@@ -4,7 +4,8 @@ use super::{complex_result, finite_complex_result, ComplexParts, Suffix};
 use crate::calc_result::CalcResult;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::num_error;
-use crate::functions::math_and_trigonometry::{excel_sin_cos, EXCEL_TRIG_LIMIT};
+use crate::functions::math_and_trigonometry::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
+use crate::x87_exp::excel_exp;
 
 /// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
 /// real part, although `cosh y` is still finite there: `IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`
@@ -55,6 +56,37 @@ fn hyperbolic_log_form(
     Some(finite_complex_result(re, im, suffix, cell))
 }
 
+/// `(sinh t, cosh t)` as IMSIN and IMCOS build them from the imaginary part: `(EXP(t) ∓ EXP(-t))/2`
+/// with Excel's EXP for every t, small t too, where the worksheet SINH switches to expm1
+/// (numbers.md). So the imaginary part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm
+/// sinh gives ...242709) and `IMSIN("1E-200+1E-200i")` is "1E-200": EXP(1E-200) = EXP(-1E-200),
+/// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH does not: it keeps
+/// `IMSINH("1E-200+1E-200i")`'s tiny real part, and its kernel is open (T-2778).
+fn exp_sinh_cosh(t: f64) -> (f64, f64) {
+    let (a, b) = (excel_exp(t), excel_exp(-t));
+    ((a - b) / 2.0, (a + b) / 2.0)
+}
+
+/// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of SIN,
+/// COS and TAN's own kernels (the x87 reduction, [`excel_sin_cos`] and [`excel_tan`]), and
+/// `#NUM!` from |x| = 2^27 as SIN is, except IMCOT, which is "0" there (`past_limit`).
+/// probes/t2534-im-trig-real-limit (excel-graph): `IMSIN("710")` is 0.0000602887066915739 and
+/// `IMCOT("123456789.123")` 0.0177255441505541, where libm gave other last digits; at 134217728,
+/// 1E+10, 1E+15 and ±1E+200 IMSIN, IMCOS, IMTAN, IMSEC and IMCSC are `#NUM!` and IMCOT "0"
+/// (docs/excel-semantics/engineering.md, T-2534). IMTAN takes the limit only (see [`imtan`]).
+fn real_trig(
+    x: f64,
+    suffix: Suffix,
+    cell: CellReferenceIndex,
+    past_limit: Option<f64>,
+    value: impl Fn(f64) -> f64,
+) -> CalcResult {
+    if x.abs() >= EXCEL_TRIG_LIMIT {
+        return past_limit.map_or_else(|| num_error(cell), |v| complex_result(v, 0.0, suffix));
+    }
+    finite_complex_result(value(x), 0.0, suffix, cell)
+}
+
 /// The sine and cosine of `x` as SIN and COS reduce it (by the x87 64-bit π) where they answer,
 /// libm's beyond 2^27, where the reciprocal IM* functions are unprobed. IMCSC, IMSEC, IMSECH and
 /// IMCOT take these: the sweep's rows with a large real part (`956.615+0.00387493i`,
@@ -91,10 +123,14 @@ fn reciprocal_result(x: f64, y: f64, t: f64, suffix: Suffix) -> CalcResult {
 }
 
 pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if y == 0.0 {
+        return real_trig(x, suffix, cell, None, |x| excel_sin_cos(x).1);
+    }
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    finite_complex_result(x.cos() * y.cosh(), -x.sin() * y.sinh(), suffix, cell)
+    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    finite_complex_result(x.cos() * y_cosh, -x.sin() * y_sinh, suffix, cell)
 }
 
 pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -113,10 +149,10 @@ pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// denominator cancels (`IMCOT("1E-5+1E-5i")` real part 49999.9958596485, `IMCOT("0.00001i")`
 /// -99999.9917326303i; exact 50000 and 100000). UNVERIFIED (T-2531): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1 and
 /// the result is `#NUM!`. Past `cosh 2y`'s range the value is `∓i` by the
-/// sign of y (Q27:R27, R55). A real number keeps `1/tan x` (`IMCOT("1E-20")` = 1E+20).
+/// sign of y (Q27:R27, R55). A real number is 1 over TAN's kernel ([`real_trig`]; `IMCOT("1E-20")` = 1E+20).
 pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
-        return finite_complex_result(1.0 / x.tan(), 0.0, suffix, cell);
+        return real_trig(x, suffix, cell, Some(0.0), |x| 1.0 / excel_tan(x));
     }
     let cosh_2y = f64::cosh(2.0 * y);
     if cosh_2y.is_infinite() {
@@ -132,15 +168,15 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// and COS reduced as Excel's own (`trig_sin_cos`): all 69 finite cells of probes-numeric
 /// im-last-digit-sweep (T-2044). Writing sinh²y as `(cosh 2y - 1)/2` is what loses Excel's digits
 /// for tiny arguments: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (exact
-/// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. A real number is `1/sin x`
-/// (gen-m9/2f0d384b8ed0d392 A109, `IMCSC(0.2)` 5.03348954767234; the kernel gives ...235), as
+/// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. A real number is 1 over SIN's kernel ([`real_trig`])
+/// (gen-m9/2f0d384b8ed0d392 A109, `IMCSC(0.2)` 5.03348954767234; the complex formula gives ...235), as
 /// IMSEC's is `1/cos x` and IMSECH's `1/cosh x` (gen-m9/01810fc89c5ec2c0 A318). UNVERIFIED (T-2531): below |y| ≈ 1.05E-8
 /// `cosh 2y` rounds to 1, `t` is 0 and the result is `#NUM!`.
 pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    let (x_sin, x_cos) = trig_sin_cos(x);
     if y == 0.0 {
-        return finite_complex_result(1.0 / x_sin, 0.0, suffix, cell);
+        return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).0);
     }
+    let (x_sin, x_cos) = trig_sin_cos(x);
     let y_cosh = y.cosh();
     let y_sinh = y.sinh();
 
@@ -177,11 +213,11 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// value in the 10th digit). IMSECH is not the same formula turned a quarter: it squares sinh
 /// itself, so `IMSEC("4+3i")` has real part -0.0652940278579471 and `IMSECH("3+4i")`
 /// -0.065294027857947 (G23, K58).
-pub(super) fn imsec((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
-    let (x_sin, x_cos) = trig_sin_cos(x);
+pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
-        return complex_result(1.0 / x_cos, 0.0, suffix);
+        return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).1);
     }
+    let (x_sin, x_cos) = trig_sin_cos(x);
     let y_cosh = y.cosh();
     let y_sinh = y.sinh();
 
@@ -212,10 +248,14 @@ pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
 }
 
 pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    if y == 0.0 {
+        return real_trig(x, suffix, cell, None, |x| excel_sin_cos(x).0);
+    }
     if trig_exp_overflows(y) {
         return num_error(cell);
     }
-    finite_complex_result(x.sin() * y.cosh(), x.cos() * y.sinh(), suffix, cell)
+    let (y_sinh, y_cosh) = exp_sinh_cosh(y);
+    finite_complex_result(x.sin() * y_cosh, x.cos() * y_sinh, suffix, cell)
 }
 
 pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -248,7 +288,13 @@ fn tan_parts(x: f64, y: f64) -> (f64, f64) {
     }
 }
 
-pub(super) fn imtan((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
+    // Below the limit a real number keeps the double-angle form, which gives the Mac desktop cache
+    // of ironcalc-calc COMPLEXs.xlsx N6 (`IMTAN(5)` -3.38051500624658) where the web gives TAN's
+    // kernel (-3.38051500624659): a web-vs-desktop conflict left to T-1075 item 17 (T-2534).
+    if y == 0.0 && x.abs() >= EXCEL_TRIG_LIMIT {
+        return num_error(cell);
+    }
     let (x, y) = tan_parts(x, y);
     complex_result(x, y, suffix)
 }

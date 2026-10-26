@@ -455,10 +455,18 @@ reads `#BLOCKED!`; `Model::external_lookup_table` gives VLOOKUP's, HLOOKUP's and
 `#N/A` on such a sheet. XLOOKUP searches one cell of it as a one-cell vector of its `#BLOCKED!`, as it
 searches a range, so it finds nothing (`uncached_cell_vector`). COUNTA counts every cell of it
 (`external_blocked_count`). The importer keeps the sheets marked `refreshError`
-(`ExternalBook::refresh_error_sheets`), and a cell of one reads `#REF!` (T-0472). Not yet matched: whole
-columns of a cached sheet, which are the array bound's `#ERROR!` (B17, B21, B49, B50; T-0474).
-Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
-Tasks: T-0457, T-0472
+(`ExternalBook::refresh_error_sheets`), and a cell of one reads `#REF!` (T-0472). VLOOKUP, HLOOKUP and
+MATCH read a range of several cells of a cached sheet in place (`LookupTable::External`,
+`Model::cached_external_lookup_area`) instead of building it as an array, so whole columns and rows
+match B17, B21, B49 and B50 (T-0474). The search vector keeps the area's full length (the cached
+cells, then an empty tail), as a whole column of this workbook does; a vector cut to the cache's
+extent would move the approximate search's midpoints (lookup.md "Approximate match"). UNVERIFIED, a hand
+expectation awaiting an oracle cell (T-0479): an approximate whole-column lookup over an unsorted cached
+column (cache 1,5,2,9,3) is the local result. `VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as
+over a local whole column, and a unit test pins that in test_external_links.rs.
+Status: VERIFIED for the oracle cells above (excel-graph only; no desktop evidence, decision 0030); the
+unsorted approximate case is UNVERIFIED
+Tasks: T-0457, T-0472, T-0474, T-0479
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -2468,8 +2476,15 @@ Rule: INDIRECT's a1 argument given as a one-element array is `#VALUE!`, while a 
 array lifts: `INDIRECT("B1",{1})` and `INDIRECT("B1",{TRUE})` are `#VALUE!`, `INDIRECT("B1",TRUE)` is B1's 5 and
 `ROWS(INDIRECT("B1",{1;1}))` 2 (probes/t2436/computed-scalar A39:A42); in the sweep `INDIRECT("Data!B3",TOCOL(2,0,Data!A5))`
 is `#VALUE!` (06b4e8f5de409d5e A261) and `INDIRECT("Data!A1",FILTER(..)<6 numbers>)` six `#VALUE!` elements
-(f2bd5f380ec002bf A383). This answers T-2347's question for INDIRECT's a1 argument (ref_text is still unprobed).
-Evidence: probes/t2436/computed-scalar, probes/t2436/06b4e8f5de409d5e, probes/t2436/f2bd5f380ec002bf (excel-graph, 2026-10-24).
-Ours: the 1x1 array read as its element (5); T-2577.
+(f2bd5f380ec002bf A383). This answers T-2347's question for INDIRECT (a1 by T-2436, ref_text by T-2577).
+T-2577 probe: a 1x1 array lifts INDIRECT into a one-element array of references, ref_text too:
+`INDIRECT({"B1"})` and `INDIRECT({"B1"},TRUE)` are `#VALUE!`, `ROWS(INDIRECT("B1",{0}))` 1, `ISREF(INDIRECT("B1",{1}))`
+FALSE, `ISERROR(..)` TRUE, `ERROR.TYPE(..)` 3, `SUM(..)` and `MAX(..)` 5, `COUNT(..)` 0 (probes/t2577-indirect-ref-array
+A1:A28). One index into it picks the element: `F.TEST(INDEX(INDIRECT("B1",{1}),1),{-1,0,1})` is B1's one-value `#DIV/0!`
+(A100), where `INDEX(OFFSET(A1,{0;1},0),2)` is `#VALUE!` (lookup.md); INDEX of it read directly and of a 1xN grid with one
+index are unprobed. The paired functions over it are statistics.md "An array of references is #NUM! in the paired functions".
+Evidence: probes/t2436/computed-scalar, probes/t2436/06b4e8f5de409d5e, probes/t2436/f2bd5f380ec002bf (excel-graph,
+2026-10-24), probes/t2577-indirect-ref-array (excel-graph, 2026-10-26).
+Ours: since T-2577 (`lifts_one_by_one` for INDIRECT, as for OFFSET, TAKE and DROP).
 Status: VERIFIED (excel-graph)
 Tasks: T-2577, T-2347

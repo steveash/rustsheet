@@ -57,6 +57,9 @@ and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.
 `ROUND(1.23456789012345E+300,-299)` = 1.2E+300.
 Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
+Also `ROUND(1.05*(0.0284+0.0046)-0.0284,4)` = 0.0063 though the sum is 0.006249999999999999:
+probes/round-float-noise-carry A1–A2 (excel-graph, 2026-10-26, T-2634; the same value Excel
+cached in upstream's old ROUND.xlsx `issues!A2`).
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/decimal_round.rs` (T-0106).
 ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
 
@@ -168,7 +171,7 @@ double. A wrapped `num_digits` behaves the same as its wrapped value: `ROUNDUP(x
 `ROUNDUP(x,2^31+k)` and `ROUNDUP(x,k)` agree on every probed cell.
 Evidence: probes/roundup-wrapped-scaling (480 cells: 20 values × k = 1..4, plain, 65536+k, 2^31+k
 and -(65536+k), ROUNDUP and ROUNDDOWN); probes/round-huge-digits-wrap A16, A35, A38 (excel-graph,
-2026-10-09, T-0268); ironcalc-calc MATH_AND_TRIGONOMETRY/ROUND.xlsx D6 (desktop Excel cached value).
+2026-10-09, T-0268); ironcalc-calc MATH_AND_TRIGONOMETRY/ROUND_ROUNDUP_ROUNDDOWN.xlsx D6 (desktop Excel cached value).
 Rejected: multiplying the rounded-up digits by `10^-k` (52/80 cells) and binary scaling
 `ceil(x*10^k)` (37/80); the add model matches 80/80.
 Status: VERIFIED
@@ -891,7 +894,7 @@ results become 0"), so the result is 0. A ratio at 2^-1022 keeps its step. `CEIL
 `FLOOR.MATH(-10^-307,100)` are 0, while `CEILING.MATH(1E-307,4)` (ratio 2.5E-308) is 4, `CEILING(2^-1022,1)` is 1, `FLOOR.MATH(-(2^-1022),1)` is -1
 and `CEILING(2^-1022,1.0000001)` is 0. (Write a negative input as `-(2^-1022)`: `-2^-1022` is `(-2)^-1022`, positive.) The sign and argument checks are unchanged (`CEILING(1E-307,-10)` is still `#NUM!`).
 MROUND already matched (its quotient rounds to 0 there). ROUNDUP does not follow this rule: `ROUNDUP(1E-307,-2)` is 100,
-but `ROUNDUP(2^-1022,0)` is 0 (T-2756, not yet fitted). This settles the calipers goldens `formulas_math_basic` and
+but `ROUNDUP(2^-1022,0)` is a subnormal ("ROUNDUP and ROUNDDOWN of a number whose 15-digit cut is subnormal", T-2756). This settles the calipers goldens `formulas_math_basic` and
 `formulas_datetime` E169, F169, E183 and F183.
 Evidence: probes/t2715-ceiling-floor-subnormal-ratio (excel-graph, 2026-10-25): 76 number/significance pairs (±1E-307,
 ±2^-1022, ±1E-300 against significances above, at and below the boundary, both signs, and the calipers pairs) times 11
@@ -899,6 +902,32 @@ functions, all matching the rule; probes/t2715-roundup-near-smallest-normal (the
 Status: VERIFIED (excel-graph)
 Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
 Tasks: T-2715, T-2756 (ROUNDUP)
+
+## ROUNDUP and ROUNDDOWN of a number whose 15-digit cut is subnormal (T-2756)
+Rule: the ROUND family first cuts x to 15 significant digits (round to nearest, "ROUND family rounds in two decimal
+stages"). When that cut, as a double, is subnormal (below 2^-1022), ROUNDUP, ROUNDDOWN and TRUNC return a nonzero
+subnormal whatever num_digits, so `ROUNDUP(2^-1022,0)`, `ROUNDUP(-(2^-1022),-2)`, `ROUNDUP(2^-1022,300)` and
+`ROUNDDOWN(2^-1022,307)` all show 0 but `(x)=0` is FALSE. This holds for x = 2^-1022·(1+k·2^-52) with k = 0..7 (x up to
+2.2250738585072048E-308, cut 2.22507385850720E-308); from k = 8 (cut 2.22507385850721E-308, normal) ROUNDUP takes its step
+again (`ROUNDUP(x,0)` 1, `ROUNDUP(-x,-2)` -100, `ROUNDUP(x,2)` 0.01, `ROUNDUP(x,300)` 1E-300), so the threshold is the
+round-to-nearest cut, not a truncation (which would put it at k = 18). Otherwise every decimal the family converts to a
+double is flushed to 0 when subnormal: ROUND's result at any k (`ROUND(2^-1022,309)` 2.2E-308 is 0, and so is `ROUND(x,330)`
+with nothing dropped for k ≤ 7, whose kept cut is subnormal, while for k = 8 it is the normal 2.22507385850721E-308 and
+`ROUND(2^-1022,310)` is 2.23E-308), ROUNDDOWN's (`ROUNDDOWN(x,308)` for k = 8, 2E-308, is 0)
+and ROUNDUP's rounded-down part and unit (`ROUNDUP(x,308)` to `ROUNDUP(x,321)` for k = 8 are 0, though the decimal
+results 3E-308 to 2.2250738585073E-308 are normal: both 2E-308 and the unit 1E-308 are flushed; `ROUNDUP(x,307)` is
+1E-307). The subnormal returned is 2.2250738585071984E-308 for every k = 0..7 and num_digits probed (read through `*2^100`:
+2.8206162122887925E-278), 3 ulps below the double nearest the cut (2.2250738585071999E-308); no product or quotient of
+the 15 digits by powers of ten (two or three exact-power factors, each order) reproduced it, so the conversion is not
+known. The engine returns the nearest double, and misses those 7 read-back cells (rows 52-58). The rule is evidenced for num_digits
+from -300 to 330 only; the engine applies it at every num_digits (a huge one such as -400 or 2^31, which is `#NUM!` or
+wraps for a normal x, is not probed here; T-2771).
+Evidence: probes/t2756-roundup-smallest-normal-threshold (excel-graph, 2026-10-26): rows 1-28 bisect k = 0..20 and
+controls (2^-1021, 2^-1020, 3E-308, 9.99999999999999E-308, 1E-307) at num_digits 0, -2, 2, 300 and 330; rows 30-50 take
+k = 0, 7, 8 at num_digits 307 to 322 with `=0` companions; rows 52-60 read the subnormals back. probes/t2715-roundup-near-smallest-normal.
+Status: VERIFIED (excel-graph), except the subnormal's last bits
+Implemented in: `round_function` and `round_decimal` in crates/rustsheet-engine/src/decimal_round.rs
+Tasks: T-2756
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`

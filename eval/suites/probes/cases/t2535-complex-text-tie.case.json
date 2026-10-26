@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2535: does Excel's complex text round a part on a 16-digit tie as it rounds IMSINH(\"4\") (27.28991719712775 prints ...278, -27.28991719712775 ...277)? COMPLEX of computed tie values, both signs, real and imaginary parts, and the doubles behind them.",
+ "tags": [
+  "M9",
+  "engineering",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=COMPLEX((EXP(4)-EXP(-4))/2,0)",
+    "A2": "=COMPLEX(-(EXP(4)-EXP(-4))/2,0)",
+    "A3": "=COMPLEX(27.2899171971277+5E-14,0)",
+    "A4": "=COMPLEX(-27.2899171971277-5E-14,0)",
+    "A5": "=(EXP(4)-EXP(-4))/2-27.2899171971277",
+    "A6": "=SINH(4)-27.2899171971277",
+    "A7": "=IMREAL(IMSINH(\"4\"))-27.2899171971277",
+    "A8": "=27.2899171971277+5E-14-27.2899171971277",
+    "A9": "=COMPLEX(1+5E-15,0)",
+    "A10": "=COMPLEX(-1-5E-15,0)",
+    "A11": "=COMPLEX(0,27.2899171971277+5E-14)",
+    "A12": "=COMPLEX(0,-27.2899171971277-5E-14)",
+    "A13": "=IMSUM(COMPLEX(27.2899171971277+5E-14,0),\"0\")",
+    "A14": "=IMSINH(\"4+0i\")",
+    "A15": "=IMSINH(4)",
+    "A16": "=IMREAL(IMSINH(4))",
+    "A17": "=IMCOSH(\"4\")",
+    "A18": "=IMSINH(\"4.0000000000000001\")",
+    "A19": "=COMPLEX(27.2899171971277+5E-14,1)",
+    "A20": "=COMPLEX(SINH(4),0)",
+    "A21": "=COMPLEX(SINH(-4),0)",
+    "A22": "=1*(EXP(4)-EXP(-4))/2",
+    "A23": "=TEXT((EXP(4)-EXP(-4))/2,\"0.0000000000000\")"
+   }
+  }
+ ]
+}
