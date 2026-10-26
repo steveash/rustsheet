@@ -3,7 +3,7 @@ id: T-2562
 title: "ACCRINT at the calendar's start: 1904 workbooks and a February-1900 first interest (probe)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
