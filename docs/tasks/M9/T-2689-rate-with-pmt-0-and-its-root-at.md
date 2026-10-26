@@ -3,7 +3,7 @@ id: T-2689
 title: "RATE with pmt 0 and its root at -1: Excel returns the 200th secant iterate at nper 24 but #NUM! at 12 and 60 (calipers formulas_financial F141:F143)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -55,18 +55,18 @@ with T-2527 if it is in flight.
 Code: `compute_rate`, `rate_residual` (functions/financial/financial_util.rs); `rate_of` (financial/annuity.rs).
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph, oracle-filled, at least 30 cells) covers the following, and is gated or baselined:
+- [x] A probe case (excel-graph, oracle-filled, at least 30 cells) covers the following, and is gated or baselined:
       `RATE(n,0,pv)` for n = 1 to 40 and a few larger n, at pv = -100 and -1;
       pmt = 0 with a nonzero fv (a root away from -1) as a control;
       and guesses 0 and 0.5 at n = 24.
       If the web disagrees with the Mac cells, desktop evidence already in the repo stays the target (decision 0030).
       Record the conflict and add a re-check to T-1075.
-- [ ] financial.md "RATE is a secant on the FV residual" states the cap's return rule (or the trajectory difference)
+- [x] financial.md "RATE is a secant on the FV residual" states the cap's return rule (or the trajectory difference)
       with the cells that bound it, and the UNVERIFIED note on the cap rule is updated.
-- [ ] `F calipers/roundtrip/formulas_financial/golden.xlsx Sheet1!F142` disappears from eval/baseline/calipers.txt
+- [x] (deferred to the steward's calipers ratchet, see Outcome; the cell passes) `F calipers/roundtrip/formulas_financial/golden.xlsx Sheet1!F142` disappears from eval/baseline/calipers.txt
       (`rustsheet-eval update-baseline --suite calipers`). F139, F141, F143, F144 and the new probe cells pass,
       and no baseline gains a line.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - RATE's last-ulp misses and the nested `RATE(n,PMT(..),..)` cells (T-2527).
@@ -80,3 +80,26 @@ the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance
 
 Owned visibly-off cells (2026-10-25 eval run): calipers formulas_financial Sheet1!F142 (RATE, `#NUM!` where Excel
 has a number). Stage `semantics`: wrong type, decided by the solver's stopping rule.
+
+## Progress
+Superseded by the Outcome. The in-flight notes traced the plain-double secant over rate-pmt-zero-cap and found its
+200th iterate equals Excel's value bit for bit on every returned cell, so only the cap's return rule was open; the
+step-window and trajectory hypotheses they weighed were ruled out by probes/rate-cap-return-rule.
+
+## Outcome
+Excel's 200-step cap has its own, looser return test: the 200th iterate is returned when |r200 - r199| < 1e-4,
+|f(r200)| < 1e-4 and 1 + r200 > 1e-4, all absolute; otherwise `#NUM!`. `compute_rate` used to return it on
+|dr| < 1e-7 alone. Evidence: new probe `probes/rate-cap-return-rule` (74 cells, excel-graph) next to
+`probes/rate-pmt-zero-cap` (58). Guesses that move 1 + r200 across 1e-4 at fixed n (A1-A19) put the lower pmt-0 band
+on 1 + r, not on the step ratio; loan runs from far guesses pin the |f| edge (rate-step-cap A30 at 7.3e-5 returns,
+A53 at 1.06e-4 is `#NUM!`) and, scaled by 2^-10 to 2^-40 (same trajectory, smaller f), show the step test is
+absolute (A72: step 7.8e-5, 4e-4 of the rate, returns; A70: 1.3e-4 is `#NUM!`). financial.md "RATE is a secant on
+the FV residual" states the rule.
+
+Eval delta: probes +132 cells (both cases 100%, `C` lines in eval/baseline/probes.txt); rate-step-cap stays 46/46;
+calipers formulas_financial Sheet1!F142 passes (F139-F144 all match); probes-numeric m9-fin-irr-rate A583
+`RATE(10,-1E6,1E7)` now `#NUM!` as in Excel (481 -> 482; this is T-2527's A583 bullet, its |f| is 0.1-0.4 at the cap).
+The calipers baseline is not rewritten in this PR: `update-baseline --suite calipers` on this branch sees 1448
+fixed lines and 36 unrelated ulp-level misses (pv23_007/008/009/056 cash-flow and IRR cells, no RATE call) from
+drift since the last calipers ratchet, and refuses; the steward's next calipers ratchet drops the F142 line and
+the F140 line, which also passes now.
