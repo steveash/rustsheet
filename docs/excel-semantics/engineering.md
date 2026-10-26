@@ -369,6 +369,7 @@ Status: VERIFIED (excel-graph); implemented (T-1385)
 Tasks: T-1385
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
+- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
 - Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.
 - An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER; a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
@@ -768,9 +769,11 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   Not yet matched: `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`; T-2641).
   Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
   rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
-- **Large parts in plain notation.** `IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i" (21
-  characters per part; ours E notation; e707d43a891ba9b5 A330). With `IMCOT("1E-20")` "100000000000000000000" (T-1966's
-  probe) the cut is at least 1E+21; where it is is unprobed. T-2542.
+- **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
+  past 15 significant digits (`IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i";
+  `IMSUM("123456789012345678901","0")` is "123456789012345000000"), and in E notation from exponent 21
+  (`1.23456789012345E+21`, `1.5E+21`) (probes/eng-im-large-part, exponents 15 to 25, real and imaginary parts, IMSUM and
+  IMPRODUCT; matched since T-2542). Plain notation is not capped at 20 characters here, unlike coercion to text.
 - **Base conversions.** BIN2DEC, BIN2HEX and BIN2OCT of non-binary text are `#NUM!` ("ABC", "a", " x ", "TRUE", "a*";
   matched since T-2544; OCT2*/HEX2* of such text already give `#NUM!`). `places` is checked before the number: an invalid
   places (0, including an empty cell and fractions that truncate to 0 such as 0.5 or 0.01005, a negative one, 11, 42) is

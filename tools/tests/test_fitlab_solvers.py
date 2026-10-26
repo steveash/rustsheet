@@ -206,6 +206,34 @@ def test_yield_start_sweep_newton_from_a_shared_start() -> None:
         assert abs(newton(*cell.args) - cell.expected) < 5e-14 * cell.expected, cell.key
 
 
+@pytest.mark.usefixtures("real_cases")
+def test_yield_start_one_input_two_steps_back() -> None:
+    # T-2740: on yield-start-one-input every row with both twins below PRICE's root (rows 22-96) steps
+    # back two analytic-Newton iterates to one start shared by frequency 2 (A) and 1 (B), to 1.3e-8 (asserted to 2e-8).
+    # The start is the coupon rate at price 100 (row 41), linear in the rate (rows 42-66: 0.0046704412
+    # + 1.01128042 R, to 6e-9), and falls with the term (row 96, maturity 2126).
+    cells = load_sweep(["probes/yield-start-one-input"], r"^=YIELD\((.*)\)$").cells
+    by_key = {c.key: c for c in cells}
+
+    def start(row: int) -> float:
+        a, b = (
+            solvers.newton_back_chain(by_key[f"S!{c}{row}"].args, by_key[f"S!{c}{row}"].expected, 2)[2]
+            for c in "AB"
+        )
+        assert abs(a - b) < 2e-8, row
+        return (a + b) / 2
+
+    assert abs(start(41) - 0.05) < 1e-8
+    assert abs(start(42) - 0.0046704412) < 1e-8
+    assert abs(start(52) - 0.0552344627) < 1e-8
+    assert abs(start(66) - (0.0046704412 + 1.01128042 * 0.12)) < 1e-8
+    assert abs(start(96) - 0.0511796361) < 1e-8
+    # Exactly two: on row 52 the twins are 1.9e-5 apart one step back and 6.8e-4 three steps back.
+    a, b = (solvers.newton_back_chain(by_key[f"S!{c}52"].args, by_key[f"S!{c}52"].expected, 3) for c in "AB")
+    assert abs(a[1] - b[1]) > 1e-5
+    assert abs(a[3] - b[3]) > 1e-4
+
+
 def test_finite_difference_newton_reaches_the_analytic_root() -> None:
     # T-1592: every finite-difference variant (forward, central, absolute and relative step) converges on
     # yield-start-sweep A1 to the root analytic Newton finds, within the derivative's error.
