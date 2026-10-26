@@ -60,12 +60,48 @@ fn formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
         ("SUM(", ")"),
         ("-(", ")"),
         ("1*(", ")"),
-        // Whitespace at every level is a node of its own, so it nests less deep (SPEC-0023).
-        ("( ", " )"),
-        ("SUM( ", " )"),
     ] {
         let text = evaluate_deepest_on_2_mib_stack(open, close);
         assert_eq!(text.as_deref(), Some("1"), "{open}");
+    }
+}
+
+/// SPEC-0023: whitespace costs no nesting level, so a shape typed with spaces at every level, a
+/// `Node::Spaced` around each operand and each sign's operand, nests exactly as deep as without
+/// them (`=SUM( - SUM( - …` past Excel's 64 nested functions), and its formula text prints, survives
+/// a row insert and a sheet rename and evaluates on a 2 MiB stack (decision 0127).
+#[test]
+fn spaced_shapes_nest_as_deep_as_bare_ones_on_a_2_mib_stack() {
+    for (open, close, bare_open, bare_close) in [
+        ("( ", " )", "(", ")"),
+        ("SUM( ", " )", "SUM(", ")"),
+        ("SUM( - ", " )", "SUM(-", ")"),
+        ("- ( ", " ) ", "-(", ")"),
+        ("IF( TRUE, ", " )", "IF(TRUE,", ")"),
+    ] {
+        let (spaced, _) = deepest_on_2_mib_stack(open, close).unwrap_or_default();
+        let (bare, _) = deepest_on_2_mib_stack(bare_open, bare_close).unwrap_or_default();
+        assert_eq!(spaced, bare, "{open}");
+        assert!(spaced > 64, "{open}: {spaced}");
+        let handle = std::thread::Builder::new()
+            .stack_size(2 << 20)
+            .spawn(move || {
+                let mut model = new_empty_model();
+                let formula = nested(open, "B1", close, spaced);
+                model.set_user_input(0, 1, 1, formula.clone()).ok()?;
+                model.evaluate();
+                let before = (model._get_formula("A1"), model._get_text("A1"));
+                model.insert_rows(0, 1, 1).ok()?;
+                model.rename_sheet("Sheet1", "Renamed").ok()?;
+                model.evaluate();
+                let moved = nested(open, "B2", close, spaced);
+                Some((formula, before, moved, model._get_formula("A2")))
+            });
+        let result = handle.ok().and_then(|h| h.join().ok()).flatten();
+        let (formula, (text, value), moved, after) = result.unwrap_or_default();
+        assert_eq!(text, formula.trim_end(), "{open}");
+        assert_eq!(value, "0", "{open}");
+        assert_eq!(after, moved.trim_end(), "{open}");
     }
 }
 

@@ -153,7 +153,8 @@ one, so up to 127 nested parentheses or function calls are accepted (126 around 
 `0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
 (T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
-a plus directly before a number literal folds into it and adds no node. Excel caps function nesting at 64
+a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
+level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
 text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
 cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
@@ -348,8 +349,10 @@ touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the R1
 sheet renames and moves print the spaces back. A cell stores two trees: the written one, which prints, and one with no
 whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a `Spaced`
 (`model::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the stripped tree too.
-Still open: runs holding a line feed print nothing (T-2782), the spaces beyond an intersection's one (T-2783), the
-leading run of stored text (T-2784), whitespace around LAMBDA parameter names (dropped; unprobed), and the xlsx export,
+A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass); other leading
+whitespace characters are kept as before (unprobed). Still open: runs holding a line feed print nothing (T-2782),
+the spaces beyond an intersection's one (T-2783), whitespace around LAMBDA parameter names (dropped; unprobed,
+T-2786), and the xlsx export,
 which writes the stripped tree until T-2786 shows what Excel saves. `=S! B1` is a parse error (`#ERROR!`) where Excel
 reads `S!B1` (T-2785).
 Status: VERIFIED (excel-graph)

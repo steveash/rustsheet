@@ -73,6 +73,12 @@ impl Node {
     /// `self` with `before` and `after` written around it: itself when both are empty, so a
     /// formula with no whitespace holds no [`Node::Spaced`]. Runs around an operand that already
     /// has some join them, so a `Spaced` never wraps another.
+    ///
+    /// A `Spaced` costs no level of [`super::MAX_FORMULA_DEPTH`]: it only ever wraps a node that
+    /// costs one, and never another `Spaced`, so the tree is at most twice as deep as counted, and
+    /// only the printers and edits walk it (evaluation reads the tree with no whitespace,
+    /// decision 0127). A formula nests as deep with spaces as without, as Excel's does; the
+    /// nesting tests print and edit the spaced shapes at the limit on a 2 MiB stack.
     pub(super) fn spaced(self, before: Run, after: Run) -> Node {
         let (space, child) = self.unspaced();
         let space = Spacing {
@@ -122,22 +128,5 @@ impl Parser {
             | TokenType::RightParenthesis => self.run_ahead(),
             _ => Run::default(),
         }
-    }
-
-    /// `node` with `before` and `after` around it, counted as one more level of depth when it
-    /// gains a [`Node::Spaced`], so whitespace never lets a tree outgrow
-    /// [`super::MAX_FORMULA_DEPTH`] (CLAUDE.md directive 5).
-    pub(super) fn spaced_level(
-        &mut self,
-        node: Node,
-        before: Run,
-        after: Run,
-    ) -> Result<Node, Node> {
-        let was_spaced = matches!(node, Node::Spaced { .. });
-        let node = node.spaced(before, after);
-        if !was_spaced && matches!(node, Node::Spaced { .. }) {
-            self.grow(self.depth, 0)?;
-        }
-        Ok(node)
     }
 }

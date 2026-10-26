@@ -737,7 +737,7 @@ impl Parser {
         // after `=` keeps it: `<f> 1+2</f>` prints `=1+2` (probes/t2776-formula-text-whitespace-shapes
         // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784).
         let formula = if self.loaded {
-            formula.trim_start()
+            formula.trim_start_matches(' ')
         } else {
             formula
         };
@@ -900,7 +900,7 @@ impl Parser {
         signs: Vec<(bool, Run)>,
     ) -> Result<Node, Node> {
         for (is_minus, after_sign) in signs.into_iter().rev() {
-            t = self.spaced_level(t, after_sign, Run::default())?;
+            t = t.spaced(after_sign, Run::default());
             self.grow(self.depth, 0)?;
             let right = Box::new(t);
             t = if is_minus {
@@ -913,7 +913,7 @@ impl Parser {
             };
         }
         while self.lexer.peek_token() == TokenType::Percent {
-            t = self.spaced_level(t, Run::default(), self.run_ahead())?;
+            t = t.spaced(Run::default(), self.run_ahead());
             self.lexer.advance_token();
             self.grow(self.depth, 0)?;
             t = Node::UnaryKind {
@@ -922,7 +922,7 @@ impl Parser {
             };
         }
         let after = self.run_after_operand();
-        self.spaced_level(t, before, after)
+        Ok(t.spaced(before, after))
     }
 
     fn parse_operand(&mut self) -> Node {

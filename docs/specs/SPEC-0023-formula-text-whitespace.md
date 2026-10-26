@@ -158,9 +158,11 @@ Changes from the design above, found while implementing step 1 (decision 0127):
   (`model::ParsedFormula`; the copy exists only for a formula written with whitespace). The other evaluated trees
   (defined names, conditional formats, outside-cell formulas) are stripped where they are parsed. The peel in
   `ungrouped`/`lowered` and the walkers stays, for the printers and edits that read the written tree.
-- **`Spacing` is inline** (`Spaced { space: Spacing, child: Box<Node> }`), two bytes today, so no second box; and
-  every `Spaced` costs one level of `MAX_FORMULA_DEPTH`, so a formula spaced at every level nests less deep than an
-  unspaced one, but never deeper than the stack is sized for (directive 5).
+- **`Spacing` is inline** (`Spaced { space: Spacing, child: Box<Node> }`), two bytes today, so no second box.
+  As the design says, a `Spaced` costs no level of `MAX_FORMULA_DEPTH`, so a formula nests as deep with spaces as
+  without. It wraps only a node that costs a level and never another `Spaced`, so a written tree is at most twice as
+  deep as counted, and only printers and edits walk it; the nesting tests print, edit and evaluate spaced shapes at
+  the limit on a 2 MiB stack (`spaced_shapes_nest_as_deep_as_bare_ones_on_a_2_mib_stack`).
 - The runs are attached in `Parser::parse_power` (before the operand, after each sign, before each `%`, after the
   operand) and after `@`, which covers every primary position the probes show.
 

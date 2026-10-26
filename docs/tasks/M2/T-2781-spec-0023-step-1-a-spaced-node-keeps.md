@@ -40,9 +40,9 @@ C7:C13, C16:C18; probes/t2776-ws-after-at C1.
 - Deviation from the spec's design, recorded in SPEC-0023 "Implementation note": a cell stores the written tree and a
   stripped copy (`model::ParsedFormula`, `Node::strip_spaces`), and evaluation, units and static analysis read the
   copy, because ~300 argument-shape sites match nodes without peeling; defined names, conditional formats and
-  outside-cell formulas are stripped where parsed. Every `Spaced` costs a depth level (nesting test gains `( ` and
-  `SUM( ` shapes). The xlsx export still writes the stripped tree (T-2786 decides).
-- Stored text: a file's `<f>` drops its leading whitespace (`Parser::loaded`), so t2776-shapes E7/E8 keep passing and
+  outside-cell formulas are stripped where parsed. A `Spaced` costs no depth level; the
+  nesting tests gain spaced shapes (`( `, `SUM( - `, `IF( TRUE, `…) printed, edited and evaluated at the limit. The xlsx export still writes the stripped tree (T-2786 decides).
+- Stored text: a file's `<f>` drops its leading whitespace (`Parser::loaded`, spaces only), so t2776-shapes E7/E8 keep passing and
   E1, E2, E10 (T-2784's) pass now; T-2784 is left with nothing in E-cells beyond E6/E9 (line feed, intersection).
 - Eval: probes known failures 2690 -> 2654 (36 fixed, 0 regressions): t2769 C1:C5, C7, C8, C10:C15, C18:C20, C22;
   t2723 C24, C25; t2776-shapes C1, C2, C7:C12, C16:C18, C21, E1, E2, E10, F21; t2776-ws-after-at C1. Every other

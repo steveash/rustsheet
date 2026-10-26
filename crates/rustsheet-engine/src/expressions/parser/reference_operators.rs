@@ -249,9 +249,7 @@ impl Parser {
                 self.nesting -= PRIMARY_DEPTH;
                 match t {
                     Node::ParseErrorKind { .. } => t,
-                    t => match self.spaced_level(t, gap, Run::default()) {
-                        Ok(t) | Err(t) => t,
-                    },
+                    t => t.spaced(gap, Run::default()),
                 }
             };
             if let Node::ParseErrorKind { .. } = t {
