@@ -19,7 +19,6 @@ T-2786 could not answer: typing a this-row formula into a table column made Exce
 ## Acceptance criteria
 - [ ] Probe case with excel-graph values; findings in syntax.md; implementation task filed if it differs.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the findings.

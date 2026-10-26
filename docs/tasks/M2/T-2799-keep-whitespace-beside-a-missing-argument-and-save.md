@@ -20,7 +20,6 @@ T-2786 found Excel keeps a run between commas or after the last comma (`=IF(1, ,
 - [ ] The I1:I13 FORMULATEXT cells of probes/t2786-whitespace-structured-refs-runs pass.
 - [ ] SPEC-0023 "Where whitespace attaches" updated; export writes CR LF for a kept line feed and import reads it.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Structured references (T-2801).

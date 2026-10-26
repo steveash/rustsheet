@@ -345,7 +345,7 @@ Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-struc
 T-2786), sheet1.xml H1:H17 and E4:E15. Excel's whitespace semantics are in syntax.md.
 Ours: export prints from a tree that keeps no whitespace (SPEC-0023 step 1 designs keeping it), so the saved text is
 canonical; the line feed's CR LF form and the runs beside a missing argument are filed as T-2799.
-Status: VERIFIED (web)
+Status: VERIFIED (excel-graph)
 Tasks: T-2786, T-2799, T-2801
 
 ## Cached volatile values are those of the last calculation, near the save time
