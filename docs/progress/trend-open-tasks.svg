@@ -25,11 +25,11 @@
 <rect class="grid" fill="#d1d9e0" x="70" y="66.0" width="542" height="1"/>
 <text x="62.0" y="66.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">50</text>
 <text x="341.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-25</text>
-<circle class="b-semantics" fill="#2a78d6" cx="341.0" cy="80.4" r="3.5"><title>Semantics, 2026-10-25: 46</title></circle>
+<circle class="b-semantics" fill="#2a78d6" cx="341.0" cy="87.6" r="3.5"><title>Semantics, 2026-10-25: 44</title></circle>
 <circle class="b-accuracy" fill="#1baf7a" cx="341.0" cy="199.2" r="3.5"><title>Accuracy, 2026-10-25: 13</title></circle>
 <circle class="b-visible" fill="#6250d6" cx="341.0" cy="109.2" r="3.5"><title>Visible, 2026-10-25: 38</title></circle>
 <circle class="b-parked" fill="#4b5563" cx="341.0" cy="112.8" r="3.5"><title>Parked, 2026-10-25: 37</title></circle>
-<text x="351.0" y="80.4" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">46</text>
+<text x="351.0" y="87.6" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">44</text>
 <text x="351.0" y="199.2" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">13</text>
 <text x="351.0" y="109.2" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">38</text>
 <text x="351.0" y="124.2" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">37</text>
