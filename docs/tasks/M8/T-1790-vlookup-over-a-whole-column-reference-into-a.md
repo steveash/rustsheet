@@ -3,7 +3,7 @@ id: T-1790
 title: "VLOOKUP over a whole-column reference into a cached external workbook reads the cache, not #ERROR!"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
