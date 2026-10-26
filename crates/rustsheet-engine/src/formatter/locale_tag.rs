@@ -4,7 +4,9 @@
 //! docs/excel-semantics/number-formats.md "Locale tags localize date names".
 
 pub use crate::locale::excel_date_names::DateNames;
-use crate::locale::excel_date_names::{EN_US, LOCALES, LUNAR_JA, LUNAR_KO, LUNAR_ZH};
+use crate::locale::excel_date_names::{
+    ARABIC, ARABIC_LEVANT, EN_US, LOCALES, LUNAR_JA, LUNAR_KO, LUNAR_ZH,
+};
 
 /// The calendar a locale tag selects: what `yy`, `yyyy`, `b`, `e` and `g` print.
 /// Evidence: probes/text-locale-calendars, text-locale-calendars-detail, text-locale-japanese-year
@@ -110,10 +112,11 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// for a Korean LCID), 7 Thai (Thai names), 9 Gregorian with French names, and 15 and above are
 /// ignored (`[$-FF040C]mmmm` is "mars"). E, F, 11, 12 and 13 are lunar: E with lunar month names
 /// and Japanese weekdays (Korean names under a Korean LCID), F and 11 with zh-CN weekdays, 12 and
-/// 13 with en-US names. Day halves follow the LCID throughout. Calendars 6 (Hijri,
-/// TODO(T-2729)), 8 (Hebrew), A-C (Arabic Gregorian), 10 (Saka) and 14
-/// (Korean native names; TODO(T-1923)) are not modelled and stay [`LocaleTag::Silent`], as do
-/// numeral-system digits (bits 24-31; TODO(T-1925)).
+/// 13 with en-US names. A is Gregorian with Levant Arabic month names, B and C Gregorian with
+/// the ar-SA names, 14 Gregorian with the Korean native month names (probes/t1923-calendar-digits).
+/// Day halves follow the LCID throughout. Calendars 6 (Hijri, TODO(T-2729)), 8 (Hebrew) and 10
+/// (Saka; TODO(T-2779)) are not modelled and stay [`LocaleTag::Silent`], as do numeral-system
+/// digits (bits 24-31; TODO(T-1925)).
 fn resolve_lcid(value: u32) -> LocaleTag {
     match value {
         0xF800 => return LocaleTag::SystemDate,
@@ -165,6 +168,9 @@ fn resolve_lcid(value: u32) -> LocaleTag {
         ),
         0xF | 0x11 => with_names(&LUNAR_ZH, Calendar::Lunar(LunarTable::Chinese)),
         0x12 | 0x13 => with_names(EN_US, Calendar::Lunar(LunarTable::Eastern)),
+        0xA => with_names(&ARABIC_LEVANT, Calendar::Gregorian),
+        0xB | 0xC => with_names(ARABIC, Calendar::Gregorian),
+        0x14 => with_names(&LUNAR_KO, Calendar::Gregorian),
         _ => LocaleTag::Silent,
     }
 }

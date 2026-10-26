@@ -1,7 +1,7 @@
 use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::element_errors::array_element_error;
-use crate::functions::statistical::paired::{is_marked_number, marked_number_error, PairedArg};
+use crate::functions::statistical::paired::{marked_number_error, PairedArg};
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
@@ -123,12 +123,12 @@ impl Model {
         if args.len() != 2 {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let x_range = self.evaluate_node_in_context(&args[0], cell);
-        // A first argument that is a number straight from ERROR.TYPE or CELL is `#NUM!` once the
-        // sizes match (`INTERCEPT(ERROR.TYPE(#REF!),5)`, `SLOPE(ERROR.TYPE(#REF!),5)`, while
-        // `RSQ(ERROR.TYPE(#NAME?),Data!C8:C11)` is `#N/A`; T-2576). The second reads as the number
-        // it is (`INTERCEPT(5,ERROR.TYPE(#REF!))` is `#DIV/0!` like (5,4)).
-        let first_marked = is_marked_number(&args[0], &x_range, cell.row);
+        // A marked first argument (a number straight from ERROR.TYPE or CELL, an array of
+        // references) is `#NUM!` once the sizes match (`INTERCEPT(ERROR.TYPE(#REF!),5)`,
+        // `SLOPE(INDIRECT("B1",{1;1}),{1;2})`, while `RSQ(ERROR.TYPE(#NAME?),Data!C8:C11)` is
+        // `#N/A`; T-2576, T-2577). The second reads as the number it is
+        // (`INTERCEPT(5,ERROR.TYPE(#REF!))` is `#DIV/0!` like (5,4)).
+        let (x_range, first_marked) = self.evaluate_sample_arg(&args[0], cell);
         let y_range = self.evaluate_node_in_context(&args[1], cell);
         let x_range = self.blank_one_cell_as_error(x_range, cell);
         let y_range = self.blank_one_cell_as_error(y_range, cell);

@@ -32,13 +32,15 @@ impl Model {
             &TRIMMEAN_DATA,
             cell,
             &mut |model, data, values| {
-                if data.is_empty() {
-                    return num_error(cell);
-                }
+                // percent's error comes before the no-number `#NUM!`, as PERCENTILE's k
+                // (`TRIMMEAN(<text cells>,<#N/A>)` is `#N/A`, gen-m9/3e98b26cf6713e77 A247).
                 let percent = match model.cast_number_ref(value_at(values, 1), cell) {
                     Ok(v) => v,
                     Err(e) => return e,
                 };
+                if data.is_empty() {
+                    return num_error(cell);
+                }
                 if !(0.0..1.0).contains(&percent) {
                     return num_error(cell);
                 }

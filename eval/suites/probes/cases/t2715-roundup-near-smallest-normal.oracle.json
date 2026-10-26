@@ -481,15 +481,255 @@
    "D9": {
     "t": "n",
     "v": 0.0
+   },
+   "E1": {
+    "t": "b",
+    "v": false
+   },
+   "E10": {
+    "t": "b",
+    "v": false
+   },
+   "E11": {
+    "t": "b",
+    "v": false
+   },
+   "E12": {
+    "t": "b",
+    "v": false
+   },
+   "E13": {
+    "t": "b",
+    "v": false
+   },
+   "E14": {
+    "t": "b",
+    "v": false
+   },
+   "E15": {
+    "t": "b",
+    "v": false
+   },
+   "E16": {
+    "t": "b",
+    "v": false
+   },
+   "E17": {
+    "t": "b",
+    "v": false
+   },
+   "E18": {
+    "t": "b",
+    "v": false
+   },
+   "E19": {
+    "t": "b",
+    "v": false
+   },
+   "E2": {
+    "t": "b",
+    "v": false
+   },
+   "E20": {
+    "t": "b",
+    "v": false
+   },
+   "E21": {
+    "t": "b",
+    "v": false
+   },
+   "E22": {
+    "t": "b",
+    "v": false
+   },
+   "E23": {
+    "t": "b",
+    "v": false
+   },
+   "E24": {
+    "t": "b",
+    "v": false
+   },
+   "E25": {
+    "t": "b",
+    "v": false
+   },
+   "E26": {
+    "t": "b",
+    "v": false
+   },
+   "E27": {
+    "t": "b",
+    "v": false
+   },
+   "E28": {
+    "t": "b",
+    "v": false
+   },
+   "E29": {
+    "t": "b",
+    "v": false
+   },
+   "E3": {
+    "t": "b",
+    "v": false
+   },
+   "E30": {
+    "t": "b",
+    "v": false
+   },
+   "E4": {
+    "t": "b",
+    "v": false
+   },
+   "E5": {
+    "t": "b",
+    "v": false
+   },
+   "E6": {
+    "t": "b",
+    "v": false
+   },
+   "E7": {
+    "t": "b",
+    "v": false
+   },
+   "E8": {
+    "t": "b",
+    "v": false
+   },
+   "E9": {
+    "t": "b",
+    "v": false
+   },
+   "F1": {
+    "t": "b",
+    "v": true
+   },
+   "F10": {
+    "t": "b",
+    "v": true
+   },
+   "F11": {
+    "t": "b",
+    "v": false
+   },
+   "F12": {
+    "t": "b",
+    "v": false
+   },
+   "F13": {
+    "t": "b",
+    "v": false
+   },
+   "F14": {
+    "t": "b",
+    "v": false
+   },
+   "F15": {
+    "t": "b",
+    "v": false
+   },
+   "F16": {
+    "t": "b",
+    "v": false
+   },
+   "F17": {
+    "t": "b",
+    "v": false
+   },
+   "F18": {
+    "t": "b",
+    "v": false
+   },
+   "F19": {
+    "t": "b",
+    "v": false
+   },
+   "F2": {
+    "t": "b",
+    "v": true
+   },
+   "F20": {
+    "t": "b",
+    "v": false
+   },
+   "F21": {
+    "t": "b",
+    "v": true
+   },
+   "F22": {
+    "t": "b",
+    "v": true
+   },
+   "F23": {
+    "t": "b",
+    "v": true
+   },
+   "F24": {
+    "t": "b",
+    "v": true
+   },
+   "F25": {
+    "t": "b",
+    "v": true
+   },
+   "F26": {
+    "t": "b",
+    "v": true
+   },
+   "F27": {
+    "t": "b",
+    "v": true
+   },
+   "F28": {
+    "t": "b",
+    "v": true
+   },
+   "F29": {
+    "t": "b",
+    "v": true
+   },
+   "F3": {
+    "t": "b",
+    "v": true
+   },
+   "F30": {
+    "t": "b",
+    "v": true
+   },
+   "F4": {
+    "t": "b",
+    "v": true
+   },
+   "F5": {
+    "t": "b",
+    "v": true
+   },
+   "F6": {
+    "t": "b",
+    "v": true
+   },
+   "F7": {
+    "t": "b",
+    "v": true
+   },
+   "F8": {
+    "t": "b",
+    "v": true
+   },
+   "F9": {
+    "t": "b",
+    "v": true
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "5d8f19479b97896338da62ed6ac575242925db00e76e1a1c6c5039ef3e735350",
+  "input_sha256": "7aa8b3f9279222c5b812716d22155a9bf2d34014e11755518ce550e417b3ebda",
   "kind": "excel-graph",
-  "produced_at": "2026-10-25T19:03:13+00:00",
+  "produced_at": "2026-10-26T03:54:31+00:00",
   "version": null,
-  "workbook_name": "5e552a25dd2c8a0d80278efa4d23c841db17b94b59afbe274f2508cd664e90c7.xlsx"
+  "workbook_name": "f0f514d8ae1d1d5c7c01af9782bc71f398a0caea003989216ed185ef11278141.xlsx"
  }
 }
