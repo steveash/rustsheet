@@ -125,7 +125,7 @@ impl Model {
         };
         let totals_rows = i32::from(totals_row);
         if top < 1
-            || top + totals_rows >= bottom
+            || top.saturating_add(totals_rows) >= bottom
             || left > right
             || bottom > crate::constants::LAST_ROW
         {
