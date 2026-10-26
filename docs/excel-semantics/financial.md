@@ -1767,7 +1767,7 @@ Read together: a start that equals the coupon at par and moves linearly with the
 yield-approximation formula; T-1592 is the place to fit it. Lab test: `test_yield_start_one_input_two_steps_back`.
 T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
 - Start: S = (100·R + (100 - P)/T) / ((100 + P)/2 - (100 - P)/(4T)), with T the basis's settlement-to-maturity days
-  over 360 (over 365 on bases 1 and 3; basis 2 is assumed to be days over 360, with no evidence yet). On yield-start-one-input
+  over 360 (over 365 on bases 1 and 3; basis 2 is assumed to be days over 360, with no evidence yet: gen-m9 A189 says it is off, T-2777). On yield-start-one-input
   rows 22-96 (but 67) the two-steps-back start fits a denominator P + w(100 - P) where (1/2 - w)·T is 0.25000 on every
   row (prices 90.5 to 99.5, rates 0 to 0.12, terms 2.3 to 30.3 years). At price 98 and T = 1559/360 that gives
   0.0552344627, the T-2187 start. It does not use the redemption, the frequency or the coupon schedule. Rows 1-21 and 67 sit
