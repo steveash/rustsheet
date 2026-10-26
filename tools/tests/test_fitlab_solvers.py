@@ -285,3 +285,17 @@ def test_yield_fitted_start_and_short_stop() -> None:
     start = {c.key: c for c in load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells}
     for cell in (sweep["S!A1"], start["S!C18"], one_input["S!B21"]):
         assert model(*cell.args) == cell.expected, cell.key
+
+
+def test_yield_start_term_whole_years_then_leftover_days() -> None:
+    # T-2777: the start's term is whole years, then the leftover days over 360, 365 (basis 3) or the
+    # maturity's calendar year (basis 1). Bit-exact on probe cells the days-over-a-year term missed: a
+    # 29 February settlement on bases 1 and 0 (anniversary 1 March: rows 5 and 37), basis 1 from
+    # 1 June 2011 to 1 April 2020 (row 4) and basis 2 on gen-m9 A189's dates (row 13). Row 8 (basis 1,
+    # 9 + 364/366) is within 2 ulp, as are 115 of the probe's 120 cells.
+    probe = {c.key: c for c in load_sweep(["probes/yield-start-term-basis"], r"^=YIELD\((.*)\)$").cells}
+    model = yield_caret.caret_priced(solvers._newton_yield_short(solvers.fitted_yield_start, 1e-10))
+    for key in ("S!B5", "S!C5", "S!A37", "S!C37", "S!A4", "S!B4", "S!C13"):
+        assert model(*probe[key].args) == probe[key].expected, key
+    assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
+    assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360

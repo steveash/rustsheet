@@ -23,6 +23,7 @@ use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
+    functions::date_and_time::is_leap_year,
     functions::lift::{div_error, num_error},
     functions::Function,
     model::Model,
@@ -185,21 +186,14 @@ fn compute_price(
 // ============================================================
 
 /// YIELD with more than one coupon left: Excel's Newton ([`excel_yield_newton`]) on PRICE as PRICE
-/// computes it, from its closed-form start over the term in years. Where that Newton leaves
-/// PRICE's domain YIELD is #NUM!, with no fallback, even where PRICE has a root
+/// computes it, from its closed-form start over the term in years ([`yield_start_years`]). Where
+/// that Newton leaves PRICE's domain YIELD is #NUM!, with no fallback, even where PRICE has a root
 /// (`YIELD(36665,44491,42,106,100,4,0)`, `YIELD(39448,43831,0.05,1E+5,100,2)`; T-2391).
 fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
     let settlement = from_excel_date(bond.settlement)?;
     let maturity = from_excel_date(bond.maturity)?;
-    // The start's term: the basis' settlement-to-maturity days over 360, or over 365 on bases 1
-    // and 3 (yield-start-sweep D: 1581/365, not YEARFRAC's average year, on basis 1). Basis 2's
-    // days/360 is unverified: no probe yet, and gen-m9 A189 says it is off (TODO(T-2777)).
-    let year = if matches!(bond.basis, 1 | 3) {
-        365.0
-    } else {
-        360.0
-    };
-    let years = basis_days(settlement, maturity, bond.basis) / year;
+    let years =
+        yield_start_years(settlement, maturity, bond.basis).ok_or_else(|| "#NUM!".to_string())?;
     let (rate, redemption, frequency) = (bond.rate, bond.redemption, bond.frequency);
     excel_yield_newton(
         bond.yld_or_pr,
@@ -208,6 +202,34 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
         |y| schedule.dprice(rate, y, redemption, frequency),
     )
     .ok_or_else(|| "#NUM!".to_string())
+}
+
+/// The term [`yield_start`] takes, in years: the whole years from `settlement` to `maturity`, then
+/// the basis' days from the last anniversary of `settlement` to `maturity` over 360 (bases 0, 2
+/// and 4), 365 (basis 3) or the length of the maturity's calendar year (basis 1). A 29 February
+/// settlement has its anniversaries on 1 March in common years. Fitted on
+/// probes/yield-start-term-basis (T-2777: 115 of 120 cells within 4 ulp, the other 5 at PRICE's
+/// root, against 14 for the basis' days over its year): `YIELD(DATE(2010,1,31),DATE(2020,1,30),..,1)`
+/// starts from 9 + 364/366 (2020 is a leap year), and `YIELD(DATE(2012,2,29),DATE(2019,8,15),..,0)`
+/// from 7 + DAYS360(1 March 2019, maturity)/360, not DAYS360 over the whole term (financial.md
+/// "YIELD stops short of PRICE's root"). `None` past the calendar's end.
+fn yield_start_years(settlement: NaiveDate, maturity: NaiveDate, basis: u32) -> Option<f64> {
+    let anniversary = |year: i32| {
+        NaiveDate::from_ymd_opt(year, settlement.month(), settlement.day())
+            .or_else(|| NaiveDate::from_ymd_opt(year, 3, 1))
+    };
+    let mut whole_years = maturity.year() - settlement.year();
+    let mut last = anniversary(maturity.year())?;
+    if last > maturity {
+        whole_years -= 1;
+        last = anniversary(maturity.year() - 1)?;
+    }
+    let year = match basis {
+        1 if is_leap_year(maturity.year()) => 366.0,
+        1 | 3 => 365.0,
+        _ => 360.0,
+    };
+    Some(f64::from(whole_years) + basis_days(last, maturity, basis) / year)
 }
 
 // ============================================================

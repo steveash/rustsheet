@@ -185,6 +185,38 @@ fn fn_yield_stops_short_of_the_root() {
     assert_eq!(bits("A2"), 0.056_983_625_338_011_136_f64.to_bits());
 }
 
+// YIELD's start takes whole years, then the leftover days over the basis' year (T-2777; financial.md
+// "YIELD stops short of PRICE's root"): Excel's bits on probes/yield-start-term-basis B5 (basis 1, a
+// 29 February settlement whose anniversaries fall on 1 March), A37 (the same on basis 0: 7 +
+// 164/360, not DAYS360's 2685/360), C13 (basis 2: 17 + 314/360) and gen-m9/ba4ddb817a8e700e A17
+// (basis 1: 20 + 284/365).
+#[test]
+fn fn_yield_start_term_whole_years_then_leftover_days() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=YIELD(DATE(2012,2,29),DATE(2019,8,15),0.05,98,100.5,4,1)",
+    );
+    model._set(
+        "A2",
+        "=YIELD(DATE(2012,2,29),DATE(2019,8,15),0.05,98,100.5,2,0)",
+    );
+    model._set(
+        "A3",
+        "=YIELD(DATE(2004,7,5),DATE(2022,5,15),0.05,110,100.5,2,2)",
+    );
+    model._set("A4", "=YIELD(38743,46332,1E-15,116,123456789.123,4,1)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 0.053_819_659_384_186_62_f64.to_bits());
+    assert_eq!(bits("A2"), 0.053_839_849_220_157_665_f64.to_bits());
+    assert_eq!(bits("A3"), 0.042_160_398_818_263_84_f64.to_bits());
+    assert_eq!(bits("A4"), 0.726_837_593_103_053_2_f64.to_bits());
+}
+
 // YIELD's Newton has no fallback (T-2391; financial.md "YIELD's #NUM! cells and its 100-step
 // cap"): an iterate off PRICE's domain is #NUM! though PRICE has a root (probes/yield-newton-domain
 // B14 and A14), and the 100th iterate is the value though it is no root (C1).
