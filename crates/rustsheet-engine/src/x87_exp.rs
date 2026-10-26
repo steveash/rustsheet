@@ -245,8 +245,9 @@ fn two_to_the_minus_one(magnitude: u128, drop: u32) -> (u128, i32) {
 /// The distance from a 64-bit rounding midpoint, in half-units of the 64-bit grid, beyond which
 /// the estimate's rounding is trusted: 2^-9 half-units, at least 2^-74 of the value (a grid unit
 /// is at least 2^-64 of it). The estimate's error budget: the f64 tail about 2^-89, the neglected
-/// yl yh^4/24 about 2^-87, the rounded cross terms and the table 2^-104 or less, times at most 3.4
-/// for the E + e sum: under 2^-84 (module tests check 2^-80 on a sweep). The series runs for
+/// yl yh^4/24 about 2^-85.6 (|yl| < 2^-51 |yh| from `times_ln_2`), y itself and the rounded cross
+/// terms and the table 2^-104 or less, times at most 3.4 for the E + e F sum: under 2^-83 (module
+/// tests check 2^-80 on a sweep; the worst seen is 2^-86.6). The series runs for
 /// about 1 call in 2^9.
 const MIDPOINT_MARGIN: f64 = 1.0 / 512.0;
 
@@ -703,7 +704,8 @@ mod tests {
     // The u64 core returns the reference core's bits (T-2102): random doubles of every finite
     // bit pattern (so every exponent, the range guards and subnormals), uniform in [-750, 750]
     // and in [-30, 30], random significands at every binade from 2^-70 up, and full-width
-    // registers with random 64-bit significands at those binades.
+    // registers with random 64-bit significands at those binades. Both sides share step 3's
+    // estimate; `fast_path_matches_series`, `estimate_error_bound` and the mpmath fixture cover it.
     #[test]
     fn integer_core_matches_the_reference() {
         let mut state = 0x3C6E_F372_FE94_F82B_u64;
