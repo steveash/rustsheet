@@ -50,8 +50,8 @@ pub(crate) fn compute_rate(
     const OFFSET: f64 = 0.001;
     const TOLERANCE: f64 = 1e-7;
     // Excel's looser test at the cap (T-2689): the 200th iterate is returned when its step and
-    // |f| are below 1e-4 and it is above -1 + 1e-4. probes/rate-cap-return-rule: a step of 7.3e-5
-    // (A68, A72) returns and 1.3e-4 (A70) is `#NUM!`, also where the step is 4e-4 of the rate (A72);
+    // |f| are below 1e-4 and it is above -1 + 1e-4. probes/rate-cap-return-rule: steps of 7.3e-5
+    // (A68) and 7.8e-5 (A72) return and 1.3e-4 (A70) is `#NUM!`, also where the step is 4e-4 of the rate (A72);
     // |f| 7.3e-5 returns (rate-step-cap A30) and 1.06e-4 is `#NUM!` (A53); 1 + r 1.02e-4 returns (A1)
     // and 9.4e-5 is `#NUM!` (A16).
     const RATE_CAP_TOLERANCE: f64 = 1e-4;
