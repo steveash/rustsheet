@@ -84,8 +84,11 @@ impl Model {
     /// already clipped to the used area, is walked over its existing cells
     /// ([`Self::for_each_existing_position`], [`WalkBudget::Free`]) rather than position by
     /// position: it holds at least [`MIN_SPARSE_WALK_POSITIONS`] positions, more than
-    /// [`DENSE_WALK_FACTOR`] per cell its columns hold, and the formula can still record the area
-    /// as read empty in one rectangle (T-1690).
+    /// [`DENSE_WALK_FACTOR`] per cell its columns hold (T-1690). The area is put on record as
+    /// read empty in one rectangle, also once the formula's seen-range cap is spent, when the
+    /// formula is `#VALUE!` ([`MAX_SEEN_RANGES`](crate::area_budget::MAX_SEEN_RANGES)): the dense
+    /// walk it would fall back to costs every position of the area and a record per blank one,
+    /// unbounded in time and memory (directive 5, T-2710).
     pub(super) fn walks_sparsely(
         &self,
         sheet: u32,
@@ -94,7 +97,7 @@ impl Model {
     ) -> bool {
         let side = |first: i32, last: i32| u64::try_from(last - first + 1).unwrap_or(0);
         let positions = side(left.row, row2) * side(left.column, column2);
-        if positions < MIN_SPARSE_WALK_POSITIONS || !self.area_budget.has_seen_ranges(1) {
+        if positions < MIN_SPARSE_WALK_POSITIONS {
             return false;
         }
         let Ok(worksheet) = self.workbook.worksheet(sheet) else {
@@ -225,9 +228,9 @@ impl Model {
         // own spill cells stands, and those read as empty until it has run.
         // The area itself is a step: its record must be paid for even when it finds nothing, or
         // a LAMBDA repeating a union over an empty sheet would grow the record without bound. A
-        // free single area is not charged: a mostly blank aggregate range is walked here only
-        // while the seen-range cap can pay for its record ([`Self::walks_sparsely`]), and a
-        // rectangle already on record is free.
+        // free single area is not charged: a mostly blank aggregate range holds at least
+        // 65,536 positions ([`Self::walks_sparsely`]), so its record takes one rectangle of the
+        // seen-range cap per such range, and a rectangle already on record is free.
         self.spend_walk(budget, 1, cell)?;
         self.record_seen_empty_range(sheet, left.row, left.column, right.row, right.column);
         let data = &mut self

@@ -955,14 +955,24 @@ at its start; a spill into another column of the area is caught by the area's re
 step per row found (at least one, even with no cell in the area's columns), one per unallocated
 chunk of 1,024 rows passed over, and one per 16 row slots tested in allocated chunks
 (`SLOTS_PER_WALK_STEP`); so is a shorter area, whose row walk is a chunk of slots at most. Past it the argument is `#VALUE!`. Every multi-area argument, IF/CHOOSE/LET
-operand and LAMBDA call of the formula draws on the same budget, like the pair budget; a single
-range argument is not counted and is walked as before (every position of its used area), unless a
-far cell stretches that used area: a single range whose clipped area holds at least 65,536
-positions and more than four per cell of its columns (`SUM(A:XFD)` with data in A1 and
-XFD1048576, 1.7e10 positions) is walked over its existing cells like a union's area, so it costs
-the data (T-1690). It does not draw on the budget: that walk costs less than the dense one it
-replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over 100,000
-cells) gives the same value as the dense walk, and the change adds no `#VALUE!`. Over
+operand and LAMBDA call of the formula draws on the same budget, like the pair budget. A single
+range argument is not counted. It is walked over every position of its used area while that is
+the cheaper walk, and over its existing cells like a union's area once a far cell stretches the
+used area: a single range whose clipped area holds at least 65,536 positions and more than four
+per cell of its columns (`SUM(A:XFD)` with data in A1 and XFD1048576, 1.7e10 positions;
+`COUNTA(A:CV)` beside one cell in CV1048576) costs the data, never its positions (T-1690,
+T-2710). Below 65,536 positions the dense walk is used, so one walk visits at most 65,536 blank
+positions, plus at most four per cell of its columns above that. Every single-range walk of an
+aggregate argument takes this path: the dense `ClipBlocks` walk (SUM, COUNT, COUNTA, COUNTBLANK,
+which counts the cells that are not blank and takes them from the area's size, LARGE, GCD and
+LCM, which read any number of blanks as one 0, SUBTOTAL, AGGREGATE, ...) and the `ClipWholeLines`
+walk of TEXTJOIN's 3-D path, which reads blanks as empty values: it hands each run of blank
+positions between two existing cells on as a count, in row-major order, so the delimiters they
+add are counted, not read. It does not draw on the budget: that walk costs less than the dense
+one it replaces, so a LAMBDA repeating it (`SUM(BYROW(SEQUENCE(200),LAMBDA(r,SUM(A:Z))))` over
+100,000 cells) gives the same value as the dense walk, and the change adds no `#VALUE!` of the
+walk budget. A budget would not do: over filled cells a step is a cell, so it would make a
+filled `SUM(A:Z)` `#VALUE!` where Excel computes it. Over
 sparse data a union then costs what the data costs: `=SUM(BYROW(A1:A1000,LAMBDA(r,SUM((B:B,C:C)))))`
 with three cells in 10,000 used rows is about 50 steps per walk, and `MAX_AREAS` copies of `A:A`
 over a cell in row 1,000 fit. Over filled cells a step is a cell: sixteen arguments of a 16-column
@@ -998,8 +1008,8 @@ so memory is bounded by the workbook's formula text and each use by the caps abo
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `Model::union_areas`,
 `Model::count_union_areas`, `Model::intersect_areas`); area_budget.rs (`MAX_AREA_PAIRS`,
-`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690
+`MAX_AREA_WALK`, `SLOTS_PER_WALK_STEP`); functions/util.rs (`Model::for_each_position_in_area`, `Model::walk_area`, `Model::for_each_cell_or_error_in_whole_range`); functions/util/existing_walk.rs (`Model::for_each_existing_position`, `Model::for_each_indexed_position`, `Model::walks_sparsely`); sheet_data.rs (`SheetData::rows_in_column_between`, `SheetData::cells_in_columns`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064, T-1065, T-1162, T-1462, T-1497, T-1502, T-1690, T-2710
 
 ## Seen-range cap
 Rule: one formula evaluation may put at most 65,536 distinct rectangles on record as read empty in a
@@ -1008,7 +1018,14 @@ A function walking a whole column or row (and a lookup down a column, or a SUMIF
 range) visits only the used area and records the rest as one rectangle read empty, as does an
 aggregate walking an explicit block that reaches at least 1,024 cells past the used area, while the
 budget has room (a shorter block, or one met once the budget is short, is walked and recorded cell by
-cell, which is uncapped, so blocks alone never make a formula `#VALUE!`; T-0405), and every area of
+cell, which is uncapped; T-0405), and a single range of at least 65,536 positions that a far cell
+leaves mostly blank (more than four per cell of its columns) is walked over its existing cells and
+recorded as one rectangle, whether or not the budget has room ("Union area cap", T-1690, T-2710):
+its dense walk would read every position and record each blank one, unbounded in time and memory
+(`SUM(A:XFD)` beside one far cell is 1.7e10 positions), so past the cap such a formula is
+`#VALUE!` (DEVIATION; `=SUM(MAP(SEQUENCE(65536),LAMBDA(r,SUM(OFFSET(Sheet2!1:1,r,0)))))+SUM(A:J)`
+beside 1 in J1048576 is `#VALUE!`, one row fewer is 1). Smaller blocks alone never make a formula
+`#VALUE!`. Every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
@@ -1034,8 +1051,9 @@ anchors.
 Status: DEVIATION (decision 0014)
 Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range`,
 `Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
-(`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`)
-Tasks: T-1463, T-1769
+(`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`);
+functions/util/existing_walk.rs (`Model::walks_sparsely`)
+Tasks: T-1463, T-1769, T-2710
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
