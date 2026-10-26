@@ -14,7 +14,7 @@ use coupon_schedule::{
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 use odd_last::odd_l_func;
-use yield_solver::solve_yield;
+use yield_solver::{excel_yield_newton, solve_yield, yield_start};
 
 use super::number_or_error;
 use crate::{
@@ -142,6 +142,22 @@ impl CouponSchedule {
 
         first_term + second_term - accrued
     }
+
+    /// d/d`yld` of [`CouponSchedule::price`] with more than one coupon left, analytic, with the
+    /// same `growth`: YIELD's Newton steps on it (T-1592).
+    fn dprice(&self, rate: f64, yld: f64, redemption: f64, frequency: u32) -> f64 {
+        let CouponSchedule { n, e, a } = *self;
+        let dsc_over_e = (e - a) / e;
+        let f = frequency as f64;
+        let v = 1.0 + yld / f;
+        let mut slope = 0.0;
+        for k in 1..=(n as u32) {
+            let t = k as f64 - 1.0 + dsc_over_e;
+            slope -= t * 100.0 * rate / f / discount_growth(v, t + 1.0) / f;
+        }
+        let t = n - 1.0 + dsc_over_e;
+        slope - t * redemption / discount_growth(v, t + 1.0) / f
+    }
 }
 
 // Returns the clean price (per `redemption` par) for a standard coupon bond.
@@ -167,6 +183,34 @@ fn compute_price(
 // ============================================================
 // Yield solver (Newton-Raphson + bisection)
 // ============================================================
+
+/// YIELD with more than one coupon left: Excel's Newton ([`excel_yield_newton`]) on PRICE as PRICE
+/// computes it, from its closed-form start over the term in years, and `compute_yield_from_price`
+/// where that Newton gives no value (an iterate off PRICE's domain, or 100 steps).
+fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
+    let settlement = from_excel_date(bond.settlement)?;
+    let maturity = from_excel_date(bond.maturity)?;
+    // The start's term: the basis' settlement-to-maturity days over 360, or over 365 on bases 1
+    // and 3 (yield-start-sweep D: 1581/365, not YEARFRAC's average year, on basis 1). Basis 2's
+    // days/360 is unverified: no probe yet, and gen-m9 A189 says it is off (TODO(T-2777)).
+    let year = if matches!(bond.basis, 1 | 3) {
+        365.0
+    } else {
+        360.0
+    };
+    let years = basis_days(settlement, maturity, bond.basis) / year;
+    let (rate, redemption, frequency) = (bond.rate, bond.redemption, bond.frequency);
+    excel_yield_newton(
+        bond.yld_or_pr,
+        yield_start(rate, bond.yld_or_pr, years),
+        |y| schedule.price(rate, y, redemption, frequency, discount_growth),
+        |y| schedule.dprice(rate, y, redemption, frequency),
+    )
+    .map_or_else(
+        || compute_yield_from_price(bond.yld_or_pr, schedule, rate, redemption, frequency),
+        Ok,
+    )
+}
 
 /// YIELD's solver: `solve_yield` over `schedule`, which the caller walks once, so each of the
 /// at most 100 Newton steps (three prices) and 97 bisection prices is a sum over the coupons.
@@ -680,14 +724,7 @@ impl Model {
                             return yield_closed::yield_one_period(&bond, &schedule)
                                 .map_err(|_| num_error(cell));
                         }
-                        compute_yield_from_price(
-                            bond.yld_or_pr,
-                            &schedule,
-                            bond.rate,
-                            bond.redemption,
-                            bond.frequency,
-                        )
-                        .map_err(|_| num_error(cell))
+                        compute_yield(&bond, &schedule).map_err(|_| num_error(cell))
                     }),
             )
         })

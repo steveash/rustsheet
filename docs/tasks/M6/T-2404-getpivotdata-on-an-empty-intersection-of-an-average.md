@@ -21,6 +21,10 @@ Calc!A216 (`VLOOKUP(GETPIVOTDATA("UNITS",Pivot!$H$4,"Product",Pivot!$J$4,"REP","
 B record: Excel #N/A, ours #REF!), and (T-2524) gen-m9/d8266bc15533702a.case.json Calc!A343 `GAMMA.DIST(..,IF(GETPIVOTDATA("count of sales",
 Pivot!$H$3:$L$8,"Product",Pivot!$K$4,"Rep",Pivot!$H$6),ACOS(1.5),IMSUB("5",Data!D7)))` (a Count pivot, Bo has no C record: Excel's
 IF takes the FALSE branch, "3.995", ours #REF!).
+Also owns (T-2674): gen-m6 case 8641fa604c5b8e14 Calc!A19 `=GETPIVOTDATA("Units",Pivot!$H$3,"Rep",Pivot!$K$4,"Product","B")`,
+A25 `=GETPIVOTDATA("Count of Units",Pivot!$H$3,"rep","Bo","Product",Pivot!$H$6)` and A39
+`=GETPIVOTDATA("Count of Units",Pivot!$H$3,"Rep","Cy","Product","B")` (a Count of Units pivot, empty intersections:
+Excel 0, ours #REF!).
 Found by T-2396's generator sample (excel-graph, 2026-10-22, scratch, not committed): over an Average of Units pivot
 (rows Product, columns Region; Product A has no East record, B no South, C no West), `=GETPIVOTDATA("units",Pivot!$H$3,"Product","a","Region","East")`,
 `("Units",Pivot!$H$3,"PRODUCT",Pivot!$H$7,"Region","South")` and `("Average of Units",Pivot!$L$5,"Product","C","Region","West")`
