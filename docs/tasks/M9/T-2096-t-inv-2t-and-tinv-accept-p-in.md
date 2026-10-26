@@ -3,7 +3,7 @@ id: T-2096
 title: "T.INV.2T and TINV accept p in (1,2) and return the negative quantile"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
