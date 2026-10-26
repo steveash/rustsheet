@@ -2,8 +2,9 @@
 
 - **Status:** accepted (2026-10-05, owner request). Amended by 0053: with the merge queue on, the
   queue gives this guarantee. Amended by 0075: merges are made under the merge lock, so the check
-  passes on the first green CI after the lock is taken. It refines 0023 (a clash caught by the
-  second PR's CI now also has to be caught at merge time) and the up-to-date clause of the steward
+  passes on the first green CI after the lock is taken. Amended by 0121: "merge `main` in" below
+  happens under the lock; before it, only to fix a conflict or a known id collision. It refines
+  0023 (a clash caught by the second PR's CI now also has to be caught at merge time) and the up-to-date clause of the steward
   merge policy, fits 0020 (merge `main` in, never rebase), and leaves 0016's allocator as best
   effort.
 - **Context:** On 2026-10-05, steward PR #79 and T-0109 PR #81 each added a task numbered T-0129.
@@ -18,7 +19,7 @@
 - **Decision:** the guarantee lives at merge time.
   - The steward skill's merge policy check (c), "up to date with `main`", is now a mechanical
     step right before every merge: fetch `origin/main` and require
-    `git merge-base --is-ancestor origin/main origin/<branch>`. Otherwise merge `main` in, run
+    `git merge-base --is-ancestor origin/main origin/<branch>`. Otherwise merge `main` in (under the merge lock, decision 0121), run
     `make check`, push, and merge only after CI is green on that head. The same CI then runs
     `tasks.py validate` and `check_decisions.py` against the real merged tree, so a duplicate
     fails before it lands and the PR renumbers its own record.

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_progress_report import data, report, write_inputs
+from test_progress_report import GIT, data, report, write_inputs
 
 from rustsheet_tools import progress_report
 from rustsheet_tools.progress_report import blocks, page
@@ -17,6 +17,17 @@ from rustsheet_tools.progress_report.model import ProgressReportError, Run, run_
 RUN = Run("2026-10-19", "abc12345", ("s",), ())
 DATA = data()
 AS_OF = "<!-- as-of: 2026-10-19 abc12345 -->"
+SECTIONS = {
+    "goals": "## Goals",
+    "campaign": "## Campaign stages",
+    "since-last-run": "## Since the last run",
+    "trends": "## Trends",
+}
+
+
+def render(existing: str | None) -> str:
+    """The page for RUN at its own commit, keeping the judgment text of `existing`."""
+    return page.render(RUN, DATA, existing, SECTIONS)
 
 
 def judgment_page(texts: dict[str, str]) -> str:
@@ -29,7 +40,7 @@ def judgment_page(texts: dict[str, str]) -> str:
 
 def run_main(tmp_path: Path, r: dict[str, Any] | None = None) -> Path:
     out = tmp_path / "pages"
-    progress_report.main([*write_inputs(tmp_path, r or report()), "--out-dir", str(out)])
+    progress_report.main([*write_inputs(tmp_path, r or report()), "--out-dir", str(out)], GIT)
     return out
 
 
@@ -66,9 +77,22 @@ def test_hostile_suite_names_are_escaped_in_the_status_block() -> None:
 
 
 def test_a_first_run_writes_every_block_in_order_with_placeholders() -> None:
-    text = page.render(RUN, DATA, None)
+    text = render(None)
     names = [m.group(3) for m in blocks.MARKER.finditer(text) if not m.group(1)]
-    assert names == ["status", "bottom-line", "parity", "readiness", "risks", "method"]
+    assert names == [
+        "status",
+        "bottom-line",
+        "goals",
+        "campaign",
+        "since-last-run",
+        "trends",
+        "parity",
+        "top-functions",
+        "evidence",
+        "readiness",
+        "risks",
+        "method",
+    ]
     parsed = page.parse(text)
     assert all(parsed[n].text == blocks.PLACEHOLDER for n in page.JUDGMENT_BLOCKS)
     assert "not yet updated" not in text
@@ -82,7 +106,7 @@ def test_judgment_text_is_kept_byte_for_byte() -> None:
         "readiness": f"{AS_OF}\r\n*Likely*: read and compute.\r\né≤ no newline at the end",
         "risks": f"\n\n  {AS_OF}\n1. The risk (T-0071).\n   progress: plain prose is fine\n\n\n",
     }
-    new = page.render(RUN, DATA, judgment_page(texts))
+    new = render(judgment_page(texts))
     parsed = page.parse(new)
     for name, text in texts.items():
         assert parsed[name].text == text
@@ -102,7 +126,7 @@ def test_judgment_text_survives_main_with_crlf_on_disk(tmp_path: Path) -> None:
 
 
 def test_a_missing_judgment_block_gets_the_placeholder() -> None:
-    new = page.render(RUN, DATA, judgment_page({"risks": f"\n{AS_OF}\nOnly risks.\n"}))
+    new = render(judgment_page({"risks": f"\n{AS_OF}\nOnly risks.\n"}))
     parsed = page.parse(new)
     assert parsed["bottom-line"].text == blocks.PLACEHOLDER
     assert parsed["readiness"].text == blocks.PLACEHOLDER
@@ -116,7 +140,7 @@ J, G = "judgment", "generated"
     ("existing", "error"),
     [
         (judgment_page({"summary": "x"}), "unknown judgment block name 'summary'"),
-        (blocks.open_marker(G, "goals") + blocks.close_marker(G), "unknown generated block name 'goals'"),
+        (blocks.open_marker(G, "summary") + blocks.close_marker(G), "unknown generated block name 'summary'"),
         (
             blocks.open_marker(G, "status") + blocks.open_marker(G, "method") + blocks.close_marker(G) * 2,
             "nested marker inside block 'status'",
@@ -144,7 +168,7 @@ J, G = "judgment", "generated"
 )
 def test_bad_markers_fail_loudly(tmp_path: Path, existing: str, error: str) -> None:
     with pytest.raises(ProgressReportError, match=error):
-        page.render(RUN, DATA, existing)
+        render(existing)
     out = tmp_path / "pages"
     out.mkdir()
     (out / "progress.md").write_text(existing)
@@ -171,7 +195,7 @@ def test_bad_markers_fail_loudly(tmp_path: Path, existing: str, error: str) -> N
 )
 def test_the_stale_line_when_the_as_of_does_not_name_the_run(as_of: str, line: str | None) -> None:
     text = f"\n{as_of}\nThe text.\n"
-    new = page.render(RUN, DATA, judgment_page({"readiness": text}))
+    new = render(judgment_page({"readiness": text}))
     section = new.split("## Real-world readiness\n\n", 1)[1].split("## Risks", 1)[0]
     if line is None:
         assert section.startswith(blocks.open_marker("judgment", "readiness"))

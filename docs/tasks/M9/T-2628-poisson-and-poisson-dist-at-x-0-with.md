@@ -3,7 +3,7 @@ id: T-2628
 title: "POISSON and POISSON.DIST at x 0 with a negative mean are EXP(-mean)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,3 +37,7 @@ Cells:
 
 ## Out of scope
 - The other distributions' negative-parameter edges.
+
+## Outcome
+Done by T-2474 (scalar distributions at extreme arguments, part 2), which implements the same rule in poisson.rs:
+probes/poisson-negative-mean A1-A7 and gen-m9/23d82b62e9a85bdd A208 pass, with unit tests for x 0, 0.3 and 1.

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,11 @@ class ProgressReportError(Exception):
     """An input is missing, malformed or not the shape this generator reads."""
 
 
+class ReportShapeError(ProgressReportError):
+    """The eval report lacks a field a later task added: an older report shape. The run is
+    incomplete, not broken (SPEC-0022 "Failure handling"): the page is marked stale."""
+
+
 def field(obj: Any, key: str, where: str, task: str | None = None) -> Any:
     """`obj[key]`; a non-object `obj` or a missing key is a `ProgressReportError` naming `where`
     and, when given, the task that added the key (an older report shape)."""
@@ -41,8 +47,10 @@ def field(obj: Any, key: str, where: str, task: str | None = None) -> Any:
         msg = f"{where} is not a JSON object"
         raise ProgressReportError(msg)
     if key not in obj:
-        since = f"; the report predates {task}, re-run `make eval`" if task else ""
-        msg = f"{where} has no `{key}`{since}"
+        msg = f"{where} has no `{key}`"
+        if task:
+            msg += f"; the report predates {task}, re-run `make eval`"
+            raise ReportShapeError(msg)
         raise ProgressReportError(msg)
     return obj[key]
 
@@ -118,6 +126,14 @@ class FunctionParity:
     """Of those, the visibly-off cells."""
     meets_rate: bool
     """Covered and at least 99.9% of `rate_cells` within 15 digits (decisions 0114, 0118)."""
+    evidence: int
+    """Every Excel-evidence cell that calls it, accepted deviations included
+    (`v15_checkpoint.functions[].cells`; T-0073)."""
+    covered: bool
+    """Enough Excel cells for the fifteen-digit checkpoint (decision 0094; `covered`)."""
+    prior: float | None
+    """The catalog's real-world frequency `prior` (eval/catalog/functions.yaml); None when the
+    catalog sets none or no priors were given (T-0073)."""
 
     @property
     def attributed_cells(self) -> int:
@@ -153,6 +169,12 @@ class Phase1:
     met: bool
     at_strict_rate: int
     """Information only: the stricter every-function count (decision 0118 item 5)."""
+    v15_met: bool
+    """The fifteen-digit checkpoint (decision 0094): `v15_checkpoint.met`."""
+    covered: int
+    """In-scope functions with decision 0094's coverage."""
+    visibly_off: int
+    """In-scope visibly-off cells over the checkpoint's suites."""
 
 
 @dataclass(frozen=True)
@@ -189,6 +211,8 @@ class Parity:
     tiers: list[TierCount]
     phase1: Phase1
     suites: list[Suite]
+    milestones_exited: tuple[str, ...]
+    """The milestones whose report.json `milestone_exit` row is met (decision 0085)."""
 
     def tier_functions(self, tier: str) -> int:
         """In-scope functions in `tier` (report.json `tiers`)."""
@@ -235,6 +259,9 @@ def _phase1(v15: Any) -> Phase1:
         count(v15, "at_rate", where, "T-0080"),
         flag(v15, "phase1_met", where, "T-0080"),
         count(v15, "at_strict_rate", where, "T-0080"),
+        flag(v15, "met", where),
+        count(v15, "covered", where),
+        count(v15, "visibly_off", where),
     )
 
 
@@ -282,8 +309,16 @@ def _suite(raw: Any, i: int, baseline_dir: Path) -> Suite:
     )
 
 
-def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -> Parity:
+def compute(
+    report: dict[str, Any],
+    scope: dict[str, Any],
+    baseline_dir: Path,
+    priors: Mapping[str, float | None] | None = None,
+) -> Parity:
     """The parity section's data for every in-scope catalog function of `scope`.
+
+    `priors` is the catalog's `prior` per function (evidence.load_priors); when given, every
+    in-scope function must have an entry, so a catalog that is not scope.json's source fails.
 
     Each function's tier, attribution and cells are the report's `functions[]` entry (T-0068); a
     catalog function no cell calls has none and is `unscored`, as report.json `tiers` counts it.
@@ -321,6 +356,9 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
             msg = f"report.json v15_checkpoint has no entry for in-scope function {name}; is scope.json the run's catalog?"
             raise ProgressReportError(msg)
         rwhere = f"report.json v15_checkpoint function {name!r}"
+        if priors is not None and name not in priors:
+            msg = f"the catalog has no function {name}; is scope.json its view?"
+            raise ProgressReportError(msg)
         rows.append(
             FunctionParity(
                 name,
@@ -333,6 +371,9 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
                 count(rate, "rate_cells", rwhere, "T-0080"),
                 count(rate, "rate_visible", rwhere, "T-0080"),
                 flag(rate, "meets_rate", rwhere, "T-0080"),
+                evidence=count(rate, "cells", rwhere),
+                covered=flag(rate, "covered", rwhere),
+                prior=priors.get(name) if priors is not None else None,
             )
         )
     tiers = _tiers(report)
@@ -344,7 +385,13 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
         )
         raise ProgressReportError(msg)
     suites = [_suite(s, i, baseline_dir) for i, s in enumerate(items(report, "suites", "report.json"))]
-    return Parity(rows, tiers, _phase1(v15), suites)
+    exits = items(report, "milestone_exit", "report.json")
+    exited = tuple(
+        str(field(row, "milestone", f"report.json milestone_exit[{i}]"))
+        for i, row in enumerate(exits)
+        if flag(row, "exit", f"report.json milestone_exit[{i}]")
+    )
+    return Parity(rows, tiers, _phase1(v15), suites, exited)
 
 
 def load_object(path: Path) -> dict[str, Any]:
@@ -362,7 +409,7 @@ def load_object(path: Path) -> dict[str, Any]:
 
 # The run's commit and date are printed into the page, so they must be what `run_meta.rs` writes.
 COMMIT_SHA = re.compile(r"[0-9a-f]{4,40}")
-RUN_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+RUN_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")  # ASCII digits only, unlike `\d`
 
 
 @dataclass(frozen=True)
@@ -389,7 +436,7 @@ def run_of(report: dict[str, Any]) -> Run:
     run = report.get("run")
     if not isinstance(run, dict):
         msg = "report.json has no `run` record; it predates T-0080, re-run `make eval`"
-        raise ProgressReportError(msg)
+        raise ReportShapeError(msg)
     date, commit, skipped = run.get("date"), run.get("commit"), run.get("skipped_suites")
     if not isinstance(date, str) or not RUN_DATE.fullmatch(date):
         msg = f"report.json `run.date` is not a YYYY-MM-DD date: {date!r}"
@@ -407,3 +454,54 @@ def run_of(report: dict[str, Any]) -> Run:
         str(field(s, "name", "report.json suites[]")) for s in items(report, "suites", "report.json")
     )
     return Run(date, commit, suites, tuple(SkippedSuite(s["name"], s["reason"]) for s in skipped))
+
+
+# The task statuses the page counts, and the open ones: scripts/tasks.py `STATUSES` without
+# `dropped`, and its `OPEN` (not done or dropped).
+TASK_STATUSES = ("todo", "in-progress", "blocked", "done")
+OPEN_STATUSES = ("todo", "in-progress", "blocked")
+# The decision-0114 campaign stages (scripts/tasks.py `CAMPAIGNS`), and the parked row: the
+# `defer: phase-1b` tasks, tasks.json `deferred` (decision 0119).
+STAGES = ("semantics", "accuracy", "visible")
+PARKED = "parked"
+
+
+@dataclass(frozen=True)
+class Tasks:
+    """Task counts from tasks.json (`scripts/tasks.py stats --json`, T-0069)."""
+
+    by_status: dict[str, int]
+    """Every task per status in TASK_STATUSES, summed over the milestones."""
+    by_stage: dict[str, dict[str, int]]
+    """Per stage of STAGES and PARKED: `open`, `blocked` and `done` tasks."""
+    ready: dict[str, int]
+    """Per stage of STAGES and PARKED: the tasks `ready()` on main, ignoring branch claims."""
+    by_milestone: dict[str, dict[str, int]]
+    """Per milestone tasks.json lists: its tasks per status in TASK_STATUSES."""
+
+
+def _stage_counts(raw: Any, where: str) -> dict[str, int]:
+    status = {s: count(raw, s, where) for s in TASK_STATUSES}
+    return {
+        "open": sum(status[s] for s in OPEN_STATUSES),
+        "blocked": status["blocked"],
+        "done": status["done"],
+    }
+
+
+def tasks_of(raw: dict[str, Any]) -> Tasks:
+    """The counts of a parsed tasks.json, checked."""
+    milestones = mapping(raw, "by_milestone", "tasks.json")
+    by_milestone = {
+        name: {s: count(per, s, f"tasks.json by_milestone.{name}") for s in TASK_STATUSES}
+        for name, per in sorted(milestones.items())
+    }
+    by_status = {s: sum(per[s] for per in by_milestone.values()) for s in TASK_STATUSES}
+    campaign = mapping(raw, "by_campaign", "tasks.json")
+    stages = {
+        s: (mapping(campaign, s, "tasks.json by_campaign"), f"tasks.json by_campaign.{s}") for s in STAGES
+    }
+    stages[PARKED] = (mapping(raw, "deferred", "tasks.json"), "tasks.json deferred")
+    by_stage = {s: _stage_counts(per, where) for s, (per, where) in stages.items()}
+    ready = {s: count(per, "ready", where) for s, (per, where) in stages.items()}
+    return Tasks(by_status, by_stage, ready, by_milestone)

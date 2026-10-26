@@ -724,8 +724,8 @@ NEGBINOM.DIST cdfs off their closed forms, the EXPON.DIST cdf and the CHISQ.DIST
 `arithmetic::flush_subnormal`, the BETA.DIST cdf does unless beta = 1, and the NEGBINOM.DIST pmf at f = 0 no longer
 does (test/statistical/test_subnormal_results.rs). Unprobed and flushed by extension: the CHISQ.DIST cdf at 2 degrees
 (`1 - EXP(-x/2)`, subnormal from x below 4.4E-308) and at 1 degree (an ERF form, never subnormal from a normal x), the
-BETA.DIST cdf at alpha = 1, and BETADIST at beta = 1 off (2, 1). Only row 25 of t2706-subnormal-density-paths is still
-wrong (T-2738).
+BETA.DIST cdf at alpha = 1, and BETADIST at beta = 1 off (2, 1). Row 25's #NUM! is GAMMA.DIST's subnormal x / beta
+(statistics.md "GAMMA.DIST's density is #NUM! at a subnormal x / beta", T-2738).
 Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
 2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
@@ -883,6 +883,22 @@ arm), excel-graph, 2026-10-25: all 464 MOD cells match the rule, with `ISERROR` 
 Status: VERIFIED (excel-graph) as a fitted rule
 Implemented in: `excel_mod` in crates/rustsheet-engine/src/functions/util.rs
 Tasks: T-2714
+
+## CEILING and FLOOR of a subnormal ratio are 0 (T-2715)
+Rule: CEILING, CEILING.MATH (both modes), CEILING.PRECISE, ISO.CEILING, ECMA.CEILING, FLOOR, FLOOR.MATH (both modes) and
+FLOOR.PRECISE flush the ratio number/significance to 0 when it is subnormal (|ratio| < 2^-1022), as `/` does ("Subnormal
+results become 0"), so the result is 0. A ratio at 2^-1022 keeps its step. `CEILING.MATH(10^-307,10)` and
+`FLOOR.MATH(-10^-307,100)` are 0, while `CEILING.MATH(1E-307,4)` (ratio 2.5E-308) is 4, `CEILING(2^-1022,1)` is 1, `FLOOR.MATH(-(2^-1022),1)` is -1
+and `CEILING(2^-1022,1.0000001)` is 0. (Write a negative input as `-(2^-1022)`: `-2^-1022` is `(-2)^-1022`, positive.) The sign and argument checks are unchanged (`CEILING(1E-307,-10)` is still `#NUM!`).
+MROUND already matched (its quotient rounds to 0 there). ROUNDUP does not follow this rule: `ROUNDUP(1E-307,-2)` is 100,
+but `ROUNDUP(2^-1022,0)` is 0 (T-2756, not yet fitted). This settles the calipers goldens `formulas_math_basic` and
+`formulas_datetime` E169, F169, E183 and F183.
+Evidence: probes/t2715-ceiling-floor-subnormal-ratio (excel-graph, 2026-10-25): 76 number/significance pairs (±1E-307,
+±2^-1022, ±1E-300 against significances above, at and below the boundary, both signs, and the calipers pairs) times 11
+functions, all matching the rule; probes/t2715-roundup-near-smallest-normal (the ROUNDUP and ROUNDDOWN controls).
+Status: VERIFIED (excel-graph)
+Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
+Tasks: T-2715, T-2756 (ROUNDUP)
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`
@@ -2224,6 +2240,13 @@ ACOTH(1) and ACOTH(-1) are `#NUM!`. Evidence: probes/atanh-unit-argument (excel-
 ## SUBTOTAL 6 over no numbers is 0 (T-2269)
 Rule (excel-graph, gen-m6, 2026-10-21): SUBTOTAL's PRODUCT (function_num 6) of ranges holding no numbers is 0, as `PRODUCT` is:
 `DATE(2071,6,SUBTOTAL(6,Data!C5:C7))` over "?b", "abc", "abc" is 62609 (`DATE(2071,6,0)`) (gen-m6/216e3c05f407ca79 Calc!A21).
-Ours: implemented (T-2269). Function_num 6 is VERIFIED; function_num 106 is treated the same but is UNVERIFIED (no oracle cell).
-Status: VERIFIED (6), UNVERIFIED (106)
-Tasks: T-2269
+Function_num 106 is 0 too (excel-graph, probes/subtotal-106-no-numbers, T-2302): over text only
+(Hide!C1), blanks only (Hide!C2, with `SUBTOTAL(6,...)` as control in C3), several such references (C7),
+and over ranges whose only numbers sit in manually hidden rows (Hide!C4, C6, C8, C9; the
+function_num 6 control C5 still multiplies the hidden 3 and 5 to 15) or in rows a table filter hides
+(Filter!C2, C3; function_num 6 skips filtered rows too, so Filter!C1 is 0). AGGREGATE's PRODUCT
+(function 6) gives 0 the same way under options 1, 4, 5 and 6 (Hide!C10-C12, Filter!C4): an empty
+product is 0 whenever no number is included, never 1.
+Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
+Status: VERIFIED
+Tasks: T-2269, T-2302
