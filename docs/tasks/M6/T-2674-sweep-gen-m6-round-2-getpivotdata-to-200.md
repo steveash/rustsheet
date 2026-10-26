@@ -3,7 +3,7 @@ id: T-2674
 title: "Sweep gen-m6 round 2: GETPIVOTDATA to 200 generated outer-call cells, the last uncovered M6 function"
 milestone: M6
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
