@@ -2623,12 +2623,7 @@ F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U10
 F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U17
 F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U7
 F	probes/m7-lift-take-drop-sortby.case.json	Sheet1!U9
-F	probes/negative-date-sections-1900.case.json	S!A21
-F	probes/negative-date-sections-1900.case.json	S!A22
-F	probes/negative-date-sections-1904.case.json	S!A21
-F	probes/negative-date-sections-1904.case.json	S!A22
 F	probes/negative-date-sections-1904.case.json	S!A23
-F	probes/negative-date-sections-1904.case.json	S!A9
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A1
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A10
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A11
