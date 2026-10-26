@@ -26,7 +26,8 @@ Failing cells (eval/baseline/probes.txt): probes/sheet-ops/sheet-ops-workbook-na
 probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix Calc!A1:B2.
 Design points: the parser needs the workbook file name (`Workbook::name` + ".xlsx", as `workbook_file_name` in
 functions/information/mod.rs) and must read `<file>.xlsx!loc` back as the workbook name; the xlsx writer must not emit a
-prefix Excel cannot read (check what Excel stores, likely `[0]!loc`); an unnamed workbook is unprobed.
+prefix Excel cannot read (probe what Excel stores; `[0]!loc` is a guess); the quoting rule rests on two file names, so
+probe a file name with a space and one with only letters and digits first; an unnamed workbook is unprobed.
 
 ## Acceptance criteria
 - [ ] The 7 cells above leave eval/baseline/probes.txt (`make eval-baseline`), no regressions.

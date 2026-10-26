@@ -2102,7 +2102,7 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   `sheet-ops-rename-undefined-qualified-name`, excel-graph 2026-10-26, T-1701). Ours matches.
 - **A sheet-qualified workbook name is rewritten to the workbook's file name.** With workbook `loc` =
   `=Feb!$A$1` (5) and no `Feb!loc`, Excel shows `=Feb!loc` as `=<file>.xlsx!loc` from load on, the file name
-  quoted as a sheet name would be: FORMULATEXT gives `='53aa…f48.xlsx'!loc`, `=SUM('53aa…f48.xlsx'!loc)` and
+  quoted as a sheet name would be (inferred from two file names, one digit-led and quoted, one letter-led and not): FORMULATEXT gives `='53aa…f48.xlsx'!loc`, `=SUM('53aa…f48.xlsx'!loc)` and
   `='53aa…f48.xlsx'!loc+1` (values 5, 5, 6; `ISREF` TRUE) with no rename (probe
   `sheet-ops-workbook-name-via-prefix-no-rename`), and `=ebfe…145.xlsx!loc` (unquoted: the name starts with a
   letter) after renaming Feb to Mar, values still 5 (probe `sheet-ops-rename-workbook-name-via-prefix`;
