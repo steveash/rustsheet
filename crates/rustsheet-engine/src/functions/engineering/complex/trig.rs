@@ -317,10 +317,11 @@ pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
 /// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives
 /// (probes/eng-imtan-imcot-overflow A1-A9, T-1966). Where the denominator rounds to 0 (x within
-/// about 7.5E-9 of an odd multiple of π/2 and `cosh 2y` 1) it is TAN's kernel, reduced by the x87
+/// about 5.2E-9 of an odd multiple of π/2 and `cosh 2y` 1) it is TAN's kernel, reduced by the x87
 /// 64-bit π: `IMTAN("1.5707963267949")` is -286413440886091 and `IMTAN("1.5707963267948966")`
 /// (read as 1.57079632679489) 148752068975966, where libm's `tan` gives -286411383293069 and
-/// 148752623989354 (A10, A11, T-2760). Past SIN's limit, unprobed, libm's.
+/// 148752623989354 (A10, A11, T-2760). Only those two points near π/2 are probed, not the window's
+/// edges or other odd multiples; past SIN's limit, also unprobed, it is libm's.
 fn tan_parts(x: f64, y: f64) -> (f64, f64) {
     let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
     if denominator == 0.0 {
