@@ -848,6 +848,9 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   1899-12-31). `ACCRINT(DATE(1900,4,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 404512.3611111111.
 - A regular period that starts before 1900 does not matter when the settlement's period is later:
   `ACCRINT(33448,1,37714,1E+300,0.3,1,2,TRUE)` is a number (gen-m9 3b7990bd4e3307ba Calc!A317).
+  On basis 1 it does, or something else near serial 1 does: `ACCRINT(33853,1.005,37554,1,9888,1,1)` (annual, calc_method
+  TRUE) is `#NUM!` (gen-m9 932b33b1ef8b7608 Calc!A118, excel-graph, 2026-10-26), ours 100198.77008758142. Which bases and
+  first_interest values cut is unprobed (T-2562).
 - The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
   counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
   0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
@@ -861,7 +864,7 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
 Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24).
 Status: VERIFIED (excel-graph)
 Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
-Tasks: T-2124
+Tasks: T-2124, T-2562
 
 ## COUPNUM in a 1904 workbook
 Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative
@@ -2233,9 +2236,41 @@ e8d55ec393460bb7 A374), while a date of 0 passes the read (`AMORDEGRC(-1,<blank>
 1dce4774f5c0e736 A199) and one below 0 is `#NUM!` as it is read ("AMORLINC and AMORDEGRC check order").
 Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which since
 T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). ACCRINT's other dates and numbers
-still take booleans (unprobed).
+still take booleans; a FALSE par cell is `#VALUE!` in Excel ("ACCRINT check order: calc_method first, dates as read",
+T-2792), the others are unprobed.
 Status: VERIFIED (excel-graph)
 Tasks: T-2455
+
+## ACCRINT check order: calc_method first, dates as read (T-2676)
+Rule: ACCRINT reads its last argument, calc_method, before all the others: calc_method's own error is the result, and
+text there (`"1"`, `"TRUE"`, `""`) is `#VALUE!` ("VDB, DDB and ACCRINT argument types"), whatever the first seven
+arguments hold, an issue off the calendar included. Then it reads issue, first_interest, settlement, rate, par,
+frequency and basis in order, and a date that does not floor to a calendar serial (below 0, or past 2958465) is `#NUM!`
+as soon as it is read, before a later argument's error, text or boolean, as the COUP* readers do ("Analysis ToolPak
+securities functions check frequency and dates first"). A par read from a FALSE cell is `#VALUE!`, before frequency
+100's `#NUM!`.
+- calc_method first: `ACCRINT(33996,35923,39160,<#DIV/0!>,2872,2,0,"1")` is `#VALUE!` (gen-m9/290180acf017709c A32),
+  `ACCRINT(34182,2958466,37446,<#NUM!>,4792,2,4,<#REF!>)` `#REF!` (932b33b1ef8b7608 A323),
+  `ACCRINT(43830,42,-0.5,<#REF!>,<#NUM!>,2,4,<#N/A>)` `#N/A` (290180acf017709c A132), and with a text issue cell
+  `ACCRINT(<"a*">,35416,61,1,3393,2,3,<#NUM!>)` `#NUM!` (A22); also 290180acf017709c A297, A342, A372, A387,
+  f81bd3b6dc373e5c A55, A70, A105, A145, A225, A285. Over the 240 Excel-backed gen-m9 cells with ACCRINT as the outer call,
+  all 40 where calc_method is an error or text give calc_method's result, among them cells that already passed with an
+  issue below 0 (290180acf017709c A82, A392) or a first_interest below 0 (f81bd3b6dc373e5c A310).
+- dates as read: `ACCRINT(34205,2958466,43831,<"a" cell>,1719,1,3)` is `#NUM!` (290180acf017709c A117),
+  `ACCRINT(1.005,-3.05,37242,-238.09,<#DIV/0!>,2)` `#NUM!` (932b33b1ef8b7608 A33), `ACCRINT(33191,-0.2525,37264,
+  <T.TEST(..)>,3606,4,3)` `#NUM!` (290180acf017709c A47), `ACCRINT(123456789.123,35882,37568,0.5,6884,<"ü" cell>)`
+  `#NUM!` (f81bd3b6dc373e5c A290), and an inner `ACCRINT(-1,35650,39448,<TRUE cell>,7682,4,3)` is `#NUM!` before the
+  boolean rate's `#VALUE!` (290180acf017709c A162, through STEYX). Of the 10 gen-m9 cells with a date off the calendar
+  before a later bad argument, 9 are `#NUM!` (also A37, A157, A232 of 290180acf017709c, A43 of 932b33b1ef8b7608 and A255
+  of f81bd3b6dc373e5c); the tenth, f81bd3b6dc373e5c A115, is `#SPILL!` because its par is an array, which lifts first.
+- boolean par: `ACCRINT(32965,35462,36817,10,<FALSE cell>,100,1.005,FALSE)` is `#VALUE!` (932b33b1ef8b7608 A233).
+Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
+read); a typed boolean par, and booleans in first_interest, settlement, frequency and basis.
+Evidence: gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c (excel-graph, T-2676 sweep, 2026-10-26); each
+cell's arguments evaluated with the engine on the case's Data sheet.
+Ours: `accrint_of` (functions/financial/accrint.rs) reads left to right and checks the dates after every read; T-2792.
+Status: VERIFIED (excel-graph)
+Tasks: T-2792
 
 ## XNPV reads one empty values cell as a single 0 cash flow
 Rule: `XNPV(1,A2,B11)` and `XNPV(1,A2,B11:B11)` with A2 empty and B11 = 100 are the number 0 (not `#NUM!`); an empty cell
