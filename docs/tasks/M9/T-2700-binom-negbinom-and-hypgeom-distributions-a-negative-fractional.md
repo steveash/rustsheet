@@ -72,7 +72,7 @@ Cells:
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 9 known-failure lines (6 now; the 3 HYPGEOM lines went with T-2429) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline. In particular the probes-numeric t1048/t1049
       binomdist, negbinomdist and hypgeomdist cells keep passing.
-- [ ] Unit tests: `BINOM.DIST(-0.0125,10,1E-16,FALSE)`, `NEGBINOMDIST(-0.5,8,0.5)` and `HYPGEOMDIST(3,-0.025,5,9)` are
+- [x] Unit tests: `BINOM.DIST(-0.0125,10,1E-16,FALSE)`, `NEGBINOMDIST(-0.5,8,0.5)` and `HYPGEOMDIST(3,-0.025,5,9)` are
       `#NUM!`. A positive fraction still truncates: the passing probe cell `BINOM.DIST(2.9,3.9,0.5,FALSE)` keeps
       passing.
 - [ ] Each of the three statistics.md entries gets an "Ours:" note naming this task.
@@ -92,4 +92,4 @@ criterion under Acceptance criteria states it.
 ## Outcome
 `binom_dist_of` (number_s) and `negbinom_dist_of` (number_f) now check the sign of the untruncated count, so a count in
 (-1, 0) is `#NUM!` (binom.rs). HYPGEOM was already done by T-2429. Eval delta: 7 known-failure lines left
-eval/baseline/gen-m9.txt, no new ones. The rules were already recorded in statistics.md (T-2255, T-2256).
+eval/baseline/gen-m9.txt, no new ones. One bonus cell left the baseline: b9a32ce9a1fd0d71 A195 (`NEGBINOMDIST(Data!$D$6,7,..)`, D6 = -0.5, Excel `#NUM!`). The rules were already in statistics.md (T-2255, T-2256); their "Ours:" notes now name T-2700.
