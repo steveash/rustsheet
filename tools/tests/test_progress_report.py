@@ -66,6 +66,78 @@ def rate(name: str, cells: int, visible: int, meets: bool, covered: bool = False
     }
 
 
+def exit_row(milestone: str, exited: bool) -> dict[str, Any]:
+    """A `milestone_exit` row (decision 0085): every measure met when `exited`."""
+    return {
+        "milestone": milestone,
+        "functions": 3,
+        "covered": 3,
+        "coverage_met": True,
+        "gen_scored": 20000,
+        "gen_visibly_off": 4,
+        "gen_allowance": 20,
+        "gen_met": True,
+        "calc_visibly_off": 0,
+        "calc_met": True,
+        "probe_visibly_off": 0 if exited else 2,
+        "probes_met": exited,
+        "exit": exited,
+    }
+
+
+# A docs/milestones.md: the phase table and the milestones the synthetic report and tasks name.
+MILESTONES = """# Milestones
+
+## Phase order (decision 0027)
+
+| Phase | Milestones, in order | Status |
+|---|---|---|
+| 1. Parity (fifteen digits) | M0, M1, M2, M5, M6, M9 | active |
+| 1b. Bit parity | the `defer: phase-1b` tasks of every milestone | after Phase 1 |
+| 2. Architecture and performance | M3 | deferred |
+
+## M0 — Scaffolding
+
+**Scope:** the harness.
+- [ ] not an exit criterion
+
+**Exit criteria:**
+- [x] CI green.
+- [ ] Oracle set up,
+  over two lines.
+- [x] One loop merged.
+
+**Eval suites:**
+- [ ] not an exit criterion either
+
+## M1 — Core semantics
+
+**Exit criteria:**
+- `smoke` at 100%.
+
+## M2 — Top functions
+
+**Exit criteria:** gen-m2 at 100%.
+
+## M3 — Dependency graph (Phase 2)
+
+**Exit criteria:**
+- [ ] Metamorphic suite.
+
+## M5 — Function families I
+
+**Exit criteria:** catalog coverage 100%.
+
+## M6 — Lookup & reference
+
+**Exit criteria:** same as M5.
+
+## M9 — Numerical parity
+
+**Exit criteria:** ironcalc-calc at 99.95%.
+"""
+
+
 def report() -> dict[str, Any]:
     """ABS exact, SUM within 4 ulp, LN within 15 digits, UPPER at 99.9%, BETA.DIST below 99% placed
     by every Excel cell (fallback). INFO is called by no cell (unscored). CALL is out of scope."""
@@ -89,6 +161,10 @@ def report() -> dict[str, Any]:
             "met": False,
             "covered": 5,
             "visibly_off": 3,
+            "rate_num": 999,
+            "rate_den": 1000,
+            "phase1_line": "Phase 1 (decision 0114): not met (4/6 functions covered)",
+            "verdict_line": "Fifteen-digit parity: not met (coverage 5/6, visibly-off cells 3)",
             "functions": [
                 rate("ABS", 30, 0, True),
                 rate("SUM", 23, 0, True),
@@ -99,7 +175,21 @@ def report() -> dict[str, Any]:
             ],
         },
         "cases": [],
-        "milestone_exit": [{"milestone": "M5", "exit": True}, {"milestone": "M6", "exit": False}],
+        "milestone_exit": [
+            exit_row("M5", True),
+            {**exit_row("M6", False), "gen_scored": None, "gen_met": None},
+        ],
+        "milestone_lists": [
+            {"name": "m1-probes", "cases": 9, "cases_run": 9, "known_failures": 2, "failing_cases": ["a"]}
+        ],
+        "probe_milestones": [
+            {"milestone": "M0-M2", "known_failures": 3, "visibly_off": 1},
+            {"milestone": "M5", "known_failures": 0, "visibly_off": 0},
+        ],
+        "catalog_coverage": [
+            {"milestone": "M2", "functions": 2, "covered": 2},
+            {"milestone": "M6", "functions": 0, "covered": 0},
+        ],
         "run": {"commit": "abc12345", "date": "2026-10-19", "skipped_suites": []},
         "suites": [
             {
@@ -287,14 +377,16 @@ def write_inputs(
 ) -> list[str]:
     rep, scope, tasks_json = tmp_path / "report.json", tmp_path / "scope.json", tmp_path / "tasks.json"
     catalog = tmp_path / "functions.yaml"
+    milestones = tmp_path / "milestones.md"
     rep.write_text(json.dumps(r))
     scope.write_text(json.dumps(SCOPE))
     tasks_json.write_text(json.dumps(t or tasks()))
     catalog.write_text(catalog_yaml(PRIORS))
+    milestones.write_text(MILESTONES)
     return [
         *("--report", str(rep), "--scope", str(scope), "--catalog", str(catalog)),
         *("--baselines", str(NO_BASELINES)),
-        *("--tasks", str(tasks_json), "--today", today),
+        *("--tasks", str(tasks_json), "--milestones", str(milestones), "--today", today),
     ]
 
 
