@@ -3,7 +3,7 @@ id: T-2664
 title: "Probe COT at TAN's double-rounding near-ties (does COT inherit RN53(RN64(tan))?)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
