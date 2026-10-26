@@ -501,7 +501,7 @@ fn yield_and_odd_elements_are_charged_by_schedule_length() {
 }
 
 /// HYPGEOM.DIST's `ByValue` charge (T-2433): an element is charged the larger of its walk (2^14)
-/// and its cdf sum, 16 units a term over min(sample_s, number_sample, population_s) + 1 terms
+/// and its cdf sum, 16 units a term over `min(sample_s, number_sample, population_s) + 1` terms
 /// and 131 window exponents, at most the cap's bound 2^22, so exactly 32 elements at the bound
 /// fit under `MAX_LIFTED_CELL_VISITS` (as the flat weight allowed before) and 33 do not. A text
 /// count bounds nothing, so the least of the other counts is charged, the bound when every count
