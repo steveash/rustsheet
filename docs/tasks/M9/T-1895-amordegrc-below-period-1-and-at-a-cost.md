@@ -3,7 +3,7 @@ id: T-1895
 title: "AMORDEGRC below period 1, at a cost of 1E308 and past 2^20 periods match Excel (probes fin-amor-period-bound B17, -b B2, -c A1-A5)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -66,9 +66,17 @@ Cells:
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (AMORDEGRC 0 or a different 13th-15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).
 
-## Progress (in flight, 2026-10-26; resumed by an opus run 19:26 UTC)
-- Done on this branch, not yet checked or reviewed: `amor_round` skips its 13-decimal pre-round when `x * 1e13`
-  overflows. fin-amor-period-bound-b B2 is now 1.9470044346591894E302, Excel 1.94700443465919E302: 15-digit
-  (visible) parity, 1 ulp off at the bit level, so it stays a known failure (NumericUlp; no baseline change). Unit test,
-  financial.md note and the lift test update are in; `make check` green at this head. Not reviewed, no PR yet.
-- Untouched: B17 (period 0.5) and fin-amor-period-bound-c A1, A3-A5 (closed-form drift, still NumericClose).
+## Outcome
+- fin-amor-period-bound-b B2 (`AMORDEGRC(1E308,..)`): `amor_round` skips its 13-decimal pre-round where `x * 1e13`
+  overflows, so the charge is 1.9470044346591894E302 (was 0), Excel 1.94700443465919E302: visible (15-digit) parity, still a
+  NumericUlp known failure; the bit moves to T-2826.
+- AMORDEGRC below period 1 is explained: probes/amordegrc-fraction-alone-a to -g (7 new cases, excel-graph) show each such
+  formula alone is 0 (ours) and otherwise the value the previous AMORDEGRC evaluation left behind, in Excel's
+  calculation order (financial.md "AMORDEGRC below period 1"). Matching it needs calculation-order state: B17 and the
+  fractional-period cells stay known failures, moved to T-2825 (decision on modelling it).
+- -c A1-A5 stay the existing work-cap DEVIATION; a scratch run showed Excel does not round each charge before
+  subtracting it (that walk gets A1-A4 but breaks B4, B5, B11, B12, B14 and fin-amordegrc A7), recorded in financial.md;
+  fitting Excel's per-period arithmetic moves to T-2826.
+- Acceptance criteria not met here: B17 and -c A1, A3-A5 remain visibly off (T-2825, T-2826 own them).
+- Eval delta: 0 cells fixed, 0 regressions; 13 new probe cells (12 pass, amordegrc-fraction-alone-f A1 a new known failure,
+  owned by T-2825).
