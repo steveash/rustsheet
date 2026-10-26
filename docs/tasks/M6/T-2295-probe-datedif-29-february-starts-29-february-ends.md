@@ -3,7 +3,7 @@ id: T-2295
 title: "Probe DATEDIF 29 February starts, 29 February ends in non-leap years, and negative MD"
 milestone: M6
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
