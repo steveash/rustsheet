@@ -3,7 +3,7 @@ id: T-2812
 title: "Fit the format-code complexity cost of a currency tag to the probed limits"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
