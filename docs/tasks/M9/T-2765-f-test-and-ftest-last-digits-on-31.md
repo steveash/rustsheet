@@ -68,7 +68,7 @@ value in every product order, so the innermost difference is FTEST, about 2 ulp 
 - gen-m9/932b33b1ef8b7608.case.json (1): Calc!A168
 
 ## Acceptance criteria
-- [ ] These 31 known-failure lines (32 with the T-2676 cell 932b33b1ef8b7608 A168) disappear from eval/baseline/gen-m9.txt (`make eval-baseline`) with no new ones in any
+- [ ] These 32 known-failure lines (the 31 F.TEST and FTEST cells plus the T-2676 cell 932b33b1ef8b7608 A168) disappear from eval/baseline/gen-m9.txt (`make eval-baseline`) with no new ones in any
       baseline, or the Outcome records the candidates scored with the f-test fit and their bit-exact counts (decision
       0056 time box) and the cells still open move to a follow-up.
 - [ ] statistics.md "F.TEST / FTEST: larger variance on top" cites these cells for the model that matches them.
