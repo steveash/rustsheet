@@ -63,13 +63,13 @@ Questions the spec must answer:
 
 ## Outcome
 docs/specs/SPEC-0024-formula-work-budget.md answers questions 1–4:
-1. **What is charged.** A work unit is one node evaluated, one array cell built, or one array cell read whole. The lifted
-   kernels' own charges are drawn again. The counter is a field of the existing per-formula `AreaBudget`, reset by
+1. **What is charged.** A work unit is one node evaluated, one array cell built, one array cell read whole, or 64 bytes of
+   a text value. Every per-call cap's spend (lifted kernels, *IF(S) visits, regex budgets) is drawn again. The counter is a field of the existing per-formula `AreaBudget`, reset by
    `with_area_budget`.
 2. **The result past the limit.** It is `#VALUE!` ("Formula needs too much work to calculate"), set formula-wide when the run
    ends, so `IFERROR` cannot catch it. The LAMBDA helpers stop at once.
 3. **Calibration.** The provisional limit is 2^28. The upper bound is the harness timeout. The lower bound is the eval gate,
-   plus a measured maximum that must sit under 2^26.
+   plus a measured maximum that must sit under 2^26. Per-kind weights are fitted so that each kind's worst case stops within 10 s.
 4. **DEVIATION and tests.** The DEVIATION text is drafted, and the tests use counters only.
 
-Follow-ups: T-2803 (step 1, M, opus), T-2804 (step 2, S, sonnet), T-2805 (step 3, M, opus). No eval change (docs only).
+Follow-ups: T-2803 (step 1, M, opus), T-2804 (step 2, S, sonnet), T-2805 (step 3, M, opus); known gaps T-2806 (retained memory), T-2807 (spec: a per-recalculation bound). No eval change (docs only).

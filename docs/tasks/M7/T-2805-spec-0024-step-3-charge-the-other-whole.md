@@ -17,7 +17,7 @@ is left that a LAMBDA can repeat over a LET-bound array without bound.
 ## Context
 SPEC-0024 rollout step 3. Audit the whole-array readers and charge each the cells it reads through `Model::spend_work`. The
 list to check: MATCH/XMATCH/XLOOKUP/LOOKUP/VLOOKUP/HLOOKUP linear search; SORT/SORTBY; UNIQUE; FILTER; TEXTJOIN/CONCAT;
-TOCOL/TOROW; SUMPRODUCT; MMULT inputs; the *IF(S) over arrays; INDEX over arrays (O(1), so no charge; record that). Prefer a
+TOCOL/TOROW; SUMPRODUCT; MMULT inputs; the *IF(S) over arrays; INDEX over arrays (O(1), so no charge; record that). A reader also charges the text elements it reads by their length (⌈bytes / `TEXT_BYTES_PER_UNIT`⌉, SPEC-0024 section 1). Prefer a
 shared helper at the point where an array argument is read whole. Do not add a per-function copy (directive 3). List the
 covered readers in the SPEC-0024 DEVIATION entry in arrays.md.
 

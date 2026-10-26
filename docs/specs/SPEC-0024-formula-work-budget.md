@@ -1,8 +1,8 @@
 # SPEC-0024 — A work budget for one formula evaluation
 
-- **Status:** draft (accepted on merge of T-2712, once reviewers approve)
+- **Status:** accepted (T-2712; architecture, quality and security reviewers approved)
 - **Milestone / lane:** M7 / engine
-- **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805
+- **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps T-2806, T-2807
 
 ## Problem
 Each array is capped at 2^20 cells (arrays.md "Array results above 1,048,576 cells are #ERROR!").
@@ -43,8 +43,11 @@ Non-goals:
   lifted-quantile charging of T-2607). They stay as they are. Their charges are also drawn from the
   new budget (step 1), so a cap that is fine for one call cannot be multiplied by LAMBDA.
 - The iterative-calculation sweep cap (`iteration.rs` `MAX_SWEEP_EVALUATIONS`) and the whole
-  recalculation's cost. The budget is per formula evaluation. A pass costs at most the number of
-  formulas times the budget, the same scaling as the area budgets.
+  recalculation's cost. The budget is per formula evaluation, so a pass costs at most the number of
+  formulas times the budget. This is a residual risk: 1,000 cells each near the limit is about
+  1,000 times the per-formula time. A per-recalculation bound needs its own design, because the
+  result of an over-budget pass, and which cells give up, must be deterministic. It is filed as
+  T-2807 (a spec task).
 - Wall-clock deadlines. They are non-deterministic and are not used (Alternatives).
 
 ## Excel behavior to match
@@ -70,17 +73,18 @@ shapes in eval and must stay computed:
 
 ### 1. What is charged: one *work unit*
 The budget counts **work units**. Each unit is roughly one cheap evaluation step, about 10–70 ns
-in a release build. Units are charged at three chokepoints, which together cover every way a short
-formula can multiply work:
+in a release build. Units are charged at the chokepoints below. Every multiplying shape the spec
+knows of goes through at least one of them. "Known gaps" below lists what is still uncovered.
 
 | charge | where | units |
 |---|---|---|
 | node evaluation | `Model::evaluate_node_in_context`, once per call (after `ungrouped`) | 1 |
 | array cells built | where an array value is allocated: SEQUENCE, RANDARRAY, MAKEARRAY, the result of MAP/SCAN/BYROW/BYCOL, `evaluate_range` (range → array), `broadcast_arrays` and the operator/IF broadcasts, `broadcast_text`, the SPEC-0011 lift driver's result, HSTACK/VSTACK/EXPAND/WRAP*/TEXTSPLIT, MMULT | rows × columns, charged before allocating, at the same call that runs `limits::check_array_size` / `check_array_cells` / `check_built_array_size` |
 | array cells read | the aggregate walker's array arm (`aggregate_args.rs` `walk_array_items`: SUM, COUNT, AVERAGE, MIN, MAX, PRODUCT and the other `for_each_value` readers), then the other whole-array readers (step 3) | cells of the array argument |
-| per-call kernel work | the SPEC-0011 driver's `kernel_units` and the *IF(S) cell visits already computed for `MAX_LIFTED_CELL_VISITS` | the same number, charged again to the formula |
+| text values | the same node chokepoint: a node whose value is a `CalcResult::String` (a function result, a cell read, a LET or LAMBDA variable read, a literal) | ⌈UTF-8 bytes / `TEXT_BYTES_PER_UNIT`⌉ (64 provisional; set by calibration). `broadcast_text` charges the byte total it already sums for its 64 MiB cap (`within_text_budget`) |
+| per-call capped work | every per-call cap's spend, charged again to the formula: the SPEC-0011 driver's `kernel_units`, the *IF(S) cell visits counted for `MAX_LIFTED_CELL_VISITS`, the regex engine's compile and match budgets (regex_engine.rs, pcre) | the same number, or a fixed weight per budget step set by calibration |
 
-Why these three:
+Why these charges:
 - **Nodes** bound everything that builds no array. Examples are a long scalar LAMBDA body called
   2^20 times by MAKEARRAY, and nested MAPs over small arrays. The LAMBDA call itself needs no
   separate charge, because its body's nodes pay for it.
@@ -88,6 +92,23 @@ Why these three:
 - **Read cells** bound the variant that builds once and reads many times:
   `=LET(s,SEQUENCE(100000),REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(s))))`. It builds 2E5 cells
   and reads 1E10.
+- **Text values** bound string work, which a node charge of 1 does not.
+  `MAP(SEQUENCE(1000),LAMBDA(x,MAP(SEQUENCE(1000),LAMBDA(y,LEN(REPT("a",32767))))))` would
+  otherwise do 32 KB of work per unit. Charging every text *value* where it enters the evaluator
+  covers producers (REPT, SUBSTITUTE, CONCAT, TEXTJOIN, `&`), whose result is a node value. It also
+  covers scanners (LEN, FIND, SEARCH, MID over a long text): the text they scan is itself a node
+  value, whether a call result, a cell read or a bound variable read
+  (`LET(s,REPT("a",32767),MAP(..,LAMBDA(y,LEN(s))))` pays at each read of `s`). Text elements of
+  arrays are charged by their length where step 3 charges array reads.
+
+Known gaps (out of scope, recorded for later work):
+- **Retained memory.** The budget counts work, not what a formula holds at once. Memory stays bounded
+  by the existing per-value caps: arrays of 2^20 cells, 32,767-unit texts, `MAX_CAPTURED_CELLS`, and
+  the nested-array caps. 2^20 cells of 32 KB texts is still about 64 GB in principle, as it is today.
+  This is pre-existing and is filed as T-2806.
+- **Super-linear work inside one scalar call** that has no per-call cap and touches no text: none is
+  known. A function found to have one gets a per-call cap of its own, charged to the formula like the
+  others.
 
 Union walks keep their own budget (`MAX_AREA_WALK`, 2^24 steps per formula). It is already per
 formula and already bounded, so it is not charged twice.
@@ -115,13 +136,20 @@ pub(crate) struct AreaBudget {
 }
 
 impl Model {
-    /// Takes `units` from the formula's work budget; past it, marks the run as exceeded and gives
-    /// the error. Inlined fast path (one subtraction and branch); the error path is `#[cold]`.
+    /// Takes `units` from the formula's work budget with `checked_sub` (never a wrapping `-`),
+    /// past it marks the run as exceeded and gives the error. Inlined fast path (one subtraction
+    /// and branch); the error path is `#[cold]`. Callers compute `units` with saturating
+    /// arithmetic (`rows.saturating_mul(columns)`, summed kernel units), so an oversized charge
+    /// saturates to `u64::MAX` and fails; it never wraps into a small one.
     pub(crate) fn spend_work(&mut self, units: u64, cell: CellReferenceIndex) -> Result<(), CalcResult>;
     /// Whether the run has spent its work budget: the LAMBDA helpers stop their loops on it.
     pub(crate) fn work_exceeded(&self) -> bool;
 }
 ```
+
+The limit the budget starts from is `MAX_FORMULA_WORK`. Tests lower it through a `#[cfg(test)]` field on `Model`
+(`formula_work_limit`, read by `AreaBudget`'s fresh-budget constructor in `with_area_budget`). It is not a public setter like
+`set_max_evaluation_stack`: the budget is a security bound, not an API option, so no public surface is added.
 
 The struct's doc comment and the module doc are reworded to say "the budgets of one formula
 evaluation". A rename to `FormulaBudget` is optional and, if done, done in the same step.
@@ -159,19 +187,31 @@ correct: the dependency cell's value *is* `#VALUE!`, as it is when evaluated on 
 
 ### 4. Calibration
 The limit has two constraints:
-- **Upper:** a formula at the limit finishes well inside the harness's 30 s timeout. At the
-  measured 67 ns per element step, and with ~2 units per element step for the formulas above
-  (1 built + 1 read; a node charge per call), 30 s is about 9E8 units. A case can hold several such
-  formulas, so the limit is set to at most a third of that.
+- **Upper:** a formula at the limit finishes well inside the harness's 30 s timeout, whatever
+  kind of unit it spends. The only measurement so far is 67 ns per element step of
+  `REDUCE(..,SUM(SEQUENCE(1E5)))`, about 2 units, so about 33 ns per unit for built and read
+  cells. A node unit (a LAMBDA call's binding, a function dispatch) or a text unit may cost far
+  more, so 33 ns is not assumed for them. Step 1 times one worst case per charge kind, run until
+  the budget stops it (release build):
+  - nodes: `=SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z)))))` and a nested MAP with a
+    scalar body;
+  - built cells: the three Problem formulas;
+  - read cells: the LET variant;
+  - text: `MAP(SEQUENCE(1000),LAMBDA(x,MAP(SEQUENCE(1000),LAMBDA(y,LEN(REPT("a",32767))))))`
+    and the `LET(s,REPT(..),..LEN(s)..)` variant;
+  - per-call caps: a MAKEARRAY of lifted RATE and a MAP of REGEXTEST calls.
+  The weights (units per node, `TEXT_BYTES_PER_UNIT`, units per regex step) are chosen so that each
+  kind's worst case reaches the limit in at most **10 s**. A case can hold several such formulas.
+  Weights may differ per kind; the limit stays one number.
 - **Lower:** every eval formula computed today stays computed (Goal 2). The gate enforces this
   mechanically. A limit set too low turns cells into `#VALUE!`, which `make eval-check` reports as
   regressions, and the gate refuses them.
 
-Step 1 sets `MAX_FORMULA_WORK = 2^28` (268,435,456 units, about 9 s at 33 ns per unit). Before
-committing, it measures the highest units any eval formula spends, with a local, uncommitted
-instrumentation run over all suites. It records the maximum and the case in the DEVIATION entry. If
-the maximum is above 2^26 (a quarter of the limit), step 1 stops and reports it, rather than raising
-the limit past the upper constraint.
+Step 1 sets `MAX_FORMULA_WORK = 2^28` (268,435,456 units) and fits the weights to the timings above.
+Before committing, it measures the highest units any eval formula spends, with a local, uncommitted
+instrumentation run over all suites. It records the maximum, the case and the per-kind timings in
+the DEVIATION entry. If the maximum is above 2^26 (a quarter of the limit), or no weights meet both
+constraints, step 1 stops and reports it rather than loosening either constraint.
 
 Worked examples at 2^28:
 
@@ -193,8 +233,8 @@ Step 1 adds this entry to docs/excel-semantics/arrays.md, with the measured cali
 > result for it cannot be probed (the session times out).
 > Evidence: none for Excel; a resource limit (directive 5).
 > Ours: each formula evaluation (a cell formula, a defined name, a conditional format,
-> `evaluate_formula`) may spend 2^28 work units: one per node evaluated, one per array cell built
-> or read whole, plus the lifted kernels' own charges (SPEC-0024). Past it the formula is `#VALUE!`
+> `evaluate_formula`) may spend 2^28 work units: per node evaluated, per array cell built or read
+> whole, per 64 bytes of each text value, plus the per-call caps' own charges (SPEC-0024). Past it the formula is `#VALUE!`
 > ("Formula needs too much work to calculate"), which `IFERROR` cannot catch. The heaviest eval
 > formula spends <measured> units (<case>).
 > Status: DEVIATION (decision 0014)
@@ -222,8 +262,8 @@ Step 1 adds this entry to docs/excel-semantics/arrays.md, with the measured cali
 - Unit tests in area_budget.rs and a new `test/test_formula_work.rs`, counter-based:
   - The units a formula spends, read from the budget after a run through a `#[cfg(test)]` accessor:
     `=1+2` is 3 nodes; `=SUM(SEQUENCE(10))` is the nodes plus 10 built plus 10 read.
-  - With a test-only lower limit (a `#[cfg(test)]` override of the model's limit, like
-    `set_max_evaluation_stack`), a formula one unit over the limit is `#VALUE!` (`TOO_MUCH_WORK`) and
+    `=LEN(REPT("a",640))` charges the nodes plus 10 text units for the REPT result (64 bytes per unit).
+  - With a test-only lower limit (the `#[cfg(test)]` `formula_work_limit` field of section 2), a formula one unit over the limit is `#VALUE!` (`TOO_MUCH_WORK`) and
     one at the limit computes.
   - `IFERROR(<over>,0)` and `IF(ISERROR(<over>),0,1)` are `#VALUE!`.
   - A dependency cell over the budget is `#VALUE!` and the outer `IFERROR(A1,0)` is 0.
@@ -241,10 +281,11 @@ Step 1 adds this entry to docs/excel-semantics/arrays.md, with the measured cali
 
 ## Rollout
 1. **T-2803 (M, opus)**: the budget in `AreaBudget` (`MAX_FORMULA_WORK`, `spend_work`,
-   `work_exceeded`), the uncatchable formula error in `with_area_budget`, node and built-cell
-   charges, the lifted kernels' charges, the helpers' early stop, the DEVIATION entry with the
-   calibration measured. Acceptance: the three Problem formulas finish within the harness timeout
-   (as `#VALUE!`), no baseline gains a line, `make check` green.
+   `work_exceeded`), the uncatchable formula error in `with_area_budget`, node, text and
+   built-cell charges, the per-call caps' charges, the helpers' early stop, the weights fitted to
+   the per-kind timings (section 4), the DEVIATION entry with the calibration measured. Acceptance:
+   the three Problem formulas finish within the harness timeout (as `#VALUE!`), each kind's worst
+   case stops within 10 s, no baseline gains a line, `make check` green.
 2. **T-2804 (S, sonnet)**: read-cell charges in the aggregate walker's array arm, and the LET variant
    as a test. Acceptance: the LET variant finishes within the harness timeout, no baseline gains a
    line.
