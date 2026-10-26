@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 // A single-range aggregate argument walks the cells stored in its range, not every position of
 // the used area, when a far cell leaves that area mostly blank (T-1690, T-2710). The work is
 // counted in cell reads (`Evaluation::cell_reads`), not wall-clock time (T-2282).

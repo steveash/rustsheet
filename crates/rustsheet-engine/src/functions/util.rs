@@ -21,7 +21,7 @@ pub(crate) mod collation;
 mod existing_walk;
 
 pub(crate) use existing_walk::StoredWalk;
-use existing_walk::WalkBudget;
+use existing_walk::{span, WalkBudget};
 
 use collation::cmp_text;
 
@@ -756,9 +756,9 @@ impl Model {
                     column: column2,
                 };
                 let runs = matches!(walk, AreaWalk::ClipWholeLines);
-                let side = |first: i32, last: i32| u64::try_from(last - first + 1).unwrap_or(0);
-                let width = side(left.column, column2);
-                // The row-major index of the next position not yet handed on.
+                let width = span(left.column, column2);
+                // The row-major index of the next position not yet handed on. Every position
+                // the walk visits lies inside the area, so its index is below the area's size.
                 let mut next: u64 = 0;
                 self.for_each_existing_position(
                     sheet,
@@ -766,8 +766,8 @@ impl Model {
                     cell,
                     (&mut columns, WalkBudget::Free),
                     &mut |model, position| {
-                        let index = side(left.row, position.row - 1) * width
-                            + side(left.column, position.column - 1);
+                        let index = span(left.row, position.row - 1) * width
+                            + span(left.column, position.column - 1);
                         if runs && index > next {
                             f(model, AreaStep::Blanks(index - next))?;
                         }
@@ -775,7 +775,7 @@ impl Model {
                         f(model, AreaStep::Position(position))
                     },
                 )?;
-                let positions = side(left.row, row2) * width;
+                let positions = span(left.row, row2) * width;
                 if runs && positions > next {
                     f(self, AreaStep::Blanks(positions - next))?;
                 }

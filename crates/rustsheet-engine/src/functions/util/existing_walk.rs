@@ -37,6 +37,11 @@ const MIN_SPARSE_WALK_POSITIONS: u64 = 1 << 16;
 /// row, so a dense column costs a read step per this many cells.
 const INDEX_BATCH_ROWS: usize = 64;
 
+/// Positions from `first` to `last` along one side of an area, 0 when `last` is before `first`.
+pub(super) fn span(first: i32, last: i32) -> u64 {
+    u64::try_from(i64::from(last) - i64::from(first) + 1).unwrap_or(0)
+}
+
 /// Whether a walk of existing cells ([`Model::for_each_existing_position`]) draws on the formula's
 /// union walk budget ([`MAX_AREA_WALK`](crate::area_budget::MAX_AREA_WALK)).
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -95,8 +100,7 @@ impl Model {
         left: &CellReferenceIndex,
         (row2, column2): (i32, i32),
     ) -> bool {
-        let side = |first: i32, last: i32| u64::try_from(last - first + 1).unwrap_or(0);
-        let positions = side(left.row, row2) * side(left.column, column2);
+        let positions = span(left.row, row2) * span(left.column, column2);
         if positions < MIN_SPARSE_WALK_POSITIONS {
             return false;
         }
