@@ -415,7 +415,8 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   equal others (A13); 4.470348358154297e-09 = 0.3/2^26 at guess 0.3 (A3), 4.8828125e-09 = 1e-5/2^11 at guess 0
   (A9), 3.725290298461914e-09 = 2/2^29 at guess 2 (A10). A negative guess is `#NUM!` (A6, A7, A11), even
   where the downward chain from the guess brackets the root (A6: root -0.1, guess -0.2). So no XNPV sign is
-  read on the walk; a NaN from normalising XNPV by the first value would explain it (unconfirmed).
+  read on the walk; a NaN from normalising XNPV by the first value would explain it (unconfirmed). (A nonzero first value with XNPV(0)
+  exactly 0 does walk from a negative guess: the T-2728 bullet below.)
 - T-2728 (probes/irr-guess-edges A41-A47, probes/t2728-irr-guess-ref-mark A73-A81, excel-graph, 2026-10-25/26): when
   XNPV(0) is exactly 0 (flows summing to 0, a root at 0), any nonzero XNPV differs from it, so the first chain point
   brackets and the bisection halves the guess down to 0: `XIRR({-100,10,20,30,40},{0,1,59,60,61},G)` is G/2^k at the
@@ -556,8 +557,10 @@ cell's), as is; (2) the guess: an error guess, as is, then the guess range (`#VA
   `IRR(@CELL("row",D2))` are `#NUM!` (irr-guess-edges A20-A26, irr-guess-edges-2 A35-A44; A51, A63). It is the mark of
   statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions", and it passes through the same wrappers:
   `LET(x,..,x)`, `IF(TRUE,..)`, `CHOOSE(1,..)`, `INDEX(..,1)`, `IFERROR(..,0)` and `LAMBDA(x,x)(..)` keep the `#VALUE!`
-  (A53-A61). Unprobed: the order of a single error cell as the flows against an error guess (ours (3)).
-Evidence: probes/t2728-irr-guess-ref-mark (cells A1-A81, "-2" is probes/t2728-irr-guess-ref-mark-2), excel-graph,
+  (A53-A61).
+- A single error cell as the flows is (3): with A1 `=1/0`, `IRR(A1,NA())`, `IRR(A1:A1,NA())` and `IRR((A1),NA())` are `#N/A`
+  and `IRR(A1,0.1)` `#VALUE!` (probes/t2728-irr-guess-ref-mark-3 A2-A5).
+Evidence: probes/t2728-irr-guess-ref-mark (cells A1-A81, "-2" is probes/t2728-irr-guess-ref-mark-2), -3, excel-graph,
 2026-10-26; probes/irr-guess-edges, irr-guess-edges-2 (2026-10-25); gen-m9 5422bdbf173fc233 A63, 5c6a23c4f6597f1c A153.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_irr` (functions/financial/mod.rs), `is_marked_number` (functions/util.rs); the wrapped forms are

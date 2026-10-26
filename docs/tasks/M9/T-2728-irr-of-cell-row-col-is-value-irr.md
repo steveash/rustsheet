@@ -54,7 +54,7 @@ Decision 0083: every cell this task owns has the wrong type, error or value, so 
   between a direct flows error and the `#VALUE!` of an error element or a marked flow, so the gen-m9 A153 cell is the
   guess's `#REF!` (INDEX's own error for one index into a 2-D range, not an IRR quirk).
 - XIRR: an exact XNPV(0) = 0 brackets at the first chain point (the guess halved down to 0), not the negative mirror.
-- Probes: probes/t2728-irr-guess-ref-mark (43 scored cells) and -2 (46), excel-graph 2026-10-26; financial.md
+- Probes: probes/t2728-irr-guess-ref-mark (43 scored cells), -2 (32) and -3 (4), excel-graph 2026-10-26; financial.md
   "IRR's error order" (new) and a T-2728 bullet under "XIRR is a bracketing bisection". The wrapped-mark cells
   (IF/CHOOSE/INDEX/IFERROR/LAMBDA, A53-A61) are left to T-2766 and unscored until then.
 - Eval delta: the 3 owned gen-m9 known failures pass; no new known-failure lines.
