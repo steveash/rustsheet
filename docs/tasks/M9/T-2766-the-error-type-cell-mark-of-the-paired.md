@@ -31,6 +31,8 @@ Known failures left in eval/baseline/probes.txt for probes/t2576-error-type-cell
   statistics.md "An array of references is #NUM! in the paired functions"): Calc!A64
   `F.TEST(LET(x,INDIRECT("B1",{1}),x),{-1,0,1})` Excel #NUM!, ours #VALUE! (`Model::evaluate_sample_arg` follows only a
   direct OFFSET or INDIRECT, `TODO(T-2766)`); Calc!A148 `SUMXMY2(INDIRECT("B1",{1}),4)` Excel #NUM!, ours #VALUE!.
+- Also probe, for an array of references (T-2577), the first argument of RSQ and STEYX, T.TEST's second sample, and
+  COVARIANCE.S's and COVAR's second argument, which the engine marks by analogy.
 - Also probe the UNVERIFIED positions statistics.md lists (the second argument of COVAR, COVARIANCE.S and the regression
   family; a marked first argument against an error element of the second).
 Carrying the mark through bindings needs a design (a value flag, not syntax); split if bigger than S.

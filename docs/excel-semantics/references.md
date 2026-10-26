@@ -2472,7 +2472,9 @@ is `#VALUE!` (06b4e8f5de409d5e A261) and `INDIRECT("Data!A1",FILTER(..)<6 number
 T-2577 probe: a 1x1 array lifts INDIRECT into a one-element array of references, ref_text too:
 `INDIRECT({"B1"})` and `INDIRECT({"B1"},TRUE)` are `#VALUE!`, `ROWS(INDIRECT("B1",{0}))` 1, `ISREF(INDIRECT("B1",{1}))`
 FALSE, `ISERROR(..)` TRUE, `ERROR.TYPE(..)` 3, `SUM(..)` and `MAX(..)` 5, `COUNT(..)` 0 (probes/t2577-indirect-ref-array
-A1:A28); the paired functions over it are statistics.md "An array of references is #NUM! in the paired functions".
+A1:A28). One index into it picks the element: `F.TEST(INDEX(INDIRECT("B1",{1}),1),{-1,0,1})` is B1's one-value `#DIV/0!`
+(A100), where `INDEX(OFFSET(A1,{0;1},0),2)` is `#VALUE!` (lookup.md); INDEX of it read directly and of a 1xN grid with one
+index are unprobed. The paired functions over it are statistics.md "An array of references is #NUM! in the paired functions".
 Evidence: probes/t2436/computed-scalar, probes/t2436/06b4e8f5de409d5e, probes/t2436/f2bd5f380ec002bf (excel-graph,
 2026-10-24), probes/t2577-indirect-ref-array (excel-graph, 2026-10-26).
 Ours: since T-2577 (`lifts_one_by_one` for INDIRECT, as for OFFSET, TAKE and DROP).

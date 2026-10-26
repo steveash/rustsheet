@@ -21,7 +21,7 @@ use crate::reference_operators::{RefArg, RefElement};
 /// `@`, SINGLE, MAX or a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR,
 /// a LAMBDA call and INDEX keep it in Excel and are not followed here: TODO(T-2766)
 /// (statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions").
-pub(crate) fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
+fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
     if !matches!(value, CalcResult::Number(_)) {
         return false;
     }

@@ -3809,9 +3809,11 @@ of an element (the cell, `#DIV/0!`); what keeps it: LET (`F.TEST(LET(x,INDIRECT(
 Evidence: probes/t2577-indirect-ref-array (excel-graph, 2026-10-26).
 Ours: since T-2577 for a direct OFFSET or INDIRECT argument in F.TEST, the `fn_get_two_matrices` family (CORREL,
 PEARSON, SLOPE, INTERCEPT, RSQ, STEYX, FORECAST, CHITEST), COVARIANCE and T.TEST (`Model::evaluate_sample_arg`,
-functions/statistical/paired.rs); the LET form, SUMXMY2, LINEST and STDEV are T-2766's.
-Status: VERIFIED (excel-graph)
-Tasks: T-2577, T-2766
+functions/statistical/paired.rs); the LET form, SUMXMY2 and LINEST are T-2766's, STDEV T-2065's. UNVERIFIED, marked by
+analogy with the ERROR.TYPE mark: the first argument of RSQ and STEYX, T.TEST's second sample, and COVARIANCE.S's and
+COVAR's second argument (read as cells with no number); probing them is T-2766's.
+Status: VERIFIED (excel-graph) for the listed calls
+Tasks: T-2577, T-2766, T-2065
 
 ## LINEST: a known_y range with empty cells is #VALUE! (T-2436)
 Rule: LINEST of a known_y range that holds empty cells beside its numbers is `#VALUE!`, not a fit of the numbers:
