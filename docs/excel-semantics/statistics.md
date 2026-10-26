@@ -3767,9 +3767,16 @@ T-2576 probe (probes/t2576-error-type-cell-paired, excel-graph, 2026-10-26; FTES
 - Which functions react, first array argument: COVARIANCE.S, COVAR, CORREL, SLOPE, RSQ, PEARSON, STEYX, SUMXMY2 (1 with 4)
   and FORECAST.LINEAR are `#NUM!` (E1:E16, E23); so is T.TEST's second array (`T.TEST({1,2,3},ERROR.TYPE(#REF!),2,2)`,
   E14) and both of FTEST's (E35). A second argument of COVARIANCE.P is `#DIV/0!` (`COVARIANCE.P(4,ERROR.TYPE(#REF!))`,
-  while `COVARIANCE.P(4,5)` is 0; E26), INTERCEPT's known_x and FORECAST's x read it as the number (E27, E29). CHITEST and
-  the one-list functions are unaffected: SUM, STDEV, VAR.P, KURT, PERCENTILE, LARGE, MEDIAN, DEVSQ, AVEDEV, ZTEST and
-  LINEST give what 4 gives (E18:E22, E30:E38).
+  while `COVARIANCE.P(4,5)` is 0; E26), INTERCEPT's known_x and FORECAST's x read it as the number (E27, E29). T.TEST's
+  first sample is `#NUM!` too (`TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`, gen-m9 a5342a7e24fd803e A15), after its
+  tails/type checks (gen-m9 d5fd9e05e9e6f466 A184 is the tails argument's `#CALC!`). A size mismatch comes first: `#N/A`
+  (`COVARIANCE.S(ERROR.TYPE(#REF!),Data!C10:D10)`, gen-m9 abc2939ebd1e2365 A335; `RSQ(ERROR.TYPE(#NAME?),Data!C8:C11)`,
+  b9a32ce9a1fd0d71 A267). UNVERIFIED: the second argument of COVAR, COVARIANCE.S, CORREL, PEARSON, SLOPE, RSQ and STEYX
+  (the engine treats it as COVARIANCE.P's and INTERCEPT's), and a marked first argument against an error element of the
+  second (the engine gives `#NUM!`).
+- LINEST reacts: `LINEST(ERROR.TYPE(#REF!))` is `#VALUE!` (E34) where `LINEST(2)` is 0 (gen-m9 8d3588d8df0812df A186).
+  CHITEST and the one-list functions are unaffected: SUM, STDEV, VAR.P, KURT, PERCENTILE, LARGE, MEDIAN, DEVSQ, AVEDEV and
+  ZTEST give what 4 gives (E18:E22, E30:E33, E36:E38).
 The third T-2255 cell, `F.TEST(INDIRECT("Data!B3",TOCOL(2,0,Data!A5)),{-1,0,1})`
 (06b4e8f5de409d5e A261), is `#NUM!` over an INDIRECT that is `#VALUE!` (references.md "INDIRECT: a 1x1 array a1 argument is
 #VALUE!"), as is `COVARIANCE.P(INDIRECT("Data!A1",FILTER(..)),Data!B11:D12)` (f2bd5f380ec002bf A383); that `#NUM!` is UNVERIFIED.

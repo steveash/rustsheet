@@ -23,7 +23,12 @@ Known failures left in eval/baseline/probes.txt for probes/t2576-error-type-cell
   D19 `LAMBDA(x,x)(..)`, D20 `INDEX(..,1)`, D24 `ERROR.TYPE({#REF!})`: Excel #NUM!, ours #DIV/0!.
 - Calc!E16 `SUMXMY2(ERROR.TYPE(#REF!),5)`: Excel #NUM!, ours 1 (SUMXMY2 reads through `sumx_arg`, not
   `fn_get_two_matrices`; SUMX2MY2 and SUMX2PY2 are unprobed).
-- Calc!E34 `LINEST(ERROR.TYPE(#REF!))`: Excel #VALUE! (unexplained; `LINEST(4)` is unprobed), ours a fit, and its spill F34.
+- Calc!E34 `LINEST(ERROR.TYPE(#REF!))`: Excel #VALUE! where `LINEST(2)` is 0 (gen-m9 8d3588d8df0812df A186), ours a fit,
+  and its spill F34.
+- Calc!D27 `FTEST({1;2;3},SINGLE(ERROR.TYPE(#REF!)))`: Excel #DIV/0!, ours #NAME? (SINGLE is not parsed; move it to the
+  task that owns SINGLE if one exists).
+- Also probe the UNVERIFIED positions statistics.md lists (the second argument of COVAR, COVARIANCE.S and the regression
+  family; a marked first argument against an error element of the second).
 Carrying the mark through bindings needs a design (a value flag, not syntax); split if bigger than S.
 
 ## Acceptance criteria
