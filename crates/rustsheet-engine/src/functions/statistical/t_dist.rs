@@ -554,11 +554,11 @@ impl Model {
         {
             return CalcResult::new_args_number_error(cell);
         }
+        // A text sample is an array of one cell with no number, not `#VALUE!`
+        // (`TTEST(IFERROR(#VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!`, gen-m9
+        // 46ac3ef5e61583ca A344; statistics.md "T.TEST: an error sample first ...").
         let samples = self
-            // A text sample is an array of one cell with no number, not `#VALUE!`
-            // (`TTEST(IFERROR(#VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!`, gen-m9
-            // 46ac3ef5e61583ca A344; statistics.md "T.TEST: an error sample first ...").
-            .paired_samples(args, cell, true, MarkedSample::NumError)
+            .paired_samples(args, cell, MarkedSample::NumError)
             .map_err(|error| PairedSamplesError {
                 error: error.error.without_message(),
                 ..error
