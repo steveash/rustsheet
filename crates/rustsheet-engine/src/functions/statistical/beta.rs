@@ -131,6 +131,15 @@ impl Model {
                 _ => Err(div_error(cell)),
             };
         }
+        // The density is #NUM! at an x of exactly 0 with alpha <= 1, and at an x of exactly 1 with
+        // beta <= 1: Excel checks the given x against 0 and 1 rather than the interval's own ends,
+        // so `BETA.DIST(0,0.5,2,FALSE,-1,1)` and `BETA.DIST(1,2,0.5,FALSE,0,5)` are #NUM! at an
+        // interior point while `BETA.DIST(2,0.5,2,FALSE,2,5)` is 0 at the interval's own lower end
+        // (statistics.md "BETA.DIST's density is #NUM! at an x of 0 or 1 (T-2435)";
+        // probes/t2435-dist-extremes A59:A67, A103:A106, A126:A128, A132:A140).
+        if !cumulative && ((x == 0.0 && alpha <= 1.0) || (x == 1.0 && beta_param <= 1.0)) {
+            return Err(num_error(cell));
+        }
         let t = (x - a) / width;
         let dist = Beta::new(alpha, beta_param).map_err(|_| num_error(cell))?;
         let result = if cumulative {
