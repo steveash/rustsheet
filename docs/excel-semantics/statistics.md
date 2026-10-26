@@ -3948,7 +3948,9 @@ Rule (probes/t2475-stat-subexpressions, excel-graph, 2026-10-24; each from the p
 - WEIBULL.DIST at x = 0 is 0 cumulative too, even where beta^-alpha overflows: `WEIBULL.DIST(0,1E+8,4.6269E-09,TRUE)`
   is 0 (P!A78, 1b31092a0d79e5f1 A179); and an overflowing (x/beta)^alpha is `#NUM!`, not the cdf's limit 1:
   `WEIBULL(1E+15,1E+15,<TRUE cell>,1)` (P!A407, a5342a7e24fd803e A166), confirming the T-2496 hypothesis above. Which
-  form Excel overflows on ((x/beta)^alpha or x^alpha·beta^-alpha) is UNVERIFIED where the two differ.
+  form Excel overflows on ((x/beta)^alpha or x^alpha·beta^-alpha) is UNVERIFIED where the two differ, and so is the
+  density (cumulative FALSE) on that overflow: both cells are cumulative, and ours gives the density `#NUM!` too.
+  NORMDIST's cdf at that x (ours 1) is likewise unprobed.
 - `POISSON.DIST(2E+29,7,-1)` is 1 (P!A216, 5919660b7bb4d195 A88): a cumulative count past 2^64 is not rejected.
   UNVERIFIED: the pmf there (ours `#NUM!`).
 - IFERROR's fallback that is a blank cell is the empty value, as its value argument's is (logic.md "IFERROR / IFNA of a

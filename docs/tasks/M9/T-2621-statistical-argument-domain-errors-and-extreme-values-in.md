@@ -42,6 +42,9 @@ Owned gen-m9 cells (23; known failures in eval/baseline/gen-m9.txt, and the prob
 - gen-m9/d208bbafc3bc1997.case.json Calc!A262: probe P!A520 `SKEW(D41!D11:D12,D41!D10)`: Excel 2.4980018054066022e-15, ours 2.9976021664879227e-15
 - gen-m9/f82473275380882e.case.json Calc!A143: probe P!A572 `NORMDIST(1E+300,MAX(D48!C11:C12),2.5,0)`: Excel "#6", ours 0.0
 
+Moved to T-2788 (last-digit numeric fits): P!A317 / 873f30d2bf76f8db A308, P!A417 / a63d1c7d6f96c56d A92, P!A520 /
+d208bbafc3bc1997 A262.
+
 ## Acceptance criteria
 - [x] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
 - [x] `make check` green; reviewers approve.

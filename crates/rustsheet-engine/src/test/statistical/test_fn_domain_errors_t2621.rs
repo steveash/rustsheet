@@ -35,6 +35,10 @@ fn statistical_domain_errors_and_extreme_values() {
             "=STDEV.P(100,2,IFERROR(1/0,Z1),{1,2,3,4,5,6,7,8,9,10})",
             "25.55976868",
         ),
+        // ... the same empty value a blank value argument gives (logic.md, T-0291): OR reads it as
+        // FALSE where OR(Z1) is #VALUE!, and COUNT counts it.
+        ("=OR(IFERROR(1/0,Z1))", "FALSE"),
+        ("=COUNT(IFERROR(1/0,Z1))", "1"),
         // TRIMMEAN of a lone blank cell is #NUM! (P!A353).
         ("=TRIMMEAN(Z1,3.14159)", "#NUM!"),
         ("=TRIMMEAN(Z1,0.5)", "#NUM!"),
