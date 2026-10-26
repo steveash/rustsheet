@@ -75,11 +75,24 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let from_unit = match Self::cast_string_ref(from_unit, cell) {
+        // A boolean unit read from a cell is `#VALUE!`, not an unknown unit
+        // (gen-m9 290180acf017709c Calc!A148, A158, f81bd3b6dc373e5c Calc!A291).
+        // Each unit is checked and read in turn, so from_unit's error comes first.
+        let unit_text = |unit: &CalcResult| {
+            if matches!(unit, CalcResult::Boolean(_)) {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Expecting text".to_string(),
+                ));
+            }
+            Self::cast_string_ref(unit, cell)
+        };
+        let from_unit = match unit_text(from_unit) {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let to_unit = match Self::cast_string_ref(to_unit, cell) {
+        let to_unit = match unit_text(to_unit) {
             Ok(s) => s,
             Err(error) => return error,
         };
