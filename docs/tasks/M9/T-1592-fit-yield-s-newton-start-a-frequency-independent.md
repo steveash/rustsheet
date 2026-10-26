@@ -150,5 +150,5 @@ The engine follows (`yield_start`, `excel_yield_newton`). Eval: 391 known failur
 ironcalc-calc 6). 3 cells regress by 1 ulp at the root (yield-start-one-input S!A5, yield-start-rate-term S!B34
 and S!B35). Those fall under decision 0083's standing allowance, and T-2777 names them. Of the 23 owned gen-m9 cells, 11 are
 bit-exact and 9 within 4 ulp. A189 (basis 2), A17 (basis 1), A102 and A194 remain (T-2777).
-Pending: recording the baseline with `update-baseline --allow-regressions` under decision 0083's allowance. The
+Resumed 2026-10-26 by an opus run (branch idle 3 h). Pending: recording the baseline with `update-baseline --allow-regressions` under decision 0083's allowance. The
 session's permission policy refused that command, so the run needs an explicit go-ahead.
