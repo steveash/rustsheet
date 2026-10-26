@@ -567,14 +567,18 @@ and the oracle calibration found IMARGUMENT differing by ulps between Excel for 
 - For a real argument at or near the double nearest π/2 Excel gives a finite value, not `#NUM!`:
   IMTAN("1.5707963267948966") = "148752068975966", IMTAN("1.5707963267949") = "-286413440886091",
   IMCOT("1.5707963267948966") = "6.72259557049637E-15", IMCOT("1.5707963267949") = "-3.49145625605507E-15"
-  (probes/eng-imtan-imcot-overflow A10-A13, excel-graph). RustSheet differs from the sixth or seventh significant digit on
-  (148752623989354, -286411383293069, 6.72257048770831E-15, -3.49148133884313E-15): the real-argument
-  tangent kernel near a pole is not yet fitted (known failures in eval/baseline/probes.txt).
+  (probes/eng-imtan-imcot-overflow A10-A13, excel-graph). The text "1.5707963267948966" reads as 1.57079632679489
+  (15 digits), 6.7E-15 below π/2. These are TAN's x87 kernel, reduced by the 64-bit π (numbers.md "SIN / COS at multiples of 90°"): the remainder is
+  `(FRAC_PI_2 - x) + 6.1257422745431E-17`, π₆₄/2's tail, and both pairs of values are 1 over the tangent of it to every
+  printed digit, while the true π (libm's `tan`) gives 148752623989354 and -286411383293069 from the sixth or seventh
+  digit. Here IMTAN's double-angle denominator `cos 2x + cosh 2y` rounds to 0 (x within about 5.2E-9 of π/2), and IMTAN
+  falls back to TAN's kernel (only these two points are probed; the window's edges and other odd multiples of π/2 are
+  not); IMCOT of a real number is 1 over it anyway (T-2534). Since T-2760 all four match.
 Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
 T, U columns; probes/eng-argument-modes Calc!A33 `IMCOT("3+4i")` = "-0.000187587737983659-1.00064439247156i"
 and A51 `IMTAN("3+4i")` = "-0.000187346204629478+0.999355987381473i" (excel-graph), which the
 double-angle form matches too, so the digits are not Mac-only.
-Status: VERIFIED (desktop cached values and excel-graph); the near-π/2 real-argument digits are an open mismatch (T-1966)
+Status: VERIFIED (desktop cached values and excel-graph)
 Tasks: T-0907, T-1966, T-2760, T-2043, T-2044
 
 ## Base conversions read a blank cell and empty text as 0
