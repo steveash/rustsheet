@@ -22,7 +22,7 @@ use crate::x87_register::Register;
 /// RN64(log2 e), the 64-bit significand FLDL2E loads, with the value `LOG2_E_64 * 2^-63`
 /// (`round8/exp_v6.py` `_L2E64`; log2 e = 1.442695040888963407359924681001892137..., whose
 /// significand `0xB8AA3B295C17F0BB_BE87`... rounds up).
-const LOG2_E_64: u128 = 0xB8AA_3B29_5C17_F0BC;
+const LOG2_E_64: u64 = 0xB8AA_3B29_5C17_F0BC;
 
 /// ln 2 as a double-double (hi + lo, |lo| <= ulp(hi)/2), from 300-bit mpmath.
 pub(crate) const LN_2_HI: f64 = f64::from_bits(0x3FE6_2E42_FEFA_39EF); // 0x1.62e42fefa39efp-1
@@ -54,7 +54,7 @@ pub(crate) fn excel_exp(a: f64) -> f64 {
 /// `test/fixtures/exp_extended.fixture`, T-2645). An argument past the double range gives 0 or
 /// infinity.
 pub(crate) fn excel_exp_extended(a: Register) -> f64 {
-    exp_with(a, two_to_the_minus_one)
+    exp_with::<true>(a, two_to_the_minus_one)
 }
 
 /// Excel's expm1, under SINH, TANH and PPMT: Kahan's `(u - 1) * x / ln(u)` with `u` Excel's own
@@ -74,14 +74,29 @@ pub(crate) fn excel_expm1(x: f64) -> f64 {
 }
 
 /// [`excel_exp_extended`] with step 3's RN64(2^f - 1) taken from `two_to_the_minus_one`, so the
-/// tests can run the whole model on the reference series.
-fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
+/// tests can run the whole model on the reference series. Generic, not a function pointer, so the
+/// fast path's estimate is a direct (inlinable) call. With `SHORTCUT`, steps 3 and 4 first try
+/// [`two_to_the_fraction`], which skips them when their roundings cannot change the double.
+///
+/// The widths are fixed by the model, so the integer work is mostly 64-bit (T-2102): the argument's
+/// significand and RN64(log2 e) are 64-bit, so step 1 is one 64 x 64 multiply; t, the fraction
+/// and w all fit 64 bits. The reciprocal for f < 0 and step 4 use the floating-point unit where it
+/// is exact (an estimate corrected by an exact remainder, and a correctly rounded u64 to f64
+/// conversion), instead of a u128 division and a general rounding. `tests::exp_with_reference`
+/// keeps the earlier u128 core, and `integer_core_matches_reference` checks they agree.
+fn exp_with<const SHORTCUT: bool>(
+    a: Register,
+    two_to_the_minus_one: impl Fn(u128, u32) -> (u128, i32),
+) -> f64 {
     let (negative, a_significand, a_exponent) = a.parts();
-    // A zero (no top bit) gives 1. Otherwise 2^top <= |a| < 2^(top + 1); a significand has at
-    // most 64 bits, so its bit index fits an i32.
+    // A register's significand has at most 64 bits; a zero (no top bit) gives 1.
+    let Ok(a_significand) = u64::try_from(a_significand) else {
+        return f64::NAN;
+    };
     let Some(top_bit) = a_significand.checked_ilog2() else {
         return 1.0;
     };
+    // 2^top <= |a| < 2^(top + 1); a bit index of a u64 fits an i32.
     let top = a_exponent + i32::try_from(top_bit).unwrap_or(0);
     // |a| < 2^-65 gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
     if top < -65 {
@@ -92,52 +107,64 @@ fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> 
     if top >= 11 || (top == 10 && a.store().abs() * std::f64::consts::LOG2_E > T_LIMIT) {
         return if negative { 0.0 } else { f64::INFINITY };
     }
-    // Step 1: t = T * 2^t_exponent, T a 64-bit integer (|a| >= 2^-65, and a significand of at
-    // least 53 bits times the 64-bit constant has more than 64 bits to round).
-    let (t, shift) = round_to_bits(a_significand * LOG2_E_64, 64, false);
+    // Step 1: t = T * 2^t_exponent, T a 64-bit integer. The product of two 64-bit integers, the
+    // constant at least 2^63, has 64 to 128 bits.
+    let (t, shift) = round_to_64_bits(u128::from(a_significand) * u128::from(LOG2_E_64));
     let t_exponent = a_exponent - 63 + shift;
-    // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130. The guards above
-    // make every `try_from` fallback below unreachable: t < 2^64, n <= 2^11 and |f| < 2^64.
+    // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130. f is held as its
+    // magnitude and whether it is below n, so it stays a u64: |f| <= 2^(drop - 1) <= 2^63.
     let Ok(drop) = u32::try_from(-t_exponent) else {
         return f64::NAN;
     };
-    let (n, fraction) = if drop >= 65 {
+    let (n, fraction, below_n) = if drop >= 65 {
         // |t| < 2^(64 - drop) <= 1/2: n = 0 and f = t.
-        (0_i32, i128::try_from(t).unwrap_or(0))
+        (0_i32, t, false)
     } else {
+        // drop <= 64: shift in u128 so drop = 64 needs no special case.
+        let t = u128::from(t);
         let integer = t >> drop;
         let rest = t & ((1 << drop) - 1);
         let half = 1 << (drop - 1);
         // Integer bit operations, not `||`: a data-dependent branch here mispredicts half the time.
-        let n = integer + (u128::from(rest > half) | (u128::from(rest == half) & (integer & 1)));
-        let f = i128::try_from(t).unwrap_or(0) - i128::try_from(n << drop).unwrap_or(0);
-        (i32::try_from(n).unwrap_or(0), f)
+        let up = u128::from(rest > half) | (u128::from(rest == half) & (integer & 1));
+        // Rounding up leaves f = rest - 2^drop, negative, of magnitude 2^drop - rest.
+        let magnitude = if up == 1 { (1 << drop) - rest } else { rest };
+        let n = i32::try_from(integer + up).unwrap_or(0);
+        (n, u64::try_from(magnitude).unwrap_or(0), up == 1)
     };
     // f * sign(a) is the true fraction: `fraction` is the magnitude-side remainder of |t|.
-    let negative_f = (fraction < 0) != negative;
+    let negative_f = below_n != negative;
     let n = if negative { -n } else { n };
+    // 2^f * 2^n with 2^f in [0.7, 1.42] is a normal double for -1021 <= n <= 1023.
+    if SHORTCUT && fraction != 0 && (-1021..=1023).contains(&n) {
+        if let Some(power) = two_to_the_fraction(fraction, drop, negative_f) {
+            return power * power_of_two(n);
+        }
+    }
     // Step 3: w = W * 2^w_exponent, W a 64-bit integer.
-    let (mut w, mut w_exponent) = (1_u128 << 63, -63);
+    let (mut w, mut w_exponent) = (1_u64 << 63, -63);
     if fraction != 0 {
-        let (u, u_exponent) = two_to_the_minus_one(fraction.unsigned_abs(), drop);
-        // u < 0.415, so u_exponent <= -65 and 1 = 2^gap units of u.
+        let (u, u_exponent) = two_to_the_minus_one(u128::from(fraction), drop);
+        // u < 0.415 is 64-bit with u_exponent <= -65; 1 + u in [1, 2) is 2^63 + u / 2^(gap - 63)
+        // units of 2^-63, rounded (a carry to 2 cannot happen). gap >= 128 leaves w = 1.
         let gap = u32::try_from(-u_exponent).unwrap_or(128);
         if gap < 128 {
-            let (sum, sum_shift) = round_to_bits((1 << gap) + u, 64, false);
-            (w, w_exponent) = (sum, u_exponent + sum_shift);
+            w = (1 << 63) + round_shifted(u, gap - 63);
         }
         if negative_f {
-            // w is in [1, 2), so 2^127 / W is in (2^63, 2^64]: the integer quotient already has
-            // the 64 bits, and the remainder rounds it (a tie needs W = 2^63, an exact quotient).
-            let numerator = 1_u128 << 127;
-            let (quotient, remainder) = (numerator / w, numerator % w);
-            let rounded = quotient + u128::from(2 * remainder > w);
-            let (q, q_shift) = round_to_bits(rounded, 64, false);
-            (w, w_exponent) = (q, -127 - w_exponent + q_shift);
+            (w, w_exponent) = reciprocal(w);
         }
     }
     // Step 4: one rounding of the 64-bit w * 2^n to a double, or to the subnormal grid.
     let exponent = w_exponent + n;
+    if (-1085..=960).contains(&exponent) {
+        // w * 2^exponent is at least 2^-1022, so the double is normal (or infinite): the u64 to
+        // f64 conversion is the one rounding (Rust rounds it to nearest, ties to even), and the
+        // scalings by powers of two are exact. A rounding up to 2^64 at the top overflows to
+        // infinity, as the rounding to a double does.
+        return w as f64 * power_of_two(-63) * power_of_two(exponent + 63);
+    }
+    let w = u128::from(w);
     round_extended_to_double(w, exponent, false).unwrap_or_else(|| {
         if exponent > 0 {
             f64::INFINITY
@@ -145,6 +172,155 @@ fn exp_with(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> 
             round_extended_to_subnormal(w, exponent, false).unwrap_or(0.0)
         }
     })
+}
+
+/// Steps 3 and 4's double, RN53(w), for f = ±`magnitude` * 2^-`drop` in [-1/2, 1/2] \ {0}
+/// (`negative` gives the sign), when it is certain without w (T-2102). w is 2^f after
+/// three RN64 roundings (2^|f| - 1, 1 + u and, for f < 0, the reciprocal), so |w - 2^f| <= 2^-63
+/// 2^f; a 2^f more than that from every double rounding midpoint rounds to the same double as w.
+/// A double-double estimate of 2^f, good to about 2^-67, decides that unless it lies within
+/// [`DOUBLE_MIDPOINT_MARGIN`] of a midpoint, or its head is 1 (a power of two, with the finer
+/// midpoints below it); then `None`, and the exact chain runs (about 1 call in 30).
+#[inline]
+fn two_to_the_fraction(magnitude: u64, drop: u32, negative: bool) -> Option<f64> {
+    let (high, low) = two_to_the_fraction_estimate(u128::from(magnitude), drop);
+    let (head, tail) = if negative {
+        // 1 / (high + low): a quotient and one correction from its exact residual (1 - q high
+        // is exact by Sterbenz, as q high is within an ulp of 1).
+        let quotient = 1.0 / high;
+        let (product, product_error) = two_prod(quotient, high);
+        let residual = ((1.0 - product) - product_error) - quotient * low;
+        fast_two_sum(quotient, quotient * residual)
+    } else {
+        (high, low)
+    };
+    if head == 1.0 {
+        return None;
+    }
+    // Half an ulp of the head, which is in [0.7, 1.42]; |tail| is at most that.
+    let half_ulp = if head > 1.0 {
+        power_of_two(-53)
+    } else {
+        power_of_two(-54)
+    };
+    (half_ulp - tail.abs() > DOUBLE_MIDPOINT_MARGIN).then_some(head)
+}
+
+/// How far [`two_to_the_fraction`]'s estimate must be from a double rounding midpoint: 2^-60,
+/// above the estimate's error (about 2^-67) plus w's (at most 2^-63 * 1.42).
+const DOUBLE_MIDPOINT_MARGIN: f64 = 1.0 / 1_152_921_504_606_846_976.0; // 2^-60
+
+/// 2^f for f = `magnitude` * 2^-`drop` in (0, 1/2], to about 2^-67, as a double-double: the
+/// [`two_to_the_minus_one_estimate`] scheme with fewer exact terms, as [`two_to_the_fraction`]
+/// needs only 2^-60. 2^f = 1 + E + e + E e with E = 2^(j/64) - 1 from the table and e = expm1(y),
+/// y = r ln 2, |y| <= 0.0055: e = yh + yh^2 (1/2 + yh/6 + ... + yh^5/5040) + yl (1 + yh), the
+/// bracket in plain f64 (its error about 2^-69, the next term 2^-75).
+#[inline]
+fn two_to_the_fraction_estimate(magnitude: u128, drop: u32) -> (f64, f64) {
+    // As in two_to_the_minus_one_estimate: j = nint(64 f) <= 32, r exact with |r| <= 1/128.
+    let j = (magnitude + (1 << (drop - 7))) >> (drop - 6);
+    let r = i128::try_from(magnitude).unwrap_or(0) - i128::try_from(j << (drop - 6)).unwrap_or(0);
+    let (rh, rl) = exact_double_double(r, drop);
+    let (product, product_error) = two_prod(rh, LN_2_HI);
+    let (yh, yl) = fast_two_sum(product, product_error + (rh * LN_2_LO + rl * LN_2_HI));
+    let rest = yh
+        * yh
+        * (0.5
+            + yh * (1.0 / 6.0
+                + yh * (1.0 / 24.0
+                    + yh * (1.0 / 120.0 + yh * (1.0 / 720.0 + yh * (1.0 / 5040.0))))));
+    let (b, b_error) = fast_two_sum(yh, rest);
+    let lo = b_error + yl * (1.0 + yh);
+    let (e_hi, e_lo) = TWO_TO_THE_J_OVER_64_MINUS_ONE[usize::try_from(j).unwrap_or(0).min(32)];
+    let (e_hi, e_lo) = (f64::from_bits(e_hi), f64::from_bits(e_lo));
+    // E e, then E + (e + E e), then 1 + that (in (0, 0.415], so 1 leads).
+    let (m, m_error) = two_prod(e_hi, b);
+    let m_error = m_error + e_hi * lo + e_lo * b;
+    let (s, s_error) = two_sum(b, m);
+    let (u, u_error) = two_sum(e_hi, s);
+    let (one_plus, one_plus_error) = fast_two_sum(1.0, u);
+    fast_two_sum(
+        one_plus,
+        one_plus_error + (u_error + s_error + lo + m_error + e_lo),
+    )
+}
+
+/// `value` (at least 2^63, at most 128 bits) rounded to nearest, ties to even, to 64 bits: the
+/// significand and the number of low bits dropped ([`round_to_bits`] specialized to a 64-bit
+/// result, inlined on the hot path).
+#[inline]
+fn round_to_64_bits(value: u128) -> (u64, i32) {
+    // 0..=64 low bits to drop.
+    let shift = 64 - value.leading_zeros();
+    let kept = u64::try_from(value >> shift).unwrap_or(u64::MAX);
+    let (rounded, carry) = kept.overflowing_add(round_up(value, shift, kept));
+    // A carry out of the top bit (all ones rounded up) leaves 2^64 = 2^63 * 2.
+    let shift = i32::try_from(shift).unwrap_or(0);
+    if carry {
+        (1 << 63, shift + 1)
+    } else {
+        (rounded, shift)
+    }
+}
+
+/// `value` (below 2^64) / 2^`shift` rounded to nearest, ties to even, for 2 <= `shift` < 65: at
+/// most 62 bits.
+#[inline]
+fn round_shifted(value: u128, shift: u32) -> u64 {
+    let kept = u64::try_from(value >> shift).unwrap_or(0);
+    kept + round_up(value, shift, kept)
+}
+
+/// 1 if `value` / 2^`shift`, truncated to `kept`, rounds up to nearest, ties to even, else 0
+/// (`shift` <= 64; 0 drops nothing). Integer bit operations, not `||`: the round-up is
+/// data-dependent, and a branch on it mispredicts about half the time.
+#[inline]
+fn round_up(value: u128, shift: u32, kept: u64) -> u64 {
+    if shift == 0 {
+        return 0;
+    }
+    let dropped = value & ((1 << shift) - 1);
+    let half = 1 << (shift - 1);
+    u64::from(dropped > half) | (u64::from(dropped == half) & kept & 1)
+}
+
+/// RN64(1 / w) for w = `significand` * 2^-63 in [1, 2) with a 64-bit significand: the 64-bit
+/// significand and its exponent. 1 / w = 2^127 / W * 2^-64 with the integer quotient in
+/// (2^63, 2^64), so it already has the 64 bits and the remainder rounds it (a tie needs W = 2^63,
+/// an exact quotient). The quotient comes from an f64 estimate, good to about 2^12 units,
+/// refined by one more f64 step from its exact remainder and then made exact by at most one unit
+/// either way; this replaces a u128 division, a runtime call.
+#[inline]
+fn reciprocal(significand: u64) -> (u64, i32) {
+    const TWO_TO_THE_127: u128 = 1 << 127;
+    if significand == 1 << 63 {
+        return (1 << 63, -63);
+    }
+    let divisor = significand as f64;
+    // In (2^63, 2^64): the saturating conversion keeps it a u64.
+    let estimate = (TWO_TO_THE_127 as f64 / divisor) as u64;
+    // |remainder| < 2^78, exact in i128 (the product is below 2^128).
+    let wide = i128::from(significand);
+    let remainder = TWO_TO_THE_127
+        .wrapping_sub(u128::from(estimate) * u128::from(significand))
+        .cast_signed();
+    // The remainder as a double from its two halves (no runtime i128 conversion); the correction
+    // is under 2^13 units and its floor is off by at most one.
+    let high = i64::try_from(remainder >> 64).unwrap_or(0) as f64;
+    let low = (remainder as u64) as f64;
+    let correction = ((high * power_of_two(64) + low) / divisor).floor() as i64;
+    let mut quotient = i128::from(estimate) + i128::from(correction);
+    let mut remainder = remainder - i128::from(correction) * wide;
+    if remainder < 0 {
+        quotient -= 1;
+        remainder += wide;
+    } else if remainder >= wide {
+        quotient += 1;
+        remainder -= wide;
+    }
+    // A significand above 2^63 has a quotient at most 2^64 - 2, so the rounded one is a u64.
+    let quotient = u64::try_from(quotient).unwrap_or(u64::MAX);
+    (quotient + u64::from(2 * remainder > wide), -64)
 }
 
 /// RN64(2^f - 1) for f = `magnitude` * 2^-`drop` in (0, 1/2]: the 64-bit significand and its
@@ -430,8 +606,83 @@ pub(crate) fn dd_rounded_twice((hi, lo): (f64, f64)) -> f64 {
 mod tests {
     use super::*;
 
+    /// The integer core before T-2102 (u128 throughout, a u128 division for the reciprocal and
+    /// the general roundings), kept as the reference [`exp_with`] is compared with.
+    fn exp_with_reference(a: Register, two_to_the_minus_one: fn(u128, u32) -> (u128, i32)) -> f64 {
+        let (negative, a_significand, a_exponent) = a.parts();
+        // A zero (no top bit) gives 1. Otherwise 2^top <= |a| < 2^(top + 1); a significand has at
+        // most 64 bits, so its bit index fits an i32.
+        let Some(top_bit) = a_significand.checked_ilog2() else {
+            return 1.0;
+        };
+        let top = a_exponent + i32::try_from(top_bit).unwrap_or(0);
+        // |a| < 2^-65 gives exactly 1: |u| < 2^-64 then, under half a 64-bit ulp of 1, so w = 1.
+        if top < -65 {
+            return 1.0;
+        }
+        // |a| * log2 e beyond T_LIMIT: certain from the exponent outside [1024, 2048), and for a
+        // double the same f64 test as before on the stored value (exact for a loaded double).
+        if top >= 11 || (top == 10 && a.store().abs() * std::f64::consts::LOG2_E > T_LIMIT) {
+            return if negative { 0.0 } else { f64::INFINITY };
+        }
+        // Step 1: t = T * 2^t_exponent, T a 64-bit integer (|a| >= 2^-65, and a significand of at
+        // least 53 bits times the 64-bit constant has more than 64 bits to round).
+        let (t, shift) = round_to_bits(a_significand * u128::from(LOG2_E_64), 64, false);
+        let t_exponent = a_exponent - 63 + shift;
+        // Step 2: |t| <= T_LIMIT < 2^11 and |t| >= 2^-66, so `drop` is in 53..=130. The guards above
+        // make every `try_from` fallback below unreachable: t < 2^64, n <= 2^11 and |f| < 2^64.
+        let Ok(drop) = u32::try_from(-t_exponent) else {
+            return f64::NAN;
+        };
+        let (n, fraction) = if drop >= 65 {
+            // |t| < 2^(64 - drop) <= 1/2: n = 0 and f = t.
+            (0_i32, i128::try_from(t).unwrap_or(0))
+        } else {
+            let integer = t >> drop;
+            let rest = t & ((1 << drop) - 1);
+            let half = 1 << (drop - 1);
+            // Integer bit operations, not `||`: a data-dependent branch here mispredicts half the time.
+            let n =
+                integer + (u128::from(rest > half) | (u128::from(rest == half) & (integer & 1)));
+            let f = i128::try_from(t).unwrap_or(0) - i128::try_from(n << drop).unwrap_or(0);
+            (i32::try_from(n).unwrap_or(0), f)
+        };
+        // f * sign(a) is the true fraction: `fraction` is the magnitude-side remainder of |t|.
+        let negative_f = (fraction < 0) != negative;
+        let n = if negative { -n } else { n };
+        // Step 3: w = W * 2^w_exponent, W a 64-bit integer.
+        let (mut w, mut w_exponent) = (1_u128 << 63, -63);
+        if fraction != 0 {
+            let (u, u_exponent) = two_to_the_minus_one(fraction.unsigned_abs(), drop);
+            // u < 0.415, so u_exponent <= -65 and 1 = 2^gap units of u.
+            let gap = u32::try_from(-u_exponent).unwrap_or(128);
+            if gap < 128 {
+                let (sum, sum_shift) = round_to_bits((1 << gap) + u, 64, false);
+                (w, w_exponent) = (sum, u_exponent + sum_shift);
+            }
+            if negative_f {
+                // w is in [1, 2), so 2^127 / W is in (2^63, 2^64]: the integer quotient already has
+                // the 64 bits, and the remainder rounds it (a tie needs W = 2^63, an exact quotient).
+                let numerator = 1_u128 << 127;
+                let (quotient, remainder) = (numerator / w, numerator % w);
+                let rounded = quotient + u128::from(2 * remainder > w);
+                let (q, q_shift) = round_to_bits(rounded, 64, false);
+                (w, w_exponent) = (q, -127 - w_exponent + q_shift);
+            }
+        }
+        // Step 4: one rounding of the 64-bit w * 2^n to a double, or to the subnormal grid.
+        let exponent = w_exponent + n;
+        round_extended_to_double(w, exponent, false).unwrap_or_else(|| {
+            if exponent > 0 {
+                f64::INFINITY
+            } else {
+                round_extended_to_subnormal(w, exponent, false).unwrap_or(0.0)
+            }
+        })
+    }
+
     fn excel_exp_series(a: f64) -> f64 {
-        exp_with(Register::load(a), two_to_the_minus_one_series)
+        exp_with::<false>(Register::load(a), two_to_the_minus_one_series)
     }
 
     #[test]
@@ -552,6 +803,73 @@ mod tests {
         }
     }
 
+    /// The 64-bit integer core (T-2102) returns the earlier u128 core's bits, with either step 3:
+    /// random doubles over the whole finite range of EXP, near its underflow and overflow ends
+    /// (where step 4 leaves the fast normal path), at every binade from 2^-70 up, and as
+    /// full-width extended registers (64-bit significands).
+    #[test]
+    fn integer_core_matches_reference() {
+        let mut state = 0x243F_6A88_85A3_08D3_u64;
+        let check = |register: Register| {
+            assert_eq!(
+                exp_with::<true>(register, two_to_the_minus_one).to_bits(),
+                exp_with_reference(register, two_to_the_minus_one).to_bits(),
+                "{:?}",
+                register.parts()
+            );
+            assert_eq!(
+                exp_with::<false>(register, two_to_the_minus_one).to_bits(),
+                exp_with_reference(register, two_to_the_minus_one).to_bits(),
+                "{:?}",
+                register.parts()
+            );
+        };
+        for _ in 0..300_000 {
+            let unit = (next(&mut state) >> 11) as f64 / 9_007_199_254_740_992.0;
+            let binade =
+                f64::from_bits(((next(&mut state) % 85 + 953) << 52) | (next(&mut state) >> 12));
+            for a in [
+                (unit - 0.5) * 1500.0,
+                -745.2 + unit * 37.0,
+                700.0 + unit * 10.0,
+                binade,
+                -binade,
+            ] {
+                check(Register::load(a));
+                check(full_width(a));
+            }
+        }
+        // Both cores on the series step 3, on fewer points (the series is slow).
+        for _ in 0..20_000 {
+            let unit = (next(&mut state) >> 11) as f64 / 9_007_199_254_740_992.0;
+            let a = Register::load((unit - 0.5) * 1500.0);
+            assert_eq!(
+                exp_with::<false>(a, two_to_the_minus_one_series).to_bits(),
+                exp_with_reference(a, two_to_the_minus_one_series).to_bits()
+            );
+        }
+    }
+
+    /// [`reciprocal`] is RN64(2^127 / W) as the u128 division gives it, at random W and at the
+    /// ends of [2^63, 2^64).
+    #[test]
+    fn reciprocal_matches_division() {
+        let divide = |w: u64| {
+            let (numerator, w) = (1_u128 << 127, u128::from(w));
+            let rounded = numerator / w + u128::from(2 * (numerator % w) > w);
+            let (q, shift) = round_to_bits(rounded, 64, false);
+            (u64::try_from(q).unwrap(), -64 + shift)
+        };
+        let mut state = 0x1319_8A2E_0370_7344_u64;
+        let mut divisors: Vec<u64> = (0..1_000_000).map(|_| next(&mut state) | 1 << 63).collect();
+        for k in 0..2_000 {
+            divisors.extend([(1 << 63) + k, u64::MAX - k]);
+        }
+        for w in divisors {
+            assert_eq!(reciprocal(w), divide(w), "w = {w:#x}");
+        }
+    }
+
     /// EXP of an extended argument equals w1-density's mpmath model V6 (`lib.py` `exp_v6`) on the
     /// 5,200 random 64-bit arguments of `test/fixtures/exp_extended.fixture` (lines
     /// `±significand exponent model`, the significand and the model's bits in hex).
@@ -655,8 +973,13 @@ mod tests {
         };
         let (fast, fast_sum) = time(&excel_exp);
         let (series, series_sum) = time(&excel_exp_series);
+        let (reference, reference_sum) =
+            time(&|a| exp_with_reference(Register::load(a), two_to_the_minus_one));
         let (libm, _) = time(&f64::exp);
         assert_eq!(fast_sum.to_bits(), series_sum.to_bits());
-        println!("excel_exp {fast:?}, series path {series:?}, libm {libm:?} per call");
+        assert_eq!(fast_sum.to_bits(), reference_sum.to_bits());
+        println!(
+            "excel_exp {fast:?}, u128 core {reference:?}, series path {series:?}, libm {libm:?} per call"
+        );
     }
 }
