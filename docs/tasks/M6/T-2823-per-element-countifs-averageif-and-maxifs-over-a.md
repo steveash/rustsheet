@@ -42,3 +42,4 @@ range), AVERAGEIF (range and average range, as SUMIF) and MAXIFS (max range and 
 element charged one walk per criteria pair as SUMIFS is (the existing SPEC-0014 bound DEVIATION); their static shape
 comes from `criteria_and_grid_static_result`. AVERAGEIFS and MINIFS are unprobed and stay the value view (lookup.md).
 Eval: probes known failures 2631 -> 2625 (the six owned cells), no regressions.
+Follow-up: T-2833 probes the argument positions inferred from SUMIF/SUMIFS.
