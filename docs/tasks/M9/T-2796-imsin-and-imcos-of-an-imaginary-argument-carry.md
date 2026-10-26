@@ -34,6 +34,6 @@ IMSIN and IMCOS of an imaginary or near-imaginary argument print Excel's digits,
 
 ## Outcome
 IMSIN and IMCOS take `(sinh y, cosh y)` from IMSINH's kernel at `-y` (`trig_sinh_cosh`, complex/trig.rs; sin z =
--i·sinh(iz)) inside its band (0.01, 20], and the EXP pair outside, so `IMSIN("-4i")` is -27.2899171971278i. The first
+-i·sinh(i·z)) inside its band (0.01, 20], and the EXP pair outside, so `IMSIN("-4i")` is -27.2899171971278i. The first
 hypothesis tried fitted: all 1,023 IMSIN/IMCOS cells of the suites still pass. engineering.md updated.
 Eval: probes known failures 2585 -> 2584 (C2), no regressions.
