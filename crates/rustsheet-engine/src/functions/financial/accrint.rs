@@ -193,24 +193,21 @@ impl Model {
                 CalcResult::String(_) => Err(value_error(cell)),
                 value => Self::cast_bool_ref(value, cell),
             })?;
-            let issue = self.financial_date(self.cast_number_no_bools_ref(issue, cell)?);
-            if from_excel_date(issue).is_err() {
-                return Err(num_error(cell));
-            }
-            let first_interest = self.financial_date(self.cast_number_ref(first_interest, cell)?);
-            if from_excel_date(first_interest).is_err() {
-                return Err(num_error(cell));
-            }
+            // Serial 0 still reads; below it, or past the calendar's end, is `#NUM!` at once. The
+            // settlement is not checked as it is read (`ACCRINT(34022,36149,0.5,NA(),..)` is `#N/A`,
+            // gen-m9/932b33b1ef8b7608 A28).
+            let calendar_date = |serial: i64| -> Result<i64, CalcResult> {
+                if (0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER)).contains(&serial) {
+                    Ok(serial)
+                } else {
+                    Err(num_error(cell))
+                }
+            };
+            let issue =
+                calendar_date(self.financial_date(self.cast_number_no_bools_ref(issue, cell)?))?;
+            let first_interest =
+                calendar_date(self.financial_date(self.cast_number_ref(first_interest, cell)?))?;
             let settlement = self.financial_date(self.cast_number_ref(settlement, cell)?);
-            // The settlement's last serial depends on the date system and `calc_method`.
-            let settlement_limit = self
-                .workbook
-                .settings
-                .date_system
-                .accrint_settlement_limit(calc_method);
-            if from_excel_date_up_to(settlement, settlement_limit).is_err() {
-                return Err(num_error(cell));
-            }
             Ok((
                 issue,
                 first_interest,
@@ -253,6 +250,21 @@ impl Model {
         if self.coupon_schedule_breaks(first_interest_serial) {
             return broken_schedule_error(cell);
         }
+        // The serials must name dates of the calendar (a settlement up to the date system's limit).
+        if from_excel_date(issue_serial).is_err()
+            || from_excel_date(first_interest_serial).is_err()
+            || from_excel_date_up_to(
+                settlement_serial,
+                self.workbook
+                    .settings
+                    .date_system
+                    .accrint_settlement_limit(calc_method),
+            )
+            .is_err()
+        {
+            return num_error(cell);
+        }
+
         // Excel: a 1904 settlement read past 9999-12-31 (calc_method FALSE) has no 30/360 date;
         // bases 0 and 4 then accrue first_interest's 1904 serial plus 1462 days in the settlement
         // slice, whatever the settlement and the issue (410415.83 for first_interest 9990-06-30,
