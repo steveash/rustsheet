@@ -3,7 +3,7 @@ id: T-2677
 title: "Decision 0094 outer call: an invoked LAMBDA(..)(..) counts as a LAMBDA outer call"
 milestone: M7
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -36,3 +36,9 @@ A generated cell whose formula is one invoked LAMBDA, `LAMBDA(x,x+1)(3)`, counts
 ## Out of scope
 - Generating more LAMBDA cells (T-2675).
 - Counting LAMBDA inside LET, MAP or other helpers as an outer call.
+
+## Outcome
+`outer_call` (crates/rustsheet-eval/src/formula_calls.rs) accepts one or more `(...)` invocation groups after a
+LAMBDA call, only for LAMBDA (`ABS(1)(2)` stays `None`). Unit test `an_invoked_lambda_is_a_lambda_outer_call`.
+After `make eval`, LAMBDA's checkpoint row has 89 generated outer-call cells (was 0); the change only accepts more
+LAMBDA formulas, so no other function's count can drop. Still short of the 200-cell bar: generating more is T-2675.
