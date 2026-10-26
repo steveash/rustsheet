@@ -499,3 +499,86 @@ fn yield_and_odd_elements_are_charged_by_schedule_length() {
         yield_units(0.0, 2_935.0, 4.0, 1)
     );
 }
+
+/// HYPGEOM.DIST's `ByValue` charge (T-2433): an element is charged the larger of its walk (2^14)
+/// and its cdf sum, 16 units a term over `min(sample_s, number_sample, population_s) + 1` terms
+/// and 131 window exponents, at most the cap's bound 2^22, so exactly 32 elements at the bound
+/// fit under `MAX_LIFTED_CELL_VISITS` (as the flat weight allowed before) and 33 do not. A text
+/// count bounds nothing, so the least of the other counts is charged, the bound when every count
+/// is a text; an error, a negative count or one of 2^31 - 1 or more,
+/// which the kernel refuses before either path, 1.
+#[test]
+fn hypgeom_dist_elements_are_charged_by_their_counts() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let work = Function::HypGeomDist.arg_kinds().map(|kinds| kinds.work);
+    let Some(work @ KernelWork::ByValue(ValueWork::HypergeometricSum { .. })) = work else {
+        panic!("HYPGEOM.DIST is not charged by its counts: {work:?}");
+    };
+    // sample_s lifted over `samples`, number_sample 1E8, population_s 1E8, number_pop 2E8.
+    let column = |samples: &[ArrayNode]| {
+        vec![
+            LiftedArg::Grid(samples.iter().map(|n| vec![n.clone()]).collect()),
+            LiftedArg::Scalar(CalcResult::Number(1E8)),
+            LiftedArg::Scalar(CalcResult::Number(1E8)),
+            LiftedArg::Scalar(CalcResult::Number(2E8)),
+            LiftedArg::Scalar(CalcResult::Boolean(true)),
+        ]
+    };
+    let one = |sample: ArrayNode| kernel_units(work, &column(&[sample]), 1, 1, 1);
+    let at_bound = |count: usize| column(&vec![ArrayNode::Number(5E7); count]);
+    let units = |args: &[LiftedArg], rows: usize| kernel_units(work, args, rows, 1, rows as u64);
+    assert_eq!(units(&at_bound(32), 32), MAX_LIFTED_CELL_VISITS);
+    assert!(units(&at_bound(33), 33) > MAX_LIFTED_CELL_VISITS);
+    // The walk's floor, then 16 units a term.
+    assert_eq!(one(ArrayNode::Number(0.0)), 1 << 14);
+    assert_eq!(one(ArrayNode::Empty), 1 << 14);
+    assert_eq!(one(ArrayNode::Boolean(true)), 1 << 14);
+    assert_eq!(one(ArrayNode::Number(892.0)), 1 << 14);
+    assert_eq!(one(ArrayNode::Number(893.0)), (893 + 1 + 131) * 16);
+    assert_eq!(one(ArrayNode::Number(1000.9)), (1000 + 1 + 131) * 16);
+    assert_eq!(one(ArrayNode::Number(262_144.0)), 1 << 22);
+    // Refused before either path, or read as any count.
+    assert_eq!(one(ArrayNode::Number(-0.5)), 1);
+    assert_eq!(one(ArrayNode::Number(2_147_483_647.0)), 1);
+    assert_eq!(one(ArrayNode::Number(2_147_483_646.9)), 1 << 22);
+    assert_eq!(
+        one(ArrayNode::Error(crate::expressions::token::Error::NA)),
+        1
+    );
+    assert_eq!(one(ArrayNode::String("7".into())), 1 << 22);
+    // A text beside a small count: that count bounds the window (gen-m9/a013a45a8fbcab4f A169,
+    // `HYPGEOM.DIST(3,PIVOTBY(..),10,3,..)` over the PIVOTBY's header texts).
+    let text_counts = |sample: f64| {
+        vec![
+            LiftedArg::Scalar(CalcResult::Number(sample)),
+            LiftedArg::Grid(vec![vec![ArrayNode::String("Total".into())]]),
+            LiftedArg::Scalar(CalcResult::String("1E8".into())),
+            LiftedArg::Scalar(CalcResult::Number(2E8)),
+            LiftedArg::Scalar(CalcResult::Boolean(true)),
+        ]
+    };
+    assert_eq!(kernel_units(work, &text_counts(3.0), 1, 1, 1), 1 << 14);
+    assert_eq!(kernel_units(work, &text_counts(1E6), 1, 1, 1), 1 << 22);
+    let all_texts = [
+        LiftedArg::Scalar(CalcResult::String("3".into())),
+        LiftedArg::Grid(vec![vec![ArrayNode::String("3".into())]]),
+        LiftedArg::Scalar(CalcResult::String("3".into())),
+    ];
+    assert_eq!(kernel_units(work, &all_texts, 1, 1, 1), 1 << 22);
+    // The least count bounds the window: a small population_s over a huge sample_s.
+    let small_successes = [
+        LiftedArg::Grid(vec![vec![ArrayNode::Number(1E8)]; 4]),
+        LiftedArg::Scalar(CalcResult::Number(1E8)),
+        LiftedArg::Scalar(CalcResult::Number(3000.0)),
+        LiftedArg::Scalar(CalcResult::Number(2E8)),
+        LiftedArg::Scalar(CalcResult::Boolean(true)),
+    ];
+    assert_eq!(
+        kernel_units(work, &small_successes, 4, 1, 4),
+        4 * (3000 + 132) * 16
+    );
+}

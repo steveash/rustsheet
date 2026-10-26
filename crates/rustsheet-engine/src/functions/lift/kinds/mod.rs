@@ -19,6 +19,7 @@ use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::parser::ArrayNode;
 use crate::formatter::dates::FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
 use crate::functions::Function;
+use crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 /// How one parameter takes an array or a range (SPEC-0011).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -101,6 +102,21 @@ pub(crate) enum ValueWork {
         within: usize,
         per_visit: u32,
     },
+    /// HYPGEOM.DIST's cdf (T-2433): either a walk of at most `walk` units, or a sum over a window
+    /// of at most the least of the counts `counts` (each truncated) plus one terms, and up to
+    /// `extra` more exponents for the window's bounds, at `per_term` units a term; never more
+    /// than `weight`, the bound of the sum's own per-call cap. A text count bounds nothing (the
+    /// kernel may read it as any count), so the least of the others is taken, `weight` when
+    /// every count is a text. An element is charged 1 when a count is an error, negative or too
+    /// large ([`COUNT_LIMIT_EXCLUSIVE`]): the kernel returns before either path. See
+    /// [`hypergeometric_units`].
+    HypergeometricSum {
+        counts: &'static [usize],
+        walk: u32,
+        extra: u32,
+        per_term: u32,
+        weight: u32,
+    },
 }
 
 /// The widest span of days a coupon schedule walk can cross: the calendar's last serial, as the
@@ -164,6 +180,8 @@ impl ValueWork {
             }
             // A text has no fixed length.
             ValueWork::TextScan { .. } => u64::MAX,
+            // The sum at its cap.
+            ValueWork::HypergeometricSum { weight, .. } => u64::from(weight),
         }
     }
 
@@ -240,8 +258,52 @@ impl ValueWork {
                 text_scan_length(value(within)),
                 per_visit,
             ),
+            ValueWork::HypergeometricSum {
+                counts,
+                walk,
+                extra,
+                per_term,
+                weight,
+            } => {
+                let mut least = f64::INFINITY;
+                for &arg in counts {
+                    let count = match value(arg) {
+                        Some(ArgValue::Blank) | None => 0.0,
+                        // A text may read as any count, so it bounds nothing: the least of
+                        // the other counts still bounds the window.
+                        Some(ArgValue::Text(_)) => continue,
+                        Some(ArgValue::Error) => return 1,
+                        Some(ArgValue::Number(n)) => n,
+                        Some(ArgValue::Boolean(b)) => f64::from(u8::from(b)),
+                    };
+                    // The kernel's #NUM! before either path (hypegeom.rs `hyp_geom_dist_of`).
+                    if !(0.0..COUNT_LIMIT_EXCLUSIVE).contains(&count) {
+                        return 1;
+                    }
+                    least = least.min(count.trunc());
+                }
+                // `least` is a whole number in [0, 2^31), or infinite when every count is a
+                // text: the sum at its cap.
+                let terms = if least.is_finite() {
+                    least as u64
+                } else {
+                    u64::MAX
+                };
+                hypergeometric_units(terms, walk, extra, per_term, weight)
+            }
         }
     }
+}
+
+/// The units one HYPGEOM.DIST element is charged when the least of its counts is `least`: the
+/// larger of its two paths, the walk's `walk` units and the sum's `least + 1 + extra` terms at
+/// `per_term` units, at most `weight`. Saturating.
+fn hypergeometric_units(least: u64, walk: u32, extra: u32, per_term: u32, weight: u32) -> u64 {
+    let sum = least
+        .saturating_add(1)
+        .saturating_add(u64::from(extra))
+        .saturating_mul(u64::from(per_term));
+    sum.max(u64::from(walk)).min(u64::from(weight))
 }
 
 /// The most UTF-8 bytes a number or a logical reads as when a text function takes it as text:
