@@ -31,10 +31,11 @@ test: ## Run Rust tests
 # name contains one of these substrings (libtest filters); shard 2 runs every other test (libtest
 # `--skip` with the same substrings, which matches the same way). So the two together run exactly
 # the tests `make test` runs, each once, and a new test lands in shard 2 unless it matches. The
-# substrings pick about half of the engine's test CPU time and keep its two longest tests
-# (test_fn_groupby's and test_fn_pivotby's visit-cap tests) in different shards; shard 1's clippy
-# and shard 2's other test binaries take about as long (PR #1869's CI runs).
-TEST_SHARD_1 := test::test_tailed_array test::test_fn_groupby text_functions::fn_regex dynamic_evaluation::test_range_reads
+# substrings pick a little under half of the engine's test CPU time (shard 1 also runs clippy in
+# CI) and keep the memory-bound whole-grid tests apart: test_fn_groupby's 1M-row visit-cap tests
+# here, test_tailed_array's whole-column ones and test_fn_pivotby's in shard 2. Run together they
+# slow each other down (PR #1869's CI runs).
+TEST_SHARD_1 := test::test_fn_groupby text_functions::fn_regex test::test_multi_area_arguments dynamic_evaluation::test_range_reads functions::text::
 
 test-shard-1: ## CI: the tests matching TEST_SHARD_1 (half of make test)
 	$(CARGO) test --workspace --exclude rustsheet_python -- $(TEST_SHARD_1)
