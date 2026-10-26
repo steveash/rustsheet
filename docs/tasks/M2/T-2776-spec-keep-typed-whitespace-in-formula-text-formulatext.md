@@ -24,6 +24,7 @@ whitespace, whitespace before a comma, and whitespace inside an array constant; 
 spaces before it (`=  +5` prints `=  5`). Today the tree (`Node`) keeps no whitespace and the printer
 (expressions/parser/stringify.rs) writes canonical text, so the 18 probe cells with kept whitespace fail (C1:C5, C7, C8, C10:C15, C17:C20, C22), plus
 probes/t2723-unary-plus-formula-text C24, C25 (owned here until the spec's tasks take them).
+SPEC-0007 lists whitespace preservation as a non-goal (its Goals / non-goals); the new spec picks that up.
 Design questions for the spec: where the whitespace lives (`Node` must not grow, `NODE_SIZE`, SPEC-0007; formulas
 are shared R1C1 trees, so whitespace that differs per cell must not break sharing), how it survives reference
 moves, copy/fill and structural edits, whether stored xlsx `<f>` text keeps it on load and export (unprobed:
