@@ -3,7 +3,7 @@ id: T-2696
 title: "Probe where POWER's overflowing y*ln x rule switches on (bases 0.15-0.2, exponents 1E+307-1.7E+308)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,8 @@ Pin down the edge of numbers.md "POWER when y·ln x overflows" (T-2661): the eng
 
 ## Out of scope
 - Integer exponents up to 2^53 (the square-and-multiply path).
+
+## Outcome
+Added probes/power-overflow-edge (172 cells, POWER and `^`, excel-graph values). The engine already matched every
+cell, so `positive_power` is unchanged; numbers.md records the edge (between 0.165 and 0.166 for y = 9.99999999999999E+307).
+Eval delta: probes +172 cells, all passing; no baseline change.
