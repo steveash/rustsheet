@@ -81,14 +81,8 @@ fn xirr_with_a_zero_first_value_brackets_at_the_first_chain_point() {
 }
 
 fn assert_num_errors(formulas: &[&str]) {
-    let model = evaluated(formulas);
-    for row in 1..=formulas.len() {
-        assert_eq!(
-            model.get_cell_value_by_ref(&format!("Sheet1!A{row}")),
-            Ok(CellValue::String("#NUM!".to_string())),
-            "A{row}"
-        );
-    }
+    let cases: Vec<(&str, &str)> = formulas.iter().map(|formula| (*formula, "#NUM!")).collect();
+    assert_errors(&cases);
 }
 
 #[test]

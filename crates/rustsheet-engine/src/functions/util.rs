@@ -26,13 +26,13 @@ use existing_walk::{span, WalkBudget};
 use collation::cmp_text;
 
 /// Whether `value`, the value of the argument `node`, is a number that ERROR.TYPE or
-/// `CELL("col"|"row",..)` returned straight to the argument (parentheses aside), which F.TEST and
-/// the paired functions treat apart from any other number: `FTEST({1;2;3},ERROR.TYPE(#REF!))` and
-/// `COVARIANCE.P(ERROR.TYPE(#REF!),5)` are `#NUM!` where 4 gives `#DIV/0!` and 0, while `+0`,
-/// `@`, SINGLE, MAX or a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR,
-/// a LAMBDA call and INDEX keep it in Excel and are not followed here: TODO(T-2766)
-/// (statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions"). IRR's flows
-/// reject it with `#VALUE!` (financial.md "IRR's error order", T-2728).
+/// `CELL("col"|"row",..)` returned straight to the argument (parentheses aside): the "mark" some
+/// array-taking arguments reject where the same number from anywhere else is accepted. F.TEST
+/// and the paired functions give `#NUM!` for it (`FTEST({1;2;3},ERROR.TYPE(#REF!))`, statistics.md
+/// "ERROR.TYPE and CELL results are #NUM! in the paired functions") and IRR's flows `#VALUE!`
+/// (`IRR(CELL("row",D2))`, financial.md "IRR's error order", T-2728). `+0`, `@`, SINGLE, MAX or
+/// a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR, a LAMBDA call and
+/// INDEX keep it in Excel and are not followed here: TODO(T-2766).
 pub(crate) fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
     if !matches!(value, CalcResult::Number(_)) {
         return false;

@@ -320,9 +320,10 @@ fn xirr_xnpv(rate: f64, values: &[f64], dates: &[f64]) -> Option<f64> {
 }
 
 /// The bracket XIRR bisects: the first point of a trial chain whose XNPV sign differs from
-/// XNPV(0)'s (any nonzero XNPV when XNPV(0) is exactly 0), with the point before it. With `s` the guess (1e-5 for a guess of 0) the chain is
-/// 0, s, 2s, 4s, ... for a guess >= 0, then, when that finds nothing and `s` < 1, 0, -s and
-/// p → (p - 1)/2 toward -1; a negative guess walks only 0, g, (g - 1)/2, ...
+/// XNPV(0)'s (any nonzero XNPV when XNPV(0) is exactly 0), with the point before it. With `s`
+/// the guess (1e-5 for a guess of 0) the chain is 0, s, 2s, 4s, ... for a guess >= 0, then, when
+/// that finds nothing and `s` < 1, 0, -s and p → (p - 1)/2 toward -1; a negative guess walks
+/// only 0, g, (g - 1)/2, ...
 /// (docs/excel-semantics/financial.md "XIRR is a bracketing bisection, not Newton"; fit lab `xirr`, T-1525).
 /// Excel's cap on the walk is unprobed: 100 points per walk is enough on every oracle cell.
 /// A zero first value skips the walk: the bracket is [0, s] whatever the flows, even where XNPV is
