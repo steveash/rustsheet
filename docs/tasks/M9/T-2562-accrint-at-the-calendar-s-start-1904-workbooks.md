@@ -56,7 +56,9 @@ it is `#NUM!`. The two unprobed edges keep the task's bit-level goal.
   at frequencies 1, 2 and 4; FI 367 and the other bases are numbers. Basis 1 reads the length of first_interest's
   regular period, so `compute_accrint` now requires that period's start to be in the calendar on basis 1. Fixes
   gen-m9/932b33b1ef8b7608 Calc!A118; all 92 cells of the 1900 probe pass.
-- February-1900 first_interest (serial 59 or 60): every probed cell is `#NUM!` in Excel and already in ours.
+- February-1900 first_interest (serial 59 or 60): every probed cell is `#NUM!` in Excel and already in ours, but the
+  calendar-start cut answers before the end-of-month rule, so whether serial 59 reads as February's last day is still
+  unprobed: follow-up T-2837 (with the basis-1 cut at serial 0).
 - 1904 workbook: the cut moves to 1904-01-01 (43 of 50 cells are `#NUM!` in Excel, numbers in ours). It is tied to
   T-2337 (the 1904 financial results Excel for the web changed after 2026-10-12), so follow-up T-2835 (after T-2337)
   owns the 43 new known-failure lines in eval/baseline/probes.txt.

@@ -27,7 +27,8 @@ In a 1904 workbook ACCRINT is `#NUM!` where today's Excel is, for a coupon date 
   serial + 2 * 1462 (`DateSystem::financial_1900_serial`), so the cut has to be placed in that frame:
   crates/rustsheet-engine/src/functions/financial/accrint.rs `accrint_coupon_serial`.
 - Blocked on T-2337: the 1904 financial results changed in Excel for the web after 2026-10-12 and the committed 1904
-  sidecars conflict with today's values; implement once T-2337 settles which values are current.
+  sidecars conflict with today's values; implement once T-2337 settles which values are current, and re-fill probes/accrint-calendar-start-1904
+  first (its values are Excel for the web's of 2026-10-26).
 
 ## Acceptance criteria
 - [ ] The 43 probes/accrint-calendar-start-1904 known-failure lines leave eval/baseline/probes.txt, with no new

@@ -940,7 +940,9 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   FI 1.005, annual, basis 1; T-2562).
 - A first_interest of serial 59 (1900-02-28) or 60 (Excel's 1900-02-29) with an issue of 1, 30 or 45 is `#NUM!`,
   semiannual and quarterly, on bases 0 and 1, settlement before or after it: the regular period starts in 1899
-  (probes/accrint-calendar-start-1900 B1:B32).
+  (probes/accrint-calendar-start-1900 B1:B32). Those cells do not show whether the end-of-month rule reads serial 59 as
+  February's last day: the calendar-start cut answers first (unprobed, T-2837). The basis-1 cut is pinned deep in 1899
+  and at 1900-01-01 only; a regular period starting exactly on serial 0 is unprobed (T-2837).
 - In a 1904 workbook the cut moves to 1904-01-01: with first_interest 1904-03-31 or 1904-06-30 (quarterly), an issue of
   1904-01-01, 1904-01-02, serial 0 or serial 1 is `#NUM!` for settlements 1904-02-15 and 1950-06-30, calc_method TRUE or
   FALSE, and `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` is `#NUM!` on every basis,
