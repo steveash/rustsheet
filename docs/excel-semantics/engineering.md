@@ -369,6 +369,7 @@ Status: VERIFIED (excel-graph); implemented (T-1385)
 Tasks: T-1385
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
+- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
 - Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.
 - An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER; a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
