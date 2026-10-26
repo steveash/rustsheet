@@ -3,7 +3,7 @@ id: T-2535
 title: "IMSINH, IMSIN and IMCOS build sinh and cosh as (EXP(y) -/+ EXP(-y))/2 (gen-m9, 38 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -55,12 +55,24 @@ Cells:
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 38 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for IMSINH("4"), IMCOS("150-0.002i") and IMSIN("1E-200+1E-200i").
-- [ ] `make check` green; reviewers approve.
+      (`make eval-baseline`), with no new known-failure lines in any baseline. Partly: the 4 IMSIN/IMCOS lines are
+      gone; the 34 IMSINH lines moved to T-2778 (see Outcome).
+- [x] Unit tests for IMCOS("150-0.002i") and IMSIN("1E-200+1E-200i") (IMSINH("4") moved to T-2778).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The overflow edge near 710 (T-2231).
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+IMSIN and IMCOS now build sinh and cosh of the imaginary part as `(EXP(t) ∓ EXP(-t))/2` with Excel's EXP
+(`exp_sinh_cosh`, complex/trig.rs). That fixes 4 gen-m9 lines: `IMSIN("1E-200+1E-200i")` and `IMCOS("1.5E+2-2E-3i")`.
+For IMSINH the premise was wrong. It keeps `IMSINH("1E-200+1E-200i")`'s tiny real part (the EXP form regresses
+gen-m9 A155/A377). Its `IMSINH("4")` is one ulp above `(EXP(4)-EXP(-4))/2` and above libm's sinh, while
+`IMSINH("-4")` is not. A correctly rounded sinh fixes the 34 cells but regresses COMPLEXs.xlsx P12/P21 and
+web ±12 (probes/t2535-imsinh-imcosh-kernel-sweep, probes/t2535-complex-text-tie, excel-graph 2026-10-26;
+engineering.md). IMSINH keeps libm, and its 34 cells plus the new probes' 6 failing cells moved to T-2778.
+Eval delta: gen-m9 known failures 4084 → 4080 (fixed 4), probes +2 cases (147 cells, 6 known failures owned by
+T-2778), regressions 0.
