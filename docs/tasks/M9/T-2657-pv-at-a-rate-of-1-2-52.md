@@ -3,7 +3,7 @@ id: T-2657
 title: "PV at a rate of -1+2^-52 and IRR from a guess of 42 are #DIV/0! (gen-m9, 2 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
