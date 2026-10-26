@@ -30,7 +30,7 @@ unprobed: probe it first (excel-probe skill) before relying on the byte reading.
 ## Out of scope
 - Stored-text runs (T-2784).
 
-## Handoff
+## Handoff (resumed)
 Claimed by a sonnet run, then escalated at once (work-loop step 5b: unclear evidence) without code changes. The task needs
 oracle probes first (255/256/257 spaces; 255/256/257/300 line feeds; the line-feed wrap is unprobed), then a parser change in
 `Run::of` driven by those results. `rustsheet-oracle status` showed excel-graph OK in this session, so the probes can be filled.
