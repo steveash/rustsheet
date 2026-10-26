@@ -87,4 +87,4 @@ criterion under Acceptance criteria states it.
 
 ## Outcome
 MODE, MODE.SNGL and MODE.MULT: a one-cell range to an empty cell is `#VALUE!`. Eval delta: 39 gen-m9 known-failure
-lines fixed (all 38 owned plus one more), 18 probes lines fixed, 0 regressions.
+lines fixed (all 38 owned plus probes/t2475-stat-subexpressions P!A96 and one more nested cell), 18 probes lines fixed, 0 regressions.
