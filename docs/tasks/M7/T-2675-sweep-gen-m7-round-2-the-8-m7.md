@@ -3,7 +3,7 @@ id: T-2675
 title: "Sweep gen-m7 round 2: the 8 M7 functions under 200 generated outer-call cells (LAMBDA, LET, GROUPBY, PIVOTBY, HSTACK, SEQUENCE, REGEXTEST, REGEXREPLACE)"
 milestone: M7
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -32,16 +32,16 @@ left them out.
   failures may join: T-2460 (a blank key stays blank), T-2606, T-2451. REGEX families: T-1972, T-2356.
 
 ## Acceptance criteria
-- [ ] In `make eval`'s "Fifteen-digit parity checkpoint", every function listed above has at least 200 generated
+- [x] In `make eval`'s "Fifteen-digit parity checkpoint", every function listed above has at least 200 generated
       outer-call cells and shows as covered.
-- [ ] Every new cell is Excel-backed (excel-graph sidecars). The fill reports 0 failures, or the Outcome explains each
+- [x] Every new cell is Excel-backed (excel-graph sidecars). The fill reports 0 failures, or the Outcome explains each
       refused case. The suite stays gated.
-- [ ] `make eval-baseline` reports 0 regressions, and the decision 0088 lock moves only by new coverage.
-- [ ] The gap-triager traces every new gen-m7 known failure to its innermost diverging sub-expression. Each family
+- [x] `make eval-baseline` reports 0 regressions, and the decision 0088 lock moves only by new coverage.
+- [x] The gap-triager traces every new gen-m7 known failure to its innermost diverging sub-expression. Each family
       gets a task, new or extended (`campaign: visible` if it is visibly off), with milestone M7 when the diverging
       function is an M7 function. The Outcome lists each one with its cell count.
-- [ ] Quirks found are recorded in docs/excel-semantics/ in this PR.
-- [ ] `make check` green; reviewers approve.
+- [x] Quirks found are recorded in docs/excel-semantics/ in this PR.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing any function: the triaged tasks do that.
@@ -51,3 +51,17 @@ left them out.
 ## Visible-parity stage
 The coverage half of decision 0094's checkpoint for M7. The task is done when the 8 functions meet the 200
 outer-call-cell bar and every new visibly-off family has a task.
+
+## Outcome
+gen-m7 grew from 52 to 55 cases and from 31,845 to 36,641 scored cells, all excel-graph-backed (fill: 3 sidecars,
+0 failures, 0 skipped, no case refused). Generator command:
+`cd tools && uv run rustsheet-gen --milestone M7 --focus --spill --functions LAMBDA,LET,GROUPBY,PIVOTBY,HSTACK,SEQUENCE,REGEXTEST,REGEXREPLACE --count 3 --formulas 400 --seed 2675`;
+no top-up batch was needed. Then `uv run rustsheet-oracle fill -b excel-graph --suite gen-m7` and `make eval-baseline`.
+
+Every one of the 8 functions is now covered in the "Fifteen-digit parity checkpoint" (generated outer-call cells):
+LAMBDA 239, GROUPBY 229, PIVOTBY 225, HSTACK 235, SEQUENCE 233, REGEXTEST 232, REGEXREPLACE 234, LET 249.
+gen-m7 stays 100% bit-exact: every new cell passes, known failures 0 -> 0, 0 regressions, the suite stays gated.
+Visible parity: 0 visibly-off cells in the new cases; lock 4,448 unchanged. So there are no new failure families to
+triage and no quirk to record. The functions' existing visibly-off cells (LAMBDA 71, GROUPBY 23, PIVOTBY 23, HSTACK 13,
+SEQUENCE 13, REGEXTEST 3) come from formulas where they are not the outer call and belong to the existing tasks.
+Edge-pool gaps: none seen; the generated formulas do not exercise GROUPBY/PIVOTBY blank keys (T-2460).
