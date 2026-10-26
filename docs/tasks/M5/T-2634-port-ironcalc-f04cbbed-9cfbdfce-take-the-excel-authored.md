@@ -3,10 +3,10 @@ id: T-2634
 title: "Port ironcalc f04cbbed/9cfbdfce: take the Excel-authored ROUND_ROUNDUP_ROUNDDOWN.xlsx calc test workbook"
 milestone: M5
 lane: functions-math
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -36,7 +36,16 @@ Excel lock file `~$ROUND.xlsx` (165 bytes): do not take it. Triaged by the 2026-
 - Upstream's `test_fn_round.rs` unit tests are IronCalc-authored, not Excel evidence; take only
   those whose expectations an Excel cell confirms.
 
-## Outcome
+## Outcome (provisional, pending the decision record below)
 Replaced `ROUND.xlsx` with upstream's Excel-authored `ROUND_ROUNDUP_ROUNDDOWN.xlsx` (9cfbdfce;
 the `~$ROUND.xlsx` lock file not taken). Checked cells 137 -> 326, all pass; no known failures
 added, 0 regressions. Re-pointed the numbers.md citation. IronCalc-authored unit tests not taken.
+
+## Handoff
+Work is complete and reviewed (security, architecture, quality, excel-fidelity all APPROVE; make check
+green locally; ironcalc-calc case 137 -> 326 cells, all pass, 0 regressions). CI `hygiene` fails:
+`scripts/check_governance.py` flags `ROUND.xlsx` as a deleted test file ("requires a decision record and
+reviewer sign-off", a protected path, so beyond a sonnet run). Next: `make new-decision TITLE="..."`
+recording that upstream renamed ROUND.xlsx to ROUND_ROUNDUP_ROUNDDOWN.xlsx (superset, every old cell
+retained) so the delete is a rename, commit it, push, re-run reviewers on the decision, merge the PR
+(#1899) under the merge lock, then set status: done.
