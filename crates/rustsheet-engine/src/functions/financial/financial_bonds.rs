@@ -149,14 +149,13 @@ impl CouponSchedule {
         let CouponSchedule { n, e, a } = *self;
         let dsc_over_e = (e - a) / e;
         let f = frequency as f64;
-        let coupon = 100.0 * rate / f;
         let v = 1.0 + yld / f;
         let mut slope = 0.0;
         for k in 1..=(n as u32) {
-            let t = dsc_over_e + k as f64 - 1.0;
-            slope -= t * coupon / discount_growth(v, t + 1.0) / f;
+            let t = k as f64 - 1.0 + dsc_over_e;
+            slope -= t * 100.0 * rate / f / discount_growth(v, t + 1.0) / f;
         }
-        let t = dsc_over_e + n - 1.0;
+        let t = n - 1.0 + dsc_over_e;
         slope - t * redemption / discount_growth(v, t + 1.0) / f
     }
 }
