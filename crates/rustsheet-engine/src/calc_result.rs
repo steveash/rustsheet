@@ -4,6 +4,14 @@ use crate::expressions::{parser::ArrayNode, token::Error, types::CellReferenceIn
 use crate::number_format::cmp_excel_precision;
 use crate::text::Text;
 
+/// Rows and columns of the range with corners `left` and `right`, in order.
+pub(crate) fn range_dims(left: CellReferenceIndex, right: CellReferenceIndex) -> (usize, usize) {
+    (
+        usize::try_from(right.row - left.row + 1).unwrap_or(0),
+        usize::try_from(right.column - left.column + 1).unwrap_or(0),
+    )
+}
+
 #[derive(Clone)]
 pub struct Range {
     pub left: CellReferenceIndex,
@@ -57,6 +65,15 @@ impl CalcResult {
             CalcResult::Range { left, right } => left != right,
             CalcResult::Array(_) => true,
             _ => false,
+        }
+    }
+
+    /// Rows and columns of a range or array result (1x1 for anything else).
+    pub(crate) fn shape(&self) -> (usize, usize) {
+        match self {
+            CalcResult::Range { left, right } => range_dims(*left, *right),
+            CalcResult::Array(array) => (array.len(), array.first().map_or(0, Vec::len)),
+            _ => (1, 1),
         }
     }
 

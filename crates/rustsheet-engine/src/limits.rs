@@ -45,6 +45,22 @@ pub fn check_array_cells(rows: usize, columns: usize) -> Option<(Error, String)>
     None
 }
 
+/// Whether an array of `rows` x `columns` anchored at `anchor` runs past the last row or column.
+pub(crate) fn spills_past_grid(anchor: CellReferenceIndex, rows: usize, columns: usize) -> bool {
+    let last = |start: i32, count: usize| i64::from(start) + count as i64 - 1;
+    last(anchor.row, rows) > i64::from(LAST_ROW)
+        || last(anchor.column, columns) > i64::from(LAST_COLUMN)
+}
+
+/// The `#SPILL!` of a dynamic array anchored at `anchor` that runs past the grid.
+pub(crate) fn spill_past_grid_error(anchor: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::SPILL,
+        anchor,
+        "Spill would exceed worksheet bounds".to_string(),
+    )
+}
+
 /// 2^31, the least size Excel reads as no longer a size: EXPAND's rows or columns (`#VALUE!`) and
 /// WRAPROWS/WRAPCOLS's `wrap_count` (`#NUM!`) refuse it (arrays.md "Stacked results past the grid",
 /// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").

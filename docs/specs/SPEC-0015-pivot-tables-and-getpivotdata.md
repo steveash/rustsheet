@@ -50,7 +50,7 @@ Unknowns. Each is probed by T-2085, and until then T-2083 answers `#REF!` for it
 T-1703 behavior where one exists), never a guessed value:
 1. several data fields: the `"Values"` field, what a blank `data_field` picks, and a source name
    shared by two data fields (Sum and Count of Sales);
-2. an empty intersection of any aggregate but Sum (H13 covers Sum only);
+2. an empty intersection of CountNums, Product, Var, VarP, StdDev and StdDevP (Sum, Count, Average, Max and Min are 0, T-2404);
 3. numbers, dates and booleans as items (match by value or by text);
 4. page (filter) fields with a selected item, and hidden items on an axis;
 5. the same field twice with the same item;
@@ -182,7 +182,7 @@ refers to the list in "Excel behavior to match".
    an axis answers only with no pairs, its grand total (calipers formula_stress_test, T-2662); any
    pair there is `#REF!` (unknown 10).
 4. The value: the data field's aggregate over the records whose fields equal every chosen item. A
-   Sum over no records is 0 (H13); any other aggregate over no records is `#REF!` (unknown 2). A
+   Sum, Count, Average, Max or Min over no records is 0 (H13, probes/getpivotdata-empty-intersection); any other aggregate over no records is `#REF!` (unknown 2, unprobed). A
    record holding an error, a blank or text in the data field makes the answer `#REF!` (unknown 6).
 5. An array of items lifts per SPEC-0011 (L1, L5), each element a scalar call; an array
    `data_field`, `pivot_table` or field name keeps T-1703's single `#REF!` (unknown 7).

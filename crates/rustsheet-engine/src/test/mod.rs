@@ -124,6 +124,7 @@ mod test_tailed_array;
 mod test_this_row;
 mod test_trigonometric;
 mod test_true_false;
+mod test_typographic_quote_names;
 mod test_union_operator;
 mod test_union_sum_metamorphic;
 mod test_union_vara_mode;
