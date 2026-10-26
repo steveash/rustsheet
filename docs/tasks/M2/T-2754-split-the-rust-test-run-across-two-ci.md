@@ -33,7 +33,7 @@ concurrency over the last 60 runs was 24 with no queueing (2 s), so one more job
 - [x] CI's rust job is a two-shard matrix: shard 1 runs fmt-check, clippy and shard 1's tests,
       shard 2 the rest; each shard has its own rust-cache key.
 - [x] Before/after job and wall times from real PR runs, in the decision record.
-- [ ] `make check` green (done); reviewers approve (pending).
+- [x] `make check` green; reviewers approve (security, architecture, quality, performance).
 
 ## Out of scope
 - The python job (about 4 min, 2.75 of it pytest building the release rustsheet-eval binary).

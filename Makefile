@@ -27,14 +27,10 @@ clippy: ## Lint Rust with -D warnings (workspace lint policy in Cargo.toml)
 test: ## Run Rust tests
 	$(CARGO) test --workspace --exclude rustsheet_python
 
-# CI runs `make test` as two parallel jobs (decision 0122, T-2754). Shard 1 runs every test whose
-# name contains one of these substrings (libtest filters); shard 2 runs every other test (libtest
-# `--skip` with the same substrings, which matches the same way). So the two together run exactly
-# the tests `make test` runs, each once, and a new test lands in shard 2 unless it matches. The
-# substrings pick a little under half of the engine's test CPU time (shard 1 also runs clippy in
-# CI) and keep the memory-bound whole-grid tests apart: test_fn_groupby's 1M-row visit-cap tests
-# here, test_tailed_array's whole-column ones and test_fn_pivotby's in shard 2. Run together they
-# slow each other down (PR #1869's CI runs).
+# CI runs `make test` as two shards (decision 0122): shard 1 runs the tests whose names contain one
+# of these substrings, shard 2 every other test (`--skip` matches the same way), so together they
+# run exactly the tests of `make test`, each once. Keep test_fn_groupby here and test_tailed_array
+# in shard 2 (memory-bound; they slow each other down); 0122 says when to rebalance.
 TEST_SHARD_1 := test::test_fn_groupby text_functions::fn_regex test::test_multi_area_arguments dynamic_evaluation::test_range_reads functions::text::
 
 test-shard-1: ## CI: the tests matching TEST_SHARD_1 (half of make test)
