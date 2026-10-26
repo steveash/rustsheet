@@ -137,6 +137,9 @@ fn structured_reference_into_a_linked_workbook_is_ref() {
     for row in 1..=3 {
         assert_eq!(model.get_formatted_cell_value(0, row, 1).unwrap(), "#REF!");
     }
+    // A typed formula stays a parse error; same-workbook `Sales[[#Data],[Val]]` resolving to its
+    // data area is covered by test_structured_references.
+    assert_eq!(eval(&mut model, "=ROWS([1]!Table3[#Data])"), "#ERROR!");
 }
 
 #[test]

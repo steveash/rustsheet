@@ -179,8 +179,9 @@ data is `#BLOCKED!`" below), and not a value, whatever the link part caches:
 `VLOOKUP(E8,[1]!Table3[#Data],2,FALSE)` is `#REF!` with a link part that caches only the other book's
 `sheetNames` (empty `sheetData`, no `definedNames`).
 Evidence: corpus-bench/58994/1_58994_input.xlsx Sheet1!F8 (excel-graph sidecar, 2026-10-26, gap triage).
-Whether a link part that *does* cache the table's cells changes it is unprobed. Ours: the lexer reads `[1]!Table3[#Data]` as a structured reference whose table name keeps the
-prefix; no such table exists, so a stored formula is `#REF!` (a typed one stays a parse error; T-0482).
+Whether a link part that *does* cache the table's cells changes it is unprobed. Ours: the lexer reads `[1]!Table3[#Data]` as a structured reference whose table name keeps
+the prefix; no such table exists, so a stored formula is `#REF!`. A typed one stays a parse error
+(`#ERROR!`), which is not evidenced against Excel (T-0482).
 Status: VERIFIED (excel-graph)
 Tasks: T-0482
 
