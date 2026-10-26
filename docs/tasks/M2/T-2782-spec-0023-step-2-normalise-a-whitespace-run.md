@@ -3,10 +3,10 @@ id: T-2782
 title: "SPEC-0023 step 2: normalise a whitespace run to its line feeds and last spaces, wrapping the space count at 256"
 milestone: M2
 lane: engine
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: [T-2781]
 ---
 
@@ -29,3 +29,10 @@ unprobed: probe it first (excel-probe skill) before relying on the byte reading.
 
 ## Out of scope
 - Stored-text runs (T-2784).
+
+## Handoff
+Claimed by a sonnet run, then escalated at once (work-loop step 5b: unclear evidence) without code changes. The task needs
+oracle probes first (255/256/257 spaces; 255/256/257/300 line feeds; the line-feed wrap is unprobed), then a parser change in
+`Run::of` driven by those results. `rustsheet-oracle status` showed excel-graph OK in this session, so the probes can be filled.
+Next: write the probe case with the excel-probe skill, fill it, read the wrap behaviour from the oracle values, then implement
+SPEC-0023 step 2 against t2776-formula-text-whitespace-shapes C19:C22, F21 and the t2769 C17 / t2776 C13 cells.
