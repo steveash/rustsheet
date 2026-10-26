@@ -1785,7 +1785,7 @@ iterate leaves PRICE's domain or 100 steps pass, it falls back to the old solver
 difference, then bisection). The `#NUM!` cells and the 100-step values of "YIELD's #NUM! cells and its suspected 100-step
 cap" are not fitted yet.
 Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2777 (bases 1 and 2), T-2788 (the last ulps)
 
 ## YIELD's #NUM! cells and its suspected 100-step cap
 Rule: Excel's YIELD is `#NUM!` at some inputs where PRICE has a root, and returns a number that is not a root at others;
