@@ -21,9 +21,12 @@ planner and the steward then check M2's exit with the tools instead of by hand.
   records that the planner has had to check M2 by hand on every run since M2 became current.
 - The second blocker is in scripts/exit_owners.py: `exit_cells` looks for a `probe_milestones` row whose `milestone` is
   the requested one, but the report labels M2's probe row `M0-M2` (decision 0051: M0, M1 and M2 probes count
-  together toward M2). A run on the 2026-10-26 report with the M2 row added and `M0-M2` read as M2 found 18 exit cells,
-  all in probes; 13 were owned (T-2781..T-2785, T-2769) and 5 were not, because T-2771 named them as the range
-  `A52-A58`, which the ownership rule does not expand (T-2771 now names each cell).
+  together toward M2). A run on the 2026-10-26 report with the M2 row added and `M0-M2` read as M2 listed all 18
+  known-failure cells of that row; 13 were owned (T-2781..T-2785, T-2769) and 5 were not, because T-2771 named them as
+  the range `A52-A58`, which the ownership rule does not expand (T-2771 now names each cell). Only 11 of the 18 are
+  visibly off: T-2771's A52–A58 are within 15 digits (`numeric_close`), so under decision 0114's visible-parity reading
+  they are not M2 exit cells. The M2 row and `exit-owners` must count visibly-off cells only, as the M5 and M6 rows do;
+  state this in the decision record.
 - M2's criteria (docs/milestones.md "M2", settled by T-1472 and decision 0058; read at visible parity by decision 0114):
   - `gen-m2` has at least 10,000 scored cells and none visibly off ("100%"; not M5's 20,000 and 0.999 allowance).
   - The ironcalc-calc M2 row of "Milestone function scope" has no visibly-off cell once
