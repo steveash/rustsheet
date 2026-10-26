@@ -3,7 +3,7 @@ id: T-2675
 title: "Sweep gen-m7 round 2: the 8 M7 functions under 200 generated outer-call cells (LAMBDA, LET, GROUPBY, PIVOTBY, HSTACK, SEQUENCE, REGEXTEST, REGEXREPLACE)"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
