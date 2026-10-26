@@ -451,12 +451,19 @@ impl Model {
         let mut negate = false;
         let mut percents = 0_usize;
         let mut operand = node;
-        while let Node::UnaryKind { kind, right } = operand {
-            match kind {
-                OpUnary::Minus => negate = !negate,
-                OpUnary::Percentage => percents += 1,
+        loop {
+            match operand {
+                Node::UnaryKind { kind, right } => {
+                    match kind {
+                        OpUnary::Minus => negate = !negate,
+                        OpUnary::Percentage => percents += 1,
+                    }
+                    operand = right;
+                }
+                // The identity: `-+-B:B` is one chain too.
+                Node::UnaryPlus { child } => operand = child,
+                _ => break,
             }
-            operand = right;
         }
         self.apply_number_unary(operand, cell, |mut f| {
             // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
