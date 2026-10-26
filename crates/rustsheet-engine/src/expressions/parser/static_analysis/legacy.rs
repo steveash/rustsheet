@@ -424,8 +424,8 @@ fn returns_array_constants(kind: &Function, args: &[Node]) -> bool {
 /// `=N(INDEX(5,1))` is 5, `=N(INDEX(5,2))` `#REF!`, `=N(INDEX(5,-1))` `#VALUE!` (T-2725 A1-A10,
 /// A15, A16). The scalar is a number, text or a boolean under any chain of groups and minus
 /// (`=N(INDEX(--5,0))`, `=T(INDEX((-"a"),0,0))`; probes/t2601-index-scalar-forms-t-n A1-A28,
-/// T-2601). Our parser drops a unary plus, which Excel keeps in the formula text on text and
-/// booleans (T-2723).
+/// T-2601), and under a unary plus, which `ungrouped` sees through (`=T(INDEX(+"a",0,0))`, B14;
+/// T-2723).
 fn indexes_a_scalar_literal(kind: &Function, args: &[Node]) -> bool {
     fn is_scalar(arg: &Node) -> bool {
         match arg.ungrouped() {
@@ -605,7 +605,9 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
 /// of, at any depth (bounded by the parser's depth cap).
 fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
     match node {
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+        Node::UnaryKind { right: child, .. }
+        | Node::Group { child, .. }
+        | Node::UnaryPlus { child } => {
             for_each_value_operand(child, f);
         }
         Node::OpConcatenateKind { .. }
@@ -769,7 +771,9 @@ fn for_each_array_context_site(node: &mut Node, f: &mut impl FnMut(&mut Node, Pl
                 for_each_array_context_site(arg, f);
             }
         }
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+        Node::UnaryKind { right: child, .. }
+        | Node::Group { child, .. }
+        | Node::UnaryPlus { child } => {
             for_each_array_context_site(child, f);
         }
         Node::OpConcatenateKind { .. }
@@ -864,12 +868,12 @@ fn is_lookup_table(kind: &Function, index: usize) -> bool {
     ) && index == 1
 }
 
-/// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses:
-/// `SUM((B1:B6*1))` intersects like `SUM(B1:B6*1)`, unlike `SUM((B1:B6))`
-/// (probes/legacy-value-argument-intersection-b Z2, Z10; T-1551).
+/// Whether `node` is arithmetic, concatenation or a comparison, possibly in parentheses or
+/// under a unary plus (the identity): `SUM((B1:B6*1))` intersects like `SUM(B1:B6*1)`, unlike
+/// `SUM((B1:B6))` (probes/legacy-value-argument-intersection-b Z2, Z10; T-1551).
 fn is_value_operation(node: &Node) -> bool {
     match node {
-        Node::Group { child, .. } => is_value_operation(child),
+        Node::Group { child, .. } | Node::UnaryPlus { child } => is_value_operation(child),
         Node::UnaryKind { .. }
         | Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
