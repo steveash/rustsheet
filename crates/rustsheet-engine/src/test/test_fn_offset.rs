@@ -332,6 +332,31 @@ fn fn_offset_lifted_into_per_element_callers() {
     assert_eq!(model._get_text("L2"), *"#REF!");
 }
 
+// COUNTIFS, AVERAGEIF and MAXIFS lift per element too, one value each (probes/t2065-lift-countifs,
+// -averageif, -maxifs, excel-graph 2026-10-26), and charge every criteria walk of every element.
+#[test]
+fn fn_offset_lifted_into_countifs_averageif_maxifs() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "100");
+    model._set("A1048576", "1");
+    model._set("C1", "=COUNTIFS(OFFSET(A1,{0;1},0),\">0\")");
+    model._set("D1", "=AVERAGEIF(OFFSET(A1,0,0,{1;2}),\">0\")");
+    model._set(
+        "E1",
+        "=MAXIFS(OFFSET(A1,{0;1},0),OFFSET(A1,{0;1},0),\">0\")",
+    );
+    model._set("F1", "=COUNTIFS(OFFSET(A:A,0,0,,SEQUENCE(1,1000)),\">0\")");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"1");
+    assert_eq!(model._get_text("C2"), *"1");
+    assert_eq!(model._get_text("D1"), *"1");
+    assert_eq!(model._get_text("D2"), *"50.5");
+    assert_eq!(model._get_text("E1"), *"1");
+    assert_eq!(model._get_text("E2"), *"100");
+    assert_eq!(model._get_text("F1"), *"#ERROR!");
+}
+
 // SPEC-0014 "Bounds": the elements' cells are charged before any element runs, so a SUBTOTAL
 // over a thousand whole columns is the bound's error, not 10^9 reads (a DEVIATION, lookup.md).
 #[test]
