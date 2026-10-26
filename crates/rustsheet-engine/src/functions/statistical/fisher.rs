@@ -7,7 +7,7 @@ use crate::functions::statistical::incomplete_beta::{
 };
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::loader::dbinom_raw_dev;
-use crate::functions::statistical::paired::{is_marked_number, marked_number_error};
+use crate::functions::statistical::paired::marked_number_error;
 use crate::functions::statistical::special::{ln_gamma, refine_increasing};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
@@ -576,9 +576,10 @@ impl Model {
         cell: CellReferenceIndex,
         which: &str,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
-        let sample = self.evaluate_node_in_context(node, cell);
-        // `FTEST({1;2;3},ERROR.TYPE(#REF!))` is `#NUM!`, either sample (T-2576).
-        if is_marked_number(node, &sample, cell.row) {
+        let (sample, marked) = self.evaluate_sample_arg(node, cell);
+        // `FTEST({1;2;3},ERROR.TYPE(#REF!))` and `F.TEST({-1,0,1},INDIRECT("B1",{1}))` are `#NUM!`,
+        // either sample (T-2576, T-2577).
+        if marked {
             return Err(marked_number_error(cell));
         }
         if self.is_blank_one_cell(&sample) {
