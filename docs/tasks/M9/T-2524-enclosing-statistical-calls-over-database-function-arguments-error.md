@@ -61,17 +61,17 @@ is visibly off too (14th digit); only A358 (1 ulp) is bit-level and may move to 
 - Database-function semantics (T-1390, T-2516).
 
 ## Outcome
-Triage only (2026-10-26, opus run), with no code change. On current main 12 of the 20 cells already pass (they
+Triage only (2026-10-26, opus run): no code change, no new semantics, no eval delta. On current main 12 of the 20 cells already pass (they
 have left eval/baseline/gen-m9.txt, fixed by tasks merged since T-1390's fill): 0a614cfe974b59c3 A246,
 2138b909d8f810ea A108, afc00c8b70e78baf A11, 2a18b2f5a4dc43ac A334, 8d3588d8df0812df A64 and A235, 530c636749a85209
 A191, f2bd5f380ec002bf A321, 5be29fa316931f05 A299, c18dbf21f11093f3 A178 and A24, d208bbafc3bc1997 A399.
 The other eight were traced by evaluating each top-level argument with the engine, whose arguments agree with Excel
 (T-1390's fill). Each now belongs to the task whose recorded rule covers it:
 - T.TEST/TTEST, an error sample before the tails/type check (statistics.md "T.TEST: an error sample first ...",
-  owned by T-2469, in flight on its branch): 3b7990bd4e3307ba A286 (array2 #DIV/0!, tails -16928: Excel #DIV/0!),
+  added to T-2469's cells): 3b7990bd4e3307ba A286 (array2 #DIV/0!, tails -16928: Excel #DIV/0!),
   607e85cfee83a689 A256 (array1 #VALUE!), 9e2225ead8a6a07b A10 (array2 #VALUE!, tails #NUM!, type #REF!: Excel
   #VALUE!), 91e167cd8d7eb652 A148 (array2 #N/A, tails and type #VALUE!: Excel #N/A).
-- FREQUENCY, an error argument is that error (T-2427, in flight): 530c636749a85209 A174 (data_array #DIV/0!, bins 180).
+- FREQUENCY, an error argument is that error (added to T-2427's cells): 530c636749a85209 A174 (data_array #DIV/0!, bins 180).
 - GETPIVOTDATA on an empty intersection of a Count pivot is 0: d8266bc15533702a A343, added to T-2404.
 - CHISQ.DIST deep tail (14th digit): 984cba67bbe6972b A217, added to T-2638.
 - TDIST(3,6,2), 1 ulp: d910f000b60e2eac A358, added to T-0969's cell list.
