@@ -3,7 +3,7 @@ id: T-2823
 title: "Per-element COUNTIFS, AVERAGEIF and MAXIFS over a lifted OFFSET (T-2065 probes)"
 milestone: M6
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
