@@ -3,7 +3,7 @@ id: T-2712
 title: "Spec: bound the work of nested LAMBDA helpers (three formulas under 100 characters run past the 30 s case timeout)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
