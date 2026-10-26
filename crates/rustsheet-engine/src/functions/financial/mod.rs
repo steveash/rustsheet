@@ -643,8 +643,9 @@ impl Model {
                     Err(error) => return error.clone(),
                 };
                 // Excel: a written empty guess (`XIRR(v,d,)`) is the default 0.1, but an empty
-                // cell is guess 0; IRR and RATE read both as 0 (financial.md "XIRR: an empty
-                // guess argument is the default 0.1"; probes/xirr-irr-empty-guess).
+                // cell is guess 0; IRR and RATE read both as 0 (financial.md "XIRR (and IRR): an
+                // empty guess argument is the default 0.1 for XIRR, guess 0 for IRR";
+                // probes/xirr-irr-empty-guess).
                 let guess = arguments
                     .get(2)
                     .filter(|guess| !matches!(guess, CalcResult::EmptyArg));
