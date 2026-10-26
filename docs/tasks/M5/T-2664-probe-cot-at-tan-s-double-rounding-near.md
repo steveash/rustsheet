@@ -28,6 +28,6 @@ probes-numeric/t2147-tan-double-rounding (copy its A column), filled with excel-
 
 ## Outcome
 Added probes-numeric/t2664-cot-double-rounding (150 COT cells, excel-graph). Ours matches 131 of 150 (TAN: 129); the 19
-misses are 1-ulp near-tie noise, recorded in numbers.md. Engine unchanged; no alternative model was fitted (no
-arbitrary-precision tool available), which a later task could do. Eval delta: +131 passing cells, 19 new known failures
-(new-coverage), 0 regressions.
+misses (17 at 1 ulp, 2 at 2 ulp) are rows where TAN also misses, recorded in numbers.md. Simple alternative models fit far worse
+(20/38 vs 36/38 at |x| <= 1.5), so the engine is unchanged. Eval delta: ungated suite probes-numeric, 131/150 bit-exact; no
+baseline change, 0 regressions.
