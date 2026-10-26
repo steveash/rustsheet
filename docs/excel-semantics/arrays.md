@@ -1878,7 +1878,9 @@ excel-graph, 2026-10-24, T-2579; there D!A1:A6 = 1, blank, TRUE, "x", 5, =1/0 an
   `#VALUE!`, B44; through LET too, B48, B50), but lift over an array (`IMSQRT(REDUCE(0,1,LAMBDA(a,b,{2;8})))` has 2 rows,
   B46), while SQRT and ABS lift over both (B42, B51). A REDUCE whose LAMBDA returns a range gives that reference
   (`ROWS(REDUCE(0,1,LAMBDA(a,b,D!B1:B2)))` 2, B43; IMSQRT of it `#VALUE!`, B40), and so does one returning TRIMRANGE of a
-  range (B49 `#VALUE!`; gen-m9 df083d85b436b49a A20). Ours: the TRIMRANGE form lifts (T-2596).
+  range: the step is the trimmed reference (B49 `#VALUE!`; gen-m9 df083d85b436b49a A20). Ours since T-2596: REDUCE's
+  LAMBDA caller keeps a TRIMRANGE body's reference (`LambdaCaller::keeping_trimrange_references`); a TRIMRANGE wrapped in
+  IF or LET, and the other LAMBDA helpers returning TRIMRANGE, are unprobed.
 - COMBIN lifts over arrays and ranges as COMBINA does: `INDEX(COMBIN(18,{1,2;3,4}),2,2)` is 3060, `SUM(COMBIN(18,FILTER(..)))`
   21777.000000000004, `SUM(COMBIN(D!B1:B3,1))` 12, a text element `#VALUE!` (B60-B68; gen-m9 c18dbf21f11093f3 A174's inner
   `COMBIN(18,FILTER(..))` is 1).
@@ -1892,6 +1894,6 @@ Evidence: probes/t2436 (excel-graph, 2026-10-24); probes/t2579-array-value-edges
 Ours (since T-2579): COMBIN lifts (`fn_combin`, lift/kinds/general.rs) and `if_error_like` reads a multi-cell range's
 blanks, and those of the range a direct TRIMRANGE keeps, as 0 (`blanks_as_zero`); wrapped forms (LET, IF, TAKE, DROP, a
 lifted TRIMRANGE), IFNA through TRIMRANGE and a TRIMRANGE trimmed to one blank cell are unprobed (T-2597); wide arrays
-T-2600; the REDUCE/TRIMRANGE reference T-2596.
+T-2600; the REDUCE/TRIMRANGE reference since T-2596.
 Status: VERIFIED (excel-graph)
 Tasks: T-2579, T-2600, T-2596

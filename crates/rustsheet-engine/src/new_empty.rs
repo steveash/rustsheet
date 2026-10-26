@@ -439,7 +439,7 @@ impl Model {
             }
         }
         new_worksheet.shared_formulas = shared_formulas;
-        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables);
+        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables, None);
         self.parser.set_lexer_mode(LexerMode::A1);
 
         // Insert the copy right after the source sheet.

@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1966: IMTAN and IMCOT where cosh 2y overflows and near pi/2.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-1966"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMTAN(\"1+400i\")",
+    "A2": "=IMTAN(\"1-400i\")",
+    "A3": "=IMCOT(\"1+400i\")",
+    "A4": "=IMTAN(\"1+354i\")",
+    "A5": "=IMCOT(\"1+354i\")",
+    "A6": "=IMTAN(\"1+355i\")",
+    "A7": "=IMCOT(\"1+355i\")",
+    "A8": "=IMTAN(\"1+356i\")",
+    "A9": "=IMCOT(\"1+356i\")",
+    "A10": "=IMTAN(\"1.5707963267948966\")",
+    "A11": "=IMTAN(\"1.5707963267949\")",
+    "A12": "=IMCOT(\"1.5707963267948966\")",
+    "A13": "=IMCOT(\"1.5707963267949\")"
+   }
+  }
+ ],
+ "expected": {}
+}
