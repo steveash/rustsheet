@@ -156,7 +156,7 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// im-last-digit-sweep (T-2044). Writing sinh²y as `(cosh 2y - 1)/2` is what loses Excel's digits
 /// for tiny arguments: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (exact
 /// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. A real number is 1 over SIN's kernel ([`real_trig`])
-/// (gen-m9/2f0d384b8ed0d392 A109, `IMCSC(0.2)` 5.03348954767234; the kernel gives ...235), as
+/// (gen-m9/2f0d384b8ed0d392 A109, `IMCSC(0.2)` 5.03348954767234; the complex formula gives ...235), as
 /// IMSEC's is `1/cos x` and IMSECH's `1/cosh x` (gen-m9/01810fc89c5ec2c0 A318). UNVERIFIED (T-2531): below |y| ≈ 1.05E-8
 /// `cosh 2y` rounds to 1, `t` is 0 and the result is `#NUM!`.
 pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
