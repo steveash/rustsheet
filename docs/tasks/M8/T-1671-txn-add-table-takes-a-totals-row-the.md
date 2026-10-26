@@ -3,7 +3,7 @@ id: T-1671
 title: "Txn::add_table takes a totals row; the eval adapter loads spec totals rows"
 milestone: M8
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
