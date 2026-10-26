@@ -40,7 +40,8 @@ pub(super) fn format_fraction(
     let value = match part.comma {
         0 => value,
         _ if value == 0.0 => value,
-        2 => value * 1e250,
+        // Past about 1.8E58 the product is infinite; its text would pass 255 characters, #VALUE!.
+        2 if (value * 1e250).is_finite() => value * 1e250,
         _ => return None,
     };
     let tokens = &part.tokens;
