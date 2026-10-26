@@ -16,6 +16,7 @@ fn overflowing_squares_and_t_test_error_order() {
         ("=T.TEST({1,2,3},{1E+200,1E+200,-1E+200},1,2)", "#NUM!"),
         ("=T.TEST({1,2,3},{1E+200,1E+200,-1E+200},2,3)", "#NUM!"),
         // WEIBULL's cdf where x^alpha and beta^-alpha are inf and 0 is still a number...
+        // (The oracle shows only "a number" here; 1 is the closed form's value.)
         ("=WEIBULL(1E+15,42,10000000001,TRUE)", "1"),
         ("=WEIBULL(0.2,1E+15,0.2,TRUE)", "0.632120559"),
         // ... while the density there stays #NUM!.

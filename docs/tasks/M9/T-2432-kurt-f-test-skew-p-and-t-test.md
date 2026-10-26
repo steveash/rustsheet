@@ -98,5 +98,5 @@ KURT and SKEW.P are `#DIV/0!` and Z.TEST and T.TEST `#NUM!` where the sum of squ
 passed on main). The three T.TEST error-order cells (A59, A100, A194) were error order, not overflow: either sample's own
 error now comes before tails/type, and tails and type are read before either is range-checked. Fixing them surfaced
 WEIBULL's NaN cdf (gen-m9 7f7ca726c3f68554 A308), now the closed form 1 - EXP(-(x/beta)^alpha), which also fixes
-probes/t2436/abc2939ebd1e2365 A196. Rules in statistics.md "Overflowing squares (T-2432)". Eval: gen-m9 known failures
+probes/t2436/abc2939ebd1e2365 A196 and 7c20351562a2d71d A106. Rules in statistics.md "Overflowing squares (T-2432)". Eval: gen-m9 known failures
 3897 -> 3839 (58 fixed), probes 2446 -> 2410 (36 fixed), no regressions (against main plus T-2621).

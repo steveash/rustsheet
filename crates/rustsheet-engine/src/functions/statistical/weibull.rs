@@ -60,9 +60,12 @@ impl Model {
         // `VLOOKUP(..,TAN(3.14159))`'s `#VALUE!` (gen-m9 7f7ca726c3f68554 A308). Its density
         // there stays #NUM! (`WEIBULL(3,3.14159E+15,<about 1.5E+6>,FALSE)`, 9e2225ead8a6a07b A340).
         let result = if cumulative {
-            Some(dist.cdf(x))
-                .filter(|p| !p.is_nan())
-                .unwrap_or_else(|| -(-t).exp_m1())
+            let p = dist.cdf(x);
+            if p.is_nan() {
+                -(-t).exp_m1()
+            } else {
+                p
+            }
         } else {
             // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes/t2693-subnormal-weibull
             // A2; docs/excel-semantics/numbers.md "Distribution densities").

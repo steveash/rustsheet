@@ -3990,14 +3990,15 @@ tails and type (`TTEST({..},<#VALUE!>,<#N/A>,3)` is `#VALUE!`, 9e2225ead8a6a07b 
 second sample, and tails and type are both read before either is range-checked (`T.TEST(<number>,{..},7,<#VALUE!>)` is
 `#VALUE!`, 607e85cfee83a689 A194).
 WEIBULL's cdf where statrs' x^alpha·beta^-alpha is inf·0 is a number, 1 - EXP(-(x/beta)^alpha):
-`WEIBULL(0.2,1E+15,0.2,TRUE)` is 0.6321205588285577 (probes/t2436/abc2939ebd1e2365 A196), and
-`WEIBULL(1E+15,42,10000000001,TRUE)` is a number (read through `VLOOKUP(..,TAN(3.14159))`'s `#VALUE!` inside a T.TEST,
-7f7ca726c3f68554 A308). The density there is not: `WEIBULL(3,3.14159E+15,<ACCRINTM(..) about 1.5E+6>,FALSE)` is `#NUM!`
-(9e2225ead8a6a07b A340), while `WEIBULL(100,1E+8,99999,<FALSE>)` is 0 (probes/t2436/7c20351562a2d71d A106; ours `#NUM!`,
-the (x/beta)^alpha overflow of the T-2621 entry, which holds for the two cumulative cells only). Which form Excel's density
-takes is UNVERIFIED.
+`WEIBULL(0.2,1E+15,0.2,TRUE)` is 0.6321205588285577 (probes/t2436/abc2939ebd1e2365 A196), `WEIBULL(100,1E+8,99999,<42>)`
+is 0 ((x/beta)^alpha underflows; probes/t2436/7c20351562a2d71d A106) and `WEIBULL(1E+15,42,10000000001,TRUE)` is a
+number (read through `VLOOKUP(..,TAN(3.14159))`'s `#VALUE!` inside a T.TEST, 7f7ca726c3f68554 A308; ours 1, the closed
+form's value, which no oracle cell shows directly). The density there is not: `WEIBULL(3,3.14159E+15,<ACCRINTM(..) about
+1.5E+6>,FALSE)` is `#NUM!` (9e2225ead8a6a07b A340), the one density cell; how Excel forms the density is UNVERIFIED (ours
+keeps statrs' NaN as `#NUM!`).
 Evidence: gen-m9 (excel-graph, 2026-10-22/23, T-2255, T-2256), probes/t2436 (excel-graph, 2026-10-24); the cells in T-2432.
 Ours: as Excel since T-2432 (`fn_kurt`, `fn_skew_p`, `z_test_element`, `t_test_p`, `t_test_element`,
-`PairedSamplesError::argument_is_error_value`, `weibull_dist_of`), except the WEIBULL density cell A106.
+`PairedSamplesError::argument_is_error_value`, `weibull_dist_of`). T.TEST's "both read, then checked" order rests on
+one cell (A194), which a plain type-before-tails order would fit too.
 Status: VERIFIED (excel-graph)
 Tasks: T-2432

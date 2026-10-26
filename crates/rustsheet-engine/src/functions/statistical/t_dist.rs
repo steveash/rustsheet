@@ -142,9 +142,6 @@ fn t_test_p(
         )
     };
 
-    // A sample variance that overflows (data whose squares do) is #NUM!, not a p from an infinite
-    // deviation (`T.TEST(B6:D12,{1E+200,1E+200,-1E+200},1,2)`, gen-m9 a612e89321a6df9c A375;
-    // statistics.md "Overflowing squares (T-2432)").
     let n1 = values1.len();
     let n2 = values2.len();
     if n1 == 0 || n2 == 0 {
@@ -168,6 +165,9 @@ fn t_test_p(
             let nd = diffs.len();
             let md = mean(&diffs);
             let vd = sample_var(&diffs);
+            // A sample variance that overflows (data whose squares do) is #NUM!, not a p from an
+            // infinite deviation, in every test type (`T.TEST(B6:D12,{1E+200,1E+200,-1E+200},1,2)`,
+            // gen-m9 a612e89321a6df9c A375; statistics.md "Overflowing squares (T-2432)").
             if vd.is_infinite() {
                 return error(Error::NUM);
             }
