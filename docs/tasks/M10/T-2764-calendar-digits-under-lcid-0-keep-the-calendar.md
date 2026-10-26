@@ -16,6 +16,9 @@ A calendar digit over LCID 0 applies its calendar with en-US names: `TEXT(45000,
 ## Context
 Today `resolve_lcid` (formatter/locale_tag.rs) returns `Silent` for LCID 0 before reading the calendar digit, so these print the Gregorian date. Failing: probes/text-locale-lunar-edges A59, text-locale-lunar-tokens A57, A58 (T-1922). Probe whether other calendar digits (3, 5, 7, 9) over LCID 0 also apply before generalizing. See number-formats.md "Calendars of a locale tag", lunar bullet on LCID 0.
 
+T-1924 (2026-10-26) keeps a calendar digit over any LCID without a locale, LCID 0 included (`without_locale`): A59, A57 and
+A58 pass since then. Only the B2 cell (A79) remains.
+
 ## Acceptance criteria
 - [ ] text-locale-lunar-edges A59 and text-locale-lunar-tokens A57, A58 pass.
 - [ ] text-locale-lunar-tokens A79 passes: `B2` before a lunar tag gives the lunar date (`TEXT(45300,"B2[$-110409]yyyy|m")` is "2023|12"; T-2729 leaves the lunar digits out).
