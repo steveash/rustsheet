@@ -3747,6 +3747,7 @@ so the size check and the one-point rule apply: `COVARIANCE.P({1,2,3},TRUE)` is 
 boolean ours already matches (A29:A34).
 Evidence: probes/t2436/computed-scalar (excel-graph, 2026-10-24); 4 gen-m9 cells listed in T-2575.
 Ours: matches (T-2575).
+UNVERIFIED: COVAR (the compatibility name) shares the code path, so a boolean scalar is one value there too; no probe of it yet.
 Status: VERIFIED (excel-graph); COVAR with a boolean unprobed
 Tasks: T-2575
 
