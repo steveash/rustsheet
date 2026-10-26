@@ -395,6 +395,11 @@ fn im_reciprocal_kernels_match_the_sweep() {
             "-2.46276584105671+258.045027895372i",
         ),
         (r#"=IMSEC("1+0.5i")"#, "1.08126832311555+0.778194035118073i"),
+        // IMSECH's t fuses sinh²x into the sum (J34; T-2750): unfused it gives ...306335i.
+        (
+            r#"=IMSECH("1.34384-77.6742i")"#,
+            "-0.367433538630135+0.376675382306336i",
+        ),
         // A real argument is 1/sin x and 1/cosh x (gen-m9/2f0d384b8ed0d392 A109, 01810fc89c5ec2c0 A318).
         (r#"=IMCSC("0.2")"#, "5.03348954767234"),
         (r#"=IMSECH("1.5")"#, "0.42509603494228"),

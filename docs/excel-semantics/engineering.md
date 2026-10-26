@@ -457,11 +457,16 @@ angle"); cosh and sinh are libm's. Rule:
   4.33329584706818-0.178960935839407i (G29; exact real part 4.3332958470681874). IMCSC's `(cosh 2y − 1)/2`
   (T-2044) missed G29 and G33; `cos²x·cosh²y + sin²x·(cosh²y − 1)` with `cosh²y = cosh y·cosh y` gets them but
   misses rows 45 and 79 (`-9.51393+8.31084i`, `1+0.5i`); `cos²x + (cosh y·cosh y − 1)` misses rows 20, 36, 45.
-- IMSECH: `t = cos²y + sinh²x` (sinh squared itself, unlike IMSEC), result `(cosh x·cos y/t, −sinh x·sin y/t)`: 61 of
-  62 finite cells (miss J34/L34, `1.34384-77.6742i`, last digit of the imaginary part, which the old
-  `cosh²x cos²y + sinh²x sin²y` kernel got right; that kernel missed rows 28, 49, 79 and the IMSECH("3+4i") digit). This is why IMSEC("4+3i") and IMSECH("3+4i") differ.
-  IMSEC's T-2743 form turned a quarter (`cos²y + ((cosh 2x + 1)/2 − 1)`) gets 41 of the 49 sweep rows with a
-  nonzero imaginary part (the current kernel 48 of them, missing J34; the 62 above also count the real rows); the candidates T-2743 tried for J34 are in T-2750, which owns it.
+- IMSECH (T-2750): `t = fma(sinh x, sinh x, cos²y)`, i.e. `cos²y + sinh²x` (sinh squared itself, unlike IMSEC) with the
+  product sinh²x fused into the sum (one rounding), result `(cosh x·cos y/t, −sinh x·sin y/t)`: all 62 finite cells.
+  The unfused sum (T-2044) misses only J34/L34, `IMSECH("1.34384-77.6742i")`, Excel -0.367433538630135+0.376675382306336i
+  (exact imaginary part 0.37667538230633553, unfused ...306335); fusing cos²y into the sum instead (`fma(cos y, cos y,
+  sinh²x)`) also misses J34. The old `cosh²x cos²y + sinh²x sin²y` kernel missed rows 28, 49, 79 and the IMSECH("3+4i")
+  digit; this is why IMSEC("4+3i") and IMSECH("3+4i") differ. Other forms scored on the 61 sweep rows with a nonzero
+  imaginary part (row 42 excluded, the overflow path answers it): `1/IMCOSH(z)` as `(a, −b)/(a² + b²)` 58 (misses rows
+  7, 49, 54), Smith's division 56, `cosh²x − sin²y` 52, the half-angle `(cosh 2x + cos 2y)/2` 55, IMSEC's T-2743 form
+  turned a quarter 55, `(e^x ± e^-x)/2` for cosh and sinh 51. A fused form fitting where the plain one misses suggests
+  Excel's build contracts `a·a + b·b` to `fma(b, b, a·a)`; the other kernels are not refitted for it (unprobed).
 - IMCOT: `(sin 2x, −sinh 2y) / (cosh 2y − (2cos²x − 1))`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit). Past `cosh 2y`'s range the
   value is `−i` for y > 0 and `i` for y < 0 (P27, P44, P49, P68, P69, P71; P52, P55). A real number keeps `1/tan x`.
