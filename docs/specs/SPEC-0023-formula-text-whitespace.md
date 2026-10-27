@@ -27,7 +27,7 @@ Goals:
 1. Whitespace that Excel keeps survives parse → print, in every printer:
    - `to_english_string`, `to_localized_string`, `to_rc_format`, `to_string_displaced` and
      `to_string_moved`;
-   - the xlsx export text, Excel saves kept whitespace as typed, a line feed as raw CR LF bytes that read back as LF (T-2786, xlsx-storage.md).
+   - the xlsx export text, Excel saves kept whitespace as typed, with a line feed as raw CR LF bytes that read back as LF (T-2786, xlsx-storage.md); export should write it (T-2948).
 2. Whitespace that Excel drops is dropped at parse time, so the tree only ever holds what prints.
 3. No value changes. Whitespace is transparent to evaluation and to every shape test, as a `Group`
    is.
@@ -81,7 +81,7 @@ probes/t2776-* (excel-graph, 2026-10-26).
   kept as typed (`=NOW( )`, `=IF(1, ,2)`, `=SUM(1, )`, `=SUM(, 1)`), unlike a run before a comma that follows an
   operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2944). `=SUM (1)` and
   `=SUM( )` are refused. Structured references normalize their whitespace (T-2801). Excel saves kept whitespace in the
-  `<f>` text, a line feed as raw CR LF bytes that read back as LF (xlsx-storage.md), so export prints the tree's whitespace and does not strip it.
+  `<f>` text, a line feed as raw CR LF bytes that read back as LF (xlsx-storage.md), so export should print the tree's whitespace and not strip it (T-2948; today it writes none).
 
 ## Design
 ### Where whitespace attaches
