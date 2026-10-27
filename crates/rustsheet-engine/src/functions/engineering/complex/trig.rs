@@ -61,14 +61,14 @@ fn hyperbolic_log_form(
 /// the worksheet SINH switches to expm1
 /// (numbers.md). So the imaginary part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm
 /// sinh gives ...242709) and `IMSIN("1E-200+1E-200i")` is "1E-200": EXP(1E-200) = EXP(-1E-200),
-/// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH, IMCOSH and IMSECH take
+/// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH, IMCOSH, IMSECH and IMCSCH take
 /// [`inverse_exp_sinh_cosh`] instead (T-2629).
 fn exp_sinh_cosh(t: f64) -> (f64, f64) {
     let (a, b) = (excel_exp(t), excel_exp(-t));
     ((a - b) / 2.0, (a + b) / 2.0)
 }
 
-/// `(sinh x, cosh x)` as IMSINH, IMCOSH and IMSECH build them from the real part: `u = EXP(-x)`,
+/// `(sinh x, cosh x)` as IMSINH, IMCOSH, IMSECH and IMCSCH build them from the real part: `u = EXP(-x)`,
 /// then `(1/u ∓ u)/2`, with Excel's EXP. The reciprocal makes the kernel lopsided: `IMSINH("4")` is
 /// 27.289917197127753, one ulp above libm sinh, while `IMSINH("-4")` is libm's (T-2778), and at
 /// x = 1.5 both parts are one ulp above libm, at -1.5 neither. It fits all 300 cells of
