@@ -4,12 +4,12 @@
 - **Context:** Excel's AMORDEGRC with 0 < period < 1 computes no charge of its own: it returns a value the last
   AMORDEGRC or AMORLINC Excel ran before it left behind, 0 in a fresh workbook (docs/excel-semantics/financial.md
   "AMORDEGRC below period 1"). T-2825 offered two options: keep the cells that read a neighbour's value as known
-  failures, or carry the state and evaluate in Excel's order. Its probes (probes/amordegrc-fraction-state-h to -y,
+  failures, or carry the state and evaluate in Excel's order. Its probes (probes/amordegrc-fraction-state-h to -ab,
   excel-graph 2026-10-27) show the state follows exactly the fresh-load order SPEC-0017 already reproduces for
   WEEKNUM's stale `return_type` (recalc.md "The order Excel calculates a freshly loaded workbook in"): last sheet
   first (-n), bottom row first and each row right to left (-p, -q), a precedent first (-o). What each call leaves is
-  a short table: an AMORDEGRC from period 1 on its value, at period 0 a 0, an AMORLINC its rounded first-period
-  charge; errors and periods past the asset life leave it as it was, and other functions do not touch it.
+  a short table: an AMORDEGRC from period 1 on its value, an AMORLINC its rounded first-period charge; a period-0
+  AMORDEGRC, errors, periods past the asset life and other functions leave it as it was.
 - **Decision:** model it. The per-recalc state SPEC-0017 introduced for WEEKNUM becomes one `OrderState` (WEEKNUM's
   start weekday and AMORDEGRC's left-over value), reset, saved and restored as a unit by the passes and the
   Excel-order chain; a read of either part triggers the Excel-order pass. A lifted AMORDEGRC's fractional elements are

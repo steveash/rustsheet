@@ -205,7 +205,8 @@ struct Amortized {
 /// "AMORDEGRC below period 1", probes/amordegrc-fraction-state-*).
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum LeftOver {
-    /// It stays as it was: a period past the asset life (-u, -v). So it does for an error.
+    /// It stays as it was: an AMORDEGRC at period 0 (-z) and a period past the asset life (-u,
+    /// -v). So it does for an error (-l, -m; a NaN AMORLINC charge is unprobed).
     Keep,
     /// It becomes this value.
     Set(f64),
@@ -270,9 +271,9 @@ impl Asset {
     /// AMORDEGRC: the rate times a coefficient of the life, applied to the remaining cost; two
     /// periods before the end it charges half of what is left and then the rest. `loop_periods`
     /// is `DEGRESSIVE_LOOP_PERIODS` (smaller in tests, to check the closed form against the walk).
-    /// From period 1 on it leaves its own charge, at period 0 it leaves 0 (`AMORDEGRC(46557,0,39881,
-    /// 440,0,0.1)` is 46117), and strictly between 0 and 1 it reads what was left
-    /// (probes/amordegrc-fraction-state-l to -t).
+    /// From period 1 on it leaves its own charge, at period 0 it leaves the value as it was
+    /// (`AMORDEGRC(46557,0,39881,440,0,0.1)` is 46117 and passes a 485 through), and strictly
+    /// between 0 and 1 it reads what was left (probes/amordegrc-fraction-state-l to -z).
     fn degressive(&self, period: f64, loop_periods: u64) -> Result<Amortized, String> {
         let ass_life = (1.0 / self.rate).ceil();
         let within_life = period <= ass_life;
@@ -283,7 +284,7 @@ impl Asset {
         let (first_depr_linc, asset_life) = self.first_depreciation(depr_rate, ass_life)?;
         let first_depr = amor_round(first_depr_linc);
         if period == 0.0 {
-            return Ok(Amortized::new(first_depr, LeftOver::Set(0.0)));
+            return Ok(Amortized::new(first_depr, LeftOver::Keep));
         }
         if period < 1.0 {
             return Ok(Amortized::new(0.0, LeftOver::Read));

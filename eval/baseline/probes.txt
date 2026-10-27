@@ -40,6 +40,8 @@ C	probes/amordegrc-fraction-alone-d.case.json	1
 C	probes/amordegrc-fraction-alone-e.case.json	2
 C	probes/amordegrc-fraction-alone-f.case.json	2
 C	probes/amordegrc-fraction-alone-g.case.json	3
+C	probes/amordegrc-fraction-state-aa.case.json	3
+C	probes/amordegrc-fraction-state-ab.case.json	3
 C	probes/amordegrc-fraction-state-h.case.json	2
 C	probes/amordegrc-fraction-state-i.case.json	2
 C	probes/amordegrc-fraction-state-j.case.json	2
@@ -58,6 +60,7 @@ C	probes/amordegrc-fraction-state-v.case.json	3
 C	probes/amordegrc-fraction-state-w.case.json	2
 C	probes/amordegrc-fraction-state-x.case.json	2
 C	probes/amordegrc-fraction-state-y.case.json	2
+C	probes/amordegrc-fraction-state-z.case.json	3
 C	probes/amordegrc-fractional-period.case.json	32
 C	probes/anchorarray-at-operand-kinds.case.json	16
 C	probes/anchorarray-at-operand.case.json	2

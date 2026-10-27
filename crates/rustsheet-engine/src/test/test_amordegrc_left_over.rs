@@ -66,16 +66,17 @@ fn a_precedent_runs_first() {
 #[test]
 fn what_each_call_leaves() {
     // AMORLINC leaves its first period's charge rounded (131.803... and 360); a period-0
-    // AMORDEGRC leaves 0; an error and a period past the life leave the value as it was
-    // (probes/amordegrc-fraction-state-j, -y, -t, -m, -u, -v).
+    // AMORDEGRC, an error and a period past the life leave the value as it was
+    // (probes/amordegrc-fraction-state-j, -y, -z, -m, -u, -v).
     assert_eq!(above("=AMORLINC(2400,39679,39813,300,1,0.15,1)"), "132");
     assert_eq!(above("=AMORLINC(2400,39813,39813,300,1,0.15,1)"), "360");
-    assert_eq!(above("=AMORDEGRC(46557,0,39881,440,0,0.1)"), "0");
+    assert_eq!(above("=AMORDEGRC(46557,0,39881,440,0,0.1)"), "485");
     assert_eq!(above("=AMORDEGRC(2400,39679,39813,-1,2,0.15,1)"), "485");
     assert_eq!(above("=AMORDEGRC(2400,39679,39813,300,20,0.15,1)"), "485");
     assert_eq!(above("=AMORLINC(2400,39679,39813,300,20,0.15,1)"), "485");
-    // Other functions leave nothing (-i).
+    // Other functions leave it as it was (-aa, -ab).
     assert_eq!(above("=EFFECT(1,1)"), "485");
+    assert_eq!(above("=SUM(1,2)"), "485");
 }
 
 #[test]

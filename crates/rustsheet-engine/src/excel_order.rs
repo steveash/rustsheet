@@ -146,6 +146,7 @@ impl Model {
                         ..
                     })
                 ) {
+                    // What it does to AMORDEGRC's left-over value is unprobed: left as it is.
                     model.evaluation.order_state.weeknum_start = None;
                 }
                 return Outcome::Done;

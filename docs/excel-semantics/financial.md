@@ -1371,15 +1371,17 @@ workbook-wide state written in Excel's calculation order:
   `AMORDEGRC(2400,39679,39813,300,0.5,0.15,1)`, `(..,0.0001,..)` and `AMORDEGRC(98882,37287,38647,1E-13,0.5625,0.1,1)`
   (probes/amordegrc-fraction-alone-a to -d).
 - An AMORDEGRC from period 1 on leaves its own value: 485 from `AMORDEGRC(2400,39679,39813,300,2,0.15,1)`, 776 from
-  `(..,1,..)` (alone-f, fraction-state-l to -q). A period-0 AMORDEGRC leaves 0, though its value is 46117
-  (fraction-state-t: `AMORDEGRC(46557,0,39881,440,0,0.1)`).
+  `(..,1,..)` (alone-f, fraction-state-l to -q). A period-0 AMORDEGRC leaves the value as it was, not its own
+  46117: `AMORDEGRC(46557,0,39881,440,0,0.1)` passes the 485 below it through (fraction-state-z; alone, -t, 0).
 - AMORLINC leaves its first-period charge rounded to a whole number, whatever its period:
   `AMORLINC(2400,39679,39813,300,p,0.15,1)` is 360 for p 1 and 3 and 131.803… for p 0, and leaves 132 for each
   (fraction-state-j, -w, -s); bought on its first period's end, `AMORLINC(2400,39813,39813,300,1,0.15,1)` leaves 360
-  (-y). Other functions leave nothing: `EFFECT(1,1)` (1) and a constant 7 below the fraction leave it 0 (-i, -k).
+  (-y). Other functions leave the value as it was: `EFFECT(1,1)` (1) and `SUM(1,2)` pass the 485 below them through
+  (-aa, -ab), and alone `EFFECT(1,1)` and a constant 7 below the fraction leave it 0 (-i, -k).
 - An AMORDEGRC or AMORLINC that is an error, or past the asset life (period 20 of a 0.15 rate, value 0), leaves the
-  value as it was: an early `#NUM!` (negative salvage, -m), one from the asset-life check (rate 1, -h; rate 3.1E26,
-  -l) and both functions at period 20 (-u, -v) pass the 485 below them through.
+  value as it was: an early `#NUM!` (negative salvage, -m), one from the asset-life check (rate 3.1E26, -l) and both
+  functions at period 20 (-u, -v) pass the 485 below them through, and alone an asset-life error (rate 1) leaves
+  0 (-h). An error after the arguments are checked (a NaN AMORLINC charge) is unprobed.
 - Lifted over an array, every fractional element is 0: `SUM(AMORDEGRC(..,{0.3,0.5},..))` above the 485 charge is 0
   (-x). What a lifted call leaves is unprobed.
 - The order is Excel's fresh-load order (recalc.md "The order Excel calculates a freshly loaded workbook in"): the
@@ -1389,18 +1391,20 @@ workbook-wide state written in Excel's calculation order:
 Every earlier cell fits this reading: probes/amordegrc-fractional-period A1-A11 are 776, the value of A12 (period
 1.0001) below them; A23-A26 are 1693, A24's and A26's from A25 and A27 (a different asset, whose own period 1 is 2284,
 A28); fin-amor-period-bound B17 (period 0.5) is 485, B18's value; amor-argument-check-order A846-A851 are 776 from A852
-(period 1.5), and A862-A864 are 0, from A866's period-0 AMORDEGRC through the error in A865. gen-m9 d912671baa1364aa A76
+(period 1.5), and A862-A864 are 0: A866's period-0 AMORDEGRC, the first cell Excel runs, and the error in A865
+leave the state empty. gen-m9 d912671baa1364aa A76
 (period 0.5625) is 1, which the table does not explain: the last AMORDEGRC or AMORLINC after it, A96
 (`AMORLINC(92598,36663,39379,343,6,1E-300,3)`), leaves 0 (fraction-state-r), and its other AMORDEGRCs and AMORLINCs are
 errors.
 Evidence: probes/amordegrc-fraction-alone-a to -g (excel-graph, 2026-10-26, T-1895) and
-probes/amordegrc-fraction-state-h to -y (excel-graph, 2026-10-27, T-2825), with the earlier cells above.
+probes/amordegrc-fraction-state-h to -ab (excel-graph, 2026-10-27, T-2825), with the earlier cells above.
 Ours: since T-2825 (decision 0131), `OrderState::amor_left_over` in evaluation.rs, set and read by
 `Model::amortization_call` (functions/financial/amortization.rs, `LeftOver`); a read runs the pass in Excel's order
 (`excel_order.rs`, SPEC-0017), whose move budget and its DEVIATION (dates.md) apply here too. gen-m9 d912671baa1364aa
 Calc!A76 stays a known failure.
 Status: VERIFIED (excel-graph) on freshly loaded workbooks; after an edit in a live session the order is not
-reproducible from the file (recalc.md), what a lifted call leaves is unprobed, and gen-m9 A76 is UNEXPLAINED
+reproducible from the file (recalc.md), what a lifted call and a dynamic-array formula's place in the order do to the
+value are unprobed (ours: the last element's value; left as it is), and gen-m9 A76 is UNEXPLAINED
 Tasks: T-1895, T-2825
 
 ## AMORDEGRC past 2^20 periods

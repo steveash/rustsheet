@@ -142,7 +142,8 @@ the next free rank for sheets added later. It keeps probes/weeknum-stale-sheet-m
 AMORDEGRC or AMORLINC left (financial.md "AMORDEGRC below period 1"). `weeknum_start` became one field of
 `Evaluation::order_state: OrderState`, reset, saved and restored as a unit wherever this spec resets, saves or
 restores `weeknum_start`, and `weeknum_read` became `order_state_read`, set by a reader of either part. A
-dynamic-array formula's place in the chain still empties only the WEEKNUM part.
+dynamic-array formula's place in the chain still empties only the WEEKNUM part (its effect on AMORDEGRC's value is
+unprobed).
 
 ### Depth limit
 The `max_depth`/`max_stack` unwind is documented as never changing a result (`set_max_evaluation_depth`).
