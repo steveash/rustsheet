@@ -211,7 +211,8 @@ impl ArgValue {
 /// it reads every argument as a number, refusing an error or a logical (`cast_number_no_bools_ref`),
 /// and each of the `dates` must be on the calendar, `#NUM!` as it is read
 /// (probes/fin-odd-date-before-error-arg, odd-bond-argument-check-order). A text may read as any
-/// number, so it refuses nothing.
+/// number, so it refuses nothing. `value` is `None` only past the call's arguments (a blank one
+/// is `Some(ArgValue::Blank)`), so the scan stops at the call's end.
 fn refused_before_any_walk(dates: &[usize], value: &impl Fn(usize) -> Option<ArgValue>) -> bool {
     let calendar = 0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0;
     let off_calendar = dates

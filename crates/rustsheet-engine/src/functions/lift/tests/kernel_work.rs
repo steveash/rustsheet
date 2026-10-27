@@ -542,7 +542,7 @@ fn odd_elements_refused_before_the_walk_are_charged_one() {
         ])
     };
     // An issue far before the calendar: as at the longest schedule unless refused.
-    assert!(oddfyield(ArrayNode::Number(-1.2E14), number(0.05), 22) <= 22);
+    assert_eq!(oddfyield(ArrayNode::Number(-1.2E14), number(0.05), 22), 22);
     assert_eq!(oddfyield(ArrayNode::Number(-0.5), number(0.05), 22), 22);
     assert_eq!(
         oddfyield(ArrayNode::Number(2_958_466.0), number(0.05), 22),
