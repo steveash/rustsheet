@@ -101,6 +101,18 @@ fn trig_sinh_cosh(y: f64) -> (f64, f64) {
     (-sinh, cosh)
 }
 
+/// `(sinh y, cosh y)` for IMSEC: [`trig_sinh_cosh`] inside its band, libm's outside, where IMSEC keeps
+/// libm's digits (the EXP pair of [`trig_sinh_cosh`] loses 9 older IMSEC cells there). With cosh 2y
+/// taken the same way, IMSEC fits 32 of the 34 probes-numeric im-sec-csch-fused texts (27 with libm's
+/// parts) and keeps every older oracle cell (docs/excel-semantics/engineering.md, T-2884).
+fn sec_sinh_cosh(y: f64) -> (f64, f64) {
+    if in_inverse_exp_band(y) {
+        trig_sinh_cosh(y)
+    } else {
+        (y.sinh(), y.cosh())
+    }
+}
+
 /// Whether `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`, where the `1/u` form applies.
 fn in_inverse_exp_band(x: f64) -> bool {
     let t = x.abs();
@@ -282,16 +294,16 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// itself, so `IMSEC("4+3i")` has real part -0.0652940278579471 and `IMSECH("3+4i")`
 /// -0.065294027857947 (G23, K58). Each numerator divides its hyperbolic part by `t` first,
 /// `cos x·(cosh y/t)`: 27 of the 34 IMSEC texts of probes-numeric im-sec-csch-fused, against 23 for
-/// `cos x·cosh y/t`, with every older cell kept (T-2841).
+/// `cos x·cosh y/t`, with every older cell kept (T-2841). cosh y, sinh y and cosh 2y are
+/// [`sec_sinh_cosh`]'s: 32 of the 34 (T-2884).
 pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).1);
     }
     let (x_sin, x_cos) = trig_sin_cos(x);
-    let y_cosh = y.cosh();
-    let y_sinh = y.sinh();
+    let (y_sinh, y_cosh) = sec_sinh_cosh(y);
 
-    let t = x_cos * x_cos + ((f64::cosh(2.0 * y) + 1.0) / 2.0 - 1.0);
+    let t = x_cos * x_cos + ((sec_sinh_cosh(2.0 * y).1 + 1.0) / 2.0 - 1.0);
     if !t.is_finite() {
         return overflowed_reciprocal(x_cos, x_sin * y.signum(), y, suffix);
     }
