@@ -298,7 +298,7 @@ fn structural_edits_keep_values() {
         found.extend(mismatches(&model, 0, 5, true));
         // The table moves or grows over row 6, and the reference on another sheet there was off
         // the data rows (`#VALUE!`), which the edit does not change: it keeps its text and reads
-        // the table's row 6 (T-2297; whether Excel does is unprobed, T-2843).
+        // the table's row 6 (T-2297; whether Excel does is unprobed, T-2845).
         if name == "insert above" || name == "insert inside" {
             found.retain(|f| !f.contains(" on sheet 1 row 6: "));
             let column = TEMPLATES.iter().position(|t| *t == "=ROW({x})").unwrap() as i32;

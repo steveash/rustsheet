@@ -54,6 +54,6 @@ grow it back; T-2338), and is left alone by an edit after it. The walk (`to_stri
 on every sheet and conditional formats) keeps the text of every structured reference to those tables;
 their `reference` is updated after the walk and `reset_tables` reparses, so defined names follow too. Every
 other case stays the fallback; a `#This Row` reference keeps the fallback rule, and a headerless table's first row is a fallback
-(T-2843 probes both; on another sheet an off-data `#This Row` cell now reads the moved table's row).
+(T-2845 probes both; on another sheet an off-data `#This Row` cell now reads the moved table's row).
 Eval: probes known failures 3018 -> 2995 (23 fixed, 0 regressions): every FORMULATEXT cell this task owned
 plus the insert-row move/grow cases (above-header, before, inside-data, above-last-data).
