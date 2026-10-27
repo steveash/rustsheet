@@ -231,7 +231,8 @@ pub struct FunctionArguments {
     pub pairwise: Option<f64>,
 }
 
-/// A parameter and a class one call passes it, keyed by function name.
+/// A function name, a parameter and a class one call passes it: one entry of the single-argument
+/// census.
 type Slot<'a> = (&'a str, usize, ArgClass);
 
 /// The (parameter, class) slots of one call of `f`, in order; a `range` parameter counts a
