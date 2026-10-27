@@ -3,7 +3,7 @@ id: T-2548
 title: "BESSELJ, BESSELY and BESSELI last-ulp cells at x = 84 to 1E+5 in the gen-m9 engineering sweep (12 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
