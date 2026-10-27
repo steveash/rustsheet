@@ -258,8 +258,21 @@ visit caps' charges, which have a margin of their own:
   section 1).
 
 Measured for T-2813 (release build, 2026-10-27, the T-2803 branch with origin/main merged in, local
-instrumentation of `with_area_budget`, not committed): MEASURE_EVAL. Time to the limit, each a
-`SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(<call>))))`: MEASURE_TIME.
+instrumentation of `with_area_budget`, not committed): `rustsheet-eval check` has 0 regressions
+and no formula past the limit. The heaviest eval formula spends 118,754,196 units, 118,751,450 of them visit-cap charges (below 2^27) and 2,746
+other units (a Calc!A204 cell; the 124,806,376 of T-2803 predates the kernel charges T-2814 and
+T-2815 changed). The heaviest outside the visit caps spends 8,388,620 units, none of them visit-cap
+charges (2^23, below 2^26). Both lower constraints hold. Time to the limit, each a
+`SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(<call>))))`:
+
+| `<call>` | one call alone | to the limit |
+|---|---|---|
+| `RATE(3000+0*SEQUENCE(16384),-1,100)` (all 200 steps, at the cap) | 2.1 s | 2.1 s (the second call's charge fails) |
+| `RATE(3000+0*SEQUENCE(1000),-1,100)` | | 4.2 s (32 calls) |
+| `YIELD(43831,47484,0.05,1E-100*SEQUENCE(12329),100,2)` | | 17.6 s |
+| `YIELD(43831,80355,0.05,1E-100*SEQUENCE(644),100,4)` | 15.0 s | 28.1 s |
+| `REGEXTEST(REPT("a",32767)&SEQUENCE(100),"(a|aa)*b")` (a 100 by 100 MAKEARRAY) | | 0.8 s |
+
 The YIELD and ODDFYIELD shapes miss the 5 s rule today, as one call of theirs at the cap takes
 about 17 s; T-2879 refits their weight (about 4.3 s at 2^26, measured by T-2814) and owns the gap.
 T-2803 does not wait for it: without the budget the same MAKEARRAY never stops, and with it it stops
@@ -337,7 +350,9 @@ Step 1 adds this entry to docs/excel-semantics/arrays.md, with the measured cali
    built-cell charges, the per-call caps' charges, the helpers' early stop, the weights fitted to
    the per-kind timings (section 4), the DEVIATION entry with the calibration measured. Acceptance:
    the three Problem formulas finish within the harness timeout (as `#VALUE!`), each kind's worst
-   case stops within 10 s, no baseline gains a line, `make check` green.
+   case stops within 10 s, no baseline gains a line, `make check` green. The visit caps are charged
+   at 1 unit and judged by the amended rules of section 4 (T-2813); their YIELD and ODDFYIELD
+   shapes are T-2879's, not a blocker of this step.
 2. **T-2804 (S, sonnet)**: read-cell charges in the aggregate walker's array arm, and the LET variant
    as a test. Acceptance: the LET variant finishes within the harness timeout, no baseline gains a
    line.
