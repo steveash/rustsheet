@@ -36,3 +36,5 @@ but 0 and 6 wins over a `B2` before the tag) made text-locale-lunar-tokens A79 p
 asserts for each of those cells in formatter/test/test_locale_tag.rs
 (`a_calendar_digit_over_an_lcid_without_a_locale_keeps_its_date`).
 Eval: no change (the four cells already pass on main).
+Follow-up: T-2935 probes the other calendar digits (3, 4, 5, 9, 14) over an LCID with no locale, which the Context asked
+for before generalizing.
