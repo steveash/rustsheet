@@ -3855,9 +3855,6 @@ F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A55
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A56
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A57
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A58
-F	probes/t2776-formula-text-whitespace-shapes.case.json	S!C3
-F	probes/t2776-formula-text-whitespace-shapes.case.json	S!C5
-F	probes/t2776-formula-text-whitespace-shapes.case.json	S!E9
 F	probes/t2776-ws-after-bang.case.json	S!A1
 F	probes/t2776-ws-after-bang.case.json	S!C1
 F	probes/t2812-currency-tag-cost.case.json	S!A11
