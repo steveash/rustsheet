@@ -319,6 +319,7 @@ C	probes/datevalue-separator-spaces.case.json	32
 C	probes/db-argument-modes.case.json	121
 C	probes/db-computed-criteria-shapes.case.json	59
 C	probes/db-criteria-formula-placement.case.json	27
+C	probes/db-field-error-order.case.json	13
 C	probes/db-get-blank-field.case.json	11
 C	probes/db-header-criteria-shapes.case.json	73
 C	probes/dbl-max-text-a.case.json	1
