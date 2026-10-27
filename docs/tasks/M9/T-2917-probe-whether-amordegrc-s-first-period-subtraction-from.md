@@ -30,4 +30,4 @@ probes/amordegrc-walk-drift D1-D12 did for the final rounding). Search for such 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The walk after period 1 (T-2849) and past 2^20 periods (T-2916).
+- The walk after period 1 (T-2849) and past 2^20 periods (T-2918).

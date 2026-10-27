@@ -48,6 +48,6 @@ twice, `RN53(RN64(remain - rate * remain))`. `DegressiveWalk::charge` now subtra
 (the first period's subtraction too, by analogy). A scratch fit over the 135 cells of probes/amordegrc-walk-drift and
 -ties: the twice-rounded walk 135, main's 107, exact or 80-bit-throughout arithmetic 86, `remain * (1 - rate)` 38; it
 also gives all five of probes/fin-amor-period-bound-c A1-A5 (1.1E6-2.4E6 periods, outside the fit; main's walk 3), which
-the closed form past 2^20 periods still misses (follow-up T-2916). Eval: 28 known failures fixed (D16, E5-E45,
+the closed form past 2^20 periods still misses (follow-up T-2918). Eval: 28 known failures fixed (D16, E5-E45,
 A51, A53, C5, C8, C9), 0 regressions. A walk at the cap now takes 3.9 s for 512 lifted elements (2.06 s before), within
 SPEC-0011's 5 s, so `AMORDEGRC_WEIGHT` stays 2^18; financial.md and SPEC-0011 give the new timing.
