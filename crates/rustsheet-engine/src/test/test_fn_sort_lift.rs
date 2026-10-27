@@ -23,7 +23,7 @@ fn by_col_lifts_over_an_array() {
     check(&[
         ("C1", "=COLUMNS(SORT(A1:A3,1,1,{FALSE,TRUE}))", "2"),
         // By rows the sorted column starts at 1; by columns the one column is unchanged.
-        // probes/t2366-sort-lifted-by-col: later elements hold a value, not empty as SORTBY's do. Excel's value there is #VALUE! (ours 3, T-2922), so it is not pinned.
+        // probes/t2366-sort-lifted-by-col: later elements hold a value, not empty as SORTBY's do. Excel's value there is #VALUE! (ours 3, T-2929), so it is not pinned.
         ("C2", "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,1)", "1"),
         (
             "C3",

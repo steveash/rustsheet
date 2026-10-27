@@ -36,4 +36,4 @@ Then set the entry to `.array()` or `.array_first()` and fix the tests and array
 ## Outcome
 Probe `probes/t2366-sort-lifted-by-col` filled from excel-graph. SORT's lifted by_col elements are never empty
 (not SORTBY's `ArrayFirst`; `.array()` kept); arrays.md and the tests cite it. Four probe cells fail (a TRUE by_col element
-past the first column with sort_index 1 is `#VALUE!` in Excel): baselined, owned by T-2922. Eval delta: 8 of 12 probe cells pass; 4 new known failures.
+past the first column with sort_index 1 is `#VALUE!` in Excel): baselined, owned by T-2929. Eval delta: 8 of 12 probe cells pass; 4 new known failures.
