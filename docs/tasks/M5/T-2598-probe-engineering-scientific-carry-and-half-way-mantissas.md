@@ -34,4 +34,4 @@ unprobed. Fill through excel-graph.
 ## Outcome
 Probe `probes/t2598-engineering-scientific` (12 cells) filled through excel-graph. Ours already matches every cell, so
 no code change and no follow-up task; the rules are in number-formats.md (T-2598 bullet). Eval delta: +1 probe case,
-12 cells passing, no baseline change.
+12 cells passing, baseline gains one `C` line, no fixes or regressions.
