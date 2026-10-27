@@ -121,6 +121,6 @@ Most owned cells already passed on `main` (the error-sample-first order was buil
 one cell left that was this function's was `TTEST(IFERROR(#VALUE!,""),..,1,3)` (46ac3ef5e61583ca A344): T.TEST read a text
 sample as `#VALUE!`, now an array of one cell with no number (`#DIV/0!`), with unit tests for the four acceptance formulas.
 Two other owned cells stay failing for a cause outside T.TEST: 44a8841352dc48e9 A251 (`FORECAST.ETS.SEASONALITY` is
-`#N/IMPL!`, now listed in T-2424) and c2684066d8df263e A214 (`PIVOTBY` array2, ours 0.3720 against Excel's 0.3685; now T-2821).
+`#N/IMPL!`, now listed in T-2424) and c2684066d8df263e A214 (`PIVOTBY` array2, ours 0.3720 against Excel's 0.3685; now T-2854).
 
 A typed or computed boolean sample takes the same path as text (shared with COVARIANCE.P/.S) and is unprobed for T.TEST; statistics.md records it as UNVERIFIED.

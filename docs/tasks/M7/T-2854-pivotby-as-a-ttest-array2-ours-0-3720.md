@@ -1,5 +1,5 @@
 ---
-id: T-2821
+id: T-2854
 title: "PIVOTBY as a TTEST array2: ours 0.3720 against Excel's 0.3685 (gen-m9 c2684066d8df263e A214)"
 milestone: M7
 lane: functions-lookup
