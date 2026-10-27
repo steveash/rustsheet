@@ -193,14 +193,15 @@ const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
 /// prices; YIELD's Newton, which has no bisection since T-2391, at most 100 steps of a price and a
 /// slope, so the shared charge is an upper bound for it),
 /// each a sum over up to 32,400 quarterly coupons (0.55 ms at the calendar's longest schedule,
-/// release build). That bound is about 0.23 s an element, so a lifted call runs at most 2^27 /
-/// 2^24 = 8 such elements, about 1.8 s at the bound; the slowest inputs found take 54 ms an
-/// element (`YIELD(1,2958465,0.05,1E300,100,4,1)`, about 90 prices: 16 elements took 0.94 s).
-/// The walk and every price sum are as long as the schedule, so a shorter one is charged in
-/// proportion to its coupon count plus one (`ValueWork::CouponWalks`, T-1869): a 10-year
-/// semiannual YIELD 10,873 units, so a lift of it runs up to 12,344 elements.
+/// release build). Near the discount power's overflow (a price of 1E-100) a price term costs
+/// about 340 ns, not 17 ns, so the weight is fitted to those inputs: one call at the cap took at
+/// most 4.3 s (161 elements of `YIELD(43831,80355,0.05,1E-100,100,4)`; 89 of the ODDFYIELD over
+/// 180 years, 4.2 s; T-2879), and a lift runs at most 2^27 / 2^26 = 2 elements at the longest
+/// schedule. The walk and every price sum are as long as the schedule, so a shorter one is
+/// charged in proportion to its coupon count plus one (`ValueWork::CouponWalks`, T-1869): a
+/// 10-year semiannual YIELD 43,501 units, so a lift of it runs up to 3,085 elements.
 /// docs/excel-semantics/financial.md "Yield and odd-coupon work cap" (a DEVIATION).
-const YIELD_SOLVER_WEIGHT: u32 = 1 << 24;
+const YIELD_SOLVER_WEIGHT: u32 = 1 << 26;
 /// `YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])`: one pass, the walk
 /// from the maturity back to the settlement and the solver's price sums over that schedule.
 const YIELD: ArgKinds = ArgKinds::fixed(
@@ -213,7 +214,8 @@ const YIELD: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 1,
         weight: YIELD_SOLVER_WEIGHT,
-        reads_all_first: false,
+        // `Model::bond_args` reads all seven arguments before `CouponSchedule::new` (T-2879).
+        reads_all_first: true,
     }),
 );
 /// `ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency,
@@ -302,9 +304,9 @@ const CUMULATIVE: ArgKinds = ArgKinds::fixed(
 const AMORLINC_WEIGHT: u32 = 1 << 9;
 /// What one AMORDEGRC element is charged unless refused before its walk (`ValueWork::Amortization`,
 /// T-2840): at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods walked one by one, then a closed
-/// form, about 4 ms an element in a release build (512 elements of `AMORDEGRC(1E15,..,1,5E6,
-/// 1E-7,1)`, whose walk takes no shortcut, took 2.06 s). 2^18 units run at most 512 elements,
-/// about 2 s.
+/// form, about 7.6 ms an element in a release build (512 elements of `AMORDEGRC(1E15,..,1,5E6,
+/// 1E-7,1)`, whose walk takes no shortcut, took 3.9 s since each subtraction is rounded twice,
+/// T-2849; 2.06 s before). 2^18 units run at most 512 elements, about 3.9 s.
 const AMORDEGRC_WEIGHT: u32 = 1 << 18;
 /// `AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
 const AMORLINC: ArgKinds = ArgKinds::fixed(
