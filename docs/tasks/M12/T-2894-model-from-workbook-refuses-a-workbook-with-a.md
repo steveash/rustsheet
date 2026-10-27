@@ -25,17 +25,19 @@ SPEC-0026 decision 3 (docs/specs/SPEC-0026-python-legacy-surface.md). Directive 
 `get_style` (styles.rs) also indexes `fills`, `fonts` and `borders` unchecked.
 Check, in one pass over the workbook, every index a later read trusts: cell, row and column style indices against
 `cell_xfs`; each `cell_xfs` entry's font, fill, border and number-format ids; shared-string indices; shared-formula
-indices per sheet; row and column ranges; sheet ids in defined names and the selected sheet; CF dxf ids. List the
+indices per sheet; row and column ranges; sheet ids in defined names and the selected sheet; CF dxf ids; decoded counts and dimensions against the grid limits. List the
 invariants in a doc comment on the validator, so the fuzz target (T-2895) finds what it misses.
 
 ## Acceptance criteria
 - [ ] The two reproductions above are unit tests that get `Err` from `Model::from_workbook` (no panic).
 - [ ] One test per other invariant checked (a dangling font, fill, border, shared-string, sheet index...).
-- [ ] Every workbook the engine writes still loads: the xlsx/icalc round-trip tests and the eval suites are unchanged.
+- [ ] Every workbook the engine writes or imports still loads: the xlsx/icalc round-trip tests, the xlsx test corpus
+      (crates/rustsheet-xlsx/tests) and the eval suites are unchanged.
+- [ ] Decoded counts and dimensions past the grid limits are refused before anything is allocated from them.
 - [ ] The check is linear in the workbook's size.
-- [ ] `make check` green; reviewers approve.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Diffs (`apply_external_diffs`, T-2896).
-- The xlsx importer, which builds its own workbook (fuzzed by fuzz/fuzz_targets/xlsx_import.rs).
+- Changes to the xlsx importer itself. Its workbooks pass through the same check (`rustsheet_xlsx::import` ends in
+  `Model::from_workbook`), so a check failure there surfaces as the importer's typed `XlsxError::Workbook`.

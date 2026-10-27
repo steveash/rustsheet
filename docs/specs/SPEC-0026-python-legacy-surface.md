@@ -39,6 +39,9 @@ The legacy surface breaks directive 5 (untrusted input never reaches a panic) in
 
 The legacy classes also skip what the facade enforces at load (`LoadOptions`: the read-cell cap `max_read_cells`, typed
 errors, and the per-workbook clock of SPEC-0008 at construction). Their xlsx loaders do go through the fuzzed importer.
+This gap is accepted until the legacy module is removed at the v1 freeze: `rustsheet.legacy` is an explicit,
+deprecated opt-in, its import warning says it skips the facade's load limits, and the supported path
+(`Workbook.open`/`from_bytes`) has them.
 
 ## Goals / non-goals
 Goals:
@@ -62,15 +65,16 @@ None: this spec changes no calculation. The facade's obligations stay as SPEC-00
 
 ## Design
 
-### 1. Are icalc/bitcode bytes and external diffs untrusted? Yes, both.
-Directive 5 makes workbooks untrusted, and an icalc file or a bitcode buffer is a workbook in another encoding. A Python
-caller cannot tell an engine-written buffer from a crafted one any better than an xlsx file from a crafted one, and the
-binding has no integrity check (no MAC, no version guard beyond bitcode's own framing). A diff list comes from a peer
-over a channel the engine does not control (the collaboration mechanism exchanges diffs between users' models,
-docs/examples/collaboration.py), so it is as untrusted as a workbook. Neither may reach a panic. The binding resolves this by not accepting such bytes (decision 2). The engine
-resolves it by validating them (decisions 3 and 4), because Rust callers keep the decoders.
+### Decision 1. Are icalc/bitcode bytes and external diffs untrusted? Yes, both.
+Directive 5 makes workbooks untrusted, and an icalc file or a bitcode buffer is a workbook in another encoding. A
+Python caller cannot tell an engine-written buffer from a crafted one any better than an xlsx file from a crafted one,
+and the binding has no integrity check (no MAC, no version guard beyond bitcode's own framing). A diff list comes from
+a peer over a channel the engine does not control (the collaboration mechanism exchanges diffs between users' models,
+docs/examples/collaboration.py), so it is as untrusted as a workbook. Neither may reach a panic. The binding resolves
+this by not accepting such bytes (decision 2). The engine resolves it by validating them (decisions 3 and 4), because
+Rust callers keep the decoders.
 
-### 2. Symbol table
+### Decision 2. Symbol table
 Every name `rustsheet/__init__.py` exports, plus the legacy methods that take bytes or panic:
 
 | symbol | decision | reason | task |
@@ -82,7 +86,7 @@ Every name `rustsheet/__init__.py` exports, plus the legacy methods that take by
 | `load_from_bytes`, `create_user_model_from_bytes`, `UserModel.from_bytes` | remove | decode bitcode into an unchecked `Model` (R1, R2); the facade reads xlsx bytes (`Workbook.from_bytes`) | T-2897 |
 | `load_from_icalc`, `create_user_model_from_icalc`, `UserModel.from_icalc` | remove | same decoder over a file | T-2897 |
 | `Model.save_to_icalc`, `Model.to_bytes`, `UserModel.save_to_icalc`, `UserModel.to_bytes` | remove | writers with no reader left in the package; xlsx is the exchange format | T-2897 |
-| `UserModel.apply_external_diffs`, `UserModel.flush_send_queue` | remove | peer bytes applied unchecked; collaboration is the web UI layer's, not the package's (SPEC-0001) | T-2897 |
+| `UserModel.apply_external_diffs`, `UserModel.flush_send_queue` | remove | peer bytes applied unchecked; collaboration belongs to the `UserModel` UI layer, which SPEC-0001 keeps out of the facade | T-2897 |
 | `test_panic`, `Model.test_panic` | remove | a shipped panic that no test calls; PyO3's panic translation needs no test of ours | T-2897 |
 | `Model`, `create`, `load_from_xlsx` | move to `rustsheet.legacy` (deprecated) | the raw API carries features the facade lacks (table below); its xlsx loader is the fuzzed importer | T-2898 |
 | `UserModel`, `create_user_model`, `create_user_model_from_xlsx` | move to `rustsheet.legacy` (deprecated) | same, plus undo/redo, CF, clipboard and named styles | T-2898 |
@@ -96,7 +100,7 @@ workbook bytes. Their arguments are untrusted too. They reach the engine's ordin
 `Err` for a bad sheet index. They are not in this spec's scope beyond that note: they go with the classes at the v1
 freeze.
 
-### 3. Engine: `Model::from_workbook` validates (T-2894)
+### Decision 3. Engine: `Model::from_workbook` validates (T-2894)
 `Model::from_workbook` runs one linear pass over the decoded `Workbook` before it builds anything, and returns `Err` on:
 
 - a cell, row or column style index outside `styles.cell_xfs`;
@@ -106,6 +110,8 @@ freeze.
 - a row or column outside the grid;
 - a sheet id or index (defined names, the selected sheet, views) that names no sheet;
 - a CF dxf id outside `styles.dxfs`.
+- a decoded count or dimension (sheets, rows, columns, cells per row, shared strings) past the engine's grid limits,
+  checked before anything is allocated from it, so a crafted buffer cannot request a huge allocation.
 
 The validator's doc comment lists the invariants, so that what it misses is the fuzz target's to find. Because the
 check sits in `from_workbook`, it covers every decoder: `Model::from_bytes`, `UserModel::from_bytes`,
@@ -116,17 +122,17 @@ Alternative rejected: making every reader bounds-checked (`get` instead of `[]` 
 others). The readers are many and spread out, a missed one is still a panic, and the cost lands on every read instead
 of once per load.
 
-### 4. Engine: diffs are validated before any applies (T-2896)
+### Decision 4. Engine: diffs are validated before any applies (T-2896)
 `UserModel::apply_external_diffs` checks every decoded `Diff` against the model's current sheets, styles and grid
 before applying the first one, and returns `Err` with the model unchanged on any dangling index. It reuses T-2894's
 index checks. The Python package no longer calls it (decision 2), but the Rust API keeps it for the web UI layer.
 
-### 5. Fuzzing (T-2895)
+### Decision 5. Fuzzing (T-2895)
 A new target, fuzz/fuzz_targets/bitcode_workbook.rs, decodes arbitrary bytes through `Model::from_bytes` and, when the
 model loads, runs `evaluate()` and a few reads and edits. Its seed corpus is `to_bytes()` of small engine-written
 workbooks, because random bytes rarely decode. It joins the M12 exit criterion "fuzzers run 24 h with no crash".
 
-### 6. What the facade must gain before the legacy module goes
+### Decision 6. What the facade must gain before the legacy module goes
 The legacy module is removed at the API v1 freeze (M12). Each feature it carries is either moved to an M12 facade
 task first or dropped:
 
@@ -149,7 +155,7 @@ task first or dropped:
 The "move" rows become M12 api tasks when the legacy module's removal is scheduled. This spec does not file them
 because each depends on the Python facade's API review at the v1 freeze.
 
-### 7. Deprecation path
+### Decision 7. Deprecation path
 The package is pre-v1 (0.1.0), so breaking changes are allowed:
 
 - **T-2897** removes the byte loaders, the diff methods and `test_panic` with no warning release. A security fix

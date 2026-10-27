@@ -28,7 +28,6 @@ load panics: flush a real send queue, change one index in the bytes, apply. The 
 - [ ] A crafted diff list with a dangling style index and one with a dangling sheet index each get `Err`, with no panic
       and the model unchanged; the existing diff tests still pass.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - A fuzz target for diffs (file one if this task finds more than the shapes above).

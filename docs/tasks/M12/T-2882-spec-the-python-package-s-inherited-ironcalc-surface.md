@@ -87,4 +87,6 @@ SPEC-0026 (docs/specs/SPEC-0026-python-legacy-surface.md) decides the Python leg
 - The engine validates every decoded workbook in `Model::from_workbook`, with R1 and R2 as tests (T-2894), and validates diffs before applying any (T-2896).
 - A `bitcode_workbook` fuzz target covers the decoder (T-2895).
 
-The spec's feature table lists, for each legacy feature, whether it moves to the facade or is dropped at v1. api-design.md "Phasing" points to the spec. No code changes; eval delta none.
+The spec's feature table lists, for each legacy feature, whether it moves to the facade or is dropped at v1. api-design.md "Phasing" points to the spec. The feature table's "move" rows (expose `move_sheet`, row/column
+insert and delete, hidden rows, number formats and defined names in the Python facade) are deliberately not filed yet:
+they depend on the Python facade's API review at the v1 freeze (SPEC-0026 decision 6). No code changes; eval delta none.

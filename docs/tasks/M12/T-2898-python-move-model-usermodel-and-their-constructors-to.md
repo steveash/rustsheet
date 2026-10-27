@@ -15,10 +15,10 @@ spec: docs/specs/SPEC-0026-python-legacy-surface.md
 `import rustsheet` exports only the facade (`Workbook`, `Transaction`, `Formula`, `XlError`, the errors, `open`) and
 the pure helpers. `Model`, `UserModel`, `CellType`, `create`, `create_user_model`, `load_from_xlsx` and
 `create_user_model_from_xlsx` move to `rustsheet.legacy`; importing it raises a `DeprecationWarning`, which says they
-go at the API v1 freeze. The README describes the facade.
+go at the API v1 freeze and skip the facade's load limits. The README describes the facade.
 
 ## Context
-SPEC-0026 decisions 1, 3 and 5. The facade lacks what most legacy tests use (styles, undo/redo, CF, clipboard, links,
+SPEC-0026 decisions 2, 6 and 7. The facade lacks what most legacy tests use (styles, undo/redo, CF, clipboard, links,
 named styles, frozen panes, row and column sizes), so these classes stay until each feature is moved to the facade or
 dropped (SPEC-0026's feature table). Code: bindings/python/python/rustsheet/__init__.py, a new
 bindings/python/python/rustsheet/legacy.py that re-exports from `rustsheet._rustsheet`, and _ironcalc.pyi (rename it
@@ -32,7 +32,6 @@ IronCalc's ("pip install ironcalc"): rewrite it around `rustsheet.Workbook`, wit
 - [ ] `import rustsheet.legacy` raises a `DeprecationWarning`, and every moved symbol is importable from it.
 - [ ] The README names neither IronCalc nor `pip install ironcalc`, and its quick start is the facade.
 - [ ] `make check` green (python job included); reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Removing the legacy classes (at the API v1 freeze, after SPEC-0026's feature table is cleared).
