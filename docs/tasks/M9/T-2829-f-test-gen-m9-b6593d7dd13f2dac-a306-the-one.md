@@ -64,6 +64,13 @@ it displays ...021, so it is visibly off.
     (-8.9E-15 / -1.8E-15 / +2.7E-15), `GL(a) + algdiv(a, b)` (+1.8E-15 / -1.8E-15 / -0.9E-15), and TOMS's
     reduction (0 / 0 / 0). Since -1.4E-15 is below one ulp of a stored ln B, look at the series s and EXP of the
     extended z too.
+- **Probe probes/t2829-ftest-tail-over-b (excel-graph, 2026-10-27)**: `2*F.DIST.RT(1E+12,df1,df2)`, with Excel's
+  values compared to `f_test_bratio_p(df2/total, df1·f/total, df2/2, df1/2)` (Excel - ours, relative; ulps):
+  - a = 2.5: b = 8.5, 9, 10, 11, 12 and 13 are bit-exact; b = 9.5, 10.5, 11.5 and 15 are 3-4 ulp low (about
+    -6E-16 to -8E-16); b = 19.5 is +2 ulp. Integer b is exact here, and half-integer b is not.
+  - a = 6: b = 8.5 +11, 9 +3, 9.5 -22, 10 -10, 10.5 +1, 11 +9, 11.5 **-143 (-2.3E-14)**, 12 -7, 13 +9, 15 +5,
+    19.5 +7. a = 6, b = 11.5 stands out here too, on another x. Check what is special at that pair (TOMS's
+    reduction, the L140 or bgrat dispatch at a0 = 6 with b0 = 11.5, or half_integer_beta's product).
 - Next ideas: (1) A306's data hold 123456789.123: probe F.TEST on the same shapes with x placed so that
   fl(a·LN x) has a different residual, to tell whether Excel stores a·LN x here at all; (2) probe a = 6 against
   b = 11 and 11.5 with modest data to test a half-integer-b ln B form; (3) check whether Excel orients this point
