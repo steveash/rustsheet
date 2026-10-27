@@ -35,6 +35,9 @@ half the 2^28 formula budget), so the 2^26 rule cannot hold for any weight above
 per-call cap or raise the formula limit for this kind; charge it at weight 1 and fix the kernel weights that make a
 unit slow (T-2814) so the 10 s target holds; or relax the 2^26 margin for this kind only. Read the T-2803 branch's
 `area_budget.rs` (`VISIT_UNITS`, `spend_visits`) and the task's "Blocked because" section.
+T-2814 (2026-10-27) changed the RATE numbers above: a lifted RATE element is now charged 2^13 units (`RATE_WEIGHT`),
+not 200, about 2.4 s for one call at the 2^27 cap (16,384 elements), so the RATE time case reaches the per-call cap
+about 40x sooner and must be re-measured. YIELD and ODDFYIELD still take about 17 s at the cap (T-2879).
 
 ## Acceptance criteria
 - [ ] SPEC-0024 sections 1 and 4 state the rule for per-call capped work, with the measurements above, and the chosen
