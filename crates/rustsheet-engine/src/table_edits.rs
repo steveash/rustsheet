@@ -76,25 +76,41 @@ fn row_span(
 fn column_span((left, right): (i32, i32), at: i32, delta: i32) -> Span {
     if at > right {
         Span::Unchanged
-    } else if delta > 0 && at <= left && right <= LAST_COLUMN - delta {
-        Span::Changed(left + delta, right + delta)
-    } else if delta < 0 && at - delta - 1 < left {
+    } else if (delta > 0 && at <= left && right <= LAST_COLUMN - delta)
+        || (delta < 0 && at - delta - 1 < left)
+    {
         Span::Changed(left + delta, right + delta)
     } else {
         Span::Fallback
     }
 }
 
-/// The class of `table` under the edit `displace_data`, on its sheet: `None` for a fallback,
-/// otherwise its new reference when it changes (`Some(None)` when it does not).
-fn new_reference(table: &Table, displace_data: &DisplaceData) -> Option<Option<String>> {
+/// What a structural edit does to one table of the edited sheet.
+enum Follow {
+    /// The table cannot follow the edit.
+    Fallback,
+    /// The edit leaves the table where it is.
+    Unchanged,
+    /// The table moves, grows or shrinks to this reference.
+    Resized(String),
+}
+
+/// What the edit `displace_data`, on the sheet of `table`, does to it.
+fn follow(table: &Table, displace_data: &DisplaceData) -> Follow {
+    followed(table, displace_data).unwrap_or(Follow::Fallback)
+}
+
+/// [`follow`], with `None` for a fallback.
+fn followed(table: &Table, displace_data: &DisplaceData) -> Option<Follow> {
     let (left, top, right, bottom) = parse_range(&table.reference).ok()?;
     let header = i32::try_from(table.header_row_count).ok()?;
     let totals = i32::try_from(table.totals_row_count).ok()?;
     let (rows, columns) = match *displace_data {
         DisplaceData::Row { row, delta, .. } => {
-            let data = (top.checked_add(header)?, bottom.checked_sub(totals)?);
-            (row_span((top, bottom), data, row, delta), Span::Unchanged)
+            let data_first = top.checked_add(header)?;
+            let data_last = bottom.checked_sub(totals)?;
+            let rows = row_span((top, bottom), (data_first, data_last), row, delta);
+            (rows, Span::Unchanged)
         }
         DisplaceData::Column { column, delta, .. } => {
             (Span::Unchanged, column_span((left, right), column, delta))
@@ -103,12 +119,12 @@ fn new_reference(table: &Table, displace_data: &DisplaceData) -> Option<Option<S
     };
     let ((top, bottom), (left, right)) = match (rows, columns) {
         (Span::Fallback, _) | (_, Span::Fallback) => return None,
-        (Span::Unchanged, Span::Unchanged) => return Some(None),
+        (Span::Unchanged, Span::Unchanged) => return Some(Follow::Unchanged),
         (Span::Changed(top, bottom), _) => ((top, bottom), (left, right)),
         (_, Span::Changed(left, right)) => ((top, bottom), (left, right)),
     };
     let (first, last) = (number_to_column(left)?, number_to_column(right)?);
-    Some(Some(format!("{first}{top}:{last}{bottom}")))
+    Some(Follow::Resized(format!("{first}{top}:{last}{bottom}")))
 }
 
 impl Model {
@@ -144,13 +160,12 @@ impl Model {
             if !table.is_on_sheet(&sheet_name) {
                 continue;
             }
-            let Some(reference) = new_reference(table, displace_data) else {
-                continue;
-            };
-            edits.kept.push(name.to_lowercase());
-            if let Some(reference) = reference {
-                edits.resized.push((name.clone(), reference));
+            match follow(table, displace_data) {
+                Follow::Fallback => continue,
+                Follow::Unchanged => {}
+                Follow::Resized(reference) => edits.resized.push((name.clone(), reference)),
             }
+            edits.kept.push(name.to_lowercase());
         }
         edits
     }
