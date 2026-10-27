@@ -347,7 +347,13 @@ impl Parser {
             if table_name.to_lowercase() == name_lower {
                 // A bare table name is its data area, like `Table[]` (gen-m8b specials
                 // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(name, None, None, true);
+                return self.structured_reference_operand(
+                    name,
+                    None,
+                    None,
+                    token::TableSpacing::default(),
+                    true,
+                );
             }
         }
         // xlpm: Excel Lambda Parameter
@@ -669,12 +675,14 @@ impl Parser {
         table_name: String,
         specifier: Option<token::TableSpecifier>,
         table_reference: Option<TableReference>,
+        spacing: token::TableSpacing,
         bare: bool,
     ) -> Node {
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
+            spacing,
             bare,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);

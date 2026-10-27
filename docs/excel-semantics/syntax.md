@@ -403,9 +403,15 @@ agree):
   Ours: the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
 Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
 (I1:I13). Each refused formula was entered alone against the same case.
-Ours: the runs SPEC-0023 keeps are in the entry above; a run beside a missing argument is T-2944, and
-structured-reference whitespace is unimplemented (T-2801).
+Ours: the runs SPEC-0023 keeps are in the entry above; a run beside a missing argument is T-2944. Inside a structured
+reference (T-2801) the lexer keeps the runs after the outer `[` and before the outer `]` as typed and whether any
+whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. Two choices are ours, not
+probed: a run around a lone specifier keeps the outer brackets it was typed in (`T[ [#Data] ]` prints as typed), and a
+stored `T[ Col ]`, padded on both sides, reads back as column `Col` with its padding (so our own export round-trips).
+One-sided `T[ Col]` and `T[Col ]`, and padded `#` or `@` starts (`T[ #Data ]`), read as before, as a column whose
+name has the spaces. T-2962 probes these choices.
 Status: VERIFIED (excel-graph)
+Implemented in: expressions/lexer/structured_references.rs, expressions/parser/structured_reference.rs (`text`)
 Tasks: T-2786, T-2944, T-2800, T-2801, T-2955, T-2956, T-2957, T-2958
 
 ## FORMULATEXT keeps every written parenthesis

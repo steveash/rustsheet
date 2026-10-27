@@ -13,11 +13,14 @@ each probe case that fails with no cell, that no open task of that milestone nam
 not 0.
 
 A task owns a cell when its front matter has the milestone and an open status, and its text names
-the case's file stem (the last path segment of the case id less `.case.json`: a gen hash, an
-xlsx file name, a probe name; with or without that suffix) and either the cell's A1 name as a whole
-word, or a colon span (`A5:D5`) holding it on a line that names the stem, or the stem on a line
-with no A1-shaped token (a task that names only the case owns all of it). Hyphen spans
-(`D49-D65`) name their ends only (decision 0136). The ironcalc-calc
+the case (`case_names`): by its file stem (the last path segment of the case id less `.case.json`:
+a gen hash, an xlsx file name, a probe name; with or without that suffix) when no other case of the
+report has that stem, else only by a longer suffix of the case id that is unique in the report
+(`pv26_011/golden.xlsx`, `t2436/<hash>`, `gen-m9/<hash>`) or by its directory below the suite when
+no other case of the report is in a directory of that name (`pv26_011`; decision 0138), and
+either the cell's A1 name as a whole word, or a colon span (`A5:D5`) holding it on a line that
+names the case, or the case on a line with no A1-shaped token (a task that names only the case
+owns all of it). Hyphen spans (`D49-D65`) name their ends only (decision 0136). The ironcalc-calc
 exceptions are the row's `excepted` cells, which `make eval` takes from
 eval/milestones/exit-exceptions.tsv.
 
@@ -33,6 +36,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -65,12 +69,31 @@ class ExitCell:
     formula: str
 
     @property
-    def stem(self) -> str:
-        return self.case.rsplit("/", 1)[-1].removesuffix(SPEC_SUFFIX)
-
-    @property
     def a1(self) -> str | None:
         return None if self.key == WHOLE_CASE else self.key.rsplit("!", 1)[-1]
+
+
+def case_names(cases: list[str]) -> dict[str, tuple[str, ...]]:
+    """Each case id → the names a task may call it by (decision 0138). A stem that one case has
+    names that case. A stem that several cases share (every calipers `golden.xlsx`, a gen-m9
+    hash rerun as `probes/t2436/<hash>`) names none of them: such a case is named by each suffix
+    of its id, of two segments or more, that no other case has, and by its directory (below the
+    suite, the id's first segment) when no other case is in a directory of that name."""
+    ids = sorted(set(cases))
+    parts = {c: c.removesuffix(SPEC_SUFFIX).split("/") for c in ids}
+    stems = Counter(p[-1] for p in parts.values())
+    suffixes = Counter("/".join(p[k:]) for p in parts.values() for k in range(len(p) - 1))
+    dirs = Counter(p[-2] for p in parts.values() if len(p) > 2)
+    out: dict[str, tuple[str, ...]] = {}
+    for c, p in parts.items():
+        if stems[p[-1]] == 1:
+            out[c] = (p[-1],)
+            continue
+        found = ["/".join(p[k:]) for k in range(len(p) - 1) if suffixes["/".join(p[k:])] == 1]
+        if len(p) > 2 and dirs[p[-2]] == 1:
+            found.append(p[-2])
+        out[c] = tuple(found)
+    return out
 
 
 def failing_cells(report: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
@@ -161,14 +184,17 @@ A1_SPAN = re.compile(rf"(?<!{A1_WORD}){A1_PART}:{A1_PART}(?!\w)")
 A1_SPLIT = re.compile(A1_PART)
 
 
-def names_stem(text: str, stem: str) -> bool:
-    """Whether `text` names the case `stem`, bare or as `<stem>.case.json` (decision 0136)."""
-    pattern = rf"(?<!{STEM_WORD}){re.escape(stem)}(?:{re.escape(SPEC_SUFFIX)})?(?!{STEM_WORD})"
-    return re.search(pattern, text) is not None
+def names_case(text: str, names: tuple[str, ...]) -> bool:
+    """Whether `text` holds one of a case's `names` (`case_names`), bare or followed by
+    `.case.json` (decision 0136), bounded like a file name."""
+    return any(
+        re.search(rf"(?<!{STEM_WORD}){re.escape(n)}(?:{re.escape(SPEC_SUFFIX)})?(?!{STEM_WORD})", text)
+        for n in names
+    )
 
 
-def names_in_span(text: str, stem: str, a1: str) -> bool:
-    """Whether a colon span on a line of `text` that names `stem` holds the cell `a1`. Per line,
+def names_in_span(text: str, names: tuple[str, ...], a1: str) -> bool:
+    """Whether a colon span on a line of `text` that names the case holds the cell `a1`. Per line,
     unlike a single A1 name, because tasks quote formulas whose ranges (`Data!B6:C10`) are not
     cells they own."""
     m = A1_SPLIT.fullmatch(a1)
@@ -176,7 +202,7 @@ def names_in_span(text: str, stem: str, a1: str) -> bool:
         return False
     col, row = column_number(m[1]), int(m[2])
     for line in text.splitlines():
-        if not names_stem(line, stem):
+        if not names_case(line, names):
             continue
         for s in A1_SPAN.finditer(line):
             c1, c2 = sorted((column_number(s[1]), column_number(s[3])))
@@ -186,32 +212,39 @@ def names_in_span(text: str, stem: str, a1: str) -> bool:
     return False
 
 
-def names_whole_case(text: str, stem: str) -> bool:
-    """Whether a line of `text` names `stem` and no cell: a task that lists cells beside a case
+def names_whole_case(text: str, names: tuple[str, ...]) -> bool:
+    """Whether a line of `text` names the case and no cell: a task that lists cells beside a case
     owns only those, even when they have since passed and left the report."""
-    return any(names_stem(line, stem) and not A1_TOKEN.search(line) for line in text.splitlines())
+    return any(names_case(line, names) and not A1_TOKEN.search(line) for line in text.splitlines())
 
 
-def owned(cell: ExitCell, texts: list[str]) -> bool:
-    """Whether one of `texts` owns `cell`."""
+def owned(cell: ExitCell, texts: list[str], called: tuple[str, ...]) -> bool:
+    """Whether one of `texts` owns `cell`, a case called by `called`."""
     for text in texts:
-        if not names_stem(text, cell.stem):
+        if not names_case(text, called):
             continue
-        if cell.a1 is not None and (names(text, cell.a1, A1_WORD) or names_in_span(text, cell.stem, cell.a1)):
+        if cell.a1 is not None and (names(text, cell.a1, A1_WORD) or names_in_span(text, called, cell.a1)):
             return True
-        if names_whole_case(text, cell.stem):
+        if names_whole_case(text, called):
             return True
     return False
+
+
+def report_case_names(report: dict[str, Any], cells: list[ExitCell]) -> dict[str, tuple[str, ...]]:
+    """`case_names` over every case of the report and of `cells`."""
+    ids = [str(c["id"]) for c in report.get("cases") or []]
+    return case_names(ids + [c.case for c in cells])
 
 
 def unowned(report: dict[str, Any], milestone: str, tasks_dir: Path) -> list[ExitCell]:
     cells = exit_cells(report, milestone)
     texts = open_task_texts(tasks_dir, milestone)
+    called = report_case_names(report, cells)
     seen: set[tuple[str, str, str]] = set()
     out = []
     for c in cells:
         ident = (c.criterion, c.case, c.key)
-        if ident not in seen and not owned(c, texts):
+        if ident not in seen and not owned(c, texts, called[c.case]):
             seen.add(ident)
             out.append(c)
     return out
@@ -227,7 +260,8 @@ def unowned_unattributed(report: dict[str, Any], tasks_dir: Path) -> list[ExitCe
         ExitCell(UNATTRIBUTED, str(c["case"]), str(c["cell"]), str(c.get("formula") or ""))
         for c in report.get("unattributed_off") or []
     ]
-    return [c for c in cells if not owned(c, texts)]
+    called = report_case_names(report, cells)
+    return [c for c in cells if not owned(c, texts, called[c.case])]
 
 
 def main(argv: list[str]) -> int:

@@ -2,7 +2,7 @@
 //! the area it resolves to (SPEC-0016).
 
 use super::super::lexer::{Lexer, LexerMode};
-use super::super::token::{TableReference, TableSpecifier, TokenType};
+use super::super::token::{TableReference, TableSpacing, TableSpecifier, TokenType};
 use crate::language::get_language;
 use crate::locale::get_locale;
 
@@ -16,6 +16,8 @@ pub struct StructuredReference {
     pub specifier: Option<TableSpecifier>,
     /// The column or column range, if any.
     pub table_reference: Option<TableReference>,
+    /// The whitespace kept inside the outer brackets (T-2801).
+    pub spacing: TableSpacing,
     /// A bare table name (`ROWS(Sales)`), or `Sales[]`, which the lexer reads as the bare name.
     pub bare: bool,
 }
@@ -56,16 +58,29 @@ fn specifier_text(specifier: &TableSpecifier) -> &'static str {
 /// `#This Row`: Excel's own file has `Table9[Totals '[']^&*@'#$,,<>]` (`calc_test_tables/tables.xlsx`
 /// Escape!E6).
 fn column_text(name: &str) -> String {
-    let mut text = String::with_capacity(name.len() + 2);
-    text.push('[');
+    format!("[{}]", escaped_column(name))
+}
+
+/// [`column_text`] without its brackets.
+fn escaped_column(name: &str) -> String {
+    let mut text = String::with_capacity(name.len());
     for (index, c) in name.chars().enumerate() {
         if matches!(c, '[' | ']' | '#' | '\'') || (c == '@' && index == 0) {
             text.push('\'');
         }
         text.push(c);
     }
-    text.push(']');
     text
+}
+
+/// Whether a single column prints in the bare form `T[Col]`: an empty name or one that starts
+/// with a space keeps its own brackets, since `T[]` is the bare name and the lexer skips the
+/// space, and so does one that ends with a space, as Excel stores it (`Table3[[the two ]]`,
+/// `calc_test_tables/tables.xlsx` Hidden!B6).
+fn prints_bare(column: &str) -> bool {
+    !column.is_empty()
+        && !column.starts_with(char::is_whitespace)
+        && !column.ends_with(char::is_whitespace)
 }
 
 fn table_reference_text(table_reference: &TableReference) -> String {
@@ -79,34 +94,45 @@ fn table_reference_text(table_reference: &TableReference) -> String {
 
 impl StructuredReference {
     /// The canonical long form: `T[[#Spec],[Col]]`, `T[[#Spec],[A]:[B]]`, `T[Col]`,
-    /// `T[[A]:[B]]`, `T[#Spec]`, `T[]`, or the bare name as written (SPEC-0016 "Printing").
+    /// `T[[A]:[B]]`, `T[#Spec]`, `T[]`, or the bare name as written (SPEC-0016 "Printing"), with
+    /// the whitespace Excel keeps inside the outer brackets: the runs after `[` and before `]` as
+    /// typed, and one space after the comma where any was typed. A single column in padded
+    /// brackets drops its own: `T[ [Col] ]` prints `T[ Col ]` (syntax.md "Whitespace beside a
+    /// missing argument is kept; a structured reference keeps some and normalizes the rest";
+    /// probes/t2786-whitespace-structured-refs-runs F4:F15, T-2801).
     pub(crate) fn text(&self) -> String {
         let name = &self.table_name;
         if self.bare {
             return name.clone();
         }
+        let TableSpacing {
+            open,
+            close,
+            comma_space,
+        } = &self.spacing;
+        let comma = if *comma_space { ", " } else { "," };
         match (&self.specifier, &self.table_reference) {
             (None, None) => format!("{name}[]"),
-            (Some(specifier), None) => match specifier {
-                TableSpecifier::HeadersData | TableSpecifier::DataTotals => {
-                    format!("{name}[{}]", specifier_text(specifier))
-                }
-                _ => format!("{name}{}", specifier_text(specifier)),
-            },
-            // `T[Col]`; an empty name or one that starts with a space keeps its own brackets,
-            // since `T[]` is the bare name and the lexer skips the space, and so does one that ends
-            // with a space, as Excel stores it (`Table3[[the two ]]`, calc_test_tables/tables.xlsx
-            // Hidden!B6).
-            (None, Some(TableReference::ColumnReference(column)))
-                if !column.is_empty()
-                    && !column.starts_with(char::is_whitespace)
-                    && !column.ends_with(char::is_whitespace) =>
+            // A specifier pair keeps its outer brackets, and so does a lone specifier typed with
+            // padding inside them (unprobed).
+            (Some(specifier), None)
+                if self.spacing.is_padded()
+                    || matches!(
+                        specifier,
+                        TableSpecifier::HeadersData | TableSpecifier::DataTotals
+                    ) =>
             {
-                format!("{name}{}", column_text(column))
+                format!("{name}[{open}{}{close}]", specifier_text(specifier))
             }
-            (None, Some(reference)) => format!("{name}[{}]", table_reference_text(reference)),
+            (Some(specifier), None) => format!("{name}{}", specifier_text(specifier)),
+            (None, Some(TableReference::ColumnReference(column))) if prints_bare(column) => {
+                format!("{name}[{open}{}{close}]", escaped_column(column))
+            }
+            (None, Some(reference)) => {
+                format!("{name}[{open}{}{close}]", table_reference_text(reference))
+            }
             (Some(specifier), Some(reference)) => format!(
-                "{name}[{},{}]",
+                "{name}[{open}{}{comma}{}{close}]",
                 specifier_text(specifier),
                 table_reference_text(reference)
             ),
