@@ -3,7 +3,7 @@ id: T-2527
 title: "RATE: the last-ulp misses of the secant model (f's evaluation), the root-0 #NUM! cell and a fitlab port of the scratch harness"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -37,14 +37,31 @@ the documented order 69/375 and FV's order 210/375; candidates in financial.md).
 Code: `compute_rate`, `rate_residual` (functions/financial/financial_util.rs).
 
 ## Acceptance criteria
-- [ ] The fit lab parses the nested `RATE(n,PMT(..),..)` cells and scores the T-2005 model and candidates on every
+- [x] The fit lab parses the nested `RATE(n,PMT(..),..)` cells and scores the T-2005 model and candidates on every
       literal RATE cell, with iterate hits.
-- [ ] Visible parity: fewer visibly-off RATE cells than the 117 above, with no new known-failure lines in any
+- [x] Visible parity: fewer visibly-off RATE cells than the 117 above, with no new known-failure lines in any
       baseline, or the unfitted ones documented in financial.md with the forms tried.
 - [x] A583's rule probed and implemented or documented (T-2689).
-- [ ] A278, A245 and A367 (regressed by T-2005) pass again or are documented with the forms tried.
-- [ ] Probe a guess whose residual is exactly 0 (ours runs the secant, the sign of the zero picking r1).
-- [ ] `make check` green; reviewers approve.
+- [x] A278, A245 and A367 (regressed by T-2005) pass again or are documented with the forms tried.
+- [x] Probe a guess whose residual is exactly 0 (ours runs the secant, the sign of the zero picking r1).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - PMT's own bits (T-1528 and the PMT tasks), IRR, YIELD.
+
+## Outcome
+- Fit lab `rate` (`uv run rustsheet-fitlab rate`): the sweep reads a nested call whose text is the whole formula
+  of a cell of the fit's new `calls` cases as Excel's value of that cell (`Fit.calls`, `sweep.call_values`), so
+  `RATE(n,PMT(..),..)` takes Excel's own PMT bits from probes-numeric/m9-fin-pmt (all 308 inner calls are
+  there). `rate_secant_candidates` ports the T-2005 model with traces; the fit scores 474 cells (errors included).
+- Finding: with Excel's PMT bits the secant is bit-exact on 474/474 when the residual's `+`, `*` and `/` are
+  Excel's twice-rounded operators, 472/474 with FV's once-rounded `annuity_factor` (A487 2,183 ulp, A218 157
+  ulp), 457-468 with the sum in another order; Excel's value is an iterate of the trace on 428/428 numeric
+  cells. `rate_residual` now uses the twice-rounded operators (financial.md "RATE is a secant on the FV residual").
+- The RATE cells still off are off by the engine's PMT, which differs from Excel on 176 of the 308 inner calls
+  (PMT's tasks, T-1528): against the engine's own PMT bits both residuals give 320/474 exact and 116 visibly off
+  (117 before T-2689's A583). A218, A278, A245 and A367 are among them, documented in financial.md.
+- Probe probes/rate-zero-residual-guess (12 cells, excel-graph): a guess with residual exactly 0 runs the secant
+  (`RATE(1,0,0,0)` is `#NUM!`, the flat secant, not 0.1); the model passes all 12.
+- Eval delta: gated baselines unchanged (0 fixed, 0 regressions; probes +1 case, 12 cells, all pass); visible
+  parity 3225 in-scope cells visibly off (unchanged). Follow-up: T-2922 (norm-s-inv onto `calls`).

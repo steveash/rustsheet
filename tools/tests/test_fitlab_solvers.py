@@ -21,6 +21,25 @@ def test_parse_arg_reads_array_literals_and_dates() -> None:
         parse_arg("DATE(2024,2,30)", "S", book)
 
 
+def test_parse_arg_reads_a_nested_call_from_the_calls_cases() -> None:
+    book = Workbook({}, {}, {"PMT(0.2,1,10000)": -12000.0})
+    assert parse_arg("PMT(0.2, 1, 10000)", "S", book) == -12000.0  # whitespace is not part of the key
+    with pytest.raises(UnparsedError):
+        parse_arg("PMT(0.2,2,10000)", "S", book)
+
+
+def test_rate_secant_needs_excel_operators_in_the_residual() -> None:
+    # m9-fin-irr-rate A218, RATE(1,PMT(0.2,1,10000,-500,1),10000,-500,1), with Excel's PMT
+    # (m9-fin-pmt A2): Excel 0.19999999999999138; FV's once-rounded residual is 157 ulp off (T-2527).
+    args: tuple[Arg, ...] = (1.0, -9583.333333333332, 10000.0, -500.0, 1.0)
+    assert solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(*args) == 0.19999999999999138
+    assert solvers.rate_secant(solvers.fv_residual())(*args) == 0.19999999999998702
+    with pytest.raises(solvers.NoResultError):  # residual 0 everywhere: the flat secant, not the guess
+        solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(1.0, 0.0, 0.0, 0.0)
+    with pytest.raises(solvers.ExcelError, match="guess"):
+        solvers.rate_secant(solvers.fv_residual())(1.0, -1.0, 1.0, 0.0, 0.0, -1.0)
+
+
 def test_day_counts_and_schedule() -> None:
     settle, maturity = datetime.date(2024, 3, 1), datetime.date(2024, 8, 31)
     assert solvers.days360(datetime.date(2023, 8, 31), settle, european=False) == 181
@@ -127,8 +146,17 @@ def test_irr_secant_on_a_two_flow_root() -> None:
 @pytest.mark.usefixtures("real_cases")
 def test_rate_results_are_rates() -> None:
     cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
-    assert len(cells) == 136
-    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 7
+    assert len(cells) == 474  # nested PMT included (T-2527), error cells too
+    assert sum(c.error is not None for c in cells) == 46
+    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 28
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_rate_secant_model_is_bit_exact_on_the_fit_set() -> None:
+    # financial.md "RATE is a secant on the FV residual" quotes this score (T-2527).
+    result = fit.run(registry()["rate"], engine=False, only=r"Excel operators, sum pv,pmt,fv$")
+    (s,) = result.scores
+    assert (s.exact, s.total) == (474, 474)
 
 
 def test_iterate_converges_or_reports_no_result() -> None:

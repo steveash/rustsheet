@@ -7,8 +7,10 @@ Arguments are numeric literals, TRUE/FALSE, string literals, array literals of t
 row-major), `DATE(y,m,d)` with integer literals (a 1900-system serial), references (`A1`, `$Z$1`,
 `Data!B2`, `D1:D10`) to constant cells of the case or to formula cells with an oracle value, and
 arithmetic over numeric literals (`0.05/12`, `1+26955297717044*2^-52`), which is evaluated with
-Excel's operator model (`arithmetic`). A cell whose arguments are anything else (another function
-call) is reported as unparsed. A pattern with one group is an argument list split at top-level
+Excel's operator model (`arithmetic`), and a nested call whose text is the whole formula of a cell
+of the fit's `calls` cases (`PMT(0.2,1,10000)` in `RATE(1,PMT(0.2,1,10000),10000)`), which is
+Excel's value of that cell: the outer kernel is then scored on Excel's own bits of the inner call.
+A cell whose arguments are anything else (another function call) is reported as unparsed. A pattern with one group is an argument list split at top-level
 commas; a pattern with several groups gives one argument per group that took part in the match.
 """
 
@@ -63,6 +65,7 @@ _MAX_RANGE_CELLS = 1_000_000
 _ARITH = re.compile(rf"\s*(?:(?P<num>{_UNSIGNED})|(?P<op>[-+*/^()]))")
 _MAX_EXACT_EXPONENT = 1100  # beyond the double range either way
 _MAX_NESTING = 50  # parentheses and unary signs: a bound on the parser's recursion (directive 5)
+_CALL = re.compile(r"=[A-Za-z][\w.]*\([^()]*\)")  # one call over literals: `=PMT(0.2,1,10000)`
 _DATE = re.compile(r"DATE\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", re.IGNORECASE)
 EPOCH = datetime.date(1899, 12, 30)  # serial 61 = 1900-03-01 (Excel's phantom 1900-02-29 is 60)
 
@@ -125,6 +128,7 @@ class Workbook:
 
     sheets: dict[str, dict[str, Any]]
     oracle: dict[str, dict[str, Any]]
+    calls: dict[str, float] = field(default_factory=dict)  # `call_key` -> Excel's value
 
     def value(self, sheet: str, address: str) -> float | bool | str | None:
         """A referenced cell's value: a constant from the case, or Excel's value of a formula."""
@@ -346,7 +350,32 @@ def parse_arg(text: str, sheet: str, book: Workbook) -> Arg:
             raise UnparsedError(msg)
         values = [book.value(name, xl_rowcol_to_cell(r, c)) for r in rows for c in cols]
         return values if m.group("last") else values[0]
+    if (call := book.calls.get(call_key(text))) is not None:
+        return call
     return arithmetic(text)
+
+
+def call_key(text: str) -> str:
+    """A nested call's lookup key: its text without whitespace (`PMT(0.2, 1, 10000)` and
+    `PMT(0.2,1,10000)` are one call)."""
+    return re.sub(r"\s+", "", text)
+
+
+def call_values(case_ids: list[str]) -> dict[str, float]:
+    """Excel's value of every cell of `case_ids` whose formula is one function call with a numeric
+    oracle value, keyed by `call_key` of the formula without its `=`."""
+    out: dict[str, float] = {}
+    for case_id in case_ids:
+        entry = case_entry(case_id)
+        book = load_workbook(Path(entry["path"]), Path(entry["sidecar"]))
+        for sheet, cells in book.sheets.items():
+            for address, raw in cells.items():
+                if not (isinstance(raw, str) and _CALL.fullmatch(raw)):
+                    continue
+                value = book.oracle.get(sheet, {}).get(address)
+                if isinstance(value, dict) and value.get("t") == "n":
+                    out[call_key(raw[1:])] = float(value["v"])
+    return out
 
 
 def case_entry(case_id: str) -> dict[str, Any]:
@@ -418,12 +447,21 @@ def select(
             sweep.cells.append(cell)
 
 
-def load_sweep(case_ids: list[str], pattern: str, where: Any = None, errors: bool = False) -> Sweep:
-    """The matching cells of every case in `case_ids` (`suite/name`)."""
+def load_sweep(
+    case_ids: list[str],
+    pattern: str,
+    where: Any = None,
+    errors: bool = False,
+    calls: list[str] | None = None,
+) -> Sweep:
+    """The matching cells of every case in `case_ids` (`suite/name`); a nested call in an argument
+    reads Excel's value of the same call from the `calls` cases (`call_values`)."""
     regex = re.compile(pattern)
     sweep = Sweep()
+    known = call_values(calls) if calls else {}
     for case_id in case_ids:
         entry = case_entry(case_id)
         book = load_workbook(Path(entry["path"]), Path(entry["sidecar"]))
+        book = Workbook(book.sheets, book.oracle, known)
         select(entry["id"], book, regex, sweep, where, errors=errors)
     return sweep
