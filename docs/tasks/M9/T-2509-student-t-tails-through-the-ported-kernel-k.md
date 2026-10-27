@@ -80,7 +80,7 @@ which the 2026-10-27 opus run's permissions refused. The code is done; nothing e
   gen-m9 0620505280d2ea6e A158 `T.DIST.2T(37.5,10)` and A273 `TDIST(2,3,2)`; 334f3dc9ca937f10 A171 (TDIST at df 6,
   1.7E-22); 3fb9cecf2c23169f A345 `T.DIST.2T(..,3)` (= TDIST(2,3,2)); 44a8841352dc48e9 A310 `TDIST(1.5,7,2)`;
   5389dd4d5b5739d2 A216 `TDIST(37.5,10,2)`; 5be29fa316931f05 A238 and cb61169f4c033d4b A160 `TDIST(2,3,1)`;
-  a2262ea466fcc142 A58 `T.DIST.2T(1E+5,8)`; eedd629f3d69fdda A261 `T.DIST.2T(1E+10,7)`. Follow-up ulp task: T-2927.
+  a2262ea466fcc142 A58 `T.DIST.2T(1E+5,8)`; eedd629f3d69fdda A261 `T.DIST.2T(1E+10,7)`. Follow-up ulp task: T-2930.
 - Still to check for condition 3 of the allowance: that at least one fixed cell was visibly off on main (compare
   `make eval` on main and on the branch).
 - Next step: `rustsheet-eval update-baseline --allow-regressions`, `rustsheet-eval evidence-floor --update`, commit
@@ -98,4 +98,4 @@ which the 2026-10-27 opus run's permissions refused. The code is done; nothing e
   visibly off 280 -> 5 (T.DIST.2T(100,2), (1E6,2), T.DIST.RT(1E6,2) at df 2; T.DIST.RT(5.4513,500) bgrat -21 ulp;
   T.DIST.RT(2.5,30) bup + bgrat); p1 part D visibly off 205 -> 10. Wrapper identities hold by construction
   (2T = 2L exactly, the upper side fl(1 - L)).
-- T.TEST's tail is unchanged (no evidence for its complement): T-2927.
+- T.TEST's tail is unchanged (no evidence for its complement): T-2930.

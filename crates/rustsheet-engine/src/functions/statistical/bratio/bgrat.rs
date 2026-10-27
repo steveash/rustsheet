@@ -31,8 +31,9 @@ const MAX_TERMS: usize = 30;
 /// TOMS bgrat's stop rule, |term| <= 15 eps (sum + l), with bratio's eps = 1e-15.
 const STOP_TOLERANCE: f64 = 15e-15;
 
-/// Past this z the prefactor e^-z leaves the double range; such points keep today's kernel.
-const MAX_Z: f64 = 700.0;
+/// Past this z the prefactor e^-z is past [`dd_exp`]'s double-double range (its tail word turns
+/// subnormal); such points, tails below about 1E-282, keep today's kernel.
+const MAX_Z: f64 = 650.0;
 
 /// 1/sqrt(pi) as a double-double (200-bit mpmath): bgrat's r = b z^b e^-z / Gamma(b + 1) is
 /// z^(1/2) e^-z / sqrt(pi) at b = 1/2.

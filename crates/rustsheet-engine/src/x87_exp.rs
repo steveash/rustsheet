@@ -598,9 +598,9 @@ const DD_EXP_TERMS: u32 = 11;
 /// Squarings that undo [`dd_exp`]'s argument halving (2^8 = 256).
 const DD_EXP_SQUARINGS: u32 = 8;
 
-/// e^a in double-double (about 2^-98 relative) for |a| <= 700: a = k ln 2 + r, e^(r/256) by its
-/// Taylor series, squared 8 times, times 2^k. Outside that range the head is past the normal
-/// range and the result is not meaningful; callers check first.
+/// e^a in double-double (about 2^-98 relative) for |a| <= 650: a = k ln 2 + r, e^(r/256) by its
+/// Taylor series, squared 8 times, times 2^k. Below -650 the tail word turns subnormal and loses
+/// bits, and from about 709 the head overflows; callers check first.
 pub(crate) fn dd_exp(a: (f64, f64)) -> (f64, f64) {
     let k = (a.0 / std::f64::consts::LN_2).round();
     let reduced = dd_add(a, dd_mul((-k, 0.0), (LN_2_HI, LN_2_LO)));
@@ -614,7 +614,7 @@ pub(crate) fn dd_exp(a: (f64, f64)) -> (f64, f64) {
     for _ in 0..DD_EXP_SQUARINGS {
         sum = dd_mul(sum, sum);
     }
-    // |k| <= 1010 for |a| <= 700; 2^k as a double is exact.
+    // |k| <= 938 for |a| <= 650; 2^k as a double is exact.
     let scale = power_of_two(k as i32);
     (sum.0 * scale, sum.1 * scale)
 }
