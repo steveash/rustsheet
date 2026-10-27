@@ -88,8 +88,9 @@ fn saka_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
 const HEBREW_EPOCH: i64 = -1_373_427;
 /// The day number of 1899-12-30, from which [`real_day`] counts.
 const DAY_NUMBER_1899_12_30: i64 = 693_594;
-/// The last serial whose Hebrew date Excel prints by the arithmetic calendar: 2238-11-07, 29
-/// Cheshvan 5999. Excel's dates drift from it from Kislev 5999 on (2238-12-01 is "5999-03-24",
+/// The last serial whose Hebrew date is modelled: 2238-11-07, 29 Cheshvan 5999. Excel's dates match
+/// the arithmetic calendar at every probed date to 2238-11-01 (A10); the days to 29 Cheshvan are
+/// extrapolated (a drift that starts there would not show before Kislev). Excel's dates drift from it from Kislev 5999 on (2238-12-01 is "5999-03-24",
 /// not 23; 2239-09-24 is "6000-01-01", not 5999-13-24) and are `#VALUE!` from some date between
 /// 4000-01-01 and 5000-01-01 to 9999-12-31 (probes/t2779-hebrew-saka-more A1:A35). Past it the
 /// date is `#VALUE!` here (TODO(T-2954)).

@@ -53,7 +53,7 @@ Hebrew-script names under Hebrew and Arabic LCIDs, `mmmmm` the whole Hebrew mont
 Hebrew month 13 with no locale ("" and U+0001), serial 60 `#VALUE!` even for time-only sections.
 Excel's Hebrew dates leave the arithmetic calendar from Kislev 5999 (2238-12) and are `#VALUE!` from
 between 4000 and 5000: ours is `#VALUE!` past 2238-11-07, follow-up T-2954. digits A, B, C, 14 `yy|b|bbbb|e`
-are Gregorian (probed). Known misses: bn-IN 445 (no table here, Excel gives the Latin Saka names) and
-`h:mm|yyyy-mm-dd`, whose second `mm` ours reads as minutes (t2779-hebrew-saka-more E7).
+are Gregorian (probed). Known misses: bn-IN 445 (no table here, Excel gives the Latin Saka names; T-2959) and
+`h:mm|yyyy-mm-dd`, whose second `mm` ours reads as minutes (t2779-hebrew-saka-more E7; T-2961).
 Eval: 146 baseline cells fixed (t1923-calendar-digits 129, text-locale-calendars 12, t1924 3, t2729 1,
 text-locale-name-tables 1); 23 of the 276 new probe cells fail (the post-2238 Hebrew dates, 445, E7).
