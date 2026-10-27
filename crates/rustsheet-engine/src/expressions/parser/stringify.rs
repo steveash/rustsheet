@@ -797,11 +797,7 @@ enum Binding {
 
 fn binding(node: &Node) -> Binding {
     // Whitespace binds as the operand it is written around.
-    let mut node = node;
-    while let Node::Spaced { child, .. } = node {
-        node = child;
-    }
-    match node {
+    match node.unwrap_spaced() {
         Node::CompareKind { .. } => Binding::Compare,
         Node::OpConcatenateKind { .. } => Binding::Concat,
         Node::OpSumKind { .. } => Binding::Sum,
