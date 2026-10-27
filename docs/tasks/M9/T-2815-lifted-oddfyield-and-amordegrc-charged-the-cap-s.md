@@ -3,7 +3,7 @@ id: T-2815
 title: "Lifted ODDFYIELD and AMORDEGRC charged the cap's bound: #ERROR! where Excel spills (gen-m9, 2 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
