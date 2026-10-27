@@ -3,7 +3,8 @@
 - **Status:** accepted (T-2712; architecture, quality and security reviewers approved); amended by T-2813
   (how per-call capped work is charged and calibrated: sections 1 and 4)
 - **Milestone / lane:** M7 / engine
-- **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps T-2806, T-2807
+- **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps
+  T-2806, T-2807; the visit caps' 5 s rule (T-2813 amendment) for YIELD and ODDFYIELD is T-2879
 
 ## Problem
 Each array is capped at 2^20 cells (arrays.md "Array results above 1,048,576 cells are #ERROR!").
@@ -120,11 +121,13 @@ AGGREGATE visits, GROUPBY/PIVOTBY's visits, all counted against `MAX_LIFTED_CELL
 charged to the formula at **1 unit per visit or kernel unit**, everywhere, inside a LAMBDA or not.
 The time a call's units take is not the formula budget's to fit: it belongs to the call's own cap.
 SPEC-0011's security rule for kernel work makes each kernel weight a measure of time (T-2814 fitted
-RATE's to about 18 ns a unit at the cap). Since `MAX_FORMULA_WORK` is twice `MAX_LIFTED_CELL_VISITS`,
-a formula spends at most two calls' worth of capped work. So this kind's 10 s target (section 4)
-holds exactly when **every visit cap's worst case, one call at its cap, runs within 5 s**. That is a
-requirement on the kernel weights (SPEC-0011), and a weight that breaks it is a perf task against
-that kernel, not a change to this budget.
+RATE's to about 18 ns a unit at the cap). Since `MAX_FORMULA_WORK` is twice
+`MAX_LIFTED_CELL_VISITS`, a formula spends at most two caps' worth of capped work (`spend_work`
+refuses a charge larger than what is left, so two calls exactly at the cap plus any node already
+exceed it). So this kind's 10 s target (section 4) holds exactly when **every visit cap's worst
+case, one call at its cap, runs within 5 s**. That is a requirement on the kernel weights
+(SPEC-0011), and a weight that breaks it is a perf task against that kernel, not a change to this
+budget.
 
 Why not the alternatives T-2813 weighed:
 - *A weight above 1.* An eval cell may legitimately spend most of one cap on one call
@@ -135,7 +138,8 @@ Why not the alternatives T-2813 weighed:
   non-LAMBDA product open: a formula of a few hundred lifted calls side by side
   (`SUM(RATE(..),RATE(..),..)` within 8,192 characters) multiplies the per-call cap by the call
   count with no helper involved. Charging everywhere bounds that too, at the cost of refusing a
-  formula with three or more calls each near its cap; no eval formula has even two.
+  formula with two calls each near its cap (one call at its cap plus a quarter-limit of other work
+  always computes, section 4); no eval formula has even two such calls.
 - *Lowering the per-call cap or raising the formula limit for this kind.* The first refuses the eval
   cells above; the second raises the time every other kind may take, and the limit stays one
   number (section 4).
@@ -252,18 +256,19 @@ visit caps' charges, which have a margin of their own:
   stay at or below one cap, `MAX_LIFTED_CELL_VISITS` (2^27). Together with the line above, every
   eval formula then stays below 2^26 + 2^27, three quarters of the limit, so a formula of one call
   at its cap plus a quarter-limit of other work always computes, and the formula budget refuses no
-  single call that its own cap allows.
+  single call that its own cap allows. A second call near its cap in the same formula may be
+  refused.
 - *Upper, visit caps:* each visit cap's worst case, one call at its cap, runs within 5 s (release
   build), so two such calls, the most the limit allows, stop within 10 s ("Per-call capped work" in
   section 1).
 
 Measured for T-2813 (release build, 2026-10-27, the T-2803 branch with origin/main merged in, local
-instrumentation of `with_area_budget`, not committed): `rustsheet-eval check` has 0 regressions
-and no formula past the limit. The heaviest eval formula spends 118,754,196 units, 118,751,450 of them visit-cap charges (below 2^27) and 2,746
-other units (a Calc!A204 cell; the 124,806,376 of T-2803 predates the kernel charges T-2814 and
-T-2815 changed). The heaviest outside the visit caps spends 8,388,620 units, none of them visit-cap
-charges (2^23, below 2^26). Both lower constraints hold. Time to the limit, each a
-`SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(<call>))))`:
+instrumentation of `with_area_budget`, not committed): `rustsheet-eval check` has 0 regressions and
+no formula past the limit. The heaviest eval formula spends 118,754,196 units, 118,751,450 of them
+visit-cap charges (below 2^27) and 2,746 other units (a Calc!A204 cell; the 124,806,376 of T-2803
+predates the kernel charges T-2814 and T-2815 changed). The heaviest outside the visit caps spends
+8,388,620 units, none of them visit-cap charges (2^23, below 2^26). Both lower constraints hold.
+Time to the limit, each a `SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(<call>))))`:
 
 | `<call>` | one call alone | to the limit |
 |---|---|---|
@@ -276,7 +281,14 @@ charges (2^23, below 2^26). Both lower constraints hold. Time to the limit, each
 The YIELD and ODDFYIELD shapes miss the 5 s rule today, as one call of theirs at the cap takes
 about 17 s; T-2879 refits their weight (about 4.3 s at 2^26, measured by T-2814) and owns the gap.
 T-2803 does not wait for it: without the budget the same MAKEARRAY never stops, and with it it stops
-after two calls.
+within two caps' worth of calls. T-2803 re-measures these figures on its own head and records them
+in the DEVIATION entry (section 5).
+Until T-2879 merges, the DEVIATION entry names that gap (a MAKEARRAY of YIELD takes about 28 s to
+the limit) and T-2879. The other kernels near the cap in eval (CHISQ.DIST, GAMMAINV, POISSON.DIST,
+ODDLPRICE) and the *IF(S), AGGREGATE and GROUPBY/PIVOTBY visits were not timed here: SPEC-0011's
+rule fits each kernel weight to time, and T-2814 timed IRR, XIRR, ODDLYIELD and PRICE within it;
+T-2803 times one call at the cap for each of these families when it resumes and files a perf task
+for any over 5 s. A formula refused for two near-cap calls is covered by the same DEVIATION entry.
 
 Worked examples at 2^28:
 
