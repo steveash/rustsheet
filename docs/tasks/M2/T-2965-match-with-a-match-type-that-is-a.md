@@ -1,5 +1,5 @@
 ---
-id: T-2962
+id: T-2965
 title: "MATCH with a match_type that is a reference to a #N/A cell gives #REF! in Excel (probes/m2-argument-kind-gaps Calc!A25)"
 milestone: M2
 lane: functions-lookup

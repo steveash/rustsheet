@@ -1202,6 +1202,6 @@ error, fraction, boolean and numeric text as literal and as a reference in DAY, 
 MID, SUMIF, SUMIFS) match ours.
 This extends Rule 2 of "MATCH descending search scans from the top; a text match_type read from a cell is #REF!" and the VLOOKUP/HLOOKUP
 reference-index rule: a non-numeric value (text, `=""`, an error) read from a cell in these arguments is #REF! (A22, A25; HLOOKUP row_index_num
-M1/M2 = 4 at A32, A35, while the literals give 3 and 7 at A31, A33). T-2962 extends `match_type_arg`, not a parallel path.
+M1/M2 = 4 at A32, A35, while the literals give 3 and 7 at A31, A33). T-2965 extends `match_type_arg`, not a parallel path.
 Status: VERIFIED (web); other error kinds as the reference unprobed.
-Tasks: T-2861, T-2962. Implemented in: not yet (T-2962).
+Tasks: T-2861, T-2965. Implemented in: not yet (T-2965).
