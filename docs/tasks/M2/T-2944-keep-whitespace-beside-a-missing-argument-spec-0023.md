@@ -3,7 +3,7 @@ id: T-2944
 title: "Keep whitespace beside a missing argument (SPEC-0023)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
