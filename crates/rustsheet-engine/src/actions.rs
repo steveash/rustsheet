@@ -413,7 +413,7 @@ impl Model {
 
     /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displacement`.
     pub(crate) fn displace_cf_ranges(&mut self, sheet: u32, displacement: Displacement) {
-        let (displace_data, _) = displacement;
+        let displace_data = displacement.data;
         let count = match self.workbook.worksheets.get(sheet as usize) {
             Some(ws) => ws.conditional_formatting.len(),
             None => return,

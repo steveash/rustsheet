@@ -1,6 +1,6 @@
 //! Printing a structured reference (SPEC-0016 "Printing" and "Structural edits").
 
-use super::{stringify, DisplaceData, Rewrite, NO_REWRITE};
+use super::{stringify, DisplaceData, Displacement, Rewrite, NO_REWRITE};
 use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
 use crate::expressions::token::{self, TableSpecifier};
@@ -120,12 +120,15 @@ pub(super) fn reference_text(
         };
     }
     match rewrite {
-        Rewrite::Displace(DisplaceData::None, _) => return reference.text(),
+        Rewrite::Displace(Displacement {
+            data: DisplaceData::None,
+            ..
+        }) => return reference.text(),
         // A `#This Row` area keeps today's rule below: whether Excel then reads the cell's row
         // of the moved table, or the row it read, is unprobed (T-2845).
-        Rewrite::Displace(_, kept)
+        Rewrite::Displace(Displacement { kept_tables, .. })
             if !matches!(lowered, Node::ThisRowKind { .. })
-                && kept.contains(&reference.table_name.to_lowercase()) =>
+                && kept_tables.contains(&reference.table_name.to_lowercase()) =>
         {
             return reference.text();
         }

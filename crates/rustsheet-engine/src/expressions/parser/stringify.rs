@@ -64,10 +64,78 @@ pub enum DisplaceData {
     None,
 }
 
-/// A structural edit as the printer applies it: the displacement, and the lowercase names of the
-/// tables that follow it, whose structured references keep their text (SPEC-0016 "Structural
-/// edits", T-2297).
-pub(crate) type Displacement<'a> = (&'a DisplaceData, &'a [String]);
+/// A structural edit as the printer applies it (SPEC-0016 "Structural edits").
+#[derive(Clone, Copy)]
+pub(crate) struct Displacement<'a> {
+    /// The displacement.
+    pub(crate) data: &'a DisplaceData,
+    /// The lowercase names of the tables that follow the edit, whose structured references keep
+    /// their text (T-2297).
+    pub(crate) kept_tables: &'a [String],
+    /// The data blocks of the tables that grow with a row insert at their first data row or at
+    /// their totals row (T-2321).
+    pub(crate) grown_edges: &'a [DataBlock],
+}
+
+/// The data rows `rows` and columns `columns` of a table on `sheet`, before the edit.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DataBlock {
+    pub(crate) sheet: u32,
+    pub(crate) rows: (i32, i32),
+    pub(crate) columns: (i32, i32),
+}
+
+impl Displacement<'_> {
+    /// A displacement that no table follows.
+    const fn plain(data: &DisplaceData) -> Displacement<'_> {
+        Displacement {
+            data,
+            kept_tables: &[],
+            grown_edges: &[],
+        }
+    }
+
+    /// The displacements of the two corners of the plain range `rows` x `columns` on sheet
+    /// `sheet_index`, when it lies in the data block of a table that grows with a row insert at an
+    /// edge and touches that edge; `None` for any other range, whose corners displace as usual.
+    /// Quirk (T-2197, probes/table-edits): Excel grows such a range with the table, where an
+    /// ordinary insert at a range's first row shifts it and one just below it leaves it.
+    /// `=SUM(S!C4:C7)` onto data rows 4-7 becomes `=SUM(S!C4:C8)` both for the insert above row 4
+    /// (table-insert-row-above-first-data A7) and above the totals row 8
+    /// (table-insert-row-above-totals A7). Only that exact range is probed; a range inside the
+    /// block touching the edge is assumed to grow the same way (hand, unprobed: T-2846).
+    fn grown_corners(
+        &self,
+        sheet_index: u32,
+        rows: (i32, i32),
+        columns: (i32, i32),
+    ) -> Option<(DisplaceData, DisplaceData)> {
+        let DisplaceData::Row { row, delta, .. } = *self.data else {
+            return None;
+        };
+        let block = self.grown_edges.iter().find(|block| {
+            block.sheet == sheet_index
+                && block.rows.0 <= rows.0
+                && rows.1 <= block.rows.1
+                && block.columns.0 <= columns.0
+                && columns.1 <= block.columns.1
+        })?;
+        let shift = |row| DisplaceData::Row {
+            sheet: sheet_index,
+            row,
+            delta,
+        };
+        if row == block.rows.0 && rows.0 == row {
+            // The first row stays and the last shifts with the data below the insert.
+            Some((DisplaceData::None, shift(row)))
+        } else if row == block.rows.1 + 1 && rows.1 == block.rows.1 {
+            // The first row is above the insert; the last grows by `delta`.
+            Some((DisplaceData::None, shift(rows.1)))
+        } else {
+            None
+        }
+    }
+}
 
 /// How the printer rewrites the references of a formula: displaced by a structural edit, or
 /// moved by a cut and paste. Everything else prints the same either way, so a moved formula
@@ -76,7 +144,7 @@ enum Rewrite<'a> {
     /// Displaced by a structural edit; the structured references to the tables named here
     /// (lowercase) keep their text, since those tables move, grow or shrink with the edit
     /// (SPEC-0016 "Structural edits", T-2297).
-    Displace(&'a DisplaceData, &'a [String]),
+    Displace(Displacement<'a>),
     Move(&'a MoveContext<'a>),
     /// Prints the area of every structured reference to one of these tables (lowercase names)
     /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
@@ -105,7 +173,7 @@ pub(crate) fn open_range_flags(
     )
 }
 
-const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None, &[]);
+const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(Displacement::plain(&DisplaceData::None));
 
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
@@ -168,21 +236,22 @@ pub fn to_string_displaced(
     locale: &Locale,
     language: &Language,
 ) -> String {
-    to_string_displaced_keeping(node, context, (displace_data, &[]), locale, language)
+    let displacement = Displacement::plain(displace_data);
+    to_string_displaced_keeping(node, context, displacement, locale, language)
 }
 
 /// [`to_string_displaced`] for a structural edit that moves, grows or shrinks the tables
-/// `kept_tables` (lowercase names): a structured reference to one of them keeps its text, and
-/// one to any other table prints the area it is displaced to where that area changes
+/// `displacement.kept_tables` (lowercase names): a structured reference to one of them keeps its
+/// text, and one to any other table prints the area it is displaced to where that area changes
 /// (SPEC-0016 "Structural edits", T-2297).
 pub(crate) fn to_string_displaced_keeping(
     node: &Node,
     context: &CellReferenceRC,
-    (displace_data, kept_tables): Displacement,
+    displacement: Displacement,
     locale: &Locale,
     language: &Language,
 ) -> String {
-    let rewrite = Rewrite::Displace(displace_data, kept_tables);
+    let rewrite = Rewrite::Displace(displacement);
     stringify(node, Some(context), &rewrite, false, locale, language)
 }
 
@@ -518,7 +587,7 @@ fn stringify(
 ) -> String {
     use self::Node::*;
     let displace_data = match rewrite {
-        Rewrite::Displace(displace_data, _) => displace_data,
+        Rewrite::Displace(displacement) => displacement.data,
         Rewrite::Move(move_context) => {
             if let Some(text) = moved_reference_text(node, move_context) {
                 return text;
@@ -578,9 +647,31 @@ fn stringify(
                 (*absolute_row1, *row1, *absolute_row2, *row2),
                 (*absolute_column1, *column1, *absolute_column2, *column2),
             );
+            let grown = match (rewrite, context) {
+                (Rewrite::Displace(displacement), Some(context)) if !full_row && !full_column => {
+                    let at =
+                        |absolute, value, origin| if absolute { value } else { value + origin };
+                    displacement.grown_corners(
+                        *sheet_index,
+                        (
+                            at(*absolute_row1, *row1, context.row),
+                            at(*absolute_row2, *row2, context.row),
+                        ),
+                        (
+                            at(*absolute_column1, *column1, context.column),
+                            at(*absolute_column2, *column2, context.column),
+                        ),
+                    )
+                }
+                _ => None,
+            };
+            let (displace1, displace2) = match &grown {
+                Some((first, last)) => (first, last),
+                None => (displace_data, displace_data),
+            };
             let s1 = stringify_reference(
                 context,
-                displace_data,
+                displace1,
                 &Reference {
                     sheet_name,
                     sheet_index: *sheet_index,
@@ -594,7 +685,7 @@ fn stringify(
             );
             let s2 = stringify_reference(
                 context,
-                displace_data,
+                displace2,
                 &Reference {
                     sheet_name: &None,
                     sheet_index: *sheet_index,
