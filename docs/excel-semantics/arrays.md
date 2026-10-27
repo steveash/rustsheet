@@ -1384,19 +1384,23 @@ caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CEL
 visits, and a REGEX* or regex XLOOKUP/XMATCH call's compile budget (4 bytes a unit) and search work (32 units a unit). Past it the formula is
 `#VALUE!` ("Formula needs too much work to calculate"), which `IFERROR` cannot catch (the formula's value is the error,
 whatever the formula made of it); a dependency cell has its own budget, so its `#VALUE!` is an ordinary value to its readers.
-Once a charge fails no further LAMBDA call runs, so the run ends at once. Calibration (release build, 2026-10-26, T-2803):
-the heaviest eval formula spends 124,806,376 units (gen-m9/0a614cfe974b59c3 Calc!A117, one lifted call near its per-call
-cap); without the per-call caps' charges the heaviest spends 8,388,620. Time to the limit: the three REDUCE/MAP/MAKEARRAY
-formulas of SPEC-0024 7.0, 7.0 and 5.9 s, `REDUCE(0,SEQUENCE(3000),..SUM(SEQUENCE(100000)))` 9.5 s, a nested MAKEARRAY of
-scalar bodies 6.2 s, MAPs of `LEN(REPT("a",32767))` 0.9 s, of `FIND("b",s&"b")` and `LEN(SUBSTITUTE(s,"a","b"))` over a
-32,767-byte `s` 2.6 and 4.2 s, of TEXTSPLIT 1.1 s, of REGEXTEST 0.1 s; a MAKEARRAY of lifted RATE about 50 s at 1 unit a visit, as one lifted RATE
-call at its own cap takes about 25 s (T-2814). How the per-call caps are charged is open (T-2813). Array cells read by
-aggregates and other whole-array readers are not charged yet (T-2804, T-2805).
+Once a charge fails no further LAMBDA call runs, so the run ends at once. Calibration (release build, 2026-10-27, T-2803
+with SPEC-0024 as amended by T-2813): the heaviest eval formula spends 118,754,196 units (gen-m9/3e98b26cf6713e77 Calc!A204,
+a lifted CHISQ.INV.RT over a PIVOTBY: 118,751,450 of them visit units, below one cap, 2^27); the heaviest outside the visit
+caps spends 8,388,620 (ironcalc-calc/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx, a whole-column ROW array; below 2^26). Time to the
+limit: the three REDUCE/MAP/MAKEARRAY formulas of SPEC-0024 10.5, 10.6 and 11.1 s, MAPs of `LEN(REPT("a",32767))` 0.9 s,
+a MAKEARRAY of REGEXTEST 0.8 s, of lifted RATE at its cap 2.4 s (the second call's charge fails) and of smaller RATE calls
+4.6 s, of lifted YIELD 11-12 s (each call refused by its own cap since T-2879, so these are node units). One call at its
+visit cap: RATE 2.4 s, ODDLPRICE 1.1 s, CHISQ.DIST and POISSON.DIST 0.4 s, GAMMA.INV and GAMMA.DIST under 0.1 s, COUNTIF
+and SUMIFS over 1,024 cells 0.1 and 0.4 s. Nested LAMBDA helpers are not bounded in time yet:
+`SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))))))` reaches the
+limit only after 124 s, as a call costs far more than its body's nodes (T-2923). Array cells read by aggregates and other
+whole-array readers are not charged yet (T-2804, T-2805).
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/area_budget.rs (`MAX_FORMULA_WORK`, `Model::spend_work`, `Model::with_area_budget`),
 crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/functions/logical/lambda.rs
 (`call_prepared`).
-Tasks: T-2712 (SPEC-0024), T-2803
+Tasks: T-2712 (SPEC-0024), T-2803, T-2813, T-2923
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a

@@ -64,9 +64,8 @@ pub(crate) const MAX_FORMULA_WORK: u64 = 1 << 28;
 // The weights below are fitted so that each kind's worst case reaches [`MAX_FORMULA_WORK`] in
 // under 10 s of a release build (SPEC-0024 section 4, T-2803; the timings are in arrays.md "One
 // formula evaluation does at most 268,435,456 work units"): a node or a built cell costs about
-// 50 ns and a byte a text scanner reads (FIND, SUBSTITUTE over 32,767 bytes) about 5 ns. A lifted
-// kernel unit costs up to 190 ns (RATE), which [`VISIT_UNITS`] does not cover: no weight meets
-// both calibration constraints for it (T-2813).
+// 50 ns and a byte a text scanner reads (FIND, SUBSTITUTE over 32,767 bytes) about 5 ns. A visit
+// cap's units are timed by its own cap instead ([`VISIT_UNITS`], T-2813).
 
 /// Work units of one node evaluated ([`MAX_FORMULA_WORK`]).
 pub(crate) const NODE_UNITS: u64 = 2;
@@ -79,9 +78,9 @@ pub(crate) const TEXT_BYTES_PER_UNIT: u64 = 4;
 
 /// Work units of one visit of a per-call cap (`limits::MAX_LIFTED_CELL_VISITS`: a lifted call's
 /// cell visits and kernel units, GROUPBY and PIVOTBY's) ([`MAX_FORMULA_WORK`]). One, the cap's own
-/// number: eval cells spend up to 124,806,376 units on one lifted call near the cap, so a higher
-/// weight turns them into `#VALUE!` (6 does for 13 gen-m9 cells), while a MAKEARRAY of lifted RATE
-/// needs 5 or more to stop within 10 s; the rule is open (TODO(T-2813)).
+/// number, everywhere (SPEC-0024 as amended by T-2813): an eval cell may spend most of one cap on
+/// one call, so a higher weight would refuse calls the cap allows, and the time a call's units
+/// take is its kernel weight's to bound (one call at its cap within 5 s), not this budget's.
 pub(crate) const VISIT_UNITS: u64 = 1;
 
 /// Message of the formula's error once it spent [`MAX_FORMULA_WORK`].

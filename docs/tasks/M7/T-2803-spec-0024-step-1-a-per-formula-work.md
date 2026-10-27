@@ -3,11 +3,11 @@ id: T-2803
 title: "SPEC-0024 step 1: a per-formula work budget charged per node, per array cell built and per lifted kernel unit"
 milestone: M7
 lane: engine
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
-depends_on: [T-2712]
+depends_on: [T-2712, T-2923]
 ---
 
 ## Goal
@@ -58,6 +58,27 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
   unbounded until T-2804 and T-2805 merge; land the three tasks in order.
 - Charging array cells read by aggregates (T-2804) and by the other whole-array readers (T-2805).
 - Dense single-range walks (T-2710, T-2711, T-2713).
+
+## Blocked because
+Blocked on T-2923 (SPEC-0024 amendment), by SPEC-0024 section 4's rule: "no weights meet both constraints". Checked by an
+opus run on 2026-10-27, after main was merged in (release build, idle 4-core container). The run timed each kind to the limit
+at the committed weights (scratch test, not committed). Nested LAMBDA helpers miss the 10 s target by an order of magnitude,
+and the 30 s harness timeout too:
+`SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))))))` takes 124 s
+(460 ns a unit), and `SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,r))))))` 17.9 s. A call costs far
+more than its body's nodes are charged, and more per cell the deeper it is nested (11.8 us under three helpers, 4.4 us under
+two). No node weight bounds that, and section 1 says a call needs no charge of its own. The three Problem formulas also take
+10.5, 10.6 and 11.1 s (7.0, 7.0 and 5.9 s on 2026-10-26). T-2923 has the full table. Unblock when T-2923 merges; then apply
+its charge and weights, re-time, and continue at review.
+
+Done in this run: merged origin/main (T-2813, T-2814, T-2815 and T-2879 are on main now). Dropped `TODO(T-2813)` and applied
+the amended visit rule in area_budget.rs's comments. Updated the arrays.md DEVIATION calibration with this run's numbers:
+heaviest eval formula 118,754,196 units (gen-m9/3e98b26cf6713e77 Calc!A204, 118,751,450 of them visit units); heaviest
+outside the visit caps 8,388,620 (ironcalc-calc/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx); `rustsheet-eval check` 0 regressions.
+Timed one call at its visit cap for the kernel families section 4 lists: RATE 2.4 s, ODDLPRICE 1.1 s, CHISQ.DIST and
+POISSON.DIST 0.4 s, GAMMA.INV and GAMMA.DIST under 0.1 s, COUNTIF and SUMIFS over 1,024 cells 0.1 and 0.4 s. All are within
+5 s, so no perf task was filed. Not timed: AGGREGATE (a k array is `#ERROR!` up front) and GROUPBY/PIVOTBY (no eval shape
+near the cap).
 
 ## Notes from the blocked run
 Unblocked 2026-10-27: it was blocked on SPEC-0024 section 4's calibration rule (the heaviest eval formula spent more than
