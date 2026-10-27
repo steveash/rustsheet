@@ -665,7 +665,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "66bd366af2c9c19054d1673ce43b39fbce507d08a6cf8b32708c5a13a18222fb"
+        == "cdb6072f223cf603915ba86c6dd52bf2feaa11db67ed9f539695ca7a7ead84af"
     )
 
 

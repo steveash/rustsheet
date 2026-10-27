@@ -140,6 +140,8 @@ class Catalog:
 
 # Share of *IFS calls whose ranges ignore the shared shape, so the #VALUE! mismatch stays covered.
 SHAPE_MISMATCH_RATE = 0.1
+# Share of `probe` values drawn from the probed range's own cells, so the search can find them.
+PROBE_HIT_RATE = 0.95
 
 
 def pool_rate(p: dict[str, Any]) -> float:
@@ -188,6 +190,14 @@ class Gen:
         a = col_letter(c0)
         b = col_letter(c0 + width - 1)
         return f"Data!{a}{r0}:{b}{r1}"
+
+    def cell_in(self, ref: str) -> str:
+        """A cell inside the range `ref` (`Data!A1:C3`), or a free cell reference when `ref` is not one."""
+        m = re.fullmatch(r"(Data!)([A-Z])(\d+):([A-Z])(\d+)", ref)
+        if m is None:
+            return self.cell_ref()
+        c0, r0, c1, r1 = ord(m[2]), int(m[3]), ord(m[4]), int(m[5])
+        return f"Data!{chr(self.rng.randint(c0, c1))}{self.rng.randint(r0, r1)}"
 
     # -- literals --------------------------------------------------------------------------
     def literal(self, typ: str) -> str:
@@ -241,6 +251,12 @@ class Gen:
         outer_shape, self.call_shape = self.call_shape, None
         declared = 0  # names this call declares (LET variables, LAMBDA parameters)
         repeated = 1  # how many arguments the last repeating param got (MAP's arrays fix its LAMBDA's arity)
+        # A `probe: <param>` value is drawn from the cells of that range param, so the search finds something
+        # (MATCH's lookup_value); the range is drawn first and reused when its turn comes (T-2719).
+        by_name = {q["name"]: q for q in params}
+        drawn: dict[str, str] = {
+            q["probe"]: self.argument(by_name[q["probe"]], depth) for q in params if q.get("probe")
+        }
         i = 0
         while i < len(params):
             p = params[i]
@@ -268,7 +284,12 @@ class Gen:
                 # LAMBDA's calculation sees all its parameters.
                 self.scope += self.pending
                 self.pending = []
-            args.extend(self.argument(p, depth, arity=repeated) for _ in range(count))
+            if p["name"] in drawn:
+                args.append(drawn[p["name"]])
+            elif p.get("probe") and self.rng.random() < PROBE_HIT_RATE:
+                args.append(self.cell_in(drawn[p["probe"]]))
+            else:
+                args.extend(self.argument(p, depth, arity=repeated) for _ in range(count))
             if p.get("mode") == "name":
                 declared += count
             i += 1
