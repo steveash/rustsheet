@@ -7,18 +7,17 @@ ratchets themselves are enforced by scripts/check_*.py; this module only counts 
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from rustsheet_tools.progress_report.markdown import signed, table
-from rustsheet_tools.progress_report.model import ProgressReportError, count, field
+from rustsheet_tools.progress_report.model import ProgressReportError, count, docs_dir, field, load_object
 
 QUALITY = "quality"
 DECISIONS = "decisions"
 SEMANTICS = "excel-semantics"
 # The history row's `codebase` keys with the label of each count, in the order the block shows them.
-MEASURES = (
+COUNTS = (
     ("lint_allows", "Lint-debt allow entries"),
     ("duplicated_lines", "Duplicated lines"),
     ("oversized_files", "Oversized files"),
@@ -26,18 +25,6 @@ MEASURES = (
     ("decisions", "Decision records"),
     ("semantics_lines", "Excel-semantics lines"),
 )
-
-
-def _json(path: Path) -> dict[str, Any]:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as e:
-        msg = f"{path}: {e}"
-        raise ProgressReportError(msg) from e
-    if not isinstance(data, dict):
-        msg = f"{path} is not a JSON object"
-        raise ProgressReportError(msg)
-    return data
 
 
 def _lint_allows(data: dict[str, Any], where: str) -> int:
@@ -69,18 +56,15 @@ def _lines(path: Path) -> int:
 
 def measure(repo: Path) -> dict[str, int]:
     """The counts of the repository at `repo`."""
-    # The docs directory is named by a page path: a bare "docs" literal is not in CODE_READ_PATHS
-    # (scripts/check_docs_readers.py, decision 0049).
-    docs = repo / "docs/progress.md"
-    docs = docs.parent
+    docs = docs_dir(repo)
     quality = repo / QUALITY
     debt = quality / "lint-debt.json"
     dup, floor = quality / "duplication.json", quality / "evidence-floor.json"
     return {
-        "lint_allows": _lint_allows(_json(debt), str(debt)),
-        "duplicated_lines": count(_json(dup), "duplicated_lines", str(dup)),
-        "oversized_files": len(_json(quality / "oversized-files.json")),
-        "below_floor": count(_json(floor), "below_floor", str(floor)),
+        "lint_allows": _lint_allows(load_object(debt), str(debt)),
+        "duplicated_lines": count(load_object(dup), "duplicated_lines", str(dup)),
+        "oversized_files": len(load_object(quality / "oversized-files.json")),
+        "below_floor": count(load_object(floor), "below_floor", str(floor)),
         "decisions": sum(1 for p in _records(docs / DECISIONS) if p.name.startswith("0")),
         "semantics_lines": sum(_lines(p) for p in _records(docs / SEMANTICS)),
     }
@@ -88,7 +72,7 @@ def measure(repo: Path) -> dict[str, int]:
 
 def check_row(obj: Any, where: str) -> None:
     """Check a history row's optional `codebase` object; rows without one are valid."""
-    for key, _ in MEASURES:
+    for key, _ in COUNTS:
         count(obj, key, where)
 
 
@@ -97,7 +81,7 @@ def block(counts: dict[str, int], last: dict[str, Any] | None) -> str:
     for a row from before the block existed."""
     before = last.get("codebase") if last else None
     rows = []
-    for key, label in MEASURES:
+    for key, label in COUNTS:
         now = counts[key]
         change = signed(now - field(before, key, "history codebase")) if before else "n/a"
         rows.append([label, f"{now:,}", change])

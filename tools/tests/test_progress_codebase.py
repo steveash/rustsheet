@@ -10,12 +10,7 @@ from test_progress_history import row
 from test_progress_report import data, tasks
 
 from rustsheet_tools.progress_report import codebase, history
-from rustsheet_tools.progress_report.model import ProgressReportError, Run, tasks_of
-
-
-def docs_dir(root: Path) -> Path:
-    # Named by a page path: a bare "docs" literal trips scripts/check_docs_readers.py.
-    return (root / "docs/progress.md").parent
+from rustsheet_tools.progress_report.model import ProgressReportError, Run, docs_dir, tasks_of
 
 
 def repo(tmp_path: Path, *, decisions: int = 2, semantics: tuple[str, ...] = ("a\nb\n", "c\n")) -> Path:
@@ -93,7 +88,7 @@ def test_a_missing_docs_subdir_fails_instead_of_counting_zero(tmp_path: Path) ->
 
 
 def test_the_complete_row_carries_the_counts() -> None:
-    counts = {key: i for i, (key, _) in enumerate(codebase.MEASURES)}
+    counts = {key: i for i, (key, _) in enumerate(codebase.COUNTS)}
     r = history.complete_row(
         Run("2026-10-19", "abc12345", ("s",), ()), data(), tasks_of(tasks()), None, counts
     )

@@ -421,6 +421,13 @@ def load_object(path: Path) -> dict[str, Any]:
     return data
 
 
+def docs_dir(repo: Path) -> Path:
+    """The repository's docs directory. It is named by the page's own path because that path is in
+    CODE_READ_PATHS (scripts/ci_changes.py, decision 0049) and a bare docs literal is not: keep it
+    so, or scripts/check_docs_readers.py fails `make hygiene`."""
+    return (repo / "docs/progress.md").parent
+
+
 # The run's commit and date are printed into the page, so they must be what `run_meta.rs` writes.
 COMMIT_SHA = re.compile(r"[0-9a-f]{4,40}")
 RUN_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")  # ASCII digits only, unlike `\d`
