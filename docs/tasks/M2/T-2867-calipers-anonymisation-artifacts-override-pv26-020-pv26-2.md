@@ -3,7 +3,7 @@ id: T-2867
 title: "Calipers anonymisation artifacts: score pv26_020/pv26_2_020 Summary row 17 and pv26_010 Cover!C16 against Excel's values for the shipped workbook (51 visibly-off cells; MIN, MAX, AVERAGE Phase 1)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -61,3 +61,16 @@ each is scored against Excel's value for the shipped workbook and passes.
 ## Out of scope
 - Other calipers cells (desktop-only rules: T-2663, T-2704; PV model last digits: T-0454, T-0458, T-0463).
 - Any engine change: ours is already Excel's answer for the shipped workbook.
+
+## Outcome
+- Decision 0133 adds cached values broken by the corpus anonymisation as a `cached_overrides` class under
+  decision 0032. probes/t2867-calipers-anonymised-inputs (excel-graph, 2026-10-27) holds the shipped Summary
+  formulas over B17 `Company0691` with no such sheet, the other M7:O21 rows as their cached INDIRECT results,
+  and `=45678` for Cover!C16. Excel gives `#REF!` for all 25 Summary cells and 45678 for C16, the engine's values.
+- eval/suites/calipers/cached-overrides.tsv gains the 51 lines; `rustsheet-eval show` now passes every checked
+  cell of pv26_020 (1,324), pv26_2_020 (1,324) and pv26_010 (53,315). Engine unchanged.
+- Eval delta: probes +1 case (26 cells, all passing); calipers 51 cells fixed against the probe.
+- The 51 `F` lines are not yet out of eval/baseline/calipers.txt: `update-baseline --suite calipers` refuses
+  on main because of T-0463's 36 stale pv23 cells (`check --suite calipers` on this branch: fixed 1,525,
+  REGRESSIONS 36, all T-0463's), and `--filter` is not allowed for baseline operations. T-0463's ratchet
+  records these lines with the other fixes, as it does for T-2688's.

@@ -6,7 +6,7 @@ use super::ArgKind::{Lift, LiftArrays, WholeByCaller};
 use super::KernelWork::{ByValue, Constant, Weighted};
 use super::ValueWork::{Amortization, CouponWalks, Loop};
 use super::{ArgKinds, CallResult, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
-use crate::functions::financial::{MAX_DEPRECIATION_PERIODS, RATE_MAX_STEPS};
+use crate::functions::financial::MAX_DEPRECIATION_PERIODS;
 use crate::functions::Function;
 
 /// `DDB(cost, salvage, life, period, [factor])`.
@@ -38,14 +38,20 @@ const VDB: ArgKinds = ArgKinds::fixed(
 /// The units a DB or VDB element at the period cap is charged (one more for the call): at most
 /// 1,024 such elements per lifted call.
 const DEPRECIATION_WEIGHT: u32 = (1 << 17) - 1;
-/// `RATE(nper, pmt, pv, [fv], [type], [guess])`: a secant with a fixed cap of
-/// `RATE_MAX_STEPS` steps (`financial_util::compute_rate`), each element charged that weight
-/// (SPEC-0011 security rule): a lifted call of more than 2^27 / 200 = 671,088 elements is
+/// What one RATE element is charged: at most `RATE_MAX_STEPS` (200) secant steps
+/// (`financial_util::compute_rate`), each a residual with Excel's `^` and its twice-rounded
+/// arithmetic, about 150 us an element run to the cap in a release build (10,000 elements of
+/// `RATE(3000,-1,100)`, which runs all 200 steps to `#NUM!`, took 1.52 s; T-2814). 2^13 units run
+/// at most 16,384 elements, about 2.5 s; the step count alone, 200 units, let one call run 671,088
+/// elements, about 100 s.
+const RATE_WEIGHT: u32 = 1 << 13;
+/// `RATE(nper, pmt, pv, [fv], [type], [guess])`: each element charged its step cap's weight
+/// (SPEC-0011 security rule): a lifted call of more than 2^27 / 2^13 = 16,384 elements is
 /// refused like any other past `MAX_LIFTED_CELL_VISITS` (DEVIATION, docs/excel-semantics/arrays.md).
 const RATE: ArgKinds = ArgKinds::fixed(
     3,
     &[Lift, Lift, Lift, Lift, Lift, Lift],
-    Weighted(RATE_MAX_STEPS),
+    Weighted(RATE_WEIGHT),
 );
 /// `NPV(rate, value1, [value2], ...)`: the values are read whole by the caller, once, and every
 /// element walks them, so the call is charged their count per element (`LiftCost::Cells`, T-1821).

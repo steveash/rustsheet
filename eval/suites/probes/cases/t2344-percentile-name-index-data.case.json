@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2344: QUARTILE/PERCENTILE/PERCENTRANK data given as a defined name, INDEX, OFFSET, CHOOSE or IF result that is one cell holding a boolean or text.",
+  "tags": [
+    "M9",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "nT": "=Data!$A$1",
+    "nX": "=Data!$A$2",
+    "nS": "=Data!$A$3",
+    "nE": "=Data!$A$9"
+  },
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=QUARTILE(nT,1)",
+        "A2": "=QUARTILE.EXC(nT,1)",
+        "A3": "=PERCENTILE(nT,0.5)",
+        "A4": "=PERCENTRANK(nT,1)",
+        "A5": "=PERCENTRANK.EXC(nT,1)",
+        "A6": "=QUARTILE(nX,1)",
+        "A7": "=QUARTILE.EXC(nX,1)",
+        "A8": "=PERCENTILE(nX,0.5)",
+        "A9": "=PERCENTRANK(nX,1)",
+        "A10": "=PERCENTRANK.EXC(nX,1)",
+        "A11": "=QUARTILE(nS,1)",
+        "A12": "=QUARTILE.EXC(nS,1)",
+        "A13": "=PERCENTILE(nS,0.5)",
+        "A14": "=PERCENTRANK(nS,1)",
+        "A15": "=PERCENTRANK.EXC(nS,1)",
+        "A16": "=QUARTILE(nE,1)",
+        "A17": "=PERCENTRANK(nE,1)",
+        "A18": "=QUARTILE(INDEX(Data!B1:B3,1),1)",
+        "A19": "=QUARTILE(INDEX(Data!B1:B3,2),1)",
+        "A20": "=QUARTILE.EXC(INDEX(Data!B1:B3,1),1)",
+        "A21": "=PERCENTILE.INC(INDEX(Data!B1:B3,2),0.5)",
+        "A22": "=PERCENTRANK(INDEX(Data!B1:B3,1),1)",
+        "A23": "=PERCENTRANK(INDEX(Data!B1:B3,2),1)",
+        "A24": "=QUARTILE(INDEX(Data!B1:B3,3),1)",
+        "A25": "=QUARTILE(OFFSET(Data!A1,0,0),1)",
+        "A26": "=QUARTILE(OFFSET(Data!A2,0,0),1)",
+        "A27": "=PERCENTRANK(OFFSET(Data!A1,0,0),1)",
+        "A28": "=QUARTILE(CHOOSE(1,Data!A1),1)",
+        "A29": "=QUARTILE(IF(TRUE,Data!A2),1)",
+        "A30": "=QUARTILE(INDEX(Data!B1:B3,2),NA())"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": true,
+        "A2": "x",
+        "A3": "1",
+        "A4": 1,
+        "A5": 2,
+        "A6": 3,
+        "B1": true,
+        "B2": "x",
+        "B3": 5
+      }
+    }
+  ],
+  "expected": {}
+}

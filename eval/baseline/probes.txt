@@ -1148,6 +1148,7 @@ C	probes/t2311-pivotby-value-cause.case.json	195
 C	probes/t2311-pivotby-value-columns-error.case.json	127
 C	probes/t2312-wrap-count-threshold.case.json	66
 C	probes/t2314-textbefore-instance-bound.case.json	29
+C	probes/t2344-percentile-name-index-data.case.json	30
 C	probes/t2352-time-text-trailing-colon.case.json	26
 C	probes/t2355-regex-dollar-inner-lf.case.json	11
 C	probes/t2360-array-lambda-holidays.case.json	508
@@ -1350,6 +1351,8 @@ C	probes/t2753-gamma-density-ratio-sweep.case.json	96
 C	probes/t2753-gamma-density-switch.case.json	84
 C	probes/t2756-roundup-smallest-normal-threshold.case.json	541
 C	probes/t2769-formula-text-whitespace.case.json	47
+C	probes/t2772-unary-plus-in-range-rows.case.json	20
+C	probes/t2772-unary-plus-static-readings.case.json	36
 C	probes/t2776-formula-text-whitespace-shapes.case.json	65
 C	probes/t2776-ws-after-at.case.json	2
 C	probes/t2776-ws-after-bang.case.json	2
@@ -1359,6 +1362,7 @@ C	probes/t2778-imsinh-sign-sweep.case.json	312
 C	probes/t2782-whitespace-run-wrap.case.json	36
 C	probes/t2812-currency-tag-cost.case.json	54
 C	probes/t2836-dollar-run-cost.case.json	95
+C	probes/t2867-calipers-anonymised-inputs.case.json	26
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -3897,6 +3901,8 @@ F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A55
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A56
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A57
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A58
+F	probes/t2772-unary-plus-in-range-rows.case.json	S!J2
+F	probes/t2772-unary-plus-in-range-rows.case.json	S!J5
 F	probes/table-edits/plain-range-delete-row-first.case.json	F!A6
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
