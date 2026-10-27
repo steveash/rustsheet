@@ -39,7 +39,7 @@ unreduced pieces (k at a = 2.5 is -1 to +1).
 
 ## Notes from the first run (2026-10-27, time-boxed)
 Scored on the 99 grid cells, with each cell's k computed as in `docs/research/t2829/ln_beta_map.py` (scripts kept in
-scratch, not committed):
+scratch, not committed, so these scores are unreproduced from the repo):
 - LN of a GAMMA product, using Excel's own GAMMA cell values (probes `=GAMMA(v)`, all 242 points on file, within 0.33 ulp
   of exact at 6, 11.5, 17.5, 19, 27.5): LN((Ga·Gb)/Gab) 47, LN(Ga·(Gb/Gab)) 47, LN(Gb/Gab) + LN(Ga) 56, and
   LN(Ga) + LN(Gb) - LN(Gab) 27-34. Correctly rounded GAMMA gives 45-57. These are at noise level, so this is not the form.
@@ -79,6 +79,7 @@ scoring one candidate at a time:
   - Excel GAMMALN sums: 16-28 of 99. Correctly rounded lnGamma sums: 27-34 of 99.
 
 ## Blocked because: time-boxed (decision 0056)
+- BETA.DIST's bpser cells with a shape above 8 were not scored in either run; there is no negative result for them.
 - Two runs. The best score is still TOMS's a-reduction with w = prod a/(a + b), at 55 of 99. Accurate ln B (shipped)
   scores 45. Every candidate is listed in the two Notes sections above.
 - What is left: Excel's L carries error that depends on a and b jointly, more finely than a double lnGamma grid. For
