@@ -43,9 +43,9 @@ def test_each_count_is_read_from_its_file(tmp_path: Path) -> None:
 
 
 def test_a_missing_ratchet_file_fails(tmp_path: Path) -> None:
-    (r := repo(tmp_path))
+    r = repo(tmp_path)
     (r / "quality" / "duplication.json").unlink()
-    with pytest.raises(ProgressReportError, match="duplication.json"):
+    with pytest.raises(ProgressReportError, match=r"duplication\.json"):
         codebase.measure(r)
 
 
