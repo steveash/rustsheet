@@ -345,6 +345,28 @@ pub enum TableSpecifier {
     DataTotals,
 }
 
+/// The whitespace Excel keeps inside a structured reference's outer brackets, which the lexer
+/// otherwise skips (syntax.md "Whitespace beside a missing argument is kept; a structured
+/// reference keeps some and normalizes the rest", T-2801): the runs after the outer `[` and
+/// before the outer `]`, kept as typed, and whether whitespace followed the comma before the
+/// column, which prints as one space. Whitespace before that comma is dropped.
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
+pub struct TableSpacing {
+    /// The run after the outer `[` (`T[ [Col]:[Other] ]`).
+    pub open: String,
+    /// The run before the outer `]`.
+    pub close: String,
+    /// Whether whitespace followed the comma (`T[[#Data], [Col]]`).
+    pub comma_space: bool,
+}
+
+impl TableSpacing {
+    /// Whether the outer brackets hold a run of their own.
+    pub fn is_padded(&self) -> bool {
+        !self.open.is_empty() || !self.close.is_empty()
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TableReference {
     ColumnReference(String),
@@ -395,6 +417,7 @@ pub enum TokenType {
         table_name: String,
         specifier: Option<TableSpecifier>,
         table_reference: Option<TableReference>,
+        spacing: TableSpacing,
     },
 }
 
