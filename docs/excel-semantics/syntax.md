@@ -397,13 +397,16 @@ agree):
 - Whitespace around the whole reference is an ordinary operand run (`=SUM( T[Col] )` prints as typed).
 - The calculated-column fill rewrote `=T[[#This Row], [Col]]` and `=T[ [#This Row] , [Col] ]` typed into C2 and C3 to the
   formula typed into C4 (`T[[#This Row],[Col]] + T[[#This Row],[Other]]`), so this-row shapes are unanswered
-  (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800).
+  (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800). The cells were typed one at a
+  time in the order C2, C3, C4, so each later formula re-filled the whole column. The fill rules are T-2957, and the
+  engine fill is T-2958.
+  Ours: the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
 Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
 (I1:I13). Each refused formula was entered alone against the same case.
 Ours: the runs SPEC-0023 keeps are in the entry above; a run beside a missing argument is T-2944, and
 structured-reference whitespace is unimplemented (T-2801).
 Status: VERIFIED (excel-graph)
-Tasks: T-2786, T-2944, T-2800, T-2801
+Tasks: T-2786, T-2944, T-2800, T-2801, T-2955, T-2956, T-2957, T-2958
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every
