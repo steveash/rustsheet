@@ -4,6 +4,13 @@ use crate::functions::statistical::special::normal_cdf;
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
+/// phi(0) = 1/sqrt(2*pi), the density at 0.
+const PHI_0: f64 = 0.398_942_280_401_432_7;
+/// Below this |z| Phi(z) - 0.5 cancels to 0 or to a few bits; Excel returns z * phi(0) there
+/// (`GAUSS(1E-300)` = 3.989422804014327E-301, `GAUSS(1E-15)` = 3.989422804014328E-16).
+/// Excel: see docs/excel-semantics/statistics.md, "GAUSS of a tiny argument is x times phi(0) (T-2255)"
+const TINY_Z: f64 = 1e-8;
+
 impl Model {
     /// `GAUSS(z)`: lifts over an array and a range (SPEC-0011; probes/stat-argument-modes
     /// H315-H317).
@@ -13,7 +20,11 @@ impl Model {
                 return CalcResult::new_args_number_error(cell);
             };
             number_or_error(model.cast_number_ref(z, cell).and_then(|z| {
-                let result = normal_cdf(z, 0.0, 1.0) - 0.5;
+                let result = if z.abs() < TINY_Z {
+                    z * PHI_0
+                } else {
+                    normal_cdf(z, 0.0, 1.0) - 0.5
+                };
                 if result.is_finite() {
                     Ok(result)
                 } else {
