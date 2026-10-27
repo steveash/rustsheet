@@ -3,7 +3,7 @@ id: T-2672
 title: "NPV to 15 digits on cancelling flows: Excel's discount and summation order (IRR.xlsx residues at IRR's root, 37 visibly-off cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
