@@ -3,7 +3,7 @@ id: T-2957
 title: "Probe Excel's calculated-column fill when a formula is typed into a table column (probes/t2786 C2:C4)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
