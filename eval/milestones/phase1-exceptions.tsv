@@ -1,0 +1,15 @@
+# Phase 1 rate exceptions (decision 0134): visibly-off Excel cells whose only open question is
+# desktop Excel evidence, so decision 0039 assigns them to M14 and they never block the Phase 1
+# exit. Each is left out of the Phase 1 rate (report.json `v15_checkpoint`) of the function it
+# counts toward. One cell per line, tab-separated: case!Sheet!A1 (as eval/baseline names it), the
+# decision that names the cell as M14-only (four digits), and the open M14 task that owns it. A
+# line hides no cell from eval/baseline or the gate: the cell stays a known failure. Add a line
+# only in the PR that takes the decision naming it (decision 0044 protects eval/milestones/).
+# Excel 15 cached #VALUE! where Microsoft 365 (excel-graph) gives another value; an Excel build
+# below 16 does not outrank the web (decision 0030 rule 2). J136 AND("1",1) is T-1075 item 7
+# (coercion.md "AND/OR/XOR text arguments"); G936, H936 and K936 MODE are T-1075 item 10
+# (decision 0067).
+poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!J136	0134	T-1075
+poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!G936	0134	T-1075
+poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!H936	0134	T-1075
+poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!K936	0134	T-1075

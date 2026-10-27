@@ -3,7 +3,7 @@ id: T-2912
 title: "Phase 1 rate leaves out cells whose only open question is desktop evidence (decision 0039): AND and MODE miss it only on Excel 15 poi caches"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -43,21 +43,21 @@ rate on the cells Phase 1 can actually settle. The left-out cells stay known fai
   left out.
 
 ## Acceptance criteria
-- [ ] A decision record (`make new-decision`) amends decisions 0087 and 0118. It defines which cells leave the
+- [x] A decision record (`make new-decision`) amends decisions 0087 and 0118. It defines which cells leave the
       Phase 1 rate (assigned to M14 by decision 0039, with an open M14 owner) and how they are listed. It names
       poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J136, G936, H936 and K936 as the first such cells, citing
       decisions 0030, 0039 and 0067. The architecture reviewer approves it.
-- [ ] After `make eval` with poi fetched, AND and MODE have `meets_rate` true in report.json `v15_checkpoint`, and
+- [x] After `make eval` with poi fetched, AND and MODE have `meets_rate` true in report.json `v15_checkpoint`, and
       report.md shows the number of left-out cells next to the Phase 1 line (or per function). The four cells
       stay F lines in eval/baseline/poi.txt (`make eval-baseline` changes nothing for them).
-- [ ] Unit tests in v15_checkpoint.rs: a listed cell does not count toward a function's rate. An unlisted
+- [x] Unit tests in v15_checkpoint.rs: a listed cell does not count toward a function's rate. An unlisted
       visibly-off cell still does. A listed cell that passes is ignored. A listed cell that is not scored or not
       failing is reported (warning or error, as the record says), so the list cannot go stale silently.
-- [ ] The harness rejects a line with no decision or no `T-` owner (same validation as exit_exceptions.rs). The
+- [x] The harness rejects a line with no decision or no `T-` owner (same validation as exit_exceptions.rs). The
       ironcalc-calc function-scope rows keep their current numbers.
-- [ ] The Outcome lists every function whose `meets_rate` changed and the Phase 1 count before and after
+- [x] The Outcome lists every function whose `meets_rate` changed and the Phase 1 count before and after
       (377 functions on the 2026-10-27 dashboard).
-- [ ] `make check` green; `make progress-report` still renders; reviewers approve.
+- [x] `make check` green; `make progress-report` still renders; reviewers approve.
 
 ## Out of scope
 - Changing any engine result, or overriding the cached values (decision 0067 rejected `cached_overrides` for
@@ -65,3 +65,23 @@ rate on the cells Phase 1 can actually settle. The left-out cells stay known fai
 - Listing other conflict cells beyond the four named above. Each needs its own decision citing its evidence; the
   steward or gap-triager files them.
 - Decision 0094's coverage count and the strict information count (decision 0118 item 5) stay as they are.
+
+## Outcome
+- Decision 0134 adds `eval/milestones/phase1-exceptions.tsv`, a sibling of decision 0087's exit
+  exceptions. Its lines are `case!Sheet!A1`, the decision and the M14 owner. It lists poi
+  EverythingTests!J136, G936, H936 and K936 (T-1075 items 7 and 10). `phase1_exceptions.rs` parses
+  it, sharing the line validation with `exit_exceptions.rs` (`split_cell`, `check_owner` and
+  `read_optional`). `ExceptionsError` now names its file.
+- `v15_checkpoint` drops a listed visibly-off Excel cell from `rate_cells` and `rate_visible` of
+  the function whose count holds it, and reports the cell as `rate_excepted`. `cells`, `visible`,
+  the tier, the strict count and the 0094 checkpoint keep the cell. report.md prints the number
+  left out per function under the Phase 1 line, and warns about stale lines.
+- `make eval` with all 17 suites on this branch (origin/main ac1f85d81 + this diff): AND 465/465 (1
+  excepted) and MODE 338/338 (3 excepted) now have `meets_rate` true. No other function's
+  `meets_rate` changed. Phase 1 went from 389 to 391 of 506. The 2026-10-27 dashboard showed 377
+  on an older head; other merges since then account for the rest. There are no stale lines. The
+  four cells stay F lines in eval/baseline/poi.txt, and nothing changes in the baseline.
+- Progress dashboard: `campaign_block` skips functions that meet the rate. With that, the list of
+  functions the semantic fixes would lift no longer names AND or MODE. `make progress-report`
+  renders.
+- Eval delta: none (report-only measure; no engine change).
