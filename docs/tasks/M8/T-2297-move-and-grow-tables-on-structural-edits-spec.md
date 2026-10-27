@@ -3,7 +3,7 @@ id: T-2297
 title: "Move and grow tables on structural edits (SPEC-0016 step 1b)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
