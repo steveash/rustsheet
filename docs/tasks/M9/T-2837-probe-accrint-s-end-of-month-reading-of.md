@@ -3,7 +3,7 @@ id: T-2837
 title: "Probe ACCRINT's end-of-month reading of serial 59 and the basis-1 cut at serial 0 (probe)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
