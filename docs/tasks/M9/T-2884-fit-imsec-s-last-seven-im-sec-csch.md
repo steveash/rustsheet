@@ -3,7 +3,7 @@ id: T-2884
 title: "Fit IMSEC's last seven im-sec-csch-fused texts (cosh y and sinh y parts)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,10 +29,18 @@ Context: past `inverse_exp_sinh_cosh`'s band its parts are libm's, and only `IMC
 Code: `imsec` in crates/rustsheet-engine/src/functions/engineering/complex/trig.rs.
 
 ## Acceptance criteria
-- [ ] IMSEC fits more than 27 of the 34 fused texts and loses no older oracle cell, or the task records that no
+- [x] IMSEC fits more than 27 of the 34 fused texts and loses no older oracle cell, or the task records that no
       candidate does, with the scores.
-- [ ] engineering.md "IM* reciprocal kernels" records the scores.
-- [ ] `make check` green; reviewers approve.
+- [x] engineering.md "IM* reciprocal kernels" records the scores.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMCSCH kernel changes beyond that probe (all 44 fit since T-2841), IMCSC, IMCOT, IMSECH.
+
+## Outcome
+IMSEC's cosh y, sinh y and cosh 2y now come from `sec_sinh_cosh`: IMCOS's `trig_sinh_cosh` (`1/u` form) inside
+(0.01, 20] and libm's outside. It fits 32 of the 34 probes-numeric im-sec-csch-fused texts (27 before; B9, B19, B20,
+B21 and B33 now fit) and keeps every older IMSEC oracle cell in gen-m9, ironcalc-calc, probes and probes-numeric.
+B3 and B31 stay one unit of the 15th digit low in the real part. Scores of every candidate are in engineering.md
+"IM* reciprocal kernels". Eval: `make eval-check` 0 regressions, no gated baseline moves (probes-numeric is ungated).
+The IMCSCH large-real probe moved to T-2914.

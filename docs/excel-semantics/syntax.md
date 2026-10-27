@@ -99,10 +99,9 @@ Rule: Excel for the web refuses a whole workbook holding `GETPIVOTDATA(data_fiel
 field2)` (5 arguments) or `(..., field1, item1, field2, item2, field3)` (7), with or without a pivot table at the
 reference and inside `IFERROR` too. Three arguments (`data_field, pivot_table, field1`, the item missing) load and
 are `#REF!` (web.md "GETPIVOTDATA against a pivot table"), and even counts load. So the field/item pairs are checked
-when the formula is read, but only past the first pair. RustSheet loads such a formula and gives `#REF!`
-(`fn_getpivotdata` takes `chunks_exact(2)` and refuses a leftover field); with no Excel value to match, a known gap,
-not a deviation (T-2403 aligns it with the other refused argument counts, which give `#ERROR!`). The generator draws
-only the three-argument odd call (tools/src/rustsheet_tools/gen/pivots.py).
+when the formula is read, but only past the first pair. RustSheet loads such a formula and gives `#ERROR!` like the
+other refused argument counts (T-2403; `fn_getpivotdata` checks the count first); with no Excel value to match, a known
+gap, not a deviation. The generator draws only the three-argument odd call (tools/src/rustsheet_tools/gen/pivots.py).
 Evidence: single-formula workbooks over a generated pivot (`Pivot!H3`, a Count of Units pivot, rows Product,
 columns Rep) sent with `rustsheet-oracle fill -b excel-graph` on 2026-10-22 (T-2396): `=GETPIVOTDATA("Units",Pivot!$H$3,"Product","C","Rep")`,
 the same against `Pivot!$Z$40` (outside the pivot), wrapped in `IFERROR(...,-1)`, and
