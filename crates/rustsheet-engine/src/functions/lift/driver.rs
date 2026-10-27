@@ -3,12 +3,12 @@
 //! the in-place single-grid path and the text budget.
 
 use super::arg_buf::ArgBuf;
-use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork};
+use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork, ValueWork};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 use crate::arithmetic::{bcast_get, MISSING};
-use crate::cast::calc_result_to_array_node;
+use crate::cast::{calc_result_to_array_node, MAX_NUMBER_TEXT_LEN};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::functions::util::{array_element_value, top_left_of_array};
@@ -131,25 +131,53 @@ pub(crate) enum LiftCost {
 /// any runs: `elements` times the table weight, or for [`KernelWork::ByValue`] the sum of each
 /// element's charge by its argument values. That sum runs over every element, reused or not, so
 /// it never charges less than the elements computed; it is one pass over the grid, O(elements).
+///
+/// A [`ValueWork::CouponWalks`] kernel reads each of its arguments as a number before any walk,
+/// so a text is charged as what `reads_as` (the kernel's own `Model::cast_number`) reads it as: a
+/// number as that number, any other text as an error, `#VALUE!` before any walk (T-2879). Each
+/// reading parses at most [`MAX_NUMBER_TEXT_LEN`] characters, and a scalar's is read once.
 pub(super) fn kernel_units(
     work: KernelWork,
     lifted: &[LiftedArg],
     rows: usize,
     columns: usize,
     elements: u64,
+    reads_as: &dyn Fn(&str) -> Option<f64>,
 ) -> u64 {
     let KernelWork::ByValue(work) = work else {
         return elements.saturating_mul(work.weight());
     };
+    let reads_numbers = matches!(work, ValueWork::CouponWalks { .. });
+    let read_text = |text: &str| {
+        // Only a shortcut for `number_text_too_long` in `cast_number`: past
+        // `4 * MAX_NUMBER_TEXT_LEN` bytes a text has more characters than a number text may, so
+        // it is not parsed (or its characters counted) once per element.
+        let number = if text.len() > 4 * MAX_NUMBER_TEXT_LEN {
+            None
+        } else {
+            reads_as(text)
+        };
+        number.map_or(ArgValue::Error, ArgValue::Number)
+    };
+    // A scalar's value is read once; a grid's per element.
+    let slots: Vec<Result<ArgValue, &Vec<Vec<ArrayNode>>>> = lifted
+        .iter()
+        .map(|arg| match arg {
+            LiftedArg::Scalar(CalcResult::String(text)) if reads_numbers => Ok(read_text(text)),
+            LiftedArg::Scalar(value) => Ok(ArgValue::of(value)),
+            LiftedArg::Grid(grid) => Err(grid),
+        })
+        .collect();
     let mut units: u64 = 0;
     for row in 0..rows {
         for column in 0..columns {
             let value = |index: usize| {
-                lifted.get(index).map(|arg| match arg {
-                    LiftedArg::Scalar(value) => ArgValue::of(value),
-                    LiftedArg::Grid(grid) => {
-                        ArgValue::of_node(bcast_get(grid, row, column).unwrap_or(&MISSING).scalar())
-                    }
+                slots.get(index).map(|slot| match slot {
+                    Ok(value) => *value,
+                    Err(grid) => match bcast_get(grid, row, column).unwrap_or(&MISSING).scalar() {
+                        ArrayNode::String(text) if reads_numbers => read_text(text),
+                        node => ArgValue::of_node(node),
+                    },
                 })
             };
             units = units.saturating_add(work.units(value));
@@ -572,7 +600,8 @@ impl Model {
                 (plan, count_walks(&lifted, rows, columns, reuse))
             }
         };
-        let units = kernel_units(options.work, &lifted, rows, columns, elements);
+        let reads_as = |text: &str| self.cast_number(text);
+        let units = kernel_units(options.work, &lifted, rows, columns, elements, &reads_as);
         let visits = match cost {
             LiftCost::Unit => units,
             LiftCost::Cells(cells) => cells.saturating_mul(units),
