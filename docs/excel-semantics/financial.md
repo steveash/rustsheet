@@ -612,9 +612,10 @@ Implemented in: `irr_fallback`, `IRR_FALLBACK_STEPS` (functions/financial/financ
 Tasks: T-2727, T-1686, T-2131
 
 ## RATE is a secant on the FV residual
-Rule: RATE is a secant, not Newton's method, on the residual f(r) = pv·P + pmt·(k·((P-1)/r)) + fv with
-FV's own evaluation: P = (1+r)^n by Excel's `^` on Excel's `1+r`, k = 1+r for type 1, in exactly that
-parenthesization (FV's `annuity_factor`), and f(0) = pv + pmt·n + fv. It starts from r0 = guess and
+Rule: RATE is a secant, not Newton's method, on the residual f(r) = ((pv·P) + (pmt·(k·((P-1)/r)))) + fv:
+P = (1+r)^n by Excel's `^` on Excel's `1+r`, k = 1+r for type 1, in exactly that parenthesization, each
+`+`, `-`, `*` and `/` Excel's twice-rounded operator (not FV's `annuity_factor`, which rounds once), and
+f(0) = pv + pmt·n + fv. It starts from r0 = guess and
 r1 = r0 - 0.001·sign(f(r0)), steps r2 = r1 - f1·(r1-r0)/(f1-f0) with Excel's twice-rounded `-`, `*` and `/`,
 and stops at the first iterate with |r2 - r1| < 1e-7 and |f(r2)| < 1e-7, returning r2. The cap is 200
 steps, not the documented 20: guesses whose run needs 172 to 200 steps converge, those needing 201 to 216 are
@@ -636,8 +637,26 @@ tests |dr| < 1e-7 alone 166, |f| < 1e-6 188, < 1e-8 181, |dr| < 1e-6 191, < 1e-8
 217/394, 100 232/414. In exact arithmetic Newton (in r, v = 1/(1+r), ln(1+r), on f, f/(1+r)^n,
 r·f and f·(1+r)^a for a in -100..100), Halley and finite-difference Newton (steps ±1E-5 to ±1E-10,
 absolute and relative) never reproduce R!C's large-error cells; the secant reproduces R!B's to a few ulps.
-The 181 numeric cells still off are mostly a few ulps (the last secant step amplifies f's rounding);
-which operation differs is open (follow-up in T-2005's Outcome). One cell disagrees on the value type:
+The 181 numeric cells still off were f's rounding and the nested PMT's bits (T-2527): the fit lab
+(`uv run rustsheet-fitlab rate`, kernels/solvers.py `rate_secant_candidates`) reads a nested `PMT(..)` as
+Excel's value of the same call in probes-numeric/m9-fin-pmt (all 308 inner calls are there). Excel agrees
+that the nested call adds nothing: probes/rate-excel-pmt-bits repeats the 308 nested cells with the PMT
+replaced by a cell holding Excel's PMT bits (its 15-digit literal plus an exact m·2^-e), and its 308 values
+are the nested cells' bits. On the 782 RATE cells of the fit set (errors included; the probes above,
+rate-zero-residual-guess and rate-excel-pmt-bits) the secant is bit-exact on all 782 with the residual's
+operators twice-rounded, 778 with them rounded once (FV's evaluation; m9-fin-irr-rate A487 2,183 ulp, A218
+157 ulp, and the same two inputs again as rows A2 and A271 of rate-excel-pmt-bits), and 751 to 774 with the
+three-term sum in another order (pv,fv,pmt; fv,pv,pmt; pmt,fv,pv; either rounding). Excel's value is an
+iterate of the model's trace on 705 of 705 numeric cells. So the RATE cells still off
+in the eval (m9-fin-irr-rate A218, A278, A245, A367 among them) are off by the engine's PMT bits, not by
+RATE's: the engine's PMT differs from Excel on 176 of the 308 inner calls (PMT's own tasks, T-1528).
+A guess whose residual is exactly 0 runs the secant, it is not returned (probes/rate-zero-residual-guess,
+T-2527): `RATE(1,0,0,0)` and `RATE(1,0,0,0,0,0.3)`, residual 0 everywhere, are `#NUM!` (the flat secant),
+not the guess; `RATE(10,-1E6,1E7,0,0,0)` is 0 (from guess 0 the first step lands on 0 exactly and the
+next one does not move), where the default guess is `#NUM!` (A583 below), and the guess-0 roots A8 and A10
+are 0 too; exact roots as guesses (`RATE(2,0,-1,1.5625,0,0.25)`, `RATE(2,-1,-1,4.75,0,0.5)`; A3-A6, A12)
+return the guess's bits, as the model. A7 (default guess) and A11 (type 1, residual -1.25 at the guess) are
+controls, not zero residuals. One cell disagrees on the value type:
 m9-fin-irr-rate A583 `RATE(10,-1E6,1E7)`, root exactly 0, is `#NUM!` in Excel; near 0 the residual is
 rounding noise (|f| about 0.1 to 0.4 against the 1E-7 test), the run wanders until the cap and the
 model returned its 200th iterate, -2.6E-9, before the cap's |f| test below (now `#NUM!`, as in Excel).
@@ -653,14 +672,14 @@ The cap's return test (T-2689; probes/rate-cap-return-rule, rate-pmt-zero-cap, r
   pmt 0 and fv 0 the bands follow: n 2-10 converge, n 11-15 end below 1 + r = 1e-4, n 16-24 return (calipers
   formulas_financial F142 = rate-pmt-zero-cap A24, -0.9970141220397587), n 25 and up have a step over 1e-4.
 Whether a test is `<` or `<=` and whether the last one is 1 + r or r + 1 are not separated by any cell.
-Not probed, kept from the model: `#NUM!` for a flat secant (f1 = f0) and for a residual whose `^` overflows; only the
-iterates r2 are tested against -1 (not r1 = guess - 0.001); a guess whose residual is exactly 0 runs the secant
-(the zero's sign picks r1) rather than returning the guess; f(0) is pv + pmt·n + fv in plain doubles (the three
+Not probed, kept from the model: `#NUM!` for a residual whose `^` overflows (a flat secant is probed:
+rate-zero-residual-guess A1, A2); only the iterates r2 are tested against -1 (not r1 = guess - 0.001); a -0
+residual at the guess (the zero's sign picks r1; the probe's residuals are all +0); f(0) is pv + pmt·n + fv in plain doubles (the three
 guess-0 cells are bit-exact, but no cell separates the order); the cap probe's guesses were chosen by the model's own
 step count, so the cap's position is measured in model steps (A30's exact unconverged bits confirm it).
 Ours: `compute_rate` (functions/financial/financial_util.rs), this model.
-Status: VERIFIED (method, stop rule, cap and its return test; excel-graph) / UNVERIFIED (f's last-ulp evaluation, the rules above)
-Tasks: T-1525, T-0916, T-1533, T-2005, T-2689
+Status: VERIFIED (method, f's evaluation to the last ulp, stop rule, cap and its return test, a zero residual at the guess; excel-graph) / UNVERIFIED (the rules above)
+Tasks: T-1525, T-0916, T-1533, T-2005, T-2689, T-2527
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula
