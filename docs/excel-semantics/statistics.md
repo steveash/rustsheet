@@ -3333,6 +3333,21 @@ bcb24385baafb2f0 A377 3 ulp). Still visibly off:
 `F.TEST(Data!B6:E12,Data!A1:D10)`, gen-m9/b6593d7dd13f2dac A306 (Excel 1.23966888990022E-69, ours 25 ulp off; data with
 123456789.123 among values near 1; T-2829). 8 cells move from bit-exact to 1 to 3 ulp (T-2830). Evidence and per-branch
 tables: docs/research/t2681/README.md, `score_bratio.py`.
+- F.TEST is 2·F.DIST.RT at Excel's own f, to the bit: at gen-m9/b6593d7dd13f2dac A306's data
+  `F.TEST(..)` and `2*F.DIST.RT(VAR.S(..)/VAR.S(..),23,12)` are both 1.23966888990022E-69. With both shapes above 1,
+  Excel's bpser stores fl(a·LN x) as the port does: when the sample is scaled to move x by up to 1E5 ulp, the gap
+  between ours and Excel stays a constant of the shapes (5.3E-15 relative at a = 6, b = 11.5, 1.4E-15 at b = 11).
+  That constant is Excel's ln B(a, b): bpser's L is a stored double an integer number of ulps off fl(accurate ln B)
+  (-3 at a = 6, b = 11.5, which is A306's whole miss; -1 at (6, 11); 0 at (2.5, 11), gen-m9/a790a4d4a6a82756 A289).
+  On a grid of 99 F.TEST cells (a 2.5 to 8, b 8.5 to 19.5, x near 1E-12) every L is within 0.2 of an integer k ulps,
+  k from -3 to +2 (|k| <= 1 at a = 2.5, 4, 4.5 and 5, 2 at a = 3, 3.5, 6, 7 and 8, -3 only at (6, 11.5)); the same
+  test on L + ln a, L + ln b or L + lnGamma(a + b) gives random fractions.
+  No form tried gives the map: accurate 45 of 99 (shipped), TOMS betaln 49, TOMS's a-reduction with w = prod a/(a + b)
+  55, Excel GAMMALN sums 15 to 29 (docs/research/t2829/ln_beta_map.py; probes/t2829-ftest-a306-shapes and
+  t2829-ftest-ln-beta-grid, excel-graph; open as T-2924). A306 stays 25 ulp low until that form is found.
+  The F.DIST.RT cells of probes/t2829-ftest-tail-over-b (f = 1E12) are off ours by these k plus whole steps of the
+  fl(a·LN x) grid (a = 6, b = 11.5: -143 ulp = +5.4E-15 - 2.8E-14 relative), and `2*F.DIST.RT(..,22,12)` differs from
+  F.TEST at the b = 11 twin by such a step, so F.DIST.RT forms x or z differently there; F.TEST is the clean probe.
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
@@ -3577,7 +3592,10 @@ Rule: GAUSS(z) keeps its leading term for tiny z: `GAUSS(1E-300)` is 3.989422804
 -3.989422804014327E-301 (gen-m9/4bad303d32cc3f46 A225, 05d44f6dd6cfc567 A233), `GAUSS(1E-15)` 3.989422804014328E-16
 (a54c738c697617c3 A235), so it is not NORM.S.DIST(z) - 0.5 in doubles (that gives 0 and 4.440892098500626E-16).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 8 cells listed in T-2434.
-Ours: 0 and 4.440892098500626E-16; T-2434.
+Cut: the leading term is exact only for tiny z. `GAUSS(1E-10)` is 3.9894310077670525E-11 and `GAUSS(4E-15)`
+1.5543122344752192E-15, the cancelled Phi(z) - 0.5 (gen-m9/68d8ffb69ff739d8 A262, 146b46e74f2dac3b A46), so the switch
+lies in (1E-15, 4E-15); ours uses z * phi(0) below 2E-15 (T-2434).
+Ours: 7 of the 8 cells match; `GAUSS(1E-15)` is 3.9894228040143274E-16, one ulp below Excel (follow-up).
 Status: VERIFIED (excel-graph)
 
 ## Scalar distributions at extreme arguments (T-2255)

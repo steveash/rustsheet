@@ -10,8 +10,11 @@ use std::collections::HashMap;
 use std::io::BufRead;
 
 use quick_xml::events::{BytesEnd, BytesStart, Event};
+use rustsheet_engine::expressions::lexer::{has_overlong_string_literal, MAX_STRING_LITERAL_UNITS};
 use rustsheet_engine::expressions::parser::Parser;
 use rustsheet_engine::expressions::utils::{is_valid_row, number_to_column};
+use rustsheet_engine::language::get_language;
+use rustsheet_engine::locale::get_locale;
 use rustsheet_engine::types::{Cell, DataTable, DataTableInput, DateSystem, Row, SheetData};
 
 use crate::error::XlsxError;
@@ -520,6 +523,7 @@ impl SheetDataReader<'_> {
                 MAX_FORMULA_UNITS,
                 &format!("Formula in {context}"),
             )?;
+            check_string_literals(&formula_text, &format!("Formula in {context}"))?;
             match formula_type {
                 "shared" => {
                     let si = formula
@@ -783,6 +787,20 @@ pub(super) fn check_stored_length(
     if text.len() > limit && text.encode_utf16().count() > limit {
         return Err(XlsxError::Workbook(format!(
             "{subject} is longer than {limit} UTF-16 code units"
+        )));
+    }
+    Ok(())
+}
+
+/// Refuses the workbook, as Excel does, when `text` holds a string literal over 4,095 UTF-16 units
+/// (T-2762).
+pub(super) fn check_string_literals(text: &str, subject: &str) -> Result<(), XlsxError> {
+    // The scan only measures literals, which no locale or language changes; "en" always exists.
+    let locale = get_locale("en").map_err(XlsxError::Workbook)?;
+    let language = get_language("en").map_err(XlsxError::Workbook)?;
+    if has_overlong_string_literal(text, locale, language) {
+        return Err(XlsxError::Workbook(format!(
+            "{subject} holds a string literal longer than {MAX_STRING_LITERAL_UNITS} UTF-16 code units"
         )));
     }
     Ok(())
