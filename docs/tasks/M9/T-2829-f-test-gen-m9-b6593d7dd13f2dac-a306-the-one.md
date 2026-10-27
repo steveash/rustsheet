@@ -26,6 +26,31 @@ variances when one is 8E11 times the other (x = df_s/(df_b f + df_s) against df_
 df_s v_s), and the variance sums in x87 registers); probe the same shapes with the data scaled.
 Use `docs/research/t2681/score_bratio.py` to score.
 
+## Findings so far (2026-10-27, first opus run; scripts not committed, numbers reproducible as below)
+Inputs: a = 6, b = 11.5, two-pass x = 6.291397944737322e-13, Excel p = 1.23966888990022E-69 (the oracle's
+shortest repr has 15 digits; A289 below has 17). Ours (`f_test_bratio_p`) 1.2396688899002135E-69: 25 ulp low, and
+it displays ...021, so it is visibly off.
+- **Not x.** Exact tail at each x against Excel, by mpmath `betainc`: two-pass double x +19 ulp (Excel is lower
+  than the exact tail), exact x +27. The other forms tried all give x at or above the two-pass x (+19 to +42):
+  one-pass, `n·Σx² - (Σx)²`, Welford, x87-extended accumulators (numpy longdouble), row- or column-major order,
+  `1/(1 + db f/ds)`, `ds v1/(db v2 + ds v1)`, f in extended. Excel would need x about 4 ulp below the two-pass x.
+  The port is flat in x here: x ± 1 ulp gives the same p, because fl(a·LN x) is stored on a 2.8E-14 grid.
+- **Not ln x formed from pieces**: `fl(ln 12) - fl(ln total)`, `-ln(1 + 23f/12)` and the rest land on the same
+  stored fl(a·LN x) (-25 ulp), or at +5 to +43 when a·ln x is left unstored.
+- **z**: with ln B exact, Excel's p needs z = a·ln x - ln B about 4.0E-15 below the exact z. fl64(a·LN x) is 9.18E-15
+  below (that is our -25 ulp), and an unstored a·ln x is about exact (+19).
+- **ln B**: TOMS 708 `betaln` (reduce a0 to (1, 2], then `ln w + GAMMALN(a0) + algdiv(a0, b0)`) equals the
+  accurate ln B on A306 and on A289 (both 0 ulp apart in p). Excel's GAMMALN sum held in a register,
+  `-GL(a) + (-GL(b) + GL(a+b))` (BETA.DIST's bpser form, ln B 13 ulp high in p), puts A306 on Excel's 15 digits.
+  But used for every pair of shapes both >= 1 with one above 8, it turns gen-m9/a790a4d4a6a82756 Calc!A289
+  (`F.TEST({1,1,2,2,2,3},Data!B1:E11)`, a = 2.5, b = 11, x = 2.9621212121212663E-30, Excel
+  4.2838236027000643E-72, bit-exact today) into ...0517, visibly off. So that form is out unless something
+  separates the two cells (b half-integer against integer? a0 >= 4?).
+- Next ideas: (1) A306's data hold 123456789.123: probe F.TEST on the same shapes with x placed so that
+  fl(a·LN x) has a different residual, to tell whether Excel stores a·LN x here at all; (2) probe a = 6 against
+  b = 11 and 11.5 with modest data to test a half-integer-b ln B form; (3) check whether Excel orients this point
+  through w1 (bratio's 1 - w with the swap) for a0 >= 4.
+
 ## Acceptance criteria
 - [ ] A306 within half a unit of the 15th significant digit of Excel's value, or the cause
       recorded in docs/excel-semantics/statistics.md with the probe that shows it.
