@@ -61,15 +61,15 @@ fn hyperbolic_log_form(
 /// the worksheet SINH switches to expm1
 /// (numbers.md). So the imaginary part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm
 /// sinh gives ...242709) and `IMSIN("1E-200+1E-200i")` is "1E-200": EXP(1E-200) = EXP(-1E-200),
-/// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH, IMCOSH, IMSECH and IMCSCH take
-/// [`inverse_exp_sinh_cosh`] instead (T-2629).
+/// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH, IMCOSH, IMSECH and
+/// IMCSCH take [`inverse_exp_sinh_cosh`] instead (T-2629, T-2841).
 fn exp_sinh_cosh(t: f64) -> (f64, f64) {
     let (a, b) = (excel_exp(t), excel_exp(-t));
     ((a - b) / 2.0, (a + b) / 2.0)
 }
 
-/// `(sinh x, cosh x)` as IMSINH, IMCOSH, IMSECH and IMCSCH build them from the real part: `u = EXP(-x)`,
-/// then `(1/u ∓ u)/2`, with Excel's EXP. The reciprocal makes the kernel lopsided: `IMSINH("4")` is
+/// `(sinh x, cosh x)` as IMSINH, IMCOSH, IMSECH and IMCSCH build them from the real part:
+/// `u = EXP(-x)`, then `(1/u ∓ u)/2`, with Excel's EXP. The reciprocal makes the kernel lopsided: `IMSINH("4")` is
 /// 27.289917197127753, one ulp above libm sinh, while `IMSINH("-4")` is libm's (T-2778), and at
 /// x = 1.5 both parts are one ulp above libm, at -1.5 neither. It fits all 300 cells of
 /// probes/t2778-imsinh-sign-sweep (0.0105 <= |x| <= 18.2), where `(EXP(x) - EXP(-x))/2` fits 224,
@@ -260,7 +260,7 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// either square of the identity fused; every older cell ties (T-2817, engineering.md
 /// "IM* reciprocal kernels"). The parts sinh x and cosh x are IMSINH's ([`inverse_exp_sinh_cosh`]):
 /// with them all 44 fit, `IMCSCH("0.0853196+0.00680423i")` 11.6323554979869-0.929943499720481i
-/// included, where libm's missed 11 (T-2841).
+/// included, where libm's parts fit 33 of 44 (T-2841).
 pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
 

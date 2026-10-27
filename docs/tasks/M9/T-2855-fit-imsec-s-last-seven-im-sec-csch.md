@@ -23,6 +23,9 @@ form 28 and 1 lost. So Excel's IMSEC probably builds cosh y and sinh y in a way 
 (`INVERSE_EXP_LOW`/`HIGH`-like switches) or per sign of y. Start from `trig_sinh_cosh` and look at the older cells it
 loses (probes-numeric `im-last-digit-sweep`). Score every candidate on every IMSEC oracle cell (gen-m9,
 ironcalc-calc, probes, probes-numeric `im-*`), as T-2841 did with a scratch build outside the commit.
+Also probe IMCSCH with a large real part and y = 0 (`IMCSCH("400")`, `IMCSCH("710")`), carried over from T-2841's
+Context: past `inverse_exp_sinh_cosh`'s band its parts are libm's, and only `IMCSCH("710.4+0i")`
+(probes/eng-im-overflow-edges A64) covers the overflowed `t`.
 Code: `imsec` in crates/rustsheet-engine/src/functions/engineering/complex/trig.rs.
 
 ## Acceptance criteria
@@ -32,4 +35,4 @@ Code: `imsec` in crates/rustsheet-engine/src/functions/engineering/complex/trig.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- IMCSCH (all 44 fit since T-2841), IMCSC, IMCOT, IMSECH.
+- IMCSCH kernel changes beyond that probe (all 44 fit since T-2841), IMCSC, IMCOT, IMSECH.
