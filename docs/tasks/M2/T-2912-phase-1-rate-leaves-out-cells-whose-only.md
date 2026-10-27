@@ -3,7 +3,7 @@ id: T-2912
 title: "Phase 1 rate leaves out cells whose only open question is desktop evidence (decision 0039): AND and MODE miss it only on Excel 15 poi caches"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
