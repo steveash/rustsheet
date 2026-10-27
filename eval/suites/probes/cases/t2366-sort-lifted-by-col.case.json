@@ -1,7 +1,7 @@
 {
  "format": "rustsheet-case/v1",
  "description": "T-2366: SORT lifted by_col elements: each call's top-left (Array) or only the first (ArrayFirst).",
- "tags": ["M2", "probe", "lookup", "T-2366"],
+ "tags": ["M7", "probe", "lookup", "T-2366"],
  "sheets": [
   {
    "name": "Sheet1",
