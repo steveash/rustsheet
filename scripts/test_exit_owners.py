@@ -220,6 +220,13 @@ class SharedStems(TaskDir):
         self.assertEqual(called[self.COPY], ("probes/t2436/146b46e74f2dac3b", "t2436/146b46e74f2dac3b", "t2436"))
         self.assertEqual(called[self.GEN9], ("gen-m9/146b46e74f2dac3b",))
 
+    def test_a_directory_two_cases_share_names_neither(self) -> None:
+        other = "probes/t2436/0000000000000000.case.json"
+        called = exit_owners.case_names([*self.CASES, other])
+        self.assertEqual(called[self.COPY], ("probes/t2436/146b46e74f2dac3b", "t2436/146b46e74f2dac3b"))
+        # Its stem is its own, so the shared directory does not matter.
+        self.assertEqual(called[other], ("0000000000000000",))
+
     def test_a_calipers_directory_and_cell_own_only_that_workbook(self) -> None:
         self.task("Desktop-only cells: pv26_011 S!A1.", milestone="M14")
         self.assertEqual(self.unowned(), [f"{c}!S!A1" for c in (self.PV12, self.GEN9, self.COPY)])

@@ -73,7 +73,7 @@ the Phase 1 rule that every remaining failure has a filed task (docs/milestones.
   the stem in all three forms (A1 anywhere, colon span on the case's line, whole-case line).
 - Tests: `SharedStems` in scripts/test_exit_owners.py (names, calipers directory + cell, gen-m9 hash vs its
   t2436 copy, a shared stem alone owning nothing); the 18 existing tests pass unchanged.
-- Counts on `make eval` of origin/main 5cadaf05 with calipers fetched (3,328 cases; 70 shared stems, 603 cases),
+- Counts on `make eval` of origin/main 5cadaf05 with calipers fetched (3,328 cases; 70 stems shared by 603 cases, 456 of them calipers),
   before → after: `make exit-owners MILESTONE=M2` 0 → 0, `M5` 0 → 0, `M6` 0 → 0, `--unattributed` 0 → 0.
   Of the 271 unattributed visibly-off cells in shared-stem cases, 57 false owner links (task, cell) are gone, and
   no cell is left without an owner: the 6 cells the Context measured now have proper owners (T-2663 names

@@ -4,9 +4,9 @@
   by 0136).
 - **Context:**
   - 0096 identifies a case by its file stem, the last segment of its id. On a report with
-    calipers fetched, 70 stems are shared by 601 cases: all 171 calipers cases are
-    `calipers/<set>/<dir>/golden.xlsx`, and 69 gen-m9 hashes are rerun as `probes/t2429/<hash>`
-    or `probes/t2436/<hash>`.
+    calipers fetched (origin/main 5cadaf05), 70 stems are shared by 603 cases: all 456 calipers
+    cases are `calipers/<set>/<dir>/golden.xlsx`, and 69 gen-m9 hashes are rerun as
+    `probes/t2429/<hash>` or `probes/t2436/<hash>`.
   - A task that names one of those cases therefore also owned the same A1 cell (or, on a line
     with no A1 token, every failing cell) of all the others, so `make exit-owners` and
     `--unattributed` hid unowned failures (T-2880 measured 6 such visibly-off cells; T-2704 and

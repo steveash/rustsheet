@@ -17,10 +17,10 @@ the case (`case_names`): by its file stem (the last path segment of the case id 
 a gen hash, an xlsx file name, a probe name; with or without that suffix) when no other case of the
 report has that stem, else only by a longer suffix of the case id that is unique in the report
 (`pv26_011/golden.xlsx`, `t2436/<hash>`, `gen-m9/<hash>`) or by its directory below the suite when
-no other case of the report is in a directory of that name (`pv26_011`; decision 0138), and either the cell's A1 name as a whole
-word, or a colon span (`A5:D5`) holding it on a line that names the stem, or the stem on a line
-with no A1-shaped token (a task that names only the case owns all of it). Hyphen spans
-(`D49-D65`) name their ends only (decision 0136). The ironcalc-calc
+no other case of the report is in a directory of that name (`pv26_011`; decision 0138), and
+either the cell's A1 name as a whole word, or a colon span (`A5:D5`) holding it on a line that
+names the case, or the case on a line with no A1-shaped token (a task that names only the case
+owns all of it). Hyphen spans (`D49-D65`) name their ends only (decision 0136). The ironcalc-calc
 exceptions are the row's `excepted` cells, which `make eval` takes from
 eval/milestones/exit-exceptions.tsv.
 
@@ -36,6 +36,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -80,16 +81,9 @@ def case_names(cases: list[str]) -> dict[str, tuple[str, ...]]:
     suite, the id's first segment) when no other case is in a directory of that name."""
     ids = sorted(set(cases))
     parts = {c: c.removesuffix(SPEC_SUFFIX).split("/") for c in ids}
-    stems: dict[str, int] = {}
-    suffixes: dict[str, int] = {}
-    dirs: dict[str, int] = {}
-    for p in parts.values():
-        stems[p[-1]] = stems.get(p[-1], 0) + 1
-        for k in range(len(p) - 1):
-            key = "/".join(p[k:])
-            suffixes[key] = suffixes.get(key, 0) + 1
-        if len(p) > 2:
-            dirs[p[-2]] = dirs.get(p[-2], 0) + 1
+    stems = Counter(p[-1] for p in parts.values())
+    suffixes = Counter("/".join(p[k:]) for p in parts.values() for k in range(len(p) - 1))
+    dirs = Counter(p[-2] for p in parts.values() if len(p) > 2)
     out: dict[str, tuple[str, ...]] = {}
     for c, p in parts.items():
         if stems[p[-1]] == 1:
