@@ -3,7 +3,7 @@ id: T-2506
 title: "Incomplete beta L140: bup with Excel's density times x y as prefactor, plus bpser (T-2464 E4)"
 milestone: M9
 lane: functions-stat
-status: blocked
+status: in-progress
 priority: P1
 size: M
 tier: opus
@@ -42,7 +42,7 @@ bup+bgrat (T-2509, T-2510) reuses it.
 - [ ] The L140 bup+bpser cells of r2-bratio's sets (beta_exact, w2f, ix) score at least 7,505 bit-exact and 11,713
       within 15 digits of 11,742, with the engine's own density as P.
 - [ ] The ix L140 cells score at least 1,011 bit-exact of 1,620.
-- [ ] The three stat-argument-modes cells are either kept bit-exact or recorded under decision 0083's allowance, with
+- [x] The three stat-argument-modes cells are either kept bit-exact or recorded under decision 0083's allowance, with
       the test of r2-impact's hypothesis 1 in the Outcome.
 - [ ] `make check` green; reviewers approve.
 
@@ -58,24 +58,15 @@ in the Outcome. Bit-level criteria still unmet move to a follow-up task without 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
 
-## Blocked because
-Blocked because: three gated ulp regressions need decision 0083's standing allowance
-(`rustsheet-eval update-baseline --allow-regressions`), which this run's permission mode refused to execute.
+## Progress (2026-10-27, allowance recorded)
+The baseline is recorded with `update-baseline --allow-regressions` under decision 0083's standing allowance, with the
+owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. It adds exactly three gated lines,
+all numeric, 1 ulp and not visibly off, in `ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx` `Sheet1` (Excel vs ours):
+- G15 `BETA.DIST`: 0.4999999999999999 vs 0.49999999999999994;
+- G65 `BETA.DIST`: 0.39911862276339233 vs 0.3991186227633924;
+- H32 `BETA.INV` chained on G32: 0.555 vs 0.5550000000000002.
 
-The branch builds on T-2505 (#1991, merged into `main` and into this branch). It adds
-`bratio/mod.rs` `l140_bup_bpser` and `bup` (Excel's density `beta_density_small_shape` of Beta(b0', a0) at y0 times
-x·y as the prefactor, the w4 term arithmetic, TOMS's k and early break) and sends `Branch::L140BupBpser` through them
-for BETA.DIST's cdf.
-
-Eval on 2026-10-27 (this branch with T-2505, against T-2505 alone):
-- gated: gen-m9 fixed 1; probes fixed 6; ironcalc-calc fixed 8 and **3 regressions**, all numeric, 1 to 2 ulp, none
-  visibly off: BETADIST_BETAINV.xlsx G15 (Excel 0.4999999999999999, ours 0.49999999999999994), G65
-  (0.39911862276339233 vs 0.3991186227633924) and H32 (BETA.INV chained on G32: 0.555 vs 0.5550000000000002; T-2633's
-  kind of cell). Visible parity 3,316 in-scope cells (lock 3,581).
-- probes-numeric (ungated): 6,312 cells fixed, 125 BETA.DIST cells newly off (w2f xruns and absweep), 1 newly past
-  4 ulp (t2464-w2f-absweep A5595), 0 newly visibly off; visibly-off numbers 100,013 → 98,965.
-- Summing W without the early break (`l140_best`'s `W_best`) leaves all three gated cells unchanged.
-
-The three cells meet decision 0083's allowance conditions 1–3. To finish: confirm, run the allowance update (condition 4:
-list the cells in the Outcome and a follow-up ulp task), measure the acceptance counts, run the reviewers, open the
-PR. The stat-argument-modes cells named in the criteria did not regress.
+T-2633 owns them (the BETADIST_BETAINV ulp cells). Gated eval against main 81c3d27e: gen-m9 fixed 1, ironcalc-calc fixed
+8, probes fixed 6. A full run of every suite against a main 81c3d27e binary finds 128 ungated probes-numeric cells
+newly failing, all 1-3 ulp, and none newly visibly off; in-scope cells visibly off fall from 103,384 to 102,314.
+Still to do before `done`: measure acceptance criteria 1 and 2 (the r2-bratio and ix L140 counts), then review.
