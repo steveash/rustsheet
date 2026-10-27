@@ -23,8 +23,8 @@ an integer k ulps from fl(accurate ln B), k from -3 (a = 6, b = 11.5, gen-m9/b65
 L + ln a, L + ln b or L + lnGamma(a + b) are random, so the stored quantity is L itself. Scores of the forms tried (cells
 reproduced of 99): accurate 45 (what `f_test_tail::neg_ln_beta` ships above 8), TOMS betaln with Excel's LN 49, the TOMS
 reduction with w = prod a/(a + b) 55, gamln(a) + algdiv(a, b) unreduced 40, Excel GAMMALN sums in each order 15-29.
-k grows with a (|k| <= 1 at a <= 5, up to 3 at a >= 6), and for integer a (common a0 = 1 after the reduction) it is
-not constant in b, so the error is not algdiv(a0, b) alone. The same L is open for BETA.DIST (statistics.md, "algdiv
+|k| <= 1 at a = 2.5, 4, 4.5 and 5, up to 2 at a = 3, 3.5, 6, 7 and 8, and 3 only at (6, 11.5); for integer a (common
+a0 = 1 after the reduction) it is not constant in b, so the error is not algdiv(a0, b) alone. The same L is open for BETA.DIST (statistics.md, "algdiv
 OPEN": Excel's algdiv about 1 unit from TOMS's), so a fit should be checked on BETA.DIST's cells too.
 Ideas: the reduction product in x87 or in another order; lnw from a product of quotients h/(1 + h) with LN of each
 factor; Stirling's series for lnGamma(a + b) and lnGamma(b) with Excel's own constants; a probe at a = 1.5 .. 2 to pin the

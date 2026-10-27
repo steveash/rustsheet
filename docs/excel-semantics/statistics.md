@@ -3340,7 +3340,8 @@ tables: docs/research/t2681/README.md, `score_bratio.py`.
   That constant is Excel's ln B(a, b): bpser's L is a stored double an integer number of ulps off fl(accurate ln B)
   (-3 at a = 6, b = 11.5, which is A306's whole miss; -1 at (6, 11); 0 at (2.5, 11), gen-m9/a790a4d4a6a82756 A289).
   On a grid of 99 F.TEST cells (a 2.5 to 8, b 8.5 to 19.5, x near 1E-12) every L is within 0.2 of an integer k ulps,
-  k from -3 to +2, |k| <= 1 for a <= 5; the same test on L + ln a, L + ln b or L + lnGamma(a + b) gives random fractions.
+  k from -3 to +2 (|k| <= 1 at a = 2.5, 4, 4.5 and 5, 2 at a = 3, 3.5, 6, 7 and 8, -3 only at (6, 11.5)); the same
+  test on L + ln a, L + ln b or L + lnGamma(a + b) gives random fractions.
   No form tried gives the map: accurate 45 of 99 (shipped), TOMS betaln 49, TOMS's a-reduction with w = prod a/(a + b)
   55, Excel GAMMALN sums 15 to 29 (docs/research/t2829/ln_beta_map.py; probes/t2829-ftest-a306-shapes and
   t2829-ftest-ln-beta-grid, excel-graph; open as T-2924). A306 stays 25 ulp low until that form is found.

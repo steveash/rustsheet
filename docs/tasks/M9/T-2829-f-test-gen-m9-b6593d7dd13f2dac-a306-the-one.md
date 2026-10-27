@@ -26,7 +26,9 @@ variances when one is 8E11 times the other (x = df_s/(df_b f + df_s) against df_
 df_s v_s), and the variance sums in x87 registers); probe the same shapes with the data scaled.
 Use `docs/research/t2681/score_bratio.py` to score.
 
-## Findings so far (2026-10-27, first opus run; resumed 13:55 UTC by a second run; scripts not committed, numbers reproducible as below)
+## Findings so far (2026-10-27, first opus run; resumed by a second run)
+The first run's scripts are not committed (numbers reproducible as below); the second run's map script is
+docs/research/t2829/ln_beta_map.py (Outcome).
 Inputs: a = 6, b = 11.5, two-pass x = 6.291397944737322e-13, Excel p = 1.23966888990022E-69 (the oracle's
 shortest repr has 15 digits; A289 below has 17). Ours (`f_test_bratio_p`) 1.2396688899002135E-69: 25 ulp low, and
 it displays ...021, so it is visibly off.
