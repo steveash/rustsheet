@@ -18,7 +18,7 @@ ODD and EVEN return Excel's doubles for values above 2^53 (`ODD(9999999999999999
 Gap triage of gen-m5 (T-2114, excel-graph oracle, 2026-10-20). Needs an oracle sweep: T-2172. `fn_odd`/`fn_even` (mathematical.rs) compute `ceil((|x|-1)/2)*2+1` and `ceil(|x|/2)*2` in
 doubles; above 2^53 `|x|-1` already rounds. Candidate models to test against the sweep: the 15-digit cut first (ROUND's
 stage 1, decimal_round.rs), ROUNDUP's "adds the unit in binary" (numbers.md), `2*ceil((x+1)/2)-1`. Observation:
-docs/excel-semantics/numbers.md "ODD and EVEN above 2^53: last digits not explained". The EVEN cell's input comes from SERIESSUM
+docs/excel-semantics/numbers.md "ODD above 2^53 adds one in binary" (was "ODD and EVEN above 2^53: last digits not explained"). The EVEN cell's input comes from SERIESSUM
 and may itself be an ulp off in Excel (T-2163), so fit on the sweep, not on that cell alone.
 
 Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 3 in eval/baseline/gen-m5.txt:
@@ -47,7 +47,7 @@ already 5E+15, so the ODD is the innermost divergence.
 | gen-m5/36133d9266f8ed26 Calc!A144 | `=CEILING.PRECISE(AVERAGE(Data!E8,ODD(9999999999999999)))` (E8 = 1) | 5000000000000000.0 | 4999999999999990.0 |
 
 ## Acceptance criteria
-- [x] These 5 known-failure lines (3 from T-2114, 1 from T-2252, 1 from T-2648) disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] These 5 known-failure lines (4 removed here; 38b1b8e51dbad326 A10 was already gone, T-2163) (3 from T-2114, 1 from T-2252, 1 from T-2648) disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
 - [x] Every ODD/EVEN cell of the T-2172 sweep passes, or the remaining ones are listed residuals in numbers.md.
 - [x] `make check` green; reviewers approve.
 
