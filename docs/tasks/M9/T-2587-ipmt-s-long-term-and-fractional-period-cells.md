@@ -52,7 +52,7 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9): these 9 cells are within half a unit of the 15th significant digit of Excel's
       value (their lines leave eval/baseline/gen-m9.txt, or stay only as last-digit NumericUlp lines), with
-      no new known-failure lines in any baseline. Partly: 8 of the 10 pass; A202 moved to T-2935 and A177
+      no new known-failure lines in any baseline. Partly: 8 of the 10 pass; A202 moved to T-2943 and A177
       (a BETAINV miss, not IPMT's) to T-2936.
 - [x] financial.md records IPMT's formulation and its evidence.
 - [ ] `make check` green; reviewers approve.
@@ -71,7 +71,7 @@ Cells:
   probes-numeric, ironcalc-calc, corpus-bench or poi. `discounted_interest` and `DISCOUNTED_INTEREST_FROM` in
   functions/financial/annuity.rs; unit test `interest_on_excels_discount`.
 - Split out: A202 (0a957119475760c5) cancels on fv and needs the same form there without breaking A207 and four
-  huge-rate probe cells (T-2935). A177 (5ded7594e597e31e) is not IPMT's miss: Excel's `BETAINV(1E-15,1E+8,1)`
+  huge-rate probe cells (T-2943). A177 (5ded7594e597e31e) is not IPMT's miss: Excel's `BETAINV(1E-15,1E+8,1)`
   differs from `p^(1/alpha)` by 3.6E-10 relative (T-2936).
 - Eval: gen-m9 known failures 3724 -> 3720 (4 fixed, 0 regressions); IPMT visibly-off cells 12 -> 9 over gen-m9,
   probes, probes-numeric and ironcalc-calc. calipers: the same 26 known regressions (T-0458) with and

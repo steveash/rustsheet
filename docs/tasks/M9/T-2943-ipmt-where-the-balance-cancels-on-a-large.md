@@ -1,5 +1,5 @@
 ---
-id: T-2935
+id: T-2943
 title: "IPMT where the balance cancels on a large fv: Excel's discounted Y at rate 1"
 milestone: M9
 lane: functions-financial

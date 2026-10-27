@@ -214,11 +214,11 @@ A227; T-2587 fit over the 1403 IPMT and 441 CUMIPMT cells of gen-m9, probes, pro
 - Open: `IPMT(1,6,50,272273,AVERAGE(..))` (fv about 1.37E+9, gen-m9 0a957119475760c5 A202) cancels on fv. Excel's
   -272272.99996209145 is the discounted form with expm1 (the cancelling form's exact `Y` gives ...232986), but taking
   that form for cancelling balances makes `IPMT(0.1,8,291,1,638)` (gen-m9 6376e27be7a05871 A207) and four
-  probes/fin-ipmt-ppmt-huge-rate pv-0 cells (`IPMT(2,2,10,0,315)`) visibly off (T-2935).
+  probes/fin-ipmt-ppmt-huge-rate pv-0 cells (`IPMT(2,2,10,0,315)`) visibly off (T-2943).
 Status: VERIFIED to the bit on the four cells (excel-graph); the switch is fitted.
 Implemented in: `discounted_interest`, `DISCOUNTED_INTEREST_FROM` and `period_payments`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2587).
-Tasks: T-2587, T-2935
+Tasks: T-2587, T-2943
 
 ## DB and SYD argument domains
 Rule: SYD with a negative salvage is `#NUM!` (`SYD(100,-1E-300,10,1)`; salvage 0 is a value), and `life*(life+1)` past the
