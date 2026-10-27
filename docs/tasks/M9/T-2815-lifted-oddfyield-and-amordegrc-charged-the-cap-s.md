@@ -32,11 +32,12 @@ Split from T-2795, which charged the incomplete-gamma entries by value and fixed
   walk's length follows from (cost, salvage, rate: financial.md "AMORLINC and AMORDEGRC work cap").
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9): the 2 known-failure lines above disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Each changed charge is a bound of its element's work, and the financial.md DEVIATION entries say how an element
+- [x] Visible parity (gen-m9): the 2 known-failure lines above disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. (A323 done; A10 split to T-2840 with
+      its cell.)
+- [x] Each changed charge is a bound of its element's work, and the financial.md DEVIATION entries say how an element
       is charged.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The incomplete-gamma entries (T-2795).
