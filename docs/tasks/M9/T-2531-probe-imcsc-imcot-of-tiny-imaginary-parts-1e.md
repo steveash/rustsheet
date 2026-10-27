@@ -3,7 +3,7 @@ id: T-2531
 title: "Probe IMCSC/IMCOT of tiny imaginary parts (1E-7i, 1E-9i, 1E-9+1E-9i) where cosh 2y rounds to 1"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,8 @@ crates/rustsheet-engine/src/functions/engineering/complex/trig.rs. Use the `exce
 
 ## Out of scope
 -
+
+## Outcome
+Probe `t2531-imcsc-imcot-tiny-imag` (48 cells) filled from excel-graph; ours already matched all 48, so
+no code change. engineering.md records the results and the UNVERIFIED line is gone. Eval delta: +48
+checked cells, all pass; no baseline change.
