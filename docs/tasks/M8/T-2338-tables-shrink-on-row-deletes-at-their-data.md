@@ -3,7 +3,7 @@ id: T-2338
 title: "Tables shrink on row deletes at their data edges and keep one blank data row when every data row goes (T-2324 evidence)"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -32,14 +32,24 @@ as T-2321 does for inserts. Excel refuses a delete of the header row (409 Insert
 move cells in a table"); the engine's answer to that edit is an engine decision (refuse or fall back).
 
 ## Acceptance criteria
-- [ ] Every cell of table-delete-row-first-data, -last-data, -last-data-totals and -all-data passes and
+- [x] Every cell of table-delete-row-first-data, -last-data, -last-data-totals and -all-data passes and
       leaves eval/baseline/probes.txt (`make eval-baseline`), with no new known failure.
-- [ ] Deleting the totals row removes it from the table (decision 0128, unmasked by T-1671's totals rows):
+- [x] Deleting the totals row removes it from the table (decision 0128, unmasked by T-1671's totals rows):
       table-delete-row-totals F!A3 (`ROWS(Sales[#All])` 5, ours `#ERROR!`) and F!A15 (FORMULATEXT keeps
       `=Sales[[#Totals],[Qty]]`, ours `=#REF!`), and table-delete-row-last-data-totals F!A15 (keeps the text,
       ours `=S!$C$7`) pass and leave eval/baseline/probes.txt.
-- [ ] references.md's "Implemented in" line updated.
+- [x] references.md's "Implemented in" line updated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
+
+## Outcome
+A row delete inside a table's data rows now shrinks it at the edges too, a delete of its totals row
+drops that row (`Span::DropTotals`), and a delete of its only data row keeps the row and clears the
+table's cells (`Model::last_data_row`; probed first: table-delete-row-all-data-below shows nothing
+below moves). A plain range shrinks when a row delete takes its edge rows (`Displacement::range_corners`;
+probed with no table: plain-range-delete-row-first, -last). Eval: probes known failures 2865 -> 2821
+(46 fixed: every cell of table-delete-row-first-data, -last-data, -last-data-totals, -all-data,
+-totals), 0 regressions; 2 new-coverage failures in the new probe cases (T-2849). Follow-ups: T-2848
+(probe the row's cells outside the table and a multi-row all-data delete), T-2849.

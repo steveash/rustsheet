@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-2338: when delete_row deletes sheet row 4 four times, every data row of Sales on S!B3:C7 (header 3, data 4-7), do the cells below the table shift up on the last delete? S!C10 99 and S!C11 7 sit below the table; sheet F holds A1 =S!C10, A2 FORMULATEXT(A1), A3 =SUM(S!C10:C11), A4 FORMULATEXT(A3), A5 =ROWS(Sales), A6 =ROWS(Sales[#All]), A7 =SUM(S!C4:C7), A8 FORMULATEXT(A7).",
+  "description": "T-2338: when delete_row deletes sheet row 4 four times, every data row of Sales on S!B3:C7 (header 3, data 4-7), do the cells below the table shift up on the last delete? S!C9 7 and S!C10 99 sit below the table; sheet F holds A1 =S!C10, A2 FORMULATEXT(A1), A3 =SUM(S!C9:C10), A4 FORMULATEXT(A3), A5 =ROWS(Sales), A6 =ROWS(Sales[#All]), A7 =SUM(S!C4:C7), A8 FORMULATEXT(A7).",
   "tags": [
     "M8",
     "tables",
@@ -21,7 +21,7 @@
         "C6": 4,
         "C7": 8,
         "C10": 99,
-        "C11": 7
+        "C9": 7
       },
       "tables": [
         {
@@ -35,7 +35,7 @@
       "cells": {
         "A1": "=S!C10",
         "A2": "=FORMULATEXT(A1)",
-        "A3": "=SUM(S!C10:C11)",
+        "A3": "=SUM(S!C9:C10)",
         "A4": "=FORMULATEXT(A3)",
         "A5": "=ROWS(Sales)",
         "A6": "=ROWS(Sales[#All])",
