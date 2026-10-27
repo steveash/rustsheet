@@ -392,8 +392,9 @@ impl Model {
 
     /// A `link_location` as HYPERLINK reads it, or the error it gives whatever `friendly_name`
     /// is: the location's own error, or `#VALUE!` for more than 255 characters, a `#` of an
-    /// internal link included (probes/t2277-hyperlink-location-length A1-A15; lookup.md
-    /// "HYPERLINK: a `link_location` past 255 characters").
+    /// internal link included, counted in UTF-16 units like `LEN`
+    /// (probes/t2277-hyperlink-location-length A1-A15, probes/t2358-hyperlink-location-non-bmp
+    /// A1-A9; lookup.md "HYPERLINK: a `link_location` past 255 characters").
     fn hyperlink_location(
         location: &CalcResult,
         cell: CellReferenceIndex,
