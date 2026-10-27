@@ -2,7 +2,7 @@
 
 use crate::expressions::{
     lexer::{Lexer, LexerMode},
-    token::{OpSum, TableReference, TableSpecifier, TokenType::*},
+    token::{OpSum, TableReference, TableSpacing, TableSpecifier, TokenType::*},
 };
 use crate::language::get_language;
 use crate::locale::get_locale;
@@ -24,7 +24,11 @@ fn table_this_row() {
             table_reference: Some(TableReference::RangeReference((
                 "Jan".to_string(),
                 "Dec".to_string()
-            )))
+            ))),
+            spacing: TableSpacing {
+                comma_space: true,
+                ..TableSpacing::default()
+            },
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -38,7 +42,8 @@ fn table_no_specifier() {
         StructuredReference {
             table_name: "tbInfo".to_string(),
             specifier: None,
-            table_reference: Some(TableReference::ColumnReference("December".to_string()))
+            table_reference: Some(TableReference::ColumnReference("December".to_string())),
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -52,7 +57,8 @@ fn table_no_specifier_white_spaces() {
         StructuredReference {
             table_name: "tbInfo".to_string(),
             specifier: None,
-            table_reference: Some(TableReference::ColumnReference("First Month".to_string()))
+            table_reference: Some(TableReference::ColumnReference("First Month".to_string())),
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -66,7 +72,8 @@ fn table_totals_no_reference() {
         StructuredReference {
             table_name: "tbInfo".to_string(),
             specifier: Some(TableSpecifier::Totals),
-            table_reference: None
+            table_reference: None,
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -150,7 +157,8 @@ fn table_specifiers_ignore_case_and_combine() {
         StructuredReference {
             table_name: "tbl".to_string(),
             specifier: Some(TableSpecifier::HeadersData),
-            table_reference: Some(TableReference::ColumnReference("Note".to_string()))
+            table_reference: Some(TableReference::ColumnReference("Note".to_string())),
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -160,7 +168,8 @@ fn table_specifiers_ignore_case_and_combine() {
         StructuredReference {
             table_name: "tbl".to_string(),
             specifier: Some(TableSpecifier::DataTotals),
-            table_reference: None
+            table_reference: None,
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -170,7 +179,8 @@ fn table_specifiers_ignore_case_and_combine() {
         StructuredReference {
             table_name: "tbl".to_string(),
             specifier: Some(TableSpecifier::All),
-            table_reference: None
+            table_reference: None,
+            spacing: TableSpacing::default(),
         }
     );
     assert!(matches!(
