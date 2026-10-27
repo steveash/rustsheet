@@ -3,7 +3,7 @@ id: T-2552
 title: "gen-m9 engineering cells waiting on T-2093's F.TEST of a scalar: BESSELI and COMPLEX over it (2 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
