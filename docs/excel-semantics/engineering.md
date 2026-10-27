@@ -891,7 +891,8 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   A `$` prefix is read before a complex number: `IMABS("$1+2i")` is 2.23606797749979 (probes/eng-inumber-reading A5;
   implemented in T-2641, `parse_complex_number`; a sign after the `$` stays `#NUM!`, "$-5").
   Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
-  rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
+  rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`]; a `$` on the imaginary part ("1+$2i"), a `€` prefix, a leading NBSP, a trailing tab and LF/CR around a
+  complex number [`#NUM!` or read as VALUE reads, unverified] (T-2641).
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
   past 15 significant digits (`IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i";
   `IMSUM("123456789012345678901","0")` is "123456789012345000000"), and in E notation from exponent 21
