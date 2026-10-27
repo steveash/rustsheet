@@ -32,7 +32,6 @@ pub(super) fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String
         }
     };
 
-    // TODO: This is an overuse
     let tokens = get_tokens(s);
 
     // There has to be 1, 2 3, or 4 tokens
