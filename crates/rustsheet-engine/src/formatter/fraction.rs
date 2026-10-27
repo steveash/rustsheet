@@ -299,7 +299,20 @@ fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
 /// nonzero value that scales past the bounds is 255 `#` and `#VALUE!` from TEXT (`?/?,` on 0.5;
 /// probes/fraction-overflow-scaled, number-formats.md "Scaling commas in fraction formats").
 fn fraction_scale(commas: i32) -> f64 {
-    10.0_f64.powi(commas.saturating_mul(-3).rem_euclid(256))
+    10.0_f64.powi(comma_exponent(commas, false))
+}
+
+/// The exponent of ten that `commas` scaling commas apply: -3n, which Excel keeps in a byte,
+/// unsigned in a fraction section ([`fraction_scale`]) and signed elsewhere (`signed`), where 252
+/// commas on 5 print "5000000000000" (-756 wraps to 12; probes/t2842-dollar-run-contexts K1:K3,
+/// number-formats.md "Many scaling commas wrap").
+pub(super) fn comma_exponent(commas: i32, signed: bool) -> i32 {
+    let exponent = commas.saturating_mul(-3).rem_euclid(256);
+    if signed && exponent > 127 {
+        exponent - 256
+    } else {
+        exponent
+    }
 }
 
 /// The largest fixed denominator Excel uses as written (2^15); past it Excel picks the
@@ -379,4 +392,18 @@ fn fill_left(digits: &str, kinds: &[char]) -> String {
         }
     }
     format!("{zeros}{digits}{spaces}")
+}
+
+#[cfg(test)]
+mod comma_tests {
+    use super::comma_exponent;
+
+    #[test]
+    fn comma_exponents_wrap_in_a_byte() {
+        assert_eq!(comma_exponent(1, true), -3);
+        assert_eq!(comma_exponent(42, true), -126);
+        assert_eq!(comma_exponent(252, true), 12);
+        assert_eq!(comma_exponent(254, true), 6);
+        assert_eq!(comma_exponent(1, false), 253);
+    }
 }

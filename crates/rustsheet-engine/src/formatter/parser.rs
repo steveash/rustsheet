@@ -59,8 +59,8 @@ pub struct NumberPart {
     pub condition: Option<(Compare, f64)>,
     pub use_thousands: bool,
     pub percent: i32, // multiply number by 100^percent
-    /// Scaling commas: divide the number by 1000^comma, or in a fraction section multiply it by
-    /// 10^((-3 * comma) mod 256) (`fraction::fraction_scale`).
+    /// Scaling commas: scale the number by 10^-3n, the exponent wrapping in a signed byte, or in a
+    /// fraction section an unsigned one (`fraction::comma_exponent`).
     pub comma: i32,
     pub tokens: Vec<TextToken>,
     pub digit_count: i32, // number of digit tokens (#, 0 or ?) to the left of the decimal point
