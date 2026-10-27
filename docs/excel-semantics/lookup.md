@@ -1084,10 +1084,12 @@ Rule (excel-graph, 2026-10-22, probes/t2277-hyperlink-location-length A1-A15): a
 `#VALUE!`, with or without friendly_name and over an array friendly_name (one `#VALUE!`, no spill): `HYPERLINK(REPT("a",255),1)` = 1,
 `REPT("a",256)` is `#VALUE!` (also `HYPERLINK(REPT("a",256))`), `"#"&REPT("a",254)` = 1 and `"#"&REPT("a",255)` is `#VALUE!`: the
 `#` of an internal link counts. This was the cause of gen-m6/0bcac2d96e96b3df Calc!A17 (a 328-character TEXTJOIN location), not a
-TEXTJOIN error. Unprobed: characters outside the BMP (ours counts UTF-16 units).
-Ours: implemented (T-2277).
+TEXTJOIN error. Characters outside the BMP count as two (UTF-16 units, like LEN; excel-graph, 2026-10-27,
+probes/t2358-hyperlink-location-non-bmp A1-A9): `REPT("😀",127)&"a"` (255 units, 128 code points) = 1, `REPT("😀",128)`
+(256 units) is `#VALUE!`, as are 200 and 255 emoji; `LEN(REPT("😀",128))` = 256.
+Ours: implemented (T-2277, confirmed T-2358: counts UTF-16 units).
 Status: VERIFIED
-Tasks: T-2277
+Tasks: T-2277, T-2358
 
 ## LOOKUP past a short result vector gives a blank's empty value; MMULT of it is #VALUE! (T-2278)
 Rule: when LOOKUP's match position lies past a one-cell result vector, it reads on to the blank cell there and gives its

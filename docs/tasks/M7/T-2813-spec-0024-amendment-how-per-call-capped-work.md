@@ -3,7 +3,7 @@ id: T-2813
 title: "SPEC-0024 amendment: how per-call capped work is charged to the formula work budget"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -40,11 +40,21 @@ not 200, about 2.4 s for one call at the 2^27 cap (16,384 elements), so the RATE
 about 40x sooner and must be re-measured. YIELD and ODDFYIELD still take about 17 s at the cap (T-2879).
 
 ## Acceptance criteria
-- [ ] SPEC-0024 sections 1 and 4 state the rule for per-call capped work, with the measurements above, and the chosen
+- [x] SPEC-0024 sections 1 and 4 state the rule for per-call capped work, with the measurements above, and the chosen
       rule meets: no eval regression, and each kind's worst case stops within 10 s (or the spec records why not).
-- [ ] T-2803's "Blocked because" section, on its draft branch (#1938, `agent/engine/T-2803-formula-work-budget`), points at the amendment, so the next opus run can resume it.
-- [ ] `make check` green; reviewers approve.
+- [x] T-2803's "Blocked because" section, on its draft branch (#1938, `agent/engine/T-2803-formula-work-budget`), points at the amendment, so the next opus run can resume it.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the rule (T-2803 resumes with it).
 - Kernel weight calibration (T-2814).
+
+## Outcome
+SPEC-0024 amended (sections 1, 4 and Rollout step 1): a visit cap's spend (lift driver visits and kernel units, *IF(S) and
+AGGREGATE visits, GROUPBY/PIVOTBY) is charged 1 unit each, everywhere; its time belongs to the call's own cap, so the
+formula budget (twice the cap) needs each visit cap's worst case within 5 s. Section 4's quarter-limit margin now applies
+outside the visit caps' charges, which must stay within one cap (2^27). Measured on the T-2803 branch with main merged in
+(release, local instrumentation): 0 eval regressions; heaviest formula 118,754,196 units (118,751,450 visit-cap,
+2,746 other); heaviest outside the visit caps 8,388,620; a MAKEARRAY of worst-case RATE stops in 2.1-4.2 s; YIELD and
+ODDFYIELD 17.6-28.1 s, owned by T-2879 (its acceptance now cites the amendment). T-2803's "Blocked because" on its branch
+(#1938) points at the amendment and says how to resume. Eval delta: none (docs only).
