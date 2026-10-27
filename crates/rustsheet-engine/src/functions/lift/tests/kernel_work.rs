@@ -530,7 +530,6 @@ fn odd_elements_refused_before_the_walk_are_charged_one() {
     use super::super::driver::{kernel_units, LiftedArg};
     use crate::calc_result::CalcResult;
     use crate::expressions::parser::ArrayNode;
-    use crate::limits::MAX_LIFTED_CELL_VISITS;
 
     let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
     let work = |function: Function| {

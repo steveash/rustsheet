@@ -1041,11 +1041,11 @@ ODDLYIELD walk to the maturity once in closed form (up to 2.2 ms, 2 walks: 1,024
 schedule each element is charged in proportion to its coupon count plus one, the extra period covering a pass's fixed cost
 (`ValueWork::CouponWalks`, T-1869): a 10-year semiannual YIELD is 43,501 units (3,085 elements), and a one-period one
 2,093. An ODD* or YIELD element its kernel refuses before any walk is charged 1 unit (T-2815, T-2879 for YIELD): every ODD*
-kernel reads all its arguments first (`Model::odd_args`), as YIELD does (`Model::bond_args`), returning on an error or a logical in any of them and on a date outside
-[0, 2958466) as it reads it, so `ODDFYIELD(45535,45661,X,38502,{22 errors},82,110,4)` with an issue X near -1.2E14
+kernel reads all its arguments first (`Model::odd_args`), as YIELD does (`Model::bond_args`), returning on an error
+or a logical in any of them and on a date outside [0, 2958466) as it reads it, so `ODDFYIELD(45535,45661,X,38502,{22 errors},82,110,4)` with an issue X near -1.2E14
 lifts its 22 elements (gen-m9/ba4ddb817a8e700e Calc!A323, Excel `#SPILL!` there) where it was charged 22
-calendar-long solvers. A text argument of any of these kernels, and of the COUP* functions, PRICE, DURATION and
-ACCRINT, is charged as the engine reads it (`Model::cast_number`, T-2879): a date text as its date, a text that reads
+calendar-long solvers. A text argument of any of these kernels, and of the COUP* functions, PRICE, DURATION,
+MDURATION and ACCRINT, is charged as the engine reads it (`Model::cast_number`, T-2879): a date text as its date, a text that reads
 as no number 1, as it is `#VALUE!` before any walk (gen-m9/0a957119475760c5 Calc!A116, whose settlement texts `a*`,
 `ABC`, `x~*`, `abc` were each charged a calendar-long walk).
 The scalar calls are not capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about

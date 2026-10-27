@@ -149,8 +149,9 @@ pub(super) fn kernel_units(
     };
     let reads_numbers = matches!(work, ValueWork::CouponWalks { .. });
     let read_text = |text: &str| {
-        // Past `4 * MAX_NUMBER_TEXT_LEN` bytes a text has more characters than a number text
-        // may (`number_text_too_long`), so it is not parsed.
+        // Only a shortcut for `number_text_too_long` in `cast_number`: past
+        // `4 * MAX_NUMBER_TEXT_LEN` bytes a text has more characters than a number text may, so
+        // it is not parsed (or its characters counted) once per element.
         let number = if text.len() > 4 * MAX_NUMBER_TEXT_LEN {
             None
         } else {
@@ -158,30 +159,26 @@ pub(super) fn kernel_units(
         };
         number.map_or(ArgValue::Error, ArgValue::Number)
     };
-    let scalars: Vec<Option<ArgValue>> = lifted
+    // A scalar's value is read once; a grid's per element.
+    let slots: Vec<Result<ArgValue, &Vec<Vec<ArrayNode>>>> = lifted
         .iter()
         .map(|arg| match arg {
-            LiftedArg::Scalar(CalcResult::String(text)) if reads_numbers => Some(read_text(text)),
-            LiftedArg::Scalar(value) => Some(ArgValue::of(value)),
-            LiftedArg::Grid(_) => None,
+            LiftedArg::Scalar(CalcResult::String(text)) if reads_numbers => Ok(read_text(text)),
+            LiftedArg::Scalar(value) => Ok(ArgValue::of(value)),
+            LiftedArg::Grid(grid) => Err(grid),
         })
         .collect();
     let mut units: u64 = 0;
     for row in 0..rows {
         for column in 0..columns {
             let value = |index: usize| {
-                lifted
-                    .get(index)
-                    .map(|arg| match (arg, scalars.get(index)) {
-                        (_, Some(Some(value))) => *value,
-                        (LiftedArg::Grid(grid), _) => {
-                            match bcast_get(grid, row, column).unwrap_or(&MISSING).scalar() {
-                                ArrayNode::String(text) if reads_numbers => read_text(text),
-                                node => ArgValue::of_node(node),
-                            }
-                        }
-                        (LiftedArg::Scalar(value), _) => ArgValue::of(value),
-                    })
+                slots.get(index).map(|slot| match slot {
+                    Ok(value) => *value,
+                    Err(grid) => match bcast_get(grid, row, column).unwrap_or(&MISSING).scalar() {
+                        ArrayNode::String(text) if reads_numbers => read_text(text),
+                        node => ArgValue::of_node(node),
+                    },
+                })
             };
             units = units.saturating_add(work.units(value));
         }
