@@ -815,13 +815,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
                                 // i.e. the value is 123 and the format_code is ##### (ln = 3 and digit_count = 5)
-                                // A zero mantissa still shows one integer digit, even for `#`:
+                                // A zero mantissa prints every integer placeholder, even `#`:
                                 // `|#.#|E-|#|` on 0 is "|0.|E|0|" (poi/NumberFormatApproxTests.xlsx
-                                // A136), where `#.#` alone gives ".".
-                                let zero_mantissa = p.is_scientific
-                                    && ln == 0
-                                    && number_index == -1
-                                    && digit.kind == '#';
+                                // A136), where `#.#` alone gives "."; `##0.0E+0` on 0 is "000.0E+0"
+                                // (gen-m10 659cd5776d423ce3 F!J14; T-2227).
+                                let zero_mantissa = p.is_scientific && ln == 0 && digit.kind == '#';
                                 if zero_mantissa {
                                     text = format!("{text}0");
                                 } else if !(number_index < 0 && digit.kind == '#') {
