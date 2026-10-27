@@ -42,11 +42,14 @@ A57, A58.
 - Probe t2771-roundup-subnormal-cuts: ROUNDUP and ROUNDDOWN of 2^-1022 give the same subnormal at num_digits -400,
   ±1E10, ±2^31 and 2^53. The subnormal cut wins over `#NUM!` and over the digit wrap.
 - Subtraction keeps subnormal arguments (`3E-308-2.5E-308`), and those give many more cuts. Excel does not cut them at
-  all (t2771-roundup-subnormal-cuts, -sign, -threshold):
-  - from 2^-1026 up, ROUNDUP, ROUNDDOWN and TRUNC return x as it is, and ROUND flushes it;
-  - below 2^-1026 (an exact binary switch at k = 2^48), every call of the family returns |x|.
+  all (t2771-roundup-subnormal-cuts, -sign, -threshold, -sign-controls):
+  - ROUNDUP, ROUNDDOWN and TRUNC return a subnormal argument as it is, with its sign;
+  - ROUND keeps a positive one below 2^-1026 (an exact binary switch at k = 2^48), and gives 0 otherwise.
+- The sign seen lost below 2^-1026 comes from unary minus: `-x` of a tiny positive x is +x, while `0-x` keeps the sign
+  (sign-controls). `apply_unary_chain` implements this. Not probed: unary minus on references, ranges and arrays, a
+  tiny negative operand, and ROUND's tiny rule outside num_digits 0, 320 and 330.
 - A normal argument has only one possible subnormal cut, 2.22507385850720E-308. Its double is therefore the one
   evidenced value, 2^-1022 - 6·2^-1074, and the engine returns that constant. The conversion behind it stays unknown;
   it is not needed for any reachable input.
-- `round_function` in decimal_round.rs implements all three rules; numbers.md is updated.
-- Eval delta: probes known failures 2,988 → 2,981 (A52–A58 fixed), 0 regressions. Three new cases (337 cells) all pass.
+- Eval delta: probes known failures 2,988 → 2,981 (t2756 A52–A58 fixed), 0 regressions. Four new cases (393 checked
+  cells) all pass.

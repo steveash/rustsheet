@@ -430,10 +430,11 @@ impl Model {
 
     /// Evaluates a unary `-` or `%` node. A chain such as `B:B%%%` or `---B:B` is applied
     /// in one element-wise pass, so a whole column is lifted once rather than once per
-    /// operator (the `formula_eval` fuzz timeout, T-1078). The operators commute (negation is
-    /// exact but for a tiny positive operand, which every minus keeps positive, and the subnormal
-    /// flush is sign-symmetric), so only the minus parity and the
-    /// `%` count matter, and the walk allocates nothing.
+    /// operator (the `formula_eval` fuzz timeout, T-1078). Only the minus parity and the `%` count
+    /// are kept, and the walk allocates nothing. Negation is exact and the subnormal flush is
+    /// sign-symmetric, except that `-x` of a tiny positive x is +x; the chain applies that once,
+    /// to the parity, which is unprobed for `--x` and for a tiny negative operand (numbers.md
+    /// "Unary minus of a tiny subnormal").
     pub(crate) fn apply_unary_chain(
         &mut self,
         node: &Node,

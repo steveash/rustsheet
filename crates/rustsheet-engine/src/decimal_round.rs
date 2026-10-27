@@ -75,7 +75,8 @@ const SMALLEST_NORMAL_CUT: f64 = f64::from_bits(0x000F_FFFF_FFFF_FFFA);
 /// - ROUNDUP, ROUNDDOWN and TRUNC return a subnormal `value` as it is, with no 15-digit cut, and a
 ///   normal one whose cut is subnormal (`ROUNDUP(2^-1022,0)`) as ±[`SMALLEST_NORMAL_CUT`], while
 ///   `ROUNDUP(2^-1022*(1+8*2^-52),0)`, whose cut 2.22507385850721E-308 is normal, is 1;
-/// - ROUND returns a positive subnormal below [`TINY_SUBNORMAL_BELOW`] (2^-1026; a negative one, or one from there up, is 0) as it is (`ROUND(x,0)` is `x`).
+/// - ROUND returns a positive subnormal below [`TINY_SUBNORMAL_BELOW`] (2^-1026) as it is
+///   (`ROUND(x,0)` is `x`); a negative one, or one from there up, is 0.
 ///
 /// INT does not share this path.
 pub(crate) fn round_function(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
@@ -452,7 +453,7 @@ mod tests {
     }
 
     /// probes/t2771-roundup-subnormal-cuts and -sign: from 2^-1026 up, ROUNDUP, ROUNDDOWN and TRUNC
-    /// return a subnormal as it is (no 15-digit cut), and ROUND flushes it.
+    /// return a subnormal as it is (no 15-digit cut), and ROUND flushes one from 2^-1026 up.
     #[test]
     fn subnormal_from_two_to_minus_1026_is_kept_by_roundup_and_rounddown() {
         // 2^-1021 - 2^-1022*(1.1), whose 15-digit cut is a different double.

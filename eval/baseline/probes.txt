@@ -1366,6 +1366,7 @@ C	probes/t2753-gamma-density-switch.case.json	84
 C	probes/t2756-roundup-smallest-normal-threshold.case.json	541
 C	probes/t2769-formula-text-whitespace.case.json	47
 C	probes/t2771-roundup-subnormal-cuts.case.json	176
+C	probes/t2771-roundup-subnormal-sign-controls.case.json	56
 C	probes/t2771-roundup-subnormal-sign.case.json	121
 C	probes/t2771-roundup-subnormal-threshold.case.json	40
 C	probes/t2772-unary-plus-in-range-rows.case.json	20

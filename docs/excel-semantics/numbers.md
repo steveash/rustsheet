@@ -929,7 +929,8 @@ A subnormal argument (kept by a subtraction such as `3E-308-2.5E-308`) is not cu
   to 2.2E-308) and at num_digits 0, 2, 330, -400, 2^31 and 1E10;
 - ROUND returns a positive x below 2^-1026 (k < 2^48) as it is (`ROUND(x,0)`, `ROUND(x,330)` are x), and gives 0 for a
   negative one at any size and for a positive one from 2^-1026 up. The switch is exact: k = 2^48 - 1 is kept and
-  k = 2^48 (x = 2^-1026 ≈ 1.39E-309) is 0.
+  k = 2^48 (x = 2^-1026 ≈ 1.39E-309) is 0. Probed at num_digits 0, 320 and 330 only; the engine applies it at every
+  num_digits.
 A negative normal argument whose cut is subnormal gives the negative constant (`ROUNDDOWN(-(2^-1022),0)`,
 `ROUNDUP(0-2^-1022,0)`, `TRUNC((0-1)*2^-1022)`). Arguments negated with unary minus below 2^-1026 arrive positive
 ("Unary minus of a tiny subnormal" below), so `ROUNDUP(-x,0)` there is +x.
@@ -946,8 +947,9 @@ Tasks: T-2756, T-2771
 
 ## Unary minus of a tiny subnormal (T-2771)
 Rule: `-x` of a positive subnormal x below 2^-1026 (k·2^-1074 with k < 2^48) is +x; from 2^-1026 up it is -x. `0-x`
-keeps the sign at every size, and `-1*x` is 0 (a subnormal product is flushed, "Subnormal results become 0"). Negating
-a negative tiny value is unprobed.
+keeps the sign at every size, and `-1*x` is 0 (a subnormal product is flushed, "Subnormal results become 0"). Every
+probed operand is an inline expression; unary minus on a cell reference, range or array, a tiny negative operand and
+a chain such as `--x` are unprobed. The engine applies the rule to the whole chain's parity and to every operand kind.
 Evidence: probes/t2771-roundup-subnormal-sign-controls B and C (k = 12345 and 2^48 - 1 against 2^48 and 2^50 + 3),
 excel-graph, 2026-10-27; t2771-roundup-subnormal-sign and -threshold read the same switch through the ROUND family.
 Status: VERIFIED (excel-graph) for a positive operand
