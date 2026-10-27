@@ -3,7 +3,7 @@ id: T-2598
 title: "Probe engineering scientific carry and half-way mantissas (##0.0E+0 on 999.96, ##0E+0 on 0.0145)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
