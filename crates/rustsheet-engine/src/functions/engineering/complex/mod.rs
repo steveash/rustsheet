@@ -121,6 +121,9 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
         Some(r) => (-1.0, r),
         None => (1.0, s.strip_prefix('+').unwrap_or(s)),
     };
+    // A `$` prefix is read before a complex number: `IMABS("$1+2i")` 2.23606797749979
+    // (probes/eng-inumber-reading A5). A sign after it stays unreadable (`"$-5"`, A4's family).
+    let s = s.strip_prefix('$').unwrap_or(s);
     if s.starts_with(['+', '-']) {
         return Err(format!("Not a complex number: {s}"));
     }

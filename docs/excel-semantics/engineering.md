@@ -888,7 +888,8 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   43832.125, "Jan 1, 2020" 43831, "1/2/20" 43832, "12:00 PM" 0.5), and so are " -5", "- 5", "(5)", "1E-3%" 1E-05,
   "1,000E-2" 10 and "3 1/2" 3.5. Ours matches all of these since T-2541 (`has_inner_minus`) except "3 1/2", which
   VALUE does not read yet (text.md, T-2646).
-  Not yet matched: `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`; T-2641).
+  A `$` prefix is read before a complex number: `IMABS("$1+2i")` is 2.23606797749979 (probes/eng-inumber-reading A5;
+  implemented in T-2641, `parse_complex_number`; a sign after the `$` stays `#NUM!`, "$-5").
   Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
   rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
