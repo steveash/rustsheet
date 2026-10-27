@@ -335,8 +335,8 @@ fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
 ///   GAMMALN, smaller shape first, a0 + b0 an x87 sum, and fl(GL(a0) + algdiv(a0, b0)) from
 ///   b0 = 8. T-2503's density form (`beta_density::ln_beta_small_shape`) differs at its edges: it
 ///   takes b0 = 8 by GAMMALN, B(a0, 1) as 1/a0 and a plain a0 + b0;
-/// - min(a, b) = 1: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506);
-/// - both > 1 and max <= 8: GL(a) + (GL(b) - GL(fl(a + b))) in argument order, held unstored.
+/// - both >= 1 and max <= 8: GL(a) + (GL(b) - GL(fl(a + b))) in argument order, held unstored;
+/// - min(a, b) = 1 and max > 8: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506).
 ///
 /// `None` for both shapes > 1 with one above 8, where the model takes an accurate ln B.
 fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
@@ -355,17 +355,15 @@ fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
         };
         return Some(Register::load(-ln_beta));
     }
-    if small == 1.0 {
-        // B(1, b) = 1/b, so L = -LN(b): the density's form (`beta_density::ln_beta_small_shape`).
-        // Only L140's bpser(a0, 1, x0) at a whole b0 reaches it (`ported_tails` keeps a caller's
-        // shape of 1 on today's kernel). On r2-bratio's L140 cells it moves the 548 with a0 > 8
-        // off today's kernel (within 15 digits 11,603 -> 11,721 of 11,742), and taking it for
-        // a0 <= 8 too, in place of the GAMMALN form, adds 72 bit-exact cells
-        // (docs/research/t2506/RESULTS.md).
-        return Some(Register::load(excel_ln(large)));
-    }
     if large > BPSER_GAMMALN_FORM_MAX {
-        return None;
+        // B(1, b) = 1/b, so L = -LN(b), the density's form (`beta_density::ln_beta_small_shape`).
+        // Only L140's bpser(a0, 1, x0) at a whole b0 reaches it (`ported_tails` keeps a caller's
+        // shape of 1 on today's kernel): on r2-bratio's L140 cells it takes the 548 with a0 > 8
+        // off today's kernel, within 15 digits 11,603 -> 11,721 of 11,742. At a0 <= 8 it would add
+        // 72 bit-exact cells there but moves BETA.DIST(0.5,2,2,TRUE) from 1 to 2 ulp off Excel
+        // (ironcalc-calc BETADIST_BETAINV.xlsx G15) and the BETA.INV chained on it
+        // (docs/research/t2506/RESULTS.md).
+        return (small == 1.0).then(|| Register::load(excel_ln(large)));
     }
     // -(p + q) rounds as (-p) + (-q) does: round to nearest is symmetric.
     let inner =

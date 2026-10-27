@@ -35,8 +35,13 @@ fn t2464_kernels() {
             });
             let branch = super::bratio::dispatch(a, b, x, y).map_or(u64::MAX, |d| d.branch as u64);
             let ported = u8::from(ported.is_some());
-            writeln!(out, "{:016x} {:016x} {branch} {ported}", w.to_bits(), w1.to_bits())
-                .expect("write T2464_OUT");
+            writeln!(
+                out,
+                "{:016x} {:016x} {branch} {ported}",
+                w.to_bits(),
+                w1.to_bits()
+            )
+            .expect("write T2464_OUT");
             continue;
         }
         let r = match op {

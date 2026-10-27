@@ -2268,7 +2268,8 @@ w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `z
 Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505), for BETA.DIST's cdf only: the w3 series and
 EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
 Its algdiv (b0 >= 8) is `beta_density::algdiv` in doubles, where the model runs TOMS algdiv x87 stored.
-Both shapes >= 1 with max > 8 (the model's accurate ln B) and a shape of exactly 1 stay on Cephes' fractions. On
+Both shapes > 1 with max > 8 (the model's accurate ln B) and a caller's shape of exactly 1 stay on Cephes'
+fractions; L140's bpser(a0, 1, x0) at a whole b0 and a0 > 8 takes L = -LN(a0) (T-2506). On
 probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
 bit-exact cells moved off and 7 became visibly off (listed in T-2847). F, BINOM and NEGBINOM still take Cephes' fractions (T-2847).
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
@@ -2295,12 +2296,19 @@ bfrac (min(a,b) >= 40) takes the same brcomp = density·x·y, with λ = fl(a - f
   and the pdf's c + 1 predicts the tie response (-10.5 against -10.58). The fraction's own arithmetic is not found:
   white residual, sd 3.8 units, after 64 storage masks, five eps values and three precisions. bfrac cells: 146/476/685
   of 1,316 (CR 109/466/677).
+- At a whole b0 (b0' = 1) with a0 > 8, bpser(a0, 1, x0)'s lnB is -LN(a0), B(1, b) = 1/b as the density takes it
+  (T-2506). With the engine's own density, bup arithmetic and bpser, the L140 bup+bpser cells of r2-bratio's be, w2f
+  and ix sets (bratio's dispatch as ported) score 8,800/11,696/11,721 of 11,742, the ix cells alone 995/1,344/1,362
+  of 1,383. -LN(a0) at a0 <= 8 too scores 72 more bit-exact there but is 2 ulp off at BETA.DIST(0.5,2,2,TRUE)
+  (Excel 0.4999999999999999, ironcalc-calc BETADIST_BETAINV.xlsx G15) where GAMMALN's sum is 1 ulp off, so a0 <= 8
+  stays on GAMMALN's sum (docs/research/t2506/RESULTS.md).
 - Rejected: stored, extended, Horner or reverse W; the (P·y0)·x order; an extended P; every CF × prefactor on 15,657
   direct cells (best 2,931, CR 2,920); bfrac's λ from y.
 Evidence: probes-numeric t2464-w2f-xruns-1, -xruns-2, -absweep; w4's probe w4p1 (w4-fractions/probe, not in
 eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_lambda.py`, `t25_old.py`), r2-bratio
-(`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio.
-Ours: Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
+(`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio; docs/research/t2506.
+Ours: L140 bup+bpser for BETA.DIST's cdf (`functions/statistical/bratio/mod.rs` `l140_bup_bpser`, `bup`, T-2506);
+L140 with bgrat and bfrac on Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
 Status: VERIFIED (excel-graph) for L140 bup+bpser to 15 digits (11,724 of 11,753; 64% bit-exact); bfrac's fraction
 UNVERIFIED
 Tasks: T-2506, T-2508, T-2512
