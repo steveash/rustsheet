@@ -156,6 +156,13 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A110, A148, A262
 - gen-m9/f82473275380882e.case.json (4): Calc!A291, A320, A353, A382
 
+Split 2026-10-27 (gap triage, opus refill): while this task waits on T-0969, two parts that need no new CDF are
+their own tasks. T-2858 (sonnet) owns every df = 1 cell: Excel's df = 1 quantile is `1/TAN(PI()*p/2)` through
+Excel's TAN, bit-exact on all 112 failing df = 1 cells (statistics.md, T-2858 entry). T-2859 (opus, `accuracy`)
+owns the visibly-off cells for df 2 to 99998 with p/2 >= 2E-5 where Excel is within a few ulps of the true
+quantile and ours is not (274 cells, the list is in T-2859). This task keeps the bit-level target, the cells
+T-2859 shows Excel itself is off on, and whatever T-2858 and T-2859 leave in their Outcomes.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 269 known-failure lines (35 from T-2255, 234 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

@@ -2859,6 +2859,48 @@ Tasks: T-1531, T-1542
 - Ours: `statrs`' `StudentsT::inverse_cdf` is wrong for small df well before it fails (`T.INV(1E-10,1)` gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200. For p < 1E-5 we use a closed-form tail asymptotic once x = df/(df+t^2) < 1E-8; otherwise `statrs` for p >= 1E-8 (it is bit-exact with Excel there) and bisection on its cdf below 1E-8 (`statrs`' inverse hangs at p = 1E-100 for df = 1000). Results agree with Excel to about 1E-13 relative for df <= 5, but only 7 of 105 cells are bit-exact, and for df >= 99999 at p <= 1E-200 we are wrong (-37.17 where Excel gives -79.06: for df = 99999 the `statrs` cdf saturates in the bisection branch, for df = 1E5 the normal series is used): T-1542.
 - `T.INV.2T` with p in (1,2) is `T.INV(1 - p/2)`, a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128); ours implements it since T-2096 (`t_inv_of`), see the entry above. Near p = 1 the quantile has an absolute error of about 1e-8 (`TINV(1+2^-52,2)` is -1.49e-8, Excel -3.14e-16): T-2839.
 
+## Student-t quantile at one degree of freedom is 1/TAN(π·p/2) through Excel's TAN (T-2858)
+Rule: with a df that truncates to 1, the Student-t quantiles are the Cauchy closed form evaluated in doubles with
+Excel's own TAN kernel (numbers.md's x87-style tangent, `excel_tan` in math_and_trigonometry/trig.rs), not a search
+on the cdf. With `t2(q)` = `1/TAN(PI()*q/2)`:
+- `T.INV.2T(p,1)` and `TINV(p,1)` are `t2(p)` for p up to 1, and `-t2(2-p)` for p in (1, 2);
+- `T.INV(p,1)` is `-1/TAN(PI()*p)` below 0.5 and `1/TAN(PI()*(1-p))` above it;
+- `CONFIDENCE.T(alpha,sd,size)` with size truncating to 2 is `t2(alpha)*sd/SQRT(2)`.
+So Excel's values are exact at the round points (`T.INV.2T(0.5,1)` = `T.INV(0.75,1)` = 1, `T.INV.2T(1.5,1)` =
+`T.INV(0.25,1)` = -1, `T.INV.2T(0.75,1)` = 0.4142135623730951) and follow TAN's rounding near p = 1, where they
+are far from the true quantile: `TINV(1-1E-10,1)` is 1.570797438519081E-10 while the true value is
+1.5707964567631675E-10 (6E-7 relative; libm's `1/tan` gives 1.5707974382682531E-10, Excel's TAN gives Excel's
+bits), and `TINV(1+2^-52,1)` is -5.053466325954936E-16 (true -3.48786849800863E-16). Forms that are not Excel's,
+scored on the 41 two-tailed literal cells: `TAN(PI()*(1-p)/2)` 1, `COS/SIN` 25, libm `1/tan` 27; for p above 1 the
+reflection is needed (`1/TAN(PI()*1.5/2)` is -0.9999999999999998, Excel -1). A p literal keeps Excel's 15-digit
+parse: `T.INV.2T(1.9999999999999998,1)` is -63712901546918.43, the value at p = 1.99999999999999.
+Evidence: gap triage 2026-10-27 evaluated these forms with the engine's TAN on a scratch case against all 112 failing
+df = 1 cells in eval/ (excel-graph; T_DIST.xlsx and CONFIDENCE.xlsx desktop cache), and all 112 match bit for bit.
+Among them `ironcalc-calc/STATISTICAL/T_DIST.xlsx` `T.DIST.2T T.INV.2T`!D2 `T.INV.2T(T.DIST.2T(60,1),1)` = 60 exactly
+and D15/D37 (p = 0.5000000000000001) = 0.9999999999999996; probes-numeric/t1531-t-tiny-p A1-A44 and A121-A129,
+m9-t-inv-2t A1-A13, m9-t-inv A1-A13; gen-m9 334f3dc9ca937f10 A23 `TINV(1E-300,1)`, 5389dd4d5b5739d2 A299
+`TINV(1-1E-10,1)`, a4090567758520df A307 `TINV(1+2^-52,1)`. The full cell list is in T-2858.
+Ours: `statrs`' inverse or the tail asymptotic (`t_quantile`, `t_tail_quantile` in t_dist.rs), from 1 ulp to the 14th
+digit off (`TINV(0.5,1)` 1.0000000000000016), and to 100% off near p = 1 (`TINV(1-1E-10,1)` 1.05E-8).
+Status: VERIFIED (excel-graph and Excel-cached; the formula is a fit that every evidence cell matches)
+Tasks: T-2858
+
+## Chi-squared quantile at df 2 and gamma quantile at alpha 1 are closed forms (T-2860)
+Rule: with a deg_freedom that truncates to 2, `CHISQ.INV(p,2)` is `-2*LN(1+(-p))` computed as `-2·log1p(-p)`, and
+`CHISQ.INV.RT(q,2)` and `CHIINV(q,2)` are `-2·ln(q)` on the upper-tail probability itself; with alpha exactly 1,
+`GAMMA.INV(p,1,beta)` and `GAMMAINV` are `-beta·log1p(-p)`. These are the exponential distribution's quantiles in
+doubles with libm's `ln`/`log1p`, so Excel is exact where they are (`GAMMA.INV(1E-300,1,1)` = 1E-300,
+`CHISQ.INV(1E-10,2)` = 2.0000000001E-10; `-2·ln(1-p)` would give 2.000000165580742E-10).
+Evidence: gap triage 2026-10-27 checked the forms against every failing cell of these shapes in eval/: 34 of 34
+bit-exact (excel-graph): probes-numeric/m9-legacy-chiinv A13-A34 (`CHIINV(0.01,2)` = 9.210340371976182),
+m9-gamma-inv A19-A27 (`GAMMA.INV(0.999,1,1)` = 6.907755278982136), m9-chisq-inv A12/A13, m9-chisq-inv-rt A9/A10,
+t1049-chisqinv, t1049-chisqinvrt, t1543-inverse-cdf-tiny-p A55/A58, and 12 gen-m9 cells (8fec7b207f4dd753 A265
+`CHISQ.INV.RT(0.001,2)` = 13.815510557964274; ecc87f80077959e0 A154 `CHISQ.INV.RT(0.001,2.5)`, same value). Passing
+cells were not re-checked. T-0972 already noted CHIINV at df 2 as `-2*LN(p)` (gen-m9/4df1b22d3ed63f58 A9).
+Ours: the incomplete-gamma search (`gamma_quantile`), 1 to 40 ulp off and 4 cells visibly off.
+Status: VERIFIED (excel-graph)
+Tasks: T-2860
+
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
 
