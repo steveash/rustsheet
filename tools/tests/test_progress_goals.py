@@ -177,6 +177,14 @@ def campaign_data() -> Parity:
             # At the rate already, or unscored: not below the bar, so in no count.
             function("FINE", "rate999", {"pass": 9999, "visible_other": 1}),
             function("NONE", "unscored", {}),
+            # Its tier counts a cell the rate leaves out (decision 0134), so its rate cells hold no
+            # off cell and it meets the rate: not below the bar either.
+            dataclasses.replace(
+                function("LEFT.OUT", "rate99", {"pass": 465, "visible_other": 1}),
+                rate_cells=465,
+                rate_visible=0,
+                meets_rate=True,
+            ),
         ],
     )
 
@@ -184,7 +192,14 @@ def campaign_data() -> Parity:
 def test_the_semantic_fixes_lift_count_and_the_off_cells() -> None:
     g = goals.load(report())
     lifted = {f.name: goals.lifts(g, f) for f in campaign_data().functions}
-    assert lifted == {"AT.BAR": True, "SHORT": False, "FALLBACK": True, "FINE": True, "NONE": False}
+    assert lifted == {
+        "AT.BAR": True,
+        "SHORT": False,
+        "FALLBACK": True,
+        "FINE": True,
+        "NONE": False,
+        "LEFT.OUT": True,
+    }
     text = goals.campaign_block(g, campaign_data(), tasks_of(tasks()))
     assert "**3** in-scope functions are below the Phase 1 rate" in text
     # Attributed cells only: FALLBACK's 5 are Excel cells, not attributed ones.
