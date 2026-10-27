@@ -491,6 +491,16 @@ fn exceeds_complexity_limit(format: &str) -> bool {
 mod tests {
     use super::{exceeds_complexity_limit, is_unterminated};
 
+    /// Asserts that every code in `ok` is within the limit and every one in `too_complex` over it.
+    fn assert_limit(ok: &[String], too_complex: &[String]) {
+        for code in ok {
+            assert!(!exceeds_complexity_limit(code), "{code}");
+        }
+        for code in too_complex {
+            assert!(exceeds_complexity_limit(code), "{code}");
+        }
+    }
+
     fn quoted(n: usize) -> String {
         format!("\"{}\"", "a".repeat(n))
     }
@@ -524,9 +534,6 @@ mod tests {
             "[Red][>5]0".to_string(),
             "[>5]0;[<9]0".to_string(),
         ];
-        for code in ok {
-            assert!(!exceeds_complexity_limit(&code), "{code}");
-        }
         let too_complex = [
             "dm".repeat(16) + "d",
             format!("d{}", " ".repeat(83)),
@@ -550,50 +557,32 @@ mod tests {
             "[>5][<9]0".to_string(),
             "[>5]0[<9]".to_string(),
         ];
-        for code in too_complex {
-            assert!(exceeds_complexity_limit(&code), "{code}");
-        }
+        assert_limit(&ok, &too_complex);
     }
 
-    /// Runs of unquoted `$` (probes/t2836-dollar-run-cost, T-2836).
+    /// Runs of unquoted `$` (probes/t2836-dollar-run-cost, T-2836): each code works at the given
+    /// length of its ladder and fails one longer.
     #[test]
     fn dollar_runs() {
         let dollars = |n: usize| "$".repeat(n);
-        let ok = [
-            dollars(247),
-            format!("d{}", dollars(246)),
-            format!("{}d", dollars(246)),
-            format!("0{}", dollars(245)),
-            format!("[$-409]{}", dollars(232)),
-            format!("[$-409]{}", " ".repeat(78)),
-            format!("{}{}", quoted(1), dollars(243)),
-            format!("[$€-40C]{}", dollars(230)),
-            format!("[$€]{}", dollars(230)),
-            format!("[$USD]{}", dollars(226)),
-            format!("[$USD]{}", " ".repeat(76)),
-            format!("[$€]{}", " ".repeat(77)),
-            format!("[$€-F800]{}", quoted(117)),
+        let spaces = |n: usize| " ".repeat(n);
+        let ladders: [(&dyn Fn(usize) -> String, usize); 13] = [
+            (&|n| dollars(n), 247),
+            (&|n| format!("d{}", dollars(n)), 246),
+            (&|n| format!("{}d", dollars(n)), 246),
+            (&|n| format!("0{}", dollars(n)), 245),
+            (&|n| format!("[$-409]{}", dollars(n)), 232),
+            (&|n| format!("[$-409]{}", spaces(n)), 78),
+            (&|n| format!("{}{}", quoted(1), dollars(n)), 243),
+            (&|n| format!("[$€-40C]{}", dollars(n)), 230),
+            (&|n| format!("[$€]{}", dollars(n)), 230),
+            (&|n| format!("[$USD]{}", dollars(n)), 226),
+            (&|n| format!("[$USD]{}", spaces(n)), 76),
+            (&|n| format!("[$€]{}", spaces(n)), 77),
+            (&|n| format!("[$€-F800]{}", quoted(n)), 117),
         ];
-        for code in ok {
-            assert!(!exceeds_complexity_limit(&code), "{code}");
-        }
-        let too_complex = [
-            dollars(248),
-            format!("d{}", dollars(247)),
-            format!("{}d", dollars(247)),
-            format!("0{}", dollars(246)),
-            format!("[$-409]{}", dollars(233)),
-            format!("[$-409]{}", " ".repeat(79)),
-            format!("{}{}", quoted(1), dollars(244)),
-            format!("[$€-40C]{}", dollars(231)),
-            format!("[$€]{}", dollars(231)),
-            format!("[$USD]{}", dollars(227)),
-            format!("[$USD]{}", " ".repeat(77)),
-            format!("[$€]{}", " ".repeat(78)),
-            format!("[$€-F800]{}", quoted(118)),
-        ];
-        for code in too_complex {
-            assert!(exceeds_complexity_limit(&code), "{code}");
+        for (code, last_ok) in ladders {
+            assert_limit(&[code(last_ok)], &[code(last_ok + 1)]);
         }
     }
 
@@ -626,9 +615,6 @@ mod tests {
             format!("[>5]{}", quoted(120)),
             format!("[>5]0{}", quoted(116)),
         ];
-        for code in ok {
-            assert!(!exceeds_complexity_limit(&code), "{code}");
-        }
         let too_complex = [
             format!("d{}", quoted(126)),
             format!("d {}", quoted(124)),
@@ -653,9 +639,7 @@ mod tests {
             format!("[>5]{}", quoted(122)),
             format!("[>5]0{}", quoted(118)),
         ];
-        for code in too_complex {
-            assert!(exceeds_complexity_limit(&code), "{code}");
-        }
+        assert_limit(&ok, &too_complex);
     }
 
     /// What follows quoted text, and placeholder runs after the first: each code works with `n`
@@ -829,9 +813,6 @@ mod tests {
             "0;0;0;A/P".to_string(),
             "0;0;0;x@AM/PM".to_string(),
         ];
-        for code in ok {
-            assert!(!exceeds_complexity_limit(&code), "{code}");
-        }
         let too_complex = [
             format!("AM/PM{}", " ".repeat(80)),
             format!("AM/PM{}", quoted(121)),
@@ -841,9 +822,7 @@ mod tests {
             format!("[$-409]{}", " ".repeat(79)),
             "0;0;0;0".to_string(),
         ];
-        for code in too_complex {
-            assert!(exceeds_complexity_limit(&code), "{code}");
-        }
+        assert_limit(&ok, &too_complex);
     }
 
     /// probes/t1883-currency-locale-edges and t2812-currency-tag-cost (excel-graph, T-2812).
@@ -857,9 +836,6 @@ mod tests {
             format!("[$USD]{}", quoted(115)),
             format!("[$USD-40C]{}", quoted(115)),
         ];
-        for code in ok {
-            assert!(!exceeds_complexity_limit(&code), "{code}");
-        }
         let too_complex = [
             format!("[$€-40C]{}", quoted(118)),
             format!("[$€]{}", quoted(118)),
@@ -868,8 +844,6 @@ mod tests {
             format!("[$USD]{}", quoted(116)),
             format!("[$USD-40C]{}", quoted(116)),
         ];
-        for code in too_complex {
-            assert!(exceeds_complexity_limit(&code), "{code}");
-        }
+        assert_limit(&ok, &too_complex);
     }
 }
