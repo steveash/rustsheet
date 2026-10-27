@@ -96,8 +96,8 @@ impl Lexer {
         self.consume_escaped_until(end_char)
     }
 
-    /// Reads a column name up to the unescaped `end_char` (consumed when it is `]`),
-    /// unescaping the `'` sequences.
+    /// Reads a column name up to the unescaped `end_char` (consumed when it is `]`, an error when
+    /// that `]` is missing), unescaping the `'` sequences.
     fn consume_escaped_until(&mut self, end_char: char) -> Result<String> {
         let mut position = self.position;
         while position < self.len {
@@ -120,6 +120,14 @@ impl Lexer {
         }
         let chars: String = self.chars[self.position..position].iter().collect();
         if end_char == ']' {
+            // An unterminated column name (`T[[Col`) is refused here: stepping past the missing
+            // `]` would leave the position beyond the formula.
+            if position >= self.len {
+                return Err(LexerError {
+                    position: self.position,
+                    message: "Invalid column name".to_string(),
+                });
+            }
             position += 1;
         }
         self.position = position;
@@ -228,7 +236,8 @@ impl Lexer {
             open: self.whitespace_run(),
             ..TableSpacing::default()
         };
-        if !spacing.open.is_empty() && self.peek_char() != Some('[') {
+        // A padded `#` or `@` start (`T[ #Data ]`) is unprobed and keeps its old reading.
+        if !spacing.open.is_empty() && !matches!(self.peek_char(), Some('[' | '#' | '@')) {
             if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
                 return Ok(token);
             }

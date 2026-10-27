@@ -405,7 +405,8 @@ reference (T-2801) the lexer keeps the runs after the outer `[` and before the o
 whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. Two choices are ours, not
 probed: a run around a lone specifier keeps the outer brackets it was typed in (`T[ [#Data] ]` prints as typed), and a
 stored `T[ Col ]`, padded on both sides, reads back as column `Col` with its padding (so our own export round-trips).
-One-sided `T[ Col]` and `T[Col ]` read as before, as a column whose name has the space.
+One-sided `T[ Col]` and `T[Col ]`, and padded `#` or `@` starts (`T[ #Data ]`), read as before, as a column whose
+name has the spaces. T-2962 probes these choices.
 Status: VERIFIED (excel-graph)
 Implemented in: expressions/lexer/structured_references.rs, expressions/parser/structured_reference.rs (`text`)
 Tasks: T-2786, T-2944, T-2800, T-2801

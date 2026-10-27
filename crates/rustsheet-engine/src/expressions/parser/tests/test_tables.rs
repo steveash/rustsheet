@@ -156,6 +156,32 @@ fn whitespace_inside_a_structured_reference() {
     }
 }
 
+/// An unterminated structured reference is a parse error, never a panic (directive 5): the
+/// lexer used to step past the missing `]` and leave its position beyond the formula.
+#[test]
+fn unterminated_structured_reference_is_a_parse_error() {
+    let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 6,
+        column: 5,
+    };
+    for formula in [
+        "SUM(T[[Col)",
+        "T[[Col",
+        "T[[A]:[B",
+        "T[[#Data],[Col",
+        "T[ [Col",
+        "T[ Col ",
+        "T[@[Col",
+        "T[@Col",
+    ] {
+        let t = parser.parse(formula, &cell_reference);
+        assert!(matches!(t, Node::ParseErrorKind { .. }), "{formula}: {t:?}");
+    }
+}
+
 #[test]
 fn malformed_table_reference_is_ref_error_not_a_panic() {
     // The table metadata comes from the workbook, which is untrusted (directive 5).

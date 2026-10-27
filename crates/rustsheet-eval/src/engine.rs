@@ -214,7 +214,7 @@ impl Engine for RustSheetEngine {
                 // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
                 // reads it.
                 define_names(tx, spec, &ids, false)?;
-                // Values first, then tables (they read their headers), then formulas, typed ones included (a
+                // Values first, then tables (they read their headers), then formulas (a
                 // structured reference parses only once its table exists).
                 for formulas in [false, true] {
                     for (sheet, &id) in spec.sheets.iter().zip(&ids) {

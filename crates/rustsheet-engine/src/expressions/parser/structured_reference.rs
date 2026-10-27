@@ -76,7 +76,7 @@ fn escaped_column(name: &str) -> String {
 /// Whether a single column prints in the bare form `T[Col]`: an empty name or one that starts
 /// with a space keeps its own brackets, since `T[]` is the bare name and the lexer skips the
 /// space, and so does one that ends with a space, as Excel stores it (`Table3[[the two ]]`,
-/// calc_test_tables/tables.xlsx Hidden!B6).
+/// `calc_test_tables/tables.xlsx` Hidden!B6).
 fn prints_bare(column: &str) -> bool {
     !column.is_empty()
         && !column.starts_with(char::is_whitespace)
@@ -113,17 +113,18 @@ impl StructuredReference {
         let comma = if *comma_space { ", " } else { "," };
         match (&self.specifier, &self.table_reference) {
             (None, None) => format!("{name}[]"),
-            (Some(specifier), None) => match specifier {
-                TableSpecifier::HeadersData | TableSpecifier::DataTotals => {
-                    format!("{name}[{open}{}{close}]", specifier_text(specifier))
-                }
-                // Padding around a lone specifier is unprobed: it keeps the outer brackets it
-                // was typed in.
-                _ if self.spacing.is_padded() => {
-                    format!("{name}[{open}{}{close}]", specifier_text(specifier))
-                }
-                _ => format!("{name}{}", specifier_text(specifier)),
-            },
+            // A specifier pair keeps its outer brackets, and so does a lone specifier typed with
+            // padding inside them (unprobed).
+            (Some(specifier), None)
+                if self.spacing.is_padded()
+                    || matches!(
+                        specifier,
+                        TableSpecifier::HeadersData | TableSpecifier::DataTotals
+                    ) =>
+            {
+                format!("{name}[{open}{}{close}]", specifier_text(specifier))
+            }
+            (Some(specifier), None) => format!("{name}{}", specifier_text(specifier)),
             (None, Some(TableReference::ColumnReference(column))) if prints_bare(column) => {
                 format!("{name}[{open}{}{close}]", escaped_column(column))
             }
