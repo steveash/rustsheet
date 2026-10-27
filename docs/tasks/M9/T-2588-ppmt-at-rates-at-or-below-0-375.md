@@ -62,5 +62,5 @@ Cells:
   (`PPMT(-0.5,1.5,180,79711)`). A335 stays a known failure as an ulp miss (NumericUlp), no longer visibly off.
   The probe: all 79 cells within 15 digits, 43 bit-exact.
 - Not done: the fit-lab candidates (`fitlab/kernels/annuity.py`) and pinning the series/LN switch on the
-  negative side, filed as T-2949.
+  negative side, filed as T-2950.
 
