@@ -370,9 +370,10 @@ Tasks: T-2196, T-2838
 ## A calculated column is saved as `calculatedColumnFormula` plus one formula per row
 Rule (excel-graph downloads of the T-2957 probes, 2026-10-27): a column Excel filled (references.md, "Calculated
 columns") gets `<calculatedColumnFormula>` inside its `<tableColumn>`, plus a `dataDxfId`, and every data cell keeps
-its own `<f>` and cached value. The column formula is the file form of the first data row's formula:
+its own `<f>` and cached value. The column formula is the typed formula in file form:
 `T[[#This Row],[Col]]*2` for a typed `=[@Col]*2` (the `@` written as `#This Row` with the table name, as in "Structured
-references in the file"), `A2*2` for `=A2*2` typed into C2. Structured cells are written as plain `<f>` per
+references in the file"), `A2*2` for `=A2*2` typed into C2 (which row's A1 text is saved when the formula is typed below the first
+data row is unprobed). Structured cells are written as plain `<f>` per
 cell; the A1 fill as a shared formula (`<f t="shared" ref="C2:C4" si="0">A2*2</f>`). A re-fill replaces the column
 formula (`*3` after references.md rule 2); an exception does not change it (`*2` is still saved after a
 constant in C3 and `*3` typed into C4). A column that was not filled (rule 4) gets no `calculatedColumnFormula`.

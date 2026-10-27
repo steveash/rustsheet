@@ -2549,6 +2549,9 @@ blank, or all the one calculated formula); whether a column whose cells hold one
 Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
 C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
+The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
+formula cells, so the sidecars do not hold them: they are read from each case's saved `xl/worksheets/sheet1.xml`
+(eval/.cache/oracle/excel-graph/<input_sha256>.xlsx).
 Ours: the engine has no calculated columns (no column formula on `Table`), so a typed formula stays in its own cell;
 the eval adapter also types before the table exists (T-2955), so a typed `[@Col]` is `#ERROR!`. The fill is T-2958,
 the auto-expansion T-2968.
