@@ -53,6 +53,17 @@ pub(crate) fn stored_formula(node: Node) -> ParsedFormula {
 }
 
 impl Model {
+    /// The tree the formula text of shared formula `formula_index` of `sheet` prints.
+    pub(crate) fn written_formula(&self, sheet: u32, formula_index: i32) -> Result<&Node, String> {
+        Ok(self
+            .parsed_formulas
+            .get(sheet as usize)
+            .ok_or("missing sheet")?
+            .get(formula_index as usize)
+            .ok_or("missing formula")?
+            .written())
+    }
+
     /// The formula in (`sheet`, `row`, `column`), `=` first, as `printer` prints it at the cell;
     /// `None` for a cell without a formula. [`Model::get_cell_formula`] and
     /// [`Model::moved_text`] differ only in their printer.
@@ -67,13 +78,7 @@ impl Model {
         let Some(formula_index) = worksheet.cell(row, column).and_then(|c| c.get_formula()) else {
             return Ok(None);
         };
-        let formula = self
-            .parsed_formulas
-            .get(sheet as usize)
-            .ok_or("missing sheet")?
-            .get(formula_index as usize)
-            .ok_or("missing formula")?
-            .written();
+        let formula = self.written_formula(sheet, formula_index)?;
         let cell_ref = CellReferenceRC {
             sheet: worksheet.get_name(),
             row,

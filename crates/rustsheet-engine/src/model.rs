@@ -1669,13 +1669,7 @@ impl Model {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let formula = self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
-                        .ok_or("missing formula")?
-                        .written();
+                    let formula = self.written_formula(sheet, formula_index)?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
                         row,
