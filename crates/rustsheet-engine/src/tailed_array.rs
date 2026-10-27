@@ -8,7 +8,8 @@
 //! below the head, where each operand is empty and every other operand is what it is in every
 //! row). The aggregate walk then visits the head's elements and the tail element once per row
 //! past the head: the sequence the 1,048,576-row array gives, so results and errors are the
-//! walk's.
+//! walk's. SUMPRODUCT reads its arguments the same way (T-0471): each tailed argument keeps its
+//! logical 1,048,576-row shape, and the rows past every head share one product.
 //!
 //! Only expressions whose rows are independent of one another are taken
 //! ([`Model::tailed_leaves`]): literals, one-cell references, single whole columns, the value
@@ -25,6 +26,7 @@ use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
 use crate::model::Model;
+use crate::reference_operators::RefArg;
 
 #[cfg(test)]
 thread_local! {
@@ -55,6 +57,32 @@ pub(crate) struct Tailed<T> {
     pub(crate) head: T,
     pub(crate) tail: Option<T>,
     pub(crate) tail_len: usize,
+}
+
+impl Tailed<RefArg> {
+    /// The elements of a tailed argument: its head's, and its tail element with the number of
+    /// rows it stands for; `None` unless the head is one column of values and the tail one
+    /// element, as the two evaluations of an array argument give.
+    pub(crate) fn elements(
+        self,
+    ) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
+        let Err(CalcResult::Array(head)) = self.head.into_ranges_or_value() else {
+            return None;
+        };
+        if head.iter().any(|row| row.len() != 1) {
+            return None;
+        }
+        let tail = match self.tail.map(RefArg::into_ranges_or_value) {
+            None => None,
+            Some(Err(CalcResult::Array(tail))) => {
+                let [row] = <[Vec<ArrayNode>; 1]>::try_from(tail).ok()?;
+                let [element] = <[ArrayNode; 1]>::try_from(row).ok()?;
+                Some((element, self.tail_len))
+            }
+            Some(_) => return None,
+        };
+        Some((head.into_iter().flatten(), tail))
+    }
 }
 
 /// The node under its parentheses and unary pluses. Unlike `Node::ungrouped`, a structured
