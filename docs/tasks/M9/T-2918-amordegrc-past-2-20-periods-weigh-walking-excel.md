@@ -3,7 +3,7 @@ id: T-2918
 title: "AMORDEGRC past 2^20 periods: weigh walking Excel's twice-rounded subtraction further before the closed form"
 milestone: M9
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
