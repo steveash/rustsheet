@@ -2348,9 +2348,12 @@ first rewrites the other sheets' references to its tables as plain ranges (so th
 before), and `restore_sheet` puts the tables back. A whole row or column insert or delete moves a table
 when it is wholly before it, grows it when rows are inserted below its header row and at or above its totals
 row (`h < r <= t`, so at its first data row and its totals row too: T-2321) and
-shrinks it when the deleted rows are strictly inside them (neither the first nor the last data row), and
-then every structured reference to it keeps its text, in cell formulas on any sheet, conditional formats
-and defined names (T-2297, `table_edits.rs`). Every other edit that crosses a table (a delete at a data edge or touching the header or totals row, a column edit inside
+shrinks it when the deleted rows are inside them, data edges included, with a data row left (T-2338), drops
+its totals row on a delete of exactly that row (T-2338), and then every structured reference to it keeps its
+text, in cell formulas on any sheet, conditional formats and defined names (T-2297, `table_edits.rs`). A delete
+of its only data row keeps the row and clears the table's cells of it (`Model::last_data_row`, T-2338), and a
+plain range shrinks on a delete of its edge rows (`Displacement::range_corners`, T-2338). Every other edit
+that crosses a table (a delete touching the header row, of every data row at once, a column edit inside
 it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
@@ -2359,16 +2362,16 @@ moved or grown table's row there, a value change from before T-2297 (unprobed, T
 the first row of a table without a header row is a fallback too (unprobed, T-2845). So is an insert that would
 carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
 refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
-data rows and columns that touches the edited edge (`Displacement::grown_corners`, stringify.rs, T-2321);
-only the whole data column is probed, the other shapes are a hand generalisation (T-2846). The delete
-edges are T-2338, column inserts inside T-2339. With no table of that name (engine API `remove_table`), the formula is a parse
+data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
+only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
+inside are T-2339. A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
+(plain-range-delete-row-first A6, T-2855). With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
 canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
 registers a spec table with its totals row; an insert above the totals row grows the table and keeps
-`Sales[[#Totals],[Qty]]` (T-2321), but the totals row's deletes (delete it or the last data row) still print the
-displaced plain range or `#REF!` where Excel keeps the reference (decision 0128; T-2338).
+`Sales[[#Totals],[Qty]]` (T-2321), and since T-2338 the totals row's deletes (delete it or the last data row) keep it too (decision 0128).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
 its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2845; desktop-only cut and paste T-2325).
@@ -2398,8 +2401,18 @@ Right/Left):
   times, every data row, leaves the header and one blank data row: `ROWS(Sales)` 1, `#All` 2, `SUM` 0,
   `COUNTA(Sales[Region])` 0, the plain range `S!C4:C4` (table-delete-row-all-data). The last of the four deletes
   is not an ordinary row delete: a plain range onto only that row survives as `S!C4:C4` instead of `#REF!`, so
-  Excel keeps the table's one data row (cleared or refused); whether cells below the table shift up on that
-  last delete is open.
+  Excel keeps the table's one data row, cleared: nothing below the table moves on that last delete. `=S!C10`
+  below the table reads `=S!C7` after the four deletes (three rows up, not four), `=SUM(S!C9:C10)` reads
+  `=SUM(S!C6:C7)`, and `ROWS(Sales)` is 1 (table-delete-row-all-data-below, excel-graph 2026-10-27, T-2338).
+  What happens to that row's cells outside the table, and to one delete of every data row at once, is
+  unprobed (T-2848).
+- A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
+  of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
+  of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
+  (`=SUM(S!C4:C4)`, row 4) becomes `#REF!`, printed `=SUM(S!#REF!)` (plain-range-delete-row-first, -last,
+  excel-graph 2026-10-27, T-2338). Only one-row deletes are probed: the engine's shrink on a multi-row delete
+  across an edge (rows 3-5 over `C4:C7` give `C3:C4`) is a hand generalisation, and whole-row ranges and
+  column deletes still give `#REF!` corners (T-2851).
 - Column inserts. At A or B (left of or at the table's first column) the table moves right
   (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
   (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes
