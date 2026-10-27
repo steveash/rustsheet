@@ -3,7 +3,7 @@ id: T-0485
 title: "Pass caches under iterative calculation when no read joins a cycle (calipers pv26_002)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
