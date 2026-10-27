@@ -660,7 +660,7 @@ most 616 single steps for any double, capped at 1,024, `#NUM!` past the cap), bi
 up to 2^20 periods and finishes in a closed form that can be a unit off the walk for charges of 1E12 or more
 (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
-elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
+elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 7.6 ms with the twice-rounded subtraction of T-2849: 512 elements, 3.9 s).
 
 As built (T-1821): NPV is `[Lift]` with a repeated `WholeByCaller`, IRR `[WholeByCaller, Lift]` and MIRR
 `[WholeByCaller, Lift, Lift]`. Each caller reads its cash flows once, before the driver, and calls `lift_call_costed`
