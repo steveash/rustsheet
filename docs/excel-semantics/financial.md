@@ -953,7 +953,7 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
     month-end: no cell reached a coupon date after 1900-02-28/29 that depends on it (the settlement slice uses the
     regular period's 360/frequency days on basis 0), so the question has no observable effect in these cells.
 - Basis 1's cut on first_interest's regular period is exactly 1900-01-01: ACCRINT(33853,FI,37554,1,9888,freq,1) is
-  `#NUM!` for FI 365 and 366 annual, 182 (1900-06-30, a month end, so the period starts 1899-12-31) semiannual and 91
+  `#NUM!` for FI 365 and 366 annual, 182 (1900-06-30, whose period starts before serial 1 with or without the month-end rule) semiannual and 91
   (1900-03-31) quarterly, and a number for FI 367 annual (period from 1900-01-01), 183 and 184 semiannual and 92 and
   93 quarterly (probes/accrint-eom-1900 B1:B9; the same cells on basis 0 are all numbers, C1:C9; T-2837).
 - In a 1904 workbook the cut moves to 1904-01-01: with first_interest 1904-03-31 or 1904-06-30 (quarterly), an issue of
