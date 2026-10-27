@@ -58,6 +58,6 @@ The engine follows it (`yield_start_years`, on the dates Excel shows, so serial 
 `solvers.start_years`. financial.md "YIELD stops short of PRICE's root" records it.
 Eval: 18 known failures fixed, no regressions (gen-m9 -2: ba4ddb817a8e700e A17 bit-exact and c0681a8b150ce301 A223;
 ironcalc-calc -3: PRICE_YIELD I3, I10, I29; probes -13: yield-start-sweep D4:D6, fin-coupon-walk-bounds-c C12 and G12,
-the 1900/1904 financial-readers row 19 cells); the new probe adds 61 ulp-level known failures. Of the four owned cells,
+the 1900/1904 financial-readers row 19 cells); the new probe (159 cells) adds 80 known failures, 73 of them 1-2 ulp and 7 at 2e-15 to 1.1e-14 (handed to T-2788). Of the four owned cells,
 A17 passes; A189 (basis 2) moves from 3e-11 off to 8 ulp, and A102 and A194 (basis 0, unchanged) stay 6 to 8 ulp off:
 all three now miss only by a rounding boundary at the 15th digit, so they go to T-2788 with the probe's 5 root cells.

@@ -1937,9 +1937,10 @@ is 7 + 164/360 (row 41). Counted back from maturity instead, or with 29 February
 or with the anniversary year's or the settlement year's length on basis 1, the fit is worse (lab arithmetic,
 cells bit-exact / within 4 ulp, of rows 1-40: this rule 59/115; forward with 28 February 46/103 at best; back from maturity
 48/92 at best; the days over a year 8/14; lab `solvers.start_years` on all 159 cells 79/153, the days over a year
-18/34). Rows 41-53 are all within 2 ulp under this rule, where the old term misses rows 41, 46, 47, 49, 51 and 53 by
+18/34). In the lab, rows 41-53 are all within 2 ulp under this rule, where the old term misses rows 41, 46, 47, 49, 51 and 53 by
 3e-15 to 1.4e-9. The 5 cells left (A9, C11, C20, A26, A38) sit at PRICE's root (next step 1e-12 to
-1e-16) and are 4e-15 to 1e-14 off, the root-level last digits of T-2788, with their twins in the other columns
+1e-16) and are 4e-15 to 1e-14 off, the root-level last digits of T-2788; the engine also leaves the sub-year cells
+B50 and A52 10 to 12 ulp off (their term is 344/365 under either rule, so the miss is in the Newton or PRICE), with their twins in the other columns
 within 2 ulp. gen-m9/ba4ddb817a8e700e A17 (basis 1, 20 + 284/365) becomes bit-exact; gen-m9/81bcdc0bec0c8e6b A189
 (basis 2) moves from 3e-11 off to 8 ulp. The dates are the ones Excel shows: serial 60 is 29 February 1900, so
 `YIELD(60,36585,0.05,90,100,4)` (to 29 February 2000) starts from 100 years and keeps Excel's bits
