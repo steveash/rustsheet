@@ -434,7 +434,6 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 hijri_ymd(serial_1900)
             } else {
                 match p.calendar {
-                    // Past the lunar tables (2100) the date is Gregorian, TODO(T-2759).
                     Some(Calendar::Lunar(table)) if serial_1900 <= LUNAR_LAST_SERIAL => {
                         lunar_ymd(serial_1900, table)
                     }
