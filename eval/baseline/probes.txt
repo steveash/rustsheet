@@ -1163,6 +1163,7 @@ C	probes/t2360-array-lambda-holidays.case.json	508
 C	probes/t2364-regex-dollar-final-cr.case.json	5
 C	probes/t2364-regex-newline-convention.case.json	25
 C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
+C	probes/t2366-sort-lifted-by-col.case.json	12
 C	probes/t2369-workday-text-holidays.case.json	68
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
@@ -3517,6 +3518,10 @@ F	probes/t2360-array-lambda-holidays.case.json	G!C11
 F	probes/t2360-array-lambda-holidays.case.json	G!C4
 F	probes/t2360-array-lambda-holidays.case.json	G!D12
 F	probes/t2360-array-lambda-holidays.case.json	G!D3
+F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!H18
+F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!H6
+F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!I1
+F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!I7
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A1
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A13
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A19
