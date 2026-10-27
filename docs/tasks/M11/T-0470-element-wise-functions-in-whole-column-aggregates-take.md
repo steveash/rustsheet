@@ -46,6 +46,15 @@ The scan found nothing to admit.
 - **Result:** no workbook uses ISNUMBER, ISBLANK, ISERROR, NOT, LEN, IFERROR or any other
   element-wise function inside a whole-column aggregate. Admitting them would add code and test
   surface that no evidence asks for.
+- **How to re-run the scan:** a short Python script reads each workbook with `zipfile` and
+  runs over `xl/worksheets/sheet*.xml` (unescaped `<f>` text):
+  - aggregate calls match `\b(SUMPRODUCT|SUM|MAX|MIN|AVERAGE|...)\(`, and the argument runs up
+    to the matching parenthesis;
+  - a whole column matches `(?<![A-Za-z0-9_$])\$?[A-Z]{1,3}:\$?[A-Z]{1,3}(?![A-Za-z0-9(])`;
+  - inside the argument, every call `\b((?:_xlfn\.)?[A-Z][A-Z0-9.]*)\(` whose own arguments
+    hold a whole column is counted;
+  - a second pass keeps arguments with an operator (`=<>*+/&^-`) outside string literals, to
+    find operator-only expressions.
 - **If a case appears:** a future workbook with such a pattern (a corpus timeout, or a gap
   report) should get a task naming that function and that file.
 
