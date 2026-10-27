@@ -21,5 +21,7 @@ Left over from T-2434 (z * phi(0) below 2E-15; statistics.md "GAUSS of a tiny ar
 - [ ] gen-m9/a54c738c697617c3 Calc!A235 leaves eval/baseline/gen-m9.txt with no new known failures.
 - [ ] `make check` green; reviewers approve.
 
+Also probe Excel at GAUSS(1.5E-15), 2E-15, 2.5E-15, 3E-15, 3.5E-15 to pin the cut that T-2434 set to 2E-15 (`excel-probe` skill).
+
 ## Out of scope
 -
