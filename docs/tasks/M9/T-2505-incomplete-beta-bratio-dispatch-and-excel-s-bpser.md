@@ -89,6 +89,7 @@ the Outcome and handed to T-2512. Bit-level criteria still unmet move to a follo
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
 
 ## Progress (2026-10-27, session ran out of budget; resume from this branch)
+Resumed 2026-10-27 03:30 UTC by an opus run (routine step 2).
 - Landed on the branch: `functions/statistical/bratio/mod.rs`, the 1992 dispatch (`dispatch` → `Dispatch { branch,
   swapped, a0, b0, x0, y0 }`, `Branch` with the model's branch names, x0 >= 0.3, λ formed as TOMS forms it), and
   `bratio/tests.rs` with hand-derived boundary points. It sits behind `#[cfg(test)] mod bratio;` until the callers
