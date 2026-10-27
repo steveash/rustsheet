@@ -24,26 +24,40 @@ def cell(sheet: str, a1: str, formula: str = "=X()") -> dict[str, object]:
 
 def report() -> dict[str, object]:
     return {
-        "milestone_exit": [{"milestone": "M5"}],
+        "milestone_exit": [
+            {
+                "milestone": "M5",
+                "probe_row": "M5",
+                "gen_visibly_off_cells": [f"{GEN}!Calc!A1", f"{GEN}!Calc!A107"],
+            }
+        ],
         "cases": [
             {
                 "id": GEN,
                 "suite": "gen-m5",
-                "cells": [cell("Calc", "A1"), cell("Calc", "A107", "=CSCH(PI()/4)")],
+                # A2 fails within 15 digits: not visibly off, so not an exit cell (decision 0135).
+                "cells": [cell("Calc", "A1"), cell("Calc", "A107", "=CSCH(PI()/4)"), cell("Calc", "A2")],
             },
-            {"id": TRIG, "suite": "ironcalc-calc", "cells": [cell("S", "C51"), cell("S", "C55")]},
-            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2"), cell("P", "B3")]},
+            {"id": TRIG, "suite": "ironcalc-calc", "cells": [cell("S", "C51"), cell("S", "C55"), cell("S", "C60")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2"), cell("P", "B3"), cell("P", "B4")]},
         ],
         "function_scope": {
             "rows": [
                 {
                     "milestone": "M5",
-                    "failing": [f"{TRIG}!S!C51", f"{TRIG}!S!C55"],
+                    "failing": [f"{TRIG}!S!C51", f"{TRIG}!S!C55", f"{TRIG}!S!C60"],
                     "excepted": [f"{TRIG}!S!C55"],
+                    "visibly_off": [f"{TRIG}!S!C51", f"{TRIG}!S!C55"],
                 }
             ]
         },
-        "probe_milestones": [{"milestone": "M5", "failing_cases": [[PROBE, 2]]}],
+        "probe_milestones": [
+            {
+                "milestone": "M5",
+                "failing_cases": [[PROBE, 3]],
+                "visibly_off_cells": [f"{PROBE}!P!B2", f"{PROBE}!P!B3"],
+            }
+        ],
     }
 
 
@@ -95,6 +109,25 @@ class ExitOwners(TaskDir):
         listed = self.listed()
         self.assertIn(f"{TRIG}!S!C51", listed)
         self.assertNotIn(f"{TRIG}!S!C55", listed)
+
+    def test_only_visibly_off_cells_are_exit_cells(self) -> None:
+        listed = self.listed()
+        self.assertNotIn(f"{GEN}!Calc!A2", listed)
+        self.assertNotIn(f"{TRIG}!S!C60", listed)
+        self.assertNotIn(f"{PROBE}!P!B4", listed)
+
+    def test_m2_probe_cells_come_from_the_m0_m2_row(self) -> None:
+        r = report()
+        r["milestone_exit"] = [{"milestone": "M2", "probe_row": "M0-M2"}]
+        r["function_scope"] = {"rows": []}
+        r["probe_milestones"] = [
+            {"milestone": "M0-M2", "failing_cases": [[PROBE, 3]], "visibly_off_cells": [f"{PROBE}!P!B3"]},
+            {"milestone": "M5", "failing_cases": [[PROBE, 3]], "visibly_off_cells": [f"{PROBE}!P!B2"]},
+        ]
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M2", self.tasks)]
+        self.assertEqual(listed, [f"{PROBE}!P!B3"])
+        self.task("probes/index-reference-args P!B3", milestone="M2")
+        self.assertEqual(exit_owners.unowned(r, "M2", self.tasks), [])
 
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")

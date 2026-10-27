@@ -3345,6 +3345,15 @@ tables: docs/research/t2681/README.md, `score_bratio.py`.
   No form tried gives the map: accurate 45 of 99 (shipped), TOMS betaln 49, TOMS's a-reduction with w = prod a/(a + b)
   55, Excel GAMMALN sums 15 to 29 (docs/research/t2829/ln_beta_map.py; probes/t2829-ftest-a306-shapes and
   t2829-ftest-ln-beta-grid, excel-graph; open as T-2924). A306 stays 25 ulp low until that form is found.
+  Ruled out by structure (T-2924, docs/research/t2924/structure.py):
+  - Any sum of double lnGamma values, each within 2 ulp, in seven orders. lnGamma(b) and lnGamma(a + b) lie on a
+    grid 4 ulp(L) wide, so 16 or more cells are unreachable in every order.
+  - For integer a, TOMS's a-reduction fl(LN(w) + A(b)) with any w product, the exact ln of the product included:
+    no single A(b) fits more than 1 of 11 b values.
+  - Any per-argument error f(a) + h(b) + q(a + b) added to ln B and rounded once. At most 94 of 99 cells fit such
+    an error, against 82 for random k.
+  So Excel forms ln B jointly in (a, b), finer than a double lnGamma grid. Blocked as time-boxed (decision 0056). BETA.DIST's
+  bpser cells with a shape above 8 were not scored.
   The F.DIST.RT cells of probes/t2829-ftest-tail-over-b (f = 1E12) are off ours by these k plus whole steps of the
   fl(a·LN x) grid (a = 6, b = 11.5: -143 ulp = +5.4E-15 - 2.8E-14 relative), and `2*F.DIST.RT(..,22,12)` differs from
   F.TEST at the b = 11 twin by such a step, so F.DIST.RT forms x or z differently there; F.TEST is the clean probe.
@@ -4258,7 +4267,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2432
 
 ## PERCENTILE and PERCENTILE.INC interpolate from a one-based rank 1 + k(n-1) (gap triage 2026-10-25)
-Rule (hypothesis checked against Excel's values, not yet implemented): with the n numbers sorted as a[1..n], Excel computes
+Rule (checked against Excel's values; implemented by T-1811): with the n numbers sorted as a[1..n], Excel computes
 the rank `r = 1 + k*(n-1)` in doubles, takes `j = floor(r)` and `h = r - j`, and returns `a[j] + h*(a[j+1] - a[j])`.
 Because the 1 is added before the fraction is taken, a tiny k is lost in `r` (`1 + 1E-20` is 1), so the result is the
 smallest value exactly, and h carries the rounding of `1 + k(n-1)` rather than of `k(n-1)`. This looks wrong for tiny k
@@ -4273,6 +4282,6 @@ Evidence: eval/baseline/gen-m9.txt lines of T-1811 (excel-graph, 2026-10-23), e.
 gen-m9/607e85cfee83a689 Calc!A20 (`PERCENTILE.INC(Data!B7:E11,1E-20)` is 1E-15, the smallest value), gen-m9/eccd03df42e40006
 Calc!A151 (`PERCENTILE.INC(Data!B11:E12,1E-200)` is 0), Calc!A162 (`PERCENTILE(Data!A4:B4,1E-10)` over -0.0001 and 7 is
 -9.999929998994208E-05), gen-m9/a4090567758520df Calc!A28.
-Status: UNVERIFIED as an implementation (39 of 40 cells reproduced offline); QUARTILE and QUARTILE.INC are assumed to share it.
-Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the zero-based rank `k*(n-1)`.
+Status: VERIFIED (excel-graph). Implemented by T-1811; QUARTILE and QUARTILE.INC share `percentile_inc_impl` and show 0 regressions across their oracle cells. One cell is not reproduced (A269 above).
+Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the one-based rank `1 + k*(n-1)` (T-1811). Known miss: gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, rule -2.4999999999999987) stays in the baseline.
 Tasks: T-1811

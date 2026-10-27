@@ -4,10 +4,11 @@
   scripts/exit_owners.py --milestone M5 [--report PATH] [--tasks DIR] [--strict]
   scripts/exit_owners.py --unattributed [--report PATH] [--tasks DIR] [--strict]
 
-Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every failing cell of the
-milestone's exit criteria (decision 0085: the `gen-m<k>` suite, the ironcalc-calc row of
-"Milestone function scope" less its exit exceptions, and the probes of the milestone's row of
-"Probe milestones") that no open task of that milestone names, one per line as
+Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every visibly-off cell of
+the milestone's exit criteria (decision 0085, read at visible parity by decisions 0114 and 0135:
+the `gen-m<k>` suite, the ironcalc-calc row of "Milestone function scope" less its exit
+exceptions, and the probes of the milestone's row of "Probe milestones", `M0-M2` for M2), plus
+each probe case that fails with no cell, that no open task of that milestone names, one per line as
 `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count is
 not 0.
 
@@ -86,8 +87,11 @@ def formula_of(cell: dict[str, Any]) -> str:
 
 
 def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
-    """Every failing cell of `milestone`'s exit criteria, in report order per criterion."""
-    if not any(r.get("milestone") == milestone for r in report.get("milestone_exit") or []):
+    """Every visibly-off cell of `milestone`'s exit criteria, in report order per criterion. The
+    visibly-off lists are the report's (decision 0135): the exit row's `gen_visibly_off_cells`,
+    the function-scope row's `visibly_off` and the probe row's `visibly_off_cells`."""
+    exit_row = next((r for r in report.get("milestone_exit") or [] if r.get("milestone") == milestone), None)
+    if exit_row is None:
         raise ValueError(f"report.json has no milestone_exit row for {milestone}")
     by_case = failing_cells(report)
     formulas = {
@@ -96,28 +100,36 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     out: list[ExitCell] = []
 
     gen = f"gen-{milestone.lower()}"
+    gen_off = set(exit_row.get("gen_visibly_off_cells") or [])
     for case in report.get("cases") or []:
         if case.get("suite") == gen:
             for c in by_case.get(str(case["id"]), []):
-                out.append(ExitCell(gen, str(case["id"]), f"{c['sheet']}!{c['cell']}", formula_of(c)))
+                key = f"{c['sheet']}!{c['cell']}"
+                if f"{case['id']}!{key}" in gen_off:
+                    out.append(ExitCell(gen, str(case["id"]), key, formula_of(c)))
 
     scope = report.get("function_scope") or {}
     for row in scope.get("rows") or []:
         if row.get("milestone") == milestone:
             excepted = set(row.get("excepted") or [])
+            visible = set(row.get("visibly_off") or [])
             for name in row.get("failing") or []:
-                if name not in excepted:
+                if name not in excepted and name in visible:
                     case, _, key = str(name).partition("!")
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
 
+    probe_row = exit_row.get("probe_row") or milestone
     for row in report.get("probe_milestones") or []:
-        if row.get("milestone") == milestone:
+        if row.get("milestone") == probe_row:
+            probe_off = set(row.get("visibly_off_cells") or [])
             for case, _count in row.get("failing_cases") or []:
                 cells = by_case.get(case, [])
                 if not cells:
                     out.append(ExitCell(PROBES_SUITE, case, WHOLE_CASE, ""))
                 for c in cells:
-                    out.append(ExitCell(PROBES_SUITE, case, f"{c['sheet']}!{c['cell']}", formula_of(c)))
+                    key = f"{c['sheet']}!{c['cell']}"
+                    if f"{case}!{key}" in probe_off:
+                        out.append(ExitCell(PROBES_SUITE, case, key, formula_of(c)))
     return out
 
 
