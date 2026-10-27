@@ -329,7 +329,10 @@ C	probes/decimal-unreadable.case.json	84
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
+C	probes/defined-name-local-formula-scope.case.json	10
 C	probes/defined-name-non-ascii.case.json	3
+C	probes/defined-name-qualified-like-reference-more.case.json	6
+C	probes/defined-name-qualified-like-reference.case.json	6
 C	probes/discount-argument-check-order.case.json	1707
 C	probes/discount-security-modes.case.json	135
 C	probes/discount-serial-zero.case.json	50
@@ -2189,6 +2192,7 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
+F	probes/defined-name-qualified-like-reference.case.json	Sheet1!A8
 F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
@@ -2198,10 +2202,6 @@ F	probes/eng-inumber-date-boundary.case.json	S!B21
 F	probes/eng-inumber-date-boundary.case.json	S!B22
 F	probes/eng-inumber-date-boundary.case.json	S!B23
 F	probes/eng-inumber-reading.case.json	S!A5
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A1
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A3
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A4
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A5
 F	probes/fin-argument-modes.case.json	Sheet1!H186
 F	probes/fin-argument-modes.case.json	Sheet1!H200
 F	probes/fin-argument-modes.case.json	Sheet1!H236

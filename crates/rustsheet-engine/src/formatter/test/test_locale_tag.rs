@@ -187,6 +187,10 @@ fn a_calendar_digit_over_an_lcid_without_a_locale_keeps_its_date() {
     assert_eq!(text(0.75, "[$-708DE]h AM/PM"), "6 PM");
     // LCID 0 is one too (T-2764's cells).
     assert_eq!(text(45000.0, "[$-110000]mmmm|d"), "February|24");
+    assert_eq!(text(45000.0, "[$-120000]mmmm|d"), "February|24");
+    assert_eq!(text(45000.0, "[$-E0000]mmmm|dddd"), "February|Wednesday");
+    // A lunar digit wins over a `B2` before the tag (probes/text-locale-lunar-tokens A79).
+    assert_eq!(text(45300.0, "B2[$-110409]yyyy|m"), "2023|12");
 }
 
 #[test]

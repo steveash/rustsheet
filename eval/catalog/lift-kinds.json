@@ -7,7 +7,7 @@
   {"name":"ACOT","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"ACOTH","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"ADDRESS","required":2,"params":["Lift","Lift","Lift","Lift","Lift"],"repeat":[],"max":5,"work":"Constant"},
-  {"name":"AMORDEGRC","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":[],"max":7,"work":"ByValue(Amortization { degressive: true, weight: 262144 })"},
+  {"name":"AMORDEGRC","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":[],"max":7,"work":"ByValue(Amortization { degressive: true, weight: 1048576 })"},
   {"name":"AMORLINC","required":6,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":[],"max":7,"work":"ByValue(Amortization { degressive: false, weight: 512 })"},
   {"name":"ARABIC","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"ASIN","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
