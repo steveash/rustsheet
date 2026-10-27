@@ -1,6 +1,6 @@
 ---
 id: T-2919
-title: "SUMPRODUCT of a one-cell numeric-text reference beside a one-cell number is #VALUE! (poi FormulaEvalTestData_Copy.xlsx EverythingTests!J1328)"
+title: "SUMPRODUCT of a one-cell numeric-text reference beside a one-cell number: probe it (poi FormulaEvalTestData_Copy.xlsx EverythingTests!J1328)"
 milestone: M5
 lane: functions-math
 status: done
@@ -55,7 +55,7 @@ Steps:
       cell of it passes.
 - [x] The poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 line disappears from eval/baseline/poi.txt
       (`make eval-baseline`) with no new F line in any baseline, or, under step 3, the task records the decision that
-      retires it and the evidence.
+      retires it and the evidence. (Step 3 applied: J1328 is kept as a CONFLICTING known failure.)
 - [x] coercion.md's SUMPRODUCT entry states the numeric-text rule as VERIFIED (excel-graph), citing the probe cells and
       J1328, and drops the UNVERIFIED note.
 - [x] Unit tests in sumproduct.rs for the numeric-text one-cell argument beside a number, in both orders.
@@ -76,4 +76,5 @@ The engine already matched, so every probe cell passes with no code change. J132
 15.0300) evidence. It is recorded CONFLICTING in coercion.md under decision 0030 §2 and decision 0039, following the
 MODE G936/H936/K936 precedent, and it stays a known failure in eval/baseline/poi.txt until a 16.x desktop value decides
 (T-1075, M14). A unit test in test_sumproduct.rs pins the 0. Eval delta: +1 probe case (46 cells pass), 0 fixed,
-0 regressions.
+0 regressions. coercion.md had no UNVERIFIED note to drop on main (the gap-triager added one on this
+branch, now replaced). J1328 is item 19 of T-1075 (M14).
