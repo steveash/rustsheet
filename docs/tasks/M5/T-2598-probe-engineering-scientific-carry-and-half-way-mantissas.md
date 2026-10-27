@@ -3,7 +3,7 @@ id: T-2598
 title: "Probe engineering scientific carry and half-way mantissas (##0.0E+0 on 999.96, ##0E+0 on 0.0145)"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,9 +24,14 @@ and 1.5E-5; `##0.00E+00` on 999.995. Add a grouped code (`#,##0.0E+0` on 1/3, 12
 unprobed. Fill through excel-graph.
 
 ## Acceptance criteria
-- [ ] A probe case with the cells above is filled through excel-graph, and number-formats.md states the rules it shows.
-- [ ] Ours matches every probe cell, or each mismatch has its own follow-up task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with the cells above is filled through excel-graph, and number-formats.md states the rules it shows.
+- [x] Ours matches every probe cell, or each mismatch has its own follow-up task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/t2598-engineering-scientific` (12 cells) filled through excel-graph. Ours already matches every cell, so
+no code change and no follow-up task; the rules are in number-formats.md (T-2598 bullet). Eval delta: +1 probe case,
+12 cells passing, no baseline change.
