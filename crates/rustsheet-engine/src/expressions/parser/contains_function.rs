@@ -38,6 +38,18 @@ impl Node {
         false
     }
 
+    /// How many nodes the tree holds, itself included: what cloning it costs (SPEC-0024 section 1,
+    /// "LAMBDA values made"). Walked with an explicit stack like [`Node::contains_function`].
+    pub(crate) fn node_count(&self) -> u64 {
+        let mut pending = vec![self];
+        let mut count: u64 = 0;
+        while let Some(node) = pending.pop() {
+            count = count.saturating_add(1);
+            node.push_children(&mut pending);
+        }
+        count
+    }
+
     /// Whether the tree holds a LAMBDA call, written out as `LAMBDA(x,x)(1)`.
     pub(crate) fn contains_lambda_call(&self) -> bool {
         let mut pending = vec![self];

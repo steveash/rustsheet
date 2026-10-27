@@ -751,13 +751,6 @@ impl Model {
         CalcResult::Array(lifted)
     }
 
-    /// The workbook's file name as CELL names it (`Budget.xlsx`), `None` for an unnamed workbook
-    /// (an empty `Workbook::name`, which holds the name without its extension).
-    fn workbook_file_name(&self) -> Option<String> {
-        let name = &self.workbook.name;
-        (!name.is_empty()).then(|| format!("{name}.xlsx"))
-    }
-
     /// The value of one CELL `info_type` for `reference`; `ranges` holds every area of a union.
     fn cell_info(
         &mut self,
@@ -780,7 +773,7 @@ impl Model {
                         message: message.to_string(),
                     };
                     // Excel's form for an unsaved workbook is unprobed.
-                    let Some(file_name) = self.workbook_file_name() else {
+                    let Some(file_name) = self.workbook.file_name() else {
                         return unimplemented("Unnamed workbook");
                     };
                     // A union cannot span sheets in Excel; one on another sheet is unprobed.

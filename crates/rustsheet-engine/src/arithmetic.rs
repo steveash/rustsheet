@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::NODE_UNITS,
     calc_result::CalcResult,
     cast::{
         array_node_to_string, array_node_to_text, NumberOrArray, StringOrArray, ValueOrArray,
@@ -332,6 +333,10 @@ fn finite_or_num(value: f64) -> Result<f64, Error> {
     finite_or_overflow(value).map(flush_subnormal)
 }
 
+/// 2^-1026, below which Excel's ROUND keeps a positive subnormal and unary minus keeps it positive
+/// (docs/excel-semantics/numbers.md; probes/t2771-roundup-subnormal-threshold, -sign-controls).
+pub(crate) const TINY_SUBNORMAL_BELOW: f64 = f64::MIN_POSITIVE / 16.0;
+
 /// 0 for a value below the smallest normal double, `value` otherwise. The postfix `%` and the
 /// multiplying and dividing functions (PRODUCT, SUMPRODUCT, SUMSQ, AVERAGE) flush their result
 /// like `*` and `/`; addition keeps subnormals (docs/excel-semantics/numbers.md "Subnormal results become 0",
@@ -504,6 +509,10 @@ impl Model {
         }
         match node {
             Node::OpSumKind { kind, left, right } => {
+                // The root `+` is a node, charged as `evaluate_node_in_context` charges one.
+                if let Err(error) = self.spend_work(NODE_UNITS, cell) {
+                    return error;
+                }
                 let left = self.evaluate_node_in_context(left, cell);
                 let left = self.collapse_single_cell(left);
                 let right = self.evaluate_node_in_context(right, cell);

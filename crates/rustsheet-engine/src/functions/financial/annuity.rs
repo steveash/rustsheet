@@ -275,6 +275,33 @@ fn discounted_principal(
     usable.then_some(principal)
 }
 
+/// Where IPMT's exact balance and [`discounted_interest`] differ by more than this relative
+/// amount (about 3 ulp), Excel has the discounted one; below it the exact one matches Excel's bits
+/// more often (financial.md "IPMT follows Excel's own discount where it moves the value"). 3E-16
+/// and 1E-15 each fit fewer cells than 5E-16 to 7E-16 (T-2587).
+const DISCOUNTED_INTEREST_FROM: f64 = 6e-16;
+
+/// IPMT on Excel's own discount, as [`discounted_principal`] has PPMT: `-rate*((pv+fv)*Y - fv)` in
+/// doubles, divided by `1+rate` for type 1, with `Y = expm1((period-1-nper)*L)/expm1(-nper*L)`,
+/// Excel's expm1 and [`growth_log`]'s L. For long terms at negative rates `(1+rate)^-nper` is huge
+/// and carries L's error into the value (`IPMT(-0.05,10,336,1)` is 0.03151246988087522, the exact
+/// value 0.03151246988087528; gen-m9 e168be7f6d3f84c2 A385). `None` where it is not finite.
+fn discounted_interest(
+    rate: f64,
+    nper: f64,
+    period: f64,
+    (pv, fv): (f64, f64),
+    period_start: bool,
+) -> Option<f64> {
+    let log = growth_log(rate);
+    let share = excel_expm1((period - 1.0 - nper) * log) / excel_expm1(-nper * log);
+    let mut interest = -rate * ((pv + fv) * share - fv);
+    if period_start {
+        interest /= 1.0 + rate;
+    }
+    interest.is_finite().then_some(interest)
+}
+
 /// `(1+rate)^x` for `x <= 0` as [`accurate_growth`] has it, and 0 where that declines for a
 /// positive rate (the power is then below 1E-270, which a double near 1 cannot see).
 fn accurate_discount(rate: f64, x: f64) -> Option<Pair> {
@@ -478,9 +505,22 @@ pub(super) fn period_payments(
         let whole_term = period_count.fract() == 0.0;
         interest = match balance_interest(rate, period_count, period, values, period_start) {
             Some((interest, true)) => Some(interest),
-            balance => split
-                .map(|(interest, _)| interest.0)
-                .or(balance.filter(|_| whole_term).map(|(interest, _)| interest)),
+            balance => {
+                let exact = split
+                    .map(|(interest, _)| interest.0)
+                    .or(balance.filter(|_| whole_term).map(|(interest, _)| interest));
+                let discounted =
+                    discounted_interest(rate, period_count, period, values, period_start);
+                // An exact 0 makes the ratio NaN (keeps 0) or infinite (takes the finite discount).
+                match (exact, discounted) {
+                    (Some(exact), Some(discounted))
+                        if ((discounted - exact) / exact).abs() > DISCOUNTED_INTEREST_FROM =>
+                    {
+                        Some(discounted)
+                    }
+                    _ => exact,
+                }
+            }
         };
     }
     if let (Some(interest), Some(principal)) = (interest, principal) {
@@ -872,6 +912,37 @@ mod tests {
         // Period 1 of type 1 is 0 even where PMT is #NUM!; PPMT is PMT there.
         assert_eq!(ipmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Ok(0.0));
         assert_eq!(ppmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Err(Error::NUM));
+    }
+
+    /// IPMT takes Excel's own discount where it moves the value past a few ulp: long terms at
+    /// negative rates, a fractional period (gen-m9 e168be7f6d3f84c2 A385, c0681a8b150ce301 A104,
+    /// b6a02893a8d6b151 A35, 1cd3096e3e87c965 A227; financial.md "IPMT follows Excel's own
+    /// discount where it moves the value").
+    #[test]
+    fn interest_on_excels_discount() {
+        let ipmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).0;
+        assert_eq!(
+            ipmt(-0.05, 10.0, 336.0, 1.0, 0.0, false),
+            Ok(0.031_512_469_880_875_22)
+        );
+        assert_eq!(
+            ipmt(-0.5, 3.0, 232.0, 259_859.0, 333.0, true),
+            Ok(64_714.999_999_999_75)
+        );
+        assert_eq!(
+            ipmt(-0.05, 4.0, 341.0, 208_149.0, 115.0, true),
+            Ok(9_391.860_328_810_97)
+        );
+        assert_eq!(
+            // 3.14159 (Data!A6), written as a quotient so clippy does not take it for PI.
+            ipmt(314_159.0 / 100_000.0, 1.999, 167.0, 0.375, 0.0, false),
+            Ok(-1.178_096_249_999_999_8)
+        );
+        // Within a few ulp the exact balance stays: it has Excel's bits (m9-fin-pmt A101).
+        assert_eq!(
+            ipmt(0.1, 2.0, 3.0, 10_000.0, 0.0, true),
+            Ok(-634.441_087_613_293_1)
+        );
     }
 
     /// PPMT's log is the series below 0.375 and Excel's LN above it, an ulp or two from

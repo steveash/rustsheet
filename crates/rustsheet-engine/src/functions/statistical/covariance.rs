@@ -12,7 +12,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<PairedValues, CalcResult> {
-        match self.paired_samples(args, cell, true, MarkedSample::NoNumber) {
+        match self.paired_samples(args, cell, MarkedSample::NoNumber) {
             Ok(paired) if paired.same_size => Ok(paired),
             Ok(_)
             | Err(PairedSamplesError {
