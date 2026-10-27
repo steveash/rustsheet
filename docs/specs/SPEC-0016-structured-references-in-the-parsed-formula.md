@@ -233,15 +233,20 @@ Edge cases, for a table with header row `h`, data rows `d1..d2` and an optional 
 | Insert, `r <= h` | move | every area shifts by `n` |
 | Insert, `r` after the last table row | none | no area changes |
 | Insert, `d1 < r <= d2` | grow | data, `#All` and totals areas grow or shift together, as the lowered ranges do |
-| Insert, `r == d1` (between header and data) | fallback | the lowered data area shifts and the header does not: not a table shape |
-| Insert, `r == t` (between data and totals) | fallback | the data area stays and the totals row shifts: not a table shape |
+| Insert, `r == d1` (between header and data) | grow | Excel grows the table (probes/table-edits/table-insert-row-above-first-data, T-2197); the plain ranges onto its data grow too, see below |
+| Insert, `r == t` (between data and totals) | grow | Excel grows the table and moves the totals row (probes/table-edits/table-insert-row-above-totals, T-2197); the plain ranges onto its data grow too |
 | Delete wholly above `h` or wholly below the last row | move / none | |
 | Delete wholly inside `d1..d2`, at least one data row left | shrink | |
 | Delete touching `h` or `t`, all data rows, or straddling an edge of the table | fallback | the lowered areas become trimmed or `#REF!`, which a table cannot represent |
 
 T-2197 probed the row inserts (references.md "Structured references when the table changes"): Excel
-*grows* the table on an insert at `r == d1` and at `r == t`, so those two fallback rows are superseded
-(T-2321); the other insert rows hold.
+*grows* the table on an insert at `r == d1` and at `r == t` (T-2321 replaced the two fallback rows the
+table had there); the other insert rows hold. With those two inserts a plain range onto the table's
+data grows with it: `=SUM(S!C4:C7)` over data rows 4-7 becomes `=SUM(S!C4:C8)`, where an ordinary
+insert at its first row would shift it and one just below it would leave it. As built
+(`Displacement::grown_corners`), every range inside the table's data rows and columns that touches
+the edge grows; only the whole data column is probed (T-2846). A table without a header row has no
+`r == d1` edge: an insert at its first row stays a fallback (T-2845).
 
 A column edit at column `c`: an insert with `c <= c1`, or a delete wholly left of `c1`, is a
 move; an edit wholly right of `c2` changes nothing; every other column edit that crosses
@@ -250,9 +255,7 @@ move; an edit wholly right of `c2` changes nothing; every other column edit that
 As built (T-2297, `table_edits.rs`): the walk takes the set of tables that *follow* the edit
 (move, grow, shrink, or left alone by an edit wholly after them) instead of the fallback set
 (`to_string_displaced_keeping`); a reference to any other table keeps step 1's refined rule. A
-delete at the first or last data row is a fallback too, not a shrink, because its undo (an insert at
-that row) would be a fallback and not grow the table back; T-2338 adds those edges with T-2321's
-insert edges. A table that would grow or move past the last row or column is a fallback. A `#This
+delete at the first or last data row is a fallback too, not a shrink, until T-2338 implements those edges. A table that would grow or move past the last row or column is a fallback. A `#This
 Row` reference keeps step 1's rule even when its table follows the edit (T-2845 probes it), and an
 insert at the first row of a table without a header row is a fallback (T-2845). The insert of
 rows or columns that would push a table off the sheet is allowed (the cells pushed off are empty)

@@ -2335,8 +2335,8 @@ through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Re
   data rows) becomes `=SUM(S!C4:C8)` after the insert above row 4, where an ordinary insert at a range's
   first row shifts it (`S!C5:C8`, as above the header), and after the insert above the totals row 8, where
   an ordinary insert just below a range leaves it (as `S!C4:C7` stays for r = 8 without totals).
-- So SPEC-0016's edge-case table is wrong on two rows: an insert at r == d1 and at r == t *grows* the
-  table (it said fallback); the move, grow-inside and none rows hold (T-2321).
+- So SPEC-0016's edge-case table was wrong on two rows: an insert at r == d1 and at r == t *grows* the
+  table (it said fallback); the move, grow-inside and none rows hold (fixed by T-2321).
 - A loaded formula naming a table the file does not have (`=SUM(Nope[Qty])`) or a column its table does not
   have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
   `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
@@ -2346,11 +2346,11 @@ is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference
 re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
 first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
 before), and `restore_sheet` puts the tables back. A whole row or column insert or delete moves a table
-when it is wholly before it, grows it when rows are inserted strictly inside its data (`d1 < r <= d2`) and
+when it is wholly before it, grows it when rows are inserted below its header row and at or above its totals
+row (`h < r <= t`, so at its first data row and its totals row too: T-2321) and
 shrinks it when the deleted rows are strictly inside them (neither the first nor the last data row), and
 then every structured reference to it keeps its text, in cell formulas on any sheet, conditional formats
-and defined names (T-2297, `table_edits.rs`). Every other edit that crosses a table (an insert at its first
-data row or totals row, a delete at a data edge or touching the header or totals row, a column edit inside
+and defined names (T-2297, `table_edits.rs`). Every other edit that crosses a table (a delete at a data edge or touching the header or totals row, a column edit inside
 it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
@@ -2358,15 +2358,17 @@ its table follows the edit: on another sheet, a row off the data rows keeps its 
 moved or grown table's row there, a value change from before T-2297 (unprobed, T-2845). An insert at
 the first row of a table without a header row is a fallback too (unprobed, T-2845). So is an insert that would
 carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
-refuses it is unprobed, T-2845). The plain-range quirk is not implemented. The two
-insert edge rows and the quirk are T-2321, the delete edges T-2338, column inserts inside T-2339. With no table of that name (engine API `remove_table`), the formula is a parse
+refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
+data rows and columns that touches the edited edge (`Displacement::grown_corners`, stringify.rs, T-2321);
+only the whole data column is probed, the other shapes are a hand generalisation (T-2846). The delete
+edges are T-2338, column inserts inside T-2339. With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
 canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
-registers a spec table with its totals row; because the table does not grow, shrink or move with an edit yet, the
-totals row's own edits (insert above it, delete it or the last data row) print the displaced plain range or `#REF!`
-where Excel keeps `Sales[[#Totals],[Qty]]` (decision 0128; T-2321, T-2338).
+registers a spec table with its totals row; an insert above the totals row grows the table and keeps
+`Sales[[#Totals],[Qty]]` (T-2321), but the totals row's deletes (delete it or the last data row) still print the
+displaced plain range or `#REF!` where Excel keeps the reference (decision 0128; T-2338).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
 its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2845; desktop-only cut and paste T-2325).
@@ -2376,7 +2378,7 @@ what it read (`#VALUE!` off the data rows). A formula on another sheet that refe
 every row, off the data rows too (before step 2 those were `#VALUE!`), which matches "Delete the table's sheet" below
 (table-delete-sheet: every structured reference becomes `#REF!`). A defined name has no cell, so its `#This Row` is resolved
 at row 1, where its body is parsed, as before step 2 (unprobed, hand: Excel may resolve it at the calling cell's row; T-2595).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845, T-2846
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases

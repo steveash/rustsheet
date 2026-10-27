@@ -2504,7 +2504,6 @@ F	probes/ftest-decomposition.case.json	Calc!C6
 F	probes/ftest-decomposition.case.json	Calc!C8
 F	probes/ftest-decomposition.case.json	Calc!C9
 F	probes/ftest-decomposition.case.json	Calc!D10
-F	probes/ftest-decomposition.case.json	Calc!D11
 F	probes/ftest-decomposition.case.json	Calc!D13
 F	probes/ftest-decomposition.case.json	Calc!D4
 F	probes/ftest-decomposition.case.json	Calc!D5
@@ -3816,13 +3815,6 @@ F	probes/table-edits/table-delete-row-totals.case.json	F!A15
 F	probes/table-edits/table-delete-row-totals.case.json	F!A3
 F	probes/table-edits/table-insert-column-inside.case.json	F!A12
 F	probes/table-edits/table-insert-column-inside.case.json	F!A5
-F	probes/table-edits/table-insert-row-above-first-data.case.json	F!A2
-F	probes/table-edits/table-insert-row-above-first-data.case.json	F!A5
-F	probes/table-edits/table-insert-row-above-first-data.case.json	F!A7
-F	probes/table-edits/table-insert-row-above-first-data.case.json	F!A9
-F	probes/table-edits/table-insert-row-above-totals.case.json	F!A12
-F	probes/table-edits/table-insert-row-above-totals.case.json	F!A2
-F	probes/table-edits/table-insert-row-above-totals.case.json	F!A7
 F	probes/text-255-units-array-element.case.json	S!A4
 F	probes/text-255-units-from-cell.case.json	S!A12
 F	probes/text-255-units-from-cell.case.json	S!A4

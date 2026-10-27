@@ -195,13 +195,12 @@ fn the_export_of_a_missing_table_is_a_ref_error() {
 }
 
 /// The table (header row 1, data rows 2-3) moves with an insert at its header row, grows with
-/// one inside its data and is left alone by one below it; an insert at its first data row is a
-/// fallback (Excel grows it, T-2321).
+/// one at its first data row or inside its data (T-2321) and is left alone by one below it.
 #[test]
 fn row_inserts_keep_values() {
     for (row, follows) in [
         (1, true),
-        (2, false),
+        (2, true),
         (3, true),
         (4, true),
         (5, true),
@@ -394,11 +393,12 @@ fn a_formula_on_the_table_sheet_keeps_its_value() {
     // The table moved with the data (T-2297).
     assert_eq!(formula(&model, 0, 2, 6), "=SUM(Sales[Qty])");
     assert_eq!(value(&model, 0, 2, 6), "3");
-    // Its first data row is a fallback (T-2321): the area moves with the data, the table does not.
+    // An insert at its first data row grows it (T-2321).
     model.insert_rows(0, 3, 1).unwrap();
     model.evaluate();
-    assert_eq!(formula(&model, 0, 2, 6), "=SUM($A$4:$A$5)");
+    assert_eq!(formula(&model, 0, 2, 6), "=SUM(Sales[Qty])");
     assert_eq!(value(&model, 0, 2, 6), "3");
+    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B5");
     model.insert_rows(0, 20, 1).unwrap();
     model
         .set_user_input(0, 10, 6, "=SUM(Sales[Qty])".to_string())
@@ -406,6 +406,104 @@ fn a_formula_on_the_table_sheet_keeps_its_value() {
     model.insert_rows(0, 20, 1).unwrap();
     model.evaluate();
     assert_eq!(formula(&model, 0, 10, 6), "=SUM(Sales[Qty])");
+}
+
+/// T-2197's `Sales` on S!B3:C7 (header row 3, data rows 4-7, Qty 1, 2, 4, 8), with a totals row
+/// 8 when `totals` is set, and on `F` the formulas `=SUM(Sales[Qty])`, `=ROWS(Sales)` and the
+/// plain ranges `=SUM(S!C4:C7)` (the data column), `=SUM(S!C5:C7)` (inside it, off its edges)
+/// and `=SUM(S!B4:D7)` (wider than the table).
+fn edge_model(totals: bool) -> Model {
+    let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+    model.rename_sheet("Sheet1", "S").unwrap();
+    model.add_sheet("F").unwrap();
+    let mut cells = vec![(3, 2, "Region"), (3, 3, "Qty")];
+    for (row, (region, qty)) in [("E", "1"), ("W", "2"), ("N", "4"), ("S", "8")]
+        .into_iter()
+        .enumerate()
+    {
+        let row = row as i32 + 4;
+        cells.extend([(row, 2, region), (row, 3, qty)]);
+    }
+    for (row, column, input) in cells {
+        model
+            .set_user_input(0, row, column, input.to_string())
+            .unwrap();
+    }
+    let bottom = if totals { 8 } else { 7 };
+    model
+        .add_table_with_totals(0, "Sales", (3, 2, bottom, 3), false, totals)
+        .unwrap();
+    if totals {
+        let total = "=SUBTOTAL(109,Sales[Qty])".to_string();
+        model.set_user_input(0, 8, 3, total).unwrap();
+    }
+    for (row, input) in [
+        "=SUM(Sales[Qty])",
+        "=ROWS(Sales)",
+        "=SUM(S!C4:C7)",
+        "=SUM(S!C5:C7)",
+        "=SUM(S!B4:D7)",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        model
+            .set_user_input(1, row as i32 + 1, 1, input.to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    model
+}
+
+/// The formulas of `F` column A after inserting one row above `row`, and the table's reference.
+fn edge_insert(totals: bool, row: i32) -> (Vec<String>, String) {
+    let mut model = edge_model(totals);
+    model.insert_rows(0, row, 1).unwrap();
+    model.evaluate();
+    let formulas = (1..=5).map(|r| formula(&model, 1, r, 1)).collect();
+    (formulas, model.workbook.tables["Sales"].reference.clone())
+}
+
+/// Excel grows the table on an insert at its first data row and at its totals row, and a plain
+/// range onto its data column grows with it (T-2197 table-insert-row-above-first-data and
+/// -above-totals: `=SUM(S!C4:C7)` becomes `=SUM(S!C4:C8)`); a range off that edge, or wider than
+/// the table, displaces as usual.
+#[test]
+fn a_table_and_ranges_onto_its_data_grow_at_its_edges() {
+    let formulas = |plain: [&str; 3]| {
+        let mut all = vec!["=SUM(Sales[Qty])".to_string(), "=ROWS(Sales)".to_string()];
+        all.extend(plain.map(str::to_string));
+        all
+    };
+    // Only `=SUM(S!C4:C8)` is oracle-backed; the off-edge and wider ranges are hand expectations
+    // (an ordinary displacement) until T-2846 probes them.
+    // Above the first data row.
+    let grown = formulas(["=SUM(S!C4:C8)", "=SUM(S!C6:C8)", "=SUM(S!B5:D8)"]);
+    for totals in [false, true] {
+        let bottom = if totals { 9 } else { 8 };
+        assert_eq!(
+            edge_insert(totals, 4),
+            (grown.clone(), format!("B3:C{bottom}"))
+        );
+    }
+    // Above the totals row.
+    let above_totals = formulas(["=SUM(S!C4:C8)", "=SUM(S!C5:C8)", "=SUM(S!B4:D7)"]);
+    assert_eq!(edge_insert(true, 8), (above_totals, "B3:C9".to_string()));
+    // Just below the table: nothing changes.
+    let unchanged = formulas(["=SUM(S!C4:C7)", "=SUM(S!C5:C7)", "=SUM(S!B4:D7)"]);
+    assert_eq!(
+        edge_insert(false, 8),
+        (unchanged.clone(), "B3:C7".to_string())
+    );
+    assert_eq!(edge_insert(true, 9), (unchanged, "B3:C8".to_string()));
+
+    // The values read the grown table: one blank data row, the totals row still sums the data.
+    let mut model = edge_model(true);
+    model.insert_rows(0, 8, 1).unwrap();
+    model.evaluate();
+    let values: Vec<String> = (1..=3).map(|r| value(&model, 1, r, 1)).collect();
+    assert_eq!(values, ["15", "5", "15"]);
+    assert_eq!(value(&model, 0, 9, 3), "15");
 }
 
 #[test]
