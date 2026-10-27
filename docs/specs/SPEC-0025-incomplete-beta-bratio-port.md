@@ -1,6 +1,6 @@
 # SPEC-0025 — Port Excel's TOMS 708 `bratio` incomplete beta, one branch at a time
 
-- **Status:** draft
+- **Status:** accepted (T-2504 review)
 - **Milestone / lane:** M9 / functions-stat
 - **Tasks:** T-2504 (this spec); T-2505, T-2506, T-2508, T-2509, T-2510, T-2511 (the port); T-2507 (the min > 1
   density it needs); T-2633 (T-2119's chained BETA.INV cells)
@@ -112,6 +112,14 @@ pub(crate) struct Tails { pub w: f64, pub w1: f64, pub branch: Branch, pub swapp
 
 /// Excel's K(a, b, x, y): I_x(a, b) and 1 - I_x(a, b), with x and y formed by the caller.
 pub(crate) fn bratio(a: f64, b: f64, x: f64, y: f64) -> Option<Tails>;
+
+/// [`bratio`] with every branch that is not ported yet answered by the caller's `legacy` evaluator, which
+/// returns the caller's own result (the tail it reads) as today; `Tails::branch` still names the branch.
+pub(crate) fn bratio_or(a: f64, b: f64, x: f64, y: f64, legacy: impl FnOnce() -> Option<f64>)
+    -> Option<BratioValue>;
+
+/// A ported branch's tails, or the legacy evaluator's single value for a delegated one.
+pub(crate) enum BratioValue { Ported(Tails), Legacy { value: f64, branch: Branch } }
 ```
 
 - `None` is the domain error. Callers already turn it into `#NUM!`; their own argument checks stay in front of the
@@ -125,7 +133,7 @@ pub(crate) fn bratio(a: f64, b: f64, x: f64, y: f64) -> Option<Tails>;
 - `bratio()` always runs the 1992 dispatch, and each branch has a `ported` flag: a `const` match arm, not a runtime
   setting.
 - A branch that is not ported calls today's code for the caller's tail and keeps today's value exactly. The
-  delegate is `incomplete_beta::beta_reg_tail` for BETA.DIST/F, `student_t.rs` for T and the pmf walk for BINOM and
+  delegate is `incomplete_beta::beta_reg_tail` for BETA.DIST/F (private today; T-2505 makes it `pub(crate)`), `student_t.rs` for T and the pmf walk for BINOM and
   NEGBINOM. So the caller passes its legacy evaluator as a closure, `bratio_or(a, b, x, y, legacy)`, and a cell
   whose branch has not moved is bit-identical to main.
 - A task switches only the branches its piece completes, and only for the callers its evidence covers. Where a

@@ -52,7 +52,7 @@ two existing kernels.
 - Any engine code.
 
 ## Outcome
-docs/specs/SPEC-0025-incomplete-beta-bratio-port.md (draft). It covers:
+docs/specs/SPEC-0025-incomplete-beta-bratio-port.md (accepted). It covers:
 - one kernel `bratio::bratio(a, b, x, y) -> Option<Tails>` (w, w1, branch) in a new `functions/statistical/bratio/`
   directory;
 - each caller's (a, b, x, y) table;
