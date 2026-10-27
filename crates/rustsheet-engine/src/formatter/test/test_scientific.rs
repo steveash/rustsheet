@@ -133,3 +133,24 @@ fn scientific_percent_and_comma_do_not_scale() {
         );
     }
 }
+
+// Zero prints every integer placeholder of a scientific code, `#` included, and a carry out of the
+// mantissa renormalises (gen-m10 659cd5776d423ce3 F!J14, 5eb95c63c7d6180c F!G13,
+// bfbcd16cee266336 F!W12; T-2227).
+#[test]
+fn scientific_zero_prints_all_integer_placeholders_and_carry_renormalises() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (0.0, "##0.0E+0", "000.0E+0"),
+        (0.0, "##0.00E+00", "000.00E+00"),
+        (0.0, "#E+0", "0E+0"),
+        (99.5, "0.0E+00", "1.0E+02"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{value} {code}"
+        );
+    }
+}

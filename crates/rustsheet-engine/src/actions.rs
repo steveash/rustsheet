@@ -1107,6 +1107,10 @@ impl Model {
         if !self.can_delete_rows(sheet, row, row_count)? {
             return Err("Cannot delete rows because that would break an array formula".to_string());
         }
+        if let Some(area) = self.last_data_row(sheet, row, row_count) {
+            // A table keeps its last data row, cleared (Model::last_data_row, T-2338).
+            return self.range_clear_contents(&area);
+        }
         self.displace_pivots(sheet, PivotLines::Rows, row, -row_count)?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves

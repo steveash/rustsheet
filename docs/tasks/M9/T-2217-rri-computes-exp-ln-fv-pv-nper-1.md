@@ -7,8 +7,8 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: [T-2216]
-defer: phase-1b
 ---
 
 ## Goal
@@ -85,5 +85,4 @@ to a follow-up task filed without the key.
 ## Note from T-2216
 The sweep (financial.md "DURATION and RRI operation order") fits `EXP(LN(fv/pv)*(1/nper))-1` on 134 of 136 numeric points; `/nper` fits only 87. Implement the `*(1/nper)` form.
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/01523d247594952e Calc!A218 `=RRI(T.DIST.RT(TIME(5,2,16),1E+8),8370,40876)`: Excel 43.89282054161517, ours 43.892820541615116; gen-m9/5ded7594e597e31e Calc!A51 `=RRI(Data!B9,4299,42330)`: Excel 92554.9018325151, ours 92554.90183251501.
