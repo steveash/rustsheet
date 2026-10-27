@@ -657,7 +657,7 @@ def _outer_function(formula: str) -> str:
 
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
-    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) and T-2318 (TEXTJOIN's delimiter is an array parameter).
+    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) T-2318 (TEXTJOIN's delimiter is an array parameter) and T-2719 (*IFS ranges share a shape, MATCH's lookup_array is a vector).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -665,7 +665,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "505d7bc2688c30017ec88bafbf7512ef881ad1606a3cce3d4cfa30195cad721c"
+        == "66bd366af2c9c19054d1673ce43b39fbce507d08a6cf8b32708c5a13a18222fb"
     )
 
 
@@ -1053,3 +1053,26 @@ def test_m9_count_and_ets_pools_reach_their_edges() -> None:
     assert all(p.startswith("{") and p.endswith("}") for p in POOLS["ets_timeline"] + POOLS["ets_values"])
     used = {p["pool"] for f in catalog.functions for p in f.get("params", []) if "pool" in p}
     assert {"beta_bound", "fisherinv_y", "forecast_x", "lognorm_mean"} <= used
+
+
+def test_ifs_ranges_share_a_shape_and_match_looks_in_one_dimension() -> None:
+    # T-2719: SUMIFS/COUNTIFS ranges of one call agree in shape (bar a ~1 in 10 mismatch) and MATCH's
+    # lookup_array is mostly a single row or column.
+    def dims(ref: str) -> tuple[int, int]:
+        (c0, r0), (c1, r1) = (re.match(r"([A-Z])(\d+)", x).groups() for x in ref[5:].split(":"))  # type: ignore[union-attr]
+        return int(r1) - int(r0) + 1, ord(c1) - ord(c0) + 1
+
+    calls: list[list[str]] = []
+    matches: list[tuple[int, int]] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M2", formulas=120)
+        for formula in spec["sheets"][1]["cells"].values():
+            for m in re.finditer(r"(?:SUMIFS|COUNTIFS)\(((?:[^()]|\([^()]*\))*)\)", formula):
+                calls.append(re.findall(r"Data![A-Z]\d+:[A-Z]\d+", m.group(1)))
+            matches += [dims(a) for a in re.findall(r"MATCH\([^,()]*,(Data![A-Z]\d+:[A-Z]\d+)", formula)]
+    multi = [c for c in calls if len(c) > 1]
+    assert len(multi) > 50 and matches
+    agree = sum(len({dims(r) for r in c}) == 1 for c in multi)
+    assert 0.8 <= agree / len(multi) < 1.0
+    one_d = sum(1 in d for d in matches)
+    assert 0.7 <= one_d / len(matches) < 1.0

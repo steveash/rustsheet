@@ -254,7 +254,7 @@ functions:
     returns: number
     params:
       - { name: lookup_value, mode: value, type: any }
-      - { name: lookup_array, mode: range, type: any }
+      - { name: lookup_array, mode: range, type: any, vector: true, wide_rate: 0.1, row_rate: 0.2 }
       - { name: match_type, mode: value, type: number, optional: true, domain: { int: true, min: -1, max: 1 } }
   - name: SUMIFS
     category: math
@@ -262,8 +262,8 @@ functions:
     prior: 3
     returns: number
     params:
-      - { name: sum_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: sum_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: COUNTIFS
     category: statistical
@@ -271,7 +271,7 @@ functions:
     prior: 2
     returns: number
     params:
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: ROUNDUP
     category: math
@@ -567,8 +567,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: average_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: average_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: BAHTTEXT
     category: text
@@ -2865,8 +2865,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: max_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: max_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: MDETERM
     category: math
@@ -2919,8 +2919,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: min_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: min_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: MINUTE
     category: date
