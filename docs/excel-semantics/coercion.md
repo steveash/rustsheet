@@ -277,13 +277,13 @@ order beats a mismatch (which of several element errors wins is unprobed). A bla
 Numeric text in a one-cell argument is a 0 factor too, like non-numeric text: with a one-cell reference to the text "4",
 " 4", "1.5", "1E3", "$4" or a formula's `="4"`, `SUMPRODUCT(t,n)`, `SUMPRODUCT(n,t)`, `SUMPRODUCT(t:t,n:n)`, `SUMPRODUCT(t,2)`,
 `SUMPRODUCT(t,{2})`, `SUMPRODUCT(t)` and `SUMPRODUCT(t,n,m)` are 0, and so are two-cell text ranges beside numbers
-(probes/t2919-sumproduct-one-cell-numeric-text A1-A46, excel-graph, 2026-10-27, T-2919; the engine already matched).
+(probes/t2921-sumproduct-one-cell-numeric-text A1-A46, excel-graph, 2026-10-27, T-2921; the engine already matched).
 CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3 target):
 poi/FormulaEvalTestData_Copy.xlsx (AppVersion 15.0300, Excel 2013) caches `#VALUE!` for EverythingTests!J1328
 `SUMPRODUCT(G1330:G1330,I1330:I1330)` (G1330 the text "4", I1330 the number 2), where Microsoft 365 gives 0 on the same shape
 (probe A45). The engine follows M365, and J1328 stays a known failure until a 16.x desktop value decides (T-1075, M14).
 Status: VERIFIED (excel-graph); CONFLICTING with the Excel 15 cached J1328.
-Tasks: T-0944, T-2150, T-2296, T-2450, T-2573, T-2919
+Tasks: T-0944, T-2150, T-2296, T-2450, T-2573, T-2921
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =

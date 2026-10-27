@@ -151,7 +151,7 @@ fn test_sumproduct_error_element_after_shape_mismatch() {
 #[test]
 fn test_sumproduct_one_cell_numeric_text_is_a_zero_factor() {
     // Excel: a one-cell reference to numeric text is a 0 factor beside a one-cell number, in
-    // either order, like non-numeric text (probes/t2919-sumproduct-one-cell-numeric-text A1-A3,
+    // either order, like non-numeric text (probes/t2921-sumproduct-one-cell-numeric-text A1-A3,
     // A45, excel-graph). Excel 2013 cached #VALUE! for poi FormulaEvalTestData_Copy J1328
     // (CONFLICTING, docs/excel-semantics/coercion.md).
     let mut model = new_empty_model();

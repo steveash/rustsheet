@@ -1,5 +1,5 @@
 ---
-id: T-2919
+id: T-2921
 title: "SUMPRODUCT of a one-cell numeric-text reference beside a one-cell number: probe it (poi FormulaEvalTestData_Copy.xlsx EverythingTests!J1328)"
 milestone: M5
 lane: functions-math
@@ -70,7 +70,7 @@ poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 and every probe cell hav
 `semantics`: a wrong type caused by an argument rule).
 
 ## Outcome
-Step 3 applied. probes/t2919-sumproduct-one-cell-numeric-text (46 cells, excel-graph, 2026-10-27) shows Microsoft 365 gives
+Step 3 applied. probes/t2921-sumproduct-one-cell-numeric-text (46 cells, excel-graph, 2026-10-27) shows Microsoft 365 gives
 0 for every shape, J1328's verbatim shape included (A45): numeric text in a one-cell reference is a 0 factor, like "x".
 The engine already matched, so every probe cell passes with no code change. J1328's `#VALUE!` is Excel 2013 (AppVersion
 15.0300) evidence. It is recorded CONFLICTING in coercion.md under decision 0030 §2 and decision 0039, following the

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "SUMPRODUCT of a one-cell reference to numeric text (\"4\", \" 4\", \"1.5\", \"1E3\", \"$4\"), non-numeric text (\"x\") and a formula's text (=\"4\") beside a one-cell number in both orders, as a one-cell range, beside a constant and {2}, alone; and two-cell text ranges (T-2919, poi FormulaEvalTestData_Copy EverythingTests!J1328).",
+ "description": "SUMPRODUCT of a one-cell reference to numeric text (\"4\", \" 4\", \"1.5\", \"1E3\", \"$4\"), non-numeric text (\"x\") and a formula's text (=\"4\") beside a one-cell number in both orders, as a one-cell range, beside a constant and {2}, alone; and two-cell text ranges (T-2921, poi FormulaEvalTestData_Copy EverythingTests!J1328).",
  "tags": [
   "M5",
   "probe",

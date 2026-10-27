@@ -88,9 +88,9 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    probes/t2065-lift-median, -large and -small failed to open on Excel for the web on 2026-10-26 (createSession "retries
    exhausted", two runs each). What does Windows desktop give for `MEDIAN(OFFSET(A1,{0;1;2},0))`, `LARGE(OFFSET(A1,{0;1},0),1)`
    and `SMALL(OFFSET(A1,0,0,{2;3}),2)`? Until answered they keep the engine's value view.
-19. **SUMPRODUCT of a one-cell numeric-text reference** (T-2919; coercion.md SUMPRODUCT entry).
+19. **SUMPRODUCT of a one-cell numeric-text reference** (T-2921; coercion.md SUMPRODUCT entry).
    poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 `SUMPRODUCT(G1330:G1330,I1330:I1330)` (G1330 the text "4",
-   I1330 the number 2): Excel 15 cached `#VALUE!`, excel-graph gives 0 (probes/t2919-sumproduct-one-cell-numeric-text A45).
+   I1330 the number 2): Excel 15 cached `#VALUE!`, excel-graph gives 0 (probes/t2921-sumproduct-one-cell-numeric-text A45).
    The engine follows the web; J1328 stays a known failure.
 
 ## Acceptance criteria
