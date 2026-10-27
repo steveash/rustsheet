@@ -419,7 +419,7 @@ impl Model {
         }
         self.end_iteration();
         // Conditional formats are evaluated on the next style read (SPEC-0021).
-        self.cf_stale = true;
+        self.cf.stale = true;
     }
 
     /// Runs passes until one completes without a restart. `RestartLog` learns
@@ -815,8 +815,9 @@ impl Model {
         spills: bool,
     ) -> CalcResult {
         // Shares the formula, it does not copy it.
-        let node =
-            Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
+        let node = Arc::clone(
+            &self.parsed_formulas[cell_reference.sheet as usize][formula as usize].evaluated,
+        );
         match self.run_cell_formula(&node, cell_reference, spills) {
             CalcResult::Range { left, right } => {
                 let (rows, columns) = range_dims(left, right);
