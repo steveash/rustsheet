@@ -484,7 +484,8 @@ Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2
 Fitted on probes-numeric `im-last-digit-sweep` (excel-graph, T-2043), scoring each candidate on whether it
 prints Excel's 15 digits (IMABS and IMARGUMENT: the double, bit for bit). SIN and COS of the real (IMSEC, IMCSC,
 IMCOT) or imaginary (IMSECH) part are Excel's own, reduced by the x87 64-bit π (numbers.md "Trig of a huge
-angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's, which are IMSINH's `1/u` form, and IMSEC's, which are IMCOS's `1/u` form inside (0.01, 20] (T-2884). Rule:
+angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` form) and IMSEC's
+(IMCOS's `1/u` form inside the band, T-2884). Rule:
 - IMCSC: `t = sin²x + (cosh 2y − 1)/2`, result `(sin x·(cosh y/t), −cos x·(sinh y/t))`: 69 of the 69 finite cells
   (the old `sin²x·cosh²y + cos²x·sinh²y` 58). Writing sinh²y as `(cosh 2y − 1)/2` is what loses the tiny-argument
   digits above; `sin²x + (cosh²y − 1)` reproduces those two rows but misses `0.00829243+6.03779e-05i` (row 31).
