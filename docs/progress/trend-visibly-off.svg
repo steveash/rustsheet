@@ -19,10 +19,10 @@
 <text x="70.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-25</text>
 <text x="341.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-26</text>
 <text x="612.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-27</text>
-<polyline class="s-numeric" stroke="#e34948" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,88.4 341.0,119.9 612.0,124.8"><title>Number</title></polyline>
-<circle class="b-numeric" fill="#e34948" cx="612.0" cy="124.8" r="3.5"><title>Number, 2026-10-27: 101,034</title></circle>
-<polyline class="s-other" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,222.0 341.0,244.2 612.0,244.5"><title>Type, error or text</title></polyline>
-<circle class="b-other" fill="#4b5563" cx="612.0" cy="244.5" r="3.5"><title>Type, error or text, 2026-10-27: 1,265</title></circle>
-<text x="622.0" y="124.8" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">101,034</text>
-<text x="622.0" y="244.5" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">1,265</text>
+<polyline class="s-numeric" stroke="#e34948" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,88.4 341.0,119.9 612.0,126.0"><title>Number</title></polyline>
+<circle class="b-numeric" fill="#e34948" cx="612.0" cy="126.0" r="3.5"><title>Number, 2026-10-27: 100,003</title></circle>
+<polyline class="s-other" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,222.0 341.0,244.2 612.0,244.6"><title>Type, error or text</title></polyline>
+<circle class="b-other" fill="#4b5563" cx="612.0" cy="244.6" r="3.5"><title>Type, error or text, 2026-10-27: 1,135</title></circle>
+<text x="622.0" y="126.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">100,003</text>
+<text x="622.0" y="244.6" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">1,135</text>
 </g></svg>
