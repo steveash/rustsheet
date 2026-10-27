@@ -4,10 +4,11 @@ title: "T of a cell holding text over 255 units is empty text; T of a long array
 milestone: M5
 lane: functions-text
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -22,3 +23,10 @@ Probes text-255-units-from-cell A4 and A12 (`T(D1)`, `T(D3)`: Excel "", ours `#V
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the 3 visibly-off REPT cells. Fixing them lifts REPT to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
