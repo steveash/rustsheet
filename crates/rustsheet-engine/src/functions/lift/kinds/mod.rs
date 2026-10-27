@@ -18,6 +18,7 @@ use crate::calc_result::CalcResult;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::parser::ArrayNode;
 use crate::formatter::dates::FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+use crate::functions::financial::{amortization_values_valid, asset_life_refused};
 use crate::functions::statistical::incomplete_gamma;
 use crate::functions::Function;
 use crate::limits::COUNT_LIMIT_EXCLUSIVE;
@@ -138,6 +139,13 @@ pub(crate) enum ValueWork {
         probability: Option<usize>,
         weight: u32,
     },
+    /// AMORLINC's and AMORDEGRC's walk (T-2840): `weight` units, the flat bound of a walk, or 1
+    /// for an element the kernel refuses before it walks (`Model::amortization_of`): an error or
+    /// a logical in any argument, a cost, salvage, period and rate, all numbers, that fail the
+    /// value checks, or, with `degressive`, a rate whose asset life AMORDEGRC refuses. A text or
+    /// a blank may read as any number, so it refuses nothing; nor does a date, whose calendar
+    /// check depends on the workbook's date system. See [`amortization_refused`].
+    Amortization { degressive: bool, weight: u32 },
 }
 
 /// How a [`ValueWork::IncompleteGamma`] element's shape follows from its shape argument's value
@@ -238,7 +246,8 @@ impl ValueWork {
             ValueWork::TextScan { .. } => u64::MAX,
             // The sum at its cap.
             ValueWork::HypergeometricSum { weight, .. }
-            | ValueWork::IncompleteGamma { weight, .. } => u64::from(weight),
+            | ValueWork::IncompleteGamma { weight, .. }
+            | ValueWork::Amortization { weight, .. } => u64::from(weight),
         }
     }
 
@@ -390,8 +399,36 @@ impl ValueWork {
                 };
                 incomplete_gamma_units(a, cdfs, weight)
             }
+            ValueWork::Amortization { degressive, weight } => {
+                if amortization_refused(degressive, &value) {
+                    1
+                } else {
+                    u64::from(weight)
+                }
+            }
         }
     }
+}
+
+/// Whether AMORLINC (AMORDEGRC with `degressive`) returns before its walk on these argument
+/// values (`Model::amortization_of`): it reads cost to rate as numbers and the basis, refusing an
+/// error or a logical in any of them (`refused_before_any_walk`), then makes its value checks
+/// (`amortization_values_valid`) and, for AMORDEGRC, its asset-life check (`asset_life_refused`),
+/// all before the walk. Only numbers are judged, a text or a blank may read as any: the value
+/// checks when cost, salvage, period and rate are all numbers, the life when the rate is one.
+fn amortization_refused(degressive: bool, value: &impl Fn(usize) -> Option<ArgValue>) -> bool {
+    let number = |arg: usize| match value(arg) {
+        Some(ArgValue::Number(n)) => Some(n),
+        _ => None,
+    };
+    let [cost, salvage, period, rate] = [0, 3, 4, 5].map(number);
+    let values_refused = match (cost, salvage, period, rate) {
+        (Some(c), Some(s), Some(p), Some(r)) => !amortization_values_valid(c, s, p, r),
+        _ => false,
+    };
+    refused_before_any_walk(&[], value)
+        || values_refused
+        || (degressive && rate.is_some_and(asset_life_refused))
 }
 
 /// The units one incomplete-gamma element of shape at most `a` running at most `cdfs` cdfs is

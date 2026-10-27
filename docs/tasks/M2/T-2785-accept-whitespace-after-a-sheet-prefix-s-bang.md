@@ -3,7 +3,7 @@ id: T-2785
 title: "Accept whitespace after a sheet prefix's bang (=S! B1 reads S!B1)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -20,9 +20,14 @@ docs/excel-semantics/syntax.md "Formula text keeps typed whitespace…" (Dropped
 Whitespace around `:` is already accepted and dropped (t2776-ws-before-colon / -after-colon pass).
 
 ## Acceptance criteria
-- [ ] probes/t2776-ws-after-bang A1, C1 pass; 0 regressions.
-- [ ] Quoted sheet prefixes (`='My S'! B1`) behave the same, or are probed first if unsure.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/t2776-ws-after-bang A1, C1 pass; 0 regressions.
+- [x] Quoted sheet prefixes (`='My S'! B1`) behave the same, or are probed first if unsure.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Whitespace inside the sheet name or before `!` (probe first if needed).
+
+## Outcome
+`consume_range` (lexer) now skips whitespace after a sheet prefix's `!`, for plain and quoted prefixes
+alike (the quoted case shares the path; unit test in `lexer/test/test_ranges.rs`, not separately oracle-probed).
+probes/t2776-ws-after-bang A1 and C1 now pass (2 cells fixed, 0 regressions; baseline updated).
