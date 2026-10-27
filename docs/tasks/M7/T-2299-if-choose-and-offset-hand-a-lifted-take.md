@@ -3,7 +3,7 @@ id: T-2299
 title: "IF, CHOOSE and OFFSET hand a lifted TAKE or DROP grid on, and TAKE over an error source lifts"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
