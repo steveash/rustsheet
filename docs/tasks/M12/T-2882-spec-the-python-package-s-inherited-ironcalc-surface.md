@@ -3,7 +3,7 @@ id: T-2882
 title: "Spec: the Python package's inherited IronCalc surface (raw Model, UserModel, icalc/bytes loaders, external diffs, test_panic) under directive 5"
 milestone: M12
 lane: api
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -63,18 +63,28 @@ Questions the spec answers:
    allowed; say whether there is a warning release first).
 
 ## Acceptance criteria
-- [ ] Spec merged that answers questions 1–5 for every legacy symbol exported by `rustsheet/__init__.py`, listed in
+- [x] Spec merged that answers questions 1–5 for every legacy symbol exported by `rustsheet/__init__.py`, listed in
       a table (symbol, decision, reason). It cites the two reproductions above, and its test plan includes a Rust
       test for each one: the crafted style index and the dangling formula index give `Err` or are unreachable, never
       a panic.
-- [ ] The spec names its implementation tasks, filed with `make new-task` (api lane for the binding, engine lane
+- [x] The spec names its implementation tasks, filed with `make new-task` (api lane for the binding, engine lane
       for any `Model::from_workbook` validation, harness lane for a new fuzz target). Each is size S/M with
       checkable criteria, and the decoder-validation task carries the two reproductions as tests.
-- [ ] docs/architecture/api-design.md "Phasing" or SPEC-0001 points to the new spec for the Python legacy surface.
-- [ ] No code changes; `make check` green; reviewers (including reviewer-architecture and reviewer-security) approve.
+- [x] docs/architecture/api-design.md "Phasing" or SPEC-0001 points to the new spec for the Python legacy surface.
+- [x] No code changes; `make check` green; reviewers (including reviewer-architecture and reviewer-security) approve.
 
 ## Out of scope
 - The implementation: removing classes, adding validation, adding fuzz targets (the tasks the spec files).
 - Java/FFI bindings and the API v1 semver freeze (other M12 work).
 - `Model::from_bytes` callers inside the Rust crates that only read bytes the engine wrote itself (the spec may
   mention them, but this task does not change them).
+
+## Outcome
+SPEC-0026 (docs/specs/SPEC-0026-python-legacy-surface.md) decides the Python legacy surface:
+- icalc/bitcode bytes and external diffs are untrusted under directive 5.
+- The Python package drops the bitcode and icalc loaders and writers, `apply_external_diffs`/`flush_send_queue` and both `test_panic`s (T-2897).
+- `Model`, `UserModel`, their xlsx constructors and `CellType` move to a deprecated `rustsheet.legacy` module until the v1 freeze, and the README moves to the facade (T-2898).
+- The engine validates every decoded workbook in `Model::from_workbook`, with R1 and R2 as tests (T-2894), and validates diffs before applying any (T-2896).
+- A `bitcode_workbook` fuzz target covers the decoder (T-2895).
+
+The spec's feature table lists, for each legacy feature, whether it moves to the facade or is dropped at v1. api-design.md "Phasing" points to the spec. No code changes; eval delta none.
