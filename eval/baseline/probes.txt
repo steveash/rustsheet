@@ -1365,6 +1365,9 @@ C	probes/t2753-gamma-density-ratio-sweep.case.json	96
 C	probes/t2753-gamma-density-switch.case.json	84
 C	probes/t2756-roundup-smallest-normal-threshold.case.json	541
 C	probes/t2769-formula-text-whitespace.case.json	47
+C	probes/t2771-roundup-subnormal-cuts.case.json	176
+C	probes/t2771-roundup-subnormal-sign.case.json	121
+C	probes/t2771-roundup-subnormal-threshold.case.json	40
 C	probes/t2772-unary-plus-in-range-rows.case.json	20
 C	probes/t2772-unary-plus-static-readings.case.json	36
 C	probes/t2776-formula-text-whitespace-shapes.case.json	65
@@ -3841,13 +3844,6 @@ F	probes/t2753-gamma-density-switch.case.json	S!B6
 F	probes/t2753-gamma-density-switch.case.json	S!B7
 F	probes/t2753-gamma-density-switch.case.json	S!B8
 F	probes/t2753-gamma-density-switch.case.json	S!B9
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A52
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A53
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A54
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A55
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A56
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A57
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A58
 F	probes/t2772-unary-plus-in-range-rows.case.json	S!J2
 F	probes/t2772-unary-plus-in-range-rows.case.json	S!J5
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
