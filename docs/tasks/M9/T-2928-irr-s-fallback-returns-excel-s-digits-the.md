@@ -58,6 +58,11 @@ T-2927's sweep (probes-numeric/t2927-irr-fallback-sweep, 150 flows, with t2927-i
 "IRR's fallback when the secant fails", Sweep): offsets from -9168 to +8395 ulps; scaling by 1E6 and negating the flows
 both move them; the guess changes the digits on 5 of 15 rows. Excel is `#NUM!` where the fallback rule returns for
 `{-N,1,1,1,1,1}` with N = 496 to 2000 (rows A26-A31) and for their 1E6-scaled and negated forms (A101-A112).
+The sweep's generator is tools/src/rustsheet_tools/fitlab/irr_fallback_sweep.py (extend `families()` and rerun `case`
+and, after the oracle fill, `roots`). It left out the gen-m9 shapes of 31474c20fc1dafd6 A173 (Data!C1:E7) and A271
+(Data!D5:E8), whose flows need a snapshot of those Data ranges; add them if the fit needs more three- and four-flow
+shapes. The guess column's digits (5 of 15 rows differ) conflict with irr-fallback-roots (no guess dependence on
+`{42,1,1,-1}` and `{-400,1,1,1,1,1}`); settle where the fallback starts as part of the fit.
 
 ## Acceptance criteria
 - [ ] The fit lab scores each candidate above on probes-numeric/t2927-irr-fallback-sweep and the owned cells,

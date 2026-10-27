@@ -613,17 +613,19 @@ them, while ours is within 1E-16, correctly rounded. Matching Excel means reprod
 (T-2928, after the T-2927 sweep).
 Sweep (T-2927; probes-numeric/t2927-irr-fallback-sweep, 150 flows where the fitted secant fails from guess 0.1 and
 its retry, excel-graph 2026-10-27; exact roots and Excel's offset in ulps in t2927-irr-fallback-sweep.roots.tsv,
-Decimal bisection to 30 digits). Excel's offset from the exact root has no fixed sign or size: `{k,1,1,-1}` for k in
+Decimal bisection to 30 digits; both files are written by tools' rustsheet_tools.fitlab.irr_fallback_sweep). Excel's offset from the exact root has no fixed sign or size: `{k,1,1,-1}` for k in
 2..100 ranges from -59 to +113 ulps (median +1; 0 to 2 ulps for many k), `{0.3,-2.5,1.005}` is -251 ulps at every
-scale from 1E-3 to 1E+5 (rows A32-A41), but mostly +7 ulps once those are scaled by a further 1E6, and varying b in
+scale from 1E-3 to 1E+6 (rows A32-A41), but mostly +7 ulps once those are scaled by a further 1E6, and varying b in
 `{0.3,-b,1.005}` gives -9168 to +8395 ulps (b = 2.4, 3.0). Scaling a `{k,1,1,-1}` flow by 1E6 shrinks the offset to
 within 9 ulps (k = 5: +34 ulps, scaled +0.3), so the stop test is on |P| in the flows' units, not relative. Negating the
 flows, which leaves the root unchanged, moves it, to -572..+1251 ulps (k = 25: +1 ulp, negated +1251), so Excel's
 iteration is not symmetric in the sign of P. The guess column (column B, every tenth row) changes the digits on 5 of
 its 15 rows: `{2,1,1,-1}` -0.5000000000000002 against -0.5000000000000036 with guess 0.5, `{0.3E6,-2.5E6,1.005E6}`
 6.909808543634389 against 6.909808543634618 (rows 41 and 121), the same `{2,1,1,-1}` scaled by 1E6 (row 51), and
-`{7E6,1E6,1E6,-1E6}` by one ulp (row 61). So the fallback starts from the guess,
-or the secant's last iterate, not from a fixed point, though which flows return does not depend on it.
+`{7E6,1E6,1E6,-1E6}` by one ulp (row 61). This conflicts with irr-fallback-roots, where
+`{42,1,1,-1}` and `{-400,1,1,1,1,1}` give the same digits for every guess from 0 to 1: whether the fallback starts
+from the guess (or from the secant's last iterate) is UNVERIFIED and left to T-2928. Which flows return does not
+depend on the guess.
 `#NUM!` where the fallback rule returns: `{-N,1,1,1,1,1}` for N = 496, 656, 866, 1145, 1513 and 2000 (rows 26-31),
 and the same scaled by 1E6 and negated (rows 101-112), while N = 163 to 375 and 400 return. The engine's Newton from v = 0
 converges there within its cap, so Excel's fallback gives up on a condition the rule lacks (a step cap below ours, or a stop on |P|
