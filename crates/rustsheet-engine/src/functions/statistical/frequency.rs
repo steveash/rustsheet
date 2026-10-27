@@ -1,4 +1,3 @@
-use crate::arithmetic::own_error;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::reference_operators::RefArg;
@@ -30,16 +29,19 @@ impl Model {
     fn collect_freq_values(
         &mut self,
         arg: &Node,
+        is_data: bool,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, FreqError> {
         let value = self.evaluate_node_in_context(arg, cell);
-        self.freq_values_of(value, cell)
+        self.freq_values_of(value, is_data, cell)
     }
 
-    /// The numbers FREQUENCY counts in the evaluated argument `value`.
+    /// The numbers FREQUENCY counts in the evaluated argument `value`, `data_array` when
+    /// `is_data`, else `bins_array`.
     fn freq_values_of(
         &mut self,
         value: CalcResult,
+        is_data: bool,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, FreqError> {
         match value {
@@ -51,21 +53,17 @@ impl Model {
             | CalcResult::EmptyArg
             | CalcResult::String(_)
             | CalcResult::Boolean(_) => Ok(vec![]),
-            // The first error element is the result, not the `#VALUE!` the shared reader gives
-            // (gen-m9/05d44f6dd6cfc567 A126: `{-1,TRUE,0}` through CHISQ.DIST.RT is `#NUM!`).
-            CalcResult::Array(array) => {
-                let first_error = array.iter().flatten().find_map(own_error);
-                match first_error {
-                    Some(error) => Err(FreqError::element(CalcResult::new_error(
-                        error,
-                        cell,
-                        "Error in array".to_string(),
-                    ))),
-                    None => self
-                        .numeric_flat_of(CalcResult::Array(array), cell)
-                        .map_err(FreqError::element),
-                }
-            }
+            // An error element of the data array is the result, not the `#VALUE!` the shared reader
+            // gives (gen-m9/05d44f6dd6cfc567 A126: `{-1,TRUE,0}` through CHISQ.DIST.RT is `#NUM!`),
+            // and a scalar bins error beats it (`FREQUENCY({1;#DIV/0!},NA())` is `#N/A`,
+            // probes/frequency-bins B1-B3). A bins array keeps the shared reader's `#VALUE!`: no
+            // oracle cell shows an error element there (T-2636).
+            array @ CalcResult::Array(_) if is_data => self
+                .numeric_flat_with_element_errors(array, cell)
+                .map_err(FreqError::element),
+            // Every other data error, a range's error cell included, comes before the bins' as
+            // on `main` (the reverse is unprobed); the bins' own lose to the data's.
+            value if is_data => self.numeric_flat_of(value, cell).map_err(FreqError::scalar),
             value => self
                 .numeric_flat_of(value, cell)
                 .map_err(FreqError::element),
@@ -87,25 +85,26 @@ impl Model {
                 RefArg::Ranges(areas) => self
                     .values_from_areas(&areas, cell)
                     .map(|v| v.into_iter().flatten().collect())
-                    .map_err(FreqError::element),
+                    .map_err(FreqError::scalar),
                 // A LET variable, IF or name that holds an array or a number is counted like
                 // any other data_array; only an error is the result (T-1065 fidelity review).
                 RefArg::Value(error @ CalcResult::Error { .. }) => Err(FreqError::scalar(error)),
-                RefArg::Value(value) => self.freq_values_of(value, cell),
-                RefArg::Grid(grid) => self.freq_values_of(grid.to_values(), cell),
+                RefArg::Value(value) => self.freq_values_of(value, true, cell),
+                RefArg::Grid(grid) => self.freq_values_of(grid.to_values(), true, cell),
             }
         } else {
-            self.collect_freq_values(&args[0], cell)
+            self.collect_freq_values(&args[0], true, cell)
         };
-        let bins_raw = self.collect_freq_values(&args[1], cell);
+        let bins_raw = self.collect_freq_values(&args[1], false, cell);
         // Excel: a scalar error argument is the result, data before bins, and beats an error
-        // inside an array (`FREQUENCY({1;#DIV/0!},NA())` is `#N/A`, `FREQUENCY(NA(),{1;#DIV/0!})`
-        // is `#N/A`; gen-m9/589f42e67f4b4b8d A338; probes/frequency-bins B1-B3, T-2427).
+        // element of the data array (`FREQUENCY({1;#DIV/0!},NA())` is `#N/A`,
+        // `FREQUENCY(NA(),{1;#DIV/0!})` is `#N/A`; gen-m9/589f42e67f4b4b8d A338;
+        // probes/frequency-bins B1-B3, T-2427).
         let (data, bins_raw) = match (data, bins_raw) {
             (Ok(data), Ok(bins)) => (data, bins),
             (Err(e), _) if !e.in_array => return e.error,
             (_, Err(e)) if !e.in_array => return e.error,
-            // Array errors: the data's first, else the bins'.
+            // Otherwise the data's error first, else the bins'.
             (Err(e), _) | (_, Err(e)) => return e.error,
         };
 

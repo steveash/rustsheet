@@ -29,6 +29,10 @@ Still failing from T-2430's list and not covered here: F.TEST/FTEST (T-2093), FO
   to the data argument, before error propagation is implemented: `ROWS(FREQUENCY(0,{1,#VALUE!,3}))`,
   `INDEX(FREQUENCY(0,{1,#VALUE!,3}),1)`, `FREQUENCY({1;2},{#N/A})`.
 
+Update (T-2427, 2026-10-27): FREQUENCY's data array now propagates an error element, and a scalar bins error beats it
+(probes/frequency-bins B1-B3). Left here: PROB; FREQUENCY's bins array (still `#VALUE!`, the corpus-bench/53062 evidence
+above); and an error cell in a data range against a scalar bins error, which keeps `main`'s data-first order unprobed.
+
 ## Acceptance criteria
 - [ ] Probe the argument-error order of PROB and FREQUENCY with an array error element; record it in statistics.md.
 - [ ] Probe `SLOPE`, `INTERCEPT`, `STEYX`, `RSQ`, `FORECAST.LINEAR` and `CHISQ.TEST` with `{1,#N/A,3},{1,2,3}`, and the reverse position (plain first argument, error element in the second); record it in statistics.md (T-2430 changed them unverified).

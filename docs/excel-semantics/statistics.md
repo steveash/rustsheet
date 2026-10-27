@@ -3421,7 +3421,8 @@ Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3}
 are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
 (gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
 Ours: T-2430 implements it for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST and the paired functions
-(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB and FREQUENCY still map an array's error element to `#VALUE!` (T-2636),
+(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB, and FREQUENCY's bins array, still map an array's error element to `#VALUE!` (T-2636; FREQUENCY's data array
+propagates it since T-2427),
 F.TEST and FTEST since T-2692 (`f_test_sample`, fisher.rs). UNVERIFIED (shared reader, no oracle cell): SLOPE, INTERCEPT, STEYX, RSQ, FORECAST, FORECAST.LINEAR,
 CHISQ.TEST and CHITEST now return the element's error too; the other argument's error winning is verified only for PERCENTILE, TRIMMEAN
 and COVARIANCE.S and applied to every function above; an array with an error element as the second argument against a plain first
@@ -3456,14 +3457,17 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
 Resolved by probes/frequency-bins (excel-graph, 2026-10-24): with no numeric bin (a text, boolean or blank cell or a
 typed text or boolean) the result is two rows, 0 then every numeric data value; text and booleans in data or bins are
 skipped (`{1;2}` against `"a"`, TRUE, a blank cell, `{"a";"b"}`; `FREQUENCY("a",{1;2})` is three rows of 0 counts). Error
-precedence: a scalar error argument (data, then bins) beats an error inside an array (the range and one-cell-reference forms are UNVERIFIED), and within arrays data
+precedence: a scalar error argument (data, then bins) beats an error element of the data array, and within arrays data
 comes first: `FREQUENCY({1;#DIV/0!},NA())` and `FREQUENCY(NA(),{1;#DIV/0!})` are `#N/A`, `FREQUENCY(1/0,NA())` is
 `#DIV/0!`, `FREQUENCY({#N/A;1},{#DIV/0!;1})` is `#N/A`.
 T.TEST: an error `type` beats a bad `tails` (`T.TEST({0.02,0.027},2,44,NA())` is `#N/A`, probes/frequency-bins B7) when
 the samples are good; with a samples error the bad `tails` stays first (gen-m9/9735c5ab72fa5ecf A336); the full
 interleaving is UNVERIFIED.
 A typed or referenced text that reads as a number (`"2"`) is skipped in ours; UNVERIFIED.
-Ours: implemented, T-2427. The cells still off are other functions' gaps (ODDFYIELD, FORECAST.ETS, EXPAND, DB, NPER, ...).
+Ours: implemented, T-2427, only as far as the probe goes. An error element of the data array is the result, and a scalar
+bins error beats it. An error element of the bins array keeps `main`'s `#VALUE!`: no oracle cell shows it, and desktop
+evidence points elsewhere (corpus-bench/53062 caches a number with a `#VALUE!` bins element; T-2636 probes it). An error
+cell in a data range keeps `main`'s data-first order against a scalar bins error, UNVERIFIED (T-2636). The cells still off are other functions' gaps (ODDFYIELD, FORECAST.ETS, EXPAND, DB, NPER, ...).
 Status: VERIFIED (excel-graph)
 
 ## Booleans from a reference or a formula are numbers in the F, beta, chi-squared and hypergeometric functions (T-2255)
