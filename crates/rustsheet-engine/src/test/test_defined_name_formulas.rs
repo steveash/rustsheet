@@ -85,6 +85,7 @@ fn branching_names_are_bounded_in_time() {
     // 2^5 = 32 within the budget.
     assert_eq!(model._get_text("A3"), *"32");
     assert_eq!(model._get_text("A4"), *"FALSE");
+    assert_eq!(model._get_text("A5"), *"#NAME?");
 }
 
 // Every name in a chain nests its body: the depth and stack budgets stop the chain before the
@@ -178,22 +179,28 @@ fn sheet_qualified_name_falls_back_to_workbook_name() {
 }
 
 // `Sheet2!Q1_Total` is the name `Q1_Total`, not `Sheet2!Q1` then `_Total`, beside the plain
-// `Sheet2!Q1` (probes/defined-name-qualified-like-reference, excel-graph; ironcalc 2aa0e653).
+// `Sheet2!Q1`; a `.` continues the name too (probes/defined-name-qualified-like-reference and
+// -more, excel-graph; ironcalc 2aa0e653).
 #[test]
 fn qualified_name_spelled_like_a_cell_then_more() {
     let mut model = new_empty_model();
     model.add_sheet("Sheet2").unwrap();
     model._set("Sheet2!Q1", "77");
     model.define_name("Q1_Total", None, "=100").unwrap();
+    model.define_name("Q1.Rate", None, "=5").unwrap();
     model._set("A1", "=Sheet2!Q1_Total");
     model._set("A2", "=Sheet2!Q1");
     model._set("A3", "=SUM(Sheet2!Q1_Total,Sheet2!Q1)");
     model._set("A4", "=Sheet1!Q1_Total*2");
+    model._set("A5", "=Sheet2!Q1.Rate");
+    model._set("A6", "=ERROR.TYPE(Sheet2!A1B)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"100");
     assert_eq!(model._get_text("A2"), *"77");
     assert_eq!(model._get_text("A3"), *"177");
     assert_eq!(model._get_text("A4"), *"200");
+    assert_eq!(model._get_text("A5"), *"5");
+    assert_eq!(model._get_text("A6"), *"5");
 }
 
 // A name spelled like an out-of-range R1C1 reference is defined but never resolved, also after a

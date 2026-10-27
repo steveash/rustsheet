@@ -330,6 +330,7 @@ C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
 C	probes/defined-name-local-formula-scope.case.json	10
 C	probes/defined-name-non-ascii.case.json	3
+C	probes/defined-name-qualified-like-reference-more.case.json	6
 C	probes/defined-name-qualified-like-reference.case.json	6
 C	probes/discount-argument-check-order.case.json	1707
 C	probes/discount-security-modes.case.json	135
