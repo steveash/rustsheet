@@ -30,14 +30,14 @@ The LAMBDA-as-text rule is inferred from the wrapper (`t&"|"&v` with TYPE 128); 
 before implementing it.
 
 ## Acceptance criteria
-- [x] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
+- [x] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence. Except: probes/t2475 P!A279 (a one-cell TAKE cut minus a scalar error is a scalar error; ours a 1x1 array) still fails and moves to T-2857; the new probe's A6 and A18 are known failures owned by T-2630.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
 
 ## Outcome
-Probe `probes/t2622-contents-xmatch-take-lambda` (excel-graph) found five separate rules, all recorded in docs/excel-semantics (information.md, lookup.md, statistics.md, arrays.md): CELL("contents") of a blank counts in COUNT/COUNTA and is `#VALUE!` in MODE; XMATCH match_mode 3 takes a number as its text; TAKE/DROP of a one-cell reference stays a reference (TYPE 1, `#VALUE!` for a blank in PEARSON-family); an error inside an array data argument of PERCENTILE/QUARTILE/PERCENTRANK is that error, after the scalar arguments' errors; an uncalled LAMBDA joined as text or compared is `#VALUE!`. Eval: gen-m9 -60 known failures (all five owned cells), probes -14, no regressions.
+Probe `probes/t2622-contents-xmatch-take-lambda` (excel-graph) found five separate rules, all recorded in docs/excel-semantics (information.md, lookup.md, statistics.md, arrays.md): CELL("contents") of a blank counts in COUNT/COUNTA and is `#VALUE!` in MODE; XMATCH match_mode 3 takes a number as its text; TAKE/DROP of a one-cell reference stays a reference (TYPE 1, `#VALUE!` for a blank in PEARSON-family); an error inside an array data argument of PERCENTILE/QUARTILE/PERCENTRANK is that error, after the scalar arguments' errors; an uncalled LAMBDA joined as text or compared is `#VALUE!`. Eval against `main` at the 2026-10-27 review (after main merges): gen-m9 -3 lines (775d053de498b8c7 A98, A201 and 1b31092a0d79e5f1 A143; the rest of the owned cells had already passed on `main`), probes -11 t2475 lines and +2 new known failures in the new probe (t2622 Calc!A6, A18, T-2630), no regressions. Not fixed: P!A279 (T-2857).
 Not done: CELL("contents") wrapped in IF counted in COUNT / MODE (Excel does; follow-up).
 
 Review fixes (2026-10-27, steward REQUEST_CHANGES of 2026-10-26):

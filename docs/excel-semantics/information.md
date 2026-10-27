@@ -426,7 +426,7 @@ engine-only `"timezone"`/`"timezones"` (T-2190), unprobed and awaiting oracle co
 Evidence: probes/info-sheets-info-types Alpha!D25:D49 (excel-graph, 2026-10-20, T-2115).
 
 ## CELL("contents") of a blank cell is a blank value that COUNT and COUNTA count (T-2622)
-Rule (excel-graph, 2026-10-24): `CELL("contents", ref)` of a blank cell, written out as an argument, counts as a value: `COUNT(CELL("contents",C5))` and `COUNTA(CELL("contents",C5))` are 1, and `COUNT(Data!B2:B4,CELL("contents",Data!C5))` adds 1 to the range's count, although `COUNT(C5)` of the blank cell itself is 0. MODE.SNGL of it is `#VALUE!` like a blank cell (`MODE.SNGL(C5)` is `#VALUE!`, `MODE.SNGL(0)` `#N/A`). `SUM(CELL("contents",C5))` is 0 and `CELL("contents",C5)` shows 0. Inside TEXTAFTER's instance_num the blank is 0 (`#VALUE!`), not an omitted argument (gen-m7/9359f03972e94026 Calc!A1420).
+Rule (excel-graph, 2026-10-24): `CELL("contents", ref)` of a blank cell, written out as an argument, counts as a value: `COUNT(CELL("contents",C5))` and `COUNTA(CELL("contents",C5))` are 1, and `COUNT(Data!B2:B4,CELL("contents",Data!C5))` adds 1 to the range's count (there `CELL` reads Calc!C5, the formula's own sheet, which is blank: the CELL sheet quirk; Data!C5 itself holds 100), although `COUNT(C5)` of the blank cell itself is 0. MODE.SNGL of it is `#VALUE!` like a blank cell (`MODE.SNGL(C5)` is `#VALUE!`, `MODE.SNGL(0)` `#N/A`). `SUM(CELL("contents",C5))` is 0 and `CELL("contents",C5)` shows 0. Inside TEXTAFTER's instance_num the blank is 0 (`#VALUE!`), not an omitted argument (gen-m7/9359f03972e94026 Calc!A1420).
 Ours: COUNT, COUNTA and MODE test for the call as written (`is_cell_contents_call`). Excel gives the same through IF (`COUNT(IF(TRUE,CELL("contents",C5)))` is 1, `MODE.SNGL(IF(TRUE,CELL("contents",C5)))` is `#VALUE!`; the cells were left out of the probe), which ours does not (T-2630).
 Evidence: probes/t2622-contents-xmatch-take-lambda A1-A3, A5, A9-A13; gen-m9/c2684066d8df263e Calc!A201, gen-m9/92d4fa29e5510f1e Calc!A98.
 Status: VERIFIED (excel-graph)
@@ -436,4 +436,8 @@ Implemented in: `fn_count`, `fn_counta`, `collect_mode_values`
 Rule (excel-graph, 2026-10-24): TAKE and DROP hand on the reference they cut, so `TYPE(TAKE(Data!B2,1,1))` and `TYPE(TAKE(LET(v,Data!B2,v),-1,-1))` are 1 (a number), while a cut of an array value is 64 (`TYPE(TAKE(5,1,1))`, `TYPE(TAKE({1,2},1,1))`, `TYPE(TAKE(LET(v,5,v),1,1))`), and so is a multi-cell cut of a range. DROP is unprobed (ours treats it like TAKE). The cut of a blank cell is `#VALUE!` as the blank cell is in PEARSON, CORREL and SLOPE (`PEARSON(TAKE(Data!F2,1,1),Data!C2:D4)`, F2 blank); a nonblank one-cell reference against a longer range is `#N/A`.
 Evidence: probes/t2622-contents-xmatch-take-lambda A29-A31, A59-A68, A113-A123; gen-m9/1b31092a0d79e5f1 Calc!A143.
 Status: VERIFIED (excel-graph)
+An operator over the cut is not yet Excel's: `TAKE(range,1,1)-(1/0)` is a scalar `#DIV/0!` in Excel (probes/t2475
+P!A279), a 1x1 array in ours (T-2857). Every `fn_get_two_matrices` caller reads the cut as a reference, CHISQ.TEST
+included; only PEARSON, CORREL and SLOPE are probed. COUNT and COUNTA of `CELL("contents",..)` of numeric text count it
+in ours, unprobed.
 Implemented in: `evaluate_cut_reference` (TYPE, `fn_get_two_matrices`)
