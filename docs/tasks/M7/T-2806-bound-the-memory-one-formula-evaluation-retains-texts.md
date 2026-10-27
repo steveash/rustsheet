@@ -47,5 +47,6 @@ aborted the process (32 GB needed). Fix, without a per-site byte cap (about 300 
 Documented in arrays.md "Copies of a text share its bytes" (DEVIATION) and the work-units entry; SPEC-0024's
 "Retained memory" gap updated. The byte bound is the work budget's (`#VALUE!`, uncatchable), not a new `#ERROR!` cap:
 one budget (directive 3). Tests: test_text_copies.rs (sharing for seven copy shapes, copy-on-write edits, the `&` charge
-and its budget error). Eval delta: none (no baseline change). Follow-up: T-2948 (TEXT with a 32,767-character format
+and its budget error). `Text::Utf8` and `Text::Lone` now hold `Arc<String>` and `Arc<LoneText>`, a change to the public
+variants (in-repo only criteria.rs matches them, through deref; the Python bindings use `Text` as `str`). Eval delta: none (no baseline change). Follow-up: T-2948 (TEXT with a 32,767-character format
 takes 22 ms a call: a time gap found while measuring).

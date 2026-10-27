@@ -316,8 +316,8 @@ impl Text {
                 false
             }
             Text::Lone(lone) => {
-                if let Some(kept) = lone.units.get(..max) {
-                    *self = Text::from_utf16(kept.to_vec());
+                if lone.units.len() > max {
+                    *self = Text::from_utf16(lone.units.get(..max).unwrap_or_default().to_vec());
                     return true;
                 }
                 false

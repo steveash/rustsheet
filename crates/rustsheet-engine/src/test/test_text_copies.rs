@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 //! What one formula's texts hold in memory (T-2806; docs/excel-semantics/arrays.md "Copies of a
 //! text share its bytes"): a text copied into many cells shares one buffer, and the `&` operator
 //! over an array pays for each text it makes. Every test checks sharing or counts units, never
@@ -67,6 +65,10 @@ fn a_clone_shares_the_bytes_and_an_edit_copies_them() {
         assert!(shares_bytes(&original, &copy));
         assert_eq!(pushed.len_utf16(), original.len_utf16() + 1);
         assert_eq!(&*cut, "a");
+        // A text of exactly the limit is not cut, and still shares its bytes.
+        let mut whole = copy.clone();
+        assert!(!whole.truncate_utf16(original.len_utf16()));
+        assert!(shares_bytes(&original, &whole));
     }
 }
 
