@@ -3,11 +3,11 @@ id: T-2507
 title: "Beta density for min(a,b) > 1: Loader's saddle point with Excel's bd0 (T-2464 E5)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
-campaign: accuracy
+campaign: visible
 depends_on: [T-2645]
 spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
@@ -73,4 +73,25 @@ r2-impact counts 261 visibly off pre-T2464 (224 at max >= 8, 37 at max < 8). Bit
 task without the campaign key.
 
 ## Stage (decision 0114)
-`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+`campaign: visible`, not `accuracy` (re-staged 2026-10-27 by this task's second attempt). Decision 0114's accuracy
+stage needs a high-precision reference to show Excel close to correctly rounded, and for min(a,b) > 1 it does not:
+- Against a 40-digit mpmath reference of x^(a-1) (1-x)^(b-1) / B(a,b) (exact 1 - x), a correctly rounded kernel
+  scores, exact / 4 ulp / 15 digits shown: hold1 251 / 1,738 / 2,147 of 3,296 (statistics.md's CR row, 2,435 by its
+  half-unit rule), t2464-w2f-absweep 327 / 1,997 / 2,259 of 3,072, t2464-w2f-xruns-1 299 / 4,611 / 5,013 of 6,144,
+  and the 928 pre-T2464 cells of `docs/research/t2464/beta_exact.tsv` 123 / 744 / 737. Excel's error on those 928 reaches
+  235 ulp (`BETA.DIST(0.9,5,100,FALSE)`, m9-beta-dist-a5) and is 24-182 ulp at a dozen cells with shapes 10-100
+  (m9-beta-dist-a10, -a50, -a100), from `beta_exact.tsv`'s err_ulp column.
+- Loader's model (M3) reaches 3,176 of hold1 within 15 digits. So matching Excel's visible digits means
+  reproducing its algorithm, which is the visible stage (decision 0114, decision 0056's time-box).
+
+## Blocked because
+Blocked because: the Loader model cannot yet meet the no-new-visibly-off and no-gated-regression rules. The first
+attempt's branch `claude/hopeful-meitner-5oxf0g-t2507` (2026-10-25, commits 090e13ec1 and 9d9fd0a0b) implements the
+structure and wires it into BETA.DIST's pdf for min(a,b) > 1. Against main 77ea05010 it fixes 36,410 visibly-off
+probes-numeric cells, makes 677 visibly off where Excel disagrees with it (median 9 ulp, max 84), and regresses the
+gated `BETADIST_BETAINV.xlsx` G3 by 1 ulp (Excel 0.17924096936442618; the correctly rounded value is
+0.17924096936442616, so a correctly rounded kernel loses G3 too). No regime split by bd0 branch pair or by n avoids
+both. That branch's task file has the full comparison (`docs/research/t2507/lost_cells.tsv`,
+`newly_visibly_off.tsv`). Unblock when T-2586 pins the shape constant and the series branch, or when the owner accepts
+the losses with a decision record; then resume from that branch's code (`loader.rs`, `stirlerr_exact`,
+`ln_double_double`).

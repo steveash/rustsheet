@@ -2216,6 +2216,12 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
     685/2,675/3,029; exact constant 658/2,987/3,161; CR 251/1,738/2,435;
   - verifier hold-out (1,600): M3 133/1,035/1,351, exact constant 98/1,043/1,350, CR 66/533/909;
   - r2's 32,264 cells: M3 6,312/25,807/31,461, LDe 5,765/25,254/31,385, CR 3,573/26,024/29,280.
+- Excel is not close to correctly rounded here, so a more accurate kernel does not reach its visible digits (T-2507,
+  decision 0114's stage test): on `docs/research/t2464/beta_exact.tsv`'s 928 a, b > 1 density cells Excel is
+  123 exact, 744 within 4 ulp and 737 within 15 shown digits of the 60-digit value, with errors up to 235 ulp
+  (`BETA.DIST(0.9,5,100,FALSE)`) and 24-182 ulp at a dozen cells of shapes 10-100; on t2464-w2f-absweep 327 / 1,997 /
+  2,259 of 3,072 and t2464-w2f-xruns-1 299 / 4,611 / 5,013 of 6,144. The same reference with q = fl(1 - x) scores
+  worse (626 of the 928 within 15 digits), so Excel's error is not q's rounding alone.
 - With one free constant per block (a structure test, not a model), on the verifier's bd0 hold-out (1,920 cells):
   r3's knobs 668/1,501/1,732, r2's 568/1,337/1,678, CR 163/940/1,407, a free-constant null 202/912/1,413. Both-log
   blocks are 387/474/474 of 640: the worker's 656 of 770 was a favourable subset.
