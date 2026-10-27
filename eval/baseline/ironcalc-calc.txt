@@ -81,6 +81,7 @@ C	ironcalc-calc/LOGICAL/LAMBDA.xlsx	8
 C	ironcalc-calc/LOGICAL/LET.xlsx	6
 C	ironcalc-calc/LOGICAL/MAKEARRAY.xlsx	9
 C	ironcalc-calc/LOGICAL/MAP_REDUCE.xlsx	7
+C	ironcalc-calc/LOGICAL/NOT.xlsx	115
 C	ironcalc-calc/LOGICAL/SCAN.xlsx	9
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/ADDRESS.xlsx	34
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/CHOOSE.xlsx	24

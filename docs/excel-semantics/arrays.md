@@ -135,6 +135,7 @@ an error stays; an empty cell in a range is FALSE, so NOT gives TRUE. A range an
 element values (`NOT({"TRUE","abc","1",#N/A,0,2,"false"," TRUE",""})` is FALSE, `#VALUE!`, `#VALUE!`, `#N/A`, TRUE,
 FALSE, TRUE, `#VALUE!`, `#VALUE!`), and `NOT({""})` is `#VALUE!`. Evidence: probes/not-array-cast (38 cells, the scalar
 `NOT(cell)` and `NOT("text")` forms alongside; excel-graph, 2026-10-09, T-0260); the engine already matched every cell.
+More evidence: ironcalc-calc/LOGICAL/NOT.xlsx (Excel-authored, 115 checked cells, T-2820): numeric-looking text ("1E3", "50%", "1/1/2024") and `NOT("")` give `#VALUE!`, computed text "TRUE" gives FALSE, an empty cell gives TRUE, and the lift holds over INDEX/ROWS/SUM and an anchor-array spill reference.
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE), T-0233 (element values), T-0260 (NOT per-element cast probe)
 Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) through the lift driver (`Model::lift_text`, T-0226, T-1775); `fn_not` (`functions/logical/and_or_xor_not.rs`) and its `scalar_arguments` static-analysis entry (T-0225).
 
