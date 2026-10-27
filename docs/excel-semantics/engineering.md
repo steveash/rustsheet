@@ -484,7 +484,8 @@ Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2
 Fitted on probes-numeric `im-last-digit-sweep` (excel-graph, T-2043), scoring each candidate on whether it
 prints Excel's 15 digits (IMABS and IMARGUMENT: the double, bit for bit). SIN and COS of the real (IMSEC, IMCSC,
 IMCOT) or imaginary (IMSECH) part are Excel's own, reduced by the x87 64-bit π (numbers.md "Trig of a huge
-angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's, which are IMSINH's `1/u` form. Rule:
+angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` form) and IMSEC's
+(IMCOS's `1/u` form inside the band, whose ends are unprobed, T-2797; T-2884). Rule:
 - IMCSC: `t = sin²x + (cosh 2y − 1)/2`, result `(sin x·(cosh y/t), −cos x·(sinh y/t))`: 69 of the 69 finite cells
   (the old `sin²x·cosh²y + cos²x·sinh²y` 58). Writing sinh²y as `(cosh 2y − 1)/2` is what loses the tiny-argument
   digits above; `sin²x + (cosh²y − 1)` reproduces those two rows but misses `0.00829243+6.03779e-05i` (row 31).
@@ -530,8 +531,20 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's, which are IMSIN
     and `sin x·(sinh y/t)`, fits 27 of 34 (23 before) and keeps every older cell. For IMSEC's cosh y and sinh y,
     IMSINH's `1/u` form fits 28 but loses 1 older cell, the EXP pair 29 (10 lost) and IMCOS's `trig_sinh_cosh` 31
     (9 lost). cosh 2y as the EXP pair ties; as the `1/u` form it fits 26. These two are now the kernels
-    (functions/engineering/complex/trig.rs). Seven IMSEC texts stay one unit of the 15th digit off (B3, B9, B19, B20,
-    B21, B31, B33), among them `IMSEC("-1.44771+0.0419247i")` (T-2884).
+    (functions/engineering/complex/trig.rs). Seven IMSEC texts stayed one unit of the 15th digit off (B3, B9, B19, B20,
+    B21, B31, B33), among them `IMSEC("-1.44771+0.0419247i")`.
+  - T-2884 scored IMSEC's cosh y, sinh y and cosh 2y parts the same way, on every IMSEC oracle cell (gen-m9,
+    ironcalc-calc, probes, probes-numeric): fused texts fitted of 34 and older cells lost. Using IMCOS's
+    `trig_sinh_cosh` (`1/u` form inside (0.01, 20]) inside the band and libm's cosh and sinh outside it fits 31 and
+    keeps every older cell. The full `trig_sinh_cosh`, with the EXP pair outside the band, fits 31 but loses 9, so
+    outside the band Excel's IMSEC keeps libm's digits. Other candidates (fitted, lost): IMSINH's `1/u` form at |y| with
+    the sign of y 29, 0; at y 28, 1; EXP pair 29, 10; `e = EXP(y)` then `(e ∓ 1/e)/2` 31, 9; libm sinh with any other
+    cosh 27 or 28, 0. cosh 2y taken the same way (`1/u` inside the band, libm outside) fits 32 and keeps every older cell.
+    `trig_sinh_cosh(2y)` everywhere (the EXP pair outside the band) ties it, so no cell decides cosh 2y outside the band; it fits B20 and B33 (`IMSEC("-1.44771+0.0419247i")`). The EXP pair
+    fits 31. IMSINH's `1/u` form fits 30. `cos²x + sinh²y` fits 28 and loses 4, `cos²x + (cosh²y − 1)` 22 and loses 5,
+    and fusing cos²x fits 15. `(cosh 2y − 1)/2` for sinh²y fits 32 but loses 2. Dividing the product `cos x·cosh y`
+    by t fits 28. These are now the kernels. B3 and B31 stay one unit of the 15th digit low in the real part
+    (`IMSEC("2.11217+0.627617i")` Excel -0.86864314680255, ours ...549).
 - IMCOT: `(sin 2x, −sinh 2y) / ((cosh 2y + 1) − 2cos²x)`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit), and gen-m9's
   `IMCOT("-1.5+0.5i")` -0.0557109884865415-0.463942860183828i (45 cells, T-2537). The grouping matters only
