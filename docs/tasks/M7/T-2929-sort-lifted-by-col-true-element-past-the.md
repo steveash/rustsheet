@@ -3,7 +3,7 @@ id: T-2929
 title: "SORT lifted by_col: TRUE element past the first column with sort_index 1 is #VALUE! in Excel"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
