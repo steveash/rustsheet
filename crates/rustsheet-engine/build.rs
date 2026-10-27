@@ -30,19 +30,30 @@ fn watched_git_paths() -> Vec<PathBuf> {
         return Vec::new();
     };
     let (git_dir, common_dir) = (Path::new(git_dir), Path::new(common_dir));
+    // `--path-format` needs git 2.31 or newer; an older git echoes the unknown option as its
+    // first line. Without two absolute directories, watch only build.rs: GIT_VERSION may then go
+    // stale, but the engine never rebuilds on every call.
+    if !git_dir.is_absolute() || !common_dir.is_absolute() {
+        return Vec::new();
+    }
+    // `packed-refs` and `refs/tags` are dropped below if missing now; packing refs later also
+    // changes the watched ref files and directories, so the rerun still happens.
     let mut paths = vec![
         git_dir.join("HEAD"),
         common_dir.join("packed-refs"),
         common_dir.join("refs").join("tags"),
     ];
     if let Some(branch) = run_git(&["symbolic-ref", "-q", "HEAD"]) {
-        // A packed branch has no loose ref file until its next commit writes one: watch the
-        // directory that commit will write to instead.
+        // A packed branch has no loose ref file until its next commit writes one, and packing
+        // also removes the empty directories of a slashed name (`agent/<lane>/T-...`): watch the
+        // nearest existing directory on the way to that file, whose entries the commit changes.
         let loose = common_dir.join(&branch);
-        paths.push(match loose.parent() {
-            Some(dir) if !loose.exists() => dir.to_path_buf(),
-            _ => loose,
-        });
+        let watched = loose
+            .ancestors()
+            .take_while(|p| p.starts_with(common_dir))
+            .find(|p| p.exists())
+            .map(Path::to_path_buf);
+        paths.extend(watched);
     }
     paths.retain(|p| p.exists());
     paths
@@ -54,6 +65,7 @@ fn main() {
         println!("cargo:rerun-if-changed={}", path.display());
     }
 
+    // The work tree is not watched, so `-dirty` follows the last HEAD or ref change, as before.
     // Prefer exact tag
     let version = run_git(&["describe", "--tags", "--exact-match"])
         .or_else(|| run_git(&["describe", "--tags", "--dirty", "--always"]))
