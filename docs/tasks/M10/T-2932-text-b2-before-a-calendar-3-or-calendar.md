@@ -1,0 +1,41 @@
+---
+id: T-2932
+title: "TEXT: B2 before a calendar-3 or calendar-7 tag applies the year conversion twice"
+milestone: M10
+lane: functions-text
+status: todo
+priority: P3
+size: S
+tier: opus
+depends_on: []
+---
+
+## Goal
+TEXT and cell display give Excel's years when `B2` comes before a Thai (calendar 7) or explicit Japanese (calendar 3)
+locale tag, where Excel applies the calendar's year conversion a second time.
+
+## Context
+Found by T-2729 (number-formats.md "`B2` before a locale tag and calendar digit 6", the calendar-3/7 quirk). Any calendar
+digit but 0 and 6 wins over a `B2` before the tag, and the engine prints such a section as if the `B2` were not there.
+Excel does so for digits 1, 2, 9, A and the lunar ones, but for 7 and 3 it converts the year twice:
+- `B2[$-70409]yyyy-mm-dd|mmmm|dddd|g|e` of 45000 is "3109-03-15|มีนาคม|พุธ||2566" (2023 + 543 twice; `e` the Thai year once),
+  `B2[$-70409]b|bbbb|e` "09|3109|2566".
+- `B2[$-30411]yyyy-mm-dd|mmmm|dddd|g|e` is "4294965434-03-15|3月|水曜日|M|4294965434" and `B2[$-30409]yyyy|e|g`
+  "4294965434|4294965434|M": the Reiwa era year 5 read again as a Gregorian year, which falls in Meiji (5 - 1868 + 1 =
+  -1862, printed as an unsigned 32-bit number), and `g` that era's letter.
+Probe before generalizing: `B2` before calendar 5 (Korean, +2333) and 4 (Taiwan), `B2` before `[$-411]` with a `g`
+(`B2[$-411]g|yy`, the Japanese LCID's own calendar becomes Hijri there), other serials (an early Reiwa date, a Meiji
+date), and `B2[$-70409]`/`B2[$-30411]` as a cell number format.
+Failing cells (probes, excel-graph 2026-10-27):
+- probes/t2729-hijri-locale-tag S!A245, A246
+- probes/t2729-hijri-locale-tag-names S!A296, A297, A316, A317
+Also failing, through T-2779 (Hebrew is not modelled; once it is, digit 8 wins over `B2` with no further change):
+- probes/t2729-hijri-locale-tag S!A262 (`B2[$-80409]`, Excel "5783-06-22|Adar|Yom Revi'i||5783")
+
+## Acceptance criteria
+- [ ] The six calendar-3/7 cells above pass and leave eval/baseline/probes.txt, with no new known failure.
+- [ ] number-formats.md records the rule with the new probe's evidence.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- The Hebrew and Saka calendars themselves (T-2779).
