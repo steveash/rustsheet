@@ -1447,6 +1447,7 @@ C	probes/text-format-aaa-weekday.case.json	50
 C	probes/text-format-array.case.json	37
 C	probes/text-format-bare-literals.case.json	76
 C	probes/text-format-digits-date-token.case.json	132
+C	probes/text-format-fill-char-date-fraction.case.json	32
 C	probes/text-format-length-limit-b.case.json	27
 C	probes/text-format-length-limit-c.case.json	82
 C	probes/text-format-length-limit-d.case.json	73

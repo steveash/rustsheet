@@ -150,7 +150,9 @@ pub(super) fn format_fraction(
             }
             TextToken::Literal(c) => text.push(*c),
             TextToken::Text(t) => text.push_str(t),
-            TextToken::Ghost(_) | TextToken::Spacer(_) => text.push(' '),
+            TextToken::Ghost(_) => text.push(' '),
+            // Excel: a `*x` fill adds nothing (probes/text-format-fill-char-date-fraction A8:A11, docs/excel-semantics/number-formats.md#fill-characters-x-add-nothing-to-the-text).
+            TextToken::Spacer(_) => {}
             _ => {}
         }
     }
