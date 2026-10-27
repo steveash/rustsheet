@@ -205,3 +205,13 @@ fn a_condition_on_the_first_section_chooses_among_the_sections() {
     assert_eq!(text(-123_456.789, "[=0]\"nil\";General"), "-123456.789");
     assert_eq!(text(0.0, "[=0]\"nil\";General"), "nil");
 }
+
+#[test]
+fn cyan_color_is_accepted() {
+    use crate::formatter::format::{format_number, FormatContext};
+    let ctx = FormatContext::new(crate::locale::get_locale("en").unwrap());
+    let text = |v: f64, f: &str| format_number(v, f, &ctx).text;
+    // Excel (gen-m10, T-1737): `[Cyan]` is one of the eight color names, not #VALUE!.
+    assert_eq!(text(0.0, "[Green]#,##0;[Magenta](#,##0);[Cyan]0"), "0");
+    assert_eq!(text(5.0, "[cyan]0"), "5");
+}

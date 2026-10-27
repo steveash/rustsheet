@@ -679,7 +679,7 @@ probes/t1738-question-first-decimal, excel-graph 2026-10-25): `TEXT(3,"0.?")` an
 `"0.?0"` "3. 0", `"0.??"` and `"#,##0.??"` "3.  ", `"0.?#"` "3. ", `"?.??E+00"` on 1000 "1.  E+03", `"?.??"` on 0
 " .  " and `"0.?"` on -3 "-3. "; implemented in formatter/format.rs. `#%` on 0.0049 is "%" since T-2206's rounding.
 Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
-the text section on text and booleans (T-1736), `[Cyan]` (T-1737; `[$USD]` currency text is implemented since T-2157, which needed it),
+the text section on text and booleans (T-1736), `[Cyan]` (`[Cyan]` done in T-1737; `[$USD]` currency text since T-2157),
 scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030, T-2206
