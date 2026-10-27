@@ -1299,6 +1299,7 @@ C	probes/t2579-array-value-edges.case.json	52
 C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
+C	probes/t2598-engineering-scientific.case.json	12
 C	probes/t2601-index-scalar-forms-t-n.case.json	56
 C	probes/t2625-nested-consumers.case.json	32
 C	probes/t2629-imcosh-imsinh-y-sweep.case.json	800
@@ -1365,6 +1366,10 @@ C	probes/t2753-gamma-density-ratio-sweep.case.json	96
 C	probes/t2753-gamma-density-switch.case.json	84
 C	probes/t2756-roundup-smallest-normal-threshold.case.json	541
 C	probes/t2769-formula-text-whitespace.case.json	47
+C	probes/t2771-roundup-subnormal-cuts.case.json	176
+C	probes/t2771-roundup-subnormal-sign-controls.case.json	56
+C	probes/t2771-roundup-subnormal-sign.case.json	121
+C	probes/t2771-roundup-subnormal-threshold.case.json	40
 C	probes/t2772-unary-plus-in-range-rows.case.json	20
 C	probes/t2772-unary-plus-static-readings.case.json	36
 C	probes/t2776-formula-text-whitespace-shapes.case.json	65
@@ -1662,6 +1667,7 @@ C	probes/weeknum-stale-sheet-order.case.json	4
 C	probes/weeknum-stale-volatile-reader.case.json	1
 C	probes/weeknum-sumproduct-blank-type.case.json	12
 C	probes/whole-column-empty-walkers.case.json	16
+C	probes/workbook-name-own-book-prefix.case.json	13
 C	probes/workday-holidays-error-order.case.json	541
 C	probes/workday-lift-errors.case.json	35
 C	probes/workday-serial-zero.case.json	58
@@ -2197,7 +2203,6 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
-F	probes/defined-name-qualified-like-reference.case.json	Sheet1!A8
 F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
@@ -3242,13 +3247,6 @@ F	probes/regression-trend.case.json	Sheet1!O7
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!A1
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!A2
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!B2
-F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B2
-F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B3
 F	probes/solver-iteration-traces.case.json	I!A17
 F	probes/solver-iteration-traces.case.json	I!A22
 F	probes/solver-iteration-traces.case.json	I!A24
@@ -3840,13 +3838,6 @@ F	probes/t2753-gamma-density-switch.case.json	S!B6
 F	probes/t2753-gamma-density-switch.case.json	S!B7
 F	probes/t2753-gamma-density-switch.case.json	S!B8
 F	probes/t2753-gamma-density-switch.case.json	S!B9
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A52
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A53
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A54
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A55
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A56
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A57
-F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A58
 F	probes/t2772-unary-plus-in-range-rows.case.json	S!J2
 F	probes/t2772-unary-plus-in-range-rows.case.json	S!J5
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
