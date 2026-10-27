@@ -162,12 +162,16 @@ fn lower_of_underflow(a: f64) -> f64 {
     }
 }
 
+/// The shape below which [`gamma_prefactor`] forms x^a e^-x / Gamma(a) directly, and above which
+/// it takes TOMS 654's `rcomp`; GAMMA.DIST's tiny-ratio log form keeps to the same split.
+pub(super) const DIRECT_SHAPE_MAX: f64 = 20.0;
+
 /// x^a e^-x / Gamma(a), the factor in front of both P(a, x) and Q(a, x). For a large shape the
 /// exponent a ln x - x - ln Gamma(a) cancels to a small number and loses its digits, so it is
 /// rewritten as sqrt(a / 2 pi) exp(-a rlog1(x/a - 1) - correction(a)) (TOMS 654's
 /// `rcomp`); below 20 it is formed directly.
 fn gamma_prefactor(a: f64, x: f64) -> f64 {
-    if a < 20.0 {
+    if a < DIRECT_SHAPE_MAX {
         // x^a and e^-x each to within an ulp; their logs summed would carry the absolute error
         // of a ln x into the result's relative error (11 ulps at GAMMA.DIST(10,9,2,TRUE)).
         let power = x.powf(a);
