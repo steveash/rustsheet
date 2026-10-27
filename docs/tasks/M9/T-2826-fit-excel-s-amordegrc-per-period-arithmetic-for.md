@@ -3,7 +3,7 @@ id: T-2826
 title: "Fit Excel's AMORDEGRC per-period arithmetic for charges of 1E12 and more (fin-amor-period-bound-c A1-A5, -b B2 to the bit)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
