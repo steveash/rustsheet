@@ -43,5 +43,5 @@ probes/t2546-bessel-past-cap.
 
 ## Outcome
 Added `probes/t2881-besselj-turning-point` (76 cells, excel-graph oracle-filled 2026-10-27): `BESSELJ(n,n)` for n = 1000..100000,
-n±1/10/100, n+0.5, n-2/3/5 at 50000/99999/100000, and small orders near x. Eval delta: 76 cells added (54 fail, all in
+n±1/10/100, n+0.5, n-2/3/5 at 50000/99999/100000, and small orders near x. Eval delta: 76 cells added (53 fail, all in
 the baseline for T-2548; no other baseline change). Cited in docs/excel-semantics/engineering.md.
