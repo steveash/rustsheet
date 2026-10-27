@@ -3,7 +3,7 @@ id: T-2945
 title: "TEXT of a text value with an empty text section (;;;) is empty text, not the text"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -53,3 +53,6 @@ gen-m10/0e3d8eba9432a18d T!A24, so the acceptance criteria above are the stage t
 ## Out of scope
 - Displayed text of cells (T-1736) and the other TEXT-on-text probes (T-1130: 1-3 section formats, `_x`/`*x`, digit and
   date tokens in the text section).
+
+## Outcome
+`format_text_value` now returns empty text when the format ends in `;` after three parts (empty 4th section); the parser exposes `ends_in_separator`. Eval: gen-m10 T!A24 fixed (one baseline line removed), no new F/TF lines. The `TEXT(TRUE,";;;")` and five-section `"0;;;;"` probes were not run (no oracle access); the five-section `#VALUE!` assertion was left out, see number-formats.md.
