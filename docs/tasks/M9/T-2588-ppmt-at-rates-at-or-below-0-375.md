@@ -3,7 +3,7 @@ id: T-2588
 title: "PPMT at rates at or below -0.375, past 1E+300 and at fractional periods"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
