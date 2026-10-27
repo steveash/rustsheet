@@ -8,9 +8,10 @@
 //! 50,000 rows, with five text criteria and 100 numeric thresholds. Then aggregates over
 //! whole-column expressions (T-0469): 400 `MAX(IF(F:F=A1,G:G,""))` over 2,000 rows. Then criteria
 //! aggregates with a new criterion per call (T-0465): 10,500 ranks, each two COUNTIFS (one over a
-//! growing prefix), and 12,000 per-row SUMIFS over 1,500 rows.
-//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column` and `-- rank`
-//! run only the T-0449, the T-0469 or the T-0465 case)
+//! growing prefix), and 12,000 per-row SUMIFS over 1,500 rows. Then SUMPRODUCT over whole-column
+//! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows.
+//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank` and
+//! `-- sumproduct` run only the T-0449, T-0469, T-0465 or T-0471 case)
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
 //! and the spread.
@@ -109,6 +110,23 @@ fn whole_column_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// The T-0469 data with `SUMPRODUCT((F:F=A1)*G:G)` beside each key in B instead, as in
+/// corpus-bench 55049.
+fn sumproduct_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(format!("F{r}").as_str(), format!("k{}", r % 50).as_str())?;
+            tx.set(format!("G{r}").as_str(), f64::from((r * 37) % 1000))?;
+        }
+        for r in 1..=WHOLE_COLUMN_CALLS {
+            tx.set(format!("A{r}").as_str(), format!("k{}", r % 50).as_str())?;
+            let formula = format!("=SUMPRODUCT((F:F=A{r})*G:G)");
+            tx.set(format!("B{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
 /// Rows of data in the T-0465 case.
 const RANK_ROWS: u32 = 1_500;
 /// Score columns in the T-0465 case, A to G.
@@ -149,6 +167,15 @@ fn rank_workbook() -> Result<Workbook, Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut wb = sumproduct_workbook()?;
+    let t = common::timings(RUNS, || wb.recalculate());
+    writeln!(
+        std::io::stdout(),
+        "SUMPRODUCT((F:F=A1)*G:G): {WHOLE_COLUMN_CALLS} calls over {WHOLE_COLUMN_ROWS} rows, runs={RUNS} {t}"
+    )?;
+    if std::env::args().any(|arg| arg == "sumproduct") {
+        return Ok(());
+    }
     let mut wb = rank_workbook()?;
     let t = common::timings(RUNS, || wb.recalculate());
     writeln!(
