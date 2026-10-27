@@ -3,7 +3,7 @@ id: T-2753
 title: "GAMMA.DIST density at a tiny x / beta: Excel's EXP(a LN(y) - y - LNGAMMA(a)) / x, 1E-14 off the exact value"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
