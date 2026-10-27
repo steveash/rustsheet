@@ -13,11 +13,11 @@
 //!   token (`d`, `mm`, `%`, `@`, `_x`, `*x`, `[h]`, `AM/PM`, ...);
 //! - a cost of at most 250 over the whole code: 3 per section holding a digit placeholder, 2 per
 //!   placeholder run (`"0"` costs 5, `"0-0"` 10) plus 2 per `.` in it, 3 per
-//!   unquoted or escaped literal character (`$` 1; a run of colons counts once), 2 per quoted
+//!   unquoted or escaped literal character (unquoted `$` 1; a run of colons counts once), 2 per quoted
 //!   character, 2 per other token (`AM/PM` 3), 2 per color, 7 per condition, 0 per `;`; a
 //!   currency tag is quoted text of its symbol plus 13, its locale part free (`[$€-40C]` 15);
 //! - a section holding an unquoted `$` and no placeholder pays 3 once (2 if it holds a date or time
-//!   token), and unquoted text directly after a locale tag pays 1;
+//!   token or `@`), and unquoted text directly after a locale tag pays 1;
 //! - quoted text pays 4 more when a token follows it directly, 2 when unquoted text comes between
 //!   them (`"a" @` + 120 quoted works, 121 fails) and 1 when a color or condition does; 1 when a
 //!   placeholder run follows it directly or after unquoted text and 0 after a color or condition
@@ -32,7 +32,8 @@
 //!   quoted works, 118 fails, while `"[>5]0"` + 79 spaces works), and a section after the first
 //!   holding quoted text and a placeholder 1 more (`"0;0"` + 120 quoted fails).
 //!
-//! A code left unterminated is rejected too, whatever the value ([`rejects_format_code`]).
+//! A code over 255 characters, or left unterminated, is rejected too, whatever the value
+//! ([`rejects_format_code`]).
 //!
 //! TEXT also rejects two placements of `@`, for any value (docs/excel-semantics/number-formats.md,
 //! "TEXT of a text value: `@` with other tokens in one section"; probes/text-at-with-tokens,
@@ -47,6 +48,11 @@ use super::lexer::{Lexer, Token};
 const MAX_SECTIONS: usize = 4;
 const MAX_ELEMENTS: usize = 32;
 const MAX_COST: usize = 250;
+/// The longest code TEXT takes, which only codes of cheap characters reach: `"0"` + 254 commas and
+/// `"d"` + 254 colons work (255 characters) and 255 fail, `[$-409]` + 248 colons works and 249
+/// fails (probes/t2842-dollar-run-contexts J, K, T-2842). Counted in characters; a code with
+/// characters outside the BMP is unprobed.
+const MAX_CODE_CHARS: usize = 255;
 /// What a section's first digit placeholder costs once, on top of `PLACEHOLDER_RUN_COST` per run
 /// (`"0-0"` + 120 quoted works and 121 fails, `"0-0-0"` + 117 works and 118 fails;
 /// probes/text-format-length-limit-o, -p, T-1486).
@@ -89,8 +95,10 @@ const CLOSING_RUN_CHEAP_SWITCH_COST: usize = 2;
 /// `NUMBER_SECTION_COST` (which it then replaces): `REPT("$",247)` works and 248 fails, while
 /// `"0"` + 245 `$` works and 246 fails (probes/t2836-dollar-run-cost, T-2836).
 const DOLLAR_SECTION_COST: usize = 3;
-/// What `DOLLAR_SECTION_COST` is instead when the section also holds a date or time token (`"d"`
-/// + 246 `$` works and 247 fails, and so does 246 `$` + `"d"`; only `d` is probed).
+/// What `DOLLAR_SECTION_COST` is instead when the section also holds a date or time token or `@`
+/// (`"d"` + 246 `$` works and 247 fails, and so does 246 `$` + `"d"`; so do `m`, `yyyy`, `h`, `ss`
+/// and, on text, `@`; `AM/PM` pays the full 3: + 236 works and 237 fails;
+/// probes/t2836-dollar-run-cost, t2842-dollar-run-contexts A:E, H).
 const DOLLAR_DATE_SECTION_COST: usize = 2;
 /// What unquoted text pays when it follows a locale tag directly (`[$-409]` + 232 `$` works and 233
 /// fails, + 78 spaces works and 79 fails; probes/t2836-dollar-run-cost, t2812-currency-tag-cost).
@@ -251,8 +259,8 @@ struct Section {
     free_text_tokens: usize,
     /// Whether the section holds a digit placeholder (it pays `NUMBER_SECTION_COST` once).
     has_placeholder: bool,
-    /// Whether the section holds an unquoted `$`, and whether it holds a date or time token (they
-    /// set what the section pays for `$` when it holds no placeholder).
+    /// Whether the section holds an unquoted `$`, and whether it holds a date or time token or `@`
+    /// (they set what the section pays for `$` when it holds no placeholder).
     has_dollar: bool,
     has_date_time: bool,
     /// What followed the latest quoted text.
@@ -300,10 +308,13 @@ impl Section {
     }
 }
 
-/// Whether TEXT is `#VALUE!` for `format` whatever the value: the code is over the complexity
-/// limit, or it is left unterminated (see [`is_unterminated`]).
+/// Whether TEXT is `#VALUE!` for `format` whatever the value: the code is over 255 characters
+/// ([`MAX_CODE_CHARS`]) or the complexity limit, or it is left unterminated (see
+/// [`is_unterminated`]).
 pub(crate) fn rejects_format_code(format: &str) -> bool {
-    exceeds_complexity_limit(format) || is_unterminated(format)
+    format.chars().count() > MAX_CODE_CHARS
+        || exceeds_complexity_limit(format)
+        || is_unterminated(format)
 }
 
 /// Whether `format` ends inside a quoted run or a `[...]` bracket, or with a `\`, `_` or `*` that
@@ -397,7 +408,9 @@ fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Period if run == Run::Digits => (Run::Digits, DECIMAL_POINT_COST),
             Token::Literal(':') if run == Run::Colon => continue,
             Token::Literal(':') => (Run::Colon, LITERAL_COST),
-            Token::Literal('$') | Token::Escaped('$') => {
+            // An escaped `\$` is any escaped literal: 3, and no `$` section cost (`REPT("\$",83)`
+            // works and 84 fails; probes/t2842-dollar-run-contexts F, T-2842).
+            Token::Literal('$') => {
                 section.has_dollar = true;
                 (Run::Literal, DOLLAR_COST)
             }
@@ -440,7 +453,9 @@ fn exceeds_complexity_limit(format: &str) -> bool {
                 cost += AFTER_LOCALE_UNQUOTED_COST;
             }
             after_locale = matches!(token, Token::Locale(_));
-            section.has_date_time |= is_date_time_letter(&token);
+            // `@` sets the `$` section cost like a date token (`"@"` + 246 `$` on text works and 247
+            // fails; probes/t2842-dollar-run-contexts H, T-2842).
+            section.has_date_time |= is_date_time_letter(&token) || token == Token::Raw;
             match next_run {
                 Run::Literal | Run::Colon => {
                     if !joins_run {
@@ -452,8 +467,7 @@ fn exceeds_complexity_limit(format: &str) -> bool {
                         section.run_quoted_is_tag = currency_tag;
                         section.run_tail_is_dollar = true;
                     } else {
-                        section.run_tail_is_dollar &=
-                            matches!(token, Token::Literal('$') | Token::Escaped('$'));
+                        section.run_tail_is_dollar &= token == Token::Literal('$');
                     }
                     section.has_quoted |= quoted;
                     section.after_quoted = if quoted {
@@ -490,15 +504,16 @@ fn exceeds_complexity_limit(format: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{exceeds_complexity_limit, is_unterminated};
+    use super::{exceeds_complexity_limit, is_unterminated, rejects_format_code};
 
-    /// Asserts that every code in `ok` is within the limit and every one in `too_complex` over it.
+    /// Asserts that TEXT takes every code in `ok` and rejects every one in `too_complex` (over the
+    /// complexity or length limit).
     fn assert_limit(ok: &[String], too_complex: &[String]) {
         for code in ok {
-            assert!(!exceeds_complexity_limit(code), "{code}");
+            assert!(!rejects_format_code(code), "{code}");
         }
         for code in too_complex {
-            assert!(exceeds_complexity_limit(code), "{code}");
+            assert!(rejects_format_code(code), "{code}");
         }
     }
 
@@ -561,13 +576,14 @@ mod tests {
         assert_limit(&ok, &too_complex);
     }
 
-    /// Runs of unquoted `$` (probes/t2836-dollar-run-cost, T-2836): each code works at the given
-    /// length of its ladder and fails one longer.
+    /// Runs of `$` and other cheap literals (probes/t2836-dollar-run-cost, T-2836;
+    /// t2842-dollar-run-contexts, T-2842): each code works at the given length of its ladder and
+    /// fails one longer.
     #[test]
     fn dollar_runs() {
         let dollars = |n: usize| "$".repeat(n);
         let spaces = |n: usize| " ".repeat(n);
-        let ladders: [(&dyn Fn(usize) -> String, usize); 13] = [
+        let ladders: [(&dyn Fn(usize) -> String, usize); 25] = [
             (&|n| dollars(n), 247),
             (&|n| format!("d{}", dollars(n)), 246),
             (&|n| format!("{}d", dollars(n)), 246),
@@ -581,6 +597,19 @@ mod tests {
             (&|n| format!("[$USD]{}", spaces(n)), 76),
             (&|n| format!("[$€]{}", spaces(n)), 77),
             (&|n| format!("[$€-F800]{}", quoted(n)), 117),
+            // probes/t2842-dollar-run-contexts (T-2842).
+            (&|n| format!("m{}", dollars(n)), 246),
+            (&|n| format!("yyyy{}", dollars(n)), 246),
+            (&|n| format!("ss{}", dollars(n)), 246),
+            (&|n| format!("AM/PM{}", dollars(n)), 236),
+            (&|n| format!("@{}", dollars(n)), 246),
+            (&|n| "\\$".repeat(n), 83),
+            (&|n| format!("{}{}", quoted(1), "\\$".repeat(n)), 81),
+            (&|n| format!("[$-409]{}", "-".repeat(n)), 78),
+            (&|n| format!("[$-409]{}", ":".repeat(n)), 248),
+            (&|n| format!("0{}", ",".repeat(n)), 254),
+            (&|n| format!("d{}", ":".repeat(n)), 254),
+            (&|n| format!("[$-409]0{}", ",".repeat(n)), 247),
         ];
         for (code, last_ok) in ladders {
             assert_limit(&[code(last_ok)], &[code(last_ok + 1)]);
