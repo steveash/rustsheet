@@ -29,6 +29,9 @@ functions/information/mod.rs) and must read `<file>.xlsx!loc` back as the workbo
 prefix Excel cannot read (probe what Excel stores; `[0]!loc` is a guess); the quoting rule rests on two file names, so
 probe a file name with a space and one with only letters and digits first; an unnamed workbook is unprobed.
 
+Exit owners (decision 0096; the 2026-10-27 planner run names each cell the ranges above hold):
+- probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix Calc!A2
+
 ## Acceptance criteria
 - [ ] The 7 cells above leave eval/baseline/probes.txt (`make eval-baseline`), no regressions.
 - [ ] An xlsx round trip of such a formula keeps its value (unit test); references.md says ours matches.

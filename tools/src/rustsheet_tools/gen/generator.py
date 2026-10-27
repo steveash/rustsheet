@@ -138,6 +138,12 @@ class Catalog:
         return Catalog([o for o in self.operators if ok(o)], functions)
 
 
+# Share of *IFS calls whose ranges ignore the shared shape, so the #VALUE! mismatch stays covered.
+SHAPE_MISMATCH_RATE = 0.1
+# Share of `probe` values drawn from the probed range's own cells, so the search can find them.
+PROBE_HIT_RATE = 0.95
+
+
 def pool_rate(p: dict[str, Any]) -> float:
     """Share of `p`'s values drawn from its pool: `pool_rate` when the catalog sets one (the D* database and
     criteria, whose Db pools only work together, T-2249), else POOL_RATE."""
@@ -159,6 +165,8 @@ class Gen:
     # The case's pivot (sheet `Pivot`), built from its own seeded stream at the first `pivot: true` call (T-2396).
     pivot_seed: int = 0
     pivot: PivotSource | None = None
+    # The (rows, columns) the `same_shape` ranges of the call being generated share (T-2719).
+    call_shape: tuple[int, int] | None = None
 
     # -- references into the data sheet --------------------------------------------------
     def cell_ref(self) -> str:
@@ -168,16 +176,28 @@ class Gen:
         dollar_r = "$" if self.rng.random() < 0.2 else ""
         return f"Data!{dollar_c}{col}{dollar_r}{row}"
 
-    def range_ref(self, width: int = 1, *, full: bool = False) -> str:
-        """A `width`-column range of data rows; `full` spans every row, so two full ranges are the same height."""
+    def range_ref(self, width: int = 1, *, full: bool = False, height: int | None = None) -> str:
+        """A `width`-column range of data rows; `full` spans every row, so two full ranges are the same height,
+        and `height` fixes the row count."""
         c0 = self.rng.randrange(self.data_cols - width + 1)
         r0, r1 = 1, self.data_rows
-        if not full:
+        if height is not None:
+            r0 = self.rng.randrange(1, self.data_rows - height + 2)
+            r1 = r0 + height - 1
+        elif not full:
             r0 = self.rng.randrange(1, self.data_rows)
             r1 = self.rng.randrange(r0, self.data_rows + 1)
         a = col_letter(c0)
         b = col_letter(c0 + width - 1)
         return f"Data!{a}{r0}:{b}{r1}"
+
+    def cell_in(self, ref: str) -> str:
+        """A cell inside the range `ref` (`Data!A1:C3`), or a free cell reference when `ref` is not one."""
+        m = re.fullmatch(r"(Data!)([A-Z])(\d+):([A-Z])(\d+)", ref)
+        if m is None:
+            return self.cell_ref()
+        c0, r0, c1, r1 = ord(m[2]), int(m[3]), ord(m[4]), int(m[5])
+        return f"Data!{chr(self.rng.randint(c0, c1))}{self.rng.randint(r0, r1)}"
 
     # -- literals --------------------------------------------------------------------------
     def literal(self, typ: str) -> str:
@@ -228,8 +248,15 @@ class Gen:
         params: list[dict[str, Any]] = fn["params"]
         outer, outer_pending = len(self.scope), self.pending
         self.pending = []
+        outer_shape, self.call_shape = self.call_shape, None
         declared = 0  # names this call declares (LET variables, LAMBDA parameters)
         repeated = 1  # how many arguments the last repeating param got (MAP's arrays fix its LAMBDA's arity)
+        # A `probe: <param>` value is drawn from the cells of that range param, so the search finds something
+        # (MATCH's lookup_value); the range is drawn first and reused when its turn comes (T-2719).
+        by_name = {q["name"]: q for q in params}
+        drawn: dict[str, str] = {
+            q["probe"]: self.argument(by_name[q["probe"]], depth) for q in params if q.get("probe")
+        }
         i = 0
         while i < len(params):
             p = params[i]
@@ -257,12 +284,18 @@ class Gen:
                 # LAMBDA's calculation sees all its parameters.
                 self.scope += self.pending
                 self.pending = []
-            args.extend(self.argument(p, depth, arity=repeated) for _ in range(count))
+            if p["name"] in drawn:
+                args.append(drawn[p["name"]])
+            elif p.get("probe") and self.rng.random() < PROBE_HIT_RATE:
+                args.append(self.cell_in(drawn[p["probe"]]))
+            else:
+                args.extend(self.argument(p, depth, arity=repeated) for _ in range(count))
             if p.get("mode") == "name":
                 declared += count
             i += 1
         del self.scope[outer:]
         self.pending = outer_pending
+        self.call_shape = outer_shape
         invoked = ""
         if fn.get("invoke"):
             # A LAMBDA left uncalled is #CALC!, so the generator calls it with one value per parameter.
@@ -326,10 +359,40 @@ class Gen:
         self.pending = []
         return text
 
-    def argument_text(self, p: dict[str, Any], mode: str, depth: int) -> str:
-        if mode == "range" and p.get("cell"):
+    def shaped_range(self, p: dict[str, Any]) -> str | None:
+        """A `range` param's reference when its shape is constrained (`cell`, `same_shape`, `wide_rate`,
+        `row_rate`), else None."""
+        if p.get("cell"):
             # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
             return self.cell_ref()
+        if p.get("same_shape"):
+            # The *IFS ranges of one call must agree in shape or Excel gives #VALUE!; (0, 0) is a call that
+            # keeps its ranges free so the mismatch stays covered (T-2719).
+            if self.call_shape is None:
+                free = self.rng.random() < SHAPE_MISMATCH_RATE
+                self.call_shape = (
+                    (0, 0)
+                    if free
+                    else (
+                        self.rng.randint(1, self.data_rows - 1),
+                        self.rng.randint(1, min(4, self.data_cols)),
+                    )
+                )
+            if self.call_shape != (0, 0):
+                return self.range_ref(width=self.call_shape[1], height=self.call_shape[0])
+        if p.get("vector") and self.rng.random() < p.get("wide_rate", 0.0):
+            # A small 2-D rate keeps MATCH's #N/A path for a non-vector lookup_array covered (T-2719).
+            return self.range_ref(width=self.rng.randint(2, min(4, self.data_cols)))
+        if p.get("vector") and p.get("row_rate") and self.rng.random() < p["row_rate"]:
+            row = self.rng.randrange(1, self.data_rows + 1)
+            c0 = self.rng.randrange(self.data_cols - 1)
+            c1 = self.rng.randrange(c0 + 1, self.data_cols)
+            return f"Data!{col_letter(c0)}{row}:{col_letter(c1)}{row}"
+        return None
+
+    def argument_text(self, p: dict[str, Any], mode: str, depth: int) -> str:
+        if mode == "range" and (shaped := self.shaped_range(p)) is not None:
+            return shaped
         if p.get("vector") and (mode == "range" or self.rng.random() < 0.5):
             # LOOKUP/XLOOKUP/XMATCH search one column here and WRAPROWS/WRAPCOLS wrap one; 2-D only gives an error.
             return self.range_ref(width=1, full=p.get("full", False))

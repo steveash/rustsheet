@@ -24,8 +24,13 @@ quirk of probes/t1613-hijri-b2-weekday under a tag. In the same probe, pin the n
 unprobed (number-formats.md "The `B2` (Hijri) calendar"): `B2dddd|mmmmm`, `B2dddd|mmmm|dddd`, `B2mmmm|dddd|mmmm`,
 `B2mmmm|dddd|dddd`, `B2mmmmm|mmmm`, and a `B2yyyy-mm-dd` cell number format (Range.text) next to TEXT.
 
+Exit owners (decision 0096; the 2026-10-27 planner run names each cell this task's two forms cover):
+- probes/text-locale-calendars-detail S!A7 (`B2[$-411]mmmm|e|g`), S!A8 (`B2[$-40C]mmmm|yyyy`)
+- probes/text-locale-era-gregorian S!A21 (`[$-60409]B2yyyy`, Excel "1444", ours "2023")
+
 ## Acceptance criteria
 - [ ] A probe case covers both forms (excel-graph) and passes; number-formats.md records the rule.
+- [ ] The three exit-owner cells above pass and leave eval/baseline/probes.txt, with no new known failure.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

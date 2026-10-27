@@ -308,6 +308,35 @@ fn im_reciprocal_overflow_keeps_normal_tiny_parts() {
     assert_texts(&cases);
 }
 
+// Excel: probes-numeric/im-sec-csch-fused B9, B19, B20, B21, B33 (excel-graph): IMSEC's cosh y,
+// sinh y and cosh 2y are IMCOS's `1/u` parts inside the band; libm's print one unit off (T-2884).
+#[test]
+fn fn_imsec_band_hyperbolic_parts() {
+    let cases = [
+        (
+            r#"=IMSEC("2.21947+0.698791i")"#,
+            "-0.807710329291948+0.64308799423738i",
+        ),
+        (
+            r#"=IMSEC("3.20765-0.327795i")"#,
+            "-0.950236497714764+0.0198980791378094i",
+        ),
+        (
+            r#"=IMSEC("-0.808042-1.20389i")"#,
+            "0.451923719531837+0.394767953997992i",
+        ),
+        (
+            r#"=IMSEC("0.906164+0.720525i")"#,
+            "0.787178229060829+0.620089092085526i",
+        ),
+        (
+            r#"=IMSEC("-1.44771+0.0419247i")"#,
+            "7.30033916775268-2.47256566938037i",
+        ),
+    ];
+    assert_texts(&cases);
+}
+
 // Excel: probes-numeric/im-last-digit-sweep D21, M21, P21 (T-2334).
 #[test]
 fn fn_imcsc_imlog2_imcot_of_zero_are_num() {

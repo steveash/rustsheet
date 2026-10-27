@@ -877,7 +877,11 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   ROW, COLUMN, CELL, ISFORMULA, N and T lift, once per whole element (`SUBTOTAL(9,OFFSET(A1,0,0,{1;2;3}))`
   spills 1, 101, 10101). Operators, IS* functions, IFERROR, TEXTJOIN and AGGREGATE see `#VALUE!` per element;
   IF, CHOOSE, LET, VSTACK, TAKE and DROP inside SUM hand the elements on; OFFSET over such a result lifts
-  again. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+  again. A lifted TAKE's grid is handed on the same way by IF and CHOOSE in every consumer and
+  lifts again as OFFSET's reference (`SUMPRODUCT(IF(TRUE,TAKE(A1:B3,{1;2})))` is 0, `ROWS(OFFSET(TAKE(A1:B3,{1;2}),1,0))`
+  is 2), and TAKE over an error source with a lifted count is one error per element
+  (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby, T-2299). DROP is implemented the same
+  way by analogy, unprobed; so is which error wins between an error source and an invalid lifted count. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
   `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (E101, -b2 E153). Ours: since T-2174 for an unlifted count. Inside SUM
   only a direct OFFSET or INDIRECT source keeps it (TRIMRANGE, IF, LET and nested TAKE/DROP sources there read
   values), and a lifted count over such a grid is unprobed (T-2212). Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,
@@ -1084,10 +1088,12 @@ Rule (excel-graph, 2026-10-22, probes/t2277-hyperlink-location-length A1-A15): a
 `#VALUE!`, with or without friendly_name and over an array friendly_name (one `#VALUE!`, no spill): `HYPERLINK(REPT("a",255),1)` = 1,
 `REPT("a",256)` is `#VALUE!` (also `HYPERLINK(REPT("a",256))`), `"#"&REPT("a",254)` = 1 and `"#"&REPT("a",255)` is `#VALUE!`: the
 `#` of an internal link counts. This was the cause of gen-m6/0bcac2d96e96b3df Calc!A17 (a 328-character TEXTJOIN location), not a
-TEXTJOIN error. Unprobed: characters outside the BMP (ours counts UTF-16 units).
-Ours: implemented (T-2277).
+TEXTJOIN error. Characters outside the BMP count as two (UTF-16 units, like LEN; excel-graph, 2026-10-27,
+probes/t2358-hyperlink-location-non-bmp A1-A9): `REPT("😀",127)&"a"` (255 units, 128 code points) = 1, `REPT("😀",128)`
+(256 units) is `#VALUE!`, as are 200 and 255 emoji; `LEN(REPT("😀",128))` = 256.
+Ours: implemented (T-2277, confirmed T-2358: counts UTF-16 units).
 Status: VERIFIED
-Tasks: T-2277
+Tasks: T-2277, T-2358
 
 ## LOOKUP past a short result vector gives a blank's empty value; MMULT of it is #VALUE! (T-2278)
 Rule: when LOOKUP's match position lies past a one-cell result vector, it reads on to the blank cell there and gives its

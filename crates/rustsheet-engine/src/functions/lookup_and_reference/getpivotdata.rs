@@ -25,7 +25,10 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() < 2 {
+        // Excel for the web refuses the workbook for 5, 7, ... arguments (a second or later field
+        // without its item), so, like every refused count, it is `#ERROR!`, before any argument
+        // is read (docs/excel-semantics/syntax.md "GETPIVOTDATA with an odd count").
+        if args.len() < 2 || (args.len() >= 5 && args.len() % 2 == 1) {
             return CalcResult::new_args_number_error(cell);
         }
         let data_field = self.evaluate_node_in_context(&args[0], cell);
