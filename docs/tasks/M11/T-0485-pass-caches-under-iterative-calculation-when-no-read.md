@@ -3,7 +3,7 @@ id: T-0485
 title: "Pass caches under iterative calculation when no read joins a cycle (calipers pv26_002)"
 milestone: M11
 lane: perf
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -33,11 +33,22 @@ T-0465). Its values must stay exactly the same.
   - Prove that a cached read then makes no reader join that a walk would have made join.
 
 ## Acceptance criteria
-- [ ] Tests compare walked and cached values under iteration: a cycle through a criteria range or
+- [x] Tests compare walked and cached values under iteration: a cycle through a criteria range or
       a lookup range, cycles that close after a range was cached, and the data-table second round.
-- [ ] calipers `pv26_002` release calculation time in the Outcome. If it calculates within 60 s,
+- [x] calipers `pv26_002` release calculation time in the Outcome. If it calculates within 60 s,
       its `exclude` entries go and `rustsheet-eval update-baseline --suite calipers` records it.
-- [ ] `make eval` shows no new known failure; `make check` green; reviewers approve.
+- [x] `make eval` shows no new known failure; `make check` green; reviewers approve.
 
 ## Out of scope
 - SUMPRODUCT over whole columns (T-0471).
+
+## Outcome
+`pass_cache_safe` no longer refuses the pass caches under iteration. A cached range holds no cycle member: a search
+vector whose build joined a cycle (`Model::cycle_joins` moved) is not stored, the criteria cache's `read_is_inert`
+treats a member (or a spill cell whose anchor is one) as never cacheable, since the lazy walk may not read it, and a
+cell joins only while on the stack, before it is evaluated, so a cached range cannot gain a member later. Tests
+(test_iteration.rs) compare cached with walked values (a test-only `no_pass_caches` switch) through cycles in criteria
+and lookup ranges, cycles closing after a range was cached and the data-table round, and two sweep-count tests catch
+each guard (removing either fails them). calipers `pv26_002` in release: load 12.2 s, evaluate 109.9 s (about 540 s
+before), still past 60 s, so its `exclude` entries stay; the rest is likely SUMPRODUCT over whole columns (T-0471).
+Eval: no change (0 fixed, 0 regressions).
