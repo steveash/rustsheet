@@ -3,7 +3,7 @@ id: T-2882
 title: "Spec: the Python package's inherited IronCalc surface (raw Model, UserModel, icalc/bytes loaders, external diffs, test_panic) under directive 5"
 milestone: M12
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
