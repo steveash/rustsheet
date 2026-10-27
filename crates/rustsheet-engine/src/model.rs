@@ -569,7 +569,10 @@ impl Model {
     ) -> CalcResult {
         use Node::*;
         let node = node.ungrouped(); // A written group is its child; a loop adds no frame.
-        match node {
+        if let Err(error) = self.spend_node(cell) {
+            return error;
+        }
+        let result = match node {
             OpSumKind { .. }
             | OpProductKind { .. }
             | OpPowerKind { .. }
@@ -578,12 +581,12 @@ impl Model {
             NumberKind(value) => CalcResult::Number(*value),
             BooleanKind(value) => CalcResult::Boolean(*value),
             ReferenceKind {
-                sheet_name: _,
                 sheet_index,
                 absolute_row,
                 absolute_column,
                 row,
                 column,
+                ..
             } => {
                 // Relative coordinates are offsets from the formula's cell.
                 let row1 = *row + if *absolute_row { 0 } else { cell.row };
@@ -640,7 +643,8 @@ impl Model {
             | ImplicitIntersection { .. }
             | LambdaDefKind { .. }
             | LambdaCallKind { .. } => self.evaluate_cold_node(node, cell),
-        }
+        };
+        self.charged(result, cell)
     }
 
     fn cell_reference_to_string(
