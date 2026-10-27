@@ -2460,7 +2460,7 @@ naming an inserted column `ColumnN` in its header cell, and `deleted_column` in 
 prints a reference to a deleted column as `#REF!`, a column range that loses both ends too; one that loses
 one end prints its displaced plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
 `ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). A wholly deleted plain range still prints `#REF!:#REF!` (T-2855), and INDIRECT of a
-structured reference's text is `#REF!` (T-2888). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+structured reference's text is `#REF!` (T-2911). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
 in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
@@ -2475,7 +2475,7 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2888, T-2899
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

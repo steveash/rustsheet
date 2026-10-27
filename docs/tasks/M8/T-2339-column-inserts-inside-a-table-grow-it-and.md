@@ -44,5 +44,5 @@ column, and a structured reference to it prints `#REF!` (stringify/structured.rs
 the same probes, because the oracle records formula cells only and the spill-extent check would otherwise flag them.
 Eval delta (probes): 15 fixed (table-insert-column-inside F!A5, A12; table-delete-column-qty F!A2-A5, A10, A12;
 table-delete-column-region F!A2-A5, A9, A10, A12), 0 regressions, 2 new cases with 3 new-coverage failures (INDIRECT of
-a structured reference: T-2888). Not met here: table-delete-column-qty F!A7 (`=SUM(S!#REF!)`, a plain range print) is
-T-2855's. Follow-ups: T-2888, T-2899 (probe the generalised shapes).
+a structured reference: T-2911). Not met here: table-delete-column-qty F!A7 (`=SUM(S!#REF!)`, a plain range print) is
+T-2855's. Follow-ups: T-2911, T-2899 (probe the generalised shapes).
