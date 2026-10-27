@@ -16,6 +16,7 @@ C	probes/3d-ref-span-missing-ends.case.json	12
 C	probes/3d-ref-values.case.json	10
 C	probes/accrint-calendar-start-1900.case.json	92
 C	probes/accrint-calendar-start-1904.case.json	50
+C	probes/accrint-eom-1900.case.json	42
 C	probes/aggregate-args.case.json	53
 C	probes/aggregate-array-args.case.json	48
 C	probes/aggregate-array-error-vs-ref-error-average-family.case.json	87
