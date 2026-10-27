@@ -3,7 +3,7 @@ id: T-2227
 title: "Scientific formats: zero prints all integer placeholders, mantissa carry renormalises, 1E+15 cells"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
