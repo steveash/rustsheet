@@ -1404,6 +1404,7 @@ C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
 C	probes/t2829-ftest-tail-over-b.case.json	22
 C	probes/t2836-dollar-run-cost.case.json	95
+C	probes/t2842-dollar-run-contexts.case.json	218
 C	probes/t2867-calipers-anonymised-inputs.case.json	26
 C	probes/t2881-besselj-turning-point.case.json	76
 C	probes/t2921-sumproduct-one-cell-numeric-text.case.json	47
