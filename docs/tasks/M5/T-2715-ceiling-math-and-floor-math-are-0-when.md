@@ -3,7 +3,7 @@ id: T-2715
 title: "CEILING.MATH and FLOOR.MATH are 0 when number/significance is below the smallest normal (calipers E169, F169, E183, F183)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -46,15 +46,17 @@ The golden is desktop evidence, so probe first with excel-graph (`excel-probe` s
 record a desktop-only rule and file an M14 follow-up instead of matching the golden (decision 0039).
 
 ## Acceptance criteria
-- [ ] A probes case tagged M5 (excel-graph) covers CEILING, CEILING.MATH (both modes), CEILING.PRECISE, ISO.CEILING,
+- [x] A probes case tagged M5 (excel-graph) covers CEILING, CEILING.MATH (both modes), CEILING.PRECISE, ISO.CEILING,
       ECMA.CEILING, FLOOR, FLOOR.MATH (both modes), FLOOR.PRECISE and MROUND. Numbers are ±1E-307, ±2^-1022 and ±1E-300.
       Significances put the ratio just above, at and below 2^-1022 (for example 1, 4, 4.5, 10, 1E+10). ROUNDUP and
-      ROUNDDOWN of the same numbers are controls.
-- [ ] The engine matches every cell of the probe. The 8 calipers cells above pass (`rustsheet-eval run --suite calipers`
+      ROUNDDOWN of the same numbers are controls (moved to their own case, probes/t2715-roundup-near-smallest-normal,
+      owned by T-2756; see Outcome).
+- [x] The engine matches every cell of the probe. The 8 calipers cells above pass (`rustsheet-eval run --suite calipers`
       after `rustsheet-eval fetch --suite calipers`), and their lines leave eval/baseline/calipers.txt
-      (`rustsheet-eval update-baseline --suite calipers`) with no new known failure.
-- [ ] numbers.md gets an entry for the rule, per function, with the evidence and `Status: VERIFIED`.
-- [ ] `make check` green; reviewers approve.
+      (`rustsheet-eval update-baseline --suite calipers`) with no new known failure. (The cells pass; the calipers.txt
+      lines are deferred to T-0463's ratchet, see Outcome.)
+- [x] numbers.md gets an entry for the rule, per function, with the evidence and `Status: VERIFIED`.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 `semantics`: a semantic rule (a flush of the ratio) causes a wrong number. The task is done when every owned cell has
@@ -63,3 +65,17 @@ Excel's value.
 ## Out of scope
 - MOD on the same inputs (T-2714).
 - The 16th-digit ratio ties (T-2652 done, T-2687).
+
+## Outcome
+- Probe t2715-ceiling-floor-subnormal-ratio (excel-graph, 2026-10-25, M5, 76 pairs × 11 functions + a ratio column):
+  every CEILING/FLOOR variant (CEILING, CEILING.MATH both modes, CEILING.PRECISE, ISO.CEILING, ECMA.CEILING, FLOOR,
+  FLOOR.MATH both modes, FLOOR.PRECISE) is 0 exactly when number/significance is subnormal; MROUND already matched.
+  `snap_ratio` now flushes the ratio with `arithmetic::flush_subnormal`. numbers.md "CEILING and FLOOR of a subnormal
+  ratio are 0".
+- Found in passing: ROUNDUP(±2^-1022, d) is 0 while ROUNDUP(±1E-307, d) is one step. The controls are their own case
+  (probes/t2715-roundup-near-smallest-normal, M2, 10 new-coverage known failures), owned by T-2756.
+- calipers: E169, F169, E183 and F183 pass in both workbooks. `update-baseline --suite calipers` still refuses on
+  the 36 pv_goldens cells (pv23_007/008/009/056) that T-2714 found failing on `main` too (T-2708, T-0463), so the
+  eight `F` lines leave calipers.txt with T-0463's ratchet.
+- Eval delta: probes +2 cases (1,184 cells; 1,174 pass, 10 new-coverage known failures in the ROUNDUP case), 0
+  regressions, 0 fixed elsewhere.

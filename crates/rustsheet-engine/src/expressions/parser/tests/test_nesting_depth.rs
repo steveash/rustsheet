@@ -110,16 +110,17 @@ fn deep_formulas_of_every_shape_are_too_deep() {
 #[test]
 fn unary_minus_runs_nest_up_to_the_limit() {
     on_small_stack(|| {
-        // Each minus is its own node (`--x` coerces, T-0132), so a run nests:
-        // one under the limit parses, a very long one is a parse error, never a
-        // stack overflow. Plus signs are no-ops and add no nodes.
+        // Each minus is its own node (`--x` coerces, T-0132), and so is each plus
+        // kept in the formula text (T-2723), so a run nests: one under the limit
+        // parses, a very long one is a parse error, never a stack overflow. The
+        // plus directly before a number folds into it and adds no node.
         let node = parse(&format!("{}1", "-".repeat(MAX_FORMULA_DEPTH - 3)));
         assert!(matches!(node, Node::UnaryKind { .. }));
         assert!(is_too_deep(&parse(&format!("{}1", "-".repeat(10_000)))));
-        assert!(matches!(
-            parse(&format!("{}1", "+".repeat(10_000))),
-            Node::NumberKind(_)
-        ));
+        let node = parse(&format!("{}1", "+".repeat(MAX_FORMULA_DEPTH - 2)));
+        assert!(matches!(node, Node::UnaryPlus { .. }));
+        assert!(is_too_deep(&parse(&format!("{}1", "+".repeat(10_000)))));
+        assert!(matches!(parse("+1"), Node::NumberKind(_)));
     });
 }
 

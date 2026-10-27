@@ -8,7 +8,7 @@ fn model_evaluates_automatically() {
     model.set_user_input(0, 1, 1, "=1 + 1").unwrap();
 
     assert_eq!(model.get_formatted_cell_value(0, 1, 1), Ok("2".to_string()));
-    assert_eq!(model.get_cell_content(0, 1, 1), Ok("=1+1".to_string()));
+    assert_eq!(model.get_cell_content(0, 1, 1), Ok("=1 + 1".to_string()));
 }
 
 #[test]

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -125,6 +126,17 @@ class FunctionParity:
     """Of those, the visibly-off cells."""
     meets_rate: bool
     """Covered and at least 99.9% of `rate_cells` within 15 digits (decisions 0114, 0118)."""
+    evidence: int
+    """Every Excel-evidence cell that calls it, accepted deviations included
+    (`v15_checkpoint.functions[].cells`; T-0073)."""
+    covered: bool
+    """Enough Excel cells for the fifteen-digit checkpoint (decision 0094; `covered`)."""
+    prior: float | None
+    """The catalog's real-world frequency `prior` (eval/catalog/functions.yaml); None when the
+    catalog sets none or no priors were given (T-0073)."""
+    real_world_calls: int = 0
+    """Formula cells of the Excel-saved corpora (calipers, poi) that call it (report.json
+    `functions[].real_world_calls`, T-0079)."""
 
     @property
     def attributed_cells(self) -> int:
@@ -140,6 +152,11 @@ class FunctionParity:
     def rate_within15(self) -> int:
         """Of `rate_cells`, those within 15 digits."""
         return max(0, self.rate_cells - self.rate_visible)
+
+    @property
+    def attributed_within15(self) -> int:
+        """Of its attributed cells, those within 15 digits (not visibly off)."""
+        return self.attributed_cells - sum(self.attributed[b] for b in VISIBLE)
 
 
 @dataclass(frozen=True)
@@ -204,6 +221,8 @@ class Parity:
     suites: list[Suite]
     milestones_exited: tuple[str, ...]
     """The milestones whose report.json `milestone_exit` row is met (decision 0085)."""
+    real_world_suites: tuple[str, ...] = ()
+    """The suites whose formula cells `real_world_calls` counts (report.json `real_world_suites`)."""
 
     def tier_functions(self, tier: str) -> int:
         """In-scope functions in `tier` (report.json `tiers`)."""
@@ -300,8 +319,16 @@ def _suite(raw: Any, i: int, baseline_dir: Path) -> Suite:
     )
 
 
-def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -> Parity:
+def compute(
+    report: dict[str, Any],
+    scope: dict[str, Any],
+    baseline_dir: Path,
+    priors: Mapping[str, float | None] | None = None,
+) -> Parity:
     """The parity section's data for every in-scope catalog function of `scope`.
+
+    `priors` is the catalog's `prior` per function (evidence.load_priors); when given, every
+    in-scope function must have an entry, so a catalog that is not scope.json's source fails.
 
     Each function's tier, attribution and cells are the report's `functions[]` entry (T-0068); a
     catalog function no cell calls has none and is `unscored`, as report.json `tiers` counts it.
@@ -329,16 +356,21 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
         if stat is None:
             tier, attribution = "unscored", "all"
             attributed = excel = dict.fromkeys(BUCKETS, 0)
+            calls = 0
         else:
             tier = one_of(stat, "tier", where, TIERS, "T-0068")
             attribution = one_of(stat, "attribution", where, ATTRIBUTIONS, "T-0068")
             attributed = closeness(stat, "attributed", where, "T-0068")
             excel = closeness(stat, "excel", where, "T-0068")
+            calls = count(stat, "real_world_calls", where, "T-0079")
         rate = rates.get(name)
         if rate is None:
             msg = f"report.json v15_checkpoint has no entry for in-scope function {name}; is scope.json the run's catalog?"
             raise ProgressReportError(msg)
         rwhere = f"report.json v15_checkpoint function {name!r}"
+        if priors is not None and name not in priors:
+            msg = f"the catalog has no function {name}; is scope.json its view?"
+            raise ProgressReportError(msg)
         rows.append(
             FunctionParity(
                 name,
@@ -351,6 +383,10 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
                 count(rate, "rate_cells", rwhere, "T-0080"),
                 count(rate, "rate_visible", rwhere, "T-0080"),
                 flag(rate, "meets_rate", rwhere, "T-0080"),
+                evidence=count(rate, "cells", rwhere),
+                covered=flag(rate, "covered", rwhere),
+                prior=priors.get(name) if priors is not None else None,
+                real_world_calls=calls,
             )
         )
     tiers = _tiers(report)
@@ -368,7 +404,8 @@ def compute(report: dict[str, Any], scope: dict[str, Any], baseline_dir: Path) -
         for i, row in enumerate(exits)
         if flag(row, "exit", f"report.json milestone_exit[{i}]")
     )
-    return Parity(rows, tiers, _phase1(v15), suites, exited)
+    corpora = tuple(str(s) for s in items(report, "real_world_suites", "report.json", "T-0079"))
+    return Parity(rows, tiers, _phase1(v15), suites, exited, corpora)
 
 
 def load_object(path: Path) -> dict[str, Any]:
@@ -451,6 +488,10 @@ class Tasks:
     """Every task per status in TASK_STATUSES, summed over the milestones."""
     by_stage: dict[str, dict[str, int]]
     """Per stage of STAGES and PARKED: `open`, `blocked` and `done` tasks."""
+    ready: dict[str, int]
+    """Per stage of STAGES and PARKED: the tasks `ready()` on main, ignoring branch claims."""
+    by_milestone: dict[str, dict[str, int]]
+    """Per milestone tasks.json lists: its tasks per status in TASK_STATUSES."""
 
 
 def _stage_counts(raw: Any, where: str) -> dict[str, int]:
@@ -465,14 +506,16 @@ def _stage_counts(raw: Any, where: str) -> dict[str, int]:
 def tasks_of(raw: dict[str, Any]) -> Tasks:
     """The counts of a parsed tasks.json, checked."""
     milestones = mapping(raw, "by_milestone", "tasks.json")
-    by_status = dict.fromkeys(TASK_STATUSES, 0)
-    for name, per in sorted(milestones.items()):
-        for s in TASK_STATUSES:
-            by_status[s] += count(per, s, f"tasks.json by_milestone.{name}")
-    campaign = mapping(raw, "by_campaign", "tasks.json")
-    by_stage = {
-        s: _stage_counts(mapping(campaign, s, "tasks.json by_campaign"), f"tasks.json by_campaign.{s}")
-        for s in STAGES
+    by_milestone = {
+        name: {s: count(per, s, f"tasks.json by_milestone.{name}") for s in TASK_STATUSES}
+        for name, per in sorted(milestones.items())
     }
-    by_stage[PARKED] = _stage_counts(mapping(raw, "deferred", "tasks.json"), "tasks.json deferred")
-    return Tasks(by_status, by_stage)
+    by_status = {s: sum(per[s] for per in by_milestone.values()) for s in TASK_STATUSES}
+    campaign = mapping(raw, "by_campaign", "tasks.json")
+    stages = {
+        s: (mapping(campaign, s, "tasks.json by_campaign"), f"tasks.json by_campaign.{s}") for s in STAGES
+    }
+    stages[PARKED] = (mapping(raw, "deferred", "tasks.json"), "tasks.json deferred")
+    by_stage = {s: _stage_counts(per, where) for s, (per, where) in stages.items()}
+    ready = {s: count(per, "ready", where) for s, (per, where) in stages.items()}
+    return Tasks(by_status, by_stage, ready, by_milestone)

@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "A2": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "B1": {
+    "t": "s",
+    "v": "=Inputs!Missing"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=SUM(Inputs!Missing)"
+   }
+  },
+  "Inputs": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2e59c89591f8503a347903596ca6a961860c8ce170efddd8338e453aed834559",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-26T22:01:49+00:00",
+  "version": null,
+  "workbook_name": "03b0afc232abc6fd546060123a5dc227588a369d1838e8b19447d160e1e1cb29.xlsx"
+ }
+}

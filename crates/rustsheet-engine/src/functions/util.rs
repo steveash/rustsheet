@@ -21,9 +21,37 @@ pub(crate) mod collation;
 mod existing_walk;
 
 pub(crate) use existing_walk::StoredWalk;
-use existing_walk::WalkBudget;
+use existing_walk::{span, WalkBudget};
 
 use collation::cmp_text;
+
+/// Whether `value`, the value of the argument `node`, is a number that ERROR.TYPE or
+/// `CELL("col"|"row",..)` returned straight to the argument (parentheses aside): the "mark" some
+/// array-taking arguments reject where the same number from anywhere else is accepted. F.TEST
+/// and the paired functions give `#NUM!` for it (`FTEST({1;2;3},ERROR.TYPE(#REF!))`, statistics.md
+/// "ERROR.TYPE and CELL results are #NUM! in the paired functions") and IRR's flows `#VALUE!`
+/// (`IRR(CELL("row",D2))`, financial.md "IRR's error order", T-2728). `+0`, `@`, SINGLE, MAX or
+/// a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR, a LAMBDA call and
+/// INDEX keep it in Excel and are not followed here: TODO(T-2766).
+pub(crate) fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
+    if !matches!(value, CalcResult::Number(_)) {
+        return false;
+    }
+    match &*node.ungrouped_at(row) {
+        Node::FunctionKind {
+            kind: Function::ErrorType,
+            ..
+        } => true,
+        Node::FunctionKind {
+            kind: Function::Cell,
+            args,
+        } => matches!(
+            args.first(),
+            Some(Node::StringKind(info)) if info.eq_ignore_ascii_case("col") || info.eq_ignore_ascii_case("row")
+        ),
+        _ => false,
+    }
+}
 
 /// The number a referenced cell gives an aggregate: numbers count, booleans, text and empty cells
 /// are skipped (SPEC-0009 `CellNumbers::Numbers`).
@@ -211,6 +239,22 @@ enum AreaWalk {
     ClipWholeLines,
     /// The cells that exist only, for the areas of a union.
     Existing,
+}
+
+/// What a range walk hands its walker ([`Model::walk_area`]): a position to read, or, for an
+/// `AreaWalk::ClipWholeLines` walk over a mostly blank area, a run of blank positions handed on
+/// as their count, in row-major order between the positions around it.
+enum AreaStep {
+    Position(CellReferenceIndex),
+    Blanks(u64),
+}
+
+/// What [`Model::for_each_cell_or_error_in_whole_range`] hands its walker, in row-major order:
+/// a cell's value, or a run of blank cells as their count, so a mostly blank range costs its
+/// data, not its positions (T-2710).
+pub(crate) enum RangeItem {
+    Cell(CalcResult),
+    Blanks(u64),
 }
 
 impl Model {
@@ -569,7 +613,9 @@ impl Model {
     /// something: TEXTJOIN with `ignore_empty` FALSE adds a delimiter for it. (GCD and LCM read
     /// it as 0, `LCM(F1:F3)` with 4, blank, 6 is 0, docs/excel-semantics/coercion.md, but any
     /// number of blanks as one: [`Self::for_each_cell_or_error_in_range_noting_blanks`].)
-    /// Whole-row and whole-column ranges are still clipped to the used area.
+    /// Whole-row and whole-column ranges are still clipped to the used area. A mostly blank
+    /// area ([`Self::walks_sparsely`]) hands its blank cells on as runs, [`RangeItem::Blanks`],
+    /// so the walk costs the cells that exist (T-2710).
     pub(crate) fn for_each_cell_or_error_in_whole_range<F>(
         &mut self,
         range: &Range,
@@ -577,15 +623,18 @@ impl Model {
         mut f: F,
     ) -> Result<(), CalcResult>
     where
-        F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
+        F: FnMut(&mut Self, RangeItem) -> Result<(), CalcResult>,
     {
         self.walk_area(
             range,
             AreaWalk::ClipWholeLines,
             cell,
-            &mut |model, position| {
-                let value = model.evaluate_cell(position);
-                f(model, value)
+            &mut |model, step| match step {
+                AreaStep::Position(position) => {
+                    let value = model.evaluate_cell(position);
+                    f(model, RangeItem::Cell(value))
+                }
+                AreaStep::Blanks(count) => f(model, RangeItem::Blanks(count)),
             },
         )
         .map(|_| ())
@@ -605,7 +654,11 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
-        self.walk_area(range, AreaWalk::ClipBlocks, cell, &mut |model, position| {
+        self.walk_area(range, AreaWalk::ClipBlocks, cell, &mut |model, step| {
+            let AreaStep::Position(position) = step else {
+                // A `ClipBlocks` walk hands on no blank runs: its blanks are left out.
+                return Ok(());
+            };
             let value = model.evaluate_cell(position);
             f(model, value)
         })
@@ -658,7 +711,12 @@ impl Model {
         } else {
             AreaWalk::ClipBlocks
         };
-        self.walk_area(area, walk, cell, f).map(|_| ())
+        self.walk_area(area, walk, cell, &mut |model, step| match step {
+            AreaStep::Position(position) => f(model, position),
+            // Only a `ClipWholeLines` walk hands on blank runs.
+            AreaStep::Blanks(_) => Ok(()),
+        })
+        .map(|_| ())
     }
 
     /// [`Self::for_each_position_in_area`] with the cells of each sheet chosen as `walk` says.
@@ -672,7 +730,7 @@ impl Model {
         f: &mut F,
     ) -> Result<bool, CalcResult>
     where
-        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+        F: FnMut(&mut Self, AreaStep) -> Result<(), CalcResult>,
     {
         let Range { left, right } = area;
         // The columns of a row found by a union walk, reused from row to row and sheet to sheet.
@@ -690,7 +748,7 @@ impl Model {
                         (left, right),
                         cell,
                         (&mut columns, WalkBudget::Charged),
-                        f,
+                        &mut |model, position| f(model, AreaStep::Position(position)),
                     )?;
                     continue;
                 }
@@ -715,29 +773,48 @@ impl Model {
                 clipped.map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
             // A far cell stretches the used area: `SUM(A:XFD)` with data in A1 and XFD1048576
             // is 1.7e10 positions. A mostly blank area is walked over its cells that exist, as
-            // a union's areas are, so the walk costs the data (T-1690). The blank cells it
-            // skips are ones the dense walk hands on, so `ClipBlocks` reports them left out.
-            if matches!(walk, AreaWalk::ClipBlocks)
-                && self.walks_sparsely(sheet, left, (row2, column2))
-            {
+            // a union's areas are, so the walk costs the data (T-1690, T-2710). The blank cells
+            // it skips are ones the dense walk hands on, so `ClipBlocks` reports them left out
+            // and `ClipWholeLines` hands them on as runs between the cells it visits.
+            if self.walks_sparsely(sheet, left, (row2, column2)) {
                 blanks_left_out = true;
                 let corner = CellReferenceIndex {
                     sheet,
                     row: row2,
                     column: column2,
                 };
+                let runs = matches!(walk, AreaWalk::ClipWholeLines);
+                let width = span(left.column, column2);
+                // The row-major index of the next position not yet handed on. Every position
+                // the walk visits lies inside the area, so its index is below the area's size.
+                let mut next: u64 = 0;
                 self.for_each_existing_position(
                     sheet,
                     (left, &corner),
                     cell,
                     (&mut columns, WalkBudget::Free),
-                    f,
+                    &mut |model, position| {
+                        let index = span(left.row, position.row - 1) * width
+                            + span(left.column, position.column - 1);
+                        if runs && index > next {
+                            f(model, AreaStep::Blanks(index - next))?;
+                        }
+                        next = index + 1;
+                        f(model, AreaStep::Position(position))
+                    },
                 )?;
+                let positions = span(left.row, row2) * width;
+                if runs && positions > next {
+                    f(self, AreaStep::Blanks(positions - next))?;
+                }
                 continue;
             }
             for row in left.row..=row2 {
                 for column in left.column..=column2 {
-                    f(self, CellReferenceIndex { sheet, row, column })?;
+                    f(
+                        self,
+                        AreaStep::Position(CellReferenceIndex { sheet, row, column }),
+                    )?;
                 }
             }
         }
@@ -824,5 +901,23 @@ impl Function {
     /// Whether the call is one of [`Function::picked_reference_arg`]'s.
     pub(crate) fn picks_reference(&self) -> bool {
         self.picked_reference_arg().is_some()
+    }
+
+    /// The built-ins whose result can be a reference they pick or build: INDEX, OFFSET and INDIRECT, the arm a
+    /// scalar IF, CHOOSE, SWITCH or IFS takes, a LET body, and [`Function::picks_reference`]'s.
+    /// The parser takes them as reference operands (`is_reference_operand`) and FORMULATEXT
+    /// reads the reference they pick (`fn_formulatext`, T-2726).
+    pub(crate) fn may_be_reference(&self) -> bool {
+        matches!(
+            self,
+            Function::Index
+                | Function::Offset
+                | Function::Indirect
+                | Function::If
+                | Function::Choose
+                | Function::Switch
+                | Function::Ifs
+                | Function::Let
+        ) || self.picks_reference()
     }
 }

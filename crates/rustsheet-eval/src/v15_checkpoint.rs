@@ -17,7 +17,7 @@ use crate::catalog::Catalog;
 use crate::closeness::Closeness;
 use crate::evidence_floor::EVIDENCE_FLOOR;
 use crate::formula_calls::outer_call;
-use crate::milestone_exit::{meets_rate, RATE_NUM};
+use crate::milestone_exit::{meets_rate, RATE_DEN, RATE_NUM};
 use crate::report::{FunctionStat, RunReport};
 use crate::runner::CaseResult;
 use crate::value::Verdict;
@@ -72,7 +72,7 @@ pub struct StrictRate {
 }
 
 /// Share of `cells` not visibly off, floored at 0; `None` without cells.
-fn share(cells: usize, visible: usize) -> Option<f64> {
+pub(crate) fn share(cells: usize, visible: usize) -> Option<f64> {
     // Cell counts stay far below 2^52, so the casts are exact.
     #[allow(clippy::cast_precision_loss)]
     let rate = (cells > 0).then(|| cells.saturating_sub(visible) as f64 / cells as f64);
@@ -119,6 +119,20 @@ pub struct V15Checkpoint {
     /// Information only: functions that meet the strict rate ([`StrictRate::meets_rate`]).
     #[serde(default)]
     pub at_strict_rate: usize,
+    /// The Phase 1 rate, `rate_num / rate_den` of a function's counted cells (decision 0114):
+    /// [`RATE_NUM`] / [`RATE_DEN`], written out so report readers (the progress dashboard,
+    /// T-0072) take the bar from the report instead of copying it.
+    #[serde(default)]
+    pub rate_num: usize,
+    /// The denominator of [`Self::rate_num`].
+    #[serde(default)]
+    pub rate_den: usize,
+    /// [`Self::verdict_line`], written out for report readers (T-0072).
+    #[serde(default)]
+    pub verdict_line: String,
+    /// [`Self::phase1_line`], written out for report readers (T-0072).
+    #[serde(default)]
+    pub phase1_line: String,
 }
 
 impl V15Checkpoint {
@@ -243,7 +257,7 @@ pub fn summarize(
     let at_rate = functions.iter().filter(|f| f.meets_rate).count();
     let at_strict_rate = functions.iter().filter(|f| f.strict.meets_rate).count();
     let visibly_off = report.visibly_off_cells();
-    V15Checkpoint {
+    let mut checkpoint = V15Checkpoint {
         in_scope: functions.len(),
         met: !functions.is_empty() && covered == functions.len() && visibly_off == 0,
         at_rate,
@@ -253,7 +267,14 @@ pub fn summarize(
         covered,
         visibly_off,
         suites: report.suites.iter().map(|s| s.name.clone()).collect(),
-    }
+        rate_num: RATE_NUM,
+        rate_den: RATE_DEN,
+        verdict_line: String::new(),
+        phase1_line: String::new(),
+    };
+    checkpoint.verdict_line = checkpoint.verdict_line();
+    checkpoint.phase1_line = checkpoint.phase1_line();
+    checkpoint
 }
 
 /// The report section: the overall line, then the functions below the bar, worst first, then the
@@ -328,6 +349,7 @@ mod tests {
             oracle: None,
             v15: v15_reason.map(|_| V15::Exempt),
             v15_reason: v15_reason.map(String::from),
+            params: Vec::new(),
         }
     }
 
@@ -419,6 +441,27 @@ mod tests {
             "Fifteen-digit parity: not met (coverage 1/1, visibly-off cells 1)"
         );
         assert!(!v.functions[0].meets && v.functions[0].covered);
+    }
+
+    #[test]
+    fn report_json_carries_the_rate_and_both_lines() {
+        // T-0072: the progress dashboard reads the bar and the lines from report.json.
+        let mut g = case("gen-m5/a", 1);
+        g.cells = excel("PI()", 25);
+        let catalog = Catalog::from_functions([func("PI", Some("no arguments"))]);
+        let results = [g];
+        let report = RunReport::build("e", &results, &[], &catalog);
+        let v = summarize(&catalog, &results, &report, &["gen-m5"]);
+        let json = serde_json::to_value(&v).unwrap();
+        assert_eq!(
+            (json["rate_num"].as_u64(), json["rate_den"].as_u64()),
+            (Some(999), Some(1000))
+        );
+        assert_eq!(
+            json["verdict_line"].as_str(),
+            Some(v.verdict_line().as_str())
+        );
+        assert_eq!(json["phase1_line"].as_str(), Some(v.phase1_line().as_str()));
     }
 
     #[test]

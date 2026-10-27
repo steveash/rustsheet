@@ -1,13 +1,14 @@
 """Generate the daily progress page, docs/progress.md, from the eval report (SPEC-0022).
 
 Reads `eval/runs/latest/report.json` (written by `make eval`), `eval/catalog/scope.json`, the
-eval baselines, `eval/runs/latest/tasks.json` (`scripts/tasks.py stats --json`), git, and the
-existing page and run history under `--out-dir` (the repository's docs directory; `make
-progress-report` passes it). A complete run writes `progress.md`, keeping the steward's judgment
-blocks byte for byte, and `progress/` (the all-functions page, the charts and history.json). An
-incomplete run (no report, an older report shape, or a skipped suite) rewrites only the page's
-status block as stale, adds a `complete: false` history row and exits 0. Every input is checked
-and every file rendered before anything is written, so a failed run leaves the pages as they were.
+eval baselines, `eval/runs/latest/tasks.json` (`scripts/tasks.py stats --json`),
+docs/milestones.md, git, and the existing page and run history under `--out-dir` (the
+repository's docs directory; `make progress-report` passes it). A complete run writes
+`progress.md`, keeping the steward's judgment blocks byte for byte, and `progress/` (the
+all-functions page, the charts and history.json). An incomplete run (no report, an older report
+shape, or a skipped suite) rewrites only the page's status block as stale, adds a
+`complete: false` history row and exits 0. Every input is checked and every file rendered before
+anything is written, so a failed run leaves the pages as they were.
 
 With `--check` it writes nothing: it checks the judgment blocks of the existing page (check.py,
 T-0074) and exits 1, listing every offender, when one fails.
@@ -24,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.progress_report import check, history, page, parity
+from rustsheet_tools.progress_report import arguments, check, evidence, goals, history, page, parity
 from rustsheet_tools.progress_report.model import (
     Parity,
     ProgressReportError,
@@ -74,8 +75,10 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
     ap = argparse.ArgumentParser(prog=PROG, description=(__doc__ or "").splitlines()[0])
     ap.add_argument("--report", type=Path, default=repo / "eval" / "runs" / "latest" / "report.json")
     ap.add_argument("--scope", type=Path, default=repo / "eval" / "catalog" / "scope.json")
+    ap.add_argument("--catalog", type=Path, default=repo / "eval" / "catalog" / "functions.yaml")
     ap.add_argument("--baselines", type=Path, default=repo / "eval" / "baseline", help="eval/baseline/")
     ap.add_argument("--tasks", type=Path, default=repo / "eval" / "runs" / "latest" / "tasks.json")
+    ap.add_argument("--milestones", type=Path, default=repo / goals.MILESTONES_MD)
     ap.add_argument(
         "--out-dir", type=Path, help="the docs directory to write into (or, with --check, to read)"
     )
@@ -104,7 +107,15 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
         result = (
             _stale_outcome(outcome, rows, previous, git.head(), args.today)
             if isinstance(outcome, Stale)
-            else _complete_outcome(*outcome, rows, previous, git=git, tasks=load_object(args.tasks))
+            else _complete_outcome(
+                *outcome[:3],
+                rows,
+                previous,
+                coverage=outcome[3],
+                git=git,
+                tasks=load_object(args.tasks),
+                milestones=goals.parse_milestones(_read_text(args.milestones)),
+            )
         )
     except ProgressReportError as e:
         sys.exit(f"{PROG}: {e}")
@@ -152,15 +163,19 @@ def _stale_outcome(
 def _complete_outcome(
     run: Run,
     data: Parity,
+    goal: goals.Goals,
     rows: list[history.Row],
     previous: str | None,
     *,
+    coverage: arguments.Coverage,
     git: history.Git,
     tasks: dict[str, Any],
+    milestones: list[goals.MilestoneDoc],
 ) -> Result:
     """A complete run: every generated block, the charts and functions.md, and its history row."""
+    counts = tasks_of(tasks)
     # HEAD is read only when the report has no commit (see history.complete_row).
-    row = history.complete_row(run, data, tasks_of(tasks), None if run.commit else git.head())
+    row = history.complete_row(run, data, counts, None if run.commit else git.head())
     rows = history.add(rows, row)
     last = history.last_complete(rows, row["date"])
     commits = (
@@ -169,31 +184,48 @@ def _complete_outcome(
         else None
     )
     sections = {
+        "goals": goals.goals_block(goal, milestones, data, counts, last),
+        "campaign": goals.campaign_block(goal, data, counts),
         "since-last-run": history.since_block(row, last, commits),
         "trends": history.trends_block(parity.ASSETS),
+        "arguments": arguments.block(coverage),
     }
     summary = [
         f"{len(data.functions)} functions: " + ", ".join(f"{t.tier} {t.functions}" for t in data.tiers),
         parity.phase1_lines(data).splitlines()[0],
     ]
-    files = {**parity.files(data, run), **history.charts(rows)}
+    files = {**parity.files(data, run), **evidence.files(data), **history.charts(rows)}
     return Result(page.render(run, data, previous, sections), files, rows, summary)
 
 
-def _evaluate(report: dict[str, Any], args: argparse.Namespace) -> Stale | tuple[Run, Parity]:
-    """The run and its parity data, or why the run is incomplete: an older report shape, or a
-    suite it skipped. A malformed report or a catalog that is not the run's still fails."""
+def _evaluate(
+    report: dict[str, Any], args: argparse.Namespace
+) -> Stale | tuple[Run, Parity, goals.Goals, arguments.Coverage]:
+    """The run, its parity data and its goals fields, or why the run is incomplete: an older
+    report shape, or a suite it skipped. A malformed report or a catalog that is not the run's
+    still fails."""
     try:
         run = run_of(report)
     except ReportShapeError as e:
         return Stale(f"an older report shape ({e})", None)
     try:
-        data = compute(report, load_object(args.scope), args.baselines)
+        data = compute(report, load_object(args.scope), args.baselines, evidence.load_priors(args.catalog))
+        goal = goals.load(report)
+        coverage = arguments.load(report)
     except ReportShapeError as e:
         return Stale(f"an older report shape ({e})", run)
     if run.skipped:
         return Stale(_skipped_reason(run), run)
-    return run, data
+    return run, data, goal, coverage
+
+
+def _read_text(path: Path) -> str:
+    """`path` as UTF-8 text; a missing or unreadable file is a `ProgressReportError`."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        msg = f"{path}: {e}"
+        raise ProgressReportError(msg) from e
 
 
 def run_check(docs: Path) -> None:

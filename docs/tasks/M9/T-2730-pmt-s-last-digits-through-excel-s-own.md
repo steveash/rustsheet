@@ -55,6 +55,20 @@ Code: `fn_pmt`, `accurate_payment` (exact double-double), `growth_log`, `discoun
 The sweeps hold enough points for fv 0, type 0. For fv and type 1, the lab re-scores m9-fin-pmt.
 No oracle sweep is needed before the first attempt.
 
+Also gen-m9 (gap triage 2026-10-26, `make eval` on 1c8b3d34, excel-graph): 7 PPMT and 1 CUMPRINC cells, each 1 ulp
+off and the outer call, that no task listed; most at a large rate where the result is tiny (gen-m9/1dce4774f5c0e736
+Calc!A112 `=PPMT(10,7,158,147532,763)`: Excel -7.575972059482481E-153, ours -7.57597205948248E-153), one plain
+(gen-m9/3c06f9298f65a3ba Calc!A256 `=PPMT(0.05,3,114,302806)`: Excel -64.35825018498787, ours -64.35825018498785).
+Re-score them with the model this task fits.
+Cells:
+- gen-m9/1dce4774f5c0e736.case.json (1): Calc!A112
+- gen-m9/3c06f9298f65a3ba.case.json (2): Calc!A109, A256
+- gen-m9/79d87fc527927626.case.json (1): Calc!A291
+- gen-m9/9a1fa5366bc50918.case.json (1): Calc!A374
+- gen-m9/a91bad4e84f49739.case.json (1): Calc!A305
+- gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A69
+- gen-m9/d0854366830dcdee.case.json (1): Calc!A98
+
 ## Acceptance criteria
 - [ ] Lab: PMT candidates built on Excel's L (`-pv*rate/(1-Q(-n))`, `-pv*rate*Q(n)/(Q(n)-1)`, expm1 via Excel's EXP or
       Kahan's formula, each with double and 64-bit intermediates) are scored on the two sweeps and m9-fin-pmt, including

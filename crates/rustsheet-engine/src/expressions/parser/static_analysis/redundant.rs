@@ -89,7 +89,9 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         Node::SpillRangeOperator { child } => {
             remove_redundant_legacy_intersection(child, add, false);
         }
-        Node::Group { child, .. } => remove_redundant_legacy_intersection(child, add, arrays),
+        Node::Group { child, .. } | Node::UnaryPlus { child } | Node::Spaced { child, .. } => {
+            remove_redundant_legacy_intersection(child, add, arrays);
+        }
         Node::UnaryKind { right, .. } => remove_redundant_legacy_intersection(right, add, arrays),
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }

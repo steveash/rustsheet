@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="234" viewBox="0 0 760 234" role="img" aria-labelledby="t d">
+<title id="t">Excel cells per function</title><desc id="d">506 in-scope functions by their number of Excel-evidence cells.</desc>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-cells{fill:#2a78d6}.in-cells{fill:#000000}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-cells{fill:#3987e5}.in-cells{fill:#000000}}</style>
+<rect class="bg" fill="#ffffff" x="0" y="0" width="760" height="234"/>
+<g transform="translate(14,14)">
+<text x="0.0" y="16.0" class="ink title" fill="#1f2328" text-anchor="start" dominant-baseline="middle">Excel cells per function</text>
+<rect class="grid" fill="#d1d9e0" x="150.0" y="36" width="1" height="154"/>
+<text x="150.0" y="204.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">0</text>
+<rect class="grid" fill="#d1d9e0" x="265.5" y="36" width="1" height="154"/>
+<text x="265.5" y="204.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">100</text>
+<rect class="grid" fill="#d1d9e0" x="381.0" y="36" width="1" height="154"/>
+<text x="381.0" y="204.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">200</text>
+<rect class="grid" fill="#d1d9e0" x="496.5" y="36" width="1" height="154"/>
+<text x="496.5" y="204.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">300</text>
+<rect class="grid" fill="#d1d9e0" x="612.0" y="36" width="1" height="154"/>
+<text x="612.0" y="204.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">400</text>
+<text x="140.0" y="55.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">&lt; 20</text>
+<text x="158.0" y="55.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">0 (0.00%)</text>
+<text x="140.0" y="85.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">20–199</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="76.0" width="5.8" height="18" rx="3"><title>20–199: 5</title></rect>
+<text x="163.8" y="85.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">5 (0.99%)</text>
+<text x="140.0" y="115.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">200–399</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="106.0" width="3.5" height="18" rx="3"><title>200–399: 3</title></rect>
+<text x="161.5" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">3 (0.59%)</text>
+<text x="140.0" y="145.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">400–999</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="136.0" width="370.8" height="18" rx="3"><title>400–999: 321</title></rect>
+<text x="528.8" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">321 (63.44%)</text>
+<text x="140.0" y="175.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≥ 1000</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="166.0" width="204.4" height="18" rx="3"><title>≥ 1000: 177</title></rect>
+<text x="362.4" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">177 (34.98%)</text>
+</g></svg>

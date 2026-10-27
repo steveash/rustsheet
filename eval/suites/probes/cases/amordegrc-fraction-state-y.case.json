@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 fractional above an AMORLINC purchased on its first period's end (first charge rate * cost, 360): what does it leave?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)",
+        "A2": "=AMORLINC(2400,39813,39813,300,1,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

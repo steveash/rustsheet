@@ -1,10 +1,11 @@
 """The progress report generator (SPEC-0022) on a small synthetic report: the parity block, the
-all-functions page and the charts (T-0081), input validation, and the run record (T-0070).
-test_progress_page.py covers the page and its judgment blocks, test_progress_history.py the run
-history and stale runs (T-0071)."""
+all-functions page and the charts (T-0081), input validation, the run record (T-0070), and the
+top-functions and evidence blocks (T-0073). test_progress_page.py covers the page and its judgment
+blocks, test_progress_history.py the run history and stale runs (T-0071)."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,7 @@ from typing import Any
 import pytest
 
 from rustsheet_tools import progress_report
-from rustsheet_tools.progress_report import parity
+from rustsheet_tools.progress_report import evidence, parity
 from rustsheet_tools.progress_report.history import Git
 from rustsheet_tools.progress_report.markdown import md_cell, md_text, pct, table
 from rustsheet_tools.progress_report.model import (
@@ -51,12 +52,92 @@ def fn(name: str, tier: str, attribution: str = "sole", **attributed: int) -> di
         "attribution": attribution,
         "attributed": cells,
         "excel": {**cells, "pass": cells["pass"] + 10},
+        "real_world_calls": 0,
     }
 
 
-def rate(name: str, cells: int, visible: int, meets: bool) -> dict[str, Any]:
-    """A `v15_checkpoint.functions[]` entry (T-0080)."""
-    return {"name": name, "rate_cells": cells, "rate_visible": visible, "meets_rate": meets}
+def rate(name: str, cells: int, visible: int, meets: bool, covered: bool = False) -> dict[str, Any]:
+    """A `v15_checkpoint.functions[]` entry (T-0080): its Excel cells (`cells`) are its rate cells."""
+    return {
+        "name": name,
+        "cells": cells,
+        "covered": covered,
+        "rate_cells": cells,
+        "rate_visible": visible,
+        "meets_rate": meets,
+    }
+
+
+def exit_row(milestone: str, exited: bool) -> dict[str, Any]:
+    """A `milestone_exit` row (decision 0085): every measure met when `exited`."""
+    return {
+        "milestone": milestone,
+        "functions": 3,
+        "covered": 3,
+        "coverage_met": True,
+        "gen_scored": 20000,
+        "gen_visibly_off": 4,
+        "gen_allowance": 20,
+        "gen_met": True,
+        "calc_visibly_off": 0,
+        "calc_met": True,
+        "probe_visibly_off": 0 if exited else 2,
+        "probes_met": exited,
+        "exit": exited,
+    }
+
+
+# A docs/milestones.md: the phase table and the milestones the synthetic report and tasks name.
+MILESTONES = """# Milestones
+
+## Phase order (decision 0027)
+
+| Phase | Milestones, in order | Status |
+|---|---|---|
+| 1. Parity (fifteen digits) | M0, M1, M2, M5, M6, M9 | active |
+| 1b. Bit parity | the `defer: phase-1b` tasks of every milestone | after Phase 1 |
+| 2. Architecture and performance | M3 | deferred |
+
+## M0 — Scaffolding
+
+**Scope:** the harness.
+- [ ] not an exit criterion
+
+**Exit criteria:**
+- [x] CI green.
+- [ ] Oracle set up,
+  over two lines.
+- [x] One loop merged.
+
+**Eval suites:**
+- [ ] not an exit criterion either
+
+## M1 — Core semantics
+
+**Exit criteria:**
+- `smoke` at 100%.
+
+## M2 — Top functions
+
+**Exit criteria:** gen-m2 at 100%.
+
+## M3 — Dependency graph (Phase 2)
+
+**Exit criteria:**
+- [ ] Metamorphic suite.
+
+## M5 — Function families I
+
+**Exit criteria:** catalog coverage 100%.
+
+## M6 — Lookup & reference
+
+**Exit criteria:** same as M5.
+
+## M9 — Numerical parity
+
+**Exit criteria:** ironcalc-calc at 99.95%.
+"""
 
 
 def report() -> dict[str, Any]:
@@ -74,6 +155,8 @@ def report() -> dict[str, Any]:
             fn("CALL", "below99", "all", visible_other=1),
         ],
         "tiers": [{"tier": t, "functions": tiers[t], "fallback": fallback.get(t, 0)} for t in TIERS],
+        "real_world_suites": ["calipers", "poi"],
+        "argument_coverage": [{"name": "ABS", "single": 0.5}, {"name": "PI", "single": None}],
         "v15_checkpoint": {
             "in_scope": 6,
             "at_rate": 4,
@@ -82,17 +165,35 @@ def report() -> dict[str, Any]:
             "met": False,
             "covered": 5,
             "visibly_off": 3,
+            "rate_num": 999,
+            "rate_den": 1000,
+            "phase1_line": "Phase 1 (decision 0114): not met (4/6 functions covered)",
+            "verdict_line": "Fifteen-digit parity: not met (coverage 5/6, visibly-off cells 3)",
             "functions": [
                 rate("ABS", 30, 0, True),
                 rate("SUM", 23, 0, True),
                 rate("LN", 28, 0, True),
-                rate("UPPER", 2000, 1, True),
+                rate("UPPER", 2000, 1, True, covered=True),
                 rate("BETA.DIST", 15, 1, False),
                 rate("INFO", 0, 0, False),
             ],
         },
         "cases": [],
-        "milestone_exit": [{"milestone": "M5", "exit": True}, {"milestone": "M6", "exit": False}],
+        "milestone_exit": [
+            exit_row("M5", True),
+            {**exit_row("M6", False), "gen_scored": None, "gen_met": None},
+        ],
+        "milestone_lists": [
+            {"name": "m1-probes", "cases": 9, "cases_run": 9, "known_failures": 2, "failing_cases": ["a"]}
+        ],
+        "probe_milestones": [
+            {"milestone": "M0-M2", "known_failures": 3, "visibly_off": 1},
+            {"milestone": "M5", "known_failures": 0, "visibly_off": 0},
+        ],
+        "catalog_coverage": [
+            {"milestone": "M2", "functions": 2, "covered": 2},
+            {"milestone": "M6", "functions": 0, "covered": 0},
+        ],
         "run": {"commit": "abc12345", "date": "2026-10-19", "skipped_suites": []},
         "suites": [
             {
@@ -110,8 +211,24 @@ def report() -> dict[str, Any]:
     }
 
 
-def data(r: dict[str, Any] | None = None, baselines: Path = NO_BASELINES) -> Parity:
-    return compute(r or report(), SCOPE, baselines)
+# Catalog priors (eval/catalog/functions.yaml `prior`): ABS, LN and UPPER tie; INFO has none.
+PRIORS: dict[str, float | None] = {
+    "SUM": 72.0,
+    "ABS": 3.0,
+    "UPPER": 3.0,
+    "LN": 3.0,
+    "BETA.DIST": 0.5,
+    "INFO": None,
+    "CALL": None,
+}
+
+
+def data(
+    r: dict[str, Any] | None = None,
+    baselines: Path = NO_BASELINES,
+    priors: dict[str, float | None] | None = PRIORS,
+) -> Parity:
+    return compute(r or report(), SCOPE, baselines, priors)
 
 
 def test_functions_come_from_the_catalog_with_the_reports_tiers() -> None:
@@ -216,6 +333,15 @@ def test_pct_never_rounds_to_the_ends() -> None:
     assert pct(0, 0) == "\N{EN DASH}"
 
 
+def catalog_yaml(priors: dict[str, Any]) -> str:
+    """A functions.yaml holding one entry per name, with its prior when it is not None."""
+    rows = [
+        f"  - {{ name: {json.dumps(n)}" + ("" if p is None else f", prior: {p}") + " }"
+        for n, p in priors.items()
+    ]
+    return "functions:\n" + "\n".join(rows) + "\n"
+
+
 def stage(todo: int, blocked: int, done: int) -> dict[str, int]:
     """A tasks.json stage map (`scripts/tasks.py stats --json`)."""
     return {"todo": todo, "in-progress": 1, "blocked": blocked, "done": done, "dropped": 1, "ready": 2}
@@ -254,12 +380,17 @@ def write_inputs(
     tmp_path: Path, r: dict[str, Any], t: dict[str, Any] | None = None, *, today: str = "2026-10-19"
 ) -> list[str]:
     rep, scope, tasks_json = tmp_path / "report.json", tmp_path / "scope.json", tmp_path / "tasks.json"
+    catalog = tmp_path / "functions.yaml"
+    milestones = tmp_path / "milestones.md"
     rep.write_text(json.dumps(r))
     scope.write_text(json.dumps(SCOPE))
     tasks_json.write_text(json.dumps(t or tasks()))
+    catalog.write_text(catalog_yaml(PRIORS))
+    milestones.write_text(MILESTONES)
     return [
-        *("--report", str(rep), "--scope", str(scope), "--baselines", str(NO_BASELINES)),
-        *("--tasks", str(tasks_json), "--today", today),
+        *("--report", str(rep), "--scope", str(scope), "--catalog", str(catalog)),
+        *("--baselines", str(NO_BASELINES)),
+        *("--tasks", str(tasks_json), "--milestones", str(milestones), "--today", today),
     ]
 
 
@@ -283,6 +414,10 @@ def test_main_writes_the_page_the_functions_page_and_the_charts(tmp_path: Path) 
     assert all(r.count("|") == 10 for r in rows)
     assert "| BETA.DIST | statistical | M9 | &lt; 99% | every call | 5 | 15 | 93.33% | no |" in functions
     assert "| INFO | information | M5 | Unscored | every call | 0 | 0 | \N{EN DASH} | no |" in functions
+    assert "## The 40 most-used functions" in page
+    assert "## Evidence depth" in page
+    assert f"(progress/{evidence.CHART})" in page
+    assert "@media (prefers-color-scheme: dark)" in (out / "progress" / evidence.CHART).read_text()
     # The retired parity page is never written (T-0081: docs/parity.md is a static pointer).
     assert not (out / "parity.md").exists()
     assert not (out / "parity").exists()
@@ -358,3 +493,106 @@ def test_the_run_record_is_validated(tmp_path: Path, field: str, value: object) 
     with pytest.raises(SystemExit, match=field):
         progress_report.main([*write_inputs(tmp_path, r), "--out-dir", str(tmp_path / "out")], GIT)
     assert not (tmp_path / "out").exists()
+
+
+def with_cells(cells: dict[str, int]) -> Parity:
+    """`data()` with the Excel cells (`v15_checkpoint.functions[].cells`) of each named function."""
+    r = report()
+    for f in r["v15_checkpoint"]["functions"]:
+        f["cells"] = cells[f["name"]]
+    return data(r)
+
+
+EDGES = {"INFO": 0, "ABS": 19, "SUM": 20, "LN": 399, "UPPER": 400, "BETA.DIST": 1000}
+
+
+def test_evidence_bands_at_their_edges() -> None:
+    p = with_cells(EDGES)
+    assert evidence.band_counts(p) == [
+        ("< 20", 2),
+        ("20\N{EN DASH}199", 1),
+        ("200\N{EN DASH}399", 1),
+        ("400\N{EN DASH}999", 1),
+        ("\N{GREATER-THAN OR EQUAL TO} 1000", 1),
+    ]
+    assert evidence.band_counts(with_cells({**EDGES, "ABS": 20, "LN": 400}))[:4] == [
+        ("< 20", 1),
+        ("20\N{EN DASH}199", 2),
+        ("200\N{EN DASH}399", 0),
+        ("400\N{EN DASH}999", 2),
+    ]
+    text = evidence.evidence_table(p)
+    assert "| &lt; 20 | 2 | 33.33% |" in text
+    assert "| **All** | **6** |  |" in text
+
+
+def test_evidence_median_of_an_even_count() -> None:
+    # Six functions: 0, 19, 20, 399, 400, 1000; the median is the mean of 20 and 399.
+    p = with_cells(EDGES)
+    assert evidence.median_cells(p) == 209.5
+    block = evidence.evidence_block(p)
+    assert "has **209.5** Excel cells" in block
+    assert "**1 of\n6** (16.67%) are covered" in block
+    assert (
+        "**4** have fewer than\n400 Excel cells, 2 of them fewer than 20: INFO (0), ABS (19), SUM (20), LN (399)."
+        in block
+    )
+    assert "has **400** Excel cells" in evidence.evidence_block(with_cells({**EDGES, "LN": 400, "SUM": 400}))
+
+
+def test_top_functions_by_prior_ties_by_name() -> None:
+    p = data()
+    assert [f.name for f in evidence.top_functions(p)] == ["SUM", "ABS", "LN", "UPPER", "BETA.DIST", "INFO"]
+    assert [f.name for f in evidence.top_functions(p, 3)] == ["SUM", "ABS", "LN"]
+    lines = evidence.top_table(evidence.top_functions(p)).splitlines()
+    assert lines[0] == (
+        "| # | Function | Category | Tier | Prior | Attributed cells | Within 15 digits | Excel cells"
+        " | Real-world calls |"
+    )
+    assert lines[2] == "| 1 | SUM | math | \N{LESS-THAN OR EQUAL TO} 4 ulp | 72 | 23 | 100.00% | 23 | 0 |"
+    assert lines[6] == "| 5 | BETA.DIST | statistical | &lt; 99% | 0.5 | 5 | 93.33% | 15 | 0 |"
+    assert lines[7] == "| 6 | INFO | information | Unscored | none | 0 | \N{EN DASH} | 0 | 0 |"
+    block = evidence.top_block(p)
+    assert "**3 of 6** never differ" in block
+    assert "**4** meet the Phase 1 rate" in block
+
+
+def test_the_catalog_priors_are_checked(tmp_path: Path) -> None:
+    path = tmp_path / "functions.yaml"
+    path.write_text(catalog_yaml(PRIORS))
+    assert evidence.load_priors(path) == PRIORS
+    path.write_text(catalog_yaml({"SUM": '"often"'}))
+    with pytest.raises(ProgressReportError, match="prior that is not a non-negative number"):
+        evidence.load_priors(path)
+    with pytest.raises(ProgressReportError, match=r"functions\.yaml"):
+        evidence.load_priors(tmp_path / "none" / "functions.yaml")
+    without_ln = {k: v for k, v in PRIORS.items() if k != "LN"}
+    with pytest.raises(ProgressReportError, match="the catalog has no function LN"):
+        data(priors=without_ln)
+    assert all(f.prior is None for f in data(priors=None).functions)
+
+
+def test_real_world_line_weights_attributed_shares_by_calls() -> None:
+    p = data()
+    names = {s.name for s in p.suites}
+    assert "calipers" not in names
+    assert parity.real_world_line(p) == "Real-world calls: not measured, calipers and poi did not run."
+    assert p.real_world_suites == ("calipers", "poi")
+    corpora = [dataclasses.replace(p.suites[0], name=n) for n in p.real_world_suites]
+    calls = {"SUM": 30, "BETA.DIST": 10, "INFO": 50}
+    weighted = dataclasses.replace(
+        p,
+        suites=[*p.suites, *corpora],
+        functions=[dataclasses.replace(f, real_world_calls=calls.get(f.name, 0)) for f in p.functions],
+    )
+    sum_, beta = (next(f for f in p.functions if f.name == n) for n in ("SUM", "BETA.DIST"))
+    # INFO has no attributed cells, so its calls carry no share and stay out of the weights.
+    share = (
+        30 * sum_.attributed_within15 / sum_.attributed_cells
+        + 10 * beta.attributed_within15 / beta.attributed_cells
+    ) / 40
+    assert (
+        f"**{100 * share:.2f}%** of the 40 calls to attributed in-scope functions in the calipers and poi"
+        in (parity.real_world_line(weighted))
+    )
+    assert parity.real_world_line(weighted) in parity.block(weighted)

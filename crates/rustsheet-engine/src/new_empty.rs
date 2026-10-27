@@ -9,7 +9,6 @@ use crate::{
     expressions::{
         lexer::LexerMode,
         parser::{
-            static_analysis::run_static_analysis_on_node,
             stringify::{
                 move_sheet_in_node, rename_sheet_in_node, to_english_string, to_localized_string,
                 to_rc_format, to_string_lowering,
@@ -142,8 +141,7 @@ impl Model {
                 if self.call_name_spellings.apply(&mut t) {
                     *formula = to_rc_format(&t);
                 }
-                let static_result = run_static_analysis_on_node(&t);
-                parse_formula.push((std::sync::Arc::new(t), static_result));
+                parse_formula.push(crate::formula_cells::stored_formula(t));
             }
             // The lookup of the shared formulas follows the parsed formulas: both
             // are made from the lists of the sheets, here.
@@ -210,6 +208,8 @@ impl Model {
                 // A name has no cell: its `#This Row` areas are resolved at the row it is parsed
                 // at, as before SPEC-0016 step 2. Excel's rule is unprobed (T-1699, T-2595).
                 body.lower_this_rows_at(dummy_ref.row);
+                // Evaluation reads no whitespace (see `ParsedFormula`); the name keeps its text.
+                body.strip_spaces();
                 match body {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(Arc::new((parameters, *body)))
@@ -439,7 +439,7 @@ impl Model {
             }
         }
         new_worksheet.shared_formulas = shared_formulas;
-        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables);
+        lower_this_row_cells(&mut new_worksheet, &by_row, &source_tables, None);
         self.parser.set_lexer_mode(LexerMode::A1);
 
         // Insert the copy right after the source sheet.

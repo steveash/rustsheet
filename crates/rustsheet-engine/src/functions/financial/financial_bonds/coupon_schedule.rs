@@ -123,18 +123,19 @@ fn coupon_period(
     })
 }
 
-// The coupon period around settlement on the schedule COUPDAYS' basis 1 counts around a
-// 29 February (`coupdays_actual`): walked back from the maturity without the end-of-month rule,
-// each date the one after it moved back a period, so its day can drift to the 28th.
-fn chained_coupon_period(
+// The next coupon date after settlement on the schedule COUPDAYS' basis 1 walks (`coupdays_actual`):
+// walked back from the maturity without the end-of-month rule, each date the one after it moved
+// back a period, so its day can drift (maturity 2019-03-31 semiannual: 2018-09-30, 2018-03-30).
+fn chained_next_coupon(
     settlement: i64,
     maturity: i64,
     frequency: u32,
-) -> Result<(NaiveDate, NaiveDate), String> {
+) -> Result<NaiveDate, String> {
     let months_per = (12 / frequency) as i32;
-    walk_coupon_schedule(settlement, coupon_date(maturity)?, |later, _| {
+    let (_, next) = walk_coupon_schedule(settlement, coupon_date(maturity)?, |later, _| {
         change_month(later, -months_per, false)
-    })
+    })?;
+    Ok(next)
 }
 
 // Walks back from `mat` until a date is on or before settlement: `step(later, periods)` gives the
@@ -216,43 +217,53 @@ pub(in crate::functions::financial) fn coupon_days_e(
 ) -> Result<f64, String> {
     match basis {
         0 | 2 | 4 => Ok(360.0 / frequency as f64),
-        // The period PRICE, YIELD and DURATION use. The COUPDAYS function itself differs around
-        // 29 February (`coupdays_actual`); keep the two apart.
+        // The period PRICE, YIELD and DURATION use. The COUPDAYS function itself counts another
+        // period on month-end schedules (`coupdays_actual`); keep the two apart.
         1 => coupon_period_days(settlement, maturity, frequency),
         3 => Ok(365.0 / frequency as f64),
         _ => Err("Invalid basis".to_string()),
     }
 }
 
-// COUPDAYS on basis 1. When the coupon period around settlement starts or ends on a 29 February
-// that is not the maturity, Excel counts the period of the schedule walked back from the maturity
-// without the end-of-month rule (every date clamped from the one after it): with maturity
-// 2025-02-28 and settlement 2023-11-15 it is 2023-08-28 to 2024-02-28, 184 days, although
-// COUPPCD/COUPNCD are 2023-08-31/2024-02-29. PRICE and the other readers keep the 182-day period.
-// 1900-02-28 counts as such a 29 February, as if Excel's fictitious 1900-02-29 were the month's
-// last day. A period that starts before 1900-01-01 is counted in the real calendar
-// (`COUPDAYS(1,43830,4,1)` is 90, 1899-12-31 to 1900-03-31), one inside it by serials.
-// Excel: see docs/excel-semantics/financial.md#coupdays-basis-1-around-29-february.
+// COUPDAYS on basis 1, which is not COUPNCD - COUPPCD. Excel takes the next coupon date B of the
+// schedule walked back from the maturity without the end-of-month rule (`chained_next_coupon`) and
+// counts from B moved back one period: to its month's last day when B is a month end, else the
+// day clamped. So maturity 2019-03-31 semiannual gives 181 for settlement 1950-01-15 (1949-09-30
+// to 1950-03-30) and 183 for 1950-06-15 (1950-03-31 to 1950-09-30), and maturity 2025-02-28 gives
+// 184 for 2023-11-15 (2023-08-28 to 2024-02-28: 2024-02-28 is not a month end). Excel's 1900 has a
+// 29 February, so 1900-02-28 is not a month end. When that start is after settlement (settlement
+// 1900-03-30, maturity 2019-03-31: the start is 1900-03-31), Excel moves back once more (B becomes
+// the start). A date before 1900 compares one higher than its serial here (1899-12-31 as 1, so
+// settlement 0 to maturity 2019-12-31 counts 1899-06-30 to 1899-12-31, 184). A period that starts
+// before 1900-01-01 counts real days, except after that extra step into the calendar, which counts
+// B's serial (the start reads as serial 0): `COUPDAYS(90,DATE(2019,3,31),2,1)` is 91.
+// Excel: see docs/excel-semantics/financial.md#coupdays-basis-1-counts-from-the-chained-next-coupon.
 pub(in crate::functions::financial) fn coupdays_actual(
     settlement: i64,
     maturity: i64,
     frequency: u32,
 ) -> Result<f64, String> {
-    let mat = coupon_date(maturity)?;
-    let (prev, next) = coupon_period(settlement, maturity, frequency)?;
-    let on_leap_day = |d: NaiveDate| {
-        d != mat && d.month() == 2 && (d.day() == 29 || (d.year() == 1900 && d.day() == 28))
+    let months_per = (12 / frequency) as i32;
+    let calendar_start = coupon_date(1)?;
+    // 1900-02-28 is not a month end in Excel's 1900, which has a 29 February.
+    let back_one = |later: NaiveDate| {
+        let month_end =
+            is_last_day_of_month(later) && !(later.year() == 1900 && later.month() == 2);
+        change_month(later, -months_per, month_end)
     };
-    let (prev, next) = if on_leap_day(prev) || on_leap_day(next) {
-        chained_coupon_period(settlement, maturity, frequency)?
-    } else {
-        (prev, next)
-    };
-    let prev_serial = coupon_serial(prev);
-    if prev_serial < 1 {
+    // A date before 1900 compares as its serial plus one.
+    let compare_serial = |d: NaiveDate| coupon_serial(d) + i64::from(d < calendar_start);
+    let mut next = chained_next_coupon(settlement, maturity, frequency)?;
+    let mut prev = back_one(next)?;
+    let stepped_back = compare_serial(prev) > settlement;
+    if stepped_back {
+        next = prev;
+        prev = back_one(next)?;
+    }
+    if next < calendar_start || (prev < calendar_start && !stepped_back) {
         return Ok(actual_days(prev, next));
     }
-    Ok((coupon_serial(next) - prev_serial) as f64)
+    Ok((coupon_serial(next) - coupon_serial(prev).max(0)) as f64)
 }
 
 // Accrued days from the previous coupon to settlement (A).

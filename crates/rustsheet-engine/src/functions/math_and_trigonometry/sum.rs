@@ -1,7 +1,7 @@
 use crate::calc_result::Range;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::element_errors::array_element_error;
-use crate::functions::statistical::paired::PairedArg;
+use crate::functions::statistical::paired::{marked_number_error, PairedArg};
 use crate::functions::util::aggregate_args::{
     AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
@@ -123,7 +123,12 @@ impl Model {
         if args.len() != 2 {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let x_range = self.evaluate_node_in_context(&args[0], cell);
+        // A marked first argument (a number straight from ERROR.TYPE or CELL, an array of
+        // references) is `#NUM!` once the sizes match (`INTERCEPT(ERROR.TYPE(#REF!),5)`,
+        // `SLOPE(INDIRECT("B1",{1;1}),{1;2})`, while `RSQ(ERROR.TYPE(#NAME?),Data!C8:C11)` is
+        // `#N/A`; T-2576, T-2577). The second reads as the number it is
+        // (`INTERCEPT(5,ERROR.TYPE(#REF!))` is `#DIV/0!` like (5,4)).
+        let (x_range, first_marked) = self.evaluate_sample_arg(&args[0], cell);
         let y_range = self.evaluate_node_in_context(&args[1], cell);
         let x_range = self.blank_one_cell_as_error(x_range, cell);
         let y_range = self.blank_one_cell_as_error(y_range, cell);
@@ -156,6 +161,9 @@ impl Model {
                 cell,
                 "Arguments must have the same number of cells".to_string(),
             ));
+        }
+        if first_marked {
+            return Err(marked_number_error(cell));
         }
         let array_error = |_, error| array_element_error(error, cell);
         let paired = self.paired_values(first, second, cell, array_error)?;

@@ -159,12 +159,35 @@ def suites_table(p: Parity) -> str:
     )
 
 
+def real_world_line(p: Parity) -> str:
+    """The share of real-world calls landing within 15 digits: each function's attributed
+    within-15-digit share weighted by its real-world calls. A run without calipers or poi says so
+    instead of showing a partial number."""
+    corpora = " and ".join(p.real_world_suites)
+    missing = [s for s in p.real_world_suites if s not in {x.name for x in p.suites}]
+    if missing or not corpora:
+        return f"Real-world calls: not measured, {' and '.join(missing) or 'no corpus'} did not run."
+    weighted = [f for f in p.functions if f.real_world_calls and f.attributed_cells]
+    calls = sum(f.real_world_calls for f in weighted)
+    if calls == 0:
+        return f"Real-world calls: none of the {corpora} formula cells call an attributed function."
+    within = sum(f.real_world_calls * f.attributed_within15 / f.attributed_cells for f in weighted)
+    share = f"{100 * within / calls:.2f}%"
+    return (
+        f"Real-world calls: **{share}** of the {calls:,} calls to attributed in-scope functions in the {corpora} "
+        "formula cells land within 15 digits, weighting each function's attributed within-15-digit share by its "
+        "calls (report.json `functions[].real_world_calls`)."
+    )
+
+
 def block(p: Parity) -> str:
     """The `parity` block of docs/progress.md."""
     charts = {c.name: f"![{c.title}]({ASSETS}/{c.name})" for c in CHARTS}
     return f"""## Parity
 
 {phase1_lines(p)}
+
+{real_world_line(p)}
 
 Each in-scope function is placed by the **worst** of its counted Excel cells, so one off cell
 drops it a tier. A cell counts toward a function only when that function is its formula's only

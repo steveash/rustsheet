@@ -806,7 +806,9 @@ impl Model {
             column: anchor_col,
         };
         // CF formulas are stored internally in English.
-        let node = self.parse_internal_formula(body, &context_rc);
+        let mut node = self.parse_internal_formula(body, &context_rc);
+        // Evaluation reads no whitespace (see `ParsedFormula`).
+        node.strip_spaces();
 
         for &(r1, c1, r2, c2) in ranges {
             for row in r1..=r2 {

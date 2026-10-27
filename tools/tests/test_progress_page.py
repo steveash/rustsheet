@@ -17,7 +17,13 @@ from rustsheet_tools.progress_report.model import ProgressReportError, Run, run_
 RUN = Run("2026-10-19", "abc12345", ("s",), ())
 DATA = data()
 AS_OF = "<!-- as-of: 2026-10-19 abc12345 -->"
-SECTIONS = {"since-last-run": "## Since the last run", "trends": "## Trends"}
+SECTIONS = {
+    "goals": "## Goals",
+    "campaign": "## Campaign stages",
+    "since-last-run": "## Since the last run",
+    "trends": "## Trends",
+    "arguments": "## Argument coverage",
+}
 
 
 def render(existing: str | None) -> str:
@@ -77,9 +83,14 @@ def test_a_first_run_writes_every_block_in_order_with_placeholders() -> None:
     assert names == [
         "status",
         "bottom-line",
+        "goals",
+        "campaign",
         "since-last-run",
         "trends",
         "parity",
+        "top-functions",
+        "evidence",
+        "arguments",
         "readiness",
         "risks",
         "method",
@@ -131,7 +142,7 @@ J, G = "judgment", "generated"
     ("existing", "error"),
     [
         (judgment_page({"summary": "x"}), "unknown judgment block name 'summary'"),
-        (blocks.open_marker(G, "goals") + blocks.close_marker(G), "unknown generated block name 'goals'"),
+        (blocks.open_marker(G, "summary") + blocks.close_marker(G), "unknown generated block name 'summary'"),
         (
             blocks.open_marker(G, "status") + blocks.open_marker(G, "method") + blocks.close_marker(G) * 2,
             "nested marker inside block 'status'",

@@ -637,11 +637,33 @@ impl Txn<'_> {
         name: &str,
         filtered: bool,
     ) -> Result<(), EditError> {
+        self.add_table_with_totals(range, name, filtered, false)
+    }
+
+    /// [`Txn::add_table`] for a `range` whose last row is the table's totals row when
+    /// `totals_row` is set, so `Table[#Totals]` reads it and `Table[#All]` includes it. The totals
+    /// cells keep what they hold (set them first or after); a totals-row function is not recorded.
+    ///
+    /// # Errors
+    /// As [`Txn::add_table`]; a totals row needs a data row between the header and itself.
+    pub fn add_table_with_totals(
+        &mut self,
+        range: RangeRef,
+        name: &str,
+        filtered: bool,
+        totals_row: bool,
+    ) -> Result<(), EditError> {
         let index = sheet_index(self.model, range.sheet)?;
         let (top, left) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
         let (bottom, right) = engine_rc(range.bottom, range.right).ok_or(RefError::OutOfBounds)?;
         self.model
-            .add_table(index, name, (top, left, bottom, right), filtered)
+            .add_table_with_totals(
+                index,
+                name,
+                (top, left, bottom, right),
+                filtered,
+                totals_row,
+            )
             .map_err(EditError::Table)?;
         self.sheet_op = true;
         self.undo.push(Undo::Table(name.to_string()));

@@ -32,6 +32,9 @@ They are last-digit PPMT/IPMT and NPV results and their sums. pv23_007, 008 and 
 cause is a recent change to the annuity or NPV kernels (T-0458's calipers PPMT/IPMT cells, T-1528). Find the commit
 with `git bisect` on `check --suite calipers` before fixing anything.
 
+- T-2688 (2026-10-26) fixed pv23_056 Summary!F23 (XIRR empty guess); its stale `F` line is left for this task's
+  ratchet.
+
 ## Acceptance criteria
 - [ ] The 36 cells are fixed, or recorded through a reviewed decision if the change behind them is kept.
 - [ ] `rustsheet-eval update-baseline --suite calipers` succeeds without `--allow-regressions` and records the fixes.

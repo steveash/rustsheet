@@ -81,14 +81,8 @@ fn xirr_with_a_zero_first_value_brackets_at_the_first_chain_point() {
 }
 
 fn assert_num_errors(formulas: &[&str]) {
-    let model = evaluated(formulas);
-    for row in 1..=formulas.len() {
-        assert_eq!(
-            model.get_cell_value_by_ref(&format!("Sheet1!A{row}")),
-            Ok(CellValue::String("#NUM!".to_string())),
-            "A{row}"
-        );
-    }
+    let cases: Vec<(&str, &str)> = formulas.iter().map(|formula| (*formula, "#NUM!")).collect();
+    assert_errors(&cases);
 }
 
 #[test]
@@ -105,4 +99,127 @@ fn xirr_with_a_zero_first_value_and_a_negative_guess_is_num() {
 fn xirr_with_a_nonzero_first_value_still_needs_a_later_date() {
     // probes/xirr-mismatched-empties X9
     assert_num_errors(&["=XIRR({-1000,1100},{45365,45000})"]);
+}
+
+/// Asserts each formula's number is within `relative` of Excel's value.
+fn assert_numbers_near(cases: &[(&str, f64)], relative: f64) {
+    let formulas: Vec<&str> = cases.iter().map(|case| case.0).collect();
+    let model = evaluated(&formulas);
+    for (row, (_, want)) in (1..).zip(cases) {
+        let value = model.get_cell_value_by_ref(&format!("Sheet1!A{row}"));
+        assert!(
+            matches!(value, Ok(CellValue::Number(n)) if (n - want).abs() <= relative * want.abs()),
+            "A{row}: {value:?}, want {want}"
+        );
+    }
+}
+
+#[test]
+fn irr_is_num_at_a_far_root() {
+    // probes/irr-fallback-roots A29, A39 and irr-guess-edges-2 A15, A31: 1 + r at or past 1E+7
+    assert_num_errors(&["=IRR({-1,1E+7})", "=IRR({-1,1E+13})", "=IRR({-1E-15,1})"]);
+    // A28, A39: 3E+6 and r = 9999998.994 still return (their digits are T-2131's)
+    assert_numbers_near(
+        &[
+            ("=IRR({-1,3E+6})", 2_999_998.999_580_666),
+            ("=IRR({-1,0,1E+14})", 9_999_998.994_161_328),
+        ],
+        1e-9,
+    );
+}
+
+#[test]
+fn irr_where_the_secant_fails_is_num_at_a_root_near_minus_one() {
+    // probes/irr-fallback-roots A1, A5, A8, A10: the NPV polynomial's root nearest v = 0 is negative
+    assert_num_errors(&[
+        "=IRR({1,7,-1})",
+        "=IRR({1,7,-1},1)",
+        "=IRR({1,20,-1})",
+        "=IRR({1,3,-1})",
+    ]);
+}
+
+#[test]
+fn irr_where_the_secant_fails_finds_the_root_nearest_v_zero() {
+    // probes/irr-fallback-roots A12, A15, A16, A22: within 1E-14 relative of Excel's
+    assert_numbers_near(
+        &[
+            ("=IRR({42,1,1,-1},0.5)", -0.746_704_476_653_737_1),
+            ("=IRR({42,1,1,-1},0)", -0.746_704_476_653_737_1),
+            ("=IRR({0.3,-2.5,1.005},0.01)", 6.909_808_543_634_611),
+            ("=IRR({-400,1,1,1,1,1},0.5)", -0.673_736_675_180_840_5),
+        ],
+        1e-14,
+    );
+}
+
+#[test]
+fn xirr_at_an_exact_root_of_zero_brackets_at_the_first_chain_point() {
+    // probes/irr-guess-edges A41-A47 (T-2728): the flows sum to 0, so XNPV(0) is exactly 0 and
+    // the first point of the upward chain brackets: the result is the guess halved down to 0
+    let got = results(&[
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61})",
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61},1000)",
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61},123456789.123)",
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61},1E+10)",
+        // probes/t2728-irr-guess-ref-mark A73-A81: a negative guess halves toward 0 from below
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61},-0.5)",
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61},0)",
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61},1E+20)",
+        "=XIRR({100,-10,-20,-30,-40},{0,1,59,60,61})",
+        "=XIRR({-100,10,20,30,40},{0,1,59,60,61},1E+15)",
+    ]);
+    let expected = [
+        2.980_232_238_769_531_4e-9_f64,
+        3.637_978_807_091_713e-9,
+        3.426_614_245_766_179_6e-9,
+        4.336_808_689_942_018e-9,
+        -3.725_290_298_461_914e-9,
+        4.882_812_5e-9,
+        2.524_354_896_707_237_8e-9,
+        2.980_232_238_769_531_4e-9,
+        3.308_722_450_212_110_7e-9,
+    ];
+    assert_eq!(got, expected.map(f64::to_bits));
+    assert_num_errors(&["=XIRR({-100,10,20,30,40},{0,1,59,60,61},1E+300)"]);
+}
+
+/// Asserts each formula's error.
+fn assert_errors(cases: &[(&str, &str)]) {
+    let formulas: Vec<&str> = cases.iter().map(|case| case.0).collect();
+    let model = evaluated(&formulas);
+    for (row, (formula, want)) in (1..).zip(cases) {
+        assert_eq!(
+            model.get_cell_value_by_ref(&format!("Sheet1!A{row}")),
+            Ok(CellValue::String((*want).to_string())),
+            "A{row}: {formula}"
+        );
+    }
+}
+
+#[test]
+fn irr_rejects_a_number_straight_from_cell_or_error_type() {
+    // probes/irr-guess-edges-2, probes/t2728-irr-guess-ref-mark A51, A63 (T-2728)
+    assert_errors(&[
+        ("=IRR(CELL(\"row\",D2))", "#VALUE!"),
+        ("=IRR(CELL(\"col\",D2),0.5)", "#VALUE!"),
+        ("=IRR(ERROR.TYPE(#REF!))", "#VALUE!"),
+        ("=IRR(CELL(\"row\",D2)+0)", "#NUM!"),
+        ("=IRR(@CELL(\"row\",D2))", "#NUM!"),
+        ("=IRR(ROW(D2))", "#NUM!"),
+    ]);
+}
+
+#[test]
+fn irr_reads_the_guess_between_a_flows_error_and_an_element_error() {
+    // probes/t2728-irr-guess-ref-mark A1, A39, A41 and -2 A1, A3, A5 (T-2728)
+    assert_errors(&[
+        ("=IRR(1/0,NA())", "#DIV/0!"),
+        ("=IRR(1/0,1E+300)", "#DIV/0!"),
+        ("=IRR({1,\"a\"}+0,1/0)", "#DIV/0!"),
+        ("=IRR({1,\"a\"}+0,0.1)", "#VALUE!"),
+        ("=IRR(CELL(\"row\",D2),1/0)", "#DIV/0!"),
+        ("=IRR(ERROR.TYPE(#REF!),NA())", "#N/A"),
+        ("=IRR({1,\"a\"}+0,INDEX(B3:C9,2))", "#REF!"),
+    ]);
 }
