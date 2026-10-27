@@ -135,6 +135,9 @@ impl Model {
     /// Iterates every worksheet's CF rules in priority order (lowest priority number,
     /// processed last). The result for each cell is stored in
     /// the cache and consumed by `get_extended_style_for_cell`.
+    ///
+    /// Unbounded: it visits every cell of every rule's area, which a style read never does (it
+    /// evaluates the cell read, `cf_styles.rs`, T-0476). For a caller that asks for it.
     pub fn evaluate_conditional_formatting(&mut self) {
         self.cf.begin_round();
         self.cf.all = true;
@@ -349,19 +352,20 @@ impl Model {
         }
     }
 
-    /// The numbers in `ranges` of `sheet`, row by row: computed once per round of evaluation
-    /// (`CfState`), over the ranges cut at the used area, past which every cell is empty.
+    /// The numbers in `ranges` of `sheet`, row by row, over the ranges cut at the used area, past
+    /// which every cell is empty: kept for the round (`CfState`) while its budget lasts.
     fn collect_numeric_values(
         &mut self,
         sheet: u32,
         ranges: &[(i32, i32, i32, i32)],
     ) -> Arc<[f64]> {
-        let key = (sheet, ranges.to_vec());
+        let areas = self.cf_clipped(sheet, ranges);
+        let key = (sheet, areas);
         if let Some(values) = self.cf.values.get(&key) {
             return values.clone();
         }
         let mut values = Vec::new();
-        for &(r1, c1, r2, c2) in &self.cf_clipped(sheet, ranges) {
+        for &(r1, c1, r2, c2) in &key.1 {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(n)) = self.get_cell_value_by_index(sheet, row, col)
@@ -372,24 +376,27 @@ impl Model {
             }
         }
         let values: Arc<[f64]> = values.into();
-        self.cf.values.insert(key, values.clone());
+        if self.cf.charge(values.len()) {
+            self.cf.values.insert(key, values.clone());
+        }
         values
     }
 
     /// How many cells of `ranges` of `sheet` hold each value (`cell_value_key`), for the
-    /// unique and duplicate rules: computed once per round of evaluation, over the ranges cut at
-    /// the used area (an empty cell has no key).
+    /// unique and duplicate rules, over the ranges cut at the used area (an empty cell has no key):
+    /// kept for the round while its budget lasts.
     fn value_counts(
         &mut self,
         sheet: u32,
         ranges: &[(i32, i32, i32, i32)],
     ) -> Arc<HashMap<String, u32>> {
-        let key = (sheet, ranges.to_vec());
+        let areas = self.cf_clipped(sheet, ranges);
+        let key = (sheet, areas);
         if let Some(counts) = self.cf.counts.get(&key) {
             return counts.clone();
         }
         let mut counts: HashMap<String, u32> = HashMap::new();
-        for &(r1, c1, r2, c2) in &self.cf_clipped(sheet, ranges) {
+        for &(r1, c1, r2, c2) in &key.1 {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
@@ -401,7 +408,9 @@ impl Model {
             }
         }
         let counts = Arc::new(counts);
-        self.cf.counts.insert(key, counts.clone());
+        if self.cf.charge(counts.len()) {
+            self.cf.counts.insert(key, counts.clone());
+        }
         counts
     }
 
@@ -417,6 +426,7 @@ impl Model {
             .collect()
     }
 
+    /// Resolves a Cfvo threshold to a concrete f64 value.
     fn resolve_cfvo(&mut self, cfvo: &Cfvo, values: &[f64], sheet: u32) -> f64 {
         match cfvo {
             Cfvo::Min => values.iter().cloned().fold(f64::INFINITY, f64::min),

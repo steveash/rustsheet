@@ -62,4 +62,10 @@ docs/excel-semantics/README.md) and a probe-free justification (directive 5 wins
   - rustsheet-xlsx `test_conditional_formatting.rs`: the same for every cell of
     cf_tests.xlsx (Excel-authored, every kind of rule), and 3 rows and columns past it.
   - Mutations: no cell written for a read, and statistics kept across rounds, each fail a test.
+- Directive 5 for the statistics: they are keyed by the area cut at the used area (rules over
+  areas that cut the same share them), and a round keeps at most 4,000,000 values
+  (`MAX_KEPT_VALUES`); past it they are computed per read, as before. Each sheet's rules are
+  sorted and parsed once per round. `evaluate_conditional_formatting()` is documented as unbounded.
 - SPEC-0021 "Resource limits" and "When the evaluation happens" revised.
+- Filed T-2856: a probe of stop-if-true between rules of different priorities (today's behavior,
+  kept here, reads as the reverse of Excel's documented one).

@@ -93,7 +93,12 @@ edit, undo and redo.
 
 Once a read has cleared the flag, each cell's results stay as they are until the next of the four
 call sites, exactly as today's snapshot does. Since T-0476 a cell's rules run at that cell's first
-read in the round, so what follows holds for each cell's first read, not only the round's first. The differences all come from changes made through `Model`, or
+read in the round, so what follows holds for each cell's first read, not only the round's first.
+A rule's statistics are taken at the first read that needs them in the round, not after the rules
+above it have run. The two differ only when a rule above computes a formula cell written since the
+last `evaluate()` (below), so within the window this section already accepts. The thresholds of a
+value rule are evaluated at each read too, so a volatile one (`NOW()`) can differ between cells
+read at different times. The differences all come from changes made through `Model`, or
 through a paused `UserModel`, after the snapshot point but before the first read. All are accepted:
 - **The read sees those edits.** It sees edited cells, and edited rules, dxfs, rows, columns and
   sheets (`Model::add_conditional_formatting` and the other CF edits, undo/redo and clipboard

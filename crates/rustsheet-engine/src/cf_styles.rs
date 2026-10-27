@@ -11,13 +11,20 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::cf_types::{CfCellResult, CfDataBar, CfIcon, CfRating, ExtendedStyle};
+use crate::cf_types::{CfCellResult, CfDataBar, CfIcon, CfRating, CfRule, ExtendedStyle};
+use crate::evaluation::CellKey;
 use crate::Model;
 
-/// A cell, as (`sheet`, `row`, `column`).
-type CellKey = (u32, i32, i32);
 /// The areas of a rule on a sheet: (`sheet`, its (row1, column1, row2, column2) areas).
 type AreaKey = (u32, Vec<(i32, i32, i32, i32)>);
+
+/// A sheet's rules in priority order, each with its parsed areas.
+type SheetRules = Arc<Vec<(Vec<(i32, i32, i32, i32)>, CfRule)>>;
+
+/// Values (numbers, or distinct values counted) the statistics of one round may keep, across
+/// all rules (directive 5): past it a rule's statistics are computed for each read that needs
+/// them, as before T-0476.
+const MAX_KEPT_VALUES: usize = 4_000_000;
 
 /// What the conditional formats evaluated so far hold, for one round: from the first style read
 /// after a load, an `evaluate()` or `set_theme` (which set `stale`) to the next such event.
@@ -33,9 +40,15 @@ pub(crate) struct CfState {
     read: HashSet<CellKey>,
     /// While one cell's rules are evaluated, that cell.
     target: Option<CellKey>,
-    /// Statistics of this round, per rule area (`collect_numeric_values`, `value_counts`).
+    /// The numbers of each rule area this round (`collect_numeric_values`), keyed by the area
+    /// cut at the used area.
     pub(crate) values: HashMap<AreaKey, Arc<[f64]>>,
+    /// The value counts of each rule area this round (`value_counts`), keyed the same way.
     pub(crate) counts: HashMap<AreaKey, Arc<HashMap<String, u32>>>,
+    /// How many values `values` and `counts` hold, against `MAX_KEPT_VALUES`.
+    kept: usize,
+    /// Each sheet's rules in priority order this round.
+    rules: HashMap<u32, SheetRules>,
     /// How many rounds began, for the tests of SPEC-0021.
     #[cfg(test)]
     pub(crate) runs: usize,
@@ -52,6 +65,8 @@ impl Default for CfState {
             target: None,
             values: HashMap::new(),
             counts: HashMap::new(),
+            kept: 0,
+            rules: HashMap::new(),
             #[cfg(test)]
             runs: 0,
         }
@@ -70,12 +85,30 @@ impl CfState {
         self.read.clear();
         self.values.clear();
         self.counts.clear();
+        self.kept = 0;
+        self.rules.clear();
         self.stale = false;
         self.all = false;
         #[cfg(test)]
         {
             self.runs += 1;
         }
+    }
+
+    /// Whether statistics of `values` more values may be kept this round; charges them if so.
+    pub(crate) fn charge(&mut self, values: usize) -> bool {
+        let kept = self.kept.saturating_add(values);
+        if kept > MAX_KEPT_VALUES {
+            return false;
+        }
+        self.kept = kept;
+        true
+    }
+
+    /// How many values the statistics of this round keep, for the tests of T-0476.
+    #[cfg(test)]
+    pub(crate) fn kept(&self) -> usize {
+        self.kept
     }
 
     /// The areas of `ranges` a rule's results are written for: all of them, or while one cell is
@@ -194,18 +227,38 @@ impl Model {
     /// Evaluates the rules of `sheet` whose areas hold (`row`, `column`), in priority order, for
     /// that cell only: what `evaluate_conditional_formatting` stores for it.
     fn evaluate_conditional_formatting_at(&mut self, sheet: u32, row: i32, column: i32) {
-        let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) else {
+        let Some(rules) = self.sheet_rules(sheet) else {
             return;
         };
-        let mut rules = worksheet.conditional_formatting.clone();
-        rules.sort_by_key(|cf| cf.priority);
         self.cf.target = Some((sheet, row, column));
-        for cf in rules {
-            let ranges = crate::conditional_formatting::parse_sqref(&cf.range);
+        for (ranges, rule) in rules.iter() {
             if ranges.iter().any(|&area| holds(area, row, column)) {
-                self.apply_cf_rule(sheet, &cf.cf_rule, &ranges);
+                self.apply_cf_rule(sheet, rule, ranges);
             }
         }
         self.cf.target = None;
+    }
+
+    /// `sheet`'s rules in priority order with their parsed areas, built once per round.
+    fn sheet_rules(&mut self, sheet: u32) -> Option<SheetRules> {
+        if let Some(rules) = self.cf.rules.get(&sheet) {
+            return Some(rules.clone());
+        }
+        let worksheet = self.workbook.worksheets.get(sheet as usize)?;
+        let mut rules = worksheet.conditional_formatting.clone();
+        rules.sort_by_key(|cf| cf.priority);
+        let rules: SheetRules = Arc::new(
+            rules
+                .into_iter()
+                .map(|cf| {
+                    (
+                        crate::conditional_formatting::parse_sqref(&cf.range),
+                        cf.cf_rule,
+                    )
+                })
+                .collect(),
+        );
+        self.cf.rules.insert(sheet, rules.clone());
+        Some(rules)
     }
 }

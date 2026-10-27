@@ -281,3 +281,32 @@ fn statistics_are_recomputed_each_round() {
     assert!(!red(&mut model, 10));
     assert!(red(&mut model, 3));
 }
+
+/// Directive 5: rules whose areas cut at the used area are the same share one set of statistics,
+/// and the statistics a round keeps are bounded (past the bound they are computed per read).
+#[test]
+fn kept_statistics_are_shared_and_bounded() {
+    let mut model = new_empty_model();
+    for row in 1..=100 {
+        model.set_user_input(0, row, 1, row.to_string()).unwrap();
+    }
+    for extra in 0..50 {
+        let top = CfRuleInput::Top10 {
+            rank: 1,
+            percent: false,
+            format: super::red_fill(),
+            stop_if_true: false,
+        };
+        let area = format!("A1:A{}", 1000 + extra * 1000);
+        model.add_conditional_formatting(0, &area, top).unwrap();
+    }
+    model.evaluate();
+    assert!(red(&mut model, 100));
+    assert_eq!(model.cf.kept(), 100);
+
+    let mut state = crate::cf_styles::CfState::default();
+    assert!(state.charge(3_999_999));
+    assert!(!state.charge(2));
+    assert!(state.charge(1));
+    assert_eq!(state.kept(), 4_000_000);
+}
