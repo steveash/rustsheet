@@ -3,7 +3,7 @@ id: T-2358
 title: "HYPERLINK: probe the 255-character link_location bound for characters outside the BMP"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-2277 added the bound (`hyperlink_location`, crates/rustsheet-engine/src/functi
 
 ## Out of scope
 - HYPERLINK's displayed text and link storage.
+
+## Outcome
+Probed on excel-graph (probes/t2358-hyperlink-location-non-bmp): the bound counts UTF-16 units (127 emoji + "a" passes, 128 emoji is #VALUE!). Our implementation already matched; lookup.md updated. No eval baseline change.
