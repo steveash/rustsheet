@@ -171,7 +171,7 @@ Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx 
 A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
 it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
-Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of fewer than four sections is unprobed and returns the text unchanged.
+Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of fewer than four sections is unprobed and returns the text unchanged. An empty 4th section (`;;;`; the parser drops the empty section after a trailing `;`, so `Parser::ends_in_separator` marks it) gives empty text (gen-m10/0e3d8eba9432a18d T!A24). A five-section format on a text value is unprobed (T-2945 probe cells not run: no oracle access).
 Tasks: T-0935, T-2945
 
 ## TEXT of a text value is `#VALUE!` over 255 characters

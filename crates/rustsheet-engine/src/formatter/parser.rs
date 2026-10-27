@@ -214,6 +214,9 @@ pub(crate) fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
 
 pub struct Parser {
     pub parts: Vec<ParsePart>,
+    /// Whether the format ends in a `;`, so an empty section follows the last part.
+    pub(crate) ends_in_separator: bool,
+    last_part_ended_on_separator: bool,
     lexer: Lexer,
 }
 
@@ -320,12 +323,18 @@ impl Parser {
     pub fn new(format: &str) -> Self {
         let lexer = Lexer::new(format);
         let parts = vec![];
-        Parser { parts, lexer }
+        Parser {
+            parts,
+            ends_in_separator: false,
+            last_part_ended_on_separator: false,
+            lexer,
+        }
     }
     pub fn parse(&mut self) {
         while self.lexer.peek_token() != Token::EOF {
             let part = self.parse_part();
             self.parts.push(part);
+            self.ends_in_separator = self.last_part_ended_on_separator;
         }
     }
 
@@ -836,6 +845,7 @@ impl Parser {
             after_colon = is_colon;
             token = next_token;
         }
+        self.last_part_ended_on_separator = token == Token::Separator;
         // Excel: a bare digit 1-9 is a literal (`TEXT(5,"2")` is "2", `"4am/pm"` "4AM"), but beside a
         // date or time token anywhere in the section the code is #VALUE!: `"42abc"`, `"4b"`, `"b4"`,
         // `"4 d"`, `"4:mm"`, `"[h]4"`, `"4g"`; quoted or escaped it prints (`"\4b"` is "443";
