@@ -84,3 +84,13 @@ fn a_bare_digit_beside_a_date_token_rejects_the_code() {
         assert_eq!(number(3.25, code), (text.to_string(), false), "{code}");
     }
 }
+
+// `[Cyan]` is one of Excel's eight colors, so the format is accepted (gen-m10, T-1737).
+#[test]
+fn cyan_is_a_color() {
+    assert_eq!(
+        number(0.0, "[Green]#,##0;[Magenta](#,##0);[Cyan]0"),
+        ("0".to_string(), false)
+    );
+    assert_eq!(number(5.0, "[Cyan]0"), ("5".to_string(), false));
+}
