@@ -1,6 +1,6 @@
-//! The run's own record in report.json (SPEC-0022, T-0080): the commit and UTC date it ran at, and
-//! each suite under eval/suites it did not run with the reason, so the progress dashboard can tell
-//! a complete run from a stale one. Also the report's timing section. `date` and `commit` change
+//! The run's own record in report.json (SPEC-0022, T-0080): the commit and UTC date it ran at,
+//! whether the tree had uncommitted changes (T-0082), and each suite under eval/suites it did not
+//! run with the reason, so the progress dashboard can tell a complete run from a stale one. Also the report's timing section. `date` and `commit` change
 //! from run to run, so no test or golden file compares a whole report.json.
 
 use std::fmt::Write as _;
@@ -27,6 +27,11 @@ const UNIX_EPOCH_SERIAL: i64 = 25_569;
 pub struct RunMeta {
     /// `git rev-parse --short=8 HEAD` at the repository root, or `None` when git fails.
     pub commit: Option<String>,
+    /// Whether `git status --porcelain` at the repository root listed any tracked or untracked
+    /// change (ignored files do not count), so the report is not exactly `commit`'s result;
+    /// `None` when git fails, like `commit`.
+    #[serde(default)]
+    pub dirty: Option<bool>,
     /// The UTC date of the run, `YYYY-MM-DD`; empty in a report no run filled.
     pub date: String,
     /// Each suite under eval/suites that did not run, by name.
@@ -48,6 +53,7 @@ impl RunMeta {
     pub fn new(root: &Path, now: SystemTime, all: &[Suite], chosen: &[Suite]) -> RunMeta {
         RunMeta {
             commit: git_commit(root),
+            dirty: git_dirty(root),
             date: utc_date(now),
             skipped_suites: skipped(all, chosen),
         }
@@ -70,6 +76,29 @@ pub fn git_commit(root: &Path) -> Option<String> {
     let sha = sha.trim();
     (out.status.success() && !sha.is_empty() && sha.bytes().all(|b| b.is_ascii_hexdigit()))
         .then(|| sha.to_string())
+}
+
+/// Whether `root`'s work tree has uncommitted changes; `None` when git is missing or fails.
+#[must_use]
+pub fn git_dirty(root: &Path) -> Option<bool> {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["status", "--porcelain"])
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| porcelain_is_dirty(&String::from_utf8_lossy(&out.stdout)))
+}
+
+/// Whether `git status --porcelain` output lists any entry: each changed or untracked path is
+/// one non-empty line, and a clean tree prints nothing.
+#[must_use]
+pub fn porcelain_is_dirty(porcelain: &str) -> bool {
+    porcelain.lines().any(|line| !line.trim().is_empty())
 }
 
 /// `now`'s UTC date as `YYYY-MM-DD`. A clock before 1970 reads as 1970-01-01, and one past
@@ -113,8 +142,13 @@ pub fn write_markdown(run: &RunMeta, md: &mut String) {
         .collect();
     let _ = writeln!(
         md,
-        "Run: commit `{}`, {} (UTC). Skipped suites: {}.\n",
+        "Run: commit `{}`{}, {} (UTC). Skipped suites: {}.\n",
         run.commit.as_deref().unwrap_or("unknown"),
+        if run.dirty == Some(true) {
+            " with uncommitted changes"
+        } else {
+            ""
+        },
         if run.date.is_empty() {
             "no date"
         } else {
@@ -191,11 +225,40 @@ mod tests {
         let missing = std::env::temp_dir().join("rustsheet-run-meta-test-no-such-dir");
         assert_eq!(git_commit(&missing), None);
         let run = RunMeta::new(&missing, UNIX_EPOCH, &[], &[]);
-        assert_eq!(run.commit, None);
+        assert_eq!((run.commit.clone(), run.dirty), (None, None));
         let json = serde_json::to_value(&run).unwrap_or_default();
         assert_eq!(json["commit"], serde_json::Value::Null);
+        assert_eq!(json["dirty"], serde_json::Value::Null);
         assert_eq!(json["date"], "1970-01-01");
         assert_eq!(json["skipped_suites"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn any_porcelain_entry_makes_the_tree_dirty() {
+        assert!(!porcelain_is_dirty(""));
+        assert!(!porcelain_is_dirty("\n"));
+        assert!(porcelain_is_dirty(
+            " M crates/rustsheet-eval/src/run_meta.rs\n"
+        ));
+        assert!(porcelain_is_dirty("?? scratch.txt\n"));
+        let mut md = String::new();
+        let run = RunMeta {
+            commit: Some("0123abcd".into()),
+            dirty: Some(true),
+            date: "2026-10-27".into(),
+            ..RunMeta::default()
+        };
+        write_markdown(&run, &mut md);
+        assert!(
+            md.starts_with("Run: commit `0123abcd` with uncommitted changes, 2026-10-27 (UTC)."),
+            "{md}"
+        );
+        // A report read back from before T-0082 has no `dirty`.
+        let old: RunMeta = serde_json::from_str(
+            r#"{"commit":"0123abcd","date":"2026-10-27","skipped_suites":[]}"#,
+        )
+        .unwrap_or_default();
+        assert_eq!((old.commit.as_deref(), old.dirty), (Some("0123abcd"), None));
     }
 
     #[test]

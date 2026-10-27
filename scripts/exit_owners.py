@@ -2,6 +2,7 @@
 """Milestone exit cells that no open task of the milestone owns (decision 0096).
 
   scripts/exit_owners.py --milestone M5 [--report PATH] [--tasks DIR] [--strict]
+  scripts/exit_owners.py --unattributed [--report PATH] [--tasks DIR] [--strict]
 
 Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every failing cell of the
 milestone's exit criteria (decision 0085: the `gen-m<k>` suite, the ironcalc-calc row of
@@ -16,6 +17,11 @@ xlsx file name, a probe name) and either the cell's A1 name as a whole word, or 
 with no A1-shaped token (a task that names only the case owns all of it). The ironcalc-calc
 exceptions are the row's `excepted` cells, which `make eval` takes from
 eval/milestones/exit-exceptions.tsv.
+
+`--unattributed` lists instead the report's `unattributed_off` cells (decision 0118 item 6, decision 0132, T-0082:
+visibly-off Excel cells attributed to no function; a `DEVIATION` cell is never among them) that no
+open task of any milestone owns, by the same rule, as `case!Sheet!A1<TAB>formula`, then a count
+line. It gates nothing (`--strict` aside).
 """
 
 from __future__ import annotations
@@ -110,13 +116,13 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     return out
 
 
-def open_task_texts(tasks_dir: Path, milestone: str) -> list[str]:
-    """The text of every open task of `milestone` under `tasks_dir`."""
+def open_task_texts(tasks_dir: Path, milestone: str | None) -> list[str]:
+    """The text of every open task of `milestone` (of any milestone when `None`) under `tasks_dir`."""
     out = []
     for path in sorted(tasks_dir.glob("*/T-*.md")):
         text = path.read_text()
         meta = tasks.front_matter(text, path)
-        if meta.get("milestone") == milestone and meta.get("status") in tasks.OPEN:
+        if milestone in (None, meta.get("milestone")) and meta.get("status") in tasks.OPEN:
             out.append(text)
     return out
 
@@ -164,13 +170,34 @@ def unowned(report: dict[str, Any], milestone: str, tasks_dir: Path) -> list[Exi
     return out
 
 
+UNATTRIBUTED = "unattributed"
+
+
+def unowned_unattributed(report: dict[str, Any], tasks_dir: Path) -> list[ExitCell]:
+    """The report's unattributed visibly-off cells that no open task owns, in report order."""
+    texts = open_task_texts(tasks_dir, None)
+    cells = [
+        ExitCell(UNATTRIBUTED, str(c["case"]), str(c["cell"]), str(c.get("formula") or ""))
+        for c in report.get("unattributed_off") or []
+    ]
+    return [c for c in cells if not owned(c, texts)]
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--milestone", required=True, help="M<n>, e.g. M5")
+    which = ap.add_mutually_exclusive_group(required=True)
+    which.add_argument("--milestone", help="M<n>, e.g. M5")
+    which.add_argument(
+        "--unattributed",
+        action="store_true",
+        help="unowned cells attributed to no function",
+    )
     ap.add_argument("--report", type=Path, default=REPORT)
     ap.add_argument("--tasks", type=Path, default=tasks.TASKS)
     ap.add_argument("--strict", action="store_true", help="exit 1 when any cell is unowned")
     args = ap.parse_args(argv)
+    if args.unattributed:
+        return main_unattributed(args.report, args.tasks, args.strict)
     if not tasks.MILESTONE.match(args.milestone):
         print(f"error: --milestone must be M<n>, not {args.milestone!r}", file=sys.stderr)
         return 2
@@ -187,6 +214,21 @@ def main(argv: list[str]) -> int:
         print(f"{c.criterion}\t{c.case}!{c.key}\t{c.formula}")
     print(f"{len(cells)} failing {args.milestone} exit cells have no open {args.milestone} owner")
     return 1 if args.strict and cells else 0
+
+
+def main_unattributed(report_path: Path, tasks_dir: Path, strict: bool) -> int:
+    if not report_path.is_file():
+        print(f"error: {report_path} not found; run `make eval` first", file=sys.stderr)
+        return 2
+    try:
+        cells = unowned_unattributed(json.loads(report_path.read_text()), tasks_dir)
+    except (ValueError, KeyError, TypeError) as e:
+        print(f"error: {report_path}: {e}", file=sys.stderr)
+        return 2
+    for c in cells:
+        print(f"{c.case}!{c.key}\t{c.formula}")
+    print(f"{len(cells)} visibly-off cells attributed to no function have no open owner")
+    return 1 if strict and cells else 0
 
 
 if __name__ == "__main__":

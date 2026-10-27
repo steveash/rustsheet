@@ -304,7 +304,11 @@ pub struct RunReport {
     /// Argument classes per in-scope function and catalog parameter (T-0077).
     #[serde(default)]
     pub argument_coverage: Vec<FunctionArguments>,
-    /// Commit, date and skipped suites ([`RunMeta`], T-0080); filled by the caller.
+    /// Visibly-off, in-scope Excel cells attributed to no function (decision 0118 item 6, T-0082),
+    /// in case order. Deviation cells are not among them.
+    #[serde(default)]
+    pub unattributed_off: Vec<attribution::UnattributedCell>,
+    /// Commit, date, dirty flag and skipped suites ([`RunMeta`], T-0080); filled by the caller.
     #[serde(default)]
     pub run: RunMeta,
 }
@@ -323,6 +327,7 @@ impl RunReport {
         let mut suites: BTreeMap<String, SuiteSummary> = BTreeMap::new();
         let mut functions: BTreeMap<String, FunctionStat> = BTreeMap::new();
         let mut evidence: BTreeMap<String, FunctionEvidence> = BTreeMap::new();
+        let mut unattributed_off = Vec::new();
         for r in results {
             let s = suites
                 .entry(r.suite.clone())
@@ -350,13 +355,21 @@ impl RunReport {
                         .push(format!("{}\t{}", r.id, c.key()));
                 }
                 let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
-                if calls_only_in_scope(catalog, &called) {
+                let in_scope = calls_only_in_scope(catalog, &called);
+                if in_scope {
                     s.closeness.add(c);
                     book.add(c);
                 }
                 // A by-design value says nothing about how well a function matches Excel.
                 if c.verdict == Verdict::Deviation {
                     continue;
+                }
+                if in_scope && attribution::is_unattributed_off(c, &called) {
+                    unattributed_off.push(attribution::UnattributedCell {
+                        case: r.id.clone(),
+                        cell: c.key(),
+                        formula: c.formula.clone().unwrap_or_default(),
+                    });
                 }
                 let visible = Visible::of(c);
                 if visible.total() > 0 {
@@ -439,6 +452,7 @@ impl RunReport {
             function_scope: function_scope::summarize(catalog, results),
             argument_coverage: argument_coverage::summarize(catalog, results),
             real_world_suites: REAL_WORLD_SUITES.iter().map(ToString::to_string).collect(),
+            unattributed_off,
             // The caller fills the milestone sections, the checkpoint and `run`.
             ..RunReport::default()
         }
