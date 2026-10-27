@@ -215,6 +215,8 @@ pub(super) fn may_hand_on_grid(node: &Node) -> bool {
                 kind: Function::Offset
                     | Function::Indirect
                     | Function::Trimrange
+                    | Function::Take
+                    | Function::Drop
                     | Function::If
                     | Function::Choose
                     | Function::Let,

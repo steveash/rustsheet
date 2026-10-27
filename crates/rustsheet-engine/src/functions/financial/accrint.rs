@@ -113,7 +113,14 @@ fn compute_accrint(
     // Only the coupon dates the accrual reads must be in the calendar: a regular period that
     // starts before 1900 is fine when the settlement's period is later (`ACCRINT(33448,1,37714,
     // 1E+300,0.3,1,2,TRUE)` is a number; gen-m9 3b7990bd4e3307ba Calc!A317).
-    let pcd = accrint_coupon_serial(pcd_date, first_coupon)?;
+    let mut pcd = accrint_coupon_serial(pcd_date, first_coupon)?;
+    // Excel: first_interest 60 (the fictitious 1900-02-29) stays serial 60 as the settlement's
+    // coupon date, although the schedule steps from 1900-02-28, so an issue of 59 still has a
+    // period to walk back through and the walk reaches 1899: `ACCRINT(59,60,242,0.05,1000,2,0,
+    // TRUE)` is #NUM! while first_interest 59 is a number (probes/accrint-eom-1900 A9, A13).
+    if pcd_date == first_interest_date {
+        pcd = pcd.max(first_interest);
+    }
 
     let first_date = issue.max(pcd);
     let days0 = serial_basis_days(first_date, settlement, basis)?;
