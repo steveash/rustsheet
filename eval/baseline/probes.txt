@@ -933,6 +933,7 @@ C	probes/rank-nonref-errors.case.json	44
 C	probes/rank-unknown-shape-ref.case.json	17
 C	probes/rate-cap-return-rule.case.json	74
 C	probes/rate-empty-arguments.case.json	10
+C	probes/rate-excel-pmt-bits.case.json	308
 C	probes/rate-pmt-zero-cap.case.json	58
 C	probes/rate-step-cap.case.json	46
 C	probes/rate-zero-residual-guess.case.json	12
