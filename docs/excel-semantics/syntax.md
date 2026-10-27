@@ -354,8 +354,8 @@ a later run of exactly 256 line feeds counts as none there (unprobed). A cell st
 prints, and one with no whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a
 `Spaced` (`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the
 stripped tree too. A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass);
-other leading whitespace characters are kept as before (unprobed). Still open: the spaces beyond an intersection's one
-(T-2783), whitespace around LAMBDA parameter names (dropped; unprobed, T-2786), and the xlsx export, which writes the
+other leading whitespace characters are kept as before (unprobed). The spaces beyond an intersection's one are kept as the right operand's leading run (T-2783; C3, C5, E9 pass). Still open: FORMULATEXT of an
+intersection whose separator holds line feeds (`B1:B2` LF ` B2` drops the LF; unprobed, T-2786), whitespace around LAMBDA parameter names (dropped; unprobed, T-2786), and the xlsx export, which writes the
 stripped tree until T-2786 shows what Excel saves. `=S! B1` is a parse error (`#ERROR!`) where Excel reads `S!B1`
 (T-2785).
 Status: VERIFIED (excel-graph)

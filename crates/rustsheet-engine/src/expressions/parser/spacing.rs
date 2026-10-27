@@ -31,7 +31,7 @@ impl Run {
     /// print nothing; docs/excel-semantics/syntax.md, probes/t2776-formula-text-whitespace-shapes
     /// and probes/t2782-whitespace-run-wrap). Whitespace holding anything but spaces and line
     /// feeds is not kept: the other whitespace characters print nothing today.
-    fn of(text: &[char]) -> Run {
+    pub(super) fn of(text: &[char]) -> Run {
         if !text.iter().all(|c| matches!(c, ' ' | '\n')) {
             return Run::default();
         }
@@ -123,6 +123,15 @@ impl Node {
             Node::Spaced { space, child } => (space, *child),
             node => (Spacing::default(), node),
         }
+    }
+
+    /// The node under any [`Node::Spaced`] wrapper, for the printers that decide on its shape.
+    pub(crate) fn unwrap_spaced(&self) -> &Node {
+        let mut node = self;
+        while let Node::Spaced { child, .. } = node {
+            node = child;
+        }
+        node
     }
 
     /// [`Node::spaced`] with the runs of `space`.

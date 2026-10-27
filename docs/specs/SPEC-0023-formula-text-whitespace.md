@@ -167,6 +167,11 @@ Changes from the design above, found while implementing step 1 (decision 0127):
 - The runs are attached in `Parser::parse_power` (before the operand, after each sign, before each `%`, after the
   operand) and after `@`, which covers every primary position the probes show.
 
+### Implementation note (T-2783)
+Step 3 attaches the spaces after the intersection's first (the operator) to the right operand as its `before` run,
+not as a printed separator on the intersection node, so no node field is added; `intersection_operand` peels
+`Spaced` so the operand is not parenthesised.
+
 ### What does not change
 Public API, the depth and operator caps, every parse error, and every value.
 
