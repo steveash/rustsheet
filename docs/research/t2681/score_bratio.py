@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "t2464" / "r2-bratio"))
-import bratio_excel as B  # noqa: E402
+import bratio_excel as B  # noqa: E402 - needs the sys.path entry set above
 
 
 def ordered(v: float) -> int:

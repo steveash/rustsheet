@@ -14,12 +14,13 @@
 //! `bpser` is worse than that model (28 bit-exact of 116 against 75, 23 visibly off against 0;
 //! docs/research/t2681/README.md, docs/excel-semantics/statistics.md "F.TEST / FTEST").
 //!
-//! Every loop is bounded ([`SERIES_TERMS`], and `bup`'s n below 40).
+//! Every loop is bounded (bratio's series bound, and `bup`'s n below 40).
 
 use super::beta_density::beta_density_small_shape;
+use super::bratio::{bpser_with_ln_beta, EPS};
 use super::gammaln::excel_gammaln;
-use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
-use crate::x87_exp::{dd_add, dd_to_extended, excel_exp_extended};
+use crate::arithmetic::{extended_quotient, extended_sum};
+use crate::x87_exp::{dd_add, dd_to_extended};
 use crate::x87_log10::{excel_ln, ln_double_double};
 use crate::x87_register::Register;
 
@@ -27,11 +28,6 @@ use crate::x87_register::Register;
 const BRATIO_SERIES_SHAPE_MAX: f64 = 40.0;
 /// TOMS's `bpser` and L140 cut on b0 x0 and on x0.
 const BPSER_CUT: f64 = 0.7;
-/// bratio's `eps` (TOMS: max(2^-52, 1e-15)), `bup`'s relative stop.
-const EPS: f64 = 1e-15;
-/// Bound on [`bpser`]'s terms: x0 <= 0.7 there and the terms shrink like x0^n, so it stops after
-/// a few hundred.
-const SERIES_TERMS: u32 = 100_000;
 /// TOMS `gamln1(1/2)`, ln Gamma(3/2), as TOMS's rational approximation gives it in doubles: w3's
 /// ln Gamma(1/2) is fl64(gamln1(1/2) - LN(1/2)) (`lnb_w3`, `w3_lg = "toms"`); it enters at the
 /// L140 shape 1/2 (gen-m9/58e3253bbd3a7a82 A141 and 8f2ac25945af87da A119, bit-exact with it).
@@ -57,7 +53,7 @@ pub(super) fn f_test_bratio_p(x: f64, y: f64, a: f64, b: f64) -> Option<f64> {
         return None;
     }
     let w = if b0 * x0 <= BPSER_CUT {
-        bpser(a0, b0, x0)
+        bpser(a0, b0, x0)?
     } else {
         if x0 > BPSER_CUT {
             return None;
@@ -69,32 +65,17 @@ pub(super) fn f_test_bratio_p(x: f64, y: f64, a: f64, b: f64) -> Option<f64> {
             n -= 1.0;
             shape = 1.0;
         }
-        bup(shape, a0, y0, x0, n)? + bpser(a0, shape, x0)
+        bup(shape, a0, y0, x0, n)? + bpser(a0, shape, x0)?
     };
     // bratio's other tail, and the swap back.
     let w1 = (0.5 - w) + 0.5;
     Some(2.0 * w.min(w1))
 }
 
-/// w3's `bpser`: `I_x(a, b)` as `s = 1/a + sum c_n/(a+n)`, `c_n = c_(n-1) ((1/2 - b/n) + 1/2) x`, every
-/// step a stored x87 op, summed until s stops changing, times EXP(fl64(fl(a LN x) - L)) with L
-/// [`neg_ln_beta`]'s ln B(a, b).
-fn bpser(a: f64, b: f64, x: f64) -> f64 {
-    let mut s = extended_quotient(1.0, a);
-    let mut c = 1.0;
-    let mut n = 0.0;
-    for _ in 0..SERIES_TERMS {
-        n += 1.0;
-        let factor = extended_sum(extended_sum(0.5, -extended_quotient(b, n)), 0.5);
-        c = extended_product(extended_product(c, factor), x);
-        let next = extended_sum(s, extended_quotient(c, extended_sum(a, n)));
-        if next == s {
-            break;
-        }
-        s = next;
-    }
-    let z = Register::load(extended_product(a, excel_ln(x))).add(neg_ln_beta(a, b));
-    extended_product(excel_exp_extended(z), s)
+/// w3's `bpser`: bratio's series and EXP ([`bpser_with_ln_beta`]) with L [`neg_ln_beta`]'s
+/// ln B(a, b).
+fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
+    bpser_with_ln_beta(a, b, x, neg_ln_beta(a, b))
 }
 
 /// -ln B(a, b) in a register as w3's `lnb_w3` forms it: above a shape of 8 the accurate value
@@ -162,8 +143,10 @@ fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::bratio::bpser_neg_ln_beta;
     use super::{f_test_bratio_p, neg_ln_beta};
     use crate::test::util::ulps;
+    use crate::x87_register::Register;
 
     // (x, y, a, b, Excel's F.TEST, the port's ulps from it) at the F.TEST cells the remainder
     // model had visibly off (excel-graph; T-2681): none is visibly off now.
@@ -250,6 +233,23 @@ mod tests {
         ] {
             assert_eq!(neg_ln_beta(a, b).store(), reference, "B({a}, {b})");
         }
+    }
+
+    // F.TEST's ln B is not BETA.DIST's bpser ln B (`bratio::bpser_neg_ln_beta`), so bpser takes it
+    // as an argument: at the L140 shape 1/2 it reads GAMMALN(1/2) as gamln1(1/2) - LN(1/2), an ulp
+    // apart once stored (A141 and A119 are bit-exact with it), and above a shape of 8 it has the
+    // accurate value where BETA.DIST's port has none yet.
+    #[test]
+    fn ln_beta_differs_from_beta_dist_bpser() {
+        let beta_dist = |a, b| bpser_neg_ln_beta(a, b).map(Register::store);
+        for (a, b, f_test, beta_dist_value) in [
+            (7.5, 0.5, 0.418_432_181_381_979_2, 0.418_432_181_381_979_24),
+            (6.0, 0.5, 0.302_705_374_150_394_95, 0.302_705_374_150_395),
+        ] {
+            assert_eq!(neg_ln_beta(a, b).store(), f_test, "B({a}, {b})");
+            assert_eq!(beta_dist(a, b), Some(beta_dist_value), "B({a}, {b})");
+        }
+        assert_eq!(beta_dist(9.0, 2.5), None);
     }
 
     // Not ported: a shape of 1/2 or 1 (the remainder model), a smaller-side shape of 40 or more
