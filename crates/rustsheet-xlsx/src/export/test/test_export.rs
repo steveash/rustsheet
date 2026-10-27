@@ -154,7 +154,7 @@ fn test_formulas() {
 }
 
 /// The text of the part `name` of the xlsx file `path`.
-fn part_text(path: &str, name: &str) -> String {
+pub(super) fn part_text(path: &str, name: &str) -> String {
     let file = fs::File::open(path).unwrap();
     let mut archive = zip::ZipArchive::new(file).unwrap();
     let mut text = String::new();
