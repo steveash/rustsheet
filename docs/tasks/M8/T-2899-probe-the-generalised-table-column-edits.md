@@ -1,6 +1,6 @@
 ---
 id: T-2899
-title: "Probe table column edits T-2339 generalised: ColumnN naming with gaps and case clashes, a multi-column insert in one op, deleting every column, a delete straddling an edge, a column range losing one end"
+title: "Probe the table column edits T-2339 generalised: ColumnN naming with gaps and case clashes, a multi-column insert in one op, deleting every column, a delete straddling an edge, a column range losing one end"
 milestone: M8
 lane: research
 status: todo

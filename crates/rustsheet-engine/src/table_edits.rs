@@ -121,6 +121,7 @@ fn column_span((left, right): (i32, i32), at: i32, delta: i32) -> Span {
         if end < left {
             Span::Changed(left + delta, right + delta)
         } else if left <= at && end <= right && (left < at || end < right) {
+            // Inside the table, leaving at least one of its columns.
             Span::Changed(left, right + delta)
         } else {
             Span::Fallback

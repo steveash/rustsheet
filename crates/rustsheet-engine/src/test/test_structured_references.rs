@@ -232,8 +232,8 @@ fn row_deletes_keep_values() {
     }
 }
 
-/// The table over columns A:B moves with an insert at A and is left alone right of B; any other
-/// column edit changes its column list, a fallback (T-2339).
+/// The table over columns A:B moves with an insert at A, grows with one at B and is left alone
+/// right of B (T-2339); column deletes inside it are `column_deletes_inside_drop_the_column`.
 #[test]
 fn column_inserts_and_deletes_keep_values() {
     // An insert at the second column grows the table (T-2339).
