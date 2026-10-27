@@ -402,16 +402,18 @@ Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2
 (I1:I13). Each refused formula was entered alone against the same case.
 Ours: the runs SPEC-0023 keeps are in the entry above; a run beside a missing argument is T-2944.
 Structured-reference whitespace prints as above (T-2801): the runs inside the outer brackets are kept as
-written around a column, a column range or nested specifiers (`T[[Col] ]` too, unprobed), a run before
-the comma is dropped and any run after it prints as one space. A lone item specifier drops its padding
-(`T[ [#Data] ]` prints `T[#Data]`, unprobed), and a second item specifier's comma keeps no space
-(`T[[#Headers], [#Data],[Col]]`, unprobed). The export writes the same text, and the lexer reads
-Excel's saved `T[ Col ]` back as `Col` with its padding, so a bare column's leading and trailing runs
-are padding, never part of the name (Excel writes such a column bracketed, `Table3[[the two ]]`);
-the shapes Graph refuses (`T[ Col]`, `T[Col ]`) are accepted. A run before `]`, `@` or `#` is read as
-before (`T[ ]` names the column ` `).
+written around a column, a column range or nested specifiers, a run before the comma is dropped and any
+run after it prints as one space. Only one space each side is probed. Keeping longer, line-feed or
+one-sided runs verbatim (`T[[Col] ]`) is our guess, and so are two choices that are ours, not seen in
+Excel: a lone item specifier drops its padding (`T[ [#Data] ]` prints `T[#Data]`), and in a
+two-specifier form only the comma before the column keeps its space (T-2963 probes them all). The export
+writes the same text, and the lexer reads Excel's saved `T[ Col ]` back as `Col` with its padding, so a
+bare column's leading and trailing runs are padding, never part of the name (Excel writes such a
+column bracketed, `Table3[[the two ]]`). This is more lenient than typed Excel: the shapes Graph
+refuses (`T[ Col]`, `T[Col ]`) are accepted, and loading a hand-written stored one is unprobed (T-2800).
+A leading run right before `]`, `@` or `#` is read as before (`T[ ]` names the column ` `).
 Status: VERIFIED (excel-graph)
-Tasks: T-2786, T-2944, T-2800, T-2801
+Tasks: T-2786, T-2944, T-2800, T-2801, T-2963
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every

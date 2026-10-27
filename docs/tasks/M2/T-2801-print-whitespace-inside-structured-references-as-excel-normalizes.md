@@ -34,3 +34,4 @@ T-2786 shapes: `T[ [Col] ]` prints `T[ Col ]`; `T[ [#Data] , [Col] ]` prints `T[
   structured reference finds its table (every E cell of this case was `#ERROR!` before).
 - Eval: probes known failures 2983 -> 2971 (t2786 E4, E5, E7:E9, E12:E15, F4, F7, F15 fixed; F8
   passes for the right reason now), no regressions. C2:C4 stay with T-2800, H/I with T-2944.
+- Follow-up: T-2963 (probe the padding shapes beyond one space that this change guesses).

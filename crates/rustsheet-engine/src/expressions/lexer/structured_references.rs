@@ -199,7 +199,8 @@ impl Lexer {
     // * Whitespace inside the outer brackets is kept in `TableSpacing` (T-2801): a run after `[`
     //   and before `]` around a column or nested specifiers (`T[ [Col]:[Other] ]`, `T[ Col ]`,
     //   which Excel saves for `T[ [Col] ]`), and whether a run follows the comma before the
-    //   column. A run before `]`, `@` or `#` is lexed as before (part of a column name).
+    //   column. A bare column's trailing run is always padding (`T[Col ]` names `Col`); a leading
+    //   run right before `]`, `@` or `#` is lexed as before (part of a column name: `T[ ]`).
     pub(crate) fn consume_structured_reference(&mut self, table_name: &str) -> Result<TokenType> {
         self.expect(TokenType::LeftBracket)?;
         let start = self.position;

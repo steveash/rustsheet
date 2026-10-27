@@ -667,10 +667,9 @@ impl Parser {
 
     /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
     /// (SPEC-0016), with the whitespace it keeps (`spacing`, T-2801). `bare` marks a bare table
-    /// name (`ROWS(Sales)`). `#This Row` lowers to a
-    /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
-    /// does not resolve (unknown table or column) stays a parse error, which keeps the formula
-    /// text.
+    /// name (`ROWS(Sales)`). `#This Row` lowers to a [`Node::ThisRowKind`], resolved at the
+    /// evaluating cell's row (T-1699); a reference that does not resolve (unknown table or
+    /// column) stays a parse error, which keeps the formula text.
     pub(super) fn structured_reference_operand(
         &mut self,
         table_name: String,
