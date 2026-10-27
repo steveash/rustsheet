@@ -3,7 +3,7 @@ id: T-2505
 title: "Incomplete beta: bratio dispatch and Excel's bpser branches for every caller (T-2464 E3)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
