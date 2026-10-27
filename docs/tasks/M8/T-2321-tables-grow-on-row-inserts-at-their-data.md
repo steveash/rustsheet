@@ -3,7 +3,7 @@ id: T-2321
 title: "Tables grow on row inserts at their data edges and plain ranges onto them follow (T-2197 evidence)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
