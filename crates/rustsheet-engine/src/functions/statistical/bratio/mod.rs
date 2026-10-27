@@ -15,7 +15,7 @@ use crate::x87_log10::excel_ln;
 use crate::x87_register::Register;
 
 /// TOMS 708's `eps` in `bratio`: max(2^-52, 1e-15).
-const EPS: f64 = 1e-15;
+pub(super) const EPS: f64 = 1e-15;
 
 /// The most bpser series terms [`bpser`] sums before giving the point back to today's kernel
 /// (directive 5). Every bpser branch has its ratio b·x below 0.7 or x0 <= 0.7, so the terms fall
@@ -292,16 +292,23 @@ fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
 /// - z = fl64(fl(a·LN x) - L), never stored, and I = fl(EXP(z)·s) with Excel's EXP of the
 ///   extended argument (T-2645).
 ///
-/// `None` where L is not ported (both shapes >= 1 and one above 8), at a shape of 0, where
-/// fl(a·LN x) is not finite, or where the series has not settled within [`BPSER_MAX_TERMS`].
+/// `None` where L is not ported (both shapes >= 1 and one above 8), and where
+/// [`bpser_with_ln_beta`] gives `None`.
 fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
+    bpser_with_ln_beta(a, b, x, bpser_neg_ln_beta(a, b)?)
+}
+
+/// [`bpser`] with -L given by the caller: F.TEST's tail takes the series and EXP as BETA.DIST's
+/// do but forms ln B its own way (`f_test_tail::neg_ln_beta`, T-2681). `None` at a shape of 0,
+/// where fl(a·LN x) is not finite, or where the series has not settled within
+/// [`BPSER_MAX_TERMS`].
+pub(super) fn bpser_with_ln_beta(a: f64, b: f64, x: f64, neg_ln_beta: Register) -> Option<f64> {
     if a <= 0.0 {
         return None;
     }
     if x == 0.0 {
         return Some(0.0);
     }
-    let neg_ln_beta = bpser_neg_ln_beta(a, b)?;
     let mut s = extended_quotient(1.0, a);
     let mut c = 1.0;
     let mut n = 0.0;
@@ -339,7 +346,7 @@ fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
 /// - min(a, b) = 1 and max > 8: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506).
 ///
 /// `None` for both shapes > 1 with one above 8, where the model takes an accurate ln B.
-fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
+pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
     let (small, large) = if a < b { (a, b) } else { (b, a) };
     if small < 1.0 {
         let ln_beta = if large < BPSER_GAMMALN_FORM_MAX {

@@ -112,6 +112,25 @@ fn test_range_with_sheet_with_space() {
     assert_eq!(lx.next_token(), EOF);
 }
 
+/// Excel drops whitespace after a sheet prefix's `!` (probes/t2776-ws-after-bang).
+#[test]
+fn test_range_with_sheet_whitespace_after_bang() {
+    for (formula, sheet) in [("Sheet1! A1", "Sheet1"), ("'New sheet'!  A1", "New sheet")] {
+        let mut lx = new_lexer(formula);
+        assert_eq!(
+            lx.next_token(),
+            Reference {
+                sheet: Some(sheet.to_string()),
+                row: 1,
+                column: 1,
+                absolute_column: false,
+                absolute_row: false,
+            }
+        );
+        assert_eq!(lx.next_token(), EOF);
+    }
+}
+
 #[test]
 fn test_range_error() {
     let mut lx = new_lexer("'Sheet 1'!3.4:5");

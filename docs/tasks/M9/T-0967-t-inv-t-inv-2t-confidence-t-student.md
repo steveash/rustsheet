@@ -44,6 +44,11 @@ directly (no `1 - p`). The last digits depend on the solver's start, step and st
 Previous evidence from T-0925 (inverse normal): a closed-form inverse plus one Newton step regressed
 cells that the old code matched by luck; measure regressions on every attempt.
 
+Split (gap triage 2026-10-25): the centre quantiles, where a two-tailed p near 1 (or a one-tailed p near 0.5) makes
+the result a tiny t and ours cancels (`TINV(1-1E-10,5)` Excel 1.3171528710518458e-10, ours 2.356080457693621e-08), are
+owned by T-2724 (accuracy stage, 62 cells listed there, including T_DIST.xlsx D20, D62, D63 and E20 below). This task
+keeps every other cell; its acceptance counts exclude the T-2724 cells.
+
 Oracle sweep (T-1043): probes-numeric cases `m9-t-inv`, `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
 
 gen-m9 sweep (gap triage 2026-10-23, T-2255). CONFIDENCE.T, whose Student-t quantile is visibly off (35 cells).
