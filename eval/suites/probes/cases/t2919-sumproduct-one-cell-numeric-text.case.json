@@ -1,0 +1,96 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "SUMPRODUCT of a one-cell reference to numeric text (\"4\", \" 4\", \"1.5\", \"1E3\", \"$4\"), non-numeric text (\"x\") and a formula's text (=\"4\") beside a one-cell number in both orders, as a one-cell range, beside a constant and {2}, alone; and two-cell text ranges (T-2919, poi FormulaEvalTestData_Copy EverythingTests!J1328).",
+ "tags": [
+  "M5",
+  "probe",
+  "coercion"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=SUMPRODUCT(Data!A1,Data!B1)",
+    "A2": "=SUMPRODUCT(Data!B1,Data!A1)",
+    "A3": "=SUMPRODUCT(Data!A1:A1,Data!B1:B1)",
+    "A4": "=SUMPRODUCT(Data!A1,2)",
+    "A5": "=SUMPRODUCT(Data!A1,{2})",
+    "A6": "=SUMPRODUCT(Data!A1)",
+    "A7": "=SUMPRODUCT(Data!A2,Data!B1)",
+    "A8": "=SUMPRODUCT(Data!B1,Data!A2)",
+    "A9": "=SUMPRODUCT(Data!A2:A2,Data!B1:B1)",
+    "A10": "=SUMPRODUCT(Data!A2,2)",
+    "A11": "=SUMPRODUCT(Data!A2,{2})",
+    "A12": "=SUMPRODUCT(Data!A2)",
+    "A13": "=SUMPRODUCT(Data!A3,Data!B1)",
+    "A14": "=SUMPRODUCT(Data!B1,Data!A3)",
+    "A15": "=SUMPRODUCT(Data!A3:A3,Data!B1:B1)",
+    "A16": "=SUMPRODUCT(Data!A3,2)",
+    "A17": "=SUMPRODUCT(Data!A3,{2})",
+    "A18": "=SUMPRODUCT(Data!A3)",
+    "A19": "=SUMPRODUCT(Data!A4,Data!B1)",
+    "A20": "=SUMPRODUCT(Data!B1,Data!A4)",
+    "A21": "=SUMPRODUCT(Data!A4:A4,Data!B1:B1)",
+    "A22": "=SUMPRODUCT(Data!A4,2)",
+    "A23": "=SUMPRODUCT(Data!A4,{2})",
+    "A24": "=SUMPRODUCT(Data!A4)",
+    "A25": "=SUMPRODUCT(Data!A5,Data!B1)",
+    "A26": "=SUMPRODUCT(Data!B1,Data!A5)",
+    "A27": "=SUMPRODUCT(Data!A5:A5,Data!B1:B1)",
+    "A28": "=SUMPRODUCT(Data!A5,2)",
+    "A29": "=SUMPRODUCT(Data!A5,{2})",
+    "A30": "=SUMPRODUCT(Data!A5)",
+    "A31": "=SUMPRODUCT(Data!A6,Data!B1)",
+    "A32": "=SUMPRODUCT(Data!B1,Data!A6)",
+    "A33": "=SUMPRODUCT(Data!A6:A6,Data!B1:B1)",
+    "A34": "=SUMPRODUCT(Data!A6,2)",
+    "A35": "=SUMPRODUCT(Data!A6,{2})",
+    "A36": "=SUMPRODUCT(Data!A6)",
+    "A37": "=SUMPRODUCT(Data!A7,Data!B1)",
+    "A38": "=SUMPRODUCT(Data!B1,Data!A7)",
+    "A39": "=SUMPRODUCT(Data!A7:A7,Data!B1:B1)",
+    "A40": "=SUMPRODUCT(Data!A7,2)",
+    "A41": "=SUMPRODUCT(Data!A7,{2})",
+    "A42": "=SUMPRODUCT(Data!A7)",
+    "A43": "=SUMPRODUCT(Data!A1:A2,Data!B1:B2)",
+    "A44": "=SUMPRODUCT(Data!A6:A7,Data!B1:B2)",
+    "A45": "=SUMPRODUCT(Data!A1:A1,Data!C1:C1)",
+    "A46": "=SUMPRODUCT(Data!A1,Data!B1,Data!C1)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": {
+     "t": "s",
+     "v": "4"
+    },
+    "A2": {
+     "t": "s",
+     "v": " 4"
+    },
+    "A3": {
+     "t": "s",
+     "v": "1.5"
+    },
+    "A4": {
+     "t": "s",
+     "v": "1E3"
+    },
+    "A5": {
+     "t": "s",
+     "v": "$4"
+    },
+    "A6": {
+     "t": "s",
+     "v": "x"
+    },
+    "A7": "=\"4\"",
+    "B1": 2,
+    "B2": 3,
+    "C1": 5
+   }
+  }
+ ],
+ "expected": {}
+}

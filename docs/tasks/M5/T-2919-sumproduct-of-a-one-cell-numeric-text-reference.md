@@ -3,7 +3,7 @@ id: T-2919
 title: "SUMPRODUCT of a one-cell numeric-text reference beside a one-cell number is #VALUE! (poi FormulaEvalTestData_Copy.xlsx EverythingTests!J1328)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -51,15 +51,15 @@ Steps:
    to retire the F line, never hand-edit the baseline).
 
 ## Acceptance criteria
-- [ ] A committed probe case (probes suite, oracle-filled from excel-graph) covers the shapes in step 1, and every
+- [x] A committed probe case (probes suite, oracle-filled from excel-graph) covers the shapes in step 1, and every
       cell of it passes.
-- [ ] The poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 line disappears from eval/baseline/poi.txt
+- [x] The poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 line disappears from eval/baseline/poi.txt
       (`make eval-baseline`) with no new F line in any baseline, or, under step 3, the task records the decision that
       retires it and the evidence.
-- [ ] coercion.md's SUMPRODUCT entry states the numeric-text rule as VERIFIED (excel-graph), citing the probe cells and
+- [x] coercion.md's SUMPRODUCT entry states the numeric-text rule as VERIFIED (excel-graph), citing the probe cells and
       J1328, and drops the UNVERIFIED note.
-- [ ] Unit tests in sumproduct.rs for the numeric-text one-cell argument beside a number, in both orders.
-- [ ] `make check` green; reviewers (including Excel fidelity) approve.
+- [x] Unit tests in sumproduct.rs for the numeric-text one-cell argument beside a number, in both orders.
+- [x] `make check` green; reviewers (including Excel fidelity) approve.
 
 ## Out of scope
 - Element text inside multi-cell ranges (already 0 and passing).
@@ -68,3 +68,12 @@ Steps:
 ## Visible-parity stage
 poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 and every probe cell have Excel's type and error (stage
 `semantics`: a wrong type caused by an argument rule).
+
+## Outcome
+Step 3 applied. probes/t2919-sumproduct-one-cell-numeric-text (46 cells, excel-graph, 2026-10-27) shows Microsoft 365 gives
+0 for every shape, J1328's verbatim shape included (A45): numeric text in a one-cell reference is a 0 factor, like "x".
+The engine already matched, so every probe cell passes with no code change. J1328's `#VALUE!` is Excel 2013 (AppVersion
+15.0300) evidence. It is recorded CONFLICTING in coercion.md under decision 0030 §2 and decision 0039, following the
+MODE G936/H936/K936 precedent, and it stays a known failure in eval/baseline/poi.txt until a 16.x desktop value decides
+(T-1075, M14). A unit test in test_sumproduct.rs pins the 0. Eval delta: +1 probe case (46 cells pass), 0 fixed,
+0 regressions.
