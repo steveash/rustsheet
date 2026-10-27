@@ -265,3 +265,58 @@ fn a_cycle_through_a_scalar_operand() {
     TAILED_OFF.with(|flag| flag.set(false));
     assert_eq!(texts[0], texts[1]);
 }
+
+/// SUMPRODUCT reads element-wise whole-column arguments as a head and a tail too (T-0471): one
+/// argument over every expression of the aggregate tests.
+#[test]
+fn sumproduct_of_one_tailed_argument() {
+    check(
+        &["SUMPRODUCT"],
+        &[
+            "(A:A=1)*B:B",
+            "IF(A:A=$H$1,B:B,\"\")",
+            "A:A=$H$1",
+            "B:B/A:A",
+            "IF(A:A=\"\",0.1,0)",
+            "$H$2+A:A",
+            "-A:A",
+            // Columns without errors, so the products are summed: C holds text, blanks and
+            // empty text, Sheet2!A numbers only. A tail of 0.1 in every row, added row by row.
+            "IF(C:C=\"\",0.1,C:C)",
+            "(C:C=\"\")*1",
+            "C:C*2",
+            "Sheet2!A:A/3",
+            "IF(Sheet2!A:A=\"\",1/3,Sheet2!A:A)",
+        ],
+    );
+}
+
+/// SUMPRODUCT over several arguments, tailed or not: shapes compared at their logical size, the
+/// first element error in argument order, a whole-argument error, tails that differ by sheet and
+/// a nonzero product past every head.
+#[test]
+fn sumproduct_of_several_arguments() {
+    let cases = [
+        ("=SUMPRODUCT((A:A=1)*1,B:B*1)", 2),
+        ("=SUMPRODUCT((A:A=1)*1,B:B)", 1),
+        ("=SUMPRODUCT(A:A*1,A1:A10)", 1),
+        ("=SUMPRODUCT(A1:A10,A:A*1)", 1),
+        ("=SUMPRODUCT(B:B*1,(A:A=\"\")*1)", 2),
+        ("=SUMPRODUCT((C:C=\"\")*1,NA())", 1),
+        ("=SUMPRODUCT(Sheet2!A:A*1,(A:A=\"\")*1)", 2),
+        ("=SUMPRODUCT((Sheet2!A:A=\"\")*0.5,(A:A=\"\")*3)", 2),
+        ("=SUMPRODUCT((A:A>0)*1,(A:A>0)*1,(B:B<>0)*1)", 3),
+        ("=SUMPRODUCT((C:C=\"\")*0.1,(Sheet2!A:A=\"\")*3)", 2),
+        ("=SUMPRODUCT(C:C*1,Sheet2!A:A+1)", 2),
+        ("=SUMPRODUCT((C:C=\"\")*1,Sheet2!A:A)", 1),
+        // A tail product of -0: skipped, as adding it leaves the total as it is.
+        ("=SUMPRODUCT(-(C:C=\"x\")*1,Sheet2!A:A+1)", 2),
+    ];
+    let formulas: Vec<String> = cases.iter().map(|(f, _)| (*f).to_string()).collect();
+    let expected_walks: usize = cases.iter().map(|(_, walks)| walks).sum();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, expected_walks);
+}
