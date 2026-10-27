@@ -24,23 +24,20 @@ fn percentile_numbers(
     arg: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
-    let typed_in_place = !matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
-    match model.evaluate_node_in_context(arg, cell) {
+    // Read once in reference context (nesting costs no more): a name, INDEX, OFFSET, IF or CHOOSE
+    // that picks a cell comes back as a range, so a lone text or boolean cell is skipped like text
+    // in a range, and only a typed value is a one-element array (T-2344).
+    match model
+        .evaluate_picked_reference_arg(arg, cell)
+        .into_single_sheet_area(cell)
+    {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
         error @ CalcResult::Error { .. } => Err(error),
         // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
         // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128),
         // and typed text a number (A11).
-        CalcResult::Boolean(b) if typed_in_place => Ok(vec![f64::from(u8::from(b))]),
-        text @ CalcResult::String(_) if typed_in_place => {
-            model.cast_number_ref(&text, cell).map(|n| vec![n])
-        }
-        // A single cell holding text or a boolean (a cell reference, not the typed values above)
-        // is no number, like text inside a range: the data is empty and every function reports
-        // `#NUM!`, not `#VALUE!`, after k's or quart's own error (probes/quartile-single-text-cell
-        // B1-B11, quartile-numeric-text-cell C2-C5; t2429-quartile-exc-no-number A1-A3, A9-A12,
-        // A19-A22 for a TRUE cell).
-        CalcResult::String(_) | CalcResult::Boolean(_) => Ok(vec![]),
+        CalcResult::Boolean(b) => Ok(vec![f64::from(u8::from(b))]),
+        text @ CalcResult::String(_) => model.cast_number_ref(&text, cell).map(|n| vec![n]),
         CalcResult::Array(array) => match nested_array_error(&array, cell) {
             Some(error) => Err(error),
             None => model.numeric_flat_with_element_errors(CalcResult::Array(array), cell),

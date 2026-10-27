@@ -395,6 +395,17 @@ fn im_reciprocal_kernels_match_the_sweep() {
             r#"=IMSECH("1.34384-77.6742i")"#,
             "-0.367433538630135+0.376675382306336i",
         ),
+        // probes-numeric/im-sec-csch-fused B15 and IMCSCH's 0.0853196+0.00680423i row (T-2841):
+        // IMSEC divides cosh y by t first (`cos x·cosh y/t` gives ...0977324647782459i), and
+        // IMCSCH takes IMSINH's sinh and cosh (libm's give other last digits).
+        (
+            r#"=IMSEC("-0.256747-1.51569i")"#,
+            "0.409998516701268+0.097732464778246i",
+        ),
+        (
+            r#"=IMCSCH("0.0853196+0.00680423i")"#,
+            "11.6323554979869-0.929943499720481i",
+        ),
         // A real argument is 1/sin x and 1/cosh x (gen-m9/2f0d384b8ed0d392 A109, 01810fc89c5ec2c0 A318).
         (r#"=IMCSC("0.2")"#, "5.03348954767234"),
         (r#"=IMSECH("1.5")"#, "0.42509603494228"),
