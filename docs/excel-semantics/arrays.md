@@ -1799,11 +1799,25 @@ are never empty, unlike SORTBY's (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,
 `{FALSE,TRUE}` spills 1 then `#VALUE!`, `{TRUE,TRUE}` 3 then `#VALUE!`, sort_index 3 with `{FALSE,TRUE}` `#VALUE!` then 3, and a range
 by_col (`E1:E2` = FALSE,TRUE) lifts like an array (`ROWS` 2, `COLUMNS` 1: spills 1 then `#VALUE!`). Of the later elements only the
 sort_index 3 one (I11) matches the call's top-left; the second (TRUE) element is `#VALUE!` with sort_index 1 (I1, I7, H18) although a
-TRUE first element with sort_index 1 is 3 (H7). The rule behind it is unprobed (T-2929).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col (excel-graph, 2026-10-27, T-2366).
+TRUE first element with sort_index 1 is 3 (H7). The rule (probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and
+-column, excel-graph, 2026-10-27, T-2929; `A1:D4` = 13,7,22,5; 9,31,2,17; 26,4,15,11; 3,19,8,28): an element whose call fails (an
+invalid by_col such as "x", a sort_index past the array) keeps its error and is skipped by the rest of the rule. The first call that
+sorts in each row leads it; the leads keep their call's top-left when every lead's by_col is equal (`{TRUE;TRUE;TRUE}`, a range
+F1:F3 of TRUE, `{"x";TRUE;TRUE}` and `{TRUE,FALSE;TRUE,FALSE}` keep every row), and otherwise only the first lead does. Every other
+element that sorts is broken: empty (spills 0, ISBLANK TRUE, `&"|"` "|", TYPE 1, ROWS of it `#VALUE!`) when the sort_index is the
+single key 2 (`2`, `{2}`, a cell holding 2, `2.7`, `"2"`; not `{2,1}`, `{1,2}` or `{2,2}`) and it is either the first broken element
+in row-major order or below a broken element that may be empty with the same by_col; `#VALUE!` otherwise. So, with sort_index 2,
+`{TRUE,TRUE,TRUE,TRUE}` is 22, empty, `#VALUE!`, `#VALUE!` (a 1x6 likewise), `{"x",TRUE,TRUE,TRUE}` `#VALUE!`, 22, empty, `#VALUE!`,
+`{TRUE,"x",TRUE,TRUE}` 22, `#VALUE!`, empty, `#VALUE!`, `{TRUE;FALSE;FALSE}` 22, empty, empty, `{TRUE;TRUE;FALSE}` and
+`{TRUE;FALSE;TRUE}` 22, empty, `#VALUE!`, `{TRUE,TRUE;FALSE,FALSE}` 22, empty / `#VALUE!`, `#VALUE!`, and a 3x2 range of TRUE 22,
+empty in every row; with sort_index 1, 3 or 4 every broken element is `#VALUE!`. Sort order, by_col FALSE or TRUE, the array's
+shape (4x4, 3x1, 1x3, 3x2, an array constant) and a range by_col change nothing. That a failed call between two that sort is skipped
+is evidenced for an invalid by_col ("x"); for a sort_index past the array it is by analogy, UNVERIFIED, as is comparing a number
+by_col with a boolean one.
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col (excel-graph, 2026-10-27, T-2366); probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column (excel-graph, 2026-10-27, T-2929).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
-(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; none is empty, VERIFIED as not SORTBY's and UNIQUE's first-element-only rule (T-2366), and a range by_col lifts too; ours gives each element its call's top-left, which Excel does not for a TRUE by_col element past the first column with sort_index 1, `#VALUE!` there, T-2929); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
+(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; none is empty, VERIFIED as not SORTBY's and UNIQUE's first-element-only rule (T-2366), and a range by_col lifts too; ours gives each element its call's top-left, which Excel does not for a TRUE by_col element past the first column with sort_index 1, `#VALUE!` there; since T-2929 `sort_lifted_elements` in spill_functions.rs applies the rule above to the lifted elements); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
 Status: VERIFIED (excel-graph)
 Tasks: T-2313, T-2318, T-2319, T-2366, T-2467, T-2929
 
