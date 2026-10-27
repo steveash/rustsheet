@@ -61,6 +61,11 @@ for the Cephes kernel are gone.
     `bratio`/`Tails`/`bratio_or` entry before T-2506 adds bup and bgrat (or amend the spec), and add the hex-bits
     branch fixture and the complement, swap and monotonicity property tests. `beta_density::ln_beta_small_shape` and
     `bratio::bpser_neg_ln_beta` overlap; unify them or say in the code why they differ.
+- T-2506 (L140 bup+bpser for BETA.DIST's cdf) moved 128 ungated probes-numeric cells from bit-exact to 1-3 ulp off
+  (none visibly off; counted against main 81c3d27e, cells not listed). The per-branch scoring here re-measures them
+  with the L140 cells. When F's callers move to bratio, test r2-impact's next hypothesis 1 (F's x as
+  1/(1 + (d2/d1)/X), or bup's W rounding at b0' = 0.5, n = 2) on probes/stat-argument-modes F.DIST H215,
+  F.DIST.RT H221 and FDIST H226 (2.5, 2.5, x = 0.6000000000000001), which are bit-exact today on Cephes.
 
 ## Acceptance criteria
 - [ ] F.DIST, F.DIST.RT, FDIST, F.TEST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's

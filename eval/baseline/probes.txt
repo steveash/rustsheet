@@ -2518,8 +2518,6 @@ F	probes/fraction-format-features.case.json	Sheet1!H5
 F	probes/fraction-format-features.case.json	Sheet1!H6
 F	probes/fraction-format-features.case.json	Sheet1!I5
 F	probes/fraction-format-features.case.json	Sheet1!I6
-F	probes/ftest-decomposition.case.json	Calc!A11
-F	probes/ftest-decomposition.case.json	Calc!A12
 F	probes/ftest-decomposition.case.json	Calc!A4
 F	probes/ftest-decomposition.case.json	Calc!A5
 F	probes/ftest-decomposition.case.json	Calc!A6
@@ -2530,7 +2528,6 @@ F	probes/ftest-decomposition.case.json	Calc!B6
 F	probes/ftest-decomposition.case.json	Calc!B8
 F	probes/ftest-decomposition.case.json	Calc!B9
 F	probes/ftest-decomposition.case.json	Calc!C10
-F	probes/ftest-decomposition.case.json	Calc!C12
 F	probes/ftest-decomposition.case.json	Calc!C4
 F	probes/ftest-decomposition.case.json	Calc!C5
 F	probes/ftest-decomposition.case.json	Calc!C6
@@ -2541,14 +2538,11 @@ F	probes/ftest-decomposition.case.json	Calc!D4
 F	probes/ftest-decomposition.case.json	Calc!D5
 F	probes/ftest-decomposition.case.json	Calc!D6
 F	probes/ftest-decomposition.case.json	Calc!D8
-F	probes/ftest-decomposition.case.json	Calc!E11
-F	probes/ftest-decomposition.case.json	Calc!E12
 F	probes/ftest-decomposition.case.json	Calc!E4
 F	probes/ftest-decomposition.case.json	Calc!E5
 F	probes/ftest-decomposition.case.json	Calc!E6
 F	probes/ftest-decomposition.case.json	Calc!E8
 F	probes/ftest-decomposition.case.json	Calc!F10
-F	probes/ftest-decomposition.case.json	Calc!F11
 F	probes/ftest-decomposition.case.json	Calc!F4
 F	probes/ftest-decomposition.case.json	Calc!F5
 F	probes/ftest-decomposition.case.json	Calc!F6
