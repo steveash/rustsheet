@@ -297,7 +297,7 @@ Key schema elements:
   `enum` lists the usual text values of a parameter (CELL's info_type; T-1088), soft like `int`.
 - `cell: true` (a `range` parameter): the generator passes one cell. ISFORMULA lifts over a range, which would spill into
   the next formula, and Excel refuses a literal (T-1088).
-- `vector: true` (a `range` or `array` parameter): the generator passes a one-column range. LOOKUP and the XLOOKUP/XMATCH lookup
+- `vector: true` (a `range` or `array` parameter): the generator passes a one-column range (unless `wide_rate` or `row_rate` below say otherwise). LOOKUP and the XLOOKUP/XMATCH lookup
   vectors give only `#N/A` or `#VALUE!` for a 2-D range, which would hide the search itself (T-1238); WRAPROWS/WRAPCOLS
   wrap one column (T-1083).
   `wide_rate: <share>` makes that share of the draws 2-D and `row_rate: <share>` makes it a one-row range, so MATCH's
@@ -312,7 +312,8 @@ Key schema elements:
   parameters, or 30% of the time an eta-reduced name written `_xleta.SUM`; `mode: name` declares a LET variable or LAMBDA
   parameter, visible after its value (LET) or in the `body: true` calculation; `invoke: true` calls the LAMBDA at once.
   `spelled` is the formula spelling where the case builder adds no prefix (`_xlfn.GROUPBY`; T-1083).
-- `always: true` (an optional parameter): the generator never omits it. CELL without a reference reads the cell last
+- `always: true` (an optional parameter): the generator never omits it (MATCH's match_type, whose default 1 on unsorted
+  data is mostly `#N/A`, T-2719). CELL without a reference reads the cell last
   changed, which no oracle value can match.
 - `edge_classes`: named, function-specific value or structure generators. They join the
   global type pools (§6) and become coverage-matrix columns (§13).

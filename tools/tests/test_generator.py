@@ -657,7 +657,9 @@ def _outer_function(formula: str) -> str:
 
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
-    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) T-2318 (TEXTJOIN's delimiter is an array parameter) and T-2719 (*IFS ranges share a shape, MATCH's lookup_array is a vector).
+    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained
+    # signatures), T-2318 (TEXTJOIN's delimiter is an array parameter) and T-2719 (*IFS ranges share a shape,
+    # MATCH's lookup_array is a vector).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -1059,7 +1061,7 @@ def test_ifs_ranges_share_a_shape_and_match_looks_in_one_dimension() -> None:
     # T-2719: SUMIFS/COUNTIFS ranges of one call agree in shape (bar a ~1 in 10 mismatch) and MATCH's
     # lookup_array is mostly a single row or column.
     def dims(ref: str) -> tuple[int, int]:
-        (c0, r0), (c1, r1) = (re.match(r"([A-Z])(\d+)", x).groups() for x in ref[5:].split(":"))  # type: ignore[union-attr]
+        (c0, r0), (c1, r1) = (re.findall(r"([A-Z])(\d+)", ref)[i] for i in (0, 1))
         return int(r1) - int(r0) + 1, ord(c1) - ord(c0) + 1
 
     calls: list[list[str]] = []
@@ -1076,3 +1078,16 @@ def test_ifs_ranges_share_a_shape_and_match_looks_in_one_dimension() -> None:
     assert 0.8 <= agree / len(multi) < 1.0
     one_d = sum(1 in d for d in matches)
     assert 0.7 <= one_d / len(matches) < 1.0
+
+
+def test_fixed_height_ranges_and_probes_stay_inside_their_range() -> None:
+    # T-2719: `range_ref(height=)` is exact, and `cell_in` lands inside the probed range.
+    gen = Gen(random.Random(1), catalog(), data_rows=12, data_cols=5, max_depth=2)
+    for _ in range(50):
+        ref = gen.range_ref(width=2, height=3)
+        assert re.fullmatch(r"Data!([A-E])(\d+):([A-E])(\d+)", ref)
+        m = re.fullmatch(r"Data!([A-E])(\d+):([A-E])(\d+)", ref)
+        assert m and int(m[4]) - int(m[2]) == 2 and ord(m[3]) - ord(m[1]) == 1
+        cell = gen.cell_in("Data!B2:D4")
+        assert re.fullmatch(r"Data![B-D][2-4]", cell), cell
+    assert re.fullmatch(r"Data!\$?[A-E]\$?\d+", gen.cell_in("not a range"))

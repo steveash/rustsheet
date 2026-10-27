@@ -360,7 +360,8 @@ class Gen:
         return text
 
     def shaped_range(self, p: dict[str, Any]) -> str | None:
-        """A `range` param's reference when its shape is constrained (`cell`, `same_shape`, `wide_rate`, `row_rate`), else None."""
+        """A `range` param's reference when its shape is constrained (`cell`, `same_shape`, `wide_rate`,
+        `row_rate`), else None."""
         if p.get("cell"):
             # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
             return self.cell_ref()
