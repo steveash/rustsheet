@@ -1,0 +1,18 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1895: AMORDEGRC with 0 < period < 1, alone in a fresh workbook: the 2400 asset at period 0.0001 (0 in amor-argument-check-order A863). Tests whether the value depends on an earlier evaluation.",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(2400,39679,39813,300,0.0001,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

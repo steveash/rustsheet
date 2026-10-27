@@ -327,8 +327,8 @@ cache spanning A1:A1048576 is `#VALUE!` (test_external_links.rs
 Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
-C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
-eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
+C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1, C2 and E1 are listed in
+eval/suites/probes/deviations, decision 0036; C3 passes since T-0483); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
 listed in eval/suites/probes/deviations, decision 0091, T-2223); probes/t2579-array-value-edges B23 (`ROWS(MAKEARRAY(1048577,1,..))`,
 1048577 in Excel, excel-graph, 2026-10-24; listed in eval/suites/probes/deviations, decision 0108, T-2600).
 Status: DEVIATION (decision 0014)
@@ -340,15 +340,30 @@ crates/rustsheet-engine/src/functions/lift/; `Model::evaluate_range` in crates/r
 crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454);
 `Model::external_area_value` and `Model::external_aggregate_value` in
 crates/rustsheet-engine/src/external_links.rs (a cached range of a linked workbook, T-1460)
-In a **spill** context the deviation is not needed and is a known gap, not a deviation: Excel's answer follows
-from the shape alone, so it costs no allocation. `=SUMPRODUCT(book2!A:A=book1!A3)*book2!H:J` in book1!B3 (a
-scalar against a whole-column 3-column range, 3,145,728 cells) is `#SPILL!` in Excel and `#ERROR!` in the
-engine, which hits the cap inside `broadcast_arrays` before any spill decision is made; `=ABS(A:A)` and
-`=DATE(11:1899,12,1)` in a cell are the same shape-only `#SPILL!` (above). T-0480 refuses such a spill from the
-broadcast shape; the deviation keeps covering value contexts (`ROWS`, `SUM`, `INDEX` over the same array).
+In a **spill** context the deviation is not needed: Excel's answer follows from the shape alone, so it costs
+no allocation. `=SUMPRODUCT(book2!A:A=book1!A3)*book2!H:J` in book1!B3 (a scalar against a whole-column
+3-column range, 3,145,728 cells) is `#SPILL!` in Excel; `=ABS(A:A)` and `=DATE(11:1899,12,1)` in a cell are the
+same shape-only `#SPILL!` (above). Since T-0480 the formula of a dynamic-array anchor whose root is an operator
+chain (`+ - * / ^ & =` and the other comparisons, parenthesized or not, and operator operands down to 8 levels,
+`=1+H:J*2`) is `#SPILL!` when a link would broadcast to more than 1,048,576 cells and to a shape that runs past
+the grid from the anchor, decided from the operand shapes before the broadcast (`Model::evaluate_spilling_chain`,
+`unspillable_broadcast` in arithmetic.rs). Since T-0483 the same holds for a root (or operator operand) that is
+a call in the lifting table that gives one value per element (not SORTBY or UNIQUE), a unary operator or `%`:
+`=DATE(11:1899,12,1)` in C1 or C3 and `=-H:J` or `=H:J%` in C3
+are `#SPILL!`, decided from the shapes of the ranges in its `Lift` arguments, nested lifts and unary operators
+included, before anything is lifted (`Model::unspillable_lift` in spill_shape.rs; probes/lifted-range-rows C3).
+The deviation still covers value contexts (`ROWS`, `SUM`, `INDEX` over the same array:
+`=ROWS(SUMPRODUCT(A:A=A1)*H:J)` and `=ROWS(-H:J)` stay `#ERROR!`), an over-bound result whose shape fits the grid
+from its anchor (`=1*H:J` or `=-H:J` in K1: Excel spills it or answers `#SPILL!` for an occupied cell, ours is
+`#ERROR!`), and spills of other over-bound arrays (a function result that is not a lift, a lift whose range comes
+from a name or a function). Only the `*` broadcast of corpus-bench/55049 and the DATE lift of
+probes/lifted-range-rows C3 are oracle-backed; the unary operators, the 2^34-cell lifts (`=LEFT(A:A,1:1)`), the
+other operators, an error operand
+(`=1/0*H:J`, expected from probes/error-operand-broadcast) and 2^34-cell broadcasts (`=D:D+4:4`) follow the same shape rule unprobed (T-0484).
 Evidence: corpus-bench/55049/1_55049_input.xlsx book1!B3:B23 (21 cells, excel-graph sidecar, 2026-10-26, gap
-triage).
-Tasks: T-0047, T-1420, T-1454, T-1460, T-0480
+triage); test_lifted_range_bound.rs `broadcast_above_the_bound_that_cannot_spill_is_spill` and
+`lift_above_the_bound_that_cannot_spill_is_spill`.
+Tasks: T-0047, T-1420, T-1454, T-1460, T-0480, T-0483, T-0484
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint

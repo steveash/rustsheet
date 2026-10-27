@@ -3,6 +3,8 @@ use statrs::distribution::{Beta, Continuous};
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
+use crate::functions::statistical::beta_density::beta_density_small_shape;
+use crate::functions::statistical::bratio::beta_dist_lower_tail;
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
@@ -80,9 +82,11 @@ fn beta_cumulative(value: &CalcResult, cell: CellReferenceIndex) -> Result<bool,
 impl Model {
     /// `BETA.DIST(x, alpha, beta, cumulative, [A], [B])`: every argument lifts over an array and
     /// a range (SPEC-0011; probes/stat-argument-modes H84-H89, probes/stat-later-argument-lift
-    /// H1-H5, K3-K6). The cdf is the T-0970 incomplete beta (`incomplete_beta::beta_reg_complement`,
-    /// T-2119), with Excel's closed forms on bratio's oriented arguments at a shape of 1 (T-2502);
-    /// the density is `incomplete_beta::beta_density` where it applies.
+    /// H1-H5, K3-K6). The cdf is `bratio::beta_dist_lower_tail`: Excel's closed forms on bratio's
+    /// oriented arguments at a shape of 1 (T-2502), the ported bpser branches of TOMS 708 bratio
+    /// (T-2505), and the T-0970 incomplete beta (T-2119) for the branches not ported yet;
+    /// the density is `beta_density::beta_density_small_shape` for min(alpha, beta) <= 1 (T-2503)
+    /// and `incomplete_beta::beta_density` where it applies above.
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BetaDist, args, cell, &mut |model, values| {
             let [x, alpha, beta, cumulative, bounds @ ..] = values else {
@@ -155,7 +159,7 @@ impl Model {
             // A subnormal cdf is kept only at beta = 1, the closed form t^alpha, and is 0 at any
             // other beta, 1.0000001 included (`(x)=0` FALSE at B2, B3, B6, B7, B11, B12 of
             // probes/t2737-subnormal-cdf-shapes, TRUE at B1, B4, B5, B8:B10; T-2737).
-            let cdf = beta_reg_complement(t, 1.0 - t, alpha, beta_param);
+            let cdf = beta_dist_lower_tail(t, 1.0 - t, alpha, beta_param);
             if beta_param == 1.0 {
                 cdf
             } else {
@@ -166,7 +170,10 @@ impl Model {
             // density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/t2513-r3-m1-residual-hold E863,
             // E875, E957; docs/excel-semantics/numbers.md "Distribution densities").
             flush_subnormal(
-                beta_density(t, alpha, beta_param).unwrap_or_else(|| dist.pdf(t)) / width,
+                beta_density_small_shape(t, alpha, beta_param)
+                    .or_else(|| beta_density(t, alpha, beta_param))
+                    .unwrap_or_else(|| dist.pdf(t))
+                    / width,
             )
         };
         if result.is_nan() || result.is_infinite() {

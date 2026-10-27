@@ -72,9 +72,19 @@ cell is told from its sum. Cell ids are the consumers case's unless named.
    10100 (E101, b2 E153). A producer whose reference argument is a grid lifts again:
    `ROWS(OFFSET(OFFSET(A1,{0;1},0),1,0))` 2, `SUM(..)` 10100 (E145, E149), `SUM(OFFSET(A1:A2,{0;1},0))` 101.
 
-Open (the Excel-for-web session failed, "retries exhausted", on every workbook holding these,
-twice): MEDIAN, STDEV.S, VAR.S, LARGE, SMALL, COUNTIFS, AVERAGEIF, MAXIFS, SUMSQ, AVERAGEA, MAXA and
-CONCAT over a reference grid (T-2065). Until answered, these keep today's behaviour of a value view.
+T-2065 answered the open list, one formula per workbook (probes/t2065-lift-*, excel-graph 2026-10-26, data as in
+b2; E1 holds the formula):
+- Aggregates over all elements: `STDEV.S(OFFSET(A1,{0;1},0))` 70.0035713374682 and `VAR.S(..)` 4900.5 (the values 1 and
+  100), `SUMSQ(OFFSET(A1,{0;1},0))` 10001. Every element is one cell there, so top-left cell versus whole element
+  is unprobed for them (follow-up task).
+- Per-element callers (rule 6), each spilling one value per element: `COUNTIFS(OFFSET(A1,{0;1},0),">0")` 1, 1;
+  `AVERAGEIF(OFFSET(A1,0,0,{1;2}),">0")` 1, 50.5; `MAXIFS(OFFSET(A1,{0;1},0),OFFSET(A1,{0;1},0),">0")` 1, 100.
+- `CONCAT(OFFSET(A1,{0;1},0))` is `#VALUE!` (a value view, as TEXTJOIN in rule 2).
+- `AVERAGEA(OFFSET(A4,{0;1;2},0))` and `MAXA(..)` are 0 with A4 the text "5", A5 blank and A6 TRUE: the
+  result is 0: not 5 and not 1, but which elements count is open, as the data holds no number (follow-up task).
+- Failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs, alone in a
+  workbook): MEDIAN, LARGE and SMALL over a lifted OFFSET. Desktop question T-1075 item 18 (decision 0039); until
+  answered they keep today's value view.
 
 ## Design
 
@@ -124,12 +134,13 @@ would not move it.
     skips, COUNTA counts, SUMPRODUCT reads 0). An error element is the result. Others keep the
     value view until T-2065 answers them.
   - Per-element callers (rule 6): SUBTOTAL, COUNTIF, SUMIF, SUMIFS, COUNTBLANK, AREAS, ROW, COLUMN,
-    CELL, ISFORMULA, N, T. One helper, `Model::lift_over_ref_grid(grid, cell, |model, elem| ..)`,
+    CELL, ISFORMULA, N, T; COUNTIFS, AVERAGEIF and MAXIFS since T-2823 (T-2065's answers). One
+    helper, `Model::lift_over_ref_grid(grid, cell, |model, elem| ..)`,
     runs the scalar call per element and builds a `CalcResult::Array` (a SUMIF whose range and
     sum_range are both grids broadcasts them as SPEC-0011 does). Its cost is the consumer's:
     `LiftCost::Unit` for ROW, COLUMN, AREAS, CELL, ISFORMULA, N and T (O(1) per element);
     `LiftCost::Cells` of each element's clipped cells for SUBTOTAL, COUNTIF, SUMIF and COUNTBLANK, and
-    cells times criteria pairs for SUMIFS and COUNTIFS (as lookup_each.rs charges). Past the budget
+    cells times criteria pairs for SUMIFS, COUNTIFS and MAXIFS (as lookup_each.rs charges). Past the budget
     the call is the bound's error where Excel computes a value
     (`SUBTOTAL(9,OFFSET(A:A,0,0,SEQUENCE(1000)))`): T-2064 records that DEVIATION (decision 0014)
     when it lands the charge.
@@ -203,5 +214,5 @@ through volatility. T-0401 carries a pointer to this paragraph.
    As built, T-1956 lifts through a separate driver entry, `Model::lift_references`, sharing the shape check
    with `lift_grids` (its output is `RefElement`s, not `ArrayNode`s), and moved the LET/IF/CHOOSE pass-through,
    the held-grid budget, a producer over a grid reference argument and the deep-nest test to T-2078.
-6. **T-2065** (research, S, any time): probe the open aggregates one formula per workbook (the
-   combined workbooks failed to open).
+6. **T-2065** (research, S, done): probed the open aggregates one formula per workbook (answers above;
+   MEDIAN, LARGE and SMALL never open on Excel for the web).

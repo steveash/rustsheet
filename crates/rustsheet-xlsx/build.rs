@@ -46,9 +46,10 @@ const FOLDERS: &[FolderConfig] = &[
         cached_overrides: Some("../../eval/suites/ironcalc-calc/cached-overrides.tsv"),
     },
     FolderConfig {
-        dir: "tests/calc_test_no_export",
-        prefix: "test_no_export",
-        test_save: false,
+        // Excel-authored tables and structured references, kept through the export (T-2196).
+        dir: "tests/calc_test_tables",
+        prefix: "test_tables",
+        test_save: true,
         skip: &[],
         recursive: false,
         cached_overrides: None,

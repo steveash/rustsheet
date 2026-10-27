@@ -32,6 +32,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
+use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::tailed_array::range_corners;
 use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
 
@@ -985,8 +986,8 @@ impl Model {
                 message.to_string(),
             ))
         };
-        if row + height - 1 > LAST_ROW || column + width - 1 > LAST_COLUMN {
-            return Ok(spill_error("Spill would exceed worksheet bounds"));
+        if spills_past_grid(anchor, array.len(), array[0].len()) {
+            return Ok(Some(spill_past_grid_error(anchor)));
         }
 
         // Is the area free? Another array's spill cell blocks, whichever anchor

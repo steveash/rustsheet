@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A currency symbol as a name, a typographic quote mid-name, and a stray typographic quote after a string literal (T-0481)",
+  "tags": [
+    "M11",
+    "parser",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=€",
+        "A2": "=a“b",
+        "A3": "=\"x\"“y\""
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3"
+  ]
+}

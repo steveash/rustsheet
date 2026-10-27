@@ -764,7 +764,7 @@ impl Model {
         // ISOWEEKNUM of a valid serial keeps a Monday start in WEEKNUM's stale return_type state
         // (probes/weeknum-stale-reset-isoweeknum, SPEC-0017 rule 2).
         if matches!(result, CalcResult::Number(_)) {
-            self.evaluation.weeknum_start = Some(weeknum::WeeknumStart::Monday);
+            self.evaluation.order_state.weeknum_start = Some(weeknum::WeeknumStart::Monday);
         }
         result
     }

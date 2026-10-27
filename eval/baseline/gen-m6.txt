@@ -94,6 +94,3 @@ C	gen-m6/f93597dff1cfa5b6.case.json	400
 C	gen-m6/f94b5b8236742618.case.json	40
 C	gen-m6/fde83d52a9d1fc63.case.json	400
 C	gen-m6/fe0972380d030e4a.case.json	400
-F	gen-m6/8641fa604c5b8e14.case.json	Calc!A19
-F	gen-m6/8641fa604c5b8e14.case.json	Calc!A25
-F	gen-m6/8641fa604c5b8e14.case.json	Calc!A39

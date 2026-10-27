@@ -3,7 +3,7 @@ id: T-2074
 title: "Treat 00 in a fraction denominator as a placeholder denominator and fix the ?/100 and grouped-integer cases"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ T-0982 fixed the zero padding (`0` pads a denominator on the left): rows 13 and 
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+In formatter/fraction.rs a negative value with no integer part and a zero numerator takes no minus (F9, F13), and `use_thousands` groups the integer digits (I10). I9 already passed. Eval: probes/fraction-format-features F9, F13, I10 fixed; rows 5 and 6 (#VALUE!/huge values) are not this task.

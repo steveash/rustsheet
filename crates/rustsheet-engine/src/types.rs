@@ -494,8 +494,8 @@ pub(crate) fn sheet_names_match(a: &str, b: &str) -> bool {
 }
 
 impl Table {
-    /// Whether the table is on the sheet `sheet_name` ([`sheet_names_match`]).
-    pub(crate) fn is_on_sheet(&self, sheet_name: &str) -> bool {
+    /// Whether the table is on the sheet `sheet_name` (sheet names match ignoring case).
+    pub fn is_on_sheet(&self, sheet_name: &str) -> bool {
         sheet_names_match(&self.sheet_name, sheet_name)
     }
 }

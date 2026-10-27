@@ -192,7 +192,9 @@ Only `pass` counts as passing. Case statuses:
   bucket counts. Decision 0118's counts sit beside them (T-0068): each function's `excel` holds
   the non-deviation Excel-evidence cells that call it, `attributed` those whose only non-glue call
   it is (`closeness::sole_call`), `tier` the worst-cell tier and `attribution` whether `attributed`
-  (`sole`) or, below 20 attributed cells, `excel` (`all`) placed it. Each suite's `workbooks`
+  (`sole`) or, below 20 attributed cells, `excel` (`all`) placed it. Each function's
+  `real_world_calls` counts the formula cells of the Excel-saved corpora that call it, the suites
+  the top-level `real_world_suites` names (calipers and poi; T-0079). Each suite's `workbooks`
   counts its cases with a scored in-scope cell: `all_exact`, `all_within15` and `any_visible`.
   It uses the suite's `closeness` cells (hand-written expectations and deviation passes included),
   so it is suite scope, not Excel-only evidence.

@@ -902,4 +902,22 @@ impl Function {
     pub(crate) fn picks_reference(&self) -> bool {
         self.picked_reference_arg().is_some()
     }
+
+    /// The built-ins whose result can be a reference they pick or build: INDEX, OFFSET and INDIRECT, the arm a
+    /// scalar IF, CHOOSE, SWITCH or IFS takes, a LET body, and [`Function::picks_reference`]'s.
+    /// The parser takes them as reference operands (`is_reference_operand`) and FORMULATEXT
+    /// reads the reference they pick (`fn_formulatext`, T-2726).
+    pub(crate) fn may_be_reference(&self) -> bool {
+        matches!(
+            self,
+            Function::Index
+                | Function::Offset
+                | Function::Indirect
+                | Function::If
+                | Function::Choose
+                | Function::Switch
+                | Function::Ifs
+                | Function::Let
+        ) || self.picks_reference()
+    }
 }

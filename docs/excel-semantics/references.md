@@ -167,9 +167,18 @@ meant is a *name* to Excel, so an undefined one evaluates to `#NAME?`, not to a 
 `IF(B2="domestic",“D”,IF(B2="international",“I”,“N/A”))` is `#NAME?`.
 Evidence: corpus-bench/48354/1_48354_input.xlsx Sheet1!D2:D6 (5 cells; the stored `<f t="array">` keeps the
 U+201C/U+201D characters and the workbook's own cached value is `#NAME?`, as is the excel-graph sidecar).
-Which other characters Excel's name lexer accepts, and whether a typed formula behaves like a stored one, is
-unprobed (T-0481 probes it). Ours: `#ERROR!` (the lexer refuses the token).
-Status: VERIFIED (stored formulas, excel-graph + Excel-cached); the character set UNVERIFIED
+The quoted token is an ordinary undefined name, not an error shape: it is `#NAME?` only when evaluated
+(`IF(FALSE,“D”,1)` is 1), `ISREF(“D”)` is FALSE, `ERROR.TYPE(“D”)` is 5, `“D”&"x"` and `SUM(“A1”)` are
+`#NAME?` (`“A1”` is a name, not a cell), `=“N/A”` is `#NAME?`, and FORMULATEXT keeps the curly quotes.
+Evidence: probes/t0481-curly-quote-names A1-A10 and -b A1-A2 (excel-graph, 2026-10-26, stored formulas).
+Unprobed: whether a *typed* formula behaves the same (the oracle cannot type one), whether a name can be
+*defined* with these characters, and other punctuation as a name character (`€`, a quote mid-name
+`a“b`, `"x"“y"`; probes/t0481-curly-quote-names-c, pending), and a quoted token as a sheet prefix (`“D”!A1`,
+which ours reads as a sheet name).
+Ours (T-0481): the lexer reads U+201C and U+201D as name characters, anywhere in a name, and a token
+holding one is a name even where it would spell a cell (`is_typographic_quote`, `is_quoted_name` in
+crates/rustsheet-engine/src/expressions/utils/mod.rs, used by the lexer); defined names still refuse them.
+Status: VERIFIED (stored formulas, excel-graph + Excel-cached); typed formulas and the wider character set UNVERIFIED
 Tasks: T-0481
 
 ## A structured reference into a linked workbook is `#REF!`
@@ -542,7 +551,7 @@ constant `#VALUE!`. The engine matches, FORMULATEXT's `#REF!` and `#VALUE!` form
 `CHOOSE(9,..)` and `CHOOSE(0,..)` are `#VALUE!` and `CHOOSE(NA(),..)` `#N/A`; `IF(NA(),..)` is `#N/A`, `IF("x",..)` `#VALUE!`,
 `IF(1/0,..)` `#DIV/0!`, and an error in the arm taken, `IF(TRUE,NA(),..)`, is `#N/A`. An array-shaped result is not a reference:
 `INDEX({1,2;3,4},0,1)`, `INDEX({1,2;3,4},1,0)` and `INDEX({1,2;3,4},0,0)` spill `#VALUE!` over the shape of the result (2x1, 1x2, 2x2),
-`INDEX({1,2;3,4},2,2)` is one `#VALUE!`, and `IF({TRUE,FALSE},..)` and `CHOOSE({1,2},..)` spill a 1x2 of `#VALUE!`. The engine matches all 28 cells (`fn_formulatext`, T-2526). Unprobed: FORMULATEXT of a pick call that returns a plain scalar (`IF(TRUE,5,A1)`, `CHOOSE(1,5,A1)`) and of XLOOKUP, TAKE, DROP, LET, SWITCH or IFS results still gives the engine's `#ERROR!` (open gap; probe task T-2529; also unprobed: array elements that are errors, `INDIRECT` of an array).
+`INDEX({1,2;3,4},2,2)` is one `#VALUE!`, and `IF({TRUE,FALSE},..)` and `CHOOSE({1,2},..)` spill a 1x2 of `#VALUE!`. The engine matches all 28 cells (`fn_formulatext`, T-2526). FORMULATEXT of the forms T-2526 left open (probes/formulatext-pick-scalars-and-arrays, excel-graph 2026-10-25, T-2529; Data!A1 `1`, A2 `=A1+1`, A3 `3`): a pick call is a reference only when the arm it takes is a cell, and then FORMULATEXT reads that cell. `IF(FALSE,5,Data!A2)`, `CHOOSE(2,5,Data!A2)`, `IF(TRUE,Data!A2,5)`, `SWITCH(1,1,Data!A2,Data!A1)`, `SWITCH(9,1,5,Data!A2)`, `IFS(TRUE,Data!A2,..)` and `LET(x,Data!A2,x)` give `=A1+1`; a taken arm that is a plain value gives `#VALUE!` (`IF(TRUE,5,Data!A1)`, `CHOOSE(1,5,Data!A1)`, `SWITCH(1,1,5,Data!A1)`, `IFS(TRUE,5,..)`, `LET(x,5,x)`, `LET(x,Data!A2,x+1)`, `XLOOKUP(9,..,..,"nf")`, and TAKE or DROP of `SEQUENCE(3)`). No match is the call's own error: `SWITCH(9,1,5)` and `IFS(FALSE,5)` are `#N/A`, and `XLOOKUP(9,Data!A1:A3,Data!A1:A3)` is `#N/A`. XLOOKUP, TAKE and DROP that pick a cell read it: `XLOOKUP(2,Data!B1:B3,Data!A1:A3)` and `DROP(Data!A1:A3,1,0)` (spills `=A1+1`, `#N/A`), `TAKE(Data!A1:A3,2)` (spills `#N/A`, `=A1+1`), `TAKE(Data!A1:A3,1)`, `TAKE(Data!A1:A3,-1)`, `TAKE(Data!A1:A3,1,-1)`, `DROP(Data!A1:A3,2)` and `XLOOKUP(3,..)` pick the constant cells A1 or A3 and give `#N/A`. An array selector or lookup value is not a reference: `XLOOKUP({1,3},..)` spills 1x2 `#VALUE!`. Array elements keep their own error: `IF({TRUE,FALSE},NA(),Data!A2)` spills `#N/A`, `#VALUE!`; `IF({TRUE,FALSE},Data!A2,NA())` spills `#VALUE!`, `#N/A`; `CHOOSE({1,2},NA(),Data!A2)` spills `#N/A`, `#VALUE!`; `IF({TRUE,TRUE},NA(),Data!A2)` spills `#N/A`, `#N/A`. `INDIRECT` of an array is evaluated per element, each element read as FORMULATEXT of that reference: `INDIRECT({"Data!A2"})` is `=A1+1`; `INDIRECT({"Data!A1","Data!A2"})` spills `#N/A`, `=A1+1`; the column form spills down; `INDIRECT({"Data!A2","zz zz"})` spills `=A1+1`, `#REF!`; `INDIRECT(Data!C1:D1)` (cells holding the text) behaves the same. The no-match errors are read as the call's own `#N/A`, which the probe cannot tell apart from FORMULATEXT's not-a-formula `#N/A`. The engine matches all 49 cells: `fn_formulatext` reads a pick call's argument as SUBTOTAL does (`evaluate_picked_reference_arg`), a lifted INDIRECT per element (`formula_texts_of_grid`), and a value as `#VALUE!` per element with an error element kept (T-2726).
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array
@@ -2086,9 +2095,19 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   Cases c238d93c128fd5ee, 6322c0f2638aa11b; fixed by T-1641.
 - **A sheet-qualified sheet-scoped name follows a rename of its sheet.** With `Data!Local` =
   `=Data!$A$1:$A$2` and Calc `=Data!Local` (`#SPILL!`) and `=SUM(Data!Local)` (3), renaming Data to
-  Inputs keeps both values (probe `sheet-ops-rename-sheet-scoped-name`, excel-graph; T-1693). Open:
-  whether a workbook name read through a renamed sheet's prefix (`Feb!loc`) is rewritten; the engine
-  keeps the prefix as typed.
+  Inputs keeps both values (probe `sheet-ops-rename-sheet-scoped-name`, excel-graph; T-1693).
+- **A sheet-qualified name that resolves to nothing follows a rename too.** `=Data!Missing` and
+  `=SUM(Data!Missing)` (no `Missing` anywhere) are `#NAME?`, and after renaming Data to Inputs their
+  FORMULATEXT is `=Inputs!Missing` and `=SUM(Inputs!Missing)` (probe
+  `sheet-ops-rename-undefined-qualified-name`, excel-graph 2026-10-26, T-1701). Ours matches.
+- **A sheet-qualified workbook name is rewritten to the workbook's file name.** With workbook `loc` =
+  `=Feb!$A$1` (5) and no `Feb!loc`, Excel shows `=Feb!loc` as `=<file>.xlsx!loc` from load on, the file name
+  quoted as a sheet name would be (inferred from two file names, one digit-led and quoted, one letter-led and not): FORMULATEXT gives `='53aa…f48.xlsx'!loc`, `=SUM('53aa…f48.xlsx'!loc)` and
+  `='53aa…f48.xlsx'!loc+1` (values 5, 5, 6; `ISREF` TRUE) with no rename (probe
+  `sheet-ops-workbook-name-via-prefix-no-rename`), and `=ebfe…145.xlsx!loc` (unquoted: the name starts with a
+  letter) after renaming Feb to Mar, values still 5 (probe `sheet-ops-rename-workbook-name-via-prefix`;
+  excel-graph 2026-10-26, T-1701). So a rename never touches it. Ours: the text keeps `Feb!`, and after the
+  rename both values are `#NAME?` (T-2834). An unnamed workbook is unprobed.
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.
@@ -2316,8 +2335,8 @@ through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Re
   data rows) becomes `=SUM(S!C4:C8)` after the insert above row 4, where an ordinary insert at a range's
   first row shifts it (`S!C5:C8`, as above the header), and after the insert above the totals row 8, where
   an ordinary insert just below a range leaves it (as `S!C4:C7` stays for r = 8 without totals).
-- So SPEC-0016's edge-case table is wrong on two rows: an insert at r == d1 and at r == t *grows* the
-  table (it said fallback); the move, grow-inside and none rows hold (T-2321).
+- So SPEC-0016's edge-case table was wrong on two rows: an insert at r == d1 and at r == t *grows* the
+  table (it said fallback); the move, grow-inside and none rows hold (fixed by T-2321).
 - A loaded formula naming a table the file does not have (`=SUM(Nope[Qty])`) or a column its table does not
   have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
   `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
@@ -2326,27 +2345,40 @@ Implemented in: partly (T-2195, SPEC-0016 step 1; T-1699, step 2). Every structu
 is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
 re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
 first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
-before), and `restore_sheet` puts the tables back. Tables do not move on structural edits yet: every edit
-that changes the area a structured reference resolves to rewrites it to the displaced plain range (the
-fallback of SPEC-0016 for every table); one that leaves the area unchanged keeps the text. So today the
-values match Excel except where the table grows (`ROWS(Sales)` stays 4, `ROWS(Sales[#All])` 5 for Excel's 7) and FORMULATEXT prints the plain
-range; the plain-range quirk is not implemented. The move and grow classes are T-2297, the two edge rows
-and the quirk T-2321. With no table of that name (engine API `remove_table`), the formula is a parse
+before), and `restore_sheet` puts the tables back. A whole row or column insert or delete moves a table
+when it is wholly before it, grows it when rows are inserted below its header row and at or above its totals
+row (`h < r <= t`, so at its first data row and its totals row too: T-2321) and
+shrinks it when the deleted rows are strictly inside them (neither the first nor the last data row), and
+then every structured reference to it keeps its text, in cell formulas on any sheet, conditional formats
+and defined names (T-2297, `table_edits.rs`). Every other edit that crosses a table (a delete at a data edge or touching the header or totals row, a column edit inside
+it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
+structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
+that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
+its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
+moved or grown table's row there, a value change from before T-2297 (unprobed, T-2845). An insert at
+the first row of a table without a header row is a fallback too (unprobed, T-2845). So is an insert that would
+carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
+refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
+data rows and columns that touches the edited edge (`Displacement::grown_corners`, stringify.rs, T-2321);
+only the whole data column is probed, the other shapes are a hand generalisation (T-2846). The delete
+edges are T-2338, column inserts inside T-2339. With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
-canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). The eval adapter registers a
-table without its totals row, so the totals cases read `Sales[#Totals]` as `#REF!` even unedited (T-1671).
+canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
+registers a spec table with its totals row; an insert above the totals row grows the table and keeps
+`Sales[[#Totals],[Qty]]` (T-2321), but the totals row's deletes (delete it or the last data row) still print the
+displaced plain range or `#REF!` where Excel keeps the reference (decision 0128; T-2338).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
-its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2297, T-2325).
+its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2845; desktop-only cut and paste T-2325).
 A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
 kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
 what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on
 every row, off the data rows too (before step 2 those were `#VALUE!`), which matches "Delete the table's sheet" below
 (table-delete-sheet: every structured reference becomes `#REF!`). A defined name has no cell, so its `#This Row` is resolved
 at row 1, where its body is parsed, as before step 2 (unprobed, hand: Excel may resolve it at the calling cell's row; T-2595).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845, T-2846
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases
