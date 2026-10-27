@@ -15,7 +15,6 @@ use crate::functions::util::{cell_number, coerced_cell_number};
 use crate::model::Model;
 use crate::nested_array::NestedKind;
 use crate::reference_operators::{RefArg, RefElement, RefGrid};
-use crate::tailed_array::Tailed;
 
 /// Where an item the walker hands on came from. The coercion rules depend on it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -321,9 +320,7 @@ impl Model {
         // An element-wise expression of whole columns: its used head and its tail row
         // (SPEC-0020).
         if let Some(tailed) = self.read_tailed(arg, cell, read_arg) {
-            if let Some((head, tail)) = tailed_elements(tailed) {
-                #[cfg(test)]
-                crate::tailed_array::TAILED_WALKS.with(|walks| walks.set(walks.get() + 1));
+            if let Some((head, tail)) = tailed.elements() {
                 self.walk_array_nodes(head, cell, walk, visit)?;
                 return match tail {
                     Some((element, _)) if walk.ignores(&element) => Ok(()),
@@ -633,30 +630,6 @@ impl Model {
     }
 }
 
-/// The elements of a tailed argument (`tailed_array.rs`): its head's, and its tail element with
-/// the number of rows it stands for; `None` unless the head is one column of values and the tail
-/// one element, as the two evaluations of an array argument give.
-fn tailed_elements(
-    tailed: Tailed<RefArg>,
-) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
-    let Err(CalcResult::Array(head)) = tailed.head.into_ranges_or_value() else {
-        return None;
-    };
-    if head.iter().any(|row| row.len() != 1) {
-        return None;
-    }
-    let tail = match tailed.tail.map(RefArg::into_ranges_or_value) {
-        None => None,
-        Some(Err(CalcResult::Array(tail))) => {
-            let [row] = <[Vec<ArrayNode>; 1]>::try_from(tail).ok()?;
-            let [element] = <[ArrayNode; 1]>::try_from(row).ok()?;
-            Some((element, tailed.tail_len))
-        }
-        Some(_) => return None,
-    };
-    Some((head.into_iter().flatten(), tail))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -688,7 +661,7 @@ mod tests {
         // Z1's formula is the sheet's last parsed formula.
         let args = match model.parsed_formulas[0]
             .last()
-            .map(|(node, ..)| node.as_ref())
+            .map(|formula| formula.evaluated.as_ref())
         {
             Some(Node::FunctionKind { args, .. }) => args.clone(),
             _ => Vec::new(),

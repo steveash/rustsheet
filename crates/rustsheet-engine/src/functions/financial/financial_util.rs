@@ -27,6 +27,8 @@ fn rate_residual(
 
 /// The most secant steps RATE takes, Excel's own cap: the probe guesses whose run needs 200
 /// steps converge and those that need 201 to 216 are `#NUM!` (probes/rate-step-cap).
+/// A lifted RATE is charged the time of a run of this many steps (`RATE_WEIGHT` in the lifting
+/// table, T-2814): refit it if the cap or a step's work changes.
 pub(crate) const RATE_MAX_STEPS: u32 = 200;
 
 /// RATE as Excel computes it: a secant on the residual [`rate_residual`] from r0 = guess and

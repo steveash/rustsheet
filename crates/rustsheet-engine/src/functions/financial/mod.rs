@@ -14,13 +14,13 @@ mod amortization;
 mod annuity;
 mod cumulative;
 mod dates;
+pub(crate) use amortization::{amortization_values_valid, asset_life_refused};
 pub(crate) use dates::{day_count_basis, days_30_360_us_ymd};
 mod discount;
 mod financial_bonds;
 mod financial_depreciation;
 pub(crate) use financial_depreciation::MAX_DEPRECIATION_PERIODS;
 mod financial_util;
-pub(crate) use financial_util::RATE_MAX_STEPS;
 mod mirr;
 mod rate_conversions;
 

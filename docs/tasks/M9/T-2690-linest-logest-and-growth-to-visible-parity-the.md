@@ -39,6 +39,8 @@ Visibly-off cells (all are known-failure lines in eval/baseline/probes.txt or ir
   0.9824549416670796.
 - probes/growth-modes, 15 cells: K3, K15, K27, K123, K145-K152, K157, K169, K219. For example K145
   `GROWTH(D2:D9,A2:C9,A2:C9)`: Excel 2.943203437996074, ours 2.943203437996122.
+- gen-m9/589f42e67f4b4b8d Calc!A193 `LOGEST(Data!A10:B11)`: Excel 2.220601291150046, ours 2.2206012911500514 (gap triage
+  2026-10-25: visibly off, owned until now only by the deferred T-2006; it counts with the 113 below).
 - ironcalc-calc/STATISTICAL/LINEST_LOGEST.xlsx (Mac 16.x cache), 5 cells: E2, E3, E5, E6, G6. For example E3
   `LINEST(A2:A6)` intercept: Excel -0.031000000000000028, ours -0.03100000000000025.
 
