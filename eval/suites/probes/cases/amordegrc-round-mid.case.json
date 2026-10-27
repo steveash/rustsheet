@@ -1,0 +1,29 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2826 review: AMORDEGRC charges from 3E11 to 8E13 where a 15-digit cut and main's 13-decimal pre-round round differently: F1-F6 the first period's charge (period 0), G1-G6 period 1.",
+ "tags": [
+  "M9",
+  "financial",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "F1": "=AMORDEGRC(8.78284247843786E20,39679,39813,300,0,1E-7,1)",
+    "F2": "=AMORDEGRC(8.88674751907764E20,39679,39813,300,0,1E-7,1)",
+    "F3": "=AMORDEGRC(6.38767720641861E20,39679,39813,300,0,1E-7,1)",
+    "F4": "=AMORDEGRC(3.47925977217322E18,39679,39813,300,0,1E-7,1)",
+    "F5": "=AMORDEGRC(2.22440844234809E20,39679,39813,300,0,1E-7,1)",
+    "F6": "=AMORDEGRC(7.03686653283163E20,39679,39813,300,0,1E-7,1)",
+    "G1": "=AMORDEGRC(6.58425714587141E18,39679,39813,300,1,1E-7,1)",
+    "G2": "=AMORDEGRC(9.09493126120155E18,39679,39813,300,1,1E-7,1)",
+    "G3": "=AMORDEGRC(7.60224684655605E18,39679,39813,300,1,1E-7,1)",
+    "G4": "=AMORDEGRC(8.30115688110333E18,39679,39813,300,1,1E-7,1)",
+    "G5": "=AMORDEGRC(8.26389129000042E18,39679,39813,300,1,1E-7,1)",
+    "G6": "=AMORDEGRC(5.13317060169337E18,39679,39813,300,1,1E-7,1)"
+   }
+  }
+ ],
+ "expected": {}
+}
