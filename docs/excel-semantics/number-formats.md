@@ -815,3 +815,8 @@ A `*x` fill (repeat) character contributes nothing to the displayed text or to T
 and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
 2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in both the number and the date
 branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel-graph) for number sections; a fill in a date or clock code (`TEXT(1,"d*x")`) and in a fraction code (fraction.rs still prints a space) is UNVERIFIED (T-2480).
+
+- Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 5eb95c63c7d6180c F!G13, excel-graph): a scientific
+  code on zero prints every integer placeholder of the mantissa as `0`, `#` included (`##0.0E+0` → "000.0E+0",
+  `##0.00E+00` → "000.00E+00", `#E+0` → "0E+0"). A carry out of the mantissa renormalises (`0.0E+00` on 99.5 is
+  "1.0E+02"). Still open: the 1E+15 / 1.23457E+14 cells that show nothing, "-x1E+15" vs "x-1E+15", `#E+0` ties.

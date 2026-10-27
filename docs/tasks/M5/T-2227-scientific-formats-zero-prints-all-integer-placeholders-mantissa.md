@@ -3,7 +3,7 @@ id: T-2227
 title: "Scientific formats: zero prints all integer placeholders, mantissa carry renormalises, 1E+15 cells"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Follow-up of T-1730 (gen-m10, excel-graph): zero prints every integer placeholde
 
 ## Out of scope
 -
+
+## Outcome
+Zero in a scientific code now prints every integer placeholder (`##0.0E+0` → "000.0E+0"; gen-m10 659cd5776d423ce3 F!J14 and 4c6a49fe4a6fa404 F!R4 fixed). The mantissa carry (99.5) already passed. Not done, to follow up: the 1E+15 / 1.23457E+14 empty cells and the "-x1E+15" vs "x-1E+15" sign position.
