@@ -3,7 +3,7 @@ id: T-2841
 title: "Fit the IMSEC and IMCSCH part kernels on the im-sec-csch-fused misses"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
