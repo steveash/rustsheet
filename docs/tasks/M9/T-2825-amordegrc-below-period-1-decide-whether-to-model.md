@@ -3,7 +3,7 @@ id: T-2825
 title: "AMORDEGRC below period 1: decide whether to model Excel's left-over value (calculation-order state)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
