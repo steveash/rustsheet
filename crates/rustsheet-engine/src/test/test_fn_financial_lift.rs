@@ -259,9 +259,9 @@ fn discount_securities_and_t_bills_lift_arrays_and_refuse_ranges() {
 fn the_table_enters_rate_as_weighted() {
     use crate::functions::Function;
     // RATE's secant has a fixed 200-step cap (Excel's, probes/rate-step-cap); each element is
-    // charged that weight.
+    // charged the time of a run to it, 2^13 units (T-2814), so a lift runs at most 16,384.
     let weight = |function: Function| function.arg_kinds().map(|kinds| kinds.work.weight());
-    assert_eq!(weight(Function::Rate), Some(200));
+    assert_eq!(weight(Function::Rate), Some(1 << 13));
     assert_eq!(weight(Function::Pmt), Some(1));
 }
 

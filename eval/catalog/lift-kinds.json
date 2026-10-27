@@ -273,7 +273,7 @@
   {"name":"RANK","required":2,"params":["Lift","ReferenceByCaller","Lift"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"RANK.AVG","required":2,"params":["Lift","ReferenceByCaller","Lift"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"RANK.EQ","required":2,"params":["Lift","ReferenceByCaller","Lift"],"repeat":[],"max":3,"work":"Constant"},
-  {"name":"RATE","required":3,"params":["Lift","Lift","Lift","Lift","Lift","Lift"],"repeat":[],"max":6,"work":"Weighted(200)"},
+  {"name":"RATE","required":3,"params":["Lift","Lift","Lift","Lift","Lift","Lift"],"repeat":[],"max":6,"work":"Weighted(8192)"},
   {"name":"RECEIVED","required":4,"params":["LiftArrays","LiftArrays","LiftArrays","LiftArrays","LiftArrays"],"repeat":[],"max":5,"work":"Constant"},
   {"name":"REPLACE","required":4,"params":["Lift","Lift","Lift","Lift"],"repeat":[],"max":4,"work":"Constant"},
   {"name":"REPLACEB","required":4,"params":["Lift","Lift","Lift","Lift"],"repeat":[],"max":4,"work":"Constant"},

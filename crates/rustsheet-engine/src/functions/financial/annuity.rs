@@ -583,8 +583,8 @@ impl Model {
     }
 
     /// `RATE(nper, pmt, pv, [fv], [type], [guess])`. The secant stops after `RATE_MAX_STEPS`
-    /// (200) steps, so the table charges each element that weight (`KernelWork::Weighted`,
-    /// SPEC-0011 security rule).
+    /// (200) steps, so the table charges each element the time of a run to that cap
+    /// (`RATE_WEIGHT`, `KernelWork::Weighted`, SPEC-0011 security rule).
     pub(crate) fn fn_rate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Rate, args, cell, &mut |model, values| {
             number_or_error(model.rate_of(values, cell))
