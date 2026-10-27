@@ -182,3 +182,56 @@ fn numerator_past_excels_bound_is_unshowable() {
     assert_eq!(text(1E15, "# ?/?"), "1000000000000000    ");
     assert_eq!(format_number(1000.0, "?/100", &ctx).text, "#VALUE!");
 }
+
+/// probes/fraction-format-features F9, F13 and I10 (excel-graph, T-2074): a negative value whose
+/// numerator rounds to zero takes no minus when there is no integer part, and a comma between
+/// integer placeholders groups the integer digits.
+#[test]
+fn zero_numerator_without_integer_has_no_minus_and_integer_groups() {
+    assert_eq!(text(-0.001, "?/100"), "0/100");
+    assert_eq!(text(-0.001, "?/00"), "0/01");
+    assert_eq!(text(-1.0 / 7.0, "# ?/2"), "-0    ");
+    assert_eq!(text(1234.5, "#,##0 ?/4"), "1,234 2/4");
+    assert_eq!(text(1234567.5, "#,##0 ?/4"), "1,234,567 2/4");
+}
+
+/// probes/fraction-overflow-scaled (excel-graph, T-2522): a `,` right after the denominator
+/// multiplies by 10^((-3n) mod 256); elsewhere it is a literal or vanishes.
+#[test]
+fn comma_after_denominator_scales_up_by_a_wrapped_exponent() {
+    let ctx = FormatContext::new(get_locale("en").unwrap());
+    let unshowable = |value: f64, format: &str| format_number(value, format, &ctx).unshowable;
+    assert_eq!(text(1E-250, "?/?,"), "1000/1");
+    assert_eq!(text(0.0, "?/?,"), "0/1");
+    assert!(unshowable(0.5, "?/?,"));
+    assert_eq!(text(1E-250, "?/?,,"), "1/1");
+    assert_eq!(text(1E-251, "?/?,,"), "0/1");
+    assert_eq!(text(1E-238, "?/?,,,"), "1000000000/1");
+    assert_eq!(text(1E-250, "?/4,"), "4000/4");
+    assert!(unshowable(2.0, "# ?/4,"));
+    assert_eq!(format_number(2.0, "# ?/4,", &ctx).text, "#VALUE!");
+    assert_eq!(text(1E-252, "?/?%,"), "0/1%,");
+    assert_eq!(text(1E-250, "?/? ,"), "0/1 ,");
+    assert_eq!(text(1234567.5, "0, ?/4"), "1234567 2/4");
+    assert_eq!(text(0.5, "0%,"), "50%,");
+    assert_eq!(text(21474836.469, "?/?%"), "2147483647/1%");
+    assert!(unshowable(21474836.47, "?/?%"));
+}
+
+/// probes/fraction-large-fixed-denominator and -six-digit-denominator (excel-graph, T-2522): past
+/// 32768 a fixed denominator is picked as for placeholders (up to 9999999) and prints the code's
+/// digits cut to its length; six digits are #VALUE!.
+#[test]
+fn fixed_denominator_past_32768_is_picked() {
+    let ctx = FormatContext::new(get_locale("en").unwrap());
+    assert_eq!(text(0.5, "?/32768"), "16384/32768");
+    assert_eq!(text(0.5, "?/32769"), "1/3    ");
+    assert_eq!(text(0.8192, "?/40000"), "512/400  ");
+    assert_eq!(text(0.8191874, "?/40000"), "4095937/40000");
+    assert_eq!(text(1.0 / 9_999_999.0, "?/40000"), "1/40000");
+    assert_eq!(text(1E-7, "?/40000"), "0/4    ");
+    assert_eq!(text(0.5, "??/40000"), " 1/4    ");
+    assert_eq!(text(0.5, "0/40000"), "1/4");
+    assert_eq!(text(1.5, "# ?/40000"), "1 1/4    ");
+    assert_eq!(format_number(0.5, "?/100000", &ctx).text, "#VALUE!");
+}

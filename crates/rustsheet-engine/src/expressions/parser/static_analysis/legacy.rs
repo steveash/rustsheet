@@ -607,7 +607,8 @@ fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
     match node {
         Node::UnaryKind { right: child, .. }
         | Node::Group { child, .. }
-        | Node::UnaryPlus { child } => {
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. } => {
             for_each_value_operand(child, f);
         }
         Node::OpConcatenateKind { .. }
@@ -775,7 +776,8 @@ fn for_each_array_context_site(node: &mut Node, f: &mut impl FnMut(&mut Node, Pl
         }
         Node::UnaryKind { right: child, .. }
         | Node::Group { child, .. }
-        | Node::UnaryPlus { child } => {
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. } => {
             for_each_array_context_site(child, f);
         }
         Node::OpConcatenateKind { .. }
@@ -875,7 +877,9 @@ fn is_lookup_table(kind: &Function, index: usize) -> bool {
 /// `SUM((B1:B6))` (probes/legacy-value-argument-intersection-b Z2, Z10; T-1551).
 fn is_value_operation(node: &Node) -> bool {
     match node {
-        Node::Group { child, .. } | Node::UnaryPlus { child } => is_value_operation(child),
+        Node::Group { child, .. } | Node::UnaryPlus { child } | Node::Spaced { child, .. } => {
+            is_value_operation(child)
+        }
         Node::UnaryKind { .. }
         | Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }

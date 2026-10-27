@@ -138,6 +138,13 @@ T-2069 replaced "sheet index" in the reversed order with the sheet's load rank. 
 `load_rank: u32` per worksheet, set from the sheet's position when the workbook is read, and set to
 the next free rank for sheets added later. It keeps probes/weeknum-stale-sheet-moved passing.
 
+*Later (T-2825, decision 0131).* AMORDEGRC below period 1 reads a second calc-order state, the value the last
+AMORDEGRC or AMORLINC left (financial.md "AMORDEGRC below period 1"). `weeknum_start` became one field of
+`Evaluation::order_state: OrderState`, reset, saved and restored as a unit wherever this spec resets, saves or
+restores `weeknum_start`, and `weeknum_read` became `order_state_read`, set by a reader of either part. A
+dynamic-array formula's place in the chain still empties only the WEEKNUM part (its effect on AMORDEGRC's value is
+unprobed).
+
 ### Depth limit
 The `max_depth`/`max_stack` unwind is documented as never changing a result (`set_max_evaluation_depth`).
 That stays true:

@@ -192,7 +192,9 @@ Only `pass` counts as passing. Case statuses:
   bucket counts. Decision 0118's counts sit beside them (T-0068): each function's `excel` holds
   the non-deviation Excel-evidence cells that call it, `attributed` those whose only non-glue call
   it is (`closeness::sole_call`), `tier` the worst-cell tier and `attribution` whether `attributed`
-  (`sole`) or, below 20 attributed cells, `excel` (`all`) placed it. Each suite's `workbooks`
+  (`sole`) or, below 20 attributed cells, `excel` (`all`) placed it. Each function's
+  `real_world_calls` counts the formula cells of the Excel-saved corpora that call it, the suites
+  the top-level `real_world_suites` names (calipers and poi; T-0079). Each suite's `workbooks`
   counts its cases with a scored in-scope cell: `all_exact`, `all_within15` and `any_visible`.
   It uses the suite's `closeness` cells (hand-written expectations and deviation passes included),
   so it is suite scope, not Excel-only evidence.
@@ -258,6 +260,14 @@ leaves it out, the decision, the owning task). Each row lists them as `excepted`
 keeps its meaning. `run` and `check` refuse a malformed line or a repeated cell; a listed cell that fails
 in no row is listed under "Stale exit exceptions" without failing the run. The file never touches
 eval/baseline or the gate.
+
+The Phase 1 rate (`v15_checkpoint`) has its own list, `eval/milestones/phase1-exceptions.tsv`
+(`phase1_exceptions.rs`, decision 0134; one line per cell: `case!Sheet!A1` of any suite, the decision
+that names it as M14-only desktop evidence, the owning M14 task). A listed visibly-off Excel cell
+leaves `rate_cells` and `rate_visible` of the function whose count holds it (`rate_excepted`);
+`cells`, `visible`, the tier and the strict count keep it. report.md prints the number left out per
+function under the Phase 1 line, and warns about a listed cell the run does not score or that is not
+visibly off (`stale_exceptions`). The same validation refuses a malformed line in `run` and `check`.
 
 ## Catalog coverage per milestone
 `crates/rustsheet-eval/src/catalog_coverage.rs` (T-2112, T-2175) adds a "Catalog coverage per milestone"

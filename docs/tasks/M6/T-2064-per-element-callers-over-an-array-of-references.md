@@ -71,3 +71,8 @@ COUNTIF/SUMIF/SUMIFS spill by `criteria_and_grid_static_result`; SHEET of a grid
 a reference position stacks them (`Model::vstack_reference`). Eval: probes known failures 1738 -> 1695 (43 cells:
 the 23 listed plus their spilled neighbours), no regressions; visible parity 1760 -> 1742. Follow-up: T-2292
 probes the cases lookup.md lists as unprobed.
+
+## T-2065 findings
+Per-element oracle values (probes/t2065-lift-*, excel-graph): `COUNTIFS(OFFSET(A1,{0;1},0),">0")` 1, 1;
+`AVERAGEIF(OFFSET(A1,0,0,{1;2}),">0")` 1, 50.5; `MAXIFS(OFFSET(A1,{0;1},0),OFFSET(A1,{0;1},0),">0")` 1, 100;
+`CONCAT(OFFSET(A1,{0;1},0))` `#VALUE!`. See SPEC-0014 and docs/excel-semantics/lookup.md.

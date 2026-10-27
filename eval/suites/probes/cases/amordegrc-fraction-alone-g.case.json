@@ -1,0 +1,20 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1895: AMORDEGRC with 0 < period < 1, order: 485 (A1), then the 2400 asset at periods 0.0001 (A2) and 0.5 (A3). Tests whether the value depends on an earlier evaluation.",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(2400,39679,39813,300,2,0.15,1)",
+        "A2": "=AMORDEGRC(2400,39679,39813,300,0.0001,0.15,1)",
+        "A3": "=AMORDEGRC(2400,39679,39813,300,0.5,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.progress_report import check, evidence, goals, history, page, parity
+from rustsheet_tools.progress_report import arguments, check, evidence, goals, history, page, parity
 from rustsheet_tools.progress_report.model import (
     Parity,
     ProgressReportError,
@@ -108,9 +108,10 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
             _stale_outcome(outcome, rows, previous, git.head(), args.today)
             if isinstance(outcome, Stale)
             else _complete_outcome(
-                *outcome,
+                *outcome[:3],
                 rows,
                 previous,
+                coverage=outcome[3],
                 git=git,
                 tasks=load_object(args.tasks),
                 milestones=goals.parse_milestones(_read_text(args.milestones)),
@@ -166,6 +167,7 @@ def _complete_outcome(
     rows: list[history.Row],
     previous: str | None,
     *,
+    coverage: arguments.Coverage,
     git: history.Git,
     tasks: dict[str, Any],
     milestones: list[goals.MilestoneDoc],
@@ -186,6 +188,7 @@ def _complete_outcome(
         "campaign": goals.campaign_block(goal, data, counts),
         "since-last-run": history.since_block(row, last, commits),
         "trends": history.trends_block(parity.ASSETS),
+        "arguments": arguments.block(coverage),
     }
     summary = [
         f"{len(data.functions)} functions: " + ", ".join(f"{t.tier} {t.functions}" for t in data.tiers),
@@ -195,7 +198,9 @@ def _complete_outcome(
     return Result(page.render(run, data, previous, sections), files, rows, summary)
 
 
-def _evaluate(report: dict[str, Any], args: argparse.Namespace) -> Stale | tuple[Run, Parity, goals.Goals]:
+def _evaluate(
+    report: dict[str, Any], args: argparse.Namespace
+) -> Stale | tuple[Run, Parity, goals.Goals, arguments.Coverage]:
     """The run, its parity data and its goals fields, or why the run is incomplete: an older
     report shape, or a suite it skipped. A malformed report or a catalog that is not the run's
     still fails."""
@@ -206,11 +211,12 @@ def _evaluate(report: dict[str, Any], args: argparse.Namespace) -> Stale | tuple
     try:
         data = compute(report, load_object(args.scope), args.baselines, evidence.load_priors(args.catalog))
         goal = goals.load(report)
+        coverage = arguments.load(report)
     except ReportShapeError as e:
         return Stale(f"an older report shape ({e})", run)
     if run.skipped:
         return Stale(_skipped_reason(run), run)
-    return run, data, goal
+    return run, data, goal, coverage
 
 
 def _read_text(path: Path) -> str:

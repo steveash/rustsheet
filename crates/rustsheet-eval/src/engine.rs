@@ -29,6 +29,11 @@ pub trait Evaluated {
     fn text(&self, _sheet: &str, _addr: Addr) -> Option<String> {
         None
     }
+    /// The sheet names in tab order, which the argument-coverage census parses formulas against
+    /// (T-0077); empty when the engine cannot list them.
+    fn sheet_names(&self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 pub trait Engine: Sync {
@@ -103,6 +108,10 @@ impl RustSheetEvaluated {
 }
 
 impl Evaluated for RustSheetEvaluated {
+    fn sheet_names(&self) -> Vec<String> {
+        self.workbook.sheets().into_iter().map(|s| s.name).collect()
+    }
+
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
         let cell = self.cell(sheet, addr)?;
         Some(match self.workbook.value(cell).ok()? {
@@ -212,10 +221,11 @@ impl Engine for RustSheetEngine {
                         if formulas {
                             spec_pivots::add_pivots(tx, spec, &ids, sheet, id)?;
                             for table in &sheet.tables {
-                                tx.add_table(
-                                    table_range(id, &table.range, table.totals_row)?,
+                                tx.add_table_with_totals(
+                                    range_ref(id, &table.range)?,
                                     &table.name,
                                     table.filter,
+                                    table.totals_row,
                                 )?;
                             }
                         }
@@ -415,21 +425,6 @@ fn define_names(
         }
     }
     Ok(())
-}
-
-/// A spec table's `A1:B9` range on sheet `id`, without its last row when that is a totals row
-/// (`TableSpec::totals_row`).
-fn table_range(id: SheetId, a1: &str, totals_row: bool) -> Result<RangeRef, rustsheet::EditError> {
-    let range = range_ref(id, a1)
-        .map_err(|_| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
-    let bottom = range.bottom.saturating_sub(u32::from(totals_row));
-    Ok(RangeRef::new(
-        id,
-        range.top,
-        range.left,
-        bottom,
-        range.right,
-    )?)
 }
 
 /// An A1 range (`A1:B4`, one-based) of sheet `id` as a facade range.
@@ -800,23 +795,23 @@ mod tests {
     }
 
     #[test]
-    fn spec_totals_row_is_left_out_of_the_table() {
-        // Until the facade takes totals rows (T-1671) the adapter registers the table without
-        // its last row, so data references are right and the totals formula is not circular.
+    fn spec_totals_row_is_part_of_the_table() {
+        // The facade takes the totals row (T-1671): `#All` covers it and `#Totals` reads it.
         let spec = spec(
             r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
                 "A1":"Key","B1":"Val","A2":"a","B2":1,"A3":"b","B3":2,"A4":"Total",
-                "B4":"=SUBTOTAL(109,Data[Val])","D1":"=ROWS(Data[#All])"},
+                "B4":"=SUBTOTAL(109,Data[Val])","D1":"=ROWS(Data[#All])",
+                "D2":"=Data[[#Totals],[Val]]"},
                 "tables":[{"name":"Data","ref":"A1:B4","totals_row":true}]}]}"#,
         );
         let evaluated = RustSheetEngine
             .evaluate_spec(&spec, None)
             .expect("evaluates");
-        // B4 sums the two data rows; `#All` has no totals row (Excel: 4 rows).
-        for (row, col) in [(4, 2), (1, 4)] {
+        // B4 sums the two data rows (3); `#All` has four rows; `#Totals` reads B4.
+        for (row, col, want) in [(4, 2, 3.0), (1, 4, 4.0), (2, 4, 3.0)] {
             assert_eq!(
                 evaluated.value("S", Addr { row, col }),
-                Some(Value::Number(3.0))
+                Some(Value::Number(want))
             );
         }
     }

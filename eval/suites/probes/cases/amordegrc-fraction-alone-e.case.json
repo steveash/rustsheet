@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1895: AMORDEGRC with 0 < period < 1, order: a period-2 charge of 485 (A1) before the 10000 asset at period 0.3 (A2). Tests whether the value depends on an earlier evaluation.",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(2400,39679,39813,300,2,0.15,1)",
+        "A2": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)"
+      }
+    }
+  ],
+  "expected": {}
+}

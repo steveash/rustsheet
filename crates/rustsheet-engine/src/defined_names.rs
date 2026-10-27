@@ -175,10 +175,17 @@ impl Model {
     /// Evaluates the formula `node` of the cell `cell` with a name budget and an area budget of
     /// its own, so that the budgets belong to this one run of this one formula: a cell evaluated
     /// inside another cell's name body, or the same cell run again after a restart, does not
-    /// inherit them.
-    pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+    /// inherit them. `spills` is set for a dynamic-array anchor ([`Model::evaluate_formula_root`]).
+    pub(crate) fn run_cell_formula(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        spills: bool,
+    ) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
-        let result = self.with_area_budget(cell, |model| model.evaluate_formula_root(node, cell));
+        let result = self.with_area_budget(cell, |model| {
+            model.evaluate_formula_root(node, cell, spills)
+        });
         self.defined_names_running = outer;
         result
     }
@@ -201,7 +208,7 @@ impl Model {
                 format!("Defined name \"{name}\" is a 3-D reference."),
             );
         }
-        self.within_defined_name(|model| model.evaluate_formula_root(body, cell))
+        self.within_defined_name(|model| model.evaluate_formula_root(body, cell, false))
             .unwrap_or_else(|| name_refers_to_itself(name, cell))
     }
 

@@ -71,14 +71,17 @@ fn simple_table() {
         column: 6,
     };
 
-    // `#This Row` keeps its text, and the export prints the area on the cell's row (T-1699).
+    // `#This Row` keeps its text, in the export too, which writes table parts (T-2196).
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
         "SUM(tblIncome[[#This Row],[Jan]:[Dec]])"
     );
-    assert_eq!(to_excel_string(&t, &cell_reference), "SUM($A$2:$E$2)");
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
+        "SUM(tblIncome[[#This Row],[Jan]:[Dec]])"
+    );
 
     // Cell A3
     let cell_reference = CellReferenceRC {
@@ -90,11 +93,11 @@ fn simple_table() {
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUBTOTAL(109,tblIncome[Jan])"
+        "SUBTOTAL(109, tblIncome[Jan])"
     );
     assert_eq!(
         to_excel_string(&t, &cell_reference),
-        "SUBTOTAL(109,$A$2:$A$3)"
+        "SUBTOTAL(109, tblIncome[Jan])"
     );
 
     // Cell A3 in 'Second Sheet'
@@ -107,11 +110,11 @@ fn simple_table() {
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUBTOTAL(109,tblIncome[Jan])"
+        "SUBTOTAL(109, tblIncome[Jan])"
     );
     assert_eq!(
         to_excel_string(&t, &cell_reference),
-        "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
+        "SUBTOTAL(109, tblIncome[Jan])"
     );
 }
 
@@ -156,12 +159,16 @@ fn huge_header_or_totals_row_counts_are_ref_error_not_an_overflow() {
         let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
         for formula in ["SUM(tblIncome[Jan])", "SUM(tblIncome[[#Totals],[Jan]])"] {
             let t = parser.parse(formula, &cell_reference);
-            assert_eq!(
-                to_excel_string(&t, &cell_reference),
-                "SUM(#REF!)",
+            assert!(
+                matches!(t.ungrouped(), Node::FunctionKind { args, .. }
+                    if matches!(args[0].ungrouped(), Node::ErrorKind(_))),
                 "{formula} with header {header}, totals {totals}"
             );
         }
+        // The export writes such a reference as its error; `#Totals` keeps its text, as Excel
+        // keeps it for a table without a totals row (T-2196).
+        let t = parser.parse("SUM(tblIncome[Jan])", &cell_reference);
+        assert_eq!(to_excel_string(&t, &cell_reference), "SUM(#REF!)");
     }
 }
 
@@ -182,12 +189,14 @@ fn bare_table_name_and_empty_brackets_are_the_data_area() {
         &cell_reference,
     );
     assert_eq!(to_excel_string(&bare, &cell_reference), expected);
-    assert_eq!(expected, "ROWS($A$2:$C$3)");
+    // The file stores a bare name as `T[]` (xlsx-storage.md "Structured references in the file").
+    assert_eq!(expected, "ROWS(tblIncome[])");
+    assert!(matches!(bare.ungrouped(), Node::FunctionKind { .. }));
     // A bare name keeps its text; `tblIncome[]` is read as the bare name (SPEC-0016).
     assert_eq!(to_rc_format(&bare), "ROWS(tblIncome)");
     // Names match ignoring case, and keep the case they were typed in.
     let t = parser.parse("ROWS(TBLINCOME)", &cell_reference);
-    assert_eq!(to_excel_string(&t, &cell_reference), expected);
+    assert_eq!(to_excel_string(&t, &cell_reference), "ROWS(TBLINCOME[])");
     assert_eq!(to_rc_format(&t), "ROWS(TBLINCOME)");
 }
 
@@ -198,14 +207,18 @@ fn this_row_outside_the_data_rows_is_value_error() {
     let mut parser = new_parser(worksheets, vec![], tables);
     // Data rows are 2 and 3; the header row, and rows above and below, are #VALUE! (gen-m8b
     // this-row e1bf5aa0ffb4ed87).
-    for (row, expected) in [(1, "#VALUE!"), (4, "#VALUE!"), (9, "#VALUE!"), (3, "$A$3")] {
+    for row in [1, 4, 9, 3] {
         let cell_reference = CellReferenceRC {
             sheet: "Sheet One".to_string(),
             row,
             column: 9,
         };
         let t = parser.parse("tblIncome[[#This Row],[Jan]]", &cell_reference);
-        assert_eq!(to_excel_string(&t, &cell_reference), expected);
+        // Excel stores the reference on any row, and evaluates it (T-2196).
+        assert_eq!(
+            to_excel_string(&t, &cell_reference),
+            "tblIncome[[#This Row],[Jan]]"
+        );
         assert_eq!(
             to_english_localized_string(&t, &cell_reference),
             "tblIncome[[#This Row],[Jan]]"
@@ -236,11 +249,13 @@ fn reversed_column_range_is_the_same_area() {
     // column-range 44cecbb1ecd5b2da K143: COLUMNS(Sales[[2024]:[a.b]]) is 2 either way round.
     let forward = parser.parse("tblIncome[[Jan]:[Mar]]", &cell_reference);
     let reversed = parser.parse("tblIncome[[Mar]:[Jan]]", &cell_reference);
+    assert_eq!(forward.ungrouped(), reversed.ungrouped());
+    assert!(matches!(forward.ungrouped(), Node::RangeKind { .. }));
+    // The file keeps it as written: Excel computed gen-m8b's reversed form from the file.
     assert_eq!(
         to_excel_string(&reversed, &cell_reference),
-        to_excel_string(&forward, &cell_reference)
+        "tblIncome[[Mar]:[Jan]]"
     );
-    assert_eq!(to_excel_string(&reversed, &cell_reference), "$A$2:$C$3");
     assert_eq!(to_rc_format(&reversed), "tblIncome[[Mar]:[Jan]]");
 }
 

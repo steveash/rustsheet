@@ -39,3 +39,8 @@ Eval delta: probes known failures 30 fewer, none new (reference-lift-consumers E
 E129, E133, E173, E181, E189, E197, E201; -b1c E69, E73; -b1d E105; -b2 E117, E121, E137, E145, E157, E161, E165,
 E181, E185, E189, E201; reference-lift-elements G12, H12). The INDIRECT cells (E9, E205, elements F12, b2 E213)
 need INDIRECT as a producer (T-1957) and then pass through this walker.
+
+## T-2065 findings
+Oracle values (probes/t2065-lift-*, excel-graph): `STDEV.S(OFFSET(A1,{0;1},0))` 70.0035713374682, `VAR.S(..)` 4900.5,
+`SUMSQ(..)` 10001 (single-cell elements; top-left versus whole element is open, T-2816); `AVERAGEA`/`MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0.
+MEDIAN, LARGE and SMALL never open on Excel for the web (M14). See SPEC-0014 and docs/excel-semantics/lookup.md.

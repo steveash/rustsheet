@@ -3,7 +3,7 @@ id: T-2495
 title: "ISPMT, DB, DDB, SYD, PPMT, CUMIPMT, CUMPRINC, DOLLARDE, DOLLARFR and NOMINAL: argument error order (gen-m9, 13 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -48,10 +48,10 @@ Cells:
 - gen-m9/d0854366830dcdee.case.json (1): Calc!A82
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): these 13 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2257): these 13 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Each cell is fixed, or moved to a named task in the Outcome with its probe result.
-- [ ] `make check` green; reviewers approve.
+- [x] Each cell is fixed, or moved to a named task in the Outcome with its probe result.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -61,3 +61,13 @@ Decision 0083 (gap triage 2026-10-23, T-2257): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+- No code change needed: when this task was picked (2026-10-26, `origin/main` 743284c68), none of the 13
+  owned cells was in eval/baseline/gen-m9.txt, and `rustsheet-eval show --all` scores each of them
+  `Pass` with Excel's error: DOLLARDE A240 `#VALUE!`, ISPMT A174 `#VALUE!`, CUMIPMT A108 `#NUM!`,
+  SYD A29 `#NUM!`, DOLLARFR A9 `#DIV/0!`, PPMT A196 `#VALUE!`, ISPMT A352 `#NUM!`, CUMPRINC A231
+  `#VALUE!`, DB A247 `#NUM!`, DDB A13 `#VALUE!`, SYD A100 `#NUM!`, ISPMT A104 and NOMINAL A82 `#NUM!`.
+  Earlier merged work fixed them (the clone's shallow history does not show which commit), so no
+  probe was needed and nothing moves to T-2496.
+- Eval delta: none.

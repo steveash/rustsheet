@@ -60,9 +60,10 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// which 95,942 are not 0).
 ///
 /// What the cap costs, which the lifting table charges (lift/kinds/statistical.rs
-/// `HYPGEOM_DIST_WEIGHT`, 2^22 units an element): one term is three statrs `ln_binomial`s and an
-/// `exp` (six Lanczos `ln_gamma`s above 170). Measured in release (T-1873, load 1 to 2 on 4 cores):
-/// 167 to 193 ns a term where the terms are normal (statrs' own sum over the 25,000,001 terms of
+/// `HYPGEOM_DIST_WEIGHT`, 2^22 units an element at most; since T-2433 less by the counts): one
+/// term is three statrs `ln_binomial`s and an `exp` (six Lanczos `ln_gamma`s above 170). Measured
+/// in release (T-1873, load 1 to 2 on 4 cores): 167 to 193 ns a term where the terms are normal
+/// (statrs' own sum over the 25,000,001 terms of
 /// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`, 4.8 s as on main; 32 elements of
 /// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)`, the widest distribution at a
 /// population of 1.8E8 with 258,239 terms each, 1.38 to 1.55 s in benches/lift.rs), and 206 to 234
@@ -304,15 +305,19 @@ impl Model {
         }
         let [sample_s, number_sample, population_s, number_pop] = counts.map(f64::trunc);
 
-        // sample_s >= number_sample + population_s - number_pop, number_sample <= number_pop and
-        // population_s <= number_pop, with number_pop > 0; anything else is #NUM!. A zero
-        // number_sample or population_s is valid (t1049-hypgeomdist A44, A46, A55, A56).
-        let valid = sample_s >= number_sample + population_s - number_pop
-            && number_sample <= number_pop
-            && population_s <= number_pop
-            && number_pop > 0.0;
+        // number_sample <= number_pop and population_s <= number_pop, with number_pop > 0; anything
+        // else is #NUM!. A zero number_sample or population_s is valid (t1049-hypgeomdist A44,
+        // A46, A55, A56).
+        let valid = number_sample <= number_pop && population_s <= number_pop && number_pop > 0.0;
         if !valid {
             return Err(num_error(cell));
+        }
+        // Below number_sample + population_s - number_pop, the fewest successes a draw can hold,
+        // the density and the cdf are 0, not `#NUM!` (gen-m9/4250f880ab640c49 A339
+        // `HYPGEOMDIST(2,5,10,11)`, probes/t2436 `HYPGEOM.DIST(1,3,6,7,TRUE)`; statistics.md
+        // "HYPGEOMDIST: a sample below the possible range is 0", T-2699).
+        if sample_s < number_sample + population_s - number_pop {
+            return Ok(0.0);
         }
         // Above min(number_sample, population_s) the density is 0 and the cdf 1, not `#NUM!`
         // (t1048-hypgeomdist A13, A16; t1049-hypgeomdist A35, A36, A43, A45).

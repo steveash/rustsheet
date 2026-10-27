@@ -267,3 +267,44 @@ def test_caret_priced_prices_with_excels_power() -> None:
     bond = (0.06, 130.0, 1, 0.0, 360.0, 360.0, 10)
     assert yield_caret.caret_priced(lambda: solvers.price(0.07, bond))() == 108.22689722310892
     assert solvers.price(0.07, bond) == 108.22689722310889
+
+
+def test_yield_fitted_start_and_short_stop() -> None:
+    # T-1592: the two-steps-back starts of yield-start-one-input rows 22-96 (but 67) are the fitted
+    # start to 2e-8 (the back-chain's precision), and Newton from it, returning the iterate whose next
+    # step is below 1e-10 without taking that step, gives Excel's bits on the `^`-priced PRICE: A1 of
+    # yield-solver-sweep (one step), yield-start-sweep C18 (a 6.66e-6 step taken, a 9.67e-11 one not)
+    # and yield-start-one-input B21 (a 1.01e-10 step taken).
+    one_input = {c.key: c for c in load_sweep(["probes/yield-start-one-input"], r"^=YIELD\((.*)\)$").cells}
+    for row in (22, 41, 42, 52, 66, 68, 96):
+        cell = one_input[f"S!A{row}"]
+        back = solvers.newton_back_chain(cell.args, cell.expected, 2)[2]
+        assert abs(back - solvers.fitted_yield_start(*cell.args)) < 2e-8, row
+    model = yield_caret.caret_priced(solvers._newton_yield_short(solvers.fitted_yield_start, 1e-10))
+    sweep = {c.key: c for c in load_sweep(["probes/yield-solver-sweep"], r"^=YIELD\((.*)\)$").cells}
+    start = {c.key: c for c in load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells}
+    for cell in (sweep["S!A1"], start["S!C18"], one_input["S!B21"]):
+        assert model(*cell.args) == cell.expected, cell.key
+
+
+def test_yield_start_term_whole_years_then_leftover_days() -> None:
+    # T-2777: the start's term is whole years, then the leftover days over 360, 365 (basis 3) or the
+    # maturity's calendar year (basis 1). On probe cells the days-over-a-year term misses visibly (a
+    # 29 February settlement on bases 1, 0 and 4, rows 5, 37 and 41; 28 February settlements on basis 0,
+    # rows 46 and 47; basis 1 to a leap-year maturity, row 8) the fitted term lands within 4 ulp (the
+    # lab's last bit varies with the platform's libm) and the old term at least 1e-13 relative off.
+    probe = {c.key: c for c in load_sweep(["probes/yield-start-term-basis"], r"^=YIELD\((.*)\)$").cells}
+    model = yield_caret.caret_priced(solvers._newton_yield_short(solvers.fitted_yield_start, 1e-10))
+
+    def old_start(*args: Arg) -> float:
+        settle, maturity, rate, pr, _, _, basis = solvers._bond(args)
+        years = solvers._years_to_maturity(settle, maturity, basis)
+        return (100 * rate + (100 - pr) / years) / ((100 + pr) / 2 - (100 - pr) / (4 * years))
+
+    old = yield_caret.caret_priced(solvers._newton_yield_short(old_start, 1e-10))
+    for key in ("S!B5", "S!C5", "S!A8", "S!B8", "S!A37", "S!C37", "S!A41", "S!C41", "S!A46", "S!C47"):
+        cell = probe[key]
+        assert abs(model(*cell.args) - cell.expected) <= 4 * math.ulp(cell.expected), key
+        assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
+    assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
+    assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
