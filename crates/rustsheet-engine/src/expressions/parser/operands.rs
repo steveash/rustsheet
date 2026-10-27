@@ -530,9 +530,15 @@ impl Parser {
                 message: err.message,
             };
         }
-        // We should do this *only* importing functions from xlsx: Implicit Intersection
-        if &name == "_xlfn.SINGLE" {
+        // Implicit intersection: `_xlfn.SINGLE(x)` is how a file stores `@x`, and Excel takes a
+        // typed `SINGLE(x)`, in any case, as `@x` too and shows it so (`=SINGLE(C1:C3)` beside row 2
+        // is the row's cell, FORMULATEXT `=@C1:C3`; probes/single-typed-*, xlsx-storage.md "Typed
+        // SINGLE(x) is the @ operator", T-2938). Excel refuses `=SINGLE()` and `=SINGLE(1,2)` typed.
+        if name == "_xlfn.SINGLE" || display_name.eq_ignore_ascii_case("SINGLE") {
             if args.len() != 1 {
+                if self.typed && self.wrong_count_call.is_none() {
+                    self.wrong_count_call = Some("SINGLE".to_string());
+                }
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
                     expecting: vec![ExpectedTokens::Other],

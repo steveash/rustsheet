@@ -159,6 +159,23 @@ Status: VERIFIED (web)
 Implemented in: expressions/parser/stringify.rs (`Group`, T-1340; `_xlfn.SINGLE((x))`, T-1343).
 Tasks: T-1244, T-1340, T-1343, T-1398
 
+## Typed `SINGLE(x)` is the `@` operator
+Rule: a formula typed with `SINGLE(x)`, in any case, is the implicit-intersection operator `@x`, the same as the stored
+`_xlfn.SINGLE(x)`, and FORMULATEXT shows it as `@`, without SINGLE's own parentheses: `=SINGLE(C1:C3)` beside row 2 is
+the row's cell (20) and shows `=@C1:C3`, off rows 1-3 it is `#VALUE!`; `=single(C1:C3)` is the same; `=SINGLE(5)` is 5
+(`=@5`), `=SINGLE({1,2})` 1 (`=@{1,2}`), `=SINGLE(ERROR.TYPE(#REF!))` 4 (`=@ERROR.TYPE(#REF!)`), and
+`=FTEST({1;2;3},SINGLE(ERROR.TYPE(#REF!)))` `#DIV/0!` (`=FTEST({1;2;3},@ERROR.TYPE(#REF!))`). Typed `=SINGLE()` and
+`=SINGLE(1,2)` are refused (Graph PATCH 400 `InvalidArgument`, as for other wrong argument counts, decision 0103).
+Evidence: probes/single-typed-01 to -06 and -09, each cell typed through Graph `values` (excel-graph, 2026-10-27,
+T-2938); -07 (`=SINGLE()`) and -08 (`=SINGLE(1,2)`) were refused, so they have no case. probes/t2576-error-type-cell-paired
+Calc!D27, written bare and built as `_xlfn.SINGLE(` by the case builder, agrees.
+Ours: the parser reads a bare `SINGLE(` with one argument as `@`, typed, through the API and in stored text alike
+(a bare newer name read from a file resolves, T-1089); a typed call with other than one argument is refused
+(`set_typed_user_input`), and stored text keeps it as a parse error.
+Status: VERIFIED (web)
+Implemented in: crates/rustsheet-engine/src/expressions/parser/operands.rs (`parse_named_call`).
+Tasks: T-2938
+
 ## A one-cell dynamic formula is stored as a one-cell array with `cm="1"`
 Rule: a dynamic-array formula whose result is one cell is stored like a spilling one, with the
 anchor alone as the range: `<c r="F3" cm="1"><f t="array" ref="F3">SUM(ROW(C2:C4))</f>`. A plain

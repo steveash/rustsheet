@@ -1053,6 +1053,13 @@ C	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	7
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
+C	probes/single-typed-01.case.json	2
+C	probes/single-typed-02.case.json	2
+C	probes/single-typed-03.case.json	2
+C	probes/single-typed-04.case.json	2
+C	probes/single-typed-05.case.json	2
+C	probes/single-typed-06.case.json	2
+C	probes/single-typed-09.case.json	2
 C	probes/skew-p-bound.case.json	14
 C	probes/solver-iteration-traces.case.json	353
 C	probes/sort-error-args.case.json	48
@@ -3676,7 +3683,6 @@ F	probes/t2576-error-type-cell-paired.case.json	Calc!D19
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D2
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D20
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D24
-F	probes/t2576-error-type-cell-paired.case.json	Calc!D27
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D3
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D5
 F	probes/t2576-error-type-cell-paired.case.json	Calc!E16
