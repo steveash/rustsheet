@@ -3,7 +3,7 @@ id: T-2817
 title: "Probe IMSEC and IMCSCH inputs that tell fused from unfused denominators"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -28,10 +28,20 @@ Recompute the candidates with the engine's own kernels before probing (temporary
 then probe 20 or more discriminating inputs per function with the excel-probe skill.
 
 ## Acceptance criteria
-- [ ] A probes-numeric case with excel-graph values for 20 or more discriminating IMSEC and IMCSCH inputs.
-- [ ] Each kernel keeps or adopts the form that fits the most cells (all old cells included); engineering.md
+- [x] A probes-numeric case with excel-graph values for 20 or more discriminating IMSEC and IMCSCH inputs.
+- [x] Each kernel keeps or adopts the form that fits the most cells (all old cells included); engineering.md
       records the scores.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMCSC and IMCOT (refuted by T-2757), IMSECH (T-2750).
+
+## Outcome
+probes-numeric `im-sec-csch-fused` (excel-graph, 2026-10-27): 34 IMSEC and 44 IMCSCH inputs (text, IMREAL and
+IMAGINARY of each), picked with the engine's own kernels so that the plain and fused denominators print different
+text, plus the task's 8 libm-emulation candidates. Fusing is not what Excel does for either function:
+- IMSEC keeps its T-2743 plain kernel (23 of 34 texts; fused 10).
+- IMCSCH moves to `t = sinh²x + sin²y` (33 of 44; the old four-product sum scored 25, its fused forms 30 and 18).
+Every older oracle cell ties, and the gate suites show 0 regressions. No form fits all the cells, so T-2841 fits the
+part kernels. Scores are in engineering.md "IM* reciprocal kernels". probes-numeric is not a gate suite, so the new
+case's 11 IMSEC and 11 IMCSCH text misses are in no baseline.
