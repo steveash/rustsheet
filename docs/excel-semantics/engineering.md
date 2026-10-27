@@ -523,7 +523,7 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's, which are IMSIN
     IMSINH's `1/u` form fits 28 but loses 1 older cell, the EXP pair 29 (10 lost) and IMCOS's `trig_sinh_cosh` 31
     (9 lost). cosh 2y as the EXP pair ties; as the `1/u` form it fits 26. These two are now the kernels
     (functions/engineering/complex/trig.rs). Seven IMSEC texts stay one unit of the 15th digit off (B3, B9, B19, B20,
-    B21, B31, B33), among them `IMSEC("-1.44771+0.0419247i")` (T-2855).
+    B21, B31, B33), among them `IMSEC("-1.44771+0.0419247i")` (T-2884).
 - IMCOT: `(sin 2x, −sinh 2y) / ((cosh 2y + 1) − 2cos²x)`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit), and gen-m9's
   `IMCOT("-1.5+0.5i")` -0.0557109884865415-0.463942860183828i (45 cells, T-2537). The grouping matters only

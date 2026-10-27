@@ -44,5 +44,5 @@ overflowed `t` is `inf` (it was NaN), and only `IMCSCH("710.4+0i")` (probes/eng-
 - Eval delta: probes-numeric `im-sec-csch-fused` 190 -> 220 of 234 cells; every other case unchanged; gated suites 0
   fixed, 0 regressions (no baseline change).
 - The `IMCSCH("400")` / `IMCSCH("710")` probe was not run; that path is unchanged (`inverse_exp_sinh_cosh` is libm's
-  outside its band, as before); T-2855 carries it.
-- Follow-up: T-2855 (IMSEC's last seven fused texts).
+  outside its band, as before); T-2884 carries it.
+- Follow-up: T-2884 (IMSEC's last seven fused texts).
