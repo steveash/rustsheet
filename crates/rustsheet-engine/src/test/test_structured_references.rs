@@ -212,14 +212,15 @@ fn row_inserts_keep_values() {
     }
 }
 
-/// With two data rows no delete is strictly inside them (see `a_table_shrinks_and_moves_left`):
-/// every delete that touches the table is a fallback, one below it leaves it alone.
+/// The table (header row 1, data rows 2-3) shrinks with a delete of either data row (T-2338) and
+/// is left alone by one below it; a delete touching its header row, or of both data rows at once,
+/// is a fallback.
 #[test]
 fn row_deletes_keep_values() {
     for (row, count, follows) in [
         (1, 1, false),
-        (2, 1, false),
-        (3, 1, false),
+        (2, 1, true),
+        (3, 1, true),
         (2, 2, false),
         (4, 1, true),
         (5, 1, true),
@@ -325,11 +326,11 @@ fn wide_state(model: &Model) -> (Vec<String>, String, String, String) {
     )
 }
 
-/// A delete strictly inside the data rows shrinks the table, a column delete left of it moves it
+/// A delete inside the data rows shrinks the table, a column delete left of it moves it
 /// left, and a row insert inside its data grows it: every reference keeps its text, from another
 /// sheet, from the table's sheet, through a defined name and from a conditional format, and reads
 /// the table as it now is (references.md "Structured references under row deletes, column edits,
-/// convert, table and sheet delete", T-2324). A delete at an edge of the data is a fallback.
+/// convert, table and sheet delete", T-2324), a delete at an edge of the data too (T-2338).
 #[test]
 fn a_table_shrinks_and_moves_left() {
     let kept = |calc: [&str; 4]| {
@@ -359,15 +360,15 @@ fn a_table_shrinks_and_moves_left() {
     model.evaluate();
     assert_eq!(value(&model, 1, 9, 1), "6");
 
-    // The last data row (8) is an edge, a fallback (T-2338): the reference prints its displaced
-    // area, as before, and the table stays.
+    // A delete of the last data row (8) shrinks the table too (T-2338).
     model.delete_rows(0, 8, 1).unwrap();
     model.evaluate();
     let (_, text, _, cf) = wide_state(&model);
-    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Data!$A$3:#REF!)");
-    assert_eq!(text, "=SUM($A$3:#REF!)");
-    assert_eq!(cf, "SUM($A$3:#REF!)>30");
-    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B8");
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Sales[Qty])");
+    assert_eq!(text, "=SUM(Sales[Qty])");
+    assert_eq!(cf, "SUM(Sales[Qty])>30");
+    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B7");
+    assert_eq!(value(&model, 1, 9, 1), "5");
 }
 
 /// An edit on another sheet leaves the table, and so its references, alone.

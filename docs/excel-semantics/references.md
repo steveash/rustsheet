@@ -2359,7 +2359,7 @@ moved or grown table's row there, a value change from before T-2297 (unprobed, T
 the first row of a table without a header row is a fallback too (unprobed, T-2845). So is an insert that would
 carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
 refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
-data rows and columns that touches the edited edge (`Displacement::grown_corners`, stringify.rs, T-2321);
+data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). The delete
 edges are T-2338, column inserts inside T-2339. With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column

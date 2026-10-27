@@ -96,23 +96,49 @@ impl Displacement<'_> {
     }
 
     /// The displacements of the two corners of the plain range `rows` x `columns` on sheet
-    /// `sheet_index`, when it lies in the data block of a table that grows with a row insert at an
-    /// edge and touches that edge; `None` for any other range, whose corners displace as usual.
-    /// Quirk (T-2197, probes/table-edits): Excel grows such a range with the table, where an
-    /// ordinary insert at a range's first row shifts it and one just below it leaves it.
-    /// `=SUM(S!C4:C7)` onto data rows 4-7 becomes `=SUM(S!C4:C8)` both for the insert above row 4
+    /// `sheet_index` where a row edit does not displace them one by one; `None` for any other
+    /// range, whose corners displace as usual.
+    ///
+    /// A row delete that takes a range's first or last rows, but not all of them, shrinks it to
+    /// the rows left (plain-range-delete-row-first and -last A1:A4, excel-graph, T-2338:
+    /// `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` either way), where displacing the
+    /// deleted corner alone would give `#REF!`.
+    ///
+    /// Quirk (T-2197, probes/table-edits): a range in the data block of a table that grows with a
+    /// row insert at an edge, and touching that edge, grows with the table, where an ordinary
+    /// insert at a range's first row shifts it and one just below it leaves it. `=SUM(S!C4:C7)`
+    /// onto data rows 4-7 becomes `=SUM(S!C4:C8)` both for the insert above row 4
     /// (table-insert-row-above-first-data A7) and above the totals row 8
     /// (table-insert-row-above-totals A7). Only that exact range is probed; a range inside the
     /// block touching the edge is assumed to grow the same way (hand, unprobed: T-2846).
-    fn grown_corners(
+    fn range_corners(
         &self,
         sheet_index: u32,
         rows: (i32, i32),
         columns: (i32, i32),
     ) -> Option<(DisplaceData, DisplaceData)> {
-        let DisplaceData::Row { row, delta, .. } = *self.data else {
+        let DisplaceData::Row { sheet, row, delta } = *self.data else {
             return None;
         };
+        if sheet != sheet_index {
+            return None;
+        }
+        // The corner on row `from` moved to row `to`.
+        let shift_to = |from: i32, to: i32| DisplaceData::Row {
+            sheet,
+            row: from.min(to),
+            delta: to - from,
+        };
+        if delta < 0 {
+            let deleted = row..=row - delta - 1;
+            return if deleted.contains(&rows.0) && !deleted.contains(&rows.1) {
+                Some((shift_to(rows.0, row), shift_to(rows.1, rows.1 + delta)))
+            } else if !deleted.contains(&rows.0) && deleted.contains(&rows.1) {
+                Some((DisplaceData::None, shift_to(rows.1, row - 1)))
+            } else {
+                None
+            };
+        }
         let block = self.grown_edges.iter().find(|block| {
             block.sheet == sheet_index
                 && block.rows.0 <= rows.0
@@ -120,20 +146,10 @@ impl Displacement<'_> {
                 && block.columns.0 <= columns.0
                 && columns.1 <= block.columns.1
         })?;
-        let shift = |row| DisplaceData::Row {
-            sheet: sheet_index,
-            row,
-            delta,
-        };
-        if row == block.rows.0 && rows.0 == row {
-            // The first row stays and the last shifts with the data below the insert.
-            Some((DisplaceData::None, shift(row)))
-        } else if row == block.rows.1 + 1 && rows.1 == block.rows.1 {
-            // The first row is above the insert; the last grows by `delta`.
-            Some((DisplaceData::None, shift(rows.1)))
-        } else {
-            None
-        }
+        // The first row stays (at or above the insert) and the last grows by `delta`.
+        let at_edge = (row == block.rows.0 && rows.0 == row)
+            || (row == block.rows.1 + 1 && rows.1 == block.rows.1);
+        at_edge.then(|| (DisplaceData::None, shift_to(rows.1, rows.1 + delta)))
     }
 }
 
@@ -651,7 +667,7 @@ fn stringify(
                 (Rewrite::Displace(displacement), Some(context)) if !full_row && !full_column => {
                     let at =
                         |absolute, value, origin| if absolute { value } else { value + origin };
-                    displacement.grown_corners(
+                    displacement.range_corners(
                         *sheet_index,
                         (
                             at(*absolute_row1, *row1, context.row),
