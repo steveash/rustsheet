@@ -299,7 +299,7 @@ fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
 /// nonzero value that scales past the bounds is 255 `#` and `#VALUE!` from TEXT (`?/?,` on 0.5;
 /// probes/fraction-overflow-scaled, number-formats.md "Scaling commas in fraction formats").
 fn fraction_scale(commas: i32) -> f64 {
-    10.0_f64.powi((-3 * commas).rem_euclid(256))
+    10.0_f64.powi(commas.saturating_mul(-3).rem_euclid(256))
 }
 
 /// The largest fixed denominator Excel uses as written (2^15); past it Excel picks the

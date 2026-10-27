@@ -298,7 +298,9 @@ Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "gro
 part in threes". It is not a literal at that position. `0`/`?` placeholders beyond the number's
 digits pad the grouped result, and the padding is grouped too: with `0` a padded group shows its
 separator, and with `?` the padded separator becomes a space. A trailing `,` still scales by 1000
-and keeps the sign.
+and keeps the sign. A `,` right after a `%` does not scale: it prints as a literal (`0%,` on 0.5 is "50%,", on 1234567
+"123456700%,"; probes/fraction-overflow-scaled A79-A80, excel-graph 2026-10-27, T-2522; see "Scaling commas in fraction
+formats").
 - `0,0000000` on 1234567 → "01,234,567" (A67); `0,00000000` → "001,234,567" (A68);
   `0,000000000` → "0,001,234,567" (A69); `$000,000,000` on 314159 → "$000,314,159" (A335).
 - `?,???????` → " 1,234,567" (A44); `?,????????` → "  1,234,567" (A45); `?,?????????` →
@@ -761,7 +763,9 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   "1 1/4    "). Six or more digits (`?/100000`, `?/123456`) are #VALUE! from TEXT for every value, and Excel for the
   web refuses a workbook that applies one as a cell format (FileCorruptTryRepair), so its displayed text is unknown.
   Implemented in `format_fraction` (`MAX_FIXED_DENOMINATOR`, `LARGE_FIXED_MAX_DENOMINATOR`) and the parser. Unprobed: a
-  numerator mixing `?` with `#` or `0`, and a blank fraction (`# ?/40000` on a whole number).
+  numerator mixing `?` with `#` or `0`, a blank fraction (`# ?/40000` on a whole number), and
+  whether the #VALUE! rule is about the digit count or the value (only 6-digit codes of 100000 or more were probed;
+  7+ digits and leading zeros are extrapolated).
 - **Placeholder fractions past 2^30** are not the last convergent (VERIFIED, excel-graph 2026-10-21, T-1740,
   probe cells kept out of the suites until the follow-up implements them; T-2233): `?/?` on 1073741824.5 is
   "1073741825/1" (not 2147483649/2), -1073741824.5 "-1073741825/1", 1431655765.5 "1431655766/1",
