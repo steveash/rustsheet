@@ -3592,7 +3592,10 @@ Rule: GAUSS(z) keeps its leading term for tiny z: `GAUSS(1E-300)` is 3.989422804
 -3.989422804014327E-301 (gen-m9/4bad303d32cc3f46 A225, 05d44f6dd6cfc567 A233), `GAUSS(1E-15)` 3.989422804014328E-16
 (a54c738c697617c3 A235), so it is not NORM.S.DIST(z) - 0.5 in doubles (that gives 0 and 4.440892098500626E-16).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 8 cells listed in T-2434.
-Ours: 0 and 4.440892098500626E-16; T-2434.
+Cut: the leading term is exact only for tiny z. `GAUSS(1E-10)` is 3.9894310077670525E-11 and `GAUSS(4E-15)`
+1.5543122344752192E-15, the cancelled Phi(z) - 0.5 (gen-m9/68d8ffb69ff739d8 A262, 146b46e74f2dac3b A46), so the switch
+lies in (1E-15, 4E-15); ours uses z * phi(0) below 2E-15 (T-2434).
+Ours: 7 of the 8 cells match; `GAUSS(1E-15)` is 3.9894228040143274E-16, one ulp below Excel (follow-up).
 Status: VERIFIED (excel-graph)
 
 ## Scalar distributions at extreme arguments (T-2255)

@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {},
+  "Sheet1": {
+   "A1": {
+    "t": "n",
+    "v": 100.0
+   },
+   "A2": {
+    "t": "s",
+    "v": "77"
+   },
+   "A3": {
+    "t": "n",
+    "v": 100.0
+   },
+   "A6": {
+    "t": "n",
+    "v": 100.0
+   },
+   "A7": {
+    "t": "n",
+    "v": 200.0
+   },
+   "A8": {
+    "t": "s",
+    "v": "='2d8a5e0b538e30e210103f1c695424004772f18404c0e84ac7ca61cb4475fe45.xlsx'!Q1_Total"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "b2183bfc100d6a58f88c0cd6039386efee663321bab5e8866df05aaae741e7ef",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-27T15:43:43+00:00",
+  "version": null,
+  "workbook_name": "2d8a5e0b538e30e210103f1c695424004772f18404c0e84ac7ca61cb4475fe45.xlsx"
+ }
+}

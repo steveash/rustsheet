@@ -76,6 +76,10 @@ NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
 # Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
 POOL_RATE = 0.35
+# Shares of a number- or bool-typed `value` parameter without a `hard` domain drawn as `""` and as an error literal,
+# so generated suites reach the `empty_text` and `error` argument kinds (T-2866, decision 0094; §6.5).
+EMPTY_TEXT_RATE = 0.03
+ERROR_RATE = 0.03
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
 # `--spill` (synthetic-generator.md §5.2 shape 3): the largest footprint reserved under a spilling probe, and the
 # share of spilling probes given a blocker cell in it (edge class `spill_blocked`), so `#SPILL!` stays covered.
@@ -420,6 +424,12 @@ class Gen:
         # A `hard` domain is never overridden: outside it Excel refuses the workbook (MUNIT).
         if p.get("pool") and not dom.get("hard") and self.rng.random() < pool_rate(p):
             return self.rng.choice(POOLS[p["pool"]])
+        if p.get("type") in ("number", "bool") and not dom.get("hard"):
+            roll = self.rng.random()
+            if roll < EMPTY_TEXT_RATE:
+                return '""'
+            if roll < EMPTY_TEXT_RATE + ERROR_RATE:
+                return self.rng.choice(POOLS["errors"])
         return self.value_expr(p, depth)
 
     def value_expr(self, p: dict[str, Any], depth: int) -> str:
