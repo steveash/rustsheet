@@ -3,7 +3,7 @@ id: T-2506
 title: "Incomplete beta L140: bup with Excel's density times x y as prefactor, plus bpser (T-2464 E4)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
