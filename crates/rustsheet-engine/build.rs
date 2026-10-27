@@ -12,10 +12,11 @@ fn run_git(args: &[&str]) -> Option<String> {
 }
 
 /// The files whose change can change `git describe`: this worktree's HEAD and reflog (or, with
-/// reflogs off, the branch ref HEAD points at), `packed-refs` and the tags. Cargo resolves a relative `rerun-if-changed` path
-/// against the crate directory, where `.git` does not exist, and a missing watched file always
-/// counts as changed, so the script re-ran on every cargo call (T-2755). Ask git for its real
-/// directories (`.git` is a file in a worktree) and watch only paths that exist.
+/// reflogs off, the branch ref HEAD points at), `packed-refs` and the tags. Cargo resolves a
+/// relative `rerun-if-changed` path against the crate directory, where `.git` does not exist,
+/// and a missing watched file always counts as changed, so the script re-ran on every cargo call
+/// (T-2755). Ask git for its real directories (`.git` is a file in a worktree) and watch only
+/// paths that exist.
 fn watched_git_paths() -> Vec<PathBuf> {
     let Some(dirs) = run_git(&[
         "rev-parse",
@@ -36,12 +37,15 @@ fn watched_git_paths() -> Vec<PathBuf> {
     if !git_dir.is_absolute() || !common_dir.is_absolute() {
         return Vec::new();
     }
-    // `packed-refs` and `refs/tags` are dropped below if missing now; packing refs later also
-    // changes the watched ref files and directories, so the rerun still happens.
+    // Paths missing now are dropped below. `packed-refs` appears only when refs are packed,
+    // which also changes the watched ref files; a missing `refs/tags` (clones always create it)
+    // falls back to `refs`, where a later `git tag` creates it.
+    let refs = common_dir.join("refs");
+    let tags = refs.join("tags");
     let mut paths = vec![
         git_dir.join("HEAD"),
         common_dir.join("packed-refs"),
-        common_dir.join("refs").join("tags"),
+        if tags.exists() { tags } else { refs },
     ];
     // This worktree's reflog gains a line on every commit, reset, rebase and checkout here, and
     // not when other branches move, so it is the cheapest exact signal. Reflogs can be off.
