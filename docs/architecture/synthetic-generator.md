@@ -300,6 +300,12 @@ Key schema elements:
 - `vector: true` (a `range` or `array` parameter): the generator passes a one-column range. LOOKUP and the XLOOKUP/XMATCH lookup
   vectors give only `#N/A` or `#VALUE!` for a 2-D range, which would hide the search itself (T-1238); WRAPROWS/WRAPCOLS
   wrap one column (T-1083).
+  `wide_rate: <share>` makes that share of the draws 2-D and `row_rate: <share>` makes it a one-row range, so MATCH's
+  lookup_array is mostly one-dimensional with a few 2-D `#N/A` cases (T-2719).
+- `same_shape: true` (`range` parameters of one call): the ranges share one rows x columns shape, except in about 1 call
+  in 10, so the *IFS functions compute a real match and the shape-mismatch `#VALUE!` stays covered (T-2719).
+- `probe: <param>` (a `value` parameter): drawn from the cells of that `range` parameter 95% of the time, so MATCH's
+  lookup_value usually exists in the array (T-2719).
 - `full: true` (an `array` parameter): every range spans all data rows, so GROUPBY's, SORTBY's and FILTER's arrays are the
   same height; `mask: true` makes FILTER's include a comparison of one full column (T-1083).
 - `mode: lambda` (with `arity`, or `arity: repeat` for MAP's one parameter per array) is a LAMBDA whose body may use its
