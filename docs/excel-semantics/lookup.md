@@ -1193,3 +1193,11 @@ not yet (T-2824).
 probes/t2065-lift-median, -large, -small failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs).
 Status: UNVERIFIED (desktop question, M14 T-1075 item 18, decision 0039).
 Tasks: T-2065, T-2063, T-2064, T-2823, T-2824
+
+## MATCH match_type that is a reference to an error cell is #REF! (excel-graph)
+Rule: `MATCH(30,A1:A5,M2)` with M2 `=NA()` gives `#REF!` (ERROR.TYPE 4) in Excel for the web, not the #N/A the
+error carries; the literal `NA()` as match_type and the same reference as VLOOKUP/HLOOKUP range_lookup propagate #N/A.
+Evidence: probes/m2-argument-kind-gaps Calc!A25 (T-2861, excel-graph, 2026-10-27); the other 78 cells of that case (empty text,
+error, fraction, boolean and numeric text as literal and as a reference in DAY, YEAR, IF, INDEX, MATCH, VLOOKUP, HLOOKUP, LEFT, RIGHT,
+MID, SUMIF, SUMIFS) match ours.
+Status: VERIFIED once (web only; other error kinds as the reference unprobed). Implemented in: not yet (T-2962).

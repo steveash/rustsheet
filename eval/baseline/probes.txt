@@ -714,6 +714,7 @@ C	probes/lotus-dot-range-offgrid.case.json	2
 C	probes/lotus-dot-range-space.case.json	2
 C	probes/lotus-dot-range-trailing-letter.case.json	2
 C	probes/lotus-dot-range.case.json	6
+C	probes/m2-argument-kind-gaps.case.json	79
 C	probes/m7-argument-modes.case.json	174
 C	probes/m7-lift-take-drop-sortby.case.json	934
 C	probes/m7-one-cell-operand-lift.case.json	18
@@ -2964,6 +2965,7 @@ F	probes/logest-modes.case.json	Sheet1!M92
 F	probes/logest-modes.case.json	Sheet1!M93
 F	probes/logest-modes.case.json	Sheet1!N85
 F	probes/logest-modes.case.json	Sheet1!N86
+F	probes/m2-argument-kind-gaps.case.json	Calc!A25
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A1
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A10
 F	probes/npv-fvschedule-typed.case.json	Sheet1!A11

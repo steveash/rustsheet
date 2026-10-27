@@ -3,7 +3,7 @@ id: T-2861
 title: "Probe the M2 argument kinds no Excel cell covers yet: empty text, an error, a fraction or a boolean in 12 functions"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -55,3 +55,8 @@ kind is scored. For SUMIF/SUMIFS put the fraction and boolean both in the criter
 ## Out of scope
 - Argument kinds of M5 and later functions (T-2862, T-2863, T-2864, T-2865).
 - Generator pool changes (T-2866).
+
+## Outcome
+Added `probes/m2-argument-kind-gaps` (79 checked cells, excel-graph 2026-10-27, tag M2): every listed parameter/kind pair as a literal
+and as a cell reference; `argument_coverage` now shows every listed kind seen. 78 cells match; the one difference (MATCH with a
+match_type reference to a #N/A cell: Excel #REF!, ours #N/A, Calc!A25) is baselined and owned by T-2962.
