@@ -428,7 +428,7 @@ mod tests {
             },
         ) {
             CalcResult::String(t) => t.to_string(),
-            _ => String::new(),
+            other => panic!("expected text, got {other:?}"),
         };
         assert_eq!(
             text(2.112_17, 0.627_617),
