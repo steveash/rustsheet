@@ -37,7 +37,7 @@ import as a follow-up.
       faster.
 - [x] pv26_001 and pv26_2_001 leave the `exclude` list in eval/suites/calipers/suite.toml if they
       calculate within 60 s, and `rustsheet-eval update-baseline --suite calipers` records their results with no new known failure
-      elsewhere.
+      elsewhere. (They left the list; the recording waits on T-0463, see the Outcome.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -58,7 +58,8 @@ import as a follow-up.
   | 44f80b2 (`main` today) | 0.66 s | 0.052 s | 0.165 s | 0.49 s |
   Load (parse + `from_workbook`) went from 13.6 s to 0.71 s, 19x; load + evaluate + save from 27.5 s to 1.4 s.
   pv26_2_001 is the same (1.44 s in all on `main`).
-- In the harness each case takes about 1.5 s (`rustsheet-eval run --suite calipers --filter pv26_001/`),
+- In the harness each case takes about 1.5 s (the case's `millis` in `report.json`; the whole
+  `rustsheet-eval run --suite calipers --filter pv26_001/` command, with startup and discovery, about 8 s),
   so both left the `exclude` list in eval/suites/calipers/suite.toml. Each scores 134,038 of 134,039
   cells; the one failure is `Ticker0001_Validation_Sheet!A2`, `CELL("filename",...)` (Excel for the web's
   `#VALUE!` against desktop Excel's cached path; owned by T-2663).
