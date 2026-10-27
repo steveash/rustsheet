@@ -3,7 +3,7 @@ id: T-2522
 title: "Probe the fraction overflow bounds under % and , scaling and large fixed denominators"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
