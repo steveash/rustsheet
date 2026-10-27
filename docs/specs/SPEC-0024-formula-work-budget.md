@@ -4,7 +4,7 @@
   (how per-call capped work is charged and calibrated: sections 1 and 4) and by T-2923 (LAMBDA values made: sections 1 and 4)
 - **Milestone / lane:** M7 / engine
 - **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps
-  T-2806, T-2807; the visit caps' 5 s rule (T-2813 amendment) for YIELD and ODDFYIELD is T-2879
+  T-2806, T-2807, T-2925; the LAMBDA-made charge (T-2923 amendment); the visit caps' 5 s rule (T-2813 amendment) for YIELD and ODDFYIELD is T-2879
 
 ## Problem
 Each array is capped at 2^20 cells (arrays.md "Array results above 1,048,576 cells are #ERROR!").
@@ -95,7 +95,7 @@ Why these charges:
 - **LAMBDA values made** (amendment, T-2923) bound a body that makes a LAMBDA on each call
   (`MAKEARRAY(..,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))`). Making one clones its body into
   `self.lambdas` and runs `close_over`. When the new LAMBDA reads the call's parameters, the caller's
-  body is also cloned and patched again on the next call. All of that is charged one node. Measured
+  body is also cloned and patched again on the next call. Before this amendment all of that was charged one node. Measured
   on main (release build, 2026-10-27): `MAP(1,LAMBDA(z,z))` as a MAKEARRAY body costs 1.4 us a cell,
   against 0.28 us for `SEQUENCE(1)`. `LAMBDA(z,z)(1)` costs 1.3 us. The MAKEARRAY of MAP above costs
   4.5 us a cell (180 ns a unit at the T-2803 weights). A MAP of 1,000 such MAKEARRAYs reaches the
@@ -318,7 +318,8 @@ for any over 5 s. A formula refused for two near-cap calls is covered by the sam
 `NODE_UNITS` = `CELL_UNITS` = 2): the three Problem formulas took 10.5, 10.6 and 11.1 s to the limit,
 above the 10 s target. On 2026-10-26 the same took 7.0, 7.0 and 5.9 s. So step 1 also re-fits
 `NODE_UNITS` and `CELL_UNITS` (3 puts them at about 7 s here). The lower constraint has room:
-the heaviest eval formula outside the visit caps spends 8,388,620 units at weight 2
+the heaviest eval formula outside the visit caps spends 8,388,620 units at weight 2 (the unit counts and ns-a-unit
+figures in section 1 and the worked examples below are at weight 2 and move with the re-fit)
 (ironcalc-calc/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx, a whole-column ROW array), 12.6M at 3, and
 2^26 allows 8. Every timed case must stop within 10 s on the machine step 1 measures on. Fit the
 weights with a margin, as a slower machine (the 10.5 s above) must not miss the 30 s harness timeout.
@@ -393,7 +394,7 @@ Step 1 adds this entry to docs/excel-semantics/arrays.md, with the measured cali
 1. **T-2803 (M, opus)**: the budget in `AreaBudget` (`MAX_FORMULA_WORK`, `spend_work`,
    `work_exceeded`), the uncatchable formula error in `with_area_budget`, node, text,
    built-cell and LAMBDA-made charges (T-2923), the per-call caps' charges, the helpers' early stop, the weights fitted to
-   the per-kind timings (section 4), the DEVIATION entry with the calibration measured. Acceptance:
+   the per-kind timings (section 4; re-fit `NODE_UNITS` and `CELL_UNITS` and fit `LAMBDA_UNITS`, T-2923), the DEVIATION entry with the calibration measured. Acceptance:
    the three Problem formulas finish within the harness timeout (as `#VALUE!`), each kind's worst
    case stops within 10 s, no baseline gains a line, `make check` green. The visit caps are charged
    at 1 unit and judged by the amended rules of section 4 (T-2813); their YIELD and ODDFYIELD

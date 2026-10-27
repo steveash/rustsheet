@@ -47,7 +47,8 @@ The lower constraint must still hold: the heaviest eval formula outside the visi
 - [x] The cause of the nested-call cost is named, with a profile or counters.
 - [x] SPEC-0024 sections 1 and 4 are amended with the chosen charge, or with a perf task that removes the cost. A worst case of
       nested LAMBDA helpers (at least the 124 s formula above, and a deeper one) is added to section 4's timed list.
-- [x] T-2803's "Blocked because" names this amendment as its blocker; it is unblocked when this merges.
+- [x] T-2803's "Blocked because" names this amendment as its blocker; it is unblocked when this merges. (T-2803's live task
+      file is on its draft branch agent/engine/T-2803-formula-work-budget, #1938, which has the section and the charge to add.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
