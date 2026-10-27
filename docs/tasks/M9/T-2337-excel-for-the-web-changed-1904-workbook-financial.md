@@ -3,7 +3,7 @@ id: T-2337
 title: "Excel for the web changed 1904-workbook financial results after 2026-10-12: re-fill the 1904 probes and re-derive the 1904 financial rules"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
