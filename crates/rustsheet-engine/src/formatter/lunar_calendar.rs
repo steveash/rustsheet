@@ -253,17 +253,22 @@ pub(crate) fn lunar_ymd(serial: i64, table: LunarTable) -> Option<(i32, u32, u32
             break;
         }
         start = next;
-        if entry & NEW_YEAR == 0 {
-            month += 1;
-        } else {
-            (year, month) = (year + 1, 1);
-        }
+        (year, month) = next_month(entry, year, month);
     }
     if in_early_year(&EARLY_YEARS, day) {
         year += 1;
     }
     let day_of_month = u32::try_from(day - start + 1).ok()?;
     Some((year, month, day_of_month))
+}
+
+/// The lunar year and month after month `month` of `year`, whose table entry is `entry`.
+fn next_month(entry: u8, year: i32, month: u32) -> (i32, u32) {
+    if entry & NEW_YEAR == 0 {
+        (year, month + 1)
+    } else {
+        (year + 1, 1)
+    }
 }
 
 /// Whether `day` lies in one of the `early` ranges, which carry the next lunar year.
@@ -307,11 +312,7 @@ impl LaterTable {
         for &entry in lengths {
             months.push(LaterMonth { start, year, month });
             start += i64::from(entry & LENGTH);
-            if entry & NEW_YEAR == 0 {
-                month += 1;
-            } else {
-                (year, month) = (year + 1, 1);
-            }
+            (year, month) = next_month(entry, year, month);
         }
         let early_count = u8::from_le_bytes(take(bytes)?);
         let early_years = (0..early_count)
