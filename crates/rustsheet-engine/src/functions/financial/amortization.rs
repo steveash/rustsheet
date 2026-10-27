@@ -145,12 +145,8 @@ impl Model {
         // The purchase may fall on the first period's end (`AMORLINC(2400,1,1,300,1,0.15,1)` is
         // 360), and every value is checked before the basis is read
         // (`AMORLINC(-1,39679,39813,300,1,0.15,NA())` is #NUM!).
-        let valid = cost >= 0.0
-            && salvage >= 0.0
-            && salvage < cost
-            && period >= 0.0
-            && rate > 0.0
-            && purchased <= first_period;
+        let valid =
+            amortization_values_valid(cost, salvage, period, rate) && purchased <= first_period;
         if !valid {
             return Err(num_error(cell));
         }
@@ -170,11 +166,7 @@ impl Model {
             Amortization::Linear => asset.linear(period),
             Amortization::Degressive => {
                 // Checked after the basis (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is #N/A).
-                // The asset life must not fall in [0, 3] or strictly between 4 and 5: Excel
-                // accepts a life of exactly 4 and 5 (rates 0.25, 0.2; probes/fin-amordegrc
-                // A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
-                let life = 1.0 / rate;
-                if (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0) {
+                if asset_life_refused(rate) {
                     return Err(num_error(cell));
                 }
                 asset.degressive(period, DEGRESSIVE_LOOP_PERIODS)
@@ -182,6 +174,21 @@ impl Model {
         }
         .map_err(|_| num_error(cell))
     }
+}
+
+/// AMORLINC's and AMORDEGRC's value checks beside the dates: `0 <= salvage < cost`, `period >= 0`
+/// and `rate > 0`, written as the valid ranges so that a NaN fails them. Also the lift's charge
+/// (`ValueWork::Amortization`), which must refuse only what the kernel refuses.
+pub(crate) fn amortization_values_valid(cost: f64, salvage: f64, period: f64, rate: f64) -> bool {
+    cost >= 0.0 && salvage >= 0.0 && salvage < cost && period >= 0.0 && rate > 0.0
+}
+
+/// Whether AMORDEGRC refuses the asset life `1 / rate` of a positive rate: it must not fall in
+/// [0, 3] or strictly between 4 and 5. Excel accepts a life of exactly 4 and 5 (rates 0.25, 0.2;
+/// probes/fin-amordegrc A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
+pub(crate) fn asset_life_refused(rate: f64) -> bool {
+    let life = 1.0 / rate;
+    (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0)
 }
 
 /// The stand-in date of a 1900 serial from 0 to 9999-12-31 (`from_excel_date`, whose serial 1 is
