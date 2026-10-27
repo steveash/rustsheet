@@ -3,7 +3,7 @@ id: T-2910
 title: "Audit M2's structural exit criterion: one aggregate-argument walker and one criteria matcher for every consumer, duplication down 15% from M2's start"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -42,19 +42,32 @@ row (T-2822) plus this record, without re-auditing the code.
   Which commit counts as "M2's start" is part of the verdict; justify it from git history.
 
 ## Acceptance criteria
-- [ ] A decision record (`make new-decision`) states the verdict on each half of the criterion. For aggregate
+- [x] A decision record (`make new-decision`) states the verdict on each half of the criterion. For aggregate
       iteration and for criteria matching it gives a table: function or call site, file, and whether it is
       on the shared code, differs for a cited evidenced reason, or is a copy.
-- [ ] The record gives the duplication counts at the chosen M2 start commit and at the PR's base, both measured
+- [x] The record gives the duplication counts at the chosen M2 start commit and at the PR's base, both measured
       by today's scripts/check_duplication.py with the same window, the commits' hashes and the reduction in
       percent.
-- [ ] Every copy found gets a follow-up task filed with `make new-task` (M2, engine or quality lane, naming
+- [x] Every copy found gets a follow-up task filed with `make new-task` (M2, engine or quality lane, naming
       the file and function and the shared code to move onto). Or the record explains why none is needed.
-- [ ] docs/milestones.md's M2 structural bullet gains one line citing the decision record and its verdict, with
+- [x] docs/milestones.md's M2 structural bullet gains one line citing the decision record and its verdict, with
       no other change to the criteria text.
-- [ ] No code changes in this PR. `make check` green; reviewers approve (architecture reviewer included).
+- [x] No code changes in this PR. `make check` green; reviewers approve (architecture reviewer included).
 
 ## Out of scope
 - Moving any remaining copy onto the shared code (the follow-up tasks do it).
 - Adding the structural criterion to the report's M2 exit row (T-2822 keeps it out by design).
 - Changing check_duplication.py or quality/duplication.json.
+
+## Outcome
+Decision 0137 (on 11592ab5) finds M2's structural criterion met:
+- Aggregate iteration: every variadic aggregate is on the SPEC-0009 walker. SUBTOTAL, AGGREGATE, SUMPRODUCT,
+  COUNTBLANK, GCD/LCM, MULTINOMIAL, NPV and the data-array readers each differ for a cited, evidenced reason.
+  None is a copy.
+- Criteria matching: every criteria or wildcard consumer goes through functions/criteria.rs. The
+  conditional-format text rules are not a worksheet consumer; their wildcard handling is unprobed, so criteria.md
+  gets an UNVERIFIED entry and T-1075 item 20 asks desktop Excel.
+- Duplication: 9,153 at a08a9c76 (the parent of T-0200) and 2,931 at 11592ab5, with today's script (window 10).
+  That is down 68.0%.
+- No copy was found, so no follow-up tasks. SPEC-0009 gets an as-built note for two consumer rows that lag the code.
+  Eval delta: none (docs only).

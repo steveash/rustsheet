@@ -291,6 +291,9 @@ its error was returned at once (`?`). T-1439 probed them (probes/aggregate-error
 and moved them to `Ranked`, since Excel ranks their errors as SUM does.
 
 ### As built (T-1476)
+- The consumer mapping above lags the code in two rows (decision 0137 audit). DEVSQ and AVEDEV count an
+  empty argument as 0 through `for_each_value`, and only SUMSQ skips it (probes/stat-order-floor-batch A274, A299,
+  T-1748). VARA, VARPA, STDEVA and STDEVPA rank errors as SUM does (`VARA_ARGS`, probes/aggregate-error-precedence-a-variants, T-1696).
 - T-1615 removed `ArrayErrorRank` (and the `lambda_held` flag it needed): every `Ranked` policy holds
   an array error like a referenced one, since Excel ranks it that way for SUM, MIN, MAX, AVERAGE
   and MEDIAN (probes/aggregate-array-error-vs-ref-error). The design above shows the earlier shape.
