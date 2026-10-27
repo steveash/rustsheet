@@ -17,10 +17,11 @@
 //! records what it saw, so a spill that later writes into it restarts the pass, and every pass
 //! starts with an empty cache; nothing is cached in Excel-order passes or outside a pass. Under
 //! iterative calculation a range holding a cycle member is not cached (its reader joins the cycle,
-//! where the lazy walk may not read it; `Model::join_stack`, T-0485). Reading the whole range records reads the walk may not have made, so a
-//! later spill into one of those cells restarts the pass where the walk would not: slower, never
-//! a different value. Values read through the cache are the walk's values, and the matches are
-//! taken in the walk's order (row by row), so sums round alike and the first error wins alike.
+//! where the lazy walk may not read it; `Model::join_stack`, T-0485). Reading the whole range
+//! records reads the walk may not have made, so a later spill into one of those cells restarts the
+//! pass where the walk would not: slower, never a different value. Values read through the cache
+//! are the walk's values, and the matches are taken in the walk's order (row by row), so sums round
+//! alike and the first error wins alike.
 //!
 //! A criterion new to a range is still tested on every cell of it, which costs rank and per-row
 //! idioms, a new criterion per call, the range's size each call (calipers `pv26_002`: 272,000

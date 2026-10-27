@@ -97,7 +97,7 @@ impl Model {
 
     /// A read of an evaluated cell: when it is a member, its readers on the stack become members.
     pub(crate) fn read_evaluated(&mut self, at: CellReferenceIndex) {
-        if self.iterating() && self.evaluation.iteration.members.contains(&key(at)) {
+        if self.iterating() && self.is_cycle_member(at) {
             self.join_stack();
         }
     }

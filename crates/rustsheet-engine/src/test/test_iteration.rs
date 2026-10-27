@@ -123,15 +123,13 @@ fn cached_reads_match_the_walk(
     cached
 }
 
-fn cells(list: impl IntoIterator<Item = (String, String)>) -> Vec<(String, String)> {
-    list.into_iter().collect()
-}
-
 /// A cycle through a criteria range: A50 counts the range it sits in, and the readers below
 /// count, sum and match it with criteria that need different cells.
 #[test]
 fn a_cycle_through_a_criteria_range_reads_as_the_walk() {
-    let mut list = cells((1..=100).map(|row| (format!("A{row}"), row.to_string())));
+    let mut list = (1..=100)
+        .map(|row| (format!("A{row}"), row.to_string()))
+        .collect::<Vec<_>>();
     list.push(("A50".into(), "=COUNTIFS($A$1:$A$100,\">10\")/10".into()));
     for row in 1..=30 {
         list.push((
@@ -156,7 +154,9 @@ fn a_cycle_through_a_criteria_range_reads_as_the_walk() {
 /// A cycle through a lookup range: D70 looks up the range it sits in.
 #[test]
 fn a_cycle_through_a_lookup_range_reads_as_the_walk() {
-    let mut list = cells((1..=100).map(|row| (format!("E{row}"), (row * 2).to_string())));
+    let mut list = (1..=100)
+        .map(|row| (format!("E{row}"), (row * 2).to_string()))
+        .collect::<Vec<_>>();
     list.push(("E70".into(), "=MATCH(40,$E$1:$E$100,0)+E69".into()));
     for row in 1..=30 {
         list.push((
@@ -179,7 +179,9 @@ fn a_cycle_through_a_lookup_range_reads_as_the_walk() {
 /// a cycle through a reader, and I95 joins one through a later reader of its own range.
 #[test]
 fn cycles_that_close_after_a_range_was_cached_read_as_the_walk() {
-    let mut list = cells((1..=100).map(|row| (format!("J{row}"), (row % 17).to_string())));
+    let mut list = (1..=100)
+        .map(|row| (format!("J{row}"), (row % 17).to_string()))
+        .collect::<Vec<_>>();
     for row in 1..=30 {
         list.push((
             format!("I{row}"),
@@ -214,7 +216,9 @@ fn cycles_that_close_after_a_range_was_cached_read_as_the_walk() {
 /// the table and the range read as the walk in both rounds.
 #[test]
 fn the_data_table_round_reads_as_the_walk() {
-    let mut list = cells((1..=100).map(|row| (format!("M{row}"), row.to_string())));
+    let mut list = (1..=100)
+        .map(|row| (format!("M{row}"), row.to_string()))
+        .collect::<Vec<_>>();
     list.push(("M80".into(), "=COUNTIFS($M$1:$M$100,\">\"&A1)/4".into()));
     list.push(("A1".into(), "10".into()));
     list.push(("B3".into(), "=COUNTIFS($M$1:$M$100,\">\"&A1)".into()));
@@ -239,7 +243,9 @@ fn the_data_table_round_reads_as_the_walk() {
 /// T-0485).
 #[test]
 fn without_a_cycle_iteration_keeps_the_caches() {
-    let mut list = cells((1..=100).map(|row| (format!("A{row}"), (row % 13).to_string())));
+    let mut list = (1..=100)
+        .map(|row| (format!("A{row}"), (row % 13).to_string()))
+        .collect::<Vec<_>>();
     for row in 1..=30 {
         list.push((
             format!("B{row}"),
@@ -277,12 +283,14 @@ fn k1_after_an_edit(cells: &[(String, String)]) -> (String, String) {
 /// readers do not join, and the cached range values must not read it either (T-0485).
 #[test]
 fn a_member_the_lazy_walk_skips_joins_no_cached_reader() {
-    let mut list = cells((1..=100).flat_map(|row| {
-        [
-            (format!("A{row}"), "x".to_string()),
-            (format!("B{row}"), row.to_string()),
-        ]
-    }));
+    let mut list = (1..=100)
+        .flat_map(|row| {
+            [
+                (format!("A{row}"), "x".to_string()),
+                (format!("B{row}"), row.to_string()),
+            ]
+        })
+        .collect::<Vec<_>>();
     list.push(("A50".into(), "y".into()));
     list.push(("B50".into(), "=K1".into()));
     for row in 101..=110 {
@@ -300,7 +308,9 @@ fn a_member_the_lazy_walk_skips_joins_no_cached_reader() {
 /// not cached for the readers after it (T-0485).
 #[test]
 fn a_lookup_vector_whose_build_joined_is_not_cached() {
-    let mut list = cells((1..=100).map(|row| (format!("E{row}"), (row + 10).to_string())));
+    let mut list = (1..=100)
+        .map(|row| (format!("E{row}"), (row + 10).to_string()))
+        .collect::<Vec<_>>();
     list.push(("E50".into(), "=K1".into()));
     list.push(("F101".into(), "=MATCH(15,$E$1:$E$100,0)".into()));
     for row in 102..=110 {
