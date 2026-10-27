@@ -25,6 +25,8 @@ beside a missing argument is kept"; probes/t2786-whitespace-structured-refs-runs
 ## Acceptance criteria
 - [ ] I1 and I11 of probes/t2786-whitespace-structured-refs-runs pass, and NOW()/TODAY() still take no argument.
 - [ ] A probe answers whether Excel keeps a run before a missing first argument (`=SUM( ,1)`), and ours matches.
+      The same probe confirms that `=SUBTOTAL(9,A1, )` and `=SUBTOTAL(9, ,A1)` are refused (test_subtotal_reference_args.rs
+      H21, H22: hand-written, kept as main had them).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
