@@ -4274,5 +4274,5 @@ gen-m9/607e85cfee83a689 Calc!A20 (`PERCENTILE.INC(Data!B7:E11,1E-20)` is 1E-15, 
 Calc!A151 (`PERCENTILE.INC(Data!B11:E12,1E-200)` is 0), Calc!A162 (`PERCENTILE(Data!A4:B4,1E-10)` over -0.0001 and 7 is
 -9.999929998994208E-05), gen-m9/a4090567758520df Calc!A28.
 Status: IMPLEMENTED (T-1811); QUARTILE and QUARTILE.INC share it.
-Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the zero-based rank `k*(n-1)`.
+Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the one-based rank `1 + k*(n-1)` (T-1811). Known miss: gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, rule -2.4999999999999987) stays in the baseline.
 Tasks: T-1811
