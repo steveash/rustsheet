@@ -1481,10 +1481,12 @@ about 7.9 us an element, 2.1 s per call; a walk at the cap would be `#NUM!`), AM
 form (512 elements of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, which takes no shortcut, 2.06 s). The scalar calls are not
 capped beyond those bounds.
 Since T-2840 an element the kernel refuses before its walk is charged 1, not the weight, so a broadcast of such elements
-lifts in full: an error or a logical in any argument (each is read, the basis too, before the walk), or numbers that
-fail the value checks (`0 <= salvage < cost`, `period >= 0`, `rate > 0`, NaN failing them) or, for AMORDEGRC, the asset
-life (`1/rate` in [0, 3] or (4, 5)). A text or a blank is not judged (it may read as any number), nor is a date's
-calendar check, which depends on the date system: such an element is charged the weight. gen-m9/e8d55ec393460bb7
+lifts in full: an error or a logical in any argument (each is read, the basis too, before the walk), a cost, salvage,
+period and rate, all numbers, that fail the value checks (`0 <= salvage < cost`, `period >= 0`, `rate > 0`, NaN failing
+them), or for AMORDEGRC a rate whose asset life is refused (`1/rate` in [0, 3] or (4, 5)); the charge calls the
+kernel's own predicates (`amortization_values_valid`, `asset_life_refused`). A text or a blank is not judged (it may
+read as any number), nor is a date's calendar check, which depends on the date system: such an element is charged the
+weight. gen-m9/e8d55ec393460bb7
 Calc!A10, about 1,250 PIVOTBY purchase dates (most of them texts) at a rate of `PMT(100,271,417889,43,0)` (negative),
 spills like Excel's instead of `#ERROR!`.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").

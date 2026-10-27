@@ -18,6 +18,7 @@ use crate::calc_result::CalcResult;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::parser::ArrayNode;
 use crate::formatter::dates::FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+use crate::functions::financial::{amortization_values_valid, asset_life_refused};
 use crate::functions::statistical::incomplete_gamma;
 use crate::functions::Function;
 use crate::limits::COUNT_LIMIT_EXCLUSIVE;
@@ -140,10 +141,10 @@ pub(crate) enum ValueWork {
     },
     /// AMORLINC's and AMORDEGRC's walk (T-2840): `weight` units, the flat bound of a walk, or 1
     /// for an element the kernel refuses before it walks (`Model::amortization_of`): an error or
-    /// a logical in any argument, or numbers that fail the value checks (`0 <= salvage < cost`,
-    /// `period >= 0`, `rate > 0`) or, with `degressive`, AMORDEGRC's asset life. A text or a blank
-    /// may read as any number, so it refuses nothing; nor does a date, whose calendar check
-    /// depends on the workbook's date system. See [`amortization_refused`].
+    /// a logical in any argument, a cost, salvage, period and rate, all numbers, that fail the
+    /// value checks, or, with `degressive`, a rate whose asset life AMORDEGRC refuses. A text or
+    /// a blank may read as any number, so it refuses nothing; nor does a date, whose calendar
+    /// check depends on the workbook's date system. See [`amortization_refused`].
     Amortization { degressive: bool, weight: u32 },
 }
 
@@ -411,30 +412,23 @@ impl ValueWork {
 
 /// Whether AMORLINC (AMORDEGRC with `degressive`) returns before its walk on these argument
 /// values (`Model::amortization_of`): it reads cost to rate as numbers and the basis, refusing an
-/// error or a logical in any of them (`refused_before_any_walk`), then checks `0 <= salvage <
-/// cost`, `period >= 0`, `rate > 0` and, for AMORDEGRC, an asset life `1 / rate` outside [0, 3]
-/// and (4, 5), all before the walk. Only numbers are judged: a text or a blank may read as any.
-/// The checks are written as the valid ranges, as the kernel's are, so a NaN fails them too.
+/// error or a logical in any of them (`refused_before_any_walk`), then makes its value checks
+/// (`amortization_values_valid`) and, for AMORDEGRC, its asset-life check (`asset_life_refused`),
+/// all before the walk. Only numbers are judged, a text or a blank may read as any: the value
+/// checks when cost, salvage, period and rate are all numbers, the life when the rate is one.
 fn amortization_refused(degressive: bool, value: &impl Fn(usize) -> Option<ArgValue>) -> bool {
     let number = |arg: usize| match value(arg) {
         Some(ArgValue::Number(n)) => Some(n),
         _ => None,
     };
     let [cost, salvage, period, rate] = [0, 3, 4, 5].map(number);
-    let fails = |x: Option<f64>, valid: &dyn Fn(f64) -> bool| x.is_some_and(|x| !valid(x));
-    let life_refused = |rate: f64| {
-        let life = 1.0 / rate;
-        (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0)
+    let values_refused = match (cost, salvage, period, rate) {
+        (Some(c), Some(s), Some(p), Some(r)) => !amortization_values_valid(c, s, p, r),
+        _ => false,
     };
     refused_before_any_walk(&[], value)
-        || fails(cost, &|c| c >= 0.0)
-        || fails(salvage, &|s| s >= 0.0)
-        || cost
-            .zip(salvage)
-            .is_some_and(|(c, s)| s.partial_cmp(&c) != Some(std::cmp::Ordering::Less))
-        || fails(period, &|p| p >= 0.0)
-        || fails(rate, &|r| r > 0.0)
-        || (degressive && rate.is_some_and(life_refused))
+        || values_refused
+        || (degressive && rate.is_some_and(asset_life_refused))
 }
 
 /// The units one incomplete-gamma element of shape at most `a` running at most `cdfs` cdfs is

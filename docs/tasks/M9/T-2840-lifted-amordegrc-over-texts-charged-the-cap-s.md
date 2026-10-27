@@ -43,10 +43,12 @@ Decision 0083: the cell has the wrong error, so the task is in the campaign.
 ## Outcome
 AMORLINC and AMORDEGRC are charged by value (`ValueWork::Amortization`, lift/kinds/mod.rs): an element the kernel
 refuses before its walk costs 1 unit, every other its flat weight as before. Refused means an error or a logical in any
-argument, or numbers that fail the value checks (`0 <= salvage < cost`, `period >= 0`, `rate > 0`) or AMORDEGRC's
-asset life, the same checks `Model::amortization_of` makes before `degressive`/`linear`. Texts, blanks and the date
-calendar check are not judged (charged the weight), so the "may read as a number" bit for texts was not needed: the
-cell's rate, `PMT(100,271,417889,43,0)`, is negative, refusing every element whatever its purchase date. Unit test
-`amortization_elements_refused_before_the_walk_are_charged_one`; financial.md "AMORLINC and AMORDEGRC work cap" says how
-an element is charged. Eval delta: gen-m9 known failures 3753 -> 3752 (e8d55ec393460bb7 Calc!A10 fixed), 0
+argument, a cost, salvage, period and rate (all numbers) that fail the value checks, or a rate whose AMORDEGRC asset
+life is refused, through the kernel's own predicates (`amortization_values_valid`, `asset_life_refused`, now shared
+with `Model::amortization_of`). Texts, blanks and the date calendar check are not judged, and such an element is still
+charged the weight: no "may read as a number" bit for texts was added, because this cell does not need one. Its rate,
+`PMT(100,271,417889,43,0)`, is negative, so every element is refused whatever its purchase date. Unit tests
+`amortization_elements_are_charged_the_bound` and `amortization_elements_refused_before_the_walk_are_charged_one`
+(which also checks that the kernel errors on each refused case); financial.md "AMORLINC and AMORDEGRC work cap" says
+how an element is charged. Eval delta: gen-m9 known failures 3753 -> 3752 (e8d55ec393460bb7 Calc!A10 fixed), 0
 regressions.

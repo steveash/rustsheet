@@ -287,7 +287,8 @@ const CUMULATIVE: ArgKinds = ArgKinds::fixed(
 // --- Financial ATP (T-1841) -----------------------------------------------------------------
 /// What one AMORLINC element is charged unless refused before its walk (`ValueWork::Amortization`,
 /// T-2840), priced from its cap: at most `LINEAR_STEP_CAP` (1,024) single subtractions
-/// (functions/financial/amortization.rs `linear_charge`; the longest real walk takes 616). A step costs about 7.7 ns in a release build (2^18 elements of
+/// (functions/financial/amortization.rs `linear_charge`; the longest real walk takes 616). A step
+/// costs about 7.7 ns in a release build (2^18 elements of
 /// `AMORLINC(..,2400,..,300,9E15,1.08E-16,1)`, 613 steps each, within 1% of the longest, took
 /// 1.23 s, 4.7 us an element), so a walk at the cap is about 7.9 us and 2^9 units run at most
 /// 2^18 elements, about 2.1 s. docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC work
