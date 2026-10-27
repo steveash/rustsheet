@@ -7,6 +7,7 @@ use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
 use super::super::utils::{
     is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
+    quote_name,
 };
 use super::reference_operators::is_reference_operand;
 use super::structured_reference::{
@@ -260,10 +261,12 @@ impl Parser {
             }
             None => crate::expressions::utils::unquote_sheet_prefix(prefix)?,
         };
-        let scope = if sheet.is_empty() {
-            None
-        } else {
-            Some(self.get_sheet_index_by_name(&sheet)?)
+        let scope = match self.get_sheet_index_by_name(&sheet) {
+            _ if sheet.is_empty() => None,
+            Some(index) => Some(index),
+            // `Budget.xlsx!loc`, the text Excel shows for `Feb!loc`, reads the workbook name.
+            None if self.is_workbook_file(&sheet) => None,
+            None => return None,
         };
         // A sheet with no local definition reads the workbook-scoped name (docs/excel-semantics/
         // references.md "A sheet-qualified name falls back to the workbook name"; `Feb!loc`).
@@ -282,7 +285,25 @@ impl Parser {
                 (None, formula)
             }
         };
-        Some(Node::DefinedNameKind((name.to_string(), scope, formula)))
+        // Excel shows a workbook name read through a sheet, or through the file's own-workbook
+        // prefix `[0]!`, with the workbook's file name as its prefix, quoted as a sheet name
+        // would be (`=Feb!loc` is `='53aa….xlsx'!loc`), and a sheet rename leaves it alone
+        // (docs/excel-semantics/references.md "A sheet-qualified workbook name is rewritten to
+        // the workbook's file name", T-2834).
+        let text = match &self.workbook_file {
+            Some(file) if scope.is_none() && !prefix.is_empty() && !formula.is_empty() => {
+                format!("{}!{bare}", quote_name(file))
+            }
+            _ => name.to_string(),
+        };
+        Some(Node::DefinedNameKind((text, scope, formula)))
+    }
+
+    /// Whether a sheet prefix spells this workbook's file name (`Budget.xlsx`, any case).
+    fn is_workbook_file(&self, prefix: &str) -> bool {
+        self.workbook_file
+            .as_deref()
+            .is_some_and(|file| file.to_lowercase() == prefix.to_lowercase())
     }
 
     /// A name that is not called: a defined name, a table or a LAMBDA parameter.

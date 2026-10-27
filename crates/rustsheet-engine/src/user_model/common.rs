@@ -315,7 +315,7 @@ impl UserModel {
             old_value,
             new_value: name.to_string(),
         }]);
-        self.model.workbook.name = name.to_string();
+        self.model.set_workbook_name(name);
     }
 
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed

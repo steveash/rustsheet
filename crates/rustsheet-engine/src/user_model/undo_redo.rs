@@ -468,7 +468,7 @@ impl UserModel {
                     old_value,
                     new_value: _,
                 } => {
-                    self.model.workbook.name = old_value.clone();
+                    self.model.set_workbook_name(old_value);
                 }
                 Diff::CreateNamedStyle {
                     name,
@@ -933,7 +933,7 @@ impl UserModel {
                     old_value: _,
                     new_value,
                 } => {
-                    self.model.workbook.name = new_value.clone();
+                    self.model.set_workbook_name(new_value);
                 }
                 Diff::CreateNamedStyle {
                     name,
