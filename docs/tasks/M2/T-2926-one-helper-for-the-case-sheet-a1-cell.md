@@ -3,7 +3,7 @@ id: T-2926
 title: "One helper for the case!Sheet!A1 cell id in eval reports"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
