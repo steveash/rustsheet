@@ -429,3 +429,15 @@ fn an_invalid_places_is_num_before_the_number_is_read() {
         assert_eq!(model._get_text(cell), expected, "{formula}");
     }
 }
+
+/// A `$` prefix is read before a complex number, but not before a sign
+/// (probes/eng-inumber-reading A5, probes/eng-inumber-date-boundary "$-5").
+#[test]
+fn inumber_currency_prefix_is_read_before_a_complex_number() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMABS("$1+2i")=SQRT(5)"#);
+    model._set("A2", r#"=IMABS("$-5")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+}

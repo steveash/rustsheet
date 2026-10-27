@@ -3,7 +3,7 @@ id: T-2641
 title: "IM* inumber: a currency prefix on a complex number is read (probes/eng-inumber-reading A5); probe neighbouring whitespace and date shapes"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -18,9 +18,12 @@ Found while doing T-2541 (probes/eng-inumber-reading, excel-graph 2026-10-25). E
 Code: `complex_of` and `parse_complex_number` in complex/mod.rs.
 
 ## Acceptance criteria
-- [ ] probes/eng-inumber-reading A5 passes; any extra probe cells are oracle-filled.
-- [ ] docs/excel-semantics/engineering.md "How an inumber is read" updated.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/eng-inumber-reading A5 passes; any extra probe cells are oracle-filled.
+- [x] docs/excel-semantics/engineering.md "How an inumber is read" updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Date-dependent cells (a probe must not depend on the current year).
+
+## Outcome
+`parse_complex_number` strips a leading `$` after the optional sign, so `IMABS("$1+2i")` is 2.23606797749979 and `"$-5"` stays `#NUM!`. probes/eng-inumber-reading A5 now passes (probes known failures 2926 -> 2925, no regressions). The neighbouring shapes (`$` on the imaginary part, `€`, NBSP, trailing tab, LF/CR, `-$1+2i`) are unprobed and listed under "Unprobed" in docs/excel-semantics/engineering.md.
