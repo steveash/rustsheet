@@ -3,7 +3,8 @@
 //! `#VALUE!` in it, with no intersection (`ArgKind::LiftArrays`, SPEC-0011; probes/fin-argument-modes
 //! H19-H35, probes/fin-remaining-later-argument-ranges H11-H34).
 //!
-//! Excel walks the periods one by one in doubles: `AMORLINC(2400,39679,39813,300,875000,0.000001,1)`
+//! Excel walks the periods one by one in doubles (AMORDEGRC subtracts each charge in x87 extended
+//! precision, rounding the remaining value twice: `extended_sum`): `AMORLINC(2400,39679,39813,300,875000,0.000001,1)`
 //! is 0.0015212859222804571, the remainder after 874,999 subtractions of 0.0024, not the closed
 //! form's 0.0015213114757168815 (probes/fin-amor-period-bound A6), and a period of 1E15 at a rate
 //! of 1E-300 did not finish within the excel-graph timeout (docs/excel-semantics/financial.md
@@ -22,6 +23,7 @@ use super::dates::{actual_days, days_30_360_eu, days_30_360_us, DateReading};
 use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
+    arithmetic::extended_sum,
     calc_result::CalcResult,
     decimal_round::{round_decimal, RoundMode},
     expressions::{parser::Node, types::CellReferenceIndex},
@@ -41,8 +43,9 @@ fn first_period_days(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
     }
 }
 
-/// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk
-/// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
+/// The most AMORDEGRC periods walked one by one. Up to here the kernel is Excel's walk
+/// (probes/fin-amor-period-bound B6-B14 and probes/amordegrc-walk-drift E1-E48, up to 10^6 periods,
+/// are Excel's values); past it, where the
 /// walk has not reached a period whose charge is fixed, the decay is a closed form, which can move
 /// the rounded charge once it is about 1E12 or more (fin-amor-period-bound-c). The bound is also the
 /// kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds/financial.rs).
@@ -299,7 +302,9 @@ impl Asset {
             return Ok(Amortized::new(0.0, LeftOver::Read));
         }
         let walk = DegressiveWalk {
-            remain: self.cost - first_depr,
+            // Subtracted like every later charge (`DegressiveWalk::charge`), by analogy: the
+            // probes fit the plain and the twice-rounded difference alike.
+            remain: extended_sum(self.cost, -first_depr),
             salvage: self.salvage,
             rate: depr_rate,
             half_period: half_period(asset_life),
@@ -429,7 +434,12 @@ struct DegressiveWalk {
 impl DegressiveWalk {
     /// The (unrounded) charge of whole period `periods`, main's loop: each period charges
     /// `rate * remain`, the half period half of `remain` (and the rate becomes 1), and once
-    /// `remain` is below the salvage nothing.
+    /// `remain` is below the salvage nothing. Excel subtracts the charge in x87 extended precision
+    /// and stores the difference, so `remain` is rounded twice ([`extended_sum`]): about one step in
+    /// 4,000 then differs from the plain difference by an ulp, which a walk of 10^3 periods or more
+    /// carries into its charge. With it all 135 cells of probes/amordegrc-walk-drift and -ties are
+    /// Excel's; with the plain difference 28 (from 1000 periods on) were not (T-2849, financial.md
+    /// "AMORDEGRC rounds its charge like ROUND").
     ///
     /// The walk stops early where the rest is known, bit for bit main's value: below the salvage
     /// every later period charges 0; before the half period a charge that rounds to 0 stays 0
@@ -468,7 +478,7 @@ impl DegressiveWalk {
             } else {
                 depr_temp
             };
-            let remain = self.remain - depr;
+            let remain = extended_sum(self.remain, -depr);
             if remain == self.remain {
                 // A fixed point: every period charges `depr` until the half period, or for ever
                 // after it (the rate is 1 there, so only a zero `remain` stays put).
@@ -590,7 +600,8 @@ mod tests {
         depr
     }
 
-    /// Main's AMORDEGRC loop after the first period, the reference walk.
+    /// Main's AMORDEGRC loop after the first period, with Excel's twice-rounded subtraction
+    /// (T-2849): the reference walk, one period at a time.
     fn degressive_walk(walk: &DegressiveWalk, asset_life: f64, periods: u64) -> f64 {
         let mut depr = 0.0;
         let mut depr_rate = walk.rate;
@@ -608,7 +619,7 @@ mod tests {
             } else {
                 depr_temp
             };
-            remain -= depr;
+            remain = extended_sum(remain, -depr);
         }
         depr
     }

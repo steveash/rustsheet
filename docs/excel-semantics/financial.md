@@ -1320,7 +1320,8 @@ the periods before charge 0.0024 (A5) and the ones after 0 (A7); at rate 0.001 p
 to 2.4E6 periods (rate 1E-7) Excel is 18989305437102, 16344246350030, 13720292047582 and 5154670166168 for
 `AMORDEGRC(1E20,39679,39813,300,P,1E-7,1)` with P = 1100000, 1700000, 2400000 and `AMORDEGRC(3E19,..,1500000,..)`
 (-c A1-A4): a walk in doubles gives A1, A3 and A4 but 16344246350031 for A2, so Excel's per-period arithmetic is
-not exactly that walk at that size; `AMORDEGRC(1E300,..,2000000,1E-7,1)` is 1.51632679480347E293, 15 significant digits
+not exactly that walk at that size (it subtracts in x87 extended precision, a walk that does gives all of A1-A5:
+"AMORDEGRC rounds its charge like ROUND"); `AMORDEGRC(1E300,..,2000000,1E-7,1)` is 1.51632679480347E293, 15 significant digits
 (-c A5, as -b B2). Excel finishes 10^9 periods (`AMORLINC(2400,39679,39813,300,1E9,1E-9,1)` is 0, -b A1), but
 `AMORLINC(2400,39679,39813,300,1E15,1E-300,1)` did not finish within the excel-graph timeout: a fill of a workbook
 holding only that cell failed after 8.5 minutes (createSession retries exhausted, 2026-10-18), as did, twice, a larger
@@ -1421,7 +1422,8 @@ or more it often is).
 `AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` is 18989305437101 here and 18989305437102 in Excel (-c A1), and A3, A4
 are a unit off the other way (13720292047583, 5154670166167); A2 is Excel's 16344246350030, where main's walk is ...031;
 `AMORDEGRC(1E300,..,2000000,1E-7,1)` is 1.5163267948033552E293, Excel 1.51632679480347E293 and main
-1.5163267948034761E293 (-c A5; T-2826: the 15-digit cut of main's walk is ...348). A review replay found 6 of 154 random cases (costs 1E6
+1.5163267948034761E293 (-c A5; T-2826: the 15-digit cut of main's walk is ...348). Excel's own walk, twice rounded at each
+subtraction ("AMORDEGRC rounds its charge like ROUND", T-2849), gives all of A1-A5. A review replay found 6 of 154 random cases (costs 1E6
 to 1E20, 1.1 to 4 times 2^20 periods) a unit off main; the unit test `degressive_shortcuts_equal_the_walk_and_the_closed_form_stays_near_it`
 bounds the drift at 1e-13 relative for costs up to 1E20. Main walked these in milliseconds (46 ms for the five above),
 but a walk is unbounded in the period, and the 2^20 cut is the kernel's work cap ("AMORLINC and AMORDEGRC work cap").
@@ -1437,7 +1439,8 @@ Excel does not round each period's charge before subtracting it from what is lef
 but probes/fin-amor-period-bound B4 and B5 become 1000 and 999 (Excel 0), B11 41042641306981 (Excel
 41042641307062) and fin-amordegrc A7 155 (Excel 154) (T-1895, a scratch run). With Excel's final rounding, main's walk
 gives -c A1, A3 and A4 past 2^20 periods (the closed form does not), but not A2 (main ...030.504 cuts to ...030.5 and
-rounds to ...031) nor A5: Excel's own walk drifts a few ulps from main's ("AMORDEGRC rounds its charge like ROUND").
+rounds to ...031) nor A5; Excel's own walk, which subtracts in x87 extended precision, gives all five ("AMORDEGRC rounds
+its charge like ROUND", T-2849).
 
 ## AMORDEGRC rounds its charge like ROUND
 Rule: AMORDEGRC rounds the charge it returns the way ROUND(x,0) does ("ROUND family rounds in two decimal stages",
@@ -1446,14 +1449,22 @@ charge of 1E15 or more comes back as its 15-digit cut: `AMORDEGRC(1E300,39679,39
 2.49999977117486E293 (the walk's 2.4999997711748632E293), and a charge whose 15-digit cut is a half rounds up although
 the charge is below it: `AMORDEGRC(1.72531591826348E20,..,1,1E-7,1)` (charge 43132894008630.49) is 43132894008631.
 Main pre-rounded at 13 decimal places (`x * 1E13`), which kept such a charge below the half and a huge charge unrounded.
-Beyond the final rounding, Excel's per-period walk is main's (`remain -= rate * remain`) only to within a few ulps: at 1
-and 2 periods every charge within one ulp of a cut boundary has main's value (probes/amordegrc-walk-drift D1-D12), but
-from about 1000 periods Excel's walk drifts from main's by a few ulps in both directions: 1 of 6 such cells differs at
-1000 periods (-drift D16: Excel 1.54281774366471E294, main's charge 1.5428177436647047E294), 2 of 6 at 10^4 (E5, E6),
-about half at 5x10^4 to 10^6 (E7-E45; -ties A51, A53, C5, C8, C9). Excel's exact per-period arithmetic is open (T-2849):
-an FMA update, `remain * (1 - rate)`, the rate and coefficient multiplied in another order, a charge cut to 8 to 16
-significant digits or rounded to a whole number before it is subtracted, and an accumulated depreciation subtracted
-from the cost each fit fewer of the 157 probed cells than main's walk (T-2826, a scratch fit).
+Excel's per-period walk subtracts each charge from what is left in x87 extended precision and stores the difference
+as a double, so the remaining value is rounded twice, first to a 64-bit significand and then to 53 bits ("Division
+rounds twice", numbers.md): `remain = RN53(RN64(remain - rate * remain))`, the charge `rate * remain` a plain double
+product. About one step in 4,000 then lands an ulp from main's plain `remain -= rate * remain`, so the two walks agree at
+1 and 2 periods (every charge within one ulp of a cut boundary: probes/amordegrc-walk-drift D1-D12, -ties A1-A12, C1-C3,
+C7) and drift apart from about 1000 periods: main's walk misses 1 of 6 near-boundary cells at 1000 periods (-drift D16:
+Excel 1.54281774366471E294, main's charge 1.5428177436647047E294), 2 of 6 at 10^4 (E5, E6) and about half at 5x10^4 to
+10^6 (E7-E45; -ties A51, A53, C5, C8, C9), 28 of the 135 cells, where the twice-rounded walk gives all 135. It also gives
+all five of probes/fin-amor-period-bound-c A1-A5 (1.1E6 to 2.4E6 periods, not used in the fit), where main's walk
+misses A2 and A5. Not Excel's (each scored against the 135 cells in a scratch fit, T-2826 and T-2849): the walk in exact
+or extended arithmetic throughout (86), an FMA update, `remain * (1 - rate)` (38), the rate and coefficient multiplied
+in another order, a first charge computed in another order (107 each), a charge cut to 8 to 16 significant digits or
+rounded to a whole number before it is subtracted, and an accumulated depreciation subtracted from the cost. The
+product `rate * remain` kept in extended precision too (rounded twice when it is the charge) also gives all 135 and
+differs from the double product in 2 raw charges of 135, none visible once rounded; the subtraction of the first
+period's rounded charge from the cost fits the probes plain or rounded twice (no cell tells them apart).
 The first period's charge (period 0) rounds the same way: `AMORDEGRC(3.47925977217322E18,39679,39813,300,0,1E-7,1)`
 (318456837070.49963) is 318456837071, where main's pre-round gave ...070 (probes/amordegrc-round-mid F1-F6; G1-G6 at
 period 1, charges 1.2E12 to 2.3E12). Smaller charges, where the two rules still differ for a fraction within 0.5*10^(d-15) below a half (d integer digits;
@@ -1463,11 +1474,12 @@ Evidence: probes/amordegrc-walk-ties (69 cells: costs near 1E20 at 1 to 10^6 per
 within 0.01 of a half, exact halves, costs 1E300 and 1.23456789012345E300) and probes/amordegrc-walk-drift (66 cells:
 charges within one ulp of a 15-digit cut boundary at 1, 2 and 1000 periods, and near x.45 at 10^4 to 10^6 periods),
 excel-graph, 2026-10-27, T-2826; probes/amordegrc-round-mid (12 cells, excel-graph, 2026-10-27, T-2826 review);
-probes/fin-amor-period-bound-b B2.
+probes/fin-amor-period-bound-b B2; probes/fin-amor-period-bound-c A1-A5 (excel-graph, 2026-10-18, T-1841).
 Ours: since T-2826 (`amor_round` in functions/financial/amortization.rs, through `decimal_round::round_decimal`); the
-walk-drift cells above are known failures.
-Status: VERIFIED (excel-graph) for the rounding of charges from about 3E11 up; smaller charges inferred; the walk past
-about 1000 periods is open (T-2849)
+twice-rounded walk since T-2849 (`DegressiveWalk::charge` through `arithmetic::extended_sum`, which rounds the first
+period's subtraction twice too, by analogy). Past 2^20 periods the kernel still finishes in closed form ("AMORDEGRC
+past 2^20 periods", a DEVIATION), so -c A1, A3, A4 and A5 stay known failures (A2 is Excel's by chance).
+Status: VERIFIED (excel-graph) for the rounding of charges from about 3E11 up and for the walk; smaller charges inferred
 Tasks: T-2826, T-2849
 
 ## AMORLINC and AMORDEGRC work cap
@@ -1478,7 +1490,8 @@ over arrays: probes/fin-argument-modes H19-H35; Excel's own limit is unprobed). 
 release build: AMORLINC's exact walk at most 1,024 single subtractions, its step cap (`LINEAR_STEP_CAP`; the longest
 real walk takes 616, and 2^18 elements of `AMORLINC(..,9E15,1.08E-16,1)`, 613 steps each, took 1.23 s, so the cap is
 about 7.9 us an element, 2.1 s per call; a walk at the cap would be `#NUM!`), AMORDEGRC's 2^20 walked periods and the closed
-form (512 elements of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, which takes no shortcut, 2.06 s). The scalar calls are not
+form (512 elements of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, which takes no shortcut, 3.9 s since T-2849 rounds each
+subtraction twice; 2.06 s before). The scalar calls are not
 capped beyond those bounds.
 Since T-2840 an element the kernel refuses before its walk is charged 1, not the weight, so a broadcast of such elements
 lifts in full: an error or a logical in any argument (each is read, the basis too, before the walk), a cost, salvage,
