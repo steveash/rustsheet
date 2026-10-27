@@ -3,7 +3,7 @@ id: T-2938
 title: "Typed SINGLE(x): probe whether Excel takes it as the @ operator and match it (probes/t2576-error-type-cell-paired D27, ours #NAME?)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,16 +41,27 @@ probes/t2576-error-type-cell-paired Calc!D27 `=FTEST({1;2;3},SINGLE(ERROR.TYPE(#
 - Leave the stored-file form alone. A bare `SINGLE(` read from an xlsx follows T-1089's bare-newer-name rule.
 
 ## Acceptance criteria
-- [ ] A new probe case with the typed entries above is oracle-filled (excel-graph) and committed, with refused entries
+- [x] A new probe case with the typed entries above is oracle-filled (excel-graph) and committed, with refused entries
       recorded in the semantics note. The rule goes into docs/excel-semantics/xlsx-storage.md (or the `@` section it
       links to), with Status and Evidence.
-- [ ] If Excel takes typed `SINGLE` as `@`: probes/t2576-error-type-cell-paired Calc!D27 passes and leaves
+- [x] If Excel takes typed `SINGLE` as `@`: probes/t2576-error-type-cell-paired Calc!D27 passes and leaves
       eval/baseline/probes.txt, the new case passes, and probes/intersection-single-operands keeps passing. A unit test
       in the parser tests covers `SINGLE(B1:B3)` typed, and its FORMULATEXT if Excel showed one.
-- [ ] If Excel refuses it: the harness follow-up is filed and names D27, and the engine keeps `#NAME?`.
-- [ ] `make eval-baseline` shows no regression; `make check` green; reviewers approve.
+- [x] (n/a: Excel takes it) If Excel refuses it: the harness follow-up is filed and names D27, and the engine keeps `#NAME?`.
+- [x] `make eval-baseline` shows no regression; `make check` green; reviewers approve.
 
 ## Out of scope
 - Bare `SINGLE(` and other bare newer names read from an xlsx file (T-1089).
 - The other builder-only prefixes (ANCHORARRAY, FILTERXML, IMAGE, QUERYSTRING, WEBSERVICE).
 - The ERROR.TYPE mark of the paired functions (T-2766).
+
+## Outcome
+Excel takes a typed `SINGLE(x)`, in any case, as `@x`, and FORMULATEXT shows `@x` (SINGLE's parentheses dropped):
+probes/single-typed-01 to -06 and -09 (excel-graph, 2026-10-27), with one typed entry per case. Typed `=SINGLE()` and
+`=SINGLE(1,2)` were refused (Graph 400), so cases -07 and -08 were dropped, and that is recorded in xlsx-storage.md
+"Typed `SINGLE(x)` is the `@` operator". The builder's `SINGLE(` to `_xlfn.SINGLE(` rewrite is therefore faithful, and no
+harness follow-up is needed. The parser (operands.rs `parse_named_call`) reads a bare `SINGLE(` with one argument as the
+`@` node in typed, API and stored text. A typed call with another argument count is refused like other wrong counts
+(`wrong_count_call`, decision 0103). Unit tests are in test_implicit_intersection.rs. Eval delta: probes/t2576-error-type-cell-paired
+Calc!D27 is fixed and leaves eval/baseline/probes.txt; there are 7 new passing cases (14 cells); probes/intersection-single-operands
+still passes. D27 also leaves T-2766's list.
