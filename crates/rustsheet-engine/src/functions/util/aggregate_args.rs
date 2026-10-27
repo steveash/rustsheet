@@ -661,7 +661,7 @@ mod tests {
         // Z1's formula is the sheet's last parsed formula.
         let args = match model.parsed_formulas[0]
             .last()
-            .map(|(node, ..)| node.as_ref())
+            .map(|formula| formula.evaluated.as_ref())
         {
             Some(Node::FunctionKind { args, .. }) => args.clone(),
             _ => Vec::new(),
