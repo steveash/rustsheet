@@ -3,7 +3,7 @@ id: T-2759
 title: "Lunar calendar digits past 2100: Excel's lunar dates to 9999"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
