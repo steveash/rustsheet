@@ -3,7 +3,7 @@ id: T-2606
 title: "Probe PIVOTBY's hidden Total gate with column subtotals, col_total_depth -1 and a LAMBDA returning empty text"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,8 @@ Code: `checked_totals`, `Grid::has_records` in functions/lookup_and_reference/pi
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/t2606-pivotby-total-gate-layouts` (excel-graph). `col_total_depth` -1 gates like 1 and a `""` gating cell still counts:
+ours already matches (D1-D4, F1/G1). Column subtotal layouts do not follow the single-gating-line rule and the probe is confounded;
+the 5 differing cells are baselined and filed as T-2967. arrays.md updated.

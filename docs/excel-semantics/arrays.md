@@ -1746,10 +1746,18 @@ third; with one group only value 0 (the Total cells of the last value column are
 records under every line, so its cells always count (P!A7, P!A35); the error decides with the true total (power-of-two
 sums decode to the row's own records). The gen-m9 calls with 7 column groups have no hidden Total error under their gates and
 so are arrays (`PIVOTBY(Data!B1:B12,Data!C1:C12,Data!D1:E12,_xleta.AVERAGE)` 11x17 although row 7's Total cells are `#DIV/0!`).
-Consistent with two column fields (four leaf lines). Unprobed: column subtotal lines and `col_total_depth` -1 (ours counts every
-line, subtotals included, in grid order); a LAMBDA returning `""` in the gating cell (ours: a record is enough).
-Status: VERIFIED
-Tasks: T-2311, T-2578
+Consistent with two column fields (four leaf lines).
+T-2606 (excel-graph, 2026-10-27, probes/t2606-pivotby-total-gate-layouts): `col_total_depth` -1 (Total column first) gates exactly as
+1 (T!D1-D4 = C1-C4): with one column field p, q and 2 values the hidden Total cells count in the row with a q record only, so the
+Total column is not a line of the gate in either order. A LAMBDA returning `""` in the gating cell still counts: a record there is
+enough (U!F1 and its control V!G1 are both `#VALUE!`). Column subtotal lines (`col_total_depth` 2 / -2, same result for both signs;
+leaves p/x, p/y, q/x, 2 values, seven rows, one per non-empty leaf set, P!A1-A14) do NOT follow the single-gating-line rule: the
+hidden Total cell of value 1 counts in rows m1, m2..m7 whichever lines they hold, value 0 in rows m2, m3, m4 and not in m1, m5, m6,
+m7 (m1 = p/x only, m2 = p/y, m3 = p/x+p/y, m4 = q/x, m5 = p/x+q/x, m6 = p/y+q/x, m7 = all). Not monotone in the records (m6 holds m2's
+record but differs), and rows m1-m4 are confounded: the row total equals a subtotal cell there. Not decoded; ours differs (A1, A4,
+A5, B4, B5), baselined, T-2967.
+Status: VERIFIED (without subtotals); subtotal layouts UNRESOLVED
+Tasks: T-2311, T-2578, T-2606
 
 ## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
 Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
