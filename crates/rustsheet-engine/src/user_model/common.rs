@@ -1112,6 +1112,11 @@ impl UserModel {
     ///
     /// See also [`Model::delete_rows`].
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        if let Some(area) = self.model.last_data_row(sheet, row, row_count) {
+            // The delete keeps a table's only data row and clears it ([`Model::delete_rows`],
+            // T-2338): record it as the clear it is, so undo restores the cells and moves nothing.
+            return self.range_clear_contents(&area);
+        }
         let worksheet = self.model.workbook.worksheet(sheet)?;
         let mut old_data = Vec::new();
         // Collect data for all rows to be deleted

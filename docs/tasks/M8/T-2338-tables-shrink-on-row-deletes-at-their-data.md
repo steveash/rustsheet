@@ -39,7 +39,7 @@ move cells in a table"); the engine's answer to that edit is an engine decision 
       `=Sales[[#Totals],[Qty]]`, ours `=#REF!`), and table-delete-row-last-data-totals F!A15 (keeps the text,
       ours `=S!$C$7`) pass and leave eval/baseline/probes.txt.
 - [x] references.md's "Implemented in" line updated.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cut and paste, row and column moves, undo and duplicated sheets (desktop, T-2325).
@@ -52,4 +52,6 @@ below moves). A plain range shrinks when a row delete takes its edge rows (`Disp
 probed with no table: plain-range-delete-row-first, -last). Eval: probes known failures 2865 -> 2821
 (46 fixed: every cell of table-delete-row-first-data, -last-data, -last-data-totals, -all-data,
 -totals), 0 regressions; 2 new-coverage failures in the new probe cases (T-2849). Follow-ups: T-2848
-(probe the row's cells outside the table and a multi-row all-data delete), T-2849.
+(probe the row's cells outside the table, a table beside it and a multi-row all-data delete), T-2849
+(both new-coverage failures), T-2851 (probe the hand range-shrink shapes). Undo of the kept last data row
+is recorded as the clear it is (`UserModel::delete_rows`).

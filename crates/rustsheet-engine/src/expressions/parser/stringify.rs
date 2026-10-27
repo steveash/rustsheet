@@ -102,7 +102,8 @@ impl Displacement<'_> {
     /// A row delete that takes a range's first or last rows, but not all of them, shrinks it to
     /// the rows left (plain-range-delete-row-first and -last A1:A4, excel-graph, T-2338:
     /// `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` either way), where displacing the
-    /// deleted corner alone would give `#REF!`.
+    /// deleted corner alone would give `#REF!`. Only one-row deletes are probed; a wider delete
+    /// across an edge shrinks the same way (hand, T-2851).
     ///
     /// Quirk (T-2197, probes/table-edits): a range in the data block of a table that grows with a
     /// row insert at an edge, and touching that edge, grows with the table, where an ordinary

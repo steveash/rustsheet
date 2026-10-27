@@ -20,6 +20,8 @@ nothing below it. T-2338 implements that (`Model::last_data_row`, table_edits.rs
 table's own cells of the row. Two questions are open:
 - the cells of that sheet row outside the table (S!E4 = 5 next to `Sales` on S!B3:C4): cleared, kept,
   or does the delete fail?
+- a second table beside it in the same sheet row (`Other` on S!E3:F7 next to `Sales` on S!B3:C4):
+  the engine keeps and clears `Sales`'s row and leaves `Other` alone, which is a guess;
 - one delete of every data row at once (rows 4-7 of `Sales` on S!B3:C7, Graph `range('4:7')/delete`):
   does Excel delete three rows and keep one, refuse, or do something else? The engine treats it as a
   fallback (the structured references print the displaced plain range).

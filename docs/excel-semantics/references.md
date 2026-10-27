@@ -2410,7 +2410,9 @@ Right/Left):
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
   (`=SUM(S!C4:C4)`, row 4) becomes `#REF!`, printed `=SUM(S!#REF!)` (plain-range-delete-row-first, -last,
-  excel-graph 2026-10-27, T-2338).
+  excel-graph 2026-10-27, T-2338). Only one-row deletes are probed: the engine's shrink on a multi-row delete
+  across an edge (rows 3-5 over `C4:C7` give `C3:C4`) is a hand generalisation, and whole-row ranges and
+  column deletes still give `#REF!` corners (T-2851).
 - Column inserts. At A or B (left of or at the table's first column) the table moves right
   (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
   (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes

@@ -102,6 +102,31 @@ fn column_span((left, right): (i32, i32), at: i32, delta: i32) -> Span {
     }
 }
 
+/// A table's range, `left..=right` by `top..=bottom`, and its data rows `data.0..=data.1` (below
+/// its header row, above its totals row).
+pub(crate) struct Bounds {
+    pub(crate) left: i32,
+    pub(crate) top: i32,
+    pub(crate) right: i32,
+    pub(crate) bottom: i32,
+    pub(crate) data: (i32, i32),
+}
+
+/// The [`Bounds`] of `table`; `None` when its reference or row counts do not fit (directive 5).
+pub(crate) fn bounds(table: &Table) -> Option<Bounds> {
+    let (left, top, right, bottom) = parse_range(&table.reference).ok()?;
+    let header = i32::try_from(table.header_row_count).ok()?;
+    let totals = i32::try_from(table.totals_row_count).ok()?;
+    let data = (top.checked_add(header)?, bottom.checked_sub(totals)?);
+    Some(Bounds {
+        left,
+        top,
+        right,
+        bottom,
+        data,
+    })
+}
+
 /// What a structural edit does to one table of the edited sheet.
 enum Follow {
     /// The table cannot follow the edit.
@@ -119,15 +144,16 @@ fn follow(table: &Table, displace_data: &DisplaceData) -> Follow {
 
 /// [`follow`], with `None` for a fallback.
 fn followed(table: &Table, displace_data: &DisplaceData) -> Option<Follow> {
-    let (left, top, right, bottom) = parse_range(&table.reference).ok()?;
-    let header = i32::try_from(table.header_row_count).ok()?;
-    let totals = i32::try_from(table.totals_row_count).ok()?;
+    let Bounds {
+        left,
+        top,
+        right,
+        bottom,
+        data,
+    } = bounds(table)?;
     let (rows, columns) = match *displace_data {
         DisplaceData::Row { row, delta, .. } => {
-            let data_first = top.checked_add(header)?;
-            let data_last = bottom.checked_sub(totals)?;
-            let rows = row_span((top, bottom), (data_first, data_last), row, delta);
-            (rows, Span::Unchanged)
+            (row_span((top, bottom), data, row, delta), Span::Unchanged)
         }
         DisplaceData::Column { column, delta, .. } => {
             (Span::Unchanged, column_span((left, right), column, delta))
@@ -138,7 +164,7 @@ fn followed(table: &Table, displace_data: &DisplaceData) -> Option<Follow> {
         // `column_span` never drops a totals row.
         (Span::Fallback, _) | (_, Span::Fallback | Span::DropTotals) => return None,
         (Span::Unchanged, Span::Unchanged) => return Some(Follow::Unchanged),
-        (Span::DropTotals, _) => ((top, bottom - 1), (left, right), true),
+        (Span::DropTotals, _) => ((top, bottom.checked_sub(1)?), (left, right), true),
         (Span::Changed(top, bottom), _) => ((top, bottom), (left, right), false),
         (_, Span::Changed(left, right)) => ((top, bottom), (left, right), false),
     };
@@ -155,9 +181,13 @@ fn grown_edge(table: &Table, sheet: u32, displace_data: &DisplaceData) -> Option
     let DisplaceData::Row { row, delta, .. } = *displace_data else {
         return None;
     };
-    let (left, top, right, bottom) = parse_range(&table.reference).ok()?;
-    let data_first = top.checked_add(i32::try_from(table.header_row_count).ok()?)?;
-    let data_last = bottom.checked_sub(i32::try_from(table.totals_row_count).ok()?)?;
+    let Bounds {
+        left,
+        top,
+        right,
+        bottom,
+        data: (data_first, data_last),
+    } = bounds(table)?;
     let at_edge = (row == data_first && top < row) || (row == data_last + 1 && row <= bottom);
     (delta > 0 && at_edge && data_first <= data_last).then_some(DataBlock {
         sheet,
@@ -200,16 +230,13 @@ impl Model {
         }
         let sheet_name = self.workbook.worksheet(sheet).ok()?.get_name();
         self.workbook.tables.values().find_map(|table| {
-            let (left, top, right, bottom) = parse_range(&table.reference).ok()?;
-            let header = i32::try_from(table.header_row_count).ok()?;
-            let data_last = bottom.checked_sub(i32::try_from(table.totals_row_count).ok()?)?;
-            let only =
-                table.is_on_sheet(&sheet_name) && header > 0 && top.checked_add(header)? == row;
-            (only && data_last == row).then_some(Area {
+            let b = bounds(table)?;
+            let only = table.is_on_sheet(&sheet_name) && b.top < row && b.data == (row, row);
+            only.then_some(Area {
                 sheet,
                 row,
-                column: left,
-                width: right - left + 1,
+                column: b.left,
+                width: b.right.checked_sub(b.left)?.checked_add(1)?,
                 height: 1,
             })
         })
