@@ -3,7 +3,7 @@ id: T-2861
 title: "Probe the M2 argument kinds no Excel cell covers yet: empty text, an error, a fraction or a boolean in 12 functions"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
