@@ -40,6 +40,8 @@ with `git bisect` on `check --suite calipers` before fixing anything.
 ## Acceptance criteria
 - [ ] The 36 cells are fixed, or recorded through a reviewed decision if the change behind them is kept.
 - [ ] `rustsheet-eval update-baseline --suite calipers` succeeds without `--allow-regressions` and records the fixes.
+- [ ] The ratchet removes the 51 `F` lines T-2867 left (pv26_020 and pv26_2_020 Summary, pv26_010 Cover!C16) and T-2688's
+      pv23_056 Summary!F23 line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
