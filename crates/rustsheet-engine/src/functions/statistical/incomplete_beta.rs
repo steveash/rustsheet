@@ -41,7 +41,7 @@ const MAX_FRACTION_TERMS: u32 = 300;
 /// The shape from which Stirling's series (with [`stirling_correction`]'s terms) is used.
 const STIRLING_MIN: f64 = 8.0;
 /// 1/sqrt(2 pi).
-const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
+pub(crate) const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
 /// Terms of the atanh series in [`rlog1`]: |r| <= 1/3 there, so (1/9)^20 is far below 2^-53.
 const RLOG1_TERMS: u32 = 20;
 

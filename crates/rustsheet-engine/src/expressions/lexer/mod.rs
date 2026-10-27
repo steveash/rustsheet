@@ -58,10 +58,15 @@ use super::utils;
 
 pub mod util;
 
+pub use string_literal::{
+    has_overlong_string_literal, MAX_STRING_LITERAL_UNITS, STRING_LITERAL_TOO_LONG_MESSAGE,
+};
+
 #[cfg(test)]
 mod test;
 
 mod ranges;
+mod string_literal;
 mod structured_references;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -711,17 +716,20 @@ impl Lexer {
         self.locale.numbers.symbols.decimal == "."
     }
 
+    /// Whether `c` may continue a name.
+    fn is_name_char(&self, c: char) -> bool {
+        c.is_alphanumeric()
+            || c == '_'
+            || c == '.'
+            || (c == '\\' && self.backslash_in_names())
+            || utils::is_typographic_quote(c)
+    }
+
     // Consumes an identifier from the input stream
     fn consume_identifier(&mut self) -> String {
         let mut position = self.position;
         while position < self.len {
-            let next_char = self.chars[position];
-            if next_char.is_alphanumeric()
-                || next_char == '_'
-                || next_char == '.'
-                || (next_char == '\\' && self.backslash_in_names())
-                || utils::is_typographic_quote(next_char)
-            {
+            if self.is_name_char(self.chars[position]) {
                 position += 1;
             } else {
                 break;
@@ -730,33 +738,6 @@ impl Lexer {
         let chars = self.chars[self.position..position].iter().collect();
         self.position = position;
         chars
-    }
-
-    fn consume_string(&mut self) -> Result<String> {
-        let mut position = self.position;
-        let len = self.len;
-        let mut chars = "".to_string();
-        let mut terminated = false;
-        while position < len {
-            let x = self.chars[position];
-            position += 1;
-            if x != '"' {
-                chars.push(x);
-            } else if position < len && self.chars[position] == '"' {
-                chars.push(x);
-                chars.push(self.chars[position]);
-                position += 1;
-            } else {
-                terminated = true;
-                break;
-            }
-        }
-        self.position = position;
-
-        if !terminated {
-            return Err(self.set_error("Expected closing '\"' but found end of input", position));
-        }
-        Ok(chars)
     }
 
     // Consumes a quoted string from input
@@ -926,6 +907,11 @@ impl Lexer {
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
+        // Excel drops whitespace after a sheet prefix's `!` (`=S! B1` reads and prints `=S!B1`;
+        // docs/excel-semantics/syntax.md, probes/t2776-ws-after-bang).
+        if sheet.is_some() {
+            self.consume_whitespace();
+        }
         // Excel keeps the sheet prefix when a referenced range is deleted (`Sheet1!#REF!`); the
         // whole reference is the #REF! error (docs/excel-semantics/references.md,
         // "A sheet-qualified #REF! is #REF!").
@@ -963,7 +949,11 @@ impl Lexer {
                 self.position = end;
             }
         }
-        if let (Err(_), Some(sheet)) = (&m, &sheet) {
+        // A cell that more of a name follows starts a qualified name (`=Data!Q1_Total`; references.md,
+        // probes/defined-name-qualified-like-reference*). A range (`Data!A1:B2x`) is unprobed.
+        let name_follows_cell = matches!(m, Ok(ParsedRange { right: None, .. }))
+            && self.peek_char().is_some_and(|c| self.is_name_char(c));
+        if let (true, Some(sheet)) = (m.is_err() || name_follows_cell, &sheet) {
             if let Some(name) = self.consume_sheet_scoped_name(sheet, start) {
                 return name;
             }

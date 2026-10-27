@@ -6,7 +6,7 @@
 //! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
 //! migration).
 
-use super::beta_density::algdiv;
+use super::beta_density::{algdiv, beta_density_small_shape};
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{beta_reg_complement, closed_form_tails};
 use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
@@ -15,7 +15,7 @@ use crate::x87_log10::excel_ln;
 use crate::x87_register::Register;
 
 /// TOMS 708's `eps` in `bratio`: max(2^-52, 1e-15).
-const EPS: f64 = 1e-15;
+pub(super) const EPS: f64 = 1e-15;
 
 /// The most bpser series terms [`bpser`] sums before giving the point back to today's kernel
 /// (directive 5). Every bpser branch has its ratio b·x below 0.7 or x0 <= 0.7, so the terms fall
@@ -198,7 +198,7 @@ pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// A shape of 1 outside the closed forms (a0 = 1 with y0 > 0.9) stays on today's kernel, whose
 /// x^a there is Excel's value: `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966
 /// (probes/ftest-decomposition B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
-fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
+pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
     // TODO(T-2847): find Excel's form at a0 = 1 outside the closed forms before moving it.
     if a == 1.0 || b == 1.0 {
         return None;
@@ -214,9 +214,75 @@ fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
             let w1 = bpser(d.b0, d.a0, d.y0)?;
             (other(w1), w1)
         }
+        Branch::L140BupBpser => {
+            let w = l140_bup_bpser(d.a0, d.b0, d.x0, d.y0)?;
+            (w, other(w))
+        }
         _ => return None,
     };
     Some(if d.swapped { (w1, w) } else { (w, w1) })
+}
+
+/// bratio's L140 for x0 <= 0.7 (a, b > 1, b0 < 40, b0·x0 > 0.7): with n = int(b0) and
+/// b0' = b0 - n (b0' = 1 and n - 1 at an integer b0), w = bup(b0', a0, y0, x0, n) + bpser(a0, b0', x0)
+/// (statistics.md "Incomplete beta L140 and bfrac: the prefactor is Excel's own density times x·y";
+/// model `w4-fractions/tomsx.py` `l140_best`, `bratio_excel.py` `bup` with `bup_arith = "w4"` and
+/// `brcmp1 = "pdf"`).
+fn l140_bup_bpser(a0: f64, b0: f64, x0: f64, y0: f64) -> Option<f64> {
+    // b0 < 40, so n is a small whole number of bup terms.
+    let mut n = b0.trunc();
+    let mut b0_frac = b0 - n;
+    if b0_frac == 0.0 {
+        n -= 1.0;
+        b0_frac = 1.0;
+    }
+    let up = bup(b0_frac, a0, y0, x0, n)?;
+    let series = bpser(a0, b0_frac, x0)?;
+    Some(up + series)
+}
+
+/// TOMS 708 `bup(a, b, x, y, n)` = `I_x(a, b) - I_x(a + n, b)` for a whole n >= 1 and a <= 1, as
+/// Excel computes it (`bratio_excel.py` `bup` and `_bup_term`, `bup_arith = "w4"`):
+/// - the prefactor is Excel's own beta density P of Beta(a, b) at x (T-2503, a <= 1) times x·y, so
+///   bup = fl(fl(P·fl(x·y))/a)·W, with no exp(mu) scaling;
+/// - W = 1 + `d_1` + ... with `d_l = d_{l-1}·(r_l·x)`, `r_l = fl(fl(apb + l)/fl(ap1 + l))` stored and `r_l·x`
+///   held in a register; each partial sum stored;
+/// - the sum stops after term k (TOMS's (b - 1)x/y - a) once d <= eps·W.
+fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
+    let density = beta_density_small_shape(x, a, b)?;
+    let ret = density * (x * y) / a;
+    if n == 1.0 || ret == 0.0 {
+        return Some(ret);
+    }
+    let nm1 = n - 1.0;
+    let mut k = 0.0;
+    if b > 1.0 {
+        if y > 1e-4 {
+            let r = (b - 1.0) * x / y - a;
+            if r >= 1.0 {
+                k = if r < nm1 { r.trunc() } else { nm1 };
+            }
+        } else {
+            k = nm1;
+        }
+    }
+    let (apb, ap1) = (a + b, a + 1.0);
+    let x_reg = Register::load(x);
+    let mut d = 1.0;
+    let mut w = 1.0;
+    let mut l = 0.0;
+    while l < nm1 {
+        let ratio = extended_quotient(apb + l, ap1 + l);
+        d = Register::load(d)
+            .mul(Register::load(ratio).mul(x_reg))
+            .store();
+        w = extended_sum(w, d);
+        if l >= k && d <= EPS * w {
+            break;
+        }
+        l += 1.0;
+    }
+    Some(ret * w)
 }
 
 /// Excel's bpser, `I_x(a, b)` by the power series (statistics.md "Incomplete beta bpser: a forward
@@ -226,16 +292,23 @@ fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
 /// - z = fl64(fl(a·LN x) - L), never stored, and I = fl(EXP(z)·s) with Excel's EXP of the
 ///   extended argument (T-2645).
 ///
-/// `None` where L is not ported (both shapes >= 1 and one above 8), at a shape of 0, where
-/// fl(a·LN x) is not finite, or where the series has not settled within [`BPSER_MAX_TERMS`].
+/// `None` where L is not ported (both shapes >= 1 and one above 8), and where
+/// [`bpser_with_ln_beta`] gives `None`.
 fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
+    bpser_with_ln_beta(a, b, x, bpser_neg_ln_beta(a, b)?)
+}
+
+/// [`bpser`] with -L given by the caller: F.TEST's tail takes the series and EXP as BETA.DIST's
+/// do but forms ln B its own way (`f_test_tail::neg_ln_beta`, T-2681). `None` at a shape of 0,
+/// where fl(a·LN x) is not finite, or where the series has not settled within
+/// [`BPSER_MAX_TERMS`].
+pub(super) fn bpser_with_ln_beta(a: f64, b: f64, x: f64, neg_ln_beta: Register) -> Option<f64> {
     if a <= 0.0 {
         return None;
     }
     if x == 0.0 {
         return Some(0.0);
     }
-    let neg_ln_beta = bpser_neg_ln_beta(a, b)?;
     let mut s = extended_quotient(1.0, a);
     let mut c = 1.0;
     let mut n = 0.0;
@@ -269,10 +342,11 @@ fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
 ///   GAMMALN, smaller shape first, a0 + b0 an x87 sum, and fl(GL(a0) + algdiv(a0, b0)) from
 ///   b0 = 8. T-2503's density form (`beta_density::ln_beta_small_shape`) differs at its edges: it
 ///   takes b0 = 8 by GAMMALN, B(a0, 1) as 1/a0 and a plain a0 + b0;
-/// - both >= 1 and max <= 8: GL(a) + (GL(b) - GL(fl(a + b))) in argument order, held unstored.
+/// - both >= 1 and max <= 8: GL(a) + (GL(b) - GL(fl(a + b))) in argument order, held unstored;
+/// - min(a, b) = 1 and max > 8: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506).
 ///
-/// `None` for both shapes >= 1 with one above 8, where the model takes an accurate ln B.
-fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
+/// `None` for both shapes > 1 with one above 8, where the model takes an accurate ln B.
+pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
     let (small, large) = if a < b { (a, b) } else { (b, a) };
     if small < 1.0 {
         let ln_beta = if large < BPSER_GAMMALN_FORM_MAX {
@@ -289,7 +363,14 @@ fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
         return Some(Register::load(-ln_beta));
     }
     if large > BPSER_GAMMALN_FORM_MAX {
-        return None;
+        // B(1, b) = 1/b, so L = -LN(b), the density's form (`beta_density::ln_beta_small_shape`).
+        // Only L140's bpser(a0, 1, x0) at a whole b0 reaches it (`ported_tails` keeps a caller's
+        // shape of 1 on today's kernel): on r2-bratio's L140 cells it takes the 548 with a0 > 8
+        // off today's kernel, within 15 digits 11,603 -> 11,721 of 11,742. At a0 <= 8 it would add
+        // 72 bit-exact cells there but moves BETA.DIST(0.5,2,2,TRUE) from 1 to 2 ulp off Excel
+        // (ironcalc-calc BETADIST_BETAINV.xlsx G15) and the BETA.INV chained on it
+        // (docs/research/t2506/RESULTS.md).
+        return (small == 1.0).then(|| Register::load(excel_ln(large)));
     }
     // -(p + q) rounds as (-p) + (-q) does: round to nearest is symmetric.
     let inner =

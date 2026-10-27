@@ -44,6 +44,11 @@ directly (no `1 - p`). The last digits depend on the solver's start, step and st
 Previous evidence from T-0925 (inverse normal): a closed-form inverse plus one Newton step regressed
 cells that the old code matched by luck; measure regressions on every attempt.
 
+Split (gap triage 2026-10-25): the centre quantiles, where a two-tailed p near 1 (or a one-tailed p near 0.5) makes
+the result a tiny t and ours cancels (`TINV(1-1E-10,5)` Excel 1.3171528710518458e-10, ours 2.356080457693621e-08), are
+owned by T-2724 (accuracy stage, 62 cells listed there, including T_DIST.xlsx D20, D62, D63 and E20 below). This task
+keeps every other cell; its acceptance counts exclude the T-2724 cells.
+
 Oracle sweep (T-1043): probes-numeric cases `m9-t-inv`, `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
 
 gen-m9 sweep (gap triage 2026-10-23, T-2255). CONFIDENCE.T, whose Student-t quantile is visibly off (35 cells).
@@ -155,6 +160,14 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (2): Calc!A45, A273
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A110, A148, A262
 - gen-m9/f82473275380882e.case.json (4): Calc!A291, A320, A353, A382
+
+Gap triage 2026-10-27 (`make eval` on 7dba3bfe): 3 visibly-off cells that no task named. They are p in (1,2), which
+T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T.INV(0.25,df)`, `TINV(1.5,df)` and
+`-T.INV(0.75,df)`. So the miss is the central quantile itself, not the p > 1 mapping. Exact (mpmath)
+`T.INV(0.25,7)` is -0.71114177808178631: Excel is 4E-16 above it, ours 3E-16 below.
+- gen-m9/5395b8a427764a3f Calc!A347 `=T.INV.2T(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
+- gen-m9/787ba8d801105a60 Calc!A265 `=TINV(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
+- gen-m9/1db18890916ee643 Calc!A106 `=TINV(1.5,10)`: Excel -0.6998120613124317, ours -0.6998120613124311
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 269 known-failure lines (35 from T-2255, 234 from T-2256) disappear from eval/baseline/gen-m9.txt

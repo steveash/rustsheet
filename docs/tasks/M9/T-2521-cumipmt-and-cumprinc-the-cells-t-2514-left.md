@@ -34,6 +34,11 @@ the payments less the principal; docs/excel-semantics/financial.md "CUMIPMT and 
   - type 0's balance-form band [2^-10, 2^10] (T-2363);
   - `GEOMETRIC_MIN_DISCOUNT` = 8 (between `CUMPRINC_CUMIPMT.xlsx` H25 at 3.96 and H4 at 8.9);
   - `TINY_RATE_GROWTH` = 2^-10.
+- Type 1 from period 1 (gap triage 2026-10-27, `make eval` on 7dba3bfe). Only deferred tasks named these cells (T-2243,
+  T-2730), but they are visibly off: ironcalc-calc CUMPRINC_CUMIPMT.xlsx Sheet1!G2 = probes/fin-cumipmt-overflow-and-forms
+  A7 `CUMIPMT(0.0083,36,8000,1,10,1)`, Excel -520.1181191021385, ours -520.1181191021378. T-2363 found that Excel's
+  CUMIPMT is `-pmt·m - CUMPRINC` and that G2 is bit-exact from Excel's own H2. So G2 is H2's 1-ulp miss
+  (`CUMPRINC(0.0083,36,8000,1,10,1)`) magnified by the cancellation. Fit H2's type 1 principal and G2 follows.
 Code: functions/financial/cumulative.rs.
 
 ## Acceptance criteria

@@ -430,7 +430,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
             let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
-            let ymd = if p.hijri {
+            let ymd = if p.hijri || p.calendar == Some(Calendar::Hijri) {
                 hijri_ymd(serial_1900)
             } else {
                 match p.calendar {
@@ -447,7 +447,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
             // year in the others (probes/text-locale-japanese-year A1-A13).
             let mut seen_era = false;
-            let mut names = NameTokens::new(p.hijri);
+            let mut names = NameTokens::new(p.hijri, p.names.is_some());
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -475,12 +475,14 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         text = format!("{text}{ymd_day}");
                     }
                     TextToken::DayPadded => {
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let day = ymd_day as usize;
                         text = format!("{text}{day:02}");
                     }
@@ -488,6 +490,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let month = ymd_month as usize;
                         text = format!("{text}{month}");
                     }
@@ -495,6 +498,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let month = ymd_month as usize;
                         text = format!("{text}{month:02}");
                     }
@@ -519,6 +523,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let buddhist = matches!(
                             token,
                             TextToken::BuddhistYearShort | TextToken::BuddhistYear
@@ -565,6 +570,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         if let Some(Calendar::Japanese { .. }) = p.calendar {
                             let era_year = japanese_era_year(serial_1900, ymd_year);
                             if *padded {
@@ -687,16 +693,18 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return match format_fraction(value, p, fraction, &locale.numbers.symbols.group) {
+                // Past 255 characters a fraction cannot be shown either: `# ?/4,` on 2 would print
+                // 258 (255 `#`, TEXT #VALUE!; probes/fraction-overflow-scaled A49).
+                let text = format_fraction(value, p, fraction, &locale.numbers.symbols.group)
+                    .filter(|text| text.chars().count() <= MAX_TEXT_FORMAT_CHARS);
+                return match text {
                     Some(text) => Formatted {
                         text,
                         color: p.color,
                         error: None,
                         unshowable: false,
                     },
-                    None => {
-                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
-                    }
+                    None => Formatted::unshowable(format!("Fraction overflows: '{value}'")),
                 };
             }
             let mut text = "".to_string();

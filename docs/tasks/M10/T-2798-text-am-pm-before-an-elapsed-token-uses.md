@@ -16,6 +16,9 @@ depends_on: []
 ## Context
 probes/text-elapsed-two-tokens.case.json S!A13 (excel-graph "PM 12", engine "PM 36"); dates.md "Negative serials under an explicit negative section". Discovered in T-1366. Only the marker-first order is valid; the marker after an elapsed token is #VALUE! (done).
 
+Exit owners (decision 0096; the 2026-10-27 planner run names each cell the `.case.json` line above holds):
+- probes/text-elapsed-two-tokens S!A13
+
 ## Acceptance criteria
 - [ ] S!A13 passes and leaves eval/baseline/probes.txt; probe other elapsed tokens (`AM/PM [mm]`, `[s]`) first.
 - [ ] `make check` green; reviewers approve.
