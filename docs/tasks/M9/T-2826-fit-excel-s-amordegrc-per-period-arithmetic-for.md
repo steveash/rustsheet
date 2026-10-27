@@ -48,4 +48,4 @@ periods on, in both directions; ten candidate operation orders fit fewer cells t
 rounds its charge like ROUND"). fin-amor-period-bound-b B2 passes; -c A2 passes as before; -c A1, A3, A4 would pass
 with a walk past 2^20 periods but stay on the closed form within the work cap, and A5 needs Excel's walk (entry
 "AMORDEGRC past 2^20 periods"). Eval delta: -1 known failure (B2), +147 probe cells (with probes/amordegrc-round-mid, 12
-cells for charges of 3E11 to 8E13 from the review) of which 119 pass and 28 are walk-drift known failures. Follow-up: T-2847 (Excel's per-period arithmetic).
+cells for charges of 3E11 to 8E13 from the review) of which 119 pass and 28 are walk-drift known failures. Follow-up: T-2849 (Excel's per-period arithmetic).

@@ -1,5 +1,5 @@
 ---
-id: T-2847
+id: T-2849
 title: "Find Excel's AMORDEGRC per-period arithmetic: the walk drifts a few ulps from main's from about 10^3 periods (amordegrc-walk-drift, -ties)"
 milestone: M9
 lane: functions-financial
