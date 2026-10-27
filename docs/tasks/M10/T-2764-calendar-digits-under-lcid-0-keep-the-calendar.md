@@ -3,7 +3,7 @@ id: T-2764
 title: "Calendar digits under LCID 0 keep the calendar with en-US names"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
