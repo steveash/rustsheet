@@ -808,7 +808,7 @@ impl Model {
             clock,
         );
         model.parse_formulas();
-        model.cf_stale = true;
+        model.cf.stale = true;
         Ok(model)
     }
 
@@ -851,10 +851,7 @@ impl Model {
             defined_names_running: Default::default(),
             area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
-            cf_cache: HashMap::new(),
-            cf_stale: true,
-            #[cfg(test)]
-            cf_runs: 0,
+            cf: crate::cf_styles::CfState::default(),
             links: HashMap::new(),
         }
     }
