@@ -27,6 +27,10 @@ It may be a tiny-rate path (1+r rounds to 1 + 1.000000082740371E-10) or a lucky 
 ## Acceptance criteria
 - [ ] A probe of NPV at tiny rates (1E-12 to 1E-6, with three to eight flows that do and do not cancel) has Excel
       values, and the lab scores the running product against the A85 candidates on it and on the 470 cells.
+- [ ] The same probe has the two unprobed range edges of financial.md "NPV's discount past the double range":
+      `NPV(1,1.5E+308,1.5E+308)` (does the partial sum overflow before the final division?) and a quotient that is
+      subnormal before the final division scales it (e.g. `NPV(-0.9999999999,1E-300,1E-310)`), and the entry records
+      the answers.
 - [ ] If one formulation matches more cells than the running product, the engine uses it and A85's line leaves
       eval/baseline/gen-m9.txt; otherwise financial.md records the counts and the task closes as explained.
 - [ ] `make check` green; reviewers approve.
