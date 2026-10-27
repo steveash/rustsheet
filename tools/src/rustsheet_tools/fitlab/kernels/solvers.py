@@ -639,12 +639,32 @@ def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[
     return chain
 
 
+def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> float:
+    """The term the fitted YIELD start takes (T-2777, probes/yield-start-term-basis): whole years from
+    `settle` (a 29 February settlement has its anniversaries on 1 March in common years), then the
+    basis' days from the last anniversary to `maturity` over 360 (bases 0, 2, 4), 365 (basis 3) or
+    the length of the maturity's calendar year (basis 1). The engine's `yield_start_years`."""
+
+    def anniversary(year: int) -> datetime.date:
+        if settle.month == 2 and settle.day == 29 and not calendar.isleap(year):
+            return datetime.date(year, 3, 1)
+        return settle.replace(year=year)
+
+    whole, last = maturity.year - settle.year, anniversary(maturity.year)
+    if last > maturity:
+        whole, last = whole - 1, anniversary(maturity.year - 1)
+    days = days360(last, maturity, basis == 4) if basis in (0, 4) else (maturity - last).days
+    year = {1: 366.0 if calendar.isleap(maturity.year) else 365.0, 3: 365.0}.get(basis, 360.0)
+    return whole + days / year
+
+
 def fitted_yield_start(*args: Arg) -> float:
     """T-1592's fitted start: (100 rate + (100 - pr)/T) / ((100 + pr)/2 - (100 - pr)/(4T)), T the
-    `_years_to_maturity`. On yield-start-one-input the two-steps-back starts give a denominator
-    pr + w (100 - pr) with (1/2 - w) T = 0.25000 on every row below PRICE's root."""
+    `start_years` (T-2777; T-1592 fitted it with `_years_to_maturity`, the same on its basis-0 probes
+    but for a 29 February settlement). On yield-start-one-input the two-steps-back starts give a
+    denominator pr + w (100 - pr) with (1/2 - w) T = 0.25000 on every row below PRICE's root."""
     settle, maturity, rate, pr, _, _, basis = _bond(args)
-    years = _years_to_maturity(settle, maturity, basis)
+    years = start_years(settle, maturity, basis)
     return (100 * rate + (100 - pr) / years) / ((100 + pr) / 2 - (100 - pr) / (4 * years))
 
 
