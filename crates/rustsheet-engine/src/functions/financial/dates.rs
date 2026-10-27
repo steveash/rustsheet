@@ -21,12 +21,19 @@ use crate::{
 /// `TBILLPRICE(0,367,0.1)` is `#NUM!`. A 29 February settlement, the fictitious 1900-02-29
 /// (serial 60) too, reaches a year on at 1 March: `TBILLPRICE(DATE(2024,2,29),DATE(2025,3,1),0.1)`
 /// and `TBILLPRICE(60,426,0.1)` are numbers (probes/tbill-settlement-below-one B3-B18;
-/// docs/excel-semantics/financial.md "T-bill settlement below serial 1").
+/// docs/excel-semantics/financial.md "T-bill settlement below serial 1"). A settlement in 9999,
+/// whose anniversary would be in 10000, is `None`, `#NUM!` however short the bill: in both date
+/// systems `TBILLPRICE(DATE(9999,1,1),DATE(9999,1,10),0.05)` is `#NUM!` and 9998-12-31 to
+/// 9999-12-31 a number (probes/fin-1900-tbill-last-day, fin-1904-calendar-readers A2, A21:A25;
+/// financial.md "T-bills settled in 9999").
 pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Option<bool> {
+    let (start_year, start_month, start_day) = excel_serial_to_ymd(start_date)?;
+    if start_year >= 9999 {
+        return None;
+    }
     if end_date - start_date < 365 {
         return Some(true);
     }
-    let (start_year, start_month, start_day) = excel_serial_to_ymd(start_date)?;
     let (end_year, end_month, end_day) = excel_serial_to_ymd(end_date)?;
     if end_year == start_year {
         return Some(true);
@@ -40,15 +47,37 @@ pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Option<bo
     Some(end_year == start_year + 1 && (end_month, end_day) <= anniversary)
 }
 
+/// How a financial function reads a date argument of a 1904 workbook. Excel for the web changed
+/// five functions on 2026-10-21 and left the rest (docs/excel-semantics/dates.md "The 1904 date
+/// system: ACCRINT, COUPNUM and the TBILL functions read the date itself"); in a 1900 workbook
+/// both readings are the serial itself.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum DateReading {
+    /// Serial + 2 * 1462 (`DateSystem::financial_1900_serial`): YEARFRAC, the other COUP*
+    /// functions, PRICE, YIELD, DURATION, the discount securities, the odd-period functions,
+    /// AMORLINC and AMORDEGRC.
+    Shifted,
+    /// The date itself, serial + 1462 (`DateSystem::calendar_1900_serial`): ACCRINT, COUPNUM,
+    /// TBILLEQ, TBILLPRICE and TBILLYIELD.
+    Calendar,
+}
+
 impl Model {
     /// The floored 1900 serial a financial function's day counts read for the date argument
     /// `serial`: 2 * 1462 days on in a 1904 workbook (`DateSystem::financial_1900_serial`).
     pub(super) fn financial_date(&self, serial: f64) -> i64 {
-        self.workbook
-            .settings
-            .date_system
-            .financial_1900_serial(serial)
-            .floor() as i64
+        self.financial_date_as(DateReading::Shifted, serial)
+    }
+
+    /// The floored 1900 serial a financial function that reads dates by `reading` takes for the
+    /// date argument `serial`.
+    pub(super) fn financial_date_as(&self, reading: DateReading, serial: f64) -> i64 {
+        let date_system = self.workbook.settings.date_system;
+        let read = match reading {
+            DateReading::Shifted => date_system.financial_1900_serial(serial),
+            DateReading::Calendar => date_system.calendar_1900_serial(serial),
+        };
+        read.floor() as i64
     }
 
     /// Whether Excel's coupon schedule breaks for `maturity`, as `financial_date` read it
@@ -83,17 +112,18 @@ impl Model {
     }
 
     /// A date argument of the TBILL, discount-security, AMORLINC and AMORDEGRC functions as read:
-    /// its number, #NUM! unless it floors to a serial from 0 to 9999-12-31, checked before the
+    /// its number, #NUM! unless `reading` floors it to a serial from 0 to 9999-12-31, checked before the
     /// next argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)`
     /// are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16;
     /// financial.md, T-1406).
     pub(super) fn financial_calendar_date_of(
         &self,
         value: &CalcResult,
+        reading: DateReading,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let serial = self.cast_number_no_bools_ref(value, cell)?;
-        self.financial_calendar_serial(serial, cell)
+        self.financial_calendar_serial(serial, reading, cell)
     }
 
     /// The range check of [`Model::financial_calendar_date_of`] for a serial already read as a
@@ -101,16 +131,17 @@ impl Model {
     pub(super) fn financial_calendar_serial(
         &self,
         serial: f64,
+        reading: DateReading,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         let calendar = 0..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
-        if !calendar.contains(&self.financial_date(serial)) {
+        if !calendar.contains(&self.financial_date_as(reading, serial)) {
             return Err(num_error(cell));
         }
         Ok(serial)
     }
 
-    /// A date argument of the COUP* functions as read, as `financial_date` reads it: #NUM!
+    /// A date argument of the COUP* functions as read by `reading` (`DateReading`): #NUM!
     /// unless it floors to a day of this workbook's calendar, checked before the next argument is
     /// read (`COUPDAYS(2958466,NA(),2)` and `COUPNUM(39000,2958466,2,NA())` are #NUM!,
     /// `COUPNCD(2958465.5,NA(),2)` #N/A; probes/coup-calendar-edges A1-A8, T-2486). In a 1904
@@ -119,6 +150,7 @@ impl Model {
     pub(super) fn coupon_date_of(
         &self,
         value: &CalcResult,
+        reading: DateReading,
         cell: CellReferenceIndex,
     ) -> Result<i64, CalcResult> {
         let serial = self.cast_number_no_bools_ref(value, cell)?;
@@ -131,7 +163,7 @@ impl Model {
         if !day.is_some_and(|day| calendar.contains(&day)) {
             return Err(num_error(cell));
         }
-        Ok(self.financial_date(serial))
+        Ok(self.financial_date_as(reading, serial))
     }
 
     /// A day-count basis argument as read: an error, text or boolean is returned, an omitted basis

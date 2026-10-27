@@ -18,7 +18,7 @@
 
 use chrono::{Datelike, NaiveDate};
 
-use super::dates::{actual_days, days_30_360_eu, days_30_360_us};
+use super::dates::{actual_days, days_30_360_eu, days_30_360_us, DateReading};
 use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
@@ -98,8 +98,9 @@ impl Model {
         let cost = self.cast_number_no_bools_ref(cost, cell)?;
         // `AMORLINC(2400,-1,NA(),..)` and `AMORLINC(2400,39679,2958466,NA(),..)` are #NUM!, while a
         // date of 0 or 0.5 passes (`AMORLINC(2400,0.5,NA(),..)` is #N/A).
-        let purchased = self.financial_calendar_date_of(purchased, cell)?;
-        let first_period = self.financial_calendar_date_of(first_period, cell)?;
+        let purchased = self.financial_calendar_date_of(purchased, DateReading::Shifted, cell)?;
+        let first_period =
+            self.financial_calendar_date_of(first_period, DateReading::Shifted, cell)?;
         let salvage = self.cast_number_no_bools_ref(salvage, cell)?;
         let period = self.cast_number_no_bools_ref(period, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;

@@ -10,7 +10,7 @@
 //! invalid amount (probes/discount-argument-check-order, T-2484; financial.md "Discount securities
 //! check order"). Moved out of `financial/mod.rs` (T-1372).
 
-use super::dates::is_less_than_one_year;
+use super::dates::{is_less_than_one_year, DateReading};
 use super::number_or_error;
 use crate::functions::lift::{div_error, num_error};
 use crate::{
@@ -85,7 +85,9 @@ impl Model {
         value: &CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<i64, CalcResult> {
-        Ok(self.financial_calendar_date_of(value, cell)?.floor() as i64)
+        Ok(self
+            .financial_calendar_date_of(value, DateReading::Shifted, cell)?
+            .floor() as i64)
     }
 
     /// Reads [`DiscountArgs`] in Excel's order: the basis first, then the rest left to right, each
@@ -342,13 +344,20 @@ impl Model {
         // dates floor to whole days, so a settlement from 0 to below 1 is serial 0
         // (`TBILLPRICE(0.5,1.9,0.1)` = `TBILLPRICE(0,1,0.1)` and `TBILLPRICE(0.5,0.9,0.1)` is
         // #NUM!: probes/tbill-settlement-below-one A1:A5; financial.md "T-bill settlement below
-        // serial 1").
-        let settlement = self.discount_date_of(settlement, cell)?;
-        let maturity = self.discount_date_of(maturity, cell)?;
+        // serial 1"). The TBILL functions read the dates themselves (`DateReading::Calendar`), so
+        // in a 1904 workbook 2023-02-28 to 2024-02-29 is more than a year
+        // (probes/date-system-1904-financial-shift A31:A33).
+        let reading = DateReading::Calendar;
+        let settlement = self
+            .financial_calendar_date_of(settlement, reading, cell)?
+            .floor() as i64;
+        let maturity = self
+            .financial_calendar_date_of(maturity, reading, cell)?
+            .floor() as i64;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let less_than_one_year = is_less_than_one_year(
-            self.financial_date(settlement as f64),
-            self.financial_date(maturity as f64),
+            self.financial_date_as(reading, settlement as f64),
+            self.financial_date_as(reading, maturity as f64),
         )
         .ok_or_else(|| num_error(cell))?;
         if settlement >= maturity || !less_than_one_year || rate <= 0.0 {

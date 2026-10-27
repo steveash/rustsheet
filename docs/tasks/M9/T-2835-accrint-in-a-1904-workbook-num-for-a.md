@@ -3,7 +3,7 @@ id: T-2835
 title: "ACCRINT in a 1904 workbook: #NUM! for a coupon date before 1904-01-01 (43 probe cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -37,9 +37,15 @@ In a 1904 workbook ACCRINT is `#NUM!` where today's Excel is, for a coupon date 
   first (its values are Excel for the web's of 2026-10-26).
 
 ## Acceptance criteria
-- [ ] probes/accrint-calendar-start-1904 lands, re-filled, and every cell passes, with no new known-failure lines in any
+- [x] probes/accrint-calendar-start-1904 lands, re-filled, and every cell passes, with no new known-failure lines in any
       baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Landed by T-2337 (2026-10-27). probes/accrint-calendar-start-1904 is in the suite (re-filled 2026-10-27, same values
+as 2026-10-26) and all 50 cells pass: ACCRINT reads a 1904 date as the date itself, and `accrint_coupon_serial` takes
+the workbook's first coupon date (`DateSystem::first_coupon_1900_serial`), so the 1900 cut sits at 1904-01-01. No new
+known-failure lines.
