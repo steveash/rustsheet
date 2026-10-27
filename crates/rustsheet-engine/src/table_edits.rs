@@ -47,7 +47,9 @@ enum Span {
 /// table-insert-row-above-first-data and -above-totals: `ROWS(Sales)` 5). An insert at the first
 /// row of a table without a header row is a fallback (unprobed, T-2845). A delete inside the data
 /// rows, at their edges too, shrinks the table if a data row is left, and one of exactly the totals
-/// row drops it (T-2324 table-delete-row-first-data, -last-data, -last-data-totals, -totals). A
+/// row drops it (T-2324 table-delete-row-first-data, -last-data, -last-data-totals, -totals; only
+/// one-row deletes are probed, a wider one reaching a data edge is hand, T-2848). The first row of
+/// a table without a header row is a fallback, as for inserts (T-2845). A
 /// delete touching the header row is a fallback (Excel refuses it), and so is one of every data
 /// row (`Model::last_data_row` handles the one-row case) or one straddling the table's
 /// edges (unprobed).
@@ -77,7 +79,11 @@ fn row_span(
             Span::Unchanged
         } else if end < top {
             Span::Changed(top + delta, bottom + delta)
-        } else if data_first <= at && end <= data_last && (data_first < at || end < data_last) {
+        } else if top < at
+            && data_first <= at
+            && end <= data_last
+            && (data_first < at || end < data_last)
+        {
             Span::Changed(top, bottom + delta)
         } else if data_last < bottom && at == bottom && end == bottom {
             Span::DropTotals
@@ -223,7 +229,7 @@ impl Model {
     /// table-delete-row-all-data: `ROWS(Sales)` 1, `SUM(Sales[Qty])` 0, the plain `S!C4:C4` kept;
     /// table-delete-row-all-data-below, T-2338: `=S!C10` reads `=S!C7` after four deletes at row 4,
     /// three rows up, not four). Only the table's own cells of that row are cleared; what Excel does
-    /// to the row's cells outside the table is unprobed (T-2848).
+    /// to the row's cells outside the table, and to a table with a totals row, is unprobed (T-2848).
     pub(crate) fn last_data_row(&self, sheet: u32, row: i32, row_count: i32) -> Option<Area> {
         if row_count != 1 {
             return None;
@@ -331,6 +337,8 @@ mod tests {
         assert_eq!(rows(4, -1), Span::Changed(3, 6));
         assert_eq!(rows(7, -1), Span::Changed(3, 6));
         assert_eq!(rows(6, -2), Span::Changed(3, 5));
+        // Without a header row the first row is a data row: a fallback, as for inserts (T-2845).
+        assert_eq!(row_span((3, 7), (3, 7), 3, -1), Span::Fallback);
         // The header row, every data row at once, or across an edge of the table: a fallback.
         for (at, count) in [(2, 2), (3, 1), (4, 4), (1, 10)] {
             assert_eq!(rows(at, -count), Span::Fallback, "delete {at}+{count}");

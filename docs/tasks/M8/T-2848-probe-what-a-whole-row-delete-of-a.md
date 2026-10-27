@@ -22,6 +22,9 @@ table's own cells of the row. Two questions are open:
   or does the delete fail?
 - a second table beside it in the same sheet row (`Other` on S!E3:F7 next to `Sales` on S!B3:C4):
   the engine keeps and clears `Sales`'s row and leaves `Other` alone, which is a guess;
+- the only data row of a table with a totals row (the engine keeps and clears it as without one);
+- a two-row delete reaching a data edge (rows 6-7 of `Sales` on S!B3:C7: the engine shrinks it to
+  B3:C5) and a delete of the first row of a table without a header row (the engine falls back);
 - one delete of every data row at once (rows 4-7 of `Sales` on S!B3:C7, Graph `range('4:7')/delete`):
   does Excel delete three rows and keep one, refuse, or do something else? The engine treats it as a
   fallback (the structured references print the displaced plain range).
