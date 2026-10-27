@@ -21,7 +21,8 @@ from itertools import pairwise
 from pathlib import Path
 from typing import Any, Protocol
 
-from rustsheet_tools.progress_report.markdown import table
+from rustsheet_tools.progress_report import codebase
+from rustsheet_tools.progress_report.markdown import signed, table
 from rustsheet_tools.progress_report.model import (
     COMMIT_SHA,
     GE,
@@ -141,6 +142,8 @@ def _check_row(row: Any, i: int) -> str:
         per = mapping(mapping(row, "campaign", where), stage, f"{where}.campaign")
         for key in STAGE_KEYS:
             count(per, key, f"{where}.campaign.{stage}")
+    if "codebase" in row:
+        codebase.check_row(row["codebase"], f"{where}.codebase")
     return date
 
 
@@ -210,13 +213,16 @@ def _skipped(skipped: tuple[SkippedSuite, ...]) -> list[dict[str, str]]:
     return [{"name": s.name, "reason": s.reason} for s in skipped]
 
 
-def complete_row(run: Run, data: Parity, tasks: Tasks, head: str | None) -> Row:
+def complete_row(
+    run: Run, data: Parity, tasks: Tasks, head: str | None, counts: codebase.Codebase | None = None
+) -> Row:
     """The history row of a complete run. Its commit is the report's `run.commit`; only when the
     eval could not read it (null) does the row fall back to `head`, the commit generating the page,
-    so the next run can still count the commits since this one."""
+    so the next run can still count the commits since this one. `counts` adds the optional
+    `codebase` object (T-0078); rows from before it have none."""
     cells = data.attributed_cells()
     numeric, other = VISIBLE
-    return {
+    row: Row = {
         "date": run.date,
         "commit": run.commit or head,
         "complete": True,
@@ -243,6 +249,9 @@ def complete_row(run: Run, data: Parity, tasks: Tasks, head: str | None) -> Row:
         "campaign": {stage: dict(tasks.by_stage[stage]) for stage in STAGE_ROWS},
         "milestones_exited": list(data.milestones_exited),
     }
+    if counts is not None:
+        row["codebase"] = codebase.row(counts)
+    return row
 
 
 def incomplete_row(date: str, commit: str | None, skipped: tuple[SkippedSuite, ...]) -> Row:
@@ -263,15 +272,6 @@ MEASURES: tuple[tuple[str, Callable[[Row], int]], ...] = (
     ("Attributed Excel cells", lambda r: int(r["excel_cells"])),
     ("Tasks done", lambda r: int(r["tasks"]["done"])),
 )
-
-
-def signed(delta: int) -> str:
-    """`delta` with its sign: +3, \N{MINUS SIGN}2 or 0."""
-    if delta > 0:
-        return f"+{delta:,}"
-    if delta < 0:
-        return f"\N{MINUS SIGN}{-delta:,}"
-    return "0"
 
 
 def since_block(row: Row, last: Row | None, commits: int | None) -> str:
