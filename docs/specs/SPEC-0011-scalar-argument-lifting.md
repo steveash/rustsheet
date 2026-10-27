@@ -718,8 +718,8 @@ COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have
 they are `Constant` only if the cap is fixed). A kernel whose loop length its arguments predict in O(1)
 may instead be `ByValue(ValueWork)`: before any element runs, the driver sums each element's
 `ValueWork::units` of its argument values over the broadcast (`lift/driver.rs` `kernel_units`, one
-O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). Two
-estimators exist:
+O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). The
+estimators include:
 - `Loop { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order); DB and VDB,
   T-1820): `1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument
   `arg`, `1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the
@@ -740,6 +740,11 @@ estimators exist:
   being the sum's per-call cap; a text count is left out of the min (it may read as any count),
   `weight` when every count is a text, and an error, a negative count or one of
   2^31 - 1 or more (refused before either path) 1.
+- `Amortization { degressive, weight }` (T-2840, AMORLINC and AMORDEGRC): `weight`, the flat bound
+  of a walk, or 1 for an element the kernel refuses before it walks: an error or a logical in any
+  argument, a cost, salvage, period and rate, all numbers, that fail the kernel's value checks
+  (`amortization_values_valid`), or, with `degressive`, a rate whose asset life AMORDEGRC refuses
+  (`asset_life_refused`). Texts, blanks and the date calendar check are not judged.
 
 T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
