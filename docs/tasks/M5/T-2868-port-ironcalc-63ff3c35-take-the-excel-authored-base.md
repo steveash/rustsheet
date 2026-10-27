@@ -3,7 +3,7 @@ id: T-2868
 title: "Port ironcalc 63ff3c35: take the Excel-authored BASE_DECIMAL_issue_1617.xlsx calc test workbook"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
