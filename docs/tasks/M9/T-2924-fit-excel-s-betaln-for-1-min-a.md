@@ -3,7 +3,7 @@ id: T-2924
 title: "Fit Excel's betaln for 1 < min(a, b) < 8 < max(a, b): a stored double -3 to +2 ulps off the accurate ln B (probes/t2829-ftest-ln-beta-grid)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
