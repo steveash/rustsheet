@@ -3,7 +3,7 @@ id: T-0488
 title: "SPEC-0020 amendment: tailed whole-column and past-the-used-area operands for UNIQUE, TEXTJOIN, LOOKUP and SMALL (corpus-bench 45896 17.6 s, 33935 8.6 s, 59969 5.7 s)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
