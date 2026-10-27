@@ -1,7 +1,7 @@
 //! Comma-separated lists inside an operand: function arguments and the rows
 //! of an array constant.
 
-use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{OpSum, TokenType};
 
 impl Parser {
@@ -112,11 +112,14 @@ impl Parser {
             self.lexer.advance_token();
             arg_index += 1;
             self.set_argument_hint(fn_name, arg_index);
+            // A run between two commas, or after the last one, is the missing argument's own and
+            // prints back (`=IF(1, ,2)`, `=SUM(1,` LF `)`; syntax.md "Whitespace beside a missing
+            // argument is kept", probes/t2786-whitespace-structured-refs-runs I2:I10, T-2944).
             if &self.lexer.peek_token() == arg_separator_token {
-                args.push(Node::EmptyArgKind);
+                args.push(self.missing_argument());
                 next_token = arg_separator_token.clone();
             } else if self.lexer.peek_token() == TokenType::RightParenthesis {
-                args.push(Node::EmptyArgKind);
+                args.push(self.missing_argument());
                 return Ok(args);
             } else {
                 let p = self.parse_argument(binds_names && arg_index % 2 == 1);
@@ -128,6 +131,11 @@ impl Parser {
             }
         }
         Ok(args)
+    }
+
+    /// A missing argument after a comma, with the run written in its place.
+    fn missing_argument(&self) -> Node {
+        Node::EmptyArgKind.spaced(self.run_ahead(), Run::default())
     }
 
     /// Records that the position currently being parsed *starts* argument
