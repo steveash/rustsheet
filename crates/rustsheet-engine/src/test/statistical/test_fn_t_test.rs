@@ -51,6 +51,8 @@ fn test_fn_t_test_error_sample_before_tails_and_type() {
     model._set("D1", "=T.TEST(1/0,A1:A3,3,2)");
     model._set("D2", "=T.TEST(A1:A3,NA(),1,9)");
     model._set("D3", "=T.TEST(A1:A3,A1:A3,-2.5,\"a\")");
+    // A hand expectation: Excel's evidence is the computed empty text (gen-m9 46ac3ef5e61583ca A344); T-2853 probes
+    // the typed literal.
     model._set("D4", "=T.TEST(\"\",A1:A4,1,3)");
     // An error inside a range still loses to a bad tails (T-1813).
     model._set("D5", "=T.TEST(B1:B3,A1:A3,3,2)");
