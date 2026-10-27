@@ -17,7 +17,8 @@ ENGINE = "engine (today)"
 @dataclass
 class Fit:
     """What to score: `cases` (`suite/name`), the formula `pattern` whose first group is the
-    argument list, the candidates, and an optional `where(cell)` filter (e.g. a sub-domain)."""
+    argument list, the candidates, an optional `where(cell)` filter (e.g. a sub-domain) and the
+    `calls` cases whose Excel values stand in for nested calls (sweep.call_values)."""
 
     name: str
     description: str
@@ -26,6 +27,7 @@ class Fit:
     candidates: Callable[[], list[Candidate]]  # built lazily: some families are large
     where: Callable[[Cell], bool] | None = None
     errors: bool = False  # also score the cells whose Excel value is an error
+    calls: list[str] = field(default_factory=list)  # cases giving Excel's value of nested calls
     notes: list[str] = field(default_factory=list)
 
 
@@ -77,7 +79,7 @@ class FitResult:
 def run(fit: Fit, *, engine: bool = True, only: str | None = None, keep: int = 10) -> FitResult:
     """Loads the sweep and scores the engine (unless `engine` is false) and every candidate whose
     name matches the regex `only`."""
-    sweep = load_sweep(fit.cases, fit.pattern, fit.where, fit.errors)
+    sweep = load_sweep(fit.cases, fit.pattern, fit.where, fit.errors, fit.calls)
     cases = sorted({c.case for c in sweep.cells})
     candidates = [engine_candidate(cases)] if engine and cases else []
     wanted = re.compile(only) if only else None

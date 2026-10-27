@@ -95,8 +95,9 @@ const SORTBY: ArgKinds = ArgKinds {
 /// `SORT(array, [sort_index], [sort_order], [by_col])`: `by_col` lifts over an array
 /// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
 /// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
-/// sorts the whole array: read and charged as [`TOCOL`]. Whether a later non-error element is its
-/// call's top-left (`.array()`) or empty (SORTBY's `CallResult::ArrayFirst`) is UNVERIFIED (T-2366).
+/// sorts the whole array: read and charged as [`TOCOL`]. Later elements are not
+/// empty (`.array()`, not SORTBY's `ArrayFirst`: probes/t2366-sort-lifted-by-col); a TRUE element past the first column with
+/// `sort_index` 1 is `#VALUE!` in Excel, not the call's top-left (T-2929).
 const SORT: ArgKinds = ArgKinds::fixed(
     1,
     &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],

@@ -261,6 +261,14 @@ keeps its meaning. `run` and `check` refuse a malformed line or a repeated cell;
 in no row is listed under "Stale exit exceptions" without failing the run. The file never touches
 eval/baseline or the gate.
 
+The Phase 1 rate (`v15_checkpoint`) has its own list, `eval/milestones/phase1-exceptions.tsv`
+(`phase1_exceptions.rs`, decision 0134; one line per cell: `case!Sheet!A1` of any suite, the decision
+that names it as M14-only desktop evidence, the owning M14 task). A listed visibly-off Excel cell
+leaves `rate_cells` and `rate_visible` of the function whose count holds it (`rate_excepted`);
+`cells`, `visible`, the tier and the strict count keep it. report.md prints the number left out per
+function under the Phase 1 line, and warns about a listed cell the run does not score or that is not
+visibly off (`stale_exceptions`). The same validation refuses a malformed line in `run` and `check`.
+
 ## Catalog coverage per milestone
 `crates/rustsheet-eval/src/catalog_coverage.rs` (T-2112, T-2175) adds a "Catalog coverage per milestone"
 section to report.md (report.json: `catalog_coverage`), one row per function milestone. A function is
