@@ -9,12 +9,34 @@ use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
+use crate::x87_exp::excel_exp;
+use crate::x87_log10::excel_ln;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// The one shape whose cdf Excel takes from its ERF kernel, on exact equality: `a = 0.5 +- 1 ulp`
 /// already takes the generic path (docs/excel-semantics/statistics.md, T-1778,
 /// `kmyst-erf-ashape`).
 const HALF_SHAPE: f64 = 0.5;
+
+/// The x / beta below which GAMMA.DIST's density is Excel's log-space form (probes/
+/// t2753-gamma-density-switch: within 1 ulp of Excel up to 3E-16 at shapes 0.5, 1 and 2, 4 to 7
+/// ulp at 1E-15, where the direct form is 10 off; T-2753).
+const LOG_FORM_RATIO: f64 = 1E-15;
+
+/// The shapes the log-space form is probed at lie below this (the prefactor's own regime split).
+const LOG_FORM_SHAPE_MAX: f64 = 20.0;
+
+/// GAMMA.DIST's density where y = x / beta is below [`LOG_FORM_RATIO`]: Excel forms
+/// EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
+/// result, so `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235, not 1 (probes/
+/// t2753-gamma-density-ratio-sweep A1, B1; t2738-gamma-dist-tiny-ratio A2, A4, A15, A19).
+/// With Excel's own LN, EXP and GAMMA it is within 1 ulp of Excel there. `None` elsewhere, and
+/// at x = 0, which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
+fn tiny_ratio_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
+    let y = x / beta;
+    (x > 0.0 && alpha < LOG_FORM_SHAPE_MAX && y < LOG_FORM_RATIO)
+        .then(|| excel_exp(alpha * excel_ln(y) - y) / excel_gamma(alpha) / x)
+}
 
 /// GAMMA.DIST's cdf for the gamma `dist` of scale `beta`, through Excel's identities
 /// (docs/excel-semantics/statistics.md, T-1778): GAMMA.DIST(x,a,b,TRUE) = GAMMA.DIST(x/b,a,1,TRUE),
@@ -94,7 +116,11 @@ impl Model {
         } else {
             // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/m9-gamma-dist-a500
             // B22; docs/excel-semantics/numbers.md "Distribution densities").
-            flush_subnormal(gamma_density(alpha, x, beta_scale).unwrap_or_else(|| dist.pdf(x)))
+            flush_subnormal(
+                tiny_ratio_density(alpha, x, beta_scale)
+                    .or_else(|| gamma_density(alpha, x, beta_scale))
+                    .unwrap_or_else(|| dist.pdf(x)),
+            )
         };
         if !result.is_finite() {
             return Err(num_error(cell));
