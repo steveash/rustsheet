@@ -133,6 +133,26 @@ fn the_problem_formulas_stop_at_the_limit() {
 }
 
 #[test]
+fn a_regex_call_that_runs_out_of_its_budget_is_charged_the_whole_budget() {
+    // This search holds more than the call's 64 MiB (fn_regex_backtrack.rs
+    // `the_visited_set_is_held_memory`): the call is `#ERROR!` and the formula pays for both whole
+    // budgets, so a MAP of such calls reaches the formula's limit after a handful of them instead
+    // of running each one (SPEC-0024).
+    let call = r#"REGEXTEST("a"&CHAR(10)&REPT("a",32764)&CHAR(10),"(?:b[a-z]{20000}|a)*b$")"#;
+    let mut model = new_empty_model();
+    model._set("A1", &format!("={call}"));
+    model._set(
+        "A2",
+        &format!("=SUM(MAP(SEQUENCE(1000),LAMBDA(x,IFERROR(--{call},0))))"),
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert!(units(&format!("={call}")) > (1 << 25));
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_error_message("A2"), TOO_MUCH_WORK);
+}
+
+#[test]
 fn an_oversized_charge_fails_without_wrapping() {
     let mut model = new_empty_model();
     let cell = model._parse_reference("A1");

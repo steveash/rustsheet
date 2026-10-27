@@ -3,7 +3,7 @@ id: T-2803
 title: "SPEC-0024 step 1: a per-formula work budget charged per node, per array cell built and per lifted kernel unit"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -32,26 +32,26 @@ and stop and report if it is above 2^26. Add the DEVIATION entry from section 5 
 measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/union-walk-repeated-in-lambda passing.
 
 ## Acceptance criteria
-- [ ] `=REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(SEQUENCE(100000))))`,
+- [x] `=REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(SEQUENCE(100000))))`,
       `=SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAP(SEQUENCE(1000),LAMBDA(y,SUM(SEQUENCE(1000))))))))` and
       `=SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(SEQUENCE(1000)))))` finish within the harness timeout (`--timeout 30`, release)
       as `#VALUE!`. Engine tests assert the value and that the units spent are within the limit plus one loop iteration
       (counters, no timing).
-- [ ] Counter tests from SPEC-0024's Test plan: units of `=1+2` and `=SUM(SEQUENCE(10))`; at the limit versus one over it
+- [x] Counter tests from SPEC-0024's Test plan: units of `=1+2` and `=SUM(SEQUENCE(10))`; at the limit versus one over it
       (test-only lower limit); `IFERROR(<over>,0)` is `#VALUE!`; an over-budget dependency cell caught by the outer
       `IFERROR(A1,0)` is 0; the next formula gets a full budget; past the limit a MAKEARRAY makes at most one more LAMBDA call.
-- [ ] No baseline gains a line (`make eval-check`: 0 regressions); the measured maximum is in the DEVIATION entry.
-- [ ] Per-kind timing (spec section 4, release build): each listed worst case (nodes, built cells, read cells, text, per-call
+- [x] No baseline gains a line (`make eval-check`: 0 regressions); the measured maximum is in the DEVIATION entry.
+- [x] Per-kind timing (spec section 4, release build): each listed worst case (nodes, built cells, read cells, text, per-call
       caps) stops at the limit within 10 s. The PR records the timings and the chosen weights. The visit caps are judged
       by section 4 as amended by T-2813 (one call at its cap within 5 s, timed for each kernel family near the cap in eval);
       YIELD and ODDFYIELD are T-2879's and named in the DEVIATION entry until it merges.
-- [ ] `spend_work` uses `checked_sub`, and every charge is computed with saturating arithmetic. A unit test checks that a
+- [x] `spend_work` uses `checked_sub`, and every charge is computed with saturating arithmetic. A unit test checks that a
       `u64::MAX` charge fails cleanly.
-- [ ] An audit of the text and regex functions (SUBSTITUTE with many matches, TEXTSPLIT, REGEX*, FIND/SEARCH on long text)
+- [x] An audit of the text and regex functions (SUBSTITUTE with many matches, TEXTSPLIT, REGEX*, FIND/SEARCH on long text)
       for work super-linear in their input within one call. Any such function gets a per-call cap charged to the formula
       (SPEC-0024 "Known gaps"). The Outcome lists what was checked.
-- [ ] The criterion calc bench does not slow by more than 2% (PR notes the numbers).
-- [ ] `make check` green; reviewers approve.
+- [x] The criterion calc bench does not slow by more than 2% (PR notes the numbers).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Build-once, read-many shapes (the LET variant, whole-array readers, text elements of LET-bound arrays). They stay
@@ -59,78 +59,28 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
 - Charging array cells read by aggregates (T-2804) and by the other whole-array readers (T-2805).
 - Dense single-range walks (T-2710, T-2711, T-2713).
 
-## Notes from the third run (T-2923 applied)
-Resumed 2026-10-27 after T-2923 merged; merged origin/main. Added the LAMBDA-made charge: `LAMBDA_UNITS` (512) plus
-`NODE_UNITS` per body node (`Node::node_count`) where a LAMBDA is stored (`LambdaDefKind` in node_frames.rs, `fn_lambda`)
-and `NODE_UNITS` per node where `prepare_lambda` clones a body. Re-fit the weights: `NODE_UNITS` 6, `CELL_UNITS` 3 (at 3 a
-node, `SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,r))))))` took 11.4 s; at 6, 7.7 s). Timings to the
-limit (release, idle 4-core container) are in the arrays.md DEVIATION entry: every kind within 0.8-7.9 s, the T-2923
-nested worst cases 0.8-3.3 s (124 s before). Calibration with local, uncommitted instrumentation: `rustsheet-eval check`
-0 regressions, no formula past the limit, heaviest 118,756,588 units (118,751,450 visit units, below 2^27), heaviest
-outside the visit caps 12,582,948 (below 2^26). New tests: the LAMBDA-made charge and the Problem formulas (plus the
-nested T-2923 one) stopping at a lowered limit. The visit weights are unchanged, so the per-call timings of the second run
-stand.
-
-## Notes from the second blocked run
-Unblocked 2026-10-27: T-2923 (#2051) merged its SPEC-0024 amendment. Was blocked on T-2923 (SPEC-0024 amendment), by SPEC-0024 section 4's rule: "no weights meet both constraints". Checked by an
-opus run on 2026-10-27, after main was merged in (release build, idle 4-core container). The run timed each kind to the limit
-at the committed weights (scratch test, not committed). Nested LAMBDA helpers miss the 10 s target by an order of magnitude,
-and the 30 s harness timeout too:
-`SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))))))` takes 124 s
-(460 ns a unit), and `SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,r))))))` 17.9 s. A call costs far
-more than its body's nodes are charged, and more per cell the deeper it is nested (11.8 us under three helpers, 4.4 us under
-two). No node weight bounds that, and section 1 says a call needs no charge of its own. The three Problem formulas also take
-10.5, 10.6 and 11.1 s (7.0, 7.0 and 5.9 s on 2026-10-26). T-2923 has the full table. Unblock when T-2923 merges; then apply
-its charge and weights, re-time, and continue at review. What T-2923 adds to this task (SPEC-0024 sections 1 and 4 as
-amended): charge `LAMBDA_UNITS` per LAMBDA stored (`store_lambda`) plus `NODE_UNITS` per node of each body clone
-(`LambdaDefKind`, and `prepare_lambda` when `call_prepared` patches a fresh body), fit `LAMBDA_UNITS` by time on section 4's three
-nested worst cases, and re-fit `NODE_UNITS`/`CELL_UNITS` with a margin (3 put the Problem formulas at about 7 s here).
-
-Done in this run: merged origin/main (T-2813, T-2814, T-2815 and T-2879 are on main now). Dropped `TODO(T-2813)` and applied
-the amended visit rule in area_budget.rs's comments. Updated the arrays.md DEVIATION calibration with this run's numbers:
-heaviest eval formula 118,754,196 units (gen-m9/3e98b26cf6713e77 Calc!A204, 118,751,450 of them visit units); heaviest
-outside the visit caps 8,388,620 (ironcalc-calc/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx); `rustsheet-eval check` 0 regressions.
-Timed one call at its visit cap for the kernel families section 4 lists: RATE 2.4 s, ODDLPRICE 1.1 s, CHISQ.DIST and
-POISSON.DIST 0.4 s, GAMMA.INV and GAMMA.DIST under 0.1 s, COUNTIF and SUMIFS over 1,024 cells 0.1 and 0.4 s. All are within
-5 s, so no perf task was filed. Not timed: AGGREGATE (a k array is `#ERROR!` up front) and GROUPBY/PIVOTBY (no eval shape
-near the cap).
-
-## Notes from the blocked run
-Unblocked 2026-10-27: it was blocked on SPEC-0024 section 4's calibration rule (the heaviest eval formula spent more than
-2^26 units, and no weight for the per-call caps' charges met both constraints). T-2813 (#2022, merged) amended SPEC-0024: visit caps are charged 1 unit a visit or
-kernel unit, everywhere (`VISIT_UNITS` stays 1, as committed here), and section 4's margin is split: the heaviest eval
-formula stays within 2^26 outside the visit caps' charges and within 2^27 of them (measured 2026-10-27 on this branch with
-main merged in: 8,388,620 and 118,751,450, 0 regressions); each visit cap's worst case, one call at its cap, runs within
-5 s (RATE 2.1 s; YIELD and ODDFYIELD about 15-17 s are T-2879's, not this task's). Resuming: merge origin/main in (this branch predates
-T-2813, T-2814 and T-2815 on main), drop the `TODO(T-2813)` in area_budget.rs, update
-the arrays.md DEVIATION entry's calibration to the amended rules, and continue at review.
-
-What is on the branch (implementation of Design sections 1-5; fmt, clippy, engine tests, hygiene and eval check pass locally; no review yet):
-- `AreaBudget` gains `work`/`work_exceeded`; `Model::spend_work` (`checked_sub`, `#[cold]` error), `spend_value`,
-  `spend_cells`, `spend_visits`, `work_exceeded`; `with_area_budget` makes the formula `#VALUE!` (`TOO_MUCH_WORK`)
-  whenever the budget was exceeded, so `IFERROR` cannot catch it; test-only `formula_work_limit`/`formula_work_spent`.
-- Charges: `NODE_UNITS` (2) per node in `evaluate_node_in_context`, per operator-chain link and for the root `+`; a node's
-  text value (1 unit per 4 bytes) and array value (`CELL_UNITS`, 2 per cell) at the same chokepoint (one definition
-  instead of a charge at each `check_array_*` site, which also covers every array builder); `evaluate_range` per cell;
-  the lift driver's up-front visits and output charges, `lift_text_call`, `lift_references`, ref_lift, GROUPBY/PIVOTBY
-  visits (`VISIT_UNITS`, 1); lifted text results' bytes; REGEX* and regex XLOOKUP/XMATCH compile and search work.
-- `call_prepared` refuses every LAMBDA call once the budget is exceeded, so the helpers' loops do no more work
-  (counter test: a MAKEARRAY makes fewer than 1,000 cell reads at a 1,000-unit limit).
-- Tests: src/test/test_formula_work.rs (units per node/cell/text and chain link, at-limit vs over, uncatchable,
-  dependency budget, early stop, `u64::MAX` charge). The full engine suite passes at the committed weights;
-  `rustsheet-eval check` has 0 regressions at them.
-- DEVIATION entry in arrays.md with the measurements.
-
-Measurements (release build, local instrumentation of `with_area_budget`, not committed):
-- Eval (`rustsheet-eval check`): VISIT_UNITS 6 → 13 gen-m9 regressions; VISIT_UNITS 1 → 0 regressions, max 124,806,376
-  units (gen-m9/0a614cfe974b59c3 Calc!A117; 984cba67bbe6972b Calc!A14 124,783,848; both one lifted call near the 2^27
-  per-call cap); VISIT_UNITS 0 → 0 regressions, max 8,388,620.
-- Time to the limit at the committed weights: SPEC-0024's three formulas 7.0 / 7.0 / 5.9 s; REDUCE 3000 9.5 s; nested
-  MAKEARRAY of scalar bodies 6.2 s; text kinds 0.6-4.2 s; REGEXTEST 0.1 s; MAKEARRAY of lifted RATE about 50 s at
-  VISIT_UNITS 1 (8.5 s at 6), because one RATE element is about 190 ns per kernel unit (T-2814).
-- Text audit: SUBSTITUTE (`str::replace`, KMP on the UTF-16 path), FIND/SEARCH (greedy wildcard matcher, linear), TEXTSPLIT
-  and REGEX* (per-call search budget) are linear in their input within one call; none needs a new per-call cap.
-- Overhead: the repo has no criterion calc bench. Against an origin/main release build, alternating runs of
-  `=SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z)))))` took 4.38/4.55/3.70 s on main and
-  4.06/4.55/3.74 s on the branch (noise; the test suite ran alongside), and a MAKEARRAY of an IF body 0.20-0.21 s on both.
-- Not done: review, PR checks.
+## Outcome
+Merged 2026-10-27 (three runs; blocked twice on SPEC-0024 calibration, unblocked by the T-2813 and T-2923 amendments).
+- `AreaBudget` gains `work`/`work_exceeded`; `Model::spend_work` (`checked_sub`, `#[cold]` error), `spend_node`,
+  `spend_value`, `spend_cells`, `spend_visits`, `spend_lambda_made`, `work_exceeded`. `with_area_budget` makes the formula
+  `#VALUE!` (`TOO_MUCH_WORK`) whenever the budget ran out, so `IFERROR` cannot catch it; the test-only lower limit and the
+  units spent are `AreaBudget.limit`/`last_spent` (`#[cfg(test)]`, no public surface; SPEC-0024 section 2 names them
+  `formula_work_limit`/`formula_work_spent`).
+- Charges and fitted weights: `NODE_UNITS` 6 per node (each operator-chain link one), `CELL_UNITS` 3 per array cell, charged
+  once at the node chokepoint for every array a node gives (instead of at each `check_array_*` site; it covers every
+  builder whose array surfaces as a node value) and in `evaluate_range`; text 1 unit per 4 bytes (SPEC-0024's 64 was
+  provisional); `LAMBDA_UNITS` 512 per LAMBDA stored plus `NODE_UNITS` per node of each body clone (`LambdaDefKind`,
+  `fn_lambda`, `prepare_lambda`; T-2923); visit caps 1 unit a visit (T-2813); REGEX* and regex XLOOKUP/XMATCH compile and
+  search work, and the whole two budgets for a call that ran out of them (found in review). `call_prepared` refuses every
+  LAMBDA call once the budget ran out.
+- Calibration (release, idle 4-core container, local uncommitted instrumentation): `rustsheet-eval check` 0 regressions,
+  no formula past the limit; heaviest 118,756,588 units (118,751,450 visit units, below 2^27); heaviest outside the visit
+  caps 12,582,948 (below 2^26). Every timed kind stops within 0.8-7.9 s (table in the arrays.md DEVIATION entry); the T-2923
+  nested worst case 2.9 s (124 s before); a MAP of REGEXTEST calls that each exhaust their budget 0.7-2.3 s.
+- Text audit: SUBSTITUTE (`str::replace`, KMP on the UTF-16 path), FIND/SEARCH (greedy wildcard matcher), TEXTSPLIT and
+  REGEX* (per-call search budget) are linear in their input within one call; none needs a new per-call cap.
+- Bench: the repo has no criterion calc bench; alternating hand timings of a MAKEARRAY of MAP against origin/main were
+  within noise (4.06-4.55 s vs 3.70-4.55 s).
+- Tests: src/test/test_formula_work.rs (units per node, cell, text, chain link and LAMBDA made; at the limit vs one over;
+  uncatchable; dependency budget; early stop; `u64::MAX` charge; the Problem formulas and the T-2923 one at a lowered
+  limit; an exhausted regex call). Eval delta: none (0 fixed, 0 regressions).

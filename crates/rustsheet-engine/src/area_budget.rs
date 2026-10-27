@@ -56,8 +56,9 @@ pub(crate) const TOO_MANY_SEEN_RANGES: &str = "Too many distinct ranges read";
 /// Most work units one formula evaluation may spend (SPEC-0024): [`NODE_UNITS`] per node
 /// evaluated, [`CELL_UNITS`] per array cell built, one per [`TEXT_BYTES_PER_UNIT`] bytes of each
 /// text value, [`LAMBDA_UNITS`] per LAMBDA value made and [`NODE_UNITS`] per node of each LAMBDA
-/// body cloned, plus the per-call caps' own charges ([`VISIT_UNITS`] per visit). Each LAMBDA call draws on it again, so it bounds the product of a helper's
-/// iterations and the work of each call, which no per-call cap does. Past it the formula is
+/// body cloned, plus the per-call caps' own charges ([`VISIT_UNITS`] per visit). Each LAMBDA
+/// call draws on it again, so it bounds the product of a helper's iterations and the work of
+/// each call, which no per-call cap does. Past it the formula is
 /// `#VALUE!` ([`TOO_MUCH_WORK`]), which cannot be caught (DEVIATION, decision 0014: arrays.md
 /// "One formula evaluation does at most 268,435,456 work units").
 pub(crate) const MAX_FORMULA_WORK: u64 = 1 << 28;

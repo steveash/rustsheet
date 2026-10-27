@@ -281,7 +281,9 @@ impl Model {
         if let Some((error, message)) = check_range_size(&left, &right) {
             return Err(CalcResult::new_error(error, cell, message));
         }
-        // The array is built whole, so it is charged its cells before it is (SPEC-0024).
+        // The array is built whole, so it is charged its cells before it is (SPEC-0024). A caller
+        // may consume it without it becoming a node value; when it does become one, it is charged
+        // again at the node chokepoint, which the calibration (arrays.md) includes.
         let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
         let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
         self.spend_cells(rows, width, cell)?;

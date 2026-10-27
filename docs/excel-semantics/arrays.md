@@ -1382,7 +1382,8 @@ units: 6 per node evaluated (each link of an operator chain is one), 3 per cell 
 is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
-visits, and a REGEX* or regex XLOOKUP/XMATCH call's compile budget (4 bytes a unit) and search work (32 units a unit). Past it the formula is
+visits, and a REGEX* or regex XLOOKUP/XMATCH call's compile budget (4 bytes a unit) and search work (32 units a unit), all of
+both budgets for a call that ran out of them. Past it the formula is
 `#VALUE!` ("Formula needs too much work to calculate"), which `IFERROR` cannot catch (the formula's value is the error,
 whatever the formula made of it); a dependency cell has its own budget, so its `#VALUE!` is an ordinary value to its readers.
 Once a charge fails no further LAMBDA call runs, so the run ends at once. Calibration (release build, idle 4-core container,
@@ -1395,7 +1396,8 @@ LAMBDA(r,c,r))))))` 7.7 s (11.4 s at 3 units a node, hence 6); LAMBDAs made on e
 `SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))))))` 2.9 s (124 s
 before the LAMBDA charge), with the body `r+c+z+r+c+z+r+c+z` 3.3 s, with `LAMBDA(z,z)(1)` 0.8 s; MAPs of
 `LEN(REPT("a",32767))` 0.9 s, of `FIND("b",REPT("a",32767))` 5.1 s, of `LEN(SUBSTITUTE(REPT("a",32767),"a","b"))` 3.0 s, of
-`SEARCH("b",s)` over a LET-bound 32,767-byte `s` 5.8 s; a MAKEARRAY of REGEXTEST 0.8 s, of lifted RATE at its cap 2.9 s (the
+`SEARCH("b",s)` over a LET-bound 32,767-byte `s` 5.8 s; a MAKEARRAY of REGEXTEST 0.8 s, a MAP of REGEXTEST calls that each run out of their own budget (`\G(a|a)*b` and `(.*)\1x` over
+32,767 a's; such a call is charged both whole regex budgets) 2.3 and 0.7 s, of lifted RATE at its cap 2.9 s (the
 second call's charge fails) and of smaller RATE calls 5.2 s, of lifted YIELD 7.6-7.9 s (each call refused by its own cap
 since T-2879, so these are node units). One call at its visit cap (2026-10-27, before T-2923's re-fit, which does not change
 visit units): RATE 2.4 s, ODDLPRICE 1.1 s, CHISQ.DIST and POISSON.DIST 0.4 s, GAMMA.INV and GAMMA.DIST under 0.1 s, COUNTIF

@@ -191,24 +191,32 @@ impl PatternCache {
 
     /// The call's result: `#ERROR!` when its work ran out in any element. What the call spent of
     /// its compile and search budgets is charged to the formula's work budget too, so a LAMBDA
-    /// cannot multiply a call within these budgets past the formula's (SPEC-0024).
+    /// cannot multiply a call within these budgets past the formula's (SPEC-0024). A call that ran
+    /// out is charged both whole budgets: it may have spent them, and a failed charge leaves the
+    /// counters short of what was done.
     fn finish(
         &self,
         model: &mut Model,
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let (compiled, searched) = if self.exhausted {
+            (to_u64(COMPILE_BUDGET), SEARCH_BUDGET)
+        } else {
+            (
+                to_u64(COMPILE_BUDGET.saturating_sub(self.budget)),
+                SEARCH_BUDGET.saturating_sub(self.work),
+            )
+        };
+        let units = (compiled / COMPILE_BYTES_PER_WORK_UNIT)
+            .saturating_add(searched / SEARCH_UNITS_PER_WORK_UNIT);
+        if let Err(error) = model.spend_work(units, cell) {
+            return error;
+        }
         if self.exhausted {
             return too_much_regex_work(cell);
         }
-        let compiled = to_u64(COMPILE_BUDGET.saturating_sub(self.budget));
-        let searched = SEARCH_BUDGET.saturating_sub(self.work);
-        let units = (compiled / COMPILE_BYTES_PER_WORK_UNIT)
-            .saturating_add(searched / SEARCH_UNITS_PER_WORK_UNIT);
-        match model.spend_work(units, cell) {
-            Ok(()) => result,
-            Err(error) => error,
-        }
+        result
     }
 }
 
