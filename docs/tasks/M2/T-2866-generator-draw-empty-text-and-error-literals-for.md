@@ -3,7 +3,7 @@ id: T-2866
 title: "Generator: draw empty text and error literals for number-typed value parameters, so generated suites reach the empty_text and error argument kinds"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -47,3 +47,6 @@ formulas and oracle values; only new batches change.
 ## Out of scope
 - Running and oracle-filling new generated batches (a follow-up research task once this lands).
 - `array`-mode parameters and the domain-specific pools in pools.py.
+
+## Outcome
+`Gen.scalar_text` draws `""` (`EMPTY_TEXT_RATE`, 3%) and an `errors` pool entry (`ERROR_RATE`, 3%) for a number- or bool-typed `value` parameter that has no `hard` domain and missed its edge pool. Documented in synthetic-generator.md §6.5. Seed-pinned tests updated deliberately because the extra rng draw moves every unfocused seed: the `test_unfocused_output_is_unchanged` digest was re-recorded, `emitted()` now uses 60 seeds (PHONETIC fell out of 40), and `test_number_enums_are_number_literals` accepts `""`. No eval/suites/gen-* file changed; a scratch-suite run produced e.g. `INDEX(Data!A3:C7,#DIV/0!,...)`. Eval delta: none (no engine change).
