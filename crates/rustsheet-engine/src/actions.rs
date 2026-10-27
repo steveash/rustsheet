@@ -7,11 +7,11 @@ use crate::expressions::parser::stringify::{
 use crate::expressions::parser::Parser as ExprParser;
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
+use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
 use crate::pivot::PivotLines;
 use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
-use crate::{formula_cells::written_formula, language::get_default_language};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
 /// that links follow their cells when rows or columns are inserted, deleted or
@@ -369,7 +369,9 @@ impl Model {
             .cell(row, column)
             .and_then(|c| c.get_formula())
         {
-            let node = &written_formula(&self.parsed_formulas[sheet as usize][f as usize]).clone();
+            let node = &self.parsed_formulas[sheet as usize][f as usize]
+                .written()
+                .clone();
             let cell_reference = CellReferenceRC {
                 sheet: self.workbook.worksheets[sheet as usize].get_name(),
                 row,
