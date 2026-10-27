@@ -1,0 +1,38 @@
+---
+id: T-2834
+title: "Write a sheet-prefixed workbook name with the workbook's file name as its prefix, and keep its value across a sheet rename"
+milestone: M8
+lane: engine
+status: todo
+priority: P2
+size: S
+tier: opus
+depends_on: []
+---
+
+## Goal
+A formula that reads a workbook-scoped name through a sheet prefix (`=Feb!loc`, no `Feb!loc` defined) shows the
+workbook's file name as the prefix in FORMULATEXT, as Excel does, and keeps its value when that sheet is renamed.
+
+## Context
+T-1701 probed it (excel-graph, 2026-10-26; docs/excel-semantics/references.md "A sheet-qualified workbook name is
+rewritten to the workbook's file name"). Excel rewrites `Feb!loc` to `<file>.xlsx!loc` on load, the file name quoted as
+a sheet name would be (`'53aa…xlsx'!loc` for a name starting with a digit, `ebfe…xlsx!loc` otherwise); values are
+unchanged (5, `SUM` 5, `+1` 6, ISREF TRUE) and a rename of Feb leaves the formula alone.
+Ours: FORMULATEXT keeps `=Feb!loc` (6 cells), and after renaming Feb to Mar both values are `#NAME?` (Excel 5):
+the rename keeps the `Feb!` prefix of a scope-`None` name (`rename_defined_name_sheet`, expressions/utils/mod.rs) and
+the re-parse finds no sheet Feb (`prefixed_name_operand`, parser/operands.rs).
+Failing cells (eval/baseline/probes.txt): probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename Calc!B1:B3,
+probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix Calc!A1:B2.
+Design points: the parser needs the workbook file name (`Workbook::name` + ".xlsx", as `workbook_file_name` in
+functions/information/mod.rs) and must read `<file>.xlsx!loc` back as the workbook name; the xlsx writer must not emit a
+prefix Excel cannot read (probe what Excel stores; `[0]!loc` is a guess); the quoting rule rests on two file names, so
+probe a file name with a space and one with only letters and digits first; an unnamed workbook is unprobed.
+
+## Acceptance criteria
+- [ ] The 7 cells above leave eval/baseline/probes.txt (`make eval-baseline`), no regressions.
+- [ ] An xlsx round trip of such a formula keeps its value (unit test); references.md says ours matches.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- A sheet-scoped name read through its own sheet's prefix (follows a rename since T-1693).

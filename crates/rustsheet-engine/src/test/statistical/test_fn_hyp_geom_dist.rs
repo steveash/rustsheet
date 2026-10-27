@@ -106,3 +106,29 @@ fn a_negative_or_huge_count_is_num() {
         );
     }
 }
+
+#[test]
+fn a_sample_below_the_possible_range_is_zero() {
+    let mut model = new_empty_model();
+    // gen-m9 c468f5046aadfbbc A85 and probes/t2436 35e8168aae2b00f8: the pmf and the cdf are 0
+    // below number_sample + population_s - number_pop; the other domain errors stay #NUM!.
+    let cells = [
+        ("=HYPGEOMDIST(3,5,5,6)", "0"),
+        ("=HYPGEOMDIST(2,5,10,11)", "0"),
+        ("=HYPGEOM.DIST(1,2,7,7,FALSE)", "0"),
+        ("=HYPGEOM.DIST(1,3,6,7,TRUE)", "0"),
+        ("=HYPGEOMDIST(1,8,3,7)", "#NUM!"),
+        ("=HYPGEOMDIST(1,3,8,7)", "#NUM!"),
+    ];
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, value)) in cells.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *value,
+            "{formula}"
+        );
+    }
+}

@@ -268,6 +268,7 @@ mod tests {
             oracle: None,
             v15: None,
             v15_reason: None,
+            params: Vec::new(),
         }
     }
 
@@ -303,6 +304,7 @@ mod tests {
             cells,
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            arguments: Vec::new(),
         }
     }
 

@@ -498,8 +498,9 @@ impl Model {
         })
     }
 
-    /// The T.INV kernel; `two_tailed` for T.INV.2T and TINV, which take p in (0, 1] and return
-    /// the magnitude with `P(|T| > t) = p`.
+    /// The T.INV kernel; `two_tailed` for T.INV.2T and TINV, which take p in (0, 2) and return
+    /// the magnitude with `P(|T| > t) = p` for p up to 1, and the negative quantile of 2 - p
+    /// above it.
     fn t_inv_of(
         &self,
         values: &[CalcResult],
@@ -518,7 +519,7 @@ impl Model {
             return Err(div_error(cell));
         }
         let p_out = if two_tailed {
-            p <= 0.0 || p > 1.0
+            p <= 0.0 || p >= 2.0
         } else {
             p <= 0.0 || p >= 1.0
         };
@@ -526,7 +527,12 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
-        let x = if two_tailed {
+        let x = if two_tailed && p > 1.0 {
+            // T.INV.2T(p) = T.INV(1 - p/2), the negative quantile, for p in (1, 2) (m9-t-edges A2
+            // `T.INV.2T(1.5,5)`, A43 `T.INV.2T(1.5,10)`). 2 - p is exact on [1, 2] (Sterbenz), and
+            // the upper tail of (2 - p) / 2 reaches the tiny-p path for p near 2.
+            -t_upper_quantile(&dist, df, (2.0 - p) / 2.0).abs()
+        } else if two_tailed {
             // Two-sided: F(x) = 1 - p/2
             t_upper_quantile(&dist, df, p / 2.0).abs()
         } else {

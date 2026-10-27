@@ -28,7 +28,8 @@ pub(crate) enum ElementCost {
     /// One visit: ROW, COLUMN, AREAS, CELL, ISFORMULA, N and T read no cells or one.
     Unit,
     /// The cells of the element's references inside the used area, times this many walks:
-    /// SUBTOTAL, COUNTIF, SUMIF and COUNTBLANK walk them once, SUMIFS once per criteria pair.
+    /// SUBTOTAL, COUNTIF, SUMIF, AVERAGEIF and COUNTBLANK walk them once, SUMIFS, COUNTIFS and
+    /// MAXIFS once per criteria pair.
     Cells(u64),
 }
 
@@ -46,10 +47,14 @@ impl Function {
     /// where they take a reference (SPEC-0014 rule 6), for a call of `count` arguments.
     /// `SUBTOTAL(9,OFFSET(A1,{0;1},0))` spills 1, 100; `ROW(OFFSET(A1,{0;1},0))` 1, 2
     /// (probes/reference-lift-consumers E57-E78, E97, E109, E165, E169, E185; -b1c E85-E93;
-    /// -b1d E97; -b2 E125-E133, E177, E193, E197). COUNTIFS and the other *IFS stay the value
-    /// view until T-2065 probes them.
+    /// -b1d E97; -b2 E125-E133, E177, E193, E197). COUNTIFS, AVERAGEIF and MAXIFS too:
+    /// `COUNTIFS(OFFSET(A1,{0;1},0),">0")` spills 1, 1, `AVERAGEIF(OFFSET(A1,0,0,{1;2}),">0")`
+    /// 1, 50.5 (probes/t2065-lift-countifs, -averageif, -maxifs). AVERAGEIFS and MINIFS are
+    /// unprobed and stay the value view.
     pub(crate) fn per_reference_element(&self, count: usize) -> Option<PerElement> {
         let first: fn(usize) -> bool = |index| index == 0;
+        // One walk per criteria pair (SUMIFS, COUNTIFS, MAXIFS).
+        let per_pair = ElementCost::Cells(u64::try_from(count / 2).unwrap_or(u64::MAX).max(1));
         let (takes_reference, cost): (fn(usize) -> bool, ElementCost) = match self {
             Function::Row
             | Function::Column
@@ -59,14 +64,13 @@ impl Function {
             | Function::T => (first, ElementCost::Unit),
             Function::Cell => (|index| index == 1, ElementCost::Unit),
             Function::Countif | Function::Countblank => (first, ElementCost::Cells(1)),
+            // Every criteria range.
+            Function::Countifs => (|index| index % 2 == 0, per_pair),
             Function::Subtotal => (|index| index > 0, ElementCost::Cells(1)),
             // The criteria range and the sum range.
-            Function::Sumif => (|index| index != 1, ElementCost::Cells(1)),
-            // The sum range and every criteria range.
-            Function::Sumifs => (
-                |index| index == 0 || index % 2 == 1,
-                ElementCost::Cells(u64::try_from(count / 2).unwrap_or(u64::MAX).max(1)),
-            ),
+            Function::Sumif | Function::Averageif => (|index| index != 1, ElementCost::Cells(1)),
+            // The sum (max) range and every criteria range.
+            Function::Sumifs | Function::Maxifs => (|index| index == 0 || index % 2 == 1, per_pair),
             _ => return None,
         };
         Some(PerElement {

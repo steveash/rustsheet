@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Control for sheet-ops-rename-workbook-name-via-prefix: a workbook-scoped name read through a sheet prefix, no rename. (T-1701)",
+  "tags": [
+    "M8",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Feb!loc",
+        "A2": "=SUM(Feb!loc)",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)",
+        "A3": "=Feb!loc+1",
+        "B3": "=FORMULATEXT(A3)",
+        "A4": "=ISREF(Feb!loc)"
+      }
+    },
+    {
+      "name": "Feb",
+      "cells": {
+        "A1": 5,
+        "A2": 7
+      }
+    }
+  ],
+  "names": {
+    "loc": "=Feb!$A$1"
+  }
+}

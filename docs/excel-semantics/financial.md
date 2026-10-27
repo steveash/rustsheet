@@ -933,9 +933,24 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   1899-12-31). `ACCRINT(DATE(1900,4,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 404512.3611111111.
 - A regular period that starts before 1900 does not matter when the settlement's period is later:
   `ACCRINT(33448,1,37714,1E+300,0.3,1,2,TRUE)` is a number (gen-m9 3b7990bd4e3307ba Calc!A317).
-  On basis 1 it does, or something else near serial 1 does: `ACCRINT(33853,1.005,37554,1,9888,1,1)` (annual, calc_method
-  TRUE) is `#NUM!` (gen-m9 932b33b1ef8b7608 Calc!A118, excel-graph, 2026-10-26), ours 100198.77008758142. Which bases and
-  first_interest values cut is unprobed (T-2562).
+  On basis 1 it does: basis 1 reads the length of first_interest's regular period, so that period must start on
+  1900-01-01 or later however late the settlement is. `ACCRINT(33853,FI,37554,1,9888,freq,1)` is `#NUM!` for FI 1, 1.005
+  and 2 at frequencies 1, 2 and 4, and a number for FI 367 (regular period from 1900-01-01 when annual); bases 0, 2, 3
+  and 4 give numbers for all of them (probes/accrint-calendar-start-1900 A1:A60; gen-m9 932b33b1ef8b7608 Calc!A118 is
+  FI 1.005, annual, basis 1; T-2562).
+- A first_interest of serial 59 (1900-02-28) or 60 (Excel's 1900-02-29) with an issue of 1, 30 or 45 is `#NUM!`,
+  semiannual and quarterly, on bases 0 and 1, settlement before or after it: the regular period starts in 1899
+  (probes/accrint-calendar-start-1900 B1:B32). Those cells do not show whether the end-of-month rule reads serial 59 as
+  February's last day: the calendar-start cut answers first (unprobed, T-2837). The basis-1 cut is pinned deep in 1899
+  and at 1900-01-01 only; a regular period starting exactly on serial 0 is unprobed (T-2837).
+- In a 1904 workbook the cut moves to 1904-01-01: with first_interest 1904-03-31 or 1904-06-30 (quarterly), an issue of
+  1904-01-01, 1904-01-02, serial 0 or serial 1 is `#NUM!` for settlements 1904-02-15 and 1950-06-30, calc_method TRUE or
+  FALSE, and `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` is `#NUM!` on every basis,
+  semiannual and quarterly. An issue of 1904-04-01 computes (2312.361111111111 for first_interest 1904-03-31, calc_method
+  TRUE, or 1904-06-30), except with first_interest 1904-03-31 and calc_method FALSE (regular period from 1903-12-31),
+  which is `#NUM!` (a 50-cell probe filled with excel-graph on 2026-10-26, kept out of the suite until T-2835 lands it
+  with its fix, since its 43 off cells would pass the visible-parity lock). Ours applies the 1900 cut there (T-2835, after
+  T-2337).
 - The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
   counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
   0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
@@ -946,10 +961,11 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
 - Excel for the web returned 0 for `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`
   (fin-coupon-walk-bounds-b A9) on 2026-10-17 and `#NUM!` on 2026-10-24, in a re-fill of -b and in
   fin-accrint-1900-calendar D1; the oracle now records `#NUM!`.
-Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24).
+Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24);
+accrint-calendar-start-1900 (92 cells) (excel-graph, 2026-10-26); the 1904 probe is T-2835's.
 Status: VERIFIED (excel-graph)
 Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
-Tasks: T-2124, T-2562
+Tasks: T-2124, T-2562, T-2835
 
 ## COUPNUM in a 1904 workbook
 Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative
@@ -1493,7 +1509,8 @@ exp(y·ln x)"), not libm `pow`. `PRICE(DATE(2020,3,1),DATE(2030,3,1),0.06,0.07,1
 gives ...889), `PRICE(1,43831,0.05,0.06,100,2)` is 83.34716628375435 (240 coupons; libm ...423) and
 `ODDFPRICE(39448,43831,39083,39630,0.08,0.09,100,2,0)` is 92.4077632093273 (libm 92.40776320932721).
 Integer exponents (settlement on a coupon date) and the fractional ones of a mid-period settlement and of
-ODDFPRICE's offsets all come out bit-exact with `^`: every PRICE and ODDFPRICE cell in eval/ now passes.
+ODDFPRICE's offsets all come out bit-exact with `^`: every PRICE and ODDFPRICE cell in eval/ then passed, except
+where both the coupon rate and the yield are far above 1 (the observation below).
 Evidence: ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!H2-H6, H8-H11, H28, ODDFPRICE_ODDFYIELD!J5, J8, J9,
 J11, J23, J25, J27, J29-J33, J44, J45 and ODDFPRICE_SHORT!J9, J10, J13 (Excel-cached); probes/fin-coupon-walk-bounds-c
 C10, C11, G10, G11, J10, J11, fin-argument-modes H189, H251, fin-bond-negative-basis E2, E9, G2, G9,
@@ -1511,8 +1528,34 @@ PRICE kernel is not what keeps the YIELD fits (T-1592, T-2007) from Excel's bits
 Ours: `discount_growth` in functions/financial/financial_bonds.rs (`arithmetic::power`, libm where `^` is an error);
 DURATION and MDURATION use it too (T-1975), and so does YIELD's Newton (T-1592); ODDFYIELD's `solve_yield` prices with
 `f64::powf`.
+Observation (T-2732): where both the coupon rate and the yield are far above 1, PRICE, DURATION and MDURATION leave
+Excel's bits, and in 62 cells its 15 digits. probes/bond-extreme-coupon-yield (579 cells, excel-graph) crosses coupon
+rates 10..1E+300 with yields 1..44270 at frequency 1, 2 and 4, basis 0 and 1, mid-period (DSC = 26 days) and on a
+coupon date, plus short stubs (43830-45293 at frequency 4, basis 1: DSC/E = 2/92; 39697-44449 at frequency 2,
+basis 0: 4/180). The engine passes 165 cells, 319 are within 4 ulp and 95 beyond, 62 of them visibly off: PRICE 43,
+DURATION 8, MDURATION 11. The pieces pass: COUPDAYSNC, COUPDAYS, COUPNUM (Parts!A1-A3), `(1+yld/2)^(DSC/E)` and
+`(1+yld/2)^(DSC/E+N-1)` with Excel's `^` (Parts!C1-D6), and the redemption term alone at rate 0 (Parts!B1-B6), so
+the gap is in how the coupon flows are summed and combined: the coupon term alone (redemption 1E-300, Parts!E1-J6)
+already misses, 5 cells visibly (Parts!F1, F2, F5, F6, G2), with the same digits as PRICE at redemption 100. Against
+a 50-digit mpmath value of the documented sums (DSC/E, N and A/E from the coupon dates; q = 1+yld/f, c = 100·rate/f;
+price = sum over k = 1..N of c/q^(k-1+DSC/E), plus redemption/q^(N-1+DSC/E), minus c·A/E; DURATION = the Macaulay sum
+of the same flows ÷ f; MDURATION = DURATION/q; each cell's distance from it in ulps of the exact value):
+- Short stubs: Excel is close to correctly rounded and the engine is not. All 34 failing DURATION and MDURATION
+  cells are within 3.1 ulp in Excel and 5 to 30 ulp off in the engine; the 16 visibly-off PRICE cells are 0.6 to 23
+  ulp off in Excel (median 6) and 16 to 55 in the engine (median 33). All 33 visibly-off short-stub cells are closer
+  in Excel, including gen-m9 a91bad4e84f49739 A142's twin `PRICE(43830,45293,100,278,50,4,1)` (Calc!A182: Excel +15.8 ulp,
+  ours -16.2) and 30e20ba3302fea8b A90's `MDURATION(39697,44449,EDATE(58318,22),44270,2,0)` (Calc!C183: Excel
+  -0.8 ulp, ours -17.8).
+- The main grid (DSC = 26 days): neither is correctly rounded. On the 29 visibly-off cells (27 of them PRICE, 5 of
+  those on Parts) Excel is 0 to 32 ulp off (median 5) and the engine 0.6 to 23 (median 9); Excel is closer in 16, the
+  engine in 13. Excel's own error reaches
+  32 ulp (Calc!A20 `PRICE(38136,44737,1E+10,7,100,1,0)`: Excel 55709579072.88489, -32 ulp; ours ...88501, -16).
+  gen-m9 0a957119475760c5 A279's `PRICE(38136,44737,1E+300,7,100,2)` (Calc!A181) is Excel +0.5 ulp, ours +8.5 (
+against the double that 1E+300 parses to).
+So a more accurate kernel would fix the short-stub DURATION and MDURATION cells but not the grid's PRICE cells,
+where only Excel's own operation order gives its digits: T-2733 keeps the `visible` stage.
 Status: VERIFIED (excel-graph)
-Tasks: T-2207
+Tasks: T-2207, T-2732, T-2733
 
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient

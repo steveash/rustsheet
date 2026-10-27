@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A workbook-scoped name read through a sheet prefix, then that sheet is renamed: FORMULATEXT shows whether the prefix follows. (T-1701)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Feb!loc",
+        "A2": "=SUM(Feb!loc)",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)"
+      }
+    },
+    {
+      "name": "Feb",
+      "cells": {
+        "A1": 5,
+        "A2": 7
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Feb",
+      "to": "Mar"
+    }
+  ],
+  "names": {
+    "loc": "=Feb!$A$1"
+  }
+}
