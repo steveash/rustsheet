@@ -1466,7 +1466,7 @@ its charge like ROUND", T-2826). Main's rounding scaled the value by 1E13 first 
 Excel does not round each period's charge before subtracting it from what is left: a walk that does gives -c A1-A4
 but probes/fin-amor-period-bound B4 and B5 become 1000 and 999 (Excel 0), B11 41042641306981 (Excel
 41042641307062) and fin-amordegrc A7 155 (Excel 154) (T-1895, a scratch run). With Excel's final rounding, main's walk
-gives -c A1, A3 and A4 past 2^20 periods (the closed form does not), but not A2 (main ...030.504 cuts to ...030.5 and
+gives -c A1, A3 and A4 past 2^20 periods (the closed form, which took over there before T-2918, does not), but not A2 (main ...030.504 cuts to ...030.5 and
 rounds to ...031) nor A5; Excel's own walk, which subtracts in x87 extended precision, gives all five ("AMORDEGRC rounds
 its charge like ROUND", T-2849).
 
