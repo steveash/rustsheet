@@ -62,7 +62,7 @@ in the Outcome. Bit-level criteria still unmet move to a follow-up task without 
 Blocked because: three gated ulp regressions need decision 0083's standing allowance
 (`rustsheet-eval update-baseline --allow-regressions`), which this run's permission mode refused to execute.
 
-The branch builds on T-2505 (#1991, merged in locally; merge `origin/main` once #1991 lands). It adds
+The branch builds on T-2505 (#1991, merged into `main` and into this branch). It adds
 `bratio/mod.rs` `l140_bup_bpser` and `bup` (Excel's density `beta_density_small_shape` of Beta(b0', a0) at y0 times
 x·y as the prefactor, the w4 term arithmetic, TOMS's k and early break) and sends `Branch::L140BupBpser` through them
 for BETA.DIST's cdf.
