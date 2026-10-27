@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::{clone_units, too_much_work},
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{
@@ -435,6 +436,12 @@ impl Model {
         cell: CellReferenceIndex,
         bind: impl FnMut(&mut Self, usize) -> Binding,
     ) -> RefArg {
+        // Past the formula's work budget no LAMBDA runs, so a helper's loop over its remaining
+        // elements does no work and the run ends at once; the formula's value is the budget's
+        // error whatever the helper returns (SPEC-0024 section 3, `with_area_budget`).
+        if self.work_exceeded() {
+            return RefArg::Value(too_much_work(cell));
+        }
         let Some(stack_base) = self.lambda_stack_base() else {
             return RefArg::Value(CalcResult::new_error(
                 Error::NUM,
@@ -550,22 +557,28 @@ impl Model {
         provided: usize,
         cell: CellReferenceIndex,
     ) -> PreparedLambda {
-        let definition =
-            self.lambda_definition(lambda_result, provided, cell)
-                .map(|(parameters, mut body)| {
-                    let ids: Vec<usize> = parameters
-                        .iter()
-                        .map(|param| {
-                            let raw_id = self.get_next_variable_id();
-                            assign_variable_ids(&mut body, &param.name, raw_id as u32);
-                            raw_id
-                        })
-                        .collect();
-                    // After every id is patched in: a read is found by its id.
-                    let once = read_once(&body, &ids);
-                    let ids = ids.into_iter().zip(once).collect();
-                    (ids, body)
-                });
+        // The body is cloned for each fresh patch, which a body making a LAMBDA that reads its
+        // parameters needs on every call (SPEC-0024 section 1, "LAMBDA values made").
+        let definition = self
+            .lambda_definition(lambda_result, provided, cell)
+            .and_then(|definition| {
+                self.spend_work(clone_units(&definition.1), cell)
+                    .map(|()| definition)
+            })
+            .map(|(parameters, mut body)| {
+                let ids: Vec<usize> = parameters
+                    .iter()
+                    .map(|param| {
+                        let raw_id = self.get_next_variable_id();
+                        assign_variable_ids(&mut body, &param.name, raw_id as u32);
+                        raw_id
+                    })
+                    .collect();
+                // After every id is patched in: a read is found by its id.
+                let once = read_once(&body, &ids);
+                let ids = ids.into_iter().zip(once).collect();
+                (ids, body)
+            });
         PreparedLambda {
             definition,
             lambda_mark: self.last_lambda_id,
@@ -639,6 +652,9 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let last = args.len() - 1;
+        if let Err(error) = self.spend_lambda_made(&args[last], cell) {
+            return error;
+        }
         let body = args[last].clone();
         let parameters: Vec<NamedVariable> = args[..last]
             .iter()

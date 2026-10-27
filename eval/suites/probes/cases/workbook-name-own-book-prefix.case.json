@@ -1,0 +1,46 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2834: a workbook-scoped name stored in the file with the own-book prefix `[0]!loc` (what the xlsx writer could emit for `<file>.xlsx!loc`), beside one where the formula's sheet has its own `loc`, and FORMULATEXT of a workbook name read through the formula's own sheet.",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=[0]!loc",
+        "A2": "=SUM([0]!loc)",
+        "A3": "=[0]!loc+1",
+        "A4": "=ISREF([0]!loc)",
+        "A5": "=Calc!loc",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)",
+        "B3": "=FORMULATEXT(A3)",
+        "B5": "=FORMULATEXT(A5)"
+      }
+    },
+    {
+      "name": "Local",
+      "cells": {
+        "A1": "=[0]!loc",
+        "A2": "=loc",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)"
+      }
+    },
+    {
+      "name": "Feb",
+      "cells": {
+        "A1": 5,
+        "A2": 7
+      }
+    }
+  ],
+  "names": {
+    "loc": "=Feb!$A$1",
+    "Local!loc": "=Feb!$A$2"
+  },
+  "expected": {}
+}
