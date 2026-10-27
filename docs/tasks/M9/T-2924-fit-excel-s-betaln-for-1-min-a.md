@@ -49,6 +49,11 @@ scratch, not committed):
   Excel's GAMMALN cell values used in a sum score 15-29. Next: Stirling-type pieces such as (a + b - 0.5)·LN(a + b), with
   Excel's LN and with the cancellation left to the sum. Also algdiv's d·alnrel(a/b) and a·(LN b - 1) taken from
   x87-stored partial sums, and an inline lnGamma inside betaln that differs from the GAMMALN worksheet function.
+- Stirling forms with a left unreduced score worse: lnGamma(a) + (b - 0.5)LN b - (a + b - 0.5)LN(a + b) + a + (D(b) -
+  D(a + b)), with D the exact Stirling remainder, scores 12-22 in four orders. lnGamma(a) + TOMS algdiv(a, b) pieces
+  (w - u - v, using Excel's LN) scores 34-35. Excel's misses are modest: |k| = 0 at 45 cells, 1 at about 45, 2 at 8 and 3 at 1,
+  so it looks like a pre-rounding error of about 1 ulp. A term of magnitude 20-40 rounded once fits that, and a form
+  with cancellation across several such terms does not.
 
 ## Out of scope
 - Porting the form (its own task), the shapes of 1/2 and 1 (the remainder model), min(a, b) < 1.
