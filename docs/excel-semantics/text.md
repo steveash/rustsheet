@@ -1120,3 +1120,13 @@ Evidence: probes/t2581-textsplit-textbefore A1-A29 (excel-graph, 2026-10-24). Th
 Ours: since T-2581 (`split_grid`, `textsplit_element` in functions/text/textsplit.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2581
+
+## ARRAYTOTEXT error before format
+An error value as ARRAYTOTEXT's first argument is the result before the format is looked at: `ARRAYTOTEXT(NA(),2)`
+is `#N/A`, `ARRAYTOTEXT(1/0,2)` `#DIV/0!`, `ARRAYTOTEXT(SINH(710),2)` `#NUM!`, `ARRAYTOTEXT(NA(),"x")` `#N/A`, and a
+reference to an error cell (also `B1:B1`) the same. With two errors the first argument's wins (`ARRAYTOTEXT(NA(),1/0)`
+`#N/A`, `ARRAYTOTEXT(1/0,NA())` `#DIV/0!`); a valid first argument with an error format gives the format's error
+(`ARRAYTOTEXT(1,NA())` `#N/A`). An error inside an array is not the argument's error: `ARRAYTOTEXT({1,#N/A},2)` is
+`#VALUE!`, as `ARRAYTOTEXT(1,2)` and `ARRAYTOTEXT(1,"x")` are. VERIFIED (probes/arraytotext-error-vs-format, excel-graph
+2026-10-27, T-2250). VALUETOTEXT differs: `VALUETOTEXT(NA(),2)` is `#VALUE!`, not the argument's error (matches today's
+engine, unprobed beyond that cell).
