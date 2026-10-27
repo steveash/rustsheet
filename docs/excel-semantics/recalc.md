@@ -27,15 +27,17 @@ left. A cell that reads a formula cell not yet calculated is abandoned, moved to
 precedent, and re-run from its start at its new place; the cells in between run first. A sheet moved after loading keeps its load position, and `calcChain.xml` does not change
 the order on a full-calc load. Formulas entered or edited in a live session leave this order and
 are not reproducible from the file. The order is visible only through WEEKNUM's stale return_type
-state, the one calc-order-dependent value known so far (dates.md, "WEEKNUM's stale return_type
-state"); iterative calculation sweeps a cycle in forward row-major order instead (below).
+state (dates.md, "WEEKNUM's stale return_type state") and AMORDEGRC's left-over value below period 1
+(financial.md, "AMORDEGRC below period 1", which follows the same order: probes/amordegrc-fraction-state-n,
+-o, -p, -q), the calc-order-dependent values known so far; iterative calculation sweeps a cycle in forward row-major order instead (below).
 Evidence: probes/weeknum-stale-grid, -order-row, -order-column, -order-column-40, -order-2x3,
 -order-3x2, -sheet-order, -sheet-moved, -dependency, -precedent-between and -precedent-restart (excel-graph, 2026-10-19, T-1484);
 calcChain.xml and session edits: docs/research/t1484-weeknum-calc-order-2026-10-19.md.
 Ours: `Model::run_pass` evaluates spill anchors first, then every cell in forward storage order
-(sheet, row, column ascending). SPEC-0017 reproduces Excel's order where WEEKNUM's state needs it.
+(sheet, row, column ascending). SPEC-0017 reproduces Excel's order where WEEKNUM's or AMORDEGRC's
+state needs it (`OrderState`, decision 0131).
 Status: VERIFIED (excel-graph)
-Tasks: T-1484, T-2068, T-2069, T-2070
+Tasks: T-1484, T-2068, T-2069, T-2070, T-2825
 
 ## A circular reference without iteration keeps the cells' values from before the recalculation
 Rule: with iterative calculation off, every cell of a cycle, and every cell whose evaluation reads one, keeps the value

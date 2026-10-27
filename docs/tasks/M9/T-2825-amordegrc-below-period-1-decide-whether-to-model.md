@@ -3,7 +3,7 @@ id: T-2825
 title: "AMORDEGRC below period 1: decide whether to model Excel's left-over value (calculation-order state)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -31,11 +31,22 @@ Cells (known failures): probes/amordegrc-fractional-period A1-A11, A23-A26; prob
 probes/fin-amor-period-bound B17; probes/amordegrc-fraction-alone-f A1; gen-m9/d912671baa1364aa Calc!A76.
 
 ## Acceptance criteria
-- [ ] A decision record (`make new-decision`) choosing between modelling the state and keeping the cells as known failures,
+- [x] A decision record (`make new-decision`) choosing between modelling the state and keeping the cells as known failures,
   citing the probes; financial.md "AMORDEGRC below period 1" updated to match.
-- [ ] If modelled: the cells listed under Context pass with no new failures; otherwise their baseline lines stay, named in
+- [x] If modelled: the cells listed under Context pass with no new failures; otherwise their baseline lines stay, named in
   the entry.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The AMORDEGRC walk's arithmetic past 2^20 periods (T-2826).
+
+## Outcome
+Modelled (decision 0131). Twenty-one new probes (probes/amordegrc-fraction-state-h to -ab, excel-graph 2026-10-27) show
+the left-over value follows the fresh-load order SPEC-0017 already reproduces for WEEKNUM (last sheet first, bottom
+row first, right to left, a precedent first) and pin down what each call leaves: an AMORDEGRC from period 1 its
+value, an AMORLINC its rounded first-period charge; a period-0 AMORDEGRC, errors, periods past the life and other
+functions keep it, and lifted fractional elements are 0. WEEKNUM's `weeknum_start` became one field of
+`OrderState` (evaluation.rs) next to `amor_left_over`, and `weeknum_read` became `order_state_read`;
+`Model::amortization_call` (amortization.rs) sets and reads it. financial.md "AMORDEGRC below period 1", recalc.md and
+SPEC-0017 updated. Eval: probes known failures 3,021 -> 2,998 (the 23 listed cells fixed, every new probe cell passes,
+0 regressions); gen-m9 d912671baa1364aa Calc!A76 stays a known failure, unexplained by the table (financial.md).
