@@ -37,11 +37,18 @@ without git.
 
 ## Outcome
 crates/rustsheet-engine/build.rs asks git for its real directories (`git rev-parse
---path-format=absolute --git-dir --git-common-dir`) and watches only paths that exist: this
-worktree's HEAD, the branch's loose ref (or `refs/heads` while the branch is packed),
-`packed-refs` and `refs/tags`, plus `build.rs`. Without git it watches only `build.rs`.
-Measured locally: a second `cargo build --release -p rustsheet_eval` with nothing changed
-compiles nothing (0.1 s; before, it re-ran the script and rebuilt the engine and everything
-above it, about 2 min on a CI runner). A commit re-runs the script and `GIT_VERSION` follows
-`git describe` (`d5c06299d`). In a `git worktree` (detached HEAD, `.git` a file) it watches
-`.git/worktrees/<name>/HEAD` and a second build compiles nothing.
+--path-format=absolute --git-dir --git-common-dir`, git 2.31+) and watches only paths that exist:
+this worktree's `HEAD` and reflog `logs/HEAD` (with reflogs off: the nearest existing directory
+on the way to the branch's loose ref, since packing removes the empty directories of a slashed
+name), `packed-refs`, `refs/tags`, and `build.rs`. Without git, or with an older git, it watches
+only `build.rs` (GIT_VERSION may then go stale, but nothing rebuilds on every call).
+Measured: a second `cargo build --release -p rustsheet_eval` with nothing changed compiles
+nothing (0.1 s; before, every cargo call re-ran the script and rebuilt the engine, xlsx,
+rustsheet and eval crates, about 2 min release on a CI runner). Creating a branch or fetching
+rebuilds nothing; a commit re-runs the script once and GIT_VERSION follows `git describe`, in a
+clone, in a `git worktree` (detached HEAD, `.git` a file) and on a packed `agent/<lane>/...`
+branch (the case review found).
+Known, accepted rebuilds (each far rarer than the old every-call rebuild): switching branches at
+the same commit rewrites HEAD, and `fetch --prune`, `pack-refs` or `gc` rewrite `packed-refs`
+(it also holds remote refs); cargo recompiles the crate whenever the script re-runs. The `-dirty`
+suffix is only as fresh as the last HEAD or ref change, since the work tree is not watched.

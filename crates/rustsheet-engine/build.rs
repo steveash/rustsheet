@@ -11,8 +11,8 @@ fn run_git(args: &[&str]) -> Option<String> {
     Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
-/// The files whose change can change `git describe`: this worktree's HEAD, the branch ref it
-/// points at, `packed-refs` and the tags. Cargo resolves a relative `rerun-if-changed` path
+/// The files whose change can change `git describe`: this worktree's HEAD and reflog (or, with
+/// reflogs off, the branch ref HEAD points at), `packed-refs` and the tags. Cargo resolves a relative `rerun-if-changed` path
 /// against the crate directory, where `.git` does not exist, and a missing watched file always
 /// counts as changed, so the script re-ran on every cargo call (T-2755). Ask git for its real
 /// directories (`.git` is a file in a worktree) and watch only paths that exist.
@@ -43,7 +43,12 @@ fn watched_git_paths() -> Vec<PathBuf> {
         common_dir.join("packed-refs"),
         common_dir.join("refs").join("tags"),
     ];
-    if let Some(branch) = run_git(&["symbolic-ref", "-q", "HEAD"]) {
+    // This worktree's reflog gains a line on every commit, reset, rebase and checkout here, and
+    // not when other branches move, so it is the cheapest exact signal. Reflogs can be off.
+    let reflog = git_dir.join("logs").join("HEAD");
+    if reflog.exists() {
+        paths.push(reflog);
+    } else if let Some(branch) = run_git(&["symbolic-ref", "-q", "HEAD"]) {
         // A packed branch has no loose ref file until its next commit writes one, and packing
         // also removes the empty directories of a slashed name (`agent/<lane>/T-...`): watch the
         // nearest existing directory on the way to that file, whose entries the commit changes.
@@ -65,7 +70,8 @@ fn main() {
         println!("cargo:rerun-if-changed={}", path.display());
     }
 
-    // The work tree is not watched, so `-dirty` follows the last HEAD or ref change, as before.
+    // The work tree is not watched (that would rebuild on every edit), so `-dirty` is only as
+    // fresh as the last HEAD or ref change; it was exact while the script re-ran on every call.
     // Prefer exact tag
     let version = run_git(&["describe", "--tags", "--exact-match"])
         .or_else(|| run_git(&["describe", "--tags", "--dirty", "--always"]))
