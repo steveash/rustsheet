@@ -3,7 +3,7 @@ id: T-2434
 title: "GAUSS of a tiny argument is x times phi(0), not 0 (gen-m9, 8 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
