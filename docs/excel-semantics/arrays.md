@@ -1379,7 +1379,8 @@ Rule: Excel has no known per-formula work limit; a formula whose LAMBDA helpers 
 Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
 Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
 units: 6 per node evaluated (each link of an operator chain is one), 3 per cell of each array value a node gives or a range
-is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results), 512 per LAMBDA value
+is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
+`&` operator makes over an array, T-2806), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
 visits, and a REGEX* or regex XLOOKUP/XMATCH call's compile budget (4 bytes a unit) and search work (32 units a unit), all of
@@ -1407,8 +1408,30 @@ whole-array readers are not charged yet (T-2804, T-2805).
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/area_budget.rs (`MAX_FORMULA_WORK`, `Model::spend_work`, `Model::with_area_budget`),
 crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/functions/logical/lambda.rs
-(`call_prepared`, `prepare_lambda`, `fn_lambda`), crates/rustsheet-engine/src/node_frames.rs (`LambdaDefKind`).
-Tasks: T-2712 (SPEC-0024), T-2803, T-2813, T-2923
+(`call_prepared`, `prepare_lambda`, `fn_lambda`), crates/rustsheet-engine/src/node_frames.rs (`LambdaDefKind`),
+crates/rustsheet-engine/src/arithmetic.rs (`handle_concatenate`).
+Tasks: T-2712 (SPEC-0024), T-2803, T-2813, T-2923, T-2806
+
+## Copies of a text share its bytes
+Rule: Excel has no known limit on the memory one formula's texts take; `IF(SEQUENCE(1024,1024),REPT("a",32767))` copies a
+32,767-character text into 2^20 cells, and only memory limits it (not probed: the oracle cannot read back a 64 GB result).
+Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024 "Known gaps: retained memory").
+Ours: a text value's bytes are shared (`Text` holds an `Arc`), so a copy into another cell, array element, LET name or
+LAMBDA argument is a pointer, and an edit (`&`, truncation) copies only bytes another value still holds. New texts are paid
+for by the work budget of "One formula evaluation does at most 268,435,456 work units" (one unit per 4 bytes), so one
+formula makes at most about 2^30 bytes of text before it is `#VALUE!`. Measured on a release build (2026-10-27, T-2806;
+peak resident memory of a process holding A1 `=REPT("a",32767)` and the formula in B1): before T-2806,
+`IF(SEQUENCE(1024,1024),REPT("a",32767))`, the same over A1, `IFERROR(SEQUENCE(1024,1024)/0,..)`, `IFNA`, `CHOOSE`,
+`INDEX(..,SEQUENCE(1024,1024)*0+1)`, `EXPAND(..,1024,1024,..)`, `TOCOL(IF(..))` and `SEQUENCE(1024,1024)&REPT("a",32767)` each
+aborted the process past a 6 GB address-space limit (32 GB needed); now the copies peak at 115 MB (TOCOL of one: 470 MB)
+and the `&` formulas stop at the budget, `#VALUE!` at 1.1 GB. `MAKEARRAY(1024,1024,LAMBDA(r,c,REPT("a",32767)))`, MAP and
+SCAN shapes were already bounded by the text charge on each call's value (`#VALUE!` at 1.1 GB); a LAMBDA that returns a
+LET-bound or cell text now shares it (`#VALUE!` at 25 MB, was 1.1 GB). Excel would compute the copies' values; ours
+does too, so only the `&` formulas past the budget differ.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/text.rs (`Text`), crates/rustsheet-engine/src/arithmetic.rs
+(`handle_concatenate`).
+Tasks: T-2806
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a

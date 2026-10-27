@@ -15,6 +15,7 @@ use std::iter::Copied;
 use std::ops::Deref;
 use std::slice;
 use std::str::{Chars, EncodeUtf16};
+use std::sync::Arc;
 
 use bitcode::__private::{Buffer, Decoder, Encoder, Result as CoderResult, View};
 use bitcode::{Decode, Encode};
@@ -33,12 +34,18 @@ use bitcode::{Decode, Encode};
 /// [`Text::slice_utf16`], [`Text::truncate_utf16`] and [`Text::concat`] keep the lone half of a
 /// cut pair, as Excel does; they replaced the lossy `utf16_slice`, `truncate_text` and
 /// `concat_text` helpers (T-1579, T-1580).
+///
+/// The bytes are shared (`Arc`), so a clone is a pointer copy and an in-place edit copies only
+/// text another value still holds. One formula can copy a text into each of 2^20 array cells
+/// (`IF(SEQUENCE(1024,1024),REPT("a",32767))`, `EXPAND`, `INDEX`): with owned bytes that is
+/// 32 GB, so the formula's memory would be bounded only by the cell cap times the text cap
+/// (T-2806, docs/excel-semantics/arrays.md "Copies of a text share its bytes").
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Text {
     /// Well-formed text.
-    Utf8(String),
+    Utf8(Arc<String>),
     /// Text holding at least one lone surrogate.
-    Lone(Box<LoneText>),
+    Lone(Arc<LoneText>),
 }
 
 /// The exact units of a [`Text`] holding a lone surrogate, with its lossy view.
@@ -101,9 +108,9 @@ impl Text {
             }
         }
         if lone_count == 0 {
-            Text::Utf8(lossy)
+            Text::from(lossy)
         } else {
-            Text::Lone(Box::new(LoneText {
+            Text::Lone(Arc::new(LoneText {
                 units,
                 lossy,
                 lone_count,
@@ -164,7 +171,7 @@ impl Text {
     #[must_use]
     pub fn left_chars(&self, n: usize) -> Text {
         match self {
-            Text::Utf8(s) => Text::Utf8(s.chars().take(n).collect()),
+            Text::Utf8(s) => Text::from(s.chars().take(n).collect::<String>()),
             Text::Lone(_) => Self::from_chars(self.chars_lossless().take(n)),
         }
     }
@@ -176,7 +183,7 @@ impl Text {
         match self {
             Text::Utf8(s) => {
                 let skip = s.chars().count().saturating_sub(n);
-                Text::Utf8(s.chars().skip(skip).collect())
+                Text::from(s.chars().skip(skip).collect::<String>())
             }
             Text::Lone(_) => {
                 let skip = self.chars_lossless().count().saturating_sub(n);
@@ -211,7 +218,7 @@ impl Text {
             let mut joined = String::with_capacity(x.len() + y.len());
             joined.push_str(x);
             joined.push_str(y);
-            return Text::Utf8(joined);
+            return Text::from(joined);
         }
         let mut joined = a.clone();
         joined.push(b);
@@ -223,8 +230,9 @@ impl Text {
     /// surrogate at the end with a lone low one at the start of `other`, as [`Text::concat`].
     pub fn push(&mut self, other: &Text) {
         match (&mut *self, other) {
-            (Text::Utf8(s), Text::Utf8(o)) => s.push_str(o),
+            (Text::Utf8(s), Text::Utf8(o)) => Arc::make_mut(s).push_str(o),
             (Text::Lone(lone), Text::Utf8(o)) => {
+                let lone = Arc::make_mut(lone);
                 lone.units.extend(o.encode_utf16());
                 lone.lossy.push_str(o);
             }
@@ -233,15 +241,16 @@ impl Text {
                 let mut units: Vec<u16> = Vec::with_capacity(s.len() + o.units.len());
                 units.extend(s.encode_utf16());
                 units.extend_from_slice(&o.units);
-                let mut lossy = std::mem::take(s);
+                let mut lossy = Arc::unwrap_or_clone(std::mem::take(s));
                 lossy.push_str(&o.lossy);
-                *self = Text::Lone(Box::new(LoneText {
+                *self = Text::Lone(Arc::new(LoneText {
                     units,
                     lossy,
                     lone_count: o.lone_count,
                 }));
             }
             (Text::Lone(lone), Text::Lone(o)) => {
+                let lone = Arc::make_mut(lone);
                 let pairs = match (lone.units.last(), o.units.first()) {
                     (Some(high), Some(low))
                         if HIGH_SURROGATES.contains(high) && LOW_SURROGATES.contains(low) =>
@@ -268,7 +277,7 @@ impl Text {
                             .push_str(o.lossy.get(REPLACEMENT_LEN..).unwrap_or_default());
                         lone.lone_count = lone.lone_count + o.lone_count - 2;
                         if lone.lone_count == 0 {
-                            *self = Text::Utf8(std::mem::take(&mut lone.lossy));
+                            *self = Text::from(std::mem::take(&mut lone.lossy));
                         }
                     }
                 }
@@ -298,7 +307,7 @@ impl Text {
                             exact.push(ch.encode_utf16(&mut pair)[0]);
                             *self = Text::from_utf16(exact);
                         } else {
-                            s.truncate(byte);
+                            Arc::make_mut(s).truncate(byte);
                         }
                         return true;
                     }
@@ -307,10 +316,8 @@ impl Text {
                 false
             }
             Text::Lone(lone) => {
-                if lone.units.len() > max {
-                    let mut units = std::mem::take(&mut lone.units);
-                    units.truncate(max);
-                    *self = Text::from_utf16(units);
+                if let Some(kept) = lone.units.get(..max) {
+                    *self = Text::from_utf16(kept.to_vec());
                     return true;
                 }
                 false
@@ -324,7 +331,7 @@ impl Text {
     #[must_use]
     pub fn repeat(&self, times: usize) -> Text {
         match self {
-            Text::Utf8(s) => Text::Utf8(s.repeat(times)),
+            Text::Utf8(s) => Text::from(s.repeat(times)),
             Text::Lone(lone) => {
                 let mut units = Vec::with_capacity(lone.units.len().saturating_mul(times));
                 for _ in 0..times {
@@ -341,7 +348,7 @@ impl Text {
     #[must_use]
     pub fn map_runs(&self, f: impl Fn(&str) -> String) -> Text {
         if !self.has_lone_surrogate() {
-            return Text::Utf8(f(self));
+            return Text::from(f(self));
         }
         let mut units = Vec::new();
         for segment in self.segments() {
@@ -359,7 +366,7 @@ impl Text {
     pub fn trim_spaces(&self) -> Text {
         if !self.has_lone_surrogate() {
             let words: Vec<&str> = self.split(' ').filter(|w| !w.is_empty()).collect();
-            return Text::Utf8(words.join(" "));
+            return Text::from(words.join(" "));
         }
         let units: Vec<u16> = self.units().collect();
         let words: Vec<&[u16]> = units
@@ -388,11 +395,11 @@ impl Text {
     }
 
     /// The lossy view as an owned `String` (each lone unit as U+FFFD), without a copy for
-    /// well-formed text.
+    /// well-formed text no other value shares.
     pub fn into_lossy_string(self) -> String {
         match self {
-            Text::Utf8(s) => s,
-            Text::Lone(lone) => lone.lossy,
+            Text::Utf8(s) => Arc::unwrap_or_clone(s),
+            Text::Lone(lone) => Arc::unwrap_or_clone(lone).lossy,
         }
     }
 }
@@ -436,7 +443,7 @@ fn slice_utf8(s: &str, start: usize, end: usize) -> Text {
     let first_byte = first_byte.min(last_byte);
     let middle = &s[first_byte..last_byte];
     if leading.is_none() && trailing.is_none() {
-        return Text::Utf8(middle.to_string());
+        return Text::from(middle);
     }
     let mut units = Vec::with_capacity(middle.len() + 2);
     units.extend(leading);
@@ -447,20 +454,20 @@ fn slice_utf8(s: &str, start: usize, end: usize) -> Text {
 
 impl Default for Text {
     fn default() -> Self {
-        Text::Utf8(String::new())
+        Text::from(String::new())
     }
 }
 
 impl From<String> for Text {
     /// A move, no scan: valid UTF-8 is always well-formed UTF-16.
     fn from(s: String) -> Self {
-        Text::Utf8(s)
+        Text::Utf8(Arc::new(s))
     }
 }
 
 impl From<&str> for Text {
     fn from(s: &str) -> Self {
-        Text::Utf8(s.to_string())
+        Text::from(s.to_string())
     }
 }
 
@@ -617,7 +624,7 @@ impl Buffer for TextEncoder {
 impl Encoder<Text> for TextEncoder {
     fn encode(&mut self, t: &Text) {
         let repr = match t {
-            Text::Utf8(s) => TextReprRef::Utf8(s),
+            Text::Utf8(s) => TextReprRef::Utf8(s.as_str()),
             Text::Lone(lone) => TextReprRef::Lone(lone.units.clone()),
         };
         self.0.encode(&repr);
@@ -638,7 +645,7 @@ impl<'a> View<'a> for TextDecoder<'a> {
 impl<'a> Decoder<'a, Text> for TextDecoder<'a> {
     fn decode(&mut self) -> Text {
         match self.0.decode() {
-            TextRepr::Utf8(s) => Text::Utf8(s),
+            TextRepr::Utf8(s) => Text::from(s),
             TextRepr::Lone(units) => Text::from_utf16(units),
         }
     }
