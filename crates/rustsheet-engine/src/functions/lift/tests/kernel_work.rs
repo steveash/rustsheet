@@ -500,6 +500,77 @@ fn yield_and_odd_elements_are_charged_by_schedule_length() {
     );
 }
 
+/// An ODD* element its kernel refuses before any walk is charged 1 (T-2815, `Model::odd_args`):
+/// an error or a logical in any argument, or a date off the calendar. ODDFYIELD at the bound
+/// is otherwise the YIELD solver's charge, so 22 such elements (gen-m9/ba4ddb817a8e700e A323, an
+/// issue near -1.2E14 and errors in `rate`) fit under the lift budget, where 9 at the bound do not.
+#[test]
+fn odd_elements_refused_before_the_walk_are_charged_one() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
+    let work = |function: Function| {
+        let work = function.arg_kinds().map(|kinds| kinds.work);
+        let Some(work @ KernelWork::ByValue(ValueWork::CouponWalks { .. })) = work else {
+            panic!("{function:?} is not charged by its schedule: {work:?}");
+        };
+        work
+    };
+    // ODDFYIELD over `count` issues, `rate` the fifth argument.
+    let oddfyield = |issue: ArrayNode, rate: LiftedArg, count: usize| {
+        let args = [
+            number(45_535.0),
+            number(45_661.0),
+            LiftedArg::Grid(vec![vec![issue]; count]),
+            number(45_600.0),
+            rate,
+            number(95.0),
+            number(100.0),
+            number(4.0),
+        ];
+        kernel_units(work(Function::Oddfyield), &args, count, 1, count as u64)
+    };
+    let na = |count: usize| {
+        LiftedArg::Grid(vec![
+            vec![ArrayNode::Error(
+                crate::expressions::token::Error::NA
+            )];
+            count
+        ])
+    };
+    // An issue far before the calendar: as at the longest schedule unless refused.
+    assert!(oddfyield(ArrayNode::Number(-1.2E14), number(0.05), 22) <= 22);
+    assert_eq!(oddfyield(ArrayNode::Number(-0.5), number(0.05), 22), 22);
+    assert_eq!(
+        oddfyield(ArrayNode::Number(2_958_466.0), number(0.05), 22),
+        22
+    );
+    assert_eq!(oddfyield(ArrayNode::Number(45_000.0), na(22), 22), 22);
+    assert_eq!(oddfyield(ArrayNode::Boolean(true), number(0.05), 22), 22);
+    // On the calendar the walk is charged: about 125 years quarterly from serial 0.
+    assert!(oddfyield(ArrayNode::Number(0.0), number(0.05), 22) > 22 * 100);
+    // A text may read as any date: still the bound.
+    assert!(oddfyield(ArrayNode::String("x".into()), number(0.05), 9) > MAX_LIFTED_CELL_VISITS);
+    // ODDLPRICE reads its arguments the same way.
+    let oddlprice = |last: ArrayNode| {
+        let args = [
+            number(45_535.0),
+            number(45_661.0),
+            LiftedArg::Grid(vec![vec![last]; 4]),
+            number(0.05),
+            number(0.04),
+            number(100.0),
+            number(4.0),
+        ];
+        kernel_units(work(Function::Oddlprice), &args, 4, 1, 4)
+    };
+    assert_eq!(oddlprice(ArrayNode::Number(-1.0)), 4);
+    assert!(oddlprice(ArrayNode::Number(0.0)) > 4);
+}
+
 /// HYPGEOM.DIST's `ByValue` charge (T-2433): an element is charged the larger of its walk (2^14)
 /// and its cdf sum, 16 units a term over `min(sample_s, number_sample, population_s) + 1` terms
 /// and 131 window exponents, at most the cap's bound 2^22, so exactly 32 elements at the bound
