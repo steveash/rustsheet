@@ -46,11 +46,14 @@ off move here with the campaign key; T-1592's other 19 owned gen-m9 cells pass o
   gen-m9/e168be7f6d3f84c2 Calc!A194.
 
 ## Outcome
-Probe probes/yield-start-term-basis (120 cells, excel-graph 2026-10-26: 12 date pairs on bases 1, 2 and 3, 4 on basis
-0, at frequencies 2 and 4 and prices 98 and 110). The start's term is not the basis' days over a year on any basis: it
+Probe probes/yield-start-term-basis (159 cells, excel-graph 2026-10-26/27: 12 date pairs on bases 1, 2 and 3; basis 0
+and 4 rows with 28 and 29 February settlements and sub-year terms, added after the Excel-fidelity review; frequencies
+2 and 4, prices 98 and 110). The start's term is not the basis' days over a year on any basis: it
 is the whole years from settlement, then the basis' days from the last anniversary to maturity over 360 (bases 0, 2,
 4), 365 (basis 3) or the maturity's calendar year (basis 1), with 29 February anniversaries on 1 March in common years
-(lab: 59/120 bit-exact and 115/120 within 4 ulp, against 8 and 14 for the old term; the 5 left sit at PRICE's root).
+(lab `solvers.start_years`: 79/159 bit-exact and 153/159 within 4e-16 relative, against 18 and 34 for the old term;
+5 of the 6 left sit at PRICE's root). The 30/360 count starts at the anniversary, so a 28 February settlement on
+basis 0 changes too (row 46).
 The engine follows it (`yield_start_years`, on the dates Excel shows, so serial 60 is 29 February 1900); the lab has
 `solvers.start_years`. financial.md "YIELD stops short of PRICE's root" records it.
 Eval: 18 known failures fixed, no regressions (gen-m9 -2: ba4ddb817a8e700e A17 bit-exact and c0681a8b150ce301 A223;

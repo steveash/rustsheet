@@ -207,8 +207,9 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
 /// whole years from settlement to maturity, then the basis' days from the last anniversary of the
 /// settlement to maturity over 360 (bases 0, 2 and 4), 365 (basis 3) or the length of the
 /// maturity's calendar year (basis 1). A 29 February settlement has its anniversaries on 1 March
-/// in common years. Fitted on probes/yield-start-term-basis (T-2777: 115 of 120 cells within 4
-/// ulp, the other 5 at PRICE's root, against 14 for the basis' days over its year):
+/// in common years; the 30/360 count's end-of-February rule looks at the anniversary. Fitted on
+/// probes/yield-start-term-basis (T-2777: 153 of 159 cells within 4e-16 relative, 5 of the other 6
+/// at PRICE's root, against 34 for the basis' days over its year):
 /// `YIELD(DATE(2010,1,31),DATE(2020,1,30),..,1)` starts from 9 + 364/366 (2020 is a leap year),
 /// and `YIELD(DATE(2012,2,29),DATE(2019,8,15),..,0)` from 7 + DAYS360(1 March 2019, maturity)/360,
 /// not DAYS360 over the whole term (financial.md "YIELD stops short of PRICE's root"). The dates
