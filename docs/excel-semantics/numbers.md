@@ -949,12 +949,12 @@ Tasks: T-2756, T-2771
 Rule: `-x` of a positive subnormal x below 2^-1026 (k·2^-1074 with k < 2^48) is +x; from 2^-1026 up it is -x. `0-x`
 keeps the sign at every size, and `-1*x` is 0 (a subnormal product is flushed, "Subnormal results become 0"). Every
 probed operand is an inline expression; unary minus on a cell reference, range or array, a tiny negative operand and
-a chain such as `--x` are unprobed. The engine applies the rule to the whole chain's parity and to every operand kind.
+a chain such as `--x` are unprobed. The engine applies the rule to the whole chain's parity and to every operand kind (T-2942 probes the rest).
 Evidence: probes/t2771-roundup-subnormal-sign-controls B and C (k = 12345 and 2^48 - 1 against 2^48 and 2^50 + 3),
 excel-graph, 2026-10-27; t2771-roundup-subnormal-sign and -threshold read the same switch through the ROUND family.
 Status: VERIFIED (excel-graph) for a positive operand
 Implemented in: `apply_unary_chain` in crates/rustsheet-engine/src/cast.rs (`TINY_SUBNORMAL_BELOW`, arithmetic.rs)
-Tasks: T-2771
+Tasks: T-2771, T-2942
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`

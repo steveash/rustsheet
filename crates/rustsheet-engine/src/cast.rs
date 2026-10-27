@@ -433,8 +433,8 @@ impl Model {
     /// operator (the `formula_eval` fuzz timeout, T-1078). Only the minus parity and the `%` count
     /// are kept, and the walk allocates nothing. Negation is exact and the subnormal flush is
     /// sign-symmetric, except that `-x` of a tiny positive x is +x; the chain applies that once,
-    /// to the parity, which is unprobed for `--x` and for a tiny negative operand (numbers.md
-    /// "Unary minus of a tiny subnormal").
+    /// to the parity, which is unprobed for `--x`, a tiny negative operand and references
+    /// (numbers.md "Unary minus of a tiny subnormal"; TODO(T-2942): probe those forms).
     pub(crate) fn apply_unary_chain(
         &mut self,
         node: &Node,
