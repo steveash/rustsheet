@@ -34,7 +34,7 @@ use crate::{
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
 use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::tailed_array::range_corners;
-use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
+use crate::{clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
 // * A single cell
@@ -186,15 +186,8 @@ pub struct Model {
     pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
-    /// Evaluated CF results per cell by (`sheet_index`, row, column), rebuilt from scratch by `evaluate_conditional_formatting()`.
-    pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
-    /// `cf_cache` is out of date: the next style read rebuilds it (SPEC-0021). Set where the
-    /// conditional formats used to be evaluated eagerly: load, the end of `evaluate()`,
-    /// `set_theme`.
-    pub(crate) cf_stale: bool,
-    /// How many times the conditional formats were evaluated, for the tests of SPEC-0021.
-    #[cfg(test)]
-    pub(crate) cf_runs: usize,
+    /// The conditional formats evaluated so far, per cell (`cf_styles.rs`, SPEC-0021, T-0476).
+    pub(crate) cf: crate::cf_styles::CfState,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
     /// For each sheet, where each of its shared formulas is. Only an aid to find a formula without
@@ -1145,7 +1138,7 @@ impl Model {
     /// Sets the workbook theme.
     pub fn set_theme(&mut self, theme: crate::types::Theme) {
         self.workbook.theme = theme;
-        self.cf_stale = true;
+        self.cf.stale = true;
     }
 
     /// Returns the Theme
@@ -1370,7 +1363,7 @@ impl Model {
 
         model.parse_formulas();
         model.parse_defined_names();
-        model.cf_stale = true;
+        model.cf.stale = true;
 
         Ok(model)
     }
