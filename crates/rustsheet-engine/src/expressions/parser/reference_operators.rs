@@ -127,6 +127,9 @@ impl Parser {
             // Excel refuses the formula (load-time `FileCorruptTryRepair`, so no oracle value)
             // on CR, TAB, NBSP and the like as separator, and on a value as an operand.
             let separator = self.lexer.separator();
+            // The first space is the operator; Excel keeps the rest (SPEC-0023 step 3,
+            // probes/t2776-formula-text-whitespace-shapes C3, C5, E9).
+            let extra = Run::of(separator.get(1..).unwrap_or_default());
             // U+3000 starts a name for Excel, and no such name is defined: `#NAME?`
             // (probes/intersection-whitespace H7).
             let name_error = separator.contains(&'\u{3000}');
@@ -151,7 +154,7 @@ impl Parser {
             depth = self.depth;
             t = Node::OpIntersectKind {
                 left: Box::new(t),
-                right: Box::new(p),
+                right: Box::new(p.spaced(extra, Run::default())),
             };
         }
         if as_name {
@@ -425,6 +428,11 @@ fn starts_reference(token: &TokenType) -> bool {
 /// the left operand `A1 @A1` of `(A1 @A1) B1` keeps its parentheses, since bare `A1 @A1 B1`
 /// is `A1 @(A1 B1)` (T-0149).
 pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
+    // The extra spaces beside the operator are written around the right operand (SPEC-0023).
+    let mut node = node;
+    while let Node::Spaced { child, .. } = node {
+        node = child;
+    }
     let bare = match node {
         Node::OpIntersectKind { right, .. } => {
             is_left && !matches!(**right, Node::ImplicitIntersection { .. })

@@ -31,7 +31,7 @@ impl Run {
     /// print nothing; docs/excel-semantics/syntax.md, probes/t2776-formula-text-whitespace-shapes
     /// and probes/t2782-whitespace-run-wrap). Whitespace holding anything but spaces and line
     /// feeds is not kept: the other whitespace characters print nothing today.
-    fn of(text: &[char]) -> Run {
+    pub(super) fn of(text: &[char]) -> Run {
         if !text.iter().all(|c| matches!(c, ' ' | '\n')) {
             return Run::default();
         }
