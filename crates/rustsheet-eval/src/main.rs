@@ -34,6 +34,7 @@ use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::lift_kinds;
 use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
+use rustsheet_eval::phase1_exceptions::Phase1Exceptions;
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::run_meta::RunMeta;
@@ -271,20 +272,22 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
-/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051)
-/// and the named exit exceptions (decision 0087).
+/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051),
+/// the named exit exceptions (decision 0087) and the Phase 1 rate exceptions (decision 0134).
 struct Milestones {
     lists: Vec<MilestoneList>,
     rules: Rules,
     exceptions: ExitExceptions,
+    phase1_exceptions: Phase1Exceptions,
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
 /// a case that no suite discovers, or a cell line names a cell its case holds no expectation for.
-/// A malformed line of the exit exceptions fails too.
+/// A malformed line of the exit exceptions or the Phase 1 rate exceptions fails too.
 fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
     let exceptions = ExitExceptions::load(root)?;
+    let phase1_exceptions = Phase1Exceptions::load(root)?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
         let mut files = BTreeMap::new();
@@ -310,6 +313,7 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
         lists,
         rules,
         exceptions,
+        phase1_exceptions,
     })
 }
 
@@ -346,7 +350,13 @@ fn score_milestones(
     report.catalog_coverage =
         catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
     let generated_names: Vec<&str> = generated.keys().map(String::as_str).collect();
-    report.v15_checkpoint = v15_checkpoint::summarize(catalog, results, report, &generated_names);
+    report.v15_checkpoint = v15_checkpoint::summarize(
+        catalog,
+        results,
+        report,
+        &generated_names,
+        &milestones.phase1_exceptions,
+    );
     report.milestone_exit = milestone_exit::summarize(report);
 }
 
