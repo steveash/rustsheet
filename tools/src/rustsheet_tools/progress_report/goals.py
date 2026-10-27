@@ -403,7 +403,9 @@ def lifts(g: Goals, f: FunctionParity) -> bool:
 
 def campaign_block(g: Goals, data: Parity, tasks: Tasks) -> str:
     """The `campaign` block: a row per stage and the parked row."""
-    below = [f for f in data.functions if f.tier in BELOW_BAR]
+    # A function whose tier is under the bar but which meets the rate had its only off cells left
+    # out of the rate (decision 0134), so no fix lifts it.
+    below = [f for f in data.functions if f.tier in BELOW_BAR and not f.meets_rate]
     other = sum(f.attributed["visible_other"] for f in below)
     numeric = sum(f.attributed["visible_numeric"] for f in below)
     lifted = sorted(f.name for f in below if lifts(g, f))
@@ -467,6 +469,7 @@ METHOD = f"""- **Goals.** The Phase 1 and checkpoint lines are report.json `v15_
   and the exit checklists, report.json `catalog_coverage`, `milestone_exit`, `milestone_lists`
   and `probe_milestones`, and tasks.json `by_milestone`.
 - **Campaign stages.** Task counts are tasks.json `by_campaign` and `deferred` (decision 0119).
-  The functions below the rate are those whose report tier is under `rate999`; a function is
+  The functions below the rate are those whose report tier is under `rate999` and whose
+  `meets_rate` is false (decision 0134 leaves listed cells out of the rate, not the tier); a function is
   lifted when its counted cells (`v15_checkpoint.functions[].rate_cells`) reach the report's rate
   (`rate_num / rate_den`) once its visibly-off type, error and text cells are fixed."""
