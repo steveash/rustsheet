@@ -6,10 +6,12 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// phi(0) = 1/sqrt(2*pi), the density at 0.
 const PHI_0: f64 = 0.398_942_280_401_432_7;
-/// Below this |z| Phi(z) - 0.5 cancels to 0 or to a few bits; Excel returns z * phi(0) there
-/// (`GAUSS(1E-300)` = 3.989422804014327E-301, `GAUSS(1E-15)` = 3.989422804014328E-16).
+/// Below this |z| Excel returns z * phi(0) (`GAUSS(1E-300)` = 3.989422804014327E-301,
+/// `GAUSS(1E-15)` = 3.989422804014328E-16). Above it Excel still shows the cancellation of
+/// Phi(z) - 0.5 (`GAUSS(1E-10)` = 3.9894310077670525E-11, `GAUSS(4E-15)` = 1.5543122344752192E-15;
+/// gen-m9 oracle), so the cut lies in (1E-15, 4E-15); 2E-15 is the evidence-bounded choice.
 /// Excel: see docs/excel-semantics/statistics.md, "GAUSS of a tiny argument is x times phi(0) (T-2255)"
-const TINY_Z: f64 = 1e-8;
+const TINY_Z: f64 = 2e-15;
 
 impl Model {
     /// `GAUSS(z)`: lifts over an array and a range (SPEC-0011; probes/stat-argument-modes
