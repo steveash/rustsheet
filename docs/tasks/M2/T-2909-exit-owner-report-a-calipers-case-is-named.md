@@ -1,6 +1,6 @@
 ---
 id: T-2909
-title: "Exit-owner report: a calipers case is named by its golden directory, not by the shared stem golden.xlsx; a corpus-bench case by its directory number"
+title: "Exit-owner report: a calipers case is named by its golden directory, not by the file name all of them share; a corpus-bench case by its directory number"
 milestone: M2
 lane: harness
 status: todo
@@ -17,23 +17,30 @@ calipers golden owns only that golden's cells. A task that names a corpus-bench 
 by tasks that never mention them, and stop counting owned corpus-bench cells as unowned.
 
 ## Context
+- Naming note: every calipers case file has the same name, `golden` with the `.xlsx` extension. This task writes
+  it as GOLDEN, and the corpus-bench file of case 53062 as INPUT-53062. Under the current rule, a task that spells
+  either name out on a line with no A1-shaped token owns every cell of those cases: the bug itself.
 - Reported by the gap-triager in the 2026-10-27 steward snapshot (docs/status.md, "Queues"): "every calipers
-  case shares the stem `golden.xlsx`, so a task naming `golden.xlsx` 'owns' every calipers cell. No task covers
+  case shares the stem GOLDEN, so a task naming GOLDEN 'owns' every calipers cell. No task covers
   that yet."
 - Cause: `ExitCell.stem` is the last path segment of the case id. eval/suites/calipers/suite.toml includes
-  `**/golden.xlsx`, so all 171 calipers cases (`calipers/pv_goldens/pv23_007/golden.xlsx`,
-  `calipers/roundtrip/formulas_nested/golden.xlsx`, ...) have the same stem `golden.xlsx`. `owned` checks that
+  `**/` + GOLDEN, so all 171 calipers cases (`calipers/pv_goldens/pv23_007/GOLDEN`,
+  `calipers/roundtrip/formulas_nested/GOLDEN`, ...) have the same stem GOLDEN. `owned` checks that
   the stem is named somewhere in the task text, and then checks the A1 name or `names_whole_case`.
 - Two leaks this causes today, both reproducible against the open task files:
-  - T-2708 (M9) lists `calipers/pv_goldens/pv23_007/golden.xlsx (11): Pro Forma Cash Flow Statement!AF13, ... G15,
+  - T-2708 (M9) lists `calipers/pv_goldens/pv23_007/GOLDEN (11): Pro Forma Cash Flow Statement!AF13, ... G15,
     ...`. Any failing calipers cell named `G15`, `N13` or `BI15`, in any other golden, counts as owned by T-2708.
-  - T-2704 (M14) line 20 names `calipers/roundtrip/formulas_nested/golden.xlsx` on a line with no A1-shaped token.
+  - T-2704 (M14) line 21 names `calipers/roundtrip/formulas_nested/GOLDEN` on a line with no A1-shaped token.
     By `names_whole_case`, that makes T-2704 own every calipers cell. `--unattributed` reads the open tasks of
-    every milestone, so every unattributed visibly-off calipers cell is hidden there.
-- The opposite problem, in corpus-bench: case ids are `corpus-bench/<n>/1_<n>_input.xlsx`, and tasks name them as
+    every milestone, so every unattributed visibly-off calipers cell is hidden there. On 179909a8 that covers all 4
+    of them: pv26_011 and pv26_2_011 `UC market model!B3` and `CD market model!B3`
+    (`MID(CELL("filename",A1),...)`). `exit_owners.owned` credits them to T-2704 alone, a task about one-ulp
+    products in formulas_nested. Their real owner is presumably T-2663 (desktop-only CELL filename), which the tool
+    cannot see because it never spells out GOLDEN.
+- The opposite problem, in corpus-bench: case ids are `corpus-bench/<n>/1_<n>_input` plus `.xlsx`, and tasks name them as
   `corpus-bench/<n>`. T-2636 (M9) says "corpus-bench/53062 (`formamspnc (7)`, AE6:AQ6 and the cells downstream; the
-  case is a whole-case `F *` line ...)". It never writes `1_53062_input.xlsx`, so `make unowned-off` on 179909a8
-  lists 220 cells of `corpus-bench/53062/1_53062_input.xlsx` as unowned. That is the largest group of its 887 lines.
+  case is a whole-case `F *` line ...)". It never writes INPUT-53062, so `make unowned-off` on 179909a8
+  lists 220 cells of `corpus-bench/53062/`INPUT-53062 as unowned. That is the largest group of its 887 lines.
   T-2636's line also names `AE6:AQ6`, so after this fix it owns only those cells (and the span only once T-2731
   lands). The Outcome says how many of the 220 are still unowned. The gap-triager gives those an owner, for
   example by adding a whole-case line to T-2636.
@@ -48,15 +55,15 @@ by tasks that never mention them, and stop counting owned corpus-bench cells as 
 
 ## Acceptance criteria
 - [ ] A case whose last segment is not unique in its suite is named by enough of its path to tell it apart (for
-      example `pv23_007/golden.xlsx`, or the full case id). The decision record states the rule. A task line
-      written the way the calipers tasks already write them (`calipers/pv_goldens/pv23_007/golden.xlsx (11): ...`)
+      example `pv23_007/GOLDEN`, or the full case id). The decision record states the rule. A task line
+      written the way the calipers tasks already write them (`calipers/pv_goldens/pv23_007/GOLDEN (11): ...`)
       still owns those cells, with no edits to task files.
 - [ ] Test: with T-2708's pv23_007 line as the only task text, a failing `G15` of
-      `calipers/pv_goldens/pv23_008/golden.xlsx` is not owned and `G15` of pv23_007 is.
-- [ ] Test: a line naming only `calipers/roundtrip/formulas_nested/golden.xlsx` owns that case's cells and no
+      `calipers/pv_goldens/pv23_008/GOLDEN` is not owned and `G15` of pv23_007 is.
+- [ ] Test: a line naming only `calipers/roundtrip/formulas_nested/GOLDEN` owns that case's cells and no
       cell of another golden.
 - [ ] Test: a line naming `corpus-bench/53062` and no A1-shaped token owns every cell of
-      `corpus-bench/53062/1_53062_input.xlsx`. A line naming `corpus-bench/5306` does not. A line naming
+      `corpus-bench/53062/`INPUT-53062. A line naming `corpus-bench/5306` does not. A line naming
       `corpus-bench/53062` beside `AE6` owns AE6 of that case and not F6.
 - [ ] Cases with unique stems (gen hashes, ironcalc-calc file names, probe names) keep today's behavior. The
       existing tests pass unchanged.
