@@ -211,12 +211,13 @@ fn is_number_or_date(token: &Token) -> bool {
 }
 
 /// Whether `token` makes a section holding `@` invalid (probes/text-at-with-tokens A1-A43,
-/// B1-B43): the date and time letters, the elapsed tokens, the era and calendar tokens, the digit
+/// B1-B43): the date and time letters, the elapsed tokens, the era token, the digit
 /// placeholders, `.`, `/`, `E+`, `General`, `%` and a condition. Like [`is_number_or_date`], which leaves out
-/// `AM/PM` (a fourth section may hold it); the calendar tokens (`B1`, `B2`) are inferred from the other date tokens.
+/// `AM/PM` (a fourth section may hold it), but without the calendar prefixes: `TEXT(45000,"B2[$-409]@")`
+/// is "45000" (probes/t2729-hijri-locale-tag-names A289; `B1@` and a bare `B2@` are inferred from it).
 /// `A/P` is in neither list: a fourth section may hold it (probes/text-at-token-sections A20).
 fn conflicts_with_text(token: &Token) -> bool {
-    is_number_or_date(token)
+    (is_number_or_date(token) && !matches!(token, Token::Calendar(_)))
         || matches!(
             token,
             Token::Period

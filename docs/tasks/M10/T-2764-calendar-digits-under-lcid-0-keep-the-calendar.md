@@ -18,6 +18,8 @@ Today `resolve_lcid` (formatter/locale_tag.rs) returns `Silent` for LCID 0 befor
 
 T-1924 (2026-10-26) keeps a calendar digit over any LCID without a locale, LCID 0 included (`without_locale`): A59, A57 and
 A58 pass since then. Only the B2 cell (A79) remains.
+T-2729 (2026-10-27) lets any calendar digit but 0 and 6 win over a `B2` before the tag, so A79 passes too: every
+cell of this task passes; what is left is closing it.
 
 ## Acceptance criteria
 - [ ] text-locale-lunar-edges A59 and text-locale-lunar-tokens A57, A58 pass.

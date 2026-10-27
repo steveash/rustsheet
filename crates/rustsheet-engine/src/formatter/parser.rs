@@ -112,7 +112,9 @@ pub struct DatePart {
     pub calendar: Option<Calendar>,
     /// Whether the section's locale tag names a Japanese LCID (`Localized::japanese_lcid`).
     pub japanese_lcid: bool,
-    /// Whether a `B2` prefix puts the section in the Hijri calendar (`date_names::hijri_ymd`).
+    /// Whether a `B2` prefix before any tag puts the section in the Hijri calendar
+    /// (`date_names::hijri_ymd`) and, with no tag or from its first `mmm` on, Excel's Arabic
+    /// name path (`date_names::NameTokens`).
     pub hijri: bool,
 }
 
@@ -367,6 +369,7 @@ impl Parser {
         let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
         let mut hijri = false;
+        let mut calendar_prefix = false;
         // Whether the previous token is an unescaped colon, which the next one joins.
         let mut after_colon = false;
         let mut locale = None;
@@ -687,16 +690,19 @@ impl Parser {
                     tokens.push(TextToken::Era(length));
                 }
                 // `B1` selects the Gregorian calendar and still makes the section a date one
-                // (`TEXT(100,"B1")` is ""). After a locale tag `B1` and `B2` change nothing
-                // (`[$-40C]B2mmmm` is "mars"; probes/text-locale-calendars A125-A134).
-                Token::Calendar('1') => {
+                // (`TEXT(100,"B1")` is ""). `B2` selects the Hijri calendar
+                // (`TEXT(45000,"B2yyyy-mm-dd")` is "1444-08-23"; probes/t1613-hijri-b2), also
+                // before a tag (the lexer resolves the tag in it). After a tag either changes
+                // nothing (`[$-40C]B2mmmm` is "mars"; probes/text-locale-calendars A125-A134), but
+                // is #VALUE! after another prefix (`B2[$-409]B1`, `[$-60409]B2B1`;
+                // probes/t2729-hijri-locale-tag-names A278-A285).
+                Token::Calendar(c) => {
+                    if locale.is_some() && calendar_prefix {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
-                }
-                // `B2` selects the Hijri calendar (`TEXT(45000,"B2yyyy-mm-dd")` is "1444-08-23";
-                // probes/t1613-hijri-b2). After a locale tag it changes nothing.
-                Token::Calendar(_) => {
-                    is_date = true;
-                    hijri |= locale.is_none();
+                    calendar_prefix = true;
+                    hijri |= c == '2' && locale.is_none();
                 }
                 Token::Hour => {
                     is_date = true;
@@ -856,11 +862,13 @@ impl Parser {
                 return self.system_part(system_format, color);
             }
         }
-        let tagged = locale.is_some();
         let localized = match locale {
             Some(LocaleTag::Names(localized)) => Some(localized),
             _ => None,
         };
+        // A calendar digit other than Hijri wins over a `B2` before the tag (`B2[$-10409]yyyy` is
+        // "2023"); an unresolved tag leaves it a bare `B2` (`B2[$-zzz]`).
+        hijri &= localized.is_none_or(|l| l.calendar == Calendar::Hijri);
         let general_count = tokens
             .iter()
             .filter(|t| matches!(t, TextToken::General))
@@ -881,17 +889,7 @@ impl Parser {
             }
         }
         if is_date {
-            let prints_date = tokens.iter().any(|t| {
-                !matches!(
-                    t,
-                    TextToken::Literal(_)
-                        | TextToken::Text(_)
-                        | TextToken::Ghost(_)
-                        | TextToken::Spacer(_)
-                )
-            });
-            // TODO(T-2729): `B2` before a locale tag (`B2[$-40C]mmmm` is "Chaaban") is not modelled.
-            if is_number || (hijri && prints_date && tagged) {
+            if is_number {
                 return ParsePart::Error(ErrorPart::default());
             }
             // Excel prints a currency symbol in a date section where it is written
