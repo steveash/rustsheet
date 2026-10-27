@@ -2552,7 +2552,7 @@ C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, 
 Ours: the engine has no calculated columns (no column formula on `Table`), so a typed formula stays in its own cell;
 the eval adapter also types before the table exists (T-2955), so a typed `[@Col]` is `#ERROR!`. The fill is T-2958,
 the auto-expansion T-2968.
-Status: VERIFIED (excel-graph; desktop unprobed)
+Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
 Implemented in: no (T-2958, T-2968)
 Tasks: T-2957, T-2958, T-2968, T-2969
 
