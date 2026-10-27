@@ -330,8 +330,12 @@ falls back as the aggregate walk does. The shape checks and the lift costs use t
   - The vector checks (`rows > 1`, the by-row rule) use the logical size. `result_vector` is read
     as today, after the search.
 - **SMALL and LARGE** (`ranked_numbers`, through `numbers_from_reference_arg`). Today the
-  argument's array gives its first error element in row-major order (`nested_array_error`), or else
-  its numbers (`values_from_array`; any other element is no number).
+  argument's array is first checked by `nested_array_error`, which returns `#N/A` if any element is
+  a nested array, whatever comes before it. Then `values_from_array` gives the first plain error in
+  row-major order (a Lambda or nested element is `#VALUE!` there), or else the numbers. Any other
+  element is no number. A tailed argument has literals, one-cell references, ranges, the value
+  operators and IF, none of which can give a nested or Lambda element, so only the plain-error rule
+  applies.
   - Tailed: the head's first error. Failing that, the tail's error if the tail is one. Failing
     that, the head's numbers, followed by `tail_len` copies of the tail if it is a number.
   - A FALSE, text or empty tail adds nothing (59969). A numeric tail allocates `tail_len` numbers,
@@ -347,8 +351,10 @@ falls back as the aggregate walk does. The shape checks and the lift costs use t
   - Any other text, number or boolean tail is pushed copy by copy until the join is over the limit.
     That takes at most 32,768 pushes, since each copy adds at least one unit. Past the limit,
     nothing more changes.
-  - An error tail is returned at its first copy unless the join is already over the limit. In that
-    case the error is dropped, as the array branch drops it (probes/textjoin-array-limit-empty-strings).
+  - An error tail is returned at its first copy, unless the join is over the limit once the
+    delimiter before that copy is counted (`exceeds_with_separator`). In that case the error is
+    dropped, as `push_cell` drops it (probes/text-result-limit-errors,
+    probes/textjoin-array-limit-empty-strings).
 
 ### 4. Invariants per consumer
 - **Values and errors.** Each consumer sees its argument's element sequence through the same
