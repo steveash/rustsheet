@@ -48,4 +48,4 @@ Owned cells, probes/m7-lift-take-drop-sortby (T-1960, excel-graph, 2026-10-21; S
 - New producers or consumers beyond the cells above (SPEC-0014 tasks).
 
 ## Outcome
-`may_hand_on_grid` now names TAKE and DROP, so IF, CHOOSE and OFFSET's reference argument hand a lifted TAKE/DROP grid on (SUMPRODUCT 0, OFFSET lifts again). `take_drop_lifted` lifts the count over an error source as one error per element. Eval: 17 cells of probes/m7-lift-take-drop-sortby left eval/baseline/probes.txt; no new failures; `make check` green. lookup.md updated.
+`may_hand_on_grid` now names TAKE and DROP, so IF, CHOOSE and OFFSET's reference argument hand a lifted TAKE/DROP grid on (SUMPRODUCT 0, OFFSET lifts again). `take_drop_lifted` lifts the count over an error source as one error per element. Eval: 16 cells of probes/m7-lift-take-drop-sortby left eval/baseline/probes.txt; no new failures; `make check` green. lookup.md updated.
