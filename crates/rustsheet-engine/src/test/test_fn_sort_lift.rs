@@ -25,7 +25,11 @@ fn by_col_lifts_over_an_array() {
         // By rows the sorted column starts at 1; by columns the one column is unchanged.
         // probes/t2366-sort-lifted-by-col: later elements hold a value, not empty as SORTBY's do.
         ("C2", "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,1)", "1"),
-        ("C3", "=ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))", "FALSE"),
+        (
+            "C3",
+            "=ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))",
+            "FALSE",
+        ),
     ]);
 }
 
