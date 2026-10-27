@@ -3,7 +3,7 @@ id: T-2779
 title: "Hebrew (8) and Saka (10) calendar digits in locale tags print Excel's dates and names (probes/t1923-calendar-digits)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
