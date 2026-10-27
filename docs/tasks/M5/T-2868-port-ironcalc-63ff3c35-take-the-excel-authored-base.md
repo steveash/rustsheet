@@ -38,5 +38,5 @@ code change needs no port; this task only takes the workbook as Excel evidence. 
 ## Outcome
 Took `BASE_DECIMAL_issue_1617.xlsx` (Excel 16.0300, `DECIMAL("",2)` cached 0) into the ironcalc-calc
 suite. It scores 3/3 cells passing with no code change, confirming the existing "DECIMAL of unreadable
-text" rule. ironcalc-calc: 221 cases, 72,961 cells, 72,338 pass; baseline unchanged (no known-failure
+text" rule. ironcalc-calc: 221 cases, 72,961 cells, 72,338 pass; baseline gains one `C` line for the new case and no `F` lines (no known-failure
 shrink, no regressions).
