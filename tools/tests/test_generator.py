@@ -1085,7 +1085,6 @@ def test_fixed_height_ranges_and_probes_stay_inside_their_range() -> None:
     gen = Gen(random.Random(1), catalog(), data_rows=12, data_cols=5, max_depth=2)
     for _ in range(50):
         ref = gen.range_ref(width=2, height=3)
-        assert re.fullmatch(r"Data!([A-E])(\d+):([A-E])(\d+)", ref)
         m = re.fullmatch(r"Data!([A-E])(\d+):([A-E])(\d+)", ref)
         assert m and int(m[4]) - int(m[2]) == 2 and ord(m[3]) - ord(m[1]) == 1
         cell = gen.cell_in("Data!B2:D4")
