@@ -272,7 +272,7 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
-/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051)
+/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051),
 /// the named exit exceptions (decision 0087) and the Phase 1 rate exceptions (decision 0134).
 struct Milestones {
     lists: Vec<MilestoneList>,
