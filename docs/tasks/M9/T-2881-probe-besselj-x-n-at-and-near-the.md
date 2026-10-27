@@ -3,7 +3,7 @@ id: T-2881
 title: "Probe BESSELJ(x,n) at and near the turning point n = x (n from 1000 to 1E+5) to fit Excel's Miller recurrence rounding"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
