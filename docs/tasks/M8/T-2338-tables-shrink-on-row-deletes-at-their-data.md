@@ -3,7 +3,7 @@ id: T-2338
 title: "Tables shrink on row deletes at their data edges and keep one blank data row when every data row goes (T-2324 evidence)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
