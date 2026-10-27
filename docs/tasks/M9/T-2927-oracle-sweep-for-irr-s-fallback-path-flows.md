@@ -1,0 +1,71 @@
+---
+id: T-2927
+title: "Oracle sweep for IRR's fallback path: flows where the fitted secant fails, to pin the returned digits"
+milestone: M9
+lane: research
+status: todo
+priority: P2
+size: S
+tier: opus
+depends_on: []
+---
+
+## Goal
+Excel values for IRR on enough flows that take the fallback path, so that T-2928 can fit the digits Excel's fallback
+returns. That path is used where both runs of the fitted secant in v fail. Each value is tagged with its distance in
+ulps from the exact root.
+
+## Context
+Gap triage 2026-10-27 (`make eval` on origin/main 7dba3bfe, calipers, poi and corpus-bench fetched). The engine's
+fallback picks the right root and returns `#NUM!` in the right places (T-2727). financial.md "IRR's fallback when the
+secant fails" records that rule, and it is verified on excel-graph. The digits it returns are not Excel's, though.
+Excel returns about 2 to 4E-15 above the exact root, and ours is correctly rounded:
+- `IRR({42,1,1,-1},G)` for G = 0, 0.01, 0.5 and 1: Excel -0.7467044766537371, ours -0.7467044766537408. The exact
+  root (mpmath, 50 digits) is -0.74670447665374079, so Excel is +3.7E-15 off it and ours -5E-17.
+- `IRR({-400,1,1,1,1,1},G)` for G = 0.01, 0.5 and 1: Excel -0.6737366751808405, ours -0.6737366751808422. The exact
+  root is -0.67373667518084225, so Excel is +1.8E-15 off it.
+- `IRR({0.3,-2.5,1.005},1)`: Excel 6.9098085436343055, ours 6.909808543634309 (1 ulp apart). Both are about
+  3E-13 below the exact root 6.90980854363461213.
+Evidence: probes/irr-fallback-roots P!A12:A15 and A21:A24 (excel-graph, 2026-10-26). The guess does not change
+Excel's value, so the fallback starts from a fixed point.
+
+These values come from only three distinct flow sets. The engine's `irr_fallback` (Newton on P(v) = sum c_i v^i from
+v = 0, Horner order, stop at |dv| < 1e-7·max(|v|, 1), functions/financial/financial_util.rs) cannot be told apart from
+the other candidates on three points: Newton in v from 0 or from 1, Newton in r, a stop on |P|, returning `v` or
+`next`, and the Horner order. T-2928 needs those candidates scored on enough points to pin the rule. This is a
+numeric-fitting group that needs more Excel points than the cached workbooks give. Following the gap-triager rule,
+it gets an oracle sweep, not a blind fit.
+
+The case is new: `eval/suites/probes-numeric/cases/t2927-irr-fallback-sweep.case.json`, tag `M9`, `"expected": {}`.
+Follow the `excel-probe` skill and put the layout in the case description. Generate the case with a script, and
+commit the script or record its command in the description. Keep only flows where the fitted secant fails from
+guess 0.1 and from its retry. `irr_secant_v` in tools/src/rustsheet_tools/fitlab/kernels/solvers.py is the lab's copy
+of the engine model; use it to filter. Drop flows whose secant succeeds; they belong to T-2131. Families, about
+150 rows:
+- `{k,1,1,-1}` for k from 2 to 100 in steps that keep the fallback path;
+- `{-N,1,1,1,1,1}` for N from 10 to 2000, log-spaced;
+- three-flow `{a,-b,c}` sets with a positive root nearest v = 0: the {0.3,-2.5,1.005} shape, scaled by 1E-3 to 1E+6
+  and with b varied;
+- four of the gen-m9 shapes: 31474c20fc1dafd6 A173's Data!C1:E7 flows, A271's Data!D5:E8, and
+  3c06f9298f65a3ba A394's `{0,2,-1}` (leading zero flow);
+- each flow scaled by 1E6 and by -1, to show whether the stop test scales with the flows.
+Column A is `=IRR({...})` with no guess. Column B is `=IRR({...},0.5)` on every tenth row, to confirm that the guess
+does not matter. Fill with `cd tools && uv run rustsheet-oracle fill -b excel-graph --suite probes-numeric`. If no
+backend is ready, leave the case pending and set this task `blocked` on the oracle, with the
+`rustsheet-oracle status` command as the proof that unblocks it.
+
+## Acceptance criteria
+- [ ] probes-numeric/t2927-irr-fallback-sweep is committed with excel-graph values for every row. Each row's
+      hypotheses (or a committed TSV beside the case) give the exact root (mpmath, 30 digits) and Excel's signed
+      offset from it in ulps.
+- [ ] financial.md "IRR's fallback when the secant fails" gets a sweep paragraph that cites the case: the offset's
+      sign and size by family, whether the scaled and negated flows move it, and whether the guess column
+      confirms that the guess does not matter.
+- [ ] Any flow where Excel is `#NUM!` but the fallback rule says it returns (or the reverse) is listed in financial.md
+      and in T-2928's Context.
+- [ ] No engine change. New known-failure lines appear only for the new case. `make check` green; reviewers approve.
+
+## Out of scope
+- Fitting or implementing the fallback's digits (T-2928).
+- The secant path and the large-root departures (T-2131, T-2565).
+- The `#DIV/0!` cases (T-2802).

@@ -1,0 +1,78 @@
+---
+id: T-2928
+title: "IRR's fallback returns Excel's digits: the polynomial Newton from v = 0 lands 15 to 35 ulp from Excel (10 visibly-off cells)"
+milestone: M9
+lane: functions-financial
+status: todo
+priority: P2
+size: M
+tier: opus
+campaign: visible
+depends_on: [T-2927]
+---
+
+## Goal
+Where both fitted secant runs fail, IRR returns Excel's value to within half a unit of the 15th significant digit.
+Today the fallback finds the right root but returns it correctly rounded, while Excel returns an iterate a few E-15
+away from it. Excel is the inaccurate one here, so this means reproducing Excel's iteration and stop. Converging
+further would not help.
+
+## Context
+Gap triage 2026-10-27 (`make eval` on origin/main 7dba3bfe). No open task owned the probe cells. Quirk entry:
+docs/excel-semantics/financial.md "IRR's fallback when the secant fails" (the exact-root offsets are recorded there). T-2727 (done) fitted
+which flows return and which are `#NUM!` (financial.md "IRR's fallback when the secant fails"). T-1686 (research)
+owns the solver caps and overflow probes, T-2131 the secant iterate and T-2565 the large-root departures. None of
+them covers the fallback's returned digits.
+
+**Needs an oracle sweep.** Three distinct flow sets cannot separate the candidate stop rules, so this task depends
+on T-2927 (probes-numeric/t2927-irr-fallback-sweep) and is not attempted before that case has values.
+
+Owned cells, all visibly off except P!A21. Exact roots are from mpmath at 50 digits.
+| case | cell | formula | Excel | ours | exact root |
+|---|---|---|---|---|---|
+| probes/irr-fallback-roots | P!A12, A13, A14, A15 | `IRR({42,1,1,-1},G)`, G = 0.5, 1, 0.01, 0 | -0.7467044766537371 | -0.7467044766537408 | -0.74670447665374079 |
+| probes/irr-fallback-roots | P!A22, A23, A24 | `IRR({-400,1,1,1,1,1},G)`, G = 0.5, 1, 0.01 | -0.6737366751808405 | -0.6737366751808422 | -0.67373667518084225 |
+| probes/irr-fallback-roots | P!A21 (1 ulp) | `IRR({0.3,-2.5,1.005},1)` | 6.9098085436343055 | 6.909808543634309 | 6.90980854363461213 |
+| ironcalc-calc/FINANCIAL/IRR.xlsx | General!L17 | `IRR(A17:F17)` (= {-400,1,1,1,1,1}) | -0.6737366751808405 | -0.6737366751808422 | as above |
+| gen-m9/31474c20fc1dafd6 | Calc!A173 | `IRR(Data!C1:E7)` | 661.4076391219855 | 661.4076391462188 | |
+| gen-m9/31474c20fc1dafd6 | Calc!A271 | `IRR(Data!D5:E8)` | -0.7467044766537371 | -0.7467044766537408 | as {42,1,1,-1} |
+IRR.xlsx L17 and the two gen-m9 cells are also listed in T-2131. Both take the fallback path today, so this task
+owns them, and T-2131's Context notes the move.
+
+Excel is about 3.7E-15 and 1.8E-15 above the exact root at the first two flows. That is the size of a Newton or
+secant step stopped one iterate early with |dv| near 1e-7.5, or of a stop on the residual |P(v)|. The engine
+(`irr_fallback`, `IRR_FALLBACK_STEPS` in crates/rustsheet-engine/src/functions/financial/financial_util.rs) runs
+Newton on P(v) = sum c_i v^i from v = 0, in Horner order from the highest power. It stops when
+|next - v| < 1e-7·max(|next|, 1) and returns `irr_from_discount(next)`. Candidates to score in the fit lab:
+- return `v` instead of `next`;
+- a relative or an absolute stop, and the threshold (1e-7, 1e-8, 1e-10);
+- Newton in r = 1/v - 1, or in x = 1 + r, instead of v;
+- P with ascending powers instead of Horner, or with the leading zeros kept;
+- an NPV in r rather than in v for the residual;
+- the start (v = 0, v = 1, the last secant iterate).
+Add an `irr_fallback` family to tools/src/rustsheet_tools/fitlab/kernels/solvers.py next to `irr_secant_v`, over
+the T-2927 sweep plus the cells above. Excel's selection rule (which flows return, which are `#NUM!`) is verified
+and must not change.
+
+## Acceptance criteria
+- [ ] The fit lab scores each candidate above on probes-numeric/t2927-irr-fallback-sweep and the owned cells,
+      reporting bit-exact, within-4-ulp and within-15-digits counts. financial.md "IRR's fallback when the secant
+      fails" records the counts, rejected candidates included.
+- [ ] Either a candidate brings every owned cell within half a unit of the 15th significant digit, and the engine
+      implements it: the lines for probes/irr-fallback-roots P!A12:A15, A22:A24, ironcalc-calc IRR.xlsx General!L17
+      and gen-m9/31474c20fc1dafd6 Calc!A173 and A271 leave eval/baseline/, and no baseline gains a line. Or the
+      task is set `blocked`, "Blocked because: time-boxed (decision 0056)", with the candidates listed.
+- [ ] The fallback stays bounded (`IRR_FALLBACK_STEPS`); the `#NUM!` cells of probes/irr-fallback-roots,
+      irr-guess-edges and irr-guess-edges-2 still pass.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- The secant path's digits and large-root flows (T-2131, T-2565); the `#DIV/0!` cells (T-2802).
+- XIRR (T-2566, T-2611).
+
+## Visible-parity stage
+Decision 0083/0114, stage `visible`: Excel is the inaccurate one here (mpmath puts ours within 1E-16 of the exact
+root and Excel 2E-15 to 4E-15 off it), so the target is Excel's own iterate, time-boxed under decision 0056. The task
+is done when every owned cell is within half a unit of the 15th significant digit of Excel's value. If P!A21 or any
+cell is still a few ulp off then, it moves to a follow-up task filed with `defer: phase-1b` and no campaign key, named
+in the Outcome.
