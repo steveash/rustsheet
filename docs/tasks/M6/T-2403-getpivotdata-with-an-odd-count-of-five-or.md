@@ -3,7 +3,7 @@ id: T-2403
 title: "GETPIVOTDATA with an odd count of five or more arguments is #ERROR!, like other refused argument counts"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
