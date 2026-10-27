@@ -729,8 +729,39 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   -2147483647 and 2147483648 255 `#`; -2147483646 is "-2147483646/1" (overflow A43-A64, overflow2 A58-A64).
   A whole part takes the rest: `# ?/100` on 1E15 is "1000000000000000      ", `# ?/?` on 2147483648.5
   "2147483648 1/2" and `0 ?/10` on 1E14+0.5 "100000000000000 5/10" (overflow A37-A42, A74-A76).
-  Implemented in `format_fraction` (formatter/fraction.rs). UNVERIFIED: the engine applies both bounds to the
-  value after `%` and `,` scaling, and the fixed bound to denominators past 32767; neither is probed (T-2233).
+  Implemented in `format_fraction` (formatter/fraction.rs). Both bounds apply to the value after `%` scaling
+  (VERIFIED, probes/fraction-overflow-scaled A1-A27, excel-graph 2026-10-27, T-2522): `?/?%` on 21474836.469 is
+  "2147483647/1%" and on 21474836.47, 21474836.48 and -21474836.48 255 `#`; `??/??%` on 21474836.46 "2147483646/1 %";
+  `# ?/?%` on 21474836.48 "2147483648    %"; `?/100%` on 3.27674 "32767/100%" and on 3.27675 255 `#`; the 2^30 stop
+  rule below too (`?/?%` on 10737418.245 "1073741825/1%", 10737418.235 "2147483647/2%"). For `,` scaling see
+  "Scaling commas in fraction formats"; for denominators past 32767 "Fixed denominators past 32768".
+- **Scaling commas in fraction formats** (VERIFIED, probes/fraction-overflow-scaled, excel-graph 2026-10-27, T-2522).
+  A `,` right after the denominator (`?/?,`, `# ?/4,`, `?/4,%`) multiplies the value by 10^((-3n) mod 256) for n such
+  commas, as if Excel kept the exponent -3n in an unsigned byte: 10^253 for one, 10^250 for two, 10^247 for three. So
+  `?/?,` on 1E-250 is "1000/1", on 1E-290 and 1E-300 "0/1", and on 0.5, 1, 1500 or 1E-200 255 `#` (TEXT `#VALUE!`)
+  under the 2^31 - 1 bound; `?/4,` on 1E-250 "4000/4"; `?/?,,` on 1E-250 "1/1", 1E-247 "1000/1"; `?/?,,,` on 1E-238
+  "1000000000/1". With an integer part the integer prints in full: `# ?/4,` on 1E-12 is "1" + 241 zeros + 4 spaces,
+  and on 2 the text would pass 255 characters, so 255 `#` and `#VALUE!`. Zero is unscaled (`?/?,` on 0 "0/1", `# ?/4,`
+  "0    "). The scaled value is cut to 15 significant digits: `?/?,,` on 1E-251 is "0/1" (0.1, whose double product
+  0.10000000000000002 would pick 1/9; A65, the only cell that tells). A `,` anywhere else prints or vanishes: after a
+  `%` or a literal it is a literal (`?/?%,` on 1E-252 "0/1%,", `?/?% ,` "0/1% ,", `?/? ,` "0/1 ,"), and a `,` after the
+  integer neither scales nor groups (`0, ?/4` on 2 is "2    ", on 1234567.5 "1234567 2/4"; `#, ?/4` alike). Outside a
+  fraction a `,` after `%` is a literal too: `0%,` on 0.5 is "50%," and on 1234567 "123456700%,". Implemented in the
+  parser (`Token::Comma`) and `fraction_scale` (formatter/fraction.rs). Unprobed: 86 or more commas (the exponent wraps
+  past 0), a `,` between the numerator and the `/`.
+- **Fixed denominators past 32768** (VERIFIED, probes/fraction-large-fixed-denominator and -six-digit-denominator,
+  excel-graph 2026-10-27, T-2522). Up to 32768 a fixed denominator is used as written (`?/32768` on 0.5 is
+  "16384/32768", on 1 255 `#`, the numerator bound 32767). From 32769 to 99999 Excel ignores it and picks the
+  denominator as for placeholders, the last convergent with a denominator up to 9999999 whatever the code's digit
+  count, under the placeholder value bound and 2^31 stop rule (`?/40000` on 0.5 "1/4    ", 0.8192 "512/400  ",
+  0.8191874 "4095937/40000", 1/9999999 "1/40000", 1E-7 "0/4    ", 2147483646.9 "2147483647/4    ", 2147483647 255 `#`;
+  `?/32769` on 1/9999999 "1/32769"). The code's digits print in place of the denominator's, cut to its digit count
+  (625 shows "400", 5000000 "40000"), and pad with spaces to the code's width under a `?` numerator and not under a `#`
+  or `0` one (`??/40000` on 0.5 " 1/4    ", `0/40000` and `#/40000` "1/4", `# #/40000` on 1.5 "1 1/4", `# ?/40000`
+  "1 1/4    "). Six or more digits (`?/100000`, `?/123456`) are #VALUE! from TEXT for every value, and Excel for the
+  web refuses a workbook that applies one as a cell format (FileCorruptTryRepair), so its displayed text is unknown.
+  Implemented in `format_fraction` (`MAX_FIXED_DENOMINATOR`, `LARGE_FIXED_MAX_DENOMINATOR`) and the parser. Unprobed: a
+  numerator mixing `?` with `#` or `0`, and a blank fraction (`# ?/40000` on a whole number).
 - **Placeholder fractions past 2^30** are not the last convergent (VERIFIED, excel-graph 2026-10-21, T-1740,
   probe cells kept out of the suites until the follow-up implements them; T-2233): `?/?` on 1073741824.5 is
   "1073741825/1" (not 2147483649/2), -1073741824.5 "-1073741825/1", 1431655765.5 "1431655766/1",
@@ -747,7 +778,7 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   integer over 1: 1073741824.5 "1073741825/1", 1073741824.25 "1073741824/1". At the bound: 1073741823.5 "2147483647/2"
   (2 x 1073741823 = 2^31 - 2 is taken). The sum alone passing 2^31 is taken: 1500000000.6 "3000000001/2", and
   715827883+1/3 (the double 715827883.3333334, partial quotients 2 then 1) "2147483650/3", where 1 x 1431655767 is under
-  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". UNVERIFIED: the bound under `%` and `,` scaling.
+  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". Under `%` scaling the rule applies to the scaled value (T-2522, above).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
@@ -762,9 +793,8 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
 - **A trailing `,` after the denominator scales the value up, not down by 1000**: `# ?/4,` is #VALUE! for every value but 0, which prints
   "0    " (B5:I5); `# ?/4,,` multiplies the value by 1E250 and prints the integer in full with the fraction blanked ("15" + 249
   zeros + 4 spaces on 1.5, B6; -0.001 "-1" + 247 zeros, F6; 253 to 255 characters), and is #VALUE! on 1234.5 (I6),
-  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! on the same pattern (a larger
-  factor, or the limit); the per-comma factor and the limit's role are hypotheses to probe (T-2072). Not
-  implemented: we print "0    ".
+  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! because one comma multiplies
+  by 10^253 (settled by T-2522, "Scaling commas in fraction formats" above; implemented, rows 5-6 pass).
 - **`0` numerator placeholders print**: a zero numerator is not blanked, it pads with zeros: `# 00/16` on 0 "00/16",
   on 1.99 "2 00/16" (D8, E8), and `# 0/4` on 0 "0/4", 1 "1 0/4" (D15, G15); the integer part is dropped under `#` when
   zero and the separator goes with it (`# 00/16` on 0.5 "08/16", H8; `# 0/4` on 0.5 "2/4", H15; -0.5 "-08/16", "-2/4",
