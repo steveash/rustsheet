@@ -172,10 +172,10 @@ fn hebrew_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
     ))
 }
 
-/// What a month name token (`None` for a weekday one) prints in the Hebrew calendar for month `month` of `year`, with the
+/// What a month name token prints in the Hebrew calendar for month `month` of `year`, with the
 /// leap-year Adars `adars` of the tag's names, or `None` when the token reads `names` by month
-/// number as usual. With a locale every month token is the whole name (`[$-80409]mmmmm` of Adar is
-/// "Adar", of a leap year's month 7 "AdarII"). With no locale (`adars` `None`) month 13 prints
+/// number as usual (and for a weekday token). With a locale every month token is the whole name (`[$-80409]mmmmm` of Adar is
+/// "Adar", of a leap year's month 7 "`AdarII`"). With no locale (`adars` `None`) month 13 prints
 /// nothing for `mmm` and `mmmm` and U+0001 for `mmmmm` (`[$-80000]m|mmm|mmmm|mmmmm` of 2024-09-20
 /// is "13|||\u{1}"; probes/t2779-hebrew-saka-more E1, t2779-hebrew-saka-names B8:D21).
 pub(crate) fn hebrew_month_name(

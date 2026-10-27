@@ -42,7 +42,8 @@ const SAKA_MONTHS: [&str; 12] = [
 
 /// The Saka names of an Arabic or Hindi LCID (`[$-100401]`, `[$-100439]`): Devanagari months, and
 /// the hi-IN `dddd` for both `ddd` and `dddd` (`[$-100439]mmmm|ddd` of 2023-03-15 is
-/// "फल्गुण|बुधवार"; probes/t2779-hebrew-saka-more B1:B23, C32, C33).
+/// "फल्गुण|बुधवार"; probes/t2779-hebrew-saka-more B1:B23, C32, C33). Excel's months 4 and 8 hold the
+/// precomposed U+095D and U+0958, which are not NFC, so they are escaped.
 pub(crate) static SAKA_HINDI: DateNames = DateNames {
     months_short: SAKA_HINDI_MONTHS,
     months: SAKA_HINDI_MONTHS,
@@ -54,11 +55,11 @@ const SAKA_HINDI_MONTHS: [&str; 12] = [
     "चैत्र",
     "वैशाख",
     "ज्येष्ट",
-    "आषाढ़",
+    "आषा\u{95d}",
     "श्रावण",
     "भाद्र",
     "आश्वीन",
-    "क़ार्तीक",
+    "\u{958}ार्तीक",
     "अग्रहायन",
     "पौसा",
     "माघ",
