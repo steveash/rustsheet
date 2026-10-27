@@ -3,7 +3,7 @@ id: T-2829
 title: "F.TEST gen-m9/b6593d7dd13f2dac A306: the one cell bratio leaves visibly off (T-2681)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -77,10 +77,20 @@ it displays ...021, so it is visibly off.
   through w1 (bratio's 1 - w with the swap) for a0 >= 4.
 
 ## Acceptance criteria
-- [ ] A306 within half a unit of the 15th significant digit of Excel's value, or the cause
-      recorded in docs/excel-semantics/statistics.md with the probe that shows it.
-- [ ] No new visibly-off F.TEST cell (`uv run rustsheet-fitlab f-test`).
-- [ ] `make check` green; reviewers approve.
+- [x] A306 within half a unit of the 15th significant digit of Excel's value, or the cause
+      recorded in docs/excel-semantics/statistics.md with the probe that shows it (the cause: Excel's ln B, a stored
+      double 3 ulps below the accurate one at (6, 11.5); probes/t2829-ftest-ln-beta-grid; its form is T-2924's).
+- [x] No new visibly-off F.TEST cell (`uv run rustsheet-fitlab f-test`): no engine change.
+- [x] `make check` green; reviewers approve.
+
+## Outcome
+Research only, no engine change (eval delta 0; three new probe cases, their failing cells in eval/baseline/probes.txt).
+A306's 25 ulp is Excel's ln B: reading L = fl(a LN x) - ln(p / 2s) off each probe cell (p deep in bpser, z unstored)
+gives a stored double k ulps from fl(accurate ln B), k = -3 at A306's (6, 11.5), -1 at (6, 11), 0 at A289's (2.5, 11).
+probes/t2829-ftest-ln-beta-grid (99 F.TEST cells, a 2.5..8 by b 8.5..19.5, excel-graph) shows the same on every cell,
+k in -3..+2, max fraction 0.19. No form tried reproduces the map (accurate 45 of 99, TOMS betaln 49, TOMS reduction
+55, GAMMALN sums 15-29; `docs/research/t2829/ln_beta_map.py`, `ln_beta_map.out`), so A306 stays visibly off and the fit
+is T-2924. Recorded in statistics.md "F.TEST / FTEST".
 
 ## Out of scope
 - The cells 1 to 3 ulp off (T-2830).
