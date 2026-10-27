@@ -295,7 +295,10 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// -0.065294027857947 (G23, K58). Each numerator divides its hyperbolic part by `t` first,
 /// `cos x·(cosh y/t)`: 27 of the 34 IMSEC texts of probes-numeric im-sec-csch-fused, against 23 for
 /// `cos x·cosh y/t`, with every older cell kept (T-2841). cosh y, sinh y and cosh 2y are
-/// [`sec_sinh_cosh`]'s: 32 of the 34 (T-2884).
+/// [`sec_sinh_cosh`]'s: 32 of the 34 (T-2884). Inside that kernel's `1/u` band sinh²y is
+/// `(cosh 2y - 1)/2`: the last two texts, `IMSEC("2.11217+0.627617i")` -0.86864314680255+0.803795556920423i
+/// and `IMSEC("-3.75483+1.33847i")` (B3, B31), need it, and rows 29 and 33 of the sweep, both below the
+/// band (|y| = 0.00977722 and 0.00387493), need cosh²y - 1 (T-2920).
 pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).1);
@@ -303,7 +306,13 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     let (x_sin, x_cos) = trig_sin_cos(x);
     let (y_sinh, y_cosh) = sec_sinh_cosh(y);
 
-    let t = x_cos * x_cos + ((sec_sinh_cosh(2.0 * y).1 + 1.0) / 2.0 - 1.0);
+    let cosh_2y = sec_sinh_cosh(2.0 * y).1;
+    let y_sinh_squared = if in_inverse_exp_band(y) {
+        (cosh_2y - 1.0) / 2.0
+    } else {
+        (cosh_2y + 1.0) / 2.0 - 1.0
+    };
+    let t = x_cos * x_cos + y_sinh_squared;
     if !t.is_finite() {
         return overflowed_reciprocal(x_cos, x_sin * y.signum(), y, suffix);
     }
@@ -388,7 +397,7 @@ pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 
 #[cfg(test)]
 mod tests {
-    use super::inverse_exp_sinh_cosh;
+    use super::{imsec, inverse_exp_sinh_cosh, CalcResult, CellReferenceIndex, Suffix};
 
     #[test]
     fn inverse_exp_kernel_is_lopsided_in_x() {
@@ -404,6 +413,31 @@ mod tests {
         // probes/t2535-complex-text-tie: IMSINH("4") is 27.289917197127753, IMSINH("-4") libm's.
         assert_eq!(inverse_exp_sinh_cosh(4.0).0, 27.289_917_197_127_753);
         assert_eq!(inverse_exp_sinh_cosh(-4.0).0, -27.289_917_197_127_75);
+    }
+
+    // probes-numeric im-sec-csch-fused B3 and B31 (excel-graph): inside the band sinh²y is
+    // (cosh 2y - 1)/2 (T-2920).
+    #[test]
+    fn imsec_takes_the_half_angle_sinh_squared_inside_the_band() {
+        let text = |x, y| match imsec(
+            (x, y, Suffix::I),
+            CellReferenceIndex {
+                sheet: 0,
+                row: 1,
+                column: 1,
+            },
+        ) {
+            CalcResult::String(t) => t.to_string(),
+            _ => String::new(),
+        };
+        assert_eq!(
+            text(2.112_17, 0.627_617),
+            "-0.86864314680255+0.803795556920423i"
+        );
+        assert_eq!(
+            text(-3.754_83, 1.338_47),
+            "-0.436112042213995+0.267414799382832i"
+        );
     }
 
     #[test]
