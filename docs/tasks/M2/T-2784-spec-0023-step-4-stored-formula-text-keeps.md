@@ -16,7 +16,7 @@ does: `<f>1 + 2</f>` prints `=1 + 2`, `<f> 1+2</f>` prints `=1+2`.
 
 ## Context
 - T-2781 already drops the leading run of a file's stored text (`Parser::loaded` trims it) and E1, E2 and E10
-  pass; what is left here is E6 (a line feed, with T-2782) and checking the rule against T-2786's findings.
+  pass; E6 (a line feed) landed with T-2782, so what was left here was checking the rule against T-2786's findings.
 SPEC-0023 step 4 ("Stored text"). Evidence: probes/t2776-formula-text-whitespace-shapes D1:E10 (excel-graph,
 2026-10-26). Typed formulas keep the leading run (`= 1+2`), stored ones do not.
 
@@ -30,4 +30,4 @@ SPEC-0023 step 4 ("Stored text"). Evidence: probes/t2776-formula-text-whitespace
 ## Outcome
 No code change. T-2781 (`Parser::loaded` drops the leading run of stored text) and T-2782/T-2783 already made
 probes/t2776-formula-text-whitespace-shapes pass in full on main: 65 of 65 cells, including E1, E2, E6, E7, E8, E9 and
-E10 (`rustsheet-eval show`, 2026-10-27), baselined in eval/baseline/probes.txt. Eval delta: none.
+E10 (`rustsheet-eval show`, 2026-10-27), recorded as fully passing in eval/baseline/probes.txt (unchanged here). Eval delta: none.
