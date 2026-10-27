@@ -3,7 +3,7 @@ id: T-2828
 title: "Probe whitespace runs joined across a folded plus or a sign when they hold line feeds"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ sign) and either run holds line feeds, so `Run::then` matches it.
 
 ## Out of scope
 - Runs inside one gap (T-2782, done).
+
+## Outcome
+Probed all five shapes on excel-graph (probes/t2828-whitespace-join-folded-plus); our FORMULATEXT, LEN and values match in all 30 cells, so no engine task. Recorded in docs/excel-semantics/syntax.md. Eval delta: +30 probe cells passing, no regressions.

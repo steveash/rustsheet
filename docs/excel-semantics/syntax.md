@@ -350,7 +350,7 @@ Ours (T-2781, SPEC-0023 step 1; line feeds T-2782, step 2): the parser keeps eac
 `Node::Spaced` around the operand it touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the
 R1C1 storage text, row and column edits, sheet renames and moves print the runs back. Two runs that the parser joins
 around one operand (a folded plus) add their line feeds and keep the earlier spaces only when the later run has none;
-a later run of exactly 256 line feeds counts as none there (unprobed). A cell stores two trees: the written one, which
+a later run of exactly 256 line feeds counts as none there. Probed (probes/t2828-whitespace-join-folded-plus, excel-graph 2026-10-27, T-2828; ours matches all 30 cells): `=  +` LF `5` prints back as typed (6 chars, one LF, two spaces), as do `=` LF `+  5` (2 spaces), `=- ` LF ` 5` (`=-` LF ` 5`: the space before the LF is dropped) and `=1+   +` + 256 LF + `5` (`=1+   +5`: the wrapped 256 LF print nothing, the three spaces stay); `=1+ ` LF ` +` LF ` 5` prints `=1+` LF ` +` LF ` 5` (the space before the first LF dropped, 2 LF, 2 spaces). Values match the whitespace-free formula (5, 5, 6, -5, 6). A cell stores two trees: the written one, which
 prints, and one with no whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a
 `Spaced` (`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the
 stripped tree too. A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass);
