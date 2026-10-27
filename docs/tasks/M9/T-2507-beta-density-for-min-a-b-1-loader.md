@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2645]
+depends_on: [T-2645, T-2586]
 spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
@@ -77,8 +77,9 @@ task without the campaign key.
 stage needs a high-precision reference to show Excel close to correctly rounded, and for min(a,b) > 1 it does not:
 - Against a 40-digit mpmath reference of x^(a-1) (1-x)^(b-1) / B(a,b) (exact 1 - x), a correctly rounded kernel
   scores, exact / 4 ulp / 15 digits shown: hold1 251 / 1,738 / 2,147 of 3,296 (statistics.md's CR row, 2,435 by its
-  half-unit rule), t2464-w2f-absweep 327 / 1,997 / 2,259 of 3,072, t2464-w2f-xruns-1 299 / 4,611 / 5,013 of 6,144,
-  and the 928 pre-T2464 cells of `docs/research/t2464/beta_exact.tsv` 123 / 744 / 737. Excel's error on those 928 reaches
+  half-unit rule), t2464-w2f-absweep 327 / 1,997 / 2,259 of 3,072, t2464-w2f-xruns-1 299 / 4,611 / 5,013 of 6,144
+  (`docs/research/t2507/cr_score.py`), and, from the separate 60-digit run, the 928 pre-T2464 cells of
+  `docs/research/t2464/beta_exact.tsv` 123 / 744 / 737. Excel's error on those 928 reaches
   235 ulp (`BETA.DIST(0.9,5,100,FALSE)`, m9-beta-dist-a5) and is 24-182 ulp at a dozen cells with shapes 10-100
   (m9-beta-dist-a10, -a50, -a100), from `beta_exact.tsv`'s err_ulp column.
 - Loader's model (M3) reaches 3,176 of hold1 within 15 digits. So matching Excel's visible digits means
@@ -92,6 +93,7 @@ probes-numeric cells, makes 677 visibly off where Excel disagrees with it (media
 gated `BETADIST_BETAINV.xlsx` G3 by 1 ulp (Excel 0.17924096936442618; the correctly rounded value is
 0.17924096936442616, so a correctly rounded kernel loses G3 too). No regime split by bd0 branch pair or by n avoids
 both. That branch's task file has the full comparison (`docs/research/t2507/lost_cells.tsv`,
-`newly_visibly_off.tsv`). Unblock when T-2586 pins the shape constant and the series branch, or when the owner accepts
+`newly_visibly_off.tsv`, both only on that branch at 9d9fd0a0b). Unblock when T-2586 pins the shape constant and the
+series branch, or when the owner accepts
 the losses with a decision record; then resume from that branch's code (`loader.rs`, `stirlerr_exact`,
 `ln_double_double`).
