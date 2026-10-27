@@ -75,6 +75,12 @@ pub struct SheetData {
     /// write (a spill) can tell that what it found before is out of date.
     #[bitcode(skip)]
     layout_version: u64,
+    /// The last row that exists (0 for none), kept in step by every write, so that `last_row`,
+    /// which every clipped walk asks, costs nothing (T-0465). `None` until known, for a sheet
+    /// decoded and not yet rebuilt, when `last_row` scans the chunks. Not serialised. Every write
+    /// that creates or removes a row (`row_or_insert`, `remove_row`) must keep it.
+    #[bitcode(skip)]
+    known_last_row: Option<i32>,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -180,8 +186,12 @@ impl SheetData {
             chunk.rows[index] = Some(Row::default());
             chunk.used += 1;
             self.row_count += 1;
+            self.known_last_row = Some(match self.known_last_row {
+                Some(last) => last.max(row),
+                None => self.scan_last_row(),
+            });
         }
-        chunk.rows[index].as_mut()
+        self.row_mut(row)
     }
 
     /// Every row that exists with its number, in ascending order.
@@ -255,9 +265,14 @@ impl SheetData {
         })
     }
 
-    /// The number of the last row that exists, or 0 for an empty sheet. Cheap: it
-    /// looks at whole chunks, so callers can bound whole-column walks by it.
+    /// The number of the last row that exists, or 0 for an empty sheet. Kept by every write, so
+    /// callers can bound whole-column walks by it.
     pub(crate) fn last_row(&self) -> i32 {
+        self.known_last_row.unwrap_or_else(|| self.scan_last_row())
+    }
+
+    /// [`Self::last_row`] from the chunks: the last chunk's slots, from the end.
+    fn scan_last_row(&self) -> i32 {
         for (chunk_index, chunk) in self.chunks.iter().enumerate().rev() {
             let Some(chunk) = chunk else { continue };
             if let Some(index) = chunk.rows.iter().rposition(Option::is_some) {
@@ -294,6 +309,7 @@ impl SheetData {
         }
         self.column_counts = counts;
         self.column_rows = None;
+        self.known_last_row = Some(self.scan_last_row());
         self.layout_version = self.layout_version.wrapping_add(1);
     }
 
@@ -495,6 +511,9 @@ impl SheetData {
             if chunk.used == 0 {
                 self.chunks[chunk_index] = None;
             }
+            if self.known_last_row == Some(row) {
+                self.known_last_row = Some(self.scan_last_row());
+            }
             for (column, _) in &removed.cells {
                 self.unindex_cell(row, *column);
             }
@@ -632,6 +651,33 @@ mod test {
         assert_eq!(decoded.last_column(), 6);
         decoded.remove_cell(2, 6);
         assert_eq!(decoded.last_column(), 3);
+    }
+
+    /// The kept last row (T-0465) is right before and after a decode, before the rebuild too
+    /// (it scans then), and after every kind of write.
+    #[test]
+    fn the_last_row_is_kept_by_every_write() {
+        let mut data = SheetData::new();
+        data.set_cell(9, 3, number(1.0));
+        data.set_cell(3000, 1, number(1.0));
+        let mut decoded: SheetData = bitcode::decode(&bitcode::encode(&data)).unwrap();
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.set_cell(2000, 1, number(1.0));
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.rebuild_column_counts();
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.set_row(4000, Vec::new());
+        assert_eq!(decoded.last_row(), 4000);
+        decoded.remove_row(4000);
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.remove_cell(3000, 1);
+        assert_eq!(decoded.last_row(), 2000);
+        decoded.remove_cell(9, 3);
+        decoded.remove_cell(2000, 1);
+        assert_eq!(decoded.last_row(), 0);
+        let mut fresh = SheetData::default();
+        fresh.set_cell(5, 1, number(1.0));
+        assert_eq!(fresh.last_row(), 5);
     }
 
     #[test]
