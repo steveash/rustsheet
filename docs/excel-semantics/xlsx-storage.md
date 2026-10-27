@@ -372,9 +372,9 @@ the save. A structured reference is stored with its normalized spaces: typed `T[
 Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
 T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac1b22c81cabb3f77c8, refetch with `rustsheet-oracle fill --force`), sheet1.xml H1:H17 and E4:E15. A typed `=T[#Headers]` (E13) is `#SPILL!` in the sidecar but `#VALUE!` in the saved array `<v>`; not relied on. Excel's whitespace semantics are in syntax.md.
 Ours: export writes the tree with no whitespace (SPEC-0023 keeps the written runs for printing only), so the saved text is
-canonical; the runs beside a missing argument are filed as T-2942.
+canonical; the runs beside a missing argument are filed as T-2944.
 Status: VERIFIED (excel-graph)
-Tasks: T-2786, T-2942, T-2801
+Tasks: T-2786, T-2944, T-2801
 
 ## Cached volatile values are those of the last calculation, near the save time
 Rule: a workbook's cached values for `TODAY()`, `NOW()` and their dependents are those of Excel's last

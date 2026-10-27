@@ -79,7 +79,7 @@ probes/t2776-* (excel-graph, 2026-10-26).
 - **Values**: every probed value equals the value of the formula without spaces.
 - **Answered** (T-2786, syntax.md "Whitespace beside a missing argument is kept"): a run beside a missing operand is
   kept as typed (`=NOW( )`, `=IF(1, ,2)`, `=SUM(1, )`, `=SUM(, 1)`), unlike a run before a comma that follows an
-  operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2942). `=SUM (1)` and
+  operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2944). `=SUM (1)` and
   `=SUM( )` are refused. Structured references normalize their whitespace (T-2801). Excel saves kept whitespace in the
   `<f>` text, a line feed as raw CR LF bytes that read back as LF (xlsx-storage.md), so export prints the tree's whitespace and does not strip it.
 
@@ -92,7 +92,7 @@ applied to one.
   after a binary operator, after a unary sign, after `(`, after a comma, and after `@`.
 - A run after a primary's last token, followed by a binary operator, `%` or `)`, is that primary's
   `after`.
-- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. (A run beside a missing argument is kept: see Unknown/Answered below, T-2942.) These are
+- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. (A run beside a missing argument is kept: see Unknown/Answered below, T-2944.) These are
   exactly the places where Excel drops it (for the probed shapes; see Unknown).
 
 Attaching at the primary level, and never to a chain, leaves the value-operator chains of SPEC-0007
