@@ -3,7 +3,7 @@ id: T-2764
 title: "Calendar digits under LCID 0 keep the calendar with en-US names"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -22,9 +22,19 @@ T-2729 (2026-10-27) lets any calendar digit but 0 and 6 win over a `B2` before t
 cell of this task passes; what is left is closing it.
 
 ## Acceptance criteria
-- [ ] text-locale-lunar-edges A59 and text-locale-lunar-tokens A57, A58 pass.
-- [ ] text-locale-lunar-tokens A79 passes: `B2` before a lunar tag gives the lunar date (`TEXT(45300,"B2[$-110409]yyyy|m")` is "2023|12"; T-2729 leaves the lunar digits out).
-- [ ] `make check` green; reviewers approve.
+- [x] text-locale-lunar-edges A59 and text-locale-lunar-tokens A57, A58 pass.
+- [x] text-locale-lunar-tokens A79 passes: `B2` before a lunar tag gives the lunar date (`TEXT(45300,"B2[$-110409]yyyy|m")` is "2023|12"; T-2729 leaves the lunar digits out).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Nothing left to implement: T-1924 (2026-10-26, `without_locale` keeps a calendar digit over any LCID without a locale)
+made text-locale-lunar-edges A59 and text-locale-lunar-tokens A57, A58 pass, and T-2729 (2026-10-27, any calendar digit
+but 0 and 6 wins over a `B2` before the tag) made text-locale-lunar-tokens A79 pass. This closes the task with unit
+asserts for each of those cells in formatter/test/test_locale_tag.rs
+(`a_calendar_digit_over_an_lcid_without_a_locale_keeps_its_date`).
+Eval: no change (the four cells already pass on main).
+Follow-up: T-2935 probes the other calendar digits (3, 4, 5, 9, 14) over an LCID with no locale, which the Context asked
+for before generalizing.
