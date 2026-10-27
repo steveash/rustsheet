@@ -2365,7 +2365,7 @@ refuses it is unprobed, T-2845). The plain-range quirk is implemented for every 
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
 inside are T-2339. A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
-(plain-range-delete-row-first A6, T-2849). With no table of that name (engine API `remove_table`), the formula is a parse
+(plain-range-delete-row-first A6, T-2855). With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored

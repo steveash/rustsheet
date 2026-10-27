@@ -51,7 +51,7 @@ table's cells (`Model::last_data_row`; probed first: table-delete-row-all-data-b
 below moves). A plain range shrinks when a row delete takes its edge rows (`Displacement::range_corners`;
 probed with no table: plain-range-delete-row-first, -last). Eval: probes known failures 2865 -> 2821
 (46 fixed: every cell of table-delete-row-first-data, -last-data, -last-data-totals, -all-data,
--totals), 0 regressions; 2 new-coverage failures in the new probe cases (T-2849). Follow-ups: T-2848
-(probe the row's cells outside the table, a table beside it and a multi-row all-data delete), T-2849
+-totals), 0 regressions; 2 new-coverage failures in the new probe cases (T-2855). Follow-ups: T-2848
+(probe the row's cells outside the table, a table beside it and a multi-row all-data delete), T-2855
 (both new-coverage failures), T-2851 (probe the hand range-shrink shapes). Undo of the kept last data row
 is recorded as the clear it is (`UserModel::delete_rows`).
