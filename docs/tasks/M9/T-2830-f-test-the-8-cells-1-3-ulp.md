@@ -22,6 +22,8 @@ cde551ea787f713a A199 (1), fd9fa22d212080d6 A279 (1). Seven are bratio's `bpser`
 the tail, x0 below 1E-13), A243 is L140 at a0 = 4, b0 = 2 (docs/research/t2681/README.md).
 Unported in f_test_tail.rs: `w1_bpser` for a shape of 1/2 with x0 >= 0.3 (bratio 7 bit-exact of 8
 there against the model's 2, `score_bratio.out`), and bgrat, bfrac, basym.
+Take A199 first: its 1 ulp sits on a 15-digit rounding boundary, so its displayed text differs
+(Excel 7.63011667685884E-43, ours 7.63011667685883E-43; reviewer-excel-fidelity on #1959).
 
 ## Acceptance criteria
 - [ ] Each of the 8 cells bit-exact or its residual explained in docs/excel-semantics/statistics.md.

@@ -306,7 +306,7 @@ pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
 
 /// (0.5 - v) + 0.5, each step an x87 op stored to a double: bratio's complement and bpser's
 /// series factor 1 - b/n.
-pub(super) fn half_complement(v: f64) -> f64 {
+fn half_complement(v: f64) -> f64 {
     extended_sum(extended_sum(0.5, -v), 0.5)
 }
 

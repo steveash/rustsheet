@@ -45,7 +45,7 @@ orders, and df 1 against df 249 or 400 (the series hands over to `beta_reg_compl
 - [ ] Visible parity: the 8 cells above have Excel's value to 15 significant digits, with no new
       known-failure lines in any baseline beyond decision 0083's allowance.
 - [x] The T-2571 ad hoc scores are reproducible from committed fits.
-- [ ] Each candidate's score (bit-exact / within 4 ulp / visibly off) is recorded in
+- [x] Each candidate's score (bit-exact / within 4 ulp / visibly off) is recorded in
       docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
 
