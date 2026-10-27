@@ -47,7 +47,6 @@ impl Register {
 
     /// The register `(-1)^negative * significand * 2^exponent` for a significand below 2^64,
     /// normalised as an operation leaves it.
-    #[cfg(test)]
     pub(crate) fn from_parts(negative: bool, significand: u128, exponent: i32) -> Self {
         if significand == 0 {
             return Self::zero(negative);
