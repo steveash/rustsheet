@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-2801]
 campaign: semantics
 ---
 
@@ -49,6 +49,18 @@ printing fixes. Either land after T-2801, or record the one unmasked line with a
 ## Visible-parity stage
 Target: S!E5, S!E8, S!E9, S!E13, S!E14 and S!E15 of probes/t2786-whitespace-structured-refs-runs have Excel's type and
 value. All six cells are wrong-type (`#ERROR!` against a number or `#SPILL!`), so the stage is `semantics`.
+
+## Superseded in flight (2026-10-27)
+An opus run claimed this task and made the adapter change (a typed `=...` joins the formulas pass), with a
+unit test: `make eval-check` then showed the 6 cells fixed and S!F8 regressed, as predicted. Meanwhile both open
+T-2801 branches (`agent/engine/T-2801-structref-whitespace` and `agent/engine/T-2801-structured-ref-whitespace`,
+2026-10-27 22:04 and 22:13 UTC) carry the same adapter change together with the printing that keeps F8 passing
+(the second drops all 6 lines below from eval/baseline/probes.txt), so this task waits on T-2801 instead of landing
+a duplicate with a decision record. When a T-2801 PR merges: if the 6 lines below are gone from
+eval/baseline/probes.txt, set this task `done` with an Outcome naming that PR; otherwise do what is left, starting
+from the adapter code T-2801 merged.
+A unit test worth keeping if T-2801 has none: a spec with table T over A1:A3 (`Col`, 3, typed `(4)`) and typed
+`=SUM(T[Col])` gives -1, typed `=A3*2` gives -8.
 
 ## Acceptance criteria
 - [ ] Typed (`entered`) formula cells are entered in the formulas pass, after tables, pivots and
