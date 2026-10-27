@@ -95,11 +95,11 @@ def write_case() -> None:
 
 
 def npv(flows: Flows, rate: Decimal) -> Decimal:
-    """Sum of c_i / (1 + rate)^i, in the current decimal context."""
+    """Sum of c_i / (1 + rate)^i, in the current decimal context, on the flows' exact binary values."""
     v = 1 / (1 + rate)
     total, power = Decimal(0), Decimal(1)
     for c in flows:
-        total += Decimal(repr(float(c))) * power
+        total += Decimal(float(c)) * power
         power *= v
     return total
 

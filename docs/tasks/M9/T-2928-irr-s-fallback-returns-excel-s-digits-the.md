@@ -55,7 +55,8 @@ the T-2927 sweep plus the cells above. Excel's selection rule (which flows retur
 and must not change.
 
 T-2927's sweep (probes-numeric/t2927-irr-fallback-sweep, 150 flows, with t2927-irr-fallback-sweep.roots.tsv; financial.md
-"IRR's fallback when the secant fails", Sweep): offsets from -9168 to +8395 ulps; scaling by 1E6 and negating the flows
+"IRR's fallback when the secant fails", Sweep): offsets from -10524 (A138) to +9036 (A144) ulps over the whole sweep,
+with `{-284,1,1,1,1,1}` (A24) at +1865 ulps while its scaled and negated forms are within 1 ulp; scaling by 1E6 and negating the flows
 both move them; the guess changes the digits on 5 of 15 rows. Excel is `#NUM!` where the fallback rule returns for
 `{-N,1,1,1,1,1}` with N = 496 to 2000 (rows A26-A31) and for their 1E6-scaled and negated forms (A101-A112).
 The sweep's generator is tools/src/rustsheet_tools/fitlab/irr_fallback_sweep.py (extend `families()` and rerun `case`
