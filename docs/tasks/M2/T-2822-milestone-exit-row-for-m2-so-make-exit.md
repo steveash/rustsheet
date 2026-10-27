@@ -3,7 +3,7 @@ id: T-2822
 title: "Milestone exit row for M2 so make exit-owners MILESTONE=M2 runs"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
