@@ -3241,9 +3241,10 @@ TRUE or "2" k is coerced and the array decides (no numbers: `#NUM!`). A k that i
 written or returned by OFFSET, INDIRECT or IF, reads its top-left cell (a multi-cell range does not
 lift), and a referenced cell holding an error is `#VALUE!`, not that error (options 0, 4 and 6
 probed; options 1, 2, 3, 5 and 7 too, T-2336: `AGGREGATE(14,o,A1:A5,D1)` with D1 `=NA()` is `#VALUE!`
-for every one of them, probes/aggregate-error-k-picked-ref A1:A5). A fourth argument IF or CHOOSE picks a reference
-for under function 9 is read as that reference: `AGGREGATE(9,0,A1:A2,IF(TRUE,B1))` and the `CHOOSE(1,B1)` form give
-13, as the plain `B1` does (A6:A8, B1 = 10, A1:A2 = 1, 2).
+for every one of them, probes/aggregate-error-k-picked-ref Calc!A1:A5). Under function 9, a fourth argument that
+is IF or CHOOSE returning a reference is summed as that reference: `AGGREGATE(9,0,A1:A2,IF(TRUE,B1))` and the
+`CHOOSE(1,B1)` form give 13, the same as plain `B1` (Calc!A6:A8; B1 = 10, A1:A2 = 1, 2). Other functions in 1-13 are
+assumed alike.
 Cells (probes/aggregate-range-k-first-cell, excel-graph 2026-10-21; Data A1:A5 = 1..5, B1 "x",
 B2 blank, B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`, E1 `=NA()`, E2 2):
 - `AGGREGATE(18,3,C1:C2,B1:B3)`, `AGGREGATE(14,6,C1:C2,"x")`, functions 14-19 over C1:C2 with
