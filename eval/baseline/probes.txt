@@ -1122,6 +1122,7 @@ C	probes/t2065-lift-stdevs.case.json	1
 C	probes/t2065-lift-sumsq.case.json	1
 C	probes/t2065-lift-vars.case.json	1
 C	probes/t2127-trimrange-blank-shapes.case.json	63
+C	probes/t2184-dollar-neg-rounds-to-zero.case.json	4
 C	probes/t2189-ifs-omitted-concat.case.json	1
 C	probes/t2189-ifs-omitted-isblank.case.json	1
 C	probes/t2189-switch-omitted-concat.case.json	1
