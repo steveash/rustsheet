@@ -3,7 +3,7 @@ id: T-2783
 title: "SPEC-0023 step 3: keep the extra spaces of an intersection operator in formula text"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
