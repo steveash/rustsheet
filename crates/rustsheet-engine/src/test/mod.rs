@@ -223,6 +223,7 @@ mod test_sheet_names;
 mod test_spill_functions;
 mod test_string_literal_limit;
 mod test_text;
+mod test_text_copies;
 mod test_today;
 mod test_trigonometric_reciprocals;
 mod test_types;
