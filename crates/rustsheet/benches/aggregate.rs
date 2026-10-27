@@ -142,8 +142,14 @@ fn unique_textjoin_workbook() -> Result<Workbook, Box<dyn Error>> {
     common::filled_workbook(|tx| {
         tx.add_sheet("Zord")?;
         for r in 1..=WHOLE_COLUMN_ROWS {
-            tx.set(format!("Zord!A{r}").as_str(), format!("k{}", r % 50).as_str())?;
-            tx.set(format!("Zord!C{r}").as_str(), format!("n{}", r % 20).as_str())?;
+            tx.set(
+                format!("Zord!A{r}").as_str(),
+                format!("k{}", r % 50).as_str(),
+            )?;
+            tx.set(
+                format!("Zord!C{r}").as_str(),
+                format!("n{}", r % 20).as_str(),
+            )?;
         }
         for r in 1..=TAILED_CONSUMER_CALLS {
             tx.set(format!("A{r}").as_str(), format!("k{}", r % 50).as_str())?;
@@ -177,8 +183,14 @@ fn small_row_workbook() -> Result<Workbook, Box<dyn Error>> {
     common::filled_workbook(|tx| {
         tx.add_sheet("Report")?;
         for r in 2..=WHOLE_COLUMN_ROWS + 1 {
-            tx.set(format!("Report!A{r}").as_str(), format!("a{}", r % 5).as_str())?;
-            tx.set(format!("Report!B{r}").as_str(), format!("b{}", r % 4).as_str())?;
+            tx.set(
+                format!("Report!A{r}").as_str(),
+                format!("a{}", r % 5).as_str(),
+            )?;
+            tx.set(
+                format!("Report!B{r}").as_str(),
+                format!("b{}", r % 4).as_str(),
+            )?;
             tx.set(format!("Report!G{r}").as_str(), f64::from((r * 37) % 1000))?;
         }
         tx.set("X1", "a1")?;
@@ -200,7 +212,10 @@ fn tailed_consumer_cases() -> Result<(), Box<dyn Error>> {
             "TEXTJOIN(\",\",TRUE,UNIQUE(IF(A1=Zord!A:A,Zord!C:C,\"\")))",
             unique_textjoin_workbook,
         ),
-        ("IF($L$1>1,LOOKUP(2,1/(J:J<>\"\"),J:J))", lookup_last_workbook),
+        (
+            "IF($L$1>1,LOOKUP(2,1/(J:J<>\"\"),J:J))",
+            lookup_last_workbook,
+        ),
         (
             "SMALL(IF((A2:A70000=x)*(B2:B70000=y),ROW(A2:A70000)),k)",
             small_row_workbook,

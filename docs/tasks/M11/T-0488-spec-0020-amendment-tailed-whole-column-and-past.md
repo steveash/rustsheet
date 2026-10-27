@@ -3,7 +3,7 @@ id: T-0488
 title: "SPEC-0020 amendment: tailed whole-column and past-the-used-area operands for UNIQUE, TEXTJOIN, LOOKUP and SMALL (corpus-bench 45896 17.6 s, 33935 8.6 s, 59969 5.7 s)"
 milestone: M11
 lane: perf
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -46,13 +46,36 @@ SPEC-0020 (docs/specs/SPEC-0020-whole-column-array-operands.md) built `Tailed`, 
    materialized path), and the size checks (`#ERROR!` above 1,048,576 cells, arrays.md) on the logical size.
 
 ## Acceptance criteria
-- [ ] SPEC-0020 has an amendment section (status stays accepted) answering questions 1-4, with the design for
+- [x] SPEC-0020 has an amendment section (status stays accepted) answering questions 1-4, with the design for
       each consumer and a Rollout list of implementation tasks (S/M each), filed with `make new-task` (lane perf,
       tier opus), each naming the corpus-bench file it targets and its measure.
-- [ ] A bench case in the aggregate or lookup bench reproduces each of the three shapes (with 2,000-row data) so
+- [x] A bench case in the aggregate or lookup bench reproduces each of the three shapes (with 2,000-row data) so
       the follow-ups can measure against it; its current timing is in the Outcome.
-- [ ] No behavior change in this task; `make check` green; reviewers (architecture, performance) approve.
+- [x] No behavior change in this task; `make check` green; reviewers (architecture, performance) approve.
 
 ## Out of scope
 - Implementing the consumers (the Rollout tasks).
 - Aggregates (T-0469, T-0470) and SUMPRODUCT (T-0471).
+
+## Outcome
+SPEC-0020 has Amendment 1 (status stays accepted). Its answers:
+1. Consumers: UNIQUE runs `unique_of` on `head ++ [t, t]`, which gives the same result as the full
+   array for any number of tail copies above two; LOOKUP's vector form uses `SearchData`'s existing
+   virtual empty tail when the tail element has no `value_kind`; SMALL and LARGE take the head's
+   first error, then the tail's, then the numbers. TEXTJOIN's contract is written down but not
+   filed, because 45896's TEXTJOIN gets a short UNIQUE result.
+2. Bounded single-column ranges are leaves when every range leaf has the same span.
+3. `ROW(<leaf range>)` is a position leaf with a `#N/IMPL` sentinel tail. A sentinel tail element
+   falls back to today's path. The operators' left-error precedence makes this sound.
+4. The invariants are stated per consumer. Size checks and lift costs use the logical size.
+
+Rollout tasks: T-0491 (bounded and ROW leaves, M), T-0492 (SMALL/LARGE, 59969), T-0493 (UNIQUE,
+45896) and T-0494 (LOOKUP, 33935), all lane perf, tier opus.
+
+Bench `cargo bench -p rustsheet --bench aggregate -- tailed_consumers` measures 20 calls of each
+shape over 2,000 rows, release build, before any Rollout task:
+- TEXTJOIN/UNIQUE: min 10.87 s
+- LOOKUP: min 3.52 s
+- SMALL/ROW over a 70,000-row range: min 0.46 s
+
+No behavior change. Eval delta: none.
