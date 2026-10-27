@@ -3,7 +3,7 @@ id: T-2403
 title: "GETPIVOTDATA with an odd count of five or more arguments is #ERROR!, like other refused argument counts"
 milestone: M6
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ No Excel value exists, so the check is a unit test, not an eval case.
 
 ## Out of scope
 - Refusing the workbook on import (no other refused argument count does).
+
+## Outcome
+`fn_getpivotdata` now gives `#ERROR!` (args-number error) for 5, 7, ... arguments before reading any, with or without a pivot; 3 arguments stay `#REF!`. Unit test added; syntax.md updated. No eval cell changes (no Excel value exists).
