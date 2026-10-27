@@ -49,7 +49,7 @@ The lower constraint must still hold: the heaviest eval formula outside the visi
       nested LAMBDA helpers (at least the 124 s formula above, and a deeper one) is added to section 4's timed list.
 - [x] T-2803's "Blocked because" names this amendment as its blocker; it is unblocked when this merges. (T-2803's live task
       file is on its draft branch agent/engine/T-2803-formula-work-budget, #1938, which has the section and the charge to add.)
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the budget (T-2803).
