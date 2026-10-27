@@ -3,7 +3,7 @@ id: T-2504
 title: "Spec: port Excel's TOMS 708 bratio incomplete beta behind BETA.DIST, F, T, BINOM and NEGBINOM (T-2464 E3a)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
