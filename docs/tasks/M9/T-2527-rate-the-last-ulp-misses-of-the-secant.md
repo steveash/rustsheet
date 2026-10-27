@@ -3,7 +3,7 @@ id: T-2527
 title: "RATE: the last-ulp misses of the secant model (f's evaluation), the root-0 #NUM! cell and a fitlab port of the scratch harness"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
