@@ -254,6 +254,11 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 
 /// csch(x+iy) is `#NUM!` when the squared modulus of sinh underflows to 0: `IMCSCH("0")` and
 /// `IMCSCH("1E-200+1E-200i")` (gen-m9/2f0d384b8ed0d392 A315, 59a16b5ab566ee5c A274), as IMCSC's `t`.
+/// The denominator is `t = sinh²x + sin²y`, the identity for `sinh²x·cos²y + cosh²x·sin²y`: 33 of
+/// the 44 IMCSCH texts of probes-numeric im-sec-csch-fused, inputs chosen so the forms disagree, against
+/// 25 for that four-product sum, 30 and 18 for it with either product fused (`mul_add`) and 32 for
+/// either square of the identity fused; every older cell ties (T-2817, engineering.md
+/// "IM* reciprocal kernels"). No form fits all 44, so the cosh and sinh parts likely differ too.
 pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let x_cosh = x.cosh();
     let x_sinh = x.sinh();
@@ -261,7 +266,7 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
     let y_cos = y.cos();
     let y_sin = y.sin();
 
-    let t = x_sinh * x_sinh * y_cos * y_cos + x_cosh * x_cosh * y_sin * y_sin;
+    let t = x_sinh * x_sinh + y_sin * y_sin;
     if t == 0.0 {
         return num_error(cell);
     }
