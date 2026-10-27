@@ -3,7 +3,7 @@ id: T-2910
 title: "Audit M2's structural exit criterion: one aggregate-argument walker and one criteria matcher for every consumer, duplication down 15% from M2's start"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
