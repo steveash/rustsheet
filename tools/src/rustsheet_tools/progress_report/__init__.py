@@ -32,6 +32,7 @@ from rustsheet_tools.progress_report.model import (
     ReportShapeError,
     Run,
     compute,
+    docs_dir,
     load_object,
     run_of,
     tasks_of,
@@ -90,10 +91,7 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
     )
     args = ap.parse_args(argv)
     if args.check:
-        # The default docs dir is named by the page's own path because "docs/progress.md" is in
-        # CODE_READ_PATHS (scripts/ci_changes.py, decision 0049) and a bare "docs" is not: keep it so,
-        # or scripts/check_docs_readers.py fails `make hygiene`.
-        run_check(args.out_dir or (repo / "docs/progress.md").parent)
+        run_check(args.out_dir or docs_dir(repo))
         return
     if args.out_dir is None:
         ap.error("--out-dir is required unless --check is given")
