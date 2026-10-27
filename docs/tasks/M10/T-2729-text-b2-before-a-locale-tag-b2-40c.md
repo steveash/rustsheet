@@ -3,7 +3,7 @@ id: T-2729
 title: "TEXT: B2 before a locale tag (B2[40C]mmmm is Chaaban) and the [6xxxx] Hijri calendar digit"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
