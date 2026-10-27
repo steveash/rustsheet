@@ -3,8 +3,9 @@
 //!
 //! The edit tests pin today's values with a twin: each structured reference on `Calc` is paired
 //! with the plain range it stood for before SPEC-0016. After every edit both have the same
-//! value, and the structured formula keeps its text unless the edit rewrote its twin, in which
-//! case it has the twin's text (the fallback of SPEC-0016 "Structural edits").
+//! value. An edit the table follows (it moves, grows or shrinks, T-2297) keeps the structured
+//! text; under any other, the structured formula keeps its text unless the edit rewrote its twin,
+//! in which case it has the twin's text (the fallback of SPEC-0016 "Structural edits").
 
 use crate::expressions::parser::stringify::to_excel_string;
 use crate::expressions::types::CellReferenceRC;
@@ -63,18 +64,24 @@ fn value(model: &Model, sheet: u32, row: i32, column: i32) -> String {
     model.get_formatted_cell_value(sheet, row, column).unwrap()
 }
 
-/// Applies `edit` and checks every pair as the module doc says.
-fn check_edit(name: &str, edit: impl FnOnce(&mut Model)) {
+/// Applies `edit`, which the table follows when `follows` is set, and checks every pair as the
+/// module doc says.
+fn check_edit(name: &str, follows: bool, edit: impl FnOnce(&mut Model)) {
     let mut model = model();
     edit(&mut model);
     model.evaluate();
     for (row, (structured, twin)) in PAIRS.iter().enumerate() {
         let row = row as i32 + 1;
+        if follows {
+            assert_eq!(formula(&model, 1, row, 1), *structured, "{name}");
+        }
         // A twin rewritten to the same text (`$A$3:$A$2` read back as `$A$2:$A$3` after a row
         // move) leaves either text on the structured formula.
         let twin_now = formula(&model, 1, row, 2);
         let structured_now = formula(&model, 1, row, 1);
-        if twin_now == *twin {
+        if follows {
+            // The twin moved with the data; the table moved with it.
+        } else if twin_now == *twin {
             assert!(
                 structured_now == *structured || structured_now == twin_now,
                 "{name}: {structured} is {structured_now}"
@@ -187,31 +194,51 @@ fn the_export_of_a_missing_table_is_a_ref_error() {
     assert_eq!(to_excel_string(node, &context), "#REF!");
 }
 
+/// The table (header row 1, data rows 2-3) moves with an insert at its header row, grows with
+/// one inside its data and is left alone by one below it; an insert at its first data row is a
+/// fallback (Excel grows it, T-2321).
 #[test]
 fn row_inserts_keep_values() {
-    for row in [1, 2, 3, 4, 5, 10] {
-        check_edit(&format!("insert row {row}"), |m| {
+    for (row, follows) in [(1, true), (2, false), (3, true), (4, true), (5, true), (10, true)] {
+        check_edit(&format!("insert row {row}"), follows, |m| {
             m.insert_rows(0, row, 1).unwrap();
         });
     }
 }
 
+/// With two data rows no delete is strictly inside them (see `a_table_shrinks_and_moves_left`):
+/// every delete that touches the table is a fallback, one below it leaves it alone.
 #[test]
 fn row_deletes_keep_values() {
-    for (row, count) in [(1, 1), (2, 1), (3, 1), (2, 2), (4, 1), (5, 1), (1, 5)] {
-        check_edit(&format!("delete rows {row}+{count}"), |m| {
+    for (row, count, follows) in [
+        (1, 1, false),
+        (2, 1, false),
+        (3, 1, false),
+        (2, 2, false),
+        (4, 1, true),
+        (5, 1, true),
+        (1, 5, false),
+    ] {
+        check_edit(&format!("delete rows {row}+{count}"), follows, |m| {
             m.delete_rows(0, row, count).unwrap();
         });
     }
 }
 
+/// The table over columns A:B moves with an insert at A and is left alone right of B; any other
+/// column edit changes its column list, a fallback (T-2339).
 #[test]
 fn column_inserts_and_deletes_keep_values() {
-    for column in [1, 2, 3, 5] {
-        check_edit(&format!("insert column {column}"), |m| {
+    for (column, insert_follows, delete_follows) in [
+        (1, true, false),
+        (2, false, false),
+        (3, true, true),
+        (5, true, true),
+    ] {
+        check_edit(&format!("insert column {column}"), insert_follows, |m| {
             m.insert_columns(0, column, 1).unwrap();
         });
-        check_edit(&format!("delete column {column}"), |m| {
+        check_edit(&format!("delete column {column}"), delete_follows, |m| {
             m.delete_columns(0, column, 1).unwrap();
         });
     }
@@ -220,15 +247,133 @@ fn column_inserts_and_deletes_keep_values() {
 #[test]
 fn row_and_column_moves_keep_values() {
     for (row, delta) in [(2, 1), (3, -1), (1, 3), (5, -4)] {
-        check_edit(&format!("move row {row} by {delta}"), |m| {
+        check_edit(&format!("move row {row} by {delta}"), false, |m| {
             m.move_rows_action(0, row, 1, delta).unwrap();
         });
     }
     for (column, delta) in [(1, 1), (2, -1), (3, -2)] {
-        check_edit(&format!("move column {column} by {delta}"), |m| {
+        check_edit(&format!("move column {column} by {delta}"), false, |m| {
             m.move_columns_action(0, column, 1, delta).unwrap();
         });
     }
+}
+
+/// `Sales` over `Data!B2:C7` (header row 2, Qty 1, 2, 4, 8, 16 in B3:B7), referred to from
+/// `Calc`, from its own sheet, through a defined name and from a conditional format.
+fn wide_model() -> Model {
+    let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+    model.rename_sheet("Sheet1", "Data").unwrap();
+    model.add_sheet("Calc").unwrap();
+    model.set_user_input(0, 2, 2, "Qty".to_string()).unwrap();
+    model.set_user_input(0, 2, 3, "Val".to_string()).unwrap();
+    for (row, qty) in [(3, "1"), (4, "2"), (5, "4"), (6, "8"), (7, "16")] {
+        model.set_user_input(0, row, 2, qty.to_string()).unwrap();
+    }
+    model.add_table(0, "Sales", (2, 2, 7, 3), false).unwrap();
+    model.define_name("QtyName", None, "Sales[Qty]").unwrap();
+    for (row, text) in [
+        (1, "=SUM(Sales[Qty])"),
+        (2, "=SUM(QtyName)"),
+        (3, "=ROWS(Sales[#All])"),
+        (4, "=COLUMN(Sales[Qty])"),
+    ] {
+        model.set_user_input(1, row, 1, text.to_string()).unwrap();
+    }
+    model
+        .set_user_input(0, 1, 6, "=SUM(Sales[Qty])".to_string())
+        .unwrap();
+    model.workbook.worksheets[0]
+        .conditional_formatting
+        .push(crate::cf_types::ConditionalFormatting {
+            range: "E1:E2".to_string(),
+            cf_rule: crate::cf_types::CfRule::Formula {
+                formula: "SUM(Sales[Qty])>30".to_string(),
+                dxf_id: 0,
+                stop_if_true: false,
+            },
+            priority: 1,
+        });
+    model.evaluate();
+    model
+}
+
+/// The `Calc` values, the formula on the table's sheet (wherever the edit moved it), its value,
+/// and the conditional format's formula.
+fn wide_state(model: &Model) -> (Vec<String>, String, String, String) {
+    let calc = (1..=4).map(|row| value(model, 1, row, 1)).collect();
+    let (row, column) = model.workbook.worksheets[0]
+        .sheet_data
+        .cells()
+        .find(|(_, _, cell)| cell.get_formula().is_some())
+        .map(|(row, column, _)| (row, column))
+        .unwrap();
+    let cf = match &model.workbook.worksheets[0].conditional_formatting[0].cf_rule {
+        crate::cf_types::CfRule::Formula { formula, .. } => formula.clone(),
+        other => panic!("{other:?}"),
+    };
+    (
+        calc,
+        formula(model, 0, row, column),
+        value(model, 0, row, column),
+        cf,
+    )
+}
+
+/// A delete strictly inside the data rows shrinks the table, a column delete left of it moves it
+/// left, and a row insert inside its data grows it: every reference keeps its text, from another
+/// sheet, from the table's sheet, through a defined name and from a conditional format, and reads
+/// the table as it now is (references.md "Structured references under row deletes, column edits,
+/// convert, table and sheet delete", T-2324). A delete at an edge of the data is a fallback.
+#[test]
+fn a_table_shrinks_and_moves_left() {
+    let kept = |calc: [&str; 4]| {
+        (
+            calc.map(str::to_string).to_vec(),
+            "=SUM(Sales[Qty])".to_string(),
+            calc[0].to_string(),
+            "SUM(Sales[Qty])>30".to_string(),
+        )
+    };
+    let mut model = wide_model();
+    assert_eq!(wide_state(&model), kept(["31", "31", "6", "2"]));
+    model.delete_rows(0, 4, 2).unwrap();
+    model.evaluate();
+    assert_eq!(wide_state(&model), kept(["25", "25", "4", "2"]));
+    model.delete_columns(0, 1, 1).unwrap();
+    model.evaluate();
+    assert_eq!(wide_state(&model), kept(["25", "25", "4", "1"]));
+    model.insert_rows(0, 4, 3).unwrap();
+    model.evaluate();
+    assert_eq!(wide_state(&model), kept(["25", "25", "7", "1"]));
+    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B8");
+    // A formula typed after the edits reads the table where it is now.
+    model
+        .set_user_input(1, 9, 1, "=ROWS(Sales)".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(value(&model, 1, 9, 1), "6");
+
+    // The last data row (8) is an edge, a fallback (T-2338): the reference prints its displaced
+    // area, as before, and the table stays.
+    model.delete_rows(0, 8, 1).unwrap();
+    model.evaluate();
+    let (_, text, _, cf) = wide_state(&model);
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Data!$A$3:#REF!)");
+    assert_eq!(text, "=SUM($A$3:#REF!)");
+    assert_eq!(cf, "SUM($A$3:#REF!)>30");
+    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B8");
+}
+
+/// An edit on another sheet leaves the table, and so its references, alone.
+#[test]
+fn an_edit_of_another_sheet_keeps_the_table() {
+    let mut model = wide_model();
+    model.insert_rows(1, 1, 2).unwrap();
+    model.delete_columns(1, 2, 1).unwrap();
+    model.evaluate();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B2:C7");
+    assert_eq!(formula(&model, 1, 3, 1), "=SUM(Sales[Qty])");
+    assert_eq!(value(&model, 1, 3, 1), "31");
 }
 
 #[test]
@@ -239,8 +384,13 @@ fn a_formula_on_the_table_sheet_keeps_its_value() {
         .unwrap();
     model.insert_rows(0, 1, 1).unwrap();
     model.evaluate();
-    // Today's text and value: the area moved with the data, the table did not.
-    assert_eq!(formula(&model, 0, 2, 6), "=SUM($A$3:$A$4)");
+    // The table moved with the data (T-2297).
+    assert_eq!(formula(&model, 0, 2, 6), "=SUM(Sales[Qty])");
+    assert_eq!(value(&model, 0, 2, 6), "3");
+    // Its first data row is a fallback (T-2321): the area moves with the data, the table does not.
+    model.insert_rows(0, 3, 1).unwrap();
+    model.evaluate();
+    assert_eq!(formula(&model, 0, 2, 6), "=SUM($A$4:$A$5)");
     assert_eq!(value(&model, 0, 2, 6), "3");
     model.insert_rows(0, 20, 1).unwrap();
     model

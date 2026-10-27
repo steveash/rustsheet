@@ -2,7 +2,7 @@ use crate::cf_types::{CfRule, Cfvo};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::cut_paste::cf_sqref_anchor;
 use crate::expressions::parser::stringify::{
-    to_localized_string, to_string_displaced, DisplaceData,
+    to_localized_string, to_string_displaced_keeping, DisplaceData, Displacement,
 };
 use crate::expressions::parser::Parser as ExprParser;
 use crate::expressions::types::CellReferenceRC;
@@ -228,20 +228,21 @@ fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
 // In IronCalc, if one of the edges of the range is deleted will replace the edge with #REF!
 // I feel this is unimportant for now.
 
-/// Displaces a single formula string (with or without leading `=`) using `to_string_displaced`.
+/// Displaces a single formula string (with or without leading `=`) using
+/// `to_string_displaced_keeping`.
 /// CF formulas are stored in English (see [`Model::user_formula_to_internal`]),
 /// so the caller must have the parser in the default (English) locale/language.
 fn displace_cf_formula_str(
     parser: &mut ExprParser,
     formula: &str,
     context: &CellReferenceRC,
-    data: &DisplaceData,
+    data: Displacement,
 ) -> String {
     let trimmed = formula.trim();
     let has_eq = trimmed.starts_with('=');
     let body = if has_eq { &trimmed[1..] } else { trimmed };
     let node = parser.parse(body, context);
-    let displaced = to_string_displaced(
+    let displaced = to_string_displaced_keeping(
         &node,
         context,
         data,
@@ -259,7 +260,7 @@ fn displace_cfvo(
     parser: &mut ExprParser,
     cfvo: Cfvo,
     context: &CellReferenceRC,
-    data: &DisplaceData,
+    data: Displacement,
 ) -> Cfvo {
     if let Cfvo::Formula(f) = cfvo {
         Cfvo::Formula(displace_cf_formula_str(parser, &f, context, data))
@@ -273,7 +274,7 @@ fn displace_cf_rule_formulas(
     parser: &mut ExprParser,
     rule: CfRule,
     context: &CellReferenceRC,
-    data: &DisplaceData,
+    data: Displacement,
 ) -> CfRule {
     match rule {
         CfRule::Formula {
@@ -360,7 +361,7 @@ impl Model {
         sheet: u32,
         row: i32,
         column: i32,
-        displace_data: &DisplaceData,
+        displacement: Displacement,
     ) -> Result<(), String> {
         if let Some(f) = self
             .workbook
@@ -379,10 +380,10 @@ impl Model {
             // one is written back through the (localized) parser, and comparing
             // against an English rendering would flag every formula as changed.
             let formula = to_localized_string(node, &cell_reference, self.locale, self.language);
-            let formula_displaced = to_string_displaced(
+            let formula_displaced = to_string_displaced_keeping(
                 node,
                 &cell_reference,
-                displace_data,
+                displacement,
                 self.locale,
                 self.language,
             );
@@ -401,17 +402,17 @@ impl Model {
     ///
     /// # Arguments
     ///
-    /// * `displace_data` - A reference to `DisplaceData` describing the displacement's direction and magnitude.
-    fn displace_cells(&mut self, displace_data: &DisplaceData) -> Result<(), String> {
+    /// * `displacement` - The displacement's direction and magnitude, and the tables that follow it.
+    pub(crate) fn displace_cells(&mut self, displacement: Displacement) -> Result<(), String> {
         let cells = self.get_all_cells();
         for cell in cells {
-            self.shift_cell_formula(cell.index, cell.row, cell.column, displace_data)?;
+            self.shift_cell_formula(cell.index, cell.row, cell.column, displacement)?;
         }
         Ok(())
     }
 
-    /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displace_data`.
-    fn displace_cf_ranges(&mut self, sheet: u32, displace_data: &DisplaceData) {
+    /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displacement`.
+    pub(crate) fn displace_cf_ranges(&mut self, sheet: u32, displacement: Displacement) {
         let count = match self.workbook.worksheets.get(sheet as usize) {
             Some(ws) => ws.conditional_formatting.len(),
             None => return,
@@ -423,7 +424,7 @@ impl Model {
         for idx in 0..count {
             let cf = &self.workbook.worksheets[sheet as usize].conditional_formatting[idx];
             let old_range = cf.range.clone();
-            let new_range = displace_cf_sqref(&old_range, displace_data, sheet);
+            let new_range = displace_cf_sqref(&old_range, displacement.0, sheet);
             let rule = cf.cf_rule.clone();
             if let Some((anchor_row, anchor_col)) = cf_sqref_anchor(&old_range) {
                 phase1.push((idx, new_range, rule, anchor_row, anchor_col));
@@ -444,7 +445,7 @@ impl Model {
                 column: anchor_col,
             };
             let new_rule =
-                displace_cf_rule_formulas(&mut self.parser, rule, &context, displace_data);
+                displace_cf_rule_formulas(&mut self.parser, rule, &context, displacement);
             self.workbook.worksheets[sheet as usize].conditional_formatting[idx].range = new_range;
             self.workbook.worksheets[sheet as usize].conditional_formatting[idx].cf_rule = new_rule;
         }
@@ -677,8 +678,7 @@ impl Model {
             column,
             delta: column_count,
         };
-        self.displace_cells(&disp)?;
-        self.displace_cf_ranges(sheet, &disp);
+        self.displace_formulas(sheet, &disp)?;
 
         // In the list of columns:
         // * Keep all the columns to the left
@@ -806,8 +806,7 @@ impl Model {
             column,
             delta: -column_count,
         };
-        self.displace_cells(&disp)?;
-        self.displace_cf_ranges(sheet, &disp);
+        self.displace_formulas(sheet, &disp)?;
         let worksheet = &mut self.workbook.worksheet_mut(sheet)?;
 
         // deletes all the column styles
@@ -1082,8 +1081,7 @@ impl Model {
             row,
             delta: row_count,
         };
-        self.displace_cells(&disp)?;
-        self.displace_cf_ranges(sheet, &disp);
+        self.displace_formulas(sheet, &disp)?;
 
         Ok(())
     }
@@ -1191,8 +1189,7 @@ impl Model {
             row,
             delta: -row_count,
         };
-        self.displace_cells(&disp)?;
-        self.displace_cf_ranges(sheet, &disp);
+        self.displace_formulas(sheet, &disp)?;
         Ok(())
     }
 
@@ -1348,8 +1345,7 @@ impl Model {
             column,
             delta,
         };
-        self.displace_cells(&disp)?;
-        self.displace_cf_ranges(sheet, &disp);
+        self.displace_formulas(sheet, &disp)?;
         Ok(())
     }
 
@@ -1495,8 +1491,7 @@ impl Model {
         }
 
         let disp = DisplaceData::RowMove { sheet, row, delta };
-        self.displace_cells(&disp)?;
-        self.displace_cf_ranges(sheet, &disp);
+        self.displace_formulas(sheet, &disp)?;
         Ok(())
     }
 

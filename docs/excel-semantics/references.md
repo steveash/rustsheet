@@ -2345,12 +2345,18 @@ Implemented in: partly (T-2195, SPEC-0016 step 1; T-1699, step 2). Every structu
 is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
 re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
 first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
-before), and `restore_sheet` puts the tables back. Tables do not move on structural edits yet: every edit
-that changes the area a structured reference resolves to rewrites it to the displaced plain range (the
-fallback of SPEC-0016 for every table); one that leaves the area unchanged keeps the text. So today the
-values match Excel except where the table grows (`ROWS(Sales)` stays 4, `ROWS(Sales[#All])` 5 for Excel's 7) and FORMULATEXT prints the plain
-range; the plain-range quirk is not implemented. The move and grow classes are T-2297, the two edge rows
-and the quirk T-2321. With no table of that name (engine API `remove_table`), the formula is a parse
+before), and `restore_sheet` puts the tables back. A whole row or column insert or delete moves a table
+when it is wholly before it, grows it when rows are inserted strictly inside its data (`d1 < r <= d2`) and
+shrinks it when the deleted rows are strictly inside them (neither the first nor the last data row), and
+then every structured reference to it keeps its text, in cell formulas on any sheet, conditional formats
+and defined names (T-2297, `table_edits.rs`). Every other edit that crosses a table (an insert at its first
+data row or totals row, a delete at a data edge or touching the header or totals row, a column edit inside
+it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
+structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
+that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
+its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
+moved or grown table's row there (unprobed, T-2325). The plain-range quirk is not implemented. The two
+insert edge rows and the quirk are T-2321, the delete edges T-2338, column inserts inside T-2339. With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
