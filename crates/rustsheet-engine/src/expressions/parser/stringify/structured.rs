@@ -3,7 +3,7 @@
 use super::{stringify, DisplaceData, Displacement, Rewrite, NO_REWRITE};
 use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
-use crate::expressions::token::{self, TableSpecifier};
+use crate::expressions::token::{self, TableReference, TableSpecifier};
 use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
@@ -126,11 +126,20 @@ pub(super) fn reference_text(
         }) => return reference.text(),
         // A `#This Row` area keeps today's rule below: whether Excel then reads the cell's row
         // of the moved table, or the row it read, is unprobed (T-2845).
-        Rewrite::Displace(Displacement { kept_tables, .. })
-            if !matches!(lowered, Node::ThisRowKind { .. })
-                && kept_tables.contains(&reference.table_name.to_lowercase()) =>
+        Rewrite::Displace(Displacement {
+            kept_tables,
+            deleted_columns,
+            ..
+        }) if !matches!(lowered, Node::ThisRowKind { .. })
+            && kept_tables.contains(&reference.table_name.to_lowercase()) =>
         {
-            return reference.text();
+            // A column delete inside the table turns a reference naming a deleted column into
+            // `#REF!` (T-2324 table-delete-column-qty: `=SUM(#REF!)`, -region: `=COUNTA(#REF!)`).
+            return if names_deleted_column(reference, deleted_columns) {
+                token::Error::REF.to_string()
+            } else {
+                reference.text()
+            };
         }
         Rewrite::Lower(tables, _) => {
             let name = reference.table_name.to_lowercase();
@@ -168,6 +177,27 @@ pub(super) fn reference_text(
         reference.text()
     } else {
         rewritten
+    }
+}
+
+/// Whether `reference` names a column of `deleted` (lowercase (table, column) names), either end
+/// of a column range included: what Excel does to a range that keeps one end is unprobed, and
+/// the range cannot keep its text without the deleted end.
+fn names_deleted_column(reference: &StructuredReference, deleted: &[(String, String)]) -> bool {
+    if deleted.is_empty() {
+        return false;
+    }
+    let table = reference.table_name.to_lowercase();
+    let is_deleted = |column: &str| {
+        let column = column.to_lowercase();
+        deleted.iter().any(|(t, c)| *t == table && *c == column)
+    };
+    match &reference.table_reference {
+        Some(TableReference::ColumnReference(column)) => is_deleted(column),
+        Some(TableReference::RangeReference((first, last))) => {
+            is_deleted(first) || is_deleted(last)
+        }
+        None => false,
     }
 }
 
