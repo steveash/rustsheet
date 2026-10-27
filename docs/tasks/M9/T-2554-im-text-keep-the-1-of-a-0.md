@@ -3,7 +3,7 @@ id: T-2554
 title: "IM* text: keep the 1 of a -0.9999999999999999 part, plain digits for 1E+20 (sweep P43, D18, P18)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ crates/rustsheet-engine/src/functions/engineering/complex/mod.rs, number_format.
 
 ## Out of scope
 -
+
+## Outcome
+No code change: `probes-numeric/im-last-digit-sweep.case.json` P43, D18 and P18 already pass on `origin/main`
+(`-4.00011374673746E-17-1i`, `100000000000000000000`: the `y == -1.0` test compares the unrounded
+part and `value_to_text` writes IM* parts with decimal exponent up to 20 in plain notation). Fixed in passing by
+earlier IM* text work. Eval delta: none (no known failures for this case in `eval/baseline/probes.txt`).
