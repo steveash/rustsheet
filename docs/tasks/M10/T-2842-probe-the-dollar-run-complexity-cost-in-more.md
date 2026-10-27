@@ -3,7 +3,7 @@ id: T-2842
 title: "Probe the unquoted-$ complexity cost with other date tokens, an escaped $, @ and literals after a locale tag"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
