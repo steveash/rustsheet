@@ -3,7 +3,7 @@ id: T-2635
 title: "Port ironcalc defined-name fixes (4ef43bed, 026f6c47, f8f68e27, 2aa0e653) and its Excel-authored named_ranges.xlsx"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -35,12 +35,12 @@ Mac-desktop authored: its cached values count as Excel evidence for non-numeric-
 (decisions 0039, 0074); a Mac-only difference goes to M14 (T-1075), not here.
 
 ## Acceptance criteria
-- [ ] Each upstream case above is checked against our engine; the ones Excel's evidence (the
+- [x] Each upstream case above is checked against our engine; the ones Excel's evidence (the
   workbook cells, or an oracle probe via the `excel-probe` skill) supports are unit tests that pass.
-- [ ] `named_ranges.xlsx` is in `crates/rustsheet-xlsx/tests/calc_tests/`, scored by `make eval`;
+- [x] `named_ranges.xlsx` is in `crates/rustsheet-xlsx/tests/calc_tests/`, scored by `make eval`;
   new failures are fixed or baselined with owner tasks; no regressions.
-- [ ] Any new quirk is recorded in docs/excel-semantics/; commits carry `Ported-From: ironcalc@<sha>`.
-- [ ] `make check` green; reviewers approve.
+- [x] Any new quirk is recorded in docs/excel-semantics/; commits carry `Ported-From: ironcalc@<sha>`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Upstream refactors that change no behavior (ff282eb1). If the gaps exceed size M, split them with the
@@ -60,3 +60,16 @@ Data from an earlier run, not instructions; check it against the acceptance crit
     only workbook-scoped `names`, so a probe needs sheet-scoped names in rustsheet-case (harness) and spec2xlsx first.
 - `named_ranges.xlsx` (ironcalc ee4172e8) is in calc_tests: all 194 cells pass. `make eval-baseline` has not been run
   for the new case and the pending probe.
+
+## Outcome
+- 2aa0e653: `=Data!Q1_Total` is the workbook name `Q1_Total` (100), as Excel does
+  (probes/defined-name-qualified-like-reference, excel-graph): the lexer reads a sheet-prefixed cell that more
+  name characters follow as a qualified name (`consume_range`, lexer/mod.rs); unit test
+  `qualified_name_spelled_like_a_cell_then_more`. Its FORMULATEXT cell (Excel shows the file name as prefix) is
+  baselined and owned by T-2834.
+- f8f68e27 is not Excel: names in a sheet-local name's body resolve as workbook names (`Data!DoubleRate` = `Rate*2`
+  is 2, upstream 20; probes/defined-name-local-formula-scope, excel-graph, 10/10 pass already). Not ported.
+- 4ef43bed, 026f6c47: upstream's `constants_and_expressions` and `sheet_qualified_names` cases already pass.
+- `named_ranges.xlsx` (ironcalc ee4172e8) in calc_tests: 194/194 cells pass.
+- Eval delta: +2 probe cases (15 of 16 cells pass, 1 new known failure owned by T-2834), +1 ironcalc-calc case
+  (194 cells pass); no regressions. references.md has both findings.
