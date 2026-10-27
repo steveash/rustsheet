@@ -3,7 +3,7 @@ id: T-2955
 title: "Spec adapter: set typed (entered) formulas after the tables, so a typed structured reference resolves (probes/t2786 E5, E8, E9, E13:E15)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
