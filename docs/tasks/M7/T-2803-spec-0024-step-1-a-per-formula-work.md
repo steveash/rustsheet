@@ -59,6 +59,18 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
 - Charging array cells read by aggregates (T-2804) and by the other whole-array readers (T-2805).
 - Dense single-range walks (T-2710, T-2711, T-2713).
 
+## Notes from the third run (T-2923 applied)
+Resumed 2026-10-27 after T-2923 merged; merged origin/main. Added the LAMBDA-made charge: `LAMBDA_UNITS` (512) plus
+`NODE_UNITS` per body node (`Node::node_count`) where a LAMBDA is stored (`LambdaDefKind` in node_frames.rs, `fn_lambda`)
+and `NODE_UNITS` per node where `prepare_lambda` clones a body. Re-fit the weights: `NODE_UNITS` 6, `CELL_UNITS` 3 (at 3 a
+node, `SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,r))))))` took 11.4 s; at 6, 7.7 s). Timings to the
+limit (release, idle 4-core container) are in the arrays.md DEVIATION entry: every kind within 0.8-7.9 s, the T-2923
+nested worst cases 0.8-3.3 s (124 s before). Calibration with local, uncommitted instrumentation: `rustsheet-eval check`
+0 regressions, no formula past the limit, heaviest 118,756,588 units (118,751,450 visit units, below 2^27), heaviest
+outside the visit caps 12,582,948 (below 2^26). New tests: the LAMBDA-made charge and the Problem formulas (plus the
+nested T-2923 one) stopping at a lowered limit. The visit weights are unchanged, so the per-call timings of the second run
+stand.
+
 ## Notes from the second blocked run
 Unblocked 2026-10-27: T-2923 (#2051) merged its SPEC-0024 amendment. Was blocked on T-2923 (SPEC-0024 amendment), by SPEC-0024 section 4's rule: "no weights meet both constraints". Checked by an
 opus run on 2026-10-27, after main was merged in (release build, idle 4-core container). The run timed each kind to the limit

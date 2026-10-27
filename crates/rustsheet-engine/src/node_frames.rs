@@ -69,6 +69,9 @@ impl Model {
                 self.implicit_intersection_to_value(result, cell)
             }
             LambdaDefKind { parameters, body } => {
+                if let Err(error) = self.spend_lambda_made(body, cell) {
+                    return error;
+                }
                 let definition = Arc::new((parameters.clone(), *body.clone()));
                 CalcResult::Lambda(self.store_lambda(definition))
             }

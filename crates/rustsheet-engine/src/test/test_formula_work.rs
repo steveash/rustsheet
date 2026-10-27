@@ -5,7 +5,7 @@
 //! (`AreaBudget::last_spent`) or cell reads, never time (T-2282).
 
 use crate::area_budget::{
-    CELL_UNITS, MAX_FORMULA_WORK, NODE_UNITS, TEXT_BYTES_PER_UNIT, TOO_MUCH_WORK,
+    CELL_UNITS, LAMBDA_UNITS, MAX_FORMULA_WORK, NODE_UNITS, TEXT_BYTES_PER_UNIT, TOO_MUCH_WORK,
 };
 use crate::model::Model;
 use crate::test::util::new_empty_model;
@@ -42,6 +42,16 @@ fn a_formula_spends_units_per_node_cell_built_and_text_byte() {
     // chain, SEQUENCE(10) and its 10 cells, the inner `+1` (its link, its operand and 10 cells),
     // the outer `+1` (its operand, and the chain's 10 cells).
     assert_eq!(units("=SUM(SEQUENCE(10)+1+1)"), 7 * N + 30 * C);
+}
+
+#[test]
+fn a_lambda_made_is_charged_for_storing_it_and_each_body_clone() {
+    const N: u64 = NODE_UNITS;
+    // The call, the LAMBDA, its argument 1 and its body `x` are four nodes run; storing the LAMBDA
+    // costs LAMBDA_UNITS plus its one-node body, and the call's patched copy of the body one more.
+    assert_eq!(units("=LAMBDA(x,x)(1)"), LAMBDA_UNITS + 6 * N);
+    // A body of three nodes costs three a clone.
+    assert_eq!(units("=LAMBDA(x,x+1)(1)"), LAMBDA_UNITS + 12 * N);
 }
 
 #[test]
@@ -99,6 +109,27 @@ fn past_the_limit_a_lambda_helper_makes_no_more_calls() {
     assert_eq!(model._get_text("A1"), "#VALUE!");
     assert_eq!(model._get_error_message("A1"), TOO_MUCH_WORK);
     assert!(reads < 1_000, "{reads} cell reads");
+}
+
+#[test]
+fn the_problem_formulas_stop_at_the_limit() {
+    // SPEC-0024's three formulas, under a lower limit so the test stays fast: each is `#VALUE!`
+    // after spending the limit, not the 1E10 steps it would take to compute.
+    const LIMIT: u64 = 1 << 20;
+    for formula in [
+        "=REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(SEQUENCE(100000))))",
+        "=SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAP(SEQUENCE(1000),LAMBDA(y,SUM(SEQUENCE(1000))))))))",
+        "=SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(SEQUENCE(1000)))))",
+        "=SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))))))",
+    ] {
+        let mut model = model_with_limit(LIMIT);
+        model._set("A1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "#VALUE!", "{formula}");
+        assert_eq!(model._get_error_message("A1"), TOO_MUCH_WORK, "{formula}");
+        // Spent most of the limit: the last charge, at most one loop step's, did not fit.
+        assert!(model.area_budget.last_spent > LIMIT / 2, "{formula}");
+    }
 }
 
 #[test]

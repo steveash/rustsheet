@@ -6,7 +6,7 @@
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     limits::too_many_visits,
     model::Model,
 };
@@ -55,7 +55,8 @@ pub(crate) const TOO_MANY_SEEN_RANGES: &str = "Too many distinct ranges read";
 
 /// Most work units one formula evaluation may spend (SPEC-0024): [`NODE_UNITS`] per node
 /// evaluated, [`CELL_UNITS`] per array cell built, one per [`TEXT_BYTES_PER_UNIT`] bytes of each
-/// text value, plus the per-call caps' own charges ([`VISIT_UNITS`] per visit). Each LAMBDA call draws on it again, so it bounds the product of a helper's
+/// text value, [`LAMBDA_UNITS`] per LAMBDA value made and [`NODE_UNITS`] per node of each LAMBDA
+/// body cloned, plus the per-call caps' own charges ([`VISIT_UNITS`] per visit). Each LAMBDA call draws on it again, so it bounds the product of a helper's
 /// iterations and the work of each call, which no per-call cap does. Past it the formula is
 /// `#VALUE!` ([`TOO_MUCH_WORK`]), which cannot be caught (DEVIATION, decision 0014: arrays.md
 /// "One formula evaluation does at most 268,435,456 work units").
@@ -63,15 +64,17 @@ pub(crate) const MAX_FORMULA_WORK: u64 = 1 << 28;
 
 // The weights below are fitted so that each kind's worst case reaches [`MAX_FORMULA_WORK`] in
 // under 10 s of a release build (SPEC-0024 section 4, T-2803; the timings are in arrays.md "One
-// formula evaluation does at most 268,435,456 work units"): a node or a built cell costs about
-// 50 ns and a byte a text scanner reads (FIND, SUBSTITUTE over 32,767 bytes) about 5 ns. A visit
-// cap's units are timed by its own cap instead ([`VISIT_UNITS`], T-2813).
+// formula evaluation does at most 268,435,456 work units", T-2923's re-fit): a LAMBDA call of a
+// one-node body under MAKEARRAY costs about 250 ns, which its node and built cell (9 units) pay
+// for, a built cell about 25 ns, a byte a text scanner reads (FIND, SUBSTITUTE over 32,767 bytes)
+// about 5 ns, and a LAMBDA made on each call a few microseconds ([`LAMBDA_UNITS`]). A visit cap's
+// units are timed by its own cap instead ([`VISIT_UNITS`], T-2813).
 
 /// Work units of one node evaluated ([`MAX_FORMULA_WORK`]).
-pub(crate) const NODE_UNITS: u64 = 2;
+pub(crate) const NODE_UNITS: u64 = 6;
 
 /// Work units of one array cell built ([`MAX_FORMULA_WORK`]).
-pub(crate) const CELL_UNITS: u64 = 2;
+pub(crate) const CELL_UNITS: u64 = 3;
 
 /// Bytes of a text value charged as one work unit ([`MAX_FORMULA_WORK`]).
 pub(crate) const TEXT_BYTES_PER_UNIT: u64 = 4;
@@ -82,6 +85,13 @@ pub(crate) const TEXT_BYTES_PER_UNIT: u64 = 4;
 /// one call, so a higher weight would refuse calls the cap allows, and the time a call's units
 /// take is its kernel weight's to bound (one call at its cap within 5 s), not this budget's.
 pub(crate) const VISIT_UNITS: u64 = 1;
+
+/// Work units of one LAMBDA value stored (`Model::store_lambda`), on top of [`NODE_UNITS`] per
+/// node of the body it clones ([`MAX_FORMULA_WORK`]). Every LAMBDA a formula makes stays in
+/// `Model::lambdas` until the evaluation ends, and each later call slows with the map's size, so a
+/// body that makes a LAMBDA on each call costs far more than its nodes (SPEC-0024 as amended by
+/// T-2923; fitted by time on section 4's nested worst cases).
+pub(crate) const LAMBDA_UNITS: u64 = 512;
 
 /// Message of the formula's error once it spent [`MAX_FORMULA_WORK`].
 pub(crate) const TOO_MUCH_WORK: &str = "Formula needs too much work to calculate";
@@ -185,6 +195,11 @@ pub(crate) fn cell_units(rows: usize, columns: usize) -> u64 {
     u64::try_from(rows.saturating_mul(columns))
         .unwrap_or(u64::MAX)
         .saturating_mul(CELL_UNITS)
+}
+
+/// The units of cloning `body`: [`NODE_UNITS`] per node, saturating.
+pub(crate) fn clone_units(body: &Node) -> u64 {
+    body.node_count().saturating_mul(NODE_UNITS)
 }
 
 /// The units of `visits` visits of a per-call cap: [`VISIT_UNITS`] each, saturating.
@@ -293,6 +308,16 @@ impl Model {
             _ => return Ok(()),
         };
         self.spend_work(units, cell)
+    }
+
+    /// Charges a LAMBDA value made with body `body`: [`LAMBDA_UNITS`] for storing it and the
+    /// nodes of the body it clones ([`clone_units`]).
+    pub(crate) fn spend_lambda_made(
+        &mut self,
+        body: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        self.spend_work(LAMBDA_UNITS.saturating_add(clone_units(body)), cell)
     }
 
     /// [`Model::spend_work`] for building a `rows` x `columns` array ([`cell_units`]).
