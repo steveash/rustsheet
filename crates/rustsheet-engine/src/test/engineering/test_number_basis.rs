@@ -441,3 +441,17 @@ fn inumber_currency_prefix_is_read_before_a_complex_number() {
     assert_eq!(model._get_text("A1"), *"TRUE");
     assert_eq!(model._get_text("A2"), *"#NUM!");
 }
+
+#[test]
+fn inumber_currency_symbol_needs_a_number_after_it() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMABS("-$1+2i")=SQRT(5)"#);
+    model._set("A2", r#"=IMABS("1+$2i")=SQRT(5)"#);
+    model._set("A3", r#"=IMABS("$i")"#);
+    model._set("A4", r#"=IMABS("3+4i"&CHAR(9))"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"TRUE");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}

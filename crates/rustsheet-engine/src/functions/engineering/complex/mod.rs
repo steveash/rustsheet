@@ -121,9 +121,13 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
         Some(r) => (-1.0, r),
         None => (1.0, s.strip_prefix('+').unwrap_or(s)),
     };
-    // A `$` prefix is read before a complex number: `IMABS("$1+2i")` 2.23606797749979
-    // (probes/eng-inumber-reading A5). A sign after it stays unreadable (`"$-5"`, A4's family).
-    let s = s.strip_prefix('$').unwrap_or(s);
+    // A currency symbol is read before a number part, after a sign or not: `IMABS("$1+2i")`,
+    // `"-$1+2i"`, `"1+$2i"`, `"€1+2i"`, `"$3i"` and `"$ 1+2i"` are all read, while `"$i"`, `"-$i"`
+    // (no number) and `"$$1"` are `#NUM!` (probes/eng-inumber-reading A5,
+    // probes/eng-inumber-currency-shapes A1:A11). A sign after the symbol stays unreadable
+    // (`"$-5"`, probes/eng-inumber-date-boundary A4).
+    let stripped = strip_currency_symbols(s);
+    let s = stripped.as_str();
     if s.starts_with(['+', '-']) {
         return Err(format!("Not a complex number: {s}"));
     }
@@ -227,6 +231,26 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
         }
         _ => Err(format!("Not a complex number: {s}")),
     }
+}
+
+/// `text` without its currency symbols (`$`, `€`) that stand before a number part: at the start
+/// or right after a `+` or `-` that begins a part, where a digit or `.` follows (past spaces).
+fn strip_currency_symbols(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut at_part_start = true;
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if at_part_start && matches!(c, '$' | '€') {
+            let mut rest = chars.clone().skip_while(|&r| r == ' ');
+            if matches!(rest.next(), Some('0'..='9' | '.')) {
+                at_part_start = false;
+                continue;
+            }
+        }
+        at_part_start = matches!(c, '+' | '-') && !out.ends_with(['E', 'e']);
+        out.push(c);
+    }
+    out
 }
 
 /// Whether `text`, past its leading spaces, has a `-` that is neither its first character nor an
@@ -333,7 +357,11 @@ impl Model {
         if number_text_too_long(&value) {
             return Err(value_error(cell));
         }
-        if value.starts_with(['\t', '\u{3000}']) {
+        // NBSP, tab, LF and CR at either end are `#NUM!` too, where a space is read
+        // (probes/eng-inumber-currency-shapes A13:A17).
+        if value.starts_with(['\t', '\u{3000}', '\u{a0}', '\n', '\r'])
+            || value.ends_with(['\t', '\u{a0}', '\n', '\r'])
+        {
             return Err(num_error(cell));
         }
         // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",

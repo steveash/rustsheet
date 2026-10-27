@@ -26,4 +26,4 @@ Code: `complex_of` and `parse_complex_number` in complex/mod.rs.
 - Date-dependent cells (a probe must not depend on the current year).
 
 ## Outcome
-`parse_complex_number` strips a leading `$` after the optional sign, so `IMABS("$1+2i")` is 2.23606797749979 and `"$-5"` stays `#NUM!`. probes/eng-inumber-reading A5 now passes (probes known failures 2926 -> 2925, no regressions). The neighbouring shapes (`$` on the imaginary part, `€`, NBSP, trailing tab, LF/CR, `-$1+2i`) are unprobed and listed under "Unprobed" in docs/excel-semantics/engineering.md.
+`parse_complex_number` reads a `$` or `€` before any number part (after a sign or not, imaginary part included) and `complex_of` makes NBSP, tab, LF and CR at either end `#NUM!`, as probes/eng-inumber-reading A5 and the new probes/eng-inumber-currency-shapes (17 cells, oracle-filled) show. Probes known failures 2926 -> 2925, no regressions. A plain real with a trailing tab is unprobed.
