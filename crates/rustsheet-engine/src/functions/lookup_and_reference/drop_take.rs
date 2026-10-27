@@ -172,12 +172,6 @@ impl Model {
                 });
             }
         }
-        let data = match self.result_to_array(source, cell) {
-            Ok(d) => d,
-            Err(e) => return RefArg::Value(e),
-        };
-        let (num_rows, num_cols) = grid_dims(&data);
-        let cells = u64::try_from(num_rows.saturating_mul(num_cols)).unwrap_or(u64::MAX);
         let kind = match edge {
             Edge::Take => Function::Take,
             Edge::Drop => Function::Drop,
@@ -189,6 +183,23 @@ impl Model {
                 "TAKE or DROP has no lifting table entry".to_string(),
             ));
         };
+        // An error source does not short-circuit a lifted count: it is one error per element
+        // (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby Sheet1 F33, G33, U10).
+        if let CalcResult::Error { .. } = source {
+            return RefArg::Value(self.lift_values(
+                counts.into_iter().collect(),
+                LiftCost::Cells(1),
+                &LiftOptions::for_entry(kinds),
+                cell,
+                &mut |_, _| source.clone(),
+            ));
+        }
+        let data = match self.result_to_array(source, cell) {
+            Ok(d) => d,
+            Err(e) => return RefArg::Value(e),
+        };
+        let (num_rows, num_cols) = grid_dims(&data);
+        let cells = u64::try_from(num_rows.saturating_mul(num_cols)).unwrap_or(u64::MAX);
         RefArg::Value(self.lift_values(
             counts.into_iter().collect(),
             LiftCost::Cells(cells),

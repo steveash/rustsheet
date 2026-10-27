@@ -308,11 +308,27 @@ Evidence: probes/t2738-gamma-dist-tiny-ratio (excel-graph 2026-10-25): #NUM! at 
 `(4.5E-308,1,2,FALSE)` (ratio 2.25E-308, 0.499999999999989), `(3E-308,1,1,FALSE)` and `(1,1,1E+307,FALSE)`. The cdf is 0
 (companion TRUE) at `(1E-10,1,1E+300,TRUE)`, `(1E-300,1,1E+10,TRUE)` and `(3E-308,1,2,TRUE)`; a normal x / beta with a
 subnormal density is 0 (`(10,1,1E+307*10,FALSE)`, `(1E+300,1,1E+307*10,FALSE)`). Near the bound Excel's density is
-about 1E-14 relative off the exact value (T-2753).
+about 1E-14 relative off the exact value: see "GAMMA.DIST's density at a tiny x / beta" (T-2753).
 Implemented in: functions/statistical/gamma.rs `gamma_dist_of`; x = 0 keeps its own rule. Unprobed: CHISQ.DIST at x
 below 4.45E-308 (its scale is 2), an x / beta that overflows, and a computed subnormal x with a normal x / beta (a
 typed one reads as 0, numbers.md "Formula literals").
 Status: VERIFIED
+
+## GAMMA.DIST's density at a tiny x / beta is a log-space form (T-2753)
+Rule: where y = x / beta is at most about 1E-15 (and x > 0, shape a below 20), `GAMMA.DIST(x,a,beta,FALSE)` is
+EXP(a*LN(y)-y)/GAMMA(a)/x, not the exact density: the log carries |LN(y)| ulp of error, so `GAMMA.DIST(1E-300,1,1,FALSE)`
+is 1.0000000000000235 and `GAMMA.DIST(1,1,1E+307,FALSE)` 9.999999999999768E-308. Between 1E-15 and 1E-10 Excel takes a
+form not yet found, up to 37 ulp from both this one and the direct y^a e^-y / GAMMA(a) / x (T-2852).
+Evidence: probes/t2753-gamma-density-ratio-sweep (x / beta 1E-300 to 0.5 at shapes 1, 2, 0.5 and 50, column A beta = 1,
+column B x = 1) and probes/t2753-gamma-density-switch (1E-19 to 1E-11), excel-graph 2026-10-27;
+probes/t2738-gamma-dist-tiny-ratio A2, A4, A15, A19. With Excel's own LN, EXP and GAMMA the form is exact or 1 ulp off at
+most cells below 1E-15 (exact at t2738 A2, A15, A19) and 2 to 3 ulp off at a few: switch A11 `GAMMA.DIST(2E-16,1,1,FALSE)`,
+A12, A18, A24, A25, A38, B10, B11, B18, B24, B25, B38 and sweep A19 `GAMMA.DIST(1E-20,2,1,FALSE)` (T-2852); at 1E-15 it is 4
+to 7 off, the direct form 4 to 12. LNGAMMA in place of GAMMA is 40 to 60 ulp off at shape 0.5.
+Implemented in: functions/statistical/gamma.rs `tiny_ratio_density` (GAMMA.DIST and GAMMADIST only; CHISQ.DIST keeps
+`incomplete_gamma::gamma_density`, unprobed at tiny x). Unprobed: shapes from 2 to 20 (the cutoff at 20 is the
+prefactor's own split, not evidence; at shape 50 the density underflows to 0 in this regime).
+Status: VERIFIED for the form (0 to 3 ulp at the probed cells; the last bits are T-2852)
 
 ## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
 Rule: these functions are bit-identical compositions of one another, so their last digits come from one
@@ -1340,6 +1356,15 @@ every record (`H1:H3` with `H3` blank sums all records), as does a blank header 
   first record and matches nothing (0). VERIFIED (probes/db-criteria-formula-placement H1-H12, excel-graph;
   ours already agrees). The text `"true"`, `"True"` and `"TRUE"` all hold under a blank header (H13-H15).
 - **DGET** of the one matching record's blank field cell is `#VALUE!`, as when nothing matches.
+- **Field before shape** (probes/db-field-error-order, excel-graph 2026-10-27, T-2516). The `field` is resolved
+  before the database or criteria shape is checked: an error `field` (`NA()`, `1/0`, a `VLOOKUP` that is
+  `#N/A`) gives that error even when the criteria or the database is one row (`DSUM(A1:C4,NA(),G1)` and
+  `DSUM(A1:C1,NA(),E1:E2)` are `#N/A`, `1/0` is `#DIV/0!`). A field that names no column (`"Nope"`) is
+  `#VALUE!` with a good, a one-row-criteria and a one-row database; a field out of range (5) or 0 is `#VALUE!`
+  with one-row criteria. `GAMMA.DIST(TRUE,42,1E-15,"FALSE")` is the number 0, so
+  `DGET(db,<that>,<one-row criteria>)` is a field of 0: `#VALUE!`. Ours already agrees. The `#VALUE!` of gen-m9
+  88cabddc4935351c A14 and c9d7659896d95368 A271 is the field expression's own error passing through (a
+  `#N/A` VLOOKUP field gives `#N/A`, L23), so they confirm the order; 7bd219ec0c0c5e22 A324 is the gamma case.
 - **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
   the boolean TRUE record, over `=NA()` nothing.
 Evidence: probes/db-header-criteria-shapes (72 questions; database A1:E6 with headers Name, Qty, 0.5,
@@ -1353,7 +1378,7 @@ the power of the nesting, so only one level runs: a nested formula condition is 
 (directive 5; DEVIATION, decision 0014). What Excel does with a nested formula condition is unprobed.
 Status: VERIFIED (excel-graph); the one-level re-evaluation is DEVIATION (decision 0014), Excel's nested
 behavior UNVERIFIED
-Tasks: T-1390
+Tasks: T-1390, T-2516
 
 ## GAMMA and GAMMALN sweep (T-1042)
 Rule: Excel's GAMMA is exact only for small integers, GAMMALN is not correctly rounded at integers,
@@ -2268,7 +2293,8 @@ w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `z
 Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505), for BETA.DIST's cdf only: the w3 series and
 EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
 Its algdiv (b0 >= 8) is `beta_density::algdiv` in doubles, where the model runs TOMS algdiv x87 stored.
-Both shapes >= 1 with max > 8 (the model's accurate ln B) and a shape of exactly 1 stay on Cephes' fractions. On
+Both shapes > 1 with max > 8 (the model's accurate ln B) and a caller's shape of exactly 1 stay on Cephes'
+fractions; L140's bpser(a0, 1, x0) at a whole b0 and a0 > 8 takes L = -LN(a0) (T-2506). On
 probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
 bit-exact cells moved off and 7 became visibly off (listed in T-2847). F, BINOM and NEGBINOM still take Cephes' fractions (T-2847).
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
@@ -2295,12 +2321,19 @@ bfrac (min(a,b) >= 40) takes the same brcomp = density·x·y, with λ = fl(a - f
   and the pdf's c + 1 predicts the tie response (-10.5 against -10.58). The fraction's own arithmetic is not found:
   white residual, sd 3.8 units, after 64 storage masks, five eps values and three precisions. bfrac cells: 146/476/685
   of 1,316 (CR 109/466/677).
+- At a whole b0 (b0' = 1) with a0 > 8, bpser(a0, 1, x0)'s lnB is -LN(a0), B(1, b) = 1/b as the density takes it
+  (T-2506). With the engine's own density, bup arithmetic and bpser, the L140 bup+bpser cells of r2-bratio's be, w2f
+  and ix sets (bratio's dispatch as ported) score 8,800/11,696/11,721 of 11,742, the ix cells alone 995/1,344/1,362
+  of 1,383. -LN(a0) at a0 <= 8 too scores 72 more bit-exact there but is 2 ulp off at BETA.DIST(0.5,2,2,TRUE)
+  (Excel 0.4999999999999999, ironcalc-calc BETADIST_BETAINV.xlsx G15) where GAMMALN's sum is 1 ulp off, so a0 <= 8
+  stays on GAMMALN's sum (docs/research/t2506/RESULTS.md).
 - Rejected: stored, extended, Horner or reverse W; the (P·y0)·x order; an extended P; every CF × prefactor on 15,657
   direct cells (best 2,931, CR 2,920); bfrac's λ from y.
 Evidence: probes-numeric t2464-w2f-xruns-1, -xruns-2, -absweep; w4's probe w4p1 (w4-fractions/probe, not in
 eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_lambda.py`, `t25_old.py`), r2-bratio
-(`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio.
-Ours: Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
+(`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio; docs/research/t2506.
+Ours: L140 bup+bpser for BETA.DIST's cdf (`functions/statistical/bratio/mod.rs` `l140_bup_bpser`, `bup`, T-2506);
+L140 with bgrat and bfrac on Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
 Status: VERIFIED (excel-graph) for L140 bup+bpser to 15 digits (11,724 of 11,753; 64% bit-exact); bfrac's fraction
 UNVERIFIED
 Tasks: T-2506, T-2508, T-2512
@@ -3171,7 +3204,7 @@ Evidence: probes/stat-order-floor-batch A274, A299 (empty argument), A102, A128 
 A294, A295, A300 (DEVSQ; a two-pass reproduces all seven bit-exactly); excel-graph, 2026-10-17.
 Status: VERIFIED (excel-graph).
 Ours (T-1748): AVEDEV/DEVSQ count the empty argument as 0 (`for_each_value`); the data argument of PERCENTILE*, QUARTILE*,
-PERCENTRANK* reads a typed boolean as a one-element array and typed text as a number (a single cell holding either is unprobed, UNVERIFIED, and unchanged). DEVSQ is one-pass (devsq.rs, T-1749).
+PERCENTRANK* reads a typed boolean as a one-element array and typed text as a number (a single cell holding either is no number, see "A lone text, boolean or empty cell as the data of QUARTILE..."). DEVSQ is one-pass (devsq.rs, T-1749).
 T-1748 sweep (probes-numeric/t1748-typed-boolean-data, excel-graph): PERCENTILE, PERCENTILE.INC/.EXC(TRUE,0.5), QUARTILE.EXC(TRUE,2),
 PERCENTRANK/.EXC(TRUE,1), SMALL/LARGE(TRUE,1) and QUARTILE(TRUE,0) are all 1, QUARTILE(FALSE,1) is 0, `QUARTILE("1",1)` is 1 (direct
 text coerces), `SUMSQ(1,)` is 1 (empty skipped or counted as 0 alike).
@@ -3272,14 +3305,68 @@ exact f while the double f is within 3: the residual is in the tail's evaluation
 Recipes' `betai` in doubles (exp(lnB + a ln x + b ln y) or with three separate exps, `betacf`, with or without the
 symmetry switch, ln y or ln(1 - x), libm or correctly rounded lgamma) scores at best 132 / 235 / 29, and ln y as
 log1p(-x) under the model 146 / 272 / 24: none beats the model. These last scores (NR `betai`, log1p(-x), the exact-f inversion) and the closed form's
-13 / 16 against (2/pi)*asin 11 and atan 10 were run as ad hoc scripts, not yet committed fits (T-2681).
+13 / 16 against (2/pi)*asin 11 and atan 10 were run as ad hoc scripts; T-2681 committed them (`uv run rustsheet-fitlab
+f-test-half` and `f-test-nr`, tools/src/rustsheet_tools/fitlab/kernels/ftest_adhoc.py). They reproduce the closed forms
+(13 / 16, 11, 10, the series 3) and log1p(-x) (146 / 272 / 24); the model at the exact variance ratio scores 141 / 259 (max
+311 ulp); NR `betai` with libm lgamma scores at best 106 / 198 / 51 max ulp (three exps, ln(1 - x)), so T-2571's 132 / 235 came
+from a variant the committed fit does not have (its correctly rounded lgamma, unrecorded).
+Both shapes above 1 (df 3 or more on each side; rule from a fit, PARTIAL): F.TEST's tail is TOMS 708 bratio with
+Excel's pieces, T-2464 r2-bratio's integrated model (`docs/research/t2464/r2-bratio/bratio_excel.py`, `BEST`), not the
+remainder model above. After bratio's swap on lambda = (a+b) y - b (a > b) or a - (a+b) x, with b0 below 40:
+- b0 x0 <= 0.7: `bpser` as w3 found it, s = 1/a0 + sum c_n/(a0+n), c_n = c_(n-1) ((1/2 - b0/n) + 1/2) x0, every step an
+  x87 op stored to a double, summed until s stops changing, times EXP of the unstored fl64(fl(a0 LN x0) - ln B), with ln B
+  fl64(GL(a0) + fl64(GL(b0) - GL(a0+b0))) (GL Excel's GAMMALN; ln Gamma(1/2) as fl64(gamln1(1/2) - LN(1/2))) up to a
+  shape of 8 and the accurate ln B above;
+- otherwise, with x0 <= 0.7 (TOMS L140): `bup` from the shape b0 - n (1/2 or 1) up by n = the integer part of b0, its
+  prefactor Excel's beta density at y0 times y0 x0 over the shape (BETA.DIST's density for a shape of 1/2 or 1, T-2513's
+  model M2; with r2-bratio's w1 model M1 instead the F.TEST hybrid is 192 bit-exact, not 205) and its ratios stored, plus `bpser` at that shape;
+- p = 2 min(w, (1/2 - w) + 1/2).
+On the 291 cells of the `f-test` fit the 113 with both shapes above 1 score 68 / 110 / 1 visibly off under bratio against
+31 / 96 / 7 for the remainder model; with a shape of 1/2 bratio's `bpser` is worse (28 / 88 / 23 visibly off of 116
+against 75 / 114 / 0), so the model stays there. What decides: w3's series with the unstored EXP argument (plain TOMS
+`bpser` 38 / 76 / 24, the argument stored to a double 47 / 80 / 22) and bup's density prefactor (TOMS `brcmp1` 51 / 100 /
+8, a correctly rounded density 64 / 107 / 2); the arithmetic switches move at most one cell. The engine's port
+(below, with M2) is 76 / 110 / 1 on those 113 and 205 / 284 / 1 on all 291 against 160 / 270 / 7 before: 7 of the 8 cells
+T-2571 left visibly off now have Excel's 15 digits (gen-m9/58e3253bbd3a7a82 A141, 8f2ac25945af87da A119 and
+a7bf0d8d81d33ba6 A81 bit-exact; fec39efaba9284c3 A36 1 ulp, caa1eed48b1883fe A380, f34f66fb7f81e673 A4 and the FILTER cell
+bcb24385baafb2f0 A377 3 ulp). Still visibly off:
+`F.TEST(Data!B6:E12,Data!A1:D10)`, gen-m9/b6593d7dd13f2dac A306 (Excel 1.23966888990022E-69, ours 25 ulp off; data with
+123456789.123 among values near 1; T-2829). 8 cells move from bit-exact to 1 to 3 ulp (T-2830). Evidence and per-branch
+tables: docs/research/t2681/README.md, `score_bratio.py`.
+- F.TEST is 2·F.DIST.RT at Excel's own f, to the bit: at gen-m9/b6593d7dd13f2dac A306's data
+  `F.TEST(..)` and `2*F.DIST.RT(VAR.S(..)/VAR.S(..),23,12)` are both 1.23966888990022E-69. With both shapes above 1,
+  Excel's bpser stores fl(a·LN x) as the port does: when the sample is scaled to move x by up to 1E5 ulp, the gap
+  between ours and Excel stays a constant of the shapes (5.3E-15 relative at a = 6, b = 11.5, 1.4E-15 at b = 11).
+  That constant is Excel's ln B(a, b): bpser's L is a stored double an integer number of ulps off fl(accurate ln B)
+  (-3 at a = 6, b = 11.5, which is A306's whole miss; -1 at (6, 11); 0 at (2.5, 11), gen-m9/a790a4d4a6a82756 A289).
+  On a grid of 99 F.TEST cells (a 2.5 to 8, b 8.5 to 19.5, x near 1E-12) every L is within 0.2 of an integer k ulps,
+  k from -3 to +2 (|k| <= 1 at a = 2.5, 4, 4.5 and 5, 2 at a = 3, 3.5, 6, 7 and 8, -3 only at (6, 11.5)); the same
+  test on L + ln a, L + ln b or L + lnGamma(a + b) gives random fractions.
+  No form tried gives the map: accurate 45 of 99 (shipped), TOMS betaln 49, TOMS's a-reduction with w = prod a/(a + b)
+  55, Excel GAMMALN sums 15 to 29 (docs/research/t2829/ln_beta_map.py; probes/t2829-ftest-a306-shapes and
+  t2829-ftest-ln-beta-grid, excel-graph; open as T-2924). A306 stays 25 ulp low until that form is found.
+  Ruled out by structure (T-2924, docs/research/t2924/structure.py):
+  - Any sum of double lnGamma values, each within 2 ulp, in seven orders. lnGamma(b) and lnGamma(a + b) lie on a
+    grid 4 ulp(L) wide, so 16 or more cells are unreachable in every order.
+  - For integer a, TOMS's a-reduction fl(LN(w) + A(b)) with any w product, the exact ln of the product included:
+    no single A(b) fits more than 1 of 11 b values.
+  - Any per-argument error f(a) + h(b) + q(a + b) added to ln B and rounded once. At most 94 of 99 cells fit such
+    an error, against 82 for random k.
+  So Excel forms ln B jointly in (a, b), finer than a double lnGamma grid. Blocked as time-boxed (decision 0056). BETA.DIST's
+  bpser cells with a shape above 8 were not scored.
+  The F.DIST.RT cells of probes/t2829-ftest-tail-over-b (f = 1E12) are off ours by these k plus whole steps of the
+  fl(a·LN x) grid (a = 6, b = 11.5: -143 ulp = +5.4E-15 - 2.8E-14 relative), and `2*F.DIST.RT(..,22,12)` differs from
+  F.TEST at the b = 11 twin by such a step, so F.DIST.RT forms x or z differently there; F.TEST is the clean probe.
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
 F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
-Engine: `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
-`beta_reg_complement` above) in crates/rustsheet-engine/src/functions/statistical/fisher.rs.
-Status: implemented as a fit (T-2361); Excel's algorithm for R is UNVERIFIED.
+Engine: `f_test_p` in crates/rustsheet-engine/src/functions/statistical/fisher.rs: `f_test_bratio_p`
+(f_test_tail.rs, T-2681) for both shapes above 1 with a + b <= 200 where it reaches (not TOMS `bgrat`, `bfrac`
+or `basym`), else `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
+`beta_reg_complement` above).
+Status: implemented as a fit (T-2361, T-2681); bratio for both shapes above 1 is PARTIAL (one cell visibly off, T-2829),
+Excel's algorithm for R at a shape of 1/2 is UNVERIFIED.
 
 ## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
 COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell
@@ -3514,7 +3601,10 @@ Rule: GAUSS(z) keeps its leading term for tiny z: `GAUSS(1E-300)` is 3.989422804
 -3.989422804014327E-301 (gen-m9/4bad303d32cc3f46 A225, 05d44f6dd6cfc567 A233), `GAUSS(1E-15)` 3.989422804014328E-16
 (a54c738c697617c3 A235), so it is not NORM.S.DIST(z) - 0.5 in doubles (that gives 0 and 4.440892098500626E-16).
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 8 cells listed in T-2434.
-Ours: 0 and 4.440892098500626E-16; T-2434.
+Cut: the leading term is exact only for tiny z. `GAUSS(1E-10)` is 3.9894310077670525E-11 and `GAUSS(4E-15)`
+1.5543122344752192E-15, the cancelled Phi(z) - 0.5 (gen-m9/68d8ffb69ff739d8 A262, 146b46e74f2dac3b A46), so the switch
+lies in (1E-15, 4E-15); ours uses z * phi(0) below 2E-15 (T-2434).
+Ours: 7 of the 8 cells match; `GAUSS(1E-15)` is 3.9894228040143274E-16, one ulp below Excel (follow-up).
 Status: VERIFIED (excel-graph)
 
 ## Scalar distributions at extreme arguments (T-2255)
@@ -3915,7 +4005,8 @@ QUARTILE*, PERCENTILE* and TRIMMEAN are `#NUM!` (`QUARTILE(Data!E2,3)` with E2 =
 `TRIMMEAN(Data!B7,1.005)` with TRUE, 9735c5ab72fa5ecf A264) and PERCENTRANK* `#N/A` (`PERCENTRANK(Data!C11,1.005)` with "a",
 44a8841352dc48e9 A52). This answers T-2344's single-cell question and T-2066's (`QUARTILE` of one text cell).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 72 cells in T-2344.
-Ours: since T-2429 a cell holding text or a boolean is no number in QUARTILE*, PERCENTILE* and PERCENTRANK* ("A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"), and since T-2621 a cell holding nothing, text or a boolean in TRIMMEAN; the name and INDEX forms stay T-2344's.
+Ours: since T-2429 a cell holding text or a boolean is no number in QUARTILE*, PERCENTILE* and PERCENTRANK* ("A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"), and since T-2621 a cell holding nothing, text or a boolean in TRIMMEAN.
+T-2344 probed the same data given as a defined name, INDEX, OFFSET, IF or CHOOSE result (probes/t2344-percentile-name-index-data A1-A30, excel-graph, 2026-10-27): a reference of any of these forms holding one text (also numeric text "1") or boolean cell is no number, `#NUM!` for QUARTILE*/PERCENTILE* and `#N/A` for PERCENTRANK*, after quart's own error (`QUARTILE(INDEX(..),NA())` `#N/A`); ours since T-2344 (`percentile_numbers` reads the argument once in reference context). TRIMMEAN's name/INDEX forms and LET, IFS, SWITCH and LAMBDA picks are unprobed.
 Status: VERIFIED (excel-graph)
 
 ## COVARIANCE: a boolean scalar is one value (T-2436)
@@ -4176,3 +4267,23 @@ Ours: as Excel since T-2432 (`fn_kurt`, `fn_skew_p`, `z_test_element`, `t_test_p
 one cell (A194), which a plain type-before-tails order would fit too.
 Status: VERIFIED (excel-graph)
 Tasks: T-2432
+
+## PERCENTILE and PERCENTILE.INC interpolate from a one-based rank 1 + k(n-1) (gap triage 2026-10-25)
+Rule (checked against Excel's values; implemented by T-1811): with the n numbers sorted as a[1..n], Excel computes
+the rank `r = 1 + k*(n-1)` in doubles, takes `j = floor(r)` and `h = r - j`, and returns `a[j] + h*(a[j+1] - a[j])`.
+Because the 1 is added before the fraction is taken, a tiny k is lost in `r` (`1 + 1E-20` is 1), so the result is the
+smallest value exactly, and h carries the rounding of `1 + k(n-1)` rather than of `k(n-1)`. This looks wrong for tiny k
+and is still Excel: `PERCENTILE.INC(Data!B1:D6,1E-20)` is 0 (the smallest number), not 1.1E-20, and
+`PERCENTILE.INC(Data!B7:D8,0.1)` is -1.1102230246251565E-16, not 0. A scratch script (triage, not in the repo) applied
+the rule to the 40 failing gen-m9 PERCENTILE/PERCENTILE.INC cells whose arguments are literals or Data cells: 39 match
+bit for bit (the zero-based `a[i] + h*(b-a)` that the engine uses matches none of the 13 visibly-off ones). The one miss is
+gen-m9/5395b8a427764a3f Calc!A269 `PERCENTILE(Data!A9:D11,1E-16)` (data -2.5, 1E-15, ...): Excel -2.499999999999999, the
+rule -2.4999999999999987, which `(1-h)*a + h*b` gives instead (that form misses 4 other cells). The same rule gives
+probes/stat-argument-modes H424 and H429 (`PERCENTILE(C1:C6,0.3)` over 1 and 4) as 1.9000000000000001, Excel's value.
+Evidence: eval/baseline/gen-m9.txt lines of T-1811 (excel-graph, 2026-10-23), e.g. gen-m9/38e4fc309fe199ea Calc!A311,
+gen-m9/607e85cfee83a689 Calc!A20 (`PERCENTILE.INC(Data!B7:E11,1E-20)` is 1E-15, the smallest value), gen-m9/eccd03df42e40006
+Calc!A151 (`PERCENTILE.INC(Data!B11:E12,1E-200)` is 0), Calc!A162 (`PERCENTILE(Data!A4:B4,1E-10)` over -0.0001 and 7 is
+-9.999929998994208E-05), gen-m9/a4090567758520df Calc!A28.
+Status: VERIFIED (excel-graph). Implemented by T-1811; QUARTILE and QUARTILE.INC share `percentile_inc_impl` and show 0 regressions across their oracle cells. One cell is not reproduced (A269 above).
+Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the one-based rank `1 + k*(n-1)` (T-1811). Known miss: gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, rule -2.4999999999999987) stays in the baseline.
+Tasks: T-1811

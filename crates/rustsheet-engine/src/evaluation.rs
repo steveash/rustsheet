@@ -311,6 +311,9 @@ pub(crate) struct Evaluation {
     pub(crate) passes_in_last_evaluation: u32,
     /// Circular references under iterative calculation (`iteration.rs`).
     pub(crate) iteration: crate::iteration::IterationState,
+    /// Turns the pass caches off, so a test can compare cached values with the walk's.
+    #[cfg(test)]
+    pub(crate) no_pass_caches: bool,
 }
 
 /// How deep the recursion may go when nobody has said otherwise, in formulas
@@ -385,22 +388,28 @@ impl Default for Evaluation {
             blocked_on: None,
             passes_in_last_evaluation: 0,
             iteration: Default::default(),
+            #[cfg(test)]
+            no_pass_caches: false,
         }
     }
 }
 
 impl Model {
     /// Whether the caches of this pass (`search_cache.rs`, `ifs_cache.rs`) may be read or filled
-    /// now: inside a pass that is neither abandoned, unwinding, blocked, in Excel order nor
-    /// iterating, so a value read now stays the pass's value.
+    /// now: inside a pass that is neither abandoned, unwinding, blocked nor in Excel order, so a
+    /// value read now stays the pass's value. Under iterative calculation too: a cached range holds
+    /// no cycle member (`Model::join_stack`, T-0485). The sweeps run outside a pass.
     pub(crate) fn pass_cache_safe(&self) -> bool {
         let evaluation = &self.evaluation;
+        #[cfg(test)]
+        if evaluation.no_pass_caches {
+            return false;
+        }
         evaluation.in_pass
             && evaluation.restart.is_none()
             && !evaluation.unwinding
             && !evaluation.excel_order
             && !evaluation.blocking
-            && !self.iterating()
     }
 
     /// Evaluates every formula in the workbook, then its data tables and, if there are any,
@@ -419,7 +428,7 @@ impl Model {
         }
         self.end_iteration();
         // Conditional formats are evaluated on the next style read (SPEC-0021).
-        self.cf_stale = true;
+        self.cf.stale = true;
     }
 
     /// Runs passes until one completes without a restart. `RestartLog` learns
@@ -815,8 +824,9 @@ impl Model {
         spills: bool,
     ) -> CalcResult {
         // Shares the formula, it does not copy it.
-        let node =
-            Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
+        let node = Arc::clone(
+            &self.parsed_formulas[cell_reference.sheet as usize][formula as usize].evaluated,
+        );
         match self.run_cell_formula(&node, cell_reference, spills) {
             CalcResult::Range { left, right } => {
                 let (rows, columns) = range_dims(left, right);

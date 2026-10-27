@@ -14,7 +14,7 @@ use crate::x87_exp::{dd_add, dd_div, dd_mul, excel_exp, excel_expm1, two_sum};
 use crate::x87_log10::excel_ln;
 use crate::x87_register::Register;
 use crate::{
-    arithmetic::{extended_quotient, extended_sum, power},
+    arithmetic::{extended_product, extended_quotient, extended_sum, power},
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::Function,
@@ -34,6 +34,18 @@ pub(super) fn annuity_power(rate: f64, nper: f64) -> Result<f64, Error> {
 pub(super) fn annuity_factor(rate: f64, p: f64, period_start: bool) -> f64 {
     let k = if period_start { 1.0 + rate } else { 1.0 };
     k * ((p - 1.0) / rate)
+}
+
+/// [`annuity_factor`] with each `+`, `*` and `/` Excel's twice-rounded operator: RATE's residual
+/// (`financial_util::rate_residual`), where the once-rounded factor misses 4 of the 782 fit-lab
+/// cells (financial.md "RATE is a secant on the FV residual", T-2527).
+pub(super) fn annuity_factor_rounded(rate: f64, p: f64, period_start: bool) -> f64 {
+    let k = if period_start {
+        extended_sum(1.0, rate)
+    } else {
+        1.0
+    };
+    extended_product(k, extended_quotient(extended_sum(p, -1.0), rate))
 }
 
 /// PMT's `P = (1+rate)^nper` (1 for no periods) for its overflow guards and fallback forms:
@@ -583,8 +595,8 @@ impl Model {
     }
 
     /// `RATE(nper, pmt, pv, [fv], [type], [guess])`. The secant stops after `RATE_MAX_STEPS`
-    /// (200) steps, so the table charges each element that weight (`KernelWork::Weighted`,
-    /// SPEC-0011 security rule).
+    /// (200) steps, so the table charges each element the time of a run to that cap
+    /// (`RATE_WEIGHT`, `KernelWork::Weighted`, SPEC-0011 security rule).
     pub(crate) fn fn_rate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Rate, args, cell, &mut |model, values| {
             number_or_error(model.rate_of(values, cell))

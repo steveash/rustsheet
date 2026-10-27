@@ -77,6 +77,16 @@ Cells:
 - gen-m9/c0681a8b150ce301.case.json (1): Calc!A169
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A3
 
+Gap triage 2026-10-27: IRR.xlsx General!L17 and gen-m9/31474c20fc1dafd6 Calc!A173 and A271 take the fallback path,
+not the secant (financial.md "IRR's fallback when the secant fails"). T-2928 owns their digits, after the T-2927
+sweep. Their lines count toward the criterion below once T-2928 lands; do not fit them through the secant.
+The same triage found 7 visibly-off far-root cells that no task named. They take the secant path, so they are this
+task's (with T-2565's guess sweeps; financial.md "IRR's far-root bound"):
+- probes/irr-fallback-roots P!A25 `IRR({-1,1E+4})`: Excel 9999.0000000011, ours 9999.000000012204;
+- A26 `IRR({-1,1E+5})`: Excel 99999.0000004551, ours 99999.00000156532;
+- A28 `IRR({-1,3E+6})`: Excel 2999998.999580666, ours 2999999.000579867;
+- A36 to A39 `IRR({-1,0,X})` for X = 1E+8, 1E+10, 1E+12, 1E+14: e.g. A39 Excel 9999998.994161328, ours 9999998.996610194.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 16 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.

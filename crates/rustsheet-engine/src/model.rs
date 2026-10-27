@@ -34,7 +34,7 @@ use crate::{
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
 use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::tailed_array::range_corners;
-use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
+use crate::{clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
 // * A single cell
@@ -186,15 +186,8 @@ pub struct Model {
     pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
-    /// Evaluated CF results per cell by (`sheet_index`, row, column), rebuilt from scratch by `evaluate_conditional_formatting()`.
-    pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
-    /// `cf_cache` is out of date: the next style read rebuilds it (SPEC-0021). Set where the
-    /// conditional formats used to be evaluated eagerly: load, the end of `evaluate()`,
-    /// `set_theme`.
-    pub(crate) cf_stale: bool,
-    /// How many times the conditional formats were evaluated, for the tests of SPEC-0021.
-    #[cfg(test)]
-    pub(crate) cf_runs: usize,
+    /// The conditional formats evaluated so far, per cell (`cf_styles.rs`, SPEC-0021, T-0476).
+    pub(crate) cf: crate::cf_styles::CfState,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
     /// For each sheet, where each of its shared formulas is. Only an aid to find a formula without
@@ -552,6 +545,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
+        parser.set_workbook_file(self.workbook.file_name());
         let node = parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
@@ -576,7 +570,10 @@ impl Model {
     ) -> CalcResult {
         use Node::*;
         let node = node.ungrouped(); // A written group is its child; a loop adds no frame.
-        match node {
+        if let Err(error) = self.spend_node(cell) {
+            return error;
+        }
+        let result = match node {
             OpSumKind { .. }
             | OpProductKind { .. }
             | OpPowerKind { .. }
@@ -585,12 +582,12 @@ impl Model {
             NumberKind(value) => CalcResult::Number(*value),
             BooleanKind(value) => CalcResult::Boolean(*value),
             ReferenceKind {
-                sheet_name: _,
                 sheet_index,
                 absolute_row,
                 absolute_column,
                 row,
                 column,
+                ..
             } => {
                 // Relative coordinates are offsets from the formula's cell.
                 let row1 = *row + if *absolute_row { 0 } else { cell.row };
@@ -647,7 +644,8 @@ impl Model {
             | ImplicitIntersection { .. }
             | LambdaDefKind { .. }
             | LambdaCallKind { .. } => self.evaluate_cold_node(node, cell),
-        }
+        };
+        self.charged(result, cell)
     }
 
     fn cell_reference_to_string(
@@ -1145,7 +1143,7 @@ impl Model {
     /// Sets the workbook theme.
     pub fn set_theme(&mut self, theme: crate::types::Theme) {
         self.workbook.theme = theme;
-        self.cf_stale = true;
+        self.cf.stale = true;
     }
 
     /// Returns the Theme
@@ -1370,7 +1368,7 @@ impl Model {
 
         model.parse_formulas();
         model.parse_defined_names();
-        model.cf_stale = true;
+        model.cf.stale = true;
 
         Ok(model)
     }
@@ -1551,9 +1549,7 @@ impl Model {
                     self.language,
                 ),
                 Some(i) => {
-                    let formula = crate::formula_cells::written_formula(
-                        &self.parsed_formulas[sheet as usize][i as usize],
-                    );
+                    let formula = self.parsed_formulas[sheet as usize][i as usize].written();
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1671,13 +1667,7 @@ impl Model {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let formula = crate::formula_cells::written_formula(
-                        self.parsed_formulas
-                            .get(sheet as usize)
-                            .ok_or("missing sheet")?
-                            .get(formula_index as usize)
-                            .ok_or("missing formula")?,
-                    );
+                    let formula = self.written_formula(sheet, formula_index)?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
                         row,
@@ -2130,8 +2120,8 @@ impl Model {
 
                 // Update the style if needed
                 let cell = CellReferenceIndex { sheet, row, column };
-                let (parsed_formula, _static_result, _) =
-                    &self.parsed_formulas[sheet as usize][formula_index as usize];
+                let parsed_formula =
+                    &self.parsed_formulas[sheet as usize][formula_index as usize].evaluated;
 
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
                     let new_style_index = self
@@ -2481,9 +2471,8 @@ impl Model {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula = crate::formula_cells::written_formula(
-                    &self.parsed_formulas[sheet as usize][formula_index as usize],
-                );
+                let formula =
+                    self.parsed_formulas[sheet as usize][formula_index as usize].written();
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,
@@ -3091,6 +3080,14 @@ impl Model {
     /// in-engine reader of the time goes through here.
     pub(crate) fn now_unix_millis(&self) -> i64 {
         self.clock.now_unix_millis()
+    }
+
+    /// Renames the workbook (`name` without its extension). Formulas typed from now on show the
+    /// new file name as the prefix of a workbook name read through a sheet (T-2834); a formula
+    /// already parsed shows it after its next re-parse, as its stored text is `[0]!name`.
+    pub(crate) fn set_workbook_name(&mut self, name: &str) {
+        self.workbook.name = name.to_string();
+        self.parser.set_workbook_file(self.workbook.file_name());
     }
 
     /// Sets the timezone of the model

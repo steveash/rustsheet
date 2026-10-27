@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2338: with no table, does a plain range shrink when delete_row deletes its first row (row 4)? S!C4:C7 holds 1,2,4,8 and S!C9 16; sheet F holds A1 =SUM(S!C4:C7), A2 FORMULATEXT(A1), A3 =SUM(S!$C$4:$C$7), A4 FORMULATEXT(A3), A5 =SUM(S!C4:C4) (one row), A6 FORMULATEXT(A5), A7 =SUM(S!C7:C9), A8 FORMULATEXT(A7).",
+  "tags": [
+    "M8",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "C4": 1,
+        "C5": 2,
+        "C6": 4,
+        "C7": 8,
+        "C9": 16
+      }
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=SUM(S!C4:C7)",
+        "A2": "=FORMULATEXT(A1)",
+        "A3": "=SUM(S!$C$4:$C$7)",
+        "A4": "=FORMULATEXT(A3)",
+        "A5": "=SUM(S!C4:C4)",
+        "A6": "=FORMULATEXT(A5)",
+        "A7": "=SUM(S!C7:C9)",
+        "A8": "=FORMULATEXT(A7)"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "delete_row",
+      "sheet": "S",
+      "row": 4
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8"
+  ]
+}
