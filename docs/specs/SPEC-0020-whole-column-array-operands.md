@@ -294,6 +294,9 @@ Why a tail element other than the sentinel is the value of every tail row:
     picks.
 - A real `#N/IMPL` from a cell or scalar in the tail is mistaken for the sentinel. That only causes
   the fallback, which is today's path, so the collision is safe.
+- The argument holds only for the value operators and IF. A function that turns an error into a
+  value (IFERROR, ISERROR, ISNA, …) would hide the sentinel, so any task that adds a tailed
+  function must prove the rule again for it, or refuse ROW leaves beneath it.
 
 ### 3. Consumers
 Each consumer reads its argument with `read_tailed` and the reading it uses today, so the head and
