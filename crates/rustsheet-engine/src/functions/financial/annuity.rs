@@ -183,15 +183,10 @@ fn accurate_period_split(
 /// is a round point between them, not pinned).
 const GROWTH_LOG_SERIES_TO: f64 = 0.375;
 
-/// At or below this rate `1+rate` has no logarithm and PPMT keeps the exact form. Above it,
-/// negative rates included, Excel's PPMT is the discounted one: `PPMT(-0.5,5,294,171132)` is
-/// -5347.875000000112, not the exact -5347.875 (gen-m9 79d87fc527927626 A46), and
-/// probes-numeric/ppmt-negative-rate-sweep has every rate from -0.9 to -0.3 within 15 digits of
-/// it (T-2588).
+/// At or below this rate `1+rate` has no log and PPMT keeps the exact form; above it, Excel's is
+/// the discounted one, probed down to -0.9 (probes-numeric/ppmt-negative-rate-sweep, T-2588).
 const DISCOUNTED_RATE_FROM: f64 = -1.0;
-
-/// The exact power of two [`discounted_principal`] scales `pv+fv` by where the unscaled product
-/// overflows a double: 2^-600 brings 1E+308 down to about 2.4E+127, far from both ends of the range.
+/// 2^-600: [`discounted_principal`] scales `pv+fv` by it where the double product overflows.
 const OVERFLOW_SCALE: f64 = 2.409_919_865_102_884e-181;
 
 /// The series stops once a term leaves the sum unchanged; for |rate| < 0.375 each term is under
@@ -237,8 +232,8 @@ const SHORT_GROWTH: f64 = 1e-6;
 /// terms (`PPMT(0.1,1,360,10000)` is -1.2549699967849914E-12, the exact value
 /// -1.254969996784983E-12). `None` for a rate at or below [`DISCOUNTED_RATE_FROM`], below
 /// [`SHORT_GROWTH`], and where a factor or the result is not finite and normal. Where `pv+fv`
-/// times the discount passes the double range, the product is rescaled, as Excel's x87 register
-/// holds it ([`OVERFLOW_SCALE`]).
+/// times the discount passes the double range, the product is rescaled ([`OVERFLOW_SCALE`]), which
+/// gives Excel's value there.
 ///
 /// `past_range` is the form where the exact one declines, `(1+rate)^nper` past about 1E+270: a
 /// discount below the normal range is then 0 and so is PPMT, as Excel's is (`PPMT(42,10,303,8292,
@@ -283,8 +278,8 @@ fn discounted_principal(
     };
     let mut principal = principal_at(1.0);
     if !principal.is_finite() {
-        // Excel holds the product in an x87 register, whose range does not overflow where a
-        // double's does: `PPMT(-0.5,4,230,1E+300)` is -6.249999999999966E+298 (gen-m9
+        // Excel has the exact value where the double product overflows (an extended-range
+        // intermediate?): `PPMT(-0.5,4,230,1E+300)` is -6.249999999999966E+298 (gen-m9
         // 67a4c03afd63f988 A180). A power-of-two scale keeps every bit of the product.
         principal = principal_at(OVERFLOW_SCALE);
     }

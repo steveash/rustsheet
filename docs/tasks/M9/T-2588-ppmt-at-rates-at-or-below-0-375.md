@@ -58,7 +58,8 @@ Cells:
   by 2^-600 when the double product overflows (`PPMT(-0.5,4,230,1E+300)`).
 - Code: `DISCOUNTED_RATE_FROM` -0.375 -> -1, `OVERFLOW_SCALE` in functions/financial/annuity.rs; unit test
   `principal_at_negative_rates`.
-- Eval: gen-m9 known failures 3671 -> 3666 (the 5 cells; A335 is now an ulp off, within 15 digits), 0 regressions.
+- Eval: gen-m9 known failures 3671 -> 3666, 0 regressions: A73, A383, A46, A180 and, in passing, 5422bdbf173fc233 A138
+  (`PPMT(-0.5,1.5,180,79711)`). A335 stays a known failure as an ulp miss (NumericUlp), no longer visibly off.
   The probe: all 79 cells within 15 digits, 43 bit-exact.
 - Not done: the fit-lab candidates (`fitlab/kernels/annuity.py`) and pinning the series/LN switch on the
   negative side, filed as T-2949.
