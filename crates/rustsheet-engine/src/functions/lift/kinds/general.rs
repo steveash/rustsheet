@@ -96,7 +96,7 @@ const SORTBY: ArgKinds = ArgKinds {
 /// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
 /// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
 /// sorts the whole array: read and charged as [`TOCOL`]. Each element holds its
-/// call's top-left (`.array()`, not SORTBY's `ArrayFirst`: probes/t2366-sort-lifted-by-col).
+/// call's top-left (`.array()`, not SORTBY's `ArrayFirst`: probes/t2366-sort-lifted-by-col; known divergence: T-2922).
 const SORT: ArgKinds = ArgKinds::fixed(
     1,
     &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],

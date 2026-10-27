@@ -1805,7 +1805,7 @@ Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every 
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
 (T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; each element is its call's top-left, VERIFIED against SORTBY's and UNIQUE's first-element-only rule, and a range by_col lifts too: T-2366; but a TRUE by_col element past the first column with sort_index 1 is `#VALUE!` in Excel and 3 in ours, T-2366's follow-up); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
 Status: VERIFIED (excel-graph)
-Tasks: T-2313, T-2318, T-2319, T-2467
+Tasks: T-2313, T-2318, T-2319, T-2366, T-2467, T-2922
 
 ## TOROW and UNIQUE of a lone blank cell
 Rule: a one-cell reference to a blank cell stays blank in TOROW and UNIQUE: `TOROW(Data!Z1,3)` drops it and is `#CALC!` (nothing
