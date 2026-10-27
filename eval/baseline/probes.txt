@@ -1328,6 +1328,7 @@ C	probes/t2776-ws-before-colon.case.json	2
 C	probes/t2778-imsinh-sign-sweep.case.json	312
 C	probes/t2782-whitespace-run-wrap.case.json	36
 C	probes/t2812-currency-tag-cost.case.json	54
+C	probes/t2836-dollar-run-cost.case.json	95
 C	probes/table-edits/table-convert-names-this-row.case.json	13
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
@@ -3851,13 +3852,6 @@ F	probes/t2776-formula-text-whitespace-shapes.case.json	S!C5
 F	probes/t2776-formula-text-whitespace-shapes.case.json	S!E9
 F	probes/t2776-ws-after-bang.case.json	S!A1
 F	probes/t2776-ws-after-bang.case.json	S!C1
-F	probes/t2812-currency-tag-cost.case.json	S!A11
-F	probes/t2812-currency-tag-cost.case.json	S!A17
-F	probes/t2812-currency-tag-cost.case.json	S!A18
-F	probes/t2812-currency-tag-cost.case.json	S!A19
-F	probes/t2812-currency-tag-cost.case.json	S!A20
-F	probes/t2812-currency-tag-cost.case.json	S!A3
-F	probes/t2812-currency-tag-cost.case.json	S!A31
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
