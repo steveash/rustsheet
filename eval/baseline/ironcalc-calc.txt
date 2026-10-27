@@ -292,10 +292,7 @@ F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J2
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J22
 F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J28
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!A23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B21
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B22
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!Q2
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R1
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R2
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L12
@@ -314,45 +311,21 @@ F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L42
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L56
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L58
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M10
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M11
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M12
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M13
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M16
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M17
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M18
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M19
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M2
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M8
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M9
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!N9
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D5
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E2
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E3
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K2
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K4
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K5
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K6
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!K7
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!L4
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!L7
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!M2
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!M4
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!M9
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!N2
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!N4
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!N5
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!N6
-F	ironcalc-calc/FINANCIAL/NPV.xlsx	Sheet1!N7
 F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F10
 F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F11
 F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F14
