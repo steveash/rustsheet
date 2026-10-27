@@ -17,6 +17,10 @@ The BESSELJ, BESSELY and BESSELI last-ulp cells of the gen-m9 sweep at x = 84 to
 ## Context
 Gap triage of the T-2258 gen-m9 engineering sweep. None is visibly off (each within half a unit of the 15th digit), so no campaign key: `BESSELJ(1000,3)`, `BESSELJ(1000,5)`, `BESSELJ(700,2)`, `BESSELJ(84,2)`, `BESSELJ(1E+5,0)`, `BESSELJ(1E+5,4)`, `BESSELY(1000,0)`, `BESSELY(1000,2)`, `BESSELY(714,4)`, `BESSELY(1E+5,1)`, `BESSELY(3299.36..,4)` (1 to 3 ulps) and `BESSELI(100.218..,5)` 1.177055823943151E+42 (ours ...507E+42). Fit after T-2547 (which fixes the model above 100 on T-2140's sweep); `BESSELJ(84,2)` is inside the 8..100 range the model is said to match, so check it first.
 
+Also owned (T-2881 probe, excel-graph, 2026-10-27): the 53 known-failure lines of `probes/t2881-besselj-turning-point`
+(44 visibly off at 15 digits; Miller cells x <= n and the upward-recurrence cells x > n at n >= 2000, 1E-15..1.6E-13 relative).
+The task's scope covers both recurrence branches.
+
 Owned gen-m9 cells (T-2258 triage, excel-graph, 2026-10-23): 12 known-failure lines in eval/baseline/gen-m9.txt, 12 formulas, 0 visibly off.
 Examples:
 - gen-m9/12e4aa13a20cc1f8 Calc!A257 `=BESSELY(714,4)`: Excel -0.0025082601200159195, ours -0.00250826012001592

@@ -22,7 +22,7 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
     y(0.2457520174e-5 + y(-0.240337019e-6)))))`. That is why `BESSELJ(10,1)` = 0.04347224965225415
     against true 0.04347274617 (and up to 3.4e-5 off at x = 8). Y1 uses the book's `P`.
   - Higher orders run the same recurrences as for small x: J's upward recurrence (n < x) is bit-exact
-    only as `b * (2j * (1/x)) - a`, like Y's (11 cells are 1 ulp off with `(2j/x) * b`), and Miller's
+    at moderate n (n = 1000 passes; not at n >= 2000, see the T-2881 note below) only as `b * (2j * (1/x)) - a`, like Y's (11 cells are 1 ulp off with `(2j/x) * b`), and Miller's
     for n >= x. In the asymptotic form `(z * Q) * sin` is bit-exact; `z * sin * Q` is 1 ulp off at
     `BESSELY(8.5,1)`.
   - `BESSELJ(0,n)` is 0 for n >= 2; `BESSELY` of x <= 0 is `#NUM!`.
@@ -47,6 +47,10 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   are both about 1.6E-13 low (relative), mostly from `tox = 2/x` rounding to a double, and differ only in per-step rounding
   (x87 64-bit and FMA steps don't reproduce it either). Turning-point sweep (76 cells, n = 1000..100000, x = n, n±1/10/100, n+0.5, n-2/3/5):
   probes/t2881-besselj-turning-point (excel-graph, 2026-10-27, T-2881), for T-2548 to fit.
+  It shows: Miller cells (x <= n) miss by about 1E-15 to 3E-14 relative from n = 1000 up; BESSELJ(84,84), (84,83), (100,100) and
+  all n = 1000 cells except `BESSELJ(990,1000)` are bit-exact; the branch switch at x > n matches Excel's, but the upward
+  recurrence is NOT bit-exact at large n (21 cells from `BESSELJ(2001,2000)` on, up to 1.6E-13 relative, e.g.
+  `BESSELJ(100100,100000)` Excel -0.006729033731473101, ours -0.006729033731474205). T-2548 owns both branches.
   Web vs desktop: Mac Excel 16.0300's cached `BESSELJ(100000,5)` 0.001846551246313725 and `BESSELY(100000,5)`
   0.001719431947654535 (ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18, F18) differ from the web's 0.0018465512463137278
   and 0.0017194319476545319 (t2547-bessel-phase-cut A85, A86), which the engine gives; a Mac has no x87 sine. The engine
