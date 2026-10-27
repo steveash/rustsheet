@@ -7,8 +7,8 @@ status: todo
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: []
-defer: phase-1b
 ---
 
 ## Goal
@@ -102,5 +102,4 @@ target is that every visibly-off cell it owns has Excel's type, error and text, 
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/b4173fe25109a238 Calc!A48 `=LOGNORM.DIST(40,0,(Data!A10*100%),FALSE)`: Excel 3.0218137820578166e-14, ours 3.021813782057842e-14 (5 units of the 15th digit).

@@ -4174,3 +4174,23 @@ Ours: as Excel since T-2432 (`fn_kurt`, `fn_skew_p`, `z_test_element`, `t_test_p
 one cell (A194), which a plain type-before-tails order would fit too.
 Status: VERIFIED (excel-graph)
 Tasks: T-2432
+
+## PERCENTILE and PERCENTILE.INC interpolate from a one-based rank 1 + k(n-1) (gap triage 2026-10-25)
+Rule (hypothesis checked against Excel's values, not yet implemented): with the n numbers sorted as a[1..n], Excel computes
+the rank `r = 1 + k*(n-1)` in doubles, takes `j = floor(r)` and `h = r - j`, and returns `a[j] + h*(a[j+1] - a[j])`.
+Because the 1 is added before the fraction is taken, a tiny k is lost in `r` (`1 + 1E-20` is 1), so the result is the
+smallest value exactly, and h carries the rounding of `1 + k(n-1)` rather than of `k(n-1)`. This looks wrong for tiny k
+and is still Excel: `PERCENTILE.INC(Data!B1:D6,1E-20)` is 0 (the smallest number), not 1.1E-20, and
+`PERCENTILE.INC(Data!B7:D8,0.1)` is -1.1102230246251565E-16, not 0. A scratch script (triage, not in the repo) applied
+the rule to the 40 failing gen-m9 PERCENTILE/PERCENTILE.INC cells whose arguments are literals or Data cells: 39 match
+bit for bit (the zero-based `a[i] + h*(b-a)` that the engine uses matches none of the 13 visibly-off ones). The one miss is
+gen-m9/5395b8a427764a3f Calc!A269 `PERCENTILE(Data!A9:D11,1E-16)` (data -2.5, 1E-15, ...): Excel -2.499999999999999, the
+rule -2.4999999999999987, which `(1-h)*a + h*b` gives instead (that form misses 4 other cells). The same rule gives
+probes/stat-argument-modes H424 and H429 (`PERCENTILE(C1:C6,0.3)` over 1 and 4) as 1.9000000000000001, Excel's value.
+Evidence: eval/baseline/gen-m9.txt lines of T-1811 (excel-graph, 2026-10-23), e.g. gen-m9/38e4fc309fe199ea Calc!A311,
+gen-m9/607e85cfee83a689 Calc!A20 (`PERCENTILE.INC(Data!B7:E11,1E-20)` is 1E-15, the smallest value), gen-m9/eccd03df42e40006
+Calc!A151 (`PERCENTILE.INC(Data!B11:E12,1E-200)` is 0), Calc!A162 (`PERCENTILE(Data!A4:B4,1E-10)` over -0.0001 and 7 is
+-9.999929998994208E-05), gen-m9/a4090567758520df Calc!A28.
+Status: UNVERIFIED as an implementation (39 of 40 cells reproduced offline); QUARTILE and QUARTILE.INC are assumed to share it.
+Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the zero-based rank `k*(n-1)`.
+Tasks: T-1811
