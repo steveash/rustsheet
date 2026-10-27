@@ -3,7 +3,7 @@ id: T-2505
 title: "Incomplete beta: bratio dispatch and Excel's bpser branches for every caller (T-2464 E3)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -64,7 +64,7 @@ and the branches are w_bpser, w1_bpser and bpser(a,b>1). Other branches keep tod
       (1 < b0 < 8) and at least 2,861 of 2,868 (b0 >= 8).
 - [ ] r2-bratio's per-branch bit-exact counts are met or beaten: w_bpser 6,767 of 11,845, w1_bpser 1,666 of 1,845,
       bpser(a,b>1) 978 of 1,523. Both L forms are reported.
-- [ ] BETA.DIST's cdf runs on the bratio port.
+- [x] BETA.DIST's cdf runs on the bratio port.
 - [ ] The two gated lost cells are recorded under decision 0083 (or a decision record), and the effect on T-2633's
       chained BETA.INV cells is stated. No other baseline line is added.
 - [ ] The pre-T-2502 seams are deleted: `beta_reg_complement_unoriented`, `beta_reg_upper_unoriented`,
@@ -88,15 +88,18 @@ the Outcome and handed to T-2512. Bit-level criteria still unmet move to a follo
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
 
-## Progress (2026-10-27, session ran out of budget; resume from this branch)
-Resumed 2026-10-27 03:30 UTC by an opus run (routine step 2).
-- Landed on the branch: `functions/statistical/bratio/mod.rs`, the 1992 dispatch (`dispatch` → `Dispatch { branch,
-  swapped, a0, b0, x0, y0 }`, `Branch` with the model's branch names, x0 >= 0.3, λ formed as TOMS forms it), and
-  `bratio/tests.rs` with hand-derived boundary points. It sits behind `#[cfg(test)] mod bratio;` until the callers
-  move onto it; remove that gate in this task.
-- Next:
-  1. Port bpser per r2-bpser-small `lib.py` `bpser_w3`: s = fl(1/a) forward series; z = fl64(fl(a·LN x) - L); EXP of
-     the extended z (`x87_exp::excel_exp_extended`); L = GL53/glalgdiv. Verify against the model run with the
-     bindings venv (docs/research/t2464/README.md "Rebuilding the harness").
-  2. `bratio_or` per SPEC-0025, then the callers: BETA.DIST cdf, F (w5 forms everywhere), BINOM, NEGBINOM.
-  3. Delete the pre-T-2502 seams and the harness, as the acceptance criteria require.
+## Outcome (2026-10-27, split)
+Split at the session budget: this task landed the dispatch, Excel's bpser and BETA.DIST's cdf on them; **T-2847**
+takes the other callers, the per-branch scoring, the seam and harness deletions (the acceptance criteria not ticked
+above, moved there unchanged).
+- `functions/statistical/bratio/mod.rs`: the 1992 dispatch (x0 >= 0.3), `bpser` (the w3 forward series from fl(1/a),
+  z = fl64(fl(a·LN x) - L), EXP of the extended z, L = GL53/glalgdiv for min(a, b) < 1 and the extended GAMMALN sum
+  for min >= 1, max <= 8), the complement (0.5 - w) + 0.5, and `beta_dist_lower_tail`, which BETA.DIST's and
+  BETADIST's cdf now call. Closed forms first; unported branches, bpser with both shapes >= 1 and max > 8, and a
+  shape of exactly 1 outside the closed forms keep `incomplete_beta.rs`. The `#[cfg(test)]` gate is gone.
+- Eval delta: gated suites 0 regressions; ironcalc-calc known failures 638 → 626, probes 2,961 → 2,960 (baseline
+  updated). probes-numeric (ungated): bit-exact 337,698 → 350,106 (+12,408; 13,408 fixed, 1,000 bit-exact cells moved
+  1 to 4 ulp, none past 15 digits); visibly-off numbers 104,206 → 100,013 (-4,193). Per case:
+  t2464-r2-bpser-small-shapes bit-exact 2,908 → 7,787 of 12,000, cells past 4 ulp 3,194 → 31;
+  t2464-r2-bratio-x29 bit-exact 1,851 → 1,946 of 3,080 (the 434-cell and per-branch counts are T-2847's to measure).
+- statistics.md: the bpser entry has its "Implemented in" line; the bratio entry's "Ours" names the dispatch.

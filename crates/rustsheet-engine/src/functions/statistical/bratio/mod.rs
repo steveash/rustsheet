@@ -216,9 +216,9 @@ fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
     Some(if d.swapped { (w1, w) } else { (w, w1) })
 }
 
-/// Excel's bpser, I_x(a, b) by the power series (statistics.md "Incomplete beta bpser: a forward
+/// Excel's bpser, `I_x(a, b)` by the power series (statistics.md "Incomplete beta bpser: a forward
 /// series times EXP(fl(a LN x) - lnB)"; model `r2-bpser-small/lib.py` `bpser_w3` with GL53):
-/// - s = fl(1/a) + sum c_n/(a + n), c_n = (c_{n-1}·((0.5 - b/n) + 0.5))·x, every op an x87 op
+/// - s = fl(1/a) + sum `c_n/(a + n)`, `c_n = (c_{n-1}·((0.5 - b/n) + 0.5))·x`, every op an x87 op
 ///   stored to a double, summed forward until s stops changing (no TOMS tolerance);
 /// - z = fl64(fl(a·LN x) - L), never stored, and I = fl(EXP(z)·s) with Excel's EXP of the
 ///   extended argument (T-2645).
