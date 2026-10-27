@@ -404,7 +404,9 @@ agree):
 Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
 (I1:I13). Each refused formula was entered alone against the same case.
 Ours: the runs SPEC-0023 keeps are in the entry above. A run between two commas or after the last comma prints
-back (T-2944). The run inside an empty call (`=NOW( )`) is still dropped (T-2966). Inside a structured
+back (T-2944). The run inside an empty call (`=NOW( )`) and a run before a missing first argument
+(`=SUM( ,1)`, unprobed) are still dropped (T-2966). A spaced missing argument is still missing where a function
+refuses one (`=SUBTOTAL(9,A1, )` is refused like `=SUBTOTAL(9,A1,)`, references.md; the spaced shape is unprobed). Inside a structured
 reference (T-2801) the lexer keeps the runs after the outer `[` and before the outer `]` as typed and whether any
 whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. Two choices are ours, not
 probed: a run around a lone specifier keeps the outer brackets it was typed in (`T[ [#Data] ]` prints as typed), and a

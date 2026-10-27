@@ -24,6 +24,7 @@ beside a missing argument is kept"; probes/t2786-whitespace-structured-refs-runs
 
 ## Acceptance criteria
 - [ ] I1 and I11 of probes/t2786-whitespace-structured-refs-runs pass, and NOW()/TODAY() still take no argument.
+- [ ] A probe answers whether Excel keeps a run before a missing first argument (`=SUM( ,1)`), and ours matches.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
