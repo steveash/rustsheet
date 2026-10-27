@@ -227,8 +227,11 @@ Only a walk whose visitor folds numbers skips the repeats.
 Until a task lands, its expressions take today's path unchanged.
 
 ## Amendment 1 (T-0488): UNIQUE, LOOKUP, SMALL and LARGE; bounded ranges; ROW()
-Status: accepted with the spec. It widens what is tailed and adds consumers; nothing above
-changes for the expressions it already takes.
+Status: accepted with the spec. It widens what is tailed and adds consumers, and supersedes
+three things above for what it lists. The non-goals "every other consumer keeps today's code"
+and "lookups" no longer cover LOOKUP's vector form, UNIQUE, SMALL and LARGE. "Which expressions
+are tailed" now also takes bounded single-column spans and `ROW(<leaf range>)`. `Tailed` covers
+such a span. For the expressions T-0469 already takes, nothing changes.
 
 ### Problem
 Gap triage 2026-10-27 found the three slowest corpus-bench cases, all passing, outside the
@@ -371,7 +374,8 @@ falls back as the aggregate walk does. The shape checks and the lift costs use t
   - UNIQUE with `exactly_once` TRUE and FALSE, a tail equal to a head value, an all-tail result,
     and by_col (refused);
   - LOOKUP with an error tail, an empty tail and a numeric tail (refused), and the array form
-    (refused);
+    (refused), with a target whose kind differs from the head's last element, so the search's
+    midpoints are exercised;
   - SMALL and LARGE with an error in the head and in the tail, and with numeric, FALSE and empty
     tails.
 - **Eval.** `rustsheet-eval check`, 0 regressions in every gated suite.

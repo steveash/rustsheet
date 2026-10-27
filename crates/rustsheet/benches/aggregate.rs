@@ -168,9 +168,12 @@ fn lookup_last_workbook() -> Result<Workbook, Box<dyn Error>> {
             tx.set(format!("J{r}").as_str(), f64::from((r * 37) % 1000))?;
         }
         tx.set("L1", 2.0)?;
+        let formula = "=IF($L$1>1,LOOKUP(2,1/(J:J<>\"\"),J:J))";
         for r in 1..=TAILED_CONSUMER_CALLS {
-            let formula = "=IF($L$1>1,LOOKUP(2,1/(J:J<>\"\"),J:J))".to_string();
-            tx.set(format!("N{r}").as_str(), Input::Formula(formula))?;
+            tx.set(
+                format!("N{r}").as_str(),
+                Input::Formula(formula.to_string()),
+            )?;
         }
         Ok(())
     })

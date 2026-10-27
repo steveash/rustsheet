@@ -24,7 +24,8 @@ LOOKUP line.
 
 ## Acceptance criteria
 - [ ] Equivalence tests (tailed vs `TAILED_OFF`) with an error tail, an empty tail, a numeric tail (refused), the
-      array form (refused) and a lifted lookup_value.
+      array form (refused), a lifted lookup_value, and a target whose kind differs from the head's last
+      element (the search's midpoints).
 - [ ] corpus-bench 33935 under 1 s through the harness; the bench line's before/after in the Outcome.
 - [ ] `rustsheet-eval check` 0 regressions.
 - [ ] `make check` green; reviewers approve.
