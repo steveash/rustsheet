@@ -1754,8 +1754,8 @@ enough (U!F1 and its control V!G1 are both `#VALUE!`). Column subtotal lines (`c
 leaves p/x, p/y, q/x, 2 values, seven rows, one per non-empty leaf set, P!A1-A14) do NOT follow the single-gating-line rule: the
 hidden Total cell of value 1 counts in rows m1, m2..m7 whichever lines they hold, value 0 in rows m2, m3, m4 and not in m1, m5, m6,
 m7 (m1 = p/x only, m2 = p/y, m3 = p/x+p/y, m4 = q/x, m5 = p/x+q/x, m6 = p/y+q/x, m7 = all). Not monotone in the records (m6 holds m2's
-record but differs), and rows m1-m4 are confounded: the row total equals a subtotal cell there. Not decoded; ours differs (A1, A4,
-A5, B4, B5), baselined, T-2967.
+record but differs), and rows m1-m4 are confounded: the row total equals a subtotal cell there. Not decoded; ours differs (14 of the 28 cells: A1, A2, A4, A6, A7, A9,
+A11, A13, B2, B4, B6, B7, B11, B13), baselined, T-2967.
 Status: VERIFIED (without subtotals); subtotal layouts UNRESOLVED
 Tasks: T-2311, T-2578, T-2606
 
