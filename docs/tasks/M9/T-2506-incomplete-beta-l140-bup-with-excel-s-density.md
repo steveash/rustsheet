@@ -3,7 +3,7 @@ id: T-2506
 title: "Incomplete beta L140: bup with Excel's density times x y as prefactor, plus bpser (T-2464 E4)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -57,3 +57,25 @@ in the Outcome. Bit-level criteria still unmet move to a follow-up task without 
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Blocked because
+Blocked because: three gated ulp regressions need decision 0083's standing allowance
+(`rustsheet-eval update-baseline --allow-regressions`), which this run's permission mode refused to execute.
+
+The branch builds on T-2505 (#1991, merged in locally; merge `origin/main` once #1991 lands). It adds
+`bratio/mod.rs` `l140_bup_bpser` and `bup` (Excel's density `beta_density_small_shape` of Beta(b0', a0) at y0 times
+x·y as the prefactor, the w4 term arithmetic, TOMS's k and early break) and sends `Branch::L140BupBpser` through them
+for BETA.DIST's cdf.
+
+Eval on 2026-10-27 (this branch with T-2505, against T-2505 alone):
+- gated: gen-m9 fixed 1; probes fixed 6; ironcalc-calc fixed 8 and **3 regressions**, all numeric, 1 to 2 ulp, none
+  visibly off: BETADIST_BETAINV.xlsx G15 (Excel 0.4999999999999999, ours 0.49999999999999994), G65
+  (0.39911862276339233 vs 0.3991186227633924) and H32 (BETA.INV chained on G32: 0.555 vs 0.5550000000000002; T-2633's
+  kind of cell). Visible parity 3,316 in-scope cells (lock 3,581).
+- probes-numeric (ungated): 6,312 cells fixed, 125 BETA.DIST cells newly off (w2f xruns and absweep), 1 newly past
+  4 ulp (t2464-w2f-absweep A5595), 0 newly visibly off; visibly-off numbers 100,013 → 98,965.
+- Summing W without the early break (`l140_best`'s `W_best`) leaves all three gated cells unchanged.
+
+The three cells meet decision 0083's allowance conditions 1–3. To finish: confirm, run the allowance update (condition 4:
+list the cells in the Outcome and a follow-up ulp task), measure the acceptance counts, run the reviewers, open the
+PR. The stat-argument-modes cells named in the criteria did not regress.
