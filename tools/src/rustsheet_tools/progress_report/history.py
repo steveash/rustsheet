@@ -214,7 +214,7 @@ def _skipped(skipped: tuple[SkippedSuite, ...]) -> list[dict[str, str]]:
 
 
 def complete_row(
-    run: Run, data: Parity, tasks: Tasks, head: str | None, counts: codebase.Codebase | None = None
+    run: Run, data: Parity, tasks: Tasks, head: str | None, counts: dict[str, int] | None = None
 ) -> Row:
     """The history row of a complete run. Its commit is the report's `run.commit`; only when the
     eval could not read it (null) does the row fall back to `head`, the commit generating the page,
@@ -250,7 +250,7 @@ def complete_row(
         "milestones_exited": list(data.milestones_exited),
     }
     if counts is not None:
-        row["codebase"] = codebase.row(counts)
+        row["codebase"] = dict(counts)
     return row
 
 
