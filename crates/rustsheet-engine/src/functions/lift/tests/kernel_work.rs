@@ -716,7 +716,8 @@ fn amortization_elements_are_charged_the_bound() {
 /// An AMORLINC or AMORDEGRC element its kernel refuses before its walk is charged 1 (T-2840,
 /// `Model::amortization_of`): an error or a logical in any argument, or numbers failing the value
 /// checks or AMORDEGRC's asset life (gen-m9/e8d55ec393460bb7 A10: about 1,250 purchase dates,
-/// most of them texts, at a negative rate). The kernel itself returns an error on each.
+/// most of them texts, at a negative rate). The kernel itself returns an error on each failed
+/// value or life check.
 #[test]
 fn amortization_elements_refused_before_the_walk_are_charged_one() {
     use crate::calc_result::CalcResult;
