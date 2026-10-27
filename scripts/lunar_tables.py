@@ -35,6 +35,9 @@ LAST_YEAR = 9999
 SPAN = 100
 NEW_YEAR = 0x80
 LENGTH = 0x1F
+# chr(48) to chr(111): position gap+1, or gap+33 for month 1 (MID, as CHAR does not lift over
+# arrays in RustSheet yet and the probe should pass once the calendar is right).
+CODES = "".join(chr(c) for c in range(48, 112))
 # Serials of 2101-01-01 and 9999-12-31.
 FIRST_SERIAL = 73416
 LAST_SERIAL = 2958465
@@ -53,7 +56,7 @@ def formula(tag: str, first: int, last: int) -> str:
         "+(d=1)*(m<>1)*(m<>mp+1)+(d=1)*(m=1)*(y<>yp+1),"
         "t,FILTER(HSTACK(s,m),d=1),v,TAKE(t,,1),"
         "g,v-VSTACK(a,DROP(v,-1)),"
-        f'TEXT(a,{f}yyyy/m/d")&";"&CONCAT(IF(TAKE(t,,-1)=1,CHAR(80+g),CHAR(48+g)))'
+        f'TEXT(a,{f}yyyy/m/d")&";"&CONCAT(MID("{CODES}",g+1+32*(TAKE(t,,-1)=1),1))'
         f'&";"&TEXTJOIN(",",,FILTER(s&":"&TEXT(s,{f}yyyy/m/d"),b>0,"")))'
     )
 

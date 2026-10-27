@@ -72,6 +72,6 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
 - Quirks recorded (number-formats.md "Lunar calendars"): the 1960/2051 early year recurs every 91 years
   (2142, 2233, … 9968, 87 in all, both tables on the same days); when that month spans 31 days Excel repeats
   the day number on 1 January (2232-12-31 and 2233-01-01 are both "12/19"), and no other month has 31 days.
-- Eval: probes/text-locale-lunar-edges A14-A20 and text-locale-lunar-tokens A80, A81 now pass, and
-  t2759-lunar-months-2101 passes 420/420. The packed probe cells stay known failures only because CHAR does
-  not lift over arrays (`#N/IMPL!`); follow-up T-2946.
+- Eval: probes/text-locale-lunar-edges A14-A20 and text-locale-lunar-tokens A80, A81 now pass (9 known failures
+  fixed), t2759-lunar-months-2101 passes 420/420 and the 8 packed cases 158/158. The packed probe spells its codes
+  with MID over a fixed alphabet rather than CHAR, which does not lift over arrays in RustSheet yet (follow-up T-2946).
