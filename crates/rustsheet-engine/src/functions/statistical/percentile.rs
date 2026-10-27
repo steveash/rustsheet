@@ -24,7 +24,8 @@ fn percentile_numbers(
     arg: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
-    let typed_in_place = !matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. });
+    // A name, INDEX, OFFSET, IF or CHOOSE result that is a reference reads as one (T-2344).
+    let typed_in_place = !model.is_reference(arg, cell);
     match model.evaluate_node_in_context(arg, cell) {
         CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![]),
         error @ CalcResult::Error { .. } => Err(error),
@@ -35,7 +36,9 @@ fn percentile_numbers(
         text @ CalcResult::String(_) if typed_in_place => {
             model.cast_number_ref(&text, cell).map(|n| vec![n])
         }
-        // A single cell holding text or a boolean (a cell reference, not the typed values above)
+        // A single cell holding text or a boolean (a reference, whether written, named or picked by
+        // INDEX, OFFSET, IF or CHOOSE; not the typed values above, probes/t2344-percentile-name-
+        // index-data)
         // is no number, like text inside a range: the data is empty and every function reports
         // `#NUM!`, not `#VALUE!`, after k's or quart's own error (probes/quartile-single-text-cell
         // B1-B11, quartile-numeric-text-cell C2-C5; t2429-quartile-exc-no-number A1-A3, A9-A12,
