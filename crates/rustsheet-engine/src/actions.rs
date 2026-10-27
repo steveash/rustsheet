@@ -4,7 +4,7 @@ use crate::cut_paste::cf_sqref_anchor;
 use crate::expressions::parser::stringify::{
     to_localized_string, to_string_displaced_keeping, DisplaceData, Displacement,
 };
-use crate::expressions::parser::Parser as ExprParser;
+use crate::expressions::parser::{Node, Parser as ExprParser};
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
 use crate::language::get_default_language;
@@ -369,9 +369,7 @@ impl Model {
             .cell(row, column)
             .and_then(|c| c.get_formula())
         {
-            let node = &self.parsed_formulas[sheet as usize][f as usize]
-                .written()
-                .clone();
+            let node = &Node::clone(self.parsed_formulas[sheet as usize][f as usize].written());
             let cell_reference = CellReferenceRC {
                 sheet: self.workbook.worksheets[sheet as usize].get_name(),
                 row,
