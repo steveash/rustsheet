@@ -1,0 +1,35 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2641: IMABS of a currency prefix in front of, inside and after a sign of a complex number; NBSP, tab, LF and CR around a complex number.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-2641"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMABS(\"$1+2i\")",
+    "A2": "=IMABS(\"-$1+2i\")",
+    "A3": "=IMABS(\"+$1+2i\")",
+    "A4": "=IMABS(\"$i\")",
+    "A5": "=IMABS(\"-$i\")",
+    "A6": "=IMABS(\"$3i\")",
+    "A7": "=IMABS(\"$1+2j\")",
+    "A8": "=IMABS(\"1+$2i\")",
+    "A9": "=IMABS(\"€1+2i\")",
+    "A10": "=IMABS(\"$ 1+2i\")",
+    "A11": "=IMABS(\"$$1\")",
+    "A12": "=IMABS(\"$1+2i \")",
+    "A13": "=IMABS(UNICHAR(160)&\"3+4i\")",
+    "A14": "=IMABS(\"3+4i\"&CHAR(9))",
+    "A15": "=IMABS(\"3+4i\"&CHAR(10))",
+    "A16": "=IMABS(\"3+4i\"&CHAR(13))",
+    "A17": "=IMABS(CHAR(10)&\"3+4i\")"
+   }
+  }
+ ],
+ "expected": {}
+}
