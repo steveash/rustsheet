@@ -687,16 +687,18 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return match format_fraction(value, p, fraction, &locale.numbers.symbols.group) {
+                // Past 255 characters a fraction cannot be shown either: `# ?/4,` on 2 would print
+                // 258 (255 `#`, TEXT #VALUE!; probes/fraction-overflow-scaled A49).
+                let text = format_fraction(value, p, fraction, &locale.numbers.symbols.group)
+                    .filter(|text| text.chars().count() <= MAX_TEXT_FORMAT_CHARS);
+                return match text {
                     Some(text) => Formatted {
                         text,
                         color: p.color,
                         error: None,
                         unshowable: false,
                     },
-                    None => {
-                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
-                    }
+                    None => Formatted::unshowable(format!("Fraction overflows: '{value}'")),
                 };
             }
             let mut text = "".to_string();

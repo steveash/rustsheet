@@ -59,7 +59,9 @@ pub struct NumberPart {
     pub condition: Option<(Compare, f64)>,
     pub use_thousands: bool,
     pub percent: i32, // multiply number by 100^percent
-    pub comma: i32,   // divide number by 1000^comma
+    /// Scaling commas: divide the number by 1000^comma, or in a fraction section multiply it by
+    /// 10^((-3 * comma) mod 256) (`fraction::fraction_scale`).
+    pub comma: i32,
     pub tokens: Vec<TextToken>,
     pub digit_count: i32, // number of digit tokens (#, 0 or ?) to the left of the decimal point
     pub precision: i32,   // number of digits to the right of the decimal point
@@ -85,6 +87,9 @@ pub struct Fraction {
     /// Fixed digits or placeholder kinds; see [`Denominator`].
     pub denominator: Denominator,
 }
+
+/// The most digits a fixed fraction denominator may have; more is `#VALUE!`.
+const MAX_FIXED_DENOMINATOR_DIGITS: usize = 5;
 
 /// The denominator of a fraction section.
 pub enum Denominator {
@@ -342,6 +347,10 @@ impl Parser {
         let mut comma = 0;
         let mut percent = 0;
         let mut last_token_is_digit = false;
+        // Whether the previous token is a `%`, or ends a fraction's denominator (or is a scaling
+        // comma right after one): a `,` there is a literal or a fraction's scaling comma.
+        let mut after_percent = false;
+        let mut after_denominator = false;
         // Just past the last digit placeholder while only literals follow it, which may stand
         // between a numerator and its `/` (`#\:#=/=#`, poi/NumberFormatTests A134).
         let mut after_digits: Option<usize> = None;
@@ -384,6 +393,9 @@ impl Parser {
             is_number = is_number || token_is_digit;
             let next_token_is_digit = next_token.is_digit();
             let is_colon = token == Token::Literal(':');
+            let is_percent = token == Token::Percent;
+            let is_comma = token == Token::Comma;
+            let mut ends_denominator = false;
             if token_is_digit {
                 if is_scientific {
                     exponent_digit_count += 1;
@@ -404,8 +416,16 @@ impl Parser {
                     tokens.push(TextToken::General);
                 }
                 Token::Comma => {
-                    // If it is in between digit tokens then we use the thousand separator
-                    if last_token_is_digit && next_token_is_digit {
+                    // Excel: in a fraction section only a `,` right after the denominator scales
+                    // (`?/?,` on 1E-250 is "1000/1"); a `,` after a `%` or a literal prints, also
+                    // outside a fraction (`?/?% ,` and `?/? ,` on 1E-250 are "0/1% ," and "0/1 ,",
+                    // `0%,` on 0.5 "50%,"; probes/fraction-overflow-scaled; number-formats.md
+                    // "Scaling commas in fraction formats").
+                    if after_denominator {
+                        comma += 1;
+                    } else if after_percent || (fraction.is_some() && !last_token_is_digit) {
+                        tokens.push(TextToken::Literal(','));
+                    } else if last_token_is_digit && next_token_is_digit {
                         use_thousands = true;
                     } else if digit_count > 0 {
                         comma += 1;
@@ -535,6 +555,13 @@ impl Parser {
                             }
                             self.lexer.next_token();
                         }
+                        // Excel: a fixed denominator of six or more digits is #VALUE! from TEXT
+                        // (`TEXT(0.5,"?/100000")`, `"?/123456"`; probes/fraction-six-digit-
+                        // denominator); a workbook that applies one is refused by Excel for the
+                        // web (number-formats.md "Fixed denominators past 32768").
+                        if digits.len() > MAX_FIXED_DENOMINATOR_DIGITS {
+                            return ParsePart::Error(ErrorPart::default());
+                        }
                         Denominator::Fixed(digits)
                     } else {
                         let mut kinds = vec![placeholder_kind(&next_token)];
@@ -549,6 +576,10 @@ impl Parser {
                         .rev()
                         .take_while(|t| matches!(t, TextToken::Digit(_)))
                         .count();
+                    // Excel: a `,` before the fraction neither scales nor prints (`0, ?/4` on 2 is
+                    // "2    ", on 1234567 "1234567    "; probes/fraction-overflow-scaled).
+                    comma = 0;
+                    ends_denominator = true;
                     fraction = Some(Fraction {
                         numerator_start: numerator_end - numerator_len,
                         numerator_end,
@@ -794,6 +825,8 @@ impl Parser {
                 after_digits = None;
             }
             last_token_is_digit = token_is_digit;
+            after_percent = is_percent;
+            after_denominator = ends_denominator || (after_denominator && is_comma);
             after_colon = is_colon;
             token = next_token;
         }
