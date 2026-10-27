@@ -101,3 +101,26 @@ fn unported_points_keep_todays_kernel() {
         );
     }
 }
+
+// L140 at a whole b0 and a0 > 8 runs bpser(a0, 1, x0) with ln B(a0, 1) = -LN(a0): Excel's
+// values (probes-numeric, excel-graph), each on today's kernel and off before T-2506.
+#[test]
+fn l140_whole_b0_takes_ln_beta_of_one() {
+    let cells: [(f64, f64, f64, f64); 3] = [
+        // m9-beta-dist-a100 A37, A39; t0969-beta-prefactor Pref!D140.
+        (0.1, 100.0, 10.0, 1.668_234_277_029_307e-88),
+        (0.5, 100.0, 10.0, 7.203_401_329_871_238e-21),
+        (0.2, 15.0, 8.0, 1.312_292_337_614_844e-6),
+    ];
+    for (x, a, b, excel) in cells {
+        assert_eq!(
+            dispatch(a, b, x, 1.0 - x).map(|d| d.branch),
+            Some(Branch::L140BupBpser)
+        );
+        assert_eq!(
+            cdf(x, a, b).to_bits(),
+            excel.to_bits(),
+            "BETA.DIST({x},{a},{b},TRUE)"
+        );
+    }
+}

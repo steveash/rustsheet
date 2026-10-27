@@ -3,7 +3,7 @@ id: T-2879
 title: "Lifted YIELD and ODDFYIELD at the visit cap run about 17 s: refit the solver weight"
 milestone: M7
 lane: perf
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -35,11 +35,26 @@ Raise the weight only together with those two charge refinements. ODDLYIELD, PRI
 and are within their weights.
 
 ## Acceptance criteria
-- [ ] YIELD's and ODDFYIELD's charge is fitted so the slowest inputs above take at most about 5 s at the cap; the PR
-      records the timings.
-- [ ] No baseline gains a line (`make eval-check`: 0 regressions), including the two cells above.
-- [ ] docs/excel-semantics/financial.md "Yield and odd-coupon work cap" and SPEC-0011's as-built note give the new numbers.
-- [ ] `make check` green; reviewers approve.
+- [x] YIELD's and ODDFYIELD's charge is fitted so the slowest inputs above take at most about 5 s at the cap; the PR
+      records the timings. (SPEC-0024 section 4 as amended by T-2813 needs this 5 s too: the formula work budget allows two
+      calls at the cap, and a MAKEARRAY of the 644-element YIELD above measured 28.1 s to the limit.)
+- [x] No baseline gains a line (`make eval-check`: 0 regressions), including the two cells above.
+- [x] docs/excel-semantics/financial.md "Yield and odd-coupon work cap" and SPEC-0011's as-built note give the new numbers.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - RATE (T-2814).
+
+## Outcome
+`YIELD_SOLVER_WEIGHT` is 2^26 (from 2^24). Two charge refinements come with it, so no eval cell turns into `#ERROR!`:
+- YIELD is `reads_all_first` (`Model::bond_args` reads all seven arguments before `CouponSchedule::new`).
+- `kernel_units` now takes the model's `cast_number`. For a `CouponWalks` kernel, a text is charged as the number it reads as, or as an error (`#VALUE!` before any walk) when it reads as no number. A scalar is read once, and a text over 1,020 bytes is not parsed.
+
+Release-build timings, one call at the cap:
+- 161 elements of `YIELD(43831,80355,0.05,1E-100,100,4)`: 4.34 s.
+- 535 of `YIELD(43831,54788,0.05,1E-100,100,4)`: 0.75 s.
+- 3,085 of `YIELD(43831,47484,0.05,1E-100,100,2)`: 2.60 s.
+- 89 of `ODDFYIELD(43831,DATE(2200,1,1),43800,DATE(2020,4,1),0,1E-100,100,4)`: 4.25 s.
+- One element more is `#ERROR!` in 0.01 s.
+
+Eval delta: none (`make eval-check`: 0 regressions in every suite, including gen-m9 79d87fc527927626 A270 and 0a957119475760c5 A116). financial.md and SPEC-0011 give the new numbers.

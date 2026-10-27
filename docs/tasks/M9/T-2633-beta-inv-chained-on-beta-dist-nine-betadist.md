@@ -48,6 +48,10 @@ Visibly off after T-2119 (the visible-parity stage):
 - probes/stat-quantile-lift E9 `BETA.INV(1-2^-53,1.0024017013258346,12177.162026553196)`: `#NUM!` on main, now
   0.0030131411834558195. Excel gives 0.0691959487211844 (T-1871 owns the fit).
 
+- Added by T-2506 (L140 bup + bpser, 2026-10-27, decision 0083 allowance), `BETADIST_BETAINV.xlsx` `Sheet1`, 1 ulp
+  each: G15 0.4999999999999999 vs 0.49999999999999994, G65 0.39911862276339233 vs 0.3991186227633924, H32 (BETA.INV
+  on G32) 0.555 vs 0.5550000000000002.
+
 These cells passed before only because statrs' cdf and its inverse were wrong in the same way (T-2119 Context). The
 H42 group follows G42 (BETA.DIST), which is still 4 ulp from Excel. So fitting G42's last bits probably moves H42-H49
 too. Code: `functions/statistical/beta.rs`, `inverse_beta.rs`, `special::refine_increasing`. See

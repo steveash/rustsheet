@@ -2284,7 +2284,8 @@ w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `z
 Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505), for BETA.DIST's cdf only: the w3 series and
 EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
 Its algdiv (b0 >= 8) is `beta_density::algdiv` in doubles, where the model runs TOMS algdiv x87 stored.
-Both shapes >= 1 with max > 8 (the model's accurate ln B) and a shape of exactly 1 stay on Cephes' fractions. On
+Both shapes > 1 with max > 8 (the model's accurate ln B) and a caller's shape of exactly 1 stay on Cephes'
+fractions; L140's bpser(a0, 1, x0) at a whole b0 and a0 > 8 takes L = -LN(a0) (T-2506). On
 probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
 bit-exact cells moved off and 7 became visibly off (listed in T-2847). F, BINOM and NEGBINOM still take Cephes' fractions (T-2847).
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
@@ -2311,12 +2312,19 @@ bfrac (min(a,b) >= 40) takes the same brcomp = density·x·y, with λ = fl(a - f
   and the pdf's c + 1 predicts the tie response (-10.5 against -10.58). The fraction's own arithmetic is not found:
   white residual, sd 3.8 units, after 64 storage masks, five eps values and three precisions. bfrac cells: 146/476/685
   of 1,316 (CR 109/466/677).
+- At a whole b0 (b0' = 1) with a0 > 8, bpser(a0, 1, x0)'s lnB is -LN(a0), B(1, b) = 1/b as the density takes it
+  (T-2506). With the engine's own density, bup arithmetic and bpser, the L140 bup+bpser cells of r2-bratio's be, w2f
+  and ix sets (bratio's dispatch as ported) score 8,800/11,696/11,721 of 11,742, the ix cells alone 995/1,344/1,362
+  of 1,383. -LN(a0) at a0 <= 8 too scores 72 more bit-exact there but is 2 ulp off at BETA.DIST(0.5,2,2,TRUE)
+  (Excel 0.4999999999999999, ironcalc-calc BETADIST_BETAINV.xlsx G15) where GAMMALN's sum is 1 ulp off, so a0 <= 8
+  stays on GAMMALN's sum (docs/research/t2506/RESULTS.md).
 - Rejected: stored, extended, Horner or reverse W; the (P·y0)·x order; an extended P; every CF × prefactor on 15,657
   direct cells (best 2,931, CR 2,920); bfrac's λ from y.
 Evidence: probes-numeric t2464-w2f-xruns-1, -xruns-2, -absweep; w4's probe w4p1 (w4-fractions/probe, not in
 eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_lambda.py`, `t25_old.py`), r2-bratio
-(`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio.
-Ours: Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
+(`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio; docs/research/t2506.
+Ours: L140 bup+bpser for BETA.DIST's cdf (`functions/statistical/bratio/mod.rs` `l140_bup_bpser`, `bup`, T-2506);
+L140 with bgrat and bfrac on Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
 Status: VERIFIED (excel-graph) for L140 bup+bpser to 15 digits (11,724 of 11,753; 64% bit-exact); bfrac's fraction
 UNVERIFIED
 Tasks: T-2506, T-2508, T-2512
@@ -3288,14 +3296,44 @@ exact f while the double f is within 3: the residual is in the tail's evaluation
 Recipes' `betai` in doubles (exp(lnB + a ln x + b ln y) or with three separate exps, `betacf`, with or without the
 symmetry switch, ln y or ln(1 - x), libm or correctly rounded lgamma) scores at best 132 / 235 / 29, and ln y as
 log1p(-x) under the model 146 / 272 / 24: none beats the model. These last scores (NR `betai`, log1p(-x), the exact-f inversion) and the closed form's
-13 / 16 against (2/pi)*asin 11 and atan 10 were run as ad hoc scripts, not yet committed fits (T-2681).
+13 / 16 against (2/pi)*asin 11 and atan 10 were run as ad hoc scripts; T-2681 committed them (`uv run rustsheet-fitlab
+f-test-half` and `f-test-nr`, tools/src/rustsheet_tools/fitlab/kernels/ftest_adhoc.py). They reproduce the closed forms
+(13 / 16, 11, 10, the series 3) and log1p(-x) (146 / 272 / 24); the model at the exact variance ratio scores 141 / 259 (max
+311 ulp); NR `betai` with libm lgamma scores at best 106 / 198 / 51 max ulp (three exps, ln(1 - x)), so T-2571's 132 / 235 came
+from a variant the committed fit does not have (its correctly rounded lgamma, unrecorded).
+Both shapes above 1 (df 3 or more on each side; rule from a fit, PARTIAL): F.TEST's tail is TOMS 708 bratio with
+Excel's pieces, T-2464 r2-bratio's integrated model (`docs/research/t2464/r2-bratio/bratio_excel.py`, `BEST`), not the
+remainder model above. After bratio's swap on lambda = (a+b) y - b (a > b) or a - (a+b) x, with b0 below 40:
+- b0 x0 <= 0.7: `bpser` as w3 found it, s = 1/a0 + sum c_n/(a0+n), c_n = c_(n-1) ((1/2 - b0/n) + 1/2) x0, every step an
+  x87 op stored to a double, summed until s stops changing, times EXP of the unstored fl64(fl(a0 LN x0) - ln B), with ln B
+  fl64(GL(a0) + fl64(GL(b0) - GL(a0+b0))) (GL Excel's GAMMALN; ln Gamma(1/2) as fl64(gamln1(1/2) - LN(1/2))) up to a
+  shape of 8 and the accurate ln B above;
+- otherwise, with x0 <= 0.7 (TOMS L140): `bup` from the shape b0 - n (1/2 or 1) up by n = the integer part of b0, its
+  prefactor Excel's beta density at y0 times y0 x0 over the shape (BETA.DIST's density for a shape of 1/2 or 1, T-2513's
+  model M2; with r2-bratio's w1 model M1 instead the F.TEST hybrid is 192 bit-exact, not 205) and its ratios stored, plus `bpser` at that shape;
+- p = 2 min(w, (1/2 - w) + 1/2).
+On the 291 cells of the `f-test` fit the 113 with both shapes above 1 score 68 / 110 / 1 visibly off under bratio against
+31 / 96 / 7 for the remainder model; with a shape of 1/2 bratio's `bpser` is worse (28 / 88 / 23 visibly off of 116
+against 75 / 114 / 0), so the model stays there. What decides: w3's series with the unstored EXP argument (plain TOMS
+`bpser` 38 / 76 / 24, the argument stored to a double 47 / 80 / 22) and bup's density prefactor (TOMS `brcmp1` 51 / 100 /
+8, a correctly rounded density 64 / 107 / 2); the arithmetic switches move at most one cell. The engine's port
+(below, with M2) is 76 / 110 / 1 on those 113 and 205 / 284 / 1 on all 291 against 160 / 270 / 7 before: 7 of the 8 cells
+T-2571 left visibly off now have Excel's 15 digits (gen-m9/58e3253bbd3a7a82 A141, 8f2ac25945af87da A119 and
+a7bf0d8d81d33ba6 A81 bit-exact; fec39efaba9284c3 A36 1 ulp, caa1eed48b1883fe A380, f34f66fb7f81e673 A4 and the FILTER cell
+bcb24385baafb2f0 A377 3 ulp). Still visibly off:
+`F.TEST(Data!B6:E12,Data!A1:D10)`, gen-m9/b6593d7dd13f2dac A306 (Excel 1.23966888990022E-69, ours 25 ulp off; data with
+123456789.123 among values near 1; T-2829). 8 cells move from bit-exact to 1 to 3 ulp (T-2830). Evidence and per-branch
+tables: docs/research/t2681/README.md, `score_bratio.py`.
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
 F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
-Engine: `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
-`beta_reg_complement` above) in crates/rustsheet-engine/src/functions/statistical/fisher.rs.
-Status: implemented as a fit (T-2361); Excel's algorithm for R is UNVERIFIED.
+Engine: `f_test_p` in crates/rustsheet-engine/src/functions/statistical/fisher.rs: `f_test_bratio_p`
+(f_test_tail.rs, T-2681) for both shapes above 1 with a + b <= 200 where it reaches (not TOMS `bgrat`, `bfrac`
+or `basym`), else `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
+`beta_reg_complement` above).
+Status: implemented as a fit (T-2361, T-2681); bratio for both shapes above 1 is PARTIAL (one cell visibly off, T-2829),
+Excel's algorithm for R at a shape of 1/2 is UNVERIFIED.
 
 ## Paired functions: a size mismatch is `#N/A` before an error cell (T-1927)
 COVARIANCE.S, COVARIANCE.P, COVAR and a paired T.TEST (type 1) of arguments with different cell
