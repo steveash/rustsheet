@@ -76,4 +76,4 @@ Cells:
 - Eval: gen-m9 known failures 3724 -> 3720 (4 fixed, 0 regressions); IPMT visibly-off cells 12 -> 9 over gen-m9,
   probes, probes-numeric and ironcalc-calc. calipers: the same 26 known regressions (T-0458) with and
   without the change.
-- Left for the next run (session budget): `make check`, the review panel, the PR and the merge.
+- Resumed 2026-10-27 by the next opus run for `make check`, the review panel, the PR and the merge.
