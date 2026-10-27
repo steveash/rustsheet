@@ -398,8 +398,8 @@ agree):
 - The calculated-column fill rewrote `=T[[#This Row], [Col]]` and `=T[ [#This Row] , [Col] ]` typed into C2 and C3 to the
   formula typed into C4 (`T[[#This Row],[Col]] + T[[#This Row],[Other]]`), so this-row shapes are unanswered
   (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800). The cells were typed one at a
-  time in the order C2, C3, C4, so each later formula re-filled the whole column. The fill rules are T-2957, and the
-  engine fill is T-2958.
+  time in the order C2, C3, C4, so each later formula re-filled the whole column. The fill rules are in references.md
+  ("Calculated columns: a formula typed into a table column", T-2957), and the engine fill is T-2958.
   Ours: the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
 Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
 (I1:I13). Each refused formula was entered alone against the same case.

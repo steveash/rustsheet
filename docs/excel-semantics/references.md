@@ -2514,6 +2514,48 @@ and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with 
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
 Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899
 
+## Calculated columns: a formula typed into a table column
+Rule (excel-graph `entered` cells, typed one at a time in the case's order, 2026-10-27, T-2957; table `T` A1:C4,
+columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each `Calc` cell in F):
+1. **A formula typed into one data cell of a column whose other data cells are all blank fills every data row.**
+   `=[@Col]*2` typed into the middle row C3 fills C2:C4 (2, 4, 8, each printing `=[@Col]*2`); a totals row is not
+   filled (C5 of a table A1:C5 with totals row stays blank, `ISFORMULA` FALSE) (t2957-fill-one-totals).
+2. **A different formula typed into a cell of a filled column re-fills the whole column**, the earlier typed row
+   included: C2 `=T[[#This Row],[Col]]*2`, then C3 `=[@Col]*3`, leaves `=[@Col]*3` in C2:C4 (3, 6, 12)
+   (t2957-refill-second). probes/t2786-whitespace-structured-refs-runs C2:C4 (three typed this-row formulas, each
+   re-filling) agrees. Whether typing into the row typed first re-fills too is unprobed: the case format cannot type
+   one cell twice.
+3. **A constant typed into a filled column is an exception**: C2 `=[@Col]*2` then C3 `5` leaves C3 the number 5
+   (FORMULATEXT `#N/A`) and C2, C4 the formula (2, 8) (t2957-constant-exception). **A column with an exception is
+   not re-filled**: a later `=[@Col]*3` typed into C4 stays in C4 alone (12; C2 keeps `*2`, C3 keeps 5)
+   (t2957-constant-then-refill). One of four runs of this sequence came back with every `Calc` cell blank; three
+   reruns agree on the rule above, so that run is taken as a Graph anomaly.
+4. **No fill when another data cell already holds a value**: with the constant 5 in C2 (stored in the file),
+   `=[@Col]*2` typed into C3 stays in C3 alone (4), and C4 stays blank (t2957-existing-constant).
+5. **An A1 formula fills shifted, like a fill-down**: `=A2*2` typed into C2 gives `=A3*2`, `=A4*2` in C3:C4 (2, 4,
+   8) (t2957-a1-reference).
+6. **Every filled row prints the typed cell's text** for a structured formula (`=[@Col]*2`, `=[@Col]*3` in every
+   row); an A1 formula prints its shifted text. How a typed long form (`=T[[#This Row],[Col]]*2`) prints is not
+   answered: in refill-second it was re-filled over.
+7. **Typing just right of the table expands it** (t2957-expand-right-data, -header, each run twice): `=A2*2` typed
+   into D2 grows `T` to A1:D4 (`COLUMNS(T[#All])` 4), names the new column `Column1` (D1 holds that text, as for a
+   column insert above) and fills D2:D4 with `=A2*2`, `=A3*2`, `=A4*2`. `=1+1` typed into the header-row cell D1
+   grows `T` to A1:D4 too, but D1 becomes the **text** `0` (not 2, not a formula; the column is named `0`), and
+   D2:D4 stay blank. Typing a constant beside the table, below its last row, or beside a totals row is unprobed.
+What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
+`calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
+blank, or all the one calculated formula); whether a column whose cells hold one identical formula with no saved
+`calculatedColumnFormula` re-fills is unprobed (T-2969 probes a stored column formula).
+Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
+constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
+C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
+Ours: the engine has no calculated columns (no column formula on `Table`), so a typed formula stays in its own cell;
+the eval adapter also types before the table exists (T-2955), so a typed `[@Col]` is `#ERROR!`. The fill is T-2958,
+the auto-expansion T-2968.
+Status: VERIFIED (excel-graph; desktop unprobed)
+Implemented in: no (T-2958, T-2968)
+Tasks: T-2957, T-2958, T-2968, T-2969
+
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
 and FORMULATEXT prints the name with the spelling of the *first* occurrence of that name (compared
