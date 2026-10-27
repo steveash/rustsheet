@@ -392,3 +392,14 @@ Status: VERIFIED (excel-graph) for the values; the reference rule for a criterio
 stay put; ours agrees); the header-row rule is VERIFIED for Db!A2:D9 with `=B2>3` only (eight cells, one placement; T-2553),
 its general form and the other-sheet rule are UNVERIFIED (T-2617).
 Tasks: T-2258, T-2422, T-2525, T-2553, T-2617
+
+## Conditional-format text rules and wildcards (UNVERIFIED, T-2910)
+Rule (ours): the conditional-format text rules (contains, does not contain, begins with, ends with, equals;
+`apply_cf_text` in conditional_formatting.rs) compare lower-cased text literally. `*`, `?` and `~` in the rule's text
+match only themselves. These rules do not use the criteria matcher in functions/criteria.rs, which every worksheet
+criteria and wildcard consumer uses (decision 0137).
+Excel: unknown. Excel saves a "text that contains" rule with a formula of its own, and if that formula is SEARCH-based,
+wildcards would apply. No probe exists: the Graph oracle cannot evaluate conditional formats, so the evidence needs
+desktop Excel (decision 0039, T-1075 item 20).
+Status: UNVERIFIED.
+Tasks: T-2910, T-1075

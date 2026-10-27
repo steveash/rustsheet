@@ -3,7 +3,7 @@ id: T-2929
 title: "SORT lifted by_col: TRUE element past the first column with sort_index 1 is #VALUE! in Excel"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -21,9 +21,18 @@ the error depends on the element's column index versus sort_index. Probe more co
 Code: `SORT` in functions/lift/kinds/general.rs; arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments".
 
 ## Acceptance criteria
-- [ ] Follow-up probes pin the rule; arrays.md records it.
-- [ ] The four failing T-2366 probe cells pass and the baseline shrinks.
-- [ ] `make check` green; reviewers approve.
+- [x] Follow-up probes pin the rule; arrays.md records it.
+- [x] The four failing T-2366 probe cells pass and the baseline shrinks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORTBY and TEXTJOIN.
+
+## Outcome
+Five probe cases (probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range, -column; excel-graph) pinned the rule:
+failed calls keep their error and are skipped; each row's first sorting call leads it, and the leads keep their call's
+top-left when every lead's by_col is equal (else only the first); every other sorting element is empty when sort_index is
+the single key 2 and it is the first broken element or sits below an empty-able broken one with the same by_col, else
+`#VALUE!`. `sort_lifted_elements` (spill_functions.rs) applies it after the lift; arrays.md records it. The four failing
+T-2366 cells pass, and the new cases pass in full (379 cells). Unprobed: a sort-invalid call between two that sort
+(by analogy with an invalid by_col) and a number by_col beside a boolean in a column.
