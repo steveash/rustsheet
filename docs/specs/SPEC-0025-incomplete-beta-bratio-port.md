@@ -157,6 +157,8 @@ pub(crate) fn bratio(a: f64, b: f64, x: f64, y: f64) -> Option<Tails>;
   basym use fixed-size coefficient arrays (TOMS's 30 and 20 terms).
 - L140's n = int(b0) is below 40. bup's 20-step shifts are fixed.
 - No recursion and no `Vec` in the kernel.
+- `bratio_or` calls its legacy closure at most once per evaluation, and the delegates keep their existing caps
+  (`MAX_FRACTION_TERMS`, the pmf walk's bound), so delegation adds no unbounded work.
 - Non-finite or out-of-domain input returns `None` before dispatch: a, b <= 0, x or y outside [0, 1], or x + y not
   within TOMS's 3·eps of 1.
 - The edges of the model, in order: x = 0 → (0, 1); y = 0 → (1, 0); max(a, b) < eps·0.001 → (b/(a+b), a/(a+b)).
