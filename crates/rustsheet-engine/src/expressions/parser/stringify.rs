@@ -64,11 +64,19 @@ pub enum DisplaceData {
     None,
 }
 
+/// A structural edit as the printer applies it: the displacement, and the lowercase names of the
+/// tables that follow it, whose structured references keep their text (SPEC-0016 "Structural
+/// edits", T-2297).
+pub(crate) type Displacement<'a> = (&'a DisplaceData, &'a [String]);
+
 /// How the printer rewrites the references of a formula: displaced by a structural edit, or
 /// moved by a cut and paste. Everything else prints the same either way, so a moved formula
 /// has the text FORMULATEXT shows (SPEC-0007 step 5).
 enum Rewrite<'a> {
-    Displace(&'a DisplaceData),
+    /// Displaced by a structural edit; the structured references to the tables named here
+    /// (lowercase) keep their text, since those tables move, grow or shrink with the edit
+    /// (SPEC-0016 "Structural edits", T-2297).
+    Displace(&'a DisplaceData, &'a [String]),
     Move(&'a MoveContext<'a>),
     /// Prints the area of every structured reference to one of these tables (lowercase names)
     /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
@@ -97,7 +105,7 @@ pub(crate) fn open_range_flags(
     )
 }
 
-const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
+const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None, &[]);
 
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
@@ -160,7 +168,21 @@ pub fn to_string_displaced(
     locale: &Locale,
     language: &Language,
 ) -> String {
-    let rewrite = Rewrite::Displace(displace_data);
+    to_string_displaced_keeping(node, context, (displace_data, &[]), locale, language)
+}
+
+/// [`to_string_displaced`] for a structural edit that moves, grows or shrinks the tables
+/// `kept_tables` (lowercase names): a structured reference to one of them keeps its text, and
+/// one to any other table prints the area it is displaced to where that area changes
+/// (SPEC-0016 "Structural edits", T-2297).
+pub(crate) fn to_string_displaced_keeping(
+    node: &Node,
+    context: &CellReferenceRC,
+    (displace_data, kept_tables): Displacement,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    let rewrite = Rewrite::Displace(displace_data, kept_tables);
     stringify(node, Some(context), &rewrite, false, locale, language)
 }
 
@@ -496,7 +518,7 @@ fn stringify(
 ) -> String {
     use self::Node::*;
     let displace_data = match rewrite {
-        Rewrite::Displace(displace_data) => displace_data,
+        Rewrite::Displace(displace_data, _) => displace_data,
         Rewrite::Move(move_context) => {
             if let Some(text) = moved_reference_text(node, move_context) {
                 return text;
