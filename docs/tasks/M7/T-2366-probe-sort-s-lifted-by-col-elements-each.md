@@ -3,7 +3,7 @@ id: T-2366
 title: "Probe SORT's lifted by_col elements: each call's top-left or only the first (SORTBY's rule)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
