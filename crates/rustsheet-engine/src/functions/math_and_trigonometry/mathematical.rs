@@ -695,8 +695,8 @@ impl Model {
     /// `ODD(number)`: `|number|` rounded up to an integer, plus one when that is even, with the
     /// sign of `number`. The `+ 1` is a double addition, so between 2^53 and 2^54 it rounds half to
     /// even: `ODD(2^53+2)` is 2^53+4 and `ODD(2^53+4)` is 2^53+4, and from 2^54 up the input comes
-    /// back (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:G66; docs/excel-semantics/numbers.md
-    /// "ODD above 2^53 adds one in binary").
+    /// back (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66, ODD in F:G;
+    /// docs/excel-semantics/numbers.md "ODD above 2^53 adds one in binary").
     pub(crate) fn fn_odd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Odd, args, cell, |f| {
             let up = f64::ceil(f64::abs(f));

@@ -63,7 +63,7 @@ Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by 
 is a tie that rounds half to even, which is exactly the T-2172 sweep's residue rule (x = 2 mod 4 goes up by 2, x = 0 mod 4
 stays), and from 2^54 up the input comes back. All 66 ODD/EVEN cells of probes-numeric/trig-odd-even-sumxmy2-sweep pass (the
 case's 5 remaining misses are SUMXMY2 cells, not this task's). EVEN was already right and is unchanged. numbers.md entry
-rewritten as the rule ("ODD above 2^53 adds one in binary"), status IMPLEMENTED.
+rewritten as the rule ("ODD above 2^53 adds one in binary"), status VERIFIED, implemented.
 Eval delta: gen-m5 known failures 6 -> 2 (fixed Calc!A144 of 36133d9266f8ed26, the suite's visibly-off cell; A283 of
 6b831f5e2a20bc34; A224 of bbbd316c346ce645; A232 of d88d12a62b726a0a; 38b1b8e51dbad326 A10 was already fixed by T-2163).
 No regressions in any suite; visible parity 3309 visibly-off cells (lock 3581).

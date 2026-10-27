@@ -134,7 +134,7 @@ low through SERIESSUM's own power (fixed by T-2163).
 Evidence (excel-graph): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66 (66 values 2^52 .. 1.8E+308, ODD and EVEN,
 T-2172; every old miss was an even double in (2^53, 2^54)); gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645
 Calc!A224, gen-m5/d88d12a62b726a0a Calc!A232, gen-m5/36133d9266f8ed26 Calc!A144.
-Status: IMPLEMENTED (T-2173).
+Status: VERIFIED (excel-graph, 66 sweep cells + 4 gen-m5 cells); implemented (T-2173).
 
 ## MROUND rounds the quotient up within 5E-15 of a half, and multiplies in binary (T-2201)
 Rule: `MROUND(number, multiple)` (after the sign and zero checks) is
