@@ -3,7 +3,7 @@ id: T-2250
 title: "ARRAYTOTEXT: an error value argument wins over an invalid format (#NUM! before #VALUE!)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
