@@ -2934,6 +2934,7 @@ Tasks: T-1543, T-1634
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
+- Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 
 ## NORM.S.INV is AS 241 PPND16 in the tails; the central region is unfitted (T-1746)
@@ -3345,6 +3346,15 @@ tables: docs/research/t2681/README.md, `score_bratio.py`.
   No form tried gives the map: accurate 45 of 99 (shipped), TOMS betaln 49, TOMS's a-reduction with w = prod a/(a + b)
   55, Excel GAMMALN sums 15 to 29 (docs/research/t2829/ln_beta_map.py; probes/t2829-ftest-a306-shapes and
   t2829-ftest-ln-beta-grid, excel-graph; open as T-2924). A306 stays 25 ulp low until that form is found.
+  Ruled out by structure (T-2924, docs/research/t2924/structure.py):
+  - Any sum of double lnGamma values, each within 2 ulp, in seven orders. lnGamma(b) and lnGamma(a + b) lie on a
+    grid 4 ulp(L) wide, so 16 or more cells are unreachable in every order.
+  - For integer a, TOMS's a-reduction fl(LN(w) + A(b)) with any w product, the exact ln of the product included:
+    no single A(b) fits more than 1 of 11 b values.
+  - Any per-argument error f(a) + h(b) + q(a + b) added to ln B and rounded once. At most 94 of 99 cells fit such
+    an error, against 82 for random k.
+  So Excel forms ln B jointly in (a, b), finer than a double lnGamma grid. Blocked as time-boxed (decision 0056). BETA.DIST's
+  bpser cells with a shape above 8 were not scored.
   The F.DIST.RT cells of probes/t2829-ftest-tail-over-b (f = 1E12) are off ours by these k plus whole steps of the
   fl(a·LN x) grid (a = 6, b = 11.5: -143 ulp = +5.4E-15 - 2.8E-14 relative), and `2*F.DIST.RT(..,22,12)` differs from
   F.TEST at the b = 11 twin by such a step, so F.DIST.RT forms x or z differently there; F.TEST is the clean probe.
@@ -3880,9 +3890,11 @@ reference to an empty cell `#VALUE!` (T-2426), then an error in tails or type (`
 A32), and only then the tails/type range check (`#NUM!`). A typed empty text as a sample is no number (`TTEST(IFERROR(
 #VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!`, 46ac3ef5e61583ca A344). The data-error-first order holds for direct error values;
 an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
-is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve is `#DIV/0!` in ours: UNVERIFIED.
+is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve was `#DIV/0!` in ours: UNVERIFIED (the cell now passes).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2469.
-Ours: tails and type are checked first (`#NUM!`) and a typed text sample is `#VALUE!`; T-2469.
+Ours: matches the computed empty text, a text sample being an array of one cell with no number (T-2469). A typed text
+literal (`T.TEST("",A1:A4,1,3)` `#DIV/0!`, `T.TEST("a",..)`) and a typed or computed boolean sample take the same path in
+ours (as in COVARIANCE.P/.S, probes/t2436/computed-scalar A35:A37): UNVERIFIED for T.TEST (T-2853 probes them).
 Status: VERIFIED (excel-graph) except the noted cell
 
 ## Z.TEST: an error array first; one data value is #DIV/0!; a lone non-number cell is #N/A (T-2256)
@@ -4258,7 +4270,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2432
 
 ## PERCENTILE and PERCENTILE.INC interpolate from a one-based rank 1 + k(n-1) (gap triage 2026-10-25)
-Rule (hypothesis checked against Excel's values, not yet implemented): with the n numbers sorted as a[1..n], Excel computes
+Rule (checked against Excel's values; implemented by T-1811): with the n numbers sorted as a[1..n], Excel computes
 the rank `r = 1 + k*(n-1)` in doubles, takes `j = floor(r)` and `h = r - j`, and returns `a[j] + h*(a[j+1] - a[j])`.
 Because the 1 is added before the fraction is taken, a tiny k is lost in `r` (`1 + 1E-20` is 1), so the result is the
 smallest value exactly, and h carries the rounding of `1 + k(n-1)` rather than of `k(n-1)`. This looks wrong for tiny k
@@ -4273,6 +4285,6 @@ Evidence: eval/baseline/gen-m9.txt lines of T-1811 (excel-graph, 2026-10-23), e.
 gen-m9/607e85cfee83a689 Calc!A20 (`PERCENTILE.INC(Data!B7:E11,1E-20)` is 1E-15, the smallest value), gen-m9/eccd03df42e40006
 Calc!A151 (`PERCENTILE.INC(Data!B11:E12,1E-200)` is 0), Calc!A162 (`PERCENTILE(Data!A4:B4,1E-10)` over -0.0001 and 7 is
 -9.999929998994208E-05), gen-m9/a4090567758520df Calc!A28.
-Status: UNVERIFIED as an implementation (39 of 40 cells reproduced offline); QUARTILE and QUARTILE.INC are assumed to share it.
-Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the zero-based rank `k*(n-1)`.
+Status: VERIFIED (excel-graph). Implemented by T-1811; QUARTILE and QUARTILE.INC share `percentile_inc_impl` and show 0 regressions across their oracle cells. One cell is not reproduced (A269 above).
+Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the one-based rank `1 + k*(n-1)` (T-1811). Known miss: gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, rule -2.4999999999999987) stays in the baseline.
 Tasks: T-1811
