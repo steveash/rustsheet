@@ -1474,7 +1474,7 @@ Evidence: probes/amordegrc-walk-ties (69 cells: costs near 1E20 at 1 to 10^6 per
 within 0.01 of a half, exact halves, costs 1E300 and 1.23456789012345E300) and probes/amordegrc-walk-drift (66 cells:
 charges within one ulp of a 15-digit cut boundary at 1, 2 and 1000 periods, and near x.45 at 10^4 to 10^6 periods),
 excel-graph, 2026-10-27, T-2826; probes/amordegrc-round-mid (12 cells, excel-graph, 2026-10-27, T-2826 review);
-probes/fin-amor-period-bound-b B2; probes/fin-amor-period-bound-c A1-A5 (excel-graph, 2026-10-18, T-1841).
+probes/fin-amor-period-bound-b B2; probes/fin-amor-period-bound-c A1-A5 (excel-graph, 2026-10-18, T-1841 review).
 Ours: since T-2826 (`amor_round` in functions/financial/amortization.rs, through `decimal_round::round_decimal`); the
 twice-rounded walk since T-2849 (`DegressiveWalk::charge` through `arithmetic::extended_sum`, which rounds the first
 period's subtraction twice too, by analogy). Past 2^20 periods the kernel still finishes in closed form ("AMORDEGRC
