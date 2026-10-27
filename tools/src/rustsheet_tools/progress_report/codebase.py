@@ -16,8 +16,8 @@ from rustsheet_tools.progress_report.markdown import signed, table
 from rustsheet_tools.progress_report.model import ProgressReportError, count, field
 
 QUALITY = "quality"
-DECISIONS = "docs/decisions"
-SEMANTICS = "docs/excel-semantics"
+DECISIONS = "decisions"
+SEMANTICS = "excel-semantics"
 # The history row's `codebase` keys with the label of each count, in the order the block shows them.
 MEASURES = (
     ("lint_allows", "Lint-debt allow entries"),
@@ -66,8 +66,8 @@ def _lines(path: Path) -> int:
         raise ProgressReportError(msg) from e
 
 
-def measure(repo: Path) -> Codebase:
-    """The counts of the repository at `repo`."""
+def measure(repo: Path, docs: Path) -> Codebase:
+    """The counts of the repository at `repo`, whose docs directory is `docs`."""
     quality = repo / QUALITY
     debt = quality / "lint-debt.json"
     dup, floor = quality / "duplication.json", quality / "evidence-floor.json"
@@ -77,8 +77,8 @@ def measure(repo: Path) -> Codebase:
         "duplicated_lines": count(_json(dup), "duplicated_lines", where),
         "oversized_files": len(_json(quality / "oversized-files.json")),
         "below_floor": count(_json(floor), "below_floor", str(floor)),
-        "decisions": len(list((repo / DECISIONS).glob("0*.md"))),
-        "semantics_lines": sum(_lines(p) for p in sorted((repo / SEMANTICS).glob("*.md"))),
+        "decisions": len(list((docs / DECISIONS).glob("0*.md"))),
+        "semantics_lines": sum(_lines(p) for p in sorted((docs / SEMANTICS).glob("*.md"))),
     }
     return Codebase(counts)
 

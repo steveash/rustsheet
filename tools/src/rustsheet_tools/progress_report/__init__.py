@@ -114,6 +114,7 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
                 coverage=outcome[3],
                 git=git,
                 repo=repo,
+                out_dir=args.out_dir,
                 tasks=load_object(args.tasks),
                 milestones=goals.parse_milestones(_read_text(args.milestones)),
             )
@@ -171,13 +172,14 @@ def _complete_outcome(
     coverage: arguments.Coverage,
     git: history.Git,
     repo: Path,
+    out_dir: Path,
     tasks: dict[str, Any],
     milestones: list[goals.MilestoneDoc],
 ) -> Result:
     """A complete run: every generated block, the charts and functions.md, and its history row."""
     counts = tasks_of(tasks)
     # HEAD is read only when the report has no commit (see history.complete_row).
-    counts_now = codebase.measure(repo)
+    counts_now = codebase.measure(repo, out_dir)
     row = history.complete_row(run, data, counts, None if run.commit else git.head(), counts_now)
     rows = history.add(rows, row)
     last = history.last_complete(rows, row["date"])
