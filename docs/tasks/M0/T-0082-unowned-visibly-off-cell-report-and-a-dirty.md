@@ -3,7 +3,7 @@ id: T-0082
 title: "Unowned visibly-off cell report and a dirty-tree flag in the eval report run record"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -31,15 +31,24 @@ Two small gaps from the T-0080 review:
 - The progress page (SPEC-0022) can show both later; this task only produces them.
 
 ## Acceptance criteria
-- [ ] report.json (or a `rustsheet-eval` subcommand the steward runs) lists the visibly-off,
+- [x] report.json (or a `rustsheet-eval` subcommand the steward runs) lists the visibly-off,
       unattributed Excel cells with no owning task and no `DEVIATION`, as `suite/case!cell` with
       the formula, plus their count; report.md prints the count on one line. It gates nothing.
-- [ ] Unit tests: a two-specialised-call cell with no owner is listed; the same cell with an
+- [x] Unit tests: a two-specialised-call cell with no owner is listed; the same cell with an
       owning task or a `DEVIATION` is not; an attributed cell is never listed.
-- [ ] report.json `run.dirty` is `true` with uncommitted tracked or untracked changes, `false` on
+- [x] report.json `run.dirty` is `true` with uncommitted tracked or untracked changes, `false` on
       a clean tree, `null` without git; a unit test covers the parsing.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Rendering either on docs/progress.md (a later progress-report task may).
 - Filing tasks for the listed cells: the steward does that from the list.
+
+## Outcome
+report.json gains `unattributed_off` (`case`, `cell`, `formula`: visibly-off, non-deviation,
+in-scope Excel cells with no sole call, decision 0118 item 6) and report.md prints its count under
+"Parity tiers"; `make unowned-off` (`scripts/exit_owners.py --unattributed`) drops the cells an open
+task of any milestone owns, with the exit-owners matching, and prints the rest with a count. report.json
+`run.dirty` is `git status --porcelain` at the root (`null` without git), and the report's run line
+says "with uncommitted changes" when set. Decision 0132 covers the `scripts/` and Makefile edits.
+Eval delta: none (harness only).

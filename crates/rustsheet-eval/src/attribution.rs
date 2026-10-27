@@ -13,11 +13,53 @@ use std::fmt::Write as _;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
-use crate::closeness::Closeness;
+use crate::closeness::{Closeness, Visible};
 use crate::evidence_floor::EVIDENCE_FLOOR;
+use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::milestone_exit::{meets_rate, RATE99_NUM, RATE_NUM};
 use crate::report::{FunctionStat, RunReport};
-use crate::runner::CellResult;
+use crate::runner::{CaseResult, CellResult};
+use crate::value::Verdict;
+
+/// A visibly-off Excel cell that decision 0118 attributes to no function (item 6): its in-scope
+/// formula calls two or more distinct non-glue functions, or only glue with two or more distinct
+/// calls. It still needs an owning task or a `DEVIATION` before Phase 1 exits; the report lists
+/// them all and `scripts/exit_owners.py --unattributed` drops those an open task owns (T-0082).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnattributedCell {
+    /// The case id, `suite/case`.
+    pub case: String,
+    /// `Sheet!A1`.
+    pub cell: String,
+    /// The cell's formula as its case records it.
+    pub formula: String,
+}
+
+/// The [`UnattributedCell`]s of `results`, in case order: the visibly-off, non-deviation Excel
+/// cells whose formula calls only in-scope functions, at least one, and no sole one.
+#[must_use]
+pub fn unattributed_off(catalog: &Catalog, results: &[CaseResult]) -> Vec<UnattributedCell> {
+    let mut out = Vec::new();
+    for r in results {
+        for c in &r.cells {
+            if !c.from_excel || c.verdict == Verdict::Deviation || !Visible::is_off(c) {
+                continue;
+            }
+            let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
+            if !called.is_empty()
+                && crate::closeness::sole_call(&called).is_none()
+                && calls_only_in_scope(catalog, &called)
+            {
+                out.push(UnattributedCell {
+                    case: r.id.clone(),
+                    cell: c.key(),
+                    formula: c.formula.clone().unwrap_or_default(),
+                });
+            }
+        }
+    }
+    out
+}
 
 /// A function's parity tier: the worst of its counted cells (decision 0083's order of parity),
 /// then the share of them within 15 significant digits. Best first.
@@ -241,6 +283,12 @@ pub fn write_markdown(report: &RunReport, md: &mut String) {
         .iter()
         .fold((0, 0), |(n, fb), t| (n + t.functions, fb + t.fallback));
     let _ = writeln!(md, "| total | {n} | {fb} |");
+    let _ = writeln!(
+        md,
+        "\nVisibly-off Excel cells attributed to no function (decision 0118 item 6): {}; \
+         `make unowned-off` lists those with no owning task.",
+        report.unattributed_off.len()
+    );
 }
 
 #[cfg(test)]
@@ -388,6 +436,47 @@ mod tests {
             "{md}"
         );
         assert!(md.contains("| total | 2 | 2 |"), "{md}");
+    }
+
+    #[test]
+    fn only_visibly_off_excel_cells_with_no_sole_call_are_unattributed() {
+        let mut r = case("probes/a", 1);
+        r.cells = vec![
+            // Two specialised calls, and glue only with two distinct calls: listed.
+            off("GAMMA(BETA.DIST(0.5,2,3,TRUE))"),
+            off("IF(AND(A1,B1),1,2)"),
+            // Attributed (one specialised call, or one glue function), passing, a by-design
+            // value, a non-Excel cell: never listed.
+            off("IF(A1,GAMMA(1))"),
+            off("IF(A1,1,2)"),
+            excel("GAMMA(1)+BETA.DIST(0.5,2,3,TRUE)", Verdict::Pass),
+            CellResult {
+                actual: Value::Number(2.0),
+                ..excel("GAMMA(2)+BETA.DIST(0.5,2,3,TRUE)", Verdict::Deviation)
+            },
+            CellResult {
+                actual: Value::Number(2.0),
+                ..cell("GAMMA(3)+BETA.DIST(0.5,2,3,TRUE)", Verdict::NumericMismatch)
+            },
+        ];
+        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        let listed: Vec<(&str, &str)> = report
+            .unattributed_off
+            .iter()
+            .map(|u| (u.case.as_str(), u.formula.as_str()))
+            .collect();
+        assert_eq!(
+            listed,
+            [
+                ("probes/a", "GAMMA(BETA.DIST(0.5,2,3,TRUE))"),
+                ("probes/a", "IF(AND(A1,B1),1,2)")
+            ]
+        );
+        let md = report.to_markdown(1);
+        assert!(
+            md.contains("attributed to no function (decision 0118 item 6): 2;"),
+            "{md}"
+        );
     }
 
     #[test]
