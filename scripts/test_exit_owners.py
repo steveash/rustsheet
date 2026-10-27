@@ -106,6 +106,37 @@ class ExitOwners(TaskDir):
         self.task("probes/index-reference-args-2")
         self.assertIn(f"{PROBE}!P!B2", self.listed())
 
+    def test_a_stem_with_the_case_json_suffix_names_its_case(self) -> None:
+        # The gap-triage `Cells:` line form (decision 0136).
+        self.task("- gen-m5/1d22a002d4f380b3.case.json (1): Calc!A107")
+        listed = self.listed()
+        self.assertNotIn(f"{GEN}!Calc!A107", listed)
+        self.assertIn(f"{GEN}!Calc!A1", listed)
+
+    def test_a_longer_case_json_name_does_not_name_its_prefix(self) -> None:
+        self.task("- gen-m5/1d22a002d4f380b3d.case.json (1): Calc!A107")
+        self.task("- gen-m5/1d22a002d4f380b3.case.json.bak (1): Calc!A107")
+        self.assertIn(f"{GEN}!Calc!A107", self.listed())
+
+    def test_a_colon_span_owns_its_rectangle(self) -> None:
+        self.task("probes/index-reference-args P!$C$2:B1")
+        listed = self.listed()
+        self.assertNotIn(f"{PROBE}!P!B2", listed)
+        self.assertIn(f"{PROBE}!P!B3", listed)
+
+    def test_a_colon_span_off_the_stem_line_owns_nothing(self) -> None:
+        # A quoted formula's range is not a list of owned cells.
+        self.task("probes/index-reference-args P!B3\n\n`=SUM(P!B1:B9)`")
+        listed = self.listed()
+        self.assertIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_a_hyphen_span_names_only_its_ends(self) -> None:
+        self.task("index-reference-args B1-B3")
+        listed = self.listed()
+        self.assertIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+
     def test_output_and_strict_exit(self) -> None:
         path = self.tasks / "report.json"
         path.write_text(json.dumps(report()))

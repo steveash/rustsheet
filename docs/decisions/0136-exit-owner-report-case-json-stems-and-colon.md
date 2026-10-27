@@ -15,9 +15,12 @@
 - **Decision:**
   - A case's stem followed by `.case.json` names the case, exactly as the bare stem does; the
     pair is bounded like a file name, so `abc` still does not name `abcd.case.json`.
-  - A colon span of two A1 names (`A5:D5`, `Sheet1!$A$5:$D$5`) names every cell in its
-    rectangle, as an A1 reference does in Excel. It counts wherever 0096 reads an A1 name, so a
-    line holding a span is a line that names cells, not the whole case.
+  - A colon span of two A1 names (`A5:D5`, `Sheet1!$A$5:$D$5`) on a line that names the case's
+    stem names every cell in its rectangle, as an A1 reference does in Excel. Unlike a single A1
+    name, which counts anywhere in the task, a span counts only on the stem's line: tasks quote
+    formulas, and a quoted range (T-2519's `SUMXMY2(TAKE(Data!C11,-1,1),Data!B6:C10)`) is not a
+    list of owned cells. A line holding a span still names cells, so it does not own the whole
+    case.
   - A hyphen between two A1 names (`D49-D65`) is not a span. Hyphens join milestone and lane
     names (`M7-M9`, `M0-M2`) and case names, so reading them as spans would make tasks own cells
     they never meant; it names its two ends only, as before. The fix is to write the span with a
