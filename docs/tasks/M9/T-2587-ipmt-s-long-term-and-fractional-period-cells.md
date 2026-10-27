@@ -3,7 +3,7 @@ id: T-2587
 title: "IPMT's long-term and fractional-period cells off in the 13th to 15th digit"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -55,7 +55,7 @@ Cells:
       no new known-failure lines in any baseline. Partly: 8 of the 10 pass; A202 moved to T-2943 and A177
       (a BETAINV miss, not IPMT's) to T-2936.
 - [x] financial.md records IPMT's formulation and its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit parity (T-2243, T-1528).
@@ -76,4 +76,4 @@ Cells:
 - Eval: gen-m9 known failures 3724 -> 3720 (4 fixed, 0 regressions); IPMT visibly-off cells 12 -> 9 over gen-m9,
   probes, probes-numeric and ironcalc-calc. calipers: the same 26 known regressions (T-0458) with and
   without the change.
-- Resumed 2026-10-27 by the next opus run for `make check`, the review panel, the PR and the merge.
+- Resumed by the next opus run for `make check`, review and merge; renumbered the A202 follow-up to T-2943 (T-2935 was taken on main). statistics.md records the BETAINV miss as Open.
