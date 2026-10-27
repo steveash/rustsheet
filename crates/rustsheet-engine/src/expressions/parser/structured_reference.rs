@@ -1,7 +1,10 @@
 //! A structured reference as written (`Sales[[#All],[Qty]]`), kept in the parsed formula next to
 //! the area it resolves to (SPEC-0016).
 
-use super::super::token::{TableReference, TableSpecifier};
+use super::super::lexer::{Lexer, LexerMode};
+use super::super::token::{TableReference, TableSpecifier, TokenType};
+use crate::language::get_language;
+use crate::locale::get_locale;
 
 /// The source of a structured reference: what [`super::Node::StructuredReferenceKind`] prints
 /// back in the storage and in-engine printers.
@@ -27,7 +30,7 @@ pub(super) const COLUMN_NOT_FOUND: &str = "Expecting column: ";
 /// Whether a parse error with `message` comes from a structured reference that did not
 /// resolve. The xlsx export writes such a formula as `#REF!`, so a file never holds a structured
 /// reference without the table parts it needs (xlsx-storage.md "Structured references in the
-/// file"; the engine writes no table parts before T-2196).
+/// file"): only the tables the workbook has are exported, as table parts (T-2196).
 pub(crate) fn is_unresolved_structured_reference(message: &str) -> bool {
     [TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND, COLUMN_NOT_FOUND]
         .iter()
@@ -49,12 +52,14 @@ fn specifier_text(specifier: &TableSpecifier) -> &'static str {
 
 /// A column name between brackets, with Excel's `'` escape before each special character (the
 /// inverse of the lexer's `consume_escaped_until`; xlsx-storage.md "Structured references in the
-/// file": the quote goes before the character).
+/// file": the quote goes before the character). `@` is special only first, where it would read as
+/// `#This Row`: Excel's own file has `Table9[Totals '[']^&*@'#$,,<>]` (`calc_test_tables/tables.xlsx`
+/// Escape!E6).
 fn column_text(name: &str) -> String {
     let mut text = String::with_capacity(name.len() + 2);
     text.push('[');
-    for c in name.chars() {
-        if matches!(c, '[' | ']' | '#' | '\'' | '@') {
+    for (index, c) in name.chars().enumerate() {
+        if matches!(c, '[' | ']' | '#' | '\'') || (c == '@' && index == 0) {
             text.push('\'');
         }
         text.push(c);
@@ -89,9 +94,13 @@ impl StructuredReference {
                 _ => format!("{name}{}", specifier_text(specifier)),
             },
             // `T[Col]`; an empty name or one that starts with a space keeps its own brackets,
-            // since `T[]` is the bare name and the lexer skips the space.
+            // since `T[]` is the bare name and the lexer skips the space, and so does one that ends
+            // with a space, as Excel stores it (`Table3[[the two ]]`, calc_test_tables/tables.xlsx
+            // Hidden!B6).
             (None, Some(TableReference::ColumnReference(column)))
-                if !column.is_empty() && !column.starts_with(char::is_whitespace) =>
+                if !column.is_empty()
+                    && !column.starts_with(char::is_whitespace)
+                    && !column.ends_with(char::is_whitespace) =>
             {
                 format!("{name}{}", column_text(column))
             }
@@ -102,5 +111,41 @@ impl StructuredReference {
                 table_reference_text(reference)
             ),
         }
+    }
+
+    /// The form the xlsx file stores: [`Self::text`], with a bare table name written as `T[]`,
+    /// since Excel refuses a file holding a bare `T` as corrupt (xlsx-storage.md "Structured
+    /// references in the file").
+    pub(crate) fn file_text(&self) -> String {
+        if self.bare {
+            format!("{}[]", self.table_name)
+        } else {
+            self.text()
+        }
+    }
+}
+
+/// The `(column1, row1, column2, row2)` of an A1 range such as a table's `ref` (`A1:D6`).
+///
+/// # Errors
+/// When `formula` is not a range.
+pub fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
+    let mut lexer = Lexer::new(
+        formula,
+        LexerMode::A1,
+        #[allow(clippy::expect_used)]
+        get_locale("en").expect(""),
+        #[allow(clippy::expect_used)]
+        get_language("en").expect(""),
+    );
+    if let TokenType::Range {
+        left,
+        right,
+        sheet: _,
+    } = lexer.next_token()
+    {
+        Ok((left.column, left.row, right.column, right.row))
+    } else {
+        Err("Not a range".to_string())
     }
 }

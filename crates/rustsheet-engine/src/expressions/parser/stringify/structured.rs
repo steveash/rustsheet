@@ -3,7 +3,7 @@
 use super::{stringify, DisplaceData, Rewrite, NO_REWRITE};
 use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
-use crate::expressions::token;
+use crate::expressions::token::{self, TableSpecifier};
 use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
@@ -72,7 +72,7 @@ pub(crate) fn to_localized_string_this_row_lowered(
 }
 
 /// The printed `Node::ThisRowKind`, which is printed only as a lowered area (a structural-edit
-/// fallback, the export): first resolved at the printing cell's row, which gives the text its
+/// fallback): first resolved at the printing cell's row, which gives the text its
 /// parse-time lowering had (`$A$3` or `#VALUE!`), then rewritten by `sub`; with no cell, as the
 /// columns on the formula's own row (SPEC-0016 "Structural edits", T-1699).
 pub(super) fn this_row_text(
@@ -93,8 +93,8 @@ pub(super) fn this_row_text(
     area.map_or_else(String::new, |area| sub(&area))
 }
 
-/// The printed `Node::StructuredReferenceKind`: its text as written, or the area it resolves to
-/// in the export and where an edit changes that area.
+/// The printed `Node::StructuredReferenceKind`: its text as written (in its file form in the
+/// export), or the area it resolves to where an edit changes that area.
 pub(super) fn reference_text(
     reference: &StructuredReference,
     lowered: &Node,
@@ -106,9 +106,18 @@ pub(super) fn reference_text(
     let print = |node: &Node, rewrite: &Rewrite| {
         stringify(node, context, rewrite, export_to_excel, locale, language)
     };
-    // The export prints the area until it writes table parts (SPEC-0016 step 3, T-2196).
+    // The export writes every table as a table part, so the file keeps the reference, in the
+    // form Excel stores (SPEC-0016 step 3, T-2196), `#Totals` of a table without a totals row
+    // included (Excel keeps `SUM(Table2[#Totals])`, cached `#REF!`: calc_test_tables/tables.xlsx
+    // Sheet2!F4). Any other reference that lowers to an error comes from table metadata that does
+    // not fit (directive 5), and is written as that error, which it evaluates to.
     if export_to_excel {
-        return print(lowered, rewrite);
+        return match lowered {
+            Node::ErrorKind(_) if reference.specifier != Some(TableSpecifier::Totals) => {
+                print(lowered, rewrite)
+            }
+            _ => reference.file_text(),
+        };
     }
     match rewrite {
         Rewrite::Displace(DisplaceData::None) => return reference.text(),
