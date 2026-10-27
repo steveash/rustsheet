@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::argument_coverage::{self, ArgumentSeen};
+use crate::argument_coverage::{self, CallSeen};
 use crate::case::{
     canonical_key, cell_key, is_excel_evidence, kept_nonzero_formulas, load_oracle,
     split_qualified, CaseSpec, CASE_FORMAT,
@@ -111,10 +111,10 @@ pub struct CaseResult {
     /// the milestone function scope follows the names a formula calls (T-1970).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub defined_names: BTreeMap<String, String>,
-    /// The argument classes the case's Excel-evidence cells pass each function (T-0077). Only the
-    /// run's own report reads them, so they are never serialized.
+    /// The calls the case's Excel-evidence cells make, arguments classified (T-0077, T-0083).
+    /// Only the run's own report reads them, so they are never serialized.
     #[serde(skip)]
-    pub arguments: Vec<ArgumentSeen>,
+    pub arguments: Vec<CallSeen>,
 }
 
 #[derive(Debug, Clone)]
