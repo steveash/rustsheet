@@ -6,7 +6,7 @@ use super::ArgKind::{Lift, LiftArrays, WholeByCaller};
 use super::KernelWork::{ByValue, Constant, Weighted};
 use super::ValueWork::{Amortization, CouponWalks, Loop};
 use super::{ArgKinds, CallResult, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
-use crate::functions::financial::{MAX_DEPRECIATION_PERIODS, RATE_MAX_STEPS};
+use crate::functions::financial::MAX_DEPRECIATION_PERIODS;
 use crate::functions::Function;
 
 /// `DDB(cost, salvage, life, period, [factor])`.
@@ -38,14 +38,20 @@ const VDB: ArgKinds = ArgKinds::fixed(
 /// The units a DB or VDB element at the period cap is charged (one more for the call): at most
 /// 1,024 such elements per lifted call.
 const DEPRECIATION_WEIGHT: u32 = (1 << 17) - 1;
-/// `RATE(nper, pmt, pv, [fv], [type], [guess])`: a secant with a fixed cap of
-/// `RATE_MAX_STEPS` steps (`financial_util::compute_rate`), each element charged that weight
-/// (SPEC-0011 security rule): a lifted call of more than 2^27 / 200 = 671,088 elements is
+/// What one RATE element is charged: at most `RATE_MAX_STEPS` (200) secant steps
+/// (`financial_util::compute_rate`), each a residual with Excel's `^` and its twice-rounded
+/// arithmetic, about 150 us an element run to the cap in a release build (10,000 elements of
+/// `RATE(3000,-1,100)`, which runs all 200 steps to `#NUM!`, took 1.52 s; T-2814). 2^13 units run
+/// at most 16,384 elements, about 2.5 s; the step count alone, 200 units, let one call run 671,088
+/// elements, about 100 s.
+const RATE_WEIGHT: u32 = 1 << 13;
+/// `RATE(nper, pmt, pv, [fv], [type], [guess])`: each element charged its step cap's weight
+/// (SPEC-0011 security rule): a lifted call of more than 2^27 / 2^13 = 16,384 elements is
 /// refused like any other past `MAX_LIFTED_CELL_VISITS` (DEVIATION, docs/excel-semantics/arrays.md).
 const RATE: ArgKinds = ArgKinds::fixed(
     3,
     &[Lift, Lift, Lift, Lift, Lift, Lift],
-    Weighted(RATE_MAX_STEPS),
+    Weighted(RATE_WEIGHT),
 );
 /// `NPV(rate, value1, [value2], ...)`: the values are read whole by the caller, once, and every
 /// element walks them, so the call is charged their count per element (`LiftCost::Cells`, T-1821).
@@ -187,14 +193,15 @@ const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
 /// prices; YIELD's Newton, which has no bisection since T-2391, at most 100 steps of a price and a
 /// slope, so the shared charge is an upper bound for it),
 /// each a sum over up to 32,400 quarterly coupons (0.55 ms at the calendar's longest schedule,
-/// release build). That bound is about 0.23 s an element, so a lifted call runs at most 2^27 /
-/// 2^24 = 8 such elements, about 1.8 s at the bound; the slowest inputs found take 54 ms an
-/// element (`YIELD(1,2958465,0.05,1E300,100,4,1)`, about 90 prices: 16 elements took 0.94 s).
-/// The walk and every price sum are as long as the schedule, so a shorter one is charged in
-/// proportion to its coupon count plus one (`ValueWork::CouponWalks`, T-1869): a 10-year
-/// semiannual YIELD 10,873 units, so a lift of it runs up to 12,344 elements.
+/// release build). Near the discount power's overflow (a price of 1E-100) a price term costs
+/// about 340 ns, not 17 ns, so the weight is fitted to those inputs: one call at the cap took at
+/// most 4.3 s (161 elements of `YIELD(43831,80355,0.05,1E-100,100,4)`; 89 of the ODDFYIELD over
+/// 180 years, 4.2 s; T-2879), and a lift runs at most 2^27 / 2^26 = 2 elements at the longest
+/// schedule. The walk and every price sum are as long as the schedule, so a shorter one is
+/// charged in proportion to its coupon count plus one (`ValueWork::CouponWalks`, T-1869): a
+/// 10-year semiannual YIELD 43,501 units, so a lift of it runs up to 3,085 elements.
 /// docs/excel-semantics/financial.md "Yield and odd-coupon work cap" (a DEVIATION).
-const YIELD_SOLVER_WEIGHT: u32 = 1 << 24;
+const YIELD_SOLVER_WEIGHT: u32 = 1 << 26;
 /// `YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])`: one pass, the walk
 /// from the maturity back to the settlement and the solver's price sums over that schedule.
 const YIELD: ArgKinds = ArgKinds::fixed(
@@ -207,7 +214,8 @@ const YIELD: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 1,
         weight: YIELD_SOLVER_WEIGHT,
-        reads_all_first: false,
+        // `Model::bond_args` reads all seven arguments before `CouponSchedule::new` (T-2879).
+        reads_all_first: true,
     }),
 );
 /// `ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency,

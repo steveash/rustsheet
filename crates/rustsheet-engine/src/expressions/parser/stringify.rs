@@ -75,6 +75,9 @@ pub(crate) struct Displacement<'a> {
     /// The data blocks of the tables that grow with a row insert at their first data row or at
     /// their totals row (T-2321).
     pub(crate) grown_edges: &'a [DataBlock],
+    /// The table columns a column delete removes, as lowercase (table, column) names: a
+    /// structured reference to one of them prints `#REF!` (T-2339).
+    pub(crate) deleted_columns: &'a [(String, String)],
 }
 
 /// The data rows `rows` and columns `columns` of a table on `sheet`, before the edit.
@@ -92,6 +95,7 @@ impl Displacement<'_> {
             data,
             kept_tables: &[],
             grown_edges: &[],
+            deleted_columns: &[],
         }
     }
 

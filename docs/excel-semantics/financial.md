@@ -940,9 +940,22 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   FI 1.005, annual, basis 1; T-2562).
 - A first_interest of serial 59 (1900-02-28) or 60 (Excel's 1900-02-29) with an issue of 1, 30 or 45 is `#NUM!`,
   semiannual and quarterly, on bases 0 and 1, settlement before or after it: the regular period starts in 1899
-  (probes/accrint-calendar-start-1900 B1:B32). Those cells do not show whether the end-of-month rule reads serial 59 as
-  February's last day: the calendar-start cut answers first (unprobed, T-2837). The basis-1 cut is pinned deep in 1899
-  and at 1900-01-01 only; a regular period starting exactly on serial 0 is unprobed (T-2837).
+  (probes/accrint-calendar-start-1900 B1:B32). Those cells did not show how serial 59 and 60 act in the schedule;
+  probes/accrint-eom-1900 (T-2837) does. With calc_method TRUE and a settlement past first_interest (semiannual
+  settlement 1900-08-30, quarterly 1900-05-30):
+  - An issue of 58.5 is `#NUM!` for first_interest 59 and 60 on bases 0 and 1.
+  - When the issue is not before first_interest (issue 59 with first_interest 59, issue 60 with first_interest 59
+    or 60), basis 0 is a number (`ACCRINT(59,59,242,...,2,0,TRUE)` is 24.86111111111111, `ACCRINT(59,59,150,...,
+    4,0,TRUE)` 12.36111111111111, issue 60 gives 25 and 12.5) and basis 1 is `#NUM!` (the regular period starts in
+    1899).
+  - Issue 59 with first_interest 60 is `#NUM!` on basis 0 as well: serial 60 stays serial 60 as the coupon date, so
+    the issue (59) lies before it and the walk back reaches 1899. This does not show whether serial 59 counts as
+    month-end: no cell reached a coupon date after 1900-02-28/29 that depends on it (the settlement slice uses the
+    regular period's 360/frequency days on basis 0), so the question has no observable effect in these cells.
+- Basis 1's cut on first_interest's regular period is exactly 1900-01-01: ACCRINT(33853,FI,37554,1,9888,freq,1) is
+  `#NUM!` for FI 365 and 366 annual, 182 (1900-06-30, whose period starts before serial 1 with or without the month-end rule) semiannual and 91
+  (1900-03-31) quarterly, and a number for FI 367 annual (period from 1900-01-01), 183 and 184 semiannual and 92 and
+  93 quarterly (probes/accrint-eom-1900 B1:B9; the same cells on basis 0 are all numbers, C1:C9; T-2837).
 - In a 1904 workbook the cut moves to 1904-01-01: with first_interest 1904-03-31 or 1904-06-30 (quarterly), an issue of
   1904-01-01, 1904-01-02, serial 0 or serial 1 is `#NUM!` for settlements 1904-02-15 and 1950-06-30, calc_method TRUE or
   FALSE, and `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` is `#NUM!` on every basis,
@@ -1022,7 +1035,7 @@ Tasks: T-1822, T-1846
 
 ## Yield and odd-coupon work cap
 Rule: RustSheet charges a lifted YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE or ODDLYIELD call for its solver and schedule work,
-in proportion to each element's coupon count plus one, so one call lifts at most 8 elements (YIELD, ODDFYIELD), 256
+in proportion to each element's coupon count plus one, so one call lifts at most 2 elements (YIELD, ODDFYIELD), 256
 (ODDFPRICE) or 1,024 (ODDLPRICE, ODDLYIELD) at the calendar's longest schedule, and more over shorter ones:
 `ROWS(YIELD(SEQUENCE(9)*0+1,2958465,0.05,1E300,100,4,1))` is `#ERROR!` where Excel lifts every element
 (probes/fin-argument-modes, fin-yield-odd-lift: they lift over arrays; Excel's own limit is unprobed), while
@@ -1030,24 +1043,31 @@ in proportion to each element's coupon count plus one, so one call lifts at most
 (up to 4.4 and 6.3 ms at the calendar's longest schedule, release build), then the solver evaluates the price at most
 397 times (ODDFYIELD: 100 Newton steps of three prices, 97 bisection prices; YIELD's Newton, since T-2391, at most 100
 steps of a price and a slope), each a sum over up to 32,400 quarterly coupons
-(0.55 ms): about 0.23 s an element at that bound, charged 2^24 units against SPEC-0011's 2^27 visit cap (8 elements,
-about 1.8 s; the slowest inputs found, a price of 1E300 over 9990 years, take 54 ms an element). ODDFPRICE walks and sums
+(0.55 ms): about 0.23 s an element at that bound, charged 2^26 units against SPEC-0011's 2^27 visit cap (2 elements).
+Where the discount's power takes its slow path near overflow (a price of 1E-100) a price term costs about 340 ns, not
+17 ns, so the weight is fitted to those inputs (T-2879, release build, one call at the cap): 161 elements of
+`YIELD(43831,80355,0.05,1E-100,100,4)` take 4.3 s, 535 of `YIELD(43831,54788,0.05,1E-100,100,4)` 0.75 s, 3,085 of
+`YIELD(43831,47484,0.05,1E-100,100,2)` 2.6 s and 89 of `ODDFYIELD(43831,DATE(2200,1,1),43800,DATE(2020,4,1),0,1E-100,100,4)`
+4.2 s; one element more is `#ERROR!`. At 2^24 those took 10.9 s to 17.3 s. ODDFPRICE walks and sums
 its odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 elements took 1.7 s), ODDLPRICE and
 ODDLYIELD walk to the maturity once in closed form (up to 2.2 ms, 2 walks: 1,024 elements took 2.2 s). Below the longest
 schedule each element is charged in proportion to its coupon count plus one, the extra period covering a pass's fixed cost
-(`ValueWork::CouponWalks`, T-1869): a 10-year semiannual YIELD is 10,873 units (12,344 elements), and a one-period one
-524. An ODD* element its kernel refuses before any walk is charged 1 unit (T-2815): every ODD* kernel reads all its
-arguments first (`Model::odd_args`), returning on an error or a logical in any of them and on a date outside
-[0, 2958466) as it reads it, so `ODDFYIELD(45535,45661,X,38502,{22 errors},82,110,4)` with an issue X near -1.2E14
+(`ValueWork::CouponWalks`, T-1869): a 10-year semiannual YIELD is 43,501 units (3,085 elements), and a one-period one
+2,093. An ODD* or YIELD element its kernel refuses before any walk is charged 1 unit (T-2815, T-2879 for YIELD): every ODD*
+kernel reads all its arguments first (`Model::odd_args`), as YIELD does (`Model::bond_args`), returning on an error
+or a logical in any of them and on a date outside [0, 2958466) as it reads it, so `ODDFYIELD(45535,45661,X,38502,{22 errors},82,110,4)` with an issue X near -1.2E14
 lifts its 22 elements (gen-m9/ba4ddb817a8e700e Calc!A323, Excel `#SPILL!` there) where it was charged 22
-calendar-long solvers. A text may read as any number, so it is still charged as at the longest schedule.
+calendar-long solvers. A text argument of any of these kernels, and of the COUP* functions, PRICE, DURATION,
+MDURATION and ACCRINT, is charged as the engine reads it (`Model::cast_number`, T-2879): a date text as its date, a text that reads
+as no number 1, as it is `#VALUE!` before any walk (gen-m9/0a957119475760c5 Calc!A116, whose settlement texts `a*`,
+`ABC`, `x~*`, `abc` were each charged a calendar-long walk).
 The scalar calls are not capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about
 2.4 s a scalar call at the solver bound, 0.6 s measured); the walk is now hoisted out of the solver, with the same values.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`),
 functions/lift/kinds/mod.rs (`ValueWork::CouponWalks`)
-Tasks: T-1842, T-1869, T-2815
+Tasks: T-1842, T-1869, T-2815, T-2879
 
 ## CUMIPMT and CUMPRINC over many periods
 Rule: Excel computes CUMIPMT and CUMPRINC in constant time whatever the period count, also where `(1+rate)^nper`
