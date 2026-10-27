@@ -60,6 +60,13 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
 ## Blocked because
 Blocked because: SPEC-0024 section 4's calibration rule — the heaviest eval formula spends more than 2^26 units, and no
 weight for the per-call caps' charges meets both constraints. Resolve via T-2813 (spec amendment), then resume this branch.
+T-2813 amends SPEC-0024 (branch `agent/engine/T-2813-per-call-budget-charge`): visit caps are charged 1 unit a visit or
+kernel unit, everywhere (`VISIT_UNITS` stays 1, as committed here), and section 4's margin is split: the heaviest eval
+formula stays within 2^26 outside the visit caps' charges and within 2^27 of them (measured 2026-10-27 on this branch with
+main merged in: 8,388,620 and 118,751,450, 0 regressions); each visit cap's worst case, one call at its cap, runs within
+5 s (RATE 2.1 s; YIELD and ODDFYIELD about 15-17 s are T-2879's, not this task's). Once T-2813 is `done` on main, unblock
+this task on this branch (agent-workflow "Unblocking is an agent's job"), drop the `TODO(T-2813)` in area_budget.rs, update
+the arrays.md DEVIATION entry's calibration to the amended rules, and continue at review.
 
 What is on the branch (implementation of Design sections 1-5; fmt, clippy, engine tests, hygiene and eval check pass locally; no review yet):
 - `AreaBudget` gains `work`/`work_exceeded`; `Model::spend_work` (`checked_sub`, `#[cold]` error), `spend_value`,
