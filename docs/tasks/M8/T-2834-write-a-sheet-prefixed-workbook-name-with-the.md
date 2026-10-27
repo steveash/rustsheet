@@ -23,7 +23,8 @@ Ours: FORMULATEXT keeps `=Feb!loc` (6 cells), and after renaming Feb to Mar both
 the rename keeps the `Feb!` prefix of a scope-`None` name (`rename_defined_name_sheet`, expressions/utils/mod.rs) and
 the re-parse finds no sheet Feb (`prefixed_name_operand`, parser/operands.rs).
 Failing cells (eval/baseline/probes.txt): probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename Calc!B1:B3,
-probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix Calc!A1:B2.
+probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix Calc!A1:B2,
+probes/defined-name-qualified-like-reference Sheet1!A8 (`=FORMULATEXT` of `=Data!Q1_Total`; added by T-2635).
 Design points: the parser needs the workbook file name (`Workbook::name` + ".xlsx", as `workbook_file_name` in
 functions/information/mod.rs) and must read `<file>.xlsx!loc` back as the workbook name; the xlsx writer must not emit a
 prefix Excel cannot read (probe what Excel stores; `[0]!loc` is a guess); the quoting rule rests on two file names, so
@@ -33,7 +34,7 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
 - probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix Calc!A2
 
 ## Acceptance criteria
-- [ ] The 7 cells above leave eval/baseline/probes.txt (`make eval-baseline`), no regressions.
+- [ ] The 8 cells above leave eval/baseline/probes.txt (`make eval-baseline`), no regressions.
 - [ ] An xlsx round trip of such a formula keeps its value (unit test); references.md says ours matches.
 - [ ] `make check` green; reviewers approve.
 

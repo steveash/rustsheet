@@ -617,7 +617,10 @@ These are first-class and distinct from `""`:
 All error values, appearing as literals (`#N/A`, `NA()`, `1/0`), in cells, and inside
 ranges at the first, last and middle positions. Ranges with **two different errors**
 test which error wins (the first in evaluation order). Edge class `error_order` covers
-`=#N/A+#DIV/0!` and the reverse.
+`=#N/A+#DIV/0!` and the reverse. A number- or bool-typed `value` parameter that has no `hard` domain and was
+not drawn from its edge pool receives `""` with share `EMPTY_TEXT_RATE` (3%) and an entry of the `errors`
+pool with share `ERROR_RATE` (3%), so generated suites reach the `empty_text` and `error` argument kinds
+(T-2866; decision 0094).
 
 ### 6.6 Arrays and references
 - Array literals: `{1,2,3}`, `{1;2;3}`, `{1,2;3,4}`, mixed-type `{1,"a",TRUE,#N/A}`,

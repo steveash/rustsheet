@@ -70,7 +70,7 @@ pub(crate) fn row_of(milestone: u32) -> u32 {
     milestone.max(DEFAULT_MILESTONE)
 }
 
-fn row_label(row: u32) -> String {
+pub(crate) fn row_label(row: u32) -> String {
     if row == DEFAULT_MILESTONE {
         "M0-M2".to_string()
     } else {
@@ -332,6 +332,10 @@ pub struct MilestoneRow {
     /// (decision 0114).
     #[serde(default)]
     pub visibly_off: usize,
+    /// Those cells, as `case!Sheet!A1`, in case order: what `scripts/exit_owners.py` lists for the
+    /// row (decision 0135).
+    #[serde(default)]
+    pub visibly_off_cells: Vec<String>,
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -366,6 +370,7 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 s.deviations += 1;
             } else if Visible::is_off(c) {
                 s.visibly_off += 1;
+                s.visibly_off_cells.push(format!("{}!{}", r.id, c.key()));
             }
             rows_of_case.insert(row);
         }
@@ -766,6 +771,7 @@ mod tests {
                 known_failures: failing.iter().map(|f| f.1).sum(),
                 failing_cases: failing.iter().map(|f| (f.0.to_owned(), f.1)).collect(),
                 visibly_off: 0,
+                visibly_off_cells: Vec::new(),
             }
         };
         assert_eq!(
@@ -778,6 +784,7 @@ mod tests {
                 row("M8", 0, 0, 0, 0, &[]),
                 MilestoneRow {
                     visibly_off: 1,
+                    visibly_off_cells: vec!["probes/catalog/c.case.json!S!A2".into()],
                     ..row(
                         "M9",
                         2,

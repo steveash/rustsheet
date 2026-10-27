@@ -217,6 +217,7 @@ C	ironcalc-calc/defined_names_for_unit_test.xlsx	3
 C	ironcalc-calc/escape_strings.xlsx	2
 C	ironcalc-calc/issue_341.xlsx	5
 C	ironcalc-calc/logical.xlsx	188
+C	ironcalc-calc/named_ranges.xlsx	194
 C	ironcalc-calc/percentage.xlsx	6
 C	ironcalc-calc/quotes.xlsx	5
 C	ironcalc-calc/range_operator.xlsx	9

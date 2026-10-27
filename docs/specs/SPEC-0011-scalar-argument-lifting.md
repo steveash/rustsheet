@@ -657,10 +657,11 @@ As built (T-1841): AMORLINC and AMORDEGRC are `LiftArrays` and `Weighted`. Their
 so the kernels keep the walk's values with an integer count and a bound (`functions/financial/amortization.rs`;
 financial.md "AMORLINC and AMORDEGRC over many periods"): AMORLINC jumps the steps that are exact within a binade (at
 most 616 single steps for any double, capped at 1,024, `#NUM!` past the cap), bit for bit the walk; AMORDEGRC walks
-up to 2^20 periods and finishes in a closed form that can be a unit off the walk for charges of 1E12 or more
-(financial.md "AMORDEGRC past 2^20 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
+up to 2^22 periods (2^20 before T-2918) and finishes in a closed form that can be a unit off the walk for charges of
+1E12 or more (financial.md "AMORDEGRC past 2^22 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
-elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 7.6 ms with the twice-rounded subtraction of T-2849: 512 elements, 3.9 s).
+elements, about 2.1 s), AMORDEGRC 2^20 since T-2918 (2^22 periods, about 32 ms with the twice-rounded subtraction of T-2849: 128 elements, 3.96 to
+4.35 s; 2^18 for 2^20 periods before).
 
 As built (T-1821): NPV is `[Lift]` with a repeated `WholeByCaller`, IRR `[WholeByCaller, Lift]` and MIRR
 `[WholeByCaller, Lift, Lift]`. Each caller reads its cash flows once, before the driver, and calls `lift_call_costed`
