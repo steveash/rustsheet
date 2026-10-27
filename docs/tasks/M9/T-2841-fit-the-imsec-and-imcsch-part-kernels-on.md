@@ -3,7 +3,7 @@ id: T-2841
 title: "Fit the IMSEC and IMCSCH part kernels on the im-sec-csch-fused misses"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,10 +27,22 @@ Also probe a large real part with y = 0, such as `IMCSCH("400")` and `IMCSCH("71
 overflowed `t` is `inf` (it was NaN), and only `IMCSCH("710.4+0i")` (probes/eng-im-overflow-edges A64) covers that path.
 
 ## Acceptance criteria
-- [ ] Each kernel fits more `im-sec-csch-fused` cells than today and loses no older oracle cell (or the task records
+- [x] Each kernel fits more `im-sec-csch-fused` cells than today and loses no older oracle cell (or the task records
       that no candidate does, with the scores).
-- [ ] engineering.md "IM* reciprocal kernels" records the scores.
-- [ ] `make check` green; reviewers approve.
+- [x] engineering.md "IM* reciprocal kernels" records the scores.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMCSC, IMCOT, IMSECH.
+
+## Outcome
+- IMCSCH takes IMSINH's sinh x and cosh x (`inverse_exp_sinh_cosh`): all 44 `im-sec-csch-fused` texts fit (33 before),
+  `IMCSCH("0.0853196+0.00680423i")` included. IMSEC divides each hyperbolic part by t before multiplying,
+  `cos x·(cosh y/t)`: 27 of 34 (23 before). No older IMSEC or IMCSCH oracle cell is lost (gen-m9, ironcalc-calc,
+  probes, probes-numeric `im-*`, scored with a scratch knob build outside the commit). engineering.md "IM* reciprocal
+  kernels" has every candidate's score; two unit cases in `test_complex.rs`.
+- Eval delta: probes-numeric `im-sec-csch-fused` 190 -> 220 of 234 cells; every other case unchanged; gated suites 0
+  fixed, 0 regressions (no baseline change).
+- The `IMCSCH("400")` / `IMCSCH("710")` probe was not run; that path is unchanged (`inverse_exp_sinh_cosh` is libm's
+  outside its band, as before).
+- Follow-up: T-2855 (IMSEC's last seven fused texts).

@@ -258,10 +258,11 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// the 44 IMCSCH texts of probes-numeric im-sec-csch-fused, inputs chosen so the forms disagree, against
 /// 25 for that four-product sum, 30 and 18 for it with either product fused (`mul_add`) and 32 for
 /// either square of the identity fused; every older cell ties (T-2817, engineering.md
-/// "IM* reciprocal kernels"). No form fits all 44, so the cosh and sinh parts likely differ too.
+/// "IM* reciprocal kernels"). The parts sinh x and cosh x are IMSINH's ([`inverse_exp_sinh_cosh`]):
+/// with them all 44 fit, `IMCSCH("0.0853196+0.00680423i")` 11.6323554979869-0.929943499720481i
+/// included, where libm's missed 11 (T-2841).
 pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    let x_cosh = x.cosh();
-    let x_sinh = x.sinh();
+    let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
 
     let y_cos = y.cos();
     let y_sin = y.sin();
@@ -273,13 +274,15 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
     reciprocal_result(x_sinh * y_cos / t, -x_cosh * y_sin / t, t, suffix)
 }
 
-/// sec(x+iy) = `(cos x·cosh y, sin x·sinh y) / t` with `t = cos²x + ((cosh 2y + 1)/2 - 1)`, sinh²y
+/// sec(x+iy) = `(cos x·(cosh y/t), sin x·(sinh y/t))` with `t = cos²x + ((cosh 2y + 1)/2 - 1)`, sinh²y
 /// written as cosh²y - 1 by the half-angle identity: all 70 finite cells of probes-numeric
 /// im-last-digit-sweep (T-2743). IMCSC's `(cosh 2y - 1)/2` misses rows 29 and 33 near a pole of the
 /// secant (`IMSEC("956.615+0.00387493i")` is -2.46276584105671+258.045027895372i, off from the exact
 /// value in the 10th digit). IMSECH is not the same formula turned a quarter: it squares sinh
 /// itself, so `IMSEC("4+3i")` has real part -0.0652940278579471 and `IMSECH("3+4i")`
-/// -0.065294027857947 (G23, K58).
+/// -0.065294027857947 (G23, K58). Each numerator divides its hyperbolic part by `t` first,
+/// `cos x·(cosh y/t)`: 27 of the 34 IMSEC texts of probes-numeric im-sec-csch-fused, against 23 for
+/// `cos x·cosh y/t`, with every older cell kept (T-2841).
 pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).1);
@@ -292,7 +295,7 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if !t.is_finite() {
         return overflowed_reciprocal(x_cos, x_sin * y.signum(), y, suffix);
     }
-    complex_result(x_cos * y_cosh / t, x_sin * y_sinh / t, suffix)
+    complex_result(x_cos * (y_cosh / t), x_sin * (y_sinh / t), suffix)
 }
 
 /// sech(x+iy) = `(cosh x·cos y, -sinh x·sin y) / t` with `t = cos²y + sinh²x`, sinh²x fused into the

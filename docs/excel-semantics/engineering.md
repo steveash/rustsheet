@@ -513,6 +513,15 @@ angle"); cosh and sinh are libm's. Rule:
     `sinh²x + sin²y` (T-2817); every older cell ties. No form fits all 44 (`IMCSCH("0.0853196+0.00680423i")`, Excel
     11.6323554979869-0.929943499720481i, is fitted by none), so the remaining misses are likely in the cosh, sinh, sin or
     cos parts, not the grouping (T-2841).
+  - T-2841 scored the parts on every IMSEC and IMCSCH oracle cell (gen-m9, ironcalc-calc, probes, probes-numeric
+    `im-*`). IMCSCH with IMSINH's `1/u` sinh x and cosh x (`inverse_exp_sinh_cosh`) fits all 44 fused texts and keeps
+    every older cell. The `(EXP(x) ∓ EXP(-x))/2` pair fits 39 and IMSIN's `trig_sinh_cosh` 38, and each loses 2 older
+    cells. Excel's reduced SIN and COS of y tie libm's. IMSEC with each numerator divided first, `cos x·(cosh y/t)`
+    and `sin x·(sinh y/t)`, fits 27 of 34 (23 before) and keeps every older cell. For IMSEC's cosh y and sinh y,
+    IMSINH's `1/u` form fits 28 but loses 1 older cell, the EXP pair 29 (10 lost) and IMCOS's `trig_sinh_cosh` 31
+    (9 lost). cosh 2y as the EXP pair ties; as the `1/u` form it fits 26. These two are now the kernels
+    (functions/engineering/complex/trig.rs). Seven IMSEC texts stay one unit of the 15th digit off (B3, B9, B19, B20,
+    B21, B31, B33), among them `IMSEC("-1.44771+0.0419247i")` (T-2855).
 - IMCOT: `(sin 2x, −sinh 2y) / ((cosh 2y + 1) − 2cos²x)`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit), and gen-m9's
   `IMCOT("-1.5+0.5i")` -0.0557109884865415-0.463942860183828i (45 cells, T-2537). The grouping matters only
