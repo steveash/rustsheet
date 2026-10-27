@@ -169,9 +169,11 @@ the row's cell (20) and shows `=@C1:C3`, off rows 1-3 it is `#VALUE!`; `=single(
 Evidence: probes/single-typed-01 to -06 and -09, each cell typed through Graph `values` (excel-graph, 2026-10-27,
 T-2938); -07 (`=SINGLE()`) and -08 (`=SINGLE(1,2)`) were refused, so they have no case. probes/t2576-error-type-cell-paired
 Calc!D27, written bare and built as `_xlfn.SINGLE(` by the case builder, agrees.
-Ours: the parser reads a bare `SINGLE(` with one argument as `@`, typed, through the API and in stored text alike
-(a bare newer name read from a file resolves, T-1089); a typed call with other than one argument is refused
-(`set_typed_user_input`), and stored text keeps it as a parse error.
+Ours: the parser reads a bare `SINGLE(` with one argument as `@`, typed, through the API and in stored text alike; a
+typed call with other than one argument is refused (`set_typed_user_input`), and stored text keeps it as a parse error.
+Known gaps: a bare `SINGLE(` read from a file is likely `#NAME?` in Excel, as other bare newer names are ("Newer functions
+need `_xlfn.`"; unprobed for SINGLE); ours reads it as `@`, the gap T-1089 owns. A LET or LAMBDA name spelled `single`
+and called (`LET(single,LAMBDA(x,x*2),single(3))`) is `@3` in ours, as `anchorarray` is; Excel's reading is unprobed.
 Status: VERIFIED (web)
 Implemented in: crates/rustsheet-engine/src/expressions/parser/operands.rs (`parse_named_call`).
 Tasks: T-2938
