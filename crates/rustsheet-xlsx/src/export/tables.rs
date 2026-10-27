@@ -93,10 +93,10 @@ fn totals_row_metadata(
         return (String::new(), String::new());
     };
     if let Some(f) = cell.get_formula() {
-        let Some((node, ..)) = usize::try_from(f).ok().and_then(|i| parsed_formulas.get(i)) else {
+        let Some(parsed) = usize::try_from(f).ok().and_then(|i| parsed_formulas.get(i)) else {
             return (String::new(), String::new());
         };
-        let formula = to_excel_string(node, context);
+        let formula = to_excel_string(&parsed.evaluated, context);
         return (
             " totalsRowFunction=\"custom\"".to_string(),
             format!(

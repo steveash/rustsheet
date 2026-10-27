@@ -108,7 +108,7 @@ impl Model {
         };
         cell.get_formula().is_some_and(|f| {
             self.parsed_formulas[sheet_index as usize][f as usize]
-                .0
+                .evaluated
                 .contains_function(kinds)
         })
     }
