@@ -178,3 +178,16 @@ good. Probe: probes/frequency-bins. Eval: gen-m9 known failures 5755 -> 5657 (98
 unchanged apart from its new case. 19 FREQUENCY cells stay off because their other arguments are other functions' gaps
 (ODDFYIELD/ODDLYIELD, FORECAST.ETS*, EXPAND, DB, NPER, WRAPCOLS, FILTER, INDIRECT/MAP); the acceptance lines for those are
 not met; they move to T-2624 and the remaining gen-m9 lines stay in the baseline.
+
+Review fixes (2026-10-27, after reviewer-excel-fidelity's REQUEST_CHANGES of 2026-10-26):
+- An error element now propagates only from the data array (`numeric_flat_with_element_errors`, replacing the
+  hand-rolled loop). An error element of the bins array keeps `main`'s `#VALUE!`, because no oracle cell covers it
+  and corpus-bench/53062 points the other way (T-2636).
+- An error cell in a data range keeps `main`'s data-first order against a scalar bins error, UNVERIFIED (T-2636).
+  A scalar bins error still beats an error element of the data array (probes/frequency-bins B1-B3).
+- The T.TEST change went to `main` separately (`t_dist.rs` takes `main`'s side in the merge), and its test cells
+  still pass.
+- The T-2636 notes are refreshed (statistics.md, the prob.rs TODO, the T-2636 task). The `"2"` text-bin rule stays
+  UNVERIFIED.
+- Eval on main 7f6b373a merged in: gen-m9 3,753 -> 3,598 (155 fixed), probes 2,891 -> 2,886 (5 fixed;
+  frequency-bins 38/38), 0 regressions.
