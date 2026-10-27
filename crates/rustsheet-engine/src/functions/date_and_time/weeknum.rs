@@ -29,7 +29,7 @@ impl Model {
         if matches!(result, CalcResult::Array(_)) {
             // A WEEKNUM that lifts over an array empties the state, whatever its types
             // (`SUM(WEEKNUM(100,{2,2}))`; dates.md "WEEKNUM's stale return_type state").
-            self.evaluation.weeknum_start = None;
+            self.evaluation.order_state.weeknum_start = None;
         }
         result
     }
@@ -74,7 +74,7 @@ impl Model {
         };
         // Types 1 and 17 keep a Sunday start, 2, 11 and 21 a Monday one, and every other type
         // below 22 empties the state, the always-#NUM! ones included (probes/weeknum-stale-setters).
-        let state = &mut self.evaluation.weeknum_start;
+        let state = &mut self.evaluation.order_state.weeknum_start;
         match return_type {
             1 | 17 => *state = Some(WeeknumStart::Sunday),
             2 | 11 | 21 => *state = Some(WeeknumStart::Monday),
@@ -102,8 +102,8 @@ impl Model {
             // from that weekday, and #NUM! when it is empty (docs/excel-semantics/dates.md
             // "WEEKNUM's stale return_type state", probes/weeknum-stale-*, SPEC-0017).
             _ => {
-                self.evaluation.weeknum_read = true;
-                match self.evaluation.weeknum_start {
+                self.evaluation.order_state_read = true;
+                match self.evaluation.order_state.weeknum_start {
                     Some(WeeknumStart::Sunday) => chrono::Weekday::Sun,
                     Some(WeeknumStart::Monday) => chrono::Weekday::Mon,
                     None => return num_error(cell),

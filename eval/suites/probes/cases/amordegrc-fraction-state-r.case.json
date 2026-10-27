@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 fractional above gen-m9 d912671baa1364aa A96's AMORLINC (period 6, rate 1E-300): is it what leaves that workbook's A76 its 1?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)",
+        "A2": "=AMORLINC(92598,36663,39379,343,6,1E-300,3)"
+      }
+    }
+  ],
+  "expected": {}
+}
