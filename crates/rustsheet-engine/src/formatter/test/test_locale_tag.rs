@@ -70,8 +70,12 @@ fn tags_resolve_like_excel() {
     assert_eq!(names("fr-XX"), Some("mars"));
     assert_eq!(names("de"), Some("März"));
     assert_eq!(names("400"), Some("March"));
+    // Lunar calendar digits (probes/text-locale-lunar-edges, text-locale-lunar-tokens A61-A74).
+    assert_eq!(names("11040C"), Some("三月"));
+    assert_eq!(names("E0412"), Some("삼월"));
+    assert_eq!(names("120411"), Some("March"));
     for silent in [
-        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "11040C", "40C,1", "+40C",
+        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "6040C", "40C,1", "+40C",
     ] {
         assert_eq!(resolve(silent), LocaleTag::Silent, "{silent}");
     }
@@ -140,4 +144,46 @@ fn buddhist_and_calendar_tokens_under_a_tag() {
     assert_eq!(text(45000.0, "[$-40C]B2mmmm"), "mars");
     assert_eq!(text(45000.0, "[$-401]B2yyyy-mm-dd"), "2023-03-15");
     assert_eq!(text(45000.0, "B1[$-411]g|e"), "R|5");
+}
+
+// probes/t1924-locale-tag-extended-hex and text-locale-calendars A136-A142 (T-1924).
+#[test]
+fn a_tag_neither_hex_nor_bcp47_reads_as_extended_hex() {
+    // Letters count from 10 in either case, `_` from `0` (47), `~` and `{` from `a`.
+    assert_eq!(text(45000.0, "[$-g]mmmm"), "marzo");
+    assert_eq!(text(45000.0, "[$-h]mmmm|e"), "3月|5");
+    assert_eq!(text(45000.0, "[$-3gC]mmmm"), "mars");
+    assert_eq!(text(45000.0, "[$-2wC]mmmm"), "mars");
+    assert_eq!(text(45000.0, "[$-6g40C]mmmm|yyyy"), "มีนาคม|2566");
+    assert_eq!(text(45000.0, "[$-r]mmmm|dddd"), "marec|streda");
+    // An LCID with a sublanguage and no table has no locale: 0x2412 is not Korean.
+    assert_eq!(text(45000.0, "[$-x_y]mmmm|yyyy-mm-dd"), "March|2023-03-15");
+    assert_eq!(text(0.75, "[$-Gg]h A/P"), "6 P");
+    assert_eq!(text(0.75, "[$-zzzz]h A/P"), "6 P");
+    // A BCP-47 language still comes first (`fr-FR_x` is French).
+    assert_eq!(text(45000.0, "[$-fr-FR_x]mmmm"), "mars");
+}
+
+#[test]
+fn a_calendar_digit_over_an_lcid_without_a_locale_keeps_its_date() {
+    // de_DE is 0xE0FDE and en_US 0xFA0FC (calendars E and F): lunar dates with en-US names.
+    assert_eq!(
+        text(45000.0, "[$-de_DE]mmmm|yyyy-mm-dd|dddd|e"),
+        "February|2023-02-24|Wednesday|2023"
+    );
+    assert_eq!(
+        text(45000.0, "[$-en_US]mmmm|yyyy-mm-dd"),
+        "February|2023-02-24"
+    );
+    assert_eq!(
+        text(45000.0, "[$-E08DE]mmmm|yyyy-mm-dd"),
+        "February|2023-02-24"
+    );
+    // Thai and Arabic calendars keep their own names; A/P stays as written.
+    assert_eq!(text(45000.0, "[$-708DE]mmmm|yyyy"), "มีนาคม|2566");
+    assert_eq!(text(45000.0, "[$-a_b_c]mmmm|dddd"), "مارس|الأربعاء");
+    assert_eq!(text(0.75, "[$-E08DE]h A/P"), "6 P");
+    assert_eq!(text(0.75, "[$-708DE]h AM/PM"), "6 PM");
+    // LCID 0 is one too (T-2764's cells).
+    assert_eq!(text(45000.0, "[$-110000]mmmm|d"), "February|24");
 }

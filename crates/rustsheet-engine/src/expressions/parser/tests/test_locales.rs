@@ -46,9 +46,9 @@ fn simple_locale() {
     );
 
     let t = parser.parse("SUM(1,5; 2,5)", &cell_reference);
-    assert_eq!(to_rc_format(&t), "SUM(1.5,2.5)");
+    assert_eq!(to_rc_format(&t), "SUM(1.5, 2.5)");
     assert_eq!(
         to_localized_string(&t, &cell_reference, parser.locale, parser.language),
-        "SUM(1,5;2,5)"
+        "SUM(1,5; 2,5)"
     );
 }

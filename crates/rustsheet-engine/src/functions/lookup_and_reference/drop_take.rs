@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{range_dims, CalcResult},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -313,13 +313,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if matches!(
-            node.ungrouped(),
-            Node::FunctionKind {
-                kind: Function::Take | Function::Drop,
-                ..
-            }
-        ) {
+        if is_take_or_drop(node) {
             self.evaluate_picked_source(node, cell, Self::evaluate_node_in_context)
         } else {
             self.evaluate_node_in_context(node, cell)
@@ -387,14 +381,6 @@ impl Model {
     }
 }
 
-/// Rows and columns of the range with corners `left` and `right`, in order.
-pub(crate) fn range_dims(left: CellReferenceIndex, right: CellReferenceIndex) -> (usize, usize) {
-    (
-        usize::try_from(right.row - left.row + 1).unwrap_or(0),
-        usize::try_from(right.column - left.column + 1).unwrap_or(0),
-    )
-}
-
 /// The reference to `rows` x `columns` of the area whose top left corner is `left`.
 pub(crate) fn sub_range(
     left: CellReferenceIndex,
@@ -415,4 +401,15 @@ pub(crate) fn sub_range(
             column: left.column + offset(columns.end) - 1,
         },
     }
+}
+
+/// Whether `node` (ignoring grouping) is a TAKE or DROP call.
+pub(crate) fn is_take_or_drop(node: &Node) -> bool {
+    matches!(
+        node.ungrouped(),
+        Node::FunctionKind {
+            kind: Function::Take | Function::Drop,
+            ..
+        }
+    )
 }

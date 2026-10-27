@@ -3,7 +3,7 @@ id: T-2683
 title: "TEXT with an elapsed token and AM/PM ([h]:mm AM/PM) is #VALUE!"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,3 +25,6 @@ before generalizing (excel-probe skill), and whether the number-format cell disp
 
 ## Out of scope
 -
+
+## Outcome
+Done by T-1366: a bracketed elapsed token before AM/PM or A/P is #VALUE! (elapsed-no-seconds-boundary A31 now passes).

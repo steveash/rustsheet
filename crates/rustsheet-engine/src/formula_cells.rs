@@ -2,6 +2,8 @@
 //! are parsed differently and stored through the same node setter, so a legacy tree is stored as
 //! it was rewritten, its N/T markers included (SPEC-0012), not re-read from its display text.
 
+use std::sync::Arc;
+
 use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
 use crate::expressions::parser::stringify::{
     to_localized_string, to_localized_string_this_row_lowered,
@@ -14,6 +16,28 @@ use crate::model::Model;
 
 /// A printer of a parsed formula in the active locale and language, at a cell.
 type FormulaPrinter = fn(&Node, &CellReferenceRC, &Locale, &Language) -> String;
+
+/// A shared formula as a sheet stores it: the tree evaluation and analysis read, with no
+/// whitespace in it, its static result and, for a formula written with whitespace, the tree as
+/// written, which the cell's formula text prints (SPEC-0023; see [`written_formula`]).
+/// Evaluation never sees a [`Node::Spaced`], so no argument-shape test has to peel one.
+pub type ParsedFormula = (Arc<Node>, StaticResult, Option<Arc<Node>>);
+
+/// `node`, a formula as parsed, stored as a [`ParsedFormula`].
+pub(crate) fn stored_formula(node: Node) -> ParsedFormula {
+    let written = node.has_spaces().then(|| Arc::new(node.clone()));
+    let mut node = node;
+    if written.is_some() {
+        node.strip_spaces();
+    }
+    let static_result = run_static_analysis_on_node(&node);
+    (Arc::new(node), static_result, written)
+}
+
+/// The tree the formula text of `formula` prints: as written, whitespace included.
+pub(crate) fn written_formula(formula: &ParsedFormula) -> &Node {
+    formula.2.as_deref().unwrap_or(&formula.0)
+}
 
 impl Model {
     /// The formula in (`sheet`, `row`, `column`), `=` first, as `printer` prints it at the cell;
@@ -30,12 +54,13 @@ impl Model {
         let Some(formula_index) = worksheet.cell(row, column).and_then(|c| c.get_formula()) else {
             return Ok(None);
         };
-        let (formula, _static_result) = &self
-            .parsed_formulas
-            .get(sheet as usize)
-            .ok_or("missing sheet")?
-            .get(formula_index as usize)
-            .ok_or("missing formula")?;
+        let formula = written_formula(
+            self.parsed_formulas
+                .get(sheet as usize)
+                .ok_or("missing sheet")?
+                .get(formula_index as usize)
+                .ok_or("missing formula")?,
+        );
         let cell_ref = CellReferenceRC {
             sheet: worksheet.get_name(),
             row,
@@ -104,9 +129,11 @@ impl Model {
         node: Node,
         style: i32,
     ) -> Result<i32, String> {
-        let static_result = run_static_analysis_on_node(&node);
-        let is_dynamic = !matches!(static_result, StaticResult::Scalar);
-        let formula_index = self.shared_formula_index(sheet, node, static_result)?;
+        let formula_index = self.shared_formula_index(sheet, node)?;
+        let is_dynamic = !matches!(
+            self.parsed_formulas[sheet as usize][formula_index as usize].1,
+            StaticResult::Scalar
+        );
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         if is_dynamic {
             worksheet.set_cell_with_dynamic_formula(row, column, formula_index, style, 1, 1)?;
@@ -128,7 +155,7 @@ impl Model {
     ) -> Result<(), String> {
         let formula_index = self.set_cell_with_formula_node(sheet, row, column, node, style)?;
         let cell = CellReferenceIndex { sheet, row, column };
-        let (parsed_formula, _static_result) =
+        let (parsed_formula, _static_result, _) =
             &self.parsed_formulas[sheet as usize][formula_index as usize];
         if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
             let style_index = self

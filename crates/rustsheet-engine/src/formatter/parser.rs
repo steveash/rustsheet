@@ -139,6 +139,58 @@ pub(crate) fn numeric_section_count(parts: &[ParsePart]) -> usize {
     }
 }
 
+/// The `[cond]` of a number or date section, if it has one.
+pub(crate) fn section_condition(part: &ParsePart) -> Option<(Compare, f64)> {
+    match part {
+        ParsePart::Number(p) => p.condition,
+        ParsePart::Date(p) => p.condition,
+        ParsePart::General(_) | ParsePart::Error(_) => None,
+    }
+}
+
+/// The section a value takes when the first section carries a condition, and whether the value
+/// then prints without its sign. `None` leaves the choice to the sign rules.
+///
+/// Excel: the first section is used when its condition holds; otherwise a second condition
+/// decides the next section and the last section takes the rest (`[<100]0.0;[>=1000]#,##0;0` prints
+/// 999.9999 as "1000"; `[>=1]0.00;0.000` prints -0.5 as "-0.500"; gen-m10 039accabcfe1e6c7 F!Q1-Q20
+/// and siblings, T-1734). The sign is dropped only by a condition that holds for negatives alone
+/// (`[<=-1]0` prints -1.5 as "2"); `[<100]0.0` prints -0.5 as "-0.5" and `[<1]0.0000` prints
+/// -0.5 as "-0.5000". `[<=0]` is unprobed.
+pub(crate) fn conditional_section(
+    parts: &[ParsePart],
+    sections: usize,
+    value: f64,
+) -> Option<(usize, bool)> {
+    if !(2..=4).contains(&sections) {
+        return None;
+    }
+    let (first_cmp, first_bound) = section_condition(parts.first()?)?;
+    let index = if first_cmp.holds(value, first_bound) {
+        0
+    } else if sections == 2 {
+        1
+    } else {
+        // A third section is the "else"; a second without a condition keeps the sign rules.
+        let (cmp, bound) = section_condition(parts.get(1)?)?;
+        if cmp.holds(value, bound) {
+            1
+        } else {
+            2
+        }
+    };
+    let negatives_only = |(cmp, bound): (Compare, f64)| match cmp {
+        Compare::LessThan => bound <= 0.0,
+        Compare::LessOrEqualThan => bound < 0.0,
+        _ => false,
+    };
+    let drop_sign = parts
+        .get(index)
+        .and_then(section_condition)
+        .is_some_and(negatives_only);
+    Some((index, drop_sign))
+}
+
 /// Whether `part` holds `@`, which makes it a text section.
 pub(crate) fn is_text_section(part: &ParsePart) -> bool {
     section_tokens(part).is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw)))
@@ -318,6 +370,8 @@ impl Parser {
         // number-formats.md "Elapsed-time tokens"). `m` after `[m]` is unprobed and stays a clock
         // minute.
         let mut elapsed_hour = false;
+        // Bracketed `[h]`/`[m]`/`[s]` tokens so far (a bare `h` after `[h]` is not one).
+        let mut bracketed_elapsed = 0_usize;
         let mut elapsed_second = false;
         // Whether a bare (unquoted, unescaped) digit 1-9 was read: it is a literal, but not beside
         // a date or time token (`is_calendar_or_clock`).
@@ -650,11 +704,21 @@ impl Parser {
                     });
                 }
                 Token::AMPM => {
+                    // Excel: a bracketed elapsed token before the marker is #VALUE! (`[ss] AM/PM`,
+                    // `[h] AM/PM`, `[mm] AM/PM`, `[s] A/P`) but the marker first is valid
+                    // (`AM/PM [h]` on 1.5 is "PM 12"; probes/text-elapsed-two-tokens A1, A9-A11, A13).
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AMPM);
                 }
                 Token::AP(am, pm) => {
+                    // As for `AM/PM` above: an elapsed token before the marker is #VALUE!.
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AP(am, pm));
@@ -685,34 +749,40 @@ impl Parser {
                 Token::EOF => {}
                 Token::ElapsedHour => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHour);
                 }
                 Token::ElapsedMinute => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     tokens.push(TextToken::ElapsedMinute);
                 }
                 Token::ElapsedSecond => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecond);
                 }
                 Token::ElapsedHourPadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHourPadded);
                 }
                 Token::ElapsedMinutePadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     tokens.push(TextToken::ElapsedMinutePadded);
                 }
                 Token::ElapsedSecondPadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecondPadded);
@@ -733,6 +803,12 @@ impl Parser {
         // probes/text-format-digits-date-token; number-formats.md "Bare digits beside a date token").
         if bare_digit && tokens.iter().any(is_calendar_or_clock) {
             return ParsePart::Error(ErrorPart { whole_code: true });
+        }
+        // Excel: a section with two bracketed elapsed tokens is #VALUE! for any value (`[h]:[mm]`,
+        // `[mm]:[ss]`; probes/negative-date-sections-1900 and -1904 A9, A21, A22; dates.md "Negative
+        // serials under an explicit negative section"). A bare `h` after `[h]` is not bracketed.
+        if bracketed_elapsed > 1 {
+            return ParsePart::Error(ErrorPart::default());
         }
         if repeated_locale {
             return ParsePart::Error(ErrorPart::default());
@@ -796,7 +872,7 @@ impl Parser {
                 use_ampm,
                 tokens,
                 names: localized.map(|l| l.names),
-                day_half: localized.map(|l| l.day_half),
+                day_half: localized.and_then(|l| l.day_half),
                 calendar: localized.map(|l| l.calendar),
                 japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
                 hijri,

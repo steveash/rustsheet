@@ -23,12 +23,14 @@ def render(catalog: Path = CATALOG) -> str:
     """The view of `catalog` as JSON text: one entry per function, sorted by name.
 
     `scope` is always present (an entry without it is in scope); `reason`, `oracle`, `v15` and
-    `v15_reason` only when the catalog sets them. `category` groups the evidence-floor report (T-0056)."""
+    `v15_reason` only when the catalog sets them. `category` groups the evidence-floor report (T-0056);
+    `params` feeds the argument-coverage census (T-0077)."""
     rows: list[str] = []
     for entry in sorted(Catalog.load(catalog).functions, key=lambda f: str(f["name"])):
         row: dict[str, Any] = {"name": entry["name"]}
         row.update({k: entry[k] for k in FIELDS if k in entry})
         row.setdefault("scope", "in")
+        row["params"] = [_param(p) for p in entry.get("params", [])]
         rows.append(json.dumps(row, ensure_ascii=False))
     # One function per line keeps diffs of the committed view readable.
     header = {
@@ -37,6 +39,15 @@ def render(catalog: Path = CATALOG) -> str:
     }
     head = ",\n".join(f" {json.dumps(k)}: {json.dumps(v)}" for k, v in header.items())
     return "{\n" + head + ',\n "functions": [\n  ' + ",\n  ".join(rows) + "\n ]\n}\n"
+
+
+def _param(param: dict[str, Any]) -> dict[str, Any]:
+    """A parameter's name and mode, and on the first member of a repeating group its size."""
+    out: dict[str, Any] = {"name": param["name"], "mode": param["mode"]}
+    repeat = param.get("repeat")
+    if repeat:
+        out["repeat"] = len(repeat["group"]) if isinstance(repeat, dict) else 1
+    return out
 
 
 def main() -> None:

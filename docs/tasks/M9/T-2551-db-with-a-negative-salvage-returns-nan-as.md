@@ -3,7 +3,7 @@ id: T-2551
 title: "DB with a negative salvage returns NaN as a number (ISNUMBER is TRUE) instead of #NUM! (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -34,3 +34,10 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Already fixed on main before this task was picked: `fn_db` returns `#NUM!` for a negative salvage
+(the `salvage < 0.0` domain check), and gen-m9/f066968376660329 Calc!A244 is no longer a
+known-failure line in eval/baseline/gen-m9.txt. This PR adds the missing unit test
+(`fn_db_negative_salvage_is_an_error_value`: ISNUMBER FALSE, ISERROR TRUE, `#NUM!`). Eval delta: none.
+No non-finite Number leak was reproduced for DB. DDB and VDB (financial_depreciation.rs) carry the same `salvage < 0.0` domain check before any arithmetic, so neither leaks NaN for a negative salvage (read, not probed). Whether other functions can return a non-finite Number was not audited.

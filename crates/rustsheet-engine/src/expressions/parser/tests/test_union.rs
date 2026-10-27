@@ -164,7 +164,9 @@ fn unions_round_trip_through_stringify() {
     let mut parser = parser();
     let cases = [
         ("(A1,B2)", "(A1,B2)"),
-        ("( A1 , B2 )", "(A1,B2)"),
+        // The spaces after `(` and the comma and before `)` print back; the one before the comma
+        // does not (SPEC-0023).
+        ("( A1 , B2 )", "( A1, B2 )"),
         ("(Data!E4,Data!E4)", "(Data!E4,Data!E4)"),
         ("(Data!E12,Data!A9)/1", "(Data!E12,Data!A9)/1"),
         ("(Data!C12,Data!E9)&\"\"", "(Data!C12,Data!E9)&\"\""),

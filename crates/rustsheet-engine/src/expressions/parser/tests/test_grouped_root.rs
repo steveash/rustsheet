@@ -128,9 +128,12 @@ fn plain_parse_keeps_the_root_group() {
 }
 
 #[test]
-fn spaces_between_nested_parentheses_still_nest() {
+fn spaces_between_nested_parentheses_print_back() {
+    // The spaces are written between the two groups, so they do not merge into one node of two
+    // levels as `((A1))` does; both print as typed (SPEC-0023).
     let mut parser = parser();
     let node = parser.parse("( (A1) )", &context());
-    assert!(matches!(node, Node::Group { levels: 2, .. }));
-    assert_eq!(to_english_localized_string(&node, &context()), "((A1))");
+    assert!(matches!(node, Node::Group { levels: 1, .. }));
+    assert_eq!(to_english_localized_string(&node, &context()), "( (A1) )");
+    assert!(matches!(node.ungrouped(), Node::ReferenceKind { .. }));
 }

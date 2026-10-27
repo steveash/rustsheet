@@ -305,18 +305,7 @@ fn im_reciprocal_overflow_keeps_normal_tiny_parts() {
         (r#"=IMSEC("1.5+711i")"#, "0"),
         (r#"=IMEXP("-724.227-562.884i")"#, "0"),
     ];
-    let mut model = new_empty_model();
-    for (row, (formula, _)) in cases.iter().enumerate() {
-        model._set(&format!("A{}", row + 1), formula);
-    }
-    model.evaluate();
-    for (row, (formula, expected)) in cases.iter().enumerate() {
-        assert_eq!(
-            model._get_text(&format!("A{}", row + 1)),
-            *expected,
-            "{formula}"
-        );
-    }
+    assert_texts(&cases);
 }
 
 // Excel: probes-numeric/im-last-digit-sweep D21, M21, P21 (T-2334).
@@ -355,9 +344,10 @@ fn fn_imln_imlog10_of_zero_are_num() {
     }
 }
 
-// Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044). The tiny-argument rows keep
-// the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in the last digit of the
-// same real part (G23, J58), and a large real part needs SIN's own reduction (D51).
+// Excel: probes-numeric/im-last-digit-sweep (excel-graph; T-2044) and gen-m9 (T-2537). The
+// tiny-argument rows keep the digits Excel loses (D65, D70, P65, P70), IMSEC and IMSECH differ in
+// the last digit of the same real part (G23, J58), and a large real part needs SIN's own
+// reduction (D51).
 #[test]
 fn im_reciprocal_kernels_match_the_sweep() {
     let cases = [
@@ -375,6 +365,11 @@ fn im_reciprocal_kernels_match_the_sweep() {
             "49999.9958596485-49999.9958663151i",
         ),
         (r#"=IMCOT("0.00001i")"#, "-99999.9917326303i"),
+        // gen-m9/060b18586fcff6e6 Calc!A72 (excel-graph, T-2537): `(cosh 2y + 1) - 2cos²x`.
+        (
+            r#"=IMCOT("-1.5+0.5i")"#,
+            "-0.0557109884865415-0.463942860183828i",
+        ),
         (r#"=IMCOT("219.098+3372.26i")"#, "-i"),
         (r#"=IMCOT("-724.227-562.884i")"#, "i"),
         (
@@ -404,18 +399,7 @@ fn im_reciprocal_kernels_match_the_sweep() {
         (r#"=IMCSC("0.2")"#, "5.03348954767234"),
         (r#"=IMSECH("1.5")"#, "0.42509603494228"),
     ];
-    let mut model = new_empty_model();
-    for (row, (formula, _)) in cases.iter().enumerate() {
-        model._set(&format!("A{}", row + 1), formula);
-    }
-    model.evaluate();
-    for (row, (formula, expected)) in cases.iter().enumerate() {
-        assert_eq!(
-            model._get_text(&format!("A{}", row + 1)),
-            *expected,
-            "{formula}"
-        );
-    }
+    assert_texts(&cases);
 }
 
 // Excel: probes-numeric/im-last-digit-sweep B22, C22 (T-2044): IMABS scales by the larger part
@@ -444,4 +428,64 @@ fn impower_angle_is_excels_atan2_kernel() {
     model._set("A1", r#"=IMPOWER("1000+1i",1)"#);
     model.evaluate();
     assert_eq!(model._get_text("A1"), "1000+1i");
+}
+
+// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and are
+// `#NUM!` from 2^27, IMCOT "0"; IMTAN takes the limit only (probes/t2534-im-trig-real-limit, T-2534).
+#[test]
+fn im_trig_of_a_real_number_follows_sin_cos_tan() {
+    let cases = [
+        (r#"=IMSIN("710")"#, "0.0000602887066915739"),
+        (r#"=IMSIN("123456789.123")"#, "0.99984293955201"),
+        (r#"=IMCOS("123456789.123")"#, "0.0177227601686489"),
+        (r#"=IMSEC("123456789.123")"#, "56.424619556099"),
+        (r#"=IMCSC("710")"#, "16586.8544023646"),
+        (r#"=IMCOT("710")"#, "16586.8543722202"),
+        (r#"=IMCOT("123456789.123")"#, "0.0177255441505541"),
+        (r#"=IMSIN("134217727")"#, "-0.955993328772671"),
+        (r#"=IMSIN("134217728")"#, "#NUM!"),
+        (r#"=IMCOS("-1E+200")"#, "#NUM!"),
+        (r#"=IMTAN("1E+15")"#, "#NUM!"),
+        (r#"=IMSEC("1E+10")"#, "#NUM!"),
+        (r#"=IMCSC("1E+200")"#, "#NUM!"),
+        (r#"=IMCOT("1E+200")"#, "0"),
+        (r#"=IMCOT("-134217728")"#, "0"),
+        // The desktop cache of COMPLEXs.xlsx N6; the web gives TAN's -3.38051500624659 (T-2774).
+        (r#"=IMTAN("5")"#, "-3.38051500624658"),
+    ];
+    assert_texts(&cases);
+}
+
+// IMSIN and IMCOS build sinh and cosh of the imaginary part as (EXP(t) -/+ EXP(-t))/2 outside
+// IMSINH's kernel band; IMSINH keeps a tiny real part (gen-m9, T-2258 triage; T-2535). Inside it they
+// take IMSINH's kernel at -y: `IMSIN("-4i")` has IMSINH("4")'s digits (probes/t2778-imsinh-sign-sweep
+// C2, T-2796), where the EXP pair prints ...277i.
+#[test]
+fn im_sin_cos_take_sinh_and_cosh_from_exp() {
+    let cases = [
+        (r#"=IMSINH("1E-200+1E-200i")"#, "1E-200+1E-200i"),
+        (
+            r#"=IMCOS("150-0.002i")"#,
+            "0.699252204980454-0.0014297538124271i",
+        ),
+        (r#"=IMSIN("1E-200+1E-200i")"#, "1E-200"),
+        (r#"=IMSIN("-4i")"#, "-27.2899171971278i"),
+    ];
+    assert_texts(&cases);
+}
+
+/// Each `(formula, text)` in its own cell of column A: the formula prints that text.
+fn assert_texts(cases: &[(&str, &str)]) {
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
 }

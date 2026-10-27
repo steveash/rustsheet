@@ -20,12 +20,12 @@
 <rect class="b-cells" fill="#2a78d6" x="150.0" y="76.0" width="5.8" height="18" rx="3"><title>20–199: 5</title></rect>
 <text x="163.8" y="85.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">5 (0.99%)</text>
 <text x="140.0" y="115.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">200–399</text>
-<rect class="b-cells" fill="#2a78d6" x="150.0" y="106.0" width="4.6" height="18" rx="3"><title>200–399: 4</title></rect>
-<text x="162.6" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">4 (0.79%)</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="106.0" width="3.5" height="18" rx="3"><title>200–399: 3</title></rect>
+<text x="161.5" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">3 (0.59%)</text>
 <text x="140.0" y="145.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">400–999</text>
-<rect class="b-cells" fill="#2a78d6" x="150.0" y="136.0" width="382.3" height="18" rx="3"><title>400–999: 331</title></rect>
-<text x="540.3" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">331 (65.42%)</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="136.0" width="370.8" height="18" rx="3"><title>400–999: 321</title></rect>
+<text x="528.8" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">321 (63.44%)</text>
 <text x="140.0" y="175.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≥ 1000</text>
-<rect class="b-cells" fill="#2a78d6" x="150.0" y="166.0" width="191.7" height="18" rx="3"><title>≥ 1000: 166</title></rect>
-<text x="349.7" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">166 (32.81%)</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="166.0" width="204.4" height="18" rx="3"><title>≥ 1000: 177</title></rect>
+<text x="362.4" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">177 (34.98%)</text>
 </g></svg>

@@ -158,7 +158,7 @@ fn every_written_form_is_kept() {
 }
 
 #[test]
-fn the_export_prints_the_area() {
+fn the_export_keeps_the_reference() {
     let model = model();
     let context = CellReferenceRC {
         sheet: "Calc".to_string(),
@@ -166,10 +166,11 @@ fn the_export_prints_the_area() {
         column: 1,
     };
     let node = &model.parsed_formulas[1][0].0;
-    assert_eq!(to_excel_string(node, &context), "SUM(Data!$A$2:$A$3)");
+    // The export writes the table parts, so the file keeps the reference (T-2196).
+    assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
     assert_eq!(
         crate::expressions::parser::stringify::to_excel_array_formula_string(node, &context),
-        "SUM(Data!$A$2:$A$3)"
+        "SUM(Sales[Qty])"
     );
 }
 
@@ -308,7 +309,9 @@ fn a_sheet_rename_keeps_text_and_values() {
         column: 1,
     };
     let node = &model.parsed_formulas[1][0].0;
-    assert_eq!(to_excel_string(node, &context), "SUM(Facts!$A$2:$A$3)");
+    // The table part is written on the renamed sheet, so the file keeps the reference (T-2196).
+    assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
+    assert_eq!(model.workbook.tables["Sales"].sheet_name, "Facts");
 }
 
 #[test]
@@ -522,4 +525,28 @@ fn convert_to_range_keeps_cells_and_makes_references_absolute_ranges() {
     );
     assert_eq!(model.get_formatted_cell_value(0, 3, 1).unwrap(), "7");
     assert!(model.convert_table_to_range("Sales").is_err());
+}
+
+/// Convert to range: a `#This Row` reference off the data rows stays `#VALUE!` (below the
+/// table and on another sheet), while one on a data row reads its own cell with the column
+/// absolute and the row relative (probes/table-edits/table-convert-names-this-row and
+/// table-convert-same-sheet, T-2643).
+#[test]
+fn convert_to_range_lowers_this_row_at_each_row() {
+    let mut model = model();
+    for row in [2, 3, 5] {
+        model
+            .set_user_input(0, row, 4, "=Sales[[#This Row],[Qty]]*2".to_string())
+            .unwrap();
+    }
+    model
+        .set_user_input(1, 5, 4, "=Sales[[#This Row],[Qty]]".to_string())
+        .unwrap();
+    model.convert_table_to_range("Sales").unwrap();
+    model.evaluate();
+    assert_eq!(value(&model, 0, 5, 4), "#VALUE!");
+    assert_eq!(value(&model, 0, 2, 4), "2");
+    assert_eq!(value(&model, 0, 3, 4), "4");
+    assert_eq!(model.get_localized_cell_content(0, 3, 4).unwrap(), "=$A3*2");
+    assert_eq!(value(&model, 1, 5, 4), "#VALUE!");
 }

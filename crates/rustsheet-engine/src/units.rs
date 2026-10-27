@@ -208,6 +208,8 @@ impl Model {
             Node::SpillRangeOperator { .. } => None,
             // Unreachable: peeled and resolved above.
             Node::Group { .. }
+            | Node::UnaryPlus { .. }
+            | Node::Spaced { .. }
             | Node::StructuredReferenceKind { .. }
             | Node::ThisRowKind { .. } => None,
             Node::LambdaDefKind { .. } => None,

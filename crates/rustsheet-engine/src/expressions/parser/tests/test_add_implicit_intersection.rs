@@ -205,3 +205,34 @@ fn defined_names_and_dynamic_functions() {
         );
     }
 }
+
+// T-2723: a unary plus is the identity, so a legacy formula gains the `@` it gains without it,
+// a literal under a plus included (`IF(+TRUE,…)`, `CHOOSE(+1,…)`).
+#[test]
+fn a_unary_plus_changes_no_implicit_intersection() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut legacy = |formula: &str| {
+        let mut t = parser.parse(formula, &cell_reference);
+        add_implicit_intersection(&mut t, true);
+        to_english_localized_string(&t, &cell_reference)
+    };
+    for (formula, plus) in [
+        ("N(IF(TRUE,A1:A3))", "N(IF(+TRUE,A1:A3))"),
+        ("N(CHOOSE(1,A1:A3,{2;3}))", "N(CHOOSE(+1,A1:A3,{2;3}))"),
+        ("SIN(A1:A10)", "SIN(+A1:A10)"),
+        ("SUM((A1:A10*1))", "SUM(+(A1:A10*1))"),
+    ] {
+        let expected = legacy(formula);
+        let with_plus = legacy(plus);
+        assert_eq!(
+            with_plus.replace('+', ""),
+            expected.replace('+', ""),
+            "{plus}"
+        );
+    }
+}

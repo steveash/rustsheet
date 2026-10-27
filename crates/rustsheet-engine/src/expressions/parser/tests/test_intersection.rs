@@ -104,19 +104,22 @@ fn intersection_operands_may_be_parenthesized_or_calls() {
 fn whitespace_elsewhere_is_not_an_intersection() {
     let mut parser = parser();
     let cases = [
-        (" 1 + 2 ", "1+2"),
-        ("SUM( A1 , B1 )", "SUM(A1,B1)"),
-        ("SUM( A1:B2 )", "SUM(A1:B2)"),
-        ("( A1 )", "(A1)"),
+        // The spaces Excel keeps print back (SPEC-0023): not those at the end, before a comma,
+        // in an array constant or around `:`.
+        (" 1 + 2 ", " 1 + 2"),
+        ("SUM( A1 , B1 )", "SUM( A1, B1 )"),
+        ("SUM( A1:B2 )", "SUM( A1:B2 )"),
+        ("SUM( A1 : B2 )", "SUM( A1:B2 )"),
+        ("( A1 )", "( A1 )"),
         ("{ 1 , 2 ; 3 , 4 }", "{1,2;3,4}"),
-        ("A1 + B1", "A1+B1"),
-        ("A1 -B1", "A1-B1"),
-        ("A1 & B1", "A1&B1"),
-        ("A1 = B1", "A1=B1"),
-        ("A1 * B1", "A1*B1"),
-        ("A1 ^ B1", "A1^B1"),
-        ("A1 %", "A1%"),
-        ("IF( A1 , B1 , C1 )", "IF(A1,B1,C1)"),
+        ("A1 + B1", "A1 + B1"),
+        ("A1 -B1", "A1 -B1"),
+        ("A1 & B1", "A1 & B1"),
+        ("A1 = B1", "A1 = B1"),
+        ("A1 * B1", "A1 * B1"),
+        ("A1 ^ B1", "A1 ^ B1"),
+        ("A1 %", "A1 %"),
+        ("IF( A1 , B1 , C1 )", "IF( A1, B1, C1 )"),
         ("A1:B2 ", "A1:B2"),
     ];
     for (formula, expected) in cases {
@@ -340,5 +343,26 @@ fn intersection_operands_must_be_references() {
     ] {
         let node = parser.parse(formula, &context());
         assert!(is_intersection(&node), "{formula}: {node:?}");
+    }
+}
+
+#[test]
+fn extra_spaces_of_an_intersection_print_back() {
+    // The first space is the operator, Excel keeps the rest (SPEC-0023 step 3,
+    // probes/t2776-formula-text-whitespace-shapes C3, C5, E9).
+    let mut parser = parser();
+    for (formula, expected) in [
+        ("B1:B2  B2", "B1:B2  B2"),
+        ("B1:B2   B2", "B1:B2   B2"),
+        ("SUM(B1:B2  B2)", "SUM(B1:B2  B2)"),
+        ("B1:B2  B2  B1", "B1:B2  B2  B1"),
+        ("B1:B2  (B2)", "B1:B2  (B2)"),
+    ] {
+        let node = parser.parse(formula, &context());
+        assert_eq!(
+            to_english_localized_string(&node, &context()),
+            expected,
+            "{formula}: {node:?}"
+        );
     }
 }

@@ -34,6 +34,10 @@ move cells in a table"); the engine's answer to that edit is an engine decision 
 ## Acceptance criteria
 - [ ] Every cell of table-delete-row-first-data, -last-data, -last-data-totals and -all-data passes and
       leaves eval/baseline/probes.txt (`make eval-baseline`), with no new known failure.
+- [ ] Deleting the totals row removes it from the table (decision 0128, unmasked by T-1671's totals rows):
+      table-delete-row-totals F!A3 (`ROWS(Sales[#All])` 5, ours `#ERROR!`) and F!A15 (FORMULATEXT keeps
+      `=Sales[[#Totals],[Qty]]`, ours `=#REF!`), and table-delete-row-last-data-totals F!A15 (keeps the text,
+      ours `=S!$C$7`) pass and leave eval/baseline/probes.txt.
 - [ ] references.md's "Implemented in" line updated.
 - [ ] `make check` green; reviewers approve.
 

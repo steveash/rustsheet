@@ -16,6 +16,14 @@ const TRIMMEAN_DATA: DataArg = DataArg {
     // error before the bad `percent` (probes/stat-test-lift P82, T-1982).
     read: |model, node, cell| match model.evaluate_node_in_context(node, cell) {
         error @ CalcResult::Error { .. } => Err(error),
+        // A single cell holding nothing, text or a boolean is data with no number, so `#NUM!`
+        // (`TRIMMEAN(Data!B7,1.005)` with B7 TRUE, gen-m9 9735c5ab72fa5ecf A264;
+        // `TRIMMEAN(D28!A6,3.14159)` with A6 blank, probes/t2475-stat-subexpressions P!A353).
+        CalcResult::EmptyCell | CalcResult::String(_) | CalcResult::Boolean(_)
+            if matches!(*node.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
+        {
+            Ok(Vec::new())
+        }
         value => model.numeric_flat_with_element_errors(value, cell),
     },
     order: DataOrder::Ascending,
@@ -32,13 +40,15 @@ impl Model {
             &TRIMMEAN_DATA,
             cell,
             &mut |model, data, values| {
-                if data.is_empty() {
-                    return num_error(cell);
-                }
+                // percent's error comes before the no-number `#NUM!`, as PERCENTILE's k
+                // (`TRIMMEAN(<text cells>,<#N/A>)` is `#N/A`, gen-m9/3e98b26cf6713e77 A247).
                 let percent = match model.cast_number_ref(value_at(values, 1), cell) {
                     Ok(v) => v,
                     Err(e) => return e,
                 };
+                if data.is_empty() {
+                    return num_error(cell);
+                }
                 if !(0.0..1.0).contains(&percent) {
                     return num_error(cell);
                 }

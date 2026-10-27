@@ -34,13 +34,15 @@ fn whole_column_against_whole_row_is_bounded() {
     // 2^20 x 2^14 = 2^34 cells; out of column A and row 1 (where they would be circular).
     model._set("C3", "=ROWS(LEFT(A:A,1:1))");
     model._set("C4", "=ROWS(FIND(\"a\",A:A,1:1))");
+    // In a cell the shape runs past the grid: #SPILL! from the shapes alone (T-0483).
     model._set("C5", "=LEFT(A:A,1:1)");
 
     model.evaluate();
 
-    for cell in ["C3", "C4", "C5"] {
+    for cell in ["C3", "C4"] {
         assert_eq!(model._get_text(cell), *"#ERROR!", "{cell}");
     }
+    assert_eq!(model._get_text("C5"), *"#SPILL!");
 }
 
 #[test]

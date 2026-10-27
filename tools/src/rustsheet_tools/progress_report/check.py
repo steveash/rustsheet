@@ -1,6 +1,7 @@
 """`rustsheet-progress-report --check`: the judgment blocks of docs/progress.md (SPEC-0022, T-0074).
 
-A judgment block passes when its as-of line names the run in the `status` block, every number in
+A judgment block passes when its as-of line names the run in the `status` block (the complete
+run, or the incomplete run a Stale banner reports), every number in
 it appears verbatim in a generated block, and it is plain text: no URL, web or email address, no
 `[` or `]` (so no Markdown link, image or reference definition in any form), and no `<` apart from
 its own as-of comment. The page is parsed by
@@ -16,8 +17,13 @@ from rustsheet_tools.progress_report import blocks, page
 from rustsheet_tools.progress_report.model import COMMIT_SHA, RUN_DATE, ProgressReportError
 
 OK = "progress check ok"
-# The run the `status` block names; page.status writes this sentence (a test keeps the two in step).
-STATUS_RUN = re.compile(rf"The eval run of \*\*({RUN_DATE.pattern})\*\* at commit `({COMMIT_SHA.pattern})`")
+# The run the `status` block names: page.status writes "The eval run of ..." on a complete run and
+# page.stale_status's banner "The run of ..." on a stale one (tests keep both in step). The banner's
+# "last complete run, **<date>** at ..." never matches, so a stale page's as-of lines must name the
+# incomplete run the banner reports, not the run its numbers come from.
+STATUS_RUN = re.compile(
+    rf"The (?:eval )?run of \*\*({RUN_DATE.pattern})\*\* at commit `({COMMIT_SHA.pattern})`"
+)
 # What counts as a number (T-0074): `\d[\d,]*(\.\d+)?%?` standing alone, never the digits of an
 # identifier such as LOG10, ATAN2, v15 or phase1 (no word character directly before). A unit suffix
 # does not hide a number: `500x`, `12ms` and `1.5x` still yield 500, 12 and 1.5, so a judgment block

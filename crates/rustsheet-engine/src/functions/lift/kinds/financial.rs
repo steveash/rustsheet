@@ -57,10 +57,10 @@ const NPV: ArgKinds = ArgKinds {
     work: Constant,
     result: CallResult::Value,
 };
-/// What one IRR element is charged per cash flow (`LiftCost::Cells` of the flows): the most NPV
-/// passes over the flows one call can make, 455 (`financial_util::compute_irr`: two secant runs
-/// of 52, then the fallback's Newton from the guess, 100 with its derivative passes, its
-/// bisection's 51 and its Newtons from 200 and -2, 200), rounded up.
+/// What one IRR element is charged per cash flow (`LiftCost::Cells` of the flows): at least the
+/// most NPV passes over the flows one call can make, 154 (`financial_util::compute_irr`: two
+/// secant runs of 52, then the fallback's 50 Newton steps of one pass each). The charge is kept
+/// from the earlier fallback, which made up to 455 passes (T-2727).
 const IRR_WEIGHT: u32 = 1 << 9;
 /// `IRR(values, [guess])`: the values are read whole by the caller (T-1821).
 const IRR: ArgKinds = ArgKinds::fixed(1, &[WholeByCaller, Lift], Weighted(IRR_WEIGHT));
@@ -127,6 +127,7 @@ const COUPON: ArgKinds = ArgKinds::fixed(
         frequency: 2,
         walks: 2,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])`:
@@ -143,6 +144,7 @@ const ACCRINT: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 2,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `DURATION(settlement, maturity, coupon, yld, frequency, [basis])` and MDURATION: three walks
@@ -159,6 +161,7 @@ const BOND_5_OF_6: ArgKinds = ArgKinds::fixed(
         frequency: 4,
         walks: 4,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])`, as DURATION.
@@ -172,6 +175,7 @@ const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 4,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 // --- End financial ATP (T-1822) -------------------------------------------------------------
@@ -179,7 +183,9 @@ const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
 // --- Financial ATP (T-1842) -----------------------------------------------------------------
 /// What one YIELD or ODDFYIELD element is charged at the longest schedule: its kernel walks the
 /// coupon schedule once (`CouponSchedule`, `OddFirstSchedule`; up to 4.4 and 6.3 ms), then the
-/// solver evaluates the price at most 397 times (100 Newton steps of three, 97 bisection prices),
+/// solver evaluates the price at most 397 times (ODDFYIELD: 100 Newton steps of three, 97 bisection
+/// prices; YIELD's Newton, which has no bisection since T-2391, at most 100 steps of a price and a
+/// slope, so the shared charge is an upper bound for it),
 /// each a sum over up to 32,400 quarterly coupons (0.55 ms at the calendar's longest schedule,
 /// release build). That bound is about 0.23 s an element, so a lifted call runs at most 2^27 /
 /// 2^24 = 8 such elements, about 1.8 s at the bound; the slowest inputs found take 54 ms an
@@ -201,6 +207,7 @@ const YIELD: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 1,
         weight: YIELD_SOLVER_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency,
@@ -218,6 +225,7 @@ const ODDFPRICE: ArgKinds = ArgKinds::fixed(
         frequency: 7,
         walks: 8,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: true,
     }),
 );
 /// `ODDFYIELD(settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency,
@@ -233,6 +241,7 @@ const ODDFYIELD: ArgKinds = ArgKinds::fixed(
         frequency: 7,
         walks: 1,
         weight: YIELD_SOLVER_WEIGHT,
+        reads_all_first: true,
     }),
 );
 /// `ODDLPRICE(settlement, maturity, last_interest, rate, yld, redemption, frequency, [basis])`
@@ -250,6 +259,7 @@ const ODD_LAST: ArgKinds = ArgKinds::fixed(
         frequency: 6,
         walks: 2,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: true,
     }),
 );
 // --- End financial ATP (T-1842) -------------------------------------------------------------

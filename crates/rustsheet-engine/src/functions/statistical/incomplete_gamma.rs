@@ -61,7 +61,54 @@ use super::special::refine_increasing;
 /// Those counts are statrs' series (T-1872); the accurate one (T-0971) runs to 2^-54, not 1E-15,
 /// about 8% more terms near x = a (a = 5E9 stays under the cap), so an inversion's budget runs
 /// out at a smaller shape: 7.9E8 at p = 1E-5 is past it, 3E8 within (T-2367 measures the bound).
-const MAX_TERMS: u32 = 1 << 19;
+pub(crate) const MAX_TERMS: u32 = 1 << 19;
+
+/// The most continued-fraction terms one cdf of shape `a` may take: 256 + 32 * cbrt(a), past
+/// which the cdf is NaN, as past [`MAX_TERMS`]. The fraction is used for x >= a + 1 and needs
+/// most terms at x just above a + 1, about 10 * cbrt(a) for a above 10 and at most 110 below
+/// (T-2795 sweep, run once: shapes 1E-3 to 1.6E15, 4,200 x each; 1,064,339 terms at 1.6E15), so
+/// the budget is at least twice what any cdf the cap keeps needs and changes no value. The unit
+/// test `the_continued_fraction_stays_within_half_its_budget` keeps that for shapes up to 1E10.
+/// It gives the cdf a bound from its shape alone ([`cdf_terms_bound`]), which the lifting table
+/// charges by value.
+fn continued_fraction_budget(a: f64) -> u32 {
+    let budget = 256.0 + 32.0 * a.cbrt();
+    if budget < f64::from(MAX_TERMS) {
+        // A whole number below 2^19 after `ceil`, so the cast is exact.
+        budget.ceil() as u32
+    } else {
+        MAX_TERMS
+    }
+}
+
+/// The terms the small-shape Q series ([`small_shape_upper`]) takes at most beside the power
+/// series: its terms `x^n / (n! (a + n))` (x < 1, a < 1/2) fall under 2^-54 of its sum by
+/// n = 19, as the sum's partial sums stay above 0.41 x (alternating terms that fall).
+const SMALL_SHAPE_TERMS: u32 = 20;
+
+/// The terms the power series ([`lower_series`]) takes past `a` at most: it runs for x < a + 1,
+/// so every ratio `x / (a + n)` is below 1, and from n = 2x - a on (at most a + 3) each is at most
+/// 1/2, so within 55 more terms the last is under 2^-54 of the sum.
+const SERIES_TERMS_PAST_SHAPE: u32 = 58;
+
+/// The most terms one cdf of shape at most `a` takes, whatever its x: the power series' bound
+/// (with the small-shape Q series) or the continued fraction's budget, at most [`MAX_TERMS`].
+/// It does not fall as `a` grows, so a bound of the shape is enough.
+pub(crate) fn cdf_terms_bound(a: f64) -> u32 {
+    let series = a + f64::from(SERIES_TERMS_PAST_SHAPE + SMALL_SHAPE_TERMS);
+    let series = if series < f64::from(MAX_TERMS) {
+        // Below 2^19 after `ceil`, so the cast is exact.
+        series.ceil() as u32
+    } else {
+        MAX_TERMS
+    };
+    series.max(continued_fraction_budget(a)).min(MAX_TERMS)
+}
+
+/// The cdfs one inversion ([`gamma_quantile`]) runs at most: statrs' search (1,075 halvings,
+/// 1,025 doublings, 8 bisections, 4 Newton steps), then one check and at most 129 more of the
+/// refinement (T-1634, T-1872). The lifting table charges an inversion by it (T-2795).
+pub(crate) const INVERSION_CDFS: u32 = 2_250;
 
 /// The terms a cdf or an inversion has left. Once spent, the cdf in progress is NaN.
 struct Terms(u32);
@@ -318,8 +365,9 @@ fn incomplete_gamma_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
     let mut d = 1.0 / b;
     let mut h = d;
     let mut i = 1.0;
+    let mut budget = Terms(continued_fraction_budget(a));
     loop {
-        if !terms.take() {
+        if !terms.take() || !budget.take() {
             return (f64::NAN, f64::NAN);
         }
         let an = -i * (i - a);
@@ -574,8 +622,9 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::{
-        gamma_cdf, gamma_density, gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur,
-        incomplete_gamma_pair, inverse_cdf_within, Tail, Terms, MAX_TERMS,
+        cdf_terms_bound, continued_fraction_budget, gamma_cdf, gamma_density, gamma_inverse_cdf,
+        gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, Tail, Terms,
+        MAX_TERMS,
     };
     use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
     use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -866,6 +915,37 @@ mod tests {
             dist.shape()
         ));
         assert!(inverse_cdf_within(&dist, 1e-5, &mut Terms(1_000)).is_nan());
+    }
+
+    // The continued fraction's own budget (T-2795) is at least twice the terms it needs at
+    // every shape the sweep reached, so it changes no value; past it the cdf is NaN.
+    #[test]
+    fn the_continued_fraction_stays_within_half_its_budget() {
+        let mut a: f64 = 1e-3;
+        while a < 1e10 {
+            let step = a.sqrt().max(1.0) * 0.05;
+            let near = (0..60).map(|k| a + 1.0 + f64::from(k) * step);
+            let far = [10.0, 1e3, 1e5].map(|k| a + 1.0 + k * a.sqrt().max(1.0));
+            for x in near.chain(far) {
+                let mut terms = Terms(MAX_TERMS);
+                let (p, _) = incomplete_gamma_pair(a, x, &mut terms);
+                assert!(!p.is_nan(), "a = {a:e}, x = {x:e}");
+                let used = MAX_TERMS - terms.0;
+                assert!(
+                    2 * used <= continued_fraction_budget(a),
+                    "a = {a:e}, x = {x:e}: {used} terms"
+                );
+                assert!(used <= cdf_terms_bound(a));
+            }
+            a *= 3.1;
+        }
+        // A slow fraction (`terms_needed` checks its NaN one term short of the shared budget)
+        // stays within its own; the budget saturates at the cap for a huge shape.
+        let used = terms_needed(1e8, 1.0001e8);
+        assert!(used < continued_fraction_budget(1e8));
+        assert_eq!(continued_fraction_budget(1e30), MAX_TERMS);
+        assert_eq!(cdf_terms_bound(1e9), MAX_TERMS);
+        assert_eq!(cdf_terms_bound(2.5), 256 + 44);
     }
 
     // Excel's quantiles in the tails and at a small shape, where statrs' search is off or NaN

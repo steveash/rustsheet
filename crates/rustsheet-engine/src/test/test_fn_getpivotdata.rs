@@ -298,16 +298,26 @@ fn every_aggregate_runs_over_the_picked_records() {
 }
 
 #[test]
-fn aggregates_with_no_records_other_than_sum_are_ref() {
-    let mut model = model();
-    model.workbook.pivot_tables[0].data_fields[0].function = Aggregate::Average;
-    model._set(
-        "H1",
-        r#"=GETPIVOTDATA("Sales",$A$3,"Region","West","Product","C")"#,
-    );
-    model.evaluate();
-    // SPEC-0015 unknown 2.
-    assert_eq!(model._get_text("H1"), "#REF!");
+fn aggregates_with_no_records_are_zero_except_var_and_stddev() {
+    // probes/getpivotdata-empty-intersection (Excel 0 for these five); Var/StdDev are unprobed
+    // and stay `#REF!` (SPEC-0015 unknown 2).
+    for (function, expected) in [
+        (Aggregate::Average, "0"),
+        (Aggregate::Count, "0"),
+        (Aggregate::Max, "0"),
+        (Aggregate::Min, "0"),
+        (Aggregate::Var, "#REF!"),
+        (Aggregate::StdDev, "#REF!"),
+    ] {
+        let mut model = model();
+        model.workbook.pivot_tables[0].data_fields[0].function = function;
+        model._set(
+            "H1",
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","West","Product","C")"#,
+        );
+        model.evaluate();
+        assert_eq!(model._get_text("H1"), expected, "{function:?}");
+    }
 }
 
 #[test]

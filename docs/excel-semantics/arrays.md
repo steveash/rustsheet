@@ -327,8 +327,8 @@ cache spanning A1:A1048576 is `#VALUE!` (test_external_links.rs
 Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
-C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
-eval/suites/probes/deviations, decision 0036); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
+C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1, C2 and E1 are listed in
+eval/suites/probes/deviations, decision 0036; C3 passes since T-0483); probes/textsplit-padded-size A1–A4 (TEXTSPLIT's padded result, excel-graph, 2026-10-17;
 listed in eval/suites/probes/deviations, decision 0091, T-2223); probes/t2579-array-value-edges B23 (`ROWS(MAKEARRAY(1048577,1,..))`,
 1048577 in Excel, excel-graph, 2026-10-24; listed in eval/suites/probes/deviations, decision 0108, T-2600).
 Status: DEVIATION (decision 0014)
@@ -340,7 +340,30 @@ crates/rustsheet-engine/src/functions/lift/; `Model::evaluate_range` in crates/r
 crates/rustsheet-engine/src/external_reference.rs (a spilled range into another workbook, T-1454);
 `Model::external_area_value` and `Model::external_aggregate_value` in
 crates/rustsheet-engine/src/external_links.rs (a cached range of a linked workbook, T-1460)
-Tasks: T-0047, T-1420, T-1454, T-1460
+In a **spill** context the deviation is not needed: Excel's answer follows from the shape alone, so it costs
+no allocation. `=SUMPRODUCT(book2!A:A=book1!A3)*book2!H:J` in book1!B3 (a scalar against a whole-column
+3-column range, 3,145,728 cells) is `#SPILL!` in Excel; `=ABS(A:A)` and `=DATE(11:1899,12,1)` in a cell are the
+same shape-only `#SPILL!` (above). Since T-0480 the formula of a dynamic-array anchor whose root is an operator
+chain (`+ - * / ^ & =` and the other comparisons, parenthesized or not, and operator operands down to 8 levels,
+`=1+H:J*2`) is `#SPILL!` when a link would broadcast to more than 1,048,576 cells and to a shape that runs past
+the grid from the anchor, decided from the operand shapes before the broadcast (`Model::evaluate_spilling_chain`,
+`unspillable_broadcast` in arithmetic.rs). Since T-0483 the same holds for a root (or operator operand) that is
+a call in the lifting table that gives one value per element (not SORTBY or UNIQUE), a unary operator or `%`:
+`=DATE(11:1899,12,1)` in C1 or C3 and `=-H:J` or `=H:J%` in C3
+are `#SPILL!`, decided from the shapes of the ranges in its `Lift` arguments, nested lifts and unary operators
+included, before anything is lifted (`Model::unspillable_lift` in spill_shape.rs; probes/lifted-range-rows C3).
+The deviation still covers value contexts (`ROWS`, `SUM`, `INDEX` over the same array:
+`=ROWS(SUMPRODUCT(A:A=A1)*H:J)` and `=ROWS(-H:J)` stay `#ERROR!`), an over-bound result whose shape fits the grid
+from its anchor (`=1*H:J` or `=-H:J` in K1: Excel spills it or answers `#SPILL!` for an occupied cell, ours is
+`#ERROR!`), and spills of other over-bound arrays (a function result that is not a lift, a lift whose range comes
+from a name or a function). Only the `*` broadcast of corpus-bench/55049 and the DATE lift of
+probes/lifted-range-rows C3 are oracle-backed; the unary operators, the 2^34-cell lifts (`=LEFT(A:A,1:1)`), the
+other operators, an error operand
+(`=1/0*H:J`, expected from probes/error-operand-broadcast) and 2^34-cell broadcasts (`=D:D+4:4`) follow the same shape rule unprobed (T-0484).
+Evidence: corpus-bench/55049/1_55049_input.xlsx book1!B3:B23 (21 cells, excel-graph sidecar, 2026-10-26, gap
+triage); test_lifted_range_bound.rs `broadcast_above_the_bound_that_cannot_spill_is_spill` and
+`lift_above_the_bound_that_cannot_spill_is_spill`.
+Tasks: T-0047, T-1420, T-1454, T-1460, T-0480, T-0483, T-0484
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
@@ -1878,7 +1901,9 @@ excel-graph, 2026-10-24, T-2579; there D!A1:A6 = 1, blank, TRUE, "x", 5, =1/0 an
   `#VALUE!`, B44; through LET too, B48, B50), but lift over an array (`IMSQRT(REDUCE(0,1,LAMBDA(a,b,{2;8})))` has 2 rows,
   B46), while SQRT and ABS lift over both (B42, B51). A REDUCE whose LAMBDA returns a range gives that reference
   (`ROWS(REDUCE(0,1,LAMBDA(a,b,D!B1:B2)))` 2, B43; IMSQRT of it `#VALUE!`, B40), and so does one returning TRIMRANGE of a
-  range (B49 `#VALUE!`; gen-m9 df083d85b436b49a A20). Ours: the TRIMRANGE form lifts (T-2596).
+  range: the step is the trimmed reference (B49 `#VALUE!`; gen-m9 df083d85b436b49a A20). Ours since T-2596: REDUCE's
+  LAMBDA caller keeps a TRIMRANGE body's reference (`LambdaCaller::keeping_trimrange_references`); a TRIMRANGE wrapped in
+  IF or LET, and the other LAMBDA helpers returning TRIMRANGE, are unprobed.
 - COMBIN lifts over arrays and ranges as COMBINA does: `INDEX(COMBIN(18,{1,2;3,4}),2,2)` is 3060, `SUM(COMBIN(18,FILTER(..)))`
   21777.000000000004, `SUM(COMBIN(D!B1:B3,1))` 12, a text element `#VALUE!` (B60-B68; gen-m9 c18dbf21f11093f3 A174's inner
   `COMBIN(18,FILTER(..))` is 1).
@@ -1892,7 +1917,7 @@ Evidence: probes/t2436 (excel-graph, 2026-10-24); probes/t2579-array-value-edges
 Ours (since T-2579): COMBIN lifts (`fn_combin`, lift/kinds/general.rs) and `if_error_like` reads a multi-cell range's
 blanks, and those of the range a direct TRIMRANGE keeps, as 0 (`blanks_as_zero`); wrapped forms (LET, IF, TAKE, DROP, a
 lifted TRIMRANGE), IFNA through TRIMRANGE and a TRIMRANGE trimmed to one blank cell are unprobed (T-2597); wide arrays
-T-2600; the REDUCE/TRIMRANGE reference T-2596.
+T-2600; the REDUCE/TRIMRANGE reference since T-2596.
 Status: VERIFIED (excel-graph)
 Tasks: T-2579, T-2600, T-2596
 

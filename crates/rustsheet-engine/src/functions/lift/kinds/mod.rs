@@ -18,7 +18,9 @@ use crate::calc_result::CalcResult;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::parser::ArrayNode;
 use crate::formatter::dates::FINANCIAL_EPOCH_1904_IN_1900_SERIALS;
+use crate::functions::statistical::incomplete_gamma;
 use crate::functions::Function;
+use crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 /// How one parameter takes an array or a range (SPEC-0011).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -69,7 +71,8 @@ pub(crate) enum KernelWork {
 
 /// How a [`KernelWork::ByValue`] kernel's work follows from one element's argument values. Every
 /// estimate is at least 1 and at most [`ValueWork::most`], so a lift charged by value never costs
-/// more than the flat worst case it replaces.
+/// more than the flat worst case it replaces; a text search has no such case, as its texts have no
+/// fixed length.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ValueWork {
     /// A loop whose length is the value of argument `arg`: the Bessel recurrences run about once
@@ -84,14 +87,76 @@ pub(crate) enum ValueWork {
     /// for the solvers, whose one pass is the walk and every price sum). A pass is charged
     /// `weight` units at the longest schedule (quarterly across the whole calendar,
     /// [`COUPON_SPAN_DAYS`]) and in proportion to its period count plus one below that; see
-    /// [`coupon_walk_units`].
+    /// [`coupon_walk_units`]. With `reads_all_first` (the ODD* kernels, `Model::odd_args`), the
+    /// kernel reads every argument before any walk, and returns on an error or a logical in any
+    /// of them and on a date off the calendar (outside [0, 2958466)): such an element is
+    /// charged 1 (T-2815).
     CouponWalks {
         dates: &'static [usize],
         frequency: usize,
         walks: u32,
         weight: u32,
+        reads_all_first: bool,
+    },
+    /// A search for argument `find`'s text in argument `within`'s (FIND and SEARCH, T-1961):
+    /// both texts are read once, and each start position of `within` compares at most the
+    /// shorter text's length with `find`, `per_visit` compared bytes costing one visit beside the
+    /// position's own; see [`text_scan_units`].
+    TextScan {
+        find: usize,
+        within: usize,
+        per_visit: u32,
+    },
+    /// HYPGEOM.DIST's cdf (T-2433): either a walk of at most `walk` units, or a sum over a window
+    /// of at most the least of the counts `counts` (each truncated) plus one terms, and up to
+    /// `extra` more exponents for the window's bounds, at `per_term` units a term; never more
+    /// than `weight`, the bound of the sum's own per-call cap. A text count bounds nothing (the
+    /// kernel may read it as any count), so the least of the others is taken, `weight` when
+    /// every count is a text. An element is charged 1 when a count is an error, negative or too
+    /// large ([`COUNT_LIMIT_EXCLUSIVE`]): the kernel returns before either path. See
+    /// [`hypergeometric_units`].
+    HypergeometricSum {
+        counts: &'static [usize],
+        walk: u32,
+        extra: u32,
+        per_term: u32,
+        weight: u32,
+    },
+    /// One cdf of the incomplete gamma, or one inversion of it (`probability` names its
+    /// probability argument), over the first `args` arguments, at most `weight` units (T-2795).
+    /// A cdf takes at most `incomplete_gamma::cdf_terms_bound(a)` terms for a shape of at most
+    /// `a`, which argument `shape` bounds as `shape_of` says; an inversion runs at most
+    /// `incomplete_gamma::INVERSION_CDFS` cdfs, all within one budget of `MAX_TERMS` terms. An
+    /// element is charged 1 when an argument is an error, or a probability is a number outside
+    /// (0, 1), a logical or a blank: the kernel returns before any cdf. A text shape or
+    /// probability is charged `weight`, as it may read as any number. See
+    /// [`incomplete_gamma_units`].
+    IncompleteGamma {
+        args: usize,
+        shape: usize,
+        shape_of: GammaShape,
+        probability: Option<usize>,
+        weight: u32,
     },
 }
+
+/// How a [`ValueWork::IncompleteGamma`] element's shape follows from its shape argument's value
+/// `v`, as an upper bound (a kernel may truncate `v` first, which only lowers the shape).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GammaShape {
+    /// The shape is the argument: GAMMA.DIST's and GAMMA.INV's alpha.
+    Shape,
+    /// The shape is half the argument: the chi-squared degrees of freedom.
+    HalfDegrees,
+    /// The shape is the argument truncated plus 1: POISSON's count, Q(k + 1, mean).
+    PoissonCount,
+}
+
+/// The measured cost, in tenths of a nanosecond, of one incomplete-gamma term at its slowest
+/// (the continued fraction's NaN path) and of one cdf's own work beside its terms, release build:
+/// the figures statistical.rs `INCOMPLETE_GAMMA_WEIGHT` is derived from (T-1872).
+const INCOMPLETE_GAMMA_TERM_COST: u64 = 47;
+const INCOMPLETE_GAMMA_CDF_COST: u64 = 490;
 
 /// The widest span of days a coupon schedule walk can cross: the calendar's last serial, as the
 /// kernels read every date in the 1900 financial space from serial 0 to 9999-12-31 (a 1904
@@ -103,7 +168,8 @@ pub(crate) const COUPON_SPAN_DAYS: u64 = MAXIMUM_DATE_SERIAL_NUMBER.unsigned_abs
 pub(crate) enum ArgValue {
     Number(f64),
     Boolean(bool),
-    Text,
+    /// A text of this many UTF-8 bytes, at least its UTF-16 units.
+    Text(usize),
     /// A blank cell or an omitted argument: the kernels read it as 0.
     Blank,
     Error,
@@ -114,7 +180,7 @@ impl ArgValue {
         match value {
             CalcResult::Number(n) => ArgValue::Number(*n),
             CalcResult::Boolean(b) => ArgValue::Boolean(*b),
-            CalcResult::String(_) => ArgValue::Text,
+            CalcResult::String(s) => ArgValue::Text(s.len()),
             CalcResult::EmptyCell | CalcResult::EmptyArg => ArgValue::Blank,
             _ => ArgValue::Error,
         }
@@ -126,7 +192,7 @@ impl ArgValue {
         match self {
             ArgValue::Number(n) => Some(n.floor()),
             ArgValue::Boolean(b) => Some(f64::from(u8::from(b))),
-            ArgValue::Text | ArgValue::Blank | ArgValue::Error => None,
+            ArgValue::Text(_) | ArgValue::Blank | ArgValue::Error => None,
         }
     }
 
@@ -134,11 +200,28 @@ impl ArgValue {
         match node {
             ArrayNode::Number(n) => ArgValue::Number(*n),
             ArrayNode::Boolean(b) => ArgValue::Boolean(*b),
-            ArrayNode::String(_) => ArgValue::Text,
+            ArrayNode::String(s) => ArgValue::Text(s.len()),
             ArrayNode::Empty => ArgValue::Blank,
             ArrayNode::Error(_) | ArrayNode::Lambda(_) | ArrayNode::Nested(_) => ArgValue::Error,
         }
     }
+}
+
+/// Whether an ODD* kernel (`Model::odd_args`) returns before any walk on these argument values:
+/// it reads every argument as a number, refusing an error or a logical (`cast_number_no_bools_ref`),
+/// and each of the `dates` must be on the calendar, `#NUM!` as it is read
+/// (probes/fin-odd-date-before-error-arg, odd-bond-argument-check-order). A text may read as any
+/// number, so it refuses nothing. `value` is `None` only past the call's arguments (a blank one
+/// is `Some(ArgValue::Blank)`), so the scan stops at the call's end.
+fn refused_before_any_walk(dates: &[usize], value: &impl Fn(usize) -> Option<ArgValue>) -> bool {
+    let calendar = 0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0;
+    let off_calendar = dates
+        .iter()
+        .any(|&arg| matches!(value(arg), Some(ArgValue::Number(n)) if !calendar.contains(&n)));
+    off_calendar
+        || (0..)
+            .map_while(value)
+            .any(|arg| matches!(arg, ArgValue::Error | ArgValue::Boolean(_)))
 }
 
 impl ValueWork {
@@ -151,6 +234,11 @@ impl ValueWork {
             ValueWork::CouponWalks { walks, weight, .. } => {
                 u64::from(walks).saturating_mul(u64::from(weight)).max(1)
             }
+            // A text has no fixed length.
+            ValueWork::TextScan { .. } => u64::MAX,
+            // The sum at its cap.
+            ValueWork::HypergeometricSum { weight, .. }
+            | ValueWork::IncompleteGamma { weight, .. } => u64::from(weight),
         }
     }
 
@@ -164,7 +252,7 @@ impl ValueWork {
                     Some(ArgValue::Number(n)) if (0.0..=f64::from(cap)).contains(&n.trunc()) => {
                         n.trunc()
                     }
-                    Some(ArgValue::Text) => f64::from(cap),
+                    Some(ArgValue::Text(_)) => f64::from(cap),
                     _ => 0.0,
                 };
                 // `order` is a whole number in [0, cap], so the cast is exact.
@@ -176,13 +264,17 @@ impl ValueWork {
                 frequency,
                 walks,
                 weight,
+                reads_all_first,
             } => {
+                if reads_all_first && refused_before_any_walk(dates, &value) {
+                    return 1;
+                }
                 // An invalid frequency is #NUM! and an error argument its error, both before any
                 // walk (`Model::coupon_args`, `Model::bond_args`, `Model::accrint_of`). A logical
                 // is charged as its number: ACCRINT reads it as one.
                 let per_year = match value(frequency) {
                     // A text may read as any frequency.
-                    Some(ArgValue::Text) => 4.0,
+                    Some(ArgValue::Text(_)) => 4.0,
                     Some(arg) => match arg.whole_number() {
                         Some(n) => n,
                         None => return 1,
@@ -198,7 +290,7 @@ impl ValueWork {
                     let date = match value(arg) {
                         Some(ArgValue::Blank) | None => 0.0,
                         // A text may read as any date.
-                        Some(ArgValue::Text) => return self.most(),
+                        Some(ArgValue::Text(_)) => return self.most(),
                         Some(ArgValue::Error) => return 1,
                         Some(arg) => arg.whole_number().unwrap_or(0.0),
                     };
@@ -218,8 +310,148 @@ impl ValueWork {
                 let walk = coupon_walk_units(span as u64, per_year as u64, weight);
                 u64::from(walks).saturating_mul(walk).max(1)
             }
+            ValueWork::TextScan {
+                find,
+                within,
+                per_visit,
+            } => text_scan_units(
+                text_scan_length(value(find)),
+                text_scan_length(value(within)),
+                per_visit,
+            ),
+            ValueWork::HypergeometricSum {
+                counts,
+                walk,
+                extra,
+                per_term,
+                weight,
+            } => {
+                let mut least = f64::INFINITY;
+                for &arg in counts {
+                    let count = match value(arg) {
+                        Some(ArgValue::Blank) | None => 0.0,
+                        // A text may read as any count, so it bounds nothing: the least of
+                        // the other counts still bounds the window.
+                        Some(ArgValue::Text(_)) => continue,
+                        Some(ArgValue::Error) => return 1,
+                        Some(ArgValue::Number(n)) => n,
+                        Some(ArgValue::Boolean(b)) => f64::from(u8::from(b)),
+                    };
+                    // The kernel's #NUM! before either path (hypegeom.rs `hyp_geom_dist_of`).
+                    if !(0.0..COUNT_LIMIT_EXCLUSIVE).contains(&count) {
+                        return 1;
+                    }
+                    least = least.min(count.trunc());
+                }
+                // `least` is a whole number in [0, 2^31), or infinite when every count is a
+                // text: the sum at its cap.
+                let terms = if least.is_finite() {
+                    least as u64
+                } else {
+                    u64::MAX
+                };
+                hypergeometric_units(terms, walk, extra, per_term, weight)
+            }
+            ValueWork::IncompleteGamma {
+                args,
+                shape,
+                shape_of,
+                probability,
+                weight,
+            } => {
+                // Every argument is read before any cdf (chisq.rs, gamma.rs, poisson.rs).
+                if (0..args).any(|arg| value(arg) == Some(ArgValue::Error)) {
+                    return 1;
+                }
+                if let Some(arg) = probability {
+                    match value(arg) {
+                        // A probability of 0 or 1 is closed form, and outside them #NUM!.
+                        Some(ArgValue::Number(p)) if !(p > 0.0 && p < 1.0) => return 1,
+                        Some(ArgValue::Boolean(_) | ArgValue::Blank) | None => return 1,
+                        Some(ArgValue::Text(_)) => return u64::from(weight),
+                        Some(ArgValue::Number(_) | ArgValue::Error) => {}
+                    }
+                }
+                let v = match value(shape) {
+                    Some(ArgValue::Number(n)) => n.abs(),
+                    Some(ArgValue::Boolean(b)) => f64::from(u8::from(b)),
+                    Some(ArgValue::Blank | ArgValue::Error) | None => 0.0,
+                    Some(ArgValue::Text(_)) => return u64::from(weight),
+                };
+                let a = match shape_of {
+                    GammaShape::Shape => v,
+                    GammaShape::HalfDegrees => v / 2.0,
+                    GammaShape::PoissonCount => v + 1.0,
+                };
+                let cdfs = if probability.is_some() {
+                    u64::from(incomplete_gamma::INVERSION_CDFS)
+                } else {
+                    1
+                };
+                incomplete_gamma_units(a, cdfs, weight)
+            }
         }
     }
+}
+
+/// The units one incomplete-gamma element of shape at most `a` running at most `cdfs` cdfs is
+/// charged: `weight` in proportion of its terms and cdfs at their measured costs to the bound
+/// `weight` stands for (`MAX_TERMS` terms and `incomplete_gamma::INVERSION_CDFS` cdfs), plus 1,
+/// at most `weight`. A NaN shape is charged `weight`.
+fn incomplete_gamma_units(a: f64, cdfs: u64, weight: u32) -> u64 {
+    let max_terms = u64::from(incomplete_gamma::MAX_TERMS);
+    let per_cdf = if a.is_nan() {
+        max_terms
+    } else {
+        u64::from(incomplete_gamma::cdf_terms_bound(a))
+    };
+    let terms = per_cdf.saturating_mul(cdfs).min(max_terms);
+    let cost = terms * INCOMPLETE_GAMMA_TERM_COST + cdfs * INCOMPLETE_GAMMA_CDF_COST;
+    let bound = max_terms * INCOMPLETE_GAMMA_TERM_COST
+        + u64::from(incomplete_gamma::INVERSION_CDFS) * INCOMPLETE_GAMMA_CDF_COST;
+    let weight = u64::from(weight);
+    (1 + (weight * cost).div_ceil(bound)).min(weight)
+}
+
+/// The units one HYPGEOM.DIST element is charged when the least of its counts is `least`: the
+/// larger of its two paths, the walk's `walk` units and the sum's `least + 1 + extra` terms at
+/// `per_term` units, at most `weight`. Saturating.
+fn hypergeometric_units(least: u64, walk: u32, extra: u32, per_term: u32, weight: u32) -> u64 {
+    let sum = least
+        .saturating_add(1)
+        .saturating_add(u64::from(extra))
+        .saturating_mul(u64::from(per_term));
+    sum.max(u64::from(walk)).min(u64::from(weight))
+}
+
+/// The most UTF-8 bytes a number or a logical reads as when a text function takes it as text:
+/// the General form of a number is at most 15 digits with a sign, a point and a 4-character
+/// exponent, `FALSE` is 5.
+const NUMBER_TEXT_BYTES: u64 = 32;
+
+/// The length a [`ValueWork::TextScan`] charges for an argument: a text's bytes, a number's or a
+/// logical's longest text, 0 for a blank (the empty text) and for an error, which the kernel
+/// returns before it scans.
+fn text_scan_length(value: Option<ArgValue>) -> u64 {
+    match value {
+        Some(ArgValue::Text(bytes)) => u64::try_from(bytes).unwrap_or(u64::MAX),
+        Some(ArgValue::Number(_) | ArgValue::Boolean(_)) => NUMBER_TEXT_BYTES,
+        Some(ArgValue::Blank | ArgValue::Error) | None => 0,
+    }
+}
+
+/// The units one search for a `find`-byte text in a `within`-byte one is charged: each text's
+/// length plus 1 for reading it, and at each of `within + 1` start positions 1 plus the bytes
+/// compared there (at most the shorter length) over `per_visit`. Saturating.
+/// TEXTSPLIT, TEXTBEFORE and TEXTAFTER charge a whole call by the same shape (`ScanCost` in
+/// functions/text/lifted.rs), but over a delimiter list read whole; this one is per element.
+fn text_scan_units(find: u64, within: u64, per_visit: u32) -> u64 {
+    let compared = find.min(within) / u64::from(per_visit.max(1));
+    find.saturating_add(1).saturating_add(
+        within
+            .saturating_add(1)
+            .saturating_mul(compared.saturating_add(1)),
+    )
 }
 
 /// The units one coupon schedule walk across `span` days at `per_year` (1, 2 or 4) periods a
@@ -236,7 +468,8 @@ pub(crate) fn coupon_walk_units(span: u64, per_year: u64, weight: u32) -> u64 {
 }
 
 impl KernelWork {
-    /// The units one kernel call is charged before it runs (for `ByValue`, the most it can be).
+    /// The units one kernel call is charged before it runs (for `ByValue`, the most it can be:
+    /// `u64::MAX` for a `TextScan`, which `kernel_units` charges by value instead).
     pub(crate) fn weight(self) -> u64 {
         match self {
             KernelWork::Constant | KernelWork::Output { .. } => 1,
@@ -398,7 +631,7 @@ const LIFT_1_OF_3: ArgKinds = ArgKinds::fixed(1, &[Lift, Lift, Lift], Constant);
 /// Three or four worksheet arguments that lift over arrays and ranges: RRI, PDURATION, SLN;
 /// ISPMT and SYD.
 const LIFT_3: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Constant);
-/// `DAYS360(start_date, end_date, [method])`, FIND and SEARCH.
+/// `DAYS360(start_date, end_date, [method])` and BASE.
 const LIFT_2_OF_3: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift, Lift], Constant);
 /// `BINOM.DIST.RANGE(trials, probability_s, number_s, [number_s2])` and SUBSTITUTE.
 const LIFT_3_OF_4: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Constant);
