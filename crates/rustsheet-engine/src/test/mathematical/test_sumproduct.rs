@@ -147,3 +147,21 @@ fn test_sumproduct_error_element_after_shape_mismatch() {
     assert_eq!(model._get_text("C1"), "#DIV/0!");
     assert_eq!(model._get_text("C2"), "#DIV/0!");
 }
+
+#[test]
+fn test_sumproduct_one_cell_numeric_text_is_a_zero_factor() {
+    // Excel: a one-cell reference to numeric text is a 0 factor beside a one-cell number, in
+    // either order, like non-numeric text (probes/t2921-sumproduct-one-cell-numeric-text A1-A3,
+    // A45, excel-graph). Excel 2013 cached #VALUE! for poi FormulaEvalTestData_Copy J1328
+    // (CONFLICTING, docs/excel-semantics/coercion.md).
+    let mut model = new_empty_model();
+    model._set("A1", "'4");
+    model._set("B1", "2");
+    model._set("C1", "=SUMPRODUCT(A1,B1)");
+    model._set("C2", "=SUMPRODUCT(B1,A1)");
+    model._set("C3", "=SUMPRODUCT(A1:A1,B1:B1)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "0");
+    assert_eq!(model._get_text("C2"), "0");
+    assert_eq!(model._get_text("C3"), "0");
+}
