@@ -19,7 +19,6 @@ Excel saves typed whitespace in `<f>` (`=1 + 2` is `<f>1 + 2</f>`, `=SUM( 1 )`, 
 ## Acceptance criteria
 - [ ] Export of a formula with kept whitespace writes it as typed; a stored `1 + 2` round-trips.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Whitespace inside structured references (T-2801) and beside missing arguments (T-2944).

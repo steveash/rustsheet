@@ -134,7 +134,8 @@ impl Node {
         node
     }
 
-    /// [`Node::unwrap_spaced`], for a walker that rewrites the node it decides on.
+    /// [`Node::unwrap_spaced`] for a mutable borrow, for a walker that rewrites the node it
+    /// decides on (one function cannot serve both borrows).
     pub(crate) fn unwrap_spaced_mut(&mut self) -> &mut Node {
         let mut node = self;
         while let Node::Spaced { child, .. } = node {

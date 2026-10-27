@@ -563,6 +563,7 @@ fn test_typed_whitespace_is_saved_in_the_formula_text() {
         ("=- 5 * 2", "<f>- 5 * 2</f>"),
         ("=ABS( @A1:A3 ) + 1", "<f>ABS( A1:A3 ) + 1</f>"),
         ("=SUM( @A1:A3, 1)", "<f>SUM( _xlfn.SINGLE(A1:A3), 1)</f>"),
+        // Saved as a one-cell dynamic array, as without the spaces, so its `<f>` has attributes.
         (
             "=LET( x, 1, x + 1)",
             ">_xlfn.LET( _xlpm.x, 1, _xlpm.x + 1)</f>",
