@@ -3,7 +3,7 @@ id: T-2803
 title: "SPEC-0024 step 1: a per-formula work budget charged per node, per array cell built and per lifted kernel unit"
 milestone: M7
 lane: engine
-status: blocked
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -59,8 +59,8 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
 - Charging array cells read by aggregates (T-2804) and by the other whole-array readers (T-2805).
 - Dense single-range walks (T-2710, T-2711, T-2713).
 
-## Blocked because
-Blocked on T-2923 (SPEC-0024 amendment), by SPEC-0024 section 4's rule: "no weights meet both constraints". Checked by an
+## Notes from the second blocked run
+Unblocked 2026-10-27: T-2923 (#2051) merged its SPEC-0024 amendment. Was blocked on T-2923 (SPEC-0024 amendment), by SPEC-0024 section 4's rule: "no weights meet both constraints". Checked by an
 opus run on 2026-10-27, after main was merged in (release build, idle 4-core container). The run timed each kind to the limit
 at the committed weights (scratch test, not committed). Nested LAMBDA helpers miss the 10 s target by an order of magnitude,
 and the 30 s harness timeout too:
