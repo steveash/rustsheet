@@ -37,4 +37,4 @@ T-1517, T-2634. Triaged by the 2026-10-26 (18:47 UTC) steward run.
 ## Outcome
 Took upstream's `LOGICAL/NOT.xlsx` (de6545ab, Microsoft Macintosh Excel cache, 16,745 bytes).
 The ironcalc-calc suite now scores 115 checked cells for it, all pass; no known failures
-added, no baseline change, 0 regressions.
+added (the baseline gained only the new checked-cell count line), 0 regressions.
