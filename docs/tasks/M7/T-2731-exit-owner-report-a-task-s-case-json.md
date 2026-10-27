@@ -3,7 +3,7 @@ id: T-2731
 title: "Exit-owner report: a task's 'case.json (n): cells' lines and A1:B2 spans own their cells (1,866 cell lines in 74 open tasks are invisible to it)"
 milestone: M7
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -37,17 +37,41 @@ Found by the gap triage on 2026-10-25, which used `exit_owners.owned` to find un
   Tests: scripts/test_exit_owners.py.
 
 ## Acceptance criteria
-- [ ] A stem followed by `.case.json` names its case (the T-2427 reproduction above is owned). A stem that is only
+- [x] A stem followed by `.case.json` names its case (the T-2427 reproduction above is owned). A stem that is only
       the prefix of a longer name still does not (`abc` does not name `abcd.case.json`).
-- [ ] A colon span `A5:D5` (with or without `Sheet!`) owns every cell in its rectangle, so T-2519's B5 is owned. Hyphen
+- [x] A colon span `A5:D5` (with or without `Sheet!`) owns every cell in its rectangle, so T-2519's B5 is owned. Hyphen
       spans are owned or explicitly not, as the new decision record states, with a test either way.
-- [ ] The per-line "stem with no A1 token owns the whole case" rule is unchanged: a `Cells:` line with cells owns only
+- [x] The per-line "stem with no A1 token owns the whole case" rule is unchanged: a `Cells:` line with cells owns only
       those cells, and the existing tests pass unchanged.
-- [ ] Before/after counts of `make exit-owners MILESTONE=M5` and `MILESTONE=M6` (and of the same check run at M7, M8
+- [x] Before/after counts of `make exit-owners MILESTONE=M5` and `MILESTONE=M6` (and of the same check run at M7, M8
       and M9 with an ad hoc report of all suites, as the triage did) are in the Outcome.
-- [ ] Decision record amending 0096 added; `make check` green; reviewers approve.
+- [x] Decision record amending 0096 added; `make check` green; reviewers approve.
 
 ## Out of scope
 - Rewriting existing task files into a new format.
 - Companion cells that no task names. The probes/t2436 ROWS/COLUMNS cells in columns T and U are an example: 130
   failing companions of owned column-A cells, visibly off. They need a bookkeeping task, not a tool rule.
+
+## Outcome
+Decision 0136 amends 0096's ownership rule, and `scripts/exit_owners.py` implements it:
+- `<stem>.case.json` names its case, bounded like a file name (`abc` does not name `abcd.case.json`).
+- A colon span (`A5:D5`, `Sheet1!$A$5:$D$5`) owns its rectangle when it is on a line that names the stem. The
+  per-line limit keeps a quoted formula's range (T-2519's `Data!B6:C10`) from owning cells. The single-A1 and
+  whole-case rules are unchanged.
+- Hyphen spans (`D49-D65`) are not spans. They name their ends only, and a test pins this.
+- `column_number` is reused from tools/src/rustsheet_tools/sheetop.py, which is stdlib-only.
+
+The T-2427 reproduction (`146b46e74f2dac3b` Calc!A328) and T-2519's Sheet1!B5 are now owned.
+
+Counts, on a `make eval` of origin/main a1e8fbe6 (all 17 suites), old rule then new:
+- `make exit-owners MILESTONE=M5`: 0 → 0. `MILESTONE=M6`: 0 → 0.
+- `--unattributed` unowned: 651 → 22. The 629 gained cells are all owned through `Cells:` lines (`.case.json`),
+  none through spans; a sample traced to T-2425's lists.
+- Ad hoc, over every failing cell of every suite (263,139 cells), counting cells that an open task of the
+  milestone owns:
+  - M7: 84 → 86.
+  - M8: 17 → 17.
+  - M9: 90,759 → 92,705. Of gen-m9's 3,717 failing cells, unowned 2,831 → 978.
+  - gen-m7 and gen-m8 have no failing cells.
+
+Eval delta: none (no engine, suite or baseline change). `make check` green.
