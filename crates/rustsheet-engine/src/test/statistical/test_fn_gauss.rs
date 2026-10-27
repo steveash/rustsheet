@@ -45,3 +45,19 @@ fn test_fn_gauss_booleans() {
     assert_eq!(model._get_text("A1"), *"0.341344746");
     assert_eq!(model._get_text("A2"), *"0");
 }
+
+#[test]
+fn test_fn_gauss_tiny_argument_is_z_times_phi_zero() {
+    // Excel (gen-m9 oracle, T-2434): the leading term below ~2E-15, the cancelled Phi(z) - 0.5 above.
+    let mut model = new_empty_model();
+    model._set("A1", "=GAUSS(1E-300)");
+    model._set("A2", "=GAUSS(-1E-300)");
+    model._set("A3", "=GAUSS(1E-10)");
+    model._set("A4", "=GAUSS(4E-15)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"3.98942E-301");
+    assert_eq!(model._get_text("A2"), *"-3.98942E-301");
+    assert_eq!(model._get_text("A3"), *"3.98943E-11");
+    assert_eq!(model._get_text("A4"), *"1.55431E-15");
+}
