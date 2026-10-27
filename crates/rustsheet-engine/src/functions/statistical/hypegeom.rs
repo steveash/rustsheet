@@ -305,15 +305,19 @@ impl Model {
         }
         let [sample_s, number_sample, population_s, number_pop] = counts.map(f64::trunc);
 
-        // sample_s >= number_sample + population_s - number_pop, number_sample <= number_pop and
-        // population_s <= number_pop, with number_pop > 0; anything else is #NUM!. A zero
-        // number_sample or population_s is valid (t1049-hypgeomdist A44, A46, A55, A56).
-        let valid = sample_s >= number_sample + population_s - number_pop
-            && number_sample <= number_pop
-            && population_s <= number_pop
-            && number_pop > 0.0;
+        // number_sample <= number_pop and population_s <= number_pop, with number_pop > 0; anything
+        // else is #NUM!. A zero number_sample or population_s is valid (t1049-hypgeomdist A44,
+        // A46, A55, A56).
+        let valid = number_sample <= number_pop && population_s <= number_pop && number_pop > 0.0;
         if !valid {
             return Err(num_error(cell));
+        }
+        // Below number_sample + population_s - number_pop, the fewest successes a draw can hold,
+        // the density and the cdf are 0, not `#NUM!` (gen-m9/4250f880ab640c49 A339
+        // `HYPGEOMDIST(2,5,10,11)`, probes/t2436 `HYPGEOM.DIST(1,3,6,7,TRUE)`; statistics.md
+        // "HYPGEOMDIST: a sample below the possible range is 0", T-2699).
+        if sample_s < number_sample + population_s - number_pop {
+            return Ok(0.0);
         }
         // Above min(number_sample, population_s) the density is 0 and the cdf 1, not `#NUM!`
         // (t1048-hypgeomdist A13, A16; t1049-hypgeomdist A35, A36, A43, A45).

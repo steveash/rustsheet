@@ -368,6 +368,13 @@ same reference. `ThisRowKind` evaluation is O(1).
 3. **T-2196 (M): table parts in the export.** Write `<tableParts>` and `xl/tables/tableN.xml`,
    with the totals-row metadata xlsx-storage.md requires. Then switch `to_excel_string` to the
    preserved reference, with a bare name written as `Table[]`.
+   As built (T-2196): `export/tables.rs` writes one part per table (numbered in sheet order, by name
+   within a sheet), after the sheet's external hyperlinks in its rels part; a totals-row formula cell
+   as `totalsRowFunction="custom"` with its `<totalsRowFormula>`, a text cell as `totalsRowLabel`;
+   an `<autoFilter>` over the header and data rows. The export prints every resolved structured
+   reference from `reference` (`StructuredReference::file_text`), so a `#This Row` is no longer
+   lowered at the cell's row there; an unresolved one is still `#REF!`. The criteria of an applied
+   filter are not kept (T-2838).
 4. **T-1683** picks the FORMULATEXT spelling over the preserved node, and adds the lexer
    rejection of unterminated references.
 5. **T-2197 (probe):** how Excel resizes, converts and deletes a table on row and column inserts

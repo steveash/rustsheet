@@ -221,10 +221,10 @@ fn a_grown_table_reads_its_new_data_row() {
     assert_eq!(value(&model, 1, 5, 1), "#VALUE!");
 }
 
-/// The export prints the area until it writes table parts (T-2196): today's text, resolved at
-/// the exported cell's row.
+/// The export writes table parts, so it keeps `#This Row` in its file form on every row; Excel
+/// evaluates it at the cell's row (T-2196).
 #[test]
-fn the_export_prints_the_area_of_the_row() {
+fn the_export_keeps_this_row_on_every_row() {
     let mut model = model();
     for row in [3, 6] {
         model
@@ -244,9 +244,12 @@ fn the_export_prints_the_area_of_the_row() {
         row,
         column: 4,
     };
-    assert_eq!(to_excel_string(node, &at(3)), "$A$3+SUM($A$3:$B$3)");
-    assert_eq!(to_excel_string(node, &at(6)), "#VALUE!+SUM(#VALUE!)");
-    assert_eq!(to_excel_string(node, &at(1)), "#VALUE!+SUM(#VALUE!)");
+    for row in [3, 6, 1] {
+        assert_eq!(
+            to_excel_string(node, &at(row)),
+            "Sales[[#This Row],[Qty]]+SUM(Sales[[#This Row],[Qty]:[Val]])"
+        );
+    }
 }
 
 /// Structural edits keep today's values; one whose displaced area differs, or that moves the
