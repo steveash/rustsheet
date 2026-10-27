@@ -3,7 +3,7 @@ id: T-2840
 title: "Lifted AMORDEGRC over texts charged the cap's bound: #ERROR! where Excel spills (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
