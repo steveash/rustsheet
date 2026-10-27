@@ -1,7 +1,7 @@
 ---
 id: T-2880
 title: "Exit-owner report: a file stem shared by several cases (every calipers workbook, gen-m9 hashes copied into probes/t2429 and t2436) must not own all of them"
-milestone: M2
+milestone: M7
 lane: harness
 status: todo
 priority: P2
@@ -55,7 +55,8 @@ the Phase 1 rule that every remaining failure has a filed task (docs/milestones.
 - [ ] The Outcome gives `make exit-owners MILESTONE=M5`, `MILESTONE=M6`, `MILESTONE=M2` (once T-2822 lands) and
       `scripts/exit_owners.py --unattributed` counts before and after, on a report that includes calipers
       (`target/release/rustsheet-eval fetch --suite calipers` first). Each newly listed cell gets an owner in the
-      same PR (a line in the open task that should fix it) or is listed in the Outcome for the steward.
+      same PR (a line in the open task that should fix it) or is listed in the Outcome for the steward; past 10 newly
+      listed cells, the owner lines go to a follow-up task instead.
 - [ ] Decision record amending decision 0096 added; `make check` green; reviewers approve.
 
 ## Out of scope
