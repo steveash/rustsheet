@@ -1,8 +1,10 @@
 # SPEC-0024 — A work budget for one formula evaluation
 
-- **Status:** accepted (T-2712; architecture, quality and security reviewers approved)
+- **Status:** accepted (T-2712; architecture, quality and security reviewers approved); amended by T-2813
+  (how per-call capped work is charged and calibrated: sections 1 and 4)
 - **Milestone / lane:** M7 / engine
-- **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps T-2806, T-2807
+- **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps
+  T-2806, T-2807; the visit caps' 5 s rule (T-2813 amendment) for YIELD and ODDFYIELD is T-2879
 
 ## Problem
 Each array is capped at 2^20 cells (arrays.md "Array results above 1,048,576 cells are #ERROR!").
@@ -82,7 +84,7 @@ knows of goes through at least one of them. "Known gaps" below lists what is sti
 | array cells built | where an array value is allocated: SEQUENCE, RANDARRAY, MAKEARRAY, the result of MAP/SCAN/BYROW/BYCOL, `evaluate_range` (range → array), `broadcast_arrays` and the operator/IF broadcasts, `broadcast_text`, the SPEC-0011 lift driver's result, HSTACK/VSTACK/EXPAND/WRAP*/TEXTSPLIT, MMULT | rows × columns, charged before allocating, at the same call that runs `limits::check_array_size` / `check_array_cells` / `check_built_array_size` |
 | array cells read | the aggregate walker's array arm (`aggregate_args.rs` `walk_array_items`: SUM, COUNT, AVERAGE, MIN, MAX, PRODUCT and the other `for_each_value` readers), then the other whole-array readers (step 3) | cells of the array argument |
 | text values | the same node chokepoint: a node whose value is a `CalcResult::String` (a function result, a cell read, a LET or LAMBDA variable read, a literal) | ⌈UTF-8 bytes / `TEXT_BYTES_PER_UNIT`⌉ (64 provisional; set by calibration). `broadcast_text` charges the byte total it already sums for its 64 MiB cap (`within_text_budget`) |
-| per-call capped work | every per-call cap's spend, charged again to the formula: the SPEC-0011 driver's `kernel_units`, the *IF(S) cell visits counted for `MAX_LIFTED_CELL_VISITS`, the regex engine's compile and match budgets (regex_engine.rs, pcre) | the same number, or a fixed weight per budget step set by calibration |
+| per-call capped work | every per-call cap's spend, charged again to the formula: the SPEC-0011 driver's `kernel_units`, the *IF(S) cell visits counted for `MAX_LIFTED_CELL_VISITS`, GROUPBY/PIVOTBY's visits, the regex engine's compile and match budgets (regex_engine.rs, pcre) | the same number for the visit caps (1 unit per visit or kernel unit, T-2813: see "Per-call capped work" below); a fixed weight per budget step set by calibration for the regex budgets |
 
 Why these charges:
 - **Nodes** bound everything that builds no array. Examples are a long scalar LAMBDA body called
@@ -112,6 +114,38 @@ Known gaps (out of scope, recorded for later work):
 
 Union walks keep their own budget (`MAX_AREA_WALK`, 2^24 steps per formula). It is already per
 formula and already bounded, so it is not charged twice.
+
+#### Per-call capped work (amendment, T-2813)
+**Rule.** A visit cap's spend (the lift driver's cell visits and `kernel_units`, the *IF(S) and
+AGGREGATE visits, GROUPBY/PIVOTBY's visits, all counted against `MAX_LIFTED_CELL_VISITS` = 2^27) is
+charged to the formula at **1 unit per visit or kernel unit**, everywhere, inside a LAMBDA or not.
+The time a call's units take is not the formula budget's to fit: it belongs to the call's own cap.
+SPEC-0011's security rule for kernel work makes each kernel weight a measure of time (T-2814 fitted
+RATE's to about 18 ns a unit at the cap). Since `MAX_FORMULA_WORK` is twice
+`MAX_LIFTED_CELL_VISITS`, a formula spends at most two caps' worth of capped work (`spend_work`
+refuses a charge larger than what is left, so two calls exactly at the cap plus any node already
+exceed it). So this kind's 10 s target (section 4) holds exactly when **every visit cap's worst
+case, one call at its cap, runs within 5 s**. That is a requirement on the kernel weights
+(SPEC-0011), and a weight that breaks it is a perf task against that kernel, not a change to this
+budget.
+
+Why not the alternatives T-2813 weighed:
+- *A weight above 1.* An eval cell may legitimately spend most of one cap on one call
+  (gen-m9/0a614cfe974b59c3 Calc!A117, 124,806,376 units). Any weight above 2 turns such a cell into
+  `#VALUE!`; 6 cost 13 gen-m9 cells (T-2803). A higher weight would also make the formula budget,
+  not the per-call cap, the real limit of one call, so two limits would decide one thing.
+- *Charging only inside a LAMBDA call.* It needs a call-depth flag on every charge, and it leaves the
+  non-LAMBDA product open: a formula of a few hundred lifted calls side by side
+  (`SUM(RATE(..),RATE(..),..)` within 8,192 characters) multiplies the per-call cap by the call
+  count with no helper involved. Charging everywhere bounds that too, at the cost of refusing a
+  formula with two calls each near its cap (one call at its cap plus a quarter-limit of other work
+  always computes, section 4); no eval formula has even two such calls.
+- *Lowering the per-call cap or raising the formula limit for this kind.* The first refuses the eval
+  cells above; the second raises the time every other kind may take, and the limit stays one
+  number (section 4).
+
+The regex compile and search budgets are not visit caps: they keep the fixed weights per budget
+step that calibration sets (section 4).
 
 ### 2. Where the counter lives
 `area_budget.rs` `AreaBudget` already has the right lifetime. `Model::with_area_budget` gives each
@@ -199,7 +233,8 @@ The limit has two constraints:
   - read cells: the LET variant;
   - text: `MAP(SEQUENCE(1000),LAMBDA(x,MAP(SEQUENCE(1000),LAMBDA(y,LEN(REPT("a",32767))))))`
     and the `LET(s,REPT(..),..LEN(s)..)` variant;
-  - per-call caps: a MAKEARRAY of lifted RATE and a MAP of REGEXTEST calls.
+  - per-call caps: a MAKEARRAY of lifted RATE and a MAP of REGEXTEST calls (amendment, T-2813:
+    also a MAKEARRAY of lifted YIELD; the visit caps' target is a per-call one, below).
   The weights (units per node, `TEXT_BYTES_PER_UNIT`, units per regex step) are chosen so that each
   kind's worst case reaches the limit in at most **10 s**. A case can hold several such formulas.
   Weights may differ per kind; the limit stays one number.
@@ -212,6 +247,48 @@ Before committing, it measures the highest units any eval formula spends, with a
 instrumentation run over all suites. It records the maximum, the case and the per-kind timings in
 the DEVIATION entry. If the maximum is above 2^26 (a quarter of the limit), or no weights meet both
 constraints, step 1 stops and reports it rather than loosening either constraint.
+
+**Per-call capped work (amendment, T-2813).** The quarter-limit margin is measured without the
+visit caps' charges, which have a margin of their own:
+- *Lower, other kinds:* the heaviest eval formula's units outside the visit caps' charges stay at or
+  below 2^26.
+- *Lower, visit caps:* the heaviest eval formula's visit-cap charges, summed over all its calls,
+  stay at or below one cap, `MAX_LIFTED_CELL_VISITS` (2^27). Together with the line above, every
+  eval formula then stays below 2^26 + 2^27, three quarters of the limit, so a formula of one call
+  at its cap plus a quarter-limit of other work always computes, and the formula budget refuses no
+  single call that its own cap allows. A second call near its cap in the same formula may be
+  refused.
+- *Upper, visit caps:* each visit cap's worst case, one call at its cap, runs within 5 s (release
+  build), so two such calls, the most the limit allows, stop within 10 s ("Per-call capped work" in
+  section 1).
+
+Measured for T-2813 (release build, 2026-10-27, the T-2803 branch with origin/main merged in, local
+instrumentation of `with_area_budget`, not committed): `rustsheet-eval check` has 0 regressions and
+no formula past the limit. The heaviest eval formula spends 118,754,196 units, 118,751,450 of them
+visit-cap charges (below 2^27) and 2,746 other units (a Calc!A204 cell; the 124,806,376 of T-2803
+predates the kernel charges T-2814 and T-2815 changed). The heaviest outside the visit caps spends
+8,388,620 units, none of them visit-cap charges (2^23, below 2^26). Both lower constraints hold.
+Time to the limit, each a `SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(<call>))))`:
+
+| `<call>` | one call alone | to the limit |
+|---|---|---|
+| `RATE(3000+0*SEQUENCE(16384),-1,100)` (all 200 steps, at the cap) | 2.1 s | 2.1 s (the second call's charge fails) |
+| `RATE(3000+0*SEQUENCE(1000),-1,100)` | | 4.2 s (32 calls) |
+| `YIELD(43831,47484,0.05,1E-100*SEQUENCE(12329),100,2)` | | 17.6 s |
+| `YIELD(43831,80355,0.05,1E-100*SEQUENCE(644),100,4)` | 15.0 s | 28.1 s |
+| `REGEXTEST(REPT("a",32767)&SEQUENCE(100),"(a|aa)*b")` (a 100 by 100 MAKEARRAY) | | 0.8 s |
+
+The YIELD and ODDFYIELD shapes miss the 5 s rule today, as one call of theirs at the cap takes
+about 17 s; T-2879 refits their weight (about 4.3 s at 2^26, measured by T-2814) and owns the gap.
+T-2803 does not wait for it: without the budget the same MAKEARRAY never stops, and with it it stops
+within two caps' worth of calls. T-2803 re-measures these figures on its own head and records them
+in the DEVIATION entry (section 5).
+Until T-2879 merges, the DEVIATION entry names that gap (a MAKEARRAY of YIELD takes about 28 s to
+the limit) and T-2879. The other kernels near the cap in eval (CHISQ.DIST, GAMMAINV, POISSON.DIST,
+ODDLPRICE) and the *IF(S), AGGREGATE and GROUPBY/PIVOTBY visits were not timed here: SPEC-0011's
+rule fits each kernel weight to time, and T-2814 timed IRR, XIRR, ODDLYIELD and PRICE within it;
+T-2803 times one call at the cap for each of these families when it resumes and files a perf task
+for any over 5 s. A formula refused for two near-cap calls is covered by the same DEVIATION entry.
 
 Worked examples at 2^28:
 
@@ -285,7 +362,9 @@ Step 1 adds this entry to docs/excel-semantics/arrays.md, with the measured cali
    built-cell charges, the per-call caps' charges, the helpers' early stop, the weights fitted to
    the per-kind timings (section 4), the DEVIATION entry with the calibration measured. Acceptance:
    the three Problem formulas finish within the harness timeout (as `#VALUE!`), each kind's worst
-   case stops within 10 s, no baseline gains a line, `make check` green.
+   case stops within 10 s, no baseline gains a line, `make check` green. The visit caps are charged
+   at 1 unit and judged by the amended rules of section 4 (T-2813); their YIELD and ODDFYIELD
+   shapes are T-2879's, not a blocker of this step.
 2. **T-2804 (S, sonnet)**: read-cell charges in the aggregate walker's array arm, and the LET variant
    as a test. Acceptance: the LET variant finishes within the harness timeout, no baseline gains a
    line.
