@@ -3,7 +3,7 @@ id: T-2606
 title: "Probe PIVOTBY's hidden Total gate with column subtotals, col_total_depth -1 and a LAMBDA returning empty text"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
