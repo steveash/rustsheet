@@ -36,7 +36,9 @@ SPAN = 100
 NEW_YEAR = 0x80
 LENGTH = 0x1F
 # chr(48) to chr(111): position gap+1, or gap+33 for month 1 (MID, as CHAR does not lift over
-# arrays in RustSheet yet and the probe should pass once the calendar is right).
+# arrays in RustSheet yet and the probe should pass once the calendar is right). It spells gaps of
+# 0-31 days only: a longer gap would decode wrong, which the length check and check_cell_starts in
+# pack_table catch.
 CODES = "".join(chr(c) for c in range(48, 112))
 # Serials of 2101-01-01 and 9999-12-31.
 FIRST_SERIAL = 73416

@@ -29,6 +29,10 @@ const FIRST_MONTH: u32 = 12;
 pub(crate) const LAST_SERIAL: i64 = 2_958_465;
 /// Its day number.
 const LAST_DAY: i64 = LAST_SERIAL - 1;
+/// The day number of 2101-01-01, past which [`LATER`] is read (its first month starts on or after
+/// this day; the days before that start belong to the last month of [`CHINESE`]), so a table that
+/// failed to decode could only lose the dates past 2100.
+const FIRST_LATER_DAY: i64 = 73_415;
 /// Day-number ranges to 2100 that already carry the next year: from Gregorian 1 January to the day
 /// before month 1, in 1960 and 2051 (`[$-110409]yyyy/m/d` of 1959-12-31 is "1959/12/18" and of
 /// 1960-01-01 "1960/12/19"; probes/text-locale-lunar-tokens A82-A85).
@@ -234,13 +238,15 @@ pub(crate) fn lunar_ymd(serial: i64, table: LunarTable) -> Option<(i32, u32, u32
     if day > LAST_DAY {
         return None;
     }
-    let [chinese, eastern] = later_tables()?;
-    let later = match table {
-        LunarTable::Chinese => chinese,
-        LunarTable::Eastern => eastern,
-    };
-    if day >= later.months.first()?.start {
-        return later.ymd(day);
+    if day >= FIRST_LATER_DAY {
+        let [chinese, eastern] = later_tables()?;
+        let later = match table {
+            LunarTable::Chinese => chinese,
+            LunarTable::Eastern => eastern,
+        };
+        if day >= later.months.first()?.start {
+            return later.ymd(day);
+        }
     }
     let (mut year, mut month, mut start) = (FIRST_YEAR, FIRST_MONTH, FIRST_MONTH_START);
     for (index, &chinese) in CHINESE.iter().enumerate() {
