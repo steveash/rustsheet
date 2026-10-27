@@ -3,7 +3,7 @@ id: T-2719
 title: "Generator: matching range shapes for *IFS and a vector MATCH lookup_array"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
