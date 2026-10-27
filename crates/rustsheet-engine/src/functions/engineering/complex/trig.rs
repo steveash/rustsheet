@@ -428,7 +428,7 @@ mod tests {
             },
         ) {
             CalcResult::String(t) => t.to_string(),
-            other => panic!("expected text, got {other:?}"),
+            _ => panic!("IMSEC returned no text"),
         };
         assert_eq!(
             text(2.112_17, 0.627_617),
