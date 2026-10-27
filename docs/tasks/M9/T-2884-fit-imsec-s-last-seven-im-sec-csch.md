@@ -3,7 +3,7 @@ id: T-2884
 title: "Fit IMSEC's last seven im-sec-csch-fused texts (cosh y and sinh y parts)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
