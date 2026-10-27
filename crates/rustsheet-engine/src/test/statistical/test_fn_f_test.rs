@@ -83,7 +83,9 @@ fn f_test_is_symmetric_and_keeps_the_rounded_powers() {
     assert_eq!(model._get_text("C3"), "#NUM!");
     let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
     assert_eq!(number("A1").to_bits(), number("A2").to_bits());
-    assert!((number("A1") / 0.794_785_878_081_945_8 - 1.0).abs() < 5e-16);
+    // Both shapes 3.5: bratio's L140 (f_test_tail.rs, T-2681) is Excel's value bit for bit
+    // (probes/ftest-decomposition A7), where the remainder model was 2 ulp off.
+    assert_eq!(number("A1"), 0.794_785_878_081_945_8);
     assert!((number("B1") / 7.189_542_390_448_293e-56 - 1.0).abs() < 5e-16);
 }
 

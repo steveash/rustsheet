@@ -23,6 +23,9 @@ B10, B28, B29, and text-locale-calendars A140. Also open there: B22, where `[$-_
 `[$-x_y]` (0x2412) prints English, so find where Excel falls back to the language. Probe the plain hex tags `[$-2412]` and `[$-2F409]` too, to learn
 whether the extended path (`resolve_extended`, neutral LCIDs only) really differs from `resolve_lcid`'s fallback.
 
+Exit owners (decision 0096; the 2026-10-27 planner run names each cell the ranges above hold):
+- probes/t1924-locale-tag-extended-hex S!A2, S!A3, S!B2, S!B3
+
 ## Acceptance criteria
 - [ ] A probe case covers the variants above; its cells pass; number-formats.md records which differ from the language fallback.
 - [ ] `make check` green; reviewers approve.
