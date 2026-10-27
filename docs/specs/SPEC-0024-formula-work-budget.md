@@ -280,6 +280,7 @@ Time to the limit, each a `SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(<call>))))`:
 
 The YIELD and ODDFYIELD shapes miss the 5 s rule today, as one call of theirs at the cap takes
 about 17 s; T-2879 refits their weight (about 4.3 s at 2^26, measured by T-2814) and owns the gap.
+As built (T-2879): at 2^26 one call at the cap takes at most 4.34 s (financial.md "Yield and odd-coupon work cap").
 T-2803 does not wait for it: without the budget the same MAKEARRAY never stops, and with it it stops
 within two caps' worth of calls. T-2803 re-measures these figures on its own head and records them
 in the DEVIATION entry (section 5).

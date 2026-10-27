@@ -59,3 +59,7 @@ UniFFI (→ Kotlin/Java) or Panama FFM via `cbindgen` for bulk transfer. JNI is 
 | v0.5 | M3 | `ChangeSet` from dirty propagation; CalcMode; precedents/dependents |
 | v0.8 | M4 | snapshots, scenarios, `RefMap` structural edits |
 | v1 | M12 | freeze + semver checks; Calculator; Java |
+
+The Python package's IronCalc-era surface (raw `Model`, `UserModel`, the bitcode/icalc loaders, external diffs,
+`test_panic`) is decided by SPEC-0026: the byte loaders, diffs and `test_panic` go, and the classes move to a
+deprecated `rustsheet.legacy` module until the v1 freeze.

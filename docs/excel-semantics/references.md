@@ -2364,7 +2364,7 @@ carry a table past the last row or column (the cells pushed off are empty, so th
 refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
-inside are T-2339. A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
+inside grow the table (T-2339). A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
 (plain-range-delete-row-first A6, T-2855). With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
@@ -2416,7 +2416,11 @@ Right/Left):
 - Column inserts. At A or B (left of or at the table's first column) the table moves right
   (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
   (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes
-  (table-insert-column-before, -left-edge, -inside, -right-edge).
+  (table-insert-column-before, -left-edge, -inside, -right-edge). The new table column is named `Column1`
+  and its header cell holds that text (`INDEX(Sales[#Headers],1,2)` and `INDIRECT("S!C3")` "Column1", the data
+  cells blank, `INDIRECT("Sales[Column1]")` a column COUNTA counts 0 in); a second insert at C names the new
+  C `Column2` and the first moves to D (table-insert-column-inside-header, table-insert-two-columns-inside-header,
+  excel-graph 2026-10-27, T-2339).
 - Column deletes. Deleting A moves the table left (table-delete-column-before). Deleting a table column drops
   it: deleting C (Qty) makes `SUM(Sales[Qty])` `#REF!`, printed `=SUM(#REF!)`, and the plain `S!C4:C7`
   `=SUM(S!#REF!)`, while `COLUMNS(Sales)` is 1 and `ROWS(Sales)` 4 (table-delete-column-qty); deleting B
@@ -2450,8 +2454,13 @@ Status: VERIFIED (excel-graph)
 Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
-move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
-do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+move and inside classes); the edge row deletes (T-2338) and the column grow and table-column delete match
+too (T-2339: `column_span` and `edit_columns` in table_edits.rs grow or shrink the table and its column list,
+naming an inserted column `ColumnN` in its header cell, and `deleted_column` in stringify/structured.rs
+prints a reference to a deleted column as `#REF!`, a column range that loses both ends too; one that loses
+one end prints its displaced plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
+`ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). A wholly deleted plain range still prints `#REF!:#REF!` (T-2855), and INDIRECT of a
+structured reference's text is `#REF!` (T-2911). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
 in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
@@ -2466,7 +2475,7 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

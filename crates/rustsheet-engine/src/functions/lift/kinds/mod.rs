@@ -91,7 +91,8 @@ pub(crate) enum ValueWork {
     /// [`coupon_walk_units`]. With `reads_all_first` (the ODD* kernels, `Model::odd_args`), the
     /// kernel reads every argument before any walk, and returns on an error or a logical in any
     /// of them and on a date off the calendar (outside [0, 2958466)): such an element is
-    /// charged 1 (T-2815).
+    /// charged 1 (T-2815). The lift driver gives these kernels a text as what the kernel reads it
+    /// as (`kernel_units`, T-2879): a number, or an error for a text that reads as none.
     CouponWalks {
         dates: &'static [usize],
         frequency: usize,
@@ -499,7 +500,7 @@ fn text_scan_units(find: u64, within: u64, per_visit: u32) -> u64 {
 /// YIELDs at the solver's extremes took 12 ms, four-coupon ones 223 ms; a release build).
 pub(crate) fn coupon_walk_units(span: u64, per_year: u64, weight: u32) -> u64 {
     let longest = COUPON_SPAN_DAYS * 4 + 365;
-    // At most 2^24 * (2958465 * 4 + 365), far inside a u64.
+    // At most 2^26 * (2958465 * 4 + 365), far inside a u64.
     let scaled = u64::from(weight) * (span.min(COUPON_SPAN_DAYS) * per_year.min(4) + 365);
     scaled.div_ceil(longest)
 }
