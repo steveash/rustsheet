@@ -5,7 +5,8 @@
 //! Excel's bgrat carries everything in more than double precision except three stored doubles:
 //! - lnx: Excel's LN(x) for y > 0.01, else Excel's log1p(-y) (the TOMS switch is at 0.375);
 //! - z = fl(-ν·lnx) with ν = a - 1/4, an x87 product stored to a double;
-//! - grat1's Q(1/2, z): Excel's ERFC.PRECISE of fl(sqrt(z)) (0.5 + (0.5 - ERF) below z = 1/4).
+//! - the incomplete gamma ratio Q(1/2, z) that bgrat starts from: Excel's ERFC.PRECISE of fl(sqrt(z))
+//!   (0.5 + (0.5 - ERF) below z = 1/4).
 //!
 //! The rest (the prefactor's algdiv, ν^(1/2), z^(1/2) e^-z and the asymptotic sum) is evaluated here
 //! in double-double, which is closer to r2-tdist's exact identity than the x87-extended form
