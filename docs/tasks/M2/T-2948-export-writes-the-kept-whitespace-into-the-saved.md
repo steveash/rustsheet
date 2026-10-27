@@ -3,7 +3,7 @@ id: T-2948
 title: "Export writes the kept whitespace into the saved <f> text (SPEC-0023)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
