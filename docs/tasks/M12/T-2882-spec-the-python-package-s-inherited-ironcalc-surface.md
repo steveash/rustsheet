@@ -84,7 +84,7 @@ SPEC-0026 (docs/specs/SPEC-0026-python-legacy-surface.md) decides the Python leg
 - icalc/bitcode bytes and external diffs are untrusted under directive 5.
 - The Python package drops the bitcode and icalc loaders and writers, `apply_external_diffs`/`flush_send_queue` and both `test_panic`s (T-2897).
 - `Model`, `UserModel`, their xlsx constructors and `CellType` move to a deprecated `rustsheet.legacy` module until the v1 freeze, and the README moves to the facade (T-2898).
-- The engine validates every decoded workbook in `Model::from_workbook`, with R1 and R2 as tests (T-2894), and validates diffs before applying any (T-2896).
+- The engine validates every decoded workbook in `Model::from_workbook`, with R1 and R2 as tests (T-2913), and validates diffs before applying any (T-2896).
 - A `bitcode_workbook` fuzz target covers the decoder (T-2895).
 
 The spec's feature table lists, for each legacy feature, whether it moves to the facade or is dropped at v1. api-design.md "Phasing" points to the spec. The feature table's "move" rows (expose `move_sheet`, row/column

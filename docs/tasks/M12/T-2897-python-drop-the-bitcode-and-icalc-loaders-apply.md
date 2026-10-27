@@ -34,4 +34,4 @@ round-trip; keep the xlsx ones), tests/test_diffs.py (the whole file) and docs/e
 
 ## Out of scope
 - Moving the classes to `rustsheet.legacy` (T-2898).
-- The engine's own `Model::from_bytes` and `apply_external_diffs` (T-2894, T-2896).
+- The engine's own `Model::from_bytes` and `apply_external_diffs` (T-2913, T-2896).

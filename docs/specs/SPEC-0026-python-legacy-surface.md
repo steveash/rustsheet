@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Milestone / lane:** M12 / api (with engine and harness tasks)
-- **Tasks:** T-2882 (this spec); T-2894, T-2895, T-2896, T-2897, T-2898 (implementation)
+- **Tasks:** T-2882 (this spec); T-2913, T-2895, T-2896, T-2897, T-2898 (implementation)
 
 ## Problem
 T-0104 put the Python binding on API v0 "keeping the old Model bindings until parity", and nothing has revisited that
@@ -57,7 +57,7 @@ Non-goals:
 - New facade features (styles, undo/redo, CF, clipboard; SPEC-0001 non-goals). The feature table below only says
   where each one goes.
 - Java/FFI and the API v1 semver freeze (other M12 work).
-- `Model::from_bytes` callers inside the Rust crates that only read bytes the engine wrote. They are covered by T-2894's
+- `Model::from_bytes` callers inside the Rust crates that only read bytes the engine wrote. They are covered by T-2913's
   check anyway.
 
 ## Excel behavior to match
@@ -100,7 +100,7 @@ workbook bytes. Their arguments are untrusted too. They reach the engine's ordin
 `Err` for a bad sheet index. They are not in this spec's scope beyond that note: they go with the classes at the v1
 freeze.
 
-### Decision 3. Engine: `Model::from_workbook` validates (T-2894)
+### Decision 3. Engine: `Model::from_workbook` validates (T-2913)
 `Model::from_workbook` runs one linear pass over the decoded `Workbook` before it builds anything, and returns `Err` on:
 
 - a cell, row or column style index outside `styles.cell_xfs`;
@@ -124,7 +124,7 @@ of once per load.
 
 ### Decision 4. Engine: diffs are validated before any applies (T-2896)
 `UserModel::apply_external_diffs` checks every decoded `Diff` against the model's current sheets, styles and grid
-before applying the first one, and returns `Err` with the model unchanged on any dangling index. It reuses T-2894's
+before applying the first one, and returns `Err` with the model unchanged on any dangling index. It reuses T-2913's
 index checks. The Python package no longer calls it (decision 2), but the Rust API keeps it for the web UI layer.
 
 ### Decision 5. Fuzzing (T-2895)
@@ -168,7 +168,7 @@ The package is pre-v1 (0.1.0), so breaking changes are allowed:
 ## Alternatives considered
 - **Keep the bitcode/icalc loaders and harden them (decision 3 alone).** Rejected for Python: it keeps a second,
   undocumented exchange format whose only Python use is a round-trip test, and it ties the package's safety to the
-  completeness of one validator. The validator still lands (T-2894), as defense in depth for Rust callers.
+  completeness of one validator. The validator still lands (T-2913), as defense in depth for Rust callers.
 - **Move the legacy classes behind a non-default cargo feature.** Rejected: a wheel is built once for every user, so a
   feature-gated class means a second wheel or a source build. The `legacy` submodule gives the same opt-in with one
   artifact.
@@ -176,7 +176,7 @@ The package is pre-v1 (0.1.0), so breaking changes are allowed:
   seven examples use them, and the facade lacks the features in the table above. Removal waits for v1.
 
 ## Test plan
-- T-2894: R1 and R2 as Rust unit tests that get `Err` from `Model::from_workbook`, never a panic, plus one test per
+- T-2913: R1 and R2 as Rust unit tests that get `Err` from `Model::from_workbook`, never a panic, plus one test per
   other invariant. The xlsx and icalc round-trip tests and the eval suites stay green.
 - T-2895: `bitcode_workbook` runs at least 10 minutes locally with no crash, seeded with engine-written workbooks.
 - T-2896: a crafted diff list with a dangling style index and one with a dangling sheet index each get `Err`, and the
@@ -186,7 +186,7 @@ The package is pre-v1 (0.1.0), so breaking changes are allowed:
 
 ## Rollout
 1. T-2897 (api, S): drop the byte loaders, the diffs and `test_panic` from Python. This closes the Python exposure.
-2. T-2894 (engine, M): validate in `Model::from_workbook`.
-3. T-2895 (harness, S, after T-2894) and T-2896 (engine, M, after T-2894).
+2. T-2913 (engine, M): validate in `Model::from_workbook`.
+3. T-2895 (harness, S, after T-2913) and T-2896 (engine, M, after T-2913).
 4. T-2898 (api, M, after T-2897): the `legacy` module, the deprecation warning, and the README.
 5. At the API v1 freeze: file the "move" rows of the feature table as facade tasks, then remove `rustsheet.legacy`.
