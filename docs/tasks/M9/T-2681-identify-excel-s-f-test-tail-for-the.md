@@ -3,7 +3,7 @@ id: T-2681
 title: "Identify Excel's F.TEST tail for the 8 cells still visibly off after T-2571"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -44,10 +44,39 @@ orders, and df 1 against df 249 or 400 (the series hands over to `beta_reg_compl
 ## Acceptance criteria
 - [ ] Visible parity: the 8 cells above have Excel's value to 15 significant digits, with no new
       known-failure lines in any baseline beyond decision 0083's allowance.
-- [ ] The T-2571 ad hoc scores are reproducible from committed fits.
-- [ ] Each candidate's score (bit-exact / within 4 ulp / visibly off) is recorded in
+- [x] The T-2571 ad hoc scores are reproducible from committed fits.
+- [x] Each candidate's score (bit-exact / within 4 ulp / visibly off) is recorded in
       docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - F.DIST, F.DIST.RT and BETA.DIST, which use the shared `beta_reg_complement` kernel.
+
+## Outcome
+- Finding: with both shapes above 1, F.TEST's tail is TOMS 708 bratio with Excel's pieces (T-2464
+  r2-bratio's `BEST`): w3's `bpser` and L140's `bup` with Excel's beta density as its prefactor
+  (docs/excel-semantics/statistics.md "F.TEST / FTEST"; docs/research/t2681/README.md). Ported as
+  `f_test_bratio_p` (crates/rustsheet-engine/src/functions/statistical/f_test_tail.rs), which
+  reuses BETA.DIST's small-shape density (`beta_density_small_shape`, model M2) and is used by
+  fisher.rs `f_test_p` where it reaches; a shape of 1/2 keeps the remainder model, which beats
+  bratio there.
+- Fit (`uv run rustsheet-fitlab f-test`, 291 cells): engine 160 / 270 / 7 visibly off before,
+  205 / 284 / 1 after (bit-exact / within 4 ulp / visibly off).
+- The 8 cells: 7 now have Excel's 15 digits (A141, A119, A81 bit-exact; A36 1 ulp; A380, A4, A377
+  3 ulp). gen-m9/b6593d7dd13f2dac A306 is still visibly off (25 ulp): follow-up T-2829. Acceptance
+  criterion 1 is met on 7 of 8 cells; the eighth moves to T-2829 (decision 0083, "Done at visible
+  parity" applies to the cells it reaches).
+- Regressed from bit-exact (decision 0083 allowance; follow-up T-2830): gen-m9/2801c1c11c21e134 A2
+  (1 ulp), 285d87cea1aaa73c A280 (3), 320d51765af9b6b7 A223 (1), 85f48d5cdfb24555 A154 (2),
+  8d3588d8df0812df A243 (1), a61e547a1cab994c A11 (1), cde551ea787f713a A199 (1),
+  fd9fa22d212080d6 A279 (1).
+- Eval delta: gen-m9 known failures 3801 -> 3774 (35 fixed, 8 regressed), probes
+  2644 -> 2634 (10 fixed), ironcalc-calc 638 -> 637 (`F_TEST.xlsx` F1).
+- The T-2571 ad hoc scores are committed fits: `f-test-half`, `f-test-nr` (ftest_adhoc.py).
+- Recorded 2026-10-27, after merging main 7bd9090e: the baseline was recorded with `update-baseline --allow-regressions` under
+  decision 0083's standing allowance, with the owner's approval in session
+  https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. gen-m9 3753 -> 3726 (35 fixed); the eight regressed cells
+  above are exactly the eight lines added, all numeric, 1-3 ulp, none visibly off; probes 2891 -> 2881 (10 fixed). A
+  full run of every suite against a main 7bd9090e binary finds no other newly failing cell, ungated probes-numeric
+  included, and none newly visibly off; in-scope cells visibly off fall from 103,412 to 103,406. Acceptance criterion
+  1 stays unticked for A306 (T-2829); criterion 3's per-candidate scores are the fits above.
