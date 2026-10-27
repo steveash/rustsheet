@@ -3,7 +3,7 @@ id: T-2587
 title: "IPMT's long-term and fractional-period cells off in the 13th to 15th digit"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
