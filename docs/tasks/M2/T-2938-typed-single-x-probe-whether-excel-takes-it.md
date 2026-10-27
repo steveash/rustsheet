@@ -3,7 +3,7 @@ id: T-2938
 title: "Typed SINGLE(x): probe whether Excel takes it as the @ operator and match it (probes/t2576-error-type-cell-paired D27, ours #NAME?)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
