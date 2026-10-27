@@ -114,6 +114,35 @@ Known gaps (out of scope, recorded for later work):
 Union walks keep their own budget (`MAX_AREA_WALK`, 2^24 steps per formula). It is already per
 formula and already bounded, so it is not charged twice.
 
+#### Per-call capped work (amendment, T-2813)
+**Rule.** A visit cap's spend (the lift driver's cell visits and `kernel_units`, the *IF(S) and
+AGGREGATE visits, GROUPBY/PIVOTBY's visits, all counted against `MAX_LIFTED_CELL_VISITS` = 2^27) is
+charged to the formula at **1 unit per visit or kernel unit**, everywhere, inside a LAMBDA or not.
+The time a call's units take is not the formula budget's to fit: it belongs to the call's own cap.
+SPEC-0011's security rule for kernel work makes each kernel weight a measure of time (T-2814 fitted
+RATE's to about 18 ns a unit at the cap). Since `MAX_FORMULA_WORK` is twice `MAX_LIFTED_CELL_VISITS`,
+a formula spends at most two calls' worth of capped work. So this kind's 10 s target (section 4)
+holds exactly when **every visit cap's worst case, one call at its cap, runs within 5 s**. That is a
+requirement on the kernel weights (SPEC-0011), and a weight that breaks it is a perf task against
+that kernel, not a change to this budget.
+
+Why not the alternatives T-2813 weighed:
+- *A weight above 1.* An eval cell may legitimately spend most of one cap on one call
+  (gen-m9/0a614cfe974b59c3 Calc!A117, 124,806,376 units). Any weight above 2 turns such a cell into
+  `#VALUE!`; 6 cost 13 gen-m9 cells (T-2803). A higher weight would also make the formula budget,
+  not the per-call cap, the real limit of one call, so two limits would decide one thing.
+- *Charging only inside a LAMBDA call.* It needs a call-depth flag on every charge, and it leaves the
+  non-LAMBDA product open: a formula of a few hundred lifted calls side by side
+  (`SUM(RATE(..),RATE(..),..)` within 8,192 characters) multiplies the per-call cap by the call
+  count with no helper involved. Charging everywhere bounds that too, at the cost of refusing a
+  formula with three or more calls each near its cap; no eval formula has even two.
+- *Lowering the per-call cap or raising the formula limit for this kind.* The first refuses the eval
+  cells above; the second raises the time every other kind may take, and the limit stays one
+  number (section 4).
+
+The regex compile and search budgets are not visit caps: they keep the fixed weights per budget
+step that calibration sets (section 4).
+
 ### 2. Where the counter lives
 `area_budget.rs` `AreaBudget` already has the right lifetime. `Model::with_area_budget` gives each
 formula run a fresh one: `run_cell_formula` (cell formulas and defined names),
@@ -200,7 +229,8 @@ The limit has two constraints:
   - read cells: the LET variant;
   - text: `MAP(SEQUENCE(1000),LAMBDA(x,MAP(SEQUENCE(1000),LAMBDA(y,LEN(REPT("a",32767))))))`
     and the `LET(s,REPT(..),..LEN(s)..)` variant;
-  - per-call caps: a MAKEARRAY of lifted RATE and a MAP of REGEXTEST calls.
+  - per-call caps: a MAKEARRAY of lifted RATE and a MAP of REGEXTEST calls (amendment, T-2813:
+    also a MAKEARRAY of lifted YIELD; the visit caps' target is a per-call one, below).
   The weights (units per node, `TEXT_BYTES_PER_UNIT`, units per regex step) are chosen so that each
   kind's worst case reaches the limit in at most **10 s**. A case can hold several such formulas.
   Weights may differ per kind; the limit stays one number.
@@ -213,6 +243,27 @@ Before committing, it measures the highest units any eval formula spends, with a
 instrumentation run over all suites. It records the maximum, the case and the per-kind timings in
 the DEVIATION entry. If the maximum is above 2^26 (a quarter of the limit), or no weights meet both
 constraints, step 1 stops and reports it rather than loosening either constraint.
+
+**Per-call capped work (amendment, T-2813).** The quarter-limit margin is measured without the
+visit caps' charges, which have a margin of their own:
+- *Lower, other kinds:* the heaviest eval formula's units outside the visit caps' charges stay at or
+  below 2^26.
+- *Lower, visit caps:* the heaviest eval formula's visit-cap charges, summed over all its calls,
+  stay at or below one cap, `MAX_LIFTED_CELL_VISITS` (2^27). Together with the line above, every
+  eval formula then stays below 2^26 + 2^27, three quarters of the limit, so a formula of one call
+  at its cap plus a quarter-limit of other work always computes, and the formula budget refuses no
+  single call that its own cap allows.
+- *Upper, visit caps:* each visit cap's worst case, one call at its cap, runs within 5 s (release
+  build), so two such calls, the most the limit allows, stop within 10 s ("Per-call capped work" in
+  section 1).
+
+Measured for T-2813 (release build, 2026-10-27, the T-2803 branch with origin/main merged in, local
+instrumentation of `with_area_budget`, not committed): MEASURE_EVAL. Time to the limit, each a
+`SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(<call>))))`: MEASURE_TIME.
+The YIELD and ODDFYIELD shapes miss the 5 s rule today, as one call of theirs at the cap takes
+about 17 s; T-2879 refits their weight (about 4.3 s at 2^26, measured by T-2814) and owns the gap.
+T-2803 does not wait for it: without the budget the same MAKEARRAY never stops, and with it it stops
+after two calls.
 
 Worked examples at 2^28:
 
