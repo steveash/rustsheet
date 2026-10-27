@@ -54,6 +54,9 @@ pub(crate) struct IterationState {
     prior: HashMap<Key, Cell>,
     /// The members as the first round's sweeps left them.
     settled: HashMap<Key, Cell>,
+    /// Calls of `join_stack` so far: a pass cache built while this moved read a member, so its
+    /// reader joined, and is not stored (`search_cache.rs`, `ifs_cache.rs`; T-0485).
+    joins: u64,
 }
 
 impl Model {
@@ -99,9 +102,27 @@ impl Model {
         }
     }
 
+    /// Whether `at` is in the recalculated set, so that reading it joins its readers to it.
+    pub(crate) fn is_cycle_member(&self, at: CellReferenceIndex) -> bool {
+        self.evaluation.iteration.members.contains(&key(at))
+    }
+
+    /// [`IterationState::joins`] so far.
+    pub(crate) fn cycle_joins(&self) -> u64 {
+        self.evaluation.iteration.joins
+    }
+
+    /// Joins the stack to the recalculated set. A cached read skips the reads that would join its
+    /// reader, so a cached range holds no member: its build is not stored when it joined (the
+    /// count moved), and a cell joins only while it is on the stack, before it is evaluated, where
+    /// a range is cached only once every cell of it is (T-0485).
     fn join_stack(&mut self) {
-        let stack = self.evaluation.stack.iter().map(|c| key(*c));
-        self.evaluation.iteration.members.extend(stack);
+        let state = &mut self.evaluation;
+        state.iteration.joins += 1;
+        state
+            .iteration
+            .members
+            .extend(state.stack.iter().map(|c| key(*c)));
     }
 
     /// Starts the second round of passes, after data tables: the members are collected afresh.

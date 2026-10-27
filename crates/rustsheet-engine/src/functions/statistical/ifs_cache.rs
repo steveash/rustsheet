@@ -15,8 +15,9 @@
 //!
 //! The rest of the argument is `search_cache.rs`'s (T-0448): the first read of a cached range
 //! records what it saw, so a spill that later writes into it restarts the pass, and every pass
-//! starts with an empty cache; nothing is cached under iterative calculation, Excel-order passes
-//! or outside a pass. Reading the whole range records reads the walk may not have made, so a
+//! starts with an empty cache; nothing is cached in Excel-order passes or outside a pass. Under
+//! iterative calculation a range holding a cycle member is not cached (its reader joins the cycle,
+//! where the lazy walk may not read it; `Model::join_stack`, T-0485). Reading the whole range records reads the walk may not have made, so a
 //! later spill into one of those cells restarts the pass where the walk would not: slower, never
 //! a different value. Values read through the cache are the walk's values, and the matches are
 //! taken in the walk's order (row by row), so sums round alike and the first error wins alike.
@@ -233,9 +234,10 @@ fn rect_size(rect: RectKey) -> usize {
 impl Model {
     /// Whether reading `at` evaluates nothing and marks nothing: a constant or a blank, a formula
     /// cell already evaluated in this pass, or a spill cell whose anchor is. `None` for a
-    /// circular cell, which never becomes readable this way.
+    /// circular cell or a cycle member under iterative calculation (whose reader joins it, where
+    /// the lazy walk may not read it), which never becomes readable this way.
     fn read_is_inert(&self, at: CellReferenceIndex) -> Option<bool> {
-        if self.evaluation.circular.contains(&key(at)) {
+        if self.evaluation.circular.contains(&key(at)) || self.is_cycle_member(at) {
             return None;
         }
         let evaluated = |at: CellReferenceIndex| {
@@ -249,6 +251,9 @@ impl Model {
                     row: a.0,
                     column: a.1,
                 };
+                if self.is_cycle_member(anchor) {
+                    return None;
+                }
                 matches!(self.fetch_cell(anchor), Some(Cell::ArrayFormula { .. }))
                     && evaluated(anchor)
             }
