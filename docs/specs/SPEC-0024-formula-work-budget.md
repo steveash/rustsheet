@@ -1,6 +1,7 @@
 # SPEC-0024 — A work budget for one formula evaluation
 
-- **Status:** accepted (T-2712; architecture, quality and security reviewers approved)
+- **Status:** accepted (T-2712; architecture, quality and security reviewers approved); amended by T-2813
+  (how per-call capped work is charged and calibrated: sections 1 and 4)
 - **Milestone / lane:** M7 / engine
 - **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps T-2806, T-2807
 
@@ -82,7 +83,7 @@ knows of goes through at least one of them. "Known gaps" below lists what is sti
 | array cells built | where an array value is allocated: SEQUENCE, RANDARRAY, MAKEARRAY, the result of MAP/SCAN/BYROW/BYCOL, `evaluate_range` (range → array), `broadcast_arrays` and the operator/IF broadcasts, `broadcast_text`, the SPEC-0011 lift driver's result, HSTACK/VSTACK/EXPAND/WRAP*/TEXTSPLIT, MMULT | rows × columns, charged before allocating, at the same call that runs `limits::check_array_size` / `check_array_cells` / `check_built_array_size` |
 | array cells read | the aggregate walker's array arm (`aggregate_args.rs` `walk_array_items`: SUM, COUNT, AVERAGE, MIN, MAX, PRODUCT and the other `for_each_value` readers), then the other whole-array readers (step 3) | cells of the array argument |
 | text values | the same node chokepoint: a node whose value is a `CalcResult::String` (a function result, a cell read, a LET or LAMBDA variable read, a literal) | ⌈UTF-8 bytes / `TEXT_BYTES_PER_UNIT`⌉ (64 provisional; set by calibration). `broadcast_text` charges the byte total it already sums for its 64 MiB cap (`within_text_budget`) |
-| per-call capped work | every per-call cap's spend, charged again to the formula: the SPEC-0011 driver's `kernel_units`, the *IF(S) cell visits counted for `MAX_LIFTED_CELL_VISITS`, the regex engine's compile and match budgets (regex_engine.rs, pcre) | the same number, or a fixed weight per budget step set by calibration |
+| per-call capped work | every per-call cap's spend, charged again to the formula: the SPEC-0011 driver's `kernel_units`, the *IF(S) cell visits counted for `MAX_LIFTED_CELL_VISITS`, GROUPBY/PIVOTBY's visits, the regex engine's compile and match budgets (regex_engine.rs, pcre) | the same number for the visit caps (1 unit per visit or kernel unit, T-2813: see "Per-call capped work" below); a fixed weight per budget step set by calibration for the regex budgets |
 
 Why these charges:
 - **Nodes** bound everything that builds no array. Examples are a long scalar LAMBDA body called
