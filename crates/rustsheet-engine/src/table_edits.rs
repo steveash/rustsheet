@@ -1,12 +1,12 @@
 //! Tables that follow a row or column insert or delete (SPEC-0016 "Structural edits", T-2297):
-//! an edit wholly before a table moves it, and a row insert or delete strictly inside its data
-//! rows grows or shrinks it, so the structured references to it keep their text. Every other
-//! edit that crosses a table leaves it as it is (the *fallback*): its references print the
-//! displaced area, as before SPEC-0016.
+//! an edit wholly before a table moves it, a row insert below its header row and above or at its
+//! totals row grows it (T-2321) and a row delete strictly inside its data rows shrinks it, so the
+//! structured references to it keep their text. Every other edit that crosses a table leaves it
+//! as it is (the *fallback*): its references print the displaced area, as before SPEC-0016.
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::parse_range;
-use crate::expressions::parser::stringify::DisplaceData;
+use crate::expressions::parser::stringify::{DataBlock, DisplaceData, Displacement};
 use crate::expressions::utils::number_to_column;
 use crate::model::Model;
 use crate::types::Table;
@@ -19,6 +19,9 @@ struct TableEdits {
     kept: Vec<String>,
     /// The tables that move, grow or shrink, by name, with their new `reference`.
     resized: Vec<(String, String)>,
+    /// The data blocks of the tables that grow with a row insert at their first data row or at
+    /// their totals row, onto which plain ranges grow too (T-2321).
+    grown_edges: Vec<DataBlock>,
 }
 
 /// How an edit changes the rows (or columns) `first..=last` of a table.
@@ -34,10 +37,11 @@ enum Span {
 
 /// The rows a row insert (`delta > 0` rows above `at`) or delete (rows `at..at - delta`) gives
 /// the table on rows `top..=bottom` with data rows `data_first..=data_last`, by SPEC-0016's
-/// edge-case table. An insert at the first data row, a header row's or not, or at the totals row
-/// (Excel grows a table with a header there, T-2197: T-2321; without one, T-2845) and a delete at an edge of the data or touching the header or totals row
-/// (T-2338) are fallbacks. A delete at a data edge is one too because its undo, an insert at
-/// the same row, would then not grow the table back.
+/// edge-case table. An insert below the top row and at or above the bottom row grows the table,
+/// so one at the first data row under a header row or at the totals row does too (T-2197
+/// table-insert-row-above-first-data and -above-totals: `ROWS(Sales)` 5). An insert at the first
+/// row of a table without a header row is a fallback (unprobed, T-2845), and so is a delete at an
+/// edge of the data or touching the header or totals row (T-2338).
 fn row_span(
     (top, bottom): (i32, i32),
     (data_first, data_last): (i32, i32),
@@ -53,7 +57,7 @@ fn row_span(
             Span::Fallback
         } else if at <= top && at < data_first {
             Span::Changed(top + delta, bottom + delta)
-        } else if data_first < at && at <= data_last {
+        } else if top < at {
             Span::Changed(top, bottom + delta)
         } else {
             Span::Fallback
@@ -129,6 +133,25 @@ fn followed(table: &Table, displace_data: &DisplaceData) -> Option<Follow> {
     Some(Follow::Resized(format!("{first}{top}:{last}{bottom}")))
 }
 
+/// The data block of `table` on sheet `sheet` when the row insert `displace_data` is at its first
+/// data row under a header row or at its totals row, the two edges where Excel grows the table and
+/// the plain ranges onto its data with it (T-2197); `None` for any other edit. The caller has
+/// checked that the table follows the edit.
+fn grown_edge(table: &Table, sheet: u32, displace_data: &DisplaceData) -> Option<DataBlock> {
+    let DisplaceData::Row { row, delta, .. } = *displace_data else {
+        return None;
+    };
+    let (left, top, right, bottom) = parse_range(&table.reference).ok()?;
+    let data_first = top.checked_add(i32::try_from(table.header_row_count).ok()?)?;
+    let data_last = bottom.checked_sub(i32::try_from(table.totals_row_count).ok()?)?;
+    let at_edge = (row == data_first && top < row) || (row == data_last + 1 && row <= bottom);
+    (delta > 0 && at_edge && data_first <= data_last).then_some(DataBlock {
+        sheet,
+        rows: (data_first, data_last),
+        columns: (left, right),
+    })
+}
+
 impl Model {
     /// Rewrites every formula (cells on every sheet, and the conditional formats of `sheet`) for
     /// the structural edit `displace_data` on `sheet`, then moves, grows or shrinks the tables
@@ -139,7 +162,11 @@ impl Model {
         displace_data: &DisplaceData,
     ) -> Result<(), String> {
         let edits = self.table_edits(displace_data);
-        let displacement = (displace_data, edits.kept.as_slice());
+        let displacement = Displacement {
+            data: displace_data,
+            kept_tables: &edits.kept,
+            grown_edges: &edits.grown_edges,
+        };
         self.displace_cells(displacement)?;
         self.displace_cf_ranges(sheet, displacement);
         self.resize_tables(edits.resized);
@@ -165,7 +192,12 @@ impl Model {
             match follow(table, displace_data) {
                 Follow::Fallback => continue,
                 Follow::Unchanged => {}
-                Follow::Resized(reference) => edits.resized.push((name.clone(), reference)),
+                Follow::Resized(reference) => {
+                    edits
+                        .grown_edges
+                        .extend(grown_edge(table, sheet, displace_data));
+                    edits.resized.push((name.clone(), reference));
+                }
             }
             edits.kept.push(name.to_lowercase());
         }
@@ -201,12 +233,12 @@ mod tests {
     fn row_inserts_follow_the_edge_case_table() {
         assert_eq!(rows(1, 1), Span::Changed(4, 8));
         assert_eq!(rows(3, 2), Span::Changed(5, 9));
-        assert_eq!(rows(4, 1), Span::Fallback);
+        assert_eq!(rows(4, 1), Span::Changed(3, 8));
         assert_eq!(rows(5, 1), Span::Changed(3, 8));
         assert_eq!(rows(7, 1), Span::Changed(3, 8));
         assert_eq!(rows(8, 1), Span::Unchanged);
-        // With a totals row 8 (data 4-7), an insert at the totals row is a fallback.
-        assert_eq!(row_span((3, 8), (4, 7), 8, 1), Span::Fallback);
+        // With a totals row 8 (data 4-7), an insert at the totals row grows the table (T-2321).
+        assert_eq!(row_span((3, 8), (4, 7), 8, 1), Span::Changed(3, 9));
         assert_eq!(row_span((3, 8), (4, 7), 9, 1), Span::Unchanged);
         // Without a header row the first row is a data row: an insert there is a fallback, since
         // Excel grows a table with a header on an insert at its first data row (T-2845 probes it).
