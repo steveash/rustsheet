@@ -1148,6 +1148,7 @@ C	probes/t2311-pivotby-value-cause.case.json	195
 C	probes/t2311-pivotby-value-columns-error.case.json	127
 C	probes/t2312-wrap-count-threshold.case.json	66
 C	probes/t2314-textbefore-instance-bound.case.json	29
+C	probes/t2344-percentile-name-index-data.case.json	30
 C	probes/t2352-time-text-trailing-colon.case.json	26
 C	probes/t2355-regex-dollar-inner-lf.case.json	11
 C	probes/t2360-array-lambda-holidays.case.json	508
