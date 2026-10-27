@@ -30,6 +30,10 @@ probes/t2546-bessel-past-cap.
       - `BESSELJ(n+d,n)` and `BESSELJ(n-d,n)` for d = 1, 10, 100 at the same orders where n - d > 0;
       - `BESSELJ(x,n)` at the non-integer x = n + 0.5;
       - a few small orders near x (`BESSELJ(84,84)`, `BESSELJ(84,83)`, `BESSELJ(100,100)`).
+      - `BESSELJ(n-2,n)`, `BESSELJ(n-3,n)` and `BESSELJ(n-5,n)` for n = 50000, 99999 and 100000, where the Miller result is most
+        sensitive to rounding.
+      Cells with x <= n run Miller's recurrence (`jn_miller`) and decide the rounding model. Cells with x > n
+      (`BESSELJ(n+d,n)`, x = n + 0.5) take the upward recurrence, so they only show where Excel switches branches.
 - [ ] Every failing cell has a baseline entry, owned by T-2548 (`make eval-baseline`); no other baseline changes.
 - [ ] docs/excel-semantics/engineering.md cites the case next to the T-2548 "Not fitted" note.
 - [ ] `make check` green; reviewers approve.

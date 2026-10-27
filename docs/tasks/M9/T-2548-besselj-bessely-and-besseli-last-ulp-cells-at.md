@@ -72,4 +72,4 @@ or steps rounded to 53 or 64 bits), the true value from the same port in exact a
   - FMA `fl(j*tox)*bj - bjp` (...336523);
   - `j*fl(tox*bj) - bjp` (...336154);
   - one rounding of `j*tox*bj - bjp` (...336324).
-  These scatter by about 2E-16 around Excel's value, so a fit needs the T-2881 points (several n near x).
+  These scatter by about 2E-16 (absolute) around Excel's value, so a fit needs the T-2881 points (several n near x).
