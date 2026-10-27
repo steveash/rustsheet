@@ -336,7 +336,7 @@ pub struct ConditionalFormattingView {
 // Evaluated CF result for a single cell (transient, not stored in Workbook).
 // ---------------------------------------------------------------------------
 
-/// The winning CF result for a cell, stored in `Model::cf_cache` after `evaluate()`.
+/// The winning CF result for a cell, stored in `Model::cf` (`cf_styles.rs`).
 #[derive(Clone, Debug)]
 pub(crate) enum CfCellResult {
     /// A dxf-based rule matched; `dxf_id` indexes into styles.dxfs.

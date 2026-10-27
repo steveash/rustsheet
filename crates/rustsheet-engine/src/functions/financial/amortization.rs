@@ -23,6 +23,7 @@ use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
     calc_result::CalcResult,
+    decimal_round::{round_decimal, RoundMode},
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     functions::lift::num_error,
@@ -144,12 +145,8 @@ impl Model {
         // The purchase may fall on the first period's end (`AMORLINC(2400,1,1,300,1,0.15,1)` is
         // 360), and every value is checked before the basis is read
         // (`AMORLINC(-1,39679,39813,300,1,0.15,NA())` is #NUM!).
-        let valid = cost >= 0.0
-            && salvage >= 0.0
-            && salvage < cost
-            && period >= 0.0
-            && rate > 0.0
-            && purchased <= first_period;
+        let valid =
+            amortization_values_valid(cost, salvage, period, rate) && purchased <= first_period;
         if !valid {
             return Err(num_error(cell));
         }
@@ -169,11 +166,7 @@ impl Model {
             Amortization::Linear => asset.linear(period),
             Amortization::Degressive => {
                 // Checked after the basis (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is #N/A).
-                // The asset life must not fall in [0, 3] or strictly between 4 and 5: Excel
-                // accepts a life of exactly 4 and 5 (rates 0.25, 0.2; probes/fin-amordegrc
-                // A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
-                let life = 1.0 / rate;
-                if (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0) {
+                if asset_life_refused(rate) {
                     return Err(num_error(cell));
                 }
                 asset.degressive(period, DEGRESSIVE_LOOP_PERIODS)
@@ -181,6 +174,21 @@ impl Model {
         }
         .map_err(|_| num_error(cell))
     }
+}
+
+/// AMORLINC's and AMORDEGRC's value checks beside the dates: `0 <= salvage < cost`, `period >= 0`
+/// and `rate > 0`, written as the valid ranges so that a NaN fails them. Also the lift's charge
+/// (`ValueWork::Amortization`), which must refuse only what the kernel refuses.
+pub(crate) fn amortization_values_valid(cost: f64, salvage: f64, period: f64, rate: f64) -> bool {
+    cost >= 0.0 && salvage >= 0.0 && salvage < cost && period >= 0.0 && rate > 0.0
+}
+
+/// Whether AMORDEGRC refuses the asset life `1 / rate` of a positive rate: it must not fall in
+/// [0, 3] or strictly between 4 and 5. Excel accepts a life of exactly 4 and 5 (rates 0.25, 0.2;
+/// probes/fin-amordegrc A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
+pub(crate) fn asset_life_refused(rate: f64) -> bool {
+    let life = 1.0 / rate;
+    (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0)
 }
 
 /// The stand-in date of a 1900 serial from 0 to 9999-12-31 (`from_excel_date`, whose serial 1 is
@@ -552,15 +560,15 @@ fn amor_are_equal(x: f64, y: f64) -> bool {
     (x - y).abs() < 0.0001
 }
 
-// `round excelComplaint`: pre-round to 13 significant digits (Excel's internal
-// precision) then round to the nearest integer, ties away from zero.
+// The AMOR* functions round a charge the way ROUND(x,0) does: the value is cut to 15 significant
+// digits and then rounded half away from zero, so a charge of 1E15 or more comes back at 15
+// digits (`AMORDEGRC(1E308,39679,39813,300,1E5,1E-6,1)` is 1.94700443465919E302, the walk's
+// 1.9470044346591894E302 cut) and 43132894008630.49 rounds up through 43132894008630.5
+// (docs/excel-semantics/financial.md "AMORDEGRC rounds its charge like ROUND", probes/amordegrc-walk-ties,
+// T-2826). A cut that overflows (only a charge within 5E292 of the largest double, unprobed)
+// leaves the value as it is.
 fn amor_round(x: f64) -> f64 {
-    // Past about 1.8E295 the scaled value overflows; there the pre-round has no visible effect, and
-    // skipping it keeps a huge charge finite (`AMORDEGRC(1E308,..)`, probes/fin-amor-period-bound-b
-    // B2, T-1895).
-    let scaled = (x * 1e13).round();
-    let k = if scaled.is_finite() { scaled / 1e13 } else { x };
-    k.round()
+    round_decimal(x, 0.0, RoundMode::HalfAwayFromZero).unwrap_or(x)
 }
 
 #[cfg(test)]
@@ -720,14 +728,17 @@ mod tests {
     }
 
     #[test]
-    fn amor_round_keeps_a_huge_charge_finite() {
-        // `x * 1e13` overflows past about 1.8E295: the value rounds as it is (T-1895).
+    fn amor_round_rounds_like_round() {
+        // A huge charge comes back cut to 15 digits (probes/fin-amor-period-bound-b B2, T-2826).
         assert_eq!(
             amor_round(1.947_004_434_659_189_4e302),
-            1.947_004_434_659_189_4e302
+            1.947_004_434_659_19e302
         );
         assert_eq!(amor_round(-1e300), -1e300);
         assert_eq!(amor_round(2.5), 3.0);
+        // The 15-digit cut is 43132894008630.5 (probes/amordegrc-walk-ties A1).
+        assert_eq!(amor_round(43_132_894_008_630.49), 43_132_894_008_631.0);
+        assert_eq!(amor_round(f64::MAX), f64::MAX);
     }
 
     #[test]

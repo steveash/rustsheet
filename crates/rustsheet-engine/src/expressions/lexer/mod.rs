@@ -926,6 +926,11 @@ impl Lexer {
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
+        // Excel drops whitespace after a sheet prefix's `!` (`=S! B1` reads and prints `=S!B1`;
+        // docs/excel-semantics/syntax.md, probes/t2776-ws-after-bang).
+        if sheet.is_some() {
+            self.consume_whitespace();
+        }
         // Excel keeps the sheet prefix when a referenced range is deleted (`Sheet1!#REF!`); the
         // whole reference is the #REF! error (docs/excel-semantics/references.md,
         // "A sheet-qualified #REF! is #REF!").

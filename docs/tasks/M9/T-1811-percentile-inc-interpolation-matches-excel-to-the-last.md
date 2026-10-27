@@ -7,8 +7,8 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
+campaign: visible
 depends_on: []
-defer: phase-1b
 ---
 
 ## Goal
@@ -18,6 +18,14 @@ PERCENTILE and PERCENTILE.INC give Excel's bits where the interpolation rounds d
 probes/stat-argument-modes H424 `PERCENTILE(C1:C6,0.3)` and H429 `PERCENTILE.INC(C1:C6,0.3)` (C1:C6 = 1, "2", TRUE, "x", 4, blank, so the numbers are 1 and 4): Excel 1.9000000000000001, ours 1.9 (`percentile_inc_impl` in functions/statistical/percentile.rs computes `a + frac*(b-a)`; `(1-frac)*a + frac*b` is 1.9 too). Find the evaluation order Excel uses (more probe cells with two- and three-point data and several k, excel-probe skill) before changing the formula; QUARTILE.INC shares it. Named in T-1772's Outcome.
 
 T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): PERCENTILE and PERCENTILE.INC interpolation off Excel's, including tiny k where Excel's formula returns the lower value exactly (`PERCENTILE.INC(Data!B1:D6,1E-20)` Excel 0, ours 1.1E-20; `PERCENTILE.INC(Data!B8:E9,1E-16)` 4.4408920985006264E-17 against 5.0000000000000005E-17), which constrains the formulation.
+
+Gap triage 2026-10-25: a formulation that reproduces 39 of the 40 failing gen-m9 cells whose arguments are literals or
+Data cells, all 13 visibly-off ones among them, and H424/H429: the one-based rank `r = 1 + k*(n-1)`, `j = floor(r)`,
+`h = r - j`, result `a[j] + h*(a[j+1] - a[j])` (sorted a[1..n]). The 1 added first is what loses a tiny k. The one miss is
+gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, the rule -2.4999999999999987); leave it in the baseline and
+name it in the Outcome if no variant fits it without losing another cell. Details and cells: docs/excel-semantics/statistics.md
+"PERCENTILE and PERCENTILE.INC interpolate from a one-based rank 1 + k(n-1)". QUARTILE/QUARTILE.INC call the same
+`percentile_inc_impl`, so they follow.
 
 Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 42 known-failure lines in eval/baseline/gen-m9.txt, 13 visibly off.
 Examples:
@@ -58,8 +66,9 @@ Cells:
 - gen-m9/f82473275380882e.case.json (1): Calc!A163
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2256): these 42 known-failure lines (the T-2256 cells in Context) disappear from
-      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity (gen-m9, T-2256): the 13 visibly-off cells pass, and at least 39 of these 42 known-failure lines
+      (the T-2256 cells in Context) disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), each one that stays
+      named in the Outcome, with no new known-failure lines in any baseline.
 - [ ] H424 and H429 leave eval/baseline/probes.txt, with no new F lines in any suite.
 - [ ] The rule is recorded in docs/excel-semantics/statistics.md with its probe cells.
 - [ ] `make check` green; reviewers approve.
@@ -73,5 +82,4 @@ campaign. Its target is that every cell it owns has Excel's type, error and text
 significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria
 still unmet then move to a follow-up task without the key.
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: the 13 visibly-off gen-m9 cells of Context, e.g. gen-m9/38e4fc309fe199ea Calc!A311 `=PERCENTILE.INC(Data!B1:D6,1E-20)`: Excel 0, ours 1.1E-20; gen-m9/607e85cfee83a689 Calc!A20 `=PERCENTILE.INC(Data!B7:E11,1E-20)`: Excel 1E-15, ours 1.000011E-15.

@@ -291,6 +291,102 @@ fn parse_criterion_number(v: &str) -> Option<f64> {
     parse_excel_number(v.trim_matches(' '))
 }
 
+/// The comparison operator a criterion string starts with (none is `Eq`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum CriterionOp {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
+
+/// The operator of `s`, its text (`"<="`, ..., `"="` or `""`) and the operand after it.
+fn criterion_operator(s: &str) -> (CriterionOp, &'static str, &str) {
+    const OPERATORS: [(&str, CriterionOp); 6] = [
+        ("<=", CriterionOp::Le),
+        (">=", CriterionOp::Ge),
+        ("<>", CriterionOp::Ne),
+        ("<", CriterionOp::Lt),
+        (">", CriterionOp::Gt),
+        ("=", CriterionOp::Eq),
+    ];
+    for (prefix, op) in OPERATORS {
+        if let Some(operand) = s.strip_prefix(prefix) {
+            return (op, prefix, operand);
+        }
+    }
+    (CriterionOp::Eq, "", s)
+}
+
+/// A criterion whose matching cells a sorted or hashed index of the cells can find (T-0465).
+#[derive(Debug)]
+pub(crate) enum IndexedCriterion {
+    /// Numbers `op` the target, equality to 15 digits ([`numbers_equal`]). Under `Eq` a text that
+    /// reads as an equal number matches too, and under `Ne` every cell but an equal number.
+    Number(CriterionOp, f64),
+    /// Text equal to this one under `cmp_text`; never empty, so a blank never matches.
+    Text(Text),
+}
+
+impl IndexedCriterion {
+    /// The predicate of the criterion, which [`build_criteria_with`] returns for it.
+    fn matcher<'a>(self) -> CriteriaMatcher<'a> {
+        match self {
+            IndexedCriterion::Number(op, f) => match op {
+                CriterionOp::Eq => Box::new(move |x| result_is_equal_to_number(x, f)),
+                CriterionOp::Ne => Box::new(move |x| result_is_not_equal_to_number(x, f)),
+                CriterionOp::Lt => Box::new(move |x| result_is_less_than_number(x, f)),
+                CriterionOp::Le => Box::new(move |x| result_is_less_or_equal_than_number(x, f)),
+                CriterionOp::Gt => Box::new(move |x| result_is_greater_than_number(x, f)),
+                CriterionOp::Ge => Box::new(move |x| result_is_greater_or_equal_than_number(x, f)),
+            },
+            IndexedCriterion::Text(target) => {
+                Box::new(move |x| result_is_equal_to_string(x, &target))
+            }
+        }
+    }
+}
+
+/// The criterion `value` as an [`IndexedCriterion`], when it compares numbers or is a plain text
+/// equality; `None` for every other criterion. This is where [`build_criteria_with`] reads those
+/// criteria, so the two agree by construction: an operand that reads as a number, else (unless it
+/// is a boolean, an error, empty or, for `=` and `<>`, a wildcard pattern) as a date, compares
+/// numbers.
+pub(crate) fn indexed_criterion(
+    value: &CalcResult,
+    locale: &'static Locale,
+    current_year: CurrentYear,
+    date_system: DateSystem,
+    flavor: CriteriaFlavor,
+) -> Option<IndexedCriterion> {
+    let s = match value {
+        CalcResult::Number(target) => {
+            return Some(IndexedCriterion::Number(CriterionOp::Eq, *target))
+        }
+        CalcResult::String(s) => s,
+        _ => return None,
+    };
+    let (op, prefix, v) = criterion_operator(s);
+    if let Some(f) = parse_criterion_number(v) {
+        return Some(IndexedCriterion::Number(op, f));
+    }
+    if v.is_empty() || v.to_lowercase().parse::<bool>().is_ok() || is_english_error_string(v) {
+        return None;
+    }
+    let wildcard = v.contains('*') || v.contains('?');
+    if matches!(op, CriterionOp::Eq | CriterionOp::Ne) && wildcard {
+        return None;
+    }
+    if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
+        return Some(IndexedCriterion::Number(op, f));
+    }
+    // A D-function's plain text without `=` matches by prefix.
+    (op == CriterionOp::Eq && (flavor == CriteriaFlavor::Standard || !prefix.is_empty()))
+        .then(|| IndexedCriterion::Text(operand_text(s, prefix)))
+}
+
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
 pub(crate) fn build_criteria_with<'a>(
     value: &'a CalcResult,
@@ -299,111 +395,76 @@ pub(crate) fn build_criteria_with<'a>(
     date_system: DateSystem,
     flavor: CriteriaFlavor,
 ) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
+    if let Some(indexed) = indexed_criterion(value, locale, current_year, date_system, flavor) {
+        return indexed.matcher();
+    }
     match value {
         CalcResult::String(s) => {
-            if let Some(v) = s.strip_prefix("<=") {
-                if let Some(f) = parse_criterion_number(v) {
-                    Box::new(move |x| result_is_less_or_equal_than_number(x, f))
-                } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
-                    m
-                } else if v.is_empty() {
-                    Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
-                    Box::new(move |x| result_is_less_or_equal_than_number(x, f))
-                } else {
-                    let target = operand_text(s, "<=");
-                    Box::new(move |x| result_is_less_or_equal_than_string(x, &target))
+            let (op, prefix, v) = criterion_operator(s);
+            match op {
+                CriterionOp::Lt | CriterionOp::Le | CriterionOp::Gt | CriterionOp::Ge => {
+                    let inclusive = matches!(op, CriterionOp::Le | CriterionOp::Ge);
+                    if let Some(m) = bool_or_error_operand_matcher(v, inclusive) {
+                        return m;
+                    }
+                    if v.is_empty() {
+                        return Box::new(move |_x| false);
+                    }
+                    let target = operand_text(s, prefix);
+                    match op {
+                        CriterionOp::Lt => {
+                            Box::new(move |x| result_is_less_than_string(x, &target))
+                        }
+                        CriterionOp::Le => {
+                            Box::new(move |x| result_is_less_or_equal_than_string(x, &target))
+                        }
+                        CriterionOp::Gt => {
+                            Box::new(move |x| result_is_greater_than_string(x, &target))
+                        }
+                        _ => Box::new(move |x| result_is_greater_or_equal_than_string(x, &target)),
+                    }
                 }
-            } else if let Some(v) = s.strip_prefix(">=") {
-                if let Some(f) = parse_criterion_number(v) {
-                    Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
-                } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
-                    m
-                } else if v.is_empty() {
-                    Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
-                    Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
-                } else {
-                    let target = operand_text(s, ">=");
-                    Box::new(move |x| result_is_greater_or_equal_than_string(x, &target))
-                }
-            } else if let Some(v) = s.strip_prefix("<>") {
                 // Same for both flavors: `<>ab` is an exact not-equal, never a prefix test.
-                if let Some(f) = parse_criterion_number(v) {
-                    Box::new(move |x| result_is_not_equal_to_number(x, f))
-                } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
-                    Box::new(move |x| result_is_not_equal_to_bool(x, b))
-                } else if is_english_error_string(v) {
-                    Box::new(move |x| result_is_not_equal_to_error(x, v))
-                } else if v.contains('*') || v.contains('?') {
-                    let pattern = WildcardPattern::new(&operand_text(s, "<>"));
-                    Box::new(move |x| !pattern.matches_result(x))
-                } else if v.is_empty() {
-                    Box::new(result_is_not_equal_to_empty)
-                } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
-                    Box::new(move |x| result_is_not_equal_to_number(x, f))
-                } else {
-                    let target = operand_text(s, "<>");
-                    Box::new(move |x| result_is_not_equal_to_string(x, &target))
+                CriterionOp::Ne => {
+                    if let Ok(b) = v.to_lowercase().parse::<bool>() {
+                        Box::new(move |x| result_is_not_equal_to_bool(x, b))
+                    } else if is_english_error_string(v) {
+                        Box::new(move |x| result_is_not_equal_to_error(x, v))
+                    } else if v.contains('*') || v.contains('?') {
+                        let pattern = WildcardPattern::new(&operand_text(s, prefix));
+                        Box::new(move |x| !pattern.matches_result(x))
+                    } else if v.is_empty() {
+                        Box::new(result_is_not_equal_to_empty)
+                    } else {
+                        let target = operand_text(s, prefix);
+                        Box::new(move |x| result_is_not_equal_to_string(x, &target))
+                    }
                 }
-            } else if let Some(v) = s.strip_prefix('<') {
-                if let Some(f) = parse_criterion_number(v) {
-                    Box::new(move |x| result_is_less_than_number(x, f))
-                } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
-                    m
-                } else if v.is_empty() {
-                    Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
-                    Box::new(move |x| result_is_less_than_number(x, f))
-                } else {
-                    let target = operand_text(s, "<");
-                    Box::new(move |x| result_is_less_than_string(x, &target))
-                }
-            } else if let Some(v) = s.strip_prefix('>') {
-                if let Some(f) = parse_criterion_number(v) {
-                    Box::new(move |x| result_is_greater_than_number(x, f))
-                } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
-                    m
-                } else if v.is_empty() {
-                    Box::new(move |_x| false)
-                } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
-                    Box::new(move |x| result_is_greater_than_number(x, f))
-                } else {
-                    let target = operand_text(s, ">");
-                    Box::new(move |x| result_is_greater_than_string(x, &target))
-                }
-            } else {
-                let explicit_equals = s.starts_with('=');
-                let v = s.strip_prefix('=').unwrap_or(s);
-                if let Some(f) = parse_criterion_number(v) {
-                    Box::new(move |x| result_is_equal_to_number(x, f))
-                } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
-                    Box::new(move |x| result_is_equal_to_bool(x, b))
-                } else if is_english_error_string(v) {
-                    Box::new(move |x| result_is_equal_to_error(x, v))
-                } else if v.contains('*') || v.contains('?') {
-                    let pattern = WildcardPattern::new(&operand_text(
-                        s,
-                        if explicit_equals { "=" } else { "" },
-                    ));
-                    Box::new(move |x| pattern.matches_result(x))
-                } else if let Some(f) = parse_date_criterion(v, locale, current_year, date_system) {
-                    Box::new(move |x| result_is_equal_to_number(x, f))
-                } else if flavor == CriteriaFlavor::Standard && explicit_equals && v.is_empty() {
-                    // Excel: a bare "=" does not match an empty-string cell (probes/criteria-grammar
-                    // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
-                    Box::new(move |x| matches!(x, CalcResult::EmptyCell))
-                } else if flavor == CriteriaFlavor::Database && !explicit_equals {
-                    let folded = operand_text(s, "").map_runs(str::to_lowercase);
-                    let prefix: Vec<u16> = folded.units().collect();
-                    Box::new(move |x| result_starts_with_units(x, &prefix))
-                } else {
-                    let target = operand_text(s, if explicit_equals { "=" } else { "" });
-                    Box::new(move |x| result_is_equal_to_string(x, &target))
+                CriterionOp::Eq => {
+                    let explicit_equals = !prefix.is_empty();
+                    if let Ok(b) = v.to_lowercase().parse::<bool>() {
+                        Box::new(move |x| result_is_equal_to_bool(x, b))
+                    } else if is_english_error_string(v) {
+                        Box::new(move |x| result_is_equal_to_error(x, v))
+                    } else if v.contains('*') || v.contains('?') {
+                        let pattern = WildcardPattern::new(&operand_text(s, prefix));
+                        Box::new(move |x| pattern.matches_result(x))
+                    } else if flavor == CriteriaFlavor::Standard && explicit_equals && v.is_empty()
+                    {
+                        // Excel: a bare "=" does not match an empty-string cell (probes/criteria-grammar
+                        // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
+                        Box::new(move |x| matches!(x, CalcResult::EmptyCell))
+                    } else if flavor == CriteriaFlavor::Database && !explicit_equals {
+                        let folded = operand_text(s, "").map_runs(str::to_lowercase);
+                        let prefix: Vec<u16> = folded.units().collect();
+                        Box::new(move |x| result_starts_with_units(x, &prefix))
+                    } else {
+                        let target = operand_text(s, prefix);
+                        Box::new(move |x| result_is_equal_to_string(x, &target))
+                    }
                 }
             }
         }
-        CalcResult::Number(target) => Box::new(move |x| result_is_equal_to_number(x, *target)),
         CalcResult::Boolean(b) => Box::new(move |x| result_is_equal_to_bool(x, *b)),
         CalcResult::Error { error, .. } => {
             // An error will match an error (never a string that is an error). Excel: except a stored
@@ -414,8 +475,11 @@ pub(crate) fn build_criteria_with<'a>(
             }
             Box::new(move |x| result_is_equal_to_error(x, &error.to_string()))
         }
-        CalcResult::Range { left: _, right: _ } => Box::new(move |_x| false),
-        CalcResult::Array(_) | CalcResult::Lambda(_) => Box::new(move |_x| false),
+        // `indexed_criterion` takes every number above.
+        CalcResult::Number(target) => Box::new(move |x| result_is_equal_to_number(x, *target)),
+        CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+            Box::new(move |_x| false)
+        }
         CalcResult::EmptyCell | CalcResult::EmptyArg => Box::new(result_is_equal_to_empty),
     }
 }

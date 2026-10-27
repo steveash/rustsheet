@@ -185,7 +185,8 @@ fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
     // fin-amor-period-bound-c (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION): the closed
     // form drifts from the walk by about 1e-13 relative, so a charge of 1E12 or more can be a unit
     // off. Excel is A1 18989305437102, A2 16344246350030, A3 13720292047582, A4 5154670166168, A6
-    // 151632679; main walked A1, A3, A4 to Excel's value and A2 to ...031. TODO(T-2826).
+    // 151632679; main's walk, rounded the Excel way, gives A1, A3, A4 but stays past the work cap,
+    // and gives A2 ...031: Excel's own walk drifts a few ulps from main's. TODO(T-2849).
     check(&[
         (
             "A1",
@@ -218,9 +219,9 @@ fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
 #[test]
 fn extreme_values_from_cells_are_values_without_a_panic() {
     // Unprobed except A3. Where main finished (A4, A5, A7-A9) these are main's values: a rate of
-    // 1E300 is a life of one period, a date or basis out of range is #NUM!. A3 keeps a cost of 1E308
-    // finite through AMORDEGRC's rounding (fin-amor-period-bound-b B2 is 1.94700443465919E302 in
-    // Excel, T-1895). Where main walked past 2^53 and never finished (A1, A2, A6), the walk's value.
+    // 1E300 is a life of one period, a date or basis out of range is #NUM!. A3 is Excel's: a cost
+    // of 1E308 stays finite and the charge is cut to 15 digits (fin-amor-period-bound-b B2, T-1895,
+    // T-2826). Where main walked past 2^53 and never finished (A1, A2, A6), the walk's value.
     check(&[
         // Rate 2.5E-308: a life of 4E307 periods, the charge 6E-305 never moves 2,100.
         (
@@ -232,7 +233,7 @@ fn extreme_values_from_cells_are_values_without_a_panic() {
         (
             "A3",
             "=AMORDEGRC(Z5,39679,39813,300,1E5,1E-6,1)",
-            "1.9470044346591894e302",
+            "1.94700443465919e302",
         ),
         ("A4", "=AMORLINC(Z5,39679,39813,300,1,Z4,1)", "0"),
         ("A5", "=AMORDEGRC(Z5,39679,39813,300,Z5,Z1,1)", "0"),
