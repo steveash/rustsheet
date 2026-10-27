@@ -6,6 +6,8 @@
 //! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
 //! migration).
 
+mod bgrat;
+
 use super::beta_density::{algdiv, beta_density_small_shape};
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{beta_reg_complement, closed_form_tails};
@@ -13,6 +15,7 @@ use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
 use crate::x87_exp::excel_exp_extended;
 use crate::x87_log10::excel_ln;
 use crate::x87_register::Register;
+use bgrat::bgrat_half;
 
 /// TOMS 708's `eps` in `bratio`: max(2^-52, 1e-15).
 pub(super) const EPS: f64 = 1e-15;
@@ -31,6 +34,9 @@ const BPSER_GAMMALN_FORM_MAX: f64 = 8.0;
 /// (probes-numeric t2464-r2-bratio-x29: Excel takes the 0.3 dispatch on 284 of the 434 cells in
 /// [0.29, 0.3) where the two differ, the 0.29 one on 87).
 const W1_BPSER_MIN_X: f64 = 0.3;
+
+/// The bup terms bratio takes before bgrat for b0 <= 15 (its `n = 20`).
+const BUP_BGRAT_TERMS: f64 = 20.0;
 
 /// The branch bratio computes a point with (the model's names; `bratio_excel.py` `kernel`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -212,6 +218,16 @@ pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)>
         }
         Branch::W1Bpser => {
             let w1 = bpser(d.b0, d.a0, d.y0)?;
+            (other(w1), w1)
+        }
+        // bgrat's b is a0: only b = 1/2 is ported (T-2509; T-2510 and T-2512 own the rest).
+        Branch::Bgrat if d.a0 == 0.5 => {
+            let w1 = bgrat_half(d.b0, d.y0, d.x0, 0.0)?;
+            (other(w1), w1)
+        }
+        Branch::BupBgrat if d.a0 == 0.5 => {
+            let up = bup(d.b0, d.a0, d.y0, d.x0, BUP_BGRAT_TERMS)?;
+            let w1 = bgrat_half(d.b0 + BUP_BGRAT_TERMS, d.y0, d.x0, up)?;
             (other(w1), w1)
         }
         Branch::L140BupBpser => {

@@ -27,7 +27,7 @@ use crate::x87_log1p::excel_ln_one_minus;
 const GAMMALN_FORM_MAX: f64 = 8.0;
 
 /// TOMS 708 `algdiv`'s Stirling coefficients c0..c5.
-const ALGDIV_C: [f64; 6] = [
+pub(super) const ALGDIV_C: [f64; 6] = [
     0.083_333_333_333_333_3,
     -0.002_777_777_777_609_91,
     7.936_506_668_253_9e-4,

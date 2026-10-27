@@ -583,6 +583,42 @@ pub(crate) fn dd_div(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
     two_sum(q, remainder.0 / b.0)
 }
 
+/// sqrt of a positive double-double: the double root and one Newton correction.
+pub(crate) fn dd_sqrt(a: (f64, f64)) -> (f64, f64) {
+    let root = a.0.sqrt();
+    let square = dd_mul((root, 0.0), (root, 0.0));
+    let residual = dd_add(a, (-square.0, -square.1));
+    two_sum(root, residual.0 / (2.0 * root))
+}
+
+/// Taylor terms of [`dd_exp`] on its reduced argument, |r| <= ln 2 / 2^9: the first omitted
+/// term is below 2^-120 relative.
+const DD_EXP_TERMS: u32 = 11;
+
+/// Squarings that undo [`dd_exp`]'s argument halving (2^8 = 256).
+const DD_EXP_SQUARINGS: u32 = 8;
+
+/// e^a in double-double (about 2^-98 relative) for |a| <= 700: a = k ln 2 + r, e^(r/256) by its
+/// Taylor series, squared 8 times, times 2^k. Outside that range the head is past the normal
+/// range and the result is not meaningful; callers check first.
+pub(crate) fn dd_exp(a: (f64, f64)) -> (f64, f64) {
+    let k = (a.0 / std::f64::consts::LN_2).round();
+    let reduced = dd_add(a, dd_mul((-k, 0.0), (LN_2_HI, LN_2_LO)));
+    let small = (reduced.0 / 256.0, reduced.1 / 256.0);
+    let mut term = (1.0, 0.0);
+    let mut sum = (1.0, 0.0);
+    for i in 1..=DD_EXP_TERMS {
+        term = dd_div_small(dd_mul(term, small), f64::from(i));
+        sum = dd_add(sum, term);
+    }
+    for _ in 0..DD_EXP_SQUARINGS {
+        sum = dd_mul(sum, sum);
+    }
+    // |k| <= 1010 for |a| <= 700; 2^k as a double is exact.
+    let scale = power_of_two(k as i32);
+    (sum.0 * scale, sum.1 * scale)
+}
+
 /// RN64 of a positive double-double `hi + lo`: the 64-bit significand and its exponent.
 pub(crate) fn dd_to_extended((hi, lo): (f64, f64)) -> (u128, i32) {
     let (significand, exponent) = significand_and_exponent(hi);
