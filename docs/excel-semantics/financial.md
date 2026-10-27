@@ -122,18 +122,31 @@ relative from the exact -1.254969996784983E-12 (m9-fin-pmt A166).
   large-rate fv cells by 10 to 94 ulp (`PPMT(10,2,85,-1,733)` = -2.440762531497786E-84), `1-Q(-n)`
   taken directly misses short terms (279; it cancels), and `Q(per-2-n)` for type 1 instead of the
   division misses `PPMT(2.5,5,214,1E-300,589,1)` by 108 ulp. In period 1 of type 1 PPMT is PMT.
-- Where it does not apply: rates at or below -0.375 are the exact form (`PPMT(-0.5,1,277,73630,609)`
-  = -37119.5, gen-m9 762cd0e4ec9a7aa9 A5; this model is 25 ulp off), yet `PPMT(-0.5,12,158,1.9)` is
-  -0.00046386718749999705, 6.4E-15 relative from the exact value and 33 ulp from this model
-  (gen-m9 38e4fc309fe199ea A73): unexplained (T-2242 follow-up). Where |n*L| < 1E-6 L's error
-  cannot move the power by an ulp, and the exact form matches Excel's last bit where this one is an
-  ulp off (`PPMT(1E-10,2,124,191996,822,1)` = -1554.9838614045912).
-- Open: the switch between 0.37 and 0.38 is not pinned (the engine takes 0.375), nor whether it is
-  on |rate| or on rate for negative rates; the last-bit misses of the sweeps (a 64-bit `-n*L`, the
-  x87 EXP on it, and a divided form were each worse).
+- Negative rates (T-2588): the same discount holds for every rate above -1, not only above -0.375.
+  `PPMT(-0.5,5,294,171132)` is -5347.875000000112 and `PPMT(-0.5,12,158,1.9)` -0.00046386718749999705,
+  where the exact values are -5347.875 and -0.0004638671875 (gen-m9 79d87fc527927626 A46, 38e4fc309fe199ea
+  A73). probes-numeric/ppmt-negative-rate-sweep (excel-graph, 2026-10-27: rates -0.9 to -0.3 in four shapes
+  with fv and type 1, a fine grid at -0.38 to -0.37, a -0.5 grid over period, term and fv): over the 62
+  cells at or below -0.375 this form, with a correctly rounded LN and EXP, is within 15 digits on 61 and
+  bit-exact on 31, where the exact form is within 15 digits on 32 (8 bit-exact; `PPMT(-0.9,5,60,100000)`
+  is Excel's -8.999999999999833, exact -8.999999999999993). The engine's form is within 15 digits on all
+  79 cells (43 bit-exact). The earlier note that `PPMT(-0.5,1,277,73630,609)` = -37119.5 ruled it out is
+  wrong: this form gives -37119.5 too.
+- Past the double range: Excel holds `(pv+fv)*rate*Q` in an x87 register, so it does not overflow
+  where a double product would: `PPMT(-0.5,4,230,1E+300)` is -6.249999999999966E+298 (exact
+  -6.25E+298; gen-m9 67a4c03afd63f988 A180, and -0.25 and -0.75 in the sweep). The engine rescales
+  `pv+fv` by 2^-600 and back when the double product overflows, which keeps every bit.
+- Fractional periods take the same form (`PPMT(-0.5,1.999,97,226365)` is -56630.48966324223, the
+  engine an ulp below; gen-m9 d0854366830dcdee A335).
+- Where |n*L| < 1E-6 L's error cannot move the power by an ulp, and the exact form matches Excel's
+  last bit where this one is an ulp off (`PPMT(1E-10,2,124,191996,822,1)` = -1554.9838614045912).
+- Open: the series/LN switch between 0.37 and 0.38 is not pinned (the engine takes 0.375), nor
+  whether it is on |rate| (the engine) for negative rates: the sweep is within 15 digits either side
+  of -0.375 but was not scored by L candidate. The last-bit misses of the sweeps (a 64-bit `-n*L`, the
+  x87 EXP on it, and a divided form were each worse) are open too.
 Status: VERIFIED to 15 digits (excel-graph); bits open.
 Implemented in: `growth_log` and `discounted_principal`, on `x87_exp::excel_expm1`
-(crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2242).
+(crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2242, T-2588).
 Conflicting evidence: 35 cells of desktop-Excel-saved Calipers models fed by PPMT and IPMT
 matched Excel bit for bit before T-2242 and are now off by a few ulps. They are in pv_goldens
 pv23_007 ("Pro Forma Cash Flow Statement" AF13, AV13, BG15, G15, G24, N13, …), pv23_008 ("Debt

@@ -3,7 +3,7 @@ id: T-2588
 title: "PPMT at rates at or below -0.375, past 1E+300 and at fractional periods"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,10 +41,25 @@ Cells:
 - gen-m9/d0854366830dcdee.case.json (1): Calc!A335
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9): these 5 cells are within half a unit of the 15th significant digit of Excel's
+- [x] Visible parity (gen-m9): these 5 cells are within half a unit of the 15th significant digit of Excel's
       value, with no new known-failure lines in any baseline.
-- [ ] financial.md's PPMT entry covers negative rates, the 1E+300 cell and fractional periods.
-- [ ] `make check` green; reviewers approve.
+- [x] financial.md's PPMT entry covers negative rates, the 1E+300 cell and fractional periods.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IPMT (T-2587); bit parity (T-2243, T-1528).
+
+## Outcome
+- Rule (financial.md "PPMT discounts with an atanh-series log", negative-rate bullets): Excel's discounted PPMT
+  holds for every rate above -1, not only above -0.375. Over the 62 cells at or below -0.375 of the new probe
+  probes-numeric/ppmt-negative-rate-sweep (79 cells, excel-graph, 2026-10-27), that form is within 15 digits on
+  61 and the exact form on 32. The -37119.5 cell that had kept the exact form fits the discounted one too.
+- Past the double range Excel's x87 register holds `(pv+fv)*rate*Q`: `discounted_principal` rescales `pv+fv`
+  by 2^-600 when the double product overflows (`PPMT(-0.5,4,230,1E+300)`).
+- Code: `DISCOUNTED_RATE_FROM` -0.375 -> -1, `OVERFLOW_SCALE` in functions/financial/annuity.rs; unit test
+  `principal_at_negative_rates`.
+- Eval: gen-m9 known failures 3671 -> 3666 (the 5 cells; A335 is now an ulp off, within 15 digits), 0 regressions.
+  The probe: all 79 cells within 15 digits, 43 bit-exact.
+- Not done: the fit-lab candidates (`fitlab/kernels/annuity.py`) and pinning the series/LN switch on the
+  negative side. Both are bit-level work, out of scope here (T-2243).
+
