@@ -202,8 +202,7 @@ impl Model {
             // Serial 0 still reads; below it, or past the calendar's end, is `#NUM!` at once. The
             // settlement is not checked as it is read (`ACCRINT(34022,36149,0.5,NA(),..)` is `#N/A`,
             // gen-m9/f81bd3b6dc373e5c A60 reads an issue of 0.5 past a text rate).
-            // ACCRINT reads the dates themselves (`DateReading::Calendar`).
-            let reading = DateReading::Calendar;
+            let reading = DateReading::of(&Function::Accrint);
             let issue = self.financial_date_as(
                 reading,
                 self.financial_calendar_date_of(issue, reading, cell)?,

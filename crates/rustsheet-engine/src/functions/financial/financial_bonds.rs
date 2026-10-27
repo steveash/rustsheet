@@ -549,13 +549,7 @@ impl Model {
         cell: CellReferenceIndex,
         body: CouponBody,
     ) -> CalcResult {
-        // COUPNUM reads the dates themselves, the other COUP* functions 2 * 1462 days on
-        // (`DateReading`).
-        let reading = if kind == Function::Coupnum {
-            DateReading::Calendar
-        } else {
-            DateReading::Shifted
-        };
+        let reading = DateReading::of(&kind);
         self.lift_call(kind, args, cell, &mut |model, values| match model
             .coupon_args(values, reading, cell)
         {
@@ -980,16 +974,7 @@ impl Model {
     pub(crate) fn fn_coupnum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.coupon_call(Function::Coupnum, args, cell, |model, coupon, cell| {
             let (settlement, maturity, frequency, _basis) = coupon;
-            // A previous coupon before the workbook's first day is #NUM!: 1900-01-01 is
-            // `coupon_count`'s own check, 1904-01-01 this one (`COUPNUM(0,181,2)` with previous
-            // coupon 1903-12-31, `COUPNUM(0,182,2)` = 1; probes/fin-coupnum-1904-epoch A1-A41,
-            // fin-coupnum-1904-maturity-sweep; financial.md "COUPNUM in a 1904 workbook").
-            let first = model
-                .workbook
-                .settings
-                .date_system
-                .first_coupon_1900_serial();
-            if prev_coupon_date(settlement, maturity, frequency).is_ok_and(|pcd| pcd < first) {
+            if model.coupon_before_calendar(settlement, maturity, frequency) {
                 return num_error(cell);
             }
             date_number(

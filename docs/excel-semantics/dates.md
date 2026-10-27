@@ -720,7 +720,8 @@ serial 2957003) is `#NUM!`, and so is a coupon date before 1904-01-01 (financial
 - `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9996,1,1),0.05,1000,2,0,FALSE)` = 300 (-accrint-settlement-bound A1),
   ACCRINT and COUPNUM compute with any first_interest or maturity up to 9999-12-31 (`COUPNUM(DATE(2024,1,15),
   DATE(9999,12,31),2)` = 15952, -coupon-bound A13), and a settlement past 2957003 is `#NUM!` (-financial-settlement-bound
-  A10, D10:F10). The coupon schedule break from 9995-12-31 of the next entry does not apply to them.
+  A10, D10:F10). The coupon schedule break from 9995-12-31 of the next entry does not apply to them; it still applies
+  to COUPPCD, COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, PRICE, YIELD, DURATION and MDURATION.
 - `TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)` is `#NUM!` (366 days, more than a year; -financial-shift A31:A33),
   `TBILLPRICE(DATE(9996,1,1),DATE(9996,6,30),0.05)` and `TBILLEQ(DATE(9996,1,1),DATE(9996,12,31),0.05)` are numbers
   while YEARFRAC, DISC, ACCRINTM, AMORLINC, COUPDAYBS and PRICE of the same 9996 dates are `#NUM!`
@@ -735,6 +736,9 @@ settlement slices (410415.83 → 300) and its near-9999 `#NUM!`s, COUPNUM comput
 `#NUM!` for a previous coupon before 1904-01-01 (`COUPNUM(0,DATE(1910,3,31),4)` 25 → `#NUM!`), and the TBILLs over a
 29 February maturity turned `#NUM!`. A second re-fill on 2026-10-27 (T-2337) gave the same 111 values and changed
 nothing else. Desktop Excel is unprobed (M14 question, decision 0039).
+UNVERIFIED: the argument-error order in a 1904 workbook. Ours range-checks these five functions' dates in the new
+reading as they are read, so `TBILLEQ(DATE(9996,1,1),NA(),0.05)` is `#N/A` (it was `#NUM!` in the old reading); no 1904
+probe pairs a late date with a later error argument (T-2843).
 Evidence: the 27 `*-1904` probe cases re-filled 2026-10-27 (excel-graph): in all of them every ACCRINT, COUPNUM and
 TBILL* cell matches our 1900 evaluation of the same formulas except cells that pass a literal serial (0, 200, 2957004),
 while COUPPCD, COUPNCD, COUPDAY*, PRICE, YIELD, DURATION, YEARFRAC, the discount securities, the odd-period functions and

@@ -12,8 +12,11 @@ use crate::{
     expressions::{token::Error, types::CellReferenceIndex},
     formatter::dates::{excel_serial_to_ymd, EPOCH_1904_IN_1900_SERIALS},
     functions::lift::num_error,
+    functions::Function,
     model::Model,
 };
+
+use super::financial_bonds::coupon_schedule::prev_coupon_date;
 
 /// Whether `end_date` is at most a year after `start_date` (1900 serials), the TBILL* limit,
 /// `None` off the calendar. It compares the dates Excel shows, so serial 0 is 1900-01-00 and
@@ -50,7 +53,7 @@ pub(super) fn is_less_than_one_year(start_date: i64, end_date: i64) -> Option<bo
 /// How a financial function reads a date argument of a 1904 workbook. Excel for the web changed
 /// five functions on 2026-10-21 and left the rest (docs/excel-semantics/dates.md "The 1904 date
 /// system: ACCRINT, COUPNUM and the TBILL functions read the date itself"); in a 1900 workbook
-/// both readings are the serial itself.
+/// both readings are the serial itself. `DateReading::of` says which function reads which.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DateReading {
     /// Serial + 2 * 1462 (`DateSystem::financial_1900_serial`): YEARFRAC, the other COUP*
@@ -62,7 +65,40 @@ pub(super) enum DateReading {
     Calendar,
 }
 
+impl DateReading {
+    /// How `function` reads its date arguments.
+    pub(super) fn of(function: &Function) -> Self {
+        match function {
+            Function::Accrint
+            | Function::Coupnum
+            | Function::Tbilleq
+            | Function::Tbillprice
+            | Function::Tbillyield => Self::Calendar,
+            _ => Self::Shifted,
+        }
+    }
+}
+
 impl Model {
+    /// Whether the previous coupon of `settlement` and `maturity` (as `DateReading::Calendar`
+    /// reads them) is before the workbook's first day, where COUPNUM is #NUM!: 1900-01-01 is
+    /// `coupon_count`'s own check, 1904-01-01 this one (`COUPNUM(0,181,2)` with previous coupon
+    /// 1903-12-31, `COUPNUM(0,182,2)` = 1; probes/fin-coupnum-1904-epoch A1-A41,
+    /// fin-coupnum-1904-maturity-sweep; financial.md "COUPNUM in a 1904 workbook").
+    pub(super) fn coupon_before_calendar(
+        &self,
+        settlement: i64,
+        maturity: i64,
+        frequency: u32,
+    ) -> bool {
+        let first = self
+            .workbook
+            .settings
+            .date_system
+            .first_coupon_1900_serial();
+        prev_coupon_date(settlement, maturity, frequency).is_ok_and(|pcd| pcd < first)
+    }
+
     /// The floored 1900 serial a financial function's day counts read for the date argument
     /// `serial`: 2 * 1462 days on in a 1904 workbook (`DateSystem::financial_1900_serial`).
     pub(super) fn financial_date(&self, serial: f64) -> i64 {
@@ -112,8 +148,8 @@ impl Model {
     }
 
     /// A date argument of the TBILL, discount-security, AMORLINC and AMORDEGRC functions as read:
-    /// its number, #NUM! unless `reading` floors it to a serial from 0 to 9999-12-31, checked before the
-    /// next argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)`
+    /// its number, #NUM! unless `reading` floors it to a serial from 0 to 9999-12-31, checked
+    /// before the next argument is read (`TBILLEQ(-1,1/0,0.05)` and `TBILLEQ(39000,2958466,1/0)`
     /// are #NUM!, `TBILLEQ(0,39100,1/0)` #DIV/0!; probes/securities-argument-error-order C1:F16;
     /// financial.md, T-1406).
     pub(super) fn financial_calendar_date_of(
@@ -361,4 +397,19 @@ pub(super) fn broken_schedule_days(
 /// date-system-1904-odd-accrint-bound B11:D15).
 pub(super) fn broken_schedule_error(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NUM, cell, "no coupon schedule".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_less_than_one_year;
+
+    // A T-bill settled in 9999 is #NUM! however short; 9998-12-31 still reaches 9999-12-31
+    // (probes/fin-1900-tbill-last-day A8, A9, A12; T-2337).
+    #[test]
+    fn a_settlement_in_9999_has_no_one_year_limit() {
+        assert_eq!(is_less_than_one_year(2_958_101, 2_958_110), None);
+        assert_eq!(is_less_than_one_year(2_958_100, 2_958_110), Some(true));
+        assert_eq!(is_less_than_one_year(2_958_100, 2_958_465), Some(true));
+        assert_eq!(is_less_than_one_year(0, 366), Some(true));
+    }
 }
