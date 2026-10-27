@@ -2135,8 +2135,15 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   `='53aa…f48.xlsx'!loc+1` (values 5, 5, 6; `ISREF` TRUE) with no rename (probe
   `sheet-ops-workbook-name-via-prefix-no-rename`), and `=ebfe…145.xlsx!loc` (unquoted: the name starts with a
   letter) after renaming Feb to Mar, values still 5 (probe `sheet-ops-rename-workbook-name-via-prefix`;
-  excel-graph 2026-10-26, T-1701). So a rename never touches it. Ours: the text keeps `Feb!`, and after the
-  rename both values are `#NAME?` (T-2834). An unnamed workbook is unprobed.
+  excel-graph 2026-10-26, T-1701). So a rename never touches it. The formula's own sheet is rewritten too
+  (`=Calc!loc` on Calc shows `=<file>.xlsx!loc`), and a file that stores `[0]!loc` (the own-workbook prefix)
+  loads as the workbook name with the same file-name text, even on a sheet with its own `loc`
+  (`Local!loc` = 7 beside workbook `loc` = 5: `=[0]!loc` on Local is 5, `=loc` 7; probe
+  `workbook-name-own-book-prefix`, excel-graph 2026-10-27, T-2834). Ours matches (T-2834): the parser
+  writes the file-name prefix, reads `<file>.xlsx!loc` (any case) back as the workbook name, and stores and
+  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. Unprobed: a
+  file name with a space or other characters a sheet name would quote (ours quotes it as a sheet name),
+  and an unnamed workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`).
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.

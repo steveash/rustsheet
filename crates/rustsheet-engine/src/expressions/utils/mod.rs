@@ -434,7 +434,8 @@ pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {
 /// Points the sheet prefix of a qualified defined name (`Data!Local`) at `new_sheet` when the
 /// name is scoped to the renamed sheet (`scope == Some(renamed)`). A name with no prefix, and a
 /// linked workbook's `[1]!Name`, are left as they are. A workbook name read through a sheet
-/// prefix has no scope here: no Excel evidence yet for rewriting it.
+/// prefix has no scope here and is left alone: its text is the workbook's file name, which a sheet
+/// rename never touches (probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix, T-2834).
 pub(crate) fn rename_defined_name_sheet(
     name: &mut String,
     scope: Option<u32>,
