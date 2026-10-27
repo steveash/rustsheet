@@ -3,7 +3,7 @@ id: T-2829
 title: "F.TEST gen-m9/b6593d7dd13f2dac A306: the one cell bratio leaves visibly off (T-2681)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
