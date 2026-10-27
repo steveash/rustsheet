@@ -3316,6 +3316,11 @@ bcb24385baafb2f0 A377 3 ulp). Still visibly off:
 `F.TEST(Data!B6:E12,Data!A1:D10)`, gen-m9/b6593d7dd13f2dac A306 (Excel 1.23966888990022E-69, ours 25 ulp off; data with
 123456789.123 among values near 1; T-2829). 8 cells move from bit-exact to 1 to 3 ulp (T-2830). Evidence and per-branch
 tables: docs/research/t2681/README.md, `score_bratio.py`.
+- F.TEST is 2·F.DIST.RT at Excel's own f, to the bit: at gen-m9/b6593d7dd13f2dac A306's data
+  `F.TEST(..)` and `2*F.DIST.RT(VAR.S(..)/VAR.S(..),23,12)` are both 1.23966888990022E-69. With both shapes above 1,
+  Excel's bpser stores fl(a·LN x) as the port does: when the sample is scaled to move x by up to 1E5 ulp, the gap
+  between ours and Excel stays a constant of the shapes (5.3E-15 relative at a = 6, b = 11.5, 1.4E-15 at b = 11).
+  That constant is not yet identified (T-2829; probes/t2829-ftest-a306-shapes, excel-graph).
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own

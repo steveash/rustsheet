@@ -46,6 +46,24 @@ it displays ...021, so it is visibly off.
   (`F.TEST({1,1,2,2,2,3},Data!B1:E11)`, a = 2.5, b = 11, x = 2.9621212121212663E-30, Excel
   4.2838236027000643E-72, bit-exact today) into ...0517, visibly off. So that form is out unless something
   separates the two cells (b half-integer against integer? a0 >= 4?).
+- **Probe probes/t2829-ftest-a306-shapes (excel-graph, 2026-10-27)**, ours from `rustsheet-eval show`:
+  - A1 = A306's F.TEST with inline arrays: Excel 1.23966888990022E-69, the same double as the gen-m9 cell. A2,
+    `2*F.DIST.RT(VAR.S(..)/VAR.S(..),23,12)`, gives the same double, so F.TEST is 2·F.DIST.RT at Excel's own f.
+    Ours is 1.239668889900213E-69 on that path (a different kernel from F.TEST's).
+  - A3 and A4 are VAR.S of the two samples. Excel's are 765.7947626390592 and 635065683430145.2; ours shows A4
+    as ...145.3, 1 ulp apart (it still scores Pass).
+  - A7-A12 hold the large sample times 1 ± 1E-9..1E-8, which moves x by up to about 1E5 ulp. Ours (accurate ln B)
+    is low against Excel by a constant 5.3E-15 relative on every cell (A1 -65, A7 -67, A8 -68, A9 -67, A10 -67,
+    A11 -66, A12 -65, in units of 1E-85). Against the GAMMALN-register ln B it is high by a constant 2.7E-15.
+    The residual of a stored fl(a·LN x) changes with x, so a constant offset means Excel stores a·LN x as the
+    port does. What remains is a constant of the shapes: ln B, s or EXP.
+  - A5 is the b = 11 twin (the large sample less its last value): Excel 1.0045406401767847E-69, ours ...7833,
+    1.4E-15 relative low. A6 is its F.DIST.RT.
+  - Excel's ln B would have to be accurate - 5.3E-15 at (6, 11.5), accurate - 1.4E-15 at (6, 11), and the
+    accurate value at (2.5, 11) (A289). No form tried gives all three: the GAMMALN register sum
+    (-8.9E-15 / -1.8E-15 / +2.7E-15), `GL(a) + algdiv(a, b)` (+1.8E-15 / -1.8E-15 / -0.9E-15), and TOMS's
+    reduction (0 / 0 / 0). Since -1.4E-15 is below one ulp of a stored ln B, look at the series s and EXP of the
+    extended z too.
 - Next ideas: (1) A306's data hold 123456789.123: probe F.TEST on the same shapes with x placed so that
   fl(a·LN x) has a different residual, to tell whether Excel stores a·LN x here at all; (2) probe a = 6 against
   b = 11 and 11.5 with modest data to test a half-integer-b ln B form; (3) check whether Excel orients this point
