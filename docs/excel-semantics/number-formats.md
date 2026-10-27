@@ -830,6 +830,10 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   `# ?/?%` on 21474836.48 "2147483648    %"; `?/100%` on 3.27674 "32767/100%" and on 3.27675 255 `#`; the 2^30 stop
   rule below too (`?/?%` on 10737418.245 "1073741825/1%", 10737418.235 "2147483647/2%"). For `,` scaling see
   "Scaling commas in fraction formats"; for denominators past 32767 "Fixed denominators past 32768".
+- **Many scaling commas wrap** (VERIFIED, probes/t2842-dollar-run-contexts K1:K3, K10:K11, excel-graph 2026-10-27, T-2842):
+  outside a fraction, Excel keeps the scaling exponent -3n of n trailing commas in a signed byte, so `TEXT(5,"0"&REPT(",",252))`
+  is "5000000000000" (-756 wraps to 12), 253 commas "5000000000" (9), 254 "5000000" (6), and `[$-409]0` + 246 commas
+  5 followed by 30 zeros. Counts from 43 (where -129 first wraps) to 245 are unprobed; the engine applies the same wrap.
 - **Scaling commas in fraction formats** (VERIFIED, probes/fraction-overflow-scaled, excel-graph 2026-10-27, T-2522).
   A `,` right after the denominator (`?/?,`, `# ?/4,`, `?/4,%`) multiplies the value by 10^((-3n) mod 256) for n such
   commas, as if Excel kept the exponent -3n in an unsigned byte: 10^253 for one, 10^250 for two, 10^247 for three. So

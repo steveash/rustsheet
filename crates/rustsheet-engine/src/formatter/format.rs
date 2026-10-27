@@ -718,7 +718,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let tokens = &p.tokens;
             // `General` among literals shows the value itself, with its sign
             let general_value = value;
-            let scaled = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+            // Excel keeps the scaling commas' exponent -3n in a signed byte: `"0"` + 252 commas
+            // on 5 is "5000000000000" (-756 wraps to 12; probes/t2842-dollar-run-contexts K1:K3).
+            let comma_exponent = (p.comma.saturating_mul(-3) + 128).rem_euclid(256) - 128;
+            let scaled = value * 100.0_f64.powi(p.percent) * 10.0_f64.powi(comma_exponent);
             value = scaled;
             // p.precision is the number of significant digits _after_ the decimal point
             // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
