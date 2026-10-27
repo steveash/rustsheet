@@ -1121,13 +1121,7 @@ impl UserModel {
         let mut old_data = Vec::new();
         // Collect data for all rows to be deleted
         for r in row..row + row_count {
-            let mut row_data = None;
-            for rd in &worksheet.rows {
-                if rd.r == r {
-                    row_data = Some(rd.clone());
-                    break;
-                }
-            }
+            let row_data = worksheet.rows.iter().find(|rd| rd.r == r).cloned();
             // SpillCells are transient; save their style as EmptyCell so undo can
             // restore the style index, letting evaluate() recreate the SpillCell correctly.
             let data = worksheet
