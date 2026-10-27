@@ -89,7 +89,7 @@ Owned cells (62 known-failure lines, 61 visibly off; `make eval-show CASE=<case>
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Excel's own last digits elsewhere in the family (T-0967), tiny p (T-1542), p in (1,2) (T-2096), the T.DIST kernel (T-0969).
+- Excel's own last digits elsewhere in the family (T-0967), tiny p (T-1542), p in (1,2) (T-2096), p just above 1 (T-2839; a fix there may share this kernel, so coordinate), the T.DIST kernel (T-0969).
 
 ## Visible-parity stage
 Decision 0083/0114, stage `accuracy`: done when every owned cell is within half a unit of Excel's 15th significant digit.
