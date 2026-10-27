@@ -716,17 +716,20 @@ impl Lexer {
         self.locale.numbers.symbols.decimal == "."
     }
 
+    /// Whether `c` may continue a name.
+    fn is_name_char(&self, c: char) -> bool {
+        c.is_alphanumeric()
+            || c == '_'
+            || c == '.'
+            || (c == '\\' && self.backslash_in_names())
+            || utils::is_typographic_quote(c)
+    }
+
     // Consumes an identifier from the input stream
     fn consume_identifier(&mut self) -> String {
         let mut position = self.position;
         while position < self.len {
-            let next_char = self.chars[position];
-            if next_char.is_alphanumeric()
-                || next_char == '_'
-                || next_char == '.'
-                || (next_char == '\\' && self.backslash_in_names())
-                || utils::is_typographic_quote(next_char)
-            {
+            if self.is_name_char(self.chars[position]) {
                 position += 1;
             } else {
                 break;
@@ -946,7 +949,11 @@ impl Lexer {
                 self.position = end;
             }
         }
-        if let (Err(_), Some(sheet)) = (&m, &sheet) {
+        // A cell that more of a name follows starts a qualified name (`=Data!Q1_Total`; references.md,
+        // probes/defined-name-qualified-like-reference*). A range (`Data!A1:B2x`) is unprobed.
+        let name_follows_cell = matches!(m, Ok(ParsedRange { right: None, .. }))
+            && self.peek_char().is_some_and(|c| self.is_name_char(c));
+        if let (true, Some(sheet)) = (m.is_err() || name_follows_cell, &sheet) {
             if let Some(name) = self.consume_sheet_scoped_name(sheet, start) {
                 return name;
             }
