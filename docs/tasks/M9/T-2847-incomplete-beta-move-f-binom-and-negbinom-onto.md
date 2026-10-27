@@ -55,6 +55,8 @@ for the Cephes kernel are gone.
       A5816, A8117, A9633, A10836; t2464-w2f-absweep A7053;
     - `bpser_neg_ln_beta` takes `beta_density::algdiv` in double arithmetic for b0 >= 8, where the model runs TOMS
       algdiv x87 stored (r2-bpser-small `lib.py` `algdiv_x87`); this may explain part of the b0 >= 8 residue.
+  - Probe (excel-probe) Excel's value where fl(a·LN x) overflows, e.g. `BETA.DIST(0.1,1E308,0.5,TRUE)` and a shape of
+    MAX double: bpser keeps today's kernel there (T-2505), while the model gives 0.
   - SPEC-0025's layout and tests: split `bratio/mod.rs` into `bpser.rs`/`ln_beta.rs` and give it the spec's
     `bratio`/`Tails`/`bratio_or` entry before T-2506 adds bup and bgrat (or amend the spec), and add the hex-bits
     branch fixture and the complement, swap and monotonicity property tests. `beta_density::ln_beta_small_shape` and
