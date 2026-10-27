@@ -25,7 +25,9 @@ Excel does so for digits 1, 2, 9, A and the lunar ones, but for 7 and 3 it conve
   -1862, printed as an unsigned 32-bit number), and `g` that era's letter.
 Probe before generalizing: `B2` before calendar 5 (Korean, +2333) and 4 (Taiwan), `B2` before `[$-411]` with a `g`
 (`B2[$-411]g|yy`, the Japanese LCID's own calendar becomes Hijri there), other serials (an early Reiwa date, a Meiji
-date), and `B2[$-70409]`/`B2[$-30411]` as a cell number format.
+date), and `B2[$-70409]`/`B2[$-30411]` as a cell number format. In the same probe, confirm two inferences T-2729 left
+(number-formats.md): `TEXT(45000,"B1@")` and `"B2@"` (inferred "45000" from `B2[$-409]@`), and a number before the
+`mmm` switch, `B2[$-409]yyyy|mmm|dddd` (the engine prints the real weekday).
 Failing cells (probes, excel-graph 2026-10-27):
 - probes/t2729-hijri-locale-tag S!A245, A246
 - probes/t2729-hijri-locale-tag-names S!A296, A297, A316, A317

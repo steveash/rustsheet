@@ -135,8 +135,10 @@ Rule: a second calendar prefix after a tag is `#VALUE!` (`B2[$-409]B2mmmm`, `B2[
 the tag are fine (`B2B2[$-409]mmmm` is "Sha'ban") and so is `B1` before a tag (`B1[$-40C]mmmm` is "mars").
 Evidence: probes/t2729-hijri-locale-tag (278 cells), probes/t2729-hijri-locale-tag-names (320 cells), excel-graph
 2026-10-27; text-locale-calendars A47-A49, A87, A88, A124; text-locale-calendars-detail A7, A8; text-locale-era-gregorian A21.
-Unprobed: calendar digits 15 and above after `B2` (the engine lets them win like the others); the extended-hex tags that
-resolve to a locale (`B2[$-g]`; the engine leaves them Gregorian); Hijri names of LCIDs with no table here (TODO(T-1875)).
+Unprobed: a number token before the `mmm` switch (`B2[$-409]yyyy|mmm|dddd`; the engine applies the bare `B2` rule, so the
+weekday is the real one); calendar digits 15 and above after `B2` (the engine lets them win like the others); the extended-hex tags that
+resolve to a locale (`B2[$-g]`; the engine leaves them Gregorian); Hijri names of LCIDs with no table here (TODO(T-1875); the engine gives them the Arabic names
+of an LCID with no locale, so Persian `[$-60429]` prints "شعبان").
 Implemented in: `resolve_after_hijri_prefix`, `hijri_names` and `Calendar::Hijri` (formatter/locale_tag.rs), the
 lexer's `hijri_prefix`, `NameTokens` (formatter/date_names.rs), the Hijri tables in locale/excel_date_names.rs.
 Status: VERIFIED (excel-graph)

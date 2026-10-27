@@ -31,7 +31,7 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell this task
 ## Acceptance criteria
 - [x] A probe case covers both forms (excel-graph) and passes; number-formats.md records the rule.
 - [x] The three exit-owner cells above pass and leave eval/baseline/probes.txt, with no new known failure.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other calendar digits (8 Hebrew, 10 Saka, the lunar ones).

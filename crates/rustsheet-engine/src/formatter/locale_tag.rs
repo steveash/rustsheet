@@ -86,9 +86,12 @@ pub enum LocaleTag {
 pub const SYSTEM_LONG_DATE: &str = "dddd, mmmm d, yyyy";
 /// The system long time format of en-US Windows (`[$-F400]`).
 pub const SYSTEM_LONG_TIME: &str = "h:mm:ss AM/PM";
+/// The tag value of the system long date (`[$-F800]`).
+const SYSTEM_DATE_LCID: u32 = 0xF800;
+/// The tag value of the system long time (`[$-F400]`).
+const SYSTEM_TIME_LCID: u32 = 0xF400;
 
 /// Resolves the text between `[$-` and `]`.
-/// [`resolve_after_hijri_prefix`] resolves a tag that follows a `B2` prefix in its section.
 ///
 /// A hex LCID may carry a calendar in the digits above the low four (see `resolve_lcid`). An LCID
 /// with no table falls back to its language (`[$-80C]` is French, `[$-C]` too); 400 and 800, the
@@ -96,6 +99,7 @@ pub const SYSTEM_LONG_TIME: &str = "h:mm:ss AM/PM";
 /// A BCP-47 tag matches case-insensitively, then by its language (`[$-fr-XX]` is French).
 /// Any other tag is read as extended hex ([`extended_hex`], [`resolve_extended`]): `[$-fr_FR]` is
 /// the Saka calendar over an LCID with no locale.
+/// [`resolve_after_hijri_prefix`] resolves a tag that follows a `B2` prefix in its section.
 pub fn resolve(tag: &str) -> LocaleTag {
     resolve_with(tag, false)
 }
@@ -169,7 +173,7 @@ fn extended_hex(tag: &str) -> Option<u32> {
 /// `value` with calendar digit 0 read as 6 (Hijri) after a `B2` prefix; the system tags keep
 /// theirs.
 fn hijri_default(value: u32, hijri_prefix: bool) -> u32 {
-    if hijri_prefix && value >> 16 == 0 && value != 0xF800 && value != 0xF400 {
+    if hijri_prefix && value >> 16 == 0 && value != SYSTEM_DATE_LCID && value != SYSTEM_TIME_LCID {
         value | 0x6_0000
     } else {
         value
@@ -189,8 +193,8 @@ fn hijri_default(value: u32, hijri_prefix: bool) -> u32 {
 /// digits (bits 24-31; TODO(T-1925)).
 fn resolve_lcid(value: u32) -> LocaleTag {
     match value {
-        0xF800 => return LocaleTag::SystemDate,
-        0xF400 => return LocaleTag::SystemTime,
+        SYSTEM_DATE_LCID => return LocaleTag::SystemDate,
+        SYSTEM_TIME_LCID => return LocaleTag::SystemTime,
         _ => {}
     }
     if value >> 24 != 0 {
