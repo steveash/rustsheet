@@ -1386,6 +1386,11 @@ C	probes/t2829-ftest-tail-over-b.case.json	22
 C	probes/t2836-dollar-run-cost.case.json	95
 C	probes/t2867-calipers-anonymised-inputs.case.json	26
 C	probes/t2921-sumproduct-one-cell-numeric-text.case.json	47
+C	probes/t2929-sort-lifted-by-col-column.case.json	50
+C	probes/t2929-sort-lifted-by-col-errors.case.json	94
+C	probes/t2929-sort-lifted-by-col-index.case.json	84
+C	probes/t2929-sort-lifted-by-col-range.case.json	30
+C	probes/t2929-sort-lifted-by-col-shapes.case.json	121
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -3514,10 +3519,6 @@ F	probes/t2360-array-lambda-holidays.case.json	G!C11
 F	probes/t2360-array-lambda-holidays.case.json	G!C4
 F	probes/t2360-array-lambda-holidays.case.json	G!D12
 F	probes/t2360-array-lambda-holidays.case.json	G!D3
-F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!H18
-F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!H6
-F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!I1
-F	probes/t2366-sort-lifted-by-col.case.json	Sheet1!I7
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A1
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A13
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A19
