@@ -205,7 +205,8 @@ fn unlifted_calls_are_the_scalar_calls() {
         ("A6", "0.916666667"),
         ("A7", "0.083333333"),
         ("A8", "1"),
-        ("A9", "#NUM!"),
+        // Below number_sample + population_s - number_pop the cdf is 0 (T-2699).
+        ("A9", "0"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");

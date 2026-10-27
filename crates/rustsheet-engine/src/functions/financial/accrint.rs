@@ -79,7 +79,16 @@ fn compute_accrint(
     // Regular coupon period [reg_pcd, first_interest]; its length is the
     // denominator used for the settlement slice.
     let reg_pcd_date = change_month(first_interest_date, -num_months, end_month_bond)?;
-    let reg_pcd = coupon_serial(reg_pcd_date);
+    // Excel: basis 1 reads that period's length, so its start must be in the calendar too, even
+    // when the settlement's period is later: `ACCRINT(33853,1.005,37554,1,9888,1,1)` is #NUM! on
+    // basis 1 at every frequency and a number on the other bases, and a first_interest of 367
+    // (regular period from 1900-01-01) is a number on basis 1 (probes/accrint-calendar-start-1900
+    // A1:A60; gen-m9 932b33b1ef8b7608 Calc!A118; financial.md "ACCRINT at the calendar's start").
+    let reg_pcd = if basis == 1 {
+        accrint_coupon_serial(reg_pcd_date)?
+    } else {
+        coupon_serial(reg_pcd_date)
+    };
     // Coupon date immediately before settlement. When settlement is past
     // first_interest (only meaningful for the default calc_method) walk the
     // schedule forward to find it; otherwise it is the regular coupon start.
