@@ -3890,9 +3890,11 @@ reference to an empty cell `#VALUE!` (T-2426), then an error in tails or type (`
 A32), and only then the tails/type range check (`#NUM!`). A typed empty text as a sample is no number (`TTEST(IFERROR(
 #VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!`, 46ac3ef5e61583ca A344). The data-error-first order holds for direct error values;
 an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
-is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve is `#DIV/0!` in ours: UNVERIFIED.
+is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve was `#DIV/0!` in ours: UNVERIFIED (the cell now passes).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2469.
-Ours: tails and type are checked first (`#NUM!`) and a typed text sample is `#VALUE!`; T-2469.
+Ours: matches the computed empty text, a text sample being an array of one cell with no number (T-2469). A typed text
+literal (`T.TEST("",A1:A4,1,3)` `#DIV/0!`, `T.TEST("a",..)`) and a typed or computed boolean sample take the same path in
+ours (as in COVARIANCE.P/.S, probes/t2436/computed-scalar A35:A37): UNVERIFIED for T.TEST (T-2853 probes them).
 Status: VERIFIED (excel-graph) except the noted cell
 
 ## Z.TEST: an error array first; one data value is #DIV/0!; a lone non-number cell is #N/A (T-2256)
