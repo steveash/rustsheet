@@ -7,6 +7,12 @@
 use super::super::kinds::{KernelWork, ValueWork};
 use crate::functions::Function;
 
+/// What `kernel_units` reads a text as in these tests: the engine's own reading
+/// (`Model::cast_number`), as the lift driver passes it.
+fn read_number(text: &str) -> Option<f64> {
+    crate::test::util::new_empty_model().cast_number(text)
+}
+
 /// Where the incomplete beta's cap is: statrs' `checked_beta_reg` runs at most 140
 /// continued-fraction steps, and `ln_gamma` is a fixed Lanczos sum.
 const BETA_CDF: &str = "one statrs incomplete beta: at most 140 continued-fraction steps";
@@ -239,7 +245,9 @@ fn bessel_elements_are_charged_by_order() {
         ]
     };
     let at_cap = |count: usize| column(&vec![ArrayNode::Number(100_000.0); count]);
-    let units = |args: &[LiftedArg], rows: usize| kernel_units(work, args, rows, 1, rows as u64);
+    let units = |args: &[LiftedArg], rows: usize| {
+        kernel_units(work, args, rows, 1, rows as u64, &read_number)
+    };
     assert_eq!(units(&at_cap(2048), 2048), MAX_LIFTED_CELL_VISITS);
     assert!(units(&at_cap(2049), 2049) > MAX_LIFTED_CELL_VISITS);
     assert_eq!(units(&column(&[ArrayNode::Number(0.0)]), 1), 1);
@@ -256,7 +264,10 @@ fn bessel_elements_are_charged_by_order() {
         LiftedArg::Grid(vec![vec![ArrayNode::Number(1.0)]; 10]),
         LiftedArg::Scalar(CalcResult::Number(100_000.0)),
     ];
-    assert_eq!(kernel_units(work, &scalar, 10, 1, 10), 10 << 16);
+    assert_eq!(
+        kernel_units(work, &scalar, 10, 1, 10, &read_number),
+        10 << 16
+    );
 }
 
 /// FIND's and SEARCH's `ByValue` charge (T-1961): each element is charged both texts' lengths
@@ -287,7 +298,7 @@ fn text_search_elements_are_charged_by_their_texts() {
         };
         let charge = |find: CalcResult, within: ArrayNode| {
             let args = [LiftedArg::Scalar(find), LiftedArg::Grid(vec![vec![within]])];
-            kernel_units(work, &args, 1, 1, 1)
+            kernel_units(work, &args, 1, 1, 1, &read_number)
         };
         let text = |len: usize| "a".repeat(len);
         let short = charge(
@@ -338,7 +349,7 @@ fn depreciation_elements_are_charged_by_period() {
                 vec![ArrayNode::Number(100_000.0)];
                 count
             ]));
-            kernel_units(work, &args, count, 1, count as u64)
+            kernel_units(work, &args, count, 1, count as u64, &read_number)
         };
         assert_eq!(at_cap(1024), MAX_LIFTED_CELL_VISITS, "{function:?}");
         assert!(at_cap(1025) > MAX_LIFTED_CELL_VISITS, "{function:?}");
@@ -374,7 +385,14 @@ fn coupon_elements_are_charged_by_schedule_length() {
             number(maturity),
             frequency,
         ];
-        kernel_units(work(Function::Coupnum), &args, count, 1, count as u64)
+        kernel_units(
+            work(Function::Coupnum),
+            &args,
+            count,
+            1,
+            count as u64,
+            &read_number,
+        )
     };
     let longest = COUPON_SPAN_DAYS as f64;
     let quarterly = || number(4.0);
@@ -404,8 +422,14 @@ fn coupon_elements_are_charged_by_schedule_length() {
         coupnum(ArrayNode::Number(50_000.0), 43_831.0, number(1.0), 1),
         2 * 37
     );
-    let text = || ArrayNode::String("2020-01-01".into());
-    assert_eq!(coupnum(text(), 43_831.0, number(1.0), 1), 2 << 16);
+    // A text is charged as the engine reads it (T-2879): a date text as its date, any other
+    // text 1, as `#VALUE!` before any walk.
+    let text = |text: &str| ArrayNode::String(text.into());
+    assert_eq!(
+        coupnum(text("2007-01-01"), 43_831.0, number(2.0), 1),
+        coupnum(ArrayNode::Number(39_083.0), 43_831.0, number(2.0), 1)
+    );
+    assert_eq!(coupnum(text("abc"), 43_831.0, number(2.0), 1), 1);
     assert_eq!(
         coupnum(
             ArrayNode::Number(0.0),
@@ -443,7 +467,7 @@ fn coupon_elements_are_charged_by_schedule_length() {
         number(100.0),
         number(2.0),
     ];
-    let units = kernel_units(work(Function::Price), &price, 513, 1, 513);
+    let units = kernel_units(work(Function::Price), &price, 513, 1, 513, &read_number);
     assert_eq!(units, 513 * 4 * 56);
     let accrint = [
         number(39_083.0),
@@ -454,7 +478,7 @@ fn coupon_elements_are_charged_by_schedule_length() {
         number(2.0),
     ];
     assert_eq!(
-        kernel_units(work(Function::Accrint), &accrint, 1, 1, 1),
+        kernel_units(work(Function::Accrint), &accrint, 1, 1, 1, &read_number),
         2 * 55
     );
 }
@@ -485,19 +509,16 @@ fn yield_and_odd_elements_are_charged_by_schedule_length() {
         let Some(work @ KernelWork::ByValue(ValueWork::CouponWalks { .. })) = work else {
             panic!("YIELD is not charged by its schedule: {work:?}");
         };
-        kernel_units(work, &args, count, 1, count as u64)
+        kernel_units(work, &args, count, 1, count as u64, &read_number)
     };
     let longest = COUPON_SPAN_DAYS as f64;
-    assert_eq!(yield_units(0.0, longest, 4.0, 8), MAX_LIFTED_CELL_VISITS);
-    assert!(yield_units(0.0, longest, 4.0, 9) > MAX_LIFTED_CELL_VISITS);
-    assert_eq!(yield_units(43_830.0, 43_831.0, 4.0, 1), 524);
-    // The Goal's call: 9 elements of about 13 years semiannually.
-    assert_eq!(yield_units(39_001.0, 43_831.0, 2.0, 9), 9 * 14_213);
-    // -1 to 10 is 11 days as written, but up to 2,935 in a 1904 workbook.
-    assert_eq!(
-        yield_units(-1.0, 10.0, 4.0, 1),
-        yield_units(0.0, 2_935.0, 4.0, 1)
-    );
+    assert_eq!(yield_units(0.0, longest, 4.0, 2), MAX_LIFTED_CELL_VISITS);
+    assert!(yield_units(0.0, longest, 4.0, 3) > MAX_LIFTED_CELL_VISITS);
+    assert_eq!(yield_units(43_830.0, 43_831.0, 4.0, 1), 2_093);
+    // T-1869's call: 9 elements of about 13 years semiannually.
+    assert_eq!(yield_units(39_001.0, 43_831.0, 2.0, 9), 9 * 56_850);
+    // `Model::bond_args` refuses a settlement off the calendar before any walk (T-2879).
+    assert_eq!(yield_units(-1.0, 10.0, 4.0, 1), 1);
 }
 
 /// An ODD* element its kernel refuses before any walk is charged 1 (T-2815, `Model::odd_args`):
@@ -509,7 +530,6 @@ fn odd_elements_refused_before_the_walk_are_charged_one() {
     use super::super::driver::{kernel_units, LiftedArg};
     use crate::calc_result::CalcResult;
     use crate::expressions::parser::ArrayNode;
-    use crate::limits::MAX_LIFTED_CELL_VISITS;
 
     let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
     let work = |function: Function| {
@@ -531,7 +551,14 @@ fn odd_elements_refused_before_the_walk_are_charged_one() {
             number(100.0),
             number(4.0),
         ];
-        kernel_units(work(Function::Oddfyield), &args, count, 1, count as u64)
+        kernel_units(
+            work(Function::Oddfyield),
+            &args,
+            count,
+            1,
+            count as u64,
+            &read_number,
+        )
     };
     let na = |count: usize| {
         LiftedArg::Grid(vec![
@@ -552,8 +579,12 @@ fn odd_elements_refused_before_the_walk_are_charged_one() {
     assert_eq!(oddfyield(ArrayNode::Boolean(true), number(0.05), 22), 22);
     // On the calendar the walk is charged: about 125 years quarterly from serial 0.
     assert!(oddfyield(ArrayNode::Number(0.0), number(0.05), 22) > 22 * 100);
-    // A text may read as any date: still the bound.
-    assert!(oddfyield(ArrayNode::String("x".into()), number(0.05), 9) > MAX_LIFTED_CELL_VISITS);
+    // A text is charged as the engine reads it (T-2879): one that reads as no number is 1.
+    assert_eq!(oddfyield(ArrayNode::String("x".into()), number(0.05), 9), 9);
+    assert_eq!(
+        oddfyield(ArrayNode::String("1900-01-01".into()), number(0.05), 1),
+        oddfyield(ArrayNode::Number(1.0), number(0.05), 1)
+    );
     // ODDLPRICE reads its arguments the same way.
     let oddlprice = |last: ArrayNode| {
         let args = [
@@ -565,7 +596,7 @@ fn odd_elements_refused_before_the_walk_are_charged_one() {
             number(100.0),
             number(4.0),
         ];
-        kernel_units(work(Function::Oddlprice), &args, 4, 1, 4)
+        kernel_units(work(Function::Oddlprice), &args, 4, 1, 4, &read_number)
     };
     assert_eq!(oddlprice(ArrayNode::Number(-1.0)), 4);
     assert!(oddlprice(ArrayNode::Number(0.0)) > 4);
@@ -599,9 +630,11 @@ fn hypgeom_dist_elements_are_charged_by_their_counts() {
             LiftedArg::Scalar(CalcResult::Boolean(true)),
         ]
     };
-    let one = |sample: ArrayNode| kernel_units(work, &column(&[sample]), 1, 1, 1);
+    let one = |sample: ArrayNode| kernel_units(work, &column(&[sample]), 1, 1, 1, &read_number);
     let at_bound = |count: usize| column(&vec![ArrayNode::Number(5E7); count]);
-    let units = |args: &[LiftedArg], rows: usize| kernel_units(work, args, rows, 1, rows as u64);
+    let units = |args: &[LiftedArg], rows: usize| {
+        kernel_units(work, args, rows, 1, rows as u64, &read_number)
+    };
     assert_eq!(units(&at_bound(32), 32), MAX_LIFTED_CELL_VISITS);
     assert!(units(&at_bound(33), 33) > MAX_LIFTED_CELL_VISITS);
     // The walk's floor, then 16 units a term.
@@ -632,14 +665,23 @@ fn hypgeom_dist_elements_are_charged_by_their_counts() {
             LiftedArg::Scalar(CalcResult::Boolean(true)),
         ]
     };
-    assert_eq!(kernel_units(work, &text_counts(3.0), 1, 1, 1), 1 << 14);
-    assert_eq!(kernel_units(work, &text_counts(1E6), 1, 1, 1), 1 << 22);
+    assert_eq!(
+        kernel_units(work, &text_counts(3.0), 1, 1, 1, &read_number),
+        1 << 14
+    );
+    assert_eq!(
+        kernel_units(work, &text_counts(1E6), 1, 1, 1, &read_number),
+        1 << 22
+    );
     let all_texts = [
         LiftedArg::Scalar(CalcResult::String("3".into())),
         LiftedArg::Grid(vec![vec![ArrayNode::String("3".into())]]),
         LiftedArg::Scalar(CalcResult::String("3".into())),
     ];
-    assert_eq!(kernel_units(work, &all_texts, 1, 1, 1), 1 << 22);
+    assert_eq!(
+        kernel_units(work, &all_texts, 1, 1, 1, &read_number),
+        1 << 22
+    );
     // The least count bounds the window: a small population_s over a huge sample_s.
     let small_successes = [
         LiftedArg::Grid(vec![vec![ArrayNode::Number(1E8)]; 4]),
@@ -649,7 +691,7 @@ fn hypgeom_dist_elements_are_charged_by_their_counts() {
         LiftedArg::Scalar(CalcResult::Boolean(true)),
     ];
     assert_eq!(
-        kernel_units(work, &small_successes, 4, 1, 4),
+        kernel_units(work, &small_successes, 4, 1, 4, &read_number),
         4 * (3000 + 132) * 16
     );
 }
@@ -680,7 +722,7 @@ fn amortization_units(
         number(rate),
         LiftedArg::Scalar(basis),
     ];
-    kernel_units(work, &args, 513, 1, 513)
+    kernel_units(work, &args, 513, 1, 513, &read_number)
 }
 
 /// AMORLINC's and AMORDEGRC's `ByValue` charge (T-2840): an element is charged its kernel's flat
