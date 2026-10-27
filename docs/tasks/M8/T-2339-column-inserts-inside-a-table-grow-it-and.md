@@ -3,7 +3,7 @@ id: T-2339
 title: "Column inserts inside a table grow it, and deleting a table column drops it with its references as #REF! (T-2324 evidence)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
