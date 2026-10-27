@@ -3,12 +3,12 @@ id: T-2548
 title: "BESSELJ, BESSELY and BESSELI last-ulp cells at x = 84 to 1E+5 in the gen-m9 engineering sweep (12 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: blocked
 priority: P3
 size: S
 tier: opus
 campaign: visible
-depends_on: [T-2547]
+depends_on: [T-2547, T-2881]
 ---
 
 ## Goal
@@ -55,3 +55,21 @@ recurrence, n = x; visibly off in the 15th digit). Tried without a match: the st
 ## Visible-parity stage
 Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
 Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/2b0324e2de2e7b74 Calc!A295 `=BESSELJ(1E+5,100000)`: Excel 0.009636944011336267, ours 0.00963694401133629 (4.6 units of the 15th digit).
+
+## Blocked because
+Blocked because: needs the T-2881 oracle sweep of `BESSELJ` near the turning point n = x; one cell cannot pick a model.
+Findings (2026-10-27, opus run): a Python port of `jn_miller` run with mpmath at 40 digits (exact steps with a double `tox`,
+or steps rounded to 53 or 64 bits), the true value from the same port in exact arithmetic started at order 120000; the scratch script is not committed.
+- The true `J_100000(100000)` is 0.0096369440113378623. Ours (0.00963694401133629) and Excel's (0.009636944011336267) are
+  both about 1.6E-13 low (relative), so Excel does run Miller's recurrence here. Upward recurrence from J0 and J1 at `ax >= n` gives
+  0.009636943998118515, far off.
+- Almost all of the shared error comes from `tox = 2/x` rounding to a double (relative error +8.18E-17; near the turning
+  point the result is about 2,000 times as sensitive to it). With that double `tox` and exact arithmetic everywhere
+  else, the result is 0.0096369440113363024. Excel's value is 3.5E-17 below that, ours 1.2E-17 below it, so what is left is
+  per-step rounding noise.
+- Tried without a match, each with the NR start order m = 102000:
+  - x87 64-bit steps, kept in registers (0.009636944011336303) or stored to double each step (...336333);
+  - FMA `fl(j*tox)*bj - bjp` (...336523);
+  - `j*fl(tox*bj) - bjp` (...336154);
+  - one rounding of `j*tox*bj - bjp` (...336324).
+  These scatter by about 2E-16 (absolute) around Excel's value, so a fit needs the T-2881 points (several n near x).
