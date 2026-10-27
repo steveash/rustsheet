@@ -3,7 +3,7 @@ id: T-2813
 title: "SPEC-0024 amendment: how per-call capped work is charged to the formula work budget"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
