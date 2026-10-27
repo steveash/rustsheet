@@ -293,22 +293,6 @@ pub(crate) fn to_string_moved(
     stringify(node, Some(&context), &rewrite, false, locale, language)
 }
 
-/// The text of a defined name. Stored (R1C1) and exported, a workbook name written with a prefix
-/// (`'Budget.xlsx'!loc`, or `Feb!loc` in an unnamed workbook) is `[0]!loc`, the own-workbook
-/// prefix Excel reads from a file as that name, so the text survives a sheet or workbook rename
-/// (probes/workbook-name-own-book-prefix, T-2834). A linked workbook's `[1]!Name` and a
-/// sheet-scoped name keep their text.
-fn defined_name_text(name: &str, scope: Option<u32>, stored: bool) -> String {
-    match name.rsplit_once('!') {
-        Some((prefix, bare))
-            if stored && scope.is_none() && !prefix.is_empty() && !name.starts_with('[') =>
-        {
-            format!("[0]!{bare}")
-        }
-        _ => name.to_string(),
-    }
-}
-
 /// The sheet prefix of a 3-D reference, `First:Last`, quoted as one name when either sheet
 /// needs quotes (`'Data2:Q 4'!A1`); a one-sheet span is the plain name (probes/3d-ref-one-sheet-span-lift B6).
 pub(crate) fn sheet_span_text(first: &str, last: &str, one_sheet: bool) -> String {
@@ -834,9 +818,11 @@ fn stringify(
             }
             format!("{{{matrix_string}}}")
         }
-        DefinedNameKind((name, scope, _)) => {
-            defined_name_text(name, *scope, context.is_none() || export_to_excel)
-        }
+        DefinedNameKind((name, scope, _)) => crate::expressions::utils::defined_name_text(
+            name,
+            *scope,
+            context.is_none() || export_to_excel,
+        ),
         NamedVariableKind { name, id: _ } => variable_text(name, context),
         UnaryKind { kind, right } => {
             let operand = wrap(sub(right), binding(right) < binding(node));

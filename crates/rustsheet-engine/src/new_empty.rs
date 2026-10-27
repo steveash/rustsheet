@@ -819,13 +819,12 @@ impl Model {
     pub(crate) fn unparsed(
         workbook: Workbook,
         shared_strings: HashMap<String, usize>,
-        parser: Parser,
+        mut parser: Parser,
         locale: &'static Locale,
         language: &'static Language,
         tz: Tz,
         clock: Clock,
     ) -> Model {
-        let mut parser = parser;
         parser.set_workbook_file(workbook.file_name());
         Model {
             workbook,
