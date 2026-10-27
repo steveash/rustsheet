@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_progress_report import GIT, MILESTONES, ZERO, data, report, tasks, write_inputs
+from test_progress_report import GIT, MILESTONES, ZERO, data, exit_row, report, tasks, write_inputs
 
 from rustsheet_tools import progress_report
 from rustsheet_tools.progress_report import goals, history
@@ -231,3 +231,11 @@ def test_a_report_before_t0072_is_a_stale_run(tmp_path: Path) -> None:
     assert "**Stale.**" in text
     assert "predates T-0072" in text
     assert "## Goals" not in text
+
+
+def test_a_coverage_count_without_a_criterion_reads_not_required() -> None:
+    # Decision 0135: M2's row shows its coverage counts, but coverage is not an M2 criterion.
+    row = exit_row("M2", True) | {"covered": 30, "functions": 37, "coverage_met": None}
+    assert "coverage 30/37 (not required)" in goals.exit_measures("M2", row)
+    absent = exit_row("M6", False) | {"covered": None, "functions": None, "coverage_met": None}
+    assert "coverage ?/? (not in run)" in goals.exit_measures("M6", absent)
