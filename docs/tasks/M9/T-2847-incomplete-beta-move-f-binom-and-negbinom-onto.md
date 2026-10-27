@@ -42,9 +42,23 @@ for the Cephes kernel are gone.
   - A shape of exactly 1 outside the closed forms (a0 = 1, y0 > 0.9) stays on `unoriented_shape_one`'s x^a, which is
     bit-exact on probes/ftest-decomposition B12 where bpser(1, 3.5, x0) is 1 ulp high. Find Excel's form before moving
     it.
-  - On probes-numeric, 1,000 cells bit-exact on the Cephes kernel moved 1 to 4 ulp under the port (all still within
-    15 digits), for example `BETA.DIST(0.1,0.5,0.5,TRUE)` (m9-beta-dist-a0p5 A7). Score them against the model with the
-    bindings venv before fitting anything (decision 0114: accuracy stage, no last-bit fitting).
+  - On probes-numeric the port moved cells the wrong way (T-2505 Outcome). Score them against the model with the
+    bindings venv before fitting anything (decision 0114: accuracy stage, no last-bit fitting); a cell the model gets
+    and the port does not is a port bug:
+    - 987 cells bit-exact on the Cephes kernel are now off, 984 by 1 to 4 ulp, for example
+      `BETA.DIST(0.1,0.5,0.5,TRUE)` (m9-beta-dist-a0p5 A7);
+    - newly visibly off: t2464-w2f-absweep A7053 (w_bpser, b0 < 8, bit-exact before), t0969-beta-prefactor Pref!D77
+      and D83, t0969-t-beta-link Link!E109, t2464-r2-bpser-small-shapes A2543, A9491 and A10836 (4 of the 7 by the
+      harness's rule);
+    - newly past 4 ulp: m9-beta-dist-a0p5 A9; m9-legacy-betadist A19, A20; t0969-t-beta-link Link!I105;
+      t1745-beta-inv-roundtrip G4, I4, G180, I180; t2464-r2-bpser-small-shapes A432, A1092, A2541, A5219 (8 ulp),
+      A5816, A8117, A9633, A10836; t2464-w2f-absweep A7053;
+    - `bpser_neg_ln_beta` takes `beta_density::algdiv` in double arithmetic for b0 >= 8, where the model runs TOMS
+      algdiv x87 stored (r2-bpser-small `lib.py` `algdiv_x87`); this may explain part of the b0 >= 8 residue.
+  - SPEC-0025's layout and tests: split `bratio/mod.rs` into `bpser.rs`/`ln_beta.rs` and give it the spec's
+    `bratio`/`Tails`/`bratio_or` entry before T-2506 adds bup and bgrat (or amend the spec), and add the hex-bits
+    branch fixture and the complement, swap and monotonicity property tests. `beta_density::ln_beta_small_shape` and
+    `bratio::bpser_neg_ln_beta` overlap; unify them or say in the code why they differ.
 
 ## Acceptance criteria
 - [ ] F.DIST, F.DIST.RT, FDIST, F.TEST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's

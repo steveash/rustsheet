@@ -2267,9 +2267,10 @@ w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `z
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
 Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505), for BETA.DIST's cdf only: the w3 series and
 EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
+Its algdiv (b0 >= 8) is `beta_density::algdiv` in doubles, where the model runs TOMS algdiv x87 stored.
 Both shapes >= 1 with max > 8 (the model's accurate ln B) and a shape of exactly 1 stay on Cephes' fractions. On
-probes-numeric it moves 12,408 cells to bit-exact (1,000 bit-exact cells move by 1 to 4 ulp) and takes visibly-off
-numbers from 104,206 to 100,013. F, BINOM and NEGBINOM still take Cephes' fractions (T-2847).
+probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
+bit-exact cells moved off and 7 became visibly off (listed in T-2847). F, BINOM and NEGBINOM still take Cephes' fractions (T-2847).
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%
 Tasks: T-2505, T-2512, T-2122

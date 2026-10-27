@@ -97,9 +97,25 @@ above, moved there unchanged).
   for min >= 1, max <= 8), the complement (0.5 - w) + 0.5, and `beta_dist_lower_tail`, which BETA.DIST's and
   BETADIST's cdf now call. Closed forms first; unported branches, bpser with both shapes >= 1 and max > 8, and a
   shape of exactly 1 outside the closed forms keep `incomplete_beta.rs`. The `#[cfg(test)]` gate is gone.
-- Eval delta: gated suites 0 regressions; ironcalc-calc known failures 638 → 626, probes 2,961 → 2,960 (baseline
-  updated). probes-numeric (ungated): bit-exact 337,698 → 350,106 (+12,408; 13,408 fixed, 1,000 bit-exact cells moved
-  1 to 4 ulp, none past 15 digits); visibly-off numbers 104,206 → 100,013 (-4,193). Per case:
-  t2464-r2-bpser-small-shapes bit-exact 2,908 → 7,787 of 12,000, cells past 4 ulp 3,194 → 31;
+- Eval delta: gated suites 0 regressions; ironcalc-calc known failures 638 → 626 (BETADIST_BETAINV.xlsx G2, G11, G19,
+  G21, G42, G44, G46-G49, H2, H25), probes 2,961 → 2,960 (ftest-decomposition D11); baseline updated.
+- T-2633's chained BETA.INV cells: H2 and H25 of BETADIST_BETAINV.xlsx now pass (bit-exact); none of its cells
+  regressed.
+- probes-numeric (ungated), per cell against the same run on `main`: bit-exact 337,698 → 350,106 (+12,408); the
+  harness's visibly-off numbers 104,206 → 100,013 (-4,193). It also moves cells the wrong way, listed in T-2847 to be
+  scored against the model (decision 0083):
+  - 984 bit-exact cells now 1 to 4 ulp off, and 3 bit-exact cells now 5 to 8 ulp off;
+  - 14 cells from within 4 ulp to past 4 ulp, and 326 already-off cells worse by up to 12 ulp
+    (t0969-beta-prefactor Pref!D91, 5 → 17 ulp);
+  - newly visibly off (7 by a strict half-unit check, 4 by the harness's rule): t2464-w2f-absweep A7053 (bit-exact
+    before), t0969-beta-prefactor Pref!D77 and D83, t0969-t-beta-link Link!E109, t2464-r2-bpser-small-shapes A2543,
+    A9491 and A10836.
+  Per case: t2464-r2-bpser-small-shapes bit-exact 2,908 → 7,787 of 12,000, cells past 4 ulp 3,194 → 31;
   t2464-r2-bratio-x29 bit-exact 1,851 → 1,946 of 3,080 (the 434-cell and per-branch counts are T-2847's to measure).
+- Review fixes: fl(a·LN x) = -inf (a shape near 1E308) keeps today's kernel, since a register load reads it as 0 and
+  bpser gave a spurious 6E-155 at `BETA.DIST(0.1,1E308,0.5,TRUE)` (Excel's value there is unprobed); a shape of 0
+  never reaches the series.
+- Differs from SPEC-0025's layout: one `bratio/mod.rs` (no `bpser.rs`/`ln_beta.rs`), `beta_dist_lower_tail` and a
+  private `ported_tails` in place of `bratio`/`Tails`/`bratio_or`, and nine inline oracle cells in place of the
+  hex-bits fixture and property tests. T-2847 carries these.
 - statistics.md: the bpser entry has its "Implemented in" line; the bratio entry's "Ours" names the dispatch.

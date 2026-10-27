@@ -155,6 +155,8 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
     if a0 < EPS.min(EPS * b0) && b0 * x0 <= 1.0 {
         return Branch::Apser;
     }
+    // The two powf here only pick a branch (against 0.7 and 0.9); bratio's own pow may differ
+    // from libm's by an ulp right at those cuts.
     if a0.max(b0) > 1.0 {
         if b0 <= 1.0 {
             return Branch::WBpser;
@@ -197,11 +199,12 @@ pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// x^a there is Excel's value: `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966
 /// (probes/ftest-decomposition B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
 fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
+    // TODO(T-2847): find Excel's form at a0 = 1 outside the closed forms before moving it.
     if a == 1.0 || b == 1.0 {
         return None;
     }
     let d = dispatch(a, b, x, y)?;
-    let other = |v: f64| extended_sum(extended_sum(0.5, -v), 0.5);
+    let other = half_complement;
     let (w, w1) = match d.branch {
         Branch::WBpser | Branch::BpserLarge => {
             let w = bpser(d.a0, d.b0, d.x0)?;
@@ -223,9 +226,12 @@ fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
 /// - z = fl64(fl(a·LN x) - L), never stored, and I = fl(EXP(z)·s) with Excel's EXP of the
 ///   extended argument (T-2645).
 ///
-/// `None` where L is not ported (both shapes >= 1 and one above 8) or the series has not settled
-/// within [`BPSER_MAX_TERMS`].
+/// `None` where L is not ported (both shapes >= 1 and one above 8), at a shape of 0, where
+/// fl(a·LN x) is not finite, or where the series has not settled within [`BPSER_MAX_TERMS`].
 fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
+    if a <= 0.0 {
+        return None;
+    }
     if x == 0.0 {
         return Some(0.0);
     }
@@ -236,7 +242,7 @@ fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
     let mut settled = false;
     for _ in 0..BPSER_MAX_TERMS {
         n += 1.0;
-        let factor = extended_sum(extended_sum(0.5, -extended_quotient(b, n)), 0.5);
+        let factor = half_complement(extended_quotient(b, n));
         c = extended_product(extended_product(c, factor), x);
         let next = extended_sum(s, extended_quotient(c, extended_sum(a, n)));
         if next == s {
@@ -248,7 +254,13 @@ fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
     if !settled {
         return None;
     }
-    let z = Register::load(extended_product(a, excel_ln(x))).add(neg_ln_beta);
+    // A load reads a non-finite double as 0, so fl(a·LN x) = -inf (a shape near 1E308) would
+    // drop out of z: such points keep today's kernel.
+    let a_ln_x = extended_product(a, excel_ln(x));
+    if !a_ln_x.is_finite() {
+        return None;
+    }
+    let z = Register::load(a_ln_x).add(neg_ln_beta);
     Some(extended_product(excel_exp_extended(z), s))
 }
 
@@ -283,6 +295,12 @@ fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
     let inner =
         Register::load(-excel_gammaln(b)).add(Register::load(excel_gammaln(extended_sum(a, b))));
     Some(Register::load(-excel_gammaln(a)).add(inner))
+}
+
+/// (0.5 - v) + 0.5, each step an x87 op stored to a double: bratio's complement and bpser's
+/// series factor 1 - b/n.
+fn half_complement(v: f64) -> f64 {
+    extended_sum(extended_sum(0.5, -v), 0.5)
 }
 
 #[cfg(test)]

@@ -92,6 +92,8 @@ fn unported_points_keep_todays_kernel() {
         (0.5, 50.0, 60.0),                   // bfrac
         (0.01, 3.0, 20.0),                   // bpser with ln B not ported (max > 8)
         (0.916_913_946_587_537_1, 3.5, 1.0), // a0 = 1, y0 > 0.9
+        (0.1, 1e308, 0.5),                   // fl(a·LN x) = -inf
+        (0.1, f64::MAX, 0.5),
     ] {
         assert_eq!(
             cdf(x, a, b).to_bits(),
