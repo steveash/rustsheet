@@ -165,13 +165,14 @@ Tasks: T-2377, T-2388
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
 value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@@\@` → "@jello@"
 (A6), `;;;-@-@-` → "-jello-jello-" (A10), `TRUE` with `;;;-@-` → "-TRUE-" (A17), and
-`TEXT(TRUE,"General")` = "TRUE".
-Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73.
+`TEXT(TRUE,"General")` = "TRUE". An empty 4th section prints nothing: `TEXT("text",";;;")` is ""
+(gen-m10/0e3d8eba9432a18d T!A24; ours "text", T-2945), as `;;;` hides a number (gen-m10/810fee377a42575b A19).
+Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73; gen-m10/0e3d8eba9432a18d T!A24.
 A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
 it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of fewer than four sections is unprobed and returns the text unchanged.
-Tasks: T-0935
+Tasks: T-0935, T-2945
 
 ## TEXT of a text value is `#VALUE!` over 255 characters
 Rule: `TEXT` of a text value (a boolean's "TRUE"/"FALSE" included) is `#VALUE!` once its result is over
@@ -694,8 +695,18 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - Implemented (VERIFIED, gen-m10, T-2226): an engineering mantissa (two or more integer placeholders) rounds after
   the shift, to its own integer digits plus the decimals (`##0.0E+0` on 1/3 "333.3E-3", on -1/7 "-142.9E-3",
   `##0.00E+00` on 1/3 "333.33E-03", `00.0E+0` on 0.125 "12.5E-2"; 28 gen-m10 text cells). Ours: a rounding carry
-  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"), which is
-  unprobed for engineering codes.
+  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"); see the
+  T-2598 bullet below for the probe evidence.
+- Implemented (T-2598; VERIFIED, probes/t2598-engineering-scientific, excel-graph 2026-10-27; ours matches all 12
+  cells): an engineering mantissa that rounds up to the next power of ten renormalises only when it reaches 10 to the
+  number of integer placeholders. `##0.0E+0` on 999.96 is "1.0E+3", on 9999.96 "10.0E+3", on -999.96 "-1.0E+3", but on
+  99.96 it stays "100.0E+0" (100 is a legal three-digit mantissa). `00.0E+0` on 9.96 is "10.0E+0" and on 99.96 it is
+  "01.0E+2" (100 needs three digits, so the exponent moves to the next multiple of 2 and the mantissa is padded).
+  `##0.00E+00` on 999.995 is "1.00E+03". The mantissa rounds on the 15-digit decimal, half away from zero (T-2206):
+  `##0E+0` on 0.0145 is "15E-3" (the double is 0.01449999…, so only this cell tells decimal from binary
+  rounding), on 0.0125 "13E-3", on 1.5E-5 "15E-6". The group size of a grouped code counts
+  as integer placeholders: `#,##0.0E+0` has four integer placeholders, so the exponent is a multiple of 4 and the mantissa keeps its
+  group separator: 1/3 is "3,333.3E-4" and 12345.6 is "1.2E+4".
 - Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).

@@ -14,8 +14,10 @@ not 0.
 
 A task owns a cell when its front matter has the milestone and an open status, and its text names
 the case's file stem (the last path segment of the case id less `.case.json`: a gen hash, an
-xlsx file name, a probe name) and either the cell's A1 name as a whole word, or the stem on a line
-with no A1-shaped token (a task that names only the case owns all of it). The ironcalc-calc
+xlsx file name, a probe name; with or without that suffix) and either the cell's A1 name as a whole
+word, or a colon span (`A5:D5`) holding it on a line that names the stem, or the stem on a line
+with no A1-shaped token (a task that names only the case owns all of it). Hyphen spans
+(`D49-D65`) name their ends only (decision 0136). The ironcalc-calc
 exceptions are the row's `excepted` cells, which `make eval` takes from
 eval/milestones/exit-exceptions.tsv.
 
@@ -36,7 +38,10 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import tasks  # noqa: E402 (the sys.path line above must run first)
+# tools/ is a uv project, but sheetop is stdlib-only, so this script stays stdlib-only too.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools" / "src"))
+import tasks  # noqa: E402 (the sys.path lines above must run first)
+from rustsheet_tools.sheetop import column_number  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "eval" / "runs" / "latest" / "report.json"
@@ -148,21 +153,51 @@ def names(text: str, token: str, word: str) -> bool:
 # A107, `A10` does not name A1).
 STEM_WORD = r"[\w.-]"
 A1_WORD = r"[\w$]"
-A1_TOKEN = re.compile(rf"(?<!{A1_WORD})\$?[A-Z]{{1,3}}\$?[0-9]{{1,7}}(?!\w)")
+A1_PART = r"\$?([A-Z]{1,3})\$?([0-9]{1,7})"
+A1_TOKEN = re.compile(rf"(?<!{A1_WORD}){A1_PART}(?!\w)")
+# `A5:D5` beside a stem names its whole rectangle, as an A1 reference does (decision 0136);
+# `D49-D65` does not.
+A1_SPAN = re.compile(rf"(?<!{A1_WORD}){A1_PART}:{A1_PART}(?!\w)")
+A1_SPLIT = re.compile(A1_PART)
+
+
+def names_stem(text: str, stem: str) -> bool:
+    """Whether `text` names the case `stem`, bare or as `<stem>.case.json` (decision 0136)."""
+    pattern = rf"(?<!{STEM_WORD}){re.escape(stem)}(?:{re.escape(SPEC_SUFFIX)})?(?!{STEM_WORD})"
+    return re.search(pattern, text) is not None
+
+
+def names_in_span(text: str, stem: str, a1: str) -> bool:
+    """Whether a colon span on a line of `text` that names `stem` holds the cell `a1`. Per line,
+    unlike a single A1 name, because tasks quote formulas whose ranges (`Data!B6:C10`) are not
+    cells they own."""
+    m = A1_SPLIT.fullmatch(a1)
+    if m is None:
+        return False
+    col, row = column_number(m[1]), int(m[2])
+    for line in text.splitlines():
+        if not names_stem(line, stem):
+            continue
+        for s in A1_SPAN.finditer(line):
+            c1, c2 = sorted((column_number(s[1]), column_number(s[3])))
+            r1, r2 = sorted((int(s[2]), int(s[4])))
+            if c1 <= col <= c2 and r1 <= row <= r2:
+                return True
+    return False
 
 
 def names_whole_case(text: str, stem: str) -> bool:
     """Whether a line of `text` names `stem` and no cell: a task that lists cells beside a case
     owns only those, even when they have since passed and left the report."""
-    return any(names(line, stem, STEM_WORD) and not A1_TOKEN.search(line) for line in text.splitlines())
+    return any(names_stem(line, stem) and not A1_TOKEN.search(line) for line in text.splitlines())
 
 
 def owned(cell: ExitCell, texts: list[str]) -> bool:
     """Whether one of `texts` owns `cell`."""
     for text in texts:
-        if not names(text, cell.stem, STEM_WORD):
+        if not names_stem(text, cell.stem):
             continue
-        if cell.a1 is not None and names(text, cell.a1, A1_WORD):
+        if cell.a1 is not None and (names(text, cell.a1, A1_WORD) or names_in_span(text, cell.stem, cell.a1)):
             return True
         if names_whole_case(text, cell.stem):
             return True

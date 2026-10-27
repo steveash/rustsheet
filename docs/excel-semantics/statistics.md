@@ -2934,6 +2934,7 @@ Tasks: T-1543, T-1634
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
+- Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 
 ## NORM.S.INV is AS 241 PPND16 in the tails; the central region is unfitted (T-1746)
@@ -3889,9 +3890,11 @@ reference to an empty cell `#VALUE!` (T-2426), then an error in tails or type (`
 A32), and only then the tails/type range check (`#NUM!`). A typed empty text as a sample is no number (`TTEST(IFERROR(
 #VALUE!,""),Data!B11:E11,1,3)` is `#DIV/0!`, 46ac3ef5e61583ca A344). The data-error-first order holds for direct error values;
 an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
-is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve is `#DIV/0!` in ours: UNVERIFIED.
+is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve was `#DIV/0!` in ours: UNVERIFIED (the cell now passes).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2469.
-Ours: tails and type are checked first (`#NUM!`) and a typed text sample is `#VALUE!`; T-2469.
+Ours: matches the computed empty text, a text sample being an array of one cell with no number (T-2469). A typed text
+literal (`T.TEST("",A1:A4,1,3)` `#DIV/0!`, `T.TEST("a",..)`) and a typed or computed boolean sample take the same path in
+ours (as in COVARIANCE.P/.S, probes/t2436/computed-scalar A35:A37): UNVERIFIED for T.TEST (T-2853 probes them).
 Status: VERIFIED (excel-graph) except the noted cell
 
 ## Z.TEST: an error array first; one data value is #DIV/0!; a lone non-number cell is #N/A (T-2256)
