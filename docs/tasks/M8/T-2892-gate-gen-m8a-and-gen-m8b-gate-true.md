@@ -3,7 +3,7 @@ id: T-2892
 title: "Gate gen-m8a and gen-m8b: gate = true with recorded baselines, so a names, 3-D or table regression fails make check"
 milestone: M8
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
