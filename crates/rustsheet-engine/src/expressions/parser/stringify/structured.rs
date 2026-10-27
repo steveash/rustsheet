@@ -1,6 +1,6 @@
 //! Printing a structured reference (SPEC-0016 "Printing" and "Structural edits").
 
-use super::{stringify, DisplaceData, Rewrite, NO_REWRITE};
+use super::{stringify, DisplaceData, Displacement, Rewrite, NO_REWRITE};
 use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
 use crate::expressions::token::{self, TableSpecifier};
@@ -120,7 +120,18 @@ pub(super) fn reference_text(
         };
     }
     match rewrite {
-        Rewrite::Displace(DisplaceData::None) => return reference.text(),
+        Rewrite::Displace(Displacement {
+            data: DisplaceData::None,
+            ..
+        }) => return reference.text(),
+        // A `#This Row` area keeps today's rule below: whether Excel then reads the cell's row
+        // of the moved table, or the row it read, is unprobed (T-2845).
+        Rewrite::Displace(Displacement { kept_tables, .. })
+            if !matches!(lowered, Node::ThisRowKind { .. })
+                && kept_tables.contains(&reference.table_name.to_lowercase()) =>
+        {
+            return reference.text();
+        }
         Rewrite::Lower(tables, _) => {
             let name = reference.table_name.to_lowercase();
             return if tables.contains(&name) {
@@ -144,11 +155,11 @@ pub(super) fn reference_text(
                 reference.text()
             };
         }
-        Rewrite::Displace(_) | Rewrite::Move(_) => {}
+        Rewrite::Displace(..) | Rewrite::Move(_) => {}
     }
-    // A structural edit or a cut and paste that changes the area prints the changed area, as
-    // before SPEC-0016, since the table itself does not move (the fallback of SPEC-0016
-    // "Structural edits"); otherwise the reference stays as written.
+    // A structural edit the table does not follow, or a cut and paste, that changes the area
+    // prints the changed area, as before SPEC-0016 (the fallback of SPEC-0016 "Structural
+    // edits"); otherwise the reference stays as written.
     // A `#This Row` area is printed resolved at the cell's row, so its text is kept only where
     // the cell keeps its row too; otherwise it prints the area it read, its text before SPEC-0016
     // step 2 (T-1699).

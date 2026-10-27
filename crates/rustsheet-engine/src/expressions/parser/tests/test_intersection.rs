@@ -345,3 +345,24 @@ fn intersection_operands_must_be_references() {
         assert!(is_intersection(&node), "{formula}: {node:?}");
     }
 }
+
+#[test]
+fn extra_spaces_of_an_intersection_print_back() {
+    // The first space is the operator, Excel keeps the rest (SPEC-0023 step 3,
+    // probes/t2776-formula-text-whitespace-shapes C3, C5, E9).
+    let mut parser = parser();
+    for (formula, expected) in [
+        ("B1:B2  B2", "B1:B2  B2"),
+        ("B1:B2   B2", "B1:B2   B2"),
+        ("SUM(B1:B2  B2)", "SUM(B1:B2  B2)"),
+        ("B1:B2  B2  B1", "B1:B2  B2  B1"),
+        ("B1:B2  (B2)", "B1:B2  (B2)"),
+    ] {
+        let node = parser.parse(formula, &context());
+        assert_eq!(
+            to_english_localized_string(&node, &context()),
+            expected,
+            "{formula}: {node:?}"
+        );
+    }
+}

@@ -501,7 +501,18 @@ angle"); cosh and sinh are libm's. Rule:
   ...189522), and fusing IMCOT's `2cos²x` (`fma(−2cos x, cos x, cosh 2y + 1)`) misses P31 and P70 (real part
   120.582756444086 for 120.582756444066, and 49999.9958602735 for ...8596485). Fusing IMSEC's `cos²x`
   (`fma(cos x, cos x, (cosh 2y + 1)/2 − 1)`) and either product of IMCSCH's sum ties the current kernels: no cell
-  tells them apart, so the kernels are unchanged and the question goes to a probe (T-2817).
+  there tells them apart. T-2817 probed inputs chosen (with the engine's kernels) so the forms print different text,
+  probes-numeric `im-sec-csch-fused` (excel-graph, 2026-10-27; 34 IMSEC and 44 IMCSCH inputs, the text scored):
+  - IMSEC: the plain T-2743 kernel 23 of 34, fusing `cos²x` 10; `cos²x + sinh²y` 22, fused either way 18 and 22,
+    `cos²x + (cosh y·cosh y − 1)` 19 (fused 14), `fma(cos²x·cosh y, cosh y, sin²x·sinh²y)` and the other product fused 21.
+    The kernel is unchanged (it also keeps all 70 sweep cells); `IMSEC("-1.44771+0.0419247i")`, Excel
+    7.30033916775268-2.47256566938037i, is fitted by none.
+  - IMCSCH: `t = sinh²x + sin²y` (the identity for the four-product sum) 33 of 44, fusing either square of it 32, the
+    four-product `sinh²x·cos²y + cosh²x·sin²y` 25, it with `sinh²x·cos y·cos y` fused 30 and with `cosh²x·sin y·sin y`
+    fused 18; squares of the products (`(sinh x·cos y)² + (cosh x·sin y)²`) 26, fused 26 and 24. The kernel is now
+    `sinh²x + sin²y` (T-2817); every older cell ties. No form fits all 44 (`IMCSCH("0.0853196+0.00680423i")`, Excel
+    11.6323554979869-0.929943499720481i, is fitted by none), so the remaining misses are likely in the cosh, sinh, sin or
+    cos parts, not the grouping (T-2841).
 - IMCOT: `(sin 2x, −sinh 2y) / ((cosh 2y + 1) − 2cos²x)`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit), and gen-m9's
   `IMCOT("-1.5+0.5i")` -0.0557109884865415-0.463942860183828i (45 cells, T-2537). The grouping matters only

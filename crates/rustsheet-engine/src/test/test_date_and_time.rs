@@ -1027,11 +1027,11 @@ fn datedif_error_unit_comes_before_a_negative_start_date() {
     assert_eq!(model._get_text("A4"), *"#NUM!");
 }
 
-// ACCRINT walks the schedule of first_interest, which in a 1904 workbook breaks from 9995-12-31
-// on: #NUM!, while 9995-12-30 still accrues (probes/date-system-1904-odd-accrint-bound A11, B11,
-// D11, A12, B15; T-1447).
+// ACCRINT reads a 1904 date as the date itself since 2026-10-21, so its schedule no longer breaks
+// from 9995-12-31 on: it gives the 1900 values up to 9999-12-31 (probes/date-system-1904-odd-
+// accrint-bound A11, B11, D12, B15, re-filled 2026-10-27; T-2337, formerly T-1447's #NUM!).
 #[test]
-fn accrint_first_interest_past_the_1904_coupon_schedule_is_num() {
+fn accrint_first_interest_near_9999_in_1904_gives_the_1900_value() {
     let mut model = new_empty_model();
     model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
     model._set(
@@ -1052,8 +1052,8 @@ fn accrint_first_interest_past_the_1904_coupon_schedule_is_num() {
     );
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"98.47222222");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
-    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"98.61111111");
+    assert_eq!(model._get_text("A3"), *"48.61111111");
     assert_eq!(model._get_text("A4"), *"75.27624309");
 }
 

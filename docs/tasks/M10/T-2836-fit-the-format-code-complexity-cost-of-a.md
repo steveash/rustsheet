@@ -3,7 +3,7 @@ id: T-2836
 title: "Fit the format-code complexity cost of a long $ run after a locale or currency tag"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -30,10 +30,10 @@ Cells (Excel #VALUE!, ours the text):
 Semantics: number-formats.md "TEXT format code complexity limit" (currency tags). Code: formatter/complexity.rs.
 
 ## Acceptance criteria
-- [ ] Visible parity: the 7 cells above leave eval/baseline/probes.txt (`make eval-baseline`) with no new known-failure
+- [x] Visible parity: the 7 cells above leave eval/baseline/probes.txt (`make eval-baseline`) with no new known-failure
       lines in any baseline.
-- [ ] number-formats.md states the `$` cost found.
-- [ ] `make check` green; reviewers approve.
+- [x] number-formats.md states the `$` cost found.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -41,3 +41,13 @@ Semantics: number-formats.md "TEXT format code complexity limit" (currency tags)
 ## Visible-parity stage
 Decision 0083: every cell this task owns has the wrong type (Excel #VALUE!, ours text), so the task is in the campaign:
 done when each owned cell has Excel's type and value.
+
+## Outcome
+Probed probes/t2836-dollar-run-cost (95 cells, excel-graph, 2026-10-26): bare, `d`-, `0`-, `[$-409]`- and
+quoted-prefixed `$` ladders, `[$USD]` + spaces and `[$€-F800]` + quoted. No single additive `$` cost fits, so
+formatter/complexity.rs prices it per context: a section holding an unquoted `$` and no placeholder pays 3 once
+(2 with a date token); quoted text whose closing run goes on with only `$`, or a currency tag followed by
+unquoted text, pays 2 instead of 4 (this also fixes `[$USD]` + 76 spaces, which T-2812's +4 inference rejected);
+unquoted text directly after a locale tag pays 1. `[$€-F800]` confirms a system-locale tag's locale is free.
+Eval: the 7 owned probes/t2812-currency-tag-cost cells pass; the new case passes 95/95 (9 cells failed before the
+fix); no new known failures. Recorded in number-formats.md ("Unquoted `$`", currency tags).
