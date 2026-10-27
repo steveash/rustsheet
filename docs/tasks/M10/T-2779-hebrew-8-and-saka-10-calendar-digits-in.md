@@ -19,7 +19,7 @@ tag" ("Hebrew (8)" and "Saka (10)"), from probes/t1923-calendar-digits (excel-gr
 for Saka, A145:A204, A206/A208/A210 and A211:A213 for Hebrew. Older cells: probes/text-locale-calendars A53:A55, A77:A79,
 A89, A90 and their neighbours.
 Code: formatter/locale_tag.rs `resolve_lcid` (both digits are `LocaleTag::Silent`, `TODO(T-2779)`). Add a `Calendar` variant per
-calendar, convert like the lunar calendar's date tokens, and add the name tables to locale/excel_date_names.rs.
+calendar, convert like the lunar calendar's date tokens, and add the name tables (they went to locale/calendar_date_names.rs; see Outcome).
 - Saka: the year turns on 22 March (21 March in a Gregorian leap year: 2024-03-21 is 1946-01-01).
   - Chaitra has 31 days in a leap year.
   - `yy` prints two digits; `e` and `b` print the Saka year.
