@@ -1658,6 +1658,7 @@ C	probes/weeknum-stale-sheet-order.case.json	4
 C	probes/weeknum-stale-volatile-reader.case.json	1
 C	probes/weeknum-sumproduct-blank-type.case.json	12
 C	probes/whole-column-empty-walkers.case.json	16
+C	probes/workbook-name-own-book-prefix.case.json	13
 C	probes/workday-holidays-error-order.case.json	541
 C	probes/workday-lift-errors.case.json	35
 C	probes/workday-serial-zero.case.json	58
@@ -2193,7 +2194,6 @@ F	probes/date-system-1904-odd-years.case.json	S!L3
 F	probes/date-system-1904-odd-years.case.json	S!N3
 F	probes/date-system-1904-odd-years.case.json	S!S3
 F	probes/dbl-max-text-b.case.json	S!A1
-F	probes/defined-name-qualified-like-reference.case.json	Sheet1!A8
 F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
@@ -3238,13 +3238,6 @@ F	probes/regression-trend.case.json	Sheet1!O7
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z10
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z8
 F	probes/scalar-lift-open-a.case.json	Sheet1!Z9
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!A1
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!A2
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix.case.json	Calc!B2
-F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B1
-F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B2
-F	probes/sheet-ops/sheet-ops-workbook-name-via-prefix-no-rename.case.json	Calc!B3
 F	probes/solver-iteration-traces.case.json	I!A17
 F	probes/solver-iteration-traces.case.json	I!A22
 F	probes/solver-iteration-traces.case.json	I!A24

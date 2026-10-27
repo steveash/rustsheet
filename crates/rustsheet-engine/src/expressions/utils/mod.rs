@@ -434,7 +434,8 @@ pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {
 /// Points the sheet prefix of a qualified defined name (`Data!Local`) at `new_sheet` when the
 /// name is scoped to the renamed sheet (`scope == Some(renamed)`). A name with no prefix, and a
 /// linked workbook's `[1]!Name`, are left as they are. A workbook name read through a sheet
-/// prefix has no scope here: no Excel evidence yet for rewriting it.
+/// prefix has no scope here and is left alone: its text is the workbook's file name, which a sheet
+/// rename never touches (probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix, T-2834).
 pub(crate) fn rename_defined_name_sheet(
     name: &mut String,
     scope: Option<u32>,
@@ -444,6 +445,22 @@ pub(crate) fn rename_defined_name_sheet(
     let bare = bare_defined_name(name);
     if scope == Some(renamed) && bare.len() < name.len() && !name.starts_with('[') {
         *name = format!("{}!{bare}", quote_name(new_sheet));
+    }
+}
+
+/// The text of a defined name. Stored (R1C1) and exported, a workbook name written with a prefix
+/// (`'Budget.xlsx'!loc`, or `Feb!loc` in an unnamed workbook) is `[0]!loc`, the own-workbook
+/// prefix Excel reads from a file as that name, so the text survives a sheet or workbook rename
+/// (probes/workbook-name-own-book-prefix, T-2834). A linked workbook's `[1]!Name` and a
+/// sheet-scoped name keep their text.
+pub(crate) fn defined_name_text(name: &str, scope: Option<u32>, stored: bool) -> String {
+    match name.rsplit_once('!') {
+        Some((prefix, bare))
+            if stored && scope.is_none() && !prefix.is_empty() && !name.starts_with('[') =>
+        {
+            format!("[0]!{bare}")
+        }
+        _ => name.to_string(),
     }
 }
 

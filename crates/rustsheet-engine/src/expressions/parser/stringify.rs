@@ -818,7 +818,11 @@ fn stringify(
             }
             format!("{{{matrix_string}}}")
         }
-        DefinedNameKind((name, ..)) => name.to_string(),
+        DefinedNameKind((name, scope, _)) => crate::expressions::utils::defined_name_text(
+            name,
+            *scope,
+            context.is_none() || export_to_excel,
+        ),
         NamedVariableKind { name, id: _ } => variable_text(name, context),
         UnaryKind { kind, right } => {
             let operand = wrap(sub(right), binding(right) < binding(node));
