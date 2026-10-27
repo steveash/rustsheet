@@ -136,6 +136,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
   The exception is a line of `eval/milestones/exit-exceptions.tsv`; the M2 row's "failing excl. exceptions" leaves it out (decision 0087).
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
+  Met at 11592ab5 (decision 0137): every variadic aggregate uses the SPEC-0009 walker and every criteria or wildcard consumer uses functions/criteria.rs. Duplication fell 68.0% (9,153 → 2,931).
 
 ## M3 — Dependency graph, incremental and lazy recalculation (Phase 2)
 
