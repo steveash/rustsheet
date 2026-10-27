@@ -2,6 +2,7 @@ use statrs::distribution::{Continuous, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
+use crate::functions::statistical::bratio::ported_tails;
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement_unoriented, beta_reg_upper_unoriented, closed_form_tails,
@@ -53,11 +54,13 @@ fn f_beta_ratio_overflows(df1: f64, df2: f64, x: f64) -> bool {
     x > 0.0 && !(df2 / (df1 * x)).is_finite()
 }
 
-/// One F tail (`upper`: P(F > x)): Excel's closed forms on [`f_beta_arguments`] where they apply
-/// ([`closed_form_tails`], a df of 2), else [`f_tail_pre_t2502`].
+/// One F tail (`upper`: P(F > x)) on [`f_beta_arguments`]: Excel's closed forms where they apply
+/// ([`closed_form_tails`], a df of 2), then the bratio port's branches (SPEC-0025's caller table,
+/// T-2847), else [`f_tail_pre_t2502`].
 fn f_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
     let (u, v) = f_beta_arguments(df1, df2, x);
-    match closed_form_tails(u, v, df1 / 2.0, df2 / 2.0) {
+    let (a, b) = (df1 / 2.0, df2 / 2.0);
+    match closed_form_tails(u, v, a, b).or_else(|| ported_tails(a, b, u, v)) {
         Some((lower, upper_tail)) => {
             if upper {
                 upper_tail
