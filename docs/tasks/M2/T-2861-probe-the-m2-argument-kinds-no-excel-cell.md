@@ -60,3 +60,5 @@ kind is scored. For SUMIF/SUMIFS put the fraction and boolean both in the criter
 Added `probes/m2-argument-kind-gaps` (79 checked cells, excel-graph 2026-10-27, tag M2): every listed parameter/kind pair as a literal
 and as a cell reference; `argument_coverage` `seen` now includes every listed kind for the listed parameters (checked against report.json; `covered` still counts the kinds outside this task). 78 cells match; the one difference (MATCH with a
 match_type reference to a #N/A cell: Excel #REF!, ours #N/A, Calc!A25) is baselined and owned by T-2962.
+Kinds outside the task's list still short: IF.logical_test `error`, RIGHT.num_chars `numeric_text`, SUMIFS.criteria `negative`/`zero` (10/11, 10/11, 9/11);
+the criterion was read as the listed pairs. SUMIF/SUMIFS cells follow the rules in criteria.md already.
