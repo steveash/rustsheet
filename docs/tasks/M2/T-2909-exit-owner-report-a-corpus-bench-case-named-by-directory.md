@@ -3,7 +3,7 @@ id: T-2909
 title: "Exit-owner report: a task that names a corpus-bench case by its directory (corpus-bench/53062) owns it"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
