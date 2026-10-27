@@ -3345,6 +3345,14 @@ tables: docs/research/t2681/README.md, `score_bratio.py`.
   No form tried gives the map: accurate 45 of 99 (shipped), TOMS betaln 49, TOMS's a-reduction with w = prod a/(a + b)
   55, Excel GAMMALN sums 15 to 29 (docs/research/t2829/ln_beta_map.py; probes/t2829-ftest-a306-shapes and
   t2829-ftest-ln-beta-grid, excel-graph; open as T-2924). A306 stays 25 ulp low until that form is found.
+  Ruled out by structure (T-2924, docs/research/t2924/structure.py):
+  - Any sum of double lnGamma values, each within 2 ulp, in seven orders. lnGamma(b) and lnGamma(a + b) lie on a
+    grid 4 ulp(L) wide, so 16 or more cells are unreachable in every order.
+  - For integer a, TOMS's a-reduction fl(LN(w) + A(b)) with any w product, the exact ln of the product included:
+    no single A(b) fits more than 1 of 11 b values.
+  - Any per-argument error f(a) + h(b) + q(a + b) added to ln B and rounded once. At most 94 of 99 cells fit such
+    an error, against 82 for random k.
+  So Excel forms ln B jointly in (a, b), finer than a double lnGamma grid. Blocked as time-boxed (decision 0056).
   The F.DIST.RT cells of probes/t2829-ftest-tail-over-b (f = 1E12) are off ours by these k plus whole steps of the
   fl(a·LN x) grid (a = 6, b = 11.5: -143 ulp = +5.4E-15 - 2.8E-14 relative), and `2*F.DIST.RT(..,22,12)` differs from
   F.TEST at the b = 11 twin by such a step, so F.DIST.RT forms x or z differently there; F.TEST is the clean probe.
