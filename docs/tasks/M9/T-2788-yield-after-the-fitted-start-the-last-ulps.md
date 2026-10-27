@@ -28,6 +28,12 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
   yield-start-one-input S!B11, B17, B31, B54, B62, B69.
 - gen-m9 cells within 4 ulp after T-1592: A229 (3aa168259335be54), A333 (5ded7594e597e31e), A376 (6376e27be7a05871),
   A231 (9a1fa5366bc50918), A122 and A269 (b73c6cc96e093f03), A23 (bc04c1f478c9896c), A223 (c0681a8b150ce301).
+- Handed over by T-2777 (2026-10-26) once its term fix left them ulp-level: gen-m9/81bcdc0bec0c8e6b A189
+  (basis 2, Excel -0.0008265806588318691, ours ...682, 8 ulp), gen-m9/a91bad4e84f49739 A102 (-0.0008665128023479636,
+  ours ...645) and gen-m9/e168be7f6d3f84c2 A194 (0.05369271319672304, ours ...308), which miss Excel's 15th
+  significant digit by a rounding boundary; and probes/yield-start-term-basis A9, C11, C20, A26 and A38, at the
+  root and 4e-15 to 1e-14 off, plus B50 and A52 (sub-year, 10 to 12 ulp in the engine, 1-2 ulp in the lab) and the
+  probe's 73 cells 1-2 ulp off.
 
 ## Acceptance criteria
 - [ ] The three regressed probe cells pass bit for bit (their lines leave eval/baseline/probes.txt), or the task

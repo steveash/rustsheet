@@ -127,6 +127,7 @@ const COUPON: ArgKinds = ArgKinds::fixed(
         frequency: 2,
         walks: 2,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])`:
@@ -143,6 +144,7 @@ const ACCRINT: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 2,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `DURATION(settlement, maturity, coupon, yld, frequency, [basis])` and MDURATION: three walks
@@ -159,6 +161,7 @@ const BOND_5_OF_6: ArgKinds = ArgKinds::fixed(
         frequency: 4,
         walks: 4,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])`, as DURATION.
@@ -172,6 +175,7 @@ const BOND_6_OF_7: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 4,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: false,
     }),
 );
 // --- End financial ATP (T-1822) -------------------------------------------------------------
@@ -203,6 +207,7 @@ const YIELD: ArgKinds = ArgKinds::fixed(
         frequency: 5,
         walks: 1,
         weight: YIELD_SOLVER_WEIGHT,
+        reads_all_first: false,
     }),
 );
 /// `ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency,
@@ -220,6 +225,7 @@ const ODDFPRICE: ArgKinds = ArgKinds::fixed(
         frequency: 7,
         walks: 8,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: true,
     }),
 );
 /// `ODDFYIELD(settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency,
@@ -235,6 +241,7 @@ const ODDFYIELD: ArgKinds = ArgKinds::fixed(
         frequency: 7,
         walks: 1,
         weight: YIELD_SOLVER_WEIGHT,
+        reads_all_first: true,
     }),
 );
 /// `ODDLPRICE(settlement, maturity, last_interest, rate, yld, redemption, frequency, [basis])`
@@ -252,6 +259,7 @@ const ODD_LAST: ArgKinds = ArgKinds::fixed(
         frequency: 6,
         walks: 2,
         weight: COUPON_WALK_WEIGHT,
+        reads_all_first: true,
     }),
 );
 // --- End financial ATP (T-1842) -------------------------------------------------------------
