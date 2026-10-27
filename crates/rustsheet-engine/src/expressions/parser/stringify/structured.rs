@@ -122,7 +122,7 @@ pub(super) fn reference_text(
     match rewrite {
         Rewrite::Displace(DisplaceData::None, _) => return reference.text(),
         // A `#This Row` area keeps today's rule below: whether Excel then reads the cell's row
-        // of the moved table, or the row it read, is unprobed (T-2325).
+        // of the moved table, or the row it read, is unprobed (T-2843).
         Rewrite::Displace(_, kept)
             if !matches!(lowered, Node::ThisRowKind { .. })
                 && kept.contains(&reference.table_name.to_lowercase()) =>

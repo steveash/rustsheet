@@ -34,8 +34,8 @@ enum Span {
 
 /// The rows a row insert (`delta > 0` rows above `at`) or delete (rows `at..at - delta`) gives
 /// the table on rows `top..=bottom` with data rows `data_first..=data_last`, by SPEC-0016's
-/// edge-case table. An insert at the first data row or at the totals row (Excel grows the table,
-/// T-2197: T-2321) and a delete at an edge of the data or touching the header or totals row
+/// edge-case table. An insert at the first data row, a header row's or not, or at the totals row
+/// (Excel grows a table with a header there, T-2197: T-2321; without one, T-2843) and a delete at an edge of the data or touching the header or totals row
 /// (T-2338) are fallbacks. A delete at a data edge is one too because its undo, an insert at
 /// the same row, would then not grow the table back.
 fn row_span(
@@ -48,8 +48,10 @@ fn row_span(
         if at > bottom {
             Span::Unchanged
         } else if bottom > LAST_ROW - delta {
+            // The insert is allowed (the cells pushed off are empty), the table cannot follow it:
+            // an engine decision under directive 5, Excel's answer is unprobed.
             Span::Fallback
-        } else if at <= top {
+        } else if at <= top && at < data_first {
             Span::Changed(top + delta, bottom + delta)
         } else if data_first < at && at <= data_last {
             Span::Changed(top, bottom + delta)
@@ -206,8 +208,10 @@ mod tests {
         // With a totals row 8 (data 4-7), an insert at the totals row is a fallback.
         assert_eq!(row_span((3, 8), (4, 7), 8, 1), Span::Fallback);
         assert_eq!(row_span((3, 8), (4, 7), 9, 1), Span::Unchanged);
-        // Without a header row the first row is a data row: an insert there moves the table.
-        assert_eq!(row_span((3, 7), (3, 7), 3, 1), Span::Changed(4, 8));
+        // Without a header row the first row is a data row: an insert there is a fallback, since
+        // Excel grows a table with a header on an insert at its first data row (T-2843 probes it).
+        assert_eq!(row_span((3, 7), (3, 7), 3, 1), Span::Fallback);
+        assert_eq!(row_span((3, 7), (3, 7), 2, 1), Span::Changed(4, 8));
         // A table that would leave the sheet does not follow.
         let last = crate::constants::LAST_ROW;
         assert_eq!(row_span((3, last), (4, last), 1, 1), Span::Fallback);

@@ -253,7 +253,10 @@ As built (T-2297, `table_edits.rs`): the walk takes the set of tables that *foll
 delete at the first or last data row is a fallback too, not a shrink, because its undo (an insert at
 that row) would be a fallback and not grow the table back; T-2338 adds those edges with T-2321's
 insert edges. A table that would grow or move past the last row or column is a fallback. A `#This
-Row` reference keeps step 1's rule even when its table follows the edit (T-2325 probes it).
+Row` reference keeps step 1's rule even when its table follows the edit (T-2843 probes it), and an
+insert at the first row of a table without a header row is a fallback (T-2843). The insert of
+rows or columns that would push a table off the sheet is allowed (the cells pushed off are empty)
+and the table does not follow it: an engine decision (directive 5).
 
 A fallback leaves the table metadata as it is today and loses the structured text of the
 formulas that refer to that table, as today. T-2197's findings replace the fallback. The interim
