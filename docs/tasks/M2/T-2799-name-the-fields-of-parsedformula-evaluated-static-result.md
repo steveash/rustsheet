@@ -3,7 +3,7 @@ id: T-2799
 title: "Name the fields of ParsedFormula (evaluated, static_result, written)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
