@@ -42,7 +42,9 @@ measurement filled in. Must keep probes/lambda-call-depth H3, H6 and probes/unio
       `IFERROR(A1,0)` is 0; the next formula gets a full budget; past the limit a MAKEARRAY makes at most one more LAMBDA call.
 - [ ] No baseline gains a line (`make eval-check`: 0 regressions); the measured maximum is in the DEVIATION entry.
 - [ ] Per-kind timing (spec section 4, release build): each listed worst case (nodes, built cells, read cells, text, per-call
-      caps) stops at the limit within 10 s. The PR records the timings and the chosen weights.
+      caps) stops at the limit within 10 s. The PR records the timings and the chosen weights. The visit caps are judged
+      by section 4 as amended by T-2813 (one call at its cap within 5 s, timed for each kernel family near the cap in eval);
+      YIELD and ODDFYIELD are T-2879's and named in the DEVIATION entry until it merges.
 - [ ] `spend_work` uses `checked_sub`, and every charge is computed with saturating arithmetic. A unit test checks that a
       `u64::MAX` charge fails cleanly.
 - [ ] An audit of the text and regex functions (SUBSTITUTE with many matches, TEXTSPLIT, REGEX*, FIND/SEARCH on long text)
