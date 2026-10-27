@@ -737,39 +737,6 @@ impl Lexer {
         chars
     }
 
-    fn consume_string(&mut self) -> Result<String> {
-        let mut position = self.position;
-        let len = self.len;
-        let mut chars = "".to_string();
-        let mut terminated = false;
-        let mut units = 0;
-        while position < len {
-            let x = self.chars[position];
-            position += 1;
-            if x != '"' {
-                chars.push(x);
-                units += x.len_utf16();
-            } else if position < len && self.chars[position] == '"' {
-                chars.push(x);
-                chars.push(self.chars[position]);
-                position += 1;
-                units += 1;
-            } else {
-                terminated = true;
-                break;
-            }
-        }
-        self.position = position;
-
-        if units > MAX_STRING_LITERAL_UNITS {
-            return Err(self.set_error(STRING_LITERAL_TOO_LONG_MESSAGE, position));
-        }
-        if !terminated {
-            return Err(self.set_error("Expected closing '\"' but found end of input", position));
-        }
-        Ok(chars)
-    }
-
     // Consumes a quoted string from input
     // 'This is a quoted string'
     // ' Also is a ''quoted'' string'
