@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-0489]
 ---
 
 ## Goal
@@ -28,6 +28,9 @@ Ours already reads `fonts`, `fills`, `borders`, `cellStyleXfs` and `cellStyles` 
 refuses a file without `<cellXfs>` (`required_section`, a typed `XlsxError::Xml`, no panic), and an
 empty list is kept empty, so a cell's `s` index may point at nothing. Directive 5 is already met;
 this task is about loading what Excel loads.
+
+T-0489 (research) already asks whether Excel for the web opens poi/47889.xlsx, which we refuse for its missing
+`<cellXfs>`; take its answer for that variant and probe only the variants it does not cover.
 
 Evidence first (directive 1): before changing what we refuse, build the six workbooks the upstream
 test builds (one list missing each) plus the all-missing one and confirm with the oracle that Excel

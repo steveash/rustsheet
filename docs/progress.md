@@ -19,7 +19,7 @@ Values match Excel on real workbooks and wrong types, errors and text are nearly
 - **Phase 1 has not exited.** 394 of 506 in-scope functions meet the exit rate (decision 0118), and no milestone's exit row is met: M5 and M6 miss only on their probes, with 7 and 5 visibly-off cells.
 - **A strong day.** Phase 1 functions moved +16 and the Exact tier +14, while the below-99% tier moved −5; visibly-off numbers fell by −5,119 to 100,003 and visibly-off type, error or text cells by −349 to 1,135.
 - **Real-world files are close.** On calipers, 99.85% of cells are bit-exact and 160 of its 171 workbooks have every cell within 15 digits; corpus-bench has a visibly-off cell in 2 of 320 workbooks and poi in 3 of 115.
-- **The biggest gap is numeric accuracy** (judgment): 99,999 visibly-off numbers in the 112 functions below the rate against 1,031 type, error or text cells. Fixing only the latter would lift 26 of them, and 5 semantics tasks are ready.
+- **The biggest gap is numeric accuracy** (judgment): 99,999 visibly-off numbers in the 112 functions below the rate against 1,031 type, error or text cells. Fixing only the latter would lift 26 of them, and 6 semantics tasks are ready.
 - **The current milestone's probes are nearly clean.** The M0-M2 probes have 9 known failures, 2 of them visibly off (a unary plus inside a range row, owner T-2885); the others are ROUNDUP's subnormal cut (T-2771).
 <!-- /progress:judgment -->
 

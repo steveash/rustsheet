@@ -38,6 +38,8 @@ owned (the other 184 are T-2779, T-1875, T-2759, T-2932, T-1925, T-2106, T-2684,
 ## Acceptance criteria
 - [ ] Unit test in formatter tests: `format_text_value("text", ";;;")` and `format_text_value("TRUE", ";;;")` give `""`;
       `format_text_value("x", "4;b")` is still "x"; `format_text_value("x", "0;;;;")` is still `#VALUE!`.
+      The boolean and five-section expectations are inferred (poi/TextFormatTests A17, T-1736's F!X20, and
+      `TEXT("1","0;0;0;;")`); add probe cells `=TEXT(TRUE,";;;")` and `=TEXT("x","0;;;;")` and follow Excel.
 - [ ] The line `F	gen-m10/0e3d8eba9432a18d.case.json	T!A24` disappears from eval/baseline/gen-m10.txt (`make eval-baseline`)
       and no new F or TF line appears in any baseline.
 - [ ] The "Implemented in" line of number-formats.md "Text and booleans use the format's text section" says an empty
