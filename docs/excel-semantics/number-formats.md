@@ -819,4 +819,4 @@ branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel
 - Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 5eb95c63c7d6180c F!G13, excel-graph): a scientific
   code on zero prints every integer placeholder of the mantissa as `0`, `#` included (`##0.0E+0` → "000.0E+0",
   `##0.00E+00` → "000.00E+00", `#E+0` → "0E+0"). A carry out of the mantissa renormalises (`0.0E+00` on 99.5 is
-  "1.0E+02"). Still open: the 1E+15 / 1.23457E+14 cells that show nothing, "-x1E+15" vs "x-1E+15", `#E+0` ties.
+  "1.0E+02"; already correct, pinned by test). Still open (T-2850): the 1E+15 / 1.23457E+14 cells that show nothing, "-x1E+15" vs "x-1E+15", `#E+0` ties.
