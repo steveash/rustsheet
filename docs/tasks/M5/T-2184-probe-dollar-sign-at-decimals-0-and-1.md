@@ -3,7 +3,7 @@ id: T-2184
 title: "Probe DOLLAR sign at decimals 0 and 1 for a negative value that rounds to zero"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
