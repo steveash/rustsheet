@@ -27,7 +27,7 @@ Goals:
 1. Whitespace that Excel keeps survives parse → print, in every printer:
    - `to_english_string`, `to_localized_string`, `to_rc_format`, `to_string_displaced` and
      `to_string_moved`;
-   - the xlsx export text, once T-2786 shows what Excel writes there.
+   - the xlsx export text, Excel saves kept whitespace as typed, with a line feed as raw CR LF bytes that read back as LF (T-2786, xlsx-storage.md); export should write it (T-2948).
 2. Whitespace that Excel drops is dropped at parse time, so the tree only ever holds what prints.
 3. No value changes. Whitespace is transparent to evaluation and to every shape test, as a `Group`
    is.
@@ -73,15 +73,15 @@ probes/t2776-* (excel-graph, 2026-10-26).
 - **Stored text**: a formula read from a file's `<f>` keeps its interior whitespace (`1 + 2`,
   `SUM( 1 )`, `1+` LF `2`, `(1 )+2`) and applies the typed drops. Whitespace at the very start is
   also dropped: `<f>  +5</f>` prints `=5`, and `<f> 1+2</f>` prints `=1+2`.
-- **Refused** (observed, error text not recorded; T-2786 re-probes it): `=SUM (1)`, a space between a
+- **Refused** (Graph answers 400 InvalidArgument, T-2786): `=SUM (1)`, a space between a
   function name and its `(`. What ours does with it is untested
-  (`operands.rs` reads a call only when no whitespace precedes the `(`); T-2786 adds the case.
+  (`operands.rs` reads a call only when no whitespace precedes the `(`); probes/t2786-whitespace-structured-refs-runs.
 - **Values**: every probed value equals the value of the formula without spaces.
-- **Unknown** (T-2786): runs with no operand beside them (`=NOW( )`, `=IF(1, ,2)`, a run before `)`
-  after a comma); whitespace inside a structured reference (`T[ Col]`, `T[[#This Row], [Col]]`),
-  and whether Excel saves kept whitespace in the `<f>` text it writes. Until T-2786 answers, export
-  prints what the tree holds, because every printer shares one walker. If Excel strips whitespace
-  on save, T-2786 files the export change.
+- **Answered** (T-2786, syntax.md "Whitespace beside a missing argument is kept"): a run beside a missing operand is
+  kept as typed (`=NOW( )`, `=IF(1, ,2)`, `=SUM(1, )`, `=SUM(, 1)`), unlike a run before a comma that follows an
+  operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2944). `=SUM (1)` and
+  `=SUM( )` are refused. Structured references normalize their whitespace (T-2801). Excel saves kept whitespace in the
+  `<f>` text, a line feed as raw CR LF bytes that read back as LF (xlsx-storage.md), so export should print the tree's whitespace and not strip it (T-2948; today it writes none).
 
 ## Design
 ### Where whitespace attaches
@@ -92,7 +92,7 @@ applied to one.
   after a binary operator, after a unary sign, after `(`, after a comma, and after `@`.
 - A run after a primary's last token, followed by a binary operator, `%` or `)`, is that primary's
   `after`.
-- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. These are
+- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. (A run beside a missing argument is kept: see Unknown/Answered below, T-2944.) These are
   exactly the places where Excel drops it (for the probed shapes; see Unknown).
 
 Attaching at the primary level, and never to a chain, leaves the value-operator chains of SPEC-0007
@@ -227,6 +227,6 @@ Each step is one S/M task. Each leaves `make check` green and moves only the cel
    interior runs. Fixes t2776-shapes E1, E2, E6 and E10.
 5. **T-2785 — `=S! B1`** (engine, sonnet, S). Independent of the steps above: whitespace after a
    sheet prefix's `!` is skipped (t2776-ws-after-bang A1, C1).
-6. **T-2786 — open probes** (research, sonnet, S). Whitespace inside structured references, and the
+6. **T-2786 — probes (done)** (research, sonnet, S). Whitespace inside structured references, and the
    `<f>` text Excel saves. Files the export or structured-reference task if the answers differ from
    what step 1 prints.
