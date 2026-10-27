@@ -3,7 +3,7 @@ id: T-2731
 title: "Exit-owner report: a task's 'case.json (n): cells' lines and A1:B2 spans own their cells (1,866 cell lines in 74 open tasks are invisible to it)"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
