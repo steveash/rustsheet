@@ -3,7 +3,7 @@ id: T-2945
 title: "TEXT of a text value with an empty text section (;;;) is empty text, not the text"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
