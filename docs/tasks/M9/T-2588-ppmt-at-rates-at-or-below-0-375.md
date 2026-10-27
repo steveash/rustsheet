@@ -61,5 +61,5 @@ Cells:
 - Eval: gen-m9 known failures 3671 -> 3666 (the 5 cells; A335 is now an ulp off, within 15 digits), 0 regressions.
   The probe: all 79 cells within 15 digits, 43 bit-exact.
 - Not done: the fit-lab candidates (`fitlab/kernels/annuity.py`) and pinning the series/LN switch on the
-  negative side. Both are bit-level work, out of scope here (T-2243).
+  negative side, filed as T-2949.
 
