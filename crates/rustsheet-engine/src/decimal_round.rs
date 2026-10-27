@@ -15,7 +15,7 @@
 //! So `ROUND(1.005,2)` is 1.01 (1.00499999999999989… becomes 1.00500000000000 first) and
 //! `ROUNDDOWN(123456789.123,-5)` is exactly 123400000.
 
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{flush_subnormal, TINY_SUBNORMAL_BELOW};
 use crate::constants::EXCEL_PRECISION;
 use crate::number_format::{significant_15, to_precision};
 
@@ -63,10 +63,6 @@ fn effective_digits(num_digits: f64, exponent: i64, mode: RoundMode) -> i64 {
     }
 }
 
-/// Below 2^-1026 every ROUND-family call returns the magnitude of its argument
-/// (probes/t2771-roundup-subnormal-threshold: k·2^-1074 for k = 2^48 - 1 does, k = 2^48 does not).
-const MAGNITUDE_BELOW: f64 = f64::MIN_POSITIVE / 16.0;
-
 /// The double Excel returns for the 15-digit cut 2.22507385850720E-308: 2^-1022 - 6·2^-1074, 3 ulps
 /// below the nearest double (probes/t2756-roundup-smallest-normal-threshold rows 52-58). It is the
 /// only subnormal cut a normal argument can have, since every normal value cuts to at least it.
@@ -75,21 +71,19 @@ const SMALLEST_NORMAL_CUT: f64 = f64::from_bits(0x000F_FFFF_FFFF_FFFA);
 /// ROUND, ROUNDUP, ROUNDDOWN and TRUNC of `value` at `num_digits`: [`round_decimal`], except for
 /// tiny values, whatever `num_digits` (docs/excel-semantics/numbers.md "ROUNDUP and ROUNDDOWN of a
 /// number whose 15-digit cut is subnormal"; probes t2756-roundup-smallest-normal-threshold and
-/// t2771-roundup-subnormal-cuts, -sign and -threshold, oracle excel-graph):
-/// - below 2^-1026 every mode returns `|value|`: `ROUND(-x,330)`, `ROUNDUP(-x,0)` and `ROUND(x,0)`
-///   are all `x`;
-/// - ROUNDUP, ROUNDDOWN and TRUNC return a subnormal `value` from 2^-1026 on as it is, with no
-///   15-digit cut, and a normal one whose cut is subnormal (`ROUNDUP(2^-1022,0)`) as
-///   [`SMALLEST_NORMAL_CUT`], while `ROUNDUP(2^-1022*(1+8*2^-52),0)`, whose cut
-///   2.22507385850721E-308 is normal, is 1.
+/// t2771-roundup-subnormal-cuts, -sign, -threshold and -sign-controls, oracle excel-graph):
+/// - ROUNDUP, ROUNDDOWN and TRUNC return a subnormal `value` as it is, with no 15-digit cut, and a
+///   normal one whose cut is subnormal (`ROUNDUP(2^-1022,0)`) as ±[`SMALLEST_NORMAL_CUT`], while
+///   `ROUNDUP(2^-1022*(1+8*2^-52),0)`, whose cut 2.22507385850721E-308 is normal, is 1;
+/// - ROUND returns a positive subnormal below [`TINY_SUBNORMAL_BELOW`] (2^-1026; a negative one, or one from there up, is 0) as it is (`ROUND(x,0)` is `x`).
 ///
 /// INT does not share this path.
 pub(crate) fn round_function(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
-    let magnitude = value.abs();
-    if magnitude != 0.0 && magnitude < MAGNITUDE_BELOW {
-        return Some(magnitude);
-    }
-    if mode != RoundMode::HalfAwayFromZero {
+    if mode == RoundMode::HalfAwayFromZero {
+        if value > 0.0 && value < TINY_SUBNORMAL_BELOW {
+            return Some(value);
+        }
+    } else {
         if value.is_subnormal() {
             return Some(value);
         }
@@ -257,7 +251,9 @@ pub(crate) fn round_engineering(value: f64, group: f64, precision: i32) -> (f64,
 
 #[cfg(test)]
 mod tests {
-    use super::{round_decimal, round_function, RoundMode, MAGNITUDE_BELOW, SMALLEST_NORMAL_CUT};
+    use super::{
+        round_decimal, round_function, RoundMode, SMALLEST_NORMAL_CUT, TINY_SUBNORMAL_BELOW,
+    };
 
     fn round(value: f64, digits: f64) -> Option<f64> {
         round_decimal(value, digits, RoundMode::HalfAwayFromZero)
@@ -461,7 +457,7 @@ mod tests {
     fn subnormal_from_two_to_minus_1026_is_kept_by_roundup_and_rounddown() {
         // 2^-1021 - 2^-1022*(1.1), whose 15-digit cut is a different double.
         let x = 2f64.powi(-1021) - f64::MIN_POSITIVE * 1.1;
-        assert!(x.is_subnormal() && x.abs() >= MAGNITUDE_BELOW);
+        assert!(x.is_subnormal() && x.abs() >= TINY_SUBNORMAL_BELOW);
         for digits in [0.0, 2.0, 330.0] {
             assert_eq!(round_function(x, digits, RoundMode::Up), Some(x));
             assert_eq!(round_function(x, digits, RoundMode::Down), Some(x));
@@ -475,27 +471,29 @@ mod tests {
         }
     }
 
-    /// probes/t2771-roundup-subnormal-threshold: below 2^-1026 (k < 2^48) every mode returns |x|.
+    /// probes/t2771-roundup-subnormal-threshold and -sign-controls: ROUNDUP, ROUNDDOWN and TRUNC
+    /// keep a subnormal of either sign at any size; ROUND keeps a positive one below 2^-1026 only.
     #[test]
-    fn below_two_to_minus_1026_every_mode_returns_the_magnitude() {
-        for k in [1, 12_345, (1 << 48) - 1] {
+    fn tiny_subnormals_keep_their_sign_and_round_keeps_positive_ones_below_two_to_minus_1026() {
+        for k in [1, 12_345, (1 << 48) - 1, 1 << 48, (1 << 50) + 3] {
             let x = subnormal(k);
-            for mode in [RoundMode::HalfAwayFromZero, RoundMode::Up, RoundMode::Down] {
-                for digits in [0.0, 2.0, 330.0] {
+            for mode in [RoundMode::Up, RoundMode::Down] {
+                for digits in [0.0, 2.0, 330.0, -400.0, 2_147_483_648.0, 1e10] {
                     assert_eq!(round_function(x, digits, mode), Some(x));
-                    assert_eq!(round_function(-x, digits, mode), Some(x));
+                    assert_eq!(round_function(-x, digits, mode), Some(-x));
                 }
             }
+            let kept = if k < 1 << 48 { x } else { 0.0 };
+            for digits in [0.0, 320.0, 330.0] {
+                assert_eq!(
+                    round_function(x, digits, RoundMode::HalfAwayFromZero),
+                    Some(kept)
+                );
+                assert_eq!(
+                    round_function(-x, digits, RoundMode::HalfAwayFromZero),
+                    Some(0.0)
+                );
+            }
         }
-        let x = subnormal(1 << 48);
-        assert_eq!(round_function(-x, 0.0, RoundMode::Up), Some(-x));
-        assert_eq!(
-            round_function(x, 330.0, RoundMode::HalfAwayFromZero),
-            Some(0.0)
-        );
-        assert_eq!(
-            round_function(-x, 0.0, RoundMode::HalfAwayFromZero),
-            Some(0.0)
-        );
     }
 }

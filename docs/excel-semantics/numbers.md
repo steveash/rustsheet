@@ -925,21 +925,34 @@ is the only subnormal cut a normal argument can have, and its double is this one
 probed, out-of-range ones included: -400, 1E10, -1E10, 2^31, -(2^31) and 2^53 give the same subnormal for ROUNDUP and
 ROUNDDOWN, where 1.5 gives `#NUM!` (ROUNDUP at -400 and -1E10) or wraps (ROUNDUP(1.5,2^31) = 2).
 A subnormal argument (kept by a subtraction such as `3E-308-2.5E-308`) is not cut at all:
-- from 2^-1026 up to 2^-1022, ROUNDUP, ROUNDDOWN and TRUNC return x itself, bit for bit, with its sign, at num_digits 0,
-  2 and 330 (`ROUNDUP(-x,2)` = -x). ROUND flushes it to 0 at num_digits 0, 320 and 330;
-- below 2^-1026 (k·2^-1074 with k < 2^48), every call of the family returns |x|, whatever the function, sign or
-  num_digits: `ROUND(x,0)`, `ROUND(-x,330)`, `ROUNDUP(-x,0)`, `ROUNDDOWN(-x,0)` and `TRUNC(-x)` are all +x. The switch is
-  exact: k = 2^48 - 1 returns |x|, and k = 2^48 (x = 2^-1026 ≈ 1.39E-309) takes the rule above. The boundary is the one
-  below which x·2^-49 rounds to 0; the mechanism behind it is unknown.
+- ROUNDUP, ROUNDDOWN and TRUNC return x itself, bit for bit and with its sign, at every size (k·2^-1074 from k = 1
+  to 2.2E-308) and at num_digits 0, 2, 330, -400, 2^31 and 1E10;
+- ROUND returns a positive x below 2^-1026 (k < 2^48) as it is (`ROUND(x,0)`, `ROUND(x,330)` are x), and gives 0 for a
+  negative one at any size and for a positive one from 2^-1026 up. The switch is exact: k = 2^48 - 1 is kept and
+  k = 2^48 (x = 2^-1026 ≈ 1.39E-309) is 0.
+A negative normal argument whose cut is subnormal gives the negative constant (`ROUNDDOWN(-(2^-1022),0)`,
+`ROUNDUP(0-2^-1022,0)`, `TRUNC((0-1)*2^-1022)`). Arguments negated with unary minus below 2^-1026 arrive positive
+("Unary minus of a tiny subnormal" below), so `ROUNDUP(-x,0)` there is +x.
 Evidence: probes/t2756-roundup-smallest-normal-threshold (excel-graph, 2026-10-26): rows 1-28 bisect k = 0..20 and
 controls (2^-1021, 2^-1020, 3E-308, 9.99999999999999E-308, 1E-307) at num_digits 0, -2, 2, 300 and 330; rows 30-50 take
 k = 0, 7, 8 at num_digits 307 to 322 with `=0` companions; rows 52-60 read the subnormals back. probes/t2715-roundup-near-smallest-normal.
 probes/t2771-roundup-subnormal-cuts (20 subnormal arguments from 5E-324 to 2.2E-308, five functions each, and the huge
 num_digits rows 22-33), t2771-roundup-subnormal-sign (eleven arguments from 1E-320 to 2E-309, ten forms each) and
-t2771-roundup-subnormal-threshold (k = 2^48 - 2 to 2^49), all excel-graph, 2026-10-27.
+t2771-roundup-subnormal-threshold (k = 2^48 - 2 to 2^49) and t2771-roundup-subnormal-sign-controls (negative arguments
+built without unary minus, cell references, huge num_digits), all excel-graph, 2026-10-27.
 Status: VERIFIED (excel-graph)
 Implemented in: `round_function` and `round_decimal` in crates/rustsheet-engine/src/decimal_round.rs
 Tasks: T-2756, T-2771
+
+## Unary minus of a tiny subnormal (T-2771)
+Rule: `-x` of a positive subnormal x below 2^-1026 (k·2^-1074 with k < 2^48) is +x; from 2^-1026 up it is -x. `0-x`
+keeps the sign at every size, and `-1*x` is 0 (a subnormal product is flushed, "Subnormal results become 0"). Negating
+a negative tiny value is unprobed.
+Evidence: probes/t2771-roundup-subnormal-sign-controls B and C (k = 12345 and 2^48 - 1 against 2^48 and 2^50 + 3),
+excel-graph, 2026-10-27; t2771-roundup-subnormal-sign and -threshold read the same switch through the ROUND family.
+Status: VERIFIED (excel-graph) for a positive operand
+Implemented in: `apply_unary_chain` in crates/rustsheet-engine/src/cast.rs (`TINY_SUBNORMAL_BELOW`, arithmetic.rs)
+Tasks: T-2771
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`
