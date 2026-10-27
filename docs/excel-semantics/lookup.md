@@ -55,10 +55,12 @@ Calipers note: `calipers/pv_goldens/pv26_020` and `pv26_2_020` `Summary!C17:...1
 for this rule: the corpus anonymisation renamed the text in `Summary!B17` to `Company0691` but left
 the sheet it names as `ConAgra` (whose `TargetName`, D24, is the cached `Company2277`), so the
 workbook as shipped has no `Company0691` sheet and `#REF!` is right for it (lookup.md "INDIRECT to
-a sheet that does not exist is #REF!").
+a sheet that does not exist is #REF!"). probes/t2867-calipers-anonymised-inputs (excel-graph,
+2026-10-27) confirms it on the shipped inputs: `#REF!` for C17:O17 and for MAX, AVERAGE, MEDIAN and
+MIN over M7:M21. Those cells are scored against the probe through cached overrides (decision 0133, T-2867).
 Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-2660
+Tasks: T-2660, T-2867
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and

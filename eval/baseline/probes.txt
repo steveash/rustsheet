@@ -1360,6 +1360,7 @@ C	probes/t2778-imsinh-sign-sweep.case.json	312
 C	probes/t2782-whitespace-run-wrap.case.json	36
 C	probes/t2812-currency-tag-cost.case.json	54
 C	probes/t2836-dollar-run-cost.case.json	95
+C	probes/t2867-calipers-anonymised-inputs.case.json	26
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
