@@ -245,12 +245,11 @@ impl Model {
             return Err(format!("No table named '{name}'"));
         }
         let tables = [name.to_lowercase()];
-        let data_rows = self.workbook.tables.get(name).and_then(|table| {
-            let (_, top, _, bottom) = parse_range(&table.reference).ok()?;
-            let header = i32::try_from(table.header_row_count).ok()?;
-            let totals = i32::try_from(table.totals_row_count).ok()?;
-            Some((top.checked_add(header)?, bottom.checked_sub(totals)?))
-        });
+        let data_rows = self
+            .workbook
+            .tables
+            .get(name)
+            .and_then(|table| Some(crate::table_edits::bounds(table)?.data));
         self.lower_this_row_references(&tables, data_rows);
         self.rewrite_table_references(&tables, None, TableRewrite::Lower);
         self.remove_table(name)
