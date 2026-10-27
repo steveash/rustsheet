@@ -3,7 +3,7 @@ id: T-2806
 title: "Bound the memory one formula evaluation retains (texts in large arrays)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
