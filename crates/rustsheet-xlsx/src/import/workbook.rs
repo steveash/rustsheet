@@ -2,7 +2,7 @@ use std::io::Read;
 
 use super::package::Package;
 
-use super::sheet_data::{check_stored_length, MAX_NAME_BODY_UNITS};
+use super::sheet_data::{check_stored_length, check_string_literals, MAX_NAME_BODY_UNITS};
 use super::xml::XmlNode;
 use rustsheet_engine::types::{DateSystem, DefinedName, Iteration, SheetState};
 
@@ -119,6 +119,7 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             MAX_NAME_BODY_UNITS,
             &format!("definedName {name} body"),
         )?;
+        check_string_literals(&formula, &format!("definedName {name} body"))?;
         // NOTE: In Excel the `localSheetId` is just the index of the worksheet and unrelated to the sheetId
         let sheet_id = match node.attribute("localSheetId") {
             Some(s) => {

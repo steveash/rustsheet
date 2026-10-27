@@ -3,7 +3,11 @@ id: T-2923
 title: "SPEC-0024 amendment: LAMBDA calls cost far more than their body's nodes; charge a call or bound nesting"
 milestone: M7
 lane: engine
+<<<<<<< HEAD
 status: todo
+=======
+status: done
+>>>>>>> origin/main
 priority: P2
 size: S
 tier: opus
@@ -44,12 +48,40 @@ The lower constraint must still hold: the heaviest eval formula outside the visi
 (gen-m9/3e98b26cf6713e77 Calc!A204, a lifted CHISQ.INV.RT over a PIVOTBY: 118,751,450 visit units).
 
 ## Acceptance criteria
+<<<<<<< HEAD
 - [ ] The cause of the nested-call cost is named, with a profile or counters.
 - [ ] SPEC-0024 sections 1 and 4 are amended with the chosen charge, or with a perf task that removes the cost. A worst case of
       nested LAMBDA helpers (at least the 124 s formula above, and a deeper one) is added to section 4's timed list.
 - [ ] T-2803's "Blocked because" names this amendment as its blocker; it is unblocked when this merges.
 - [ ] `make check` green; reviewers approve.
+=======
+- [x] The cause of the nested-call cost is named, with a profile or counters.
+- [x] SPEC-0024 sections 1 and 4 are amended with the chosen charge, or with a perf task that removes the cost. A worst case of
+      nested LAMBDA helpers (at least the 124 s formula above, and a deeper one) is added to section 4's timed list.
+- [x] T-2803's "Blocked because" names this amendment as its blocker; it is unblocked when this merges. (T-2803's live task
+      file is on its draft branch agent/engine/T-2803-formula-work-budget, #1938, which has the section and the charge to add.)
+- [x] `make check` green; reviewers approve.
+>>>>>>> origin/main
 
 ## Out of scope
 - Implementing the budget (T-2803).
 - The visit caps' rule (T-2813, done).
+<<<<<<< HEAD
+=======
+
+## Outcome
+The time goes to making LAMBDA values, not to calling them, and not to nesting depth. The run timed 16 variants on main
+(release build, a scratch test, not committed):
+- A call whose body makes no LAMBDA costs about 275 ns (`MAKEARRAY(1024,1024,LAMBDA(r,c,r))`: 0.26 s). That is the same at
+  depth 3 (`MAP` of `MAP` of 32 by 32 MAKEARRAYs: 0.23 s for 1M calls).
+- Making a LAMBDA costs about 1 us more (`MAP(1,LAMBDA(z,z))` 1.40 s, `LAMBDA(z,z)(1)` 1.31 s, `SEQUENCE(1)` 0.28 s per 1M
+  cells). `LambdaDefKind` clones the body into `self.lambdas`. When the new LAMBDA reads the call's parameters, the caller's
+  body is also patched afresh on every call (`call_prepared`).
+- The cost per cell grows with how many LAMBDAs are stored, not with depth. `self.lambdas` keeps them until the evaluation
+  ends: 4.49 s for 1M made, 21.8 s for 4M in one formula, 4.48 s for 1M made at depth 3 over small arrays.
+
+SPEC-0024 now charges LAMBDA values made: `LAMBDA_UNITS` per LAMBDA stored, plus the nodes of each body clone (section 1).
+Section 4 times three nested worst cases and records that the Problem formulas took 10.5-11.1 s at weight 2, so step 1
+re-fits `NODE_UNITS` and `CELL_UNITS` with a margin. Filed T-2925: drop a formula's LAMBDAs after its root cell. Eval delta: none
+(documentation only).
+>>>>>>> origin/main

@@ -135,7 +135,10 @@ a doubled quote is one character (t2739-typed-dq-4094 and -dq-4095, 4,093 or 4,0
 4,095 letters and `""` are refused). It counts UTF-16 units: 2,047 emoji (4,094 units, t2739-typed-emoji-2047, `LEN`
 4094) are accepted and 2,048 (4,096 units) refused. The limit is per literal (t2739-typed-two-4000, two literals of
 4,000, is accepted). Stored, 256 and 4,095 load (t2739-stored-256, -stored-4095) and 4,096 makes Excel refuse the
-workbook (createSession 501), so the published 255 is no limit at all. The engine has none (T-2762).
+workbook (createSession 501), so the published 255 is no limit at all. The engine refuses a literal over 4,095 units in the lexer: a typed one is rejected
+and the cell keeps its content (`is_limit_error`), and the importer refuses the workbook, for cell formulas and defined-name
+bodies (T-2762; name bodies are unprobed; the importer's scan stops at the first token the lexer rejects, so a literal
+after one loads as a parse error).
 Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
 writer cannot emit them raw; T-1075 item 8).
 Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; the 4,095-unit string-literal limit (see "Typed" above; the published figure is 255) is the cause: 4,090 emoji are 8,180 units for the literals, which is why the cases split them.

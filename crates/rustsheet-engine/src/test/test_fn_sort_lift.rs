@@ -23,9 +23,13 @@ fn by_col_lifts_over_an_array() {
     check(&[
         ("C1", "=COLUMNS(SORT(A1:A3,1,1,{FALSE,TRUE}))", "2"),
         // By rows the sorted column starts at 1; by columns the one column is unchanged.
-        // Hand-written, UNVERIFIED: Excel may leave the second element empty as SORTBY does (T-2366).
+        // probes/t2366-sort-lifted-by-col: later elements hold a value, not empty as SORTBY's do. Excel's value there is #VALUE! (ours 3, T-2929), so it is not pinned.
         ("C2", "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,1)", "1"),
-        ("C3", "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2)", "3"),
+        (
+            "C3",
+            "=ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))",
+            "FALSE",
+        ),
     ]);
 }
 
@@ -34,7 +38,7 @@ fn an_element_error_stays_in_its_position() {
     // sort_index 3 is past the one column (`#VALUE!`) but not past the three rows.
     check(&[
         ("C1", "=INDEX(SORT(A1:A3,3,1,{FALSE,TRUE}),1,1)", "#VALUE!"),
-        // Hand-written, UNVERIFIED (T-2366).
+        // probes/t2366-sort-lifted-by-col I11.
         ("C2", "=INDEX(SORT(A1:A3,3,1,{FALSE,TRUE}),1,2)", "3"),
         ("C3", "=INDEX(SORT(A1:A3,1,1,{FALSE,\"x\"}),1,2)", "#VALUE!"),
     ]);
