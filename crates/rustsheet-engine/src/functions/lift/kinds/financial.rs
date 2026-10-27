@@ -4,7 +4,7 @@
 
 use super::ArgKind::{Lift, LiftArrays, WholeByCaller};
 use super::KernelWork::{ByValue, Constant, Weighted};
-use super::ValueWork::{CouponWalks, Loop};
+use super::ValueWork::{Amortization, CouponWalks, Loop};
 use super::{ArgKinds, CallResult, ATP_2, ATP_3, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
 use crate::functions::financial::{MAX_DEPRECIATION_PERIODS, RATE_MAX_STEPS};
 use crate::functions::Function;
@@ -285,18 +285,19 @@ const CUMULATIVE: ArgKinds = ArgKinds::fixed(
 // --- End financial ATP (T-1845) -------------------------------------------------------------
 
 // --- Financial ATP (T-1841) -----------------------------------------------------------------
-/// What one AMORLINC element is charged, priced from its cap: at most `LINEAR_STEP_CAP` (1,024)
-/// single subtractions (functions/financial/amortization.rs `linear_charge`; the longest real walk
-/// takes 616). A step costs about 7.7 ns in a release build (2^18 elements of
+/// What one AMORLINC element is charged unless refused before its walk (`ValueWork::Amortization`,
+/// T-2840), priced from its cap: at most `LINEAR_STEP_CAP` (1,024) single subtractions
+/// (functions/financial/amortization.rs `linear_charge`; the longest real walk takes 616). A step costs about 7.7 ns in a release build (2^18 elements of
 /// `AMORLINC(..,2400,..,300,9E15,1.08E-16,1)`, 613 steps each, within 1% of the longest, took
 /// 1.23 s, 4.7 us an element), so a walk at the cap is about 7.9 us and 2^9 units run at most
 /// 2^18 elements, about 2.1 s. docs/excel-semantics/financial.md "AMORLINC and AMORDEGRC work
 /// cap" (a DEVIATION).
 const AMORLINC_WEIGHT: u32 = 1 << 9;
-/// What one AMORDEGRC element is charged: at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods
-/// walked one by one, then a closed form, about 4 ms an element in a release build (512 elements
-/// of `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, whose walk takes no shortcut, took 2.06 s). 2^18 units
-/// run at most 512 elements, about 2 s.
+/// What one AMORDEGRC element is charged unless refused before its walk (`ValueWork::Amortization`,
+/// T-2840): at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods walked one by one, then a closed
+/// form, about 4 ms an element in a release build (512 elements of `AMORDEGRC(1E15,..,1,5E6,
+/// 1E-7,1)`, whose walk takes no shortcut, took 2.06 s). 2^18 units run at most 512 elements,
+/// about 2 s.
 const AMORDEGRC_WEIGHT: u32 = 1 << 18;
 /// `AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
 const AMORLINC: ArgKinds = ArgKinds::fixed(
@@ -304,7 +305,10 @@ const AMORLINC: ArgKinds = ArgKinds::fixed(
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
     ],
-    Weighted(AMORLINC_WEIGHT),
+    ByValue(Amortization {
+        degressive: false,
+        weight: AMORLINC_WEIGHT,
+    }),
 );
 /// `AMORDEGRC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
 const AMORDEGRC: ArgKinds = ArgKinds::fixed(
@@ -312,7 +316,10 @@ const AMORDEGRC: ArgKinds = ArgKinds::fixed(
     &[
         LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays, LiftArrays,
     ],
-    Weighted(AMORDEGRC_WEIGHT),
+    ByValue(Amortization {
+        degressive: true,
+        weight: AMORDEGRC_WEIGHT,
+    }),
 );
 // --- End financial ATP (T-1841) -------------------------------------------------------------
 

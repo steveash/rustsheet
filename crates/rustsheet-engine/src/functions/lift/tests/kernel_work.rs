@@ -653,3 +653,115 @@ fn hypgeom_dist_elements_are_charged_by_their_counts() {
         4 * (3000 + 132) * 16
     );
 }
+
+/// AMORLINC's and AMORDEGRC's `ByValue` charge (T-2840): an element is charged its kernel's flat
+/// bound, so 512 AMORDEGRC elements fit under `MAX_LIFTED_CELL_VISITS` and 513 do not, or 1 when
+/// the kernel refuses it before its walk (`Model::amortization_of`): an error or a logical in any
+/// argument, or numbers failing the value checks or AMORDEGRC's asset life. A text or a blank may
+/// read as any number, and is charged the bound (gen-m9/e8d55ec393460bb7 A10: about 1,250
+/// purchase dates, most of them texts, at a negative rate).
+#[test]
+fn amortization_elements_refused_before_the_walk_are_charged_one() {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::expressions::token::Error;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
+    let work = |function: Function| {
+        let work = function.arg_kinds().map(|kinds| kinds.work);
+        let Some(work @ KernelWork::ByValue(ValueWork::Amortization { .. })) = work else {
+            panic!("{function:?} is not charged by its values: {work:?}");
+        };
+        work
+    };
+    // `function(cost, dates, 39813, salvage, period, rate, basis)` over `count` purchase dates.
+    let units = |function: Function, date: ArrayNode, values: [f64; 4], basis: LiftedArg| {
+        let count = 513;
+        let [cost, salvage, period, rate] = values;
+        let args = [
+            number(cost),
+            LiftedArg::Grid(vec![vec![date]; count]),
+            number(39_813.0),
+            number(salvage),
+            number(period),
+            number(rate),
+            basis,
+        ];
+        kernel_units(work(function), &args, count, 1, count as u64)
+    };
+    let date = || ArrayNode::Number(39_679.0);
+    let valid = [2400.0, 300.0, 1.0, 0.15];
+
+    assert!(units(Function::Amordegrc, date(), valid, number(1.0)) > MAX_LIFTED_CELL_VISITS);
+    assert_eq!(
+        units(Function::Amordegrc, date(), valid, number(1.0)) / 513 * 512,
+        MAX_LIFTED_CELL_VISITS
+    );
+    // A text date may read as any date; a text basis as any basis.
+    let text = || ArrayNode::String("x".into());
+    assert!(units(Function::Amordegrc, text(), valid, number(1.0)) > MAX_LIFTED_CELL_VISITS);
+    let text_basis = LiftedArg::Scalar(CalcResult::String("1".into()));
+    assert!(units(Function::Amordegrc, date(), valid, text_basis) > MAX_LIFTED_CELL_VISITS);
+    // Refused before the walk: an error or a logical anywhere, a failed value check.
+    let refused = [
+        (ArrayNode::Error(Error::NA), valid),
+        (ArrayNode::Boolean(true), valid),
+        (text(), [2400.0, 300.0, 1.0, -41_788_900.0]),
+        (text(), [-1.0, 300.0, 1.0, 0.15]),
+        (text(), [2400.0, -1.0, 1.0, 0.15]),
+        (text(), [300.0, 300.0, 1.0, 0.15]),
+        (text(), [2400.0, 300.0, -1.0, 0.15]),
+        (text(), [2400.0, 300.0, 1.0, 0.0]),
+        (text(), [2400.0, 300.0, f64::NAN, 0.15]),
+        // AMORDEGRC's asset life: 1 / 0.5 is 2, 1 / 0.22 about 4.5.
+        (text(), [2400.0, 300.0, 1.0, 0.5]),
+        (text(), [2400.0, 300.0, 1.0, 0.22]),
+    ];
+    for (date, values) in refused {
+        assert_eq!(
+            units(Function::Amordegrc, date.clone(), values, number(1.0)),
+            513,
+            "{date:?} {values:?}"
+        );
+    }
+    let na_basis = LiftedArg::Scalar(CalcResult::new_error(
+        Error::NA,
+        crate::expressions::types::CellReferenceIndex {
+            sheet: 0,
+            column: 1,
+            row: 1,
+        },
+        String::new(),
+    ));
+    assert_eq!(units(Function::Amordegrc, date(), valid, na_basis), 513);
+    // A life of exactly 4 or 5 walks (rates 0.25 and 0.2); AMORLINC checks no life.
+    for rate in [0.25, 0.2] {
+        assert!(
+            units(
+                Function::Amordegrc,
+                date(),
+                [2400.0, 300.0, 1.0, rate],
+                number(1.0)
+            ) > 513
+        );
+    }
+    assert!(
+        units(
+            Function::Amorlinc,
+            date(),
+            [2400.0, 300.0, 1.0, 0.5],
+            number(1.0)
+        ) > 513
+    );
+    assert_eq!(
+        units(
+            Function::Amorlinc,
+            date(),
+            [2400.0, 300.0, 1.0, -0.5],
+            number(1.0)
+        ),
+        513
+    );
+}
