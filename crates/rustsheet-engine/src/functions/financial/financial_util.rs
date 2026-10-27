@@ -1,4 +1,4 @@
-use super::annuity::{annuity_factor, annuity_power};
+use super::annuity::{annuity_factor_rounded, annuity_power};
 use crate::{
     arithmetic::{extended_product, extended_quotient, extended_sum, flush_subnormal},
     expressions::token::Error,
@@ -9,9 +9,13 @@ use crate::{
 // doc comments). RATE is a fitted secant too (T-2005, financial.md "RATE is a secant on the FV
 // residual").
 
-/// RATE's residual f(r) = pv·P + pmt·k·((P-1)/r) + fv, P = (1+r)^n, with FV's power and
-/// annuity factor (`annuity_power`, `annuity_factor`) in that order; f(0) is the limit
-/// pv + pmt·n + fv. `None` where Excel's `^` errs (a power past the double range).
+/// RATE's residual f(r) = ((pv·P) + (pmt·(k·((P-1)/r)))) + fv, P = (1+r)^n by FV's power
+/// (`annuity_power`), k = 1+r for type 1, with each `+`, `*` and `/` Excel's twice-rounded operator
+/// ([`annuity_factor_rounded`]; FV's once-rounded `annuity_factor` misses 4 of the 782 fit-lab
+/// cells); f(0) is the limit pv + pmt·n + fv. `None` where Excel's `^` errs (a power past the
+/// double range). Fit lab `rate` (T-2527): bit-exact on all 782 RATE cells of the fit set, a
+/// nested PMT at Excel's bits (financial.md "RATE is a secant on the FV residual";
+/// probes/rate-excel-pmt-bits pins it).
 fn rate_residual(
     rate: f64,
     (nper, pmt, pv, fv): (f64, f64, f64, f64),
@@ -21,7 +25,11 @@ fn rate_residual(
         return Some(pv + pmt * nper + fv);
     }
     let p = annuity_power(rate, nper).ok()?;
-    let f = pv * p + pmt * annuity_factor(rate, p, period_start) + fv;
+    let factor = annuity_factor_rounded(rate, p, period_start);
+    let f = extended_sum(
+        extended_sum(extended_product(pv, p), extended_product(pmt, factor)),
+        fv,
+    );
     f.is_finite().then_some(f)
 }
 
