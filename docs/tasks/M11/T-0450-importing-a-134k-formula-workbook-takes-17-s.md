@@ -38,7 +38,7 @@ import as a follow-up.
 - [x] pv26_001 and pv26_2_001 leave the `exclude` list in eval/suites/calipers/suite.toml if they
       calculate within 60 s, and `rustsheet-eval update-baseline --suite calipers` records their results with no new known failure
       elsewhere. (They left the list; the recording waits on T-0463, see the Outcome.)
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 11-minute COUNTIFS/SUMIFS models pv26_002 and pv26_2_002 (T-0449).
