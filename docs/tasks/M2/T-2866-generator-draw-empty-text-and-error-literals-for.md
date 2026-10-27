@@ -3,7 +3,7 @@ id: T-2866
 title: "Generator: draw empty text and error literals for number-typed value parameters, so generated suites reach the empty_text and error argument kinds"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
