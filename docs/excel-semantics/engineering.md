@@ -49,7 +49,7 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   probes/t2881-besselj-turning-point (excel-graph, 2026-10-27, T-2881), for T-2548 to fit.
   It shows: Miller cells (x <= n) miss by about 1E-15 to 3E-14 relative from n = 1000 up; BESSELJ(84,84), (84,83), (100,100) and
   all n = 1000 cells except `BESSELJ(990,1000)` are bit-exact; the branch switch at x > n matches Excel's, but the upward
-  recurrence is NOT bit-exact at large n (21 cells from `BESSELJ(2001,2000)` on, up to 1.6E-13 relative, e.g.
+  recurrence is NOT bit-exact at large n (22 cells: `BESSELJ(2001,2000)`, `BESSELJ(5100,5000)` and all 20 upward cells at n >= 10000, up to 1.6E-13 relative, e.g.
   `BESSELJ(100100,100000)` Excel -0.006729033731473101, ours -0.006729033731474205). T-2548 owns both branches.
   Web vs desktop: Mac Excel 16.0300's cached `BESSELJ(100000,5)` 0.001846551246313725 and `BESSELY(100000,5)`
   0.001719431947654535 (ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18, F18) differ from the web's 0.0018465512463137278
