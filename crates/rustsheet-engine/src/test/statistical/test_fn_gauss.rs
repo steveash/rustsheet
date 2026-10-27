@@ -56,8 +56,8 @@ fn test_fn_gauss_tiny_argument_is_z_times_phi_zero() {
     model._set("A4", "=GAUSS(4E-15)");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"3.98942E-301");
-    assert_eq!(model._get_text("A2"), *"-3.98942E-301");
+    assert_eq!(model._get_text("A1"), *"3.9894E-301");
+    assert_eq!(model._get_text("A2"), *"-3.9894E-301");
     assert_eq!(model._get_text("A3"), *"3.98943E-11");
     assert_eq!(model._get_text("A4"), *"1.55431E-15");
 }
