@@ -3,7 +3,7 @@ id: T-2479
 title: "Probe WRAPCOLS of an empty cell or 2-D array with an error or bad wrap_count, and EXPAND array pad_with past the grid"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2365 review: ours returns `#VALUE!` for `WRAPCOLS({1,2;3,4},-1)` and `#N/A` fo
 
 ## Out of scope
 -
+
+## Outcome
+Probe cases t2479-* filled from excel-graph. Excel: empty-cell vector beats an error wrap_count (`#VALUE!`), and EXPAND rows past the grid beat an array pad_with (`#NUM!`). Both fixed; arrays.md updated. probes: 3 new cases, all pass (56 cells).

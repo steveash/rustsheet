@@ -1927,3 +1927,12 @@ lifted TRIMRANGE), IFNA through TRIMRANGE and a TRIMRANGE trimmed to one blank c
 T-2600; the REDUCE/TRIMRANGE reference since T-2596.
 Status: VERIFIED (excel-graph)
 Tasks: T-2579, T-2600, T-2596
+
+## WRAPCOLS/WRAPROWS of an empty cell, and EXPAND's array pad_with past the grid
+Rule (excel-graph, 2026-10-27, T-2479; probes/t2479-wrap-notvector-badcount, t2479-expand-padarray-small, t2479-expand-padarray-past-grid):
+a single empty cell as the vector of WRAPCOLS or WRAPROWS is `#VALUE!` even beside an error wrap_count
+(`WRAPCOLS(Z1,NA())` and `WRAPROWS(Z1,1/0)` are `#VALUE!`, not `#N/A`/`#DIV/0!`), whereas a 2-D array vector
+beside an error wrap_count gives the wrap_count's error (T-2365). A bad non-error wrap_count (-1, 0, text) beside either
+not-a-vector input is `#VALUE!`. EXPAND's array pad_with is `#VALUE!` as before for sizes inside the grid, but rows
+past the grid are `#NUM!` first: `ROWS(EXPAND(1,1048577,1,{0;1}))` is `#NUM!` (run as its own case; beside others it hung the workbook).
+Implemented in: `wrapcols_wraprows.rs` (`flatten_vector`), `expand.rs` (`expand_kernel`).
