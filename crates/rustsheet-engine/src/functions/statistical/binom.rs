@@ -20,10 +20,14 @@ use crate::x87_log10::excel_ln;
 use crate::x87_log1p::excel_ln_one_minus;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
-/// The trial count (after truncation) from which BINOM.DIST, BINOMDIST and BINOM.DIST.RANGE are
-/// `#NUM!` whatever the other arguments: 2^31 - 1, so 2^31 - 2 trials is the most Excel evaluates
-/// (statistics.md "BINOM.DIST is #NUM! from 2^31 - 1 trials"; probes-numeric
-/// t2645-binom-trials-limit, excel-graph: every k, both cumulative modes, p = 0 and 1 too).
+/// The trial count (after truncation) from which BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE,
+/// BINOM.INV and CRITBINOM are `#NUM!` whatever the other arguments: 2^31 - 1, so 2^31 - 2 trials
+/// is the most Excel evaluates (statistics.md "BINOM.DIST is #NUM! from 2^31 - 1 trials";
+/// probes-numeric t2645-binom-trials-limit, excel-graph: every k, both cumulative modes, p = 0 and
+/// 1 too; the same limit holds for the inverses, `BINOM.INV(2147483647,0.5,0.5)` and
+/// `CRITBINOM(2147483647,0.5,0.5)` #NUM! against a count at 2^31 - 2, probes/t2435-dist-extremes
+/// A16, A17, A19; the count itself at such a trial count is still ours to fix, A15 and A18,
+/// T-2809).
 const TRIALS_LIMIT: f64 = crate::limits::COUNT_LIMIT_EXCLUSIVE;
 
 impl Model {
@@ -63,6 +67,15 @@ impl Model {
         let k = number_s as u64;
         // A certain outcome: the walks need 0 < p < 1.
         if p == 0.0 || p == 1.0 {
+            // The pmf at k = 0 is EXP(n.LN(1 - p)) (below), so p = 1 takes Excel's LN(0) and is
+            // #NUM! from one trial on, where the cdf there is 0 and n = 0 trials is 1
+            // (`BINOM.DIST(0,2,1,FALSE)` and `BINOMDIST(0,2,1,FALSE)` #NUM!,
+            // `BINOM.DIST(0,2,1,TRUE)` 0, `BINOM.DIST(0,0,1,FALSE)` 1,
+            // `BINOM.DIST(1,2,1,FALSE)` 0; probes/t2435-dist-extremes A1:A13, A113, A114;
+            // gen-m9 05d44f6dd6cfc567 A344, a013a45a8fbcab4f A206).
+            if p == 1.0 && !cumulative && k == 0 && n >= 1 {
+                return Err(num_error(cell));
+            }
             let certain = if p == 0.0 { 0 } else { n };
             let hit = if cumulative {
                 k >= certain
@@ -180,7 +193,8 @@ impl Model {
     }
 
     /// `BINOM.INV(trials, probability_s, alpha)`, and CRITBINOM. The search halves
-    /// `[0, trials]` with `trials` a `u64`, so it stops after at most 64 steps of one cdf each,
+    /// `[0, trials]` with `trials` under [`TRIALS_LIMIT`], so it stops after at most 31 steps of
+    /// one cdf each,
     /// its own per-call cap: up to about 65 us an element in release, which the lifting table
     /// charges as `Weighted(4096)` (SPEC-0011 security rule; lift/kinds/statistical.rs
     /// `BINOM_INV`).
@@ -201,9 +215,7 @@ impl Model {
         let trials = self.cast_number_ref(trials, cell)?.trunc();
         let p = self.cast_number_ref(p, cell)?;
         let alpha = self.cast_number_ref(alpha, cell)?;
-        if trials < 0.0
-            // Not TRIALS_LIMIT: BINOM.INV and CRITBINOM at 2^31 - 1 trials are unprobed.
-            || trials > u64::MAX as f64
+        if !(0.0..TRIALS_LIMIT).contains(&trials)
             || p.is_nan()
             // Probability 0 is #NUM! too, unlike BINOMDIST (probes-numeric/m9-legacy-critbinom A23, A24).
             || p <= 0.0

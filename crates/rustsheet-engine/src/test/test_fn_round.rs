@@ -50,11 +50,15 @@ fn round_family_lifts_over_array_arguments() {
 
 #[test]
 fn round_of_a_column_against_a_row_is_bounded() {
-    // Resource limit (DEVIATION, arrays.md): the lifted result is capped, not allocated.
+    // Resource limit (DEVIATION, arrays.md): the lifted result is capped, not allocated. In a
+    // value context that is #ERROR!; in a cell the 2^34-cell shape runs past the grid, so it is
+    // #SPILL! from the shapes alone (T-0483).
     let mut model = new_empty_model();
     model._set("B2", "=ROUND(A1:A1048576,C1:XFD1)");
+    model._set("B3", "=ROWS(ROUND(A1:A1048576,C1:XFD1))");
     model.evaluate();
-    assert_eq!(model._get_text("B2"), *"#ERROR!");
+    assert_eq!(model._get_text("B2"), *"#SPILL!");
+    assert_eq!(model._get_text("B3"), *"#ERROR!");
 }
 
 // A LAMBDA read as a number by a math function on the lifting driver is `#VALUE!`, as it was

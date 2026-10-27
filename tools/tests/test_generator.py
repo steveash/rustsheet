@@ -147,9 +147,9 @@ def test_generator_emits_every_m2_function() -> None:
 
 
 def emitted(milestone: str) -> set[str]:
-    """Every tag (function name) the generator emits over 40 seeds at `milestone`."""
+    """Every tag (function name) the generator emits over 60 seeds at `milestone`."""
     seen: set[str] = set()
-    for seed in range(40):
+    for seed in range(60):
         seen.update(generate_case(catalog(), seed, milestone=milestone, formulas=80)["tags"])
     return seen
 
@@ -293,8 +293,9 @@ def test_number_enums_are_number_literals() -> None:
         for formula in spec["sheets"][1]["cells"].values():
             freqs += re.findall(r"COUP(?:DAYBS|DAYS|DAYSNC|NCD|NUM|PCD)\(\d+,\d+,([^,()]*)", formula)
     assert freqs and {"1", "2", "4"} & set(freqs), freqs
-    # The frequency pool's "2" is the one deliberate text frequency (T-2248).
-    assert not any(f.startswith('"') and f != '"2"' for f in freqs), freqs
+    # The frequency pool's "2" is the one deliberate text frequency (T-2248); `""` is the empty-text draw of
+    # every number parameter (T-2866).
+    assert not any(f.startswith('"') and f not in ('"2"', '""') for f in freqs), freqs
 
 
 def m7_formulas() -> list[str]:
@@ -657,7 +658,9 @@ def _outer_function(formula: str) -> str:
 
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
-    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) and T-2318 (TEXTJOIN's delimiter is an array parameter).
+    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained
+    # signatures), T-2318 (TEXTJOIN's delimiter is an array parameter) and T-2719 (*IFS ranges share a shape,
+    # MATCH's lookup_array is a vector) and T-2866 (number and bool parameters draw `""` and errors).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -665,7 +668,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "505d7bc2688c30017ec88bafbf7512ef881ad1606a3cce3d4cfa30195cad721c"
+        == "4b035e759ac9d701f7e9da74eb3c12458b9c654b406c43002083a28a1d71229f"
     )
 
 
@@ -1053,3 +1056,49 @@ def test_m9_count_and_ets_pools_reach_their_edges() -> None:
     assert all(p.startswith("{") and p.endswith("}") for p in POOLS["ets_timeline"] + POOLS["ets_values"])
     used = {p["pool"] for f in catalog.functions for p in f.get("params", []) if "pool" in p}
     assert {"beta_bound", "fisherinv_y", "forecast_x", "lognorm_mean"} <= used
+
+
+def test_ifs_ranges_share_a_shape_and_match_looks_in_one_dimension() -> None:
+    # T-2719: SUMIFS/COUNTIFS ranges of one call agree in shape (bar a ~1 in 10 mismatch) and MATCH's
+    # lookup_array is mostly a single row or column.
+    def dims(ref: str) -> tuple[int, int]:
+        (c0, r0), (c1, r1) = (re.findall(r"([A-Z])(\d+)", ref)[i] for i in (0, 1))
+        return int(r1) - int(r0) + 1, ord(c1) - ord(c0) + 1
+
+    calls: list[list[str]] = []
+    matches: list[tuple[int, int]] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M2", formulas=120)
+        for formula in spec["sheets"][1]["cells"].values():
+            for m in re.finditer(r"(?:SUMIFS|COUNTIFS)\(((?:[^()]|\([^()]*\))*)\)", formula):
+                calls.append(re.findall(r"Data![A-Z]\d+:[A-Z]\d+", m.group(1)))
+            matches += [dims(a) for a in re.findall(r"MATCH\([^,()]*,(Data![A-Z]\d+:[A-Z]\d+)", formula)]
+    multi = [c for c in calls if len(c) > 1]
+    assert len(multi) > 50 and matches
+    agree = sum(len({dims(r) for r in c}) == 1 for c in multi)
+    assert 0.8 <= agree / len(multi) < 1.0
+    one_d = sum(1 in d for d in matches)
+    assert 0.7 <= one_d / len(matches) < 1.0
+
+
+def test_fixed_height_ranges_and_probes_stay_inside_their_range() -> None:
+    # T-2719: `range_ref(height=)` is exact, and `cell_in` lands inside the probed range.
+    gen = Gen(random.Random(1), catalog(), data_rows=12, data_cols=5, max_depth=2)
+    for _ in range(50):
+        ref = gen.range_ref(width=2, height=3)
+        m = re.fullmatch(r"Data!([A-E])(\d+):([A-E])(\d+)", ref)
+        assert m and int(m[4]) - int(m[2]) == 2 and ord(m[3]) - ord(m[1]) == 1
+        cell = gen.cell_in("Data!B2:D4")
+        assert re.fullmatch(r"Data![B-D][2-4]", cell), cell
+    assert re.fullmatch(r"Data!\$?[A-E]\$?\d+", gen.cell_in("not a range"))
+
+
+def test_number_and_bool_value_params_draw_empty_text_and_errors() -> None:
+    """T-2866: a number or bool `value` param gets `""` and an error literal; a `hard` domain never does."""
+    g = Gen(random.Random(7), Catalog([], []), 12, 5, 3)
+    for typ in ("number", "bool"):
+        drawn = {g.scalar_text({"type": typ}, 0) for _ in range(2000)}
+        assert '""' in drawn, typ
+        assert drawn & set(POOLS["errors"]), typ
+    hard = {"type": "number", "domain": {"int": True, "min": 1, "max": 5, "hard": True}}
+    assert all(g.scalar_text(hard, 0) in {"1", "2", "3", "4", "5"} for _ in range(2000))

@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "A fixed fraction denominator of six or more digits in TEXT (T-2522). Only TEXT: a workbook whose cell applies such a code is refused by Excel for the web (FileCorruptTryRepair), so no displayed-text cells.",
+ "tags": [
+  "M10",
+  "text",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "T",
+   "cells": {
+    "A1": "=TEXT(0.5,\"?/100000\")",
+    "A2": "=TEXT(0.5,\"?/123456\")",
+    "A3": "=TEXT(0,\"?/100000\")",
+    "A4": "=TEXT(1.5,\"# ?/100000\")",
+    "A5": "=TEXT(0.5,\"?/99999\")"
+   }
+  }
+ ],
+ "expected": {}
+}

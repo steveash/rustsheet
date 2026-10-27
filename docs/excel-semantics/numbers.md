@@ -94,10 +94,14 @@ gives ...266 in both signs and both directions, `±999999999999999.5` gives ±1E
 Unlike INT, the family's cut has no 1E+15 boundary: `FLOOR(-1000000000000000.5,1)` = -1E+15 (INT gives -1000000000000001),
 `FLOOR(1000000000000002.5,1)` = `CEILING(1000000000000002.5,1)` = 1E+15, and `FLOOR(±4503599627370495.5,1)` =
 ±4503599627370500 (INT gives 4503599627370495 and -4503599627370496); without the cut these would keep their integer digits
-(probe cells B7-B14). Not probed: a significance other than 1 (every probe row has significance 1, as does the gen-m5 cell),
-so "cuts the ratio" rather than "cuts the value" rests on the existing design.
+(probe cells B7-B14). With a significance other than 1 the cut applies to the ratio `value/significance`, not to the value or the result: stored
+values whose ratio is an exact `.5` tie (significance 0.5, 3 and -2, both signs of value) give the away-from-zero result in
+all seven functions, e.g. `CEILING(-166666666666633.25,0.5)` = -166666666666633.5 (a plain ceiling or a cut of the value gives ...633),
+`FLOOR(-999999999999799.5,3)` = -999999999999801 and `FLOOR.MATH(666666666666533,-2)` = 666666666666534 (T-2687; the engine already matched all 84 cells). A positive value with a negative significance is #NUM!
+in FLOOR and CEILING only.
 Evidence: gen-m5/048f6b1a0fb9544b Calc!A257 (excel-graph, 2026-10-25, T-2648); probes/t2652-floor-ceiling-ties
-(14 values x 7 functions, excel-graph, 2026-10-25, T-2652).
+(14 values x 7 functions, excel-graph, 2026-10-25, T-2652); probes/t2687-floor-ceiling-nonunit-ties
+(12 rows x 7 functions, excel-graph, 2026-10-26, T-2687).
 Status: VERIFIED
 Implemented in: `snap_ratio` (ceiling_floor.rs) via `significant_15` and `decimal_to_f64`, ties away from zero (T-2652)
 Tasks: T-2652
@@ -117,23 +121,20 @@ round-to-nearest (half away from zero) to 15 significant digits, then floor, for
 1000000000000005, `INT(-4503599627370495.5)` = -4503599627370496, `INT(999999999999999.9)` = 1E+15 (still cut).
 Status: VERIFIED (excel-graph, 5 + 63 cells); implemented (T-2171, confirmed by T-2215).
 
-## ODD and EVEN above 2^53: last digits not explained (T-2173)
-Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992; ours is 9999999999999988, from
-`ceil((|x|-1)/2)*2+1` in doubles, where `|x|-1` already rounds down. `RADIANS(ODD(9999999999999999)*(-1-B11))` follows it.
-`EVEN((0.1/E5)*SERIESSUM(-2.5,B10,3,0.1))` (gen-m5/38b1b8e51dbad326 Calc!A10) was not an EVEN miss: the EVEN input was an
-ulp low through SERIESSUM's own power, and the cell passes since T-2163 raised with the `^` kernel. No formulation is fitted
-yet for the ODD cells.
-Fitting points (66 values 2^52 .. 1.8E+308, ODD and EVEN, excel-graph, T-2172): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66.
-EVEN matches Excel on all 66 cells. ODD misses 11: every miss is an even double strictly above 2^53 and up to about 1E+16 (2^53+2,
-2^53+6, ..., 9999999999999990 .. 1.000000000000001E+16, and -(2^53+2)), where Excel returns the next double away from zero (x+2) and
-ours the one toward zero (e.g. G10 `ODD(9007199254740994)` is 9007199254740996, ours 9007199254740992; G30 `ODD(9999999999999998)` is
-1E+16, an even result). Between 2^53 and at least 1.000000000000001E+16 (G36; where the band ends below 2^54 is unprobed) the rule is by residue: x = 2 (mod 4) gives x+2 (away from zero), x = 0 (mod 4) returns x unchanged, an even result
-(G11, G13, G15, G17, G27, G29, G31, G33, G35, G63). `ODD(2^53)` and values from 2^54 up return the input unchanged (F9, F20:F25, F37:F64, F66).
-`EVEN(6.223015277861143E+37)` with the stored double returns its input (H60); the gen-m5 ...144 came from a computed, 1-ulp-low input, not EVEN. T-2173 fits this.
-Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224 (gen-m5/38b1b8e51dbad326 Calc!A10 fixed by T-2163).
-`ODD(EVEN(9999999999999999))` is 9999999999999992 as well (ours 9999999999999988): gen-m5/d88d12a62b726a0a Calc!A232 (excel-graph,
-2026-10-22, T-2252 triage).
-Status: OBSERVED; T-2173 (after the T-2172 oracle sweep).
+## ODD above 2^53 adds one in binary (T-2173)
+Rule: `ODD(number)` is `c = ceil(|number|)`, then `c + 1` when `c` is even, as one double addition, with the sign of
+`number`. Below 2^53 the addition is exact. Between 2^53 and 2^54 every double is even and `c + 1` is a tie, so it rounds
+half to even: x = 2 (mod 4) gives x+2 (away from zero; `ODD(9007199254740994)` is 9007199254740996, `ODD(9999999999999998)`
+is 1E+16), x = 0 (mod 4) returns x unchanged, an even result. `ODD(2^53)` and values from 2^54 up return the input
+unchanged (`c + 1` rounds back to `c`). The earlier `ceil((|x|-1)/2)*2+1` gave the double toward zero, because `|x|-1`
+already rounds there. EVEN (`ceil(|x|/2)*2`, exact) matched Excel on all 66 sweep points before and after.
+`ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992, and `ODD(EVEN(9999999999999999))` too.
+`EVEN((0.1/E5)*SERIESSUM(-2.5,B10,3,0.1))` (gen-m5/38b1b8e51dbad326 Calc!A10) was not an EVEN miss: its input was an ulp
+low through SERIESSUM's own power (fixed by T-2163).
+Evidence (excel-graph): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66 (66 values 2^52 .. 1.8E+308, ODD and EVEN,
+T-2172; every old miss was an even double in (2^53, 2^54)); gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645
+Calc!A224, gen-m5/d88d12a62b726a0a Calc!A232, gen-m5/36133d9266f8ed26 Calc!A144.
+Status: VERIFIED (excel-graph, 66 sweep cells + 4 gen-m5 cells); implemented (T-2173).
 
 ## MROUND rounds the quotient up within 5E-15 of a half, and multiplies in binary (T-2201)
 Rule: `MROUND(number, multiple)` (after the sign and zero checks) is
@@ -2030,9 +2031,9 @@ gen-m5/55afc805e00a1509 Calc!A101, gen-m5/08eafc9e61602bcb Calc!A98 (past 2^53);
 gen-m5/cd883013bea3b305 Calc!A22, gen-m5/9a7a94353845ea12 Calc!A45, gen-m5/90bf45bea539723d Calc!A251.
 A written-empty `min_length` is an omitted one, but a blank cell is 0: `BASE(0,2,)` is "0" (`LEN` 1) and `BASE(5,2,)` "101",
 while `BASE(0,2,Z99)` is "" (`LEN` 0), `BASE(5,2,Z99)` "101"; `BASE(0,2,"")` is `#VALUE!`; `BASE({0,5},2,{0,0})` is {"", "101"}.
-Ours reads the written-empty argument as 0, so `BASE(0,2,)` gives "" (follow-up T-2691).
+Ours reads a written-empty argument as omitted and a blank cell as 0 (`fn_base`, T-2691).
 Evidence (excel-graph, 2026-10-25): probes/base-zero-empty-min-length (T-2416).
-Status: VERIFIED (excel-graph) for the cells above; engine implements both halves (T-2373, T-2374) except a written-empty `min_length` (T-2691).
+Status: VERIFIED (excel-graph) for the cells above; engine implements all of it (T-2373, T-2374, T-2691).
 Tasks: T-2289, T-2373, T-2374, T-2416, T-2691
 
 ## RANDBETWEEN and RANDARRAY argument checks

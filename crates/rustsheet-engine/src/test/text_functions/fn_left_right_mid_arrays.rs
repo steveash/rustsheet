@@ -136,5 +136,5 @@ fn roundtrip_mid_array_formula() {
     model._set("A1", "=MID(N2, SEQUENCE(LEN(N2)), 1)");
     model.evaluate();
     let f = model.get_cell_formula(0, 1, 1).unwrap().unwrap();
-    assert_eq!(f, "=MID(N2,SEQUENCE(LEN(N2)),1)");
+    assert_eq!(f, "=MID(N2, SEQUENCE(LEN(N2)), 1)");
 }

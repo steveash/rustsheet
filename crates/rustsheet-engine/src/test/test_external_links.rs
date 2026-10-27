@@ -119,6 +119,29 @@ fn cached_ranges_read_as_references() {
     assert_eq!(eval(&mut model, "=COUNTA([1]Nope!$A$1:$B$2)"), "0");
 }
 
+// A structured reference qualified by a workbook is `#REF!` whatever the link caches
+// (corpus-bench/58994 F8; docs/excel-semantics/references.md; T-0482).
+#[test]
+fn structured_reference_into_a_linked_workbook_is_ref() {
+    let mut model = linked();
+    for (cell, formula) in [
+        ("A1", "=ROWS([1]!Table3[#Data])"),
+        ("A2", "=VLOOKUP(1,[1]!Table3[#Data],2,FALSE)"),
+        ("A3", "=ROWS([1]Defines!Table3[Col])"),
+    ] {
+        model
+            .set_loaded_user_input(0, cell[1..].parse().unwrap(), 1, formula.to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    for row in 1..=3 {
+        assert_eq!(model.get_formatted_cell_value(0, row, 1).unwrap(), "#REF!");
+    }
+    // A typed formula stays a parse error; same-workbook `Sales[[#Data],[Val]]` resolving to its
+    // data area is covered by test_structured_references.
+    assert_eq!(eval(&mut model, "=ROWS([1]!Table3[#Data])"), "#ERROR!");
+}
+
 #[test]
 fn defined_names_read_the_cache() {
     let mut model = linked();

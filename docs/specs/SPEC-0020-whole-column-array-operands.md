@@ -218,6 +218,8 @@ Only a walk whose visitor folds numbers skips the repeats.
    bench. Measure: 59932 and 17049.
 2. **T-0470 (S).** The element-wise functions that corpus formulas use inside such aggregates, one
    list from a scan of the fetched suites (ISNUMBER, ISBLANK, ISERROR, NOT, LEN, IFERROR, …).
+   Dropped: the scan found no element-wise function inside a whole-column aggregate (T-0470
+   Outcome), so these functions keep today's path.
 3. **T-0471 (S).** SUMPRODUCT as a second consumer (`SUMPRODUCT((A:A=x)*B:B)`), with the same
    element sequence per argument.
 

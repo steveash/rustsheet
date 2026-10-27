@@ -1,0 +1,35 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A sheet-qualified name that resolves to nothing, then its sheet is renamed: FORMULATEXT shows whether the prefix follows. (T-1701)",
+  "tags": [
+    "M8",
+    "sheet-ops",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Data!Missing",
+        "A2": "=SUM(Data!Missing)",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "A2": 2
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "rename",
+      "sheet": "Data",
+      "to": "Inputs"
+    }
+  ]
+}

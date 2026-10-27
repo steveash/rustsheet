@@ -105,7 +105,7 @@ impl Model {
             .parsed_formulas
             .get(sheet as usize)
             .and_then(|formulas| formulas.get(index as usize))
-            .is_some_and(|(node, _)| node.has_legacy_marker()))
+            .is_some_and(|formula| formula.evaluated.has_legacy_marker()))
     }
 
     /// Writes `input`, the display text an edit (row or column insert or delete, move, fill,

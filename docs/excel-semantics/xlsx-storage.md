@@ -310,6 +310,11 @@ differs from what a user types, and Excel for the web refuses or misreads the ty
   `totalsRowFunction="custom"` and `<totalsRowFormula>` for a formula cell (written as a plain `<f>`). A table
   with `totalsRowCount="1"` whose totals cells lack it (a label and a dynamic-array SUBTOTAL) is refused as
   corrupt; with it the file loads and `Sales[[#Totals],[Val]]` reads the totals cell.
+- Excel's own file (crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx, Excel-authored) also shows: a column
+  name that ends with a space keeps its inner brackets, `SUBTOTAL(109,Table3[[the two ]])` (Hidden!B6); an `@`
+  inside a column name is not escaped, `SUM(Table9[Totals '[']^&*@'#$,,<>])` (Escape!E6); `#Totals` of a table
+  without a totals row is kept as written, `SUM(Table2[#Totals])` cached `#REF!` (Sheet2!F4). The engine's printer
+  writes these forms (T-2196); a leading `@` is still escaped, since `[@` reads as `#This Row`.
 - Table names that look like cell addresses (`T1`) are rejected by XlsxWriter; a header that is a number in
   text (`2024`) is fine.
 Evidence: the corrupt-file refusals are upload errors, not cell values (throwaway probes during T-1607, not
@@ -318,8 +323,30 @@ kept; to re-run one, a sheet with table `Sales` at A1:D4 or A1:B4 and one formul
 pins each written form.
 Status: VERIFIED (web)
 Implemented in: tools/src/rustsheet_tools/spec2xlsx.py (`table_refs_to_file_form`, `_totals_column`); the engine
-reads `[#This Row]`; `Table[]` is T-1674.
+reads `[#This Row]`; `Table[]` is T-1674; the xlsx export writes these forms (T-2196, "Table parts in the export").
 Tasks: T-1607
+
+## Table parts in the export
+Rule (ours, T-2196): the export writes each table as `xl/tables/tableN.xml` with the forms of "Structured
+references in the file" above: a totals-row formula cell as `totalsRowFunction="custom"` plus `<totalsRowFormula>`,
+a totals-row text cell as `totalsRowLabel`, and formulas keep their structured references (`Sales[]` for a bare
+name, `[#This Row]` for `@`). Excel itself writes `totalsRowFunction="sum"` (and the other named functions) for a
+totals cell it built, with the cell formula `SUBTOTAL(109,Table1[Feb])` (calc_test_tables/tables.xlsx
+`xl/tables/table1.xml`); `custom` with that formula is the form the T-1607 uploads showed Excel loads.
+The import keeps only whether a table's `<autoFilter>` applies a filter (`has_filters`, which makes SUBTOTAL call
+the sheet's hidden rows filtered), not its criteria, so the export writes an applied filter as a
+`<filterColumn colId="0"/>` without a criterion. That is schema-valid and our own import reads it back as
+filtered; whether Excel opens it without repair, and still calls the hidden rows filtered, is unprobed (T-2838).
+A totals-row cell holding a number, boolean or error constant gets no metadata (T-1607 covered label and formula
+cells only); whether Excel loads that is unprobed too (T-2838's probe). A structured reference that lowers to an
+error because the table's metadata does not fit (an unparsable `ref`, an overflowing row count; directive 5) is
+written as that error.
+Evidence: crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx (Excel-authored, 9 tables) now round-trips
+(import, export, import) with the same values (generated test `test_tables_tables`) and the same formula text
+(`excel_authored_tables_keep_their_formula_text`, export/test/test_tables.rs).
+Status: UNVERIFIED (the exported file has not been opened in Excel)
+Implemented in: crates/rustsheet-xlsx/src/export/tables.rs
+Tasks: T-2196, T-2838
 
 ## A table part without a name attribute is named by its displayName
 Rule: Excel opens a workbook whose `xl/tables/tableN.xml` has `displayName` but no `name` attribute (as
@@ -344,10 +371,10 @@ the save. A structured reference is stored with its normalized spaces: typed `T[
 `T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`.
 Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
 T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac1b22c81cabb3f77c8, refetch with `rustsheet-oracle fill --force`), sheet1.xml H1:H17 and E4:E15. A typed `=T[#Headers]` (E13) is `#SPILL!` in the sidecar but `#VALUE!` in the saved array `<v>`; not relied on. Excel's whitespace semantics are in syntax.md.
-Ours: export prints from a tree that keeps no whitespace (SPEC-0023 step 1 designs keeping it), so the saved text is
-canonical; the runs beside a missing argument are filed as T-2799.
+Ours: export writes the tree with no whitespace (SPEC-0023 keeps the written runs for printing only), so the saved text is
+canonical; the runs beside a missing argument are filed as T-2942.
 Status: VERIFIED (excel-graph)
-Tasks: T-2786, T-2799, T-2801
+Tasks: T-2786, T-2942, T-2801
 
 ## Cached volatile values are those of the last calculation, near the save time
 Rule: a workbook's cached values for `TODAY()`, `NOW()` and their dependents are those of Excel's last

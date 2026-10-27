@@ -59,7 +59,9 @@ pub struct NumberPart {
     pub condition: Option<(Compare, f64)>,
     pub use_thousands: bool,
     pub percent: i32, // multiply number by 100^percent
-    pub comma: i32,   // divide number by 1000^comma
+    /// Scaling commas: divide the number by 1000^comma, or in a fraction section multiply it by
+    /// 10^((-3 * comma) mod 256) (`fraction::fraction_scale`).
+    pub comma: i32,
     pub tokens: Vec<TextToken>,
     pub digit_count: i32, // number of digit tokens (#, 0 or ?) to the left of the decimal point
     pub precision: i32,   // number of digits to the right of the decimal point
@@ -86,6 +88,9 @@ pub struct Fraction {
     pub denominator: Denominator,
 }
 
+/// The most digits a fixed fraction denominator may have; more is `#VALUE!`.
+const MAX_FIXED_DENOMINATOR_DIGITS: usize = 5;
+
 /// The denominator of a fraction section.
 pub enum Denominator {
     /// Digits as written (`16` in `# ??/16`).
@@ -107,7 +112,9 @@ pub struct DatePart {
     pub calendar: Option<Calendar>,
     /// Whether the section's locale tag names a Japanese LCID (`Localized::japanese_lcid`).
     pub japanese_lcid: bool,
-    /// Whether a `B2` prefix puts the section in the Hijri calendar (`date_names::hijri_ymd`).
+    /// Whether a `B2` prefix before any tag puts the section in the Hijri calendar
+    /// (`date_names::hijri_ymd`) and, with no tag or from its first `mmm` on, Excel's Arabic
+    /// name path (`date_names::NameTokens`).
     pub hijri: bool,
 }
 
@@ -342,6 +349,10 @@ impl Parser {
         let mut comma = 0;
         let mut percent = 0;
         let mut last_token_is_digit = false;
+        // Whether the previous token is a `%`, or ends a fraction's denominator (or is a scaling
+        // comma right after one): a `,` there is a literal or a fraction's scaling comma.
+        let mut after_percent = false;
+        let mut after_denominator = false;
         // Just past the last digit placeholder while only literals follow it, which may stand
         // between a numerator and its `/` (`#\:#=/=#`, poi/NumberFormatTests A134).
         let mut after_digits: Option<usize> = None;
@@ -358,6 +369,7 @@ impl Parser {
         let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
         let mut hijri = false;
+        let mut calendar_prefix = false;
         // Whether the previous token is an unescaped colon, which the next one joins.
         let mut after_colon = false;
         let mut locale = None;
@@ -370,6 +382,8 @@ impl Parser {
         // number-formats.md "Elapsed-time tokens"). `m` after `[m]` is unprobed and stays a clock
         // minute.
         let mut elapsed_hour = false;
+        // Bracketed `[h]`/`[m]`/`[s]` tokens so far (a bare `h` after `[h]` is not one).
+        let mut bracketed_elapsed = 0_usize;
         let mut elapsed_second = false;
         // Whether a bare (unquoted, unescaped) digit 1-9 was read: it is a literal, but not beside
         // a date or time token (`is_calendar_or_clock`).
@@ -382,6 +396,9 @@ impl Parser {
             is_number = is_number || token_is_digit;
             let next_token_is_digit = next_token.is_digit();
             let is_colon = token == Token::Literal(':');
+            let is_percent = token == Token::Percent;
+            let is_comma = token == Token::Comma;
+            let mut ends_denominator = false;
             if token_is_digit {
                 if is_scientific {
                     exponent_digit_count += 1;
@@ -402,8 +419,16 @@ impl Parser {
                     tokens.push(TextToken::General);
                 }
                 Token::Comma => {
-                    // If it is in between digit tokens then we use the thousand separator
-                    if last_token_is_digit && next_token_is_digit {
+                    // Excel: in a fraction section only a `,` right after the denominator scales
+                    // (`?/?,` on 1E-250 is "1000/1"); a `,` after a `%` or a literal prints, also
+                    // outside a fraction (`?/?% ,` and `?/? ,` on 1E-250 are "0/1% ," and "0/1 ,",
+                    // `0%,` on 0.5 "50%,"; probes/fraction-overflow-scaled; number-formats.md
+                    // "Scaling commas in fraction formats").
+                    if after_denominator {
+                        comma += 1;
+                    } else if after_percent || (fraction.is_some() && !last_token_is_digit) {
+                        tokens.push(TextToken::Literal(','));
+                    } else if last_token_is_digit && next_token_is_digit {
                         use_thousands = true;
                     } else if digit_count > 0 {
                         comma += 1;
@@ -533,6 +558,13 @@ impl Parser {
                             }
                             self.lexer.next_token();
                         }
+                        // Excel: a fixed denominator of six or more digits is #VALUE! from TEXT
+                        // (`TEXT(0.5,"?/100000")`, `"?/123456"`; probes/fraction-six-digit-
+                        // denominator); a workbook that applies one is refused by Excel for the
+                        // web (number-formats.md "Fixed denominators past 32768").
+                        if digits.len() > MAX_FIXED_DENOMINATOR_DIGITS {
+                            return ParsePart::Error(ErrorPart::default());
+                        }
                         Denominator::Fixed(digits)
                     } else {
                         let mut kinds = vec![placeholder_kind(&next_token)];
@@ -547,6 +579,10 @@ impl Parser {
                         .rev()
                         .take_while(|t| matches!(t, TextToken::Digit(_)))
                         .count();
+                    // Excel: a `,` before the fraction neither scales nor prints (`0, ?/4` on 2 is
+                    // "2    ", on 1234567 "1234567    "; probes/fraction-overflow-scaled).
+                    comma = 0;
+                    ends_denominator = true;
                     fraction = Some(Fraction {
                         numerator_start: numerator_end - numerator_len,
                         numerator_end,
@@ -654,16 +690,19 @@ impl Parser {
                     tokens.push(TextToken::Era(length));
                 }
                 // `B1` selects the Gregorian calendar and still makes the section a date one
-                // (`TEXT(100,"B1")` is ""). After a locale tag `B1` and `B2` change nothing
-                // (`[$-40C]B2mmmm` is "mars"; probes/text-locale-calendars A125-A134).
-                Token::Calendar('1') => {
+                // (`TEXT(100,"B1")` is ""). `B2` selects the Hijri calendar
+                // (`TEXT(45000,"B2yyyy-mm-dd")` is "1444-08-23"; probes/t1613-hijri-b2), also
+                // before a tag (the lexer resolves the tag in it). After a tag either changes
+                // nothing (`[$-40C]B2mmmm` is "mars"; probes/text-locale-calendars A125-A134), but
+                // is #VALUE! after another prefix (`B2[$-409]B1`, `[$-60409]B2B1`;
+                // probes/t2729-hijri-locale-tag-names A278-A285).
+                Token::Calendar(c) => {
+                    if locale.is_some() && calendar_prefix {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
-                }
-                // `B2` selects the Hijri calendar (`TEXT(45000,"B2yyyy-mm-dd")` is "1444-08-23";
-                // probes/t1613-hijri-b2). After a locale tag it changes nothing.
-                Token::Calendar(_) => {
-                    is_date = true;
-                    hijri |= locale.is_none();
+                    calendar_prefix = true;
+                    hijri |= c == '2' && locale.is_none();
                 }
                 Token::Hour => {
                     is_date = true;
@@ -702,11 +741,21 @@ impl Parser {
                     });
                 }
                 Token::AMPM => {
+                    // Excel: a bracketed elapsed token before the marker is #VALUE! (`[ss] AM/PM`,
+                    // `[h] AM/PM`, `[mm] AM/PM`, `[s] A/P`) but the marker first is valid
+                    // (`AM/PM [h]` on 1.5 is "PM 12"; probes/text-elapsed-two-tokens A1, A9-A11, A13).
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AMPM);
                 }
                 Token::AP(am, pm) => {
+                    // As for `AM/PM` above: an elapsed token before the marker is #VALUE!.
+                    if bracketed_elapsed > 0 {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
                     use_ampm = true;
                     tokens.push(TextToken::AP(am, pm));
@@ -737,34 +786,40 @@ impl Parser {
                 Token::EOF => {}
                 Token::ElapsedHour => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHour);
                 }
                 Token::ElapsedMinute => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     tokens.push(TextToken::ElapsedMinute);
                 }
                 Token::ElapsedSecond => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecond);
                 }
                 Token::ElapsedHourPadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_hour = true;
                     tokens.push(TextToken::ElapsedHourPadded);
                 }
                 Token::ElapsedMinutePadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     tokens.push(TextToken::ElapsedMinutePadded);
                 }
                 Token::ElapsedSecondPadded => {
                     is_date = true;
+                    bracketed_elapsed += 1;
                     is_time = true;
                     elapsed_second = true;
                     tokens.push(TextToken::ElapsedSecondPadded);
@@ -776,6 +831,8 @@ impl Parser {
                 after_digits = None;
             }
             last_token_is_digit = token_is_digit;
+            after_percent = is_percent;
+            after_denominator = ends_denominator || (after_denominator && is_comma);
             after_colon = is_colon;
             token = next_token;
         }
@@ -785,6 +842,12 @@ impl Parser {
         // probes/text-format-digits-date-token; number-formats.md "Bare digits beside a date token").
         if bare_digit && tokens.iter().any(is_calendar_or_clock) {
             return ParsePart::Error(ErrorPart { whole_code: true });
+        }
+        // Excel: a section with two bracketed elapsed tokens is #VALUE! for any value (`[h]:[mm]`,
+        // `[mm]:[ss]`; probes/negative-date-sections-1900 and -1904 A9, A21, A22; dates.md "Negative
+        // serials under an explicit negative section"). A bare `h` after `[h]` is not bracketed.
+        if bracketed_elapsed > 1 {
+            return ParsePart::Error(ErrorPart::default());
         }
         if repeated_locale {
             return ParsePart::Error(ErrorPart::default());
@@ -799,11 +862,13 @@ impl Parser {
                 return self.system_part(system_format, color);
             }
         }
-        let tagged = locale.is_some();
         let localized = match locale {
             Some(LocaleTag::Names(localized)) => Some(localized),
             _ => None,
         };
+        // A calendar digit other than Hijri wins over a `B2` before the tag (`B2[$-10409]yyyy` is
+        // "2023"); an unresolved tag leaves it a bare `B2` (`B2[$-zzz]`).
+        hijri &= localized.is_none_or(|l| l.calendar == Calendar::Hijri);
         let general_count = tokens
             .iter()
             .filter(|t| matches!(t, TextToken::General))
@@ -824,17 +889,7 @@ impl Parser {
             }
         }
         if is_date {
-            let prints_date = tokens.iter().any(|t| {
-                !matches!(
-                    t,
-                    TextToken::Literal(_)
-                        | TextToken::Text(_)
-                        | TextToken::Ghost(_)
-                        | TextToken::Spacer(_)
-                )
-            });
-            // TODO(T-2729): `B2` before a locale tag (`B2[$-40C]mmmm` is "Chaaban") is not modelled.
-            if is_number || (hijri && prints_date && tagged) {
+            if is_number {
                 return ParsePart::Error(ErrorPart::default());
             }
             // Excel prints a currency symbol in a date section where it is written
@@ -848,7 +903,7 @@ impl Parser {
                 use_ampm,
                 tokens,
                 names: localized.map(|l| l.names),
-                day_half: localized.map(|l| l.day_half),
+                day_half: localized.and_then(|l| l.day_half),
                 calendar: localized.map(|l| l.calendar),
                 japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
                 hijri,

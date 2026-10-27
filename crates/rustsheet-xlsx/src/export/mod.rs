@@ -10,6 +10,7 @@ mod rich_errors;
 mod shared_strings;
 mod styles;
 mod styles_util;
+mod tables;
 mod theme;
 mod workbook;
 mod workbook_xml_rels;
@@ -35,7 +36,8 @@ use crate::error::XlsxError;
 #[cfg(test)]
 mod test;
 
-fn get_content_types_xml(workbook: &Workbook, rich: bool) -> String {
+/// `table_parts` is the number of table parts (`xl/tables/table1.xml` on).
+fn get_content_types_xml(workbook: &Workbook, rich: bool, table_parts: usize) -> String {
     // A list of all files in the zip
     let mut content = vec![
         r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">"#.to_string(),
@@ -49,6 +51,12 @@ fn get_content_types_xml(workbook: &Workbook, rich: bool) -> String {
             worksheet + 1
         );
         content.push(sheet);
+    }
+    for table in 1..=table_parts {
+        content.push(format!(
+            r#"<Override PartName="/xl/tables/table{table}.xml" ContentType="{}"/>"#,
+            tables::TABLE_CONTENT_TYPE
+        ));
     }
     content.push(
         r#"<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>"#.to_string(),
@@ -96,13 +104,21 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     };
     // Cells holding `#SPILL!`, `#CALC!`, ... point (`vm`) at rich values (T-1014).
     let rich = rich_errors::has_rich_errors(workbook);
+    let tables_by_sheet = tables::tables_by_sheet(workbook);
+    // The table parts of each sheet: the part numbers `first..first + count`, from 1.
+    let mut table_parts = Vec::with_capacity(tables_by_sheet.len());
+    let mut next_part = 1;
+    for tables in &tables_by_sheet {
+        table_parts.push(next_part..next_part + tables.len());
+        next_part += tables.len();
+    }
     let mut zip = zip::ZipWriter::new(writer);
 
     let options = zip::write::SimpleFileOptions::default();
 
     // root folder
     zip.start_file("[Content_Types].xml", options)?;
-    zip.write_all(get_content_types_xml(workbook, rich).as_bytes())?;
+    zip.write_all(get_content_types_xml(workbook, rich, next_part - 1).as_bytes())?;
 
     zip.add_directory("docProps", options)?;
     zip.start_file("docProps/app.xml", options)?;
@@ -145,7 +161,8 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     // sheet rels parts (one per sheet with external hyperlinks)
     let mut has_worksheet_rels = false;
     for (sheet_index, worksheet) in workbook.worksheets.iter().enumerate() {
-        if let Some(rels_xml) = worksheets::get_worksheet_xml_rels(worksheet) {
+        let parts = table_parts.get(sheet_index).cloned().unwrap_or(0..0);
+        if let Some(rels_xml) = worksheets::get_worksheet_xml_rels(worksheet, parts) {
             if !has_worksheet_rels {
                 zip.add_directory("xl/worksheets/_rels", options)?;
                 has_worksheet_rels = true;
@@ -177,9 +194,29 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
                 &model.parsed_formulas[sheet_index],
                 sheet_dimension_str,
                 is_sheet_selected,
+                tables_by_sheet.get(sheet_index).map_or(0, Vec::len),
             )
             .as_bytes(),
         )?;
+    }
+
+    if next_part > 1 {
+        zip.add_directory("xl/tables", options)?;
+    }
+    for (sheet_index, tables) in tables_by_sheet.iter().enumerate() {
+        let (Some(worksheet), Some(parsed_formulas), Some(parts)) = (
+            workbook.worksheets.get(sheet_index),
+            model.parsed_formulas.get(sheet_index),
+            table_parts.get(sheet_index),
+        ) else {
+            continue;
+        };
+        for (table, id) in tables.iter().zip(parts.clone()) {
+            zip.start_file(format!("xl/tables/table{id}.xml"), options)?;
+            zip.write_all(
+                tables::get_table_xml(table, id, worksheet, parsed_formulas, workbook).as_bytes(),
+            )?;
+        }
     }
 
     let writer = zip.finish()?;

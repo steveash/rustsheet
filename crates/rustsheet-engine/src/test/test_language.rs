@@ -28,7 +28,7 @@ fn french() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"4");
-    assert_eq!(model._get_formula("A1"), *"=SI(1>2,3,4)");
+    assert_eq!(model._get_formula("A1"), *"=SI(1>2, 3, 4)");
     assert_eq!(model._get_formula("B1"), *"=VRAI");
     assert_eq!(model._get_formula("C1"), *"=FAUX()");
     assert_eq!(model._get_formula("D1"), *"=FAUX");

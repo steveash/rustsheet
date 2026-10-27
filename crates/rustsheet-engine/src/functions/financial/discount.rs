@@ -10,7 +10,7 @@
 //! invalid amount (probes/discount-argument-check-order, T-2484; financial.md "Discount securities
 //! check order"). Moved out of `financial/mod.rs` (T-1372).
 
-use super::dates::is_less_than_one_year;
+use super::dates::{is_less_than_one_year, DateReading};
 use super::number_or_error;
 use crate::functions::lift::{div_error, num_error};
 use crate::{
@@ -59,8 +59,8 @@ impl Model {
         // Unlike the other discount securities, ACCRINTM reads its basis last; both dates are
         // #NUM! off the calendar as they are read (`ACCRINTM(-1,39448,0.1,1000,NA())` is #NUM!,
         // `ACCRINTM(NA(),2958466,..)` #N/A: probes/discount-argument-check-order).
-        let issue_serial = self.discount_date_of(issue, cell)?;
-        let settlement_serial = self.discount_date_of(settlement, cell)?;
+        let issue_serial = self.discount_date_of(issue, DateReading::Shifted, cell)?;
+        let settlement_serial = self.discount_date_of(settlement, DateReading::Shifted, cell)?;
         // A boolean rate or par is `#VALUE!` (`ACCRINTM(34825,37622,1E-9,TRUE,4)`, a TRUE cell
         // too: probes/t2455-transpose-single-value A41, A54); text "2" is 2 (A55).
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
@@ -83,9 +83,12 @@ impl Model {
     fn discount_date_of(
         &self,
         value: &CalcResult,
+        reading: DateReading,
         cell: CellReferenceIndex,
     ) -> Result<i64, CalcResult> {
-        Ok(self.financial_calendar_date_of(value, cell)?.floor() as i64)
+        Ok(self
+            .financial_calendar_date_of(value, reading, cell)?
+            .floor() as i64)
     }
 
     /// Reads [`DiscountArgs`] in Excel's order: the basis first, then the rest left to right, each
@@ -104,8 +107,8 @@ impl Model {
         // (probes/discount-argument-check-order; financial.md "Discount securities check order").
         let basis = self.day_count_basis_of(rest.first(), cell)?;
         Ok(DiscountArgs {
-            settlement: self.discount_date_of(settlement, cell)?,
-            maturity: self.discount_date_of(maturity, cell)?,
+            settlement: self.discount_date_of(settlement, DateReading::Shifted, cell)?,
+            maturity: self.discount_date_of(maturity, DateReading::Shifted, cell)?,
             first: self.cast_number_no_bools_ref(first, cell)?,
             second: self.cast_number_no_bools_ref(second, cell)?,
             basis,
@@ -242,9 +245,9 @@ impl Model {
         };
         let basis = self.day_count_basis_of(rest.first(), cell)?;
         Ok(MaturityArgs {
-            settlement: self.discount_date_of(settlement, cell)?,
-            maturity: self.discount_date_of(maturity, cell)?,
-            issue: self.discount_date_of(issue, cell)?,
+            settlement: self.discount_date_of(settlement, DateReading::Shifted, cell)?,
+            maturity: self.discount_date_of(maturity, DateReading::Shifted, cell)?,
+            issue: self.discount_date_of(issue, DateReading::Shifted, cell)?,
             rate: self.cast_number_no_bools_ref(rate, cell)?,
             last: self.cast_number_no_bools_ref(last, cell)?,
             basis,
@@ -342,13 +345,16 @@ impl Model {
         // dates floor to whole days, so a settlement from 0 to below 1 is serial 0
         // (`TBILLPRICE(0.5,1.9,0.1)` = `TBILLPRICE(0,1,0.1)` and `TBILLPRICE(0.5,0.9,0.1)` is
         // #NUM!: probes/tbill-settlement-below-one A1:A5; financial.md "T-bill settlement below
-        // serial 1").
-        let settlement = self.discount_date_of(settlement, cell)?;
-        let maturity = self.discount_date_of(maturity, cell)?;
+        // serial 1"). The TBILL functions read the dates themselves (`DateReading::Calendar`), so
+        // in a 1904 workbook 2023-02-28 to 2024-02-29 is more than a year
+        // (probes/date-system-1904-financial-shift A31:A33).
+        let reading = DateReading::Calendar; // TBILLEQ, TBILLPRICE, TBILLYIELD: `DateReading::of`
+        let settlement = self.discount_date_of(settlement, reading, cell)?;
+        let maturity = self.discount_date_of(maturity, reading, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let less_than_one_year = is_less_than_one_year(
-            self.financial_date(settlement as f64),
-            self.financial_date(maturity as f64),
+            self.financial_date_as(reading, settlement as f64),
+            self.financial_date_as(reading, maturity as f64),
         )
         .ok_or_else(|| num_error(cell))?;
         if settlement >= maturity || !less_than_one_year || rate <= 0.0 {

@@ -21,6 +21,25 @@ def test_parse_arg_reads_array_literals_and_dates() -> None:
         parse_arg("DATE(2024,2,30)", "S", book)
 
 
+def test_parse_arg_reads_a_nested_call_from_the_calls_cases() -> None:
+    book = Workbook({}, {}, {"PMT(0.2,1,10000)": -12000.0})
+    assert parse_arg("PMT(0.2, 1, 10000)", "S", book) == -12000.0  # whitespace is not part of the key
+    with pytest.raises(UnparsedError):
+        parse_arg("PMT(0.2,2,10000)", "S", book)
+
+
+def test_rate_secant_needs_excel_operators_in_the_residual() -> None:
+    # m9-fin-irr-rate A218, RATE(1,PMT(0.2,1,10000,-500,1),10000,-500,1), with Excel's PMT
+    # (m9-fin-pmt A2): Excel 0.19999999999999138; FV's once-rounded residual is 157 ulp off (T-2527).
+    args: tuple[Arg, ...] = (1.0, -9583.333333333332, 10000.0, -500.0, 1.0)
+    assert solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(*args) == 0.19999999999999138
+    assert solvers.rate_secant(solvers.fv_residual())(*args) == 0.19999999999998702
+    with pytest.raises(solvers.NoResultError):  # residual 0 everywhere: the flat secant, not the guess
+        solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(1.0, 0.0, 0.0, 0.0)
+    with pytest.raises(solvers.ExcelError, match="guess"):
+        solvers.rate_secant(solvers.fv_residual())(1.0, -1.0, 1.0, 0.0, 0.0, -1.0)
+
+
 def test_day_counts_and_schedule() -> None:
     settle, maturity = datetime.date(2024, 3, 1), datetime.date(2024, 8, 31)
     assert solvers.days360(datetime.date(2023, 8, 31), settle, european=False) == 181
@@ -127,8 +146,17 @@ def test_irr_secant_on_a_two_flow_root() -> None:
 @pytest.mark.usefixtures("real_cases")
 def test_rate_results_are_rates() -> None:
     cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
-    assert len(cells) == 136
-    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 7
+    assert len(cells) == 782  # nested PMT included (T-2527), error cells too
+    assert sum(c.error is not None for c in cells) == 77
+    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 40
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_rate_secant_model_is_bit_exact_on_the_fit_set() -> None:
+    # financial.md "RATE is a secant on the FV residual" quotes this score (T-2527).
+    result = fit.run(registry()["rate"], engine=False, only=r"Excel operators, sum pv,pmt,fv$")
+    (s,) = result.scores
+    assert (s.exact, s.total) == (782, 782)
 
 
 def test_iterate_converges_or_reports_no_result() -> None:
@@ -285,3 +313,26 @@ def test_yield_fitted_start_and_short_stop() -> None:
     start = {c.key: c for c in load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells}
     for cell in (sweep["S!A1"], start["S!C18"], one_input["S!B21"]):
         assert model(*cell.args) == cell.expected, cell.key
+
+
+def test_yield_start_term_whole_years_then_leftover_days() -> None:
+    # T-2777: the start's term is whole years, then the leftover days over 360, 365 (basis 3) or the
+    # maturity's calendar year (basis 1). On probe cells the days-over-a-year term misses visibly (a
+    # 29 February settlement on bases 1, 0 and 4, rows 5, 37 and 41; 28 February settlements on basis 0,
+    # rows 46 and 47; basis 1 to a leap-year maturity, row 8) the fitted term lands within 4 ulp (the
+    # lab's last bit varies with the platform's libm) and the old term at least 1e-13 relative off.
+    probe = {c.key: c for c in load_sweep(["probes/yield-start-term-basis"], r"^=YIELD\((.*)\)$").cells}
+    model = yield_caret.caret_priced(solvers._newton_yield_short(solvers.fitted_yield_start, 1e-10))
+
+    def old_start(*args: Arg) -> float:
+        settle, maturity, rate, pr, _, _, basis = solvers._bond(args)
+        years = solvers._years_to_maturity(settle, maturity, basis)
+        return (100 * rate + (100 - pr) / years) / ((100 + pr) / 2 - (100 - pr) / (4 * years))
+
+    old = yield_caret.caret_priced(solvers._newton_yield_short(old_start, 1e-10))
+    for key in ("S!B5", "S!C5", "S!A8", "S!B8", "S!A37", "S!C37", "S!A41", "S!C41", "S!A46", "S!C47"):
+        cell = probe[key]
+        assert abs(model(*cell.args) - cell.expected) <= 4 * math.ulp(cell.expected), key
+        assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
+    assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
+    assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360

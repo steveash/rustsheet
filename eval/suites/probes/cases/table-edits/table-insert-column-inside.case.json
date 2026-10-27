@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-2324: what happens to a table and its structured references when insert_column inserts a column at C, between the table's two columns. Table Sales on S!B3:C7 (header B3:C3 Region/Qty, data rows 4-7 Qty 1,2,4,8); sheet F holds A1 =SUM(Sales[Qty]), A2 =ROWS(Sales), A3 =ROWS(Sales[#All]), A4 =ROW(Sales[#Headers]), A5 FORMULATEXT(A1), A6 =SUM(S!C4:C7) (a plain range for comparison), A7 FORMULATEXT(A6), A8 =COUNTA(Sales[Region]), A9 FORMULATEXT(A8), A10 =COLUMNS(Sales), A11 =COLUMN(Sales[Qty]), A12 FORMULATEXT(A11).",
+  "description": "T-2324: what happens to a table and its structured references when insert_column inserts a column at C, between the table's two columns. Table Sales on S!B3:C7 (header B3:C3 Region/Qty, data rows 4-7 Qty 1,2,4,8); sheet F holds A1 =SUM(Sales[Qty]), A2 =ROWS(Sales), A3 =ROWS(Sales[#All]), A4 =ROW(Sales[#Headers]), A5 FORMULATEXT(A1), A6 =SUM(S!C4:C7) (a plain range for comparison), A7 FORMULATEXT(A6), A8 =COUNTA(Sales[Region]), A9 FORMULATEXT(A8), A10 =COLUMNS(Sales), A11 =COLUMN(Sales[Qty]), A12 FORMULATEXT(A11). S!C3, the new column's header cell, is checked too (T-2339). The oracle records formula cells only, so the header cells' expected text is Excel's as read through INDIRECT (F!A2 of table-insert-column-inside-header, excel-graph 2026-10-27).",
   "tags": [
     "M8",
     "tables",
@@ -53,7 +53,12 @@
       "column": "C"
     }
   ],
-  "expected": {},
+  "expected": {
+    "S!C3": {
+      "t": "s",
+      "v": "Column1"
+    }
+  },
   "check": [
     "F!A1",
     "F!A2",
@@ -66,6 +71,7 @@
     "F!A9",
     "F!A10",
     "F!A11",
-    "F!A12"
+    "F!A12",
+    "S!C3"
   ]
 }

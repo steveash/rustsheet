@@ -136,36 +136,51 @@ fn a_cdf_sum_is_bounded() {
 
 #[test]
 fn hypgeom_dist_is_charged_its_weight() {
-    // HYPGEOM.DIST is charged 2^22 an element (the bound of one capped cdf): 2^27 / 2^22 = 32
-    // elements, so a lifted call of 33 is refused before it runs. HYPGEOMDIST is charged 2^13 (its
-    // pmf walk, T-0977): 16,384 elements.
+    // HYPGEOM.DIST is charged by its counts (T-2433): at most 2^22 an element (the bound of one
+    // capped cdf), so 32 elements whose least count is past the term cap fit under 2^27 and 33
+    // are refused before they run (here `number_pop` is 1, so each element would be a quick
+    // `#NUM!`: the charge reads the counts, not the outcome). Small counts are charged the walk's
+    // 2^14: 8,192 elements. HYPGEOMDIST's pmf walk is charged 2^13 (T-0977): 16,384 elements.
     let mut model = new_empty_model();
     let calls = [
-        "HYPGEOM.DIST(SEQUENCE(#)*0+2,3,5,10,TRUE)",
-        "HYPGEOM.DIST(2,3,5,10,SEQUENCE(#)>0)",
-        "HYPGEOM.DIST(1,4,8,SEQUENCE(#)+19,FALSE)",
+        (
+            "HYPGEOM.DIST(SEQUENCE(#)*0+1000000,1000000,1000000,1,TRUE)",
+            32,
+        ),
+        (
+            "HYPGEOM.DIST(1000000,SEQUENCE(#)*0+1000000,1000000,1,TRUE)",
+            32,
+        ),
+        (
+            "HYPGEOM.DIST(1000000,1000000,1000000+SEQUENCE(#)*0,1,TRUE)",
+            32,
+        ),
+        ("HYPGEOM.DIST(2,3,5,10,SEQUENCE(#)>0)", 8192),
+        ("HYPGEOM.DIST(3,3,2,1,SEQUENCE(#)>0)", 8192),
+        ("HYPGEOM.DIST(1,4,8,SEQUENCE(#)+19,FALSE)", 8192),
+        ("HYPGEOMDIST(1,4,8,SEQUENCE(#)+19)", 16384),
     ];
-    for (row, call) in calls.iter().enumerate() {
+    for (row, (call, most)) in calls.iter().enumerate() {
         let row = row + 1;
         model._set(
             &format!("A{row}"),
-            &format!("=ROWS({})", call.replace('#', "32")),
+            &format!("=ROWS({})", call.replace('#', &most.to_string())),
         );
         model._set(
             &format!("B{row}"),
-            &format!("=ROWS({})", call.replace('#', "33")),
+            &format!("=ROWS({})", call.replace('#', &(most + 1).to_string())),
         );
     }
-    model._set("C1", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16384)+19))");
-    model._set("C2", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16385)+19))");
     model.evaluate();
-    for (row, call) in calls.iter().enumerate() {
+    for (row, (call, most)) in calls.iter().enumerate() {
         let row = row + 1;
-        assert_eq!(model._get_text(&format!("A{row}")), *"32", "{call}");
+        assert_eq!(
+            model._get_text(&format!("A{row}")),
+            most.to_string(),
+            "{call}"
+        );
         assert_eq!(model._get_text(&format!("B{row}")), *"#ERROR!", "{call}");
     }
-    assert_eq!(model._get_text("C1"), *"16384");
-    assert_eq!(model._get_text("C2"), *"#ERROR!");
 }
 
 #[test]
@@ -190,7 +205,8 @@ fn unlifted_calls_are_the_scalar_calls() {
         ("A6", "0.916666667"),
         ("A7", "0.083333333"),
         ("A8", "1"),
-        ("A9", "#NUM!"),
+        // Below number_sample + population_s - number_pop the cdf is 0 (T-2699).
+        ("A9", "0"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");

@@ -53,7 +53,8 @@ pub(crate) fn rename_defined_name_in_node(
         }
         Node::SpillRangeOperator { child }
         | Node::Group { child, .. }
-        | Node::UnaryPlus { child } => {
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
         // Do nothing

@@ -10,36 +10,10 @@ use crate::calc_result::{CalcResult, Range};
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::is_marked_number;
 use crate::functions::Function;
 use crate::model::Model;
 use crate::reference_operators::{RefArg, RefElement};
-
-/// Whether `value`, the value of the argument `node`, is a number that ERROR.TYPE or
-/// `CELL("col"|"row",..)` returned straight to the argument (parentheses aside), which F.TEST and
-/// the paired functions treat apart from any other number: `FTEST({1;2;3},ERROR.TYPE(#REF!))` and
-/// `COVARIANCE.P(ERROR.TYPE(#REF!),5)` are `#NUM!` where 4 gives `#DIV/0!` and 0, while `+0`,
-/// `@`, SINGLE, MAX or a cell holding the value make it a plain number. LET, IF, CHOOSE, IFERROR,
-/// a LAMBDA call and INDEX keep it in Excel and are not followed here: TODO(T-2766)
-/// (statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions").
-fn is_marked_number(node: &Node, value: &CalcResult, row: i32) -> bool {
-    if !matches!(value, CalcResult::Number(_)) {
-        return false;
-    }
-    match &*node.ungrouped_at(row) {
-        Node::FunctionKind {
-            kind: Function::ErrorType,
-            ..
-        } => true,
-        Node::FunctionKind {
-            kind: Function::Cell,
-            args,
-        } => matches!(
-            args.first(),
-            Some(Node::StringKind(info)) if info.eq_ignore_ascii_case("col") || info.eq_ignore_ascii_case("row")
-        ),
-        _ => false,
-    }
-}
 
 impl Model {
     /// The value of `node` as a sample of F.TEST or a paired function, and whether Excel marks it

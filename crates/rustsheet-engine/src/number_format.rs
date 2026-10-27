@@ -617,6 +617,20 @@ impl Model {
     }
 }
 
+/// Groups the digits of an integer part in threes with `separator` (`1234567` → `1,234,567`).
+/// Indian `#,##,##0` grouping is the formatter's own (`use_group_separator`); FIXED, DOLLAR and
+/// fraction formats group in threes.
+pub(crate) fn group_thousands(digits: &str, separator: &str) -> String {
+    let mut result = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            result.push_str(separator);
+        }
+        result.push(c);
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

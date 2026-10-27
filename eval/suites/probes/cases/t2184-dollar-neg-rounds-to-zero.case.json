@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "DOLLAR sign for a negative value that rounds to zero at decimals 0 and 1 (T-2184). Column A, one probe per row.",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "dollar"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=DOLLAR(-0.4,0)",
+    "A2": "=DOLLAR(-0.04,1)",
+    "A3": "=DOLLAR(-0.4,1)",
+    "A4": "=DOLLAR(-0.5,0)"
+   }
+  }
+ ],
+ "expected": {}
+}

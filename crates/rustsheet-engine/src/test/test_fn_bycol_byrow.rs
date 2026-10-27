@@ -119,7 +119,10 @@ fn byrow_single_char_param_displays_a1() {
     model.evaluate();
     assert_eq!(model._get_text("B22"), "30");
     // The displayed formula must remain in A1 notation, not the raw R1C1 string.
-    assert_eq!(model._get_formula("B22"), "=BYROW(A1:C1,LAMBDA(c,MAX(c)))");
+    assert_eq!(
+        model._get_formula("B22"),
+        "=BYROW(A1:C1, LAMBDA(c, MAX(c)))"
+    );
 }
 
 #[test]

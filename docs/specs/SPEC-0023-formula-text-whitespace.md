@@ -65,10 +65,11 @@ probes/t2776-* (excel-graph, 2026-10-26).
 - **Folded plus**: a plus that folds into a number literal leaves its spaces before it in place. So
   `=  +5` prints `=  5`, and `=1+  +5` prints `=1+  5`.
 - **A run is a line-feed count plus a space count.** Only the line feeds and the spaces after the
-  last line feed print. `=1+ ` LF ` 2` prints `=1+` LF ` 2`, and 10 spaces, 3 line feeds and 2 spaces
-  print as the 3 line feeds and the 2 spaces. The space count is one byte and wraps: 300 typed
-  spaces print as 44. This matches the BIFF `PtgAttrSpace` record, which stores one count per kind.
-  The behaviour comes from the probes; the record only explains it.
+  last line feed print. `=1+ ` LF ` 2` prints `=1+` LF ` 2`, and 10 spaces, 3 line feeds and 2
+  spaces print as the 3 line feeds and the 2 spaces. Each count is one byte and wraps on its own:
+  300 typed spaces print as 44, and so do 300 line feeds (probes/t2782-whitespace-run-wrap). This
+  matches the BIFF `PtgAttrSpace` record, which stores one count per kind. The behaviour comes from
+  the probes; the record only explains it.
 - **Stored text**: a formula read from a file's `<f>` keeps its interior whitespace (`1 + 2`,
   `SUM( 1 )`, `1+` LF `2`, `(1 )+2`) and applies the typed drops. Whitespace at the very start is
   also dropped: `<f>  +5</f>` prints `=5`, and `<f> 1+2</f>` prints `=1+2`.
@@ -78,7 +79,7 @@ probes/t2776-* (excel-graph, 2026-10-26).
 - **Values**: every probed value equals the value of the formula without spaces.
 - **Answered** (T-2786, syntax.md "Whitespace beside a missing argument is kept"): a run beside a missing operand is
   kept as typed (`=NOW( )`, `=IF(1, ,2)`, `=SUM(1, )`, `=SUM(, 1)`), unlike a run before a comma that follows an
-  operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2799). `=SUM (1)` and
+  operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2942). `=SUM (1)` and
   `=SUM( )` are refused. Structured references normalize their whitespace (T-2801). Excel saves kept whitespace in the
   `<f>` text, a line feed as raw CR LF bytes that read back as LF (xlsx-storage.md), so export prints the tree's whitespace and does not strip it.
 
@@ -91,7 +92,7 @@ applied to one.
   after a binary operator, after a unary sign, after `(`, after a comma, and after `@`.
 - A run after a primary's last token, followed by a binary operator, `%` or `)`, is that primary's
   `after`.
-- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. (A run beside a missing argument is kept: see Unknown/Answered below, T-2799.) These are
+- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. (A run beside a missing argument is kept: see Unknown/Answered below, T-2942.) These are
   exactly the places where Excel drops it (for the probed shapes; see Unknown).
 
 Attaching at the primary level, and never to a chain, leaves the value-operator chains of SPEC-0007
@@ -116,8 +117,8 @@ pub(crate) struct Run { pub line_feeds: u8, pub spaces: u8 }
   node exists only where whitespace was written.
 - **`Run` is Excel's shape.** Parsing a run into `Run` performs the normalisation the probes show:
   count the line feeds, keep the spaces after the last one, and wrap the space count at 256 (the
-  count mod 256, never a panic). Whether the line-feed count wraps too is unprobed: step 2 probes
-  it first and does whatever that shows. Printing a `Run` is `"\n" × line_feeds + " " × spaces`. Step 1
+  count mod 256, never a panic); the line-feed count wraps at 256 too, on its own (step 2's probe,
+  probes/t2782-whitespace-run-wrap). Printing a `Run` is `"\n" × line_feeds + " " × spaces`. Step 1
   keeps only the space count of a run without line feeds; step 2 adds the line-feed rules.
 - **Parser.** `parse_primary` reads the run before it from the lexer. The binary-operator, `%` and
   `)` sites read the run after the operand they just finished. The lexer already sees the
@@ -148,6 +149,28 @@ parse.
 - **Stored text (step 4).** Import parses `<f>` with the same parser, so interior whitespace comes
   for free from step 1. Step 4 drops the leading run of a stored formula and keeps the typed leading
   run (`= 1+2`), as the probe shows.
+
+### Implementation note (T-2781)
+Changes from the design above, found while implementing step 1 (decision 0127):
+- **Evaluation reads a stripped tree.** About 300 sites in the evaluator and the functions match an argument's
+  shape without `ungrouped()` (`LET` name positions, `ISOMITTED`, reference-argument tests, LAMBDA bodies), which a
+  rare `Group` never reached but a common `SUM(A1, B1)` would. So a cell stores the written tree for printing and
+  edits, and a copy with every `Spaced` removed (`Node::strip_spaces`) for evaluation, units and static analysis
+  (`formula_cells::ParsedFormula`; the copy exists only for a formula written with whitespace). The other evaluated trees
+  (defined names, conditional formats, outside-cell formulas) are stripped where they are parsed. The peel in
+  `ungrouped`/`lowered` and the walkers stays, for the printers and edits that read the written tree.
+- **`Spacing` is inline** (`Spaced { space: Spacing, child: Box<Node> }`), two bytes today, so no second box.
+  As the design says, a `Spaced` costs no level of `MAX_FORMULA_DEPTH`, so a formula nests as deep with spaces as
+  without. It wraps only a node that costs a level and never another `Spaced`, so a written tree is at most twice as
+  deep as counted, and only printers and edits walk it; the nesting tests print, edit and evaluate spaced shapes at
+  the limit on a 2 MiB stack (`spaced_shapes_nest_as_deep_as_bare_ones_on_a_2_mib_stack`).
+- The runs are attached in `Parser::parse_power` (before the operand, after each sign, before each `%`, after the
+  operand) and after `@`, which covers every primary position the probes show.
+
+### Implementation note (T-2783)
+Step 3 attaches the spaces after the intersection's first (the operator) to the right operand as its `before` run,
+not as a printed separator on the intersection node, so no node field is added; `intersection_operand` peels
+`Spaced` so the operand is not parenthesised.
 
 ### What does not change
 Public API, the depth and operator caps, every parse error, and every value.

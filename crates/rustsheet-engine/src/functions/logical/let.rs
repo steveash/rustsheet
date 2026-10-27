@@ -102,7 +102,8 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
         | Node::Group { child, .. }
-        | Node::UnaryPlus { child } => {
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. } => {
             assign_variable_ids(child, target, id);
         }
         Node::OpRangeKind { left, right }

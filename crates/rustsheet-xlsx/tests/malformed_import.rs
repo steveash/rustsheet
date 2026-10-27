@@ -400,9 +400,22 @@ fn workbook_with_name_body(body: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     })
 }
 
-/// A sheet whose A100 holds `-LEN("<emoji_count emoji>")`, `8 + 2 * emoji_count` UTF-16 units.
+/// `emoji_count` emoji as `&`-joined (XML-escaped) string literals of at most 2,000 emoji each (a literal over
+/// 4,095 units is refused, T-2762): `2 * emoji_count + 4 * pieces + (pieces - 1)` UTF-16 units.
+fn emoji_literals(emoji_count: usize) -> String {
+    let mut pieces = Vec::new();
+    let mut left = emoji_count;
+    while left > 0 {
+        let n = left.min(2_000);
+        pieces.push(format!("\"{}\"", "\u{1F600}".repeat(n)));
+        left -= n;
+    }
+    pieces.join("&amp;")
+}
+
+/// A sheet whose A100 holds `-LEN(<emoji_count emoji>)` (`6 + literal` UTF-16 units).
 fn sheet_with_emoji_formula(emoji_count: usize) -> Result<Vec<u8>, Box<dyn Error>> {
-    let f = format!("-LEN(\"{}\")", "\u{1F600}".repeat(emoji_count));
+    let f = format!("-LEN({})", emoji_literals(emoji_count));
     let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{f}</f></c></row>");
     rewrite(|name, content| {
         if name == "xl/worksheets/sheet1.xml" {
@@ -430,17 +443,59 @@ fn name_body_longer_than_8191_characters_refuses_the_workbook() -> TestResult {
 // 4,097 and 4,099 scalars, so a scalar count would accept the second.
 #[test]
 fn non_bmp_text_counts_two_utf16_units_toward_the_limits() -> TestResult {
-    let emoji = "\u{1F600}".repeat(4_093);
-    assert_imports(&workbook_with_name_body(&format!("\"{emoji}\"&amp;1"))?)?;
+    // Three literals (none over 4,095 units, T-2762): 4,090 emoji + 10 = 8,190 units.
+    let emoji = emoji_literals(4_090);
+    assert_imports(&workbook_with_name_body(&format!("{emoji}&amp;1"))?)?;
     assert_import_error(
-        &workbook_with_name_body(&format!("\"{emoji}\"&amp;1&amp;1"))?,
+        &workbook_with_name_body(&format!("{emoji}&amp;1&amp;1"))?,
         "definedName nm body is longer than 8191 UTF-16 code units",
     );
-    // 4,092 emoji + 8 = 8,192 units loads; one more emoji is 8,194 and is refused.
-    assert_imports(&sheet_with_emoji_formula(4_092)?)?;
+    // 4,089 emoji + 14 = 8,192 units loads; one more emoji is 8,194 and is refused.
+    assert_imports(&sheet_with_emoji_formula(4_089)?)?;
     assert_import_error(
-        &sheet_with_emoji_formula(4_093)?,
+        &sheet_with_emoji_formula(4_090)?,
         "Formula in Sheet1!A100 is longer than 8192 UTF-16 code units",
+    );
+    Ok(())
+}
+
+/// A sheet whose A100 holds `LEN("<literal>")`.
+fn sheet_with_literal(literal: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let cell =
+        format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>LEN(\"{literal}\")</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+// Excel refuses a workbook with a string literal of 4,096 UTF-16 units and loads 4,095; a doubled
+// quote counts once and emoji twice (T-2739 probes t2739-stored-4095, t2739-typed-dq-4095,
+// t2739-typed-emoji-2047; T-2762).
+#[test]
+fn string_literal_longer_than_4095_units_refuses_the_workbook() -> TestResult {
+    let message =
+        "Formula in Sheet1!A100 holds a string literal longer than 4095 UTF-16 code units";
+    assert_imports(&sheet_with_literal(&"a".repeat(4_095))?)?;
+    assert_import_error(&sheet_with_literal(&"a".repeat(4_096))?, message);
+    assert_imports(&sheet_with_literal(&format!("{}\"\"", "a".repeat(4_094)))?)?;
+    assert_import_error(
+        &sheet_with_literal(&format!("{}\"\"", "a".repeat(4_095)))?,
+        message,
+    );
+    assert_imports(&sheet_with_literal(&"\u{1F600}".repeat(2_047))?)?;
+    assert_import_error(&sheet_with_literal(&"\u{1F600}".repeat(2_048))?, message);
+    // A defined-name body too (T-2739 notes: a single 4,090-emoji literal body was refused).
+    assert_imports(&workbook_with_name_body(&format!(
+        "\"{}\"",
+        "a".repeat(4_095)
+    ))?)?;
+    assert_import_error(
+        &workbook_with_name_body(&format!("\"{}\"", "a".repeat(4_096)))?,
+        "definedName nm body holds a string literal longer than 4095 UTF-16 code units",
     );
     Ok(())
 }

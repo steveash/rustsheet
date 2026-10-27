@@ -45,7 +45,7 @@ fn language() {
     assert_eq!(model2.get_cell_content(0, 1, 1), Ok("=AHORA()".to_string()));
     assert_eq!(
         model2.get_cell_content(0, 1, 2),
-        Ok("=SUMA(1,234;3,4;T1:T3;{1;2,4;3})".to_string())
+        Ok("=SUMA(1,234; 3,4; T1:T3; {1;2,4;3})".to_string())
     );
 }
 
@@ -59,7 +59,7 @@ fn formulatext_english() {
 
     assert_eq!(
         model.get_formatted_cell_value(0, 1, 2),
-        Ok("=SUM(1,2,3)".to_string())
+        Ok("=SUM(1, 2, 3)".to_string())
     );
 }
 

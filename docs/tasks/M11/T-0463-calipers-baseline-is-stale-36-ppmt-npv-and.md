@@ -34,10 +34,14 @@ with `git bisect` on `check --suite calipers` before fixing anything.
 
 - T-2688 (2026-10-26) fixed pv23_056 Summary!F23 (XIRR empty guess); its stale `F` line is left for this task's
   ratchet.
+- T-2867 (2026-10-27) scores 51 pv26_020, pv26_2_020 and pv26_010 cells against an excel-graph probe (cached
+  overrides, decision 0133); its 51 stale `F` lines are left for this task's ratchet too.
 
 ## Acceptance criteria
 - [ ] The 36 cells are fixed, or recorded through a reviewed decision if the change behind them is kept.
 - [ ] `rustsheet-eval update-baseline --suite calipers` succeeds without `--allow-regressions` and records the fixes.
+- [ ] The ratchet removes the 51 `F` lines T-2867 left (pv26_020 and pv26_2_020 Summary, pv26_010 Cover!C16) and T-2688's
+      pv23_056 Summary!F23 line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
