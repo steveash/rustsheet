@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: accuracy
 depends_on: [T-2645, T-2502, T-2504]
+spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
 ## Goal
