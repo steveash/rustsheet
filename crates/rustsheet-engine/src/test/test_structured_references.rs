@@ -172,7 +172,7 @@ fn the_export_keeps_the_reference() {
         row: 1,
         column: 1,
     };
-    let node = &model.parsed_formulas[1][0].0;
+    let node = &model.parsed_formulas[1][0].evaluated;
     // The export writes the table parts, so the file keeps the reference (T-2196).
     assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
     assert_eq!(
@@ -190,7 +190,7 @@ fn the_export_of_a_missing_table_is_a_ref_error() {
         row: 1,
         column: 1,
     };
-    let node = &model.parsed_formulas[1][0].0;
+    let node = &model.parsed_formulas[1][0].evaluated;
     assert_eq!(to_excel_string(node, &context), "#REF!");
 }
 
@@ -620,7 +620,7 @@ fn a_sheet_rename_keeps_text_and_values() {
         row: 1,
         column: 1,
     };
-    let node = &model.parsed_formulas[1][0].0;
+    let node = &model.parsed_formulas[1][0].evaluated;
     // The table part is written on the renamed sheet, so the file keeps the reference (T-2196).
     assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
     assert_eq!(model.workbook.tables["Sales"].sheet_name, "Facts");
