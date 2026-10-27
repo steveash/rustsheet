@@ -58,10 +58,15 @@ use super::utils;
 
 pub mod util;
 
+pub use string_literal::{
+    has_overlong_string_literal, MAX_STRING_LITERAL_UNITS, STRING_LITERAL_TOO_LONG_MESSAGE,
+};
+
 #[cfg(test)]
 mod test;
 
 mod ranges;
+mod string_literal;
 mod structured_references;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -730,33 +735,6 @@ impl Lexer {
         let chars = self.chars[self.position..position].iter().collect();
         self.position = position;
         chars
-    }
-
-    fn consume_string(&mut self) -> Result<String> {
-        let mut position = self.position;
-        let len = self.len;
-        let mut chars = "".to_string();
-        let mut terminated = false;
-        while position < len {
-            let x = self.chars[position];
-            position += 1;
-            if x != '"' {
-                chars.push(x);
-            } else if position < len && self.chars[position] == '"' {
-                chars.push(x);
-                chars.push(self.chars[position]);
-                position += 1;
-            } else {
-                terminated = true;
-                break;
-            }
-        }
-        self.position = position;
-
-        if !terminated {
-            return Err(self.set_error("Expected closing '\"' but found end of input", position));
-        }
-        Ok(chars)
     }
 
     // Consumes a quoted string from input

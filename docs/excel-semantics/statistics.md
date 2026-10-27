@@ -1356,6 +1356,15 @@ every record (`H1:H3` with `H3` blank sums all records), as does a blank header 
   first record and matches nothing (0). VERIFIED (probes/db-criteria-formula-placement H1-H12, excel-graph;
   ours already agrees). The text `"true"`, `"True"` and `"TRUE"` all hold under a blank header (H13-H15).
 - **DGET** of the one matching record's blank field cell is `#VALUE!`, as when nothing matches.
+- **Field before shape** (probes/db-field-error-order, excel-graph 2026-10-27, T-2516). The `field` is resolved
+  before the database or criteria shape is checked: an error `field` (`NA()`, `1/0`, a `VLOOKUP` that is
+  `#N/A`) gives that error even when the criteria or the database is one row (`DSUM(A1:C4,NA(),G1)` and
+  `DSUM(A1:C1,NA(),E1:E2)` are `#N/A`, `1/0` is `#DIV/0!`). A field that names no column (`"Nope"`) is
+  `#VALUE!` with a good, a one-row-criteria and a one-row database; a field out of range (5) or 0 is `#VALUE!`
+  with one-row criteria. `GAMMA.DIST(TRUE,42,1E-15,"FALSE")` is the number 0, so
+  `DGET(db,<that>,<one-row criteria>)` is a field of 0: `#VALUE!`. Ours already agrees. The `#VALUE!` of gen-m9
+  88cabddc4935351c A14 and c9d7659896d95368 A271 is the field expression's own error passing through (a
+  `#N/A` VLOOKUP field gives `#N/A`, L23), so they confirm the order; 7bd219ec0c0c5e22 A324 is the gamma case.
 - **Matched conditions** use the shared criteria grammar (criteria.md); `Qty` over TRUE matches only
   the boolean TRUE record, over `=NA()` nothing.
 Evidence: probes/db-header-criteria-shapes (72 questions; database A1:E6 with headers Name, Qty, 0.5,
@@ -1369,7 +1378,7 @@ the power of the nesting, so only one level runs: a nested formula condition is 
 (directive 5; DEVIATION, decision 0014). What Excel does with a nested formula condition is unprobed.
 Status: VERIFIED (excel-graph); the one-level re-evaluation is DEVIATION (decision 0014), Excel's nested
 behavior UNVERIFIED
-Tasks: T-1390
+Tasks: T-1390, T-2516
 
 ## GAMMA and GAMMALN sweep (T-1042)
 Rule: Excel's GAMMA is exact only for small integers, GAMMALN is not correctly rounded at integers,
@@ -3324,6 +3333,21 @@ bcb24385baafb2f0 A377 3 ulp). Still visibly off:
 `F.TEST(Data!B6:E12,Data!A1:D10)`, gen-m9/b6593d7dd13f2dac A306 (Excel 1.23966888990022E-69, ours 25 ulp off; data with
 123456789.123 among values near 1; T-2829). 8 cells move from bit-exact to 1 to 3 ulp (T-2830). Evidence and per-branch
 tables: docs/research/t2681/README.md, `score_bratio.py`.
+- F.TEST is 2·F.DIST.RT at Excel's own f, to the bit: at gen-m9/b6593d7dd13f2dac A306's data
+  `F.TEST(..)` and `2*F.DIST.RT(VAR.S(..)/VAR.S(..),23,12)` are both 1.23966888990022E-69. With both shapes above 1,
+  Excel's bpser stores fl(a·LN x) as the port does: when the sample is scaled to move x by up to 1E5 ulp, the gap
+  between ours and Excel stays a constant of the shapes (5.3E-15 relative at a = 6, b = 11.5, 1.4E-15 at b = 11).
+  That constant is Excel's ln B(a, b): bpser's L is a stored double an integer number of ulps off fl(accurate ln B)
+  (-3 at a = 6, b = 11.5, which is A306's whole miss; -1 at (6, 11); 0 at (2.5, 11), gen-m9/a790a4d4a6a82756 A289).
+  On a grid of 99 F.TEST cells (a 2.5 to 8, b 8.5 to 19.5, x near 1E-12) every L is within 0.2 of an integer k ulps,
+  k from -3 to +2 (|k| <= 1 at a = 2.5, 4, 4.5 and 5, 2 at a = 3, 3.5, 6, 7 and 8, -3 only at (6, 11.5)); the same
+  test on L + ln a, L + ln b or L + lnGamma(a + b) gives random fractions.
+  No form tried gives the map: accurate 45 of 99 (shipped), TOMS betaln 49, TOMS's a-reduction with w = prod a/(a + b)
+  55, Excel GAMMALN sums 15 to 29 (docs/research/t2829/ln_beta_map.py; probes/t2829-ftest-a306-shapes and
+  t2829-ftest-ln-beta-grid, excel-graph; open as T-2924). A306 stays 25 ulp low until that form is found.
+  The F.DIST.RT cells of probes/t2829-ftest-tail-over-b (f = 1E12) are off ours by these k plus whole steps of the
+  fl(a·LN x) grid (a = 6, b = 11.5: -143 ulp = +5.4E-15 - 2.8E-14 relative), and `2*F.DIST.RT(..,22,12)` differs from
+  F.TEST at the b = 11 twin by such a step, so F.DIST.RT forms x or z differently there; F.TEST is the clean probe.
 Evidence: the F.TEST cells of gen-m9 (excel-graph, T-2255 sweep), probes/stat-argument-modes
 H248:H251, probes/ftest-decomposition A7:F13, probes-numeric m9-legacy-ftest and t1049-ftest.
 Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` of Excel's own
