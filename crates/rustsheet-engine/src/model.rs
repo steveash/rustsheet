@@ -545,6 +545,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
+        parser.set_workbook_file(self.workbook.file_name());
         let node = parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
@@ -3079,6 +3080,14 @@ impl Model {
     /// in-engine reader of the time goes through here.
     pub(crate) fn now_unix_millis(&self) -> i64 {
         self.clock.now_unix_millis()
+    }
+
+    /// Renames the workbook (`name` without its extension). Formulas typed from now on show the
+    /// new file name as the prefix of a workbook name read through a sheet (T-2834); a formula
+    /// already parsed shows it after its next re-parse, as its stored text is `[0]!name`.
+    pub(crate) fn set_workbook_name(&mut self, name: &str) {
+        self.workbook.name = name.to_string();
+        self.parser.set_workbook_file(self.workbook.file_name());
     }
 
     /// Sets the timezone of the model
