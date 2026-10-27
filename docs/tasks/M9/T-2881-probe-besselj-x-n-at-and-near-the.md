@@ -18,7 +18,7 @@ point (n = x), enough of them to fit how Excel's recurrence rounds (T-2548).
 T-2548 cannot fit `BESSELJ(1E+5,100000)` (Excel 0.009636944011336267, ours 0.00963694401133629, true value
 0.00963694401133786) from one cell. Near n = x the result is very sensitive to the rounding of `tox = 2/x` and of each
 recurrence step. Our double recurrence, x87 64-bit steps (stored or kept), FMA steps and the step associations already
-tried (T-2548 Context) scatter by about 2E-16 around Excel's value, and none of them hits it. More points are needed to
+tried (T-2548 Context and "Blocked because") scatter by about 2E-16 around Excel's value, and none of them hits it. More points are needed to
 tell the models apart. The kernel is `jn_miller` in crates/rustsheet-engine/src/functions/engineering/transcendental/bessel_excel.rs.
 Existing evidence: probes/m9-bessel-order-limits (`BESSELJ(1E+5,100001)` 0.0094462635180178) and
 probes/t2546-bessel-past-cap.

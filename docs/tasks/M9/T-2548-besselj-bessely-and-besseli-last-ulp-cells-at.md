@@ -58,7 +58,8 @@ Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by 
 
 ## Blocked because
 Blocked because: needs the T-2881 oracle sweep of `BESSELJ` near the turning point n = x; one cell cannot pick a model.
-Findings (2026-10-27, opus run, mpmath at 40 digits; data from a scratch analysis, not committed):
+Findings (2026-10-27, opus run): a Python port of `jn_miller` run with mpmath at 40 digits (exact steps with a double `tox`,
+or steps rounded to 53 or 64 bits), the true value from the same port in exact arithmetic started at order 120000; the scratch script is not committed.
 - The true `J_100000(100000)` is 0.0096369440113378623. Ours (0.00963694401133629) and Excel's (0.009636944011336267) are
   both about 1.6E-13 low (relative), so Excel does run Miller's recurrence here. Upward recurrence from J0 and J1 at `ax >= n` gives
   0.009636943998118515, far off.
