@@ -16,12 +16,14 @@
 //!   unquoted or escaped literal character (`$` 1; a run of colons counts once), 2 per quoted
 //!   character, 2 per other token (`AM/PM` 3), 2 per color, 7 per condition, 0 per `;`; a
 //!   currency tag is quoted text of its symbol plus 13, its locale part free (`[$€-40C]` 15);
+//! - a section holding an unquoted `$` and no placeholder pays 3 once (2 if it holds a date or time
+//!   token), and unquoted text directly after a locale tag pays 1;
 //! - quoted text pays 4 more when a token follows it directly, 2 when unquoted text comes between
 //!   them (`"a" @` + 120 quoted works, 121 fails) and 1 when a color or condition does; 1 when a
 //!   placeholder run follows it directly or after unquoted text and 0 after a color or condition
 //!   (`"0"` + 120 quoted + `"[Red]0"` works, 121 fails); and 4 when the literal run that closes its section goes
 //!   on with unquoted text after it (`"d"` + 120 quoted + 2 spaces works, + 3 fails; 122 quoted +
-//!   `d` works, 123 fails);
+//!   `d` works, 123 fails), 2 if that text is only `$` or the quoted text is a currency tag;
 //! - in a section whose closing literal run holds quoted text, its date, time and `@` tokens are
 //!   free (`"d"` + 125 quoted works, like 125 quoted alone; `"h:mm"` + 123 quoted works), and `@`
 //!   even takes 1 off the rest (`"@ "` + 124 quoted works, `"@  "` + 122 works and 123 fails,
@@ -75,8 +77,24 @@ const LOCALE_COST: usize = 14;
 const CURRENCY_TAG_COST: usize = 13;
 const COLOR_COST: usize = 2;
 const CONDITION_COST: usize = 7;
-/// What quoted text costs on top of its characters when more of the section follows it.
+/// What quoted text costs on top of its characters when a token follows it directly.
 const QUOTED_SWITCH_COST: usize = 4;
+/// What quoted text costs instead of `QUOTED_SWITCH_COST` when the literal run that closes its
+/// section goes on with unquoted text after it, and that text is only `$` or the quoted text is a
+/// currency tag (`"a"` + 243 `$` works and 244 fails, `[$USD]` + 76 spaces works and 77 fails;
+/// probes/t2836-dollar-run-cost, T-2836). Other unquoted text pays the full 4 (`"d"` + 122 quoted
+/// + 1 space fails; probes/text-format-length-limit-i).
+const CLOSING_RUN_CHEAP_SWITCH_COST: usize = 2;
+/// What a section holding an unquoted `$` and no digit placeholder pays once, like
+/// `NUMBER_SECTION_COST` (which it then replaces): `REPT("$",247)` works and 248 fails, while
+/// `"0"` + 245 `$` works and 246 fails (probes/t2836-dollar-run-cost, T-2836).
+const DOLLAR_SECTION_COST: usize = 3;
+/// What `DOLLAR_SECTION_COST` is instead when the section also holds a date or time token (`"d"`
+/// + 246 `$` works and 247 fails, and so does 246 `$` + `"d"`; only `d` is probed).
+const DOLLAR_DATE_SECTION_COST: usize = 2;
+/// What unquoted text pays when it follows a locale tag directly (`[$-409]` + 232 `$` works and 233
+/// fails, + 78 spaces works and 79 fails; probes/t2836-dollar-run-cost, t2812-currency-tag-cost).
+const AFTER_LOCALE_UNQUOTED_COST: usize = 1;
 /// What a token pays instead of `QUOTED_SWITCH_COST` when unquoted text comes between the quoted
 /// text and the token (`"a" @` + 120 quoted works and 121 fails, `"a"--d` + 120 works and 121
 /// fails; probes/text-format-length-limit-n, -o).
@@ -232,12 +250,20 @@ struct Section {
     free_text_tokens: usize,
     /// Whether the section holds a digit placeholder (it pays `NUMBER_SECTION_COST` once).
     has_placeholder: bool,
+    /// Whether the section holds an unquoted `$`, and whether it holds a date or time token (they
+    /// set what the section pays for `$` when it holds no placeholder).
+    has_dollar: bool,
+    has_date_time: bool,
     /// What followed the latest quoted text.
     after_quoted: AfterQuoted,
     /// Whether the current literal run holds quoted text and whether it now ends in unquoted text;
     /// both reset when a non-literal element starts.
     run_has_quoted: bool,
     run_ends_unquoted: bool,
+    /// Whether the latest quoted text of the current literal run is a currency tag, and whether
+    /// the unquoted text after it is only `$`.
+    run_quoted_is_tag: bool,
+    run_tail_is_dollar: bool,
 }
 
 impl Section {
@@ -247,10 +273,21 @@ impl Section {
         let mut refund = 0;
         if self.run_has_quoted {
             if self.run_ends_unquoted {
-                extra += QUOTED_SWITCH_COST;
+                extra += if self.run_quoted_is_tag || self.run_tail_is_dollar {
+                    CLOSING_RUN_CHEAP_SWITCH_COST
+                } else {
+                    QUOTED_SWITCH_COST
+                };
             }
             refund +=
                 TOKEN_COST * self.free_tokens + TEXT_TOKEN_EXTRA_REFUND * self.free_text_tokens;
+        }
+        if self.has_dollar && !self.has_placeholder {
+            extra += if self.has_date_time {
+                DOLLAR_DATE_SECTION_COST
+            } else {
+                DOLLAR_SECTION_COST
+            };
         }
         if self.conditions > 0 && self.has_quoted && self.has_placeholder {
             extra += CONDITION_WITH_QUOTED_COST;
@@ -302,6 +339,8 @@ fn exceeds_complexity_limit(format: &str) -> bool {
     // Whether the current section holds `@`, and whether it holds a token that conflicts with it.
     let mut has_text = false;
     let mut has_conflict = false;
+    // Whether the latest element is a locale tag (not a currency tag's locale part).
+    let mut after_locale = false;
     loop {
         let currency_tag = lexer.at_currency_tag();
         let currency_locale = lexer.has_pending_locale();
@@ -334,6 +373,7 @@ fn exceeds_complexity_limit(format: &str) -> bool {
                 };
                 run = Run::None;
                 has_conflict = false;
+                after_locale = false;
                 if sections > MAX_SECTIONS {
                     return true;
                 }
@@ -356,7 +396,10 @@ fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Period if run == Run::Digits => (Run::Digits, DECIMAL_POINT_COST),
             Token::Literal(':') if run == Run::Colon => continue,
             Token::Literal(':') => (Run::Colon, LITERAL_COST),
-            Token::Literal('$') | Token::Escaped('$') => (Run::Literal, DOLLAR_COST),
+            Token::Literal('$') | Token::Escaped('$') => {
+                section.has_dollar = true;
+                (Run::Literal, DOLLAR_COST)
+            }
             // An escaped colon does not join a colon run: it prints (`0\:\:` is "1::").
             Token::Locale(_) if currency_locale => continue,
             Token::Locale(_) => (Run::None, LOCALE_COST),
@@ -392,6 +435,11 @@ fn exceeds_complexity_limit(format: &str) -> bool {
         cost += token_cost;
         if counts_as_element {
             let quoted = currency_tag || matches!(token, Token::Text(_));
+            if after_locale && !quoted && matches!(next_run, Run::Literal | Run::Colon) {
+                cost += AFTER_LOCALE_UNQUOTED_COST;
+            }
+            after_locale = matches!(token, Token::Locale(_));
+            section.has_date_time |= is_date_time_letter(&token);
             match next_run {
                 Run::Literal | Run::Colon => {
                     if !joins_run {
@@ -399,6 +447,13 @@ fn exceeds_complexity_limit(format: &str) -> bool {
                     }
                     section.run_has_quoted |= quoted;
                     section.run_ends_unquoted = !quoted;
+                    if quoted {
+                        section.run_quoted_is_tag = currency_tag;
+                        section.run_tail_is_dollar = true;
+                    } else {
+                        section.run_tail_is_dollar &=
+                            matches!(token, Token::Literal('$') | Token::Escaped('$'));
+                    }
                     section.has_quoted |= quoted;
                     section.after_quoted = if quoted {
                         AfterQuoted::Directly
@@ -494,6 +549,48 @@ mod tests {
             format!("[>5]0{}", " ".repeat(80)),
             "[>5][<9]0".to_string(),
             "[>5]0[<9]".to_string(),
+        ];
+        for code in too_complex {
+            assert!(exceeds_complexity_limit(&code), "{code}");
+        }
+    }
+
+    /// Runs of unquoted `$` (probes/t2836-dollar-run-cost, T-2836).
+    #[test]
+    fn dollar_runs() {
+        let dollars = |n: usize| "$".repeat(n);
+        let ok = [
+            dollars(247),
+            format!("d{}", dollars(246)),
+            format!("{}d", dollars(246)),
+            format!("0{}", dollars(245)),
+            format!("[$-409]{}", dollars(232)),
+            format!("[$-409]{}", " ".repeat(78)),
+            format!("{}{}", quoted(1), dollars(243)),
+            format!("[$€-40C]{}", dollars(230)),
+            format!("[$€]{}", dollars(230)),
+            format!("[$USD]{}", dollars(226)),
+            format!("[$USD]{}", " ".repeat(76)),
+            format!("[$€]{}", " ".repeat(77)),
+            format!("[$€-F800]{}", quoted(117)),
+        ];
+        for code in ok {
+            assert!(!exceeds_complexity_limit(&code), "{code}");
+        }
+        let too_complex = [
+            dollars(248),
+            format!("d{}", dollars(247)),
+            format!("{}d", dollars(247)),
+            format!("0{}", dollars(246)),
+            format!("[$-409]{}", dollars(233)),
+            format!("[$-409]{}", " ".repeat(79)),
+            format!("{}{}", quoted(1), dollars(244)),
+            format!("[$€-40C]{}", dollars(231)),
+            format!("[$€]{}", dollars(231)),
+            format!("[$USD]{}", dollars(227)),
+            format!("[$USD]{}", " ".repeat(77)),
+            format!("[$€]{}", " ".repeat(78)),
+            format!("[$€-F800]{}", quoted(118)),
         ];
         for code in too_complex {
             assert!(exceeds_complexity_limit(&code), "{code}");
