@@ -4,17 +4,20 @@
   scripts/exit_owners.py --milestone M5 [--report PATH] [--tasks DIR] [--strict]
   scripts/exit_owners.py --unattributed [--report PATH] [--tasks DIR] [--strict]
 
-Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every failing cell of the
-milestone's exit criteria (decision 0085: the `gen-m<k>` suite, the ironcalc-calc row of
-"Milestone function scope" less its exit exceptions, and the probes of the milestone's row of
-"Probe milestones") that no open task of that milestone names, one per line as
+Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every visibly-off cell of
+the milestone's exit criteria (decision 0085, read at visible parity by decisions 0114 and 0135:
+the `gen-m<k>` suite, the ironcalc-calc row of "Milestone function scope" less its exit
+exceptions, and the probes of the milestone's row of "Probe milestones", `M0-M2` for M2), plus
+each probe case that fails with no cell, that no open task of that milestone names, one per line as
 `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count is
 not 0.
 
 A task owns a cell when its front matter has the milestone and an open status, and its text names
 the case's file stem (the last path segment of the case id less `.case.json`: a gen hash, an
-xlsx file name, a probe name) and either the cell's A1 name as a whole word, or the stem on a line
-with no A1-shaped token (a task that names only the case owns all of it). The ironcalc-calc
+xlsx file name, a probe name; with or without that suffix) and either the cell's A1 name as a whole
+word, or a colon span (`A5:D5`) holding it on a line that names the stem, or the stem on a line
+with no A1-shaped token (a task that names only the case owns all of it). Hyphen spans
+(`D49-D65`) name their ends only (decision 0136). The ironcalc-calc
 exceptions are the row's `excepted` cells, which `make eval` takes from
 eval/milestones/exit-exceptions.tsv.
 
@@ -35,7 +38,10 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import tasks  # noqa: E402 (the sys.path line above must run first)
+# tools/ is a uv project, but sheetop is stdlib-only, so this script stays stdlib-only too.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools" / "src"))
+import tasks  # noqa: E402 (the sys.path lines above must run first)
+from rustsheet_tools.sheetop import column_number  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "eval" / "runs" / "latest" / "report.json"
@@ -81,8 +87,11 @@ def formula_of(cell: dict[str, Any]) -> str:
 
 
 def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
-    """Every failing cell of `milestone`'s exit criteria, in report order per criterion."""
-    if not any(r.get("milestone") == milestone for r in report.get("milestone_exit") or []):
+    """Every visibly-off cell of `milestone`'s exit criteria, in report order per criterion. The
+    visibly-off lists are the report's (decision 0135): the exit row's `gen_visibly_off_cells`,
+    the function-scope row's `visibly_off` and the probe row's `visibly_off_cells`."""
+    exit_row = next((r for r in report.get("milestone_exit") or [] if r.get("milestone") == milestone), None)
+    if exit_row is None:
         raise ValueError(f"report.json has no milestone_exit row for {milestone}")
     by_case = failing_cells(report)
     formulas = {
@@ -91,28 +100,36 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     out: list[ExitCell] = []
 
     gen = f"gen-{milestone.lower()}"
+    gen_off = set(exit_row.get("gen_visibly_off_cells") or [])
     for case in report.get("cases") or []:
         if case.get("suite") == gen:
             for c in by_case.get(str(case["id"]), []):
-                out.append(ExitCell(gen, str(case["id"]), f"{c['sheet']}!{c['cell']}", formula_of(c)))
+                key = f"{c['sheet']}!{c['cell']}"
+                if f"{case['id']}!{key}" in gen_off:
+                    out.append(ExitCell(gen, str(case["id"]), key, formula_of(c)))
 
     scope = report.get("function_scope") or {}
     for row in scope.get("rows") or []:
         if row.get("milestone") == milestone:
             excepted = set(row.get("excepted") or [])
+            visible = set(row.get("visibly_off") or [])
             for name in row.get("failing") or []:
-                if name not in excepted:
+                if name not in excepted and name in visible:
                     case, _, key = str(name).partition("!")
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
 
+    probe_row = exit_row.get("probe_row") or milestone
     for row in report.get("probe_milestones") or []:
-        if row.get("milestone") == milestone:
+        if row.get("milestone") == probe_row:
+            probe_off = set(row.get("visibly_off_cells") or [])
             for case, _count in row.get("failing_cases") or []:
                 cells = by_case.get(case, [])
                 if not cells:
                     out.append(ExitCell(PROBES_SUITE, case, WHOLE_CASE, ""))
                 for c in cells:
-                    out.append(ExitCell(PROBES_SUITE, case, f"{c['sheet']}!{c['cell']}", formula_of(c)))
+                    key = f"{c['sheet']}!{c['cell']}"
+                    if f"{case}!{key}" in probe_off:
+                        out.append(ExitCell(PROBES_SUITE, case, key, formula_of(c)))
     return out
 
 
@@ -136,21 +153,51 @@ def names(text: str, token: str, word: str) -> bool:
 # A107, `A10` does not name A1).
 STEM_WORD = r"[\w.-]"
 A1_WORD = r"[\w$]"
-A1_TOKEN = re.compile(rf"(?<!{A1_WORD})\$?[A-Z]{{1,3}}\$?[0-9]{{1,7}}(?!\w)")
+A1_PART = r"\$?([A-Z]{1,3})\$?([0-9]{1,7})"
+A1_TOKEN = re.compile(rf"(?<!{A1_WORD}){A1_PART}(?!\w)")
+# `A5:D5` beside a stem names its whole rectangle, as an A1 reference does (decision 0136);
+# `D49-D65` does not.
+A1_SPAN = re.compile(rf"(?<!{A1_WORD}){A1_PART}:{A1_PART}(?!\w)")
+A1_SPLIT = re.compile(A1_PART)
+
+
+def names_stem(text: str, stem: str) -> bool:
+    """Whether `text` names the case `stem`, bare or as `<stem>.case.json` (decision 0136)."""
+    pattern = rf"(?<!{STEM_WORD}){re.escape(stem)}(?:{re.escape(SPEC_SUFFIX)})?(?!{STEM_WORD})"
+    return re.search(pattern, text) is not None
+
+
+def names_in_span(text: str, stem: str, a1: str) -> bool:
+    """Whether a colon span on a line of `text` that names `stem` holds the cell `a1`. Per line,
+    unlike a single A1 name, because tasks quote formulas whose ranges (`Data!B6:C10`) are not
+    cells they own."""
+    m = A1_SPLIT.fullmatch(a1)
+    if m is None:
+        return False
+    col, row = column_number(m[1]), int(m[2])
+    for line in text.splitlines():
+        if not names_stem(line, stem):
+            continue
+        for s in A1_SPAN.finditer(line):
+            c1, c2 = sorted((column_number(s[1]), column_number(s[3])))
+            r1, r2 = sorted((int(s[2]), int(s[4])))
+            if c1 <= col <= c2 and r1 <= row <= r2:
+                return True
+    return False
 
 
 def names_whole_case(text: str, stem: str) -> bool:
     """Whether a line of `text` names `stem` and no cell: a task that lists cells beside a case
     owns only those, even when they have since passed and left the report."""
-    return any(names(line, stem, STEM_WORD) and not A1_TOKEN.search(line) for line in text.splitlines())
+    return any(names_stem(line, stem) and not A1_TOKEN.search(line) for line in text.splitlines())
 
 
 def owned(cell: ExitCell, texts: list[str]) -> bool:
     """Whether one of `texts` owns `cell`."""
     for text in texts:
-        if not names(text, cell.stem, STEM_WORD):
+        if not names_stem(text, cell.stem):
             continue
-        if cell.a1 is not None and names(text, cell.a1, A1_WORD):
+        if cell.a1 is not None and (names(text, cell.a1, A1_WORD) or names_in_span(text, cell.stem, cell.a1)):
             return True
         if names_whole_case(text, cell.stem):
             return True

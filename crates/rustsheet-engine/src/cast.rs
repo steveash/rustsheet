@@ -281,11 +281,16 @@ impl Model {
         if let Some((error, message)) = check_range_size(&left, &right) {
             return Err(CalcResult::new_error(error, cell, message));
         }
+        // The array is built whole, so it is charged its cells before it is (SPEC-0024). A caller
+        // may consume it without it becoming a node value; when it does become one, it is charged
+        // again at the node chokepoint, which the calibration (arrays.md) includes.
+        let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
+        let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+        self.spend_cells(rows, width, cell)?;
         let (last_row, last_column) = self
             .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
             .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-        let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
-        let mut result = Vec::with_capacity(usize::try_from(right.row - left.row + 1).unwrap_or(0));
+        let mut result = Vec::with_capacity(rows);
         for row in left.row..=right.row {
             let mut row_result = Vec::with_capacity(width);
             for column in left.column..=right.column {
