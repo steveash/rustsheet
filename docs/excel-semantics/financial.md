@@ -645,7 +645,7 @@ replaced by a cell holding Excel's PMT bits (its 15-digit literal plus an exact 
 are the nested cells' bits. On the 782 RATE cells of the fit set (errors included; the probes above,
 rate-zero-residual-guess and rate-excel-pmt-bits) the secant is bit-exact on all 782 with the residual's
 operators twice-rounded, 778 with them rounded once (FV's evaluation; m9-fin-irr-rate A487 2,183 ulp, A218
-157 ulp, and the same two rows of rate-excel-pmt-bits, A2 and A271), and 751 to 774 with the
+157 ulp, and the same two inputs again as rows A2 and A271 of rate-excel-pmt-bits), and 751 to 774 with the
 three-term sum in another order (pv,fv,pmt; fv,pv,pmt; pmt,fv,pv; either rounding). Excel's value is an
 iterate of the model's trace on 705 of 705 numeric cells. So the RATE cells still off
 in the eval (m9-fin-irr-rate A218, A278, A245, A367 among them) are off by the engine's PMT bits, not by
