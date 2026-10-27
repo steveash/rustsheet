@@ -67,7 +67,14 @@ TEXT_POOL: list[str] = [
     "?b",
     "x~*",
 ]
-CRITERIA_POOL: list[Any] = [">0", "<5", ">=2", "<>1", "=a", "a*", "*c", "?b?", 1, "abc", "", "<>"]
+# Criteria as text; the text-number (`"1"`, `"=2"`, `"1E1"`), tilde-escape (`"x~*"` is a TEXT_POOL value), and boolean
+# entries exercise Excel's text-to-number criteria matching (T-2717). Ints are emitted as numeric literals.
+CRITERIA_POOL: list[Any] = [
+    ">0", "<5", ">=2", "<>1", "=a", "a*", "*c", "?b?", 1, "abc", "", "<>",
+    "1", "2.5", "=2", "1E1", "x~*", "~?", "TRUE", "=FALSE",
+]  # fmt: skip
+# Criteria that are formulas rather than literals: a comparison operator joined to a date serial, i.e. a date as text.
+CRITERIA_EXPR_POOL: list[str] = ['">"&DATE(2020,1,1)', '"<="&DATE(1900,1,1)']
 # LET variables and LAMBDA parameters: none is a cell reference (`x1` is one), a function name (`N`) or `r`/`c`.
 NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 # Functions passed by name as a LAMBDA (eta-reduced, `BYROW(A1:B3,SUM)`); Excel stores them `_xleta.SUM`
@@ -342,11 +349,17 @@ class Gen:
                 width=self.rng.randint(1, min(4, self.data_cols)), full=p.get("full", False)
             )
         if mode == "criteria":
-            c = self.rng.choice(CRITERIA_POOL)
-            return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
+            return self.criteria_text()
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
         return self.scalar_text(p, depth)
+
+    def criteria_text(self) -> str:
+        """A `criteria` argument: a quoted text or numeric literal, or a date expression."""
+        c = self.rng.choice(CRITERIA_POOL + CRITERIA_EXPR_POOL)
+        if c in CRITERIA_EXPR_POOL:
+            return str(c)
+        return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
 
     def scalar_text(self, p: dict[str, Any], depth: int) -> str:
         """A `value` param: an in-domain literal, else an edge-pool entry, else a free expression."""

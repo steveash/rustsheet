@@ -58,6 +58,20 @@ def test_generation_is_deterministic() -> None:
     assert a == b
 
 
+def test_criteria_pool_emits_text_number_and_date_criteria() -> None:
+    # T-2717: criteria are quoted text (text-number, tilde escape, boolean text) or a date expression.
+    formulas = " ".join(
+        " ".join(
+            generate_case(catalog(), seed, milestone="M2", functions=["COUNTIF", "SUMIFS"], focus=True)[
+                "sheets"
+            ][1]["cells"].values()
+        )
+        for seed in range(3)
+    )
+    for literal in ('"1"', '"2.5"', '"=2"', '"1E1"', '"~?"', '"TRUE"', '"=FALSE"', '">"&DATE(2020,1,1)'):
+        assert literal in formulas, literal
+
+
 def test_milestone_scoping_excludes_later_functions() -> None:
     spec = generate_case(catalog(), 3, milestone="M1", formulas=60)
     formulas = " ".join(spec["sheets"][1]["cells"].values())
@@ -436,8 +450,10 @@ def test_paired_repeat_groups_stay_paired() -> None:
     countifs = next(f for f in cat.functions if f["name"] == "COUNTIFS")
     assert countifs["params"][0]["repeat"]["group"] == ["criteria_range", "criteria"]
     spec = generate_case(cat, 3, milestone="M2", formulas=300)
-    # criteria are literals and ranges contain no commas, so a bare COUNTIFS has 2n-1 commas.
-    bare = [f for f in spec["sheets"][1]["cells"].values() if re.fullmatch(r"=COUNTIFS\([^()]*\)", f)]
+    # criteria are literals (a date criterion's DATE(y,1,1) is folded to one token) and ranges contain no commas,
+    # so a bare COUNTIFS has 2n-1 commas.
+    cells = (re.sub(r"DATE\(\d+,1,1\)", "DATE", f) for f in spec["sheets"][1]["cells"].values())
+    bare = [f for f in cells if re.fullmatch(r"=COUNTIFS\([^()]*\)", f)]
     assert bare
     assert all(f.count(",") % 2 == 1 for f in bare)
 
@@ -657,7 +673,7 @@ def _outer_function(formula: str) -> str:
 
 def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
-    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) and T-2318 (TEXTJOIN's delimiter is an array parameter).
+    # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained signatures) and T-2318 (TEXTJOIN's delimiter is an array parameter).  Re-recorded for T-2717 (the criteria pool grew, so criteria draws moved).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -665,7 +681,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "505d7bc2688c30017ec88bafbf7512ef881ad1606a3cce3d4cfa30195cad721c"
+        == "b56c3ee3ca9fc26d200aa6cba8259d448a1d6bc9a96d1e53d72bb4fd357b069a"
     )
 
 
