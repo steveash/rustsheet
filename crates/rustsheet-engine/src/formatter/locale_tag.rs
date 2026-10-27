@@ -3,6 +3,9 @@
 //! probes/text-locale-name-tables, probes/text-locale-am-neutral (excel-graph, 2026-10-18);
 //! docs/excel-semantics/number-formats.md "Locale tags localize date names".
 
+use crate::locale::calendar_date_names::{
+    HEBREW_LATIN, HEBREW_LATIN_ADARS, HEBREW_SCRIPT, HEBREW_SCRIPT_ADARS, SAKA, SAKA_HINDI,
+};
 pub use crate::locale::excel_date_names::DateNames;
 use crate::locale::excel_date_names::{
     ARABIC, ARABIC_LEVANT, EN_US, HIJRI_ARABIC, HIJRI_ENGLISH, HIJRI_FRENCH, HIJRI_TURKISH,
@@ -35,6 +38,15 @@ pub enum Calendar {
     /// the Hijri year and `g` nothing (`[$-60409]yy|yyyy|e|b|bbbb` of 2023-03-15 is
     /// "44|1444|1444|44|1444"; probes/t2729-hijri-locale-tag A203).
     Hijri,
+    /// Calendar digit 10: the Saka year, month and day for every date token, `b` and `e`
+    /// included (`[$-100409]yyyy-mm-dd|yy|e|b` of 2023-03-15 is "1944-12-24|44|1944|44";
+    /// `calendar_dates::saka_ymd`).
+    Saka,
+    /// Calendar digit 8: the Hebrew year, month and day for every date token
+    /// (`[$-80409]yyyy-mm-dd|e|b` of 2023-03-15 is "5783-06-22|5783|83";
+    /// `calendar_dates::hebrew_ymd`), with the names of a leap year's months 6 and 7, `None`
+    /// under an LCID with no locale, whose month names go by number.
+    Hebrew(Option<&'static [&'static str; 2]>),
 }
 
 /// Which month table a lunar calendar digit uses: F and 11 follow China; E, 12 and 13 one that
@@ -188,9 +200,9 @@ fn hijri_default(value: u32, hijri_prefix: bool) -> u32 {
 /// and Japanese weekdays (Korean names under a Korean LCID), F and 11 with zh-CN weekdays, 12 and
 /// 13 with en-US names. A is Gregorian with Levant Arabic month names, B and C Gregorian with
 /// the ar-SA names, 14 Gregorian with the Korean native month names (probes/t1923-calendar-digits).
-/// 6 is Hijri, with the LCID's Hijri names ([`hijri_names`]). Day halves follow the LCID
-/// throughout. Calendars 8 (Hebrew) and 10 (Saka; TODO(T-2779)) are not modelled and stay [`LocaleTag::Silent`], as do numeral-system
-/// digits (bits 24-31; TODO(T-1925)).
+/// 6 is Hijri, with the LCID's Hijri names ([`hijri_names`]), 8 Hebrew and 10 Saka
+/// ([`hebrew_or_saka`]). Day halves follow the LCID throughout. Numeral-system digits (bits 24-31;
+/// TODO(T-1925)) stay [`LocaleTag::Silent`].
 fn resolve_lcid(value: u32) -> LocaleTag {
     match value {
         SYSTEM_DATE_LCID => return LocaleTag::SystemDate,
@@ -201,6 +213,12 @@ fn resolve_lcid(value: u32) -> LocaleTag {
         return LocaleTag::Silent;
     }
     let lcid = (value & 0xFFFF) as u16;
+    // LCID 1 has no locale under Hebrew and Saka, though 0xC, 0xD and 0x39 have theirs
+    // (`[$-80001]mmmm` of 2024-03-21 is "July", `[$-8000D]mmmm` "אדר ב"; probes/t2779-hebrew-saka-more
+    // C29:C33, D29:D33). Under the other digits it is unprobed and reads as Arabic.
+    if lcid == 1 && matches!(value >> 16, 8 | 0x10) {
+        return without_locale(value >> 16);
+    }
     let names = if lcid == 0x400 || lcid == 0x800 {
         EN_US
     } else if let Some(names) = table(lcid).or_else(|| by_language(lcid)) {
@@ -246,7 +264,24 @@ fn resolve_lcid(value: u32) -> LocaleTag {
         0xB | 0xC => with_names(ARABIC, Calendar::Gregorian),
         0x14 => with_names(&LUNAR_KO, Calendar::Gregorian),
         6 => with_names(hijri_names(lcid), Calendar::Hijri),
-        _ => LocaleTag::Silent,
+        8 | 0x10 => {
+            let (calendar_names, calendar) = hebrew_or_saka(value >> 16 == 8, lcid);
+            with_names(calendar_names, calendar)
+        }
+    }
+}
+
+/// The names and calendar of digit 8 (`hebrew`) or 10 under `lcid`: Hebrew script for a Hebrew or
+/// Arabic LCID (`[$-8040D]`, `[$-80801]`), Devanagari Saka names for an Arabic or Hindi one
+/// (`[$-100401]`, `[$-100439]`), the Latin transliterations under every other LCID with a locale
+/// (probes/t2779-hebrew-saka-names E1:E25, t2779-hebrew-saka-more C1:D33). bn-IN (0x445) also
+/// prints the Latin Saka names, but it has no table here and so no locale (`without_locale`).
+fn hebrew_or_saka(hebrew: bool, lcid: u16) -> (&'static DateNames, Calendar) {
+    match (hebrew, lcid & 0x3FF) {
+        (true, 0x0D | 0x01) => (&HEBREW_SCRIPT, Calendar::Hebrew(Some(&HEBREW_SCRIPT_ADARS))),
+        (true, _) => (&HEBREW_LATIN, Calendar::Hebrew(Some(&HEBREW_LATIN_ADARS))),
+        (false, 0x01 | 0x39) => (&SAKA_HINDI, Calendar::Saka),
+        (false, _) => (&SAKA, Calendar::Saka),
     }
 }
 
@@ -281,9 +316,10 @@ fn resolve_extended(value: u32) -> LocaleTag {
 /// is "February|2023-02-24", `[$-708DE]` gives "มีนาคม|2566-03-15", `[$-CFDFC]` "مارس", and
 /// `h A/P` is "6 P" under each (probes/t1924-locale-tag-extended-hex A13, A14, B13, B14;
 /// text-locale-calendars A136-A138, A142). Hijri has the Arabic names (`[$-608DE]` and
-/// `[$-60000]` print "شعبان|الأربعاء"; probes/t2729-hijri-locale-tag A201, A260). Other digits (3,
-/// 4, 5, 9 and 14 are unprobed here) leave such a tag [`LocaleTag::Silent`], as do Hebrew and Saka
-/// (TODO(T-2779)).
+/// `[$-60000]` print "شعبان|الأربعاء"; probes/t2729-hijri-locale-tag A201, A260). Hebrew and Saka
+/// name their months by number in en-US (`[$-80000]mmmm` of 2024-03-21 is "July", `[$-fr_FR]`
+/// of 2023-03-15 "December"; probes/t2779-hebrew-saka-names F1:F7, E12, E13). Other digits (3,
+/// 4, 5, 9 and 14 are unprobed here) leave such a tag [`LocaleTag::Silent`].
 fn without_locale(calendar: u32) -> LocaleTag {
     let (names, calendar) = match calendar {
         7 => match table(0x41E) {
@@ -295,6 +331,8 @@ fn without_locale(calendar: u32) -> LocaleTag {
         0xE | 0x12 | 0x13 => (EN_US, Calendar::Lunar(LunarTable::Eastern)),
         0xF | 0x11 => (EN_US, Calendar::Lunar(LunarTable::Chinese)),
         6 => (&HIJRI_ARABIC, Calendar::Hijri),
+        8 => (EN_US, Calendar::Hebrew(None)),
+        0x10 => (EN_US, Calendar::Saka),
         _ => return LocaleTag::Silent,
     };
     LocaleTag::Names(Localized {
