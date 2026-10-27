@@ -180,18 +180,13 @@ fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
         .unwrap_or(Ordering::Equal)
 }
 
-/// The elements of a SORT lifted over its `by_col`, `result`, given each call's by_col when it
-/// sorted (`None` when it failed), row-major. A failed call keeps its error and is skipped by
-/// what follows. The first sorting call of each row leads it; the leads keep their call's
-/// top-left when every lead's by_col is equal, and otherwise only the first does. Every other
-/// sorting call is "broken": empty when the sort_index is the single key 2 (`only_key_two`) and
-/// it is the first broken element, or the element above it is an empty-able broken element with
-/// the same by_col; `#VALUE!` otherwise. So `SORT(A1:D4,2,1,{TRUE,TRUE,TRUE})` is the top-left,
-/// empty, `#VALUE!`; `{TRUE;FALSE;FALSE}` the top-left, empty, empty; `{TRUE;FALSE;TRUE}` the
-/// top-left, empty, `#VALUE!`; `{TRUE;TRUE;TRUE}` the top-left three times; and with sort_index 1
-/// every broken element is `#VALUE!` (probes/t2929-sort-lifted-by-col-index, -shapes, -errors,
-/// -range and -column; T-2929). Comparing by_col values as the booleans they are read as (`1`
-/// beside TRUE in a column) is UNVERIFIED.
+/// The elements of a SORT lifted over its `by_col`, `result`, given each call's `by_col` when it
+/// sorted (`None` when it failed), row-major. Failed calls keep their error; each row's first
+/// sorting call leads it, and the leads keep their call's top-left when all their `by_col` values
+/// are equal (else only the first does); every other sorting call is empty when `only_key_two`
+/// and it is the first such element or sits below an empty-able one with the same `by_col`, and
+/// `#VALUE!` otherwise (probes/t2929-sort-lifted-by-col-*, T-2929; the rule and its UNVERIFIED
+/// corners are in arrays.md).
 // Excel: docs/excel-semantics/arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments".
 fn sort_lifted_elements(
     result: CalcResult,
@@ -422,7 +417,8 @@ impl Model {
         if sorted.len() < 2 {
             return result;
         }
-        let only_key_two = matches!(raw_index.as_slice(), [index] if *index as i64 == 2);
+        // sort_index truncates, so 2.7 is key 2 too (probes/t2929-sort-lifted-by-col-errors K18).
+        let only_key_two = matches!(raw_index.as_slice(), [index] if (2.0..3.0).contains(index));
         sort_lifted_elements(result, &sorted, only_key_two)
     }
 

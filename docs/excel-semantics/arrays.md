@@ -1795,7 +1795,7 @@ a text error and a join over 32,767 characters (`#CALC!`) fill every element, an
 (`TEXTJOIN({"-","+"},{TRUE;FALSE},"a","","b")` is "a-b", "a-+b"). The gen-m7 cell: `LAMBDA(y,TEXTJOIN(y,y,y))({TRUE;FALSE})` is
 "TRUETRUEFALSE" twice, so RIGHT of it spills and A1137's spill is blocked.
 SORT's lifted by_col elements (probes/t2366-sort-lifted-by-col, excel-graph, 2026-10-27, T-2366), `A1:A3` = 3,1,2: later elements
-are never empty, unlike SORTBY's (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; so not `ArrayFirst`). Values:
+do not follow SORTBY's `ArrayFirst` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
 `{FALSE,TRUE}` spills 1 then `#VALUE!`, `{TRUE,TRUE}` 3 then `#VALUE!`, sort_index 3 with `{FALSE,TRUE}` `#VALUE!` then 3, and a range
 by_col (`E1:E2` = FALSE,TRUE) lifts like an array (`ROWS` 2, `COLUMNS` 1: spills 1 then `#VALUE!`). Of the later elements only the
 sort_index 3 one (I11) matches the call's top-left; the second (TRUE) element is `#VALUE!` with sort_index 1 (I1, I7, H18) although a
@@ -1817,9 +1817,9 @@ by_col with a boolean one.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col (excel-graph, 2026-10-27, T-2366); probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column (excel-graph, 2026-10-27, T-2929).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
-(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; none is empty, VERIFIED as not SORTBY's and UNIQUE's first-element-only rule (T-2366), and a range by_col lifts too; ours gives each element its call's top-left, which Excel does not for a TRUE by_col element past the first column with sort_index 1, `#VALUE!` there; since T-2929 `sort_lifted_elements` in spill_functions.rs applies the rule above to the lifted elements); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
+(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element, then `sort_lifted_elements` in spill_functions.rs keeps, empties or errs each element by the rule above (T-2929); a range by_col lifts too; the two UNVERIFIED corners are T-2947's); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
 Status: VERIFIED (excel-graph)
-Tasks: T-2313, T-2318, T-2319, T-2366, T-2467, T-2929
+Tasks: T-2313, T-2318, T-2319, T-2366, T-2467, T-2929, T-2947
 
 ## TOROW and UNIQUE of a lone blank cell
 Rule: a one-cell reference to a blank cell stays blank in TOROW and UNIQUE: `TOROW(Data!Z1,3)` drops it and is `#CALC!` (nothing
