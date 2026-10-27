@@ -78,4 +78,5 @@ Exact roots and signed ulp offsets in t2927-irr-fallback-sweep.roots.tsv. The ge
 left out (their Data ranges would need a snapshot); `{0,2,-1}` is in. financial.md has the sweep paragraph: no fixed
 offset, the 1E6 scale and negation both move the digits, the guess changes them on 5 of 15 rows, and
 `{-N,1,1,1,1,1}` for N >= 496 is `#NUM!` where the rule returns (listed in T-2928's Context). No engine change.
-Eval: EVAL3
+Eval: no baseline change (probes-numeric has no eval/baseline file; every gated suite unchanged, 0 regressions). The engine
+matches Excel on 40 of the case's 165 cells.
