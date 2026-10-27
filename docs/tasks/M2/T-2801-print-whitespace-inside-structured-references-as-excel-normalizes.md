@@ -3,7 +3,7 @@ id: T-2801
 title: "Print whitespace inside structured references as Excel normalizes it"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
