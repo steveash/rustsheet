@@ -59,3 +59,5 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
   new-year rule (month 1 forced on a date that need not be a month start, hence the 1-day months); recover it from
   the forced starts. If no closed form appears within the time box, fall back to the per-year probe to 9999
   (about 8000 years x 2 columns), stored as packed binary data rather than Rust source (1000-line file limit).
+
+- Resumed by an opus run at 2026-10-27 19:30 UTC (branch idle 2 h 45 min, work-loop resume rule).
