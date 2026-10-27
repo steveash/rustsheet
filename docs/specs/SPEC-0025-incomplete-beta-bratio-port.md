@@ -64,8 +64,8 @@ Everything below is VERIFIED (excel-graph) in docs/excel-semantics/statistics.md
   family at (n/2, 1/2) with n/2 >= 8 is open, and so are bfrac's own noise and the Loader constant.
 
 ### Each caller's arguments
-The callers form x and y themselves, never 1 - x inside the kernel (w5-triangulation 2.3; statistics.md "Caller
-arguments").
+The callers form x and y themselves, never 1 - x inside the kernel (w5-triangulation 2.3; the "Caller arguments" bullet of statistics.md "Incomplete beta is
+TOMS 708 `bratio`").
 
 | caller | K(a, b, x, y) | result |
 |---|---|---|
