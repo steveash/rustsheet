@@ -864,14 +864,15 @@ Tasks: T-2635
 Rule: after a sheet prefix, a cell address that more name characters follow (letters, digits,
 `_` or `.`) is a name, not the cell. With workbook `Q1_Total` = 100, `Q1.Rate` = 5 and Data!Q1 =
 77: `=Data!Q1_Total` is 100, `=Data!Q1` is 77, `=Sheet1!Q1_Total*2` is 200,
-`=SUM(Data!Q1_Total,Data!Q1)` and `=Data!Q1_Total+Data!Q1` are 177, and `=Data!Q1.Rate` is 5. An
+`=SUM(Data!Q1_Total,Data!Q1)` and `=Data!Q1_Total+Data!Q1` are 177 (Q1 a number), and `=Data!Q1.Rate` is 5. An
 undefined one (`=Data!A1B`) is `#NAME?` (`ERROR.TYPE` 5). Being a workbook name reached through a
 sheet prefix, Excel's FORMULATEXT shows it with the file name as the prefix (see "A
 sheet-qualified workbook name is rewritten to the workbook's file name"; T-2834).
 Evidence: probes/defined-name-qualified-like-reference and
 probes/defined-name-qualified-like-reference-more (excel-graph, 2026-10-27, T-2635; upstream
-IronCalc 2aa0e653 lexes `_` the same way). A range that name characters follow (`Data!A1:B2x`) is
-unprobed. Ours matches except that FORMULATEXT cell (T-2834).
+IronCalc 2aa0e653 lexes `_` the same way). Unprobed, and read as a name by ours: a `\` or a
+typographic quote after the cell, and a rejected dotted corner (`Data!A1.B2x`); a range that name
+characters follow (`Data!A1:B2x`) is unprobed and stays a range then an error. Ours matches except that FORMULATEXT cell (T-2834).
 Status: VERIFIED (Excel for the web).
 Tasks: T-2635, T-2834
 
