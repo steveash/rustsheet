@@ -3,7 +3,7 @@ id: T-2516
 title: "DGET with an error field and one-row criteria: which error wins (T-1390 follow-up)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
