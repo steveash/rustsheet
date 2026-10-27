@@ -34,7 +34,7 @@ criteria that are numbers written as text, so gen suites score Excel's text-numb
 - Fixing criteria matching (the triaged functions task does that).
 
 ## Outcome
-`CRITERIA_POOL` gained text-number (`"1"`, `"2.5"`, `"=2"`, `"1E1"`), tilde-escape (`"~?"`; `"x~*"` was already a
+`CRITERIA_POOL` gained text-number (`"1"`, `"2.5"`, `"=2"`, `"1E1"`), tilde-escape (`"x~*"`, `"~?"`; `"x~*"` was already a
 `TEXT_POOL` data value), boolean-text (`"TRUE"`, `"=FALSE"`) criteria, plus a new `CRITERIA_EXPR_POOL` of date criteria
 (`">"&DATE(2020,1,1)`). Unit test covers emission. Batch `--focus --functions COUNTIF,COUNTIFS,SUMIF,SUMIFS --count 2
 --seed 2717` filled with excel-graph: 2 cases, 80 cells, all bit-exact (0 mismatches, 0 regressions), so no new

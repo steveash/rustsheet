@@ -67,8 +67,8 @@ TEXT_POOL: list[str] = [
     "?b",
     "x~*",
 ]
-# Criteria as text; the text-number (`"1"`, `"=2"`, `"1E1"`), tilde-escape (`"x~*"` is a TEXT_POOL value), and boolean
-# entries exercise Excel's text-to-number criteria matching (T-2717). Ints are emitted as numeric literals.
+# Criteria as text; the text-number (`"1"`, `"=2"`, `"1E1"`), tilde-escape (`"x~*"`, `"~?"`; `"x~*"` is also a TEXT_POOL
+# data value) and boolean entries exercise Excel's text-to-number criteria matching (T-2717). Ints are emitted as numeric literals.
 CRITERIA_POOL: list[Any] = [
     ">0", "<5", ">=2", "<>1", "=a", "a*", "*c", "?b?", 1, "abc", "", "<>",
     "1", "2.5", "=2", "1E1", "x~*", "~?", "TRUE", "=FALSE",

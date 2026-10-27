@@ -68,7 +68,18 @@ def test_criteria_pool_emits_text_number_and_date_criteria() -> None:
         )
         for seed in range(3)
     )
-    for literal in ('"1"', '"2.5"', '"=2"', '"1E1"', '"~?"', '"TRUE"', '"=FALSE"', '">"&DATE(2020,1,1)'):
+    for literal in (
+        '"1"',
+        '"2.5"',
+        '"=2"',
+        '"1E1"',
+        '"x~*"',
+        '"~?"',
+        '"TRUE"',
+        '"=FALSE"',
+        '">"&DATE(2020,1,1)',
+        '"<="&DATE(1900,1,1)',
+    ):
         assert literal in formulas, literal
 
 
