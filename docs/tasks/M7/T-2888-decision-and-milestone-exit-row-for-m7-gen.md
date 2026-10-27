@@ -3,7 +3,7 @@ id: T-2888
 title: "Decision and milestone exit row for M7 (gen-m7, spill extents, M7 probes) so make exit-owners MILESTONE=M7 runs"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
