@@ -3,7 +3,7 @@ id: T-2173
 title: "ODD and EVEN of values above 2^53: fit Excel's last digit (ODD(9999999999999999))"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
