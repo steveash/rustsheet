@@ -32,10 +32,10 @@
 <rect class="b-ulp4" fill="#1baf7a" x="331.7" y="72.0" width="28.8" height="18" rx="3"><title>statistical: 10</title></rect>
 <rect class="b-digits15" fill="#6250d6" x="362.5" y="72.0" width="13.4" height="18" rx="3"><title>statistical: 5</title></rect>
 <rect class="b-rate999" fill="#d55181" x="377.9" y="72.0" width="10.3" height="18" rx="3"><title>statistical: 4</title></rect>
-<rect class="b-rate99" fill="#eda100" x="390.2" y="72.0" width="50.4" height="18" rx="3"><title>statistical: 17</title></rect>
-<text x="415.4" y="81.0" class="num in-rate99" fill="#000000" text-anchor="middle" dominant-baseline="middle">17</text>
-<rect class="b-below99" fill="#e34948" x="442.6" y="72.0" width="166.3" height="18" rx="3"><title>statistical: 54</title></rect>
-<text x="525.8" y="81.0" class="num in-below99" fill="#000000" text-anchor="middle" dominant-baseline="middle">54</text>
+<rect class="b-rate99" fill="#eda100" x="390.2" y="72.0" width="53.4" height="18" rx="3"><title>statistical: 18</title></rect>
+<text x="417.0" y="81.0" class="num in-rate99" fill="#000000" text-anchor="middle" dominant-baseline="middle">18</text>
+<rect class="b-below99" fill="#e34948" x="445.7" y="72.0" width="163.2" height="18" rx="3"><title>statistical: 53</title></rect>
+<text x="527.3" y="81.0" class="num in-below99" fill="#000000" text-anchor="middle" dominant-baseline="middle">53</text>
 <text x="616.9" y="81.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">149</text>
 <text x="140.0" y="111.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">math</text>
 <rect class="b-exact" fill="#2a78d6" x="150.0" y="102.0" width="192.0" height="18" rx="3"><title>math: 63</title></rect>
@@ -47,34 +47,33 @@
 <rect class="b-below99" fill="#e34948" x="402.6" y="102.0" width="3.1" height="18" rx="3"><title>math: 1</title></rect>
 <text x="413.6" y="111.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">83</text>
 <text x="140.0" y="141.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">financial</text>
-<rect class="b-exact" fill="#2a78d6" x="150.0" y="132.0" width="90.4" height="18" rx="3"><title>financial: 30</title></rect>
-<text x="195.2" y="141.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">30</text>
-<rect class="b-ulp4" fill="#1baf7a" x="242.4" y="132.0" width="7.2" height="18" rx="3"><title>financial: 3</title></rect>
-<rect class="b-digits15" fill="#6250d6" x="251.6" y="132.0" width="1.5" height="18" rx="3"><title>financial: 1</title></rect>
-<rect class="b-rate99" fill="#eda100" x="254.7" y="132.0" width="22.6" height="18" rx="3"><title>financial: 8</title></rect>
-<rect class="b-below99" fill="#e34948" x="279.4" y="132.0" width="40.0" height="18" rx="3"><title>financial: 13</title></rect>
-<text x="299.4" y="141.0" class="num in-below99" fill="#000000" text-anchor="middle" dominant-baseline="middle">13</text>
+<rect class="b-exact" fill="#2a78d6" x="150.0" y="132.0" width="96.6" height="18" rx="3"><title>financial: 32</title></rect>
+<text x="198.3" y="141.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">32</text>
+<rect class="b-ulp4" fill="#1baf7a" x="248.6" y="132.0" width="4.2" height="18" rx="3"><title>financial: 2</title></rect>
+<rect class="b-digits15" fill="#6250d6" x="254.7" y="132.0" width="1.5" height="18" rx="3"><title>financial: 1</title></rect>
+<rect class="b-rate99" fill="#eda100" x="257.8" y="132.0" width="16.5" height="18" rx="3"><title>financial: 6</title></rect>
+<rect class="b-below99" fill="#e34948" x="276.3" y="132.0" width="43.1" height="18" rx="3"><title>financial: 14</title></rect>
+<text x="297.8" y="141.0" class="num in-below99" fill="#000000" text-anchor="middle" dominant-baseline="middle">14</text>
 <text x="327.4" y="141.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">55</text>
 <text x="140.0" y="171.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">engineering</text>
-<rect class="b-exact" fill="#2a78d6" x="150.0" y="162.0" width="127.4" height="18" rx="3"><title>engineering: 42</title></rect>
-<text x="213.7" y="171.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">42</text>
-<rect class="b-ulp4" fill="#1baf7a" x="279.4" y="162.0" width="10.3" height="18" rx="3"><title>engineering: 4</title></rect>
-<rect class="b-digits15" fill="#6250d6" x="291.7" y="162.0" width="1.5" height="18" rx="3"><title>engineering: 1</title></rect>
-<rect class="b-rate99" fill="#eda100" x="294.8" y="162.0" width="13.4" height="18" rx="3"><title>engineering: 5</title></rect>
-<rect class="b-below99" fill="#e34948" x="310.2" y="162.0" width="6.2" height="18" rx="3"><title>engineering: 2</title></rect>
+<rect class="b-exact" fill="#2a78d6" x="150.0" y="162.0" width="118.1" height="18" rx="3"><title>engineering: 39</title></rect>
+<text x="209.1" y="171.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">39</text>
+<rect class="b-ulp4" fill="#1baf7a" x="270.1" y="162.0" width="10.3" height="18" rx="3"><title>engineering: 4</title></rect>
+<rect class="b-digits15" fill="#6250d6" x="282.4" y="162.0" width="1.5" height="18" rx="3"><title>engineering: 1</title></rect>
+<rect class="b-rate99" fill="#eda100" x="285.5" y="162.0" width="10.3" height="18" rx="3"><title>engineering: 4</title></rect>
+<rect class="b-below99" fill="#e34948" x="297.8" y="162.0" width="18.5" height="18" rx="3"><title>engineering: 6</title></rect>
 <text x="324.3" y="171.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">54</text>
 <text x="140.0" y="201.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">text</text>
 <rect class="b-exact" fill="#2a78d6" x="150.0" y="192.0" width="121.2" height="18" rx="3"><title>text: 40</title></rect>
 <text x="210.6" y="201.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">40</text>
 <rect class="b-rate999" fill="#d55181" x="273.2" y="192.0" width="1.5" height="18" rx="3"><title>text: 1</title></rect>
-<rect class="b-rate99" fill="#eda100" x="276.3" y="192.0" width="16.5" height="18" rx="3"><title>text: 6</title></rect>
-<rect class="b-below99" fill="#e34948" x="294.8" y="192.0" width="3.1" height="18" rx="3"><title>text: 1</title></rect>
+<rect class="b-rate99" fill="#eda100" x="276.3" y="192.0" width="21.6" height="18" rx="3"><title>text: 7</title></rect>
 <text x="305.8" y="201.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">48</text>
 <text x="140.0" y="231.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">lookup</text>
-<rect class="b-exact" fill="#2a78d6" x="150.0" y="222.0" width="93.5" height="18" rx="3"><title>lookup: 31</title></rect>
-<text x="196.7" y="231.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">31</text>
-<rect class="b-rate99" fill="#eda100" x="245.5" y="222.0" width="13.4" height="18" rx="3"><title>lookup: 5</title></rect>
-<rect class="b-below99" fill="#e34948" x="260.9" y="222.0" width="6.2" height="18" rx="3"><title>lookup: 2</title></rect>
+<rect class="b-exact" fill="#2a78d6" x="150.0" y="222.0" width="96.6" height="18" rx="3"><title>lookup: 32</title></rect>
+<text x="198.3" y="231.0" class="num in-exact" fill="#000000" text-anchor="middle" dominant-baseline="middle">32</text>
+<rect class="b-rate99" fill="#eda100" x="248.6" y="222.0" width="13.4" height="18" rx="3"><title>lookup: 5</title></rect>
+<rect class="b-below99" fill="#e34948" x="264.0" y="222.0" width="3.1" height="18" rx="3"><title>lookup: 1</title></rect>
 <text x="275.0" y="231.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">38</text>
 <text x="140.0" y="261.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">date</text>
 <rect class="b-exact" fill="#2a78d6" x="150.0" y="252.0" width="77.0" height="18" rx="3"><title>date: 25</title></rect>
