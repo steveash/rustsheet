@@ -3,7 +3,7 @@ id: T-2299
 title: "IF, CHOOSE and OFFSET hand a lifted TAKE or DROP grid on, and TAKE over an error source lifts"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ Owned cells, probes/m7-lift-take-drop-sortby (T-1960, excel-graph, 2026-10-21; S
 
 ## Out of scope
 - New producers or consumers beyond the cells above (SPEC-0014 tasks).
+
+## Outcome
+`may_hand_on_grid` now names TAKE and DROP, so IF, CHOOSE and OFFSET's reference argument hand a lifted TAKE/DROP grid on (SUMPRODUCT 0, OFFSET lifts again). `take_drop_lifted` lifts the count over an error source as one error per element. Eval: 17 cells of probes/m7-lift-take-drop-sortby left eval/baseline/probes.txt; no new failures; `make check` green. lookup.md updated.
