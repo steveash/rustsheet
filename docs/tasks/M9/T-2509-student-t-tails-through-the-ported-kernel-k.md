@@ -3,7 +3,7 @@ id: T-2509
 title: "Student t tails through the ported kernel: K(n/2,1/2,y,z) and Excel's bgrat at b = 1/2 (T-2464 r2-tdist)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -70,3 +70,32 @@ fall from about 1,286 (the CR level) to about 7.
 Decision 0083: this task is done when every T tail cell it owns (T.DIST TRUE, T.DIST.RT, T.DIST.2T, TDIST, and T.TEST's
 tail) is within half a unit of the 15th significant digit of Excel's value, or the cells still off are named in the
 Outcome. Bit-level criteria still unmet then move to a follow-up task without the campaign key.
+
+## Blocked because
+Blocked because: the baseline update needs `--allow-regressions` (decision 0083's standing ulp-regression allowance),
+which the 2026-10-27 opus run's permissions refused. The code is done; nothing else is open.
+- `make eval-check` on the branch: gen-m9 known failures 3,724 -> 3,664 (fixed 70), ironcalc-calc 617 -> 609 (fixed 8),
+  probes 2,868 -> 2,864 (fixed 4); visible parity 3,221 in-scope cells visibly off (lock 3,337).
+- 10 regressions, all numeric, each exactly 1 ulp, none visibly off (all small integer df, bpser or bup + bgrat):
+  gen-m9 0620505280d2ea6e A158 `T.DIST.2T(37.5,10)` and A273 `TDIST(2,3,2)`; 334f3dc9ca937f10 A171 (TDIST at df 6,
+  1.7E-22); 3fb9cecf2c23169f A345 `T.DIST.2T(..,3)` (= TDIST(2,3,2)); 44a8841352dc48e9 A310 `TDIST(1.5,7,2)`;
+  5389dd4d5b5739d2 A216 `TDIST(37.5,10,2)`; 5be29fa316931f05 A238 and cb61169f4c033d4b A160 `TDIST(2,3,1)`;
+  a2262ea466fcc142 A58 `T.DIST.2T(1E+5,8)`; eedd629f3d69fdda A261 `T.DIST.2T(1E+10,7)`. Follow-up ulp task: T-2927.
+- Still to check for condition 3 of the allowance: that at least one fixed cell was visibly off on main (compare
+  `make eval` on main and on the branch).
+- Next step: `rustsheet-eval update-baseline --allow-regressions`, `rustsheet-eval evidence-floor --update`, commit
+  `eval/baseline/`, run the review skill, mark the PR ready.
+
+## Outcome (so far)
+- `bratio/bgrat.rs`: TOMS bgrat at b = 1/2 in double-double with Excel's three stored pieces (LN or log1p(-y) at the
+  0.01 cut, z = fl(-ν·lnx), ERFC.PRECISE(fl(sqrt z))); `ported_tails` takes bgrat and bup + bgrat when bgrat's b is 1/2
+  (shared with BETA.DIST). `x87_exp`: `dd_exp`, and `dd_sqrt` moved there from `student_t.rs`.
+- `student_t::kernel_tail`: from df 3 every T tail is one call K(n/2, 1/2, y, z), halved. df 1 and 2 keep today's
+  path (df 1: the ported bpser at a = b = 1/2 is bit-exact on 24 of 67 cells.tsv df-1 tails against 41; df 2: closed
+  forms).
+- Scores (temporary scorer over docs/research/t2464/cells.tsv and probe t2464-r2-tdist-p1): T bgrat cells 1,546/1,564
+  bit-exact, 1,563 within 15 digits; p1 part C 4,898/4,915; cells.tsv lower-side T tails 1,498 -> 3,261 bit-exact,
+  visibly off 280 -> 5 (T.DIST.2T(100,2), (1E6,2), T.DIST.RT(1E6,2) at df 2; T.DIST.RT(5.4513,500) bgrat -21 ulp;
+  T.DIST.RT(2.5,30) bup + bgrat); p1 part D visibly off 205 -> 10. Wrapper identities hold by construction
+  (2T = 2L exactly, the upper side fl(1 - L)).
+- T.TEST's tail is unchanged (no evidence for its complement): T-2927.
