@@ -3,7 +3,7 @@ id: T-2479
 title: "Probe WRAPCOLS of an empty cell or 2-D array with an error or bad wrap_count, and EXPAND array pad_with past the grid"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
