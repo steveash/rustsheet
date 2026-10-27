@@ -3,7 +3,7 @@ id: T-2920
 title: "IMSEC's last two im-sec-csch-fused texts (B3, B31) and their IMREAL (C3, C31): Excel's 15 digits, no older IMSEC cell lost"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -43,11 +43,11 @@ losing an older one, record the scores in engineering.md and say whether a resea
 IMSEC inputs would separate the candidates (file it with `make new-task` if so).
 
 ## Acceptance criteria
-- [ ] probes-numeric/im-sec-csch-fused S!B3, S!B31, S!C3 and S!C31 pass, every other IMSEC oracle cell that passes
+- [x] probes-numeric/im-sec-csch-fused S!B3, S!B31, S!C3 and S!C31 pass, every other IMSEC oracle cell that passes
       today still passes, and no new F line appears in any baseline (`make eval-baseline`); or the task records,
       with the scores, that no candidate does, and files the follow-up above.
-- [ ] engineering.md "IM* reciprocal kernels" records the result and the scores.
-- [ ] `make check` green; reviewers (including Excel fidelity) approve.
+- [x] engineering.md "IM* reciprocal kernels" records the result and the scores.
+- [x] `make check` green; reviewers (including Excel fidelity) approve.
 
 ## Out of scope
 - IMCSCH, IMCSC, IMCOT and IMSECH kernels (all their fused-probe texts already fit).
@@ -55,3 +55,13 @@ IMSEC inputs would separate the candidates (file it with `make new-task` if so).
 
 ## Visible-parity stage
 S!B3, S!B31, S!C3 and S!C31 show Excel's 15 digits (stage `visible`: reproduce Excel's IMSEC formulation).
+
+## Outcome
+IMSEC's denominator takes sinh²y as `(cosh 2y − 1)/2` inside its parts' `1/u` band (0.01 < |y| <= 20), and keeps
+`(cosh 2y + 1)/2 − 1` outside it (`imsec` in functions/engineering/complex/trig.rs). probes-numeric
+im-sec-csch-fused S!B3, S!B31, S!C3 and S!C31 now pass (230 → 234 of 234). No IMSEC oracle cell in gen-m9,
+ironcalc-calc, probes or probes-numeric is lost: rows 29 and 33 of im-last-digit-sweep, below the band, still
+need the old form. The scratch-build scores of the losing candidates are in engineering.md "IM* reciprocal kernels"
+(T-2920 bullet). These include x87-extended evaluation, fused and half-angle `t`, and extended numerators.
+Eval delta: probes-numeric +4 cells (ungated suite); gated baselines unchanged. Follow-ups: none. Where the switch
+lies is the band's own unprobed end, which T-2797 already covers.

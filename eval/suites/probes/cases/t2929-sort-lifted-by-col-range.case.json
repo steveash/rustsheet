@@ -1,0 +1,51 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2929: SORT lifted over a range by_col: column and 2-D ranges, and a range read through an operator.",
+ "tags": [
+  "M7",
+  "probe",
+  "lookup",
+  "T-2929"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 13,
+    "B1": 7,
+    "C1": 22,
+    "D1": 5,
+    "A2": 9,
+    "B2": 31,
+    "C2": 2,
+    "D2": 17,
+    "A3": 26,
+    "B3": 4,
+    "C3": 15,
+    "D3": 11,
+    "A4": 3,
+    "B4": 19,
+    "C4": 8,
+    "D4": 28,
+    "F1": true,
+    "G1": true,
+    "F2": true,
+    "G2": true,
+    "F3": true,
+    "G3": true,
+    "F5": false,
+    "F6": true,
+    "F7": true,
+    "K1": "=SORT(A1:D4,1,1,F1:F3)",
+    "K5": "=SORT(A1:D4,2,1,F1:F3)",
+    "K9": "=SORT(A1:D4,1,1,F1:G3)",
+    "K13": "=SORT(A1:D4,2,1,F1:G3)",
+    "K17": "=SORT(A1:D4,2,1,F5:F7)",
+    "K21": "=SORT(A1:D4,1,1,IF(TRUE,F1:F3))",
+    "K25": "=SORT(A1:D4,2,1,F1:F3=TRUE)",
+    "K29": "=SORT(A1:D4,1,1,{TRUE;TRUE;TRUE}=TRUE)"
+   }
+  }
+ ],
+ "expected": {}
+}

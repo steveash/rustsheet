@@ -490,7 +490,8 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   (the old `sin²x·cosh²y + cos²x·sinh²y` 58). Writing sinh²y as `(cosh 2y − 1)/2` is what loses the tiny-argument
   digits above; `sin²x + (cosh²y − 1)` reproduces those two rows but misses `0.00829243+6.03779e-05i` (row 31).
 - IMSEC (T-2743): `t = cos²x + ((cosh 2y + 1)/2 − 1)`, i.e. sinh²y as cosh²y − 1 with cosh²y from the
-  half-angle identity, result `(cos x·cosh y/t, sin x·sinh y/t)`: all 70 finite cells. Near a pole the
+  half-angle identity, result `(cos x·cosh y/t, sin x·sinh y/t)`: all 70 finite cells. Inside the `1/u` band of
+  IMSEC's parts (0.01 < |y| <= 20) sinh²y is `(cosh 2y − 1)/2` instead (T-2920, below). Near a pole the
   cancellation in cosh²y − 1 is visible: `IMSEC("956.615+0.00387493i")` is -2.46276584105671+258.045027895372i
   (G33; exact -2.462765841048564+258.045027894412i, off in the 10th digit) and `IMSEC("23.7944+0.00977722i")`
   4.33329584706818-0.178960935839407i (G29; exact real part 4.3332958470681874). IMCSC's `(cosh 2y − 1)/2`
@@ -545,6 +546,28 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
     and fusing cos²x fits 15. `(cosh 2y − 1)/2` for sinh²y fits 32 but loses 2. Dividing the product `cos x·cosh y`
     by t fits 28. These are now the kernels. B3 and B31 stay one unit of the 15th digit low in the real part
     (`IMSEC("2.11217+0.627617i")` Excel -0.86864314680255, ours ...549).
+  - T-2920 fitted B3 and B31 (`IMSEC("2.11217+0.627617i")` -0.86864314680255+0.803795556920423i,
+    `IMSEC("-3.75483+1.33847i")` -0.436112042213995+0.267414799382832i; both real parts lie near a 15-digit
+    tie, and the old kernel was a few ulps low). Each candidate was scored on every IMSEC oracle cell of gen-m9,
+    ironcalc-calc, probes and probes-numeric, counting texts fixed and older cells lost (IMREAL and IMAGINARY of
+    them included). The rule: inside the `1/u` band of `sec_sinh_cosh` (0.01 < |y| <= 20) sinh²y is
+    `(cosh 2y − 1)/2`, and outside it `(cosh 2y + 1)/2 − 1` as before. This fixes all 4 cells and loses none, so
+    all 34 fused texts fit. Switching on the band of 2y instead ties. Excel's split is VERIFIED only as far as the
+    cells go: rows 29 and 33 of im-last-digit-sweep (|y| = 0.00977722 and 0.00387493, below the band) need
+    `(cosh 2y + 1)/2 − 1`, and every fused text (|y| inside the band) is fitted by `(cosh 2y − 1)/2`. Where the
+    switch lies between 0.00977722 and the smallest fused |y| is the band's own unprobed end (T-2797).
+    Losing candidates (fixed, lost):
+    - `(cosh 2y − 1)/2` everywhere: 4, 3 (G33).
+    - The same with the EXP pair for cosh 2y outside the band: 4, 3.
+    - With IMSINH's `1/u` cosh 2y: 4, 11.
+    - The whole kernel in x87 extended registers, stored once: 4, 25.
+    - It with `t` stored to a double first: 4, 35.
+    - It with cosh y, sinh y and cosh 2y also unstored `1/u` registers: 4, 50.
+    - `cos²x` unrounded (extended) in the sum: 4, 36. `fma(cos x, cos x, ·)`: 4, 36.
+    - Half-angle `t = (cos 2x + cosh 2y)/2`: 4, 19. `(1 + cos 2x)/2` for cos²x: 4, 11.
+    - Fit neither cell: extended numerators over the double `t` (either division order, Excel's unrounded COS, or
+      the unstored `1/u` parts), `(cos²x + cosh²y) − 1`, `(cos²x − 1) + cosh²y`, multiplying by `1/t`, and libm's
+      cos x.
 - IMCOT: `(sin 2x, −sinh 2y) / ((cosh 2y + 1) − 2cos²x)`: all 63 cells with a nonzero imaginary part, including the
   tiny-argument rows (`cosh 2y − cos 2x` misses row 31 by one unit of the 12th digit), and gen-m9's
   `IMCOT("-1.5+0.5i")` -0.0557109884865415-0.463942860183828i (45 cells, T-2537). The grouping matters only
