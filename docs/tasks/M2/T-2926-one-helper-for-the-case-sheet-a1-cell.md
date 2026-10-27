@@ -3,7 +3,7 @@ id: T-2926
 title: "One helper for the case!Sheet!A1 cell id in eval reports"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ Every report field that names a cell as `case!Sheet!A1` is built by one helper, 
 
 ## Out of scope
 - Changing the cell-id format, or how sheet names are quoted.
+
+## Outcome
+Added `CaseResult::cell_id` (runner.rs) and used it in function_scope.rs, milestone_exit.rs and
+probe_milestones.rs. The other `a!b` formats (baseline.rs, phase1_exceptions.rs) hold a sheet/cell
+pair or a split cell, not a case id, so they stay. report.json differs from main only in timings
+and the dirty flag. Eval delta: none.
