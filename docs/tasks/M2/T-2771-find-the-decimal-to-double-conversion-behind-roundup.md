@@ -3,7 +3,7 @@ id: T-2771
 title: "Find the decimal-to-double conversion behind ROUNDUP's subnormal cut (probes/t2756 A52-A58)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
