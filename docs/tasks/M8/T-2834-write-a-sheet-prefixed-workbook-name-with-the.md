@@ -49,4 +49,4 @@ text back (any case) as the workbook name. Stored (R1C1) and exported text is `[
 (probes/workbook-name-own-book-prefix, excel-graph) shows Excel loads `[0]!loc` from a file as the
 workbook name with the file-name text, even on a sheet with its own `loc`. So sheet renames, workbook
 renames (`UserModel::set_name`) and xlsx round trips keep it (unit tests in the engine and the xlsx
-crate). Eval: probes known failures 2988 -> 2980 (the 8 cells above), new case 10/10, no regressions.
+crate). Eval: probes known failures 2988 -> 2980 (the 8 cells above), new case 13/13, no regressions.

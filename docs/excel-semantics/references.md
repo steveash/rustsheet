@@ -2143,7 +2143,8 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   writes the file-name prefix, reads `<file>.xlsx!loc` (any case) back as the workbook name, and stores and
   saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. Unprobed: a
   file name with a space or other characters a sheet name would quote (ours quotes it as a sheet name),
-  and an unnamed workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`).
+  an unnamed workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`), and `[0]!loc` inside a
+  defined name's body in the file (ours writes it there too; T-2937).
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.
