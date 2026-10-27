@@ -3,7 +3,7 @@ id: T-2880
 title: "Exit-owner report: a file stem shared by several cases (every calipers workbook, gen-m9 hashes copied into probes/t2429 and t2436) must not own all of them"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
