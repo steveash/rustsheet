@@ -47,6 +47,30 @@ const COUNTA_ARGS: AggregatePolicy = AggregatePolicy {
 };
 
 impl Model {
+    /// A `CELL("contents", ..)` argument of COUNT or COUNTA, read once (T-2622): `None` for any
+    /// other argument; `Some(Ok(1.0))` for the blank cell it reads, which counts as the empty value
+    /// (probes/t2622-contents-xmatch-take-lambda, excel-graph); otherwise its value walked as a
+    /// direct value, `Some(Ok(0.0))`, or that walk's error.
+    fn walk_cell_contents_arg<F>(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+        walk: &mut AggregateWalk,
+        visit: &mut F,
+    ) -> Option<Result<f64, CalcResult>>
+    where
+        F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
+    {
+        let value = self.cell_contents_call_value(arg, cell)?;
+        if matches!(value, CalcResult::EmptyCell) {
+            return Some(Ok(1.0));
+        }
+        Some(
+            self.walk_aggregate_read(RefArg::Value(value), false, cell, walk, visit)
+                .map(|()| 0.0),
+        )
+    }
+
     pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -78,18 +102,12 @@ impl Model {
             Ok(())
         };
         for arg in args {
-            let step = match self.cell_contents_call_value(arg, cell) {
-                Some(CalcResult::EmptyCell) => {
-                    blank_contents += 1.0;
-                    continue;
+            let step = match self.walk_cell_contents_arg(arg, cell, &mut walk, &mut visit) {
+                Some(Ok(blank)) => {
+                    blank_contents += blank;
+                    Ok(())
                 }
-                Some(value) => self.walk_aggregate_read(
-                    RefArg::Value(value),
-                    false,
-                    cell,
-                    &mut walk,
-                    &mut visit,
-                ),
+                Some(Err(error)) => Err(error),
                 None => self.walk_aggregate_arg(arg, cell, &mut walk, &mut visit),
             };
             if let Err(error) = step {
@@ -131,19 +149,13 @@ impl Model {
             Ok(())
         };
         for arg in args {
-            if let Some(value) = self.cell_contents_call_value(arg, cell) {
-                if matches!(value, CalcResult::EmptyCell) {
-                    blank_contents += 1.0;
-                } else if let Err(error) = self.walk_aggregate_read(
-                    RefArg::Value(value),
-                    false,
-                    cell,
-                    &mut walk,
-                    &mut visit,
-                ) {
-                    return error;
+            match self.walk_cell_contents_arg(arg, cell, &mut walk, &mut visit) {
+                Some(Ok(blank)) => {
+                    blank_contents += blank;
+                    continue;
                 }
-                continue;
+                Some(Err(error)) => return error,
+                None => {}
             }
             // The cells of another workbook count the cells its externalLink cache holds
             // (`COUNTA([1]Uses!$A$1:$B$3)` is 5; fixtures/external-link-cached-ranges), and none

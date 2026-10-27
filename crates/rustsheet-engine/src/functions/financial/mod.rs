@@ -148,7 +148,7 @@ impl Model {
                                 ));
                             }
                             ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
-                                return Err(Model::lambda_as_number_error(*cell))
+                                return Err(Model::lambda_value_error(*cell))
                             }
                             ArrayNode::Empty => {
                                 if let Some(value) = handle_empty_cell()? {

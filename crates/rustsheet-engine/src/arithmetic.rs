@@ -861,7 +861,7 @@ impl Model {
             // probes/t2622-contents-xmatch-take-lambda A57, excel-graph).
             (ValueOrArray::Value(CalcResult::Lambda(_)), ValueOrArray::Value(_))
             | (ValueOrArray::Value(_), ValueOrArray::Value(CalcResult::Lambda(_))) => {
-                Self::lambda_as_number_error(cell)
+                Self::lambda_value_error(cell)
             }
             (ValueOrArray::Value(lv), ValueOrArray::Value(rv)) => {
                 CalcResult::Boolean(apply(&lv, &rv))

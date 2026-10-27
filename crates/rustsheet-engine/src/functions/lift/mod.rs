@@ -58,7 +58,7 @@ impl Model {
     ) -> Result<f64, CalcResult> {
         match value {
             CalcResult::String(text) => self.cast_number(text).ok_or_else(|| value_error(cell)),
-            CalcResult::Lambda(_) => Err(Self::lambda_as_number_error(cell)),
+            CalcResult::Lambda(_) => Err(Self::lambda_value_error(cell)),
             other => self.cast_number_ref(other, cell),
         }
     }

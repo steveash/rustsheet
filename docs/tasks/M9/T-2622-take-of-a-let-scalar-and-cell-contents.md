@@ -39,3 +39,16 @@ before implementing it.
 ## Outcome
 Probe `probes/t2622-contents-xmatch-take-lambda` (excel-graph) found five separate rules, all recorded in docs/excel-semantics (information.md, lookup.md, statistics.md, arrays.md): CELL("contents") of a blank counts in COUNT/COUNTA and is `#VALUE!` in MODE; XMATCH match_mode 3 takes a number as its text; TAKE/DROP of a one-cell reference stays a reference (TYPE 1, `#VALUE!` for a blank in PEARSON-family); an error inside an array data argument of PERCENTILE/QUARTILE/PERCENTRANK is that error, after the scalar arguments' errors; an uncalled LAMBDA joined as text or compared is `#VALUE!`. Eval: gen-m9 -60 known failures (all five owned cells), probes -14, no regressions.
 Not done: CELL("contents") wrapped in IF counted in COUNT / MODE (Excel does; follow-up).
+
+Review fixes (2026-10-27, steward REQUEST_CHANGES of 2026-10-26):
+- The PERCENTILE-family rule: this branch's own `DataError::AfterScalars` was dropped when `main` was merged in (c7e6241b),
+  because `main` had meanwhile implemented the same rule generally (statistics.md "An error element of an array argument
+  is that error (T-2255)": `numeric_flat_with_element_errors`, `array_element_error`, `lift_over_sorted`). Every probe cell
+  of that rule passes on it, so nothing is restored. statistics.md now names that code, and the unit test
+  `percentile_family_array_error_element_order` pins the probed order.
+- XMATCH match_mode 3: `main` already behaved this way (T-2669's `regex_pattern`); this task adds the probe and a test.
+  lookup.md says so.
+- COUNT and COUNTA share one helper for a `CELL("contents", ..)` argument (`walk_cell_contents_arg`), and the text and
+  number uses of an uncalled LAMBDA share `lambda_value_error`. arrays.md's `Implemented in:` names (`cast_string_ref`,
+  `handle_comparison`) were checked.
+- Still failing and owned by T-2630: A6 (`COUNT(IF(TRUE,CELL("contents",C5)))`) and A18 (`MODE.SNGL(IF(TRUE,...))`).

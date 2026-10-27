@@ -4075,10 +4075,13 @@ Status: VERIFIED (excel-graph; the per-cell values, not yet the rules behind the
 Tasks: T-2475, T-2619, T-2620, T-2621, T-2622
 
 ## PERCENTILE, QUARTILE and PERCENTRANK: an error inside an array argument (T-2622)
-Rule (excel-graph, 2026-10-24): an error element of an array data argument is that error, the first in row-major order, for PERCENTILE, PERCENTILE.EXC, QUARTILE, QUARTILE.EXC, PERCENTRANK and PERCENTRANK.EXC (`PERCENTRANK({#N/A,#DIV/0!,1},1)` is `#N/A`, `{#DIV/0!,#N/A,1}` `#DIV/0!`; `PERCENTRANK(Data!C2:C4-(1/0),1)` is `#DIV/0!`), but an error among the other arguments comes before it (directly evidenced for PERCENTILE, `PERCENTILE({1,#N/A,3},1/0)` is `#DIV/0!`, and by gen-m9 cells for QUARTILE.INC, PERCENTRANK and PERCENTRANK.INC; the gen-m9 cells with a `#VALUE!` k). That order is for arrays; for a scalar or range error the data's error stays first (a rule that moved 89 gen-m9 cells when tried for every data error, e.g. gen-m9/0072265d385d8ab2 Calc!A39 and Calc!A197). `DataError::AfterScalars` carries the rule. An array of errors cut from a range by TAKE is the same (`PERCENTRANK(TAKE(Data!C2:E4,3,1)-(1/0),1)`).
+Rule (excel-graph, 2026-10-24): an error element of an array data argument is that error, the first in row-major order, for PERCENTILE, PERCENTILE.EXC, QUARTILE, QUARTILE.EXC, PERCENTRANK and PERCENTRANK.EXC (`PERCENTRANK({#N/A,#DIV/0!,1},1)` is `#N/A`, `{#DIV/0!,#N/A,1}` `#DIV/0!`; `PERCENTRANK(Data!C2:C4-(1/0),1)` is `#DIV/0!`), but an error among the other arguments comes before it (directly evidenced for PERCENTILE, `PERCENTILE({1,#N/A,3},1/0)` is `#DIV/0!`, and by gen-m9 cells for QUARTILE.INC, PERCENTRANK and PERCENTRANK.INC; the gen-m9 cells with a `#VALUE!` k). That order is for arrays; for a scalar or range error the data's error stays first (a rule that moved 89 gen-m9 cells when tried for every data error, e.g. gen-m9/0072265d385d8ab2 Calc!A39 and Calc!A197). An array of errors cut from a range by TAKE is the same (`PERCENTRANK(TAKE(Data!C2:E4,3,1)-(1/0),1)`). This is the general
+rule of "An error element of an array argument is that error (T-2255)" above, which `main` already implements; T-2622 adds the
+probe and a unit test (`percentile_family_array_error_element_order`).
 Evidence: probes/t2622-contents-xmatch-take-lambda A73, A89-A96, A103-A112; gen-m9/775d053de498b8c7 Calc!A235.
 Status: VERIFIED (excel-graph)
-Implemented in: `percentile_numbers`, `DataError::AfterScalars`
+Implemented in: `percentile_numbers` reads the data with `numeric_flat_with_element_errors` (element errors tagged by
+`element_errors::array_element_error`), and `sorted_data.rs` `lift_over_sorted` lets another argument's error win over one.
 
 ## POISSON at x 0 with a negative mean
 Rule: POISSON and POISSON.DIST at x 0 with a negative mean are EXP(-mean), cumulative or not, not `#NUM!`:

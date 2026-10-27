@@ -58,7 +58,7 @@ impl Model {
                         // unprobed and stays `#VALUE!`.
                         ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array => 0.0,
                         ArrayNode::Lambda(_) | ArrayNode::Nested(_) => {
-                            return Model::lambda_as_number_error(cell)
+                            return Model::lambda_value_error(cell)
                         }
                         ArrayNode::Error(e) => {
                             element_error.get_or_insert_with(|| e.clone());

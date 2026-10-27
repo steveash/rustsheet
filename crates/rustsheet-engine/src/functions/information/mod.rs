@@ -351,7 +351,7 @@ impl Model {
         }
         // `ISEVEN(LAMBDA(x,x))` is `#VALUE!` (probes/lambda-value-arguments A23).
         if matches!(value, CalcResult::Lambda(_)) {
-            return Self::lambda_as_number_error(cell);
+            return Self::lambda_value_error(cell);
         }
         // Excel adds 1E-10 to the absolute value before truncating, so a value at most 1E-10 below
         // an integer counts as that integer: ISODD(7-1E-10) is TRUE, ISODD(7-1.01E-10) FALSE, at 7,

@@ -369,25 +369,16 @@ impl Model {
             }
             CalcResult::Array(s) => Ok(NumberOrArray::Array(s)),
             error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Lambda(_) => Err(Self::lambda_as_number_error(cell)),
+            CalcResult::Lambda(_) => Err(Self::lambda_value_error(cell)),
         }
     }
 
-    /// `#VALUE!` for a LAMBDA value joined as text.
-    pub(crate) fn lambda_as_text_error(cell: CellReferenceIndex) -> CalcResult {
+    /// `#VALUE!` for an uncalled LAMBDA value read as a number or joined as text.
+    pub(crate) fn lambda_value_error(cell: CellReferenceIndex) -> CalcResult {
         CalcResult::new_error(
             Error::VALUE,
             cell,
-            "LAMBDA cannot be used as text".to_string(),
-        )
-    }
-
-    /// `#VALUE!` for a LAMBDA value used where a number is read.
-    pub(crate) fn lambda_as_number_error(cell: CellReferenceIndex) -> CalcResult {
-        CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "LAMBDA cannot be used as a number".to_string(),
+            "LAMBDA cannot be used as a value".to_string(),
         )
     }
 
@@ -595,7 +586,7 @@ impl Model {
         // A direct LAMBDA value is #VALUE! (ERROR.TYPE 3) for SUM, PRODUCT, MIN, MAX, AVERAGE and
         // MEDIAN (probes/aggregate-picked-direct-a-variants D7-D12, excel-graph 2026-10-14).
         if matches!(result, CalcResult::Lambda(_)) {
-            return Err(Self::lambda_as_number_error(cell));
+            return Err(Self::lambda_value_error(cell));
         }
         self.cast_to_number(result, cell)
     }
@@ -630,7 +621,7 @@ impl Model {
             error @ CalcResult::Error { .. } => Err(error.clone()),
             // As `cast_to_number` reads one: a LAMBDA element a lifted kernel gets is `#VALUE!`
             // (`CONFIDENCE.NORM(BYROW(..,LAMBDA(acc,LAMBDA(v,v))),..)`, gen-m9/165db58d1540f014 A273).
-            CalcResult::Lambda(_) => Err(Self::lambda_as_number_error(cell)),
+            CalcResult::Lambda(_) => Err(Self::lambda_value_error(cell)),
             CalcResult::Range { .. } | CalcResult::Array(_) => Err(not_a_scalar(cell)),
         }
     }
@@ -733,7 +724,7 @@ impl Model {
             error @ CalcResult::Error { .. } => Err(error.clone()),
             // An uncalled LAMBDA joined as text is #VALUE!, as it is as a number
             // (`LAMBDA(x,x)&""`, probes/t2622-contents-xmatch-take-lambda A49-A53, excel-graph).
-            CalcResult::Lambda(_) => Err(Self::lambda_as_text_error(cell)),
+            CalcResult::Lambda(_) => Err(Self::lambda_value_error(cell)),
             other => calc_scalar_to_string(other).ok_or_else(|| not_a_scalar(cell)),
         }
     }

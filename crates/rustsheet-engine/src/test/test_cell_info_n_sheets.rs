@@ -265,3 +265,21 @@ fn nested_cell_contents_in_count_is_linear() {
 
     assert_eq!(model._get_text("A1"), *"1");
 }
+
+/// An error element of an array data argument is the first in row-major order for the PERCENTILE
+/// family, but an error among the other arguments comes before it (probes/t2622-contents-xmatch-
+/// take-lambda A89-A96, A103; main's `numeric_flat_with_element_errors` and `lift_over_sorted`).
+#[test]
+fn percentile_family_array_error_element_order() {
+    let mut model = new_empty_model();
+    model._set("A1", "=PERCENTRANK({#N/A,#DIV/0!,1},1)");
+    model._set("A2", "=PERCENTRANK({#DIV/0!,#N/A,1},1)");
+    model._set("A3", "=PERCENTILE({1,#N/A,3},1/0)");
+    model._set("A4", "=QUARTILE({1,#N/A,3},1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+}
