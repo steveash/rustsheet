@@ -69,7 +69,10 @@ and the 30 s harness timeout too:
 more than its body's nodes are charged, and more per cell the deeper it is nested (11.8 us under three helpers, 4.4 us under
 two). No node weight bounds that, and section 1 says a call needs no charge of its own. The three Problem formulas also take
 10.5, 10.6 and 11.1 s (7.0, 7.0 and 5.9 s on 2026-10-26). T-2923 has the full table. Unblock when T-2923 merges; then apply
-its charge and weights, re-time, and continue at review.
+its charge and weights, re-time, and continue at review. What T-2923 adds to this task (SPEC-0024 sections 1 and 4 as
+amended): charge `LAMBDA_UNITS` per LAMBDA stored (`store_lambda`) plus `NODE_UNITS` per node of each body clone
+(`LambdaDefKind`, and `prepare_lambda` when `call_prepared` patches a fresh body), fit `LAMBDA_UNITS` by time on section 4's three
+nested worst cases, and re-fit `NODE_UNITS`/`CELL_UNITS` with a margin (3 put the Problem formulas at about 7 s here).
 
 Done in this run: merged origin/main (T-2813, T-2814, T-2815 and T-2879 are on main now). Dropped `TODO(T-2813)` and applied
 the amended visit rule in area_budget.rs's comments. Updated the arrays.md DEVIATION calibration with this run's numbers:
