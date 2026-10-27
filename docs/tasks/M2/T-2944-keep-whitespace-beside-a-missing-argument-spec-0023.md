@@ -32,4 +32,7 @@ T-2786 found Excel keeps a run between commas or after the last comma (`=IF(1, ,
 - I1 and I11 (`=NOW( )`, `=TODAY(  )`) are split off to T-2966. An empty call has no argument node for the run,
   and adding one would change every arg-count check. So of I1:I13, these two still fail and I12/I13 already
   passed.
+- The LF round-trip is in-engine: a kept LF prints back as LF from the tree, through the R1C1 storage text
+  (`test_spacing.rs` `whitespace_beside_a_missing_argument_prints_back`). The xlsx export still writes the
+  canonical text without runs, so a saved `<f>` carrying the kept LF is the export of kept whitespace, T-2948.
 - Eval: probes known failures 2620 -> 2613 (t2786 I2, I3, I4, I5, I8, I9, I10), no regressions.

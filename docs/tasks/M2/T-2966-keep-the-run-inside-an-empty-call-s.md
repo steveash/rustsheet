@@ -27,4 +27,4 @@ beside a missing argument is kept"; probes/t2786-whitespace-structured-refs-runs
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The runs beside a missing argument after a comma (T-2944, done).
