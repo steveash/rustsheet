@@ -121,7 +121,7 @@ pub struct ErrorPart {
     /// Whether the error rejects the whole code, also for a value another section formats: a bare
     /// digit beside a date token does (`TEXT(3.14159,"0;4b")` is #VALUE!;
     /// probes/text-format-digits-date-token A42). Other section errors are not probed that way,
-    /// and some come from tokens the engine does not implement (`[Cyan]`, T-1737).
+    /// and some come from tokens the engine does not implement.
     pub whole_code: bool,
 }
 
