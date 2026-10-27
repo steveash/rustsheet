@@ -1,4 +1,4 @@
-use super::{dispatch, Branch};
+use super::{beta_dist_lower_tail, dispatch, Branch};
 
 fn branch(a: f64, b: f64, x: f64) -> (Branch, bool) {
     let d = dispatch(a, b, x, 1.0 - x).expect("in domain");
@@ -46,4 +46,56 @@ fn large_shapes_follow_the_1992_dispatch() {
     assert_eq!(branch(50.0, 60.0, 0.45), (Branch::Bfrac, false));
     // At the mean of two shapes above 100, λ is within 3% of the smaller one: basym.
     assert_eq!(branch(500.0, 600.0, 500.0 / 1100.0).0, Branch::Basym);
+}
+
+/// BETA.DIST(x, a, b, TRUE) through [`beta_dist_lower_tail`] with y = fl(1 - x), as BETA.DIST forms it.
+fn cdf(x: f64, a: f64, b: f64) -> f64 {
+    beta_dist_lower_tail(x, 1.0 - x, a, b)
+}
+
+// Excel's values (probes-numeric, excel-graph), bit-exact through the bpser port and 1 to 9 ulp
+// off on the Cephes kernel before it: w = bpser(a0, b0, x0), w1 = bpser(b0, a0, y0) on swapped
+// and unswapped points, GL53's ln B on both sides of b0 = 8, and bpser for min(a, b) > 1.
+#[test]
+fn bpser_branches_match_excel() {
+    let cells: [(f64, f64, f64, f64); 9] = [
+        // t2464-r2-bpser-small-shapes A7639, A8989: both shapes below 1.
+        (0.36612, 0.8696, 0.7992, 0.353_647_781_486_548_5),
+        (0.30847, 0.854, 0.4308, 0.185_638_762_228_111_07),
+        // A4703, A11115, A1863: swapped, one shape above 1.
+        (0.67491, 1.443, 0.9544, 0.548_639_083_091_801_5),
+        (0.7605, 0.6488, 1.224, 0.887_422_334_623_970_9),
+        (0.76893, 0.6409, 1.109, 0.871_169_777_428_695_6),
+        // A3296 (b0 < 8) and A6107 (b0 >= 8: algdiv): w1 = bpser(b0, a0, y0).
+        (0.058802, 7.524, 0.3655, 6.403_455_904_329_501e-11),
+        (0.0492, 27.67, 0.5934, 1.121_119_221_077_011e-37),
+        // m9-beta-dist-a0p0001 A21: a tiny shape.
+        (0.5, 0.0001, 2.0, 0.999_980_684_218_537_7),
+        // m9-beta-dist-a2 A25: bpser for min(a, b) > 1.
+        (0.1, 2.0, 2.5, 0.039_458_160_723_854_8),
+    ];
+    for (x, a, b, excel) in cells {
+        assert_eq!(
+            cdf(x, a, b).to_bits(),
+            excel.to_bits(),
+            "BETA.DIST({x},{a},{b},TRUE)"
+        );
+    }
+}
+
+// Branches not ported yet, and a shape of 1 outside the closed forms, keep today's kernel.
+#[test]
+fn unported_points_keep_todays_kernel() {
+    use crate::functions::statistical::incomplete_beta::beta_reg_complement;
+    for (x, a, b) in [
+        (0.295, 0.5, 5.0),                   // bup + bgrat
+        (0.5, 50.0, 60.0),                   // bfrac
+        (0.01, 3.0, 20.0),                   // bpser with ln B not ported (max > 8)
+        (0.916_913_946_587_537_1, 3.5, 1.0), // a0 = 1, y0 > 0.9
+    ] {
+        assert_eq!(
+            cdf(x, a, b).to_bits(),
+            beta_reg_complement(x, 1.0 - x, a, b).to_bits()
+        );
+    }
 }

@@ -1,8 +1,6 @@
 mod beta;
 mod beta_density;
-// Built behind tests until its callers move onto it in this task (TODO(T-2505), SPEC-0025).
 mod binom;
-#[cfg(test)]
 mod bratio;
 mod chisq;
 mod correl;

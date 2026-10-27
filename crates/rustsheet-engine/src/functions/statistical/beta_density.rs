@@ -84,7 +84,7 @@ fn ln_beta_small_shape(a: f64, b: f64) -> f64 {
 /// TOMS 708 `algdiv(a, b)` = ln(Gamma(b) / Gamma(a + b)) for a < b, b >= 8, in double arithmetic
 /// with Excel's LN for ln b: the best of the variants T-2513 tried for Excel's own (T-2512 owns the
 /// exact form).
-fn algdiv(a: f64, b: f64) -> f64 {
+pub(super) fn algdiv(a: f64, b: f64) -> f64 {
     let [c0, c1, c2, c3, c4, c5] = ALGDIV_C;
     let h = a / b;
     let c = h / (h + 1.0);
