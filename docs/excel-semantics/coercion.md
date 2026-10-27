@@ -274,7 +274,12 @@ anywhere is `#VALUE!` (`SUMPRODUCT(B1:C4,{1,2,3})`). A whole-argument error beat
 and `SUMPRODUCT(X,R,NA())` are `#N/A`, even with the element error ahead of it. Status: VERIFIED (excel-graph). Implemented in
 `fn_sumproduct` (T-2450): every argument is read, a whole-argument error returns at once, and the first element error in argument then element
 order beats a mismatch (which of several element errors wins is unprobed). A blank one-cell argument also returns at once, so it beats an element error in any position (`SUMPRODUCT(R,blank)` is `#VALUE!`): VERIFIED (excel-graph, probes/t2296-sumproduct-error-element A17-A20): `SUMPRODUCT(R1:S2,blank)`, `SUMPRODUCT(blank,R1:S2)`, `SUMPRODUCT({#N/A},blank)` and `SUMPRODUCT({1,#N/A;2,3},X1:X2,blank)` are all `#VALUE!`, in either order.
-Tasks: T-0944, T-2150, T-2296, T-2450, T-2573
+Numeric text in a one-cell argument (UNVERIFIED on 16.x and excel-graph; T-2919): poi/FormulaEvalTestData_Copy.xlsx
+EverythingTests!J1328 (Excel-cached, AppVersion 15.0300, Excel 2013) is `#VALUE!` for `SUMPRODUCT(G1330:G1330,I1330:I1330)`,
+where G1330 is the text "4" and I1330 the number 2; ours is 0, the factor rule above for non-numeric text ("x", t2200 A10, A11).
+So numeric text in a one-cell reference may be `#VALUE!` where non-numeric text is 0, or Excel 2013 differed. No 16.x or
+excel-graph cell decides it yet; T-2919 probes it.
+Tasks: T-0944, T-2150, T-2296, T-2450, T-2573, T-2919
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
 Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =
