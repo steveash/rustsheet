@@ -139,8 +139,8 @@ def write_roots() -> None:
                     exact = "no sign change"
                 else:
                     exact = format(root, ".30g")
-                    ulp = Decimal(repr(math.ulp(float(root))))
-                    offset = format((Decimal(repr(float(value))) - root) / ulp, ".2f")
+                    ulp = Decimal(math.ulp(float(root)))
+                    offset = format((Decimal(float(value)) - root) / ulp, ".2f")
             row = (i, family, json.dumps(flows), value, guessed, exact, offset)
             lines.append("\t".join(str(t) for t in row))
     Path(f"{CASE}.roots.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8")

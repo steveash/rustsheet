@@ -612,10 +612,10 @@ root is -0.74670447665374079 and `{-400,1,1,1,1,1}`'s is -0.67373667518084225. E
 them, while ours is within 1E-16, correctly rounded. Matching Excel means reproducing where its iteration stops
 (T-2928, after the T-2927 sweep).
 Sweep (T-2927; probes-numeric/t2927-irr-fallback-sweep, 150 flows where the fitted secant fails from guess 0.1 and
-its retry, excel-graph 2026-10-27; exact roots of the flows' binary values and Excel's offset in ulps in
+its retry, excel-graph 2026-10-27; exact roots of the flows' binary values and the signed offset of Excel's double in ulps in
 t2927-irr-fallback-sweep.roots.tsv, decimal bisection to 30 digits; both files are written by tools'
 rustsheet_tools.fitlab.irr_fallback_sweep). Excel's offset from the exact root has no fixed sign or size, by family:
-- `{k,1,1,-1}`, k = 2..100: -59 to +113 ulps (median +1; 0 to 2 ulps for many k); scaled by 1E6: -1.8 to +8.9;
+- `{k,1,1,-1}`, k = 2..100: -59 to +113 ulps (median +1; 0 to 2 ulps for many k); scaled by 1E6: -2.0 to +8.9;
   negated (same root): -572 to +1251 (k = 25: +1 ulp, negated +1251).
 - `{-N,1,1,1,1,1}`, N = 163..375: within 1 ulp except N = 284 (A24), +1865 ulps, whose 1E6-scaled and negated
   forms are within 1 ulp; negated up to +53.
