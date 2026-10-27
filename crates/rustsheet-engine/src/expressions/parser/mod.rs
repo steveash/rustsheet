@@ -981,7 +981,14 @@ impl Parser {
                 table_name,
                 specifier,
                 table_reference,
-            } => self.structured_reference_operand(table_name, specifier, table_reference, false),
+                spacing,
+            } => self.structured_reference_operand(
+                table_name,
+                specifier,
+                table_reference,
+                spacing,
+                false,
+            ),
         }
     }
 }

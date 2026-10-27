@@ -3,7 +3,7 @@
 //! the stack, stays small: an unoptimized build gives every local of every arm its own slot, and
 //! the whole match took about 11 KB per level (T-1110).
 
-use super::super::token::{self, TableReference, TokenType};
+use super::super::token::{self, TableReference, TableSpacing, TokenType};
 use super::super::types::ParsedReference;
 use super::super::utils::{
     is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
@@ -347,7 +347,13 @@ impl Parser {
             if table_name.to_lowercase() == name_lower {
                 // A bare table name is its data area, like `Table[]` (gen-m8b specials
                 // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(name, None, None, true);
+                return self.structured_reference_operand(
+                    name,
+                    None,
+                    None,
+                    TableSpacing::default(),
+                    true,
+                );
             }
         }
         // xlpm: Excel Lambda Parameter
@@ -660,7 +666,8 @@ impl Parser {
     }
 
     /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
-    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` lowers to a
+    /// (SPEC-0016), with the whitespace it keeps (`spacing`, T-2801). `bare` marks a bare table
+    /// name (`ROWS(Sales)`). `#This Row` lowers to a
     /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
     /// does not resolve (unknown table or column) stays a parse error, which keeps the formula
     /// text.
@@ -669,12 +676,14 @@ impl Parser {
         table_name: String,
         specifier: Option<token::TableSpecifier>,
         table_reference: Option<TableReference>,
+        spacing: TableSpacing,
         bare: bool,
     ) -> Node {
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
+            spacing,
             bare,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);

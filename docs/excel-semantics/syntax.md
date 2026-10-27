@@ -400,8 +400,16 @@ agree):
   (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800).
 Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
 (I1:I13). Each refused formula was entered alone against the same case.
-Ours: the runs SPEC-0023 keeps are in the entry above; a run beside a missing argument is T-2944, and
-structured-reference whitespace is unimplemented (T-2801).
+Ours: the runs SPEC-0023 keeps are in the entry above; a run beside a missing argument is T-2944.
+Structured-reference whitespace prints as above (T-2801): the runs inside the outer brackets are kept as
+written around a column, a column range or nested specifiers (`T[[Col] ]` too, unprobed), a run before
+the comma is dropped and any run after it prints as one space. A lone item specifier drops its padding
+(`T[ [#Data] ]` prints `T[#Data]`, unprobed), and a second item specifier's comma keeps no space
+(`T[[#Headers], [#Data],[Col]]`, unprobed). The export writes the same text, and the lexer reads
+Excel's saved `T[ Col ]` back as `Col` with its padding, so a bare column's leading and trailing runs
+are padding, never part of the name (Excel writes such a column bracketed, `Table3[[the two ]]`);
+the shapes Graph refuses (`T[ Col]`, `T[Col ]`) are accepted. A run before `]`, `@` or `#` is read as
+before (`T[ ]` names the column ` `).
 Status: VERIFIED (excel-graph)
 Tasks: T-2786, T-2944, T-2800, T-2801
 

@@ -351,6 +351,20 @@ pub enum TableReference {
     RangeReference((String, String)),
 }
 
+/// The whitespace a structured reference keeps inside its outer brackets, which Excel prints
+/// back (T-2801; syntax.md "Whitespace beside a missing argument is kept; a structured
+/// reference keeps some and normalizes the rest").
+#[derive(Debug, PartialEq, Eq, Clone, Default, Serialize, Deserialize)]
+pub struct TableSpacing {
+    /// The run after the opening `[`, as written (`T[ [Col]:[Other] ]`).
+    pub leading: String,
+    /// The run before the closing `]`, as written.
+    pub trailing: String,
+    /// Whether a run follows the comma before the column (`T[[#Data], [Col]]`): Excel prints
+    /// it as one space, and drops a run before the comma.
+    pub after_comma: bool,
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TokenType {
     Illegal(LexerError),
@@ -395,6 +409,7 @@ pub enum TokenType {
         table_name: String,
         specifier: Option<TableSpecifier>,
         table_reference: Option<TableReference>,
+        spacing: TableSpacing,
     },
 }
 

@@ -2,7 +2,7 @@
 //! the area it resolves to (SPEC-0016).
 
 use super::super::lexer::{Lexer, LexerMode};
-use super::super::token::{TableReference, TableSpecifier, TokenType};
+use super::super::token::{TableReference, TableSpacing, TableSpecifier, TokenType};
 use crate::language::get_language;
 use crate::locale::get_locale;
 
@@ -16,6 +16,8 @@ pub struct StructuredReference {
     pub specifier: Option<TableSpecifier>,
     /// The column or column range, if any.
     pub table_reference: Option<TableReference>,
+    /// The whitespace kept inside the outer brackets.
+    pub spacing: TableSpacing,
     /// A bare table name (`ROWS(Sales)`), or `Sales[]`, which the lexer reads as the bare name.
     pub bare: bool,
 }
@@ -56,15 +58,18 @@ fn specifier_text(specifier: &TableSpecifier) -> &'static str {
 /// `#This Row`: Excel's own file has `Table9[Totals '[']^&*@'#$,,<>]` (`calc_test_tables/tables.xlsx`
 /// Escape!E6).
 fn column_text(name: &str) -> String {
-    let mut text = String::with_capacity(name.len() + 2);
-    text.push('[');
+    format!("[{}]", escaped_column(name))
+}
+
+/// A column name with the escapes of [`column_text`], without its brackets.
+fn escaped_column(name: &str) -> String {
+    let mut text = String::with_capacity(name.len());
     for (index, c) in name.chars().enumerate() {
         if matches!(c, '[' | ']' | '#' | '\'') || (c == '@' && index == 0) {
             text.push('\'');
         }
         text.push(c);
     }
-    text.push(']');
     text
 }
 
@@ -79,12 +84,21 @@ fn table_reference_text(table_reference: &TableReference) -> String {
 
 impl StructuredReference {
     /// The canonical long form: `T[[#Spec],[Col]]`, `T[[#Spec],[A]:[B]]`, `T[Col]`,
-    /// `T[[A]:[B]]`, `T[#Spec]`, `T[]`, or the bare name as written (SPEC-0016 "Printing").
+    /// `T[[A]:[B]]`, `T[#Spec]`, `T[]`, or the bare name as written (SPEC-0016 "Printing"),
+    /// with the whitespace Excel keeps (T-2801, probes/t2786-whitespace-structured-refs-runs
+    /// F4:F15): the runs inside the outer brackets as written, so `T[ [Col] ]` prints
+    /// `T[ Col ]`, and one space after the comma when a run followed it. A lone item specifier
+    /// prints without them (`T[ [#Data] ]` is unprobed).
     pub(crate) fn text(&self) -> String {
         let name = &self.table_name;
         if self.bare {
             return name.clone();
         }
+        let TableSpacing {
+            leading,
+            trailing,
+            after_comma,
+        } = &self.spacing;
         match (&self.specifier, &self.table_reference) {
             (None, None) => format!("{name}[]"),
             (Some(specifier), None) => match specifier {
@@ -102,12 +116,16 @@ impl StructuredReference {
                     && !column.starts_with(char::is_whitespace)
                     && !column.ends_with(char::is_whitespace) =>
             {
-                format!("{name}{}", column_text(column))
+                format!("{name}[{leading}{}{trailing}]", escaped_column(column))
             }
-            (None, Some(reference)) => format!("{name}[{}]", table_reference_text(reference)),
+            (None, Some(reference)) => format!(
+                "{name}[{leading}{}{trailing}]",
+                table_reference_text(reference)
+            ),
             (Some(specifier), Some(reference)) => format!(
-                "{name}[{},{}]",
+                "{name}[{leading}{},{}{}{trailing}]",
                 specifier_text(specifier),
+                if *after_comma { " " } else { "" },
                 table_reference_text(reference)
             ),
         }

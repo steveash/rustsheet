@@ -2,7 +2,7 @@
 
 use crate::expressions::{
     lexer::{Lexer, LexerMode},
-    token::{OpSum, TableReference, TableSpecifier, TokenType::*},
+    token::{OpSum, TableReference, TableSpacing, TableSpecifier, TokenType::*},
 };
 use crate::language::get_language;
 use crate::locale::get_locale;
@@ -24,7 +24,11 @@ fn table_this_row() {
             table_reference: Some(TableReference::RangeReference((
                 "Jan".to_string(),
                 "Dec".to_string()
-            )))
+            ))),
+            spacing: TableSpacing {
+                after_comma: true,
+                ..TableSpacing::default()
+            },
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -38,7 +42,8 @@ fn table_no_specifier() {
         StructuredReference {
             table_name: "tbInfo".to_string(),
             specifier: None,
-            table_reference: Some(TableReference::ColumnReference("December".to_string()))
+            table_reference: Some(TableReference::ColumnReference("December".to_string())),
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -52,7 +57,8 @@ fn table_no_specifier_white_spaces() {
         StructuredReference {
             table_name: "tbInfo".to_string(),
             specifier: None,
-            table_reference: Some(TableReference::ColumnReference("First Month".to_string()))
+            table_reference: Some(TableReference::ColumnReference("First Month".to_string())),
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -66,7 +72,8 @@ fn table_totals_no_reference() {
         StructuredReference {
             table_name: "tbInfo".to_string(),
             specifier: Some(TableSpecifier::Totals),
-            table_reference: None
+            table_reference: None,
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -150,7 +157,8 @@ fn table_specifiers_ignore_case_and_combine() {
         StructuredReference {
             table_name: "tbl".to_string(),
             specifier: Some(TableSpecifier::HeadersData),
-            table_reference: Some(TableReference::ColumnReference("Note".to_string()))
+            table_reference: Some(TableReference::ColumnReference("Note".to_string())),
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -160,7 +168,8 @@ fn table_specifiers_ignore_case_and_combine() {
         StructuredReference {
             table_name: "tbl".to_string(),
             specifier: Some(TableSpecifier::DataTotals),
-            table_reference: None
+            table_reference: None,
+            spacing: TableSpacing::default(),
         }
     );
     assert_eq!(lx.next_token(), EOF);
@@ -170,11 +179,71 @@ fn table_specifiers_ignore_case_and_combine() {
         StructuredReference {
             table_name: "tbl".to_string(),
             specifier: Some(TableSpecifier::All),
-            table_reference: None
+            table_reference: None,
+            spacing: TableSpacing::default(),
         }
     );
     assert!(matches!(
         new_lexer("tbl[[#Totals],[#Headers]]").next_token(),
         Illegal(_)
     ));
+}
+
+/// The whitespace kept inside the outer brackets (T-2801, probes/t2786-whitespace-structured-refs-runs
+/// E4:E15): a run after `[` and before `]` as written, a run before a comma dropped, and whether a
+/// run follows the comma before the column.
+#[test]
+fn table_spacing_is_kept() {
+    let spaced = |leading: &str, trailing: &str, after_comma: bool| TableSpacing {
+        leading: leading.to_string(),
+        trailing: trailing.to_string(),
+        after_comma,
+    };
+    let column = |name: &str| Some(TableReference::ColumnReference(name.to_string()));
+    let range = Some(TableReference::RangeReference((
+        "Col".to_string(),
+        "Other".to_string(),
+    )));
+    for (formula, specifier, table_reference, spacing) in [
+        ("T[ [Col] ]", None, column("Col"), spaced(" ", " ", false)),
+        ("T[ Col ]", None, column("Col"), spaced(" ", " ", false)),
+        ("T[Col  ]", None, column("Col"), spaced("", "  ", false)),
+        (
+            "T[ [Col]:[Other] ]",
+            None,
+            range.clone(),
+            spaced(" ", " ", false),
+        ),
+        (
+            "T[ [#Data] , [Col] ]",
+            Some(TableSpecifier::Data),
+            column("Col"),
+            spaced(" ", " ", true),
+        ),
+        (
+            "T[[#Data]  ,  [Col]]",
+            Some(TableSpecifier::Data),
+            column("Col"),
+            spaced("", "", true),
+        ),
+        (
+            "T[[#Data],[Col]:[Other]]",
+            Some(TableSpecifier::Data),
+            range,
+            spaced("", "", false),
+        ),
+        // A run before `]`, `@` or `#` stays part of a column name, as before.
+        ("T[ ]", None, column(" "), spaced("", "", false)),
+    ] {
+        assert_eq!(
+            new_lexer(formula).next_token(),
+            StructuredReference {
+                table_name: "T".to_string(),
+                specifier,
+                table_reference,
+                spacing,
+            },
+            "{formula}"
+        );
+    }
 }

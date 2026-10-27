@@ -261,11 +261,11 @@ fn reversed_column_range_is_the_same_area() {
 
 /// Printing a structured reference and parsing the text gives the same reference, for every
 /// specifier and column form over adversarial column names (the names come from untrusted
-/// files). Printing never panics.
+/// files), with and without the whitespace a reference keeps (T-2801). Printing never panics.
 #[test]
 fn every_form_round_trips_through_the_printer() {
     use crate::expressions::parser::{Node, StructuredReference};
-    use crate::expressions::token::{TableReference, TableSpecifier};
+    use crate::expressions::token::{TableReference, TableSpacing, TableSpecifier};
 
     let names = [
         "Qty",
@@ -314,6 +314,7 @@ fn every_form_round_trips_through_the_printer() {
         table_name: "T".to_string(),
         specifier: None,
         table_reference: None,
+        spacing: TableSpacing::default(),
         bare: true,
     }];
     for specifier in &specifiers {
@@ -322,6 +323,7 @@ fn every_form_round_trips_through_the_printer() {
                 table_name: "T".to_string(),
                 specifier: specifier.clone(),
                 table_reference: None,
+                spacing: TableSpacing::default(),
                 bare: false,
             });
         }
@@ -331,12 +333,20 @@ fn every_form_round_trips_through_the_printer() {
                 TableReference::ColumnReference(left.to_string()),
                 TableReference::RangeReference((left.to_string(), right.to_string())),
             ] {
-                references.push(StructuredReference {
-                    table_name: "T".to_string(),
-                    specifier: specifier.clone(),
-                    table_reference: Some(table_reference),
-                    bare: false,
-                });
+                let spaced = TableSpacing {
+                    leading: " ".to_string(),
+                    trailing: "  ".to_string(),
+                    after_comma: specifier.is_some(),
+                };
+                for spacing in [TableSpacing::default(), spaced] {
+                    references.push(StructuredReference {
+                        table_name: "T".to_string(),
+                        specifier: specifier.clone(),
+                        table_reference: Some(table_reference.clone()),
+                        spacing,
+                        bare: false,
+                    });
+                }
             }
         }
     }
@@ -351,5 +361,36 @@ fn every_form_round_trips_through_the_printer() {
         };
         assert_eq!(**parsed, reference, "{text}");
         assert_eq!(to_rc_format(&node), text);
+    }
+}
+
+/// Excel's printing of the whitespace inside a structured reference (T-2801,
+/// probes/t2786-whitespace-structured-refs-runs F4:F15).
+#[test]
+fn structured_reference_whitespace_prints_as_excel_normalizes_it() {
+    let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let context = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 10,
+        column: 10,
+    };
+    for (formula, printed) in [
+        ("SUM(T[ [Col] ])", "SUM(T[ Col ])"),
+        ("SUM(T[ Col ])", "SUM(T[ Col ])"),
+        ("SUM(T[[Col]:[Other]])", "SUM(T[[Col]:[Other]])"),
+        ("SUM(T[ [#Data] , [Col] ])", "SUM(T[ [#Data], [Col] ])"),
+        ("SUM(T[[#Data], [Col]])", "SUM(T[[#Data], [Col]])"),
+        ("SUM( T[Col] )", "SUM( T[Col] )"),
+        ("SUM(T[ [Col]:[Other] ])", "SUM(T[ [Col]:[Other] ])"),
+        ("T[#Headers]", "T[#Headers]"),
+        (
+            "SUM(T[[#Data],[Col]:[Other]])",
+            "SUM(T[[#Data],[Col]:[Other]])",
+        ),
+        ("SUM(T[[#Data]  ,  [Col]])", "SUM(T[[#Data], [Col]])"),
+    ] {
+        let node = parser.parse(formula, &context);
+        assert_eq!(to_excel_string(&node, &context), printed, "{formula}");
     }
 }

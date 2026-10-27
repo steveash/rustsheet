@@ -242,8 +242,13 @@ impl Engine for RustSheetEngine {
                                     input = Input::LegacyFormula(text.clone());
                                 }
                             }
-                            let is_formula =
-                                matches!(input, Input::StoredFormula(_) | Input::LegacyFormula(_));
+                            // A formula typed as entered text (`{"entered":"=T[Col]"}`) goes
+                            // with the formulas too, after its table.
+                            let is_formula = match &input {
+                                Input::StoredFormula(_) | Input::LegacyFormula(_) => true,
+                                Input::Parse(text) => text.starts_with('='),
+                                _ => false,
+                            };
                             if is_formula != formulas {
                                 continue;
                             }
