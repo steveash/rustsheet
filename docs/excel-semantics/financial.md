@@ -2746,7 +2746,7 @@ The rule also gives every residue value below to the bit (M2, M3, M8, Three Para
 Evidence for the residues (ironcalc-calc/FINANCIAL/IRR.xlsx, saved by Excel Online; the rate cell is an IRR that ours matches to the
 bit, so NPV gets the same inputs):
 - General!M2 `NPV(L2,A2:F2)`, flows {-20,5,5,5,5,5}, L2 = 0.07930826116039724: Excel 6.4212018552224666E-12, exact at
-  that rate 6.421923509333131E-12, ours (left-to-right sum of v/(1+r).powi(i), `compute_npv`; with libm `pow` M2 is 6.419753617592505E-12) 6.418865439172805E-12.
+  that rate 6.421923509333131E-12, ours before T-2672 (left-to-right sum of v/(1+r).powi(i); with libm `pow` M2 is 6.419753617592505E-12) 6.418865439172805E-12.
 - General!M3, flows {-1000,230,200,125,200,10}, L3 = -0.1015006760535847: Excel -2.8358465972398184E-11, exact
   -2.815865414018216E-11, ours -2.8180124900245573E-11.
 - General!M8, flows {-70,12,15}, L8 = -0.44350694133432755: Excel -1.579429159894141E-10, exact
