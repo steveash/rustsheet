@@ -43,6 +43,4 @@ Code: functions/financial/amortization.rs (`DegressiveWalk::charge`, `amor_round
 - AMORDEGRC past 2^20 periods (the closed form, a work-cap DEVIATION).
 
 ## Resume note
-Claimed at 08:20 UTC on 2026-10-27 by an opus run that reached its session budget before starting. No work has been done
-on this branch. The proxy refused to delete it, so the next opus run should resume it (routine step 2) from the
-task as written.
+Resumed at 11:35 UTC on 2026-10-27 by an opus run (routine step 2).
