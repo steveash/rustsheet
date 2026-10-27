@@ -40,7 +40,8 @@ results in syntax.md under "A typed unary plus stays in the formula text". File 
 Two excel-graph probe cases: probes/t2772-unary-plus-static-readings (36 cells, all pass) and
 probes/t2772-unary-plus-in-range-rows (20 cells, 18 pass). A plus on a literal an analysis matches (IF/CHOOSE index,
 INDIRECT text, legacy `ABS(+{5})`, `N(+{2;3})`) changes nothing in Excel, and we match. A stored `<f>+5</f>` folds to
-`=5` on load, as we do. Typed `=LET(+x,1,x)` and `=LAMBDA(+x,x)(1)` are refused (Graph 400), as we refuse them (the
-refused cases are not committed). One mismatch: legacy `N(+B1:B3)` intersects in Excel (`=N(+@B1:B3)`, 2 on row 2);
+`=5` on load, as we do. Typed `=LET(+x,1,x)` and `=LAMBDA(+x,x)(1)` are refused (Graph 400; the refused cases are not
+committed): we give `#VALUE!` for both instead (the task's "we now refuse"
+was wrong): filed T-2887 (engine, sonnet). One mismatch: legacy `N(+B1:B3)` intersects in Excel (`=N(+@B1:B3)`, 2 on row 2);
 we read the range whole (1): filed T-2885 (engine, sonnet), J2 and J5 baselined. Recorded in syntax.md.
 Eval delta: +56 probe cells, 54 passing, 2 new-coverage failures baselined; no regressions.
