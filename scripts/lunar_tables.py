@@ -18,6 +18,7 @@ import argparse
 import bisect
 import datetime as dt
 import json
+import re
 import struct
 import sys
 from pathlib import Path
@@ -91,7 +92,12 @@ def write_case() -> None:
 
 def decode(value: str) -> tuple[tuple[int, int, int], list[tuple[int, bool]], list[str]]:
     """Split one cell into its first lunar date, (gap, is month 1) per start, and rule breaks."""
-    first, codes, breaks = value.split(";")
+    # The codes can hold ";" (an 11-day gap), so the breaks are matched from the end.
+    first, rest = value.split(";", 1)
+    match = re.fullmatch(r"(.*);((?:\d+:\d+/\d+/\d+,?)*)", rest, re.DOTALL)
+    if match is None:
+        sys.exit(f"undecodable cell {value[:40]}...")
+    codes, breaks = match.groups()
     y, m, d = (int(part) for part in first.split("/"))
     starts = [(ord(c) - 80, True) if ord(c) >= 80 else (ord(c) - 48, False) for c in codes]
     return (y, m, d), starts, [b for b in breaks.split(",") if b]
@@ -100,6 +106,11 @@ def decode(value: str) -> tuple[tuple[int, int, int], list[tuple[int, bool]], li
 def day_number(serial: int) -> int:
     """The engine's day number of a serial past 1900-02-29 (lunar_calendar.rs)."""
     return serial - 1
+
+
+def serial_of(year: int) -> int:
+    """The serial of 1 January of `year`."""
+    return FIRST_SERIAL + (dt.date(year, 1, 1) - dt.date(FIRST_YEAR, 1, 1)).days
 
 
 def gregorian(serial: int) -> dt.date:
@@ -131,28 +142,28 @@ def early_years(col: str, breaks: list[str]) -> list[tuple[int, int]]:
 
 def pack_table(col: str, cells: list[str]) -> bytes:
     """One table: first start day, its lunar year and month, month lengths, early years."""
-    starts: list[tuple[int, bool]] = []
     breaks: list[str] = []
     first_dates = []
-    for value in cells:
-        first, cell_starts, cell_breaks = decode(value)
-        first_dates.append(first)
-        starts.extend(cell_starts)
-        breaks.extend(cell_breaks)
-    early = early_years(col, breaks)
-    (year, month, _day) = first_dates[0]
-    a = day_number(FIRST_SERIAL)
-    if any(lo <= a <= hi for lo, hi in early):
-        sys.exit(f"table {col}: 1 January {FIRST_YEAR} is in an early year")
-    # Absolute start days and the month-counting year and month of each start.
+    # Absolute start days and the month-counting year and month of each start. Each cell counts
+    # its first gap from its own 1 January.
     days: list[int] = []
     labels: list[tuple[int, int]] = []
-    day = a
-    for gap, is_first_month in starts:
-        day += gap
-        year, month = (year + 1, 1) if is_first_month else (year, month + 1)
-        days.append(day)
-        labels.append((year, month))
+    for value, (first_year, _last) in zip(cells, spans()):
+        first, cell_starts, cell_breaks = decode(value)
+        first_dates.append(first)
+        breaks.extend(cell_breaks)
+        if not labels:
+            year, month, _day = first
+        day = day_number(serial_of(first_year))
+        for gap, is_first_month in cell_starts:
+            day += gap
+            year, month = (year + 1, 1) if is_first_month else (year, month + 1)
+            days.append(day)
+            labels.append((year, month))
+    early = early_years(col, breaks)
+    check_repeated_days(col, days, breaks)
+    if any(lo <= day_number(FIRST_SERIAL) <= hi for lo, hi in early):
+        sys.exit(f"table {col}: 1 January {FIRST_YEAR} is in an early year")
     check_cell_starts(col, days, labels, early, first_dates)
     lengths = [b - a for a, b in zip(days, days[1:])] + [day_number(LAST_SERIAL) + 1 - days[-1]]
     body = bytearray()
@@ -166,6 +177,26 @@ def pack_table(col: str, cells: list[str]) -> bytes:
     return out
 
 
+def check_repeated_days(col: str, days: list[int], breaks: list[str]) -> None:
+    """The engine's rule for the early years' 1 January: Excel's day number there is one less than
+    the month start gives exactly when the month has 31 days (it repeats the day before), and no
+    other month has 31 days."""
+    long = {i for i, (a, b) in enumerate(zip(days, days[1:])) if b - a == 31}
+    for item in breaks:
+        serial_text, lunar = item.split(":")
+        _y, m, d = (int(part) for part in lunar.split("/"))
+        if (m, d) == (1, 1):
+            continue
+        day = day_number(int(serial_text))
+        index = bisect.bisect_right(days, day) - 1
+        shift = day - days[index] + 1 - d
+        if shift != (index in long):
+            sys.exit(f"table {col}: {item} is {shift} day(s) off the month start")
+        long.discard(index)
+    if long:
+        sys.exit(f"table {col}: 31-day months away from an early year: {sorted(long)}")
+
+
 def check_cell_starts(
     col: str,
     days: list[int],
@@ -175,7 +206,7 @@ def check_cell_starts(
 ) -> None:
     """Each century cell's own first lunar date must follow from the months before it."""
     for (first, _last), date in zip(spans(), first_dates):
-        a = day_number(FIRST_SERIAL + (dt.date(first, 1, 1) - dt.date(FIRST_YEAR, 1, 1)).days)
+        a = day_number(serial_of(first))
         index = bisect.bisect_right(days, a) - 1
         if index < 0:
             continue

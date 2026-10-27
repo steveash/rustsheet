@@ -34,7 +34,13 @@ fn lunar_dates_of_the_probes() {
         (Chinese, 73415, Some((2100, 12, 16))),
         (Chinese, 60, None),
         (Chinese, -1, None),
-        (Chinese, 73416, None),
+        // Past the 1900-2100 tables: probes/t2759-lunar-months-2101 A1, A42, A109 and
+        // text-locale-lunar-edges A20; 2142-01-01 (88391) turns the year mid-month.
+        (Chinese, 73416, Some((2100, 12, 17))),
+        (Chinese, 88390, Some((2141, 12, 18))),
+        (Chinese, 88391, Some((2142, 12, 19))),
+        (Chinese, 2_958_465, Some((9999, 11, 26))),
+        (Chinese, 2_958_466, None),
     ];
     for (table, serial, ymd) in cases {
         assert_eq!(lunar_ymd(serial, table), ymd, "{table:?} {serial}");

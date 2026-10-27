@@ -3,7 +3,7 @@ id: T-2759
 title: "Lunar calendar digits past 2100: Excel's lunar dates to 9999"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -20,8 +20,8 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
 - probes/text-locale-lunar-edges S!A15, S!A16, S!A17, S!A18, S!A19
 
 ## Acceptance criteria
-- [ ] probes/text-locale-lunar-edges A14-A20 and text-locale-lunar-tokens A80, A81 pass, plus new probes past 2100 for both tables (with a `yyyy` check at each month-1 start, to confirm the year turns only there).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/text-locale-lunar-edges A14-A20 and text-locale-lunar-tokens A80, A81 pass, plus new probes past 2100 for both tables (with a `yyyy` check at each month-1 start, to confirm the year turns only there).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -61,3 +61,17 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
   (about 8000 years x 2 columns), stored as packed binary data rather than Rust source (1000-line file limit).
 
 - Resumed by an opus run at 2026-10-27 19:30 UTC (branch idle 2 h 45 min, work-loop resume rule).
+
+## Outcome
+- No closed form: Excel's month starts follow neither the true nor a mean new moon (progress notes above), so
+  the fallback landed. probes/t2759-lunar-packed-2101 … -9101 (excel-graph, 2026-10-27; 8 cases, 158 cells, one
+  per century and table) return one character per month start from 2101 to 9999 plus every day that breaks the
+  counting rules; `scripts/lunar_tables.py pack` cross-checks each century's 1 January and writes
+  formatter/lunar_2101.bin (200 KB: 99,157 month lengths per table and the early years), which
+  lunar_calendar.rs decodes once and binary-searches.
+- Quirks recorded (number-formats.md "Lunar calendars"): the 1960/2051 early year recurs every 91 years
+  (2142, 2233, … 9968, 87 in all, both tables on the same days); when that month spans 31 days Excel repeats
+  the day number on 1 January (2232-12-31 and 2233-01-01 are both "12/19"), and no other month has 31 days.
+- Eval: probes/text-locale-lunar-edges A14-A20 and text-locale-lunar-tokens A80, A81 now pass, and
+  t2759-lunar-months-2101 passes 420/420. The packed probe cells stay known failures only because CHAR does
+  not lift over arrays (`#N/IMPL!`); follow-up T-2946.
