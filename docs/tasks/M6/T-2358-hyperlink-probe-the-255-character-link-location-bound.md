@@ -25,4 +25,4 @@ T-2277 added the bound (`hyperlink_location`, crates/rustsheet-engine/src/functi
 - HYPERLINK's displayed text and link storage.
 
 ## Outcome
-Probed on excel-graph (probes/t2358-hyperlink-location-non-bmp): the bound counts UTF-16 units (127 emoji + "a" passes, 128 emoji is #VALUE!). Our implementation already matched; lookup.md updated. No eval baseline change.
+Probed on excel-graph (probes/t2358-hyperlink-location-non-bmp): the bound counts UTF-16 units (127 emoji + "a" passes, 128 emoji is #VALUE!). Our implementation already matched; lookup.md updated. No known-failure change (the baseline gains only the new probe's `C` line).
