@@ -3,7 +3,7 @@ id: T-2815
 title: "Lifted ODDFYIELD and AMORDEGRC charged the cap's bound: #ERROR! where Excel spills (gen-m9, 2 cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -43,3 +43,13 @@ Split from T-2795, which charged the incomplete-gamma entries by value and fixed
 
 ## Visible-parity stage
 Decision 0083: both cells have the wrong error, so the task is in the campaign.
+
+## Outcome
+ODD* elements their kernel refuses before any walk are charged 1 unit: `ValueWork::CouponWalks` gained
+`reads_all_first` (ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD; `Model::odd_args` reads every argument first and returns
+on an error, a logical or a date outside [0, 2958466)), so gen-m9/ba4ddb817a8e700e Calc!A323 lifts its 22 elements
+(Excel `#SPILL!` in its layout) instead of `#ERROR!`. financial.md "Yield and odd-coupon work cap" says how such an
+element is charged. Unit test `odd_elements_refused_before_the_walk_are_charged_one`.
+The AMORDEGRC cell (gen-m9/e8d55ec393460bb7 Calc!A10) needs a sound "text may read as a number" bit for its by-value
+charge, which the engine's coercion does not yet give: split to T-2840 with the cell.
+Eval delta: gen-m9 -1 known failure (A323), no new ones.
