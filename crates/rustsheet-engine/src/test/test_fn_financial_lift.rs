@@ -265,6 +265,16 @@ fn the_table_enters_rate_as_weighted() {
     assert_eq!(weight(Function::Pmt), Some(1));
 }
 
+/// A lifted RATE runs up to 2^27 / 2^13 = 16,384 elements; one more makes the call `#ERROR!`
+/// before any element runs (T-2814; arrays.md, a DEVIATION).
+#[test]
+fn a_lifted_rate_past_its_work_cap_is_refused() {
+    check(&[
+        ("A1", "=ROWS(RATE(SEQUENCE(16384)*0+1,-1,100))", "16384"),
+        ("A2", "=ROWS(RATE(SEQUENCE(16385)*0+1,-1,100))", "#ERROR!"),
+    ]);
+}
+
 /// DB and VDB lift every argument (probes/fin-argument-modes; T-1820), each element the scalar
 /// call, and stay bounded: a period past 100,000 is `#NUM!` (docs/excel-semantics/financial.md
 /// "DB and VDB period cap", DEVIATION) and a lift is charged by each element's period.
