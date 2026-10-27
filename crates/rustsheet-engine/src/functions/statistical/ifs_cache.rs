@@ -21,6 +21,16 @@
 //! a different value. Values read through the cache are the walk's values, and the matches are
 //! taken in the walk's order (row by row), so sums round alike and the first error wins alike.
 //!
+//! A criterion new to a range is still tested on every cell of it, which costs rank and per-row
+//! idioms, a new criterion per call, the range's size each call (calipers `pv26_002`: 272,000
+//! COUNTIFS over 1,440 rows). From the second criterion a range is tested with, a comparison with
+//! a number or a plain text equality finds its matches in an index of the range's values instead
+//! ([`ValueIndex`], T-0465): the numbers sorted, binary-searched, and the texts hashed by their
+//! collation key. The cells the index does not order (text, booleans, errors and blanks under a
+//! number criterion) are still tested by the predicate, so the set is the walk's. A block inside a
+//! cached range with the same columns (a growing prefix `I$11:I11`) is read from that range, and
+//! its match set is cut from the range's.
+//!
 //! Directive 5: ranges between [`MIN_CACHED_CELLS`] and [`MAX_CACHED_CELLS`] cells are cached;
 //! all cached values of a pass hold at most [`MAX_CACHED_CELLS`] cells and all match sets at most
 //! [`MAX_CACHED_BITS`] bits; past that the walks run as before.
@@ -33,7 +43,12 @@ use crate::calc_result::{CalcResult, Range};
 use crate::evaluation::{key, CellState, FormulaCell, KeyBuild};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::criteria::{
+    indexed_criterion, CriteriaFlavor, CriterionOp, IndexedCriterion,
+};
+use crate::functions::util::collation::{collation_key, CollationKey};
 use crate::model::Model;
+use crate::number_format::cmp_excel_precision;
 use crate::types::Cell;
 
 use super::if_ifs::Criterion;
@@ -47,6 +62,13 @@ const MAX_CACHED_CELLS: usize = 4_000_000;
 
 /// Bits all match sets of one pass may hold together, their keys' text included (4 MB).
 const MAX_CACHED_BITS: usize = 32_000_000;
+
+/// Cached ranges per column span that a block inside them is read from (a bound on the search).
+const MAX_PARENTS: usize = 16;
+
+/// Distinct criteria tested on a range by the walk before its values are indexed: an index costs
+/// a sort, which one criterion does not repay.
+const INDEX_AFTER_MISSES: u32 = 2;
 
 /// A block of one sheet: sheet, top row, left column, bottom row, right column.
 type RectKey = (u32, i32, i32, i32, i32);
@@ -94,13 +116,57 @@ enum RangeState {
     Never,
 }
 
+/// The values of a cached range ordered for the criteria [`IndexedCriterion`] describes.
+struct ValueIndex {
+    /// The finite numbers with their positions, by value (`total_cmp`), then position.
+    numbers: Vec<(f64, u32)>,
+    /// The positions of every other cell, ascending: a number criterion tests them.
+    others: Vec<u32>,
+    /// The positions of the texts, ascending, by collation key.
+    texts: HashMap<CollationKey, Vec<u32>>,
+}
+
+/// A range's index: the walk's misses so far, or the index once built.
+enum IndexState {
+    Counting(u32),
+    Ready(Arc<ValueIndex>),
+    /// Over the budget.
+    Never,
+}
+
+/// The cells of a block read from a cached range: `values[offset..offset + len]`, where the
+/// cached range is `rect`.
+pub(super) struct RangeView {
+    rect: RectKey,
+    values: Arc<[CalcResult]>,
+    offset: usize,
+    len: usize,
+}
+
+impl RangeView {
+    /// The block's `index`-th value, row by row.
+    pub(super) fn get(&self, index: usize) -> Option<&CalcResult> {
+        if index < self.len {
+            self.values.get(self.offset + index)
+        } else {
+            None
+        }
+    }
+}
+
 /// The criteria ranges' values and match sets of the current pass.
 #[derive(Default)]
 pub(crate) struct IfsCache {
     ranges: HashMap<RectKey, RangeState, KeyBuild>,
     matches: HashMap<(RectKey, CriterionKey), Arc<[u64]>>,
+    indexes: HashMap<RectKey, IndexState, KeyBuild>,
+    /// The cached ranges of each (sheet, left column, right column), as (top row, bottom row).
+    parents: HashMap<(u32, i32, i32), Vec<(i32, i32)>>,
     cells: usize,
     bits: usize,
+    /// Match sets cut from a larger cached range's, for the tests of T-0465.
+    #[cfg(test)]
+    pub(crate) windows: usize,
 }
 
 impl IfsCache {
@@ -108,8 +174,23 @@ impl IfsCache {
     pub(crate) fn clear(&mut self) {
         self.ranges.clear();
         self.matches.clear();
+        self.indexes.clear();
+        self.parents.clear();
         self.cells = 0;
         self.bits = 0;
+        #[cfg(test)]
+        {
+            self.windows = 0;
+        }
+    }
+
+    /// How many ranges were indexed in this pass, for the tests of T-0465.
+    #[cfg(test)]
+    pub(crate) fn indexed(&self) -> usize {
+        self.indexes
+            .values()
+            .filter(|state| matches!(state, IndexState::Ready(_)))
+            .count()
     }
 
     /// Match-set bits charged in this pass, for the budget test.
@@ -176,8 +257,9 @@ impl Model {
     }
 
     /// The values of `rect` row by row, when they can be read without evaluating anything (module
-    /// docs); `None` when the caller must walk.
-    fn ifs_range_values(&mut self, rect: RectKey) -> Option<Arc<[CalcResult]>> {
+    /// docs), from a cached range that holds it when there is one; `None` when the caller must
+    /// walk.
+    fn ifs_range_values(&mut self, rect: RectKey) -> Option<RangeView> {
         if !self.pass_cache_safe() {
             return None;
         }
@@ -185,8 +267,35 @@ impl Model {
         if !(MIN_CACHED_CELLS..=MAX_CACHED_CELLS).contains(&size) {
             return None;
         }
-        let checked = match self.evaluation.ifs_cache.ranges.get(&rect) {
-            Some(RangeState::Ready(values)) => return Some(values.clone()),
+        let whole = |rect: RectKey, values: &Arc<[CalcResult]>| RangeView {
+            rect,
+            values: values.clone(),
+            offset: 0,
+            len: size,
+        };
+        let (sheet, top, left, bottom, right) = rect;
+        let cache = &self.evaluation.ifs_cache;
+        let parent = cache
+            .parents
+            .get(&(sheet, left, right))
+            .and_then(|blocks| {
+                blocks
+                    .iter()
+                    .find(|&&(first, last)| first <= top && bottom <= last)
+            })
+            .map(|&(first, last)| (sheet, first, left, last, right));
+        if let Some(parent) = parent {
+            if let Some(RangeState::Ready(values)) = cache.ranges.get(&parent) {
+                let rows_above = usize::try_from(top - parent.1).unwrap_or(0);
+                let width = usize::try_from(right - left + 1).unwrap_or(1);
+                return Some(RangeView {
+                    offset: rows_above * width,
+                    ..whole(parent, values)
+                });
+            }
+        }
+        let checked = match cache.ranges.get(&rect) {
+            Some(RangeState::Ready(values)) => return Some(whole(rect, values)),
             Some(RangeState::Never) => return None,
             Some(RangeState::Waiting { checked }) => *checked,
             None => 0,
@@ -217,12 +326,70 @@ impl Model {
         let cache = &mut self.evaluation.ifs_cache;
         cache.cells += size;
         cache.ranges.insert(rect, RangeState::Ready(values.clone()));
-        Some(values)
+        let blocks = cache.parents.entry((sheet, left, right)).or_default();
+        if blocks.len() < MAX_PARENTS {
+            blocks.push((top, bottom));
+        }
+        Some(whole(rect, &values))
+    }
+
+    /// The index of `values` (the cached values of `rect`), once the walk has tested
+    /// [`INDEX_AFTER_MISSES`] criteria on it; this call counts as one.
+    fn value_index(&mut self, rect: RectKey, values: &[CalcResult]) -> Option<Arc<ValueIndex>> {
+        let cache = &mut self.evaluation.ifs_cache;
+        let misses = match cache.indexes.get(&rect) {
+            Some(IndexState::Ready(index)) => return Some(index.clone()),
+            Some(IndexState::Never) => return None,
+            Some(IndexState::Counting(misses)) => misses + 1,
+            None => 1,
+        };
+        if misses < INDEX_AFTER_MISSES {
+            cache.indexes.insert(rect, IndexState::Counting(misses));
+            return None;
+        }
+        // A position per cell, and a key unit per text unit.
+        let text_units: usize = values
+            .iter()
+            .map(|value| match value {
+                CalcResult::String(s) => s.len_utf16(),
+                _ => 0,
+            })
+            .sum();
+        let cost = values.len().saturating_add(text_units);
+        if cache.cells.saturating_add(cost) > MAX_CACHED_CELLS {
+            cache.indexes.insert(rect, IndexState::Never);
+            return None;
+        }
+        cache.cells += cost;
+        let index = Arc::new(ValueIndex::of(values));
+        cache.indexes.insert(rect, IndexState::Ready(index.clone()));
+        Some(index)
+    }
+
+    /// The cells of `view` that `matches`, as a bit set: cut from those of the cached range it
+    /// reads ([`Model::range_matches`]).
+    fn ifs_matches(
+        &mut self,
+        view: &RangeView,
+        criterion: &CalcResult,
+        matches: &dyn Fn(&CalcResult) -> bool,
+    ) -> Arc<[u64]> {
+        let bits = self.range_matches(view.rect, &view.values, criterion, matches);
+        if view.offset == 0 && view.len == view.values.len() {
+            bits
+        } else {
+            #[cfg(test)]
+            {
+                self.evaluation.ifs_cache.windows += 1;
+            }
+            window(&bits, view.offset, view.len).into()
+        }
     }
 
     /// The cells of `values` (the cached values of `rect`) that `matches`, as a bit set, from the
-    /// cache when `criterion` was tested on `rect` before in this pass.
-    fn ifs_matches(
+    /// cache when `criterion` was tested on `rect` before in this pass, else from the index of
+    /// `rect` when it has one and the criterion is one it orders.
+    fn range_matches(
         &mut self,
         rect: RectKey,
         values: &[CalcResult],
@@ -236,13 +403,23 @@ impl Model {
         {
             return bits.clone();
         }
-        let mut bits = vec![0u64; values.len().div_ceil(64)];
-        for (index, value) in values.iter().enumerate() {
-            if matches(value) {
-                bits[index / 64] |= 1u64 << (index % 64);
+        let indexed = self.indexed(criterion);
+        let index = indexed
+            .as_ref()
+            .and_then(|_| self.value_index(rect, values));
+        let bits: Arc<[u64]> = match (indexed, index) {
+            (Some(indexed), Some(index)) => index.matches(&indexed, values, matches),
+            _ => {
+                let mut bits = vec![0u64; values.len().div_ceil(64)];
+                for (position, value) in values.iter().enumerate() {
+                    if matches(value) {
+                        set_bit(&mut bits, position);
+                    }
+                }
+                bits
             }
         }
-        let bits: Arc<[u64]> = bits.into();
+        .into();
         let cache = &mut self.evaluation.ifs_cache;
         if let Some(key) = key {
             // The set's words, the key's text and a word for the entry itself.
@@ -268,9 +445,8 @@ impl Model {
     ) -> Option<Vec<u64>> {
         let mut all: Option<Vec<u64>> = None;
         for ((range, criterion), matches) in rects.iter().zip(criteria).zip(matchers) {
-            let rect = rect_of(range);
-            let values = self.ifs_range_values(rect)?;
-            let bits = self.ifs_matches(rect, &values, criterion, matches.as_ref());
+            let view = self.ifs_range_values(rect_of(range))?;
+            let bits = self.ifs_matches(&view, criterion, matches.as_ref());
             match all.as_mut() {
                 None => all = Some(bits.to_vec()),
                 Some(all) => all.iter_mut().zip(bits.iter()).for_each(|(a, b)| *a &= b),
@@ -279,10 +455,202 @@ impl Model {
         all
     }
 
+    /// How many cells of `range` `criterion` matches (`matches` its predicate): COUNTIFS with one
+    /// criterion. Counted from the index of the cached range it reads when it has one and the
+    /// criterion is one the index orders, else from the match set (which counts towards building
+    /// the index). `None` when the range is not cacheable yet.
+    pub(super) fn ifs_count(
+        &mut self,
+        range: &Range,
+        criterion: &CalcResult,
+        matches: &Criterion<'_>,
+    ) -> Option<usize> {
+        let view = self.ifs_range_values(rect_of(range))?;
+        if let Some(IndexState::Ready(index)) = self.evaluation.ifs_cache.indexes.get(&view.rect) {
+            if let Some(indexed) = self.indexed(criterion) {
+                let window = view.offset..view.offset + view.len;
+                return Some(index.count(&indexed, &view.values, matches.as_ref(), window));
+            }
+        }
+        Some(count_bits(&self.ifs_matches(
+            &view,
+            criterion,
+            matches.as_ref(),
+        )))
+    }
+
+    /// `criterion` as an [`IndexedCriterion`], read as the criteria aggregates read it.
+    fn indexed(&self, criterion: &CalcResult) -> Option<IndexedCriterion> {
+        indexed_criterion(
+            criterion,
+            self.locale,
+            &|| self.current_year(),
+            self.workbook.settings.date_system,
+            CriteriaFlavor::Standard,
+        )
+    }
+
     /// The cached values of `range` (`ifs_range_values`) for the SUMIFS-shaped walks' value range.
-    pub(super) fn ifs_values(&mut self, range: &Range) -> Option<Arc<[CalcResult]>> {
+    pub(super) fn ifs_values(&mut self, range: &Range) -> Option<RangeView> {
         self.ifs_range_values(rect_of(range))
     }
+}
+
+impl ValueIndex {
+    /// The index of a range's `values`.
+    fn of(values: &[CalcResult]) -> ValueIndex {
+        let mut numbers = Vec::new();
+        let mut others = Vec::new();
+        let mut texts: HashMap<CollationKey, Vec<u32>> = HashMap::new();
+        // Cached ranges hold at most `MAX_CACHED_CELLS` cells, so a position fits in a `u32`.
+        for (position, value) in (0u32..).zip(values) {
+            match value {
+                CalcResult::Number(x) if x.is_finite() => numbers.push((*x, position)),
+                CalcResult::String(s) => {
+                    texts.entry(collation_key(s)).or_default().push(position);
+                    others.push(position);
+                }
+                _ => others.push(position),
+            }
+        }
+        numbers.sort_unstable_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        ValueIndex {
+            numbers,
+            others,
+            texts,
+        }
+    }
+
+    /// The cells of `values` (the indexed range's) that `criterion` matches, as a bit set;
+    /// `matches` is its predicate, which tests the cells the index does not order.
+    fn matches(
+        &self,
+        criterion: &IndexedCriterion,
+        values: &[CalcResult],
+        matches: &dyn Fn(&CalcResult) -> bool,
+    ) -> Vec<u64> {
+        let mut bits = vec![0u64; values.len().div_ceil(64)];
+        self.for_each_match(criterion, values, matches, |position| {
+            set_bit(&mut bits, position as usize);
+        });
+        bits
+    }
+
+    /// How many cells of `values[window]` (`values` the indexed range's) `criterion` matches;
+    /// over the whole range a number criterion is counted from its run, without visiting it.
+    fn count(
+        &self,
+        criterion: &IndexedCriterion,
+        values: &[CalcResult],
+        matches: &dyn Fn(&CalcResult) -> bool,
+        window: std::ops::Range<usize>,
+    ) -> usize {
+        if let (IndexedCriterion::Number(op, target), true) =
+            (criterion, window == (0..values.len()))
+        {
+            let (low, high) = number_interval(&self.numbers, *op, *target);
+            let numbers = if *op == CriterionOp::Ne {
+                self.numbers.len() - (high - low)
+            } else {
+                high - low
+            };
+            let others = self
+                .others
+                .iter()
+                .filter(|&&position| values.get(position as usize).is_some_and(matches))
+                .count();
+            return numbers + others;
+        }
+        let mut count = 0;
+        self.for_each_match(criterion, values, matches, |position| {
+            if window.contains(&(position as usize)) {
+                count += 1;
+            }
+        });
+        count
+    }
+
+    /// Calls `visit` with each position of `values` (the indexed range's) that `criterion`
+    /// matches, in no particular order; `matches` tests the cells the index does not order.
+    fn for_each_match(
+        &self,
+        criterion: &IndexedCriterion,
+        values: &[CalcResult],
+        matches: &dyn Fn(&CalcResult) -> bool,
+        mut set: impl FnMut(u32),
+    ) {
+        match criterion {
+            // Only a text equals a non-empty text (`result_is_equal_to_string`).
+            IndexedCriterion::Text(target) => {
+                for &position in self.texts.get(&collation_key(target)).into_iter().flatten() {
+                    set(position);
+                }
+            }
+            IndexedCriterion::Number(op, target) => {
+                let (low, high) = number_interval(&self.numbers, *op, *target);
+                let matched = if *op == CriterionOp::Ne {
+                    [&self.numbers[..low], &self.numbers[high..]]
+                } else {
+                    [&self.numbers[low..high], &[][..]]
+                };
+                for &(_, position) in matched.into_iter().flatten() {
+                    set(position);
+                }
+                for &position in &self.others {
+                    if values.get(position as usize).is_some_and(matches) {
+                        set(position);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The positions in `numbers` (finite, ascending) of the numbers `op` `target` (for `Ne`, of
+/// those equal to it), as `low..high`: each comparison holds on a run of them, since it is
+/// monotone in the number. Equality is the criteria's 15-digit one, which is monotone too
+/// (`cmp_excel_precision`).
+fn number_interval(numbers: &[(f64, u32)], op: CriterionOp, target: f64) -> (usize, usize) {
+    let first = |below: &dyn Fn(f64) -> bool| numbers.partition_point(|&(x, _)| below(x));
+    match op {
+        CriterionOp::Lt => (0, first(&|x| x < target)),
+        CriterionOp::Le => (0, first(&|x| x <= target)),
+        CriterionOp::Gt => (first(&|x| x <= target), numbers.len()),
+        CriterionOp::Ge => (first(&|x| x < target), numbers.len()),
+        CriterionOp::Eq | CriterionOp::Ne => (
+            first(&|x| cmp_excel_precision(x, target).is_lt()),
+            first(&|x| cmp_excel_precision(x, target).is_le()),
+        ),
+    }
+}
+
+/// Sets bit `position` of `bits`.
+fn set_bit(bits: &mut [u64], position: usize) {
+    if let Some(word) = bits.get_mut(position / 64) {
+        *word |= 1u64 << (position % 64);
+    }
+}
+
+/// Bits `offset..offset + len` of `bits`, as a set of their own.
+fn window(bits: &[u64], offset: usize, len: usize) -> Vec<u64> {
+    let (first, shift) = (offset / 64, offset % 64);
+    let word = |index: usize| bits.get(index).copied().unwrap_or(0);
+    let mut cut: Vec<u64> = (0..len.div_ceil(64))
+        .map(|k| {
+            let low = word(first + k) >> shift;
+            if shift == 0 {
+                low
+            } else {
+                low | word(first + k + 1) << (64 - shift)
+            }
+        })
+        .collect();
+    if !len.is_multiple_of(64) {
+        if let Some(last) = cut.last_mut() {
+            *last &= (1u64 << (len % 64)) - 1;
+        }
+    }
+    cut
 }
 
 /// The indices of the set bits of `bits`, ascending (row by row).
