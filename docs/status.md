@@ -11,7 +11,7 @@ merged since its last run.
 
 This is the scheduled run at 05:47 UTC. It follows #1954, yesterday's 18:47 UTC run, and covers the 41 commits merged to `main` from 52a6ac4d (#1953) through 7bd9090e (#1997).
 
-`make eval` ran on 7bd9090e, the head of `main` when this run started, with a clean tree. Four PRs merged after it (#1811, #1996 T-2338, #2001 T-2753, #2000 T-2755); the next run covers them.
+`make eval` ran on 7bd9090e, the head of `main` when this run started, with a clean tree. Five PRs merged after it (#1811, #1996 T-2338, #2001 T-2753, #2000 T-2755, #2004 T-0476); the next run covers them. The gate still holds on this branch merged with `main`.
 - All 17 suites were fetched and scored (I ran `rustsheet-eval fetch` first, so calipers, corpus-bench and poi were present). Timeouts: 0 in every suite.
 - Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. It lowers the visible-parity lock from 3,581 to 3,337 (decision 0093).
 - The dashboard has this run's numbers (`make progress-report`; the judgment blocks pass `--check`).
