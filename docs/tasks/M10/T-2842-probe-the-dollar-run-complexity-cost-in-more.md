@@ -40,4 +40,5 @@ an escaped `\$` is an ordinary escaped literal (3, no `$` section cost, quoted t
 is `#VALUE!` (`MAX_CODE_CHARS` in formatter/complexity.rs), and outside fractions the scaling-comma exponent -3n wraps in
 a signed byte (`"0"` + 252 commas on 5 is "5000000000000"; formatter/format.rs). number-formats.md updated ("Unquoted
 `$`", a new "A format code over 255 characters" bullet, "Many scaling commas wrap"). Eval: one new passing case, no
-baseline failures added or fixed, no regressions.
+baseline failures added or fixed, no regressions. Up to 42 commas the scaling still divides by 1000^n, so ordinary
+comma formats round as before; counts 43-245 apply the wrap unprobed (follow-up T-2964).

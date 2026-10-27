@@ -12,8 +12,8 @@
 //!   their `,` and `.`), a run of literals (unquoted, escaped and quoted text merge), or any other
 //!   token (`d`, `mm`, `%`, `@`, `_x`, `*x`, `[h]`, `AM/PM`, ...);
 //! - a cost of at most 250 over the whole code: 3 per section holding a digit placeholder, 2 per
-//!   placeholder run (`"0"` costs 5, `"0-0"` 10) plus 2 per `.` in it, 3 per
-//!   unquoted or escaped literal character (unquoted `$` 1; a run of colons counts once), 2 per quoted
+//!   placeholder run (`"0"` costs 5, `"0-0"` 10) plus 2 per `.` in it, 3 per unquoted or
+//!   escaped literal character (unquoted `$` 1; a run of colons counts once), 2 per quoted
 //!   character, 2 per other token (`AM/PM` 3), 2 per color, 7 per condition, 0 per `;`; a
 //!   currency tag is quoted text of its symbol plus 13, its locale part free (`[$€-40C]` 15);
 //! - a section holding an unquoted `$` and no placeholder pays 3 once (2 if it holds a date or time
