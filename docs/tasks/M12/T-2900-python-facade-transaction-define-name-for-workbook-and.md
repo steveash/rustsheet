@@ -43,4 +43,4 @@ be named; the `sheet=` argument must do the same.
 ## Out of scope
 - Reading or deleting defined names from Python (the Rust facade has no read API for names yet).
 - `Txn::load_defined_name` (importer only).
-- Other missing mirrors (T-2899, T-2901 to T-2904, T-0460, T-2054); any change to crates/rustsheet or the engine.
+- Other missing mirrors (T-2916, T-2901 to T-2904, T-0460, T-2054); any change to crates/rustsheet or the engine.

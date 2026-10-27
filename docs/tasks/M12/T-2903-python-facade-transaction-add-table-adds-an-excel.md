@@ -46,5 +46,5 @@ added earlier in the same block can be named. Reuse that resolver; do not add a 
 ## Out of scope
 - Deleting or converting tables (`delete_table`, `convert_table_to_range` are behind the `harness_row_insert`
   feature of crates/rustsheet and not public API).
-- Hidden rows (T-2902); other missing mirrors (T-2899 to T-2901, T-2904, T-0460, T-2054); any change to
+- Hidden rows (T-2902); other missing mirrors (T-2916, T-2900, T-2901, T-2904, T-0460, T-2054); any change to
   crates/rustsheet or the engine.

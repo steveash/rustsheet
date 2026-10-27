@@ -40,4 +40,4 @@ Format each `CellRef` with `CellRef::to_a1_in(sheet_name)` (crates/rustsheet/src
 
 ## Out of scope
 - A per-cell info object (`Workbook::cell` / `CellInfo`): `value`, `formula` and `number_format` already cover it.
-- Other missing mirrors (T-2899 to T-2903, T-0460, T-2054); any change to crates/rustsheet or the engine.
+- Other missing mirrors (T-2916, T-2900 to T-2903, T-0460, T-2054); any change to crates/rustsheet or the engine.

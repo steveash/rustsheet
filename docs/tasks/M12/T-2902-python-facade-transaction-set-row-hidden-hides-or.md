@@ -40,5 +40,5 @@ earlier in the same block can be named.
 
 ## Out of scope
 - Hidden columns and reading the hidden flag (the Rust facade has neither).
-- Other missing mirrors (T-2899 to T-2901, T-2903, T-2904, T-0460, T-2054); any change to crates/rustsheet or
+- Other missing mirrors (T-2916, T-2900, T-2901, T-2903, T-2904, T-0460, T-2054); any change to crates/rustsheet or
   the engine.

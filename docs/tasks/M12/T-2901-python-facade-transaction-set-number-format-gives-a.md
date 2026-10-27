@@ -37,5 +37,5 @@ a format by loading an xlsx. The cell ops pass their A1 string straight to the `
 
 ## Out of scope
 - Other style properties (fonts, fills, borders): SPEC-0001 non-goals; T-2882 decides their Python future.
-- Other missing mirrors (T-2899, T-2900, T-2902 to T-2904, T-0460, T-2054); any change to crates/rustsheet or
+- Other missing mirrors (T-2916, T-2900, T-2902 to T-2904, T-0460, T-2054); any change to crates/rustsheet or
   the engine.
