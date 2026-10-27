@@ -28,11 +28,19 @@ Still failing from T-2430's list and not covered here: F.TEST/FTEST (T-2093), FO
   failure is most of the case's 338 failing cells. The probe must cover an error element in bins on its own, in addition
   to the data argument, before error propagation is implemented: `ROWS(FREQUENCY(0,{1,#VALUE!,3}))`,
   `INDEX(FREQUENCY(0,{1,#VALUE!,3}),1)`, `FREQUENCY({1;2},{#N/A})`.
+- Owner of the whole case corpus-bench/53062/1_53062_input.xlsx (gap triage 2026-10-27, as T-2909 asks):
+  the report for a84da30f has 334 visibly-off Excel cells there. They are all on the one sheet, and 325 are `#VALUE!` where
+  Excel has a number or text. They are blamed on SUM (72), LOOKUP/ABS/ISBLANK, IF, CONCATENATE, ISNUMBER, COUNTIF(S) and
+  SEARCH, but they all lie downstream of the FREQUENCY bins error above. The other 9 are COUNTIF/SEARCH tests that read
+  those `#VALUE!` cells.
 
 ## Acceptance criteria
 - [ ] Probe the argument-error order of PROB and FREQUENCY with an array error element; record it in statistics.md.
 - [ ] Probe `SLOPE`, `INTERCEPT`, `STEYX`, `RSQ`, `FORECAST.LINEAR` and `CHISQ.TEST` with `{1,#N/A,3},{1,2,3}`, and the reverse position (plain first argument, error element in the second); record it in statistics.md (T-2430 changed them unverified).
 - [ ] The PROB and FREQUENCY gen-m9 cells with `{1,#N/A,3}` pass, with no regressions.
+- [ ] If the probe shows that desktop and web FREQUENCY agree on an error element in bins, the corpus-bench/53062
+      cells fixed by it pass. The Outcome gives the case's visibly-off count before (334) and after, and files a
+      follow-up for any cell left.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

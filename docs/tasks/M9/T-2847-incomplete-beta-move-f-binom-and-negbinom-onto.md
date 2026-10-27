@@ -66,6 +66,13 @@ for the Cephes kernel are gone.
   with the L140 cells. When F's callers move to bratio, test r2-impact's next hypothesis 1 (F's x as
   1/(1 + (d2/d1)/X), or bup's W rounding at b0' = 0.5, n = 2) on probes/stat-argument-modes F.DIST H215,
   F.DIST.RT H221 and FDIST H226 (2.5, 2.5, x = 0.6000000000000001), which are bit-exact today on Cephes.
+- Gap triage 2026-10-27 (origin/main cc64bd91): the 9 visibly-off cells of probes/t2829-ftest-tail-over-b
+  (`2*F.DIST.RT(1E+12,df1,df2)`; S!A1, A3, A4, A6, A7, A9, A14, A18, A21) had no open owner, so this task owns them.
+  At S!A7 (a = 6, b = 11.5), the w5 form y = 1/(1 + d1·X/d2) moves fl(a·LN y) by -2.84E-14 relative against
+  today's d2/(d1·X + d2). That is most of the -2.38E-14 between Excel and ours. Of the case's 21 cells, the two y
+  forms differ at A1, A6 and A7 only, and fl(a·LN y) moves only at A7. The other cells are 0.2E-15 to 2.5E-15 off,
+  about the size of the ln B offset k that T-2924 fits (statistics.md "F.TEST / FTEST"). Record in the Outcome which
+  of the 9 cells reach 15 digits on the port, and leave the rest to T-2924.
 
 ## Acceptance criteria
 - [ ] F.DIST, F.DIST.RT, FDIST, F.TEST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's
