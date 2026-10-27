@@ -3,7 +3,7 @@ id: T-2867
 title: "Calipers anonymisation artifacts: score pv26_020/pv26_2_020 Summary row 17 and pv26_010 Cover!C16 against Excel's values for the shipped workbook (51 visibly-off cells; MIN, MAX, AVERAGE Phase 1)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
