@@ -288,7 +288,11 @@ deviations`, with at least 0.999 of them not visibly off; visibly-off cells prin
 probe row's visibly-off cells (0). Decision 0114 measures Phase 1 at visible parity; the bit-level
 counts (`gen_known_failures`, `calc_failing`, `probe_known_failures`) print in brackets for Phase 1b.
 A missing input prints `n/a` and is never `met`; `exit` is `met` only when all four are. It is an exit
-measure, not a gate.
+measure, not a gate. The M2 row (decision 0135) has no coverage criterion (its counts print, its
+verdict is `n/a` and `exit` ignores it), needs 10,000 scored `gen-m2` cells with none visibly off,
+and reads the `M0-M2` probe row (`probe_row`). Each row lists its gen suite's visibly-off cells
+(`gen_visibly_off_cells`) and each probe row its own (`visibly_off_cells`), so
+`scripts/exit_owners.py` lists exactly the visibly-off exit cells without re-deriving closeness.
 
 The "Fifteen-digit parity checkpoint" section (`v15_checkpoint`, decision 0094) also prints the
 Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one cell in
