@@ -37,5 +37,18 @@ unreduced pieces (k at a = 2.5 is -1 to +1).
       port it to `f_test_tail.rs` / `bratio`.
 - [ ] `make check` green; reviewers approve.
 
+## Notes from the first run (2026-10-27, time-boxed, in progress)
+Scored on the 99 grid cells, with each cell's k computed as in `docs/research/t2829/ln_beta_map.py` (scripts kept in
+scratch, not committed):
+- LN of a GAMMA product, using Excel's own GAMMA cell values (probes `=GAMMA(v)`, all 242 points on file, within 0.33 ulp
+  of exact at 6, 11.5, 17.5, 19, 27.5): LN((Ga·Gb)/Gab) 47, LN(Ga·(Gb/Gab)) 47, LN(Gb/Gab) + LN(Ga) 56, and
+  LN(Ga) + LN(Gb) - LN(Gab) 27-34. Correctly rounded GAMMA gives 45-57. These are at noise level, so this is not the form.
+- Size argument: Excel's L misses by up to 2.5 ulp before its last rounding (5E-15 absolute at a = 6..8). TOMS's
+  reduction pieces (w, lnw, gamln on (1, 2], algdiv's u and v) are all below 3 in magnitude, so in doubles they cannot
+  make that error. The error needs a term of magnitude about 20-40, such as lnGamma(a + b) or (b - 0.5)·ln b. However,
+  Excel's GAMMALN cell values used in a sum score 15-29. Next: Stirling-type pieces such as (a + b - 0.5)·LN(a + b), with
+  Excel's LN and with the cancellation left to the sum. Also algdiv's d·alnrel(a/b) and a·(LN b - 1) taken from
+  x87-stored partial sums, and an inline lnGamma inside betaln that differs from the GAMMALN worksheet function.
+
 ## Out of scope
 - Porting the form (its own task), the shapes of 1/2 and 1 (the remainder model), min(a, b) < 1.
