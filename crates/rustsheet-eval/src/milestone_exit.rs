@@ -158,7 +158,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                         r.cells
                             .iter()
                             .filter(|c| Visible::is_off(c))
-                            .map(move |c| format!("{}!{}", r.id, c.key()))
+                            .map(move |c| r.cell_id(c))
                     })
                     .collect();
             }

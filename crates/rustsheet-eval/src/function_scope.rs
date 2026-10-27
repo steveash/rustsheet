@@ -142,7 +142,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
                 if c.verdict.is_pass() {
                     row.bit_exact += 1;
                 } else if c.verdict.is_failure() {
-                    let key = format!("{}!{}", r.id, c.key());
+                    let key = r.cell_id(c);
                     if Visible::is_off(c) {
                         row.visibly_off.push(key.clone());
                     }

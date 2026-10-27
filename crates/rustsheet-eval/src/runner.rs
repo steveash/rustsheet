@@ -170,6 +170,13 @@ enum Prepared {
 }
 
 impl CaseResult {
+    /// The `case!Sheet!A1` id of one of this case's cells, as report sections name it (compared
+    /// verbatim by `scripts/exit_owners.py`, decision 0135).
+    #[must_use]
+    pub fn cell_id(&self, cell: &CellResult) -> String {
+        format!("{}!{}", self.id, cell.key())
+    }
+
     /// A case `id` of `suite` with `status`, nothing checked or skipped and no cells: the start
     /// of every result, filled in with struct-update syntax.
     pub(crate) fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {

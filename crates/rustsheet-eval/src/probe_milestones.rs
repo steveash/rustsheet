@@ -370,7 +370,7 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 s.deviations += 1;
             } else if Visible::is_off(c) {
                 s.visibly_off += 1;
-                s.visibly_off_cells.push(format!("{}!{}", r.id, c.key()));
+                s.visibly_off_cells.push(r.cell_id(c));
             }
             rows_of_case.insert(row);
         }
