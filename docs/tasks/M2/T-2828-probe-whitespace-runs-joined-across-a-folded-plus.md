@@ -3,7 +3,7 @@ id: T-2828
 title: "Probe whitespace runs joined across a folded plus or a sign when they hold line feeds"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
