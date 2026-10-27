@@ -3,7 +3,7 @@ id: T-2358
 title: "HYPERLINK: probe the 255-character link_location bound for characters outside the BMP"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
