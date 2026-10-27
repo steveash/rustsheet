@@ -103,11 +103,12 @@ def top_table(top: list[FunctionParity]) -> str:
             f"{f.attributed_cells:,}",
             pct(f.rate_within15, f.rate_cells),
             f"{f.evidence:,}",
+            f"{f.real_world_calls:,}",
         ]
         for i, f in enumerate(top, 1)
     ]
     header = ["#", "Function", "Category", "Tier", "Prior", "Attributed cells", "Within 15 digits"]
-    return table([*header, "Excel cells"], rows, right_from=4)
+    return table([*header, "Excel cells", "Real-world calls"], rows, right_from=4)
 
 
 def top_block(p: Parity) -> str:
@@ -122,7 +123,8 @@ eval/catalog/functions.yaml, ties by name. These are the bulk of what everyday w
 **{never} of {len(top)}** never differ from Excel in the 15 digits Excel shows, on every counted
 cell; **{at_rate}** meet the Phase 1 rate ({GE} 99.9% within 15 digits, and covered). The columns
 are those of [docs/progress/functions.md]({ASSETS}/functions.md); Excel cells counts every
-Excel-evidence cell that calls the function, accepted deviations included.
+Excel-evidence cell that calls the function, accepted deviations included; real-world calls
+counts the calipers and poi formula cells that call it (T-0079).
 
 {top_table(top)}"""
 

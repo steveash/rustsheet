@@ -3485,8 +3485,9 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 30 cells listed in T-2429; p
 and probes/t2429-hypgeom-threshold A1-A47 (excel-graph, 2026-10-25); probes/t2429/<case>, each owned gen-m9 cell's
 HYPGEOM call and its arguments on that case's Data sheet.
 Ours: since T-2429, `#NUM!` for a negative or huge count (`limits::COUNT_LIMIT_EXCLUSIVE`), checked on every count
-before truncation; the impossible sample is still `#NUM!` (T-2699; probes/t2429-hypgeom-huge-count A5, A6 and their
-rows, `HYPGEOMDIST(1,N,3,N)`, are its cells). T-2700 confirmed the sign-before-truncation order for the HYPGEOM counts.
+before truncation; the impossible sample is 0 for the pmf and the cdf since T-2699 (hypegeom.rs
+`hyp_geom_dist_of`; probes/t2429-hypgeom-huge-count A5, A6 and their rows, `HYPGEOMDIST(1,N,3,N)`, are its cells).
+T-2700 confirmed the sign-before-truncation order for the HYPGEOM counts.
 Status: VERIFIED (excel-graph)
 
 ## A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data (T-2429)

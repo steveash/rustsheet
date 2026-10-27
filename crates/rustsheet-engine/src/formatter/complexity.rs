@@ -14,7 +14,8 @@
 //! - a cost of at most 250 over the whole code: 3 per section holding a digit placeholder, 2 per
 //!   placeholder run (`"0"` costs 5, `"0-0"` 10) plus 2 per `.` in it, 3 per
 //!   unquoted or escaped literal character (`$` 1; a run of colons counts once), 2 per quoted
-//!   character, 2 per other token (`AM/PM` 3), 2 per color, 7 per condition, 0 per `;`;
+//!   character, 2 per other token (`AM/PM` 3), 2 per color, 7 per condition, 0 per `;`; a
+//!   currency tag is quoted text of its symbol plus 13, its locale part free (`[$€-40C]` 15);
 //! - quoted text pays 4 more when a token follows it directly, 2 when unquoted text comes between
 //!   them (`"a" @` + 120 quoted works, 121 fails) and 1 when a color or condition does; 1 when a
 //!   placeholder run follows it directly or after unquoted text and 0 after a color or condition
@@ -66,6 +67,12 @@ const AP_COST: usize = 8;
 /// `[$-409]` and every other locale tag: 7 characters at a quoted character's cost (+ 118 quoted
 /// works and 119 fails, + 78 spaces works and 79 fails).
 const LOCALE_COST: usize = 14;
+/// A currency tag is priced like quoted text of its symbol plus this, and its locale part costs
+/// nothing: `[$€]` and `[$€-40C]` + 117 quoted work and 118 fail, `[$USD]` and `[$USD-40C]` + 115
+/// work and 116 fail; followed by spaces it pays the quoted text's 4 for unquoted text after it
+/// (`[$€-40C]` and `[$€]` + 77 spaces work, 78 fail; probes/t1883-currency-locale-edges,
+/// t2812-currency-tag-cost, T-2812).
+const CURRENCY_TAG_COST: usize = 13;
 const COLOR_COST: usize = 2;
 const CONDITION_COST: usize = 7;
 /// What quoted text costs on top of its characters when more of the section follows it.
@@ -296,7 +303,11 @@ fn exceeds_complexity_limit(format: &str) -> bool {
     let mut has_text = false;
     let mut has_conflict = false;
     loop {
+        let currency_tag = lexer.at_currency_tag();
+        let currency_locale = lexer.has_pending_locale();
         let token = lexer.next_token();
+        // A malformed `[$...` tag the lexer reads as anything else is not priced as one.
+        let currency_tag = currency_tag && matches!(token, Token::Currency(_) | Token::Text(_));
         // `AM/PM` is not in the list: it may stand in a fourth section (probes/text-ap-locale-inferences
         // A11, A12, A16).
         if sections == MAX_SECTIONS && is_number_or_date(&token) {
@@ -347,10 +358,16 @@ fn exceeds_complexity_limit(format: &str) -> bool {
             Token::Literal(':') => (Run::Colon, LITERAL_COST),
             Token::Literal('$') | Token::Escaped('$') => (Run::Literal, DOLLAR_COST),
             // An escaped colon does not join a colon run: it prints (`0\:\:` is "1::").
+            Token::Locale(_) if currency_locale => continue,
             Token::Locale(_) => (Run::None, LOCALE_COST),
-            Token::Literal(_) | Token::Escaped(_) | Token::Currency(_) => {
-                (Run::Literal, LITERAL_COST)
+            Token::Currency(_) | Token::Text(_) if currency_tag => {
+                let symbol = match &token {
+                    Token::Text(text) => text.chars().count(),
+                    _ => 1,
+                };
+                (Run::Literal, CURRENCY_TAG_COST + QUOTED_CHAR_COST * symbol)
             }
+            Token::Literal(_) | Token::Escaped(_) => (Run::Literal, LITERAL_COST),
             Token::Text(text) => (Run::Literal, QUOTED_CHAR_COST * text.chars().count()),
             Token::AMPM => (Run::None, AMPM_COST),
             Token::AP(..) => (Run::None, AP_COST),
@@ -374,7 +391,7 @@ fn exceeds_complexity_limit(format: &str) -> bool {
         }
         cost += token_cost;
         if counts_as_element {
-            let quoted = matches!(token, Token::Text(_));
+            let quoted = currency_tag || matches!(token, Token::Text(_));
             match next_run {
                 Run::Literal | Run::Colon => {
                     if !joins_run {
@@ -726,6 +743,33 @@ mod tests {
             format!("[$-409]{}", quoted(119)),
             format!("[$-409]{}", " ".repeat(79)),
             "0;0;0;0".to_string(),
+        ];
+        for code in too_complex {
+            assert!(exceeds_complexity_limit(&code), "{code}");
+        }
+    }
+
+    /// probes/t1883-currency-locale-edges and t2812-currency-tag-cost (excel-graph, T-2812).
+    #[test]
+    fn currency_tag_costs() {
+        let ok = [
+            format!("[$€-40C]{}", quoted(117)),
+            format!("[$€]{}", quoted(117)),
+            format!("[$€-40C]{}", " ".repeat(77)),
+            format!("[$€]{}", " ".repeat(77)),
+            format!("[$USD]{}", quoted(115)),
+            format!("[$USD-40C]{}", quoted(115)),
+        ];
+        for code in ok {
+            assert!(!exceeds_complexity_limit(&code), "{code}");
+        }
+        let too_complex = [
+            format!("[$€-40C]{}", quoted(118)),
+            format!("[$€]{}", quoted(118)),
+            format!("[$€-40C]{}", " ".repeat(78)),
+            format!("[$€]{}", " ".repeat(78)),
+            format!("[$USD]{}", quoted(116)),
+            format!("[$USD-40C]{}", quoted(116)),
         ];
         for code in too_complex {
             assert!(exceeds_complexity_limit(&code), "{code}");
