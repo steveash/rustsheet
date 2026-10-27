@@ -2193,10 +2193,6 @@ F	probes/eng-inumber-date-boundary.case.json	S!B21
 F	probes/eng-inumber-date-boundary.case.json	S!B22
 F	probes/eng-inumber-date-boundary.case.json	S!B23
 F	probes/eng-inumber-reading.case.json	S!A5
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A1
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A3
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A4
-F	probes/fin-amor-period-bound-c.case.json	Sheet1!A5
 F	probes/fin-argument-modes.case.json	Sheet1!H186
 F	probes/fin-argument-modes.case.json	Sheet1!H200
 F	probes/fin-argument-modes.case.json	Sheet1!H236
