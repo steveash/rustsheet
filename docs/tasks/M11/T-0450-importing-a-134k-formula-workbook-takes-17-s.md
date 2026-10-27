@@ -3,7 +3,7 @@ id: T-0450
 title: "Importing a 134k-formula workbook takes 17 s (calipers pv26_001): find and fix the import hot spot"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
