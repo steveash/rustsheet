@@ -1430,7 +1430,7 @@ but a walk is unbounded in the period, and the 2^20 cut is the kernel's work cap
 Evidence: probes/fin-amor-period-bound-c A1-A6 (excel-graph, 2026-10-18, T-1841 review).
 Status: DEVIATION (decision 0014)
 Implemented in: functions/financial/amortization.rs (`DEGRESSIVE_LOOP_PERIODS`, `DegressiveWalk::closed_form`)
-Tasks: T-1841, T-1895, T-2826
+Tasks: T-1841, T-1895, T-2826, T-2916
 
 T-1895: AMORDEGRC's charge past about 1.8E295 stays finite: `AMORDEGRC(1E308,39679,39813,300,1E5,1E-6,1)` is
 1.94700443465919E302 in Excel (probes/fin-amor-period-bound-b B2), main's walk cut to 15 digits ("AMORDEGRC rounds
@@ -1479,8 +1479,9 @@ Ours: since T-2826 (`amor_round` in functions/financial/amortization.rs, through
 twice-rounded walk since T-2849 (`DegressiveWalk::charge` through `arithmetic::extended_sum`, which rounds the first
 period's subtraction twice too, by analogy). Past 2^20 periods the kernel still finishes in closed form ("AMORDEGRC
 past 2^20 periods", a DEVIATION), so -c A1, A3, A4 and A5 stay known failures (A2 is Excel's by chance).
-Status: VERIFIED (excel-graph) for the rounding of charges from about 3E11 up and for the walk; smaller charges inferred
-Tasks: T-2826, T-2849
+Status: VERIFIED (excel-graph) for the rounding of charges from about 3E11 up and for the walk; smaller charges and the
+first subtraction inferred
+Tasks: T-2826, T-2849, T-2917
 
 ## AMORLINC and AMORDEGRC work cap
 Rule: RustSheet charges each lifted AMORLINC element 2^9 units and each AMORDEGRC element 2^18 against SPEC-0011's 2^27

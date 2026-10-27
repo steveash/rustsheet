@@ -185,8 +185,9 @@ fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
     // fin-amor-period-bound-c (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION): the closed
     // form drifts from the walk by about 1e-13 relative, so a charge of 1E12 or more can be a unit
     // off. Excel is A1 18989305437102, A2 16344246350030, A3 13720292047582, A4 5154670166168, A6
-    // 151632679; main's walk, rounded the Excel way, gives A1, A3, A4 but stays past the work cap,
-    // and gives A2 ...031: Excel's own walk drifts a few ulps from main's. TODO(T-2849).
+    // 151632679; main's walk, rounded the Excel way, gives A1, A3, A4 and A2 ...031, and Excel's own
+    // walk (each subtraction rounded twice, T-2849) gives all of them, but the walk stops at the work
+    // cap. TODO(T-2916).
     check(&[
         (
             "A1",

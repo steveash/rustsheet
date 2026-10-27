@@ -3,8 +3,7 @@
 //! `#VALUE!` in it, with no intersection (`ArgKind::LiftArrays`, SPEC-0011; probes/fin-argument-modes
 //! H19-H35, probes/fin-remaining-later-argument-ranges H11-H34).
 //!
-//! Excel walks the periods one by one in doubles (AMORDEGRC subtracts each charge in x87 extended
-//! precision, rounding the remaining value twice: `extended_sum`): `AMORLINC(2400,39679,39813,300,875000,0.000001,1)`
+//! Excel walks the periods one by one in doubles: `AMORLINC(2400,39679,39813,300,875000,0.000001,1)`
 //! is 0.0015212859222804571, the remainder after 874,999 subtractions of 0.0024, not the closed
 //! form's 0.0015213114757168815 (probes/fin-amor-period-bound A6), and a period of 1E15 at a rate
 //! of 1E-300 did not finish within the excel-graph timeout (docs/excel-semantics/financial.md
@@ -13,6 +12,9 @@
 //! AMORDEGRC exactly up to `DEGRESSIVE_LOOP_PERIODS` periods and past them in a closed form that
 //! drifts from the walk by about 1e-13 relative (`DegressiveWalk::closed_form`, a DEVIATION). Moved out
 //! of `financial/financial_depreciation.rs` (T-1841).
+//!
+//! AMORDEGRC's walk subtracts each charge in x87 extended precision, so the remaining value is
+//! rounded twice (`extended_sum`; T-2849, probes/amordegrc-walk-drift and -ties).
 //!
 //! Port of the depreciation calculations as implemented in the `ExcelFinancialFunctions` library
 //! (depreciation.fs), see <https://github.com/fsprojects/ExcelFinancialFunctions>.
