@@ -96,7 +96,7 @@ fn a_stopped_run_leaves_the_value_as_it_was() {
     // A2 leaves 776 and then reads A1, not yet run: that run stops and A1 must read A3's 485.
     let model = evaluated(&[
         ("A1", FRACTION),
-        ("A2", &format!("{}+0*A1", CHARGE_776)),
+        ("A2", &format!("{CHARGE_776}+0*A1")),
         ("A3", CHARGE_485),
     ]);
     assert_eq!(model._get_text("A1"), "485");
