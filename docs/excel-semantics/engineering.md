@@ -45,7 +45,8 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   Not fitted: `BESSELJ(1E+5,100000)` is 0.009636944011336267 in Excel, 0.00963694401133629 in Miller's recurrence
   here (n = x); no association of the recurrence step nor NR's ACC 160 reproduces it (T-2548). The true value is 0.0096369440113378623: Excel's and ours
   are both about 1.6E-13 low (relative), mostly from `tox = 2/x` rounding to a double, and differ only in per-step rounding
-  (x87 64-bit and FMA steps don't reproduce it either). A turning-point sweep is T-2881.
+  (x87 64-bit and FMA steps don't reproduce it either). Turning-point sweep (76 cells, n = 1000..100000, x = n, n±1/10/100, n+0.5, n-2/3/5):
+  probes/t2881-besselj-turning-point (excel-graph, 2026-10-27, T-2881), for T-2548 to fit.
   Web vs desktop: Mac Excel 16.0300's cached `BESSELJ(100000,5)` 0.001846551246313725 and `BESSELY(100000,5)`
   0.001719431947654535 (ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18, F18) differ from the web's 0.0018465512463137278
   and 0.0017194319476545319 (t2547-bessel-phase-cut A85, A86), which the engine gives; a Mac has no x87 sine. The engine

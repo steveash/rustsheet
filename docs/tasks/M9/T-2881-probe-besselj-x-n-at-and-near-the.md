@@ -3,7 +3,7 @@ id: T-2881
 title: "Probe BESSELJ(x,n) at and near the turning point n = x (n from 1000 to 1E+5) to fit Excel's Miller recurrence rounding"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -40,3 +40,8 @@ probes/t2546-bessel-past-cap.
 
 ## Out of scope
 - Fitting the model (T-2548, opus).
+
+## Outcome
+Added `probes/t2881-besselj-turning-point` (76 cells, excel-graph oracle-filled 2026-10-27): `BESSELJ(n,n)` for n = 1000..100000,
+n±1/10/100, n+0.5, n-2/3/5 at 50000/99999/100000, and small orders near x. Eval delta: 76 cells added (54 fail, all in
+the baseline for T-2548; no other baseline change). Cited in docs/excel-semantics/engineering.md.
