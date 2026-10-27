@@ -27,10 +27,12 @@ rule (a cell whose lowered area changes prints it; one off the data rows keeps i
 - A table without a header row (`showHeaderRow` off, if Graph can make one): an insert at its first row.
   With a header, an insert at the first data row grows the table (T-2197); ours is a fallback (the
   reference prints the displaced area) until this is known.
+- A table reaching the last sheet row (or column XFD) over empty cells, and a row (column) insert above
+  (left of) it: ours runs the insert and leaves the table (a fallback); Excel may refuse it.
 Use the excel-probe skill; cases go in eval/suites/probes/cases/table-edits with `insert_row` sheet ops.
 
 ## Acceptance criteria
-- [ ] Probe cases for the three items above, oracled (excel-graph) and in the probes baseline.
+- [ ] Probe cases for the items above, oracled (excel-graph) and in the probes baseline.
 - [ ] references.md "Structured references when the table changes" records the findings; implementation
   tasks are filed for any mismatch.
 - [ ] `make check` green; reviewers approve.

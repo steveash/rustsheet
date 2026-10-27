@@ -2356,7 +2356,9 @@ structured reference resolves to rewrites it to the displaced plain range (the f
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
 its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
 moved or grown table's row there, a value change from before T-2297 (unprobed, T-2843). An insert at
-the first row of a table without a header row is a fallback too (unprobed, T-2843). The plain-range quirk is not implemented. The two
+the first row of a table without a header row is a fallback too (unprobed, T-2843). So is an insert that would
+carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
+refuses it is unprobed, T-2843). The plain-range quirk is not implemented. The two
 insert edge rows and the quirk are T-2321, the delete edges T-2338, column inserts inside T-2339. With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
