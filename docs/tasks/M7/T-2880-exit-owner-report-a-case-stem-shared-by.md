@@ -3,7 +3,7 @@ id: T-2880
 title: "Exit-owner report: a file stem shared by several cases (every calipers workbook, gen-m9 hashes copied into probes/t2429 and t2436) must not own all of them"
 milestone: M7
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,25 +41,42 @@ the Phase 1 rule that every remaining failure has a filed task (docs/milestones.
   so the change needs a decision record (`make new-decision`) amending it. Tests: scripts/test_exit_owners.py.
 
 ## Acceptance criteria
-- [ ] When a stem is shared by more than one case of the report, a task names one of those cases only with a longer
+- [x] When a stem is shared by more than one case of the report, a task names one of those cases only with a longer
       suffix of the case id that is unique in the report (for example `pv26_011/<file>` or `t2436/<hash>`, or the
       full case id), or by the bare directory segment for calipers (`pv26_011`, the form open tasks already use).
       The decision record states the exact rule, including whether a bare `<hash>` still names its gen-m9 case,
       and tests cover each form.
-- [ ] A stem that only one case has keeps today's rule; every existing test in scripts/test_exit_owners.py passes
+- [x] A stem that only one case has keeps today's rule; every existing test in scripts/test_exit_owners.py passes
       unchanged.
-- [ ] A test builds a report with two calipers cases of the same file name and a task that names one by its
+- [x] A test builds a report with two calipers cases of the same file name and a task that names one by its
       directory and a cell: the other case's cell of that name is unowned. A second test does the same for
       `gen-m9/<hash>` against `probes/t2436/<hash>`. A third: a line that writes only the shared file name and no
       cell owns no case.
-- [ ] The Outcome gives `make exit-owners MILESTONE=M5`, `MILESTONE=M6`, `MILESTONE=M2` (once T-2822 lands) and
+- [x] The Outcome gives `make exit-owners MILESTONE=M5`, `MILESTONE=M6`, `MILESTONE=M2` (once T-2822 lands) and
       `scripts/exit_owners.py --unattributed` counts before and after, on a report that includes calipers
       (`target/release/rustsheet-eval fetch --suite calipers` first). Each newly listed cell gets an owner in the
       same PR (a line in the open task that should fix it) or is listed in the Outcome for the steward; past 10 newly
       listed cells, the owner lines go to a follow-up task instead.
-- [ ] Decision record amending decision 0096 added; `make check` green; reviewers approve.
+- [x] Decision record amending decision 0096 added; `make check` green; reviewers approve.
 
 ## Out of scope
 - `<stem>.case.json` naming and A1 spans (T-2731).
 - Renaming calipers cases or the probe copies, or changing how the eval harness forms case ids.
 - Rewriting existing task files beyond adding owners for newly listed cells.
+
+## Outcome
+- `scripts/exit_owners.py` names a case through `case_names` (decision 0138, amending 0096/0136): a stem only one
+  case of the report has still names it; a shared stem names none of them, and such a case is named by any suffix
+  of its id of two segments or more that is unique in the report (`pv26_011/golden.xlsx`, `t2436/<hash>`,
+  `gen-m9/<hash>`, the full id) or by its directory below the suite when that directory holds only it
+  (`pv26_011`). A bare gen-m9 `<hash>` shared with a probe copy no longer names the gen-m9 case. The names replace
+  the stem in all three forms (A1 anywhere, colon span on the case's line, whole-case line).
+- Tests: `SharedStems` in scripts/test_exit_owners.py (names, calipers directory + cell, gen-m9 hash vs its
+  t2436 copy, a shared stem alone owning nothing); the 18 existing tests pass unchanged.
+- Counts on `make eval` of origin/main 5cadaf05 with calipers fetched (3,328 cases; 70 shared stems, 603 cases),
+  before → after: `make exit-owners MILESTONE=M2` 0 → 0, `M5` 0 → 0, `M6` 0 → 0, `--unattributed` 0 → 0.
+  Of the 271 unattributed visibly-off cells in shared-stem cases, 57 false owner links (task, cell) are gone, and
+  no cell is left without an owner: the 6 cells the Context measured now have proper owners (T-2663 names
+  pv26_011 and pv26_2_011; T-2940 names the `probes/t2436/<hash>` copies), filed since this task was written.
+  No newly listed cells, so no owner lines were added.
+- Eval delta: none (no engine change).
