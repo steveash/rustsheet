@@ -17,7 +17,7 @@ the workbook as shipped, so they stop counting as visibly-off cells of MIN, MAX,
 INDIRECT, and nothing else in those workbooks changes.
 
 ## Context
-Gap triage 2026-10-27 (`make eval` on 7bd9090e). These 51 visibly-off cells have no open owner; T-2660 (done)
+Gap triage 2026-10-27 (`make eval` on 7bd9090e). Corpus background: T-0446 (the calipers suite) and T-2660. These 51 visibly-off cells have no open owner; T-2660 (done)
 found the cause and left them "not actionable", but they still count against Phase 1 (decision 0114):
 MIN, MAX and AVERAGE are M2 functions whose only visibly-off attributed cells are these (6 each, 1,932 / 2,836 /
 13,585 Phase 1 cells), so the current milestone's functions miss the 99.9% bar because of a corpus artifact.
