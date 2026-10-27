@@ -3,7 +3,7 @@ id: T-2879
 title: "Lifted YIELD and ODDFYIELD at the visit cap run about 17 s: refit the solver weight"
 milestone: M7
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
