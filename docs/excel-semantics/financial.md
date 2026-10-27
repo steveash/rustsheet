@@ -1454,14 +1454,20 @@ about half at 5x10^4 to 10^6 (E7-E45; -ties A51, A53, C5, C8, C9). Excel's exact
 an FMA update, `remain * (1 - rate)`, the rate and coefficient multiplied in another order, a charge cut to 8 to 16
 significant digits or rounded to a whole number before it is subtracted, and an accumulated depreciation subtracted
 from the cost each fit fewer of the 157 probed cells than main's walk (T-2826, a scratch fit).
-Ours rounds AMORDEGRC's first-period charge and the value AMORLINC leaves behind the same way (unprobed past 1E15).
+The first period's charge (period 0) rounds the same way: `AMORDEGRC(3.47925977217322E18,39679,39813,300,0,1E-7,1)`
+(318456837070.49963) is 318456837071, where main's pre-round gave ...070 (probes/amordegrc-round-mid F1-F6; G1-G6 at
+period 1, charges 1.2E12 to 2.3E12). Charges below about 3E11, where the two rules differ only within 1E-13 of a
+half, and the value AMORLINC leaves behind follow ROUND by analogy, unprobed; so does a charge whose 15-digit cut
+overflows, which ours leaves as it is where ROUND is `#NUM!` (T-2847).
 Evidence: probes/amordegrc-walk-ties (69 cells: costs near 1E20 at 1 to 10^6 periods whose charge in main's walk is
 within 0.01 of a half, exact halves, costs 1E300 and 1.23456789012345E300) and probes/amordegrc-walk-drift (66 cells:
 charges within one ulp of a 15-digit cut boundary at 1, 2 and 1000 periods, and near x.45 at 10^4 to 10^6 periods),
-excel-graph, 2026-10-27, T-2826; probes/fin-amor-period-bound-b B2.
+excel-graph, 2026-10-27, T-2826; probes/amordegrc-round-mid (12 cells, excel-graph, 2026-10-27, T-2826 review);
+probes/fin-amor-period-bound-b B2.
 Ours: since T-2826 (`amor_round` in functions/financial/amortization.rs, through `decimal_round::round_decimal`); the
 walk-drift cells above are known failures.
-Status: VERIFIED (excel-graph) for the rounding; the walk past about 1000 periods is open (T-2847)
+Status: VERIFIED (excel-graph) for the rounding of charges from about 3E11 up; smaller charges inferred; the walk past
+about 1000 periods is open (T-2847)
 Tasks: T-2826, T-2847
 
 ## AMORLINC and AMORDEGRC work cap

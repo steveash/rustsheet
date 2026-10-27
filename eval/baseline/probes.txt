@@ -63,6 +63,7 @@ C	probes/amordegrc-fraction-state-x.case.json	2
 C	probes/amordegrc-fraction-state-y.case.json	2
 C	probes/amordegrc-fraction-state-z.case.json	3
 C	probes/amordegrc-fractional-period.case.json	32
+C	probes/amordegrc-round-mid.case.json	12
 C	probes/amordegrc-walk-drift.case.json	66
 C	probes/amordegrc-walk-ties.case.json	69
 C	probes/anchorarray-at-operand-kinds.case.json	16

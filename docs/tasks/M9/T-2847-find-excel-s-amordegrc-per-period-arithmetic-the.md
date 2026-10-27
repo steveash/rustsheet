@@ -29,6 +29,9 @@ From T-2826 (docs/excel-semantics/financial.md "AMORDEGRC rounds its charge like
   rounding (80-bit product rounded to double), a period counter that skips or repeats a period, the cost read
   as `cost - salvage` with the salvage added back. A probe at 1000-3000 periods with many cells near a boundary
   localises the first divergent period cheaply.
+- Also unprobed (T-2826 review): the final rounding of charges below about 3E11 (old and new rules differ only within
+  1E-13 of a half there), the value AMORLINC leaves behind, and a charge whose 15-digit cut overflows (ours keeps the
+  value, ROUND is `#NUM!`; e.g. AMORLINC's left-over at a cost near 1.797E308).
 Code: functions/financial/amortization.rs (`DegressiveWalk::charge`, `amor_round`).
 
 ## Acceptance criteria
