@@ -3898,8 +3898,6 @@ F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A55
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A56
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A57
 F	probes/t2756-roundup-smallest-normal-threshold.case.json	Sheet1!A58
-F	probes/t2776-ws-after-bang.case.json	S!A1
-F	probes/t2776-ws-after-bang.case.json	S!C1
 F	probes/table-edits/plain-range-delete-row-first.case.json	F!A6
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2

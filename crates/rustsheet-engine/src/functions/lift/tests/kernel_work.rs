@@ -653,3 +653,127 @@ fn hypgeom_dist_elements_are_charged_by_their_counts() {
         4 * (3000 + 132) * 16
     );
 }
+
+/// The units `function(cost, date, 39813, salvage, period, rate, basis)` is charged over 513
+/// purchase dates `date`, `values` being cost, salvage, period and rate (T-2840).
+fn amortization_units(
+    function: Function,
+    date: crate::expressions::parser::ArrayNode,
+    values: [f64; 4],
+    basis: crate::calc_result::CalcResult,
+) -> u64 {
+    use super::super::driver::{kernel_units, LiftedArg};
+    use crate::calc_result::CalcResult;
+
+    let work = function.arg_kinds().map(|kinds| kinds.work);
+    let Some(work @ KernelWork::ByValue(ValueWork::Amortization { .. })) = work else {
+        panic!("{function:?} is not charged by its values: {work:?}");
+    };
+    let number = |n: f64| LiftedArg::Scalar(CalcResult::Number(n));
+    let [cost, salvage, period, rate] = values;
+    let args = [
+        number(cost),
+        LiftedArg::Grid(vec![vec![date]; 513]),
+        number(39_813.0),
+        number(salvage),
+        number(period),
+        number(rate),
+        LiftedArg::Scalar(basis),
+    ];
+    kernel_units(work, &args, 513, 1, 513)
+}
+
+/// AMORLINC's and AMORDEGRC's `ByValue` charge (T-2840): an element is charged its kernel's flat
+/// bound, so 512 AMORDEGRC elements fit under `MAX_LIFTED_CELL_VISITS` and 513 do not, and a
+/// text or a blank, which may read as any number, is charged the bound too.
+#[test]
+fn amortization_elements_are_charged_the_bound() {
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::limits::MAX_LIFTED_CELL_VISITS;
+
+    let date = || ArrayNode::Number(39_679.0);
+    let valid = [2400.0, 300.0, 1.0, 0.15];
+    let units = amortization_units(Function::Amordegrc, date(), valid, CalcResult::Number(1.0));
+    assert_eq!(units / 513 * 512, MAX_LIFTED_CELL_VISITS);
+    let text = ArrayNode::String("x".into());
+    let units = amortization_units(Function::Amordegrc, text, valid, CalcResult::Number(1.0));
+    assert!(units > MAX_LIFTED_CELL_VISITS);
+    let basis = CalcResult::String("1".into());
+    assert!(amortization_units(Function::Amordegrc, date(), valid, basis) > MAX_LIFTED_CELL_VISITS);
+    // A life of exactly 4 or 5 walks (rates 0.25 and 0.2); AMORLINC checks no life.
+    for rate in [0.25, 0.2] {
+        let values = [2400.0, 300.0, 1.0, rate];
+        let units =
+            amortization_units(Function::Amordegrc, date(), values, CalcResult::Number(1.0));
+        assert!(units > 513);
+    }
+    let values = [2400.0, 300.0, 1.0, 0.5];
+    let units = amortization_units(Function::Amorlinc, date(), values, CalcResult::Number(1.0));
+    assert!(units > 513);
+}
+
+/// An AMORLINC or AMORDEGRC element its kernel refuses before its walk is charged 1 (T-2840,
+/// `Model::amortization_of`): an error or a logical in any argument, or numbers failing the value
+/// checks or AMORDEGRC's asset life (gen-m9/e8d55ec393460bb7 A10: about 1,250 purchase dates,
+/// most of them texts, at a negative rate). The kernel itself returns an error on each failed
+/// value or life check.
+#[test]
+fn amortization_elements_refused_before_the_walk_are_charged_one() {
+    use crate::calc_result::CalcResult;
+    use crate::expressions::parser::ArrayNode;
+    use crate::expressions::token::Error;
+    use crate::test::util::new_empty_model;
+
+    let valid = [2400.0, 300.0, 1.0, 0.15];
+    let one = || CalcResult::Number(1.0);
+    let text = || ArrayNode::String("x".into());
+    let error = |formula: &str| {
+        let mut model = new_empty_model();
+        model._set("A1", formula);
+        model.evaluate();
+        let value = model._get_text("A1");
+        assert!(value.starts_with('#'), "{formula} is {value}, not refused");
+    };
+    for function in [Function::Amordegrc, Function::Amorlinc] {
+        for date in [ArrayNode::Error(Error::NA), ArrayNode::Boolean(true)] {
+            let units = amortization_units(function.clone(), date.clone(), valid, one());
+            assert_eq!(units, 513, "{function:?} {date:?}");
+        }
+    }
+    let na = CalcResult::new_error(Error::NA, super::AT, String::new());
+    assert_eq!(
+        amortization_units(Function::Amordegrc, ArrayNode::Number(39_679.0), valid, na),
+        513
+    );
+    let refused = [
+        (Function::Amordegrc, [2400.0, 300.0, 1.0, -41_788_900.0]),
+        (Function::Amordegrc, [-1.0, 300.0, 1.0, 0.15]),
+        (Function::Amordegrc, [2400.0, -1.0, 1.0, 0.15]),
+        (Function::Amordegrc, [300.0, 300.0, 1.0, 0.15]),
+        (Function::Amordegrc, [2400.0, 300.0, -1.0, 0.15]),
+        (Function::Amordegrc, [2400.0, 300.0, 1.0, 0.0]),
+        // AMORDEGRC's asset life: 1 / 0.5 is 2, 1 / 0.22 about 4.5.
+        (Function::Amordegrc, [2400.0, 300.0, 1.0, 0.5]),
+        (Function::Amordegrc, [2400.0, 300.0, 1.0, 0.22]),
+        (Function::Amorlinc, [2400.0, 300.0, 1.0, -0.5]),
+    ];
+    for (function, values) in refused {
+        let units = amortization_units(function.clone(), text(), values, one());
+        assert_eq!(units, 513, "{function:?} {values:?}");
+        let [cost, salvage, period, rate] = values;
+        let name = if function == Function::Amorlinc {
+            "AMORLINC"
+        } else {
+            "AMORDEGRC"
+        };
+        error(&format!(
+            "={name}({cost},39679,39813,{salvage},{period},{rate},1)"
+        ));
+    }
+    let nan_period = [2400.0, 300.0, f64::NAN, 0.15];
+    assert_eq!(
+        amortization_units(Function::Amordegrc, text(), nan_period, one()),
+        513
+    );
+}

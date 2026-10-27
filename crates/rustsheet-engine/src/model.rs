@@ -1544,9 +1544,7 @@ impl Model {
                     self.language,
                 ),
                 Some(i) => {
-                    let formula = crate::formula_cells::written_formula(
-                        &self.parsed_formulas[sheet as usize][i as usize],
-                    );
+                    let formula = self.parsed_formulas[sheet as usize][i as usize].written();
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1664,13 +1662,7 @@ impl Model {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let formula = crate::formula_cells::written_formula(
-                        self.parsed_formulas
-                            .get(sheet as usize)
-                            .ok_or("missing sheet")?
-                            .get(formula_index as usize)
-                            .ok_or("missing formula")?,
-                    );
+                    let formula = self.written_formula(sheet, formula_index)?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
                         row,
@@ -2123,8 +2115,8 @@ impl Model {
 
                 // Update the style if needed
                 let cell = CellReferenceIndex { sheet, row, column };
-                let (parsed_formula, _static_result, _) =
-                    &self.parsed_formulas[sheet as usize][formula_index as usize];
+                let parsed_formula =
+                    &self.parsed_formulas[sheet as usize][formula_index as usize].evaluated;
 
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
                     let new_style_index = self
@@ -2474,9 +2466,8 @@ impl Model {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula = crate::formula_cells::written_formula(
-                    &self.parsed_formulas[sheet as usize][formula_index as usize],
-                );
+                let formula =
+                    self.parsed_formulas[sheet as usize][formula_index as usize].written();
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,
