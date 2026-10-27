@@ -3,7 +3,7 @@ id: T-2427
 title: "FREQUENCY: an error argument is that error, and the result has one row per bin cell plus one even for a single or text bin (gen-m9, 140 cells)"
 milestone: M9
 lane: functions-stat
-status: done
+status: blocked
 priority: P2
 size: S
 tier: sonnet
@@ -165,6 +165,21 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Blocked because
+Steward 2026-10-27: the branch has not moved since 2026-10-25 and reviewer-excel-fidelity's
+REQUEST_CHANGES on PR #1718 (steward run of 2026-10-26) is still open. Two rules this branch
+implements have no oracle evidence:
+- a bins-array error element now propagates (`freq_values_of`); corpus-bench/53062 points the
+  other way (T-2636). Probe `ROWS(FREQUENCY(0,{1,#VALUE!,3}))`, `INDEX(FREQUENCY(0,{1,#VALUE!,3}),1)`
+  and `FREQUENCY({1;2},{#N/A})` in probes/frequency-bins, or confine element errors to data_array;
+- an error cell in a data range now loses to a scalar bins error (main has data first; statistics.md
+  marks it UNVERIFIED). Probe `FREQUENCY(Data!A1:A2,NA())` with an error cell in the range, or keep
+  main's data-first order.
+Minor review points: stale T-2636 notes (statistics.md, `prob.rs` TODO), `freq_values_of` re-rolls
+`numeric_flat_with_element_errors` / `array_element_error`, the `"2"` text-bin rule is unprobed.
+Unblock: add those probes, fill them (`rustsheet-oracle status` shows excel-graph OK), follow the
+evidence, set `status: done` again and re-run the reviewers.
 
 ## Outcome
 FREQUENCY skips text/booleans/blanks, returns two rows when no bin is numeric, and an error argument is the result
