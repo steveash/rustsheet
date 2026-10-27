@@ -212,14 +212,15 @@ fn row_inserts_keep_values() {
     }
 }
 
-/// With two data rows no delete is strictly inside them (see `a_table_shrinks_and_moves_left`):
-/// every delete that touches the table is a fallback, one below it leaves it alone.
+/// The table (header row 1, data rows 2-3) shrinks with a delete of either data row (T-2338) and
+/// is left alone by one below it; a delete touching its header row, or of both data rows at once,
+/// is a fallback.
 #[test]
 fn row_deletes_keep_values() {
     for (row, count, follows) in [
         (1, 1, false),
-        (2, 1, false),
-        (3, 1, false),
+        (2, 1, true),
+        (3, 1, true),
         (2, 2, false),
         (4, 1, true),
         (5, 1, true),
@@ -325,11 +326,11 @@ fn wide_state(model: &Model) -> (Vec<String>, String, String, String) {
     )
 }
 
-/// A delete strictly inside the data rows shrinks the table, a column delete left of it moves it
+/// A delete inside the data rows shrinks the table, a column delete left of it moves it
 /// left, and a row insert inside its data grows it: every reference keeps its text, from another
 /// sheet, from the table's sheet, through a defined name and from a conditional format, and reads
 /// the table as it now is (references.md "Structured references under row deletes, column edits,
-/// convert, table and sheet delete", T-2324). A delete at an edge of the data is a fallback.
+/// convert, table and sheet delete", T-2324), a delete at an edge of the data too (T-2338).
 #[test]
 fn a_table_shrinks_and_moves_left() {
     let kept = |calc: [&str; 4]| {
@@ -359,15 +360,15 @@ fn a_table_shrinks_and_moves_left() {
     model.evaluate();
     assert_eq!(value(&model, 1, 9, 1), "6");
 
-    // The last data row (8) is an edge, a fallback (T-2338): the reference prints its displaced
-    // area, as before, and the table stays.
+    // A delete of the last data row (8) shrinks the table too (T-2338).
     model.delete_rows(0, 8, 1).unwrap();
     model.evaluate();
     let (_, text, _, cf) = wide_state(&model);
-    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Data!$A$3:#REF!)");
-    assert_eq!(text, "=SUM($A$3:#REF!)");
-    assert_eq!(cf, "SUM($A$3:#REF!)>30");
-    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B8");
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Sales[Qty])");
+    assert_eq!(text, "=SUM(Sales[Qty])");
+    assert_eq!(cf, "SUM(Sales[Qty])>30");
+    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B7");
+    assert_eq!(value(&model, 1, 9, 1), "5");
 }
 
 /// An edit on another sheet leaves the table, and so its references, alone.
@@ -504,6 +505,62 @@ fn a_table_and_ranges_onto_its_data_grow_at_its_edges() {
     let values: Vec<String> = (1..=3).map(|r| value(&model, 1, r, 1)).collect();
     assert_eq!(values, ["15", "5", "15"]);
     assert_eq!(value(&model, 0, 9, 3), "15");
+}
+
+/// A row delete that takes a plain range's first or last rows shrinks it to the rows left
+/// (plain-range-delete-row-first and -last, T-2338); one that takes all of it is `#REF!`.
+#[test]
+fn a_row_delete_at_a_range_edge_shrinks_it() {
+    let text = |delete: (i32, i32), input: &str| {
+        let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+        model.rename_sheet("Sheet1", "S").unwrap();
+        model.add_sheet("F").unwrap();
+        model.set_user_input(1, 1, 1, input.to_string()).unwrap();
+        model.delete_rows(0, delete.0, delete.1).unwrap();
+        formula(&model, 1, 1, 1)
+    };
+    assert_eq!(text((4, 1), "=SUM(S!C4:C7)"), "=SUM(S!C4:C6)");
+    assert_eq!(text((7, 1), "=SUM(S!C4:C7)"), "=SUM(S!C4:C6)");
+    assert_eq!(text((4, 1), "=SUM(S!$C$4:$C$7)"), "=SUM(S!$C$4:$C$6)");
+    assert_eq!(text((7, 1), "=SUM(S!C7:C9)"), "=SUM(S!C7:C8)");
+    // Across an edge with more than one row (hand: only one-row deletes are probed).
+    assert_eq!(text((3, 3), "=SUM(S!C4:C7)"), "=SUM(S!C3:C4)");
+    assert_eq!(text((6, 3), "=SUM(S!C4:C7)"), "=SUM(S!C4:C5)");
+    // Inside or around the range: as before.
+    assert_eq!(text((5, 1), "=SUM(S!C4:C7)"), "=SUM(S!C4:C6)");
+    assert_eq!(text((1, 1), "=SUM(S!C4:C7)"), "=SUM(S!C3:C6)");
+    assert!(text((4, 1), "=SUM(S!C4:C4)").contains("#REF!"));
+}
+
+/// Deleting a table's only data row keeps the row, cleared: nothing below moves
+/// (table-delete-row-all-data-below, T-2338), and undo restores the row without moving anything.
+#[test]
+fn deleting_the_last_data_row_clears_it_and_undo_restores_it() {
+    let mut model = edge_model(false);
+    model.set_user_input(0, 10, 3, "99".to_string()).unwrap();
+    model.set_user_input(1, 6, 1, "=S!C10".to_string()).unwrap();
+    for _ in 0..3 {
+        model.delete_rows(0, 4, 1).unwrap();
+    }
+    model.evaluate();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
+    assert_eq!(formula(&model, 1, 6, 1), "=S!C7");
+    let mut user = crate::UserModel::from_model(model);
+    user.delete_rows(0, 4, 1).unwrap();
+    let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
+    assert_eq!(formula(model, 1, 6, 1), "=S!C7");
+    assert_eq!(value(model, 1, 2, 1), "1");
+    assert_eq!(value(model, 1, 1, 1), "0");
+    assert_eq!(value(model, 0, 4, 3), "");
+    user.undo().unwrap();
+    let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
+    assert_eq!(value(model, 0, 4, 3), "8");
+    assert_eq!(value(model, 0, 7, 3), "99");
+    user.redo().unwrap();
+    assert_eq!(value(user.get_model(), 0, 4, 3), "");
+    assert_eq!(value(user.get_model(), 0, 7, 3), "99");
 }
 
 #[test]
