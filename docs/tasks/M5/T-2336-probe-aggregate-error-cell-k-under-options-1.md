@@ -3,7 +3,7 @@ id: T-2336
 title: "Probe AGGREGATE error-cell k under options 1-3, 5, 7 and an IF-picked fourth argument for functions 1-13"
 milestone: M5
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
