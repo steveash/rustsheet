@@ -40,6 +40,14 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
   starts sit about half a lunation off the new moon, and in 9990-9999 about 4-5.5 days after the mean new moon, so
   Excel's month cycle drifts against the real one. A straight mean-lunation fit over 2101-2300 (29.5337 days) leaves
   residuals of -12 to +20 days once months are indexed by rounding, so the indexing (or the model) is wrong.
+- Second pass (same day): leap months always come at the end of the year (months 13 and 14), because months are
+  numbered from a separately computed new-year date: 2101-02-14, 2102-02-03, 2103-01-23, 2104-02-10, 2105-01-31,
+  2106-02-19, 2107-02-08, 2108-01-28, 2109-02-16, 2110-02-05 (column A). Where that date is not a month start it cuts a
+  1-day or 28-day stub. With those forced starts removed, the remaining month starts of column A fall into three
+  segments with a mean lunation of 29.5294-29.5305 days and residuals of about +-1.9 days: 2101-01-15 to 2142-01-13,
+  2142-02-27 to 2233-01-13, and 2233-02-27 on. The segments are separated by the two 15-day months, both ending on
+  27 February (2142, 2233), where the phase jumps by about half a lunation. Script: count month indexes from the
+  gaps (round(gap/29.53)), then fit each segment.
 - Next: index months by counting starts (not by rounding), fit day = floor(a + n*L) per table over 2101-2300, and
   test it on 9990-9999 and on 1900-1960 (lunar_calendar.rs tables). The year turn likely comes from a separate
   new-year rule (month 1 forced on a date that need not be a month start, hence the 1-day months); recover it from
