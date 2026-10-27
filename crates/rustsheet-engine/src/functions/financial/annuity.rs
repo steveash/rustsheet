@@ -511,6 +511,7 @@ pub(super) fn period_payments(
                     .or(balance.filter(|_| whole_term).map(|(interest, _)| interest));
                 let discounted =
                     discounted_interest(rate, period_count, period, values, period_start);
+                // An exact 0 makes the ratio NaN (keeps 0) or infinite (takes the finite discount).
                 match (exact, discounted) {
                     (Some(exact), Some(discounted))
                         if ((discounted - exact) / exact).abs() > DISCOUNTED_INTEREST_FROM =>
@@ -933,7 +934,8 @@ mod tests {
             Ok(9_391.860_328_810_97)
         );
         assert_eq!(
-            ipmt(3.14159, 1.999, 167.0, 0.375, 0.0, false),
+            // 3.14159 (Data!A6), written as a quotient so clippy does not take it for PI.
+            ipmt(314_159.0 / 100_000.0, 1.999, 167.0, 0.375, 0.0, false),
             Ok(-1.178_096_249_999_999_8)
         );
         // Within a few ulp the exact balance stays: it has Excel's bits (m9-fin-pmt A101).
