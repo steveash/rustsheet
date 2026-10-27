@@ -53,15 +53,19 @@ Code: `compute_rate`, `rate_residual` (functions/financial/financial_util.rs).
 - Fit lab `rate` (`uv run rustsheet-fitlab rate`): the sweep reads a nested call whose text is the whole formula
   of a cell of the fit's new `calls` cases as Excel's value of that cell (`Fit.calls`, `sweep.call_values`), so
   `RATE(n,PMT(..),..)` takes Excel's own PMT bits from probes-numeric/m9-fin-pmt (all 308 inner calls are
-  there). `rate_secant_candidates` ports the T-2005 model with traces; the fit scores 474 cells (errors included).
-- Finding: with Excel's PMT bits the secant is bit-exact on 474/474 when the residual's `+`, `*` and `/` are
-  Excel's twice-rounded operators, 472/474 with FV's once-rounded `annuity_factor` (A487 2,183 ulp, A218 157
-  ulp), 457-468 with the sum in another order; Excel's value is an iterate of the trace on 428/428 numeric
-  cells. `rate_residual` now uses the twice-rounded operators (financial.md "RATE is a secant on the FV residual").
-- The RATE cells still off are off by the engine's PMT, which differs from Excel on 176 of the 308 inner calls
-  (PMT's tasks, T-1528): against the engine's own PMT bits both residuals give 320/474 exact and 116 visibly off
-  (117 before T-2689's A583). A218, A278, A245 and A367 are among them, documented in financial.md.
+  there). `rate_secant_candidates` ports the T-2005 model with traces; the fit scores 782 cells (errors included).
+- Finding: with Excel's PMT bits the secant is bit-exact on 782/782 when the residual's `+`, `*` and `/` are
+  Excel's twice-rounded operators, 778/782 with FV's once-rounded `annuity_factor` (A487 2,183 ulp, A218 157
+  ulp, in both cases below), 751-774 with the sum in another order; Excel's value is an iterate of the trace on
+  705/705 numeric cells. `rate_residual` now uses the twice-rounded operators (`annuity_factor_rounded`).
+- Probe probes/rate-excel-pmt-bits (308 cells, excel-graph): the nested cells with the PMT replaced by a cell
+  holding Excel's PMT bits; Excel gives the nested cells' bits and the engine passes all 308 (it pins the
+  residual: the once-rounded one fails 2).
+- The RATE cells still off in m9-fin-irr-rate are off by the engine's PMT, which differs from Excel on 176 of the
+  308 inner calls (PMT's tasks, T-1528): against the engine's own PMT bits both residuals give 320/474 exact and
+  116 visibly off (117 before T-2689's A583). A218, A278, A245 and A367 are among them, documented in financial.md.
 - Probe probes/rate-zero-residual-guess (12 cells, excel-graph): a guess with residual exactly 0 runs the secant
   (`RATE(1,0,0,0)` is `#NUM!`, the flat secant, not 0.1); the model passes all 12.
-- Eval delta: gated baselines unchanged (0 fixed, 0 regressions; probes +1 case, 12 cells, all pass); visible
-  parity 3225 in-scope cells visibly off (unchanged). Follow-up: T-2922 (norm-s-inv onto `calls`).
+- Eval delta: gated baselines 0 fixed, 0 regressions; probes +2 cases, 320 cells, all pass; visible parity 3225
+  in-scope cells visibly off (unchanged). A cap run costs about 5% more (10,000 `RATE(3000,-1,100)`: 1.9 s to
+  2.0 s), within `RATE_WEIGHT`'s margin. Follow-up: T-2922 (norm-s-inv onto `calls`).

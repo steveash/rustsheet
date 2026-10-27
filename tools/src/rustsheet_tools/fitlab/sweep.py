@@ -10,8 +10,9 @@ arithmetic over numeric literals (`0.05/12`, `1+26955297717044*2^-52`), which is
 Excel's operator model (`arithmetic`), and a nested call whose text is the whole formula of a cell
 of the fit's `calls` cases (`PMT(0.2,1,10000)` in `RATE(1,PMT(0.2,1,10000),10000)`), which is
 Excel's value of that cell: the outer kernel is then scored on Excel's own bits of the inner call.
-A cell whose arguments are anything else (another function call) is reported as unparsed. A pattern with one group is an argument list split at top-level
-commas; a pattern with several groups gives one argument per group that took part in the match.
+A cell whose arguments are anything else (another function call) is reported as unparsed. A pattern
+with one group is an argument list split at top-level commas; a pattern with several groups gives one
+argument per group that took part in the match.
 """
 
 from __future__ import annotations

@@ -48,6 +48,7 @@ RATE_CASES = [
     "probes/rate-empty-arguments",
     "probes/fin-argument-modes",
     "probes/rate-zero-residual-guess",
+    "probes/rate-excel-pmt-bits",
 ]
 YIELD_CASES = [
     "probes/solver-iteration-traces",

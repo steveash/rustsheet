@@ -146,9 +146,9 @@ def test_irr_secant_on_a_two_flow_root() -> None:
 @pytest.mark.usefixtures("real_cases")
 def test_rate_results_are_rates() -> None:
     cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
-    assert len(cells) == 474  # nested PMT included (T-2527), error cells too
-    assert sum(c.error is not None for c in cells) == 46
-    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 28
+    assert len(cells) == 782  # nested PMT included (T-2527), error cells too
+    assert sum(c.error is not None for c in cells) == 77
+    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 40
 
 
 @pytest.mark.usefixtures("real_cases")
@@ -156,7 +156,7 @@ def test_rate_secant_model_is_bit_exact_on_the_fit_set() -> None:
     # financial.md "RATE is a secant on the FV residual" quotes this score (T-2527).
     result = fit.run(registry()["rate"], engine=False, only=r"Excel operators, sum pv,pmt,fv$")
     (s,) = result.scores
-    assert (s.exact, s.total) == (474, 474)
+    assert (s.exact, s.total) == (782, 782)
 
 
 def test_iterate_converges_or_reports_no_result() -> None:
