@@ -26,8 +26,10 @@ Excel evidence for unary minus of a tiny subnormal (below 2^-1026) in the forms 
 - [ ] One excel-graph probe case reads back, at k = 12345 and k = 2^48 - 1 (and at k = 2^48 as a control):
       `-A1` and `--A1` with A1 holding the value, `-x` of a tiny negative x, `--x`, `---x`, `-{x}` over an array,
       `-A1:A2` lifted over a range, and `-x%` and `-(x)%`.
+- [ ] The same case reads back ROUND of a positive x below 2^-1026 at num_digits -2, -400, 2^31 and 1E10
+      (T-2771 evidenced only 0, 320 and 330).
 - [ ] numbers.md records the result; the engine matches every cell, or the mismatches stay known failures with this task as owner.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The ROUND family's own tiny-subnormal rules (T-2771, done).
+- The ROUND family's tiny-subnormal rules at the num_digits T-2771 already evidenced.
