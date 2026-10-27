@@ -2457,8 +2457,8 @@ match in value, and FORMULATEXT prints the displaced plain range where Excel kee
 move and inside classes); the edge row deletes (T-2338) and the column grow and table-column delete match
 too (T-2339: `column_span` and `edit_columns` in table_edits.rs grow or shrink the table and its column list,
 naming an inserted column `ColumnN` in its header cell, and `deleted_column` in stringify/structured.rs
-prints a reference to a deleted column as `#REF!`; a column range that loses one end prints its displaced
-plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
+prints a reference to a deleted column as `#REF!`, a column range that loses both ends too; one that loses
+one end prints its displaced plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
 `ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). A wholly deleted plain range still prints `#REF!:#REF!` (T-2855), and INDIRECT of a
 structured reference's text is `#REF!` (T-2888). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference

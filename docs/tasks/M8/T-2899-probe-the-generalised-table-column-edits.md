@@ -25,7 +25,8 @@ stringify/structured.rs `deleted_column`):
   `range('C:D')/insert` would need a `count` key in tools/src/rustsheet_tools/sheetop.py);
 - deleting every column of a table, and a delete straddling its left or right edge (both fall back today);
 - a column range `Sales[[Qty]:[Val]]` whose one end is deleted (printed as its displaced plain area today, whose
-  column-delete corners are T-2851's).
+  column-delete corners are T-2851's), and one whose both ends are deleted (printed `#REF!` today, as a single
+  deleted column is).
 Probe each on excel-graph (excel-probe skill), record the results in references.md "Structured references under row
 deletes, column edits, convert, table and sheet delete", and file engine tasks for any mismatch.
 
