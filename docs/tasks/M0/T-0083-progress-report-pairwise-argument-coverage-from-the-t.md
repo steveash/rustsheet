@@ -3,7 +3,7 @@ id: T-0083
 title: "Progress report: pairwise argument coverage from the T-0077 census"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
