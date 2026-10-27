@@ -87,3 +87,15 @@ the Outcome and handed to T-2512. Bit-level criteria still unmet move to a follo
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Progress (2026-10-27, session ran out of budget; resume from this branch)
+- Landed on the branch: `functions/statistical/bratio/mod.rs`, the 1992 dispatch (`dispatch` → `Dispatch { branch,
+  swapped, a0, b0, x0, y0 }`, `Branch` with the model's branch names, x0 >= 0.3, λ formed as TOMS forms it), and
+  `bratio/tests.rs` with hand-derived boundary points. It sits behind `#[cfg(test)] mod bratio;` until the callers
+  move onto it; remove that gate in this task.
+- Next:
+  1. Port bpser per r2-bpser-small `lib.py` `bpser_w3`: s = fl(1/a) forward series; z = fl64(fl(a·LN x) - L); EXP of
+     the extended z (`x87_exp::excel_exp_extended`); L = GL53/glalgdiv. Verify against the model run with the
+     bindings venv (docs/research/t2464/README.md "Rebuilding the harness").
+  2. `bratio_or` per SPEC-0025, then the callers: BETA.DIST cdf, F (w5 forms everywhere), BINOM, NEGBINOM.
+  3. Delete the pre-T-2502 seams and the harness, as the acceptance criteria require.
