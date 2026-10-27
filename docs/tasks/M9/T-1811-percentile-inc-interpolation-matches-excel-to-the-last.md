@@ -3,7 +3,7 @@ id: T-1811
 title: "PERCENTILE.INC interpolation matches Excel to the last bit (PERCENTILE(C1:C6,0.3) is 1.9000000000000001)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
