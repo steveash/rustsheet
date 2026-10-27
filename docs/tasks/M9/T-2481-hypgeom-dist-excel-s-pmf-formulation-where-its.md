@@ -23,6 +23,10 @@ the exact value everywhere, and visibly off it at these cells (Excel vs ours = e
 - probes-numeric/t1049-hypgeomdist A10 `HYPGEOM.DIST(5,10,25,100,FALSE)`: 0.052973714479659324 vs 0.05297371447965936
 - A14 `HYPGEOM.DIST(50,100,500,10000,FALSE)`: 7.89124343483521E-39 vs 7.891243434835164E-39
 - A16 `HYPGEOM.DIST(100,1000,5000,100000,FALSE)`: 3.482317936286154E-11 vs 3.482317936286112E-11
+- Large populations (gap triage 2026-10-27; they had no owner): probes/t2429-hypgeom-huge-count A7 `HYPGEOMDIST(1,2,3,1000000)`
+  5.999987999988011E-06 vs 5.999987999988E-06, A25 `HYPGEOMDIST(1,2,3,1000000000)` 5.999999987999986E-09 vs
+  5.999999988E-09; probes/t2429-hypgeom-threshold A1 `HYPGEOMDIST(1,2,3,1073741824)` 5.58793543728452E-09 vs
+  5.58793543728453E-09, A9 `HYPGEOMDIST(1,2,3,2000000000)` 2.9999999970000066E-09 vs 2.999999997E-09.
 What T-0977 ruled out (statistics.md "HYPGEOM.DIST is not exact for small integer arguments"): exp of the nine
 log-factorials in all 9! orders (correctly rounded, lgamma, summed logs), ratios of COMBINs, a product of ratios from
 x = 0, Loader's `dhyper`. Each matches at most 25 of 84 small-population pmf cells. Excel's cdf is the sum of its own
@@ -36,7 +40,7 @@ t1049-hypgeomdist A5 `HYPGEOM.DIST(0,3,5,12,TRUE)` (Excel 0.15909090909090923, n
 ulp off under statrs).
 
 ## Acceptance criteria
-- [ ] The six cells above are within half a unit of the 15th digit of Excel's value, no new known-failure lines.
+- [ ] The ten cells above are within half a unit of the 15th digit of Excel's value, no new known-failure lines.
 - [ ] statistics.md records the matched formulation; the bit-level cells above pass or are listed with Excel vs ours.
 - [ ] `make check` green; reviewers approve.
 
