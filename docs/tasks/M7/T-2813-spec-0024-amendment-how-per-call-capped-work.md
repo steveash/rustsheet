@@ -7,6 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
+spec: docs/specs/SPEC-0024-formula-work-budget.md
 depends_on: []
 ---
 
@@ -38,7 +39,7 @@ unit slow (T-2814) so the 10 s target holds; or relax the 2^26 margin for this k
 ## Acceptance criteria
 - [ ] SPEC-0024 sections 1 and 4 state the rule for per-call capped work, with the measurements above, and the chosen
       rule meets: no eval regression, and each kind's worst case stops within 10 s (or the spec records why not).
-- [ ] T-2803's "Blocked because" section points at the amendment, so the next opus run can resume it.
+- [ ] T-2803's "Blocked because" section, on its draft branch (#1938, `agent/engine/T-2803-formula-work-budget`), points at the amendment, so the next opus run can resume it.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
