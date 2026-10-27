@@ -260,6 +260,7 @@ fn column_deletes_inside_drop_the_column() {
         ("=SUM(#REF!)", "#REF!"),
         ("=SUM(Sales[#All])", "30"),
         ("=ROWS(Sales)", "2"),
+        // The plain range's column-delete corner gap, as above (T-2851).
         ("=SUM(#REF!:$A$3)", "#REF!"),
         ("=COUNTA(Sales[#Headers])", "1"),
         ("=SUM(Sales[[#Data],[Val]])", "30"),
@@ -268,6 +269,7 @@ fn column_deletes_inside_drop_the_column() {
         ("=SUM(Sales[Qty])", "3"),
         ("=SUM(Sales[#All])", "3"),
         ("=ROWS(Sales)", "2"),
+        // Not Excel's value: the plain range's column-delete corner gap (T-2851).
         ("=SUM(Data!$A$2:#REF!)", "#ERROR!"),
         ("=COUNTA(Sales[#Headers])", "1"),
         ("=SUM(#REF!)", "#REF!"),

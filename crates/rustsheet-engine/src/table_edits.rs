@@ -5,6 +5,8 @@
 //! text. Every other edit that crosses a table leaves it
 //! as it is (the *fallback*): its references print the displaced area, as before SPEC-0016.
 
+use std::collections::HashSet;
+
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::parse_range;
 use crate::expressions::parser::stringify::{DataBlock, DisplaceData, Displacement};
@@ -180,6 +182,13 @@ struct ColumnEdit {
     delta: i32,
 }
 
+impl ColumnEdit {
+    /// The number of columns a delete removes; 0 for an insert.
+    fn deleted(self) -> usize {
+        usize::try_from(-i64::from(self.delta)).unwrap_or(0)
+    }
+}
+
 /// What the edit `displace_data`, on the sheet of `table`, does to it.
 fn follow(table: &Table, displace_data: &DisplaceData) -> Follow {
     followed(table, displace_data).unwrap_or(Follow::Fallback)
@@ -253,25 +262,26 @@ fn grown_edge(table: &Table, sheet: u32, displace_data: &DisplaceData) -> Option
 }
 
 /// Inserts or deletes the table columns `edit` names in `columns`. An inserted column is named
-/// `ColumnN`, N the least number no column of the table has yet, as Excel names it
-/// (T-2339 table-insert-column-inside-header).
-fn edit_columns(columns: &mut Vec<TableColumn>, ColumnEdit { index, delta }: ColumnEdit) {
-    let index = index.min(columns.len());
-    if delta < 0 {
-        let end = index
-            .saturating_add(usize::try_from(-i64::from(delta)).unwrap_or(0))
-            .min(columns.len());
+/// `ColumnN`, N the least number no column of the table has yet: Excel names one inserted column
+/// `Column1`, and a second `Column2` (T-2339 table-insert-column-inside-header,
+/// table-insert-two-columns-inside-header); gaps, case clashes and a multi-column insert are a
+/// hand generalisation (T-2899).
+fn edit_columns(columns: &mut Vec<TableColumn>, edit: ColumnEdit) {
+    let index = edit.index.min(columns.len());
+    if edit.delta < 0 {
+        let end = index.saturating_add(edit.deleted()).min(columns.len());
         columns.drain(index..end);
         return;
     }
     let mut next_id = columns.iter().map(|c| c.id).max().unwrap_or(0);
+    let taken: HashSet<String> = columns.iter().map(|c| c.name.to_lowercase()).collect();
     let mut number = 0u32;
-    for offset in 0..usize::try_from(delta).unwrap_or(0) {
+    for offset in 0..usize::try_from(edit.delta).unwrap_or(0) {
         next_id = next_id.saturating_add(1);
         let name = loop {
             number = number.saturating_add(1);
             let name = format!("Column{number}");
-            if !columns.iter().any(|c| c.name.eq_ignore_ascii_case(&name)) {
+            if !taken.contains(&name.to_lowercase()) {
                 break name;
             }
         };
@@ -374,9 +384,8 @@ impl Model {
                     edits
                         .grown_edges
                         .extend(grown_edge(table, sheet, displace_data));
-                    if let Some(ColumnEdit { index, delta }) = resized.columns {
-                        let count = usize::try_from(-i64::from(delta)).unwrap_or(0);
-                        let deleted = table.columns.iter().skip(index).take(count);
+                    if let Some(edit) = resized.columns {
+                        let deleted = table.columns.iter().skip(edit.index).take(edit.deleted());
                         edits
                             .deleted_columns
                             .extend(deleted.map(|c| (name.to_lowercase(), c.name.to_lowercase())));
