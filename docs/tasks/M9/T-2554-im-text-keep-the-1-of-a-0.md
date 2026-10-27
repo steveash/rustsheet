@@ -35,4 +35,5 @@ crates/rustsheet-engine/src/functions/engineering/complex/mod.rs, number_format.
 No code change: `probes-numeric/im-last-digit-sweep.case.json` P43, D18 and P18 already pass on `origin/main`
 (`-4.00011374673746E-17-1i`, `100000000000000000000`: the `y == -1.0` test compares the unrounded
 part and `value_to_text` writes IM* parts with decimal exponent up to 20 in plain notation). Fixed in passing by
-earlier IM* text work. Eval delta: none (no known failures for this case in `eval/baseline/probes.txt`).
+earlier IM* text work. Eval delta: none. The probes-numeric suite is ungated (`gate = false`), so no baseline covers it; the case
+still fails on an unrelated cell, Calc!B33 `=IMABS(A33)` (a NumericUlp miss, 956.6150000078482 vs ...479).
