@@ -28,6 +28,14 @@ brackets, measured 2026-10-23):
   `F.INV.RT(Data!D$2,7,1)` (0.71), c2974c061384fdd9 A267 `F.INV(SQRT(ACOTH(123456789.123)),2,9)` (0.68).
 - probes/stat-quantile-lift E6 `F.INV(1E-50,6000,4)`: Excel 0.0004924127886173762, ours 0.016348828 (no statrs start,
   bisection of our cdf; T-1871 territory).
+- Gap triage 2026-10-25: ten more gen-m9 cells of the same kind that no task named (excel-graph; Excel, ours):
+  320d51765af9b6b7 A15 `F.INV.RT(POWER(1/3,0.2),(COUNTIFS(Data!B2:E8,"<>")+1),2)` 0.5769171267631172, ...166;
+  40425341c5034eed A108 `FINV(CHITEST(VSTACK(Data!D10,Data!C12),Data!C11:D11),1,1)` 0.5866909757268702, ...692;
+  60b0b6e69ad35a45 A150 `F.INV.RT(LET(..),9,10)` 0.9923205895406533, ...524; 7674c89c824aca43 A212 `FINV(0.025,10,6)`
+  5.461323718731779, ...796; b6593d7dd13f2dac A188 `FINV(Data!D10,3.14159,10)` 0.8450805765917135, ...142;
+  c18dbf21f11093f3 A92 `F.INV(0.5,1,3)` and caa1eed48b1883fe A359 (same value) 0.5850602740518204, ...211;
+  e6cf3b20a014e6a3 A135 `F.INV.RT(0.025,6,1.999)` 937.1110834482022, ...029; eced4bb6a0234c9e A202 `F.INV.RT(0.5,5,7)`
+  0.9602597305806843, ...833; eced4bb6a0234c9e A289 `FINV(0.975,100,DOLLARFR(3.14159,13))` 0.3077283973670394, ...3883.
 These are crossings of a cdf a few ulp from Excel's, so matching them means matching Excel's F.DIST/F.DIST.RT kernel to
 the last ulp near each crossing (excel-probe dense runs of F.DIST.RT around these x), or Excel's quantile search's own
 stopping rule (T-1745 found BETA.INV to be a crossing of Excel's cdf).

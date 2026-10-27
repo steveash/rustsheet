@@ -139,6 +139,9 @@ PPMT is not `PMT - IPMT` but a closed form of its own; PPMT's last digits may fo
 
 ## New evidence (gap triage 2026-10-25)
 NPV's visibly-off cells moved to T-2672 (visible-parity stage), which waits on T-2671's decomposition probe (one-term, zero-padded and two-term NPVs at rates where the candidate orders differ). The new evidence is NPV at IRR's root in ironcalc-calc/FINANCIAL/IRR.xlsx: 12 cells whose rate is bit-exact in ours still differ in the residue (financial.md "NPV's residue at IRR's root is not the double sum"). NPV's last-digit tail stays here.
+Gap triage 2026-10-25 (second pass): that tail includes ironcalc-calc/FINANCIAL/NPV.xlsx, 15 known-failure lines, all 1-2 ulp
+(none visibly off), which no task named: Sheet1!K2, K4, K5, K6, K7, L4, L7, M2, M4, M9, N2, N4, N5, N6, N7, e.g. K2
+`NPV(A2,B2,C2,D2,E2:G2)` Excel 237.57926512731055, ours 237.5792651273106 (2 ulp). T-2671's probe should fit them too.
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2257): the gen-m9 cells listed under "T-2257 sweep" in Context are visibly off (wrong
