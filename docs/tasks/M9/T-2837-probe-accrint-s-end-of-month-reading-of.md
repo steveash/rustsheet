@@ -3,7 +3,7 @@ id: T-2837
 title: "Probe ACCRINT's end-of-month reading of serial 59 and the basis-1 cut at serial 0 (probe)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -27,9 +27,15 @@ Excel evidence settles two ACCRINT edges T-2562 left open, and ACCRINT follows i
 - financial.md "ACCRINT at the calendar's start". Use the excel-probe skill; one case file, tag M9.
 
 ## Acceptance criteria
-- [ ] A probe case with excel-graph values lands and its findings go into financial.md.
-- [ ] Any failing cell is fixed or owned by a named follow-up task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with excel-graph values lands and its findings go into financial.md.
+- [x] Any failing cell is fixed or owned by a named follow-up task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - 1904 workbooks (T-2835).
+
+## Outcome
+Probe `probes/accrint-eom-1900` (42 cells, excel-graph) landed; findings are in financial.md "ACCRINT at the
+calendar's start". Two cells failed (issue 59, first_interest 60, basis 0): Excel keeps first_interest 60 as serial 60
+as the settlement's coupon date, so the walk back reaches 1899 (`#NUM!`); fixed in `compute_accrint`. The serial-59
+month-end question is not observable in these cells (recorded). Basis-1 cut pinned at exactly 1900-01-01.
