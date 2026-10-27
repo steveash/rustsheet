@@ -23,8 +23,11 @@ fn t2464_kernels() {
         let bits = |h: &str| f64::from_bits(u64::from_str_radix(h, 16).expect("hex bits"));
         let x = bits(hex);
         if op == "BRATIO" {
+            let a = x;
             let rest: Vec<f64> = it.map(bits).collect();
-            let (a, b, x, y) = (x, rest[0], rest[1], rest[2]);
+            let [b, x, y] = rest[..] else {
+                panic!("BRATIO takes four hex doubles: {line}");
+            };
             let ported = super::incomplete_beta::closed_form_tails(x, y, a, b)
                 .or_else(|| super::bratio::ported_tails(a, b, x, y));
             let (w, w1) = ported.unwrap_or_else(|| {

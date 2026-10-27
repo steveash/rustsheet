@@ -41,8 +41,9 @@ bup+bgrat (T-2509, T-2510) reuses it.
 ## Acceptance criteria
 - [x] The L140 bup+bpser cells of r2-bratio's sets (beta_exact, w2f, ix) score at least 7,505 bit-exact and 11,713
       within 15 digits of 11,742, with the engine's own density as P.
-- [x] The ix L140 cells score at least 1,011 bit-exact of 1,620. (Measured on the rebuilt ix set, where the ported
-      dispatch sends 1,383 cells to L140 bup+bpser: 995 bit-exact, 72% against the model's 62%; see the Outcome.)
+- [ ] The ix L140 cells score at least 1,011 bit-exact of 1,620. (Not met as written: on the rebuilt ix set the
+      ported dispatch sends 1,383 cells to L140 bup+bpser, 995 bit-exact; the 1,620 vs 1,383 difference moves to
+      T-2893 per the Visible-parity stage.)
 - [x] The three stat-argument-modes cells are either kept bit-exact or recorded under decision 0083's allowance, with
       the test of r2-impact's hypothesis 1 in the Outcome.
 - [ ] `make check` green; reviewers approve.
@@ -83,12 +84,14 @@ Still to do before `done`: measure acceptance criteria 1 and 2 (the r2-bratio an
 - Scores (docs/research/t2506/score_l140.py, `score_l140.out`, RESULTS.md; the research harness gained a `BRATIO` op):
   r2-bratio's be, w2f and ix L140 bup+bpser cells 8,800/11,696/11,721 of 11,742 (bit-exact/4 ulp/15 digits; before
   the resume 8,622/11,535/11,603; CR 3,956/10,379/11,573). ix alone: 995/1,344/1,362 of 1,383; the model's 1,620
-  ix L140 cells are 1,383 on the rebuilt ix set under the ported dispatch (the difference is not traced).
+  ix L140 cells are 1,383 on the rebuilt ix set under the ported dispatch. Criterion 2 is not met as written (995
+  against 1,011, on a different population): follow-up T-2893 traces the difference and scores the model's set.
 - Visible parity: 21 L140 cells stay visibly off, all ix mapped arguments (F.DIST, F.DIST.RT, FDIST, NEGBINOM.DIST,
   RESULTS.md); BETA.DIST's own be and w2f L140 cells are all within 15 digits. The ix cells reach the kernel only once
   their callers move to bratio (T-2847).
 - Eval delta: gated suites unchanged by the resume (0 fixed, 0 regressions; the three 1-ulp BETADIST_BETAINV lines
-  recorded earlier under decision 0083 stay, owned by T-2633); in-scope visibly off 3,309. Ungated: the a0 > 8 cells
+  recorded earlier under decision 0083's "Standing ulp-regression allowance", conditions 1-4, stay, owned by
+  T-2633); in-scope visibly off 3,309. Ungated: the a0 > 8 cells
   named in `l140_whole_b0_takes_ln_beta_of_one` (m9-beta-dist-a100 A37, A39; t0969-beta-prefactor Pref!D140) now
   match Excel bit for bit.
 - statistics.md: the L140 entry records the whole-b0 lnB and the engine's scores; the bpser entry's "Implemented in".
