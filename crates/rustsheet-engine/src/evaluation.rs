@@ -419,7 +419,7 @@ impl Model {
         }
         self.end_iteration();
         // Conditional formats are evaluated on the next style read (SPEC-0021).
-        self.cf_stale = true;
+        self.cf.stale = true;
     }
 
     /// Runs passes until one completes without a restart. `RestartLog` learns

@@ -1,9 +1,96 @@
 //! Reading a cell's style with its conditional-formatting overlay. The conditional formats are
 //! evaluated on the first read after a load, an `evaluate()` or `set_theme` (SPEC-0021, T-0468),
-//! not by those.
+//! not by those, and only for the cell read (T-0476): the rules whose areas hold it, in priority
+//! order, as the evaluation of every cell would apply them to it. A rule's statistics over its
+//! area (the numbers for color scales, data bars, icons, top/bottom and average rules, the value
+//! counts for unique and duplicate rules) are computed once per round, over the area cut at the
+//! sheet's used area. So a read costs the rules over that cell plus, once, the statistics over
+//! the used area: an expression rule over a million rows costs one formula per read, not a
+//! million (corpus-bench 41978).
+
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use crate::cf_types::{CfCellResult, CfDataBar, CfIcon, CfRating, ExtendedStyle};
 use crate::Model;
+
+/// A cell, as (`sheet`, `row`, `column`).
+type CellKey = (u32, i32, i32);
+/// The areas of a rule on a sheet: (`sheet`, its (row1, column1, row2, column2) areas).
+type AreaKey = (u32, Vec<(i32, i32, i32, i32)>);
+
+/// What the conditional formats evaluated so far hold, for one round: from the first style read
+/// after a load, an `evaluate()` or `set_theme` (which set `stale`) to the next such event.
+pub(crate) struct CfState {
+    /// The conditional results of each cell evaluated, in rule order.
+    pub(crate) cache: HashMap<CellKey, Vec<CfCellResult>>,
+    /// Set where the conditional formats used to be evaluated eagerly; the next read starts a
+    /// new round.
+    pub(crate) stale: bool,
+    /// The round evaluated every cell (`evaluate_conditional_formatting`).
+    pub(crate) all: bool,
+    /// The cells whose rules this round evaluated.
+    read: HashSet<CellKey>,
+    /// While one cell's rules are evaluated, that cell.
+    target: Option<CellKey>,
+    /// Statistics of this round, per rule area (`collect_numeric_values`, `value_counts`).
+    pub(crate) values: HashMap<AreaKey, Arc<[f64]>>,
+    pub(crate) counts: HashMap<AreaKey, Arc<HashMap<String, u32>>>,
+    /// How many rounds began, for the tests of SPEC-0021.
+    #[cfg(test)]
+    pub(crate) runs: usize,
+}
+
+impl Default for CfState {
+    /// Stale: nothing is evaluated before the first read.
+    fn default() -> Self {
+        CfState {
+            cache: HashMap::new(),
+            stale: true,
+            all: false,
+            read: HashSet::new(),
+            target: None,
+            values: HashMap::new(),
+            counts: HashMap::new(),
+            #[cfg(test)]
+            runs: 0,
+        }
+    }
+}
+
+/// Whether the area (row1, column1, row2, column2) holds the cell (`row`, `column`).
+fn holds((r1, c1, r2, c2): (i32, i32, i32, i32), row: i32, column: i32) -> bool {
+    (r1..=r2).contains(&row) && (c1..=c2).contains(&column)
+}
+
+impl CfState {
+    /// Forgets the last round's results and statistics.
+    pub(crate) fn begin_round(&mut self) {
+        self.cache.clear();
+        self.read.clear();
+        self.values.clear();
+        self.counts.clear();
+        self.stale = false;
+        self.all = false;
+        #[cfg(test)]
+        {
+            self.runs += 1;
+        }
+    }
+
+    /// The areas of `ranges` a rule's results are written for: all of them, or while one cell is
+    /// evaluated, that cell once for each area that holds it.
+    pub(crate) fn visited(&self, ranges: &[(i32, i32, i32, i32)]) -> Vec<(i32, i32, i32, i32)> {
+        match self.target {
+            None => ranges.to_vec(),
+            Some((_, row, column)) => ranges
+                .iter()
+                .filter(|&&area| holds(area, row, column))
+                .map(|_| (row, column, row, column))
+                .collect(),
+        }
+    }
+}
 
 impl Model {
     /// Returns the extended cell style for (`sheet`, `row`, `column`), including any
@@ -15,11 +102,14 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<ExtendedStyle, String> {
-        if self.cf_stale {
-            self.evaluate_conditional_formatting();
+        if self.cf.stale {
+            self.cf.begin_round();
+        }
+        if !self.cf.all && self.cf.read.insert((sheet, row, column)) {
+            self.evaluate_conditional_formatting_at(sheet, row, column);
         }
         let base = self.get_style_for_cell(sheet, row, column)?;
-        let extended = match self.cf_cache.get(&(sheet, row, column)) {
+        let extended = match self.cf.cache.get(&(sheet, row, column)) {
             Some(c) => c,
             None => {
                 return Ok(ExtendedStyle {
@@ -101,9 +191,21 @@ impl Model {
         })
     }
 
-    /// Counts an evaluation of the conditional formats, for the tests of SPEC-0021.
-    #[cfg(test)]
-    pub(crate) fn count_cf_run(&mut self) {
-        self.cf_runs += 1;
+    /// Evaluates the rules of `sheet` whose areas hold (`row`, `column`), in priority order, for
+    /// that cell only: what `evaluate_conditional_formatting` stores for it.
+    fn evaluate_conditional_formatting_at(&mut self, sheet: u32, row: i32, column: i32) {
+        let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) else {
+            return;
+        };
+        let mut rules = worksheet.conditional_formatting.clone();
+        rules.sort_by_key(|cf| cf.priority);
+        self.cf.target = Some((sheet, row, column));
+        for cf in rules {
+            let ranges = crate::conditional_formatting::parse_sqref(&cf.range);
+            if ranges.iter().any(|&area| holds(area, row, column)) {
+                self.apply_cf_rule(sheet, &cf.cf_rule, &ranges);
+            }
+        }
+        self.cf.target = None;
     }
 }
