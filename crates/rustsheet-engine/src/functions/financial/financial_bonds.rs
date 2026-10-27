@@ -7,8 +7,8 @@ mod yield_closed;
 mod yield_solver;
 
 use super::dates::{
-    basis_days, broken_schedule_days, broken_schedule_error, day_count_basis, days_30_360_eu_ymd,
-    days_30_360_us_ymd, BROKEN_SCHEDULE_PCD,
+    basis_days, broken_schedule_days, day_count_basis, days_30_360_eu_ymd, days_30_360_us_ymd,
+    DateReading, BROKEN_SCHEDULE_PCD,
 };
 use coupon_schedule::{
     change_month, coupdays_actual, coupon_count, coupon_days_a, coupon_days_e, coupon_days_nc,
@@ -520,6 +520,7 @@ impl Model {
     fn coupon_args(
         &self,
         values: &[CalcResult],
+        reading: DateReading,
         cell: CellReferenceIndex,
     ) -> Result<CouponArgs, CalcResult> {
         let [settlement, maturity, frequency, rest @ ..] = values else {
@@ -527,8 +528,8 @@ impl Model {
         };
         // Settlement 0 is a date to the COUP* functions (`COUPPCD(0,43831,2)` is 0); COUPNUM is
         // #NUM! there because its previous coupon date falls before the calendar (`coupon_count`).
-        let settlement = self.coupon_date_of(settlement, cell)?;
-        let maturity = self.coupon_date_of(maturity, cell)?;
+        let settlement = self.coupon_date_of(settlement, reading, cell)?;
+        let maturity = self.coupon_date_of(maturity, reading, cell)?;
         if settlement >= maturity {
             return Err(num_error(cell));
         }
@@ -548,15 +549,13 @@ impl Model {
         cell: CellReferenceIndex,
         body: CouponBody,
     ) -> CalcResult {
-        self.lift_call(
-            kind,
-            args,
-            cell,
-            &mut |model, values| match model.coupon_args(values, cell) {
-                Ok(coupon) => body(model, coupon, cell),
-                Err(error) => error,
-            },
-        )
+        let reading = DateReading::of(&kind);
+        self.lift_call(kind, args, cell, &mut |model, values| match model
+            .coupon_args(values, reading, cell)
+        {
+            Ok(coupon) => body(model, coupon, cell),
+            Err(error) => error,
+        })
     }
 
     /// Reads and checks `(settlement, maturity, rate, yld, frequency, basis)` of DURATION and
@@ -586,8 +585,8 @@ impl Model {
         } else {
             None
         };
-        let settlement = self.financial_calendar_date_of(settlement, cell)?;
-        let maturity = self.financial_calendar_date_of(maturity, cell)?;
+        let settlement = self.financial_calendar_date_of(settlement, DateReading::Shifted, cell)?;
+        let maturity = self.financial_calendar_date_of(maturity, DateReading::Shifted, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
         let yld = self.cast_number_no_bools_ref(yld, cell)?;
         let redemption = match redemption {
@@ -975,8 +974,8 @@ impl Model {
     pub(crate) fn fn_coupnum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.coupon_call(Function::Coupnum, args, cell, |model, coupon, cell| {
             let (settlement, maturity, frequency, _basis) = coupon;
-            if model.coupon_schedule_breaks(maturity) {
-                return broken_schedule_error(cell);
+            if model.coupon_before_calendar(settlement, maturity, frequency) {
+                return num_error(cell);
             }
             date_number(
                 coupon_count(settlement, maturity, frequency).map(f64::from),

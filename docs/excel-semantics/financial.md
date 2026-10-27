@@ -919,7 +919,7 @@ A1-L14 (excel-graph, 2026-10-20, T-1844).
 Ours: matches (functions/financial/financial_bonds/coupon_schedule.rs: `coupon_period`, `coupon_count`,
 `coupdays_actual`, `coupon_days_nc`). In a 1904 workbook
 `COUPNUM(0,400,2)` and `COUPNUM(1,400,2)` are `#NUM!` (previous coupon 1903-08-04, before the 1904 calendar) while
-`COUPPCD(1,400,2)` is -150 (-1904 A5-A7); see "COUPNUM in a 1904 workbook".
+`COUPPCD(1,400,2)` is -150 (-1904 A5-A7); see "COUPNUM in a 1904 workbook" (ours matches since T-2337).
 Status: VERIFIED (excel-graph)
 Tasks: T-1822, T-1844, T-2124, T-2125
 
@@ -948,9 +948,12 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   FALSE, and `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` is `#NUM!` on every basis,
   semiannual and quarterly. An issue of 1904-04-01 computes (2312.361111111111 for first_interest 1904-03-31, calc_method
   TRUE, or 1904-06-30), except with first_interest 1904-03-31 and calc_method FALSE (regular period from 1903-12-31),
-  which is `#NUM!` (a 50-cell probe filled with excel-graph on 2026-10-26, kept out of the suite until T-2835 lands it
-  with its fix, since its 43 off cells would pass the visible-parity lock). Ours applies the 1900 cut there (T-2835, after
-  T-2337).
+  which is `#NUM!` (probes/accrint-calendar-start-1904, 47 of its 50 cells `#NUM!`; first filled 2026-10-26, re-filled
+  2026-10-27 with the same values). ACCRINT reads a 1904 date as the date itself (dates.md "The 1904 date system:
+  ACCRINT, COUPNUM and the TBILL functions read the date itself"), so this is the 1900 rule with the calendar starting on
+  1904-01-01. An issue on serial 0 is `#NUM!` in 1904 too, also when its period starts on 1904-01-01
+  (`ACCRINT(0,DATE(1904,7,1),DATE(1904,3,1),0.06,1000,2,0)`, fin-coupnum-1904-maturity-sweep C2). Ours since T-2337
+  (`DateSystem::first_coupon_1900_serial` passed to `compute_accrint`).
 - The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
   counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
   0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
@@ -962,14 +965,17 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   (fin-coupon-walk-bounds-b A9) on 2026-10-17 and `#NUM!` on 2026-10-24, in a re-fill of -b and in
   fin-accrint-1900-calendar D1; the oracle now records `#NUM!`.
 Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24);
-accrint-calendar-start-1900 (92 cells) (excel-graph, 2026-10-26); the 1904 probe is T-2835's.
+accrint-calendar-start-1900 (92 cells) (excel-graph, 2026-10-26); accrint-calendar-start-1904 (50 cells, excel-graph,
+2026-10-27, T-2835, landed by T-2337).
 Status: VERIFIED (excel-graph)
 Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
-Tasks: T-2124, T-2562, T-2835
+Tasks: T-2124, T-2562, T-2835, T-2337
 
 ## COUPNUM in a 1904 workbook
 Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative
-1904 serial); a previous coupon on 1904-01-01 (serial 0) counts. Nothing else takes this cut: COUPPCD returns the
+1904 serial); a previous coupon on 1904-01-01 (serial 0) counts. This is the 1900 rule ("Coupon schedules at the
+calendar's edges") in the 1904 calendar: since 2026-10-21 COUPNUM reads a 1904 date as the date itself (dates.md "The
+1904 date system: ACCRINT, COUPNUM and the TBILL functions read the date itself"). Nothing else takes this cut: COUPPCD returns the
 negative serial, and COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, PRICE, YIELD, DURATION and MDURATION compute with that
 period. The cut is the same at frequency 1, 2 and 4; bases 1 and 3 and fractional dates are probed on the `#NUM!` side
 only (A37-A40).
@@ -983,17 +989,16 @@ only (A37-A40).
 - ACCRINT has its own cut: `#NUM!` when the issue is serial 0 (C1, C2, C4-C9, C11, C12, C17) or when the issue's
   previous coupon is before 1904-01-01 (`ACCRINT(10,DATE(1904,6,30),DATE(1904,3,1),0.06,1000,2,0)`, C10); an issue of 1
   or later whose previous coupon is on or after 1904-01-01 computes (C3, C15, C16, C18, C19).
-- `ACCRINT(200,DATE(1904,12,31),DATE(1905,3,1),0.06,1000,2,0)` is 37.16666666666667, ours 37 (C14); with
+- `ACCRINT(200,DATE(1904,12,31),DATE(1905,3,1),0.06,1000,2,0)` is 37.16666666666667 (C14; ours 37 until T-2337); with
   calc_method FALSE it is 37 (C21).
-Conflict: these values are from 2026-10-21. On 2026-10-12 the same excel-graph oracle gave 25 for
-`COUPNUM(0,DATE(1910,3,31),4)` (probes/date-system-1904-financial S!A38), and a re-fill of the 24 committed 1904 cases on
-2026-10-21 changed 111 of their 1,041 cells; see dates.md "Excel for the web changed 1904 financial results (2026-10)".
-The rule above is today's Excel; how it fits with the rest of the 1904 financial rules is T-2337's to work out.
+Before 2026-10-21 Excel for the web read the dates 2·1462 days on here too and gave 25 for `COUPNUM(0,DATE(1910,3,31),4)`
+(probes/date-system-1904-financial S!A38, 2026-10-12); a re-fill on 2026-10-27 confirms the values above (T-2337).
 Evidence: probes/fin-coupnum-1904-epoch A1-A41, fin-coupnum-1904-maturity-sweep A1-A79, C1-C21 (excel-graph,
-2026-10-21, T-2125), fin-coupon-walk-bounds-1904 A5-A7.
-Ours: not implemented. A COUPNUM-only check is drafted in docs/research/excel-1904-drift-2026-10.md; it is parked until
-T-2337 settles the 1904 rules, because on its own it breaks date-system-1904-financial S!A38 against the older value.
-Status: CONFLICTING (excel-graph 2026-10-21 against excel-graph 2026-10-12; T-2337)
+2026-10-21, re-filled 2026-10-27; T-2125, T-2337), fin-coupon-walk-bounds-1904 A5-A7.
+Ours: COUPNUM reads `DateReading::Calendar` and checks the previous coupon against
+`DateSystem::first_coupon_1900_serial` (`fn_coupnum`, financial_bonds.rs; T-2337); ACCRINT's cut is
+`accrint_coupon_serial` (accrint.rs).
+Status: VERIFIED (excel-graph)
 Tasks: T-2125, T-2337
 
 ## Coupon schedule work cap
@@ -1630,8 +1635,10 @@ is `#DIV/0!`, `TBILLPRICE(39000,39500,"x")` `#VALUE!`). An error settlement beat
 Evidence: probes/securities-argument-error-order (192 cells, excel-graph, 2026-10-20, T-1406); probes/coup-calendar-edges
 A1-A8 (the 9999-12-31 bound, excel-graph, 2026-10-25, T-2486); gen-m9/0c7fc447bc2eebfd
 Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
-Unprobed: serial 2958465 alone as a T-bill date (the inclusive bound is inferred), and the range in a 1904 workbook (the
-engine checks the date after the 1904 shift).
+In a 1904 workbook the T-bills read the date itself, so their range is the 1904 calendar's own, 1904-01-01 to
+9999-12-31: `TBILLPRICE(DATE(9996,1,1),DATE(9996,6,30),0.05)` is a number while DISC of the same dates is `#NUM!`, and
+`TBILLPRICE(-1,100,0.05)` is `#NUM!` (probes/fin-1904-calendar-readers A1, A10, A16; dates.md "The 1904 date system:
+ACCRINT, COUPNUM and the TBILL functions read the date itself"). Near the end of the calendar see "T-bills settled in 9999".
 Ours: matches since T-1406 (`coupon_args` in financial_bonds.rs, `tbill_arguments` in discount.rs); the COUP* upper
 bound since T-2486 (`coupon_date_of` in financial/dates.rs). In a 1904 workbook the bound is the 1904 calendar's own
 last day, 2957003, though the financial reading moves it past 9999-12-31: `COUPPCD(39000,2957003,2)` = -1462,
@@ -1767,7 +1774,9 @@ first_interest 2956456 (9994-07-01; coupons on 1 January and 1 July), `ACCRINT(2
 (next coupon 10000-07-01) and accrues with frequency 4 (next coupon 9999-10-01). calc_method FALSE does not walk the schedule and is not affected (a settlement on 9999-12-30 accrues).
 Evidence: probes/date-system-1900-accrint-settlement-bound A23:A53 and its 1904 twin
 date-system-1904-accrint-settlement-bound (the same cells, every date 2 * 1462 serials lower; excel-graph,
-2026-10-13, T-1494).
+2026-10-13, T-1494). Since 2026-10-21 a 1904 workbook's ACCRINT reads those serials as the dates themselves, eight
+years before the 1900 cells, so its twin no longer reaches the cut and gives the 1900 values of its own dates
+(re-filled 2026-10-27; dates.md "The 1904 date system: ACCRINT, COUPNUM and the TBILL functions read the date itself").
 Ours: `compute_accrint` (functions/financial/accrint.rs).
 Status: VERIFIED (excel-graph). Tasks: T-1494.
 
@@ -2045,6 +2054,21 @@ an off-calendar settlement first), `QUARTILE(C7,E9)` of a text cell `#NUM!` (our
 cell `#NUM!` (ours `#VALUE!`); `TBILLYIELD(36586,1,MAP(Z1:Z3,<#REF!>,..))` is `#VALUE!` like ours. Those four cells
 moved to T-2496.
 Ours: matches since T-2487 (`tbill_arguments` in financial/discount.rs, `is_less_than_one_year` in financial/dates.rs).
+
+## T-bills settled in 9999
+Rule: TBILLEQ, TBILLPRICE and TBILLYIELD are `#NUM!` for a settlement in the year 9999, however short the bill, in both
+date systems; a settlement on 9998-12-31 still computes, to any maturity up to 9999-12-31. As if Excel needs the
+settlement's one-year anniversary as a date before it applies the one-year limit.
+- `TBILLPRICE(DATE(9999,1,1),DATE(9999,1,10),0.05)`, `TBILLYIELD(...,98)`, `TBILLEQ(...,0.05)` and
+  `TBILLPRICE(2958464,2958465,0.05)` are `#NUM!` (A9, A17, A18, A3); `TBILLPRICE(DATE(9998,12,31),DATE(9999,1,10),0.05)`
+  = 99.86111111111111 (A8), and with a settlement of 9998-12-31.5 the same (A16); `TBILLPRICE(DATE(9998,12,31),
+  DATE(9999,12,31),0.05)` = 94.93055555555556 (A12).
+- The 1904 workbook's last year is the same 9999: `TBILLPRICE(2957003-100,2957003,0.05)` and its TBILLYIELD and
+  TBILLEQ twins are `#NUM!` there (fin-1904-calendar-readers A2, A21:A25), while 9996 dates compute (A1, A9).
+Evidence: probes/fin-1900-tbill-last-day A1:A19, fin-1904-calendar-readers (excel-graph, 2026-10-27, T-2337).
+Ours: `is_less_than_one_year` (financial/dates.rs) since T-2337.
+Status: VERIFIED (excel-graph)
+Tasks: T-2337
 
 ## TBILLEQ and TBILLYIELD
 Rule: Excel's TBILLYIELD is `(100 - pr)/pr * (360/DSM)`, evaluated in that order; the textbook
