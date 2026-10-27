@@ -241,8 +241,8 @@ pub fn to_string_displaced(
 }
 
 /// [`to_string_displaced`] for a structural edit that moves, grows or shrinks the tables
-/// `displacement.kept_tables` (lowercase names): a structured reference to one of them keeps its text, and
-/// one to any other table prints the area it is displaced to where that area changes
+/// `displacement.kept_tables` (lowercase names): a structured reference to one of them keeps its
+/// text, and one to any other table prints the area it is displaced to where that area changes
 /// (SPEC-0016 "Structural edits", T-2297).
 pub(crate) fn to_string_displaced_keeping(
     node: &Node,

@@ -3,7 +3,7 @@ id: T-2321
 title: "Tables grow on row inserts at their data edges and plain ranges onto them follow (T-2197 evidence)"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -33,11 +33,19 @@ since T-1671; table-insert-row-above-totals F!A12 (FORMULATEXT keeps `=Sales[[#T
 `=S!$C$9`) was unmasked by it and is this task's (decision 0128).
 
 ## Acceptance criteria
-- [ ] Every cell of probes/table-edits/table-insert-row-* matches Excel (the T-1671 totals cells once it lands);
+- [x] Every cell of probes/table-edits/table-insert-row-* matches Excel (the T-1671 totals cells once it lands);
   their lines in eval/baseline/probes.txt disappear (`make eval-baseline`), no new known-failure lines.
-- [ ] SPEC-0016's edge-case table rows for `r == d1` and `r == t` say grow, citing the probe cases.
-- [ ] Unit tests in src/test/test_structured_references.rs cover both edges and the plain-range growth.
-- [ ] `make check` green; reviewers approve.
+- [x] SPEC-0016's edge-case table rows for `r == d1` and `r == t` say grow, citing the probe cases.
+- [x] Unit tests in src/test/test_structured_references.rs cover both edges and the plain-range growth.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Deletes, column edits, convert to range, table delete (T-2324 probes them).
+
+## Outcome
+A whole-row insert at a table's first data row (under a header row) or at its totals row now grows
+the table (`row_span`, table_edits.rs), and a plain range inside the table's data block touching that
+edge grows with it (`Displacement::grown_corners`, stringify.rs; `Displacement` is now a struct
+carrying the grown data blocks). SPEC-0016's edge-case table and references.md updated. Eval: probes
+known failures 2872 -> 2865 (7 cells of table-insert-row-above-first-data and -above-totals fixed),
+0 regressions. Follow-up: T-2846 probes the range shapes beyond the whole data column.

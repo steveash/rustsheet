@@ -475,6 +475,8 @@ fn a_table_and_ranges_onto_its_data_grow_at_its_edges() {
         all.extend(plain.map(str::to_string));
         all
     };
+    // Only `=SUM(S!C4:C8)` is oracle-backed; the off-edge and wider ranges are hand expectations
+    // (an ordinary displacement) until T-2846 probes them.
     // Above the first data row.
     let grown = formulas(["=SUM(S!C4:C8)", "=SUM(S!C6:C8)", "=SUM(S!B5:D8)"]);
     for totals in [false, true] {
