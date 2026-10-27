@@ -359,29 +359,39 @@ class Gen:
         self.pending = []
         return text
 
-    def argument_text(self, p: dict[str, Any], mode: str, depth: int) -> str:
-        if mode == "range" and p.get("cell"):
+    def shaped_range(self, p: dict[str, Any]) -> str | None:
+        """A `range` param's reference when its shape is constrained (`cell`, `same_shape`, `wide_rate`, `row_rate`), else None."""
+        if p.get("cell"):
             # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
             return self.cell_ref()
-        if mode == "range" and p.get("same_shape"):
+        if p.get("same_shape"):
             # The *IFS ranges of one call must agree in shape or Excel gives #VALUE!; (0, 0) is a call that
             # keeps its ranges free so the mismatch stays covered (T-2719).
             if self.call_shape is None:
                 free = self.rng.random() < SHAPE_MISMATCH_RATE
-                self.call_shape = (0, 0) if free else (
-                    self.rng.randint(1, self.data_rows - 1),
-                    self.rng.randint(1, min(4, self.data_cols)),
+                self.call_shape = (
+                    (0, 0)
+                    if free
+                    else (
+                        self.rng.randint(1, self.data_rows - 1),
+                        self.rng.randint(1, min(4, self.data_cols)),
+                    )
                 )
             if self.call_shape != (0, 0):
                 return self.range_ref(width=self.call_shape[1], height=self.call_shape[0])
-        if p.get("vector") and mode == "range" and self.rng.random() < p.get("wide_rate", 0.0):
+        if p.get("vector") and self.rng.random() < p.get("wide_rate", 0.0):
             # A small 2-D rate keeps MATCH's #N/A path for a non-vector lookup_array covered (T-2719).
             return self.range_ref(width=self.rng.randint(2, min(4, self.data_cols)))
-        if p.get("vector") and p.get("row_rate") and mode == "range" and self.rng.random() < p["row_rate"]:
+        if p.get("vector") and p.get("row_rate") and self.rng.random() < p["row_rate"]:
             row = self.rng.randrange(1, self.data_rows + 1)
             c0 = self.rng.randrange(self.data_cols - 1)
             c1 = self.rng.randrange(c0 + 1, self.data_cols)
             return f"Data!{col_letter(c0)}{row}:{col_letter(c1)}{row}"
+        return None
+
+    def argument_text(self, p: dict[str, Any], mode: str, depth: int) -> str:
+        if mode == "range" and (shaped := self.shaped_range(p)) is not None:
+            return shaped
         if p.get("vector") and (mode == "range" or self.rng.random() < 0.5):
             # LOOKUP/XLOOKUP/XMATCH search one column here and WRAPROWS/WRAPCOLS wrap one; 2-D only gives an error.
             return self.range_ref(width=1, full=p.get("full", False))
