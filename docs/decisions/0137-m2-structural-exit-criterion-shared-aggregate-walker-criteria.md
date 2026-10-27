@@ -8,7 +8,8 @@
     is not a cell measure. This record is the audit the steward reads instead. It audits `main` at 11592ab5 and
     makes no code change.
   - "Consumer" here means a worksheet function that folds a variable list of arguments (ranges, arrays,
-    scalars) into one aggregate, or that matches cells against a criterion or a wildcard pattern.
+    scalars) into one aggregate, or that matches cells against a criterion or a wildcard pattern. Text joins
+    (CONCAT, TEXTJOIN in text/concatenate.rs) iterate cells too, but they are not aggregates, so they are out of scope.
 - **Decision:** all three parts are met. M2's structural criterion holds at 11592ab5.
 
   **1. Aggregate-argument iteration: met.**
@@ -16,8 +17,8 @@
     `walk_aggregate_args` / `for_each_aggregate_number`). Each one states its differences as a policy constant.
   - Every other walk below has its own loop or helper for a difference the code cites evidence for.
     None is a copy of the walker.
-  - `rg "let mut reference_error" crates/rustsheet-engine/src/functions` finds nothing outside the walker,
-    which is SPEC-0009's own check.
+  - `rg "let mut reference_error" crates/rustsheet-engine/src/functions` finds no match, which is SPEC-0009's
+    own check (no consumer keeps its own error-ranking loop).
 
   | Function(s) | File | Verdict |
   |---|---|---|
@@ -62,7 +63,7 @@
     structural task to merge. The status log's first duplication line (9,153 →
     8,829) is T-0200's own measurement, and today's script reproduces both numbers (9,153 at a08a9c76, 8,829 at
     7646134c), so the window and the script are unchanged for this purpose.
-  - At 11592ab5 (`main`, this PR's base) it measures 2,931, the committed quality/duplication.json value.
+  - At 11592ab5 (`main` when audited) it measures 2,931, the committed quality/duplication.json value.
   - The reduction is (9,153 − 2,931) / 9,153 = 68.0%, more than the 15% required. The count covers the whole
     repository, so the reduction includes work outside M2's functions. The criterion asks only for the baseline
     reduction, which this is.
