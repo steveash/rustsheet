@@ -3,7 +3,7 @@ id: T-2772
 title: "Probe a unary plus where analysis matches a literal: N(IF(+TRUE,B1:B3)), N(CHOOSE(+TRUE,Z1,{2;3})), INDIRECT(+K1), legacy ABS(+{5}) and N(+{2;3}), LET(+x,1,x), a stored <f>+5</f>"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
