@@ -714,6 +714,7 @@ C	probes/lotus-dot-range-offgrid.case.json	2
 C	probes/lotus-dot-range-space.case.json	2
 C	probes/lotus-dot-range-trailing-letter.case.json	2
 C	probes/lotus-dot-range.case.json	6
+C	probes/m2-argument-kind-gaps.case.json	79
 C	probes/m7-argument-modes.case.json	174
 C	probes/m7-lift-take-drop-sortby.case.json	934
 C	probes/m7-one-cell-operand-lift.case.json	18
@@ -1404,6 +1405,7 @@ C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
 C	probes/t2829-ftest-tail-over-b.case.json	22
 C	probes/t2836-dollar-run-cost.case.json	95
+C	probes/t2842-dollar-run-contexts.case.json	218
 C	probes/t2867-calipers-anonymised-inputs.case.json	26
 C	probes/t2881-besselj-turning-point.case.json	76
 C	probes/t2921-sumproduct-one-cell-numeric-text.case.json	47
@@ -2961,6 +2963,7 @@ F	probes/logest-modes.case.json	Sheet1!M92
 F	probes/logest-modes.case.json	Sheet1!M93
 F	probes/logest-modes.case.json	Sheet1!N85
 F	probes/logest-modes.case.json	Sheet1!N86
+F	probes/m2-argument-kind-gaps.case.json	Calc!A25
 F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/odd-bond-argument-check-order.case.json	Calc!A258
 F	probes/regression-trend.case.json	Sheet1!N10
@@ -3489,14 +3492,7 @@ F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C4
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H1
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H11
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I1
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I10
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I11
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I2
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I3
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I4
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I5
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I8
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I9
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11

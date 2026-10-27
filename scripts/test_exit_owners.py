@@ -196,6 +196,100 @@ class ExitOwners(TaskDir):
         self.assertIn("no milestone_exit row for M7", err.getvalue())
 
 
+class SharedStems(TaskDir):
+    """A stem several cases share names none of them (decision 0138)."""
+
+    PV11 = "calipers/pv_goldens/pv26_011/golden.xlsx"
+    PV12 = "calipers/pv_goldens/pv26_012/golden.xlsx"
+    GEN9 = "gen-m9/146b46e74f2dac3b.case.json"
+    COPY = "probes/t2436/146b46e74f2dac3b.case.json"
+    CASES = (PV11, PV12, GEN9, COPY)
+
+    def unowned(self) -> list[str]:
+        r = {"unattributed_off": [{"case": c, "cell": "S!A1", "formula": "=X()"} for c in self.CASES]}
+        return [f"{c.case}!{c.key}" for c in exit_owners.unowned_unattributed(r, self.tasks)]
+
+    def test_case_names(self) -> None:
+        called = exit_owners.case_names([*self.CASES, PROBE])
+        self.assertEqual(called[PROBE], ("index-reference-args",))
+        self.assertEqual(
+            called[self.PV11],
+            (self.PV11, "pv_goldens/pv26_011/golden.xlsx", "pv26_011/golden.xlsx", "pv26_011"),
+        )
+        # `t2436` is a directory of one case here, so it names that case too; a suite never does.
+        self.assertEqual(called[self.COPY], ("probes/t2436/146b46e74f2dac3b", "t2436/146b46e74f2dac3b", "t2436"))
+        self.assertEqual(called[self.GEN9], ("gen-m9/146b46e74f2dac3b",))
+
+    def test_a_directory_two_cases_share_names_neither(self) -> None:
+        other = "probes/t2436/0000000000000000.case.json"
+        called = exit_owners.case_names([*self.CASES, other])
+        self.assertEqual(called[self.COPY], ("probes/t2436/146b46e74f2dac3b", "t2436/146b46e74f2dac3b"))
+        # Its stem is its own, so the shared directory does not matter.
+        self.assertEqual(called[other], ("0000000000000000",))
+
+    def test_a_calipers_directory_and_cell_own_only_that_workbook(self) -> None:
+        self.task("Desktop-only cells: pv26_011 S!A1.", milestone="M14")
+        self.assertEqual(self.unowned(), [f"{c}!S!A1" for c in (self.PV12, self.GEN9, self.COPY)])
+
+    def test_a_gen_hash_does_not_own_its_probe_copy(self) -> None:
+        self.task("- gen-m9/146b46e74f2dac3b.case.json (1): S!A1", milestone="M9")
+        self.assertEqual(self.unowned(), [f"{c}!S!A1" for c in (self.PV11, self.PV12, self.COPY)])
+        self.task("probes/t2436/146b46e74f2dac3b S!A1", milestone="M9")
+        self.assertEqual(self.unowned(), [f"{self.PV11}!S!A1", f"{self.PV12}!S!A1"])
+
+    def test_a_shared_stem_alone_names_no_case(self) -> None:
+        self.task("Every failing cell of golden.xlsx and of 146b46e74f2dac3b.", milestone="M14")
+        self.task("golden.xlsx S!A1, 146b46e74f2dac3b S!A1", milestone="M14")
+        self.assertEqual(len(self.unowned()), 4)
+
+
+class DirectoryPaths(TaskDir):
+    """A case with its own stem is also named by its directory path (decision 0139)."""
+
+    CB = "corpus-bench/53062/1_53062_input.xlsx"
+    OTHER = "corpus-bench/5306/1_5306_input.xlsx"
+    CASES = (CB, OTHER)
+
+    def unowned(self) -> list[str]:
+        r = {
+            "unattributed_off": [
+                {"case": c, "cell": f"S!{a1}", "formula": "=X()"} for c in self.CASES for a1 in ("AE6", "F6")
+            ]
+        }
+        return [f"{c.case}!{c.key}" for c in exit_owners.unowned_unattributed(r, self.tasks)]
+
+    def test_case_names(self) -> None:
+        called = exit_owners.case_names([*self.CASES, PROBE])
+        self.assertEqual(called[self.CB], ("1_53062_input.xlsx", "corpus-bench/53062"))
+        self.assertEqual(called[PROBE], ("index-reference-args",))
+
+    def test_a_path_two_cases_are_under_names_neither(self) -> None:
+        nested = "corpus-bench/53062/sub/x.xlsx"
+        self.assertEqual(exit_owners.case_names([self.CB, nested])[self.CB], ("1_53062_input.xlsx",))
+        bare = "corpus-bench/53062.case.json"
+        self.assertEqual(exit_owners.case_names([self.CB, bare])[self.CB], ("1_53062_input.xlsx",))
+
+    def test_a_directory_path_alone_owns_the_whole_case(self) -> None:
+        self.task("corpus-bench/53062 (`formamspnc (7)`): the case is a whole-case line.")
+        self.assertEqual(self.unowned(), [f"{self.OTHER}!S!AE6", f"{self.OTHER}!S!F6"])
+
+    def test_a_shorter_path_names_nothing(self) -> None:
+        self.task("Every failing cell of corpus-bench/5306 and of corpus-bench/530.", milestone="M11")
+        self.assertEqual(self.unowned(), [f"{self.CB}!S!AE6", f"{self.CB}!S!F6"])
+
+    def test_a_directory_path_beside_a_cell_owns_only_that_cell(self) -> None:
+        self.task("corpus-bench/53062 AE6")
+        self.assertEqual(self.unowned(), [f"{self.CB}!S!F6", f"{self.OTHER}!S!AE6", f"{self.OTHER}!S!F6"])
+
+    def test_the_full_id_still_names_the_case(self) -> None:
+        self.task("`corpus-bench/53062/1_53062_input.xlsx` F6")
+        self.assertEqual(self.unowned(), [f"{self.CB}!S!AE6", f"{self.OTHER}!S!AE6", f"{self.OTHER}!S!F6"])
+
+    def test_a_name_may_end_a_sentence(self) -> None:
+        self.task("The spill cases of corpus-bench/5306.")
+        self.assertEqual(self.unowned(), [f"{self.CB}!S!AE6", f"{self.CB}!S!F6"])
+
+
 class UnattributedOwners(TaskDir):
     UNATTRIBUTED = {
         "unattributed_off": [
