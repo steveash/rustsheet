@@ -52,11 +52,13 @@ value. All six cells are wrong-type (`#ERROR!` against a number or `#SPILL!`), s
 
 ## Superseded in flight (2026-10-27)
 An opus run claimed this task and made the adapter change (a typed `=...` joins the formulas pass), with a
-unit test: `make eval-check` then showed the 6 cells fixed and S!F8 regressed, as predicted. Meanwhile T-2801's
-branch `agent/engine/T-2801-structref-whitespace` (commit 2026-10-27 22:04 UTC) carries the same adapter change
-together with the printing that keeps F8 passing, so this task waits on T-2801 instead of landing a duplicate
-with a decision record. When T-2801 merges: if the 6 lines below are gone from eval/baseline/probes.txt, set this
-task `done` with an Outcome naming T-2801's PR; otherwise do what is left, starting from T-2801's adapter code.
+unit test: `make eval-check` then showed the 6 cells fixed and S!F8 regressed, as predicted. Meanwhile both open
+T-2801 branches (`agent/engine/T-2801-structref-whitespace` and `agent/engine/T-2801-structured-ref-whitespace`,
+2026-10-27 22:04 and 22:13 UTC) carry the same adapter change together with the printing that keeps F8 passing
+(the second drops all 6 lines below from eval/baseline/probes.txt), so this task waits on T-2801 instead of landing
+a duplicate with a decision record. When a T-2801 PR merges: if the 6 lines below are gone from
+eval/baseline/probes.txt, set this task `done` with an Outcome naming that PR; otherwise do what is left, starting
+from the adapter code T-2801 merged.
 A unit test worth keeping if T-2801 has none: a spec with table T over A1:A3 (`Col`, 3, typed `(4)`) and typed
 `=SUM(T[Col])` gives -1, typed `=A3*2` gives -8.
 
