@@ -31,6 +31,11 @@ Also owned (T-2625, 2026-10-24): probes/t2625-nested-consumers P!A13, A18, A19, 
 key fields) and A28:A31 (its key column and column-key rows as text: Excel shows a blank key as "" in the row keys and in each
 column-key row, ours 0), and gen-m9/e85daedce5c2675e Calc!A35 (`BESSELJ(COUNT(PIVOTBY(..)),..)`, the same COUNT plus 2).
 
+Exit owners (decision 0096; the 2026-10-27 planner run names each cell the ranges above hold):
+- probes/t2578-pivotby-total-error-scope P!D50, P!D51, P!D53, P!D55, P!D62, P!D64
+- probes/t2578-groupby-product-subtotals P!A3, P!A6
+- probes/t2625-nested-consumers P!A29, P!A30
+
 ## Acceptance criteria
 - [ ] The six G! known-failure lines above disappear from eval/baseline/probes.txt, no new known failures.
 - [ ] gen-m9/8d3588d8df0812df Calc!A240 and the eleven probes/t2578-* blank-key lines disappear from the baselines.
