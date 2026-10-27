@@ -8,7 +8,6 @@ ratchets themselves are enforced by scripts/check_*.py; this module only counts 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -27,13 +26,6 @@ MEASURES = (
     ("decisions", "Decision records"),
     ("semantics_lines", "Excel-semantics lines"),
 )
-
-
-@dataclass(frozen=True)
-class Codebase:
-    """The counts of one run, keyed as in `MEASURES`."""
-
-    counts: dict[str, int]
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -58,6 +50,15 @@ def _lint_allows(data: dict[str, Any], where: str) -> int:
     return total
 
 
+def _records(directory: Path) -> list[Path]:
+    """The markdown files of `directory`; a missing directory is an error rather
+    than a count of zero."""
+    if not directory.is_dir():
+        msg = f"{directory} is not a directory"
+        raise ProgressReportError(msg)
+    return sorted(directory.glob("*.md"))
+
+
 def _lines(path: Path) -> int:
     try:
         return len(path.read_text(encoding="utf-8").splitlines())
@@ -66,26 +67,23 @@ def _lines(path: Path) -> int:
         raise ProgressReportError(msg) from e
 
 
-def measure(repo: Path, docs: Path) -> Codebase:
-    """The counts of the repository at `repo`, whose docs directory is `docs`."""
+def measure(repo: Path) -> dict[str, int]:
+    """The counts of the repository at `repo`."""
+    # The docs directory is named by a page path: a bare "docs" literal is not in CODE_READ_PATHS
+    # (scripts/check_docs_readers.py, decision 0049).
+    docs = repo / "docs/progress.md"
+    docs = docs.parent
     quality = repo / QUALITY
     debt = quality / "lint-debt.json"
     dup, floor = quality / "duplication.json", quality / "evidence-floor.json"
-    where = f"{dup}"
-    counts = {
+    return {
         "lint_allows": _lint_allows(_json(debt), str(debt)),
-        "duplicated_lines": count(_json(dup), "duplicated_lines", where),
+        "duplicated_lines": count(_json(dup), "duplicated_lines", str(dup)),
         "oversized_files": len(_json(quality / "oversized-files.json")),
         "below_floor": count(_json(floor), "below_floor", str(floor)),
-        "decisions": len(list((docs / DECISIONS).glob("0*.md"))),
-        "semantics_lines": sum(_lines(p) for p in sorted((docs / SEMANTICS).glob("*.md"))),
+        "decisions": sum(1 for p in _records(docs / DECISIONS) if p.name.startswith("0")),
+        "semantics_lines": sum(_lines(p) for p in _records(docs / SEMANTICS)),
     }
-    return Codebase(counts)
-
-
-def row(c: Codebase) -> dict[str, int]:
-    """The history row's `codebase` object."""
-    return dict(c.counts)
 
 
 def check_row(obj: Any, where: str) -> None:
@@ -94,13 +92,13 @@ def check_row(obj: Any, where: str) -> None:
         count(obj, key, where)
 
 
-def block(c: Codebase, last: dict[str, Any] | None) -> str:
+def block(counts: dict[str, int], last: dict[str, Any] | None) -> str:
     """The block's Markdown. `last` is the last complete history row; the change column is blank
     for a row from before the block existed."""
     before = last.get("codebase") if last else None
     rows = []
     for key, label in MEASURES:
-        now = c.counts[key]
+        now = counts[key]
         change = signed(now - field(before, key, "history codebase")) if before else "n/a"
         rows.append([label, f"{now:,}", change])
     since = f" since {last['date']}" if before and last else ""

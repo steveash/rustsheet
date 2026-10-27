@@ -45,7 +45,7 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 
 | Milestone | Phase | Exit criteria checked | Catalog coverage | Exit measures (report) | Frozen list and probes | Todo | In progress | Blocked | Done |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 5 visibly off, 12 known failures | 2 | 1 | 0 | 76 |
+| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 5 visibly off, 12 known failures | 2 | 0 | 0 | 77 |
 | M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 5 visibly off, 12 known failures | 4 | 1 | 2 | 391 |
 | M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 5 visibly off, 12 known failures | 13 | 0 | 0 | 381 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
@@ -107,7 +107,7 @@ Against the last complete run, **2026-10-26** at commit `5dc93dd8` ([docs/progre
 | Visibly-off attributed cells: number | 105,122 | 105,182 | +60 |
 | Visibly-off attributed cells: type, error or text | 1,484 | 1,458 | −26 |
 | Attributed Excel cells | 1,447,455 | 1,448,223 | +768 |
-| Tasks done | 1,817 | 1,836 | +19 |
+| Tasks done | 1,817 | 1,837 | +20 |
 <!-- /progress:generated -->
 
 <!-- progress:generated trends -->

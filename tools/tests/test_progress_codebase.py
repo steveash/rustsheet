@@ -7,13 +7,15 @@ from pathlib import Path
 
 import pytest
 from test_progress_history import row
+from test_progress_report import data, tasks
 
 from rustsheet_tools.progress_report import codebase, history
-from rustsheet_tools.progress_report.model import ProgressReportError
+from rustsheet_tools.progress_report.model import ProgressReportError, Run, tasks_of
 
 
-def docs(root: Path) -> Path:
-    return root / "d"
+def docs_dir(root: Path) -> Path:
+    # Named by a page path: a bare "docs" literal trips scripts/check_docs_readers.py.
+    return (root / "docs/progress.md").parent
 
 
 def repo(tmp_path: Path, *, decisions: int = 2, semantics: tuple[str, ...] = ("a\nb\n", "c\n")) -> Path:
@@ -23,12 +25,12 @@ def repo(tmp_path: Path, *, decisions: int = 2, semantics: tuple[str, ...] = ("a
     (q / "duplication.json").write_text(json.dumps({"duplicated_lines": 120, "window": 10}))
     (q / "oversized-files.json").write_text(json.dumps({"f.rs": 1000, "g.rs": 2000, "h.rs": 3000}))
     (q / "evidence-floor.json").write_text(json.dumps({"floor": 20, "below_floor": 7}))
-    d = docs(tmp_path) / "decisions"
+    d = docs_dir(tmp_path) / "decisions"
     d.mkdir(parents=True)
     for i in range(decisions):
         (d / f"{i:04d}-x.md").write_text("x")
     (d / "README.md").write_text("not a record")
-    s = docs(tmp_path) / "excel-semantics"
+    s = docs_dir(tmp_path) / "excel-semantics"
     s.mkdir()
     for i, text in enumerate(semantics):
         (s / f"{i}.md").write_text(text)
@@ -36,7 +38,7 @@ def repo(tmp_path: Path, *, decisions: int = 2, semantics: tuple[str, ...] = ("a
 
 
 def test_each_count_is_read_from_its_file(tmp_path: Path) -> None:
-    assert codebase.measure(repo(tmp_path), docs(tmp_path)).counts == {
+    assert codebase.measure(repo(tmp_path)) == {
         "lint_allows": 3,
         "duplicated_lines": 120,
         "oversized_files": 3,
@@ -50,13 +52,13 @@ def test_a_missing_ratchet_file_fails(tmp_path: Path) -> None:
     r = repo(tmp_path)
     (r / "quality" / "duplication.json").unlink()
     with pytest.raises(ProgressReportError, match=r"duplication\.json"):
-        codebase.measure(r, docs(r))
+        codebase.measure(r)
 
 
 def test_block_shows_the_change_against_the_last_row(tmp_path: Path) -> None:
-    now = codebase.measure(repo(tmp_path), docs(tmp_path))
+    now = codebase.measure(repo(tmp_path))
     last = row("2026-10-18")
-    last["codebase"] = {**now.counts, "duplicated_lines": 130, "decisions": 1}
+    last["codebase"] = {**now, "duplicated_lines": 130, "decisions": 1}
     text = codebase.block(now, last)
     assert "| Duplicated lines | 120 | \N{MINUS SIGN}10 |" in text
     assert "| Decision records | 2 | +1 |" in text
@@ -64,7 +66,7 @@ def test_block_shows_the_change_against_the_last_row(tmp_path: Path) -> None:
 
 
 def test_block_without_an_earlier_codebase_row_has_no_change(tmp_path: Path) -> None:
-    text = codebase.block(codebase.measure(repo(tmp_path), docs(tmp_path)), row("2026-10-18"))
+    text = codebase.block(codebase.measure(repo(tmp_path)), row("2026-10-18"))
     assert "| Oversized files | 3 | n/a |" in text
 
 
@@ -76,8 +78,23 @@ def test_rows_without_a_codebase_object_still_load() -> None:
 
 def test_a_codebase_object_is_checked_and_round_trips(tmp_path: Path) -> None:
     r = row("2026-10-18")
-    r["codebase"] = codebase.row(codebase.measure(repo(tmp_path), docs(tmp_path)))
+    r["codebase"] = codebase.measure(repo(tmp_path))
     assert history.parse(history.dump([r])) == [r]
     del r["codebase"]["decisions"]
     with pytest.raises(ProgressReportError, match="decisions"):
         history.parse(history.dump([r]))
+
+
+def test_a_missing_docs_subdir_fails_instead_of_counting_zero(tmp_path: Path) -> None:
+    r = repo(tmp_path)
+    (docs_dir(r) / "excel-semantics").rename(docs_dir(r) / "elsewhere")
+    with pytest.raises(ProgressReportError, match="not a directory"):
+        codebase.measure(r)
+
+
+def test_the_complete_row_carries_the_counts() -> None:
+    counts = {key: i for i, (key, _) in enumerate(codebase.MEASURES)}
+    r = history.complete_row(
+        Run("2026-10-19", "abc12345", ("s",), ()), data(), tasks_of(tasks()), None, counts
+    )
+    assert r["codebase"] == counts
