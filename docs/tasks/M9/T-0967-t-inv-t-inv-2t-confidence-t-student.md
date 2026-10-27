@@ -161,6 +161,14 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A110, A148, A262
 - gen-m9/f82473275380882e.case.json (4): Calc!A291, A320, A353, A382
 
+Gap triage 2026-10-27 (`make eval` on 7dba3bfe): 3 visibly-off cells that no task named. They are p in (1,2), which
+T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T.INV(0.25,df)`, `TINV(1.5,df)` and
+`-T.INV(0.75,df)`. So the miss is the central quantile itself, not the p > 1 mapping. Exact (mpmath)
+`T.INV(0.25,7)` is -0.71114177808178631: Excel is 4E-16 above it, ours 3E-16 below.
+- gen-m9/5395b8a427764a3f Calc!A347 `=T.INV.2T(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
+- gen-m9/787ba8d801105a60 Calc!A265 `=TINV(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
+- gen-m9/1db18890916ee643 Calc!A106 `=TINV(1.5,10)`: Excel -0.6998120613124317, ours -0.6998120613124311
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 269 known-failure lines (35 from T-2255, 234 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

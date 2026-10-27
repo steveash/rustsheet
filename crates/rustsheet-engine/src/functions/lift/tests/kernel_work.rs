@@ -726,7 +726,7 @@ fn amortization_units(
 }
 
 /// AMORLINC's and AMORDEGRC's `ByValue` charge (T-2840): an element is charged its kernel's flat
-/// bound, so 512 AMORDEGRC elements fit under `MAX_LIFTED_CELL_VISITS` and 513 do not, and a
+/// bound, so 128 AMORDEGRC elements fit under `MAX_LIFTED_CELL_VISITS` and 129 do not, and a
 /// text or a blank, which may read as any number, is charged the bound too.
 #[test]
 fn amortization_elements_are_charged_the_bound() {
@@ -737,7 +737,7 @@ fn amortization_elements_are_charged_the_bound() {
     let date = || ArrayNode::Number(39_679.0);
     let valid = [2400.0, 300.0, 1.0, 0.15];
     let units = amortization_units(Function::Amordegrc, date(), valid, CalcResult::Number(1.0));
-    assert_eq!(units / 513 * 512, MAX_LIFTED_CELL_VISITS);
+    assert_eq!(units / 513 * 128, MAX_LIFTED_CELL_VISITS);
     let text = ArrayNode::String("x".into());
     let units = amortization_units(Function::Amordegrc, text, valid, CalcResult::Number(1.0));
     assert!(units > MAX_LIFTED_CELL_VISITS);
