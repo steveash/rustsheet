@@ -241,11 +241,11 @@ fn l140_bup_bpser(a0: f64, b0: f64, x0: f64, y0: f64) -> Option<f64> {
     Some(up + series)
 }
 
-/// TOMS 708 `bup(a, b, x, y, n)` = I_x(a, b) - I_x(a + n, b) for a whole n >= 1 and a <= 1, as
+/// TOMS 708 `bup(a, b, x, y, n)` = `I_x(a, b) - I_x(a + n, b)` for a whole n >= 1 and a <= 1, as
 /// Excel computes it (`bratio_excel.py` `bup` and `_bup_term`, `bup_arith = "w4"`):
 /// - the prefactor is Excel's own beta density P of Beta(a, b) at x (T-2503, a <= 1) times x·y, so
 ///   bup = fl(fl(P·fl(x·y))/a)·W, with no exp(mu) scaling;
-/// - W = 1 + d_1 + ... with d_l = d_{l-1}·(r_l·x), r_l = fl(fl(apb + l)/fl(ap1 + l)) stored and r_l·x
+/// - W = 1 + `d_1` + ... with `d_l = d_{l-1}·(r_l·x)`, `r_l = fl(fl(apb + l)/fl(ap1 + l))` stored and `r_l·x`
 ///   held in a register; each partial sum stored;
 /// - the sum stops after term k (TOMS's (b - 1)x/y - a) once d <= eps·W.
 fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
