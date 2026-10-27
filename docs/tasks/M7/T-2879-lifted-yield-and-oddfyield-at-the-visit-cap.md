@@ -36,7 +36,8 @@ and are within their weights.
 
 ## Acceptance criteria
 - [x] YIELD's and ODDFYIELD's charge is fitted so the slowest inputs above take at most about 5 s at the cap; the PR
-      records the timings.
+      records the timings. (SPEC-0024 section 4 as amended by T-2813 needs this 5 s too: the formula work budget allows two
+      calls at the cap, and a MAKEARRAY of the 644-element YIELD above measured 28.1 s to the limit.)
 - [x] No baseline gains a line (`make eval-check`: 0 regressions), including the two cells above.
 - [x] docs/excel-semantics/financial.md "Yield and odd-coupon work cap" and SPEC-0011's as-built note give the new numbers.
 - [x] `make check` green; reviewers approve.
