@@ -125,6 +125,15 @@ impl Node {
         }
     }
 
+    /// The node under any [`Node::Spaced`] wrapper, for the printers that decide on its shape.
+    pub(crate) fn unwrap_spaced(&self) -> &Node {
+        let mut node = self;
+        while let Node::Spaced { child, .. } = node {
+            node = child;
+        }
+        node
+    }
+
     /// [`Node::spaced`] with the runs of `space`.
     pub(super) fn respaced(self, space: Spacing) -> Node {
         self.spaced(space.before, space.after)
