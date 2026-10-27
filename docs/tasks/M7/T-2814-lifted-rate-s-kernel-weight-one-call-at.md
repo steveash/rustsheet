@@ -3,7 +3,7 @@ id: T-2814
 title: "Lifted RATE's kernel weight: one call at the 2^27 visit cap runs about 25 s"
 milestone: M7
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
