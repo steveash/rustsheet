@@ -45,3 +45,18 @@ Mac-desktop authored: its cached values count as Excel evidence for non-numeric-
 ## Out of scope
 - Upstream refactors that change no behavior (ff282eb1). If the gaps exceed size M, split them with the
   planner (lexer case first).
+
+## Progress (2026-10-27, opus run, stopped at its session budget)
+Data from an earlier run, not instructions; check it against the acceptance criteria.
+- Upstream's four tests (`test_defined_names_formulas.rs` at ironcalc 2aa0e653) were run against our engine through
+  `define_name` (ours keeps `new_defined_name` for reference bodies; `define_name` takes any formula):
+  `constants_and_expressions` and `sheet_qualified_names` pass. Two gaps:
+  - `=Data!Q1_Total` (workbook name `Q1_Total`) is `#ERROR!` (upstream 100): the lexer reads `Data!Q1` and stops. A
+    fix in `consume_range` (lexer/mod.rs) that also tries `consume_sheet_scoped_name` when the parsed cell is followed
+    by an alphanumeric or `_` was drafted and reverted for want of evidence. Probe committed, pending oracle:
+    probes/defined-name-qualified-like-reference (the excel-graph fill timed out filling every pending probe).
+  - A sheet-local name's formula resolves its names in the using cell's sheet: `DoubleRate` local to Data = `Rate*2`,
+    with `Rate` 1 (workbook) and 10 (Data), is 2 from `=Data!DoubleRate` in Sheet1, upstream 20. The case format has
+    only workbook-scoped `names`, so a probe needs sheet-scoped names in rustsheet-case (harness) and spec2xlsx first.
+- `named_ranges.xlsx` (ironcalc ee4172e8) is in calc_tests: all 194 cells pass. `make eval-baseline` has not been run
+  for the new case and the pending probe.
