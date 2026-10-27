@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 two fractional periods lifted over an array constant and summed, A2 the 485 charge: does each element read the value?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SUM(AMORDEGRC(10000,39000,39400,500,{0.3,0.5},0.3,0))",
+        "A2": "=AMORDEGRC(2400,39679,39813,300,2,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

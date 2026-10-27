@@ -253,8 +253,8 @@ fn the_export_keeps_this_row_on_every_row() {
 }
 
 /// Structural edits keep today's values; one whose displaced area differs, or that moves the
-/// formula's cell to another row, prints that area, as every structured reference does under
-/// the fallback of SPEC-0016 "Structural edits".
+/// formula's cell to another row, prints that area, as a `#This Row` reference does under every
+/// edit of SPEC-0016 "Structural edits", whether its table follows the edit or not (T-2297).
 #[test]
 fn structural_edits_keep_values() {
     type Edit = fn(&mut Model);
@@ -288,6 +288,7 @@ fn structural_edits_keep_values() {
         }),
         ("insert column left", |m| m.insert_columns(1, 1, 1).unwrap()),
     ];
+    let mut all = Vec::new();
     for (name, edit) in edits {
         let mut model = parity_model();
         edit(&mut model);
@@ -295,8 +296,22 @@ fn structural_edits_keep_values() {
         let first_column = if name == "insert column left" { 2 } else { 1 };
         let mut found = mismatches(&model, 1, first_column, true);
         found.extend(mismatches(&model, 0, 5, true));
-        assert!(found.is_empty(), "{name}:\n{}", found.join("\n"));
+        // The table moves or grows over row 6, and the reference on another sheet there was off
+        // the data rows (`#VALUE!`), which the edit does not change: it keeps its text and reads
+        // the table's row 6 (T-2297; whether Excel does is unprobed, T-2845).
+        if name == "insert above" || name == "insert inside" {
+            found.retain(|f| !f.contains(" on sheet 1 row 6: "));
+            let column = TEMPLATES.iter().position(|t| *t == "=ROW({x})").unwrap() as i32;
+            let column = 2 * column + 1;
+            assert_eq!(
+                formula(&model, 1, 6, column),
+                "=ROW(Sales[[#This Row],[Qty]])"
+            );
+            assert_eq!(value(&model, 1, 6, column), "6", "{name}");
+        }
+        all.extend(found.into_iter().map(|f| format!("{name}: {f}")));
     }
+    assert!(all.is_empty(), "{}", all.join("\n"));
     // An edit of another sheet leaves the text of a formula on the table's sheet as it is.
     let mut model = parity_model();
     model.add_sheet("Other").unwrap();
