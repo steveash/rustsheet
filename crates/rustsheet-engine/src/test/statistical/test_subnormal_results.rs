@@ -61,7 +61,7 @@ fn gamma_density_of_a_subnormal_ratio_is_num() {
 
 // T-2753: below x / beta = 1E-15 GAMMA.DIST's density is Excel's log-space form, not the exact
 // density (probes/t2753-gamma-density-ratio-sweep B1, A3; probes/t2738-gamma-dist-tiny-ratio A2), where
-// the engine is bit-exact; elsewhere in the regime it is within 1 ulp.
+// the engine is bit-exact; elsewhere in the regime it is 0 to 3 ulp off (T-2852).
 #[test]
 fn gamma_density_at_a_tiny_ratio_is_the_log_form() {
     check_cells(

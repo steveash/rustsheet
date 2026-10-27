@@ -3,7 +3,7 @@ use statrs::distribution::{Continuous, Gamma};
 use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, Tail};
+use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, Tail, DIRECT_SHAPE_MAX};
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
@@ -18,23 +18,22 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// `kmyst-erf-ashape`).
 const HALF_SHAPE: f64 = 0.5;
 
-/// The x / beta below which GAMMA.DIST's density is Excel's log-space form (probes/
-/// t2753-gamma-density-switch: within 1 ulp of Excel up to 3E-16 at shapes 0.5, 1 and 2, 4 to 7
-/// ulp at 1E-15, where the direct form is 10 off; T-2753).
+/// The x / beta up to which GAMMA.DIST's density is Excel's log-space form (probes/
+/// t2753-gamma-density-switch: 0 to 3 ulp from Excel up to 3E-16 at shapes 0.5, 1 and 2, 4 to 7
+/// at 1E-15, where the direct form is 4 to 12 off; T-2753, T-2852).
 const LOG_FORM_RATIO: f64 = 1E-15;
 
-/// The shapes the log-space form is probed at lie below this (the prefactor's own regime split).
-const LOG_FORM_SHAPE_MAX: f64 = 20.0;
-
-/// GAMMA.DIST's density where y = x / beta is below [`LOG_FORM_RATIO`]: Excel forms
+/// GAMMA.DIST's density where y = x / beta is at most [`LOG_FORM_RATIO`]: Excel forms
 /// EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
 /// result, so `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235, not 1 (probes/
 /// t2753-gamma-density-ratio-sweep A1, B1; t2738-gamma-dist-tiny-ratio A2, A4, A15, A19).
-/// With Excel's own LN, EXP and GAMMA it is within 1 ulp of Excel there. `None` elsewhere, and
-/// at x = 0, which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
+/// With Excel's own LN, EXP and GAMMA it is 0 to 1 ulp from Excel at most probed cells there and
+/// 2 to 3 at a few (`GAMMA.DIST(2E-16,1,1,FALSE)`, `(1E-20,2,1,FALSE)`; T-2852). Only shapes 0.5,
+/// 1 and 2 are probed; it keeps to the prefactor's direct shapes. `None` elsewhere, and at x = 0,
+/// which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
 fn tiny_ratio_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
     let y = x / beta;
-    (x > 0.0 && alpha < LOG_FORM_SHAPE_MAX && y < LOG_FORM_RATIO)
+    (x > 0.0 && alpha < DIRECT_SHAPE_MAX && y <= LOG_FORM_RATIO)
         .then(|| excel_exp(alpha * excel_ln(y) - y) / excel_gamma(alpha) / x)
 }
 
