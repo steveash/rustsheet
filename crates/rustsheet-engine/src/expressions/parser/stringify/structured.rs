@@ -133,13 +133,15 @@ pub(super) fn reference_text(
         }) if !matches!(lowered, Node::ThisRowKind { .. })
             && kept_tables.contains(&reference.table_name.to_lowercase()) =>
         {
-            // A column delete inside the table turns a reference naming a deleted column into
+            // A column delete inside the table turns a reference to a deleted column into
             // `#REF!` (T-2324 table-delete-column-qty: `=SUM(#REF!)`, -region: `=COUNTA(#REF!)`).
-            return if names_deleted_column(reference, deleted_columns) {
-                token::Error::REF.to_string()
-            } else {
-                reference.text()
-            };
+            // A column range that loses one end is printed as the area it is displaced to below,
+            // as under a fallback: what Excel does to it is unprobed.
+            match deleted_column(reference, deleted_columns) {
+                DeletedColumn::Whole => return token::Error::REF.to_string(),
+                DeletedColumn::None => return reference.text(),
+                DeletedColumn::RangeEnd => {}
+            }
         }
         Rewrite::Lower(tables, _) => {
             let name = reference.table_name.to_lowercase();
@@ -180,12 +182,20 @@ pub(super) fn reference_text(
     }
 }
 
-/// Whether `reference` names a column of `deleted` (lowercase (table, column) names), either end
-/// of a column range included: what Excel does to a range that keeps one end is unprobed, and
-/// the range cannot keep its text without the deleted end.
-fn names_deleted_column(reference: &StructuredReference, deleted: &[(String, String)]) -> bool {
+/// How a column delete inside a table touches a structured reference to it.
+enum DeletedColumn {
+    /// It names no deleted column.
+    None,
+    /// It names one deleted column, or a range both of whose ends are deleted.
+    Whole,
+    /// It names a column range one of whose ends is deleted.
+    RangeEnd,
+}
+
+/// How the columns `deleted` (lowercase (table, column) names) touch `reference`.
+fn deleted_column(reference: &StructuredReference, deleted: &[(String, String)]) -> DeletedColumn {
     if deleted.is_empty() {
-        return false;
+        return DeletedColumn::None;
     }
     let table = reference.table_name.to_lowercase();
     let is_deleted = |column: &str| {
@@ -193,11 +203,15 @@ fn names_deleted_column(reference: &StructuredReference, deleted: &[(String, Str
         deleted.iter().any(|(t, c)| *t == table && *c == column)
     };
     match &reference.table_reference {
-        Some(TableReference::ColumnReference(column)) => is_deleted(column),
+        Some(TableReference::ColumnReference(column)) if is_deleted(column) => DeletedColumn::Whole,
         Some(TableReference::RangeReference((first, last))) => {
-            is_deleted(first) || is_deleted(last)
+            match (is_deleted(first), is_deleted(last)) {
+                (true, true) => DeletedColumn::Whole,
+                (false, false) => DeletedColumn::None,
+                _ => DeletedColumn::RangeEnd,
+            }
         }
-        None => false,
+        _ => DeletedColumn::None,
     }
 }
 

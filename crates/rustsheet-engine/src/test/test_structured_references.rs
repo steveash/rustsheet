@@ -236,19 +236,70 @@ fn row_deletes_keep_values() {
 /// column edit changes its column list, a fallback (T-2339).
 #[test]
 fn column_inserts_and_deletes_keep_values() {
-    for (column, insert_follows, delete_follows) in [
-        (1, true, false),
-        (2, false, false),
-        (3, true, true),
-        (5, true, true),
-    ] {
-        check_edit(&format!("insert column {column}"), insert_follows, |m| {
+    // An insert at the second column grows the table (T-2339).
+    for column in [1, 2, 3, 5] {
+        check_edit(&format!("insert column {column}"), true, |m| {
             m.insert_columns(0, column, 1).unwrap();
         });
-        check_edit(&format!("delete column {column}"), delete_follows, |m| {
+    }
+    for column in [3, 5] {
+        check_edit(&format!("delete column {column}"), true, |m| {
             m.delete_columns(0, column, 1).unwrap();
         });
     }
+}
+
+/// A column delete inside the table shrinks it and drops the column (T-2339): a reference to the
+/// deleted column prints `#REF!`, as Excel does (probes/table-edits/table-delete-column-qty), and
+/// the others keep their text and read the shrunk table. A column range that loses one end prints
+/// the area it is displaced to, as under a fallback; its value is the plain range's, whose own
+/// column-delete gaps are T-2851's (Excel is unprobed for both).
+#[test]
+fn column_deletes_inside_drop_the_column() {
+    let qty = [
+        ("=SUM(#REF!)", "#REF!"),
+        ("=SUM(Sales[#All])", "30"),
+        ("=ROWS(Sales)", "2"),
+        ("=SUM(#REF!:$A$3)", "#REF!"),
+        ("=COUNTA(Sales[#Headers])", "1"),
+        ("=SUM(Sales[[#Data],[Val]])", "30"),
+    ];
+    let val = [
+        ("=SUM(Sales[Qty])", "3"),
+        ("=SUM(Sales[#All])", "3"),
+        ("=ROWS(Sales)", "2"),
+        ("=SUM(Data!$A$2:#REF!)", "#ERROR!"),
+        ("=COUNTA(Sales[#Headers])", "1"),
+        ("=SUM(#REF!)", "#REF!"),
+    ];
+    for (column, expected) in [(1, qty), (2, val)] {
+        let mut model = model();
+        model.delete_columns(0, column, 1).unwrap();
+        model.evaluate();
+        for (row, (text, result)) in (1..).zip(expected) {
+            assert_eq!(formula(&model, 1, row, 1), text, "delete column {column}");
+            assert_eq!(
+                value(&model, 1, row, 1),
+                result,
+                "delete column {column}: {text}"
+            );
+        }
+    }
+}
+
+/// A column inserted inside the table is named `Column1`, in its header cell too (T-2339,
+/// probes/table-edits/table-insert-column-inside-header).
+#[test]
+fn a_column_inserted_inside_is_named_in_its_header() {
+    let mut model = model();
+    model.insert_columns(0, 2, 1).unwrap();
+    model
+        .set_user_input(1, 10, 1, "=INDEX(Sales[#Headers],1,2)".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(value(&model, 0, 1, 2), "Column1");
+    assert_eq!(value(&model, 1, 10, 1), "Column1");
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Sales[Qty])");
 }
 
 #[test]
