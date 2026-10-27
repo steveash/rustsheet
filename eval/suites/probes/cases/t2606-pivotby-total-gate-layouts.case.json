@@ -1,0 +1,139 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2606 probe: PIVOTBY hidden Total error gate with column subtotals (S, depth 2 and -2), col_total_depth -1/0/1 (T), and a LAMBDA returning empty text in the gating cell (U vs control V)",
+ "tags": [
+  "M7",
+  "probe",
+  "lookup",
+  "T-2606"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "P",
+   "cells": {
+    "A1": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,2)))",
+    "A2": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,2)))",
+    "A3": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,2)))",
+    "A4": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,2)))",
+    "A5": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=16,NA(),SUM(v))),0,1,0,2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=16,NA(),SUM(v))),0,1,0,2)))",
+    "A6": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=32,NA(),SUM(v))),0,1,0,2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=32,NA(),SUM(v))),0,1,0,2)))",
+    "B1": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,-2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,-2)))",
+    "B2": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,-2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,-2)))",
+    "B3": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,-2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,-2)))",
+    "B4": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,-2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,-2)))",
+    "B5": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=16,NA(),SUM(v))),0,1,0,-2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=16,NA(),SUM(v))),0,1,0,-2)))",
+    "B6": "=IFERROR(ROWS(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=32,NA(),SUM(v))),0,1,0,-2)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(S!A2:A4,S!B2:C4,S!D2:E4,LAMBDA(v,IF(SUM(v)=32,NA(),SUM(v))),0,1,0,-2)))",
+    "C1": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,1)))",
+    "D1": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,-1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,-1)))",
+    "E1": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,0)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=1,NA(),SUM(v))),0,1,0,0)))",
+    "C2": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,1)))",
+    "D2": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,-1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,-1)))",
+    "E2": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,0)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=2,NA(),SUM(v))),0,1,0,0)))",
+    "C3": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,1)))",
+    "D3": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,-1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,-1)))",
+    "E3": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,0)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=4,NA(),SUM(v))),0,1,0,0)))",
+    "C4": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,1)))",
+    "D4": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,-1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,-1)))",
+    "E4": "=IFERROR(ROWS(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,0)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(T!A2:A3,T!B2:B3,T!D2:E3,LAMBDA(v,IF(SUM(v)=8,NA(),SUM(v))),0,1,0,0)))",
+    "F1": "=IFERROR(ROWS(_xlfn.PIVOTBY(U!A2:A4,U!B2:B4,U!D2:E4,LAMBDA(v,IF(ROWS(v)=2,NA(),IF(SUM(v)=2,\"\",SUM(v)))),0,1,0,1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(U!A2:A4,U!B2:B4,U!D2:E4,LAMBDA(v,IF(ROWS(v)=2,NA(),IF(SUM(v)=2,\"\",SUM(v)))),0,1,0,1)))",
+    "G1": "=IFERROR(ROWS(_xlfn.PIVOTBY(V!A2:A4,V!B2:B4,V!D2:E4,LAMBDA(v,IF(ROWS(v)=2,NA(),IF(SUM(v)=2,\"\",SUM(v)))),0,1,0,1)),\"E\"&ERROR.TYPE(_xlfn.PIVOTBY(V!A2:A4,V!B2:B4,V!D2:E4,LAMBDA(v,IF(ROWS(v)=2,NA(),IF(SUM(v)=2,\"\",SUM(v)))),0,1,0,1)))"
+   }
+  },
+  {
+   "name": "S",
+   "cells": {
+    "A1": "r",
+    "B1": "c1",
+    "C1": "c2",
+    "D1": "u",
+    "E1": "w",
+    "A2": "a",
+    "B2": "p",
+    "C2": "x",
+    "D2": 1,
+    "E2": 2,
+    "A3": "b",
+    "B3": "p",
+    "C3": "y",
+    "D3": 4,
+    "E3": 8,
+    "A4": "c",
+    "B4": "q",
+    "C4": "x",
+    "D4": 16,
+    "E4": 32
+   }
+  },
+  {
+   "name": "T",
+   "cells": {
+    "A1": "r",
+    "B1": "c1",
+    "C1": "c2",
+    "D1": "u",
+    "E1": "w",
+    "A2": "a",
+    "B2": "p",
+    "C2": "x",
+    "D2": 1,
+    "E2": 2,
+    "A3": "b",
+    "B3": "q",
+    "C3": "x",
+    "D3": 4,
+    "E3": 8
+   }
+  },
+  {
+   "name": "U",
+   "cells": {
+    "A1": "r",
+    "B1": "c1",
+    "C1": "c2",
+    "D1": "u",
+    "E1": "w",
+    "A2": "a",
+    "B2": "p",
+    "C2": "x",
+    "D2": 1,
+    "E2": 2,
+    "A3": "a",
+    "B3": "q",
+    "C3": "x",
+    "D3": 2,
+    "E3": 8,
+    "A4": "b",
+    "B4": "p",
+    "C4": "x",
+    "D4": 16,
+    "E4": 32
+   }
+  },
+  {
+   "name": "V",
+   "cells": {
+    "A1": "r",
+    "B1": "c1",
+    "C1": "c2",
+    "D1": "u",
+    "E1": "w",
+    "A2": "a",
+    "B2": "p",
+    "C2": "x",
+    "D2": 1,
+    "E2": 2,
+    "A3": "a",
+    "B3": "q",
+    "C3": "x",
+    "D3": 3,
+    "E3": 8,
+    "A4": "b",
+    "B4": "p",
+    "C4": "x",
+    "D4": 16,
+    "E4": 32
+   }
+  }
+ ]
+}
