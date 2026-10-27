@@ -933,9 +933,24 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
   1899-12-31). `ACCRINT(DATE(1900,4,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)` is 404512.3611111111.
 - A regular period that starts before 1900 does not matter when the settlement's period is later:
   `ACCRINT(33448,1,37714,1E+300,0.3,1,2,TRUE)` is a number (gen-m9 3b7990bd4e3307ba Calc!A317).
-  On basis 1 it does, or something else near serial 1 does: `ACCRINT(33853,1.005,37554,1,9888,1,1)` (annual, calc_method
-  TRUE) is `#NUM!` (gen-m9 932b33b1ef8b7608 Calc!A118, excel-graph, 2026-10-26), ours 100198.77008758142. Which bases and
-  first_interest values cut is unprobed (T-2562).
+  On basis 1 it does: basis 1 reads the length of first_interest's regular period, so that period must start on
+  1900-01-01 or later however late the settlement is. `ACCRINT(33853,FI,37554,1,9888,freq,1)` is `#NUM!` for FI 1, 1.005
+  and 2 at frequencies 1, 2 and 4, and a number for FI 367 (regular period from 1900-01-01 when annual); bases 0, 2, 3
+  and 4 give numbers for all of them (probes/accrint-calendar-start-1900 A1:A60; gen-m9 932b33b1ef8b7608 Calc!A118 is
+  FI 1.005, annual, basis 1; T-2562).
+- A first_interest of serial 59 (1900-02-28) or 60 (Excel's 1900-02-29) with an issue of 1, 30 or 45 is `#NUM!`,
+  semiannual and quarterly, on bases 0 and 1, settlement before or after it: the regular period starts in 1899
+  (probes/accrint-calendar-start-1900 B1:B32). Those cells do not show whether the end-of-month rule reads serial 59 as
+  February's last day: the calendar-start cut answers first (unprobed, T-2837). The basis-1 cut is pinned deep in 1899
+  and at 1900-01-01 only; a regular period starting exactly on serial 0 is unprobed (T-2837).
+- In a 1904 workbook the cut moves to 1904-01-01: with first_interest 1904-03-31 or 1904-06-30 (quarterly), an issue of
+  1904-01-01, 1904-01-02, serial 0 or serial 1 is `#NUM!` for settlements 1904-02-15 and 1950-06-30, calc_method TRUE or
+  FALSE, and `ACCRINT(DATE(1904,1,1),DATE(1904,3,31),DATE(1950,6,30),0.05,1000,freq,basis,TRUE)` is `#NUM!` on every basis,
+  semiannual and quarterly. An issue of 1904-04-01 computes (2312.361111111111 for first_interest 1904-03-31, calc_method
+  TRUE, or 1904-06-30), except with first_interest 1904-03-31 and calc_method FALSE (regular period from 1903-12-31),
+  which is `#NUM!` (a 50-cell probe filled with excel-graph on 2026-10-26, kept out of the suite until T-2835 lands it
+  with its fix, since its 43 off cells would pass the visible-parity lock). Ours applies the 1900 cut there (T-2835, after
+  T-2337).
 - The day counts read the serials as Excel shows them: the actual bases count serials, so the fictitious 1900-02-29
   counts, and the 30/360 bases read serial 1 as 1900-01-01: `ACCRINT(DATE(1900,2,15),DATE(1900,5,10),DATE(1900,4,1),
   0.05,1000,4,0,TRUE)` is 6.388888888888888 (46/90) on bases 0, 1, 2 and 4, and 6.301369863013699 on basis 3;
@@ -946,10 +961,11 @@ settlement is not past `first_interest` or calc_method is FALSE) or any period s
 - Excel for the web returned 0 for `ACCRINT(DATE(1900,3,1),DATE(1900,6,30),DATE(9990,6,30),0.05,1000,4,0,TRUE)`
   (fin-coupon-walk-bounds-b A9) on 2026-10-17 and `#NUM!` on 2026-10-24, in a re-fill of -b and in
   fin-accrint-1900-calendar D1; the oracle now records `#NUM!`.
-Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24).
+Evidence: probes/fin-accrint-1900-calendar (52 cells), fin-coupon-walk-bounds-c O1-O14, -b A9 (excel-graph, 2026-10-24);
+accrint-calendar-start-1900 (92 cells) (excel-graph, 2026-10-26); the 1904 probe is T-2835's.
 Status: VERIFIED (excel-graph)
 Implemented (T-2124): `compute_accrint` in functions/financial/accrint.rs.
-Tasks: T-2124, T-2562
+Tasks: T-2124, T-2562, T-2835
 
 ## COUPNUM in a 1904 workbook
 Rule: in a 1904 workbook COUPNUM is `#NUM!` exactly when the previous coupon date is before 1904-01-01 (a negative
@@ -1015,13 +1031,18 @@ its odd first period once (up to 6.3 ms, 8 walks of `COUPON_WALK_WEIGHT`: 256 el
 ODDLYIELD walk to the maturity once in closed form (up to 2.2 ms, 2 walks: 1,024 elements took 2.2 s). Below the longest
 schedule each element is charged in proportion to its coupon count plus one, the extra period covering a pass's fixed cost
 (`ValueWork::CouponWalks`, T-1869): a 10-year semiannual YIELD is 10,873 units (12,344 elements), and a one-period one
-524. The scalar calls are not capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about
+524. An ODD* element its kernel refuses before any walk is charged 1 unit (T-2815): every ODD* kernel reads all its
+arguments first (`Model::odd_args`), returning on an error or a logical in any of them and on a date outside
+[0, 2958466) as it reads it, so `ODDFYIELD(45535,45661,X,38502,{22 errors},82,110,4)` with an issue X near -1.2E14
+lifts its 22 elements (gen-m9/ba4ddb817a8e700e Calc!A323, Excel `#SPILL!` there) where it was charged 22
+calendar-long solvers. A text may read as any number, so it is still charged as at the longest schedule.
+The scalar calls are not capped. Before T-1842 YIELD and ODDFYIELD walked the schedule on every solver step (about
 2.4 s a scalar call at the solver bound, 0.6 s measured); the walk is now hoisted out of the solver, with the same values.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5, SPEC-0011 "Security rule for kernel work").
 Status: DEVIATION (decision 0014)
 Implemented in: functions/lift/kinds/financial.rs (`YIELD_SOLVER_WEIGHT`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODD_LAST`),
 functions/lift/kinds/mod.rs (`ValueWork::CouponWalks`)
-Tasks: T-1842, T-1869
+Tasks: T-1842, T-1869, T-2815
 
 ## CUMIPMT and CUMPRINC over many periods
 Rule: Excel computes CUMIPMT and CUMPRINC in constant time whatever the period count, also where `(1+rate)^nper`
@@ -1908,7 +1929,7 @@ Read together: a start that equals the coupon at par and moves linearly with the
 yield-approximation formula; T-1592 is the place to fit it. Lab test: `test_yield_start_one_input_two_steps_back`.
 T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
 - Start: S = (100·R + (100 - P)/T) / ((100 + P)/2 - (100 - P)/(4T)), with T the basis's settlement-to-maturity days
-  over 360 (over 365 on bases 1 and 3; basis 2 is assumed to be days over 360, with no evidence yet: gen-m9 A189 says it is off, T-2777). On yield-start-one-input
+  over 360 (over 365 on bases 1 and 3; T-2777 below replaces this term on every basis). On yield-start-one-input
   rows 22-96 (but 67) the two-steps-back start fits a denominator P + w(100 - P) where (1/2 - w)·T is 0.25000 on every
   row (prices 90.5 to 99.5, rates 0 to 0.12, terms 2.3 to 30.3 years). At price 98 and T = 1559/360 that gives
   0.0552344627, the T-2187 start. It does not use the redemption, the frequency or the coupon schedule. Rows 1-21 and 67 sit
@@ -1921,11 +1942,37 @@ T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
   212 and 340). Cut 1e-9: 194/370; 1e-11: 145/370. The previous best was 4/178. The 9 cells left are 7 to 33 ulp off
   (solver-iteration-traces Y!E2; yield-solver-sweep C7 and C11, where the rate is 0.4 or 0.2; yield-start-one-input B11,
   B17, B31, B54, B62 and B69), within 15 significant digits. Lab test: `test_yield_fitted_start_and_short_stop`.
-Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`). Since
+T-2777 (probes/yield-start-term-basis, excel-graph 2026-10-26/27; 159 cells `YIELD(S,M,0.05,P,100.5,F,B)`, columns P 98
+F 2, P 98 F 4 and P 110 F 2; 12 settlement-maturity pairs on bases 1, 2 and 3, and rows 37-53 on basis 0 and 4 with 28
+and 29 February settlements, plus sub-year terms): the start's term
+T is not the basis' days over a year. It is the whole years from settlement, then the basis' days from the last
+anniversary of the settlement to maturity over 360 on bases 0, 2 and 4, over 365 on basis 3, and over the length of
+the maturity's calendar year (365 or 366) on basis 1. A 29 February settlement has its anniversaries on 1 March in
+common years. Examples: 31 January 2010 to 30 January 2020 is 9 + 364/366 on basis 1 (2020 is a leap year), not
+3651/365; 5 July 2004 to 15 May 2022 is 17 + 314/360 on basis 2 (gen-m9 A189), not 6523/360; 29 February 2012 to
+15 August 2019 is 7 + 167/365 on basis 1 and 7 + DAYS360(1 March 2019, 15 August 2019)/360 = 7 + 164/360 on basis 0,
+not DAYS360 over the whole term (2685/360). The 30/360 count starts at the anniversary, so its end-of-February rule looks
+at the anniversary, not the settlement: 28 February 2015 to 15 August 2016 on basis 0 is 1 + DAYS360(28 February 2016,
+15 August 2016)/360 = 1 + 167/360, not DAYS360's 525/360 (row 46), and 29 February 2012 to 15 August 2019 on basis 4
+is 7 + 164/360 (row 41). Counted back from maturity instead, or with 29 February anniversaries on 28 February,
+or with the anniversary year's or the settlement year's length on basis 1, the fit is worse (lab arithmetic,
+cells bit-exact / within 4 ulp, of rows 1-40: this rule 59/115; forward with 28 February 46/103 at best; back from maturity
+48/92 at best; the days over a year 8/14; lab `solvers.start_years` on all 159 cells 79/153, the days over a year
+18/34). In the lab, rows 41-53 are all within 2 ulp under this rule, where the old term misses rows 41, 46, 47, 49, 51 and 53 by
+3e-15 to 1.4e-9. The 5 cells left (A9, C11, C20, A26, A38) sit at PRICE's root (next step 1e-12 to
+1e-16) and are 4e-15 to 1e-14 off, the root-level last digits of T-2788; the engine also leaves the sub-year cells
+B50 and A52 10 to 12 ulp off (their term is 344/365 under either rule, so the miss is in the Newton or PRICE), with their twins in the other columns
+within 2 ulp. gen-m9/ba4ddb817a8e700e A17 (basis 1, 20 + 284/365) becomes bit-exact; gen-m9/81bcdc0bec0c8e6b A189
+(basis 2) moves from 3e-11 off to 8 ulp. The dates are the ones Excel shows: serial 60 is 29 February 1900, so
+`YIELD(60,36585,0.05,90,100,4)` (to 29 February 2000) starts from 100 years and keeps Excel's bits
+(probes/fin-coupon-walk-bounds-c H12), where 28 February 1900 would give 100 + 1/360. Lab: `solvers.start_years`, pinned in
+tools/tests/test_fitlab_solvers.py::test_yield_start_term_whole_years_then_leftover_days.
+Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
+T-2777's term (`yield_start_years`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
 cells and its 100-step cap").
 Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2777 (bases 1 and 2), T-2788 (the last ulps)
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2777 (the start's term), T-2788 (the last ulps)
 
 ## YIELD's #NUM! cells and its 100-step cap
 Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of

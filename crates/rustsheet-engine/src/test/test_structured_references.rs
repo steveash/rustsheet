@@ -158,7 +158,7 @@ fn every_written_form_is_kept() {
 }
 
 #[test]
-fn the_export_prints_the_area() {
+fn the_export_keeps_the_reference() {
     let model = model();
     let context = CellReferenceRC {
         sheet: "Calc".to_string(),
@@ -166,10 +166,11 @@ fn the_export_prints_the_area() {
         column: 1,
     };
     let node = &model.parsed_formulas[1][0].0;
-    assert_eq!(to_excel_string(node, &context), "SUM(Data!$A$2:$A$3)");
+    // The export writes the table parts, so the file keeps the reference (T-2196).
+    assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
     assert_eq!(
         crate::expressions::parser::stringify::to_excel_array_formula_string(node, &context),
-        "SUM(Data!$A$2:$A$3)"
+        "SUM(Sales[Qty])"
     );
 }
 
@@ -308,7 +309,9 @@ fn a_sheet_rename_keeps_text_and_values() {
         column: 1,
     };
     let node = &model.parsed_formulas[1][0].0;
-    assert_eq!(to_excel_string(node, &context), "SUM(Facts!$A$2:$A$3)");
+    // The table part is written on the renamed sheet, so the file keeps the reference (T-2196).
+    assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
+    assert_eq!(model.workbook.tables["Sales"].sheet_name, "Facts");
 }
 
 #[test]

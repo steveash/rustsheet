@@ -37,10 +37,8 @@ use std::sync::Arc;
 
 use crate::functions::Function;
 use crate::language::get_default_language;
-use crate::language::get_language;
 use crate::language::Language;
 use crate::locale::get_default_locale;
-use crate::locale::get_locale;
 use crate::locale::Locale;
 use crate::nested_array::NestedArray;
 use crate::text::Text;
@@ -81,33 +79,12 @@ pub use depth::{
 };
 pub(crate) use spacing::Run;
 pub use spacing::Spacing;
-pub use structured_reference::StructuredReference;
+pub use structured_reference::{parse_range, StructuredReference};
 
 pub(crate) use call_names::CallNameSpellings;
 
 #[cfg(test)]
 mod tests;
-
-pub(crate) fn parse_range(formula: &str) -> Result<(i32, i32, i32, i32), String> {
-    let mut lexer = lexer::Lexer::new(
-        formula,
-        lexer::LexerMode::A1,
-        #[allow(clippy::expect_used)]
-        get_locale("en").expect(""),
-        #[allow(clippy::expect_used)]
-        get_language("en").expect(""),
-    );
-    if let TokenType::Range {
-        left,
-        right,
-        sheet: _,
-    } = lexer.next_token()
-    {
-        Ok((left.column, left.row, right.column, right.row))
-    } else {
-        Err("Not a range".to_string())
-    }
-}
 
 fn get_table_column_by_name(table_column_name: &str, table: &Table) -> Option<i32> {
     let wanted = table_column_name.to_lowercase();
