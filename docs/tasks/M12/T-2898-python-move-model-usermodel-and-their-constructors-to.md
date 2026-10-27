@@ -25,6 +25,9 @@ bindings/python/python/rustsheet/legacy.py that re-exports from `rustsheet._rust
 to match the module, `_rustsheet.pyi`). Tests: conftest.py's `um`/`rm` fixtures and every test using them import from
 `rustsheet.legacy` and filter the warning (pytest `filterwarnings`). The README (bindings/python/README.md) is still
 IronCalc's ("pip install ironcalc"): rewrite it around `rustsheet.Workbook`, with one short section on the legacy module.
+The legacy classes keep two entry points that take structured, caller-shaped data rather than indices:
+`UserModel.paste_from_clipboard` and `paste_csv_string`. They go with the module at v1; until then the legacy section of
+the README says the module is not hardened for untrusted input.
 
 ## Acceptance criteria
 - [ ] `rustsheet.__all__` lists only the facade and the helpers (`column_name_from_number`, `column_number_from_name`,

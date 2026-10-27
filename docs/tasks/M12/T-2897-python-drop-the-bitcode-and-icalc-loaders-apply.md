@@ -22,13 +22,14 @@ on both classes.
 SPEC-0026 decisions 1, 2 and 7 (docs/specs/SPEC-0026-python-legacy-surface.md, its symbol table).
 Code: bindings/python/src/lib.rs, raw_model.rs, user_model.rs; bindings/python/python/rustsheet/__init__.py (imports and
 `__all__`) and _ironcalc.pyi. Tests to drop or rewrite: tests/test_io.py (`test_icalc_roundtrip` and the bytes
-round-trip; keep the xlsx ones), tests/test_diffs.py (the whole file) and docs/examples/collaboration.py (delete it). No test calls `test_panic`. Pre-v1, so this ships with no warning release
+round-trip; keep the xlsx ones), tests/test_diffs.py (the whole file) and docs/examples/collaboration.py (delete it, with its
+`literalinclude` in bindings/python/docs/usage_examples.rst). No test calls `test_panic`. Pre-v1, so this ships with no warning release
 (SPEC-0026 decision 7); note it in the package changelog or README.
 
 ## Acceptance criteria
 - [ ] None of the listed symbols is importable from `rustsheet` (a test asserts it for each name).
-- [ ] `grep -rn "test_panic\|from_icalc\|from_bytes\|apply_external_diffs" bindings/python` finds only that test and
-      the facade's `Workbook.from_bytes` (xlsx bytes, which stays).
+- [ ] No binding source (bindings/python/src), stub (`.pyi`), example or rst page defines, exports or shows any of
+      them; the facade's `Workbook.from_bytes` (xlsx bytes) stays.
 - [ ] `make check` green (python job included); reviewers approve.
 
 ## Out of scope
