@@ -303,7 +303,10 @@ fn structural_edits_keep_values() {
             found.retain(|f| !f.contains(" on sheet 1 row 6: "));
             let column = TEMPLATES.iter().position(|t| *t == "=ROW({x})").unwrap() as i32;
             let column = 2 * column + 1;
-            assert_eq!(formula(&model, 1, 6, column), "=ROW(Sales[[#This Row],[Qty]])");
+            assert_eq!(
+                formula(&model, 1, 6, column),
+                "=ROW(Sales[[#This Row],[Qty]])"
+            );
             assert_eq!(value(&model, 1, 6, column), "6", "{name}");
         }
         all.extend(found.into_iter().map(|f| format!("{name}: {f}")));

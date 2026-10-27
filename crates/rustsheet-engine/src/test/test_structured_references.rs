@@ -199,7 +199,14 @@ fn the_export_of_a_missing_table_is_a_ref_error() {
 /// fallback (Excel grows it, T-2321).
 #[test]
 fn row_inserts_keep_values() {
-    for (row, follows) in [(1, true), (2, false), (3, true), (4, true), (5, true), (10, true)] {
+    for (row, follows) in [
+        (1, true),
+        (2, false),
+        (3, true),
+        (4, true),
+        (5, true),
+        (10, true),
+    ] {
         check_edit(&format!("insert row {row}"), follows, |m| {
             m.insert_rows(0, row, 1).unwrap();
         });
@@ -282,9 +289,8 @@ fn wide_model() -> Model {
     model
         .set_user_input(0, 1, 6, "=SUM(Sales[Qty])".to_string())
         .unwrap();
-    model.workbook.worksheets[0]
-        .conditional_formatting
-        .push(crate::cf_types::ConditionalFormatting {
+    model.workbook.worksheets[0].conditional_formatting.push(
+        crate::cf_types::ConditionalFormatting {
             range: "E1:E2".to_string(),
             cf_rule: crate::cf_types::CfRule::Formula {
                 formula: "SUM(Sales[Qty])>30".to_string(),
@@ -292,7 +298,8 @@ fn wide_model() -> Model {
                 stop_if_true: false,
             },
             priority: 1,
-        });
+        },
+    );
     model.evaluate();
     model
 }
