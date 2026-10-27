@@ -3,7 +3,7 @@ id: T-2820
 title: "Port ironcalc de6545ab: take the Excel-authored NOT.xlsx calc test workbook"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
