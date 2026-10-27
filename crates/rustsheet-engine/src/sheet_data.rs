@@ -77,7 +77,8 @@ pub struct SheetData {
     layout_version: u64,
     /// The last row that exists (0 for none), kept in step by every write, so that `last_row`,
     /// which every clipped walk asks, costs nothing (T-0465). `None` until known, for a sheet
-    /// decoded and not yet rebuilt, when `last_row` scans the chunks. Not serialised.
+    /// decoded and not yet rebuilt, when `last_row` scans the chunks. Not serialised. Every write
+    /// that creates or removes a row (`row_or_insert`, `remove_row`) must keep it.
     #[bitcode(skip)]
     known_last_row: Option<i32>,
 }

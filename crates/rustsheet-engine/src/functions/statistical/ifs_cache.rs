@@ -609,10 +609,11 @@ impl ValueIndex {
 /// The positions in `numbers` (finite, ascending) of the numbers `op` `target` (for `Ne`, of
 /// those equal to it), as `low..high`: each comparison holds on a run of them, since it is
 /// monotone in the number. Equality is the criteria's 15-digit one, which is monotone too
-/// (`cmp_excel_precision`).
+/// (`cmp_excel_precision`). The predicates these runs stand for are `IndexedCriterion::matcher`'s
+/// (criteria.rs); the tests of T-0465 hold the two together. Always `low <= high <= len`.
 fn number_interval(numbers: &[(f64, u32)], op: CriterionOp, target: f64) -> (usize, usize) {
     let first = |below: &dyn Fn(f64) -> bool| numbers.partition_point(|&(x, _)| below(x));
-    match op {
+    let (low, high) = match op {
         CriterionOp::Lt => (0, first(&|x| x < target)),
         CriterionOp::Le => (0, first(&|x| x <= target)),
         CriterionOp::Gt => (first(&|x| x <= target), numbers.len()),
@@ -621,7 +622,9 @@ fn number_interval(numbers: &[(f64, u32)], op: CriterionOp, target: f64) -> (usi
             first(&|x| cmp_excel_precision(x, target).is_lt()),
             first(&|x| cmp_excel_precision(x, target).is_le()),
         ),
-    }
+    };
+    // Monotone predicates give `low <= high`; the clamp keeps the slices in bounds regardless.
+    (low.min(high), high)
 }
 
 /// Sets bit `position` of `bits`.

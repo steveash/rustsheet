@@ -41,7 +41,8 @@ Candidate approach, on top of `ifs_cache.rs`'s cached range values (`RangeState:
 ## Acceptance criteria
 - [x] A bench reproduces the rank idiom and the per-row SUMIFS over 1,500 rows x 20,000 calls; its
       recalc is at least 10x faster than after T-0449, timings in the Outcome.
-- [x] calipers pv26_002 release calculation time in the Outcome; if they
+- [x] calipers pv26_002 release calculation time in the Outcome (540 s, not within 60 s: it
+      calculates with iteration on, which turns the pass caches off; T-0485); if they
       now calculate within 60 s, their timeout lines and `exclude` entries go
       (`make eval-baseline`, `rustsheet-eval update-baseline --suite calipers`).
 - [x] Unit tests compare every new index path with the walk (equality, each comparison operator,
@@ -94,4 +95,3 @@ Candidate approach, on top of `ifs_cache.rs`'s cached range values (`RangeState:
   - the budget test now takes two criteria, to stay on match sets;
   - sheet_data.rs: the kept last row across decode, rebuild and every kind of write.
 - **Mutations:** an off-by-one in `>=`'s run and a wrong shift in `window` each fail tests.
-
