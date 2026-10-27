@@ -801,6 +801,29 @@ mod tests {
     }
 
     #[test]
+    fn spec_typed_formulas_go_in_after_the_tables() {
+        // A typed `=...` reads a structured reference, so it goes in after the tables; typed text
+        // that is not a formula stays a value (`(4)` is -4). T-2955, T-2801.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":"Col","A2":3,"A3":{"entered":"(4)"},
+                "C1":{"entered":"=SUM(T[Col])"},"C2":{"entered":"=A3*2"}},
+                "tables":[{"name":"T","ref":"A1:A3"}]}]}"#,
+        );
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
+        assert_eq!(
+            evaluated.value("S", Addr { row: 1, col: 3 }),
+            Some(Value::Number(-1.0))
+        );
+        assert_eq!(
+            evaluated.value("S", Addr { row: 2, col: 3 }),
+            Some(Value::Number(-8.0))
+        );
+    }
+
+    #[test]
     fn spec_totals_row_is_part_of_the_table() {
         // The facade takes the totals row (T-1671): `#All` covers it and `#Totals` reads it.
         let spec = spec(
