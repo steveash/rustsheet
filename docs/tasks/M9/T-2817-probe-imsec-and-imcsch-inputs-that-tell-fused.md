@@ -3,7 +3,7 @@ id: T-2817
 title: "Probe IMSEC and IMCSCH inputs that tell fused from unfused denominators"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
