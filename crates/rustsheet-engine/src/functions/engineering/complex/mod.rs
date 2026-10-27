@@ -199,11 +199,10 @@ impl Model {
         if number_text_too_long(&value) {
             return Err(value_error(cell));
         }
-        // NBSP, tab, LF and CR at either end are `#NUM!` too, where a space is read
-        // (probes/eng-inumber-currency-shapes A13:A17).
-        if value.starts_with(['\t', '\u{3000}', '\u{a0}', '\n', '\r'])
-            || value.ends_with(['\t', '\u{a0}', '\n', '\r'])
-        {
+        // NBSP, tab, LF, CR and U+3000 at either end, past leading spaces, are `#NUM!` too, where a
+        // space is read (probes/eng-inumber-currency-shapes A13:A17, A18:A26, plain reals included).
+        const UNREAD_EDGE: [char; 5] = ['\t', '\u{3000}', '\u{a0}', '\n', '\r'];
+        if value.trim_start_matches(' ').starts_with(UNREAD_EDGE) || value.ends_with(UNREAD_EDGE) {
             return Err(num_error(cell));
         }
         // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",

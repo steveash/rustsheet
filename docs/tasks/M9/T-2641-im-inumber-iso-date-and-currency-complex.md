@@ -26,4 +26,4 @@ Code: `complex_of` and `parse_complex_number` in complex/mod.rs.
 - Date-dependent cells (a probe must not depend on the current year).
 
 ## Outcome
-`parse_complex_number` reads a `$` or `€` before any number part (after a sign or not, imaginary part included) and `complex_of` makes NBSP, tab, LF and CR at either end `#NUM!`, as probes/eng-inumber-reading A5 and the new probes/eng-inumber-currency-shapes (17 cells, oracle-filled) show. Probes known failures 2926 -> 2925, no regressions. A plain real with a trailing tab is unprobed.
+`parse_complex_number` reads a `$` or `€` before any number part (after a sign or not, imaginary part included) and `complex_of` makes NBSP, tab, LF, CR and U+3000 at either end `#NUM!`, as probes/eng-inumber-reading A5 and the new probes/eng-inumber-currency-shapes (30 cells, oracle-filled) show. Probes known failures 2926 -> 2925, no regressions.
