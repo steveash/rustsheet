@@ -588,19 +588,44 @@ Under A, B, C and 14, `e` and `g` are probed ("2023", ""); `yy`, `b` and `bbbb` 
 
 Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
 
-**Not modelled** (the tag prints English and keeps `A/P`):
-- 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i"; T-2779), probed across 2023-2024 in probes/t1923-calendar-digits
-  A145:A213. Months number from Tishrei (1), so a leap year has 13: 5784's AdarI is month 6, AdarII 7, Elul 13
-  (2024-09-20 is "5784-13-17|Elul"). The year turns at Rosh Hashanah (2023-09-16 is "5784-01-01"). `yy` prints two
-  digits, `e` and `b` the Hebrew year. `ddd` is "Yom Rishon" … "Shabat". Under 40D and 401 the names are Hebrew script
-  (AdarII is "אדר ב" with a plain space; the weekday "יום רביעי" joins with a no-break space, A211, A212). 9999-12-31 is `#VALUE!`, and serials 0 and 1 are "5660-05-01|Shvat".
-- 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"; T-2779), probed in A85:A144. The year turns on 22 March, or 21
-  March in a Gregorian leap year (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days.
-  `yy` prints two digits ("44"), `e` and `b` the Saka year. Months are Chaitra … Phalguna. `ddd` is a short
-  Sanskrit weekday, Sunday "Ravi" to Saturday "Sani" (the seven in A85:A144). Serial 1 is "1821-10-11|Pausa", and so is serial 0. 9999-12-31 is
-  "9921-10-10" with `yy` "21".
-- Under both, serial 60 (the fictitious 1900-02-29) is `#VALUE!`.
-- Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
+**Hebrew (8) and Saka (10)** (T-2779; probes/t1923-calendar-digits A85:A213, t2779-hebrew-saka-names, t2779-hebrew-saka-more, excel-graph 2026-10-26/27):
+- 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i"), the arithmetic calendar. Months number from Tishrei (1), so a leap
+  year has 13: 5784's AdarI is month 6, AdarII 7, Elul 13 (2024-09-20 is "5784-13-17|Elul"). The year turns at Rosh
+  Hashanah (2023-09-16 is "5784-01-01"). `yy`, `b`, `bb` and `y` print two digits, `e`, `ee`, `yyy`, `yyyyy` and `bbbb`
+  the Hebrew year; `g` prints nothing. With a locale, `mmm`, `mmmm` and `mmmmm` all print the whole month name.
+  - Under a Hebrew or Arabic LCID (40D, 401, 801, C01, 3C01, neutral D) the names are Hebrew script: months "תשרי" …
+    "אלול", AdarI "אדר א" and AdarII "אדר ב" with a plain space; `ddd` is the weekday's letter ("א" … "ו", "ש") and
+    `dddd` the he-IL name ("יום רביעי" with a no-break space, "שבת"; A211, A212).
+  - Under every other LCID with a locale (409, 40C, 407, 411, 412, 404, 41E, 419, 439, every other table LCID, 400, 800
+    and neutral C and 39) they are Latin: Tishrei, Cheshvan, Kislev, Tevet, Shvat, Adar (AdarI and AdarII in a leap
+    year), Nisan, Iyar, Sivan, Tamuz, Av, Elul, and `ddd` = `dddd` = "Yom Rishon" … "Yom Shishi", "Shabat".
+  - Serials 0 and 1 are "5660-05-01|Shvat", 59 "5660-06-29|AdarI". Excel matches the arithmetic calendar at every
+    probed date to 2238-11-01, and ours follows it to 2238-11-07 (29 Cheshvan 5999); from Kislev 5999 its dates drift ahead (2238-12-01 is
+    "5999-03-24", the arithmetic 23; 2239-09-24 "6000-01-01"; 4000-01-01 "7760-04-24", the arithmetic 7760-04-11), and
+    from some date between 4000-01-01 and 5000-01-01 to 9999-12-31 they are `#VALUE!` (t2779-hebrew-saka-more A1:A35).
+    Ours is `#VALUE!` past 2238-11-07 (T-2954).
+- 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"). The year turns on 22 March, or 21 March in a Gregorian leap year
+  (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days; months 2-6 have 31, 7-12 30.
+  `yy`, `b`, `bb` and `y` print two digits ("44"), `e`, `ee`, `yyy`, `yyyyy` and `bbbb` the Saka year. Serial 1 is
+  "1821-10-11|Pausa", and so is serial 0; 59 is "1821-12-09". 9999-12-31 is "9921-10-10" with `yy` "21".
+  - Latin names under every LCID with a locale but an Arabic or Hindi one (40D and bn-IN 445 included): months Chaitra,
+    Vaisakha, Jyaistha, Asadha, Sravana, Bhadra, Asvina, Karthika, Agrahayana, Pausa, Magha, Phalguna (`mmm` the same,
+    `mmmmm` the first letter); `ddd` Ravi, Som, Mangal, Budh, Guru, Sukra, Sani; `dddd` Ravivara, Somavara, Mangalvara,
+    Budhavara, Guruvara, Sukravara, Sanivara.
+  - Under an Arabic or Hindi LCID (401, 801, 439, neutral 39) the months are Devanagari ("चैत्र" … "फल्गुण", `mmmmm` the first
+    character) and `ddd` and `dddd` both the hi-IN `dddd` ("बुधवार").
+- Under both, serial 60 (the fictitious 1900-02-29) is `#VALUE!`, even for a section with only time tokens
+  (`TEXT(60.5,"[$-80409]h:mm")`); `TEXT(0.25,"[$-80409]h:mm|yyyy-mm-dd")` is "6:00|5660-05-01". A `B2` before the tag
+  changes nothing (`B2[$-80409]yyyy-mm-dd|mmmm` is "5783-06-22|Adar"). Day halves follow the LCID (`[$-8040D]h A/P` is
+  "6 PM").
+- LCID 1 has no locale under both (`[$-80001]mmmm` of 2024-03-21 is "July", `[$-100001]` "December"), unlike
+  neutral C, D and 39. With no locale the month names are en-US by the calendar's month number (`[$-80000]mmmm` of
+  AdarII 5784 is "July", `[$-100000]` of 1 Chaitra "January"), and Hebrew month 13 prints nothing for `mmm` and
+  `mmmm` and U+0001 for `mmmmm` (`[$-80000]m|mmm|mmmm|mmmmm` of 2024-09-20 is "13|||\u{1}").
+- Digits A, B, C and 14 are Gregorian for `yy`, `b`, `bbbb` and `e` too (`[$-A0409]yy|b|bbbb|e` is "23|23|2023|2023").
+
+**Numeral digits and LCIDs with no locale**:
+- Numeral digits `[$-8000411]e` print native digits ("୫"; not modelled, T-1925).
 - A calendar digit over an LCID with no locale (LCID 0 included) keeps its calendar's date. The names are en-US, except under 7 (Thai names) and A, B, C (Arabic), and `A/P` stays as written: `[$-E08DE]mmmm|yyyy-mm-dd` of 45000 is "February|2023-02-24", `[$-708DE]` "มีนาคม|2566-03-15", `[$-10D90B]` the Saka "December|1944-12-24", and `h A/P` is "6 P" under each (probes/t1924-locale-tag-extended-hex A13-A15, B13-B15). Underscore tags reach these through the extended hex reading above: `[$-de_DE]` (0xE0FDE), `[$-en_US]` (0xFA0FC) and `[$-ja_JP]` (0x13D049) give the lunar date in English, `[$-a_b_c]` (0xCFDFC) ar-SA names (T-1924). Digits 3, 4, 5, 9 and 14 over such an LCID are unprobed; ours leaves them unresolved.
 
 **Lunar calendars (E, F, 11, 12, 13; T-1922).** Every date token prints the lunar date: serial 45000 (2023-03-15) is lunar 2023, month 2, day 24, and `yyyy`, `yy`, `e`, `b` and `bbbb` all print the lunar year (`[$-110409]bbbb|b|e|yyyy|yy` of 45300, 2024-01-09, is "2023|23|2023|2023|23"). `g` prints nothing.
