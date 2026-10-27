@@ -127,6 +127,7 @@ fn unexpected(sheet: &str, addr: Addr, actual: Value) -> CellResult {
         from_excel: true,
         listed_deviation: false,
         graph_subnormal: false,
+        spill_extent: true,
     }
 }
 

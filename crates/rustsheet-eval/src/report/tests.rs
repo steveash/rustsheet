@@ -76,6 +76,7 @@ pub(crate) fn cell(formula: &str, verdict: Verdict) -> CellResult {
         from_excel: false,
         listed_deviation: false,
         graph_subnormal: false,
+        spill_extent: false,
     }
 }
 
@@ -168,6 +169,7 @@ fn cells_passed_by_decision_0042_are_listed() {
     r.cells = vec![
         CellResult {
             graph_subnormal: true,
+            spill_extent: false,
             ..cell("3E-308-2.5E-308", Verdict::Pass)
         },
         cell("ABS(1)", Verdict::Pass),

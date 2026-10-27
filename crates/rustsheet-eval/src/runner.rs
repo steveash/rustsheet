@@ -69,6 +69,10 @@ pub struct CellResult {
     /// the report lists these cells so the evidence stays visible (T-1142).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub graph_subnormal: bool,
+    /// Whether the spill-extent check added the cell: one the engine filled and Excel left empty,
+    /// outside `checked` (decision 0063). The M7 exit counts these (decision 0140).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spill_extent: bool,
 }
 
 impl CellResult {
@@ -393,6 +397,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 from_excel: e.from_excel,
                 listed_deviation: e.pinned.is_some(),
                 graph_subnormal,
+                spill_extent: false,
             }
         })
         .collect()

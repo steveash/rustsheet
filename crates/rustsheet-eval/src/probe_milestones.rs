@@ -336,6 +336,10 @@ pub struct MilestoneRow {
     /// row (decision 0135).
     #[serde(default)]
     pub visibly_off_cells: Vec<String>,
+    /// Cells the spill-extent check failed (filled by the engine, left empty by Excel; decision
+    /// 0063): the M7 exit requires none (decision 0140).
+    #[serde(default)]
+    pub spill_extent_failures: usize,
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -364,6 +368,9 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 .unwrap_or(DEFAULT_MILESTONE);
             let s = rows.entry(row).or_default();
             s.cells += 1;
+            if c.spill_extent {
+                s.spill_extent_failures += 1;
+            }
             if c.verdict.is_pass() {
                 s.bit_exact += 1;
             } else if c.verdict == Verdict::Deviation {
@@ -586,6 +593,7 @@ mod tests {
             from_excel: true,
             listed_deviation: verdict == Verdict::Deviation,
             graph_subnormal: false,
+            spill_extent: false,
         }
     }
 
@@ -772,6 +780,7 @@ mod tests {
                 failing_cases: failing.iter().map(|f| (f.0.to_owned(), f.1)).collect(),
                 visibly_off: 0,
                 visibly_off_cells: Vec::new(),
+                spill_extent_failures: 0,
             }
         };
         assert_eq!(
@@ -809,5 +818,29 @@ mod tests {
             "{md}"
         );
         assert!(summarize(&rules, &results[5..], BaselineMode::Cells).is_empty());
+    }
+
+    #[test]
+    fn spill_extent_cells_are_counted_in_their_row() {
+        let rules = rules("");
+        let extent = CellResult {
+            formula: None,
+            expected: Value::Empty,
+            spill_extent: true,
+            ..cell("S!B1", "", Verdict::TypeMismatch)
+        };
+        let results = [case(
+            "probes/s.case.json",
+            &["M7"],
+            CaseStatus::Fail,
+            vec![pass("S!A1", "SEQUENCE(1)"), extent],
+        )];
+        let rows = summarize(&rules, &results, BaselineMode::Cells);
+        let m7 = rows.iter().find(|r| r.milestone == "M7").expect("M7 row");
+        assert_eq!((m7.cells, m7.spill_extent_failures), (2, 1));
+        assert!(rows
+            .iter()
+            .filter(|r| r.milestone != "M7")
+            .all(|r| r.spill_extent_failures == 0));
     }
 }

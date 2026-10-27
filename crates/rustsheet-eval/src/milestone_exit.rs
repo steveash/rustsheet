@@ -1,7 +1,9 @@
 //! Milestone exit status (T-2177): the four exit measures of decision 0085, for M5 and (by its
 //! "same as M5" inheritance) M6, next to their thresholds, and M2's (decision 0135, from
 //! docs/milestones.md and decision 0058): no coverage criterion, and its generated suite needs
-//! 10,000 scored cells with none visibly off. Decision 0114 reads them at visible
+//! 10,000 scored cells with none visibly off; and M7's (decision 0140): gen-m7 at M5's rate over
+//! 10,000 scored cells, no spill-extent failure in gen-m7 or the M7 probes, and coverage and
+//! ironcalc-calc shown but not required. Decision 0114 reads them at visible
 //! parity: the generated suite, ironcalc-calc and probes count visibly-off cells, and the bit-level
 //! counts are shown beside them for Phase 1b. Every input is a row the report already computes, so
 //! nothing here scores anything; a missing input is `None`, never met. It is an exit measure, not
@@ -15,12 +17,14 @@ use crate::closeness::Visible;
 use crate::probe_milestones::{parse_milestone, row_label};
 use crate::report::RunReport;
 
-/// The milestones this section covers. M7 to M11 need their own decision first.
-pub const MILESTONES: [&str; 3] = ["M2", "M5", "M6"];
+/// The milestones this section covers. M8 to M11 need their own decision first.
+pub const MILESTONES: [&str; 4] = ["M2", "M5", "M6", "M7"];
 /// Fewest scored cells the generated suite must have (decision 0085 item 2).
 pub const MIN_SCORED: usize = 20_000;
 /// M2's fewest scored cells of `gen-m2` (docs/milestones.md "M2", decision 0058).
 pub const M2_MIN_SCORED: usize = 10_000;
+/// M7's fewest scored cells of `gen-m7` (docs/milestones.md "M7", decision 0140).
+pub const M7_MIN_SCORED: usize = 10_000;
 /// The generated suite's pass rate must reach 999/1000 of its scored cells; decision 0114's
 /// per-function Phase 1 rate (`v15_checkpoint`) shares it.
 pub(crate) const RATE_NUM: usize = 999;
@@ -43,24 +47,38 @@ struct Criteria {
     min_scored: usize,
     /// Share of the scored cells, over [`RATE_DEN`], that must not be visibly off.
     rate_num: usize,
-    /// Catalog coverage is an exit criterion (M5, M6; not M2, decision 0135).
+    /// Catalog coverage is an exit criterion (M5, M6; not M2, decision 0135, nor M7).
     coverage: bool,
+    /// The ironcalc-calc function-scope row is an exit criterion (not M7, decision 0140).
+    calc: bool,
+    /// Spill extents are an exit criterion (M7, decision 0140).
+    extent: bool,
 }
 
 fn criteria(milestone: &str) -> Criteria {
-    if milestone == "M2" {
+    match milestone {
         // "100%": no gen-m2 cell visibly off.
-        Criteria {
+        "M2" => Criteria {
             min_scored: M2_MIN_SCORED,
             rate_num: RATE_DEN,
             coverage: false,
-        }
-    } else {
-        Criteria {
+            calc: true,
+            extent: false,
+        },
+        "M7" => Criteria {
+            min_scored: M7_MIN_SCORED,
+            rate_num: RATE_NUM,
+            coverage: false,
+            calc: false,
+            extent: true,
+        },
+        _ => Criteria {
             min_scored: MIN_SCORED,
             rate_num: RATE_NUM,
             coverage: true,
-        }
+            calc: true,
+            extent: false,
+        },
     }
 }
 
@@ -102,7 +120,8 @@ pub struct ExitRow {
     /// Of those, the visibly-off cells (decision 0114).
     #[serde(default)]
     pub calc_visibly_off: Option<usize>,
-    /// No visibly-off cell is left.
+    /// No visibly-off cell is left; `None` too for a milestone without an ironcalc-calc
+    /// criterion (M7), whose counts are shown but not required.
     pub calc_met: Option<bool>,
     /// Known failures of the milestone's probe row (Phase 1b).
     pub probe_known_failures: Option<usize>,
@@ -114,7 +133,14 @@ pub struct ExitRow {
     /// The "Probe milestones" row the probe measure reads: `M0-M2` for M2 (decision 0051).
     #[serde(default)]
     pub probe_row: String,
-    /// All four measures are met.
+    /// Spill-extent failures of the generated suite and the probe row (decision 0063); `None`
+    /// for a milestone without the criterion (only M7 has it, decision 0140).
+    #[serde(default)]
+    pub extent_failures: Option<usize>,
+    /// No spill-extent failure.
+    #[serde(default)]
+    pub extent_met: Option<bool>,
+    /// Every measure the milestone requires is met.
     pub exit: bool,
 }
 
@@ -172,22 +198,40 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                     .count();
                 row.calc_failing = Some(failing);
                 row.calc_visibly_off = Some(visible);
-                row.calc_met = Some(visible == 0);
+                row.calc_met = need.calc.then_some(visible == 0);
             }
             let probes = &report.probe_milestones;
-            if let Some(p) = probes.iter().find(|p| p.milestone == row.probe_row) {
+            let probe = probes.iter().find(|p| p.milestone == row.probe_row);
+            if let Some(p) = probe {
                 row.probe_known_failures = Some(p.known_failures);
                 row.probe_visibly_off = Some(p.visibly_off);
                 row.probes_met = Some(p.visibly_off == 0);
             }
-            let coverage = if need.coverage {
-                row.coverage_met
-            } else {
-                Some(true)
-            };
-            row.exit = [coverage, row.gen_met, row.calc_met, row.probes_met]
-                .iter()
-                .all(|v| *v == Some(true));
+            if need.extent && row.gen_scored.is_some() {
+                if let Some(p) = probe {
+                    // Extent cells always fail, so the report's failing-cell lists keep them all.
+                    let generated = report
+                        .cases
+                        .iter()
+                        .filter(|r| r.suite == suite)
+                        .flat_map(|r| &r.cells)
+                        .filter(|c| c.spill_extent)
+                        .count();
+                    let failures = generated + p.spill_extent_failures;
+                    row.extent_failures = Some(failures);
+                    row.extent_met = Some(failures == 0);
+                }
+            }
+            let required = |criterion: bool, met: Option<bool>| if criterion { met } else { Some(true) };
+            row.exit = [
+                required(need.coverage, row.coverage_met),
+                row.gen_met,
+                required(need.calc, row.calc_met),
+                row.probes_met,
+                required(need.extent, row.extent_met),
+            ]
+            .iter()
+            .all(|v| *v == Some(true));
             row
         })
         .collect()
@@ -213,13 +257,13 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
     let _ = writeln!(md, "\n## Milestone exit (decisions 0085, 0114)\n");
     let _ = writeln!(
         md,
-        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
+        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. M7 (decision 0140): gen-m7 needs {M7_MIN_SCORED} scored cells at the 0.999 rate, gen-m7 and the M7 probes have no spill-extent failure (a cell the engine filled that Excel left empty, decision 0063), and coverage and ironcalc-calc are shown but not required. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
     );
     let _ = writeln!(
         md,
-        "| milestone | coverage (covered/functions) | gen suite (scored, 15-digit rate, visibly off/allowance [bit failures]) | ironcalc-calc (visibly off [bit failures], excl. exceptions) | probes (visibly off [bit failures]) | exit |"
+        "| milestone | coverage (covered/functions) | gen suite (scored, 15-digit rate, visibly off/allowance [bit failures]) | ironcalc-calc (visibly off [bit failures], excl. exceptions) | probes (visibly off [bit failures]) | spill extents (failures) | exit |"
     );
-    let _ = writeln!(md, "|---|---|---|---|---|---|");
+    let _ = writeln!(md, "|---|---|---|---|---|---|---|");
     for r in rows {
         let coverage = format!(
             "{}/{} {}",
@@ -241,7 +285,7 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
         };
         let _ = writeln!(
             md,
-            "| {} | {coverage} | {generated} | {} [{}] {} | {} [{}] {} | {} |",
+            "| {} | {coverage} | {generated} | {} [{}] {} | {} [{}] {} | {} {} | {} |",
             r.milestone,
             count(r.calc_visibly_off),
             count(r.calc_failing),
@@ -249,6 +293,8 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
             count(r.probe_visibly_off),
             count(r.probe_known_failures),
             verdict(r.probes_met),
+            count(r.extent_failures),
+            verdict(r.extent_met),
             if r.exit { "met" } else { "not met" }
         );
     }
@@ -339,12 +385,12 @@ mod tests {
         write_markdown(&rows, &mut md);
         assert!(
             md.contains(
-                "| M5 | 10/10 met | 22400, 0.99911, 20/22 [20] met | 0 [0] met | 0 [0] met | met |"
+                "| M5 | 10/10 met | 22400, 0.99911, 20/22 [20] met | 0 [0] met | 0 [0] met | n/a n/a | met |"
             ),
             "{md}"
         );
         assert!(
-            md.contains("| M6 | n/a/n/a n/a | n/a | n/a [n/a] n/a | n/a [n/a] n/a | not met |"),
+            md.contains("| M6 | n/a/n/a n/a | n/a | n/a [n/a] n/a | n/a [n/a] n/a | n/a n/a | not met |"),
             "{md}"
         );
     }
@@ -488,7 +534,7 @@ mod tests {
         write_markdown(&summarize(&r), &mut md);
         assert!(
             md.contains(
-                "| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0] met | 0 [0] met | 0 [3] met | met |"
+                "| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0] met | 0 [0] met | 0 [3] met | n/a n/a | met |"
             ),
             "{md}"
         );
@@ -521,5 +567,117 @@ mod tests {
         r.cases = vec![g];
         let m2 = row(&r, "M2");
         assert_eq!(m2.gen_visibly_off_cells, ["gen-m2/abc.case.json!S!A1"]);
+    }
+
+    /// A run whose M7 inputs meet M7's exit: `gen_cells` (cells, visibly off) of gen-m7, an
+    /// ironcalc-calc M7 row with a visibly-off cell and coverage short (neither required).
+    fn m7_report(gen_cells: (usize, usize)) -> RunReport {
+        let mut r = report(None);
+        let (cells, visible) = gen_cells;
+        r.catalog_coverage.push(MilestoneCoverage {
+            milestone: "M7".into(),
+            functions: 40,
+            covered: 39,
+            ..MilestoneCoverage::default()
+        });
+        r.suites.push(SuiteSummary {
+            name: "gen-m7".into(),
+            cells,
+            cells_passed: cells - visible,
+            closeness: Closeness {
+                visible_other: visible,
+                ..Closeness::default()
+            },
+            ..SuiteSummary::default()
+        });
+        r.function_scope
+            .as_mut()
+            .unwrap()
+            .rows
+            .push(MilestoneScope {
+                milestone: "M7".into(),
+                failing: vec!["c!S!A1".into()],
+                visibly_off: vec!["c!S!A1".into()],
+                ..MilestoneScope::default()
+            });
+        r.probe_milestones.push(MilestoneRow {
+            milestone: "M7".into(),
+            known_failures: 2,
+            ..MilestoneRow::default()
+        });
+        r
+    }
+
+    /// A spill-extent cell of gen-m7, as `spill_extent.rs` adds it.
+    fn extent_case() -> crate::runner::CaseResult {
+        use crate::report::tests::{case, cell};
+        use crate::value::Verdict;
+        let mut g = case("gen-m7/abc.case.json", 1);
+        g.cells = vec![CellResult {
+            spill_extent: true,
+            ..cell("SEQUENCE(2)", Verdict::TypeMismatch)
+        }];
+        g
+    }
+
+    #[test]
+    fn m7_needs_ten_thousand_gen_cells_at_the_rate_and_no_extent_failure() {
+        let r = m7_report((M7_MIN_SCORED, 10));
+        let m7 = row(&r, "M7");
+        assert_eq!((m7.gen_allowance, m7.gen_met), (Some(10), Some(true)));
+        assert_eq!(
+            (m7.covered, m7.functions, m7.coverage_met),
+            (Some(39), Some(40), None),
+            "coverage is shown, not required"
+        );
+        assert_eq!(
+            (m7.calc_failing, m7.calc_visibly_off, m7.calc_met),
+            (Some(1), Some(1), None),
+            "ironcalc-calc is shown, not required"
+        );
+        assert_eq!(m7.probe_row, "M7");
+        assert_eq!((m7.probe_known_failures, m7.probes_met), (Some(2), Some(true)));
+        assert_eq!((m7.extent_failures, m7.extent_met), (Some(0), Some(true)));
+        assert!(m7.exit, "{m7:?}");
+        let mut md = String::new();
+        write_markdown(&summarize(&r), &mut md);
+        assert!(
+            md.contains(
+                "| M7 | 39/40 n/a | 10000, 0.99900, 10/10 [10] met | 1 [1] n/a | 0 [2] met | 0 met | met |"
+            ),
+            "{md}"
+        );
+        // Other rows have no extent criterion.
+        assert_eq!(m5(&r).extent_failures, None);
+        // 9,999 scored cells is not met.
+        let m7 = row(&m7_report((M7_MIN_SCORED - 1, 0)), "M7");
+        assert_eq!(m7.gen_met, Some(false));
+        assert!(!m7.exit);
+        // The allowance plus one visibly-off cell is not met.
+        let m7 = row(&m7_report((M7_MIN_SCORED, 11)), "M7");
+        assert_eq!((m7.gen_allowance, m7.gen_met), (Some(10), Some(false)));
+        assert!(!m7.exit);
+        // A visibly-off M7 probe cell is not met.
+        let mut r = m7_report((M7_MIN_SCORED, 0));
+        r.probe_milestones[1].visibly_off = 1;
+        assert!(!row(&r, "M7").exit);
+    }
+
+    #[test]
+    fn one_m7_extent_failure_is_not_met() {
+        let mut r = m7_report((M7_MIN_SCORED, 0));
+        r.cases = vec![extent_case()];
+        let m7 = row(&r, "M7");
+        assert_eq!((m7.extent_failures, m7.extent_met), (Some(1), Some(false)));
+        assert!(!m7.exit);
+        let mut r = m7_report((M7_MIN_SCORED, 0));
+        r.probe_milestones[1].spill_extent_failures = 1;
+        let m7 = row(&r, "M7");
+        assert_eq!((m7.extent_failures, m7.extent_met), (Some(1), Some(false)));
+        assert!(!m7.exit);
+        // Without the gen suite or the probe row the measure is absent, never met.
+        let mut r = m7_report((M7_MIN_SCORED, 0));
+        r.probe_milestones.pop();
+        assert_eq!(row(&r, "M7").extent_met, None);
     }
 }

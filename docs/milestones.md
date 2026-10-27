@@ -215,7 +215,9 @@ its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** generated dynamic-array suite (≥ 10k cells, spill shapes included) at ≥ 99.9%;
 spill extents identical to Excel;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M7 row (decision 0140): gen-m7 alone, spill-extent failures of
+gen-m7 and the M7 probes required to be 0, at visible parity (decision 0114).
 
 ## M8 — Names, tables, structured references, multi-sheet
 
