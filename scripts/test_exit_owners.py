@@ -145,7 +145,8 @@ class UnattributedOwners(TaskDir):
     }
 
     def unowned(self) -> list[str]:
-        return [f"{c.case}!{c.key}" for c in exit_owners.unowned_unattributed(self.UNATTRIBUTED, self.tasks)]
+        cells = exit_owners.unowned_unattributed(self.UNATTRIBUTED, self.tasks)
+        return [f"{c.case}!{c.key}" for c in cells]
 
     def test_an_unattributed_cell_is_listed_until_an_open_task_of_any_milestone_owns_it(
         self,
@@ -166,7 +167,8 @@ class UnattributedOwners(TaskDir):
             self.assertEqual(exit_owners.main([*args, "--strict"]), 1)
         lines = out.getvalue().splitlines()
         self.assertEqual(lines[0], f"{PROBE}!P!B2\tGAMMA(BETA.DIST(0.5,2,3,TRUE))")
-        self.assertEqual(lines[2], "2 visibly-off cells attributed to no function have no open owner")
+        count = "2 visibly-off cells attributed to no function have no open owner"
+        self.assertEqual(lines[2], count)
         # A report from before T-0082 has no list: nothing is unowned.
         path.write_text("{}")
         with redirect_stdout(io.StringIO()):

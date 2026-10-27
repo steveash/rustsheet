@@ -18,10 +18,10 @@ with no A1-shaped token (a task that names only the case owns all of it). The ir
 exceptions are the row's `excepted` cells, which `make eval` takes from
 eval/milestones/exit-exceptions.tsv.
 
-`--unattributed` lists instead the report's `unattributed_off` cells (decision 0118 item 6, decision 0132, T-0082:
-visibly-off Excel cells attributed to no function; a `DEVIATION` cell is never among them) that no
-open task of any milestone owns, by the same rule, as `case!Sheet!A1<TAB>formula`, then a count
-line. It gates nothing (`--strict` aside).
+`--unattributed` lists instead the report's `unattributed_off` cells (decision 0118 item 6,
+decision 0132, T-0082: visibly-off Excel cells attributed to no function; a `DEVIATION` cell is
+never among them) that no open task of any milestone owns, by the same rule, as
+`case!Sheet!A1<TAB>formula`, then a count line. It gates nothing (`--strict` aside).
 """
 
 from __future__ import annotations
@@ -117,7 +117,7 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
 
 
 def open_task_texts(tasks_dir: Path, milestone: str | None) -> list[str]:
-    """The text of every open task of `milestone` (of any milestone when `None`) under `tasks_dir`."""
+    """The text of every open task of `milestone` (any milestone when `None`) in `tasks_dir`."""
     out = []
     for path in sorted(tasks_dir.glob("*/T-*.md")):
         text = path.read_text()

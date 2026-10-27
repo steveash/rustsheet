@@ -13,13 +13,13 @@ use std::fmt::Write as _;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
-use std::collections::BTreeSet;
-
 use crate::closeness::{Closeness, Visible};
 use crate::evidence_floor::EVIDENCE_FLOOR;
+use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::milestone_exit::{meets_rate, RATE99_NUM, RATE_NUM};
 use crate::report::{FunctionStat, RunReport};
-use crate::runner::CellResult;
+use crate::runner::{CaseResult, CellResult};
+use crate::value::Verdict;
 
 /// A visibly-off Excel cell that decision 0118 attributes to no function (item 6): its in-scope
 /// formula calls two or more distinct non-glue functions, or only glue with two or more distinct
@@ -35,13 +35,30 @@ pub struct UnattributedCell {
     pub formula: String,
 }
 
-/// Whether the non-deviation cell `cell`, whose formula calls `called` (all in scope), is a
-/// visibly-off Excel cell attributed to no function.
-pub(crate) fn is_unattributed_off(cell: &CellResult, called: &BTreeSet<String>) -> bool {
-    cell.from_excel
-        && !called.is_empty()
-        && crate::closeness::sole_call(called).is_none()
-        && Visible::is_off(cell)
+/// The [`UnattributedCell`]s of `results`, in case order: the visibly-off, non-deviation Excel
+/// cells whose formula calls only in-scope functions, at least one, and no sole one.
+#[must_use]
+pub fn unattributed_off(catalog: &Catalog, results: &[CaseResult]) -> Vec<UnattributedCell> {
+    let mut out = Vec::new();
+    for r in results {
+        for c in &r.cells {
+            if !c.from_excel || c.verdict == Verdict::Deviation || !Visible::is_off(c) {
+                continue;
+            }
+            let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
+            if !called.is_empty()
+                && crate::closeness::sole_call(&called).is_none()
+                && calls_only_in_scope(catalog, &called)
+            {
+                out.push(UnattributedCell {
+                    case: r.id.clone(),
+                    cell: c.key(),
+                    formula: c.formula.clone().unwrap_or_default(),
+                });
+            }
+        }
+    }
+    out
 }
 
 /// A function's parity tier: the worst of its counted cells (decision 0083's order of parity),

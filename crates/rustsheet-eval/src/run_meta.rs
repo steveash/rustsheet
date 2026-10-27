@@ -1,11 +1,12 @@
 //! The run's own record in report.json (SPEC-0022, T-0080): the commit and UTC date it ran at,
 //! whether the tree had uncommitted changes (T-0082), and each suite under eval/suites it did not
-//! run with the reason, so the progress dashboard can tell a complete run from a stale one. Also the report's timing section. `date` and `commit` change
-//! from run to run, so no test or golden file compares a whole report.json.
+//! run with the reason, so the progress dashboard can tell a complete run from a stale one. Also
+//! the report's timing section. `date`, `commit` and `dirty` change from run to run, so no test or
+//! golden file compares a whole report.json.
 
 use std::fmt::Write as _;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rustsheet_engine::formatter::dates::from_excel_date;
@@ -64,14 +65,7 @@ impl RunMeta {
 /// git failure is never an error: the report just names no commit.
 #[must_use]
 pub fn git_commit(root: &Path) -> Option<String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["rev-parse", "--short=8", "HEAD"])
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .output()
-        .ok()?;
+    let out = git(root, &["rev-parse", "--short=8", "HEAD"])?;
     let sha = String::from_utf8(out.stdout).ok()?;
     let sha = sha.trim();
     (out.status.success() && !sha.is_empty() && sha.bytes().all(|b| b.is_ascii_hexdigit()))
@@ -81,14 +75,7 @@ pub fn git_commit(root: &Path) -> Option<String> {
 /// Whether `root`'s work tree has uncommitted changes; `None` when git is missing or fails.
 #[must_use]
 pub fn git_dirty(root: &Path) -> Option<bool> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["status", "--porcelain"])
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .output()
-        .ok()?;
+    let out = git(root, &["status", "--porcelain"])?;
     out.status
         .success()
         .then(|| porcelain_is_dirty(&String::from_utf8_lossy(&out.stdout)))
@@ -99,6 +86,19 @@ pub fn git_dirty(root: &Path) -> Option<bool> {
 #[must_use]
 pub fn porcelain_is_dirty(porcelain: &str) -> bool {
     porcelain.lines().any(|line| !line.trim().is_empty())
+}
+
+/// The output of `git -C root <args>`, run against `root`'s own repository whatever `GIT_DIR` or
+/// `GIT_WORK_TREE` say; `None` when git cannot be started.
+fn git(root: &Path, args: &[&str]) -> Option<Output> {
+    Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .output()
+        .ok()
 }
 
 /// `now`'s UTC date as `YYYY-MM-DD`. A clock before 1970 reads as 1970-01-01, and one past
