@@ -230,17 +230,20 @@ impl Model {
     }
 }
 
-/// PERCENTILE.INC interpolation: rank = k*(n-1) in 0-indexed sorted array.
+/// PERCENTILE.INC interpolation from the one-based rank `1 + k*(n-1)`. Adding the 1 before the
+/// fraction is taken is Excel's (a tiny k is lost, `PERCENTILE.INC(.., 1E-20)` is the smallest
+/// value exactly; docs/excel-semantics/statistics.md "PERCENTILE and PERCENTILE.INC interpolate
+/// from a one-based rank", gen-m9 T-1811 cells).
 pub(crate) fn percentile_inc_impl(sorted: &[f64], k: f64) -> f64 {
     let n = sorted.len();
     if n == 1 {
         return sorted[0];
     }
-    let rank = k * (n - 1) as f64;
-    let low = rank.floor() as usize;
+    let rank = 1.0 + k * (n - 1) as f64;
+    let whole = rank.floor();
+    let low = (whole as usize).saturating_sub(1).min(n - 1);
     let high = (low + 1).min(n - 1);
-    let frac = rank - rank.floor();
-    sorted[low] + frac * (sorted[high] - sorted[low])
+    sorted[low] + (rank - whole) * (sorted[high] - sorted[low])
 }
 
 /// PERCENTRANK.INC: virtual position in sorted array, divided by (n-1).

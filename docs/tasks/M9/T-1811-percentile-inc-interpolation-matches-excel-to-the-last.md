@@ -3,7 +3,7 @@ id: T-1811
 title: "PERCENTILE.INC interpolation matches Excel to the last bit (PERCENTILE(C1:C6,0.3) is 1.9000000000000001)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -83,3 +83,6 @@ significant digit of Excel's value; the visible-parity criterion under Acceptanc
 still unmet then move to a follow-up task without the key.
 
 Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: the 13 visibly-off gen-m9 cells of Context, e.g. gen-m9/38e4fc309fe199ea Calc!A311 `=PERCENTILE.INC(Data!B1:D6,1E-20)`: Excel 0, ours 1.1E-20; gen-m9/607e85cfee83a689 Calc!A20 `=PERCENTILE.INC(Data!B7:E11,1E-20)`: Excel 1E-15, ours 1.000011E-15.
+
+## Outcome
+`percentile_inc_impl` now interpolates from the one-based rank `1 + k*(n-1)` (docs/excel-semantics/statistics.md); QUARTILE/QUARTILE.INC follow. Eval delta: 41 of the 42 gen-m9 known-failure lines gone (all 13 visibly-off cells pass), probes H424/H429 gone, no new failures. gen-m9/5395b8a427764a3f Calc!A269 stays in the baseline (Excel -2.499999999999999, rule -2.4999999999999987), as the triage predicted.
