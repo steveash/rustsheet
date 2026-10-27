@@ -26,11 +26,10 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
 ## Out of scope
 -
 
-## Progress (2026-10-27, opus run; the task stays in progress on this branch)
+## Progress (2026-10-27, opus runs; superseded by the Outcome below)
 - New probe probes/t2759-lunar-months-2101 (excel-graph, 2026-10-27): the per-year month-start strings of
   text-locale-lunar-months-1900 for 2101-2300 and 9990-9999, column A digit 11 (Chinese table), column B digit E
-  (Eastern table). Not yet in eval/baseline: run `make eval-baseline` before the PR (all 420 cells fail today; the
-  engine prints the Gregorian date past 2100).
+  (Eastern table).
 - What it shows: past 2100 the lunar year number follows the Gregorian year closely (2101-01-01 is "2100/12/17",
   9999-01-01 "9998/12/16"), and the 1900-1960 artefacts return: 1-day months at the year turn (2105: month 13 on
   Jan 30, month 1 on Jan 31), 14-month years (2109: month 14 on Feb 15 lasts one day), 28-, 15- and 31-day months.
