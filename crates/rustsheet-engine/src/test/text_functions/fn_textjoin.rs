@@ -19,8 +19,9 @@ fn simple_cases() {
     assert_eq!(model._get_text("B1"), *"Monday, Tuesday, Wednesday");
     assert_eq!(model._get_text("B2"), *"Monday and Tuesday and Wednesday");
     assert_eq!(model._get_text("B3"), *"Monday or Tuesday or Wednesday");
-    // Our text version removes the prefix, of course (and some white spaces)
-    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \",, A1:A3)");
+    // Our text version removes the prefix, and keeps the whitespace Excel keeps: the run in the
+    // missing argument's place (`=IF(1, ,2)`, probes/t2786-whitespace-structured-refs-runs I2, T-2944).
+    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \", , A1:A3)");
 }
 
 #[test]

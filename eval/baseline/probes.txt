@@ -3477,14 +3477,7 @@ F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C4
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H1
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H11
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I1
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I10
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I11
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I2
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I3
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I4
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I5
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I8
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I9
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11

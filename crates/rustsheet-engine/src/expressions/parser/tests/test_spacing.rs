@@ -64,6 +64,25 @@ fn kept_whitespace_prints_back() {
     }
 }
 
+/// A run between two commas or after the last one is the missing argument's own (T-2944,
+/// probes/t2786-whitespace-structured-refs-runs I2:I10).
+#[test]
+fn whitespace_beside_a_missing_argument_prints_back() {
+    for formula in [
+        "IF(1, ,2)",
+        "IF(1,  ,2)",
+        "IF(1,\n,2)",
+        "SUM(1, )",
+        "SUM(1,  )",
+        "SUM(1,\n)",
+        "IF(1,2, )",
+        "SUM(, 1)",
+        "SUM(,1)",
+    ] {
+        assert_prints_back(formula);
+    }
+}
+
 #[test]
 fn dropped_whitespace_prints_without_it() {
     let mut parser = parser();

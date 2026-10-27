@@ -92,7 +92,9 @@ applied to one.
   after a binary operator, after a unary sign, after `(`, after a comma, and after `@`.
 - A run after a primary's last token, followed by a binary operator, `%` or `)`, is that primary's
   `after`.
-- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped. (A run beside a missing argument is kept: see Unknown/Answered below, T-2944.) These are
+- A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped, except a run beside a
+  missing argument. A run between two commas, or between the last comma and `)`, is the missing argument's own: a
+  `Spaced` around `EmptyArgKind` (T-2944). The run inside an empty call's `( )` is T-2966. These are
   exactly the places where Excel drops it (for the probed shapes; see Unknown).
 
 Attaching at the primary level, and never to a chain, leaves the value-operator chains of SPEC-0007
