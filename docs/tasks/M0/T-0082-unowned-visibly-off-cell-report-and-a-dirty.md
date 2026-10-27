@@ -3,7 +3,7 @@ id: T-0082
 title: "Unowned visibly-off cell report and a dirty-tree flag in the eval report run record"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
