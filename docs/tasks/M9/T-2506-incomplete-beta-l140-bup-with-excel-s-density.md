@@ -46,7 +46,7 @@ bup+bgrat (T-2509, T-2510) reuses it.
       T-2893 per the Visible-parity stage.)
 - [x] The three stat-argument-modes cells are either kept bit-exact or recorded under decision 0083's allowance, with
       the test of r2-impact's hypothesis 1 in the Outcome.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - L140 with bgrat (x0 > 0.7), which is T-2510.
@@ -94,4 +94,8 @@ Still to do before `done`: measure acceptance criteria 1 and 2 (the r2-bratio an
   T-2633); in-scope visibly off 3,309. Ungated: the a0 > 8 cells
   named in `l140_whole_b0_takes_ln_beta_of_one` (m9-beta-dist-a100 A37, A39; t0969-beta-prefactor Pref!D140) now
   match Excel bit for bit.
+- Criterion 3: probes/stat-argument-modes F.DIST H215, F.DIST.RT H221 and FDIST H226 stay bit-exact (in no
+  baseline): F's callers still take today's kernel, so r2-impact's hypothesis 1 has nothing to test until they move
+  to bratio; T-2847 now carries that test and the 128 ungated 1-3 ulp probes-numeric cells of the Progress note
+  (not listed by that run; T-2847's per-branch scoring re-measures them).
 - statistics.md: the L140 entry records the whole-b0 lnB and the engine's scores; the bpser entry's "Implemented in".
