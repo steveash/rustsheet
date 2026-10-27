@@ -11,7 +11,7 @@
 //! growing prefix), and 12,000 per-row SUMIFS over 1,500 rows. Then SUMPRODUCT over whole-column
 //! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows. Last, the three
 //! consumers the SPEC-0020 amendment tails next (T-0488), each over 2,000 rows: UNIQUE under
-//! TEXTJOIN, LOOKUP's last-non-empty idiom, and SMALL over a 70,000-row range with ROW().
+//! TEXTJOIN, LOOKUP's last-non-empty idiom, and SMALL over a 70,000-row range with `ROW()`.
 //! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank` and
 //! `-- sumproduct` run only the T-0449, T-0469, T-0465 or T-0471 case, `-- tailed_consumers`
 //! only the T-0488 cases)
@@ -181,7 +181,7 @@ fn lookup_last_workbook() -> Result<Workbook, Box<dyn Error>> {
 
 /// Corpus-bench 59969's shape: two keys in Report!A and Report!B (one of 5 and one of 4) and an
 /// amount in Report!G, the two keys wanted in X1 and X2, and in Z the k-th matching amount for
-/// k = 1 to `TAILED_CONSUMER_CALLS`, through SMALL over ROW() of 70,000-row ranges.
+/// k = 1 to `TAILED_CONSUMER_CALLS`, through SMALL over `ROW()` of 70,000-row ranges.
 fn small_row_workbook() -> Result<Workbook, Box<dyn Error>> {
     common::filled_workbook(|tx| {
         tx.add_sheet("Report")?;
@@ -208,9 +208,12 @@ fn small_row_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// A bench workbook's builder.
+type Build = fn() -> Result<Workbook, Box<dyn Error>>;
+
 /// Times each T-0488 shape.
 fn tailed_consumer_cases() -> Result<(), Box<dyn Error>> {
-    let cases: [(&str, fn() -> Result<Workbook, Box<dyn Error>>); 3] = [
+    let cases: [(&str, Build); 3] = [
         (
             "TEXTJOIN(\",\",TRUE,UNIQUE(IF(A1=Zord!A:A,Zord!C:C,\"\")))",
             unique_textjoin_workbook,
