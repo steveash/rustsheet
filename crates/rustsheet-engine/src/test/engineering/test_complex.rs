@@ -456,8 +456,10 @@ fn im_trig_of_a_real_number_follows_sin_cos_tan() {
     assert_texts(&cases);
 }
 
-// IMSIN and IMCOS build sinh and cosh of the imaginary part as (EXP(t) -/+ EXP(-t))/2 for every
-// t; IMSINH keeps a tiny real part (gen-m9, T-2258 triage; T-2535).
+// IMSIN and IMCOS build sinh and cosh of the imaginary part as (EXP(t) -/+ EXP(-t))/2 outside
+// IMSINH's kernel band; IMSINH keeps a tiny real part (gen-m9, T-2258 triage; T-2535). Inside it they
+// take IMSINH's kernel at -y: `IMSIN("-4i")` has IMSINH("4")'s digits (probes/t2778-imsinh-sign-sweep
+// C2, T-2796), where the EXP pair prints ...277i.
 #[test]
 fn im_sin_cos_take_sinh_and_cosh_from_exp() {
     let cases = [
@@ -467,6 +469,7 @@ fn im_sin_cos_take_sinh_and_cosh_from_exp() {
             "0.699252204980454-0.0014297538124271i",
         ),
         (r#"=IMSIN("1E-200+1E-200i")"#, "1E-200"),
+        (r#"=IMSIN("-4i")"#, "-27.2899171971278i"),
     ];
     assert_texts(&cases);
 }

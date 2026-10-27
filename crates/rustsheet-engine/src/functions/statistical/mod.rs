@@ -1,6 +1,7 @@
 mod beta;
 mod beta_density;
 mod binom;
+mod bratio;
 mod chisq;
 mod correl;
 mod count;

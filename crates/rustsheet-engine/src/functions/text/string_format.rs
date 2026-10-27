@@ -12,22 +12,10 @@ use crate::{
     },
     functions::{lift::number_or_error, Function},
     model::Model,
-    number_format::{cut_15_digits, increment_digits, parse_excel_number},
+    number_format::{cut_15_digits, group_thousands, increment_digits, parse_excel_number},
 };
 
 use crate::functions::util::near_integer::near_integer_count;
-
-/// Groups the digits of an integer part in threes (`1234567` → `1,234,567`).
-fn group_thousands(digits: &str) -> String {
-    let mut result = String::with_capacity(digits.len() + digits.len() / 3);
-    for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            result.push(',');
-        }
-        result.push(c);
-    }
-    result
-}
 
 /// Formats a non-negative f64 with the given decimal places and optional thousands separator.
 /// Returns the formatted string without sign. The value is cut to 15 significant digits and then
@@ -70,7 +58,7 @@ fn format_abs(abs_value: f64, decimals: i32, use_thousands: bool) -> String {
     }
     let int_text: String = int.iter().map(|&d| char::from(b'0' + d)).collect();
     let int_text = if use_thousands {
-        group_thousands(&int_text)
+        group_thousands(&int_text, ",")
     } else {
         int_text
     };

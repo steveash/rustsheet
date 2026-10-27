@@ -1993,8 +1993,10 @@ docs/research/t2464/cells.tsv; w5-triangulation (`f_pairs2.py`, `binom_negbinom.
 `ix_evidence.tsv`), r2-bratio (`x29_test.py`, `ctl_r.py`), verify-r2-bratio/x29check.out.
 Ours: outside the closed forms (which follow bratio's swap and F's argument forms, T-2502: "Incomplete beta closed forms
 act on the oriented arguments"), `incomplete_beta.rs` swaps at the mean for every shape, uses Cephes' fractions and
-1 - v, and forms F's x as d1X/(d1X + d2); BETA.DIST's cdf is `beta_reg` since T-2119, BINOM and NEGBINOM walk the pmf
-outside the closed forms, T is `student_t.rs`.
+1 - v, and forms F's x as d1X/(d1X + d2); BINOM and NEGBINOM walk the pmf outside the closed forms, T is
+`student_t.rs`. BETA.DIST's cdf runs on the port's dispatch (T-2505): `bratio/mod.rs` `dispatch` (x0 >= 0.3) and
+`beta_dist_lower_tail`, with the bpser branches ported and every other branch, and a shape of 1 outside the closed
+forms, still on `incomplete_beta.rs` (T-2847).
 Status: VERIFIED (excel-graph) for the dispatch, computed tail, complement and argument forms; each branch's
 arithmetic is in the entries below
 Tasks: T-2464, T-2504, T-2505
@@ -2263,7 +2265,12 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
 Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*; docs/research/t2464/
 w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `zforms.py`, `bscore.py`,
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
-Ours: Cephes' continued fractions; no series.
+Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505), for BETA.DIST's cdf only: the w3 series and
+EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
+Its algdiv (b0 >= 8) is `beta_density::algdiv` in doubles, where the model runs TOMS algdiv x87 stored.
+Both shapes >= 1 with max > 8 (the model's accurate ln B) and a shape of exactly 1 stay on Cephes' fractions. On
+probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
+bit-exact cells moved off and 7 became visibly off (listed in T-2847). F, BINOM and NEGBINOM still take Cephes' fractions (T-2847).
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%
 Tasks: T-2505, T-2512, T-2122
@@ -2850,7 +2857,7 @@ Tasks: T-1531, T-1542
 - `T.INV(1E-300,1)` = `T.INV(1E-300,1.5)` = -3.183098861837907E299 (the df = 1.5 value is the df = 1 value: df truncates); `T.INV(1E-300,5)` = -1.568392559099332E60.
 - `T.INV.2T(1E-300,1)` = 6.366197723675814E299 (exactly twice the one-sided magnitude); `CONFIDENCE.T(1E-300,1,2)` = 4.50158158078553E299.
 - Ours: `statrs`' `StudentsT::inverse_cdf` is wrong for small df well before it fails (`T.INV(1E-10,1)` gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200. For p < 1E-5 we use a closed-form tail asymptotic once x = df/(df+t^2) < 1E-8; otherwise `statrs` for p >= 1E-8 (it is bit-exact with Excel there) and bisection on its cdf below 1E-8 (`statrs`' inverse hangs at p = 1E-100 for df = 1000). Results agree with Excel to about 1E-13 relative for df <= 5, but only 7 of 105 cells are bit-exact, and for df >= 99999 at p <= 1E-200 we are wrong (-37.17 where Excel gives -79.06: for df = 99999 the `statrs` cdf saturates in the bisection branch, for df = 1E5 the normal series is used): T-1542.
-- `T.INV.2T` with p in (1,2) is `#NUM!` for us; Excel returns a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128), see the entry above.
+- `T.INV.2T` with p in (1,2) is `T.INV(1 - p/2)`, a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128); ours implements it since T-2096 (`t_inv_of`), see the entry above. Near p = 1 the quantile has an absolute error of about 1e-8 (`TINV(1+2^-52,2)` is -1.49e-8, Excel -3.14e-16): T-2839.
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
@@ -3515,8 +3522,9 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 30 cells listed in T-2429; p
 and probes/t2429-hypgeom-threshold A1-A47 (excel-graph, 2026-10-25); probes/t2429/<case>, each owned gen-m9 cell's
 HYPGEOM call and its arguments on that case's Data sheet.
 Ours: since T-2429, `#NUM!` for a negative or huge count (`limits::COUNT_LIMIT_EXCLUSIVE`), checked on every count
-before truncation; the impossible sample is still `#NUM!` (T-2699; probes/t2429-hypgeom-huge-count A5, A6 and their
-rows, `HYPGEOMDIST(1,N,3,N)`, are its cells). T-2700 confirmed the sign-before-truncation order for the HYPGEOM counts.
+before truncation; the impossible sample is 0 for the pmf and the cdf since T-2699 (hypegeom.rs
+`hyp_geom_dist_of`; probes/t2429-hypgeom-huge-count A5, A6 and their rows, `HYPGEOMDIST(1,N,3,N)`, are its cells).
+T-2700 confirmed the sign-before-truncation order for the HYPGEOM counts.
 Status: VERIFIED (excel-graph)
 
 ## A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data (T-2429)

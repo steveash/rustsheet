@@ -586,6 +586,8 @@ goes toward zero), then rounded half away from zero at `decimals`, and the digit
 `BAHTTEXT(999999999999997.5)` reads ...เก้าสิบเจ็ดบาทถ้วน (997).
 With a negative `decimals`, a value that rounds to zero has no sign: `DOLLAR(-3.75,-1)`, `DOLLAR(-2.02005,-1)` and
 `DOLLAR(-0.5,-1)` are "$0", while `DOLLAR(-0.004)` keeps "($0.00)" (above).
+At `decimals` 0 and 1 the parentheses stay: `DOLLAR(-0.4,0)` is "($0)", `DOLLAR(-0.04,1)` "($0.0)", `DOLLAR(-0.4,1)` "($0.4)" and
+`DOLLAR(-0.5,0)` "($1)"; only a negative `decimals` drops the sign (evidence: excel-graph, 2026-10-27, probes/t2184-dollar-neg-rounds-to-zero Sheet1!A1:A4, T-2184).
 Past 2^64, and with more than about 20 decimals, the 15 digits are followed by zeros as well: `DOLLAR(1.0000001234567907E+30,-2)`
 is "$1,000,000,123,456,790,000,000,000,000,000", `DOLLAR(4.33884297520652E+28,3)` "$43,388,429,752,065,200,000,000,000,000.000",
 `DOLLAR(1.2244897707231034E+29,0)` "$122,448,977,072,310,000,000,000,000,000", `FIXED(90909090909108.86,24.2)`

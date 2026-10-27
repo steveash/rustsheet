@@ -182,3 +182,15 @@ fn numerator_past_excels_bound_is_unshowable() {
     assert_eq!(text(1E15, "# ?/?"), "1000000000000000    ");
     assert_eq!(format_number(1000.0, "?/100", &ctx).text, "#VALUE!");
 }
+
+/// probes/fraction-format-features F9, F13 and I10 (excel-graph, T-2074): a negative value whose
+/// numerator rounds to zero takes no minus when there is no integer part, and a comma between
+/// integer placeholders groups the integer digits.
+#[test]
+fn zero_numerator_without_integer_has_no_minus_and_integer_groups() {
+    assert_eq!(text(-0.001, "?/100"), "0/100");
+    assert_eq!(text(-0.001, "?/00"), "0/01");
+    assert_eq!(text(-1.0 / 7.0, "# ?/2"), "-0    ");
+    assert_eq!(text(1234.5, "#,##0 ?/4"), "1,234 2/4");
+    assert_eq!(text(1234567.5, "#,##0 ?/4"), "1,234,567 2/4");
+}
