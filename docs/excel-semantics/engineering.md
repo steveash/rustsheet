@@ -896,7 +896,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   (" "&CHAR(9)&"5"), for a plain real too ("5"&CHAR(9), CHAR(160)&"5", "5"&UNICHAR(12288)) as for "3+4i"
   (probes/eng-inumber-currency-shapes A13:A26). `parse_complex_number`, `strip_currency_symbols`, `complex_of`.
   Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
-  rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
+  rule]; a leading tab on text over 255 characters [`#VALUE!`]; currency symbols other than `$` and `€` (`£`, `¥`) [`#NUM!`].
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
   past 15 significant digits (`IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i";
   `IMSUM("123456789012345678901","0")` is "123456789012345000000"), and in E notation from exponent 21
