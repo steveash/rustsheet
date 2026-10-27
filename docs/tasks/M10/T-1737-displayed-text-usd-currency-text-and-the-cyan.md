@@ -3,7 +3,7 @@ id: T-1737
 title: "Displayed text: [$USD] currency text and the [Cyan] color are accepted, not #VALUE!"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,12 +24,17 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 Update (T-2157, 2026-10-21): `[$USD]` currency text now prints as it is (formatter/lexer.rs, a multi-character `[$...]` is `Token::Text`); what is left here is the `[Cyan]` color and any `[$USD]` text cell still failing in the report.
 
 ## Acceptance criteria
-- [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
-- [ ] number-formats.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
+- [x] number-formats.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+`[Cyan]` is now an accepted color (formatter/lexer.rs `consume_color`), so `[Green]#,##0;[Magenta](#,##0);[Cyan]0`
+formats instead of `#VALUE!`. `[$USD]` text was already fixed by T-2157. Eval: gen-m10 TF F!Q17 leaves the baseline
+(1 fixed, 0 regressions).
