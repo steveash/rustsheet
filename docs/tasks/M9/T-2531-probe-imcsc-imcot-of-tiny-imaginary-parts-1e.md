@@ -34,4 +34,4 @@ crates/rustsheet-engine/src/functions/engineering/complex/trig.rs. Use the `exce
 ## Outcome
 Probe `t2531-imcsc-imcot-tiny-imag` (48 cells) filled from excel-graph; ours already matched all 48, so
 no code change. engineering.md records the results and the UNVERIFIED line is gone. Eval delta: +48
-checked cells, all pass; no baseline change.
+checked cells, all pass; the new case is recorded in eval/baseline/probes.txt by `make eval-baseline` (no known-failure change).
