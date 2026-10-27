@@ -1,5 +1,5 @@
 use crate::{
-    area_budget::NODE_UNITS,
+    area_budget::{text_units, NODE_UNITS},
     calc_result::CalcResult,
     cast::{
         array_node_to_string, array_node_to_text, NumberOrArray, StringOrArray, ValueOrArray,
@@ -761,10 +761,23 @@ impl Model {
             (Err(error), _) | (_, Err(error)) => return error,
         };
 
-        // Concatenates two array elements, propagating errors as error nodes.
-        let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+        // Concatenates two array elements, propagating errors as error nodes. Each element is a
+        // new text, so its bytes go to the formula's work budget as they are made (SPEC-0024
+        // "text values"): 2^20 elements of 32,767 bytes would otherwise be 32 GB built by one
+        // operator, past every other charge (T-2806). Once the budget is spent the rest are
+        // `#VALUE!` without being built, and the formula is the budget's error.
+        let mut concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+            if self.work_exceeded() {
+                return ArrayNode::Error(Error::VALUE);
+            }
             match (array_node_to_text(a), array_node_to_text(b)) {
-                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_limited(&sa, &sb)),
+                (Ok(sa), Ok(sb)) => {
+                    let joined = concat_limited(&sa, &sb);
+                    match self.spend_work(text_units(joined.len()), cell) {
+                        Ok(()) => ArrayNode::String(joined),
+                        Err(_) => ArrayNode::Error(Error::VALUE),
+                    }
+                }
                 (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
             }
         };

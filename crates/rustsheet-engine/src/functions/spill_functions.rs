@@ -180,6 +180,64 @@ fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
         .unwrap_or(Ordering::Equal)
 }
 
+/// The elements of a SORT lifted over its `by_col`, `result`, given each call's `by_col` when it
+/// sorted (`None` when it failed), row-major. Failed calls keep their error; each row's first
+/// sorting call leads it, and the leads keep their call's top-left when all their `by_col` values
+/// are equal (else only the first does); every other sorting call is empty when `only_key_two`
+/// and it is the first such element or sits below an empty-able one with the same `by_col`, and
+/// `#VALUE!` otherwise (probes/t2929-sort-lifted-by-col-*, T-2929; the rule and its UNVERIFIED
+/// corners are in arrays.md).
+// Excel: docs/excel-semantics/arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments".
+fn sort_lifted_elements(
+    result: CalcResult,
+    sorted: &[Option<bool>],
+    only_key_two: bool,
+) -> CalcResult {
+    let CalcResult::Array(mut rows) = result else {
+        return result;
+    };
+    let columns = rows.first().map_or(0, Vec::len);
+    if columns == 0 || rows.len().saturating_mul(columns) != sorted.len() {
+        return CalcResult::Array(rows);
+    }
+    let by_col = |row: usize, column: usize| sorted.get(row * columns + column).copied().flatten();
+    let lead = |row: usize| (0..columns).find(|&column| by_col(row, column).is_some());
+    let mut leads = (0..rows.len()).filter_map(|row| lead(row).and_then(|c| by_col(row, c)));
+    let first_lead = leads.next();
+    let leads_equal = leads.all(|value| Some(value) == first_lead);
+    let mut first_lead_placed = false;
+    let mut broken_seen = false;
+    // Whether each element of the row above is a broken element that may be empty.
+    let mut above = vec![false; columns];
+    for (row, nodes) in rows.iter_mut().enumerate() {
+        let row_lead = lead(row);
+        let mut here = vec![false; columns];
+        for (column, node) in nodes.iter_mut().enumerate() {
+            let Some(value) = by_col(row, column) else {
+                continue;
+            };
+            if Some(column) == row_lead && (leads_equal || !first_lead_placed) {
+                first_lead_placed = true;
+                continue;
+            }
+            let same_above = row > 0
+                && above.get(column).copied().unwrap_or(false)
+                && by_col(row - 1, column) == Some(value);
+            let may_be_empty = !std::mem::replace(&mut broken_seen, true) || same_above;
+            if let Some(slot) = here.get_mut(column) {
+                *slot = may_be_empty;
+            }
+            *node = if may_be_empty && only_key_two {
+                ArrayNode::Empty
+            } else {
+                ArrayNode::Error(Error::VALUE)
+            };
+        }
+        above = here;
+    }
+    CalcResult::Array(rows)
+}
+
 /// An evaluated SORTBY `by_array` argument.
 type SortByArray = Vec<Vec<ArrayNode>>;
 
@@ -324,12 +382,16 @@ impl Model {
         }
         // The array, sort_index and sort_order are read once here; by_col lifts over an array, one
         // SORT per element (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`,
-        // gen-m7/7307132bb8820f17 A1076; T-2319). Each element sorts the whole array. That an
-        // element is its call's top-left, and that a range lifts too, is UNVERIFIED (T-2366).
+        // gen-m7/7307132bb8820f17 A1076; T-2319). Each element sorts the whole array, and a range
+        // by_col lifts too (probes/t2366-sort-lifted-by-col). Which elements keep their call's
+        // top-left is `sort_lifted_elements`'s (T-2929).
         let cells = u64::try_from(num_rows.saturating_mul(num_cols))
             .unwrap_or(u64::MAX)
             .max(1);
-        self.lift_call_costed(
+        // Each call's by_col when it sorted, in row-major order (one entry per element: every
+        // element runs, `Reuse::Never`).
+        let mut sorted: Vec<Option<bool>> = Vec::new();
+        let result = self.lift_call_costed(
             kind,
             args,
             LiftCost::Cells(cells),
@@ -339,15 +401,25 @@ impl Model {
                     None | Some(CalcResult::EmptyArg) => Ok(false),
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
-                match (by_col, &raw_order) {
-                    (Err(error), _) => error,
-                    (Ok(_), Err(error)) => error.clone(),
-                    (Ok(by_col), Ok(raw_order)) => {
-                        model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell)
-                    }
-                }
+                let (result, read) = match (by_col, &raw_order) {
+                    (Err(error), _) => (error, None),
+                    (Ok(_), Err(error)) => (error.clone(), None),
+                    (Ok(by_col), Ok(raw_order)) => (
+                        model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell),
+                        Some(by_col),
+                    ),
+                };
+                sorted.push(read.filter(|_| !matches!(result, CalcResult::Error { .. })));
+                result
             },
-        )
+        );
+        // One call is the unlifted SORT (or a 1x1 by_col), whose result is the sorted array.
+        if sorted.len() < 2 {
+            return result;
+        }
+        // sort_index truncates, so 2.7 is key 2 too (probes/t2929-sort-lifted-by-col-errors K18).
+        let only_key_two = matches!(raw_index.as_slice(), [index] if (2.0..3.0).contains(index));
+        sort_lifted_elements(result, &sorted, only_key_two)
     }
 
     /// One SORT call over the read `data`: the `sort_index` and `sort_order` lists validated against

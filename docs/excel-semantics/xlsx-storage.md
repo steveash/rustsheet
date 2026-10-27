@@ -379,6 +379,22 @@ they differ is unprobed (T-2320).
 Status: VERIFIED (web)
 Tasks: T-2208
 
+## Typed whitespace is saved in the `<f>` text; a line feed is written as raw CR LF bytes
+Rule: the `<f>` text Excel saves keeps the whitespace FORMULATEXT shows, so a typed formula round-trips with its spaces:
+`=1 + 2` is `<f>1 + 2</f>`, `=SUM( 1 )` is `<f>SUM( 1 )</f>`, `=IF(1, ,2)` is `<f>IF(1, ,2)</f>`, `=SUM(1,  )` is
+`<f>SUM(1,  )</f>`, `=NOW( )` is `<f ca="1">NOW( )</f>`, `=SUM(, 1)` is `<f>SUM(, 1)</f>`. **A typed line feed is written as the two raw bytes CR LF** (no `&#13;` reference: 8 CR LF pairs in `<f>`/`<v>` text, 0 references, in
+sheet1.xml), in the `<f>` and in FORMULATEXT's cached `<v>` alike; an XML parser's end-of-line normalization reads them
+back as one LF, which is what the oracle sidecar shows. A writer emitting LF therefore matches. A space after the line
+feed is kept. The drops FORMULATEXT shows (trailing whitespace, a run before a comma after an operand) are made before
+the save. A structured reference is stored with its normalized spaces: typed `T[ [Col] ]` saves as `SUM(T[ Col ])`,
+`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`.
+Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
+T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac1b22c81cabb3f77c8, refetch with `rustsheet-oracle fill --force`), sheet1.xml H1:H17 and E4:E15. A typed `=T[#Headers]` (E13) is `#SPILL!` in the sidecar but `#VALUE!` in the saved array `<v>`; not relied on. Excel's whitespace semantics are in syntax.md.
+Ours: export writes the tree with no whitespace (SPEC-0023 keeps the written runs for printing only), so the saved text is
+canonical; the runs beside a missing argument are filed as T-2944; the export of kept whitespace as T-2948.
+Status: VERIFIED (excel-graph)
+Tasks: T-2786, T-2944, T-2801
+
 ## Cached volatile values are those of the last calculation, near the save time
 Rule: a workbook's cached values for `TODAY()`, `NOW()` and their dependents are those of Excel's last
 calculation before the save, so without the METADATA `NOW` convention (SPEC-0008) the closest clock for them

@@ -1379,7 +1379,8 @@ Rule: Excel has no known per-formula work limit; a formula whose LAMBDA helpers 
 Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
 Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
 units: 6 per node evaluated (each link of an operator chain is one), 3 per cell of each array value a node gives or a range
-is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results), 512 per LAMBDA value
+is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
+`&` operator makes over an array, T-2806), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
 visits, and a REGEX* or regex XLOOKUP/XMATCH call's compile budget (4 bytes a unit) and search work (32 units a unit), all of
@@ -1407,8 +1408,30 @@ whole-array readers are not charged yet (T-2804, T-2805).
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/area_budget.rs (`MAX_FORMULA_WORK`, `Model::spend_work`, `Model::with_area_budget`),
 crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/functions/logical/lambda.rs
-(`call_prepared`, `prepare_lambda`, `fn_lambda`), crates/rustsheet-engine/src/node_frames.rs (`LambdaDefKind`).
-Tasks: T-2712 (SPEC-0024), T-2803, T-2813, T-2923
+(`call_prepared`, `prepare_lambda`, `fn_lambda`), crates/rustsheet-engine/src/node_frames.rs (`LambdaDefKind`),
+crates/rustsheet-engine/src/arithmetic.rs (`handle_concatenate`).
+Tasks: T-2712 (SPEC-0024), T-2803, T-2813, T-2923, T-2806
+
+## Copies of a text share its bytes
+Rule: Excel has no known limit on the memory one formula's texts take; `IF(SEQUENCE(1024,1024),REPT("a",32767))` copies a
+32,767-character text into 2^20 cells, and only memory limits it (not probed: the oracle cannot read back a 64 GB result).
+Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024 "Known gaps: retained memory").
+Ours: a text value's bytes are shared (`Text` holds an `Arc`), so a copy into another cell, array element, LET name or
+LAMBDA argument is a pointer, and an edit (`&`, truncation) copies only bytes another value still holds. New texts are paid
+for by the work budget of "One formula evaluation does at most 268,435,456 work units" (one unit per 4 bytes), so one
+formula makes at most about 2^30 bytes of text before it is `#VALUE!`. Measured on a release build (2026-10-27, T-2806;
+peak resident memory of a process holding A1 `=REPT("a",32767)` and the formula in B1): before T-2806,
+`IF(SEQUENCE(1024,1024),REPT("a",32767))`, the same over A1, `IFERROR(SEQUENCE(1024,1024)/0,..)`, `IFNA`, `CHOOSE`,
+`INDEX(..,SEQUENCE(1024,1024)*0+1)`, `EXPAND(..,1024,1024,..)`, `TOCOL(IF(..))` and `SEQUENCE(1024,1024)&REPT("a",32767)` each
+aborted the process past a 6 GB address-space limit (32 GB needed); now the copies peak at 115 MB (TOCOL of one: 470 MB)
+and the `&` formulas stop at the budget, `#VALUE!` at 1.1 GB. `MAKEARRAY(1024,1024,LAMBDA(r,c,REPT("a",32767)))`, MAP and
+SCAN shapes were already bounded by the text charge on each call's value (`#VALUE!` at 1.1 GB); a LAMBDA that returns a
+LET-bound or cell text now shares it (`#VALUE!` at 25 MB, was 1.1 GB). Excel would compute the copies' values; ours
+does too, so only the `&` formulas past the budget differ.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/text.rs (`Text`), crates/rustsheet-engine/src/arithmetic.rs
+(`handle_concatenate`).
+Tasks: T-2806
 
 ## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
 Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a
@@ -1833,17 +1856,31 @@ a text error and a join over 32,767 characters (`#CALC!`) fill every element, an
 (`TEXTJOIN({"-","+"},{TRUE;FALSE},"a","","b")` is "a-b", "a-+b"). The gen-m7 cell: `LAMBDA(y,TEXTJOIN(y,y,y))({TRUE;FALSE})` is
 "TRUETRUEFALSE" twice, so RIGHT of it spills and A1137's spill is blocked.
 SORT's lifted by_col elements (probes/t2366-sort-lifted-by-col, excel-graph, 2026-10-27, T-2366), `A1:A3` = 3,1,2: later elements
-are never empty, unlike SORTBY's (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; so not `ArrayFirst`). Values:
+do not follow SORTBY's `ArrayFirst` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
 `{FALSE,TRUE}` spills 1 then `#VALUE!`, `{TRUE,TRUE}` 3 then `#VALUE!`, sort_index 3 with `{FALSE,TRUE}` `#VALUE!` then 3, and a range
 by_col (`E1:E2` = FALSE,TRUE) lifts like an array (`ROWS` 2, `COLUMNS` 1: spills 1 then `#VALUE!`). Of the later elements only the
 sort_index 3 one (I11) matches the call's top-left; the second (TRUE) element is `#VALUE!` with sort_index 1 (I1, I7, H18) although a
-TRUE first element with sort_index 1 is 3 (H7). The rule behind it is unprobed (T-2929).
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col (excel-graph, 2026-10-27, T-2366).
+TRUE first element with sort_index 1 is 3 (H7). The rule (probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and
+-column, excel-graph, 2026-10-27, T-2929; `A1:D4` = 13,7,22,5; 9,31,2,17; 26,4,15,11; 3,19,8,28): an element whose call fails (an
+invalid by_col such as "x", a sort_index past the array) keeps its error and is skipped by the rest of the rule. The first call that
+sorts in each row leads it; the leads keep their call's top-left when every lead's by_col is equal (`{TRUE;TRUE;TRUE}`, a range
+F1:F3 of TRUE, `{"x";TRUE;TRUE}` and `{TRUE,FALSE;TRUE,FALSE}` keep every row), and otherwise only the first lead does. Every other
+element that sorts is broken: empty (spills 0, ISBLANK TRUE, `&"|"` "|", TYPE 1, ROWS of it `#VALUE!`) when the sort_index is the
+single key 2 (`2`, `{2}`, a cell holding 2, `2.7`, `"2"`; not `{2,1}`, `{1,2}` or `{2,2}`) and it is either the first broken element
+in row-major order or below a broken element that may be empty with the same by_col; `#VALUE!` otherwise. So, with sort_index 2,
+`{TRUE,TRUE,TRUE,TRUE}` is 22, empty, `#VALUE!`, `#VALUE!` (a 1x6 likewise), `{"x",TRUE,TRUE,TRUE}` `#VALUE!`, 22, empty, `#VALUE!`,
+`{TRUE,"x",TRUE,TRUE}` 22, `#VALUE!`, empty, `#VALUE!`, `{TRUE;FALSE;FALSE}` 22, empty, empty, `{TRUE;TRUE;FALSE}` and
+`{TRUE;FALSE;TRUE}` 22, empty, `#VALUE!`, `{TRUE,TRUE;FALSE,FALSE}` 22, empty / `#VALUE!`, `#VALUE!`, and a 3x2 range of TRUE 22,
+empty in every row; with sort_index 1, 3 or 4 every broken element is `#VALUE!`. Sort order, by_col FALSE or TRUE, the array's
+shape (4x4, 3x1, 1x3, 3x2, an array constant) and a range by_col change nothing. That a failed call between two that sort is skipped
+is evidenced for an invalid by_col ("x"); for a sort_index past the array it is by analogy, UNVERIFIED, as is comparing a number
+by_col with a boolean one.
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col (excel-graph, 2026-10-27, T-2366); probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column (excel-graph, 2026-10-27, T-2929).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
-(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element; none is empty, VERIFIED as not SORTBY's and UNIQUE's first-element-only rule (T-2366), and a range by_col lifts too; ours gives each element its call's top-left, which Excel does not for a TRUE by_col element past the first column with sort_index 1, `#VALUE!` there, T-2929); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
+(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element, then `sort_lifted_elements` in spill_functions.rs keeps, empties or errs each element by the rule above (T-2929); a range by_col lifts too; the two UNVERIFIED corners are T-2947's); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
 Status: VERIFIED (excel-graph)
-Tasks: T-2313, T-2318, T-2319, T-2366, T-2467, T-2929
+Tasks: T-2313, T-2318, T-2319, T-2366, T-2467, T-2929, T-2947
 
 ## TOROW and UNIQUE of a lone blank cell
 Rule: a one-cell reference to a blank cell stays blank in TOROW and UNIQUE: `TOROW(Data!Z1,3)` drops it and is `#CALC!` (nothing
