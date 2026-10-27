@@ -1,0 +1,20 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 fractional, A2 an AMORDEGRC failing the asset-life check (rate 3.1E26), A3 the 485 charge: does a late error reset the left-over value?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)",
+        "A2": "=AMORDEGRC(16348,1e-15,38048,0.01,3,3.1E26,1)",
+        "A3": "=AMORDEGRC(2400,39679,39813,300,2,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

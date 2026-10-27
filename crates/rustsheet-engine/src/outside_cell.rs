@@ -4,6 +4,7 @@
 
 use crate::{
     calc_result::CalcResult,
+    evaluation::OrderState,
     expressions::{
         parser::Node,
         types::{CellReferenceIndex, CellReferenceRC},
@@ -20,11 +21,11 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        // WEEKNUM's stale return_type state lives for one formula here (SPEC-0017 "State").
-        self.evaluation.weeknum_start = None;
+        // The calculation-order state lives for one formula here (SPEC-0017 "State").
+        self.evaluation.order_state = OrderState::default();
         let result =
             self.with_area_budget(cell, |model| model.evaluate_node_in_context(node, cell));
-        self.evaluation.weeknum_start = None;
+        self.evaluation.order_state = OrderState::default();
         result
     }
 
@@ -42,7 +43,9 @@ impl Model {
             row: 1,
             column: 1,
         };
-        let node = self.parse_internal_formula(body, &context_rc);
+        let mut node = self.parse_internal_formula(body, &context_rc);
+        // Evaluation reads no whitespace (see `ParsedFormula`).
+        node.strip_spaces();
         let context_index = CellReferenceIndex {
             sheet,
             row: 1,

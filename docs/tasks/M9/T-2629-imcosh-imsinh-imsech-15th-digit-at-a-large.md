@@ -3,7 +3,7 @@ id: T-2629
 title: "IMCOSH/IMSINH/IMSECH 15th digit at a large imaginary part (eng-im-overflow-edges A9, A17, A58)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -44,9 +44,22 @@ Findings (2026-10-26, opus run after T-2750; data, not a fix):
   "Near-zero snapping in addition and subtraction"). Use the excel-probe skill, then refit.
 
 ## Acceptance criteria
-- [ ] The three lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new known-failure lines,
+- [x] The three lines leave eval/baseline/probes.txt (`make eval-baseline`) with no new known-failure lines,
       or the candidates tried are recorded in docs/excel-semantics/engineering.md (time-box, decision 0056).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Excel's IMSINH, IMCOSH and IMSECH take sinh x and cosh x as `(1/u ∓ u)/2` with `u = EXP(-x)`, and sin y, cos y from
+SIN and COS's x87 kernels. New probe probes/t2629-imcosh-imsinh-y-sweep (800 IMCOSH/IMSINH cells of ±1.5+yi, excel-graph)
+pinned the effective sinh(1.5) and cosh(1.5) at libm + 1 ulp each (= `1/EXP(-1.5)`), libm at -1.5; the kernel fits all
+800, and all 300 cells of T-2778's probes/t2778-imsinh-sign-sweep (brought in from its branch), where the best earlier
+candidate fitted 224. Engine: `inverse_exp_sinh_cosh` over 0.01 < |x| <= 20 (libm outside, where Excel's digits are
+libm's at 0.01, 0.00012 and 100; both cuts unprobed, T-2797), used by `imsinh`, `imcosh`, `imsech`.
+
+Eval: probes known failures 2,653 -> 2,645 (9 fixed: eng-im-overflow-edges A9, A17, A58 and 6 more IM-hyperbolic cells;
+1 new-coverage failure, t2778 C2 `IMSIN("-4i")`, T-2796); gen-m9 3,839 -> 3,805 (34 fixed, T-2778's IMSINH("4") cells);
+0 regressions. Visible-parity count 3,631 -> 3,624. Recorded in engineering.md "IMSINH, IMCOSH and IMSECH take sinh and
+cosh as (1/u ∓ u)/2 with u = EXP(-x) (T-2629)". Follow-ups: T-2796 (IMSIN of an imaginary argument), T-2797 (the cuts).

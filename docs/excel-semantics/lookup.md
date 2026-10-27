@@ -55,10 +55,12 @@ Calipers note: `calipers/pv_goldens/pv26_020` and `pv26_2_020` `Summary!C17:...1
 for this rule: the corpus anonymisation renamed the text in `Summary!B17` to `Company0691` but left
 the sheet it names as `ConAgra` (whose `TargetName`, D24, is the cached `Company2277`), so the
 workbook as shipped has no `Company0691` sheet and `#REF!` is right for it (lookup.md "INDIRECT to
-a sheet that does not exist is #REF!").
+a sheet that does not exist is #REF!"). probes/t2867-calipers-anonymised-inputs (excel-graph,
+2026-10-27) confirms it on the shipped inputs: `#REF!` for C17:O17 and for MAX, AVERAGE, MEDIAN and
+MIN over M7:M21. Those cells are scored against the probe through cached overrides (decision 0133, T-2867).
 Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-2660
+Tasks: T-2660, T-2867
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
@@ -577,9 +579,12 @@ XLOOKUP's match_mode and search_mode both lift (probes/lookup-argument-modes; pr
 probes/xlookup-array-search-mode-indirect). An error lookup_value does not stop the lift when match_mode is an array: the
 result is still an array, so a blocked spill is `#SPILL!`. Real oracle cell (gen-m6/fe0972380d030e4a Calc!A224,
 excel-graph, T-2290): `=XLOOKUP(VALUE((Data!$E$1&Data!D6)),Data!A5:A10,Data!C1:D9,ISERR(FIND(" x ","ü",1)),DECIMAL(OFFSET(Data!B10:E11,5,3,3,2),21),0)`
-is `#SPILL!`; its lookup_value is `#VALUE!` and its scalar search_mode `0` is invalid. UNVERIFIED (the oracle cell only
-shows the array shape): which error each element holds, and which wins between an error lookup_value and an invalid mode
-element (T-2746). With only scalar criteria the error is returned as is.
+is `#SPILL!`; its lookup_value is `#VALUE!` and its scalar search_mode `0` is invalid. VERIFIED (T-2746, excel-graph, 2026-10-26,
+probes/t2746-xlookup-error-lookup-array-modes, 32 cells): with an unblocked spill every element holds the lookup_value's
+own error (`#DIV/0!` for `1/0`, `#N/A` for `NA()`, `#VALUE!` for `"x"+1`), and an error lookup_value beats an invalid
+match_mode or search_mode element (`{0;9}`, `{9;0}`, `{9;8}`, `{1;9}`), also when both modes are arrays; a non-error
+lookup_value with `{0;9}` gives the match then `#VALUE!`. if_not_found does not replace an error lookup_value
+(`XLOOKUP(NA(),..,"nf",{0;1})` is `#N/A`). With only scalar criteria the error is returned as is. Ours matches (no code change).
 Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238); ADDRESS's a1 and HYPERLINK's
 friendly_name over an array spill: gen-m7/f68fafa0ca2eba26 A7, gen-m7/2bb922eef72e785e A22 (excel-graph, 2026-10-11).
 Ours: ADDRESS, HYPERLINK, LOOKUP's and XMATCH's lookup_value, XMATCH's match_mode and XLOOKUP lift, FORMULATEXT gives
@@ -872,13 +877,17 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   ROW, COLUMN, CELL, ISFORMULA, N and T lift, once per whole element (`SUBTOTAL(9,OFFSET(A1,0,0,{1;2;3}))`
   spills 1, 101, 10101). Operators, IS* functions, IFERROR, TEXTJOIN and AGGREGATE see `#VALUE!` per element;
   IF, CHOOSE, LET, VSTACK, TAKE and DROP inside SUM hand the elements on; OFFSET over such a result lifts
-  again. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+  again. A lifted TAKE's grid is handed on the same way by IF and CHOOSE in every consumer and
+  lifts again as OFFSET's reference (`SUMPRODUCT(IF(TRUE,TAKE(A1:B3,{1;2})))` is 0, `ROWS(OFFSET(TAKE(A1:B3,{1;2}),1,0))`
+  is 2), and TAKE over an error source with a lifted count is one error per element
+  (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby, T-2299). DROP is implemented the same
+  way by analogy, unprobed; so is which error wins between an error source and an invalid lifted count. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
   `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (E101, -b2 E153). Ours: since T-2174 for an unlifted count. Inside SUM
   only a direct OFFSET or INDIRECT source keeps it (TRIMRANGE, IF, LET and nested TAKE/DROP sources there read
   values), and a lifted count over such a grid is unprobed (T-2212). Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,
-  -b1c, -b1d, -b2, excel-graph, 2026-10-19, T-1955). MEDIAN, STDEV.S, VAR.S, LARGE, SMALL, COUNTIFS,
-  AVERAGEIF, MAXIFS, SUMSQ, AVERAGEA, MAXA and CONCAT over one are open: the workbooks holding them did
-  not open in Excel for the web (T-2065).
+  -b1c, -b1d, -b2, excel-graph, 2026-10-19, T-1955). COUNTIFS, AVERAGEIF and MAXIFS lift per element too
+  (T-2065 probes; ours since T-2823); see "Statistical aggregates over a lifted OFFSET" below for STDEV.S,
+  VAR.S, SUMSQ, AVERAGEA, MAXA, CONCAT, MEDIAN, LARGE and SMALL. AVERAGEIFS and MINIFS are unprobed.
 - Per element, the scalar rules hold: an element off the sheet is `#REF!` (`OFFSET(A1,{0;-1},0)`, second element);
   `INDIRECT("R2C1",{TRUE;FALSE})` is `#REF!`, A2; a scalar error argument next to the lifted one is that error in every
   element (`INDEX(OFFSET(A1,{0;1},NA()),1,1)` is `#N/A`).
@@ -924,11 +933,11 @@ an argument beside a grid that reads as an empty value, a 3-D range or a LAMBDA 
 a direct OFFSET or INDIRECT is read per element).
 DEVIATION (decision 0014, CLAUDE.md directive 5): before any element runs, each element of a per-element call is
 charged one visit (ROW, COLUMN, AREAS, CELL, ISFORMULA, N, T) or the cells of its reference inside the used area
-(SUBTOTAL, COUNTIF, SUMIF, COUNTBLANK; SUMIFS times its criteria pairs) against the shared cell-visit cap of
+(SUBTOTAL, COUNTIF, SUMIF, AVERAGEIF, COUNTBLANK; SUMIFS, COUNTIFS and MAXIFS times their criteria pairs) against the shared cell-visit cap of
 criteria.md; past it the call is `#ERROR!` where Excel computes it
 (`SUBTOTAL(9,OFFSET(A:A,0,0,,SEQUENCE(1,1000)))` with A1048576 filled). The pass-through of IF, CHOOSE, LET and a LAMBDA parameter, and OFFSET over a grid:
 "Arrays of references through LET, IF, CHOOSE and OFFSET" below (T-2078).
-Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078, T-2089
+Tasks: T-1810, T-1955, T-1956, T-1957, T-1958, T-2063, T-2064, T-2065, T-2078, T-2089, T-2823
 
 ## TRIMRANGE lifted over an array, a computed reference or an error
 Rule: what a TRIMRANGE lifted over trim_rows or trim_cols holds per element depends on its source (A1 = 5, A2 = 7,
@@ -1079,10 +1088,12 @@ Rule (excel-graph, 2026-10-22, probes/t2277-hyperlink-location-length A1-A15): a
 `#VALUE!`, with or without friendly_name and over an array friendly_name (one `#VALUE!`, no spill): `HYPERLINK(REPT("a",255),1)` = 1,
 `REPT("a",256)` is `#VALUE!` (also `HYPERLINK(REPT("a",256))`), `"#"&REPT("a",254)` = 1 and `"#"&REPT("a",255)` is `#VALUE!`: the
 `#` of an internal link counts. This was the cause of gen-m6/0bcac2d96e96b3df Calc!A17 (a 328-character TEXTJOIN location), not a
-TEXTJOIN error. Unprobed: characters outside the BMP (ours counts UTF-16 units).
-Ours: implemented (T-2277).
+TEXTJOIN error. Characters outside the BMP count as two (UTF-16 units, like LEN; excel-graph, 2026-10-27,
+probes/t2358-hyperlink-location-non-bmp A1-A9): `REPT("😀",127)&"a"` (255 units, 128 code points) = 1, `REPT("😀",128)`
+(256 units) is `#VALUE!`, as are 200 and 255 emoji; `LEN(REPT("😀",128))` = 256.
+Ours: implemented (T-2277, confirmed T-2358: counts UTF-16 units).
 Status: VERIFIED
-Tasks: T-2277
+Tasks: T-2277, T-2358
 
 ## LOOKUP past a short result vector gives a blank's empty value; MMULT of it is #VALUE! (T-2278)
 Rule: when LOOKUP's match position lies past a one-cell result vector, it reads on to the blank cell there and gives its
@@ -1165,3 +1176,20 @@ Implemented in: functions/lookup_and_reference/xmatch.rs `regex_pattern` and `re
 `PatternCache` per XMATCH or XLOOKUP call, shared by its lifted elements (repeated patterns compile once), so a call has
 one REGEX* call's compile and work budget (SPEC-0013).
 Tasks: T-2669, T-2680
+
+### Statistical aggregates over a lifted OFFSET (an array of references)
+Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26; data as probes/reference-lift-consumers-b2).
+- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements unprobed).
+- COUNTIFS, AVERAGEIF and MAXIFS lift per element, spilling one value each (1, 1; 1, 50.5; 1, 100). CONCAT is `#VALUE!`.
+  The engine implements these three since T-2823 (`Function::per_reference_element`, each element charged as
+  COUNTIF/SUMIFS are, with the same bound DEVIATION); AVERAGEIFS and MINIFS are unprobed and read the value view.
+  Which arguments lift is inferred from SUMIF/SUMIFS (COUNTIFS every criteria range, AVERAGEIF range and average_range,
+  MAXIFS max_range and every criteria range); forms with only some ranges lifted are unprobed (T-2833).
+- `AVERAGEA` and `MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0: the text is not read as 5 and TRUE not as 1; which elements count is open (the data holds no number).
+Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823); the rest
+not yet (T-2824).
+
+### MEDIAN, LARGE and SMALL over a lifted OFFSET
+probes/t2065-lift-median, -large, -small failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs).
+Status: UNVERIFIED (desktop question, M14 T-1075 item 18, decision 0039).
+Tasks: T-2065, T-2063, T-2064, T-2823, T-2824

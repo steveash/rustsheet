@@ -2,6 +2,7 @@ use statrs::distribution::{Continuous, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
+use crate::functions::statistical::f_test_tail::f_test_bratio_p;
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement_unoriented, beta_reg_upper_unoriented, closed_form_tails,
 };
@@ -34,6 +35,22 @@ fn f_df_ok(df: f64) -> bool {
 fn f_beta_arguments(df1: f64, df2: f64, x: f64) -> (f64, f64) {
     let scaled = df1 * x;
     (1.0 / (1.0 + df2 / scaled), 1.0 / (1.0 + scaled / df2))
+}
+
+/// Whether the F cdf at `x` is `#NUM!` because the incomplete beta's argument cannot be formed:
+/// [`f_beta_arguments`] divides df2 by df1 x, and once that quotient leaves the double range Excel
+/// reports `#NUM!` for either tail, where the density there is still 0. `FDIST(1E-300,6,1E+10)`,
+/// `F.DIST(1E-300,6,1E+10,TRUE)`, `F.DIST.RT(1E-300,6,1E+10)` and `FDIST(1E-300,1,1E+10)` are
+/// `#NUM!`, while `FDIST(1E-300,6,1E+9)` is 1 (quotient 1.67E+308, the largest the cut allows),
+/// `FDIST(1E-290,6,1E+10)` is 1, one power of ten the other way is `#NUM!` again
+/// (`FDIST(1E-301,6,1E+10)`) and `F.DIST(1E-300,6,1E+10,FALSE)` is 0. The `x > 0.0` guard is what
+/// keeps `FDIST(0,6,1E+10)` and a subnormal x out of the quotient: number text below the smallest
+/// normal double reads as 0, so `FDIST(1E-308,6,1E+8)` is 1 (numbers.md "Subnormal results become
+/// 0"). (probes/t2435-dist-extremes A39, A85:A91, A130, A131, A141, A142; gen-m9
+/// c6cfda6bd10cae93 A363.)
+/// Excel: see docs/excel-semantics/statistics.md, "The F cdf is #NUM! where df2/(df1 x) overflows (T-2435)"
+fn f_beta_ratio_overflows(df1: f64, df2: f64, x: f64) -> bool {
+    x > 0.0 && !(df2 / (df1 * x)).is_finite()
 }
 
 /// One F tail (`upper`: P(F > x)): Excel's closed forms on [`f_beta_arguments`] where they apply
@@ -95,6 +112,20 @@ const F_TEST_SERIES_TERMS: u32 = 100_000;
 /// pi as a double-double (hi + lo).
 const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 
+/// F.TEST's two-tailed p, `2 min(u, 1 - u)` for the upper tail u of [`f_test_upper_tail`]: with
+/// both shapes above 1 and a + b up to [`F_TEST_SERIES_SHAPE_MAX`], TOMS 708 `bratio`'s branches
+/// with Excel's pieces where [`f_test_bratio_p`] reaches (T-2681; bit-exact on 76 of the 113 such
+/// cells on file against 31 for the remainder model, docs/excel-semantics/statistics.md).
+fn f_test_p(x: f64, y: f64, a: f64, b: f64) -> f64 {
+    if a + b <= F_TEST_SERIES_SHAPE_MAX {
+        if let Some(p) = f_test_bratio_p(x, y, a, b) {
+            return p;
+        }
+    }
+    let upper = f_test_upper_tail(x, y, a, b);
+    2.0 * upper.min(1.0 - upper)
+}
+
 /// F.TEST's upper tail `I_x(a, b)` for `x = df_small/(df_big f + df_small) <= a/(a+b)`,
 /// `y = 1 - x`, `a = df_small/2`, `b = df_big/2` (f the larger variance over the smaller):
 /// `exp(a ln x) exp(b ln y) R` with the remainder `R = I_x(a,b)/(x^a y^b)` close to correctly
@@ -114,8 +145,8 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     {
         return beta_reg_complement_unoriented(x, y, a, b);
     }
-    // Bit-exact on 13 of the 16 such cells on file against 3 for the series (T-2571,
-    // statistics.md).
+    // Bit-exact on 13 of the 16 such cells on file against 3 for the series (T-2571; the
+    // committed fit is `uv run rustsheet-fitlab f-test-half`, T-2681).
     if a == 0.5 && b == 0.5 {
         return 2.0 * x.sqrt().asin() / std::f64::consts::PI;
     }
@@ -123,26 +154,10 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
 }
 
 /// `I_x(a,b)/(x^a (1-x)^b) = 2F1(a+b, 1; a+1; x) / (a B(a,b))` for half-integer shapes, in
-/// double-double: `B(a,b)` by `B(a+1,b) = B(a,b) a/(a+b)` and `B(a,b+1) = B(a,b) b/(a+b)` from
-/// `B(1,1) = 1`, `B(1/2,1) = B(1,1/2) = 2` or `B(1/2,1/2) = pi`, and the series of positive terms
+/// double-double: `B(a,b)` by [`half_integer_beta`] and the series of positive terms
 /// `t_(n+1) = t_n (a+b+n) x/(a+1+n)`, which nothing cancels.
 fn f_test_remainder(x: f64, a: f64, b: f64) -> f64 {
-    let a0 = if a.fract() == 0.0 { 1.0 } else { 0.5 };
-    let b0 = if b.fract() == 0.0 { 1.0 } else { 0.5 };
-    let mut beta = match (a0 == 1.0, b0 == 1.0) {
-        (true, true) => (1.0, 0.0),
-        (true, false) | (false, true) => (2.0, 0.0),
-        (false, false) => PI_DD,
-    };
-    let (mut p, mut q) = (a0, b0);
-    while p < a {
-        beta = dd_div_small(dd_mul(beta, (p, 0.0)), p + q);
-        p += 1.0;
-    }
-    while q < b {
-        beta = dd_div_small(dd_mul(beta, (q, 0.0)), p + q);
-        q += 1.0;
-    }
+    let beta = half_integer_beta(a, b);
     let mut term = (1.0, 0.0);
     let mut sum = (1.0, 0.0);
     let mut n = 0.0;
@@ -159,6 +174,28 @@ fn f_test_remainder(x: f64, a: f64, b: f64) -> f64 {
         }
     }
     dd_div(sum, dd_mul(beta, (a, 0.0))).0
+}
+
+/// `B(a,b)` in double-double for half-integer shapes a, b >= 1/2: `B(a+1,b) = B(a,b) a/(a+b)` and
+/// `B(a,b+1) = B(a,b) b/(a+b)` from `B(1,1) = 1`, `B(1/2,1) = B(1,1/2) = 2` or `B(1/2,1/2) = pi`.
+pub(super) fn half_integer_beta(a: f64, b: f64) -> (f64, f64) {
+    let a0 = if a.fract() == 0.0 { 1.0 } else { 0.5 };
+    let b0 = if b.fract() == 0.0 { 1.0 } else { 0.5 };
+    let mut beta = match (a0 == 1.0, b0 == 1.0) {
+        (true, true) => (1.0, 0.0),
+        (true, false) | (false, true) => (2.0, 0.0),
+        (false, false) => PI_DD,
+    };
+    let (mut p, mut q) = (a0, b0);
+    while p < a {
+        beta = dd_div_small(dd_mul(beta, (p, 0.0)), p + q);
+        p += 1.0;
+    }
+    while q < b {
+        beta = dd_div_small(dd_mul(beta, (q, 0.0)), p + q);
+        q += 1.0;
+    }
+    beta
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
@@ -451,6 +488,11 @@ impl Model {
                 num_error(cell)
             });
         }
+        // A tiny x whose df2/(df1 x) overflows is #NUM! for the cdf, 0 for the density
+        // ([`f_beta_ratio_overflows`]).
+        if cumulative && f_beta_ratio_overflows(df1, df2, x) {
+            return Err(num_error(cell));
+        }
         // The density at 0 is infinite for df1 = 1 and exactly 1 for df1 = 2; higher df1 give
         // 0 (`F.DIST(0,1,7,FALSE)` = #NUM!, `F.DIST(0,2,7,FALSE)` = 1;
         // probes-numeric/t1049-fdist A27, A28).
@@ -507,6 +549,11 @@ impl Model {
         // `FDIST(1E308,2,3)`; probes/stat-overflow-arguments A3, A4).
         if !(df1 * x).is_finite() {
             return Err(div_error(cell));
+        }
+        // A tiny x whose df2/(df1 x) overflows is #NUM!, as for F.DIST's cdf
+        // ([`f_beta_ratio_overflows`]).
+        if f_beta_ratio_overflows(df1, df2, x) {
+            return Err(num_error(cell));
         }
         let result = f_sf(df1, df2, x);
         if result.is_nan() || result.is_infinite() || result < 0.0 {
@@ -693,13 +740,12 @@ impl Model {
                 "The variance ratio overflows in F.TEST".to_string(),
             );
         }
-        let upper = f_test_upper_tail(
+        let mut p = f_test_p(
             df_small / total,
             df_big * f / total,
             df_small / 2.0,
             df_big / 2.0,
         );
-        let mut p = 2.0 * upper.min(1.0 - upper);
 
         // Clamp tiny FP noise
         if p < 0.0 && p > -1e-15 {

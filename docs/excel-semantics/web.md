@@ -76,8 +76,12 @@ returns the value of the pivot cell the field/item pairs pick, including subtota
   source field the pivot does not show), the same field twice with different items, and a field with no
   item (an odd argument count).
 - An intersection that has no source rows (shown blank) is **0**, not `#REF!` (West/C).
-  An Average pivot's empty intersection is 0 too (three cells of a T-2396 generator sample, excel-graph 2026-10-22,
-  not committed; ours `#REF!`, T-2404 probes it with count, max and min).
+  The same holds for every aggregate the case builder writes: Average, Count, Max and Min pivots answer 0 on an
+  empty intersection (West/C), while the non-empty intersection, row total, column total and grand total are the
+  aggregate (Average East/A 7, Count 2, Max 10, Min 4) and the pair order does not matter. Evidence:
+  probes/getpivotdata-empty-intersection (excel-graph, 2026-10-26, T-2404), plus gen-m6 8641fa604c5b8e14 Calc!A19,
+  A25 and A39 (Count of Units; A19 names the source field `"Units"` as data_field on that Count pivot and Excel
+  accepts it). CountNums, Product, Var, VarP, StdDev and StdDevP over an empty intersection are not probed (the case builder cannot write them): ours stay `#REF!`.
 - `pivot_table` may be any cell of the pivot (`$C$6`, inside the data area) or a range covering it
   (`$A$3:$E$7`); a cell outside every pivot (`$H$30`, or the source data `Data!$A$1`) is `#REF!`.
 - An array of items lifts: `"Region",{"East";"West"}` spills 22, 27 and `"Product",{"A","B","C"}` spills
@@ -112,8 +116,9 @@ boolean as an item (or an item that matches two cache items differing only in ca
 item, an error in a field/item pair, an empty intersection of any aggregate but Sum, a picked record whose data-field value
 is not a number, a number or boolean data_field, and an array data_field, pivot_table or field name (an array of items
 lifts). An error in a single-cell pivot_table propagates even inside a pivot, and an overflowing aggregate is `#NUM!`
-(both unprobed, SPEC-0015 unknowns 13 and 16). Count, Max, Min, Product,
-Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
+(both unprobed, SPEC-0015 unknowns 13 and 16). Count pivots of an all-numeric field match
+Excel on gen-m6 8641fa604c5b8e14, b304d8cf05adcc5e and df85bc699c7e87bc (T-2674; they cannot tell COUNT from COUNTA).
+Max, Min, Product, Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
 Structural edits: see "Pivot tables and structural edits" below. xlsx export drops pivots.
 
 ## GETPIVOTDATA on real-model pivots: an omitted item is the blank item, nested axes' grand total (T-2662)

@@ -3,7 +3,7 @@ id: T-2619
 title: "IRR is #NUM! on four gen-m9 cash-flow sets where ours returns a rate (T-2475 probe)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,3 +31,6 @@ Related: T-1686 (IRR caps and fallback path probe).
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Outcome (2026-10-26)
+Fixed by T-2727 (IRR's far-root bound and fallback rule, financial.md): all four owned gen-m9 cells left the baseline.

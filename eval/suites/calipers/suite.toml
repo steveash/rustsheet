@@ -31,7 +31,8 @@ require_excel_authored = true
 gate = false
 baseline = "cells"
 milestone = ["M11"]
-# Kept subnormals Excel saves as 0, scored against excel-graph probes (decisions 0032, 0090; T-2714).
+# Kept subnormals Excel saves as 0 (decision 0090; T-2714) and cached values the corpus anonymisation broke
+# (decision 0133; T-2867), scored against excel-graph probes (decision 0032).
 cached_overrides = "cached-overrides.tsv"
 
 [fetch]

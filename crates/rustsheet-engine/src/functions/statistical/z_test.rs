@@ -158,6 +158,12 @@ fn z_test_element(
     let Some(sigma) = sigma.or(data.stdev) else {
         return error(Error::DIV);
     };
+    // A standard deviation that overflows (data whose squares do) is #NUM!, not the p of 0.5 an
+    // infinite sigma gives (`ZTEST({1E+200,1E+200,-1E+200},x)`; statistics.md "Overflowing
+    // squares (T-2432)").
+    if sigma.is_infinite() {
+        return error(Error::NUM);
+    }
     let n = data.count as f64;
     // A sigma/sqrt(n) that underflows is #DIV/0! (not probed; kept from the fork, TODO(T-1942)).
     // The guard keeps the fork's plain-double test so it fires exactly where main's did; the

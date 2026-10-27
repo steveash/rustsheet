@@ -57,10 +57,45 @@ pub struct ExternalBook {
 
 /// A sheet of a linked workbook that the externalLink cache holds: the index of its book in
 /// [`Workbook::external_books`](crate::types::Workbook) and its own index in that book.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct CachedSheet {
     book: usize,
     sheet: u32,
+}
+
+/// Where the cached cells of one sheet of a linked workbook end along each column and row
+/// ([`Model::cached_line_ends`]), so a lookup finds how much of a whole column holds cached cells
+/// without walking the cache (CLAUDE.md directive 5; T-0474).
+#[derive(Debug, Default)]
+pub(crate) struct CachedLineEnds {
+    /// The last cached row of each column.
+    column_last_row: HashMap<i32, i32>,
+    /// The last cached column of each row.
+    row_last_column: HashMap<i32, i32>,
+}
+
+impl CachedLineEnds {
+    /// How many leading rows (`down`) or columns of `area` reach the cells the cache holds along
+    /// its first column (`down`) or row: every cell after them is empty, as every cell past a
+    /// sheet's last used row is (`Model::range_search_vector`).
+    pub(crate) fn leading_len(&self, area: ExternalArea, down: bool) -> usize {
+        let (end, first, last) = if down {
+            (
+                self.column_last_row.get(&area.first_column),
+                area.first_row,
+                area.last_row,
+            )
+        } else {
+            (
+                self.row_last_column.get(&area.first_row),
+                area.first_column,
+                area.last_column,
+            )
+        };
+        end.map_or(0, |&end| {
+            usize::try_from(end.min(last) - first + 1).unwrap_or(0)
+        })
+    }
 }
 
 /// The book index and sheet name of an external sheet prefix, `[1]Sheet` → (`1`, `Sheet`).
@@ -438,6 +473,62 @@ impl Model {
             cell,
             format!("No cached data for {sheet_name}"),
         ))
+    }
+
+    /// A range of several cells written into a linked workbook whose sheet the cache holds, as
+    /// MATCH, VLOOKUP and HLOOKUP search it: read in place (`LookupTable::External`) rather than
+    /// built as an array, so a whole column or row keeps its full length without passing the
+    /// array bound (`VLOOKUP(5,[1]Uses!$A:$C,2,FALSE)` is the cached "7";
+    /// fixtures/external-link-uncached-lookups Refs!B17, B21, B49, B50; T-0474). `None` for any
+    /// other node, which the caller evaluates as usual.
+    pub(crate) fn cached_external_lookup_area(
+        &self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<ExternalArea> {
+        if !matches!(node.ungrouped(), Node::WrongRangeKind { .. }) {
+            return None;
+        }
+        let area = self.cached_external_area(node, cell)?;
+        area.cache?;
+        (area.extent() != (1, 1)).then_some(area)
+    }
+
+    /// The cached value at the 0-based (`row`, `column`) offset within `area`, a cell the cache
+    /// does not hold empty; `#BLOCKED!` when the cache does not hold the area's sheet.
+    pub(crate) fn external_area_cell(
+        &self,
+        area: ExternalArea,
+        row: i32,
+        column: i32,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match area.cache {
+            Some(sheet) => self.cached_value(
+                sheet,
+                area.first_row + row,
+                area.first_column + column,
+                cell,
+            ),
+            None => external_blocked(cell),
+        }
+    }
+
+    /// The last cached cell of each column and row of `sheet`, in one walk of its book's cache.
+    pub(crate) fn cached_line_ends(&self, sheet: CachedSheet) -> CachedLineEnds {
+        let mut ends = CachedLineEnds::default();
+        let Some(book) = self.workbook.external_books.get(sheet.book) else {
+            return ends;
+        };
+        for &(index, row, column) in book.cells.keys() {
+            if index == sheet.sheet {
+                let last_row = ends.column_last_row.entry(column).or_insert(row);
+                *last_row = (*last_row).max(row);
+                let last_column = ends.row_last_column.entry(row).or_insert(column);
+                *last_column = (*last_column).max(column);
+            }
+        }
+        ends
     }
 
     /// The rows and columns of `sheet` its cached cells span, `None` when it holds none.

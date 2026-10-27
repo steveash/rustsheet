@@ -1,0 +1,25 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2358 probe: does HYPERLINK's 255-character link_location bound count UTF-16 units or code points for characters outside the BMP.",
+ "tags": [
+  "M6",
+  "probe",
+  "lookup"
+ ],
+ "sheets": [
+  {
+   "name": "M",
+   "cells": {
+    "A1": "=HYPERLINK(REPT(\"😀\",127)&\"a\",1)",
+    "A2": "=HYPERLINK(REPT(\"😀\",128),1)",
+    "A3": "=HYPERLINK(REPT(\"😀\",200),1)",
+    "A4": "=HYPERLINK(REPT(\"😀\",255),1)",
+    "A5": "=HYPERLINK(REPT(\"😀\",256),1)",
+    "A6": "=LEN(REPT(\"😀\",127)&\"a\")",
+    "A7": "=LEN(REPT(\"😀\",128))",
+    "A8": "=LEN(REPT(\"😀\",200))",
+    "A9": "=HYPERLINK(REPT(\"😀\",126)&\"aaa\",1)"
+   }
+  }
+ ]
+}

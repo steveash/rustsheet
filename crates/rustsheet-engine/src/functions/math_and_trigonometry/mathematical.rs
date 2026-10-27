@@ -198,6 +198,9 @@ impl Model {
                 Ok(f) => f.trunc() as i64,
                 Err(error) => return error,
             };
+            // A written-empty `BASE(0,2,)` is omitted (default 1); a blank cell reads as 0
+            // (probes/base-zero-empty-min-length A1, A2; numbers.md).
+            let min_length = min_length.filter(|value| !matches!(value, CalcResult::EmptyArg));
             let min_length = match model.kernel_number_or(min_length, 1.0, cell) {
                 Ok(f) => f,
                 Err(error) => return error,
@@ -689,10 +692,16 @@ impl Model {
     pub(crate) fn fn_radians(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Radians, args, cell, |f| Ok(f * (PI / 180.0)))
     }
+    /// `ODD(number)`: `|number|` rounded up to an integer, plus one when that is even, with the
+    /// sign of `number`. The `+ 1` is a double addition, so between 2^53 and 2^54 it rounds half to
+    /// even: `ODD(2^53+2)` is 2^53+4 and `ODD(2^53+4)` is 2^53+4, and from 2^54 up the input comes
+    /// back (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66, ODD in F:G;
+    /// docs/excel-semantics/numbers.md "ODD above 2^53 adds one in binary").
     pub(crate) fn fn_odd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Odd, args, cell, |f| {
-            let sign = f64::signum(f);
-            Ok(sign * (f64::ceil((f64::abs(f) - 1.0) / 2.0) * 2.0 + 1.0))
+            let up = f64::ceil(f64::abs(f));
+            let odd = if up % 2.0 == 0.0 { up + 1.0 } else { up };
+            Ok(f64::signum(f) * odd)
         })
     }
     pub(crate) fn fn_even(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -840,11 +849,17 @@ impl Model {
             let [n, k] = values else {
                 return CalcResult::new_args_number_error(cell);
             };
+            // `number` truncates toward zero before its sign check, and number_chosen floors, so
+            // one in (-1, 0) is #NUM! (`COMBINA(7,1-1.005)`, `COMBINA(24,-0.0001)`; gen-m5
+            // c688ca172fe533dc A118, gen-m6 44194b2fefa30de2 A222), except with a number of 0,
+            // where it truncates too: `COMBINA(-0.5,-0.0001)` is 1 (probes/t2475-stat-subexpressions
+            // P!A35; statistics.md "Statistical argument-domain errors and extreme values (T-2621)").
             let n = match model.kernel_number(n, cell) {
-                Ok(f) => f.floor(),
+                Ok(f) => f.trunc(),
                 Err(error) => return error,
             };
             let k = match model.kernel_number(k, cell) {
+                Ok(f) if n == 0.0 => f.trunc(),
                 Ok(f) => f.floor(),
                 Err(error) => return error,
             };
@@ -852,7 +867,7 @@ impl Model {
         })
     }
 
-    /// COMBINA on a floored `n` and `k` (see `fn_combina`).
+    /// COMBINA on an integral `n` and `k` (see `fn_combina`).
     fn combina_of(n: f64, k: f64, cell: CellReferenceIndex) -> CalcResult {
         if n < 0.0 || k < 0.0 || (n == 0.0 && k > 0.0) {
             return num_error(cell);

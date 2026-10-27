@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::expressions::utils::parse_reference_a1;
 use crate::formatter::dates::{date_to_serial_number, from_excel_date};
@@ -21,7 +22,7 @@ use chrono::{Datelike, Duration, Months, NaiveDate};
 // ---------------------------------------------------------------------------
 
 /// Parses a space-separated sqref like "A1:C3 E5" into a list of (row1,col1,row2,col2) tuples.
-fn parse_sqref(sqref: &str) -> Vec<(i32, i32, i32, i32)> {
+pub(crate) fn parse_sqref(sqref: &str) -> Vec<(i32, i32, i32, i32)> {
     sqref
         .split_whitespace()
         .filter_map(parse_range_part)
@@ -133,19 +134,20 @@ impl Model {
     ///
     /// Iterates every worksheet's CF rules in priority order (lowest priority number,
     /// processed last). The result for each cell is stored in
-    /// `cf_cache` and consumed by `get_extended_style_for_cell`.
+    /// the cache and consumed by `get_extended_style_for_cell`.
+    ///
+    /// Unbounded: it visits every cell of every rule's area, which a style read never does (it
+    /// evaluates the cell read, `cf_styles.rs`, T-0476). For a caller that asks for it.
     pub fn evaluate_conditional_formatting(&mut self) {
-        self.cf_stale = false;
-        #[cfg(test)]
-        self.count_cf_run();
-        self.cf_cache.clear();
+        self.cf.begin_round();
+        self.cf.all = true;
         let sheet_count = self.workbook.worksheets.len();
         for sheet_idx in 0..sheet_count {
             let mut cfs = self.workbook.worksheets[sheet_idx]
                 .conditional_formatting
                 .clone();
             // Lower priority number = higher priority; process high-priority first so that
-            // the first writer into cf_cache wins.
+            // the first writer into the cache wins.
             cfs.sort_by_key(|cf| cf.priority);
             for cf in cfs {
                 let ranges = parse_sqref(&cf.range);
@@ -161,7 +163,12 @@ impl Model {
     // CF evaluation helpers
     // -----------------------------------------------------------------------
 
-    fn apply_cf_rule(&mut self, sheet: u32, rule: &CfRule, ranges: &[(i32, i32, i32, i32)]) {
+    pub(crate) fn apply_cf_rule(
+        &mut self,
+        sheet: u32,
+        rule: &CfRule,
+        ranges: &[(i32, i32, i32, i32)],
+    ) {
         match rule {
             CfRule::ColorScale { thresholds } => {
                 self.apply_cf_color_scale(sheet, thresholds, ranges);
@@ -194,7 +201,7 @@ impl Model {
                 dxf_id,
                 stop_if_true,
             } => {
-                self.apply_cf_duplicate_values(sheet, *dxf_id, *stop_if_true, ranges);
+                self.apply_cf_value_count(sheet, *dxf_id, *stop_if_true, ranges, |count| count > 1);
             }
             CfRule::AboveAverage {
                 dxf_id,
@@ -269,7 +276,9 @@ impl Model {
                 dxf_id,
                 stop_if_true,
             } => {
-                self.apply_cf_unique_values(sheet, *dxf_id, *stop_if_true, ranges);
+                self.apply_cf_value_count(sheet, *dxf_id, *stop_if_true, ranges, |count| {
+                    count == 1
+                });
             }
             CfRule::TimePeriod {
                 time_period,
@@ -333,19 +342,30 @@ impl Model {
     ) {
         if stop_if_true {
             // Replace any lower-priority results already in the cache for this cell.
-            self.cf_cache.insert((sheet, row, col), vec![result]);
+            self.cf.cache.insert((sheet, row, col), vec![result]);
         } else {
-            self.cf_cache
+            self.cf
+                .cache
                 .entry((sheet, row, col))
                 .or_default()
                 .push(result);
         }
     }
 
-    /// Collects all numeric values from the given set of ranges on `sheet`.
-    fn collect_numeric_values(&self, sheet: u32, ranges: &[(i32, i32, i32, i32)]) -> Vec<f64> {
+    /// The numbers in `ranges` of `sheet`, row by row, over the ranges cut at the used area, past
+    /// which every cell is empty: kept for the round (`CfState`) while its budget lasts.
+    fn collect_numeric_values(
+        &mut self,
+        sheet: u32,
+        ranges: &[(i32, i32, i32, i32)],
+    ) -> Arc<[f64]> {
+        let areas = self.cf_clipped(sheet, ranges);
+        let key = (sheet, areas);
+        if let Some(values) = self.cf.values.get(&key) {
+            return values.clone();
+        }
         let mut values = Vec::new();
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &key.1 {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(n)) = self.get_cell_value_by_index(sheet, row, col)
@@ -355,7 +375,55 @@ impl Model {
                 }
             }
         }
+        let values: Arc<[f64]> = values.into();
+        if self.cf.charge(values.len()) {
+            self.cf.values.insert(key, values.clone());
+        }
         values
+    }
+
+    /// How many cells of `ranges` of `sheet` hold each value (`cell_value_key`), for the
+    /// unique and duplicate rules, over the ranges cut at the used area (an empty cell has no key):
+    /// kept for the round while its budget lasts.
+    fn value_counts(
+        &mut self,
+        sheet: u32,
+        ranges: &[(i32, i32, i32, i32)],
+    ) -> Arc<HashMap<String, u32>> {
+        let areas = self.cf_clipped(sheet, ranges);
+        let key = (sheet, areas);
+        if let Some(counts) = self.cf.counts.get(&key) {
+            return counts.clone();
+        }
+        let mut counts: HashMap<String, u32> = HashMap::new();
+        for &(r1, c1, r2, c2) in &key.1 {
+            for row in r1..=r2 {
+                for col in c1..=c2 {
+                    if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
+                        if let Some(k) = cell_value_key(&v) {
+                            *counts.entry(k).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+        }
+        let counts = Arc::new(counts);
+        if self.cf.charge(counts.len()) {
+            self.cf.counts.insert(key, counts.clone());
+        }
+        counts
+    }
+
+    /// `ranges` of `sheet` cut at its used area; the cells left out are empty.
+    fn cf_clipped(&self, sheet: u32, ranges: &[(i32, i32, i32, i32)]) -> Vec<(i32, i32, i32, i32)> {
+        let Ok((last_row, last_column)) = self.used_area_end_of(sheet) else {
+            return ranges.to_vec();
+        };
+        ranges
+            .iter()
+            .map(|&(r1, c1, r2, c2)| (r1, c1, r2.min(last_row), c2.min(last_column)))
+            .filter(|&(r1, c1, r2, c2)| r1 <= r2 && c1 <= c2)
+            .collect()
     }
 
     /// Resolves a Cfvo threshold to a concrete f64 value.
@@ -413,7 +481,7 @@ impl Model {
         // maps to the i-th stop in sorted order.
         stops.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -462,7 +530,7 @@ impl Model {
         }
         let axis_position = (-min_val / span).clamp(0.0, 1.0);
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -505,7 +573,7 @@ impl Model {
             .collect();
         let n = thresholds.len();
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -553,7 +621,7 @@ impl Model {
             .map(|(cfvo, is_strict)| (self.resolve_cfvo(cfvo, &values, sheet), *is_strict))
             .collect();
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -605,7 +673,7 @@ impl Model {
         };
         let threshold2 = formula2.and_then(|f| self.evaluate_formula(f, sheet));
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -655,7 +723,7 @@ impl Model {
         }
         let avg = values.iter().sum::<f64>() / values.len() as f64;
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -697,7 +765,7 @@ impl Model {
         }
         .max(1);
 
-        let mut sorted = values.clone();
+        let mut sorted = values.to_vec();
         if bottom {
             sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         } else {
@@ -705,7 +773,7 @@ impl Model {
         }
         let threshold = sorted[n.min(sorted.len()) - 1];
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -740,7 +808,7 @@ impl Model {
         ranges: &[(i32, i32, i32, i32)],
     ) {
         let search = value.to_lowercase();
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::String(s)) = self.get_cell_value_by_index(sheet, row, col)
@@ -806,9 +874,11 @@ impl Model {
             column: anchor_col,
         };
         // CF formulas are stored internally in English.
-        let node = self.parse_internal_formula(body, &context_rc);
+        let mut node = self.parse_internal_formula(body, &context_rc);
+        // Evaluation reads no whitespace (see `ParsedFormula`).
+        node.strip_spaces();
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for column in c1..=c2 {
                     let ctx = CellReferenceIndex { sheet, row, column };
@@ -831,31 +901,23 @@ impl Model {
         }
     }
 
-    fn apply_cf_unique_values(
+    /// The unique-values (`counted` is a count of 1) and duplicate-values (above 1) rules: a cell
+    /// matches when the number of cells of its rule's area holding its value is `counted`.
+    fn apply_cf_value_count(
         &mut self,
         sheet: u32,
         dxf_id: u32,
         stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
+        counted: fn(u32) -> bool,
     ) {
-        let mut counts: HashMap<String, u32> = HashMap::new();
-        for &(r1, c1, r2, c2) in ranges {
+        let counts = self.value_counts(sheet, ranges);
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
                         if let Some(k) = cell_value_key(&v) {
-                            *counts.entry(k).or_insert(0) += 1;
-                        }
-                    }
-                }
-            }
-        }
-        for &(r1, c1, r2, c2) in ranges {
-            for row in r1..=r2 {
-                for col in c1..=c2 {
-                    if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
-                        if let Some(k) = cell_value_key(&v) {
-                            if counts.get(&k).copied().unwrap_or(0) == 1 {
+                            if counted(counts.get(&k).copied().unwrap_or(0)) {
                                 self.update_cf_cache(
                                     sheet,
                                     row,
@@ -999,7 +1061,7 @@ impl Model {
         };
         let negate = matches!(period, PeriodType::NotBetween);
 
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
@@ -1021,47 +1083,6 @@ impl Model {
         }
     }
 
-    fn apply_cf_duplicate_values(
-        &mut self,
-        sheet: u32,
-        dxf_id: u32,
-        stop_if_true: bool,
-        ranges: &[(i32, i32, i32, i32)],
-    ) {
-        let mut counts: HashMap<String, u32> = HashMap::new();
-        for &(r1, c1, r2, c2) in ranges {
-            for row in r1..=r2 {
-                for col in c1..=c2 {
-                    if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
-                        let key = cell_value_key(&v);
-                        if let Some(k) = key {
-                            *counts.entry(k).or_insert(0) += 1;
-                        }
-                    }
-                }
-            }
-        }
-        for &(r1, c1, r2, c2) in ranges {
-            for row in r1..=r2 {
-                for col in c1..=c2 {
-                    if let Ok(v) = self.get_cell_value_by_index(sheet, row, col) {
-                        if let Some(k) = cell_value_key(&v) {
-                            if counts.get(&k).copied().unwrap_or(0) > 1 {
-                                self.update_cf_cache(
-                                    sheet,
-                                    row,
-                                    col,
-                                    CfCellResult::Dxf(dxf_id),
-                                    stop_if_true,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     fn apply_cf_blanks(
         &mut self,
         sheet: u32,
@@ -1070,7 +1091,7 @@ impl Model {
         stop_if_true: bool,
         ranges: &[(i32, i32, i32, i32)],
     ) {
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     let is_blank = matches!(
@@ -1100,7 +1121,7 @@ impl Model {
         ranges: &[(i32, i32, i32, i32)],
     ) {
         use crate::types::CellType;
-        for &(r1, c1, r2, c2) in ranges {
+        for &(r1, c1, r2, c2) in &self.cf.visited(ranges) {
             for row in r1..=r2 {
                 for col in c1..=c2 {
                     let is_error = self

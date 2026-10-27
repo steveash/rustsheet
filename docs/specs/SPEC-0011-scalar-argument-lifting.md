@@ -604,7 +604,9 @@ solver step is a sum over the coupons (up to 32,400, 0.55 ms in release) rather 
 and ODDFYIELD are charged 2^24 (`YIELD_SOLVER_WEIGHT`: at most 397 prices, about 0.23 s an element at the bound, so 8
 elements, about 1.8 s), ODDFPRICE eight walks (256 elements) and the closed-form ODDLPRICE and ODDLYIELD two (1,024);
 financial.md "Yield and odd-coupon work cap", a DEVIATION. T-1869 narrows it to a schedule-length budget
-(`CouponWalks` above): those counts hold only at the calendar's longest schedule.
+(`CouponWalks` above): those counts hold only at the calendar's longest schedule. T-2879 raises the solver weight to
+2^26 (2 elements at the longest schedule): a price term near the power's overflow costs about 340 ns, and one call
+at the cap now takes at most 4.3 s (financial.md "Yield and odd-coupon work cap").
 As built (T-1848): BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T are `Lift` entries.
 Their quantile search was statrs' `inv_beta_reg`, whose loops are open (it panics or never finishes at a tiny p); it is
 now a line-for-line port with a per-call cap of its own (`statistical/inverse_beta.rs`: 512 Newton steps and 4,096
@@ -658,7 +660,7 @@ most 616 single steps for any double, capped at 1,024, `#NUM!` past the cap), bi
 up to 2^20 periods and finishes in a closed form that can be a unit off the walk for charges of 1E12 or more
 (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
-elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
+elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 7.6 ms with the twice-rounded subtraction of T-2849: 512 elements, 3.9 s).
 
 As built (T-1821): NPV is `[Lift]` with a repeated `WholeByCaller`, IRR `[WholeByCaller, Lift]` and MIRR
 `[WholeByCaller, Lift, Lift]`. Each caller reads its cash flows once, before the driver, and calls `lift_call_costed`
@@ -718,8 +720,8 @@ COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have
 they are `Constant` only if the cap is fixed). A kernel whose loop length its arguments predict in O(1)
 may instead be `ByValue(ValueWork)`: before any element runs, the driver sums each element's
 `ValueWork::units` of its argument values over the broadcast (`lift/driver.rs` `kernel_units`, one
-O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). Two
-estimators exist:
+O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). The
+estimators include:
 - `Loop { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order); DB and VDB,
   T-1820): `1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument
   `arg`, `1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the
@@ -731,9 +733,21 @@ estimators exist:
   workbook does not shift), clamped to the calendar's 2958465, and `f` the frequency (1, 2 or 4):
   proportional to the period count plus one, the extra period being each pass's fixed cost, and
   `weight` per pass for the longest schedule. A solver's walk and every price sum are one pass
-  (YIELD's 397 prices, 2^24). A text date is charged as the longest schedule and a text frequency
-  as 4; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
+  (YIELD's 397 prices, 2^26 since T-2879). A text is charged as the kernel reads it
+  (`Model::cast_number`, passed to `kernel_units`; T-2879): a number text as that number, any
+  other text as an error; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
   bounds each walk, so no cap constant is needed.
+- `HypergeometricSum { counts, walk, extra, per_term, weight }` (T-2433, HYPGEOM.DIST): a cdf is
+  either a walk (`walk` units) or a sum of at most min(counts) + 1 terms and `extra` exponents, so
+  an element is `min(weight, max(walk, (min(trunc(counts)) + 1 + extra) * per_term))`, `weight`
+  being the sum's per-call cap; a text count is left out of the min (it may read as any count),
+  `weight` when every count is a text, and an error, a negative count or one of
+  2^31 - 1 or more (refused before either path) 1.
+- `Amortization { degressive, weight }` (T-2840, AMORLINC and AMORDEGRC): `weight`, the flat bound
+  of a walk, or 1 for an element the kernel refuses before it walks: an error or a logical in any
+  argument, a cost, salvage, period and rate, all numbers, that fail the kernel's value checks
+  (`amortization_values_valid`), or, with `degressive`, a rate whose asset life AMORDEGRC refuses
+  (`asset_life_refused`). Texts, blanks and the date calendar check are not judged.
 
 T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`

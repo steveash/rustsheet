@@ -3,7 +3,7 @@ id: T-2712
 title: "Spec: bound the work of nested LAMBDA helpers (three formulas under 100 characters run past the 30 s case timeout)"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -51,12 +51,25 @@ Questions the spec must answer:
    counter-based tests, not wall-clock limits (T-2282).
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-XXXX answers questions 1-4, with the three formulas above as worked examples and
+- [x] docs/specs/SPEC-XXXX answers questions 1-4, with the three formulas above as worked examples and
       the eval formulas that must stay computed.
-- [ ] Implementation tasks are filed (S/M each). Their acceptance criteria say the three formulas finish
+- [x] Implementation tasks are filed (S/M each). Their acceptance criteria say the three formulas finish
       within the harness timeout and no baseline gains a line.
-- [ ] Reviewers approve the spec.
+- [x] Reviewers approve the spec.
 
 ## Out of scope
 - The implementation (the follow-up tasks).
 - Dense single-range walks (T-2710, T-2711, T-2713), which are a cost per walk, not a repetition bound.
+
+## Outcome
+docs/specs/SPEC-0024-formula-work-budget.md answers questions 1–4:
+1. **What is charged.** A work unit is one node evaluated, one array cell built, one array cell read whole, or 64 bytes of
+   a text value. Every per-call cap's spend (lifted kernels, *IF(S) visits, regex budgets) is drawn again. The counter is a field of the existing per-formula `AreaBudget`, reset by
+   `with_area_budget`.
+2. **The result past the limit.** It is `#VALUE!` ("Formula needs too much work to calculate"), set formula-wide when the run
+   ends, so `IFERROR` cannot catch it. The LAMBDA helpers stop at once.
+3. **Calibration.** The provisional limit is 2^28. The upper bound is the harness timeout. The lower bound is the eval gate,
+   plus a measured maximum that must sit under 2^26. Per-kind weights are fitted so that each kind's worst case stops within 10 s.
+4. **DEVIATION and tests.** The DEVIATION text is drafted, and the tests use counters only.
+
+Follow-ups: T-2803 (step 1, M, opus), T-2804 (step 2, S, sonnet), T-2805 (step 3, M, opus); known gaps T-2806 (retained memory), T-2807 (spec: a per-recalculation bound). No eval change (docs only).

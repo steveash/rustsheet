@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ROUND of a sum whose binary error sits just below a half-unit at the rounding digit; carried over from the 'issues' sheet that upstream's ROUND_ROUNDUP_ROUNDDOWN.xlsx dropped (T-2634, decision 0126).",
+  "tags": [
+    "M2",
+    "math",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ROUND(1.05*(0.0284+0.0046)-0.0284,4)",
+        "A2": "=1.05*(0.0284+0.0046)-0.0284"
+      }
+    }
+  ],
+  "expected": {}
+}
