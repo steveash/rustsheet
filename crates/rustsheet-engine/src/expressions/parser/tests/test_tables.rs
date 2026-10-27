@@ -118,6 +118,37 @@ fn simple_table() {
     );
 }
 
+/// Whitespace inside a structured reference prints as Excel normalizes it: the runs inside the
+/// outer brackets as typed, one space after a comma where any was typed, none before it, and a
+/// single padded column without its own brackets (probes/t2786-whitespace-structured-refs-runs
+/// F4:F15, T-2801). The printed text parses back to the same text.
+#[test]
+fn whitespace_inside_a_structured_reference() {
+    let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 6,
+        column: 5,
+    };
+    for (typed, printed) in [
+        ("SUM(T[ [Col] ])", "SUM(T[ Col ])"),
+        ("SUM(T[ [Col]:[Other] ])", "SUM(T[ [Col]:[Other] ])"),
+        ("SUM(T[ [#Data] , [Col] ])", "SUM(T[ [#Data], [Col] ])"),
+        ("SUM(T[[#Data], [Col]])", "SUM(T[[#Data], [Col]])"),
+        ("SUM(T[[#Data]  ,  [Col]])", "SUM(T[[#Data], [Col]])"),
+        ("SUM(T[[#Data],[Col]:[Other]])", "SUM(T[[#Data],[Col]:[Other]])"),
+        ("SUM(T[[Col]:[Other]])", "SUM(T[[Col]:[Other]])"),
+        ("SUM( T[Col] )", "SUM( T[Col] )"),
+        ("T[#Headers]", "T[#Headers]"),
+    ] {
+        let t = parser.parse(typed, &cell_reference);
+        assert_eq!(to_excel_string(&t, &cell_reference), printed, "{typed}");
+        let again = parser.parse(printed, &cell_reference);
+        assert_eq!(to_excel_string(&again, &cell_reference), printed, "{printed}");
+    }
+}
+
 #[test]
 fn malformed_table_reference_is_ref_error_not_a_panic() {
     // The table metadata comes from the workbook, which is untrusted (directive 5).
@@ -265,7 +296,7 @@ fn reversed_column_range_is_the_same_area() {
 #[test]
 fn every_form_round_trips_through_the_printer() {
     use crate::expressions::parser::{Node, StructuredReference};
-    use crate::expressions::token::{TableReference, TableSpecifier};
+    use crate::expressions::token::{TableReference, TableSpacing, TableSpecifier};
 
     let names = [
         "Qty",
@@ -314,6 +345,7 @@ fn every_form_round_trips_through_the_printer() {
         table_name: "T".to_string(),
         specifier: None,
         table_reference: None,
+        spacing: TableSpacing::default(),
         bare: true,
     }];
     for specifier in &specifiers {
@@ -322,6 +354,7 @@ fn every_form_round_trips_through_the_printer() {
                 table_name: "T".to_string(),
                 specifier: specifier.clone(),
                 table_reference: None,
+                spacing: TableSpacing::default(),
                 bare: false,
             });
         }
@@ -335,7 +368,8 @@ fn every_form_round_trips_through_the_printer() {
                     table_name: "T".to_string(),
                     specifier: specifier.clone(),
                     table_reference: Some(table_reference),
-                    bare: false,
+                    spacing: TableSpacing::default(),
+                bare: false,
                 });
             }
         }

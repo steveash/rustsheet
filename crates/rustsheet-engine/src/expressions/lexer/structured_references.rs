@@ -12,7 +12,7 @@
 // range_reference -> column_reference":"column_reference
 
 use crate::expressions::token::TokenType;
-use crate::expressions::token::{TableReference, TableSpecifier};
+use crate::expressions::token::{TableReference, TableSpacing, TableSpecifier};
 
 use super::Result;
 use super::{Lexer, LexerError};
@@ -161,7 +161,36 @@ impl Lexer {
             table_name: table_name.to_string(),
             specifier,
             table_reference,
+            spacing: TableSpacing::default(),
         })
+    }
+
+    /// The whitespace run at the current position, consumed.
+    fn whitespace_run(&mut self) -> String {
+        let start = self.position;
+        self.consume_whitespace();
+        self.chars[start..self.position].iter().collect()
+    }
+
+    /// The bare column of `T[ Col ]`, after the run `open`: the name up to the closing `]`, its
+    /// trailing run kept as the closing padding. `None` (position unchanged for the caller to
+    /// reset) when no run precedes that `]` or the name is empty.
+    fn padded_bare_column(&mut self, table_name: &str, open: &str) -> Result<Option<TokenType>> {
+        let text = self.consume_escaped_until(']')?;
+        let name = text.trim_end_matches(char::is_whitespace);
+        if name.is_empty() || name.len() == text.len() {
+            return Ok(None);
+        }
+        Ok(Some(TokenType::StructuredReference {
+            table_name: table_name.to_string(),
+            specifier: None,
+            table_reference: Some(TableReference::ColumnReference(name.to_string())),
+            spacing: TableSpacing {
+                open: open.to_string(),
+                close: text[name.len()..].to_string(),
+                comma_space: false,
+            },
+        }))
     }
 
     /// Possibilities:
@@ -190,6 +219,22 @@ impl Lexer {
     //   But this is only a UI thing that we will ignore for now.
     pub(crate) fn consume_structured_reference(&mut self, table_name: &str) -> Result<TokenType> {
         self.expect(TokenType::LeftBracket)?;
+        // A run after the outer `[` is kept before nested brackets (`T[ [Col] ]`) and around a
+        // bare column padded on both sides (`T[ Col ]`, the form Excel prints and saves for
+        // `T[ [Col] ]`). Graph refuses one-sided padding (`T[ Col]`, `T[Col ]`; syntax.md),
+        // which keeps the reading it had before T-2801.
+        let start = self.position;
+        let mut spacing = TableSpacing {
+            open: self.whitespace_run(),
+            ..TableSpacing::default()
+        };
+        if !spacing.open.is_empty() && self.peek_char() != Some('[') {
+            if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
+                return Ok(token);
+            }
+            self.position = start;
+            spacing.open.clear();
+        }
         let peek_char = self.peek_char();
         if peek_char == Some(']') {
             // This is just a reference to the full table
@@ -206,6 +251,7 @@ impl Lexer {
                     table_name: table_name.to_string(),
                     specifier: Some(specifier),
                     table_reference: None,
+                    spacing,
                 });
             } else {
                 return Err(LexerError {
@@ -221,6 +267,7 @@ impl Lexer {
                 table_name: table_name.to_string(),
                 specifier: None,
                 table_reference: Some(TableReference::ColumnReference(column_name)),
+                spacing,
             });
         }
         self.expect(TokenType::LeftBracket)?;
@@ -228,6 +275,7 @@ impl Lexer {
         if specifier.is_some() {
             if self.peek_token() == TokenType::Comma {
                 self.advance_token();
+                spacing.comma_space = !self.whitespace_run().is_empty();
                 self.expect(TokenType::LeftBracket)?;
                 // A second item specifier: [[#Headers],[#Data],...] or [[#Data],[#Totals],...]
                 if self.peek_char() == Some('#') {
@@ -239,18 +287,24 @@ impl Lexer {
                     })?);
                     if self.peek_token() == TokenType::Comma {
                         self.advance_token();
+                        spacing.comma_space = !self.whitespace_run().is_empty();
                         self.expect(TokenType::LeftBracket)?;
                     }
                 }
             }
+            let before_close = self.position;
+            spacing.close = self.whitespace_run();
             if self.peek_token() == TokenType::RightBracket {
                 self.expect(TokenType::RightBracket)?;
                 return Ok(TokenType::StructuredReference {
                     table_name: table_name.to_string(),
                     specifier,
                     table_reference: None,
+                    spacing,
                 });
             }
+            self.position = before_close;
+            spacing.close.clear();
         }
 
         // Now it's either:
@@ -261,19 +315,17 @@ impl Lexer {
         let table_reference = if self.peek_char() == Some(':') {
             self.position += 1;
             let column_reference_right = self.consume_column_reference()?;
-            self.expect(TokenType::RightBracket)?;
-            Some(TableReference::RangeReference((
-                column_reference,
-                column_reference_right,
-            )))
+            TableReference::RangeReference((column_reference, column_reference_right))
         } else {
-            self.expect(TokenType::RightBracket)?;
-            Some(TableReference::ColumnReference(column_reference))
+            TableReference::ColumnReference(column_reference)
         };
+        spacing.close = self.whitespace_run();
+        self.expect(TokenType::RightBracket)?;
         Ok(TokenType::StructuredReference {
             table_name: table_name.to_string(),
             specifier,
-            table_reference,
+            table_reference: Some(table_reference),
+            spacing,
         })
     }
 }

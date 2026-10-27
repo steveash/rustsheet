@@ -214,7 +214,7 @@ impl Engine for RustSheetEngine {
                 // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
                 // reads it.
                 define_names(tx, spec, &ids, false)?;
-                // Values first, then tables (they read their headers), then formulas (a
+                // Values first, then tables (they read their headers), then formulas, typed ones included (a
                 // structured reference parses only once its table exists).
                 for formulas in [false, true] {
                     for (sheet, &id) in spec.sheets.iter().zip(&ids) {
@@ -242,8 +242,14 @@ impl Engine for RustSheetEngine {
                                     input = Input::LegacyFormula(text.clone());
                                 }
                             }
-                            let is_formula =
-                                matches!(input, Input::StoredFormula(_) | Input::LegacyFormula(_));
+                            // Text entered as typed is a formula when it starts with `=`: it
+                            // goes after the tables too, or a structured reference in it would
+                            // not parse (probes/t2786-whitespace-structured-refs-runs, T-2801).
+                            let is_formula = match &input {
+                                Input::StoredFormula(_) | Input::LegacyFormula(_) => true,
+                                Input::Parse(text) => text.starts_with('='),
+                                _ => false,
+                            };
                             if is_formula != formulas {
                                 continue;
                             }
