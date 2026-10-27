@@ -19,7 +19,7 @@ T-2197 (probes/table-edits, `Sales` on S!B3:C7, data rows 4-7) shows `=SUM(S!C4:
 `=SUM(S!C4:C8)` both for the insert above row 4 (table-insert-row-above-first-data) and above the
 totals row 8 (table-insert-row-above-totals), where an ordinary insert would shift it or leave it.
 T-2321 implements that quirk for every range inside the table's data block that touches the edge
-(`Displacement::grown_corners`, stringify.rs): a hand generalisation. Unprobed shapes, each a formula
+(`Displacement::range_corners`, stringify.rs): a hand generalisation. Unprobed shapes, each a formula
 on sheet F for the same two inserts (and the plain insert above row 8 without totals as control):
 `=SUM(S!C4:C5)` (touches the top edge only), `=SUM(S!C6:C7)` (touches the bottom edge only),
 `=SUM(S!B4:C7)` (all data columns), `=SUM(S!C4:D7)` (sticks out right of the table),
@@ -32,7 +32,7 @@ references.md "Structured references when the table changes" records the finding
 - [ ] probes/table-edits cases for the shapes above, oracle-filled (excel-graph), with FORMULATEXT
       next to each formula.
 - [ ] references.md "Structured references when the table changes" states which shapes grow; a
-      follow-up engine task is filed for any shape where `grown_corners` disagrees.
+      follow-up engine task is filed for any shape where `range_corners` disagrees.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
