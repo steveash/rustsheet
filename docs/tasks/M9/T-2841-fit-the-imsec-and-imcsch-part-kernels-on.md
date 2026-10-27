@@ -23,6 +23,8 @@ IMSECH use), or the numerators' grouping (`x_sinh * y_cos / t` vs `x_sinh * (y_c
 IMSEC and IMCSCH oracle cell (gen-m9, ironcalc-calc, probes, probes-numeric `im-*`), as T-2757 and T-2817 did, with a
 scratch test outside the commit. Misses to start from: `IMSEC("-1.44771+0.0419247i")` and
 `IMCSCH("0.0853196+0.00680423i")`, which no T-2817 form fits.
+Also probe a large real part with y = 0, such as `IMCSCH("400")` and `IMCSCH("710")`. With T-2817's `sinh²x + sin²y`, an
+overflowed `t` is `inf` (it was NaN), and only `IMCSCH("710.4+0i")` (probes/eng-im-overflow-edges A64) covers that path.
 
 ## Acceptance criteria
 - [ ] Each kernel fits more `im-sec-csch-fused` cells than today and loses no older oracle cell (or the task records
