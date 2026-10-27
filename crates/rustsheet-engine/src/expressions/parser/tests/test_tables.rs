@@ -137,7 +137,10 @@ fn whitespace_inside_a_structured_reference() {
         ("SUM(T[ [#Data] , [Col] ])", "SUM(T[ [#Data], [Col] ])"),
         ("SUM(T[[#Data], [Col]])", "SUM(T[[#Data], [Col]])"),
         ("SUM(T[[#Data]  ,  [Col]])", "SUM(T[[#Data], [Col]])"),
-        ("SUM(T[[#Data],[Col]:[Other]])", "SUM(T[[#Data],[Col]:[Other]])"),
+        (
+            "SUM(T[[#Data],[Col]:[Other]])",
+            "SUM(T[[#Data],[Col]:[Other]])",
+        ),
         ("SUM(T[[Col]:[Other]])", "SUM(T[[Col]:[Other]])"),
         ("SUM( T[Col] )", "SUM( T[Col] )"),
         ("T[#Headers]", "T[#Headers]"),
@@ -145,7 +148,11 @@ fn whitespace_inside_a_structured_reference() {
         let t = parser.parse(typed, &cell_reference);
         assert_eq!(to_excel_string(&t, &cell_reference), printed, "{typed}");
         let again = parser.parse(printed, &cell_reference);
-        assert_eq!(to_excel_string(&again, &cell_reference), printed, "{printed}");
+        assert_eq!(
+            to_excel_string(&again, &cell_reference),
+            printed,
+            "{printed}"
+        );
     }
 }
 
@@ -369,7 +376,7 @@ fn every_form_round_trips_through_the_printer() {
                     specifier: specifier.clone(),
                     table_reference: Some(table_reference),
                     spacing: TableSpacing::default(),
-                bare: false,
+                    bare: false,
                 });
             }
         }
