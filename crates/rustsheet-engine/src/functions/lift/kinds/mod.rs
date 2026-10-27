@@ -87,12 +87,16 @@ pub(crate) enum ValueWork {
     /// for the solvers, whose one pass is the walk and every price sum). A pass is charged
     /// `weight` units at the longest schedule (quarterly across the whole calendar,
     /// [`COUPON_SPAN_DAYS`]) and in proportion to its period count plus one below that; see
-    /// [`coupon_walk_units`].
+    /// [`coupon_walk_units`]. With `reads_all_first` (the ODD* kernels, `Model::odd_args`), the
+    /// kernel reads every argument before any walk, and returns on an error or a logical in any
+    /// of them and on a date off the calendar (outside [0, 2958466)): such an element is
+    /// charged 1 (T-2815).
     CouponWalks {
         dates: &'static [usize],
         frequency: usize,
         walks: u32,
         weight: u32,
+        reads_all_first: bool,
     },
     /// A search for argument `find`'s text in argument `within`'s (FIND and SEARCH, T-1961):
     /// both texts are read once, and each start position of `within` compares at most the
@@ -203,6 +207,23 @@ impl ArgValue {
     }
 }
 
+/// Whether an ODD* kernel (`Model::odd_args`) returns before any walk on these argument values:
+/// it reads every argument as a number, refusing an error or a logical (`cast_number_no_bools_ref`),
+/// and each of the `dates` must be on the calendar, `#NUM!` as it is read
+/// (probes/fin-odd-date-before-error-arg, odd-bond-argument-check-order). A text may read as any
+/// number, so it refuses nothing. `value` is `None` only past the call's arguments (a blank one
+/// is `Some(ArgValue::Blank)`), so the scan stops at the call's end.
+fn refused_before_any_walk(dates: &[usize], value: &impl Fn(usize) -> Option<ArgValue>) -> bool {
+    let calendar = 0.0..f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0;
+    let off_calendar = dates
+        .iter()
+        .any(|&arg| matches!(value(arg), Some(ArgValue::Number(n)) if !calendar.contains(&n)));
+    off_calendar
+        || (0..)
+            .map_while(value)
+            .any(|arg| matches!(arg, ArgValue::Error | ArgValue::Boolean(_)))
+}
+
 impl ValueWork {
     /// The most one element is charged.
     pub(crate) fn most(self) -> u64 {
@@ -243,7 +264,11 @@ impl ValueWork {
                 frequency,
                 walks,
                 weight,
+                reads_all_first,
             } => {
+                if reads_all_first && refused_before_any_walk(dates, &value) {
+                    return 1;
+                }
                 // An invalid frequency is #NUM! and an error argument its error, both before any
                 // walk (`Model::coupon_args`, `Model::bond_args`, `Model::accrint_of`). A logical
                 // is charged as its number: ACCRINT reads it as one.
