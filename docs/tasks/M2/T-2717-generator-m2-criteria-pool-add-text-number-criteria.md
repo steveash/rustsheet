@@ -3,7 +3,7 @@ id: T-2717
 title: "Generator M2 criteria pool: add text-number criteria"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
