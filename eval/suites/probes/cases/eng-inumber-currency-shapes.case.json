@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2641: IMABS of a currency prefix in front of, inside and after a sign of a complex number; NBSP, tab, LF and CR around a complex number.",
+ "description": "T-2641: IMABS of a currency prefix in front of, inside and after a sign of a complex number; NBSP, tab, LF and CR around a complex number. Plain reals with the same end characters, and further currency shapes.",
  "tags": [
   "M9",
   "probe",
@@ -27,7 +27,20 @@
     "A14": "=IMABS(\"3+4i\"&CHAR(9))",
     "A15": "=IMABS(\"3+4i\"&CHAR(10))",
     "A16": "=IMABS(\"3+4i\"&CHAR(13))",
-    "A17": "=IMABS(CHAR(10)&\"3+4i\")"
+    "A17": "=IMABS(CHAR(10)&\"3+4i\")",
+    "A18": "=IMABS(\"5\"&CHAR(9))",
+    "A19": "=IMABS(\"5\"&CHAR(10))",
+    "A20": "=IMABS(\"5\"&CHAR(13))",
+    "A21": "=IMABS(\"5\"&UNICHAR(160))",
+    "A22": "=IMABS(CHAR(160)&\"5\")",
+    "A23": "=IMABS(CHAR(13)&\"5\")",
+    "A24": "=IMABS(\"5\"&UNICHAR(12288))",
+    "A25": "=IMABS(\" 5\"&CHAR(9))",
+    "A26": "=IMABS(\" \"&CHAR(9)&\"5\")",
+    "A27": "=IMABS(\"1-$2i\")",
+    "A28": "=IMABS(\"1+$ 2i\")",
+    "A29": "=IMABS(\"$.5\")",
+    "A30": "=IMABS(\"$1e+$2\")"
    }
   }
  ],
