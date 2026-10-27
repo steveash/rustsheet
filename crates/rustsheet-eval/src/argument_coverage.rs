@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use rustsheet_engine::{call_arguments, ArgumentShape};
 use serde::{Deserialize, Serialize};
 
-use crate::catalog::{Catalog, CatalogParam};
+use crate::catalog::{Catalog, CatalogFunction, CatalogParam};
 use crate::cellref::Addr;
 use crate::engine::Evaluated;
 use crate::runner::{CaseResult, CellResult};
@@ -60,20 +60,25 @@ pub const ALL_CLASSES: [ArgClass; 11] = [
     ArgClass::Range,
 ];
 
-/// One argument class a case's Excel-evidence cells pass a function at one position of a call
-/// with `arity` arguments; the report maps the position to a catalog parameter.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// One argument of a call: its class, read as for a parameter of any mode but `range`, and
+/// whether it is a reference (a `range` parameter counts any reference as [`ArgClass::Range`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ArgumentSeen {
+    /// The argument's class.
+    pub class: ArgClass,
+    /// Whether the argument is a reference.
+    pub reference: bool,
+}
+
+/// One call a case's Excel-evidence cells make, with its arguments' classes kept together so
+/// that pairs of them can be counted (T-0083); the report maps positions to catalog parameters.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CallSeen {
     /// The en-US function name.
     pub function: String,
-    /// How many arguments the call has.
-    pub arity: usize,
-    /// The 0-based argument position.
-    pub index: usize,
-    /// The argument's class, read as for a parameter of any mode but `range`.
-    pub class: ArgClass,
-    /// Whether the argument is a reference (a `range` parameter counts it as [`ArgClass::Range`]).
-    pub reference: bool,
+    /// One entry per argument position; `None` for an argument that is not classified (a nested
+    /// call, an operator).
+    pub args: Vec<Option<ArgumentSeen>>,
 }
 
 /// The class of a value: a referenced cell's, or a literal's.
@@ -104,14 +109,15 @@ fn reads_as_number(text: &str) -> bool {
         && t.parse::<f64>().is_ok_and(f64::is_finite)
 }
 
-/// The arguments the Excel-evidence formula cells among `cells` pass, classified against the
-/// evaluated workbook (`sheets` in tab order). Deduplicated per case.
+/// The calls the Excel-evidence formula cells among `cells` make, their arguments classified
+/// against the evaluated workbook (`sheets` in tab order). Deduplicated per case; calls without
+/// any classified argument are left out.
 #[must_use]
 pub fn observe(
     evaluated: &dyn Evaluated,
     sheets: &[String],
     cells: &[CellResult],
-) -> Vec<ArgumentSeen> {
+) -> Vec<CallSeen> {
     let mut seen = BTreeSet::new();
     for c in cells.iter().filter(|c| c.from_excel) {
         let (Some(formula), Some(addr)) = (c.formula.as_deref(), Addr::parse(&c.cell)) else {
@@ -121,34 +127,37 @@ pub fn observe(
             continue;
         };
         for call in call_arguments(formula, sheets, &c.sheet, row, column) {
-            let arity = call.args.len();
-            for (index, arg) in call.args.iter().enumerate() {
-                let (class, reference) = match arg {
-                    ArgumentShape::Number(n) => (classify_value(&Value::Number(*n)), false),
-                    ArgumentShape::Text(s) => (classify_value(&Value::Text(s.clone())), false),
-                    ArgumentShape::Bool(_) => (ArgClass::Boolean, false),
-                    ArgumentShape::Error => (ArgClass::Error, false),
-                    ArgumentShape::Omitted => (ArgClass::Blank, false),
-                    ArgumentShape::Area => (ArgClass::Range, true),
-                    ArgumentShape::Cell { sheet, row, column } => {
-                        let addr = u32::try_from(*row)
-                            .ok()
-                            .zip(u32::try_from(*column).ok())
-                            .map(|(row, col)| Addr { row, col });
-                        let target = sheet.as_deref().unwrap_or(&c.sheet);
-                        match addr.and_then(|a| evaluated.value(target, a)) {
-                            Some(v) => (classify_value(&v), true),
-                            None => continue,
+            let args: Vec<Option<ArgumentSeen>> = call
+                .args
+                .iter()
+                .map(|arg| {
+                    let (class, reference) = match arg {
+                        ArgumentShape::Number(n) => (classify_value(&Value::Number(*n)), false),
+                        ArgumentShape::Text(s) => (classify_value(&Value::Text(s.clone())), false),
+                        ArgumentShape::Bool(_) => (ArgClass::Boolean, false),
+                        ArgumentShape::Error => (ArgClass::Error, false),
+                        ArgumentShape::Omitted => (ArgClass::Blank, false),
+                        ArgumentShape::Area => (ArgClass::Range, true),
+                        ArgumentShape::Cell { sheet, row, column } => {
+                            let addr = u32::try_from(*row)
+                                .ok()
+                                .zip(u32::try_from(*column).ok())
+                                .map(|(row, col)| Addr { row, col });
+                            let target = sheet.as_deref().unwrap_or(&c.sheet);
+                            (
+                                classify_value(&addr.and_then(|a| evaluated.value(target, a))?),
+                                true,
+                            )
                         }
-                    }
-                    ArgumentShape::Other => continue,
-                };
-                seen.insert(ArgumentSeen {
-                    function: call.name.clone(),
-                    arity,
-                    index,
-                    class,
-                    reference,
+                        ArgumentShape::Other => return None,
+                    };
+                    Some(ArgumentSeen { class, reference })
+                })
+                .collect();
+            if args.iter().any(Option::is_some) {
+                seen.insert(CallSeen {
+                    function: call.name,
+                    args,
                 });
             }
         }
@@ -216,38 +225,70 @@ pub struct FunctionArguments {
     /// Covered over expected classes, summed over the parameters; `None` when no parameter
     /// expects any (PI, LAMBDA's names).
     pub single: Option<f64>,
+    /// Of the pairs of two counted parameters and an expected class of each, the share one call
+    /// passes together (T-0083); `None` with fewer than two counted parameters.
+    #[serde(default)]
+    pub pairwise: Option<f64>,
+}
+
+/// A parameter and a class one call passes it, keyed by function name.
+type Slot<'a> = (&'a str, usize, ArgClass);
+
+/// The (parameter, class) slots of one call of `f`, in order; a `range` parameter counts a
+/// reference as [`ArgClass::Range`].
+fn call_slots(f: &CatalogFunction, call: &CallSeen) -> BTreeSet<(usize, ArgClass)> {
+    let arity = call.args.len();
+    call.args
+        .iter()
+        .enumerate()
+        .filter_map(|(index, arg)| {
+            let arg = (*arg)?;
+            let p = param_of(&f.params, arity, index)?;
+            let class = if arg.reference && f.params[p].mode == "range" {
+                ArgClass::Range
+            } else {
+                arg.class
+            };
+            Some((p, class))
+        })
+        .collect()
 }
 
 /// One row per in-scope catalog function, by name, from the cases' [`CaseResult::arguments`].
 #[must_use]
 pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Vec<FunctionArguments> {
-    let mut seen: BTreeMap<(&str, usize), BTreeSet<ArgClass>> = BTreeMap::new();
-    for a in results.iter().flat_map(|r| &r.arguments) {
-        let Some(f) = catalog.function(&a.function) else {
+    let mut singles: BTreeSet<Slot<'_>> = BTreeSet::new();
+    // Per function, two expected slots of one call with their parameters in order.
+    let mut pairs: BTreeMap<&str, BTreeSet<[(usize, ArgClass); 2]>> = BTreeMap::new();
+    for call in results.iter().flat_map(|r| &r.arguments) {
+        let Some(f) = catalog.function(&call.function) else {
             continue;
         };
-        let Some(p) = param_of(&f.params, a.arity, a.index) else {
-            continue;
-        };
-        let class = if a.reference && f.params[p].mode == "range" {
-            ArgClass::Range
-        } else {
-            a.class
-        };
-        seen.entry((f.name.as_str(), p)).or_default().insert(class);
+        let name = f.name.as_str();
+        let slots = call_slots(f, call);
+        singles.extend(slots.iter().map(|&(p, c)| (name, p, c)));
+        let expected: Vec<(usize, ArgClass)> = slots
+            .into_iter()
+            .filter(|(p, c)| expected_classes(&f.params[*p].mode).contains(c))
+            .collect();
+        for (i, &a) in expected.iter().enumerate() {
+            for &b in expected[i + 1..].iter().filter(|b| b.0 != a.0) {
+                pairs.entry(name).or_default().insert([a, b]);
+            }
+        }
     }
     catalog
         .functions()
         .filter(|f| catalog.in_scope(&f.name))
         .map(|f| {
+            let name = f.name.as_str();
             let params: Vec<ParamCoverage> = f
                 .params
                 .iter()
                 .enumerate()
                 .map(|(i, p)| {
-                    let classes = seen.get(&(f.name.as_str(), i));
                     let expected = expected_classes(&p.mode);
-                    let has = |c: &ArgClass| classes.is_some_and(|s| s.contains(c));
+                    let has = |c: &ArgClass| singles.contains(&(name, i, *c));
                     ParamCoverage {
                         name: p.name.clone(),
                         mode: p.mode.clone(),
@@ -259,11 +300,17 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Vec<FunctionArgum
                 .collect();
             let expected: usize = params.iter().map(|p| p.expected).sum();
             let covered: usize = params.iter().map(|p| p.covered).sum();
-            let single = share(expected, expected - covered);
+            let pairs_expected: usize = params
+                .iter()
+                .enumerate()
+                .flat_map(|(i, p)| params[i + 1..].iter().map(|q| p.expected * q.expected))
+                .sum();
+            let pairs_covered = pairs.get(name).map_or(0, BTreeSet::len);
             FunctionArguments {
                 name: f.name.clone(),
                 params,
-                single,
+                single: share(expected, expected - covered),
+                pairwise: share(pairs_expected, pairs_expected - pairs_covered),
             }
         })
         .collect()
