@@ -48,6 +48,12 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
   2142-02-27 to 2233-01-13, and 2233-02-27 on. The segments are separated by the two 15-day months, both ending on
   27 February (2142, 2233), where the phase jumps by about half a lunation. Script: count month indexes from the
   gaps (round(gap/29.53)), then fit each segment.
+- Against Meeus' true new moon (UTC days, no delta-T): segment 2 (2142-2233) starts within -2..+3 days of the new
+  moon (mostly 0 or +1), while segments 1 and 3 start 13-15 days after it, at mean phase 0.44-0.59, i.e. near the
+  full moon. So Excel's lunation finder locks to the new moon or to the full moon and flips every ~91 years, at the
+  27 February 15-day months, like an angle reduced modulo 180 degrees instead of 360. Its spread (+-2 days) is wider
+  than the true moon's, so it is a cruder phase model than Meeus. Crack that model first (mean elongation plus a few
+  periodic terms, evaluated at 0h of each day; find the flip condition), then the new-year rule.
 - Next: index months by counting starts (not by rounding), fit day = floor(a + n*L) per table over 2101-2300, and
   test it on 9990-9999 and on 1900-1960 (lunar_calendar.rs tables). The year turn likely comes from a separate
   new-year rule (month 1 forced on a date that need not be a month start, hence the 1-day months); recover it from
