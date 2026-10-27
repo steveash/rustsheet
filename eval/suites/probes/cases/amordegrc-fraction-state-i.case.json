@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 fractional above EFFECT(1,1) (1): is the left-over value shared with other Analysis ToolPak functions?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)",
+        "A2": "=EFFECT(1,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

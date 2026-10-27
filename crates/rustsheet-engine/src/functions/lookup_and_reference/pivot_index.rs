@@ -131,20 +131,27 @@ fn build(cache: &PivotCache, axis: Vec<u32>) -> Option<PivotIndex> {
     })
 }
 
-/// The data field's aggregate over `values` (cache order). A Sum over nothing is 0
-/// (probes/getpivotdata-real-pivot H13); any other aggregate with no defined value is `#REF!`
-/// (SPEC-0015 unknown 2), and a non-finite result `#NUM!` (unknown 16). Var and `StdDev` reuse
+/// The data field's aggregate over `values` (cache order). A Sum, Count, Average, Max or Min over
+/// nothing is 0 (probes/getpivotdata-real-pivot H13, probes/getpivotdata-empty-intersection);
+/// any other aggregate with no defined value is `#REF!` (SPEC-0015 unknown 2), and a non-finite result `#NUM!` (unknown 16). Var and `StdDev` reuse
 /// the worksheet functions' algorithm (`excel_variance`); that the pivot computes them alike is
 /// UNVERIFIED (unknown 15).
 fn aggregate(function: Aggregate, values: &[f64]) -> Result<f64, Error> {
     let n = values.len();
     let minimum = match function {
-        Aggregate::Sum => 0,
+        Aggregate::Sum
+        | Aggregate::Count
+        | Aggregate::Average
+        | Aggregate::Max
+        | Aggregate::Min => 0,
         Aggregate::StdDev | Aggregate::Var => 2,
         _ => 1,
     };
     if n < minimum {
         return Err(Error::REF);
+    }
+    if n == 0 {
+        return Ok(0.0);
     }
     let sum = || values.iter().fold(0.0, |acc, x| acc + x);
     let variance = |kind| excel_variance(values, kind);

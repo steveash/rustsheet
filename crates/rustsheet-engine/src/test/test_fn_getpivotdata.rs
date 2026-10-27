@@ -197,6 +197,29 @@ fn names_ignore_case_and_an_item_may_be_a_label_cell() {
 }
 
 #[test]
+fn an_odd_count_of_five_or_more_arguments_is_error_but_three_stay_ref() {
+    check(&[
+        (
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","East","Product")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","East","Product","A","Sales")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$A$20,"Product","A","Region")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$H$30,"Product","A","Region")"#,
+            "#ERROR!",
+        ), // no pivot
+        (r#"=GETPIVOTDATA("Sales",$A$3,"Region")"#, "#REF!"), // H15
+    ]);
+}
+
+#[test]
 fn unknown_items_fields_repeats_and_odd_pairs_are_ref() {
     check(&[
         (r#"=GETPIVOTDATA("Sales",$A$3,"Region","North")"#, "#REF!"), // H7
@@ -298,16 +321,26 @@ fn every_aggregate_runs_over_the_picked_records() {
 }
 
 #[test]
-fn aggregates_with_no_records_other_than_sum_are_ref() {
-    let mut model = model();
-    model.workbook.pivot_tables[0].data_fields[0].function = Aggregate::Average;
-    model._set(
-        "H1",
-        r#"=GETPIVOTDATA("Sales",$A$3,"Region","West","Product","C")"#,
-    );
-    model.evaluate();
-    // SPEC-0015 unknown 2.
-    assert_eq!(model._get_text("H1"), "#REF!");
+fn aggregates_with_no_records_are_zero_except_var_and_stddev() {
+    // probes/getpivotdata-empty-intersection (Excel 0 for these five); Var/StdDev are unprobed
+    // and stay `#REF!` (SPEC-0015 unknown 2).
+    for (function, expected) in [
+        (Aggregate::Average, "0"),
+        (Aggregate::Count, "0"),
+        (Aggregate::Max, "0"),
+        (Aggregate::Min, "0"),
+        (Aggregate::Var, "#REF!"),
+        (Aggregate::StdDev, "#REF!"),
+    ] {
+        let mut model = model();
+        model.workbook.pivot_tables[0].data_fields[0].function = function;
+        model._set(
+            "H1",
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","West","Product","C")"#,
+        );
+        model.evaluate();
+        assert_eq!(model._get_text("H1"), expected, "{function:?}");
+    }
 }
 
 #[test]

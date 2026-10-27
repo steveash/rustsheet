@@ -1,16 +1,18 @@
-//! The pass in Excel's fresh-load order (SPEC-0017), run only when a WEEKNUM read the stale
-//! `return_type` state (docs/excel-semantics/dates.md "WEEKNUM's stale `return_type` state").
+//! The pass in Excel's fresh-load order (SPEC-0017), run only when a call read the state earlier
+//! calls left (`OrderState`): WEEKNUM's stale `return_type` (docs/excel-semantics/dates.md
+//! "WEEKNUM's stale `return_type` state") or AMORDEGRC's left-over value (financial.md
+//! "AMORDEGRC below period 1").
 //!
 //! Excel runs the formula cells of a freshly loaded workbook in the reverse of load order: the
 //! last sheet first, each sheet bottom row first and each row right to left. A cell that reads a
 //! formula cell not yet calculated stops at that read, moves to just after it in the order and
 //! runs again from its start when the order reaches it; the stopped run has no effect
 //! (recalc.md "The order Excel calculates a freshly loaded workbook in"). The order is only
-//! observable through that state, so the default pass keeps its own order and this one runs
+//! observable through those states, so the default pass keeps its own order and this one runs
 //! after it only where a reader ran (`Model::evaluate`).
 
 use crate::{
-    evaluation::{key, CellState, Restart},
+    evaluation::{key, CellState, OrderState, Restart},
     expressions::types::CellReferenceIndex,
     model::Model,
     types::{ArrayKind, Cell},
@@ -128,8 +130,8 @@ impl Model {
         let positions = self.formula_positions();
         let budget = move_budget(positions.len());
         // The chain starts as Excel's recalc does, with an empty state: what the anchors' own
-        // WEEKNUM calls left is not in Excel's order (rule 1; dates.md "Ours").
-        self.evaluation.weeknum_start = None;
+        // calls left is not in Excel's order (rule 1; dates.md "Ours").
+        self.evaluation.order_state = OrderState::default();
         run_chain(self, positions.len(), budget, |model, index, may_block| {
             let cell = positions[index as usize];
             let state = &mut model.evaluation;
@@ -144,11 +146,12 @@ impl Model {
                         ..
                     })
                 ) {
-                    model.evaluation.weeknum_start = None;
+                    // What it does to AMORDEGRC's left-over value is unprobed: left as it is.
+                    model.evaluation.order_state.weeknum_start = None;
                 }
                 return Outcome::Done;
             }
-            let weeknum_start = state.weeknum_start;
+            let order_state = state.order_state;
             state.blocking = may_block;
             state.root = Some(cell);
             model.evaluate_root_cell(cell);
@@ -160,7 +163,7 @@ impl Model {
             let Some(precedent) = state.blocked_on.take() else {
                 return Outcome::Done;
             };
-            state.weeknum_start = weeknum_start;
+            state.order_state = order_state;
             let precedent = (precedent.sheet, precedent.row, precedent.column);
             let precedent = model.chain_key(CellReferenceIndex {
                 sheet: precedent.0,

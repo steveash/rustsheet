@@ -1,9 +1,9 @@
 //! Printing a structured reference (SPEC-0016 "Printing" and "Structural edits").
 
-use super::{stringify, DisplaceData, Rewrite, NO_REWRITE};
+use super::{stringify, DisplaceData, Displacement, Rewrite, NO_REWRITE};
 use crate::expressions::parser::move_formula::ref_is_in_area;
 use crate::expressions::parser::{Node, StructuredReference};
-use crate::expressions::token;
+use crate::expressions::token::{self, TableReference, TableSpecifier};
 use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
@@ -72,7 +72,7 @@ pub(crate) fn to_localized_string_this_row_lowered(
 }
 
 /// The printed `Node::ThisRowKind`, which is printed only as a lowered area (a structural-edit
-/// fallback, the export): first resolved at the printing cell's row, which gives the text its
+/// fallback): first resolved at the printing cell's row, which gives the text its
 /// parse-time lowering had (`$A$3` or `#VALUE!`), then rewritten by `sub`; with no cell, as the
 /// columns on the formula's own row (SPEC-0016 "Structural edits", T-1699).
 pub(super) fn this_row_text(
@@ -93,8 +93,8 @@ pub(super) fn this_row_text(
     area.map_or_else(String::new, |area| sub(&area))
 }
 
-/// The printed `Node::StructuredReferenceKind`: its text as written, or the area it resolves to
-/// in the export and where an edit changes that area.
+/// The printed `Node::StructuredReferenceKind`: its text as written (in its file form in the
+/// export), or the area it resolves to where an edit changes that area.
 pub(super) fn reference_text(
     reference: &StructuredReference,
     lowered: &Node,
@@ -106,12 +106,43 @@ pub(super) fn reference_text(
     let print = |node: &Node, rewrite: &Rewrite| {
         stringify(node, context, rewrite, export_to_excel, locale, language)
     };
-    // The export prints the area until it writes table parts (SPEC-0016 step 3, T-2196).
+    // The export writes every table as a table part, so the file keeps the reference, in the
+    // form Excel stores (SPEC-0016 step 3, T-2196), `#Totals` of a table without a totals row
+    // included (Excel keeps `SUM(Table2[#Totals])`, cached `#REF!`: calc_test_tables/tables.xlsx
+    // Sheet2!F4). Any other reference that lowers to an error comes from table metadata that does
+    // not fit (directive 5), and is written as that error, which it evaluates to.
     if export_to_excel {
-        return print(lowered, rewrite);
+        return match lowered {
+            Node::ErrorKind(_) if reference.specifier != Some(TableSpecifier::Totals) => {
+                print(lowered, rewrite)
+            }
+            _ => reference.file_text(),
+        };
     }
     match rewrite {
-        Rewrite::Displace(DisplaceData::None) => return reference.text(),
+        Rewrite::Displace(Displacement {
+            data: DisplaceData::None,
+            ..
+        }) => return reference.text(),
+        // A `#This Row` area keeps today's rule below: whether Excel then reads the cell's row
+        // of the moved table, or the row it read, is unprobed (T-2845).
+        Rewrite::Displace(Displacement {
+            kept_tables,
+            deleted_columns,
+            ..
+        }) if !matches!(lowered, Node::ThisRowKind { .. })
+            && kept_tables.contains(&reference.table_name.to_lowercase()) =>
+        {
+            // A column delete inside the table turns a reference to a deleted column into
+            // `#REF!` (T-2324 table-delete-column-qty: `=SUM(#REF!)`, -region: `=COUNTA(#REF!)`).
+            // A column range that loses one end is printed as the area it is displaced to below,
+            // as under a fallback: what Excel does to it is unprobed.
+            match deleted_column(reference, deleted_columns) {
+                DeletedColumn::Whole => return token::Error::REF.to_string(),
+                DeletedColumn::None => return reference.text(),
+                DeletedColumn::RangeEnd => {}
+            }
+        }
         Rewrite::Lower(tables, _) => {
             let name = reference.table_name.to_lowercase();
             return if tables.contains(&name) {
@@ -135,11 +166,11 @@ pub(super) fn reference_text(
                 reference.text()
             };
         }
-        Rewrite::Displace(_) | Rewrite::Move(_) => {}
+        Rewrite::Displace(..) | Rewrite::Move(_) => {}
     }
-    // A structural edit or a cut and paste that changes the area prints the changed area, as
-    // before SPEC-0016, since the table itself does not move (the fallback of SPEC-0016
-    // "Structural edits"); otherwise the reference stays as written.
+    // A structural edit the table does not follow, or a cut and paste, that changes the area
+    // prints the changed area, as before SPEC-0016 (the fallback of SPEC-0016 "Structural
+    // edits"); otherwise the reference stays as written.
     // A `#This Row` area is printed resolved at the cell's row, so its text is kept only where
     // the cell keeps its row too; otherwise it prints the area it read, its text before SPEC-0016
     // step 2 (T-1699).
@@ -148,6 +179,39 @@ pub(super) fn reference_text(
         reference.text()
     } else {
         rewritten
+    }
+}
+
+/// How a column delete inside a table touches a structured reference to it.
+enum DeletedColumn {
+    /// It names no deleted column.
+    None,
+    /// It names one deleted column, or a range both of whose ends are deleted.
+    Whole,
+    /// It names a column range one of whose ends is deleted.
+    RangeEnd,
+}
+
+/// How the columns `deleted` (lowercase (table, column) names) touch `reference`.
+fn deleted_column(reference: &StructuredReference, deleted: &[(String, String)]) -> DeletedColumn {
+    if deleted.is_empty() {
+        return DeletedColumn::None;
+    }
+    let table = reference.table_name.to_lowercase();
+    let is_deleted = |column: &str| {
+        let column = column.to_lowercase();
+        deleted.iter().any(|(t, c)| *t == table && *c == column)
+    };
+    match &reference.table_reference {
+        Some(TableReference::ColumnReference(column)) if is_deleted(column) => DeletedColumn::Whole,
+        Some(TableReference::RangeReference((first, last))) => {
+            match (is_deleted(first), is_deleted(last)) {
+                (true, true) => DeletedColumn::Whole,
+                (false, false) => DeletedColumn::None,
+                _ => DeletedColumn::RangeEnd,
+            }
+        }
+        _ => DeletedColumn::None,
     }
 }
 

@@ -368,7 +368,11 @@ impl Lexer {
                         }
                     }
                     _ => {
-                        if char.is_alphabetic() || char == '_' || char == '\\' {
+                        if char.is_alphabetic()
+                            || char == '_'
+                            || char == '\\'
+                            || utils::is_typographic_quote(char)
+                        {
                             // At this point is one of the following:
                             //   1. A range with sheet: Sheet3!A3:D7
                             //   2. A boolean: TRUE or FALSE (dependent on the language)
@@ -406,6 +410,9 @@ impl Lexer {
                                 return TokenType::Boolean(false);
                             }
                             if self.peek_char() == Some('(') {
+                                return TokenType::Ident(name);
+                            }
+                            if utils::is_quoted_name(&name) {
                                 return TokenType::Ident(name);
                             }
                             if self.mode == LexerMode::A1 {
@@ -713,6 +720,7 @@ impl Lexer {
                 || next_char == '_'
                 || next_char == '.'
                 || (next_char == '\\' && self.backslash_in_names())
+                || utils::is_typographic_quote(next_char)
             {
                 position += 1;
             } else {
@@ -918,6 +926,11 @@ impl Lexer {
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
+        // Excel drops whitespace after a sheet prefix's `!` (`=S! B1` reads and prints `=S!B1`;
+        // docs/excel-semantics/syntax.md, probes/t2776-ws-after-bang).
+        if sheet.is_some() {
+            self.consume_whitespace();
+        }
         // Excel keeps the sheet prefix when a referenced range is deleted (`Sheet1!#REF!`); the
         // whole reference is the #REF! error (docs/excel-semantics/references.md,
         // "A sheet-qualified #REF! is #REF!").

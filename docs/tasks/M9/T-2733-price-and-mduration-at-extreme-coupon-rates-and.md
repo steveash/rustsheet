@@ -30,8 +30,28 @@ Not owned here, because the error is in an inner function:
 - gen-m9/30e20ba3302fea8b Calc!A310 `PRICEMAT(..,FINV(1E-100,2,3),..)`: the inner F quantile is T-2511's.
 - gen-m9/b6a02893a8d6b151 Calc!A260 `PRICEMAT(..,YIELD(..))`: the inner YIELD solver is T-1592's.
 Re-check both after their owners land.
-**Needs an oracle sweep (T-2732):** three points cannot fit an operation order. Its high-precision comparison sets
-the stage. If the engine is the one far from the exact value, the stage is accuracy (a more accurate kernel). If
+**T-2732's sweep** (excel-graph, 2026-10-26):
+probes/bond-extreme-coupon-yield: this task owns every failing cell of the case (414 known-failure lines in eval/baseline/probes.txt; 62 of them visibly off).
+By function, the visibly-off cells (Excel vs ours; layout in the case description):
+- PRICE, 43: Calc!A8, A14, A20, A26, A32, A38, A44, A45, A62, A68, A75, A87, A93, A99, A105, A122, A123, A134, A135,
+  A140, A141, A181-A186, A188-A198, and the coupon term alone at redemption 1E-300 Parts!F1, F2, F5, F6, G2. For
+  example Calc!A20 `PRICE(38136,44737,1E+10,7,100,1,0)` 55709579072.88489 vs 55709579072.88501, Calc!A184
+  `PRICE(43830,45293,10,42,100,4,1)` 15.085723843923432 vs 15.085723843923375, Calc!A193
+  `PRICE(39697,44449,1E+4,1E+3,100,2,0)` -52532.50712345407 vs -52532.507123453775.
+- DURATION, 8: Calc!B27, B182, B185, B186, B188, B189, B191, B192. For example Calc!B186
+  `DURATION(43830,45293,10,1E+3,4,1)` 0.006434782608695652 vs 0.006434782608695676.
+- MDURATION, 11: Calc!C102, C183, C186, C189, C192-C198. For example Calc!C193 `MDURATION(39697,44449,1E+4,1E+3,2,0)`
+  2.417387447327567e-05 vs 2.4173874473275588e-05.
+The other 352 failing cells are within 15 digits (319 within 4 ulp), and stay this task's only until it lands: bit-exact
+leftovers then go to the follow-up named in the Outcome.
+**Stage (T-2732's mpmath comparison, financial.md "PRICE and ODDFPRICE discount with Excel's `^`"):** stays `visible`.
+On the short stubs (rows 182-198: DSC/E 2/92 and 4/180) Excel is close to correctly rounded and the engine is not
+(DURATION and MDURATION within 3.1 ulp in Excel, 5 to 30 ulp in the engine), so a more accurate duration kernel fixes
+those. On the main grid (DSC = 26 days) Excel's PRICE is itself up to 32 ulp off and the engine is closer in 13 of 29
+visible cells, so only Excel's operation order gives its digits there. The pieces (COUP*, `(1+yld/f)^t`, the
+redemption term) all pass: the gap is in the coupon sum.
+**Oracle sweep (T-2732, done):** three points could not fit an operation order, so T-2732 swept the region; its high-precision comparison set
+the stage (above). The rule it applied: if the engine is the one far from the exact value, the stage is accuracy (a more accurate kernel). If
 Excel is, the stage stays visible (reproduce Excel's algorithm; time-boxed, decision 0056).
 Semantics: financial.md "PRICE and ODDFPRICE discount with Excel's `^`" (every ordinary PRICE cell passes with `^`).
 probes/bond-huge-yield-overflow (T-2488) shows each argument extreme on its own, and all of it passes.

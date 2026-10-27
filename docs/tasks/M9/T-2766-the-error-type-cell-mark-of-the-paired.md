@@ -16,7 +16,7 @@ mark through LET, IF, CHOOSE, IFERROR, a LAMBDA call and INDEX, and `ERROR.TYPE(
 
 ## Context
 Follow-up of T-2576, which marks the number only when the argument is the ERROR.TYPE or CELL call itself (parentheses
-aside; `is_marked_number` in crates/rustsheet-engine/src/functions/statistical/paired.rs, `TODO(T-2766)`). Rule and
+aside; `is_marked_number`, now in crates/rustsheet-engine/src/functions/util.rs, `TODO(T-2766)`). Rule and
 evidence: statistics.md "ERROR.TYPE and CELL results are #NUM! in the paired functions" (excel-graph, 2026-10-26).
 Known failures left in eval/baseline/probes.txt for probes/t2576-error-type-cell-paired:
 - Calc!D1 `FTEST({1;2;3},LET(x,ERROR.TYPE(#REF!),x))`, D2 `IF(TRUE,..)`, D3 `CHOOSE(1,..)`, D5 `IFERROR(..,0)`,
@@ -35,6 +35,10 @@ Known failures left in eval/baseline/probes.txt for probes/t2576-error-type-cell
   COVARIANCE.S's and COVAR's second argument, which the engine marks by analogy.
 - Also probe the UNVERIFIED positions statistics.md lists (the second argument of COVAR, COVARIANCE.S and the regression
   family; a marked first argument against an error element of the second).
+- IRR's flows carry the same mark as `#VALUE!` (T-2728, financial.md "IRR's error order", `fn_irr` through
+  `is_marked_number`, now in functions/util.rs): probes/t2728-irr-guess-ref-mark A53 `IRR(IF(TRUE,CELL("row",..)))`, A55
+  CHOOSE, A57 INDEX, A59 IFERROR, A61 a LAMBDA call are `#VALUE!` in Excel, ours `#NUM!`; they are in the sidecar but left
+  out of the case's `check` list, so add them back to it when the mark follows the wrappers.
 Carrying the mark through bindings needs a design (a value flag, not syntax); split if bigger than S.
 
 ## Acceptance criteria

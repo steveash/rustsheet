@@ -1,7 +1,7 @@
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::number_or_error;
-use crate::functions::statistical::special::standard_normal_pdf;
+use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::statistical::special::{normal_density_overflows, standard_normal_pdf};
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -18,7 +18,14 @@ impl Model {
                     // A boolean is a number: PHI(TRUE) = 0.24197072451914337
                     // (probes-numeric/t1049-phi A32, A33).
                     .cast_number_ref(x, cell)
-                    .map(|x| flush_subnormal(standard_normal_pdf(x))),
+                    .and_then(|x| {
+                        // A square past the double range is #NUM!, not the limit 0
+                        // (`PHI(1E+200)`; `normal_density_overflows`).
+                        if normal_density_overflows(x) {
+                            return Err(num_error(cell));
+                        }
+                        Ok(flush_subnormal(standard_normal_pdf(x)))
+                    }),
             )
         })
     }

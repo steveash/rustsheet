@@ -6,9 +6,12 @@
 //! LAMBDA (T-2710: blank runs counted, not read).
 //! Then criteria aggregates over shared ranges (T-0449): 2,000 SUMIFS and 2,000 COUNTIFS over
 //! 50,000 rows, with five text criteria and 100 numeric thresholds. Then aggregates over
-//! whole-column expressions (T-0469): 400 `MAX(IF(F:F=A1,G:G,""))` over 2,000 rows.
-//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria` and `-- whole_column` run only
-//! the T-0449 or the T-0469 case)
+//! whole-column expressions (T-0469): 400 `MAX(IF(F:F=A1,G:G,""))` over 2,000 rows. Then criteria
+//! aggregates with a new criterion per call (T-0465): 10,500 ranks, each two COUNTIFS (one over a
+//! growing prefix), and 12,000 per-row SUMIFS over 1,500 rows. Then SUMPRODUCT over whole-column
+//! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows.
+//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank` and
+//! `-- sumproduct` run only the T-0449, T-0469, T-0465 or T-0471 case)
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
 //! and the spread.
@@ -107,7 +110,81 @@ fn whole_column_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// The T-0469 data with `SUMPRODUCT((F:F=A1)*G:G)` beside each key in B instead, as in
+/// corpus-bench 55049.
+fn sumproduct_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(format!("F{r}").as_str(), format!("k{}", r % 50).as_str())?;
+            tx.set(format!("G{r}").as_str(), f64::from((r * 37) % 1000))?;
+        }
+        for r in 1..=WHOLE_COLUMN_CALLS {
+            tx.set(format!("A{r}").as_str(), format!("k{}", r % 50).as_str())?;
+            let formula = format!("=SUMPRODUCT((F:F=A{r})*G:G)");
+            tx.set(format!("B{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
+/// Rows of data in the T-0465 case.
+const RANK_ROWS: u32 = 1_500;
+/// Score columns in the T-0465 case, A to G.
+const RANK_COLUMNS: [&str; 7] = ["A", "B", "C", "D", "E", "F", "G"];
+/// The rank formulas' columns, one per score column.
+const RANK_OUTPUTS: [&str; 7] = ["N", "O", "P", "Q", "R", "S", "T"];
+/// The per-row SUMIFS formulas' columns, one per score column.
+const SUM_OUTPUTS: [&str; 7] = ["V", "W", "X", "Y", "Z", "AA", "AB"];
+
+/// Seven score columns (each a permutation of 0..1,500, so no criterion repeats on its range),
+/// a text key in K (one per row) and an amount in L. Beside each row, as calipers `pv26_002` does:
+/// the rank of each score (`COUNTIFS(all,">"&x)+COUNTIFS(prefix,x)`, the prefix growing to the
+/// row), the SUMIFS of the amounts of rows with that score, and the SUMIFS of the row's key.
+fn rank_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        let n = RANK_ROWS;
+        for r in 1..=n {
+            for (c, column) in (0u32..).zip(RANK_COLUMNS) {
+                let score = f64::from((r * 7919 + c * 13) % n);
+                tx.set(format!("{column}{r}").as_str(), score)?;
+            }
+            tx.set(format!("K{r}").as_str(), format!("key{r}").as_str())?;
+            tx.set(format!("L{r}").as_str(), f64::from((r * 37) % 1000))?;
+        }
+        for r in 1..=n {
+            for ((x, rank), sum) in RANK_COLUMNS.iter().zip(RANK_OUTPUTS).zip(SUM_OUTPUTS) {
+                let rank_formula =
+                    format!("=COUNTIFS({x}$1:{x}${n},\">\"&{x}{r})+COUNTIFS({x}$1:{x}{r},{x}{r})");
+                let sum_formula = format!("=SUMIFS($L$1:$L${n},{x}$1:{x}${n},{x}{r})");
+                tx.set(format!("{rank}{r}").as_str(), Input::Formula(rank_formula))?;
+                tx.set(format!("{sum}{r}").as_str(), Input::Formula(sum_formula))?;
+            }
+            let key_formula = format!("=SUMIFS($L$1:$L${n},$K$1:$K${n},$K{r})");
+            tx.set(format!("AD{r}").as_str(), Input::Formula(key_formula))?;
+        }
+        Ok(())
+    })
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut wb = sumproduct_workbook()?;
+    let t = common::timings(RUNS, || wb.recalculate());
+    writeln!(
+        std::io::stdout(),
+        "SUMPRODUCT((F:F=A1)*G:G): {WHOLE_COLUMN_CALLS} calls over {WHOLE_COLUMN_ROWS} rows, runs={RUNS} {t}"
+    )?;
+    if std::env::args().any(|arg| arg == "sumproduct") {
+        return Ok(());
+    }
+    let mut wb = rank_workbook()?;
+    let t = common::timings(RUNS, || wb.recalculate());
+    writeln!(
+        std::io::stdout(),
+        "rank COUNTIFS + per-row SUMIFS: 21,000 COUNTIFS and 12,000 SUMIFS over {RANK_ROWS} rows, runs={RUNS} {t}"
+    )?;
+    if std::env::args().any(|arg| arg == "rank") {
+        return Ok(());
+    }
     let mut wb = whole_column_workbook()?;
     let t = common::timings(RUNS, || wb.recalculate());
     writeln!(

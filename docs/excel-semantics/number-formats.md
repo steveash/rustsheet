@@ -298,7 +298,9 @@ Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "gro
 part in threes". It is not a literal at that position. `0`/`?` placeholders beyond the number's
 digits pad the grouped result, and the padding is grouped too: with `0` a padded group shows its
 separator, and with `?` the padded separator becomes a space. A trailing `,` still scales by 1000
-and keeps the sign.
+and keeps the sign. A `,` right after a `%` does not scale: it prints as a literal (`0%,` on 0.5 is "50%,", on 1234567
+"123456700%,"; probes/fraction-overflow-scaled A79-A80, excel-graph 2026-10-27, T-2522; see "Scaling commas in fraction
+formats").
 - `0,0000000` on 1234567 → "01,234,567" (A67); `0,00000000` → "001,234,567" (A68);
   `0,000000000` → "0,001,234,567" (A69); `$000,000,000` on 314159 → "$000,314,159" (A335).
 - `?,???????` → " 1,234,567" (A44); `?,????????` → "  1,234,567" (A45); `?,?????????` →
@@ -369,7 +371,7 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
 - **Elements:** at most 32 elements per section. An element is a run of digit placeholders together with their `,` and `.` (`REPT("0.",20)` and `REPT("#,",17)` work), a run of literals (unquoted, escaped and quoted text merge into one run, so `REPT("""a"" ",17)` works), or any other token (`d`, `mm`, `dddd`, `%`, `@`, `_x`, `*x`, `[h]`, `AM/PM`, ...). `REPT("dm",16)` works (32 elements), `REPT("dm",16)&"d"` fails (33). The count restarts at each `;` (two sections of 17 elements work).
 - **Cost:** at most 250 over the whole code (T-1434; the earlier 166 model counted the same boundaries in units of 1.5), counted as follows:
   - 3 once per section holding a digit placeholder, plus 2 per placeholder run, plus 2 per `.` in a run (`"0000000000"` costs 5; `0.0` costs 7; `"0-0"` costs 10: `"0-0"` + 120 quoted works and 121 fails, `"0-0-0"` + 117 works and 118 fails, `"0-0;"` + 120 works and 121 fails; probes/text-format-length-limit-o A1:A4, -p A5:A7, -r, T-1486). A section after the first that holds both a placeholder and quoted text pays 1 more: `"0-0;0-0"` + 114 quoted works and 115 fails, `"0;0"` + 120 fails, `"0-0;0"` and `"0;0-0"` + 117 work and 118 fail (-q A14:A15, -r); A color between two placeholders does not split their run (`"0[Red]0"` + 121 quoted works, -o A8);
-  - 3 per unquoted or escaped literal character; `$` costs 1; a run of colons costs 3 once (see "Colon runs");
+  - 3 per unquoted or escaped literal character; `$` costs 1 (plus a once-per-section 3, see "Unquoted `$`" below); a run of colons costs 3 once (see "Colon runs");
   - 2 per quoted character;
   - 2 per other token (`d`, `mm`, `%`, `@`, `[h]`, ...); `AM/PM` costs 11 to 13 and `A/P` 8 to 10 (the engine uses 11 and 8; see "`A/P` letters and a locale-only `[$-409]`", T-1714);
   - 2 per color (`"[Red]0"` + 120 quoted works, 122 fails; `"[Red]"` + 124 quoted works, 125 fails);
@@ -381,6 +383,8 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
   - **What follows quoted text** (T-1486; probes/text-format-length-limit-n, -o, -p): a token right after it pays 4 (below); a token after unquoted text that follows the quoted text pays 2 (`"a" @` + 120 quoted works and 121 fails, `"a"-@` + 122 works and 123 fails, `"a" d` + 121 works and 122 fails, `"a"--d` + 120 works and 121 fails, a space + 120 quoted + `d` works and 121 fails); a token after a color or condition pays 1 (`"d"` + 121 quoted + `"[Red]d"` works and 122 fails, + 119 quoted + `"[>5]d"` works and 120 fails, -q A16:A19); a placeholder run pays only 1 right after it or after unquoted text (`"a" 0` + 119 quoted works and 120 fails, 121 quoted + `0` works, `"0"` + 121 quoted + `"0"` works) and nothing after a color or condition (`"0"` + 120 quoted + `"[Red]0"` works and 121 fails, 121 quoted + `"[Red]0"` works and 122 fails, `"0"` + 116 quoted + `"[>5]0"` works and 117 fails).
   - **Quoted text followed by more** pays 4 extra when a token follows it directly, or when the literal run that closes the section goes on with unquoted text after it: 122 quoted + `d` works and 123 fails; `"d"` + 121 quoted + `d` works and 122 fails; 124 quoted + `@` (on text) fails; `"d"` + 120 quoted + 2 spaces works and 3 fails, + 122 quoted + 1 space fails, 110 + 8 spaces works and 9 fails, 100 + 15 works and 16 fails, 50 + 48 works and 50 fails; 120 quoted + 2 dashes works and 3 fails. Unquoted text that is followed by more quoted text or by a token does not pay it: `"d"` + 61 quoted + a space + 61 quoted works (247), `"d"` + 120 quoted + `" d"` works (247); nor does unquoted text before quoted text (50 spaces + 50 quoted works, 52 fails).
   - **Date, time and text tokens are free** in a section whose closing literal run holds quoted text: `"d"`, `"dd"`, `"m"`, `"h"`, `"yyyy"` or `"@"` + 125 quoted works like 125 quoted alone, and + 126 fails; `"d "` or `"dd "` + 123 quoted works and 124 fails; `"h:mm"` + 123 quoted works (both `h` and `mm` free); `"0;d"` + 122 quoted works and 123 fails. They keep their 2 before unquoted text (`"d"&REPT(" ",83)` fails) and before quoted text that a token follows (above). Elapsed tokens, `AM/PM`, `%` and placeholders are not free: `"[h]"` + 124 quoted works and 125 fails, `"%"` + 124 works and 125 fails, after `0`, `#`, `?` or `00` quoted text stops at 122, after `0.0` or `0 ` at 121. Seconds, `ddd`, `dddd`, `mmm`, `mmmm` are free too (`"ss"`, `"ddd"`, `"mmm"`, `"dddd"`, `"mmmm"` + 125 quoted works, 126 fails; probes/text-format-length-limit-l A27:A38); `A/P` is not (+ 125 quoted fails, A33; the engine already treats it like `AM/PM`). **`@` is refunded 1 more than the others** (T-1481): `TEXT("x","@ "&<124 quoted>)` works and 125 fails (`"@-"` and `"@\-"` the same), `"@  "` (two spaces) + 122 quoted works and 123 fails, `"@ - "` + 121 works and 122 fails, `" @ "` + 122 works and 123 fails (probes/text-format-length-limit-l A1:A3, A7:A9, A16:A18, -m), while `"d "` + 124 fails; `@` + unquoted text alone (no quoted) is unchanged (`"@"` + 82 spaces works, 83 fails). On a number the section prints General and the same limit applies (`TEXT(5,"@ "&<124 quoted>)` is "5", 125 is #VALUE!).
+- **Currency tags** (`[$€]`, `[$€-40C]`, `[$USD]`) cost like quoted text of their symbol plus 13, and the locale part of a currency tag costs nothing (a bare `[$-409]` costs 14): `[$€]` and `[$€-40C]` + 117 quoted work and 118 fail (15 + 2 per character), `[$USD]` and `[$USD-40C]` + 115 work and 116 fail (19). Followed by unquoted text the tag pays 2 (not quoted text's 4) for the literal run going on unquoted: `[$€-40C]` and `[$€]` + 77 spaces work and 78 fail, `[$USD]` + 76 spaces works and 77 fails (probes/t2836-dollar-run-cost A63:A73; 4 would reject 76). A system-locale tag's locale costs nothing too: `[$€-F800]` + 117 quoted works and 118 fails (A74:A81). Evidence: probes/t1883-currency-locale-edges A9:A63, probes/t2812-currency-tag-cost (excel-graph, T-2812), probes/t2836-dollar-run-cost (T-2836).
+- **Unquoted `$`** costs 1 per character, and a section holding one but no digit placeholder pays 3 once, like the 3 a placeholder section pays (2 when the section also holds a date token): `REPT("$",247)` (250) works and 248 fails; `"d"&REPT("$",246)` and `REPT("$",246)&"d"` (250) work and 247 fail; `"0"&REPT("$",245)` (250) works and 246 fails, so `$` adds nothing to a placeholder section's 3. Quoted text whose closing literal run goes on with only `$` pays 2 for it, not 4 (quoted `"a"` + 243 `$` works and 244 fails, `[$€]` + 230 `$` works and 231 fails, `[$USD]` + 226 works and 227 fails), while quoted text followed by spaces pays 4 (`"d"` + 122 quoted + 1 space fails). Unquoted text directly after a locale tag pays 1 (`[$-409]` + 232 `$` works and 233 fails; `[$-409]` + 78 spaces works and 79 fails). These are fitted per context: no single additive `$` cost fits every ladder. Inferred, not probed: other date or time tokens than `d` (the engine gives them `d`'s 2), an escaped `\$` (priced like `$`), a `$` in a section holding `@`, and unquoted text after a locale tag other than `$` and spaces (T-2842). Evidence: probes/t2836-dollar-run-cost (excel-graph, 2026-10-26, T-2836).
 - **Two conditions in one section** are `#VALUE!` whatever the value and length: `TEXT(7,"[>5][<9]0")`, `TEXT(1,..)`, `TEXT(10,..)`, `"[>5]0[<9]"` (probes/text-format-length-limit-j A31:A34; also g A37:A41; only the first section is probed, the engine applies the rule to every section, inferred). A color with a condition works in either order (`"[Red][>5]0"` and `"[>5][Red]0"` on 7 give "7"). Next to spaces a condition costs 6 to 8 whatever its threshold (`"[>55555]0"` plus 79 spaces works and 80 fails, like `"[>5]0"`).
 - **An unterminated code is `#VALUE!`**, whatever the value and whichever section it would use: `TEXT("x","0""")`, `TEXT("x","""")`, `TEXT("x","0;0;0;""")`, `TEXT("x","@;""")`, `TEXT(5,"0;""")`, `TEXT(-5,"0;""")`, `TEXT("x","0;[Red")` are `#VALUE!` (an unclosed quote or bracket; probes/text-format-length-limit-q A4:A13; T-1486). So are codes left with an unclosed quote after `_` or `*`, which take the next `"` as their character (`@_"a"`, `@_""`, `@*""`, `@"`, and `@_"` + 123 to 125 quoted characters; -n A3, A5, -o A36, A41, -l A13:A15). A valid code without a text section still leaves text unchanged: `TEXT("x","0:a:")`, `"0\x"` and `"0 a"` are "x" (-q A1:A3). A code ending in `\`, `_` or `*` is `#VALUE!` the same way: `TEXT("x","0\")`, `"0_"`, `"0*"`, `"@\"`, `TEXT(7,"0_")`, `TEXT(5,"0;0\")`, `TEXT(5,"0;0_")`, `TEXT(-5,"0;0\")` (-s). Only unterminated codes (a quote or bracket left open, a `\`, `_` or `*` at the end) are probed; the engine rejects exactly those (`is_unterminated` in formatter/complexity.rs), not every code our parser fails on. Other parse failures in a section the value does not use (e.g. `TEXT(5,"0;0 n")`: our lexer rejects `n`, as Excel does in a section it uses, probes/text-format-unquoted-letters A14, A40) are unprobed.
 - **Text section with a number:** a single section holding `@` does not apply to a number, which prints in General: `TEXT(1,"@"&""""&REPT("a",118)&"""")` is "1" (probes/text-format-length-limit-i A19:A26).
@@ -397,7 +401,7 @@ Not explained or not implemented (known failures):
 Cell display with a long format could not be probed: excel-graph rejects such workbooks (createSession 501 unsupportedWorkbook). The colon-run and text-section rules live in the shared formatter, so they apply to cell display too; they are probed through TEXT only.
 Ours: `formatter/complexity.rs` (`rejects_format_code`: `exceeds_complexity_limit` plus `is_unterminated`), applied by TEXT only; colon runs in `formatter/parser.rs`; the text section with a number in `format_number` (formatter/format.rs).
 Status: VERIFIED (excel-graph, fitted model)
-Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455, T-1481, T-1486, T-1735, T-1880
+Tasks: T-1388, T-1393, T-1434, T-1449, T-1450, T-1451, T-1455, T-1481, T-1486, T-1735, T-1880, T-2812, T-2836
 
 TEXT over an array of format codes (T-1451): one result per format, value and formats broadcast together (see text.md). `TEXT(1,{"0",#N/A})` is "1", `#N/A` (-f A54:B54). The error-precedence and lifting rules are verified by probes/text-format-array (T-1458) for error and too-complex format elements; a syntactically invalid format element next to an error value is not probed.
 
@@ -491,7 +495,7 @@ Rule: a `[$-tag]` with no currency symbol prints nothing, but in its own section
 - **One tag per section.** A second tag in a section is `#VALUE!`, even the same one or a system tag (`[$-40C]mmmm [$-40C]mmmm`, `[$-40C]mmmm [$€-407]mmmm`, `[$-F800][$-F400]`); tags in different sections are fine.
 - **Regional variants and more languages** (probes/text-locale-regional-lcids, 252 cells, T-1858). The language fallback does not hold across regions: `[$-C07]` de-AT has "Jän"/"Jänner" for January, "Mär" for March, and `ddd` "Mi."/"Do." (de-DE differs in all three); `[$-1004]` zh-SG mixes the two: short months as zh-TW ("一月"), days as zh-CN ("周三"); `[$-C04]` zh-HK equals zh-TW ("週三"); `[$-80A]` es-MX and `[$-2C0A]` es-AR differ from es-ES in `ddd` and the day halves ("a. m."/"p. m."), and es-AR's halves use a non-breaking space where es-MX's use a plain one. Languages that now resolve: `[$-408]` Greek ("Ιαν", "πμ"/"μμ"), `[$-41E]` Thai (Thai names, AM/PM stay Latin), `[$-41B]` Slovak (short months are the numerals "1"…"12", like Japanese), `[$-422]` Ukrainian (AM/PM stay Latin), `[$-401]` Arabic ("ص"/"م"), `[$-40D]` Hebrew (AM/PM stay Latin), `[$-439]` Hindi ("पूर्वाह्न"/"अपराह्न"). Calendar and digit switches of Thai, Arabic and Hebrew are T-1859's.
 - **Not yet modelled:** locales not in the table list print English and keep `A/P` letters, though Excel very likely localizes them. Eras and calendar digits are in "Calendars of a locale tag" below.
-- **A currency tag with a locale** (`[$€-40C]`, `[$€-fr-FR]`) is a symbol plus a locale tag in one: the symbol prints where it is written in a date section (`[$€-40C]d mmmm` "€15 mars", `d [$€-40C]mmmm` "15 €mars", `mmmm[$€-40C]` "mars€", `dddd [$€-40C]` "mercredi €", `[$€-40C]yyyy` "€2023", `[$€-40C]h:mm AM/PM` "€6:00 PM", `[$€]mmmm` "€March") and the locale localizes the section like `[$-40C]`. It counts as the section's one tag (`[$€-40C]mmmm [$-40C]mmmm` is `#VALUE!`; tags in different sections are fine). A system locale drops the symbol (`[$€-F800]` is the system long date). A multi-character symbol with a locale (`[$USD-40C]mmmm` is "USDmars") prints as text, the locale applying as above (implemented in T-2157; T-1883 keeps its unprobed edges). Evidence: probes/text-currency-locale-date (excel-graph, 2026-10-18, T-1865).
+- **A currency tag with a locale** (`[$€-40C]`, `[$€-fr-FR]`) is a symbol plus a locale tag in one: the symbol prints where it is written in a date section (`[$€-40C]d mmmm` "€15 mars", `d [$€-40C]mmmm` "15 €mars", `mmmm[$€-40C]` "mars€", `dddd [$€-40C]` "mercredi €", `[$€-40C]yyyy` "€2023", `[$€-40C]h:mm AM/PM` "€6:00 PM", `[$€]mmmm` "€March") and the locale localizes the section like `[$-40C]`. It counts as the section's one tag (`[$€-40C]mmmm [$-40C]mmmm` is `#VALUE!`; tags in different sections are fine). A system locale drops the symbol (`[$€-F800]` is the system long date). A multi-character symbol with a locale (`[$USD-40C]mmmm` is "USDmars") prints as text, the locale applying as above (implemented in T-2157). An empty or unresolvable locale on a currency tag still counts as the section's one tag: `[$€-]mmmm [$-40C]mmmm` and `[$€-zzz]mmmm [$-40C]mmmm` are `#VALUE!`, as is `[$€-40C]mmmm [$€-40C]mmmm`, while `[$€-]mmmm` and `[$€-zzz]mmmm` alone print "€March" in the default locale (and `[$€-]mmmm;[$-40C]mmmm` is fine: different sections). Format-code length limit (probes/t1883-currency-locale-edges, excel-graph, 2026-10-26): `[$€-40C]` + a quoted run works to 117 characters and fails at 118, + spaces works to 77 and fails at 78; `[$€]` + a quoted run works to 117 and fails at 118 (plain `[$-409]` allows 118 quoted and 78 spaces). The locale part of a currency tag therefore adds nothing: `[$€-40C]` and `[$€]` hit the same limits, on quoted text and on spaces (probes/t2812-currency-tag-cost A23:A28). T-2812 fits the cost (see "TEXT format code complexity limit"). Evidence: probes/text-currency-locale-date (excel-graph, 2026-10-18, T-1865), probes/t1883-currency-locale-edges (T-1883).
 - The cell display path shows the same text (probes/displayed-text-locale-names).
 Evidence: probes/text-locale-date-names (124 cells), probes/text-locale-name-tables (601), probes/text-locale-am-neutral (47), probes/displayed-text-locale-names (5), probes/text-locale-regional-lcids (252) (excel-graph, 2026-10-18). Morning strings of locales whose afternoon is "PM" are inferred as "AM" beyond fr, de, de-AT, th, sk, uk and he (probed).
 Implemented in: locale/excel_date_names.rs (tables), formatter/locale_tag.rs (resolution), `Token::Locale` (lexer.rs), `DatePart::names` and `Parser::system_part` (parser.rs), format.rs.
@@ -706,6 +710,10 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   P1) and printed under `0` (`0 ?/?` on 1/3 "0 1/3", 0e3d8eba W4). The minus leads, also on a value that
   rounds to zero: `# ?/4` on -0.5 "- 2/4" (9a8b7d68 A1), `# ?/2` on -1/7 "-0    " (bfb1a4b0 S4), `0 ?/?`
   on -1/7 "-0 1/7" (71ad5f93 G7).
+  With no integer part a numerator that rounds to zero takes no minus: `?/100` on -0.001 "0/100" and `?/00`
+  "0/01" (probes/fraction-format-features F9, F13, excel-graph, T-2074).
+- **Grouping:** a comma between integer placeholders groups the integer digits: `#,##0 ?/4` on 1234.5
+  "1,234 2/4" (probes/fraction-format-features I10, T-2074).
 - **Padding:** `?` pads the numerator on the left and the denominator on the right (`# ???/???` on 1.5
   "1   1/2  ", 05c1c646 C3; `??/??` on 0.5 " 1/2 "); `#` does not (`# #/#` on 0.5 "1/2", on 1234567890
   "1234567890", 039accab K8, K2). Under a `#` numerator the literal between the integer and the
@@ -723,8 +731,41 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   -2147483647 and 2147483648 255 `#`; -2147483646 is "-2147483646/1" (overflow A43-A64, overflow2 A58-A64).
   A whole part takes the rest: `# ?/100` on 1E15 is "1000000000000000      ", `# ?/?` on 2147483648.5
   "2147483648 1/2" and `0 ?/10` on 1E14+0.5 "100000000000000 5/10" (overflow A37-A42, A74-A76).
-  Implemented in `format_fraction` (formatter/fraction.rs). UNVERIFIED: the engine applies both bounds to the
-  value after `%` and `,` scaling, and the fixed bound to denominators past 32767; neither is probed (T-2233).
+  Implemented in `format_fraction` (formatter/fraction.rs). Both bounds apply to the value after `%` scaling
+  (VERIFIED, probes/fraction-overflow-scaled A1-A27, excel-graph 2026-10-27, T-2522): `?/?%` on 21474836.469 is
+  "2147483647/1%" and on 21474836.47, 21474836.48 and -21474836.48 255 `#`; `??/??%` on 21474836.46 "2147483646/1 %";
+  `# ?/?%` on 21474836.48 "2147483648    %"; `?/100%` on 3.27674 "32767/100%" and on 3.27675 255 `#`; the 2^30 stop
+  rule below too (`?/?%` on 10737418.245 "1073741825/1%", 10737418.235 "2147483647/2%"). For `,` scaling see
+  "Scaling commas in fraction formats"; for denominators past 32767 "Fixed denominators past 32768".
+- **Scaling commas in fraction formats** (VERIFIED, probes/fraction-overflow-scaled, excel-graph 2026-10-27, T-2522).
+  A `,` right after the denominator (`?/?,`, `# ?/4,`, `?/4,%`) multiplies the value by 10^((-3n) mod 256) for n such
+  commas, as if Excel kept the exponent -3n in an unsigned byte: 10^253 for one, 10^250 for two, 10^247 for three. So
+  `?/?,` on 1E-250 is "1000/1", on 1E-290 and 1E-300 "0/1", and on 0.5, 1, 1500 or 1E-200 255 `#` (TEXT `#VALUE!`)
+  under the 2^31 - 1 bound; `?/4,` on 1E-250 "4000/4"; `?/?,,` on 1E-250 "1/1", 1E-247 "1000/1"; `?/?,,,` on 1E-238
+  "1000000000/1". With an integer part the integer prints in full: `# ?/4,` on 1E-12 is "1" + 241 zeros + 4 spaces,
+  and on 2 the text would pass 255 characters, so 255 `#` and `#VALUE!`. Zero is unscaled (`?/?,` on 0 "0/1", `# ?/4,`
+  "0    "). The scaled value is cut to 15 significant digits: `?/?,,` on 1E-251 is "0/1" (0.1, whose double product
+  0.10000000000000002 would pick 1/9; A65, the only cell that tells). A `,` anywhere else prints or vanishes: after a
+  `%` or a literal it is a literal (`?/?%,` on 1E-252 "0/1%,", `?/?% ,` "0/1% ,", `?/? ,` "0/1 ,"), and a `,` after the
+  integer neither scales nor groups (`0, ?/4` on 2 is "2    ", on 1234567.5 "1234567 2/4"; `#, ?/4` alike). Outside a
+  fraction a `,` after `%` is a literal too: `0%,` on 0.5 is "50%," and on 1234567 "123456700%,". Implemented in the
+  parser (`Token::Comma`) and `fraction_scale` (formatter/fraction.rs). Unprobed: 86 or more commas (the exponent wraps
+  past 0), a `,` between the numerator and the `/`.
+- **Fixed denominators past 32768** (VERIFIED, probes/fraction-large-fixed-denominator and -six-digit-denominator,
+  excel-graph 2026-10-27, T-2522). Up to 32768 a fixed denominator is used as written (`?/32768` on 0.5 is
+  "16384/32768", on 1 255 `#`, the numerator bound 32767). From 32769 to 99999 Excel ignores it and picks the
+  denominator as for placeholders, the last convergent with a denominator up to 9999999 whatever the code's digit
+  count, under the placeholder value bound and 2^31 stop rule (`?/40000` on 0.5 "1/4    ", 0.8192 "512/400  ",
+  0.8191874 "4095937/40000", 1/9999999 "1/40000", 1E-7 "0/4    ", 2147483646.9 "2147483647/4    ", 2147483647 255 `#`;
+  `?/32769` on 1/9999999 "1/32769"). The code's digits print in place of the denominator's, cut to its digit count
+  (625 shows "400", 5000000 "40000"), and pad with spaces to the code's width under a `?` numerator and not under a `#`
+  or `0` one (`??/40000` on 0.5 " 1/4    ", `0/40000` and `#/40000` "1/4", `# #/40000` on 1.5 "1 1/4", `# ?/40000`
+  "1 1/4    "). Six or more digits (`?/100000`, `?/123456`) are #VALUE! from TEXT for every value, and Excel for the
+  web refuses a workbook that applies one as a cell format (FileCorruptTryRepair), so its displayed text is unknown.
+  Implemented in `format_fraction` (`MAX_FIXED_DENOMINATOR`, `LARGE_FIXED_MAX_DENOMINATOR`) and the parser. Unprobed: a
+  numerator mixing `?` with `#` or `0`, a blank fraction (`# ?/40000` on a whole number), and
+  whether the #VALUE! rule is about the digit count or the value (only 6-digit codes of 100000 or more were probed;
+  7+ digits and leading zeros are extrapolated).
 - **Placeholder fractions past 2^30** are not the last convergent (VERIFIED, excel-graph 2026-10-21, T-1740,
   probe cells kept out of the suites until the follow-up implements them; T-2233): `?/?` on 1073741824.5 is
   "1073741825/1" (not 2147483649/2), -1073741824.5 "-1073741825/1", 1431655765.5 "1431655766/1",
@@ -741,7 +782,7 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   integer over 1: 1073741824.5 "1073741825/1", 1073741824.25 "1073741824/1". At the bound: 1073741823.5 "2147483647/2"
   (2 x 1073741823 = 2^31 - 2 is taken). The sum alone passing 2^31 is taken: 1500000000.6 "3000000001/2", and
   715827883+1/3 (the double 715827883.3333334, partial quotients 2 then 1) "2147483650/3", where 1 x 1431655767 is under
-  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". UNVERIFIED: the bound under `%` and `,` scaling.
+  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". Under `%` scaling the rule applies to the scaled value (T-2522, above).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
@@ -756,9 +797,8 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
 - **A trailing `,` after the denominator scales the value up, not down by 1000**: `# ?/4,` is #VALUE! for every value but 0, which prints
   "0    " (B5:I5); `# ?/4,,` multiplies the value by 1E250 and prints the integer in full with the fraction blanked ("15" + 249
   zeros + 4 spaces on 1.5, B6; -0.001 "-1" + 247 zeros, F6; 253 to 255 characters), and is #VALUE! on 1234.5 (I6),
-  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! on the same pattern (a larger
-  factor, or the limit); the per-comma factor and the limit's role are hypotheses to probe (T-2072). Not
-  implemented: we print "0    ".
+  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! because one comma multiplies
+  by 10^253 (settled by T-2522, "Scaling commas in fraction formats" above; implemented, rows 5-6 pass).
 - **`0` numerator placeholders print**: a zero numerator is not blanked, it pads with zeros: `# 00/16` on 0 "00/16",
   on 1.99 "2 00/16" (D8, E8), and `# 0/4` on 0 "0/4", 1 "1 0/4" (D15, G15); the integer part is dropped under `#` when
   zero and the separator goes with it (`# 00/16` on 0.5 "08/16", H8; `# 0/4` on 0.5 "2/4", H15; -0.5 "-08/16", "-2/4",
@@ -809,3 +849,8 @@ A `*x` fill (repeat) character contributes nothing to the displayed text or to T
 and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
 2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in both the number and the date
 branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel-graph) for number sections; a fill in a date or clock code (`TEXT(1,"d*x")`) and in a fraction code (fraction.rs still prints a space) is UNVERIFIED (T-2480).
+
+- Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 4c6a49fe4a6fa404 F!R4, 5eb95c63c7d6180c F!G13, bfbcd16cee266336 F!W12, excel-graph): a scientific
+  code on zero prints every integer placeholder of the mantissa as `0`, `#` included (`##0.0E+0` → "000.0E+0",
+  `##0.00E+00` → "000.00E+00", `#E+0` → "0E+0"). A carry out of the mantissa renormalises (`0.0E+00` on 99.5 is
+  "1.0E+02"; already correct, pinned by test). Still open (T-2850): the 1E+15 / 1.23457E+14 cells that show nothing, "-x1E+15" vs "x-1E+15", `#E+0` ties. UNVERIFIED: grouped (`#,##0.0E+0`) and `?` (`??0.0E+0`) codes on zero.

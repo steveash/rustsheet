@@ -1,0 +1,71 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2782: how Excel normalises a long typed whitespace run in formula text: =1+<run>2 with 255, 256 and 257 spaces (rows 1-3), 255, 256, 257 and 300 line feeds (rows 4-7), 256 line feeds then 3 spaces (8) and 3 spaces then 256 line feeds (9). A is the formula, C the FORMULATEXT length, D its line-feed count, E its space count.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "entered": "=1+                                                                                                                                                                                                                                                               2"
+    },
+    "C1": "=LEN(FORMULATEXT(A1))",
+    "D1": "=LEN(FORMULATEXT(A1))-LEN(SUBSTITUTE(FORMULATEXT(A1),CHAR(10),\"\"))",
+    "E1": "=LEN(FORMULATEXT(A1))-LEN(SUBSTITUTE(FORMULATEXT(A1),\" \",\"\"))",
+    "A2": {
+     "entered": "=1+                                                                                                                                                                                                                                                                2"
+    },
+    "C2": "=LEN(FORMULATEXT(A2))",
+    "D2": "=LEN(FORMULATEXT(A2))-LEN(SUBSTITUTE(FORMULATEXT(A2),CHAR(10),\"\"))",
+    "E2": "=LEN(FORMULATEXT(A2))-LEN(SUBSTITUTE(FORMULATEXT(A2),\" \",\"\"))",
+    "A3": {
+     "entered": "=1+                                                                                                                                                                                                                                                                 2"
+    },
+    "C3": "=LEN(FORMULATEXT(A3))",
+    "D3": "=LEN(FORMULATEXT(A3))-LEN(SUBSTITUTE(FORMULATEXT(A3),CHAR(10),\"\"))",
+    "E3": "=LEN(FORMULATEXT(A3))-LEN(SUBSTITUTE(FORMULATEXT(A3),\" \",\"\"))",
+    "A4": {
+     "entered": "=1+\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n2"
+    },
+    "C4": "=LEN(FORMULATEXT(A4))",
+    "D4": "=LEN(FORMULATEXT(A4))-LEN(SUBSTITUTE(FORMULATEXT(A4),CHAR(10),\"\"))",
+    "E4": "=LEN(FORMULATEXT(A4))-LEN(SUBSTITUTE(FORMULATEXT(A4),\" \",\"\"))",
+    "A5": {
+     "entered": "=1+\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n2"
+    },
+    "C5": "=LEN(FORMULATEXT(A5))",
+    "D5": "=LEN(FORMULATEXT(A5))-LEN(SUBSTITUTE(FORMULATEXT(A5),CHAR(10),\"\"))",
+    "E5": "=LEN(FORMULATEXT(A5))-LEN(SUBSTITUTE(FORMULATEXT(A5),\" \",\"\"))",
+    "A6": {
+     "entered": "=1+\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n2"
+    },
+    "C6": "=LEN(FORMULATEXT(A6))",
+    "D6": "=LEN(FORMULATEXT(A6))-LEN(SUBSTITUTE(FORMULATEXT(A6),CHAR(10),\"\"))",
+    "E6": "=LEN(FORMULATEXT(A6))-LEN(SUBSTITUTE(FORMULATEXT(A6),\" \",\"\"))",
+    "A7": {
+     "entered": "=1+\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n2"
+    },
+    "C7": "=LEN(FORMULATEXT(A7))",
+    "D7": "=LEN(FORMULATEXT(A7))-LEN(SUBSTITUTE(FORMULATEXT(A7),CHAR(10),\"\"))",
+    "E7": "=LEN(FORMULATEXT(A7))-LEN(SUBSTITUTE(FORMULATEXT(A7),\" \",\"\"))",
+    "A8": {
+     "entered": "=1+\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n   2"
+    },
+    "C8": "=LEN(FORMULATEXT(A8))",
+    "D8": "=LEN(FORMULATEXT(A8))-LEN(SUBSTITUTE(FORMULATEXT(A8),CHAR(10),\"\"))",
+    "E8": "=LEN(FORMULATEXT(A8))-LEN(SUBSTITUTE(FORMULATEXT(A8),\" \",\"\"))",
+    "A9": {
+     "entered": "=1+   \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n2"
+    },
+    "C9": "=LEN(FORMULATEXT(A9))",
+    "D9": "=LEN(FORMULATEXT(A9))-LEN(SUBSTITUTE(FORMULATEXT(A9),CHAR(10),\"\"))",
+    "E9": "=LEN(FORMULATEXT(A9))-LEN(SUBSTITUTE(FORMULATEXT(A9),\" \",\"\"))"
+   }
+  }
+ ],
+ "expected": {}
+}

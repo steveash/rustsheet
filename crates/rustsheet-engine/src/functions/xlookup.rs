@@ -204,18 +204,6 @@ fn xlookup_pick_array(
     node.map_or_else(out_of_range, |node| array_element_value(node, cell))
 }
 
-/// Rows and columns of a range or array result (1x1 for anything else).
-fn shape(result: &CalcResult) -> (usize, usize) {
-    match result {
-        CalcResult::Range { left, right } => (
-            usize::try_from(right.row - left.row + 1).unwrap_or(0),
-            usize::try_from(right.column - left.column + 1).unwrap_or(0),
-        ),
-        CalcResult::Array(array) => (array.len(), array.first().map_or(0, Vec::len)),
-        _ => (1, 1),
-    }
-}
-
 /// Whether an XLOOKUP lookup vector of `rows` x `columns` runs down a column, given the return
 /// array's row count: a column is vertical and a row is not; a single cell is vertical when the
 /// return has one row (`XLOOKUP(1,A1:A1,B1:C1)` is the row) and a row otherwise
@@ -315,13 +303,13 @@ impl Model {
                 ))
             }
         };
-        let (rows, columns) = shape(&lookup);
+        let (rows, columns) = lookup.shape();
         if xlookup_orientation(rows, columns, 1).is_none() {
             return Err(value_error("Second argument must be a vector"));
         }
         let returned = self.evaluate_node_with_reference(return_node, cell);
         let returned = self.uncached_cell_vector(return_node, returned, cell);
-        let (return_rows, return_columns) = shape(&returned);
+        let (return_rows, return_columns) = returned.shape();
         let returns = match returned {
             CalcResult::Range { left, right } => XlookupReturns::Range(left, right),
             CalcResult::Array(returns) => XlookupReturns::Array(returns),

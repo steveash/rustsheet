@@ -10,39 +10,60 @@
 use super::super::token::TokenType;
 use super::{Node, Parser};
 
-/// One whitespace run between two tokens, in Excel's stored shape: a count of spaces (SPEC-0023).
-/// The line-feed count is T-2782's.
+/// One whitespace run between two tokens, in Excel's stored shape: a count of line feeds, then a
+/// count of the spaces after the last of them (SPEC-0023).
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub(crate) struct Run {
+    line_feeds: u8,
     spaces: u8,
 }
 
+/// `count` as Excel's one-byte run count: it wraps at 256, so 256 prints as none
+/// (probes/t2782-whitespace-run-wrap).
+fn byte_count(count: usize) -> u8 {
+    u8::try_from(count % 256).unwrap_or_default()
+}
+
 impl Run {
-    /// The run Excel keeps for the whitespace `text`: its spaces, the count wrapping at 256 as
-    /// Excel's one-byte count does (`=1+` + 300 spaces + `2` prints 44 spaces,
-    /// probes/t2776-formula-text-whitespace-shapes). Whitespace holding anything but spaces is not
-    /// kept: line feeds are T-2782's, and the other whitespace characters print nothing today.
-    fn of(text: &[char]) -> Run {
-        if !text.iter().all(|c| *c == ' ') {
+    /// The run Excel keeps for the whitespace `text`: its line feeds, then only the spaces after
+    /// the last line feed, each count wrapping at 256 on its own (`=1+ ` LF ` 2` prints `=1+` LF
+    /// ` 2`; 300 spaces print 44, 300 line feeds print 44, and 3 spaces before 256 line feeds
+    /// print nothing; docs/excel-semantics/syntax.md, probes/t2776-formula-text-whitespace-shapes
+    /// and probes/t2782-whitespace-run-wrap). Whitespace holding anything but spaces and line
+    /// feeds is not kept: the other whitespace characters print nothing today.
+    pub(super) fn of(text: &[char]) -> Run {
+        if !text.iter().all(|c| matches!(c, ' ' | '\n')) {
             return Run::default();
         }
+        let line_feeds = text.iter().filter(|c| **c == '\n').count();
+        let spaces = text.iter().rev().take_while(|c| **c == ' ').count();
         Run {
-            spaces: u8::try_from(text.len() % 256).unwrap_or_default(),
+            line_feeds: byte_count(line_feeds),
+            spaces: byte_count(spaces),
         }
     }
 
     fn is_empty(self) -> bool {
-        self.spaces == 0
+        self.line_feeds == 0 && self.spaces == 0
     }
 
-    /// The two runs typed one after the other, as one run.
+    /// The two runs typed one after the other, as one run: the line feeds add up, and the spaces
+    /// of `self` survive only when `next` has no line feed to end them. A `next` of exactly 256 line
+    /// feeds has wrapped to none and keeps them; Excel's join of two such runs is unprobed.
     fn then(self, next: Run) -> Run {
+        let spaces = if next.line_feeds == 0 {
+            self.spaces.wrapping_add(next.spaces)
+        } else {
+            next.spaces
+        };
         Run {
-            spaces: self.spaces.wrapping_add(next.spaces),
+            line_feeds: self.line_feeds.wrapping_add(next.line_feeds),
+            spaces,
         }
     }
 
     fn push_to(self, text: &mut String) {
+        text.extend(std::iter::repeat_n('\n', usize::from(self.line_feeds)));
         text.extend(std::iter::repeat_n(' ', usize::from(self.spaces)));
     }
 }
@@ -102,6 +123,15 @@ impl Node {
             Node::Spaced { space, child } => (space, *child),
             node => (Spacing::default(), node),
         }
+    }
+
+    /// The node under any [`Node::Spaced`] wrapper, for the printers that decide on its shape.
+    pub(crate) fn unwrap_spaced(&self) -> &Node {
+        let mut node = self;
+        while let Node::Spaced { child, .. } = node {
+            node = child;
+        }
+        node
     }
 
     /// [`Node::spaced`] with the runs of `space`.

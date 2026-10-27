@@ -99,10 +99,9 @@ Rule: Excel for the web refuses a whole workbook holding `GETPIVOTDATA(data_fiel
 field2)` (5 arguments) or `(..., field1, item1, field2, item2, field3)` (7), with or without a pivot table at the
 reference and inside `IFERROR` too. Three arguments (`data_field, pivot_table, field1`, the item missing) load and
 are `#REF!` (web.md "GETPIVOTDATA against a pivot table"), and even counts load. So the field/item pairs are checked
-when the formula is read, but only past the first pair. RustSheet loads such a formula and gives `#REF!`
-(`fn_getpivotdata` takes `chunks_exact(2)` and refuses a leftover field); with no Excel value to match, a known gap,
-not a deviation (T-2403 aligns it with the other refused argument counts, which give `#ERROR!`). The generator draws
-only the three-argument odd call (tools/src/rustsheet_tools/gen/pivots.py).
+when the formula is read, but only past the first pair. RustSheet loads such a formula and gives `#ERROR!` like the
+other refused argument counts (T-2403; `fn_getpivotdata` checks the count first); with no Excel value to match, a known
+gap, not a deviation. The generator draws only the three-argument odd call (tools/src/rustsheet_tools/gen/pivots.py).
 Evidence: single-formula workbooks over a generated pivot (`Pivot!H3`, a Count of Units pivot, rows Product,
 columns Rep) sent with `rustsheet-oracle fill -b excel-graph` on 2026-10-22 (T-2396): `=GETPIVOTDATA("Units",Pivot!$H$3,"Product","C","Rep")`,
 the same against `Pivot!$Z$40` (outside the pivot), wrapped in `IFERROR(...,-1)`, and
@@ -305,9 +304,21 @@ forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stor
 Ours: matches since T-2723. A kept plus is a `Node::UnaryPlus`, the identity, which every analysis sees through as it
 sees through a written group. The fold is decided in `parse_power`. Two cells still fail: the tree keeps no whitespace, so
 `=+ 5` and `=+ "a"` print `=+5` and `=+"a"` (C24, C25; "Formula text keeps typed whitespace" below, T-2776).
-Unprobed (T-2772): a stored `+5` loaded from a file (we fold it on load, as typing does), and the static readings
-where an analysis matches a literal under a plus (`N(IF(+TRUE,B1:B3))`, `INDIRECT(+"K1")`, legacy `ABS(+{5})`,
-`LET(+x,1,x)`).
+Stored, a plus on a number literal folds on load as it does typed: a plain `<f>+5</f>` prints `=5`, a dynamic one too,
+`<f>SUM(+5,1)</f>` prints `=SUM(5,1)` and `<f>+5+1</f>` prints `=5+1`, while a stored plus on anything else is kept
+(`ABS(+{5})`, `INDIRECT(+"K1")`, `+B1:B3` below) (probes/t2772-unary-plus-static-readings D19:E20,
+D27:E28; T-2772). Typed, Excel refuses a plus before a LET name or a LAMBDA parameter: `=LET(+x,1,x)` and
+`=LAMBDA(+x,x)(1)` both get Graph PATCH 400 `InvalidArgument` (docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md; refused inputs cannot be committed
+as cases). We refuse the LAMBDA form (`#ERROR!`, test_fn_let.rs) but evaluate the LET form to `#VALUE!` (T-2887). Where an analysis matches a literal, a plus changes nothing, legacy or
+dynamic: `N(IF(+TRUE,B1:B3))` and `N(CHOOSE(+TRUE,Z1,{2;3}))` match their plus-free controls (1 and 7 off the range's
+rows; 1 and 1 on row 2 of B1:B3, where no `@` is added either), `SUBTOTAL(9,TAKE(IF(INDIRECT(+"K1"),H1:H2,I1:I2),2))`
+is 7 like `INDIRECT("K1")`, legacy `ABS(+{5})` prints `=ABS(+@{5})` (5) and legacy `N(+{2;3})` prints `=N(+@{2;3})` (2);
+a dynamic `N(+{2;3})` lifts (`#SPILL!` there, blocked). FORMULATEXT keeps every such plus
+(probes/t2772-unary-plus-static-readings, probes/t2772-unary-plus-in-range-rows D:I). A plus on a whole N argument does
+make the range a value: legacy `=N(+B1:B3)` on row 2 prints `=N(+@B1:B3)` and is 2, where `=N(B1:B3)` is 1 with no `@`;
+legacy `=+B1:B3` and `=ABS(+B1:B3)` print `+@B1:B3` (2) (probes/t2772-unary-plus-in-range-rows J:M). We give 1 and print
+`=N(+B1:B3)`: `is_plain_reference` sees through the top-level plus (T-2885). Unprobed: a plus on an IF arm or on OFFSET's
+reference under N (T-2885 probes them).
 Status: VERIFIED (excel-graph)
 
 ## Formula text keeps typed whitespace, except at the end, before a comma and in an array constant
@@ -332,10 +343,12 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
 - **A run keeps only its line feeds and the spaces after the last one**: `=1+ ` LF ` 2` prints `=1+` LF ` 2`,
   `=1+` LF ` ` LF `2` prints `=1+` LF LF `2`, 10 spaces, 3 line feeds and 2 spaces print as the 3 line feeds and 2
   spaces.
-- **A run's space count wraps at 256**: `=1+` + 300 spaces + `2` prints with 44 spaces (`LEN` 48). Excel stores a
-  run as a line-feed count and a space count, the space count one byte (the line-feed count's width is
-  unprobed, T-2782) (the BIFF `PtgAttrSpace` shape; the counts are this
-  probe's evidence, not the documentation's).
+- **A run's two counts each wrap at 256, on their own**: `=1+` + 300 spaces + `2` prints with 44 spaces (`LEN` 48).
+  255, 256 and 257 typed spaces print 255, none and 1; 255, 256, 257 and 300 typed line feeds print 255, none, 1 and
+  44; 256 line feeds then 3 spaces print the 3 spaces; 3 spaces then 256 line feeds print nothing, so the spaces before
+  the last line feed are dropped even when the line-feed count wraps to none. Every value is 3
+  (probes/t2782-whitespace-run-wrap, excel-graph, 2026-10-26). Excel stores a run as a one-byte line-feed count and a
+  one-byte space count (the BIFF `PtgAttrSpace` shape; the counts are the probes' evidence, not the documentation's).
 - Refused (observed 2026-10-26, Graph's error text not recorded, so UNVERIFIED; T-2786 re-probes it): `=SUM (1)` (a
   space between a function name and its `(`): Graph's PATCH of it failed and the case was dropped.
 - Stored in the file (`<f>` text, no typing): interior whitespace loads and prints as written (`1 + 2`, `SUM( 1 )`,
@@ -344,17 +357,18 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
   where the same text typed after `=` keeps it. Every value matches the space-free formula.
 Unprobed: whitespace inside a structured reference, and whether Excel writes kept whitespace into the `<f>` text it
 saves (T-2776's spec, SPEC-0023, files both).
-Ours (T-2781, SPEC-0023 step 1): the parser keeps each run of spaces as a `Node::Spaced` around the operand it
-touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the R1C1 storage text, row and column edits,
-sheet renames and moves print the spaces back. A cell stores two trees: the written one, which prints, and one with no
-whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a `Spaced`
-(`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the stripped tree too.
-A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass); other leading
-whitespace characters are kept as before (unprobed). Still open: runs holding a line feed print nothing (T-2782),
-the spaces beyond an intersection's one (T-2783), whitespace around LAMBDA parameter names (dropped; unprobed,
-T-2786), and the xlsx export,
-which writes the stripped tree until T-2786 shows what Excel saves. `=S! B1` is a parse error (`#ERROR!`) where Excel
-reads `S!B1` (T-2785).
+Ours (T-2781, SPEC-0023 step 1; line feeds T-2782, step 2): the parser keeps each run of spaces and line feeds as a
+`Node::Spaced` around the operand it touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the
+R1C1 storage text, row and column edits, sheet renames and moves print the runs back. Two runs that the parser joins
+around one operand (a folded plus) add their line feeds and keep the earlier spaces only when the later run has none;
+a later run of exactly 256 line feeds counts as none there (unprobed). A cell stores two trees: the written one, which
+prints, and one with no whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a
+`Spaced` (`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the
+stripped tree too. A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass);
+other leading whitespace characters are kept as before (unprobed). The spaces beyond an intersection's one are kept as the right operand's leading run (T-2783; C3, C5, E9 pass). Still open: FORMULATEXT of an
+intersection whose separator holds line feeds (`B1:B2` LF ` B2` drops the LF; unprobed, T-2786), whitespace around LAMBDA parameter names (dropped; unprobed, T-2786), and the xlsx export, which writes the
+stripped tree until T-2786 shows what Excel saves. `=S! B1` is a parse error (`#ERROR!`) where Excel reads `S!B1`
+(T-2785).
 Status: VERIFIED (excel-graph)
 Tasks: T-2769, T-2776, SPEC-0023
 

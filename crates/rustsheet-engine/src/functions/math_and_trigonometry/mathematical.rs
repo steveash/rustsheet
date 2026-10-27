@@ -198,6 +198,9 @@ impl Model {
                 Ok(f) => f.trunc() as i64,
                 Err(error) => return error,
             };
+            // A written-empty `BASE(0,2,)` is omitted (default 1); a blank cell reads as 0
+            // (probes/base-zero-empty-min-length A1, A2; numbers.md).
+            let min_length = min_length.filter(|value| !matches!(value, CalcResult::EmptyArg));
             let min_length = match model.kernel_number_or(min_length, 1.0, cell) {
                 Ok(f) => f,
                 Err(error) => return error,
@@ -689,10 +692,16 @@ impl Model {
     pub(crate) fn fn_radians(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Radians, args, cell, |f| Ok(f * (PI / 180.0)))
     }
+    /// `ODD(number)`: `|number|` rounded up to an integer, plus one when that is even, with the
+    /// sign of `number`. The `+ 1` is a double addition, so between 2^53 and 2^54 it rounds half to
+    /// even: `ODD(2^53+2)` is 2^53+4 and `ODD(2^53+4)` is 2^53+4, and from 2^54 up the input comes
+    /// back (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66, ODD in F:G;
+    /// docs/excel-semantics/numbers.md "ODD above 2^53 adds one in binary").
     pub(crate) fn fn_odd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.number_fn(Function::Odd, args, cell, |f| {
-            let sign = f64::signum(f);
-            Ok(sign * (f64::ceil((f64::abs(f) - 1.0) / 2.0) * 2.0 + 1.0))
+            let up = f64::ceil(f64::abs(f));
+            let odd = if up % 2.0 == 0.0 { up + 1.0 } else { up };
+            Ok(f64::signum(f) * odd)
         })
     }
     pub(crate) fn fn_even(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

@@ -33,6 +33,17 @@ pub(crate) fn standard_normal_pdf(x: f64) -> f64 {
     (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt()
 }
 
+/// Whether Excel's normal density at the standardized `z` is `#NUM!` instead of its limit 0: it is
+/// wherever the squared value leaves the double range, so from |z| = 2^512 on. `NORM.S.DIST(2^512,
+/// FALSE)`, `PHI(1E+200)` and `NORM.DIST(3,1,2^-512,FALSE)` are `#NUM!`, while `SQRT(f64::MAX)` and
+/// every double below 2^512 are 0 (probes/t2435-dist-extremes A42:A47, A50:A57, A82:A84, A119:A125;
+/// `NORMDIST(1E+300,0.3,2.5,0)`, probes/t2475-stat-subexpressions P!A572).
+/// Excel: see docs/excel-semantics/statistics.md, "Normal densities are #NUM! once the square
+/// overflows (T-2435)"
+pub(crate) fn normal_density_overflows(z: f64) -> bool {
+    !(z * z).is_finite()
+}
+
 /// Smallest `x >= 0` with `f(x) >= target` for a non-decreasing `f`, found by doubling a bracket
 /// (at most `max_doublings` times, else `INFINITY`) and then halving it (at most 200 times, the
 /// loop stops early once the midpoint no longer moves). The time is bounded, unlike `statrs`'
