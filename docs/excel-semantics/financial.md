@@ -591,7 +591,8 @@ not others, and the split is that of Newton's method on the NPV polynomial in v,
 v = 0 (r = +inf): it converges to the real root nearest v = 0 and the call is `#NUM!` when that root is not positive or
 the run needs more than about 50 steps. Leading zero flows are dropped first (P(v)/v^k), else v = 0 would be a root:
 `IRR({0,2,-1})` returns about -0.5 (gen-m9/3c06f9298f65a3ba A394, under COSH(100)) and
-`IRR({0,1E+15,2,42,1E+15,-0.0001})` is `#NUM!` (probes/irr-guess-edges A34, A35). The guess does not matter. Probes:
+`IRR({0,1E+15,2,42,1E+15,-0.0001})` is `#NUM!` (probes/irr-guess-edges A34, A35). The guess does not change which flows return (it can change the digits;
+Sweep below). Probes:
 - `IRR({42,1,1,-1},G)` = -0.7467044766537371 for G = 0, 0.01, 0.1, 0.5, 1 and `IRR({-400,1,1,1,1,1},G)` =
   -0.6737366751808405 for G = 0.01, 0.1, 0.5, 1 (P has one real root; Newton from 0 takes 29 and 26 steps);
 - `IRR({1,3,-1})`, `IRR({1,7,-1})` (guesses 0.01 to 1) and `IRR({1,20,-1})` are `#NUM!`, though each has a root at
@@ -610,7 +611,25 @@ Against the exact roots (mpmath, 50 digits; gap triage 2026-10-27), Excel is the
 root is -0.74670447665374079 and `{-400,1,1,1,1,1}`'s is -0.67373667518084225. Excel is 3.7E-15 and 1.8E-15 above
 them, while ours is within 1E-16, correctly rounded. Matching Excel means reproducing where its iteration stops
 (T-2928, after the T-2927 sweep).
-Evidence: probes/irr-fallback-roots A1-A24 (excel-graph, 2026-10-26); the gen-m9 cells above.
+Sweep (T-2927; probes-numeric/t2927-irr-fallback-sweep, 150 flows where the fitted secant fails from guess 0.1 and
+its retry, excel-graph 2026-10-27; exact roots and Excel's offset in ulps in t2927-irr-fallback-sweep.roots.tsv,
+Decimal bisection to 30 digits). Excel's offset from the exact root has no fixed sign or size: `{k,1,1,-1}` for k in
+2..100 ranges from -59 to +113 ulps (median +1; 0 to 2 ulps for many k), `{0.3,-2.5,1.005}` is -251 ulps at every
+scale from 1E-3 to 1E+5 (rows A32-A41), but mostly +7 ulps once those are scaled by a further 1E6, and varying b in
+`{0.3,-b,1.005}` gives -9168 to +8395 ulps (b = 2.4, 3.0). Scaling a `{k,1,1,-1}` flow by 1E6 shrinks the offset to
+within 9 ulps (k = 5: +34 ulps, scaled +0.3), so the stop test is on |P| in the flows' units, not relative. Negating the
+flows, which leaves the root unchanged, moves it, to -572..+1251 ulps (k = 25: +1 ulp, negated +1251), so Excel's
+iteration is not symmetric in the sign of P. The guess column (column B, every tenth row) changes the digits on 5 of
+its 15 rows: `{2,1,1,-1}` -0.5000000000000002 against -0.5000000000000036 with guess 0.5, `{0.3E6,-2.5E6,1.005E6}`
+6.909808543634389 against 6.909808543634618 (rows 41 and 121), the same `{2,1,1,-1}` scaled by 1E6 (row 51), and
+`{7E6,1E6,1E6,-1E6}` by one ulp (row 61). So the fallback starts from the guess,
+or the secant's last iterate, not from a fixed point, though which flows return does not depend on it.
+`#NUM!` where the fallback rule returns: `{-N,1,1,1,1,1}` for N = 496, 656, 866, 1145, 1513 and 2000 (rows 26-31),
+and the same scaled by 1E6 and negated (rows 101-112), while N = 163 to 375 and 400 return. The engine's Newton from v = 0
+converges there within its cap, so Excel's fallback gives up on a condition the rule lacks (a step cap below ours, or a stop on |P|
+that the large first flow defeats).
+Evidence: probes/irr-fallback-roots A1-A24 (excel-graph, 2026-10-26); the gen-m9 cells above;
+probes-numeric/t2927-irr-fallback-sweep (excel-graph, 2026-10-27).
 Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the step cap (between 29 and 119)
 Implemented in: `irr_fallback`, `IRR_FALLBACK_STEPS` (functions/financial/financial_util.rs)
 Tasks: T-2727, T-1686, T-2131, T-2927 (sweep), T-2928 (returned digits)

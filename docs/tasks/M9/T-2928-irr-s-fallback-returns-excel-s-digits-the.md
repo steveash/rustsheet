@@ -54,6 +54,11 @@ Add an `irr_fallback` family to tools/src/rustsheet_tools/fitlab/kernels/solvers
 the T-2927 sweep plus the cells above. Excel's selection rule (which flows return, which are `#NUM!`) is verified
 and must not change.
 
+T-2927's sweep (probes-numeric/t2927-irr-fallback-sweep, 150 flows, with t2927-irr-fallback-sweep.roots.tsv; financial.md
+"IRR's fallback when the secant fails", Sweep): offsets from -9168 to +8395 ulps; scaling by 1E6 and negating the flows
+both move them; the guess changes the digits on 5 of 15 rows. Excel is `#NUM!` where the fallback rule returns for
+`{-N,1,1,1,1,1}` with N = 496 to 2000 (rows A26-A31) and for their 1E6-scaled and negated forms (A101-A112).
+
 ## Acceptance criteria
 - [ ] The fit lab scores each candidate above on probes-numeric/t2927-irr-fallback-sweep and the owned cells,
       reporting bit-exact, within-4-ulp and within-15-digits counts. financial.md "IRR's fallback when the secant
