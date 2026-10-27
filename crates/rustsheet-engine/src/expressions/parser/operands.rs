@@ -487,6 +487,14 @@ impl Parser {
         let refused = !arg_counts::takes_count(&english, count)
             || kind.arg_kinds().is_some_and(|kinds| !kinds.accepts(count));
         if refused {
+            self.note_wrong_count(name);
+        }
+    }
+
+    /// Records `name` as the first call of the formula with a count of arguments Excel refuses
+    /// typed ([`Parser::typed_refusal`]); stored text records nothing.
+    fn note_wrong_count(&mut self, name: &str) {
+        if self.typed && self.wrong_count_call.is_none() {
             self.wrong_count_call = Some(name.to_ascii_uppercase());
         }
     }
@@ -530,9 +538,13 @@ impl Parser {
                 message: err.message,
             };
         }
-        // We should do this *only* importing functions from xlsx: Implicit Intersection
-        if &name == "_xlfn.SINGLE" {
+        // Implicit intersection: `_xlfn.SINGLE(x)` is how a file stores `@x`, and Excel takes a
+        // typed `SINGLE(x)`, in any case, as `@x` too and shows it so (`=SINGLE(C1:C3)` beside row 2
+        // is the row's cell, FORMULATEXT `=@C1:C3`; probes/single-typed-*, xlsx-storage.md "Typed
+        // SINGLE(x) is the @ operator", T-2938). Excel refuses `=SINGLE()` and `=SINGLE(1,2)` typed.
+        if display_name.eq_ignore_ascii_case("SINGLE") {
             if args.len() != 1 {
+                self.note_wrong_count(&display_name);
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
                     expecting: vec![ExpectedTokens::Other],
