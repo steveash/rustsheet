@@ -221,7 +221,8 @@ pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// gen-m9 cells, T-2537), where `cosh 2y - (2cos²x - 1)` prints ...5416. That includes the digits
 /// Excel loses for tiny arguments, where the denominator cancels (`IMCOT("1E-5+1E-5i")` real
 /// part 49999.9958596485, `IMCOT("0.00001i")` -99999.9917326303i; exact 50000 and 100000).
-/// VERIFIED (T-2531, probe `t2531-imcsc-imcot-tiny-imag`): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1 and the result is `#NUM!`.
+/// VERIFIED (T-2531, probe `t2531-imcsc-imcot-tiny-imag`): the result is `#NUM!` for tiny |y| (`IMCOT("1E-8i")`
+/// already is, `IMCOT("1E-7i")` is not; the exact boundary is not probed).
 /// Past `cosh 2y`'s range the value is `∓i` by the sign of y (Q27:R27, R55). A real number is 1
 /// over TAN's kernel ([`real_trig`]; `IMCOT("1E-20")` = 1E+20).
 pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -244,8 +245,8 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// for tiny arguments: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (exact
 /// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. A real number is 1 over SIN's kernel ([`real_trig`])
 /// (gen-m9/2f0d384b8ed0d392 A109, `IMCSC(0.2)` 5.03348954767234; the complex formula gives ...235), as
-/// IMSEC's is `1/cos x` and IMSECH's `1/cosh x` (gen-m9/01810fc89c5ec2c0 A318). VERIFIED (T-2531, probe `t2531-imcsc-imcot-tiny-imag`): below |y| ≈ 1.05E-8
-/// `cosh 2y` rounds to 1, `t` is 0 and the result is `#NUM!`.
+/// IMSEC's is `1/cos x` and IMSECH's `1/cosh x` (gen-m9/01810fc89c5ec2c0 A318). VERIFIED (T-2531, probe
+/// `t2531-imcsc-imcot-tiny-imag`): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1, `t` is 0 and the result is `#NUM!`.
 pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).0);
