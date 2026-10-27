@@ -2,7 +2,7 @@
 //! them from 1900-01-01 to 9999-12-31. Evidence: probes/text-locale-lunar-months-1900 (the start
 //! and month of every lunar month to 2100, per digit), text-locale-lunar-edges,
 //! text-locale-lunar-tokens (excel-graph, 2026-10-26, T-1922); past 2100
-//! probes/t2759-lunar-packed-* (2101-9999), packed into `lunar_2101.bin` by `scripts/lunar_tables.py`, and
+//! probes/t2759-lunar-packed-* (2101-9999), packed into `lunar_2101.bin` by `docs/research/t2759_lunar_tables.py`, and
 //! t2759-lunar-months-2101 (excel-graph, 2026-10-27, T-2759); number-formats.md "Calendars of a
 //! locale tag".
 //!
@@ -285,7 +285,7 @@ fn in_early_year(early: &[(i64, i64)], day: i64) -> bool {
 }
 
 /// Excel's months from the first lunar month that starts in 2101 to 9999-12-31, per table
-/// (Chinese, then Eastern), as `scripts/lunar_tables.py` packs probes/t2759-lunar-packed-*:
+/// (Chinese, then Eastern), as `docs/research/t2759_lunar_tables.py` packs probes/t2759-lunar-packed-*:
 /// the first month's start day (u32, little-endian), lunar year (u16) and month (u8); the count
 /// of months (u32) and one byte per month, its length with [`NEW_YEAR`] when the next month is
 /// month 1; the count of early years (u8) and each one's first and last day (u32 each). The days

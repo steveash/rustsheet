@@ -65,7 +65,7 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
 - No closed form: Excel's month starts follow neither the true nor a mean new moon (progress notes above), so
   the fallback landed. probes/t2759-lunar-packed-2101 … -9101 (excel-graph, 2026-10-27; 8 cases, 158 cells, one
   per century and table) return one character per month start from 2101 to 9999 plus every day that breaks the
-  counting rules; `scripts/lunar_tables.py pack` cross-checks each century's 1 January and writes
+  counting rules; `docs/research/t2759_lunar_tables.py pack` cross-checks each century's 1 January and writes
   formatter/lunar_2101.bin (200 KB: 99,157 month lengths per table and the early years), which
   lunar_calendar.rs decodes once and binary-searches.
 - Quirks recorded (number-formats.md "Lunar calendars"): the 1960/2051 early year recurs every 91 years

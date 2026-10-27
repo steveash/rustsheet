@@ -23,7 +23,7 @@ import struct
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 CASES = ROOT / "eval/suites/probes/cases"
 CASE_PREFIX = "t2759-lunar-packed"
 # Centuries per case: Excel for the web aborts the recalculation of all 79 in one workbook.
@@ -87,7 +87,7 @@ def write_case() -> None:
                 f"Chinese lunar calendars of calendar digits 11 (A) and E (B), {rows[0][0]}-"
                 f"{rows[-1][1]}, one row per century: the lunar date of 1 January, one character "
                 "per month start (gap from the previous start; chr(48+gap), or chr(80+gap) for "
-                "month 1) and any day breaking the counting rules (T-2759, scripts/lunar_tables.py)."
+                "month 1) and any day breaking the counting rules (T-2759, docs/research/t2759_lunar_tables.py)."
             ),
             "tags": ["M10", "number-format", "probe"],
             "sheets": [{"name": "S", "cells": cells}],

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "Chinese lunar calendars of calendar digits 11 (A) and E (B), 4101-5100, one row per century: the lunar date of 1 January, one character per month start (gap from the previous start; chr(48+gap), or chr(80+gap) for month 1) and any day breaking the counting rules (T-2759, scripts/lunar_tables.py).",
+ "description": "Chinese lunar calendars of calendar digits 11 (A) and E (B), 4101-5100, one row per century: the lunar date of 1 January, one character per month start (gap from the previous start; chr(48+gap), or chr(80+gap) for month 1) and any day breaking the counting rules (T-2759, docs/research/t2759_lunar_tables.py).",
  "tags": [
   "M10",
   "number-format",
