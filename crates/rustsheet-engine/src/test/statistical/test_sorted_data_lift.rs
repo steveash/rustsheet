@@ -253,6 +253,8 @@ fn typed_scalar_data_is_a_one_element_array_but_a_cell_holding_one_is_not() {
         ("=QUARTILE(INDEX(C2:C3,1),1)", "#NUM!"),
         ("=QUARTILE.EXC(IF(TRUE,C2),NA())", "#N/A"),
         ("=PERCENTRANK(CHOOSE(1,C2),1)", "#N/A"),
+        ("=QUARTILE(OFFSET(C2,0,0),1)", "#NUM!"),
+        ("=QUARTILE(IF(QUARTILE(IF(TRUE,C2),1)>0,C2,C2),1)", "#NUM!"),
     ]);
 }
 

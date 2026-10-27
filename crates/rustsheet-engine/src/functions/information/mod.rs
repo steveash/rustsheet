@@ -136,7 +136,7 @@ impl Model {
     }
 
     /// Whether `node` stands for a reference (ISREF).
-    pub(crate) fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+    fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         // `ISREF(IF(TRUE,…!A1))` is TRUE (probes/external-ref-no-link-ifchoose A9, A10, A31).
         // A reference into another workbook, written or through INDEX, a union, an
         // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index
