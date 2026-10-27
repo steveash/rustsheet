@@ -968,7 +968,14 @@ impl Lexer {
                 self.position = end;
             }
         }
-        if let (Err(_), Some(sheet)) = (&m, &sheet) {
+        // A cell that more of a name follows starts a qualified name: `=Data!Q1_Total` is the
+        // name `Q1_Total`, not `Data!Q1` then `_Total` (docs/excel-semantics/references.md,
+        // probes/defined-name-qualified-like-reference; ironcalc 2aa0e653).
+        let name_follows_cell = matches!(m, Ok(ParsedRange { right: None, .. }))
+            && self
+                .peek_char()
+                .is_some_and(|c| c.is_alphanumeric() || c == '_');
+        if let (true, Some(sheet)) = (m.is_err() || name_follows_cell, &sheet) {
             if let Some(name) = self.consume_sheet_scoped_name(sheet, start) {
                 return name;
             }

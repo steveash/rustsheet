@@ -847,6 +847,30 @@ distinct names, a body that uses names often enough to pass 10,000 evaluations (
 `d1` = `d2+d2`, …), and deeply nested bodies that pass the stack budget.
 Tasks: T-0158
 
+## The names in a sheet-local name's body are the workbook's, wherever it is used
+Rule: a name used inside a defined name's body resolves as if from no sheet: a sheet-local body
+does not see its own sheet's local names. With workbook `Rate` = 1, `Data!Rate` = 10,
+`Data!DoubleRate` = `Rate*2` and workbook `TripleRate` = `Rate*3`: `=Data!DoubleRate` from Sheet1
+and `=DoubleRate` from Data are both 2 (not 20), `=TripleRate` is 3 from Sheet1 and from Data,
+`=Rate` from Data is 10, and `=DoubleRate` from Sheet1 is an error (`ISERROR` TRUE).
+Evidence: probes/defined-name-local-formula-scope (excel-graph, 2026-10-27, T-2635; the body is
+stored in the file as `Rate*2` with `localSheetId` of Data). Upstream IronCalc f8f68e27 resolves the
+body in the name's sheet (20); Excel does not, so it is not ported. Ours matches. A body typed into
+Name Manager on desktop (which may bind `Rate` as it is typed) is unprobed.
+Status: VERIFIED (Excel for the web).
+Tasks: T-2635
+
+## A sheet-qualified name may start like a cell reference
+Rule: after a sheet prefix, a cell address that more name characters follow is a name, not the
+cell: with workbook `Q1_Total` = 100 and Data!Q1 = 77, `=Data!Q1_Total` is 100, `=Data!Q1` is 77,
+`=Sheet1!Q1_Total*2` is 200 and `=SUM(Data!Q1_Total,Data!Q1)` is 100 (Q1 held the text `77`). Being a workbook name
+reached through a sheet prefix, Excel's FORMULATEXT shows it with the file name as the prefix (see
+"A sheet-qualified workbook name is rewritten to the workbook's file name"; T-2834).
+Evidence: probes/defined-name-qualified-like-reference (excel-graph, 2026-10-27, T-2635; upstream
+IronCalc 2aa0e653 lexes it the same way). Ours matches except that FORMULATEXT cell (T-2834).
+Status: VERIFIED (Excel for the web).
+Tasks: T-2635, T-2834
+
 ## A sheet-qualified #REF! is #REF!
 Rule: a reference that Excel has already replaced by `#REF!` but that keeps its sheet prefix
 evaluates to `#REF!`. That holds as a cell formula (`='1'!#REF!`) and as the body of a defined name:
