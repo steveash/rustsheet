@@ -304,9 +304,23 @@ pub struct RunReport {
     /// Argument classes per in-scope function and catalog parameter (T-0077).
     #[serde(default)]
     pub argument_coverage: Vec<FunctionArguments>,
-    /// Commit, date and skipped suites ([`RunMeta`], T-0080); filled by the caller.
+    /// Visibly-off, in-scope Excel cells attributed to no function (decision 0118 item 6, T-0082),
+    /// in case order. Deviation cells are not among them.
+    #[serde(default)]
+    pub unattributed_off: Vec<attribution::UnattributedCell>,
+    /// Commit, date, dirty flag and skipped suites ([`RunMeta`], T-0080); filled by the caller.
     #[serde(default)]
     pub run: RunMeta,
+}
+
+/// `r` with only its failing cells and text checks, and no argument classes: the form
+/// report.json keeps cases in.
+fn failing_only(r: &CaseResult) -> CaseResult {
+    let mut r = r.clone();
+    r.cells.retain(|c| c.verdict.is_failure());
+    r.text.retain(|t| !t.pass);
+    r.arguments.clear();
+    r
 }
 
 impl RunReport {
@@ -409,16 +423,6 @@ impl RunReport {
                 .cmp(&(a.cells - a.passed))
                 .then(a.name.cmp(&b.name))
         });
-        let cases = results
-            .iter()
-            .map(|r| {
-                let mut r = r.clone();
-                r.cells.retain(|c| c.verdict.is_failure());
-                r.text.retain(|t| !t.pass);
-                r.arguments.clear();
-                r
-            })
-            .collect();
         let lists = CatalogLists::build(catalog, implemented, &evidence, &out);
         let below_floor = below_floor(catalog, &evidence);
         let mut evidence: Vec<FunctionEvidence> = evidence.into_values().collect();
@@ -428,7 +432,7 @@ impl RunReport {
             suites: suites.into_values().collect(),
             tiers: attribution::tier_counts(catalog, &functions),
             functions,
-            cases,
+            cases: results.iter().map(failing_only).collect(),
             slowest: slowest(results, SLOWEST_CASES),
             evidence,
             unevidenced: lists.unevidenced,
@@ -439,6 +443,7 @@ impl RunReport {
             function_scope: function_scope::summarize(catalog, results),
             argument_coverage: argument_coverage::summarize(catalog, results),
             real_world_suites: REAL_WORLD_SUITES.iter().map(ToString::to_string).collect(),
+            unattributed_off: attribution::unattributed_off(catalog, results),
             // The caller fills the milestone sections, the checkpoint and `run`.
             ..RunReport::default()
         }

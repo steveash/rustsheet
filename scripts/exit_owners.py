@@ -2,11 +2,13 @@
 """Milestone exit cells that no open task of the milestone owns (decision 0096).
 
   scripts/exit_owners.py --milestone M5 [--report PATH] [--tasks DIR] [--strict]
+  scripts/exit_owners.py --unattributed [--report PATH] [--tasks DIR] [--strict]
 
-Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every failing cell of the
-milestone's exit criteria (decision 0085: the `gen-m<k>` suite, the ironcalc-calc row of
-"Milestone function scope" less its exit exceptions, and the probes of the milestone's row of
-"Probe milestones") that no open task of that milestone names, one per line as
+Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every visibly-off cell of
+the milestone's exit criteria (decision 0085, read at visible parity by decisions 0114 and 0135:
+the `gen-m<k>` suite, the ironcalc-calc row of "Milestone function scope" less its exit
+exceptions, and the probes of the milestone's row of "Probe milestones", `M0-M2` for M2), plus
+each probe case that fails with no cell, that no open task of that milestone names, one per line as
 `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count is
 not 0.
 
@@ -16,6 +18,11 @@ xlsx file name, a probe name) and either the cell's A1 name as a whole word, or 
 with no A1-shaped token (a task that names only the case owns all of it). The ironcalc-calc
 exceptions are the row's `excepted` cells, which `make eval` takes from
 eval/milestones/exit-exceptions.tsv.
+
+`--unattributed` lists instead the report's `unattributed_off` cells (decision 0118 item 6,
+decision 0132, T-0082: visibly-off Excel cells attributed to no function; a `DEVIATION` cell is
+never among them) that no open task of any milestone owns, by the same rule, as
+`case!Sheet!A1<TAB>formula`, then a count line. It gates nothing (`--strict` aside).
 """
 
 from __future__ import annotations
@@ -75,8 +82,11 @@ def formula_of(cell: dict[str, Any]) -> str:
 
 
 def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
-    """Every failing cell of `milestone`'s exit criteria, in report order per criterion."""
-    if not any(r.get("milestone") == milestone for r in report.get("milestone_exit") or []):
+    """Every visibly-off cell of `milestone`'s exit criteria, in report order per criterion. The
+    visibly-off lists are the report's (decision 0135): the exit row's `gen_visibly_off_cells`,
+    the function-scope row's `visibly_off` and the probe row's `visibly_off_cells`."""
+    exit_row = next((r for r in report.get("milestone_exit") or [] if r.get("milestone") == milestone), None)
+    if exit_row is None:
         raise ValueError(f"report.json has no milestone_exit row for {milestone}")
     by_case = failing_cells(report)
     formulas = {
@@ -85,38 +95,46 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     out: list[ExitCell] = []
 
     gen = f"gen-{milestone.lower()}"
+    gen_off = set(exit_row.get("gen_visibly_off_cells") or [])
     for case in report.get("cases") or []:
         if case.get("suite") == gen:
             for c in by_case.get(str(case["id"]), []):
-                out.append(ExitCell(gen, str(case["id"]), f"{c['sheet']}!{c['cell']}", formula_of(c)))
+                key = f"{c['sheet']}!{c['cell']}"
+                if f"{case['id']}!{key}" in gen_off:
+                    out.append(ExitCell(gen, str(case["id"]), key, formula_of(c)))
 
     scope = report.get("function_scope") or {}
     for row in scope.get("rows") or []:
         if row.get("milestone") == milestone:
             excepted = set(row.get("excepted") or [])
+            visible = set(row.get("visibly_off") or [])
             for name in row.get("failing") or []:
-                if name not in excepted:
+                if name not in excepted and name in visible:
                     case, _, key = str(name).partition("!")
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
 
+    probe_row = exit_row.get("probe_row") or milestone
     for row in report.get("probe_milestones") or []:
-        if row.get("milestone") == milestone:
+        if row.get("milestone") == probe_row:
+            probe_off = set(row.get("visibly_off_cells") or [])
             for case, _count in row.get("failing_cases") or []:
                 cells = by_case.get(case, [])
                 if not cells:
                     out.append(ExitCell(PROBES_SUITE, case, WHOLE_CASE, ""))
                 for c in cells:
-                    out.append(ExitCell(PROBES_SUITE, case, f"{c['sheet']}!{c['cell']}", formula_of(c)))
+                    key = f"{c['sheet']}!{c['cell']}"
+                    if f"{case}!{key}" in probe_off:
+                        out.append(ExitCell(PROBES_SUITE, case, key, formula_of(c)))
     return out
 
 
-def open_task_texts(tasks_dir: Path, milestone: str) -> list[str]:
-    """The text of every open task of `milestone` under `tasks_dir`."""
+def open_task_texts(tasks_dir: Path, milestone: str | None) -> list[str]:
+    """The text of every open task of `milestone` (any milestone when `None`) in `tasks_dir`."""
     out = []
     for path in sorted(tasks_dir.glob("*/T-*.md")):
         text = path.read_text()
         meta = tasks.front_matter(text, path)
-        if meta.get("milestone") == milestone and meta.get("status") in tasks.OPEN:
+        if milestone in (None, meta.get("milestone")) and meta.get("status") in tasks.OPEN:
             out.append(text)
     return out
 
@@ -164,13 +182,34 @@ def unowned(report: dict[str, Any], milestone: str, tasks_dir: Path) -> list[Exi
     return out
 
 
+UNATTRIBUTED = "unattributed"
+
+
+def unowned_unattributed(report: dict[str, Any], tasks_dir: Path) -> list[ExitCell]:
+    """The report's unattributed visibly-off cells that no open task owns, in report order."""
+    texts = open_task_texts(tasks_dir, None)
+    cells = [
+        ExitCell(UNATTRIBUTED, str(c["case"]), str(c["cell"]), str(c.get("formula") or ""))
+        for c in report.get("unattributed_off") or []
+    ]
+    return [c for c in cells if not owned(c, texts)]
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--milestone", required=True, help="M<n>, e.g. M5")
+    which = ap.add_mutually_exclusive_group(required=True)
+    which.add_argument("--milestone", help="M<n>, e.g. M5")
+    which.add_argument(
+        "--unattributed",
+        action="store_true",
+        help="unowned cells attributed to no function",
+    )
     ap.add_argument("--report", type=Path, default=REPORT)
     ap.add_argument("--tasks", type=Path, default=tasks.TASKS)
     ap.add_argument("--strict", action="store_true", help="exit 1 when any cell is unowned")
     args = ap.parse_args(argv)
+    if args.unattributed:
+        return main_unattributed(args.report, args.tasks, args.strict)
     if not tasks.MILESTONE.match(args.milestone):
         print(f"error: --milestone must be M<n>, not {args.milestone!r}", file=sys.stderr)
         return 2
@@ -187,6 +226,21 @@ def main(argv: list[str]) -> int:
         print(f"{c.criterion}\t{c.case}!{c.key}\t{c.formula}")
     print(f"{len(cells)} failing {args.milestone} exit cells have no open {args.milestone} owner")
     return 1 if args.strict and cells else 0
+
+
+def main_unattributed(report_path: Path, tasks_dir: Path, strict: bool) -> int:
+    if not report_path.is_file():
+        print(f"error: {report_path} not found; run `make eval` first", file=sys.stderr)
+        return 2
+    try:
+        cells = unowned_unattributed(json.loads(report_path.read_text()), tasks_dir)
+    except (ValueError, KeyError, TypeError) as e:
+        print(f"error: {report_path}: {e}", file=sys.stderr)
+        return 2
+    for c in cells:
+        print(f"{c.case}!{c.key}\t{c.formula}")
+    print(f"{len(cells)} visibly-off cells attributed to no function have no open owner")
+    return 1 if strict and cells else 0
 
 
 if __name__ == "__main__":

@@ -114,7 +114,7 @@ check: fmt-check clippy test eval-gates py-check py-bindings hygiene typos ## Ev
 ci: check deny machete
 
 # ---------------------------------------------------------------- Tasks
-.PHONY: tasks next-task ready-tasks board new-task new-decision exit-owners
+.PHONY: tasks next-task ready-tasks board new-task new-decision exit-owners unowned-off
 tasks: ## List tasks (LANE=, STATUS=, MILESTONE= filters)
 	$(PY) scripts/tasks.py list $(if $(LANE),--lane $(LANE)) $(if $(STATUS),--status $(STATUS)) $(if $(MILESTONE),--milestone $(MILESTONE))
 
@@ -133,6 +133,9 @@ new-decision: ## New decision record with a collision-free number: make new-deci
 exit-owners: ## Failing exit cells of a milestone that no open task of it owns, after make eval: make exit-owners MILESTONE=M5 [STRICT=1] (decision 0096)
 	$(if $(MILESTONE),,$(error MILESTONE=M<n> is required))
 	$(PY) scripts/exit_owners.py --milestone '$(MILESTONE)' $(if $(STRICT),--strict)
+
+unowned-off: ## Visibly-off cells attributed to no function that no open task owns, after make eval (decision 0132)
+	$(PY) scripts/exit_owners.py --unattributed $(if $(STRICT),--strict)
 
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board

@@ -847,6 +847,35 @@ distinct names, a body that uses names often enough to pass 10,000 evaluations (
 `d1` = `d2+d2`, …), and deeply nested bodies that pass the stack budget.
 Tasks: T-0158
 
+## The names in a sheet-local name's body are the workbook's, wherever it is used
+Rule: a name used inside a defined name's body resolves as if from no sheet: a sheet-local body
+does not see its own sheet's local names. With workbook `Rate` = 1, `Data!Rate` = 10,
+`Data!DoubleRate` = `Rate*2` and workbook `TripleRate` = `Rate*3`: `=Data!DoubleRate` from Sheet1
+and `=DoubleRate` from Data are both 2 (not 20), `=TripleRate` is 3 from Sheet1 and from Data,
+`=Rate` from Data is 10, and `=DoubleRate` from Sheet1 is an error (`ISERROR` TRUE).
+Evidence: probes/defined-name-local-formula-scope (excel-graph, 2026-10-27, T-2635; the body is
+stored in the file as `Rate*2` with `localSheetId` of Data). Upstream IronCalc f8f68e27 resolves the
+body in the name's sheet (20); Excel does not, so it is not ported. Ours matches. A body typed into
+Name Manager on desktop (which may bind `Rate` as it is typed) is unprobed.
+Status: VERIFIED (Excel for the web).
+Tasks: T-2635
+
+## A sheet-qualified name may start like a cell reference
+Rule: after a sheet prefix, a cell address that more name characters follow (letters, digits,
+`_` or `.`) is a name, not the cell. With workbook `Q1_Total` = 100, `Q1.Rate` = 5 and Data!Q1 =
+77: `=Data!Q1_Total` is 100, `=Data!Q1` is 77, `=Sheet1!Q1_Total*2` is 200,
+`=SUM(Data!Q1_Total,Data!Q1)` and `=Data!Q1_Total+Data!Q1` are 177 (Q1 a number), and `=Data!Q1.Rate` is 5. An
+undefined one (`=Data!A1B`) is `#NAME?` (`ERROR.TYPE` 5). Being a workbook name reached through a
+sheet prefix, Excel's FORMULATEXT shows it with the file name as the prefix (see "A
+sheet-qualified workbook name is rewritten to the workbook's file name"; T-2834).
+Evidence: probes/defined-name-qualified-like-reference and
+probes/defined-name-qualified-like-reference-more (excel-graph, 2026-10-27, T-2635; upstream
+IronCalc 2aa0e653 lexes `_` the same way). Unprobed, and read as a name by ours: a `\` or a
+typographic quote after the cell, and a rejected dotted corner (`Data!A1.B2x`); a range that name
+characters follow (`Data!A1:B2x`) is unprobed and stays a range then an error. Ours matches except that FORMULATEXT cell (T-2834).
+Status: VERIFIED (Excel for the web).
+Tasks: T-2635, T-2834
+
 ## A sheet-qualified #REF! is #REF!
 Rule: a reference that Excel has already replaced by `#REF!` but that keeps its sheet prefix
 evaluates to `#REF!`. That holds as a cell formula (`='1'!#REF!`) and as the body of a defined name:
@@ -2335,8 +2364,8 @@ through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Re
   data rows) becomes `=SUM(S!C4:C8)` after the insert above row 4, where an ordinary insert at a range's
   first row shifts it (`S!C5:C8`, as above the header), and after the insert above the totals row 8, where
   an ordinary insert just below a range leaves it (as `S!C4:C7` stays for r = 8 without totals).
-- So SPEC-0016's edge-case table is wrong on two rows: an insert at r == d1 and at r == t *grows* the
-  table (it said fallback); the move, grow-inside and none rows hold (T-2321).
+- So SPEC-0016's edge-case table was wrong on two rows: an insert at r == d1 and at r == t *grows* the
+  table (it said fallback); the move, grow-inside and none rows hold (fixed by T-2321).
 - A loaded formula naming a table the file does not have (`=SUM(Nope[Qty])`) or a column its table does not
   have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
   `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
@@ -2345,29 +2374,43 @@ Implemented in: partly (T-2195, SPEC-0016 step 1; T-1699, step 2). Every structu
 is kept as written (`Node::StructuredReferenceKind`, parser/structured_reference.rs) and its area is
 re-derived whenever the table list changes; a sheet rename moves the tables with the sheet; a sheet delete
 first rewrites the other sheets' references to its tables as plain ranges (so they become `#REF!`, as
-before), and `restore_sheet` puts the tables back. Tables do not move on structural edits yet: every edit
-that changes the area a structured reference resolves to rewrites it to the displaced plain range (the
-fallback of SPEC-0016 for every table); one that leaves the area unchanged keeps the text. So today the
-values match Excel except where the table grows (`ROWS(Sales)` stays 4, `ROWS(Sales[#All])` 5 for Excel's 7) and FORMULATEXT prints the plain
-range; the plain-range quirk is not implemented. The move and grow classes are T-2297, the two edge rows
-and the quirk T-2321. With no table of that name (engine API `remove_table`), the formula is a parse
+before), and `restore_sheet` puts the tables back. A whole row or column insert or delete moves a table
+when it is wholly before it, grows it when rows are inserted below its header row and at or above its totals
+row (`h < r <= t`, so at its first data row and its totals row too: T-2321) and
+shrinks it when the deleted rows are inside them, data edges included, with a data row left (T-2338), drops
+its totals row on a delete of exactly that row (T-2338), and then every structured reference to it keeps its
+text, in cell formulas on any sheet, conditional formats and defined names (T-2297, `table_edits.rs`). A delete
+of its only data row keeps the row and clears the table's cells of it (`Model::last_data_row`, T-2338), and a
+plain range shrinks on a delete of its edge rows (`Displacement::range_corners`, T-2338). Every other edit
+that crosses a table (a delete touching the header row, of every data row at once, a column edit inside
+it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
+structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
+that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
+its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
+moved or grown table's row there, a value change from before T-2297 (unprobed, T-2845). An insert at
+the first row of a table without a header row is a fallback too (unprobed, T-2845). So is an insert that would
+carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
+refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
+data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
+only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
+inside grow the table (T-2339). A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
+(plain-range-delete-row-first A6, T-2855). With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
 canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
-registers a spec table with its totals row; because the table does not grow, shrink or move with an edit yet, the
-totals row's own edits (insert above it, delete it or the last data row) print the displaced plain range or `#REF!`
-where Excel keeps `Sales[[#Totals],[Qty]]` (decision 0128; T-2321, T-2338).
+registers a spec table with its totals row; an insert above the totals row grows the table and keeps
+`Sales[[#Totals],[Qty]]` (T-2321), and since T-2338 the totals row's deletes (delete it or the last data row) keep it too (decision 0128).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
-its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2297, T-2325).
+its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2845; desktop-only cut and paste T-2325).
 A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
 kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
 what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on
 every row, off the data rows too (before step 2 those were `#VALUE!`), which matches "Delete the table's sheet" below
 (table-delete-sheet: every structured reference becomes `#REF!`). A defined name has no cell, so its `#This Row` is resolved
 at row 1, where its body is parsed, as before step 2 (unprobed, hand: Excel may resolve it at the calling cell's row; T-2595).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845, T-2846
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases
@@ -2387,12 +2430,26 @@ Right/Left):
   times, every data row, leaves the header and one blank data row: `ROWS(Sales)` 1, `#All` 2, `SUM` 0,
   `COUNTA(Sales[Region])` 0, the plain range `S!C4:C4` (table-delete-row-all-data). The last of the four deletes
   is not an ordinary row delete: a plain range onto only that row survives as `S!C4:C4` instead of `#REF!`, so
-  Excel keeps the table's one data row (cleared or refused); whether cells below the table shift up on that
-  last delete is open.
+  Excel keeps the table's one data row, cleared: nothing below the table moves on that last delete. `=S!C10`
+  below the table reads `=S!C7` after the four deletes (three rows up, not four), `=SUM(S!C9:C10)` reads
+  `=SUM(S!C6:C7)`, and `ROWS(Sales)` is 1 (table-delete-row-all-data-below, excel-graph 2026-10-27, T-2338).
+  What happens to that row's cells outside the table, and to one delete of every data row at once, is
+  unprobed (T-2848).
+- A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
+  of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
+  of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
+  (`=SUM(S!C4:C4)`, row 4) becomes `#REF!`, printed `=SUM(S!#REF!)` (plain-range-delete-row-first, -last,
+  excel-graph 2026-10-27, T-2338). Only one-row deletes are probed: the engine's shrink on a multi-row delete
+  across an edge (rows 3-5 over `C4:C7` give `C3:C4`) is a hand generalisation, and whole-row ranges and
+  column deletes still give `#REF!` corners (T-2851).
 - Column inserts. At A or B (left of or at the table's first column) the table moves right
   (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
   (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes
-  (table-insert-column-before, -left-edge, -inside, -right-edge).
+  (table-insert-column-before, -left-edge, -inside, -right-edge). The new table column is named `Column1`
+  and its header cell holds that text (`INDEX(Sales[#Headers],1,2)` and `INDIRECT("S!C3")` "Column1", the data
+  cells blank, `INDIRECT("Sales[Column1]")` a column COUNTA counts 0 in); a second insert at C names the new
+  C `Column2` and the first moves to D (table-insert-column-inside-header, table-insert-two-columns-inside-header,
+  excel-graph 2026-10-27, T-2339).
 - Column deletes. Deleting A moves the table left (table-delete-column-before). Deleting a table column drops
   it: deleting C (Qty) makes `SUM(Sales[Qty])` `#REF!`, printed `=SUM(#REF!)`, and the plain `S!C4:C7`
   `=SUM(S!#REF!)`, while `COLUMNS(Sales)` is 1 and `ROWS(Sales)` 4 (table-delete-column-qty); deleting B
@@ -2426,8 +2483,13 @@ Status: VERIFIED (excel-graph)
 Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
-move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
-do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+move and inside classes); the edge row deletes (T-2338) and the column grow and table-column delete match
+too (T-2339: `column_span` and `edit_columns` in table_edits.rs grow or shrink the table and its column list,
+naming an inserted column `ColumnN` in its header cell, and `deleted_column` in stringify/structured.rs
+prints a reference to a deleted column as `#REF!`, a column range that loses both ends too; one that loses
+one end prints its displaced plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
+`ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). A wholly deleted plain range still prints `#REF!:#REF!` (T-2855), and INDIRECT of a
+structured reference's text is `#REF!` (T-2911). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
 in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
@@ -2442,7 +2504,7 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

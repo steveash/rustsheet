@@ -709,30 +709,52 @@ Ours: every cell matches. The text coercion, typed input and criteria cells A20-
 Status: VERIFIED (web)
 Tasks: T-1416, T-1435, T-1436, T-1441, T-1444
 
-## Excel for the web changed 1904 financial results (2026-10)
-Rule: unknown until T-2337. On 2026-10-21 a re-fill of the 24 committed `date-system-1904-*` and
-`fin-coupon-walk-bounds-1904` probe cases through excel-graph changed 111 of their 1,041 cells, all in financial
-functions. The date readers did not change, nor did `COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)`, the one-day-late
-coupon date below. The committed sidecars were produced from 2026-10-12 to 2026-10-20.
-- ACCRINT lost its large 2·1462-day values: `date-system-1904-accrint-settlement-bound` S!A1 410415.8333333334 → 300,
-  and many `#NUM!` cells there and in `date-system-1904-financial-settlement-bound` D1-E9 now compute.
-- ACCRINT near 9999 (`date-system-1904-odd-accrint-bound` B11-B14, C11-C15, D11-D15, calc_method TRUE and FALSE)
-  went from `#NUM!` to values (A13 and A14 moved in the 6th digit), e.g. `ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)` 98.61111111111111.
-- COUPNUM with a previous coupon before 1904-01-01 became `#NUM!` (financial.md "COUPNUM in a 1904 workbook");
-  `date-system-1904-financial` S!A38 25 → `#NUM!`, S!A41 10 → `#NUM!`.
-- Several day counts moved by about a day (`date-system-1904-financial-readers` A11, B11, D11, E11 and the 22 and 33
-  rows; `-financial-shift` A5 (COUPNUM 2 → 3), A17, A18; `-financial-daycount` A26), and TBILLPRICE, TBILLYIELD and
-  TBILLEQ over 2023-02-28 to 2024-02-29 became `#NUM!` (`-financial-shift` A31-A33).
-The full cell list, with both values, is docs/research/excel-1904-drift-2026-10.md. The committed sidecars are left as
-they were until T-2337 decides how to adopt the new values; the next entry describes the older behavior.
-Evidence: re-fill of 2026-10-21 (excel-graph), not committed; probes/fin-coupnum-1904-epoch and
-fin-coupnum-1904-maturity-sweep (committed, 2026-10-21).
-Status: UNVERIFIED (one re-fill, not committed; T-2337 confirms it on a second day)
-Tasks: T-2337, T-2125
+## The 1904 date system: ACCRINT, COUPNUM and the TBILL functions read the date itself
+Rule: in a 1904 workbook ACCRINT, COUPNUM, TBILLPRICE, TBILLYIELD and TBILLEQ read 1904 serial s as the 1900 serial
+s + 1462, the date itself, as every non-financial reader does: they give exactly the values of a 1900 workbook with
+the same dates. Their cuts sit at the 1904 calendar's own edges: a date before 1904-01-01 or after 9999-12-31 (1904
+serial 2957003) is `#NUM!`, and so is a coupon date before 1904-01-01 (financial.md "COUPNUM in a 1904 workbook",
+"ACCRINT at the calendar's start"). Every other financial function and YEARFRAC still reads s + 2·1462 (next entry).
+- `COUPNUM(DATE(2030,2,27),DATE(2030,8,30),4)` = 3, as in 1900, while `COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)` is
+  still the one-day-early 2029-11-29 (-financial-shift A5, A1).
+- `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9996,1,1),0.05,1000,2,0,FALSE)` = 300 (-accrint-settlement-bound A1),
+  ACCRINT and COUPNUM compute with any first_interest or maturity up to 9999-12-31 (`COUPNUM(DATE(2024,1,15),
+  DATE(9999,12,31),2)` = 15952, -coupon-bound A13), and a settlement past 2957003 is `#NUM!` (-financial-settlement-bound
+  A10, D10:F10). The coupon schedule break from 9995-12-31 of the next entry does not apply to them; it still applies
+  to COUPPCD, COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, PRICE, YIELD, DURATION and MDURATION.
+- `TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)` is `#NUM!` (366 days, more than a year; -financial-shift A31:A33),
+  `TBILLPRICE(DATE(9996,1,1),DATE(9996,6,30),0.05)` and `TBILLEQ(DATE(9996,1,1),DATE(9996,12,31),0.05)` are numbers
+  while YEARFRAC, DISC, ACCRINTM, AMORLINC, COUPDAYBS and PRICE of the same 9996 dates are `#NUM!`
+  (fin-1904-calendar-readers A1:A20). A settlement in 9999 is `#NUM!` for the TBILL functions in both systems
+  (financial.md "T-bills settled in 9999").
+- `ACCRINT(0,DATE(1904,7,1),DATE(1904,3,1),0.06,1000,2,0)` is `#NUM!` (issue on serial 0, as in 1900, though 1904-01-01
+  is a date here), while an issue of 1 computes (fin-coupnum-1904-maturity-sweep C2, C3).
+History: until at least 2026-10-20 Excel for the web read these five 2·1462 days on too, as the next entry describes
+(sidecars produced 2026-10-11 to 2026-10-20). A re-fill on 2026-10-21 (T-2125) changed 111 of the 1,041 cells of the
+24 then committed 1904 probe cases, all of them ACCRINT, COUPNUM and TBILL* cells: ACCRINT lost its 2·1462-day
+settlement slices (410415.83 → 300) and its near-9999 `#NUM!`s, COUPNUM computed past the broken schedule and turned
+`#NUM!` for a previous coupon before 1904-01-01 (`COUPNUM(0,DATE(1910,3,31),4)` 25 → `#NUM!`), and the TBILLs over a
+29 February maturity turned `#NUM!`. A second re-fill on 2026-10-27 (T-2337) gave the same 111 values and changed
+nothing else. Desktop Excel is unprobed (M14 question, decision 0039).
+UNVERIFIED: the argument-error order in a 1904 workbook. Ours range-checks these five functions' dates in the new
+reading as they are read, so `TBILLEQ(DATE(9996,1,1),NA(),0.05)` is `#N/A` (it was `#NUM!` in the old reading); no 1904
+probe pairs a late date with a later error argument (T-2843).
+Evidence: the 27 `*-1904` probe cases re-filled 2026-10-27 (excel-graph): in all of them every ACCRINT, COUPNUM and
+TBILL* cell matches our 1900 evaluation of the same formulas except cells that pass a literal serial (0, 200, 2957004),
+while COUPPCD, COUPNCD, COUPDAY*, PRICE, YIELD, DURATION, YEARFRAC, the discount securities, the odd-period functions and
+AMORLINC keep the shifted values; fin-coupnum-1904-epoch, fin-coupnum-1904-maturity-sweep (2026-10-21);
+fin-1904-calendar-readers, fin-1900-tbill-last-day (2026-10-27).
+Ours: `DateReading::Calendar` (functions/financial/dates.rs, `DateSystem::calendar_1900_serial` and
+`first_coupon_1900_serial` in formatter/dates.rs), taken by `accrint_of`, COUPNUM's `coupon_call` and `tbill_arguments`
+(T-2337).
+Status: VERIFIED (web)
+Tasks: T-2125, T-2337, T-2835
 
 ## The 1904 date system: financial day counts read a 1904 serial as the 1900 serial + 2·1462
 Rule: in a 1904 workbook, YEARFRAC and the financial functions with date arguments read serial s as the 1900
-serial s + 2·1462 (T-1489, T-1492), while every other reader adds 1462. Within a four-year span with one 29 February
+serial s + 2·1462 (T-1489, T-1492), while every other reader adds 1462. ACCRINT, COUPNUM, TBILLPRICE, TBILLYIELD and
+TBILLEQ did so until 2026-10-20 and read the date itself since (previous entry); what this entry says of them is
+marked as the old behavior. Within a four-year span with one 29 February
 that is the date a day later than the 1900 reading s + 1462, so the day counts look "a day late"; near the non-leap
 century years the two differ (the 18 cells T-1493 leaves, the odd-period notes below). A date they return
 (COUPNCD, COUPPCD) comes back 2·1462 serials lower (one day early within a four-year span with one 29 February). The coupon schedule, the end-of-month rule and the 30/360 and
@@ -741,19 +763,20 @@ actual/actual counts all run on the shifted dates.
   `YEARFRAC(0,59,0)` = 59/360. `YEARFRAC(DATE(2023,2,28),DATE(2024,2,29),1)` = 1 (3/1 to 3/1).
 - `COUPPCD(DATE(2030,1,15),DATE(2030,8,30),4)` = 2029-11-29, not 2029-11-30. The maturity reads as 8/31, a
   month end, so the coupons fall on month ends and come back a day early. `COUPNCD` of the same is 2030-02-27.
-  `COUPNUM(DATE(2030,2,27),DATE(2030,8,30),4)` = 2, not 3.
-- DISC, INTRATE, PRICEDISC, YIELDDISC, RECEIVED, ACCRINTM, PRICEMAT and YIELDMAT (through YEARFRAC), ACCRINT,
+  (COUPNUM of 2030-02-27 to that maturity was 2 until 2026-10-20 and is 3 now, previous entry.)
+- DISC, INTRATE, PRICEDISC, YIELDDISC, RECEIVED, ACCRINTM, PRICEMAT and YIELDMAT (through YEARFRAC),
   AMORLINC and AMORDEGRC change the same way. `DISC(DATE(2024,1,31),DATE(2024,2,29),97,100,0)` = 0.36 (30 days).
   `AMORLINC(2400,DATE(2023,12,31),DATE(2024,12,31),300,0,0.15,1)` = 360 (1900: 360.986).
 - PRICE, YIELD, DURATION, MDURATION, ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD change too.
   `ODDFPRICE(DATE(2024,1,31),DATE(2030,2,28),DATE(2023,12,1),DATE(2024,2,29),0.05,0.06,100,2,0)` = 94.9666 (1900: 94.9546).
-- TBILLPRICE, TBILLYIELD and TBILLEQ apply their one-year limit to the shifted dates.
-  `TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)` = 90.85 (3/1 to 3/1 is one year; the 1900 twin of this cell is unprobed).
+- Old behavior: TBILLPRICE, TBILLYIELD and TBILLEQ applied their one-year limit to the shifted dates until 2026-10-20
+  (`TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)` was 90.85; `#NUM!` now, previous entry).
 - Unaffected: DAYS360 (`DAYS360(DATE(2023,8,31),DATE(2024,2,29))` = 179 in both systems) and the other date
   readers of the previous entry.
 
 At the edges:
-- Serial 0 is a valid date: `PRICE(0,DATE(1905,6,30),...)`, `ACCRINT(0,...)` and `AMORLINC(2400,0,...)` give values.
+- Serial 0 is a valid date: `PRICE(0,DATE(1905,6,30),...)` and `AMORLINC(2400,0,...)` give values (`ACCRINT(0,...)` did
+  until 2026-10-20 and is `#NUM!` now, previous entry).
 - A negative serial is #NUM!: `COUPDAYBS(-1,400,2)`, `YEARFRAC(-1,10,1)`.
 - A returned date may be negative: `COUPPCD(10,DATE(1905,6,30),2)` = -1 and `COUPPCD(0,400,2)` = -150.
 - Quirk: the last date fails once shifted. `YEARFRAC(0,2957003,1)` and `DISC(0,2957003,97,100,0)` are #NUM!, but
@@ -766,13 +789,12 @@ At the edges:
   COUPDAYBS and COUPDAYSNC are serial differences from those two dates, and so is COUPDAYS on basis 1:
   `COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` = 2958465, `COUPDAYBS` = 2958101, `COUPDAYSNC` = 364;
   `COUPDAYSNC(DATE(9998,1,10),DATE(9999,12,31),2,3)` = 720. On the 30/360 bases 0 and 4 COUPDAYBS and COUPDAYSNC are
-  #NUM!. COUPDAYS on bases 0, 2, 3 and 4 keeps its fixed length (180, 180, 182.5, 180). COUPNUM, PRICE, YIELD,
-  DURATION and MDURATION are #NUM!. A maturity past the last date (`1E+300` included) is #NUM! as before.
+  #NUM!. COUPDAYS on bases 0, 2, 3 and 4 keeps its fixed length (180, 180, 182.5, 180). PRICE, YIELD,
+  DURATION and MDURATION are #NUM! (COUPNUM was until 2026-10-20; it now counts the coupons, previous entry). A maturity past the last date (`1E+300` included) is #NUM! as before.
   The 1900 twin has no such break: every cell gives the normal schedule up to 9999-12-31.
-  ACCRINT breaks on its first_interest the same way: from 9995-12-31 on it is #NUM! for any settlement and calc_method,
-  on bases 0 and 1 with semiannual coupons (other bases and frequencies UNVERIFIED; ours breaks them all):
-  `ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)`, while 9995-12-30
-  accrues 98.47 as in 1900, and a first_interest of 9995-06-30 settled on 9995-12-31 still gives 75.28.
+  Old behavior: until 2026-10-20 ACCRINT broke on its first_interest the same way, `#NUM!` from 9995-12-31 on for any
+  settlement and calc_method (`ACCRINT(DATE(9994,1,1),DATE(9995,12,31),DATE(9995,12,21),0.05,1000,2,0,TRUE)`); it now
+  gives the 1900 value, 98.61111111111111 (previous entry).
   The odd-period functions break differently, and not on that threshold. In 1904, ODDFPRICE, ODDFYIELD, ODDLPRICE
   and ODDLYIELD are #NUM! for maturities 9995-12-30, 9995-12-31 and 9999-06-30 (issue and settlement five years
   earlier, or in the last year), where 1900 gives values. ODDF* with issue, settlement and first coupon in the year
@@ -804,8 +826,9 @@ At the edges:
   COUPPCD, COUPNCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, COUPNUM, PRICE, YIELD, DURATION, YEARFRAC and ACCRINT on bases 0, 1
   and 4, for settlements 2096-03-01, 2100-02-15, 2100-03-01, 2099-12-31 and 2096-02-15 and maturities 2100-06-30,
   2104-02-27, 2104-06-30, 2100-12-31 and 2100-02-28 (165 cells), give in a 1904 workbook exactly the values of a 1900
-  workbook with every date moved 1462 days later; COUPPCD and COUPNCD are 2·1462 serials lower. All 165 cells agree
-  bit for bit (probes/date-system-1900-financial-readers-shifted against probes/date-system-1904-financial-readers).
+  workbook with every date moved 1462 days later; COUPPCD and COUPNCD are 2·1462 serials lower. All 165 cells agreed
+  bit for bit on 2026-10-12 (probes/date-system-1900-financial-readers-shifted against probes/date-system-1904-financial-readers);
+  since 2026-10-21 the 13 ACCRINT cells that move (rows 11, 22 and 33) follow the previous entry and COUPNUM's do not move.
   The s + 1463 reading differed in 93 of the 165 cells (COUPNCD on basis 1 70308
   against 70309, COUPDAYS 181 against 182, YEARFRAC basis 0 4.32778 against 4.33056) and missed 4 more in the last
   digits. Ours reads s + 2·1462 since T-1492 (`DateSystem::financial_1900_serial`, results mapped back by
@@ -813,34 +836,23 @@ At the edges:
   (probes/date-system-1900-financial-readers-shifted), the 1900 gaps of the next sentence. The unshifted 1900 twin (probes/date-system-1900-financial-readers) has its own gaps: COUPDAYS
   basis 1 around 2096-02-29 (financial.md, "COUPDAYS basis 1 counts from the chained next coupon"; fixed in T-1493) and YIELD and
   DURATION last digits (financial.md, "YIELD stops short of PRICE's root"; T-1374).
-  A date read past 9999-12-31 is #NUM! in YEARFRAC and DISC (1904 serial 2955542, 9995-12-31, onward), but ACCRINT with
-  basis 1 and calc_method FALSE takes its *settlement* up to the last 1904 date 2957003:
-  `ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9999,12,31),0.05,1000,2,1,FALSE)` is 504.28 while 2957004 is #NUM!
-  (probes/date-system-1904-financial-settlement-bound column A (60 cells in all), excel-graph, 2026-10-13, T-1492;
-  `DateSystem::accrint_settlement_limit`). Every basis with calc_method FALSE takes it that far (T-1494): bases 1, 2
-  and 3 count the actual days to the settlement read past 9999-12-31 (`ACCRINT(DATE(9990,1,1),DATE(9990,6,30),
-  DATE(9996,1,1),0.05,1000,2,2,FALSE)` is 304.31, 2191 days from the issue read 9994-01-02 to 10000-01-02), while
-  bases 0 and 4, which need the settlement's date for 30/360, take first_interest's 1904 serial plus 1462 (its 1900-system
-  serial, actual days from the 1900 epoch) as the day count of the settlement slice, whatever the settlement and the issue: 410415.83 = 25 * 2954994 / 180 for
-  first_interest 9990-06-30 (1904 serial 2953532), for every settlement from 9995-12-31 to 9999-12-31 and issues
-  9990-01-01 to 9990-06-29; moving first_interest by -91 days moves the count by -91, and an issue before the
-  regular period adds its stub as usual (179/180 for issue 9989-01-01 or 9980-01-01). The slice is over the normal
-  period (360/frequency days): 410415.83 for frequencies 1 and 2, 410428.19 for 4 (with an 89/90 stub). With
-  calc_method TRUE, every basis is #NUM! for a settlement read past 9999-12-31, and from 9995-12-30 on too, since the
-  next coupon is then past 9999-12-31 (financial.md, "ACCRINT with calc_method TRUE: a next coupon past the calendar
-  is #NUM!"; it holds in 1900 too). Evidence: probes/date-system-1904-accrint-settlement-bound A1:A22 (excel-graph,
-  2026-10-13, T-1494); its 1900 twin date-system-1900-accrint-settlement-bound gives #NUM! for those settlements
-  (2958465 is the 1900 input bound). Ours: `fn_accrint` (accrint.rs) passes the day count to `compute_accrint`.
+  A date read past 9999-12-31 is #NUM! in YEARFRAC and DISC (1904 serial 2955542, 9995-12-31, onward).
+  Old behavior: until 2026-10-20 ACCRINT with calc_method FALSE took its settlement up to the last 1904 date 2957003,
+  counting bases 0 and 4 with first_interest's 1900 serial as the settlement slice
+  (`ACCRINT(DATE(9990,1,1),DATE(9990,6,30),DATE(9996,1,1),0.05,1000,2,0,FALSE)` was 410415.8333333334), and was
+  #NUM! with calc_method TRUE for a settlement from 9995-12-30 on (probes/date-system-1904-accrint-settlement-bound,
+  -financial-settlement-bound, excel-graph 2026-10-13, T-1492, T-1494). Both now give the 1900 values (300 for that
+  cell; previous entry).
   The break threshold of COUPPCD/COUPNCD/COUPDAYS is unchanged: the previous coupon of a broken schedule is 1900 serial 1462 in the doubled reading. All probes excel-graph, 2026-10-13. In 1900 itself, ODDLPRICE and ODDLYIELD with maturity 9999-12-31 (last interest
   9999-05-15) are #NUM!, and so is ODDFPRICE/ODDFYIELD with first coupon 9998-12-31 and maturity 9999-06-30
   (issue 9998-07-01: a first period of exactly 180 days 30/360, not the calendar; financial.md, T-1490).
   COUPDAYS on basis 1 in the broken range ignores the settlement: 2958465 for settlements 9999-01-01, 9998-03-01 and
   9996-02-01.
   Probes: date-system-1904-odd-accrint-bound, date-system-1904-odd-threshold and their 1900 twins (excel-graph,
-  2026-10-12, T-1447). Ours: ACCRINT follows `coupon_schedule_breaks` (T-1447). The odd-period cells are T-1457.
+  2026-10-12, T-1447). The odd-period cells are T-1457.
   Probes: date-system-1904-coupon-bound and its twin date-system-1900-coupon-bound (excel-graph, 2026-10-12, T-1440).
-  Ours: `DateSystem::coupon_schedule_breaks` (formatter/dates.rs), applied by the COUP* functions, PRICE, YIELD and
-  DURATION (functions/financial/financial_bonds.rs).
+  Ours: `DateSystem::coupon_schedule_breaks` (formatter/dates.rs), applied by the COUP* functions other than COUPNUM,
+  PRICE, YIELD and DURATION (functions/financial/financial_bonds.rs).
 
 Probes: date-system-1904-financial, date-system-1904-financial-shift, and the twins date-system-1900-financial-daycount
 and date-system-1904-financial-daycount (the same 40 cells in each system). All excel-graph, 2026-10-12, T-1436.
@@ -849,10 +861,10 @@ YEARFRAC and the financial date readers. Every shift cell matches, COUPNCD at 99
 The other failing cells are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMAT, YIELDDISC, YIELDMAT, TBILL*; T-1374)
 or iteration stopping points (XIRR, YIELD, ODDFYIELD; T-0916). Most fail in the 1900 twin too; PRICEDISC
 daycount A20 is 1 ulp off in 1904 only.
-Conflict: a 2026-10-21 re-fill changed 111 of the 1904 financial cells this entry rests on; see "Excel for the web
-changed 1904 financial results (2026-10)" above (T-2337).
+Since 2026-10-21 the ACCRINT, COUPNUM and TBILL* cells of these probes follow the previous entry (re-filled
+2026-10-27, T-2337).
 Status: VERIFIED (web)
-Tasks: T-1436, T-1440, T-1447, T-1457, T-1489, T-1492, T-1494
+Tasks: T-1436, T-1440, T-1447, T-1457, T-1489, T-1492, T-1494, T-2337
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.

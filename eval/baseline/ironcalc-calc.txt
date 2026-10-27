@@ -81,6 +81,7 @@ C	ironcalc-calc/LOGICAL/LAMBDA.xlsx	8
 C	ironcalc-calc/LOGICAL/LET.xlsx	6
 C	ironcalc-calc/LOGICAL/MAKEARRAY.xlsx	9
 C	ironcalc-calc/LOGICAL/MAP_REDUCE.xlsx	7
+C	ironcalc-calc/LOGICAL/NOT.xlsx	115
 C	ironcalc-calc/LOGICAL/SCAN.xlsx	9
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/ADDRESS.xlsx	34
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/CHOOSE.xlsx	24
@@ -107,6 +108,7 @@ C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ABS.xlsx	13
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ARABIC_ROMAN.xlsx	40427
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	61
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/BASE_DECIMAL.xlsx	358
+C	ironcalc-calc/MATH_AND_TRIGONOMETRY/BASE_DECIMAL_issue_1617.xlsx	3
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx	76
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/DEGREES_RADIANS.xlsx	54
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/EVEN_ODD.xlsx	87
@@ -215,6 +217,7 @@ C	ironcalc-calc/defined_names_for_unit_test.xlsx	3
 C	ironcalc-calc/escape_strings.xlsx	2
 C	ironcalc-calc/issue_341.xlsx	5
 C	ironcalc-calc/logical.xlsx	188
+C	ironcalc-calc/named_ranges.xlsx	194
 C	ironcalc-calc/percentage.xlsx	6
 C	ironcalc-calc/quotes.xlsx	5
 C	ironcalc-calc/range_operator.xlsx	9
@@ -451,40 +454,24 @@ F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C4
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!E4
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!D14
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!D26
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G11
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G14
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G19
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G2
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G21
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G23
+F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G15
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G25
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G26
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G29
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G32
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G42
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G43
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G44
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G45
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G46
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G47
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G48
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G49
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G5
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G60
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G61
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G63
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G64
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G67
+F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G65
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G9
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H11
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H15
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H19
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H2
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H23
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H24
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H25
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H26
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H31
+F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H32
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H4
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H42
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H43
@@ -497,7 +484,6 @@ F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H49
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H5
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H60
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H61
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H67
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!H72
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!G3
 F	ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	BETA_DIST!L3
@@ -598,7 +584,6 @@ F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E8
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!J2
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L2
-F	ironcalc-calc/STATISTICAL/F_TEST.xlsx	Sheet1!F1
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E11
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E16
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E21

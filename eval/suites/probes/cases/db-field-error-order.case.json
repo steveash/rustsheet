@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2516: which error a D-function returns when the field is an error or unresolvable and the database or criteria is one row. Data A1:C4, criteria E1:E2 (Qty >1), one-row criteria G1, TRUE in I1; questions in L11:L23 (K says what each asks).",
+ "tags": [
+  "M9",
+  "database",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "Name",
+    "B1": "Qty",
+    "C1": "Amt",
+    "A2": "a",
+    "B2": 1,
+    "C2": 10,
+    "A3": "b",
+    "B3": 2,
+    "C3": 20,
+    "A4": "c",
+    "B4": 3,
+    "C4": 30,
+    "E1": "Qty",
+    "E2": ">1",
+    "G1": "Qty",
+    "I1": true,
+    "K11": "field NA, one-row criteria",
+    "L11": "=DSUM(A1:C4,NA(),G1)",
+    "K12": "field NA, one-row db",
+    "L12": "=DSUM(A1:C1,NA(),E1:E2)",
+    "K13": "field NA, good",
+    "L13": "=DSUM(A1:C4,NA(),E1:E2)",
+    "K14": "field \"Nope\", one-row criteria",
+    "L14": "=DSUM(A1:C4,\"Nope\",G1)",
+    "K15": "field \"Nope\", one-row db",
+    "L15": "=DSUM(A1:C1,\"Nope\",E1:E2)",
+    "K16": "field \"Nope\", good",
+    "L16": "=DSUM(A1:C4,\"Nope\",E1:E2)",
+    "K17": "field DIV0, one-row criteria",
+    "L17": "=DSUM(A1:C4,1/0,G1)",
+    "K18": "field NUM (gamma over TRUE cell), alone",
+    "L18": "=GAMMA.DIST(I1,42,1E-15,\"FALSE\")",
+    "K19": "gamma field one-row criteria",
+    "L19": "=DGET(A1:C4,GAMMA.DIST(I1,42,1E-15,\"FALSE\"),G1)",
+    "K20": "field 5 (out of range), one-row criteria",
+    "L20": "=DSUM(A1:C4,5,G1)",
+    "K21": "field 0, one-row criteria",
+    "L21": "=DSUM(A1:C4,0,G1)",
+    "K22": "field NA, one-cell criteria G1 DMAX",
+    "L22": "=DMAX(A1:C4,NA(),G1)",
+    "K23": "VLOOKUP NA field DPRODUCT one-row crit",
+    "L23": "=DPRODUCT(A1:C4,VLOOKUP(1,A2:A4,2,FALSE),G1)"
+   }
+  }
+ ]
+}

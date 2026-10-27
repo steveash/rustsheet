@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2635 (upstream ironcalc 2aa0e653): a sheet-qualified workbook name whose text starts like a cell reference (`Data!Q1_Total`) is the name, beside the plain reference `Data!Q1`.",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "Q1_Total": "=100"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=Data!Q1_Total",
+        "A2": "=Data!Q1",
+        "A3": "=SUM(Data!Q1_Total,Data!Q1)",
+        "A6": "=Q1_Total",
+        "A7": "=Sheet1!Q1_Total*2",
+        "A8": "=FORMULATEXT(A1)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "Q1": "77"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8"
+  ]
+}
