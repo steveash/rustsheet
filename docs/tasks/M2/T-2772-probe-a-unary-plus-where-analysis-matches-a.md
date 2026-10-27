@@ -3,7 +3,7 @@ id: T-2772
 title: "Probe a unary plus where analysis matches a literal: N(IF(+TRUE,B1:B3)), N(CHOOSE(+TRUE,Z1,{2;3})), INDIRECT(+K1), legacy ABS(+{5}) and N(+{2;3}), LET(+x,1,x), a stored <f>+5</f>"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,9 +29,20 @@ Probe each on excel-graph (excel-probe skill): the values and FORMULATEXT, legac
 results in syntax.md under "A typed unary plus stays in the formula text". File engine tasks for any mismatch.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph, oracle-filled) covers every shape above. Its failing cells are baselined.
-- [ ] syntax.md records the results and names the engine tasks filed for any mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case (excel-graph, oracle-filled) covers every shape above. Its failing cells are baselined.
+- [x] syntax.md records the results and names the engine tasks filed for any mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing fixes (filed as engine tasks).
+
+## Outcome
+Two excel-graph probe cases: probes/t2772-unary-plus-static-readings (36 cells, all pass) and
+probes/t2772-unary-plus-in-range-rows (20 cells, 18 pass). A plus on a literal an analysis matches (IF/CHOOSE index,
+INDIRECT text, legacy `ABS(+{5})`, `N(+{2;3})`) changes nothing in Excel, and we match. A stored `<f>+5</f>` folds to
+`=5` on load, as we do. Typed `=LET(+x,1,x)` and `=LAMBDA(+x,x)(1)` are refused (Graph 400; the refused cases are not
+committed): we refuse the LAMBDA form (`#ERROR!`, new unit test) but give
+`#VALUE!` for the LET form: filed T-2887 (engine, sonnet). The 400s are recorded in
+docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md. One mismatch: legacy `N(+B1:B3)` intersects in Excel (`=N(+@B1:B3)`, 2 on row 2);
+we read the range whole (1): filed T-2885 (engine, sonnet), J2 and J5 baselined. Recorded in syntax.md.
+Eval delta: +56 probe cells, 54 passing, 2 new-coverage failures baselined; no regressions.
