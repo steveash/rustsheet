@@ -3,7 +3,7 @@ id: T-2344
 title: "Probe a single cell, name or INDEX result holding a boolean or text as the data of QUARTILE/PERCENTILE/PERCENTRANK"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
