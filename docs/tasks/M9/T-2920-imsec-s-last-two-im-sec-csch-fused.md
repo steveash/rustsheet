@@ -3,7 +3,7 @@ id: T-2920
 title: "IMSEC's last two im-sec-csch-fused texts (B3, B31) and their IMREAL (C3, C31): Excel's 15 digits, no older IMSEC cell lost"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
