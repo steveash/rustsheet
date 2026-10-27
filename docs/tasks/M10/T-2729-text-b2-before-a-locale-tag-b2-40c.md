@@ -45,6 +45,7 @@ tag, `mmm` switches the section to the bare-`B2` Arabic path; in that path `mmm`
 after a weekday prints the whole weekday, and a number token before the first name turns the quirk off. A second calendar
 prefix after a tag is `#VALUE!`, and `B1`/`B2` no longer conflict with `@` in TEXT. number-formats.md has a new section,
 "`B2` before a locale tag and calendar digit 6".
-Eval: EVAL_DELTA
+Eval: probes known failures 2990 -> 2987 (10 fixed: text-locale-calendars A47-A49, A87, A88, A124; text-locale-calendars-detail A7, A8;
+text-locale-era-gregorian A21; text-locale-lunar-tokens A79), 595 new probe cells of which 7 fail (owned by T-2932), 0 regressions.
 Follow-up: T-2932 (`B2` before calendar 3 and 7 applies the year conversion twice; also lists the Hebrew `B2[$-80409]`
 cell, which T-2779 fixes). T-2764's last cell (text-locale-lunar-tokens A79) passes now.
