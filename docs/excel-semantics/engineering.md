@@ -432,10 +432,11 @@ Tasks: T-2793, T-2810
   1.4142135623730951E-154). The overflow side is unchanged: a square past DBL_MAX is `#NUM!` in IMSQRT
   (`1E155+1E155i`, `1E160+0i`, `3E200+4E200i`), a sum past it is "0" (`1E154+1E154i`). Implemented in
   `flushed_square` (functions/engineering/complex/mod.rs; probes/eng-imln-modulus-range A43-A56, A79, A80,
-  eng-imln-modulus A17; excel-graph).
+  eng-imln-modulus A17; excel-graph). Extrapolated, not probed: parts of about 1.06E-154 to 1.49E-154, where each
+  square is subnormal but their sum is normal (`IMLN("1.2E-154+1.2E-154i")`; ours `#NUM!`, IMSQRT "0"; T-2894).
 Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950); probes/eng-imln-modulus, eng-imln-modulus-range (excel-graph, 2026-10-21, T-2117).
 Status: VERIFIED (excel-graph)
-Tasks: T-1766, T-1892, T-1950, T-2117, T-2572
+Tasks: T-1766, T-1892, T-1950, T-2117, T-2572, T-2894
 
 ## IMPOWER past the angle cut
 Rule: once IMPOWER's angle `atan2(y,x)·n` passes the cut (about 134217727), Excel's sine and cosine both read as the
