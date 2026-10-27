@@ -24,6 +24,16 @@ class Classifier(unittest.TestCase):
         self.assertTrue(classify("docs/excel-semantics/text.md"))
         self.assertTrue(classify("docs/status.md", "docs/excel-semantics/arrays.md"))
 
+    def test_progress_report_inputs_are_code(self) -> None:
+        # The progress report generator reads them (SPEC-0022, decision 0120).
+        self.assertTrue(classify("docs/progress/history.json"))
+        self.assertTrue(classify("docs/progress.md"))
+        self.assertTrue(classify("docs/milestones.md", "docs/status.md"))
+        self.assertTrue(classify("docs/progress/functions.md"))
+        # Their neighbours stay docs-only: a file entry matches only itself (decision 0120).
+        self.assertFalse(classify("docs/parity.md", "docs/status.md", "docs/research-plan.md"))
+        self.assertFalse(classify("docs/progress.md.bak", "docs/progress.mdx", "docs/milestones.md~"))
+
     def test_rename_of_crate_file_into_docs_is_code(self) -> None:
         # --no-renames lists both sides, so the crate side makes it code.
         self.assertTrue(classify("crates/rustsheet-engine/src/lib.rs", "docs/lib.rs"))
@@ -66,6 +76,7 @@ class DocsReaders(unittest.TestCase):
             "root = Path(ROOT) / 'docs'",
             'fs::read(".claude/skills/x.md")',
             'let p = root.join("docs/status.md");',
+            'page = "docs/progress.mdx"',
         ]:
             self.assertEqual(len(readers.violations("crates/x/src/a.rs", line)), 1, line)
 
@@ -73,6 +84,9 @@ class DocsReaders(unittest.TestCase):
         for line in [
             'const SEMANTICS_DIR: &str = "docs/excel-semantics/";',
             'root.join("docs/excel-semantics")',
+            'HISTORY = Path("docs/progress/history.json")',
+            'repo / "docs/milestones.md"',
+            "page = '../docs/progress.md'",
             '// see "docs/status.md"',
             '# reads "docs/status.md"',
             'return False, "requires Excel (see docs/architecture/oracle.md)"',

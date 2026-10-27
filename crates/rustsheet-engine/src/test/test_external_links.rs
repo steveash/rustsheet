@@ -34,6 +34,7 @@ fn linked() -> Model {
             name("Span", "='Defines'!$A$1:$B$2", None),
         ],
         cells,
+        refresh_error_sheets: Vec::new(),
     });
     model
 }
@@ -116,6 +117,29 @@ fn cached_ranges_read_as_references() {
     // A sheet the cache does not hold stays #BLOCKED!.
     assert_eq!(eval(&mut model, "=SUM([1]Nope!$A$1:$B$2)"), "#BLOCKED!");
     assert_eq!(eval(&mut model, "=COUNTA([1]Nope!$A$1:$B$2)"), "0");
+}
+
+// A structured reference qualified by a workbook is `#REF!` whatever the link caches
+// (corpus-bench/58994 F8; docs/excel-semantics/references.md; T-0482).
+#[test]
+fn structured_reference_into_a_linked_workbook_is_ref() {
+    let mut model = linked();
+    for (cell, formula) in [
+        ("A1", "=ROWS([1]!Table3[#Data])"),
+        ("A2", "=VLOOKUP(1,[1]!Table3[#Data],2,FALSE)"),
+        ("A3", "=ROWS([1]Defines!Table3[Col])"),
+    ] {
+        model
+            .set_loaded_user_input(0, cell[1..].parse().unwrap(), 1, formula.to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    for row in 1..=3 {
+        assert_eq!(model.get_formatted_cell_value(0, row, 1).unwrap(), "#REF!");
+    }
+    // A typed formula stays a parse error; same-workbook `Sales[[#Data],[Val]]` resolving to its
+    // data area is covered by test_structured_references.
+    assert_eq!(eval(&mut model, "=ROWS([1]!Table3[#Data])"), "#ERROR!");
 }
 
 #[test]
@@ -274,6 +298,7 @@ fn cached_ranges_fixture() -> Model {
             sheet_id: None,
         }],
         cells,
+        refresh_error_sheets: Vec::new(),
     });
     model
 }
@@ -546,4 +571,197 @@ fn span_of_many_cached_sheets_is_one_walk() {
         model.evaluate();
         assert_eq!(model._get_text("C1"), "#ERROR!", "{formula}");
     }
+}
+
+// A sheet `sheetNames` lists but the cache holds no cell of reads `#BLOCKED!`, yet a lookup over
+// it is `#N/A` (fixtures/external-link-uncached-lookups, excel-graph; T-0457).
+#[test]
+fn lookups_into_an_uncached_linked_sheet() {
+    let mut model = linked();
+    model.workbook.external_books[0]
+        .sheet_names
+        .push("Sort".to_string());
+    assert_eq!(eval(&mut model, "=[1]Sort!$B$2"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=ISBLANK([1]Sort!$B$2)"), "FALSE");
+    assert_eq!(eval(&mut model, "=SUM([1]Sort!$B$2:$C$3)"), "#BLOCKED!");
+    assert_eq!(eval(&mut model, "=VLOOKUP(5,[1]Sort!$B$2,1,FALSE)"), "#N/A");
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,[1]Sort!$B:$Z,2,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,[1]Sort!$B:$Z,30,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=HLOOKUP(5,[1]Sort!$1:$3,2,FALSE)"),
+        "#N/A"
+    );
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B$2,0)"), "#N/A");
+    assert_eq!(eval(&mut model, "=MATCH(5,[1]Sort!$B:$B)"), "#N/A");
+    // XLOOKUP over one cell finds nothing, as over a range; COUNTA counts every blocked cell
+    // (fixtures/external-link-uncached-lookups Refs!B13, B16, B44; T-0472).
+    assert_eq!(
+        eval(&mut model, "=XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)"),
+        "#N/A"
+    );
+    assert_eq!(
+        eval(&mut model, "=XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2,\"none\")"),
+        "none"
+    );
+    assert_eq!(eval(&mut model, "=COUNTA([1]Sort!$B:$B)"), "1048576");
+    // A sheet marked refreshError reads #REF! where it reads no cell (Refs!B38); its lookups
+    // stay #N/A (B32).
+    model.workbook.external_books[0]
+        .sheet_names
+        .push("56737".to_string());
+    model.workbook.external_books[0]
+        .refresh_error_sheets
+        .push(3);
+    assert_eq!(eval(&mut model, "=ERROR.TYPE('[1]56737'!$B$2)"), "4");
+    assert_eq!(
+        eval(&mut model, "=VLOOKUP(5,'[1]56737'!$B:$Z,2,FALSE)"),
+        "#N/A"
+    );
+}
+
+// A criteria or sum range of a cached sheet is #VALUE!, as any argument that is not a range of
+// this workbook is, cached or not; it is that error without its array being built (T-0477). One
+// too large for an array keeps its bound's error.
+#[test]
+fn criteria_ranges_of_a_cached_sheet_are_value_errors() {
+    let mut model = linked();
+    for formula in [
+        "=COUNTIF([1]Uses!$A$1:$A$3,\"Hello!\")",
+        "=COUNTIFS([1]Uses!$A:$A,\"Hello!\")",
+        "=COUNTIFS(A1:A3,1,[1]Uses!$A$1:$A$3,1)",
+        "=SUMIF([1]Uses!$A$1:$A$3,1)",
+        "=SUMIFS(A1:A3,[1]Uses!$A$1:$A$3,1)",
+        "=SUMIFS([1]Uses!$A$1:$A$3,A1:A3,1)",
+        "=AVERAGEIFS([1]Defines!$B:$B,[1]Defines!$A:$A,\"<>\")",
+        "=MAXIFS(A1:A3,[1]Uses!$A$1:$A$3,1)",
+        "=COUNTIF([1]Uses!$A$1,\"Hello!\")",
+    ] {
+        assert_eq!(eval(&mut model, formula), "#VALUE!", "{formula}");
+    }
+    assert_eq!(eval(&mut model, "=COUNTIF([1]Nope!$A$1:$A$3,1)"), "#VALUE!");
+    // Two whole columns are past the array bound (docs/excel-semantics/arrays.md).
+    assert_eq!(eval(&mut model, "=COUNTIF([1]Uses!$A:$B,1)"), "#ERROR!");
+}
+
+#[test]
+fn only_multi_cell_external_ranges_are_external_arrays() {
+    use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
+    let mut model = linked();
+    let cell = CellReferenceIndex {
+        sheet: 0,
+        row: 1,
+        column: 3,
+    };
+    let context = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 3,
+    };
+    // The predicate agrees with what evaluating the range builds.
+    let mut is_array = |range: &str| {
+        let node = model.parse_internal_formula(range, &context);
+        let predicted = model.is_external_array(&node, cell);
+        let built = matches!(
+            model.evaluate_node_in_context(&node, cell),
+            crate::calc_result::CalcResult::Array(_)
+        );
+        assert_eq!(predicted, built, "{range}");
+        predicted
+    };
+    assert!(is_array("[1]Uses!$A$1:$A$3"));
+    assert!(is_array("[1]Uses!$A:$A"));
+    assert!(!is_array("[1]Uses!$A$1"));
+    assert!(is_array("[1]Nope!$A$1:$A$3"));
+    assert!(is_array("[1]Nope!$A:$A"));
+    assert!(!is_array("[1]Uses!$A:$B"));
+    assert!(!is_array("A1:A3"));
+}
+
+// A whole column or row of a cached linked sheet is searched at full length, as a local one is: an
+// approximate search over unsorted data probes the same midpoints, so the cache's extent never
+// moves the answer (T-0474; T-0457's review). Each lookup is checked against the same lookup over
+// the same values in this workbook (H:J and rows 10:12; the rows are cached on [1]Defines).
+#[test]
+fn whole_column_lookups_keep_full_length() {
+    let mut model = linked();
+    let keys = [1.0, 5.0, 2.0, 9.0, 3.0];
+    let book = &mut model.workbook.external_books[0];
+    book.cells.clear();
+    for (i, key) in (1..).zip(keys) {
+        book.cells.extend([
+            ((0, i, 1), SpillValue::Number(key)),
+            ((0, i, 2), SpillValue::Number(key * 10.0)),
+            ((1, 1, i), SpillValue::Number(key)),
+            ((1, 2, i), SpillValue::Number(key * 10.0)),
+        ]);
+    }
+    for (i, key) in (1..).zip(keys) {
+        model._set(&format!("H{i}"), &key.to_string());
+        model._set(&format!("I{i}"), &(key * 10.0).to_string());
+    }
+    for (column, key) in ["A", "B", "C", "D", "E"].into_iter().zip(keys) {
+        model._set(&format!("{column}10"), &key.to_string());
+        model._set(&format!("{column}11"), &(key * 10.0).to_string());
+    }
+    let pairs = [
+        ("VLOOKUP(1,{t}!$A:$C,2,TRUE)", "VLOOKUP(1,$H:$J,2,TRUE)"),
+        ("VLOOKUP(4,{t}!$A:$C,2,TRUE)", "VLOOKUP(4,$H:$J,2,TRUE)"),
+        ("VLOOKUP(9,{t}!$A:$C,2)", "VLOOKUP(9,$H:$J,2)"),
+        ("VLOOKUP(99,{t}!$A:$C,3,TRUE)", "VLOOKUP(99,$H:$J,3,TRUE)"),
+        ("VLOOKUP(2,{t}!$A:$C,2,FALSE)", "VLOOKUP(2,$H:$J,2,FALSE)"),
+        ("VLOOKUP(7,{t}!$A:$C,2,FALSE)", "VLOOKUP(7,$H:$J,2,FALSE)"),
+        ("MATCH(4,{t}!$A:$A)", "MATCH(4,$H:$H)"),
+        ("MATCH(1,{t}!$A:$A,1)", "MATCH(1,$H:$H,1)"),
+        ("MATCH(4,{t}!$A:$A,-1)", "MATCH(4,$H:$H,-1)"),
+        ("MATCH(9,{t}!$A:$A,0)", "MATCH(9,$H:$H,0)"),
+        ("HLOOKUP(4,{r}!$1:$3,2,TRUE)", "HLOOKUP(4,$10:$12,2,TRUE)"),
+        ("HLOOKUP(5,{r}!$1:$3,3,FALSE)", "HLOOKUP(5,$10:$12,3,FALSE)"),
+        ("MATCH(4,{r}!$1:$1)", "MATCH(4,$10:$10)"),
+    ];
+    for (linked, local) in pairs {
+        let linked = linked
+            .replace("{t}", "[1]Uses")
+            .replace("{r}", "[1]Defines");
+        let expected = eval(&mut model, &format!("={local}"));
+        assert_eq!(
+            eval(&mut model, &format!("={linked}")),
+            expected,
+            "{linked}"
+        );
+    }
+    // The answer full length gives over this unsorted column, not the 2 a cut vector would.
+    assert_eq!(eval(&mut model, "=VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)"), "1");
+}
+
+// Lookups of one pass into the same long cached column share one search vector, and lookups into
+// a linked sheet share one index of where its cached cells end (search_cache.rs): each still finds
+// its own key, exact or approximate, and an empty column of the sheet is all blank.
+#[test]
+fn whole_column_lookups_share_the_cached_vector() {
+    let mut model = linked();
+    let book = &mut model.workbook.external_books[0];
+    book.cells.clear();
+    book.cells
+        .extend((1..=100).map(|row| ((0, row, 1), SpillValue::Number(f64::from(row) * 2.0))));
+    model._set("C1", "=MATCH(40,[1]Uses!$A:$A,0)");
+    model._set("C2", "=MATCH(41,[1]Uses!$A:$A)");
+    model._set("C3", "=VLOOKUP(200,[1]Uses!$A:$B,1,FALSE)");
+    model._set("C4", "=MATCH(1,[1]Uses!$A:$A,0)");
+    model._set("C5", "=MATCH(1,[1]Uses!$C:$C,0)");
+    model._set("C6", "=VLOOKUP(1,[1]Uses!$C:$D,2)");
+    model._set("C7", "=MATCH(2,[1]Uses!$1:$1,0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "20");
+    assert_eq!(model._get_text("C2"), "20");
+    assert_eq!(model._get_text("C3"), "200");
+    assert_eq!(model._get_text("C4"), "#N/A");
+    assert_eq!(model._get_text("C5"), "#N/A");
+    assert_eq!(model._get_text("C6"), "#N/A");
+    assert_eq!(model._get_text("C7"), "1");
 }

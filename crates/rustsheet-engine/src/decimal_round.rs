@@ -15,6 +15,7 @@
 //! So `ROUND(1.005,2)` is 1.01 (1.00499999999999989… becomes 1.00500000000000 first) and
 //! `ROUNDDOWN(123456789.123,-5)` is exactly 123400000.
 
+use crate::arithmetic::flush_subnormal;
 use crate::constants::EXCEL_PRECISION;
 use crate::number_format::{significant_15, to_precision};
 
@@ -62,11 +63,34 @@ fn effective_digits(num_digits: f64, exponent: i64, mode: RoundMode) -> i64 {
     }
 }
 
+/// ROUND, ROUNDUP, ROUNDDOWN and TRUNC of `value` at `num_digits`: [`round_decimal`], except that
+/// ROUNDUP, ROUNDDOWN and TRUNC return a value whose 15-digit cut is subnormal as that cut, whatever
+/// `num_digits` (`ROUNDUP(2^-1022,0)` and `ROUNDDOWN(2^-1022,-2)` are a nonzero subnormal, while
+/// `ROUNDUP(2^-1022*(1+8*2^-52),0)`, whose cut 2.22507385850721E-308 is normal, is 1;
+/// docs/excel-semantics/numbers.md "ROUNDUP and ROUNDDOWN of a number whose 15-digit cut is
+/// subnormal", probes/t2756-roundup-smallest-normal-threshold, oracle excel-graph). INT does not
+/// share this path.
+pub(crate) fn round_function(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
+    if mode != RoundMode::HalfAwayFromZero {
+        let cut = cut_to_15_digits(value, true);
+        // The value Excel returns is 3 ulps below this nearest double (rows 52-58 of the probe);
+        // the conversion that gives it was not found (numbers.md, same entry).
+        if cut.is_subnormal() {
+            return Some(cut);
+        }
+    }
+    round_decimal(value, num_digits, mode)
+}
+
 /// Rounds `value` at `num_digits` decimal places the way Excel's ROUND family does.
 ///
 /// `num_digits` is truncated toward zero and then narrowed to an integer the way Excel does
 /// (see [`effective_digits`]). Returns `None` when the result is beyond the double range
-/// (`ROUNDUP(1.5,-400)` is `#NUM!` in Excel).
+/// (`ROUNDUP(1.5,-400)` is `#NUM!` in Excel). Each decimal it converts to a double (the rounded
+/// digits, and ROUNDUP's unit) is flushed to 0 when subnormal: `ROUND(2^-1022,309)` (2.2E-308)
+/// and `ROUNDDOWN(2^-1022*(1+8*2^-52),308)` (2E-308) are 0, and so is
+/// `ROUNDUP(2^-1022*(1+8*2^-52),308)`, its rounded-down 2E-308 and unit 1E-308 both being
+/// flushed (probes/t2756-roundup-smallest-normal-threshold rows 30-50).
 pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
     if value == 0.0 || !value.is_finite() {
         return Some(value);
@@ -89,9 +113,9 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
             (kept + u64::from(round_up), -num_digits, false)
         }
     };
-    let mut magnitude = decimal_to_f64(digits, place)?;
+    let mut magnitude = flush_subnormal(decimal_to_f64(digits, place)?);
     if add_unit {
-        magnitude += decimal_to_f64(1, place)?;
+        magnitude += flush_subnormal(decimal_to_f64(1, place)?);
     }
     if magnitude.is_infinite() {
         return None;
@@ -119,6 +143,20 @@ pub(crate) fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
         }
     }
     format!("{digits}e{place}").parse().ok()
+}
+
+/// `value` cut to 15 significant digits, as the double nearest that decimal: an exact tie at the
+/// 16th digit goes away from zero when `tie_away`, otherwise toward zero. A zero or non-finite
+/// `value` is itself. FLOOR's ratio snap and PERCENTRANK's truncation use it, so that a double
+/// just below a digit boundary counts as on it.
+pub(crate) fn cut_to_15_digits(value: f64, tie_away: bool) -> f64 {
+    if !value.is_finite() || value == 0.0 {
+        return value;
+    }
+    let (mantissa, exponent) = significant_15(value.abs(), tie_away);
+    // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
+    decimal_to_f64(mantissa, exponent - (SIGNIFICANT_DIGITS - 1))
+        .map_or(value, |cut| cut.copysign(value))
 }
 
 /// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`: the digits kept, and whether
@@ -201,7 +239,7 @@ pub(crate) fn round_engineering(value: f64, group: f64, precision: i32) -> (f64,
 
 #[cfg(test)]
 mod tests {
-    use super::{round_decimal, RoundMode};
+    use super::{round_decimal, round_function, RoundMode};
 
     fn round(value: f64, digits: f64) -> Option<f64> {
         round_decimal(value, digits, RoundMode::HalfAwayFromZero)
@@ -327,6 +365,54 @@ mod tests {
         assert_eq!(
             round_decimal(0.5, 2_147_483_648.0, RoundMode::Up),
             Some(1.0)
+        );
+    }
+
+    /// 2^-1022 * (1 + k * 2^-52), the k-th double above the smallest normal.
+    fn above_smallest_normal(k: u32) -> f64 {
+        f64::MIN_POSITIVE * (1.0 + f64::from(k) * f64::EPSILON)
+    }
+
+    /// probes/t2756-roundup-smallest-normal-threshold: up to k = 7 the 15-digit cut
+    /// (2.22507385850720E-308) is subnormal and ROUNDUP/ROUNDDOWN return it; from k = 8 it is
+    /// normal and ROUNDUP takes its step.
+    #[test]
+    fn subnormal_cut_is_returned_by_roundup_and_rounddown() {
+        let cut = 2.225_073_858_507_2e-308_f64;
+        for k in [0, 7] {
+            let x = above_smallest_normal(k);
+            for digits in [0.0, -2.0, 2.0, 300.0, 307.0, 330.0] {
+                assert_eq!(round_function(x, digits, RoundMode::Up), Some(cut));
+                assert_eq!(round_function(-x, digits, RoundMode::Down), Some(-cut));
+            }
+            // ROUND rounds the cut and flushes a subnormal result.
+            assert_eq!(
+                round_function(x, 330.0, RoundMode::HalfAwayFromZero),
+                Some(0.0)
+            );
+            assert_eq!(
+                round_function(x, 310.0, RoundMode::HalfAwayFromZero),
+                Some(2.23e-308)
+            );
+        }
+        let x = above_smallest_normal(8);
+        assert_eq!(round_function(x, 0.0, RoundMode::Up), Some(1.0));
+        assert_eq!(round_function(-x, -2.0, RoundMode::Up), Some(-100.0));
+        assert_eq!(round_function(x, 300.0, RoundMode::Up), Some(1e-300));
+        assert_eq!(round_function(x, 307.0, RoundMode::Up), Some(1e-307));
+    }
+
+    /// The rounded-down digits and ROUNDUP's unit are each flushed when subnormal (rows 44-50).
+    #[test]
+    fn subnormal_parts_are_flushed() {
+        let x = above_smallest_normal(8);
+        for digits in [308.0, 309.0, 315.0, 321.0] {
+            assert_eq!(round_decimal(x, digits, RoundMode::Up), Some(0.0));
+            assert_eq!(round_decimal(x, digits, RoundMode::Down), Some(0.0));
+        }
+        assert_eq!(
+            round_decimal(x, 322.0, RoundMode::Up),
+            Some(2.225_073_858_507_21e-308)
         );
     }
 }

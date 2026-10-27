@@ -36,22 +36,35 @@
 //! needed restarts once evaluates in a single pass afterwards.
 //!
 //! Nothing here depends on the order in which cells are visited, only the
-//! amount of work does, but for WEEKNUM's stale `return_type` state: a pass in
-//! which a WEEKNUM read it is followed by one in Excel's order (`excel_order.rs`).
+//! amount of work does, but for the state Excel's calls leave in its calculation order
+//! (`OrderState`): a pass in which a call read it is followed by one in Excel's order
+//! (`excel_order.rs`).
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::calc_result::CalcResult;
+use crate::calc_result::{range_dims, CalcResult};
 use crate::circular::circular_reference;
-use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::date_and_time::weeknum::WeeknumStart;
+use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::model::Model;
 use crate::restart_log::RestartLog;
 use crate::seen_ranges::SeenRange;
 use crate::types::{ArrayKind, Cell};
+
+/// What a function call leaves behind for the calls Excel makes after it in the same recalc,
+/// read by calls whose value therefore depends on Excel's calculation order (`excel_order.rs`). A
+/// pass starts it empty, and the Excel-order chain puts it back when a run stops.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub(crate) struct OrderState {
+    /// WEEKNUM's stale `return_type` state (SPEC-0017).
+    pub(crate) weeknum_start: Option<WeeknumStart>,
+    /// The value AMORDEGRC with a period strictly between 0 and 1 returns: what the last
+    /// AMORDEGRC or AMORLINC left (financial.md "AMORDEGRC below period 1", decision 0131).
+    pub(crate) amor_left_over: f64,
+}
 
 /// The hasher of the maps the evaluation (and the facade's diff) keep about positions. Their
 /// keys are three small integers we produce ourselves, and every formula looks several up, which
@@ -253,6 +266,9 @@ pub(crate) struct Evaluation {
     pub(crate) restarts_in_last_evaluation: u32,
     /// Number of `evaluate()` calls so far.
     pub(crate) evaluations: u64,
+    /// Number of cells read through `Model::evaluate_cell` so far: the work counter of the
+    /// tests that bound how many cells a walk visits (T-2711).
+    pub(crate) cell_reads: u64,
     /// Number of formulas running right now, that is the depth of the
     /// recursion. It can be smaller than `stack.len()`: see `unwinding`.
     pub(crate) depth: usize,
@@ -281,10 +297,10 @@ pub(crate) struct Evaluation {
     pub(crate) evaluating_reads: u64,
     /// GETPIVOTDATA's per-pivot indices and memo, dropped at each `evaluate()` (`pivot_index.rs`).
     pub(crate) pivot_indexes: crate::functions::lookup_and_reference::pivot_index::PivotIndexes,
-    /// WEEKNUM's stale `return_type` state (SPEC-0017).
-    pub(crate) weeknum_start: Option<WeeknumStart>,
-    /// Whether a WEEKNUM read that state in this pass.
-    pub(crate) weeknum_read: bool,
+    /// What Excel's function calls leave for later ones in its calculation order (`OrderState`).
+    pub(crate) order_state: OrderState,
+    /// Whether a call read that state in this pass, so the pass's values depend on its order.
+    pub(crate) order_state_read: bool,
     /// Passes run in Excel's fresh-load order (`excel_order.rs`): set once a pass had a reader.
     pub(crate) excel_order: bool,
     /// In that order's chain, a read of a formula cell not yet evaluated stops the root's run and
@@ -352,6 +368,7 @@ impl Default for Evaluation {
             in_pass: false,
             restarts_in_last_evaluation: 0,
             evaluations: 0,
+            cell_reads: 0,
             depth: 0,
             max_depth: default_max_depth(),
             max_stack: DEFAULT_MAX_STACK,
@@ -361,8 +378,8 @@ impl Default for Evaluation {
             ifs_cache: Default::default(),
             evaluating_reads: 0,
             pivot_indexes: Default::default(),
-            weeknum_start: None,
-            weeknum_read: false,
+            order_state: OrderState::default(),
+            order_state_read: false,
             excel_order: false,
             blocking: false,
             blocked_on: None,
@@ -401,7 +418,8 @@ impl Model {
             self.iterate_cycles(false);
         }
         self.end_iteration();
-        self.evaluate_conditional_formatting();
+        // Conditional formats are evaluated on the next style read (SPEC-0021).
+        self.cf_stale = true;
     }
 
     /// Runs passes until one completes without a restart. `RestartLog` learns
@@ -422,10 +440,10 @@ impl Model {
         loop {
             self.evaluation.passes_in_last_evaluation += 1;
             let Some(restart) = self.run_pass(&log.circular) else {
-                // A WEEKNUM read the stale return_type state: its value depends on the order, so
-                // the pass that counts is one in Excel's order (SPEC-0017). It starts from the
-                // same sheet as any other pass. Without a reader the order is not observable.
-                let read = self.evaluation.weeknum_read;
+                // A call read the state earlier calls left (`OrderState`): its value depends on
+                // the order, so the pass that counts is one in Excel's order (SPEC-0017). It starts
+                // from the same sheet as any other pass. Without a reader the order is not observable.
+                let read = self.evaluation.order_state_read;
                 if read && !self.evaluation.excel_order {
                     self.evaluation.excel_order = true;
                     self.restore_dynamic_spills(&spills_before);
@@ -451,7 +469,7 @@ impl Model {
             self.restore_dynamic_spills(&spills_before);
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
-        self.evaluation.weeknum_start = None;
+        self.evaluation.order_state = OrderState::default();
     }
 
     /// Sets how many formulas deep the evaluation may recurse. A formula that
@@ -499,8 +517,8 @@ impl Model {
         state.circular_anchors = circular_anchors.iter().copied().collect();
         state.circular_below = 0;
         state.in_pass = true;
-        state.weeknum_start = None;
-        state.weeknum_read = false;
+        state.order_state = OrderState::default();
+        state.order_state_read = false;
         // dynamic links (HYPERLINK) are rebuilt on every evaluation
         self.links.clear();
         self.clear_variable_stack();
@@ -533,6 +551,7 @@ impl Model {
     /// not been evaluated in this pass. Reads are performed on behalf of the
     /// cell on top of the stack.
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
+        self.evaluation.cell_reads += 1;
         if self.evaluation.restart.is_some() || self.evaluation.unwinding {
             // The pass is being abandoned, or the recursion is unwinding;
             // nothing computed now is kept. This comes before anything is put
@@ -749,7 +768,11 @@ impl Model {
         let result = if self.evaluation.circular_anchors.contains(&key) {
             circular_reference()
         } else {
-            self.compute_formula(cell_reference, cell.f)
+            self.compute_formula(
+                cell_reference,
+                cell.f,
+                matches!(cell.array, Some((true, _))),
+            )
         };
         self.evaluation.depth -= 1;
         if self.evaluation.unwinding {
@@ -783,23 +806,24 @@ impl Model {
         self.stored_value(cell_reference)
     }
 
-    /// Runs the parsed formula and turns a reference into a value or an array.
-    fn compute_formula(&mut self, cell_reference: CellReferenceIndex, formula: i32) -> CalcResult {
+    /// Runs the parsed formula and turns a reference into a value or an array. `spills` is set
+    /// for a dynamic-array anchor ([`Model::evaluate_formula_root`]).
+    fn compute_formula(
+        &mut self,
+        cell_reference: CellReferenceIndex,
+        formula: i32,
+        spills: bool,
+    ) -> CalcResult {
         // Shares the formula, it does not copy it.
         let node =
             Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
-        match self.run_cell_formula(&node, cell_reference) {
+        match self.run_cell_formula(&node, cell_reference, spills) {
             CalcResult::Range { left, right } => {
+                let (rows, columns) = range_dims(left, right);
                 if left == right {
                     self.evaluate_cell(left)
-                } else if cell_reference.row + (right.row - left.row) > LAST_ROW
-                    || cell_reference.column + (right.column - left.column) > LAST_COLUMN
-                {
-                    CalcResult::new_error(
-                        Error::SPILL,
-                        cell_reference,
-                        "Spill would exceed worksheet bounds".to_string(),
-                    )
+                } else if spills_past_grid(cell_reference, rows, columns) {
+                    spill_past_grid_error(cell_reference)
                 } else {
                     match self.evaluate_range(left, right, cell_reference) {
                         Ok(array) => CalcResult::Array(array),

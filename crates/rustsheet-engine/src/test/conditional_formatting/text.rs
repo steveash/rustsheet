@@ -46,7 +46,7 @@ fn text_rule(operator: TextOperator, value: &str) -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model, row: i32) -> bool {
+fn is_red(model: &mut crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()
@@ -71,13 +71,13 @@ fn test_contains() {
     // TypeScript (3) and JavaScript (4) contain "Script"
     for row in [3, 4] {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should match Contains 'Script'"
         );
     }
     for row in [1, 2, 5, 6, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match Contains 'Script'"
         );
     }
@@ -102,13 +102,13 @@ fn test_does_not_contain() {
     // All except TypeScript (3) and JavaScript (4) do not contain "Script"
     for row in [1, 2, 5, 6, 7] {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should match DoesNotContain 'Script'"
         );
     }
     for row in [3, 4] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match DoesNotContain 'Script'"
         );
     }
@@ -129,13 +129,13 @@ fn test_begins_with() {
     // Fortran (1) and Forth (2) begin with "For"
     for row in [1, 2] {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should match BeginsWith 'For'"
         );
     }
     for row in [3, 4, 5, 6, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match BeginsWith 'For'"
         );
     }
@@ -155,12 +155,12 @@ fn test_ends_with() {
 
     // Only Erlang (6) ends with "lang"
     assert!(
-        is_red(&model, 6),
+        is_red(&mut model, 6),
         "row 6 (Erlang) should match EndsWith 'lang'"
     );
     for row in [1, 2, 3, 4, 5, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match EndsWith 'lang'"
         );
     }
@@ -180,12 +180,12 @@ fn test_equals_exact_match() {
 
     // Only row 5 is exactly "Haskell"
     assert!(
-        is_red(&model, 5),
+        is_red(&mut model, 5),
         "row 5 (Haskell) should match Equals 'Haskell'"
     );
     for row in [1, 2, 3, 4, 6, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match Equals 'Haskell'"
         );
     }
@@ -201,12 +201,12 @@ fn test_equals_case_insensitive() {
     model.evaluate();
 
     assert!(
-        is_red(&model, 5),
+        is_red(&mut model, 5),
         "row 5 (Haskell) should match case-insensitive Equals 'haskell'"
     );
     for row in [1, 2, 3, 4, 6, 7] {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match Equals 'haskell'"
         );
     }
@@ -223,7 +223,7 @@ fn test_equals_no_partial_match() {
 
     for row in 1..=7 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not match Equals 'Has' (partial prefix)"
         );
     }

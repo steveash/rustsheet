@@ -5,16 +5,14 @@ use crate::{
         MAX_TEXT_UNITS,
     },
     expressions::{
-        parser::{ArrayNode, Node},
+        parser::{left_chain, value_operands, ArrayNode, Node},
         token::{Error, OpCompare, OpSum},
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
-    limits::check_array_size,
+    limits::{check_array_size, unspillable_shape},
     model::Model,
-    number_format::to_excel_precision,
     text::Text,
-    x87_exp::excel_exp,
 };
 
 /// Maps an output index `i` back to the source array index, applying Excel's
@@ -361,190 +359,14 @@ pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
     let smaller = x.abs().min(y.abs());
     // 2^floor(log2(smaller)) for a normal double (its exponent bits alone); 0 for a subnormal.
     let scale = f64::from_bits(smaller.to_bits() & 0x7FF0_0000_0000_0000);
-    // 8 ULP of `smaller` is scale * 2^-49.
-    if total.abs() < scale * 2f64.powi(-49) {
+    // 8 ULP of `smaller` is scale * 2^-49. Excel flushes that bound when it is subnormal, so
+    // addends below 2^-973 never snap, even to a subnormal total: `=1.5*2^-973-x` snaps for
+    // x = 1.5*2^-973*(1+2^-52) but not at 2^-974 (probes/t2714-snap-tiny-addends).
+    if total.abs() < flush_subnormal(scale * 2f64.powi(-49)) {
         0.0
     } else {
         total
     }
-}
-
-/// 2^32 - 1: from this exponent on a negative base is `#NUM!` (docs/excel-semantics/numbers.md).
-const NEGATIVE_BASE_EXPONENT_LIMIT: f64 = 4_294_967_295.0;
-
-/// `x` to the power of `y`, as POWER and the operator `^` compute it.
-pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
-    power_with(x, y, |y, ln_x| excel_exp(extended_product(y, ln_x)))
-}
-
-/// [`power`] with `exp(y·ln x)` for a non-integer `y` taken as libm `exp` of a once-rounded
-/// product, the operator `^` before T-0959. MIRR's root keeps it: Mac desktop Excel caches
-/// `MIRR({40,-5,-5,-5,-5,-5},0.1,0.2)` as 0.3933280241536672, which this gives, where Excel for
-/// the web and [`power`] give 0.3933280241536674 (ironcalc-calc FINANCIAL/MIRR.xlsx Sheet2!N16,
-/// probes-numeric/power-mirr-root; decisions 0030 and 0039 keep the passing desktop cell).
-pub(crate) fn power_with_libm_exp(x: f64, y: f64) -> Result<f64, Error> {
-    power_with(x, y, |y, ln_x| (y * ln_x).exp())
-}
-
-/// [`power`] with `exp_of_product(y, ln x)` as the `exp(y·ln x)` step of a non-integer exponent.
-fn power_with(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> Result<f64, Error> {
-    if x == 0.0 && y == 0.0 {
-        return Err(Error::NUM);
-    }
-    if y == 0.0 {
-        return Ok(1.0);
-    }
-    // Excel: a negative base with |y| >= 2^32 - 1 is #NUM!, even for (-1)^y and for results that
-    // underflow (docs/excel-semantics/numbers.md "Integer exponents beyond 360").
-    if x < 0.0 && y.abs() >= NEGATIVE_BASE_EXPONENT_LIMIT {
-        return Err(Error::NUM);
-    }
-    if let Some(result) = integer_power(x, y) {
-        return result;
-    }
-    let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
-        // An odd root of a negative number is a real number, minus the root of the magnitude:
-        // `(-8)^(1/3)` is -1.9999999999999998 (POWER.xlsx Sheet1!D3, F9). The exponent is the one
-        // given, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
-        -non_integer_power(-x, y, exp_of_product)
-    } else {
-        non_integer_power(x, y, exp_of_product)
-    };
-    if result.is_infinite() {
-        // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2), and so is any negative exponent whose
-        // positive power underflows: Excel divides 1 by it (`1E-10^-33.5`, `0.1^-400`,
-        // probes-numeric/power-non-integer-sweep A141, A186-A191). Overflow of a positive exponent
-        // is #NUM!.
-        return Err(if x == 0.0 || y < 0.0 {
-            Error::DIV
-        } else {
-            Error::NUM
-        });
-    }
-    if result.is_nan() {
-        // A negative number to a power that is not an integer nor an odd root
-        return Err(Error::NUM);
-    }
-    finite_or_num(result)
-}
-
-/// `x^y` for a non-integer `y`, as Excel computes it: `exp(y·ln x)` (`exp_of_product`; for
-/// [`power`] EXP's kernel [`excel_exp`] on a twice-rounded product), a negative exponent as one
-/// over the positive power, and `y` = ±0.5 through [`extended_sqrt`]. This matches all 180
-/// numeric oracle cells over 14 bases and 13 exponents, where libm `pow` matches 93 (probes-numeric/power-non-integer-sweep),
-/// and `1E300^(1/3)` = `EXP(LN(1E300)*(1/3))` = 9.999999999999827E+99, where libm `exp` is 2 ulps
-/// lower (probes-numeric/power-ulp-sources A13; docs/excel-semantics/numbers.md "Non-integer
-/// exponents: exp(y·ln x)"). A negative `x` gives NaN.
-fn non_integer_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64 {
-    // -0 has the logarithm of 0: `-0^0.5` is 0, not `sqrt`'s -0 (gen-m1/6462bf910ef9f28f Calc!A19).
-    let x = if x == 0.0 { 0.0 } else { x };
-    if y == 0.5 {
-        extended_sqrt(x)
-    } else if y == -0.5 {
-        // One over the twice-rounded root, divided like `/`: `x^-0.5`, `POWER(x,-0.5)` and
-        // `1/SQRT(x)` agree (probes-numeric/power-neg-half-rounding, T-1541).
-        extended_quotient(1.0, extended_sqrt(x))
-    } else if y > 0.0 {
-        positive_power(x, y, exp_of_product)
-    } else {
-        extended_quotient(1.0, positive_power(x, -y, exp_of_product))
-    }
-}
-
-/// `exp(y·ln x)` for a positive `y`, where a product `y·ln x` that overflows is an overflow even
-/// when it is -∞: `POWER(0.1,9.99999999999999E+307)` is `#NUM!` and
-/// `POWER(0.1,-9.99999999999999E+307)` is 0, while `POWER(0.5,9.99999999999999E+307)` (a finite
-/// product, -6.9E+307) is 0 (probes/power-huge-exponent A61-A62, A81; numbers.md "POWER when
-/// y·ln x overflows").
-fn positive_power(x: f64, y: f64, exp_of_product: fn(f64, f64) -> f64) -> f64 {
-    let ln_x = x.ln();
-    // ln 0 is -∞ already: `POWER(0,9.99999999999999E+307)` stays 0 (A281).
-    if ln_x.is_finite() && (y * ln_x).is_infinite() {
-        f64::INFINITY
-    } else {
-        exp_of_product(y, ln_x)
-    }
-}
-
-/// `x^y` for an integer `y`, by binary exponentiation scanning the bits of `|y|` from the low end,
-/// as Excel computes it (docs/excel-semantics/numbers.md "Integer exponents: right-to-left
-/// square-and-multiply"; libm `pow` and `powi` round differently). A negative `y` is one over
-/// the positive power, divided like the operator `/`. `None` leaves a non-integer or huge `y` to
-/// the general path (bounding the loop to 54 iterations).
-///
-/// Out of range, for any sign of `x` (probes-numeric/power-negative-base-range,
-/// power-odd-roots A157-A162): a positive power that overflows is `#NUM!` and one that underflows
-/// is 0, so `(-0.1)^401` is 0; a negative exponent whose positive power underflows is `#DIV/0!`
-/// (`(-0.1)^-401`, `(-0.5)^-1075`), and one whose positive power overflows is 0 (`(-10)^-401`).
-fn integer_power(x: f64, y: f64) -> Option<Result<f64, Error>> {
-    // 2^53: beyond it every float is an integer, and the loop would need more than 54 iterations
-    const MAX_EXPONENT: f64 = 9_007_199_254_740_992.0;
-    if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
-        return None;
-    }
-    let positive_power =
-        decimal_power_of_ten(x, y.abs()).unwrap_or_else(|| square_and_multiply(x, y.abs()));
-    let result = if y > 0.0 {
-        if positive_power.is_infinite() {
-            return Some(Err(Error::NUM));
-        }
-        positive_power
-    } else if positive_power.abs() < f64::MIN_POSITIVE {
-        // Excel divides 1 by the positive power, and a subnormal divisor counts as zero
-        // (`1E-10^-31`, numbers.md "Non-integer exponents: exp(y·ln x)").
-        return Some(Err(Error::DIV));
-    } else {
-        extended_quotient(1.0, positive_power)
-    };
-    // Excel flushes a subnormal result to zero (T-1311 oracle: 0.1^310, 2^-1074, (-0.5)^1073).
-    Some(Ok(flush_subnormal(result)))
-}
-
-/// `x^n` for a non-negative integer `n` <= 2^53 by scanning the bits of `n` from the low end.
-/// Each product is rounded twice, like the operator `*` ([`extended_product`]): with products
-/// rounded once the loop misses 18 of the 20 `SQRT(5)^n` cells (numbers.md "Integer exponents
-/// beyond 360", T-1524 fit lab `power-sqrt5`).
-fn square_and_multiply(x: f64, n: f64) -> f64 {
-    let mut remaining = n;
-    let mut base = x;
-    let mut result = 1.0_f64;
-    while remaining >= 1.0 {
-        if remaining % 2.0 == 1.0 {
-            result = extended_product(result, base);
-        }
-        base = extended_product(base, base);
-        remaining = (remaining / 2.0).floor();
-    }
-    result
-}
-
-/// `10^n` for an integer `n` in 23..=308 as the nearest double to the decimal `1En`, which is what
-/// Excel returns for base 10 there (square-and-multiply drifts from it: `10^33` is exactly 1E+33
-/// in Excel). Smaller exponents are exact either way, and `10^23` is the square-and-multiply
-/// value. Other bases, even `100` and `-10`, follow the square-and-multiply rule.
-fn decimal_power_of_ten(x: f64, n: f64) -> Option<f64> {
-    (x == 10.0 && (23.0..=308.0).contains(&n))
-        .then(|| format!("1e{n}").parse::<f64>().ok())
-        .flatten()
-}
-
-/// Whether `y` is 1/3, 1/5, -1/7 and so on, as Excel decides it: one over `y`, rounded to 15
-/// significant digits, is an odd integer below 2^31 - 1 in magnitude. So `1/3 + 10·2^-54` counts
-/// (1/y = 2.9999999999999951 → 3) and `1/3 - 10·2^-54` does not (3.0000000000000053 →
-/// 3.00000000000001); `0.333333333333333` counts, `0.33333333333333` does not; `1/(2^31-3)`
-/// counts, `1/(2^31-1)` does not (docs/excel-semantics/numbers.md "POWER and `^`",
-/// probes-numeric/power-odd-root-tolerance, power-odd-root-tolerance-2).
-fn is_one_over_an_odd_integer(y: f64) -> bool {
-    // 2^31 - 1: the first odd denominator Excel no longer takes for a root
-    const LIMIT: f64 = 2_147_483_647.0;
-    let inverse = 1.0 / y;
-    // Cheap rejection first: far from an integer, 15 digits cannot round to one (and formatting
-    // to 15 digits allocates).
-    if inverse.abs() >= LIMIT || (inverse - inverse.round()).abs() > inverse.abs() * 1e-12 {
-        return false;
-    }
-    let inverse = to_excel_precision(inverse, 15);
-    inverse.fract() == 0.0 && inverse.abs() < LIMIT && inverse % 2.0 != 0.0
 }
 
 /// What an array has beyond its end, when it is combined with a larger one:
@@ -628,22 +450,127 @@ pub(crate) fn broadcast_arrays(
     CalcResult::Array(array)
 }
 
+/// How many operators nested in operands [`Model::evaluate_spilling_chain`] follows: enough for a
+/// written formula, and a bound on the recursion (CLAUDE.md directive 5); deeper ones evaluate as
+/// usual.
+pub(crate) const MAX_SPILL_CHECK_DEPTH: usize = 8;
+
+/// `#SPILL!` when a binary operator over `left` and `right` in the dynamic-array anchor `anchor`
+/// would broadcast ([`broadcast_arrays`]) to more cells than [`check_array_cells`](crate::limits::check_array_cells) allows and to
+/// a shape that runs past the grid from `anchor`: Excel builds that array and cannot spill it,
+/// where the engine would refuse to build it (`#ERROR!`). Decided from the shapes alone, before
+/// anything is allocated. A result within the bound is left to the spill itself.
+pub(crate) fn unspillable_broadcast(
+    anchor: CellReferenceIndex,
+    left: &CalcResult,
+    right: &CalcResult,
+) -> Option<CalcResult> {
+    // A range across sheets is an error as an operand, not an array.
+    let across_sheets = |value: &CalcResult| matches!(value, CalcResult::Range { left, right } if left.sheet != right.sheet);
+    if across_sheets(left) || across_sheets(right) {
+        return None;
+    }
+    let (n1, m1) = left.shape();
+    let (n2, m2) = right.shape();
+    unspillable_shape(anchor, n1.max(n2), m1.max(m2))
+}
+
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
     /// outermost `+`/`-` to 0, but not for a wholly parenthesized formula, which is a
     /// root `Group` (docs/excel-semantics/numbers.md "Near-zero snapping in addition
     /// and subtraction"); every other node evaluates as usual.
+    ///
+    /// `spills` is set for the formula of a dynamic-array anchor; there an operator root is
+    /// evaluated by [`Model::evaluate_spilling_chain`], and a lifted call or unary root that could
+    /// not spill is `#SPILL!` before it is evaluated ([`Model::unspillable_lift`]).
     pub(crate) fn evaluate_formula_root(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
+        spills: bool,
     ) -> CalcResult {
+        let snaps = matches!(node, Node::OpSumKind { .. });
+        let root = node.ungrouped();
+        if spills && value_operands(root).is_some() {
+            return self
+                .evaluate_spilling_chain(root, cell, snaps, 0)
+                .unwrap_or_else(|spill| spill);
+        }
+        if spills {
+            if let Some(spill) = self.unspillable_lift(root, cell) {
+                return spill;
+            }
+        }
         match node {
             Node::OpSumKind { kind, left, right } => {
                 let left = self.evaluate_node_in_context(left, cell);
+                let left = self.collapse_single_cell(left);
+                let right = self.evaluate_node_in_context(right, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }
             _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
+    /// The operator chain `node` ([`left_chain`]) of the formula of the dynamic-array anchor
+    /// `cell`, folded as [`Model::evaluate_operator_chain`] does (keep the two in step), but `Err(#SPILL!)` as soon as a
+    /// link would broadcast to more cells than the engine's array bound and to a shape that runs
+    /// past the grid from the anchor ([`unspillable_broadcast`]): Excel builds that array and
+    /// cannot spill it, so the shape alone gives Excel's answer and nothing is allocated, where
+    /// the broadcast would be `#ERROR!` (corpus-bench/55049 `=SUMPRODUCT(..)*book2!H:J` in B3;
+    /// docs/excel-semantics/arrays.md "Array results above 1,048,576 cells are #ERROR!"). A
+    /// broadcast never shrinks, so the whole formula's result could not spill either. Operands
+    /// that are operators themselves (`=1+H:J*2`) are checked the same way, down to
+    /// [`MAX_SPILL_CHECK_DEPTH`] nested operators. `snaps` applies the outermost `+`/`-` snap
+    /// to the last link ([`Model::evaluate_formula_root`]).
+    fn evaluate_spilling_chain(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        snaps: bool,
+        depth: usize,
+    ) -> Result<CalcResult, CalcResult> {
+        let (links, first) = left_chain(node);
+        let mut value = self.evaluate_spilling_operand(first, cell, depth)?;
+        let mut links = links.peekable();
+        while let Some(link) = links.next() {
+            let Some((_, right)) = value_operands(link) else {
+                break;
+            };
+            // A one-cell reference is read before the right operand ([`Model::evaluate_operator_chain`]).
+            value = self.collapse_single_cell(value);
+            let right = self.evaluate_spilling_operand(right, cell, depth)?;
+            if let Some(spill) = unspillable_broadcast(cell, &value, &right) {
+                return Err(spill);
+            }
+            value = match link {
+                Node::OpSumKind { kind, .. } if snaps && links.peek().is_none() => {
+                    self.handle_outermost_sum(value, right, cell, matches!(kind, OpSum::Minus))
+                }
+                _ => self.apply_operator(value, link, right, cell),
+            };
+        }
+        Ok(value)
+    }
+
+    /// An operand of [`Model::evaluate_spilling_chain`]: an operator chain, parenthesized or
+    /// not, is checked in turn while `depth` allows, a lifted call or unary operator that could
+    /// not spill is `Err(#SPILL!)` ([`Model::unspillable_lift`]), and anything else evaluates as
+    /// usual.
+    fn evaluate_spilling_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        depth: usize,
+    ) -> Result<CalcResult, CalcResult> {
+        let inner = node.ungrouped();
+        if depth < MAX_SPILL_CHECK_DEPTH && value_operands(inner).is_some() {
+            self.evaluate_spilling_chain(inner, cell, false, depth + 1)
+        } else if let Some(spill) = self.unspillable_lift(inner, cell) {
+            Err(spill)
+        } else {
+            Ok(self.evaluate_node_in_context(node, cell))
         }
     }
 
@@ -653,13 +580,13 @@ impl Model {
     fn handle_outermost_sum(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
         subtract: bool,
     ) -> CalcResult {
         let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
         let l = self.number_or_array(left, cell);
-        let r = self.get_number_or_array(right, cell);
+        let r = self.number_or_array(right, cell);
         // The two addends of a scalar addition (a subtraction adds the negated right operand).
         let addends = match (&l, &r) {
             (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
@@ -675,17 +602,16 @@ impl Model {
         }
     }
 
-    /// Applies `op` element‐wise for arrays/numbers to `left`, the evaluated left
-    /// operand, and `right`.
+    /// Applies `op` element‐wise for arrays/numbers to the evaluated operands `left` and `right`.
     pub(crate) fn handle_arithmetic(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
         let l = self.number_or_array(left, cell);
-        let r = self.get_number_or_array(right, cell);
+        let r = self.number_or_array(right, cell);
         self.arithmetic_on_values(l, r, cell, op)
     }
 
@@ -805,15 +731,16 @@ impl Model {
 
     /// Applies the concatenation operator (`&`) element-wise.
     /// When either operand is a range or array the result is an array of strings;
-    /// when both are scalars the result is a single String. `left` is the evaluated left operand.
+    /// when both are scalars the result is a single String. `left` and `right` are the evaluated
+    /// operands.
     pub(crate) fn handle_concatenate(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let l = self.string_or_array(left, cell);
-        let r = self.get_string_or_array(right, cell);
+        let r = self.string_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
             (Err(error), Ok(StringOrArray::Array(array))) => {
@@ -864,16 +791,17 @@ impl Model {
     /// Applies a comparison operator element-wise.
     /// When either operand is a range or array the result is an array of booleans,
     /// with an error where an element of the operands is an error;
-    /// when both are scalars the result is a single Boolean. `left` is the evaluated left operand.
+    /// when both are scalars the result is a single Boolean. `left` and `right` are the evaluated
+    /// operands.
     pub(crate) fn handle_comparison(
         &mut self,
         left: CalcResult,
-        right: &Node,
+        right: CalcResult,
         cell: CellReferenceIndex,
         kind: &OpCompare,
     ) -> CalcResult {
         let l = self.value_or_array(left, cell);
-        let r = self.get_value_or_array(right, cell);
+        let r = self.value_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
             (Err(error), Ok(ValueOrArray::Array(array))) => {
@@ -958,6 +886,9 @@ impl Model {
         }
     }
 }
+
+mod power;
+pub(crate) use power::{power, power_with_libm_exp};
 
 mod register;
 pub(crate) use register::{extended_div, extended_mul, extended_of, store_extended, Extended};

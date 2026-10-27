@@ -1,9 +1,9 @@
 ---
 id: T-2433
-title: "Lifted statistical kernels hit the KernelWork cap at a few hundred elements: #ERROR! where Excel spills (gen-m9, 9 cells)"
+title: "Lifted HYPGEOM.DIST hits the KernelWork cap at a few dozen elements: #ERROR! where Excel spills (gen-m9, 5 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -12,7 +12,8 @@ campaign: semantics
 ---
 
 ## Goal
-A lifted HYPGEOM.DIST, CHIDIST, CHISQ.INV.RT, GAMMADIST, POISSON or BETAINV over an array of a few hundred elements (a
+(Rescoped to HYPGEOM.DIST, see Acceptance criteria; T-2795 owns the others.) A lifted HYPGEOM.DIST, CHIDIST,
+CHISQ.INV.RT, GAMMADIST, POISSON or BETAINV over an array of a few hundred elements (a
 PIVOTBY result, a TRANSPOSE of a range) returns its array, as Excel does (`#SPILL!` in these cells' layout), instead of
 `#ERROR!` from the per-call lift budget.
 
@@ -52,14 +53,20 @@ Cells:
 - gen-m9/ba4ddb817a8e700e.case.json (1): Calc!A323
 - gen-m9/e8d55ec393460bb7.case.json (1): Calc!A10
 
+From T-2429 (2026-10-25): gen-m9/11eb3ab4f4f8104c Calc!A10 `=WEIBULL(HYPGEOM.DIST(1,2,10,7,_xlfn.GROUPBY(Data!B1:B12,Data!B1:E12,_xleta.MAX)),..)` is Excel `#SPILL!`, ours `#ERROR!`; the inner HYPGEOM.DIST lifted over the GROUPBY result is `#SPILL!` in Excel (probes/t2429/11eb3ab4f4f8104c A1), ours `#ERROR!`, likely the 32-element HYPGEOM.DIST lift charge (statistics.md "HYPGEOM.DIST: per-call cap and lifting"). Unverified; the cell stays in eval/baseline/gen-m9.txt.
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): the 2 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
-      from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2255): these 9 known-failure lines disappear from eval/baseline/gen-m9.txt
+Rescoped by T-2433's run (2026-10-26): the incomplete-gamma, quantile and financial charges have no closed-form bound
+from their arguments (see T-2795), so this task covers HYPGEOM.DIST, and T-2795 owns the other cells (CHIDIST,
+CHISQ.INV.RT, GAMMADIST, POISSON, ODDFYIELD, AMORDEGRC). gen-m9/35e8168aae2b00f8 A22 (BETAINV) had already left the
+baseline on main.
+- [x] Visible parity (gen-m9): the HYPGEOM.DIST known-failure lines (3e98b26cf6713e77 A62, 7bd219ec0c0c5e22 A159,
+      a013a45a8fbcab4f A169, ee2497a5e683c5d9 A359, 11eb3ab4f4f8104c A10) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The per-call bound still holds for the worst cases the DEVIATION entries list (unit tests unchanged), and the
-      three DEVIATION entries say how an element is charged now.
-- [ ] `make check` green; reviewers approve.
+- [x] The per-call bound still holds for the worst cases the DEVIATION entries list (32 elements at the cap's bound;
+      unit test `hypgeom_dist_is_charged_its_weight`), and the HYPGEOM.DIST DEVIATION entry says how an element is
+      charged now.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The functions' values (their accuracy tasks).
@@ -69,3 +76,12 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+HYPGEOM.DIST is charged by its counts (`ValueWork::HypergeometricSum`, lift/kinds/mod.rs; SPEC-0011 amended): the
+larger of its walk (2^14 units) and its cdf sum's window, (min(sample_s, number_sample, population_s) + 132) * 16, at
+most the cap's bound 2^22; a text count is left out of the min, an error or refused count is 1. 8,192 small elements
+now fit where 32 did; 32 elements at the bound still do and 33 do not. benches/lift.rs (release): 32 at the bound
+1.35-1.53 s (unchanged case), 8,192 4,000-step walks 0.99-1.0 s, 1,634 5,001-term sums 1.25-1.4 s. Eval: gen-m9 known
+failures -5 (the five HYPGEOM.DIST cells), probes -1 (probes/t2429/11eb3ab4f4f8104c A1), no regressions. Follow-up:
+T-2795 (incomplete gamma, quantiles, ODDFYIELD, AMORDEGRC).

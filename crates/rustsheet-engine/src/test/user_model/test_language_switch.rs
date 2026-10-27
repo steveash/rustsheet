@@ -47,9 +47,12 @@ fn defined_name_created_in_spanish_undo_redo() {
     // Stored in English, displayed in Spanish.
     assert_eq!(
         model.model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
+        "=LAMBDA(x, IF(x>0, 1, 2))"
     );
-    assert_eq!(model.get_defined_name_list()[0].2, "=LAMBDA(x,SI(x>0,1,2))");
+    assert_eq!(
+        model.get_defined_name_list()[0].2,
+        "=LAMBDA(x, SI(x>0, 1, 2))"
+    );
 
     // Switching language must not break undo/redo: the diff carries English.
     model.set_language("en").unwrap();
@@ -61,7 +64,7 @@ fn defined_name_created_in_spanish_undo_redo() {
     model.redo().unwrap(); // redo the defined-name creation
     assert_eq!(
         model.model.workbook.defined_names[0].formula,
-        "=LAMBDA(x,IF(x>0,1,2))"
+        "=LAMBDA(x, IF(x>0, 1, 2))"
     );
     model.redo().unwrap(); // redo the A1 input
     assert_eq!(model.model._get_text("A1"), *"1");
@@ -339,7 +342,7 @@ fn cf_formula_created_in_spanish_undo_redo() {
     };
     assert_eq!(formula, "=SI($A1>5,VERDADERO,FALSO)");
 
-    let is_red = |m: &UserModel, row: i32| {
+    let is_red = |m: &mut UserModel, row: i32| {
         m.model
             .get_extended_style_for_cell(0, row, 1)
             .unwrap()
@@ -348,7 +351,7 @@ fn cf_formula_created_in_spanish_undo_redo() {
             .color
             == Color::Rgb("#FF0000".to_string())
     };
-    assert!(is_red(&model, 10));
+    assert!(is_red(&mut model, 10));
 
     // Switch to English then undo/redo.
     model.set_language("en").unwrap();
@@ -358,6 +361,6 @@ fn cf_formula_created_in_spanish_undo_redo() {
 
     model.redo().unwrap();
     assert_eq!(stored_cf_formula(&model), "=IF($A1>5,TRUE,FALSE)");
-    assert!(is_red(&model, 10));
-    assert!(!is_red(&model, 1));
+    assert!(is_red(&mut model, 10));
+    assert!(!is_red(&mut model, 1));
 }

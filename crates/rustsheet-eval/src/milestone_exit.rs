@@ -20,6 +20,16 @@ pub const MIN_SCORED: usize = 20_000;
 pub(crate) const RATE_NUM: usize = 999;
 /// The denominator of [`RATE_NUM`].
 pub(crate) const RATE_DEN: usize = 1000;
+/// 99% over [`RATE_DEN`]: the next parity tier below [`RATE_NUM`] (`attribution::Tier`, T-0068).
+pub(crate) const RATE99_NUM: usize = 990;
+
+/// Whether `within` of `scored` cells is a share of at least `num` / [`RATE_DEN`]; never with no
+/// scored cell. The one definition of "at the rate" for the generated suite here, the Phase 1
+/// rates of `v15_checkpoint` and the parity tiers of `attribution::Tier`.
+#[must_use]
+pub(crate) fn meets_rate(within: usize, scored: usize, num: usize) -> bool {
+    scored > 0 && within.saturating_mul(RATE_DEN) >= scored.saturating_mul(num)
+}
 
 /// One milestone's four measures; `None` means the input was absent from the run.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -92,11 +102,8 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 row.gen_visibly_off = Some(visible);
                 row.gen_rate15 = (scored > 0).then(|| s.rate(scored - visible));
                 row.gen_allowance = Some(scored / RATE_DEN);
-                row.gen_met = Some(
-                    scored >= MIN_SCORED
-                        && (scored - visible).saturating_mul(RATE_DEN)
-                            >= scored.saturating_mul(RATE_NUM),
-                );
+                row.gen_met =
+                    Some(scored >= MIN_SCORED && meets_rate(scored - visible, scored, RATE_NUM));
             }
             let scope = report.function_scope.as_ref();
             if let Some(r) = scope.and_then(|s| s.rows.iter().find(|r| r.milestone == m)) {
@@ -239,6 +246,13 @@ mod tests {
 
     fn m5(r: &RunReport) -> ExitRow {
         summarize(r).remove(0)
+    }
+
+    #[test]
+    fn the_rate_is_a_share_of_at_least_num_over_den_and_never_of_no_cells() {
+        assert!(meets_rate(999, 1000, RATE_NUM) && !meets_rate(998, 1000, RATE_NUM));
+        assert!(meets_rate(990, 1000, RATE99_NUM) && !meets_rate(989, 1000, RATE99_NUM));
+        assert!(!meets_rate(0, 0, RATE_NUM));
     }
 
     #[test]

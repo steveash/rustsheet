@@ -391,6 +391,23 @@ Implemented in: the fold budget of `pcre::parse` (functions/text/pcre/parse.rs, 
 and `Replacement` (functions/text/regex_replacement.rs), `Engine` and `Search` (functions/text/regex_engine.rs), `Backtracker` and `Program` (functions/text/pcre/), `SplitList` (functions/text/textsplit.rs)
 Tasks: T-1272, T-1829, T-1988, T-1989, T-2098, T-2138, T-2355, T-2680
 
+## Lifted FIND and SEARCH calls are capped
+Rule: Excel computes a lifted FIND, FINDB, SEARCH or SEARCHB whatever its texts' lengths.
+Ours: a lifted call is `#ERROR!` ("Too many cells to visit") before its first element when its work passes
+`limits::MAX_LIFTED_CELL_VISITS` (2^27). Each element is charged both texts' UTF-8 lengths plus 1 and, at each of the
+`within_text` length plus 1 start positions, 1 plus the bytes compared there (at most the shorter text's length) over
+256 for FIND (a `memcmp`) and over 8 for SEARCH (its wildcard segments compare unit by unit); a number or a logical
+counts as 32 bytes, an error or a blank as none. `FIND(REPT("a",32766)&"b",REPT("a",32763)&SEQUENCE(1000))`, about
+10^9 compared bytes per element, is `#ERROR!`; `SUM(FIND("a",A1:A100000))` over short texts runs, and a call that does
+not lift is not charged (`FIND(REPT("a",32766)&"b",REPT("a",32767))` is `#VALUE!`, after one scan).
+Even a one-character search is charged each start position, as TEXTBEFORE reads each position: a lift whose
+`within_text`s add up past about 2^27 bytes is `#ERROR!` (`SUM(--ISNUMBER(SEARCH("x",A1:A5000)))` over 32,767-character
+cells), where 100,000 texts of 1,000 bytes run.
+Status: DEVIATION (decision 0014)
+Implemented in: `ValueWork::TextScan` and `text_scan_units` (functions/lift/kinds/mod.rs), the FIND and SEARCH entries
+(functions/lift/kinds/text.rs)
+Tasks: T-1775, T-1961
+
 ## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
 Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
 function argument modes"). Each element is read as text: a number as its text (`1E+15` as `1000000000000000`, the
@@ -569,6 +586,8 @@ goes toward zero), then rounded half away from zero at `decimals`, and the digit
 `BAHTTEXT(999999999999997.5)` reads ...เก้าสิบเจ็ดบาทถ้วน (997).
 With a negative `decimals`, a value that rounds to zero has no sign: `DOLLAR(-3.75,-1)`, `DOLLAR(-2.02005,-1)` and
 `DOLLAR(-0.5,-1)` are "$0", while `DOLLAR(-0.004)` keeps "($0.00)" (above).
+At `decimals` 0 and 1 the parentheses stay: `DOLLAR(-0.4,0)` is "($0)", `DOLLAR(-0.04,1)` "($0.0)", `DOLLAR(-0.4,1)` "($0.4)" and
+`DOLLAR(-0.5,0)` "($1)"; only a negative `decimals` drops the sign (evidence: excel-graph, 2026-10-27, probes/t2184-dollar-neg-rounds-to-zero Sheet1!A1:A4, T-2184).
 Past 2^64, and with more than about 20 decimals, the 15 digits are followed by zeros as well: `DOLLAR(1.0000001234567907E+30,-2)`
 is "$1,000,000,123,456,790,000,000,000,000,000", `DOLLAR(4.33884297520652E+28,3)` "$43,388,429,752,065,200,000,000,000,000.000",
 `DOLLAR(1.2244897707231034E+29,0)` "$122,448,977,072,310,000,000,000,000,000", `FIXED(90909090909108.86,24.2)`

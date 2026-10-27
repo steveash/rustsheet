@@ -80,7 +80,7 @@ fn test_rename_and_formula() {
     assert_eq!(model.workbook.get_worksheet_names(), ["Sheet2", "Sheet1"]);
     model._set("Sheet2!A3", "= A1 * 3");
     model.evaluate();
-    assert_eq!(model._get_formula("Sheet2!A3"), "=A1*3");
+    assert_eq!(model._get_formula("Sheet2!A3"), "= A1 * 3");
 }
 
 #[test]

@@ -426,3 +426,21 @@ fn non_integer_powers_use_excel_exp_on_a_twice_rounded_product() {
         Ok(-1.000_000_000_000_017_3e-100)
     );
 }
+
+#[test]
+fn non_integer_powers_take_excel_ln_of_the_base() {
+    // probes-numeric t2513-r3-tdensity-hold I563 and I475, t2513-r3-tdensity-a2 D653 and
+    // t2586-r4-f-small-df-a D4143 (excel-graph, T-2694): libm ln left these 1 to 10 ulp off.
+    use crate::arithmetic::{divide, plus, power, times};
+    let t_base = |a: f64| divide(12.0, plus(12.0, times(a, a)?)?);
+    let base = t_base(7.712_166_770_000_03).unwrap();
+    assert_eq!(power(base, 6.5), Ok(9.174_378_504_956_638e-6));
+    let base = t_base(1.231_606_503_000_009_4).unwrap();
+    assert_eq!(power(base, 6.5), Ok(0.461_303_160_369_790_8));
+    let a = 1.500_011_444_091_796_9;
+    let base = plus(1.0, divide(times(a, a).unwrap(), 10.0).unwrap()).unwrap();
+    assert_eq!(power(base, -5.5), Ok(0.327_525_273_297_590_07));
+    let a = 0.253_547_735_200_000_73;
+    let base = plus(1.0, divide(2.0, times(5.0, a).unwrap()).unwrap()).unwrap();
+    assert_eq!(power(base, -3.5), Ok(0.036_369_595_894_116_98));
+}

@@ -10,7 +10,69 @@ use crate::calc_result::{CalcResult, Range};
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::is_marked_number;
+use crate::functions::Function;
 use crate::model::Model;
+use crate::reference_operators::{RefArg, RefElement};
+
+impl Model {
+    /// The value of `node` as a sample of F.TEST or a paired function, and whether Excel marks it
+    /// (`#NUM!` where [`MarkedSample::NumError`] applies): a number straight from ERROR.TYPE or
+    /// CELL ([`is_marked_number`]), or an OFFSET or INDIRECT lifted into an array of references
+    /// holding a reference, whose value is its `#VALUE!` view. `F.TEST(INDIRECT("B1",{1}),{-1,0,1})`,
+    /// `COVARIANCE.P(OFFSET(B1,{0;1},0),{1;2})` and `CORREL(INDIRECT("B1",{1;1}),{1;2})` are
+    /// `#NUM!` where `{#VALUE!}` gives `#VALUE!`; an array of references holding only errors is
+    /// those errors (`F.TEST(INDIRECT("B1",{0}),..)` is `#REF!`; statistics.md "An array of
+    /// references is #NUM! in the paired functions", probes/t2577-indirect-ref-array). A LET
+    /// handing such an array on keeps the mark in Excel and is not followed here: TODO(T-2766).
+    pub(crate) fn evaluate_sample_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> (CalcResult, bool) {
+        if let Node::FunctionKind {
+            kind: kind @ (Function::Offset | Function::Indirect),
+            args,
+        } = node.ungrouped()
+        {
+            // What `fn_offset` and `fn_indirect` give, read once with the grid kept.
+            return match self.reference_producer(kind, args, cell) {
+                RefArg::Grid(grid) => {
+                    let marked = grid
+                        .elements()
+                        .iter()
+                        .any(|element| matches!(element, RefElement::Reference(_)));
+                    (grid.to_values(), marked)
+                }
+                read => (read.into_single_area(cell), false),
+            };
+        }
+        let value = self.evaluate_node_in_context(node, cell);
+        let marked = is_marked_number(node, &value, cell.row);
+        (value, marked)
+    }
+}
+
+/// What a marked number ([`is_marked_number`]) is as a sample of [`Model::paired_samples`].
+#[derive(Clone, Copy)]
+pub(crate) enum MarkedSample {
+    /// `#NUM!` when its turn comes: any first sample, T.TEST's second
+    /// (`T.TEST({1,2,3},ERROR.TYPE(#REF!),2,2)`).
+    NumError,
+    /// One cell with no number: COVARIANCE's second, so `COVARIANCE.P(4,ERROR.TYPE(#REF!))` has no
+    /// pair and is `#DIV/0!`, where `COVARIANCE.P(4,5)` is 0.
+    NoNumber,
+}
+
+/// The `#NUM!` of a marked number ([`is_marked_number`]) as an argument that rejects it.
+pub(crate) fn marked_number_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::NUM,
+        cell,
+        "A number from ERROR.TYPE or CELL, or an array of references, is not a sample here"
+            .to_string(),
+    )
+}
 
 /// One argument of a paired function, as evaluated and not yet flattened.
 pub(crate) enum PairedArg {
@@ -93,6 +155,9 @@ pub(crate) struct PairedValues {
 pub(crate) struct PairedSamplesError {
     pub(crate) error: CalcResult,
     pub(crate) sizes_differ: bool,
+    /// Whether either argument is itself an error value or a one-cell reference to a blank cell
+    /// (not a marked number, nor a range or array holding an error).
+    pub(crate) argument_is_error_value: bool,
 }
 
 /// The non-blank entries of one argument: (row-major position, value), in position order.
@@ -101,20 +166,30 @@ type Sparse = Vec<(u64, Option<f64>)>;
 impl Model {
     /// The two samples of COVARIANCE.P, COVARIANCE.S or T.TEST (`args[0]` and `args[1]`, which
     /// the caller checked exist), paired by position. Each must be a range or an array: anything
-    /// else is `#VALUE!` (a typed text too, unless `typed_text_is_sample`), and an array holding an
+    /// else is `#VALUE!` (a typed text too, unless `typed_scalar_is_sample`), and an array holding an
     /// error is `#VALUE!`, each when its turn comes.
     pub(crate) fn paired_samples(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        typed_text_is_sample: bool,
+        typed_scalar_is_sample: bool,
+        marked_second: MarkedSample,
     ) -> Result<PairedValues, PairedSamplesError> {
-        let first = self.sample_arg(&args[0], "First", cell, typed_text_is_sample);
-        let second = self.sample_arg(&args[1], "Second", cell, typed_text_is_sample);
-        let sizes_differ = matches!(
-            (first.cell_count(), second.cell_count()),
-            (Some(m), Some(n)) if m != n
+        // A marked number is `#NUM!` as the first sample of every caller (statistics.md "ERROR.TYPE
+        // and CELL results are #NUM! in the paired functions", T-2576).
+        let (first, first_count, first_is_error_value) = self.sample_arg(
+            &args[0],
+            "First",
+            cell,
+            (typed_scalar_is_sample, MarkedSample::NumError),
         );
+        let (second, second_count, second_is_error_value) = self.sample_arg(
+            &args[1],
+            "Second",
+            cell,
+            (typed_scalar_is_sample, marked_second),
+        );
+        let sizes_differ = matches!((first_count, second_count), (Some(m), Some(n)) if m != n);
         self.paired_values(first, second, cell, |index, error| {
             let which = if index == 0 { "first" } else { "second" };
             CalcResult::new_error(error, cell, format!("Error in {which} array"))
@@ -122,6 +197,7 @@ impl Model {
         .map_err(|error| PairedSamplesError {
             error,
             sizes_differ,
+            argument_is_error_value: first_is_error_value || second_is_error_value,
         })
     }
 
@@ -149,24 +225,47 @@ impl Model {
         arg: &Node,
         which: &str,
         cell: CellReferenceIndex,
-        typed_text_is_sample: bool,
-    ) -> PairedArg {
-        // With `typed_text_is_sample` a typed text is an array of one cell with no number, so
+        (typed_scalar_is_sample, marked): (bool, MarkedSample),
+    ) -> (PairedArg, Option<u64>, bool) {
+        // With `typed_scalar_is_sample` a typed text is an array of one cell with no number, so
         // against a longer range the sizes differ and the result is `#N/A`: `COVAR(A1:A6,"a")`,
         // COVARIANCE.P and .S too (statistics.md "Paired regression functions",
-        // probes/covariance-pairs-skip L8, L16). T.TEST's typed text is unprobed and stays `#VALUE!`.
-        let value = self.evaluate_node_in_context(arg, cell);
-        let value = self.blank_one_cell_as_error(value, cell);
-        if typed_text_is_sample && matches!(value, CalcResult::String(_)) {
-            return PairedArg::Values(vec![None]);
+        // probes/covariance-pairs-skip L8, L16), and a typed or computed boolean the same way:
+        // `COVARIANCE.P({1,2,3},TRUE)` is `#N/A` and `COVARIANCE.S(-2.5,FALSE)` `#DIV/0!`
+        // (probes/t2436/computed-scalar A35:A37). T.TEST's typed text is unprobed and stays `#VALUE!`.
+        let (value, is_marked) = self.evaluate_sample_arg(arg, cell);
+        // A marked value keeps its cell count for the size check, which comes first:
+        // `COVARIANCE.S(ERROR.TYPE(#REF!),Data!C10:D10)` is `#N/A` (gen-m9 abc2939ebd1e2365 A335),
+        // and `COVARIANCE.P({1;2},INDIRECT("B1",{1;1}))` two cells with no number, `#DIV/0!`
+        // (probes/t2577-indirect-ref-array A115).
+        if is_marked {
+            let cells = match &value {
+                CalcResult::Array(rows) => rows.iter().map(Vec::len).sum(),
+                _ => 1,
+            };
+            let sample = match marked {
+                MarkedSample::NumError => PairedArg::Error(marked_number_error(cell)),
+                MarkedSample::NoNumber => PairedArg::Values(vec![None; cells]),
+            };
+            return (sample, u64::try_from(cells).ok(), false);
         }
-        PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
-            PairedArg::Error(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("{which} argument must be a range or array"),
-            ))
-        })
+        let value = self.blank_one_cell_as_error(value, cell);
+        let is_error_value = matches!(value, CalcResult::Error { .. });
+        let sample = if typed_scalar_is_sample
+            && matches!(value, CalcResult::String(_) | CalcResult::Boolean(_))
+        {
+            PairedArg::Values(vec![None])
+        } else {
+            PairedArg::from_node_result(arg, value, cell.row).unwrap_or_else(|_| {
+                PairedArg::Error(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("{which} argument must be a range or array"),
+                ))
+            })
+        };
+        let count = sample.cell_count();
+        (sample, count, is_error_value)
     }
 
     /// Flattens `first` and `second` for a function that pairs them by position. The first

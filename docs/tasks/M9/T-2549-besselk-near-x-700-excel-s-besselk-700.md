@@ -3,7 +3,7 @@ id: T-2549
 title: "BESSELK near x = 700: Excel's BESSELK(700,3) is 4.69979514014056E-306, ours 4.6998714E-306 (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,10 +25,10 @@ Cells:
 - gen-m9/8cbfd5e99d2e82da.case.json (1): Calc!A166
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Every T-2550 sweep cell (the 12 listed in the update below) matches Excel exactly, or the time-box (decision 0056) is recorded in engineering.md with the best candidate.
-- [ ] `make check` green; reviewers approve.
+- [x] Every T-2550 sweep cell (the 12 listed in the update below) matches Excel exactly, or the time-box (decision 0056) is recorded in engineering.md with the best candidate.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
@@ -42,3 +42,10 @@ BESSELI overflow point (T-2550)" and probes-numeric/m9-besselk-underflow.
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Outcome
+`bessel_k`'s upward recurrence now flushes a subnormal term `2j/x * K(j)` to 0 before adding it, the rule T-2550 replayed
+bit-exactly. No fitting: it is a semantic flush, and K0/K1 were already bit-exact there. probes-numeric/m9-besselk-underflow
+goes from 134 to 146 of 147 cells (all 12 BESSELK cells at x = 700, 702, 705; the last cell is the BESSELI cut, T-2613).
+New unit test `besselk_recurrence_flushes_a_subnormal_term`. Eval delta: gen-m9 known failures 4548 -> 4547 (Calc!A166),
+0 regressions in every gated suite.

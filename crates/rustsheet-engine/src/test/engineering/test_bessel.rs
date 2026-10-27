@@ -99,3 +99,25 @@ fn asymptotic_phase_past_the_inner_trig_cut_is_num_error() {
     assert_eq!(bits("A1"), (-2.020_590_456_739_121_3e-5_f64).to_bits());
     assert_eq!(bits("A10"), (-6.584_002_087_696_111e-5_f64).to_bits());
 }
+
+/// Excel drops a subnormal term `2n/x * K(n)` from BESSELK's upward recurrence, so near x = 700
+/// higher orders repeat K0 and K1 (probes-numeric/m9-besselk-underflow).
+#[test]
+fn besselk_recurrence_flushes_a_subnormal_term() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BESSELK(700,2)=BESSELK(700,0)");
+    model._set("A2", "=BESSELK(702,4)=BESSELK(702,0)");
+    model._set("A3", "=BESSELK(705,5)=BESSELK(705,1)");
+    model._set("A4", "=BESSELK(700,3)");
+    model._set("A5", "=BESSELK(702,4)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3"] {
+        assert_eq!(model._get_text(cell), *"TRUE", "{cell}");
+    }
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A4"), 4.699_795_140_140_56e-306_f64.to_bits());
+    assert_eq!(bits("A5"), 6.310_849_433_265_845e-307_f64.to_bits());
+}

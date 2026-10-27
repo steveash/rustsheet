@@ -3,7 +3,7 @@ id: T-1691
 title: "Moving a 3-D span's end sheet past its other end shrinks the span to the remaining sheets, as Excel rewrites it"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,10 +27,21 @@ docs/excel-semantics/references.md, "3-D references when sheets move or are rena
 Moves that keep both ends in order already match (move-into-span, move-out-of-span).
 
 ## Acceptance criteria
-- [ ] Both probe cases pass, including the FORMULATEXT cells.
-- [ ] A unit test covers a move of the start sheet, of the end sheet, and of a middle sheet past
+- [x] Both probe cases pass, including the FORMULATEXT cells.
+- [x] A unit test covers a move of the start sheet, of the end sheet, and of a middle sheet past
       an end.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Deleting a span's end sheet (T-0198).
+
+## Outcome
+`Model::move_sheet` rewrites every formula and defined name before reordering: a 3-D span whose
+moved end lands past its other end shrinks to the sheets still between them, and one left with a
+single sheet becomes a plain reference (`move_sheet_in_node`, new `stringify/sheet_edits.rs`, which
+also hosts `rename_sheet_in_node` on a shared walker). The formula rewrite with undo record moved
+out of `tables.rs` into `formula_rewrite.rs` and is shared with table and sheet deletes; the
+`UserModel` undo of a move puts the rewritten text back before the reorder. New probes
+`sheet-ops-move-two-sheet-span-end-first` (Excel writes `Jan!A1`) and
+`sheet-ops-move-span-end-in-name` (names shrink too), both oracle-filled. Eval: probes known
+failures 2653 -> 2647 (6 fixed, 2 new cases passing, 0 regressions).

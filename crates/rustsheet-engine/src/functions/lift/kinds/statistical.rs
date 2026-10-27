@@ -5,8 +5,11 @@
 use super::ArgKind::{
     Lift, LiftArrays, LiftArraysRangeWhole, ReferenceByCaller, Whole, WholeByCaller,
 };
-use super::KernelWork::{Constant, Weighted};
-use super::{ArgKinds, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6};
+use super::KernelWork::{ByValue, Constant, Weighted};
+use super::ValueWork::{HypergeometricSum, IncompleteGamma};
+use super::{
+    ArgKinds, GammaShape, KernelWork, LIFT_1, LIFT_2, LIFT_3, LIFT_3_OF_5, LIFT_4, LIFT_4_OF_6,
+};
 use crate::functions::Function;
 
 /// A data argument its function reads itself, then one lifted worksheet argument:
@@ -142,29 +145,101 @@ const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(
 /// at 49 ns, about 2.6 ms, so the weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.3 s
 /// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
 /// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),
-/// 1.6 us for `GAMMA.INV(0.4,2,3)`.
+/// 1.6 us for `GAMMA.INV(0.4,2,3)`. It is the most an element is charged; each is charged by
+/// its shape below it (`incomplete_gamma`, T-2795, at the 4.7 ns and 49 ns above:
+/// `INCOMPLETE_GAMMA_TERM_COST` and `INCOMPLETE_GAMMA_CDF_COST` in mod.rs).
 const INCOMPLETE_GAMMA_WEIGHT: u32 = 1 << 18;
-/// `CHISQ.DIST.RT(x, deg_freedom)`, CHIDIST, `CHISQ.INV(probability, deg_freedom)`,
-/// CHISQ.INV.RT and CHIINV.
-const CHISQ_2: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
-/// `CHISQ.DIST(x, deg_freedom, cumulative)`, `POISSON.DIST(x, mean, cumulative)`, POISSON,
+/// An incomplete-gamma entry charged by value (T-2795): at most `INCOMPLETE_GAMMA_WEIGHT` an
+/// element, in proportion to the bound of its shape (`ValueWork::IncompleteGamma`), so a lift
+/// of small shapes runs far more than 512 elements (gen-m9/c2974c061384fdd9 A56, a CHIDIST over
+/// a 731-element PIVOTBY, was `#ERROR!` where Excel spills): `CHIDIST(x,5)` is charged 150
+/// units, a CHISQ.INV.RT of df 10 the bound unless its probability is outside (0, 1).
+const fn incomplete_gamma(
+    args: usize,
+    shape: usize,
+    shape_of: GammaShape,
+    probability: Option<usize>,
+) -> KernelWork {
+    ByValue(IncompleteGamma {
+        args,
+        shape,
+        shape_of,
+        probability,
+        weight: INCOMPLETE_GAMMA_WEIGHT,
+    })
+}
+/// `CHISQ.DIST.RT(x, deg_freedom)` and CHIDIST.
+const CHISQ_DIST_RT: ArgKinds = ArgKinds::fixed(
+    2,
+    &[Lift, Lift],
+    incomplete_gamma(2, 1, GammaShape::HalfDegrees, None),
+);
+/// `CHISQ.INV(probability, deg_freedom)`, CHISQ.INV.RT and CHIINV.
+const CHISQ_INV: ArgKinds = ArgKinds::fixed(
+    2,
+    &[Lift, Lift],
+    incomplete_gamma(2, 1, GammaShape::HalfDegrees, Some(0)),
+);
+/// `CHISQ.DIST(x, deg_freedom, cumulative)`.
+const CHISQ_DIST: ArgKinds = ArgKinds::fixed(
+    3,
+    &[Lift, Lift, Lift],
+    incomplete_gamma(3, 1, GammaShape::HalfDegrees, None),
+);
+/// `POISSON.DIST(x, mean, cumulative)` and POISSON: Q(trunc(x) + 1, mean).
+const POISSON: ArgKinds = ArgKinds::fixed(
+    3,
+    &[Lift, Lift, Lift],
+    incomplete_gamma(3, 0, GammaShape::PoissonCount, None),
+);
 /// `GAMMA.INV(probability, alpha, beta)` and GAMMAINV.
-const INCOMPLETE_GAMMA_3: ArgKinds =
-    ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(INCOMPLETE_GAMMA_WEIGHT));
+const GAMMA_INV: ArgKinds = ArgKinds::fixed(
+    3,
+    &[Lift, Lift, Lift],
+    incomplete_gamma(3, 1, GammaShape::Shape, Some(0)),
+);
 /// `GAMMA.DIST(x, alpha, beta, cumulative)` and GAMMADIST.
 const GAMMA_DIST: ArgKinds = ArgKinds::fixed(
     4,
     &[Lift, Lift, Lift, Lift],
-    Weighted(INCOMPLETE_GAMMA_WEIGHT),
+    incomplete_gamma(4, 1, GammaShape::Shape, None),
 );
 // --- End incomplete gamma (T-1872) ----------------------------------------------------------
 
 // --- Hypergeometric (T-1873) ----------------------------------------------------------------
-/// One HYPGEOM.DIST element: its capped cdf's bound, (2^18 + 131) terms at 250 ns, about 66 ms, so
-/// 32 elements take about 2.1 s (a DEVIATION; measured in release: hypegeom.rs `MAX_TERMS`). A cdf
-/// or pmf takes either the double-double walk (at most 78 us, T-0977) or that sum, never both.
+/// The most one HYPGEOM.DIST element is charged: its capped cdf's bound, (2^18 + 131) terms at
+/// 250 ns, about 66 ms, so 32 elements at the bound take about 2.1 s (a DEVIATION; measured in
+/// release: hypegeom.rs `MAX_TERMS`).
 const HYPGEOM_DIST_WEIGHT: u32 = 1 << 22;
-const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(5, &[Lift; 5], Weighted(HYPGEOM_DIST_WEIGHT));
+/// The units one term of HYPGEOM.DIST's cdf sum is charged: `HYPGEOM_DIST_WEIGHT` over the
+/// (2^18 + 131) terms of its bound, rounded up, so about 250 ns a term (T-2433).
+const HYPGEOM_TERM_WEIGHT: u32 = 16;
+/// What HYPGEOM.DIST's double-double walk is charged: at most 2^12 steps (T-0977), measured in
+/// release at about 120 us an element for the cdf's 4,000-step walk (16,384 elements of
+/// `HYPGEOM.DIST(0,4000,4000,1E9,TRUE)` took 1.93 to 2.0 s in benches/lift.rs, T-2433; the pmf's
+/// walk is cheaper, 78 us), so twice HYPGEOMDIST's weight: 8,192 elements a lifted call, about 1 s.
+const HYPGEOM_WALK_WEIGHT: u32 = 1 << 14;
+/// The exponents HYPGEOM.DIST's cdf sum may evaluate beside its terms: its window's bisections
+/// (hypegeom.rs `nonzero_terms`).
+const HYPGEOM_WINDOW_EXPONENTS: u32 = 131;
+/// `HYPGEOM.DIST(sample_s, number_sample, population_s, number_pop, cumulative)`. A cdf or pmf
+/// takes either the double-double walk (`HYPGEOM_WALK_WEIGHT`) or the capped sum, never both,
+/// and the sum's window is at most `min(sample_s, number_sample, population_s) + 1` terms (above
+/// `min(number_sample, population_s)` the cdf is 1 before any sum), so each element is charged
+/// the larger of the two by its counts (T-2433; before it, every element was charged the cap's
+/// bound, and a lift of 33 small calls was `#ERROR!` where Excel spills:
+/// gen-m9/7bd219ec0c0c5e22 A159).
+const HYPGEOM_DIST: ArgKinds = ArgKinds::fixed(
+    5,
+    &[Lift; 5],
+    ByValue(HypergeometricSum {
+        counts: &[0, 1, 2],
+        walk: HYPGEOM_WALK_WEIGHT,
+        extra: HYPGEOM_WINDOW_EXPONENTS,
+        per_term: HYPGEOM_TERM_WEIGHT,
+        weight: HYPGEOM_DIST_WEIGHT,
+    }),
+);
 /// One HYPGEOMDIST element: its pmf walk (`statistical/discrete.rs`, T-0977) of at most 2^12
 /// double-double steps, 78 us in release at 4,095 steps, twice BINOM.DIST's walk, so twice its
 /// weight: 16,384 elements a lifted call, about 1.3 s. Past the walk's budget the pmf is statrs'
@@ -325,16 +400,11 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // incomplete gamma and its search keep a per-call cap of their own
         // (`statistical/incomplete_gamma.rs`), so the entries are weighted by its bound
         // (statistics.md "Incomplete gamma: per-call cap and lifting").
-        Function::ChisqDistRT
-        | Function::ChiDistCompat
-        | Function::ChisqInv
-        | Function::ChisqInvRT
-        | Function::ChiInvCompat => Some(&CHISQ_2),
-        Function::ChisqDist
-        | Function::PoissonDist
-        | Function::PoissonCompat
-        | Function::GammaInv
-        | Function::GammaInvCompat => Some(&INCOMPLETE_GAMMA_3),
+        Function::ChisqDistRT | Function::ChiDistCompat => Some(&CHISQ_DIST_RT),
+        Function::ChisqInv | Function::ChisqInvRT | Function::ChiInvCompat => Some(&CHISQ_INV),
+        Function::ChisqDist => Some(&CHISQ_DIST),
+        Function::PoissonDist | Function::PoissonCompat => Some(&POISSON),
+        Function::GammaInv | Function::GammaInvCompat => Some(&GAMMA_INV),
         Function::GammaDist | Function::GammaDistCompat => Some(&GAMMA_DIST),
         // --- End incomplete gamma (T-1872) ---
         // --- Hypergeometric (T-1873) ---

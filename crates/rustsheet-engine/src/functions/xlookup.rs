@@ -204,18 +204,6 @@ fn xlookup_pick_array(
     node.map_or_else(out_of_range, |node| array_element_value(node, cell))
 }
 
-/// Rows and columns of a range or array result (1x1 for anything else).
-fn shape(result: &CalcResult) -> (usize, usize) {
-    match result {
-        CalcResult::Range { left, right } => (
-            usize::try_from(right.row - left.row + 1).unwrap_or(0),
-            usize::try_from(right.column - left.column + 1).unwrap_or(0),
-        ),
-        CalcResult::Array(array) => (array.len(), array.first().map_or(0, Vec::len)),
-        _ => (1, 1),
-    }
-}
-
 /// Whether an XLOOKUP lookup vector of `rows` x `columns` runs down a column, given the return
 /// array's row count: a column is vertical and a row is not; a single cell is vertical when the
 /// return has one row (`XLOOKUP(1,A1:A1,B1:C1)` is the row) and a row otherwise
@@ -303,7 +291,8 @@ impl Model {
         let value_error =
             |message: &str| CalcResult::new_error(Error::VALUE, cell, message.to_string());
         // A single-cell reference is a one-cell vector (probes/text-collation-longer A102).
-        let lookup = match self.evaluate_node_with_reference(lookup_node, cell) {
+        let lookup = self.evaluate_node_with_reference(lookup_node, cell);
+        let lookup = match self.uncached_cell_vector(lookup_node, lookup, cell) {
             lookup @ (CalcResult::Range { .. } | CalcResult::Array(_)) => lookup,
             error @ CalcResult::Error { .. } => return Err(error),
             _ => {
@@ -314,12 +303,13 @@ impl Model {
                 ))
             }
         };
-        let (rows, columns) = shape(&lookup);
+        let (rows, columns) = lookup.shape();
         if xlookup_orientation(rows, columns, 1).is_none() {
             return Err(value_error("Second argument must be a vector"));
         }
         let returned = self.evaluate_node_with_reference(return_node, cell);
-        let (return_rows, return_columns) = shape(&returned);
+        let returned = self.uncached_cell_vector(return_node, returned, cell);
+        let (return_rows, return_columns) = returned.shape();
         let returns = match returned {
             CalcResult::Range { left, right } => XlookupReturns::Range(left, right),
             CalcResult::Array(returns) => XlookupReturns::Array(returns),
@@ -348,6 +338,25 @@ impl Model {
             vertical,
             returns,
         })
+    }
+
+    /// `value`, the value of the XLOOKUP array argument `node`, as a one-cell vector of its
+    /// `#BLOCKED!` when `node` is one cell of a linked sheet that the cache holds nothing of
+    /// ([`Model::external_lookup_table`]). The search then finds nothing, as it does over a range
+    /// of that sheet, so `XLOOKUP(5,[1]Sort!$B$2,[1]Sort!$C$2)` is `#N/A`
+    /// (fixtures/external-link-uncached-lookups Refs!B13, T-0472). Any other value is itself.
+    fn uncached_cell_vector(
+        &self,
+        node: &Node,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match value {
+            CalcResult::Error { error, .. } if self.external_lookup_table(node, cell).is_some() => {
+                CalcResult::Array(vec![vec![ArrayNode::Error(error)]])
+            }
+            value => value,
+        }
     }
 
     /// One XLOOKUP search: `values` are the lookup value, `match_mode` and `search_mode`. A lookup
@@ -481,9 +490,6 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let lookup_value = self.evaluate_node_in_context(&args[0], cell);
-        if lookup_value.is_error() {
-            return lookup_value;
-        }
         let match_mode = match args.get(4) {
             Some(node) => self.evaluate_node_in_context(node, cell),
             None => CalcResult::Number(0.0),
@@ -492,8 +498,15 @@ impl Model {
             Some(node) => self.evaluate_node_in_context(node, cell),
             None => CalcResult::Number(1.0),
         };
-        let criteria = vec![lookup_value, match_mode, search_mode];
+        let mut criteria = vec![lookup_value, match_mode, search_mode];
         let lifts = criteria.iter().any(LiftedArg::is_grid);
+        // A scalar error lookup_value is the result unless another criterion lifts: then each
+        // element is an error (ours; which one is unverified), so a grid match_mode still gives
+        // an array and `#SPILL!` where it is blocked (gen-m6/fe0972380d030e4a Calc!A224,
+        // excel-graph).
+        if !lifts && criteria[0].is_error() {
+            return criteria.swap_remove(0);
+        }
         let if_not_found = self.xlookup_if_not_found(args.get(3), lifts, as_reference, cell);
         let table = self.xlookup_table(&args[1], &args[2], cell);
         // A lifted element is a value, never a reference, and keeps only the first cell of its

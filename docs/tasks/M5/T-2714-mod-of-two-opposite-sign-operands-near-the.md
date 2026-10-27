@@ -3,7 +3,7 @@ id: T-2714
 title: "MOD of two opposite-sign operands near the smallest normal is #NUM! (calipers formulas_math_basic I88, H89)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -50,16 +50,16 @@ functions/math_and_trigonometry/mathematical.rs. The golden is desktop evidence,
 follow-up instead of matching the golden (decision 0039).
 
 ## Acceptance criteria
-- [ ] A probes case tagged M5 (excel-graph) separates hypotheses (a)-(c). It covers `MOD(n,d)` for opposite-sign pairs
+- [x] A probes case tagged M5 (excel-graph) separates hypotheses (a)-(c). It covers `MOD(n,d)` for opposite-sign pairs
       whose fmod or shifted result is subnormal, normal or exactly 0: n and d among ±2^-1022, ±1E-307, ±1.5E-307,
       ±2.2250738585072014E-308, ±1E-300 with d = -(n·(1±k·2^-52)) for k = 1, 2, 4; plus the two calipers pairs and
       same-sign controls. Each pair has an `ISERROR` or `(x)=0` companion where Graph's 0 for a kept subnormal would
       hide the answer (decision 0042).
-- [ ] The engine matches every cell of the probe. The calipers I88 and H89 cells of both workbooks pass
+- [x] The engine matches every cell of the probe. (The calipers.txt part waits on T-0463's ratchet; see Outcome.) The calipers I88 and H89 cells of both workbooks pass
       (`rustsheet-eval run --suite calipers` after `rustsheet-eval fetch --suite calipers`), and their lines leave
       eval/baseline/calipers.txt (`rustsheet-eval update-baseline --suite calipers`) with no new known failure.
-- [ ] numbers.md gets an entry "MOD near the smallest normal" with the fitted rule, the evidence and `Status: VERIFIED`.
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md gets an entry "MOD near the smallest normal" with the fitted rule, the evidence and `Status: VERIFIED`.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 `semantics`: the owned cells are a wrong type (`#NUM!` against a number). The task is done when every owned cell has
@@ -68,3 +68,19 @@ Excel's type and value.
 ## Out of scope
 - CEILING.MATH and FLOOR.MATH on the same inputs (T-2715).
 - MOD's huge-quotient threshold and the huge opposite-sign divisor (done, T-0141 and T-2654).
+
+## Outcome
+- Probes (excel-graph, 2026-10-25, all tagged M5 except the snap case, M2): t2714-mod-near-smallest-normal (131 pairs, both
+  orders), -b (70), -c (66 pairs, both orders) and t2714-snap-tiny-addends (45 pairs). Hypothesis (a) holds, with one
+  arm none of (a)-(c) predicted: a subnormal fmod or a subnormal shift is `#NUM!`, but when both are subnormal and |d| is
+  exactly 2^-1022 the result is `d - fmod`. All 464 MOD cells fit (numbers.md "MOD near the smallest normal").
+- Found in passing: the near-zero snap's 8-ULP bound is flushed when subnormal, so addends below 2^-973 never snap
+  (`1E-300-1E-300*(1+2^-52)` keeps its subnormal). That is fixed here too (`snap_near_zero`), because the MOD probe's
+  `A+B` column depends on it.
+- calipers: I88 and H89 pass in both workbooks. The same workbooks' I23 and H24 (`=$C$10+$C$11`) keep the
+  subnormal now, which desktop Excel saved as 0. They pass through a new calipers `cached-overrides.tsv` (decisions
+  0032, 0090) pointing at the probe's identical rows 130 and 131.
+- Eval delta: probes +4 cases (3,051 cells, all passing), known failures unchanged in every gated suite, 0 regressions.
+  calipers (not gated): the 8 owned cells pass. `update-baseline --suite calipers` still refuses because of 36 cells
+  (pv_goldens PPMT/NPV ulps and CHISQ.INV) that fail on `main` too (checked with a build of `main`; owned by T-2708 and
+  T-0463), so calipers.txt is not ratcheted here: the four I88 and H89 `F` lines leave it with T-0463's ratchet.

@@ -18,7 +18,7 @@
 
 use chrono::{Datelike, NaiveDate};
 
-use super::dates::{actual_days, days_30_360_eu, days_30_360_us};
+use super::dates::{actual_days, days_30_360_eu, days_30_360_us, DateReading};
 use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
@@ -67,18 +67,51 @@ impl Model {
     /// (possibly prorated) first period, then a constant `rate * cost` until the cost less the
     /// salvage is used up.
     pub(crate) fn fn_amorlinc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call(Function::Amorlinc, args, cell, &mut |model, values| {
-            number_or_error(model.amortization_of(values, Amortization::Linear, cell))
-        })
+        self.amortization_call(Function::Amorlinc, Amortization::Linear, args, cell)
     }
 
     /// `AMORDEGRC(cost, date_purchased, first_period, salvage, period, rate, [basis])`: like
     /// AMORLINC, but the rate is scaled by a coefficient of the asset life, it applies to what is
     /// left, and each period's charge is rounded to a whole number.
     pub(crate) fn fn_amordegrc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call(Function::Amordegrc, args, cell, &mut |model, values| {
-            number_or_error(model.amortization_of(values, Amortization::Degressive, cell))
-        })
+        self.amortization_call(Function::Amordegrc, Amortization::Degressive, args, cell)
+    }
+
+    /// Lifts `kind` over its arguments and applies what the calls leave for an AMORDEGRC below
+    /// period 1, which returns the value the last AMORDEGRC or AMORLINC Excel ran before it left
+    /// (`LeftOver`; financial.md "AMORDEGRC below period 1", decision 0131). Such a scalar call
+    /// reads that state, so its cell's value depends on Excel's calculation order
+    /// (`excel_order.rs`). Lifted over an array its elements are 0, whatever was left
+    /// (probes/amordegrc-fraction-state-x); what a lifted call leaves is the last element's
+    /// (unprobed).
+    fn amortization_call(
+        &mut self,
+        function: Function,
+        kind: Amortization,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut left = None;
+        let mut read = false;
+        let result = self.lift_call(function, args, cell, &mut |model, values| {
+            number_or_error(model.amortization_of(values, kind, cell).map(|amortized| {
+                match amortized.left_over {
+                    LeftOver::Keep => {}
+                    LeftOver::Set(value) => left = Some(value),
+                    LeftOver::Read => read = true,
+                }
+                amortized.charge
+            }))
+        });
+        let state = &mut self.evaluation;
+        if read && !matches!(result, CalcResult::Array(_)) {
+            state.order_state_read = true;
+            return CalcResult::Number(state.order_state.amor_left_over);
+        }
+        if let Some(value) = left {
+            state.order_state.amor_left_over = value;
+        }
+        result
     }
 
     /// Reads the arguments in Excel's order (probes/amor-argument-check-order, T-2485; financial.md
@@ -91,15 +124,16 @@ impl Model {
         values: &[CalcResult],
         kind: Amortization,
         cell: CellReferenceIndex,
-    ) -> Result<f64, CalcResult> {
+    ) -> Result<Amortized, CalcResult> {
         let [cost, purchased, first_period, salvage, period, rate, rest @ ..] = values else {
             return Err(CalcResult::new_args_number_error(cell));
         };
         let cost = self.cast_number_no_bools_ref(cost, cell)?;
         // `AMORLINC(2400,-1,NA(),..)` and `AMORLINC(2400,39679,2958466,NA(),..)` are #NUM!, while a
         // date of 0 or 0.5 passes (`AMORLINC(2400,0.5,NA(),..)` is #N/A).
-        let purchased = self.financial_calendar_date_of(purchased, cell)?;
-        let first_period = self.financial_calendar_date_of(first_period, cell)?;
+        let purchased = self.financial_calendar_date_of(purchased, DateReading::Shifted, cell)?;
+        let first_period =
+            self.financial_calendar_date_of(first_period, DateReading::Shifted, cell)?;
         let salvage = self.cast_number_no_bools_ref(salvage, cell)?;
         let period = self.cast_number_no_bools_ref(period, cell)?;
         let rate = self.cast_number_no_bools_ref(rate, cell)?;
@@ -161,6 +195,32 @@ fn amor_date(serial: i64) -> Option<NaiveDate> {
     }
 }
 
+/// One call's charge and what it leaves for a later AMORDEGRC below period 1.
+struct Amortized {
+    charge: f64,
+    left_over: LeftOver,
+}
+
+/// What an AMORDEGRC or AMORLINC that is not an error does to the value an AMORDEGRC with a
+/// period strictly between 0 and 1 returns (`OrderState::amor_left_over`; financial.md
+/// "AMORDEGRC below period 1", probes/amordegrc-fraction-state-*).
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum LeftOver {
+    /// It stays as it was: an AMORDEGRC at period 0 (-z) and a period past the asset life (-u,
+    /// -v). So it does for an error (-l, -m; a NaN AMORLINC charge is unprobed).
+    Keep,
+    /// It becomes this value.
+    Set(f64),
+    /// AMORDEGRC below period 1: the charge is that value.
+    Read,
+}
+
+impl Amortized {
+    fn new(charge: f64, left_over: LeftOver) -> Self {
+        Amortized { charge, left_over }
+    }
+}
+
 /// Validated arguments: `0 <= salvage < cost`, a positive rate, the purchase on or before the
 /// first period, a basis of 0, 1, 3 or 4.
 struct Asset {
@@ -183,16 +243,21 @@ fn whole_periods(period: f64) -> u64 {
 impl Asset {
     /// AMORLINC: `findDepr` charges `rate * cost` each period, clamped to what is still
     /// available. The period count's bound is `ceil(1/rate)`, which a tiny rate makes huge.
-    fn linear(&self, period: f64) -> Result<f64, String> {
+    /// Within the asset life it leaves its first period's charge rounded to a whole number, whatever
+    /// the period: `AMORLINC(2400,39679,39813,300,p,0.15,1)` leaves 132 for p 0 (131.803...), 1 and
+    /// 3, and 360 when purchased on the first period's end (probes/amordegrc-fraction-state-j, -s,
+    /// -w, -y).
+    fn linear(&self, period: f64) -> Result<Amortized, String> {
         let asset_life = (1.0 / self.rate).ceil();
         // A positive condition, so a NaN life (never reached: the rate is positive) is 0 too.
         let within_life = period <= asset_life;
         if !within_life {
-            return Ok(0.0);
+            return Ok(Amortized::new(0.0, LeftOver::Keep));
         }
         let (first_depr, _) = self.first_depreciation(self.rate, asset_life)?;
+        let left_over = LeftOver::Set(amor_round(first_depr));
         if period == 0.0 {
-            return Ok(first_depr);
+            return Ok(Amortized::new(first_depr, left_over));
         }
         let charge = self.rate * self.cost;
         let available = self.cost - self.salvage - first_depr;
@@ -201,23 +266,29 @@ impl Asset {
         if depr.is_nan() {
             return Err(String::new());
         }
-        Ok(depr)
+        Ok(Amortized::new(depr, left_over))
     }
 
     /// AMORDEGRC: the rate times a coefficient of the life, applied to the remaining cost; two
     /// periods before the end it charges half of what is left and then the rest. `loop_periods`
     /// is `DEGRESSIVE_LOOP_PERIODS` (smaller in tests, to check the closed form against the walk).
-    fn degressive(&self, period: f64, loop_periods: u64) -> Result<f64, String> {
+    /// From period 1 on it leaves its own charge, at period 0 it leaves the value as it was
+    /// (`AMORDEGRC(46557,0,39881,440,0,0.1)` is 46117 and passes a 485 through), and strictly
+    /// between 0 and 1 it reads what was left (probes/amordegrc-fraction-state-l to -z).
+    fn degressive(&self, period: f64, loop_periods: u64) -> Result<Amortized, String> {
         let ass_life = (1.0 / self.rate).ceil();
         let within_life = period <= ass_life;
         if !within_life {
-            return Ok(0.0);
+            return Ok(Amortized::new(0.0, LeftOver::Keep));
         }
         let depr_rate = self.rate * amor_depr_coeff(ass_life);
         let (first_depr_linc, asset_life) = self.first_depreciation(depr_rate, ass_life)?;
         let first_depr = amor_round(first_depr_linc);
         if period == 0.0 {
-            return Ok(first_depr);
+            return Ok(Amortized::new(first_depr, LeftOver::Keep));
+        }
+        if period < 1.0 {
+            return Ok(Amortized::new(0.0, LeftOver::Read));
         }
         let walk = DegressiveWalk {
             remain: self.cost - first_depr,
@@ -225,7 +296,8 @@ impl Asset {
             rate: depr_rate,
             half_period: half_period(asset_life),
         };
-        Ok(amor_round(walk.charge(whole_periods(period), loop_periods)))
+        let charge = amor_round(walk.charge(whole_periods(period), loop_periods));
+        Ok(Amortized::new(charge, LeftOver::Set(charge)))
     }
 
     /// `firstDeprLinc`: the depreciation of the (possibly partial) first period and the
@@ -483,7 +555,11 @@ fn amor_are_equal(x: f64, y: f64) -> bool {
 // `round excelComplaint`: pre-round to 13 significant digits (Excel's internal
 // precision) then round to the nearest integer, ties away from zero.
 fn amor_round(x: f64) -> f64 {
-    let k = (x * 1e13).round() / 1e13;
+    // Past about 1.8E295 the scaled value overflows; there the pre-round has no visible effect, and
+    // skipping it keeps a huge charge finite (`AMORDEGRC(1E308,..)`, probes/fin-amor-period-bound-b
+    // B2, T-1895).
+    let scaled = (x * 1e13).round();
+    let k = if scaled.is_finite() { scaled / 1e13 } else { x };
     k.round()
 }
 
@@ -641,6 +717,17 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn amor_round_keeps_a_huge_charge_finite() {
+        // `x * 1e13` overflows past about 1.8E295: the value rounds as it is (T-1895).
+        assert_eq!(
+            amor_round(1.947_004_434_659_189_4e302),
+            1.947_004_434_659_189_4e302
+        );
+        assert_eq!(amor_round(-1e300), -1e300);
+        assert_eq!(amor_round(2.5), 3.0);
     }
 
     #[test]

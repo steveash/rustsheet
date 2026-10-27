@@ -1,0 +1,267 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A10": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A11": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A12": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A13": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A14": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A15": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A16": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A17": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A18": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A19": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A20": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A21": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A22": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A23": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A24": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A25": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A26": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A27": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A28": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A29": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3": {
+    "t": "s",
+    "v": "\u20acMarch"
+   },
+   "A30": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A31": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A32": {
+    "t": "s",
+    "v": "\u20ac                                                            "
+   },
+   "A33": {
+    "t": "s",
+    "v": "\u20ac                                                             "
+   },
+   "A34": {
+    "t": "s",
+    "v": "\u20ac                                                              "
+   },
+   "A35": {
+    "t": "s",
+    "v": "\u20ac                                                               "
+   },
+   "A36": {
+    "t": "s",
+    "v": "\u20ac                                                                "
+   },
+   "A37": {
+    "t": "s",
+    "v": "\u20ac                                                                 "
+   },
+   "A38": {
+    "t": "s",
+    "v": "\u20ac                                                                  "
+   },
+   "A39": {
+    "t": "s",
+    "v": "\u20ac                                                                   "
+   },
+   "A4": {
+    "t": "s",
+    "v": "\u20acMarch"
+   },
+   "A40": {
+    "t": "s",
+    "v": "\u20ac                                                                    "
+   },
+   "A41": {
+    "t": "s",
+    "v": "\u20ac                                                                     "
+   },
+   "A42": {
+    "t": "s",
+    "v": "\u20ac                                                                      "
+   },
+   "A43": {
+    "t": "s",
+    "v": "\u20ac                                                                       "
+   },
+   "A44": {
+    "t": "s",
+    "v": "\u20ac                                                                        "
+   },
+   "A45": {
+    "t": "s",
+    "v": "\u20ac                                                                         "
+   },
+   "A46": {
+    "t": "s",
+    "v": "\u20ac                                                                          "
+   },
+   "A47": {
+    "t": "s",
+    "v": "\u20ac                                                                           "
+   },
+   "A48": {
+    "t": "s",
+    "v": "\u20ac                                                                            "
+   },
+   "A49": {
+    "t": "s",
+    "v": "\u20ac                                                                             "
+   },
+   "A5": {
+    "t": "s",
+    "v": "\u20ac15 March"
+   },
+   "A50": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A51": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A52": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A53": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A54": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A55": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A56": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A57": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A58": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A59": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A6": {
+    "t": "s",
+    "v": "\u20ac15 March"
+   },
+   "A60": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A61": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A62": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A63": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "A7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A8": {
+    "t": "s",
+    "v": "\u20acMarch"
+   },
+   "A9": {
+    "t": "s",
+    "v": "\u20acaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d97df8de0b7ca07c6b060d2df6107f661ae7ea6c4cf612d89fe993bf2c405874",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-26T15:39:12+00:00",
+  "version": null,
+  "workbook_name": "7f85eda233fd1ac66cc3cfb88ea8926bf1d3058b9b881f8bc072aa4d9e02e74c.xlsx"
+ }
+}

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="290" viewBox="0 0 760 290" role="img" aria-labelledby="t d">
+<title id="t">Open tasks per campaign stage</title><desc id="d">Open tasks (todo, in progress or blocked) per decision-0114 campaign stage and parked (defer: phase-1b), per complete run; a date without one is a gap.</desc>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-semantics{fill:#2a78d6}.b-accuracy{fill:#1baf7a}.b-visible{fill:#6250d6}.b-parked{fill:#4b5563}.s-semantics{stroke:#2a78d6}.s-accuracy{stroke:#1baf7a}.s-visible{stroke:#6250d6}.s-parked{stroke:#4b5563}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-semantics{fill:#3987e5}.b-accuracy{fill:#199e70}.b-visible{fill:#9085e9}.b-parked{fill:#9ca3af}.s-semantics{stroke:#3987e5}.s-accuracy{stroke:#199e70}.s-visible{stroke:#9085e9}.s-parked{stroke:#9ca3af}}</style>
+<rect class="bg" fill="#ffffff" x="0" y="0" width="760" height="290"/>
+<g transform="translate(14,14)">
+<text x="0.0" y="16.0" class="ink title" fill="#1f2328" text-anchor="start" dominant-baseline="middle">Open tasks per campaign stage</text>
+<rect class="b-semantics" fill="#2a78d6" x="0.0" y="38" width="12" height="12" rx="2"/>
+<text x="17.0" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Semantics</text>
+<rect class="b-accuracy" fill="#1baf7a" x="102.5" y="38" width="12" height="12" rx="2"/>
+<text x="119.5" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Accuracy</text>
+<rect class="b-visible" fill="#6250d6" x="197.5" y="38" width="12" height="12" rx="2"/>
+<text x="214.5" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Visible</text>
+<rect class="b-parked" fill="#4b5563" x="285.0" y="38" width="12" height="12" rx="2"/>
+<text x="302.0" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Parked</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="246.0" width="542" height="1"/>
+<text x="62.0" y="246.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">0</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="210.0" width="542" height="1"/>
+<text x="62.0" y="210.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">10</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="174.0" width="542" height="1"/>
+<text x="62.0" y="174.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">20</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="138.0" width="542" height="1"/>
+<text x="62.0" y="138.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">30</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="102.0" width="542" height="1"/>
+<text x="62.0" y="102.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">40</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="66.0" width="542" height="1"/>
+<text x="62.0" y="66.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">50</text>
+<text x="70.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-25</text>
+<text x="612.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-26</text>
+<polyline class="s-semantics" stroke="#2a78d6" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,87.6 612.0,177.6"><title>Semantics</title></polyline>
+<circle class="b-semantics" fill="#2a78d6" cx="612.0" cy="177.6" r="3.5"><title>Semantics, 2026-10-26: 19</title></circle>
+<polyline class="s-accuracy" stroke="#1baf7a" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,199.2 612.0,195.6"><title>Accuracy</title></polyline>
+<circle class="b-accuracy" fill="#1baf7a" cx="612.0" cy="195.6" r="3.5"><title>Accuracy, 2026-10-26: 14</title></circle>
+<polyline class="s-visible" stroke="#6250d6" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,112.8 612.0,134.4"><title>Visible</title></polyline>
+<circle class="b-visible" fill="#6250d6" cx="612.0" cy="134.4" r="3.5"><title>Visible, 2026-10-26: 31</title></circle>
+<polyline class="s-parked" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,112.8 612.0,105.6"><title>Parked</title></polyline>
+<circle class="b-parked" fill="#4b5563" cx="612.0" cy="105.6" r="3.5"><title>Parked, 2026-10-26: 39</title></circle>
+<text x="622.0" y="177.6" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">19</text>
+<text x="622.0" y="195.6" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">14</text>
+<text x="622.0" y="134.4" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">31</text>
+<text x="622.0" y="105.6" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">39</text>
+</g></svg>

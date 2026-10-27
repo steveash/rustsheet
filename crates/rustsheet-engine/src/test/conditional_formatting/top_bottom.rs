@@ -38,7 +38,7 @@ fn bottom_n(rank: u32, percent: bool) -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model, row: i32) -> bool {
+fn is_red(model: &mut crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()
@@ -63,14 +63,14 @@ fn test_top3_highlights_three_highest() {
     // threshold = 80; rows 8 (80), 9 (90), 10 (100) match
     for row in 8..=10 {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} (value {}) should be in the top 3",
             VALUES[row as usize - 1]
         );
     }
     for row in 1..=7 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} (value {}) should not be in the top 3",
             VALUES[row as usize - 1]
         );
@@ -85,9 +85,12 @@ fn test_top1_highlights_only_maximum() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&model, 10), "row 10 (100) should be the top 1");
+    assert!(is_red(&mut model, 10), "row 10 (100) should be the top 1");
     for row in 1..=9 {
-        assert!(!is_red(&model, row), "row {row} should not be the top 1");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not be the top 1"
+        );
     }
 }
 
@@ -105,11 +108,14 @@ fn test_top_20_percent_highlights_two_highest() {
     model.evaluate();
 
     for row in 9..=10 {
-        assert!(is_red(&model, row), "row {row} should be in the top 20 %");
+        assert!(
+            is_red(&mut model, row),
+            "row {row} should be in the top 20 %"
+        );
     }
     for row in 1..=8 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not be in the top 20 %"
         );
     }
@@ -125,11 +131,14 @@ fn test_top_30_percent_highlights_three_highest() {
     model.evaluate();
 
     for row in 8..=10 {
-        assert!(is_red(&model, row), "row {row} should be in the top 30 %");
+        assert!(
+            is_red(&mut model, row),
+            "row {row} should be in the top 30 %"
+        );
     }
     for row in 1..=7 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not be in the top 30 %"
         );
     }
@@ -150,14 +159,14 @@ fn test_bottom3_highlights_three_lowest() {
     // threshold = 30; rows 1 (10), 2 (20), 3 (30) match
     for row in 1..=3 {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} (value {}) should be in the bottom 3",
             VALUES[row as usize - 1]
         );
     }
     for row in 4..=10 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} (value {}) should not be in the bottom 3",
             VALUES[row as usize - 1]
         );
@@ -172,9 +181,12 @@ fn test_bottom1_highlights_only_minimum() {
         .unwrap();
     model.evaluate();
 
-    assert!(is_red(&model, 1), "row 1 (10) should be the bottom 1");
+    assert!(is_red(&mut model, 1), "row 1 (10) should be the bottom 1");
     for row in 2..=10 {
-        assert!(!is_red(&model, row), "row {row} should not be the bottom 1");
+        assert!(
+            !is_red(&mut model, row),
+            "row {row} should not be the bottom 1"
+        );
     }
 }
 
@@ -193,13 +205,13 @@ fn test_bottom_20_percent_highlights_two_lowest() {
 
     for row in 1..=2 {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} should be in the bottom 20 %"
         );
     }
     for row in 3..=10 {
         assert!(
-            !is_red(&model, row),
+            !is_red(&mut model, row),
             "row {row} should not be in the bottom 20 %"
         );
     }
@@ -225,10 +237,10 @@ fn test_top_includes_all_values_at_threshold() {
         .unwrap();
     model.evaluate();
 
-    assert!(!is_red(&model, 1), "10 should not be in top-1");
+    assert!(!is_red(&mut model, 1), "10 should not be in top-1");
     for row in 2..=4 {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} (value 80) equals the threshold and should match"
         );
     }
@@ -252,11 +264,11 @@ fn test_bottom_includes_all_values_at_threshold() {
 
     for row in 1..=3 {
         assert!(
-            is_red(&model, row),
+            is_red(&mut model, row),
             "row {row} (value 10) equals the threshold and should match"
         );
     }
-    assert!(!is_red(&model, 4), "80 should not be in bottom-1");
+    assert!(!is_red(&mut model, 4), "80 should not be in bottom-1");
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +288,10 @@ fn test_top_ignores_text_cells() {
         .unwrap();
     model.evaluate();
 
-    assert!(!is_red(&model, 1), "text cell should not be highlighted");
-    assert!(!is_red(&model, 2), "5 is not the top value");
-    assert!(is_red(&model, 3), "10 is the top value");
+    assert!(
+        !is_red(&mut model, 1),
+        "text cell should not be highlighted"
+    );
+    assert!(!is_red(&mut model, 2), "5 is not the top value");
+    assert!(is_red(&mut model, 3), "10 is the top value");
 }

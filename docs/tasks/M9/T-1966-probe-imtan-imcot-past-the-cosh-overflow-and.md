@@ -3,7 +3,7 @@ id: T-1966
 title: "Probe IMTAN/IMCOT past the cosh overflow and near pi/2"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,3 +32,11 @@ there. Probe (excel-probe skill, excel-graph) `IMTAN("1+400i")`, `IMTAN("1-400i"
 
 ## Out of scope
 -
+
+## Outcome
+Probe case `probes/eng-imtan-imcot-overflow` (13 cells, excel-graph oracle). The overflow shapes
+(`IMTAN`/`IMCOT` at y = 354, 355, 356, 400, -400) match Excel exactly: `±i`, never `#NUM!`. The four
+real-argument cells at and near π/2 are finite in Excel and differ from ours from the sixth or seventh digit; they
+are recorded in engineering.md and as 4 new-case known failures in eval/baseline/probes.txt. The
+UNVERIFIED bullet in engineering.md is resolved. Follow-up: T-2760, fitting the real-argument IMTAN/IMCOT
+kernel near π/2 (opus-sized numeric fitting).

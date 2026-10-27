@@ -369,9 +369,12 @@ impl Model {
     }
 
     /// Two complex arguments of one element (IMDIV, IMSUB), read left to right; empty text and
-    /// different suffixes are `#NUM!` (engineering.md "T-1625 probes").
+    /// different suffixes are `#NUM!` (engineering.md "T-1625 probes"). `args` are the call's
+    /// argument nodes: only an argument left out of the formula is `#N/A`, not the empty value
+    /// IFERROR or IFNA hand on for a blank cell, which is 0 like the blank cell itself.
     fn complex_pair_of(
         &self,
+        args: &[Node],
         values: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> Result<(ComplexParts, ComplexParts), CalcResult> {
@@ -380,7 +383,7 @@ impl Model {
         };
         // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
         // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
-        if matches!(first, CalcResult::EmptyArg) || matches!(second, CalcResult::EmptyArg) {
+        if args.iter().any(|arg| matches!(arg, Node::EmptyArgKind)) {
             return Err(CalcResult::new_error(Error::NA, cell, String::new()));
         }
         let first = self.complex_of(first, EmptyText::ZeroIfBlank, cell)?;
@@ -401,6 +404,15 @@ impl Model {
                 [x, y, suffix] => (x, y, Some(suffix)),
                 _ => return CalcResult::new_args_number_error(cell),
             };
+            // Excel reads the suffix before the numbers, so a bad or error suffix wins over an
+            // error in real_num or i_num (T-2532; engineering.md, gen-m9 COMPLEX cells).
+            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
+                None => Suffix::I,
+                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
+                Some(Ok(s)) if s == "j" => Suffix::J,
+                Some(Ok(_)) => return value_error(cell),
+                Some(Err(s)) => return s,
+            };
             // A boolean is `#VALUE!`: `COMPLEX(TRUE,1)` (probes/eng-imsum-improduct-whole C12).
             let x = match model.cast_number_no_bools_ref(x, cell) {
                 Ok(s) => s,
@@ -409,13 +421,6 @@ impl Model {
             let y = match model.cast_number_no_bools_ref(y, cell) {
                 Ok(s) => s,
                 Err(s) => return s,
-            };
-            let suffix = match suffix.map(|suffix| Self::cast_string_ref(suffix, cell)) {
-                None => Suffix::I,
-                Some(Ok(s)) if s == "i" || s.is_empty() => Suffix::I,
-                Some(Ok(s)) if s == "j" => Suffix::J,
-                Some(Ok(_)) => return value_error(cell),
-                Some(Err(s)) => return s,
             };
             complex_result(x, y, suffix)
         })
@@ -461,7 +466,7 @@ impl Model {
     /// (probes/eng-argument-modes B36:E36, probes/scalar-lift-open-a Y13).
     pub(crate) fn fn_imdiv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Imdiv, args, cell, &mut |model, values| {
-            let ((x1, y1, suffix), (x2, y2, _)) = match model.complex_pair_of(values, cell) {
+            let ((x1, y1, suffix), (x2, y2, _)) = match model.complex_pair_of(args, values, cell) {
                 Ok(pair) => pair,
                 Err(error) => return error,
             };
@@ -536,7 +541,13 @@ impl Model {
             let Ok(radius) = power(r, n) else {
                 return num_error(cell);
             };
-            let angle = f64::atan2(y, x) * n;
+            // The angle is Excel's ATAN2 kernel, `atan(y/x)` (IMARGUMENT's [`excel_atan2`]):
+            // `IMPOWER("1000+1i",1)` is "1000+1i", its imaginary part 1.0000000000000002 where
+            // libm `atan2` gives exactly 1 (gen-m9/74779cff2810ccf4 Calc!A379; T-2610). Unprobed
+            // (T-2736): where that kernel errs (a zero or subnormal x, an overflowing y/x) `atan2` is
+            // kept; its subnormal angle is 0 (`IMPOWER("1E20+1E-300i",1)` is "1E+20") and a -0
+            // imaginary part with x < 0 is +π, where `atan2` gave a tiny part and -π.
+            let angle = excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x)) * n;
             // An underflowed radius of 0 is "0" without reading the angle
             // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
             if radius == 0.0 {
@@ -600,7 +611,7 @@ impl Model {
             Function::Imsub,
             args,
             cell,
-            &mut |model, values| match model.complex_pair_of(values, cell) {
+            &mut |model, values| match model.complex_pair_of(args, values, cell) {
                 Ok(((x1, y1, suffix), (x2, y2, _))) => {
                     // Excel: a part that overflows is 0 and the other part stays
                     // (`IMSUB("9E307","-9E307")` is "0", `IMSUB("9E307+1i","-9E307")` is "i";

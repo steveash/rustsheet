@@ -327,15 +327,26 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model, skip: &[&str]) -> Result<()
 }
 
 /// The locale of the workbook at `file_path`, and the clock its `NOW()`/`TODAY()` give the values
-/// Excel saved on: its METADATA time, or the system clock without one.
+/// Excel saved on: its METADATA time; without one, approximately, the time it was last saved
+/// (`docProps/core.xml` `dcterms:modified`, UTC, where Excel calculated in local time a little
+/// before; docs/excel-semantics/xlsx-storage.md "Cached volatile values"); the system clock
+/// without either.
 fn locale_and_clock(file_path: &str) -> (String, Clock) {
     let model = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
-    let clock = clock_from_metadata(&model).unwrap_or_default();
+    let clock = clock_from_metadata(&model)
+        .or_else(|| saved_at(&model))
+        .unwrap_or_default();
     (get_workbook_metadata(&model), clock)
 }
 
-/// Loads `file_path` on `clock`. Loading already evaluates the cells conditional formatting
-/// reads, so the clock is set before that, not after.
+/// The fixed clock at the time `model`'s file was last saved, if its properties say.
+fn saved_at(model: &Model) -> Option<Clock> {
+    let saved =
+        chrono::DateTime::parse_from_rfc3339(&model.workbook.metadata.last_modified).ok()?;
+    Clock::fixed_unix_millis(saved.timestamp_millis()).ok()
+}
+
+/// Loads `file_path` on `clock`, set before anything is evaluated.
 fn load_on_clock(file_path: &str, locale: &str, clock: Clock) -> Model {
     let workbook = load_from_excel(file_path, locale, "UTC").unwrap();
     Model::from_workbook_with_clock(workbook, "en", clock).unwrap()

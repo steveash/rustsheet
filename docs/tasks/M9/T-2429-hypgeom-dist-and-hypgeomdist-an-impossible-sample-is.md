@@ -3,7 +3,7 @@ id: T-2429
 title: "HYPGEOM.DIST and HYPGEOMDIST: a huge count is #NUM!, and the remaining T-2255/T-2256 cells (gen-m9, 26 cells; impossible sample and negative counts cut to T-2699, T-2700)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -73,11 +73,11 @@ Examples:
 (Both cells moved to T-2699.)
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 26 known-failure lines (15 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2255 and T-2256; 24 of 26: 21 gone, 3 already passing on main, 2 moved, see Outcome): these 26 known-failure lines (15 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `HYPGEOMDIST(1E15,2,2,17)` is `#NUM!`. The impossible sample and the negative fractions are tested in T-2699 and T-2700.
-- [ ] statistics.md's entry gets an "Ours:" line and the probed threshold.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: `HYPGEOMDIST(1E15,2,2,17)` is `#NUM!`. The impossible sample and the negative fractions are tested in T-2699 and T-2700.
+- [x] statistics.md's entry gets an "Ours:" line and the probed threshold.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - HYPGEOM.DIST's last digits (T-0977) and large-population cdf (T-1896).
@@ -87,3 +87,23 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+- Probed the threshold (probes/t2429-hypgeom-huge-count, probes/t2429-hypgeom-threshold, excel-graph 2026-10-25): a count
+  of 2^31 - 1 or more in any of the four arguments is `#NUM!` (2147483646.9 computes), the integer-count limit
+  `limits::COUNT_LIMIT_EXCLUSIVE` that PERMUT, COMBIN and BINOM.DIST already use. Every argument is read first (a text
+  cumulative is `#VALUE!` beside a huge count). probes/t2429/<case> traces each owned gen-m9 cell's HYPGEOM arguments.
+- hypegeom.rs `hyp_geom_dist_of` now checks every count for a negative fraction (before truncation) and the limit. That
+  also lands T-2700's HYPGEOM part (its 3 HYPGEOM cells pass).
+- gen-m9/38e4fc309fe199ea A5 needed QUARTILE.EXC of a single cell holding TRUE to be no number (`#NUM!`), not `#VALUE!`
+  (probes/t2429-quartile-exc-no-number): `percentile_numbers` now reads a boolean cell as it reads a text cell. That fixed
+  24 of T-2344's cells too.
+- Two owned cells are not this kernel's: eced4bb6a0234c9e A390 (the inner `NPER(-1,..)` is Excel `#NUM!`, ours 0) moved to
+  T-2698; 11eb3ab4f4f8104c A10 (`#SPILL!` vs ours `#ERROR!` over a GROUPBY lift) is noted in T-2433. The task's three
+  T-2256 cells 38e4fc309fe199ea A376, 44a8841352dc48e9 A146 and 941c409532603d32 A138 already passed on main.
+- The capped-cdf DEVIATION's example moved below the limit (`HYPGEOM.DIST(537370912,1073741823,1073741823,2147483646,TRUE)`);
+  the subnormal-window bench needed a population past the limit and is gone from benches/lift.rs.
+- Eval delta: gen-m9 known failures 4324 -> 4271 (-53: 21 owned, 3 of T-2700, 24 of T-2344, 1 of T-2495 (67a4c03afd63f988
+  A352), 1 each of T-2436, T-2472, T-2492 and T-2496's lists); probes 2615 -> 2639 (+39 in the new probe cases: the
+  impossible sample of T-2699, large-population last digits of T-0977/T-1896, the NPER and GROUPBY traces; -15 fixed
+  in t2436, t2492 and tbill-error-order probes); no regressions.

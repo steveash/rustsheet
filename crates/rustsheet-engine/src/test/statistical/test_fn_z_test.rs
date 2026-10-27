@@ -75,3 +75,38 @@ fn an_error_data_value_comes_before_x() {
     assert_eq!(model._get_text("D5"), *"2");
     assert_eq!(model._get_text("D6"), *"#N/A");
 }
+
+/// A one-value data argument is `#DIV/0!` before a bad sigma; a lone cell reference without a
+/// number is `#N/A` (gen-m9 T-2256 cells; statistics.md "Z.TEST: an error array first").
+#[test]
+fn lone_values_and_cells() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("B1", "5");
+    for (i, v) in [3, 4, 5, 6].iter().enumerate() {
+        model._set(&format!("C{}", i + 1), &v.to_string());
+    }
+    for (cell, formula) in [
+        ("D1", "=Z.TEST(1/0,\"x\")"),
+        ("D2", "=Z.TEST({5},3,-1)"),
+        ("D3", "=Z.TEST(A1,1)"),
+        ("D4", "=Z.TEST(A1:A1,1)"),
+        ("D5", "=Z.TEST(C1:C4,4,0)"),
+        ("D6", "=Z.TEST(Z9,1)"),
+        ("D7", "=Z.TEST(B1,3,-1)"),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, want) in [
+        ("D1", "#DIV/0!"),
+        ("D2", "#DIV/0!"),
+        ("D3", "#N/A"),
+        ("D4", "#N/A"),
+        ("D5", "#NUM!"),
+        ("D6", "#N/A"),
+        ("D7", "#DIV/0!"),
+    ] {
+        assert_eq!(model._get_text(cell), *want, "{cell}");
+    }
+}

@@ -4,6 +4,7 @@
 //! probes/stat-whole-lift W21-W47).
 
 use super::sorted_data::{DataArg, DataOrder, SortedNumbers};
+use crate::decimal_round::{cut_to_15_digits, decimal_to_f64};
 use crate::expressions::types::CellReferenceIndex;
 pub(super) use crate::functions::lift::num_error;
 use crate::functions::lift::LiftCost;
@@ -29,16 +30,17 @@ fn percentile_numbers(
         error @ CalcResult::Error { .. } => Err(error),
         // A typed boolean is a one-element array (`QUARTILE(TRUE,1)` is 1, probes-numeric/t1748-
         // typed-boolean-data A1-A8 for the whole family, probes/stat-order-floor-batch A102, A128),
-        // and typed text a number (A11). A single cell holding a boolean is unprobed and keeps the
-        // old reading below.
+        // and typed text a number (A11).
         CalcResult::Boolean(b) if typed_in_place => Ok(vec![f64::from(u8::from(b))]),
         text @ CalcResult::String(_) if typed_in_place => {
             model.cast_number_ref(&text, cell).map(|n| vec![n])
         }
-        // A single cell holding text (a cell reference, not the typed text above) is no number,
-        // like text inside a range: the data is empty and every function reports `#NUM!`, not
-        // `#VALUE!` (probes/quartile-single-text-cell B1-B11, quartile-numeric-text-cell C2-C5).
-        CalcResult::String(_) => Ok(vec![]),
+        // A single cell holding text or a boolean (a cell reference, not the typed values above)
+        // is no number, like text inside a range: the data is empty and every function reports
+        // `#NUM!`, not `#VALUE!`, after k's or quart's own error (probes/quartile-single-text-cell
+        // B1-B11, quartile-numeric-text-cell C2-C5; t2429-quartile-exc-no-number A1-A3, A9-A12,
+        // A19-A22 for a TRUE cell).
+        CalcResult::String(_) | CalcResult::Boolean(_) => Ok(vec![]),
         CalcResult::Array(array) => match nested_array_error(&array, cell) {
             Some(error) => Err(error),
             None => model.numeric_flat_with_element_errors(CalcResult::Array(array), cell),
@@ -166,8 +168,8 @@ impl Model {
     }
 
     /// PERCENTRANK.INC or .EXC (`rank_of`) of one element: an error x, then an empty array `#N/A`,
-    /// then the significance (3 digits when omitted; below 1 `#NUM!` unless the data is one
-    /// value), then an x outside the data is `#N/A`.
+    /// then an x outside the data `#N/A`, then the significance (3 digits when omitted; below 1
+    /// `#NUM!` unless the data is one value).
     fn percentrank_of(
         &self,
         data: &mut SortedNumbers,
@@ -190,13 +192,7 @@ impl Model {
         }
         let sig = match values.get(2) {
             Some(significance) => match self.cast_number_ref(significance, cell) {
-                Ok(v) => {
-                    let s = v.floor() as i32;
-                    if s < 1 && data.len() > 1 {
-                        return num_error(cell);
-                    }
-                    s
-                }
+                Ok(v) => v.floor() as i32,
                 Err(e) => return e,
             },
             None => 3,
@@ -205,16 +201,35 @@ impl Model {
         let (Some(first), Some(last)) = (sorted.first(), sorted.last()) else {
             return CalcResult::new_error(Error::NA, cell, String::new());
         };
-        // Unlike the documentation, x at either end of the array is in range (EXC too).
+        // Unlike the documentation, x at either end of the array is in range (EXC too). An x
+        // outside the data is `#N/A` before a significance below 1 is `#NUM!`
+        // (`PERCENTRANK.EXC(C4:C10,-1,0)`, gen-m9/097af1ca33638670 A312; statistics.md "Order
+        // statistics: the scalar argument's error before the no-number result").
         if x < *first || x > *last {
             return CalcResult::new_error(Error::NA, cell, String::new());
+        }
+        if sig < 1 && sorted.len() > 1 {
+            return num_error(cell);
         }
         if sorted.len() == 1 {
             // One value equal to x ranks 1 (EXC too, not 0.5); any numeric significance leaves 1 (probes/percentrank-single-value B9, B14-B19).
             return CalcResult::Number(1.0);
         }
-        let factor = 10f64.powi(sig);
-        CalcResult::Number((rank_of(sorted, x) * factor).floor() / factor)
+        // A significance whose 10^sig overflows (309 or more) is `#DIV/0!` (308 still computes:
+        // probes/t2473-percentrank-significance A6-A15, B6-B15, C6-C15).
+        // 10^sig correctly rounded: `powi` drifts by ulps past 10^22 and moves the result
+        // (`PERCENTRANK({1,2,3,4},2.5,100)` is 0.5, t2473 A5). `None` is a power past the double
+        // range.
+        let factor = decimal_to_f64(1, sig.into()).unwrap_or(f64::INFINITY);
+        if !factor.is_finite() {
+            return CalcResult::new_error(Error::DIV, cell, String::new());
+        }
+        // The scaled rank is cut to 15 significant digits before the floor, so a rank within
+        // rounding below a cut keeps its digit: `PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)` (the double
+        // 0.49999999999999983) is 0.5, and 2/3 at 15 digits 0.666666666666667 (t2473 D1-D4, D19-D23;
+        // statistics.md "PERCENTRANK: a huge significance is #DIV/0!").
+        let scaled = cut_to_15_digits(rank_of(sorted, x) * factor, true);
+        CalcResult::Number(scaled.floor() / factor)
     }
 }
 

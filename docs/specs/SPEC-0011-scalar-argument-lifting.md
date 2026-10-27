@@ -680,7 +680,9 @@ VALUETOTEXT, which order their own errors, call `lift_call` directly. The elemen
 borrowing `cast::calc_result_to_text` and `Model::calc_result_to_number`, so an unlifted call copies no text. `TextArg` and
 `broadcast_text` are deleted. Three unprobed edges now follow the driver (a LAMBDA argument, a 1x1 array, VALUETOTEXT's
 scalar error format; text.md, T-1963). FIND and SEARCH are `Constant` with their scan named as the cap
-(`lift/tests/kernel_work.rs`); T-1961 charges it. The final grep finds two `bcast_get` loops the table above missed or
+(`lift/tests/kernel_work.rs`); T-1961 charges it. As built (T-1961): FIND and SEARCH are
+`ByValue(TextScan)`, each element charged its texts' lengths and the bytes each start position compares (`lift/kinds`
+`text_scan_units`; text.md "Lifted FIND and SEARCH calls are capped"). The final grep finds two `bcast_get` loops the table above missed or
 another task owns: IMAGE's `image_grid` (information/offline_errors.rs, T-1962) and CHOOSE's `choose_array` (T-1810).
 As built (T-1962): IMAGE's array path calls `lift_values` with one kernel, `image_element`, and `image_grid` is gone; a
 position past a shorter array is the driver's `#N/A` element in argument order, as Excel does (probes/rich-errors-image-past-end).
@@ -732,6 +734,12 @@ estimators exist:
   (YIELD's 397 prices, 2^24). A text date is charged as the longest schedule and a text frequency
   as 4; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
   bounds each walk, so no cap constant is needed.
+- `HypergeometricSum { counts, walk, extra, per_term, weight }` (T-2433, HYPGEOM.DIST): a cdf is
+  either a walk (`walk` units) or a sum of at most min(counts) + 1 terms and `extra` exponents, so
+  an element is `min(weight, max(walk, (min(trunc(counts)) + 1 + extra) * per_term))`, `weight`
+  being the sum's per-call cap; a text count is left out of the min (it may read as any count),
+  `weight` when every count is a text, and an error, a negative count or one of
+  2^31 - 1 or more (refused before either path) 1.
 
 T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`

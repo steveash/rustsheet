@@ -620,7 +620,7 @@ impl Model {
             .parsed_formulas
             .get(criteria_cell.sheet as usize)
             .and_then(|formulas| formulas.get(usize::try_from(formula).ok()?))
-            .map(|(node, _)| Arc::clone(node))
+            .map(|(node, ..)| Arc::clone(node))
         else {
             return value;
         };

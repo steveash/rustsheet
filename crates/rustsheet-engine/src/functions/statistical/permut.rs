@@ -75,11 +75,18 @@ impl Model {
         k: &CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
-        let n = self.cast_number_ref(n, cell)?.floor() as i64;
-        let k = self.cast_number_ref(k, cell)?.floor() as i64;
-        if n < 0 || k < 0 {
+        let n = self.cast_number_ref(n, cell)?.floor();
+        // number_chosen truncates toward zero before its sign check, so one in (-1, 0) is 0 and
+        // the result 1 (`PERMUTATIONA(10,-0.75)`, `PERMUTATIONA(0,-0.0001)`; gen-m9 0620505280d2ea6e
+        // A280, probes/t2475-stat-subexpressions P!A28).
+        let k = self.cast_number_ref(k, cell)?.trunc() as i64;
+        // Excel: a number of about 1E+15 is #NUM!, even with number_chosen 0
+        // (`PERMUTATIONA(1000000000000000,0)`, `PERMUTATIONA(FACT(18),2)`; gen-m9 775d053de498b8c7
+        // A152, b9a32ce9a1fd0d71 A378), while `PERMUTATIONA(123456789.123,1)` is a number
+        // (1b31092a0d79e5f1 A306). The cut is UNVERIFIED: PERMUT's 2^31 - 1 is taken (T-2474).
+        if n < 0.0 || k < 0 || n >= PERMUT_NUMBER_LIMIT {
             return Err(num_error(cell));
         }
-        Ok((n as f64).powf(k as f64))
+        Ok(n.powf(k as f64))
     }
 }

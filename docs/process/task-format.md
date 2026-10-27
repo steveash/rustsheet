@@ -72,3 +72,6 @@ Rules:
   every pushed `origin/*` branch, so parallel sessions cannot collide (decision 0016). Fill in the
   `TODO(fill)` lines (`tasks.py validate` rejects them), then commit and push the file right away:
   the push is the claim.
+- Tools read task counts from `tasks.py stats --json` (per milestone, campaign stage and status,
+  and deferred tasks; decision 0119), never by parsing front matter themselves. It fails on the
+  same errors as `validate`.

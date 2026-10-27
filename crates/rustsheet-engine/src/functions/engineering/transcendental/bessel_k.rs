@@ -96,8 +96,12 @@ pub(crate) fn bessel_k(n: i32, x: f64) -> f64 {
         return f64::INFINITY;
     }
     let tox = 2.0 / x;
+    // Excel flushes a subnormal recurrence term `2j/x * K(j)` to 0 before adding it (the cutoff is
+    // inferred, T-2702), so at x = 702 and 705 K2 = K4 = K0 and K3 = K5 = K1, and at 700 only
+    // K2 = K0 (probes-numeric/m9-besselk-underflow; engineering.md "BESSELK near the bottom of the
+    // double range").
     for j in 1..n {
-        (bkm, bk) = (bk, bkm + (j as f64) * tox * bk);
+        (bkm, bk) = (bk, bkm + flush_subnormal((j as f64) * tox * bk));
     }
     bk
 }

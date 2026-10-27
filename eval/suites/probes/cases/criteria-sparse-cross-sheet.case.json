@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "COUNTIFS/SUMIFS criteria ranges on sheets with different used areas and at different offsets line up position by position (T-2711)",
+  "tags": [
+    "M2",
+    "criteria",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 1
+      }
+    },
+    {
+      "name": "Sheet2",
+      "cells": {
+        "A100": "x",
+        "A200": 5
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=COUNTIFS(Sheet1!A:A,\"\",Sheet2!A:A,\"x\")",
+        "A2": "=COUNTIFS(Sheet1!A:A,\"\",Sheet2!A:A,\"<>x\")",
+        "A3": "=SUMIFS(Sheet2!A:A,Sheet1!A:A,\"\")",
+        "A4": "=COUNTIFS(Sheet1!A1:A3,1,Sheet1!B2:B4,\"\")",
+        "A5": "=COUNTIFS(Sheet1!A1:A3,\"\",Sheet1!B2:B4,\"\")",
+        "A6": "=SUMIFS(Sheet2!A:A,Sheet2!A:A,\">1\",Sheet1!B:B,\"\")",
+        "A7": "=COUNTIFS(Sheet2!A:A,\"\",Sheet1!A:A,\"\")",
+        "A8": "=COUNTIF(Sheet2!A:B,\"\")",
+        "A9": "=AVERAGEIFS(Sheet2!A:A,Sheet1!A:A,\"\",Sheet2!A:A,\"<>x\")"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -1,0 +1,78 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2429: the HYPGEOM.DIST/HYPGEOMDIST calls of gen-m9/cde551ea787f713a (A254) and each of their arguments, on that case's Data sheet.",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=HYPGEOMDIST(1,Data!E5,Data!C$1,-QUARTILE((-2.5),2))",
+        "A2": "=1",
+        "A3": "=Data!E5",
+        "A4": "=Data!C$1",
+        "A5": "=-QUARTILE((-2.5),2)"
+      }
+    },
+    {
+      "cells": {
+        "A1": false,
+        "A10": 1.005,
+        "A11": 0.5,
+        "A12": true,
+        "A3": "TRUE",
+        "A4": 1e-15,
+        "A5": 123456789.123,
+        "A6": true,
+        "A8": 123456789.123,
+        "B1": false,
+        "B11": 2.5,
+        "B12": 7,
+        "B2": 100,
+        "B3": "a",
+        "B4": "TRUE",
+        "B5": "x",
+        "B6": 1e-15,
+        "B7": "Hello World",
+        "B8": true,
+        "B9": -0.0001,
+        "C1": -0.0001,
+        "C10": 2.5,
+        "C11": -2.5,
+        "C12": -1,
+        "C2": 100,
+        "C4": 3.14159,
+        "C5": -1,
+        "C6": 123456789.123,
+        "C7": "?b",
+        "C8": 7,
+        "C9": "1",
+        "D1": "?b",
+        "D10": true,
+        "D11": 3.14159,
+        "D12": " x ",
+        "D2": -2.5,
+        "D3": 123456789.123,
+        "D4": -2.5,
+        "D5": -2.5,
+        "D6": "\u00fc",
+        "D7": 42,
+        "D8": 0.3,
+        "D9": 0.2,
+        "E10": 1000000000000000.0,
+        "E11": 3.14159,
+        "E12": -2.5,
+        "E2": 123456789.123,
+        "E4": 0,
+        "E5": 1.005,
+        "E6": -2.5,
+        "E8": false,
+        "E9": -1
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

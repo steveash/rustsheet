@@ -3,7 +3,7 @@ id: T-2700
 title: "BINOM, NEGBINOM and HYPGEOM distributions: a negative fractional count is #NUM! before truncation (gen-m9, 9 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -40,6 +40,8 @@ Code, all in crates/rustsheet-engine/src/functions/statistical/:
 Check the sign on the untruncated value, then truncate. A negative number_pop and NEGBINOM's number_s already fail
 after truncation, so they need no change.
 
+T-2429 (2026-10-25) landed the HYPGEOM part: hypegeom.rs now checks every count's sign before truncation (and a count of 2^31 - 1 or more), so the three HYPGEOM cells below (7674c89c824aca43 A386, 589f42e67f4b4b8d A2, cde551ea787f713a A72) pass and left the baseline. What is left is BINOM and NEGBINOM.
+
 Excel cells (gen-m9, excel-graph, 2026-10-22/23; known failures in eval/baseline/gen-m9.txt). The resolved count is from
 statistics.md or the case's Data sheet:
 
@@ -67,14 +69,14 @@ Cells:
 - gen-m9/d208bbafc3bc1997.case.json (1): Calc!A231
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255 and T-2256): these 9 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2255 and T-2256): these 9 known-failure lines (6 now; the 3 HYPGEOM lines went with T-2429) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline. In particular the probes-numeric t1048/t1049
       binomdist, negbinomdist and hypgeomdist cells keep passing.
-- [ ] Unit tests: `BINOM.DIST(-0.0125,10,1E-16,FALSE)`, `NEGBINOMDIST(-0.5,8,0.5)` and `HYPGEOMDIST(3,-0.025,5,9)` are
+- [x] Unit tests: `BINOM.DIST(-0.0125,10,1E-16,FALSE)`, `NEGBINOMDIST(-0.5,8,0.5)` and `HYPGEOMDIST(3,-0.025,5,9)` are
       `#NUM!`. A positive fraction still truncates: the passing probe cell `BINOM.DIST(2.9,3.9,0.5,FALSE)` keeps
       passing.
-- [ ] Each of the three statistics.md entries gets an "Ours:" note naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] Each of the three statistics.md entries gets an "Ours:" note naming this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BINOM.DIST.RANGE, BINOM.INV, CRITBINOM and PERMUTATIONA. Their counts are not in this evidence. PERMUTATIONA does the
@@ -86,3 +88,8 @@ Cells:
 Decision 0083: every cell this task owns has the wrong type (none is a last-digit difference), so the task is in the
 campaign at the `semantics` stage. Its target is that every cell it owns has Excel's type and error; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Outcome
+`binom_dist_of` (number_s) and `negbinom_dist_of` (number_f) now check the sign of the untruncated count, so a count in
+(-1, 0) is `#NUM!` (binom.rs). HYPGEOM was already done by T-2429. Eval delta: 7 known-failure lines left
+eval/baseline/gen-m9.txt, no new ones. HYPGEOM (-1, 0) counts are covered by test_fn_hyp_geom_dist.rs (T-2429). One bonus cell left the baseline: b9a32ce9a1fd0d71 A195 (`NEGBINOMDIST(Data!$D$6,7,..)`, D6 = -0.5, Excel `#NUM!`). The rules were already in statistics.md (T-2255, T-2256); their "Ours:" notes now name T-2700.

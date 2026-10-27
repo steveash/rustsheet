@@ -3,7 +3,7 @@ id: T-2699
 title: "HYPGEOM.DIST and HYPGEOMDIST: a sample below the smallest possible count is 0, not #NUM! (gen-m9, 13 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -66,6 +66,8 @@ Cells:
 - gen-m9/c468f5046aadfbbc.case.json (1): Calc!A85
 - gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A31
 
+T-2429 (2026-10-25) probes more impossible samples: probes/t2429-hypgeom-huge-count A5, A6, A11, A12, ... (`HYPGEOMDIST(1,N,3,N)` and `HYPGEOMDIST(1,3,N,N)`, Excel 0, ours `#NUM!`, for N from 202770 to 1E9) and probes/t2429-hypgeom-threshold A3, A4, A7, A8, ... (N to 2147483646.9) are known failures in eval/baseline/probes.txt that this rule fixes.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2436): these 13 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline (the probes-numeric t1048/t1049
@@ -89,3 +91,9 @@ Cells:
 Decision 0083: every cell this task owns has the wrong type or error (none is a last-digit difference), so the task is in
 the campaign at the `semantics` stage. Its target is that every cell it owns has Excel's type and error, or a value within
 half a unit of the 15th significant digit; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`hyp_geom_dist_of` no longer folds the lower bound into the `#NUM!` check: a sample below
+number_sample + population_s - number_pop is 0 for the pmf and the cdf. gen-m9 known failures
+-13, probes -42 lines (T-2436 and t2429 cells); no new known failures. statistics.md T-2255 "Ours:"
+updated. The existing lift test A9 (`HYPGEOM.DIST(0,6,5,10,TRUE)`) is now 0 under the same rule.

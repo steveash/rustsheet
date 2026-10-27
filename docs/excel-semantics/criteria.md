@@ -216,9 +216,13 @@ for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria po
 (`COUNTIF(NA(),{"a","b"})`, `COUNTIFS(NA(),{"a"})`, `SUMIFS(NA(),...)`) made excel-graph reject the whole workbook as unsupported,
 so those cases are unprobed.
 DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
-(used cells of the walked range x criteria count x distinct criteria elements; T-0408 counts a
+(positions the walk visits x criteria count x distinct criteria elements; T-0408 counts a
 repeated element once wherever it repeats, where it counted each run of equal consecutive elements) is
-`#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
+`#ERROR!` before any walk; Excel computes it. The positions are those of the stored-cell walks
+(T-2711, "*IF(S) criteria ranges line up position by position"): the sum range's for the SUMIFS
+family, every criteria range's for COUNTIFS, each its stored cells, or its block within the used
+area when it is well filled (unit test `a_lifted_countifs_is_priced_by_every_criteria_range_it_walks`).
+Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
 over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`). VLOOKUP/HLOOKUP over an array lookup_value
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
 `lifted_lookup_over_an_array_table_hits_the_visit_cap`).
@@ -254,6 +258,31 @@ SUMIF and AVERAGEIF never error: they resize the sum/average range (probes/ifs-s
 Status: VERIFIED
 Implemented in: `fn_countifs` and `apply_ifs` (`strict_shape`) in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0209
+
+## *IF(S) criteria ranges line up position by position, whatever each sheet's used area
+Rule: COUNTIFS and the SUMIFS-shaped functions test position k of every range together, so a
+position counts only when every aligned cell meets its criterion, even when the ranges sit on
+sheets whose used areas end at different rows. With Sheet1 holding A1 = 1 and Sheet2 holding
+A100 = "x" and A200 = 5: `=COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"x")` = 1 (row 100 lies past
+Sheet1's used area), `=COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"<>x")` = 1048574,
+`=SUMIFS(Sheet2!A:A,Sheet1!A:A,"")` = 5, `=COUNTIF(Sheet2!A:B,"")` = 2097150.
+Evidence: probes/criteria-sparse-cross-sheet Calc!A1:A9 (excel-graph, 2026-10-25, T-2711).
+How the engine walks (no Excel-visible effect; directive 5): a position at which no range stores
+a cell is blank in every range, so it matches or fails as a whole and is counted without being
+read; COUNTIFS visits the positions where some range stores a cell, and the SUMIFS family the
+cells stored in its sum range (a matched position adds only a number or an error held by its sum
+cell; the first such error in row-major order is the result). A well-filled range is walked
+densely (its block within the used area is at most 4x the cells stored in its columns), any other
+over its stored cells only, so the work is at most a few times the stored cells plus the rows or
+chunks searched, not the ranges' extent: `COUNTIF(A:J,1)` beside one cell
+in J1048576 reads a few cells, `COUNTIF(A:J,"")` there is still 10,485,759. Each range is put on
+record as read empty in one piece, so a spill into it restarts the pass
+(references.md "Seen-range cap"). The engine used to treat every row past the first range's used
+area as blank in every range, which gave 0 and 1048575 for the first two calls above.
+Status: VERIFIED
+Implemented in: `count_ifs`, `run_ifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`;
+`stored_walk`, `for_each_stored_position` in `crates/rustsheet-engine/src/functions/util.rs`
+Tasks: T-2711
 
 ## SUMIF resizes sum_range from its top-left cell and never errors
 Rule: SUMIF sums the range of the criteria range's shape that starts at sum_range's top-left cell,

@@ -15,7 +15,7 @@ use rustsheet_xlsx::{export::save_to_xlsx, import::load_from_xlsx};
 fn test_cf_file() {
     // Text color is #9c0006
     // Background color is #ffc7ce
-    let model = load_from_xlsx(
+    let mut model = load_from_xlsx(
         "tests/conditional_formatting/cf_tests.xlsx",
         "en",
         "UTC",

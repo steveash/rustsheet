@@ -6,9 +6,8 @@ use crate::{
     calc_result::CalcResult,
     cell::CellValue,
     cf_types::{
-        CfCellResult, CfDataBar, CfIcon, CfRating, CfRule, CfRuleInput, Cfvo, ColorScaleThreshold,
-        ConditionalFormatting, ConditionalFormattingView, ExtendedStyle, Icon, IconThreshold,
-        PeriodType, TextOperator, ValueOperator,
+        CfCellResult, CfRule, CfRuleInput, Cfvo, ColorScaleThreshold, ConditionalFormatting,
+        ConditionalFormattingView, Icon, IconThreshold, PeriodType, TextOperator, ValueOperator,
     },
     expressions::types::{CellReferenceIndex, CellReferenceRC},
     number_format::cmp_excel_precision,
@@ -136,6 +135,9 @@ impl Model {
     /// processed last). The result for each cell is stored in
     /// `cf_cache` and consumed by `get_extended_style_for_cell`.
     pub fn evaluate_conditional_formatting(&mut self) {
+        self.cf_stale = false;
+        #[cfg(test)]
+        self.count_cf_run();
         self.cf_cache.clear();
         let sheet_count = self.workbook.worksheets.len();
         for sheet_idx in 0..sheet_count {
@@ -804,7 +806,9 @@ impl Model {
             column: anchor_col,
         };
         // CF formulas are stored internally in English.
-        let node = self.parse_internal_formula(body, &context_rc);
+        let mut node = self.parse_internal_formula(body, &context_rc);
+        // Evaluation reads no whitespace (see `ParsedFormula`).
+        node.strip_spaces();
 
         for &(r1, c1, r2, c2) in ranges {
             for row in r1..=r2 {
@@ -1119,99 +1123,6 @@ impl Model {
                 }
             }
         }
-    }
-
-    // -----------------------------------------------------------------------
-
-    /// Returns the extended cell style for (`sheet`, `row`, `column`), including
-    /// any conditional-formatting overlay computed by the last `evaluate()` call.
-    pub fn get_extended_style_for_cell(
-        &self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-    ) -> Result<ExtendedStyle, String> {
-        let base = self.get_style_for_cell(sheet, row, column)?;
-        let extended = match self.cf_cache.get(&(sheet, row, column)) {
-            Some(c) => c,
-            None => {
-                return Ok(ExtendedStyle {
-                    style: base,
-                    icon: None,
-                    data_bar: None,
-                    rating: None,
-                })
-            }
-        };
-        let mut style = base;
-        let mut icon = None;
-        let mut data_bar = None;
-        let mut rating = None;
-        // `extended` contains the cached conditional-formatting results for this cell in the
-        // order produced by the evaluator. Dxf results accumulate as we iterate; for exclusive
-        // types (ColorScale, DataBar, Icon, Rating), the last assignment in this evaluated
-        // result order wins.
-        for cf_result in extended {
-            match cf_result {
-                CfCellResult::Dxf(dxf_id) => {
-                    if let Some(dxf) = self.workbook.styles.dxfs.get(*dxf_id as usize) {
-                        style = dxf.apply_to(&style);
-                    }
-                }
-                CfCellResult::ColorScale(color) => {
-                    style.fill.color = color.clone();
-                }
-                CfCellResult::DataBar {
-                    positive_color,
-                    negative_color,
-                    is_gradient,
-                    value,
-                    axis_position,
-                    show_value,
-                } => {
-                    data_bar = Some(CfDataBar {
-                        positive_color: positive_color.clone(),
-                        negative_color: negative_color.clone(),
-                        is_gradient: *is_gradient,
-                        value: *value,
-                        axis_position: *axis_position,
-                        show_value: *show_value,
-                    });
-                }
-                CfCellResult::Icon {
-                    icon: cf_icon,
-                    color,
-                    show_value,
-                } => {
-                    icon = Some(CfIcon {
-                        icon: cf_icon.clone(),
-                        color: color.clone(),
-                        show_value: *show_value,
-                    });
-                }
-                CfCellResult::Rating {
-                    icon: cf_icon,
-                    count,
-                    max,
-                    color,
-                    show_value,
-                } => {
-                    rating = Some(CfRating {
-                        icon: cf_icon.clone(),
-                        count: *count,
-                        max: *max,
-                        color: color.clone(),
-                        show_value: *show_value,
-                    });
-                }
-            }
-        }
-        Ok(ExtendedStyle {
-            style,
-            icon,
-            data_bar,
-            rating,
-        })
     }
 
     // -----------------------------------------------------------------------

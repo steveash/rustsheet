@@ -47,7 +47,9 @@ def report() -> dict[str, object]:
     }
 
 
-class ExitOwners(unittest.TestCase):
+class TaskDir(unittest.TestCase):
+    """A temporary tasks directory and a helper that writes a task into it."""
+
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.tasks = Path(self.tmp.name)
@@ -64,6 +66,8 @@ class ExitOwners(unittest.TestCase):
             f"---\nid: T-{9000 + self.n}\nmilestone: {milestone}\nstatus: {status}\n---\n\n{body}\n"
         )
 
+
+class ExitOwners(TaskDir):
     def listed(self) -> list[str]:
         return [f"{c.case}!{c.key}" for c in exit_owners.unowned(report(), "M5", self.tasks)]
 
@@ -126,6 +130,49 @@ class ExitOwners(unittest.TestCase):
             self.assertEqual(exit_owners.main(["--milestone", "M5'", "--report", str(path)]), 2)
         self.assertIn("run `make eval` first", err.getvalue())
         self.assertIn("no milestone_exit row for M7", err.getvalue())
+
+
+class UnattributedOwners(TaskDir):
+    UNATTRIBUTED = {
+        "unattributed_off": [
+            {
+                "case": PROBE,
+                "cell": "P!B2",
+                "formula": "GAMMA(BETA.DIST(0.5,2,3,TRUE))",
+            },
+            {"case": GEN, "cell": "Calc!A9", "formula": "IF(AND(A1,B1),1,2)"},
+        ]
+    }
+
+    def unowned(self) -> list[str]:
+        cells = exit_owners.unowned_unattributed(self.UNATTRIBUTED, self.tasks)
+        return [f"{c.case}!{c.key}" for c in cells]
+
+    def test_an_unattributed_cell_is_listed_until_an_open_task_of_any_milestone_owns_it(
+        self,
+    ) -> None:
+        self.assertEqual(self.unowned(), [f"{PROBE}!P!B2", f"{GEN}!Calc!A9"])
+        self.task("index-reference-args B2", status="done")
+        self.assertIn(f"{PROBE}!P!B2", self.unowned())
+        self.task("index-reference-args B2", milestone="M9")
+        self.assertEqual(self.unowned(), [f"{GEN}!Calc!A9"])
+
+    def test_unattributed_output_and_strict_exit(self) -> None:
+        path = self.tasks / "report.json"
+        path.write_text(json.dumps(self.UNATTRIBUTED))
+        args = ["--unattributed", "--report", str(path), "--tasks", str(self.tasks)]
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(exit_owners.main(args), 0)
+            self.assertEqual(exit_owners.main([*args, "--strict"]), 1)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], f"{PROBE}!P!B2\tGAMMA(BETA.DIST(0.5,2,3,TRUE))")
+        count = "2 visibly-off cells attributed to no function have no open owner"
+        self.assertEqual(lines[2], count)
+        # A report from before T-0082 has no list: nothing is unowned.
+        path.write_text("{}")
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(exit_owners.main([*args, "--strict"]), 0)
 
 
 if __name__ == "__main__":

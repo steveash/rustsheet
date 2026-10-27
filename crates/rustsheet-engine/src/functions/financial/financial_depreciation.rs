@@ -385,9 +385,9 @@ impl Model {
                 let salvage = model.cast_number_ref(salvage, cell)?;
                 let life = model.cast_number_ref(life, cell)?;
                 let period = model.cast_number_ref(period, cell)?;
-                let month = model
-                    .cast_number_no_bools_or(rest.first(), 12.0, cell)?
-                    .trunc();
+                // A boolean month reads as 1 or 0, from a cell too (`DB(15779,385,37,<FALSE>,<FALSE>)`
+                // is `#NUM!`, probes/t2475-stat-subexpressions A165), as DDB's factor does.
+                let month = model.cast_number_or(rest.first(), 12.0, cell)?.trunc();
                 // Excel reads life and period as 32-bit integers: a period past i32::MAX is period 1
                 // (month 12 too, probe E8), a life past it is #NUM! except the u32::MAX "wrapped
                 // last year", and a negative salvage is #NUM! even at cost 0 (financial.md "DB and

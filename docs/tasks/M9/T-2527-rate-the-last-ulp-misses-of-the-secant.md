@@ -29,7 +29,8 @@ the documented order 69/375 and FV's order 210/375; candidates in financial.md).
   26 ulp, A367 `RATE(6,PMT(0.3,6,10000),10000)` 1 ulp.
 - m9-fin-irr-rate A583 `RATE(10,-1E6,1E7)` (root exactly 0) is `#NUM!` in Excel; ours returns the 200th iterate
   (-2.6E-9): near 0 the residual is noise. Probe roots at 0 and cap-edge runs whose 200th residual is large to find
-  Excel's rule (does the cap's return also test |f|?).
+  Excel's rule (does the cap's return also test |f|?). Done by T-2689: the cap returns only when the step, |f| and
+  1 + r pass 1e-4 (financial.md), so A583 is now `#NUM!` and passes.
 - The T-2005 scoring ran as a scratch Rust test that evaluated each RATE argument with the engine (nested PMT
   included); port it to the fit lab (`uv run rustsheet-fitlab rate`, tools/src/rustsheet_tools/fitlab/kernels/solvers.py)
   so candidates are scored on all RATE cells with iterate hits, as T-2005's lab criterion asked.
@@ -40,7 +41,7 @@ Code: `compute_rate`, `rate_residual` (functions/financial/financial_util.rs).
       literal RATE cell, with iterate hits.
 - [ ] Visible parity: fewer visibly-off RATE cells than the 117 above, with no new known-failure lines in any
       baseline, or the unfitted ones documented in financial.md with the forms tried.
-- [ ] A583's rule probed and implemented or documented.
+- [x] A583's rule probed and implemented or documented (T-2689).
 - [ ] A278, A245 and A367 (regressed by T-2005) pass again or are documented with the forms tried.
 - [ ] Probe a guess whose residual is exactly 0 (ours runs the secant, the sign of the zero picking r1).
 - [ ] `make check` green; reviewers approve.

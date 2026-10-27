@@ -27,9 +27,7 @@ use itertools::Itertools;
 use rustsheet_engine::{
     expressions::{
         parser::{
-            static_analysis::{
-                add_implicit_intersection, remove_redundant_implicit_intersection, StaticResult,
-            },
+            static_analysis::{add_implicit_intersection, remove_redundant_implicit_intersection},
             stringify::{to_excel_array_formula_string, to_excel_string, to_rc_format},
             Node,
         },
@@ -38,6 +36,7 @@ use rustsheet_engine::{
         utils::number_to_column,
     },
     types::{ArrayKind, Cell, FormulaValue, Link, SpillValue, Worksheet},
+    ParsedFormula,
 };
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
@@ -45,6 +44,7 @@ use crate::export::conditional_formatting::get_conditional_formatting_xml;
 use super::{
     escape::{escape_text, escape_xml},
     rich_errors::vm_attribute,
+    tables::{get_table_parts_section, TABLE_RELATIONSHIP},
     xml_constants::XML_DECLARATION,
 };
 
@@ -153,9 +153,23 @@ fn get_tooltip_attribute(tooltip: &Option<String>) -> String {
     }
 }
 
+/// The number of external links of the worksheet: their relationships come first in its rels
+/// part, `rId1` to `rId{n}`.
+fn external_link_count(worksheet: &Worksheet) -> usize {
+    worksheet
+        .links
+        .values()
+        .filter(|link| matches!(link, Link::External { .. }))
+        .count()
+}
+
 /// The rels part of the worksheet (`xl/worksheets/_rels/sheetN.xml.rels`) holding one
-/// relationship per external link, or `None` if the worksheet has no external links.
-pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
+/// relationship per external link, then one per table part (`tables` are the part numbers of
+/// the sheet's tables), or `None` if the worksheet has neither.
+pub(crate) fn get_worksheet_xml_rels(
+    worksheet: &Worksheet,
+    tables: std::ops::Range<usize>,
+) -> Option<String> {
     let mut relationships_str: Vec<String> = vec![];
     let mut rel_id = 0;
     for (_, link) in get_sorted_links(worksheet) {
@@ -166,6 +180,12 @@ pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
                 "<Relationship Id=\"rId{rel_id}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"{target}\" TargetMode=\"External\"/>"
             ));
         }
+    }
+    for table in tables {
+        rel_id += 1;
+        relationships_str.push(format!(
+            "<Relationship Id=\"rId{rel_id}\" Type=\"{TABLE_RELATIONSHIP}\" Target=\"../tables/table{table}.xml\"/>"
+        ));
     }
     if relationships_str.is_empty() {
         return None;
@@ -210,9 +230,10 @@ fn legacy_reading_intersects(node: &Node) -> bool {
 
 pub(crate) fn get_worksheet_xml(
     worksheet: &Worksheet,
-    parsed_formulas: &[(std::sync::Arc<Node>, StaticResult)],
+    parsed_formulas: &[ParsedFormula],
     dimension: &str,
     is_sheet_selected: bool,
+    table_count: usize,
 ) -> String {
     let mut sheet_data_str: Vec<String> = vec![];
     let mut cols_str: Vec<String> = vec![];
@@ -258,7 +279,7 @@ pub(crate) fn get_worksheet_xml(
     // Per shared formula, whether a legacy reading of it would add an `@` (T-1552).
     let legacy_reading: Vec<bool> = parsed_formulas
         .iter()
-        .map(|(node, _)| legacy_reading_intersects(node))
+        .map(|(node, ..)| legacy_reading_intersects(node))
         .collect();
     let table_formulas = super::data_tables::anchor_formulas(&worksheet.data_tables);
     for row_index in row_indices {
@@ -727,6 +748,8 @@ pub(crate) fn get_worksheet_xml(
         get_conditional_formatting_xml(&worksheet.conditional_formatting);
 
     let hyperlinks_section = get_hyperlinks_section(worksheet);
+    let table_parts_section =
+        get_table_parts_section(table_count, external_link_count(worksheet) + 1);
 
     format!(
         "{XML_DECLARATION}\
@@ -744,6 +767,7 @@ pub(crate) fn get_worksheet_xml(
   {merge_cells_section}\
   {cf_sections}\
   {hyperlinks_section}\
+  {table_parts_section}\
   {cf_ext_lst}\
 </worksheet>"
     )

@@ -77,6 +77,12 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   LOOKUP, INDEX), the case of sheet and name lookups, and names, sheets and scopes the cache does not
   hold. The second probes 3-D spans of the cached sheets (`[1]Uses:Defines!$B$2`); it is a workbook of
   its own so that a span Excel for the web refused could not take the other questions down with it.
+- `external-link-uncached-lookups.xlsx` (T-0457): `external-link-cached-lookups.xlsx` with sheet `Refs` replaced the
+  same way (51 legacy formulas in column B, labels in column A) and two sheets added to the externalLink part's
+  `sheetNames`: `Sort` (index 3) with no `sheetData` at all and `Bare` (index 4) with an empty
+  `<sheetData sheetId="4"/>`; `56737` keeps its `refreshError` element. It probes VLOOKUP, HLOOKUP, MATCH and XLOOKUP
+  over one cell, a small range and whole columns or rows of those sheets, the same lookups over whole columns of the
+  cached `Uses`, ERROR.TYPE of each, and direct reads (ISBLANK, SUM, COUNTA, INDEX) of the uncached sheets.
 - `circular-keeps-cached-values.xlsx` (T-0461): built by `rustsheet-spec2xlsx` (sheet `S`), then the formulas
   rewritten as plain (non-array) `<f>` cells with cached values, which a spec case cannot express, and the app name
   replaced. A1 `=B1+1` (cached 5), B1 `=A1` (4), C1 `=A1*2` (999), D1 `=D1+1` (7), E1 `=D1+100` (0), F1 `=1+1` (55),

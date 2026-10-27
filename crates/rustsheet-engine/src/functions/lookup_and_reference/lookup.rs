@@ -51,10 +51,9 @@ impl Model {
     /// returned as is.
     pub(super) fn as_vector(
         &mut self,
-        value: CalcResult,
+        table: LookupTable,
         cell: CellReferenceIndex,
     ) -> Result<SearchVector, CalcResult> {
-        let table = self.lookup_table(value, cell)?;
         let (rows, columns) = (table.rows(), table.columns());
         if rows > 1 && columns > 1 {
             return Err(CalcResult::Error {
@@ -72,6 +71,8 @@ impl Model {
                     .map(|node| array_node_to_calc_result(node, cell))
                     .collect(),
             ),
+            LookupTable::External(_) if rows > 1 => table.first_column(self, cell),
+            LookupTable::External(_) => table.first_row(self, cell),
         })
     }
 
@@ -200,6 +201,21 @@ impl Model {
         }
     }
 
+    /// MATCH's, VLOOKUP's and HLOOKUP's table argument read as a table: a range of a linked
+    /// workbook's cached sheet in place ([`Model::cached_external_lookup_area`]), anything else
+    /// through [`Model::evaluate_lookup_table_arg`] and [`Model::lookup_table`].
+    pub(super) fn lookup_table_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<LookupTable, CalcResult> {
+        if let Some(area) = self.cached_external_lookup_area(node, cell) {
+            return Ok(LookupTable::External(area));
+        }
+        let value = self.evaluate_lookup_table_arg(node, cell);
+        self.lookup_table(value, cell)
+    }
+
     /// A LOOKUP, MATCH, VLOOKUP or HLOOKUP argument read as a table: a range or an array, or else
     /// its own error. A single value is no table: `#VALUE!` for text that is not a number, `#N/A`
     /// for anything else (`MATCH("b","b",0)` and `VLOOKUP("b","b",1,FALSE)` are `#VALUE!`,
@@ -264,7 +280,9 @@ impl Model {
                 let vector = self.range_search_vector(&left, &right, down);
                 ResultVector::Range { left, down, vector }
             }
-            array @ LookupTable::Array(_) => ResultVector::Array { table: array, down },
+            table @ (LookupTable::Array(_) | LookupTable::External(_)) => {
+                ResultVector::Array { table, down }
+            }
         })
     }
 

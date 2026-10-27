@@ -54,8 +54,14 @@ same for FINDB, SEARCHB, LEFTB, RIGHTB, LENB, MIDB, REPLACEB, `=DETECTLANGUAGE("
 takes these maxima as cited overrides (tools/tests/test_catalog_arity.py `MAX_OVERRIDES`; DETECTLANGUAGE and TRANSLATE are
 not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: that `DETECTLANGUAGE("hello")` (1, the catalog minimum) is accepted
 typed (only the refusal at 2 is logged); the pair rule above 6 arguments (probed
-IFS 2 to 5, LET 3 to 6); the 255-argument
-maxima (`SUM` 255/256, `TEXTJOIN` 254/255): the oracle cannot type a formula over 255 characters (T-2709).
+IFS 2 to 5, LET 3 to 6).
+The repeating maxima, typed (T-2709, excel-graph 2026-10-25): `SUM` and `MAX` take 255 arguments (probes/t2709-typed-sum-255,
+-max-255) and are refused at 256; `CONCAT` and `TEXTJOIN` take 254 (probes/t2709-typed-concat-253, -concat-254,
+-textjoin-254, which joins 252 texts) and are refused at 255 and 256 (Graph PATCH 400 `InvalidArgument`, "The argument is
+invalid or missing or has an incorrect format", the response to any formula Excel refuses). It is the count, not the
+length: 255 one-character arguments (`=CONCAT(1,...)`, 518 characters; `=TEXTJOIN("",TRUE,1,...)`, 524) are refused while
+254 (-concat-254-short, -textjoin-254-short) and a 2,548-character CONCAT of 254 arguments (-concat-254-long) are accepted. So CONCAT takes 254 texts, one more than Microsoft's
+documented 253, and TEXTJOIN the documented 252; the engine table holds 254 for both as cited overrides.
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`
@@ -121,13 +127,22 @@ the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,0
 all load and evaluate). Non-BMP bodies count UTF-16 units the same way: probe `name-body-nonbmp-8191u` (8,191 units, emoji
 included) loads (it has the only sidecar) and a body of 8,192 units is refused (T-1397; that case was dropped). The importer refuses a name body over 8,191 units
 (`XlsxError::Workbook`, T-1397).
-Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, typed (API) formulas (the oracle builds workbooks from files; a manual Graph `range.formulas` call or desktop
-Excel is needed, deferred to M14 item 8 of T-1075, decision 0039), desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
+Typed (T-2709, Graph PATCH, excel-graph 2026-10-25): the same 8,192 limit holds, `=1+1+...+1` of 8,192 characters is
+accepted (probes/t2709-typed-sum-8192-chars, B1 `LEN(FORMULATEXT)` 8192) and one of 8,193 is refused (400
+`InvalidArgument`). A string literal holds at most 4,095 UTF-16 units, typed or stored (T-2739, excel-graph 2026-10-26 UTC): a typed
+`="a...a"` of 4,095 is accepted (probes/t2739-typed-4095, `LEN` 4095) and 4,096 is refused (400 `InvalidArgument`),
+the same in a function argument (t2739-typed-len-4095; `LEN("<4,096>")` refused). It counts the value, not the source:
+a doubled quote is one character (t2739-typed-dq-4094 and -dq-4095, 4,093 or 4,094 letters and `""`, are accepted;
+4,095 letters and `""` are refused). It counts UTF-16 units: 2,047 emoji (4,094 units, t2739-typed-emoji-2047, `LEN`
+4094) are accepted and 2,048 (4,096 units) refused. The limit is per literal (t2739-typed-two-4000, two literals of
+4,000, is accepted). Stored, 256 and 4,095 load (t2739-stored-256, -stored-4095) and 4,096 makes Excel refuse the
+workbook (createSession 501), so the published 255 is no limit at all. The engine has none (T-2762).
+Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
 writer cannot emit them raw; T-1075 item 8).
-Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; a string-literal length limit (unprobed; 255 characters is the published figure) is the likely cause for the literals, which is why the cases split them.
+Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; the 4,095-unit string-literal limit (see "Typed" above; the published figure is 255) is the cause: 4,090 emoji are 8,180 units for the literals, which is why the cases split them.
 Status: VERIFIED (excel-graph, file load)
 Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
-Tasks: T-1091, T-1093, T-1386, T-1397
+Tasks: T-1091, T-1093, T-1386, T-1397, T-2739, T-2762
 
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
@@ -136,8 +151,10 @@ error ("Formula is nested too deeply"); typed into a cell through the API it is 
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
 one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
 `0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
-(T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
-(`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
+(T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
+(T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
+a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
+level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
 text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
 cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
@@ -270,6 +287,79 @@ An error inside an array ranks with the referenced errors in MIN, MAX, AVERAGE a
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315, T-1334, T-1379, T-1439, T-1604, T-1615, T-1629, T-1696
 Implemented in: statistical/variance.rs (`VARA_ARGS`), math_and_trigonometry/sum.rs (`sum_with_last_addition`, reference and array errors held back), product.rs, mathematical.rs (`fold_min_max`) and statistical/count_and_average.rs (`for_each_value`, AVERAGE; reference errors held back, T-1379), functions/criteria.rs (`build_criteria_with`, `#BUSY!` criterion matches nothing); expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
+
+## A typed unary plus stays in the formula text, except on a number literal
+Rule: typed (Graph PATCH), Excel keeps a unary plus in the formula text everywhere except when it is directly followed by
+a number literal, where it folds into the number. Typing `=+5` stores `=5`, `=+1E+3` stores `=1000`, `=+.5` stores
+`=0.5` and `=+5%` stores `=5%`. With more than one sign, only the plus directly before the number folds: `=++5` stores
+`=+5`, `=1++2` stores `=1+2` and `=-+5` stores `=-5`. A space breaks the fold: `=+ 5` stays as typed. On anything else the
+plus is kept as typed: `=+"a"`, `=+TRUE`, `=+B1`, `=+B1:B2`, `=+SUM(1,2)`, `=+(1)`, `=+-5`, `=++"a"`, `=1++"2"`,
+`=+{1,2}`, `=+#N/A`, `=+"a"&"b"`, `=SUM(+"1",2)`, `=IF(TRUE,+"a")`, `=+(+"a")`, `=+ "a"` and `=+LAMBDA(x,x)(1)`. The plus
+is the identity: every value matches the operand's.
+Evidence: probes/t2723-unary-plus-formula-text A1:C26 (excel-graph `entered`, 2026-10-25, T-2723). Stored, a plus on text
+or a boolean loads and is kept too (probes/t2601-index-scalar-forms-t-n B14, B15), and so do stored `=+10^1` and `=+Z1`
+forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stored in one workbook was refused
+(FileCorruptTryRepair); which formula caused it is unprobed (`=+LAMBDA(x,x)(1)` is the likely one: T-2405 records
+`=SUM(1)(2)` the same way). The same rule appears in references.md (`=@+1` prints `=@1`) and lookup.md (INDEX's
+`+"a"`).
+Ours: matches since T-2723. A kept plus is a `Node::UnaryPlus`, the identity, which every analysis sees through as it
+sees through a written group. The fold is decided in `parse_power`. Two cells still fail: the tree keeps no whitespace, so
+`=+ 5` and `=+ "a"` print `=+5` and `=+"a"` (C24, C25; "Formula text keeps typed whitespace" below, T-2776).
+Unprobed (T-2772): a stored `+5` loaded from a file (we fold it on load, as typing does), and the static readings
+where an analysis matches a literal under a plus (`N(IF(+TRUE,B1:B3))`, `INDIRECT(+"K1")`, legacy `ABS(+{5})`,
+`LET(+x,1,x)`).
+Status: VERIFIED (excel-graph)
+
+## Formula text keeps typed whitespace, except at the end, before a comma and in an array constant
+Rule: typed (Graph PATCH), Excel keeps the spaces and line feeds written in a formula, and FORMULATEXT prints them back:
+around a binary operator (`=1 + 2`, `=1 +2`, `=1+ 2`, `=1  +  2`, `=B1 + B2`, `=1+` line feed `2`), after `=` (`= 1+2`),
+after a unary sign (`=- 5`, `=-+ 5`, `=+  5`, and `=+ 5`, `=+ "a"` of T-2723), before `%` (`=5 %`), after `(` and
+before `)` of a call or a group (`=SUM( 1 )`, `=SUM(B1:B2 )`, `=(1 )+2`, `=( 1)+2`) and after a comma (`=SUM(1, 2)`).
+It drops three kinds: whitespace at the end of the formula (`=1+2 ` prints `=1+2`, `=1=1 ` prints `=1=1`), whitespace
+before a comma (`=SUM(1 ,2)` prints `=SUM(1,2)`, `=IF( TRUE ,1,2)` prints `=IF( TRUE,1,2)`) and whitespace inside an
+array constant (`={1, 2}` prints `={1,2}`). A plus that folds into a number literal keeps the spaces before it:
+`=  +5` prints `=  5`. Whitespace never changes a value (every probed value is the space-free formula's).
+Evidence: probes/t2769-formula-text-whitespace A1:C23 (excel-graph `entered`, 2026-10-26, T-2769).
+More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -after-bang, -after-colon,
+-before-colon; excel-graph `entered` and stored, 2026-10-26, T-2776):
+- Kept as typed: spaces between the references of an intersection beyond the one that is the operator
+  (`=B1:B2  B2`, `=SUM(B1:B2   B2)`), after `@` (`=@ B1:B2`), around `&`, `=` and `*` (`="a" & "b"`, `=B1 = 1`,
+  `=SUM(B1:B2) * 2`), inside LET (`=LET(x, 1, x + 1)`), between unary signs (`=-  -5`, `=1 +  - 5`), inside a group
+  (`=(  1  )`) and a line feed after `=` (`=` LF `1+2`). A folded plus keeps the spaces before it after an operator
+  too: `=1+  +5` prints `=1+  5`, `=1+ +5` prints `=1+ 5`.
+- Dropped: around `:` (`=SUM(B1 :B2)` and `=SUM(B1: B2)` print `=SUM(B1:B2)`), after a sheet prefix's `!` (`=S! B1`
+  prints `=S!B1`, value 1), a trailing line feed (`=1+2` LF and `=1+2 ` LF ` ` print `=1+2`).
+- **A run keeps only its line feeds and the spaces after the last one**: `=1+ ` LF ` 2` prints `=1+` LF ` 2`,
+  `=1+` LF ` ` LF `2` prints `=1+` LF LF `2`, 10 spaces, 3 line feeds and 2 spaces print as the 3 line feeds and 2
+  spaces.
+- **A run's two counts each wrap at 256, on their own**: `=1+` + 300 spaces + `2` prints with 44 spaces (`LEN` 48).
+  255, 256 and 257 typed spaces print 255, none and 1; 255, 256, 257 and 300 typed line feeds print 255, none, 1 and
+  44; 256 line feeds then 3 spaces print the 3 spaces; 3 spaces then 256 line feeds print nothing, so the spaces before
+  the last line feed are dropped even when the line-feed count wraps to none. Every value is 3
+  (probes/t2782-whitespace-run-wrap, excel-graph, 2026-10-26). Excel stores a run as a one-byte line-feed count and a
+  one-byte space count (the BIFF `PtgAttrSpace` shape; the counts are the probes' evidence, not the documentation's).
+- Refused (observed 2026-10-26, Graph's error text not recorded, so UNVERIFIED; T-2786 re-probes it): `=SUM (1)` (a
+  space between a function name and its `(`): Graph's PATCH of it failed and the case was dropped.
+- Stored in the file (`<f>` text, no typing): interior whitespace loads and prints as written (`1 + 2`, `SUM( 1 )`,
+  `1+` LF `2`, `B1:B2  B2`, `(1 )+2`), and the typed drops apply (`SUM(1 ,2)`, `SUM({1, 2})`, a trailing space), but
+  whitespace at the start of the stored text is dropped: `<f>  +5</f>` prints `=5` and `<f> 1+2</f>` prints `=1+2`,
+  where the same text typed after `=` keeps it. Every value matches the space-free formula.
+Unprobed: whitespace inside a structured reference, and whether Excel writes kept whitespace into the `<f>` text it
+saves (T-2776's spec, SPEC-0023, files both).
+Ours (T-2781, SPEC-0023 step 1; line feeds T-2782, step 2): the parser keeps each run of spaces and line feeds as a
+`Node::Spaced` around the operand it touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the
+R1C1 storage text, row and column edits, sheet renames and moves print the runs back. Two runs that the parser joins
+around one operand (a folded plus) add their line feeds and keep the earlier spaces only when the later run has none;
+a later run of exactly 256 line feeds counts as none there (unprobed). A cell stores two trees: the written one, which
+prints, and one with no whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a
+`Spaced` (`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the
+stripped tree too. A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass);
+other leading whitespace characters are kept as before (unprobed). The spaces beyond an intersection's one are kept as the right operand's leading run (T-2783; C3, C5, E9 pass). Still open: FORMULATEXT of an
+intersection whose separator holds line feeds (`B1:B2` LF ` B2` drops the LF; unprobed, T-2786), whitespace around LAMBDA parameter names (dropped; unprobed, T-2786), and the xlsx export, which writes the
+stripped tree until T-2786 shows what Excel saves. `=S! B1` is a parse error (`#ERROR!`) where Excel reads `S!B1`
+(T-2785).
+Status: VERIFIED (excel-graph)
+Tasks: T-2769, T-2776, SPEC-0023
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every
