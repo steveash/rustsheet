@@ -22,9 +22,9 @@ design of t2578-pivotby-hidden-total-slot: power-of-two values and `LAMBDA(v,IF(
 Code: `checked_totals`, `Grid::has_records` in functions/lookup_and_reference/pivotby.rs.
 
 ## Acceptance criteria
-- [ ] A probe case answers the three questions (excel-graph); the rule in arrays.md is updated with it.
-- [ ] Ours matches every new probe cell, or each difference is a baselined known failure with a task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case answers the three questions (excel-graph); the rule in arrays.md is updated with it.
+- [x] Ours matches every new probe cell, or each difference is a baselined known failure with a task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -

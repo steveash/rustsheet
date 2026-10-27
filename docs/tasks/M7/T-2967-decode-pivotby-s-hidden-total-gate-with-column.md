@@ -15,7 +15,7 @@ depends_on: []
 
 ## Context
 T-2606 probed these (probes/t2606-pivotby-total-gate-layouts P!A1-B14); the result is not monotone in a row's records and is
-confounded where the row total equals a subtotal cell (arrays.md, "PIVOTBY: an error column total over several value columns").
+confounded where the row total equals a subtotal cell (arrays.md, "PIVOTBY: an error column total over several value columns is #VALUE! (T-2311)").
 Failing cells (14 of 28): P!A1, A2, A4, A6, A7, A9, A11, A13, B2, B4, B6, B7, B11, B13. Redesign the probe so no row total equals a subtotal or group cell (every row two records
 in the same outer group or none), decode all layouts as T-2578 did, then fix `checked_totals` in
 functions/lookup_and_reference/pivotby.rs.
