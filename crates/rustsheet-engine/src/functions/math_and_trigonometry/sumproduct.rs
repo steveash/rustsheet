@@ -168,8 +168,6 @@ impl Model {
             .read_tailed(arg, cell, |model| model.evaluate_value_or_grid(arg, cell))
             .and_then(crate::tailed_array::Tailed::elements);
         if let Some((head, tail)) = tailed {
-            #[cfg(test)]
-            crate::tailed_array::TAILED_WALKS.with(|walks| walks.set(walks.get() + 1));
             let head = head
                 .map(|node| sumproduct_factor(&node, cell, element_error))
                 .collect::<Result<Vec<f64>, CalcResult>>()?;

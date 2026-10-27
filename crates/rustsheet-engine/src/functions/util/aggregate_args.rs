@@ -321,8 +321,6 @@ impl Model {
         // (SPEC-0020).
         if let Some(tailed) = self.read_tailed(arg, cell, read_arg) {
             if let Some((head, tail)) = tailed.elements() {
-                #[cfg(test)]
-                crate::tailed_array::TAILED_WALKS.with(|walks| walks.set(walks.get() + 1));
                 self.walk_array_nodes(head, cell, walk, visit)?;
                 return match tail {
                     Some((element, _)) if walk.ignores(&element) => Ok(()),

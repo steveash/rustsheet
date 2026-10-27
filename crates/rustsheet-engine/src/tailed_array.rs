@@ -62,7 +62,8 @@ pub(crate) struct Tailed<T> {
 impl Tailed<RefArg> {
     /// The elements of a tailed argument: its head's, and its tail element with the number of
     /// rows it stands for; `None` unless the head is one column of values and the tail one
-    /// element, as the two evaluations of an array argument give.
+    /// element, as the two evaluations of an array argument give. Tests count the arguments
+    /// read this way (`TAILED_WALKS`).
     pub(crate) fn elements(
         self,
     ) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
@@ -81,6 +82,8 @@ impl Tailed<RefArg> {
             }
             Some(_) => return None,
         };
+        #[cfg(test)]
+        TAILED_WALKS.with(|walks| walks.set(walks.get() + 1));
         Some((head.into_iter().flatten(), tail))
     }
 }

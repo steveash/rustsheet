@@ -296,7 +296,7 @@ fn sumproduct_of_one_tailed_argument() {
 /// a nonzero product past every head.
 #[test]
 fn sumproduct_of_several_arguments() {
-    let formulas: Vec<String> = [
+    let cases = [
         ("=SUMPRODUCT((A:A=1)*1,B:B*1)", 2),
         ("=SUMPRODUCT((A:A=1)*1,B:B)", 1),
         ("=SUMPRODUCT(A:A*1,A1:A10)", 1),
@@ -309,11 +309,11 @@ fn sumproduct_of_several_arguments() {
         ("=SUMPRODUCT((C:C=\"\")*0.1,(Sheet2!A:A=\"\")*3)", 2),
         ("=SUMPRODUCT(C:C*1,Sheet2!A:A+1)", 2),
         ("=SUMPRODUCT((C:C=\"\")*1,Sheet2!A:A)", 1),
-    ]
-    .iter()
-    .map(|(formula, _)| (*formula).to_string())
-    .collect();
-    let expected_walks = 2 + 1 + 1 + 1 + 2 + 1 + 2 + 2 + 3 + 2 + 2 + 1;
+        // A tail product of -0: skipped, as adding it leaves the total as it is.
+        ("=SUMPRODUCT(-(C:C=\"x\")*1,Sheet2!A:A+1)", 2),
+    ];
+    let formulas: Vec<String> = cases.iter().map(|(f, _)| (*f).to_string()).collect();
+    let expected_walks: usize = cases.iter().map(|(_, walks)| walks).sum();
     let (results, walks) = both_ways(&formulas);
     for (formula, tailed, full) in results {
         assert_eq!(tailed, full, "{formula}");
