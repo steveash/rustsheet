@@ -39,6 +39,7 @@ def _op_key(kind: object) -> str | None:
     return _OP_KEYS.get(kind) if isinstance(kind, str) else None
 
 
+# scripts/exit_owners.py imports this from outside the uv project: keep this module stdlib-only.
 def column_number(letters: str) -> int:
     """The 1-based column number of column letters (`B` is 2); letters are A-Z in either case."""
     number = 0
