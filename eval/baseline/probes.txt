@@ -1299,6 +1299,7 @@ C	probes/t2579-array-value-edges.case.json	52
 C	probes/t2581-textsplit-textbefore.case.json	50
 C	probes/t2592-nested-groupby-cells.case.json	61
 C	probes/t2594-nested-aggregates.case.json	32
+C	probes/t2598-engineering-scientific.case.json	12
 C	probes/t2601-index-scalar-forms-t-n.case.json	56
 C	probes/t2625-nested-consumers.case.json	32
 C	probes/t2629-imcosh-imsinh-y-sweep.case.json	800
