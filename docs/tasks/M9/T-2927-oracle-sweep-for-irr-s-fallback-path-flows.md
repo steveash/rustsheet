@@ -3,7 +3,7 @@ id: T-2927
 title: "Oracle sweep for IRR's fallback path: flows where the fitted secant fails, to pin the returned digits"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
