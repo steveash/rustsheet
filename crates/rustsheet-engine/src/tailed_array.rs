@@ -60,27 +60,38 @@ pub(crate) struct Tailed<T> {
 }
 
 impl Tailed<RefArg> {
-    /// The elements of a tailed argument: its head's, and its tail element with the number of
-    /// rows it stands for; `None` unless the head is one column of values and the tail one
-    /// element, as the two evaluations of an array argument give. Tests count the arguments
-    /// read this way (`TAILED_WALKS`).
+    /// The elements of a tailed aggregate or SUMPRODUCT argument ([`Tailed::elements_by`] of
+    /// its arrays).
     pub(crate) fn elements(
         self,
     ) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
-        let Err(CalcResult::Array(head)) = self.head.into_ranges_or_value() else {
-            return None;
-        };
+        self.elements_by(|arg| match arg.into_ranges_or_value() {
+            Err(CalcResult::Array(array)) => Some(array),
+            _ => None,
+        })
+    }
+}
+
+impl<T> Tailed<T> {
+    /// The elements of a tailed argument, each evaluation read as an array by `as_array`: its
+    /// head's, and its tail element with the number of rows it stands for; `None` unless the
+    /// head is one column of values and the tail one element, as the two evaluations of an
+    /// array argument give. Tests count the arguments read this way (`TAILED_WALKS`).
+    pub(crate) fn elements_by(
+        self,
+        as_array: impl Fn(T) -> Option<Vec<Vec<ArrayNode>>>,
+    ) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
+        let head = as_array(self.head)?;
         if head.iter().any(|row| row.len() != 1) {
             return None;
         }
-        let tail = match self.tail.map(RefArg::into_ranges_or_value) {
+        let tail = match self.tail {
             None => None,
-            Some(Err(CalcResult::Array(tail))) => {
-                let [row] = <[Vec<ArrayNode>; 1]>::try_from(tail).ok()?;
+            Some(tail) => {
+                let [row] = <[Vec<ArrayNode>; 1]>::try_from(as_array(tail)?).ok()?;
                 let [element] = <[ArrayNode; 1]>::try_from(row).ok()?;
                 Some((element, self.tail_len))
             }
-            Some(_) => return None,
         };
         #[cfg(test)]
         TAILED_WALKS.with(|walks| walks.set(walks.get() + 1));
