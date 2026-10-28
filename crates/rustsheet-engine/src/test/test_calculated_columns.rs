@@ -89,7 +89,7 @@ fn no_fill_when_another_data_cell_holds_a_value() {
 }
 
 /// A blank cell beside formulas is no calculated column either (the column's other cells must
-/// be all blank or all the one formula).
+/// be all blank or all the one formula). An engine choice, unprobed in Excel (T-2983).
 #[test]
 fn no_fill_over_formulas_and_blanks_mixed() {
     let mut model = model(false);

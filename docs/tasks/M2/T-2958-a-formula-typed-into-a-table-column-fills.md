@@ -56,13 +56,14 @@ Target: S!C2:C4 of probes/t2786-whitespace-structured-refs-runs and every cell o
 type and value. The stage is `semantics`: a reference and entry rule, not a numeric one.
 
 ## Acceptance criteria
-- [ ] These 3 known-failure lines disappear from eval/baseline/probes.txt with no new ones:
+- [ ] ~~These 3 known-failure lines disappear from eval/baseline/probes.txt with no new ones:
       `probes/t2786-whitespace-structured-refs-runs.case.json` S!C2, S!C3, S!C4. So do the known failures of the T-2957
       cases listed in Context (fill-one-totals, refill-second, constant-exception, constant-then-refill,
-      existing-constant, a1-reference).
-- [ ] Engine unit tests: a typed formula fills an empty table column; a stored formula does not; a typed formula
+      existing-constant, a1-reference).~~ Partly met: a1-reference and the FORMULATEXT cells cleared; every cell that
+      types the unqualified `[@Col]` moved to T-2979 (see Outcome).
+- [x] Engine unit tests: a typed formula fills an empty table column; a stored formula does not; a typed formula
       over a filled column re-fills it (or not) as T-2957's evidence says; undo restores the column.
-- [ ] docs/excel-semantics/ entry from T-2957 updated with "Ours:"; `make check` green; reviewers approve.
+- [x] docs/excel-semantics/ entry from T-2957 updated with "Ours:"; `make check` green; reviewers approve.
 
 ## Out of scope
 - Table auto-expansion when typing beside a table (T-2968), and re-filling on xlsx load (T-2969).
@@ -85,3 +86,5 @@ type and value. The stage is `semantics`: a reference and entry rule, not a nume
   refill-second, constant-exception, constant-then-refill, existing-constant) stay `#ERROR!`: an unqualified
   structured reference typed inside a table does not parse at all (the parser refuses an operand starting with
   `[`). That is a parser and storage change of its own (the R1C1 storage text must keep the table), filed as T-2979.
+- Two unprobed engine choices (formulas mixed with blanks block the fill; identical stored formulas without
+  `calculatedColumnFormula` re-fill) go to the probe task T-2983.

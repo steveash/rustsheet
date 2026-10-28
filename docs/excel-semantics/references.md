@@ -2556,7 +2556,8 @@ Ours (T-2958): rules 1-5 are implemented with no state on the table: a formula t
 (`Model::set_typed_user_input`, the facade's `Input::Parse` and `Input::Formula`) fills the column's other data rows
 when they are all blank or all hold one shared formula (`Model::calculated_column_targets`, calculated_columns.rs),
 by writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A blank cell
-beside formulas blocks the fill too (unprobed). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+beside formulas blocks the fill too, and a column of one identical stored formula with no saved
+`calculatedColumnFormula` re-fills as a calculated column: both are engine choices, unprobed (T-2983). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
 after the tables, as the oracle types them after load. The probes that type the unqualified `[@Col]` stay `#ERROR!`
 in their filled cells: an unqualified structured reference does not parse yet (T-2979). Neither import nor export
