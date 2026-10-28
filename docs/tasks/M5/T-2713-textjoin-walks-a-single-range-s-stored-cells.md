@@ -3,7 +3,7 @@ id: T-2713
 title: "TEXTJOIN walks a single range's stored cells through the shared walker, not its own dense loop (TEXTJOIN over A:J beside one cell in J1048576 takes 4 s)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
