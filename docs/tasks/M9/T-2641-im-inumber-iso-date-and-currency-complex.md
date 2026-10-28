@@ -34,4 +34,4 @@ filed with `defer: phase-1b`.
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off probes cells of VALUE (3) and IMABS (2). Fixing them lifts VALUE and IMABS to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
 
 ## Outcome
-`complex_of` now reads a leading `$` before a complex number (`IMABS("$1+2i")` 2.23606797749979), after the inner-minus check so `"$-5"` stays `#NUM!`. probes/eng-inumber-reading A5 passes (baseline entry removed); engineering.md updated. Unprobed neighbours (NBSP, trailing tab, `$` on the imaginary part, `€`) remain listed there.
+`complex_of` drops a `$` or `€` that stands before a digit (`strip_currency_symbols`): `IMABS("$1+2i")`, `"$1-2i"`, `"1+$2i"`, `"€1+2i"` are 2.23606797749979, `"$i"` and `"$-5"` `#NUM!`; probe cells A20:A26 oracle-filled. probes/eng-inumber-reading A5 passes (baseline entry removed); engineering.md updated. Unprobed: NBSP, trailing tab, LF/CR, £ and ¥ (follow-up filed).
