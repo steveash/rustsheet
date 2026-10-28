@@ -264,6 +264,9 @@ fn b2_before_calendars_3_5_and_7_converts_the_years_twice() {
     );
     assert_eq!(text(32515.0, "B2[$-30409]e|g"), "4294965493|M");
     assert_eq!(text(2_958_465.0, "B2[$-30411]yyyy|e|g"), "5963|5963|R");
+    // The era read back changes on its own day: 3930-07-29 and -30 are Reiwa 1912.
+    assert_eq!(text(741_653.0, "B2[$-30411]e|g"), "45|M");
+    assert_eq!(text(741_654.0, "B2[$-30411]e|g"), "1|T");
     assert_eq!(text(45000.0, "B2[$-70411]g|yyyy"), "|2566");
     assert_eq!(text(45000.0, "B2\"x\"[$-70409]yyyy|e"), "x3109|2566");
     // `B1`, or a `B2` after the tag, changes nothing.

@@ -82,7 +82,19 @@
     "A65": "=TEXT(2958465,\"[$-70409]b|bb|bbbb|yy|e\")",
     "A66": "=TEXT(2958465,\"[$-7041E]b|yyyy\")",
     "A67": "=TEXT(2958100,\"b|bbbb\")",
-    "A68": "=TEXT(2958465,\"B2[$-50409]yyyy|yy|e|b|bbbb\")"
+    "A68": "=TEXT(2958465,\"B2[$-50409]yyyy|yy|e|b|bbbb\")",
+    "A69": "=TEXT(725374,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A70": "=TEXT(741653,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A71": "=TEXT(741654,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A72": "=TEXT(747280,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A73": "=TEXT(747281,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A74": "=TEXT(769574,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A75": "=TEXT(769575,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A76": "=TEXT(780645,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A77": "=TEXT(780646,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A78": "=TEXT(780890,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A79": "=TEXT(741444,\"B2[$-30411]yyyy-mm-dd|e|g\")",
+    "A80": "=TEXT(747074,\"B2[$-30411]yyyy-mm-dd|e|g\")"
    },
    "number_formats": {
     "B1": "B2[$-70409]yyyy-mm-dd|e|b",

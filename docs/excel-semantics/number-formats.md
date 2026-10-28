@@ -139,7 +139,9 @@ before the tag and `B2` after it change nothing):
   by `yy`, `yyyy`, `e` and `ee` alike, and `g` is Meiji: 2023-03-15 (Reiwa 5) is "4294965434|M" (5 - 1867 = -1862),
   2019-05-01 (Reiwa 1) 4294965430, 2019-04-30 (Heisei 31) 4294965460, 1989-01-07 (Showa 64) 4294965493, 1920-01-01
   (Taisho 9) 4294965438, 1900-01-01 (Meiji 33) 4294965462. 9999-12-31 (Reiwa 7981) is "5963|R": 7981 is in Reiwa again.
-  Which era a twice-converted year from 1868 to 2019 takes is unreachable (no serial gives one).
+  From Gregorian 3886 to 4037 (Reiwa 1868 to 2019) the twice-converted year falls among the modern eras, and the era
+  changes on its own day of that year: 3930-07-29 (Reiwa 1912) is "45|M", 3930-07-30 "01|T"; 4007-01-07 "64|S",
+  4007-01-08 "01|H"; 4037-04-30 "31|H", 4037-05-01 "01|R"; 3886-01-01 is "01|M" (A69-A80).
 - Month and day tokens and names print as without the `B2` (`B2[$-30411]yyyy-mm-dd|mmmm|dddd` is
   "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` under Thai (T-3029).
 - Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (not modelled,
@@ -152,7 +154,7 @@ Rule (quirk): under a tag, a number token before the `mmm` switch does not turn 
 `B2` section: `B2[$-409]yyyy|mmm|dddd` is "1444|شعبان|السبت" (Saturday, from the month) and so are `d|mmm|dddd` and
 `e|mmm|dddd`.
 `TEXT(45000,"B1@")` and `"B2@"` are "45000".
-Evidence: probes/t2932-b2-calendar-twice (73 cells), excel-graph 2026-10-28.
+Evidence: probes/t2932-b2-calendar-twice (85 cells), excel-graph 2026-10-28.
 Rule: a second calendar prefix after a tag is `#VALUE!` (`B2[$-409]B2mmmm`, `B2[$-409]B1mmmm`, `B1[$-409]B2mmmm`,
 `B2[$-60409]B1mmmm`, `[$-60409]B2B1mmmm`), as is any number token in a `B2` section (`B2[$-409]0`), but two before
 the tag are fine (`B2B2[$-409]mmmm` is "Sha'ban") and so is `B1` before a tag (`B1[$-40C]mmmm` is "mars").

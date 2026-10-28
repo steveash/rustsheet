@@ -43,7 +43,7 @@ Also failing, through T-2779 (Hebrew is not modelled; once it is, digit 8 wins o
 - The Hebrew and Saka calendars themselves (T-2779).
 
 ## Outcome (2026-10-28)
-Probe probes/t2932-b2-calendar-twice (73 cells, excel-graph): `B2` before a calendar-3, -5 (Korean, not only 3 and 7)
+Probe probes/t2932-b2-calendar-twice (85 cells, excel-graph): `B2` before a calendar-3, -5 (Korean, not only 3 and 7)
 or -7 tag converts every year token once more; Japanese era years are read back as Gregorian years (negative ones
 print as unsigned 32-bit numbers, 9999-12-31 is Reiwa 5963). Also found: `b` prints the year's third and fourth digits
 (differs past 9999, with or without a tag), and under a tag a number token before the `mmm` switch leaves the

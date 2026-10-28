@@ -431,8 +431,8 @@ fn era_of(serial: i64) -> (i32, &'static [&'static str; 3]) {
 /// Excel converts once more, reading the era year as the Gregorian year of a date with the same
 /// month and day: Reiwa 5 (2023-03-15) is year 5, before Meiji, so Meiji 5 - 1868 + 1 = -1862,
 /// which Excel prints as an unsigned 32-bit number, "4294965434|M"; 9999-12-31, Reiwa 7981, is
-/// Reiwa 5963 (probes/t2932-b2-calendar-twice A1-A16). Which era a year from 1868 to 2019 takes
-/// on the day it changed is unprobed: no serial reaches such a year twice converted.
+/// Reiwa 5963, and the era changes on its own day of the year read back: 3930-07-29 (Reiwa 1912)
+/// is Meiji 45, 3930-07-30 Taisho 1 (probes/t2932-b2-calendar-twice A1-A16, A69-A80).
 pub fn japanese_era(
     serial: i64,
     (year, month, day): (i32, u32, u32),
