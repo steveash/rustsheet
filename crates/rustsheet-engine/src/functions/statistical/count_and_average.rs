@@ -629,14 +629,17 @@ impl Model {
 }
 
 /// The numbers LARGE and SMALL rank: a reference (one range or a union's areas), an array, or a
-/// scalar typed in place, read by [`Model::numbers_from_reference_arg`].
+/// scalar typed in place, read by [`Model::numbers_from_reference_arg`]; an element-wise
+/// expression of whole columns as its head and tail row
+/// ([`Model::tailed_numbers_from_reference_arg`]).
 fn ranked_numbers(
     model: &mut Model,
     node: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
     model
-        .numbers_from_reference_arg(node, cell)
+        .tailed_numbers_from_reference_arg(node, cell)
+        .unwrap_or_else(|| model.numbers_from_reference_arg(node, cell))
         .map(|numbers| numbers.into_iter().flatten().collect())
 }
 

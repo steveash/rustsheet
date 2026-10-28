@@ -112,6 +112,7 @@ mod x87_register;
 mod test;
 
 pub use arithmetic::flush_subnormal;
+pub use calculated_columns::TableExpansion;
 pub use call_arguments::{call_arguments, ArgumentShape, CallArguments};
 pub use evaluation::{KeyBuild, KeyHasher};
 pub use formula_cells::ParsedFormula;

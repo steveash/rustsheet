@@ -3,7 +3,7 @@ id: T-2979
 title: "Unqualified structured references typed inside a table ([@Col], [Col]) resolve to that table, as Excel does"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -44,13 +44,27 @@ t2957-refill-second S!C2:C4; t2957-constant-exception S!C2, S!C4; t2957-constant
 S!C4; t2957-existing-constant S!C3 (check the list against the baseline when starting).
 
 ## Acceptance criteria
-- [ ] The known failures above leave eval/baseline/probes.txt with no new ones.
-- [ ] Engine tests: `[@Col]`, `[Col]` and `[[#This Row],[Col]]` typed in a table cell evaluate as the qualified form;
+- [x] The known failures above leave eval/baseline/probes.txt with no new ones.
+- [x] Engine tests: `[@Col]`, `[Col]` and `[[#This Row],[Col]]` typed in a table cell evaluate as the qualified form;
       FORMULATEXT prints the unqualified text; the same text in two tables on one sheet reads each its own table;
       the text survives a sheet rename (re-parse); export writes the qualified form; outside any table the operand
       is still refused.
-- [ ] docs/excel-semantics/references.md updated with "Ours:"; `make check` green; reviewers approve.
+- [x] docs/excel-semantics/references.md updated with "Ours:"; `make check` green; reviewers approve.
 
 ## Out of scope
 - Whether Excel prints a qualified `T[@Col]` typed inside its own table without the name (unprobed).
 - Totals-row formulas (`totalsRowFormula`) on import.
+
+## Outcome
+- An operand starting with `[` in a cell of a table (header and totals rows included) reads as a structured reference
+  to that table (`Parser::unqualified_structured_reference`, `containing_table_name`, parser/structured_reference.rs) with a new
+  `StructuredReference::unqualified` flag. It prints without the name (`#This Row` in its `@` form), is stored in
+  R1C1 with a `[T]` prefix (`StructuredReference::stored_text`, read back by `Lexer::stored_table_prefix`), so shared
+  formulas of two tables never collide and a re-parse prints it unqualified again; the export writes the qualified
+  file form. Outside every table it is still refused.
+- Tests: parser/tests/test_tables.rs `unqualified_reference_inside_its_table` (display, stored, export, R1C1
+  re-parse, refused outside); test/test_unqualified_structured_references.rs (fill, two tables on one sheet, column
+  and long forms, sheet rename, outside).
+- Eval: probes known failures 2644 -> 2630 (t2786-whitespace-structured-refs-runs S!C2:C4, t2957-fill-one-totals
+  S!C2:C4, refill-second S!C2:C4, constant-exception S!C2, C4, constant-then-refill S!C2, C4, existing-constant S!C3),
+  no regressions.

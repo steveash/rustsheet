@@ -22,7 +22,9 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
-pub(crate) use sheet_edits::{move_sheet_in_node, rename_sheet_in_node};
+pub(crate) use sheet_edits::{
+    move_sheet_in_node, rename_sheet_in_node, retarget_unqualified_references,
+};
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
