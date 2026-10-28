@@ -214,11 +214,13 @@ impl Engine for RustSheetEngine {
                 // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
                 // reads it.
                 define_names(tx, spec, &ids, false)?;
-                // Values first, then tables (they read their headers), then formulas (a
-                // structured reference parses only once its table exists).
-                for formulas in [false, true] {
+                // Values first, then tables (they read their headers), then stored formulas (a
+                // structured reference parses only once its table exists), then entered text on
+                // every sheet, as the oracle types it after the workbook loads: a typed formula
+                // sees every stored cell (probes/t2983-formulas-and-blank-enter-blank, T-3024).
+                for phase in [Phase::Values, Phase::Stored, Phase::Entered] {
                     for (sheet, &id) in spec.sheets.iter().zip(&ids) {
-                        if formulas {
+                        if phase == Phase::Stored {
                             spec_pivots::add_pivots(tx, spec, &ids, sheet, id)?;
                             for table in &sheet.tables {
                                 tx.add_table_with_totals(
@@ -229,7 +231,7 @@ impl Engine for RustSheetEngine {
                                 )?;
                             }
                         }
-                        if !formulas {
+                        if phase == Phase::Values {
                             spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
                         for (addr, a1, input_spec) in row_major(&sheet.cells)? {
@@ -248,15 +250,17 @@ impl Engine for RustSheetEngine {
                             // structured-refs-runs, T-2801), and a constant typed into a table
                             // column after a typed formula is an exception to its calculated
                             // column (probes/t2957-constant-exception, T-2958).
-                            let is_formula = match &input {
-                                Input::StoredFormula(_) | Input::LegacyFormula(_) => true,
-                                Input::Parse(text) => {
-                                    text.starts_with('=')
-                                        || matches!(input_spec, CellInput::Entered { .. })
+                            let input_phase = match &input {
+                                Input::StoredFormula(_) | Input::LegacyFormula(_) => Phase::Stored,
+                                Input::Parse(text)
+                                    if text.starts_with('=')
+                                        || matches!(input_spec, CellInput::Entered { .. }) =>
+                                {
+                                    Phase::Entered
                                 }
-                                _ => false,
+                                _ => Phase::Values,
                             };
-                            if is_formula != formulas {
+                            if input_phase != phase {
                                 continue;
                             }
                             tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
@@ -450,6 +454,15 @@ pub(crate) fn range_ref(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::Ed
         last.row - 1,
         last.col - 1,
     )?)
+}
+
+/// When a spec cell goes in ([`spec_input`]): its values, then the tables and stored formulas,
+/// then what the oracle types after load.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Phase {
+    Values,
+    Stored,
+    Entered,
 }
 
 /// The facade input for a spec cell; `None` leaves the cell empty.

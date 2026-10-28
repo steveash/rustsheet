@@ -1,6 +1,7 @@
-//! YIELD's Newton as Excel runs it ([`yield_start`], [`excel_yield_newton`]), and the generic
-//! yield solver ODDFYIELD wraps around a price function: Newton with a central-difference
-//! derivative from the coupon rate, then bisection.
+//! YIELD's Newton as Excel runs it ([`yield_start`], [`excel_yield_newton`]), and ODDFYIELD's,
+//! the same Newton with its own slope ([`odd_first_yield`]).
+
+use super::{discount_growth, yield_start_years, OddArgs, OddFirstSchedule};
 
 /// The yield YIELD's Newton starts from with more than one coupon left, `years` being the
 /// settlement-to-maturity term in years:
@@ -44,59 +45,68 @@ pub(super) fn excel_yield_newton(
     y.is_finite().then_some(y)
 }
 
-pub(super) fn solve_yield<F>(target_price: f64, rate: f64, price_fn: F) -> Result<f64, String>
-where
-    F: Fn(f64) -> Option<f64>,
-{
-    let obj = |y: f64| price_fn(y).map(|p| p - target_price);
+/// ODDFYIELD: [`excel_yield_newton`] on ODDFPRICE from YIELD's start over the settlement-to-maturity
+/// term ([`yield_start_years`]), with the slope of [`OddFirstSchedule::dprice`]. `None` (#NUM!) off
+/// the calendar or where the Newton leaves ODDFPRICE's domain.
+pub(super) fn odd_first_yield(odd: &OddArgs<4>, schedule: &OddFirstSchedule) -> Option<f64> {
+    let [settlement, maturity, ..] = odd.dates;
+    let years = yield_start_years(settlement, maturity, odd.basis)?;
+    excel_yield_newton(
+        odd.yld_or_pr,
+        yield_start(odd.rate, odd.yld_or_pr, years),
+        |y| schedule.price(y, discount_growth),
+        |y| schedule.dprice(y),
+    )
+}
 
-    let h = 1e-5;
-    let eps = 1e-8;
+impl OddFirstSchedule {
+    /// The slope ODDFYIELD's Newton takes at `yld`: d/dy of [`Self::price`], except that the odd
+    /// first coupon weighs as a regular one (`coupon` at the lead's exponent, not `lead`), as if the
+    /// bond's first period were regular. Excel: fitted on probes/oddfyield-solver-sweep, where this
+    /// slope from YIELD's start puts 323 of 324 coupon-bond cells within 1e-13 of Excel and the exact
+    /// slope 15 (financial.md "ODDFYIELD stops short of ODDFPRICE's root", T-2007).
+    fn dprice(&self, yld: f64) -> f64 {
+        let x = yld / self.m + 1.0;
+        let mut slope = 0.0;
+        // The lead at its own exponent, then the regular coupons, one period apart: index
+        // `first_index - 1` is the lead's (`lead_exponent` is `offset + y` there, short or long).
+        for index in (self.first_index - 1)..=self.last_index {
+            let t = index as f64 + self.offset + self.y;
+            slope -= t * self.coupon / discount_growth(x, t + 1.0) / self.m;
+        }
+        let t = self.front_exponent;
+        slope - t * self.redemption / discount_growth(x, t + 1.0) / self.m
+    }
+}
 
-    let mut y = rate;
-    for _ in 0..100 {
-        let fv = match obj(y) {
-            Some(v) if v.is_finite() => v,
-            _ => break,
-        };
-        let fp = match (obj(y + h), obj(y - h)) {
-            (Some(a), Some(b)) => (a - b) / (2.0 * h),
-            _ => break,
-        };
-        if !fp.is_finite() || fp.abs() < 1e-15 {
-            break;
-        }
-        let yn = y - fv / fp;
-        if yn <= -1.0 {
-            break;
-        }
-        if (yn - y).abs() < eps {
-            return Ok(yn);
-        }
-        y = yn;
+#[cfg(test)]
+mod tests {
+    use super::{discount_growth, OddFirstSchedule};
+
+    /// The probes/oddfyield-solver-sweep bond (settlement 2020-02-01, maturity 2025-06-30, issue
+    /// 2020-01-01, first coupon 2020-06-30, semiannual, basis 0) at the coupon `rate`.
+    fn sweep_bond(rate: f64) -> OddFirstSchedule {
+        OddFirstSchedule::new(43862, 45838, 43831, 44012, rate, 100.0, 2, 0).unwrap()
     }
 
-    // Bisection fallback
-    let (x1, x2) = (-0.9999_f64, 100.0_f64);
-    let f1 = obj(x1).ok_or("bisection failed")?;
-    let f2 = obj(x2).ok_or("bisection failed")?;
-    if f1 * f2 > 0.0 {
-        return Err("yield solver: failed to converge".to_string());
+    /// `dprice` against a central difference of `price` at 5%, as a relative gap.
+    fn slope_gap(schedule: &OddFirstSchedule) -> f64 {
+        let (y, h) = (0.05, 1e-6);
+        let numeric = (schedule.price(y + h, discount_growth)
+            - schedule.price(y - h, discount_growth))
+            / (2.0 * h);
+        ((schedule.dprice(y) - numeric) / numeric).abs()
     }
-    let (mut lo, mut hi) = if f1 < 0.0 { (x1, x2) } else { (x2, x1) };
 
-    for _ in 0..200 {
-        let mid = (lo + hi) / 2.0;
-        let fm = obj(mid).ok_or("bisection failed")?;
-        if fm.abs() < eps || (hi - lo).abs() < 1e-12 {
-            return Ok(mid);
-        }
-        let f_lo = obj(lo).ok_or("bisection failed")?;
-        if f_lo * fm < 0.0 {
-            hi = mid;
-        } else {
-            lo = mid;
-        }
+    #[test]
+    fn zero_coupon_slope_is_the_price_derivative() {
+        assert!(slope_gap(&sweep_bond(0.0)) < 1e-8);
     }
-    Err("yield solver: failed to converge".to_string())
+
+    #[test]
+    fn odd_first_coupon_weighs_as_a_regular_one_in_the_slope() {
+        // The short first coupon is 150/180 of a regular one, so the fitted slope is not the
+        // derivative (financial.md "ODDFYIELD stops short of ODDFPRICE's root").
+        assert!(slope_gap(&sweep_bond(0.05)) > 1e-6);
+    }
 }
