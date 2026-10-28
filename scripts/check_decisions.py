@@ -40,11 +40,11 @@ def unfilled(texts: dict[str, str]) -> list[str]:
     return [f"{n} still has `{UNFILLED}` lines from `make new-decision`" for n, t in sorted(texts.items()) if UNFILLED in t]
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str] | None = None) -> int:
     # `--root <dir>` judges another tree: the merge train runs `main`'s copy of this script
     # against a train worktree (SPEC-0027 section 4 step 4, decision 0066).
     decisions = DECISIONS
-    if argv:
+    if argv:  # None or [] judge this checkout
         if len(argv) != 2 or argv[0] != "--root" or not Path(argv[1]).is_dir():
             print("usage: check_decisions.py [--root <dir>]", file=sys.stderr)
             return 2
