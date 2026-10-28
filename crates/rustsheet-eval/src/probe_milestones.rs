@@ -342,6 +342,13 @@ pub struct MilestoneRow {
     pub spill_extent_failures: usize,
 }
 
+/// `case!Sheet!A1` when cell `c` of case `r` is visibly off (decision 0114): neither bit-exact nor
+/// a pinned deviation, and outside what `Visible` tolerates.
+pub(crate) fn visibly_off_name(r: &CaseResult, c: &CellResult) -> Option<String> {
+    (!c.verdict.is_pass() && c.verdict != Verdict::Deviation && Visible::is_off(c))
+        .then(|| format!("{}!{}", r.id, c.key()))
+}
+
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
 /// Empty when the run executed no `probes` case.
 #[must_use]
@@ -375,9 +382,9 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 s.bit_exact += 1;
             } else if c.verdict == Verdict::Deviation {
                 s.deviations += 1;
-            } else if Visible::is_off(c) {
+            } else if let Some(name) = visibly_off_name(r, c) {
                 s.visibly_off += 1;
-                s.visibly_off_cells.push(format!("{}!{}", r.id, c.key()));
+                s.visibly_off_cells.push(name);
             }
             rows_of_case.insert(row);
         }
