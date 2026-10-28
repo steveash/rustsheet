@@ -843,8 +843,16 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `IMCSC("1E+200")`, `IMSIN("7777777777")` (`IMSIN(HEX2OCT("FFFFFFFFFF"))`, 1068c44afcd56d53 A57), IMSEC of 1E+15 and
   `IMTAN("1.05966105763914E+57")`; but `IMCOT("1E+200")` is "0" (060b18586fcff6e6 A119). probes/t2534-im-trig-real-limit
   (excel-graph, 2026-10-26) confirms the limit for all six at 2^27: at 134217727 they answer, and at ±134217728, 1E+10,
-  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". IMTAN of a real is CONFLICTING (web vs desktop): COMPLEXs.xlsx N6
-  (Mac 16.0300) caches `IMTAN(5)` as -3.38051500624658, the libm double-angle value (T-1075 item 17).
+  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". probes/t3054-imtan-real-tan-kernel (excel-graph, 2026-10-28)
+  settles IMTAN's kernel on the web: nine real arguments where TAN's kernel and the double-angle form
+  `sin 2x / (cos 2x + 1)` print different text are all TAN's (`IMTAN("3.14159")` -2.65358979336212E-06, double-angle
+  ...207E-06; `IMTAN("-17.2737")` -197.642601323436, ...305; `IMTAN("-17.3011")` 44.7544983375159, ...163; row 3,
+  `IMTAN("4")`, prints 1.15782128234958 either way), and so is row 1, COMPLEXs.xlsx row 6's own
+  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, -3.38051500624659. IMTAN of a real is still CONFLICTING (web vs desktop):
+  COMPLEXs.xlsx N6 (Mac 16.0300) caches that formula as -3.38051500624658, the libm double-angle value (T-1075 item 17). IMTAN is one of numbers.md's "Excel for the web and desktop Excel
+  differ in the last digits" functions, so decision 0030 rule 4 (kept by decision 0039) makes the desktop N6 the fitting
+  target and the web cells, which the double-angle form misses by far less than 1e-9 relative, no target for further
+  fitting until T-1075 item 17 is answered (T-3054, dropped into T-2774).
   Ours (T-2534): IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real take SIN, COS and TAN's kernels and the limit
   (`real_trig`); IMTAN takes the limit but keeps the double-angle form below it, so the desktop N6 still passes and the 35
   web `IMTAN("5")` cells and the other IMTAN-of-a-real cells stay known failures (T-2774).
