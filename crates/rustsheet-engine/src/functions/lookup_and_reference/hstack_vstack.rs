@@ -62,7 +62,8 @@ impl Model {
         // Each argument is evaluated and a range's cells read in turn, as before, but not copied:
         // the stack is sized and checked before any range is copied (T-1564). Reading first keeps
         // a cycle through an argument a cycle: `=ROWS(HSTACK(A:A,1:1))` in W1 is circular, 0, not
-        // the cell-count `#ERROR!` (probes/scalar-lift-open-c3 W1).
+        // the cell-count `#ERROR!`, as before (probes/scalar-lift-open-c3 W1, whose oracle 0 the case
+        // flags as a Graph-backend answer, not trusted as Excel's).
         let mut results: Vec<CalcResult> = Vec::with_capacity(args.len());
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {

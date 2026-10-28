@@ -30,7 +30,7 @@ CHOOSE over an index array and IF over an array condition take each arm's extent
 moved there as `BroadcastArg`, `BroadcastArg::at`, `BroadcastArg::dims` and `evaluate_broadcast_arg`). Each range arm's
 cells are read in order as before (`Model::read_range_cells`, cast.rs, which shares `range_used_corner` with
 `evaluate_range`), so a cycle through any arm is still one, also when the result is too big
-(`=ROWS(CHOOSE({1,2},A:A,1:1))` in A1 stays 0, as probes/scalar-lift-open-c3 W1 shows for HSTACK). But no arm is copied
+(`=ROWS(CHOOSE({1,2},A:A,1:1))` in A1 stays 0, as on main; for HSTACK probes/scalar-lift-open-c3 W1, whose oracle 0 the case flags as untrusted). But no arm is copied
 until the output's size is checked, and then only the picked ones are. HSTACK and VSTACK read each range argument in
 turn the same way and copy only after the stacked shape is checked. A read before the copy is charged 3 work units per
 used cell (arrays.md work-units entry).

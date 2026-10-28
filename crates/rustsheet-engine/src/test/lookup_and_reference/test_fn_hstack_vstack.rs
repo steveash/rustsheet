@@ -84,7 +84,7 @@ fn test_hstack_refuses_an_oversized_stack_before_copying() {
 fn test_hstack_reads_its_ranges_before_the_size_check() {
     // A range argument is read before the stack is checked, so a cycle through it is circular
     // (0) rather than the cell-count `#ERROR!`, and so is one beside an error argument
-    // (probes/scalar-lift-open-c3 W1, excel-graph; T-1564).
+    // as before T-1564 (probes/scalar-lift-open-c3 W1; its oracle 0 is flagged untrusted).
     let mut model = new_empty_model();
     model._set("W1", "=ROWS(HSTACK(A:A,1:1))");
     model._set("G1", "=ROWS(HSTACK(G1:G2,NA()))");
