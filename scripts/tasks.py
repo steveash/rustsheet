@@ -150,9 +150,11 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
 
 
 def dependency_cycles(tasks: list[dict[str, object]]) -> list[list[str]]:
-    """The `depends_on` cycles among `tasks`, whatever their status (a cycle never lets any of
-    its tasks become ready), each once and starting at its smallest id; a self-dependency is a
-    cycle of one. A depth-first walk without recursion, so a long chain cannot overflow."""
+    """`depends_on` cycles among `tasks`, whatever their status (a cycle never lets any of its
+    tasks become ready), each once and starting at its smallest id; a self-dependency is a cycle
+    of one. A depth-first walk without recursion, so a long chain cannot overflow; it reports
+    the cycle each back edge it meets closes, so at least one per tangled group of tasks, not
+    every overlapping cycle (fixing one and re-running shows the next)."""
     deps = {str(t["id"]): deps_of(t) for t in tasks}
     state: dict[str, int] = {}  # 1 on the walk's path, 2 finished
     found: set[tuple[str, ...]] = set()
