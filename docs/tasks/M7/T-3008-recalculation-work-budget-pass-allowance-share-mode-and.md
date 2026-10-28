@@ -19,7 +19,8 @@ SPEC-0028 (T-2807) is the design. Today only one formula run is bounded (SPEC-00
 1,000 near-limit cells are about 2 hours. Code: crates/rustsheet-engine/src/area_budget.rs (`with_area_budget`,
 where the runs are settled), evaluation.rs (`Evaluation`, `evaluate`, `evaluate_passes`, `run_pass`,
 `evaluate_formula_cell`'s unwinding), defined_names.rs (`run_cell_formula`). The hot path (`spend_work`) must
-not change. Sweeps and data tables run under the share in share mode but draw on the ceiling only in T-3009.
+not change. The overrun is a new `RecalcBudget` field, not a `Restart` variant: `RestartLog::record` must
+learn no fact from it (SPEC-0028 section 2). The share's `4 * N` is saturating and `N` ≥ 1. Sweeps and data tables run under the share in share mode but draw on the ceiling only in T-3009.
 
 ## Acceptance criteria
 - [ ] `MAX_PASS_WORK`, `MAX_RECALC_WORK` and `RecalcBudget` in `Evaluation`, settled in `with_area_budget`

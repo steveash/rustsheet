@@ -1,6 +1,6 @@
 # SPEC-0028 — A work budget for one recalculation
 
-- **Status:** draft (T-2807)
+- **Status:** accepted (T-2807; architecture, security and quality reviewers approved)
 - **Milestone / lane:** M7 / engine
 - **Tasks:** T-2807 (this spec); the rollout steps below are filed as T-3008 and T-3009
 
@@ -141,7 +141,8 @@ share = clamp(MAX_PASS_WORK / (4 * N), 1, MAX_FORMULA_WORK)
 ```
 
 where `N` is the number of formula cells (`Cell::CellFormula` and `Cell::ArrayFormula` anchors) of
-the workbook when `evaluate` began. A complete pass then commits at most `N * share`, a quarter of
+the workbook when `evaluate` began (share mode is entered only after a formula ran, so `N` ≥ 1; `4 * N`
+is computed saturating). A complete pass then commits at most `N * share`, a quarter of
 the allowance, whatever the formulas are. A formula past its share is `#VALUE!` with the message
 `TOO_MUCH_RECALC_WORK` ("Recalculation needs too much work to calculate this formula"). Like the
 formula budget's error it is set by `with_area_budget` and cannot be caught inside the formula
@@ -173,8 +174,8 @@ given model, its history and its settings, and each is named in the DEVIATION en
   later have cut it short.
 - Share mode and the ceiling: a share-mode round that restarts often enough to spend the ceiling is
   exhausted, and how often it restarts depends on the learned anchor order. Each share-mode pass
-  commits at most a quarter of the allowance, and the normal round spent at most two allowances of
-  the ceiling's eight, so this needs more than eight share-mode passes in one round.
+  commits at most a quarter of the allowance, and the normal round spent at most two of the
+  ceiling's four allowances, so this needs more than eight share-mode passes in one round.
 
 ### 4. Iterative calculation and data tables
 They run after the first round of passes and are not passes: their order is already canonical
@@ -245,6 +246,8 @@ Step 1 adds this entry to docs/excel-semantics/recalc.md, with the calibration m
 > does not depend on the order the cells are evaluated in, except through restarted passes and
 > runs cut short by the evaluation depth limit (SPEC-0028 section 3). The heaviest eval pass
 > commits <measured> units (<case>), the heaviest eval recalculation <measured> (<case>).
+> Until T-3009: sweeps and data tables do not draw on the 2^32 ceiling yet; they keep only their
+> count caps.
 > Status: DEVIATION (decision 0014)
 
 The sweep and data-table entries of recalc.md each gain one sentence: their runs also draw on this

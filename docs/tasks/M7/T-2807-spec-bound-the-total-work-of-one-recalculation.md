@@ -24,7 +24,7 @@ caps (area budgets, `MAX_LIFTED_CELL_VISITS`) have the same scaling. Questions t
 - the DEVIATION entry.
 
 ## Acceptance criteria
-- [x] docs/specs/SPEC-XXXX answers the questions above, with a worked example of 1,000 near-limit cells.
+- [x] docs/specs/SPEC-0028 answers the questions above, with a worked example of 1,000 near-limit cells.
 - [x] Implementation tasks are filed (S/M).
 - [x] Reviewers approve.
 - [x] `make check` green; reviewers approve.
