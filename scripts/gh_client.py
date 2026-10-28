@@ -136,6 +136,10 @@ class Client:
         """The PR's conversation comments (issue comments), oldest first."""
         return self.pages(f"issues/{number(pr)}/comments")
 
+    def pull_commits(self, pr: int | str) -> list[object]:
+        """The PR's commits, oldest first (their messages carry the squash trailers)."""
+        return self.pages(f"pulls/{number(pr)}/commits")
+
     def reviews(self, pr: int | str) -> list[object]:
         """The PR's reviews, oldest first."""
         return self.pages(f"pulls/{number(pr)}/reviews")

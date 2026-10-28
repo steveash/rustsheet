@@ -179,17 +179,56 @@ fn cell_lifts_over_a_range_info_type() {
     assert_eq!(model._get_text("H1"), *"#SPILL!");
 }
 
-/// `VSTACK(CELL("contents",ref),..)` is `#VALUE!` in Excel; CELL alone and `VSTACK(0,..)` are
-/// fine (probes/t2414-gen-m7-unexplained, T-2457).
+/// A stack argument written as `CELL("contents", ref)` is `#VALUE!` when the target is blank and
+/// stacks the target's value otherwise, for VSTACK and HSTACK alike; CELL alone and `VSTACK(0,..)`
+/// are fine (probes/t2414-gen-m7-unexplained, probes/t2466-cell-contents-stack A1, A31, A41, A51,
+/// T-3030).
 #[test]
-fn cell_contents_as_vstack_argument() {
+fn cell_contents_as_a_stack_argument() {
     let mut model = new_empty_model();
     model._set("A1", "=VSTACK(CELL(\"contents\",C11),1)");
     model._set("B2", "=VSTACK(0,1)");
     model._set("C3", "=CELL(\"contents\",C11)");
+    model._set("D1", "=HSTACK(CELL(\"contents\",C11),1)");
+    model._set("E20", "7");
+    model._set("F1", "=VSTACK(CELL(\"contents\",E20),1)");
+    model._set("G1", "=HSTACK(CELL(\"contents\",E20),1)");
+    model._set("J1", "=VSTACK(1/0,CELL(\"contents\",C11))");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("B2"), *"0");
     assert_eq!(model._get_text("C3"), *"0");
+    assert_eq!(model._get_text("D1"), *"#VALUE!");
+    assert_eq!(model._get_text("F1"), *"7");
+    assert_eq!(model._get_text("F2"), *"1");
+    assert_eq!(model._get_text("G1"), *"7");
+    assert_eq!(model._get_text("H1"), *"1");
+    assert_eq!(model._get_text("J1"), *"#DIV/0!");
+}
+
+/// `CELL("contents"|"type", ref)` reads the sheet the reference names, nested or not
+/// (probes/t3030-cell-contents-nested-sheet A1, A11, A41, A81, A321; probes/t3030-cell-first-sheet;
+/// excel-graph 2026-10-28, T-3030).
+#[test]
+fn cell_contents_reads_the_named_sheet() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model._set("Sheet2!B1", "7");
+    model._set("Sheet2!B3", "abc");
+    model._set("B1", "99");
+    model._set("A1", "=CELL(\"contents\",Sheet2!B1)");
+    model._set("A2", "=CELL(\"contents\",Sheet2!B1)+0");
+    model._set("A3", "=LET(x,CELL(\"contents\",Sheet2!B1),x)");
+    model._set("A4", "=CELL(\"type\",Sheet2!B3)");
+    model._set("A5", "=CELL(\"contents\",B1)");
+    model._set("Sheet2!A1", "=CELL(\"contents\",Sheet1!B1)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"7");
+    assert_eq!(model._get_text("A2"), *"7");
+    assert_eq!(model._get_text("A3"), *"7");
+    assert_eq!(model._get_text("A4"), *"l");
+    assert_eq!(model._get_text("A5"), *"99");
+    assert_eq!(model._get_text("Sheet2!A1"), *"99");
 }

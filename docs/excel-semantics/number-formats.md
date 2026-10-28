@@ -181,11 +181,17 @@ a quoted or escaped digit prints (`"\4b"` and `"""4""b"` are "443"). The check c
 value does not use: `TEXT(3.14159,"0;4b")` is `#VALUE!`, while `"4;b"` gives "4" and `"b;4"` "43". A text or boolean value
 is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc")` are `#VALUE!`; `TEXT("x","4;b")` is "x";
 column D), as "TEXT checks the code before it looks at a text or boolean value" describes. `TEXT(-3,"b1")` is "-": a
-calendar prefix alone is no date token for a negative value. Ours is `#VALUE!` there (T-2388).
+calendar prefix alone is no date token for a negative value: `"b1"` and `"B1"` give "" for 3 and 0 and "-" for -3, `"b1 x"`
+is " x", " x" and "- x", `"[$-40C]B1"` is "", "", "-" (probes/t2388-b1-negative, excel-graph, 2026-10-28; `"B1@"` prints the
+number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals. The same holds for a lone `B2`
+(`"b2"` -> "-", `"B2 x"` "- x"), a tagged `"[$-40C]B2"` and `"[$-409]B2"` ("-"), and a magnitude past the maximum
+serial (`TEXT(-3000000,"b1")` is "-"). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
+`"b1;b1"` are "", `"0;b1 x"` is " x" (probes/t2388-b1-negative A6-A13).
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
 Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
-code with any bad number section (formatter/format.rs).
+code with any bad number section (formatter/format.rs); the literal-only date section (a lone calendar prefix) of a negative value is
+exempt from the negative-date refusal and the maximum-serial check in `format_number`.
 Tasks: T-2377, T-2388
 
 ## Text and booleans use the format's text section
@@ -632,11 +638,22 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
   - Under every other LCID with a locale (409, 40C, 407, 411, 412, 404, 41E, 419, 439, every other table LCID, 400, 800
     and neutral C and 39) they are Latin: Tishrei, Cheshvan, Kislev, Tevet, Shvat, Adar (AdarI and AdarII in a leap
     year), Nisan, Iyar, Sivan, Tamuz, Av, Elul, and `ddd` = `dddd` = "Yom Rishon" … "Yom Shishi", "Shabat".
-  - Serials 0 and 1 are "5660-05-01|Shvat", 59 "5660-06-29|AdarI". Excel matches the arithmetic calendar at every
-    probed date to 2238-11-01, and ours follows it to 2238-11-07 (29 Cheshvan 5999); from Kislev 5999 its dates drift ahead (2238-12-01 is
-    "5999-03-24", the arithmetic 23; 2239-09-24 "6000-01-01"; 4000-01-01 "7760-04-24", the arithmetic 7760-04-11), and
-    from some date between 4000-01-01 and 5000-01-01 to 9999-12-31 they are `#VALUE!` (t2779-hebrew-saka-more A1:A35).
-    Ours is `#VALUE!` past 2238-11-07 (T-2954).
+  - Serials 0 and 1 are "5660-05-01|Shvat", 59 "5660-06-29|AdarI".
+  - **Excel reads a year table, which wraps past 2238** (T-2954; probes/t2954-hebrew-drift, 512 cells, and
+    t2954-hebrew-value-limit, excel-graph 2026-10-28). A date's Hebrew month and day come from the table entry of its
+    Gregorian year: the Hebrew date of 1 January (always in Hebrew year Gregorian + 3760) and the length of the Hebrew
+    year it falls in. Excel walks forward from 1 January by that year's month lengths and takes the next Gregorian
+    year's entry from 1 Tishrei on. Entries to 2238 agree with the arithmetic calendar. Past 2238, Gregorian year `y`
+    reads the entry of 1585 + (y - 1585) mod 654. So 5999 (Tishrei 2238) takes 1586's year length: Cheshvan has 29
+    days, 2238-11-08 is "5999-03-01" (the arithmetic 5999-02-30), and 2238-12-01 is "5999-03-24". 2239-01-01 is
+    "5999-05-01", as 1585-01-01 is 5345-05-01. 2239-09-24 is "6000-01-01", 2241-10-01 "6001-13-28" (a leap year by the
+    table, not by the 19-year cycle), 4000-01-01 "7760-04-24" and 9999-12-31 "13760-04-22". The leap years of the
+    month names follow the table too: 4502-03-01 (8262-06-24) is "AdarI".
+  - The month names stop at Hebrew year 8262. From 1 Tishrei 8263 (4502-09-30), a month name token under a locale
+    (`[$-80409]mmm`, `mmmm`, `mmmmm`) is `#VALUE!`; 4502-09-29 is still "8262-13-29|Elul". The numbers and weekday names
+    still print (`yyyy-mm-dd|ddd` of 4502-09-30 is "8263-01-01|Shabat"). With no locale (`[$-80000]`) the Gregorian
+    names by month number still print ("8263-01-01|Jan|January|J"). So t2779-hebrew-saka-more's `yyyy-mm-dd|mmmm` is
+    `#VALUE!` from 5000-01-01 on, while `yyyy-mm-dd` of every date to 9999-12-31 prints.
 - 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"). The year turns on 22 March, or 21 March in a Gregorian leap year
   (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days; months 2-6 have 31, 7-12 30.
   `yy`, `b`, `bb` and `y` print two digits ("44"), `e`, `ee`, `yyy`, `yyyyy` and `bbbb` the Saka year. Serial 1 is
@@ -977,7 +994,8 @@ A `*x` fill (repeat) character contributes nothing to the displayed text or to T
 `TEXT(3,"*.0.00")` is "3.00", PI() under `0.00*-` is "3.14", and 1000 under `_(* #,##0_);...` is " 1,000 " (only the `_(`
 and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
 2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in both the number and the date
-branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel-graph) for number sections; a fill in a date or clock code (`TEXT(1,"d*x")`) and in a fraction code (fraction.rs still prints a space) is UNVERIFIED (T-2480).
+branch of `format_number` (formatter/format.rs, T-1735). Date, clock and fraction codes alike (T-2480, probes/text-fill-char-date-clock-fraction, 12 cells, excel-graph 2026-10-28): `TEXT(1,"d*x")` is "1", `TEXT(0.5,"h:mm*-")` "12:00", `TEXT(0.75,"h*x:mm AM/PM")` "6:00 PM", `TEXT(1,"*xd")` "1", `TEXT(1,"d*xm")` "11", `TEXT(1.5,"# ?/?*x")` "1 1/2", `TEXT(0.5,"?/?*x")` "1/2", `TEXT(0.5,"*x# ?/?")` " 1/2". Ours printed a space for a fraction fill; fixed in T-2480. A fill inside a blank fraction (zero under `?/?`) is unprobed and still prints a space (T-3057).
+Status: VERIFIED (excel-graph); implemented (T-1735, T-2480).
 
 - Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 4c6a49fe4a6fa404 F!R4, 5eb95c63c7d6180c F!G13, bfbcd16cee266336 F!W12, excel-graph): a scientific
   code on zero prints every integer placeholder of the mantissa as `0`, `#` included (`##0.0E+0` → "000.0E+0",

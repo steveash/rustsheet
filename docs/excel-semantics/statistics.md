@@ -3030,6 +3030,29 @@ Tasks: T-1531, T-1542
 - Ours: `statrs`' `StudentsT::inverse_cdf` is wrong for small df well before it fails (`T.INV(1E-10,1)` gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200. For p < 1E-5 we use a closed-form tail asymptotic once x = df/(df+t^2) < 1E-8; otherwise `statrs` for p >= 1E-8 (it is bit-exact with Excel there) and bisection on its cdf below 1E-8 (`statrs`' inverse hangs at p = 1E-100 for df = 1000). Results agree with Excel to about 1E-13 relative for df <= 5, but only 7 of 105 cells are bit-exact, and for df >= 99999 at p <= 1E-200 we are wrong (-37.17 where Excel gives -79.06: for df = 99999 the `statrs` cdf saturates in the bisection branch, for df = 1E5 the normal series is used): T-1542.
 - `T.INV.2T` with p in (1,2) is `T.INV(1 - p/2)`, a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128); ours implements it since T-2096 (`t_inv_of`), see the entry above. Near p = 1 the quantile has an absolute error of about 1e-8 (`TINV(1+2^-52,2)` is -1.49e-8, Excel -3.14e-16): T-2839.
 
+## Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta quantile, away from the centre (gap triage 2026-10-28)
+Rule: away from the centre (one-sided tail q = min(p, 1-p) up to at least 0.45), T.INV, T.INV.2T, TINV and
+CONFIDENCE.T return t = fl(sqrt(fl(df * fl(fl(1/y) - 1)))), where y is within one ulp of the double nearest df/(df+t*^2)
+(the nearest on 60 of 75 cells) and t* is the exact quantile (y is the beta quantile, I_y(df/2, 1/2) = 2q). The subtraction 1/y - 1 rounds to the spacing of
+doubles near 1, so where t^2/df is small Excel is off the exact quantile by up to the order of df * eps / t^2 relative
+(measured: 2.2E-7 at
+df 1E10 (`T.INV(0.9,1E10)` = 1.2815518424115688, exact 1.2815515656292591), 2.5E-11 at df 1E6 and 8E-15 at df 1000).
+The values look arbitrary, but this form gives them exactly.
+Status: VERIFIED (excel-graph; reproduced, not probed directly)
+Evidence: an mpmath triage script (exact quantile, then the double y, then the form in doubles) gives 75 of the 80
+cells where Excel is visibly off the exact quantile. 60 are 0 ulp with the nearest y. The other 15 need y one ulp from
+the nearest, so Excel's y is within an ulp of correctly rounded but not always correctly rounded (T-3061 lists them):
+the T-3061 cells within probes-numeric m9-t-inv A108-A130, m9-t-inv-2t A35-A126 (not its centre cells A36, A114, A115), m9-confidence-t A5-A45, m9-t-nonint-df A59-A66,
+m9-t-edges A38, t1048-tinv A21/B21, t1518-t-df-cut A14-A23, t1531-t-tiny-p A77-A117 (q from 1E-20), probes
+stat-argument-modes H518, and gen-m9 1b31092a0d79e5f1 A275, 2138b909d8f810ea A241, 41248d1cb153c66e A113,
+5919660b7bb4d195 A53, 775d053de498b8c7 A176. The full cell list is in T-3061.
+It does not hold near the centre. At two-tailed p = 0.99 and 0.999 (q = 0.495, 0.4995; m9-t-inv-2t A10-A115) Excel is
+within 1E-15 of the exact quantile, and the form is thousands of ulps off. The switch lies between q = 0.45 and
+0.495 (T-2724). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
+off (its y about 4E-12; T-1542).
+Ours: the exact quantile (A&S 26.7.5 from df 1E5, statrs' inverse below), so up to 2.2E-7 relative away at huge df:
+T-3061.
+
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
 
@@ -3088,6 +3111,41 @@ Tasks: T-1543, T-1634
   (p·Γ(1.25))^4·1E15 is 6.7496978931117296E-50 (40-digit Decimal), and ours is 6.74969789311173E-50. So Excel is
   4.1E-15 relative high, about 1E-15 relative in P at a = 0.25. Not yet known: whether this is the crossing of
   Excel's own GAMMA.DIST cdf (T-3012 probes it, T-3013 matches it).
+  T-3012 evidence (probes/t3012-gamma-inv-small-shape, probes/t3012-gamma-dist-at-quantile, excel-graph):
+  - Excel's GAMMA.INV is not the crossing of its own GAMMA.DIST. `GAMMA.DIST(x,a,1,TRUE)` at Excel's
+    `GAMMA.INV(p,a,1)` quantile (second case, column B, exact relative error in P against the decimal p; the
+    `cdf/p-1` column D is zero-snapped by Excel and proves nothing) is within 6E-16 of p at a = 0.05, 0.25 (except
+    row 8, +9.7E-16) and 0.5, and further off at a = 0.1 (row 3, p = 1E-30: -8.5E-15), a = 0.75 (row 16, p = 1E-100:
+    +2.6E-14; row 17 -3.2E-15; row 18 -1.9E-15; row 19 +1.2E-15; row 20 -1.3E-15) and a = 0.9 (row 21 +1.9E-15,
+    row 22 +1.1E-15, row 23 -4.7E-15, row 25 -3.0E-15). No shape is exact at every p. The sign is positive at a = 0.05, negative at a = 0.1 and changes with p
+    at a = 0.25, 0.5, 0.75 and 0.9.
+    One ulp of x moves the cdf by a quarter ulp at a = 0.25, so columns A..C agree there; at a = 0.5 and 0.9 they
+    differ (rows 15, 24, 25). The errors of 6 to 205 ulps of P at a = 0.1, 0.75, 0.9 (rows 3, 16-23) are more than one ulp of x
+    can explain, so the quantile is Excel's own inversion, not a crossing; the same holds at a = 0.05 (+5.5E-16 and
+    +5.9E-16 with A = B = C, rows 1-2) and row 8 of a = 0.25, about 30 to 90 ulps of x from a crossing. Rows 15 (a = 0.5) and 25 (a = 0.9)
+    are bracketed: at row 15 Excel returns the first x whose cdf reaches p, at row 25 the last x below p (C25, one
+    ulp of x higher, is above p; Excel's cdf jumps 3.6E-15 across that ulp).
+  - The scale is a plain final product: in all 36 rows of the first case column B equals the double product
+    A * 1E+15 exactly (`GAMMA.INV(1E-16,0.1,1)` = 6.073048362407876E-161 and `GAMMA.INV(1E-16,0.1,1E+15)` =
+    6.0730483624078755E-146 are the same value to the rounding of the product, row 10).
+  - Range: `GAMMA.INV(p,0.05,1)` is 0 for p <= 1E-30 and `#DIV/0!` at p = 1E-16 (row 4); shape 0.1 gives 0 for
+    p <= 1E-100 and shape 0.25 / 0.5 / 0.75 / 0.9 give 0 for p = 1E-300 (0.25 also at 1E-100).
+  - GAMMA.DIST's cdf at shape 0.25 (second case, rows 27-35): for x <= 1E-30 it equals
+    `EXP(0.25*LN(x))/EXP(GAMMALN(1.25))` at x = 6.7497E-65 and 1E-30 and is 1 ulp above it at x = 1E-65; it never
+    equals `x^0.25/GAMMA(1.25)` (2 ulps above at 1E-65, 1 ulp above at 6.7497E-65 and 1E-30). From x = 1E-10 up it includes the series' second
+    term (0.0034888228355002 against 0.0034888228355700 for the one-term forms), so only the x^a / Gamma(a+1) factor
+    is comparable. The `cdf/p-1` columns are zero-snapped by Excel's subtraction rule and prove nothing; compare the
+    raw cdf values.
+  - T-3013 should therefore not expect a crossing-based fix to reproduce Excel at a = 0.1, 0.75, 0.9; only the
+    exp(a ln x) form of the leading term is indicated.
+  - The same leading-factor form fits the other shapes' visibly-off GAMMA.DIST cells (gap triage 2026-10-28, T-3060):
+    `EXP(a*LN(x))/EXP(GAMMALN(a+1))`, times EXP(-x) and the series, in doubles, gives Excel's value exactly at A16, A17
+    and A18 (a = 0.75; Excel 1.18E-14, 3.5E-15 and 2.0E-15 relative above the exact cdf), within 1 ulp at A21
+    (a = 0.9, +1.15E-14) and within 5 ulp at A3-A5 (a = 0.1), evaluated with CPython's `lgamma` and `exp` standing
+    in for Excel's GAMMALN and EXP. The engine's exact form is 6 to 58 ulps off there. It does not fit A20, A23, A24
+    and A25 (a = 0.75 and 0.9, x from 1.6E-18 up). There Excel is 1.5E-15 to 4.2E-15 relative below the exact cdf
+    (about 9 to 32 ulp; A24 is visibly off), and the form is 10 to 58 ulps above Excel. So the form's region, or its
+    exact evaluation (x87, Excel's EXP), is still open.
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
@@ -3668,13 +3726,21 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-2430 and T-2093.
 Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3},(<FALSE>/"x~*"))` and `COVARIANCE.S({1,#N/A,3},RANK(<#VALUE!>))`
 are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
 (gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
+Probed on excel-graph (T-2636, probes/array-error-element-order): PROB (`PROB({1,#N/A,3},{0.2,0.3,0.5},1)`, an element in
+either data argument, with a limit error or an extra upper limit) and SLOPE, INTERCEPT, STEYX, RSQ, FORECAST.LINEAR and
+CHISQ.TEST with the element in either position are all `#N/A`; with an element error in each data argument the first
+argument's wins (`SLOPE({1,#N/A,3},{1,#DIV/0!,3})` is `#N/A`). A scalar bins error beats a data-array error element
+(`FREQUENCY({1;#DIV/0!;3},NA())` is `#N/A`), but an error element of FREQUENCY's *bins* array is skipped like text:
+`ROWS(FREQUENCY(0,{1,#VALUE!,3}))` is 3, `INDEX(FREQUENCY(0,{1,#VALUE!,3}),1)` is 1, and
+`ROWS(FREQUENCY(0,ABS({13,15,17,""}-13)))` is 4 (A1, A2, A4), as desktop Excel's cached value for corpus-bench/53062 shows.
+A typed or computed boolean as data or bins, and numeric text `"2"` as a bin, are skipped (A8-A11). `FREQUENCY({1;2},{#N/A})` is
+`#SPILL!` on the web (A3): bins made only of errors are no numeric bin, so the two-row `{0;n}` result spills into the occupied
+A4 (as gen-m9/06b4e8f5de409d5e A239). Still unprobed: an error cell in a bins range (ours: that error), a data-array error element
+against an error cell in a bins range, and an empty argument in the other position of the paired functions (T-2636 follow-up).
 Ours: T-2430 implements it for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST and the paired functions
-(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB, and FREQUENCY's bins array, still map an array's error element to `#VALUE!` (T-2636; FREQUENCY's data array
-propagates it since T-2427),
-F.TEST and FTEST since T-2692 (`f_test_sample`, fisher.rs). UNVERIFIED (shared reader, no oracle cell): SLOPE, INTERCEPT, STEYX, RSQ, FORECAST, FORECAST.LINEAR,
-CHISQ.TEST and CHITEST now return the element's error too; the other argument's error winning is verified only for PERCENTILE, TRIMMEAN
-and COVARIANCE.S and applied to every function above; an array with an error element as the second argument against a plain first
-one, and an empty argument in the other position, are unprobed (T-2636).
+(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB since T-2636; FREQUENCY's data array since T-2427 and its bins array
+skips an error element since T-2636; F.TEST and FTEST since T-2692 (`f_test_sample`, fisher.rs). The other argument's error winning is verified only for
+PERCENTILE, TRIMMEAN and COVARIANCE.S and applied to every function above.
 Status: VERIFIED (excel-graph)
 
 ## F.TEST: an error argument is that error; overflowing squares are #NUM!, KURT's #DIV/0! (T-2255)

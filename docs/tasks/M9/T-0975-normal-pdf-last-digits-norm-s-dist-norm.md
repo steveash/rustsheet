@@ -28,7 +28,10 @@ correctly rounded constant `SQRT_2PI` = 2.5066282746310007; LOGNORM.DIST's densi
 - `ironcalc-calc/STATISTICAL/PHI.xlsx` `Sheet1`: B5
 
 Oracle sweep (T-1041): probes-numeric cases `m9-normpdf-norm-s-dist`, `m9-normpdf-phi`,
-`m9-normpdf-norm-dist-s0p5`, `-s1p2`, `-s3`, `-s10`, `m9-normpdf-lognorm-dist`.
+`m9-normpdf-norm-dist-s0p5`, `m9-normpdf-norm-dist-s1p2`, `m9-normpdf-norm-dist-s3`, `m9-normpdf-norm-dist-s10`, `m9-normpdf-lognorm-dist`.
+Visibly off in `m9-normpdf-lognorm-dist` on main 5b8c2ae7 (T-3021): Calc!A29 `LOGNORM.DIST(7.25,0,1,FALSE)` Excel
+0.007734043882067061, ours ...053; Calc!A41 `LOGNORM.DIST(0.25,1,0.5,FALSE)` Excel 3.6133196398262184E-5, ours ...116;
+Calc!A73 `LOGNORM.DIST(8.25,1,0.5,FALSE)` Excel 0.008220277976125383, ours ...373.
 
 Examples (expected vs actual):
 - `NORM.S.DIST(0,FALSE)` C7/C25/C45: expected 0.3989422804014327, actual 0.39894228040143265.

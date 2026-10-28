@@ -4,18 +4,21 @@ remotes and worktrees (stdlib unittest; run by `make hygiene`)."""
 from __future__ import annotations
 
 import random
+import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_ready  # noqa: E402 (the sys.path line above must run first)
 import merge_train  # noqa: E402
-from gh_client import FakeGh, Reply  # noqa: E402
+from gh_client import Client, FakeGh, GhError, Reply, Request  # noqa: E402
 
 SCRIPTS = Path(__file__).resolve().parent
 TASK = """---
@@ -335,6 +338,654 @@ class DryRun(unittest.TestCase):
         report = self.dry_run()
         self.assertIn("would unlabel #1: conflict with main", report)
         self.assertIn("batch: #2", report)
+
+
+class SquashText(unittest.TestCase):
+    def test_titles_are_sanitized(self) -> None:
+        zwj = merge_train.ZWJ
+        title = merge_train.squash_title("T-1: fixes #12 for @bob\x07\u202e\u2028" + "x" * 200, 7)
+        self.assertTrue(title.startswith(f"T-1: f{zwj}ixes #{zwj}12 for @{zwj}bob"))
+        self.assertTrue(title.endswith(" (#7)"))
+        self.assertNotIn("\x07", title)
+        self.assertNotIn("\u202e", title)
+        self.assertNotIn("\u2028", title)
+        self.assertEqual(merge_train.squash_title("Closed: resolve it", 1), f"C{zwj}losed: r{zwj}esolve it (#1)")
+
+    def test_only_well_formed_trailers_are_kept_once(self) -> None:
+        good = "Co-Authored-By: Claude <noreply@anthropic.com>"
+        session = "Claude-Session: https://claude.ai/code/session_01Abc"
+        commits = [
+            {"commit": {"message": f"T-1: a\n\nfree text @someone #3\n{good}\n{session}"}},
+            {"commit": {"message": f"b\n\n{good}\nCo-Authored-By: @evil <x@y.z>\nCo-Authored-By: a#b <x@y.z>\n"
+                                   "Claude-Session: https://evil.example/session_1"}},
+        ]
+        self.assertEqual(merge_train.squash_trailers(commits), f"{good}\n{session}")
+
+
+class FakeLock(merge_train.LockOps):
+    """The merge lock as a script: `renew` answers from `renewals` (then 0)."""
+
+    def __init__(self, renewals: list[int] | None = None) -> None:
+        super().__init__("train-test", Path("."))
+        self.renewals = renewals or []
+        self.calls: list[tuple[str, object]] = []
+        self.on_wait: list[Callable[[], None]] = []
+
+    def wait(self, timeout_minutes: float) -> int:
+        self.calls.append(("wait", timeout_minutes))
+        for hook in self.on_wait:
+            hook()
+        return 0
+
+    def renew(self, prs: Sequence[int]) -> int:
+        self.calls.append(("renew", list(prs)))
+        return self.renewals.pop(0) if self.renewals else 0
+
+    def release(self) -> int:
+        self.calls.append(("release", None))
+        return 0
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+
+class GitHub(Client):
+    """GitHub over a temporary bare `origin`: test merges, squash merges onto `main`, labels,
+    comments, and train CI from `ci` (a list of states, one per poll; the last repeats)."""
+
+    def __init__(self, origin: Path, heads: dict[int, str]) -> None:
+        super().__init__("o", "r")
+        self.origin, self.heads = origin, heads
+        self.merged: list[int] = []
+        self.writes: list[Request] = []
+        self.ci = ["green"]
+        self.hooks: dict[tuple[str, str], Callable[[], None]] = {}
+        self.after: dict[tuple[str, str], Callable[[], None]] = {}
+        self.bad_tree = False
+        self.lose_reply = False
+        self.mergeable: object = True
+        self.refuse: set[int] = set()
+        self.unlabelled: set[int] = set()
+        # The scripted CI oracle (T-2998): when set, each tested sha is pending for `polls` polls,
+        # then concludes `oracle(sha)` ("green", "red" or "cancelled"), judged once per sha.
+        self.oracle: Callable[[str], str] | None = None
+        self.polls = 0
+        self.tested: dict[str, list[object]] = {}
+
+    def git(self, *args: str) -> str:
+        return run("git", *merge_train.IDENTITY, *args, cwd=self.origin)  # CI has no git identity
+
+    def main(self) -> str:
+        return self.git("rev-parse", "refs/heads/main")
+
+    def test_merge(self, pr: int) -> str:
+        main, head = self.main(), self.heads[pr]
+        if self.bad_tree:  # a test merge on the right parent whose tree is not the train's
+            tree = self.git("rev-parse", f"{main}^{{tree}}")
+        else:
+            tree = self.git("merge-tree", "--write-tree", main, head)
+        return self.git("commit-tree", tree, "-p", main, "-p", head, "-m", "test merge")
+
+    def files(self, sha: str) -> set[str]:
+        return set(self.git("ls-tree", "--name-only", sha).split())
+
+    def scripted(self, sha: str) -> str:
+        assert self.oracle is not None
+        polls = self.tested.setdefault(sha, [])
+        polls.append(None)
+        if len(polls) <= self.polls:
+            return "pending"
+        if not isinstance(polls[0], str):
+            polls[0] = self.oracle(sha)
+        return str(polls[0])
+
+    def green_trees(self) -> set[str]:
+        return {self.git("rev-parse", f"{sha}^{{tree}}") for sha, polls in self.tested.items() if polls[0] == "green"}
+
+    def runs(self, sha: str) -> object:
+        if self.oracle is not None:
+            state = self.scripted(sha)
+        else:
+            state = self.ci.pop(0) if len(self.ci) > 1 else self.ci[0]
+        if state == "none":
+            return {"workflow_runs": []}
+        done = state in ("green", "red", "cancelled")
+        run_ = {
+            "id": 9 + len(self.tested), "path": merge_ready.CI_WORKFLOW, "event": "push", "head_sha": sha,
+            "head_branch": merge_train.TRAIN_BRANCH, "status": "completed" if done else "in_progress",
+            "conclusion": {"green": "success", "red": "failure", "cancelled": "cancelled"}.get(state),
+            "check_suite_id": 5,
+        }
+        return {"workflow_runs": [run_]}
+
+    def checks(self) -> object:
+        jobs = (*merge_ready.REQUIRED_JOBS, *merge_ready.HEAVY_JOBS)
+        return {"check_runs": [
+            {"id": k + 1, "name": name, "status": "completed", "conclusion": "success",
+             "app": {"id": merge_ready.ACTIONS_APP_ID}, "check_suite": {"id": 5}}
+            for k, name in enumerate(jobs)
+        ]}
+
+    def send(self, request: Request) -> object:
+        try:
+            return self.answer(request)
+        finally:
+            after = self.after.pop((request.method, request.path.removeprefix("repos/o/r/")), None)
+            if after is not None:
+                after()
+
+    def answer(self, request: Request) -> object:
+        """One branch per endpoint the stage calls."""
+        hook = self.hooks.pop((request.method, request.path.removeprefix("repos/o/r/")), None)
+        if hook is not None:
+            hook()
+        path = request.path.removeprefix("repos/o/r/")
+        if request.method != "GET":
+            self.writes.append(request)
+        if path == "pulls":
+            label = [{"name": merge_ready.READY_LABEL}]
+            gone = {*self.merged, *self.unlabelled}
+            return [{"number": pr, "labels": label} for pr in self.heads if pr not in gone]
+        if m := re.fullmatch(r"pulls/(\d+)", path):
+            pr = int(m[1])
+            return {
+                "number": pr, "title": f"T-000{pr}: change {pr}", "mergeable_state": "clean",
+                "mergeable": self.mergeable, "merged": pr in self.merged,
+                "merge_commit_sha": self.test_merge(pr) if self.mergeable is not None else None,
+            }
+        if re.fullmatch(r"pulls/(\d+)/commits", path):
+            return [{"commit": {"message": "x\n\nCo-Authored-By: A <a@b.c>"}}]
+        if m := re.fullmatch(r"git/commits/([0-9a-f]{40})", path):
+            parents = self.git("rev-parse", f"{m[1]}^@").split()
+            tree = self.git("rev-parse", f"{m[1]}^{{tree}}")
+            message = self.git("log", "-1", "--format=%B", m[1])
+            return {"tree": {"sha": tree}, "parents": [{"sha": p} for p in parents], "message": message}
+        if m := re.fullmatch(rf"issues/(\d+)/labels/{merge_ready.READY_LABEL}", path):
+            self.unlabelled.add(int(m[1]))
+            return {}
+        if m := re.fullmatch(r"pulls/(\d+)/merge", path):
+            pr = int(m[1])
+            assert request.body is not None
+            if pr in self.refuse or request.body["sha"] != self.heads[pr]:
+                raise GhError("HTTP 409: head moved")
+            main = self.main()
+            tree = self.git("merge-tree", "--write-tree", main, self.heads[pr])
+            message = f"{request.body['commit_title']}\n\n{request.body['commit_message']}"
+            squash = self.git("commit-tree", tree, "-p", main, "-m", message)
+            self.git("update-ref", "refs/heads/main", squash, main)
+            self.merged.append(pr)
+            if self.lose_reply:
+                raise GhError("gh api PUT: connection reset")
+            return {"sha": squash, "merged": True}
+        if path == "actions/runs":
+            query = dict(request.query)
+            return self.runs(query["head_sha"])
+        if path.endswith("/check-runs"):
+            return self.checks()
+        if path.startswith(("issues/", "actions/workflows/")):
+            return {}
+        raise GhError(f"sim: no endpoint for {request.method} {path}")
+
+
+class StageFixture(unittest.TestCase):
+    """A temporary origin with PRs #1 and #2, the GitHub simulator and a scripted lock."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name)
+        self.origin, self.clone = base / "origin.git", base / "clone"
+        run("git", "init", "-q", "--bare", "-b", "main", str(self.origin), cwd=base)
+        run("git", "clone", "-q", str(self.origin), str(self.clone), cwd=base)
+        for key, value in (("user.name", "t"), ("user.email", "t@invalid")):
+            self.git("config", key, value)
+        self.git("checkout", "-q", "-b", "main")
+        for name in ("tasks.py", "check_decisions.py"):
+            self.write(f"scripts/{name}", (SCRIPTS / name).read_text())
+        for path in ("docs/decisions/README.md", "docs/decisions/0001-a.md"):
+            self.write(path, "x")
+        self.write(merge_train.SWITCH, 'mode = "train"\n')
+        self.m0 = self.commit("main")
+        self.git("push", "-q", "origin", "main")
+        self.heads = {}
+        for pr in (1, 2):
+            self.git("checkout", "-q", "-f", "--detach", self.m0)
+            self.write(f"f{pr}.txt", "x")
+            self.heads[pr] = self.commit(f"pr {pr}")
+            self.git("push", "-q", "origin", f"HEAD:refs/pull/{pr}/head")
+        self.git("checkout", "-q", "-f", "main")
+        self.gh = GitHub(self.origin, self.heads)
+        self.lock = FakeLock()
+        self.clock = Clock()
+        self.stage = merge_train.Stage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
+        at = {1: "2026-10-28T10:00:00Z", 2: "2026-10-28T11:00:00Z"}
+        self.verdicts = {pr: verdict(pr, head, at[pr]) for pr, head in self.heads.items()}
+
+        def verify(_client: object, pr: int, repo: merge_ready.Repo) -> merge_ready.Verdict:
+            repo.fetch_head(pr)
+            return self.verdicts[pr]
+
+        patch = mock.patch.object(merge_train.merge_ready, "verify", side_effect=verify)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def git(self, *args: str) -> str:
+        return run("git", *args, cwd=self.clone)
+
+    def write(self, path: str, text: str) -> None:
+        (self.clone / path).parent.mkdir(parents=True, exist_ok=True)
+        (self.clone / path).write_text(text)
+
+    def commit(self, message: str) -> str:
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", message)
+        return self.git("rev-parse", "HEAD")
+
+    def push_main(self, files: dict[str, str]) -> None:
+        """Someone else's commit on origin's main (a flip to lock, or a merge without the lock)."""
+        self.git("fetch", "-q", "origin", "main")
+        self.git("checkout", "-q", "-f", "--detach", "origin/main")
+        for path, text in files.items():
+            self.write(path, text)
+        self.commit("foreign")
+        self.git("push", "-q", "origin", "HEAD:refs/heads/main")
+
+    def flip(self) -> None:
+        self.push_main({merge_train.SWITCH: 'mode = "lock"\n'})
+
+    def train_ref(self) -> str:
+        return run("git", "for-each-ref", "--format=%(objectname)", merge_train.TRAIN_REF, cwd=self.origin)
+
+    def run_stage(self) -> int:
+        return self.stage.run()
+
+    def add_pr(self, pr: int, files: dict[str, str], *failures: merge_ready.Failure) -> None:
+        self.git("checkout", "-q", "-f", "--detach", self.m0)
+        for path, text in files.items():
+            self.write(path, text)
+        self.heads[pr] = self.commit(f"pr {pr}")
+        self.git("push", "-q", "origin", f"HEAD:refs/pull/{pr}/head")
+        self.git("checkout", "-q", "-f", "main")
+        self.verdicts[pr] = verdict(pr, self.heads[pr], f"2026-10-28T0{pr}:00:00Z", *failures)
+
+
+class MergeStage(StageFixture):
+    """Steps 1 and 5-7."""
+
+    def test_a_green_train_merges_in_order_and_main_ends_with_the_tested_tree(self) -> None:
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+        tip = self.train_ref()
+        self.assertEqual(self.gh.main(), self.gh.git("rev-parse", "main"))
+        self.assertEqual(self.gh.git("rev-parse", "main^{tree}"), self.gh.git("rev-parse", f"{tip}^{{tree}}"))
+        self.assertIn("#1 " + self.heads[1], self.gh.git("log", "-1", "--format=%B", tip))
+        message = self.gh.git("log", "-1", "--format=%B", "main")
+        self.assertEqual(message, "T-0002: change 2 (#2)\n\nCo-Authored-By: A <a@b.c>")
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+        self.assertIn(("renew", [2]), self.lock.calls)
+        removed = [r.path for r in self.gh.writes if r.method == "DELETE"]
+        self.assertEqual(removed, [f"repos/o/r/issues/{pr}/labels/ready-to-merge" for pr in (1, 2)])
+
+    def test_lock_mode_stops_at_once_with_no_lock_and_no_write(self) -> None:
+        self.push_main({merge_train.SWITCH: "mode = \n"})  # malformed reads as lock
+        self.assertEqual(self.run_stage(), 0)
+        self.assertEqual((self.lock.calls, self.gh.writes, self.train_ref()), ([], [], ""))
+
+    def test_a_flip_right_after_acquisition_pushes_nothing(self) -> None:
+        self.lock.on_wait.append(self.flip)
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual((self.gh.writes, self.train_ref(), self.gh.merged), ([], "", []))
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+
+    def test_a_flip_during_the_ci_wait_merges_nothing(self) -> None:
+        self.gh.ci = ["pending", "pending", "green"]
+        self.gh.hooks[("GET", "actions/runs")] = self.flip
+        self.assertEqual(self.run_stage(), 1)
+        self.assertIn("stopped: the mode on main is now lock", self.stage.log)
+        self.assertEqual(self.gh.merged, [])
+        self.assertNotEqual(self.train_ref(), "")
+
+    def test_a_flip_between_squashes_stops_after_the_first(self) -> None:
+        self.gh.hooks[("POST", "issues/1/comments")] = self.flip
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [1])
+        self.assertEqual(self.stage.log[-1], "stopped: the mode on main is now lock")
+
+    def test_main_moving_between_squashes_stops_with_a_p0(self) -> None:
+        self.gh.hooks[("POST", "issues/1/comments")] = lambda: self.push_main({"other.txt": "x"})
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [1])
+        self.assertIn("P0: main moved without the lock before squashing #2", self.stage.log)
+
+    def test_main_moving_during_a_squash_fails_the_post_squash_check(self) -> None:
+        self.gh.after[("PUT", "pulls/1/merge")] = lambda: self.push_main({"other.txt": "x"})
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [1])
+        self.assertTrue(self.stage.log[-1].startswith("P0: main differs from the tested train after squashing #1"))
+
+    def test_main_moved_before_the_first_squash(self) -> None:
+        self.gh.hooks[("GET", "actions/runs")] = lambda: self.push_main({"other.txt": "x"})
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [])
+        self.assertIn("P0: main moved without the lock before the first squash", self.stage.log)
+
+    def test_a_merge_ref_that_is_never_recomputed_stops(self) -> None:
+        self.gh.mergeable = None
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [])
+        self.assertIn("was not recomputed", self.stage.log[-1])
+
+    def test_a_lost_lock_merges_nothing_more(self) -> None:
+        # Renewals: after the push, before step 7, before squash 1, before squash 2.
+        for renewals, merged in (([4], []), ([0, 4], []), ([0, 0, 0, 4], [1])):
+            with self.subTest(renewals=renewals):
+                self.setUp()
+                self.lock.renewals = list(renewals)
+                self.assertEqual(self.run_stage(), 1)
+                self.assertEqual(self.gh.merged, merged)
+                self.assertEqual(self.lock.calls[-1], ("release", None))
+
+    def test_a_refused_merge_leaves_a_partly_merged_batch(self) -> None:
+        self.gh.refuse = {2}
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [1])
+        self.assertIn("refused", self.stage.log[-1])
+
+    def test_red_and_missing_ci_merge_nothing(self) -> None:
+        self.gh.ci = ["red"]
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual((self.gh.merged, sorted(self.gh.unlabelled)), ([], [1, 2]))
+        self.assertEqual(self.stage.log[-1], "ejected #2: ci-red")
+        # An infrastructure failure is retried once on a fresh commit, then stops ejecting nobody.
+        for ci, dispatches, words in ((["none"], 2, "even after a dispatch, twice"),
+                                      (["pending"], 0, "took over 10 min, twice")):
+            with self.subTest(ci=ci):
+                self.setUp()
+                self.gh.ci = ci
+                self.assertEqual(self.run_stage(), 1)
+                self.assertEqual((self.gh.merged, self.gh.unlabelled), ([], set()))
+                self.assertEqual(self.stage.log[-1], f"stopped: infrastructure: no CI run on the train, {words}"
+                                 if ci == ["none"] else f"stopped: infrastructure: the train CI {words}")
+                sent = [r for r in self.gh.writes if r.path.endswith("/dispatches")]
+                self.assertEqual(len(sent), dispatches)
+
+    def test_the_hold_budget_gates_the_ci_wait_and_caps_the_lock_wait(self) -> None:
+        with mock.patch.object(merge_train, "HOLD_BUDGET", merge_train.CI_TIMEOUT + merge_train.MERGE_BUDGET):
+            self.assertEqual(self.run_stage(), 1)  # two PRs need two merge budgets
+        self.assertIn("hold budget", self.stage.log[-1])
+        self.assertEqual(self.gh.merged, [])
+        self.assertEqual(self.lock.calls[0], ("wait", merge_train.WINDOW / 60))
+
+    def test_an_error_releases_the_lock(self) -> None:
+        def fail() -> None:
+            raise GhError("boom")
+
+        self.gh.hooks[("GET", "actions/runs")] = fail
+        with self.assertRaises(GhError):
+            self.run_stage()
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+
+    def test_train_mode_unlabels_failed_prs_and_ejects_with_a_label(self) -> None:
+        self.add_pr(3, {"docs/decisions/0001-b.md": "x"})  # collides with main's 0001
+        self.add_pr(4, {"f4.txt": "x"}, merge_ready.Failure("V3", "CI red", merge_ready.UNLABEL))
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+        writes = [
+            (r.method, r.path.removeprefix("repos/o/r/"), r.body)
+            for r in self.gh.writes
+            if "/3/" in r.path or "/4/" in r.path
+        ]
+        label = merge_ready.READY_LABEL
+        collision = "id collision with 0001; renumber per decision 0121 (2)"
+        self.assertEqual(writes, [
+            ("DELETE", f"issues/4/labels/{label}", None),
+            ("POST", "issues/4/comments", {"body": f"merge train: {label} removed: CI red"}),
+            ("DELETE", f"issues/3/labels/{label}", None),
+            ("POST", "issues/3/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
+            ("POST", "issues/3/comments", {"body": f"merge train: {label} removed: {collision}"}),
+        ])
+
+    def test_a_push_that_loses_its_lease_merges_nothing(self) -> None:
+        build = merge_train.build
+
+        def build_then_race(*args: object) -> merge_train.Train:
+            train = build(*args)  # type: ignore[arg-type]  # the stage's own arguments, passed through
+            run("git", "update-ref", merge_train.TRAIN_REF, self.m0, cwd=self.origin)
+            return train
+
+        with mock.patch.object(merge_train, "build", side_effect=build_then_race):
+            self.assertEqual(self.run_stage(), 1)
+        self.assertIn("lost its lease", self.stage.log[-1])
+        self.assertEqual((self.gh.merged, self.train_ref()), ([], self.m0))
+
+    def test_a_test_merge_with_another_tree_stops_with_a_p0(self) -> None:
+        self.gh.bad_tree = True
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [])
+        self.assertEqual(
+            self.stage.log[-1], "P0: main differs from the tested train at #1: GitHub's test merge has another tree"
+        )
+
+    def test_a_lost_merge_reply_is_read_back(self) -> None:
+        self.gh.lose_reply = True
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+
+    def test_the_ci_wait_renews_the_lock(self) -> None:
+        polls = merge_train.RENEW_EVERY // merge_train.CI_POLL
+        self.gh.ci = ["pending"] * (polls + 1) + ["green"]
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        renewals = [c for c in self.lock.calls if c == ("renew", [1, 2])]
+        self.assertEqual(len(renewals), 1 + 1 + 2)  # after the push, one in the wait, two in step 7
+
+    def test_sigterm_releases_the_lock(self) -> None:
+        self.gh.hooks[("GET", "actions/runs")] = lambda: merge_train.raise_on_term(signal.SIGTERM, None)
+        with self.assertRaises(SystemExit) as raised:
+            self.run_stage()
+        self.assertEqual(raised.exception.code, 128 + signal.SIGTERM)
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+
+
+TYPICAL, TIMEOUT = 5, 10  # CI polls before a result: about 5 min, and the 10-min timeout
+
+
+class RedTrain(StageFixture):
+    """SPEC-0027 section 6 against a scripted CI oracle: PRs #1..#5 (PR k adds `f<k>.txt`), whose
+    trains are red when `red` holds for the set of PRs in the tested tree."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        for pr in (3, 4, 5):
+            self.add_pr(pr, {f"f{pr}.txt": "x"})
+        for pr, head in self.heads.items():
+            self.verdicts[pr] = verdict(pr, head, f"2026-10-28T0{pr}:00:00Z")
+        self.gates: list[int] = []
+        gate = self.stage.gate
+
+        def counted(n: int) -> None:
+            self.gates.append(n)
+            gate(n)
+
+        self.stage.gate = counted  # type: ignore[method-assign]  # records each gate's n
+
+    def script(self, red: Callable[[set[int]], bool], polls: int = TYPICAL) -> None:
+        def oracle(sha: str) -> str:
+            prs = {int(name[1:-4]) for name in self.gh.files(sha) if re.fullmatch(r"f\d+\.txt", name)}
+            return "red" if red(prs) else "green"
+
+        self.gh.oracle, self.gh.polls = oracle, polls
+
+    def runs(self) -> int:
+        return len(self.gh.tested)
+
+    def holds(self, count: int) -> None:
+        """`count` merger runs; every hold but the last is cut off."""
+        for k in range(count):
+            code = self.run_stage()
+            self.assert_tested_tree_on_main()
+            if k < count - 1:
+                self.assertEqual(code, 1, self.stage.log)
+                self.assertTrue(self.stage.log[-1].startswith("stopped: hold budget"), self.stage.log)
+        self.assertEqual(code, 0, self.stage.log)
+
+    def assert_tested_tree_on_main(self) -> None:
+        main = self.gh.git("rev-parse", "main^{tree}")
+        self.assertIn(main, {*self.gh.green_trees(), self.gh.git("rev-parse", f"{self.m0}^{{tree}}")})
+
+    def assert_outcome(self, culprits: set[int]) -> None:
+        """Only culprits are ejected (labelled, with the v1 block), and every innocent PR merged."""
+        self.assertEqual(sorted(self.gh.merged), sorted(set(self.heads) - culprits))
+        self.assertEqual(self.gh.unlabelled - set(self.gh.merged), culprits)
+        ejected = [r for r in self.gh.writes if r.body == {"labels": [merge_ready.EJECTED_LABEL]}]
+        self.assertEqual(sorted(int(r.path.split("/")[-2]) for r in ejected), sorted(culprits))
+        for pr in culprits:
+            body = next(str(r.body) for r in self.gh.writes if r.path.endswith(f"issues/{pr}/comments"))
+            self.assertIn(f"<!-- merge-train-ejected v1 head: {self.heads[pr]} reason: ci-red -->", body)
+            self.assertIn("/actions/runs/", body)
+
+    def test_one_culprit_at_each_position(self) -> None:
+        for culprit in (1, 2, 3, 4, 5):
+            with self.subTest(culprit=culprit):
+                self.setUp()
+                self.script(lambda prs, c=culprit: c in prs)
+                self.holds(1)
+                self.assert_outcome({culprit})
+                rest = 1 if culprit < 5 else 0  # the PRs after the culprit re-test as one train
+                self.assertLessEqual(self.runs(), 5 + rest)
+                self.assertEqual(len(self.stage.tasks), 0)
+
+    def test_the_culprit_at_p5_takes_exactly_five_runs_in_one_hold(self) -> None:
+        self.script(lambda prs: 5 in prs)
+        self.holds(1)
+        self.assert_outcome({5})
+        self.assertEqual(self.gh.merged, [1, 2, 3, 4])
+        self.assertEqual(self.runs(), 5)
+        self.assertEqual(self.gates, [5, 2, 3, 4, 1])  # n = the PRs each run can merge
+
+    def test_a_cut_off_at_the_timeout_merges_the_green_prefix_and_resumes(self) -> None:
+        for culprit in (4, 5):
+            with self.subTest(culprit=culprit):
+                self.setUp()
+                self.script(lambda prs, c=culprit: c in prs, polls=TIMEOUT)
+                self.assertEqual(self.run_stage(), 1)
+                self.assertEqual(self.gh.merged, [1, 2, 3])  # merged before the release
+                self.assertEqual(self.lock.calls[-1], ("release", None))
+                state = self.gh.git("log", "-1", "--format=%B", merge_train.TRAIN_REF)
+                self.assertEqual(state, merge_train.Resume(
+                    self.gh.main(), ((4, self.heads[4]), (5, self.heads[5]))).render())
+                self.holds(1)
+                self.assertIn("resuming the search: the first 2 PR(s) are known red", self.stage.log)
+                self.assert_outcome({culprit})
+                # Full train, mid 2, mid 3; then mid 1 of [#4, #5] and the confirmation; for #4
+                # also #5 as the rest. No third rebuild of the full train.
+                self.assertEqual(self.runs(), 5 + (culprit == 4))
+
+    def test_a_culprit_early_in_a_train_at_the_timeout_is_confirmed_in_the_next_hold(self) -> None:
+        for culprit in (1, 2):
+            with self.subTest(culprit=culprit):
+                self.setUp()
+                self.script(lambda prs, c=culprit: c in prs, polls=TIMEOUT)
+                self.assertEqual(self.run_stage(), 1)  # the confirmation gate fails
+                self.assertEqual(self.gh.merged, list(range(1, culprit)))
+                state = self.gh.git("log", "-1", "--format=%B", merge_train.TRAIN_REF)
+                self.assertIn(f"known-red: #{culprit} {self.heads[culprit]}", state)
+                before = self.runs()
+                self.holds(1)
+                self.assertIn("resuming the search: the first 1 PR(s) are known red", self.stage.log)
+                self.assertEqual(self.runs(), before + 2)  # the confirmation, then the rest
+                self.assertLessEqual(before + 1, 5)
+                self.assert_outcome({culprit})
+
+    def test_a_moved_main_or_head_restarts_the_search_with_the_reason_recorded(self) -> None:
+        def move_head() -> None:
+            self.git("checkout", "-q", "-f", "--detach", self.heads[5])
+            self.write("f5.txt", "y")
+            self.heads[5] = self.gh.heads[5] = self.commit("pr 5 again")
+            self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/5/head")
+            self.git("checkout", "-q", "-f", "main")
+            self.verdicts[5] = verdict(5, self.heads[5], "2026-10-28T05:00:00Z")
+
+        for change, reason in ((lambda: self.push_main({"other.txt": "x"}), "main moved since the cut-off"),
+                               (move_head, "#5's head changed since the cut-off")):
+            with self.subTest(reason=reason):
+                self.setUp()
+                self.script(lambda prs: 4 in prs, polls=TIMEOUT)
+                self.assertEqual(self.run_stage(), 1)
+                change()
+                self.script(lambda prs: 4 in prs)
+                self.holds(1)
+                self.assertIn(f"restarting the search: {reason}", self.stage.log)
+                messages = [self.gh.git("log", "-1", "--format=%B", sha) for sha in self.gh.tested]
+                self.assertTrue(any(f"restart: {reason}" in m for m in messages), messages)
+                self.assert_outcome({4})
+
+    def test_two_culprits(self) -> None:
+        self.script(lambda prs: bool(prs & {2, 4}))
+        self.holds(2)  # the hold budget cuts the second search off; the next hold resumes it
+        self.assert_outcome({2, 4})
+
+    def test_an_interaction_ejects_the_later_pr(self) -> None:
+        self.script(lambda prs: {2, 4} <= prs)
+        self.holds(1)
+        self.assert_outcome({4})
+
+    def test_a_failure_that_does_not_reproduce_ejects_nobody_and_asks_for_a_p1(self) -> None:
+        self.script(lambda prs: self.runs() == 1)  # only the first run is red
+        self.holds(1)
+        self.assert_outcome(set())
+        self.assertEqual([(p, t) for p, t, _ in self.stage.tasks], [("P1", "possible flaky test or interaction")])
+        self.assertIn("#5's train prefix was red", self.stage.tasks[0][2])
+
+    def test_an_infrastructure_failure_is_retried_once_and_ejects_nobody(self) -> None:
+        def oracle(cancelled: int) -> Callable[[str], str]:
+            return lambda _sha: "cancelled" if self.runs() <= cancelled else "green"
+
+        self.gh.polls = TYPICAL
+        self.gh.oracle = oracle(1)
+        self.holds(1)
+        self.assert_outcome(set())
+        self.assertEqual(self.runs(), 2)
+        self.setUp()
+        self.gh.oracle = oracle(2)
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.stage.log[-1], "stopped: infrastructure: the ci.yml run concluded cancelled, twice")
+        self.assertEqual((self.gh.merged, self.gh.unlabelled), ([], set()))
+
+    def test_infrastructure_conclusions_are_read_from_ci_state(self) -> None:
+        """The INFRA rule matches the ends of `ci_state`'s reasons; pin each one it relies on."""
+        def jobs(run_conclusion: str, job: str | None) -> list[str]:
+            run_ = {"id": 1, "path": merge_ready.CI_WORKFLOW, "event": "push", "status": "completed",
+                    "conclusion": run_conclusion, "check_suite_id": 5}
+            names = (*merge_ready.REQUIRED_JOBS, *merge_ready.HEAVY_JOBS)
+            checks = [{"id": k + 1, "name": name, "status": "completed", "conclusion": job or "success",
+                       "app": {"id": merge_ready.ACTIONS_APP_ID}, "check_suite": {"id": 5}}
+                      for k, name in enumerate(names) if job is not None or k > 0]
+            state, reasons = merge_ready.ci_state([run_], checks, False, merge_train.TRAIN_EVENTS)
+            self.assertEqual(state, merge_ready.RED)
+            return reasons
+
+        for reasons in (jobs("cancelled", "success"), jobs("timed_out", "success"),
+                        jobs("startup_failure", "success"), jobs("success", "timed_out"),
+                        jobs("success", "cancelled"), jobs("success", None)):
+            self.assertTrue(all(r.endswith(merge_train.INFRA_CONCLUSIONS) for r in reasons), reasons)
+        self.assertFalse(jobs("failure", "success")[0].endswith(merge_train.INFRA_CONCLUSIONS))
+
+    def test_a_forged_or_malformed_state_record_is_ignored(self) -> None:
+        good = merge_train.Resume("a" * 40, ((4, "b" * 40),))
+        self.assertEqual(merge_train.Resume.parse(good.render()), good)
+        for text in (good.render().replace("#4", "#x"), good.render() + "\nextra: 1",
+                     good.render().replace("known-green-prefix: 0", "known-green-prefix: 2"),
+                     good.render().replace(merge_train.STATE_HEADER, "merge train state")):
+            with self.subTest(text=text):
+                self.assertIsNone(merge_train.Resume.parse(text))
 
 
 if __name__ == "__main__":

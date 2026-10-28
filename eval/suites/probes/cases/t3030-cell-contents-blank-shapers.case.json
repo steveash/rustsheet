@@ -1,0 +1,63 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3030: how the blank-target CELL(\"contents\") result behaves under arithmetic, concatenation, information functions, shapers and inside VSTACK; ='' and formula-0 targets.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=VSTACK(CELL(\"contents\",Data!C11)+0,1)",
+        "A11": "=VSTACK(CELL(\"contents\",Data!C11)&\"\",1)",
+        "A21": "=TOCOL(CELL(\"contents\",Data!C11))",
+        "A31": "=TOROW(CELL(\"contents\",Data!C11))",
+        "A41": "=TYPE(CELL(\"contents\",Data!C11))",
+        "A51": "=ISBLANK(CELL(\"contents\",Data!C11))",
+        "A61": "=ISNUMBER(CELL(\"contents\",Data!C11))",
+        "A71": "=ISTEXT(CELL(\"contents\",Data!C11))",
+        "A81": "=ISREF(CELL(\"contents\",Data!C11))",
+        "A91": "=IFERROR(CELL(\"contents\",Data!C11),5)",
+        "A101": "=VSTACK(N(CELL(\"contents\",Data!C11)),1)",
+        "A111": "=VSTACK(T(CELL(\"contents\",Data!C11)),1)",
+        "A121": "=VSTACK(INDEX(CELL(\"contents\",Data!C11),1),1)",
+        "A131": "=VSTACK(@CELL(\"contents\",Data!C11),1)",
+        "A141": "=VSTACK(CHOOSE(1,CELL(\"contents\",Data!C11)),1)",
+        "A151": "=VSTACK(-CELL(\"contents\",Data!C11),1)",
+        "A161": "=VSTACK((CELL(\"contents\",Data!C11)),1)",
+        "A171": "=TAKE(CELL(\"contents\",Data!C11),1)",
+        "A181": "=EXPAND(CELL(\"contents\",Data!C11),2)",
+        "A191": "=WRAPROWS(CELL(\"contents\",Data!C11),1)",
+        "A201": "=SORT(CELL(\"contents\",Data!C11))",
+        "A211": "=ROWS(CELL(\"contents\",Data!C11))",
+        "A221": "=SUM(CELL(\"contents\",Data!C11))",
+        "A231": "=COUNTA(CELL(\"contents\",Data!C11))",
+        "A241": "=LEN(CELL(\"contents\",Data!C11))",
+        "A251": "=CELL(\"contents\",Data!C11)=\"\"",
+        "A261": "=CELL(\"contents\",Data!C11)=0",
+        "A271": "=VSTACK(CELL(\"contents\",Data!H2),1)",
+        "A281": "=VSTACK(CELL(\"contents\",Data!I1),1)",
+        "A291": "=VSTACK(CELL(\"contents\",Data!C11:D12),1)",
+        "A301": "=VSTACK({1;2},CELL(\"contents\",Data!C11))",
+        "A311": "=CHOOSECOLS(CELL(\"contents\",Data!C11),1)",
+        "A321": "=VSTACK(Data!C11,1)",
+        "A331": "=VSTACK(IFERROR(CELL(\"contents\",Data!C11),5),1)",
+        "A341": "=VSTACK(LET(x,CELL(\"contents\",Data!C11),x+0),1)",
+        "A351": "=MAP(CELL(\"contents\",Data!C11),LAMBDA(v,v))",
+        "A361": "=VSTACK(MAP(CELL(\"contents\",Data!C11),LAMBDA(v,v)),1)",
+        "A371": "=UNIQUE(CELL(\"contents\",Data!C11))",
+        "A381": "=FILTER(CELL(\"contents\",Data!C11),TRUE)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "B1": 7,
+        "H2": "=\"\"",
+        "I1": "=C11"
+      }
+    }
+  ],
+  "expected": {}
+}
