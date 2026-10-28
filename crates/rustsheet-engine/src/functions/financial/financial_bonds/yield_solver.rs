@@ -1,6 +1,7 @@
-//! YIELD's Newton as Excel runs it ([`yield_start`], [`excel_yield_newton`]), and the generic
-//! yield solver ODDFYIELD wraps around a price function: Newton with a central-difference
-//! derivative from the coupon rate, then bisection.
+//! YIELD's Newton as Excel runs it ([`yield_start`], [`excel_yield_newton`]), and ODDFYIELD's,
+//! the same Newton with its own slope ([`odd_first_yield`]).
+
+use super::{OddArgs, OddFirstSchedule, discount_growth, yield_start_years};
 
 /// The yield YIELD's Newton starts from with more than one coupon left, `years` being the
 /// settlement-to-maturity term in years:
@@ -42,4 +43,41 @@ pub(super) fn excel_yield_newton(
     }
     // The 100th step can still overflow the iterate; inside the loop the next step catches that.
     y.is_finite().then_some(y)
+}
+
+/// ODDFYIELD: [`excel_yield_newton`] on ODDFPRICE from YIELD's start over the settlement-to-maturity
+/// term ([`yield_start_years`]), with the slope of [`OddFirstSchedule::dprice`]. `None` (#NUM!) off
+/// the calendar or where the Newton leaves ODDFPRICE's domain.
+pub(super) fn odd_first_yield(odd: &OddArgs<4>, schedule: &OddFirstSchedule) -> Option<f64> {
+    let [settlement, maturity, ..] = odd.dates;
+    let years = yield_start_years(settlement, maturity, odd.basis)?;
+    excel_yield_newton(
+        odd.yld_or_pr,
+        yield_start(odd.rate, odd.yld_or_pr, years),
+        |y| schedule.price(y, discount_growth),
+        |y| schedule.dprice(y),
+    )
+}
+
+impl OddFirstSchedule {
+    /// The slope ODDFYIELD's Newton takes at `yld`: d/dy of [`Self::price`], except that the odd
+    /// first coupon weighs as a regular one (`coupon` at the lead's exponent, not `lead`), as if the
+    /// bond's first period were regular. Excel: fitted on probes/oddfyield-solver-sweep, where this
+    /// slope from YIELD's start puts 323 of 324 coupon-bond cells within 1e-13 of Excel and the exact
+    /// slope 15 (financial.md "ODDFYIELD stops short of ODDFPRICE's root", T-2007).
+    fn dprice(&self, yld: f64) -> f64 {
+        let x = yld / self.m + 1.0;
+        let mut slope = 0.0;
+        // Every coupon from the lead's exponent `y` on, one period apart: `last_index + offset` is
+        // the last coupon's whole periods after the lead (N - 1 short, nq + n long).
+        let count = self.last_index as f64 + self.offset + 1.0;
+        let mut j = 0.0;
+        while j < count {
+            let t = j + self.y;
+            j += 1.0;
+            slope -= t * self.coupon / discount_growth(x, t + 1.0) / self.m;
+        }
+        let t = self.front_exponent;
+        slope - t * self.redemption / discount_growth(x, t + 1.0) / self.m
+    }
 }
