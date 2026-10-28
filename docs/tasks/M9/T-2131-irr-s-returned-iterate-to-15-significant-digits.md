@@ -105,3 +105,6 @@ task's (with T-2565's guess sweeps; financial.md "IRR's far-root bound"):
 ## Visible-parity stage
 This whole task is the visible-parity stage (decision 0083). Bit-exact iterates are a follow-up
 if the stage-1 fit does not reach them.
+
+## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
+From the parked T-2367: IRR gen-m9/d0854366830dcdee Calc!A216 `IRR(Data!A4:D10)`, 831.5533435101329 expected, 831.5533435101225 today.

@@ -194,3 +194,6 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - CONFIDENCE.T: 66 cells (13-14 digits right 31, 10-12 29, 6-9 3, fewer or 0 vs nonzero 3); most in `probes-numeric/m9-confidence-t.case.json` 30; `ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx` 18. e.g. `CONFIDENCE.T(0.1,1,2)` Excel 4.464496510753559, ours 4.464496510753552
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
+From the parked T-2695: CONFIDENCE.T gen-m9/85f48d5cdfb24555 Calc!A372 `CONFIDENCE.T(0.3,0.3,29)`, 0.0588276537815129 expected, 0.05882765378149652 today.
