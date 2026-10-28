@@ -231,3 +231,10 @@ fn xnpv_discounts_with_excels_caret_at_an_exact_root() {
     let got = results(&["=XNPV(0.1,{-1,6.727499949325611},{45000,52300})"]);
     assert_eq!(got, [2.220_446_049_250_313e-16_f64.to_bits()]);
 }
+
+#[test]
+fn xnpv_keeps_a_flow_whose_power_overflows_as_zero() {
+    // Unprobed: unchanged from the `powf` days (value/inf = 0), not Excel evidence.
+    let got = results(&["=XNPV(1E+300,{-100,100},{39448,40000})"]);
+    assert_eq!(got, [(-100.0_f64).to_bits()]);
+}

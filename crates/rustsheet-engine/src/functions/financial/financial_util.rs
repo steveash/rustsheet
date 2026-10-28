@@ -288,7 +288,7 @@ fn irr_fallback(values: &[f64]) -> Option<f64> {
 }
 
 /// XNPV: the sum of `value_i / (1 + rate)^((date_i - date_0)/365)`, days counted from the first date;
-/// `#NUM!` when the sum is not finite.
+/// `#NUM!` when the sum is not finite or a power is `#NUM!` for a base <= 0.
 pub(crate) fn compute_xnpv(
     rate: f64,
     values: &[f64],
@@ -301,9 +301,12 @@ pub(crate) fn compute_xnpv(
         let vi = values[i];
         let di = dates[i];
         // Excel's own `^` (docs/excel-semantics/financial.md "XNPV discounts with Excel's `^`").
-        let power = crate::arithmetic::power(1.0 + rate, (di - d0) / 365.0)
-            .map_err(|e| (e, "NaN".to_string()))?;
-        xnpv += vi / power;
+        // A positive base whose power overflows (`#NUM!`) still adds value/inf = 0, as `powf` did (unprobed, unchanged).
+        match crate::arithmetic::power(1.0 + rate, (di - d0) / 365.0) {
+            Ok(power) => xnpv += vi / power,
+            Err(Error::NUM) if 1.0 + rate > 0.0 => {}
+            Err(e) => return Err((e, "NaN".to_string())),
+        }
     }
     if xnpv.is_infinite() || xnpv.is_nan() {
         return Err((Error::NUM, "NaN".to_string()));
