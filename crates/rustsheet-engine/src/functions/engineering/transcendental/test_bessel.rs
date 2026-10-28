@@ -225,3 +225,12 @@ fn turning_point_recurrences_round_twice() {
         assert_eq!(excel_bessel_j(n, x), excel, "BESSELJ({x},{n})");
     }
 }
+
+#[test]
+fn bessel_i_is_nan_past_the_overflow_cut() {
+    // probes/besseli-overflow-cut-finest: 709.7 is finite and 709.70001 is #NUM! (T-2613).
+    assert!(bessel_i(0, 709.7).is_finite());
+    for n in [0, 1, 5] {
+        assert!(bessel_i(n, 709.70001).is_nan(), "n = {n}");
+    }
+}
