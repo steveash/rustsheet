@@ -3,7 +3,7 @@ id: T-2988
 title: "CI runs on merge-train branch pushes and classifies docs-only trains"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
