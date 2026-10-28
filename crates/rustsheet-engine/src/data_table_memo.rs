@@ -11,11 +11,11 @@
 //!
 //! A table is always recomputed when its formula reaches a function whose value depends on
 //! something else (the clock, a random draw, a cell's format or width, a pivot table), or when
-//! iterative calculation has cycles to iterate (every evaluation runs another round of them). The spill
-//! of a dynamic array it reads is left by the evaluation that last ran the array, and what a
-//! recomputation reads there depends on it: a table is memoized only if the spills it read are
-//! the ones it started from. The comparison is conservative: an
-//! edit to a cell read only on the way to a value that does not matter still recomputes.
+//! iterative calculation has cycles to iterate (every evaluation runs another round of them).
+//! The spill of a dynamic array it reads is left by the evaluation that last ran the array, and
+//! what a recomputation reads there depends on it: a table is memoized only if the spills it read
+//! are the ones it started from. The comparison is conservative: an edit to a cell read only on
+//! the way to a value that does not matter still recomputes.
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -31,8 +31,13 @@ use crate::{
 /// recomputed every time.
 const MAX_MEMO_CELLS: usize = 1 << 18;
 
+/// Rows the walk of the areas a table read may visit, cells found or not (directive 5): past it
+/// the table is recomputed every time.
+const MAX_MEMO_ROWS: usize = 1 << 20;
+
 /// Calls whose value depends on more than the cells and the workbook context. Matched in the
-/// formula text, so a match inside a string only costs a recomputation.
+/// formula text, so a match inside a string only costs a recomputation. A new volatile or
+/// environment-reading function must be added here.
 const UNMEMOIZABLE_CALLS: [&str; 8] = [
     "RAND(",
     "RANDBETWEEN(",
@@ -81,7 +86,8 @@ pub(crate) struct Context {
     defined_names: Vec<DefinedName>,
     tables: HashMap<String, Table>,
     settings: WorkbookSettings,
-    /// The locale and language, by address: they are `'static` tables.
+    /// The locale and language, by address: each is one of the `'static` tables, never copied,
+    /// so the same address is the same table.
     locale: usize,
     language: usize,
     sheets: Vec<SheetContext>,
@@ -281,9 +287,11 @@ impl Model {
                     .insert((sheet, row, column), self.held(at, spills).ok()?);
             }
             let mut columns = Vec::new();
+            let mut rows_left = MAX_MEMO_ROWS;
             for &(row1, column1, row2, column2) in &sheet_reads.areas {
                 let mut from = row1.max(1);
                 while let Some(row) = data.next_row_between(from, row2.min(LAST_ROW)).row {
+                    rows_left = rows_left.checked_sub(1)?;
                     data.columns_in_row_between(row, column1, column2, &mut columns);
                     for &column in &columns {
                         let at = CellReferenceIndex { sheet, row, column };
@@ -317,8 +325,7 @@ impl Model {
                 .ok()
                 .and_then(|f| ws.shared_formulas.get(f))
                 .ok_or(())?;
-            let upper = text.to_ascii_uppercase();
-            if UNMEMOIZABLE_CALLS.iter().any(|call| upper.contains(call)) {
+            if calls_unmemoizable(text) {
                 return Err(());
             }
             Ok(text.clone())
@@ -368,8 +375,11 @@ impl Model {
 
 /// Whether no defined name's formula calls one of [`UNMEMOIZABLE_CALLS`].
 pub(crate) fn names_memoizable(names: &[DefinedName]) -> bool {
-    names.iter().all(|name| {
-        let upper = name.formula.to_ascii_uppercase();
-        !UNMEMOIZABLE_CALLS.iter().any(|call| upper.contains(call))
-    })
+    !names.iter().any(|name| calls_unmemoizable(&name.formula))
+}
+
+/// Whether `formula` calls one of [`UNMEMOIZABLE_CALLS`], as far as its text tells.
+fn calls_unmemoizable(formula: &str) -> bool {
+    let upper = formula.to_ascii_uppercase();
+    UNMEMOIZABLE_CALLS.iter().any(|call| upper.contains(call))
 }

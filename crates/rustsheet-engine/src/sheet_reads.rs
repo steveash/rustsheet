@@ -4,8 +4,9 @@
 //! The record is kept by [`SheetData`] itself, because every read of a cell goes through it:
 //! nothing that reads a cell can be left out. It is a superset of what a formula depends on.
 
-use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::sheet_data::SheetData;
@@ -51,26 +52,41 @@ impl SheetReads {
 }
 
 /// The record a [`SheetData`] keeps while it is on. Reads take `&SheetData`, hence the interior
-/// mutability; `on` keeps the cost of a read while it is off to one test.
-#[derive(Debug, Clone, Default)]
+/// mutability, and a `Model` must stay `Sync` (the Python bindings share it), hence an atomic and
+/// a mutex rather than `Cell`s; `on` keeps the cost of a read while it is off to one load.
+#[derive(Debug, Default)]
 pub(crate) struct ReadLog {
-    on: Cell<bool>,
-    reads: RefCell<SheetReads>,
+    on: AtomicBool,
+    reads: Mutex<SheetReads>,
+}
+
+/// A copy of a sheet records nothing until it is asked to.
+impl Clone for ReadLog {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
 }
 
 impl ReadLog {
     #[inline]
-    pub(crate) fn cell(&self, row: i32, column: i32) {
-        if self.on.get() {
-            self.reads.borrow_mut().note_cell(row, column);
+    fn note(&self, f: impl FnOnce(&mut SheetReads)) {
+        if self.on.load(Ordering::Relaxed) {
+            match self.reads.lock() {
+                Ok(mut reads) => f(&mut reads),
+                // A poisoned record cannot be trusted: its reader recomputes.
+                Err(poisoned) => poisoned.into_inner().overflow = true,
+            }
         }
     }
 
     #[inline]
+    pub(crate) fn cell(&self, row: i32, column: i32) {
+        self.note(|reads| reads.note_cell(row, column));
+    }
+
+    #[inline]
     pub(crate) fn area(&self, area: Area) {
-        if self.on.get() {
-            self.reads.borrow_mut().note_area(area);
-        }
+        self.note(|reads| reads.note_area(area));
     }
 
     /// Every position of rows `row1..=row2`.
@@ -87,24 +103,30 @@ impl ReadLog {
 
     #[inline]
     pub(crate) fn extent(&self) {
-        if self.on.get() {
-            self.reads.borrow_mut().extent = true;
-        }
+        self.note(|reads| reads.extent = true);
     }
 }
 
 impl SheetData {
     /// Starts a new record of what is read of the cells ([`Self::take_reads`]).
     pub(crate) fn start_reads(&self) {
-        *self.reads.reads.borrow_mut() = SheetReads::default();
-        self.reads.on.set(true);
+        let fresh = SheetReads::default();
+        match self.reads.reads.lock() {
+            Ok(mut reads) => *reads = fresh,
+            Err(poisoned) => *poisoned.into_inner() = fresh,
+        }
+        self.reads.on.store(true, Ordering::Relaxed);
     }
 
     /// Stops the record and returns it; `None` if none was on.
     pub(crate) fn take_reads(&self) -> Option<SheetReads> {
-        if !self.reads.on.replace(false) {
+        if !self.reads.on.swap(false, Ordering::Relaxed) {
             return None;
         }
-        Some(self.reads.reads.take())
+        let reads = match self.reads.reads.lock() {
+            Ok(mut reads) => std::mem::take(&mut *reads),
+            Err(poisoned) => std::mem::take(&mut *poisoned.into_inner()),
+        };
+        Some(reads)
     }
 }
