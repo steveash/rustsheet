@@ -537,8 +537,9 @@ Data!A2 `=A1+1`, B2 `=B1*2`, A1/A3 constants): the picked cell is a reference ev
 `=A1+1` and `INDEX(Data!A1:B3,2,2)` gives `=B1*2` (A2, A3 of Calc); a constant pick is `#N/A` (`INDEX(Data!A1:A3,1)`); an
 out-of-range index is `#REF!` (`INDEX(Data!A1:A3,9)`) and an array-constant source is `#VALUE!` (`INDEX({1,2,3},2)`), not `#N/A`.
 `INDEX(Data!A1:A3,0)` is the whole column, so FORMULATEXT spills its three results (`#N/A`, `=A1+1`, `#N/A`).
-`CELL("address",INDEX(Data!A1:B3,2,2))` is the cross-sheet `[file]Data!$B$2`, `"row"` and `"col"` are 2, and `"contents"` is 2
-(Calc!B2's own value, the formula's-own-sheet rule of information.md "CELL(contents, ref) reads the formula's own sheet"); `INDEX(..,9)` is `#REF!` and an array
+`CELL("address",INDEX(Data!A1:B3,2,2))` is the cross-sheet `[file]Data!$B$2`, `"row"` and `"col"` are 2, and `"contents"` is 20
+(Data!B2 `=B1*2`; the named-sheet reading of information.md "CELL("contents", ref) reads the sheet the reference names",
+re-filled 2026-10-28 by T-3030. The 2026-10-1x fill gave 2, Calc!B2's value); `INDEX(..,9)` is `#REF!` and an array
 constant `#VALUE!`; `INDEX(Data!A1:B3,0,2)` gives the address of its top-left cell `[file]Data!$B$1`.
 `OFFSET(INDEX(Data!A1:A3,2),1,0)` is Data!A3 (3), `OFFSET(INDEX(Data!A1:B3,2,2),-1,0)` is Data!B1 (10), a 2-row OFFSET off the
 picked cell has 2 rows, `OFFSET(INDEX(Data!A1:B3,0,2),1,0)` spills B2:B4 (20, 30, 0), `INDEX(..,9)` is `#REF!` and an array
@@ -888,8 +889,13 @@ confirms: `=Sheet1!#REF!`, `=SUM(Sheet1!#REF!)` and `=NoSuchSheet!#REF!` are all
 body (`=#N/A`, `=#DIV/0!`, `=#REF!`) evaluate to that error; and `SHEET(name)` of an error-literal name is that same error
 (`#REF!` for `Sheet1!#REF!`, `#N/A` for `=#N/A`), not a distinct error.
 Status: VERIFIED
-Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body), `fn_sheet` (SHEET of such a name).
-Tasks: T-0152, T-0169
+The formula text keeps the prefix: FORMULATEXT prints `=SUM(S!#REF!)` (probes/table-edits
+plain-range-delete-row-first F!A6 and table-delete-column-qty F!A7, excel-graph; T-2855).
+Unprobed (T-3062): the text after the sheet is renamed or deleted, a wholly deleted range with no sheet
+prefix (printed `#REF!`), and the case of a typed sheet name.
+Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula; the
+prefix is kept as `Node::SheetRefErrorKind` in the written tree only), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body), `fn_sheet` (SHEET of such a name).
+Tasks: T-0152, T-0169, T-2855
 
 ## Disjoint intersection is #NULL!
 Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):
@@ -2146,10 +2152,18 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   (`Local!loc` = 7 beside workbook `loc` = 5: `=[0]!loc` on Local is 5, `=loc` 7; probe
   `workbook-name-own-book-prefix`, excel-graph 2026-10-27, T-2834). Ours matches (T-2834): the parser
   writes the file-name prefix, reads `<file>.xlsx!loc` (any case) back as the workbook name, and stores and
-  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. Unprobed: a
-  file name with a space or other characters a sheet name would quote (ours quotes it as a sheet name),
-  an unnamed workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`), and `[0]!loc` inside a
-  defined name's body in the file (ours writes it there too; T-2937).
+  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. `[0]!loc`
+  inside a defined name's body in the file (ours writes it there too) loads as the workbook name as well,
+  whatever the scope of the name that holds it, on Calc and on Local alike: with `wb` = `[0]!loc`,
+  `wb_plus` = `[0]!loc+1`, `wb_sum` = `SUM([0]!loc)`, `wb_rng` = `[0]!rng` (`Feb!$A$1:$A$2`) and the
+  Local-scoped `lw` = `[0]!loc`, Excel gives `=wb` 5 on Calc and on Local (which has its own `loc` = 7),
+  `=SUM(wb)` 5, `=ISREF(wb)` TRUE, `=wb_plus` 6, `=wb_sum` 5, `=lw` on Local and `=Local!lw` on Calc 5,
+  `=ROWS(wb_rng)` 2 and `=SUM(wb_rng)` 12, while `=loc` on Local stays 7 (probe
+  `t2937-own-book-prefix-in-name-body`, excel-graph 2026-10-28, T-2937); ours matches all 12 cells.
+  Unprobed, because excel-graph uploads every workbook under a hex file name: a file name with a space, `'`
+  or other characters a sheet name would quote (ours quotes it as a sheet name), and an unnamed (never
+  saved) workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`). Both are desktop
+  questions in T-1075 (items 21 and 22; M14, Phase 4, decision 0039).
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.
@@ -2439,8 +2453,8 @@ carry a table past the last row or column runs (the cells pushed off are empty) 
 refuses it (T-3038). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
-inside grow the table (T-2339). A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
-(plain-range-delete-row-first A6, T-2855). With no table of that name (engine API `remove_table`), the formula is a parse
+inside grow the table (T-2339). A wholly deleted plain range prints one sheet-qualified `S!#REF!`, not a `#REF!` per corner
+(plain-range-delete-row-first A6, table-delete-column-qty A7, T-2855). With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
 (`Parser::set_loaded`, T-2322; the rewrite also covers shapes beyond the two probed ones, unprobed: T-2604); a typed one stays a parse error (`#ERROR!`, the text kept). FORMULATEXT shows the stored
@@ -2534,7 +2548,7 @@ too (T-2339: `column_span` and `edit_columns` in table_edits.rs grow or shrink t
 naming an inserted column `ColumnN` in its header cell, and `deleted_column` in stringify/structured.rs
 prints a reference to a deleted column as `#REF!`, a column range that loses both ends too; one that loses
 one end prints its displaced plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
-`ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). A wholly deleted plain range still prints `#REF!:#REF!` (T-2855), and INDIRECT of a
+`ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). INDIRECT of a
 structured reference's text is `#REF!` (T-2911). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as

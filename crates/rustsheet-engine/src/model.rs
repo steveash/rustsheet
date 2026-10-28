@@ -614,6 +614,7 @@ impl Model {
             | DefinedNameKind(_)
             | UnaryKind { .. }
             | ErrorKind(_)
+            | SheetRefErrorKind { .. }
             | ParseErrorKind { .. }
             | Group { .. }
             | UnaryPlus { .. }

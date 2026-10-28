@@ -843,8 +843,16 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `IMCSC("1E+200")`, `IMSIN("7777777777")` (`IMSIN(HEX2OCT("FFFFFFFFFF"))`, 1068c44afcd56d53 A57), IMSEC of 1E+15 and
   `IMTAN("1.05966105763914E+57")`; but `IMCOT("1E+200")` is "0" (060b18586fcff6e6 A119). probes/t2534-im-trig-real-limit
   (excel-graph, 2026-10-26) confirms the limit for all six at 2^27: at 134217727 they answer, and at ±134217728, 1E+10,
-  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". IMTAN of a real is CONFLICTING (web vs desktop): COMPLEXs.xlsx N6
-  (Mac 16.0300) caches `IMTAN(5)` as -3.38051500624658, the libm double-angle value (T-1075 item 17).
+  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". probes/t3054-imtan-real-tan-kernel (excel-graph, 2026-10-28)
+  settles IMTAN's kernel on the web: nine real arguments where TAN's kernel and the double-angle form
+  `sin 2x / (cos 2x + 1)` print different text are all TAN's (`IMTAN("3.14159")` -2.65358979336212E-06, double-angle
+  ...207E-06; `IMTAN("-17.2737")` -197.642601323436, ...305; `IMTAN("-17.3011")` 44.7544983375159, ...163; row 3,
+  `IMTAN("4")`, prints 1.15782128234958 either way), and so is row 1, COMPLEXs.xlsx row 6's own
+  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, -3.38051500624659. IMTAN of a real is still CONFLICTING (web vs desktop):
+  COMPLEXs.xlsx N6 (Mac 16.0300) caches that formula as -3.38051500624658, the libm double-angle value (T-1075 item 17). IMTAN is one of numbers.md's "Excel for the web and desktop Excel
+  differ in the last digits" functions, so decision 0030 rule 4 (kept by decision 0039) makes the desktop N6 the fitting
+  target and the web cells, which the double-angle form misses by far less than 1e-9 relative, no target for further
+  fitting until T-1075 item 17 is answered (T-3054, dropped into T-2774).
   Ours (T-2534): IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real take SIN, COS and TAN's kernels and the limit
   (`real_trig`); IMTAN takes the limit but keeps the double-angle form below it, so the desktop N6 still passes and the 35
   web `IMTAN("5")` cells and the other IMTAN-of-a-real cells stay known failures (T-2774).
@@ -934,9 +942,22 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   43832.125, "Jan 1, 2020" 43831, "1/2/20" 43832, "12:00 PM" 0.5), and so are " -5", "- 5", "(5)", "1E-3%" 1E-05,
   "1,000E-2" 10 and "3 1/2" 3.5. Ours matches all of these since T-2541 (`has_inner_minus`) except "3 1/2", which
   VALUE does not read yet (text.md, T-2646).
-  Not yet matched: `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`; T-2641).
-  Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
-  rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
+  A currency sign, `$` or `€`, that starts the text or a part (after a `+` or `-` that is not an exponent's, spaces
+  allowed on both sides) and stands before a digit or a `.` (past spaces) is dropped (probes/eng-inumber-reading A5,
+  A20:A26, excel-graph, 2026-10-28; probes/eng-inumber-currency-shapes A1:A12, A27:A40, excel-graph, 2026-10-27 and
+  2026-10-28): `IMABS` of "$1+2i", "-$1+2i", "+$1+2i", "- $1+2i", "$1-2i", "$1+2j", "$ 1+2i", "1+$2i", "1-$2i",
+  "1+ $2i", "1+$ 2i", "$1+$2i" and "€1+2i" is 2.23606797749979, "$3i" 3, "$.5" 0.5 and "$.5+2i" 2.06155281280883.
+  Not read (`#NUM!`): "$i" and "-$i" (no number after the sign), "$$1", "$-5", "$ -5", a sign inside a number ("1$2",
+  "1.$5", "1E-$3", "$1e+$2") and the other currency signs "£1+2i", "¥1+2i". Implemented in T-2641
+  (`strip_currency_symbols`).
+  End whitespace (probes/eng-inumber-currency-shapes A13:A26): a tab, NBSP, LF, CR or U+3000 at either end, past
+  leading spaces, is `#NUM!` for a complex number and a plain real alike, where a space is read ("$1+2i " 2.23606797749979):
+  `IMABS` of NBSP&"3+4i", "3+4i"&tab, "3+4i"&LF, "3+4i"&CR, LF&"3+4i", "5"&tab, "5"&NBSP, CR&"5", "5"&U+3000,
+  " 5"&tab and " "&tab&"5" are `#NUM!`. Implemented in T-2641 (`complex_of`).
+  Unprobed (ours in brackets): a "+" inside non-complex text; "(-5)" and "June-2020" [`#NUM!`, the inner-minus rule];
+  "1E$3" and "12$3i" [`#NUM!`]; leading spaces before NBSP, LF, CR or U+3000 (only tab is probed) [`#NUM!`]; one of
+  the five followed by trailing spaces ("5"&tab&" ") [read]; these five inside the text; a leading tab on text over
+  255 characters [`#VALUE!`]. T-3059 holds them.
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
   past 15 significant digits (`IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i";
   `IMSUM("123456789012345678901","0")` is "123456789012345000000"), and in E notation from exponent 21

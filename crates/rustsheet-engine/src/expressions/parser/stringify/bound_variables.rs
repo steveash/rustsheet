@@ -111,6 +111,7 @@ where
         | Node::ArrayKind(_)
         | Node::DefinedNameKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::ParseErrorKind { .. }
         | Node::EmptyArgKind => {}
     }
