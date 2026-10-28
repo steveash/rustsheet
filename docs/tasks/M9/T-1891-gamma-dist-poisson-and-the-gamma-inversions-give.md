@@ -3,7 +3,7 @@ id: T-1891
 title: "GAMMA.DIST, POISSON and the gamma inversions give Excel's values at a huge shape and where statrs panicked (T-1872 cap gaps)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
