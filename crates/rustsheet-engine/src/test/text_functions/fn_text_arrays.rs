@@ -427,7 +427,10 @@ fn text_over_a_column_array_and_a_range_of_formats() {
 #[test]
 fn text_with_a_32767_character_code_over_an_array_is_value_error() {
     let mut model = new_empty_model();
-    model._set("A1", "=SUM(--ISERROR(TEXT(SEQUENCE(1024),REPT(\"0\",32767))))");
+    model._set(
+        "A1",
+        "=SUM(--ISERROR(TEXT(SEQUENCE(1024),REPT(\"0\",32767))))",
+    );
     model._set("A2", "=INDEX(TEXT(SEQUENCE(4,4),REPT(\"a\",32767)),4,4)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"1024");
