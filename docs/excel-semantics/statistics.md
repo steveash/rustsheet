@@ -3580,9 +3580,9 @@ with C7 = " x " (3e98b26cf6713e77 A249). The row count for a text or boolean bin
 both data and bins are errors is settled by probes/frequency-bins below.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
 Resolved by probes/frequency-bins (excel-graph, 2026-10-24): with no numeric bin (a text, boolean or blank cell or a
-typed text or boolean) the result is two rows, 0 then every numeric data value; text and booleans in data or bins are
+typed text or boolean) the result is two rows, 0 then every numeric data value; text in data, and text or booleans in bins, are
 skipped (`{1;2}` against `"a"`, TRUE, a blank cell, `{"a";"b"}`; `FREQUENCY("a",{1;2})` is three rows of 0 counts). Error
-precedence: a scalar error argument (data, then bins) beats an error element of the data array, and within arrays data
+precedence: a scalar error argument (data, then bins) beats an error element of either array, and within arrays data
 comes first: `FREQUENCY({1;#DIV/0!},NA())` and `FREQUENCY(NA(),{1;#DIV/0!})` are `#N/A`, `FREQUENCY(1/0,NA())` is
 `#DIV/0!`, `FREQUENCY({#N/A;1},{#DIV/0!;1})` is `#N/A`.
 Probe cells B4 and B7 confirm the T.TEST entry's order.
