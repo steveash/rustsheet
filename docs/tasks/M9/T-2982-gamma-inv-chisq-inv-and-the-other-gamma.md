@@ -32,7 +32,10 @@ recorded.
     (`GAMMA.DIST(1E-300,0.5,1E100,TRUE)`, `GAMMA.DIST(1E-300,1E-17,1E100,TRUE)`, `CHISQ.DIST(1E-17,1,TRUE)`).
   - The gen-m9 sweep cells of T-2255 (25 known-failure lines in eval/baseline/gen-m9.txt, listed in T-1891) and the
     T-2435 split cells (gen-m9 2801c1c11c21e134 A241, 40425341c5034eed A265; probes/t2435-dist-extremes A25, A26,
-    A101, A102; A21, A22, A33 and A34 pass since T-1891). Several of the gen-m9 cells are last digits of a small-shape inversion
+    A101, A102, and their `(...)=0` companions B101 and B102, which are `#NUM!` in Excel and TRUE in ours, so they
+    pass once A101 and A102 do (T-3021); A21, A22, A33 and A34 pass since T-1891). Also gen-m9/0a614cfe974b59c3 Calc!A327
+    `GAMMAINV(1-1E-10,Data!C7,0.5)` with a shape of 1E+15: Excel 500133012372525.06, ours `#NUM!` (the huge-shape
+    search; T-3021). Several of the gen-m9 cells are last digits of a small-shape inversion
     (`GAMMA.INV(1E-16,0.25,...)`): leave those to T-0972 if so.
   - Excel evidence for Temme's expansion is all near x = a. Probe the tails (beyond about 3 sigma) and both sides of
     the 1E8 cut (for example `GAMMA.DIST(99990000,1E8,1,TRUE)` against shape 99999999) into
