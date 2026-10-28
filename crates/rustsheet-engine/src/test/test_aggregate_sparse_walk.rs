@@ -131,3 +131,22 @@ fn the_whole_range_walk_hands_blank_runs_on_in_row_major_order() {
     );
     assert!(model.evaluation.cell_reads - before < 10);
 }
+
+#[test]
+fn textjoin_pads_clipped_columns_after_each_row() {
+    // The delimiters of a whole row's clipped columns follow that row's cells (row-major), so
+    // the first row's padding precedes the second row's text and pushes the join over the limit
+    // before a later error cell is reached (docs/excel-semantics/text.md, T-2713).
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A2", "y");
+    model._set("A3", "=NA()");
+    let (value, _) = evaluate_counting_reads(&mut model, "C5", "=TEXTJOIN(\",\",FALSE,1:3)");
+    assert_eq!(value, "#CALC!");
+    let (value, _) = evaluate_counting_reads(
+        &mut model,
+        "C6",
+        "=FIND(\"y\",TEXTJOIN({\"\",\",\"},FALSE,1:2))",
+    );
+    assert_eq!(value, "8194");
+}

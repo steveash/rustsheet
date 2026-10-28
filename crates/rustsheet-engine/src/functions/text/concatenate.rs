@@ -331,6 +331,27 @@ impl Model {
         })
     }
 
+    /// Walks `range` for [`Self::textjoin_walk`], pushing each cell, and each run of blank
+    /// cells with `ignore_empty` FALSE, onto the join state `(size, values, over_limit)`.
+    fn textjoin_push_range(
+        &mut self,
+        range: &Range,
+        ignore_empty: bool,
+        (size, values, over_limit): (&mut JoinSize, &mut Vec<String>, &mut bool),
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        self.for_each_cell_or_error_in_whole_range(range, cell, |_, item| match item {
+            RangeItem::Cell(value) => size.push_cell(value, ignore_empty, values, over_limit, cell),
+            RangeItem::Blanks(count) => {
+                if !ignore_empty && !*over_limit {
+                    *over_limit =
+                        size.push_empties(values, i64::try_from(count).unwrap_or(i64::MAX));
+                }
+                Ok(())
+            }
+        })
+    }
+
     /// One TEXTJOIN join of `texts` (each an argument's value, and whether it is a direct
     /// single-cell reference) with `delimiters` cycling between the joined values.
     fn textjoin_walk(
@@ -361,36 +382,12 @@ impl Model {
                     // D10-D11). With ignore_empty FALSE a blank cell adds a delimiter, so the blanks
                     // inside the used area are walked too, a run of them in a mostly blank area as
                     // one count, so the walk costs the stored cells (T-2710, T-2713).
-                    if let Err(error) = self.for_each_cell_or_error_in_whole_range(
-                        &Range { left, right },
-                        cell,
-                        |_, item| match item {
-                            RangeItem::Cell(value) => size.push_cell(
-                                value,
-                                ignore_empty,
-                                &mut values,
-                                &mut over_limit,
-                                cell,
-                            ),
-                            RangeItem::Blanks(count) => {
-                                if !ignore_empty && !over_limit {
-                                    over_limit = size.push_empties(
-                                        &mut values,
-                                        i64::try_from(count).unwrap_or(i64::MAX),
-                                    );
-                                }
-                                Ok(())
-                            }
-                        },
-                    ) {
-                        return error;
-                    }
-                    // Excel joins every cell of a whole column or row, so the empty cells the walk
-                    // clips off the used area still add a delimiter each with ignore_empty FALSE:
-                    // `TEXTJOIN(",",FALSE,D:D)` is #CALC! (over 32,767) and
-                    // `TEXTJOIN(",",FALSE,10:10)` has 16,383 delimiters
-                    // (probes/whole-column-empty-walkers F1, F8; text.md).
-                    if !ignore_empty && left.sheet == right.sheet {
+                    let walked = if !ignore_empty && left.sheet == right.sheet {
+                        // Excel joins every cell of a whole column or row, so the empty cells the
+                        // clip leaves off the used area still add a delimiter each:
+                        // `TEXTJOIN(",",FALSE,D:D)` is #CALC! (over 32,767) and
+                        // `TEXTJOIN(",",FALSE,10:10)` has 16,383 delimiters
+                        // (probes/whole-column-empty-walkers F1, F8; text.md).
                         let (row1, column1) = (left.row, left.column);
                         let (full_row2, full_column2) = (right.row, right.column);
                         let (row2, column2) = match self.clip_to_used_area(
@@ -410,13 +407,62 @@ impl Model {
                             i64::from(full_column2) - i64::from(column2.max(column1 - 1));
                         let skipped_rows = i64::from(full_row2) - i64::from(row2.max(row1 - 1));
                         let width = i64::from(full_column2) - i64::from(column1) + 1;
-                        let rows_walked = (i64::from(row2) - i64::from(row1) + 1).max(0);
-                        let padding = skipped_columns
-                            .saturating_mul(rows_walked)
-                            .saturating_add(skipped_rows.saturating_mul(width));
-                        if !over_limit {
-                            over_limit = size.push_empties(&mut values, padding);
+                        let mut result = Ok(());
+                        if skipped_columns == 0 {
+                            result = self.textjoin_push_range(
+                                &Range { left, right },
+                                ignore_empty,
+                                (&mut size, &mut values, &mut over_limit),
+                                cell,
+                            );
+                        } else {
+                            // The clipped columns' delimiters follow each row's cells, so the join
+                            // stays in row-major order (the first error cell reached, and the
+                            // limit, depend on it): one walk per row.
+                            for row in row1..=row2 {
+                                if column2 >= column1 {
+                                    let row_range = Range {
+                                        left: CellReferenceIndex {
+                                            row,
+                                            column: column1,
+                                            ..left
+                                        },
+                                        right: CellReferenceIndex {
+                                            row,
+                                            column: column2,
+                                            ..right
+                                        },
+                                    };
+                                    result = self.textjoin_push_range(
+                                        &row_range,
+                                        ignore_empty,
+                                        (&mut size, &mut values, &mut over_limit),
+                                        cell,
+                                    );
+                                    if result.is_err() {
+                                        break;
+                                    }
+                                }
+                                if !over_limit {
+                                    over_limit = size.push_empties(&mut values, skipped_columns);
+                                }
+                            }
                         }
+                        if result.is_ok() && !over_limit {
+                            over_limit =
+                                size.push_empties(&mut values, skipped_rows.saturating_mul(width));
+                        }
+                        result
+                    } else {
+                        self.textjoin_push_range(
+                            &Range { left, right },
+                            ignore_empty,
+                            (&mut size, &mut values, &mut over_limit),
+                            cell,
+                        )
+                    };
+                    if let Err(error) = walked {
+                        return error;
                     }
                 }
                 // A direct single-cell reference is read like a range cell (probes/text-result-limit-errors
