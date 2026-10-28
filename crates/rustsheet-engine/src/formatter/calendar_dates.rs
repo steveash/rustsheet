@@ -86,20 +86,24 @@ fn saka_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
 /// The day number (0001-01-01 being 1) of 1 Tishrei of Hebrew year 1, the arithmetic calendar's
 /// epoch.
 const HEBREW_EPOCH: i64 = -1_373_427;
-/// The day number of 1899-12-30, from which [`real_day`] counts.
-const DAY_NUMBER_1899_12_30: i64 = 693_594;
-/// The last serial whose Hebrew date is modelled: 2238-11-07, 29 Cheshvan 5999. Excel's dates match
-/// the arithmetic calendar at every probed date to 2238-11-01 (A10); the days to 29 Cheshvan are
-/// extrapolated (a drift that starts there would not show before Kislev). Excel's dates drift from it from Kislev 5999 on (2238-12-01 is "5999-03-24",
-/// not 23; 2239-09-24 is "6000-01-01", not 5999-13-24) and are `#VALUE!` from some date between
-/// 4000-01-01 and 5000-01-01 to 9999-12-31 (probes/t2779-hebrew-saka-more A1:A35). Past it the
-/// date is `#VALUE!` here (TODO(T-2954)).
-const HEBREW_LAST_SERIAL: i64 = 123_764;
-
-/// Whether Hebrew `year` has 13 months: years 3, 6, 8, 11, 14, 17 and 19 of the 19-year cycle.
-pub(crate) fn is_hebrew_leap_year(year: i32) -> bool {
-    (7 * i64::from(year) + 1).rem_euclid(19) < 7
-}
+/// The Gregorian years of Excel's Hebrew year table. A date's Hebrew month and day come from the
+/// table entry of its Gregorian year: the Hebrew date of 1 January and the length of the Hebrew year
+/// it falls in, then the next year's entry from 1 Tishrei on. Each entry agrees with the arithmetic
+/// calendar, but past 2238 the table wraps: Gregorian year `y` reads the entry of
+/// 1585 + (y - 1585) mod 654. So Cheshvan 5999 has 29 days (2238-11-08 is "5999-03-01", the
+/// arithmetic 5999-02-30) and 2239-01-01 is "5999-05-01", as 1585-01-01 is 5345-05-01; this matches
+/// all 512 cells of probes/t2954-hebrew-drift and every later date of t2779-hebrew-saka-more.
+const HEBREW_TABLE_FIRST_YEAR: i32 = 1585;
+/// The last Gregorian year of Excel's Hebrew year table ([`HEBREW_TABLE_FIRST_YEAR`]).
+const HEBREW_TABLE_LAST_YEAR: i32 = 2238;
+/// The Hebrew year of 1 January of a Gregorian year is the Gregorian year plus 3760.
+const HEBREW_YEAR_OF_JANUARY: i32 = 3760;
+/// The last Hebrew year whose months have names: from 1 Tishrei 8263 (4502-09-30) a month name
+/// token under a locale (`[$-80409]mmm`, `mmmm`, `mmmmm`) is `#VALUE!` while the numbers and the
+/// weekday names still print (`[$-80409]yyyy-mm-dd|ddd` of 4502-09-30 is "8263-01-01|Shabat");
+/// with no locale the Gregorian names by month number still print (`[$-80000]mmm` is "Jan";
+/// probes/t2954-hebrew-value-limit).
+pub(crate) const HEBREW_LAST_NAMED_YEAR: i32 = 8262;
 
 /// Days from the epoch to 1 Tishrei of `year` before the postponements of the year's length: the
 /// molad of Tishrei, a day later when it falls on a Sunday, Wednesday or Friday.
@@ -132,48 +136,83 @@ fn hebrew_new_year(year: i64) -> i64 {
     HEBREW_EPOCH + this + delay
 }
 
-/// The Hebrew date of `serial_1900` by the arithmetic calendar, months numbered from Tishrei (1),
-/// so a leap year's Adar I and Adar II are 6 and 7 and its Elul 13 (`[$-80409]yyyy-mm-dd` of
-/// 2023-03-15 is "5783-06-22", of 2024-09-20 "5784-13-17"). `None` past [`HEBREW_LAST_SERIAL`].
-fn hebrew_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
-    if serial_1900 > HEBREW_LAST_SERIAL {
-        return None;
+/// The days of month `month` (from Tishrei, 1) of a Hebrew year of `length` days: Cheshvan has 30
+/// days in a 355- or 385-day year, Kislev 29 in a 353- or 383-day one; Tevet has 29 and a leap
+/// year's Adar I 30; the other months alternate from there.
+fn hebrew_month_length(month: u32, length: i64) -> i64 {
+    match (month, length > 380) {
+        (2, _) => 29 + i64::from(length % 10 == 5),
+        (3, _) => 30 - i64::from(length % 10 == 3),
+        (1 | 5, _) | (6, true) => 30,
+        (4, _) => 29,
+        (m, true) => 30 - i64::from(m % 2),
+        (m, false) => 29 + i64::from(m % 2),
     }
-    let day = DAY_NUMBER_1899_12_30 + real_day(serial_1900)?;
-    // 1900-01-01 is in year 5660; the loop walks at most the years to 5999.
-    let mut year = 5660;
+}
+
+/// The arithmetic calendar's Hebrew month and day of day number `day`, and the length of its year.
+fn arithmetic_hebrew_date(day: i64) -> (u32, i64, i64) {
+    // A first guess from the mean year of 35,975,351 / 98,496 days, then exact.
+    let mut year = (day - HEBREW_EPOCH) * 98_496 / 35_975_351 + 1;
     while hebrew_new_year(year + 1) <= day {
         year += 1;
     }
+    while hebrew_new_year(year) > day {
+        year -= 1;
+    }
     let length = hebrew_new_year(year + 1) - hebrew_new_year(year);
-    let leap = is_hebrew_leap_year(i32::try_from(year).ok()?);
     let mut rest = day - hebrew_new_year(year);
-    let mut month: u32 = 1;
-    loop {
-        // Cheshvan has 30 days in a 355- or 385-day year, Kislev 29 in a 353- or 383-day one;
-        // Tevet has 29 and a leap year's Adar I 30; the other months alternate from there.
-        let days = match (month, leap) {
-            (2, _) => 29 + i64::from(length % 10 == 5),
-            (3, _) => 30 - i64::from(length % 10 == 3),
-            (1 | 5, _) | (6, true) => 30,
-            (4, _) => 29,
-            (m, true) => 30 - i64::from(m % 2),
-            (m, false) => 29 + i64::from(m % 2),
-        };
-        if rest < days || month == 13 {
-            break;
-        }
-        rest -= days;
+    let mut month = 1;
+    while month < 13 && rest >= hebrew_month_length(month, length) {
+        rest -= hebrew_month_length(month, length);
         month += 1;
     }
-    Some((
-        i32::try_from(year).ok()?,
-        month,
-        u32::try_from(rest + 1).ok()?,
-    ))
+    (month, rest + 1, length)
 }
 
-/// What a month name token prints in the Hebrew calendar for month `month` of `year`, with the
+/// The entry of Excel's Hebrew year table for Gregorian `year` ([`HEBREW_TABLE_FIRST_YEAR`]): the
+/// Hebrew month and day of 1 January and the length of the Hebrew year it falls in.
+fn hebrew_table_entry(year: i32) -> Option<(u32, i64, i64)> {
+    let year = if year <= HEBREW_TABLE_LAST_YEAR {
+        year
+    } else {
+        let size = HEBREW_TABLE_LAST_YEAR - HEBREW_TABLE_FIRST_YEAR + 1;
+        HEBREW_TABLE_FIRST_YEAR + (year - HEBREW_TABLE_FIRST_YEAR).rem_euclid(size)
+    };
+    let january = NaiveDate::from_ymd_opt(year, 1, 1)?;
+    Some(arithmetic_hebrew_date(i64::from(
+        january.num_days_from_ce(),
+    )))
+}
+
+/// The Hebrew date of `serial_1900` as Excel reads it from its year table
+/// ([`HEBREW_TABLE_FIRST_YEAR`]), months numbered from Tishrei (1), so a leap year's Adar I and
+/// Adar II are 6 and 7 and its Elul 13 (`[$-80409]yyyy-mm-dd` of 2023-03-15 is "5783-06-22", of
+/// 2024-09-20 "5784-13-17"; 9999-12-31 is "13760-04-22"), and the length of that Hebrew year.
+fn hebrew_date(serial_1900: i64) -> Option<(i32, u32, u32, i64)> {
+    let date = real_date(serial_1900)?;
+    let (mut month, mut day, mut length) = hebrew_table_entry(date.year())?;
+    let mut year = date.year() + HEBREW_YEAR_OF_JANUARY;
+    day += i64::from(date.ordinal0());
+    // At most a year of months, plus the new year's.
+    while day > hebrew_month_length(month, length) {
+        day -= hebrew_month_length(month, length);
+        month += 1;
+        if month > if length > 380 { 13 } else { 12 } {
+            month = 1;
+            year += 1;
+            (_, _, length) = hebrew_table_entry(date.year() + 1)?;
+        }
+    }
+    Some((year, month, u32::try_from(day).ok()?, length))
+}
+
+/// The `(year, month, day)` of [`hebrew_date`].
+fn hebrew_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
+    hebrew_date(serial_1900).map(|(year, month, day, _)| (year, month, day))
+}
+
+/// What a month name token prints in the Hebrew calendar for the date of `serial_1900`, with the
 /// leap-year Adars `adars` of the tag's names, or `None` when the token reads `names` by month
 /// number as usual (and for a weekday token). With a locale every month token is the whole name (`[$-80409]mmmmm` of Adar is
 /// "Adar", of a leap year's month 7 "`AdarII`"). With no locale (`adars` `None`) month 13 prints
@@ -183,11 +222,14 @@ pub(crate) fn hebrew_month_name(
     token: &TextToken,
     names: &'static DateNames,
     adars: Option<&'static [&'static str; 2]>,
-    (year, month): (i32, u32),
+    serial_1900: i64,
 ) -> Option<&'static str> {
     if matches!(token, TextToken::DayName | TextToken::DayNameShort) {
         return None;
     }
+    // Leap or not by the year table, which past 2238 differs from the arithmetic calendar's
+    // (`[$-80409]mmmm` of 4502-03-01, 8262-06-24, is "AdarI"; probes/t2954-hebrew-value-limit F2).
+    let (_, month, _, length) = hebrew_date(serial_1900)?;
     let Some(adars) = adars else {
         return match (month, token) {
             (13, TextToken::MonthLetter) => Some("\u{1}"),
@@ -195,7 +237,7 @@ pub(crate) fn hebrew_month_name(
             _ => None,
         };
     };
-    let index = match (is_hebrew_leap_year(year), month) {
+    let index = match (length > 380, month) {
         (true, 6 | 7) => return Some(adars[month as usize - 6]),
         (true, 8..) => month - 2,
         _ => month - 1,
@@ -293,7 +335,7 @@ pub(crate) fn year_token_text(
 
 #[cfg(test)]
 mod tests {
-    use super::{hebrew_ymd, real_day, saka_ymd, HEBREW_LAST_SERIAL};
+    use super::{hebrew_ymd, real_day, saka_ymd};
 
     #[test]
     fn real_days_skip_the_fictitious_leap_day() {
@@ -325,8 +367,13 @@ mod tests {
         assert_eq!(hebrew_ymd(61), Some((5660, 6, 30)));
         assert_eq!(hebrew_ymd(1), Some((5660, 5, 1)));
         assert_eq!(hebrew_ymd(123_758), Some((5999, 2, 23)));
-        assert_eq!(hebrew_ymd(HEBREW_LAST_SERIAL), Some((5999, 2, 29)));
-        assert_eq!(hebrew_ymd(HEBREW_LAST_SERIAL + 1), None);
+        // probes/t2954-hebrew-drift A6, A7, B13, B46; t2779-hebrew-saka-more A14; t1923 A204.
+        assert_eq!(hebrew_ymd(123_764), Some((5999, 2, 29)));
+        assert_eq!(hebrew_ymd(123_765), Some((5999, 3, 1)));
+        assert_eq!(hebrew_ymd(123_819), Some((5999, 5, 1)));
+        assert_eq!(hebrew_ymd(124_085), Some((6000, 1, 1)));
+        assert_eq!(hebrew_ymd(124_823), Some((6001, 13, 28)));
+        assert_eq!(hebrew_ymd(2_958_465), Some((13760, 4, 22)));
         assert_eq!(hebrew_ymd(60), None);
     }
 }

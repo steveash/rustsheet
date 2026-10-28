@@ -17,7 +17,7 @@ pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
 use super::{
-    calendar_dates::{calendar_ymd, hebrew_month_name, year_token_text},
+    calendar_dates::{calendar_ymd, hebrew_month_name, year_token_text, HEBREW_LAST_NAMED_YEAR},
     date_names::NameTokens,
     dates::negative_serial_allowed,
     locale_tag::Calendar,
@@ -511,8 +511,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         let weekday = excel_weekday_index(serial_1900);
                         if let (Some(Calendar::Hebrew(adars)), Some(names)) = (p.calendar, p.names)
                         {
-                            if let Some(name) =
-                                hebrew_month_name(token, names, adars, (ymd_year, ymd_month))
+                            let month_name =
+                                !matches!(token, TextToken::DayName | TextToken::DayNameShort);
+                            if month_name && adars.is_some() && ymd_year > HEBREW_LAST_NAMED_YEAR {
+                                return invalid_date(value);
+                            }
+                            if let Some(name) = hebrew_month_name(token, names, adars, serial_1900)
                             {
                                 text.push_str(name);
                                 continue;

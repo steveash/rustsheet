@@ -20,10 +20,10 @@
 <text x="250.7" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-26</text>
 <text x="431.3" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-27</text>
 <text x="612.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-28</text>
-<polyline class="s-numeric" stroke="#e34948" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,88.4 250.7,119.9 431.3,126.0 612.0,126.6"><title>Number</title></polyline>
-<circle class="b-numeric" fill="#e34948" cx="612.0" cy="126.6" r="3.5"><title>Number, 2026-10-28: 99,499</title></circle>
-<polyline class="s-other" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,222.0 250.7,244.2 431.3,244.6 612.0,244.8"><title>Type, error or text</title></polyline>
-<circle class="b-other" fill="#4b5563" cx="612.0" cy="244.8" r="3.5"><title>Type, error or text, 2026-10-28: 981</title></circle>
-<text x="622.0" y="126.6" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">99,499</text>
-<text x="622.0" y="244.8" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">981</text>
+<polyline class="s-numeric" stroke="#e34948" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,88.4 250.7,119.9 431.3,126.0 612.0,126.7"><title>Number</title></polyline>
+<circle class="b-numeric" fill="#e34948" cx="612.0" cy="126.7" r="3.5"><title>Number, 2026-10-28: 99,439</title></circle>
+<polyline class="s-other" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,222.0 250.7,244.2 431.3,244.6 612.0,245.0"><title>Type, error or text</title></polyline>
+<circle class="b-other" fill="#4b5563" cx="612.0" cy="245.0" r="3.5"><title>Type, error or text, 2026-10-28: 856</title></circle>
+<text x="622.0" y="126.7" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">99,439</text>
+<text x="622.0" y="245.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">856</text>
 </g></svg>
