@@ -215,8 +215,8 @@
     "v": "#N/A"
    },
    "A147": {
-    "t": "e",
-    "v": "#DIV/0!"
+    "t": "n",
+    "v": 1000000000000000.0
    },
    "A148": {
     "t": "n",
@@ -795,8 +795,8 @@
     "v": "#N/A"
    },
    "A278": {
-    "t": "n",
-    "v": 0.0
+    "t": "s",
+    "v": "?b"
    },
    "A279": {
     "t": "n",
@@ -1609,8 +1609,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "8c8d8bac25e5f3d776cbed6dab5c7ce69720d7755012f9f411bd4a18ee3cc0a6",
   "kind": "excel-graph",
-  "produced_at": "2026-10-20T12:45:43+00:00",
+  "produced_at": "2026-10-28T16:05:39+00:00",
   "version": null,
-  "workbook_name": "570518f488c771e0542e5482fc5f2af49f63e32b1b14b944b6475c1a8328a0d0.xlsx"
+  "workbook_name": "7a77691f104f415dc7530677a69595e8aeb88826ca5fe76582b380255a2f5249.xlsx"
  }
 }

@@ -64,7 +64,7 @@
    },
    "A112": {
     "t": "n",
-    "v": 0.0
+    "v": 3.14159
    },
    "A113": {
     "t": "s",
@@ -532,7 +532,7 @@
    },
    "A218": {
     "t": "n",
-    "v": 2.0
+    "v": 1.0
    },
    "A219": {
     "t": "e",
@@ -788,7 +788,7 @@
    },
    "A276": {
     "t": "s",
-    "v": "b"
+    "v": "v"
    },
    "A277": {
     "t": "s",
@@ -896,7 +896,7 @@
    },
    "A30": {
     "t": "s",
-    "v": "b"
+    "v": "v"
    },
    "A300": {
     "t": "e",
@@ -1617,8 +1617,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "d0015d62f522273d8b9971b2f02ec05b01067747082104f65fbc6accee035256",
   "kind": "excel-graph",
-  "produced_at": "2026-10-25T03:33:48+00:00",
+  "produced_at": "2026-10-28T15:48:20+00:00",
   "version": null,
-  "workbook_name": "707df567a1782dd19eed285acdebe0c3c1b96d44854bc76f903fe58e95ec24e5.xlsx"
+  "workbook_name": "95b0f9e370ea14778540ae03ec88a159d9696b2b1aece4dcacef010ec606cde6.xlsx"
  }
 }

@@ -189,7 +189,9 @@ pub(super) fn format_fraction(
             }
             TextToken::Literal(c) => text.push(*c),
             TextToken::Text(t) => text.push_str(t),
-            TextToken::Ghost(_) | TextToken::Spacer(_) => text.push(' '),
+            TextToken::Ghost(_) => text.push(' '),
+            // Excel: a `*x` fill adds nothing, `TEXT(1.5,"# ?/?*x")` is "1 1/2"
+            // (docs/excel-semantics/number-formats.md "Fill characters"; T-2480).
             _ => {}
         }
     }

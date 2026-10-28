@@ -537,8 +537,9 @@ Data!A2 `=A1+1`, B2 `=B1*2`, A1/A3 constants): the picked cell is a reference ev
 `=A1+1` and `INDEX(Data!A1:B3,2,2)` gives `=B1*2` (A2, A3 of Calc); a constant pick is `#N/A` (`INDEX(Data!A1:A3,1)`); an
 out-of-range index is `#REF!` (`INDEX(Data!A1:A3,9)`) and an array-constant source is `#VALUE!` (`INDEX({1,2,3},2)`), not `#N/A`.
 `INDEX(Data!A1:A3,0)` is the whole column, so FORMULATEXT spills its three results (`#N/A`, `=A1+1`, `#N/A`).
-`CELL("address",INDEX(Data!A1:B3,2,2))` is the cross-sheet `[file]Data!$B$2`, `"row"` and `"col"` are 2, and `"contents"` is 2
-(Calc!B2's own value, the formula's-own-sheet rule of information.md "CELL(contents, ref) reads the formula's own sheet"); `INDEX(..,9)` is `#REF!` and an array
+`CELL("address",INDEX(Data!A1:B3,2,2))` is the cross-sheet `[file]Data!$B$2`, `"row"` and `"col"` are 2, and `"contents"` is 20
+(Data!B2 `=B1*2`; the named-sheet reading of information.md "CELL("contents", ref) reads the sheet the reference names",
+re-filled 2026-10-28 by T-3030. The 2026-10-1x fill gave 2, Calc!B2's value); `INDEX(..,9)` is `#REF!` and an array
 constant `#VALUE!`; `INDEX(Data!A1:B3,0,2)` gives the address of its top-left cell `[file]Data!$B$1`.
 `OFFSET(INDEX(Data!A1:A3,2),1,0)` is Data!A3 (3), `OFFSET(INDEX(Data!A1:B3,2,2),-1,0)` is Data!B1 (10), a 2-row OFFSET off the
 picked cell has 2 rows, `OFFSET(INDEX(Data!A1:B3,0,2),1,0)` spills B2:B4 (20, 30, 0), `INDEX(..,9)` is `#REF!` and an array
@@ -2151,10 +2152,18 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   (`Local!loc` = 7 beside workbook `loc` = 5: `=[0]!loc` on Local is 5, `=loc` 7; probe
   `workbook-name-own-book-prefix`, excel-graph 2026-10-27, T-2834). Ours matches (T-2834): the parser
   writes the file-name prefix, reads `<file>.xlsx!loc` (any case) back as the workbook name, and stores and
-  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. Unprobed: a
-  file name with a space or other characters a sheet name would quote (ours quotes it as a sheet name),
-  an unnamed workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`), and `[0]!loc` inside a
-  defined name's body in the file (ours writes it there too; T-2937).
+  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. `[0]!loc`
+  inside a defined name's body in the file (ours writes it there too) loads as the workbook name as well,
+  whatever the scope of the name that holds it, on Calc and on Local alike: with `wb` = `[0]!loc`,
+  `wb_plus` = `[0]!loc+1`, `wb_sum` = `SUM([0]!loc)`, `wb_rng` = `[0]!rng` (`Feb!$A$1:$A$2`) and the
+  Local-scoped `lw` = `[0]!loc`, Excel gives `=wb` 5 on Calc and on Local (which has its own `loc` = 7),
+  `=SUM(wb)` 5, `=ISREF(wb)` TRUE, `=wb_plus` 6, `=wb_sum` 5, `=lw` on Local and `=Local!lw` on Calc 5,
+  `=ROWS(wb_rng)` 2 and `=SUM(wb_rng)` 12, while `=loc` on Local stays 7 (probe
+  `t2937-own-book-prefix-in-name-body`, excel-graph 2026-10-28, T-2937); ours matches all 12 cells.
+  Unprobed, because excel-graph uploads every workbook under a hex file name: a file name with a space, `'`
+  or other characters a sheet name would quote (ours quotes it as a sheet name), and an unnamed (never
+  saved) workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`). Both are desktop
+  questions in T-1075 (items 21 and 22; M14, Phase 4, decision 0039).
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.

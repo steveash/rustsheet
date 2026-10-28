@@ -742,6 +742,10 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "A266": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A267": {
     "t": "e",
     "v": "#SPILL!"
@@ -1649,8 +1653,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "f0edf96bd183d45cddc84512ae124630894d86eddf4f567911bbc3e9904d4143",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:45:27+00:00",
+  "produced_at": "2026-10-28T16:50:25+00:00",
   "version": null,
-  "workbook_name": "1a5b32789da3198e89c3c0e4c8f415d8e94b1c575a5b2e289f133bd3fb7ca80b.xlsx"
+  "workbook_name": "e66058ef6a55cd421ea0b653bb42a1a6be720370f5db32c2a5849bebe22d905c.xlsx"
  }
 }
