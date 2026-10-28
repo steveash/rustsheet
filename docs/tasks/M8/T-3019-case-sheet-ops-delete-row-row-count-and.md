@@ -1,5 +1,5 @@
 ---
-id: T-3014
+id: T-3019
 title: "Case sheet ops: delete_row row count and header-less tables, for the T-2848 residual probes"
 milestone: M8
 lane: harness

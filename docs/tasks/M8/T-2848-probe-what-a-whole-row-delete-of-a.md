@@ -54,5 +54,5 @@ sheet row, a second table beside it, and an only-data-row delete with a totals r
 `table-delete-row-only-data-outside`, `-second-table`, `-totals`). Excel keeps the outside cells and `Other`
 untouched and keeps and clears the totals-table row without moving the totals row; the engine agrees on every
 checked `F` cell. Recorded in references.md. A multi-row delete and a header-less table cannot be written as
-case ops yet: filed T-3014. Eval delta: probes known failures 2151 -> 2158 (7 new-coverage cells on `S` input
+case ops yet: filed T-3019. Eval delta: probes known failures 2151 -> 2158 (7 new-coverage cells on `S` input
 cells that the oracle sidecar leaves empty, as in table-delete-row-all-data-below), 3 new cases, 0 regressions.
