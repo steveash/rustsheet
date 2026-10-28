@@ -26,7 +26,8 @@ owns a cell when it names its case and address:
 These are named only at the case level, without the cell, so confirm the task means them and name the cell:
 - GAMMAINV: probes-numeric/t1048-gammainv `Calc!A7` (T-0972, "t1048-gammainv.case.json 4").
 - LOGNORM.DIST: probes-numeric/m9-normpdf-lognorm-dist `Calc!A29`, `Calc!A41`, `Calc!A73` (T-0975).
-- NORM.INV: ironcalc-calc/STATISTICAL/NORM_DIST.xlsx `NORM.DIST NORM.INV!F70` (T-0925, "NORM_DIST.xlsx *.INV cells").
+- NORM.INV: ironcalc-calc/STATISTICAL/NORM_DIST.xlsx `NORM.DIST NORM.INV!F70` (T-0925, "NORM_DIST.xlsx *.INV cells"; its F8, F9
+  and F39 are off too but within 15 digits, so they do not count toward the rate).
 Read each with `make eval-show CASE=<case>`, find the root cause (probe first with the excel-probe skill when Excel's
 rule is not recorded), and fold it into the task that has the same root cause, or file one. Every other visibly-off
 cell of these 39 functions is named by an open task; the FORECAST.ETS family's are T-2425's (blocked on desktop
