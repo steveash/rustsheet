@@ -261,19 +261,16 @@ impl Txn<'_> {
                     .model
                     .table_expansion(sheet, row, col, text)
                     .map_err(EditError::Engine)?;
-                let mut targets = Vec::new();
-                if let Some(expansion) = expansion {
-                    self.sheet_op = true;
-                    self.undo
-                        .push(Undo::TableExpanded(Box::new(expansion.table)));
-                    targets = expansion.cells;
-                } else {
-                    targets.extend(
-                        self.model
-                            .calculated_column_targets(sheet, row, col)
-                            .map_err(EditError::Engine)?,
-                    );
-                }
+                let targets = match expansion {
+                    Some(expansion) => {
+                        self.sheet_op = true;
+                        self.undo
+                            .push(Undo::TableExpanded(Box::new(expansion.table)));
+                        expansion.cells
+                    }
+                    None => (self.model.calculated_column_targets(sheet, row, col))
+                        .map_err(EditError::Engine)?,
+                };
                 // The targets are the other rows of the cell's column.
                 for (r, c) in targets {
                     let target = CellRef {
