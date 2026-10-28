@@ -31,14 +31,14 @@ milestone, each with case, cell, formula, expected and actual.
   preferred route, or reuse one Python helper with a test that pins it to closeness.rs's boundary cases.
 
 ## Acceptance criteria
-- [ ] `python3 scripts/exit_owners.py --all-off [--function NAME] [--strict]` (and `make unowned-off ALL=1` or a
+- [x] `python3 scripts/exit_owners.py --all-off [--function NAME] [--strict]` (and `make unowned-off ALL=1` or a
       new make target) prints the unowned visibly-off Excel cells, grouped by attributed function (then
       unattributed, then probe milestone), one per line as `function<TAB>case!Sheet!A1<TAB>formula<TAB>expected
       <TAB>actual`, then per-function and total counts; `--strict` exits 1 when any is listed.
-- [ ] It runs in under a minute on a full report.json; tests in scripts/test_exit_owners.py cover attribution,
+- [x] It runs in under a minute on a full report.json; tests in scripts/test_exit_owners.py cover attribution,
       the 4-ulp and half-unit boundaries, and deferred owners (a cell owned only by a `defer: phase-1b` task is
       listed as `deferred` and counts as unowned).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Filing the owners (T-0087).

@@ -52,7 +52,7 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # tools/ is a uv project, but sheetop is stdlib-only, so this script stays stdlib-only too.
@@ -60,6 +60,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools" / "src")
 import tasks  # noqa: E402 (the sys.path lines above must run first)
 from rustsheet_tools.sheetop import column_number  # noqa: E402
 
+T = TypeVar("T")
 ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "eval" / "runs" / "latest" / "report.json"
 CALC_SUITE = "ironcalc-calc"
@@ -162,7 +163,7 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
             visible = set(row.get("visibly_off") or [])
             for name in row.get("failing") or []:
                 if name not in excepted and name in visible:
-                    case, _, key = str(name).partition("!")
+                    case, key = split_cell_name(str(name))
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
 
     probe_row = exit_row.get("probe_row") or milestone
@@ -320,14 +321,15 @@ def show_value(value: Any) -> str:
 def all_off_cells(report: dict[str, Any]) -> list[OffCell]:
     """Every visibly-off Excel cell of the report: attributed (by function, sorted), unattributed,
     then the probe-milestone cells the first two lists lack."""
-    values = {
-        (str(case["id"]), f"{c['sheet']}!{c['cell']}"): (show_value(c.get("expected")), show_value(c.get("actual")))
+    by_key = {
+        (str(case["id"]), f"{c['sheet']}!{c['cell']}"): c
         for case in report.get("cases") or []
         for c in case.get("cells") or []
     }
 
     def off(group: str, case: str, key: str, formula: str, got: tuple[str, str] | None = None) -> OffCell:
-        e, a = got or values.get((case, key), ("", ""))
+        c = by_key.get((case, key), {})
+        e, a = got or (show_value(c.get("expected")), show_value(c.get("actual")))
         return OffCell(ExitCell(group, case, key, formula), e, a)
 
     attributed = sorted(
@@ -343,23 +345,18 @@ def all_off_cells(report: dict[str, Any]) -> list[OffCell]:
         for c in report.get("unattributed_off") or []
     ]
     seen = {(o.cell.case, o.cell.key) for o in out}
-    formulas = {
-        (str(case["id"]), f"{c['sheet']}!{c['cell']}"): formula_of(c)
-        for case in report.get("cases") or []
-        for c in case.get("cells") or []
-    }
+    cases_with_cells = {k[0] for k in by_key}
     for row in report.get("probe_milestones") or []:
         group = f"probe {row.get('milestone')}"
         for name in row.get("visibly_off_cells") or []:
-            case, _, key = str(name).rpartition("!")[0].partition("!")[0], "", ""
             case, key = split_cell_name(str(name))
             if (case, key) not in seen:
                 seen.add((case, key))
-                out.append(off(group, case, key, formulas.get((case, key), "")))
+                out.append(off(group, case, key, formula_of(by_key.get((case, key), {}))))
         for case, _count in row.get("failing_cases") or []:
-            if not any(k[0] == case for k in formulas) and (case, WHOLE_CASE) not in seen:
+            if case not in cases_with_cells and (case, WHOLE_CASE) not in seen:
                 seen.add((case, WHOLE_CASE))
-                out.append(off(group, str(case), WHOLE_CASE, "", ("", "")))
+                out.append(off(group, str(case), WHOLE_CASE, ""))
     return out
 
 
@@ -395,16 +392,23 @@ def unowned_off(
     return out
 
 
-def main_all_off(report_path: Path, tasks_dir: Path, function: str | None, strict: bool) -> int:
+def with_report(report_path: Path, compute: Callable[[dict[str, Any]], T]) -> T | None:
+    """`compute` over the parsed report, or `None` after printing why it could not (exit 2)."""
     if not report_path.is_file():
         print(f"error: {report_path} not found; run `make eval` first", file=sys.stderr)
-        return 2
+        return None
     try:
-        cells = unowned_off(json.loads(report_path.read_text()), tasks_dir)
+        return compute(json.loads(report_path.read_text()))
     except (ValueError, KeyError, TypeError) as e:
         print(f"error: {report_path}: {e}", file=sys.stderr)
+        return None
+
+
+def main_all_off(report_path: Path, tasks_dir: Path, function: str | None, strict: bool) -> int:
+    listed = with_report(report_path, lambda r: unowned_off(r, tasks_dir))
+    if listed is None:
         return 2
-    cells = [(o, d) for o, d in cells if function in (None, o.cell.criterion)]
+    cells = [(o, d) for o, d in listed if function in (None, o.cell.criterion)]
     counts: Counter[str] = Counter()
     for o, deferred in cells:
         group = f"{o.cell.criterion} (deferred)" if deferred else o.cell.criterion
@@ -430,7 +434,7 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="every unowned visibly-off Excel cell, grouped by function",
     )
-    ap.add_argument("--function", help="with --all-off: only this group (a function name)")
+    ap.add_argument("--function", help="with --all-off: only this group (a function name, `unattributed` or `probe M<k>`)")
     ap.add_argument("--report", type=Path, default=REPORT)
     ap.add_argument("--tasks", type=Path, default=tasks.TASKS)
     ap.add_argument("--strict", action="store_true", help="exit 1 when any cell is unowned")
@@ -442,14 +446,8 @@ def main(argv: list[str]) -> int:
     if not tasks.MILESTONE.match(args.milestone):
         print(f"error: --milestone must be M<n>, not {args.milestone!r}", file=sys.stderr)
         return 2
-    if not args.report.is_file():
-        print(f"error: {args.report} not found; run `make eval` first", file=sys.stderr)
-        return 2
-    try:
-        report = json.loads(args.report.read_text())
-        cells = unowned(report, args.milestone, args.tasks)
-    except (ValueError, KeyError, TypeError) as e:
-        print(f"error: {args.report}: {e}", file=sys.stderr)
+    cells = with_report(args.report, lambda r: unowned(r, args.milestone, args.tasks))
+    if cells is None:
         return 2
     for c in cells:
         print(f"{c.criterion}\t{c.case}!{c.key}\t{c.formula}")
@@ -458,13 +456,8 @@ def main(argv: list[str]) -> int:
 
 
 def main_unattributed(report_path: Path, tasks_dir: Path, strict: bool) -> int:
-    if not report_path.is_file():
-        print(f"error: {report_path} not found; run `make eval` first", file=sys.stderr)
-        return 2
-    try:
-        cells = unowned_unattributed(json.loads(report_path.read_text()), tasks_dir)
-    except (ValueError, KeyError, TypeError) as e:
-        print(f"error: {report_path}: {e}", file=sys.stderr)
+    cells = with_report(report_path, lambda r: unowned_unattributed(r, tasks_dir))
+    if cells is None:
         return 2
     for c in cells:
         print(f"{c.case}!{c.key}\t{c.formula}")
