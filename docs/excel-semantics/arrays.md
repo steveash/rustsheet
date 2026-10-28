@@ -1784,7 +1784,9 @@ shown and never counts. With no subtotals this is the `(G + v) div V` rule above
 value 0 lands on P (never counts) and value 1 on q/x; P's both values on p/y; Q's value 0 on q/x and value 1 on Q itself. With p/x,
 p/y, p/z, P, q/x, Q both Total cells land on P, so no Total cell counts at all; P's values gate on p/y and p/z. The subtotal cell
 computed is the subtotal's own (its groups' records in the row), so an error in a hidden subtotal cell is now evidenced.
-Ours: `Placement::checked_totals` (pivotby.rs) takes the dropped writes of `Placement::written_cells`.
+Unprobed: three or more column fields (nested column subtotals) and row subtotal rows (`row_total_depth` 2), where ours
+applies the same rule.
+Ours: `Placement::checked_totals` (pivot_placement.rs) takes the dropped writes of `Placement::written_cells`.
 Status: VERIFIED (excel-graph)
 Tasks: T-2311, T-2578, T-2606, T-2967
 

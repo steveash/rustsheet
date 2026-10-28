@@ -39,4 +39,3 @@ shown and never counts. Without subtotals this reduces to T-2578's `(G + v) div 
 dropped writes of `written_cells`, and `check_totals` aggregates a subtotal slot over its own records.
 Eval: probes known failures 2156 -> 2142 (t2606's 14 cells fixed), plus 359 new passing cells, 0 regressions. The old
 gate passes 168 of the new 359. arrays.md updated.
-

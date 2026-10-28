@@ -281,11 +281,12 @@ impl Model {
     }
 
     /// Computes the line's cell of each of [`Grid::checked_totals`], shown or not, and notes an
-    /// error result: with one function over several value columns, an error in any of these Total
-    /// or subtotal column cells (the grand total included) makes PIVOTBY `#VALUE!`, even where the
-    /// column shows `""` or the Total row is off; an error in a group cell or a Total row cell does not, nor does
-    /// an array or reference result (its cell's `#VALUE!`) (probes/t2311-pivotby-value-columns-
-    /// error P!A1-A42; gen-m7/18b80d3fd292d63a Calc!A913).
+    /// error result: with one function over several value columns, an error in any of these
+    /// Total or subtotal column cells (the grand total included) makes PIVOTBY `#VALUE!`, even
+    /// where the column shows `""` or the Total row is off; an error in a group cell or a Total
+    /// row cell does not, nor does an array or reference result (its cell's `#VALUE!`)
+    /// (probes/t2311-pivotby-value-columns-error P!A1-A42; gen-m7/18b80d3fd292d63a Calc!A913;
+    /// subtotal cells: probes/t2967-pivotby-subtotal-gate).
     fn check_totals(
         &mut self,
         functions: &mut Functions,

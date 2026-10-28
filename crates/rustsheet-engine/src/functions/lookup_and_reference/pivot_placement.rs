@@ -141,7 +141,7 @@ impl Placement {
     fn written_cells(&self, laid_out: &[Line], width: usize) -> Vec<Option<Slot>> {
         let mut cells: Vec<Option<Slot>> = vec![None; (self.lines.len() + 1).saturating_mul(width)];
         for (column, slot) in self.writes(laid_out, width) {
-            if matches!(self.lines.get(column / width), Some(Line::Group(_))) {
+            if matches!(self.lines.get(column / width.max(1)), Some(Line::Group(_))) {
                 continue;
             }
             if let Some(cell) = cells.get_mut(column) {
