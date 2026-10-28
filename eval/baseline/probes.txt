@@ -1471,6 +1471,7 @@ C	probes/t3030-cell-contents-blank-shapers.case.json	51
 C	probes/t3030-cell-contents-nested-sheet.case.json	39
 C	probes/t3030-cell-first-sheet.case.json	20
 C	probes/t3047-snap-array-operands.case.json	70
+C	probes/t3053-blank-reference-wrappers.case.json	25
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -3950,6 +3951,14 @@ F	probes/t3030-cell-contents-nested-sheet.case.json	Calc!A231
 F	probes/t3047-snap-array-operands.case.json	L!F1
 F	probes/t3047-snap-array-operands.case.json	L!G2
 F	probes/t3047-snap-array-operands.case.json	L!H3
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A141
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A142
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A161
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A162
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A171
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A172
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A41
+F	probes/t3053-blank-reference-wrappers.case.json	Calc!A42
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2

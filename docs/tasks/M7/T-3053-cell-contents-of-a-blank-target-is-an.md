@@ -3,7 +3,7 @@ id: T-3053
 title: "CELL('contents') of a blank target is an empty value that array arguments reject, through LET/IF/IFERROR/CHOOSE (T-3030 evidence)"
 milestone: M7
 lane: engine
-status: in-progress
+status: todo
 priority: P3
 size: M
 tier: opus
@@ -38,3 +38,12 @@ while a blank reference read through the same wrappers stays a blank that stacks
 
 ## Out of scope
 - CELL's other info types.
+
+## Progress (2026-10-28, probe done; implementation not started)
+The unprobed shapes are now probed: probes/t3053-blank-reference-wrappers (excel-graph, 2026-10-28; information.md, the
+paragraph on a blank reference read through a wrapper). A blank reference through IF, LET, CHOOSE, parentheses, `@` and
+INDEX stacks as 0 (ours matches). IFERROR and IFNA of a blank reference return the rejected empty value
+(`VSTACK(IFERROR(Data!C11,5),1)` is `#VALUE!`, A41, A141), the CELL result stays the empty value through LET and IF (A161,
+A171), and `INDEX(CELL("contents",Data!C11),1)` is `#VALUE!` (A1). So the empty value comes from value-returning calls
+(CELL, IFERROR, IFNA), and the reference-returning wrappers pass a blank reference on unchanged. The 8 new known failures
+(A41, A42, A141, A142, A161, A162, A171, A172) are in eval/baseline/probes.txt and belong to this task too.
