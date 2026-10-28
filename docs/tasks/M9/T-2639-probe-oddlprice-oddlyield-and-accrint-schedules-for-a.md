@@ -3,7 +3,7 @@ id: T-2639
 title: "Probe ODDLPRICE, ODDLYIELD and ACCRINT schedules for a 29th/30th date across a February (does the day drift?)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
