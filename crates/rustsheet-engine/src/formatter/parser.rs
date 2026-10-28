@@ -350,7 +350,7 @@ impl Parser {
     }
 
     fn parse_part(&mut self) -> ParsePart {
-        // Early returns below leave it false, so a stale value never outlives its part.
+        // Set from the last part read; error parts never reach the empty-section check.
         self.ends_in_separator = false;
         let mut token = self.lexer.next_token();
         let mut digit_count = 0;

@@ -244,7 +244,8 @@ fn mmm_takes_a_b2_section_to_the_arabic_path() {
 }
 
 // An empty text section prints nothing (gen-m10/0e3d8eba9432a18d T!A24); fewer than four sections
-// leave the text as it is (docs/excel-semantics/number-formats.md).
+// leave the text as it is (docs/excel-semantics/number-formats.md). Only `;;;` on text has oracle
+// evidence; the `TRUE` and `0;0;0;` expectations are inferred and unprobed (T-2975).
 #[test]
 fn empty_text_section_is_empty() {
     assert_eq!(format_text_value("text", ";;;").text, "");
