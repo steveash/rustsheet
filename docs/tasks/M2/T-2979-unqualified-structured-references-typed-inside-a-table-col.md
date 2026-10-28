@@ -57,7 +57,7 @@ S!C4; t2957-existing-constant S!C3 (check the list against the baseline when sta
 
 ## Outcome
 - An operand starting with `[` in a cell of a table (header and totals rows included) reads as a structured reference
-  to that table (`Parser::unqualified_structured_reference`, `containing_table_name`, parser/operands.rs) with a new
+  to that table (`Parser::unqualified_structured_reference`, `containing_table_name`, parser/structured_reference.rs) with a new
   `StructuredReference::unqualified` flag. It prints without the name (`#This Row` in its `@` form), is stored in
   R1C1 with a `[T]` prefix (`StructuredReference::stored_text`, read back by `Lexer::stored_table_prefix`), so shared
   formulas of two tables never collide and a re-parse prints it unqualified again; the export writes the qualified
