@@ -16,7 +16,7 @@ use super::{
 };
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
-use crate::expressions::token::{Error, OpUnary};
+use crate::expressions::token::OpUnary;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
@@ -720,14 +720,10 @@ fn stringify(
                 full_row,
                 full_column,
             );
-            // Quirk (T-2855, probes/table-edits plain-range-delete-row-first F!A6 and
-            // table-delete-column-qty F!A7, excel-graph): a range whose every cell is deleted
-            // prints one sheet-qualified `#REF!` (`=SUM(S!#REF!)`), not a `#REF!` per corner.
+            // Quirk (T-2855, probes/table-edits plain-range-delete-row-first F!A6, excel-graph):
+            // a wholly deleted range prints one `S!#REF!`, not a `#REF!` per corner.
             if s1 == "#REF!" && s2 == "#REF!" {
-                return match sheet_name {
-                    Some(name) => format!("{}!#REF!", quote_name(name)),
-                    None => s1,
-                };
+                return wrong_reference::ref_error_text(sheet_name.as_deref());
             }
             format!("{s1}:{s2}")
         }
@@ -843,7 +839,7 @@ fn stringify(
             }
         }
         ErrorKind(kind) => format!("{kind}"),
-        SheetRefErrorKind { sheet_name } => format!("{}!{}", quote_name(sheet_name), Error::REF),
+        SheetRefErrorKind { sheet_name } => wrong_reference::ref_error_text(Some(sheet_name)),
         ParseErrorKind { message, .. }
             if export_to_excel && is_unresolved_structured_reference(message) =>
         {
