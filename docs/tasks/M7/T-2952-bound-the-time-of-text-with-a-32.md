@@ -3,7 +3,7 @@ id: T-2952
 title: "Bound the time of TEXT with a 32,767-character format over an array"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
