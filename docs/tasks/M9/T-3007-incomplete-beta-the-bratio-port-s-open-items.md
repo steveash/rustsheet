@@ -1,5 +1,5 @@
 ---
-id: T-3003
+id: T-3007
 title: "Incomplete beta: the bratio port's open items after T-2977 (shape of 1 outside the closed forms, TOMS betaln for both shapes >= 1 above 8, fl(a LN x) overflow, SPEC-0025 layout)"
 milestone: M9
 lane: functions-stat
@@ -20,7 +20,7 @@ layout and tests.
 - T-2977 deleted the pre-T-2502 seams and the T-2464 harness and scored the engine per bratio branch
   (docs/research/t2977/score_branches.out; T-2977 Outcome). These items from T-2847's Context were left open:
   - a caller's shape of exactly 1 outside the closed forms (a0 = 1, y0 > 0.9) stays on
-    `incomplete_beta.rs::shape_one_tails` (`TODO(T-3003)` in `bratio::ported_tails`): bpser(1, 3.5, x0) is 1 ulp
+    `incomplete_beta.rs::shape_one_tails` (`TODO(T-3007)` in `bratio::ported_tails`): bpser(1, 3.5, x0) is 1 ulp
     high at probes/ftest-decomposition B12, where y0^b0 is Excel's value. Find Excel's form before moving it;
   - bpser for both shapes >= 1 with max > 8 (`bpser_neg_ln_beta` returns `None`): 509 r2-bratio bpser_large rows
     and the F tails' fallback there (for example probes/t2829-ftest-tail-over-b S!A17, `2*F.DIST.RT(1E+12,22,5)`)

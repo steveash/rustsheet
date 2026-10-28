@@ -210,7 +210,7 @@ pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(
 /// `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966 (probes/ftest-decomposition
 /// B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
 pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
-    // TODO(T-3003): find Excel's form at a0 = 1 outside the closed forms before moving it.
+    // TODO(T-3007): find Excel's form at a0 = 1 outside the closed forms before moving it.
     if a == 1.0 || b == 1.0 {
         return None;
     }

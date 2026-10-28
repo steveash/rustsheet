@@ -2050,7 +2050,7 @@ Ours: all 1,286 cells bit-exact through the worksheet functions (T-2502). Still 
   x = 0.571), a790a4d4a6a82756 A192 (a = 4, b = 1) and bbdfc06cae0e0d71 A356 (a = 5.5, b = 1), which the closed
   forms put 2, 3 and 10 ulp off (the last visibly; T-2977, `fisher.rs::unoriented_shape_one_tail`).
 - a0 = 1 with y0 > 0.9 keeps the engine's earlier tails, w = -expm1(b0 ln1p(-x0)) and w1 = y0^b0
-  (`incomplete_beta.rs::shape_one_tails`); bpser(1, b0, x0) is 1 ulp high at probes/ftest-decomposition B12. T-3003.
+  (`incomplete_beta.rs::shape_one_tails`); bpser(1, b0, x0) is 1 ulp high at probes/ftest-decomposition B12. T-3007.
 - BINOM.DIST's k = 0 is BINOM's own shortcut, not this kernel (T-2645).
 Status: VERIFIED (excel-graph)
 Implemented in: `incomplete_beta.rs::closed_form_tails` (Excel's EXP and LN, `x87_exp.rs`, `x87_log10.rs`), through
@@ -2059,7 +2059,7 @@ F.DIST.RT, FDIST), `student_t.rs::closed_form_tail` (T.DIST* at df 2), `binom.rs
 NEGBINOM.DIST at r = 1 or f = 0); then `bratio/mod.rs::ported_tails` (bpser, w1 bpser and L140 bup+bpser) for BETA.DIST's
 cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf (T-2505, T-2506, T-2847), and for F.TEST's
 large shapes and BETA.INV's huge-shape crossing (`bratio/mod.rs::kernel_tails`, T-2977)
-Tasks: T-2502, T-2505, T-2511, T-2977, T-3003
+Tasks: T-2502, T-2505, T-2511, T-2977, T-3007
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
 Rule: for ln(1 + a) with -0.375 <= a < 0, i.e. ln(1 - x) at x <= 0.375 (the beta density, BINOM.DIST(0,n,p), bgrat's

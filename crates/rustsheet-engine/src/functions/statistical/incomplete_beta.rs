@@ -134,7 +134,7 @@ pub(crate) fn closed_form_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, 
 /// - w1 = y0^b0: `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966
 ///   (probes/ftest-decomposition B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
 ///
-/// `None` for other shapes and points. Excel's own form here is not known (TODO(T-3003)).
+/// `None` for other shapes and points. Excel's own form here is not known (TODO(T-3007)).
 fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
     let swap = x > 0.5;
     let (a0, b0, x0, y0) = if swap { (b, a, y, x) } else { (a, b, x, y) };

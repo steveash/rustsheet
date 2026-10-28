@@ -76,7 +76,7 @@ the bratio port's per-branch accuracy is measured and on record.
   - w_bpser 5,458 / 10,788 / 10,803 of 11,845; model with w3_lg = toms 6,767, with gl 6,072;
   - w1_bpser 1,591 / 1,841 / 1,840 of 1,845; model toms 1,666, gl 1,643;
   - bpser(a, b > 1) 930 / 1,313 / 1,422 of 1,523; model 978 with either L. 509 of these rows have max(a, b) > 8 and
-    stay on today's kernel (T-3003).
+    stay on today's kernel (T-3007).
   - L140 bup+bpser 8,872 / 11,697 / 11,721 of 11,742 (T-2506 recorded 8,800 / 11,696 / 11,721).
   - Every branch: 21,289 / 32,672 / 33,832 of 39,852 (the CR value scores 11,812 / 33,858 / 36,619).
 - bpser criterion on t2464-r2-bpser-small-shapes (w_bpser by b0 = max(a, b), within 15 digits): 3,083 of 3,083 for
@@ -84,14 +84,14 @@ the bratio port's per-branch accuracy is measured and on record.
 - x29 criterion: bit-exact on 140 of the 434 cells where the 0.29 and 0.3 dispatches differ, against 284 for the
   model (not met). Those cells are bup+bgrat, which is not ported (T-2509, T-2510).
 - probes/t2829-ftest-tail-over-b's 9 cells (S!A1, A3, A4, A6, A7, A9, A14, A18, A21) are all still visibly off. Each
-  is bpser with both shapes above 1 and one above 8, so it has no ported ln B (T-3003, T-2924).
+  is bpser with both shapes above 1 and one above 8, so it has no ported ln B (T-3007, T-2924).
 - `docs/research/t2464/excelmath.py` evaluates Excel's EXP, LN, LOG10, GAMMALN and GAMMA through the python bindings.
   It matches the harness on 14,000 sampled inputs; the only difference is an overflowing GAMMA, which is NaN
   (`#NUM!`) instead of inf.
   `docs/research/t2506/score_l140.py`, `t2681/score_bratio.py` and `t2977/score_branches.py` still need the harness
   back from git history.
-- Not measured here, handed to T-3003: the re-score of docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells
+- Not measured here, handed to T-3007: the re-score of docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells
   (L = -LN(a0) at a whole b0, a0 <= 8) and the L140 cells it moves off; the bpser shortfall above (1 cell at
   1 < b0 < 8, 9 at b0 >= 8, where `bpser_neg_ln_beta` takes algdiv in double arithmetic).
-- Follow-up: T-3003 (the port's open items: a shape of 1 outside the closed forms, a TOMS betaln, fl(a LN x)
+- Follow-up: T-3007 (the port's open items: a shape of 1 outside the closed forms, a TOMS betaln, fl(a LN x)
   overflow, SPEC-0025's layout).
