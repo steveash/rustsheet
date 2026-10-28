@@ -116,6 +116,17 @@ class ExitOwners(TaskDir):
         self.assertNotIn(f"{TRIG}!S!C60", listed)
         self.assertNotIn(f"{PROBE}!P!B4", listed)
 
+    def test_a_calc_row_shown_but_not_required_lists_no_cell(self) -> None:
+        # M7's exit row shows the ironcalc-calc counts with a null `calc_met` (decision 0140).
+        r = report()
+        r["milestone_exit"][0].update({"calc_failing": 2, "calc_visibly_off": 1, "calc_met": None})
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M5", self.tasks)]
+        self.assertNotIn(f"{TRIG}!S!C51", listed)
+        self.assertIn(f"{PROBE}!P!B2", listed)
+        r["milestone_exit"][0]["calc_met"] = False
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M5", self.tasks)]
+        self.assertIn(f"{TRIG}!S!C51", listed)
+
     def test_m2_probe_cells_come_from_the_m0_m2_row(self) -> None:
         r = report()
         r["milestone_exit"] = [{"milestone": "M2", "probe_row": "M0-M2"}]
