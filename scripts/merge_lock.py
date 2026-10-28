@@ -24,8 +24,8 @@ A caller that finds the lock held joins the queue. A free, stale (TTL since `ren
 died) or finished lock goes to the head of the queue, or to anyone when the queue is empty. A
 holder that releases and acquires again joins at the tail. A PR that is already merged or closed
 never holds the lock (decision 0097): `acquire --pr N` refuses (exit 3) when PR N is finished, and
-the lock of a finished PR may be taken over whatever its age. That state is one GitHub API read;
-when it fails the PR counts as open.
+the lock of a finished PR may be taken over whatever its age. That state is one GitHub read
+through scripts/gh_client.py (decision 0148); when it fails the PR counts as open.
 
 The holder is `CLAUDE_CODE_SESSION_ID` unless `--holder` (or `--train`) is given.
 """
@@ -34,20 +34,18 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import http.client
-import json
 import math
 import os
 import re
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
+
+import gh_client
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
@@ -58,8 +56,6 @@ SEEN_REF = "refs/merge-lock/seen"
 TTL_MINUTES = 30
 # The committer of lock commits, so a clone with no git identity can still take the lock.
 IDENTITY = ("-c", "user.name=merge-lock", "-c", "user.email=merge-lock@invalid")
-# Seconds to wait for the GitHub API; an unanswered read counts the PR as open.
-API_TIMEOUT = 10
 
 # SPEC-0027 section 1. Every limit below bounds what one lock commit can make a reader do.
 VERSION = "2"
@@ -288,25 +284,11 @@ def describe(lock: Lock, now: float, ttl_minutes: float) -> str:
 
 def pr_finished(pr: str, root: Path = ROOT) -> bool | None:
     """Whether PR `pr` of origin's repository is merged or closed: True or False, None when the
-    GitHub API read fails (no network, rate limit, a private repository without a token)."""
-    url = git("remote", "get-url", REMOTE, root=root, check=False).stdout.strip()
-    match = re.search(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", url)
-    if match is None or not (pr.isascii() and pr.isdigit()):
+    GitHub read fails (no network, no `gh`, a non-GitHub remote). The read is gh_client's."""
+    client = gh_client.from_remote(root, REMOTE)
+    if client is None or not valid_pr(pr):
         return None
-    request = urllib.request.Request(
-        f"https://api.github.com/repos/{match[1]}/{match[2]}/pulls/{pr}",
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "rustsheet-merge-lock"},
-    )
-    if token := os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"):
-        request.add_unredirected_header("Authorization", f"Bearer {token}")
-    try:
-        with urllib.request.urlopen(request, timeout=API_TIMEOUT) as response:  # noqa: S310 (fixed https URL)
-            state = json.load(response)
-    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
-        return None
-    if not isinstance(state, dict) or "state" not in state:
-        return None
-    return bool(state.get("merged")) or state["state"] != "open"
+    return client.pr_finished(pr)
 
 
 def lock_finished(lock: Lock, finished: Callable[[str], bool]) -> bool:
