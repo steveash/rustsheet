@@ -486,6 +486,40 @@ pub struct Table {
     pub columns: Vec<TableColumn>,
     pub style_info: TableStyleInfo,
     pub has_filters: bool,
+    /// The criteria of the table's autoFilter as the file stored them, kept so an export writes
+    /// back the filter Excel read; they hide no row here (filters are not re-applied).
+    pub filter_columns: Vec<FilterColumn>,
+}
+
+/// One `<filterColumn>` of a table's autoFilter (ECMA-376-1:2016 section 18.3.2.7).
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct FilterColumn {
+    /// The 0-based column within the filter's range.
+    pub col_id: u32,
+    pub criterion: FilterCriterion,
+}
+
+/// The criterion of a [`FilterColumn`].
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub enum FilterCriterion {
+    /// `<filters>`: the rows whose text is one of `values`, plus blank rows when `blank`.
+    Values { values: Vec<String>, blank: bool },
+    /// `<customFilters>`: one or two conditions, all of which must hold when `and`.
+    Custom {
+        and: bool,
+        conditions: Vec<CustomFilter>,
+    },
+    /// Any other kind (top 10, dynamic, color or icon filters): applied, but its criterion is
+    /// not kept, so an export writes the column with no criterion.
+    Other,
+}
+
+/// One `<customFilter>`: `operator` is the file's attribute (absent means `equal`) and `val`
+/// the operand as text.
+#[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
+pub struct CustomFilter {
+    pub operator: Option<String>,
+    pub val: String,
 }
 
 /// Whether two sheet names name the same sheet: sheet names match ignoring case.

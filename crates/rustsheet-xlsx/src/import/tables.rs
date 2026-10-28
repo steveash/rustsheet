@@ -3,7 +3,9 @@ use std::io::Read;
 use super::package::Package;
 
 use super::xml::XmlNode;
-use rustsheet_engine::types::{Table, TableColumn, TableStyleInfo};
+use rustsheet_engine::types::{
+    CustomFilter, FilterColumn, FilterCriterion, Table, TableColumn, TableStyleInfo,
+};
 
 use crate::error::XlsxError;
 
@@ -112,6 +114,16 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
     } else {
         false
     };
+    let filter_columns = auto_filter
+        .first()
+        .map(|filter| {
+            filter
+                .children()
+                .filter(|n| n.has_tag_name("filterColumn"))
+                .filter_map(filter_column)
+                .collect()
+        })
+        .unwrap_or_default();
 
     // tableColumn
     let table_column = table
@@ -205,6 +217,38 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
         columns,
         style_info,
         has_filters,
+        filter_columns,
         sheet_name: sheet_name.to_string(),
     })
+}
+
+/// A `<filterColumn>`'s column and criterion; `None` for one without a valid `colId`, which
+/// Excel's schema requires.
+fn filter_column(node: &XmlNode) -> Option<FilterColumn> {
+    let col_id = node.attribute("colId")?.parse::<u32>().ok()?;
+    let criterion = if let Some(filters) = node.child("filters") {
+        FilterCriterion::Values {
+            values: filters
+                .children()
+                .filter(|n| n.has_tag_name("filter"))
+                .filter_map(|n| n.attribute("val").map(str::to_string))
+                .collect(),
+            blank: get_bool_false(filters, "blank"),
+        }
+    } else if let Some(custom) = node.child("customFilters") {
+        FilterCriterion::Custom {
+            and: get_bool_false(custom, "and"),
+            conditions: custom
+                .children()
+                .filter(|n| n.has_tag_name("customFilter"))
+                .map(|n| CustomFilter {
+                    operator: n.attribute("operator").map(str::to_string),
+                    val: n.attribute("val").unwrap_or_default().to_string(),
+                })
+                .collect(),
+        }
+    } else {
+        FilterCriterion::Other
+    };
+    Some(FilterColumn { col_id, criterion })
 }
