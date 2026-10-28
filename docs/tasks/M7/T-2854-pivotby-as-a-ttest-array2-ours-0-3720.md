@@ -26,7 +26,7 @@ gen-m9/c2684066d8df263e Calc!A214, moved from T-2469 (T.TEST itself is right; ar
 ## Handoff (resumed)
 Cause found (probe added: eval/suites/probes/cases/pivotby-ttest-array2, excel-graph 2026-10-28): the PIVOTBY grid
 matches Excel cell for cell as spilled, but Excel's blank row/column keys (blank source cells) are true blanks
-inside the array: COUNT(PIVOTBY(..)) is 108 in Excel, 114 ours (INDEX row/column counts BA1:BB32 pin the six cells:
+inside the array: COUNT(PIVOTBY(..)) is 108 in Excel, 114 ours (the probe's per-row and per-column INDEX counts pin the six cells:
 row keys A12, A13, B11 and the column-key header AD1:AF1). TTEST/COUNT skip them; ours holds Number(0.0)
 (`shown_key`, grouping.rs). Same cause as T-2460 (GROUPBY too).
 Tried: `shown_key` returning the key unchanged (blank stays `ArrayNode::Empty`). That fixes the probe but regresses

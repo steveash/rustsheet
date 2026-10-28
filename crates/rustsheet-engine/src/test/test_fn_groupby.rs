@@ -145,9 +145,9 @@ fn blank_key_is_a_true_blank_inside_the_array() {
 }
 
 #[test]
-fn total_row_fillers_are_empty_text_and_blank_key_is_zero() {
+fn total_row_fillers_are_empty_text_and_blank_key_spills_as_zero() {
     // G!AB25 and G!AC33: the second key cell of the Total row is "" (text), the blank key group
-    // shows the number 0.
+    // displays 0 when spilled (a true blank inside the array).
     let mut model = region_sales();
     for row in 2..=11 {
         model._set(&format!("C{row}"), "k");

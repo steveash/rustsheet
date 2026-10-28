@@ -861,7 +861,10 @@ TYPE 1 and `&""` "", COUNT skips it (probes/pivotby-ttest-array2: `COUNT(PIVOTBY
 gen-m9/c2684066d8df263e Calc!A214), while a spilled blank element still displays 0. IFERROR and IFNA read a blank array
 element as 0, as they read a blank cell of a multi-cell range: `TEXTJOIN("|",FALSE,IFERROR(GROUPBY(..),"#"))` shows the blank
 key as "0" (probes/groupby-sort-filter-args G!B15, B55, groupby-sort-filter-args2 G!B10; `if_error_like`, logical/mod.rs).
-Whether other element-wise consumers (IF, N, arithmetic) read a blank element as 0 is unprobed.
+IF passes a blank element through as a blank: `TTEST(..,IF(TRUE,PIVOTBY(..)),1,2)` equals the TTEST without the IF
+(probes/pivotby-ttest-array2 P!A41, P!A31). Whether IFERROR reads blanks of other arrays (FILTER, INDEX lifted over blank
+cells, VSTACK) as 0, and what N and arithmetic do with a blank element, is unprobed (T-2999); ours reads every array's
+blank as 0 in IFERROR and IFNA.
 T-2592 (probes/t2592-nested-groupby-cells, excel-graph, 2026-10-24; `GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))` is 3x3: keys a, b, Total by
 key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown headers are off). Nested cells in practice:
 - A LAMBDA whose body is a one-cell reference (`LAMBDA(x,D!D2)`) still displays `#VALUE!` in every spilled cell (probes/groupby-lambda-forms
