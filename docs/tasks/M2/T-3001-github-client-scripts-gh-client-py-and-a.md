@@ -3,7 +3,7 @@ id: T-3001
 title: "GitHub client scripts/gh_client.py and a write probe from a routine session"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
