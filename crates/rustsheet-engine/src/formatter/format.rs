@@ -148,6 +148,7 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     }
     let section = match parts.last() {
         Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
+        _ if parser.has_empty_text_section() => return capped_text(String::new()),
         _ if parts.len() < 4 => return capped_text(text.to_string()),
         _ => 3,
     };
