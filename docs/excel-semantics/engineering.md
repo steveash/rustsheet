@@ -995,9 +995,15 @@ Tasks: T-2547, T-2544, T-2580
 
 ## IMPOWER of a base whose squared modulus overflows (T-2539)
 Evidence: probes/eng-impower-overflow (12 cells, excel-graph, 2026-10-24).
-Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is not probed (treated as the real one). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
+Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is probed in T-2626 (below). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
 Status: VERIFIED (excel-graph)
 Tasks: T-2539
+
+## IMPOWER of a pure imaginary or lopsided base (T-2626)
+Evidence: probes/eng-impower-overflow-shapes (14 cells, excel-graph, 2026-10-28).
+Rule: a pure imaginary base is not subject to the both-parts-nonzero `x²+y²` overflow refusal (the modulus is `|y|`): `IMPOWER("1E+300i",-0.5)` is `7.07106781186548E-151-7.07106781186547E-151i`, `("1E+300i",-1)` is `-1E-300i`, `("-1E+300i",-0.5)` is `7.07106781186548E-151+7.07106781186547E-151i`, `("1E+200i",-0.5)` is `7.07106781186548E-101-7.07106781186548E-101i`; the result is `#NUM!` only when the radius overflows (`("1E+300i",2)`). `IMPOWER("1E+300i",1)` is `6.1257422745431E+283+1E+300i` (the x87-reduced cosine of the angle, not 0). A lopsided base with both parts nonzero is `#NUM!` as soon as `x²+y²` overflows, whatever the power and however small `y` is: `IMPOWER("1E+200+1E-300i",-0.5)`, `(…,-1)`, `(…,2)`, `(…,1)`, `IMPOWER("1E+300+1E-300i",-0.5)`, `IMPOWER("1E-300+1E+200i",-0.5)`, `IMPOWER("1E+200+1E+10i",-0.5)` and `(…,2)`. The existing guard in `fn_impower` already matches all 14 cells.
+Status: VERIFIED (excel-graph)
+Tasks: T-2626
 
 ## IMCOSH and IMSINH past |x| = 709 work in log space (T-2231)
 Evidence: probes/eng-im-overflow-edges A6-A21, probes/eng-im-overflow-edges-2 A1-A24, A58-A114 (excel-graph, 2026-10-24).
