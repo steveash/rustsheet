@@ -3,7 +3,7 @@ id: T-0492
 title: "SPEC-0020 amendment: SMALL and LARGE read a tailed argument (corpus-bench 59969 under 1 s)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
