@@ -3,7 +3,7 @@ id: T-2889
 title: "Decision record: how M8's exit criteria are measured (feature oracle suites, the POI corpus subset, M8 probes)"
 milestone: M8
 lane: research
-status: todo
+status: dropped
 priority: P2
 size: S
 tier: opus
@@ -49,3 +49,8 @@ be built from it. The record names the cells and suites each criterion counts; i
 - Implementing the exit row or the POI-subset measure (the follow-up tasks).
 - Gating gen-m8a and gen-m8b (separate task).
 - Fixing any M8 cell.
+
+## Outcome (dropped, 2026-10-28, T-0088)
+Superseded by decision 0146 (T-0088), which answers this task's questions for M1 and M8 to M11 in one record and
+cites it in docs/milestones.md. The follow-up exit row and exit-owners support are T-0089's, which lists the
+thresholds.

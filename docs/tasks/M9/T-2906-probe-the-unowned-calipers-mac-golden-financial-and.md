@@ -4,7 +4,7 @@ title: "Probe the unowned calipers Mac-golden financial and statistical cells on
 milestone: M9
 lane: research
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: sonnet
 depends_on: []

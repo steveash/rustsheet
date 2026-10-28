@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2145]
+depends_on: [T-2145, T-2510]
 ---
 
 ## Goal
@@ -157,6 +157,9 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (1): Calc!A169
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A173, A287, A363
 - gen-m9/f82473275380882e.case.json (1): Calc!A392
+
+Sequencing (T-0098, 2026-10-28): waits on T-2510, which ports Excel's bgrat for BINOM and NEGBINOM; fit the last
+digits on the ported kernel, not the current one, so the work is not done twice.
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 93 known-failure lines (8 from T-2255, 85 from T-2256) disappear from eval/baseline/gen-m9.txt
