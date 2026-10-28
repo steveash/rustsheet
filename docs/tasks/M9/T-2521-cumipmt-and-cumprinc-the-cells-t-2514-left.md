@@ -46,7 +46,7 @@ Code: functions/financial/cumulative.rs.
 - [x] Each cell above is visibly right (no new known-failure lines, `make eval-baseline`), or it is documented in
       financial.md with the forms tried.
 - [x] Probe cells (excel-probe skill) bracket the three gate edges, and the gates move to the evidence.
-- [x] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve (PR review table).
 
 ## Out of scope
 - Bit-exact fits of cells that are already visibly right (T-1374).
@@ -63,7 +63,7 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
 - probes/fin-cumipmt-overflow-and-forms: Sheet1!A10
 
 ## Outcome
-- New probe case probes/fin-cumipmt-gate-edges (87 cells, excel-graph 2026-10-28) brackets the three gates and type 1
+- New probe case probes/fin-cumipmt-gate-edges (89 cells, excel-graph 2026-10-28) brackets the three gates and type 1
   from period 1.
 - Excel's short principal discounts with its own `ln(1+rate)`, PPMT's `growth_log`, not `log1p`: A372 is now to the
   bit (A62 too as a geometric sum, but its 40 periods still take the closed form). `GEOMETRIC_MIN_DISCOUNT` moved
@@ -73,7 +73,7 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
   off with both forms.
 - Eval: 11 known failures fixed (gen-m9 4: 79d87fc527927626 A156, 89f0aee953a55a45 A152, 9d9ceba257f8001b A372,
   b6a02893a8d6b151 A305; probes 7: fin-argument-modes H72, fin-remaining-later-argument-ranges I65-I73 and K11),
-  no regressions; visibly-off in-scope cells 2620 to 2615 with the new case's 19 (the new case adds 52 known
-  failures, 35 of 87 to the bit).
+  no regressions; 2615 in-scope cells visibly off (lock 2775), 19 of them in the new case (which adds 52 known
+  failures, 37 of its 89 cells to the bit).
 - Left, documented in financial.md with the forms tried, for T-3058: G2 (= A7, type 1 from period 1), A62, A352,
   A379, the tiny-rate interest cells of both types (gate-edges A2-A8, E1-E10), and the periods near 1E15.

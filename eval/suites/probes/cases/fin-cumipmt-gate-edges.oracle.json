@@ -349,15 +349,23 @@
    "I4": {
     "t": "n",
     "v": -191.58728546636766
+   },
+   "J1": {
+    "t": "n",
+    "v": -2.3341923189629874
+   },
+   "J2": {
+    "t": "n",
+    "v": -131.84972104562613
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "fc414fda01992a2a1792d2ce029663a3541d2764f2edf3fbc199b55984dbbbc2",
+  "input_sha256": "33cf75e3a0ecfe3472e50acdf3d15ecd75002ddae7103b60da6b09a9a0706a39",
   "kind": "excel-graph",
-  "produced_at": "2026-10-28T17:25:56+00:00",
+  "produced_at": "2026-10-28T18:32:04+00:00",
   "version": null,
-  "workbook_name": "ca8c47bed3a4ba8e32f499ee3aa4492c88e712e65e9058b2a10b9573df1f5e2e.xlsx"
+  "workbook_name": "fcdc866a0d5e3d979c578c597c1a15d71202f74a8daf398313a7138a7924d944.xlsx"
  }
 }

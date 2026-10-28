@@ -352,10 +352,10 @@ impl Periods {
     /// an ulp off the correctly rounded log at some rates (-1 at 0.1, +1 at 2 against libm's
     /// `log1p`), and a deep discount carries that, so `CUMPRINC(0.1,1023,478581,7,24,1)` and
     /// `CUMPRINC(2,151,319288,3,42,1)` are to the bit with it and 67 and 245 ulps off with `log1p`
-    /// (gen-m9 9d9ceba257f8001b A372, b73c6cc96e093f03 A62, whose 40 periods still take the closed
-    /// form: TODO(T-3058); T-2521). `None` where the deepest
-    /// discount is near 1, the leading power is not normal or the result is not finite: the
-    /// per-period sum or the closed form decides there.
+    /// (gen-m9 9d9ceba257f8001b A372, b73c6cc96e093f03 A62; T-2521). A62's 40 periods still take
+    /// the closed form (TODO(T-3058)). `None` where the deepest discount is near 1, the leading
+    /// power is not normal or the result is not finite: the per-period sum or the closed form
+    /// decides there.
     fn geometric_principal(&self) -> Option<f64> {
         let log_growth = growth_log(self.rate);
         // Type 1 pays no interest in period 1, so its principal is the whole payment.

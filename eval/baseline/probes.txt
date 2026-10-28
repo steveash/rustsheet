@@ -453,7 +453,7 @@ C	probes/fin-coupon-walk-bounds-1904.case.json	14
 C	probes/fin-coupon-walk-bounds-b.case.json	13
 C	probes/fin-coupon-walk-bounds-c.case.json	200
 C	probes/fin-coupon-walk-bounds.case.json	28
-C	probes/fin-cumipmt-gate-edges.case.json	87
+C	probes/fin-cumipmt-gate-edges.case.json	89
 C	probes/fin-cumipmt-overflow-and-forms.case.json	25
 C	probes/fin-cumipmt-period-bound.case.json	30
 C	probes/fin-fvschedule-bool-ref.case.json	6

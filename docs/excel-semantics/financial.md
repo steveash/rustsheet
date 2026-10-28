@@ -1348,7 +1348,7 @@ per-period sum (type 0) or the closed form (type 1), and the balance drop where 
 interest is the payments less the closed-form principal where `nper·L` is below 2^-10 (`TINY_RATE_GROWTH`).
 19 known failures are fixed, none regressed, and visibly-off cells go from 8281 to 8267. The gates have no
 oracle cell near their edges (T-2521).
-T-2521 (probes/fin-cumipmt-gate-edges, excel-graph 2026-10-28: 87 cells around the kernel's gates; float64 fit with
+T-2521 (probes/fin-cumipmt-gate-edges, excel-graph 2026-10-28: 89 cells around the kernel's gates; float64 fit with
 the engine's own `growth_log`, `excel_exp` and `excel_expm1` against the type 0 and type 1 cells of the probes, the
 gen-m9 sweep and CUMPRINC_CUMIPMT.xlsx):
 - The short principal's geometric sum discounts with Excel's own `L = ln(1+rate)`, the one PPMT uses ("PPMT discounts
@@ -1392,7 +1392,8 @@ Ours since T-2521: the geometric principal and the payment of type 0's `-pmt·m 
 the geometric sum starts at a discount exponent of 3.6 (`GEOMETRIC_MIN_DISCOUNT`, was 8), and type 0's short
 interest is the payments less the principal wherever the principal is no larger than the interest, the band
 deciding only the rest. 11 known failures are fixed (gen-m9 4, probes 7), none regressed, and the new probe case
-has 35 of its 87 cells to the bit.
+has 37 of its 89 cells to the bit, among them J1 `CUMPRINC(0.004,1024,1000,3,34,1)`
+-2.3341923189629874 (2 ulps from the exact sum, which the closed form had) and J2.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
 fin-cumipmt-period-bound A18, the gen-m9 cells A62, A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
 T-3058; the short sums' last digits in T-1374)

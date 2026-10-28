@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2521: CUMIPMT and CUMPRINC around the kernel's gate edges. A: type 0 short interest where the growth (1+r)^(end-1)-1 crosses 2^-10 (BALANCE_GROWTH_MIN); B: where it crosses 2^10 (BALANCE_GROWTH_MAX). C (type 0), D (type 1): short principals whose discount exponent (nper-first+1)*log1p(r) runs from 3.6 to 9.3 across GEOMETRIC_MIN_DISCOUNT = 8. E, F: type 1 interest and principal where nper*log1p(r) crosses 2^-10 (TINY_RATE_GROWTH). G, H: type 1 from period 1 (CUMPRINC_CUMIPMT.xlsx G2/H2) over 1 to 10 periods; I: the payments.",
+ "description": "T-2521: CUMIPMT and CUMPRINC around the kernel's gate edges. A: type 0 short interest where the growth (1+r)^(end-1)-1 crosses 2^-10 (BALANCE_GROWTH_MIN); B: where it crosses 2^10 (BALANCE_GROWTH_MAX). C (type 0), D (type 1): short principals whose discount exponent (nper-first+1)*log1p(r) runs from 3.6 to 9.3 across GEOMETRIC_MIN_DISCOUNT = 8. E, F: type 1 interest and principal where nper*log1p(r) crosses 2^-10 (TINY_RATE_GROWTH). G, H: type 1 from period 1 (CUMPRINC_CUMIPMT.xlsx G2/H2) over 1 to 10 periods; I: the payments. J: test_fn_cumulative_lift's 32- and 33-period cells at 0.004.",
  "tags": [
   "M9",
   "financial",
@@ -96,7 +96,9 @@
     "I1": "=PMT(0.0083,36,8000,0,1)",
     "I2": "=PMT(0.1,36,8000,0,1)",
     "I3": "=PMT(0.0083,36,8000)",
-    "I4": "=PPMT(0.0083,2,36,8000,0,1)"
+    "I4": "=PPMT(0.0083,2,36,8000,0,1)",
+    "J1": "=CUMPRINC(0.004,1024,1000,3,34,1)",
+    "J2": "=CUMIPMT(0.004,1024,1000,1,33,0)"
    }
   }
  ],
