@@ -143,7 +143,7 @@ fn cdf_within(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
     }
     let scaled = x * dist.rate();
     if scaled == 0.0 {
-        return lower_of_underflow(dist.shape());
+        return LOWER_OF_UNDERFLOW;
     }
     if !scaled.is_finite() {
         return f64::NAN;
@@ -151,17 +151,11 @@ fn cdf_within(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
     incomplete_gamma_pair(dist.shape(), scaled, terms).0
 }
 
-/// P(a, x) where `x / beta` underflows to 0 for an x above 0: statrs panics there (a domain
-/// error), so this is statrs' value at the smallest x it takes, its `x < 1.1E-15` branch: 0, or 1
-/// for a shape that small too. Excel's `GAMMA.DIST(1E-300,2,1E100,TRUE)` is 0
-/// (probes/incomplete-gamma-cap E7).
-fn lower_of_underflow(a: f64) -> f64 {
-    if prec::almost_eq(a, 0.0, prec::DEFAULT_F64_ACC) {
-        1.0
-    } else {
-        0.0
-    }
-}
+/// P(a, x) where `x / beta` underflows to 0 for an x above 0 (statrs panics there, a domain
+/// error): 0 at every shape, as Excel's `GAMMA.DIST(1E-300,a,1E100,TRUE)` is for a = 2, 1, 0.5,
+/// 0.01, 1E-17 and 1E-300 (probes/incomplete-gamma-cap E7, probes/t2982-gamma-inv-huge-shape
+/// A117-A122), although the true P(1E-17, 1E-400) is 1 - 9E-15 (T-2982).
+const LOWER_OF_UNDERFLOW: f64 = 0.0;
 
 /// The shape below which [`gamma_prefactor`] forms x^a e^-x / Gamma(a) directly, and above which
 /// it takes TOMS 654's `rcomp`; GAMMA.DIST's tiny-ratio log form keeps to the same split.
@@ -549,7 +543,7 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
     }
     let scaled = x * dist.rate();
     if scaled == 0.0 {
-        return 1.0 - lower_of_underflow(dist.shape());
+        return 1.0 - LOWER_OF_UNDERFLOW;
     }
     if !scaled.is_finite() {
         return f64::NAN;

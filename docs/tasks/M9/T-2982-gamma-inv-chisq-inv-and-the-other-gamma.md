@@ -41,6 +41,21 @@ recorded.
   - `INCOMPLETE_GAMMA_WEIGHT` (lift/kinds/statistical.rs): a cdf from shape 1E8 is now one term, so its bound only
     over-charges there; re-derive it if an inversion changes.
 
+## Progress (run 1, 2026-10-28; session budget, branch pushed in flight)
+- Probe probes/t2982-gamma-inv-huge-shape (123 cells, excel-graph) and docs/excel-semantics/statistics.md "GAMMA.INV and
+  CHISQ.INV at a huge shape": the quantile is close to true up to shape 5E9, mostly `#NUM!` at 7E9-1E10 (17 of 18 p at
+  1E10), and from 2E10 to 1E300 the true quantile times c = 1.0002658235505755 at p = 0.5, any scale. In the tails it
+  is not exactly c·q: at shape 1E13, p = 1E-300 (A24) Excel is 12,972 below c·Q(p, a) and 2,600 above Q(p, a·c); every
+  gen-m9 huge-shape cell (A327, A341, A239, A338, A296) and E5 is within about 1E-11 of c·q, so c·q alone is not
+  visibly right in the tails. Next: find what produces c (it is the inversion's: the cdf has no factor) — a shifted
+  start, a transformed search variable, or a mapped shape; fit A24-A77 (two p sweeps) to it. scratch tools: mpmath with
+  Temme's C_0..C_3 for the reference quantile (mpmath's gammainc does not converge at a = 1E13).
+- Done on the branch: the cdf where x / beta underflows is 0 at every shape (A117-A122; was 1 below a shape of about
+  1E-15), and the density where x / beta overflows is `#NUM!` (E18). E18, A118, A119 pass.
+- Not probed yet: the density #NUM! cut and the cdf cut near 1E76 (excel-graph refused the workbooks holding
+  `GAMMA.DIST(2,1E40..1E100,1E10,TRUE)` and densities at shapes 1E10-1E11; try one cell per workbook). Temme's tails at
+  the 1E8 cut: A144-A146 (shape 99999999, the series side) are about 1E-15 relative off, A145 (shape 1E8) too.
+
 ## Acceptance criteria
 - [ ] probes/incomplete-gamma-cap E5, E15, E18 pass, E13, E14, E19 bit-exact or named in the Outcome with their ulp; no
       loop whose length depends on argument values beyond the T-1872 caps.

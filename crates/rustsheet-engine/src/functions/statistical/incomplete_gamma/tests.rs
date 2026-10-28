@@ -250,10 +250,12 @@ fn statrs_panics_and_hangs_end_as_nan() {
     );
     // x * rate overflows (statrs: an unwrapped domain error).
     assert!(gamma_cdf(&Gamma::new(1.0, 1e10).unwrap(), 1e300).is_nan());
-    // Where it underflows to 0 (statrs panicked too) the value is statrs' at its smallest x.
+    // Where it underflows to 0 (statrs panicked too) the cdf is Excel's 0 at every shape
+    // (probes/t2982-gamma-inv-huge-shape A117-A122; T-2982).
     assert_eq!(gamma_cdf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300), 0.0);
     assert_eq!(gamma_sf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300), 1.0);
-    assert_eq!(gamma_cdf(&Gamma::new(1e-16, 1e-100).unwrap(), 1e-300), 1.0);
+    assert_eq!(gamma_cdf(&Gamma::new(1e-16, 1e-100).unwrap(), 1e-300), 0.0);
+    assert_eq!(gamma_sf(&Gamma::new(1e-300, 1e-100).unwrap(), 1e-300), 1.0);
     // A shape of 1E300 and a mean of 1: the inversion's cdfs never finish.
     assert!(gamma_inverse_cdf(&Gamma::new(1e300, 1e300).unwrap(), 0.5).is_nan());
     // The ends and invalid arguments are statrs' (its panics outside [0, 1] are NaN).

@@ -104,7 +104,9 @@ impl Model {
         // The density of a positive x whose x / beta is subnormal is #NUM!, whatever the shape or
         // the size of the result, while the cdf there is 0 (probes/t2738-gamma-dist-tiny-ratio:
         // `GAMMA.DIST(4.4E-308,1,2,FALSE)` is #NUM!, 4.5E-308 is 0.4999...; T-2738).
-        if !cumulative && x > 0.0 && x / beta_scale < f64::MIN_POSITIVE {
+        // An x / beta that overflows is #NUM! for the density as for the cdf
+        // (`GAMMA.DIST(1E300,1,1E-10,FALSE)` and `TRUE`, probes/incomplete-gamma-cap E18, E6; T-2982).
+        if !cumulative && x > 0.0 && !(f64::MIN_POSITIVE..=f64::MAX).contains(&(x / beta_scale)) {
             return Err(num_error(cell));
         }
         let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
