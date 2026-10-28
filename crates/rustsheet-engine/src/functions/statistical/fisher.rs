@@ -1,5 +1,6 @@
 use statrs::distribution::{Continuous, FisherSnedecor};
 
+use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
@@ -13,7 +14,8 @@ use crate::functions::statistical::paired::marked_number_error;
 use crate::functions::statistical::special::{ln_gamma, refine_increasing};
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul};
+use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp};
+use crate::x87_log10::excel_ln;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -450,6 +452,28 @@ fn f_pdf_loader(m: f64, n: f64, x: f64) -> f64 {
     factor * dbinom_raw_dev(k, size, p, q, diff)
 }
 
+/// FISHER's kernel for -1 < x < 1: `0.5 * LN((1 + x) / (1 - x))` with Excel's LN and the quotient
+/// rounded twice like the operator `/` (docs/excel-semantics/statistics.md "FISHER, FISHERINV,
+/// EXPON.DIST and HARMEAN are Excel operators around LN and EXP"). The twice-rounded quotient is
+/// what makes `FISHER(1E-15/3.14159)` 2.2204460492503126E-16 (gen-m9/4ab2ba98d26c8a5e A395,
+/// excel-graph), where a plain quotient gives 3.3306690738754686E-16; fit lab `fisher`, T-2437.
+fn fisher(x: f64) -> f64 {
+    0.5 * excel_ln(extended_quotient(1.0 + x, 1.0 - x))
+}
+
+/// FISHERINV's kernel: `(EXP(2y) - 1) / (EXP(2y) + 1)` with Excel's EXP and the quotient rounded
+/// twice, not a correctly rounded tanh, and 1 once EXP(2y) overflows (docs/excel-semantics/
+/// statistics.md "FISHERINV is (EXP(2y)-1)/(EXP(2y)+1)"). The twice-rounded quotient makes
+/// `FISHERINV(TAN(PI()))` -2^-53 (gen-m9/ee2497a5e683c5d9 A30, excel-graph); fit lab `fisherinv`, T-2437.
+fn fisher_inv(y: f64) -> f64 {
+    let e = excel_exp(2.0 * y);
+    if e.is_infinite() {
+        1.0
+    } else {
+        extended_quotient(e - 1.0, e + 1.0)
+    }
+}
+
 impl Model {
     /// `FISHER(x) = 0.5 * ln((1 + x) / (1 - x))`: lifts over an array and a range (SPEC-0011;
     /// probes/stat-argument-modes H252-H254).
@@ -462,7 +486,7 @@ impl Model {
                 if x <= -1.0 || x >= 1.0 {
                     return Err(num_error(cell));
                 }
-                let result = 0.5 * ((1.0 + x) / (1.0 - x)).ln();
+                let result = fisher(x);
                 if result.is_nan() || result.is_infinite() {
                     return Err(num_error(cell));
                 }
@@ -479,15 +503,7 @@ impl Model {
                 return CalcResult::new_args_number_error(cell);
             };
             number_or_error(model.cast_number_ref(y, cell).and_then(|y| {
-                // Excel evaluates (exp(2y)-1)/(exp(2y)+1) in doubles, not a correctly rounded
-                // tanh, and is 1 once exp(2y) overflows (docs/excel-semantics/statistics.md,
-                // "FISHERINV is (EXP(2y)-1)/(EXP(2y)+1)").
-                let e = (2.0 * y).exp();
-                let result = if e.is_infinite() {
-                    1.0
-                } else {
-                    (e - 1.0) / (e + 1.0)
-                };
+                let result = fisher_inv(y);
                 if result.is_nan() || result.is_infinite() {
                     return Err(num_error(cell));
                 }
@@ -807,7 +823,47 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::f_quantile;
+    use super::{f_quantile, fisher, fisher_inv};
+
+    // FISHER and FISHERINV round their quotient twice, like Excel's `/` (excel-graph; T-2437).
+    #[test]
+    fn fisher_rounds_its_quotient_twice() {
+        // gen-m9/4ab2ba98d26c8a5e Calc!A395 `FISHER(Data!E4/Data!$D2)`, x = 1E-15/3.14159.
+        assert_eq!(
+            fisher(3.183_101_550_488_765_5e-16),
+            2.220_446_049_250_312_6e-16
+        );
+        // probes/t2437-fit-separators A1, A4, A8: Excel's cancellation, not atanh.
+        assert_eq!(
+            fisher(1.491_723_674_723_48e-11),
+            1.491_717_860_324_600_7e-11
+        );
+        assert_eq!(fisher(1.027_594_709_980_55e-16), 0.0);
+        assert_eq!(
+            fisher(-6.605_891_778_770_15e-16),
+            -6.661_338_147_750_943e-16
+        );
+    }
+
+    #[test]
+    fn fisher_inv_rounds_its_quotient_twice() {
+        // gen-m9/ee2497a5e683c5d9 Calc!A30 `FISHERINV(TAN(PI()))`, TAN(PI()) = -1.22514845490862E-16.
+        assert_eq!(
+            fisher_inv(-1.225_148_454_908_62e-16),
+            -1.110_223_024_625_156_5e-16
+        );
+        // probes/t2437-fit-separators A23, A26.
+        assert_eq!(
+            fisher_inv(-8.011_504_958_898_52e-15),
+            -7.993_605_777_301_19e-15
+        );
+        assert_eq!(
+            fisher_inv(-6.552_011_261_371_12e-16),
+            -6.661_338_147_750_943e-16
+        );
+        // FISHER_FISHERINV.xlsx C38: EXP(2y) overflows to 1.
+        assert_eq!(fisher_inv(1000.0), 1.0);
+    }
 
     // Excel's F quantile at a huge df is its BETA.INV mapped to F (probes-numeric, excel-graph).
     #[test]

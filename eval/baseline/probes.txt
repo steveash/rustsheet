@@ -1270,6 +1270,7 @@ C	probes/t2436/f2bd5f380ec002bf.case.json	78
 C	probes/t2436/f34f66fb7f81e673.case.json	54
 C	probes/t2436/fd9fa22d212080d6.case.json	18
 C	probes/t2436/fec39efaba9284c3.case.json	79
+C	probes/t2437-fit-separators.case.json	114
 C	probes/t2452-expand-1048576x2.case.json	1
 C	probes/t2452-expand-2x524288.case.json	1
 C	probes/t2452-expand-2x524289.case.json	1
@@ -3200,7 +3201,6 @@ F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A61
 F	probes/t2436/4250f880ab640c49.case.json	Calc!A121
 F	probes/t2436/4250f880ab640c49.case.json	Calc!T121
 F	probes/t2436/4250f880ab640c49.case.json	Calc!U121
-F	probes/t2436/4ab2ba98d26c8a5e.case.json	Calc!A256
 F	probes/t2436/7674c89c824aca43.case.json	Calc!A31
 F	probes/t2436/7674c89c824aca43.case.json	Calc!T16
 F	probes/t2436/7674c89c824aca43.case.json	Calc!T31

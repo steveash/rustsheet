@@ -70,3 +70,25 @@ Cells:
 ## Visible-parity stage
 Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
 Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/4ab2ba98d26c8a5e Calc!A395 `=FISHER((Data!E4/Data!$D2))`: Excel 2.2204460492503126e-16, ours 3.3306690738754686e-16.
+
+## Outcome (21 of 23 owned cells; two wait on T.DIST inputs)
+- Forms (fit lab `fisher`, `fisherinv`, `expon-cdf`, `harmean`, `fitlab/kernels/fisher_expon_harmean.py`; counts are
+  bit-exact cells, the engine before in brackets; full table in docs/excel-semantics/statistics.md "FISHER, FISHERINV,
+  EXPON.DIST and HARMEAN are Excel operators around LN and EXP"):
+  - FISHER: 0.5 * excel_ln((1 + x) / (1 - x)) with the quotient rounded twice (`extended_quotient`): 152/155 (143).
+    Fixes the visibly-off gen-m9/4ab2ba98d26c8a5e A395 (and probes/t2436/4ab2ba98d26c8a5e A256).
+  - FISHERINV: (excel_exp(2y) - 1) / (excel_exp(2y) + 1), the quotient rounded twice: 133/143 (131).
+  - EXPON.DIST/EXPONDIST cdf: -excel_expm1(-t) for t = lambda*x < 1, 1 - excel_exp(-t) from 1 on: 129/132 (98). Excel's
+    cut lies in (0.999999999999999, 1.3508); the forms agree in between wherever probed.
+  - HARMEAN: 1 / (sum(1/x) / n), every / and + twice rounded (AVERAGE's operators): 119/122 (106).
+  The fit misses are the fit lab's argument reader (blank and one-cell references), not the kernels: the eval has none.
+- New probe probes/t2437-fit-separators (114 cells, excel-graph 2026-10-28): inputs that separate the candidates, and a
+  ladder of EXPON.DIST(t,1,TRUE) bracketing the expm1 cut.
+- Eval delta: gen-m9 known failures 3552 -> 3532 (20 owned lines removed; A230 of c6cfda6bd10cae93 already passed on main);
+  probes 2156 -> 2155 (t2436/4ab2ba98d26c8a5e A256) plus the new case at 114/114. No baseline gained a line; no still-failing
+  cell of these functions moved.
+- Left (owned, not this kernel's digits; FISHER/EXPON.DIST are bit-exact on Excel's input bits):
+  - gen-m9/a612e89321a6df9c A191 `FISHER(T.DIST.RT((1.005^1e-15),4))`: Excel's T.DIST.RT(1,4) is 0.18695048315002957
+    (probes-numeric/m9-t-dist-rt A49), ours 0.18695048315002943 (T-0969, T-2509).
+  - gen-m9/caa1eed48b1883fe A382 `EXPON.DIST(T.DIST(DAYS(14246,10047),4,Data!D$11),...)`: Excel's T.DIST(4199,4,FALSE) is
+    9.192880751152396E-18 (excel-graph 2026-10-28, probed during this task), ours 9.192880751152399E-18 (T-2585).
