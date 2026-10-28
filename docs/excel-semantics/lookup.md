@@ -836,7 +836,7 @@ is circular, 0), but no arm is copied until the result's size, taken from the ar
 picked range arms are copied, so `CHOOSE({1},C:C,D:D,…)` with 254 whole-column arms holds one column (T-1564; IF over an
 array condition alike).
 Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using `BroadcastArg` and
-`evaluate_broadcast_arm` (functions/broadcast_arg.rs).
+`evaluate_broadcast_arm` (functions/lift/broadcast_arg.rs).
 Tasks: T-1508, T-1564
 
 ## XMATCH/XLOOKUP reference-form lookup and return arrays; capital Thorn

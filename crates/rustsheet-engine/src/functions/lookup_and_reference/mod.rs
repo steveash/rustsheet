@@ -8,7 +8,6 @@ use crate::expressions::utils::{
     unquote_sheet_prefix,
 };
 use crate::external_reference::{one_external_area, PickedReference};
-use crate::functions::broadcast_arg::BroadcastArg;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::limits::check_array_size;
@@ -18,7 +17,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
+use crate::functions::lift::{BroadcastArg, LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::SearchVector;

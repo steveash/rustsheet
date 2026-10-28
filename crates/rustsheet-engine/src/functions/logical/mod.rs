@@ -23,8 +23,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::{
-        broadcast_arg::BroadcastArg,
-        lift::{LiftCost, LiftOptions, LiftedArg},
+        lift::{BroadcastArg, LiftCost, LiftOptions, LiftedArg},
         Function,
     },
     limits::check_array_size,

@@ -26,7 +26,7 @@ T-1508 performance review: `choose_array` (functions/lookup_and_reference/mod.rs
 
 ## Outcome
 CHOOSE over an index array and IF over an array condition take each arm's extent from its range bounds
-(`BroadcastArg::Range`, functions/broadcast_arg.rs; IF's `IfArg`, `if_arg_at`, `if_arg_dims` and `evaluate_if_arg`
+(`BroadcastArg::Range`, functions/lift/broadcast_arg.rs; IF's `IfArg`, `if_arg_at`, `if_arg_dims` and `evaluate_if_arg`
 moved there as `BroadcastArg`, `BroadcastArg::at`, `BroadcastArg::dims` and `evaluate_broadcast_arg`). Each range arm's
 cells are read in order as before (`Model::read_range_cells`, cast.rs, which shares `range_used_corner` with
 `evaluate_range`), so a cycle through any arm is still one, also when the result is too big
