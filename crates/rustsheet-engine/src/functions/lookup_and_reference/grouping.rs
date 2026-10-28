@@ -73,13 +73,11 @@ pub(crate) enum SetId {
     },
 }
 
-/// A key as its group shows it: the blank key as the number 0 (G!A1, PIVOTBY's column keys too:
-/// probes/groupby-pivotby-followup G!A821), every other key as first spelled.
+/// A key as its group shows it: every key as first spelled, the blank key staying a true blank.
+/// A spill displays that blank as 0 (G!A1, probes/groupby-pivotby-followup G!A821), but COUNT and
+/// the other readers of the array skip it (probes/pivotby-ttest-array2 P!A32, BA1:BB32).
 pub(crate) fn shown_key(key: &ArrayNode) -> ArrayNode {
-    match key {
-        ArrayNode::Empty => ArrayNode::Number(0.0),
-        other => other.clone(),
-    }
+    key.clone()
 }
 
 /// Empty text, the filler of total rows, corners and empty PIVOTBY cells (not a blank: G!AC33).
