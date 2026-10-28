@@ -332,3 +332,12 @@ fn a_runs_are_the_weekday() {
         );
     }
 }
+
+/// A calendar prefix alone is no date token: a negative value prints its minus and the literals
+/// (probes/t2388-b1-negative; docs/excel-semantics/number-formats.md "Bare digits beside a date token").
+#[test]
+fn lone_calendar_prefix_keeps_the_minus_of_a_negative() {
+    assert_eq!(super::text(-3.0, "b1"), "-");
+    assert_eq!(super::text(-3.0, "b1 x"), "- x");
+    assert_eq!(super::text(3.0, "b1 x"), " x");
+}
