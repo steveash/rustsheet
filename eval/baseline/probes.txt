@@ -485,6 +485,7 @@ C	probes/fraction-numerator-overflow2.case.json	69
 C	probes/fraction-overflow-scaled.case.json	80
 C	probes/fraction-placeholder-past-2-30.case.json	75
 C	probes/fraction-six-digit-denominator.case.json	5
+C	probes/frequency-bins.case.json	38
 C	probes/ftest-decomposition.case.json	91
 C	probes/gamma-x87-edges.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
@@ -3253,11 +3254,6 @@ F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A12
 F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A9
 F	probes/t2496-fin-subexpressions.case.json	P!A24
 F	probes/t2496-fin-subexpressions.case.json	P!A25
-F	probes/t2496-fin-subexpressions.case.json	P!A43
-F	probes/t2496-fin-subexpressions.case.json	P!A44
-F	probes/t2496-fin-subexpressions.case.json	P!A69
-F	probes/t2496-fin-subexpressions.case.json	P!A74
-F	probes/t2496-fin-subexpressions.case.json	P!A79
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D1
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D10
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D8

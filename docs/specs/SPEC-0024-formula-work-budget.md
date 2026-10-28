@@ -49,7 +49,7 @@ Non-goals:
   formulas times the budget. This is a residual risk: 1,000 cells each near the limit is about
   1,000 times the per-formula time. A per-recalculation bound needs its own design, because the
   result of an over-budget pass, and which cells give up, must be deterministic. It is filed as
-  T-2807 (a spec task).
+  T-2807 (a spec task) and designed in SPEC-0028.
 - Wall-clock deadlines. They are non-deterministic and are not used (Alternatives).
 
 ## Excel behavior to match

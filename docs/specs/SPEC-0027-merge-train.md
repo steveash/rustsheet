@@ -227,8 +227,9 @@ it must not be taken over mid-run.
 lose to a waiter even though the holder still holds the lock. `renew` and `release` therefore
 re-read and retry until the write succeeds or the lock is no longer theirs, up to 10 attempts.
 When the lock is no longer theirs (taken over), `acquire` as a renewal exits **4** (`lost`),
-distinct from 1 (`busy`). A merger that gets 4 stops at once and merges nothing more. `release`
-exits 0 either way, as today.
+distinct from 1 (`busy`). `acquire --renew` states that the caller holds the lock, so a lock that
+is no longer its own exits 4 even when it was taken over between two calls (T-2985). A merger
+that gets 4 stops at once and merges nothing more. `release` exits 0 either way, as today.
 
 **`release`** writes `state: free` and `freed: now`, and keeps the pruned queue, so the head waiter
 takes the lock next. A session that releases and then acquires again is no longer in the queue,

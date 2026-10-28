@@ -1,0 +1,63 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FREQUENCY row counts: text, boolean, blank and error bins and data (T-2427).",
+  "tags": [
+    "M2",
+    "statistical",
+    "frequency",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ROWS(FREQUENCY({1;2},\"a\"))",
+        "A2": "=ROWS(FREQUENCY({1;2},TRUE))",
+        "A3": "=ROWS(FREQUENCY({1;2},Data!A1))",
+        "A4": "=ROWS(FREQUENCY({1;2},Data!A2))",
+        "A5": "=ROWS(FREQUENCY({1;2},Data!A1:A3))",
+        "A6": "=ROWS(FREQUENCY({1;2},Data!A3))",
+        "A7": "=ROWS(FREQUENCY({1;2},5))",
+        "A8": "=ROWS(FREQUENCY({1;2},Data!A4))",
+        "A9": "=ROWS(FREQUENCY(\"a\",{1;2}))",
+        "A10": "=FREQUENCY(NA(),{1;2})",
+        "A11": "=FREQUENCY({1;2},NA())",
+        "A12": "=FREQUENCY(1/0,NA())",
+        "A13": "=ROWS(FREQUENCY({1;2},{\"a\";1}))",
+        "A14": "=ROWS(FREQUENCY(Data!A1:A3,Data!A1:A3))",
+        "A15": "=SUM(FREQUENCY({1;2;\"a\"},Data!A3:A4))",
+        "A16": "=INDEX(FREQUENCY({1;2;3},\"a\"),1)",
+        "A17": "=INDEX(FREQUENCY({1;2;3},\"a\"),2)",
+        "A18": "=INDEX(FREQUENCY({1;2;3},Data!A1),1)",
+        "A19": "=INDEX(FREQUENCY({1;2;3},Data!A1),2)",
+        "A20": "=INDEX(FREQUENCY({1;2;3},Data!A3),1)",
+        "A21": "=INDEX(FREQUENCY({1;2;3},Data!A3),2)",
+        "A22": "=INDEX(FREQUENCY({1;2;3},TRUE),1)",
+        "A23": "=INDEX(FREQUENCY({1;2;3},TRUE),2)",
+        "A24": "=INDEX(FREQUENCY({1;2;3},{\"a\";\"b\"}),1)",
+        "A25": "=INDEX(FREQUENCY({1;2;3},{\"a\";\"b\"}),2)",
+        "A26": "=INDEX(FREQUENCY(\"a\",{1;2}),1)",
+        "A27": "=SUM(FREQUENCY({1;2;3},{\"a\";2}))",
+        "A28": "=INDEX(FREQUENCY({1;2;3},{\"a\";2}),2)",
+        "B1": "=FREQUENCY({1;#DIV/0!},NA())",
+        "B2": "=FREQUENCY(NA(),{1;#DIV/0!})",
+        "B3": "=FREQUENCY({#N/A;1},{#DIV/0!;1})",
+        "B4": "=T.TEST({0.02,0.027},2,42,NA())",
+        "B5": "=T.TEST({0.02,0.027},2,42,2)",
+        "B6": "=FREQUENCY(T.TEST({0.02,0.027},2,42,2),Data!C5)",
+        "B7": "=T.TEST({0.02,0.027},2,44,NA())",
+        "B8": "=T.TEST({0.02,0.027},2,44,2)",
+        "B9": "=T.TEST({0.02,0.027},2,2,NA())",
+        "B10": "=FREQUENCY(T.TEST({0.02,0.027},2,44,NA()),Data!C5)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "x",
+        "A2": true,
+        "A4": 3
+      }
+    }
+  ]
+}
