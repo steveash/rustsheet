@@ -3,7 +3,7 @@ id: T-2807
 title: "Spec: bound the total work of one recalculation pass"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
