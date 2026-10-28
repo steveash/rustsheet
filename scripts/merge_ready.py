@@ -196,6 +196,12 @@ def text_of(value: object, *keys: str) -> str:
     return found if isinstance(found, str) else ""
 
 
+def label_names(pull: object) -> list[str]:
+    """The names of a PR's (or issue's) labels."""
+    labels = field_of(pull, "labels")
+    return [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
+
+
 def int_of(value: object, *keys: str) -> int:
     found = field_of(value, *keys)
     return found if isinstance(found, int) and not isinstance(found, bool) else 0
@@ -373,9 +379,7 @@ def pr_state_failures(pull: object, marker: Marker, head: str, repo: Repo) -> li
 def verify(client: Client, pr: int, repo: Repo) -> Verdict:
     """V1-V6 of SPEC-0027 section 2 on PR `pr`. Raises GhError or GitError when a read fails."""
     pull = client.pull(pr)
-    labels = field_of(pull, "labels")
-    names = [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
-    if READY_LABEL not in names:
+    if READY_LABEL not in label_names(pull):
         return Verdict(pr, failures=(Failure("label", f"no {READY_LABEL} label", IGNORE),))
     authors = Authors(client, text_of(pull, "base", "repo", "owner", "type") == "User")
     # V1: the newest marker by a writer; comments by anyone else have no effect.

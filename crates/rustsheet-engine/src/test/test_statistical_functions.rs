@@ -49,18 +49,23 @@ fn test_frequency_rows_and_errors() {
     assert_eq!(model._get_text("B7"), "#DIV/0!");
 }
 
-/// What T-2427 leaves as on `main`, unprobed (T-2636): an error cell in a data range comes before a
-/// scalar bins error, and an error element of the bins array is `#VALUE!`.
+/// An error cell in a data range comes before a scalar bins error (as on `main`, unprobed), and an
+/// error element of the bins array is skipped like text (probes/array-error-element-order A1-A2,
+/// T-2636); PROB returns an array's error element (A12).
 #[test]
-fn test_frequency_unprobed_orders_keep_main() {
+fn test_frequency_data_range_error_and_bins_error_element() {
     let mut model = new_empty_model();
     model._set("A1", "1");
     model._set("A2", "=1/0");
     model._set("B1", "=FREQUENCY(A1:A2,NA())");
-    model._set("B2", "=FREQUENCY({1;2},{1,#N/A})");
+    model._set("B2", "=ROWS(FREQUENCY({1;2},{1,#N/A}))");
+    model._set("B3", "=INDEX(FREQUENCY(0,{1,#VALUE!,3}),1)");
+    model._set("B4", "=PROB({1,#N/A,3},{0.2,0.3,0.5},1)");
     model.evaluate();
+    assert_eq!(model._get_text("B4"), "#N/A");
     assert_eq!(model._get_text("B1"), "#DIV/0!");
-    assert_eq!(model._get_text("B2"), "#VALUE!");
+    assert_eq!(model._get_text("B2"), "2");
+    assert_eq!(model._get_text("B3"), "1");
 }
 
 // Evidence: probes/mode-typed-arguments A21-A29 (excel-graph, 2026-10-16, T-1291), which supersedes
