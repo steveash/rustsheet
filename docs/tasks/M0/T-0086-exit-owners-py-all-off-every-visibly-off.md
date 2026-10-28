@@ -3,7 +3,7 @@ id: T-0086
 title: "exit_owners.py --all-off: every visibly-off Excel cell no open task owns, attributed, unattributed and probe, grouped by function"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -42,3 +42,12 @@ milestone, each with case, cell, formula, expected and actual.
 
 ## Out of scope
 - Filing the owners (T-0087).
+
+## Outcome
+- The eval now writes `attributed_off` into report.json (visibly-off Excel cells with their sole-call function,
+  formula, expected and actual), built from the same rule as `unattributed_off` (`attribution::off_excel_cells`),
+  so no visibly-off rule is repeated in Python; closeness.rs's tests keep pinning the 4-ulp and half-unit boundaries.
+- `scripts/exit_owners.py --all-off [--function NAME] [--strict]` and `make unowned-off ALL=1 [FUNCTION=NAME]` list
+  the unowned cells by function, then unattributed, then probe-milestone cells; a cell owned only by a `defer:`
+  task is listed as `(deferred)`. About 30 s on the full report (100,671 attributed cells; 111 listed).
+- Eval delta: none (report-only addition).
