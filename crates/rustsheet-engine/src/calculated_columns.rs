@@ -245,7 +245,7 @@ impl Model {
     /// Writes the formula of (`sheet`, `row`, `column`) into `fill`'s targets, the cells
     /// [`Model::calculated_column_fill`] found before it was typed, each with its own style, and
     /// makes the column a calculated column (`calculated_column_formula`, the first data row's
-    /// text, as Excel saves it). The formula is stored relative to its cell, so an A1 reference
+    /// text in English; only whether it is set is read). The formula is stored relative to its cell, so an A1 reference
     /// fills shifted, like a fill down (`=A2*2` gives `=A3*2` a row below;
     /// probes/t2957-a1-reference). Nothing is written when the cell holds no formula: a typed
     /// constant fills nothing. A target the write guards refuse (`prepare_cell_for_user_input`)

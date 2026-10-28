@@ -2581,7 +2581,8 @@ Ours (T-2958, T-3024): a formula typed into a table's data rows (`Model::set_typ
 one shared formula and the column is a calculated column (`Model::calculated_column`, calculated_columns.rs), by
 writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A column is a
 calculated column when its `TableColumn::calculated_column_formula` is set, which a typed formula that fills or
-re-fills it does (the first data row's text without `=`, as Excel saves `calculatedColumnFormula`); a typed constant
+re-fills it does (only whether it is set is read; its text, the first data row's formula in English, is an engine
+choice); a typed constant
 keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
 removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
 fill in the engine, an unprobed choice (T-3025). The column formula is neither read from nor written to xlsx yet
@@ -2589,8 +2590,7 @@ fill in the engine, an unprobed choice (T-3025). The column formula is neither r
 calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
 types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
-table holding the cell since T-2979 (below). Neither import nor export
-reads or writes `calculatedColumnFormula` (T-2969).
+table holding the cell since T-2979 (below).
 Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
 grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
 over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
@@ -2602,7 +2602,7 @@ column whose other cells are not all blank, and a new column that another table 
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
 Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
-Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3025
+Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
