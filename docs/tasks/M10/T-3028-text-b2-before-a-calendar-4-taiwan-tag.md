@@ -3,7 +3,7 @@ id: T-3028
 title: "TEXT: B2 before a calendar-4 (Taiwan) tag prints 01 years"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: todo
 priority: P3
 size: S
 tier: opus
@@ -31,3 +31,14 @@ before year 1), clamped to year 1; `b` "2\u{1c}" is unexplained. Probe other ser
 
 ## Out of scope
 - Calendars 3, 5 and 7 after `B2` (T-2932).
+
+## Findings (2026-10-28, probe only; the task stays open)
+probes/t3028-b2-taiwan-years (excel-graph) answers the guess in Context: number-formats.md "`B2` before a locale tag
+and calendar digit 6", Taiwan bullet, has the rule. In short, every year token prints the Minguo year m = year - 1911:
+in full from 1000, else "0" and m's first digit; m < 1 is `#VALUE!`. `b`/`bb` print m's third and fourth characters
+and read past the end of m's text below 1000; the second character changes with the rest of the format ("X" alone,
+U+001C in A37/A38's formats), and a missing third character is U+0F01.
+Next run: implement the year tokens (`yyyy`, `yy`, `y`, `yyy`, `e`, `ee`, `bbbb` and `b`/`bb` for m ≥ 1000, and the
+`#VALUE!`); A37 and A38 also need `b`'s U+001C, which one more probe could pin down (the same `b` after each of `yyyy|`,
+`e|`, `yyyy|e|`, `yy|`, `mmmm|`, `"x"`, to see what decides the character), or leave them as known failures with the
+year tokens fixed and narrow the criterion. The new probe's cells are known failures this task owns (eval/baseline/probes.txt).
