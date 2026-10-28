@@ -25,7 +25,9 @@ use crate::{
     number_format::{complex_part_to_text, to_precision},
 };
 
+mod reading;
 mod trig;
+use reading::{has_inner_minus, strip_currency_symbols};
 use trig::{imcos, imcosh, imcot, imcsc, imcsch, imsec, imsech, imsin, imsinh, imtan};
 
 /// This implements all functions with complex arguments in the standard
@@ -226,41 +228,6 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
-/// Whether `text`, past its leading spaces, has a `-` that is neither its first character nor an
-/// exponent's sign (`1E-3`, an `E` after a digit or a `.`): Excel's complex reader does not hand
-/// such text to VALUE.
-fn has_inner_minus(text: &str) -> bool {
-    let bytes = text.trim_start_matches(' ').as_bytes();
-    (1..bytes.len()).any(|i| {
-        let exponent_sign = matches!(bytes.get(i - 1), Some(b'E' | b'e'))
-            && matches!(
-                i.checked_sub(2).and_then(|j| bytes.get(j)),
-                Some(b'0'..=b'9' | b'.')
-            );
-        bytes.get(i) == Some(&b'-') && !exponent_sign
-    })
-}
-
-/// `text` without the `$` and `€` signs that stand before a digit, past any spaces: Excel reads
-/// `IMABS("$1+2i")`, `"$1-2i"`, `"$ 1+2i"`, `"1+$2i"` and `"€1+2i"` as 1+2i (2.23606797749979), but
-/// not `"$i"` (`#NUM!`); a sign before a minus stays, so `"$-5"` is `#NUM!` (probes/eng-inumber-reading
-/// A5, A20:A26).
-fn strip_currency_symbols(text: &str) -> String {
-    let chars: Vec<char> = text.chars().collect();
-    let mut out = String::with_capacity(text.len());
-    for (i, &c) in chars.iter().enumerate() {
-        let before_digit = chars[i + 1..]
-            .iter()
-            .find(|&&n| n != ' ')
-            .is_some_and(char::is_ascii_digit);
-        if !(matches!(c, '$' | '€') && before_digit) {
-            out.push(c);
-        }
-    }
-    out
-}
-
-/// A parsed complex number: the real part, the imaginary part and the suffix.
 type ComplexParts = (f64, f64, Suffix);
 
 /// One complex function of a parsed number (IMABS … IMTAN).
