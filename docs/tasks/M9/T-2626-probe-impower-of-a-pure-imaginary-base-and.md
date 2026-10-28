@@ -3,7 +3,7 @@ id: T-2626
 title: "Probe IMPOWER of a pure imaginary base and a lopsided base whose x^2 overflows (T-2539 follow-up)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
