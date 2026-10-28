@@ -699,6 +699,7 @@ The flush follows each function's internal path, not the size of the result: `BI
 FALSE, J229/J238 TRUE). Implemented (T-2703): the EXPON.DIST, WEIBULL, BETA.DIST and GAMMA.DIST densities, the
 BINOM.DIST pmf off its k = 0 and k = n closed forms, and the NEGBINOM.DIST pmf pass their result through
 `arithmetic::flush_subnormal`. The closed forms and the cumulative modes are left unchanged: k = n is EXP-based like k = 0.
+Implemented (T-2847): the NEGBINOM.DIST cdf off its closed forms (row 9 below) flushes the bratio port's result.
 More paths (T-2706, VERIFIED at the probed arguments, probes/t2706-subnormal-density-paths, excel-graph 2026-10-25, each
 true value between 4.9E-324 and 2.2E-308, row n is the call in An and its companion in Bn). Excel KEEPS the subnormal
 (companion FALSE) of the BINOM.DIST pmf at k = n (`BINOM.DIST(1000,1000,0.49,FALSE)`, BINOMDIST, `BINOM.DIST(500,500,

@@ -714,6 +714,7 @@ C	probes/lotus-dot-range-offgrid.case.json	2
 C	probes/lotus-dot-range-space.case.json	2
 C	probes/lotus-dot-range-trailing-letter.case.json	2
 C	probes/lotus-dot-range.case.json	6
+C	probes/m2-argument-kind-gaps-b.case.json	12
 C	probes/m2-argument-kind-gaps.case.json	79
 C	probes/m7-argument-modes.case.json	174
 C	probes/m7-lift-take-drop-sortby.case.json	934
@@ -1400,7 +1401,7 @@ C	probes/t2778-imsinh-sign-sweep.case.json	312
 C	probes/t2779-hebrew-saka-more.case.json	133
 C	probes/t2779-hebrew-saka-names.case.json	143
 C	probes/t2782-whitespace-run-wrap.case.json	36
-C	probes/t2786-whitespace-structured-refs-runs.case.json	51
+C	probes/t2786-whitespace-structured-refs-runs.case.json	49
 C	probes/t2812-currency-tag-cost.case.json	54
 C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
@@ -2545,10 +2546,6 @@ F	probes/ftest-decomposition.case.json	Calc!C6
 F	probes/ftest-decomposition.case.json	Calc!C8
 F	probes/ftest-decomposition.case.json	Calc!C9
 F	probes/ftest-decomposition.case.json	Calc!D10
-F	probes/ftest-decomposition.case.json	Calc!D4
-F	probes/ftest-decomposition.case.json	Calc!D5
-F	probes/ftest-decomposition.case.json	Calc!D6
-F	probes/ftest-decomposition.case.json	Calc!D8
 F	probes/ftest-decomposition.case.json	Calc!E4
 F	probes/ftest-decomposition.case.json	Calc!E5
 F	probes/ftest-decomposition.case.json	Calc!E6
@@ -3038,6 +3035,9 @@ F	probes/stat-argument-modes.case.json	Sheet1!H144
 F	probes/stat-argument-modes.case.json	Sheet1!H163
 F	probes/stat-argument-modes.case.json	Sheet1!H168
 F	probes/stat-argument-modes.case.json	Sheet1!H173
+F	probes/stat-argument-modes.case.json	Sheet1!H215
+F	probes/stat-argument-modes.case.json	Sheet1!H221
+F	probes/stat-argument-modes.case.json	Sheet1!H226
 F	probes/stat-argument-modes.case.json	Sheet1!H231
 F	probes/stat-argument-modes.case.json	Sheet1!H236
 F	probes/stat-argument-modes.case.json	Sheet1!H241
@@ -3479,8 +3479,6 @@ F	probes/t2779-hebrew-saka-names.case.json	S!G9
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C2
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C3
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C4
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H1
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H11
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
@@ -3656,13 +3654,8 @@ F	probes/t2881-besselj-turning-point.case.json	Calc!A74
 F	probes/t2881-besselj-turning-point.case.json	Calc!A75
 F	probes/t2881-besselj-turning-point.case.json	Calc!A76
 F	probes/t2881-besselj-turning-point.case.json	Calc!A8
-F	probes/t2957-a1-reference.case.json	S!C3
-F	probes/t2957-a1-reference.case.json	S!C4
-F	probes/t2957-a1-reference.case.json	S!F3
-F	probes/t2957-a1-reference.case.json	S!F4
 F	probes/t2957-constant-exception.case.json	S!C2
 F	probes/t2957-constant-exception.case.json	S!C4
-F	probes/t2957-constant-exception.case.json	S!F4
 F	probes/t2957-constant-then-refill.case.json	S!C2
 F	probes/t2957-constant-then-refill.case.json	S!C4
 F	probes/t2957-existing-constant.case.json	S!C3
@@ -3679,13 +3672,9 @@ F	probes/t2957-expand-right-header.case.json	S!H4
 F	probes/t2957-fill-one-totals.case.json	S!C2
 F	probes/t2957-fill-one-totals.case.json	S!C3
 F	probes/t2957-fill-one-totals.case.json	S!C4
-F	probes/t2957-fill-one-totals.case.json	S!F2
-F	probes/t2957-fill-one-totals.case.json	S!F4
 F	probes/t2957-refill-second.case.json	S!C2
 F	probes/t2957-refill-second.case.json	S!C3
 F	probes/t2957-refill-second.case.json	S!C4
-F	probes/t2957-refill-second.case.json	S!F2
-F	probes/t2957-refill-second.case.json	S!F4
 F	probes/table-edits/plain-range-delete-row-first.case.json	F!A6
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2

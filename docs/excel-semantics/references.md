@@ -2556,11 +2556,18 @@ C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, 
 The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
 formula cells, so the sidecars do not hold them: they are read from each case's saved `xl/worksheets/sheet1.xml`
 (eval/.cache/oracle/excel-graph/<input_sha256>.xlsx).
-Ours: the engine has no calculated columns (no column formula on `Table`), so a typed formula stays in its own cell;
-the eval adapter also types before the table exists (T-2955), so a typed `[@Col]` is `#ERROR!`. The fill is T-2958,
-the auto-expansion T-2968.
+Ours (T-2958): rules 1-5 are implemented with no state on the table: a formula typed into a table's data rows
+(`Model::set_typed_user_input`, the facade's `Input::Parse` and `Input::Formula`) fills the column's other data rows
+when they are all blank or all hold one shared formula (`Model::calculated_column_targets`, calculated_columns.rs),
+by writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A blank cell
+beside formulas blocks the fill too, and a column of one identical stored formula with no saved
+`calculatedColumnFormula` re-fills as a calculated column: both are engine choices, unprobed (T-2983). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
+after the tables, as the oracle types them after load. The probes that type the unqualified `[@Col]` stay `#ERROR!`
+in their filled cells: an unqualified structured reference does not parse yet (T-2979). Neither import nor export
+reads or writes `calculatedColumnFormula` (T-2969); the auto-expansion is T-2968.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
-Implemented in: no (T-2958, T-2968)
+Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7 no (T-2968)
 Tasks: T-2957, T-2958, T-2968, T-2969
 
 ## Unknown function call names: spelling in FORMULATEXT
