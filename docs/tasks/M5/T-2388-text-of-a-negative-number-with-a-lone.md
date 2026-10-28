@@ -3,7 +3,7 @@ id: T-2388
 title: "TEXT of a negative number with a lone B1 calendar prefix is a minus sign (ours #VALUE!)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
