@@ -33,6 +33,12 @@ prompt itself lands in T-2996; this task makes the skills match it.)
       merged or unlabelled at once;
     - the daily thresholds that trigger the emergency switch;
     - "Merge queue" stays dormant;
+  - both skills: **the emergency-flip procedure** (SPEC-0027 "The switch", decision of T-2996).
+    Open the one-line flip PR and label it `merge-train-stop`. Run `make merge-flip-check
+    PR=<n>`. Merge it without reviewers, under the fair lock, with `expectedHeadSha` once CI is
+    green. File the P0 in a separate task-only PR. The skills also cover the 45-min stall
+    fallback, in `train` mode only, and the revert-PR handling for P0 handlers (`make
+    merge-revert-check`);
   - `docs/process/agent-workflow.md`: loop step 9, and the merger in the roles table;
   - `scripts/merge_train.toml`: `mode = "shadow"`.
 
@@ -41,6 +47,10 @@ prompt itself lands in T-2996; this task makes the skills match it.)
       describe today's flow under the fair lock.
 - [ ] The steward skill's daily step runs `make merge-train-stats` and applies SPEC-0027's
       thresholds.
+- [ ] The work-loop and steward skills describe the emergency-flip procedure and the revert-PR
+      handling exactly as SPEC-0027 states them.
+- [ ] docs/status.md's "Needs owner" entry for owner step 3 (update the worker and steward
+      routines) now says it is due, since this task's merge is what makes it due.
 - [ ] `scripts/merge_train.toml` says `mode = "shadow"`. A short decision record lands in this PR,
       and the architecture and security reviewers approve.
 - [ ] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`, `make typos` and the

@@ -18,8 +18,12 @@ tail, so no session can chain merges past waiters. A `wait` command replaces pol
 
 ## Context
 - SPEC-0027 section 1 ("A fair merge lock") is the design:
-  - the version-2 commit format, validated on write and on parse (id and number regexes, no
-    newlines, timestamps more than 60 s ahead clamped, at most 20 waiters, `prs` capped);
+  - the version-2 commit format, validated on write and on parse:
+    - id and number regexes, no newlines, at most 20 waiters, `prs` capped;
+    - timestamps more than 60 s past the lock commit's committer time are clamped to that time,
+      never to the read time;
+    - out-of-range waiter timestamps expire the waiter;
+    - a missing or malformed holder reads as held (stale after the TTL), never free;
   - the `acquire` steps;
   - `WAITER_TTL` = 10 min, with refreshes written at most every 3 min;
   - a head that does not claim a free lock within 2 min of `freed` is dropped;
@@ -49,7 +53,8 @@ tail, so no session can chain merges past waiters. A `wait` command replaces pol
 - [ ] `test_merge_lock.py` covers every `test_merge_lock.py` case in SPEC-0027's Test plan,
       including these: an empty-`prs` train lock is never finished; a renewal that loses its CAS
       to a waiter's refresh retries and succeeds, and exit 4 follows a takeover; newline
-      injection; future timestamps.
+      injection; future timestamps clamped to the committer time; a malformed holder reads as
+      held.
 - [ ] Step 1 of the steward skill's "Merge lock" and work-loop step 6.3 say to wait with
       `make merge-lock-wait` in the background, instead of retrying later.
 - [ ] A decision record, "The merge lock serves waiters first-in, first-out", lands in this PR.

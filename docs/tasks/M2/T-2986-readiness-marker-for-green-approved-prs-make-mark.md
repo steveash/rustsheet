@@ -30,8 +30,16 @@ check the marker mechanically, without reviewing the PR again.
   V3 and by the train builder. It requires success for `changes`, `hygiene` and the rust summary;
   allows `skipped` only when `run_heavy=false`; never counts a cancelled run as green; and counts
   only check runs from the GitHub Actions app.
-- It uses `scripts/gh_client.py` (T-2993) for every GitHub call. It writes only if T-2993's probe
-  showed writes work; otherwise `mark` prints the two actions for the session to perform.
+- V6 counts only reviews whose author passes V1's permission lookup. Reviews by anyone else are
+  ignored with no side effects. V2–V5 read only repository-controlled data (SPEC-0027 section 2).
+- Reviewer applicability is defined in one place, the `review` skill
+  (`.claude/skills/review/SKILL.md`, step 3). `merge_ready.py` holds the same list, and a test
+  fails when the two differ. That test reads `.claude/`, so this task adds the file to
+  `CODE_READ_PATHS` in `scripts/ci_changes.py` (decision 0066).
+- It uses `scripts/gh_client.py` (T-2993) for every GitHub call. If T-2993's probe found that
+  writes fail, `mark` uses its minimal fallback: it prints its two writes (the label, and a
+  comment whose body the script generates) as step-mode JSON actions, in the schema of SPEC-0027
+  section 4 "GitHub access". T-2995's step mode extends the same schema.
 
 ## Acceptance criteria
 - [ ] `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
@@ -42,7 +50,8 @@ check the marker mechanically, without reviewing the PR again.
 - [ ] The labels `ready-to-merge` and `merge-train-ejected` exist; the script creates them when
       they are absent.
 - [ ] `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
-      plan, and runs in `make hygiene`.
+      plan, including an outsider's `CHANGES_REQUESTED` review and the test that the
+      applicability list matches the review skill. It runs in `make hygiene`.
 - [ ] No skill or routine uses it yet (T-2989 does that).
 - [ ] A decision record for the mechanism lands in this PR. The architecture and security
       reviewers approve.

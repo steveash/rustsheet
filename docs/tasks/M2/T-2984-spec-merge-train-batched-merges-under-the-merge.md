@@ -54,7 +54,7 @@ writing this spec (2026-10-28).
 - Moving the repository to an organization or turning on the merge queue (decision 0053).
 
 ## Outcome
-SPEC-0027 (`docs/specs/SPEC-0027-merge-train.md`, revision 2 after the first review round)
+SPEC-0027 (`docs/specs/SPEC-0027-merge-train.md`, revision 3 after two review rounds)
 designs the merge train:
 - a fair, validated FIFO merge lock with `wait`, as the first, independent slice;
 - a readiness marker that workers set before moving on. Its verdicts are an attestation, not a
@@ -65,7 +65,7 @@ designs the merge train:
   post-squash tree checks that detect (not prevent) a differing `main` and revert first;
 - a binary search for the first red prefix;
 - shadow mode on `merge-train/shadow`;
-- the CI trigger;
+- the CI trigger, and a fix (T-2988) for docs-only PRs that are behind `main` being classified as code;
 - an emergency switch to `lock` that any agent can merge;
 - metrics with daily thresholds, and rollback.
 
@@ -76,7 +76,8 @@ own record. Follow-ups, in rollout order:
 - T-2986: readiness marker;
 - T-2988: CI on train branches;
 - T-2987: builder and dry run;
-- T-2994: merge stage;
+- T-2994: merge stage for green trains, with the revert path;
+- T-2998: red trains (bisection, ejection);
 - T-2995: shadow and stats;
 - T-2996: policy record and routine prompts;
 - T-2989: skills and process, `shadow`;
