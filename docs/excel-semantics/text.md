@@ -621,6 +621,9 @@ Every space is removed before the text is read, so `NUMBERVALUE("12:30 PM")` is 
 `VALUE("12:30 PM")` is 0.5208333333333334 (gen-m5/bbbd316c346ce645 A207, fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357
 against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVALUE page says spaces are ignored "even in the
 middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
+An omitted group separator defaults to "," unless the decimal separator starts with ",", when it defaults to ".":
+`NUMBERVALUE("1.5",",")` = 15, `("1.000,5",",")` = 1000.5, `("1.5.2",",")` = 152, while `("1,5",";")` = 15, `("1,5","x")` = 15
+and `("1.5",".")` = 1.5 (excel-graph, 2026-10-28, probes/numbervalue-default-group A1-A14, T-2441).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
 A separator over 255 characters is `#VALUE!`, though only its first character counts: `NUMBERVALUE(0.2,REPT("A",255),"b")` is 0.2

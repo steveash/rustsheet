@@ -3,7 +3,7 @@ id: T-2441
 title: "NUMBERVALUE with a comma decimal separator and no group separator reads the text 1.5 as 15"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,6 +30,9 @@ default depends on the decimal separator or is always the opposite of the locale
 ## Acceptance criteria
 - [ ] The cell above passes (and leaves eval/baseline/probes.txt); the probed default rule is in text.md.
 - [ ] `make check` green; reviewers approve.
+
+## Outcome
+Done: omitted group separator defaults to "." when the decimal separator starts with ",", else "," (probes/numbervalue-default-group, excel-graph 2026-10-28). Cell A8 of numbervalue-separator-edges now passes.
 
 ## Out of scope
 -
