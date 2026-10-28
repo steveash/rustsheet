@@ -216,7 +216,6 @@ pub struct Parser {
     pub parts: Vec<ParsePart>,
     /// Whether the format ends in a `;`, so an empty section follows the last part.
     ends_in_separator: bool,
-    last_part_ended_on_separator: bool,
     lexer: Lexer,
 }
 
@@ -326,7 +325,6 @@ impl Parser {
         Parser {
             parts,
             ends_in_separator: false,
-            last_part_ended_on_separator: false,
             lexer,
         }
     }
@@ -340,7 +338,6 @@ impl Parser {
         while self.lexer.peek_token() != Token::EOF {
             let part = self.parse_part();
             self.parts.push(part);
-            self.ends_in_separator = self.last_part_ended_on_separator;
         }
     }
 
@@ -353,6 +350,8 @@ impl Parser {
     }
 
     fn parse_part(&mut self) -> ParsePart {
+        // Early returns below leave it false, so a stale value never outlives its part.
+        self.ends_in_separator = false;
         let mut token = self.lexer.next_token();
         let mut digit_count = 0;
         let mut precision = 0;
@@ -426,6 +425,7 @@ impl Parser {
             match token {
                 Token::General => {
                     if tokens.is_empty() && matches!(next_token, Token::EOF | Token::Separator) {
+                        self.ends_in_separator = next_token == Token::Separator;
                         return ParsePart::General(GeneralPart {});
                     }
                     // Excel: literals around `General` print around the value (`TEXT(5,"General x")`
@@ -851,7 +851,7 @@ impl Parser {
             after_colon = is_colon;
             token = next_token;
         }
-        self.last_part_ended_on_separator = token == Token::Separator;
+        self.ends_in_separator = token == Token::Separator;
         // Excel: a bare digit 1-9 is a literal (`TEXT(5,"2")` is "2", `"4am/pm"` "4AM"), but beside a
         // date or time token anywhere in the section the code is #VALUE!: `"42abc"`, `"4b"`, `"b4"`,
         // `"4 d"`, `"4:mm"`, `"[h]4"`, `"4g"`; quoted or escaped it prints (`"\4b"` is "443";
