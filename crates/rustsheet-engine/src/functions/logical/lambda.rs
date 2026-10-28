@@ -46,6 +46,19 @@ pub(crate) struct NamedLambdas {
     prepared: HashMap<(usize, usize), PreparedLambda>,
 }
 
+impl NamedLambdas {
+    /// Drops the defined-name LAMBDAs given an id from `mark` on, with their patched bodies: the
+    /// root formula that named them is evaluated (`Model::evaluate_root_cell`, T-2925).
+    pub(crate) fn drop_since(&mut self, mark: usize) {
+        if self.named.is_empty() {
+            return;
+        }
+        self.ids.retain(|_, (_, id)| *id < mark);
+        self.named.retain(|id| *id < mark);
+        self.prepared.retain(|(id, _), _| *id < mark);
+    }
+}
+
 /// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDAs it holds, the one it
 /// is or the elements of an array of them (`LET(k,100,SCAN(..,LAMBDA(f,x,LAMBDA(z,f(z)*k+x))))`,
 /// T-2039).

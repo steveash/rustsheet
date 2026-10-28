@@ -397,3 +397,37 @@ fn a_long_call_chain_is_bounded_like_nesting() {
     model.evaluate();
     assert_eq!(model._get_formula("A2"), format!("=LAMBDA(x,x){short}"));
 }
+
+// T-2925: no LAMBDA outlives the formula that made it, so a root cell's LAMBDAs are dropped once it
+// is evaluated, and a later formula's calls do not slow down with what earlier ones made.
+#[test]
+fn a_root_cells_lambdas_are_dropped_once_it_is_evaluated() {
+    let mut model = new_empty_model();
+    model
+        .new_defined_name("AddOne", None, "=LAMBDA(x, x + 1)")
+        .unwrap();
+    model._set(
+        "A1",
+        "=SUM(MAP(SEQUENCE(10),LAMBDA(z,MAP(z,LAMBDA(y,y+z)))))",
+    );
+    model._set(
+        "A2",
+        "=A1+SUM(MAP(SEQUENCE(5),LAMBDA(z,AddOne(z))))+REDUCE(0,{1,2},_xleta.SUM)",
+    );
+    model._set("A3", "=LET(f,LAMBDA(x,LAMBDA(y,x*y)),f(3)(4))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"110");
+    assert_eq!(model._get_text("A2"), *"133");
+    assert_eq!(model._get_text("A3"), *"12");
+    assert!(model.lambdas.is_empty());
+    assert!(model.eta_lambdas.is_empty());
+    assert!(model.lambda_captures.is_empty());
+    // Ids keep growing across root cells: a patched body's mark compares them.
+    assert!(model.last_lambda_id > 0);
+
+    // A second evaluation gives the same values from a model with no LAMBDA left over.
+    model.evaluate();
+    assert_eq!(model._get_text("A2"), *"133");
+    assert!(model.lambdas.is_empty());
+}
