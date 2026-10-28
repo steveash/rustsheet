@@ -29,6 +29,10 @@ of retrying later, and waiting costs few GitHub API reads.
   cache.
 - A draft of both is in T-2985's working notes: the `wait` loop and a `FinishedReads` cache.
 
+- Left from T-2985's review: SPEC-0027 section 1 step 1 should say the finished head is
+  dropped only when the lock is free, stale or finished (as `attempt()` does), and
+  `make merge-lock-acquire` should pass `--renew` through (`RENEW=1`) or stop saying "renew".
+
 ## Acceptance criteria
 - [ ] `scripts/merge_lock.py wait --pr N [--timeout MIN]` implements SPEC-0027 section 1's
       `wait`, and `make merge-lock-wait PR=<n> [TIMEOUT=45]` runs it.
@@ -37,6 +41,7 @@ of retrying later, and waiting costs few GitHub API reads.
       limit (reads counted with a fake clock and API).
 - [ ] Step 1 of the steward skill's "Merge lock" and work-loop step 6.3 say to wait with
       `make merge-lock-wait` in the background, instead of retrying later.
+- [ ] SPEC-0027 section 1 step 1 and the `merge-lock-acquire` target match the code (above).
 - [ ] `make hygiene`, `make typos` and `check_governance.py origin/main` pass; the architecture
       and security reviewers approve the protected paths explicitly.
 
