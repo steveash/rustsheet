@@ -1,5 +1,5 @@
 ---
-id: T-3072
+id: T-3084
 title: "Probe whether criteria ordering operators (<, <=, >, >=) compare numbers at 15 digits or exactly, as = and <> do"
 milestone: M2
 lane: research

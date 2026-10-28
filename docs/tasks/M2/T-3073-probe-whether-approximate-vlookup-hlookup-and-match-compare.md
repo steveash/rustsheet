@@ -52,4 +52,4 @@ cells.
 - Engine changes (the follow-up task owns them).
 - LOOKUP, XLOOKUP and XMATCH approximate and binary modes (M6): note in the follow-up whether they share the answer,
   and file an M6 probe task if they need their own cells.
-- Criteria ordering operators (T-3072). Text and boolean keys.
+- Criteria ordering operators (T-3084). Text and boolean keys.
