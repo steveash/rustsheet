@@ -43,7 +43,8 @@ Open PRs: 29 at 06:30 UTC. Non-draft PRs older than 24 h:
 - #2005 opened 06:35 UTC yesterday and is just under 24 h old. #1583, #1658, #1767, #1885, #1917, #2055 and #2104 are drafts. The rest were opened in the last 24 h.
 
 Queues:
-- `make ready-tasks LANE=functions` printed 0 ready, so the gap-triager ran (results below in this PR). `TIER=sonnet` printed 15 (≥ 10).
+- `make ready-tasks LANE=functions` printed 0 ready, so the gap-triager ran. Six functions lanes (stat, logic, engineering, lookup, text, financial) are busy with branches pushed in the last 2 hours. The idle ones (math, criteria, date) hold only `defer: phase-1b` tasks: every visibly-off cell calling one of their functions already has an open owner elsewhere. It filed nothing just to reach the number, so the count stays 0 until the busy lanes free up. `TIER=sonnet` printed 15 (≥ 10).
+- `scripts/exit_owners.py --all-off` listed 155 visibly-off cells with no open owner. All are owned now (0 left). 147 CELL cells from the calipers formulas_information golden go to **T-2663** (their old line named only `$C$5`), and the gap-triager filed **T-3011** (research, sonnet) to probe CELL's color, parentheses, prefix, protect and width info types on excel-graph. 7 F.DIST.RT cells (probes/t2829-ftest-tail-over-b) go to **T-3007**, and 1 DEVSQ cell (poi EverythingTests!I392, owned before only by the deferred T-0951) goes to **T-1749**.
 - engine, harness and research print 0 ready only because their lanes are busy. Their M2 queues hold 4, 15 and 10 todo tasks, so the planner did not run. api printed 9, quality 6 and perf 0 (Phase 2).
 
 Upstream IronCalc: `scripts/upstream-log.sh` lists no new commits in base, xlsx or bindings since e757b4f1. Nothing to file.

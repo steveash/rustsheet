@@ -12,8 +12,6 @@ The eval run of **2026-10-28** at commit `a96b6063` (report.json `run`).
 
 ## Bottom line
 
-_Written for the run of 2026-10-27; not yet updated for this run._
-
 <!-- progress:judgment bottom-line -->
 <!-- as-of: 2026-10-28 a96b6063 -->
 Values match Excel on real workbooks and wrong types, errors and text keep shrinking; numeric accuracy is almost the whole gap, and Phase 1 has not exited.
@@ -50,7 +48,7 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 | M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | **exit not met**; coverage 37/37 (not required); generated suite 0 visibly off of 16,200, allowance 0 (met); ironcalc-calc 0 visibly off (met); probes 2 visibly off (not met) | probes M0-M2: 2 visibly off, 2 known failures | 33 | 0 | 1 | 412 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
 | M4 Storage, memory and structural edits (Phase 2) | 2 | prose | – | – | – | 0 | 0 | 0 | 0 |
-| M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 1 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 28 visibly off (not met) | probes M5: 28 visibly off, 28 known failures | 20 | 0 | 0 | 224 |
+| M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 1 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 28 visibly off (not met) | probes M5: 28 visibly off, 28 known failures | 21 | 0 | 0 | 224 |
 | M6 Lookup & reference, date & time | 1 | prose | 39/39 | **exit not met**; coverage 39/39 (met); generated suite 0 visibly off of 25,240, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 5 visibly off (not met) | probes M6: 5 visibly off, 5 known failures | 14 | 0 | 0 | 101 |
 | M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | **exit not met**; coverage 32/32 (not required); generated suite 0 visibly off of 36,641, allowance 36 (met); ironcalc-calc 0 visibly off (not required); probes 26 visibly off (not met); spill extents 0 failures (met) | probes M7: 26 visibly off, 30 known failures | 43 | 0 | 0 | 172 |
 | M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 9 visibly off, 9 known failures | 21 | 0 | 0 | 45 |
@@ -320,8 +318,6 @@ Pairwise coverage counts, for each two counted parameters, the pairs of an expec
 
 ## Real-world readiness
 
-_Written for the run of 2026-10-27; not yet updated for this run._
-
 <!-- progress:judgment readiness -->
 <!-- as-of: 2026-10-28 a96b6063 -->
 Ratings are the steward's judgment, grounded in the numbers they cite. The page measures computed values only, not speed or saving.
@@ -333,8 +329,6 @@ Ratings are the steward's judgment, grounded in the numbers they cite. The page 
 <!-- /progress:judgment -->
 
 ## Risks
-
-_Written for the run of 2026-10-27; not yet updated for this run._
 
 <!-- progress:judgment risks -->
 <!-- as-of: 2026-10-28 a96b6063 -->

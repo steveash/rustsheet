@@ -18,7 +18,11 @@ by desktop evidence, and either matched or recorded as a desktop-only rule.
 Phase 1 assessment, 2026-10-25 (decision 0114). These visibly-off calipers cells follow desktop
 behavior that Excel for the web, the Phase 1 oracle of record (decision 0039), does not show:
 - `roundtrip/formulas_information`: `CELL("color"|"filename"|"format"|"parentheses"|"prefix"|"protect"|"width",$C$5)`
-  (21 rows each). Excel for the web gives `#VALUE!` for "filename" (information.md, T-2052); the
+  (21 rows each). The visibly-off cells this task owns (2026-10-28 triage, `IFERROR(CELL(..),"Error")`, Excel a value, ours "Error"):
+  formulas_information Sheet1 E140:E160, G140:G160, H140:H160, I140:I160, J140:J160, K140:K160, N140:N160 (147 cells).
+  Excel for the web's answer for "color", "parentheses", "prefix", "protect" and "width" is unprobed (the engine's `#VALUE!` there is
+  a not-implemented placeholder; "format" and "filename" are `#VALUE!` on excel-graph): T-3011 probes them.
+  Excel for the web gives `#VALUE!` for "filename" (information.md, T-2052); the
   desktop golden gives the absPath-based path, `G`, 0, "", 1 and 15. Real models use
   `MID(CELL("filename",A1),FIND("]",CELL("filename",A1))+1,255)` to read the sheet name
   (pv26_011 and pv26_2_011 B3), so desktop parity here matters for everyday files.
