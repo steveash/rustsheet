@@ -183,12 +183,15 @@ is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc"
 column D), as "TEXT checks the code before it looks at a text or boolean value" describes. `TEXT(-3,"b1")` is "-": a
 calendar prefix alone is no date token for a negative value: `"b1"` and `"B1"` give "" for 3 and 0 and "-" for -3, `"b1 x"`
 is " x", " x" and "- x", `"[$-40C]B1"` is "", "", "-" (probes/t2388-b1-negative, excel-graph, 2026-10-28; `"B1@"` prints the
-number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals.
+number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals. The same holds for a lone `B2`
+(`"b2"` -> "-", `"B2 x"` "- x"), a tagged `"[$-40C]B2"` and `"[$-409]B2"` ("-"), and a magnitude past the maximum
+serial (`TEXT(-3000000,"b1")` is "-"). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
+`"b1;b1"` are "", `"0;b1 x"` is " x" (probes/t2388-b1-negative A6-A13).
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
 Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
-code with any bad number section (formatter/format.rs); the literal-only `B1` section of a negative value is exempt
-from the negative-date refusal in `format_number` (a lone `B2` is not probed, so it keeps the refusal).
+code with any bad number section (formatter/format.rs); the literal-only date section (a lone calendar prefix) of a negative value is
+exempt from the negative-date refusal and the maximum-serial check in `format_number`.
 Tasks: T-2377, T-2388
 
 ## Text and booleans use the format's text section

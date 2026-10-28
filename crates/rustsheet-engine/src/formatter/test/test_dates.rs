@@ -341,3 +341,10 @@ fn lone_calendar_prefix_keeps_the_minus_of_a_negative() {
     assert_eq!(super::text(-3.0, "b1 x"), "- x");
     assert_eq!(super::text(3.0, "b1 x"), " x");
 }
+
+#[test]
+fn lone_calendar_prefix_in_other_sections() {
+    assert_eq!(super::text(-3.0, "0;b1 x"), " x");
+    assert_eq!(super::text(-3.0, "b2"), "-");
+    assert_eq!(super::text(-3_000_000.0, "b1"), "-");
+}
