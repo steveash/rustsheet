@@ -2084,7 +2084,7 @@ first interest drifts too: A16 (issue 2023-08-15, first interest 2024-08-30, fre
 56.26086281812539 = 25 * (31/180 + 2 + 14/179), whose issue stub ends on 2023-08-29 (14 days of a 179-day period
 from 2023-02-28), not on 2023-08-30; and the quarterly first interests 2024-05-30 and 2024-05-29 differ (A24 =
 35.833..., A28 = 35.972...), as the drifting stub ends differ. ACCRINT basis 0 with calc_method FALSE is equal for the
-two days (A18 = A22), which has no stub from a drifted date.
+two days (A18 = A22).
 Ours: matches (the date-to-date `change_month` walk). Keep it: it is deliberate Excel behaviour.
 Status: VERIFIED (excel-graph)
 Tasks: T-2486, T-2639
