@@ -18,7 +18,7 @@
     off Excel here; no model of Excel's L140 at b0' = 0.5, n = 2 reproduces it yet.
 - **Decision:** T-2847 may record H221 and H226 as known failures (`update-baseline --allow-regressions`)
   together with the regressions decision 0083's allowance covers. Excel's value stays the expected one
-  (prime directive 1); this is not a deviation, only an ordering of work: the correctly rounded kernel lands
+  (prime directive 1); this is not a deviation, only an ordering of work: the more accurate kernel lands
   first and Excel's last bits at this point are left to a phase-1b follow-up (decision 0114).
 - **Consequences:**
   - The follow-up ulp task T-2847 files lists H215, H221 and H226 with the other regressed cells and the two

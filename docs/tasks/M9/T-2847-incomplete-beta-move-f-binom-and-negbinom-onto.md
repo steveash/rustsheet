@@ -79,7 +79,7 @@ the seams T-2502 left for the Cephes kernel, the T-2464 harness and the per-bran
       caller arguments; no gated cell regresses except as recorded under decision 0083 (and decision 0141 for two
       cells past its 4 ulp). F.TEST's bratio tail already takes them (T-2681); its other tail moves with T-2977.
 - [x] statistics.md's bratio and bpser entries name every caller in their "Implemented in" lines.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - L140 (T-2506), bfrac/basym (T-2508), the bgrat family (T-2509, T-2510) and the inverses (T-2511).

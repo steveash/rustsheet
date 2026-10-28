@@ -35,6 +35,8 @@ the bratio port's per-branch accuracy is measured and on record.
     of exactly 1 outside the closed forms; the 987 probes-numeric cells the port moved off; Excel at fl(a·LN x)
     overflow; SPEC-0025's `bpser.rs`/`ln_beta.rs` split and property tests; unifying
     `beta_density::ln_beta_small_shape` with `bratio::bpser_neg_ln_beta`).
+- Re-score docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells that L = -LN(a0) at a whole b0 makes
+  bit-exact at a0 <= 8 (T-2847 took it at every a0), and count the L140 cells it moves off, on the engine's port.
 - The 9 visibly-off cells of probes/t2829-ftest-tail-over-b (S!A1, A3, A4, A6, A7, A9, A14, A18, A21) are F.TEST's
   tail; record which reach 15 digits once F.TEST's remaining tail is on the port and leave the rest to T-2924.
 
