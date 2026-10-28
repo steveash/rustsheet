@@ -41,3 +41,9 @@ expansion (Cornish-Fisher / Hill's asymptotic) for very large n; score against p
 
 Open: Welch's fractional df keeps the plain fraction, because the new path moved t1048-ttest A3 and t1049-ttest A21 the
 wrong way. This task now covers fractional df only.
+
+## Cell found by T-2217 (2026-10-28)
+gen-m9/01523d247594952e Calc!A218 `=RRI(T.DIST.RT(TIME(5,2,16),1E+8),8370,40876)` is Excel 43.89282054161517, ours
+43.892820541615116 (visibly off). RRI fits every probed point since T-2217; the miss is the nper: ours is
+`T.DIST.RT(0.2099...,1E8)` = 0.4168699705898027, and Excel's RRI value needs an nper about 2 ulp lower (RRI moves about 3
+result ulp per nper ulp here). So the cell passes once T.DIST.RT at df 1E8 in the centre is within an ulp of Excel.

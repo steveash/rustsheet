@@ -838,16 +838,32 @@ impl Model {
             // Note error is NUM not DIV/0 also below
             return Err(num_error(cell));
         }
-        // Excel computes `(fv/pv)^(1/nper)-1` with its own `/`, `^` and `-`:
-        // `RRI(10,1,200)` is 0.6986464646342472 like `(200/1)^(1/10)-1`, where libm `powf` is
-        // 2 ulps higher (probes/fin-rri A14, fin-mduration-rri-fit A37-A60, T-1975). Unlike `^`, a
-        // negative ratio is always #NUM!: `RRI(1,-100,200)` is #NUM! where `(200/-100)^1-1` is -3,
-        // and so are odd roots (probes/fin-rri-vdb-edges A1-A16).
+        // Excel computes `EXP(LN(fv/pv)*(1/nper))-1` with its own `/`, LN, `*`, EXP and `-`,
+        // taking the reciprocal first: `RRI(0.5,3,4)` is 0.7777777777777775 where `(4/3)^2-1` is
+        // ...777 (RRI.xlsx D12), and the form fits all 134 numeric points of the T-2216 sweep
+        // (probes-numeric/m9-fin-rri-sweep; `^` fits 112, `/nper` 87) plus probes/fin-rri and
+        // fin-mduration-rri-fit A37-A59. Unlike `^`, a negative ratio is always #NUM!:
+        // `RRI(1,-100,200)` is #NUM! where `(200/-100)^1-1` is -3, and so are odd roots
+        // (probes/fin-rri-vdb-edges A1-A16).
         let ratio = extended_quotient(fv, pv);
         if ratio < 0.0 {
             return Err(num_error(cell));
         }
-        let growth = power(ratio, extended_quotient(1.0, nper)).map_err(|_| num_error(cell))?;
+        // fv = 0 is -1 although LN(0) is #NUM! (m9-fin-rri-sweep rows 131-139).
+        if ratio == 0.0 {
+            return Ok(-1.0);
+        }
+        // nper = 1 exactly skips EXP/LN: `RRI(1,826,40633)` is 48.19249394673123, `40633/826-1`,
+        // where EXP(LN(r)) is one ulp higher, while nper 1 ± 1 ulp follow the EXP/LN form
+        // (probes-numeric/m9-fin-rri-nper-one: 32 of 32 nper-1 rows, rows 33-34).
+        let growth = if nper == 1.0 {
+            ratio
+        } else {
+            excel_exp(extended_product(
+                excel_ln(ratio),
+                extended_quotient(1.0, nper),
+            ))
+        };
         let result = extended_sum(growth, -1.0);
         if !result.is_finite() {
             return Err(num_error(cell));

@@ -3,7 +3,7 @@ id: T-2217
 title: "RRI matches Excel's last ulp at RRI(0.5,3,4) (exp(ln(fv/pv)*(1/nper))-1, not ^)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -96,3 +96,18 @@ Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by 
 ## Cells added by the T-0087 sweep (2026-10-28)
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): RRI 1. This task now owns them:
 - probes-numeric/m9-fin-rri-sweep: Calc!D140
+
+## Outcome
+`rri_of` computes `EXP(LN(fv/pv)*(1/nper))-1` with the engine's `excel_ln`, `extended_product`, `excel_exp` and
+`extended_sum`, and `fv/pv-1` when nper is exactly 1. That nper-1 case is new: `RRI(1,826,40633)` (gen-m9/1cd3096e3e87c965
+and b73c6cc96e093f03 Calc!A291) passed before and regressed under the plain EXP/LN form, so this task probed it
+(probes-numeric/m9-fin-rri-nper-one, excel-graph, 38 rows: all 32 nper-1 rows are `fv/pv-1`, while nper 1 ± 1 ulp follow
+EXP/LN). financial.md records the rule.
+- Eval: gen-m9 known failures 3334 -> 3330, ironcalc-calc 556 -> 555 (RRI.xlsx D12; the web agrees with the Mac value),
+  no regressions. probes/fin-rri, fin-rri-vdb-edges, fin-mduration-rri-fit, RRI.xlsx and probes-numeric m9-fin-rri-sweep
+  (including D140) and m9-fin-rri-nper-one pass in full. The edges keep their values.
+- Visible parity: gen-m9/5ded7594e597e31e A51 passes. 01523d247594952e A218 still misses, and RRI is not the cause: its
+  nper `T.DIST.RT(TIME(5,2,16),1E+8)` is about 2 ulp above the value Excel's RRI needs. The cell is recorded on T-2126 (the
+  Student-t centre above df 1000), which owns that error.
+- T-2257 last-digit cells: all 3 pass (01523d247594952e A176, 23d82b62e9a85bdd A261, a91bad4e84f49739 A73).
+
