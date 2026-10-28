@@ -118,12 +118,16 @@ fn typed_if_with_one_argument_is_refused() {
         .set_typed_user_input(0, 1, 5, "=IF(TRUE,)".to_string())
         .unwrap();
     model
+        .set_typed_user_input(0, 2, 5, "=IF(TRUE,1)".to_string())
+        .unwrap();
+    model
         .set_typed_user_input(0, 3, 5, "=IF(FALSE,1)".to_string())
         .unwrap();
     // Stored text is not refused: it takes the one-argument eta path (`#VALUE!`, T-1947).
     model._set("A9", "=IF(TRUE)");
     model.evaluate();
     assert_eq!(model._get_text("E1"), "0");
+    assert_eq!(model._get_text("E2"), "1");
     assert_eq!(model._get_text("E3"), "FALSE");
     assert_eq!(model._get_text("A9"), "#VALUE!");
 }

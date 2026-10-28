@@ -1514,14 +1514,15 @@ few arguments (`LET(f,_xleta.SUM,f())`): the engine gives whatever the function 
 Evidence: probes/eta-reduced-names (30 questions, excel-graph, 2026-10-14, T-1466); probes/m7-argument-modes F28:H51.
 Ours: an unbound `_xleta.` name of a known function evaluates to a LAMBDA whose definition is made per call
 (`Model::unbound_name`, `eta_definition`, lambda.rs); BYROW and BYCOL take only a LAMBDA (`by_slices_lambda`). IF with
-only a condition is the one-argument eta IF above (`Model::if_pick`, T-1947; a typed `=IF(x)` takes the same path; whether
-Excel accepts one typed is entry-only and a file-stored one is refused by excel-graph, below, T-1990); `ISERROR(_xleta.SUM)` is FALSE since T-1511. GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
+only a condition is the one-argument eta IF above (`Model::if_pick`, T-1947; stored only: a typed `=IF(x)` is refused,
+by Excel (Graph PATCH 400) and by ours (T-2568), and a file-stored one is refused by excel-graph, below, T-1990, T-2939); `ISERROR(_xleta.SUM)` is FALSE since T-1511. GROUPBY and PIVOTBY call an eta name through the same path (T-1322, T-1326), with its minimum argument count (two for PERCENTOF and CORREL: "GROUPBY and PIVOTBY", T-1325), and share the "is it a LAMBDA" check with BYROW and BYCOL (`as_lambda`, bycol_byrow.rs).
 A one-argument `IF(x)` stored in a file (`=IF(TRUE)`, `=IF(1)`, `=IF({1,0})`, `=IF(A1:B1)`, each alone in a workbook) is refused by
 excel-graph: `createSession` answers 501 `FileCorruptTryRepair` / `unsupportedWorkbook`, so the formula cannot be loaded from a
 file and has no stored value to match (probes/typed-if-one-argument, left pending, T-1990). **Typed, Excel refuses it**:
 entering `=IF(TRUE)`, `=IF(FALSE)`, `=IF(1)`, `=IF(0)`, `=IF({1,0})`, `=IF(A1:B1)`, `=IF("x")`, `=IF(NA())`,
 `=ISLOGICAL(IF(TRUE))` or `=IF(TRUE)+1` through Excel for the web's input parser (Graph range `values` PATCH, each alone)
-is rejected with 400 `InvalidArgument`, as for other calls with too few arguments (syntax.md "Minimum argument counts").
+is rejected with 400 `InvalidArgument`, as `=PV(1)` and other typed calls with too few arguments are (references.md, "A LET name or LAMBDA parameter
+shadows a defined name of the same name, in any case", the paragraph on names spelled like a built-in function, T-2568).
 An empty or given second argument is accepted: `=IF(TRUE,)` is 0, `=IF(TRUE,1)` 1, `=IF(FALSE,1)` FALSE, each printing as
 typed (probes/t2939-typed-if-two-argument-controls). So a one-argument IF has no value in Excel either way, typed or
 stored; the refused entries cannot be committed as cases.
