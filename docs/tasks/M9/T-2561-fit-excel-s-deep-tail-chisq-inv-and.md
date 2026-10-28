@@ -4,7 +4,7 @@ title: "Fit Excel's deep-tail CHISQ.INV and GAMMA.INV kernel (T-1634 residue)"
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []

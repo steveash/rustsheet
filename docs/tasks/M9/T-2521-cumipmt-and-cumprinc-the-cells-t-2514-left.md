@@ -4,7 +4,7 @@ title: "CUMIPMT and CUMPRINC: the cells T-2514 left (type 1 long ranges, log1p a
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: [T-2514]

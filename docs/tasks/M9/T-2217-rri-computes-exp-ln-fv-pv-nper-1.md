@@ -4,7 +4,7 @@ title: "RRI matches Excel's last ulp at RRI(0.5,3,4) (exp(ln(fv/pv)*(1/nper))-1,
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
 campaign: visible
