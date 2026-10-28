@@ -68,13 +68,10 @@ impl OddFirstSchedule {
     fn dprice(&self, yld: f64) -> f64 {
         let x = yld / self.m + 1.0;
         let mut slope = 0.0;
-        // Every coupon from the lead's exponent `y` on, one period apart: `last_index + offset` is
-        // the last coupon's whole periods after the lead (N - 1 short, nq + n long).
-        let count = self.last_index as f64 + self.offset + 1.0;
-        let mut j = 0.0;
-        while j < count {
-            let t = j + self.y;
-            j += 1.0;
+        // The lead at its own exponent, then the regular coupons, one period apart: index
+        // `first_index - 1` is the lead's (`lead_exponent` is `offset + y` there, short or long).
+        for index in (self.first_index - 1)..=self.last_index {
+            let t = index as f64 + self.offset + self.y;
             slope -= t * self.coupon / discount_growth(x, t + 1.0) / self.m;
         }
         let t = self.front_exponent;

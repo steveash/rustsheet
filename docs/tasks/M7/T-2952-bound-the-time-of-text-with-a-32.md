@@ -3,7 +3,7 @@ id: T-2952
 title: "Bound the time of TEXT with a 32,767-character format over an array"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -25,10 +25,21 @@ existing ladders are probes/text-format-length-limit-*), then either refuse as E
 per element (formatter/, functions/lift kernel table).
 
 ## Acceptance criteria
-- [ ] The two formulas above finish under 10 s in a release build (measured in the Outcome), with Excel's value or a
+- [x] The two formulas above finish under 10 s in a release build (measured in the Outcome), with Excel's value or a
       documented DEVIATION.
-- [ ] No baseline gains a line.
-- [ ] `make check` green; reviewers approve.
+- [x] No baseline gains a line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Memory (T-2806).
+
+## Outcome
+Already bounded on `main` by T-2842's 255-character limit on a TEXT format code (`rejects_format_code` in
+formatter/complexity.rs, merged 2026-10-27, after T-2806 measured the 23 s): a code over 255 characters is `#VALUE!`
+before any formatting, the rule Excel follows (`"0"` + 254 commas works and 255 fail, probes/t2842-dollar-run-contexts
+J, K; number-formats.md "TEXT format code complexity limit"). So no engine change was needed. Measured on the release
+`rustsheet-eval show` of `main` fa70f73 (wall time of a scratch case holding that one cell, harness start included):
+- `=TEXT(SEQUENCE(1024),REPT("0",32767))`: 0.03 s (was 23 s), 1,024 `#VALUE!`.
+- `=TEXT(SEQUENCE(1024,1024),REPT("a",32767))`: 2.0 s (was past 60 s), 1,048,576 `#VALUE!`.
+Added `text_with_a_32767_character_code_over_an_array_is_value_error` (test/text_functions/fn_text_arrays.rs) so the
+early rejection stays ahead of the formatter. Eval delta: none; no baseline changes.

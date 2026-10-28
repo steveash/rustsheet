@@ -26,6 +26,9 @@ check the marker mechanically, without reviewing the PR again.
   - checks V1–V6, each with its failure side effects. V1 keeps only comments whose author has
     write, maintain or admin permission (permission API) and ignores the rest with no side
     effects. The newest qualifying marker by `updated_at` counts, pinned by comment id.
+    T-3001 found the permission API refused by the session proxy (HTTP 403; SPEC-0027 section 4,
+    "T-3001's probe"): in a session V1 and V6 need another source, and `author_association` is
+    the candidate there.
 - SPEC-0027 section 4, step 6, defines "green". It lives here as the single definition, used for
   V3 and by the train builder. It requires success for `changes`, `hygiene` and the rust summary;
   allows `skipped` only when `run_heavy=false`; never counts a cancelled run as green; and counts

@@ -3,7 +3,7 @@ id: T-0487
 title: "Decision record: how M11's exit criteria are measured (corpus-bench formula-cell match against the published leaderboard, M11 probes)"
 milestone: M11
 lane: research
-status: todo
+status: dropped
 priority: P3
 size: S
 tier: opus
@@ -47,3 +47,8 @@ and changes no baseline.
 - Implementing the exit row (follow-up task).
 - Data tables and iterative calculation (Phase 2).
 - Fixing any corpus-bench cell.
+
+## Outcome (dropped, 2026-10-28, T-0088)
+Superseded by decision 0146 (T-0088), which answers this task's questions for M1 and M8 to M11 in one record and
+cites it in docs/milestones.md. The follow-up exit row and exit-owners support are T-0089's, which lists the
+thresholds.

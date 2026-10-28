@@ -4,7 +4,7 @@ title: "RRI matches Excel's last ulp at RRI(0.5,3,4) (exp(ln(fv/pv)*(1/nper))-1,
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
 campaign: visible
@@ -56,6 +56,12 @@ Cells:
 - gen-m9/01523d247594952e.case.json (1): Calc!A176
 - gen-m9/23d82b62e9a85bdd.case.json (1): Calc!A261
 - gen-m9/a91bad4e84f49739.case.json (1): Calc!A73
+
+T-2216's sweep cells the engine misses today (gap triage 2026-10-28, `make eval` on dea28aa5; all 1 or 2 ulp, none
+visibly off; no task named them). The acceptance criterion "T-2216's sweep pass in full" already covers them, e.g. D1
+`RRI(0.5,3,4)` Excel 0.7777777777777775, ours 0.7777777777777777, and D4 Excel 8.000000000000002, ours 8:
+- probes-numeric/m9-fin-rri-sweep.case.json (19): Calc!D1, D4, D21, D22, D23, D42, D70, D84, D93, D98, D104, D109,
+  D115, D119, D120, D122, D125, D126, D129
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 2 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear

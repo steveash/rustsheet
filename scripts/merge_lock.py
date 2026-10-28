@@ -2,11 +2,13 @@
 """The merge lock: agents merge to `main` one at a time, first-in, first-out (decisions 0075, 0145).
 
   scripts/merge_lock.py acquire --pr N | --train ID [--prs N ...] [--renew] [--holder ID] [--ttl MINUTES]
+  scripts/merge_lock.py wait    --pr N | --train ID [--prs N ...] [--timeout MINUTES]  # acquire every 30 s
   scripts/merge_lock.py release [--holder ID]
   scripts/merge_lock.py status
 
-Exit codes of `acquire`: 0 the lock is yours; 1 busy (you are in the queue); 2 an error; 3 PR N
-is already merged or closed; 4 lost: you held the lock and it was taken over (a renewal).
+Exit codes of `acquire` and `wait`: 0 the lock is yours; 1 busy (you are in the queue), or `wait`
+timed out; 2 an error; 3 PR N is already merged or closed; 4 lost, for `acquire --renew` only:
+you held the lock and it was taken over.
 
 The lock is the branch `merge-lock` on origin: an orphan commit with an empty tree whose message
 (format `version: 2`, SPEC-0027 section 1) names the holder and the PR, or says `state: free`, and
@@ -22,8 +24,8 @@ A caller that finds the lock held joins the queue. A free, stale (TTL since `ren
 died) or finished lock goes to the head of the queue, or to anyone when the queue is empty. A
 holder that releases and acquires again joins at the tail. A PR that is already merged or closed
 never holds the lock (decision 0097): `acquire --pr N` refuses (exit 3) when PR N is finished, and
-the lock of a finished PR may be taken over whatever its age. That state is one GitHub API read;
-when it fails the PR counts as open.
+the lock of a finished PR may be taken over whatever its age. That state is one GitHub read
+through scripts/gh_client.py (decision 0148); when it fails the PR counts as open.
 
 The holder is `CLAUDE_CODE_SESSION_ID` unless `--holder` (or `--train`) is given.
 """
@@ -32,18 +34,18 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import http.client
-import json
+import math
 import os
 import re
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
+
+import gh_client
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
@@ -54,8 +56,6 @@ SEEN_REF = "refs/merge-lock/seen"
 TTL_MINUTES = 30
 # The committer of lock commits, so a clone with no git identity can still take the lock.
 IDENTITY = ("-c", "user.name=merge-lock", "-c", "user.email=merge-lock@invalid")
-# Seconds to wait for the GitHub API; an unanswered read counts the PR as open.
-API_TIMEOUT = 10
 
 # SPEC-0027 section 1. Every limit below bounds what one lock commit can make a reader do.
 VERSION = "2"
@@ -77,6 +77,14 @@ REFRESH = 3 * 60
 # A live head polls every 30 s, so a head that has not claimed a freed lock in this time has
 # stopped waiting.
 HEAD_CLAIM = 2 * 60
+# `wait` polls every POLL seconds, for WAIT_MINUTES by default.
+POLL = 30
+WAIT_MINUTES = 45
+# A PR's state is re-read at most every READ_EVERY polls: about 12 reads an hour per PR, against
+# 60 an hour for unauthenticated API access.
+READ_EVERY = 10
+# `wait` gives up (exit 2) after this many polls in a row fail on git (a fetch or push error).
+GIT_FAILURES = 3
 # Waiters rewrite the commit when they refresh, so a holder's write can lose to a waiter's.
 ATTEMPTS = 10
 
@@ -276,25 +284,11 @@ def describe(lock: Lock, now: float, ttl_minutes: float) -> str:
 
 def pr_finished(pr: str, root: Path = ROOT) -> bool | None:
     """Whether PR `pr` of origin's repository is merged or closed: True or False, None when the
-    GitHub API read fails (no network, rate limit, a private repository without a token)."""
-    url = git("remote", "get-url", REMOTE, root=root, check=False).stdout.strip()
-    match = re.search(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", url)
-    if match is None or not (pr.isascii() and pr.isdigit()):
+    GitHub read fails (no network, no `gh`, a non-GitHub remote). The read is gh_client's."""
+    client = gh_client.from_remote(root, REMOTE)
+    if client is None or not valid_pr(pr):
         return None
-    request = urllib.request.Request(
-        f"https://api.github.com/repos/{match[1]}/{match[2]}/pulls/{pr}",
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "rustsheet-merge-lock"},
-    )
-    if token := os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"):
-        request.add_unredirected_header("Authorization", f"Bearer {token}")
-    try:
-        with urllib.request.urlopen(request, timeout=API_TIMEOUT) as response:  # noqa: S310 (fixed https URL)
-            state = json.load(response)
-    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
-        return None
-    if not isinstance(state, dict) or "state" not in state:
-        return None
-    return bool(state.get("merged")) or state["state"] != "open"
+    return client.pr_finished(pr)
 
 
 def lock_finished(lock: Lock, finished: Callable[[str], bool]) -> bool:
@@ -349,21 +343,49 @@ def acquire(
     return code
 
 
+class Read(NamedTuple):
+    """One PR-finished read, and the poll it was made at."""
+
+    poll: int
+    finished: bool
+
+
+class FinishedReads:
+    """PR-finished reads cached per PR. Within one `acquire` (one poll) each PR is read once, out
+    of the CAS retries; across `wait`'s polls a PR is re-read only every READ_EVERY polls, so a new
+    head or holder is read at once and an unchanged one every 10th poll (SPEC-0027 section 1)."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.poll = 0
+        self.read_at: dict[str, Read] = {}
+
+    def __call__(self, pr: str) -> bool:
+        last = self.read_at.get(pr)
+        if last is None or self.poll - last.poll >= READ_EVERY:
+            last = Read(self.poll, valid_pr(pr) and bool(pr_finished(pr, self.root)))
+            self.read_at[pr] = last
+        return last.finished
+
+    def next_poll(self) -> None:
+        self.poll += 1
+
+
 def attempt(
-    holder: str, pr: str, *, prs: Sequence[str] | None, ttl_minutes: float, root: Path, renew: bool
+    holder: str,
+    pr: str,
+    *,
+    prs: Sequence[str] | None,
+    ttl_minutes: float,
+    root: Path,
+    renew: bool,
+    finished: FinishedReads | None = None,
 ) -> tuple[int, str]:
     """One `acquire`: its exit code and what to print. `prs` (a train's) replaces the lock's when
     given. `renew` says the caller holds the lock, so a lock that is not theirs is lost (4), not
-    busy."""
+    busy. `finished` carries cached reads from earlier polls."""
     check_claim(holder, pr, prs or ())
-    # One API read per PR per call, kept out of the CAS retries.
-    memo: dict[str, bool] = {}
-
-    def finished(number: str) -> bool:
-        if number not in memo:
-            memo[number] = valid_pr(number) and bool(pr_finished(number, root))
-        return memo[number]
-
+    finished = finished or FinishedReads(root)
     if pr != TRAIN and finished(pr):
         return DONE, f"merge lock refused: PR {pr} is already merged or closed"
     renewing = renew
@@ -413,6 +435,44 @@ def busy_message(lock: Lock, live: bool, place: int | None, waiting: int) -> str
     return f"merge lock busy: {ahead}; {where}"
 
 
+def wait(
+    holder: str,
+    pr: str,
+    *,
+    prs: Sequence[str] | None = None,
+    timeout_minutes: float = WAIT_MINUTES,
+    ttl_minutes: float = TTL_MINUTES,
+    root: Path = ROOT,
+) -> int:
+    """`acquire` every POLL seconds until the lock is held (0), the PR is finished (3), or the
+    timeout (1). Prints only changed messages. A git error is retried at the next poll; the
+    GIT_FAILURES-th in a row is raised (exit 2)."""
+    finished = FinishedReads(root)
+    deadline = time.time() + timeout_minutes * 60
+    last, failures = "", 0
+    while True:
+        try:
+            code, message = attempt(
+                holder, pr, prs=prs, ttl_minutes=ttl_minutes, root=root, renew=False, finished=finished
+            )
+            failures = 0
+        except GitError as e:
+            failures += 1
+            if failures >= GIT_FAILURES:
+                raise
+            code, message = BUSY, f"merge lock: {e} (retrying)"
+        if message != last:
+            print(message, flush=True)
+            last = message
+        if code != BUSY:
+            return code
+        if time.time() + POLL > deadline:
+            print(f"merge lock: still waiting after {timeout_minutes:g} min; giving up", flush=True)
+            return BUSY
+        time.sleep(POLL)
+        finished.next_poll()
+
+
 def release(holder: str, root: Path = ROOT) -> int:
     """Frees the lock if `holder` has it, by writing the free marker and keeping the queue, so the
     head waiter takes it next. 0 when the lock is no longer `holder`'s, 1 when another agent holds
@@ -447,6 +507,14 @@ def status(root: Path = ROOT) -> int:
     return 0
 
 
+def minutes(value: str) -> float:
+    """An argparse type: a finite, non-negative number of minutes (no NaN, inf or negatives)."""
+    number = float(value)
+    if not (math.isfinite(number) and number >= 0):
+        raise argparse.ArgumentTypeError(f"want a finite number of minutes >= 0, not {value!r}")
+    return number
+
+
 def main(argv: list[str], root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -454,13 +522,20 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     take = commands.add_parser("acquire")
     take.add_argument("--renew", action="store_true", help="you hold the lock: exit 4 if it was taken over")
-    claim = take.add_mutually_exclusive_group(required=True)
-    claim.add_argument("--pr", type=int)
-    claim.add_argument("--train", metavar="ID", help="a merge train: holder ID, PR `train`")
-    take.add_argument("--prs", type=int, nargs="*", help="a train's PRs still unmerged (replaces the lock's)")
-    take.add_argument("--ttl", type=float, default=TTL_MINUTES, help="minutes before a lock is stale")
+    queue = commands.add_parser("wait")
+    queue.add_argument(
+        "--timeout", type=minutes, default=WAIT_MINUTES, help="minutes before giving up (exit 1)"
+    )
+    for sub in (take, queue):
+        claim = sub.add_mutually_exclusive_group(required=True)
+        claim.add_argument("--pr", type=int)
+        claim.add_argument("--train", metavar="ID", help="a merge train: holder ID, PR `train`")
+        sub.add_argument(
+            "--prs", type=int, nargs="*", help="a train's PRs still unmerged (replaces the lock's)"
+        )
+        sub.add_argument("--ttl", type=minutes, default=TTL_MINUTES, help="minutes before a lock is stale")
     drop = commands.add_parser("release")
-    for sub in (take, drop):
+    for sub in (take, queue, drop):
         sub.add_argument("--holder", default=os.environ.get("CLAUDE_CODE_SESSION_ID"))
     commands.add_parser("status")
     args = parser.parse_args(argv)
@@ -475,6 +550,8 @@ def main(argv: list[str], root: Path = ROOT) -> int:
             return release(holder, root)
         pr = TRAIN if args.train else str(args.pr)
         prs = None if args.prs is None else [str(p) for p in args.prs]
+        if args.command == "wait":
+            return wait(holder, pr, prs=prs, timeout_minutes=args.timeout, ttl_minutes=args.ttl, root=root)
         return acquire(holder, pr, args.ttl, root=root, prs=prs, renew=args.renew)
     except (GitError, LockFormatError) as e:
         print(f"merge lock: {e}", file=sys.stderr)

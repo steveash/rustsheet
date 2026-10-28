@@ -22,8 +22,14 @@ periods and the annual long ones, but not:
 - ironcalc-calc `FINANCIAL/PRICE_YIELD.xlsx` ODDFPRICE_ODDFYIELD!K8-K11, K29-K33, K49-K52: frequency 2, issue
   2020-01-15, first coupon 2021-03-01 (a long first period over three quasi-coupon periods), settlement on a
   quasi-coupon date. Ours is off by 1e-11 to 1e-10 on both sides. Tried and rejected in T-2007: YIELD's own slope over
-  the regular `CouponSchedule::new(settlement, maturity)` (worse: 321 cells pass in that file against 325), the
-  odd schedule's slope with a coupon at every quasi-coupon date from settlement (the same 325 as the committed slope).
+  the regular `CouponSchedule::new(settlement, maturity)` (worse: 321 cells pass in that file against 325), and the
+  odd schedule's slope with a regular coupon at every quasi-coupon date from settlement (325, no better). The committed
+  slope (the lead weighed as a regular coupon at its own exponent `nq + y`) has no evidence for nq > 0.
+- ODDFYIELD's #NUM! now comes from YIELD's Newton leaving ODDFPRICE's domain (no bisection fallback since T-2007);
+  no ODDFYIELD oracle cell exercises it. Probe extreme prices (1, 5, 500, 5000, a zero coupon at a tiny price) on
+  excel-graph and record the rule in financial.md.
+- T-2007's lab was a temporary dump, not a committed `oddfyield` kernel in fitlab/kernels/solvers.py; commit one
+  here so the scores can be reproduced.
 - probes/oddfyield-solver-sweep S!A75-A83 and A9 (the 5% semiannual bond at prices near 124-132, its yield near 0),
   B1, C21, C35, C50, C52, C85, E1 and F1 (the inverted ODDFPRICE at a yield of 0), E32, E33, E40, F24, F32, F33, F46,
   F50 (NumericClose or NumericMismatch on the 2026-10-28 run).

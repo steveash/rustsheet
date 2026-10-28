@@ -206,9 +206,11 @@ clamp above.
    - when the lock is free and its `freed` is more than 2 min old, drop the head waiter. A live
      head polls every 30 s and claims a free lock within that time, so a head that has not
      claimed it in 2 min has stopped waiting;
-   - drop the head waiter if its PR is finished. This uses decision 0097's API read for the head
-     only, and only when the head changed or on every 10th poll, so a waiter makes at most about
-     12 reads an hour. Unauthenticated access allows 60 reads an hour.
+   - when the lock is free, stale or finished and the caller is not the head, drop the head
+     waiter if its PR is finished. This uses decision 0097's API read, made once per PR per
+     `acquire` and, across `wait`'s polls, only when the head changed or on every 10th poll, so a
+     waiter makes at most about 12 reads an hour per PR. Unauthenticated access allows 60 reads
+     an hour.
 2. If the caller holds the lock, renew it (`renewed` = now; `prs` replaced when given) and exit 0.
    A renewal never reorders the queue.
 3. If another agent holds the lock and it is neither stale (30 min since `renewed`) nor finished,
@@ -236,7 +238,7 @@ takes the lock next. A session that releases and then acquires again is no longe
 so it joins at the tail. That fixes the #1859 → #1865 chain.
 
 **`wait --pr N [--timeout 45]`** calls `acquire` every 30 s until it exits 0 (held) or 3 (PR
-finished), or until the timeout (exit 1). It prints only changes of position. Agents run `make
+finished), or until the timeout (exit 1). It prints only changed messages. Agents run `make
 merge-lock-wait PR=<n>` in the background and are woken when it exits, instead of polling.
 
 **Mixed versions during rollout.** A session on an older checkout runs version-1
@@ -633,6 +635,27 @@ that read off `merge_lock.py`'s own urllib code. The production implementation c
 Reads were verified through the session proxy on 2026-10-28. T-3001 probes the writes (merge,
 label, comment, branch push of `merge-train/*`, and `GET /git/commits` on a test merge) from a
 routine session, **before** any slice depends on them, and records the answer here.
+
+**T-3001's probe** (2026-10-28, an opus worker run, through `scripts/gh_client.py`):
+- **Reads work** through the session proxy: a PR, the open PRs (paged with `page=`), a PR's
+  comments, a head's check runs and workflow runs, and `GET /git/commits/<sha>` on a PR's
+  `merge_commit_sha` (#2160's test merge `fae51abf`, parents `cb57b875` and `14419263`).
+- **`GET /collaborators/{user}/permission` is refused** by the proxy (HTTP 403, "Access to this
+  GitHub API path is not permitted through this proxy"). So in a session, T-2986's V1 and V6
+  cannot read an author's permission. The candidate source is each comment's and review's
+  `author_association` (present on #1718's comments, `OWNER`). On this user-owned repository,
+  `OWNER` and `COLLABORATOR` mean write access. `MEMBER` would need the permission API after an
+  organization move. T-2986 decides and tests it. `permission()` stays in the client for CI,
+  where the token can read it.
+- **A branch push works**: `git push` of an empty-tree commit to `merge-train/probe` (`62eebcac`)
+  succeeded, and ci.yml starts nothing for it (decision 0147). The session proxy refuses branch
+  deletion (T-1938), so the branch stays; later probes overwrite it.
+- **`gh api` writes did not run**: the session's tool-permission layer refused the comment, label
+  and unlabel calls (it judged them unrequested writes to a connected app) before they reached
+  GitHub. A routine session therefore cannot count on `gh api` writes. The GitHub MCP tools did
+  write in the same run (opening #2160 and its squash merge under the merge lock, with a wrong and
+  then the right `expectedHeadSha`; see T-3001's Outcome), so the **step mode** below is the write
+  path for sessions; `gh_client` writes serve CI (`GITHUB_TOKEN`) and an owner-approved session.
 
 If writes fail, T-2995 adds a constrained **step mode** (T-2986's minimal fallback uses the same
 schema):
@@ -1349,9 +1372,11 @@ triggers the emergency switch to `lock` (section "The switch") and a P0:
   the fair lock can stay: they are inert in `lock` mode, and the fair lock helps there too.
 
 ## Open questions for the owner
-1. **GitHub writes from a routine session.** `gh api` reads work through the session proxy. T-3001
-   probes writes from a routine before anything depends on them. If they fail, the constrained
-   step mode applies (section 4).
+1. **GitHub writes from a routine session.** Answered by T-3001 (section 4, "T-3001's probe"):
+   reads and branch pushes work; `gh api` writes were refused by the session's permission layer,
+   and `collaborators/{user}/permission` by the proxy, so sessions write through the step mode and
+   check marker authors with `author_association`. Owner: allowing `gh api` writes in routine
+   sessions would let the merger write directly; until then the step mode applies.
 2. **Strict "up to date" check.** Confirm it stays off when the required checks are added. The
    train cannot merge PRs 2..n of a batch with it on.
 3. **Renumbering by the merger.** Should the merger renumber a colliding task or decision file

@@ -82,6 +82,14 @@ values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly i
   3.3,30,8000)`, `PPMT(0.1,3,29.9,8000,10,1)`, `IPMT(0.0083,12.5,36,8000,1234,1)`: J13, I15,
   G30) to 15 digits.
 - Excel is not the exact value to the bit: 3.5 ulp at most for PMT ("Annuity evaluation order").
+  Even at nper 1, where the exact payment is a plain quotient, Excel is off it: `PMT(0.05,1,10000)` is
+  -10499.999999999998 and `PMT(0.1,1,10000)` -11000.000000000002 (m9-fin-pmt A169, A85; exact -10500 and
+  -11000). Gap triage 2026-10-28: PPMT's discount below (`Q(-n)` by EXP of `-n*L`, `1-Q(-n)` by Kahan's
+  expm1) in the form `-(pv+fv*Q)/(k*((1-Q)/rate))` is bit-exact on 175 of the 308 PMT cells with libm EXP
+  and LN (docs/research/t3014_pmt_discount_score.py), above every form T-1528 tried (at most 133). UNVERIFIED
+  as Excel's PMT until it is fitted with Excel's EXP and LN (T-3014). These ulps matter: RATE amplifies them,
+  so 113 `RATE(n,PMT(..))` cells of m9-fin-irr-rate are visibly off on the engine's PMT and bit-exact on
+  Excel's (probes/rate-excel-pmt-bits, T-2527).
   Where PPMT cancels, Excel's error grows: the four period-1 cells of long terms A82, A166, A412,
   A418 are 7 to 41 ulp from the exact value and visibly different from it. For the 154 fv-0,
   type-0 PPMT cells, `PMT*exp((per-1-nper)*log1p(rate))` (the exact PMT rounded to a double, libm
@@ -2228,20 +2236,9 @@ Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/37
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells)
 
 ## ODDFYIELD stops short of ODDFPRICE's root
-Rule: ODDFYIELD's last digits are not the root of ODDFPRICE, and unlike YIELD's they fall on both sides of it: Excel's
-value is 1e-14 to 7e-11 from the root, above it in 60 of the 111 failing cells and below it in 51. The known-root
-rows of ironcalc-calc PRICE_YIELD.xlsx show it directly. Each prices a bond at a yield F with `J = ODDFPRICE(..)` and
-inverts it with `K = ODDFYIELD(..,J,..)`: K2 is 0.04999999999851281 (root 0.05, 1.5e-12 below), K8 is 0.0499999999321231
-(6.8e-11 below) and K23 is 0.05000000000085884 (8.6e-13 above). The annual rows with redemption 120 (K2-K5, K43-K46)
-all stop 1.34e-12 to 1.67e-12 below the root, at a price residual of 1.0e-11 to 1.2e-11 relative, whatever the yield
-(0.03 to 0.067). The semiannual rows K8-K11 and K49-K52 differ in settlement only, and repeat each other's gaps
-(-6.8e-11/-7.2e-11, -2.2e-11/-2.4e-11, -3.7e-11/-3.9e-11, -1.1e-11/-1.1e-11). The same bond at redemptions 10, 30, 50,
-60 and 300 (K23-K27) stops +8.6e-13, -2.1e-11, -4.0e-11, +1.7e-13 and +3.8e-12 from the root, which does not move
-smoothly with the redemption. The web probes agree: the bond `ODDFYIELD(DATE(8999,2,1),DATE(9000,6,30),DATE(8999,1,1),
-DATE(8999,6,30),0.05,98,100,2,0)` and its date-shifted twins (probes/date-system-1900-odd-threshold row 5,
--1904-odd-threshold row 5, -1900-odd-years and -1904-odd-years row 3) are 0.06499377053016654, 1.6e-14 above the root,
-and probes/date-system-1900-oddf-issue-after-quasi S!A17 and S!A32 are 0.07294567529742481, 5.1e-11 above it.
-probes/odd-bond-argument-check-order A258 is 0.06342868471015199, 1.5e-13 above the root.
+Rule: ODDFYIELD's last digits are not the root of ODDFPRICE's price at the given price, and they fall on both sides
+of it, so they are not analytic Newton on that price stopped short (Newton on a convex, decreasing price stays below
+the root after its first step; "YIELD stops short of PRICE's root").
 Fitted (T-2007 attempt 2): ODDFYIELD is YIELD's Newton ("YIELD stops short of PRICE's root": YIELD's closed-form
 start over the term in years from settlement to maturity, a step under 1e-10 not taken, 100 steps at most, #NUM!
 when a step is not finite) on ODDFPRICE, but its slope is not ODDFPRICE's: the odd first coupon weighs in the slope
@@ -2253,43 +2250,43 @@ to 150, and two ODDFPRICE inversions over yields 0 to 0.3) this model puts 98 of
 against 15 for ODDFPRICE's exact slope; in the engine 320 of the 547 sweep cells and every probe ODDFYIELD cell of
 the date-system cases pass bit-exact or within the harness' ulp tolerance. Still off: the long first periods at
 frequency 2 of PRICE_YIELD.xlsx (K8-K11, K29-K33, K49-K52, issue 2020-01-15 to first coupon 2021-03-01 with the
-settlement on a quasi-coupon date), and sweep cells whose yield is near 0 (T-3031). Rejected there: YIELD's own
-slope over the regular schedule from settlement to maturity, and a coupon in the slope at every quasi-coupon date
-of the long period.
-Attempt 1 (below) ruled out Newton with ODDFPRICE's own analytic slope: the price is convex and
-decreasing in the yield, so every analytic-Newton iterate after the first lies at or below the root, and Excel's
-values above the root rule it out: K23, K26, K27, K35, K37 and K38 (1.7e-13 to 3.8e-12 above), A17 (5.1e-11) and A258 (1.5e-13).
-The 0.06499377053016654 bond, 1.6e-14 above, is too close to the root to count either way.
-T-2007 fit-lab attempt 1 (2026-10-28): 43 distinct bonds behind the 111 failing cells, each rebuilt from the engine's
-odd-first schedule. Every candidate below scores 0/43 bit-exact and 0/43 within 4 ulp:
-- `^` prices, scored in ulps. Starts: the coupon rate, 0, 0.05 and 0.1. Slopes: analytic, forward differences
-  (h = 1e-5, 1e-6, 1e-8) and central differences (1e-5, 1e-8); ours is central with h = 1e-5 from the coupon rate,
-  stopping when a taken step is under 1e-8.
-  - Newton, stopping when a step is under 1e-7, 1e-8, 1e-9 or 1e-10 (not taken, as in YIELD), under 1e-5, 1e-6,
-    1e-7, 1e-8 or 1e-10 (taken), or when the price residual is under 1e-6 to 1e-10.
-  - The chord method (the slope fixed at the start), and the secant method from each ordered pair of the starts.
-    Both stop when a step is under 1e-6 to 1e-10 (taken or not), or when the residual is under 1e-5 to 1e-9.
-- `^` prices, scored in ulps. YIELD's fitted model (T-1592: `yield_start` with the term in periods over the
-  frequency, analytic slope, a step under 1e-10 not taken), forward differences (h = 1e-5) from that start,
-  analytic Newton from the coupon rate to a residual under 1e-7, and forward differences (h = 1e-5) from the rate
-  to a taken step under 1e-8.
-- Screened on libm prices, at a match within 1e-13 relative. Starts as above, plus the current yield
-  (rate × 100 / price). Slopes: analytic, analytic times or divided by the frequency, times or divided by
-  1 + y/m, the slope with respect to ln(1 + y/m) (with and without the frequency), forward and backward
-  differences (h = 1e-4), and forward and central differences (h = 1e-3). Stops: a step under 1e-6 to 1e-11 (taken
-  or not), or a residual under 1e-5 to 1e-10. The best screens are 50 cells, start 0.1 with the ln(1 + y/m) slope
-  or the analytic slope times 1 + y/m, a taken step under 1e-11. They are the cells where Excel sits within
-  1.6e-14 of the root, and in ulps with `^` prices (tolerances 1e-11 to 1e-13) they score 0/43.
-Evidence: ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx ODDFPRICE_ODDFYIELD!K2-K11, K23-K27, K29-K33, K35-K39, K43-K46,
-K49-K52 (Excel-cached, desktop); probes/date-system-1900-odd-threshold, -1904-odd-threshold, -1900-odd-years,
--1904-odd-years, -1900-odd-accrint-bound, -1900-oddf-issue-after-quasi, date-system-1904-financial S!A32,
-coup-calendar-edges J8, fin-argument-modes H200, fin-yield-odd-lift A5, odd-bond-argument-check-order A258
-(excel-graph).
+settlement on a quasi-coupon date), and sweep cells whose yield is near 0 (T-3031). For a long first period the
+lead-at-its-exponent form is unverified: no cell that fits has one (the sweep's first periods are short, and the
+annual PRICE_YIELD rows that fit have the settlement in the last quasi period). Tried there with no better score
+(PRICE_YIELD.xlsx cells passing, of 352; the committed slope 325): a regular coupon in the slope at every
+quasi-coupon date from settlement (325) and YIELD's own slope over the regular schedule from settlement to
+maturity (321).
+- Desktop (ironcalc-calc `FINANCIAL/PRICE_YIELD.xlsx` ODDFPRICE_ODDFYIELD, Mac 16.x cache; each K row inverts
+  `J = ODDFPRICE(.., F, ..)` back to F): K2 is 0.04999999999851281 (1.49e-12 below F = 0.05, |ODDFPRICE(K2) - J|
+  1.46e-9), K8 0.0499999999321231 (6.79e-11 below), and K23 0.05000000000085884, 8.59e-13 *above* the root. Of the
+  31 numeric K cells 25 sit 1.3e-12 to 7.2e-11 below the root and 6 sit 1.7e-13 to 3.8e-12 above it (K23, K26, K27,
+  K35, K37, K38).
+- Web (excel-graph): the same both-sides pattern. probes/date-system-1900-odd-threshold S!A5 (and its 43 twins in
+  the -odd-threshold and -odd-years probes, 1900 and 1904, one bond in different years) is 0.06499377053016654,
+  1.61e-14 above the root 0.06499377053015046 (ODDFPRICE residual -2.1e-12); date-system-1900-odd-accrint-bound
+  S!A3 is 2.49e-14 below (+1.25e-11) and S!A6 7.79e-14 above (-6.7e-12); date-system-1900-oddf-issue-after-quasi
+  S!A17 5.06e-11 above (-4.3e-9); fin-argument-modes H200 1.38e-11 below (+9.9e-9); odd-bond-argument-check-order
+  Calc!A258 1.53e-13 above (-1.2e-10). Residuals run from 1e-12 to 1e-8 in price.
+- Rejected (T-2007 attempt 1, a scratch grid on the engine's own odd-first schedule, which ODDFPRICE matches
+  bit-exact on every eval cell; 99 cells: the 31 desktop K cells read with Excel's cached J, and 68 numeric web
+  cells): every candidate below is 0/99 bit-exact and 0/99 within 4 ulp. The engine's central-difference Newton from
+  the coupon rate (stop at |dy| < 1e-8, then bisection), which lands on the root, is 0/99 as well.
+  - Newton with an analytic slope, or a central (h = 1e-5), forward or backward (h = 1e-4, 1e-5, 1e-6, 1e-8)
+    difference; from the coupon rate, 0, 0.1 or YIELD's fitted start (`yield_start` over `yield_start_years`);
+    stopping on a step below 1e-6, 1e-8, 1e-10 or 1e-12 (the iterate before the step, or after it) or on
+    |price - pr| below the same values; prices discounted with Excel's `^` or with libm, and with the accrued
+    interest subtracted from the price or added to the target instead (1,920 variants).
+  - The secant from (s, s + 0.01) for the same starts and stop rules.
+  - YIELD's fitted model as is (`excel_yield_newton` from `yield_start`, step cut 1e-10).
+- Back-chain (analytic Newton run backwards from the desktop cells below the root): one step back is 4e-7 to 4e-6
+  below the root, and none of the iterates one to three steps back meets the coupon rate, 0, 0.1 or YIELD's fitted
+  start. So whatever explains the above-root cells (a non-analytic slope, or a price inside ODDFYIELD that differs
+  from ODDFPRICE's by about 1e-9 near the root) also has to explain these.
 Ours: `fn_oddfyield` calls `odd_first_yield` (functions/financial/financial_bonds/yield_solver.rs), which runs
-`excel_yield_newton` with `OddFirstSchedule::dprice`, the slope above; before T-2007 it was a central-difference Newton from the coupon rate
-with a bisection fallback, landing within about 1e-14 of the root.
-Status: UNVERIFIED (a fit; the long first periods at frequency 2 are not explained); the values are Excel-cached and excel-graph
-Tasks: T-1374, T-2007 (the fit), T-3031 (the long first periods), T-1592 (YIELD's)
+`excel_yield_newton` with `OddFirstSchedule::dprice`, the slope above; before T-2007 it was a central-difference Newton
+from the coupon rate with a bisection fallback, landing on the root.
+Status: UNVERIFIED (a fit; the long first periods at frequency 2 are not explained); the values are oracle-backed
+Tasks: T-2007 (the fit), T-3031 (the long first periods), T-1374 (ODDFPRICE's own last digits), T-1592 (YIELD)
 
 ## YIELD's #NUM! cells and its 100-step cap
 Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of
@@ -2397,7 +2394,7 @@ Evidence: probes/fin-vdb-modes, fin-amordegrc, fin-fvschedule, fin-mduration, fi
 - FVSCHEDULE: a boolean principal is `#VALUE!` from a TRUE or FALSE cell (`C1`, `C2`), `INDEX(C1:C2,1)` or `INDIRECT("C1")`; a text-number cell (`"1000"`) is converted (1100). The reference path matches the typed path, so `cast_number_no_bools_ref` (the lifted kernel's read) is right (T-1992).
 Evidence: probes/fin-fvschedule-bool-ref (excel-graph, 2026-10-19, T-1992).
 Status: VERIFIED (excel-graph)
-Implemented (T-1764): VDB with salvage above cost never switches to straight line (-600); a fractional end period
+Implemented (T-1764; the fractional-period rules are now the fractional grid of "VDB charge order", T-2185): VDB with salvage above cost never switches to straight line (-600); a fractional end period
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
 rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
 1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. The ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI) are fixed by T-1975: see "VDB charge order" and "DURATION and RRI operation order".
@@ -2414,18 +2411,39 @@ build the per-period charges differently, so the same inputs give different last
   The floor at 0 holds from the first period: with salvage above cost, `VDB(2400,3000,10,0,1,2,TRUE)` is 0, where the
   switching mode gives -600. With `factor >= life` the rate is 1: `VDB(1000,100,2,0,1,3,TRUE)` is 900 and the next
   period 0 (probes/fin-rri-vdb-edges A17-A24).
-- `no_switch` FALSE, from a whole start period: the book value steps down by each charge,
-  `min(b·factor/life, b - salvage)`, until the straight-line charge `(b - salvage)/(life - p)` is larger; from then on
-  every period charges that same amount. The window's declining-balance charges (and a prorated last period) are summed
-  in doubles, and the whole straight-line periods are added at the end as one product `n·sl`:
+- `no_switch` FALSE: the periods are laid on the fraction of the start. The first `f = start - floor(start)` of a
+  period charges `f·min(cost·rate, cost - salvage)`, floored at 0, and whole periods follow from there (at `f`, `1+f`,
+  ...). Each period's book value `b` steps down by its charge `min(b·rate, b - salvage)` until the straight-line
+  charge `(b - salvage)/(life - t)`, `t` the period's start, is larger than the unclipped `b·rate`; from then on every
+  period charges that same amount. The window's declining-balance charges (and a prorated last period) are summed in
+  doubles, and the whole straight-line periods are added at the end as one product `n·sl`:
   `VDB(1234.56,78.9,12,4,9,1.75)` is 379.8854487417499, one ulp below the period-by-period sum, and
-  `VDB(2400,300,10,7,10,2,FALSE)` is 203.31648000000007.
-- `no_switch` FALSE from a fractional start period is not fitted yet: probes/fin-vdb-schedule A42-A46 still miss
-  (T-2185, which records a restart model that passes 89 of 92 cells).
-Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes, fin-rri-vdb-edges (excel-graph, 2026-10-20, T-1975).
+  `VDB(2400,300,10,7,10,2,FALSE)` is 203.31648000000007. A whole start has `f = 0`, the plain schedule.
+  Consequences of the fractional grid:
+  - A fractional start past the switch sees the same straight-line charge wherever it lies, set by its fraction:
+    `VDB(2400,100,10,6.5,7.5)` and `VDB(2400,100,10,8.5,9.5)` are both 133.20886857142858, `(566.23104 - 100)/3.5`,
+    and `VDB(2400,100,10,6.3,7.3)` is 132.80996324324326, `(591.396864 - 100)/3.7`, where the whole-period schedule
+    charges 132.2864 (probes/fin-vdb-fractional-start A11:A15). `VDB(2400,300,10,8.3,9.9,1.5)` is 244.0757706382978,
+    straight line from the 5.3 grid point over 4.7 periods (fin-vdb-schedule A44).
+  - The switch test uses the unclipped charge, so a clipped last piece under one period stays declining:
+    `VDB(2400,300,10,9.25,10)` is 4.512314880000062, `0.75·(b - salvage)`, while `VDB(1000,5,10,9.25,10,4)` switches and
+    charges all of `b - salvage`, 4.069926399999998 (fin-vdb-fractional-start A44, fin-vdb-fractional-start-edges A1).
+    This replaced T-1975's comparison with the clipped charge for whole starts too; a whole-start period rarely tells
+    the two apart, mostly only with a fractional life (edges A2, A9, A12), and every whole-start cell still passes.
+  - The first partial charge is clipped: `VDB(1000,900,5,0.5,1)` is 25, and `VDB(1000,950,4,1.5,3)` is 0. With salvage
+    above cost it is 0 and the negative charges follow: `VDB(2400,3000,10,0.5,1.5)` is -600 (edges A3:A7). The old
+    "fractional end period capped at `cost - salvage`" reading of `VDB(2400,300,10,9.5,10)` = 0 (T-1764) is this rule
+    too: the 9.5 grid point's book value is the salvage.
+  The model matches 153 of the 161 switching-mode cells to the bit and the other 8 to one ulp, all with a start
+  fraction of .2 or .3 (T-3022). LibreOffice's model (a restart from the start with its half-life shift) and the
+  running-total difference this replaced both miss visibly: fin-vdb-schedule A44 is 250.50773812499992 and
+  242.0635349999999 with them.
+Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes, fin-rri-vdb-edges (excel-graph, 2026-10-20, T-1975);
+fin-vdb-fractional-start (45 cells), fin-vdb-fractional-start-edges (14 cells) (excel-graph, 2026-10-28, T-2185).
 Status: VERIFIED (excel-graph)
-Implemented (T-1975): `vdb_no_switch_between` and `vdb_switching_between` in functions/financial/financial_depreciation.rs.
-Tasks: T-1975, T-2185
+Implemented (T-1975, T-2185): `vdb_no_switch_between` and `vdb_switching_between` in
+functions/financial/financial_depreciation.rs.
+Tasks: T-1975, T-2185, T-3022
 
 ## VDB, DDB and ACCRINT argument types
 Rule: VDB's `no_switch` reads as a boolean. TRUE, FALSE and a number are taken, and so is the text "TRUE" or "FALSE"

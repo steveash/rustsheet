@@ -2295,6 +2295,11 @@ where TAN also misses by 1 ulp, and dividing a small tangent into 1 can double t
 So COT inherits TAN's double rounding and its unpredictable near-tie noise. Simple alternatives fit far worse: on the 38 cells with |x| <= 1.5
 (where Excel's limited-precision pi does not matter yet; no COT miss lies there) ours matches all 38, while the exact cotangent rounded once, the cotangent rounded
 to 64 bits then 53, and the quotient of a 64-bit tangent each match 20 (independent fit during review, T-2664). Ours stays as is.
+Open lead (gap triage 2026-10-28, T-3020; not shipped): the near-tie misses are not random. All 21 TAN misses lie at |x| >= 15.4784,
+where reduction happens (the 38 rows with |x| <= 1.6 all match), and 17 of them have an odd quadrant n = round(x/(π₆₄/2)).
+Taking `-1/RN64(tan r)` for odd n (r the exact π₆₄ remainder), then RN53(RN64(·)) as before, matches 145 of the 150 t2147
+TAN cells and, through COT = 1/TAN, 145 of the 150 t2664 COT cells; the misses left are rows 73, 106, 133, 135 and 145, and
+row 133 is the one cell it loses. Its fit on the other cached TAN cells is T-3020's job.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -14,7 +13,8 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import merge_lock  # noqa: E402 (the sys.path line above must run first)
+import gh_client  # noqa: E402 (the sys.path line above must run first)
+import merge_lock  # noqa: E402
 
 REAL_GIT = merge_lock.git
 
@@ -397,6 +397,88 @@ class MergeLock(unittest.TestCase):
         lock = self.held_lock()
         self.assertEqual((lock.holder, lock.pr, lock.prs), ("run-7", "train", ()))
 
+    def wait(
+        self, on_sleep: dict[int, object] | None = None, timeout: float = 45
+    ) -> tuple[int, int, list[str]]:
+        """`wait` for agent-b's PR 202 with a fake clock: each sleep moves it 30 s and then runs
+        `on_sleep[k]` at the k-th sleep. Returns the exit code, the sleeps and the lines printed."""
+        sleeps = 0
+
+        def sleep(seconds: float) -> None:
+            nonlocal sleeps
+            sleeps += 1
+            self.now += int(seconds)
+            action = (on_sleep or {}).get(sleeps)
+            if callable(action):
+                action()
+
+        with mock.patch.object(merge_lock.time, "sleep", sleep), mock.patch("builtins.print") as printed:
+            code = merge_lock.wait("agent-b", "202", timeout_minutes=timeout, root=self.b)
+        return code, sleeps, [call.args[0] for call in printed.call_args_list]
+
+    def test_wait_returns_once_the_lock_is_free_and_prints_only_changes(self) -> None:
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        code, sleeps, lines = self.wait({3: lambda: merge_lock.release("agent-a", root=self.a)})
+        self.assertEqual((code, sleeps), (0, 3))
+        self.assertEqual(
+            lines,
+            [
+                "merge lock busy: held by agent-a for PR 101; you are waiter 1 of 1",
+                "merge lock released",  # agent-a's, printed during the third sleep
+                "merge lock acquired for PR 202",
+            ],
+        )
+
+    def test_wait_stops_when_its_pr_finished_and_on_the_timeout(self) -> None:
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        # PR 202 merges after the first poll; its state is re-read at the 10th.
+        self.assertEqual(self.wait({1: lambda: self.finished.add("202")})[:2], (3, 10))
+        self.finished.clear()
+        self.assertEqual(self.wait(timeout=5)[:2], (1, 10))
+
+    def test_wait_reads_each_pr_at_most_every_tenth_poll(self) -> None:
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        reads: list[str] = []
+        with mock.patch.object(merge_lock, "pr_finished", lambda pr, root=None: reads.append(pr) or False):
+            code, sleeps, _ = self.wait(timeout=15)
+        self.assertEqual((code, sleeps), (1, 30))
+        # 31 polls: own PR and the holder's at polls 0, 10, 20 and 30, not 62 reads.
+        self.assertEqual(sorted(reads), ["101"] * 4 + ["202"] * 4)
+
+    def test_wait_retries_git_errors_until_three_in_a_row(self) -> None:
+        real, errors = merge_lock.read_lock, [merge_lock.GitError("fetch failed")] * 2
+
+        def flaky(root: Path) -> merge_lock.Lock | None:
+            if errors:
+                raise errors.pop()
+            return real(root)
+
+        with mock.patch.object(merge_lock, "read_lock", side_effect=flaky):
+            self.assertEqual(self.wait()[:2], (0, 2))  # two failed polls, then the lock is free
+        with (
+            mock.patch.object(merge_lock, "read_lock", side_effect=merge_lock.GitError("down")),
+            self.assertRaises(merge_lock.GitError),
+        ):
+            self.wait()
+
+    def test_main_waits_for_a_pr_or_a_train_and_refuses_bad_minutes(self) -> None:
+        self.assertEqual(
+            merge_lock.main(["wait", "--pr", "202", "--holder", "agent-b", "--timeout", "1"], self.a), 0
+        )
+        merge_lock.release("agent-b", root=self.a)
+        self.assertEqual(
+            merge_lock.main(["wait", "--train", "run-7", "--prs", "1", "2", "--timeout", "1"], self.a), 0
+        )
+        lock = self.held_lock()
+        self.assertEqual((lock.holder, lock.pr, lock.prs), ("run-7", "train", ("1", "2")))
+        for flag, value in (("--timeout", "nan"), ("--timeout", "inf"), ("--ttl", "-1"), ("--ttl", "NaN")):
+            with (
+                self.subTest(flag=flag, value=value),
+                self.assertRaises(SystemExit),
+                mock.patch("sys.stderr"),
+            ):
+                merge_lock.main(["wait", "--pr", "1", "--holder", "x", flag, value], self.a)
+
     def test_main_needs_a_holder_and_a_numeric_pr(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=True), mock.patch("sys.stderr"):
             self.assertEqual(merge_lock.main(["acquire", "--pr", "1"]), 2)
@@ -405,39 +487,24 @@ class MergeLock(unittest.TestCase):
 
 
 class PrFinished(unittest.TestCase):
-    """`pr_finished` over a stubbed API (no network)."""
+    """`pr_finished` over gh_client's fake (no network)."""
 
-    def read(self, payload: object, url: str = "https://github.com/o/r.git") -> bool | None:
-        class Response:
-            def __enter__(self) -> "Response":
-                return self
-
-            def __exit__(self, *exc: object) -> None:
-                return None
-
-            def read(self, *_: object) -> bytes:
-                return json.dumps(payload).encode()
-
-        remote = subprocess.CompletedProcess([], 0, stdout=url + "\n")
-        with (
-            mock.patch.object(merge_lock, "git", return_value=remote),
-            mock.patch.object(merge_lock.urllib.request, "urlopen", return_value=Response()),
-        ):
+    def read(self, reply: gh_client.Reply, url: str = "https://github.com/o/r.git") -> bool | None:
+        fake = gh_client.FakeGh("o", "r", {("GET", "repos/o/r/pulls/7"): reply})
+        client = fake if gh_client.owner_repo(url) else None
+        with mock.patch.object(gh_client, "from_remote", return_value=client):
             return merge_lock.pr_finished("7")
 
     def test_open_merged_and_closed(self) -> None:
-        self.assertIs(self.read({"state": "open", "merged": False}), False)
-        self.assertIs(self.read({"state": "closed", "merged": True}), True)
-        self.assertIs(self.read({"state": "closed", "merged": False}), True)
+        self.assertIs(self.read(gh_client.Reply({"state": "open", "merged": False})), False)
+        self.assertIs(self.read(gh_client.Reply({"state": "closed", "merged": True})), True)
+        self.assertIs(self.read(gh_client.Reply({"state": "closed", "merged": False})), True)
 
     def test_an_unreadable_state_is_unknown(self) -> None:
-        self.assertIsNone(self.read({"message": "Not Found"}))
-        self.assertIsNone(self.read({"state": "open"}, url="git@example.com:o/r.git"))
-        with (
-            mock.patch.object(merge_lock, "git", return_value=subprocess.CompletedProcess([], 0, "https://github.com/o/r\n")),
-            mock.patch.object(merge_lock.urllib.request, "urlopen", side_effect=OSError("offline")),
-        ):
-            self.assertIsNone(merge_lock.pr_finished("7"))
+        self.assertIsNone(self.read(gh_client.Reply({"message": "Not Found"})))
+        self.assertIsNone(self.read(gh_client.Reply({"state": "open"}), url="git@example.com:o/r.git"))
+        self.assertIsNone(self.read(gh_client.Reply(error="offline")))
+        self.assertIsNone(merge_lock.pr_finished("$(whoami)"))
 
 
 if __name__ == "__main__":
