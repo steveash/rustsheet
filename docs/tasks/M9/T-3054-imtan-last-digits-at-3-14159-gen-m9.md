@@ -3,7 +3,7 @@ id: T-3054
 title: "IMTAN last digits at 3.14159 (gen-m9 756a9f7bc3a06bcc A338, unmasked by the T-3030 CELL re-fill)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: dropped
 priority: P3
 size: S
 tier: opus
@@ -27,3 +27,10 @@ depends_on: []
 
 ## Out of scope
 - Other complex functions.
+
+## Outcome (dropped, 2026-10-28)
+Duplicate of T-2774 (blocked on T-1075 item 17). A338's argument is the real number 3.14159, and IMTAN of a real is
+TAN's kernel on Excel for the web: `IMTAN(3.14159)` -2.65358979336212E-06 is already recorded in engineering.md "IM*
+trigonometry of a real number is SIN, COS and TAN" (probes/t2534-im-trig-real-limit) and owned by T-2774 through
+gen-m9/79dac8dde81afda9 A154. Following the web here regresses the Mac desktop cache COMPLEXs.xlsx N6, which decision
+0030 makes the reference, so it is not a kernel to fit. The cell is added to T-2774's owned list.
