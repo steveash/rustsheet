@@ -98,6 +98,6 @@ v, r and x) and four findings are in financial.md "IRR's fallback when the secan
 owned cells stay in eval/baseline/.
 Next attempt, from the findings: a secant (not Newton: the sign of Excel's error rules out a plain last Newton step on
 the three anchor flows) with a signed first offset and a |P| < 1E-7 stop, whose start is guess-dependent on
-`{0.3,-2.5,1.005}` and `{2,1,1,-1}` but not on `{42,1,1,-1}` or `{-400,1,1,1,1,1}`; a step cap that, with the
-residual test, makes the large-first-flow rows A26-A31 and A101 `#NUM!`. A second attempt that does not raise the
+`{0.3,-2.5,1.005}` and `{2,1,1,-1}` but not on `{42,1,1,-1}` or `{-400,1,1,1,1,1}`; and a rule for the `#NUM!` of the
+large-first-flow rows A26-A31 and A101 (finding 5: not a Newton step cap and not a root bound). A second attempt that does not raise the
 bit-exact count blocks the task (decision 0056).
