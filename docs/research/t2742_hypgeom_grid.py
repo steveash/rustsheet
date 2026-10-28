@@ -48,7 +48,7 @@ for (r,x,n,K,N) in rows:
     if f"C{r}" in c:
         leg_tot+=1; leg_ok+= (val(f"C{r}")==a)
 print('pmf cells',tot, cnt)
-print('cdf==running sum of excel pmf', cdf_ok,'/',cdf_tot, ' cdf==1 at last?')
+print('cdf==running sum of excel pmf', cdf_ok,'/',cdf_tot)
 print('legacy==pmf', leg_ok,'/',leg_tot)
 from collections import Counter
 for N in range(6,13):

@@ -146,17 +146,20 @@ visibly off the exact value (`HYPGEOMDIST(2,2,3,11)` = 0.05454545454545458 again
 T-2481.
 T-2742 grid (probes-numeric/t2742-hypgeom-small-n, excel-graph 2026-10-28): every valid (x, n, K, N) with N 6-12,
 1442 pmf and 1442 cdf cells, and HYPGEOMDIST for N = 12.
-- Only 286 of the 1442 pmf cells (19.8%) are the exact rational correctly rounded. The others are off by -14 to +10 ulps,
-  with both signs at every N and at the first, interior and last x alike: for N = 12 the most common offsets are 0, +1,
-  -2 and -1. The largest is `HYPGEOM.DIST(3,6,5,11,FALSE)` = 0.4329004329004321 (A893), 14 ulps below the exact
-  100/231; the next are A1281 `(4,7,5,12)` (13 ulps) and A898 `(3,6,6,11)`. `HYPGEOM.DIST(0,3,1,6,FALSE)` is
-  0.5000000000000001 (A24), not 0.5.
+- Only 286 of the 1442 pmf cells (19.8%) are the exact rational correctly rounded. The others are off by -14 to +10 ulps
+  (offset = Excel minus the correctly rounded exact value), with both signs at every N and at the first, interior and
+  last x alike: for N = 12 the most common offsets are 0 (82 cells), +1 (69), -1 (40), +2 (34) and -2 (31). The lowest is
+  `HYPGEOM.DIST(3,6,5,11,FALSE)` = 0.4329004329004321 (A893), -14 ulps from the exact 100/231; A884 `(3,6,3,11)`, A898
+  `(3,6,6,11)` and A1281 `(4,7,5,12)` are -13. The highest is +10 at A1321 `(3,8,4,12)`, then +9 at A690, A1339, A1366
+  and A1375. `HYPGEOM.DIST(0,3,1,6,FALSE)` is 0.5000000000000001 (A24), not 0.5.
 - The pmf is not symmetric in n and K: `pmf(x,n,K,N)` equals `pmf(x,K,n,N)` bit for bit in only 434 of the 1442 cells,
   so Excel's formulation treats the sample size and the success count differently.
-- Bit-exact counts of four of the T-0977 candidates on the grid (the 9! log-factorial orders, summed logs, Loader's
-  `dhyper` and the walked product were not re-run): exact rational 286, the double ratio
-  `COMBIN(K,x)*COMBIN(N-K,n-x)/COMBIN(N,n)` 286, the same ratio grouped `COMBIN(K,x)*(COMBIN(N-K,n-x)/COMBIN(N,n))` 280,
-  grouped `(COMBIN(K,x)/COMBIN(N,n))*COMBIN(N-K,n-x)` 285, and exp of lgamma sums 37. None comes close; offsets of over
+- Bit-exact counts on the grid (docs/research/t2742_hypgeom_grid.py; of T-0977's candidates the 9! log-factorial
+  orders, summed logs, Loader's `dhyper` and the walked product were not re-run): the exact rational 286, the double
+  ratio `COMBIN(K,x)*COMBIN(N-K,n-x)/COMBIN(N,n)` 286, grouped `COMBIN(K,x)*(COMBIN(N-K,n-x)/COMBIN(N,n))` 280, grouped
+  `(COMBIN(K,x)/COMBIN(N,n))*COMBIN(N-K,n-x)` 285, and Python `exp` of `math.lgamma` terms summed left to right as
+  lg(K+1)-lg(x+1)-lg(K-x+1)+lg(N-K+1)-lg(n-x+1)-lg(N-K-n+x+1)-lg(N+1)+lg(n+1)+lg(N-n+1) 37 (the count depends on
+  the grouping: per-COMBIN groups give 32). None comes close; offsets of over
   10 ulps suggest a log-space or iterated formulation rather than one rounding of a ratio (unverified).
 - The cdf is not the running double sum of Excel's own pmf cells from the lowest x: that rule holds in 816 of the 1442
   cdf cells, and the correctly rounded exact cdf in 776. The cdf at the last x (x = min(n, K)) is exactly 1 in all 476
