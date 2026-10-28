@@ -28,4 +28,4 @@ in `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs).
 -
 
 ## Outcome
-New probe cell probes/groupby-lifted-args2 A61 reads element (2,1) through `IFERROR(ERROR.TYPE(INDEX(..,2,1)),0)`: excel-graph gives 3 (`#VALUE!`), and ours already matches (A27 shows `#VALUE!` in the refilled sidecar too). No engine change. Recorded in arrays.md. Eval delta: none (one new passing cell).
+New probe cell probes/groupby-lifted-args2 A61 reads element (2,1) through `IFERROR(ERROR.TYPE(INDEX(..,2,1)),0)`: excel-graph gives 3 (`#VALUE!`), and ours already matches (A27 was already a decoded `#VALUE!` in the sidecar on main, so the task's premise of an undecoded rich error was out of date). No engine change. Recorded in arrays.md. Eval delta: none (one new passing cell).
