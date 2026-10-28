@@ -30,7 +30,8 @@ periods and the annual long ones, but not:
   excel-graph and record the rule in financial.md.
 - T-2007's lab was a temporary dump, not a committed `oddfyield` kernel in fitlab/kernels/solvers.py; commit one
   here so the scores can be reproduced.
-- probes/oddfyield-solver-sweep S!A75-A83 and A9 (the 5% semiannual bond at prices near 124-132, its yield near 0),
+- probes/oddfyield-solver-sweep S!A9, A75, A76, A77, A78, A79, A80, A81, A82, A83 (the 5% semiannual bond at prices
+  near 124-132, its yield near 0; listed one by one because a hyphen span names its ends only, decision 0136),
   B1, C21, C35, C50, C52, C85, E1 and F1 (the inverted ODDFPRICE at a yield of 0), E32, E33, E40, F24, F32, F33, F46,
   F50 (NumericClose or NumericMismatch on the 2026-10-28 run).
 - The rest of the sweep is within a few ulps; YIELD's slope operation order (`t * 100 * rate / m`) is worse (319

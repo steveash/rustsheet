@@ -36,6 +36,11 @@ class Classifier(unittest.TestCase):
         self.assertFalse(classify("docs/parity.md", "docs/status.md", "docs/research-plan.md"))
         self.assertFalse(classify("docs/progress.md.bak", "docs/progress.mdx", "docs/milestones.md~"))
 
+    def test_the_review_skill_is_code(self) -> None:
+        # scripts/test_merge_ready.py reads its reviewer-applicability list (decision 0149).
+        self.assertTrue(classify(".claude/skills/review/SKILL.md"))
+        self.assertFalse(classify(".claude/skills/steward/SKILL.md"))
+
     def test_rename_of_crate_file_into_docs_is_code(self) -> None:
         # --no-renames lists both sides, so the crate side makes it code.
         self.assertTrue(classify("crates/rustsheet-engine/src/lib.rs", "docs/lib.rs"))

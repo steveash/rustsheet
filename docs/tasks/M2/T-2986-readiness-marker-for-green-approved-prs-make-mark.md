@@ -3,7 +3,7 @@ id: T-2986
 title: "Readiness marker for green, approved PRs: make mark-ready and its verifier"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -45,27 +45,40 @@ check the marker mechanically, without reviewing the PR again.
   section 4 "GitHub access". T-2995's step mode extends the same schema.
 
 ## Acceptance criteria
-- [ ] `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
+- [ ] (moved to T-3040) `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
       each case in SPEC-0027 section 2, posts the marker and the label otherwise, and never posts
       a second marker for the same head.
-- [ ] `scripts/merge_ready.py verify --pr <n>` implements V1–V6 and the "green" rule. It exits 0
+- [x] `scripts/merge_ready.py verify --pr <n>` implements V1–V6 and the "green" rule. It exits 0
       when the PR is ready and 1 with the failed checks when it is not.
-- [ ] The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
+- [ ] (moved to T-3040) The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
       creates them when they are absent.
-- [ ] If T-3001 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
+- [ ] (moved to T-3040) If T-3001 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
       exactly two step-mode JSON actions, the label and a comment whose body the script generates,
       in SPEC-0027 section 4's schema. `verify` confirms the result afterwards, and a test covers
       it. If writes work, the PR says the fallback was not needed and omits it.
-- [ ] `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
+- [x] (verify's cases; `--carry`'s moved to T-3040) `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
       plan, including an outsider's `CHANGES_REQUESTED` review and the test that the
       applicability list matches the review skill. It runs in `make hygiene`.
-- [ ] No skill or routine uses it yet (T-2989 does that).
-- [ ] A decision record for the mechanism lands in this PR. The architecture and security
+- [x] No skill or routine uses it yet (T-2989 does that).
+- [x] A decision record for the mechanism lands in this PR. The architecture and security
       reviewers approve.
-- [ ] If the diff grows past size M, split it before review: the parser and `verify` first, then
+- [x] If the diff grows past size M, split it before review: the parser and `verify` first, then
       `mark`.
 
 ## Out of scope
 - Building or merging trains (T-2987, T-2994).
 - Skill and prompt changes (T-2989, T-2996).
 - Per-reviewer verdict records (T-2997).
+
+## Outcome
+- Split past size M, as the task allowed: this PR is the parser and `verify`; `mark`, `--carry`,
+  label creation and the step-mode write fallback are T-3040 (T-2989 now depends on it).
+- `scripts/merge_ready.py`: the `merge-train-ready v1` marker (render and strict parse), reviewer
+  applicability (pinned to the `review` skill by a test; the skill is now in `CODE_READ_PATHS`),
+  the "green" rule, and `verify --pr N` (`make merge-ready-verify`) running V1-V6 read-only, each
+  failure with its side effect for the merger. `scripts/gh_client.py` gains the reviews read.
+- Decision 0149: with the permission API refused in sessions, V1 and V6 count
+  `author_association` `OWNER`/`COLLABORATOR` on a user-owned repository only; `run_heavy=false`
+  comes from the CI classifier itself, because job logs are not readable from a session.
+- Checked read-only against live PRs #2162 (green) and #2179 (draft, task not done, no CI run).
+- Eval delta: none (scripts and docs only).
