@@ -25,7 +25,7 @@ The rule needs the blank-target CELL("contents") result to be distinguishable as
 survive LET/IF; a design that only extends the syntax match is not enough.
 
 ## Acceptance criteria
-- [ ] probes/t2466-cell-contents-stack passes in full; probes/t2414-gen-m7-unexplained keeps passing.
+- [ ] probes/t2466-cell-contents-stack passes in full, including the nested non-blank cells A51, A131, A141, A221, A231 and A241; probes/t2414-gen-m7-unexplained keeps passing.
 - [ ] information.md's "Ours" paragraph updated.
 - [ ] `make check` green; reviewers approve.
 

@@ -272,8 +272,8 @@ the referenced sheet; the rule stands, and a single conflicting cell is re-fille
 CELL("contents", ref) as a VSTACK argument is `#VALUE!` (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `VSTACK(CELL("contents",Data!C11),1)`,
 `VSTACK(CELL(..),Data!B7:E12)` and `ROWS(VSTACK(CELL(..),Data!B7:E12))` are all one `#VALUE!` (nothing spilled), while `CELL(..)` alone and
 `CELL(..)&"|"` give 0 and "|", and `VSTACK(0,Data!B7:E12)` is the 7x4 stack (`#N/A` padded). So the CELL result, not the blank cell, makes the
-VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK and other stacking or array-shaping callers of CELL are unprobed. Ours matches for a
-`VSTACK` argument written as `CELL("contents", ref)` with a literal info type (T-2457), whatever the target holds, which T-2466 shows is wrong (below).
+VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK and other stacking or array-shaping callers of CELL are unprobed. Ours errors for every
+`VSTACK` argument written as `CELL("contents", ref)` with a literal info type (T-2457), whatever the target holds; T-2466 shows that is wrong (below).
 
 The trigger is a **blank target**, not the call's syntax (T-2466, probes/t2466-cell-contents-stack, excel-graph, 2026-10-28):
 - Non-blank targets stack normally: `VSTACK(CELL("contents",Data!B1),1)` with B1=7 spills 7;1 (A1), a text target `abc` spills
