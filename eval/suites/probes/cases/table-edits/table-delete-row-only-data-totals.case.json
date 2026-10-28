@@ -1,0 +1,73 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2848: when delete_row deletes sheet row 4, the only data row of Sales on S!B3:C5 (header B3:C3 Region/Qty, data row 4, totals row 5 with C5 =SUBTOTAL(109,Sales[Qty])), is the row cleared and kept, removed, or refused? S!C7 7 sits below the table. Sheet F holds A1 =ROWS(Sales), A2 =ROWS(Sales[#All]), A3 =ROW(Sales[#Totals]), A4 =Sales[[#Totals],[Qty]], A5 FORMULATEXT(A4), A6 =SUM(Sales[Qty]), A7 FORMULATEXT(A6), A8 =COUNTA(Sales[Region]), A9 =SUM(S!C4:C4), A10 FORMULATEXT(A9), A11 =S!C7, A12 FORMULATEXT(A11), A13 =S!C5, A14 FORMULATEXT(A13).",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B3": "Region",
+        "C3": "Qty",
+        "B4": "E",
+        "C4": 1,
+        "B5": "Total",
+        "C5": "=SUBTOTAL(109,Sales[Qty])",
+        "C7": 7
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:C5",
+          "totals_row": true
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=ROWS(Sales)",
+        "A2": "=ROWS(Sales[#All])",
+        "A3": "=ROW(Sales[#Totals])",
+        "A4": "=Sales[[#Totals],[Qty]]",
+        "A5": "=FORMULATEXT(A4)",
+        "A6": "=SUM(Sales[Qty])",
+        "A7": "=FORMULATEXT(A6)",
+        "A8": "=COUNTA(Sales[Region])",
+        "A9": "=SUM(S!C4:C4)",
+        "A10": "=FORMULATEXT(A9)",
+        "A11": "=S!C7",
+        "A12": "=FORMULATEXT(A11)",
+        "A13": "=S!C5",
+        "A14": "=FORMULATEXT(A13)"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "delete_row",
+      "sheet": "S",
+      "row": 4
+    }
+  ],
+  "expected": {},
+  "check": [
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7",
+    "A8",
+    "A9",
+    "A10",
+    "A11",
+    "A12",
+    "A13",
+    "A14"
+  ]
+}
