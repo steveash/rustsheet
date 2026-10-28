@@ -3,7 +3,7 @@ id: T-3067
 title: "CUMIPMT and CUMPRINC: the cells T-2521 left (type 1 operation order of G2/H2, tiny-rate interest of both types, periods near 1E15)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
