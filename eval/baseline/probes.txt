@@ -726,6 +726,7 @@ C	probes/lotus-dot-range-space.case.json	2
 C	probes/lotus-dot-range-trailing-letter.case.json	2
 C	probes/lotus-dot-range.case.json	6
 C	probes/m2-argument-kind-gaps-b.case.json	12
+C	probes/m2-argument-kind-gaps-c.case.json	33
 C	probes/m2-argument-kind-gaps.case.json	79
 C	probes/m7-argument-modes.case.json	174
 C	probes/m7-lift-take-drop-sortby.case.json	934
@@ -1436,6 +1437,7 @@ C	probes/t2929-sort-lifted-by-col-errors.case.json	94
 C	probes/t2929-sort-lifted-by-col-index.case.json	84
 C	probes/t2929-sort-lifted-by-col-range.case.json	30
 C	probes/t2929-sort-lifted-by-col-shapes.case.json	121
+C	probes/t2932-b2-calendar-twice.case.json	80
 C	probes/t2939-typed-if-two-argument-controls.case.json	9
 C	probes/t2957-a1-reference.case.json	6
 C	probes/t2957-constant-exception.case.json	5
@@ -3538,12 +3540,6 @@ F	probes/t2577-indirect-ref-array.case.json	Calc!T64
 F	probes/t2577-indirect-ref-array.case.json	Calc!U148
 F	probes/t2577-indirect-ref-array.case.json	Calc!U157
 F	probes/t2577-indirect-ref-array.case.json	Calc!U64
-F	probes/t2729-hijri-locale-tag-names.case.json	S!A296
-F	probes/t2729-hijri-locale-tag-names.case.json	S!A297
-F	probes/t2729-hijri-locale-tag-names.case.json	S!A316
-F	probes/t2729-hijri-locale-tag-names.case.json	S!A317
-F	probes/t2729-hijri-locale-tag.case.json	S!A245
-F	probes/t2729-hijri-locale-tag.case.json	S!A246
 F	probes/t2738-gamma-dist-tiny-ratio.case.json	S!A4
 F	probes/t2753-gamma-density-ratio-sweep.case.json	S!A1
 F	probes/t2753-gamma-density-ratio-sweep.case.json	S!A10
@@ -3833,6 +3829,9 @@ F	probes/t2831-formulatext-indirect-multi-cell.case.json	Calc!A77
 F	probes/t2831-formulatext-indirect-multi-cell.case.json	Calc!A78
 F	probes/t2831-formulatext-indirect-multi-cell.case.json	Calc!A9
 F	probes/t2831-formulatext-indirect-multi-cell.case.json	Calc!B17
+F	probes/t2932-b2-calendar-twice.case.json	S!A37
+F	probes/t2932-b2-calendar-twice.case.json	S!A38
+F	probes/t2932-b2-calendar-twice.case.json	S!A55
 F	probes/table-edits/plain-range-delete-row-first.case.json	F!A6
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
@@ -4151,3 +4150,4 @@ TC	probes/fraction-overflow-scaled.case.json	80
 TC	probes/fraction-placeholder-past-2-30.case.json	75
 TC	probes/t2729-hijri-locale-tag-names.case.json	3
 TC	probes/t2729-hijri-locale-tag.case.json	5
+TC	probes/t2932-b2-calendar-twice.case.json	5
