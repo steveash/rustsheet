@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::cell::CellValue;
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, ulps, within_fifteen_digits};
 
 // ============================================================
 // PERCENTOF
@@ -256,15 +256,20 @@ fn fn_yield_matches_excel_off_the_fit() {
     };
     assert_eq!(bits("H30"), 25.484_095_435_031_72_f64.to_bits());
     assert_eq!(bits("A1"), 0.064_999_999_991_596_71_f64.to_bits());
-    // The twins and B20 are 1 ulp off Excel's bits, within its 15 digits; the bit-level residue
-    // is the follow-up's (T-2741 Outcome).
-    let within_an_ulp = |c: &str, excel: f64| {
-        let ulps = bits(c).abs_diff(excel.to_bits());
-        assert!(ulps <= 1, "{c}: {ulps} ulp from Excel's {excel}");
-    };
-    within_an_ulp("A2", 0.055_585_928_765_551_25);
-    within_an_ulp("A3", 0.055_585_928_843_032_48);
-    within_an_ulp("A4", 0.122_943_903_299_904_23);
+    // The twins and B20 are within Excel's 15 digits and 1 ulp off its bits; the bit-level
+    // residue is T-2788's.
+    for (c, excel) in [
+        ("A2", 0.055_585_928_765_551_25),
+        ("A3", 0.055_585_928_843_032_48),
+        ("A4", 0.122_943_903_299_904_23),
+    ] {
+        let ours = f64::from_bits(bits(c));
+        assert!(
+            within_fifteen_digits(excel, ours),
+            "{c}: {ours} vs Excel's {excel}"
+        );
+        assert!(ulps(excel, ours) <= 1, "{c}: {ours} vs Excel's {excel}");
+    }
 }
 
 // YIELD's Newton has no fallback (T-2391; financial.md "YIELD's #NUM! cells and its 100-step

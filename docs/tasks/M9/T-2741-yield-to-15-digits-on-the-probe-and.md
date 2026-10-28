@@ -98,8 +98,9 @@ named in the Outcome.
 - The T-2436 inner-expression probe cell probes/t2436/320d51765af9b6b7 Calc!A16, which follows its gen-m9 owner.
 
 ## Outcome
-- T-1592's fitted start and stop (already in `excel_yield_newton`, from `yield_start`) carry 367 of the 370 owned cells
-  to within Excel's 15 digits. On `make eval` of de48145d, only these YIELD-outermost cells of the owned cases are
+- Acceptance criterion 1 is met for 367 of the 370 owned cells, not all of them. T-1592's fitted start and stop
+  (already in `excel_yield_newton`, from `yield_start`) carry those 367 to within Excel's 15 digits. The other three
+  move to T-2974, below. On `make eval` of de48145d, only these YIELD-outermost cells of the owned cases are
   still visibly off:
   - probes/yield-start-rate-term S!B39 and S!B49 (basis 1, 5 and 10 ulp off);
   - probes/yield-solver-sweep S!C7 (27 ulp).
