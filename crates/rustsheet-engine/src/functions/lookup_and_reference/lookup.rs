@@ -139,7 +139,7 @@ impl Model {
     }
 
     /// LOOKUP's `lookup_vector` or `array`, read as the table it searches; a `lookup_vector`
-    /// with a `result_vector` (`vector_form`) maybe as a head and a tail
+    /// with a `result_vector` (`vector_form`) possibly read as a head and a tail
     /// ([`Model::tailed_lookup_search`]).
     fn lookup_search(
         &mut self,

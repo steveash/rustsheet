@@ -552,7 +552,7 @@ fn rank_and_row_dependent_small_are_not_tailed() {
 /// LOOKUP's vector form searches an element-wise `lookup_vector` as its head and a tail it skips
 /// (SPEC-0020 Amendment 1 section 3, T-0494): error tails (`1/FALSE`, corpus-bench 33935's
 /// last-non-empty idiom) and empty tails, targets of each kind, including ones whose kind differs
-/// from the head's last element (the search's midpoints skip forward), a lifted lookup_value, and
+/// from the head's last element (the search's midpoints skip forward), a lifted `lookup_value`, and
 /// a bounded span.
 #[test]
 fn lookup_vector_form_of_a_tailed_argument() {
