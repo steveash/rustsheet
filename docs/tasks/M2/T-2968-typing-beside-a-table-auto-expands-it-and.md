@@ -3,7 +3,7 @@ id: T-2968
 title: "Typing beside a table auto-expands it and fills the new column, as Excel does (probes/t2957-expand-right-*)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
