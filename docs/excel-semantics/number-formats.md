@@ -638,11 +638,22 @@ Under every one of these, `e` stays the Gregorian four-digit year, and so do `b`
   - Under every other LCID with a locale (409, 40C, 407, 411, 412, 404, 41E, 419, 439, every other table LCID, 400, 800
     and neutral C and 39) they are Latin: Tishrei, Cheshvan, Kislev, Tevet, Shvat, Adar (AdarI and AdarII in a leap
     year), Nisan, Iyar, Sivan, Tamuz, Av, Elul, and `ddd` = `dddd` = "Yom Rishon" … "Yom Shishi", "Shabat".
-  - Serials 0 and 1 are "5660-05-01|Shvat", 59 "5660-06-29|AdarI". Excel matches the arithmetic calendar at every
-    probed date to 2238-11-01, and ours follows it to 2238-11-07 (29 Cheshvan 5999); from Kislev 5999 its dates drift ahead (2238-12-01 is
-    "5999-03-24", the arithmetic 23; 2239-09-24 "6000-01-01"; 4000-01-01 "7760-04-24", the arithmetic 7760-04-11), and
-    from some date between 4000-01-01 and 5000-01-01 to 9999-12-31 they are `#VALUE!` (t2779-hebrew-saka-more A1:A35).
-    Ours is `#VALUE!` past 2238-11-07 (T-2954).
+  - Serials 0 and 1 are "5660-05-01|Shvat", 59 "5660-06-29|AdarI".
+  - **Excel reads a year table, which wraps past 2238** (T-2954; probes/t2954-hebrew-drift, 512 cells, and
+    t2954-hebrew-value-limit, excel-graph 2026-10-28). A date's Hebrew month and day come from the table entry of its
+    Gregorian year: the Hebrew date of 1 January (always in Hebrew year Gregorian + 3760) and the length of the Hebrew
+    year it falls in. Excel walks forward from 1 January by that year's month lengths and takes the next Gregorian
+    year's entry from 1 Tishrei on. Entries to 2238 agree with the arithmetic calendar. Past 2238, Gregorian year `y`
+    reads the entry of 1585 + (y - 1585) mod 654. So 5999 (Tishrei 2238) takes 1586's year length: Cheshvan has 29
+    days, 2238-11-08 is "5999-03-01" (the arithmetic 5999-02-30), and 2238-12-01 is "5999-03-24". 2239-01-01 is
+    "5999-05-01", as 1585-01-01 is 5345-05-01. 2239-09-24 is "6000-01-01", 2241-10-01 "6001-13-28" (a leap year by the
+    table, not by the 19-year cycle), 4000-01-01 "7760-04-24" and 9999-12-31 "13760-04-22". The leap years of the
+    month names follow the table too: 4502-03-01 (8262-06-24) is "AdarI".
+  - The month names stop at Hebrew year 8262. From 1 Tishrei 8263 (4502-09-30), a month name token under a locale
+    (`[$-80409]mmm`, `mmmm`, `mmmmm`) is `#VALUE!`; 4502-09-29 is still "8262-13-29|Elul". The numbers and weekday names
+    still print (`yyyy-mm-dd|ddd` of 4502-09-30 is "8263-01-01|Shabat"). With no locale (`[$-80000]`) the Gregorian
+    names by month number still print ("8263-01-01|Jan|January|J"). So t2779-hebrew-saka-more's `yyyy-mm-dd|mmmm` is
+    `#VALUE!` from 5000-01-01 on, while `yyyy-mm-dd` of every date to 9999-12-31 prints.
 - 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"). The year turns on 22 March, or 21 March in a Gregorian leap year
   (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days; months 2-6 have 31, 7-12 30.
   `yy`, `b`, `bb` and `y` print two digits ("44"), `e`, `ee`, `yyy`, `yyyyy` and `bbbb` the Saka year. Serial 1 is
