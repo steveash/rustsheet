@@ -3,7 +3,7 @@ id: T-2800
 title: "Probe this-row structured references without a calculated-column fill"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
