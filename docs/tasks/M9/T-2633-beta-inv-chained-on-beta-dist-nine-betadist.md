@@ -87,3 +87,5 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
   which T-2510 ports (itself after T-2509, blocked on its baseline update). Fitting the cdf here first would be redone
   by T-2510, and the nine chained BETA.INV lines follow BETA.DIST, so the whole task now waits on T-2510
   (`depends_on`, status back to `todo`). The next run starts by re-measuring every cell above on T-2510's kernel.
+- If the nine chained BETA.INV lines are still 1-4 ulp on T-2510's kernel, SPEC-0025 gives them to T-2511 (the inverse
+  solved to the crossing); move them there rather than fitting them here.
