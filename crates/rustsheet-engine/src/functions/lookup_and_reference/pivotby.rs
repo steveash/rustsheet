@@ -161,6 +161,47 @@ impl Placement {
     /// the covered lines, not their columns. A write over a group column is dropped, and a later
     /// write wins. The slots written name the lines as `laid_out`.
     fn written_cells(&self, laid_out: &[Line], width: usize) -> Vec<Option<Slot>> {
+        let mut cells: Vec<Option<Slot>> = vec![None; (self.lines.len() + 1).saturating_mul(width)];
+        for (column, slot) in self.writes(laid_out, width) {
+            if matches!(self.lines.get(column / width), Some(Line::Group(_))) {
+                continue;
+            }
+            if let Some(cell) = cells.get_mut(column) {
+                *cell = Some(slot);
+            }
+        }
+        cells
+    }
+
+    /// The dropped writes of [`Placement::written_cells`], each gated by the group column it
+    /// fell on: Excel still computes such a cell, in the rows with a record in that group, and
+    /// an error there makes PIVOTBY `#VALUE!` ([`Grid::checked_totals`]). Without subtotals
+    /// these are the Total cells of value `v` gated by the line `(lines + v) / width` (T-2578);
+    /// with subtotals, also the subtotal cells, and a Total cell that lands on a subtotal column
+    /// is shown, not checked (probes/t2967-pivotby-subtotal-gate; t2606-pivotby-total-gate-layouts
+    /// P!A1-B14). Excel: docs/excel-semantics/arrays.md "PIVOTBY: an error column total over
+    /// several value columns".
+    fn checked_totals(&self, cols: &Grouping, width: usize) -> Vec<CheckedTotal> {
+        let laid_out = self.laid_out(cols);
+        self.writes(&laid_out, width)
+            .filter_map(|(column, slot)| {
+                let index = column / width.max(1);
+                let Some(Line::Group(_)) = self.lines.get(index) else {
+                    return None;
+                };
+                let gate = *laid_out.get(index)?;
+                Some(CheckedTotal { slot, gate })
+            })
+            .collect()
+    }
+
+    /// Each write of the total and the subtotals, in Excel's order: the placement column
+    /// `f * width + k + v` ([`Placement::written_cells`]) and the slot written there.
+    fn writes<'s>(
+        &'s self,
+        laid_out: &'s [Line],
+        width: usize,
+    ) -> impl Iterator<Item = (usize, Slot)> + 's {
         let mut group_line = vec![0; self.first_rows.len()];
         let mut subtotals = Vec::new();
         for (index, line) in self.lines.iter().enumerate() {
@@ -176,39 +217,34 @@ impl Placement {
         subtotals.sort_unstable();
         let lines = self.lines.len();
         // (first line covered, lines covered, the line written, `None` for the total).
-        let writers =
-            std::iter::once((0, lines, None)).chain(subtotals.iter().map(|&(start, _, index)| {
+        let writers = std::iter::once((0, lines, None)).chain(subtotals.into_iter().map(
+            move |(start, _, index)| {
                 let first = group_line.get(start).copied().unwrap_or(index);
                 (
                     first,
                     index.saturating_sub(first),
                     laid_out.get(index).copied(),
                 )
-            }));
-        let mut cells: Vec<Option<Slot>> = vec![None; (lines + 1).saturating_mul(width)];
-        for (first, covered, line) in writers {
-            for value in 0..width {
+            },
+        ));
+        writers.flat_map(move |(first, covered, line)| {
+            (0..width).map(move |value| {
                 let column = first
                     .saturating_mul(width)
                     .saturating_add(covered)
                     .saturating_add(value);
-                if matches!(self.lines.get(column / width), Some(Line::Group(_))) {
-                    continue;
-                }
-                if let Some(cell) = cells.get_mut(column) {
-                    *cell = Some(match line {
-                        Some(Line::Subtotal { level, start, end }) => Slot::Subtotal {
-                            level,
-                            start,
-                            end,
-                            value,
-                        },
-                        _ => Slot::Total { value },
-                    });
-                }
-            }
-        }
-        cells
+                let slot = match line {
+                    Some(Line::Subtotal { level, start, end }) => Slot::Subtotal {
+                        level,
+                        start,
+                        end,
+                        value,
+                    },
+                    _ => Slot::Total { value },
+                };
+                (column, slot)
+            })
+        })
     }
 }
 
@@ -331,10 +367,9 @@ impl Model {
             None
         };
         let slots = slots(&col_lines, pivot.shape.columns, pivot.col_depth);
-        let checked_totals = if placement.is_some() {
-            checked_totals(&col_lines, pivot.shape.columns)
-        } else {
-            Vec::new()
+        let checked_totals = match &placement {
+            Some(placement) => placement.checked_totals(&cols, pivot.shape.columns),
+            None => Vec::new(),
         };
         let shown = match &placement {
             Some(placement) => placement.shown(&cols, &slots, pivot.shape.columns),
@@ -456,28 +491,13 @@ impl Model {
                     row.push(value);
                     continue;
                 }
-                let cell_rows: &[usize] = match slot {
-                    Slot::Group { group, .. } => {
-                        grid.buckets.get(group).map_or(&[][..], Vec::as_slice)
-                    }
-                    // A subtotal column's records are its groups', in source order
-                    // (`LAMBDA(x,ARRAYTOTEXT(x))`, probes/groupby-subtotals G!A1081).
-                    Slot::Subtotal { start, end, .. } => {
-                        grid.merged.clear();
-                        for bucket in grid.buckets.get(start..end).unwrap_or_default() {
-                            grid.merged.extend_from_slice(bucket);
-                        }
-                        grid.merged.sort_unstable();
-                        &grid.merged
-                    }
-                    Slot::Total { .. } => records,
-                };
                 let relative = grid.relative_of(slot);
+                let values = grid.values;
                 let at = Aggregate {
-                    rows: cell_rows,
+                    rows: grid.cell_rows(slot, records),
                     relative,
                 };
-                row.push(self.pivot_cell(functions, grid.values, shown, sub_row, at, cell));
+                row.push(self.pivot_cell(functions, values, shown, sub_row, at, cell));
             }
             output.push(row);
         }
@@ -486,9 +506,9 @@ impl Model {
     }
 
     /// Computes the line's cell of each of [`Grid::checked_totals`], shown or not, and notes an
-    /// error result: with one function over several value columns, an error in any Total column
-    /// cell (the grand total included) makes PIVOTBY `#VALUE!`, even where the column shows `""`
-    /// or the Total row is off; an error in a group cell or a Total row cell does not, nor does
+    /// error result: with one function over several value columns, an error in any of these Total
+    /// or subtotal column cells (the grand total included) makes PIVOTBY `#VALUE!`, even where the
+    /// column shows `""` or the Total row is off; an error in a group cell or a Total row cell does not, nor does
     /// an array or reference result (its cell's `#VALUE!`) (probes/t2311-pivotby-value-columns-
     /// error P!A1-A42; gen-m7/18b80d3fd292d63a Calc!A913).
     fn check_totals(
@@ -509,12 +529,13 @@ impl Model {
                 continue;
             }
             let relative = grid.relative_of(slot);
+            let values = grid.values;
             let at = Aggregate {
-                rows: records,
+                rows: grid.cell_rows(slot, records),
                 relative,
             };
             let pair = functions.pair_at(0, slot_value(slot));
-            let result = self.aggregate_result(functions, pair, grid.values, at, cell);
+            let result = self.aggregate_result(functions, pair, values, at, cell);
             grid.total_error = matches!(result, Ok(CalcResult::Error { .. }));
         }
     }
@@ -856,32 +877,13 @@ fn slots(lines: &[Line], value_columns: usize, col_depth: isize) -> Vec<Slot> {
     }
 }
 
-/// A Total column slot whose cell [`Model::check_totals`] computes, and the column line `gate`
-/// under which a line needs a record for it to be computed.
+/// A Total or subtotal column slot whose cell [`Model::check_totals`] computes, and the column
+/// group line `gate` under which a line needs a record for it to be computed
+/// ([`Placement::checked_totals`]).
 #[derive(Clone, Copy)]
 struct CheckedTotal {
     slot: Slot,
     gate: Line,
-}
-
-/// The Total column slots of one function over `value_columns` value columns, each gated by a
-/// column line. Excel computes the Total cell of value column `v` only in the lines with a record
-/// under the column line at value-column position `lines + v` of the grid, the line
-/// `(lines + v) / value_columns` (as if each line were one value column wide), and never when
-/// that is past the last line: so with one column group only the earlier value columns, whose
-/// Total cells are hidden, are computed. The Total row has records under every line. Excel: see
-/// docs/excel-semantics/arrays.md "PIVOTBY: an error column total over several value columns"
-/// (probes/t2578-pivotby-hidden-total-slot, t2578-pivotby-total-error-scope).
-fn checked_totals(lines: &[Line], value_columns: usize) -> Vec<CheckedTotal> {
-    (0..value_columns)
-        .filter_map(|value| {
-            let gate = lines.get((lines.len() + value) / value_columns.max(1))?;
-            Some(CheckedTotal {
-                slot: Slot::Total { value },
-                gate: *gate,
-            })
-        })
-        .collect()
 }
 
 /// The first header row of shown headers: the column field names, joined with ", " as text, above
@@ -977,6 +979,25 @@ impl<'a> Grid<'a> {
         self.buckets
             .get(start..end)
             .is_some_and(|buckets| buckets.iter().any(|bucket| !bucket.is_empty()))
+    }
+
+    /// The records of `slot`'s cell in the row being laid out, whose records are `records` (in
+    /// source order) and fill the buckets.
+    fn cell_rows<'r>(&'r mut self, slot: Slot, records: &'r [usize]) -> &'r [usize] {
+        match slot {
+            Slot::Group { group, .. } => self.buckets.get(group).map_or(&[][..], Vec::as_slice),
+            // A subtotal column's records are its groups', in source order
+            // (`LAMBDA(x,ARRAYTOTEXT(x))`, probes/groupby-subtotals G!A1081).
+            Slot::Subtotal { start, end, .. } => {
+                self.merged.clear();
+                for bucket in self.buckets.get(start..end).unwrap_or_default() {
+                    self.merged.extend_from_slice(bucket);
+                }
+                self.merged.sort_unstable();
+                &self.merged
+            }
+            Slot::Total { .. } => records,
+        }
     }
 
     /// The relative set of `slot`'s cell in the row being laid out ([`RelativeSets::of_cell`]).
