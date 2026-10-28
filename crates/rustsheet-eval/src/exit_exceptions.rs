@@ -85,6 +85,11 @@ pub(crate) fn check_owner(decision: &str, task: &str) -> Result<(), &'static str
     if decision.len() != 4 || !decision.bytes().all(|b| b.is_ascii_digit()) {
         return Err("the decision must be four digits");
     }
+    check_task(task)
+}
+
+/// Checks a line's owning task field (`T-<digits>`).
+pub(crate) fn check_task(task: &str) -> Result<(), &'static str> {
     let digits = task.strip_prefix("T-").unwrap_or_default();
     if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
         return Err("the task must be `T-<digits>`");

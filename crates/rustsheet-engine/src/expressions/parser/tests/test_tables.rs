@@ -380,6 +380,7 @@ fn every_form_round_trips_through_the_printer() {
         table_reference: None,
         spacing: TableSpacing::default(),
         bare: true,
+        unqualified: false,
     }];
     for specifier in &specifiers {
         if specifier.is_some() {
@@ -389,6 +390,7 @@ fn every_form_round_trips_through_the_printer() {
                 table_reference: None,
                 spacing: TableSpacing::default(),
                 bare: false,
+                unqualified: false,
             });
         }
         for (i, left) in names.iter().enumerate() {
@@ -403,6 +405,7 @@ fn every_form_round_trips_through_the_printer() {
                     table_reference: Some(table_reference),
                     spacing: TableSpacing::default(),
                     bare: false,
+                    unqualified: false,
                 });
             }
         }
@@ -419,4 +422,55 @@ fn every_form_round_trips_through_the_printer() {
         assert_eq!(**parsed, reference, "{text}");
         assert_eq!(to_rc_format(&node), text);
     }
+}
+
+/// A structured reference typed without its table name in a cell of the table names that table
+/// (T-2979): it prints as typed, in its `@` form, is stored with a `[T]` prefix that a re-parse
+/// reads back, and is exported qualified; outside every table it is refused.
+#[test]
+fn unqualified_reference_inside_its_table() {
+    let worksheets = vec!["Sheet One".to_string()];
+    let tables = create_test_table("tblIncome", &["Jan", "Feb"], "A1", 3);
+    let mut parser = new_parser(worksheets, vec![], tables);
+    let inside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 2,
+        column: 3,
+    };
+    for (typed, shown, stored, exported) in [
+        (
+            "[@Jan]*2",
+            "[@Jan]*2",
+            "[tblIncome][[#This Row],[Jan]]*2",
+            "tblIncome[[#This Row],[Jan]]*2",
+        ),
+        (
+            "[[#This Row],[Feb]]",
+            "[@Feb]",
+            "[tblIncome][[#This Row],[Feb]]",
+            "tblIncome[[#This Row],[Feb]]",
+        ),
+        (
+            "SUM([Jan])",
+            "SUM([Jan])",
+            "SUM([tblIncome][Jan])",
+            "SUM(tblIncome[Jan])",
+        ),
+    ] {
+        let t = parser.parse(typed, &inside);
+        assert_eq!(to_english_localized_string(&t, &inside), shown);
+        assert_eq!(to_rc_format(&t), stored);
+        assert_eq!(to_excel_string(&t, &inside), exported);
+        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::R1C1);
+        let reparsed = parser.parse(stored, &inside);
+        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::A1);
+        assert_eq!(to_english_localized_string(&reparsed, &inside), shown);
+    }
+    let outside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 9,
+        column: 9,
+    };
+    let t = parser.parse("[@Jan]*2", &outside);
+    assert!(matches!(t, Node::ParseErrorKind { .. }), "{t:?}");
 }

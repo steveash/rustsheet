@@ -2318,6 +2318,15 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   probes/table-edits/table-this-row-off-data-isref).
 - Inside the table (a formula column) `[@Col]` reads the same row; `Sales[Col]` there is the whole column
   (in-table 19fdc25163755713).
+  Ours (T-2979): an operand that starts with `[` in a cell of a table (its header and totals rows included) is a
+  structured reference to that table: `[@Col]`, `[Col]`, `[[#This Row],[Col]]`. It prints without the name, a
+  `#This Row` one in its `@` form (`=[[#This Row],[Col]]` prints `=[@Col]`, as calculated-column rule 6 shows for
+  `=[@Col]*2`; how Excel prints the typed long form is unprobed). Counting the header and totals rows as inside the
+  table is an engine choice too, unprobed (T-3000). Storage (R1C1) keeps the table as a `[T]` prefix
+  (`[T][[#This Row],[Col]]*2`), so the same text in two tables of one sheet reads each its own table and a re-parse
+  (a sheet rename) prints it unqualified again; the export writes the qualified form Excel saves
+  (`T[[#This Row],[Col]]*2`, xlsx-storage.md). Outside every table the operand is still a parse error. Clears the
+  `[@Col]` cells of probes/t2786-whitespace-structured-refs-runs and the t2957 calculated-column cases.
 - `Table[#Totals]` and `Table[[#Totals],[Col]]` of a table without a totals row are `#REF!`
   (names-case 5b5c0e20e82153bb K100 `ROWS(Stock[#totals])`; also the throwaway T-1607 probe
   `SUM(Sales[[#Totals],[A]])`). With one, they are the totals row; `#All` counts it, `#Data` does not
@@ -2564,11 +2573,20 @@ by writing that shared formula, which is stored relative to its cell, so an A1 f
 beside formulas blocks the fill too, and a column of one identical stored formula with no saved
 `calculatedColumnFormula` re-fills as a calculated column: both are engine choices, unprobed (T-2983). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
-after the tables, as the oracle types them after load. The probes that type the unqualified `[@Col]` stay `#ERROR!`
-in their filled cells: an unqualified structured reference does not parse yet (T-2979). Neither import nor export
-reads or writes `calculatedColumnFormula` (T-2969); the auto-expansion is T-2968.
+after the tables, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
+table holding the cell since T-2979 (below). Neither import nor export
+reads or writes `calculatedColumnFormula` (T-2969).
+Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
+grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
+over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
+and the name is written into its header cell. A formula typed into the header cell itself is not stored: the header
+is the text `0`. This is only probed with `=1+1`, and the oracle's H3 (`D1&""`) does not tell the text `0` from the number 0; headers are text, so the engine writes text. Whether Excel derives the `0` from the formula is unknown. If the
+table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
+and the cell is typed as before, in four unprobed cases: a constant typed there, a table with a totals row, a new
+column whose other cells are not all blank, and a new column that another table overlaps. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979): what Excel does with it there is unprobed (T-3003). The facade's edit holds
+the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
-Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7 no (T-2968)
+Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7, the same file (T-2968)
 Tasks: T-2957, T-2958, T-2968, T-2969
 
 ## Unknown function call names: spelling in FORMULATEXT

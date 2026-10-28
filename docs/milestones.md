@@ -47,6 +47,7 @@ A failure whose only open question needs desktop Excel evidence has its filed ta
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
 the oracle of record for Phases 1–3 (decision 0039). Such a visibly-off cell, once a decision names
 it, is a line of `eval/milestones/phase1-exceptions.tsv` and leaves the Phase 1 rate (decision 0134).
+A visibly-off cell that only open M14 tasks own leaves it too, with no line (decision 0143).
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).
