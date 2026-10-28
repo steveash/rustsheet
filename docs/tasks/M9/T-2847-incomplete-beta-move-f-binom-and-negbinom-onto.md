@@ -101,3 +101,5 @@ harness and F.TEST are not touched yet.
     swaps to L140 with a whole b0 = 2, so bup(1, 5, 0.5, 0.5, 1) + bpser(5, 1, 0.5). This is the a0 <= 8 B(a0, 1)
     question in `bpser_neg_ln_beta`'s comment (T-2506, BETA.DIST(0.5,2,2,TRUE)). Find Excel's L140 form at a whole
     b0 before moving BINOM.
+
+Resumed by an opus run on 2026-10-28 (branch idle 3 h).
