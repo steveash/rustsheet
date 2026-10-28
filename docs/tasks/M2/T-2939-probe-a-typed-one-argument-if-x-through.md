@@ -3,7 +3,7 @@ id: T-2939
 title: "Probe a typed one-argument IF(x) through typed entry on excel-graph (probes/typed-if-one-argument stays pending: the stored form is refused)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -36,17 +36,27 @@ task is filed that names the cells.
   The old stored-form case stays as the record of the 501. Do not delete it.
 
 ## Acceptance criteria
-- [ ] Either a committed, oracle-filled typed-entry case with Excel's values for the entries above, or (if Excel refuses
+- [x] Either a committed, oracle-filled typed-entry case with Excel's values for the entries above, or (if Excel refuses
       them) the recorded `InvalidArgument` result for each refused entry, with the accepted control committed and the
       refusal reproducible as T-2040 describes.
-- [ ] docs/excel-semantics/arrays.md replaces the "entry-only and unanswerable here" sentence with the probed rule,
+- [x] docs/excel-semantics/arrays.md replaces the "entry-only and unanswerable here" sentence with the probed rule,
       Status and Evidence. T-1075 has no item for this question (checked 2026-10-27), so no M14 item changes.
-- [ ] If ours differs (Excel refuses where we accept, or Excel's values differ from `#VALUE!` per element), a fix task is
+- [x] If ours differs (Excel refuses where we accept, or Excel's values differ from `#VALUE!` per element), a fix task is
       filed (engine lane, M2) that names the case and cells. Under decision 0103 a refusal belongs to `Input::Parse`
       typed input, not to stored formulas. If ours matches, the new case passes in `make eval`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The eta path `_xleta.IF` (T-1947) and IF with two or three arguments.
 - Getting a stored one-argument IF to load in excel-graph, or how desktop Excel writes one (M14).
 - Implementing a refusal or a value change (the follow-up task does that).
+
+## Outcome
+Excel for the web refuses every typed one-argument IF: `=IF(TRUE)`, `=IF(FALSE)`, `=IF(1)`, `=IF(0)`, `=IF({1,0})`,
+`=IF(A1:B1)`, `=IF("x")`, `=IF(NA())`, `=ISLOGICAL(IF(TRUE))` and `=IF(TRUE)+1`, each typed alone, gave Graph PATCH 400
+`InvalidArgument` (2026-10-28). The accepted controls are committed as probes/t2939-typed-if-two-argument-controls
+(`=IF(TRUE,)` 0, `=IF(TRUE,1)` 1, `=IF(FALSE,1)` FALSE, with FORMULATEXT and ISFORMULA; 9/9 pass). Ours already
+matches: the typed argument-count refusal (T-2568) refuses all ten, and the new unit test
+`typed_if_with_one_argument_is_refused` pins that. arrays.md now records the rule in place of "entry-only and
+unanswerable here". The stored-form case probes/typed-if-one-argument stays pending as the record of the 501. No fix
+task is needed. Eval delta: probes +1 case, 9 cells, all passing; 0 regressions.
