@@ -1,5 +1,5 @@
 ---
-id: T-2999
+id: T-3000
 title: "Probe unqualified structured references typed in a table's totals and header rows, and the printed form of a typed [[#This Row],[Col]] (T-2979)"
 milestone: M2
 lane: research
