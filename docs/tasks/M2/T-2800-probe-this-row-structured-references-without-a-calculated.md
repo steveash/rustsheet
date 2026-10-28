@@ -28,4 +28,4 @@ T-2786 could not answer: typing a this-row formula into a table column made Exce
 Probed with excel-graph (probes/t2800-this-row-whitespace, t2800-stored-ws-0..3). Stored `T[ Col ]`, `T[ Col]`, `T[Col ]`
 load as `#REF!`; stored `T[ [Col] ]` loads (prints `T[ Col ]`); stored `T[ #Data ]` corrupts the workbook. This-row shapes
 print `[@Col]` / `[ @Col ]` inside a table. Findings in syntax.md; implementation filed as T-3069. Eval: five new probe cases,
-three failing for us (not in the baseline), no regressions.
+failing for us (recorded in the baseline by make eval-baseline; stored-ws-1 and -2 already pass), no regressions.
