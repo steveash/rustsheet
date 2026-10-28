@@ -44,8 +44,7 @@ not parse in the engine yet (T-2979):
 ## Outcome
 Three probes filled on excel-graph (t2983-*). Rule: a column of stored identical formulas with no `calculatedColumnFormula`
 is not a calculated column; typing beside it fills nothing (a: C5 typed beside stored C2:C4; c is a second witness).
-The engine re-fills in (a), so it is a known failure in the probes baseline and engine task T-3024 is filed. (b) and (c)
-pass in the engine only because the eval adapter types cells in row-major order with stored ones (also T-3024).
+The engine re-fills in (a), so it is a known failure in the probes baseline and engine task T-3024 is filed. (c) passes in the engine only because the eval adapter types cells in row-major order with stored ones (T-3024); (b) passes via the engine's unprobed blank-blocks choice (T-3025).
 Whether a blank beside a real calculated-column formula blocks the fill stays unprobed (T-3025); a stored structured
 formula variant of (a) is T-3023. The task's original (a) typed into C3, but an `entered` cell starts blank, so (a)
 was redesigned (typed C5 of A1:C5). The acceptance criterion on the "cleared cell" half is not met; T-3025 carries it.
