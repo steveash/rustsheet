@@ -70,6 +70,9 @@ visibly off:
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] Visible parity: the 3 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] probes/fin-vdb-schedule A42-A46 pass, with fin-vdb-modes still 20/20.
+- Note on "no new known-failure lines": no existing case gained a line. The only new lines are 8 new-coverage `F`
+  lines of this task's own new probe case fin-vdb-fractional-start (one ulp off, not visibly off), written by
+  `make eval-baseline` and owned by T-3022 (`defer: phase-1b`, decision 0083).
 - [x] `make check` green; reviewers approve.
 
 Replacing that path should delete `vdb_total_depr`, whose `straight_line` parameter is now always true (T-1975 review).
