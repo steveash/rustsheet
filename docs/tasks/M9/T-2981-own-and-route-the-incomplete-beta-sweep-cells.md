@@ -3,7 +3,7 @@ id: T-2981
 title: "Own and route the incomplete-beta sweep cells no kernel task names (70 probes-numeric cases, about 88,500 visibly-off cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
