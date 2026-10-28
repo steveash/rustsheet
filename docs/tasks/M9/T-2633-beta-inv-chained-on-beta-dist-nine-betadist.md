@@ -4,7 +4,7 @@ title: "BETA.DIST/BETA.INV after T-2119: BETADIST A159 and four probes-numeric c
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 campaign: accuracy

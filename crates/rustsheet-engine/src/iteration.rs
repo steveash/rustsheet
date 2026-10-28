@@ -102,6 +102,11 @@ impl Model {
         }
     }
 
+    /// Whether this round found a circular reference to iterate.
+    pub(crate) fn has_cycles(&self) -> bool {
+        !self.evaluation.iteration.members.is_empty()
+    }
+
     /// Whether `at` is in the recalculated set, so that reading it joins its readers to it.
     pub(crate) fn is_cycle_member(&self, at: CellReferenceIndex) -> bool {
         self.evaluation.iteration.members.contains(&key(at))

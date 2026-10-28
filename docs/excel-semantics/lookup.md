@@ -880,8 +880,10 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   again. A lifted TAKE's grid is handed on the same way by IF and CHOOSE in every consumer and
   lifts again as OFFSET's reference (`SUMPRODUCT(IF(TRUE,TAKE(A1:B3,{1;2})))` is 0, `ROWS(OFFSET(TAKE(A1:B3,{1;2}),1,0))`
   is 2), and TAKE over an error source with a lifted count is one error per element
-  (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby, T-2299). DROP is implemented the same
-  way by analogy, unprobed; so is which error wins between an error source and an invalid lifted count. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+  (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby, T-2299). DROP behaves the same
+  (`ROWS(DROP(NA(),{1;2}))` is 2, `SUMPRODUCT(IF(TRUE,DROP(A1:B3,{1;2})))` and the CHOOSE form 0, `ROWS(OFFSET(DROP(A1:B3,{1;2}),1,0))` 2;
+  probes/drop-lifted-grid-handon F1:F3, F9, F10, excel-graph, T-2919), and an error source beats an invalid lifted count for both:
+  `ROWS(TAKE(NA(),{1;"x"}))` and the DROP form are 2, every element `#N/A` (same probe F4:F8, F11). TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
   `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (E101, -b2 E153). Ours: since T-2174 for an unlifted count. Inside SUM
   only a direct OFFSET or INDIRECT source keeps it (TRIMRANGE, IF, LET and nested TAKE/DROP sources there read
   values), and a lifted count over such a grid is unprobed (T-2212). Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,

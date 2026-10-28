@@ -4,7 +4,7 @@ title: "STDEV.S, VAR.S, SUMSQ, AVERAGEA and MAXA over a lifted OFFSET (T-2065 pr
 milestone: M6
 lane: engine
 status: todo
-priority: P2
+priority: P0
 size: S
 tier: opus
 depends_on: [T-2816]

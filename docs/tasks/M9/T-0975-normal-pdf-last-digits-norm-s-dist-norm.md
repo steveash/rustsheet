@@ -4,7 +4,7 @@ title: "Normal PDF last digits: NORM.S.DIST/NORM.DIST/LOGNORM.DIST non-cumulativ
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 campaign: visible

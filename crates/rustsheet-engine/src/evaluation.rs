@@ -257,6 +257,8 @@ pub(crate) struct Evaluation {
     pub(crate) seen: HashMap<CellKey, SeenRecord, KeyBuild>,
     /// Rectangles read as empty in one go, with their root (`SeenRange`).
     pub(crate) seen_ranges: crate::seen_ranges::SeenRanges,
+    /// What the data tables read when they were last recomputed (`data_table_memo.rs`).
+    pub(crate) data_table_memo: crate::data_table_memo::DataTableMemo,
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
@@ -311,6 +313,8 @@ pub(crate) struct Evaluation {
     pub(crate) blocked_on: Option<CellReferenceIndex>,
     /// Number of passes the last `evaluate()` ran, restarted ones included. For tests.
     pub(crate) passes_in_last_evaluation: u32,
+    /// Number of data-table recomputations so far (`data_tables.rs`). For tests.
+    pub(crate) data_tables_recomputed: u64,
     /// Circular references under iterative calculation (`iteration.rs`).
     pub(crate) iteration: crate::iteration::IterationState,
     /// The work budget of the recalculation running now (SPEC-0028); `None` outside `evaluate()`.
@@ -354,6 +358,7 @@ impl Default for Evaluation {
             circular_below: 0,
             seen: HashMap::default(),
             seen_ranges: crate::seen_ranges::SeenRanges::default(),
+            data_table_memo: Default::default(),
             restart: None,
             in_pass: false,
             restarts_in_last_evaluation: 0,
@@ -374,6 +379,7 @@ impl Default for Evaluation {
             blocking: false,
             blocked_on: None,
             passes_in_last_evaluation: 0,
+            data_tables_recomputed: 0,
             iteration: Default::default(),
             recalc: None,
             #[cfg(test)]
