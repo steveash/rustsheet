@@ -396,8 +396,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // token, so a negative value prints its minus and the literals (`TEXT(-3,"b1")` is "-",
             // `"b1 x"` "- x"; probes/t2388-b1-negative, excel-graph 2026-10-28, T-2388). The same
             // holds for `B2`, a tagged prefix, an explicit negative section (`"0;b1 x"` is " x")
-            // and a magnitude past the maximum serial (`TEXT(-3000000,"b1")` is "-"; a positive one prints just the
-            // literals, `TEXT(3000000,"b1 x")` is " x"; probes/t3050-b1-large-positive, excel-graph, T-3050).
+            // and a magnitude past the maximum serial (`TEXT(-3000000,"b1")` is "-"; a positive
+            // one prints just the literals, `TEXT(3000000,"b1 x")` is " x";
+            // probes/t3050-b1-large-positive, excel-graph, T-3050).
             let literals_only = p.tokens.iter().all(TextToken::is_literal);
             if value_original < 0.0
                 && !literals_only

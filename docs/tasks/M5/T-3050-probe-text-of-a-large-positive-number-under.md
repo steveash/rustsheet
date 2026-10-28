@@ -17,8 +17,8 @@ depends_on: []
 T-2388 showed `TEXT(-3000000,"b1")` is "-" (probes/t2388-b1-negative A13). The positive case is unprobed and `format_number` (formatter/format.rs) still refuses it with #VALUE! through the maximum-serial check.
 
 ## Acceptance criteria
-- [ ] Probe `"b1"`, `"b1 x"` and `"b2"` on 3000000 (excel-graph); record in number-formats.md; make our output match, baseline updated.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe `"b1"`, `"b1 x"` and `"b2"` on 3000000 (excel-graph); record in number-formats.md; make our output match, baseline updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
