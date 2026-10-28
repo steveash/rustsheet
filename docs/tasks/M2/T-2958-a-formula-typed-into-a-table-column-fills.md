@@ -3,7 +3,7 @@ id: T-2958
 title: "A formula typed into a table column fills the calculated column, as Excel does (probes/t2786 C2:C4)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
