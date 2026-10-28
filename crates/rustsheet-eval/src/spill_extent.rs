@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use crate::case::{cell_key, CaseSpec};
 use crate::cellref::{parse_range, Addr};
 use crate::engine::Evaluated;
-use crate::runner::CellResult;
+use crate::runner::{CellKind, CellResult};
 use crate::value::{compare, Value};
 use crate::volatile::FormulaCell;
 use crate::xlsx_snapshot::is_undecoded;
@@ -127,7 +127,7 @@ fn unexpected(sheet: &str, addr: Addr, actual: Value) -> CellResult {
         from_excel: true,
         listed_deviation: false,
         graph_subnormal: false,
-        spill_extent: true,
+        kind: CellKind::SpillExtent,
     }
 }
 

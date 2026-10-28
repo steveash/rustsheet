@@ -67,7 +67,7 @@ in the phase order after M6, so the planner and steward can then check it with t
   - the M7 probe row needs 0 visibly-off cells;
   - coverage and ironcalc-calc counts are shown with a null verdict and are not required.
 - Plumbing:
-  - Spill-extent cells carry `spill_extent: true` in report.json (runner.rs `CellResult`, set by `spill_extent.rs`).
+  - Spill-extent cells carry `"kind": "spill_extent"` in report.json (runner.rs `CellKind`, a two-variant enum, since a fourth `CellResult` bool fails clippy's `struct_excessive_bools`; set by `spill_extent.rs`).
   - Probe-milestone rows count them in `spill_extent_failures`.
   - report.md's exit table gains a "spill extents" column (`n/a` for M2, M5 and M6).
   - `scripts/exit_owners.py` skips the function-scope row of an exit row that shows it without requiring it.

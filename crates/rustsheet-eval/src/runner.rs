@@ -69,10 +69,29 @@ pub struct CellResult {
     /// the report lists these cells so the evidence stays visible (T-1142).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub graph_subnormal: bool,
-    /// Whether the spill-extent check added the cell: one the engine filled and Excel left empty,
-    /// outside `checked` (decision 0063). The M7 exit counts these (decision 0140).
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub spill_extent: bool,
+    /// A scored expectation, or a cell the spill-extent check added (decision 0140).
+    #[serde(default, skip_serializing_if = "CellKind::is_scored")]
+    pub kind: CellKind,
+}
+
+/// Where a [`CellResult`] comes from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CellKind {
+    /// One of the case's expectations, counted in `checked`.
+    #[default]
+    Scored,
+    /// A cell the engine filled and Excel left empty, outside `checked` (decision 0063); the M7
+    /// exit counts these (decision 0140).
+    SpillExtent,
+}
+
+impl CellKind {
+    /// Whether the cell is one of the case's expectations (the serialized default).
+    #[must_use]
+    pub fn is_scored(&self) -> bool {
+        *self == Self::Scored
+    }
 }
 
 impl CellResult {
@@ -397,7 +416,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 from_excel: e.from_excel,
                 listed_deviation: e.pinned.is_some(),
                 graph_subnormal,
-                spill_extent: false,
+                kind: CellKind::Scored,
             }
         })
         .collect()

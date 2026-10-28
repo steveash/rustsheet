@@ -26,7 +26,7 @@ use crate::cellref::Addr;
 use crate::closeness::Visible;
 use crate::formula_calls::functions_in;
 use crate::milestone_lists::MilestoneList;
-use crate::runner::{CaseResult, CellResult};
+use crate::runner::{CaseResult, CellKind, CellResult};
 use crate::suite::BaselineMode;
 use crate::value::Verdict;
 
@@ -368,7 +368,7 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 .unwrap_or(DEFAULT_MILESTONE);
             let s = rows.entry(row).or_default();
             s.cells += 1;
-            if c.spill_extent {
+            if c.kind == CellKind::SpillExtent {
                 s.spill_extent_failures += 1;
             }
             if c.verdict.is_pass() {
@@ -593,7 +593,7 @@ mod tests {
             from_excel: true,
             listed_deviation: verdict == Verdict::Deviation,
             graph_subnormal: false,
-            spill_extent: false,
+            kind: CellKind::Scored,
         }
     }
 
@@ -826,7 +826,7 @@ mod tests {
         let extent = CellResult {
             formula: None,
             expected: Value::Empty,
-            spill_extent: true,
+            kind: CellKind::SpillExtent,
             ..cell("S!B1", "", Verdict::TypeMismatch)
         };
         let results = [case(

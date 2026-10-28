@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::closeness::Visible;
 use crate::probe_milestones::{parse_milestone, row_label};
 use crate::report::RunReport;
+use crate::runner::CellKind;
 
 /// The milestones this section covers. M8 to M11 need their own decision first.
 pub const MILESTONES: [&str; 4] = ["M2", "M5", "M6", "M7"];
@@ -215,14 +216,15 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                         .iter()
                         .filter(|r| r.suite == suite)
                         .flat_map(|r| &r.cells)
-                        .filter(|c| c.spill_extent)
+                        .filter(|c| c.kind == CellKind::SpillExtent)
                         .count();
                     let failures = generated + p.spill_extent_failures;
                     row.extent_failures = Some(failures);
                     row.extent_met = Some(failures == 0);
                 }
             }
-            let required = |criterion: bool, met: Option<bool>| if criterion { met } else { Some(true) };
+            let required =
+                |criterion: bool, met: Option<bool>| if criterion { met } else { Some(true) };
             row.exit = [
                 required(need.coverage, row.coverage_met),
                 row.gen_met,
@@ -390,7 +392,9 @@ mod tests {
             "{md}"
         );
         assert!(
-            md.contains("| M6 | n/a/n/a n/a | n/a | n/a [n/a] n/a | n/a [n/a] n/a | n/a n/a | not met |"),
+            md.contains(
+                "| M6 | n/a/n/a n/a | n/a | n/a [n/a] n/a | n/a [n/a] n/a | n/a n/a | not met |"
+            ),
             "{md}"
         );
     }
@@ -471,18 +475,30 @@ mod tests {
         assert!(!row.exit);
     }
 
-    /// A run whose M2 inputs meet M2's exit: `gen_cells` (cells, visibly off) of gen-m2.
-    fn m2_report(gen_cells: (usize, usize)) -> RunReport {
+    /// One milestone's inputs added to [`report`]`(None)`: `gen` (cells, visibly off) of its
+    /// generated suite, its catalog coverage (covered, functions), its function-scope row
+    /// (`failing`, of which `excepted`) and its probe row with `probe_failures` bit-level failures.
+    struct Inputs<'a> {
+        milestone: &'a str,
+        probe_row: &'a str,
+        gen: (usize, usize),
+        coverage: (usize, usize),
+        failing: &'a str,
+        excepted: bool,
+        probe_failures: usize,
+    }
+
+    fn milestone_report(i: &Inputs) -> RunReport {
         let mut r = report(None);
-        let (cells, visible) = gen_cells;
+        let (cells, visible) = i.gen;
         r.catalog_coverage.push(MilestoneCoverage {
-            milestone: "M2".into(),
-            functions: 37,
-            covered: 30,
+            milestone: i.milestone.into(),
+            covered: i.coverage.0,
+            functions: i.coverage.1,
             ..MilestoneCoverage::default()
         });
         r.suites.push(SuiteSummary {
-            name: "gen-m2".into(),
+            name: format!("gen-{}", i.milestone.to_ascii_lowercase()),
             cells,
             cells_passed: cells - visible,
             closeness: Closeness {
@@ -491,23 +507,41 @@ mod tests {
             },
             ..SuiteSummary::default()
         });
+        let failing = vec![i.failing.to_string()];
         r.function_scope
             .as_mut()
             .unwrap()
             .rows
             .push(MilestoneScope {
-                milestone: "M2".into(),
-                failing: vec!["ironcalc-calc/IF_ARRAY.xlsx!Sheet1!C11".into()],
-                excepted: vec!["ironcalc-calc/IF_ARRAY.xlsx!Sheet1!C11".into()],
-                visibly_off: vec!["ironcalc-calc/IF_ARRAY.xlsx!Sheet1!C11".into()],
+                milestone: i.milestone.into(),
+                excepted: if i.excepted {
+                    failing.clone()
+                } else {
+                    Vec::new()
+                },
+                visibly_off: failing.clone(),
+                failing,
                 ..MilestoneScope::default()
             });
         r.probe_milestones.push(MilestoneRow {
-            milestone: "M0-M2".into(),
-            known_failures: 3,
+            milestone: i.probe_row.into(),
+            known_failures: i.probe_failures,
             ..MilestoneRow::default()
         });
         r
+    }
+
+    /// A run whose M2 inputs meet M2's exit: `gen_cells` (cells, visibly off) of gen-m2.
+    fn m2_report(gen_cells: (usize, usize)) -> RunReport {
+        milestone_report(&Inputs {
+            milestone: "M2",
+            probe_row: "M0-M2",
+            gen: gen_cells,
+            coverage: (30, 37),
+            failing: "ironcalc-calc/IF_ARRAY.xlsx!Sheet1!C11",
+            excepted: true,
+            probe_failures: 3,
+        })
     }
 
     #[test]
@@ -572,40 +606,15 @@ mod tests {
     /// A run whose M7 inputs meet M7's exit: `gen_cells` (cells, visibly off) of gen-m7, an
     /// ironcalc-calc M7 row with a visibly-off cell and coverage short (neither required).
     fn m7_report(gen_cells: (usize, usize)) -> RunReport {
-        let mut r = report(None);
-        let (cells, visible) = gen_cells;
-        r.catalog_coverage.push(MilestoneCoverage {
-            milestone: "M7".into(),
-            functions: 40,
-            covered: 39,
-            ..MilestoneCoverage::default()
-        });
-        r.suites.push(SuiteSummary {
-            name: "gen-m7".into(),
-            cells,
-            cells_passed: cells - visible,
-            closeness: Closeness {
-                visible_other: visible,
-                ..Closeness::default()
-            },
-            ..SuiteSummary::default()
-        });
-        r.function_scope
-            .as_mut()
-            .unwrap()
-            .rows
-            .push(MilestoneScope {
-                milestone: "M7".into(),
-                failing: vec!["c!S!A1".into()],
-                visibly_off: vec!["c!S!A1".into()],
-                ..MilestoneScope::default()
-            });
-        r.probe_milestones.push(MilestoneRow {
-            milestone: "M7".into(),
-            known_failures: 2,
-            ..MilestoneRow::default()
-        });
-        r
+        milestone_report(&Inputs {
+            milestone: "M7",
+            probe_row: "M7",
+            gen: gen_cells,
+            coverage: (39, 40),
+            failing: "c!S!A1",
+            excepted: false,
+            probe_failures: 2,
+        })
     }
 
     /// A spill-extent cell of gen-m7, as `spill_extent.rs` adds it.
@@ -614,7 +623,7 @@ mod tests {
         use crate::value::Verdict;
         let mut g = case("gen-m7/abc.case.json", 1);
         g.cells = vec![CellResult {
-            spill_extent: true,
+            kind: CellKind::SpillExtent,
             ..cell("SEQUENCE(2)", Verdict::TypeMismatch)
         }];
         g
@@ -636,7 +645,10 @@ mod tests {
             "ironcalc-calc is shown, not required"
         );
         assert_eq!(m7.probe_row, "M7");
-        assert_eq!((m7.probe_known_failures, m7.probes_met), (Some(2), Some(true)));
+        assert_eq!(
+            (m7.probe_known_failures, m7.probes_met),
+            (Some(2), Some(true))
+        );
         assert_eq!((m7.extent_failures, m7.extent_met), (Some(0), Some(true)));
         assert!(m7.exit, "{m7:?}");
         let mut md = String::new();

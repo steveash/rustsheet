@@ -20,8 +20,8 @@
      - **gen-m7 alone.** It needs at least 10,000 scored cells, and at least 0.999 of them not
        visibly off: the allowance is `floor(0.001 * scored)`, M5's rate.
      - **Spill extents.** Extent failures are counted apart from the scored cells: the cells
-       `spill_extent.rs` adds, marked `spill_extent` in report.json. M7 counts those of gen-m7
-       and those of the `M7` probe row, and requires 0 (`extent_failures`, `extent_met`). Rows
+       `spill_extent.rs` adds, marked `"kind": "spill_extent"` in report.json. M7 counts those of
+       gen-m7 and those of the `M7` probe row, and requires 0 (`extent_failures`, `extent_met`). Rows
        without the criterion leave both null.
      - **The `M7` probe row.** It must have 0 visibly-off cells.
      - **Not required.** Catalog coverage and the ironcalc-calc M7 function-scope row are shown

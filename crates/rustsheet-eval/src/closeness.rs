@@ -222,7 +222,7 @@ mod tests {
             from_excel: true,
             listed_deviation: false,
             graph_subnormal: false,
-            spill_extent: false,
+            kind: crate::runner::CellKind::Scored,
         }
     }
 
