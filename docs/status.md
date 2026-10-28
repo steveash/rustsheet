@@ -18,7 +18,7 @@ This is the scheduled 05:47 UTC run. It follows #2077, last night's 18:47 UTC ru
 
 CI on `main` is green: every push run since #2077 succeeded or was cancelled by the next push, and none failed. The run on a96b6063 was still in progress when this run started; the last completed run, on 0f43b80f, succeeded. The nightly fuzz run (03:41 UTC, on 81569726) passed.
 
-**M2 is still current: M0–M2 probes (decision 0051) have 2 known failures, both visibly off.** `make exit-owners MILESTONE=M2` reports 0 unowned, and so do M5 and M6.
+**M2 is still current: M0–M2 probes (decision 0051) have 2 known failures, both visibly off.** `make exit-owners MILESTONE=M2` reports 0 unowned, and so do M5 and M6. The M5 probe row rose from 7 to 28 visibly-off cells on new coverage, not a regression: T-2831's FORMULATEXT probe (#2121) added 21 failing cells, which T-2992 (#2130) owns. T-2441's NUMBERVALUE fix merged after this eval.
 - `probes/t2772-unary-plus-in-range-rows` S!J2 and S!J5 are the 2 cells. Owner: T-2885 (engine, todo).
 - T-2771 (#2075) closed the 7 ROUNDUP subnormal-cut cells. T-2910 (#2067) found M2's structural exit criterion met (decision 0137).
 - The frozen M1 list has 0 known failures (89/89 cases).
