@@ -37,7 +37,7 @@ of Excel's value. Time-boxed (decision 0056).
     - nearest or one ulp down: `CONFIDENCE.T(0.05,*,1000)` (A5 A10 A15), `CONFIDENCE.T(1E-20,1,100001)`
       (t1531 A114), `CONFIDENCE.T(0.05,1,1E10)` (t1518 A23).
 
-    At df 1E10 one ulp of y is about 1.8E9 ulps of t, so these cells need Excel's own y. Check first whether that y
+    At df 1E10 one ulp of y is about 3E9 to 4E9 ulps of t, so these cells need Excel's own y. Check first whether that y
     is the crossing of the ported incomplete beta (T-2511 inverts to that crossing for T.INV) or Excel's T.DIST
     kernel. If no rule fits them, ship the 60 and file the 15 as a follow-up with this evidence.
   - The script is not in the repo; rebuild it from this description.
@@ -78,7 +78,7 @@ of Excel's value. Time-boxed (decision 0056).
     quantile, and the form is thousands of ulps off. The switch is between q = 0.45 (fits at every df) and 0.495.
     Keep today's path above q = 0.45. T-2724 owns the centre. If pinning the switch needs more points, file a
     research-lane sweep of T.INV(p, df) for p in (0.55, 0.995) at df 3, 30, 1000 and 1E6, and do not fit it blind.
-  - Tiny q at a small df: at `T.INV.2T(1E-16,30)` (gen-m9 583ca2baea0bb30a A147) Excel's own y is 2E-12 off. That
+  - Tiny q at a small df: at `T.INV.2T(1E-16,30)` (gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12 off (its y about 4E-12). That
     is T-1542, out of scope. The q = 1E-10 to 1E-20 cells at df 99999 and 1E5 do fit.
   - df 1 and 2: the form also gives the passing df 1 and 2 cells to 0 or 1 ulp (q up to 0.45). Do not let
     them regress.
