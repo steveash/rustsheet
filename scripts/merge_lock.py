@@ -2,11 +2,13 @@
 """The merge lock: agents merge to `main` one at a time, first-in, first-out (decisions 0075, 0145).
 
   scripts/merge_lock.py acquire --pr N | --train ID [--prs N ...] [--renew] [--holder ID] [--ttl MINUTES]
+  scripts/merge_lock.py wait    --pr N | --train ID [--prs N ...] [--timeout MINUTES]  # acquire every 30 s
   scripts/merge_lock.py release [--holder ID]
   scripts/merge_lock.py status
 
-Exit codes of `acquire`: 0 the lock is yours; 1 busy (you are in the queue); 2 an error; 3 PR N
-is already merged or closed; 4 lost: you held the lock and it was taken over (a renewal).
+Exit codes of `acquire` and `wait`: 0 the lock is yours; 1 busy (you are in the queue), or `wait`
+timed out; 2 an error; 3 PR N is already merged or closed; 4 lost: you held the lock and it was
+taken over (a renewal).
 
 The lock is the branch `merge-lock` on origin: an orphan commit with an empty tree whose message
 (format `version: 2`, SPEC-0027 section 1) names the holder and the PR, or says `state: free`, and
@@ -77,6 +79,12 @@ REFRESH = 3 * 60
 # A live head polls every 30 s, so a head that has not claimed a freed lock in this time has
 # stopped waiting.
 HEAD_CLAIM = 2 * 60
+# `wait` polls every POLL seconds, for WAIT_MINUTES by default.
+POLL = 30
+WAIT_MINUTES = 45
+# A PR's state is re-read at most every READ_EVERY polls: about 12 reads an hour per PR, against
+# 60 an hour for unauthenticated API access.
+READ_EVERY = 10
 # Waiters rewrite the commit when they refresh, so a holder's write can lose to a waiter's.
 ATTEMPTS = 10
 
@@ -349,21 +357,39 @@ def acquire(
     return code
 
 
+class FinishedReads:
+    """PR-finished reads cached per PR. Within one `acquire` (one poll) each PR is read once, out
+    of the CAS retries; across `wait`'s polls a PR is re-read only every READ_EVERY polls, so a new
+    head or holder is read at once and an unchanged one every 10th poll (SPEC-0027 section 1)."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.poll = 0
+        self.read_at: dict[str, tuple[int, bool]] = {}
+
+    def __call__(self, pr: str) -> bool:
+        last = self.read_at.get(pr)
+        if last is None or self.poll - last[0] >= READ_EVERY:
+            last = (self.poll, valid_pr(pr) and bool(pr_finished(pr, self.root)))
+            self.read_at[pr] = last
+        return last[1]
+
+
 def attempt(
-    holder: str, pr: str, *, prs: Sequence[str] | None, ttl_minutes: float, root: Path, renew: bool
+    holder: str,
+    pr: str,
+    *,
+    prs: Sequence[str] | None,
+    ttl_minutes: float,
+    root: Path,
+    renew: bool,
+    finished: FinishedReads | None = None,
 ) -> tuple[int, str]:
     """One `acquire`: its exit code and what to print. `prs` (a train's) replaces the lock's when
     given. `renew` says the caller holds the lock, so a lock that is not theirs is lost (4), not
-    busy."""
+    busy. `finished` carries cached reads from earlier polls."""
     check_claim(holder, pr, prs or ())
-    # One API read per PR per call, kept out of the CAS retries.
-    memo: dict[str, bool] = {}
-
-    def finished(number: str) -> bool:
-        if number not in memo:
-            memo[number] = valid_pr(number) and bool(pr_finished(number, root))
-        return memo[number]
-
+    finished = finished or FinishedReads(root)
     if pr != TRAIN and finished(pr):
         return DONE, f"merge lock refused: PR {pr} is already merged or closed"
     renewing = renew
@@ -413,6 +439,36 @@ def busy_message(lock: Lock, live: bool, place: int | None, waiting: int) -> str
     return f"merge lock busy: {ahead}; {where}"
 
 
+def wait(
+    holder: str,
+    pr: str,
+    *,
+    prs: Sequence[str] | None = None,
+    timeout_minutes: float = WAIT_MINUTES,
+    ttl_minutes: float = TTL_MINUTES,
+    root: Path = ROOT,
+) -> int:
+    """`acquire` every POLL seconds until the lock is held (0), the PR is finished (3), a renewal
+    is lost (4), or the timeout (1). Prints only changed messages."""
+    finished = FinishedReads(root)
+    deadline = time.time() + timeout_minutes * 60
+    last = ""
+    while True:
+        code, message = attempt(
+            holder, pr, prs=prs, ttl_minutes=ttl_minutes, root=root, renew=False, finished=finished
+        )
+        if message != last:
+            print(message, flush=True)
+            last = message
+        if code != BUSY:
+            return code
+        if time.time() + POLL > deadline:
+            print(f"merge lock: still waiting after {timeout_minutes:g} min; giving up", flush=True)
+            return BUSY
+        time.sleep(POLL)
+        finished.poll += 1
+
+
 def release(holder: str, root: Path = ROOT) -> int:
     """Frees the lock if `holder` has it, by writing the free marker and keeping the queue, so the
     head waiter takes it next. 0 when the lock is no longer `holder`'s, 1 when another agent holds
@@ -454,13 +510,20 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     take = commands.add_parser("acquire")
     take.add_argument("--renew", action="store_true", help="you hold the lock: exit 4 if it was taken over")
-    claim = take.add_mutually_exclusive_group(required=True)
-    claim.add_argument("--pr", type=int)
-    claim.add_argument("--train", metavar="ID", help="a merge train: holder ID, PR `train`")
-    take.add_argument("--prs", type=int, nargs="*", help="a train's PRs still unmerged (replaces the lock's)")
-    take.add_argument("--ttl", type=float, default=TTL_MINUTES, help="minutes before a lock is stale")
+    queue = commands.add_parser("wait")
+    queue.add_argument(
+        "--timeout", type=float, default=WAIT_MINUTES, help="minutes before giving up (exit 1)"
+    )
+    for sub in (take, queue):
+        claim = sub.add_mutually_exclusive_group(required=True)
+        claim.add_argument("--pr", type=int)
+        claim.add_argument("--train", metavar="ID", help="a merge train: holder ID, PR `train`")
+        sub.add_argument(
+            "--prs", type=int, nargs="*", help="a train's PRs still unmerged (replaces the lock's)"
+        )
+        sub.add_argument("--ttl", type=float, default=TTL_MINUTES, help="minutes before a lock is stale")
     drop = commands.add_parser("release")
-    for sub in (take, drop):
+    for sub in (take, queue, drop):
         sub.add_argument("--holder", default=os.environ.get("CLAUDE_CODE_SESSION_ID"))
     commands.add_parser("status")
     args = parser.parse_args(argv)
@@ -475,6 +538,8 @@ def main(argv: list[str], root: Path = ROOT) -> int:
             return release(holder, root)
         pr = TRAIN if args.train else str(args.pr)
         prs = None if args.prs is None else [str(p) for p in args.prs]
+        if args.command == "wait":
+            return wait(holder, pr, prs=prs, timeout_minutes=args.timeout, ttl_minutes=args.ttl, root=root)
         return acquire(holder, pr, args.ttl, root=root, prs=prs, renew=args.renew)
     except (GitError, LockFormatError) as e:
         print(f"merge lock: {e}", file=sys.stderr)

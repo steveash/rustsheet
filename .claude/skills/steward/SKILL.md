@@ -26,9 +26,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   handled once, under the lock.
 - **Merge lock** (decision 0075): every merge to `main` is made under the merge lock, so `main`
   cannot move between a PR's green CI and its merge. On a head that meets (a) and (b):
-  1. `make merge-lock-acquire PR=<n>`. Exit 1 means another agent holds it (the output names it):
-     do other work (your next task) and try again at the PR's next event or check-in, or every few
-     minutes while nothing else is waiting; never merge without it.
+  1. `make merge-lock-wait PR=<n>`, run in the background (decision 0145): it queues you and exits
+     0 once the lock is yours, 3 if the PR is done, 1 after 45 min. Do other work (your next task)
+     until it exits, instead of retrying later; never merge without the lock.
   2. Holding it: if the branch is behind, merge `origin/main` in and push. For a branch
      without conflicts this is its only merge of `main` (decision 0121). A clean merge needs no
      local `make check` (CI runs the same gates); a conflict means release first, resolve and run

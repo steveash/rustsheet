@@ -206,9 +206,11 @@ clamp above.
    - when the lock is free and its `freed` is more than 2 min old, drop the head waiter. A live
      head polls every 30 s and claims a free lock within that time, so a head that has not
      claimed it in 2 min has stopped waiting;
-   - drop the head waiter if its PR is finished. This uses decision 0097's API read for the head
-     only, and only when the head changed or on every 10th poll, so a waiter makes at most about
-     12 reads an hour. Unauthenticated access allows 60 reads an hour.
+   - when the lock is free, stale or finished and the caller is not the head, drop the head
+     waiter if its PR is finished. This uses decision 0097's API read, made once per PR per
+     `acquire` and, across `wait`'s polls, only when the head changed or on every 10th poll, so a
+     waiter makes at most about 12 reads an hour per PR. Unauthenticated access allows 60 reads
+     an hour.
 2. If the caller holds the lock, renew it (`renewed` = now; `prs` replaced when given) and exit 0.
    A renewal never reorders the queue.
 3. If another agent holds the lock and it is neither stale (30 min since `renewed`) nor finished,
