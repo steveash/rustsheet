@@ -104,14 +104,22 @@ struct SheetContext {
     hidden_columns: Vec<(i32, i32)>,
 }
 
+/// What one recomputation of a table cost: charged again when the table is not recomputed, so
+/// that the tables after it find the budgets as a recomputation would leave them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TableCost {
+    /// Formula evaluations, against `MAX_DATA_TABLE_EVALUATIONS` (`data_tables.rs`).
+    pub(crate) evaluations: usize,
+    /// Work units, against the recalculation's ceiling (SPEC-0028 section 4).
+    pub(crate) work: u64,
+}
+
 /// What one table's last recomputation read, and the results it wrote.
 #[derive(Debug, Clone)]
 struct TableMemo {
     sheet: u32,
     table: DataTable,
-    /// The formula evaluations it took, charged again when it is not recomputed, so that the
-    /// tables after it find the budget as a recomputation would leave it.
-    cost: usize,
+    cost: TableCost,
     reads: Vec<(u32, SheetReads)>,
     state: ReadState,
     results: Vec<Held>,
@@ -157,7 +165,7 @@ impl Model {
         context: &Context,
         index: usize,
         (sheet, table): (u32, &DataTable),
-    ) -> Option<usize> {
+    ) -> Option<TableCost> {
         let memo = &self.evaluation.data_table_memo;
         if memo.context.as_ref() != Some(context) {
             return None;
@@ -189,14 +197,14 @@ impl Model {
     }
 
     /// Stops the record [`Self::start_data_table_reads`] started from `spills`, and keeps it as
-    /// the memo of the table at index `index`, whose recomputation took `cost` evaluations,
+    /// the memo of the table at index `index`, whose recomputation cost `cost`,
     /// unless `memoizable` is false or what was read rules it out. Called before the results are
     /// written; [`Self::seal_data_table_memo`] keeps them.
     pub(crate) fn finish_data_table_reads(
         &mut self,
         context: &Context,
         (index, sheet, table): (usize, u32, &DataTable),
-        (cost, spills): (usize, &Spills),
+        (cost, spills): (TableCost, &Spills),
         memoizable: bool,
     ) {
         let reads: Vec<(u32, SheetReads)> = (self.workbook.worksheets.iter().enumerate())

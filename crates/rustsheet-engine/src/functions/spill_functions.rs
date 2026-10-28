@@ -290,7 +290,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let result = self.evaluate_node_in_context(node, cell);
+        self.result_to_array_keep_blank(result, cell)
+    }
+
+    /// [`Model::result_to_array`], a blank cell kept as a blank element.
+    pub(crate) fn result_to_array_keep_blank(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match result {
             CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
             result => self.result_to_array(result, cell),
         }
