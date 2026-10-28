@@ -20,6 +20,9 @@ WEEKNUM readers (return_type 22+ or negative) depend on every earlier WEEKNUM/IS
 the calc order, an edge the dependency graph does not have. SPEC-0017 "Incremental recalculation"
 sets the rule SPEC-0002 must keep (T-1484).
 
+The recalculation work budget (SPEC-0028 section 7, T-2807) sets what the graph must keep so that an
+incremental recalculation enters share mode exactly when a full one would.
+
 ## Acceptance criteria
 - [ ] docs/specs/SPEC-0002-dependency-graph.md accepted by architecture+performance reviewers.
 - [ ] Implementation tasks (S/M each) created by the planner with dependencies.

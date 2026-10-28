@@ -834,6 +834,7 @@ C	probes/npv-term-order.case.json	402
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
+C	probes/numbervalue-default-group.case.json	14
 C	probes/numbervalue-separator-edges.case.json	20
 C	probes/odd-bond-argument-check-order.case.json	1091
 C	probes/off-grid-corners.case.json	6
@@ -2969,7 +2970,6 @@ F	probes/logest-modes.case.json	Sheet1!M92
 F	probes/logest-modes.case.json	Sheet1!M93
 F	probes/logest-modes.case.json	Sheet1!N85
 F	probes/logest-modes.case.json	Sheet1!N86
-F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/odd-bond-argument-check-order.case.json	Calc!A258
 F	probes/pivotby-ttest-array2.case.json	P!A36
 F	probes/pivotby-ttest-array2.case.json	P!A37
