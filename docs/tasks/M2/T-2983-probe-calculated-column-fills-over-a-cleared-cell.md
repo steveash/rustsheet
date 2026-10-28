@@ -44,5 +44,5 @@ not parse in the engine yet (T-2979):
 ## Outcome
 Three probes filled on excel-graph (t2983-*). Excel fills nothing in any of them, so a stored formula column without
 `calculatedColumnFormula` is not a calculated column and formulas mixed with blanks block the fill. The engine
-already passes all three (no baseline change); references.md rule 8 records the evidence. No engine task needed for
-A1 formulas; the stored-structured-formula case is noted as unprobed.
+already passes all three (no new known failures; three `C` coverage lines added to the probes baseline); references.md rule 8 records the evidence. No engine task needed for
+A1 formulas; the stored-structured-formula case is unprobed, filed as T-3023.
