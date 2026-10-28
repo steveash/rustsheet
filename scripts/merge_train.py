@@ -497,7 +497,7 @@ class Stage:
             if state == merge_ready.GREEN:
                 return Outcome(state, (), tuple(ids))
             if state == merge_ready.RED:
-                infra = all(job.endswith(INFRA_CONCLUSIONS) for job in jobs)
+                infra = bool(jobs) and all(job.endswith(INFRA_CONCLUSIONS) for job in jobs)
                 return Outcome(INFRA if infra else state, tuple(jobs), tuple(ids))
             now = self.clock()
             if not ids and dispatched is None and now - start >= DISPATCH_AFTER:

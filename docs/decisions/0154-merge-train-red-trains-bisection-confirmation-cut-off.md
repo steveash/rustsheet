@@ -15,6 +15,8 @@
     ci-red -->`). Green: no ejection, it merges, and a P1 `possible flaky test or interaction` is
     queued on `Stage.tasks` with both run links. The rest `P_lo+2..P_n` is rebuilt and tested as
     one new train on the new `main`, in the same hold.
+    The bound of 1 + ⌈log₂ n⌉ + 1 runs counts the search and the confirmation; the re-test of the
+    rest is a new train with a bound of its own.
   - The step 6 gate takes n = the PRs the run can merge: the batch, `mid`, or 1. A failed gate,
     or an infrastructure failure (no run, a run over 10 min, a cancelled, timed-out or
     never-started run or job) that repeats on its one retry (a fresh record commit, so a fresh
