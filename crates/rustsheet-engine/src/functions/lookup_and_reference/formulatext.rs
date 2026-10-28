@@ -7,9 +7,7 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::limits::check_range_size;
-use crate::reference_operators::{
-    not_a_reference_array, several_areas, Ranges, RefArg, RefElement, RefGrid,
-};
+use crate::reference_operators::{not_a_reference_array, Ranges, RefArg, RefElement, RefGrid};
 use crate::{calc_result::CalcResult, model::Model};
 
 impl Model {
@@ -23,12 +21,21 @@ impl Model {
         }
         let reference = match args[0].ungrouped() {
             // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it picks.
-            Node::FunctionKind { kind, .. } if kind.may_be_reference() => {
+            // A bare union is read the same way: its first area is the reference.
+            node @ (Node::FunctionKind { .. } | Node::OpUnionKind { .. }) if !matches!(node, Node::FunctionKind { kind, .. } if !kind.may_be_reference()) =>
+            {
                 match self.evaluate_picked_reference_arg(&args[0], cell) {
                     RefArg::Ranges(Ranges::One(Range { left, right })) => {
                         CalcResult::Range { left, right }
                     }
-                    RefArg::Ranges(Ranges::Areas(_)) => return several_areas(cell),
+                    // A multi-area reference is FORMULATEXT of its first area, which spills when it
+                    // covers several cells (probes/t2831-formulatext-indirect-multi-cell A33-A78;
+                    // docs/excel-semantics/references.md "FORMULATEXT of a multi-area reference
+                    // and of a multi-cell INDIRECT element").
+                    RefArg::Ranges(Ranges::Areas(areas)) => {
+                        let Range { left, right } = areas.first();
+                        CalcResult::Range { left, right }
+                    }
                     RefArg::Grid(grid) => return self.formula_texts_of_grid(&grid, cell),
                     // A pick that fails is its own error (`SWITCH(9,1,5)`, `XLOOKUP` not found:
                     // `#N/A`); one that gives values is `#VALUE!`, element by element over an
@@ -104,13 +111,13 @@ impl Model {
             for element in row {
                 values.push(match element {
                     RefElement::Error(error) => ArrayNode::Error(error.clone()),
-                    RefElement::Reference(Range { left, right }) if left == right => {
+                    // A multi-cell element is its top-left cell's text, with no spill of its own.
+                    RefElement::Reference(Range { left, .. }) => {
                         match self.formula_text_element(*left, cell, &mut text_bytes) {
                             Ok(value) => value,
                             Err(too_large) => return too_large,
                         }
                     }
-                    RefElement::Reference(_) => ArrayNode::Error(Error::VALUE),
                 });
             }
             array.push(values);

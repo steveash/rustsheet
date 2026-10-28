@@ -3,7 +3,7 @@ id: T-2992
 title: "FORMULATEXT reads a multi-area pick's first area and a multi-cell INDIRECT element's top-left cell (probes/t2831-formulatext-indirect-multi-cell)"
 milestone: M5
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -35,3 +35,6 @@ INDIRECT element"; Data!A2, A4, B1 formulas, A1, A3 constants). 21 of its 34 cel
 
 ## Out of scope
 - FORMULATEXT of other multi-area producers (INDIRECT of a union text, OFFSET), unprobed.
+
+## Outcome
+FORMULATEXT reads a multi-area reference (pick call or bare union) as its first area and a multi-cell lifted INDIRECT element as its top-left cell. probes/t2831-formulatext-indirect-multi-cell passes 34/34 (was 13/34); references.md names the implementation.
