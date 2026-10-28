@@ -959,6 +959,25 @@ class RedTrain(StageFixture):
         self.assertEqual(self.stage.log[-1], "stopped: infrastructure: the ci.yml run concluded cancelled, twice")
         self.assertEqual((self.gh.merged, self.gh.unlabelled), ([], set()))
 
+    def test_infrastructure_conclusions_are_read_from_ci_state(self) -> None:
+        """The INFRA rule matches the ends of `ci_state`'s reasons; pin each one it relies on."""
+        def jobs(run_conclusion: str, job: str | None) -> list[str]:
+            run_ = {"id": 1, "path": merge_ready.CI_WORKFLOW, "event": "push", "status": "completed",
+                    "conclusion": run_conclusion, "check_suite_id": 5}
+            names = (*merge_ready.REQUIRED_JOBS, *merge_ready.HEAVY_JOBS)
+            checks = [{"id": k + 1, "name": name, "status": "completed", "conclusion": job or "success",
+                       "app": {"id": merge_ready.ACTIONS_APP_ID}, "check_suite": {"id": 5}}
+                      for k, name in enumerate(names) if job is not None or k > 0]
+            state, reasons = merge_ready.ci_state([run_], checks, False, merge_train.TRAIN_EVENTS)
+            self.assertEqual(state, merge_ready.RED)
+            return reasons
+
+        for reasons in (jobs("cancelled", "success"), jobs("timed_out", "success"),
+                        jobs("startup_failure", "success"), jobs("success", "timed_out"),
+                        jobs("success", "cancelled"), jobs("success", None)):
+            self.assertTrue(all(r.endswith(merge_train.INFRA_CONCLUSIONS) for r in reasons), reasons)
+        self.assertFalse(jobs("failure", "success")[0].endswith(merge_train.INFRA_CONCLUSIONS))
+
     def test_a_forged_or_malformed_state_record_is_ignored(self) -> None:
         good = merge_train.Resume("a" * 40, ((4, "b" * 40),))
         self.assertEqual(merge_train.Resume.parse(good.render()), good)
