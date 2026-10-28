@@ -3,7 +3,7 @@ id: T-2641
 title: "IM* inumber: a currency prefix on a complex number is read (probes/eng-inumber-reading A5); probe neighbouring whitespace and date shapes"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -34,7 +34,12 @@ filed with `defer: phase-1b`.
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off probes cells of VALUE (3) and IMABS (2). Fixing them lifts VALUE and IMABS to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
 
 ## Outcome
-`complex_of` drops a `$` or `€` that stands before a digit (`strip_currency_symbols`): `IMABS("$1+2i")`, `"$1-2i"`, `"1+$2i"`, `"€1+2i"` are 2.23606797749979, `"$i"` and `"$-5"` `#NUM!`; probe cells A20:A26 oracle-filled. probes/eng-inumber-reading A5 passes (baseline entry removed); engineering.md updated. Unprobed: NBSP, trailing tab, LF/CR, £ and ¥ (follow-up filed).
+`complex_of` drops a `$` or `€` that starts the text or a part (after a non-exponent `+`/`-`, spaces allowed) and
+stands before a digit or `.` (`strip_currency_symbols`, complex/reading.rs), and returns `#NUM!` for a tab, NBSP, LF,
+CR or U+3000 at either end past leading spaces. Evidence: probes/eng-inumber-reading A5, A20:A26 and
+probes/eng-inumber-currency-shapes A1:A40 (excel-graph; A1:A30 first filled on #2047's branch, A31:A40 added and the
+case refilled 2026-10-28). Both cases pass in full; engineering.md "How an inumber is read" lists every probed shape.
+The opus resume folded in the follow-up T-3056 (all its shapes are now probed) and supersedes PR #2047.
 
 ## Handoff (resumed)
 Sonnet run, three excel-fidelity review rounds, all REQUEST_CHANGES; security, architecture and quality APPROVE. State: branch `agent/functions-engineering/T-2641-im-inumber-currency`, `make check` green on the last head, probes/eng-inumber-reading 26/26 (A5 and A20:A26 oracle-filled, excel-graph 2026-10-28), baseline updated.

@@ -317,7 +317,11 @@ impl Model {
         if number_text_too_long(&value) {
             return Err(value_error(cell));
         }
-        if value.starts_with(['\t', '\u{3000}']) {
+        // A tab, U+3000, NBSP, LF or CR at either end, past leading spaces, is `#NUM!`, where a space
+        // is read: `IMABS` of tab&"5", " "&tab&"5", "5"&tab, "3+4i"&LF and NBSP&"3+4i" are `#NUM!`
+        // (probes/eng-inumber-reading, probes/eng-inumber-currency-shapes A13:A26).
+        const UNREAD_EDGE: [char; 5] = ['\t', '\u{3000}', '\u{a0}', '\n', '\r'];
+        if value.trim_start_matches(' ').starts_with(UNREAD_EDGE) || value.ends_with(UNREAD_EDGE) {
             return Err(num_error(cell));
         }
         // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",
