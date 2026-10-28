@@ -4,7 +4,7 @@ title: "A wholly deleted plain range prints S!#REF! as Excel does, and the spill
 milestone: M8
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: sonnet
 depends_on: []

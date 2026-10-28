@@ -4,7 +4,7 @@ title: "Intersect a legacy N or T argument under a unary plus: N(+B1:B3) stores 
 milestone: M2
 lane: engine
 status: todo
-priority: P2
+priority: P0
 size: S
 tier: sonnet
 depends_on: []
