@@ -3,7 +3,7 @@ id: T-0453
 title: "Recompute a data table only when its formula's precedents changed"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
