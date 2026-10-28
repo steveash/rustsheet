@@ -264,7 +264,8 @@ impl Txn<'_> {
                 let mut targets = Vec::new();
                 if let Some(expansion) = expansion {
                     self.sheet_op = true;
-                    self.undo.push(Undo::TableExpanded(Box::new(expansion.table)));
+                    self.undo
+                        .push(Undo::TableExpanded(Box::new(expansion.table)));
                     targets = expansion.cells;
                 } else {
                     targets.extend(

@@ -119,7 +119,9 @@ fn expansion_readout(model: &mut Model) -> Vec<String> {
         (3, "=D1&\"\""),
         (4, "=ISFORMULA(D1)"),
     ] {
-        model.set_user_input(0, row, 8, formula.to_string()).unwrap();
+        model
+            .set_user_input(0, row, 8, formula.to_string())
+            .unwrap();
     }
     model.evaluate();
     (1..=4)
@@ -148,7 +150,10 @@ fn a_formula_typed_beside_a_data_row_grows_the_table() {
         model.get_cell_formula(0, 4, 4).unwrap().as_deref(),
         Some("=A4*2")
     );
-    assert_eq!(expansion_readout(&mut model), ["4", "4", "Column1", "FALSE"]);
+    assert_eq!(
+        expansion_readout(&mut model),
+        ["4", "4", "Column1", "FALSE"]
+    );
     // The new column is a column of the table by its name.
     model
         .set_user_input(0, 6, 1, "=SUM(T[Column1])".to_string())
@@ -204,4 +209,22 @@ fn no_expansion_for_stored_formulas_constants_totals_or_occupied_columns() {
         .unwrap();
     assert_eq!(expansion_readout(&mut occupied)[0], "3");
     assert_eq!(column_d(&occupied), ["2", "", "7"]);
+}
+
+/// A formula that does not parse as typed grows no table, beside the header row or a data row:
+/// Excel refuses the entry and changes nothing (a parse error, and a LET name spelled like a
+/// cell, which typed text refuses; decision 0103).
+#[test]
+fn no_expansion_for_a_formula_that_does_not_parse_as_typed() {
+    for row in [1, 2] {
+        for text in ["=1+", "=LET(f1,1,f1+1)"] {
+            let mut model = model(false);
+            // The refused LET is an error; the parse error is stored as before.
+            let _ = model.set_typed_user_input(0, row, 4, text.to_string());
+            assert_eq!(expansion_readout(&mut model)[0], "3", "{text} in row {row}");
+            let header = model.get_formatted_cell_value(0, 1, 4).unwrap();
+            assert_ne!(header, "Column1", "{text} in row {row}");
+            assert_ne!(header, "0", "{text} in row {row}");
+        }
+    }
 }

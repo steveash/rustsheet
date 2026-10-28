@@ -3,9 +3,10 @@
 //! column"; T-2957, T-2958), and one typed just right of a table grows it by a column (T-2968).
 
 use crate::constants::LAST_COLUMN;
+use crate::expressions::parser::Node;
 use crate::expressions::utils::number_to_column;
 use crate::model::Model;
-use crate::table_edits::{append_column, bounds};
+use crate::table_edits::{append_column, bounds, Bounds};
 use crate::types::{Cell, Table};
 
 /// A table that a formula typed just right of it grows by one column (T-2968).
@@ -16,22 +17,34 @@ pub struct TableExpansion {
     /// The new column's cells other than the typed one, (row, column): its header cell and the
     /// data rows the formula fills, which the expansion writes.
     pub cells: Vec<(i32, i32)>,
-    /// Whether the typed cell is the header cell: the formula is then not stored, and the header
-    /// is the text `0`.
+    /// Whether the typed cell is the header cell. Then the formula is not stored and the header is
+    /// the text `0`.
     pub header: bool,
 }
 
 impl Model {
+    /// The tables on the sheet named `sheet_name` whose range fits, with their [`Bounds`].
+    fn table_bounds_on_sheet<'a>(
+        &'a self,
+        sheet_name: &'a str,
+    ) -> impl Iterator<Item = (&'a Table, Bounds)> + 'a {
+        (self.workbook.tables.values())
+            .filter(move |table| table.is_on_sheet(sheet_name))
+            .filter_map(|table| Some((table, bounds(table)?)))
+    }
+
     /// The table that typing `value` into (`sheet`, `row`, `column`) grows by one column, as Excel
     /// grows a table when a formula is typed into the cell just right of its header row or a data
     /// row (probes/t2957-expand-right-data, -header: `T` A1:C4 becomes A1:D4). `None` for a
     /// constant, a table with a totals row, or a new column whose other cells are not all blank
-    /// or that another table overlaps: those are unprobed, so the cell is typed as before.
+    /// or that another table overlaps: those are unprobed, so the cell is typed as before. `None`
+    /// too for a formula that does not parse there as typed: Excel refuses such an entry and
+    /// changes nothing.
     ///
     /// # Errors
     /// When `sheet` does not exist.
     pub fn table_expansion(
-        &self,
+        &mut self,
         sheet: u32,
         row: i32,
         column: i32,
@@ -42,34 +55,51 @@ impl Model {
         }
         let worksheet = self.workbook.worksheet(sheet)?;
         let sheet_name = worksheet.get_name();
-        let on_sheet = || {
-            (self.workbook.tables.values())
-                .filter(|table| table.is_on_sheet(&sheet_name))
-                .filter_map(|table| Some((table, bounds(table)?)))
-        };
+        let on_sheet = || self.table_bounds_on_sheet(&sheet_name);
         let Some((table, b)) = on_sheet().find(|(table, b)| {
-            table.totals_row_count == 0 && b.right + 1 == column && (b.top..=b.bottom).contains(&row)
+            table.totals_row_count == 0
+                && b.right + 1 == column
+                && (b.top..=b.bottom).contains(&row)
         }) else {
             return Ok(None);
         };
         let overlapped = on_sheet().any(|(_, other)| {
-            (other.left..=other.right).contains(&column) && other.top <= b.bottom && b.top <= other.bottom
+            (other.left..=other.right).contains(&column)
+                && other.top <= b.bottom
+                && b.top <= other.bottom
         });
         let cells: Vec<(i32, i32)> = (b.top..=b.bottom)
             .filter(|&r| r != row)
             .map(|r| (r, column))
             .collect();
-        let blank = cells.iter().all(|&(r, c)| {
-            matches!(worksheet.cell(r, c), None | Some(Cell::EmptyCell { .. }))
-        });
+        let blank = cells
+            .iter()
+            .all(|&(r, c)| matches!(worksheet.cell(r, c), None | Some(Cell::EmptyCell { .. })));
         if overlapped || !blank {
             return Ok(None);
         }
-        Ok(Some(TableExpansion {
+        let header = table.header_row_count > 0 && row == b.top;
+        let expansion = TableExpansion {
             table: table.clone(),
-            cells,
-            header: table.header_row_count > 0 && row == b.top,
-        }))
+            // Typed into the header cell, the formula writes no data row.
+            cells: if header { Vec::new() } else { cells },
+            header,
+        };
+        Ok(self
+            .parses_as_typed(sheet, row, column, value)
+            .then_some(expansion))
+    }
+
+    /// Whether `value`, a formula, parses as typed into (`sheet`, `row`, `column`): no parse
+    /// error and no refusal of typed text (decision 0103).
+    fn parses_as_typed(&mut self, sheet: u32, row: i32, column: i32, value: &str) -> bool {
+        let Some(formula) = self.formula_without_prefix(value) else {
+            return false;
+        };
+        self.parser.set_typed(true);
+        let parsed = self.parse_cell_formula(sheet, row, column, formula);
+        self.parser.set_typed(false);
+        matches!(parsed, Ok(node) if !matches!(node, Node::ParseErrorKind { .. }))
     }
 
     /// Grows the table of `expansion` (on `sheet`) by its new column, and writes the column's
@@ -78,7 +108,11 @@ impl Model {
     /// (-header: `=1+1` typed into D1 leaves the text `0`, not 2 and no formula). Excel's rule for
     /// that `0` is only probed with `=1+1`; a name `0` the table already has falls back to
     /// `ColumnN` (unprobed).
-    pub(crate) fn expand_table(&mut self, sheet: u32, expansion: &TableExpansion) -> Result<(), String> {
+    pub(crate) fn expand_table(
+        &mut self,
+        sheet: u32,
+        expansion: &TableExpansion,
+    ) -> Result<(), String> {
         let Some(b) = bounds(&expansion.table) else {
             return Ok(());
         };
@@ -95,8 +129,14 @@ impl Model {
         let has_header = table.header_row_count > 0;
         self.reset_tables();
         if has_header {
-            self.prepare_cell_for_user_input(sheet, b.top, column)?;
-            self.update_cell_with_text(sheet, b.top, column, &header_text)?;
+            let written = self
+                .prepare_cell_for_user_input(sheet, b.top, column)
+                .and_then(|()| self.update_cell_with_text(sheet, b.top, column, &header_text));
+            if written.is_err() {
+                // No grown table without its header: put it back.
+                self.restore_table(expansion.table.clone());
+            }
+            written?;
         }
         Ok(())
     }
@@ -126,11 +166,8 @@ impl Model {
         let worksheet = self.workbook.worksheet(sheet)?;
         let sheet_name = worksheet.get_name();
         let Some(data) = self
-            .workbook
-            .tables
-            .values()
-            .filter(|table| table.is_on_sheet(&sheet_name))
-            .filter_map(bounds)
+            .table_bounds_on_sheet(&sheet_name)
+            .map(|(_, b)| b)
             .find(|b| (b.left..=b.right).contains(&column) && (b.data.0..=b.data.1).contains(&row))
             .map(|b| b.data)
         else {
