@@ -3,7 +3,7 @@ id: T-2531
 title: "Probe IMCSC/IMCOT of tiny imaginary parts (1E-7i, 1E-9i, 1E-9+1E-9i) where cosh 2y rounds to 1"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
