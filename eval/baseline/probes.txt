@@ -1431,7 +1431,7 @@ C	probes/t2929-sort-lifted-by-col-errors.case.json	94
 C	probes/t2929-sort-lifted-by-col-index.case.json	84
 C	probes/t2929-sort-lifted-by-col-range.case.json	30
 C	probes/t2929-sort-lifted-by-col-shapes.case.json	121
-C	probes/t2932-b2-calendar-twice.case.json	68
+C	probes/t2932-b2-calendar-twice.case.json	80
 C	probes/t2939-typed-if-two-argument-controls.case.json	9
 C	probes/t2957-a1-reference.case.json	6
 C	probes/t2957-constant-exception.case.json	5
