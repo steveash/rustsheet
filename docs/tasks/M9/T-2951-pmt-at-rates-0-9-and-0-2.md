@@ -4,7 +4,7 @@ title: "PMT at rates -0.9 and 0.2 to Excel's bits so PMT.xlsx's 10 visibly-off c
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 campaign: visible

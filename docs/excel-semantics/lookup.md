@@ -831,9 +831,13 @@ So `COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))` and `RANK(10,CHOOSE(…))` are 2x2 gr
 Evidence: probes/choose-array-index-range-arms (excel-graph, 2026-10-14, T-1508); probes/countblank-array-values H20,
 H34; probes/array-context-legacy-sumproduct H1, H10; probes/external-ref-no-link-ifchoose A32.
 Status: VERIFIED (excel-graph)
-Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using IF's `evaluate_if_arg`/`if_arg_at`
-(functions/logical/mod.rs).
-Tasks: T-1508
+Ours: every range arm's cells are read in order, so a cycle through any arm is one (`=ROWS(CHOOSE({1,2},A:A,1:1))` in A1
+is circular, 0), but no arm is copied until the result's size, taken from the arms' bounds, is checked; then only the
+picked range arms are copied, so `CHOOSE({1},C:C,D:D,…)` with 254 whole-column arms holds one column (T-1564; IF over an
+array condition alike).
+Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using `BroadcastArg` and
+`evaluate_broadcast_arm` (functions/lift/broadcast_arg.rs).
+Tasks: T-1508, T-1564
 
 ## XMATCH/XLOOKUP reference-form lookup and return arrays; capital Thorn
 A single-cell reference is a one-cell vector for XMATCH `lookup_array` and XLOOKUP `lookup_array`/`return_array`: `XMATCH(5,A1)` is 1, `XMATCH(5,one)` (single-cell defined name) is 1, `LET(r,A1,XMATCH(5,r))` is 1 and `XLOOKUP(5,A1,B3)` returns B3's value. A blank single-cell `return_array` yields 0 (`XLOOKUP(5,one,B2)` is 0). `XMATCH(10,@A1:A3)` is `#N/A` (on row 1 the `@` yields the scalar 5, not a vector containing 10) and `XLOOKUP(5,A1,@B1:B3)` on row 7 is `#VALUE!` (the `@` finds no cell on row 7 to intersect, so the error arises before XLOOKUP runs; the probe cannot separate that from a scalar `return_array`). A 3-D span `Sheet1:Sheet3!A1` as lookup_array or return_array is `#VALUE!` (not `#REF!`). `"Þ"="TH"` is TRUE and `"Þ"<"TI"` is TRUE (Thorn collates as TH), so `XMATCH("Þ",D1:D3)` is 1, `XMATCH("TI",D1:D3,1)` is 3.
@@ -880,8 +884,10 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   again. A lifted TAKE's grid is handed on the same way by IF and CHOOSE in every consumer and
   lifts again as OFFSET's reference (`SUMPRODUCT(IF(TRUE,TAKE(A1:B3,{1;2})))` is 0, `ROWS(OFFSET(TAKE(A1:B3,{1;2}),1,0))`
   is 2), and TAKE over an error source with a lifted count is one error per element
-  (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby, T-2299). DROP is implemented the same
-  way by analogy, unprobed; so is which error wins between an error source and an invalid lifted count. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+  (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby, T-2299). DROP behaves the same
+  (`ROWS(DROP(NA(),{1;2}))` is 2, `SUMPRODUCT(IF(TRUE,DROP(A1:B3,{1;2})))` and the CHOOSE form 0, `ROWS(OFFSET(DROP(A1:B3,{1;2}),1,0))` 2;
+  probes/drop-lifted-grid-handon F1:F3, F9, F10, excel-graph, T-2919), and an error source beats an invalid lifted count for both:
+  `ROWS(TAKE(NA(),{1;"x"}))` and the DROP form are 2, every element `#N/A` (same probe F4:F8, F11). TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
   `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (E101, -b2 E153). Ours: since T-2174 for an unlifted count. Inside SUM
   only a direct OFFSET or INDIRECT source keeps it (TRIMRANGE, IF, LET and nested TAKE/DROP sources there read
   values), and a lifted count over such a grid is unprobed (T-2212). Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,

@@ -4,7 +4,7 @@ title: "PMT, IPMT and PPMT back to Excel's bits on the 14 cells T-2130 moved by 
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 depends_on: [T-2130]

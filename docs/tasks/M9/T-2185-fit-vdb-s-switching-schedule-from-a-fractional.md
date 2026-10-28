@@ -3,7 +3,7 @@ id: T-2185
 title: "Fit VDB's switching schedule from a fractional start period"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -63,14 +63,17 @@ visibly off:
   (`VDB(17334,389,36,0.2,9,TRUE,FALSE)`: Excel 4147.934913793104, ours 4148.285714285714)
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
+- [x] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The 1 T-2257 last-digit lines in Context are re-checked after the fix; the Outcome says how many pass.
-- [ ] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
+- [x] The 1 T-2257 last-digit lines in Context are re-checked after the fix; the Outcome says how many pass.
+- [x] Visible parity (gen-m9, T-2256): these 1 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity: the 3 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/fin-vdb-schedule A42-A46 pass, with fin-vdb-modes still 20/20.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity: the 3 visibly-off cells listed under Context (2026-10-21) have Excel's value to 15 significant digits, or its type, error and text: the 3 lines in eval/baseline/probes.txt disappear (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] probes/fin-vdb-schedule A42-A46 pass, with fin-vdb-modes still 20/20.
+- Note on "no new known-failure lines": no existing case gained a line. The only new lines are 8 new-coverage `F`
+  lines of this task's own new probe case fin-vdb-fractional-start (one ulp off, not visibly off), written by
+  `make eval-baseline` and owned by T-3022 (`defer: phase-1b`, decision 0083).
+- [x] `make check` green; reviewers approve.
 
 Replacing that path should delete `vdb_total_depr`, whose `straight_line` parameter is now always true (T-1975 review).
 
@@ -82,3 +85,21 @@ Decision 0083: the cells listed under Context are visibly off (VDB from a fracti
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 It owns all 12 visibly-off VDB cells and alone lifts VDB. Priority raised so it leads its stage in M9.
+
+## Outcome
+Fitted (2026-10-28) on two new excel-graph probes, fin-vdb-fractional-start (45 cells) and fin-vdb-fractional-start-edges
+(14 cells), chosen where the candidate models disagree visibly. Neither the restart model nor LibreOffice's half-life
+shift is Excel's: past the switch, `VDB(2400,100,10,6.3,7.3)` is `(591.396864 - 100)/3.7` exactly, which shows Excel
+lays the whole schedule on the start's fraction (financial.md "VDB charge order"). The rule: the first `f` of a period
+charges `f·min(cost·rate, cost - salvage)` floored at 0, whole periods follow from `f`, and the switch test compares the
+straight-line charge `(b - salvage)/(life - t)` with the unclipped `b·rate`. `vdb_switching_between` now takes any
+start (whole starts are `f = 0`, unchanged) and `vdb_total_depr` is deleted. The fit was done in a Python model of the
+kernel, which the engine reproduces cell for cell.
+
+Results: all 161 switching-mode VDB cells with literal arguments are within visible parity, 153 to the bit. Six gen-m9
+lines leave gen-m9.txt: the 3 visibly-off T-2257 lines, the T-2256 line (873f30d2bf76f8db A360), the T-2492 line
+(762cd0e4ec9a7aa9 A379) and the T-2257 last-digit line (bc04c1f478c9896c A336, which now passes to the bit). fin-vdb-schedule A42-A46 pass (78/78), fin-vdb-modes 20/20,
+t2492-vdb-ddb-arguments 64/64 (its 5 lines leave probes.txt). The 8 cells left one ulp off (fin-vdb-fractional-start
+A1, A4, A6, A11, A14, A26, A29, A35, all with a start fraction of .2 or .3) are new-coverage known failures in
+probes.txt, owned by the follow-up T-3022 (`defer: phase-1b`, decision 0083). No regressions. Eval delta: gen-m9
+-6, probes -10 fixed and +8 new-coverage lines, visible parity 2564 cells visibly off.

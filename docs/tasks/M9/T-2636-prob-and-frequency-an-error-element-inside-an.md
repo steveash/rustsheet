@@ -4,7 +4,7 @@ title: "PROB and FREQUENCY: an error element inside an array argument is that er
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
