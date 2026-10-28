@@ -3,7 +3,7 @@ id: T-2984
 title: "Spec: merge train — batched merges under the merge lock"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -34,7 +34,7 @@ writing this spec (2026-10-28).
   checks yet.
 
 ## Acceptance criteria
-- [ ] `docs/specs/SPEC-0027-merge-train.md` follows `docs/specs/TEMPLATE.md` and decides, with
+- [x] `docs/specs/SPEC-0027-merge-train.md` follows `docs/specs/TEMPLATE.md` and decides, with
       rejected alternatives: the readiness handoff (marker, who marks, how it is verified and
       invalidated); the merger (who runs it, lock ownership, the batch algorithm, how the train
       gets CI and the ci.yml change, why the merged `main` tree equals the tested train tree,
@@ -42,8 +42,8 @@ writing this spec (2026-10-28).
       PRs, orphaned PRs, required checks and auto-merge); a FIFO merge lock with `wait`; the
       decision amendments (0028, 0075) and their governance; a rollout in small reversible
       slices with metrics and a rollback plan; the full prompt text of the merger routine.
-- [ ] The rollout slices are filed with `make new-task`, each linking the spec, with `depends_on`.
-- [ ] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`,
+- [x] The rollout slices are filed with `make new-task`, each linking the spec, with `depends_on`.
+- [x] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`,
       `check_governance.py origin/main`, `make typos` and the scripts unit tests pass.
 - [ ] Reviewers approve (architecture for the spec).
 
@@ -51,3 +51,24 @@ writing this spec (2026-10-28).
 - Any change to `scripts/`, `.github/`, `.claude/`, `docs/process/` or the routines: those land
   with the rollout slices, each with its own decision record.
 - Moving the repository to an organization or turning on the merge queue (decision 0053).
+
+## Outcome
+SPEC-0027 (`docs/specs/SPEC-0027-merge-train.md`) designs the merge train:
+- a FIFO merge lock with `wait`, as the first, independent slice;
+- a readiness marker (label plus a machine-readable comment naming the approved head sha and the
+  verdicts) that workers set before moving on;
+- a merger, run by an owner-created routine every 30 min with a stall fallback for any session,
+  that tests up to 5 ready PRs together on `merge-train/current` under the lock and squash-merges
+  them in order, with a proof and a per-squash tree check that `main` ends with the tested tree;
+- prefix bisection that ejects the culprit;
+- crash recovery, and the interactions with conflicts, id collisions (ejected, not renumbered),
+  docs-only PRs, orphaned PRs and required checks (strict "up to date" must stay off, and no
+  auto-merge);
+- the CI trigger;
+- draft decision text, a `lock`/`shadow`/`train` switch, metrics and a rollback plan.
+
+No decision record lands here: the spec changes no protected path, and each slice carries its
+own record. Follow-ups: T-2985 (fair lock), T-2986 (readiness marker), T-2988 (CI on train
+branches), T-2987 (train builder), T-2989 (skills, process and routine prompt; `shadow`), T-2991
+(switch on after shadow runs), T-2990 (one-week measurement). Open questions for the owner are at
+the end of the spec. No eval delta.
