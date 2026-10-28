@@ -664,65 +664,6 @@ impl Parser {
         Node::BooleanKind(value)
     }
 
-    /// An operand starting with `[` (the lexer's `LeftBracket`, just read): a structured
-    /// reference written without its table name, which names the table holding the formula's
-    /// cell, its totals row included (`=[@Col]*2`, `=SUBTOTAL(109,[Col])`; references.md
-    /// "Structured references: this row, totals and ranges", T-2979). Stored (R1C1) text carries
-    /// the table as a `[T]` prefix (`StructuredReference::stored_text`). Outside every table the
-    /// operand is refused, as before.
-    pub(super) fn unqualified_structured_reference(&mut self) -> Node {
-        let refused =
-            |parser: &mut Self| parser.unexpected_operand("Unexpected token: '['".to_string());
-        let table_name = if self.lexer.is_a1_mode() {
-            let Some(name) = self.containing_table_name() else {
-                return refused(self);
-            };
-            // Back onto the `[` just read (any whitespace before it is already behind).
-            self.lexer
-                .rewind_to(self.lexer.get_position_index().saturating_sub(1));
-            name
-        } else {
-            let Some(name) = self.lexer.stored_table_prefix() else {
-                return refused(self);
-            };
-            name
-        };
-        let Ok(token::TokenType::StructuredReference {
-            table_name,
-            specifier,
-            table_reference,
-            spacing,
-        }) = self.lexer.consume_structured_reference(&table_name)
-        else {
-            return refused(self);
-        };
-        let mut node = self.structured_reference_operand(
-            table_name,
-            specifier,
-            table_reference,
-            spacing,
-            false,
-        );
-        if let Node::StructuredReferenceKind { reference, .. } = &mut node {
-            reference.unqualified = true;
-        }
-        node
-    }
-
-    /// The name of the table whose range (headers and totals row included) holds the formula's
-    /// cell, if any.
-    fn containing_table_name(&self) -> Option<String> {
-        let context = &self.context;
-        self.tables.values().find_map(|table| {
-            let (column_start, row_start, column_end, row_end) =
-                parse_range(&table.reference).ok()?;
-            (table.is_on_sheet(&context.sheet)
-                && (column_start..=column_end).contains(&context.column)
-                && (row_start..=row_end).contains(&context.row))
-            .then(|| table.name.clone())
-        })
-    }
-
     /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
     /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` lowers to a
     /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
