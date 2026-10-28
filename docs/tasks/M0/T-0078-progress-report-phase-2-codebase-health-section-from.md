@@ -44,5 +44,5 @@ duplicated lines, oversized files, functions below the evidence floor, decision 
 excel-semantics lines), each with its change against the last complete history row that has the
 new optional `codebase` object (`n/a` until one exists, so the first run shows no deltas). History
 rows without `codebase` still load (tested). `signed` moved from history.py to markdown.py so both
-use one definition. The page was regenerated from a complete run (no eval delta; no harness or
+use one definition. The page is not regenerated in this PR (the worker has no calipers/corpus-bench/poi suites, so a run is stale and must not be committed); the steward's next complete run writes the `codebase` block (no eval delta; no harness or
 engine behavior changed). The judgment blocks are from the previous run; the steward refreshes them.
