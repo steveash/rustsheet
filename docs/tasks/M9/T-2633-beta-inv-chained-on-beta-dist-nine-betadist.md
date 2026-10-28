@@ -3,7 +3,7 @@ id: T-2633
 title: "BETA.DIST/BETA.INV after T-2119: BETADIST A159 and four probes-numeric cells visibly off, nine chained BETA.INV cells 1-4 ulp"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
