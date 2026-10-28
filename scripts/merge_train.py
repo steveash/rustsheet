@@ -264,7 +264,7 @@ SESSION = re.compile(r"Claude-Session: https://claude\.ai/code/session_[A-Za-z0-
 
 class Stop(Exception):
     """The train stops this hold with nothing more merged. `p0` when `main` differs from the
-    tested train (step 7's mismatch response); the P0 and the revert PR are T-3045's."""
+    tested train (step 7's mismatch response); the P0 and the revert PR are T-3055's."""
 
     def __init__(self, reason: str, *, p0: bool = False) -> None:
         super().__init__(reason)
@@ -337,7 +337,7 @@ class Stage:
 
     def checkpoint(self) -> None:
         """A stop checkpoint: when `main` moved since the last one, re-read the switch from it
-        (failing closed) and stop unless it still says `train`. The stop label is T-3045's."""
+        (failing closed) and stop unless it still says `train`. The stop label is T-3055's."""
         sha = remote_sha(MAIN_REF, self.root)
         if sha != self.main:
             self.main = sha

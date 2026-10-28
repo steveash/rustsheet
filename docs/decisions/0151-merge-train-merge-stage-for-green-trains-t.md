@@ -7,7 +7,7 @@
 - **Context:** T-2987 (decision 0150) built and checked trains without writing. The task allows
   a split when the diff grows past size M; the merge stage alone is about that size, so the stop
   label (which needs T-2996's `merge-flip-check`) and the post-squash revert PR and P0 filing
-  move to T-3045.
+  move to T-3055.
 - **Decision:**
   - `scripts/merge_train.py --train` (`make merge-train TRAIN=1`): read the mode (fail closed),
     `merge_lock.py wait --train` capped at the 40-min window, then under the lock: collect,
@@ -23,7 +23,7 @@
     squash) run `git ls-remote` on `main` and re-read the switch only when `main` moved.
   - Any mismatch, a lost lock (exit 4), a red or missing CI run, the budget gate or a refused
     merge stops the sequence: the PRs merged are a prefix of the tested train. A mismatch is
-    reported as `P0:`; filing it and the revert PR are T-3045's. Red trains stay T-2998's.
+    reported as `P0:`; filing it and the revert PR are T-3055's. Red trains stay T-2998's.
   - Squash text: the PR title with control and format characters stripped, cut to 100
     characters, `@`, `#` and closing keywords neutralised with a zero-width joiner, then
     ` (#k)`; the body holds only well-formed `Co-Authored-By` and `Claude-Session` trailers of
@@ -31,5 +31,5 @@
 - **Consequences:**
   - `merge_ready.ci_state` takes the run events that count, so the PR and train rules stay one
     definition; `gh_client` gains `pull_commits`.
-  - `train` mode must not be switched on (T-2991) before T-3045 lands: without it a stop label
+  - `train` mode must not be switched on (T-2991) before T-3055 lands: without it a stop label
     is not honoured mid-hold, and a post-squash mismatch is reported but not reverted.

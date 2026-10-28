@@ -7,7 +7,7 @@ status: blocked
 priority: P1
 size: S
 tier: opus
-depends_on: [T-2989, T-3045]
+depends_on: [T-2989, T-3055]
 spec: docs/specs/SPEC-0027-merge-train.md
 ---
 

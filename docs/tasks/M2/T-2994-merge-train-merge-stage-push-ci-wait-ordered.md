@@ -19,7 +19,7 @@ Any mismatch stops the train with nothing more merged and is reported as a P0. R
 T-2998.
 
 Split per the size clause below (decision 0151): the stop label, the revert PR and the P0
-filing moved to **T-3045**.
+filing moved to **T-3055**.
 
 ## Context
 - SPEC-0027 section 4: the write policy and steps 1, 5–7 and 9.
@@ -65,7 +65,7 @@ filing moved to **T-3045**.
       - a partly merged batch;
       - the squash text.
 - [x] A decision record lands in this PR. The architecture and security reviewers approve.
-- Moved to T-3045 (decision 0151): the `merge-train-stop` label at each checkpoint, a stop label
+- Moved to T-3055 (decision 0151): the `merge-train-stop` label at each checkpoint, a stop label
   on a PR that fails `merge-flip-check`, and the revert path (revert PR, P0 filing).
 
 ## Out of scope
@@ -84,4 +84,4 @@ read-back and the post-squash parent and tree check. Mode checkpoints at all fou
 lock is released in a `finally` and on SIGTERM. Inert while `mode = "lock"`.
 35 tests in `scripts/test_merge_train.py` (22 new, against a GitHub simulator over a temporary
 bare remote). Eval delta: none (scripts and docs only).
-Follow-up: **T-3045** (stop label, revert PR, P0 filing); T-2991 now depends on it.
+Follow-up: **T-3055** (stop label, revert PR, P0 filing); T-2991 now depends on it.
