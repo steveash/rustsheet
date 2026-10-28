@@ -3,7 +3,7 @@ id: T-2239
 title: "WEIBULL.DIST and WEIBULL to 15 digits: (x/lambda)^k through exp(k*ln(x/lambda)), as Excel's tail values show (18 visibly-off sweep cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
