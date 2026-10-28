@@ -6,7 +6,7 @@
   on 2026-10-28 read the named sheet in every case: the re-filled probes/info-cell-contents-range (twice, identical) and
   info-cell-legacy-range, the new probes/t3030-cell-first-sheet (sheet order Data, Calc, Other), and
   t3030-cell-contents-nested-sheet (docs/excel-semantics/information.md). T-3030 makes CELL read the named sheet and
-  re-fills from excel-graph the 47 cases whose old sidecars encoded the old reading. After that re-fill, one cell
+  re-fills from excel-graph the 80 cases whose old sidecars encoded the old reading (every case with a cell that failed once CELL read the named sheet). After that re-fill, one cell
   that passed before fails: gen-m9/756a9f7bc3a06bcc Calc!A338, `=IMTAN((CELL("contents",Data!$A$12)&OFFSET(..)))`.
   Its argument used to be Calc!A12 ("4") and is now Data!A12 ("3.14159"), where our IMTAN differs from Excel's in the
   last digits (-2.65358979336207E-06 against -2.65358979336212E-06). The engine's IMTAN did not change. The new
