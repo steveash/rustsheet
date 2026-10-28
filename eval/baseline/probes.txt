@@ -343,6 +343,7 @@ C	probes/discount-security-modes.case.json	135
 C	probes/discount-serial-zero.case.json	50
 C	probes/displayed-text-formats.case.json	10
 C	probes/dollar-fixed-unichar-edges.case.json	76
+C	probes/drop-lifted-grid-handon.case.json	11
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/dynamic-array-reshape-and-isomitted.case.json	132
 C	probes/dynamic-array-reshape-reprobe.case.json	20
