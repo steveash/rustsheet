@@ -3,7 +3,7 @@ id: T-2932
 title: "TEXT: B2 before a calendar-3 or calendar-7 tag applies the year conversion twice"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
