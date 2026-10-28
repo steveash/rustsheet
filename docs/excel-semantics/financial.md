@@ -2227,6 +2227,41 @@ unit in the 15th digit): yield-start-rate-term S!B39 and S!B49 (basis 1, 8 and 3
 Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells)
 
+## ODDFYIELD stops short of ODDFPRICE's root
+Rule: ODDFYIELD's last digits are not the root of ODDFPRICE's price at the given price, and they fall on both sides
+of it, so they are not analytic Newton on that price stopped short (Newton on a convex, decreasing price stays below
+the root after its first step; "YIELD stops short of PRICE's root"). How Excel's solver stops is not known yet.
+- Desktop (ironcalc-calc `FINANCIAL/PRICE_YIELD.xlsx` ODDFPRICE_ODDFYIELD, Mac 16.x cache; each K row inverts
+  `J = ODDFPRICE(.., F, ..)` back to F): K2 is 0.04999999999851281 (1.49e-12 below F = 0.05, |ODDFPRICE(K2) - J|
+  1.46e-9), K8 0.0499999999321231 (6.79e-11 below), and K23 0.05000000000085884, 8.59e-13 *above* the root. Of the
+  31 numeric K cells 25 sit 1.3e-12 to 7.2e-11 below the root and 6 sit 1.7e-13 to 3.8e-12 above it (K23, K26, K27,
+  K35, K37, K38).
+- Web (excel-graph): the same both-sides pattern. probes/date-system-1900-odd-threshold S!A5 (and its 43 twins in
+  the -odd-threshold and -odd-years probes, 1900 and 1904, one bond in different years) is 0.06499377053016654,
+  1.61e-14 above the root 0.06499377053015046 (ODDFPRICE residual -2.1e-12); date-system-1900-odd-accrint-bound
+  S!A3 is 2.49e-14 below (+1.25e-11) and S!A6 7.79e-14 above (-6.7e-12); date-system-1900-oddf-issue-after-quasi
+  S!A17 5.06e-11 above (-4.3e-9); fin-argument-modes H200 1.38e-11 below (+9.9e-9); odd-bond-argument-check-order
+  Calc!A258 1.53e-13 above (-1.2e-10). Residuals run from 1e-12 to 1e-8 in price.
+- Rejected (T-2007 attempt 1, a scratch grid on the engine's own odd-first schedule, which ODDFPRICE matches
+  bit-exact on every eval cell; 99 cells: the 31 desktop K cells read with Excel's cached J, and 68 numeric web
+  cells): every candidate below is 0/99 bit-exact and 0/99 within 4 ulp. The engine's central-difference Newton from
+  the coupon rate (stop at |dy| < 1e-8, then bisection), which lands on the root, is 0/99 as well.
+  - Newton with an analytic slope, or a central (h = 1e-5), forward or backward (h = 1e-4, 1e-5, 1e-6, 1e-8)
+    difference; from the coupon rate, 0, 0.1 or YIELD's fitted start (`yield_start` over `yield_start_years`);
+    stopping on a step below 1e-6, 1e-8, 1e-10 or 1e-12 (the iterate before the step, or after it) or on
+    |price - pr| below the same values; prices discounted with Excel's `^` or with libm, and with the accrued
+    interest subtracted from the price or added to the target instead (1,920 variants).
+  - The secant from (s, s + 0.01) for the same starts and stop rules.
+  - YIELD's fitted model as is (`excel_yield_newton` from `yield_start`, step cut 1e-10).
+- Back-chain (analytic Newton run backwards from the desktop cells below the root): one step back is 4e-7 to 4e-6
+  below the root, and none of the iterates one to three steps back meets the coupon rate, 0, 0.1 or YIELD's fitted
+  start. So whatever explains the above-root cells (a non-analytic slope, or a price inside ODDFYIELD that differs
+  from ODDFPRICE's by about 1e-9 near the root) also has to explain these.
+Ours: `solve_yield` (functions/financial/financial_bonds/yield_solver.rs) converges to the root, so each cell is off by
+Excel's distance from it (1e-15 to 7e-11).
+Status: UNVERIFIED (values are oracle-backed; the algorithm is unknown)
+Tasks: T-2007, T-1374 (ODDFPRICE's own last digits), T-1592 (YIELD)
+
 ## YIELD's #NUM! cells and its 100-step cap
 Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of
 PRICE's root") with no fallback. An iterate where the step is not finite (PRICE or its slope leaves its domain) makes

@@ -3,7 +3,7 @@ id: T-2007
 title: "ODDFYIELD's solver: fit where Excel stops short of ODDFPRICE's root (31 desktop cells with a known root, about 70 web cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -48,6 +48,29 @@ explain the stopping point (financial.md "PRICE and ODDFPRICE discount with Exce
 T-2483 probe (excel-graph, 2026-10-24): probes/odd-bond-argument-check-order A258
 `ODDFYIELD(39448,43831,39300,39630,0.0575,95,100,2,0)` is 0.06342868471015199 in Excel, ours 0.06342868470999918 (a
 known-failure line in eval/baseline/probes.txt; the rest of that case is argument order and passes).
+
+## Notes from the first run (2026-10-28, attempt 1 of 2, decision 0056)
+Result: 0 bit-exact, no candidate raised the count (details and per-family counts in financial.md "ODDFYIELD stops
+short of ODDFPRICE's root").
+- Cells: 99 (the 31 numeric PRICE_YIELD K cells with Excel's cached J as the price, and 68 numeric web ODDFYIELD
+  cells whose arguments the lab sweep parses). probes/date-system-1904-financial S!A32 was left out: read as 1900
+  serials its dates price a different bond (2.6e-5 off), so it needs the 1904 offset first.
+- Excel's values sit on both sides of ODDFPRICE's root (6 of 31 desktop cells and web S!A5, S!A6, S!A17, A258
+  above it), which analytic Newton on that convex price cannot do from any start. So the stop is not YIELD's rule on
+  the same price.
+- Scratch grid (not committed): the engine's `OddFirstSchedule` fields were dumped per cell and the candidates run in
+  Python with `solvers.caret_pow`; 1,920 Newton variants (analytic, central, forward and backward differences;
+  starts rate, 0, 0.1, YIELD's fitted start; step and residual stops 1e-6 to 1e-12; `^` and libm prices; accrued
+  on the price or the target side) plus secants: all 0/99 bit-exact and 0/99 within 4 ulp.
+Next attempt:
+1. Port the odd-first schedule to the lab (`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`, an `oddfyield`
+   fit over the probe cells; the PRICE_YIELD rows need Excel's J, so add a scratch sweep or a probe that
+   writes the literal J) so candidates are scored from the case files, as the first criterion asks.
+2. Test a price inside ODDFYIELD that differs from ODDFPRICE: the above-root cells need Excel's internal price
+   to be about 1e-9 (desktop K27: 3.8e-12 x slope) to 1e-12 below ODDFPRICE's near the root, e.g. a different
+   sum order, the documented formula's DSC/E split, or coupons discounted from the first coupon date.
+3. Probe (excel-probe) ODDFYIELD at prices from a one-coupon-left odd bond up to 30 years at a fixed bond, so
+   the step count and the side of the root can be read per term.
 
 ## Acceptance criteria
 - [ ] An `oddfyield` lab fit over the cells above (Excel's cached J as the price input) scores named candidates:
