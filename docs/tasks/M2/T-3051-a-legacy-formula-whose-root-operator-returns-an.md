@@ -3,7 +3,7 @@ id: T-3051
 title: "A legacy formula whose root operator returns an array constant's result shows its first element, not a spill"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
