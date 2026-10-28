@@ -494,8 +494,6 @@ class GitHub(Client):
             self.writes.append(request)
         if path == "pulls":
             label = [{"name": merge_ready.READY_LABEL}]
-            if dict(request.query).get("state") == "closed":
-                return [{"number": pr, "labels": label} for pr in self.closed if pr not in self.unlabelled]
             gone = {*self.merged, *self.unlabelled}
             return [{"number": pr, "labels": label} for pr in self.heads if pr not in gone]
         if m := re.fullmatch(r"pulls/(\d+)", path):
@@ -534,6 +532,10 @@ class GitHub(Client):
             return self.runs(query["head_sha"])
         if path.endswith("/check-runs"):
             return self.checks()
+        if path == "issues" and dict(request.query) == {"state": "closed", "labels": merge_ready.READY_LABEL,
+                                                          "per_page": "100", "page": "1"}:
+            closed = [pr for pr in self.closed if pr not in self.unlabelled]
+            return [{"number": pr, "pull_request": {}} for pr in closed] + [{"number": 99}]  # 99: an issue
         if path.startswith(("issues/", "actions/workflows/")):
             return {}
         raise GhError(f"sim: no endpoint for {request.method} {path}")
@@ -994,4 +996,3 @@ class RedTrain(StageFixture):
 
 if __name__ == "__main__":
     unittest.main()
-

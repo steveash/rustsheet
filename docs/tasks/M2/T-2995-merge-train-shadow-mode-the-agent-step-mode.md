@@ -46,13 +46,13 @@ shadow predictions agree with reality, can be computed from the GitHub API. If T
     list --workflow ci.yml --branch merge-train/shadow`, plus the commits API).
 
 ## Acceptance criteria
-- [ ] `make merge-train SHADOW=1` implements "Shadow". Tests show that it takes no lock, makes no
+- [x] `make merge-train SHADOW=1` implements "Shadow". Tests show that it takes no lock, makes no
       PR-visible writes beyond the closed-PR housekeeping, skips a round when the lease fails, and
       records predictions and the tree check.
-- [ ] For a red shadow train, shadow reuses T-2998's binary search on `M0` (no second
+- [x] For a red shadow train, shadow reuses T-2998's binary search on `M0` (no second
       implementation) to emit the `defer` and `eject:ci-red` predictions. Tests cover a red
       shadow train with the culprit at `P_3`.
-- [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
 
 ## Out of scope
 - `make merge-train-stats` (split to T-3076, 2026-10-28) and the step mode (split to T-3077: T-3001's probe

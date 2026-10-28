@@ -93,6 +93,15 @@ class Shadow(StageFixture):
         writes = [(r.method, r.path) for r in self.gh.writes]
         self.assertEqual(writes, [("DELETE", "repos/o/r/issues/7/labels/ready-to-merge")])
 
+    def test_a_failed_housekeeping_is_logged_and_the_round_goes_on(self) -> None:
+        def broken(_label: str) -> list[object]:
+            raise merge_train.GhError("issues has more than 5000 items")
+
+        self.gh.closed_labelled = broken  # type: ignore[method-assign]
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertIn("housekeeping failed: issues has more than 5000 items", self.stage.log)
+        self.assertEqual(self.prediction()[3], "#1 merge")
+
     def test_a_red_shadow_train_bisects_on_m0_and_predicts_the_culprit_at_p3(self) -> None:
         self.script(lambda prs: 3 in prs)
         self.assertEqual(self.run_stage(), 0, self.stage.log)
@@ -111,6 +120,11 @@ class Shadow(StageFixture):
         self.assertIn("#3 eject:invalidated", lines)
         self.assertIn("#6 defer", lines)
         self.assertNotIn("#6", lines[-2])
+
+    def test_the_reasons_map_to_their_ejections(self) -> None:
+        reasons = ("conflict with main", merge_train.id_collision(["FAIL duplicate id T-0001"]), "V2: head moved")
+        predicted = [merge_train.eject_reason(reason) for reason in reasons]
+        self.assertEqual(predicted, ["eject:conflict", "eject:id-collision", "eject:invalidated"])
 
     def test_another_mode_stops_shadow_at_once(self) -> None:
         self.flip()

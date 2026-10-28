@@ -767,7 +767,8 @@ class Skip(Stop):
 
 def eject_reason(reason: str) -> str:
     """The `eject:<reason>` of a PR leaving the ready set: a conflict, an id collision, or a failed
-    readiness check (`invalidated`)."""
+    readiness check (`invalidated`). It reads the reasons that `build`, `id_collision` and `collect`
+    write, so rewording one of those means updating this mapping and its test."""
     if reason == "conflict with main":
         return "eject:conflict"
     if reason.startswith("id collision"):
@@ -845,12 +846,17 @@ class ShadowStage(Stage):
 
     def housekeeping(self) -> None:
         """The one PR-visible write of shadow mode: `ready-to-merge` comes off closed PRs, which a
-        worker merged by the per-PR flow."""
-        for pull in self.client.pulls("closed"):
-            if merge_ready.READY_LABEL in merge_ready.label_names(pull):
-                pr = gh_client.number(merge_ready.int_of(pull, "number"))
+        worker merged by the per-PR flow. A failure is logged and the round goes on: the
+        housekeeping is not what the round tests."""
+        try:
+            for item in self.client.closed_labelled(merge_ready.READY_LABEL):
+                if merge_ready.field_of(item, "pull_request") is None:
+                    continue
+                pr = gh_client.number(merge_ready.int_of(item, "number"))
                 self.client.remove_label(pr, merge_ready.READY_LABEL)
                 self.log.append(f"removed {merge_ready.READY_LABEL} from closed #{pr}")
+        except GhError as error:
+            self.log.append(f"housekeeping failed: {error}")
 
     def prediction(self) -> str:
         """The predicted-outcome record: each PR's prediction (`no result` where a stopped round

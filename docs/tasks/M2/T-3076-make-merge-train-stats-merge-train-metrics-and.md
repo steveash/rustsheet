@@ -25,7 +25,10 @@ Split out of T-2995 (its third criterion), which keeps shadow mode.
   deferral rate and the effective batch size; tree-check failures and lock occupancy; during shadow, PR CI wall
   time, job queue delay, and T-2991's evidence and load bar (`gh run list --workflow ci.yml --branch
   merge-train/shadow`, plus the commits API).
-- Reads go through `scripts/gh_client.py` (T-3001); the shadow commits' message format is T-2995's.
+- Reads go through `scripts/gh_client.py` (T-3001); the shadow commits' message format is T-2995's (decision
+  0155). Its `unlabel:` line lists every PR whose label would come off, merges included, not only ejections. After a
+  bisection, shadow re-tests the rest of a red train on `M0`, without the green prefix that `train` mode would
+  have merged first, so those predictions are approximate.
 
 ## Acceptance criteria
 - [ ] `make merge-train-stats [SINCE=<date>]` prints every metric above, plus the shadow agreement score and
