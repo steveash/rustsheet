@@ -3,7 +3,7 @@ id: T-2854
 title: "PIVOTBY as a TTEST array2: ours 0.3720 against Excel's 0.3685 (gen-m9 c2684066d8df263e A214)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -17,8 +17,8 @@ depends_on: []
 gen-m9/c2684066d8df263e Calc!A214, moved from T-2469 (T.TEST itself is right; array2 is the PIVOTBY result, so the grid PIVOTBY returns for this call differs). Trace the argument with the T-2524 method (arguments evaluated by the engine) before changing PIVOTBY.
 
 ## Acceptance criteria
-- [ ] gen-m9/c2684066d8df263e Calc!A214 disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines.
-- [ ] `make check` green; reviewers approve.
+- [x] gen-m9/c2684066d8df263e Calc!A214 disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -36,3 +36,13 @@ INDEX/`&""`/COUNT keep it blank. Next: find which lifts/consumers turn array bla
 IFERROR/IF/N/TEXTJOIN over a VSTACK or GROUPBY blank), implement that in the shared array-element read, then apply the
 `shown_key` change. Rule goes in docs/excel-semantics/arrays.md. Check the eval gate for regressions with
 `rustsheet-eval check` before pushing.
+
+## Outcome
+- A blank key stays a true blank (`ArrayNode::Empty`) inside GROUPBY and PIVOTBY results (`shown_key` removed,
+  grouping.rs, pivotby.rs): COUNT and TTEST skip it, INDEX gives TYPE 1; spilled, it still displays 0.
+- IFERROR and IFNA read a blank array element as 0, as they already read a blank cell of a multi-cell range
+  (`if_error_like`, logical/mod.rs). That is the handoff's regression (`TEXTJOIN(IFERROR(GROUPBY(..)))` shows "0"), now
+  fixed with no regressions.
+- Eval: gen-m9 3630 -> 3626 (A214 here plus T-2460's 8d3588d8df0812df A240, d37313406b9f6e55 A182, e85daedce5c2675e A35);
+  probes 2655 -> 2626 (33 fixed, T-2460's cells among them, so T-2460 is closed here). The handoff's new probe
+  pivotby-ttest-array2 adds 4 known failures (TTEST 1-2 ulp off), filed as T-2993.

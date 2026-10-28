@@ -817,7 +817,7 @@ Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822, T-187
 
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
-numbers < text < FALSE < TRUE < blank, with the blank-key group shown as the number 0 and kept last even
+numbers < text < FALSE < TRUE < blank, with the blank-key group displayed as 0 when spilled (a true blank inside the array) and kept last even
 when sorting descending. Function inputs keep source order, and the total row applies the function to all
 (filtered) values, not to the group results (AVERAGE total 13.05 = 130.5/10). Filler cells of total rows, the
 corner and PIVOTBY combinations without records are empty text `""`, not blanks (a combination summing to 0
@@ -856,7 +856,12 @@ and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mod
 while MAP over the result is not an error (T-2592 below). Blank keys show as true blanks in INDEX (`TYPE` 1,
 `&""` is "", G!A12, B3), not 0. Ours since T-2593: each such cell is a nested array (`ArrayNode::Nested`), shown as `#VALUE!`, which
 INDEX returns (TYPE 64) and an element-wise lift reads as its top-left (P!B3:E37, C1:C33 and gen-m7/21b4eef18424ce94 A1504 pass);
-0 for a blank key (T-2460).
+0 for a blank key until T-2854, which keeps the blank key a true blank (`ArrayNode::Empty`) inside the array: INDEX gives
+TYPE 1 and `&""` "", COUNT skips it (probes/pivotby-ttest-array2: `COUNT(PIVOTBY(..))` 108, and the TTEST that reads it,
+gen-m9/c2684066d8df263e Calc!A214), while a spilled blank element still displays 0. IFERROR and IFNA read a blank array
+element as 0, as they read a blank cell of a multi-cell range: `TEXTJOIN("|",FALSE,IFERROR(GROUPBY(..),"#"))` shows the blank
+key as "0" (probes/groupby-sort-filter-args G!B15, B55, groupby-sort-filter-args2 G!B10; `if_error_like`, logical/mod.rs).
+Whether other element-wise consumers (IF, N, arithmetic) read a blank element as 0 is unprobed.
 T-2592 (probes/t2592-nested-groupby-cells, excel-graph, 2026-10-24; `GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))` is 3x3: keys a, b, Total by
 key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown headers are off). Nested cells in practice:
 - A LAMBDA whose body is a one-cell reference (`LAMBDA(x,D!D2)`) still displays `#VALUE!` in every spilled cell (probes/groupby-lambda-forms
@@ -904,7 +909,7 @@ LARGE, SMALL and the PERCENTILE/QUARTILE family read their data outside the walk
 error element anywhere in the array (ours checks for a nested cell first), and the 0 holds for multi-argument SUMPRODUCT. COUNT over a PIVOTBY with several key and
 value columns (`COUNT(PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))` 140, A13; gen-m9/e85daedce5c2675e A35's 142)
 differs from ours only in the blank keys, which Excel shows as true blanks in the row keys and in every column-key row
-(A28:A31; ours 0, so COUNT 165): T-2460.
+(A28:A31; ours was 0, so COUNT 165): fixed by T-2854 (see above).
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
