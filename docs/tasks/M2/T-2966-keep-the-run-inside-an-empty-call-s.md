@@ -3,7 +3,7 @@ id: T-2966
 title: "Keep the run inside an empty call's parentheses (=NOW( ), =TODAY(  ); probes/t2786 I1, I11)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
