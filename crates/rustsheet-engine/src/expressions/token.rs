@@ -377,30 +377,31 @@ pub enum TableReference {
 pub enum TokenType {
     Illegal(LexerError),
     EOF,
-    Ident(String),      // abc123
-    String(String),     // "A season"
-    Number(f64),        // 123.4
-    Boolean(bool),      // TRUE | FALSE
-    Error(Error),       // #VALUE!
-    Compare(OpCompare), // <,>, ...
-    Addition(OpSum),    // +,-
-    Product(OpProduct), // *,/
-    Power,              // ^
-    LeftParenthesis,    // (
-    RightParenthesis,   // )
-    Colon,              // :
-    Semicolon,          // ;
-    LeftBracket,        // [
-    RightBracket,       // ]
-    LeftBrace,          // {
-    RightBrace,         // }
-    Comma,              // ,
-    Bang,               // !
-    Percent,            // %
-    And,                // &
-    At,                 // @
-    Spill,              // #
-    Backslash,          // \
+    Ident(String),         // abc123
+    String(String),        // "A season"
+    Number(f64),           // 123.4
+    Boolean(bool),         // TRUE | FALSE
+    Error(Error),          // #VALUE!
+    SheetRefError(String), // Sheet1!#REF!: a deleted reference that keeps its sheet prefix
+    Compare(OpCompare),    // <,>, ...
+    Addition(OpSum),       // +,-
+    Product(OpProduct),    // *,/
+    Power,                 // ^
+    LeftParenthesis,       // (
+    RightParenthesis,      // )
+    Colon,                 // :
+    Semicolon,             // ;
+    LeftBracket,           // [
+    RightBracket,          // ]
+    LeftBrace,             // {
+    RightBrace,            // }
+    Comma,                 // ,
+    Bang,                  // !
+    Percent,               // %
+    And,                   // &
+    At,                    // @
+    Spill,                 // #
+    Backslash,             // \
     Reference {
         sheet: Option<String>,
         row: i32,

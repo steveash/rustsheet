@@ -1312,6 +1312,10 @@ C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2466-cell-contents-stack.case.json	39
 C	probes/t2473-percentrank-significance.case.json	69
 C	probes/t2475-stat-subexpressions.case.json	574
+C	probes/t2479-expand-padarray-cellbound.case.json	2
+C	probes/t2479-expand-padarray-past-grid.case.json	1
+C	probes/t2479-expand-padarray-small.case.json	3
+C	probes/t2479-wrap-notvector-badcount.case.json	52
 C	probes/t2492-vdb-ddb-arguments.case.json	64
 C	probes/t2493-npv-error-order-inner-calls.case.json	18
 C	probes/t2493-npv-rate-edges.case.json	67
@@ -3974,12 +3978,9 @@ F	probes/t3048-snap-conditional-sums.case.json	S!I5
 F	probes/t3048-snap-conditional-sums.case.json	S!I6
 F	probes/t3048-snap-conditional-sums.case.json	S!P5
 F	probes/t3048-snap-conditional-sums.case.json	S!P6
-F	probes/table-edits/plain-range-delete-row-first.case.json	F!A6
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
-F	probes/table-edits/table-delete-column-qty.case.json	F!A7
-F	probes/table-edits/table-delete-row-all-data-below.case.json	S!C7
 F	probes/table-edits/table-insert-column-inside-header.case.json	F!A4
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A1
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A2
