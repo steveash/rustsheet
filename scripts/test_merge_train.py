@@ -414,6 +414,8 @@ class GitHub(Client):
         self.mergeable: object = True
         self.refuse: set[int] = set()
         self.unlabelled: set[int] = set()
+        self.closed: list[int] = []  # closed PRs still labelled ready-to-merge
+        self.branch = merge_train.TRAIN_BRANCH  # the branch whose push CI runs report
         # The scripted CI oracle (T-2998): when set, each tested sha is pending for `polls` polls,
         # then concludes `oracle(sha)` ("green", "red" or "cancelled"), judged once per sha.
         self.oracle: Callable[[str], str] | None = None
@@ -460,7 +462,7 @@ class GitHub(Client):
         done = state in ("green", "red", "cancelled")
         run_ = {
             "id": 9 + len(self.tested), "path": merge_ready.CI_WORKFLOW, "event": "push", "head_sha": sha,
-            "head_branch": merge_train.TRAIN_BRANCH, "status": "completed" if done else "in_progress",
+            "head_branch": self.branch, "status": "completed" if done else "in_progress",
             "conclusion": {"green": "success", "red": "failure", "cancelled": "cancelled"}.get(state),
             "check_suite_id": 5,
         }
@@ -492,6 +494,8 @@ class GitHub(Client):
             self.writes.append(request)
         if path == "pulls":
             label = [{"name": merge_ready.READY_LABEL}]
+            if dict(request.query).get("state") == "closed":
+                return [{"number": pr, "labels": label} for pr in self.closed if pr not in self.unlabelled]
             gone = {*self.merged, *self.unlabelled}
             return [{"number": pr, "labels": label} for pr in self.heads if pr not in gone]
         if m := re.fullmatch(r"pulls/(\d+)", path):
@@ -990,3 +994,4 @@ class RedTrain(StageFixture):
 
 if __name__ == "__main__":
     unittest.main()
+

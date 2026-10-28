@@ -3,7 +3,7 @@ id: T-2995
 title: "Merge-train shadow mode (stats split to T-3076, step mode to T-3077)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -58,3 +58,19 @@ shadow predictions agree with reality, can be computed from the GitHub API. If T
 - `make merge-train-stats` (split to T-3076, 2026-10-28) and the step mode (split to T-3077: T-3001's probe
   found that session writes fail, so it is needed).
 - Routine prompts and policy (T-2996). Skills (T-2989).
+
+## Outcome
+- `scripts/merge_train.py`: `ShadowStage` and `--shadow` (`make merge-train SHADOW=1`), per decision 0155. `Stage`
+  now takes its branch and mode as attributes, and has a hook between collection and the first build, so shadow
+  shares the build, CI wait and bisection code.
+- `scripts/test_merge_train_shadow.py` (7 tests on test_merge_train's simulator):
+  - a green round takes no lock and makes no PR write, and records `merge` for each PR and `tree-check: match`;
+  - a repeated round pushes nothing, and a moved `main` pushes again;
+  - a lost lease skips the round;
+  - the closed-PR housekeeping is the only PR write;
+  - a red train with the culprit at `P_3` bisects on `M0` and predicts `eject:ci-red` for #3 and `merge` for the rest;
+  - ejections (`eject:invalidated`) and deferrals are predicted;
+  - another mode stops at once.
+- Split out: `make merge-train-stats` (T-3076) and the step mode (T-3077). T-3001's probe found that session writes
+  fail, so the step mode is needed and gets its own task.
+- Eval delta: none (scripts and docs only).
