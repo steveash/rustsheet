@@ -52,6 +52,7 @@ without guessing.
 Two probe cases (probes/t3012-gamma-inv-small-shape, probes/t3012-gamma-dist-at-quantile) with excel-graph values;
 findings in docs/excel-semantics/statistics.md (Excel's GAMMA.INV is its own inversion, not the crossing of its
 GAMMA.DIST: rows 3 and 16-23 are 6 to 205 ulps of P off, rows 1-2 and 8 about 30 to 90 ulps of x from a
-crossing; only rows 15 and 25 are bracketed by a crossing) and T-3013's Context. Eval delta: two new probe cases, known-failure lines added to
+crossing; only rows 15 and 25 are bracketed by a crossing, and row 12 is exactly double(1E-30) in A..C so it cannot rule one
+out) and T-3013's Context. Eval delta: two new probe cases, known-failure lines added to
 eval/baseline/probes.txt only; no other suite moved. Five unrelated probe cases failed to fill (graph
 unsupportedWorkbook), left pending.

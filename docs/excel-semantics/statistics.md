@@ -3086,8 +3086,8 @@ Tasks: T-1543, T-1634
     at a = 0.25, 0.5, 0.75 and 0.9.
     One ulp of x moves the cdf by a quarter ulp at a = 0.25, so columns A..C agree there; at a = 0.5 and 0.9 they
     differ (rows 15, 24, 25). The errors of 6 to 205 ulps of P at a = 0.1, 0.75, 0.9 (rows 3, 16-23) are more than one ulp of x
-    can explain, so the quantile is Excel's own inversion, not a crossing; the same holds at a = 0.05 (+5.5E-16
-    with A = B = C, rows 1-2) and row 8 of a = 0.25, about 30 to 90 ulps of x from a crossing. Rows 15 (a = 0.5) and 25 (a = 0.9)
+    can explain, so the quantile is Excel's own inversion, not a crossing; the same holds at a = 0.05 (+5.5E-16 and
+    +5.9E-16 with A = B = C, rows 1-2) and row 8 of a = 0.25, about 30 to 90 ulps of x from a crossing. Rows 15 (a = 0.5) and 25 (a = 0.9)
     are bracketed: at row 15 Excel returns the first x whose cdf reaches p, at row 25 the last x below p (C25, one
     ulp of x higher, is above p; Excel's cdf jumps 3.6E-15 across that ulp).
   - The scale is a plain final product: in all 36 rows of the first case column B equals the double product
