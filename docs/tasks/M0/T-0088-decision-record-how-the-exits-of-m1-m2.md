@@ -3,7 +3,7 @@ id: T-0088
 title: "Decision record: how the exits of M1, M2, M7, M8, M9, M10 and M11 are measured (decision 0085 for every Phase 1 milestone)"
 milestone: M0
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
