@@ -141,6 +141,8 @@ impl Model {
                         return RefArg::from(sub_range(left, &rows, &columns));
                     }
                     Err(error) if as_reference => return RefArg::from(error),
+                    // A multi-cell value-context result, or an `edge_spans` error, takes the array
+                    // path below, which recomputes the same span or error.
                     _ => {}
                 }
             }
