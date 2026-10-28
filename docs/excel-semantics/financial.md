@@ -2246,17 +2246,25 @@ Not yet explained. Newton with ODDFPRICE's analytic slope cannot be the whole ru
 decreasing in the yield, so every analytic-Newton iterate after the first lies at or below the root, and Excel's
 values above the root (K23, K26, K27, K35, K37, K38, the 0.06499377053016654 bond, A17, A258) rule it out.
 T-2007 fit-lab attempt 1 (2026-10-28): 43 distinct bonds behind the 111 failing cells, each rebuilt from the engine's
-odd-first schedule with `^` prices. None of the following reaches one bond bit-exact or within 4 ulp, 0/43 for each:
-- Newton with the analytic slope, from the coupon rate, 0, 0.05 or 0.1, stopping when a step is under 1e-7 to 1e-10
-  (step not taken, as in YIELD) or under 1e-6 to 1e-10 (taken), or when the price residual is under 1e-6 to 1e-10;
-- the same starts and stops with forward differences (h = 1e-5, 1e-6, 1e-8) and central differences (1e-5, 1e-8),
-  ours being central with h = 1e-5 from the coupon rate, stopping when a taken step is under 1e-8;
-- YIELD's fitted model (T-1592: `yield_start` with the term in periods over the frequency, analytic slope, a step under
-  1e-10 not taken) and forward differences from that start;
-- the chord method (the slope fixed at the start) with each slope above, and the secant method from each pair of the
-  starts above, stopping when a step is under 1e-6 to 1e-10 or when the residual is under 1e-5 to 1e-9;
-- Newton with a wrongly scaled slope (times or divided by the frequency, by 1 + y/m, or the slope with respect to ln(1 +
-  y/m)), and backward or forward differences of 1e-3 and 1e-4.
+odd-first schedule. Every candidate below scores 0/43 bit-exact and 0/43 within 4 ulp:
+- `^` prices, scored in ulps. Starts: the coupon rate, 0, 0.05 and 0.1. Slopes: analytic, forward differences
+  (h = 1e-5, 1e-6, 1e-8) and central differences (1e-5, 1e-8); ours is central with h = 1e-5 from the coupon rate,
+  stopping when a taken step is under 1e-8.
+  - Newton, stopping when a step is under 1e-7, 1e-8, 1e-9 or 1e-10 (not taken, as in YIELD), under 1e-5, 1e-6,
+    1e-7, 1e-8 or 1e-10 (taken), or when the price residual is under 1e-6 to 1e-10.
+  - The chord method (the slope fixed at the start), and the secant method from each ordered pair of the starts.
+    Both stop when a step is under 1e-6 to 1e-10 (taken or not), or when the residual is under 1e-5 to 1e-9.
+- `^` prices, scored in ulps. YIELD's fitted model (T-1592: `yield_start` with the term in periods over the
+  frequency, analytic slope, a step under 1e-10 not taken), forward differences (h = 1e-5) from that start,
+  analytic Newton from the coupon rate to a residual under 1e-7, and forward differences (h = 1e-5) from the rate
+  to a taken step under 1e-8.
+- Screened on libm prices, at a match within 1e-13 relative. Starts as above, plus the current yield
+  (rate × 100 / price). Slopes: analytic, analytic times or divided by the frequency, times or divided by
+  1 + y/m, the slope with respect to ln(1 + y/m) (with and without the frequency), forward and backward
+  differences (h = 1e-4), and forward and central differences (h = 1e-3). Stops: a step under 1e-6 to 1e-11 (taken
+  or not), or a residual under 1e-5 to 1e-10. The best screens are 50 cells, start 0.1 with the ln(1 + y/m) slope
+  or the analytic slope times 1 + y/m, a taken step under 1e-11. They are the cells where Excel sits within
+  1.6e-14 of the root, and in ulps with `^` prices (tolerances 1e-11 to 1e-13) they score 0/43.
 Evidence: ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx ODDFPRICE_ODDFYIELD!K2-K11, K23-K27, K29-K33, K35-K39, K43-K46,
 K49-K52 (Excel-cached, desktop); probes/date-system-1900-odd-threshold, -1904-odd-threshold, -1900-odd-years,
 -1904-odd-years, -1900-odd-accrint-bound, -1900-oddf-issue-after-quasi, date-system-1904-financial S!A32,

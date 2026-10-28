@@ -90,12 +90,8 @@ The scores, the evidence and what Excel's values show are in financial.md "ODDFY
 - Method: a temporary dump of `OddFirstSchedule`'s fields and the target price from `fn_oddfyield`, taken over every
   case that calls ODDFYIELD with `RS_ODDF_DUMP=1 rustsheet-eval show <case>` (not committed), re-priced in Python
   with the fit lab's `caret_pow`. Expected values are the `show` output's Excel values.
-- Candidates, each 0/43 (0 within 4 ulp): analytic Newton (starts: the coupon rate, 0, 0.05, 0.1; stops: a step under
-  1e-7 to 1e-10 not taken, a step under 1e-6 to 1e-10 taken, a residual under 1e-6 to 1e-10); forward differences
-  with h = 1e-3 to 1e-8, backward differences with h = 1e-3 and 1e-4, and central differences with h = 1e-3, 1e-5 and 1e-8; the
-  chord method; the secant method over each pair of those starts; YIELD's T-1592 model (`yield_start`, analytic
-  slope, a step under 1e-10 not taken); slopes scaled wrongly by the frequency, by 1 + y/m, or taken with respect to
-  ln(1 + y/m).
+- Candidates: the full grid (starts, slopes, stops and how each was scored) is in that financial.md entry, under
+  "T-2007 fit-lab attempt 1". Every candidate is 0/43 bit-exact and 0/43 within 4 ulp.
 - What constrains the next attempt: Excel lands above the root in 60 of the 111 cells, and analytic Newton on a convex,
   decreasing price never does after its first step. So either the slope is not ODDFPRICE's (a difference quotient
   or another function's), or the function Excel solves is not exactly ODDFPRICE. The annual redemption-120 rows
