@@ -241,6 +241,25 @@ fn has_inner_minus(text: &str) -> bool {
     })
 }
 
+/// `text` without the `$` and `€` signs that stand before a digit, past any spaces: Excel reads
+/// `IMABS("$1+2i")`, `"$1-2i"`, `"$ 1+2i"`, `"1+$2i"` and `"€1+2i"` as 1+2i (2.23606797749979), but
+/// not `"$i"` (`#NUM!`); a sign before a minus stays, so `"$-5"` is `#NUM!` (probes/eng-inumber-reading
+/// A5, A20:A26).
+fn strip_currency_symbols(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::with_capacity(text.len());
+    for (i, &c) in chars.iter().enumerate() {
+        let before_digit = chars[i + 1..]
+            .iter()
+            .find(|&&n| n != ' ')
+            .is_some_and(char::is_ascii_digit);
+        if !(matches!(c, '$' | '€') && before_digit) {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// A parsed complex number: the real part, the imaginary part and the suffix.
 type ComplexParts = (f64, f64, Suffix);
 
@@ -338,18 +357,12 @@ impl Model {
         // `IMABS` of "2024-01-01", "1-2-2020", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
         // while " -5", "- 5", "1E-3%" and "1,000E-2" are read (probes/eng-inumber-reading A4,
         // probes/eng-inumber-date-boundary column A).
-        match parse_complex_number(&value) {
+        match parse_complex_number(&strip_currency_symbols(&value)) {
             Ok(z) => Ok(z),
             Err(_) if has_inner_minus(&value) => Err(num_error(cell)),
-            // A `$` prefix is read before a complex number: `IMABS("$1+2i")` 2.23606797749979
-            // (probes/eng-inumber-reading A5).
-            Err(_) => value
-                .strip_prefix('$')
-                .and_then(|rest| parse_complex_number(rest).ok())
-                .or_else(|| {
-                    self.value_text_number(&value)
-                        .map(|f| (f, 0.0, Suffix::Real))
-                })
+            Err(_) => self
+                .value_text_number(&value)
+                .map(|f| (f, 0.0, Suffix::Real))
                 .ok_or_else(|| num_error(cell)),
         }
     }
