@@ -1,0 +1,53 @@
+---
+id: T-2984
+title: "Spec: merge train — batched merges under the merge lock"
+milestone: M2
+lane: harness
+status: in-progress
+priority: P1
+size: M
+tier: opus
+depends_on: []
+spec: docs/specs/SPEC-0027-merge-train.md
+---
+
+## Goal
+A reviewed spec for a batching merger (a "merge train"): workers hand a green, approved PR over
+with a readiness marker and move on, and one merger tests several ready PRs together under the
+merge lock and squash-merges them in order. Merge throughput then stops being one CI run per PR,
+waiters stop starving, and sessions stop ending with finished PRs stranded. The spec also covers a
+first, independent slice: a fair (FIFO) merge lock with a `wait` command. The owner approved
+writing this spec (2026-10-28).
+
+## Context
+- Over the 48 h before 2026-10-25: 182 PRs merged (3.8/h, peaks of 7/h). The merge lock (decision
+  0075) was held 60% of the time, median hold 8.1 min (about one CI run), median idle gap 0.7 min
+  (saturated at peak). Median first-green to merge was 24 min, p90 135 min. 37 lock takeovers.
+- A session can re-acquire the lock for its next PR at once, so waiters starve (30–40 min waits
+  for #1860 and #2000 while one session chained #1859 then #1865). Workers end sessions with PRs
+  stranded unmerged (e.g. #1826) because the budget ran out while they waited for the lock.
+- PR CI is now about 4.9 min wall (decisions 0122, 0125, T-2755), so a lock hold is about 6 min:
+  a ceiling of about 10 merges/h, serial. Every PR still pays at least one extra CI run under the
+  lock, and `main` moving during that run forces repeat rounds (#1866 needed 3).
+- Constraints: personal-account repository, so no GitHub merge queue (decision 0053 is dormant).
+  Agents may not create, modify or delete routines. The `main` ruleset has no required status
+  checks yet.
+
+## Acceptance criteria
+- [ ] `docs/specs/SPEC-0027-merge-train.md` follows `docs/specs/TEMPLATE.md` and decides, with
+      rejected alternatives: the readiness handoff (marker, who marks, how it is verified and
+      invalidated); the merger (who runs it, lock ownership, the batch algorithm, how the train
+      gets CI and the ci.yml change, why the merged `main` tree equals the tested train tree,
+      bisection and ejection, crash and timeout recovery, conflicts, id collisions, docs-only
+      PRs, orphaned PRs, required checks and auto-merge); a FIFO merge lock with `wait`; the
+      decision amendments (0028, 0075) and their governance; a rollout in small reversible
+      slices with metrics and a rollback plan; the full prompt text of the merger routine.
+- [ ] The rollout slices are filed with `make new-task`, each linking the spec, with `depends_on`.
+- [ ] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`,
+      `check_governance.py origin/main`, `make typos` and the scripts unit tests pass.
+- [ ] Reviewers approve (architecture for the spec).
+
+## Out of scope
+- Any change to `scripts/`, `.github/`, `.claude/`, `docs/process/` or the routines: those land
+  with the rollout slices, each with its own decision record.
+- Moving the repository to an organization or turning on the merge queue (decision 0053).
