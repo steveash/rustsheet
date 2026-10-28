@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2983: stored =A2*2 in C2 and =A4*2 in C4, C3 blank, then C4 entered =A4*3: does it fill C2 and C3 (table T A1:C4, FORMULATEXT C2:C4 in F2:F4).",
+ "tags": [
+  "M2",
+  "tables",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "tables": [
+    {
+     "name": "T",
+     "ref": "A1:C4"
+    }
+   ],
+   "cells": {
+    "A1": "Col",
+    "B1": "Other",
+    "C1": "Calc",
+    "A2": 1,
+    "B2": 10,
+    "A3": 2,
+    "B3": 20,
+    "A4": 4,
+    "B4": 40,
+    "F2": "=FORMULATEXT(C2)",
+    "F3": "=FORMULATEXT(C3)",
+    "F4": "=FORMULATEXT(C4)",
+    "C2": "=A2*2",
+    "C4": {
+     "entered": "=A4*3"
+    }
+   }
+  }
+ ]
+}

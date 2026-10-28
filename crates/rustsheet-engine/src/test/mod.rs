@@ -110,6 +110,7 @@ mod test_networkdays_networkdaysintl;
 mod test_newer_error_kinds;
 mod test_operator_broadcast_bound;
 mod test_quote_prefix;
+mod test_recalc_budget;
 mod test_row_column_styles;
 mod test_set_user_input;
 mod test_shared_formulas;

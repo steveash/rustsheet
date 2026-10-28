@@ -2,7 +2,7 @@
 
 use crate::{
     calc_result::{CalcResult, Range},
-    evaluation::stack_address,
+    evaluation_limits::stack_address,
     expressions::{
         lexer::LexerMode,
         parser::{

@@ -411,7 +411,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2793, T-2810
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
-- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
+- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). A variable bound to an omitted LAMBDA parameter or to an empty LET value hands the omission on and is `#N/A` too: `LAMBDA(a,b,IMSUB(a,b))("1",)`, `(,"1")`, `LAMBDA(a,b,IMDIV(a,b))("1",)`, `(,"1")` and `LET(e,,IMSUB("1",e))` are `#N/A` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12; T-2770), while `LET(e,IFERROR(Q1,"x"),…)` and `LET(e,IF(TRUE,Q1),…)` bind a real empty value that is 0, and `LAMBDA(a,b,IMSUB(a,b))("1")` (a missing argument) is `#VALUE!`. The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
 - Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.
 - An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER; a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
@@ -588,6 +588,9 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   `cosh 2y − cos 2x`, `cosh 2y − (1 − 2sin²x)` and `(cosh 2y − 2cos²x) + 1`. Exp-based cosh fits the same
   (scratch fit over the sweep, T-2537). Past `cosh 2y`'s range the
   value is `−i` for y > 0 and `i` for y < 0 (P27, P44, P49, P68, P69, P71; P52, P55). A real number keeps `1/tan x`.
+  T-2787 probed 24 more inputs where the two groupings print different text (probes/t2787-imcot-denominator-grouping,
+  excel-graph, 2026-10-28, libm trig): `(cosh 2y + 1) - 2cos²x` matches 21, T-2044's `cosh 2y - (2cos²x - 1)` 2 (A2, A9,
+  the cells ours misses in the last digit; A17 fits neither). Neither grouping is the whole denominator (T-3032).
 - IMABS: `a·sqrt(1 + (b/a)²)` with a the larger of |x|, |y|: 77 of 78 cells bit for bit (`hypot` 59,
   `sqrt(x²+y²)` 55, scaling by |x| or by |y| always 66); the miss is B33, `956.615+0.00387493i` (Excel
   956.6150000078482, ours 2 ulps lower). IMPOWER's modulus is still `hypot` (T-1950 evidence). A part near DBL_MAX overflows the scaled
@@ -995,9 +998,15 @@ Tasks: T-2547, T-2544, T-2580
 
 ## IMPOWER of a base whose squared modulus overflows (T-2539)
 Evidence: probes/eng-impower-overflow (12 cells, excel-graph, 2026-10-24).
-Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is not probed (treated as the real one). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
+Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is probed in T-2626 (below). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
 Status: VERIFIED (excel-graph)
 Tasks: T-2539
+
+## IMPOWER of a pure imaginary or lopsided base (T-2626)
+Evidence: probes/eng-impower-overflow-shapes (14 cells, excel-graph, 2026-10-28).
+Rule: a pure imaginary base is not subject to the both-parts-nonzero `x²+y²` overflow refusal (the modulus is `|y|`): `IMPOWER("1E+300i",-0.5)` is `7.07106781186548E-151-7.07106781186547E-151i`, `("1E+300i",-1)` is `-1E-300i`, `("-1E+300i",-0.5)` is `7.07106781186548E-151+7.07106781186547E-151i`, `("1E+200i",-0.5)` is `7.07106781186548E-101-7.07106781186548E-101i`; the result is `#NUM!` only when the radius overflows (`("1E+300i",2)`). `IMPOWER("1E+300i",1)` is `6.1257422745431E+283+1E+300i` (the x87-reduced cosine of the angle, not 0). A lopsided base with both parts nonzero is `#NUM!` as soon as `x²+y²` overflows, whatever the power and however small `y` is: `IMPOWER("1E+200+1E-300i",-0.5)`, `(…,-1)`, `(…,2)`, `(…,1)`, `IMPOWER("1E+300+1E-300i",-0.5)`, `IMPOWER("1E-300+1E+200i",-0.5)`, `IMPOWER("1E+200+1E+10i",-0.5)` and `(…,2)`. The existing guard in `fn_impower` already matches all 14 cells.
+Status: VERIFIED (excel-graph)
+Tasks: T-2626
 
 ## IMCOSH and IMSINH past |x| = 709 work in log space (T-2231)
 Evidence: probes/eng-im-overflow-edges A6-A21, probes/eng-im-overflow-edges-2 A1-A24, A58-A114 (excel-graph, 2026-10-24).

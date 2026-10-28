@@ -158,10 +158,45 @@ Rule: Excel's limit on the work of iterative calculation is unprobed; it runs up
 Evidence: none for Excel; this is a resource limit, not an Excel observation.
 Ours: the sweeps of one recalculation evaluate at most 33,554,432 members together
 (`MAX_SWEEP_EVALUATIONS`). They stop where they are when the budget is spent, so a large cycle with
-a large iterateCount cannot hold the evaluation without bound (CLAUDE.md directive 5).
+a large iterateCount cannot hold the evaluation without bound (CLAUDE.md directive 5). Their runs
+also draw on the 2^32 ceiling of "One recalculation does at most 2^32 work units", and running out
+of it stops them as their count cap does: the member being evaluated keeps its value from before
+that run.
 Status: DEVIATION (decision 0014)
-Implemented in: crates/rustsheet-engine/src/iteration.rs (`MAX_SWEEP_EVALUATIONS`)
-Tasks: T-0447
+Implemented in: crates/rustsheet-engine/src/iteration.rs (`MAX_SWEEP_EVALUATIONS`, `sweep`)
+Tasks: T-0447, T-3009
+
+## One recalculation does at most 2^32 work units, and a pass past 2^30 shares them out
+Rule: Excel has no known limit on the work of a recalculation; a long one runs until done or
+until interrupted, and a workbook that long cannot be probed (Excel for the web's session times
+out).
+Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0028).
+Ours: the formula runs of one recalculation may spend 2^32 work units in all (SPEC-0024's units:
+every pass, restarted pass and run cut short by the evaluation depth limit, every iterative sweep
+run and every data-table run). A pass whose formulas
+commit more than 2^30 units, or a round whose restarted passes and cut-short runs spend more than
+2^30, is run again with every formula limited to 2^30 / (4 × the number of formula cells) units;
+a formula past that share is `#VALUE!` ("Recalculation needs too much work to calculate this
+formula"), which `IFERROR` cannot catch, though a reader of the cell can. Past 2^32 every formula
+cell is `#VALUE!` ("Recalculation needs too much work"), dynamic anchors spill nothing, and
+neither the sweeps nor the data tables run. Which cells give up does not depend on the order the
+cells are evaluated in, except through restarted passes and runs cut short by the evaluation depth
+limit (SPEC-0028 section 3). Calibration (T-3008, every suite including calipers, poi and
+corpus-bench): the heaviest eval pass commits 180,967,707 units and the heaviest eval
+recalculation spends the same (probes/t2759-lunar-packed-7101), under a quarter of 2^30 and of
+2^32; no eval workbook reaches share mode. Worked example of SPEC-0028 section 5 (release build,
+heavy cells of 249,980,402 units each): A1:A4 compute in 24 s; A1:A5 give up in 31 s; A1:A1000
+give up in 33 s; A1:A1000 with 99,000 light cells in 27 s, every light cell computed (before this
+bound, about two hours). The sweeps and the data tables do not count against the 2^30 pass
+allowance (their order is canonical, SPEC-0028 section 4) and, in share mode, run under the share.
+When the ceiling runs out during a sweep, the sweeps stop where they are; when it runs out during a
+data table, that result cell and every later one are `#NUM!`, and the second round of passes after
+the tables is exhausted. A table the memo skips (T-0453) is charged the units its last
+recomputation spent, and is skipped only in normal mode and while the ceiling has that many left,
+so its results are those of a recomputation either way.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/recalc_budget.rs (`MAX_PASS_WORK`, `MAX_RECALC_WORK`), crates/rustsheet-engine/src/area_budget.rs (`with_area_budget`), crates/rustsheet-engine/src/evaluation.rs (`evaluate_passes`), crates/rustsheet-engine/src/iteration.rs (`sweep`), crates/rustsheet-engine/src/data_tables.rs (`spend_all_past_ceiling`, `evaluate_data_tables`)
+Tasks: T-2807, T-3008, T-3009
 
 ## Data tables (TABLE()) are recalculated, and FORMULATEXT shows `{=TABLE(row,column)}`
 Rule: excel-graph recalculates a what-if data table stored as `<f t="dataTable" ref=… dt2D=…
@@ -215,10 +250,13 @@ so a large table over a large model cannot hold the evaluation without bound (CL
 directive 5). A table that is not recomputed (T-0453) is charged what its last recomputation
 spent, so the tables after it find the budget as a recomputation would leave it. It is skipped
 only while the budget left covers that cost, and one whose recomputation ran out is always
-recomputed, so the results are those of a recomputation either way.
+recomputed, so the results are those of a recomputation either way. Each run also draws on the
+2^32 ceiling of "One recalculation does at most 2^32 work units", and running out of it stops the
+tables as their count cap does: the result cell being computed and every later one are `#NUM!`.
+A table that is not recomputed is charged the ceiling units its last recomputation spent too.
 Status: DEVIATION (decision 0014)
-Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`)
-Tasks: T-0441
+Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`, `spend_all_past_ceiling`)
+Tasks: T-0441, T-3009
 
 ## A data table holds at most 2^20 result cells, and a sheet at most 1,024 tables
 Rule: Excel accepts a data table as large as the sheet; its limits are unprobed.

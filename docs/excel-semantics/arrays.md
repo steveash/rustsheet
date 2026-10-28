@@ -605,7 +605,7 @@ top-left of its call.
     `{#N/A;FALSE}` is `#N/A`, x.
   - An error array is every element's result: `UNIQUE(SUMPRODUCT(<mismatched sizes>),HSTACK(0.2,1E+15))` is `#VALUE!`,
     `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434).
-  - Ours (T-2300): the driver option `CallResult::ArrayFirst` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
+  - Ours (T-2300): the driver option `CallResult::ArrayFirstColumn` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
     value is `#VALUE!` there (`scalar_as_one_element_array`). Only the empty element is evidenced (m7-lift-take-drop-sortby
     L25); other empty values in INDEX's first argument (`INDEX(IFERROR(B1,1),1,1)` with B1 blank) are `#VALUE!` too
     (probes/m7-unique-lift-corners, T-2348).
@@ -630,24 +630,24 @@ top-left of its call.
   on by_col (TRUE, FALSE and the by_col-only form give the same cells). Entries that are not all equal keep only the top-left
   (`{FALSE,TRUE;FALSE,FALSE;FALSE,FALSE}`: 1 then 0s). The same as gen-m7/2c156ba98ef0220a.case.json Calc!A1284 (3x3: 100
   down column A, 0 in B:C; excel-graph, 2026-10-22, T-2254 triage). Ours: UNIQUE only (`CallResult::ArrayFirstColumn`,
-  `empty_past_first_column` in lift/driver.rs) since T-2348. UNVERIFIED: whether an error element past the first column stays
-  (ours: it does, `UNIQUE(D1:D3,FALSE,{"a","a"})` is unprobed), and SORTBY's uniform 1xN sort_order, which keeps every
-  element's top-left in ours (`CallResult::ArrayFirst`; with a second by_array/sort_order pair its emptied elements are `#VALUE!`);
-  both belong with T-2349's SORTBY probes.
+  `empty_past_first_column` in lift/driver.rs) since T-2348. An error element past the first column stays
+  (`UNIQUE(D1:D3,FALSE,{"a","a"})` is `#VALUE!`, `#VALUE!`: I12, M12; `{FALSE,TRUE}` is x then empty: M13), and SORTBY's uniform 1xN sort_order empties the elements past the
+  first column the same way (`SORTBY(A1:A3,C1:C3,{1,1})` is 1 then empty; `{1,-1}` too; with a second by_array/sort_order pair and entries that
+  differ, the other elements are `#VALUE!`. A uniform 1xN order with a uniform second pair, `SORTBY(A1:A3,C1:C3,{1,1},A1:A3,1)`,
+  is UNVERIFIED, T-3027: ours 1 then empty); probes/sortby-lifted-element-corners (excel-graph, 2026-10-28, T-2349).
 - Lifted-element corners (same probe): text entries are `#VALUE!` elements whatever their case (`UNIQUE(D1:D3,FALSE,{"a";"A"})`
   and `{"a";"a"}` are `#VALUE!`, `#VALUE!`: exactly_once is not read as text), so the case question never arises; `{0;-0}` is
   x, x (equal). A call error from a non-error entry stays and the first good element is kept: `{"abc";FALSE;TRUE}` is
   `#VALUE!`, x, empty; `{FALSE;"abc";TRUE}` is x, `#VALUE!`, empty. INDEX of an empty value from IFERROR
   (`INDEX(IFERROR(AZ1,1),1,1)`, `LET(x,IFERROR(AZ1,1),INDEX(x,1,1))`, AZ1 blank) is `#VALUE!`, as for UNIQUE's empty element.
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
-UNVERIFIED for SORTBY (taken from UNIQUE's rule, unprobed; T-2349):
-- a leading invalid entry (`{2;1}`): ours `#VALUE!`, then the next element's top-left;
-- a mixed `{1;-1;2}`: ours 1, empty, `#VALUE!`, with the error per slot;
-- an error array: ours one scalar error;
-- an error by_array: ours the error in every element.
-Ours: implemented. The driver option `CallResult::ArrayFirst` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
+SORTBY follows UNIQUE's rule (probes/sortby-lifted-element-corners, excel-graph, T-2349): a leading invalid entry (`{2;1}`) is
+`#VALUE!` then the next element's top-left; a mixed `{1;-1;2}` is 1, empty, `#VALUE!`; an error array is that error in every
+element of the sort_orders' shape (`ROWS(SORTBY(NA(),C1:C3,{1;-1}))` is 2); an error by_array is the error in every element.
+UNVERIFIED (T-3027): which error wins inside an element when an error array meets an invalid or uniform 1xN sort_order (ours: the array's error, `SORTBY(NA(),C1:C3,{2;1})` is `#N/A` in every element; `SORTBY(NA(),C1:C3,{1,1})` likewise).
+Ours: implemented. The driver option `CallResult::ArrayFirstColumn` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
 Status: VERIFIED (web)
-Tasks: T-2300 (UNIQUE), T-1839 (SORTBY)
+Tasks: T-2300 (UNIQUE), T-1839 (SORTBY), T-2349 (SORTBY corners), T-3027 (error array with an invalid sort_order)
 
 ## Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule
 Rule: a function whose scalar argument gets an array lifts, one call per element, and the arguments
@@ -1230,6 +1230,23 @@ crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISIT
 crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
 Tasks: T-1325, T-1327
 
+## SCAN over a GROUPBY result (T-2398)
+Rule (observed): SCAN whose array is a GROUPBY call is one cell, not a scan of the GROUPBY's cells:
+- `SCAN(GROUPBY(Data!A1:A4,Data!B1:B4,SUM),0,MIN)` is 0.
+- A LAMBDA that ignores the accumulator gives one value (`LAMBDA(a,v,TYPE(v))` is 1, `ROWS(v)*100+COLUMNS(v)` 101).
+- One that uses the accumulator (`LAMBDA(a,v,a+1)`) is `#CALC!`, also through LET, TAKE and VSTACK.
+- With `LAMBDA(w,w)` as the GROUPBY function, SCAN MIN is `#N/A`, and with `LAMBDA(w,1/0)` it is `#DIV/0!`
+  (groupby-lifted-args A169). A hypothesis, not established: the eta-reduced MIN is given the whole GROUPBY result,
+  whose value cells hold the groups' arrays ("Aggregates over nested GROUPBY and PIVOTBY cells" above). An explicit
+  LAMBDA over the same `w,w` GROUPBY sees a 1x1 number (A45 `TYPE(v)` 1, A48 `ROWS(v)*100+COLUMNS(v)` 101), so eta MIN
+  and an explicit LAMBDA see different things.
+- MAP and REDUCE over the same GROUPBY see all of its cells (4x2; 8 elements).
+Evidence: probes/scan-over-groupby (excel-graph, 2026-10-23, T-2398); probes/groupby-lifted-args A153, I153, A161, A169;
+gen-m7/b24ce74f08d3f91a Calc!A1850.
+Status: VERIFIED for these cells; why SCAN collapses the call to one cell is not understood.
+Ours: matches every cell since T-2593 and T-2594 (nested GROUPBY cells); unit test
+`test_nested_groupby_cells::scan_over_a_groupby_call_is_one_cell`.
+
 ## Nested GROUPBY and PIVOTBY cells: bounds
 Rule: Excel keeps a GROUPBY or PIVOTBY function's array result in its cell, at any size and depth (SPEC-0018 rules 1, 8;
 "A LAMBDA array result is shown as `#VALUE!`" above). RustSheet bounds them (CLAUDE.md directive 5): one call keeps at most
@@ -1387,7 +1404,8 @@ Rule: Excel has no known per-formula work limit; a formula whose LAMBDA helpers 
 Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
 Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
 units: 6 per node evaluated (each link of an operator chain is one), 3 per cell of each array value a node gives or a range
-is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
+is turned into (a range arm of a lifted IF or CHOOSE, or an HSTACK or VSTACK argument, is first read for 3 per cell of
+its used area, then a picked one copied for 3 per cell of the range; T-1564), one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
 `&` operator makes over an array, T-2806), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
@@ -1895,7 +1913,7 @@ a text error and a join over 32,767 characters (`#CALC!`) fill every element, an
 (`TEXTJOIN({"-","+"},{TRUE;FALSE},"a","","b")` is "a-b", "a-+b"). The gen-m7 cell: `LAMBDA(y,TEXTJOIN(y,y,y))({TRUE;FALSE})` is
 "TRUETRUEFALSE" twice, so RIGHT of it spills and A1137's spill is blocked.
 SORT's lifted by_col elements (probes/t2366-sort-lifted-by-col, excel-graph, 2026-10-27, T-2366), `A1:A3` = 3,1,2: later elements
-do not follow SORTBY's `ArrayFirst` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
+do not follow SORTBY's `ArrayFirstColumn` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
 `{FALSE,TRUE}` spills 1 then `#VALUE!`, `{TRUE,TRUE}` 3 then `#VALUE!`, sort_index 3 with `{FALSE,TRUE}` `#VALUE!` then 3, and a range
 by_col (`E1:E2` = FALSE,TRUE) lifts like an array (`ROWS` 2, `COLUMNS` 1: spills 1 then `#VALUE!`). Of the later elements only the
 sort_index 3 one (I11) matches the call's top-left; the second (TRUE) element is `#VALUE!` with sort_index 1 (I1, I7, H18) although a

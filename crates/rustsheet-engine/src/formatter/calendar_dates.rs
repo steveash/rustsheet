@@ -8,9 +8,9 @@ use chrono::{Datelike, Duration, NaiveDate};
 use super::{
     date_names::hijri_ymd,
     dates::excel_serial_to_ymd,
-    locale_tag::Calendar,
+    locale_tag::{japanese_era, Calendar},
     lunar_calendar::{lunar_ymd, LAST_SERIAL},
-    parser::TextToken,
+    parser::{DatePart, TextToken},
 };
 use crate::{functions::date_and_time::is_leap_year, locale::excel_date_names::DateNames};
 
@@ -201,6 +201,94 @@ pub(crate) fn hebrew_month_name(
         _ => month - 1,
     };
     names.months.get(index as usize).copied()
+}
+
+/// The Buddhist era counts from 543 BC: serial 100 (1900-04-09) is "43" under `b` and "2443" under
+/// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).
+const BUDDHIST_ERA_OFFSET: i32 = 543;
+
+/// The Korean calendar (locale tag calendar digit 5) counts from 2333 BC: `[$-50409]yyyy` of 45000
+/// is "4356" (probes/text-locale-calendars A44-A46).
+const KOREAN_ERA_OFFSET: i32 = 2333;
+
+/// What a year or era token (`yy`, `yyyy`, `b`, `bbbb`, `e`, `ee`, `g`) of the date section `part`
+/// prints for 1900-system `serial_1900`, whose date in the section's calendar is `ymd`; `seen_era`
+/// when a `g` came earlier in the section.
+///
+/// Excel: `b` is the Buddhist year with no locale tag and the Gregorian one under a tag but in the
+/// Thai calendar (`[$-40C]bbbb` is "2023", `[$-7041E]bbbb` "2566"); `yy` and `yyyy` count in the
+/// tag's calendar (probes/text-locale-calendars, text-locale-calendars-detail A2, A14-A23). After
+/// a `B2` before a calendar-3, -5 or -7 tag (`part.year_twice`) every year token converts once
+/// more: `B2[$-70409]yyyy|e|bbbb` of 2023-03-15 is "3109|2566|3109", `B2[$-50409]yyyy|e|bbbb`
+/// "6689|4356|4356" (probes/t2932-b2-calendar-twice; the Japanese eras in
+/// [`japanese_era`]).
+pub(crate) fn year_token_text(
+    part: &DatePart,
+    token: &TextToken,
+    seen_era: bool,
+    serial_1900: i64,
+    ymd: (i32, u32, u32),
+) -> String {
+    let twice = part.year_twice;
+    if let Some(Calendar::Japanese { explicit }) = part.calendar {
+        let (era_year, names) = japanese_era(serial_1900, ymd, twice);
+        // Twice converted, the era year is negative and prints as an unsigned 32-bit number
+        // ("4294965434"), also under `yy`.
+        let era_year = era_year.cast_unsigned();
+        match token {
+            TextToken::Era(length) => return names[(*length).clamp(1, 3) - 1].to_string(),
+            TextToken::EraYear(false) => return format!("{era_year}"),
+            TextToken::EraYear(true) => return format!("{era_year:02}"),
+            TextToken::YearShort | TextToken::Year if explicit || seen_era => {
+                return format!("{era_year:02}");
+            }
+            _ => {}
+        }
+    }
+    let year = ymd.0;
+    // The one more conversion of a `B2` before the tag.
+    let again = match (twice, part.calendar) {
+        (true, Some(Calendar::Thai)) => BUDDHIST_ERA_OFFSET,
+        (true, Some(Calendar::Korean)) => KOREAN_ERA_OFFSET,
+        _ => 0,
+    };
+    let buddhist = matches!(
+        token,
+        TextToken::BuddhistYearShort | TextToken::BuddhistYear
+    );
+    let short = matches!(token, TextToken::YearShort | TextToken::BuddhistYearShort);
+    let year = match (token, part.calendar, buddhist) {
+        (TextToken::Era(_), ..) => return String::new(),
+        (TextToken::EraYear(_), ..) => year + again,
+        // After a `g` a Japanese LCID's other calendars print the whole Gregorian year
+        // (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy` "|2023"); other LCIDs are unaffected
+        // (`[$-70409]g|yyyy` is "|2566"; probes/text-locale-japanese-year A13,
+        // text-locale-era-gregorian), and a `B2` converts it once (`B2[$-70411]g|yyyy` is
+        // "|2566"; probes/t2932-b2-calendar-twice A44).
+        (_, Some(_), false) if seen_era && part.japanese_lcid => {
+            return format!("{}", year + again)
+        }
+        (_, None, true) => year + BUDDHIST_ERA_OFFSET,
+        (_, Some(Calendar::Thai), _) => year + BUDDHIST_ERA_OFFSET + again,
+        (_, Some(Calendar::Korean), false) => year + KOREAN_ERA_OFFSET + again,
+        _ => year + again,
+    };
+    if matches!(token, TextToken::EraYear(_)) {
+        return format!("{year}");
+    }
+    if buddhist && short {
+        // `b` prints the third and fourth digits of the year, which differ from its last two
+        // past 9999: `B2[$-70409]b|yy` of 9999-12-31 (Thai 11085) is "08|85"
+        // (probes/t2932-b2-calendar-twice A24).
+        let digits = year.to_string();
+        return digits.get(2..4).unwrap_or(&digits).to_string();
+    }
+    // The Taiwan calendar's `yy` is four digits (probes/text-locale-japanese-year A15).
+    if short && (buddhist || part.calendar != Some(Calendar::Taiwan)) {
+        format!("{:02}", year % 100)
+    } else {
+        format!("{year}")
+    }
 }
 
 #[cfg(test)]

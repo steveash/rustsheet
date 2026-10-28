@@ -67,6 +67,48 @@ pub(crate) fn lower_this_row_cells(
     }
 }
 
+impl Table {
+    /// A table named `name` over `reference` (`A1:C4`, header and totals rows included) on
+    /// `sheet_name`, with the columns `column_names` left to right, no differential formats and
+    /// no filter buttons, styled as the xlsx reader defaults a table without `tableStyleInfo`.
+    #[must_use]
+    pub fn new(
+        name: &str,
+        sheet_name: &str,
+        reference: &str,
+        (header_row_count, totals_row_count): (u32, u32),
+        column_names: impl IntoIterator<Item = String>,
+    ) -> Table {
+        Table {
+            name: name.to_string(),
+            display_name: name.to_string(),
+            sheet_name: sheet_name.to_string(),
+            reference: reference.to_string(),
+            totals_row_count,
+            header_row_count,
+            header_row_dxf_id: None,
+            data_dxf_id: None,
+            totals_row_dxf_id: None,
+            columns: (1..)
+                .zip(column_names)
+                .map(|(id, name)| TableColumn {
+                    id,
+                    name,
+                    ..TableColumn::default()
+                })
+                .collect(),
+            style_info: TableStyleInfo {
+                name: None,
+                show_first_column: false,
+                show_last_column: false,
+                show_row_stripes: true,
+                show_column_stripes: false,
+            },
+            has_filters: false,
+        }
+    }
+}
+
 impl Model {
     /// Adds a table on sheet `sheet` over rows `top..=bottom` and columns `left..=right`
     /// (1-based). The first row is the header row: its cells name the columns, so they must be
@@ -140,42 +182,27 @@ impl Model {
         if overlaps {
             return Err("A table cannot overlap another table".to_string());
         }
-        let mut columns: Vec<TableColumn> = Vec::new();
-        for (id, column) in (1..).zip(left..=right) {
+        let mut columns: Vec<String> = Vec::new();
+        for column in left..=right {
             let header = self.get_formatted_cell_value(sheet, top, column)?;
             if header.is_empty()
                 || columns
                     .iter()
-                    .any(|c| c.name.to_uppercase() == header.to_uppercase())
+                    .any(|c| c.to_uppercase() == header.to_uppercase())
             {
                 return Err(format!("Table header '{header}' is empty or repeated"));
             }
-            columns.push(TableColumn {
-                id,
-                name: header,
-                ..TableColumn::default()
-            });
+            columns.push(header);
         }
         let table = Table {
-            name: name.to_string(),
-            display_name: name.to_string(),
-            sheet_name,
-            reference: format!("{first}{top}:{last}{bottom}"),
-            totals_row_count: u32::from(totals_row),
-            header_row_count: 1,
-            header_row_dxf_id: None,
-            data_dxf_id: None,
-            totals_row_dxf_id: None,
-            columns,
-            // As the xlsx reader defaults a table without `tableStyleInfo`.
-            style_info: TableStyleInfo {
-                name: None,
-                show_first_column: false,
-                show_last_column: false,
-                show_row_stripes: true,
-                show_column_stripes: false,
-            },
             has_filters,
+            ..Table::new(
+                name,
+                &sheet_name,
+                &format!("{first}{top}:{last}{bottom}"),
+                (1, u32::from(totals_row)),
+                columns,
+            )
         };
         self.workbook.tables.insert(name.to_string(), table);
         self.reset_tables();
