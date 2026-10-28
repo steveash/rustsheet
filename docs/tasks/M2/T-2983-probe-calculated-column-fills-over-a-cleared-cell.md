@@ -42,7 +42,8 @@ not parse in the engine yet (T-2979):
 - A stored `calculatedColumnFormula` on load (T-2969); the engine's unqualified structured references (T-2979).
 
 ## Outcome
-Three probes filled on excel-graph (t2983-*). Excel fills nothing in any of them, so a stored formula column without
-`calculatedColumnFormula` is not a calculated column and formulas mixed with blanks block the fill. The engine
-already passes all three (no new known failures; three `C` coverage lines added to the probes baseline); references.md rule 8 records the evidence. No engine task needed for
-A1 formulas; the stored-structured-formula case is unprobed, filed as T-3023.
+Three probes filled on excel-graph (t2983-*). Excel fills nothing in any of them: a column of stored identical formulas
+with no `calculatedColumnFormula` is not a calculated column (a: C5 typed beside stored C2:C4), and formulas mixed with
+blanks block the fill (b, c). (b) and (c) pass in the engine. (a) fails: the engine re-fills, so it is a known failure in
+the probes baseline and engine task T-3024 is filed. The same case with a stored structured formula is T-3023.
+The task text's original (a) typed into C3, but an `entered` cell starts blank, so it was redesigned (typed C5 of A1:C5).

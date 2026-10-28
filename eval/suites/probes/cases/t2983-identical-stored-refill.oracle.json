@@ -8,11 +8,15 @@
    },
    "C3": {
     "t": "n",
-    "v": 6.0
+    "v": 4.0
    },
    "C4": {
     "t": "n",
     "v": 8.0
+   },
+   "C5": {
+    "t": "n",
+    "v": 24.0
    },
    "F2": {
     "t": "s",
@@ -20,20 +24,24 @@
    },
    "F3": {
     "t": "s",
-    "v": "=A3*3"
+    "v": "=A3*2"
    },
    "F4": {
     "t": "s",
     "v": "=A4*2"
+   },
+   "F5": {
+    "t": "s",
+    "v": "=A5*3"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "a8429029bff59a0c9e19eac51c4b642880ef0db835e5307f6ec33f54ee44760b",
+  "input_sha256": "30bd155e637f72d8fa3afef26333a8606831def1a73320695641252e2155b418",
   "kind": "excel-graph",
-  "produced_at": "2026-10-28T09:56:31+00:00",
+  "produced_at": "2026-10-28T10:52:51+00:00",
   "version": null,
-  "workbook_name": "6dad2b51ab06f6efa7dda9b7e217bf7d3c53030bb25168607f71a661f75167b3.xlsx"
+  "workbook_name": "cb52139fac847261cadb67a6ac742d213339ec718d5d020b6366da2cb313714a.xlsx"
  }
 }

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2983: stored =A2*2,=A3*2,=A4*2 in C2:C4 (no calculatedColumnFormula), then C3 entered =A3*3: is C2:C4 re-filled (table T A1:C4, FORMULATEXT C2:C4 in F2:F4).",
+ "description": "T-2983: stored =A2*2, =A3*2, =A4*2 in C2:C4 (no calculatedColumnFormula), then C5 (blank) entered =A5*3: is C2:C4 re-filled (table T A1:C5, FORMULATEXT C2:C5 in F2:F5).",
  "tags": [
   "M2",
   "tables",
@@ -13,7 +13,7 @@
    "tables": [
     {
      "name": "T",
-     "ref": "A1:C4"
+     "ref": "A1:C5"
     }
    ],
    "cells": {
@@ -30,10 +30,14 @@
     "F3": "=FORMULATEXT(C3)",
     "F4": "=FORMULATEXT(C4)",
     "C2": "=A2*2",
-    "C3": {
-     "entered": "=A3*3"
+    "C3": "=A3*2",
+    "C4": "=A4*2",
+    "A5": 8,
+    "B5": 80,
+    "C5": {
+     "entered": "=A5*3"
     },
-    "C4": "=A4*2"
+    "F5": "=FORMULATEXT(C5)"
    }
   }
  ]
