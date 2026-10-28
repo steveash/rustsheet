@@ -2077,7 +2077,8 @@ date, and Excel agrees with that where it matters: probes/oddl-accrint-february-
 ODDLPRICE and ODDLYIELD the same value for a last interest on the 29th or the 30th, over one odd period and over
 several periods across a February, frequencies 2 and 4, bases 0 and 1 (A1-A15, A32-A49), so there the day is
 not observable. ACCRINT does depend on the day (a first interest on the 29th and the 30th differ, A16-A31, on
-bases 0 and 1 and calc_method TRUE and FALSE) and ours matches Excel's value on all 16 cells.
+every combination of basis 0 and 1 and calc_method TRUE and FALSE except basis 0 with FALSE, which is equal) and
+ours matches Excel's value on all 16 cells.
 Status: VERIFIED (excel-graph)
 Tasks: T-2486, T-2639
 
