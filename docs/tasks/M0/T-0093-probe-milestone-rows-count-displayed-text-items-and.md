@@ -3,7 +3,7 @@ id: T-0093
 title: "Probe-milestone rows count displayed-text items and list the failing ones as case!Sheet!A1"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -40,3 +40,9 @@ M10 probes (decision 0146 item 4(b)).
 ## Out of scope
 - The M10 exit row and exit-owners support (T-0097).
 - Scoring text items in the eval gate (they stay information, T-1610).
+
+## Outcome
+`MilestoneRow` gained `text_items`, `text_failing` and `text_failing_cells` (`case!Sheet!A1`); a text item takes its
+value cell's milestone, else its case's. report.md's "Probe milestones" table has `text items` and `failing text`
+columns. Unit tests cover a case with two items (one failing), a case with none, and the markdown row. Eval delta:
+none; on this branch all 415 probe text items (the task's 410 has grown) sit in M10 and 0 fail.
