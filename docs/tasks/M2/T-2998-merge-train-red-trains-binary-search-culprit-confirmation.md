@@ -3,7 +3,7 @@ id: T-2998
 title: "Merge-train red trains: binary search, culprit confirmation, ejection and infrastructure retry"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
