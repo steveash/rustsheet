@@ -3,7 +3,7 @@ id: T-2994
 title: "Merge-train merge stage: push, CI wait, ordered squash with tree checks and the revert path"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -52,10 +52,10 @@ filing moved to **T-3045**.
   revert PR.
 
 ## Acceptance criteria
-- [ ] `scripts/merge_train.py --train` (`make merge-train TRAIN=1`) implements steps 1 and 5-7 of
+- [x] `scripts/merge_train.py --train` (`make merge-train TRAIN=1`) implements steps 1 and 5-7 of
       SPEC-0027 section 4 for a green train, with the mode half of the stop checkpoints. It does
       nothing (no lock, no write) while `mode = "lock"`.
-- [ ] `scripts/test_merge_train.py` covers SPEC-0027's Test plan cases for this slice:
+- [x] `scripts/test_merge_train.py` covers SPEC-0027's Test plan cases for this slice:
       - the write policy in `lock` mode (no lock, no write) and a malformed mode, which reads as `lock`;
       - a mode flip at each checkpoint, including right after acquisition (nothing is pushed);
       - `main` moving before the first squash, between squashes and during a squash, and a merge
@@ -64,7 +64,7 @@ filing moved to **T-3045**.
       - red, missing and overlong train CI;
       - a partly merged batch;
       - the squash text.
-- [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
 - Moved to T-3045 (decision 0151): the `merge-train-stop` label at each checkpoint, a stop label
   on a PR that fails `merge-flip-check`, and the revert path (revert PR, P0 filing).
 
@@ -72,3 +72,16 @@ filing moved to **T-3045**.
 - Red trains (T-2998).
 - Shadow mode, the step-mode fallback and stats (T-2995).
 - Turning the mode on (T-2989, T-2991).
+
+## Outcome
+`scripts/merge_train.py --train` (`make merge-train TRAIN=1`) runs SPEC-0027 section 4 steps 1
+and 5-7 for a green train (decision 0151): the capped lock wait, collect and build with the
+train-mode unlabels and ejections, a record commit pushed to `merge-train/current` under a lease,
+the hold-budget gate, the CI wait on exactly that sha (one dispatch fallback, 10-min timeout,
+renewals every 5 min, `merge_ready.ci_state` with the train's events), then the ordered squash
+with a renewal, GitHub's test-merge parent and tree check, `expectedHeadSha`, a lost-reply
+read-back and the post-squash parent and tree check. Mode checkpoints at all four points; the
+lock is released in a `finally` and on SIGTERM. Inert while `mode = "lock"`.
+35 tests in `scripts/test_merge_train.py` (22 new, against a GitHub simulator over a temporary
+bare remote). Eval delta: none (scripts and docs only).
+Follow-up: **T-3045** (stop label, revert PR, P0 filing); T-2991 now depends on it.

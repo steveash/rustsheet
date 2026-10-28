@@ -456,7 +456,8 @@ class GitHub(Client):
             if after is not None:
                 after()
 
-    def answer(self, request: Request) -> object:  # noqa: PLR0911 (one return per endpoint)
+    def answer(self, request: Request) -> object:
+        """One branch per endpoint the stage calls."""
         hook = self.hooks.pop((request.method, request.path.removeprefix("repos/o/r/")), None)
         if hook is not None:
             hook()
