@@ -32,6 +32,9 @@ Still failing from T-2430's list and not covered here: F.TEST/FTEST (T-2093), FO
 Update (T-2427, 2026-10-27): FREQUENCY's data array now propagates an error element, and a scalar bins error beats it
 (probes/frequency-bins B1-B3). Left here: PROB; FREQUENCY's bins array (still `#VALUE!`, the corpus-bench/53062 evidence
 above); and an error cell in a data range against a scalar bins error, which keeps `main`'s data-first order unprobed.
+Also to probe (T-2427 review, 2026-10-28): `FREQUENCY({1;2},"2")` and a referenced `"2"` bin (numeric text, skipped in ours);
+a typed or computed boolean as data (`FREQUENCY(TRUE,{1;2})`, `FREQUENCY(1=1,{1;2})`); a computed boolean bin
+(`FREQUENCY({1;2},1=1)`); and a data-array error element against an error cell in a bins range.
 
 ## Acceptance criteria
 - [ ] Probe the argument-error order of PROB and FREQUENCY with an array error element; record it in statistics.md.

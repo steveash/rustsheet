@@ -3537,8 +3537,8 @@ Rule: FREQUENCY with a single bin (a number, a one-cell reference, a cell holdin
 boolean data value still returns its bins-plus-one column, so in the generated layout (the next formula one row below)
 the anchor is `#SPILL!`: `FREQUENCY(Data!B11:C12,Data!B3:B3)` (0a614cfe974b59c3 A64), `FREQUENCY(Data!E5:E7,Data!D7:D7)`
 (589f42e67f4b4b8d A384), `FREQUENCY(-0.5,Data!A4)` with A4 = TRUE (8fec7b207f4dd753 A245), `FREQUENCY(Data!C$7,Data!A7)`
-with C7 = " x " (3e98b26cf6713e77 A249). The exact row count for a text or boolean bin is UNVERIFIED (the cells show
-only that it is at least two). An error argument is the result: `FREQUENCY((0*CHITEST(..)),(-2.5))`
+with C7 = " x " (3e98b26cf6713e77 A249). The row count for a text or boolean bin is settled by probes/frequency-bins
+(below). An error argument is the result: `FREQUENCY((0*CHITEST(..)),(-2.5))`
 `#N/A` (05d44f6dd6cfc567 A65), `FREQUENCY(Data!B6:D10,YEAR(VDB(..)))` `#NUM!` (b4173fe25109a238 A184); which wins when
 both data and bins are errors is settled by probes/frequency-bins below.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
@@ -3548,15 +3548,15 @@ skipped (`{1;2}` against `"a"`, TRUE, a blank cell, `{"a";"b"}`; `FREQUENCY("a",
 precedence: a scalar error argument (data, then bins) beats an error element of the data array, and within arrays data
 comes first: `FREQUENCY({1;#DIV/0!},NA())` and `FREQUENCY(NA(),{1;#DIV/0!})` are `#N/A`, `FREQUENCY(1/0,NA())` is
 `#DIV/0!`, `FREQUENCY({#N/A;1},{#DIV/0!;1})` is `#N/A`.
-T.TEST: an error `type` beats a bad `tails` (`T.TEST({0.02,0.027},2,44,NA())` is `#N/A`, probes/frequency-bins B7) when
-the samples are good; with a samples error the bad `tails` stays first (gen-m9/9735c5ab72fa5ecf A336); the full
-interleaving is UNVERIFIED.
-A typed or referenced text that reads as a number (`"2"`) is skipped in ours; UNVERIFIED.
+Probe cells B4 and B7 confirm the T.TEST entry's order.
+UNVERIFIED in ours, each skipped with no oracle cell (T-2636 probes them): a typed or referenced text that reads as a
+number (`FREQUENCY({1;2},"2")`), a typed or computed boolean as data, and a computed boolean bin. Also unprobed: a
+data-array error element against an error cell in a bins range.
 Ours: implemented, T-2427, only as far as the probe goes. An error element of the data array is the result, and a scalar
 bins error beats it. An error element of the bins array keeps `main`'s `#VALUE!`: no oracle cell shows it, and desktop
 evidence points elsewhere (corpus-bench/53062 caches a number with a `#VALUE!` bins element; T-2636 probes it). An error
 cell in a data range keeps `main`'s data-first order against a scalar bins error, UNVERIFIED (T-2636). The cells still off are other functions' gaps (ODDFYIELD, FORECAST.ETS, EXPAND, DB, NPER, ...).
-Status: VERIFIED (excel-graph)
+Status: VERIFIED (excel-graph) except the noted UNVERIFIED parts
 
 ## Booleans from a reference or a formula are numbers in the F, beta, chi-squared and hypergeometric functions (T-2255)
 Rule: a TRUE or FALSE that comes from a cell or a formula (not typed in the call) reads as 1 or 0 in F.INV, FINV,
@@ -3906,9 +3906,9 @@ A32), and only then the tails/type range check (`#NUM!`). A typed empty text as 
 an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
 is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve was `#DIV/0!` in ours: UNVERIFIED (the cell now passes).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2469.
-Ours: tails and type are checked first (`#NUM!`), except that with good samples an error `type` beats a bad `tails` (see
-the FREQUENCY entry, T-2427). A text sample matches the computed empty text, a text sample being an array of one cell
-with no number (T-2469). A typed text
+Ours: the order above (an error-value sample, then tails and type errors, then their range checks, then an error inside
+a range; T-1813, T-2256, T-2469). It matches the computed empty text, a text sample being an array of one cell with no
+number (T-2469). A typed text
 literal (`T.TEST("",A1:A4,1,3)` `#DIV/0!`, `T.TEST("a",..)`) and a typed or computed boolean sample take the same path in
 ours (as in COVARIANCE.P/.S, probes/t2436/computed-scalar A35:A37): UNVERIFIED for T.TEST (T-2853 probes them).
 Status: VERIFIED (excel-graph) except the noted cell
