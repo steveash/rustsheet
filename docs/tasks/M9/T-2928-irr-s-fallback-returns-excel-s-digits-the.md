@@ -3,7 +3,7 @@ id: T-2928
 title: "IRR's fallback returns Excel's digits: the polynomial Newton from v = 0 lands 15 to 35 ulp from Excel (10 visibly-off cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P2
 size: M
 tier: opus
@@ -87,3 +87,17 @@ root and Excel 2E-15 to 4E-15 off it), so the target is Excel's own iterate, tim
 is done when every owned cell is within half a unit of the 15th significant digit of Excel's value. If P!A21 or any
 cell is still a few ulp off then, it moves to a follow-up task filed with `defer: phase-1b` and no campaign key, named
 in the Outcome.
+
+## Attempt 1 (decision 0056)
+2026-10-28, opus run. Added the fit-lab family `irr-fallback` (kernels/solvers.py `irr_fallback_candidates`,
+`irr_fallback_newton`; `uv run rustsheet-fitlab irr-fallback`) over the T-2927 sweep and probes/irr-fallback-roots
+(212 cells, `#NUM!` included). Every candidate the Context lists is scored, and none raises the bit-exact count: the
+engine is 72 bit-exact, the best fallback variant (Newton in v from 0 with |P| < 1E-7) 69 against the same Newton's
+63. The counts, the rejected scratch candidates (damped secants past v <= 0, a 1,200-start fixed-start secant grid in
+v, r and x) and four findings are in financial.md "IRR's fallback when the secant fails", Fit. No engine change: the
+owned cells stay in eval/baseline/.
+Next attempt, from the findings: a secant (not Newton: the sign of Excel's error rules out a plain last Newton step on
+the three anchor flows) with a signed first offset and a |P| < 1E-7 stop, whose start is guess-dependent on
+`{0.3,-2.5,1.005}` and `{2,1,1,-1}` but not on `{42,1,1,-1}` or `{-400,1,1,1,1,1}`; a step cap that, with the
+residual test, makes the large-first-flow rows A26-A31 and A101 `#NUM!`. A second attempt that does not raise the
+bit-exact count blocks the task (decision 0056).

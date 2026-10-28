@@ -682,6 +682,29 @@ Which flows return does not depend on the guess.
 and the same scaled by 1E6 and negated (rows 101-112), while N = 163 to 375 and 400 return. The engine's Newton from v = 0
 converges there within its cap, so Excel's fallback gives up on a condition the rule lacks (a step cap below ours, or a stop on |P|
 that the large first flow defeats).
+Fit (T-2928 attempt 1, `uv run rustsheet-fitlab irr-fallback`, kernels/solvers.py `irr_fallback_candidates`; 212
+cells of the sweep and irr-fallback-roots, the `#NUM!` cells included; bit-exact / within 4 ulp / within 1E-9, each
+candidate run as the fallback alone, the engine with its secant first): the engine 72/108/191; Newton in v from 0 as
+the engine 63/98/179, with |P(next)| < 1E-7 added 69/104/183, |dv| < 1E-10 67/101/179, < 1E-8 65/101/179, < 1E-7
+63/101/179, < 1E-5 51/74/179, < 1E-7·|v| 63/98/179, P summed in ascending powers 65/98/179, returning v instead of
+next 28/28/113 (relative stop 21/21/106), from v = 1 36/49/104, from the guess 54/91/178; Newton in r from the guess
+2/9/40, from 0 1/9/37, in x = 1 + r 2/10/42; the fitted secant from the guess with a 1000-step cap 48/50/63 (by Horner
+49/51/63). In a scratch harness (not shipped) these also fail: the secant continuing past an iterate at v <= 0 with
+the iterate kept, -v, v1/2, v1/10, (v0 + v1)/2, 0.9·v1, v1 + 1 or 1E-3 (at most 29 of the 152 numeric cells
+bit-exact, the engine's fallback 38); the secant in v, v by Horner, r and x = 1 + r from every fixed start on a grid of
+1,200 (-0.99 to 10, offsets 1E-5 to 0.1, signed or not, step tolerance 1E-6 to 1E-8, with or without |f| < 1E-7):
+only r0 = -0.65, r1 = r0 + 0.001 gives both `{42,1,1,-1}` and `{-400,1,1,1,1,1}`, and it scores 24/152 overall, so
+the hit is chance. Findings that bound the next attempt: (1) Excel's error is not what a plain Newton step leaves: on
+`{42,1,1,-1}`, `{-400,1,1,1,1,1}` and `{0.3,-2.5,1.005}` a last Newton step in v or in r would leave an error of the
+sign of P''/P', and Excel's has the other sign (only Newton in r on `{0.3,-2.5,1.005}` fits, from an iterate
+1.4E-6 off). A secant's error C·e1·e0 has no fixed sign, and its signed first offset explains the negation
+dependence. (2) `{0.3,-2.5,1.005}` at -251 ulps from 1E-3 to 1E+6 scale and +7 from 3E7 on fits a stop test
+|P| < 1E-7 in the flows' units: at Excel's iterate |P| is about 7.9E-15 times the scale, so it passes up to the
+1E7 scale and fails from 1E8. (3) That test also turns the engine's Newton `#NUM!` on the 1E6-scaled
+`{-N,1,1,1,1,1}` for N = 656 to 2000 (rows A103-A111, as Excel) because |P| cannot fall below 1E-7 at that scale, but
+not on N = 496 scaled (A101) or on the unscaled rows A26-A31. (4) Excel's value is an iterate of Newton in v from 0,
+Newton in r from the guess or the secant in v or r from the guess on only 53 of the 152 numeric cells (Newton in v
+on 40, the secant in v on 19, Newton and the secant in r on 2 each).
 Evidence: probes/irr-fallback-roots A1-A24 (excel-graph, 2026-10-26); the gen-m9 cells above;
 probes-numeric/t2927-irr-fallback-sweep (excel-graph, 2026-10-27).
 Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the step cap (between 29 and 119)

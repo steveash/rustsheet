@@ -336,3 +336,19 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
         assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
     assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
     assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
+
+
+def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:
+    # The engine's fallback digits (T-2928): `{42,1,1,-1}` converges to -0.7467044766537408, the
+    # correctly rounded root, where Excel returns -0.7467044766537371 (probes/irr-fallback-roots A12).
+    engine = solvers.irr_fallback_newton()
+    assert engine([42.0, 1.0, 1.0, -1.0]) == -0.7467044766537408
+    assert engine([0.0, 2.0, -1.0]) == pytest.approx(-0.5)  # leading zeros dropped (T-2727)
+    with pytest.raises(solvers.NoResultError):  # P's root nearest v = 0 is negative: #NUM! (T-2727)
+        engine([1.0, 3.0, -1.0])
+    # A residual test on |P| makes the run on the 1E6-scaled {-656,1,1,1,1,1} reach the cap, as
+    # Excel does (t2927-irr-fallback-sweep A103), where the engine's step test returns.
+    scaled = [-656e6, 1e6, 1e6, 1e6, 1e6, 1e6]
+    assert engine(scaled) == pytest.approx(-0.7072347712570631)
+    with pytest.raises(solvers.NoResultError):
+        solvers.irr_fallback_newton(residual=1e-7)(scaled)
