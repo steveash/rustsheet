@@ -22,6 +22,15 @@ pub struct TableExpansion {
     pub header: bool,
 }
 
+/// The table column a typed formula fills as a calculated column ([`Model::calculated_column`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CalculatedColumn {
+    /// The table, as it is before the formula is typed.
+    pub table: Table,
+    /// The column's other data rows, (row, column): the cells the formula fills.
+    pub targets: Vec<(i32, i32)>,
+}
+
 impl Model {
     /// The tables on the sheet named `sheet_name` whose range fits, with their [`Bounds`].
     fn table_bounds_on_sheet<'a>(
@@ -148,37 +157,62 @@ impl Model {
         self.reset_tables();
     }
 
-    /// The cells a formula typed into (`sheet`, `row`, `column`) fills as its table's calculated
-    /// column: every other data row of the cell's table column, when those cells are all blank or
-    /// all hold one formula. Empty when the cell is not in a table's data rows, or when another
-    /// data cell of the column holds a value, a different formula, or is blank beside formulas:
-    /// Excel fills an empty column and re-fills a filled one, but leaves a column with an
-    /// exception (a typed constant) alone (probes/t2957-*). The totals row is never filled.
+    /// The table, as it is now, whose column a formula typed into (`sheet`, `row`, `column`)
+    /// fills or re-fills as a calculated column, and the cells it fills, every other data row of
+    /// the column (row, column). The table is one in whose data rows the cell is, when the
+    /// column's other data cells are all blank (Excel fills an empty column), or all hold one
+    /// formula and the column is a calculated column (`calculated_column_formula`: Excel re-fills
+    /// a filled column, but not a column of identical stored formulas, rule 8 of
+    /// docs/excel-semantics/references.md "Calculated columns"). `None` when another data cell
+    /// holds a value or a different formula (Excel leaves a column with an exception, a typed
+    /// constant, alone), or is blank beside formulas (probes/t2957-*, t2983-*). The typed formula
+    /// makes the column a calculated column, so the facade keeps this table for its rollback.
     ///
     /// # Errors
     /// When `sheet` does not exist.
-    pub fn calculated_column_targets(
+    pub fn calculated_column(
         &self,
         sheet: u32,
         row: i32,
         column: i32,
-    ) -> Result<Vec<(i32, i32)>, String> {
+    ) -> Result<Option<CalculatedColumn>, String> {
+        let Some(fill) = self.calculated_column_fill(sheet, row, column)? else {
+            return Ok(None);
+        };
+        Ok(
+            (self.workbook.tables.get(&fill.table)).map(|table| CalculatedColumn {
+                table: table.clone(),
+                targets: fill.targets,
+            }),
+        )
+    }
+
+    /// What a formula typed into (`sheet`, `row`, `column`) fills ([`Model::calculated_column`]).
+    /// The totals row is never filled.
+    pub(crate) fn calculated_column_fill(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+    ) -> Result<Option<ColumnFill>, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         let sheet_name = worksheet.get_name();
-        let Some(data) = self
-            .table_bounds_on_sheet(&sheet_name)
-            .map(|(_, b)| b)
-            .find(|b| (b.left..=b.right).contains(&column) && (b.data.0..=b.data.1).contains(&row))
-            .map(|b| b.data)
-        else {
-            return Ok(Vec::new());
+        let Some((table, b)) = self.table_bounds_on_sheet(&sheet_name).find(|(_, b)| {
+            (b.left..=b.right).contains(&column) && (b.data.0..=b.data.1).contains(&row)
+        }) else {
+            return Ok(None);
         };
+        let Ok(index) = usize::try_from(column - b.left) else {
+            return Ok(None);
+        };
+        let calculated =
+            (table.columns.get(index)).is_some_and(|c| c.calculated_column_formula.is_some());
         // The column's one formula, and whether a blank cell was met: the other cells must be all
         // blank or all that formula, so blank and formula cells mixed are no calculated column.
         let mut formula = None;
         let mut blank = false;
         let mut targets = Vec::new();
-        for r in data.0..=data.1 {
+        for r in b.data.0..=b.data.1 {
             if r == row {
                 continue;
             }
@@ -187,30 +221,42 @@ impl Model {
                 Some(cell) => match (cell.get_formula(), formula) {
                     (Some(f), None) => formula = Some(f),
                     (Some(f), Some(g)) if f == g => {}
-                    _ => return Ok(Vec::new()),
+                    _ => return Ok(None),
                 },
             }
             if blank && formula.is_some() {
-                return Ok(Vec::new());
+                return Ok(None);
             }
             targets.push((r, column));
         }
-        Ok(targets)
+        // Identical formulas the column holds without being a calculated column were stored, not
+        // filled by typing (probes/t2983-identical-stored-refill: only the typed cell changes).
+        if formula.is_some() && !calculated {
+            return Ok(None);
+        }
+        Ok(Some(ColumnFill {
+            table: table.name.clone(),
+            index,
+            first_row: b.data.0,
+            targets,
+        }))
     }
 
-    /// Writes the formula of (`sheet`, `row`, `column`) into `targets`, the cells
-    /// [`Model::calculated_column_targets`] found before it was typed, each with its own style.
-    /// The formula is stored relative to its cell, so an A1 reference fills shifted, like a fill
-    /// down (`=A2*2` gives `=A3*2` a row below; probes/t2957-a1-reference). Nothing is written
-    /// when the cell holds no formula: a typed constant fills nothing. A target the write guards
-    /// refuse (`prepare_cell_for_user_input`) ends the fill with an error and the rows before it
-    /// filled; the facade's edit rolls the whole write back.
+    /// Writes the formula of (`sheet`, `row`, `column`) into `fill`'s targets, the cells
+    /// [`Model::calculated_column_fill`] found before it was typed, each with its own style, and
+    /// makes the column a calculated column (`calculated_column_formula`, the first data row's
+    /// text in English; only whether it is set is read). The formula is stored relative to its
+    /// cell, so an A1 reference fills shifted, like a fill down (`=A2*2` gives `=A3*2` a row
+    /// below; probes/t2957-a1-reference). Nothing is written when the cell holds no formula: a typed
+    /// constant fills nothing. A target the write guards refuse (`prepare_cell_for_user_input`)
+    /// ends the fill with an error and the rows before it filled; the facade's edit rolls the
+    /// whole write back.
     pub(crate) fn fill_calculated_column(
         &mut self,
         sheet: u32,
         row: i32,
         column: i32,
-        targets: &[(i32, i32)],
+        fill: &ColumnFill,
     ) -> Result<(), String> {
         let Some(formula_index) = self
             .workbook
@@ -220,11 +266,30 @@ impl Model {
         else {
             return Ok(());
         };
-        for &(r, c) in targets {
+        for &(r, c) in &fill.targets {
             self.prepare_cell_for_user_input(sheet, r, c)?;
             let style = self.formula_style_index(sheet, r, c)?;
             self.set_formula_index_with_units(sheet, r, c, formula_index, style)?;
         }
+        let text = self.get_english_cell_formula(sheet, fill.first_row, column)?;
+        let text = text.map(|text| text.strip_prefix('=').unwrap_or(&text).to_string());
+        if let Some(table_column) = (self.workbook.tables.get_mut(&fill.table))
+            .and_then(|table| table.columns.get_mut(fill.index))
+        {
+            table_column.calculated_column_formula = text;
+        }
         Ok(())
     }
+}
+
+/// The calculated-column fill of one typed cell ([`Model::calculated_column_fill`]).
+pub(crate) struct ColumnFill {
+    /// The table's name.
+    table: String,
+    /// The column's index in the table.
+    index: usize,
+    /// The table's first data row.
+    first_row: i32,
+    /// The other data rows of the column, (row, column): the cells the formula fills.
+    targets: Vec<(i32, i32)>,
 }

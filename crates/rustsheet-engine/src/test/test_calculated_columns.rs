@@ -79,6 +79,52 @@ fn a_filled_column_refills_unless_it_holds_an_exception() {
     assert_eq!(calc(&model, 4), ["3", "5", "16"]);
 }
 
+/// The `calculatedColumnFormula` of `T`'s `Calc` column.
+fn column_formula(model: &Model) -> Option<String> {
+    model.workbook.tables["T"].columns[2]
+        .calculated_column_formula
+        .clone()
+}
+
+/// probes/t2983-identical-stored-refill: identical stored formulas are no calculated column, so a
+/// formula typed into the blank row changes only that row (references.md rule 8a).
+#[test]
+fn identical_stored_formulas_are_not_refilled() {
+    // T A1:C5, with C2:C4 stored `=A2*2` shifted and C5 blank.
+    let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+    for (row, col) in [(1, "Col"), (2, "1"), (3, "2"), (4, "4"), (5, "8")] {
+        model.set_user_input(0, row, 1, col.to_string()).unwrap();
+    }
+    model.set_user_input(0, 1, 2, "Other".to_string()).unwrap();
+    model.set_user_input(0, 1, 3, "Calc".to_string()).unwrap();
+    for row in 2..=4 {
+        model
+            .set_user_input(0, row, 3, format!("=A{row}*2"))
+            .unwrap();
+    }
+    model
+        .add_table_with_totals(0, "T", (1, 1, 5, 3), false, false)
+        .unwrap();
+    typed(&mut model, 5, "=A5*3");
+    assert_eq!(calc(&model, 5), ["2", "4", "8", "24"]);
+    assert_eq!(column_formula(&model), None);
+}
+
+/// A typed fill makes the column a calculated column, saved as the first data row's text, and a
+/// re-fill updates it; a typed constant fills nothing and keeps it.
+#[test]
+fn a_typed_fill_records_the_column_formula() {
+    let mut model = model(false);
+    assert_eq!(column_formula(&model), None);
+    typed(&mut model, 3, "=A3*2");
+    assert_eq!(column_formula(&model).as_deref(), Some("A2*2"));
+    typed(&mut model, 4, "=A4*3");
+    assert_eq!(calc(&model, 4), ["3", "6", "12"]);
+    assert_eq!(column_formula(&model).as_deref(), Some("A2*3"));
+    typed(&mut model, 3, "5");
+    assert_eq!(column_formula(&model).as_deref(), Some("A2*3"));
+}
+
 /// probes/t2957-existing-constant: no fill beside a value.
 #[test]
 fn no_fill_when_another_data_cell_holds_a_value() {
