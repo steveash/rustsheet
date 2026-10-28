@@ -147,9 +147,42 @@ impl Node {
         self
     }
 
+    /// [`Node::unwrap_spaced`] for a mutable borrow, for a walker that rewrites the node it
+    /// decides on (one function cannot serve both borrows).
+    pub(crate) fn unwrap_spaced_mut(&mut self) -> &mut Node {
+        let mut node = self;
+        while let Node::Spaced { child, .. } = node {
+            node = child;
+        }
+        node
+    }
+
     /// [`Node::spaced`] with the runs of `space`.
     pub(super) fn respaced(self, space: Spacing) -> Node {
         self.spaced(space.before, space.after)
+    }
+
+    /// Applies `rewrite`, a rewrite that decides on the shape of operands, as it applies to the
+    /// tree with no whitespace, the tree evaluation reads (decision 0127). On a tree written with
+    /// whitespace it runs on the bare tree and on the written one, and the written result is kept
+    /// only when it is the bare result once its whitespace is removed; otherwise the tree becomes
+    /// the bare result. A shape site that does not look past a [`Node::Spaced`] then costs the
+    /// formula its whitespace, never a value: `N( IF(1,{2;3}) )` read as a legacy formula takes
+    /// the `@`s `N(IF(1,{2;3}))` takes (T-2948).
+    pub(crate) fn rewrite_as_unspaced(&mut self, rewrite: impl Fn(&mut Node)) {
+        if !self.has_spaces() {
+            rewrite(self);
+            return;
+        }
+        let mut bare = self.clone();
+        bare.strip_spaces();
+        rewrite(&mut bare);
+        rewrite(self);
+        let mut unspaced = self.clone();
+        unspaced.strip_spaces();
+        if unspaced != bare {
+            *self = bare;
+        }
     }
 }
 

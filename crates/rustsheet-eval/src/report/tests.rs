@@ -76,6 +76,7 @@ pub(crate) fn cell(formula: &str, verdict: Verdict) -> CellResult {
         from_excel: false,
         listed_deviation: false,
         graph_subnormal: false,
+        kind: crate::runner::CellKind::Scored,
     }
 }
 
