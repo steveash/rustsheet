@@ -3,7 +3,7 @@ id: T-3012
 title: "Probe GAMMA.INV and GAMMA.DIST at a shape below 1 and p near 1E-16 (gen-m9 984cba67bbe6972b A43: Excel 4.1E-15 above the exact quantile)"
 milestone: M9
 lane: research
-status: done
+status: blocked
 priority: P3
 size: S
 tier: sonnet
@@ -51,6 +51,11 @@ without guessing.
 ## Outcome
 Two probe cases (probes/t3012-gamma-inv-small-shape, probes/t3012-gamma-dist-at-quantile) with excel-graph values;
 findings in docs/excel-semantics/statistics.md (Excel's GAMMA.INV is not the crossing of its GAMMA.DIST at any
-shape tried except possibly 0.5) and T-3013's Context. Eval delta: two new probe cases, known-failure lines added to
+shape tried except possibly 0.5 and 0.9 at p = 1E-5) and T-3013's Context. Eval delta: two new probe cases, known-failure lines added to
 eval/baseline/probes.txt only; no other suite moved. Five unrelated probe cases failed to fill (graph
 unsupportedWorkbook), left pending.
+
+## Blocked because
+Blocked because: review-round limit
+Round 3 of reviewer-excel-fidelity asked for wording fixes (row 25 is bracketed, ulp range 30 to 90, T-3013 error
+summary), applied in the following commit but not re-reviewed. Security, architecture and quality approved.
