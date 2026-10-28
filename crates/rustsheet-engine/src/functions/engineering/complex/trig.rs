@@ -101,10 +101,11 @@ fn trig_sinh_cosh(y: f64) -> (f64, f64) {
     (-sinh, cosh)
 }
 
-/// `(sinh y, cosh y)` for IMSEC, and at 2y for IMCOT ([`imcot`], T-3032): [`trig_sinh_cosh`] inside
-/// its band, libm's outside, where IMSEC keeps libm's digits (the EXP pair of [`trig_sinh_cosh`] loses 9 older IMSEC cells there). With cosh 2y
-/// taken the same way, IMSEC fits 32 of the 34 probes-numeric im-sec-csch-fused texts (27 with libm's
-/// parts) and keeps every older oracle cell (docs/excel-semantics/engineering.md, T-2884).
+/// `(sinh y, cosh y)` for IMSEC: [`trig_sinh_cosh`] inside its band, libm's outside, where IMSEC
+/// keeps libm's digits (the EXP pair of [`trig_sinh_cosh`] loses 9 older IMSEC cells there). With
+/// IMSEC's cosh 2y taken the same way, IMSEC fits 32 of the 34 probes-numeric im-sec-csch-fused
+/// texts (27 with libm's parts) and keeps every older oracle cell (docs/excel-semantics/engineering.md,
+/// T-2884). [`imcot`] takes its sinh 2y and cosh 2y from here too (T-3032).
 fn sec_sinh_cosh(y: f64) -> (f64, f64) {
     if in_inverse_exp_band(y) {
         trig_sinh_cosh(y)
