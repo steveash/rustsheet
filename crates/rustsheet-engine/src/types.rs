@@ -511,6 +511,12 @@ pub struct TableColumn {
     pub data_dxf_id: Option<u32>,
     pub totals_row_dxf_id: Option<u32>,
     pub totals_row_function: Option<String>,
+    /// The column's calculated-column formula, Excel's `calculatedColumnFormula`: the first data
+    /// row's formula text without `=`. Set when a typed formula filled the column (T-3024); only a
+    /// column that has one is re-filled by a different typed formula, since a column of identical
+    /// stored formulas without it is not a calculated column (docs/excel-semantics/references.md,
+    /// "Calculated columns", rule 8). Neither read from nor written to xlsx yet (T-2969).
+    pub calculated_column_formula: Option<String>,
 }
 
 impl Default for TableColumn {
@@ -523,6 +529,7 @@ impl Default for TableColumn {
             data_dxf_id: None,
             header_row_dxf_id: None,
             totals_row_dxf_id: None,
+            calculated_column_formula: None,
         }
     }
 }

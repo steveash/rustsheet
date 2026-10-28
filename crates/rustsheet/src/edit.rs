@@ -188,8 +188,9 @@ enum Undo {
     },
     /// A table added by `add_table`.
     Table(String),
-    /// A table as it was before a formula typed beside it grew it (T-2968).
-    TableExpanded(Box<Table>),
+    /// A table as it was before a typed formula grew it (T-2968) or made one of its columns a
+    /// calculated column (T-3024).
+    TableBefore(Box<Table>),
     /// A data table added by `add_data_table`: its sheet and result range.
     DataTable {
         sheet_id: u32,
@@ -264,12 +265,18 @@ impl Txn<'_> {
                 let targets = match expansion {
                     Some(expansion) => {
                         self.sheet_op = true;
-                        self.undo
-                            .push(Undo::TableExpanded(Box::new(expansion.table)));
+                        self.undo.push(Undo::TableBefore(Box::new(expansion.table)));
                         expansion.cells
                     }
-                    None => (self.model.calculated_column_targets(sheet, row, col))
-                        .map_err(EditError::Engine)?,
+                    None => match (self.model.calculated_column(sheet, row, col))
+                        .map_err(EditError::Engine)?
+                    {
+                        Some((table, targets)) => {
+                            self.undo.push(Undo::TableBefore(Box::new(table)));
+                            targets
+                        }
+                        None => Vec::new(),
+                    },
                 };
                 // The targets are the other rows of the cell's column.
                 for (r, c) in targets {
@@ -887,7 +894,7 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                 let undone = model.remove_table(&name);
                 debug_assert!(undone.is_ok(), "undo of add_table failed: {undone:?}");
             }
-            Undo::TableExpanded(table) => model.restore_table(*table),
+            Undo::TableBefore(table) => model.restore_table(*table),
             Undo::DataTable { sheet_id, range } => {
                 let sheet = (model.workbook.worksheets.iter())
                     .position(|ws| ws.get_sheet_id() == sheet_id)

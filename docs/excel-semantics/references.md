@@ -2576,15 +2576,18 @@ C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, 
 The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
 formula cells, so the sidecars do not hold them: they are read from each case's saved `xl/worksheets/sheet1.xml`
 (eval/.cache/oracle/excel-graph/<input_sha256>.xlsx).
-Ours (T-2958): rules 1-5 are implemented with no state on the table: a formula typed into a table's data rows
-(`Model::set_typed_user_input`, the facade's `Input::Parse` and `Input::Formula`) fills the column's other data rows
-when they are all blank or all hold one shared formula (`Model::calculated_column_targets`, calculated_columns.rs),
-by writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A blank cell
-beside formulas blocks the fill in the engine, an unprobed choice (T-3025). A column of one identical stored formula with no saved
-`calculatedColumnFormula` is wrongly re-filled by the engine (it compares shared-formula indices, which key on the
-relative formula, so shifted `=A2*2`, `=A3*2`, `=A4*2` match): rule 8(a) is a known failure (T-3024). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
-the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
-after the tables, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
+Ours (T-2958, T-3024): a formula typed into a table's data rows (`Model::set_typed_user_input`, the facade's
+`Input::Parse` and `Input::Formula`) fills the column's other data rows when they are all blank, or when they all hold
+one shared formula and the column is a calculated column (`Model::calculated_column`, calculated_columns.rs), by
+writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A column is a
+calculated column when its `TableColumn::calculated_column_formula` is set, which a typed formula that fills or
+re-fills it does (the first data row's text without `=`, as Excel saves `calculatedColumnFormula`); a typed constant
+keeps it. So a column of identical stored formulas is not re-filled (rule 8a). A blank cell beside formulas blocks the
+fill in the engine, an unprobed choice (T-3025). The column formula is neither read from nor written to xlsx yet
+(T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
+calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
+types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below). Neither import nor export
 reads or writes `calculatedColumnFormula` (T-2969).
 Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
@@ -2597,7 +2600,7 @@ and the cell is typed as before, in four unprobed cases: a constant typed there,
 column whose other cells are not all blank, and a new column that another table overlaps. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979): what Excel does with it there is unprobed (T-3003). The facade's edit holds
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
-Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7, the same file (T-2968)
+Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
 Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3025
 
 ## Unknown function call names: spelling in FORMULATEXT
