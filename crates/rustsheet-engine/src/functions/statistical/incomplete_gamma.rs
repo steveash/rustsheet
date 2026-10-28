@@ -323,6 +323,127 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
     sum
 }
 
+/// The shape from which the pair is Temme's uniform asymptotic expansion ([`temme_pair`]) and not a
+/// loop: the series needs about 6.8 * sqrt(a) terms near x = a, past [`MAX_TERMS`] from a shape of
+/// about 5.9E9, and never ends once `a + 1 == a`, while the expansion takes a fixed number of
+/// operations at any shape (T-1891).
+const TEMME_SHAPE_MIN: f64 = 1e8;
+
+/// Above this a·phi (`temme_pair`'s exponent) the smaller tail is below e^-800, so 0 in doubles,
+/// and the expansion's polynomials are not evaluated (their variable may overflow there).
+const TEMME_EXPONENT_MAX: f64 = 800.0;
+
+/// Temme's coefficients C_k(z) of the expansion, as polynomials in z, lowest power first (Temme
+/// 1979; DiDonato and Morris 1986; the 53-bit table of Boost's `igamma_temme_large`). From a shape
+/// of [`TEMME_SHAPE_MIN`] the terms past C_3 are below 1E-32 of the tail.
+const TEMME_C: [&[f64]; 4] = [
+    &[
+        -0.333_333_333_333_333_33,
+        0.083_333_333_333_333_333,
+        -0.014_814_814_814_814_815,
+        0.001_157_407_407_407_407_4,
+        0.000_352_733_686_067_019_4,
+        -0.000_178_755_144_032_921_81,
+        0.391_926_317_852_243_78e-4,
+        -0.218_544_851_067_999_22e-5,
+        -0.185_406_221_071_516e-5,
+        0.829_671_134_095_308_6e-6,
+        -0.176_659_527_368_260_79e-6,
+        0.670_785_354_340_149_86e-8,
+        0.102_618_097_842_403_08e-7,
+        -0.438_203_601_845_335_32e-8,
+        0.914_769_958_223_679_02e-9,
+    ],
+    &[
+        -0.001_851_851_851_851_851_9,
+        -0.003_472_222_222_222_222_2,
+        0.002_645_502_645_502_645_5,
+        -0.000_990_226_337_448_559_67,
+        0.000_205_761_316_872_427_98,
+        -0.401_877_572_016_460_91e-6,
+        -0.180_985_503_344_899_78e-4,
+        0.764_916_091_608_111_01e-5,
+        -0.161_209_008_945_634_46e-5,
+        0.464_712_780_280_743_43e-8,
+        0.137_863_344_691_572_1e-6,
+        -0.575_254_560_351_770_5e-7,
+        0.119_516_285_997_781_47e-7,
+    ],
+    &[
+        0.004_133_597_883_597_883_6,
+        -0.002_681_327_160_493_827_2,
+        0.000_771_604_938_271_604_94,
+        0.200_938_786_008_230_45e-5,
+        -0.000_107_366_532_263_651_61,
+        0.529_234_488_291_201_25e-4,
+        -0.127_606_351_886_187_28e-4,
+        0.342_357_873_409_613_81e-7,
+        0.137_219_573_090_629_33e-5,
+        -0.629_899_213_838_005_5e-6,
+        0.142_806_142_060_642_42e-6,
+    ],
+    &[
+        0.000_649_434_156_378_600_82,
+        0.000_229_472_093_621_399_18,
+        -0.000_469_189_494_395_255_71,
+        0.000_267_720_632_062_838_85,
+        -0.756_180_167_188_397_64e-4,
+        -0.239_650_511_386_729_67e-6,
+        0.110_826_541_153_473_02e-4,
+        -0.567_495_282_699_159_66e-5,
+        0.142_309_007_324_358_84e-5,
+    ],
+];
+
+/// (P(a, x), Q(a, x)) by Temme's uniform asymptotic expansion, for a shape of at least
+/// [`TEMME_SHAPE_MIN`] (T-1891). With phi = (x - a)/a - ln(x/a) and z = ±sqrt(2 phi) (the sign of
+/// x - a), the smaller tail is erfc(sqrt(a phi))/2 ± e^(-a phi)/sqrt(2 pi a) · sum C_k(z)/a^k
+/// (- for P below a, + for Q from a on), and the other tail 1 minus it. Excel is close to
+/// correctly rounded here: `GAMMA.DIST(1E10,1E10,1,TRUE)` = 0.5000013298076014 and
+/// `GAMMA.DIST(1E16,1E16,1,TRUE)` = 0.5000000013298076 (probes/incomplete-gamma-cap E8, E1).
+fn temme_pair(a: f64, x: f64) -> (f64, f64) {
+    // Within a factor of 2 of a, x - a is exact (Sterbenz), as in `gamma_prefactor`.
+    let phi = if x >= a * 0.5 && x <= a * 2.0 {
+        rlog1((x - a) / a)
+    } else {
+        let ratio = x / a;
+        (ratio - 1.0) - ratio.ln()
+    };
+    let exponent = a * phi;
+    let below = x < a;
+    let small = if exponent > TEMME_EXPONENT_MAX {
+        0.0
+    } else {
+        let z = if below {
+            -(2.0 * phi).sqrt()
+        } else {
+            (2.0 * phi).sqrt()
+        };
+        let inverse = 1.0 / a;
+        let series = TEMME_C
+            .iter()
+            .rev()
+            .fold(0.0, |acc, c| acc * inverse + horner(c, z));
+        let correction = series * (-exponent).exp() / (2.0 * std::f64::consts::PI * a).sqrt();
+        let base = libm::erfc(exponent.sqrt()) / 2.0;
+        if below {
+            base - correction
+        } else {
+            base + correction
+        }
+    };
+    if below {
+        (small, 1.0 - small)
+    } else {
+        (1.0 - small, small)
+    }
+}
+
+/// c\[0] + c\[1] z + c\[2] z^2 + ..., by Horner's rule.
+fn horner(c: &[f64], z: f64) -> f64 {
+    c.iter().rev().fold(0.0, |acc, &k| acc * z + k)
+}
+
 /// The accurate regularized incomplete gamma pair (P(a, x), Q(a, x)) for a > 0, x > 0 (T-0971):
 /// the series for P below x = a + 1 and the continued fraction (modified Lentz) for Q above it,
 /// each taken to full double precision, the other tail as 1 minus it (Q directly for a small
@@ -331,6 +452,13 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
 fn incomplete_gamma_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
     if a == 1.0 {
         return (-(-x).exp_m1(), (-x).exp());
+    }
+    if a >= TEMME_SHAPE_MIN {
+        // A fixed amount of work, charged as one term.
+        if !terms.take() {
+            return (f64::NAN, f64::NAN);
+        }
+        return temme_pair(a, x);
     }
     let prefactor = gamma_prefactor(a, x);
     if prefactor == 0.0 {
@@ -863,9 +991,17 @@ mod tests {
     // functions), or as Excel's value where x / beta underflows.
     #[test]
     fn statrs_panics_and_hangs_end_as_nan() {
-        // `a + 1 == a`: the series never ends (GAMMA.DIST(1E16,1E16,1,TRUE)).
-        assert!(gamma_cdf(&Gamma::new(1e16, 1.0).unwrap(), 1e16).is_nan());
-        assert!(gamma_ur(1e16 + 1.0, 1e16).is_nan());
+        // `a + 1 == a`, where the series never ends, is Temme's expansion: Excel's
+        // `GAMMA.DIST(1E16,1E16,1,TRUE)` and `POISSON(1E16,1E16,TRUE)` (probes/incomplete-gamma-cap
+        // E1, E2; T-1891).
+        assert_eq!(
+            gamma_cdf(&Gamma::new(1e16, 1.0).unwrap(), 1e16).to_bits(),
+            0.500_000_001_329_807_6_f64.to_bits()
+        );
+        assert_eq!(
+            gamma_ur(1e16 + 1.0, 1e16).to_bits(),
+            0.499_999_998_670_192_4_f64.to_bits()
+        );
         // x * rate overflows (statrs: an unwrapped domain error).
         assert!(gamma_cdf(&Gamma::new(1.0, 1e10).unwrap(), 1e300).is_nan());
         // Where it underflows to 0 (statrs panicked too) the value is statrs' at its smallest x.
@@ -901,18 +1037,20 @@ mod tests {
     // is NaN, and the same call with exactly the terms it needs is its value.
     #[test]
     fn a_call_past_its_cap_is_nan() {
-        // The series at a = x = 5E9 (CHISQ.DIST(1E10,1E10,TRUE)) stays under the cap.
-        assert!(terms_needed(5e9, 5e9) < MAX_TERMS);
-        // At a = x = 1E10 it is past it.
-        assert!(pair(1e10, 1e10).0.is_nan());
-        assert!(!incomplete_gamma_pair(1e10, 1e10, &mut Terms(u32::MAX))
-            .0
-            .is_nan());
-        // The continued fraction (x above a) and the small-shape Q's series.
-        terms_needed(1e8, 1.0001e8);
+        // The series near x = a below Temme's shape, the continued fraction (x above a) and the
+        // small-shape Q's series.
+        assert!(terms_needed(9e7, 9e7) > 50_000);
+        terms_needed(9e7, 9.0001e7);
         terms_needed(0.00113, 8e-4);
+        // From Temme's shape a cdf is one term at any x, where the series needed 675,286 at
+        // a = x = 1E10 (T-1891): Excel's `GAMMA.DIST(1E10,1E10,1,TRUE)` (E8).
+        assert_eq!(terms_needed(1e10, 1e10), 1);
+        assert_eq!(
+            pair(1e10, 1e10).0.to_bits(),
+            0.500_001_329_807_601_4_f64.to_bits()
+        );
         // An inversion shares one budget over its cdfs.
-        let dist = Gamma::new(3e8, 1e6).unwrap();
+        let dist = Gamma::new(3e7, 1e6).unwrap();
         assert!(near_at(
             inverse_cdf_within(&dist, 1e-5, &mut Terms(MAX_TERMS)),
             dist.inverse_cdf(1e-5),
