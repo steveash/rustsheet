@@ -45,6 +45,7 @@ total. A cell owned only by a `defer:` task is unowned and shows `deferred` afte
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import re
 import sys
@@ -212,6 +213,7 @@ A1_SPAN = re.compile(rf"(?<!{A1_WORD}){A1_PART}:{A1_PART}(?!\w)")
 A1_SPLIT = re.compile(A1_PART)
 
 
+@functools.lru_cache(maxsize=None)  # `--all-off` asks the same text and case for every cell of the case
 def names_case(text: str, names: tuple[str, ...]) -> bool:
     """Whether `text` holds one of a case's `names` (`case_names`), bare or followed by
     `.case.json` (decision 0136), bounded like a file name."""
@@ -240,6 +242,7 @@ def names_in_span(text: str, names: tuple[str, ...], a1: str) -> bool:
     return False
 
 
+@functools.lru_cache(maxsize=None)
 def names_whole_case(text: str, names: tuple[str, ...]) -> bool:
     """Whether a line of `text` names the case and no cell: a task that lists cells beside a case
     owns only those, even when they have since passed and left the report."""
