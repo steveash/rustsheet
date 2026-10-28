@@ -548,3 +548,58 @@ fn rank_and_row_dependent_small_are_not_tailed() {
     }
     assert_eq!(walks, 0);
 }
+
+/// LOOKUP's vector form searches an element-wise `lookup_vector` as its head and a tail it skips
+/// (SPEC-0020 Amendment 1 section 3, T-0494): error tails (`1/FALSE`, corpus-bench 33935's
+/// last-non-empty idiom) and empty tails, targets of each kind, including ones whose kind differs
+/// from the head's last element (the search's midpoints skip forward), a lifted lookup_value, and
+/// a bounded span.
+#[test]
+fn lookup_vector_form_of_a_tailed_argument() {
+    let formulas: Vec<String> = [
+        "=LOOKUP(2,1/(A:A<>\"\"),A:A)",
+        "=LOOKUP(2,1/(B:B<>\"\"),C:C)",
+        "=LOOKUP(2,1/(Sheet2!A:A<>\"\"),Sheet2!A:A)",
+        // An empty tail (C's blanks through IF), searched for a number, text and a boolean.
+        "=LOOKUP(3,IF(A:A=\"\",C:C,B:B),A:A)",
+        "=LOOKUP(0.5,IF(A:A=\"\",C:C,B:B),A:A)",
+        "=LOOKUP(\"z\",IF(A:A=\"\",C:C,A:A),B:B)",
+        "=LOOKUP(TRUE,IF(A:A=\"\",C:C,A:A),B:B)",
+        "=LOOKUP(\"a\",1/(A:A<>\"\"),B:B)",
+        // A value smaller than every key: #N/A.
+        "=LOOKUP(-5,IF(A:A=\"\",C:C,B:B),A:A)",
+        // A lifted lookup_value: one search per element.
+        "=ARRAYTOTEXT(LOOKUP({1;3;\"y\";TRUE},IF(A:A=\"\",C:C,A:A),B:B),1)",
+        // A bounded span past the used area.
+        "=LOOKUP(2,1/(A2:A70000<>\"\"),B2:B70000)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, formulas.len(), "every lookup_vector is tailed");
+}
+
+/// LOOKUP keeps the ordinary search for a tail of a searched kind (a number, FALSE, text: a run
+/// of equal keys at the end), and for the array form, which picks from the table itself.
+#[test]
+fn lookup_forms_that_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=LOOKUP(2,A:A*0+1,B:B)",
+        "=LOOKUP(2,IF(A:A<>\"\",1),B:B)",
+        "=LOOKUP(\"b\",A:A&\"\",B:B)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, _) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    let (results, walks) = both_ways(&["=LOOKUP(2,1/(A:A<>\"\"))".to_string()]);
+    assert_eq!(results[0].1, results[0].2);
+    assert_eq!(walks, 0);
+}
