@@ -3528,18 +3528,6 @@ F	probes/t2436/abc2939ebd1e2365.case.json	Calc!T1
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!T16
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U1
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U16
-F	probes/t2454-offset-array-height.case.json	Sheet1!A12
-F	probes/t2454-offset-array-height.case.json	Sheet1!B12
-F	probes/t2454-offset-array-height.case.json	Sheet1!C12
-F	probes/t2454-offset-array-height.case.json	Sheet1!D12
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!A5
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!A9
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!B5
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!B9
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!C5
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!C9
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!D5
-F	probes/t2454-offset-one-cell-array-args.case.json	Sheet1!D9
 F	probes/t2466-cell-contents-stack.case.json	Calc!A111
 F	probes/t2466-cell-contents-stack.case.json	Calc!A112
 F	probes/t2466-cell-contents-stack.case.json	Calc!A121
@@ -3547,7 +3535,6 @@ F	probes/t2466-cell-contents-stack.case.json	Calc!A122
 F	probes/t2466-cell-contents-stack.case.json	Calc!A151
 F	probes/t2466-cell-contents-stack.case.json	Calc!A152
 F	probes/t2475-stat-subexpressions.case.json	P!A142
-F	probes/t2475-stat-subexpressions.case.json	P!A279
 F	probes/t2475-stat-subexpressions.case.json	P!A317
 F	probes/t2475-stat-subexpressions.case.json	P!A369
 F	probes/t2475-stat-subexpressions.case.json	P!A417
