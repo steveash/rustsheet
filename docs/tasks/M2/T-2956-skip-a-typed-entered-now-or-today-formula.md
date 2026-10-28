@@ -3,7 +3,7 @@ id: T-2956
 title: "Skip a typed (entered) NOW or TODAY formula as volatile, as a stored one is (probes/t2786 H1, H11)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
