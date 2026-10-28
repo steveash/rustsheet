@@ -2187,8 +2187,17 @@ Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an ana
 T-2777's term (`yield_start_years`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
 cells and its 100-step cap").
-Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2777 (the start's term), T-2788 (the last ulps)
+Off the fit (T-2741, `make eval` on de48145d): of the 370 probe and ironcalc-calc YIELD cells that were visibly off
+before T-1592, 367 are now within Excel's 15 digits. Those cells come from yield-start-rate-term, yield-start-sweep,
+yield-solver-sweep, PRICE_YIELD.xlsx's I column, solver-iteration-traces, the 1900 date-system readers and the
+fin-* probes. PRICE_YIELD!I30 (0.06499999999159671, short of PRICE's own 0.065) is bit-exact. Both
+date-system-1900-financial-readers S!E8 twins and yield-start-rate-term S!B20 are 1 ulp off. The twins are the same bond
+four years apart, and their start's term in the basis's years differs, so Excel's values differ by 8e-11 and ours
+follow (`fn_yield_matches_excel_off_the_fit`). Still visibly off, though only 5 to 27 ulp from Excel past a 15th-digit
+rounding boundary: yield-start-rate-term S!B39 and S!B49 (basis 1, 8 and 30 years) and yield-solver-sweep S!C7
+(T-2974).
+Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells)
 
 ## YIELD's #NUM! cells and its 100-step cap
 Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of

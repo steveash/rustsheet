@@ -220,6 +220,38 @@ fn fn_yield_start_term_whole_years_then_leftover_days() {
     assert_eq!(bits("A5"), 0.055_580_455_075_332_17_f64.to_bits());
 }
 
+// YIELD's fitted start and early stop (T-1592) reach Excel's 15 digits beyond the cells it was
+// fitted on (T-2741; financial.md "YIELD stops short of PRICE's root"): ironcalc-calc
+// FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!I30 (a yield of PRICE's own price, short of 0.065),
+// probes/date-system-1900-financial-readers S!E8 and its -shifted twin S!E8 (the same bond four
+// years later: the start moves with the term in the basis's years, so the two differ by 8e-11), and
+// probes/yield-start-rate-term S!B20 (basis 1, 14 years).
+#[test]
+fn fn_yield_matches_excel_off_the_fit() {
+    let mut model = new_empty_model();
+    model._set("H30", "=PRICE(DATE(2025,4,1),DATE(2028,3,13),0.05,0.065,15,1,3)");
+    model._set("A1", "=YIELD(DATE(2025,4,1),DATE(2028,3,13),0.05,H30,15,1,3)");
+    model._set("A2", "=YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)");
+    model._set("A3", "=YIELD(DATE(2100,2,16),DATE(2104,3,1),0.05,98,100,2,0)");
+    model._set("A4", "=YIELD(DATE(2096,3,1),DATE(2110,6,30),0.12,98,100.5,1,0)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("H30"), 25.484_095_435_031_72_f64.to_bits());
+    assert_eq!(bits("A1"), 0.064_999_999_991_596_71_f64.to_bits());
+    // The twins and B20 are 1 ulp off Excel's bits, within its 15 digits; the bit-level residue
+    // is the follow-up's (T-2741 Outcome).
+    let within_an_ulp = |c: &str, excel: f64| {
+        let ulps = bits(c).abs_diff(excel.to_bits());
+        assert!(ulps <= 1, "{c}: {ulps} ulp from Excel's {excel}");
+    };
+    within_an_ulp("A2", 0.055_585_928_765_551_25);
+    within_an_ulp("A3", 0.055_585_928_843_032_48);
+    within_an_ulp("A4", 0.122_943_903_299_904_23);
+}
+
 // YIELD's Newton has no fallback (T-2391; financial.md "YIELD's #NUM! cells and its 100-step
 // cap"): an iterate off PRICE's domain is #NUM! though PRICE has a root (probes/yield-newton-domain
 // B14 and A14), and the 100th iterate is the value though it is no root (C1).
