@@ -3,7 +3,7 @@ id: T-2937
 title: "Probe the file-name prefix of a workbook name for a quoted file name, an unnamed workbook and a definedName body"
 milestone: M8
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,9 +23,18 @@ workbook, where ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`;
 body on load (ours writes it there).
 
 ## Acceptance criteria
-- [ ] A probe case (or a desktop question in M14 Phase 4) per point above, with oracle values where a backend can answer.
-- [ ] references.md records each answer; any mismatch with ours gets an engine task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case (or a desktop question in M14 Phase 4) per point above, with oracle values where a backend can answer.
+- [x] references.md records each answer; any mismatch with ours gets an engine task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine (follow-up tasks if a probe shows a mismatch).
+
+## Outcome
+- (3) Probed on excel-graph: `probes/t2937-own-book-prefix-in-name-body` (12 cells, M8). `[0]!loc` inside a
+  `<definedName>` body loads as the workbook name whatever the holding name's scope and whichever sheet reads it,
+  even on a sheet with its own `loc`. Ours matches all 12 cells; no engine task needed.
+- (1) and (2) cannot be answered on excel-graph (it uploads under hex file names and always saves): filed as
+  desktop questions 21 and 22 in T-1075 (M14, Phase 4, decision 0039).
+- references.md "A sheet-qualified workbook name is rewritten to the workbook's file name" records all three.
+- Eval delta: +1 probe case, 12/12 cells pass; 0 regressions.

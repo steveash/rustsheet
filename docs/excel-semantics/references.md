@@ -2146,10 +2146,18 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   (`Local!loc` = 7 beside workbook `loc` = 5: `=[0]!loc` on Local is 5, `=loc` 7; probe
   `workbook-name-own-book-prefix`, excel-graph 2026-10-27, T-2834). Ours matches (T-2834): the parser
   writes the file-name prefix, reads `<file>.xlsx!loc` (any case) back as the workbook name, and stores and
-  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. Unprobed: a
-  file name with a space or other characters a sheet name would quote (ours quotes it as a sheet name),
-  an unnamed workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`), and `[0]!loc` inside a
-  defined name's body in the file (ours writes it there too; T-2937).
+  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. `[0]!loc`
+  inside a defined name's body in the file (ours writes it there too) loads as the workbook name as well,
+  whatever the scope of the name that holds it and whichever sheet reads it: with `wb` = `[0]!loc`,
+  `wb_plus` = `[0]!loc+1`, `wb_sum` = `SUM([0]!loc)`, `wb_rng` = `[0]!rng` (`Feb!$A$1:$A$2`) and the
+  Local-scoped `lw` = `[0]!loc`, Excel gives `=wb` 5 on Calc and on Local (which has its own `loc` = 7),
+  `=SUM(wb)` 5, `=ISREF(wb)` TRUE, `=wb_plus` 6, `=wb_sum` 5, `=lw` on Local and `=Local!lw` on Calc 5,
+  `=ROWS(wb_rng)` 2 and `=SUM(wb_rng)` 12, while `=loc` on Local stays 7 (probe
+  `t2937-own-book-prefix-in-name-body`, excel-graph 2026-10-28, T-2937); ours matches all 12 cells.
+  Unprobed, because excel-graph uploads every workbook under a hex file name: a file name with a space, `'`
+  or other characters a sheet name would quote (ours quotes it as a sheet name), and an unnamed (never
+  saved) workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`). Both are desktop
+  questions in T-1075 (items 21 and 22; M14, Phase 4, decision 0039).
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.
