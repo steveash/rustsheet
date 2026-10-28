@@ -24,6 +24,7 @@ Remaining gen-m9 cells (3 known-failure lines, eval/baseline/gen-m9.txt):
 - [ ] The 3 gen-m9 cells above leave eval/baseline/gen-m9.txt (`make eval-baseline`), no new known-failure lines.
 - [ ] Also probe `SUMXMY2(<scalar>,<range>)` vs a one-cell TAKE (excel-probe) before changing SUMXMY2.
 - [ ] Carried over from T-2519 (excel-probe): `CHOOSE(1,DROP(H2:H4,-2,0))` and `LET(x,DROP(H2:H4,-2,0),x)` as OFFSET's height, and the mechanism of the scalar height 1E-15 giving 2 rows (lookup.md, probes/t2454-offset-array-height A1).
+- [ ] Probe ISBLANK/ISREF/TYPE/CELL over a one-cell TAKE/DROP (T-2519 made it a reference in value context; unprobed). probes/t2475-stat-subexpressions P!A279 (TAKE under subtraction) already passes.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
