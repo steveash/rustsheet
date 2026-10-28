@@ -17,7 +17,8 @@ table. Each one then evaluates at its own row against the table as it is after t
 
 ## Context
 - Evidence (excel-graph, 2026-10-28, T-2845): probes/table-edits table-insert-row-this-row-above-header,
-  -this-row-inside-data, -calc-column-above-header and -calc-column-inside-data. These are 39 known-failure lines in
+  table-insert-row-this-row-inside-data, table-insert-row-calc-column-above-header and
+  table-insert-row-calc-column-inside-data (all of each; the text cells with T-1683). These are 39 known-failure lines in
   eval/baseline/probes.txt. The rule is in docs/excel-semantics/references.md "Structured references when the table
   changes", T-2845 paragraph. Examples:
   - `Sales` on S!B3:C7 (Qty 1,2,4,8), F!A4:A8 `=Sales[@Qty]`, insert above row 3 (the table moves to B4:C8). Excel

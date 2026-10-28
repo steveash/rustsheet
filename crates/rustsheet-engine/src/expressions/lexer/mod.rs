@@ -915,11 +915,11 @@ impl Lexer {
         // Excel keeps the sheet prefix when a referenced range is deleted (`Sheet1!#REF!`); the
         // whole reference is the #REF! error (docs/excel-semantics/references.md,
         // "A sheet-qualified #REF! is #REF!").
-        if sheet.is_some() && self.peek_char() == Some('#') {
+        if let Some(name) = sheet.as_ref().filter(|_| self.peek_char() == Some('#')) {
             let start = self.position;
             self.position += 1;
             if self.consume_error() == TokenType::Error(Error::REF) {
-                return TokenType::Error(Error::REF);
+                return TokenType::SheetRefError(name.clone());
             }
             self.position = start;
         }

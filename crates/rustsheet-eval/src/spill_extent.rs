@@ -7,7 +7,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use crate::case::{cell_key, CaseSpec};
+use crate::case::{cell_key, CaseSpec, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::engine::Evaluated;
 use crate::runner::{CellKind, CellResult};
@@ -29,6 +29,51 @@ pub(crate) struct SpillExtent {
     pending: Vec<(String, Addr)>,
 }
 
+/// Where `addr` on `sheet` sits after the spec's `sheet_ops`. Excel keeps a table's last data row
+/// when it is deleted (T-2338, probes/table-edits/table-delete-row-all-data-below): that delete
+/// moves nothing, so the cells below the table stay one row lower than a plain delete leaves them.
+fn moved_input(spec: &CaseSpec, sheet: &str, addr: Addr) -> Addr {
+    // The data rows (first, last) of each table on `sheet`, followed through the ops.
+    let mut tables: Vec<(u32, u32)> = spec
+        .sheets
+        .iter()
+        .filter(|s| s.name == sheet)
+        .flat_map(|s| &s.tables)
+        .filter_map(|t| {
+            let (first, last) = parse_range(&t.range)?;
+            let last_data = if t.totals_row {
+                last.row.checked_sub(1)?
+            } else {
+                last.row
+            };
+            (first.row < last_data).then_some((first.row + 1, last_data))
+        })
+        .collect();
+    let mut addr = addr;
+    for op in &spec.sheet_ops {
+        if let SheetOp::DeleteRow { sheet: at, row } = op {
+            if at == sheet {
+                if tables
+                    .iter()
+                    .any(|&(first, last)| first == last && first == *row)
+                {
+                    continue;
+                }
+                for (first, last) in &mut tables {
+                    if *row < *first {
+                        *first -= 1;
+                    }
+                    if *row <= *last {
+                        *last -= 1;
+                    }
+                }
+            }
+        }
+        addr = op.moved(sheet, addr);
+    }
+    addr
+}
+
 impl SpillExtent {
     /// The check for `spec`, whose `expected` values include the oracle's `oracle_cells`.
     pub(crate) fn new(
@@ -47,11 +92,10 @@ impl SpillExtent {
                     // pivot's rendered cells are inputs of the engine case (T-2084).
                     let rendered = s.pivot_tables.iter().flat_map(|p| p.rendered.keys());
                     let inputs = s.cells.keys().chain(rendered).filter_map(|a1| {
-                        let addr = spec
-                            .sheet_ops
-                            .iter()
-                            .fold(Addr::parse(a1)?, |addr, op| op.moved(&s.name, addr));
-                        Some(cell_key(&s.name, addr))
+                        Some(cell_key(
+                            &s.name,
+                            moved_input(spec, &s.name, Addr::parse(a1)?),
+                        ))
                     });
                     // A data table's result cells are declared by the case; Excel saves all but
                     // the first as plain values, which the oracle does not record (T-0441).
@@ -199,6 +243,24 @@ mod tests {
         assert!(extent(&["A1", "B1", "C1"])
             .unexpected_cells(&Spilled)
             .is_empty());
+    }
+
+    /// Deleting row 4 of a one-row table clears it and moves nothing (T-2338), so S!C10 sits at
+    /// C7 after four deletes of a four-row table, not at C6.
+    #[test]
+    fn a_table_keeps_its_last_data_row_when_following_moved_inputs() {
+        let json = format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{}},
+            "tables":[{{"name":"T","ref":"B3:C7"}}]}}],
+            "sheet_ops":[{}]}}"#,
+            [r#"{"op":"delete_row","sheet":"S","row":4}"#; 4].join(",")
+        );
+        let spec: CaseSpec = serde_json::from_str(&json).expect("spec");
+        let c10 = Addr::parse("C10").expect("addr");
+        assert_eq!(
+            moved_input(&spec, "S", c10),
+            Addr::parse("C7").expect("addr")
+        );
     }
 
     /// A1 left pending: its spill extent in Excel is unknown, so its members are not checked.

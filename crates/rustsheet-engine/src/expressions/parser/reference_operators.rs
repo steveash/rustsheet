@@ -415,6 +415,7 @@ fn starts_reference(token: &TokenType) -> bool {
             | TokenType::StructuredReference { .. }
             | TokenType::LeftParenthesis
             | TokenType::Error(Error::REF)
+            | TokenType::SheetRefError(_)
     )
 }
 
@@ -438,6 +439,7 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::StructuredReferenceKind { .. }
+        | Node::SheetRefErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::OpRangeKind { .. }
