@@ -1438,6 +1438,9 @@ C	probes/t2957-refill-second.case.json	6
 C	probes/t2966-empty-call-runs.case.json	8
 C	probes/t2966-missing-first-arg-run.case.json	6
 C	probes/t2967-pivotby-subtotal-gate.case.json	359
+C	probes/t2983-formulas-and-blank-enter-blank.case.json	6
+C	probes/t2983-formulas-and-blank-enter-last.case.json	5
+C	probes/t2983-identical-stored-refill.case.json	6
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
