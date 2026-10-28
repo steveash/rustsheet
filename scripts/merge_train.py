@@ -3,7 +3,7 @@
 
   scripts/merge_train.py mode        # the mode on origin/main: lock, shadow or train
   scripts/merge_train.py --dry-run   # steps 2-4: collect, build, id checks; prints, writes nothing
-  scripts/merge_train.py --train     # steps 1-7 for a green train, in `train` mode only
+  scripts/merge_train.py --train     # steps 1-9 and section 6 (red trains), in `train` mode only
 
 The mode is read from `scripts/merge_train.toml` on a freshly fetched `origin/main`, never from
 the checkout, so a branch cannot switch its own flow. The read fails closed: a missing file, a
@@ -239,7 +239,7 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
     return "\n".join(lines)
 
 
-# The merge stage of a green train (SPEC-0027 section 4, steps 1 and 5-7; T-2994). The
+# The merge stage (SPEC-0027 section 4, steps 1 and 5-9; T-2994) and red trains (section 6; T-2998). The
 # constants are section 4's.
 TRAIN_BRANCH = "merge-train/current"
 TRAIN_REF = f"refs/heads/{TRAIN_BRANCH}"
@@ -269,6 +269,84 @@ class Stop(Exception):
     def __init__(self, reason: str, *, p0: bool = False) -> None:
         super().__init__(reason)
         self.p0 = p0
+
+
+class CutOff(Stop):
+    """A stop after which the known-green prefix still merges and the search state is recorded
+    (SPEC-0027 section 6, "Budget cut-off"): the step 6 gate failed, or the infrastructure failed
+    twice."""
+
+
+# The outcome of one train CI wait (step 6). INFRA is a run that is not the PRs' fault: no run, a
+# run over CI_TIMEOUT, or a run or job that was cancelled, timed out or never started (section 6).
+INFRA = "infrastructure"
+INFRA_CONCLUSIONS = ("cancelled", "timed_out", "startup_failure", "missing")
+
+
+@dataclass(frozen=True)
+class Outcome:
+    """GREEN, RED or INFRA for one tested tip, the jobs that were not green, and the run ids."""
+
+    state: str
+    jobs: tuple[str, ...] = ()
+    runs: tuple[int, ...] = ()
+
+
+# The search state a cut-off records on TRAIN_REF (section 6, "Resume is required"). The commit
+# says `[skip ci]`, so recording it starts no run.
+STATE_HEADER = "merge train state [skip ci]"
+STATE_LINE = re.compile(r"(bisect-base|known-red|known-green-prefix): (.*)")
+KNOWN_RED = re.compile(r"#([1-9]\d{0,8}) ([0-9a-f]{40})")
+
+
+@dataclass(frozen=True)
+class Resume:
+    """A recorded cut-off: the PRs `known_red` (number, head) are a known-red train on `base`."""
+
+    base: str
+    known_red: tuple[tuple[int, str], ...]
+
+    def render(self) -> str:
+        red = " ".join(f"#{pr} {head}" for pr, head in self.known_red)
+        return f"{STATE_HEADER}\n\nbisect-base: {self.base}\nknown-red: {red}\nknown-green-prefix: 0"
+
+    @staticmethod
+    def parse(message: str) -> Resume | None:
+        """The state in a TRAIN_REF commit message, or None unless it is exactly a state record.
+        Anyone who can push the branch can write one, so it only ever saves runs: a culprit is
+        ejected only after its own confirmation run is red, and only tested prefixes merge."""
+        lines = message.strip().splitlines()
+        if len(lines) != 5 or lines[0] != STATE_HEADER or lines[1]:
+            return None
+        fields = {}
+        for line in lines[2:]:
+            matched = STATE_LINE.fullmatch(line)
+            if matched is None or matched[1] in fields:
+                return None
+            fields[matched[1]] = matched[2]
+        red = fields.get("known-red", "")
+        pairs = KNOWN_RED.findall(red)
+        if (
+            not SHA.fullmatch(fields.get("bisect-base", ""))
+            or fields.get("known-green-prefix") != "0"
+            or not pairs
+            or " ".join(f"#{pr} {head}" for pr, head in pairs) != red
+        ):
+            return None
+        return Resume(fields["bisect-base"], tuple((int(pr), head) for pr, head in pairs))
+
+    def matches(self, train: Train) -> tuple[int | None, str]:
+        """How many leading members of `train` are known red, or None and the restart reason."""
+        if train.base != self.base:
+            return None, "main moved since the cut-off"
+        k = len(self.known_red)
+        prefix = [(m.pr, m.head) for m in train.members[:k]]
+        if [pr for pr, _ in prefix] != [pr for pr, _ in self.known_red]:
+            return None, "the batch no longer starts with the known-red PRs"
+        for (pr, head), (_, known) in zip(prefix, self.known_red, strict=True):
+            if head != known:
+                return None, f"#{pr}'s head changed since the cut-off"
+        return k, ""
 
 
 def squash_title(title: str, pr: int) -> str:
@@ -333,7 +411,10 @@ class Stage:
     acquired: float = 0.0
     renewed: float = 0.0
     main: str = ""
+    lease: str = ""
     log: list[str] = field(default_factory=list)
+    # The tasks this hold asks for, as (priority, title, body); filing them is T-3055's.
+    tasks: list[tuple[str, str, str]] = field(default_factory=list)
 
     def checkpoint(self) -> None:
         """A stop checkpoint: when `main` moved since the last one, re-read the switch from it
@@ -353,59 +434,99 @@ class Stage:
     def left(self) -> float:
         return HOLD_BUDGET - (self.clock() - self.acquired)
 
-    def push(self, train: Train, lease: str) -> str:
+    def push(self, train: Train, notes: Sequence[str] = ()) -> str:
         """Step 5: push a record commit on the train's tip (same tree; its message lists the
-        batch) to TRAIN_REF, leased on the sha read before the build. Returns the pushed sha."""
+        batch, then `notes`) to TRAIN_REF, leased on the last sha this hold read or pushed there.
+        Returns the pushed sha."""
         lines = [f"merge train on main {train.base}", ""]
         lines += [f"#{m.pr} {m.head}" for m in train.members]
-        tip = git(
-            *IDENTITY, "commit-tree", tree_of(train.tip, self.root), "-p", train.tip, "-m", "\n".join(lines),
-            root=self.root,
-        ).stdout.strip()
-        pushed = git("push", "-q", f"--force-with-lease={TRAIN_REF}:{lease}", REMOTE, f"{tip}:{TRAIN_REF}",
+        lines += ["", *notes] if notes else []
+        return self.write_train_ref(tree_of(train.tip, self.root), train.tip, "\n".join(lines))
+
+    def write_train_ref(self, tree: str, parent: str, message: str) -> str:
+        tip = git(*IDENTITY, "commit-tree", tree, "-p", parent, "-m", message, root=self.root).stdout.strip()
+        pushed = git("push", "-q", f"--force-with-lease={TRAIN_REF}:{self.lease}", REMOTE, f"{tip}:{TRAIN_REF}",
                      root=self.root, check=False)
         if pushed.returncode != 0:
             raise Stop(f"infrastructure: the push to {TRAIN_BRANCH} lost its lease under the lock")
+        self.lease = tip
         return tip
 
-    def ci(self, tip: str, docs_only: bool | None) -> tuple[str, list[str], bool]:
-        """The train CI's state on exactly `tip` (step 6), and whether a matching run exists."""
+    def record(self, state: Resume) -> None:
+        """A cut-off's search state, as a `[skip ci]` commit on the last train tip."""
+        git("fetch", "-q", "--no-tags", REMOTE, f"+{TRAIN_REF}:refs/merge-train/current", root=self.root)
+        self.write_train_ref(tree_of(self.lease, self.root), self.lease, state.render())
+        self.log.append("recorded known-red " + ", ".join(f"#{pr}" for pr, _ in state.known_red)
+                        + f" on {state.base[:12]}")
+
+    def recorded(self) -> Resume | None:
+        """The search state of the last cut-off, read through the commits API, or None."""
+        if not self.lease:
+            return None
+        return Resume.parse(merge_ready.text_of(self.client.commit(self.lease), "message"))
+
+    def ci(self, tip: str, docs_only: bool | None) -> tuple[str, list[str], list[int]]:
+        """The train CI's state on exactly `tip` (step 6), and the ids of the matching runs."""
         runs = [
             r for r in self.client.workflow_runs(branch=TRAIN_BRANCH, head_sha=tip)
             if merge_ready.text_of(r, "head_sha") == tip and merge_ready.text_of(r, "head_branch") == TRAIN_BRANCH
         ]
-        seen = any(
-            merge_ready.text_of(r, "path") == merge_ready.CI_WORKFLOW
-            and merge_ready.text_of(r, "event") in TRAIN_EVENTS for r in runs
+        ids = sorted(
+            merge_ready.int_of(r, "id") for r in runs
+            if merge_ready.text_of(r, "path") == merge_ready.CI_WORKFLOW
+            and merge_ready.text_of(r, "event") in TRAIN_EVENTS and merge_ready.int_of(r, "id") > 0
         )
         state, jobs = merge_ready.ci_state(runs, self.client.check_runs(tip), docs_only, TRAIN_EVENTS)
-        return state, jobs, seen
+        return state, jobs, ids
 
-    def wait_ci(self, tip: str, docs_only: bool | None, prs: Sequence[int]) -> None:
-        """Step 6: the budget gate, then the CI wait on `tip`; returns only when it is green."""
-        need = CI_TIMEOUT + len(prs) * MERGE_BUDGET
+    def gate(self, n: int) -> None:
+        """Step 6's budget gate for a CI wait whose green result can merge `n` PRs."""
+        need = CI_TIMEOUT + n * MERGE_BUDGET
         if self.left() < need:
-            raise Stop(f"hold budget: {self.left():.0f} s left, a CI wait for {len(prs)} PR(s) needs {need} s")
+            raise CutOff(f"hold budget: {self.left():.0f} s left, a CI wait for {n} PR(s) needs {need} s")
+
+    def wait_ci(self, tip: str, docs_only: bool | None, prs: Sequence[int]) -> Outcome:
+        """Step 6's CI wait on `tip`, holding the lock for `prs`."""
         start = self.clock()
         dispatched: float | None = None
         while True:
             self.checkpoint()
             if self.clock() - self.renewed >= RENEW_EVERY:
                 self.renew(prs)
-            state, jobs, seen = self.ci(tip, docs_only)
+            state, jobs, ids = self.ci(tip, docs_only)
             if state == merge_ready.GREEN:
-                return
+                return Outcome(state, (), tuple(ids))
             if state == merge_ready.RED:
-                raise Stop(f"train CI red ({'; '.join(jobs)}); red trains are T-2998's")
+                infra = bool(jobs) and all(job.endswith(INFRA_CONCLUSIONS) for job in jobs)
+                return Outcome(INFRA if infra else state, tuple(jobs), tuple(ids))
             now = self.clock()
-            if not seen and dispatched is None and now - start >= DISPATCH_AFTER:
+            if not ids and dispatched is None and now - start >= DISPATCH_AFTER:
                 self.client.dispatch(CI_WORKFLOW_FILE, TRAIN_BRANCH)
                 dispatched = now
-            elif not seen and dispatched is not None and now - dispatched >= DISPATCH_AFTER:
-                raise Stop("infrastructure: no CI run on the train, even after a dispatch")
+            elif not ids and dispatched is not None and now - dispatched >= DISPATCH_AFTER:
+                return Outcome(INFRA, ("no CI run on the train, even after a dispatch",))
             if now - start >= CI_TIMEOUT:
-                raise Stop(f"infrastructure: the train CI took over {CI_TIMEOUT // 60} min")
+                return Outcome(INFRA, (f"the train CI took over {CI_TIMEOUT // 60} min",), tuple(ids))
             self.sleep(CI_POLL)
+
+    def test(self, train: Train, n: int, prs: Sequence[int], notes: Sequence[str] = ()) -> tuple[Outcome, str]:
+        """Steps 5 and 6 for `train`, whose green result can merge `n` PRs: the gate, the push and
+        the CI wait, with one retry of an infrastructure failure on a fresh record commit (section
+        6). A second one is a CutOff. Returns the outcome and the tested tip."""
+        for attempt in (1, 2):
+            self.gate(n)
+            tip = self.push(train, notes if attempt == 1 else (*notes, "retry after an infrastructure failure"))
+            names = ", ".join(f"#{m.pr}" for m in train.members)
+            self.log.append(f"pushed {tip} to {TRAIN_BRANCH}: {names}")
+            self.renew(prs)
+            docs_only = not ci_changes.classify_range(train.base, tip, cwd=self.root)
+            self.checkpoint()  # before the CI wait
+            outcome = self.wait_ci(tip, docs_only, prs)
+            jobs = f" ({'; '.join(outcome.jobs)})" if outcome.jobs else ""
+            self.log.append(f"train CI {outcome.state} on {names}{jobs}")
+            if outcome.state != INFRA:
+                return outcome, tip
+        raise CutOff(f"infrastructure: {'; '.join(outcome.jobs)}, twice")
 
     def pre_squash(self, member: Member, expected: str) -> dict[str, object]:
         """Step 7.2: wait until GitHub's test merge of the PR sits on `expected` (the current
@@ -493,23 +614,108 @@ class Stage:
         if not heads:
             self.log.append("no ready PR")
             return []
-        lease = remote_sha(TRAIN_REF, self.root)
+        self.lease = remote_sha(TRAIN_REF, self.root)
+        state = self.recorded()
+        merged: list[int] = []
+        while heads:
+            train = self.build_on(base, heads)
+            if not train.members:
+                self.log.append("no PR left after the build")
+                break
+            known_red, notes = None, []
+            if state is not None:
+                known_red, reason = state.matches(train)
+                if known_red is None:
+                    notes = [f"restart: {reason}"]
+                    self.log.append(f"restarting the search: {reason}")
+                else:
+                    self.log.append(f"resuming the search: the first {known_red} PR(s) are known red")
+                state = None
+            done, base, heads = self.resolve(train, known_red, notes)
+            merged += done
+        return merged
+
+    def build_on(self, base: str, heads: Sequence[tuple[int, str]]) -> Train:
+        """Steps 3 and 4 on `base` in scratch worktrees, with step 3's ejections made."""
         with worktrees(self.root, base) as (train_tree, scripts_tree):
             train = build(train_tree, scripts_tree / "scripts", base, heads)
         for pr, reason in train.ejected:
             self.unlabel(pr, reason, eject=True)
         self.log += [f"deferred #{pr}: {reason}" for pr, reason in train.deferred]
-        if not train.members:
-            self.log.append("no PR left after the build")
-            return []
-        prs = [m.pr for m in train.members]
-        tip = self.push(train, lease)
-        self.log.append(f"pushed {tip} to {TRAIN_BRANCH}: " + ", ".join(f"#{pr}" for pr in prs))
-        self.renew(prs)
-        docs_only = not ci_changes.classify_range(base, tip, cwd=self.root)
-        self.checkpoint()  # before the CI wait
-        self.wait_ci(tip, docs_only, prs)
-        return self.merge_green(train, tip)
+        return train
+
+    def resolve(
+        self, train: Train, hi: int | None, notes: Sequence[str]
+    ) -> tuple[list[int], str, list[tuple[int, str]]]:
+        """One train to its end (SPEC-0027 section 6). A green train merges whole. A red one is
+        searched for its first red prefix `P_1..P_hi` (`hi` given when a resume knows it), the
+        green prefix `P_1..P_lo` merges, and `P_lo+1` gets its confirmation run on the new `main`.
+        Returns the PRs merged, the new `main` and the members left to re-test as a new train."""
+        members, prs = train.members, [m.pr for m in train.members]
+        lo, green_tip, red_runs = 0, "", tuple[int, ...]()
+        try:
+            if hi is None:
+                outcome, tip = self.test(train, len(members), prs, notes)
+                if outcome.state == merge_ready.GREEN:
+                    return self.merge_green(train, tip), self.main, []
+                hi, red_runs = len(members), outcome.runs
+            while hi - lo > 1:
+                mid = (lo + hi) // 2
+                prefix = Train(train.base, members[:mid])
+                outcome, tip = self.test(prefix, mid, prs, [f"bisect: prefix {mid} of {len(members)}"])
+                if outcome.state == merge_ready.GREEN:
+                    lo, green_tip = mid, tip
+                else:
+                    hi, red_runs = mid, outcome.runs
+        except CutOff:
+            if hi is not None:
+                base = self.merge_prefix(train, lo, green_tip)
+                self.record(Resume(base, tuple((m.pr, m.head) for m in members[lo:hi])))
+            raise
+        base = self.merge_prefix(train, lo, green_tip)
+        merged = prs[:lo]
+        culprit = members[lo]
+        rest = [(m.pr, m.head) for m in members[lo + 1:]]
+        alone = self.build_on(base, [(culprit.pr, culprit.head)])
+        if not alone.members:
+            return merged, base, rest
+        try:
+            outcome, tip = self.test(alone, 1, prs[lo:], [f"confirm: #{culprit.pr}"])
+        except CutOff:
+            self.record(Resume(base, ((culprit.pr, culprit.head),)))
+            raise
+        links = ", ".join(self.run_link(r) for r in (*red_runs, *outcome.runs)) or "none"
+        if outcome.state == merge_ready.GREEN:
+            self.tasks.append(("P1", "possible flaky test or interaction",
+                               f"#{culprit.pr}'s train prefix was red on {train.base}, then green alone on "
+                               f"{base}; runs: {links}"))
+            self.log.append(f"P1: #{culprit.pr}'s red train did not reproduce; not ejected")
+            return merged + self.merge_green(alone, tip), self.main, rest
+        self.eject_red(culprit, outcome.jobs, links)
+        return merged, base, rest
+
+    def merge_prefix(self, train: Train, k: int, tip: str) -> str:
+        """Step 7 for the tested prefix `P_1..P_k` (its CI tested `tip`); returns `main` after."""
+        if k == 0:
+            return train.base
+        self.merge_green(Train(train.base, train.members[:k]), tip)
+        return self.main
+
+    def run_link(self, run_id: int) -> str:
+        return f"https://github.com/{self.client.base.removeprefix('repos/')}/actions/runs/{run_id}"
+
+    def eject_red(self, member: Member, jobs: Sequence[str], links: str) -> None:
+        """Section 6's ejection of a confirmed culprit: the labels and a comment that names the
+        failing jobs and runs and ends with the `merge-train-ejected v1` block."""
+        self.client.remove_label(member.pr, merge_ready.READY_LABEL)
+        self.client.add_label(member.pr, merge_ready.EJECTED_LABEL)
+        failing = "; ".join(jobs).replace("@", "@" + ZWJ)
+        self.client.comment(member.pr, (
+            f"merge train: {merge_ready.READY_LABEL} removed: train CI red, confirmed on this PR alone on main\n\n"
+            f"failing jobs: {failing}\nruns: {links}\n\n"
+            f"<!-- merge-train-ejected v1 head: {member.head} reason: ci-red -->"
+        ))
+        self.log.append(f"ejected #{member.pr}: ci-red")
 
     def run(self, window: float = WINDOW) -> int:
         """Step 1, the hold and step 9. 0 when the hold ended normally, 1 when it stopped."""

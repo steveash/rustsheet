@@ -1416,7 +1416,7 @@
    },
    "A57": {
     "t": "s",
-    "v": "FALSE"
+    "v": "FALSEa*"
    },
    "A58": {
     "t": "e",
@@ -1608,7 +1608,7 @@
    },
    "B57": {
     "t": "s",
-    "v": "0.2"
+    "v": "0.2a*"
    }
   },
   "Data": {}
@@ -1617,8 +1617,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "271cad9c31f25efb5aa3e392ec9c8bda0f4eb1e234904dda76adaa0e25eee329",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T16:41:30+00:00",
+  "produced_at": "2026-10-28T16:04:21+00:00",
   "version": null,
-  "workbook_name": "2b72d2b6cbbee87f6b867e1df48dae21c21a0748f35e8925590b944ecb689596.xlsx"
+  "workbook_name": "5a794b570339531f65927a2ea18a6ef876f9f57c84a697ad95f253b05c53c5ff.xlsx"
  }
 }
