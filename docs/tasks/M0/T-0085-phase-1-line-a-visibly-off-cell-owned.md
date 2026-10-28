@@ -45,7 +45,7 @@ Phase 1 exit"). The report shows those cells in their own column, so nothing is 
       test pins both to the same cases.
 - [x] On a full `make eval`, the four FORECAST.ETS functions meet the Phase 1 rate if and only if all their
       visibly-off cells are T-2425's; no other function's verdict changes.
-- [ ] `make check` green (the generated list is up to date); reviewers approve.
+- [x] `make check` green (the generated list is up to date); reviewers approve.
 
 ## Out of scope
 - Implementing FORECAST.ETS (T-2425).
