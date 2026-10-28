@@ -146,7 +146,7 @@ visibly off the exact value (`HYPGEOMDIST(2,2,3,11)` = 0.05454545454545458 again
 T-2481.
 T-2742 grid (probes-numeric/t2742-hypgeom-small-n, excel-graph 2026-10-28): every valid (x, n, K, N) with N 6-12,
 1442 pmf and 1442 cdf cells, and HYPGEOMDIST for N = 12.
-- Only 286 of the 1442 pmf cells (19.8%) are the exact rational correctly rounded. The others are off by -14 to +14 ulps,
+- Only 286 of the 1442 pmf cells (19.8%) are the exact rational correctly rounded. The others are off by -14 to +10 ulps,
   with both signs at every N and at the first, interior and last x alike: for N = 12 the most common offsets are 0, +1,
   -2 and -1. The largest is `HYPGEOM.DIST(3,6,5,11,FALSE)` = 0.4329004329004321 (A893), 14 ulps below the exact
   100/231; the next are A1281 `(4,7,5,12)` (13 ulps) and A898 `(3,6,6,11)`. `HYPGEOM.DIST(0,3,1,6,FALSE)` is

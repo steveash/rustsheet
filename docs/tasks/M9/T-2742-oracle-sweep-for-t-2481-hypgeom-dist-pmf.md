@@ -75,7 +75,7 @@ Analysis (scratch or fit lab):
 
 ## Outcome
 Committed probes-numeric/t2742-hypgeom-small-n (1442 rows, 3291 cells, excel-graph 2026-10-28). statistics.md gained
-the T-2742 paragraph: 286/1442 pmf cells exact, offsets from -14 to +14 ulps at every x position, n/K asymmetry (434/1442
+the T-2742 paragraph: 286/1442 pmf cells exact, offsets from -14 to +10 ulps at every x position, n/K asymmetry (434/1442
 symmetric), candidate bit-exact counts (best 286, the exact rational itself), the cdf equal to the running pmf sum in
 816/1442 cells and 1 at the last x in all 476, and HYPGEOMDIST = HYPGEOM.DIST in 407/407. T-2481's Context points at the
 evidence. The suite is ungated, so no baseline changed. The analysis is docs/research/t2742_hypgeom_grid.py (exact
