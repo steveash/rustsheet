@@ -3,7 +3,7 @@ id: T-3008
 title: "Recalculation work budget: pass allowance, share mode and ceiling (SPEC-0028 step 1)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
