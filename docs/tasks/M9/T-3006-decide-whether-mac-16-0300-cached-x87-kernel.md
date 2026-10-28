@@ -1,5 +1,5 @@
 ---
-id: T-3003
+id: T-3006
 title: "Decide whether Mac 16.0300 cached x87-kernel last digits in COMPLEXs.xlsx (IMTAN N6, IMSQRT AL12/AL26) outrank excel-graph, unblocking T-2774 and T-2536 (46 visibly-off cells)"
 milestone: M9
 lane: research
