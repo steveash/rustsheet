@@ -52,6 +52,12 @@ Examples:
 Cells:
 - gen-m9/caa1eed48b1883fe.case.json (1): Calc!A382
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): the T.DIST(t,n,FALSE) cells of the T density probes (their F.DIST density cells are T-3034's). 73 visibly-off cells in 3 cases, per case:
+- probes-numeric/t2513-r3-tdensity-a1: T.DIST density 12
+- probes-numeric/t2513-r3-tdensity-a2: T.DIST density 12
+- probes-numeric/t2513-r3-tdensity-hold: T.DIST density 49
+
 ## Acceptance criteria
 - [ ] On cells.tsv's 19,776 T.DIST(.,FALSE) cells the engine is within 15 digits on at least 19,708 (df >= 3 at least
       18,631 of 18,699, df 1 and 2 all 1,077) and bit-exact on at least 7,033.
