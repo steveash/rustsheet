@@ -3,7 +3,7 @@ id: T-2932
 title: "TEXT: B2 before a calendar-3 or calendar-7 tag applies the year conversion twice"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -35,9 +35,19 @@ Also failing, through T-2779 (Hebrew is not modelled; once it is, digit 8 wins o
 - probes/t2729-hijri-locale-tag S!A262 (`B2[$-80409]`, Excel "5783-06-22|Adar|Yom Revi'i||5783")
 
 ## Acceptance criteria
-- [ ] The six calendar-3/7 cells above pass and leave eval/baseline/probes.txt, with no new known failure.
-- [ ] number-formats.md records the rule with the new probe's evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The six calendar-3/7 cells above pass and leave eval/baseline/probes.txt, with no new known failure.
+- [x] number-formats.md records the rule with the new probe's evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The Hebrew and Saka calendars themselves (T-2779).
+
+## Outcome (2026-10-28)
+Probe probes/t2932-b2-calendar-twice (73 cells, excel-graph): `B2` before a calendar-3, -5 (Korean, not only 3 and 7)
+or -7 tag converts every year token once more; Japanese era years are read back as Gregorian years (negative ones
+print as unsigned 32-bit numbers, 9999-12-31 is Reiwa 5963). Also found: `b` prints the year's third and fourth digits
+(differs past 9999, with or without a tag), and under a tag a number token before the `mmm` switch leaves the
+first-name quirk on. Implemented in `Localized::year_twice`, `locale_tag::japanese_era` and
+`calendar_dates::year_token_text` (the year logic moved out of format.rs, at its size cap).
+Eval: probes 2134 -> 2131 known failures (the six owned cells fixed; three new cells of the new case fail, owned by
+follow-ups **T-3028** (B2 before calendar 4: A37, A38) and **T-3029** (Thai weekday after `mmm`: A55)); no regressions.
