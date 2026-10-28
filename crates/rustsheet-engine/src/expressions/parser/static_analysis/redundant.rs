@@ -52,6 +52,7 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
