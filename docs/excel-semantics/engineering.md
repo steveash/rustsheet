@@ -937,7 +937,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   A currency sign that starts the text or a part (after `+` or `-`, spaces allowed) and stands before a digit is dropped (probes/eng-inumber-reading A5, A20:A26, excel-graph,
   2026-10-28): `IMABS` of "$1+2i", "$1-2i", "$1+2j", "$ 1+2i" (spaces after the sign), "1+$2i" and "€1+2i" is
   2.23606797749979, "$3i" is 3, but "$i" is `#NUM!` (no digit after the sign) and "$-5" stays `#NUM!`. Implemented in
-  T-2641 (`strip_currency_symbols`); a sign inside a number ("1$2", "1.$5", "1E$3", "12$3i") and other currency signs (£, ¥) are unprobed [ours `#NUM!`].
+  T-2641 (`strip_currency_symbols`); a sign inside a number ("1$2", "1.$5", "1E$3", "1E-$3", "12$3i"), after a `-` ("1-$2i"), twice ("$1+$2i"), spaced before the sign ("1+ $2i"), before a `.` ("$.5+2i") and other currency signs (£, ¥) are unprobed [ours `#NUM!`].
   Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
   rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
