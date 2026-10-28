@@ -1230,6 +1230,20 @@ crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISIT
 crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
 Tasks: T-1325, T-1327
 
+## SCAN over a GROUPBY result (T-2398)
+Rule (observed): SCAN whose array is a GROUPBY call is one cell, not a scan of the GROUPBY's cells:
+- `SCAN(GROUPBY(Data!A1:A4,Data!B1:B4,SUM),0,MIN)` is 0.
+- A LAMBDA that ignores the accumulator gives one value (`LAMBDA(a,v,TYPE(v))` is 1, `ROWS(v)*100+COLUMNS(v)` 101).
+- One that uses the accumulator (`LAMBDA(a,v,a+1)`) is `#CALC!`, also through LET, TAKE and VSTACK.
+- With `LAMBDA(w,w)` as the GROUPBY function, SCAN MIN is `#N/A`: the value cells hold the groups' arrays ("Aggregates
+  over nested GROUPBY and PIVOTBY cells" above), and MIN of one is `#N/A`.
+- MAP and REDUCE over the same GROUPBY see all of its cells (4x2; 8 elements).
+Evidence: probes/scan-over-groupby (excel-graph, 2026-10-23, T-2398); probes/groupby-lifted-args A153, I153, A161, A169;
+gen-m7/b24ce74f08d3f91a Calc!A1850.
+Status: VERIFIED for these cells; why SCAN collapses the call to one cell is not understood.
+Ours: matches every cell since T-2593 and T-2594 (nested GROUPBY cells); unit test
+`test_nested_groupby_cells::scan_over_a_groupby_call_is_one_cell`.
+
 ## Nested GROUPBY and PIVOTBY cells: bounds
 Rule: Excel keeps a GROUPBY or PIVOTBY function's array result in its cell, at any size and depth (SPEC-0018 rules 1, 8;
 "A LAMBDA array result is shown as `#VALUE!`" above). RustSheet bounds them (CLAUDE.md directive 5): one call keeps at most
