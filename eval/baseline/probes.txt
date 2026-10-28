@@ -78,6 +78,7 @@ C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/array-context-legacy-sumproduct.case.json	31
+C	probes/array-error-element-order.case.json	31
 C	probes/arraytotext-empty-ref.case.json	25
 C	probes/arraytotext-error-vs-format.case.json	16
 C	probes/arraytotext-number-text.case.json	15
@@ -3664,8 +3665,6 @@ F	probes/t2753-gamma-density-switch.case.json	S!B6
 F	probes/t2753-gamma-density-switch.case.json	S!B7
 F	probes/t2753-gamma-density-switch.case.json	S!B8
 F	probes/t2753-gamma-density-switch.case.json	S!B9
-F	probes/t2772-unary-plus-in-range-rows.case.json	S!J2
-F	probes/t2772-unary-plus-in-range-rows.case.json	S!J5
 F	probes/t2779-hebrew-saka-more.case.json	S!A11
 F	probes/t2779-hebrew-saka-more.case.json	S!A12
 F	probes/t2779-hebrew-saka-more.case.json	S!A13

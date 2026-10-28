@@ -672,7 +672,9 @@ fn reads_reference(kind: &Function, arg: &Node) -> bool {
 /// Whether `arg` is an argument of N or T that is a reference it reads whole, with nothing in
 /// it to intersect: the `@` of a range or of an IF arm in it is not added either.
 pub(super) fn reads_reference_whole(kind: &Function, arg: &Node) -> bool {
-    kind.is_n_or_t() && is_plain_reference(arg)
+    // A plus on the whole argument makes it a value: `=N(+B1:B3)` gets an `@`
+    // (t2772-unary-plus-in-range-rows J2, J5, T-2885).
+    kind.is_n_or_t() && !matches!(arg, Node::UnaryPlus { .. }) && is_plain_reference(arg)
 }
 
 /// Whether `node` is a reference N or T reads whole, in the shapes probed: a range or cell, an
