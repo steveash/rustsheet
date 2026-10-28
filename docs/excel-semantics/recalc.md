@@ -163,6 +163,33 @@ Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/iteration.rs (`MAX_SWEEP_EVALUATIONS`)
 Tasks: T-0447
 
+## One recalculation does at most 2^32 work units, and a pass past 2^30 shares them out
+Rule: Excel has no known limit on the work of a recalculation; a long one runs until done or
+until interrupted, and a workbook that long cannot be probed (Excel for the web's session times
+out).
+Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0028).
+Ours: the formula runs of one recalculation may spend 2^32 work units in all (SPEC-0024's units:
+every pass, restarted pass and run cut short by the evaluation depth limit). A pass whose formulas
+commit more than 2^30 units, or a round whose restarted passes and cut-short runs spend more than
+2^30, is run again with every formula limited to 2^30 / (4 × the number of formula cells) units;
+a formula past that share is `#VALUE!` ("Recalculation needs too much work to calculate this
+formula"), which `IFERROR` cannot catch, though a reader of the cell can. Past 2^32 every formula
+cell is `#VALUE!` ("Recalculation needs too much work"), dynamic anchors spill nothing, and
+neither the sweeps nor the data tables run. Which cells give up does not depend on the order the
+cells are evaluated in, except through restarted passes and runs cut short by the evaluation depth
+limit (SPEC-0028 section 3). Calibration (T-3008, every suite including calipers, poi and
+corpus-bench): the heaviest eval pass commits 180,967,707 units and the heaviest eval
+recalculation spends the same (probes/t2759-lunar-packed-7101), under a quarter of 2^30 and of
+2^32; no eval workbook reaches share mode. Worked example of SPEC-0028 section 5 (release build,
+heavy cells of 249,980,402 units each): A1:A4 compute in 24 s; A1:A5 give up in 31 s; A1:A1000
+give up in 33 s; A1:A1000 with 99,000 light cells in 27 s, every light cell computed (before this
+bound, about two hours).
+Until T-3009: sweeps and data tables do not draw on the 2^32 ceiling yet; they keep only their
+count caps (in share mode their formula runs are limited to the share).
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/recalc_budget.rs (`MAX_PASS_WORK`, `MAX_RECALC_WORK`), crates/rustsheet-engine/src/area_budget.rs (`with_area_budget`), crates/rustsheet-engine/src/evaluation.rs (`evaluate_passes`)
+Tasks: T-2807, T-3008, T-3009
+
 ## Data tables (TABLE()) are recalculated, and FORMULATEXT shows `{=TABLE(row,column)}`
 Rule: excel-graph recalculates a what-if data table stored as `<f t="dataTable" ref=… dt2D=…
 dtr=… r1=… r2=…>` in the top-left result cell. Each result cell is the table's formula, with the
@@ -188,15 +215,21 @@ Ours: matches (probes/data-tables 20/20). Each table is the sheet's `DataTable` 
 results, row input and column input), and its result cells hold plain values. After an evaluation
 pass, the tables are recomputed in sheet order. For each result cell the input cells are replaced
 by the header values, the table's formula is evaluated on demand, and the inputs are put back. The
-workbook is then evaluated again, so readers see the results. ISFORMULA and FORMULATEXT of a result
+workbook is then evaluated again, so readers see the results. A table is not recomputed when
+nothing its last recomputation read has changed: while it is recomputed every sheet records the
+cells and areas read, and their contents (constants, formula texts, styles, spills), the sheets'
+extents, the names, tables, settings and hidden rows and columns are kept with its results. A
+formula that reaches RAND, RANDBETWEEN, RANDARRAY, NOW, TODAY, CELL, INFO or GETPIVOTDATA, or
+iterative calculation, recomputes every time; when no table is recomputed the second evaluation
+is skipped (`data_table_memo.rs`, T-0453). ISFORMULA and FORMULATEXT of a result
 cell are TRUE and `{=TABLE(row,column)}`. The xlsx import reads `dt2D`, `dtr`, `r1`, `r2`, `del1`
 and `del2`, and the export writes them back on the first result cell.
 Unprobed, our choices: a deleted input (`del1`/`del2`), or a table with no input, makes every
 result `#REF!`. A header cell or formula that spills or gives a range is read as its top-left
 value (`scalar_at`). Neither is in probes/data-tables (T-0459).
 Status: VERIFIED (excel-graph) for the rules above; the unprobed choices are not
-Implemented in: crates/rustsheet-engine/src/data_tables.rs, crates/rustsheet-xlsx/src/import/sheet_data.rs (`data_table`), crates/rustsheet-xlsx/src/export/data_tables.rs
-Tasks: T-0428, T-0441, T-0446
+Implemented in: crates/rustsheet-engine/src/data_tables.rs, crates/rustsheet-engine/src/data_table_memo.rs, crates/rustsheet-xlsx/src/import/sheet_data.rs (`data_table`), crates/rustsheet-xlsx/src/export/data_tables.rs
+Tasks: T-0428, T-0441, T-0446, T-0453
 
 ## Data tables re-evaluate the workbook at most 2^25 formulas per recalculation
 Rule: Excel's limit on the work of data tables is unprobed; it is expected to compute every
@@ -206,7 +239,10 @@ Ours: every result cell re-evaluates the formulas its table's formula depends on
 of one recalculation may evaluate at most 33,554,432 formulas together
 (`MAX_DATA_TABLE_EVALUATIONS`). The result cells computed after the budget is spent are `#NUM!`,
 so a large table over a large model cannot hold the evaluation without bound (CLAUDE.md
-directive 5).
+directive 5). A table that is not recomputed (T-0453) is charged what its last recomputation
+spent, so the tables after it find the budget as a recomputation would leave it. It is skipped
+only while the budget left covers that cost, and one whose recomputation ran out is always
+recomputed, so the results are those of a recomputation either way.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`)
 Tasks: T-0441

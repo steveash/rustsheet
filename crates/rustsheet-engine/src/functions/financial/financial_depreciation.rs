@@ -17,85 +17,11 @@ use crate::functions::lift::{div_error, num_error};
 // See https://github.com/fsprojects/ExcelFinancialFunctions
 // ---------------------------------------------------------------------------
 
-// `totalDepr`: cumulative depreciation between period 0 and `period`.
-//
-// Walks the declining-balance schedule one (integer) period at a time,
-// optionally switching to straight line when that yields a larger amount,
-// and prorates the contribution of the period that contains the fractional
-// part of `period`.
-fn vdb_total_depr(
-    cost: f64,
-    salvage: f64,
-    life: f64,
-    period: f64,
-    factor: f64,
-    straight_line: bool,
-) -> f64 {
-    let frac = period - period.trunc();
-    let int_period = period.trunc() as i64;
-    let int_life = life.trunc() as i64;
-
-    let ddb_unclipped = |tot: f64| (cost - tot) * (factor / life);
-    let ddb_formula = |tot: f64| ddb_unclipped(tot).min(cost - salvage - tot);
-    let sln_formula = |tot: f64, a_period: f64| (cost - tot - salvage) / (life - a_period);
-
-    // Salvage above cost never switches: VDB(2400,3000,10,0,1) is -600 (the declining-balance
-    // charge `cost - salvage`), not the straight-line -60 (probes/fin-vdb-modes A17).
-    let switches = salvage <= cost;
-    // A fractional period prorates the unclipped charge, then the total stops at `cost - salvage`:
-    // VDB(2400,300,10,9.5,10) is 0 (probes/fin-vdb-modes A9).
-    let cap = cost - salvage;
-
-    let mut tot_depr = 0.0;
-    let mut per = 0.0_f64;
-    loop {
-        let ddb_depr = ddb_formula(tot_depr);
-        let sln_depr = sln_formula(tot_depr, per);
-        let is_sln = straight_line && switches && ddb_depr < sln_depr;
-        let depr = if is_sln { sln_depr } else { ddb_depr };
-        let new_total = tot_depr + depr;
-
-        if int_period == 0 {
-            return new_total * frac;
-        } else if per.trunc() as i64 == int_period - 1 {
-            let ddb_next = ddb_formula(new_total);
-            let sln_next = sln_formula(new_total, per + 1.0);
-            let is_sln_next = straight_line && switches && ddb_next < sln_next;
-            let depr_next = if is_sln_next {
-                if int_period == int_life {
-                    0.0
-                } else {
-                    sln_next
-                }
-            } else {
-                // The prorated part takes the unclipped charge; the cap below clips the total.
-                // Only probed with salvage <= cost; salvage above cost keeps the clipped charge.
-                if switches {
-                    ddb_unclipped(new_total)
-                } else {
-                    ddb_next
-                }
-            };
-            let prorated = new_total + depr_next * frac;
-            return if switches && prorated > cap {
-                cap
-            } else {
-                prorated
-            };
-        } else {
-            tot_depr = new_total;
-            per += 1.0;
-        }
-    }
-}
-
 /// VDB's depreciation between `start_period` and `end_period`. Excel sums the charges of the
 /// periods in the window rather than subtracting two running totals, and its two modes build the
-/// charges differently (docs/excel-semantics/financial.md "VDB charge order", T-1975):
+/// charges differently (docs/excel-semantics/financial.md "VDB charge order", T-1975, T-2185):
 /// - `no_switch` TRUE: [`vdb_no_switch_between`];
-/// - switching, from a whole `start_period`: [`vdb_switching_between`];
-/// - switching from a fractional `start_period` keeps the running-total model of
-///   [`vdb_total_depr`], which Excel does not match on every cell yet (T-2185).
+/// - switching to straight line: [`vdb_switching_between`].
 fn vdb_depr_between(
     cost: f64,
     salvage: f64,
@@ -105,13 +31,10 @@ fn vdb_depr_between(
     factor: f64,
     straight_line: bool,
 ) -> f64 {
-    if !straight_line {
-        vdb_no_switch_between(cost, salvage, life, start_period, end_period, factor)
-    } else if start_period.fract() == 0.0 {
+    if straight_line {
         vdb_switching_between(cost, salvage, life, start_period, end_period, factor)
     } else {
-        vdb_total_depr(cost, salvage, life, end_period, factor, true)
-            - vdb_total_depr(cost, salvage, life, start_period, factor, true)
+        vdb_no_switch_between(cost, salvage, life, start_period, end_period, factor)
     }
 }
 
@@ -162,14 +85,24 @@ fn vdb_no_switch_between(
     total
 }
 
-/// VDB switching to straight line, from a whole `start`. The book value steps down by each
-/// period's charge `min(b·(factor/life), b - salvage)`; from the first period whose
-/// straight-line charge `(b - salvage)/(life - p)` is larger, every later period charges that
-/// same amount. The window's declining-balance charges (and a prorated last period) are summed in
-/// doubles and the whole straight-line periods are added last as one product:
-/// `VDB(1234.56,78.9,12,4,9,1.75)` is 379.8854487417499, one ulp below the period-by-period sum
-/// (probes/fin-vdb-schedule A1-A15, A31-A40, A47-A54; fin-vdb-modes A6, A13). Salvage above cost
-/// never switches and keeps the negative charge: `VDB(2400,3000,10,0,1)` is -600 (fin-vdb-modes A17).
+/// VDB switching to straight line. Excel lays the schedule's periods on the fraction of `start`:
+/// the first `start - floor(start)` of a period charges that share of the first declining-balance
+/// charge `min(cost·rate, cost - salvage)` (at least 0), and whole periods follow from there, so a
+/// fractional start sees the same schedule wherever it lies past the switch:
+/// `VDB(2400,100,10,6.5,7.5)` and `VDB(2400,100,10,8.5,9.5)` are both 133.20886857142858,
+/// `(566.23104 - 100)/3.5` (probes/fin-vdb-fractional-start A12:A13). Each period's book value
+/// `b` steps down by its charge `min(b·rate, b - salvage)`, `rate = factor/life`; from the first
+/// period whose straight-line charge `(b - salvage)/(life - t)` (`t` the period's start) is
+/// larger than the unclipped `b·rate`, every later period charges that same amount. Comparing with
+/// the unclipped charge keeps a clipped last piece declining: `VDB(2400,300,10,9.25,10)` is
+/// 4.512314880000062, `0.75·(b - salvage)`, while `VDB(1000,5,10,9.25,10,4)` switches and charges
+/// all of `b - salvage` (fin-vdb-fractional-start A44, fin-vdb-fractional-start-edges A1). The
+/// window's declining-balance charges (and a prorated last period) are summed in doubles and the
+/// whole straight-line periods are added last as one product: `VDB(1234.56,78.9,12,4,9,1.75)` is
+/// 379.8854487417499, one ulp below the period-by-period sum (probes/fin-vdb-schedule A1-A15,
+/// A31-A54; fin-vdb-modes A6, A9, A13). Salvage above cost never switches and keeps the negative
+/// charge: `VDB(2400,3000,10,0,1)` is -600 (fin-vdb-modes A17), and so is
+/// `VDB(2400,3000,10,0.5,1.5)` (fin-vdb-fractional-start-edges A7).
 fn vdb_switching_between(
     cost: f64,
     salvage: f64,
@@ -179,19 +112,36 @@ fn vdb_switching_between(
     factor: f64,
 ) -> f64 {
     let switches = salvage <= cost;
+    let rate = factor / life;
+    let whole = start.floor();
+    let fraction = start - whole;
     let mut book = cost;
+    if fraction > 0.0 {
+        book -= fraction * (cost * rate).min(cost - salvage).max(0.0);
+    }
+    // Offsets of each period from `start`, so the window's shares and the straight-line
+    // denominators are measured from `start` itself, not from the rounded fraction
+    // (fin-vdb-fractional-start: 153 of 161 cells to the bit this way, 147 the other way).
+    let remaining_life = life - start;
+    let window = end - start;
     let mut straight_line: Option<f64> = None;
     let mut declining = 0.0;
     let mut straight_periods = 0.0;
-    let last = end.ceil() as u32;
-    for index in 0..last {
-        let elapsed = f64::from(index);
+    // `end` is at most MAX_DEPRECIATION_PERIODS, so the count fits. The schedule stops at the
+    // first period starting at or past `end`: `8.3 - 7.3` is a hair above 1, and a period counted
+    // from it would add a sliver (fin-vdb-fractional-start A43).
+    for index in 0..=end.ceil() as u32 {
+        if fraction + f64::from(index) >= end {
+            break;
+        }
+        let offset = f64::from(index) - whole;
         let charge = match straight_line {
             Some(charge) => charge,
             None => {
-                let ddb = (book * (factor / life)).min(book - salvage);
-                let sln = (book - salvage) / (life - elapsed);
-                if switches && sln > ddb {
+                let unclipped = book * rate;
+                let ddb = unclipped.min(book - salvage);
+                let sln = (book - salvage) / (remaining_life - offset);
+                if switches && sln > unclipped {
                     straight_line = Some(sln);
                     sln
                 } else {
@@ -199,12 +149,14 @@ fn vdb_switching_between(
                 }
             }
         };
-        if elapsed >= start {
-            let period = elapsed + 1.0;
-            if straight_line.is_some() && period <= end {
+        if offset >= 0.0 {
+            let share = window.min(offset + 1.0) - offset;
+            if straight_line.is_some() && share == 1.0 {
                 straight_periods += 1.0;
+            } else if share == 1.0 {
+                declining += charge;
             } else {
-                declining += prorated(charge, period, start, end);
+                declining += charge * share;
             }
         }
         book -= charge;
