@@ -3,7 +3,7 @@ id: T-2992
 title: "FORMULATEXT reads a multi-area pick's first area and a multi-cell INDIRECT element's top-left cell (probes/t2831-formulatext-indirect-multi-cell)"
 milestone: M5
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
