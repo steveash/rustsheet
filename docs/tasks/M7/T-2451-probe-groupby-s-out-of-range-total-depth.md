@@ -3,7 +3,7 @@ id: T-2451
 title: "Probe GROUPBY's out-of-range total_depth under two lifted options through ERROR.TYPE (groupby-lifted-args2 A27 is an undecoded rich error)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
