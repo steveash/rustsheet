@@ -77,7 +77,7 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
   converge there within its 300-term cap: the fraction needs on the order of sqrt(a) terms at a shape of 1E10.
 - bratio's dispatch (`bratio::small_shape_branch`) sends this point to `Branch::Bgrat`: a0 = 0.5 <= 1,
   (x0 b0)^a0 = 1.00000000005^0.5 > 0.7, and b0 > 15. bgrat is not ported yet, so the point falls back to
-  `incomplete_beta::beta_tails`. The fix for A159 is the bgrat port that T-2510 owns (TOMS 708 `bgrat`, with `grat1`
+  `incomplete_beta::beta_tails`. The fix for A159 is the bgrat port that T-2510 owns (TOMS 708 `bgrat`, with its
   for the incomplete-gamma start). This task should probably take T-2510 in `depends_on`, or narrow A159 out to it.
   The next run decides.
 - Not looked at yet: the probes-numeric cells D85, D86, E56 and F6, and the nine BETA.INV ulp lines.
