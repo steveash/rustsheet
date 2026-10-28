@@ -3,7 +3,7 @@ id: T-2986
 title: "Readiness marker for green, approved PRs: make mark-ready and its verifier"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -69,3 +69,16 @@ check the marker mechanically, without reviewing the PR again.
 - Building or merging trains (T-2987, T-2994).
 - Skill and prompt changes (T-2989, T-2996).
 - Per-reviewer verdict records (T-2997).
+
+## Outcome
+- Split past size M, as the task allowed: this PR is the parser and `verify`; `mark`, `--carry`,
+  label creation and the step-mode write fallback are T-3034 (T-2989 now depends on it).
+- `scripts/merge_ready.py`: the `merge-train-ready v1` marker (render and strict parse), reviewer
+  applicability (pinned to the `review` skill by a test; the skill is now in `CODE_READ_PATHS`),
+  the "green" rule, and `verify --pr N` (`make merge-ready-verify`) running V1-V6 read-only, each
+  failure with its side effect for the merger. `scripts/gh_client.py` gains the reviews read.
+- Decision 0149: with the permission API refused in sessions, V1 and V6 count
+  `author_association` `OWNER`/`COLLABORATOR` on a user-owned repository only; `run_heavy=false`
+  comes from the CI classifier itself, because job logs are not readable from a session.
+- Checked read-only against live PRs #2162 (green) and #2179 (draft, task not done, no CI run).
+- Eval delta: none (scripts and docs only).

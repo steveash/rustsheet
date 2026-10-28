@@ -356,6 +356,11 @@ feeds them. Only V1 and V6 read user-authored objects, and both filter by permis
 
 The FIFO key is the marker's server-side `updated_at`, never a self-declared field.
 
+**As built (T-2986, decision 0149).** In a session the permission read fails, and then V1 and V6
+count `author_association` `OWNER` or `COLLABORATOR` on a user-owned repository only. The green
+rule tells `run_heavy=false` by running the CI classifier (`ci_changes.classify_range`) on the
+PR's base and head, because the job log is not readable from a session.
+
 **Comment hygiene.** The merger's comments quote no user text. Any `@` in names or reasons it
 echoes (job names, PR titles) is escaped (`@` → `@​`), so a comment never notifies anyone.
 
