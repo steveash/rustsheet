@@ -40,11 +40,12 @@ pub enum CellInput {
 }
 
 impl CellInput {
-    /// The formula text without its leading `=`, or `None` for any other input.
+    /// The formula text without its leading `=`, or `None` for any other input. A typed entry
+    /// (`{"entered": "=NOW( )"}`) is a formula when it starts with `=`, as Excel's input parser reads it.
     #[must_use]
     pub fn formula(&self) -> Option<&str> {
         match self {
-            Self::Str(f) => f.strip_prefix('='),
+            Self::Str(f) | Self::Entered { entered: f } => f.strip_prefix('='),
             _ => None,
         }
     }
