@@ -720,6 +720,11 @@ fn stringify(
                 full_row,
                 full_column,
             );
+            // Quirk (T-2855, probes/table-edits plain-range-delete-row-first F!A6, excel-graph):
+            // a wholly deleted range prints one `S!#REF!`, not a `#REF!` per corner.
+            if s1 == "#REF!" && s2 == "#REF!" {
+                return wrong_reference::ref_error_text(sheet_name.as_deref());
+            }
             format!("{s1}:{s2}")
         }
         // Rows and columns inserted or moved on one sheet of the span do not shift the span's
@@ -834,6 +839,7 @@ fn stringify(
             }
         }
         ErrorKind(kind) => format!("{kind}"),
+        SheetRefErrorKind { sheet_name } => wrong_reference::ref_error_text(Some(sheet_name)),
         ParseErrorKind { message, .. }
             if export_to_excel && is_unresolved_structured_reference(message) =>
         {

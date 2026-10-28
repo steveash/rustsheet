@@ -1,0 +1,14 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2479 review: an array pad_with beside a size inside the grid but above the engine's cell bound; G1 is #VALUE!, G2 (columns past EXPAND's cap) #NUM! in Excel. Column G.",
+  "tags": ["M7", "probe", "dynamic-arrays", "T-2479"],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "G1": "=ROWS(_xlfn.EXPAND(1,1000,1100,{0;1}))",
+        "G2": "=ROWS(_xlfn.EXPAND(1,3,1048577,{0;1}))"
+      }
+    }
+  ]
+}

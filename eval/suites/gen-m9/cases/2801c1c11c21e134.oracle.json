@@ -122,6 +122,10 @@
     "t": "e",
     "v": "#REF!"
    },
+   "A126": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A127": {
     "t": "n",
     "v": 19.75
@@ -1637,8 +1641,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "83247422861677e9aa4993cea123ae437062bb9a1702faef270b640cce128ba6",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:46:13+00:00",
+  "produced_at": "2026-10-28T16:51:31+00:00",
   "version": null,
-  "workbook_name": "6d2031272835044bad262a0fea4b2d9b58e7e684636bc5444f53fa32f1a37dbe.xlsx"
+  "workbook_name": "cc3fad0aab7042bcf9d8094d7523d6be59f01f1a92e87e2269045e50fe7bff0e.xlsx"
  }
 }

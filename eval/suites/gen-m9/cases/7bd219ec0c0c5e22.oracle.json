@@ -542,6 +542,10 @@
     "t": "e",
     "v": "#N/A"
    },
+   "A220": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A221": {
     "t": "n",
     "v": 0.39615398652984457
@@ -1622,8 +1626,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "54dcd0e985fe1f08e66b5e61f67f9f17e1d6912a283897c1439d7ae4a11bab06",
   "kind": "excel-graph",
-  "produced_at": "2026-10-23T00:00:59+00:00",
+  "produced_at": "2026-10-28T16:54:56+00:00",
   "version": null,
-  "workbook_name": "9f25d216933a345e22cf0d05eb607d0442a5ce48601890866c3ef6205c831bd7.xlsx"
+  "workbook_name": "0e4c127355e65249471f6619fce385cf6afcf50d5ca4c419aa995684dfcabe8f.xlsx"
  }
 }
