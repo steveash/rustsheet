@@ -29,7 +29,8 @@ The eval report has a `milestone_exit` row for every Phase 1 milestone (M1, M2, 
     `exit_owners.py` reads only `gen-<milestone>` today); the poi subset (formulas with a defined name or a
     structured, 3-D or external reference, classified by the engine's parser) ≥ 99.5% not visibly off, deviations
     out, a crashed or errored subset case failing it as `case!*`; the M8 probe row 0 visibly off. Needs the poi
-    subset count in the report.
+    subset count in the report. The classifier walks the parsed formula of an untrusted workbook: it returns a result for
+    every formula, never panics and recurses no deeper than the parser's own bound (CLAUDE.md directive 5).
   - **M9:** the cumulative M9 function-scope row less exceptions with ≥ 0.9995 not visibly off (allowance
     `floor(0.0005 * scored)`); every in-scope M9 function `covered` and `meets_rate` in `v15_checkpoint` (no second
     count); the M9 probe row 0 visibly off. Exit-owners also lists the `attributed_off` cells of each M9 function

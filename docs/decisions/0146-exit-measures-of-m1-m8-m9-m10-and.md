@@ -42,6 +42,9 @@
   has its counts and a null verdict, each row names the probe row it read, and the bit-level counts
   stay beside the visible ones for Phase 1b. M2 keeps decision 0135's measures and M7 decision
   0140's; with this record every Phase 1 milestone (M1, M2, M5–M11) has defined measures.
+  Named exceptions (decision 0087) stay function-scope only: `eval/milestones/exit-exceptions.tsv`
+  applies to M9's ironcalc-calc measure as its lines already say, and this record adds no line;
+  M1, M8, M10 and M11 have no ironcalc-calc criterion, so no exception file applies to them.
   1. **M1.** Required: (a) gen-m1 has at least 3,000 scored cells with 0 visibly off (the exit's
      "≥ 3,000 oracle cells"); (b) smoke has 0 visibly-off cells; (c) the probe measure reads the
      frozen `m1-probes` list (decision 0043), not a probe-milestone row, and needs 0 visibly-off
