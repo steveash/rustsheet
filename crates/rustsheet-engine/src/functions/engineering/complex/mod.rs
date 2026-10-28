@@ -343,17 +343,13 @@ impl Model {
             Err(_) if has_inner_minus(&value) => Err(num_error(cell)),
             // A `$` prefix is read before a complex number: `IMABS("$1+2i")` 2.23606797749979
             // (probes/eng-inumber-reading A5).
-            Err(_) if value.starts_with('$') => value
+            Err(_) => value
                 .strip_prefix('$')
                 .and_then(|rest| parse_complex_number(rest).ok())
                 .or_else(|| {
                     self.value_text_number(&value)
                         .map(|f| (f, 0.0, Suffix::Real))
                 })
-                .ok_or_else(|| num_error(cell)),
-            Err(_) => self
-                .value_text_number(&value)
-                .map(|f| (f, 0.0, Suffix::Real))
                 .ok_or_else(|| num_error(cell)),
         }
     }
