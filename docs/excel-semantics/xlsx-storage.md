@@ -395,9 +395,9 @@ which reads back as LF like Excel's raw bytes. The runs beside a missing argumen
 an empty call is T-2966. The legacy `@` rewrite on import and export decides on the formula with no whitespace; where one
 of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (`=N( IF(1,{2;3}) )`
 saves as `N(IF(1,{2;3}))`, T-2970). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
-reading stored text drops it (T-2784).
+reading stored text drops it (T-2784). The saved text beside `@`, LET names and a sign is derived, not probed (T-2971).
 Status: VERIFIED (excel-graph)
-Tasks: T-2786, T-2944, T-2801, T-2948, T-2970
+Tasks: T-2786, T-2944, T-2801, T-2948, T-2970, T-2971
 
 ## Cached volatile values are those of the last calculation, near the save time
 Rule: a workbook's cached values for `TODAY()`, `NOW()` and their dependents are those of Excel's last
