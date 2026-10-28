@@ -181,7 +181,8 @@ fn with_names<'a>(sheet: &str, formula: &'a str, names: &[DefinedName]) -> Cow<'
 }
 
 /// `FORMULATEXT(ref)` / `ISFORMULA(ref)` with a lone reference argument: they read the cell's
-/// formula, not its value, so the reference is not a value precedent (T-2956).
+/// formula, not its value, so the reference is not a value precedent (T-2956). Only a lone A1 cell
+/// or range qualifies; names, structured references and `INDIRECT` keep the taint (fails safe).
 static FORMULA_READER: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"(?i)\b(?:_xlfn\.)?(?:FORMULATEXT|ISFORMULA)\s*\(\s*(?:(?:'(?:[^']|'')+'|[A-Za-z_][A-Za-z0-9_.]*)!)?\$?[A-Za-z]{1,3}\$?[0-9]+(?::\$?[A-Za-z]{1,3}\$?[0-9]+)?\s*\)",
