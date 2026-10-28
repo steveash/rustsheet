@@ -2582,7 +2582,8 @@ one shared formula and the column is a calculated column (`Model::calculated_col
 writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A column is a
 calculated column when its `TableColumn::calculated_column_formula` is set, which a typed formula that fills or
 re-fills it does (the first data row's text without `=`, as Excel saves `calculatedColumnFormula`); a typed constant
-keeps it. So a column of identical stored formulas is not re-filled (rule 8a). A blank cell beside formulas blocks the
+keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
+removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
 fill in the engine, an unprobed choice (T-3025). The column formula is neither read from nor written to xlsx yet
 (T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
 calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
