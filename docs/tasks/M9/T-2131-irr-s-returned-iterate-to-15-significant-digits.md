@@ -108,3 +108,7 @@ if the stage-1 fit does not reach them.
 
 ## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
 From the parked T-2367: IRR gen-m9/d0854366830dcdee Calc!A216 `IRR(Data!A4:D10)`, 831.5533435101329 expected, 831.5533435101225 today.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): unattributed 1. This task now owns them:
+- gen-m9/abb7d565af89b849: Calc!A387
