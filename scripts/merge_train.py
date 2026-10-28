@@ -787,6 +787,7 @@ class ShadowStage(Stage):
     inputs: str = ""
     tree_check: str = ""
     batch: list[int] = field(default_factory=list)
+    pushed: bool = False
 
     mode = SHADOW
 
@@ -806,6 +807,12 @@ class ShadowStage(Stage):
             self.predicted.setdefault(member.pr, "merge")
         self.log.append("would merge " + ", ".join(f"#{m.pr}" for m in train.members) + f" (tested {tip[:12]})")
         return []
+
+    def merge_prefix(self, train: Train, k: int, tip: str) -> str:
+        """The predicted merge of a green prefix; the confirmation and the rest stay on M0, even
+        when `main` moved during the round."""
+        self.merge_green(Train(train.base, train.members[:k]), tip)
+        return train.base
 
     def eject_red(self, member: Member, jobs: Sequence[str], links: str) -> None:
         self.predicted.setdefault(member.pr, "eject:ci-red")
@@ -842,7 +849,9 @@ class ShadowStage(Stage):
         return "match" if merge_ready.text_of(commit, "tree", "sha") == tree_of(first.merge, self.root) else "mismatch"
 
     def push(self, train: Train, notes: Sequence[str] = ()) -> str:
-        return super().push(train, [*notes, self.inputs])
+        tip = super().push(train, [*notes, self.inputs])
+        self.pushed = True
+        return tip
 
     def housekeeping(self) -> None:
         """The one PR-visible write of shadow mode: `ready-to-merge` comes off closed PRs, which a
@@ -870,8 +879,8 @@ class ShadowStage(Stage):
         return "\n".join(lines)
 
     def finish(self) -> None:
-        """Records the prediction on the shadow train's last commit; a lost lease skips it."""
-        if not self.lease or not self.inputs:
+        """Records the prediction on the shadow train this round pushed; a lost lease skips it."""
+        if not self.pushed:
             return
         try:
             self.write_train_ref(tree_of(self.lease, self.root), self.lease, self.prediction())

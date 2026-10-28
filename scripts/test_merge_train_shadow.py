@@ -126,6 +126,11 @@ class Shadow(StageFixture):
         predicted = [merge_train.eject_reason(reason) for reason in reasons]
         self.assertEqual(predicted, ["eject:conflict", "eject:id-collision", "eject:invalidated"])
 
+    def test_a_flip_before_the_push_records_nothing(self) -> None:
+        self.gh.hooks[("GET", "issues")] = self.flip  # during the housekeeping, before the first checkpoint
+        self.assertEqual(self.run_stage(), 1, self.stage.log)
+        self.assertEqual(self.shadow_ref(), "")
+
     def test_another_mode_stops_shadow_at_once(self) -> None:
         self.flip()
         self.assertEqual(self.run_stage(), 0)
