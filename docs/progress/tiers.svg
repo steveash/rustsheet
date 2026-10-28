@@ -15,23 +15,23 @@
 <rect class="grid" fill="#d1d9e0" x="612.0" y="36" width="1" height="214"/>
 <text x="612.0" y="264.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">400</text>
 <text x="140.0" y="55.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Exact</text>
-<rect class="b-exact" fill="#2a78d6" x="150.0" y="46.0" width="400.8" height="18" rx="3"><title>Exact: 347</title></rect>
-<text x="558.8" y="55.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">347 (68.58%)</text>
+<rect class="b-exact" fill="#2a78d6" x="150.0" y="46.0" width="414.6" height="18" rx="3"><title>Exact: 359</title></rect>
+<text x="572.6" y="55.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">359 (70.95%)</text>
 <text x="140.0" y="85.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≤ 4 ulp</text>
-<rect class="b-ulp4" fill="#1baf7a" x="150.0" y="76.0" width="30.0" height="18" rx="3"><title>≤ 4 ulp: 26</title></rect>
-<text x="188.0" y="85.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">26 (5.14%)</text>
+<rect class="b-ulp4" fill="#1baf7a" x="150.0" y="76.0" width="31.2" height="18" rx="3"><title>≤ 4 ulp: 27</title></rect>
+<text x="189.2" y="85.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">27 (5.34%)</text>
 <text x="140.0" y="115.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">15 digits</text>
-<rect class="b-digits15" fill="#6250d6" x="150.0" y="106.0" width="12.7" height="18" rx="3"><title>15 digits: 11</title></rect>
-<text x="170.7" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">11 (2.17%)</text>
+<rect class="b-digits15" fill="#6250d6" x="150.0" y="106.0" width="10.4" height="18" rx="3"><title>15 digits: 9</title></rect>
+<text x="168.4" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">9 (1.78%)</text>
 <text x="140.0" y="145.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≥ 99.9%</text>
-<rect class="b-rate999" fill="#d55181" x="150.0" y="136.0" width="9.2" height="18" rx="3"><title>≥ 99.9%: 8</title></rect>
-<text x="167.2" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">8 (1.58%)</text>
+<rect class="b-rate999" fill="#d55181" x="150.0" y="136.0" width="10.4" height="18" rx="3"><title>≥ 99.9%: 9</title></rect>
+<text x="168.4" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">9 (1.78%)</text>
 <text x="140.0" y="175.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≥ 99%</text>
-<rect class="b-rate99" fill="#eda100" x="150.0" y="166.0" width="50.8" height="18" rx="3"><title>≥ 99%: 44</title></rect>
-<text x="208.8" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">44 (8.70%)</text>
+<rect class="b-rate99" fill="#eda100" x="150.0" y="166.0" width="39.3" height="18" rx="3"><title>≥ 99%: 34</title></rect>
+<text x="197.3" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">34 (6.72%)</text>
 <text x="140.0" y="205.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">&lt; 99%</text>
-<rect class="b-below99" fill="#e34948" x="150.0" y="196.0" width="80.9" height="18" rx="3"><title>&lt; 99%: 70</title></rect>
-<text x="238.9" y="205.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">70 (13.83%)</text>
+<rect class="b-below99" fill="#e34948" x="150.0" y="196.0" width="78.5" height="18" rx="3"><title>&lt; 99%: 68</title></rect>
+<text x="236.5" y="205.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">68 (13.44%)</text>
 <text x="140.0" y="235.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Unscored</text>
 <text x="158.0" y="235.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">0 (0.00%)</text>
 </g></svg>

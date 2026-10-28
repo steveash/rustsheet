@@ -13,9 +13,56 @@ Evidence: `ironcalc-calc/STATISTICAL/FISHER_FISHERINV.xlsx` `FISHER FISHERINV`!C
 C38, C39 (large y), C10, C51; `ironcalc-calc/STATISTICAL/FISHER.xlsx` Sheet1!G2, G3. The formula
 reproduces every numeric FISHERINV cell in both workbooks bit for bit (32 cells, checked with
 glibc `exp` during T-0903, counting overflow as 1); `tanh` misses 6 of them.
-Status: VERIFIED (desktop cached values)
-Implemented in: `functions/statistical/fisher.rs` `fn_fisher_inv`
-Tasks: T-0976
+The quotient is Excel's `/`, rounded twice (next entry): `FISHERINV(TAN(PI()))` is -2^-53
+(gen-m9/ee2497a5e683c5d9 A30), a plain quotient one ulp further from 0 (T-2437).
+Status: VERIFIED (desktop cached values; excel-graph for the twice-rounded quotient)
+Implemented in: `functions/statistical/fisher.rs` `fisher_inv`
+Tasks: T-0976, T-2437
+
+## FISHER, FISHERINV, EXPON.DIST and HARMEAN are Excel operators around LN and EXP (T-2437)
+Rule: each is a short formula whose `/` and `+` behave like Excel's operators (numbers.md "Division
+rounds twice") around Excel's own LN and EXP kernels:
+- FISHER(x) = 0.5 * LN((1 + x) / (1 - x)), the quotient rounded twice. Near 0 this is Excel's
+  cancellation, not atanh: `FISHER(1E-15/3.14159)` = 2.2204460492503126E-16 (gen-m9/4ab2ba98d26c8a5e
+  A395, probes/t2436/4ab2ba98d26c8a5e A256), where a plain quotient gives 3.3306690738754686E-16 and
+  atanh the argument itself, 3.18E-16; `FISHER(1.49172367472348E-11)` = 1.4917178603246007E-11 (5 digits
+  of 15 off atanh) and `FISHER(1.02759470998055E-16)` = 0 (probes/t2437-fit-separators A1, A4).
+- FISHERINV(y) = (EXP(2y) - 1) / (EXP(2y) + 1), the quotient rounded twice (entry above).
+- EXPON.DIST's cdf at t = lambda * x is -expm1(-t) with Excel's Kahan expm1 (numbers.md "Excel's
+  expm1 is Kahan's formula") for t < 1, and 1 - EXP(-t) above. The cut lies between
+  t = 0.999999999999999 (Kahan's digits, A117) and 1.35079141386477 (1 - EXP's), and the two forms
+  give the same double at every t from 1 to 1.35 a search tried (probes/t2437-fit-separators A67:A117:
+  Kahan at all 26 points 0.198 <= t < 1, 1 - EXP at all 25 points 1.3508 <= t <= 8.07). libm's expm1 is one ulp off at `EXPONDIST(TAN(100*PI()),1E+8,
+  TRUE)` = 1.959369974159244E-07 (gen-m9/06b4e8f5de409d5e A140) and `EXPON.DIST(PI(),0.01,TRUE)` =
+  0.030927573695189364 (623663cacea53bbc A318). The density, lambda * EXP(-t), is unchanged.
+- HARMEAN = 1 / AVERAGE(1/x): the reciprocals summed in argument order, the sum divided by n, then
+  inverted, every `/` and `+` twice rounded; not n / sum(1/x). `HARMEAN(Data!D6:D10,Data!C6:C9)` =
+  0.569594502522996 (gen-m9/06b4e8f5de409d5e A278), n / sum one ulp above.
+
+Fit lab (`rustsheet-fitlab fisher|fisherinv|expon-cdf|harmean`, every JSON case of eval/ the four
+functions appear in; bit-exact cells, the misses of the winners are the sweep's parser, not the kernel):
+
+| fit (cells) | chosen form | other candidates | engine before |
+|---|---|---|---|
+| `fisher` (155) | **152**: 0.5*LN(q), q rounded twice | sums 1±x also twice 152 (tie); libm ln, q twice 150; LN, plain q 142; libm, plain q 140; 0.5*(LN(1+x)-LN(1-x)) 94; atanh 68 | 143 |
+| `fisherinv` (143) | **133**: EXP, quotient twice | sums e±1 also twice 133 (tie); libm exp, quotient twice 133; plain quotient 121 (either exp); tanh 85 | 131 |
+| `expon-cdf` (132) | **129**: Kahan below t = 1, else 1-EXP | cut at 2: 121, 0.5: 115, 4: 114, 8: 105; libm expm1 95; Kahan everywhere 91; 1-EXP 74 | 98 |
+| `harmean` (122) | **119**: 1/AVERAGE(1/x), + and / twice | plain +: 118; plain /: 116; both plain 115; n/sum(1/x) 103-104 | 106 |
+
+The sums `1 ± x` and `e ± 1` stay plain doubles: rounding them twice as well scores the same (FISHER 152,
+FISHERINV 133), so the sweeps do not separate the two and the simpler form is kept. The libm/EXP and LN choices
+tie on these sweeps too; the engine uses Excel's kernels (`excel_ln`,
+`excel_exp`, `excel_expm1`). Two owned gen-m9 cells stay off for their inputs, not these kernels: on
+Excel's own input bits both are exact. `FISHER(T.DIST.RT((1.005^1e-15),4))` (a612e89321a6df9c A191)
+needs Excel's `T.DIST.RT(1,4)` = 0.18695048315002957 (probes-numeric/m9-t-dist-rt A49; ours, correctly
+rounded, is 0.18695048315002943; T-2509), and `EXPON.DIST(T.DIST(4199,4,FALSE),0.3,TRUE)`
+(caa1eed48b1883fe A382) is 0.3 * T.DIST(4199,4,FALSE), whose Excel value 9.192880751152396E-18 is 3 ulp
+below ours (excel-graph, 2026-10-28, T-2437; the student t density, T-2585).
+Status: VERIFIED (excel-graph); where in [1, 1.3508) the EXPON.DIST cut lies is not observable on
+the doubles searched (the engine uses 1)
+Implemented in: `functions/statistical/fisher.rs` `fisher`, `fisher_inv`; `exponential.rs` `expon_cdf`;
+`count_and_average.rs` `harmonic_mean`; fits `tools/src/rustsheet_tools/fitlab/kernels/fisher_expon_harmean.py`
+Tasks: T-2437
 
 ## T.DIST.RT and T.DIST.2T are not 1 - T.DIST
 Rule: the Student-t upper tail is computed on its own, not as `1 - T.DIST(x, df, TRUE)`.
@@ -246,6 +293,20 @@ Otherwise LARGE takes the `ceil(k)`-th largest and SMALL the `floor(k)`-th small
 AGGREGATE 14/15 (array form) route through the same code; oracle evidence covers 14 only (aggregate-args Misc!A11, A13).
 Status: VERIFIED (probe `eval/suites/probes/cases/large-small-k`, T-1034; oracle excel-graph, 2026-10-07).
 Implemented in: `large_small_k` and `fn_large`/`fn_small` (crates/rustsheet-engine/src/functions/statistical/count_and_average.rs).
+
+## MEDIAN of an even count is a + (b - a)/2
+Rule: with an even count, MEDIAN takes the two middle values a <= b and returns `a + (b - a)/2`, the lower one plus
+half the gap. It does not return `(a + b)/2`. The two differ by an ulp or two when `a + b` rounds:
+- `MEDIAN` of -0.5 and 0.3 is -0.09999999999999998, not -0.1 (gen-m9/73f053591a54bc43 Calc!A307).
+- -0.0001 and 7 give 3.4999499999999997, not 3.49995 (gen-m9/775d053de498b8c7 Calc!A162, 91e167cd8d7eb652 A117).
+- 0.3 and 1.005 give 0.6524999999999999 (gen-m9/bbab6562e88b70e8 A170).
+- 12.302999999999999 and 43.90399999999999 give 28.103499999999997, not ...993 (calipers pv23_051/golden.xlsx WACC!E23 and
+  21 more cells of the pv23_046..055 goldens, Mac desktop cached values).
+Evidence: every gen-m* MEDIAN cell over plain Data ranges with an even count (50 cells, excel-graph). `a + (b - a)/2`
+matches all 50. `(a + b)/2`, `a/2 + b/2`, `b - (b - a)/2` and `(a + b)*0.5` match 44 each (gap triage 2026-10-28, T-3017).
+Two 9E+307 values give 9E+307 (probes/aggregate-overflow A48, numbers.md), which this form also gives. A pair whose
+`b - a` overflows is unprobed.
+Status: VERIFIED (cells above). Ours: not implemented. `fn_median` (count_and_average.rs) computes `(a + b)/2`; T-3017.
 
 ## RANK/RANK.EQ/RANK.AVG: a number absent from the reference is #N/A, even when the reference holds no number
 Rule: when `number` is not among the numeric values of `ref`, the result is `#N/A`, whatever `ref` holds: a numeric
@@ -2711,38 +2772,80 @@ Evidence: probes-numeric case `m9-weibull-dist` (cells A1:A176). Oracle: excel-g
 Status: VERIFIED (excel-graph)
 Tasks: T-1046 (sweep), T-0978
 
-### The far-tail density is less accurate than exp(-t), consistent with t = (x/l)^k through EXP(k*LN(x/l)) (lead)
-In the tail, Excel's density is off the true value by about one rounded logarithm's error times t.
-Match it; do not correct it.
+### The far-tail density is less accurate than exp(-t): t = (x/l)^k is EXP(k*LN(x/l)) (rule, T-2239)
+Rule. WEIBULL.DIST and WEIBULL evaluate, with Excel's own LN and EXP kernels (`excel_ln`, `excel_exp`; numbers.md) and
+each operation a double:
+- t = EXP(k*LN(x/l)), not a correctly rounded power;
+- the density as `k/EXP(k*LN(l)) * EXP((k-1)*LN(x)) * EXP(-t)`, left to right: k over l^k, not `k/l*(x/l)^(k-1)`;
+- the cdf as minus Excel's expm1 of -t (Kahan's formula, numbers.md "Excel's expm1 is Kahan's formula") below t = 1, and
+  as `1-EXP(-t)` from t = 1 on (next entry).
+
+In the tail, Excel's density is off the true value by about one rounded logarithm's error times t. Match it; do not
+correct it.
 - `WEIBULL.DIST(100,1,1,FALSE)` = 3.7200759760206773E-44, while exp(-100) = 3.720075976020836E-44
   (4E-14 relative; m9-weibull-dist A64).
 - `WEIBULL.DIST(1000,1,9,FALSE)` = 6.177532755504216E-50 (A88).
 - `WEIBULL.DIST(5,3.7,1,FALSE)` = 9.363099887555361E-166 (A146).
+- The l^k divisor shows away from the tail too: `WEIBULL(10,3,8,FALSE)` is 0.08310360884023987 (t1048-weibull A8, B8),
+  where the true value, 0.08310360884023976, is what `k/l*(x/l)^(k-1)*exp(-t)` gives.
 
-Computing t = exp(k*ln(x/l)), not `powf`, reproduces this. A double-precision re-run covered the
-230 in-domain cells (x, k, l > 0 with a literal TRUE/FALSE cumulative; 116 cdf, 114 density) of
-m9-weibull-dist, t1048-weibull and t1049-weibulldist. Visibly-off and bit-exact counts are per form:
+Fit (T-2239), over the in-domain cells with literal arguments (x, k, l > 0; 123 cdf, 122 density) of m9-weibull-dist,
+t1048-weibull, t1049-weibulldist, the gen-m9 and probes cells. The cdf rows and the rule's density row use Excel's
+kernels; the other density rows are libm re-runs:
 
 | form | visibly off | bit-exact |
 |---|---|---|
-| cdf `-expm1(-t)` | 0 | 94 |
-| cdf `-expm1(-(x/l)^k)`, `(x/l)^k` via powf | 1 | 74 |
-| cdf, statrs form `-expm1(-x^k*l^-k)` (the engine today) | 1 (m9 A159) | 76 |
-| cdf `1-EXP(-t)` (loses the small-x cells) | 24 | |
-| density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | |
-| density `k/l^k*exp((k-1)*ln x)*exp(-t)` | 2 (t1048 A8, B8) | |
-| density `k/l*(x/l)^(k-1)*exp(-(x/l)^k)`, powf | 15 | |
-| density, statrs form `k/l*(x/l)^(k-1)*exp(-x^k*l^-k)` (the engine today) | 17 | |
+| cdf, the rule above | 0 | 121 (m9 A69 1 ulp; t2706 A34 is subnormal, flushed to 0 in the cell) |
+| cdf `-expm1(-t)` (Excel's expm1) throughout | 0 | 112 (loses near-1 cells: m9 A57, A85, A127, gen-m9 5919660b7bb4d195 A296, ...) |
+| cdf `-expm1(-t)`, libm expm1 | 0 | 99 |
+| cdf `1-EXP(-t)` throughout (loses the small-x cells) | 24 | |
+| cdf, statrs form `-expm1(-x^k*l^-k)` (the engine before T-2239) | 1 (m9 A159) | 80 |
+| density, the rule above | 0 | 120 (t1048 A14, B14 1 ulp) |
+| density `k*exp((k-1)*ln x - k*ln l)*exp(-t)` | 2 (m9 A156, A158) | 97 |
+| density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | 72 |
+| density `k/l*(x/l)^(k-1)*exp(-t)`, powf | 3 (m9 A168; t1048 A8, B8) | 60 |
+| density `k*t/x*exp(-t)` | 7 | 49 |
+| density, statrs form `k/l*(x/l)^(k-1)*exp(-x^k*l^-k)` (the engine before T-2239) | 17 | |
 
-t1048 A8 is `WEIBULL(10,3,8,FALSE)` and B8 its WEIBULL.DIST twin, both 0.08310360884023987. The same t gives
-ironcalc-calc WEIBULL_DIST.xlsx E2 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.08505277126996899).
-The re-runs used libm `exp`/`log`, not Excel's EXP and LN kernels, so the bit-level form is still
-open (T-0978).
-Evidence: probes-numeric m9-weibull-dist A64, A88, A146, t1048-weibull, t1049-weibulldist (excel-graph);
-ironcalc-calc WEIBULL_DIST.xlsx E2 (excel-cached, Microsoft Macintosh Excel).
-Status: the values are VERIFIED (excel-graph); the `exp(k*ln(x/l))` form is UNVERIFIED (a fit lead,
-gap triage 2026-10-21; T-2239, T-0978).
-Tasks: T-2239 (15 digits), T-0978 (last digits)
+t computed as `exp(k*(ln x - ln l))`, `x^k/l^k` or `exp(k ln x)/exp(k ln l)` loses 8 density cells. Libm's `exp`/`log` in
+place of Excel's kernels give the same counts for the rule's density on this set, so it does not separate them; the
+engine uses Excel's.
+The same t gives ironcalc-calc WEIBULL_DIST.xlsx E2 and E3 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.08505277126996899).
+Evidence: probes-numeric m9-weibull-dist, t1048-weibull, t1049-weibulldist, t2239-weibull-cdf-switch (excel-graph); gen-m9
+(T-2256 cells, e.g. 5389dd4d5b5739d2 A378, 5cebac1f02bf30f2 A336); ironcalc-calc WEIBULL_DIST.xlsx E2, E3 (excel-cached,
+Microsoft Macintosh Excel).
+Ours: `functions/statistical/weibull.rs` (`scaled_power`, `weibull_cdf`, `weibull_density`).
+Status: VERIFIED (excel-graph) to 15 digits on every cell above; the 3 cells off by 1 ulp stay with T-0978.
+When x/l underflows to 0 (e.g. `WEIBULL.DIST(1E-300,2,1E+100,TRUE)`), the engine keeps t = 0, as before; Excel's
+LN(0) would be #NUM!, so its answer here may be #NUM! or 0: UNVERIFIED, no probe yet.
+Tasks: T-2239 (15 digits, done), T-0978 (last digits)
+
+### WEIBULL.DIST's cdf switches from expm1 to 1-EXP(-t) near t = 1 (T-2239)
+Rule. Below t = 1 the cdf is minus Excel's expm1 of -t; above, `1-EXP(-t)`. The switch lies between t = 0.99868 and
+t = 1.35: on a 0.0003 grid of t over (0.99, 1.36) the two forms differ in only 29 cells, all below 0.99868 (expm1) or
+above 1.35 (`1-EXP(-t)`), so the exact cut is not observable from these cells; the engine cuts at t = 1.
+- `WEIBULL.DIST(0.9917,1,1,TRUE)` = 0.6290544527285032 (expm1; A113), `WEIBULL.DIST(1.3506,1,1,TRUE)` =
+  0.7409152368565803 (`1-EXP(-t)`; A114).
+- All 291 cells of the probe are cells where the two forms differ in the last bit: 226 below the cut match expm1, 65 above
+  it match `1-EXP(-t)`, for k = 1 and k = 2 alike.
+Evidence: probes-numeric t2239-weibull-cdf-switch (excel-graph, 2026-10-28), m9-weibull-dist A57, A85, A127.
+Ours: `functions/statistical/weibull.rs` `weibull_cdf`.
+Status: VERIFIED (excel-graph)
+
+### WEIBULL's density divides by l^k: #DIV/0! when it underflows, #NUM! when it overflows (T-2239)
+Rule. The density (cumulative FALSE) is `#DIV/0!` when l^k = EXP(k*LN(l)) underflows to 0 and `#NUM!` when it
+overflows, even where the density's limit is 0. The cdf does not form l^k and stays a number there; both forms are
+`#NUM!` when t = (x/l)^k overflows.
+- `WEIBULL.DIST(0.1,10000000000.5,0.2,FALSE)` is `#DIV/0!` (gen-m9/941c409532603d32 A142), as is
+  `WEIBULL(1E-15,<about 42843>,<about 0.32>,FALSE)` (0620505280d2ea6e A61).
+- `WEIBULL.DIST(0.3,99999,99999,"FALSE")` (a63d1c7d6f96c56d A352), `WEIBULL(1,1E+8,1E+10,FALSE)` (7fd0a98183c6babf
+  A390), `WEIBULL.DIST(2,100,10000000000.5,FALSE)` (9bc247733a1ca9fa A108) and `WEIBULL.DIST(1E-10,29178,1.5E+10,"FALSE")`
+  (f82473275380882e A356) are `#NUM!`.
+- t overflows: `WEIBULL.DIST(100,1E+10,0.01,1)` and `WEIBULL(1E+300,2.5,100,0.5)` are `#NUM!` (0bbab6206b5c9a07 A340,
+  329b177b5d5165ad A101), while `WEIBULL(1E+15,42,10000000001,TRUE)` is a number (7f7ca726c3f68554 A308).
+Evidence: gen-m9 cells above (excel-graph, T-2256 triage).
+Ours: `functions/statistical/weibull.rs` `weibull_density`.
+Status: VERIFIED (excel-graph)
 
 ## Legacy distribution names sweep (T-1047)
 Rule: each legacy name returns exactly the same value or error as its modern equivalent on every paired cell (BETADIST = BETA.DIST cum, BETAINV = BETA.INV, BINOMDIST = BINOM.DIST, CHIDIST = CHISQ.DIST.RT, CHIINV = CHISQ.INV.RT, CHITEST = CHISQ.TEST, CONFIDENCE = CONFIDENCE.NORM, CRITBINOM = BINOM.INV, EXPONDIST = EXPON.DIST, FDIST = F.DIST.RT, FINV = F.INV.RT, FTEST = F.TEST); the aliases need no separate kernel.
@@ -2968,6 +3071,11 @@ Tasks: T-1543, T-1634
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
+  The lower tail is not always correctly rounded at a shape below 1 (T-3012). `GAMMA.INV(1E-16,0.25,1E+15)`
+  (gen-m9/984cba67bbe6972b.case.json Calc!A43, excel-graph) is 6.749697893111757E-50 in Excel. The exact quantile
+  (p·Γ(1.25))^4·1E15 is 6.7496978931117296E-50 (40-digit Decimal), and ours is 6.74969789311173E-50. So Excel is
+  4.1E-15 relative high, about 1E-15 relative in P at a = 0.25. Not yet known: whether this is the crossing of
+  Excel's own GAMMA.DIST cdf (T-3012 probes it, T-3013 matches it).
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
@@ -3102,6 +3210,9 @@ Tasks: T-2035 (partial), T-2093, T-2095
   - CHISQ.TEST: scalars and single cells are `#N/A`; `#N/A` for unequal element counts; a column
     against a row with the same count is accepted; constant data gives 1 (no `#DIV/0!`);
     `#DIV/0!` only for an empty range or a zero expected value; a negative expected value is `#NUM!`.
+    A side holding no number (blank, text or a boolean in a range) is `#DIV/0!`, implemented in T-2094 (t1049-chisqtest A23/A24,
+    m9-legacy-chitest A28, gen-m9 0a9226016e8f5f33 A333; checked after the `#N/A` size test; numbers on both sides never paired
+    stay 1, 8dd2312c96effb1b A343).
     Text or TRUE in the actual array returns exactly the all-numeric result (`chisqtest` A34/A35 = A29).
   - T.TEST: type 1 (paired) with unequal sizes is `#N/A`; types 2 and 3 accept unequal sizes;
     tails outside {1,2} or type outside {1,2,3} is `#NUM!`; `#DIV/0!` for one point per side, zero variance in both
@@ -3532,7 +3643,7 @@ Status: VERIFIED (excel-graph) for the cited cells
 
 CHISQ.TEST/CHITEST have no per-cell sign check: a negative actual (`CHITEST(Data!D7:D9,Data!C10:E10)`, -1 against 1, 0.1353352832366127 = exp(-2), c6cfda6bd10cae93 A375) and a negative expected cell with a positive summed statistic (`CHITEST(Data!B5:E7,Data!B7:D10)` is 0, f2bd5f380ec002bf A314) are numbers; only a negative summed statistic is `#NUM!` (probes-numeric/m9-legacy-chitest A21, `CHITEST(G1:G3,M1:M3)`, G={1,2,3}, M={5,6,-1}).
 Evidence: those three cells, excel-graph. Status: VERIFIED for them; a single negative expected with a positive total and all-numeric inputs is unprobed (T-2650).
-Open: `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (text and blanks only, including a blank against a blank) is `#DIV/0!` (0a9226016e8f5f33 A333) while other all-non-number pairings are 1 (8dd2312c96effb1b A343); UNVERIFIED why.
+Rule (T-2094): a side holding no number (blank, text or booleans in a range) is `#DIV/0!`: `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (0a9226016e8f5f33 A333, the actual side has only text, a boolean and blanks). Numbers on both sides that are never paired stay 1 (8dd2312c96effb1b A343). Still UNVERIFIED: blank against blank of equal shape beyond these cells (T-2650).
 
 ## An error element of an array argument is that error (T-2255)
 Rule: an error inside an array constant or array value given to LARGE, SMALL, QUARTILE.EXC, PERCENTRANK.INC,
@@ -3546,7 +3657,8 @@ Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3}
 are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
 (gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
 Ours: T-2430 implements it for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST and the paired functions
-(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB and FREQUENCY still map an array's error element to `#VALUE!` (T-2636),
+(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB, and FREQUENCY's bins array, still map an array's error element to `#VALUE!` (T-2636; FREQUENCY's data array
+propagates it since T-2427),
 F.TEST and FTEST since T-2692 (`f_test_sample`, fisher.rs). UNVERIFIED (shared reader, no oracle cell): SLOPE, INTERCEPT, STEYX, RSQ, FORECAST, FORECAST.LINEAR,
 CHISQ.TEST and CHITEST now return the element's error too; the other argument's error winning is verified only for PERCENTILE, TRIMMEAN
 and COVARIANCE.S and applied to every function above; an array with an error element as the second argument against a plain first
@@ -3573,13 +3685,26 @@ Rule: FREQUENCY with a single bin (a number, a one-cell reference, a cell holdin
 boolean data value still returns its bins-plus-one column, so in the generated layout (the next formula one row below)
 the anchor is `#SPILL!`: `FREQUENCY(Data!B11:C12,Data!B3:B3)` (0a614cfe974b59c3 A64), `FREQUENCY(Data!E5:E7,Data!D7:D7)`
 (589f42e67f4b4b8d A384), `FREQUENCY(-0.5,Data!A4)` with A4 = TRUE (8fec7b207f4dd753 A245), `FREQUENCY(Data!C$7,Data!A7)`
-with C7 = " x " (3e98b26cf6713e77 A249). The exact row count for a text or boolean bin is UNVERIFIED (the cells show
-only that it is at least two). An error argument is the result: `FREQUENCY((0*CHITEST(..)),(-2.5))`
+with C7 = " x " (3e98b26cf6713e77 A249). The row count for a text or boolean bin is settled by probes/frequency-bins
+(below). An error argument is the result: `FREQUENCY((0*CHITEST(..)),(-2.5))`
 `#N/A` (05d44f6dd6cfc567 A65), `FREQUENCY(Data!B6:D10,YEAR(VDB(..)))` `#NUM!` (b4173fe25109a238 A184); which wins when
-both data and bins are errors is UNVERIFIED (no cell has both).
+both data and bins are errors is settled by probes/frequency-bins below.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
-Ours: a single number for a single bin, `#VALUE!` for an error, text or boolean argument; T-2427.
-Status: VERIFIED (excel-graph) except the row count noted
+Resolved by probes/frequency-bins (excel-graph, 2026-10-24): with no numeric bin (a text, boolean or blank cell or a
+typed text or boolean) the result is two rows, 0 then every numeric data value; text in data, and text or booleans in bins, are
+skipped (`{1;2}` against `"a"`, TRUE, a blank cell, `{"a";"b"}`; `FREQUENCY("a",{1;2})` is three rows of 0 counts). Error
+precedence: a scalar error argument (data, then bins) beats an error element of either array, and within arrays data
+comes first: `FREQUENCY({1;#DIV/0!},NA())` and `FREQUENCY(NA(),{1;#DIV/0!})` are `#N/A`, `FREQUENCY(1/0,NA())` is
+`#DIV/0!`, `FREQUENCY({#N/A;1},{#DIV/0!;1})` is `#N/A`.
+Probe cells B4 and B7 confirm the T.TEST entry's order.
+UNVERIFIED in ours, each skipped with no oracle cell (T-2636 probes them): a typed or referenced text that reads as a
+number (`FREQUENCY({1;2},"2")`), a typed or computed boolean as data, and a computed boolean bin. Also unprobed: a
+data-array error element against an error cell in a bins range.
+Ours: implemented, T-2427, only as far as the probe goes. An error element of the data array is the result, and a scalar
+bins error beats it. An error element of the bins array keeps `main`'s `#VALUE!`: no oracle cell shows it, and desktop
+evidence points elsewhere (corpus-bench/53062 caches a number with a `#VALUE!` bins element; T-2636 probes it). An error
+cell in a data range keeps `main`'s data-first order against a scalar bins error, UNVERIFIED (T-2636). The cells still off are other functions' gaps (ODDFYIELD, FORECAST.ETS, EXPAND, DB, NPER, ...).
+Status: VERIFIED (excel-graph) except the noted UNVERIFIED parts
 
 ## Booleans from a reference or a formula are numbers in the F, beta, chi-squared and hypergeometric functions (T-2255)
 Rule: a TRUE or FALSE that comes from a cell or a formula (not typed in the call) reads as 1 or 0 in F.INV, FINV,
@@ -3929,7 +4054,9 @@ A32), and only then the tails/type range check (`#NUM!`). A typed empty text as 
 an error inside a range still loses to a bad tails/type (T-1813). Unexplained: `TTEST(CELL("col",Data!D4),Data!A5:B10,2,2)`
 is `#NUM!` (a5342a7e24fd803e A15), where one value against twelve was `#DIV/0!` in ours: UNVERIFIED (the cell now passes).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); cells in T-2469.
-Ours: matches the computed empty text, a text sample being an array of one cell with no number (T-2469). A typed text
+Ours: the order above (an error-value sample, then tails and type errors, then their range checks, then an error inside
+a range; T-1813, T-2256, T-2469). It matches the computed empty text, a text sample being an array of one cell with no
+number (T-2469). A typed text
 literal (`T.TEST("",A1:A4,1,3)` `#DIV/0!`, `T.TEST("a",..)`) and a typed or computed boolean sample take the same path in
 ours (as in COVARIANCE.P/.S, probes/t2436/computed-scalar A35:A37): UNVERIFIED for T.TEST (T-2853 probes them).
 Status: VERIFIED (excel-graph) except the noted cell

@@ -9,6 +9,7 @@ from rustsheet_tools.fitlab.kernels import (
     beta,
     beta_inv,
     erfc,
+    fisher_expon_harmean,
     ftest,
     ftest_adhoc,
     gamma,
@@ -37,6 +38,7 @@ MODULES = [
     xirr,
     ftest,
     ftest_adhoc,
+    fisher_expon_harmean,
 ]
 
 

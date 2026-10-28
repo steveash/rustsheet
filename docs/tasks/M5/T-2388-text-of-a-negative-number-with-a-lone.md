@@ -4,7 +4,7 @@ title: "TEXT of a negative number with a lone B1 calendar prefix is a minus sign
 milestone: M5
 lane: functions-text
 status: todo
-priority: P3
+priority: P0
 size: S
 tier: sonnet
 depends_on: []

@@ -3,7 +3,7 @@ id: T-2925
 title: "Drop the LAMBDAs a formula made once it is evaluated, so stored LAMBDAs do not pile up across a recalculation"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -33,13 +33,22 @@ must keep growing (do not reset `last_lambda_id` per root cell). Keep the drop p
 the root's start mark), not to the whole map.
 
 ## Acceptance criteria
-- [ ] After a root cell is evaluated, `lambdas` holds none of the LAMBDAs its formula made (an engine test over two cells,
+- [x] After a root cell is evaluated, `lambdas` holds none of the LAMBDAs its formula made (an engine test over two cells,
       counting the map's entries, not timing).
-- [ ] Every LAMBDA test and the probes/lambda-* eval cases still pass; no baseline gains a line.
-- [ ] The Outcome records the time of 16 cells of `SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z)))))`
+- [x] Every LAMBDA test and the probes/lambda-* eval cases still pass; no baseline gains a line.
+- [x] The Outcome records the time of 16 cells of `SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z)))))`
       before and after (release build).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The per-formula charge for LAMBDAs made (T-2803, SPEC-0024 as amended by T-2923).
 - The other retained memory of one formula (T-2806).
+
+## Outcome
+`Model::evaluate_root_cell` now drops the LAMBDAs its formula made (`lambdas`, `eta_lambdas`, and the defined-name
+entries of `named_lambdas` from the root's start id on), in time proportional to what it made; `last_lambda_id` keeps
+growing, and a table left large by a formula that made many is given back. Engine test
+`a_root_cells_lambdas_are_dropped_once_it_is_evaluated` (fails without the drop). Timing (release build, this container,
+2026-10-28; 16 cells of `SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z)))))`, each of which reaches the
+SPEC-0024 work budget and is `#VALUE!` since T-2803's LAMBDA charge): 36.8 s before, 32.7 s after (about 11% faster; the
+work budget, not the map, now bounds each cell). Eval delta: none expected (no value changes).

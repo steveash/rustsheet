@@ -4,7 +4,7 @@ title: "LINEST, LOGEST and GROWTH to visible parity: the 113 visibly-off cells o
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []

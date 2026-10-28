@@ -16,6 +16,7 @@ mod test_clock;
 mod test_column_width;
 mod test_criteria;
 mod test_criteria_sparse_walk;
+mod test_data_table_memo;
 mod test_data_tables;
 mod test_database;
 mod test_date_and_time;
