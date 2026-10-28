@@ -29,6 +29,8 @@ checkpoints (`Stage.checkpoint` in `scripts/merge_train.py`). A mismatch there i
   expected and the actual tree), file the P0 task in a separate task-only PR naming it, release.
   Before a squash: file the P0 only. `gh_client` needs a create-PR call; check T-3001's probe on
   which writes a session may make (the step mode of T-2995 may be the path).
+- **The P1 of a red train that did not reproduce** (T-2998, decision 0154): `Stage.tasks`
+  holds it as (priority, title, body); file it with the same task-only PR path as the P0.
 - **Branch deletion** after a merge (step 7.5), ignoring the proxy's 403 (T-1938).
 - `make merge-mode` prints `train (stop pending: #n)` when a stop label is honoured.
 
