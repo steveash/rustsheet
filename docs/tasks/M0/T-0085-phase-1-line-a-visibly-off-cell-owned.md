@@ -3,7 +3,7 @@ id: T-0085
 title: "Phase 1 line: a visibly-off cell owned by a desktop-evidence (M14) task counts as filed, not as a miss (decision 0114)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -35,18 +35,36 @@ Phase 1 exit"). The report shows those cells in their own column, so nothing is 
   task owns.
 
 ## Acceptance criteria
-- [ ] A decision record (`make new-decision`) states the rule: a visibly-off cell owned only by an open M14 task is
+- [x] A decision record (`make new-decision`) states the rule: a visibly-off cell owned only by an open M14 task is
       reported in a `desktop_owned` count per function and is left out of that function's Phase 1 rate cells and
       visibly-off count; cells owned by any non-M14 open task are unaffected.
-- [ ] The eval implements it with a unit test (a function whose only visibly-off cells are M14-owned meets the
+- [x] The eval implements it with a unit test (a function whose only visibly-off cells are M14-owned meets the
       rate; one with a non-M14-owned cell does not), and report.md shows the new column.
-- [ ] One definition of ownership (directive 3): the generator of the desktop-owned list calls
+- [x] One definition of ownership (directive 3): the generator of the desktop-owned list calls
       `scripts/exit_owners.py`'s `owned` (or the eval ports it and exit_owners.py is changed to use the port), and a
       test pins both to the same cases.
-- [ ] On a full `make eval`, the four FORECAST.ETS functions meet the Phase 1 rate if and only if all their
+- [x] On a full `make eval`, the four FORECAST.ETS functions meet the Phase 1 rate if and only if all their
       visibly-off cells are T-2425's; no other function's verdict changes.
-- [ ] `make check` green (the generated list is up to date); reviewers approve.
+- [x] `make check` green (the generated list is up to date); reviewers approve.
 
 ## Out of scope
 - Implementing FORECAST.ETS (T-2425).
 - Any exemption for cells whose owner is not an M14 task.
+
+## Outcome
+Decision 0143. `scripts/desktop_owned.py` applies exit_owners.py's `owned` rule (one definition; `open_tasks` factored
+out of `open_task_texts`) to every cell `F` line of eval/baseline and lists the cells that open M14 tasks own and no other
+open task owns; `make eval` writes it to the git-ignored `eval/runs/desktop-owned.tsv` and runs `rustsheet-eval run
+--desktop-owned`, which loads it into `Phase1Exceptions` (`load_desktop_owned`). `v15_checkpoint` leaves those
+visibly-off cells out of the Phase 1 rate as `desktop_owned` (per function and in total, an "M14-owned, left out" column
+and a line under the Phase 1 line in report.md); a cell phase1-exceptions.tsv also lists counts once, as `rate_excepted`.
+Generating the list per run instead of committing it (the task's preferred option) avoids a protected-path file that every
+task or baseline change would have to regenerate; the decision records why.
+
+Eval on main 81569726 plus this branch (vendored suites; poi and calipers not fetched here): 1064 generated cells (971
+T-2425, 41 T-1553, 38 T-2663, 8 T-2704, 6 T-1075); 1000 visibly-off cells left out, 453 of them counted
+(FORECAST.ETS.SEASONALITY 175, FORECAST.ETS.STAT 158, FORECAST.ETS 63, FORECAST.ETS.CONFINT 56, F.INV 1). Phase 1 line
+unchanged at 408/506 and no function's verdict changed: the four FORECAST.ETS functions still have 2-3 counted visibly-off
+cells each (FORECAST.ETS 2/20, CONFINT 2/12, SEASONALITY 3/20, STAT 3/10), ten probe cells that M9 tasks T-0969 and T-0972
+own through whole-case tally lines, so they correctly do not meet the rate. Follow-up T-3004 hands those cells to
+T-2425. Eval baseline unchanged (no cell moved).
