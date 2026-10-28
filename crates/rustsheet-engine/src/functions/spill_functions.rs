@@ -88,6 +88,19 @@ pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
     }
 }
 
+/// Whether UNIQUE's `by_col` and `exactly_once` are each absent, empty or a literal, with
+/// `by_col` not TRUE, so its array may be tailed (SPEC-0020 Amendment 1, section 3): by columns
+/// a whole column is one key, and a flag that is an array or a reference lifts the call.
+fn unique_flags_are_literals(args: &[Node]) -> bool {
+    let literal = |arg: Option<&Node>, by_col: bool| match arg {
+        None | Some(Node::EmptyArgKind) => true,
+        Some(Node::BooleanKind(flag)) => !(by_col && *flag),
+        Some(Node::NumberKind(flag)) => !(by_col && *flag != 0.0),
+        Some(_) => false,
+    };
+    literal(args.get(1), true) && literal(args.get(2), false)
+}
+
 /// One UNIQUE call over `data`: its distinct rows (or columns), or those that occur once.
 fn unique_of(
     data: &[Vec<ArrayNode>],
@@ -692,10 +705,10 @@ impl Model {
         // walks the array, so the call is charged its cells per element.
         // An error array is every element's result: `UNIQUE(<#VALUE!>,HSTACK(0.2,1E+15))` is two
         // `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434; T-2300).
-        let data = self.eval_to_array_keep_blank(&args[0], cell);
+        let (data, cells) = self.unique_array(args, cell);
         let cells = match &data {
             Ok(d) if d.is_empty() || d[0].is_empty() => return CalcResult::Array(vec![]),
-            Ok(d) => d.iter().map(Vec::len).sum::<usize>(),
+            Ok(_) => cells,
             Err(_) => 1,
         };
         let cells = u64::try_from(cells).unwrap_or(u64::MAX).max(1);
@@ -719,6 +732,43 @@ impl Model {
                 }
             },
         )
+    }
+
+    /// UNIQUE's array and its cell count. An element-wise expression of whole columns is read
+    /// as its used head and two copies of its tail row (SPEC-0020 Amendment 1, T-0493): with
+    /// rows as keys, the head followed by any `n >= 2` copies of one row has the same distinct
+    /// rows, the same rows counted once and the same order as with two copies, and a tail is at
+    /// least 4,096 rows. The count is the logical size, head plus tail, as the materialized
+    /// array's.
+    fn unique_array(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> (Result<Vec<Vec<ArrayNode>>, CalcResult>, usize) {
+        let read = |model: &mut Self| model.eval_to_array_keep_blank(&args[0], cell);
+        let tailed = if unique_flags_are_literals(args) {
+            // An error evaluation is no head or tail: the ordinary reading below reports it.
+            self.read_tailed(&args[0], cell, read)
+                .and_then(|tailed| tailed.elements_by(Result::ok))
+        } else {
+            None
+        };
+        if let Some((head, tail)) = tailed {
+            let mut rows: Vec<Vec<ArrayNode>> = head.map(|element| vec![element]).collect();
+            let mut cells = rows.len();
+            // No tail when the pass is being abandoned: the value is discarded.
+            if let Some((element, tail_len)) = tail {
+                cells = cells.saturating_add(tail_len);
+                rows.push(vec![element.clone()]);
+                rows.push(vec![element]);
+            }
+            return (Ok(rows), cells);
+        }
+        let data = read(self);
+        let cells = data
+            .as_ref()
+            .map_or(0, |data| data.iter().map(Vec::len).sum::<usize>());
+        (data, cells)
     }
 
     // ── FILTER ────────────────────────────────────────────────────────────────

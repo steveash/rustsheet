@@ -4,7 +4,7 @@ title: "BINOM.DIST, BINOM.DIST.RANGE and NEGBINOM.DIST last digits: fit Excel's 
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P1
 size: M
 tier: opus
 campaign: visible
@@ -175,3 +175,6 @@ Cells:
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (binomial and negative-binomial values that differ in the 14th-15th digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083). The fit needs T-2145's oracle sweep first.
+
+## Phase 1 triage (T-0090, 2026-10-27)
+It owns 71 of BINOM.DIST.RANGE's 73 needed cells, 534 BINOM.DIST and 121 NEGBINOM.DIST cells: despite the "last digits" title these cells are visibly off. Priority raised so it leads its stage in M9.

@@ -1,4 +1,4 @@
-use super::{beta_dist_lower_tail, dispatch, Branch};
+use super::{beta_dist_lower_tail, closed_or_ported_tails, dispatch, Branch};
 
 fn branch(a: f64, b: f64, x: f64) -> (Branch, bool) {
     let d = dispatch(a, b, x, 1.0 - x).expect("in domain");
@@ -123,4 +123,19 @@ fn l140_whole_b0_takes_ln_beta_of_one() {
             "BETA.DIST({x},{a},{b},TRUE)"
         );
     }
+}
+
+// BINOM.DIST's cdf is w1 of K(k + 1, n - k, p, fl(1 - p)), whole shapes, so L140 at a whole b0
+// runs bpser(a0, 1, x0) with ln B(a0, 1) = -LN(a0) at a0 <= 8 too: exact dyadic values stay exact
+// (`BINOM.DIST(1,6,0.5,TRUE)` = 7/64; the GAMMALN sum left Excel's 0.0546875 in ironcalc-calc
+// BINOM.xlsx E5 2 ulp high, T-2847).
+#[test]
+fn l140_whole_b0_is_exact_at_a_small_a0() {
+    let (a, b, p) = (2.0, 5.0, 0.5);
+    assert_eq!(
+        dispatch(a, b, p, 1.0 - p).map(|d| d.branch),
+        Some(Branch::L140BupBpser)
+    );
+    let (_, upper) = closed_or_ported_tails(p, 1.0 - p, a, b).expect("ported");
+    assert_eq!(upper.to_bits(), (7.0_f64 / 64.0).to_bits());
 }
