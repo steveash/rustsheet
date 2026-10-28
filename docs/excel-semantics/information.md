@@ -272,7 +272,7 @@ the referenced sheet; the rule stands, and a single conflicting cell is re-fille
 CELL("contents", ref) as a VSTACK argument is `#VALUE!` (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `VSTACK(CELL("contents",Data!C11),1)`,
 `VSTACK(CELL(..),Data!B7:E12)` and `ROWS(VSTACK(CELL(..),Data!B7:E12))` are all one `#VALUE!` (nothing spilled), while `CELL(..)` alone and
 `CELL(..)&"|"` give 0 and "|", and `VSTACK(0,Data!B7:E12)` is the 7x4 stack (`#N/A` padded). So the CELL result, not the blank cell, makes the
-VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK and TOCOL are probed below (T-2466); other stacking or array-shaping callers of CELL are unprobed. Ours errors for every
+VSTACK an error (gen-m7/8c4570978f18f4c2 Calc!A782). HSTACK (blank and non-blank targets) and TOCOL (a non-blank target only) are probed below (T-2466); other stacking or array-shaping callers of CELL are unprobed. Ours errors for every
 `VSTACK` argument written as `CELL("contents", ref)` with a literal info type (T-2457), whatever the target holds; T-2466 shows that is wrong (below).
 
 The trigger is a **blank target**, not the call's syntax (T-2466, probes/t2466-cell-contents-stack, excel-graph, 2026-10-28):
@@ -286,11 +286,11 @@ The trigger is a **blank target**, not the call's syntax (T-2466, probes/t2466-c
 - The `#VALUE!` reaches through wrappers: `VSTACK(LET(x,CELL("contents",Data!C11),x),1)` (A111), `VSTACK(IF(TRUE,CELL("contents",Data!C11)),1)`
   (A121) and an info type read from a cell, `VSTACK(CELL(Data!G2,Data!C11),1)` with G2=`contents` (A151), are all `#VALUE!`; the same
   wrappers around a non-blank target stack normally (7;1, A131, A141; `LET(..)&""` gives `"7"`;1, A241), as does `CELL(..)+0` (A221).
-  So the blank-target CELL result itself is something a stack argument rejects, while `CELL("contents",blank)` alone is 0 and `&"|"` is `"|"` (above).
+  So the blank-target CELL result itself seems to be something a stack argument rejects (an inference: `+0` and `&""` around a blank target inside a stack are unprobed), while `CELL("contents",blank)` alone is 0 and `&"|"` is `"|"` (above).
 - Other info types on a blank target are fine: `VSTACK(CELL("type",Data!C11),1)` spills `b`;1 (A161); on a non-blank target `CELL("address",Data!B1)` stacks too (A171).
 - Beside a scalar error argument the first erroring argument wins, as for any scalar-error argument of VSTACK (arrays.md, T-1695):
-  `VSTACK(CELL("contents",Data!C11),1/0)` is `#VALUE!` (A81), `VSTACK(1/0,CELL("contents",Data!C11))` is `#DIV/0!` (A91),
-  `VSTACK(NA(),CELL("contents",Data!B1))` is `#N/A` (A101).
+  `VSTACK(CELL("contents",Data!C11),1/0)` is `#VALUE!` (A81), `VSTACK(1/0,CELL("contents",Data!C11))` is `#DIV/0!` (A91);
+  with a non-blank target the error argument alone decides, `VSTACK(NA(),CELL("contents",Data!B1))` is `#N/A` (A101).
 
 Ours (as of T-2466) differs: VSTACK errors for every literal-syntax call whatever the target (A1, A11, A21, A181, A191, A211), including a mixed-case `"Contents"` (A71), misses the
 LET/IF/cell-info-type forms (A111, A121, A151), and HSTACK has no rule (A41); separately `CELL("contents",Data!B1)` (B1=7) evaluates to 0 or blank
