@@ -3,7 +3,7 @@ id: T-3054
 title: "IMTAN last digits at 3.14159 (gen-m9 756a9f7bc3a06bcc A338, unmasked by the T-3030 CELL re-fill)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
