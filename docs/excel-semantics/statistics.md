@@ -153,13 +153,14 @@ T-2742 grid (probes-numeric/t2742-hypgeom-small-n, excel-graph 2026-10-28): ever
   0.5000000000000001 (A24), not 0.5.
 - The pmf is not symmetric in n and K: `pmf(x,n,K,N)` equals `pmf(x,K,n,N)` bit for bit in only 434 of the 1442 cells,
   so Excel's formulation treats the sample size and the success count differently.
-- Bit-exact counts of the T-0977 candidates on the grid: exact rational 286, the double ratio
+- Bit-exact counts of four of the T-0977 candidates on the grid (the 9! log-factorial orders, summed logs, Loader's
+  `dhyper` and the walked product were not re-run): exact rational 286, the double ratio
   `COMBIN(K,x)*COMBIN(N-K,n-x)/COMBIN(N,n)` 286, the same ratio grouped `COMBIN(K,x)*(COMBIN(N-K,n-x)/COMBIN(N,n))` 280,
   grouped `(COMBIN(K,x)/COMBIN(N,n))*COMBIN(N-K,n-x)` 285, and exp of lgamma sums 37. None comes close; offsets of over
   10 ulps suggest a log-space or iterated formulation rather than one rounding of a ratio (unverified).
 - The cdf is not the running double sum of Excel's own pmf cells from the lowest x: that rule holds in 816 of the 1442
   cdf cells, and the correctly rounded exact cdf in 776. The cdf at the last x (x = min(n, K)) is exactly 1 in all 476
-  such cells (a sum of off-by-ulps pmfs would not always reach 1).
+  such cells (inferred, unverified: a sum of off-by-ulps pmfs would not always reach 1).
 - HYPGEOMDIST equals HYPGEOM.DIST(..,FALSE) bit for bit in all 407 N = 12 cells (column C), so they share one kernel.
 Status: VERIFIED (observation); formulation UNVERIFIED (T-0977, T-2481)
 Tasks: T-0977, T-2481, T-2742
