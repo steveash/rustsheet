@@ -702,3 +702,20 @@ and `w5/p5/{hypo,inj,peelk}.c`. The system python has no numpy; use a venv.
    them read is evidence (the ladder test, not a mask gain).
 3. Then peel from the top of the stored part: scan the first stored N stage (N.S6 with S7 unstored) with
    scan2.py `J=6` from C, with the planted control first.
+
+### 17.7 Step 17.6.1: the unstored-top control reproduces the real scan
+`t2122/k3_topscan_ctlkn.sh`: the 17.5 control, with B synthesised with the N ops j ≥ 7 (S8, P7, S7) in 80-bit
+(`KN=7`, new in scan2.py; `maskmodel.res`). Logs `k3_topscan_ctlkn_p[0-3].log`, `k3_topscan_ctlkn_summary.log`.
+
+| scan (same x, 1,289 runs, same box) | base ridge (|b| < 1, |c| < 2.5) | best away from base | at the planted truth | median / sd |
+|---|---|---|---|---|
+| control, stored top (17.5) | 643.5 | truth peak 948.6 | 961.8 (rank 0) | 293 / 53 |
+| **control, S7 and S8 in 80-bit** | **657.9** | **605.7** | −99.9 | 238 / 42 |
+| **real data** | **702.2** | **610.9** | — | 269 / 33 |
+
+With the top unstored, the planted truth's peak disappears and only the base ridge is left, at the same height and
+shape as on real data. So the real scan looks like an 80-bit top, not like a stored top inside the box. This is
+consistent with (2) of 17.5, but not yet proof: a stored top more than 3σ from C would also give no peak. Steps 2-3
+of 17.6 are the discriminating tests. Run the re-read with the unstored top first (cheap, ~1 min per base): if the
+real N7 rows then read at zero against C and the control's do too, that is structure evidence from the ladders.
+Also try KN = 8 (only S8 unstored).

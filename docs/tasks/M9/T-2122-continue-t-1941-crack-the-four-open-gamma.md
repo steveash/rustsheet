@@ -80,7 +80,9 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
   and ±1. Then (17.5) scan2's N.S7 box scan from C (3σ box, 9.6 M points): the planted control finds its truth at
   rank 0 (949 against a base bias of 644), but on real data nothing in the box beats the base ridge (702). Either
   the top is more than 3σ out, or Excel keeps S7 in 80-bit; the second is the live hypothesis. Next: the
-  unstored-top control and the ladder re-read under it (17.6).
+  unstored-top control and the ladder re-read under it (17.6). The unstored-top control (S7 and S8 in 80-bit, 17.7)
+  reproduces the real scan: no peak, and a base ridge of 658 against real 702. Next: the ladder re-read with an
+  unstored top (17.6 step 2), then KN = 8.
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses
