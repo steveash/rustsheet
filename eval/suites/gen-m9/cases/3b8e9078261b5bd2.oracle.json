@@ -169,7 +169,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "8f46f56660d4f967ddbbfa0584111db6361edce0b1f1c71e9ab41ccb5d5950b0",
   "kind": "excel-graph",
-  "produced_at": "2026-10-12T04:04:36+00:00",
-  "version": null
+  "produced_at": "2026-10-28T16:52:21+00:00",
+  "version": null,
+  "workbook_name": "016bc827a36c2766686c9d0b5ed31b727d99225462bbffa5d7c6ca3866619802.xlsx"
  }
 }

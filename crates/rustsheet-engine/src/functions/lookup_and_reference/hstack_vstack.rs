@@ -28,6 +28,26 @@ fn is_cell_contents_call(arg: &Node) -> bool {
     }
 }
 
+/// A stack argument written as `CELL("contents", ref)` whose target is blank makes the whole
+/// stack one `#VALUE!`; a non-blank target stacks its value (probes/t2466-cell-contents-stack A1,
+/// A31, A41, A51; probes/t3030-cell-contents-blank-shapers A291, excel-graph, T-3030). Excel's CELL
+/// result for a blank target is an empty value that array arguments reject, which reaches through
+/// LET, IF and an info type read from a cell too (information.md); ours cannot tell it from a blank
+/// reference read through those, so only the literal call is caught here (TODO(T-3053)).
+fn blank_cell_contents(
+    arg: &Node,
+    result: &CalcResult,
+    cell: CellReferenceIndex,
+) -> Option<CalcResult> {
+    (matches!(result, CalcResult::EmptyCell) && is_cell_contents_call(arg)).then(|| {
+        CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "CELL(\"contents\") of a blank cell is not stackable".to_string(),
+        )
+    })
+}
+
 /// A VSTACK argument once its cells are read: copied, or a range read but not copied yet.
 enum Stacked {
     Copied(Vec<Vec<ArrayNode>>),
@@ -66,7 +86,11 @@ impl Model {
         // flags as a Graph-backend answer, not trusted as Excel's).
         let mut results: Vec<CalcResult> = Vec::with_capacity(args.len());
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            let result = self.evaluate_node_in_context(arg, cell);
+            if let Some(error) = blank_cell_contents(arg, &result, cell) {
+                return error;
+            }
+            match result {
                 err @ CalcResult::Error { .. } => return err,
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.read_range_cells(left, right, cell) {
@@ -154,22 +178,17 @@ impl Model {
         // The widest argument, so the whole stack is checked before any range is copied (T-1564).
         let mut known_cols = 0_usize;
         for arg in args {
-            // `VSTACK(CELL("contents",ref),..)` is one `#VALUE!`, though CELL alone is fine
-            // (probes/t2414-gen-m7-unexplained Calc!A41, A61, A81, excel-graph, T-2457).
-            if is_cell_contents_call(arg) {
-                return CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "CELL(\"contents\", ref) is not stackable".to_string(),
-                );
-            }
             if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) {
                 known_rows = known_rows.saturating_add(1);
                 known_cols = known_cols.max(1);
                 results.push(None);
                 continue;
             }
-            match self.evaluate_node_in_context(arg, cell) {
+            let result = self.evaluate_node_in_context(arg, cell);
+            if let Some(error) = blank_cell_contents(arg, &result, cell) {
+                return error;
+            }
+            match result {
                 err @ CalcResult::Error { .. } => return err,
                 result => {
                     let (rows, cols) = unread_dims(&result);

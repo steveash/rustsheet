@@ -90,6 +90,11 @@ values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly i
   as Excel's PMT until it is fitted with Excel's EXP and LN (T-3014). These ulps matter: RATE amplifies them,
   so 113 `RATE(n,PMT(..))` cells of m9-fin-irr-rate are visibly off on the engine's PMT and bit-exact on
   Excel's (probes/rate-excel-pmt-bits, T-2527).
+  At rate -0.9 with type 1 Excel's PMT is 3 to 6 ulp below the exact magnitude (`ironcalc-calc/FINANCIAL/PMT.xlsx`
+  F10 `PMT(-0.9,3,120,300,1)` = -2703.783783783783, exact on the double rate -2703.78378378378444...; F11, F18, F23
+  likewise), and no form tried so far (the P-1 forms with `pow` or `exp(n*log1p(r))`, the discount forms above,
+  `1+rate` snapped to 0.1) reproduces those bits; PV and NPER of those payments amplify the gap about 100-fold
+  into visibly-off cells (J10, H10; T-2243).
   Where PPMT cancels, Excel's error grows: the four period-1 cells of long terms A82, A166, A412,
   A418 are 7 to 41 ulp from the exact value and visibly different from it. For the 154 fv-0,
   type-0 PPMT cells, `PMT*exp((per-1-nper)*log1p(rate))` (the exact PMT rounded to a double, libm
@@ -852,6 +857,17 @@ Evidence: probes/xirr-irr-empty-guess A1-A22 (excel-graph, T-2688); calipers pv2
 Status: VERIFIED
 Implemented in: `fn_xirr` (an `EmptyArg` guess is dropped, so the default applies); `fn_irr` reads it as 0.
 Our IRR from guess 0 is a few ulps off Excel's on these flows (…3171 for …3149), a separate kernel gap.
+
+## XIRR: a mismatched value/date size is #NUM! whatever the guess, a written empty guess included
+Rule: `XIRR(v,d,)`, `XIRR(v,d)`, `XIRR(v,d,E1)` (E1 empty) and `XIRR(v,d,0.1)` all give `#NUM!` when the
+values and dates differ in length (3 vs 2, 2 vs 3, 3 vs 4), over ranges and array constants, and also when
+the longer flow holds a text or boolean element (G21-G36). A written empty guess and an empty-cell guess
+take the same error path as an absent or number guess; a text, boolean or error guess keeps `#VALUE!`
+(see "XIRR and XNPV under the gen-m9 statistical cells").
+Evidence: probes/xirr-size-mismatch-empty-guess G1-G36 (excel-graph, T-2773)
+Status: VERIFIED
+Implemented in: `fn_xirr` (`number_guess` counts `EmptyArg` and `EmptyCell`; before T-2773 they gave
+`#VALUE!` over text or boolean flows).
 
 ## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
 (One empty values cell on its own is the exception: see "XNPV reads one empty values cell as a single 0 cash flow".)
@@ -2055,14 +2071,26 @@ DATE(2027,5,30),4)` = 43799, `COUPNCD` 43890); maturity 2027-08-29 semiannual ha
 quarterly. PRICE, YIELD, DURATION, MDURATION, ODDFPRICE and ODDFYIELD use the same schedule:
 `PRICE(37913,46720,0.05,0.06,100,4,0)` = 87.29595935878451, `DURATION(37913,46720,0.05,0.06,4,0)` = 13.296825458940603,
 and with maturity 2027-11-29 an ODDFPRICE or ODDFYIELD first coupon of 2003-11-29 is on the schedule (87.29680647881554)
-while 2003-11-28 is `#NUM!`. Only COUPDAYS on basis 1 walks the chained schedule, each date clamped from the one after
-it ("COUPDAYS basis 1 counts from the chained next coupon").
+while 2003-11-28 is `#NUM!`. Only COUPDAYS on basis 1 (and, below, ODDLPRICE, ODDLYIELD and ACCRINT, each in its own walk direction) walks the chained schedule, each date clamped from its neighbour
+in the walk ("COUPDAYS basis 1 counts from the chained next coupon").
 Evidence: probes/coup-calendar-edges B1-B14, J1-J14 (excel-graph, 2026-10-25, T-2486); gen-m9/7d2979fba2c95d64 Calc!A304.
 Ours: matches since T-2486 (`coupon_period` in financial_bonds/coupon_schedule.rs, which the COUP*, PRICE, YIELD,
 DURATION, MDURATION and ODDF* schedules read); before it the walk stepped from each date to the next, so the day drifted
 to the 28th after the first February (COUPDAYBS was 51, the PRICE above 87.29662784091713, and the ODDF* first coupon
-had to be the 28th). The ODDL* and ACCRINT walks (`change_month` in financial_bonds.rs, accrint.rs) still step date to
-date; unprobed for this (T-2639).
+had to be the 28th). The ODDL* and ACCRINT walks (`change_month` in financial_bonds.rs, accrint.rs) step date to
+date, and Excel does the same: EXCEPTION to this rule, Excel's ODDLPRICE, ODDLYIELD and ACCRINT coupon walks DRIFT. Each
+date is clamped from the previous one, so after a February the 29th/30th becomes the 28th/29th and stays there. Do not
+"unify" them with `coupon_period`. Evidence: probes/oddl-accrint-february-day (excel-graph, T-2639, 49 cells, ours matches
+all). ODDLPRICE and ODDLYIELD give the same value for a last interest on the 29th and on the 30th (A1/A4, A2/A5, A3/A6,
+A7/A10, A32/A35, A44/A47 and the other pairs, frequencies 2 and 4, bases 0 and 1): after the first February both schedules
+sit on the same day, which only a drifting walk does (a walk anchored on the last interest keeps the 29th and 30th
+apart). Only A13-A15 (Oct 30 -> Jan 30 -> Apr 30, never a February) do not discriminate. ACCRINT's backward walk from the
+first interest drifts too: A16 (issue 2023-08-15, first interest 2024-08-30, frequency 2, basis 0, calc_method TRUE) =
+56.26086281812539 = 25 * (31/180 + 2 + 14/179), whose issue stub ends on 2023-08-29 (14 days of a 179-day period
+from 2023-02-28), not on 2023-08-30; and the quarterly first interests 2024-05-30 and 2024-05-29 differ (A24 =
+35.833..., A28 = 35.972...), as the drifting stub ends differ. ACCRINT basis 0 with calc_method FALSE is equal for the
+two days (A18 = A22).
+Ours: matches (the date-to-date `change_month` walk). Keep it: it is deliberate Excel behaviour.
 Status: VERIFIED (excel-graph)
 Tasks: T-2486, T-2639
 

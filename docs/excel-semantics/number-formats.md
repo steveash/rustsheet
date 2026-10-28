@@ -181,11 +181,17 @@ a quoted or escaped digit prints (`"\4b"` and `"""4""b"` are "443"). The check c
 value does not use: `TEXT(3.14159,"0;4b")` is `#VALUE!`, while `"4;b"` gives "4" and `"b;4"` "43". A text or boolean value
 is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc")` are `#VALUE!`; `TEXT("x","4;b")` is "x";
 column D), as "TEXT checks the code before it looks at a text or boolean value" describes. `TEXT(-3,"b1")` is "-": a
-calendar prefix alone is no date token for a negative value. Ours is `#VALUE!` there (T-2388).
+calendar prefix alone is no date token for a negative value: `"b1"` and `"B1"` give "" for 3 and 0 and "-" for -3, `"b1 x"`
+is " x", " x" and "- x", `"[$-40C]B1"` is "", "", "-" (probes/t2388-b1-negative, excel-graph, 2026-10-28; `"B1@"` prints the
+number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals. The same holds for a lone `B2`
+(`"b2"` -> "-", `"B2 x"` "- x"), a tagged `"[$-40C]B2"` and `"[$-409]B2"` ("-"), and a magnitude past the maximum
+serial (`TEXT(-3000000,"b1")` is "-"). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
+`"b1;b1"` are "", `"0;b1 x"` is " x" (probes/t2388-b1-negative A6-A13).
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
 Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
-code with any bad number section (formatter/format.rs).
+code with any bad number section (formatter/format.rs); the literal-only date section (a lone calendar prefix) of a negative value is
+exempt from the negative-date refusal and the maximum-serial check in `format_number`.
 Tasks: T-2377, T-2388
 
 ## Text and booleans use the format's text section
@@ -977,7 +983,8 @@ A `*x` fill (repeat) character contributes nothing to the displayed text or to T
 `TEXT(3,"*.0.00")` is "3.00", PI() under `0.00*-` is "3.14", and 1000 under `_(* #,##0_);...` is " 1,000 " (only the `_(`
 and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
 2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in both the number and the date
-branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel-graph) for number sections; a fill in a date or clock code (`TEXT(1,"d*x")`) and in a fraction code (fraction.rs still prints a space) is UNVERIFIED (T-2480).
+branch of `format_number` (formatter/format.rs, T-1735). Date, clock and fraction codes alike (T-2480, probes/text-fill-char-date-clock-fraction, 12 cells, excel-graph 2026-10-28): `TEXT(1,"d*x")` is "1", `TEXT(0.5,"h:mm*-")` "12:00", `TEXT(0.75,"h*x:mm AM/PM")` "6:00 PM", `TEXT(1,"*xd")` "1", `TEXT(1,"d*xm")` "11", `TEXT(1.5,"# ?/?*x")` "1 1/2", `TEXT(0.5,"?/?*x")` "1/2", `TEXT(0.5,"*x# ?/?")` " 1/2". Ours printed a space for a fraction fill; fixed in T-2480. A fill inside a blank fraction (zero under `?/?`) is unprobed and still prints a space (T-3057).
+Status: VERIFIED (excel-graph); implemented (T-1735, T-2480).
 
 - Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 4c6a49fe4a6fa404 F!R4, 5eb95c63c7d6180c F!G13, bfbcd16cee266336 F!W12, excel-graph): a scientific
   code on zero prints every integer placeholder of the mantissa as `0`, `#` included (`##0.0E+0` → "000.0E+0",

@@ -584,8 +584,12 @@ impl Model {
     }
 
     /// A formula's outermost `+`/`-` over its evaluated left operand: like
-    /// [`Model::handle_arithmetic`], but a scalar result is snapped to 0 by [`snap_near_zero`].
-    /// Array operands are not snapped (no evidence).
+    /// [`Model::handle_arithmetic`], but every result, scalar or array element, is snapped to 0
+    /// by [`snap_near_zero`] on its own two addends. Excel snaps array and range operands element
+    /// by element, with the scalar bound (`=1+{3;7;8}*2^-52-1` spills 0, 0, 8 ULP;
+    /// `=A1:A4+B1:B4-C1:C4` spills 0 on the rows that cancel), and a legacy formula's
+    /// intersected rows the same way (probes/t3047-snap-array-operands, docs/excel-semantics/numbers.md
+    /// "Near-zero snapping in addition and subtraction").
     fn handle_outermost_sum(
         &mut self,
         left: CalcResult,
@@ -593,22 +597,18 @@ impl Model {
         cell: CellReferenceIndex,
         subtract: bool,
     ) -> CalcResult {
-        let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
+        // A subtraction adds the negated right operand, so its addends are `x` and `-y`.
+        let snapping_op = |x: f64, y: f64| {
+            let (total, y) = if subtract {
+                (minus(x, y)?, -y)
+            } else {
+                (plus(x, y)?, y)
+            };
+            Ok(snap_near_zero(x, y, total))
+        };
         let l = self.number_or_array(left, cell);
         let r = self.number_or_array(right, cell);
-        // The two addends of a scalar addition (a subtraction adds the negated right operand).
-        let addends = match (&l, &r) {
-            (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
-                Some((*x, if subtract { -*y } else { *y }))
-            }
-            _ => None,
-        };
-        match (self.arithmetic_on_values(l, r, cell, op), addends) {
-            (CalcResult::Number(total), Some((x, y))) => {
-                CalcResult::Number(snap_near_zero(x, y, total))
-            }
-            (result, _) => result,
-        }
+        self.arithmetic_on_values(l, r, cell, &snapping_op)
     }
 
     /// Applies `op` element‐wise for arrays/numbers to the evaluated operands `left` and `right`.
