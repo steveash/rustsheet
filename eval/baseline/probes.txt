@@ -1471,6 +1471,7 @@ C	probes/t3030-cell-contents-blank-shapers.case.json	51
 C	probes/t3030-cell-contents-nested-sheet.case.json	39
 C	probes/t3030-cell-first-sheet.case.json	20
 C	probes/t3047-snap-array-operands.case.json	70
+C	probes/t3048-snap-conditional-sums.case.json	86
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -3950,6 +3951,14 @@ F	probes/t3030-cell-contents-nested-sheet.case.json	Calc!A231
 F	probes/t3047-snap-array-operands.case.json	L!F1
 F	probes/t3047-snap-array-operands.case.json	L!G2
 F	probes/t3047-snap-array-operands.case.json	L!H3
+F	probes/t3048-snap-conditional-sums.case.json	S!D5
+F	probes/t3048-snap-conditional-sums.case.json	S!D6
+F	probes/t3048-snap-conditional-sums.case.json	S!G5
+F	probes/t3048-snap-conditional-sums.case.json	S!G6
+F	probes/t3048-snap-conditional-sums.case.json	S!I5
+F	probes/t3048-snap-conditional-sums.case.json	S!I6
+F	probes/t3048-snap-conditional-sums.case.json	S!P5
+F	probes/t3048-snap-conditional-sums.case.json	S!P6
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
