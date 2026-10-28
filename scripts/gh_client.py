@@ -36,7 +36,8 @@ LOGIN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:\[bot\])?")
 LABEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,49}")
 WORKFLOW = re.compile(r"[A-Za-z0-9_.-]{1,64}\.ya?ml")
 BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,199}")
-NAME = re.compile(r"[A-Za-z0-9_.-]{1,100}")
+# Owner, repository and input names; a name of dots only (`..`) is refused, it would change the path.
+NAME = re.compile(r"(?!\.+$)[A-Za-z0-9_.-]{1,100}")
 REMOTE_URL = re.compile(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$")
 MERGE_METHODS = ("squash", "merge", "rebase")
 
@@ -69,7 +70,7 @@ def checked(pattern: re.Pattern[str], value: str, what: str) -> str:
 def number(value: int | str, what: str = "PR number") -> int:
     """`value` as a positive integer below 10^9 (ASCII digits only); GhError otherwise."""
     text = str(value)
-    if not (text.isascii() and text.isdigit()) or not 0 < int(text) < 10**9:
+    if not (text.isascii() and text.isdigit() and len(text) <= 9) or int(text) == 0:
         raise GhError(f"refused {what}: {value!r}")
     return int(text)
 
@@ -274,13 +275,17 @@ def owner_repo(url: str) -> tuple[str, str] | None:
 
 def from_remote(root: Path = ROOT, remote: str = "origin") -> GhApi | None:
     """The real client for `remote`'s repository, or None when it is not a github.com remote."""
-    result = subprocess.run(
-        ["git", "-C", str(root), "remote", "get-url", remote],
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "remote", "get-url", remote],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
     pair = owner_repo(result.stdout.strip())
     if pair is None:
         return None

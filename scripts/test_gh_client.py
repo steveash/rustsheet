@@ -143,6 +143,8 @@ class Refusals(unittest.TestCase):
             lambda: fake.merge(7, SHA, title="t", method="fast-forward"),
             lambda: fake.comment(7, ""),
             lambda: FakeGh("o/x", "r"),
+            lambda: FakeGh("..", "r"),
+            lambda: fake.pull("1" * 5000),
         ]
         for call in refused:
             with self.assertRaises(GhError):
