@@ -3,7 +3,7 @@ id: T-2919
 title: "Probe DROP as TAKE: handed-on lifted grid and error source"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
