@@ -34,7 +34,12 @@ PERMISSIONS = re.compile(r"^(?P<indent> *)permissions\s*:(?P<value>.*)$")
 
 
 def _content(line: str) -> str:
-    """`line` without its trailing comment and whitespace (no `#` appears inside these values)."""
+    """`line` without its trailing comment and whitespace.
+
+    Only `permissions`, `on`/`push`/`branches` lines and the blocks under them are parsed this way
+    (no `#` appears inside those values). `SECRET_REFERENCES` checks the raw line, comments
+    included.
+    """
     return line.split("#", 1)[0].rstrip()
 
 
@@ -60,17 +65,17 @@ def violations(text: str) -> list[str]:
     lines = text.splitlines()
     found = []
     top_level = False
-    for n, line in enumerate(lines, 1):
+    for i, line in enumerate(lines):
         if any(p.search(line) for p in SECRET_REFERENCES):
-            found.append(f"ci.yml:{n}: references a secret or the job token")
+            found.append(f"ci.yml:{i + 1}: references a secret or the job token")
         m = PERMISSIONS.match(_content(line))
         if m is None:
             continue
         indent = len(m["indent"])
         top_level |= indent == 0
-        entries = [entry for _, entry in _block(lines, n - 1, indent)]
+        entries = [entry for _, entry in _block(lines, i, indent)]
         if m["value"].strip() or entries != ALLOWED_PERMISSIONS:
-            found.append(f"ci.yml:{n}: permissions must be exactly `contents: read`")
+            found.append(f"ci.yml:{i + 1}: permissions must be exactly `contents: read`")
     if not top_level:
         found.append("ci.yml: no workflow-level `permissions: contents: read` block")
     return found

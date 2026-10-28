@@ -45,6 +45,18 @@ class Rights(unittest.TestCase):
         ]:
             self.assertEqual(len(check.violations(GOOD + line + "\n")), 1, line)
 
+    def test_messages_name_the_line(self) -> None:
+        lines = GOOD.count("\n")
+        text = GOOD + "      - run: echo ${{ secrets.TOKEN }}\n"
+        self.assertEqual(
+            check.violations(text), [f"ci.yml:{lines + 1}: references a secret or the job token"]
+        )
+        # The job-level block is on line 14 of GOOD.
+        text = GOOD.replace("      contents: read\n    runs-on", "      contents: write\n    runs-on")
+        self.assertEqual(
+            check.violations(text), ["ci.yml:14: permissions must be exactly `contents: read`"]
+        )
+
     def test_wider_permissions_fail(self) -> None:
         for old, new in [
             ("  contents: read\n\njobs", "  contents: write\n\njobs"),
