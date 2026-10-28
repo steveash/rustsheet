@@ -146,12 +146,9 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     {
         return format_error();
     }
-    // `TEXT("text",";;;")` is "" (gen-m10/0e3d8eba9432a18d T!A24).
-    if parser.has_empty_text_section() {
-        return capped_text(String::new());
-    }
     let section = match parts.last() {
         Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
+        _ if parser.has_empty_text_section() => return capped_text(String::new()),
         _ if parts.len() < 4 => return capped_text(text.to_string()),
         _ => 3,
     };

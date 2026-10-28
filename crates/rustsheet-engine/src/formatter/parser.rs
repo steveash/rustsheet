@@ -331,7 +331,8 @@ impl Parser {
         }
     }
     /// Whether the format is three sections plus an empty fourth: the parser drops the empty
-    /// section after a trailing `;`, so `;;;` has three parts.
+    /// section after a trailing `;`, so `;;;` has three parts. Excel prints nothing for it
+    /// (`TEXT("text",";;;")` is ""; gen-m10/0e3d8eba9432a18d T!A24).
     pub(crate) fn has_empty_text_section(&self) -> bool {
         self.parts.len() == 3 && self.ends_in_separator && !self.parts.iter().any(is_text_section)
     }
