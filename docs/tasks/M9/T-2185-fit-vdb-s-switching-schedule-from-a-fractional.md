@@ -3,7 +3,7 @@ id: T-2185
 title: "Fit VDB's switching schedule from a fractional start period"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
