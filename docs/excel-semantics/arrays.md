@@ -1833,7 +1833,7 @@ WRAPROWS; G1-G7). An empty-cell vector is different: its `#VALUE!` comes BEFORE 
 `WRAPROWS(Z1,NA())` are `#VALUE!`, not `#N/A` (G8-G13). An error pad_with beside a 2-D vector is `#VALUE!` (G14). EXPAND with an
 array pad_with: rows past the grid are `#NUM!` first (`ROWS(EXPAND(1,1048577,1,{0;1}))`, `{0}`, and with a range `A1:A2` vector; G15,
 G16, G18), at the grid's last row or with columns past the grid or in range it is `#VALUE!` (G17, G19-G21; the array pad_with check
-comes after the grid-size check). Ours: empty cell fixed in T-2479 (`flatten_vector`).
+comes after the grid-size check). Ours: matches (T-2479: `flatten_vector`, `expand_kernel`).
 A multi-cell *range* pad_with is one `#VALUE!` too, with nothing spilled, whatever the range's shape and whether any cell is padded:
 `EXPAND({1;2;3},5,100,Data!A7:D7)` (gen-m7/0624b684889e9228 Calc!A2004), `EXPAND(Data!C11:D12,2,2,Data!E1:E3)` (gen-m7/2c156ba98ef0220a.case.json A185),
 `EXPAND("a",4,4,Data!C7:C11)` (2d9b48c6363e7a16 A366), `EXPAND({1,2,3},5,4,Data!B5:C11)` (A2686), a 1x1 result that pads nothing,

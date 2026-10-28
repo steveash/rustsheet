@@ -85,28 +85,25 @@ impl Model {
                 // one, whether or not any cell is padded (gen-m7/2d9b48c6363e7a16 A366, A830,
                 // A2686; arrays.md "EXPAND, WRAPROWS and WRAPCOLS"; T-2415). A one-cell reference
                 // is its value.
+                // The size checks in `expand_kernel` come first: rows past the grid with an array
+                // pad_with are `#NUM!` (probes/t2479-wrapcols-notvector-expand-padarray G15, G16,
+                // G18), and a size that fits is `#VALUE!` (G17, G19-G21).
                 let pad = values.get(3);
-                if pad.is_some_and(CalcResult::is_multi_value) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "pad_with must be a single value".to_string(),
-                    );
-                }
-                let pad = pad.map(|pad| match pad {
-                    CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
-                    other => other.clone(),
-                });
+                let pad = if pad.is_some_and(CalcResult::is_multi_value) {
+                    None
+                } else {
+                    Some(pad_with_of(
+                        pad.map(|pad| match pad {
+                            CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
+                            other => other.clone(),
+                        })
+                        .as_ref(),
+                    ))
+                };
                 // A written empty pad_with pads with blank elements too, where WRAPCOLS's is
                 // `#N/A`: `ISBLANK(INDEX(EXPAND(1,2,2,),2,2))` is TRUE, `WRAPCOLS({1,2,3},2,)`'s
                 // FALSE (probes/t2461-blank-array-sources A18, A30).
-                expand_kernel(
-                    data,
-                    target_rows,
-                    target_cols,
-                    pad_with_of(pad.as_ref()),
-                    cell,
-                )
+                expand_kernel(data, target_rows, target_cols, pad, cell)
             },
         )
     }
@@ -121,7 +118,7 @@ fn expand_kernel(
     data: &[Vec<ArrayNode>],
     target_rows: usize,
     target_cols: usize,
-    pad: ArrayNode,
+    pad: Option<ArrayNode>,
     cell: CellReferenceIndex,
 ) -> CalcResult {
     let src_rows = data.len();
@@ -161,6 +158,13 @@ fn expand_kernel(
         return CalcResult::new_error(error, cell, message);
     }
 
+    let Some(pad) = pad else {
+        return CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "pad_with must be a single value".to_string(),
+        );
+    };
     let mut result: Vec<Vec<ArrayNode>> = Vec::with_capacity(target_rows);
     for r in 0..target_rows {
         let mut row: Vec<ArrayNode> = Vec::with_capacity(target_cols);
