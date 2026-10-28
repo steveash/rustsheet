@@ -23,6 +23,8 @@ fn fill(model: &mut Model) {
     model._set("H1", "1");
     model._set("H2", "=1/0");
     model._set("H3", "TRUE");
+    // #N/IMPL: the engine does not implement FORECAST.ETS.
+    model._set("H4", "=FORECAST.ETS(5,{1,2,3},{1,2,3})");
     model.new_sheet();
     for row in 1..=60 {
         model._set(&format!("Sheet2!A{row}"), &(row % 7).to_string());
@@ -319,4 +321,94 @@ fn sumproduct_of_several_arguments() {
         assert_eq!(tailed, full, "{formula}");
     }
     assert_eq!(walks, expected_walks);
+}
+
+/// Bounded single-column ranges past the used area are tailed like whole columns (SPEC-0020
+/// Amendment 1, T-0491): spans that start inside, at the end of and below the used area, on
+/// another sheet, and `ROW()` of the span where the tail row does not reach it.
+#[test]
+fn bounded_spans_and_row_positions_are_tailed() {
+    let formulas: Vec<String> = [
+        "=SUM(A2:A70000*1)",
+        "=COUNTA(IF(B2:B70000=5,A2:A70000))",
+        "=MIN(IF(C1:C9000<>\"\",C1:C9000))",
+        "=SUM(A40:A70000+1)",
+        "=COUNTA(A50:A70000&\"\")",
+        "=SUM(Sheet2!A3:A80000*2)",
+        "=SUM(IF(B2:B70000=5,ROW(B2:B70000)))",
+        "=COUNT(IF(A2:A70000>0,ROW(A2:A70000)))",
+        "=MIN(IF(C1:C9000=3,ROW(C1:C9000)*10))",
+        "=SUMPRODUCT(IF(A2:A70000=1,ROW(A2:A70000)))",
+        "=SUM(IF(A2:A70000=1,ROW(A2:A70000),A2:A70000))",
+        // A real #N/IMPL tail with no ROW() is an ordinary tail error.
+        "=COUNTA(IF(A2:A70000=1,A2:A70000,$H$4))",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, formulas.len(), "every argument is tailed");
+}
+
+/// What bounded spans and `ROW()` leave to the ordinary reading: ranges of two spans, a tail row
+/// that reaches `ROW()` (its value differs by row: the sentinel), `ROW()` in an IF's condition, a
+/// real `#N/IMPL` tail beside `ROW()` (taken for the sentinel), `ROW()` with no range operand
+/// beside it, and a span whose rows past the used area are too few.
+#[test]
+fn ragged_spans_and_row_dependent_tails_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=SUM(A1:A70000*B2:B70000)",
+        "=SUM(A:A*A1:A70000)",
+        "=SUM(IF(B2:B70000=\"\",ROW(B2:B70000)))",
+        "=SUM(A2:A70000+ROW(A2:A70000))",
+        "=SUMPRODUCT((A2:A70000=1)*ROW(A2:A70000))",
+        "=SUM(IF(ROW(A2:A70000)>2,1))",
+        "=MAX(IF(ROW(A2:A70000)>30,A2:A70000))",
+        "=SUM(IF(A2:A70000=1,ROW(A2:A70000),$H$4))",
+        "=SUM(IF(A2:A70000=1,ROW(A1:A70000)))",
+        "=SUM(A1:A4000*1)",
+        "=SUM(IF(A:A=1,COLUMN(A:A)))",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 0);
+}
+
+/// A dynamic array spills into the tail rows of a bounded range a tailed argument read: its
+/// rows past the used area are on record as read empty, so the pass restarts.
+#[test]
+fn a_spill_into_a_bounded_tail_restarts_the_pass() {
+    let mut model = new_empty_model();
+    model._set("A2", "1");
+    model._set("E1", "=SUM(IF(A2:A70000>0,A2:A70000))");
+    model._set("F1", "=SEQUENCE(5,1,10)");
+    model._set("A100", "=F1:F5*1");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "61");
+}
+
+/// SUMPRODUCT of two bounded arguments of one length but different first rows: each is tailed
+/// with its own head, and the rows still line up.
+#[test]
+fn sumproduct_of_bounded_arguments_with_different_tops() {
+    let formulas: Vec<String> = [
+        "=SUMPRODUCT(A2:A70000*1,B3:B70001*1)",
+        "=SUMPRODUCT((A1:A9000=1)*1,(C30:C9029<>\"\")*1)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 2 * formulas.len(), "every argument is tailed");
 }
