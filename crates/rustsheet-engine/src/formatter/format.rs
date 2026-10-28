@@ -417,7 +417,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 _ => None,
             });
             // Excel: any token but a lone elapsed one (`[s]`) over a serial past 9999-12-31 is
-            // #VALUE!: `TEXT(1234567890,"h:mm")`, `"[h]:mm"`, `"[mm]:ss.0"` (gen-m10
+            // #VALUE! (a literals-only calendar-prefix section is exempt, see above): `TEXT(1234567890,"h:mm")`, `"[h]:mm"`, `"[mm]:ss.0"` (gen-m10
             // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20; gen-m5 6a511beadb56b932 Calc!A126).
             if value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0
                 && !literals_only
