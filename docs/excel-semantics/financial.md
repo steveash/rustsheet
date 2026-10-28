@@ -2244,7 +2244,8 @@ and probes/date-system-1900-oddf-issue-after-quasi S!A17 and S!A32 are 0.0729456
 probes/odd-bond-argument-check-order A258 is 0.06342868471015199, 1.5e-13 above the root.
 Not yet explained. Newton with ODDFPRICE's analytic slope cannot be the whole rule: the price is convex and
 decreasing in the yield, so every analytic-Newton iterate after the first lies at or below the root, and Excel's
-values above the root (K23, K26, K27, K35, K37, K38, the 0.06499377053016654 bond, A17, A258) rule it out.
+values above the root rule it out: K23, K26, K27, K35, K37 and K38 (1.7e-13 to 3.8e-12 above), A17 (5.1e-11) and A258 (1.5e-13).
+The 0.06499377053016654 bond, 1.6e-14 above, is too close to the root to count either way.
 T-2007 fit-lab attempt 1 (2026-10-28): 43 distinct bonds behind the 111 failing cells, each rebuilt from the engine's
 odd-first schedule. Every candidate below scores 0/43 bit-exact and 0/43 within 4 ulp:
 - `^` prices, scored in ulps. Starts: the coupon rate, 0, 0.05 and 0.1. Slopes: analytic, forward differences
