@@ -486,3 +486,65 @@ fn unique_forms_that_are_not_tailed() {
     }
     assert_eq!(walks, 0);
 }
+
+/// SMALL and LARGE read an element-wise argument as its head and its tail row (SPEC-0020
+/// Amendment 1 section 3, T-0492): the head's first error, else the tail's error, else the head's
+/// numbers and a numeric tail once per tail row. Errors in the head (A6, B's `#N/A`) and in the
+/// tail (a scalar error operand), numeric, FALSE and empty tails, whole columns and bounded spans
+/// with `ROW()` (corpus-bench 59969's shape), and k past the head's numbers.
+#[test]
+fn small_and_large_of_a_tailed_argument() {
+    let expressions = [
+        // An error in the head: A6 is #DIV/0!, B holds #N/A.
+        "A:A*1",
+        "IF(B:B=5,A:A)",
+        // An error tail (and head): the left error first.
+        "$H$2+C:C",
+        // A tail error with no error in the head.
+        "IF(Sheet2!A:A>3,Sheet2!A:A,$H$2)",
+        // A numeric tail, counted once per tail row.
+        "IF(C:C=\"\",0.1,0)",
+        "Sheet2!A:A*2",
+        // A FALSE tail: IF with no FALSE branch.
+        "IF(Sheet2!A:A>3,Sheet2!A:A)",
+        // An empty tail through a branch, and a text tail.
+        "IF(Sheet2!A:A>3,Sheet2!A:A,C:C)",
+        "Sheet2!A:A&\"\"",
+        // Bounded spans and ROW(): the tail row picks FALSE.
+        "IF((Sheet2!A2:A70000=3)*(Sheet2!A2:A70000<>\"\"),ROW(Sheet2!A2:A70000))",
+        "IF(Sheet2!A2:A70000>4,ROW(Sheet2!A2:A70000)*10)",
+    ];
+    let formulas: Vec<String> = expressions
+        .iter()
+        .flat_map(|e| {
+            ["SMALL", "LARGE"]
+                .into_iter()
+                .flat_map(move |f| [1, 3, 40, 5000].map(|k| format!("={f}({e},{k})")))
+        })
+        .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, formulas.len(), "every argument is tailed");
+}
+
+/// The RANK family keeps the ordinary reading (its arrays are `#VALUE!`), and SMALL whose tail
+/// row picks `ROW()` falls back (the sentinel).
+#[test]
+fn rank_and_row_dependent_small_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=RANK(1,Sheet2!A:A*1)",
+        "=RANK.EQ(1,IF(Sheet2!A:A>3,Sheet2!A:A))",
+        "=PERCENTRANK(Sheet2!A:A*1,2)",
+        "=SMALL(IF(Sheet2!A2:A70000=\"\",ROW(Sheet2!A2:A70000)),2)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 0);
+}
