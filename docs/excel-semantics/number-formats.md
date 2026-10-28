@@ -181,7 +181,9 @@ a quoted or escaped digit prints (`"\4b"` and `"""4""b"` are "443"). The check c
 value does not use: `TEXT(3.14159,"0;4b")` is `#VALUE!`, while `"4;b"` gives "4" and `"b;4"` "43". A text or boolean value
 is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc")` are `#VALUE!`; `TEXT("x","4;b")` is "x";
 column D), as "TEXT checks the code before it looks at a text or boolean value" describes. `TEXT(-3,"b1")` is "-": a
-calendar prefix alone is no date token for a negative value. Ours is `#VALUE!` there (T-2388).
+calendar prefix alone is no date token for a negative value: `"b1"` and `"B1"` give "" for 3 and 0 and "-" for -3, `"b1 x"`
+is " x", " x" and "- x", `"[$-40C]B1"` is "", "", "-" (probes/t2388-b1-negative, excel-graph, 2026-10-28; `"B1@"` prints the
+number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals.
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
 Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a

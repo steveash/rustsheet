@@ -392,7 +392,22 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // in the 1900 system), and on the date system (`negative_serial_allowed`;
             // docs/excel-semantics/dates.md "The 1904 date system" and "Negative serials under
             // an explicit negative section").
-            if value_original < 0.0 && !negative_serial_allowed(&p.tokens, ctx.date_system) {
+            // A section whose only date-like token is a calendar prefix (`B1`) holds no date
+            // token, so a negative value prints its minus and the literals (`TEXT(-3,"b1")` is "-",
+            // `"b1 x"` "- x"; probes/t2388-b1-negative, excel-graph 2026-10-28, T-2388).
+            let literals_only = p.tokens.iter().all(|t| {
+                matches!(
+                    t,
+                    TextToken::Literal(_)
+                        | TextToken::Text(_)
+                        | TextToken::Ghost(_)
+                        | TextToken::Spacer(_)
+                )
+            });
+            if value_original < 0.0
+                && !literals_only
+                && !negative_serial_allowed(&p.tokens, ctx.date_system)
+            {
                 return invalid_date(value_original);
             }
             // A negative that gets here (a one-section format) is formatted as its magnitude after
