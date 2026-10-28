@@ -3,7 +3,7 @@ id: T-2349
 title: "Probe SORTBY's lifted-element corners: leading or mixed invalid sort_order entries, an error array or by_array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
