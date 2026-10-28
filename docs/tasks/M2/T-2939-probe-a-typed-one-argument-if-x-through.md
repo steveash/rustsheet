@@ -3,7 +3,7 @@ id: T-2939
 title: "Probe a typed one-argument IF(x) through typed entry on excel-graph (probes/typed-if-one-argument stays pending: the stored form is refused)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
