@@ -105,7 +105,8 @@ named in the Outcome.
   - probes/yield-start-rate-term S!B39 and S!B49 (basis 1, 5 and 10 ulp off);
   - probes/yield-solver-sweep S!C7 (27 ulp).
   
-  Each sits past a 15th-digit rounding boundary. They are split to **T-2974** (`campaign: visible`), since moving them
+  Each gap is larger than half a unit in the 15th digit. Criterion 1 is closed by splitting these three, not
+  by fixing them. They are split to **T-2974** (`campaign: visible`), since moving them
   needs a change to the fitted start or stop, which is out of this task's scope (T-1592, T-2740, T-2330). No refit was
   tried here. This task made no engine change, so the eval
   delta is none and no baseline moved.

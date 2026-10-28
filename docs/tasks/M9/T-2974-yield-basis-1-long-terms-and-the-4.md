@@ -24,7 +24,8 @@ all but these three are within 15 digits (`make eval` on de48145d). Excel vs our
   vs 0.08964236972351826 (10 ulp).
 - probes/yield-solver-sweep S!C7 `YIELD(DATE(2096,3,1),DATE(2100,6,30),0.06,98,100,2,0)`: 0.0653481629462539 vs
   0.06534816294625427 (27 ulp; also one of T-2788's lab cells).
-Each is a few ulp off, but sits past a rounding boundary of the 15th digit, so it counts as visibly off.
+Each is only a few ulp off, but its gap is larger than half a unit in the 15th significant digit, so it counts
+as visibly off. B39 shows the same 15 digits as Excel, but its gap of 7e-17 still exceeds the half unit of 5e-17.
 The fit lab's "Newton, fitted start" family (`uv run rustsheet-fitlab yield-caret`) scores all three. First find
 whether the miss is in the start, in the stop, or in PRICE's sum near the root. T-2788 records the PRICE summation
 orders already tried.
