@@ -45,7 +45,8 @@ build: ## Release build of the eval harness
 # ---------------------------------------------------------------- Eval (Excel compatibility)
 .PHONY: eval eval-check eval-gates eval-baseline eval-lower-visible-lock eval-show evidence-floor
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
-	$(EVAL_GUARDED) run
+	$(PY) scripts/desktop_owned.py --out eval/runs/desktop-owned.tsv
+	$(EVAL_GUARDED) run --desktop-owned
 
 eval-check: build ## Gate: fail on any regression vs eval/baseline
 	$(EVAL_GUARDED) check
