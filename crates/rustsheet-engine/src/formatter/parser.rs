@@ -215,7 +215,7 @@ pub(crate) fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
 pub struct Parser {
     pub parts: Vec<ParsePart>,
     /// Whether the format ends in a `;`, so an empty section follows the last part.
-    pub(crate) ends_in_separator: bool,
+    ends_in_separator: bool,
     last_part_ended_on_separator: bool,
     lexer: Lexer,
 }
@@ -329,6 +329,11 @@ impl Parser {
             last_part_ended_on_separator: false,
             lexer,
         }
+    }
+    /// Whether the format is three sections plus an empty fourth: the parser drops the empty
+    /// section after a trailing `;`, so `;;;` has three parts.
+    pub(crate) fn has_empty_text_section(&self) -> bool {
+        self.parts.len() == 3 && self.ends_in_separator && !self.parts.iter().any(is_text_section)
     }
     pub fn parse(&mut self) {
         while self.lexer.peek_token() != Token::EOF {

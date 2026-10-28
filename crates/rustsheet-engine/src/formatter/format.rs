@@ -146,10 +146,8 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     {
         return format_error();
     }
-    // The parser drops the empty section after a trailing `;`, so `;;;` has three parts. Excel
-    // prints nothing for an empty text section (`TEXT("text",";;;")` is "";
-    // gen-m10/0e3d8eba9432a18d T!A24).
-    if parts.len() == 3 && parser.ends_in_separator && !parts.iter().any(is_text_section) {
+    // `TEXT("text",";;;")` is "" (gen-m10/0e3d8eba9432a18d T!A24).
+    if parser.has_empty_text_section() {
         return capped_text(String::new());
     }
     let section = match parts.last() {
