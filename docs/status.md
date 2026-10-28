@@ -34,7 +34,7 @@ Merged since #2152's eval (a96b6063): 65 commits. None were reverted, and all ca
 - Seven were squash-merged without the `(#n)` suffix in the title, each committed by GitHub: 209e5e84 (T-2885), 67c55057 (T-2370), c0ea7e4b (T-2787), 350d4020 (T-2349), 870a07be (T-2983), 39c20bcf (T-2919) and c08395c2 (T-2441).
 - Task ids merged (57): T-0088, T-0091, T-0094, T-0098, T-0453, T-1564, T-2007, T-2094, T-2185, T-2217, T-2239, T-2243, T-2250, T-2349, T-2370, T-2388, T-2398, T-2427, T-2437, T-2441, T-2466, T-2480, T-2626, T-2633, T-2636, T-2639, T-2770, T-2773, T-2787, T-2807, T-2845, T-2850, T-2885, T-2919, T-2925, T-2932, T-2937, T-2952, T-2967, T-2980, T-2981, T-2983, T-2985, T-2986, T-2987, T-2988, T-2994, T-2998, T-3001, T-3008, T-3009, T-3010, T-3012, T-3024, T-3030, T-3032, T-3047.
 - Task-only PRs: #2156, #2160, #2164, #2167, #2190 and #2196. #2152 is the last steward run.
-- After the eval, this run merged #2062 (T-2479) as an orphan (below). Other sessions merged #2205 (T-2641), #2209 (T-3021) and #2210 (T-2855).
+- After the eval, this run merged #2062 (T-2479) and #2017 (T-2717) as orphans (below). Other sessions merged #2205 (T-2641), #2209 (T-3021) and #2210 (T-2855).
 
 Blocked: 35 on `main` (= last run), and the set is unchanged since #2152. T-2398 merged from its draft (#2145). No task is `Blocked because: review-round limit`.
 
@@ -44,7 +44,7 @@ Open PRs: 27 at 19:25 UTC. Non-draft PRs older than 24 h:
   - It conflicted with `main` in `tools/tests/test_generator.py`: T-2719 and T-2866 had re-recorded the same digest.
   - I merged `main` in (190eefcd), combined the comments and re-recorded the digest. The tools tests pass (1125) and CI is green.
   - All four reviewers APPROVE. reviewer-excel-fidelity noted that the stored cases show no positive text-number match, which became **T-3064**.
-  - Queued for the merge lock at the time of writing.
+  - Under the merge lock I merged `main` in again (b21f1ea0), waited for green CI, and squash-merged it (bea6eb87, orphan merge, decision 0050).
 - **#2020 (T-2480)**: closed as a duplicate. T-2480 merged through #2207, and this branch had been idle since 2026-10-27 09:26 UTC.
 - **#2047 (T-2641)**: closed as a duplicate once #2205 merged T-2641. Idle since 2026-10-27 14:14 UTC.
 - **#1727 (T-2622)**: conflicts with `main` in `hstack_vstack.rs` and `eval/baseline/probes.txt`. T-2466/T-3030 changed the same CELL-contents-in-a-stack logic that this branch moves, so I did not resolve it blind. I commented the steps on the PR.
