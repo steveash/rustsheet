@@ -3,7 +3,7 @@ id: T-2958
 title: "A formula typed into a table column fills the calculated column, as Excel does (probes/t2786 C2:C4)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -67,3 +67,21 @@ type and value. The stage is `semantics`: a reference and entry rule, not a nume
 ## Out of scope
 - Table auto-expansion when typing beside a table (T-2968), and re-filling on xlsx load (T-2969).
 - Whitespace inside structured references (T-2801).
+
+## Outcome
+- A formula typed into a table's data rows (`Model::set_typed_user_input`; the facade's `Input::Parse` and
+  `Input::Formula`, which both type) fills the column's other data rows when they are all blank or all hold one
+  shared formula (crates/rustsheet-engine/src/calculated_columns.rs); a constant typed into a filled column is an
+  exception and blocks later re-fills; the totals row is never filled; a stored formula never fills. The fill
+  rewrites the typed cell's shared formula into each target, so an A1 formula fills shifted. Settled design: no
+  column-formula state on `Table` yet, since rules 1-5 depend only on the column's cells; `calculatedColumnFormula`
+  on import/export stays with T-2969. The fill goes through `prepare_cell_for_user_input` for every target, and the
+  facade logs every target before the write, so the fill is one edit and rolls back with it.
+- The eval adapter now types every `entered` cell after the tables (the oracle types them after load), so a
+  constant typed into a filled column is an exception, as in Excel.
+- Eval: probes known failures 2656 -> 2647 (t2957-a1-reference S!C3, C4, F3, F4; constant-exception S!F4;
+  fill-one-totals S!F2, F4; refill-second S!F2, F4), no regressions.
+- Not met here: the cells that type the unqualified `[@Col]` (t2786 S!C2:C4 and the C cells of fill-one-totals,
+  refill-second, constant-exception, constant-then-refill, existing-constant) stay `#ERROR!`: an unqualified
+  structured reference typed inside a table does not parse at all (the parser refuses an operand starting with
+  `[`). That is a parser and storage change of its own (the R1C1 storage text must keep the table), filed as T-2979.

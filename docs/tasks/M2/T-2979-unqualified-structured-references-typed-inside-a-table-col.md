@@ -40,7 +40,7 @@ Design points (record a decision if not obvious):
 
 Known failures this task should clear (eval/baseline/probes.txt, after T-2958):
 probes/t2786-whitespace-structured-refs-runs S!C2, S!C3, S!C4; t2957-fill-one-totals S!C2:C4;
-t2957-refill-second S!C2:C4, S!F2, S!F4; t2957-constant-exception S!C2, S!C4; t2957-constant-then-refill S!C2,
+t2957-refill-second S!C2:C4; t2957-constant-exception S!C2, S!C4; t2957-constant-then-refill S!C2,
 S!C4; t2957-existing-constant S!C3 (check the list against the baseline when starting).
 
 ## Acceptance criteria
