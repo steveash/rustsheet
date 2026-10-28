@@ -3,7 +3,7 @@ id: T-2617
 title: "Probe D* computed criteria over a database on another sheet: which records match (gen-m9, T-2553 leftovers)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
