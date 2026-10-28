@@ -868,7 +868,7 @@
    },
    "A294": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#DIV/0!"
    },
    "A295": {
     "t": "e",
@@ -1616,8 +1616,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "fa99e5e2077fce00088e4b193b876252eba10a90861a00b36f5a5fe47c3e3812",
   "kind": "excel-graph",
-  "produced_at": "2026-10-23T07:46:53+00:00",
+  "produced_at": "2026-10-28T15:49:54+00:00",
   "version": null,
-  "workbook_name": "16cad4ab722703007faef731b6978ff445d9412c9773a01838246203c44e80b9.xlsx"
+  "workbook_name": "a27e9e029ebc0a0a19689c383aae6e1e0fc23f092f4e7e67f1a2528854d28da6.xlsx"
  }
 }
