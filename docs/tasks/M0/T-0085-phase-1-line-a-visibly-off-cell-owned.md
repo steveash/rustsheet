@@ -3,7 +3,7 @@ id: T-0085
 title: "Phase 1 line: a visibly-off cell owned by a desktop-evidence (M14) task counts as filed, not as a miss (decision 0114)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
