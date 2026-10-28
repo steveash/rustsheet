@@ -29,7 +29,10 @@ ran a green CI makes progress, and an infrastructure failure ejects nobody.
 - SPEC-0027 section 4, step 6, defines the budget gate. A CI wait needs `CI_TIMEOUT` (10 min) plus
   n × `MERGE_BUDGET` left in the hold budget, where n is the number of PRs that run can merge:
   `mid` for a bisection step, 1 for the confirmation run, the batch size for a full train.
-- On a cut-off, the merger merges the known-green prefix before it releases.
+- On a cut-off, the merger merges the known-green prefix before it releases. A gate failure
+  before the confirmation run is a cut-off too: it records `known-red: P_{lo+1}` so the resumed
+  hold goes straight to the confirmation (otherwise a culprit at `P_1` or `P_2` livelocks near
+  the 10-min timeout).
 - **Resume is required.** The cut-off writes `bisect-base`, `known-red` (with the heads) and
   `known-green-prefix` into a commit on `merge-train/current`. The next pass resumes from that
   state when `main` is still `bisect-base` and the heads are unchanged. In `train` mode only the
@@ -49,6 +52,9 @@ ran a green CI makes progress, and an infrastructure failure ejects nobody.
       - **a 5-PR red train with the culprit at `P_4`, and again at `P_5`, with CI at the 10-min
         timeout.** It is cut off, the known-green prefix merges before the release, and resume
         completes the train in the next hold. At most 5 runs, no third rebuild;
+      - **the culprit at `P_1`, and again at `P_2`, of 5 with CI at the 10-min timeout.** The
+        confirmation gate fails, the cut-off records the single known-red PR, and the next hold
+        confirms and ejects it without re-running the full train. At most 5 runs;
       - a restart, with its reason recorded, when `main` or a head changed;
       - two culprits, an interaction, a failure that does not reproduce, and an infrastructure
         failure.

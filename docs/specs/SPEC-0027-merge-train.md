@@ -60,7 +60,7 @@ Goals:
 1. A worker hands a green, approved PR over and moves on. It never waits for the lock to merge.
 2. Several ready PRs share one CI run. The merger tests them merged together on top of `main`,
    then squash-merges them in order. Any way in which `main` could end up with a tree other than
-   the tested one is detected and reverted at once.
+   the tested one is detected at once, and a revert PR is opened for review (section 4, step 7).
 3. The decision 0028 guarantee holds: nothing lands on `main` unless the tree it produces passed
    CI together with every PR merged before it. A duplicate task id or decision number still fails
    before it lands.
@@ -396,7 +396,11 @@ Across the review's other variants: lock busy 34–45% at 3.8/h and 56–71% at 
 11–26 min; at 10/h, p90 is 27–64 min (`sim2.py` plain 43, the earlier rule with resume 38, the
 earlier rule without resume 64). The confirmation run costs about 0.09 runs per merged PR at
 p = 0.09, and it buys the flake check of section 6. With the final rule, cut-offs are rare
-(0.03 a day at 3.8/h, 0.35 a day at 7/h, p = 0.09), and none livelocks.
+(0.03 a day at 3.8/h, 0.35 a day at 7/h, p = 0.09). The simulations charge the push to CI
+time: setup is one fixed cost per hold. A rerun with the confirmation cut-off of section 6
+(`sim7r.py`) at CI 5.4, 9 and 10 min found no livelock: 0.98–1.05 runs per merged PR at 3.8/h and
+0.75–0.92 at 7/h (p = 0.09); near the timeout, p90 rises to 28–31 min at 3.8/h and 73–88 min at
+7/h, since each hold then fits fewer runs.
 
 The knee lies between 7/h and 10/h. **Revisit** (pipelined trains, a larger effective batch, a
 shorter CI) when arrivals stay at about 8–10/h, or when p90 latency in the "over 6/h" bucket
@@ -441,7 +445,7 @@ Constants:
 |---|---|---|---|---|
 | dry run (`DRY_RUN=1`, any mode) | none | none | none | none; would-be unlabels and ejections are printed |
 | `shadow` | none | `merge-train/shadow` only | none | only the housekeeping: `ready-to-merge` removed from closed PRs. Would-be unlabels and ejections go into the shadow commit's predicted outcome |
-| `train` | yes | `merge-train/current`, `merge-train/revert-*` (a revert PR's branch, step 7) | yes, the batch's PRs only (never a revert PR) | everything in this section |
+| `train` | yes | `merge-train/current`, `merge-train/revert-*` (a revert PR's branch, step 7) | yes, the batch's PRs only; a revert PR only once review has marked it ready, like any PR | everything in this section |
 | `lock` | — | — | — | the merger stops at once. Only the steward does housekeeping (section 8) |
 
 The script installs an exit handler (on success, error or signal) that releases the lock if it
@@ -511,7 +515,8 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 
    If the gate fails, first merge any known-green prefix (section 6, "Budget cut-off"), then
    release, and the remaining PRs keep their readiness. A hold therefore never exceeds
-   `HOLD_BUDGET` (40 min), and every hold that ran a green CI makes progress. Wait for the CI run
+   `HOLD_BUDGET` (40 min), every hold that ran a green CI makes progress, and a hold that ran
+   only red CIs records them, so no later hold repeats them. Wait for the CI run
    that matches **all** of these:
    - workflow file `.github/workflows/ci.yml`;
    - event `push`, or `workflow_dispatch` for the one dispatch fallback below;
@@ -565,8 +570,9 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
      4. release the lock and report.
 
      **The revert PR is reviewed and merged like any other PR, with P0 priority, under the normal
-     flow of the current mode.** The P0 handler (any agent) runs the review panel, then merges or
-     marks it ready. No review waiver applies to reverts. Revert PRs get `pull_request` CI only,
+     flow of the current mode.** The P0 handler (any agent) runs the review panel, then merges it
+     under the lock (mode `lock`) or marks it ready (mode `train`), where it rides the next batch
+     as an ordinary PR. No review waiver applies to reverts. Revert PRs get `pull_request` CI only,
      because the push trigger matches only `merge-train/current` and `merge-train/shadow`
      (section 9).
 
@@ -762,13 +768,20 @@ run without ejecting anyone.
 
 **Budget cut-off.** No CI wait starts unless `CI_TIMEOUT + n × MERGE_BUDGET` remains of
 `HOLD_BUDGET`, where n is the number of PRs that run can merge (step 6). So a hold never exceeds
-40 min. When the gate fails during a bisection, the merger:
+40 min. When the gate fails during a bisection **or before the confirmation run**, the merger:
 1. merges the known-green prefix `P_1..P_lo` (when `lo > 0`; the reservation made for the earlier
    step that proved it green covers these merges);
-2. records the state;
+2. records the state (before the confirmation, `known-red` is the single PR `P_{lo+1}`, so
+   `hi − lo = 1` and the resumed hold goes straight to the confirmation run);
 3. releases.
 
-Every hold that ran a green CI therefore makes progress. Fairness wins over finishing a
+Every hold that ran a green CI therefore makes progress, and a hold that ran only red CIs is
+never repeated. Without the confirmation case the train livelocks near the timeout: with the
+culprit at `P_1` of 5 and every run at 10 min, the full train is red at 11 min, `mid = 2` red at
+21, `mid = 1` red at 31, and the confirmation gate is 31 + 10 + 2.5 = 43.5 > 40. Restarting
+would rebuild the same red train in every hold (the performance review measured 39–214 runs per
+merge at CI 9–10 min). With the cut-off recorded, the next hold confirms `P_1` red, ejects it
+and re-tests the rest: 4 runs over two holds. Fairness wins over finishing a
 bisection, and the PRs not yet resolved keep their readiness.
 
 **Resume is required, and it is the normal path.** The state is written into a commit on
@@ -949,8 +962,8 @@ A push trigger is three lines and tests exactly the sha the merger built.
   - open PRs (its revert PRs); merge the batch's PRs only;
   - set labels and post comments.
 
-  It never pushes to `main` or to a PR branch it did not create, and it never merges its own
-  revert PR.
+  It never pushes to `main` or to a PR branch it did not create, and it never merges a revert
+  PR that review has not marked ready.
 - **Who may push train branches.** All agent sessions push as the owner's account, so no ruleset
   can tell the merger apart today. The merger's own checks are the safeguard: green counts only
   for the sha it built in this run. The owner can still add a ruleset that restricts creating
@@ -1304,7 +1317,7 @@ figure states the breakage rate p it assumes.
 |---|---|---|
 | merges per hour (mean / peak hour) | 3.8 / 7 | no lower; the peak is not capped |
 | first green on the final head → merged, p50 / p90 (per bucket, under 3/h and 3–6/h) | 24 / 135 min | ≤ 15 / ≤ 30 min when the measured p ≤ 0.10; above that, reported against p |
-| **merge-stage CI runs per merged PR** (runs after a PR is ready: under-lock runs before, train runs after) | ≈ 1.05 plus repeat rounds | ≤ 0.85 when the measured p ≤ 0.02 (simulated 0.85 at p = 0); ≤ 1.1 at p ≈ 0.09 (simulated 1.05–1.10 at 3.8/h and 0.92–0.97 at 7/h, confirmation run included), i.e. no higher than before; never above the before value |
+| **merge-stage CI runs per merged PR** (runs after a PR is ready: under-lock runs before, train runs after) | ≈ 1.05 plus repeat rounds | ≤ 0.85 when the measured p ≤ 0.02 (simulated 0.85 at p = 0); ≤ 1.1 at p ≈ 0.09 (simulated 1.05–1.10 at 3.8/h and 0.92–0.97 at 7/h, confirmation run included), i.e. within the before value once its repeat rounds are counted |
 | CI runner-minutes per merged PR (all jobs, PR and train runs) | measured | no higher |
 | lock wait for the remaining lock users, p90 | 30–40 min observed | ≤ 15 min |
 | PRs stranded (marked ready, unmerged after 2 h, not ejected) | e.g. #1826 | 0 |
