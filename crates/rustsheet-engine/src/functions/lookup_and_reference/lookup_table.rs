@@ -485,6 +485,12 @@ enum ValueKind {
     Boolean,
 }
 
+/// Whether the approximate search can stop on `value`: a number, text or a boolean. It skips
+/// every other value (a blank, an error) whatever it searches for.
+pub(super) fn is_searched_kind(value: &CalcResult) -> bool {
+    value_kind(value).is_some()
+}
+
 fn value_kind(value: &CalcResult) -> Option<ValueKind> {
     match value {
         CalcResult::Number(_) => Some(ValueKind::Number),
