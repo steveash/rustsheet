@@ -947,8 +947,9 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `IMABS` of NBSP&"3+4i", "3+4i"&tab, "3+4i"&LF, "3+4i"&CR, LF&"3+4i", "5"&tab, "5"&NBSP, CR&"5", "5"&U+3000,
   " 5"&tab and " "&tab&"5" are `#NUM!`. Implemented in T-2641 (`complex_of`).
   Unprobed (ours in brackets): a "+" inside non-complex text; "(-5)" and "June-2020" [`#NUM!`, the inner-minus rule];
-  "1E$3" and "12$3i" [`#NUM!`]; whitespace other than these five inside the text; a leading tab on text over 255
-  characters [`#VALUE!`].
+  "1E$3" and "12$3i" [`#NUM!`]; leading spaces before NBSP, LF, CR or U+3000 (only tab is probed) [`#NUM!`]; one of
+  the five followed by trailing spaces ("5"&tab&" ") [read]; these five inside the text; a leading tab on text over
+  255 characters [`#VALUE!`]. T-3059 holds them.
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
   past 15 significant digits (`IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i";
   `IMSUM("123456789012345678901","0")` is "123456789012345000000"), and in E notation from exponent 21

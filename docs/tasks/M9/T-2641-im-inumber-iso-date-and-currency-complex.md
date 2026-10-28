@@ -42,6 +42,8 @@ case refilled 2026-10-28). Both cases pass in full; engineering.md "How an inumb
 The opus resume folded in the follow-up T-3056 (all its shapes are now probed) and supersedes PR #2047.
 
 ## Handoff (resumed)
+Resolved by the opus resume: every shape below was probed (probes/eng-inumber-currency-shapes A27:A40) and the code and engineering.md follow the values; T-3056 was folded in, and the shapes still unprobed went to T-3059.
+
 Sonnet run, three excel-fidelity review rounds, all REQUEST_CHANGES; security, architecture and quality APPROVE. State: branch `agent/functions-engineering/T-2641-im-inumber-currency`, `make check` green on the last head, probes/eng-inumber-reading 26/26 (A5 and A20:A26 oracle-filled, excel-graph 2026-10-28), baseline updated.
 Oracle facts: `IMABS` of "$1+2i", "$1-2i", "$1+2j", "$ 1+2i", "1+$2i", "€1+2i" is 2.23606797749979, "$3i" is 3, "$i" is `#NUM!`, "$-5" is `#NUM!`.
 Open fidelity findings (last round):

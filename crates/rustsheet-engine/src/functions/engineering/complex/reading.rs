@@ -21,11 +21,16 @@ pub(super) fn has_inner_minus(text: &str) -> bool {
 /// `IMABS("$1+2i")`, `"-$1+2i"`, `"1-$2i"`, `"1+ $2i"`, `"$1+$2i"`, `"$ 1+2i"` and `"€1+2i"` as 1+2i
 /// (2.23606797749979) and `"$.5"` as 0.5, but `"$i"`, `"$$1"`, `"$ -5"` and `"$-5"` are `#NUM!`, and so is
 /// a sign inside a number (`"1$2"`, `"1.$5"`, `"1E-$3"`) or `£`/`¥` (probes/eng-inumber-reading A5,
-/// A20:A26, probes/eng-inumber-currency-shapes A1:A11, A27:A40).
+/// A20:A26, probes/eng-inumber-currency-shapes A1:A11, A27:A40). VALUE's `parse_number_text` does
+/// not fit: it reads a whole text as one number. `complex_of` caps the text length first.
 pub(super) fn strip_currency_symbols(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let mut out = String::with_capacity(text.len());
     for (i, &c) in chars.iter().enumerate() {
+        if !matches!(c, '$' | '€') {
+            out.push(c);
+            continue;
+        }
         let starts_part = match chars[..i].iter().rposition(|&p| p != ' ') {
             None => true,
             Some(j) => matches!(chars[j], '+' | '-') && !is_exponent_sign(&chars, j),
@@ -34,7 +39,7 @@ pub(super) fn strip_currency_symbols(text: &str) -> String {
             .iter()
             .find(|&&n| n != ' ')
             .is_some_and(|&n| n.is_ascii_digit() || n == '.');
-        if !(matches!(c, '$' | '€') && starts_part && before_digit) {
+        if !(starts_part && before_digit) {
             out.push(c);
         }
     }
