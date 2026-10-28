@@ -231,18 +231,23 @@ class Authors:
 
 
 def ci_state(
-    runs: Sequence[object], check_runs: Sequence[object], docs_only: bool | None
+    runs: Sequence[object],
+    check_runs: Sequence[object],
+    docs_only: bool | None,
+    events: Sequence[str] = ("pull_request",),
 ) -> tuple[str, list[str]]:
     """GREEN, PENDING or RED for a PR head, with the jobs that are not green.
 
     `runs` are the head's workflow runs, `check_runs` its check runs, and `docs_only` whether the
     PR's diff is docs-only (`run_heavy=false`; None when it cannot be told, which counts as no).
+    `events` are the run events that count: a PR head's `pull_request`, a train's `push` and
+    `workflow_dispatch` (SPEC-0027 section 4, step 6).
     """
     ci = [
         r
         for r in runs
         if text_of(r, "path") == CI_WORKFLOW
-        and text_of(r, "event") == "pull_request"
+        and text_of(r, "event") in events
         and int_of(r, "id") > 0
     ]
     if not ci:
