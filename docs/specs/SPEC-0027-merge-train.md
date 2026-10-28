@@ -399,8 +399,8 @@ p = 0.09, and it buys the flake check of section 6. With the final rule, cut-off
 (0.03 a day at 3.8/h, 0.35 a day at 7/h, p = 0.09). The simulations charge the push to CI
 time: setup is one fixed cost per hold. A rerun with the confirmation cut-off of section 6
 (`sim7r.py`) at CI 5.4, 9 and 10 min found no livelock: 0.98–1.05 runs per merged PR at 3.8/h and
-0.75–0.92 at 7/h (p = 0.09); near the timeout, p90 rises to 28–31 min at 3.8/h and 73–88 min at
-7/h, since each hold then fits fewer runs.
+0.75–0.92 at 7/h (p = 0.09); near the timeout (CI 9–10, seeds 1–3), p90 rises to 25–35 min at 3.8/h and 62–110 min
+at 7/h, since each hold then fits fewer runs.
 
 The knee lies between 7/h and 10/h. **Revisit** (pipelined trains, a larger effective batch, a
 shorter CI) when arrivals stay at about 8–10/h, or when p90 latency in the "over 6/h" bucket
@@ -779,8 +779,8 @@ Every hold that ran a green CI therefore makes progress, and a hold that ran onl
 never repeated. Without the confirmation case the train livelocks near the timeout: with the
 culprit at `P_1` of 5 and every run at 10 min, the full train is red at 11 min, `mid = 2` red at
 21, `mid = 1` red at 31, and the confirmation gate is 31 + 10 + 2.5 = 43.5 > 40. Restarting
-would rebuild the same red train in every hold (the performance review measured 39–214 runs per
-merge at CI 9–10 min). With the cut-off recorded, the next hold confirms `P_1` red, ejects it
+would rebuild the same red train in every hold (the performance review measured tens to thousands of
+runs per merge at CI 9–10 min, 39–4355 across rates and seeds). With the cut-off recorded, the next hold confirms `P_1` red, ejects it
 and re-tests the rest: 4 runs over two holds. Fairness wins over finishing a
 bisection, and the PRs not yet resolved keep their readiness.
 
