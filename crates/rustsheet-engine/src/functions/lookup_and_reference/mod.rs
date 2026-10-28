@@ -200,8 +200,8 @@ impl Model {
         )
     }
 
-    /// MATCH's `match_type` as a number. Text or an error that comes from a cell (a reference) and is not a
-    /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
+    /// MATCH's `match_type` as a number. Text that is not a number, or an error, that comes from a
+    /// cell (a reference) is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search scans from the top", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or

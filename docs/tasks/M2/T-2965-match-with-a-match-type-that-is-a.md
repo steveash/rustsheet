@@ -29,7 +29,7 @@ Stage 1: the cell is an error-type mismatch (visibly off); the target is the exa
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Other error kinds as the match_type reference until probed.
+- (Other error kinds were probed and are covered, see Outcome.)
 
 ## Outcome
 MATCH `match_type` read from a cell holding any error kind is now `#REF!` (probed all seven kinds,
