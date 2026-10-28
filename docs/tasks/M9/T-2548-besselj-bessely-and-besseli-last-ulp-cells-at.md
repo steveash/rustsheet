@@ -3,7 +3,7 @@ id: T-2548
 title: "BESSELJ, BESSELY and BESSELI last-ulp cells at x = 84 to 1E+5 in the gen-m9 engineering sweep (12 cells)"
 milestone: M9
 lane: functions-engineering
-status: blocked
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -60,8 +60,8 @@ recurrence, n = x; visibly off in the 15th digit). Tried without a match: the st
 Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
 Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/2b0324e2de2e7b74 Calc!A295 `=BESSELJ(1E+5,100000)`: Excel 0.009636944011336267, ours 0.00963694401133629 (4.6 units of the 15th digit).
 
-## Blocked because
-Blocked because: needs the T-2881 oracle sweep of `BESSELJ` near the turning point n = x; one cell cannot pick a model.
+## Earlier findings
+Unblocked 2026-10-28: T-2881's sweep (`probes/t2881-besselj-turning-point`) is done and scored.
 Findings (2026-10-27, opus run): a Python port of `jn_miller` run with mpmath at 40 digits (exact steps with a double `tox`,
 or steps rounded to 53 or 64 bits), the true value from the same port in exact arithmetic started at order 120000; the scratch script is not committed.
 - The true `J_100000(100000)` is 0.0096369440113378623. Ours (0.00963694401133629) and Excel's (0.009636944011336267) are
