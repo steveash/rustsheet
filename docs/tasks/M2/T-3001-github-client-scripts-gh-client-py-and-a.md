@@ -3,7 +3,7 @@ id: T-3001
 title: "GitHub client scripts/gh_client.py and a write probe from a routine session"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -32,10 +32,10 @@ session, we know whether those writes work through `gh api` in a routine session
   definition (CLAUDE.md directive 3).
 
 ## Acceptance criteria
-- [ ] `scripts/gh_client.py` and its fake implement the operations above.
+- [x] `scripts/gh_client.py` and its fake implement the operations above.
       `scripts/test_gh_client.py` checks that both build the same request shapes, and runs in
       `make hygiene`.
-- [ ] `merge_lock.py` uses the client for the PR-finished read, and its tests still pass.
+- [x] `merge_lock.py` uses the client for the PR-finished read, and its tests still pass.
 - [ ] Probe from a routine session (a worker run counts), with the evidence in the PR. It covers:
       - a comment, a label and an unlabel on a throwaway PR;
       - a push to `merge-train/probe`;
@@ -44,10 +44,35 @@ session, we know whether those writes work through `gh api` in a routine session
 
       The squash-merge probe uses a task-only PR that this task opens, merges under the merge
       lock and reverts if needed.
-- [ ] The answer (whether writes work, and which ones) is recorded in SPEC-0027 section 4 and in
+- [x] The answer (whether writes work, and which ones) is recorded in SPEC-0027 section 4 and in
       open question 1.
-- [ ] A decision record for the client lands in this PR. The architecture and security reviewers
+- [x] A decision record for the client lands in this PR. The architecture and security reviewers
       approve.
 
 ## Out of scope
 - The step-mode fallback (T-2995, only if the probe fails).
+
+## Outcome
+- `scripts/gh_client.py`: `Client` builds every request of the operations above, with each URL
+  value validated and lists paged with `page=` (at most 50 pages). `GhApi` sends requests with
+  `gh api`, and `FakeGh` answers them from a table. `scripts/test_gh_client.py` pins both to the
+  same recorded request shapes and the exact `gh` argv; it runs in `make hygiene`.
+- `merge_lock.py`'s PR-finished read now goes through the client, with the same tests (decision
+  0148).
+- Probe, from this opus worker run on 2026-10-28 (SPEC-0027 section 4, "T-3001's probe"):
+  - Reads work: PRs, comments, check runs, workflow runs, and `GET /git/commits` on #2160's test
+    merge `fae51abf` and on its squash merge `13099cd6`.
+  - The permission read `collaborators/{user}/permission` is refused by the proxy (HTTP 403).
+  - Pushing an empty-tree commit to `merge-train/probe` (`62eebcac`) works.
+  - **Not met:** the `gh api` comment, label and unlabel writes were refused by the session's
+    tool-permission layer, so they never reached GitHub. This run did not try to get around
+    that.
+  - Squash merge with the MCP tool, on #2160 (this run's task-only PR), under the merge lock:
+    the stale head `14419263` got HTTP 409 "Head branch was modified"; the current head
+    `10f9c8aa` merged.
+- Answer: sessions read with `gh_client` and write through the step mode (T-2995 builds it;
+  T-2986 has its minimal fallback). T-2986's V1 and V6 need a session-safe author check, with
+  `author_association` as the candidate. Owner question 1 now asks whether `gh api` writes should
+  be allowed in routine sessions.
+- Eval delta: none (scripts and docs only).
+
