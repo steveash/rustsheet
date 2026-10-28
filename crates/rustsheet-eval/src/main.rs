@@ -91,6 +91,10 @@ enum Cmd {
         /// Failing examples shown per function in report.md.
         #[arg(long, default_value_t = 3)]
         examples: usize,
+        /// Also leave out of the Phase 1 rate the cells of eval/runs/desktop-owned.tsv, which
+        /// `scripts/desktop_owned.py` writes (decision 0143; `make eval` passes it).
+        #[arg(long)]
+        desktop_owned: bool,
     },
     /// Fail if anything in the committed baselines no longer passes.
     Check {
@@ -735,11 +739,20 @@ fn run() -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Run { sel, out, examples } => {
+        Cmd::Run {
+            sel,
+            out,
+            examples,
+            desktop_owned,
+        } => {
             let suites = select(&root, &sel, false)?;
             check_deviations(&root, &suites)?;
             let catalog = Catalog::load(&root)?;
-            let milestones = load_milestones(&root, &catalog)?;
+            let mut milestones = load_milestones(&root, &catalog)?;
+            if desktop_owned {
+                milestones.phase1_exceptions =
+                    std::mem::take(&mut milestones.phase1_exceptions).load_desktop_owned(&root)?;
+            }
             let started = std::time::SystemTime::now();
             let results = execute(&suites, &sel);
             let mut report = RunReport::build(

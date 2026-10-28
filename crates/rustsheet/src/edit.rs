@@ -16,7 +16,7 @@ pub use self::pivot::{PivotError, PivotFunction, PivotTableInput};
 
 use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::{
-    Cell, DataTable, DataTableInput, Link, Worksheet, MAX_DATA_TABLE_CELLS,
+    Cell, DataTable, DataTableInput, Link, Table, Worksheet, MAX_DATA_TABLE_CELLS,
 };
 use rustsheet_engine::Model;
 use rustsheet_engine::TakenSheet;
@@ -188,6 +188,8 @@ enum Undo {
     },
     /// A table added by `add_table`.
     Table(String),
+    /// A table as it was before a formula typed beside it grew it (T-2968).
+    TableExpanded(Box<Table>),
     /// A data table added by `add_data_table`: its sheet and result range.
     DataTable {
         sheet_id: u32,
@@ -253,10 +255,22 @@ impl Txn<'_> {
         // cells are part of this edit and its undo.
         if let Input::Parse(text) | Input::Formula(text) = &input {
             if text.starts_with('=') {
-                let targets = self
+                // Typed just right of a table, it grows the table by a column first (T-2968):
+                // the table, the new column's header and the rows it fills are this edit's too.
+                let expansion = self
                     .model
-                    .calculated_column_targets(sheet, row, col)
+                    .table_expansion(sheet, row, col, text)
                     .map_err(EditError::Engine)?;
+                let targets = match expansion {
+                    Some(expansion) => {
+                        self.sheet_op = true;
+                        self.undo
+                            .push(Undo::TableExpanded(Box::new(expansion.table)));
+                        expansion.cells
+                    }
+                    None => (self.model.calculated_column_targets(sheet, row, col))
+                        .map_err(EditError::Engine)?,
+                };
                 // The targets are the other rows of the cell's column.
                 for (r, c) in targets {
                     let target = CellRef {
@@ -873,6 +887,7 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                 let undone = model.remove_table(&name);
                 debug_assert!(undone.is_ok(), "undo of add_table failed: {undone:?}");
             }
+            Undo::TableExpanded(table) => model.restore_table(*table),
             Undo::DataTable { sheet_id, range } => {
                 let sheet = (model.workbook.worksheets.iter())
                     .position(|ws| ws.get_sheet_id() == sheet_id)
