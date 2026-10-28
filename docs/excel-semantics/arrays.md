@@ -632,8 +632,9 @@ top-left of its call.
   down column A, 0 in B:C; excel-graph, 2026-10-22, T-2254 triage). Ours: UNIQUE only (`CallResult::ArrayFirstColumn`,
   `empty_past_first_column` in lift/driver.rs) since T-2348. An error element past the first column stays
   (`UNIQUE(D1:D3,FALSE,{"a","a"})` is `#VALUE!`, `#VALUE!`: I12, M12; `{FALSE,TRUE}` is x then empty: M13), and SORTBY's uniform 1xN sort_order empties the elements past the
-  first column the same way (`SORTBY(A1:A3,C1:C3,{1,1})` is 1 then empty; `{1,-1}` and a second by_array/sort_order pair behave as
-  for a column of entries); probes/sortby-lifted-element-corners (excel-graph, 2026-10-28, T-2349).
+  first column the same way (`SORTBY(A1:A3,C1:C3,{1,1})` is 1 then empty; `{1,-1}` too; with a second by_array/sort_order pair and entries that
+  differ, the other elements are `#VALUE!`. A uniform 1xN order with a uniform second pair, `SORTBY(A1:A3,C1:C3,{1,1},A1:A3,1)`,
+  is UNVERIFIED, T-3027: ours 1 then empty); probes/sortby-lifted-element-corners (excel-graph, 2026-10-28, T-2349).
 - Lifted-element corners (same probe): text entries are `#VALUE!` elements whatever their case (`UNIQUE(D1:D3,FALSE,{"a";"A"})`
   and `{"a";"a"}` are `#VALUE!`, `#VALUE!`: exactly_once is not read as text), so the case question never arises; `{0;-0}` is
   x, x (equal). A call error from a non-error entry stays and the first good element is kept: `{"abc";FALSE;TRUE}` is
