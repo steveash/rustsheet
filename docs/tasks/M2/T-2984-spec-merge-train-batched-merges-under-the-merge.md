@@ -72,7 +72,7 @@ designs the merge train:
 No decision record lands here: the spec changes no protected path, and each slice carries its
 own record. Follow-ups, in rollout order:
 - T-2985: fair lock;
-- T-2993: GitHub client and write probe;
+- T-3001: GitHub client and write probe;
 - T-2986: readiness marker;
 - T-2988: CI on train branches;
 - T-2987: builder and dry run;

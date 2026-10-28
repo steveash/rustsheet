@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-2993]
+depends_on: [T-3001]
 spec: docs/specs/SPEC-0027-merge-train.md
 ---
 
@@ -36,7 +36,7 @@ check the marker mechanically, without reviewing the PR again.
   (`.claude/skills/review/SKILL.md`, step 3). `merge_ready.py` holds the same list, and a test
   fails when the two differ. That test reads `.claude/`, so this task adds the file to
   `CODE_READ_PATHS` in `scripts/ci_changes.py` (decision 0066).
-- It uses `scripts/gh_client.py` (T-2993) for every GitHub call. If T-2993's probe found that
+- It uses `scripts/gh_client.py` (T-3001) for every GitHub call. If T-3001's probe found that
   writes fail, `mark` uses its minimal fallback: it prints its two writes (the label, and a
   comment whose body the script generates) as step-mode JSON actions, in the schema of SPEC-0027
   section 4 "GitHub access". T-2995's step mode extends the same schema.
@@ -49,7 +49,7 @@ check the marker mechanically, without reviewing the PR again.
       when the PR is ready and 1 with the failed checks when it is not.
 - [ ] The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
       creates them when they are absent.
-- [ ] If T-2993 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
+- [ ] If T-3001 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
       exactly two step-mode JSON actions, the label and a comment whose body the script generates,
       in SPEC-0027 section 4's schema. `verify` confirms the result afterwards, and a test covers
       it. If writes work, the PR says the fallback was not needed and omits it.

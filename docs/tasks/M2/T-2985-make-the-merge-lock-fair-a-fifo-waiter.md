@@ -39,7 +39,7 @@ tail, so no session can chain merges past waiters. A `wait` command replaces pol
   chained #1859 and #1865. The lock was taken over 37 times (SPEC-0027 Problem).
 - Code to change: `scripts/merge_lock.py`, `scripts/test_merge_lock.py`, the Makefile's
   merge-lock targets, the `steward` skill's "Merge lock" paragraph, and work-loop step 6.3.
-- This slice keeps `merge_lock.py`'s urllib PR-finished read, now rate-limited. T-2993 later moves
+- This slice keeps `merge_lock.py`'s urllib PR-finished read, now rate-limited. T-3001 later moves
   that read onto `scripts/gh_client.py`.
 - If the diff grows past size M, split it before review: the format and validation first, then
   `wait` and the skill text.

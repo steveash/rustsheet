@@ -4,7 +4,7 @@
 - **Milestone / lane:** M2 / harness (policy and process slices: quality)
 - **Tasks:**
   - T-2984: this spec.
-  - Rollout: T-2985 (fair lock), T-2993 (GitHub client and write probe), T-2986 (readiness
+  - Rollout: T-2985 (fair lock), T-3001 (GitHub client and write probe), T-2986 (readiness
     marker), T-2988 (CI on train branches), T-2987 (train builder and dry run), T-2994 (merge
     stage for green trains), T-2998 (red trains: bisection and ejection), T-2995 (shadow mode
     and stats), T-2996 (policy record, routine prompts, emergency flip check), T-2989 (skills
@@ -291,7 +291,7 @@ quality=APPROVE [excel-fidelity=APPROVE]"` sets two things:
 
 It does not post a second marker for a head that already has one.
 
-**Write fallback.** If T-2993 found that `gh api` writes fail in a session, T-2986 ships a
+**Write fallback.** If T-3001 found that `gh api` writes fail in a session, T-2986 ships a
 minimal fallback: `mark` prints its two writes (the label, and a comment whose body the script
 generates in full) as step-mode JSON actions, using the schema of section 4 "GitHub access". The
 session performs them, and `verify` confirms the result. T-2995's step mode is that same schema,
@@ -626,10 +626,10 @@ its later head commits and their check runs:
   conflict resolution, or renumbered a file, before it merged.
 - `defer` and `no result` are not scored.
 
-**GitHub access.** One client, `scripts/gh_client.py`, with a fake for tests, owned by T-2993.
-`merge_ready.py`, `merge_train.py` and `merge_lock.py`'s PR-finished read all use it: T-2993 moves
+**GitHub access.** One client, `scripts/gh_client.py`, with a fake for tests, owned by T-3001.
+`merge_ready.py`, `merge_train.py` and `merge_lock.py`'s PR-finished read all use it: T-3001 moves
 that read off `merge_lock.py`'s own urllib code. The production implementation calls `gh api`.
-Reads were verified through the session proxy on 2026-10-28. T-2993 probes the writes (merge,
+Reads were verified through the session proxy on 2026-10-28. T-3001 probes the writes (merge,
 label, comment, branch push of `merge-train/*`, and `GET /git/commits` on a test merge) from a
 routine session, **before** any slice depends on them, and records the answer here.
 
@@ -975,7 +975,7 @@ A push trigger is three lines and tests exactly the sha the merger built.
 - `scripts/merge_lock.py` (T-2985): the version-2 format and its validation, the queue,
   `acquire --train/--prs`, exit code 4, `wait`. Make targets `merge-lock-wait PR=<n>`, and
   `merge-lock-status`, which now shows the queue.
-- `scripts/gh_client.py` (T-2993): the one GitHub client (`gh api`), with a fake for tests. Its
+- `scripts/gh_client.py` (T-3001): the one GitHub client (`gh api`), with a fake for tests. Its
   operations are PRs, comments with permissions, labels, check runs and workflow runs, git
   commits, merge, and dispatch. It also takes over `merge_lock.py`'s PR-finished read.
 - `scripts/merge_ready.py` (T-2986): `mark` / `--carry` (`make mark-ready`), and `verify --pr <n>`
@@ -1012,7 +1012,7 @@ and each record cites the section of this spec it implements rather than copying
 
 - **T-2985: "The merge lock serves waiters first-in, first-out."** It amends 0075 and 0097
   (section 1): FIFO service, `wait`, rejoining at the tail, validation, train locks and exit 4.
-- **T-2993, T-2986, T-2987, T-2994, T-2998, T-2995, T-2988:** one record each for its mechanism. Each says
+- **T-3001, T-2986, T-2987, T-2994, T-2998, T-2995, T-2988:** one record each for its mechanism. Each says
   that nothing is in force until `mode` says so.
 - **T-2996: "Merges go through the merge train when the switch says so."** It is the policy
   record. It amends:
@@ -1227,13 +1227,13 @@ slice is inert. Until T-2991 sets `train`, nothing merges through the train.
 | order | task | what | depends on | reversible by |
 |---|---|---|---|---|
 | 1 | T-2985 (M) | fair FIFO lock, `make merge-lock-wait`; skills say "wait" | T-2984 | revert (v1 commits stay compatible) |
-| 2 | T-2993 (S) | `scripts/gh_client.py` + fake; moves the PR-finished read; **probe of `gh api` writes and `GET /git/commits` from a routine session, answer recorded in this spec** | T-2985 | revert |
-| 3 | T-2986 (M) | `merge_ready.py`, `make mark-ready`, labels | T-2993 | revert (nothing reads it yet) |
+| 2 | T-3001 (S) | `scripts/gh_client.py` + fake; moves the PR-finished read; **probe of `gh api` writes and `GET /git/commits` from a routine session, answer recorded in this spec** | T-2985 | revert |
+| 3 | T-2986 (M) | `merge_ready.py`, `make mark-ready`, labels | T-3001 | revert (nothing reads it yet) |
 | 4 | T-2988 (S) | CI on `merge-train/current` and `merge-train/shadow`; classification of trains, and of PRs from a single merge base; report only on `main`; secrets lint | T-2984 | revert the trigger |
 | 5 | T-2987 (M) | collect, build, independence, id checks (`--root`), `--dry-run`, property test; `merge_train.toml` = `lock`, `make merge-mode` | T-2986 | revert |
 | 6 | T-2994 (M) | push, CI wait, green rule for trains, ordered squash of a green train with its commit text, pre- and post-squash checks, stop checkpoints (including right after acquisition), opening the revert PR, recovery, lock use | T-2987, T-2988 | revert (mode `lock`) |
 | 7 | T-2998 (M) | red trains: binary search with the per-wait gate, merging the known-green prefix on a cut-off, required resume, confirmation, ejection, infrastructure retry (section 6) | T-2994 | revert (mode `lock`) |
-| 8 | T-2995 (M) | shadow mode on `merge-train/shadow` (predictions, agreement, shadow tree check); the step-mode fallback (only if T-2993 found writes fail); `make merge-train-stats` | T-2998 | revert (mode `lock`) |
+| 8 | T-2995 (M) | shadow mode on `merge-train/shadow` (predictions, agreement, shadow tree check); the step-mode fallback (only if T-3001 found writes fail); `make merge-train-stats` | T-2998 | revert (mode `lock`) |
 | 9 | T-2996 (S) | the policy record; the merger routine row and prompt and the worker and steward clauses in routines.md; `make merge-flip-check` and the `check_governance.py` waiver | T-2995 | revert |
 | 10 | T-2989 (M) | work-loop, steward, review and agent-workflow texts for each mode, the emergency-flip procedure, steward daily thresholds; mode = `shadow` | T-2996 | set mode `lock` |
 | 11 | owner | create the merger routine; add the required checks with strict mode off; after T-2989 merges, update the worker and steward routines | T-2996, T-2989 | disable the routine |
@@ -1348,7 +1348,7 @@ triggers the emergency switch to `lock` (section "The switch") and a P0:
   the fair lock can stay: they are inert in `lock` mode, and the fair lock helps there too.
 
 ## Open questions for the owner
-1. **GitHub writes from a routine session.** `gh api` reads work through the session proxy. T-2993
+1. **GitHub writes from a routine session.** `gh api` reads work through the session proxy. T-3001
    probes writes from a routine before anything depends on them. If they fail, the constrained
    step mode applies (section 4).
 2. **Strict "up to date" check.** Confirm it stays off when the required checks are added. The

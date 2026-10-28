@@ -13,7 +13,7 @@ spec: docs/specs/SPEC-0027-merge-train.md
 
 ## Goal
 The merge train can be proven live without merging anything, and its metrics, including whether
-shadow predictions agree with reality, can be computed from the GitHub API. If T-2993 found that
+shadow predictions agree with reality, can be computed from the GitHub API. If T-3001 found that
 `gh api` writes fail in a routine session, the session can perform them safely instead.
 
 ## Context
@@ -34,7 +34,7 @@ shadow predictions agree with reality, can be computed from the GitHub API. If T
     abort on any difference, and a session that never adds, skips, reorders or changes an
     action;
   - T-2986's minimal fallback uses the same schema;
-  - built **only if** T-2993's probe found that writes fail. Otherwise this criterion is dropped,
+  - built **only if** T-3001's probe found that writes fail. Otherwise this criterion is dropped,
     and the PR says so.
 - SPEC-0027 "Metrics" and "Daily thresholds": `make merge-train-stats` reports:
   - latency, per arrival bucket;
@@ -55,7 +55,7 @@ shadow predictions agree with reality, can be computed from the GitHub API. If T
 - [ ] `make merge-train-stats [SINCE=<date>]` prints every metric above, plus the shadow agreement
       score and the load bar. It is unit-tested against fixtures from the fake client, including
       PR histories scripted for each agreement rule.
-- [ ] The step mode is built and tested, or dropped, depending on T-2993's answer, as stated in
+- [ ] The step mode is built and tested, or dropped, depending on T-3001's answer, as stated in
       the PR.
 - [ ] A decision record lands in this PR. The architecture and security reviewers approve.
 
