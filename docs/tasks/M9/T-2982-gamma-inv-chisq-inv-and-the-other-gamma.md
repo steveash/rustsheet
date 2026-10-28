@@ -63,6 +63,9 @@ recorded.
   `GAMMA.DIST(2,1E40..1E100,1E10,TRUE)` and densities at shapes 1E10-1E11; try one cell per workbook). Temme's tails at
   the 1E8 cut: A144-A146 (shape 99999999, the series side) are about 1E-15 relative off, A145 (shape 1E8) too.
 
+## Progress (run 2, 2026-10-28)
+- Resumed the idle branch (opus worker, step 2 of the routine).
+
 ## Acceptance criteria
 - [ ] probes/incomplete-gamma-cap E5, E15, E18 pass, E13, E14, E19 bit-exact or named in the Outcome with their ulp; no
       loop whose length depends on argument values beyond the T-1872 caps.
