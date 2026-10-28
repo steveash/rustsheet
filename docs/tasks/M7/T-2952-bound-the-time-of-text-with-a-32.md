@@ -38,7 +38,7 @@ Already bounded on `main` by T-2842's 255-character limit on a TEXT format code 
 formatter/complexity.rs, merged 2026-10-27, after T-2806 measured the 23 s): a code over 255 characters is `#VALUE!`
 before any formatting, the rule Excel follows (`"0"` + 254 commas works and 255 fail, probes/t2842-dollar-run-contexts
 J, K; number-formats.md "TEXT format code complexity limit"). So no engine change was needed. Measured on the release
-`rustsheet-eval show` of `main` fa70f73 (wall time of one scratch case holding one cell, minus nothing):
+`rustsheet-eval show` of `main` fa70f73 (wall time of a scratch case holding that one cell, harness start included):
 - `=TEXT(SEQUENCE(1024),REPT("0",32767))`: 0.03 s (was 23 s), 1,024 `#VALUE!`.
 - `=TEXT(SEQUENCE(1024,1024),REPT("a",32767))`: 2.0 s (was past 60 s), 1,048,576 `#VALUE!`.
 Added `text_with_a_32767_character_code_over_an_array_is_value_error` (test/text_functions/fn_text_arrays.rs) so the
