@@ -1,0 +1,46 @@
+---
+id: T-3058
+title: "CUMIPMT and CUMPRINC: the cells T-2521 left (type 1 operation order of G2/H2, tiny-rate interest of both types, periods near 1E15)"
+milestone: M9
+lane: functions-financial
+status: todo
+priority: P1
+size: M
+tier: opus
+depends_on: [T-2521]
+campaign: visible
+---
+
+## Goal
+CUMIPMT and CUMPRINC are within half a unit of the 15th significant digit of Excel on the cells T-2521
+left visibly off, or each one is documented in financial.md with the forms tried.
+
+## Context
+T-2521 found that Excel's short principal discounts with its own `L = ln(1+rate)` (`annuity::growth_log`, the
+PPMT log) and that type 0's interest is the payments less the principal wherever the principal is no larger than
+the interest (docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many periods", T-2521 notes; probe
+case probes/fin-cumipmt-gate-edges). Left, by cause:
+- Type 1 from period 1 at ordinary rates: `CUMPRINC_CUMIPMT.xlsx` G2 (= fin-cumipmt-overflow-and-forms A7 and
+  fin-cumipmt-gate-edges H5, H6) is `-pmt·m - H2` with `pmt = pv/((1+r)·(1-v^nper))·r` and Excel's own H2, and
+  H2 (gate-edges G5) is to the bit with `-(pmt0·((1-v^m)/r)·v^(nper-end+1))` on Excel's EXP and `growth_log`
+  (scratch "m" ordering, 33 of 54 type 1 principals) but that ordering misses gen-m9 a91bad4e84f49739 A193 by an
+  ulp, where the kernel's order (divide the type 0 sum by `1+r`, libm `exp`) is to the bit. Find the one ordering
+  (and EXP: Excel's or libm's) that keeps A193, A383, A398 and fits G5, G6.
+- Type 0 interest where the principal is larger than the interest at tiny rates: fin-cumipmt-gate-edges A2-A7
+  (`CUMIPMT(1E-4,60,100000,3,10,0)`): `-pmt·m - P` with P one ulp off moves the result by 128-512 ulps; neither the
+  balance form nor any principal form tried is exact on all.
+- Type 1 interest at tiny rates: fin-cumipmt-gate-edges E1-E10 on both sides of `TINY_RATE_GROWTH` and gen-m9
+  e168be7f6d3f84c2 A379 `CUMIPMT(1E-9,235,379138,7,14,1)`: Excel's value is not `-pmt·m - CUMPRINC` with its own
+  CUMPRINC (F1-F10) for any payment form tried.
+- 79d87fc527927626 A352 `CUMIPMT(1E-15,283,(1.005+3.14159+1E15)%,2,16,0)`: 3 ulps of `pmt·m`.
+- Periods near 1E15 (untouched by T-2514 and T-2521): fin-remaining-later-argument-ranges K3,
+  fin-cumipmt-overflow-and-forms A9-A11, fin-cumipmt-period-bound A18 and A6.
+Code: functions/financial/cumulative.rs.
+
+## Acceptance criteria
+- [ ] Each cell above is visibly right (no new known-failure lines, `make eval-baseline`), or it is documented in
+      financial.md with the forms tried.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Bit-exact fits of cells that are already visibly right (T-1374).
