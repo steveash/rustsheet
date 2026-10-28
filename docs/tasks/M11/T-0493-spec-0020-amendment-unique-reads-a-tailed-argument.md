@@ -3,7 +3,7 @@ id: T-0493
 title: "SPEC-0020 amendment: UNIQUE reads a tailed argument (corpus-bench 45896 under 1 s)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -30,7 +30,7 @@ Code: `fn_unique` (functions/spill_functions.rs). Bench: `aggregate -- tailed_co
 ## Out of scope
 - TEXTJOIN as a direct consumer (contract in the amendment; not needed by 45896).
 
-## Handoff
+## Handoff (resumed)
 Nothing is implemented yet. The previous run claimed this task near the end of its session budget and could not
 delete the claim branch (the push of a deletion was refused). Start from `origin/main` once T-0491 (PR #2110) has
 merged: T-0491 changes `Tailed::elements` in `tailed_array.rs` (the `positions` sentinel check), which this task
