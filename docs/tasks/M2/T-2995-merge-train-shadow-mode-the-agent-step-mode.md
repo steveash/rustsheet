@@ -3,7 +3,7 @@ id: T-2995
 title: "Merge-train shadow mode, the agent step mode fallback and make merge-train-stats"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
