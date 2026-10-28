@@ -7,8 +7,9 @@
 Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every visibly-off cell of
 the milestone's exit criteria (decision 0085, read at visible parity by decisions 0114 and 0135:
 the `gen-m<k>` suite, the ironcalc-calc row of "Milestone function scope" less its exit
-exceptions, and the probes of the milestone's row of "Probe milestones", `M0-M2` for M2), plus
-each probe case that fails with no cell, that no open task of that milestone names, one per line as
+exceptions when the exit row requires it (not M7, decision 0140), and the probes of the
+milestone's row of "Probe milestones", `M0-M2` for M2), plus each probe case that fails with no
+cell, that no open task of that milestone names, one per line as
 `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count is
 not 0.
 
@@ -141,7 +142,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
                 if f"{case['id']}!{key}" in gen_off:
                     out.append(ExitCell(gen, str(case["id"]), key, formula_of(c)))
 
-    scope = report.get("function_scope") or {}
+    # A function-scope row the exit row shows but does not require (counts with a null
+    # `calc_met`, M7) is no exit criterion (decision 0140).
+    shown_only = exit_row.get("calc_failing") is not None and exit_row.get("calc_met") is None
+    scope = {} if shown_only else report.get("function_scope") or {}
     for row in scope.get("rows") or []:
         if row.get("milestone") == milestone:
             excepted = set(row.get("excepted") or [])

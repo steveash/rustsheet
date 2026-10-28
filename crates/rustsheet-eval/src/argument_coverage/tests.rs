@@ -34,6 +34,7 @@ fn cell(formula: &str, from_excel: bool) -> CellResult {
         from_excel,
         listed_deviation: false,
         graph_subnormal: false,
+        kind: crate::runner::CellKind::Scored,
     }
 }
 
