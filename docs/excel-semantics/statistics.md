@@ -13,9 +13,56 @@ Evidence: `ironcalc-calc/STATISTICAL/FISHER_FISHERINV.xlsx` `FISHER FISHERINV`!C
 C38, C39 (large y), C10, C51; `ironcalc-calc/STATISTICAL/FISHER.xlsx` Sheet1!G2, G3. The formula
 reproduces every numeric FISHERINV cell in both workbooks bit for bit (32 cells, checked with
 glibc `exp` during T-0903, counting overflow as 1); `tanh` misses 6 of them.
-Status: VERIFIED (desktop cached values)
-Implemented in: `functions/statistical/fisher.rs` `fn_fisher_inv`
-Tasks: T-0976
+The quotient is Excel's `/`, rounded twice (next entry): `FISHERINV(TAN(PI()))` is -2^-53
+(gen-m9/ee2497a5e683c5d9 A30), a plain quotient one ulp further from 0 (T-2437).
+Status: VERIFIED (desktop cached values; excel-graph for the twice-rounded quotient)
+Implemented in: `functions/statistical/fisher.rs` `fisher_inv`
+Tasks: T-0976, T-2437
+
+## FISHER, FISHERINV, EXPON.DIST and HARMEAN are Excel operators around LN and EXP (T-2437)
+Rule: each is a short formula whose `/` and `+` behave like Excel's operators (numbers.md "Division
+rounds twice") around Excel's own LN and EXP kernels:
+- FISHER(x) = 0.5 * LN((1 + x) / (1 - x)), the quotient rounded twice. Near 0 this is Excel's
+  cancellation, not atanh: `FISHER(1E-15/3.14159)` = 2.2204460492503126E-16 (gen-m9/4ab2ba98d26c8a5e
+  A395, probes/t2436/4ab2ba98d26c8a5e A256), where a plain quotient gives 3.3306690738754686E-16 and
+  atanh the argument itself, 3.18E-16; `FISHER(1.49172367472348E-11)` = 1.4917178603246007E-11 (5 digits
+  of 15 off atanh) and `FISHER(1.02759470998055E-16)` = 0 (probes/t2437-fit-separators A1, A4).
+- FISHERINV(y) = (EXP(2y) - 1) / (EXP(2y) + 1), the quotient rounded twice (entry above).
+- EXPON.DIST's cdf at t = lambda * x is -expm1(-t) with Excel's Kahan expm1 (numbers.md "Excel's
+  expm1 is Kahan's formula") for t < 1, and 1 - EXP(-t) above. The cut lies between
+  t = 0.999999999999999 (Kahan's digits, A117) and 1.35079141386477 (1 - EXP's), and the two forms
+  give the same double at every t from 1 to 1.35 a search tried (probes/t2437-fit-separators A67:A117:
+  Kahan at all 26 points 0.198 <= t < 1, 1 - EXP at all 25 points 1.3508 <= t <= 8.07). libm's expm1 is one ulp off at `EXPONDIST(TAN(100*PI()),1E+8,
+  TRUE)` = 1.959369974159244E-07 (gen-m9/06b4e8f5de409d5e A140) and `EXPON.DIST(PI(),0.01,TRUE)` =
+  0.030927573695189364 (623663cacea53bbc A318). The density, lambda * EXP(-t), is unchanged.
+- HARMEAN = 1 / AVERAGE(1/x): the reciprocals summed in argument order, the sum divided by n, then
+  inverted, every `/` and `+` twice rounded; not n / sum(1/x). `HARMEAN(Data!D6:D10,Data!C6:C9)` =
+  0.569594502522996 (gen-m9/06b4e8f5de409d5e A278), n / sum one ulp above.
+
+Fit lab (`rustsheet-fitlab fisher|fisherinv|expon-cdf|harmean`, every JSON case of eval/ the four
+functions appear in; bit-exact cells, the misses of the winners are the sweep's parser, not the kernel):
+
+| fit (cells) | chosen form | other candidates | engine before |
+|---|---|---|---|
+| `fisher` (155) | **152**: 0.5*LN(q), q rounded twice | sums 1±x also twice 152 (tie); libm ln, q twice 150; LN, plain q 142; libm, plain q 140; 0.5*(LN(1+x)-LN(1-x)) 94; atanh 68 | 143 |
+| `fisherinv` (143) | **133**: EXP, quotient twice | sums e±1 also twice 133 (tie); libm exp, quotient twice 133; plain quotient 121 (either exp); tanh 85 | 131 |
+| `expon-cdf` (132) | **129**: Kahan below t = 1, else 1-EXP | cut at 2: 121, 0.5: 115, 4: 114, 8: 105; libm expm1 95; Kahan everywhere 91; 1-EXP 74 | 98 |
+| `harmean` (122) | **119**: 1/AVERAGE(1/x), + and / twice | plain +: 118; plain /: 116; both plain 115; n/sum(1/x) 103-104 | 106 |
+
+The sums `1 ± x` and `e ± 1` stay plain doubles: rounding them twice as well scores the same (FISHER 152,
+FISHERINV 133), so the sweeps do not separate the two and the simpler form is kept. The libm/EXP and LN choices
+tie on these sweeps too; the engine uses Excel's kernels (`excel_ln`,
+`excel_exp`, `excel_expm1`). Two owned gen-m9 cells stay off for their inputs, not these kernels: on
+Excel's own input bits both are exact. `FISHER(T.DIST.RT((1.005^1e-15),4))` (a612e89321a6df9c A191)
+needs Excel's `T.DIST.RT(1,4)` = 0.18695048315002957 (probes-numeric/m9-t-dist-rt A49; ours, correctly
+rounded, is 0.18695048315002943; T-2509), and `EXPON.DIST(T.DIST(4199,4,FALSE),0.3,TRUE)`
+(caa1eed48b1883fe A382) is 0.3 * T.DIST(4199,4,FALSE), whose Excel value 9.192880751152396E-18 is 3 ulp
+below ours (excel-graph, 2026-10-28, T-2437; the student t density, T-2585).
+Status: VERIFIED (excel-graph); where in [1, 1.3508) the EXPON.DIST cut lies is not observable on
+the doubles searched (the engine uses 1)
+Implemented in: `functions/statistical/fisher.rs` `fisher`, `fisher_inv`; `exponential.rs` `expon_cdf`;
+`count_and_average.rs` `harmonic_mean`; fits `tools/src/rustsheet_tools/fitlab/kernels/fisher_expon_harmean.py`
+Tasks: T-2437
 
 ## T.DIST.RT and T.DIST.2T are not 1 - T.DIST
 Rule: the Student-t upper tail is computed on its own, not as `1 - T.DIST(x, df, TRUE)`.
@@ -3010,6 +3057,11 @@ Tasks: T-1543, T-1634
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
+  The lower tail is not always correctly rounded at a shape below 1 (T-3012). `GAMMA.INV(1E-16,0.25,1E+15)`
+  (gen-m9/984cba67bbe6972b.case.json Calc!A43, excel-graph) is 6.749697893111757E-50 in Excel. The exact quantile
+  (p·Γ(1.25))^4·1E15 is 6.7496978931117296E-50 (40-digit Decimal), and ours is 6.74969789311173E-50. So Excel is
+  4.1E-15 relative high, about 1E-15 relative in P at a = 0.25. Not yet known: whether this is the crossing of
+  Excel's own GAMMA.DIST cdf (T-3012 probes it, T-3013 matches it).
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
