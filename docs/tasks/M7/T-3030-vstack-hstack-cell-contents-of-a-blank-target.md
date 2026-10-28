@@ -23,6 +23,9 @@ LET/IF inside VSTACK evaluates to 0 or blank instead of 7 (A51, A131, A141, A221
 find why before choosing the design (the stack argument may be evaluated in a context where CELL loses its reference).
 The rule needs the blank-target CELL("contents") result to be distinguishable as a value (it is 0 alone, "|" with &"|"), so it can
 survive LET/IF; a design that only extends the syntax match is not enough.
+Before choosing that design, probe `VSTACK(CELL("contents",Data!C11)+0,1)`, `VSTACK(CELL("contents",Data!C11)&"",1)` and
+`TOCOL(CELL("contents",Data!C11))` (blank target): whether the blank-target value survives arithmetic, concatenation and
+other shapers is unprobed (T-2466 review).
 
 ## Acceptance criteria
 - [ ] probes/t2466-cell-contents-stack passes in full, including the nested non-blank cells A51, A131, A141, A221, A231 and A241; probes/t2414-gen-m7-unexplained keeps passing.
