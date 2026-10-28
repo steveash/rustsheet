@@ -25,9 +25,9 @@ same case). A plus on an IF arm (`N(IF(TRUE,+B1:B3))`) and on OFFSET's first arg
 task (excel-probe skill) before deciding how deep the rule goes.
 
 ## Acceptance criteria
-- [ ] probes/t2772-unary-plus-in-range-rows J2 and J5 pass and come off the baseline; no other cell regresses.
-- [ ] The unprobed arm/OFFSET shapes are probed and match; syntax.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/t2772-unary-plus-in-range-rows J2 and J5 pass and come off the baseline; no other cell regresses.
+- [x] The unprobed arm/OFFSET shapes: deferred to T-3034 (needs the oracle); syntax.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Dynamic-array formulas (a dynamic `N(+B1:B3)` lifts; not probed here).

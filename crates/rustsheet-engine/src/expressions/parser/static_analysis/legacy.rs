@@ -687,7 +687,8 @@ fn is_plain_reference(node: &Node) -> bool {
     // `lowered` sees through a unary plus (`IF(+TRUE,…)`, T-2723), never parentheses.
     let is_literal =
         |node: &Node| matches!(node.lowered(), Node::NumberKind(_) | Node::BooleanKind(_));
-    // A plus on the argument makes it a value: `=N(+B1:B3)` gets an `@` (t2772-unary-plus-in-range-rows J2, J5).
+    // A plus on the argument makes it a value: `=N(+B1:B3)` gets an `@`
+    // (t2772-unary-plus-in-range-rows J2, J5).
     if matches!(node, Node::UnaryPlus { .. }) {
         return false;
     }
