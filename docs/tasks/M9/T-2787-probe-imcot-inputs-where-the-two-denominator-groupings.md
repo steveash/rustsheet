@@ -3,7 +3,7 @@ id: T-2787
 title: "Probe IMCOT inputs where the two denominator groupings round differently"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
