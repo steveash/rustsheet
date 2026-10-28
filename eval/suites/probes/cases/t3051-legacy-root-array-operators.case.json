@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Legacy (non-array) formulas whose root operator works on an array constant: row, column and 2-D constants, left and right of the operator, under unary minus, parentheses, %, & and comparisons; FORMULATEXT in row 20, no spill in row 11 (T-3051).",
+  "description": "Legacy (non-array) formulas whose root operator works on an array constant: row, column and 2-D constants, left and right of the operator, under unary minus, parentheses, %, & and comparisons; FORMULATEXT in row 20; the no-spill side is probes/t3047-snap-array-operands L!G2, L!H3 (T-3051).",
   "tags": [
     "M2",
     "information",

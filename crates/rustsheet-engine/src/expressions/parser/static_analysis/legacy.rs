@@ -10,6 +10,7 @@
 
 use super::if_arm::{is_reference_arm, returns_range_arm};
 use super::lifted::lifts_arrays_at;
+use super::operand_array::{add_operand_array_at, for_each_value_operand, remove_operand_array_at};
 use super::reference_result::{is_let_call, let_result};
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, remove_redundant_legacy_intersection,
@@ -144,27 +145,6 @@ pub(super) fn add_array_at(
     } else if arrays && matches!(signature, Some(Signature::Scalar)) {
         add_operand_array_at(arg);
     }
-}
-
-/// Puts an `@` on each array constant `node` is made of through operators, parentheses and signs
-/// ([`for_each_value_operand`]): `{2;3}+0` becomes `@{2;3}+0`.
-fn add_operand_array_at(node: &mut Node) {
-    for_each_value_operand(node, &mut |operand| {
-        if matches!(operand, Node::ArrayKind(_)) {
-            *operand = Node::automatic_at(operand.clone());
-        }
-    });
-}
-
-/// Drops the `@`s [`add_operand_array_at`] adds again on import.
-pub(super) fn remove_operand_array_at(node: &mut Node) {
-    for_each_value_operand(node, &mut |operand| {
-        if let Node::ImplicitIntersection { child, .. } = operand {
-            if matches!(child.as_ref(), Node::ArrayKind(_)) {
-                *operand = child.as_ref().clone();
-            }
-        }
-    });
 }
 
 /// Drops the `@`s [`add_array_at`] adds again on import.
@@ -618,27 +598,6 @@ pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
                 *returned = Node::automatic_at(constant);
             }
         }
-    }
-}
-
-/// Calls `f` on `node`, or on each operand of the operators, parentheses and signs it is made
-/// of, at any depth (bounded by the parser's depth cap).
-fn for_each_value_operand(node: &mut Node, f: &mut impl FnMut(&mut Node)) {
-    match node {
-        Node::UnaryKind { right: child, .. }
-        | Node::Group { child, .. }
-        | Node::UnaryPlus { child }
-        | Node::Spaced { child, .. } => {
-            for_each_value_operand(child, f);
-        }
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| for_each_value_operand(operand, f));
-        }
-        _ => f(node),
     }
 }
 
