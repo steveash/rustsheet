@@ -38,24 +38,25 @@ fn computed_criterion_holds(condition: &CalcResult) -> bool {
     }
 }
 
-/// Whether a formula condition evaluated at `context` (its cell moved down to a record) stays off
-/// the database's header row: Excel matches no record whose moved relative reference into the
-/// database lands on its header row or above. Over Db!A2:D9 (header row 2) with `=B2>3` as the
-/// condition, the first record reads B2 = 4 and does not match, while the later records read
-/// B3..B8 (`DVAR(Db!A2:D9,2,Db!O1:O2)` is 12.5 and `DCOUNTA(..,3,..)` 2, rows 4 and 9; criteria.md
-/// "D* computed criteria and an unknown header in the gen-m9 database sweep (T-2258)"). Absolute
-/// rows stay put and are not checked (probes/db-criteria-formula-placement F2, F14); a reference
-/// on another sheet, or outside the database's columns, is read as it is: TODO(T-2617).
+/// Whether a formula condition evaluated at `context` (its cell moved down to a record) reads
+/// the database's records: Excel matches no record whose moved relative reference on the
+/// database's sheet lands above the first record (on the header row or higher) or in a column
+/// outside the database. Over Crit!A10:C16 (first record row 11) with the condition on Crit row 2,
+/// `=B9>0` matches rows 13-16, `=B10>0` rows 12-16 and `=F9>0` (column F) nothing; a range
+/// passes when any of it lands on the records (`=SUM(B10:B11)>3` matches every record,
+/// `=SUM(B9:B10)>3` rows 12-16; probes/db-computed-criteria-other-sheet, criteria.md "D*
+/// computed criteria and an unknown header in the gen-m9 database sweep (T-2258)"). A reference on
+/// another sheet is read as it is (`=Crit!B2>0` over Data!D1:E7 matches every record), and
+/// absolute rows stay put and are not checked (probes/db-criteria-formula-placement F2, F14).
 fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> bool {
     let first_record = query.left.row + 1;
-    let columns = query.left.column..=query.right.column;
-    let reads = |sheet: u32, row: i32, column: i32, absolute_column: bool| {
-        let column = column + if absolute_column { 0 } else { context.column };
-        sheet != query.left.sheet || !columns.contains(&column) || row + context.row >= first_record
+    let moved = |offset: i32, coordinate: i32, absolute: bool| {
+        coordinate + if absolute { 0 } else { offset }
     };
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
-        let holds = match node {
+        // The moved rows and columns spanned by a relative-row reference on the database's sheet.
+        let span = match node {
             Node::ReferenceKind {
                 sheet_index,
                 absolute_row: false,
@@ -63,31 +64,98 @@ fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> b
                 row,
                 column,
                 ..
-            } => reads(*sheet_index, *row, *column, *absolute_column),
-            // Each corner in `reads`'s argument order, its absolute row flag first.
+            } if *sheet_index == query.left.sheet => {
+                let column = moved(context.column, *column, *absolute_column);
+                Some((row + context.row, column, column))
+            }
             Node::RangeKind {
-                absolute_row1,
                 sheet_index,
+                absolute_row1,
+                absolute_column1,
                 row1,
                 column1,
-                absolute_column1,
                 absolute_row2,
+                absolute_column2,
                 row2,
                 column2,
-                absolute_column2,
                 ..
-            } => {
-                (*absolute_row1 || reads(*sheet_index, *row1, *column1, *absolute_column1))
-                    && (*absolute_row2 || reads(*sheet_index, *row2, *column2, *absolute_column2))
+            } if *sheet_index == query.left.sheet && !(*absolute_row1 && *absolute_row2) => {
+                let row1 = moved(context.row, *row1, *absolute_row1);
+                let row2 = moved(context.row, *row2, *absolute_row2);
+                let column1 = moved(context.column, *column1, *absolute_column1);
+                let column2 = moved(context.column, *column2, *absolute_column2);
+                Some((row1.max(row2), column1.min(column2), column1.max(column2)))
             }
-            _ => true,
+            _ => None,
         };
-        if !holds {
-            return false;
+        if let Some((last_row, first_column, last_column)) = span {
+            if last_row < first_record
+                || last_column < query.left.column
+                || first_column > query.right.column
+            {
+                return false;
+            }
         }
         node.push_children(&mut pending);
     }
     true
+}
+
+/// `node` as Excel evaluates it for every record, or `None` when that is `node` itself: an
+/// unqualified reference reads the database's `sheet`, not the condition's own (`=B2>50`, on Crit
+/// whose B column holds 1-20, over Data!A1:C7, whose B column holds 101-120, matches every record,
+/// like `=Data!B2>50`), and `ROW()` stays the condition cell's `own_row` while its references move
+/// (`=ROW()=2` on Crit row 2 matches every record, `=ROW()>2` none; probes/db-computed-criteria-other-sheet).
+fn condition_for_records(node: &Node, sheet: u32, own_row: i32) -> Option<Node> {
+    let rewrites = |node: &Node| match node {
+        Node::ReferenceKind {
+            sheet_name: None,
+            sheet_index,
+            ..
+        }
+        | Node::RangeKind {
+            sheet_name: None,
+            sheet_index,
+            ..
+        } => *sheet_index != sheet,
+        Node::FunctionKind {
+            kind: Function::Row,
+            args,
+        } => args.is_empty(),
+        _ => false,
+    };
+    let mut pending = vec![node];
+    let mut any = false;
+    while let Some(node) = pending.pop() {
+        any |= rewrites(node);
+        node.push_children(&mut pending);
+    }
+    if !any {
+        return None;
+    }
+    let mut node = node.clone();
+    let mut pending = vec![&mut node];
+    while let Some(node) = pending.pop() {
+        match node {
+            Node::ReferenceKind {
+                sheet_name: None,
+                sheet_index,
+                ..
+            }
+            | Node::RangeKind {
+                sheet_name: None,
+                sheet_index,
+                ..
+            } => *sheet_index = sheet,
+            Node::FunctionKind {
+                kind: Function::Row,
+                args,
+            } if args.is_empty() => *node = Node::NumberKind(f64::from(own_row)),
+            _ => {}
+        }
+        node.push_children_mut(&mut pending);
+    }
+    Some(node)
 }
 
 /// The corners of a reference argument; an error passes through, anything else is `#VALUE!`
@@ -588,8 +656,9 @@ impl Model {
     /// A computed criterion's value for database `row`. A formula condition is evaluated again
     /// as if it sat as many rows lower as the record is below the first record, so its relative
     /// references follow the record (a blank header over `=B2>2` tests each record's B cell);
-    /// a constant is its own value (probes/db-computed-criteria-shapes AB23-AB26). A record whose
-    /// moved references land on the database's header row does not match ([`reads_records`]).
+    /// a constant is its own value (probes/db-computed-criteria-shapes AB23-AB26). Its unqualified
+    /// references read the database's sheet ([`condition_for_records`]), and a record whose moved
+    /// references miss the database's records does not match ([`reads_records`]).
     fn db_computed_condition(
         &mut self,
         query: &DbQuery,
@@ -624,10 +693,13 @@ impl Model {
         else {
             return value;
         };
-        if !reads_records(&node, context, query) {
+        let rewritten = condition_for_records(&node, query.left.sheet, criteria_cell.row);
+        let node = rewritten.as_ref().unwrap_or(&node);
+        if !reads_records(node, context, query) {
             return CalcResult::Boolean(false);
         }
-        if offset == 0 {
+        // The cell's own value is the first record's, unless its references moved sheets.
+        if offset == 0 && rewritten.is_none() {
             return value;
         }
         // A formula condition that itself runs a D-function with formula conditions would
@@ -642,7 +714,7 @@ impl Model {
             );
         }
         self.defined_names_running.db_condition_running = true;
-        let result = self.evaluate_node_in_context(&node, context);
+        let result = self.evaluate_node_in_context(node, context);
         // Only reached when no condition was running (the guard above returns otherwise).
         self.defined_names_running.db_condition_running = false;
         self.dereference(result, context)

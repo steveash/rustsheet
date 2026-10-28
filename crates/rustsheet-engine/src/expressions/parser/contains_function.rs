@@ -155,7 +155,7 @@ impl Node {
     }
 
     /// [`Node::push_children`] for the walks that rewrite the tree in place.
-    fn push_children_mut<'a>(&'a mut self, pending: &mut Vec<&'a mut Node>) {
+    pub(crate) fn push_children_mut<'a>(&'a mut self, pending: &mut Vec<&'a mut Node>) {
         match self {
             Node::FunctionKind { args, .. } | Node::NamedFunctionKind { args, .. } => {
                 pending.extend(args.iter_mut());

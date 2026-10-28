@@ -3,7 +3,7 @@ id: T-2617
 title: "Probe D* computed criteria over a database on another sheet: which records match (gen-m9, T-2553 leftovers)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -47,10 +47,10 @@ Cells:
 Code: `reads_records` and `db_computed_condition` in crates/rustsheet-engine/src/functions/database.rs (TODO(T-2617)).
 
 ## Acceptance criteria
-- [ ] A probe case (excel-probe skill) with oracle values for the placements under Context is committed under eval/suites/probes.
-- [ ] criteria.md records the rule; a functions-criteria task (campaign: visible) is filed to implement it for the 8 cells,
+- [x] A probe case (excel-probe skill) with oracle values for the placements under Context is committed under eval/suites/probes.
+- [x] criteria.md records the rule; a functions-criteria task (campaign: visible) is filed to implement it for the 8 cells,
       or this task implements it if it is small.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The same-sheet header-row rule (T-2553, done).
@@ -61,3 +61,12 @@ of Excel's value, or has Excel's type, error and text. Bit-level criteria still 
 filed with `defer: phase-1b`.
 
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off gen-m9 cells of DPRODUCT (3), DMAX, DVAR, DAVERAGE, DCOUNTA and DGET (1 each). Fixing them lifts all six D* functions to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+probes/db-computed-criteria-other-sheet (149 questions, excel-graph 2026-10-28) settles it: an unqualified reference in a
+D-function formula condition reads the database's sheet (the gen-m9 criterion `=B2>3` on Db read Data's B column, which
+is why no fixed shift of Db's B fitted); on the database's sheet a moved relative reference above the first record or
+outside the database's columns fails the record, a range only when all of it does; a reference qualified with another
+sheet is read as it is; `ROW()` stays the condition cell's row. Implemented here (small): `condition_for_records` and
+`reads_records` in functions/database.rs; criteria.md updated. Eval: gen-m9 known failures 3566 -> 3558 (the 8 owned
+cells), probes +1 case all passing, no regressions.

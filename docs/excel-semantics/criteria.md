@@ -372,25 +372,40 @@ Qty 4, 10, 0, 2, 1, -4, 7, 5, Price 2.5, "x", 4, TRUE, 10, 0.5, 100, -1 and Date
   `#NUM!` (probes/db-get-blank-field N1-N8, excel-graph 2026-10-24, T-2422; implemented in `fn_dget`).
 - A database on another sheet (Data) with the criterion on Db matches no record: `DCOUNTA(Data!B4:B6,1,Db!O1:O2)`,
   `DMAX(Data!B2:E4,4,..)`, `DPRODUCT(Data!B11:E12,3,..)`, `DPRODUCT(Data!C10:E12,3,..)`, `DPRODUCT(Data!C6:D10,2,..)` are
-  0, `DAVERAGE(Data!A10:C12,2,..)` and `DVAR(Data!D2:E12,1,..)` `#DIV/0!` and `DGET(Data!A7:D11,2,..)` `#VALUE!` (ours
-  finds records: 1, 1, 1, -0.0042, 123456789.123, 3.14159, 549.25, `#NUM!`).
+  0, `DAVERAGE(Data!A10:C12,2,..)` and `DVAR(Data!D2:E12,1,..)` `#DIV/0!` and `DGET(Data!A7:D11,2,..)` `#VALUE!` (before T-2617 ours
+  found records: 1, 1, 1, -0.0042, 123456789.123, 3.14159, 549.25, `#NUM!`).
 - An unknown criteria header is ignored over a Data database too: `DGET(Data!B6:E8,4,Db!N1:N2)` (N1 "Nope") is -0.5
   (DGET skips the blank E8, above).
 Evidence: gen-m9 4dc761698ca23149 A129, 74779cff2810ccf4 A52, fa8ee59f2f1be7e0 A332, 7a819ffbbeff8fcc A303,
 5bdef392d16a5efb A161, f066968376660329 A292, A205, A313, d193e8b4ab820f52 A375, A260, f61a73cd9af21e6d A289,
 c9d7659896d95368 A82, A1, 6d16afd40600302b A365, cb80ca09be0e12bc A52, d9d55972b50e55e8 A106, 88cabddc4935351c A255
 (excel-graph, 2026-10-22/23, T-2258).
-Ours: the same-sheet cells match since T-2553: a record whose moved relative reference into the database's columns lands
-on its header row does not match (`reads_records` in functions/database.rs; the first record of Db!A2:D9
-reads B2). Ours extends this, unprobed, to a reference above the header row and to a range with either end there; a
-reference outside the database's columns, or below its records, is read as it is (all in T-2617's probe). The cells over
-a database on another sheet are T-2617's: the plain shift ours does gives Excel's `DCOUNTA(Data!A2:C10,3,Db!O1:O2)` = 3
-(02b7cfabebd2cc0a A231) and `DVARP(Data!A4:D9,1,Db!O1:O2)` = 0 (d193e8b4ab820f52 A114), but not the 8 cells above that
-match nothing, and no fixed shift fits all ten.
-Status: VERIFIED (excel-graph) for the values; the reference rule for a criterion away from the database is VERIFIED
-(T-2525, probes/db-criteria-formula-placement: relative references rebase onto the first record, absolute ones
-stay put; ours agrees); the header-row rule is VERIFIED for Db!A2:D9 with `=B2>3` only (eight cells, one placement; T-2553),
-its general form and the other-sheet rule are UNVERIFIED (T-2617).
+- Which records a formula condition reads (probes/db-computed-criteria-other-sheet, excel-graph 2026-10-28, T-2617; the
+  condition sits on Crit row 2 under the header "Calc", Crit's B column holds 1-20, Data's B column 101-120, and DSUM sums
+  2^row ids, so each answer names the rows that matched):
+  - An unqualified reference reads the database's sheet, not the condition's own: `=B2>50` over Data!A1:C7 matches every
+    record and `CELL("address",B2)` names Data, exactly as `=Data!B2>50`. A reference qualified with another sheet than
+    the database's is read as it is, shifted, with no further check: `=Crit!B2>0` matches every record of every Data
+    placement, and `=Data!B2>0` every record over Crit!A10:C16.
+  - On the database's sheet a relative-row reference keeps the record shift (record r reads row 2 + (r - first record),
+    `=ROW(B2)=5` picks the record that reads row 5), and a record whose moved reference lands above the first record (on
+    the header row or higher) or in a column outside the database does not match: over Data!A4:C10 `=B2>0` matches rows
+    8-10 only, over Data!A10:C16 nothing, over Data!D1:E7 (B outside D:E) nothing, and over Crit!A10:C16 `=B9>0` matches
+    rows 13-16, `=B10>0` rows 12-16, `=F9>0` nothing. This is what the gen-m9 cells over Data above show: their
+    criterion reads Data's B column, not Db's.
+  - A range passes when any of it lands on the records: `=SUM(B10:B11)>3` matches every record of Crit!A10:C16 (the first
+    record reads B10:B11, one end on the header row), `=SUM(B9:B10)>3` rows 12-16, `=SUM(B11:B12)>3` every record
+    (the last record's range runs below the database).
+  - `ROW()` without an argument is the condition cell's own row for every record, while references move: `=ROW()=2`
+    matches every record of every placement, `=ROW()>2` and `=ROW()<2` none (and, with no reference, no record fails
+    the rule above).
+Ours: since T-2617, `condition_for_records` (functions/database.rs) moves unqualified references onto the database's sheet
+and pins `ROW()` to the condition's row, and `reads_records` fails a record whose moved relative reference on the
+database's sheet lies above the first record or outside its columns (a range: wholly so); all 149 probe cells and the
+gen-m9 cells above match. Unprobed: a relative-column reference with an absolute row outside the columns (ours reads it
+as it is, like any absolute row), and `COLUMN()` (the shift is by rows only, so it cannot differ).
+Status: VERIFIED (excel-graph) for the values and for the reference rules (T-2525 for a criterion away from the
+database, T-2617 for the sheet, row, column and range rules and `ROW()`).
 Tasks: T-2258, T-2422, T-2525, T-2553, T-2617
 
 ## Conditional-format text rules and wildcards (UNVERIFIED, T-2910)

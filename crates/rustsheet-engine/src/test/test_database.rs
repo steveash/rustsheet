@@ -644,7 +644,9 @@ fn cells_reached_from_a_formula_condition_evaluate_in_full() {
     }
     model._set("G2", "=A2>2");
     model._set("H2", "=K2>0");
-    model._set("M1", "=DCOUNT(A1:A6,1,H1:H2)");
+    // The database spans K: a condition reading a column outside the database fails every
+    // record (probes/db-computed-criteria-other-sheet, T-2617).
+    model._set("M1", "=DCOUNT(A1:K6,1,H1:H2)");
     model._set("N1", "=DCOUNT(A1:A6,1,G1:G2)");
     model.evaluate();
     for row in 2..=6 {
@@ -695,4 +697,34 @@ fn formula_condition_on_the_header_row_fails() {
     assert_eq!(model._get_text("F3"), *"2");
     assert_eq!(model._get_text("F4"), *"4");
     assert_eq!(model._get_text("F5"), *"7");
+}
+
+/// A formula condition on another sheet than the database reads its unqualified references on
+/// the database's sheet; a record whose moved reference lies outside the database's columns
+/// fails; `ROW()` stays the condition cell's row (probes/db-computed-criteria-other-sheet, T-2617).
+#[test]
+fn formula_condition_reads_the_database_sheet() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    for row in 1..=7 {
+        model._set(&format!("Sheet2!A{row}"), &(row * 10).to_string());
+        model._set(&format!("Sheet2!B{row}"), &(100 + row).to_string());
+        model._set(&format!("B{row}"), &row.to_string());
+    }
+    for (column, condition) in [("H", "=B2>50"), ("I", "=Sheet1!B2>0"), ("J", "=ROW()=2")] {
+        model._set(&format!("{column}1"), "Calc");
+        model._set(&format!("{column}2"), condition);
+    }
+    model._set("M1", "=DSUM(Sheet2!A1:B7,1,H1:H2)");
+    model._set("M2", "=DSUM(Sheet2!A1:A7,1,H1:H2)");
+    model._set("M3", "=DSUM(Sheet2!A1:A7,1,I1:I2)");
+    model._set("M4", "=DSUM(Sheet2!A3:B7,1,J1:J2)");
+    model.evaluate();
+    // Rows 2-7 of Sheet2 match: B2..B7 hold 102..107 there (Sheet1's B holds 2..7).
+    assert_eq!(model._get_text("M1"), *"270");
+    // B lies outside Sheet2!A1:A7.
+    assert_eq!(model._get_text("M2"), *"0");
+    // A reference qualified with another sheet is read as it is.
+    assert_eq!(model._get_text("M3"), *"270");
+    assert_eq!(model._get_text("M4"), *"220");
 }
