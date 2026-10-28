@@ -34,3 +34,9 @@ TAN's kernel on Excel for the web: `IMTAN(3.14159)` -2.65358979336212E-06 is alr
 trigonometry of a real number is SIN, COS and TAN" (probes/t2534-im-trig-real-limit) and owned by T-2774 through
 gen-m9/79dac8dde81afda9 A154. Following the web here regresses the Mac desktop cache COMPLEXs.xlsx N6, which decision
 0030 makes the reference, so it is not a kernel to fit. The cell is added to T-2774's owned list.
+
+## Probe (2026-10-28, a second run on the same task)
+probes/t3054-imtan-real-tan-kernel (excel-graph) confirms the web's TAN kernel on nine more real arguments where the two
+kernels print different text, and its N1 is N6's own formula on N6's inputs, `IMREAL(IMTAN(COMPLEX(5,0,"i")))`: the web
+gives -3.38051500624659 against N6's Mac cache ...658, so the conflict is the platform, not the formula. Its 10 failing
+cells (N1, A2, A4:A11) are known failures owned by T-2774; eval delta 0 fixed, 0 regressions.
