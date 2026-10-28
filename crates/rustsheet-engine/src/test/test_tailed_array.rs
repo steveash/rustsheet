@@ -412,3 +412,77 @@ fn sumproduct_of_bounded_arguments_with_different_tops() {
     }
     assert_eq!(walks, 2 * formulas.len(), "every argument is tailed");
 }
+
+/// UNIQUE reads an element-wise whole-column argument as its head and two copies of its tail row
+/// (SPEC-0020 Amendment 1, T-0493): the whole result, as ARRAYTOTEXT's strict text, with
+/// `exactly_once` TRUE and FALSE, literal `by_col` FALSE forms, tails equal to a head value (an
+/// empty element, 0) and not, and an all-tail `#CALC!`.
+#[test]
+fn unique_of_a_tailed_argument() {
+    let expressions = [
+        "IF(A:A=$H$1,B:B,\"\")",
+        // A tail of `Empty`, which the head holds too (C's blanks).
+        "IF(A:A>1,B:B*2,C:C)",
+        // A tail of 0, which the head holds too.
+        "(A:A=1)*B:B",
+        // A tail of 0.1 that no head row holds.
+        "IF(C:C=\"\",0.1,C:C)",
+        "Sheet2!A:A&\"\"",
+        // Every row repeats: no row occurs once, `#CALC!` with exactly_once.
+        "Sheet2!A:A*0",
+    ];
+    // Each expression with exactly_once FALSE and TRUE; the literal flag forms on one of them
+    // (debug builds evaluate the ordinary 1,048,576-row reading slowly).
+    let mut formulas: Vec<String> = expressions
+        .iter()
+        .flat_map(|e| ["", ",,TRUE"].map(|f| format!("=ARRAYTOTEXT(UNIQUE({e}{f}),1)")))
+        .collect();
+    formulas.extend(
+        [",FALSE", ",0", ",,FALSE", ",FALSE,TRUE", ",0,1"]
+            .map(|f| format!("=ARRAYTOTEXT(UNIQUE(IF(A:A>1,B:B*2,C:C){f}),1)")),
+    );
+    // A bounded span past the used area, and `ROW()` of it where the tail row does not pick it
+    // (T-0491).
+    formulas.extend(
+        [
+            "IF(A2:A70000=$H$1,B2:B70000,\"\")",
+            "IF(A2:A70000=1,ROW(A2:A70000),0)",
+        ]
+        .map(|e| format!("=ARRAYTOTEXT(UNIQUE({e},,TRUE),1)")),
+    );
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, formulas.len(), "every argument is tailed");
+    let (results, _) = both_ways(&["=UNIQUE(Sheet2!A:A*0,,TRUE)".to_string()]);
+    assert_eq!(results[0].1, "#CALC!");
+}
+
+/// UNIQUE keeps the ordinary reading when a flag is not a literal FALSE-or-absent `by_col` and
+/// literal `exactly_once`: by columns (a whole column is one key), a flag from a reference or an
+/// array (the call lifts), arguments that are not element-wise expressions, and a tail row that
+/// picks `ROW()`.
+#[test]
+fn unique_forms_that_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=ARRAYTOTEXT(UNIQUE((A:A=1)*B:B,TRUE),1)",
+        "=ARRAYTOTEXT(UNIQUE((A:A=1)*B:B,1,TRUE),1)",
+        "=ARRAYTOTEXT(UNIQUE((A:A=1)*B:B,$H$3),1)",
+        "=ARRAYTOTEXT(UNIQUE((A:A=1)*B:B,,$H$3),1)",
+        "=ARRAYTOTEXT(UNIQUE((A:A=1)*B:B,{FALSE;TRUE}),1)",
+        "=ARRAYTOTEXT(UNIQUE((A:A=1)*B:B,\"FALSE\"),1)",
+        "=ARRAYTOTEXT(UNIQUE(A:A),1)",
+        "=ARRAYTOTEXT(UNIQUE(A1:A100*1),1)",
+        // The tail row picks `ROW()`: one value per row, not one repeated row (the sentinel).
+        "=ROWS(UNIQUE(IF(A2:A70000=\"\",ROW(A2:A70000),0)))",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 0);
+}
