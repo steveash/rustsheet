@@ -50,7 +50,7 @@ const BALANCE_GROWTH_MAX: f64 = 1024.0;
 /// to the bit and the rest within 2 ulps, where the per-period sum and the closed form missed all
 /// 22 by 1 to 10 ulps (T-2521). Between 2E-7 and 3.62 the cut is a fit: the one cell probed there,
 /// `CUMPRINC(0.01,360,100000,1,12,0)` (exponent 3.58, fin-argument-modes H80), is 4 ulps off with
-/// the per-period sum and 2 with the geometric one, both visibly right (TODO(T-3058): probe it).
+/// the per-period sum and 2 with the geometric one, both visibly right (TODO(T-3067): probe it).
 const GEOMETRIC_MIN_DISCOUNT: f64 = 3.6;
 
 /// The growth `nper·L` below which type 1's short interest is the payments less the principal
@@ -354,7 +354,7 @@ impl Periods {
     /// `log1p`), and a deep discount carries that, so `CUMPRINC(0.1,1023,478581,7,24,1)` and
     /// `CUMPRINC(2,151,319288,3,42,1)` are to the bit with it and 67 and 245 ulps off with `log1p`
     /// (gen-m9 9d9ceba257f8001b A372, b73c6cc96e093f03 A62; T-2521). A62's 40 periods still take
-    /// the closed form (TODO(T-3058)). `None` where the deepest discount is near 1, the leading
+    /// the closed form (TODO(T-3067)). `None` where the deepest discount is near 1, the leading
     /// power is not normal or the result is not finite: the per-period sum or the closed form
     /// decides there.
     fn geometric_principal(&self) -> Option<f64> {
@@ -419,7 +419,7 @@ impl Periods {
     /// This form matches 19 of the 28 probe cells over many periods or past an overflow (22 of the
     /// case's 30 cells pass overall) bit for
     /// bit and the others within 6 ulps, but for 48 to 64 near period 1E15 (fin-remaining-later-
-    /// argument-ranges K3, A18; TODO(T-3058)). It keeps `log1p`, not the geometric sum's
+    /// argument-ranges K3, A18; TODO(T-3067)). It keeps `log1p`, not the geometric sum's
     /// `growth_log`: on Excel's L over every long range fin-cumipmt-period-bound A6, A11 and A30
     /// leave the bit (T-2521). `None` when the result is not finite.
     fn closed_form(&self, paid: Paid) -> Option<f64> {

@@ -1364,13 +1364,13 @@ gen-m9 sweep and CUMPRINC_CUMIPMT.xlsx):
   of 22 to the bit and the rest within 2 ulps, where the other forms missed all 22 by 1 to 10 ulps. Below 3.62 the
   only probed cells are gen-m9 A300 (exponent 2E-7, the per-period sum to the bit, the geometric 2 ulps off) and
   fin-argument-modes H80 (3.58, `CUMPRINC(0.01,360,100000,1,12,0)`: the per-period sum 4 ulps off, the geometric 2),
-  so the cut at 3.6 is a fit between 2E-7 and 3.62 (T-3058 probes it); CUMPRINC_CUMIPMT.xlsx H25 (3.96), which T-2514 had to the bit only with the closed form, is to the bit
+  so the cut at 3.6 is a fit between 2E-7 and 3.62 (T-3067 probes it); CUMPRINC_CUMIPMT.xlsx H25 (3.96), which T-2514 had to the bit only with the closed form, is to the bit
   with the geometric sum on this L too.
 - Type 0's interest is the payments less the principal wherever the principal is no larger than the interest:
   `CUMIPMT(0.5,60,100000,10,18,0)` is -449999.99609733943 to the bit with it and 74 ulps off with the balance form,
   and so are gate-edges B1-B11 across the growth 2^10 (both sides), fin-argument-modes H72 and gen-m9 cells. There
   `-pmt·m` and the principal do not cancel, so the principal's last bit does not move the result.
-- Not fitted (T-3058):
+- Not fitted (T-3067):
   - Type 0 interest at tiny rates where the principal dominates: gate-edges A2-A7 (`CUMIPMT(1E-4,60,100000,3,10,0)`
     -72.68628355221881) are 128 to 512 ulps off, one ulp of `pmt·m`, with the principal from the per-period sum, the
     geometric sum, the closed form or the balance drop, and 14 to 354 with the balance form. Excel's implied principal
@@ -1397,8 +1397,8 @@ has 37 of its 89 cells to the bit, among them J1 `CUMPRINC(0.004,1024,1000,3,34,
 -2.3341923189629874 (2 ulps from the exact sum, which the closed form had) and J2.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
 fin-cumipmt-period-bound A18, the gen-m9 cells A62, A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
-T-3058; the short sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3058, T-1374
+T-3067; the short sums' last digits in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
