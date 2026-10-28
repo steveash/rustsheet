@@ -78,6 +78,7 @@ C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/array-context-legacy-sumproduct.case.json	31
+C	probes/array-error-element-order.case.json	31
 C	probes/arraytotext-empty-ref.case.json	25
 C	probes/arraytotext-error-vs-format.case.json	16
 C	probes/arraytotext-number-text.case.json	15
