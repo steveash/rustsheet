@@ -344,5 +344,66 @@ class UnattributedOwners(TaskDir):
             self.assertEqual(exit_owners.main([*args, "--strict"]), 0)
 
 
+class AllOff(TaskDir):
+    """`--all-off` (T-0086): the visibly-off rule is the eval's (closeness.rs pins the 4-ulp and
+    half-unit boundaries); the report's lists arrive already filtered."""
+
+    @staticmethod
+    def report() -> dict[str, object]:
+        return {
+            "cases": [
+                {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2"), cell("P", "B3"), cell("P", "B4")]}
+            ],
+            "attributed_off": [
+                {"case": PROBE, "cell": "P!B3", "function": "GAMMA", "formula": "GAMMA(1)",
+                 "expected": "1.0", "actual": "2.0"},
+                {"case": PROBE, "cell": "P!B2", "function": "BETA.DIST", "formula": "BETA.DIST(1)",
+                 "expected": "1.0", "actual": "2.0"},
+            ],
+            "unattributed_off": [{"case": PROBE, "cell": "P!B4", "formula": "A()+B()"}],
+            "probe_milestones": [
+                {"milestone": "M9", "failing_cases": [[PROBE, 3]],
+                 "visibly_off_cells": [f"{PROBE}!P!B3", f"{PROBE}!P!B5"]},
+            ],
+        }
+
+    def listed(self) -> list[tuple[str, str, bool]]:
+        return [
+            (o.cell.criterion, o.cell.key, deferred)
+            for o, deferred in exit_owners.unowned_off(self.report(), self.tasks)
+        ]
+
+    def test_groups_by_function_then_unattributed_then_probe(self) -> None:
+        self.assertEqual(
+            self.listed(),
+            [
+                ("BETA.DIST", "P!B2", False),
+                ("GAMMA", "P!B3", False),
+                ("unattributed", "P!B4", False),
+                ("probe M9", "P!B5", False),
+            ],
+        )
+
+    def test_an_open_task_owns_its_cell_and_a_deferred_one_does_not(self) -> None:
+        self.task("index-reference-args B3")
+        self.assertNotIn("P!B3", [k for _, k, _ in self.listed()])
+        d = self.tasks / "M5" / "T-9100-d.md"
+        d.write_text(
+            "---\nid: T-9100\nmilestone: M5\nstatus: todo\ndefer: phase-1b\n---\n\nindex-reference-args B2\n"
+        )
+        self.assertIn(("BETA.DIST", "P!B2", True), self.listed())
+
+    def test_output_function_filter_and_strict(self) -> None:
+        path = self.tasks / "report.json"
+        path.write_text(json.dumps(self.report()))
+        args = ["--all-off", "--report", str(path), "--tasks", str(self.tasks)]
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(exit_owners.main([*args, "--function", "GAMMA", "--strict"]), 1)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], f"GAMMA\t{PROBE}!P!B3\tGAMMA(1)\t1.0\t2.0")
+        self.assertEqual(lines[-1], "1 visibly-off cells have no open owner")
+
+
 if __name__ == "__main__":
     unittest.main()
