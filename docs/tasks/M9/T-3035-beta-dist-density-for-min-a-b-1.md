@@ -36,7 +36,7 @@ files the group that stays off as a Phase 1b task with that evidence.
      1 ulp off Excel's (16 exact ties of r + s, 11 just past a midpoint). Groups 2 and 3 are one cause: those 27
      log1p misses times n. Fixing the tie rule of the log1p tail (r2-log1p section 6 hypotheses) fixes both.
   - The rest: t2513-r3-m1-residual-a 1 and t2464-w2f-absweep 4 (max <= 8, the GAMMALN form; shapes next to
-    (0.5, 6.25), T-2821's "newly" list) and m9-beta-dist-a50's 2 swapped cells.
+    (0.5, 6.25), T-2821's "newly" list). (m9-beta-dist-a50's 2 cells, counted in group 1, are the swapped (50, 0.0001) points.)
 - Code: `beta_density.rs` (`beta_density_small_shape`, `algdiv`), the Excel log1p primitive from T-2645
   (`x87` modules), `binom.rs` for BINOM.DIST(0,n,p).
 

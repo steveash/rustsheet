@@ -36,7 +36,7 @@ model's margin over the correctly rounded density (about 14,700 of 64,922 scored
 - Engine: `f_pdf_accurate` in `crates/rustsheet-engine/src/functions/statistical/fisher.rs` (beta density times
   y·(1-y)/x where statrs' direct form is finite). Reuse `x87_exp::excel_exp_extended`, `x87_log10::excel_ln` and
   the Excel log1p primitive; stirlerr lives in `functions/statistical/loader.rs` (share it, do not copy it).
-- If this lands before T-2790, T-2790's 224 named t2220 cells are likely settled: re-triage T-2790 in the Outcome.
+- Ordering with T-2790: both change `f_pdf_accurate`. Whichever lands second rebases on the first; if this lands first, T-2790's 224 named t2220 cells are likely settled, so re-triage T-2790 in the Outcome.
 
 ### Cases owned (T-2981)
 Visibly-off F.DIST density cells per case at the routing eval (each case's F.DIST(...,FALSE) cells; other cells of
