@@ -445,6 +445,40 @@ class MergeLock(unittest.TestCase):
         # 31 polls: own PR and the holder's at polls 0, 10, 20 and 30, not 62 reads.
         self.assertEqual(sorted(reads), ["101"] * 4 + ["202"] * 4)
 
+    def test_wait_retries_git_errors_until_three_in_a_row(self) -> None:
+        real, errors = merge_lock.read_lock, [merge_lock.GitError("fetch failed")] * 2
+
+        def flaky(root: Path) -> merge_lock.Lock | None:
+            if errors:
+                raise errors.pop()
+            return real(root)
+
+        with mock.patch.object(merge_lock, "read_lock", side_effect=flaky):
+            self.assertEqual(self.wait()[:2], (0, 2))  # two failed polls, then the lock is free
+        with (
+            mock.patch.object(merge_lock, "read_lock", side_effect=merge_lock.GitError("down")),
+            self.assertRaises(merge_lock.GitError),
+        ):
+            self.wait()
+
+    def test_main_waits_for_a_pr_or_a_train_and_refuses_bad_minutes(self) -> None:
+        self.assertEqual(
+            merge_lock.main(["wait", "--pr", "202", "--holder", "agent-b", "--timeout", "1"], self.a), 0
+        )
+        merge_lock.release("agent-b", root=self.a)
+        self.assertEqual(
+            merge_lock.main(["wait", "--train", "run-7", "--prs", "1", "2", "--timeout", "1"], self.a), 0
+        )
+        lock = self.held_lock()
+        self.assertEqual((lock.holder, lock.pr, lock.prs), ("run-7", "train", ("1", "2")))
+        for flag, value in (("--timeout", "nan"), ("--timeout", "inf"), ("--ttl", "-1"), ("--ttl", "NaN")):
+            with (
+                self.subTest(flag=flag, value=value),
+                self.assertRaises(SystemExit),
+                mock.patch("sys.stderr"),
+            ):
+                merge_lock.main(["wait", "--pr", "1", "--holder", "x", flag, value], self.a)
+
     def test_main_needs_a_holder_and_a_numeric_pr(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=True), mock.patch("sys.stderr"):
             self.assertEqual(merge_lock.main(["acquire", "--pr", "1"]), 2)

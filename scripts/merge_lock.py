@@ -7,8 +7,8 @@
   scripts/merge_lock.py status
 
 Exit codes of `acquire` and `wait`: 0 the lock is yours; 1 busy (you are in the queue), or `wait`
-timed out; 2 an error; 3 PR N is already merged or closed; 4 lost: you held the lock and it was
-taken over (a renewal).
+timed out; 2 an error; 3 PR N is already merged or closed; 4 lost, for `acquire --renew` only:
+you held the lock and it was taken over.
 
 The lock is the branch `merge-lock` on origin: an orphan commit with an empty tree whose message
 (format `version: 2`, SPEC-0027 section 1) names the holder and the PR, or says `state: free`, and
@@ -36,6 +36,7 @@ import argparse
 import dataclasses
 import http.client
 import json
+import math
 import os
 import re
 import subprocess
@@ -46,6 +47,7 @@ import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
@@ -85,6 +87,8 @@ WAIT_MINUTES = 45
 # A PR's state is re-read at most every READ_EVERY polls: about 12 reads an hour per PR, against
 # 60 an hour for unauthenticated API access.
 READ_EVERY = 10
+# `wait` gives up (exit 2) after this many polls in a row fail on git (a fetch or push error).
+GIT_FAILURES = 3
 # Waiters rewrite the commit when they refresh, so a holder's write can lose to a waiter's.
 ATTEMPTS = 10
 
@@ -357,6 +361,13 @@ def acquire(
     return code
 
 
+class Read(NamedTuple):
+    """One PR-finished read, and the poll it was made at."""
+
+    poll: int
+    finished: bool
+
+
 class FinishedReads:
     """PR-finished reads cached per PR. Within one `acquire` (one poll) each PR is read once, out
     of the CAS retries; across `wait`'s polls a PR is re-read only every READ_EVERY polls, so a new
@@ -365,14 +376,17 @@ class FinishedReads:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.poll = 0
-        self.read_at: dict[str, tuple[int, bool]] = {}
+        self.read_at: dict[str, Read] = {}
 
     def __call__(self, pr: str) -> bool:
         last = self.read_at.get(pr)
-        if last is None or self.poll - last[0] >= READ_EVERY:
-            last = (self.poll, valid_pr(pr) and bool(pr_finished(pr, self.root)))
+        if last is None or self.poll - last.poll >= READ_EVERY:
+            last = Read(self.poll, valid_pr(pr) and bool(pr_finished(pr, self.root)))
             self.read_at[pr] = last
-        return last[1]
+        return last.finished
+
+    def next_poll(self) -> None:
+        self.poll += 1
 
 
 def attempt(
@@ -448,15 +462,23 @@ def wait(
     ttl_minutes: float = TTL_MINUTES,
     root: Path = ROOT,
 ) -> int:
-    """`acquire` every POLL seconds until the lock is held (0), the PR is finished (3), a renewal
-    is lost (4), or the timeout (1). Prints only changed messages."""
+    """`acquire` every POLL seconds until the lock is held (0), the PR is finished (3), or the
+    timeout (1). Prints only changed messages. A git error is retried at the next poll; the
+    GIT_FAILURES-th in a row is raised (exit 2)."""
     finished = FinishedReads(root)
     deadline = time.time() + timeout_minutes * 60
-    last = ""
+    last, failures = "", 0
     while True:
-        code, message = attempt(
-            holder, pr, prs=prs, ttl_minutes=ttl_minutes, root=root, renew=False, finished=finished
-        )
+        try:
+            code, message = attempt(
+                holder, pr, prs=prs, ttl_minutes=ttl_minutes, root=root, renew=False, finished=finished
+            )
+            failures = 0
+        except GitError as e:
+            failures += 1
+            if failures >= GIT_FAILURES:
+                raise
+            code, message = BUSY, f"merge lock: {e} (retrying)"
         if message != last:
             print(message, flush=True)
             last = message
@@ -466,7 +488,7 @@ def wait(
             print(f"merge lock: still waiting after {timeout_minutes:g} min; giving up", flush=True)
             return BUSY
         time.sleep(POLL)
-        finished.poll += 1
+        finished.next_poll()
 
 
 def release(holder: str, root: Path = ROOT) -> int:
@@ -503,6 +525,14 @@ def status(root: Path = ROOT) -> int:
     return 0
 
 
+def minutes(value: str) -> float:
+    """An argparse type: a finite, non-negative number of minutes (no NaN, inf or negatives)."""
+    number = float(value)
+    if not (math.isfinite(number) and number >= 0):
+        raise argparse.ArgumentTypeError(f"want a finite number of minutes >= 0, not {value!r}")
+    return number
+
+
 def main(argv: list[str], root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -512,7 +542,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     take.add_argument("--renew", action="store_true", help="you hold the lock: exit 4 if it was taken over")
     queue = commands.add_parser("wait")
     queue.add_argument(
-        "--timeout", type=float, default=WAIT_MINUTES, help="minutes before giving up (exit 1)"
+        "--timeout", type=minutes, default=WAIT_MINUTES, help="minutes before giving up (exit 1)"
     )
     for sub in (take, queue):
         claim = sub.add_mutually_exclusive_group(required=True)
@@ -521,7 +551,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
         sub.add_argument(
             "--prs", type=int, nargs="*", help="a train's PRs still unmerged (replaces the lock's)"
         )
-        sub.add_argument("--ttl", type=float, default=TTL_MINUTES, help="minutes before a lock is stale")
+        sub.add_argument("--ttl", type=minutes, default=TTL_MINUTES, help="minutes before a lock is stale")
     drop = commands.add_parser("release")
     for sub in (take, queue, drop):
         sub.add_argument("--holder", default=os.environ.get("CLAUDE_CODE_SESSION_ID"))

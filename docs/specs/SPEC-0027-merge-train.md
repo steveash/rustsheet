@@ -238,7 +238,7 @@ takes the lock next. A session that releases and then acquires again is no longe
 so it joins at the tail. That fixes the #1859 → #1865 chain.
 
 **`wait --pr N [--timeout 45]`** calls `acquire` every 30 s until it exits 0 (held) or 3 (PR
-finished), or until the timeout (exit 1). It prints only changes of position. Agents run `make
+finished), or until the timeout (exit 1). It prints only changed messages. Agents run `make
 merge-lock-wait PR=<n>` in the background and are woken when it exits, instead of polling.
 
 **Mixed versions during rollout.** A session on an older checkout runs version-1

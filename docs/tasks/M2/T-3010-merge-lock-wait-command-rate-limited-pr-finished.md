@@ -3,7 +3,7 @@ id: T-3010
 title: "Merge lock wait command, rate-limited PR-finished read, and skills that wait instead of retrying"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -34,17 +34,33 @@ of retrying later, and waiting costs few GitHub API reads.
   `make merge-lock-acquire` should pass `--renew` through (`RENEW=1`) or stop saying "renew".
 
 ## Acceptance criteria
-- [ ] `scripts/merge_lock.py wait --pr N [--timeout MIN]` implements SPEC-0027 section 1's
+- [x] `scripts/merge_lock.py wait --pr N [--timeout MIN]` implements SPEC-0027 section 1's
       `wait`, and `make merge-lock-wait PR=<n> [TIMEOUT=45]` runs it.
-- [ ] The PR-finished read is rate-limited per PR as above.
-- [ ] `scripts/test_merge_lock.py` covers `wait` reaching 0, 3 and the timeout, and the rate
+- [x] The PR-finished read is rate-limited per PR as above.
+- [x] `scripts/test_merge_lock.py` covers `wait` reaching 0, 3 and the timeout, and the rate
       limit (reads counted with a fake clock and API).
-- [ ] Step 1 of the steward skill's "Merge lock" and work-loop step 6.3 say to wait with
+- [x] Step 1 of the steward skill's "Merge lock" and work-loop step 6.3 say to wait with
       `make merge-lock-wait` in the background, instead of retrying later.
-- [ ] SPEC-0027 section 1 step 1 and the `merge-lock-acquire` target match the code (above).
-- [ ] `make hygiene`, `make typos` and `check_governance.py origin/main` pass; the architecture
+- [x] SPEC-0027 section 1 step 1 and the `merge-lock-acquire` target match the code (above).
+- [x] `make hygiene`, `make typos` and `check_governance.py origin/main` pass; the architecture
       and security reviewers approve the protected paths explicitly.
 
 ## Out of scope
 - The format, queue and acquire logic (T-2985).
 - Moving the PR-finished read onto `gh_client.py` (T-3001).
+
+## Outcome
+- `scripts/merge_lock.py wait --pr N | --train ID [--prs ...] [--timeout 45]` polls `acquire`
+  every 30 s, prints only changed messages and exits 0 (held), 3 (PR done), 1 (timeout) or 2
+  (three git errors in a row). `--timeout` and `--ttl` refuse NaN, inf and negatives.
+- `FinishedReads` caches PR-finished reads per PR on top of T-2985's per-`acquire` memo: across
+  polls a PR is re-read only every 10th poll, so a new head or holder is read at once.
+- `make merge-lock-wait PR=<n> [TIMEOUT=45]`; `make merge-lock-acquire ... RENEW=1` passes
+  `--renew`. The steward skill ("Merge lock" steps 1 and 3), work-loop step 6.3 and
+  agent-workflow step 9 wait with `make merge-lock-wait` in the background; decisions 0097 and
+  0145 describe the current state.
+- Picked up from T-2985's review: SPEC-0027 section 1 step 1 now says the finished head is dropped
+  only when the lock is free, stale or finished; `RENEW=1` on `merge-lock-acquire`.
+- `scripts/test_merge_lock.py`: 37 tests (wait reaching 0, 3 and the timeout, git-error retry, the
+  rate limit counted with a fake clock and API, `main wait` for a PR and a train, bad minutes).
+- No eval delta (no engine change).
