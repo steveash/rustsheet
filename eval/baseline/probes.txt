@@ -3682,9 +3682,6 @@ F	probes/t2779-hebrew-saka-names.case.json	S!G6
 F	probes/t2779-hebrew-saka-names.case.json	S!G7
 F	probes/t2779-hebrew-saka-names.case.json	S!G8
 F	probes/t2779-hebrew-saka-names.case.json	S!G9
-F	probes/t2787-imcot-denominator-grouping.case.json	S!A17
-F	probes/t2787-imcot-denominator-grouping.case.json	S!A2
-F	probes/t2787-imcot-denominator-grouping.case.json	S!A9
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
