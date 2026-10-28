@@ -3,7 +3,7 @@ id: T-2925
 title: "Drop the LAMBDAs a formula made once it is evaluated, so stored LAMBDAs do not pile up across a recalculation"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
