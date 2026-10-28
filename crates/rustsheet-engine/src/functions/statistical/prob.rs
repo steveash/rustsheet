@@ -30,8 +30,9 @@ impl Model {
             Err(_) => Err(error(Error::VALUE)),
         };
         let (x_arg, prob_arg) = (as_arg(x_value)?, as_arg(prob_value)?);
-        // An array's error element is the result, the other argument's own error winning
-        // (probes/array-error-element-order A12-A18).
+        // An array's error element is the result (probes/array-error-element-order A12-A14, A18),
+        // the other argument's own error winning; the order against a limit's error is inferred
+        // from a range error cell (probes/stat-test-lift P14), no probe cell separates them.
         let data =
             self.paired_values(x_arg, prob_arg, cell, |_, e| array_element_error(e, cell))?;
         if !data.same_size {
