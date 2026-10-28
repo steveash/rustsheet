@@ -3,7 +3,7 @@ id: T-3050
 title: "Probe TEXT of a large positive number under a lone calendar prefix (TEXT(3000000,'b1'))"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2388 showed `TEXT(-3000000,"b1")` is "-" (probes/t2388-b1-negative A13). The p
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/t3050-b1-large-positive` (excel-graph): a positive value past the maximum serial under a literals-only calendar-prefix section prints the literals, not #VALUE!. `format_number` now matches; recorded in number-formats.md. Eval delta: +9 passing cells in the new case.

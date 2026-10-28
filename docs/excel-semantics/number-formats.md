@@ -197,6 +197,9 @@ number, "3", "0", "-3"). A section of only literals plus the prefix prints the m
 (`"b2"` -> "-", `"B2 x"` "- x"), a tagged `"[$-40C]B2"` and `"[$-409]B2"` ("-"), and a magnitude past the maximum
 serial (`TEXT(-3000000,"b1")` is "-"). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
 `"b1;b1"` are "", `"0;b1 x"` is " x" (probes/t2388-b1-negative A6-A13).
+A positive value past the maximum serial under such a literals-only section is not `#VALUE!` either: `TEXT(3000000,"b1")`
+and `"b2"` are "" and `"b1 x"` is " x", the same as at 2958465 and 2958466 (probes/t3050-b1-large-positive, excel-graph,
+T-3050). Implemented.
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
 Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
