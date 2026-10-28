@@ -2058,7 +2058,8 @@ Status: VERIFIED (excel-graph)
 Implemented in: `incomplete_beta.rs::closed_form_tails` (Excel's EXP and LN, `x87_exp.rs`, `x87_log10.rs`), through
 `beta_reg_complement` and `beta_reg_upper` (BETA.DIST's cdf and BETA.INV's refinement), `fisher.rs::f_tail` (F.DIST,
 F.DIST.RT, FDIST), `student_t.rs::closed_form_tail` (T.DIST* at df 2), `binom.rs` (BINOM.DIST at k = n - 1,
-NEGBINOM.DIST at r = 1 or f = 0)
+NEGBINOM.DIST at r = 1 or f = 0); then `bratio/mod.rs::ported_tails` (bpser, w1 bpser and L140 bup+bpser) for BETA.DIST's
+cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf (T-2505, T-2506, T-2847)
 Tasks: T-2502, T-2505, T-2511
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
@@ -2290,13 +2291,17 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
 Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*; docs/research/t2464/
 w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `zforms.py`, `bscore.py`,
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
-Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505), for BETA.DIST's cdf only: the w3 series and
+Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505) through `ported_tails`, for BETA.DIST's cdf
+(`beta_dist_lower_tail`), F.DIST, F.DIST.RT and FDIST (`fisher.rs::f_tail`), BINOM.DIST's cdf and NEGBINOM.DIST's cdf
+(`binom.rs`; T-2847), and F.TEST's tail with its own L (`f_test_tail.rs`, T-2681): the w3 series and
 EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
 Its algdiv (b0 >= 8) is `beta_density::algdiv` in doubles, where the model runs TOMS algdiv x87 stored.
 Both shapes > 1 with max > 8 (the model's accurate ln B) and a caller's shape of exactly 1 stay on Cephes'
-fractions; L140's bpser(a0, 1, x0) at a whole b0 and a0 > 8 takes L = -LN(a0) (T-2506). On
+fractions; L140's bpser(a0, 1, x0) at a whole b0 takes L = -LN(a0) (T-2506 above a0 = 8, T-2847 at every a0). On
 probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
-bit-exact cells moved off and 7 became visibly off (listed in T-2847). F, BINOM and NEGBINOM still take Cephes' fractions (T-2847).
+bit-exact cells moved off and 7 became visibly off (listed in T-2847). T-2847 moved F, BINOM and NEGBINOM onto it: gen-m9
+3,666 -> 3,602 known failures, ironcalc-calc 617 -> 595, probes 2,913 -> 2,912, with 9 cells 1 to 5 ulp off recorded
+(T-2847 Outcome, decision 0141).
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%
 Tasks: T-2505, T-2512, T-2122
@@ -2332,7 +2337,12 @@ bfrac (min(a,b) >= 40) takes the same brcomp = density·x·y, with λ = fl(a - f
 Evidence: probes-numeric t2464-w2f-xruns-1, -xruns-2, -absweep; w4's probe w4p1 (w4-fractions/probe, not in
 eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_lambda.py`, `t25_old.py`), r2-bratio
 (`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio; docs/research/t2506.
-Ours: L140 bup+bpser for BETA.DIST's cdf (`functions/statistical/bratio/mod.rs` `l140_bup_bpser`, `bup`, T-2506);
+Ours: L140 bup+bpser for BETA.DIST's cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf
+(`functions/statistical/bratio/mod.rs` `l140_bup_bpser`, `bup`, T-2506, T-2847). Excel is not correctly rounded on
+every L140 cell: `F.DIST.RT(1.5,5,5)` = `FDIST(1.5,5,5)` = 0.33360956282916693 (probes/stat-argument-modes H221, H226),
+I_x(2.5, 2.5) at x = 0.6000000000000001 through bup(0.5, 2.5, 0.6, 0.4, 2) + bpser(2.5, 0.5, 0.4), is 5 ulp above the
+40-digit value at that x (0.33360956282916662), and `F.DIST(1.5,5,5,TRUE)` 0.6663904371708331 (H215) is its
+complement; the port gives the nearest double (decision 0141; Excel's form is unknown, r2-impact section 6);
 L140 with bgrat and bfrac on Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
 Status: VERIFIED (excel-graph) for L140 bup+bpser to 15 digits (11,724 of 11,753; 64% bit-exact); bfrac's fraction
 UNVERIFIED

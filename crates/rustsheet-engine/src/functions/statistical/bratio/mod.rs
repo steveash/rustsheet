@@ -199,7 +199,7 @@ pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// x^a there is Excel's value: `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966
 /// (probes/ftest-decomposition B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
 pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
-    // TODO(T-2847): find Excel's form at a0 = 1 outside the closed forms before moving it.
+    // TODO(T-2977): find Excel's form at a0 = 1 outside the closed forms before moving it.
     if a == 1.0 || b == 1.0 {
         return None;
     }
@@ -343,7 +343,7 @@ pub(super) fn bpser_with_ln_beta(a: f64, b: f64, x: f64, neg_ln_beta: Register) 
 ///   b0 = 8. T-2503's density form (`beta_density::ln_beta_small_shape`) differs at its edges: it
 ///   takes b0 = 8 by GAMMALN, B(a0, 1) as 1/a0 and a plain a0 + b0;
 /// - both >= 1 and max <= 8: GL(a) + (GL(b) - GL(fl(a + b))) in argument order, held unstored;
-/// - min(a, b) = 1 and max > 8: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506).
+/// - min(a, b) = 1: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506, T-2847).
 ///
 /// `None` for both shapes > 1 with one above 8, where the model takes an accurate ln B.
 pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
@@ -362,15 +362,20 @@ pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
         };
         return Some(Register::load(-ln_beta));
     }
-    if large > BPSER_GAMMALN_FORM_MAX {
+    if small == 1.0 {
         // B(1, b) = 1/b, so L = -LN(b), the density's form (`beta_density::ln_beta_small_shape`).
         // Only L140's bpser(a0, 1, x0) at a whole b0 reaches it (`ported_tails` keeps a caller's
-        // shape of 1 on today's kernel): on r2-bratio's L140 cells it takes the 548 with a0 > 8
-        // off today's kernel, within 15 digits 11,603 -> 11,721 of 11,742. At a0 <= 8 it would add
-        // 72 bit-exact cells there but moves BETA.DIST(0.5,2,2,TRUE) from 1 to 2 ulp off Excel
-        // (ironcalc-calc BETADIST_BETAINV.xlsx G15) and the BETA.INV chained on it
-        // (docs/research/t2506/RESULTS.md).
-        return (small == 1.0).then(|| Register::load(excel_ln(large)));
+        // shape of 1 on today's kernel). Above a0 = 8 it takes r2-bratio's 548 L140 cells with
+        // a0 > 8 off today's kernel (within 15 digits 11,603 -> 11,721 of 11,742; T-2506). At
+        // a0 <= 8 it is exact where the GAMMALN sum is not: BINOM.DIST's whole shapes always reach
+        // it, and `BINOM.DIST(1,6,0.5,TRUE)` is Excel's 0.0546875 here and 2 ulp off on the sum
+        // (ironcalc-calc BINOM.xlsx E5:E8, E75). It adds 72 bit-exact L140 cells but moves
+        // BETA.DIST(0.5,2,2,TRUE) from 1 to 2 ulp off Excel and the BETA.INV chained on it 2 ulp
+        // (ironcalc-calc BETADIST_BETAINV.xlsx G15, H15; docs/research/t2506/RESULTS.md, T-2847).
+        return Some(Register::load(excel_ln(large)));
+    }
+    if large > BPSER_GAMMALN_FORM_MAX {
+        return None;
     }
     // -(p + q) rounds as (-p) + (-q) does: round to nearest is symmetric.
     let inner =
