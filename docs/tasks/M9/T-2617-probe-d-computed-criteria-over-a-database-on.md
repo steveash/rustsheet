@@ -4,10 +4,11 @@ title: "Probe D* computed criteria over a database on another sheet: which recor
 milestone: M9
 lane: research
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -53,3 +54,10 @@ Code: `reads_records` and `db_computed_condition` in crates/rustsheet-engine/src
 
 ## Out of scope
 - The same-sheet header-row rule (T-2553, done).
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off gen-m9 cells of DPRODUCT (3), DMAX, DVAR, DAVERAGE, DCOUNTA and DGET (1 each). Fixing them lifts all six D* functions to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.

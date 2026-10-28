@@ -4,7 +4,7 @@ title: "Fit VDB's switching schedule from a fractional start period"
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: opus
 campaign: visible
@@ -79,3 +79,6 @@ Replacing that path should delete `vdb_total_depr`, whose `straight_line` parame
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (VDB from a fractional start period differs from the 3rd digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+It owns all 12 visibly-off VDB cells and alone lifts VDB. Priority raised so it leads its stage in M9.
