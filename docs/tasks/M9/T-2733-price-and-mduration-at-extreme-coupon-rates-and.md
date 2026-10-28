@@ -3,7 +3,7 @@ id: T-2733
 title: "PRICE and MDURATION at extreme coupon rates and yields: the 3 visibly-off gen-m9 cells parked in deferred T-1374"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: blocked
 priority: P2
 size: S
 tier: opus
@@ -74,3 +74,27 @@ significant digit of Excel's value. Criteria above that ask for bit-exact matche
 follow-up task (no campaign key, `defer: phase-1b`), named in the Outcome. Regressions that stay within 4 ulp follow
 decision 0083's allowance. Set the stage to `accuracy` instead of `visible` if T-2732's mpmath comparison shows Excel
 close to correctly rounded and the engine not.
+
+## Blocked because
+Blocked because: the baseline update needs `rustsheet-eval update-baseline --allow-regressions` under decision
+0083's standing ulp-regression allowance, and this run's permission policy refused that command. The code, the
+semantics entry and the follow-ups are on the branch; nothing else is left. To finish: on this branch run
+`target/release/rustsheet-eval update-baseline --allow-regressions` and `rustsheet-eval evidence-floor --update`,
+check that the baseline diff only drops lines apart from the six cells below, commit `eval/baseline/`, then review and merge.
+Decision 0083's four conditions: (1) the six newly failing cells are numeric and 1 to 3 ulp off; (2) none is visibly
+off and no non-numeric cell regresses; (3) 395 known-failure lines fixed, including every visibly-off cell of the
+task, against 6 regressed; (4) all six are listed below and in T-2973.
+
+## Outcome (pending the baseline update)
+- `CouponSchedule::price` (PRICE, and YIELD's Newton): accrued `rate/f·(A/E)·100`, and coupon k discounted at
+  `k + DSC/E` from k = 0. `duration_of` (DURATION, MDURATION): the same coupon exponent. Rule and fit table:
+  financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield".
+- Fit (239 PRICE cells of probes/bond-extreme-coupon-yield): bit-exact 63 → 196, within 15 digits 176 → 238; the
+  candidates scored are in the financial.md entry.
+- Eval (`rustsheet-eval check`): probes known failures 2621 → 2250 (376 fixed), gen-m9 3630 → 3612 (19 fixed,
+  among them the three gen-m9 cells of this task). Every cell of probes/bond-extreme-coupon-yield and the three gen-m9
+  cells is now within half a unit of Excel's 15th significant digit (C118 and C35 differ by 1 ulp at a display
+  rounding boundary).
+- Regressed (1 to 3 ulp, none visibly off), owned by T-2973: probes/yield-newton-domain P!B7,
+  probes/bond-extreme-coupon-yield Calc!B7, B43, C7, C43, gen-m9/5ded7594e597e31e Calc!A123.
+- Follow-ups: T-2972 (bit-exact residue, `defer: phase-1b`), T-2973 (the six regressed cells).

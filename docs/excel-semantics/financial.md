@@ -1770,9 +1770,43 @@ of the same flows ÷ f; MDURATION = DURATION/q; each cell's distance from it in 
   gen-m9 0a957119475760c5 A279's `PRICE(38136,44737,1E+300,7,100,2)` (Calc!A181) is Excel +0.5 ulp, ours +8.5 (
 against the double that 1E+300 parses to).
 So a more accurate kernel would fix the short-stub DURATION and MDURATION cells but not the grid's PRICE cells,
-where only Excel's own operation order gives its digits: T-2733 keeps the `visible` stage.
+where only Excel's own operation order gives its digits: T-2733 keeps the `visible` stage. T-2733 found that order
+("PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield").
 Status: VERIFIED (excel-graph)
 Tasks: T-2207, T-2732, T-2733
+
+## PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield
+Rule: PRICE takes the accrued interest as `rate/f · A/E · 100` (left to right, `A/E` one quotient) and discounts
+coupon k (k = 0..N-1) at the exponent `k + DSC/E`; the redemption keeps `DSC/E + N - 1`, and each discount is
+Excel's `^` ("PRICE and ODDFPRICE discount with Excel's `^`"). DURATION and MDURATION discount coupon k at the same
+`k + DSC/E`. Written this way every cell of probes/bond-extreme-coupon-yield is within half a unit of Excel's 15th
+significant digit, among them the three gen-m9 cells: `PRICE(38136,44737,1E+300,7,100,2)` (Calc!A181) is
+8.95449454935698e+300, `PRICE(43830,45293,100,278,50,4,1)` (A182) -133.76680342333566 and
+`MDURATION(39697,44449,58988,44270,2,0)` (C183) 5.029680055838246e-07. The order before (accrued `coupon · (A/E)`,
+exponent `DSC/E + k - 1` for k = 1..N) left 62 cells visibly off, Calc!A20 `PRICE(38136,44737,1E+10,7,100,1,0)` at
+55709579072.88501 against Excel's 55709579072.88489.
+Fit (T-2733; 239 PRICE cells of the case with more than one coupon left, plain doubles unless named; bit-exact /
+within 15 digits by display):
+- before: 63 / 176; exponent `k + DSC/E` with accrued `coupon·A/E`: 146 / 215; with `coupon·(A/E)`: 142 / 214;
+- accrued `rate/f·(A/E)·100`, `rate·(A/E)·(100/f)` or `A/E·rate·100/f` (the same doubles here): **196 / 238**;
+  `rate·A/E·100/f`: 166 / 223; every other order of the five factors scored lower;
+- each operation rounded twice (x87, "Division rounds twice"): the same 196 / 238; an extended (64-bit) accumulator:
+  65 / 191; everything exact with one final rounding: 61 / 189;
+- the power: Excel's `^` 196, `EXP(t·LN v)` with libm or Excel's kernels and a double product 181, the product in an
+  x87 register 164, `1/EXP(-t·LN v)` 154, libm `pow` and a correctly rounded pow 119 (with the earlier accrued);
+- the coupon `100·rate/f`, `rate·(100/f)` or `rate/f·100`: tie; summing from the last coupon: 85 at best; a
+  closed-form annuity, `v^k·v^(DSC/E)`, a running product of `v`, or discounting the coupon-date value by
+  `v^(DSC/E)` once: 79 at best; the exponent written `(k·E + DSC)/E` (one rounding): no change.
+The 43 PRICE cells left are last-digit residue (T-2972), among them the redemption term alone: `PRICE(38136,44737,0,
+42,100,2,0)` (Parts!B3) is 3.0121596882492917e-47, while 100 over the worksheet's
+`(1+42/2)^(COUPDAYSNC/COUPDAYS+COUPNUM-1)` (Parts!D3, Excel's own value) is 3.012159688249292e-47, so PRICE's
+internal power differs from `^` at some exponents. YIELD prices with the same sum and moved by an ulp in one cell
+(T-2973).
+Evidence: probes/bond-extreme-coupon-yield (579 cells, excel-graph, 2026-10-26, T-2732); gen-m9/0a957119475760c5
+Calc!A279, a91bad4e84f49739 Calc!A142, 30e20ba3302fea8b Calc!A90 (excel-graph, 2026-10-23).
+Ours: `CouponSchedule::price` and `duration_of` in functions/financial/financial_bonds.rs since T-2733.
+Status: VERIFIED (excel-graph)
+Tasks: T-2733, T-2972, T-2973
 
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
