@@ -3191,7 +3191,9 @@ Tasks: T-2035 (partial), T-2093, T-2095
   - CHISQ.TEST: scalars and single cells are `#N/A`; `#N/A` for unequal element counts; a column
     against a row with the same count is accepted; constant data gives 1 (no `#DIV/0!`);
     `#DIV/0!` only for an empty range or a zero expected value; a negative expected value is `#NUM!`.
-    The empty-range `#DIV/0!` is implemented (T-2094; checked after the `#N/A` size test).
+    A side holding no number (blank, text or a boolean in a range) is `#DIV/0!`, implemented in T-2094 (t1049-chisqtest A23/A24,
+    m9-legacy-chitest A28, gen-m9 0a9226016e8f5f33 A333; checked after the `#N/A` size test; numbers on both sides never paired
+    stay 1, 8dd2312c96effb1b A343).
     Text or TRUE in the actual array returns exactly the all-numeric result (`chisqtest` A34/A35 = A29).
   - T.TEST: type 1 (paired) with unequal sizes is `#N/A`; types 2 and 3 accept unequal sizes;
     tails outside {1,2} or type outside {1,2,3} is `#NUM!`; `#DIV/0!` for one point per side, zero variance in both
@@ -3622,7 +3624,7 @@ Status: VERIFIED (excel-graph) for the cited cells
 
 CHISQ.TEST/CHITEST have no per-cell sign check: a negative actual (`CHITEST(Data!D7:D9,Data!C10:E10)`, -1 against 1, 0.1353352832366127 = exp(-2), c6cfda6bd10cae93 A375) and a negative expected cell with a positive summed statistic (`CHITEST(Data!B5:E7,Data!B7:D10)` is 0, f2bd5f380ec002bf A314) are numbers; only a negative summed statistic is `#NUM!` (probes-numeric/m9-legacy-chitest A21, `CHITEST(G1:G3,M1:M3)`, G={1,2,3}, M={5,6,-1}).
 Evidence: those three cells, excel-graph. Status: VERIFIED for them; a single negative expected with a positive total and all-numeric inputs is unprobed (T-2650).
-Open: `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (text and blanks only, including a blank against a blank) is `#DIV/0!` (0a9226016e8f5f33 A333) while other all-non-number pairings are 1 (8dd2312c96effb1b A343); UNVERIFIED why.
+Rule (T-2094): a side holding no number (blank, text or booleans in a range) is `#DIV/0!`: `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` (0a9226016e8f5f33 A333, the actual side has only text, a boolean and blanks). Numbers on both sides that are never paired stay 1 (8dd2312c96effb1b A343). Still UNVERIFIED: blank against blank of equal shape beyond these cells (T-2650).
 
 ## An error element of an array argument is that error (T-2255)
 Rule: an error inside an array constant or array value given to LARGE, SMALL, QUARTILE.EXC, PERCENTRANK.INC,

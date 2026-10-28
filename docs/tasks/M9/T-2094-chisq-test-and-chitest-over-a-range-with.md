@@ -56,3 +56,4 @@ Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as
 ## Outcome
 `fn_chisq_test` returns `#DIV/0!` when either range holds no number (after the `#N/A` size check). Unit test
 `test_chisq_test_blank_range` added; statistics.md updated. Eval: gen-m9 known failures 3341 -> 3340; no regressions.
+Also fixes gen-m9/0a9226016e8f5f33 A333 (a side with only text, a boolean and blanks); T-2650's A333 criterion is met.
