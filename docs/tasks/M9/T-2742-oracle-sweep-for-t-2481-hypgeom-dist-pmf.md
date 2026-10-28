@@ -12,8 +12,8 @@ depends_on: []
 
 ## Goal
 Excel values for HYPGEOM.DIST over every valid (x, n, K, N) with a population from 6 to 12, as pmf and cdf. Each cell
-is tagged with its offset in ulps from the exact rational. T-2481 can then pin Excel's pmf formulation from cases
-where the candidates disagree.
+is given its offset in ulps from the exact rational (computed by the analysis script, not stored in the case). T-2481
+can then pin Excel's pmf formulation from cases where the candidates disagree.
 
 ## Context
 Gap triage 2026-10-25 (`make eval` on `main` 22588cf). HYPGEOM.DIST and HYPGEOMDIST are a few ulps off the exact
@@ -78,5 +78,5 @@ Committed probes-numeric/t2742-hypgeom-small-n (1442 rows, 3291 cells, excel-gra
 the T-2742 paragraph: 286/1442 pmf cells exact, offsets from -14 to +14 ulps at every x position, n/K asymmetry (434/1442
 symmetric), candidate bit-exact counts (best 286, the exact rational itself), the cdf equal to the running pmf sum in
 816/1442 cells and 1 at the last x in all 476, and HYPGEOMDIST = HYPGEOM.DIST in 407/407. T-2481's Context points at the
-evidence. The suite is ungated, so no baseline changed. The analysis script is not committed; its method is in the
-statistics.md paragraph (Python `fractions` exact values, signed ulp offsets).
+evidence. The suite is ungated, so no baseline changed. The analysis is docs/research/t2742_hypgeom_grid.py (exact
+rationals from Python `fractions`, signed ulp offsets per cell; it prints every number above).
