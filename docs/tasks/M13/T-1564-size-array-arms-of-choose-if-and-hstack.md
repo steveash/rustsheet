@@ -30,8 +30,10 @@ CHOOSE over an index array and IF over an array condition take each arm's extent
 moved there as `BroadcastArg`, `BroadcastArg::at`, `BroadcastArg::dims` and `evaluate_broadcast_arg`). They check the
 output size before any range arm is read. A picked range arm is then copied. An unpicked one is read cell by cell
 within the used area, in the same order, but not kept (`Model::read_range_cells`, cast.rs), so a cycle through it and
-the dependencies it records are as before. It is charged only the cells it reads. HSTACK evaluates every argument
-before reading any range, as VSTACK does, and both check the stacked shape from the arguments' extents before copying.
+the dependencies it records are as before. It is charged only the cells it reads. HSTACK reads each range argument in
+turn as before, without copying it (so a cycle through it is still one: probes/scalar-lift-open-c3 W1 stays 0), and
+HSTACK and VSTACK check the stacked shape from the arguments' extents before copying any range. Unread ranges are charged
+3 work units per used cell (arrays.md work-units entry).
 
 Measurement (release build, peak resident memory `VmHWM` of a process with C1:BJ10 filled and one formula in A1;
 "N columns" are the whole-column arms `C:C,D:D,…`):
@@ -44,9 +46,10 @@ Measurement (release build, peak resident memory `VmHWM` of a process with C1:BJ
 | `SUM(CHOOSE({1},`254 columns`))` | `#VALUE!` (work budget), 13.0 s, 4.9 GB | 5500, 0.19 s, 123 MB |
 | `SUM(IF({TRUE},C:C,D:D))` | 5500, 0.37 s, 180 MB | 5500, 0.16 s, 123 MB |
 | `ROWS(HSTACK(`60 columns`))` | `#ERROR!`, 6.4 s, 3.4 GB | `#ERROR!`, 0 ms, 8 MB |
-| `ROWS(HSTACK(`254 columns`))` | `#VALUE!` (work budget), 24.8 s, 4.9 GB | `#ERROR!` (array cells), 0 ms, 8 MB |
+| `ROWS(HSTACK(`254 columns`))` | `#VALUE!` (work budget), 24.8 s, 4.9 GB | `#ERROR!` (array cells), 0 ms, 9 MB |
 
-Two values change, both past our own limits: CHOOSE with many unpicked whole-column arms now computes, as Excel does,
+The columns hold 10 used rows, so reading an unpicked arm or an HSTACK argument costs little time here; over full
+columns it costs the reads (as before) but no copy. Two values change, both past our own limits: CHOOSE with many unpicked whole-column arms now computes, as Excel does,
 instead of running out of the work budget; HSTACK of 254 whole columns is the array-cell `#ERROR!` (DEVIATION, arrays.md
 "Array results above 1,048,576 cells") instead of the work budget's `#VALUE!`. Tests: test_fn_choose.rs,
 test_fn_if.rs, test_fn_hstack_vstack.rs. Eval delta: none.

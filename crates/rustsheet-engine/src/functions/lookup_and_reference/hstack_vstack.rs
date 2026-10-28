@@ -53,12 +53,20 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Every argument is evaluated first, a range without reading its cells, so the stack is
-        // sized and checked before any range is copied (T-1564), as VSTACK does.
+        // Each argument is evaluated and a range's cells read in turn, as before, but not copied:
+        // the stack is sized and checked before any range is copied (T-1564). Reading first keeps
+        // a cycle through an argument a cycle: `=ROWS(HSTACK(A:A,1:1))` in W1 is circular, 0, not
+        // the cell-count `#ERROR!` (probes/scalar-lift-open-c3 W1).
         let mut results: Vec<CalcResult> = Vec::with_capacity(args.len());
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 err @ CalcResult::Error { .. } => return err,
+                CalcResult::Range { left, right } => {
+                    if let Err(error) = self.read_range_cells(left, right, cell) {
+                        return error;
+                    }
+                    results.push(CalcResult::Range { left, right });
+                }
                 result => results.push(result),
             }
         }
