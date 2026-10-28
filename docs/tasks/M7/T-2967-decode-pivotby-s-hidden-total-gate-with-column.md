@@ -3,7 +3,7 @@ id: T-2967
 title: "Decode PIVOTBY's hidden Total gate with column subtotal lines (T-2606 confounds)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
