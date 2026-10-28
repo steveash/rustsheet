@@ -861,7 +861,7 @@ Evidence: probes/t2454-offset-array-height, probes/t2454-offset-one-cell-array-a
 (excel-graph, 2026-10-23, T-2454).
 Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF, CHOOSE or LET picking one) is its reference (T-2519). A one-cell
 TAKE/DROP of a single-sheet range stays its reference in value context (`take_drop_reference`), so the `+0` and `N(..)` forms are scalar too (T-2519).
-Status: VERIFIED (excel-graph); partly implemented (T-2454, T-2519)
+Status: VERIFIED (excel-graph); implemented: the engine matches every cell of the three probes, the near-zero heights included (T-2454, T-2519, T-3072)
 Tasks: T-2454, T-2519, T-3072
 
 ## TAKE/DROP of a one-cell reference is a reference
@@ -877,7 +877,8 @@ the 10-cell range is the count's `#N/A` (coercion.md "SUMX2MY2 / SUMX2PY2 / SUMX
 `ISTEXT(TAKE(E7:E8,1))` TRUE and `ISFORMULA(TAKE(E7:E8,1))` FALSE.
 Evidence: probes/t3072-take-drop-one-cell-reference P1-P18, P42-P57 (excel-graph, 2026-10-28, T-3072); gen-m9/7674c89c824aca43 Calc!A305
 (`CHITEST((E9-TAKE(E7,2,42)),C8:C10)` `#VALUE!`), gen-m9/7c20351562a2d71d Calc!A277.
-Ours: `take_drop_reference` reads a one-cell reference argument as its one-cell range (T-3072).
+Ours: `take_drop_reference` reads a one-cell reference argument, on this sheet or another, through `evaluate_node_with_reference`, as a
+one-cell range, before choosing its value or reference read (T-3072).
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2519, T-3072
 

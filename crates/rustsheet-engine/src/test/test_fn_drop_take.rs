@@ -407,6 +407,10 @@ fn take_drop_of_a_one_cell_reference_is_a_reference() {
     model._set("A6", "=SUMXMY2(TAKE(C11,-1,1),B6:C10)");
     model._set("A7", "=SUMXMY2(TAKE(C8,1),B6:C10)");
     model._set("A8", "=TYPE(1+TAKE(C8,{1}))");
+    model.add_sheet("Data").unwrap();
+    model._set("Data!A1", "x");
+    model._set("A9", "=ROWS(E9-TAKE(Data!A1,1))");
+    model._set("A10", "=ISREF(DROP(Data!A1,0))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#VALUE!");
     assert_eq!(model._get_text("A2"), "#VALUE!");
@@ -416,4 +420,6 @@ fn take_drop_of_a_one_cell_reference_is_a_reference() {
     assert_eq!(model._get_text("A6"), "#VALUE!");
     assert_eq!(model._get_text("A7"), "#N/A");
     assert_eq!(model._get_text("A8"), "64");
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+    assert_eq!(model._get_text("A10"), "TRUE");
 }
