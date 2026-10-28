@@ -450,6 +450,17 @@ impl Model {
             );
         }
 
+        // Excel: a side holding no number at all is #DIV/0!, not p = 1
+        // (probes-numeric/t1049-chisqtest A23 `CHISQ.TEST(B1:B4,Z1:Z4)` and A24, Z1:Z4 blank;
+        // m9-legacy-chitest A28 `CHITEST(P1:P3,G1:G3)`).
+        if values_left.iter().all(Option::is_none) || values_right.iter().all(Option::is_none) {
+            return CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "CHISQ.TEST range holds no number".to_string(),
+            );
+        }
+
         let mut chi2 = 0.0;
         for (obs, exp) in &values {
             if *exp == 0.0 {

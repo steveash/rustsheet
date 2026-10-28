@@ -3191,6 +3191,7 @@ Tasks: T-2035 (partial), T-2093, T-2095
   - CHISQ.TEST: scalars and single cells are `#N/A`; `#N/A` for unequal element counts; a column
     against a row with the same count is accepted; constant data gives 1 (no `#DIV/0!`);
     `#DIV/0!` only for an empty range or a zero expected value; a negative expected value is `#NUM!`.
+    The empty-range `#DIV/0!` is implemented (T-2094; checked after the `#N/A` size test).
     Text or TRUE in the actual array returns exactly the all-numeric result (`chisqtest` A34/A35 = A29).
   - T.TEST: type 1 (paired) with unequal sizes is `#N/A`; types 2 and 3 accept unequal sizes;
     tails outside {1,2} or type outside {1,2,3} is `#NUM!`; `#DIV/0!` for one point per side, zero variance in both

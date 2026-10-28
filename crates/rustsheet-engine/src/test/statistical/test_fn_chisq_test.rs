@@ -161,3 +161,28 @@ fn test_chisq_test_negative_actual_value() {
     // a negative expected cell with a positive total is a number (A314 is 0 for a huge statistic)
     assert_eq!(model._get_text("A3"), *"0.082084999");
 }
+
+// T-2094: a side with no number at all is #DIV/0!; one text cell among numbers is unchanged.
+#[test]
+fn test_chisq_test_blank_range() {
+    let mut model = crate::test::util::new_empty_model();
+    for (cell, v) in [("B1", "1"), ("B2", "2"), ("B3", "3"), ("B4", "4")] {
+        model._set(cell, v);
+    }
+    model._set("C1", "a");
+    model._set("C2", "2");
+    model._set("C3", "3");
+    model._set("C4", "4");
+    model._set("A1", "=CHISQ.TEST(B1:B4,Z1:Z4)");
+    model._set("A2", "=CHISQ.TEST(Z1:Z4,B1:B4)");
+    model._set("A3", "=CHITEST(Z1:Z4,B1:B4)");
+    model._set("A4", "=CHISQ.TEST(B1:B4,C1:C4)");
+    model._set("A5", "=CHISQ.TEST(5,5)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_ne!(model._get_text("A4"), *"#DIV/0!");
+    assert_eq!(model._get_text("A5"), *"#N/A");
+}
