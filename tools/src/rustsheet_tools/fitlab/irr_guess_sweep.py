@@ -11,10 +11,11 @@ residual test depends on scale). Column layout per (flows, scaling) block: A the
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from rustsheet_tools.fitlab.kernels.solvers import NoResultError, irr_secant_v
 
@@ -38,10 +39,8 @@ def literal(x: float) -> str:
 def iterates(flows: list[float]) -> list[float]:
     """Every iterate r_k of the model's secant run from guess 0.1, as rates."""
     trace: list[float] = []
-    try:
+    with contextlib.suppress(NoResultError, ZeroDivisionError, OverflowError):
         irr_secant_v(trace=trace)(flows, 0.1, None)
-    except (NoResultError, ZeroDivisionError, OverflowError):
-        pass
     return [r for r in trace if math.isfinite(r) and r > -1]
 
 
