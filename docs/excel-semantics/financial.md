@@ -1374,6 +1374,8 @@ with nontrivial values. A date at serial 0 makes XNPV `#NUM!` (J1:J5), although 
 Evidence: probes/xirr-exact-root-sign: 541 numeric cells, all matched by the lab's `xirr.xnpv` (tools/.../kernels/xirr.py) with
 `caret_pow` and 15-digit literals (excel-graph, 2026-10-24, T-2328).
 Ours: `compute_xnpv` and XIRR's `xirr_xnpv` use `arithmetic::power`, Excel's `^` (T-2566).
+Unprobed: where a power overflows (`XNPV(1E+300,{-100,100},{39448,40000})`), ours adds that flow as 0 (value/inf), as before
+T-2566; Excel's result is not evidenced.
 Status: VERIFIED (excel-graph)
 Implemented in: functions/financial/financial_util.rs (`compute_xnpv`, `xirr_xnpv`)
 Tasks: T-2328, T-2566
