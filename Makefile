@@ -141,14 +141,14 @@ unowned-off: ## Visibly-off cells no open task owns, after make eval: unattribut
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board
 
-# ---------------------------------------------------------------- Merge lock (decision 0075)
+# ---------------------------------------------------------------- Merge lock (decisions 0075, 0145)
 .PHONY: merge-lock-acquire merge-lock-release merge-lock-status
-merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy; 3: PR already done)
+merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy, you are queued; 3: PR already done; 4: lost)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py acquire --pr '$(PR)'
 
 merge-lock-release: ## Free your merge lock (after the merge, a red CI, or any stop)
 	$(PY) scripts/merge_lock.py release
 
-merge-lock-status: ## Who holds the merge lock, and since when
+merge-lock-status: ## Who holds the merge lock, since when, and the queue of waiters
 	$(PY) scripts/merge_lock.py status
