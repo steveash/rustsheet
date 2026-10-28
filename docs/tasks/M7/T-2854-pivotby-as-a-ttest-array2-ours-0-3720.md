@@ -3,7 +3,7 @@ id: T-2854
 title: "PIVOTBY as a TTEST array2: ours 0.3720 against Excel's 0.3685 (gen-m9 c2684066d8df263e A214)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -23,7 +23,7 @@ gen-m9/c2684066d8df263e Calc!A214, moved from T-2469 (T.TEST itself is right; ar
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Cause found (probe added: eval/suites/probes/cases/pivotby-ttest-array2, excel-graph 2026-10-28): the PIVOTBY grid
 matches Excel cell for cell as spilled, but Excel's blank row/column keys (blank source cells) are true blanks
 inside the array: COUNT(PIVOTBY(..)) is 108 in Excel, 114 ours (INDEX row/column counts BA1:BB32 pin the six cells:
