@@ -717,7 +717,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text = format!("{c}");
             }
             let tokens = &p.tokens;
-            // `General` among literals shows the value itself, with its sign
+            // `General` among literals shows the value; `lead_abs` drops its sign when the minus leads
             let general_value = value;
             // Excel keeps the scaling commas' exponent in a signed byte (`comma_exponent`). Up to
             // 42 commas it does not wrap, and dividing keeps the usual rounding.
