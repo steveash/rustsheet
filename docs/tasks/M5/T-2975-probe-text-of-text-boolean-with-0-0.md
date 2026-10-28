@@ -3,7 +3,7 @@ id: T-2975
 title: "Probe TEXT of text/boolean with ;;;, 0;0;0; and five-section formats"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
