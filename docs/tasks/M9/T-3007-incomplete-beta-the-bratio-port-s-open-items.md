@@ -45,6 +45,12 @@ layout and tests.
   model; `bpser_neg_ln_beta` takes `beta_density::algdiv` in double arithmetic for b0 >= 8, the model x87 stored).
 - The model's w_bpser counts beat the engine's (6,767 against 5,458 bit-exact of 11,845; T-2977 Outcome): the
   model scores 6,767 with w3_lg = toms and 6,072 with gl (the engine's GL53), so part of the gap is the L form.
+- Gap triage 2026-10-28 (eval on origin/main abefb50): the visibly-off cells of that same case, which no open task
+  named, are this item's too (both shapes >= 1 with one above 8, so no ported ln B; T-2977 Outcome):
+  probes/t2829-ftest-tail-over-b S!A1, A3, A4, A6, A7, A9, A18 (e.g. A1 `2*F.DIST.RT(1E+12,17,12)`, Excel
+  5.654118407649194E-70, ours 5.6541184076491873E-70; A7 `2*F.DIST.RT(1E+12,23,12)`, Excel 4.032210775559413E-70,
+  ours 4.032210775559509E-70). statistics.md (F.TEST, T-2829) says they are off by T-2924's ln B k plus whole steps
+  of the fl(a·LN x) grid, so a TOMS betaln alone may not reach them: score them and say which part is left.
 
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
