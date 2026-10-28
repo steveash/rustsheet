@@ -26,7 +26,7 @@ task (excel-probe skill) before deciding how deep the rule goes.
 
 ## Acceptance criteria
 - [x] probes/t2772-unary-plus-in-range-rows J2 and J5 pass and come off the baseline; no other cell regresses.
-- [x] The unprobed arm/OFFSET shapes: deferred to T-3041 (needs the oracle); syntax.md updated.
+- [x] The unprobed arm/OFFSET shapes: deferred to T-3045 (needs the oracle); syntax.md updated.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
