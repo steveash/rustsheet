@@ -3,7 +3,7 @@ id: T-2636
 title: "PROB and FREQUENCY: an error element inside an array argument is that error (T-2430 follow-up)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -60,3 +60,11 @@ of Excel's value, or has Excel's type, error and text. Bit-level criteria still 
 filed with `defer: phase-1b`.
 
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the 1 visibly-off SMALL cell and, from this triage, FREQUENCY gen-m9/fd9fa22d212080d6 Calc!A32 (#DIV/0! expected, #VALUE! today). Fixing them lifts SMALL to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+Probed on excel-graph (probes/array-error-element-order, 31 cells): PROB, SLOPE, INTERCEPT, STEYX, RSQ, FORECAST.LINEAR and
+CHISQ.TEST return an array's error element, the first argument's error first; an error element in FREQUENCY's bins array is
+skipped like text (agrees with desktop corpus-bench/53062). PROB now propagates the element and FREQUENCY skips it in bins.
+Recorded in statistics.md. Eval: gen-m9 known failures 3330 -> 3323 (7 fixed), no regressions; new probe case fully passing.
+corpus-bench is not fetched in the worker environment, so the case-53062 visibly-off count (334) was not re-measured; the
+steward's next full eval will show it. Still unprobed: a data-array error element against an error cell in a bins range.
