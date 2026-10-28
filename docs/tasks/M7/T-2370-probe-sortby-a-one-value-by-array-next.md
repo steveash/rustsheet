@@ -30,4 +30,4 @@ the one value as sorting rows only; (2) the snap tolerance of a fractional sort_
 - SORT's own sort_order fractions.
 
 ## Outcome
-probes/t2370-sortby-mixed-by-array-snap (45 cells, excel-graph): a one-value by_array next to a row by_array on a one-row array is `#VALUE!`, and the sort_order snap tolerance lies between 2^-22 + 2^-33 and 2^-22 + 2^-32, LEFT's. Ours already matched all 45 cells; arrays.md records both rules and no longer marks them UNVERIFIED. Eval delta: 45 new passing cells, no code change.
+probes/t2370-sortby-mixed-by-array-snap (65 cells, excel-graph): a one-value by_array next to a row by_array on a one-row array is `#VALUE!`, and the sort_order snap is `near_integer_whole`'s: LEFT's tolerance (between 2^-22 + 2^-33 and 2^-22 + 2^-32) above zero and half of it below. The first 45 cells passed; the negative-edge cells added after review did not: `-1-2^-22` and `-1-(2^-22+2^-33)` sorted descending in ours, `#VALUE!` in Excel. SORTBY's sort_order now reads `near_integer_whole` instead of `near_integer_count` (spill_functions.rs). arrays.md records both rules. Eval delta: 65 new passing cells, 0 regressions.
