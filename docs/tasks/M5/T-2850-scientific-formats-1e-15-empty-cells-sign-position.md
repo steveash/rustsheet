@@ -3,7 +3,7 @@ id: T-2850
 title: "Scientific formats: 1E+15 empty cells, sign position before literal, #E+0 ties"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
