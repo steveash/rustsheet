@@ -3,7 +3,7 @@ id: T-2641
 title: "IM* inumber: a currency prefix on a complex number is read (probes/eng-inumber-reading A5); probe neighbouring whitespace and date shapes"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
