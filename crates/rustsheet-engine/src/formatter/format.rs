@@ -1,5 +1,5 @@
 use super::elapsed::{elapsed_text, DisplayClock, ElapsedUnit};
-use super::fraction::format_fraction;
+use super::fraction::{comma_exponent, format_fraction};
 use super::general::format_general;
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
@@ -17,10 +17,10 @@ pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
 use super::{
-    date_names::{hijri_ymd, NameTokens},
-    dates::{excel_serial_to_ymd, negative_serial_allowed},
+    calendar_dates::{calendar_ymd, hebrew_month_name},
+    date_names::NameTokens,
+    dates::negative_serial_allowed,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
-    lunar_calendar::{lunar_ymd, LAST_SERIAL as LUNAR_LAST_SERIAL},
     parser::{
         conditional_section, is_text_section, numeric_section_count, section_condition,
         section_tokens, ErrorPart, GeneralPart, ParsePart, Parser, TextToken,
@@ -148,6 +148,7 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     }
     let section = match parts.last() {
         Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
+        _ if parser.has_empty_text_section() => return capped_text(String::new()),
         _ if parts.len() < 4 => return capped_text(text.to_string()),
         _ => 3,
     };
@@ -430,18 +431,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
             let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
-            let ymd = if p.hijri || p.calendar == Some(Calendar::Hijri) {
-                hijri_ymd(serial_1900)
-            } else {
-                match p.calendar {
-                    // Past the lunar tables (2100) the date is Gregorian, TODO(T-2759).
-                    Some(Calendar::Lunar(table)) if serial_1900 <= LUNAR_LAST_SERIAL => {
-                        lunar_ymd(serial_1900, table)
-                    }
-                    _ => excel_serial_to_ymd(serial_1900),
-                }
-            };
+            let ymd = calendar_ymd(p.calendar, p.hijri, serial_1900);
             let date_valid = ymd.is_some();
+            // A Saka or Hebrew section of a date with no such date is `#VALUE!` even with only
+            // time tokens (`TEXT(60.5,"[$-80409]h:mm")`; probes/t2779-hebrew-saka-more E5, E6).
+            if !date_valid && matches!(p.calendar, Some(Calendar::Saka | Calendar::Hebrew(_))) {
+                return invalid_date(value);
+            }
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
             // Under a Japanese locale tag `yy` and `yyyy` after a `g` print the era year: the
             // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
@@ -511,6 +507,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             return invalid_date(value);
                         }
                         let weekday = excel_weekday_index(serial_1900);
+                        if let (Some(Calendar::Hebrew(adars)), Some(names)) = (p.calendar, p.names)
+                        {
+                            if let Some(name) =
+                                hebrew_month_name(token, names, adars, (ymd_year, ymd_month))
+                            {
+                                text.push_str(name);
+                                continue;
+                            }
+                        }
                         // Lunar months 13 and 14 take the twelfth name (`[$-110409]mmmm` of
                         // 2024-01-11 is "十二月"; probes/text-locale-lunar-edges A26).
                         let month = ymd_month.min(12);
@@ -714,7 +719,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let tokens = &p.tokens;
             // `General` among literals shows the value itself, with its sign
             let general_value = value;
-            let scaled = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+            // Excel keeps the scaling commas' exponent in a signed byte (`comma_exponent`). Up to
+            // 42 commas it does not wrap, and dividing keeps the usual rounding.
+            let percent_scaled = value * 100.0_f64.powi(p.percent);
+            let comma_exponent = comma_exponent(p.comma, true);
+            let scaled = if comma_exponent == p.comma.saturating_mul(-3) {
+                percent_scaled / 1000.0_f64.powi(p.comma)
+            } else {
+                percent_scaled * 10.0_f64.powi(comma_exponent)
+            };
             value = scaled;
             // p.precision is the number of significant digits _after_ the decimal point
             // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";

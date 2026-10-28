@@ -16,7 +16,7 @@ pub use self::pivot::{PivotError, PivotFunction, PivotTableInput};
 
 use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::{
-    Cell, DataTable, DataTableInput, Link, Worksheet, MAX_DATA_TABLE_CELLS,
+    Cell, DataTable, DataTableInput, Link, Table, Worksheet, MAX_DATA_TABLE_CELLS,
 };
 use rustsheet_engine::Model;
 use rustsheet_engine::TakenSheet;
@@ -35,18 +35,23 @@ pub enum Input {
     Value(Value),
     /// A formula as a user types it; must start with `=`. Excel refuses some typed formulas it
     /// reads when stored, and so does this: a LET name or LAMBDA parameter spelled like a cell
-    /// (`=LET(f1,1,f1+1)`) is [`EditError::InvalidInput`] (decision 0103).
+    /// (`=LET(f1,1,f1+1)`) is [`EditError::InvalidInput`] (decision 0103). Typed into a table's
+    /// data rows it fills the column as a calculated column where Excel would, as
+    /// [`Input::Parse`] does (Excel's API and UI both type the formula; T-2958).
     Formula(String),
     /// A formula as an xlsx file stores it, read as xlsx import reads a dynamic-array `<f>`; must
     /// start with `=`. LET names and LAMBDA parameters spelled like a cell bind, as Excel binds
-    /// them stored as `_xlpm.f1` (decision 0103). Use it to replay stored formulas.
+    /// them stored as `_xlpm.f1` (decision 0103). Use it to replay stored formulas; it never
+    /// fills a table column.
     StoredFormula(String),
     /// A formula as a pre-dynamic-array workbook stores it; must start with `=`. Functions
     /// that expect a scalar implicitly intersect a range, so `=A1:A2` is stored as `=@A1:A2`,
     /// exactly as xlsx import reads a plain `<f>`.
     LegacyFormula(String),
     /// Text as a user would type it: `=` starts a formula, numbers, booleans, errors and
-    /// percentages/currencies are recognised, a leading `'` forces text.
+    /// percentages/currencies are recognised, a leading `'` forces text. A formula typed into a
+    /// table's data rows fills the column when its other data cells are all blank or all hold
+    /// one formula (a calculated column, T-2958); the filled cells are part of the edit.
     Parse(String),
     /// Empties the cell (its style is kept).
     Clear,
@@ -183,6 +188,8 @@ enum Undo {
     },
     /// A table added by `add_table`.
     Table(String),
+    /// A table as it was before a formula typed beside it grew it (T-2968).
+    TableExpanded(Box<Table>),
     /// A data table added by `add_data_table`: its sheet and result range.
     DataTable {
         sheet_id: u32,
@@ -243,7 +250,38 @@ impl Txn<'_> {
         };
         let key = (range.sheet.get(), row, col);
         self.log_cell(sheet, key, cell)?;
-        self.apply(sheet, row, col, input.into(), cell)
+        let input = input.into();
+        // A typed formula can fill its table column (a calculated column, T-2958): those
+        // cells are part of this edit and its undo.
+        if let Input::Parse(text) | Input::Formula(text) = &input {
+            if text.starts_with('=') {
+                // Typed just right of a table, it grows the table by a column first (T-2968):
+                // the table, the new column's header and the rows it fills are this edit's too.
+                let expansion = self
+                    .model
+                    .table_expansion(sheet, row, col, text)
+                    .map_err(EditError::Engine)?;
+                let targets = match expansion {
+                    Some(expansion) => {
+                        self.sheet_op = true;
+                        self.undo
+                            .push(Undo::TableExpanded(Box::new(expansion.table)));
+                        expansion.cells
+                    }
+                    None => (self.model.calculated_column_targets(sheet, row, col))
+                        .map_err(EditError::Engine)?,
+                };
+                // The targets are the other rows of the cell's column.
+                for (r, c) in targets {
+                    let target = CellRef {
+                        row: u32::try_from(r - 1).map_err(|_| RefError::OutOfBounds)?,
+                        ..cell
+                    };
+                    self.log_cell(sheet, (key.0, r, c), target)?;
+                }
+            }
+        }
+        self.apply(sheet, row, col, input, cell)
     }
 
     /// Records the input text, the undo entry and the pre-edit values for a write to `key`.
@@ -849,6 +887,7 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                 let undone = model.remove_table(&name);
                 debug_assert!(undone.is_ok(), "undo of add_table failed: {undone:?}");
             }
+            Undo::TableExpanded(table) => model.restore_table(*table),
             Undo::DataTable { sheet_id, range } => {
                 let sheet = (model.workbook.worksheets.iter())
                     .position(|ws| ws.get_sheet_id() == sheet_id)

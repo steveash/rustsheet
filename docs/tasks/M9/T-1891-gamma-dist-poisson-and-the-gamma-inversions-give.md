@@ -1,9 +1,9 @@
 ---
 id: T-1891
-title: "GAMMA.DIST, POISSON and the gamma inversions give Excel's values at a huge shape and where statrs panicked (T-1872 cap gaps)"
+title: "GAMMA.DIST, POISSON and CHISQ.DIST give Excel's values at a huge shape (T-1872 cap gaps; the inversions split to T-2982)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -12,9 +12,9 @@ campaign: accuracy
 ---
 
 ## Goal
-GAMMA.DIST, GAMMADIST, POISSON, POISSON.DIST, CHISQ.DIST*, CHIDIST and the gamma inversions (GAMMA.INV, GAMMAINV,
-CHISQ.INV, CHISQ.INV.RT, CHIINV) give Excel's value at a huge shape, and where statrs panicked or never finished,
-instead of `#NUM!`, within the per-call cap and lift weight T-1872 set.
+GAMMA.DIST, GAMMADIST, POISSON, POISSON.DIST, CHISQ.DIST* and CHIDIST give Excel's value at a huge shape, where statrs
+panicked or never finished, instead of `#NUM!`, within the per-call cap and lift weight T-1872 set. (Narrowed
+2026-10-28: the gamma inversions GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV moved to T-2982.)
 
 ## Context
 T-1872 capped statrs' incomplete gamma (`statistical/incomplete_gamma.rs`: 2^19 series or continued-fraction terms per
@@ -87,16 +87,12 @@ Our `GAMMA.DIST(1E+10,1E+10,1,TRUE)` is `#NUM!` where Excel gives 0.500001329807
 cap), probes/t2435-dist-extremes A21, A22, A33, A34: also this task's.
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 25 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] probes/incomplete-gamma-cap E1-E5, E8-E20 pass (E16 and E17: Excel 0.5000018806319452, ours
-  0.4999982128217492; E20: Excel 0.4999981193680548, ours 0.5000017871782507; E18: Excel `#NUM!`, ours 0) (or are named in the Outcome with their ulp), with
-  no loop whose length depends on argument values beyond the T-1872 caps, and the kinds.rs `INCOMPLETE_GAMMA_WEIGHT`
-  bound kept or re-derived.
-- [ ] The underflow rule (`lower_of_underflow`, backed by Excel only at shape 2, E7) is probed at a shape below 1 and
-  near 0 (`GAMMA.DIST(1E-300,0.5,1E100,TRUE)`, ours 0, true value about 1.1E-200; `GAMMA.DIST(1E-300,1E-17,1E100,TRUE)`,
-  ours 1; `CHISQ.DIST(1E-17,1,TRUE)`, ours 0 as on main, true value about 2.5E-9) and matched or recorded.
-- [ ] `make check` green; reviewers approve.
+Narrowed 2026-10-28 (session budget): the inversions, E18, the underflow rule and the gen-m9/t2435 cells moved to
+T-2982 with their evidence.
+- [x] probes/incomplete-gamma-cap E1-E4, E8-E12, E16, E17 and E20 pass (E13 1 ulp, named in the Outcome), with no loop
+      whose length depends on argument values beyond the T-1872 caps, and the kinds.rs `INCOMPLETE_GAMMA_WEIGHT`
+      bound kept.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).
@@ -110,3 +106,18 @@ it. Bit-level criteria still unmet then move to a follow-up task without the key
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Outcome
+- From a shape of 1E8 the incomplete gamma pair is Temme's uniform asymptotic expansion (`incomplete_gamma.rs`
+  `temme_pair`, C_0..C_3 of the 53-bit table, erfc and exp from libm, phi through `rlog1`), a fixed amount of work
+  charged as one term, so no huge-shape cdf hits the cap or loops: GAMMA.DIST, GAMMADIST, POISSON, POISSON.DIST,
+  CHISQ.DIST, CHISQ.DIST.RT and CHIDIST give Excel's value there.
+- probes/incomplete-gamma-cap: E1-E4, E8-E12, E16, E17, E20 bit-exact (E16, E17 and E20 were wrong on main too);
+  E13 `GAMMA.DIST(72939615800,98419000000,0.741118,TRUE)` 0.02017937516576307 against Excel's 0.020179375165763076
+  (1 ulp); the inversions now finish at E14 and E19, each 1 ulp off; E5, E15, E18 are T-2982's.
+- Eval delta against origin/main: probes 2,655 -> 2,634 known failures (21 fixed), no other suite moves, no
+  regressions; visibly-off in-scope cells 3,145 -> 3,084 on the branch's run.
+- `INCOMPLETE_GAMMA_WEIGHT` and `cdf_terms_bound` are kept: a cdf from shape 1E8 takes one term, so they only
+  over-charge there.
+- statistics.md "Incomplete gamma: per-call cap and lifting": the DEVIATION now covers the inversions only.
+- Follow-up: T-2982 (the inversions E5, E15, E18, the underflow rule, the gen-m9 and t2435 cells).

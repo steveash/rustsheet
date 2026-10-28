@@ -41,7 +41,8 @@
 
 use statrs::function::beta::{checked_beta_reg, checked_ln_beta};
 
-use super::incomplete_beta::{beta_reg_complement_unoriented, ln_near_one};
+use super::bratio::beta_dist_lower_tail;
+use super::incomplete_beta::ln_near_one;
 use super::incomplete_gamma::gamma_ur;
 use super::special::nearest_crossing;
 
@@ -218,7 +219,7 @@ fn inv_beta_reg_within(
 /// BETA.INV's quantile where statrs has no reliable search (a huge shape or a tiny p): Excel's
 /// structure, AS 109's (the algorithm [`inv_beta_reg`] ports), with a converged search. For p above
 /// 1/2 the result is 1 - Q(1 - p, beta, alpha); otherwise Q(p, alpha, beta), Q the double nearest
-/// the crossing of the T-0970 incomplete beta (or of its large-shape limit, see
+/// the crossing of BETA.DIST's kernel (`bratio::beta_dist_lower_tail`; or of its large-shape limit, see
 /// [`GAMMA_LIMIT_SHAPE_RATIO`]). Excel's BETA.INV at a = 5E9 is that value where Q is near 1, and
 /// 1 minus it for p above 1/2, bit for bit on 16 of the 24 probed cells
 /// (`BETA.INV(0.975,2.5,5E9)` = 1 - `BETA.INV(0.025,5E9,2.5)` exactly); where Q itself is tiny
@@ -246,7 +247,7 @@ pub(crate) fn beta_lower_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
         );
     }
     nearest_crossing(
-        |x| beta_reg_complement_unoriented(x, 1.0 - x, alpha, beta),
+        |x| beta_dist_lower_tail(x, 1.0 - x, alpha, beta),
         p,
         0.0,
         1.0,

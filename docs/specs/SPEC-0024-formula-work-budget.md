@@ -122,10 +122,11 @@ Known gaps (out of scope, recorded for later work):
 - **LAMBDAs stored across formulas** (T-2925). The budget bounds the LAMBDAs one formula makes, but
   `self.lambdas` keeps them until the whole evaluation ends. So a recalculation of many such formulas
   holds all of them, and each later formula's calls slow down with the map's size.
-- **Retained memory.** The budget counts work, not what a formula holds at once. Memory stays bounded
-  by the existing per-value caps: arrays of 2^20 cells, 32,767-unit texts, `MAX_CAPTURED_CELLS`, and
-  the nested-array caps. 2^20 cells of 32 KB texts is still about 64 GB in principle, as it is today.
-  This is pre-existing and is filed as T-2806.
+- **Retained memory.** The budget counts work, not what a formula holds at once. Copies of one text
+  (an IF, IFERROR, EXPAND or INDEX broadcast into 2^20 cells) were 32 GB of owned bytes before T-2806;
+  since then a text's bytes are shared, so a copy costs a pointer, and the `&` operator over an array
+  charges each text it makes, so one formula makes at most about 2^30 bytes of text (arrays.md "Copies
+  of a text share its bytes", T-2806).
 - **Super-linear work inside one scalar call** that has no per-call cap and touches no text: none is
   known. A function found to have one gets a per-call cap of its own, charged to the formula like the
   others.

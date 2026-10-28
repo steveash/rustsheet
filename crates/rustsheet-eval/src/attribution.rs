@@ -8,6 +8,7 @@
 //! attributed cell. It computes no verdict and gates nothing: T-0080 points `v15_checkpoint` at
 //! these counts, and the progress dashboard (T-0081) renders them.
 
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
@@ -35,30 +36,71 @@ pub struct UnattributedCell {
     pub formula: String,
 }
 
+/// A visibly-off Excel cell attributed to one function by decision 0118 ([`crate::closeness::sole_call`]),
+/// with what `scripts/exit_owners.py --all-off` needs to list it (T-0086).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttributedCell {
+    /// The case id, `suite/case`.
+    pub case: String,
+    /// `Sheet!A1`.
+    pub cell: String,
+    /// The function the cell is attributed to.
+    pub function: String,
+    /// The cell's formula as its case records it.
+    pub formula: String,
+    /// Excel's value, as the report prints it.
+    pub expected: String,
+    /// The engine's value, as the report prints it.
+    pub actual: String,
+}
+
+/// The in-scope, visibly-off, non-deviation Excel cells of `results` with the distinct functions
+/// their formulas call (at least one), in case order. The one rule behind both lists below.
+fn off_excel_cells<'a>(
+    catalog: &'a Catalog,
+    results: &'a [CaseResult],
+) -> impl Iterator<Item = (&'a CaseResult, &'a CellResult, BTreeSet<String>)> + 'a {
+    results.iter().flat_map(move |r| {
+        r.cells.iter().filter_map(move |c| {
+            if !c.from_excel || c.verdict == Verdict::Deviation || !Visible::is_off(c) {
+                return None;
+            }
+            let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
+            (!called.is_empty() && calls_only_in_scope(catalog, &called)).then_some((r, c, called))
+        })
+    })
+}
+
 /// The [`UnattributedCell`]s of `results`, in case order: the visibly-off, non-deviation Excel
 /// cells whose formula calls only in-scope functions, at least one, and no sole one.
 #[must_use]
 pub fn unattributed_off(catalog: &Catalog, results: &[CaseResult]) -> Vec<UnattributedCell> {
-    let mut out = Vec::new();
-    for r in results {
-        for c in &r.cells {
-            if !c.from_excel || c.verdict == Verdict::Deviation || !Visible::is_off(c) {
-                continue;
-            }
-            let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
-            if !called.is_empty()
-                && crate::closeness::sole_call(&called).is_none()
-                && calls_only_in_scope(catalog, &called)
-            {
-                out.push(UnattributedCell {
-                    case: r.id.clone(),
-                    cell: c.key(),
-                    formula: c.formula.clone().unwrap_or_default(),
-                });
-            }
-        }
-    }
-    out
+    off_excel_cells(catalog, results)
+        .filter(|(_, _, called)| crate::closeness::sole_call(called).is_none())
+        .map(|(r, c, _)| UnattributedCell {
+            case: r.id.clone(),
+            cell: c.key(),
+            formula: c.formula.clone().unwrap_or_default(),
+        })
+        .collect()
+}
+
+/// The [`AttributedCell`]s of `results`, in case order: the cells [`unattributed_off`] leaves out.
+#[must_use]
+pub fn attributed_off(catalog: &Catalog, results: &[CaseResult]) -> Vec<AttributedCell> {
+    off_excel_cells(catalog, results)
+        .filter_map(|(r, c, called)| {
+            let function = crate::closeness::sole_call(&called)?.clone();
+            Some(AttributedCell {
+                case: r.id.clone(),
+                cell: c.key(),
+                function,
+                formula: c.formula.clone().unwrap_or_default(),
+                expected: c.expected.to_string(),
+                actual: c.actual.to_string(),
+            })
+        })
+        .collect()
 }
 
 /// A function's parity tier: the worst of its counted cells (decision 0083's order of parity),
@@ -471,6 +513,15 @@ mod tests {
                 ("probes/a", "GAMMA(BETA.DIST(0.5,2,3,TRUE))"),
                 ("probes/a", "IF(AND(A1,B1),1,2)")
             ]
+        );
+        let attributed: Vec<(&str, &str)> = report
+            .attributed_off
+            .iter()
+            .map(|a| (a.function.as_str(), a.formula.as_str()))
+            .collect();
+        assert_eq!(
+            attributed,
+            [("GAMMA", "IF(A1,GAMMA(1))"), ("IF", "IF(A1,1,2)")]
         );
         let md = report.to_markdown(1);
         assert!(

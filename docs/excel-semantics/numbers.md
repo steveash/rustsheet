@@ -699,6 +699,7 @@ The flush follows each function's internal path, not the size of the result: `BI
 FALSE, J229/J238 TRUE). Implemented (T-2703): the EXPON.DIST, WEIBULL, BETA.DIST and GAMMA.DIST densities, the
 BINOM.DIST pmf off its k = 0 and k = n closed forms, and the NEGBINOM.DIST pmf pass their result through
 `arithmetic::flush_subnormal`. The closed forms and the cumulative modes are left unchanged: k = n is EXP-based like k = 0.
+Implemented (T-2847): the NEGBINOM.DIST cdf off its closed forms (row 9 below) flushes the bratio port's result.
 More paths (T-2706, VERIFIED at the probed arguments, probes/t2706-subnormal-density-paths, excel-graph 2026-10-25, each
 true value between 4.9E-324 and 2.2E-308, row n is the call in An and its companion in Bn). Excel KEEPS the subnormal
 (companion FALSE) of the BINOM.DIST pmf at k = n (`BINOM.DIST(1000,1000,0.49,FALSE)`, BINOMDIST, `BINOM.DIST(500,500,
@@ -917,18 +918,44 @@ with nothing dropped for k ≤ 7, whose kept cut is subnormal, while for k = 8 i
 `ROUND(2^-1022,310)` is 2.23E-308), ROUNDDOWN's (`ROUNDDOWN(x,308)` for k = 8, 2E-308, is 0)
 and ROUNDUP's rounded-down part and unit (`ROUNDUP(x,308)` to `ROUNDUP(x,321)` for k = 8 are 0, though the decimal
 results 3E-308 to 2.2250738585073E-308 are normal: both 2E-308 and the unit 1E-308 are flushed; `ROUNDUP(x,307)` is
-1E-307). The subnormal returned is 2.2250738585071984E-308 for every k = 0..7 and num_digits probed (read through `*2^100`:
-2.8206162122887925E-278), 3 ulps below the double nearest the cut (2.2250738585071999E-308); no product or quotient of
-the 15 digits by powers of ten (two or three exact-power factors, each order) reproduced it, so the conversion is not
-known. The engine returns the nearest double, and misses those 7 read-back cells (rows 52-58). The rule is evidenced for num_digits
-from -300 to 330 only; the engine applies it at every num_digits (a huge one such as -400 or 2^31, which is `#NUM!` or
-wraps for a normal x, is not probed here; T-2771).
+1E-307). The subnormal returned is 2.2250738585071984E-308 = 2^-1022 - 6·2^-1074 for every k = 0..7 and num_digits
+(read through `*2^100`: 2.8206162122887925E-278), 3 ulps below the double nearest the cut (2.2250738585071999E-308).
+No product or quotient of the 15 digits by powers of ten reproduced it (two or three exact-power factors, each order),
+so the conversion is not known. It does not need to be: every normal x cuts to at least 2.22507385850720E-308, so that
+is the only subnormal cut a normal argument can have, and its double is this one value. It holds at every num_digits
+probed, out-of-range ones included: -400, 1E10, -1E10, 2^31, -(2^31) and 2^53 give the same subnormal for ROUNDUP and
+ROUNDDOWN, where 1.5 gives `#NUM!` (ROUNDUP at -400 and -1E10) or wraps (ROUNDUP(1.5,2^31) = 2).
+A subnormal argument (kept by a subtraction such as `3E-308-2.5E-308`) is not cut at all:
+- ROUNDUP, ROUNDDOWN and TRUNC return x itself, bit for bit and with its sign, at every size (k·2^-1074 from k = 1
+  to 2.2E-308) and at num_digits 0, 2, 330, -400, 2^31 and 1E10;
+- ROUND returns a positive x below 2^-1026 (k < 2^48) as it is (`ROUND(x,0)`, `ROUND(x,330)` are x), and gives 0 for a
+  negative one at any size and for a positive one from 2^-1026 up. The switch is exact: k = 2^48 - 1 is kept and
+  k = 2^48 (x = 2^-1026 ≈ 1.39E-309) is 0. Probed at num_digits 0, 320 and 330 only; the engine applies it at every
+  num_digits.
+A negative normal argument whose cut is subnormal gives the negative constant (`ROUNDDOWN(-(2^-1022),0)`,
+`ROUNDUP(0-2^-1022,0)`, `TRUNC((0-1)*2^-1022)`). Arguments negated with unary minus below 2^-1026 arrive positive
+("Unary minus of a tiny subnormal" below), so `ROUNDUP(-x,0)` there is +x.
 Evidence: probes/t2756-roundup-smallest-normal-threshold (excel-graph, 2026-10-26): rows 1-28 bisect k = 0..20 and
 controls (2^-1021, 2^-1020, 3E-308, 9.99999999999999E-308, 1E-307) at num_digits 0, -2, 2, 300 and 330; rows 30-50 take
 k = 0, 7, 8 at num_digits 307 to 322 with `=0` companions; rows 52-60 read the subnormals back. probes/t2715-roundup-near-smallest-normal.
-Status: VERIFIED (excel-graph), except the subnormal's last bits
+probes/t2771-roundup-subnormal-cuts (20 subnormal arguments from 5E-324 to 2.2E-308, five functions each, and the huge
+num_digits rows 22-33), t2771-roundup-subnormal-sign (eleven arguments from 1E-320 to 2E-309, ten forms each) and
+t2771-roundup-subnormal-threshold (k = 2^48 - 2 to 2^49) and t2771-roundup-subnormal-sign-controls (negative arguments
+built without unary minus, cell references, huge num_digits), all excel-graph, 2026-10-27.
+Status: VERIFIED (excel-graph)
 Implemented in: `round_function` and `round_decimal` in crates/rustsheet-engine/src/decimal_round.rs
-Tasks: T-2756
+Tasks: T-2756, T-2771
+
+## Unary minus of a tiny subnormal (T-2771)
+Rule: `-x` of a positive subnormal x below 2^-1026 (k·2^-1074 with k < 2^48) is +x; from 2^-1026 up it is -x. `0-x`
+keeps the sign at every size, and `-1*x` is 0 (a subnormal product is flushed, "Subnormal results become 0"). Every
+probed operand is an inline expression; unary minus on a cell reference, range or array, a tiny negative operand and
+a chain such as `--x` are unprobed. The engine applies the rule to the whole chain's parity and to every operand kind (T-2942 probes the rest).
+Evidence: probes/t2771-roundup-subnormal-sign-controls B and C (k = 12345 and 2^48 - 1 against 2^48 and 2^50 + 3),
+excel-graph, 2026-10-27; t2771-roundup-subnormal-sign and -threshold read the same switch through the ROUND family.
+Status: VERIFIED (excel-graph) for a positive operand
+Implemented in: `apply_unary_chain` in crates/rustsheet-engine/src/cast.rs (`TINY_SUBNORMAL_BELOW`, arithmetic.rs)
+Tasks: T-2771, T-2942
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`

@@ -4,7 +4,7 @@ title: "Normal PDF last digits: NORM.S.DIST/NORM.DIST/LOGNORM.DIST non-cumulativ
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: opus
 campaign: visible
@@ -103,3 +103,6 @@ significant digit of Excel's value (an expected 0 exactly 0); the visible-parity
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
 
 Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/b4173fe25109a238 Calc!A48 `=LOGNORM.DIST(40,0,(Data!A10*100%),FALSE)`: Excel 3.0218137820578166e-14, ours 3.021813782057842e-14 (5 units of the 15th digit).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+It owns the 4 visibly-off LOGNORM.DIST cells and alone lifts LOGNORM.DIST. Priority raised so it leads its stage in M9.

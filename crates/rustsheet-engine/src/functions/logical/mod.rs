@@ -389,7 +389,10 @@ impl Model {
                 Ok(array) => array,
                 Err(error) => return error,
             },
-            CalcResult::Array(a) => a,
+            // So is a blank element of an array, such as GROUPBY's blank key (true blank to
+            // INDEX and COUNT): `TEXTJOIN("|",FALSE,IFERROR(GROUPBY(..),"#"))` reads it "0"
+            // (probes/groupby-sort-filter-args G!B15, B55; T-2854).
+            CalcResult::Array(a) => blanks_as_zero(a),
             CalcResult::Error { ref error, .. } if is_handled(error) => {
                 // Scalar handled error: evaluate the fallback branch directly.
                 // The branch result may itself be an array (it will spill). A blank cell there

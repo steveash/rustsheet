@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2870: M2 argument kinds T-2861 left: empty text (literal and cell) in ABS and MONTH; a fraction and numeric text as COUNTIFS criteria against a range holding 0.5, 2 and \"2\"; errors scored via ERROR.TYPE.",
+ "tags": [
+  "M2",
+  "probe",
+  "argument-modes",
+  "T-2870"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "B1": 0.5,
+    "B2": 2,
+    "B3": "2",
+    "B4": 2,
+    "B5": 0.5,
+    "M1": "=\"\"",
+    "M4": 0.5,
+    "M5": "2",
+    "A11": "=IF(ISERROR(ABS(\"\")),ERROR.TYPE(ABS(\"\")),ABS(\"\"))",
+    "A12": "=IF(ISERROR(ABS(M1)),ERROR.TYPE(ABS(M1)),ABS(M1))",
+    "A13": "=IF(ISERROR(MONTH(\"\")),ERROR.TYPE(MONTH(\"\")),MONTH(\"\"))",
+    "A14": "=IF(ISERROR(MONTH(M1)),ERROR.TYPE(MONTH(M1)),MONTH(M1))",
+    "A15": "=IF(ISERROR(COUNTIFS(B1:B5,0.5)),ERROR.TYPE(COUNTIFS(B1:B5,0.5)),COUNTIFS(B1:B5,0.5))",
+    "A16": "=IF(ISERROR(COUNTIFS(B1:B5,M4)),ERROR.TYPE(COUNTIFS(B1:B5,M4)),COUNTIFS(B1:B5,M4))",
+    "A17": "=IF(ISERROR(COUNTIFS(B1:B5,\"0.5\")),ERROR.TYPE(COUNTIFS(B1:B5,\"0.5\")),COUNTIFS(B1:B5,\"0.5\"))",
+    "A18": "=IF(ISERROR(COUNTIFS(B1:B5,\"2\")),ERROR.TYPE(COUNTIFS(B1:B5,\"2\")),COUNTIFS(B1:B5,\"2\"))",
+    "A19": "=IF(ISERROR(COUNTIFS(B1:B5,M5)),ERROR.TYPE(COUNTIFS(B1:B5,M5)),COUNTIFS(B1:B5,M5))",
+    "A20": "=IF(ISERROR(COUNTIFS(B1:B5,2)),ERROR.TYPE(COUNTIFS(B1:B5,2)),COUNTIFS(B1:B5,2))",
+    "A21": "=IF(ISERROR(COUNTIFS(B1:B5,\"2\",B1:B5,\">0\")),ERROR.TYPE(COUNTIFS(B1:B5,\"2\",B1:B5,\">0\")),COUNTIFS(B1:B5,\"2\",B1:B5,\">0\"))"
+   }
+  }
+ ],
+ "expected": {}
+}
