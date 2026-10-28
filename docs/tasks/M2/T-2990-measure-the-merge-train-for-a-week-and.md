@@ -12,29 +12,30 @@ spec: docs/specs/SPEC-0027-merge-train.md
 ---
 
 ## Goal
-After seven days in `train` mode, measure the merge train against the 48 h before 2026-10-25.
-Then record a decision on whether to retire the per-PR merge path.
+After seven days in `train` mode, measure the merge train against the 48 h before 2026-10-25 and
+record whether to retire the per-PR merge path.
 
 ## Context
-- SPEC-0027 "Metrics" lists each measure with its baseline and target:
-  - merges per hour;
-  - time from marker to merge, p50 and p90;
-  - CI runs per merged PR;
-  - lock wait;
-  - stranded PRs;
-  - ejections and bisection runs;
-  - tree-check failures;
-  - `main` red after a train;
+- SPEC-0027 "Metrics" gives the measures, their baselines and their targets:
+  - latency, measured from the first green CI on the final head and bucketed by arrival rate, with
+    the p90 target conditional on the measured breakage rate p;
+  - merge-stage CI runs per merged PR, and runner-minutes;
+  - lock wait, and stranded PRs;
+  - the red-train rate against 1 − (1 − p)^n, bisection runs and ejections;
+  - the deferral rate and the effective batch size;
+  - tree-check failures, and `main` red after a train;
   - lock occupancy.
-- Data sources: the GitHub API (PRs, workflow runs on `merge-train/current` and on PR branches,
-  marker and ejection comments) and `main`'s history.
+- `make merge-train-stats SINCE=<date>` (T-2995) computes them.
+- This task also checks the first live trains after T-2991's switch: whether they merged their
+  batches with every tree check passing.
 
 ## Acceptance criteria
-- [ ] Every metric in SPEC-0027 "Metrics" is reported with the method used to measure it, in the
-      task's Outcome or in a research note under docs/research/.
+- [ ] Every metric in SPEC-0027 "Metrics" is reported with its method, in the task's Outcome or in
+      a research note under docs/research/.
+- [ ] The first live trains after the switch are listed with their outcomes.
 - [ ] Each missed target gets a follow-up task, or a decision record that accepts the miss.
-- [ ] A decision is recorded either way: keep `lock` mode as the fallback, or retire it together
-      with the per-PR texts. SPEC-0027 is updated to match.
+- [ ] A decision is recorded: keep `lock` mode as the fallback, or retire it along with the per-PR
+      texts. SPEC-0027 is updated to match.
 
 ## Out of scope
 - Tuning the batch size or the cadence, beyond filing tasks for them.

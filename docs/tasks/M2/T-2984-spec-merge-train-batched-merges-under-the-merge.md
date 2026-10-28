@@ -45,7 +45,8 @@ writing this spec (2026-10-28).
 - [x] The rollout slices are filed with `make new-task`, each linking the spec, with `depends_on`.
 - [x] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`,
       `check_governance.py origin/main`, `make typos` and the scripts unit tests pass.
-- [ ] Reviewers approve (architecture for the spec).
+- [ ] Reviewers approve (architecture for the spec). This box is ticked at merge, once every
+      reviewer approves the final head.
 
 ## Out of scope
 - Any change to `scripts/`, `.github/`, `.claude/`, `docs/process/` or the routines: those land
@@ -53,22 +54,34 @@ writing this spec (2026-10-28).
 - Moving the repository to an organization or turning on the merge queue (decision 0053).
 
 ## Outcome
-SPEC-0027 (`docs/specs/SPEC-0027-merge-train.md`) designs the merge train:
-- a FIFO merge lock with `wait`, as the first, independent slice;
-- a readiness marker (label plus a machine-readable comment naming the approved head sha and the
-  verdicts) that workers set before moving on;
-- a merger, run by an owner-created routine every 30 min with a stall fallback for any session,
-  that tests up to 5 ready PRs together on `merge-train/current` under the lock and squash-merges
-  them in order, with a proof and a per-squash tree check that `main` ends with the tested tree;
-- prefix bisection that ejects the culprit;
-- crash recovery, and the interactions with conflicts, id collisions (ejected, not renumbered),
-  docs-only PRs, orphaned PRs and required checks (strict "up to date" must stay off, and no
-  auto-merge);
+SPEC-0027 (`docs/specs/SPEC-0027-merge-train.md`, revision 2 after the first review round)
+designs the merge train:
+- a fair, validated FIFO merge lock with `wait`, as the first, independent slice;
+- a readiness marker that workers set before moving on. Its verdicts are an attestation, not a
+  verification (owner decision); only markers by authors with write permission count;
+- an owner-created merger routine, every 30 min, that polls for a 40-min window, plus a stall
+  fallback;
+- trains of up to 5 PRs on `merge-train/current`, squash-merged in order, with mandatory pre- and
+  post-squash tree checks that detect (not prevent) a differing `main` and revert first;
+- a binary search for the first red prefix;
+- shadow mode on `merge-train/shadow`;
 - the CI trigger;
-- draft decision text, a `lock`/`shadow`/`train` switch, metrics and a rollback plan.
+- an emergency switch to `lock` that any agent can merge;
+- metrics with daily thresholds, and rollback.
 
 No decision record lands here: the spec changes no protected path, and each slice carries its
-own record. Follow-ups: T-2985 (fair lock), T-2986 (readiness marker), T-2988 (CI on train
-branches), T-2987 (train builder), T-2989 (skills, process and routine prompt; `shadow`), T-2991
-(switch on after shadow runs), T-2990 (one-week measurement). Open questions for the owner are at
-the end of the spec. No eval delta.
+own record. Follow-ups, in rollout order:
+- T-2985: fair lock;
+- T-2993: GitHub client and write probe;
+- T-2986: readiness marker;
+- T-2988: CI on train branches;
+- T-2987: builder and dry run;
+- T-2994: merge stage;
+- T-2995: shadow and stats;
+- T-2996: policy record and routine prompts;
+- T-2989: skills and process, `shadow`;
+- T-2991: `train`, blocked on the owner's routine;
+- T-2990: one-week measurement;
+- T-2997 (P3): v2 verdict records.
+
+Open questions for the owner are at the end of the spec. No eval delta.
