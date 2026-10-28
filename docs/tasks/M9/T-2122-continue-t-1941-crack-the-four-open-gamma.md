@@ -3,7 +3,7 @@ id: T-2122
 title: "Continue T-1941: crack the four open gamma kernels to the bit"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
