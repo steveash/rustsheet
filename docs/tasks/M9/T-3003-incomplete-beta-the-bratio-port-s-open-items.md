@@ -1,0 +1,44 @@
+---
+id: T-3003
+title: "Incomplete beta: the bratio port's open items after T-2977 (shape of 1 outside the closed forms, TOMS betaln for both shapes >= 1 above 8, fl(a LN x) overflow, SPEC-0025 layout)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P1
+size: M
+tier: opus
+campaign: accuracy
+depends_on: [T-2977]
+spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
+---
+
+## Goal
+The bratio port reaches the points it still hands to today's kernel for want of a piece, and its code has SPEC-0025's
+layout and tests.
+
+## Context
+- T-2977 deleted the pre-T-2502 seams and the T-2464 harness and scored the engine per bratio branch
+  (docs/research/t2977/score_branches.out; T-2977 Outcome). These items from T-2847's Context were left open:
+  - a caller's shape of exactly 1 outside the closed forms (a0 = 1, y0 > 0.9) stays on
+    `incomplete_beta.rs::shape_one_tails` (`TODO(T-3003)` in `bratio::ported_tails`): bpser(1, 3.5, x0) is 1 ulp
+    high at probes/ftest-decomposition B12, where y0^b0 is Excel's value. Find Excel's form before moving it;
+  - bpser for both shapes >= 1 with max > 8 (`bpser_neg_ln_beta` returns `None`): 509 r2-bratio bpser_large rows
+    and the F tails' fallback there (for example probes/t2829-ftest-tail-over-b S!A17, `2*F.DIST.RT(1E+12,22,5)`)
+    keep today's kernel; a TOMS `betaln` (gamln + algdiv, or bcorr for both >= 8) is the natural port, against
+    T-2924's fit of Excel's betaln;
+  - probe (excel-probe) Excel's value where fl(a·LN x) overflows, `BETA.DIST(0.1,1E308,0.5,TRUE)`;
+  - SPEC-0025's `bpser.rs`/`ln_beta.rs` split, the hex-bits branch fixture and the complement, swap and
+    monotonicity property tests, or a spec amendment; unify `beta_density::ln_beta_small_shape` with
+    `bratio::bpser_neg_ln_beta` or say in the code why they differ;
+  - the 987 probes-numeric cells T-2505's port moved off the Cephes kernel (T-2847 Context), scored against the
+    model with the bindings venv (decision 0114).
+- The model's w_bpser counts beat the engine's (6,767 against 5,458 bit-exact of 11,845; T-2977 Outcome): the
+  model scores 6,767 with w3_lg = toms and 6,072 with gl (the engine's GL53), so part of the gap is the L form.
+
+## Acceptance criteria
+- [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
+      its scores.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- bfrac/basym (T-2508), the bgrat family (T-2509, T-2510), the inverses (T-2511), T-2978's ulp cells.

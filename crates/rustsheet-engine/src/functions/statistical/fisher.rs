@@ -2,9 +2,9 @@ use statrs::distribution::{Continuous, FisherSnedecor};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
-use crate::functions::statistical::bratio::{beta_dist_lower_tail, kernel_tails};
+use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
-use crate::functions::statistical::incomplete_beta::beta_density;
+use crate::functions::statistical::incomplete_beta::{beta_density, beta_reg_tails};
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::loader::dbinom_raw_dev;
 use crate::functions::statistical::paired::marked_number_error;
@@ -36,6 +36,14 @@ fn f_beta_arguments(df1: f64, df2: f64, x: f64) -> (f64, f64) {
     (1.0 / (1.0 + df2 / scaled), 1.0 / (1.0 + scaled / df2))
 }
 
+/// The incomplete beta's argument df1 x/(df1 x + df2) and its complement df2/(df1 x + df2), the
+/// forms today's Cephes kernel takes for the F tails ([`f_tail`]'s fallback, [`f_quantile_tail`]).
+fn f_kernel_arguments(df1: f64, df2: f64, x: f64) -> (f64, f64) {
+    let scaled = df1 * x;
+    let total = scaled + df2;
+    (scaled / total, df2 / total)
+}
+
 /// Whether the F cdf at `x` is `#NUM!` because the incomplete beta's argument cannot be formed:
 /// [`f_beta_arguments`] divides df2 by df1 x, and once that quotient leaves the double range Excel
 /// reports `#NUM!` for either tail, where the density there is still 0. `FDIST(1E-300,6,1E+10)`,
@@ -52,11 +60,18 @@ fn f_beta_ratio_overflows(df1: f64, df2: f64, x: f64) -> bool {
     x > 0.0 && !(df2 / (df1 * x)).is_finite()
 }
 
-/// One F tail (`upper`: P(F > x)) on [`f_beta_arguments`]: Excel's closed forms (a df of 2), the
-/// bratio port's branches where they apply, else today's kernel ([`kernel_tails`], T-2847, T-2977).
+/// One F tail (`upper`: P(F > x)): Excel's closed forms (a df of 2) and the bratio port's branches
+/// on [`f_beta_arguments`] ([`closed_or_ported_tails`], T-2847), else today's Cephes kernel on
+/// u = df1 x/(df1 x + df2) and its complement df2/(df1 x + df2). w5's forms there move gated cells
+/// off Excel (T-2977: `FDIST(Data!$D5,1,9)`, gen-m9/c18dbf21f11093f3 A151, by 9 ulp, and
+/// `2*F.DIST.RT(1E+12,22,5)`, probes/t2829-ftest-tail-over-b S!A17, visibly).
 fn f_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
     let (u, v) = f_beta_arguments(df1, df2, x);
-    let (lower, upper_tail) = kernel_tails(u, v, df1 / 2.0, df2 / 2.0);
+    let (a, b) = (df1 / 2.0, df2 / 2.0);
+    let (lower, upper_tail) = closed_or_ported_tails(u, v, a, b).unwrap_or_else(|| {
+        let (u, v) = f_kernel_arguments(df1, df2, x);
+        beta_reg_tails(u, v, a, b)
+    });
     if upper {
         upper_tail
     } else {
@@ -74,6 +89,34 @@ fn f_cdf(df1: f64, df2: f64, x: f64) -> f64 {
 /// (T-0970: `F.DIST.RT(0.7,4,2.4)` is 0.6597222222222223 in `F_DIST.xlsx`).
 fn f_sf(df1: f64, df2: f64, x: f64) -> f64 {
     f_tail(df1, df2, x, true)
+}
+
+/// The F tail F.INV, F.INV.RT and FINV search the crossing of, until they invert the ported kernel
+/// (T-2511): today's kernel on u = df1 x/(df1 x + df2) and v = df2/(df1 x + df2) without Excel's
+/// oriented closed forms, a shape of 1 taken by [`unoriented_shape_one_tail`]. With [`f_tail`]
+/// instead the crossing moves 9 gated cells 2 to 8 ulp off Excel's quantile (T-2977:
+/// `FINV(0.025,7,10)`, gen-m9/fec39efaba9284c3 A336; gen-m9/9cca17438a7e6f8a A114 by 8 ulp; `F.INV(0.05,2,5)`,
+/// probes-numeric/m9-f-inv A10, at a shape of 1).
+fn f_quantile_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
+    let (u, v) = f_kernel_arguments(df1, df2, x);
+    let (a, b) = (df1 / 2.0, df2 / 2.0);
+    if u > 0.0 && v > 0.0 {
+        // The upper tail is I_v(b, a).
+        let shape_one = if upper {
+            unoriented_shape_one_tail(v, b, a)
+        } else {
+            unoriented_shape_one_tail(u, a, b)
+        };
+        if let Some(tail) = shape_one {
+            return tail;
+        }
+    }
+    let (lower, upper_tail) = beta_reg_tails(u, v, a, b);
+    if upper {
+        upper_tail
+    } else {
+        lower
+    }
 }
 
 /// Above this a + b (half the two df summed) F.TEST's tail is
@@ -110,12 +153,12 @@ fn f_test_p(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// a ln x is about -100) but not a continued fraction's: over the 188 distinct F.TEST inputs on
 /// file this form is bit-exact on 90 against 53 for the correctly rounded p and visibly off on 6
 /// against 40 (docs/excel-semantics/statistics.md "F.TEST / FTEST: larger variance on top").
-/// A shape of 1 is F.TEST's own form ([`f_test_shape_one_tail`]), large shapes are the kernel's
+/// A shape of 1 is F.TEST's own form ([`unoriented_shape_one_tail`]), large shapes are the kernel's
 /// ([`beta_dist_lower_tail`]: the bratio port's branches, else today's kernel; T-2977), and
 /// a = b = 1/2 is Excel's closed form 2 asin(sqrt x)/pi (T-2571; current scores in statistics.md).
 fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     if x > 0.0 && y > 0.0 {
-        if let Some(tail) = f_test_shape_one_tail(x, a, b) {
+        if let Some(tail) = unoriented_shape_one_tail(x, a, b) {
             return tail;
         }
     }
@@ -131,24 +174,26 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
 }
 
-/// Below this x F.TEST's a = 1 tail is -expm1(b ln1p(-x)), above it 1 - exp(b ln(1 - x)) (T-0974).
-const F_TEST_A1_EXPM1_MAX_X: f64 = 0.1;
+/// Below this x [`unoriented_shape_one_tail`]'s a = 1 tail is -expm1(b ln1p(-x)), above it
+/// 1 - exp(b ln(1 - x)) (T-0974).
+const A1_EXPM1_MAX_X: f64 = 0.1;
 
-/// F.TEST's `I_x(a, b)` at a shape of 1, for 0 < x < 1, on the caller's x without bratio's swap:
+/// `I_x(a, b)` at a shape of 1 as F.TEST and the F quantile's search ([`f_quantile_tail`]) take it,
+/// for 0 < x < 1, on the caller's x without bratio's swap:
 /// x^a at b = 1, and 1 - (1 - x)^b at a = 1 (as -expm1(b ln1p(-x)) below
-/// [`F_TEST_A1_EXPM1_MAX_X`]); `None` for other shapes. Excel's F.TEST does not take the oriented
+/// [`A1_EXPM1_MAX_X`]); `None` for other shapes. Excel's F.TEST does not take the oriented
 /// closed forms of F.DIST and BETA.DIST (`incomplete_beta::closed_form_tails`): with them
 /// `F.TEST` moves 2 to 10 ulp off Excel at gen-m9/68d8ffb69ff739d8 A143 (a = 1, b = 1/2, x = 0.571),
 /// a790a4d4a6a82756 A192 (a = 4, b = 1, x = 0.618) and bbdfc06cae0e0d71 A356 (a = 5.5, b = 1,
 /// x = 0.579; visibly off), each bit-exact on this form (T-2977).
-fn f_test_shape_one_tail(x: f64, a: f64, b: f64) -> Option<f64> {
+fn unoriented_shape_one_tail(x: f64, a: f64, b: f64) -> Option<f64> {
     if b == 1.0 {
         return Some((a * x.ln()).exp());
     }
     if a != 1.0 {
         return None;
     }
-    Some(if x < F_TEST_A1_EXPM1_MAX_X {
+    Some(if x < A1_EXPM1_MAX_X {
         -(b * (-x).ln_1p()).exp_m1()
     } else {
         1.0 - (b * (1.0 - x).ln()).exp()
@@ -256,7 +301,7 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
     if lower > 0.5 {
         let upper = if right_tail { p } else { 1.0 - p };
         refine_increasing(
-            |x| -f_sf(df1, df2, x),
+            |x| -f_quantile_tail(df1, df2, x, true),
             -upper,
             estimate,
             0.0,
@@ -264,7 +309,7 @@ fn f_quantile(df1: f64, df2: f64, p: f64, right_tail: bool) -> f64 {
         )
     } else {
         refine_increasing(
-            |x| f_cdf(df1, df2, x),
+            |x| f_quantile_tail(df1, df2, x, false),
             lower,
             estimate,
             0.0,
