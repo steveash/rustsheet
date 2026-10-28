@@ -235,7 +235,7 @@ Evidence: probes/info-logic-argument-modes A6:A29, info-logic-argument-modes-2 A
 info-modes-isref-value-op (oracle: excel-graph, 2026-10-09, T-1088). The refusals come from scratch fills that failed and were not kept.
 Status: VERIFIED (excel-graph)
 Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` superseded by T-1230 below).
-Settled by T-1230 (next entry): ironcalc-calc CELL.xlsx B14 (top-left of a same-sheet range) and probes/info-logic-argument-modes A18 (`#VALUE!`, which is the formula's own-sheet cell Calc!A2) both fit "the top-left cell, read on the formula's own sheet".
+Settled by T-1230 (next entry): ironcalc-calc CELL.xlsx B14 (top-left of a same-sheet range) and probes/info-logic-argument-modes A18 (`#VALUE!`, which is the formula's own-sheet cell Calc!A2) both fit "the top-left cell, read on the formula's own sheet". Superseded by T-3030: the re-filled A18 is 2 (Data!A2), the named-sheet reading.
 `CELL("address")` across sheets (unimplemented in T-1218) is implemented since T-2042: see "CELL("address") of a reference on another sheet" below.
 Tasks: T-1088, T-1218, T-2042
 
@@ -252,7 +252,8 @@ Rule (excel-graph, since 2026-10-28, T-3030): `CELL("contents", ref)` and `CELL(
 - `CELL("type",Data!A7)` is "l" for text in Data!A7 (probes/info-cell-legacy-range J1:K3, M6, N6, re-filled 2026-10-28).
 - Sheet order does not matter. With sheets Data, Calc, Other, each reads its named sheet from every other sheet (probes/t3030-cell-first-sheet).
 - Nesting does not matter. Under `+0`, N, LET, IF, `&""`, VSTACK, SUM, INDEX, IFERROR, CHOOSE, `@`, SORT and TOCOL, Data!B1 = 7 is read where Calc!B1 = 99 (probes/t3030-cell-contents-nested-sheet A1:A171, A261:A331).
-- To get this evidence, T-3030 re-filled 80 cases from excel-graph whose old sidecars encoded the old reading (decision 0153).
+- T-3030 re-filled from excel-graph every case with a cross-sheet `CELL("contents"|"type")` whose sidecar predates 2026-10-28 (decision 0153). Only CELL cells and their spills changed. info-cell-contents-range was filled twice with identical values; the second fill is not stored, so re-run `rustsheet-oracle fill -b excel-graph --force --case probes/info-cell-contents-range.case.json` to check.
+- Evidence: the sidecars above, excel-graph, 2026-10-28. The old (own-sheet) values are in the sidecars at commit 67c550570 (origin/main before T-3030): info-cell-contents-range (2026-10-12), info-cell-legacy-range (2026-10-15) and info-cell-type-cross-sheet-reprobe (2026-10-22).
 
 **History.** Fills up to 2026-10-26 read the formula's own sheet (T-1230, T-1433). Excel for the web has changed since; the single "type" cell that T-2383 saw read the referenced sheet on 2026-10-22 was an early sign. The superseded rule follows, kept for the record.
 Old rule (excel-graph fills of 2026-10-12 .. 10-26): `CELL("contents", ref)` read the top-left cell of `ref` taken **on the formula's own sheet**, whatever sheet `ref` names; a multi-cell range is never implicitly intersected, and a legacy (non-array) formula gives the same value as a dynamic one. `=CELL("contents",Data!A2)` on Calc is Calc!A2 (12.5), not Data!A2 (2.5); `Data!A7:C7` is Calc!A7 (21.5); `Data!E1:F1` is Calc!E1 (blank, 0). The earlier "other sheet = `#VALUE!`" reading (probes/info-logic-argument-modes A18) was this: Calc!A2 there is `=XOR(Data!B1)` = `#VALUE!`. Same-sheet ranges give the top-left cell (`A1:A5` in C1, C3, C8 all 11.5), legacy twins included. Legacy-twin evidence for the other info_types is in the next entry (T-1433).
@@ -276,7 +277,7 @@ case changed. The re-probe probes/info-cell-type-cross-sheet-reprobe (excel-grap
 in all 24 cells: `CELL("type",Data!C$9)` bare, under RIGHTB, LEFT and `&""`, as `Data!C9`, `Data!$C9` and `Data!$C$9`, eleven
 repeats of the gen formula (A14:A23, A347) all "b"; rows 8 and 10 "b"; Calc!E9 text gives "l" and Calc!G9 a number "v" for
 `Data!E$9` / `Data!G$9` with Data blank there. So in 2026-10-22 excel-graph could, rarely and not repeatably (one observation, T-2383), answer a cross-sheet "type" from
-the referenced sheet. Since 2026-10-28 it always does (T-3030, above); gen-m5/74b183ca6fc1d190 was re-filled.
+the referenced sheet. Since 2026-10-28 it always does (T-3030, above). gen-m5/74b183ca6fc1d190 and the re-probe were re-filled, and the re-probe's 24 "b" cells are now "l"; the old values are at commit 67c550570.
 CELL("contents", ref) as a VSTACK argument is `#VALUE!` (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23): `VSTACK(CELL("contents",Data!C11),1)`,
 `VSTACK(CELL(..),Data!B7:E12)` and `ROWS(VSTACK(CELL(..),Data!B7:E12))` are all one `#VALUE!` (nothing spilled), while `CELL(..)` alone and
 `CELL(..)&"|"` give 0 and "|", and `VSTACK(0,Data!B7:E12)` is the 7x4 stack (`#N/A` padded). So the CELL result, not the blank cell, makes the
@@ -304,7 +305,7 @@ What the blank-target result is (T-3030, probes/t3030-cell-contents-blank-shaper
 - It is an empty **value**, not a reference. `ISBLANK(..)` is TRUE (A51), `TYPE(..)` 1 (A41), `COUNTA(..)` 1 (A231),
   `ISREF(..)` FALSE (A81), `..+0` and `-..` 0, `..&""` and `T(..)` "" (A1, A11, A111, A151), `LEN(..)` 0, `..=""` and `..=0` TRUE.
 - Array-taking functions reject it with `#VALUE!`. This holds for TOCOL, TOROW, TAKE, WRAPROWS, CHOOSECOLS, FILTER, MAP,
-  ROWS, INDEX, and for VSTACK through `@`, CHOOSE, IFERROR, parentheses and MAP (A21, A31, A121:A141, A161:A171, A191, A211,
+  ROWS, VSTACK around an INDEX of it (A121; whether INDEX itself rejects it is unprobed), and VSTACK through `@`, CHOOSE, IFERROR, parentheses and MAP (A21, A31, A121:A141, A161:A171, A191, A211,
   A311, A331, A351:A361, A381). A blank range target such as `Data!C11:D12` behaves the same (A291), and so does an argument
   that is not first (`VSTACK({1;2},..)`, A301).
 - SORT, UNIQUE and EXPAND accept it as 0 (A201, A371; EXPAND pads with `#N/A`, A181), as do SUM, N, `+0`, `&""` and
@@ -315,7 +316,8 @@ What the blank-target result is (T-3030, probes/t3030-cell-contents-blank-shaper
 Ours (since T-3030) matches the non-blank and literal-call cells: CELL reads the named sheet, and VSTACK and HSTACK reject an
 argument written as `CELL("contents", ref)` (literal info type) whose target is blank. Ours cannot yet tell the empty value from
 a blank reference read through IF, LET, CHOOSE, IFERROR or parentheses, which our evaluator also turns into a bare empty cell.
-So the wrapped forms (t2466 A111, A121, A151) and the other array-taking callers listed above still differ: T-3053.
+So the wrapped forms (t2466 A111, A121, A151), the other array-taking callers listed above (blank-shapers A21 .. A381, nested-sheet A231)
+and `COUNTA(..)` (blank-shapers A231: Excel 1, ours 0) still differ: T-3053.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name

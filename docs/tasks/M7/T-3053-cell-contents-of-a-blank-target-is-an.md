@@ -31,7 +31,8 @@ while a blank reference read through the same wrappers stays a blank that stacks
 
 ## Acceptance criteria
 - [ ] probes/t2466-cell-contents-stack A111, A121 and A151 pass, as do the rejecting cells of
-      probes/t3030-cell-contents-blank-shapers listed above. No blank-reference stack cell regresses.
+      probes/t3030-cell-contents-blank-shapers listed above, its A231 (`COUNTA(..)` is 1 in Excel, 0 in ours) and
+      probes/t3030-cell-contents-nested-sheet A231 (TOCOL of a blank target). No blank-reference stack cell regresses.
 - [ ] information.md "Ours" updated.
 - [ ] `make check` green; reviewers approve.
 
