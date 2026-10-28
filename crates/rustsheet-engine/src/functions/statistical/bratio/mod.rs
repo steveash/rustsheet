@@ -182,13 +182,16 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
 }
 
 /// BETA.DIST's cdf, w of K(a, b, x, y) with y = fl(1 - x) formed by the caller (SPEC-0025's caller
-/// table): Excel's closed forms first (T-2502), then the bpser branches of the port, and today's
-/// kernel for every branch not ported yet.
+/// table): [`closed_or_ported_tails`], and today's kernel for every branch not ported yet.
 pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    if let Some((w, _)) = closed_form_tails(x, y, a, b) {
-        return w;
-    }
-    ported_tails(a, b, x, y).map_or_else(|| beta_reg_complement(x, y, a, b), |(w, _)| w)
+    closed_or_ported_tails(x, y, a, b).map_or_else(|| beta_reg_complement(x, y, a, b), |(w, _)| w)
+}
+
+/// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table: Excel's
+/// closed forms first (`incomplete_beta::closed_form_tails`, T-2502), then the branches of the
+/// port ([`ported_tails`]). `None` where neither applies, and the caller keeps today's kernel.
+pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
+    closed_form_tails(x, y, a, b).or_else(|| ported_tails(a, b, x, y))
 }
 
 /// (w, w1) of K(a, b, x, y) on the branches ported so far, `None` elsewhere. bratio computes one
@@ -363,15 +366,12 @@ pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
         return Some(Register::load(-ln_beta));
     }
     if small == 1.0 {
-        // B(1, b) = 1/b, so L = -LN(b), the density's form (`beta_density::ln_beta_small_shape`).
-        // Only L140's bpser(a0, 1, x0) at a whole b0 reaches it (`ported_tails` keeps a caller's
-        // shape of 1 on today's kernel). Above a0 = 8 it takes r2-bratio's 548 L140 cells with
-        // a0 > 8 off today's kernel (within 15 digits 11,603 -> 11,721 of 11,742; T-2506). At
-        // a0 <= 8 it is exact where the GAMMALN sum is not: BINOM.DIST's whole shapes always reach
-        // it, and `BINOM.DIST(1,6,0.5,TRUE)` is Excel's 0.0546875 here and 2 ulp off on the sum
-        // (ironcalc-calc BINOM.xlsx E5:E8, E75). It adds 72 bit-exact L140 cells but moves
-        // BETA.DIST(0.5,2,2,TRUE) from 1 to 2 ulp off Excel and the BETA.INV chained on it 2 ulp
-        // (ironcalc-calc BETADIST_BETAINV.xlsx G15, H15; docs/research/t2506/RESULTS.md, T-2847).
+        // B(1, b) = 1/b, so L = -LN(b), the density's form (`beta_density::ln_beta_small_shape`),
+        // exact where the GAMMALN sum is not. Only L140's bpser(a0, 1, x0) at a whole b0 reaches
+        // it (`ported_tails` keeps a caller's shape of 1 on today's kernel), which BINOM.DIST's
+        // whole shapes always take (ironcalc-calc BINOM.xlsx E5:E8, E75 are Excel's exact value
+        // here and 2 ulp off on the sum). Counts and the cells it moves: statistics.md "Incomplete
+        // beta bpser" (T-2506, T-2847).
         return Some(Register::load(excel_ln(large)));
     }
     if large > BPSER_GAMMALN_FORM_MAX {

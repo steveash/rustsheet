@@ -1,6 +1,6 @@
 ---
 id: T-2847
-title: "Incomplete beta: move F, BINOM and NEGBINOM onto the bratio port's bpser branches, delete the pre-T-2502 seams and the T-2464 harness (T-2505 rest)"
+title: "Incomplete beta: move F, BINOM and NEGBINOM onto the bratio port's bpser branches (T-2505 rest; seams and harness split to T-2977)"
 milestone: M9
 lane: functions-stat
 status: done
@@ -13,8 +13,8 @@ spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
 ## Goal
-Every incomplete-beta caller, not only BETA.DIST, takes the bratio port's bpser branches, and the seams T-2502 left
-for the Cephes kernel are gone.
+Every incomplete-beta caller, not only BETA.DIST, takes the bratio port's bpser branches. (Narrowed 2026-10-28: deleting
+the seams T-2502 left for the Cephes kernel, the T-2464 harness and the per-branch counts moved to T-2977.)
 
 ## Context
 - T-2505 split (its session budget): T-2505 landed Excel's bpser (`functions/statistical/bratio/mod.rs` `bpser`) and
@@ -78,32 +78,11 @@ for the Cephes kernel are gone.
 - [x] F.DIST, F.DIST.RT, FDIST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's
       caller arguments; no gated cell regresses except as recorded under decision 0083 (and decision 0141 for two
       cells past its 4 ulp). F.TEST's bratio tail already takes them (T-2681); its other tail moves with T-2977.
-- [ ] Moved to T-2977 (split 2026-10-28, session budget): the per-branch and per-probe counts.
-- [ ] Moved to T-2977: deleting the pre-T-2502 seams and the T-2464 harness.
 - [x] statistics.md's bratio and bpser entries name every caller in their "Implemented in" lines.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - L140 (T-2506), bfrac/basym (T-2508), the bgrat family (T-2509, T-2510) and the inverses (T-2511).
-
-## Progress (opus run, 2026-10-27, session budget ran out)
-Pushed on this branch, not yet reviewed: F.DIST/F.DIST.RT/FDIST (`fisher.rs` `f_tail`, w5 forms), BINOM.DIST's cdf
-and NEGBINOM.DIST's cdf (`binom.rs`) try `bratio::ported_tails` after the closed forms, with today's kernel as the
-fallback. NEGBINOM flushes a subnormal port result to 0 (probes/t2706-subnormal-density-paths A9:B9 pass). Seams,
-harness and F.TEST are not touched yet.
-`rustsheet-eval check` before the NEGBINOM flush, against origin/main 5cadaf05:
-- gen-m9 3666 -> 3606 (fixed 66), ironcalc-calc 617 -> 605 (fixed 17), probes fixed 4;
-- regressions, all 1-2 ulp:
-  - expected (task context): gen-m9 0a614cfe A19, 05d44f6d A175; probes/stat-argument-modes H215, H221, H226
-    (r2-impact's next hypothesis 1 is still to be tested on them);
-  - not predicted: gen-m9 27601819 A49, 4ab2ba98 A157, eced4bb6 A213 (FDIST, 1 ulp each);
-  - `BINOM.DIST(1,6,0.5,TRUE)`: Excel gives exactly 0.0546875, ours 0.054687500000000014. This is
-    ironcalc-calc BINOM.xlsx E5:E8 and E75, and gen-m9 9d9ceba2 A168 through INTRATE. It is I_0.5(2,5), which
-    swaps to L140 with a whole b0 = 2, so bup(1, 5, 0.5, 0.5, 1) + bpser(5, 1, 0.5). This is the a0 <= 8 B(a0, 1)
-    question in `bpser_neg_ln_beta`'s comment (T-2506, BETA.DIST(0.5,2,2,TRUE)). Find Excel's L140 form at a whole
-    b0 before moving BINOM.
-
-Resumed by an opus run on 2026-10-28 (branch idle 3 h).
 
 ## Outcome
 - F.DIST, F.DIST.RT, FDIST (`fisher.rs::f_tail`, w5 arguments), BINOM.DIST's cdf and NEGBINOM.DIST's cdf (`binom.rs`)
