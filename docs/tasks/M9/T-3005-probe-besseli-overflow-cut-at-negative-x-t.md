@@ -3,7 +3,7 @@ id: T-3005
 title: "Probe BESSELI overflow cut at negative x (T-2613 follow-up)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
