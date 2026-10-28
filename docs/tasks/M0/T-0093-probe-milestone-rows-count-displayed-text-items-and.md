@@ -29,13 +29,13 @@ M10 probes (decision 0146 item 4(b)).
   text item takes that cell's milestone, as its value cell does).
 
 ## Acceptance criteria
-- [ ] `MilestoneRow` gains `text_items: usize`, `text_failing: usize` and `text_failing_cells: Vec<String>`
+- [x] `MilestoneRow` gains `text_items: usize`, `text_failing: usize` and `text_failing_cells: Vec<String>`
       (`#[serde(default)]`), filled from the cases the row already assigns.
-- [ ] Unit tests: a case with two text items, one failing, adds 2 / 1 and the failing item's `case!Sheet!A1` to
+- [x] Unit tests: a case with two text items, one failing, adds 2 / 1 and the failing item's `case!Sheet!A1` to
       its milestone's row and nothing to another row; a case with no text items leaves the counts at 0.
-- [ ] report.md's "Probe milestones" table gains `text items` and `failing text` columns; `make eval` on `main`
+- [x] report.md's "Probe milestones" table gains `text items` and `failing text` columns; `make eval` on `main`
       shows 410 text items in total across rows and 0 failing.
-- [ ] No change to baselines, gates or `scripts/`; `make check` green; reviewers approve.
+- [x] No change to baselines, gates or `scripts/`; `make check` green; reviewers approve.
 
 ## Out of scope
 - The M10 exit row and exit-owners support (T-0097).
