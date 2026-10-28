@@ -140,8 +140,9 @@ before the tag and `B2` after it change nothing):
   2019-05-01 (Reiwa 1) 4294965430, 2019-04-30 (Heisei 31) 4294965460, 1989-01-07 (Showa 64) 4294965493, 1920-01-01
   (Taisho 9) 4294965438, 1900-01-01 (Meiji 33) 4294965462. 9999-12-31 (Reiwa 7981) is "5963|R": 7981 is in Reiwa again.
   From Gregorian 3886 to 4037 (Reiwa 1868 to 2019) the twice-converted year falls among the modern eras, and the era
-  changes on its own day of that year: 3930-07-29 (Reiwa 1912) is "45|M", 3930-07-30 "01|T"; 4007-01-07 "64|S",
-  4007-01-08 "01|H"; 4037-04-30 "31|H", 4037-05-01 "01|R"; 3886-01-01 is "01|M" (A69-A80).
+  changes on its own day of that year (`e|g` shown): 3930-07-29 (Reiwa 1912) is "45|M", 3930-07-30 "1|T"; 4007-01-07
+  "64|S", 4007-01-08 "1|H"; 4037-04-30 "31|H", 4037-05-01 "1|R"; 3886-01-01 is "1|M" (A69-A80). The Taisho-Showa
+  boundary is not probed (A72, A73 fall in Reiwa 1927).
 - Month and day tokens and names print as without the `B2` (`B2[$-30411]yyyy-mm-dd|mmmm|dddd` is
   "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` under Thai (T-3029).
 - Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (not modelled,
