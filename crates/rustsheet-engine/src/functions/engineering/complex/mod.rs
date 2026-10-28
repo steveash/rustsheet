@@ -346,7 +346,10 @@ impl Model {
             Err(_) if value.starts_with('$') => value
                 .strip_prefix('$')
                 .and_then(|rest| parse_complex_number(rest).ok())
-                .or_else(|| self.value_text_number(&value).map(|f| (f, 0.0, Suffix::Real)))
+                .or_else(|| {
+                    self.value_text_number(&value)
+                        .map(|f| (f, 0.0, Suffix::Real))
+                })
                 .ok_or_else(|| num_error(cell)),
             Err(_) => self
                 .value_text_number(&value)
