@@ -4,6 +4,8 @@
 Every record in docs/decisions/ (except README.md) must be named `NNNN-slug.md`, and no two may
 share a number: parallel PRs that both take "the next number" otherwise land a clash (0021, T-0032
 and T-0033, 2026-10-05). Needs no git or base ref, so it runs in `make hygiene` and on main.
+
+  scripts/check_decisions.py [--root <dir>]   # <dir>: the tree to judge (default: this checkout)
 """
 
 from __future__ import annotations
@@ -38,12 +40,20 @@ def unfilled(texts: dict[str, str]) -> list[str]:
     return [f"{n} still has `{UNFILLED}` lines from `make new-decision`" for n, t in sorted(texts.items()) if UNFILLED in t]
 
 
-def main() -> int:
-    names = [p.name for p in DECISIONS.glob("*.md")]
+def main(argv: list[str]) -> int:
+    # `--root <dir>` judges another tree: the merge train runs `main`'s copy of this script
+    # against a train worktree (SPEC-0027 section 4 step 4, decision 0066).
+    decisions = DECISIONS
+    if argv:
+        if len(argv) != 2 or argv[0] != "--root" or not Path(argv[1]).is_dir():
+            print("usage: check_decisions.py [--root <dir>]", file=sys.stderr)
+            return 2
+        decisions = Path(argv[1]).resolve() / "docs" / "decisions"
+    names = [p.name for p in decisions.glob("*.md")]
     if len(names) <= 1:
-        print(f"FAIL decisions: no records found in {DECISIONS}")
+        print(f"FAIL decisions: no records found in {decisions}")
         return 1
-    texts = {p.name: p.read_text() for p in DECISIONS.glob("*.md") if p.name != "README.md"}
+    texts = {p.name: p.read_text() for p in decisions.glob("*.md") if p.name != "README.md"}
     if found := problems(names) + unfilled(texts):
         for line in found:
             print(f"FAIL decisions: {line}")
@@ -53,4 +63,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

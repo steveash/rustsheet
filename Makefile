@@ -157,3 +157,7 @@ merge-lock-release: ## Free your merge lock (after the merge, a red CI, or any s
 
 merge-lock-status: ## Who holds the merge lock, since when, and the queue of waiters
 	$(PY) scripts/merge_lock.py status
+
+.PHONY: merge-mode
+merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027)
+	$(PY) scripts/merge_train.py mode
