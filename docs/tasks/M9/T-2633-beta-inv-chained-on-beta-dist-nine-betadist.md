@@ -3,12 +3,12 @@ id: T-2633
 title: "BETA.DIST/BETA.INV after T-2119: BETADIST A159 and four probes-numeric cells visibly off, nine chained BETA.INV cells 1-4 ulp"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P1
 size: S
 tier: opus
 campaign: accuracy
-depends_on: []
+depends_on: [T-2510]
 ---
 
 ## Goal
@@ -81,3 +81,9 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
   for the incomplete-gamma start). This task should probably take T-2510 in `depends_on`, or narrow A159 out to it.
   The next run decides.
 - Not looked at yet: the probes-numeric cells D85, D86, E56 and F6, and the nine BETA.INV ulp lines.
+
+## Resume (opus run 2026-10-28 14:00): wait on T-2510
+- The branch sat idle for over two hours with only the diagnosis above. A159 cannot pass without TOMS 708 `bgrat`,
+  which T-2510 ports (itself after T-2509, blocked on its baseline update). Fitting the cdf here first would be redone
+  by T-2510, and the nine chained BETA.INV lines follow BETA.DIST, so the whole task now waits on T-2510
+  (`depends_on`, status back to `todo`). The next run starts by re-measuring every cell above on T-2510's kernel.
