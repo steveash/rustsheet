@@ -99,3 +99,5 @@ Evidence: probes/t2653-ifs-text-condition-array-value, probes/t2653-ifs-text-con
 Untested: a later scalar error argument (`IFS("x",5,TRUE,1/0)`) and mismatched later shapes (`IFS("x",{1,2},TRUE,{1,2,3})`); the engine gives `#VALUE!` in every element.
 Status: VERIFIED (excel-graph); implemented (T-2653, `ifs_text_condition_error`).
 Tasks: T-2653
+
+See also: IF error arguments are recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).

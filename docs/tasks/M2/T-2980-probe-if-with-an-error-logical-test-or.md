@@ -3,7 +3,7 @@ id: T-2980
 title: "Probe IF with an error logical_test or value_if_false, SUMIFS criteria that are zero or negative, and RIGHT with a numeric-text num_chars (M2 argument kinds T-2861 and T-2870 leave)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -50,3 +50,8 @@ docs/excel-semantics/criteria.md (numeric criteria matching text cells), logic.m
 ## Out of scope
 - The parameters T-2861 (done) and T-2870 (todo) list; M5 and later functions (T-2862 to T-2865, T-2871 to T-2878).
 - Generator pools (T-2866, done).
+
+## Outcome
+Added `probes/m2-argument-kind-gaps-c` (33 cells, oracle from excel-graph). All cells already match: no known
+failures added. `argument_coverage` is now 11/11 for IF.logical_test, IF.value_if_false, SUMIFS.criteria and
+RIGHT.num_chars. Rule recorded in docs/excel-semantics/criteria.md.
