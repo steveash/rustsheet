@@ -2728,6 +2728,8 @@ Evidence: probes-numeric m9-weibull-dist, t1048-weibull, t1049-weibulldist, t223
 Microsoft Macintosh Excel).
 Ours: `functions/statistical/weibull.rs` (`scaled_power`, `weibull_cdf`, `weibull_density`).
 Status: VERIFIED (excel-graph) to 15 digits on every cell above; the 3 cells off by 1 ulp stay with T-0978.
+When x/l underflows to 0 (e.g. `WEIBULL.DIST(1E-300,2,1E+100,TRUE)`), the engine keeps t = 0, as before; Excel's
+LN(0) would be #NUM!, so its answer here may be #NUM! or 0: UNVERIFIED, no probe yet.
 Tasks: T-2239 (15 digits, done), T-0978 (last digits)
 
 ### WEIBULL.DIST's cdf switches from expm1 to 1-EXP(-t) near t = 1 (T-2239)
