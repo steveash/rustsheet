@@ -3,7 +3,7 @@ id: T-0493
 title: "SPEC-0020 amendment: UNIQUE reads a tailed argument (corpus-bench 45896 under 1 s)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
