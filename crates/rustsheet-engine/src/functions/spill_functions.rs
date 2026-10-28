@@ -747,6 +747,7 @@ impl Model {
     ) -> (Result<Vec<Vec<ArrayNode>>, CalcResult>, usize) {
         let read = |model: &mut Self| model.eval_to_array_keep_blank(&args[0], cell);
         let tailed = if unique_flags_are_literals(args) {
+            // An error evaluation is no head or tail: the ordinary reading below reports it.
             self.read_tailed(&args[0], cell, read)
                 .and_then(|tailed| tailed.elements_by(Result::ok))
         } else {

@@ -561,6 +561,7 @@ fn test_typed_whitespace_is_saved_in_the_formula_text() {
         ("=SUM( 1 )", "<f>SUM( 1 )</f>"),
         ("=1+\n 2", "<f>1+&#xA; 2</f>"),
         ("=- 5 * 2", "<f>- 5 * 2</f>"),
+        ("=PI( )", "<f>PI( )</f>"),
         ("=ABS( @A1:A3 ) + 1", "<f>ABS( A1:A3 ) + 1</f>"),
         ("=SUM( @A1:A3, 1)", "<f>SUM( _xlfn.SINGLE(A1:A3), 1)</f>"),
         // Saved as a one-cell dynamic array, as without the spaces, so its `<f>` has attributes.

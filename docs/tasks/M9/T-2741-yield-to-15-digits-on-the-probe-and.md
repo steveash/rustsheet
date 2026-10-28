@@ -3,7 +3,7 @@ id: T-2741
 title: "YIELD to 15 digits on the probe and ironcalc-calc cells T-1592 does not list (PRICE_YIELD.xlsx I column and the YIELD sweeps, 370 visibly-off cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -96,3 +96,23 @@ named in the Outcome.
 - YIELD's `#NUM!` cells and the 100-step regime of probes/yield-newton-domain (T-2391).
 - ODDFYIELD (T-2007), including fin-bond-negative-basis E17 and G17 and coup-calendar-edges J8.
 - The T-2436 inner-expression probe cell probes/t2436/320d51765af9b6b7 Calc!A16, which follows its gen-m9 owner.
+
+## Outcome
+- Acceptance criterion 1 is met for 367 of the 370 owned cells, not all of them. T-1592's fitted start and stop
+  (already in `excel_yield_newton`, from `yield_start`) carry those 367 to within Excel's 15 digits. The other three
+  move to T-2974, below. On `make eval` of de48145d, only these YIELD-outermost cells of the owned cases are
+  still visibly off:
+  - probes/yield-start-rate-term S!B39 and S!B49 (basis 1, 5 and 10 ulp off);
+  - probes/yield-solver-sweep S!C7 (27 ulp).
+  
+  Each gap is larger than half a unit in the 15th digit. Criterion 1 is closed by splitting these three, not
+  by fixing them. They are split to **T-2974** (`campaign: visible`), since moving them
+  needs a change to the fitted start or stop, which is out of this task's scope (T-1592, T-2740, T-2330). No refit was
+  tried here. This task made no engine change, so the eval
+  delta is none and no baseline moved.
+- Test `fn_yield_matches_excel_off_the_fit` (test_fn_bond_functions.rs) pins four cells:
+  - PRICE_YIELD!I30, bit-exact, with its PRICE input;
+  - date-system-1900-financial-readers S!E8, its -shifted twin S!E8 and yield-start-rate-term S!B20, each within 1 ulp.
+- financial.md "YIELD stops short of PRICE's root" says what the engine implements, with Status and Tasks updated.
+- The bit-level residue of the owned cells, including the "within 15 digits" cells listed in Context, is handed to
+  **T-2788** (no campaign key), the existing ulp follow-up. Filing a second one would duplicate it.

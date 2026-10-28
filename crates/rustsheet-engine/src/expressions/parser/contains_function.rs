@@ -1,5 +1,6 @@
 //! Walking a formula tree: the children of a node, and searching for calls of given functions.
 
+use super::spacing::is_empty_call_run;
 use super::{chain, Node};
 use crate::functions::Function;
 
@@ -135,13 +136,19 @@ impl Node {
     }
 
     /// The tree without the whitespace written in it: every [`Node::Spaced`] replaced by its
-    /// child. An explicit stack keeps the walk off the call stack.
+    /// child, and the run of an empty call removed with the argument that holds it
+    /// ([`is_empty_call_run`]). An explicit stack keeps the walk off the call stack.
     pub(crate) fn strip_spaces(&mut self) {
         let mut pending = vec![self];
         while let Some(node) = pending.pop() {
             while let Node::Spaced { child, .. } = node {
                 let child = std::mem::replace(&mut **child, Node::EmptyArgKind);
                 *node = child;
+            }
+            if let Node::FunctionKind { args, .. } = node {
+                if is_empty_call_run(args) {
+                    args.clear();
+                }
             }
             node.push_children_mut(&mut pending);
         }

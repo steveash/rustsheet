@@ -3,7 +3,7 @@ id: T-0493
 title: "SPEC-0020 amendment: UNIQUE reads a tailed argument (corpus-bench 45896 under 1 s)"
 milestone: M11
 lane: perf
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -21,25 +21,25 @@ tailed only when `by_col` and `exactly_once` are absent or literals; the lift co
 Code: `fn_unique` (functions/spill_functions.rs). Bench: `aggregate -- tailed_consumers`, the TEXTJOIN/UNIQUE line.
 
 ## Acceptance criteria
-- [ ] Equivalence tests (tailed vs `TAILED_OFF`) with `exactly_once` TRUE and FALSE, a tail equal to a head value,
+- [x] Equivalence tests (tailed vs `TAILED_OFF`) with `exactly_once` TRUE and FALSE, a tail equal to a head value,
       an all-tail result (#CALC! with exactly_once) and `by_col` TRUE (refused).
-- [ ] corpus-bench 45896 under 1 s through the harness; the bench line's before/after in the Outcome.
-- [ ] `rustsheet-eval check` 0 regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] corpus-bench 45896 under 1 s through the harness; the bench line's before/after in the Outcome.
+- [x] `rustsheet-eval check` 0 regressions.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - TEXTJOIN as a direct consumer (contract in the amendment; not needed by 45896).
 
-## Handoff (resumed)
-Nothing is implemented yet. The previous run claimed this task near the end of its session budget and could not
-delete the claim branch (the push of a deletion was refused). Start from `origin/main` once T-0491 (PR #2110) has
-merged: T-0491 changes `Tailed::elements` in `tailed_array.rs` (the `positions` sentinel check), which this task
-generalizes.
-
-Suggested approach (SPEC-0020 Amendment 1, section 3, "UNIQUE"):
-- Generalize `Tailed::elements` to any reading (for example `elements_by(self, as_array)`), keeping the
-  RefArg form for the aggregate walk and SUMPRODUCT.
-- In `fn_unique`, when `by_col` and `exactly_once` are absent or literals (and `by_col` is not TRUE), read
-  `args[0]` with `read_tailed(.., |m| m.eval_to_array_keep_blank(&args[0], cell))`.
-- Build `head ++ [t, t]`, or just the head when there is no tail, and charge `LiftCost::Cells` at the logical
-  size.
+## Outcome
+- `fn_unique` reads its array through `read_tailed` when `by_col` and `exactly_once` are each absent, empty or a
+  literal and `by_col` is not TRUE (`unique_flags_are_literals`), and runs `unique_of` unchanged on the head
+  followed by two copies of the tail row; the lift cost is the logical size (`unique_array`).
+- `Tailed::elements` is now `Tailed::elements_by` over any reading (the RefArg form delegates to it), keeping
+  T-0491's `ROW()` sentinel refusal for every consumer.
+- Tests (`test_tailed_array.rs`, tailed vs `TAILED_OFF`): `exactly_once` TRUE and FALSE, tails equal to a head
+  value (empty, 0) and not, an all-tail `#CALC!`, the literal flag forms, a bounded span and a `ROW()` branch the
+  tail does not pick (tailed); `by_col` TRUE or 1, reference, array and string flags, a bare range, a short
+  range and a tail that picks `ROW()` (refused).
+- corpus-bench 45896 through the harness: 17,860 ms → 6 ms (84/84 cells match their excel-graph values both before and after).
+- `aggregate -- tailed_consumers`, TEXTJOIN/UNIQUE line: min 11.07 s → 38.1 ms (median 11.32 s → 39.8 ms).
+- Eval delta: 0 regressions, 0 fixes (45896 already passed under the 60 s timeout; it is only faster).
