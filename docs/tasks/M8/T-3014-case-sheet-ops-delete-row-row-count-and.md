@@ -21,7 +21,13 @@ engine.rs) deletes one row; Graph can delete `range('4:7')/delete`. Spec tables 
 every data row at once (rows 4-7 of `Sales` on S!B3:C7), a two-row delete reaching a data edge (rows 6-7),
 and a delete of the first row of a table without a header row.
 
+The probes baseline also holds 7 harness false failures from T-2848: input cells `S!B5`, `S!C5`, `S!E5`
+(table-delete-row-only-data-outside), `S!E7`, `S!F7` (-second-table), `S!B5`, `S!C7` (-totals) score as
+"expected empty" against the engine's unmoved input value, as `S!C7` of table-delete-row-all-data-below does
+(T-2855).
+
 ## Acceptance criteria
+- [ ] Those 7 cells leave eval/baseline/probes.txt (the harness scores the oracle's unmoved input cells).
 - [ ] `delete_row` takes an optional row count on the oracle and engine sides; spec tables take a
       header-less flag; validated in sheetop.py with tests.
 - [ ] The three shapes above are probes/table-edits cases, oracle-filled, recorded in references.md.
