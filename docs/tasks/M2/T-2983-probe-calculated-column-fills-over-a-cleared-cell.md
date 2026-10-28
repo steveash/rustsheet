@@ -3,7 +3,7 @@ id: T-2983
 title: "Probe calculated-column fills over a cleared cell and over identical stored formulas without calculatedColumnFormula"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
