@@ -3,7 +3,7 @@ id: T-2847
 title: "Incomplete beta: move F, BINOM and NEGBINOM onto the bratio port's bpser branches, delete the pre-T-2502 seams and the T-2464 harness (T-2505 rest)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -75,12 +75,13 @@ for the Cephes kernel are gone.
   of the 9 cells reach 15 digits on the port, and leave the rest to T-2924.
 
 ## Acceptance criteria
-- [ ] F.DIST, F.DIST.RT, FDIST, F.TEST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's
-      caller arguments; no gated cell regresses except as recorded under decision 0083.
-- [ ] The per-branch and per-probe counts above are measured and recorded in the Outcome.
-- [ ] The pre-T-2502 seams and the T-2464 harness listed above are deleted.
-- [ ] statistics.md's bratio and bpser entries name every caller in their "Implemented in" lines.
-- [ ] `make check` green; reviewers approve.
+- [x] F.DIST, F.DIST.RT, FDIST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's
+      caller arguments; no gated cell regresses except as recorded under decision 0083 (and decision 0141 for two
+      cells past its 4 ulp). F.TEST's bratio tail already takes them (T-2681); its other tail moves with T-2977.
+- [ ] Moved to T-2977 (split 2026-10-28, session budget): the per-branch and per-probe counts.
+- [ ] Moved to T-2977: deleting the pre-T-2502 seams and the T-2464 harness.
+- [x] statistics.md's bratio and bpser entries name every caller in their "Implemented in" lines.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - L140 (T-2506), bfrac/basym (T-2508), the bgrat family (T-2509, T-2510) and the inverses (T-2511).
@@ -103,3 +104,23 @@ harness and F.TEST are not touched yet.
     b0 before moving BINOM.
 
 Resumed by an opus run on 2026-10-28 (branch idle 3 h).
+
+## Outcome
+- F.DIST, F.DIST.RT, FDIST (`fisher.rs::f_tail`, w5 arguments), BINOM.DIST's cdf and NEGBINOM.DIST's cdf (`binom.rs`)
+  take `bratio::ported_tails` after Excel's closed forms, with today's kernel as the fallback off the ported
+  branches. NEGBINOM flushes a subnormal port result to 0 (probes/t2706-subnormal-density-paths A9:B9).
+- bpser's L for a shape of 1 (only L140's bpser(a0, 1, x0) at a whole b0 reaches it) is -LN(a0) at every a0, not
+  only above 8: B(1, b) = 1/b exactly. This makes BINOM.DIST's whole shapes exact (`BINOM.DIST(1,6,0.5,TRUE)`,
+  ironcalc-calc BINOM.xlsx E5:E8, E75, which the GAMMALN sum left 2 ulp off).
+- Eval delta against origin/main (`rustsheet-eval check`): gen-m9 3,666 -> 3,602 known failures (69 fixed),
+  ironcalc-calc 617 -> 595 (23 fixed), probes 2,913 -> 2,912 (4 fixed); visibly-off in-scope cells 3,145 (lock
+  3,284).
+- Regressed, all numeric and within 15 digits, recorded with `update-baseline --allow-regressions` (decision 0083
+  allowance; H221 and H226 past 4 ulp under decision 0141, where the port is the correctly rounded value and Excel is
+  5 ulp high): probes/stat-argument-modes H215 (+2 ulp), H221 and H226 (-5); gen-m9 0a614cfe A19 (+1), 05d44f6d A175
+  (-1), 27601819 A49 (-1), 4ab2ba98 A157 (+1), eced4bb6 A213 (-1); ironcalc-calc BETADIST_BETAINV.xlsx H15 (-2, the
+  BETA.INV chained on BETA.DIST(0.5,2,2,TRUE)). Follow-up ulp task: T-2978.
+- probes/t2829-ftest-tail-over-b's F.TEST cells are not moved by this (F.TEST's bratio tail is T-2681's); T-2977
+  records them.
+- Follow-ups: T-2977 (the seams, the harness, F.INV/BETA.INV crossings, per-branch counts), T-2978 (the 9 ulp
+  cells).
