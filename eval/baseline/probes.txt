@@ -1197,6 +1197,7 @@ C	probes/t2365-wrap-expand-tocol-error-lift.case.json	13
 C	probes/t2366-sort-lifted-by-col.case.json	12
 C	probes/t2369-workday-text-holidays.case.json	68
 C	probes/t2370-sortby-mixed-by-array-snap.case.json	65
+C	probes/t2388-b1-negative.case.json	23
 C	probes/t2413-blank-in-stacked-arrays.case.json	45
 C	probes/t2414-gen-m7-unexplained.case.json	70
 C	probes/t2428-ztest-error-data.case.json	16
@@ -3888,7 +3889,6 @@ F	probes/text-255-units-from-cell.case.json	S!A4
 F	probes/text-255-units-rept-error-count.case.json	S!A1
 F	probes/text-255-units-rept-error-count.case.json	S!A4
 F	probes/text-elapsed-two-tokens.case.json	S!A13
-F	probes/text-format-digits-date-token.case.json	Sheet1!C25
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
