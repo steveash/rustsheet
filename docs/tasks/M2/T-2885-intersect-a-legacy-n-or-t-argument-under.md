@@ -3,7 +3,7 @@ id: T-2885
 title: "Intersect a legacy N or T argument under a unary plus: N(+B1:B3) stores N(+@B1:B3)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
