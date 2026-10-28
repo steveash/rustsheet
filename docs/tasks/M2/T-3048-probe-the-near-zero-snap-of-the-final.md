@@ -3,7 +3,7 @@ id: T-3048
 title: "Probe the near-zero snap of the final addition in SUMIF, SUMIFS, the AVERAGE family and SUMPRODUCT"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,16 +28,24 @@ does, so the engine follow-up can be filed with exact cells.
 - Opus: the snap is a numeric boundary (8 ULP of the smaller addend, T-0110, T-2714), and AVERAGE may snap its sum,
   its quotient or neither, which needs boundary pairs to tell apart.
 
+## Outcome
+probes/t3048-snap-conditional-sums (86 cells, excel-graph, 2026-10-28): AVERAGE and AVERAGEA snap their sum's final
+addition as SUM does (cancel, k = 7 and a text last cell snap; a trailing 0 and k = 8 do not), then divide; SUMIF (both
+forms), SUMIFS, AVERAGEIF (both forms), AVERAGEIFS and SUMPRODUCT (one array, two arrays, a mask) never snap. Recorded in
+docs/excel-semantics/numbers.md "Near-zero snapping" ("Summing functions"). The engine matches 78 of 86 cells; the 8
+AVERAGE/AVERAGEA cells are known failures owned by the follow-up T-3066 (functions-stat). No functions-criteria or
+functions-math follow-up is needed. Eval: probes known failures +8 (new coverage), 0 regressions.
+
 ## Acceptance criteria
-- [ ] A new excel-graph probe case `probes/t3048-snap-conditional-sums` (milestone M2, decision 0043) reads back, for
+- [x] A new excel-graph probe case `probes/t3048-snap-conditional-sums` (milestone M2, decision 0043) reads back, for
       each of SUMIF (with and without sum_range), SUMIFS, AVERAGE, AVERAGEA, AVERAGEIF, AVERAGEIFS and SUMPRODUCT
       (one array, two arrays, and an `--(cond)` mask): the 0.1/0.2/-0.3 cancel over a range, the same with a trailing
       0 addend, the same with a skipped (criteria-rejected) row last, `*1` of the call, and a boundary pair at k = 7
       and k = 8 for addends near 1. SUM over the same ranges is the control in every row.
-- [ ] numbers.md "Near-zero snapping" records, per function, whether it snaps, on which addition (the last kept
+- [x] numbers.md "Near-zero snapping" records, per function, whether it snaps, on which addition (the last kept
       addend, or the last row visited), and for AVERAGE-family calls whether the sum or the quotient is snapped,
       citing the cells.
-- [ ] Every function Excel snaps that the engine does not has its cells as known failures in eval/baseline/probes.txt
+- [x] Every function Excel snaps that the engine does not has its cells as known failures in eval/baseline/probes.txt
       and one filed follow-up task (lane functions-criteria for the *IF(S) functions, functions-stat for the AVERAGE
       family, functions-math for SUMPRODUCT) naming those cells; `make exit-owners MILESTONE=M2` reports 0.
 - [ ] `make check` green; reviewers approve.

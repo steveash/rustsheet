@@ -2078,3 +2078,8 @@ Evidence: probes/t2479-* (excel-graph, 2026-10-27).
 Status: VERIFIED (excel-graph)
 Implemented in: `wrapcols_wraprows.rs` (`flatten_vector`), `expand.rs` (`expand_kernel`).
 Tasks: T-2479
+
+## IFERROR, IFNA, N and arithmetic over blank array elements (T-2999)
+Evidence: probes/blank-elements-iferror-n-arith (11 cells, excel-graph 2026-10-28; D1:D5 = 1, blank, "x", blank, 5). IFERROR and IFNA read a blank element of FILTER, a lifted INDEX (`INDEX(D1:D5,{1,2,3,4,5})`) and VSTACK as 0 (`COUNT(IFERROR(...,-1))` and the IFNA forms are 4, A1:A6; `TEXTJOIN("|",FALSE,IFERROR(FILTER(D1:D5,TRUE),"#"))` is "1|0|x|0|5", A7), while the bare FILTER keeps the blanks (`TEXTJOIN("|",FALSE,FILTER(D1:D5,TRUE))` is "1||x||5", A8). `N` turns a blank and the text "x" into 0 (`COUNT(N(FILTER(...)))` 5, A9), `+0` reads a blank as 0 and "x" is #VALUE! (`COUNT(FILTER(...)+0)` 4, A10), and IF passes a blank through (`COUNT(IF(TRUE,FILTER(...)))` 2, A11). Ours already matches all 11 cells.
+Implemented in: no engine change needed; ours already matched (`if_error_like` in crates/rustsheet-engine/src/functions/logical/mod.rs, T-2854).
+Status: VERIFIED (excel-graph)
