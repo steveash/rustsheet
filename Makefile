@@ -94,6 +94,7 @@ hygiene: ## Lint-debt, file-size, duplication, tasks and governance ratchets
 	$(PY) scripts/tasks.py validate
 	$(PY) scripts/check_decisions.py
 	$(PY) scripts/check_docs_readers.py
+	$(PY) scripts/check_ci_workflow.py
 	$(PY) -m unittest discover -s scripts -p 'test_*.py' -q
 
 deny: ## License/advisory/source policy (needs cargo-deny)

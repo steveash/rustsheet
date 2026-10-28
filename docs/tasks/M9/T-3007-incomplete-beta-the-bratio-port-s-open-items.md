@@ -24,8 +24,15 @@ layout and tests.
     high at probes/ftest-decomposition B12, where y0^b0 is Excel's value. Find Excel's form before moving it;
   - bpser for both shapes >= 1 with max > 8 (`bpser_neg_ln_beta` returns `None`): 509 r2-bratio bpser_large rows
     and the F tails' fallback there (for example probes/t2829-ftest-tail-over-b S!A17, `2*F.DIST.RT(1E+12,22,5)`)
-    keep today's kernel; a TOMS `betaln` (gamln + algdiv, or bcorr for both >= 8) is the natural port, against
+    keep today's kernel. Gap triage 2026-10-28 (origin/main 1a0b616f): the same probe's other visibly-off cells,
+    all this branch (shapes df2/2 in {2.5, 6} and df1/2 from 8.5 to 13), had no open owner and are this item's too:
+    probes/t2829-ftest-tail-over-b S!A1 (`2*F.DIST.RT(1E+12,17,12)`, Excel 5.654118407649194E-70, ours
+    5.6541184076491873E-70), A3, A4, A6, A7 (Excel 4.032210775559413E-70, ours 4.032210775559509E-70), A9 and A18
+    (`2*F.DIST.RT(1E+12,23,5)`). statistics.md (F.TEST section) puts them off ours by T-2924's k plus whole steps of
+    the fl(a·LN x) grid; a TOMS `betaln` (gamln + algdiv, or bcorr for both >= 8) is the natural port, against
     T-2924's fit of Excel's betaln;
+    Seven more cells of that fallback are visibly off (owner since the 2026-10-28 triage): probes/t2829-ftest-tail-over-b S!A1, A3, A4, A6, A7, A9, A18
+    (`2*F.DIST.RT(1E+12,d1,d2)`, d1 17 to 26, d2 12 or 5); A1 Excel 5.654118407649194E-70, ours 5.6541184076491873E-70; A7 Excel 4.032210775559413E-70, ours 4.032210775559509E-70;
   - probe (excel-probe) Excel's value where fl(a·LN x) overflows, `BETA.DIST(0.1,1E308,0.5,TRUE)`;
   - SPEC-0025's `bpser.rs`/`ln_beta.rs` split, the hex-bits branch fixture and the complement, swap and
     monotonicity property tests, or a spec amendment; unify `beta_density::ln_beta_small_shape` with

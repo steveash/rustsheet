@@ -104,7 +104,7 @@ Why these charges:
   5.2 at 4M, 11.8 at about 11M), not from the nesting depth: three helpers deep over 32 by 32 arrays
   cost the same 4.5 us a cell as two. So the charge counts each LAMBDA stored, and each body clone by
   its nodes. `LAMBDA_UNITS` is fitted by time like the other weights (section 4). Releasing a
-  formula's LAMBDAs after its root cell, so that a recalculation does not pile them up, is T-2925.
+  formula's LAMBDAs after its root cell, so that a recalculation does not pile them up, is T-2925 (done).
 - **Built cells** bound the three formulas above. Each call builds a SEQUENCE.
 - **Read cells** bound the variant that builds once and reads many times:
   `=LET(s,SEQUENCE(100000),REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(s))))`. It builds 2E5 cells
@@ -119,9 +119,10 @@ Why these charges:
   arrays are charged by their length where step 3 charges array reads.
 
 Known gaps (out of scope, recorded for later work):
-- **LAMBDAs stored across formulas** (T-2925). The budget bounds the LAMBDAs one formula makes, but
-  `self.lambdas` keeps them until the whole evaluation ends. So a recalculation of many such formulas
-  holds all of them, and each later formula's calls slow down with the map's size.
+- **LAMBDAs stored across formulas** (T-2925, closed: a root cell's LAMBDAs are now dropped once it is
+  evaluated). The budget bounds the LAMBDAs one formula makes, but before T-2925
+  `self.lambdas` kept them until the whole evaluation ended, so a recalculation of many such formulas
+  held all of them, and each later formula's calls slowed down with the map's size.
 - **Retained memory.** The budget counts work, not what a formula holds at once. Copies of one text
   (an IF, IFERROR, EXPAND or INDEX broadcast into 2^20 cells) were 32 GB of owned bytes before T-2806;
   since then a text's bytes are shared, so a copy costs a pointer, and the `&` operator over an array
