@@ -191,10 +191,11 @@ bound, about two hours). The sweeps and the data tables do not count against the
 allowance (their order is canonical, SPEC-0028 section 4) and, in share mode, run under the share.
 When the ceiling runs out during a sweep, the sweeps stop where they are; when it runs out during a
 data table, that result cell and every later one are `#NUM!`, and the second round of passes after
-the tables is exhausted. A table the memo skips (T-0453) spends nothing of the ceiling, so near the
-ceiling an unchanged table can keep results that a recomputation would have turned into `#NUM!`.
+the tables is exhausted. A table the memo skips (T-0453) is charged the units its last
+recomputation spent, and is skipped only in normal mode and while the ceiling has that many left,
+so its results are those of a recomputation either way.
 Status: DEVIATION (decision 0014)
-Implemented in: crates/rustsheet-engine/src/recalc_budget.rs (`MAX_PASS_WORK`, `MAX_RECALC_WORK`), crates/rustsheet-engine/src/area_budget.rs (`with_area_budget`), crates/rustsheet-engine/src/evaluation.rs (`evaluate_passes`)
+Implemented in: crates/rustsheet-engine/src/recalc_budget.rs (`MAX_PASS_WORK`, `MAX_RECALC_WORK`), crates/rustsheet-engine/src/area_budget.rs (`with_area_budget`), crates/rustsheet-engine/src/evaluation.rs (`evaluate_passes`), crates/rustsheet-engine/src/iteration.rs (`sweep`), crates/rustsheet-engine/src/data_tables.rs (`spend_all_past_ceiling`, `evaluate_data_tables`)
 Tasks: T-2807, T-3008, T-3009
 
 ## Data tables (TABLE()) are recalculated, and FORMULATEXT shows `{=TABLE(row,column)}`
@@ -252,6 +253,7 @@ only while the budget left covers that cost, and one whose recomputation ran out
 recomputed, so the results are those of a recomputation either way. Each run also draws on the
 2^32 ceiling of "One recalculation does at most 2^32 work units", and running out of it stops the
 tables as their count cap does: the result cell being computed and every later one are `#NUM!`.
+A table that is not recomputed is charged the ceiling units its last recomputation spent too.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`, `spend_all_past_ceiling`)
 Tasks: T-0441, T-3009

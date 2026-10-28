@@ -410,6 +410,29 @@ fn past_the_ceiling_this_and_later_data_table_results_are_num_errors() {
 }
 
 #[test]
+fn a_table_the_memo_skips_charges_the_ceiling_what_its_recomputation_spent() {
+    let run = 3 * NODE_UNITS;
+    let results = ["B2", "B3", "B4", "B5", "C1"];
+    let mut model = tabled(MAX_RECALC_WORK);
+    assert_eq!(model.evaluation.data_tables_recomputed, 1);
+    // Nothing changed: the table is skipped, and charged its header read and four substitutions.
+    model.evaluate();
+    assert_eq!(model.evaluation.data_tables_recomputed, 1);
+    assert_eq!(last(&model).spent(), 30 + 5 * run);
+    assert_eq!(model._get_text("C1"), "100");
+
+    // One unit short of that charge: the table is recomputed instead, and gives what a model
+    // evaluated for the first time under that ceiling gives.
+    let ceiling = 30 + 5 * run - 1;
+    model.evaluation.recalc_limits = (MAX_PASS_WORK, ceiling);
+    model.evaluate();
+    assert_eq!(model.evaluation.data_tables_recomputed, 2);
+    let fresh = tabled(ceiling);
+    assert_eq!(texts(&model, &results), texts(&fresh, &results));
+    assert_eq!(model._get_text("B5"), "#NUM!");
+}
+
+#[test]
 fn formulas_outside_a_recalculation_draw_on_no_pool() {
     let mut model = model_with(10, 10, &[("A1", "=1")]);
     model.evaluate();

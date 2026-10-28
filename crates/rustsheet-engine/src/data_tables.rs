@@ -9,7 +9,7 @@
 
 use crate::{
     calc_result::CalcResult,
-    data_table_memo::names_memoizable,
+    data_table_memo::{names_memoizable, TableCost},
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     model::Model,
     types::{Cell, DataTable, DataTableError, DataTableInput},
@@ -51,24 +51,35 @@ impl Model {
                 continue;
             };
             results_left = left;
-            // A table skipped costs what its recomputation would, and only a recomputation that
-            // would not run out keeps the results it had.
+            // A table skipped costs what its recomputation would, in evaluations and in work
+            // units of the ceiling, and only a recomputation that would not run out of either
+            // keeps the results it had.
             let cost = (memoizable)
                 .then(|| self.data_table_unchanged(&context, index, (*sheet, table)))
                 .flatten();
-            if let Some(left) = cost.and_then(|cost| budget.checked_sub(cost)) {
-                budget = left;
-                continue;
+            if let Some(cost) = cost {
+                if let Some(left) = budget.checked_sub(cost.evaluations) {
+                    if self.charge_skipped_work(cost.work) {
+                        budget = left;
+                        continue;
+                    }
+                }
             }
             recomputed = true;
             self.evaluation.data_tables_recomputed += 1;
-            let before = budget;
+            let before = (budget, self.recalc_work_left());
             let spills = self.start_data_table_reads();
             let results = self.evaluate_data_table(*sheet, table, &mut budget);
             // A table that ran out of budget wrote `#NUM!` for what the tables before it spent.
-            let memoize = memoizable && budget > 0;
+            // One recomputed in share mode spent less than a normal recomputation would, so its
+            // cost is not one a later evaluation could charge (SPEC-0028 section 4).
+            let memoize = memoizable && budget > 0 && self.recalc_in_normal_mode();
+            let cost = TableCost {
+                evaluations: before.0 - budget,
+                work: before.1.saturating_sub(self.recalc_work_left()),
+            };
             let at = (index, *sheet, table);
-            self.finish_data_table_reads(&context, at, (before - budget, &spills), memoize);
+            self.finish_data_table_reads(&context, at, (cost, &spills), memoize);
             for (position, value) in &results {
                 self.write_constant(*position, value);
             }

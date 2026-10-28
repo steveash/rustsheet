@@ -222,6 +222,36 @@ impl Model {
         }
     }
 
+    /// Units left of the recalculation's ceiling; `u64::MAX` outside `Model::evaluate`.
+    pub(crate) fn recalc_work_left(&self) -> u64 {
+        self.evaluation
+            .recalc
+            .as_ref()
+            .map_or(u64::MAX, |recalc| recalc.left)
+    }
+
+    /// Whether the recalculation is in normal mode (true outside `Model::evaluate`).
+    pub(crate) fn recalc_in_normal_mode(&self) -> bool {
+        self.evaluation
+            .recalc
+            .as_ref()
+            .is_none_or(|recalc| recalc.mode == RecalcMode::Normal)
+    }
+
+    /// Charges `units` a skipped data table's recomputation would have spent to the ceiling, when
+    /// the recalculation is in normal mode and has that many left: then the skip gives the results
+    /// a recomputation would. Otherwise charges nothing and returns false: the table is recomputed.
+    pub(crate) fn charge_skipped_work(&mut self, units: u64) -> bool {
+        match self.evaluation.recalc.as_mut() {
+            None => true,
+            Some(recalc) if recalc.mode == RecalcMode::Normal && recalc.left >= units => {
+                recalc.left -= units;
+                true
+            }
+            Some(_) => false,
+        }
+    }
+
     /// Whether the current pass ran out of a pool, and of which one; clears it.
     pub(crate) fn take_overrun(&mut self) -> Option<RunBound> {
         self.evaluation.recalc.as_mut()?.overrun.take()

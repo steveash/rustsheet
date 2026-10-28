@@ -3,7 +3,7 @@ id: T-3009
 title: "Sweeps and data tables draw on the recalculation ceiling (SPEC-0028 step 2)"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -42,4 +42,6 @@ before the run, and `evaluate_data_table` turns the current and later results in
 test_recalc_budget.rs (sweeps spend but do not commit; the 11th sweep run past the ceiling; the
 third substitution and a header read past the ceiling). recalc.md: the sweep and data-table entries
 gain their sentence, the SPEC-0028 entry drops "Until T-3009" and notes that a memo-skipped table
-spends nothing. Eval delta: none (no recalculation in eval comes near the ceiling).
+is charged the ceiling units its last recomputation spent (data_table_memo.rs `TableCost`; skipped
+only in normal mode with that many units left; SPEC-0028 section 4 gains the sentence), so its
+results stay those of a recomputation; tested. Eval delta: none (no recalculation in eval comes near the ceiling).
