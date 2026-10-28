@@ -395,15 +395,20 @@ agree):
   `T[ [#Data] , [Col] ]` prints `T[ [#Data], [Col] ]` (the space before the comma is dropped, as in a call),
   `T[[#Data]  ,  [Col]]` prints `T[[#Data], [Col]]` (the run after the comma collapses to one space; one data point) and `T[[#Data],[Col]:[Other]]` prints with no space (none written).
 - **A single column in outer-padded brackets is rewritten to the bare form**: `T[ [Col] ]` prints `T[ Col ]`, a form that
-  typing `T[ Col ]` itself refuses, and which Excel itself saves (cached value 7); loading a hand-written stored `T[ Col ]` is unprobed (T-2800). Spaces around the specifier are kept as typed.
+  typing `T[ Col ]` itself refuses, and which Excel itself saves (cached value 7); Spaces around the specifier are kept as typed. **Loading a stored `<f>SUM(T[ Col ])</f>` gives `#REF!`**:
+  Excel reads the padded bare column as no reference, the cell is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`; the same
+  for the one-sided `T[ Col]` and `T[Col ]`. Stored `T[ [Col] ]` loads (value 5, prints `T[ Col ]`). A stored padded
+  `T[ #Data ]` makes Graph reject the whole workbook (`501 FileCorruptTryRepair`, `unsupportedWorkbook`), so Excel does
+  not load it at all (T-2800; probes/t2800-stored-ws-0..3; the `T[ #Data ]` case was entered alone and no case is kept).
 - Whitespace around the whole reference is an ordinary operand run (`=SUM( T[Col] )` prints as typed).
-- The calculated-column fill rewrote `=T[[#This Row], [Col]]` and `=T[ [#This Row] , [Col] ]` typed into C2 and C3 to the
-  formula typed into C4 (`T[[#This Row],[Col]] + T[[#This Row],[Other]]`), so this-row shapes are unanswered
-  (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800). The cells were typed one at a
-  time in the order C2, C3, C4, so each later formula re-filled the whole column. The fill rules are in references.md
-  ("Calculated columns: a formula typed into a table column", T-2957), and the engine fill is T-2958.
+- This-row shapes, each entered alone in its own column of a one-row table (so no calculated-column fill; T-2800):
+  `T[[#This Row], [Col]]` and `T[[#This Row] , [Col]]` print `[@Col]` (value 5); `T[ [#This Row] , [Col] ]`,
+  `T[ [#This Row],[Col] ]` and `[@ Col]` print `[ @Col ]`, the outer padding kept and the `@` form substituted. Inside a
+  table Excel always prints the short `[@...]` form; the long `T[[#This Row],...]` text is not kept. (An earlier
+  T-2786 attempt typed three of these into one column, and the calculated-column fill rewrote them all; see references.md,
+  "Calculated columns: a formula typed into a table column", T-2957, T-2958.)
   Ours: the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
-Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
+Evidence: probes/t2800-this-row-whitespace B2:F3 and t2800-stored-ws-0..3 (excel-graph, 2026-10-28, T-2800); probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
 (I1:I13). Each refused formula was entered alone against the same case. probes/t2966-empty-call-runs and
 t2966-missing-first-arg-run (excel-graph `entered`, 2026-10-28, T-2966; cache keys `input_sha256` 22b97392f143589e517cbf4a28cbe57cc7d474de238160fc867864e5597b7e36
 and 93468f85dd28e5322213f7a4284349feea5f1f526217a3daf17e0300fb11eb73). Typed `=SUBTOTAL(9,C1, )` and `=SUBTOTAL(9, ,C1)`
