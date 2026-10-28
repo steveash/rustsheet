@@ -2242,7 +2242,21 @@ DATE(8999,6,30),0.05,98,100,2,0)` and its date-shifted twins (probes/date-system
 -1904-odd-threshold row 5, -1900-odd-years and -1904-odd-years row 3) are 0.06499377053016654, 1.6e-14 above the root,
 and probes/date-system-1900-oddf-issue-after-quasi S!A17 and S!A32 are 0.07294567529742481, 5.1e-11 above it.
 probes/odd-bond-argument-check-order A258 is 0.06342868471015199, 1.5e-13 above the root.
-Not yet explained. Newton with ODDFPRICE's analytic slope cannot be the whole rule: the price is convex and
+Fitted (T-2007 attempt 2): ODDFYIELD is YIELD's Newton ("YIELD stops short of PRICE's root": YIELD's closed-form
+start over the term in years from settlement to maturity, a step under 1e-10 not taken, 100 steps at most, #NUM!
+when a step is not finite) on ODDFPRICE, but its slope is not ODDFPRICE's: the odd first coupon weighs in the slope
+as a regular coupon (100 × rate / frequency at the odd coupon's exponent, not the odd amount DFC/E or DCNL of a
+coupon). That wrong slope is what lands Excel above the root. On probes/oddfyield-solver-sweep (a short-first 5%
+semiannual bond, the same bond at a 0% coupon, and a short-first annual 6% bond at redemption 120, over prices 50
+to 150, and two ODDFPRICE inversions over yields 0 to 0.3) this model puts 98 of 101 zero-coupon cells within 4 ulp
+(39 bit-exact; there the slope is exact) and 323 of 324 coupon-bond cells within 1e-13 relative on libm prices,
+against 15 for ODDFPRICE's exact slope; in the engine 320 of the 547 sweep cells and every probe ODDFYIELD cell of
+the date-system cases pass bit-exact or within the harness' ulp tolerance. Still off: the long first periods at
+frequency 2 of PRICE_YIELD.xlsx (K8-K11, K29-K33, K49-K52, issue 2020-01-15 to first coupon 2021-03-01 with the
+settlement on a quasi-coupon date), and sweep cells whose yield is near 0 (T-3031). Rejected there: YIELD's own
+slope over the regular schedule from settlement to maturity, and a coupon in the slope at every quasi-coupon date
+of the long period.
+Attempt 1 (below) ruled out Newton with ODDFPRICE's own analytic slope: the price is convex and
 decreasing in the yield, so every analytic-Newton iterate after the first lies at or below the root, and Excel's
 values above the root rule it out: K23, K26, K27, K35, K37 and K38 (1.7e-13 to 3.8e-12 above), A17 (5.1e-11) and A258 (1.5e-13).
 The 0.06499377053016654 bond, 1.6e-14 above, is too close to the root to count either way.
@@ -2271,10 +2285,11 @@ K49-K52 (Excel-cached, desktop); probes/date-system-1900-odd-threshold, -1904-od
 -1904-odd-years, -1900-odd-accrint-bound, -1900-oddf-issue-after-quasi, date-system-1904-financial S!A32,
 coup-calendar-edges J8, fin-argument-modes H200, fin-yield-odd-lift A5, odd-bond-argument-check-order A258
 (excel-graph).
-Ours: `solve_yield` in functions/financial/financial_bonds/yield_solver.rs, Newton with a central difference (h = 1e-5)
-from the coupon rate to a step under 1e-8, then bisection. It lands within about 1e-14 of the root.
-Status: UNVERIFIED (Excel's stopping rule is unknown; the values are Excel-cached and excel-graph)
-Tasks: T-1374, T-2007 (the fit), T-1592 (YIELD's)
+Ours: `fn_oddfyield` runs `excel_yield_newton` (functions/financial/financial_bonds/yield_solver.rs) with
+`OddFirstSchedule::dprice`, the slope above; before T-2007 it was a central-difference Newton from the coupon rate
+with a bisection fallback, landing within about 1e-14 of the root.
+Status: UNVERIFIED (a fit; the long first periods at frequency 2 are not explained); the values are Excel-cached and excel-graph
+Tasks: T-1374, T-2007 (the fit), T-3031 (the long first periods), T-1592 (YIELD's)
 
 ## YIELD's #NUM! cells and its 100-step cap
 Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of

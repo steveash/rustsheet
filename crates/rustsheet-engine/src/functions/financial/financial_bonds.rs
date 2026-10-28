@@ -15,7 +15,7 @@ use coupon_schedule::{
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 use odd_last::odd_l_func;
-use yield_solver::{excel_yield_newton, solve_yield, yield_start};
+use yield_solver::{excel_yield_newton, yield_start};
 
 use super::number_or_error;
 use crate::{
@@ -443,6 +443,25 @@ impl OddFirstSchedule {
             term3 += self.coupon / growth(x, index as f64 + self.offset + self.y);
         }
         term1 + term2 + term3 - self.accrued
+    }
+
+    /// The slope ODDFYIELD's Newton takes at `yld`: d/dy of [`Self::price`], except that the odd
+    /// first coupon weighs as a regular one (`coupon` at the lead's exponent, not `lead`), as if the
+    /// bond's first period were regular. Excel: fitted on probes/oddfyield-solver-sweep, where this
+    /// slope from YIELD's start puts 323 of 324 coupon-bond cells within 1e-13 of Excel and the exact
+    /// slope 15 (financial.md "ODDFYIELD stops short of ODDFPRICE's root", T-2007).
+    fn dprice(&self, yld: f64) -> f64 {
+        let x = yld / self.m + 1.0;
+        let mut slope = 0.0;
+        let count = self.last_index as f64 + self.offset + 1.0;
+        let mut j = 0.0;
+        while j < count {
+            let t = j + self.y;
+            j += 1.0;
+            slope -= t * self.coupon / discount_growth(x, t + 1.0) / self.m;
+        }
+        let t = self.front_exponent;
+        slope - t * self.redemption / discount_growth(x, t + 1.0) / self.m
     }
 }
 
@@ -881,10 +900,17 @@ impl Model {
                 model
                     .odd_first_of(values, true, cell)
                     .and_then(|(odd, schedule)| {
-                        solve_yield(odd.yld_or_pr, odd.rate, |yld| {
-                            Some(schedule.price(yld, discount_growth))
-                        })
-                        .map_err(|_| num_error(cell))
+                        let [settlement, maturity, ..] = odd.dates;
+                        yield_start_years(settlement, maturity, odd.basis)
+                            .and_then(|years| {
+                                excel_yield_newton(
+                                    odd.yld_or_pr,
+                                    yield_start(odd.rate, odd.yld_or_pr, years),
+                                    |y| schedule.price(y, discount_growth),
+                                    |y| schedule.dprice(y),
+                                )
+                            })
+                            .ok_or_else(|| num_error(cell))
                     }),
             )
         })

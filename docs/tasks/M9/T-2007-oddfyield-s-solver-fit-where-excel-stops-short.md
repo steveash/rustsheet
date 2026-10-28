@@ -3,7 +3,7 @@ id: T-2007
 title: "ODDFYIELD's solver: fit where Excel stops short of ODDFPRICE's root (31 desktop cells with a known root, about 70 web cells)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -103,3 +103,15 @@ The scores, the evidence and what Excel's values show are in financial.md "ODDFY
   directly, as probes/solver-iteration-traces did for YIELD (T-1525): ODDFYIELD over a price sweep of one bond whose
   root is known, at 1-unit steps of the price, to see how the stopping gap moves with distance from the start. Then try
   starts from the dates (YIELD's start uses the term in years: T-2777).
+
+## Outcome
+Attempt 2 (2026-10-28) found the rule: ODDFYIELD is YIELD's Newton (`excel_yield_newton` from `yield_start` over
+`yield_start_years`) on ODDFPRICE with a slope that weighs the odd first coupon as a regular one
+(`OddFirstSchedule::dprice`); the old central-difference solver and its bisection fallback (`solve_yield`, ODDFYIELD's
+only caller) are gone. Evidence: the new probes/oddfyield-solver-sweep (547 cells, excel-graph): 320 pass against 123
+before; the lab scores 323/324 coupon-bond cells within 1e-13 for this slope against 15 for the exact one.
+Eval delta: ironcalc-calc known failures 567 -> 558 (9 PRICE_YIELD ODDFYIELD cells fixed), probes 16 fixed and 0
+regressions; the new sweep case adds 227 known-failure lines (new coverage, mostly within a few ulps). The solver is
+the one YIELD runs under `YIELD_SOLVER_WEIGHT`, with fewer price sums per step than before.
+Left over, in T-3031: the long first periods at frequency 2 (PRICE_YIELD K8-K11, K29-K33, K49-K52) and the sweep
+cells near a zero yield; the bit-exact last ulps stay with them.
