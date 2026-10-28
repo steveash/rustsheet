@@ -3,7 +3,7 @@ id: T-0092
 title: "Milestone probe lists report visibly-off cells: a count and the case!Sheet!A1 list on each milestone_lists row"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -40,3 +40,9 @@ are visibly off (decision 0114) and which ones, so M1's exit row can read the li
 ## Out of scope
 - The M1 exit row and exit-owners support (T-0089).
 - Changing which cases a list holds (frozen, decision 0043).
+
+## Outcome
+`ListSummary` gained `visibly_off` and `visibly_off_cells` (`case!Sheet!A1`), counted by the same predicate as the
+probe-milestone rows (new shared helper `probe_milestones::visibly_off_name`, deviations never counted). report.md's
+"Milestone probe lists" table has a `visibly off` column. Unit test covers an off cell, a bit-level-only cell and an
+unlisted case (the test case has a fourth, bit-level-only cell, so it expects `known_failures == 3`). Eval delta: none; `m1-probes` reads 0 visibly off on 1858 cells.

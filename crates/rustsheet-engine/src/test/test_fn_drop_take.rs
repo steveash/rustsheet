@@ -374,3 +374,19 @@ fn take_cols_error_beats_zero_rows() {
     assert_eq!(model._get_text("D4"), "#CALC!");
     assert_eq!(model._get_text("D5"), "1");
 }
+
+// A one-cell TAKE/DROP of a range is a reference, so it is a scalar under `+0` or `N()`, while an
+// array constant still lifts (probes/t2454-offset-one-cell-array-args A5:D5, A9:D9; T-2519).
+#[test]
+fn one_cell_take_drop_of_a_range_is_a_scalar_height() {
+    let mut model = new_empty_model();
+    model._set("H2", "3");
+    model._set("H3", "4");
+    model._set("A1", "=ROWS(OFFSET(B9:C12,5,1,TAKE(H2:H3,1)+0))");
+    model._set("A2", "=ROWS(OFFSET(B9:C12,5,1,N(DROP(H2:H3,-1,0))))");
+    model._set("A3", "=ROWS(OFFSET(B9:C12,5,1,{3}+0))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "1");
+}

@@ -200,8 +200,9 @@ const GROWTH_LOG_TERMS: u32 = 64;
 /// correctly rounded `ln(1+rate)` (-1 at 0.1, +1 at 0.05, +2 at 0.6), and the discount follows it
 /// (docs/excel-semantics/financial.md "PPMT discounts with an atanh-series log", T-2242). ATANH's
 /// own series (`hyperbolic::atanh_series`) stores each term and partial sum to a double instead,
-/// which misses this L, so the two loops stay separate.
-fn growth_log(rate: f64) -> f64 {
+/// which misses this L, so the two loops stay separate. CUMIPMT and CUMPRINC's geometric principal
+/// discounts with the same L (financial.md "CUMIPMT and CUMPRINC over many periods", T-2521).
+pub(super) fn growth_log(rate: f64) -> f64 {
     if rate.abs() >= GROWTH_LOG_SERIES_TO {
         return excel_ln(1.0 + rate);
     }

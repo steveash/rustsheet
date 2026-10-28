@@ -129,14 +129,22 @@ impl Model {
             return self.take_drop_of_grid(&grid, counts.as_slice(), edge, cell);
         }
         if let CalcResult::Range { left, right } = source {
-            if as_reference && left.sheet == right.sheet {
+            if left.sheet == right.sheet {
                 let (num_rows, num_cols) = range_dims(left, right);
-                return RefArg::from(
-                    match self.edge_spans(counts.as_slice(), cell, edge, num_rows, num_cols) {
-                        Ok((rows, columns)) => sub_range(left, &rows, &columns),
-                        Err(error) => error,
-                    },
-                );
+                match self.edge_spans(counts.as_slice(), cell, edge, num_rows, num_cols) {
+                    // Excel's TAKE/DROP of a range is a reference, so a one-cell result is a
+                    // scalar under `+0` or `N()`, not a lifting 1x1 array
+                    // (probes/t2454-offset-one-cell-array-args A5:D5, A9:D9; T-2519).
+                    Ok((rows, columns))
+                        if as_reference || (rows.len() == 1 && columns.len() == 1) =>
+                    {
+                        return RefArg::from(sub_range(left, &rows, &columns));
+                    }
+                    Err(error) if as_reference => return RefArg::from(error),
+                    // A multi-cell value-context result, or an `edge_spans` error, takes the array
+                    // path below, which recomputes the same span or error.
+                    _ => {}
+                }
             }
         }
         let data = match self.result_to_array(source, cell) {

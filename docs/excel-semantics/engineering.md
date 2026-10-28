@@ -607,9 +607,13 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   A318, `IMSECH("1.5")` 0.42509603494228; every real row of the sweep agrees).
 - IMARGUMENT: ATAN2's kernel, `atan(y/x)` plus or minus π (numbers.md "ATAN2 is ATAN(y/x) plus or minus π"): 77 of 77
   (libm `atan2` 67). The overflow and subnormal edges of that kernel are UNVERIFIED for IMARGUMENT.
-- UNVERIFIED: below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1, so IMCSC and IMCOT of a tiny imaginary part
-  (`IMCSC("1E-9i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")`) are `#NUM!` in ours (before T-2044 about -1E+9i), and
-  between 1E-8 and 1E-6 only a few digits survive; the sweep stops at 1E-5. Probe: T-2531.
+- IMCSC and IMCOT of a tiny imaginary part (probes-numeric/im-csc-cot-tiny-imag, T-2531, excel-graph, 56 of 56
+  cells agree with ours): `cosh 2y` rounding to 1 is Excel's behavior too. `IMCSC("1E-9i")`, `IMCSC("1E-20i")`,
+  `IMCOT("1E-8i")`, `IMCOT("1.1E-8i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")` and `IMCOT("1E-20i")` are `#NUM!`;
+  `IMCSC("1E-8i")` is `-90071992.5474099i`, `IMCSC("1.1E-8i")` `-99079191.8021509i`, `IMCSC("1E-9+1E-9i")`
+  `1000000000-1000000000i`; `IMCOT("1E-6i")` is `-999911.107320937i` (only a few digits survive between 1E-8 and 1E-6);
+  `IMCSC("1+1E-9i")` is `1.18839510577812-7.6305972223263E-10i` and `IMCOT("1+1E-9i")`
+  `0.642092615934331-1.41228292743739E-09i` (a real part of 1 keeps the kernel well conditioned).
 - UNVERIFIED: for |x| ≥ 2^27 (SIN's own `#NUM!` cut) the reciprocal kernels take libm's sine and cosine.
 - IMLOG2 (T-2231, superseding the T-2044 time-box): `ln` of IMABS's scaled modulus and the argument (`atan2`),
   both times K = 1.4426950408889636, the double one ulp above log2 e (= `1/ln 2` with the double one ulp below ln 2).
@@ -843,8 +847,16 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `IMCSC("1E+200")`, `IMSIN("7777777777")` (`IMSIN(HEX2OCT("FFFFFFFFFF"))`, 1068c44afcd56d53 A57), IMSEC of 1E+15 and
   `IMTAN("1.05966105763914E+57")`; but `IMCOT("1E+200")` is "0" (060b18586fcff6e6 A119). probes/t2534-im-trig-real-limit
   (excel-graph, 2026-10-26) confirms the limit for all six at 2^27: at 134217727 they answer, and at ±134217728, 1E+10,
-  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". IMTAN of a real is CONFLICTING (web vs desktop): COMPLEXs.xlsx N6
-  (Mac 16.0300) caches `IMTAN(5)` as -3.38051500624658, the libm double-angle value (T-1075 item 17).
+  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". probes/t3054-imtan-real-tan-kernel (excel-graph, 2026-10-28)
+  settles IMTAN's kernel on the web: nine real arguments where TAN's kernel and the double-angle form
+  `sin 2x / (cos 2x + 1)` print different text are all TAN's (`IMTAN("3.14159")` -2.65358979336212E-06, double-angle
+  ...207E-06; `IMTAN("-17.2737")` -197.642601323436, ...305; `IMTAN("-17.3011")` 44.7544983375159, ...163; row 3,
+  `IMTAN("4")`, prints 1.15782128234958 either way), and so is row 1, COMPLEXs.xlsx row 6's own
+  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, -3.38051500624659. IMTAN of a real is still CONFLICTING (web vs desktop):
+  COMPLEXs.xlsx N6 (Mac 16.0300) caches that formula as -3.38051500624658, the libm double-angle value (T-1075 item 17). IMTAN is one of numbers.md's "Excel for the web and desktop Excel
+  differ in the last digits" functions, so decision 0030 rule 4 (kept by decision 0039) makes the desktop N6 the fitting
+  target and the web cells, which the double-angle form misses by far less than 1e-9 relative, no target for further
+  fitting until T-1075 item 17 is answered (T-3054, dropped into T-2774).
   Ours (T-2534): IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real take SIN, COS and TAN's kernels and the limit
   (`real_trig`); IMTAN takes the limit but keeps the double-angle form below it, so the desktop N6 still passes and the 35
   web `IMTAN("5")` cells and the other IMTAN-of-a-real cells stay known failures (T-2774).
