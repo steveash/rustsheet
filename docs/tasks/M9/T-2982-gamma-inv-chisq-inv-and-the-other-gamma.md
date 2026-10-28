@@ -31,9 +31,13 @@ recorded.
   - The underflow rule (`lower_of_underflow`, backed by Excel only at shape 2, E7) probed at a shape below 1 and near 0
     (`GAMMA.DIST(1E-300,0.5,1E100,TRUE)`, `GAMMA.DIST(1E-300,1E-17,1E100,TRUE)`, `CHISQ.DIST(1E-17,1,TRUE)`).
   - The gen-m9 sweep cells of T-2255 (25 known-failure lines in eval/baseline/gen-m9.txt, listed in T-1891) and the
-    T-2435 split cells (gen-m9 2801c1c11c21e134 A241, 40425341c5034eed A265; probes/t2435-dist-extremes A21, A22,
-    A25, A26, A33, A34, A101, A102). Several of the gen-m9 cells are last digits of a small-shape inversion
+    T-2435 split cells (gen-m9 2801c1c11c21e134 A241, 40425341c5034eed A265; probes/t2435-dist-extremes A25, A26,
+    A101, A102; A21, A22, A33 and A34 pass since T-1891). Several of the gen-m9 cells are last digits of a small-shape inversion
     (`GAMMA.INV(1E-16,0.25,...)`): leave those to T-0972 if so.
+  - Excel evidence for Temme's expansion is all near x = a. Probe the tails (beyond about 3 sigma) and both sides of
+    the 1E8 cut (for example `GAMMA.DIST(99990000,1E8,1,TRUE)` against shape 99999999) into
+    probes/incomplete-gamma-cap; a 60-digit reference puts the kernel within 1 ulp near the centre and a few hundred
+    ulps at 1E-300, the conditioning of e^(-a phi), as the series below the cut (T-1891 fidelity review).
   - `INCOMPLETE_GAMMA_WEIGHT` (lift/kinds/statistical.rs): a cdf from shape 1E8 is now one term, so its bound only
     over-charges there; re-derive it if an inversion changes.
 
