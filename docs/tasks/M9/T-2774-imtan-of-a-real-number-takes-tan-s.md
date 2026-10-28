@@ -26,7 +26,7 @@ web, once the web-vs-desktop conflict on ironcalc-calc COMPLEXs.xlsx N6 is settl
   record and `make eval-baseline --allow-regressions`, which the T-2534 run could not take.
 - Its open question is item 17 of T-1075 (desktop-only, decision 0039 rule 3: it blocks no milestone).
 
-Owned cells (41):
+Owned cells (52):
 - The 35 `=IMTAN("5")` cells of gen-m9: 01810fc89c5ec2c0 A18, A116; 060b18586fcff6e6 A16; 09e6a8028f5acfae A270;
   1068c44afcd56d53 A219; 3cf48801617a72ad A81; 408aa11aa923a4d9 A67, A114; 516488da78a6b08c A88, A182; 5b6cc12a94f7bf14 A220;
   5bdef392d16a5efb A324; 65dc4e4da669f98a A126, A314; 65ff9a692665eba9 A345; 6d16afd40600302b A53; 76b07b57099ccc8d A312;
