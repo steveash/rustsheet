@@ -64,7 +64,10 @@ Upstream IronCalc: `scripts/upstream-log.sh` listed two commits since e757b4f1.
 - UPSTREAM.md now records b063c523 as last triaged.
 
 Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-graph OK).
-- probes: 7 pending; `rustsheet-oracle fill -b excel-graph --suite probes` was running at the time of writing.
+- probes: the same 7 pending cases as #2152. `rustsheet-oracle fill -b excel-graph --suite probes` hit my 15-minute timeout and wrote no sidecar.
+  - `t2065-lift-large`, `-median` and `-small` are T-1075 item 18 (M14).
+  - `typed-if-one-argument` (T-1990) and `t0481-curly-quote-names-c` (T-0481) are refused by Excel for the web.
+  - `displayed-text-ap-locale` and `displayed-text-locale-names` are the unfillable M10 locale cases.
 - As before, ironcalc-calc's 1 pending case is Excel-authored, and poi's 205 are web-vs-desktop conflicts (decision 0019), so I refilled neither. calipers (283 pending) and corpus-bench (592) are scored from their own cached values.
 
 Spot-audit: the last was 2026-10-25 (#1736), so none is due. The next is on or after 2026-11-01.
