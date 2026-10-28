@@ -306,6 +306,7 @@ mod tests {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: crate::poi_m8_subset::ReferenceFormCells::default(),
         }
     }
 

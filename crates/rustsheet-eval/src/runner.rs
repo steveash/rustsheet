@@ -21,6 +21,7 @@ use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
 use crate::formula_calls::calls_add_in;
 use crate::overrides;
+use crate::poi_m8_subset::{self, ReferenceFormCells};
 use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::text_expect::{self, TextExpectation, TextResult};
@@ -138,6 +139,10 @@ pub struct CaseResult {
     /// Only the run's own report reads them, so they are never serialized.
     #[serde(skip)]
     pub arguments: Vec<CallSeen>,
+    /// A poi case's formula cells in M8's subset and its unparsed formulas (decision 0146 item
+    /// 2(b), T-0094); empty for other suites. Only the run's own report reads them.
+    #[serde(skip)]
+    pub reference_forms: ReferenceFormCells,
 }
 
 #[derive(Debug, Clone)]
@@ -213,6 +218,7 @@ impl CaseResult {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: ReferenceFormCells::default(),
         }
     }
 
@@ -239,6 +245,7 @@ struct PreparedCase {
     tags: Vec<String>,
     text: Vec<TextExpectation>,
     defined_names: BTreeMap<String, String>,
+    reference_forms: ReferenceFormCells,
 }
 
 /// Runs all cases of the given suites in parallel.
@@ -295,6 +302,7 @@ pub fn run_case(
         skipped_add_in: prepared.skipped_add_in,
         tags: prepared.tags.clone(),
         defined_names: prepared.defined_names.clone(),
+        reference_forms: prepared.reference_forms.clone(),
         ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::Pending)
     };
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
@@ -497,6 +505,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             tags: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            reference_forms: ReferenceFormCells::default(),
         });
     };
     let (scorable, skipped_volatile) =
@@ -531,6 +540,17 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         .filter(|n| n.sheet.is_none())
         .map(|n| (n.name.to_ascii_uppercase(), n.body.clone()))
         .collect();
+    let reference_forms = if suite.manifest.name == poi_m8_subset::SUITE {
+        ReferenceFormCells::classify(
+            &snapshot,
+            expectations.iter().map(|e| {
+                let formula = e.formula.as_deref().or(e.anchor_formula.as_deref());
+                (e.sheet.as_str(), e.addr, formula)
+            }),
+        )
+    } else {
+        ReferenceFormCells::default()
+    };
     Ok(PreparedCase {
         input: Prepared::Xlsx { bytes },
         workbook_name,
@@ -542,6 +562,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         tags: Vec::new(),
         text: Vec::new(),
         defined_names,
+        reference_forms,
     })
 }
 
@@ -677,6 +698,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         tags: spec.tags.clone(),
         text: text_expect::expectations(&spec, case)?,
         defined_names: BTreeMap::new(),
+        reference_forms: ReferenceFormCells::default(),
         input: Prepared::Spec {
             spec: Box::new(spec),
         },
