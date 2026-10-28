@@ -3,7 +3,7 @@ id: T-2985
 title: "Make the merge lock fair: a FIFO waiter list and a wait command"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -46,21 +46,36 @@ tail, so no session can chain merges past waiters. (`wait` and the skill text ar
   between two calls exits 4 instead of reading as busy; the merger (T-2994) needs it.
 
 ## Acceptance criteria
-- [ ] `merge_lock.py` implements SPEC-0027 section 1: the version-2 format and its validation, the
+- [x] `merge_lock.py` implements SPEC-0027 section 1: the version-2 format and its validation, the
       FIFO queue, `acquire --pr/--train ID --prs`, exit code 4, renew/release retry and
       `release`. It still parses version-1 commits.
-- [ ] `make merge-lock-status` prints the queue.
-- [ ] `test_merge_lock.py` covers every `test_merge_lock.py` case in SPEC-0027's Test plan,
+- [x] `make merge-lock-status` prints the queue.
+- [x] `test_merge_lock.py` covers every `test_merge_lock.py` case in SPEC-0027's Test plan (the `wait` and
+      rate-limit cases are T-3010's),
       including these: an empty-`prs` train lock is never finished; a renewal that loses its CAS
       to a waiter's refresh retries and succeeds, and exit 4 follows a takeover; newline
       injection; future timestamps clamped to the committer time; a malformed holder reads as
       held.
-- [ ] A decision record, "The merge lock serves waiters first-in, first-out", lands in this PR.
+- [x] A decision record, "The merge lock serves waiters first-in, first-out", lands in this PR.
       It amends 0075 and 0097 and cites SPEC-0027 section 1.
-- [ ] `make hygiene`, `make typos` and `check_governance.py origin/main` pass. The architecture
+- [x] `make hygiene`, `make typos` and `check_governance.py origin/main` pass. The architecture
       and security reviewers approve the protected paths explicitly.
 
 ## Out of scope
 - `wait`, the rate-limited PR-finished read, `make merge-lock-wait` and the skill text (T-3010).
 - The readiness marker and the merge train (T-2986, T-2987).
 - Changing the 30-minute TTL.
+
+## Outcome
+- `scripts/merge_lock.py` writes and reads the version-2 lock commit: holder, PR or train `prs`,
+  `renewed`, `freed` and up to 20 waiters, validated on write and on parse (fails closed), with
+  timestamps clamped to the committer time. Version-1 commits still parse. `acquire` queues a busy
+  caller at the tail and hands a free, stale or finished lock only to the head; renew and release
+  retry their CAS; a lost holder exits 4 (`--renew` states a caller holds it). Each PR's state is
+  read at most once per `acquire`. `make merge-lock-status` prints the queue.
+- 32 tests in `scripts/test_merge_lock.py` (15 new), isolated from the real origin by a git guard.
+- Decision 0145 amends 0075 and 0097. Split along the task's own seam: `wait`, the cross-poll
+  rate limit and the skill text are T-3010.
+- During development one test run pushed one waiter line to the real `merge-lock` branch (the
+  holder was kept; the next holder's write replaced it). The guard now makes that impossible.
+- No eval delta (no engine change).
