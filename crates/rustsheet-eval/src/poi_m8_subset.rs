@@ -8,23 +8,22 @@
 //! `case!*`. poi workbooks are third-party files: a formula that does not parse is outside the
 //! subset and counted as `unparsed` (CLAUDE.md directive 5).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write as _;
 
 use rustsheet_engine::types::{Table, TableColumn, TableStyleInfo};
-use rustsheet_engine::ReferenceFormsReader;
+use rustsheet_engine::{ReferenceForms, ReferenceFormsReader};
 use serde::{Deserialize, Serialize};
 
-use crate::cellref::Addr;
 use crate::closeness::Visible;
 use crate::runner::{CaseResult, CaseStatus};
-use crate::xlsx_snapshot::WorkbookSnapshot;
+use crate::xlsx_snapshot::{FormulaKind, WorkbookSnapshot};
 
 /// The suite classified.
 pub const SUITE: &str = "poi";
 
-/// The formula cells of one case in the subset, and those whose formula does not parse, as
-/// `Sheet!A1`. Only the run's own report reads them.
+/// The formula cells (and array members) of one case in the subset, and those whose formula does
+/// not parse, as `Sheet!A1`. Only the run's own report reads them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReferenceFormCells {
     /// Cells whose formula holds one of the four forms.
@@ -34,67 +33,99 @@ pub struct ReferenceFormCells {
 }
 
 impl ReferenceFormCells {
-    /// Classifies `cells` (sheet, address, formula or array anchor's formula without `=`) of the
-    /// workbook `snapshot`, parsed against its sheets, defined names and tables.
+    /// Classifies every formula cell of the workbook `snapshot` (an array member by its anchor's
+    /// formula), parsed against its sheets, defined names and tables. Each distinct formula text of
+    /// a sheet is parsed once: a shared formula repeats it down a column.
     #[must_use]
-    pub fn classify<'a>(
-        snapshot: &WorkbookSnapshot,
-        cells: impl IntoIterator<Item = (&'a str, Addr, Option<&'a str>)>,
-    ) -> Self {
-        let sheets: Vec<String> = snapshot.sheets.iter().map(|s| s.name.clone()).collect();
-        let names: Vec<(String, Option<String>, String)> = snapshot
-            .defined_names
-            .iter()
-            .map(|n| (n.name.clone(), n.sheet.clone(), n.body.clone()))
-            .collect();
-        let tables = snapshot
-            .tables
-            .iter()
-            .map(|t| Table {
-                name: t.name.clone(),
-                display_name: t.name.clone(),
-                sheet_name: t.sheet.clone(),
-                reference: t.range.clone(),
-                totals_row_count: t.totals_rows,
-                header_row_count: t.header_rows,
-                header_row_dxf_id: None,
-                data_dxf_id: None,
-                totals_row_dxf_id: None,
-                columns: t
-                    .columns
-                    .iter()
-                    .zip(1..)
-                    .map(|(name, id)| TableColumn {
-                        id,
-                        name: name.clone(),
-                        ..TableColumn::default()
-                    })
-                    .collect(),
-                style_info: TableStyleInfo::default(),
-                has_filters: false,
-            })
-            .collect();
-        let mut reader = ReferenceFormsReader::new(sheets, &names, tables);
+    pub fn classify(snapshot: &WorkbookSnapshot) -> Self {
+        let mut reader = reader(snapshot);
         let mut out = Self::default();
-        for (sheet, addr, formula) in cells {
-            let Some(formula) = formula else {
-                continue;
-            };
-            let key = format!("{sheet}!{addr}");
-            let row = i32::try_from(addr.row).unwrap_or(1);
-            let column = i32::try_from(addr.col).unwrap_or(1);
-            match reader.read(formula, sheet, row, column) {
-                Some(forms) if forms.any() => {
-                    out.subset.insert(key);
+        for sheet in &snapshot.sheets {
+            let mut seen: HashMap<&str, Option<bool>> = HashMap::new();
+            for (addr, cell) in &sheet.cells {
+                let Some(formula) = cell.formula.as_deref() else {
+                    continue;
+                };
+                let in_subset = *seen.entry(formula).or_insert_with(|| {
+                    let row = i32::try_from(addr.row).unwrap_or(1);
+                    let column = i32::try_from(addr.col).unwrap_or(1);
+                    reader
+                        .read(formula, &sheet.name, row, column)
+                        .map(ReferenceForms::any)
+                });
+                out.insert(format!("{}!{addr}", sheet.name), in_subset);
+            }
+            for (addr, cell) in &sheet.cells {
+                let Some(FormulaKind::ArrayMember { anchor }) = &cell.formula_kind else {
+                    continue;
+                };
+                if cell.formula.is_some() {
+                    continue;
                 }
-                Some(_) => {}
-                None => {
-                    out.unparsed.insert(key);
-                }
+                let anchor = format!("{}!{anchor}", sheet.name);
+                let in_subset = if out.subset.contains(&anchor) {
+                    Some(true)
+                } else if out.unparsed.contains(&anchor) {
+                    None
+                } else {
+                    Some(false)
+                };
+                out.insert(format!("{}!{addr}", sheet.name), in_subset);
             }
         }
         out
     }
+
+    /// Records `key` as in the subset (`Some(true)`), outside it (`Some(false)`) or unparsed (`None`).
+    fn insert(&mut self, key: String, in_subset: Option<bool>) {
+        match in_subset {
+            Some(true) => {
+                self.subset.insert(key);
+            }
+            Some(false) => {}
+            None => {
+                self.unparsed.insert(key);
+            }
+        }
+    }
+}
+
+/// A reader for the formulas of `snapshot`, which knows its sheets, defined names and tables.
+fn reader(snapshot: &WorkbookSnapshot) -> ReferenceFormsReader {
+    let sheets: Vec<String> = snapshot.sheets.iter().map(|s| s.name.clone()).collect();
+    let names: Vec<(String, Option<String>, String)> = snapshot
+        .defined_names
+        .iter()
+        .map(|n| (n.name.clone(), n.sheet.clone(), n.body.clone()))
+        .collect();
+    let tables = snapshot
+        .tables
+        .iter()
+        .map(|t| Table {
+            name: t.name.clone(),
+            display_name: t.name.clone(),
+            sheet_name: t.sheet.clone(),
+            reference: t.range.clone(),
+            totals_row_count: t.totals_rows,
+            header_row_count: t.header_rows,
+            header_row_dxf_id: None,
+            data_dxf_id: None,
+            totals_row_dxf_id: None,
+            columns: t
+                .columns
+                .iter()
+                .zip(1..)
+                .map(|(name, id)| TableColumn {
+                    id,
+                    name: name.clone(),
+                    ..TableColumn::default()
+                })
+                .collect(),
+            style_info: TableStyleInfo::default(),
+            has_filters: false,
+        })
+        .collect();
+    ReferenceFormsReader::new(sheets, &names, tables)
 }
 
 /// How the subset scored.
@@ -184,22 +215,70 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::*;
+    use crate::cellref::Addr;
     use crate::runner::{CellKind, CellResult};
     use crate::value::{Value, Verdict};
-    use crate::xlsx_snapshot::{DefinedName, SheetSnapshot};
+    use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot};
+
+    fn formula(text: &str, kind: FormulaKind) -> CellSnapshot {
+        CellSnapshot {
+            formula: Some(text.to_string()),
+            formula_kind: Some(kind),
+            value: Value::Number(0.0),
+        }
+    }
 
     fn snapshot() -> WorkbookSnapshot {
+        let member = |anchor: &str| CellSnapshot {
+            formula: None,
+            formula_kind: Some(FormulaKind::ArrayMember {
+                anchor: anchor.to_string(),
+            }),
+            value: Value::Number(0.0),
+        };
+        let cells: BTreeMap<Addr, CellSnapshot> = [
+            ("A1", formula("Rate*2", FormulaKind::Normal)),
+            ("A2", formula("SUM(Jan:Feb!B1)", FormulaKind::Normal)),
+            ("A3", formula("SUM(B1:B2)", FormulaKind::Normal)),
+            ("A4", formula("SUM(1,", FormulaKind::Normal)),
+            (
+                "A5",
+                formula(
+                    "Rate*{1;2}",
+                    FormulaKind::Array {
+                        range: "A5:A6".to_string(),
+                    },
+                ),
+            ),
+            ("A6", member("A5")),
+            ("A7", member("A3")),
+            (
+                "A8",
+                CellSnapshot {
+                    formula: None,
+                    formula_kind: None,
+                    value: Value::Number(1.0),
+                },
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(a, c)| Some((Addr::parse(a)?, c)))
+        .collect();
         WorkbookSnapshot {
             application: None,
             app_version: None,
             file_app_name: None,
             date1904: false,
-            sheets: ["Jan", "Feb"]
-                .map(|name| SheetSnapshot {
-                    name: name.to_string(),
+            sheets: vec![
+                SheetSnapshot {
+                    name: "Jan".to_string(),
+                    cells,
+                },
+                SheetSnapshot {
+                    name: "Feb".to_string(),
                     cells: BTreeMap::new(),
-                })
-                .to_vec(),
+                },
+            ],
             defined_names: vec![DefinedName {
                 name: "Rate".to_string(),
                 sheet: None,
@@ -209,25 +288,14 @@ mod tests {
         }
     }
 
-    fn at(row: u32) -> Addr {
-        Addr { row, col: 1 }
-    }
-
     #[test]
-    fn classifies_cells_by_their_formula() {
-        let forms = ReferenceFormCells::classify(
-            &snapshot(),
-            [
-                ("Jan", at(1), Some("Rate*2")),
-                ("Jan", at(2), Some("SUM(Jan:Feb!B1)")),
-                ("Jan", at(3), Some("SUM(B1:B2)")),
-                ("Jan", at(4), Some("SUM(1,")),
-                ("Jan", at(5), None),
-            ],
-        );
+    fn classifies_formula_cells_and_array_members_by_their_anchor() {
+        let forms = ReferenceFormCells::classify(&snapshot());
         assert_eq!(
             forms.subset,
-            ["Jan!A1", "Jan!A2"].map(str::to_string).into()
+            ["Jan!A1", "Jan!A2", "Jan!A5", "Jan!A6"]
+                .map(str::to_string)
+                .into()
         );
         assert_eq!(forms.unparsed, ["Jan!A4".to_string()].into());
     }

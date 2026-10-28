@@ -470,6 +470,12 @@ fn pin_deviations(
 fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
     let bytes = std::fs::read(&case.path).map_err(|e| e.to_string())?;
     let snapshot = read_snapshot(&bytes).map_err(|e| e.to_string())?;
+    // Every poi workbook, pending ones too: a crashed one holding a subset formula is listed.
+    let reference_forms = if suite.manifest.name == poi_m8_subset::SUITE {
+        ReferenceFormCells::classify(&snapshot)
+    } else {
+        ReferenceFormCells::default()
+    };
     let oracle = load_oracle(case)?;
     let workbook_name = oracle.as_ref().and_then(|o| o.source.workbook_name.clone());
     let (source, from_excel, lookup): (String, bool, Lookup) = if let Some(o) = oracle {
@@ -505,7 +511,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             tags: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
-            reference_forms: ReferenceFormCells::default(),
+            reference_forms,
         });
     };
     let (scorable, skipped_volatile) =
@@ -540,17 +546,6 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         .filter(|n| n.sheet.is_none())
         .map(|n| (n.name.to_ascii_uppercase(), n.body.clone()))
         .collect();
-    let reference_forms = if suite.manifest.name == poi_m8_subset::SUITE {
-        ReferenceFormCells::classify(
-            &snapshot,
-            expectations.iter().map(|e| {
-                let formula = e.formula.as_deref().or(e.anchor_formula.as_deref());
-                (e.sheet.as_str(), e.addr, formula)
-            }),
-        )
-    } else {
-        ReferenceFormCells::default()
-    };
     Ok(PreparedCase {
         input: Prepared::Xlsx { bytes },
         workbook_name,
