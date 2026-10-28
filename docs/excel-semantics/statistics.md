@@ -3077,22 +3077,23 @@ Tasks: T-1543, T-1634
   4.1E-15 relative high, about 1E-15 relative in P at a = 0.25. Not yet known: whether this is the crossing of
   Excel's own GAMMA.DIST cdf (T-3012 probes it, T-3013 matches it).
   T-3012 evidence (probes/t3012-gamma-inv-small-shape, probes/t3012-gamma-dist-at-quantile, excel-graph):
-  - Excel's GAMMA.INV is not in general the crossing of its own GAMMA.DIST. Evaluating `GAMMA.DIST(x,a,1,TRUE)`
-    at Excel's `GAMMA.INV(p,a,1)` quantile (cells A..C of the second case, columns one ulp below, at and above give
-    the same cdf at a = 0.25, so one ulp of x cannot be resolved there) gives p exactly (to 1 ulp of p) at a = 0.05
-    and 0.5, but relative errors in P of: a = 0.25 +1.0E-15 (p = 1E-16, row 8), +6E-16 (p = 1E-10, 1E-5, rows 9, 10);
-    a = 0.1 -8.5E-15 (p = 1E-30, row 3); a = 0.75 +2.6E-14 (p = 1E-100, row 16), -3.3E-15 (1E-30, row 17),
-    -1.9E-15 (1E-16, row 18), -1.3E-15 (1E-5, row 20); a = 0.9 +2.0E-15 (1E-100, row 21), -4.7E-15 (1E-16, row 23),
-    -3.0E-15 (1E-5, row 25). So the quantile is Excel's own inversion, a few ulps of P from the crossing, with an
-    error sign that changes with p.
-  - The scale is not always a plain final product: `GAMMA.INV(1E-16,0.1,1)` = 6.073048362407876E-161 but
-    `GAMMA.INV(1E-16,0.1,1E+15)` = 6.0730483624078755E-146 (1 ulp lower); the two columns also differ by about an ulp (either way) at 0.25 / 1E-30,
-    0.25 / 1E-10 and 0.75 / 1E-30 (first case rows 10, 15, 17, 27).
+  - Excel's GAMMA.INV is not the crossing of its own GAMMA.DIST. `GAMMA.DIST(x,a,1,TRUE)` at Excel's
+    `GAMMA.INV(p,a,1)` quantile (second case, column B, exact relative error in P against the decimal p; the
+    `cdf/p-1` column D is zero-snapped by Excel and proves nothing) is within 6E-16 of p at a = 0.05, 0.25 (except
+    row 8, +9.7E-16) and 0.5, and further off at a = 0.1 (row 3, p = 1E-30: -8.5E-15), a = 0.75 (row 16, p = 1E-100:
+    +2.6E-14; row 17 -3.2E-15; row 18 -1.9E-15; row 19 +1.2E-15; row 20 -1.3E-15) and a = 0.9 (row 21 +1.9E-15,
+    row 22 +1.1E-15, row 23 -4.7E-15, row 25 -3.0E-15). No shape is exact at every p, and the sign changes with p.
+    One ulp of x moves the cdf by a quarter ulp at a = 0.25, so columns A..C agree there; at a = 0.5 and 0.9 they
+    differ (rows 15, 24, 25). The errors of 15 to 205 ulps of P at a = 0.1, 0.75, 0.9 are far more than one ulp of x
+    can explain, so the quantile is Excel's own inversion, not a crossing.
+  - The scale is a plain final product: in all 36 rows of the first case column B equals the double product
+    A * 1E+15 exactly (`GAMMA.INV(1E-16,0.1,1)` = 6.073048362407876E-161 and `GAMMA.INV(1E-16,0.1,1E+15)` =
+    6.0730483624078755E-146 are the same value to the rounding of the product, row 10).
   - Range: `GAMMA.INV(p,0.05,1)` is 0 for p <= 1E-30 and `#DIV/0!` at p = 1E-16 (row 4); shape 0.1 gives 0 for
     p <= 1E-100 and shape 0.25 / 0.5 / 0.75 / 0.9 give 0 for p = 1E-300 (0.25 also at 1E-100).
   - GAMMA.DIST's cdf at shape 0.25 (second case, rows 27-35): for x <= 1E-30 it equals
     `EXP(0.25*LN(x))/EXP(GAMMALN(1.25))` at x = 6.7497E-65 and 1E-30 and is 1 ulp above it at x = 1E-65; it never
-    equals `x^0.25/GAMMA(1.25)` (1 ulp above, 1.5 ulp at 6.7497E-65). From x = 1E-10 up it includes the series' second
+    equals `x^0.25/GAMMA(1.25)` (2 ulps above at 1E-65, 1 ulp above at 6.7497E-65 and 1E-30). From x = 1E-10 up it includes the series' second
     term (0.0034888228355002 against 0.0034888228355700 for the one-term forms), so only the x^a / Gamma(a+1) factor
     is comparable. The `cdf/p-1` columns are zero-snapped by Excel's subtraction rule and prove nothing; compare the
     raw cdf values.

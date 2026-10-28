@@ -33,7 +33,7 @@ form; it is not an accuracy fix. The target is gen-m9/984cba67bbe6972b.case.json
   and refining `gamma_quantile` to its crossing should reproduce it. Check against T-0972's branch, which refines
   gamma quantiles to the crossing, before starting, so the two do not collide.
 - T-3012 result (docs/excel-semantics/statistics.md, GAMMA.INV bullet): Excel's quantile is NOT the crossing of its own
-  GAMMA.DIST (P is off by 6E-16 to 2.6E-14 relative at a = 0.1, 0.25, 0.75, 0.9, exact at 0.05 and 0.5), so crossing
+  GAMMA.DIST (P is off by up to 1E-15 at a = 0.05, 0.25, 0.5 and by 1E-15 to 2.6E-14 at a = 0.1, 0.75, 0.9; the scale is a plain final product), so crossing
   refinement alone will not reproduce A43; the leading term of its cdf matches `EXP(a*LN(x))/EXP(GAMMALN(a+1))`.
 - Engine: crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/mod.rs `gamma_quantile`,
   `lower_series`.
