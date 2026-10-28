@@ -207,3 +207,21 @@ fn past_cap_values_match_excel() {
         assert!(!bessel_k(n, x).is_finite(), "BESSELK({x},{n})");
     }
 }
+
+/// Both recurrences round each step twice, as Excel's x87 code does: plain double steps miss these
+/// near the turning point n = x (probes/t2881-besselj-turning-point, excel-graph, T-2548).
+#[test]
+fn turning_point_recurrences_round_twice() {
+    use super::bessel_excel::excel_bessel_j;
+    for (x, n, excel) in [
+        // Miller's downward recurrence (x <= n).
+        (5000.0, 5000, 0.026_158_686_649_286_743),
+        (990.0, 1000, 0.012_361_942_456_230_18),
+        (100_000.0, 100_000, 0.009_636_944_011_336_267),
+        // The upward recurrence (x > n).
+        (2001.0, 2000, 0.038_080_655_425_271_136),
+        (100_100.0, 100_000, -0.006_729_033_731_473_101),
+    ] {
+        assert_eq!(excel_bessel_j(n, x), excel, "BESSELJ({x},{n})");
+    }
+}
