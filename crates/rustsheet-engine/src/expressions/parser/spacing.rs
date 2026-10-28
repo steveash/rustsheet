@@ -134,6 +134,19 @@ impl Node {
         node
     }
 
+    /// `self`, a call, with the run written between the parentheses of an empty call: `=NOW( )`
+    /// prints back as typed (probes/t2786-whitespace-structured-refs-runs I1, I11, T-2966). The
+    /// run is held as one spaced empty argument, which [`Node::strip_spaces`] removes, so
+    /// evaluation and the argument counts still see a call with none ([`is_empty_call_run`]).
+    pub(super) fn with_empty_call_run(mut self, run: Run) -> Node {
+        if let Node::FunctionKind { args, .. } = &mut self {
+            if args.is_empty() && !run.is_empty() {
+                args.push(Node::EmptyArgKind.spaced(run, Run::default()));
+            }
+        }
+        self
+    }
+
     /// [`Node::unwrap_spaced`] for a mutable borrow, for a walker that rewrites the node it
     /// decides on (one function cannot serve both borrows).
     pub(crate) fn unwrap_spaced_mut(&mut self) -> &mut Node {
@@ -173,7 +186,22 @@ impl Node {
     }
 }
 
+/// Whether `args` holds only the run of an empty call ([`Node::with_empty_call_run`]).
+pub(super) fn is_empty_call_run(args: &[Node]) -> bool {
+    matches!(args, [Node::Spaced { child, .. }] if matches!(**child, Node::EmptyArgKind))
+}
+
 impl Parser {
+    /// The run between a call's `(`, just read, and its `)` when no argument comes between them
+    /// (`=NOW( )`); none otherwise.
+    pub(super) fn empty_call_run(&mut self) -> Run {
+        if self.lexer.peek_token() == TokenType::RightParenthesis {
+            self.run_ahead()
+        } else {
+            Run::default()
+        }
+    }
+
     /// The whitespace run between the last token read and the next one.
     pub(super) fn run_ahead(&self) -> Run {
         Run::of(self.lexer.separator())

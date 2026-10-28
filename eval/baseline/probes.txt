@@ -1423,6 +1423,8 @@ C	probes/t2957-expand-right-data.case.json	11
 C	probes/t2957-expand-right-header.case.json	8
 C	probes/t2957-fill-one-totals.case.json	8
 C	probes/t2957-refill-second.case.json	6
+C	probes/t2966-empty-call-runs.case.json	8
+C	probes/t2966-missing-first-arg-run.case.json	6
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -3500,8 +3502,6 @@ F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C3
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C4
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H1
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H11
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I1
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I11
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11

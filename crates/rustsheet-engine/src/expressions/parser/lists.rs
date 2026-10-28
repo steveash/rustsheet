@@ -97,8 +97,10 @@ impl Parser {
         }
         // The cursor is currently in the first argument of `fn_name`.
         self.set_argument_hint(fn_name, 1);
+        // A run before a missing first argument is kept too (`=SUM( ,1)`,
+        // probes/t2966-missing-first-arg-run, T-2966).
         if &self.lexer.peek_token() == arg_separator_token {
-            args.push(Node::EmptyArgKind);
+            args.push(self.missing_argument());
         } else {
             let t = self.parse_argument(binds_names);
             if let Node::ParseErrorKind { .. } = t {
@@ -133,7 +135,7 @@ impl Parser {
         Ok(args)
     }
 
-    /// A missing argument after a comma, with the run written in its place.
+    /// A missing argument, with the run written in its place.
     fn missing_argument(&self) -> Node {
         Node::EmptyArgKind.spaced(self.run_ahead(), Run::default())
     }
