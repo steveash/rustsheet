@@ -3,7 +3,7 @@ id: T-2519
 title: "One-cell TAKE/DROP of a range under +0 or N() is a scalar, not a lifting 1x1 array (OFFSET height/width/rows)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
