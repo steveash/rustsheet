@@ -1,6 +1,6 @@
 ---
 id: T-2995
-title: "Merge-train shadow mode, the agent step mode fallback and make merge-train-stats"
+title: "Merge-train shadow mode (stats split to T-3076, step mode to T-3077)"
 milestone: M2
 lane: harness
 status: in-progress
@@ -52,12 +52,9 @@ shadow predictions agree with reality, can be computed from the GitHub API. If T
 - [ ] For a red shadow train, shadow reuses T-2998's binary search on `M0` (no second
       implementation) to emit the `defer` and `eject:ci-red` predictions. Tests cover a red
       shadow train with the culprit at `P_3`.
-- [ ] `make merge-train-stats [SINCE=<date>]` prints every metric above, plus the shadow agreement
-      score and the load bar. It is unit-tested against fixtures from the fake client, including
-      PR histories scripted for each agreement rule.
-- [ ] The step mode is built and tested, or dropped, depending on T-3001's answer, as stated in
-      the PR.
 - [ ] A decision record lands in this PR. The architecture and security reviewers approve.
 
 ## Out of scope
+- `make merge-train-stats` (split to T-3076, 2026-10-28) and the step mode (split to T-3077: T-3001's probe
+  found that session writes fail, so it is needed).
 - Routine prompts and policy (T-2996). Skills (T-2989).
