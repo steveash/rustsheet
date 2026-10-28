@@ -3,7 +3,7 @@ id: T-3009
 title: "Sweeps and data tables draw on the recalculation ceiling (SPEC-0028 step 2)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
