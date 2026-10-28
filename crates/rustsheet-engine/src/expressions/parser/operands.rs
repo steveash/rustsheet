@@ -683,6 +683,7 @@ impl Parser {
             table_reference: table_reference.clone(),
             spacing,
             bare,
+            unqualified: false,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
         if let Node::ParseErrorKind { message, .. } = &lowered {
