@@ -244,7 +244,8 @@ fn fn_vdb_fractional_start_bits() {
 }
 
 // RRI and DURATION use Excel's own operators (financial.md "DURATION and RRI operation order";
-// probes/fin-mduration-rri-fit A13, A37, T-1975).
+// probes/fin-mduration-rri-fit A13, A37, T-1975). RRI is `EXP(LN(fv/pv)*(1/nper))-1`, and
+// `fv/pv-1` at nper 1 (RRI.xlsx D12, probes-numeric/m9-fin-rri-nper-one row 32, T-2217).
 #[test]
 fn fn_rri_and_duration_bits() {
     let mut model = new_empty_model();
@@ -253,6 +254,8 @@ fn fn_rri_and_duration_bits() {
         "A2",
         "=DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)",
     );
+    model._set("A3", "=RRI(0.5,3,4)");
+    model._set("A4", "=RRI(1,826,40633)");
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
         Ok(CellValue::Number(n)) => n.to_bits(),
@@ -261,6 +264,8 @@ fn fn_rri_and_duration_bits() {
 
     assert_eq!(bits("A1"), 0.698_646_464_634_247_2_f64.to_bits());
     assert_eq!(bits("A2"), 5.541_666_666_666_668_f64.to_bits());
+    assert_eq!(bits("A3"), 0.777_777_777_777_777_5_f64.to_bits());
+    assert_eq!(bits("A4"), 48.192_493_946_731_23_f64.to_bits());
 }
 
 // DB keeps the remaining balance and DDB charges `min(old * rate, old - salvage)`, in Excel's

@@ -429,3 +429,9 @@ argument coercion: see also the `--""` entry in coercion.md.
 Evidence: probes/m2-argument-kind-gaps-b (excel-graph), Calc!A11:A14 and A15:A21. Ours already matches (12/12).
 Status: VERIFIED.
 Tasks: T-2870
+
+## Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars (VERIFIED, T-2980)
+Evidence: `probes/m2-argument-kind-gaps-c` (excel-graph). Criteria `0`/`"0"`/`"=0"` match a numeric 0 and a `"0"`
+text cell but not a blank; `-2`/`"-2"`/`"=-2"` match numeric -2 and a `"-2"` text cell; `"<0"` matches only numbers.
+An error `logical_test` (literal or cell) propagates; an error `value_if_false` surfaces only on the FALSE branch.
+`RIGHT(text,"2")`, `" 2 "` and `"1E1"` coerce num_chars as numbers. `RIGHT("abcdef","2.7")` is "ef" (truncated; Calc!A27) and `RIGHT(..,"x")` is #VALUE! (Calc!A31). IF cells: Calc!A1:A12; RIGHT cells: Calc!A25:A31. Our engine already matches every cell.

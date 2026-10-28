@@ -52,6 +52,19 @@ layout and tests.
   ours 4.032210775559509E-70). statistics.md (F.TEST, T-2829) says they are off by T-2924's ln B k plus whole steps
   of the fl(a·LN x) grid, so a TOMS betaln alone may not reach them: score them and say which part is left.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches already ported (bpser for min(a,b) > 1, L140 bup+bpser, w and w1 bpser) or at a shape of 1 outside the closed forms, still visibly off; most of the ported-branch ones have a shape above 8, so they are this task's TOMS betaln item (verify per cell). 54 visibly-off cells in 10 cases, per case:
+- probes-numeric/m9-beta-dist-a10: BETA.DIST cdf, ported BpserLarge 1
+- probes-numeric/m9-beta-dist-a100: BETA.DIST cdf, ported BpserLarge 1
+- probes-numeric/m9-beta-dist-a2p5: BETA.DIST cdf, ported BpserLarge 1
+- probes-numeric/m9-beta-dist-a5: BETA.DIST cdf, ported BpserLarge 1
+- probes-numeric/m9-f-dist-rt: F.DIST.RT cdf, ported L140BupBpser 1
+- probes-numeric/t2220-f-dist-sweep-cdf: F.DIST cdf, ported BpserLarge 5, F.DIST cdf, ported L140BupBpser 8, F.DIST cdf, shape of 1 7
+- probes-numeric/t2220-f-dist-sweep-d1-1: F.DIST.RT cdf, ported W1Bpser 1
+- probes-numeric/t2220-f-dist-sweep-d2-1: F.DIST cdf, ported W1Bpser 1
+- probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, ported BpserLarge 7, F.DIST.RT cdf, ported L140BupBpser 10, F.DIST.RT cdf, shape of 1 5
+- probes-numeric/t2464-w2f-absweep: BETA.DIST cdf, ported WBpser 5
+
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
       its scores.
