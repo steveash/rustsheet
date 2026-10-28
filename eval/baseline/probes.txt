@@ -3606,11 +3606,6 @@ F	probes/table-edits/table-delete-row-all-data-below.case.json	S!C7
 F	probes/table-edits/table-insert-column-inside-header.case.json	F!A4
 F	probes/table-edits/table-insert-two-columns-inside-header.case.json	F!A4
 F	probes/table-edits/table-insert-two-columns-inside-header.case.json	F!A5
-F	probes/text-255-units-array-element.case.json	S!A4
-F	probes/text-255-units-from-cell.case.json	S!A12
-F	probes/text-255-units-from-cell.case.json	S!A4
-F	probes/text-255-units-rept-error-count.case.json	S!A1
-F	probes/text-255-units-rept-error-count.case.json	S!A4
 F	probes/text-elapsed-two-tokens.case.json	S!A13
 F	probes/text-format-digits-date-token.case.json	Sheet1!C25
 F	probes/text-locale-calendars.case.json	S!A140

@@ -7,7 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::information::map_elements,
+    functions::{information::map_elements, text::common::reject_over_short_limit},
     model::Model,
 };
 
@@ -34,13 +34,21 @@ impl Model {
         // A range is its top-left cell, with no lift and no implicit intersection, legacy or
         // dynamic: `T(A1:A3)` with A1 "x" is "x" from any row, and with A1 5 "" even from A2's
         // row (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
-        let result = self.evaluate_node_top_left(&args[0], cell);
+        let (result, ranged) = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, .. } => (self.evaluate_cell(left), true),
+            other => (other, false),
+        };
+        let from_cell =
+            ranged || matches!(*args[0].ungrouped_at(cell.row), Node::ReferenceKind { .. });
         match result {
             // Text over 255 UTF-16 units is #VALUE!, as in REPT, CODE and UNICODE:
             // `T(REPT("x",256))` (docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a
             // text argument over 255 UTF-16 units", probes/t2199-text-length-and-combin-cuts A12).
+            // Read from a cell, such text is "" instead, and an array element over the limit is
+            // #VALUE! (probes/text-255-units-from-cell A4, A12; -array-element A4; T-2627).
             CalcResult::String(ref text) => match super::common::reject_over_short_limit(text) {
                 Ok(()) => result,
+                Err(_) if from_cell => CalcResult::String("".into()),
                 Err(error) => CalcResult::new_error(error, cell, String::new()),
             },
             error @ CalcResult::Error { .. } => error,
@@ -54,6 +62,9 @@ impl Model {
             }
             CalcResult::Array(values) => {
                 CalcResult::Array(map_elements(&values, |value| match value {
+                    ArrayNode::String(text) if reject_over_short_limit(text).is_err() => {
+                        ArrayNode::Error(Error::VALUE)
+                    }
                     ArrayNode::String(_) | ArrayNode::Error(_) => value.clone(),
                     _ => ArrayNode::String("".into()),
                 }))
