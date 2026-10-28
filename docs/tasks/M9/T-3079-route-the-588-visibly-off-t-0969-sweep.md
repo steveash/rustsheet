@@ -1,11 +1,11 @@
 ---
 id: T-3079
-title: "Route the 588 visibly-off T-0969 sweep cells (t0969-t-tail-grid, t0969-t-pdf-runs, t0969-beta-density-b, t0969-beta-switch, m9-t-dist-*) from time-boxed T-0969 to the kernel tasks that compute them"
+title: "Route the 588 visibly-off T-0969 sweep cells (t0969 t-tail-grid, t-pdf-runs, beta-density-b, beta-switch; m9 t-dist-*) from time-boxed T-0969 to the kernel tasks that compute them"
 milestone: M9
 lane: functions-stat
 status: todo
 priority: P2
-size: S
+size: M
 tier: opus
 depends_on: []
 campaign: visible
@@ -26,22 +26,25 @@ reaches them.
   density to T-2585 and the tails to T-2509 ("This task stays blocked until T-2585 and T-2509 land"). But neither task
   names these cases or cells. T-2981, which routed the incomplete-beta sweeps, skipped them because T-0969 already
   "owned" them.
-- The cells, by case and branch. Shapes come from the case JSON; the routing is a first guess, so verify each one:
+- The cells, by case and branch. Shapes come from the case JSON; the routing is a first guess, so verify each one.
+  t0969 `x` stands for the case probes-numeric/t0969-x, m9 `x` for probes-numeric/m9-x, and `gen-m9/17c110a5*` for
+  the gen-m9 case whose stem starts with those hex digits. This task spells no case in full on purpose: under the
+  ownership rule below, it would then own these cells itself and trivially meet its own third criterion.
   - Student-t right tail and two-tailed CDF, T-2509 ("Student t tails through the ported kernel"):
-    probes-numeric/t0969-t-tail-grid 227 T.DIST.RT cells (a df 2 to 1000 grid and three runs of consecutive doubles;
+    t0969 `t-tail-grid` 227 T.DIST.RT cells (a df 2 to 1000 grid and three runs of consecutive doubles;
     e.g. Calc!B1001 `=T.DIST.RT(A1001,50)` Excel 7.690416172835412e-7, ours 7.690416172835406e-7);
-    probes-numeric/m9-t-dist-rt 4 cells (`T.DIST.RT(100,1)` Excel 0.003182992764908255, ours 0.0031829927649082573;
-    `T.DIST.RT(5,100)` Excel 1.2250867067519005e-6, ours 1.2250867067519037e-6); probes-numeric/m9-t-dist-2t 6 cells
-    (`T.DIST.2T(100,1)` Excel 0.00636598552981651, ours 0.006365985529816515); probes-numeric/t0969-t-df-ratio 2 T.DIST.RT
-    cells (`T.DIST.RT(0.5,A13)` Excel 0.3127156705406078, ours 0.31271567054060817); gen-m9/17c110a53924beb8 Calc!A159
-    `T.DIST.2T(ODD(7),1E+10)` and gen-m9/91e167cd8d7eb652 Calc!A292 `T.DIST.2T(GEOMEAN(..),1)` (unattributed).
-  - Student-t density, T-2585 ("Loader's dt for df >= 3 and the df 1 and df 2 closed forms"): probes-numeric/t0969-t-pdf-runs
+    m9 `t-dist-rt` 4 cells (`T.DIST.RT(100,1)` Excel 0.003182992764908255, ours 0.0031829927649082573;
+    `T.DIST.RT(5,100)` Excel 1.2250867067519005e-6, ours 1.2250867067519037e-6); m9 `t-dist-2t` 6 cells
+    (`T.DIST.2T(100,1)` Excel 0.00636598552981651, ours 0.006365985529816515); t0969 `t-df-ratio` 2 T.DIST.RT
+    cells (`T.DIST.RT(0.5,A13)` Excel 0.3127156705406078, ours 0.31271567054060817); gen-m9/17c110a5* Calc!A159
+    `T.DIST.2T(ODD(7),1E+10)` and gen-m9/91e167cd* Calc!A292 `T.DIST.2T(GEOMEAN(..),1)` (unattributed).
+  - Student-t density, T-2585 ("Loader's dt for df >= 3 and the df 1 and df 2 closed forms"): t0969 `t-pdf-runs`
     146 cells (df 3: 29, 4: 9, 5: 14, 7: 48, 10: 46; e.g. `T.DIST(A11337,3,FALSE)` Excel 0.20892483134574413, ours
-    0.208924831345744); probes-numeric/m9-t-dist-pdf 25 cells (df 2 to 1E6; `T.DIST(100,30,FALSE)` Excel
-    2.9682918578588325e-40, ours 2.968291857858848e-40); probes-numeric/t0969-t-df-ratio 1 density cell (df 3).
+    0.208924831345744); m9 `t-dist-pdf` 25 cells (df 2 to 1E6; `T.DIST(100,30,FALSE)` Excel
+    2.9682918578588325e-40, ours 2.968291857858848e-40); t0969 `t-df-ratio` 1 density cell (df 3).
   - Beta density with min(a, b) > 1, T-2507 (Loader's saddle point, its "Cases owned (T-2981)" list):
-    probes-numeric/t0969-beta-density-b 129 cells, all column D, `BETA.DIST(x,1.5,b,FALSE)` with b > 1 (e.g. Pdf!D10
-    Excel 0.19972198869469973, ours 0.1997219886946995); probes-numeric/t0969-beta-switch 46 cells (a and b 6.5 to 9.5,
+    t0969 `beta-density-b` 129 cells, all column D, `BETA.DIST(x,1.5,b,FALSE)` with b > 1 (e.g. Pdf!D10
+    Excel 0.19972198869469973, ours 0.1997219886946995); t0969 `beta-switch` 46 cells (a and b 6.5 to 9.5,
     x 0.01 and 0.03; e.g. `BETA.DIST(0.01,A296,B296,FALSE)` Excel 1.9190855269410299, ours 1.9190855269410287). These
     probes were built to isolate Excel's 1/B(a, b) prefactor near b = 8. If T-2507's Loader form does not move them,
     the owner is the ln B fit (T-2924, blocked; T-3015 probes the dense grid), and the cells need a live owner

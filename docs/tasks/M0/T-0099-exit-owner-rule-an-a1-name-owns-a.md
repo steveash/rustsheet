@@ -23,22 +23,26 @@ never listed. The Phase 1 rate also stops leaving out visibly-off cells that no 
   also names a second case owns those same A1 cells in the second case. T-2880 fixed the related shared-stem leak; this
   one is still open.
 - Evidence (gap triage 2026-10-28, `make eval` on `main` bd7679c6b):
-  - eval/runs/desktop-owned.tsv lists `gen-m9/320d51765af9b6b7.case.json!Calc!A379` and
-    `gen-m9/7c20351562a2d71d.case.json!Calc!A254` as T-2425's (FORECAST.ETS, M14, desktop evidence). The cells are
+  - eval/runs/desktop-owned.tsv lists `gen-m9/320d5176*!Calc!A379` and
+    `gen-m9/7c203515*!Calc!A254` as T-2425's (FORECAST.ETS, M14, desktop evidence). The cells are
     `=F.INV(0.5,3,9)` (Excel 0.8516839503845974, ours 0.8516839503845963; a 40-digit mpmath root gives
     0.85168395038459728599, so Excel is right and ours is visibly off) and `=FINV(0.001,123456789.123,4)` (Excel
-    44.050905966749745, ours 44.05090596674968). T-2425 names 320d51765af9b6b7 only with A126, and 7c20351562a2d71d
-    only with A50. A379 and A254 come from its 160-cell line for gen-m9/22656c225ff4f22a. So decision 0143 leaves both
+    44.050905966749745, ours 44.05090596674968). T-2425 names 320d5176* only with A126, and 7c203515*
+    only with A50. A379 and A254 come from its 160-cell line for gen-m9/22656c22*. So decision 0143 leaves both
     cells out of the Phase 1 rate (report "M14-owned, left out": F.INV 1, FINV 1).
   - Under a per-bullet rule (the case's line plus its indented continuation lines, with colon spans as today), 107
     visibly-off cells that `--all-off` now counts as owned lose every open, undeferred owner. Examples:
-    gen-m9/5b6cc12a94f7bf14 Calc!A220 `IMTAN("5")` (T-2425 only), 60b0b6e69ad35a45 A151 `F.DIST.RT(1E+10,9,9)`
-    (T-2425 only), 5be29fa316931f05 A127 `TINV(1.5,4)` (T-2425, T-0969), c18dbf21f11093f3 A92 `F.INV(0.5,1,3)`,
-    1b31092a0d79e5f1 A363 `SMALL((SMALL({1,#N/A,3},2)/1.005),Data!C8)`, and 40 cells calling the FORECAST.ETS family in 14
-    gen-m9 cases (13 of them in 22656c225ff4f22a: A105, A130, A139, A35, A155, ...), which T-2425 should list but does not.
-  - Legitimate multi-line forms must keep working. T-3031 writes `probes/oddfyield-solver-sweep S!A9, A75, ...` and
-    continues the list (`B1, C21, C35, ...`) on indented lines of the same bullet. A strictly per-line rule would
-    unown those cells (a per-line prototype unowned about 14 more cells than the per-bullet one).
+    gen-m9/5b6cc12a* Calc!A220 `IMTAN("5")` (T-2425 only), 60b0b6e6* A151 `F.DIST.RT(1E+10,9,9)`
+    (T-2425 only), 5be29fa3* A127 `TINV(1.5,4)` (T-2425, T-0969), c18dbf21* A92 `F.INV(0.5,1,3)`,
+    1b31092a* A363 `SMALL((SMALL({1,#N/A,3},2)/1.005),Data!C8)`, and 40 cells calling the FORECAST.ETS family in 14
+    gen-m9 cases (13 of them in 22656c22*: A105, A130, A139, A35, A155, ...), which T-2425 should list but does not.
+  - Legitimate multi-line forms must keep working. T-3031 writes its oddfyield solver sweep probe's path and then
+    `S!A9, A75, ...` on one line, and continues the list (`B1, C21, C35, ...`) on indented lines of the same bullet.
+    A strictly per-line rule would unown those cells (a per-line prototype unowned about 14 more cells than the
+    per-bullet one).
+- This task writes each gen-m9 case as its first 8 hex digits and a `*` (`gen-m9/320d5176*` is the case that
+  `ls eval/suites/gen-m9/cases/320d5176*` finds), and it leaves T-3031's probe path out. Under today's rule a full case
+  name anywhere in this text, together with these A1 names, would make this task an owner of the cells it routes away.
 - The triage prototype is in this task's Context only (not committed): it splits each task into bullets (a line not
   starting with whitespace, or starting `- `, `* `, `|` or `N. `, opens a new block). It counts an A1 name only in a
   block that also names the case, and it keeps `names_in_span` and `names_whole_case` as they are.
