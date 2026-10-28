@@ -3,7 +3,7 @@ id: T-0086
 title: "exit_owners.py --all-off: every visibly-off Excel cell no open task owns, attributed, unattributed and probe, grouped by function"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
