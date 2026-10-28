@@ -127,7 +127,7 @@ Findings: (1) at rate -0.9 with fv 300 and type 1 (F10, F11, F18, F23) every for
 magnitude than Excel (Excel sits 3 to 5 ulp toward zero from the exact payment), and the miss barely moves with L
 (scratch: every L within 10 ulp of Excel's LN gives the same F10 and F11 to an ulp, and F18 within 2 ulp). The fv 0,
 type 0 controls at -0.9 carry only a 1-ulp, form-dependent residue (G10: exact -1, Excel-L/EXP +1, rounded-once 0;
-G11: 0, +1, +1; G18 0 under each), so the 3 to 5 ulp gap comes from how fv or type 1 enters; PMT.xlsx has no -0.9 cell with fv alone or type 1 alone, so the
+G11: 0, +1, +1; G18 0 under each of these), so the 3 to 5 ulp gap comes from how fv or type 1 enters; PMT.xlsx has no -0.9 cell with fv alone or type 1 alone, so the
 cached values cannot separate them. (2) The rounded-once Excel-L/EXP form is the best PMT model so far on
 m9-fin-pmt (197/308, T-3014's 175 with plain operators), but it still misses about a third of the sweep by one ulp,
 and of the five 0.2 inputs it gets only G33 (F27, G27, F32 and F33 are 1 ulp off).
