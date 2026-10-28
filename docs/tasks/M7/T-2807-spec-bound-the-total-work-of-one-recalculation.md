@@ -3,7 +3,7 @@ id: T-2807
 title: "Spec: bound the total work of one recalculation pass"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -24,10 +24,20 @@ caps (area budgets, `MAX_LIFTED_CELL_VISITS`) have the same scaling. Questions t
 - the DEVIATION entry.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-XXXX answers the questions above, with a worked example of 1,000 near-limit cells.
-- [ ] Implementation tasks are filed (S/M).
-- [ ] Reviewers approve.
-- [ ] `make check` green; reviewers approve.
+- [x] docs/specs/SPEC-XXXX answers the questions above, with a worked example of 1,000 near-limit cells.
+- [x] Implementation tasks are filed (S/M).
+- [x] Reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The implementation.
+
+## Outcome
+docs/specs/SPEC-0028-recalculation-work-budget.md: the units are SPEC-0024's summed at run boundaries in
+`with_area_budget` (the hot path is unchanged). A pass may commit `MAX_PASS_WORK` (2^30) and a round may throw
+away as much; past either, the round re-runs in share mode, each formula limited to 2^30 / (4N), so which cells
+give up depends on the model, not on the evaluation order (except through thrown-away work, which the spec
+names). `MAX_RECALC_WORK` (2^32) is the time ceiling over every phase; sweeps and data tables stop at it as their
+count caps do. Worked example of 1,000 near-limit cells: about 2 hours today, about 30 to 38 s with the spec.
+Incremental-recalculation requirements recorded for SPEC-0002 (T-0401). Implementation filed as T-3008 (M, opus)
+and T-3009 (S, opus). Eval delta: none (docs only).
