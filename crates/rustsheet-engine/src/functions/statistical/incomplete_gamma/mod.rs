@@ -656,8 +656,9 @@ const STATRS_QUANTILE_RESIDUAL: f64 = 1e-13;
 const REFINE_SHAPE_MAX: f64 = 1e9;
 
 /// From this shape on, Excel's GAMMA.INV and GAMMAINV are not a search but
-/// [`wilson_hilferty_quantile`]: `GAMMA.INV(0.5,a,1)` / a is 1.0002658235505755 for a = 2E10 to
-/// 1E300 (probes/t2982-gamma-inv-huge-shape A7-A23), while at 5E9 the quantile is the true one and
+/// [`wilson_hilferty_quantile`]: `GAMMA.INV(0.5,a,1)` / a tends to c = 1.0002658235505755, and is
+/// c (a - 1/3) / a from 1E13 to 1E300 (probes/t2982-gamma-inv-huge-shape A7-A23; the one cell at 2E10, A7, is at
+/// p = 0.5), while at 5E9 the quantile is the true one and
 /// at 7E9 and 1E10 Excel is mostly `#NUM!` (A5, A6, A42-A59; that band and the shapes from 1E9 to
 /// it stay on the search, TODO(T-3070)).
 pub(crate) const WILSON_HILFERTY_SHAPE_MIN: f64 = 2e10;
