@@ -340,6 +340,22 @@ pub struct MilestoneRow {
     /// 0063): the M7 exit requires none (decision 0140).
     #[serde(default)]
     pub spill_extent_failures: usize,
+    /// Displayed-text items scored for the row's cases (T-1610; information, not a gate).
+    #[serde(default)]
+    pub text_items: usize,
+    /// Text items whose text differs from Excel's.
+    #[serde(default)]
+    pub text_failing: usize,
+    /// Those items, as `case!Sheet!A1`, in case order: what `scripts/exit_owners.py` lists for the
+    /// row (decision 0146 item 4).
+    #[serde(default)]
+    pub text_failing_cells: Vec<String>,
+}
+
+/// `case!Sheet!A1` when cell `c` of case `r` is visibly off (decision 0114): neither bit-exact nor
+/// a pinned deviation, and outside what `Visible` tolerates.
+pub(crate) fn visibly_off_name(r: &CaseResult, c: &CellResult) -> Option<String> {
+    (c.verdict.is_failure() && Visible::is_off(c)).then(|| format!("{}!{}", r.id, c.key()))
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -375,13 +391,25 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 s.bit_exact += 1;
             } else if c.verdict == Verdict::Deviation {
                 s.deviations += 1;
-            } else if Visible::is_off(c) {
+            } else if let Some(name) = visibly_off_name(r, c) {
                 s.visibly_off += 1;
-                s.visibly_off_cells.push(format!("{}!{}", r.id, c.key()));
+                s.visibly_off_cells.push(name);
             }
             rows_of_case.insert(row);
         }
         let case_row = row_of(rules.case_milestone(r));
+        // A text item takes its cell's milestone, as its value cell does (decision 0146 item 4).
+        for t in &r.text {
+            let key = format!("{}!{}", t.sheet, t.cell);
+            let row = cell_rows.get(&key).copied().unwrap_or(case_row);
+            let s = rows.entry(row).or_default();
+            s.text_items += 1;
+            if !t.pass {
+                s.text_failing += 1;
+                s.text_failing_cells.push(format!("{}!{key}", r.id));
+            }
+            rows_of_case.insert(row);
+        }
         if r.cells.is_empty() {
             rows_of_case.insert(case_row);
         }
@@ -427,20 +455,22 @@ pub fn write_markdown(rows: &[MilestoneRow], md: &mut String) {
     );
     let _ = writeln!(
         md,
-        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) | visibly off |\n\
-         |---|---|---|---|---|---|---|"
+        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) | visibly off | text items | failing text |\n\
+         |---|---|---|---|---|---|---|---|---|"
     );
     for s in rows {
         let _ = writeln!(
             md,
-            "| {} | {} | {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             s.milestone,
             s.cases,
             s.cells,
             s.bit_exact,
             s.deviations,
             s.known_failures,
-            s.visibly_off
+            s.visibly_off,
+            s.text_items,
+            s.text_failing
         );
     }
     for s in rows.iter().filter(|s| !s.failing_cases.is_empty()) {
@@ -779,9 +809,7 @@ mod tests {
                 deviations,
                 known_failures: failing.iter().map(|f| f.1).sum(),
                 failing_cases: failing.iter().map(|f| (f.0.to_owned(), f.1)).collect(),
-                visibly_off: 0,
-                visibly_off_cells: Vec::new(),
-                spill_extent_failures: 0,
+                ..MilestoneRow::default()
             }
         };
         assert_eq!(
@@ -812,13 +840,50 @@ mod tests {
         let mut md = String::new();
         write_markdown(&rows, &mut md);
         assert!(md.contains("## Probe milestones (decision 0051)"), "{md}");
-        assert!(md.contains("| M0-M2 | 2 | 3 | 1 | 1 | 1 | 0 |"), "{md}");
-        assert!(md.contains("| M9 | 2 | 2 | 0 | 0 | 2 | 1 |"), "{md}");
+        assert!(
+            md.contains("| M0-M2 | 2 | 3 | 1 | 1 | 1 | 0 | 0 | 0 |"),
+            "{md}"
+        );
+        assert!(
+            md.contains("| M9 | 2 | 2 | 0 | 0 | 2 | 1 | 0 | 0 |"),
+            "{md}"
+        );
         assert!(
             md.contains("Failing cases in M9:\n\n- `probes/catalog/c.case.json`: 1\n- `probes/d.case.json`: 1\n"),
             "{md}"
         );
         assert!(summarize(&rules, &results[5..], BaselineMode::Cells).is_empty());
+    }
+
+    #[test]
+    fn text_items_are_counted_in_their_cases_row() {
+        let rules = rules("");
+        let text = |cell: &str, pass| crate::text_expect::TextResult {
+            sheet: "S".into(),
+            cell: cell.into(),
+            expected: "1".into(),
+            actual: Some("1".into()),
+            pass,
+        };
+        let with_text = CaseResult {
+            text: vec![text("A1", true), text("A2", false)],
+            ..case("probes/t.case.json", &["M9"], CaseStatus::Pass, vec![])
+        };
+        let plain = case("probes/n.case.json", &["M5"], CaseStatus::Pass, vec![]);
+        let rows = summarize(&rules, &[with_text, plain], BaselineMode::Cells);
+        let find = |m: &str| rows.iter().find(|r| r.milestone == m).expect(m);
+        let m9 = find("M9");
+        assert_eq!((m9.text_items, m9.text_failing), (2, 1));
+        assert_eq!(m9.text_failing_cells, ["probes/t.case.json!S!A2"]);
+        let m5 = find("M5");
+        assert_eq!((m5.text_items, m5.text_failing), (0, 0));
+        assert!(m5.text_failing_cells.is_empty());
+        let mut md = String::new();
+        write_markdown(&rows, &mut md);
+        assert!(
+            md.contains("| M9 | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 |"),
+            "{md}"
+        );
     }
 
     #[test]
