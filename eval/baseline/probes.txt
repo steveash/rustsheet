@@ -408,8 +408,9 @@ C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-3d-j-empty.case.json	61
 C	probes/eng-imsum-improduct-whole.case.json	45
 C	probes/eng-imtan-imcot-overflow.case.json	13
+C	probes/eng-inumber-currency-shapes.case.json	40
 C	probes/eng-inumber-date-boundary.case.json	46
-C	probes/eng-inumber-reading.case.json	19
+C	probes/eng-inumber-reading.case.json	26
 C	probes/eng-later-argument-lift.case.json	75
 C	probes/eng-leading-plus-oct-bool.case.json	65
 C	probes/error-arg-vs-range-check.case.json	10
@@ -2288,7 +2289,6 @@ F	probes/eng-inumber-date-boundary.case.json	S!A22
 F	probes/eng-inumber-date-boundary.case.json	S!B21
 F	probes/eng-inumber-date-boundary.case.json	S!B22
 F	probes/eng-inumber-date-boundary.case.json	S!B23
-F	probes/eng-inumber-reading.case.json	S!A5
 F	probes/fin-argument-modes.case.json	Sheet1!H236
 F	probes/fin-argument-modes.case.json	Sheet1!H374
 F	probes/fin-argument-modes.case.json	Sheet1!H375
