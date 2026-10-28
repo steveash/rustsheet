@@ -16,8 +16,8 @@
     acquires again joins at the tail.
   - A waiter that has not refreshed for 10 min is dropped (refreshes are written at most every
     3 min); a head that does not claim a freed lock within 2 min, or whose PR is finished, is
-    dropped. 0097's PR-finished read covers the head too; T-3010 rate-limits it to a re-read per
-    PR every 10th poll.
+    dropped. 0097's PR-finished read covers the head too, and `wait` re-reads a PR at most every
+    10th poll (T-3010).
   - A train lock (`pr: train`, `prs: ...`) is finished only when `prs` is non-empty and every PR
     in it is merged or closed.
   - Renewal and release retry when a waiter's refresh wins their compare-and-swap; a renewal that
@@ -26,16 +26,13 @@
   - Lock commits are validated on write and on parse: bounded ids and PR numbers, no newlines,
     timestamps clamped to the commit's committer time, and a missing or malformed holder reads
     as held by `unknown` (stale after the TTL), never free. Version-1 commits still parse.
-  - With T-3010, agents wait with `make merge-lock-wait PR=<n>` in the background (polls every
-    30 s, timeout 45 min by default) instead of retrying later; it exits 0 when the lock is theirs,
-    3 when the PR is finished, 1 on the timeout. Until then a busy `acquire` keeps the caller's
-    place for 10 min, so retrying within that time keeps it. That covers a busy lock only: a head
-    that does not claim a freed lock within 2 min loses its place, so until `wait` polls for it,
-    a head that retries less often can be skipped.
-- **Consequences:** once T-3010 lands, this replaces 0075's "do other work and try again later":
-  it changes the steward skill's "Merge lock" step 1 and work-loop step 6.3 to wait with
-  `make merge-lock-wait`. The 30-minute TTL, the compare-and-swap and 0097's exit 3 are
-  unchanged. During the rollout an older `merge_lock.py` ignores the queue and may take a lock
+  - Agents wait with `make merge-lock-wait PR=<n>` in the background (polls every 30 s, timeout
+    45 min by default, T-3010) instead of retrying later; it exits 0 when the lock is theirs, 3
+    when the PR is finished, 1 on the timeout. Its 30 s polls keep the caller's place and claim a
+    freed lock well within 2 min; a head that retries by hand less often can be skipped.
+- **Consequences:** this replaces 0075's "do other work and try again later": the steward skill's
+  "Merge lock" step 1 and work-loop step 6.3 say to wait with `make merge-lock-wait`. The
+  30-minute TTL, the compare-and-swap and 0097's exit 3 are unchanged. During the rollout an older `merge_lock.py` ignores the queue and may take a lock
   reserved for the head; waiters then re-register at their next refresh. That loses fairness for
   a while, never mutual exclusion, and ends once every session starts from a `main` with T-2985.
   The PR-finished read moves to `scripts/gh_client.py` in T-3001.
