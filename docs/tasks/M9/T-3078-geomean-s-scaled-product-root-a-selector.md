@@ -1,6 +1,6 @@
 ---
 id: T-3078
-title: "GEOMEAN's scaled-product root: search for a selector between the plain and log-domain root models (18 probe cells one ulp off)"
+title: "GEOMEAN's scaled-product root: search for a selector between the plain and log-domain root models (17 probe cells one ulp off)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -12,15 +12,15 @@ defer: phase-1b
 ---
 
 ## Goal
-GEOMEAN's over/underflow path (a plain product outside the normal range) returns Excel's root on the 18 probe cells
+GEOMEAN's over/underflow path (a plain product outside the normal range) returns Excel's root on the 17 probe cells
 listed below, each one ulp off today, with no probed GEOMEAN cell regressing. Otherwise the task records, under the
 decision 0056 time box, that no evidence-backed selector exists.
 
 ## Context
 Gap triage 2026-10-28 (`make eval` on 40844417, excel-graph evidence). An ownership check over every failing cell found
-these 18 cells named by no open task. T-1099 (blocked) owns the same class of cells in its two probes (a 600-value
+these 17 cells named by no open task. T-1099 (blocked) owns the same class of cells in its two probes (a 600-value
 underflowing set and 17 random product-order sets). T-1284 and T-2794 own the in-range root (a normal plain product), which is a different
-path in `fn_geomean`. All 18 cells are one ulp off and none is visibly off, so the task stays deferred.
+path in `fn_geomean`. All 17 cells are one ulp off and none is visibly off, so the task stays deferred.
 
 What is known (docs/excel-semantics/numbers.md "GEOMEAN root rounding", T-1108, T-0290):
 - The engine's root, `(M * 2^r)^(1/n) * 2^q`
