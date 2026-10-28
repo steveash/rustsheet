@@ -9,6 +9,7 @@ use rustsheet_engine::types::{
 
 use crate::error::XlsxError;
 
+use super::shared_strings::decode_xlsx_escapes;
 use super::util::{get_bool, get_bool_false};
 
 // <table name="Table" displayName="Table" totalsRowCount ref="A1:D6">
@@ -223,15 +224,20 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
 }
 
 /// A `<filterColumn>`'s column and criterion; `None` for one without a valid `colId`, which
-/// Excel's schema requires.
+/// Excel's schema requires. A values filter with date groups (`<dateGroupItem>`, `calendarType`)
+/// is kept as [`FilterCriterion::Other`], not as a values list that would drop its dates; the
+/// column's `hiddenButton` and `showButton` are not kept. Values are stored decoded from the
+/// file's `_xHHHH_` escapes, as cell text is.
 fn filter_column(node: &XmlNode) -> Option<FilterColumn> {
     let col_id = node.attribute("colId")?.parse::<u32>().ok()?;
-    let criterion = if let Some(filters) = node.child("filters") {
+    let criterion = if let Some(filters) = node.child("filters").filter(|f| {
+        !f.has_attribute("calendarType") && f.children().all(|n| n.has_tag_name("filter"))
+    }) {
         FilterCriterion::Values {
             values: filters
                 .children()
                 .filter(|n| n.has_tag_name("filter"))
-                .filter_map(|n| n.attribute("val").map(str::to_string))
+                .filter_map(|n| n.attribute("val").map(decode_xlsx_escapes))
                 .collect(),
             blank: get_bool_false(filters, "blank"),
         }
@@ -243,7 +249,7 @@ fn filter_column(node: &XmlNode) -> Option<FilterColumn> {
                 .filter(|n| n.has_tag_name("customFilter"))
                 .map(|n| CustomFilter {
                     operator: n.attribute("operator").map(str::to_string),
-                    val: n.attribute("val").unwrap_or_default().to_string(),
+                    val: decode_xlsx_escapes(n.attribute("val").unwrap_or_default()),
                 })
                 .collect(),
         }
@@ -251,4 +257,43 @@ fn filter_column(node: &XmlNode) -> Option<FilterColumn> {
         FilterCriterion::Other
     };
     Some(FilterColumn { col_id, criterion })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{filter_column, XmlNode};
+    use rustsheet_engine::types::FilterCriterion;
+
+    fn criterion(xml: &str) -> FilterCriterion {
+        let node = XmlNode::parse_str(xml).unwrap();
+        filter_column(&node).unwrap().criterion
+    }
+
+    /// A values filter with date groups is not read as a bare values list, which an export would
+    /// write as a filter that shows nothing (T-2838).
+    #[test]
+    fn date_grouped_values_filters_are_not_kept_as_values() {
+        let dated = r#"<filterColumn colId="1"><filters><dateGroupItem year="2024" dateTimeGrouping="year"/></filters></filterColumn>"#;
+        assert_eq!(criterion(dated), FilterCriterion::Other);
+        let calendar = r#"<filterColumn colId="1"><filters calendarType="gregorian"><filter val="a"/></filters></filterColumn>"#;
+        assert_eq!(criterion(calendar), FilterCriterion::Other);
+    }
+
+    /// Filter values are decoded from the file's `_xHHHH_` escapes, so the export's encoding
+    /// gives the same text back.
+    #[test]
+    fn filter_values_decode_xlsx_escapes() {
+        let escaped =
+            r#"<filterColumn colId="0"><filters><filter val="a_x0041_"/></filters></filterColumn>"#;
+        assert_eq!(
+            criterion(escaped),
+            FilterCriterion::Values {
+                values: vec!["aA".to_string()],
+                blank: false
+            }
+        );
+        assert!(
+            filter_column(&XmlNode::parse_str(r#"<filterColumn colId="x"/>"#).unwrap()).is_none()
+        );
+    }
 }

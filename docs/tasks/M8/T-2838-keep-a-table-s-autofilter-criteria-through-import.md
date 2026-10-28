@@ -42,6 +42,9 @@ xlsx-storage.md "Table parts in the export".
   `<filterColumn colId="0"/>`.
 - `has_filters` keeps its import rule (the autoFilter has any child) instead of deriving from the kept columns: an
   autoFilter holding only a `<sortState>` or `<extLst>` stays flagged as before, so SUBTOTAL's behavior is unchanged.
+- Values filters with date groups (`dateGroupItem`, `calendarType`) are kept as the criterion-less kind, not as an
+  empty values list; filter values are decoded from `_xHHHH_` escapes; kept criteria move with their columns
+  through column inserts and deletes inside the table (`edit_filter_columns`, table_edits.rs).
 - Tests: tables.xlsx's two filters (Table4 custom, Table16 values) survive an export byte for byte and reload equal;
   every criterion kind (blank, AND, escaped operand, kind not kept) round-trips.
 - The Excel probe of an exported filter (and of a constant totals-row cell) is split to T-3081.

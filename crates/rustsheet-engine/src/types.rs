@@ -487,7 +487,8 @@ pub struct Table {
     pub style_info: TableStyleInfo,
     pub has_filters: bool,
     /// The criteria of the table's autoFilter as the file stored them, kept so an export writes
-    /// back the filter Excel read; they hide no row here (filters are not re-applied).
+    /// back the filter Excel read; they hide no row here (filters are not re-applied). Column
+    /// inserts and deletes inside the table move them with their columns.
     pub filter_columns: Vec<FilterColumn>,
 }
 
@@ -515,7 +516,8 @@ pub enum FilterCriterion {
 }
 
 /// One `<customFilter>`: `operator` is the file's attribute (absent means `equal`) and `val`
-/// the operand as text.
+/// the operand as text, both kept verbatim for the export only; re-applying a filter would need
+/// a typed operator.
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct CustomFilter {
     pub operator: Option<String>,
