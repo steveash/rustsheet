@@ -33,6 +33,11 @@ Suspected cause (untraced): the quantile at q = 0.5 - tiny fed to `t_upper_quant
 the p < 1 branch of T.INV near 0.5 may share it. Also the NumericClose cells that are off at the 15th digit, e.g.
 201d67f1d59436ed A103 and c2684066d8df263e A374 `T.INV.2T(1.5,1)` (-1.0000000000000016, Excel -1), belong to T-0967/T-1542.
 
+Gap triage 2026-10-28 (eval on origin/main abefb50): one more cell of this branch that no task named, at a fractional
+df and p further from 1: gen-m9/5389dd4d5b5739d2 Calc!A288 `T.INV.2T(Data!E4,Data!C$10)` = `T.INV.2T(1.005,3.14159)`,
+Excel -0.006801817544729202, ours -0.006801817544722885 (9E-13 relative, visibly off; known failure in
+eval/baseline/gen-m9.txt). It counts toward the first criterion.
+
 ## Acceptance criteria
 - [ ] The cells above are within half a unit of the 15th significant digit of Excel's value, or the residue is filed.
 - [ ] statistics.md records the near-1 behavior and the fix.

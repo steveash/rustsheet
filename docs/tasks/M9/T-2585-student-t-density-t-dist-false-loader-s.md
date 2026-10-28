@@ -44,6 +44,14 @@ leaves.
   (`x87_log10::excel_ln`) exist. Code must not read docs/ (decision 0066): copy the rows the tests need into a fixture.
 - T-0969 is blocked on its tails and B; this task takes its density part (T-0969 "Blocked because").
 
+Owned gen-m9 cells (handed from T-2437, excel-graph, 2026-10-28): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Handed from T-2437 because the outer EXPON.DIST is bit-exact on Excel's inner T.DIST(4199,4,FALSE) = 9.192880751152396E-18
+(excel-graph, 2026-10-28, probed by T-2437; ours 9.192880751152399E-18): the cdf at that tiny t is 0.3 * the density.
+Examples:
+- gen-m9/caa1eed48b1883fe Calc!A382 `=EXPON.DIST(T.DIST(DAYS(14246,10047),4,Data!D$11),Data!A9,Data!B$1)`: Excel 2.757864225345719e-18, ours 2.7578642253457196e-18
+Cells:
+- gen-m9/caa1eed48b1883fe.case.json (1): Calc!A382
+
 ## Acceptance criteria
 - [ ] On cells.tsv's 19,776 T.DIST(.,FALSE) cells the engine is within 15 digits on at least 19,708 (df >= 3 at least
       18,631 of 18,699, df 1 and 2 all 1,077) and bit-exact on at least 7,033.

@@ -25,6 +25,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Unused deps | `cargo machete` | none |
 | Spelling | `typos` | clean (Excel names allow-listed in `_typos.toml`) |
 | Docs readers | `scripts/check_docs_readers.py` | code may read `docs/` or `.claude/` only under `CODE_READ_PATHS` in `scripts/ci_changes.py`, which CI never skips (decision 0066) |
+| CI rights | `scripts/check_ci_workflow.py` | `.github/workflows/ci.yml` references no secret or job token and every `permissions` block is exactly `contents: read`; its tests pin `on.push.branches` to `main`, `merge-train/current` and `merge-train/shadow` (decision 0147) |
 | Governance | `scripts/check_governance.py origin/main` | protected-path changes need a decision record; test deletions flagged |
 
 ## Ratchet mechanics
