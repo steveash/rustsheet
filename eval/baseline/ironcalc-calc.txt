@@ -789,5 +789,3 @@ F	ironcalc-calc/STATISTICAL/T_DIST.xlsx	T.DIST.2T T.INV.2T!D8
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F4
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F7
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F8
-F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E2
-F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E3
