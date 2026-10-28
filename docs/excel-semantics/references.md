@@ -2388,6 +2388,28 @@ through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Re
   an ordinary insert just below a range leaves it (as `S!C4:C7` stays for r = 8 without totals).
 - So SPEC-0016's edge-case table was wrong on two rows: an insert at r == d1 and at r == t *grows* the
   table (it said fallback); the move, grow-inside and none rows hold (fixed by T-2321).
+- `#This Row` through the move and the grow (excel-graph, 2026-10-28, T-2845; table-insert-row-this-row-above-header,
+  -this-row-inside-data, -calc-column-above-header, -calc-column-inside-data): every `Sales[@Qty]` keeps its text, on
+  every row. That includes a cell on sheet F that stays put, a cell beside the table that moves with the insert, and a
+  formula inside the table. Each one evaluates at its own row against the table as it is after the edit:
+  - insert above the header (r = 3, table now B4:C8, data rows 5-8): F!A4:A8 `=Sales[@Qty]` give #VALUE! (row 4 is the
+    header now), 1, 2, 4, 8, where before the edit they gave 1, 2, 4, 8, #VALUE!. F!A8 went from off the data rows to
+    on them (`ROW(Sales[@Qty])` 8, `ISREF` TRUE).
+  - insert inside the data (r = 6, table now B3:C8): F!A4:A8 give 1, 2, 0 (the new blank data row), 4, 8.
+  - S!E4:E7 `=Sales[@Qty]` beside the table move one row down and keep their text and values (1, 2, 4, 8); one below
+    or above the data rows stays #VALUE!.
+- FORMULATEXT prints a `#This Row` reference in its `@` form: `=Sales[@Qty]` for one typed (and stored)
+  `Sales[[#This Row],[Qty]]`, and, inside its own table, without the table name: `=Sales[@Qty]*2` in S!D4 prints
+  `=[@Qty]*2`, as the calculated-column rule says (same cases).
+- A whole-row insert inside the data does not fill a column of identical `=Sales[@Qty]*2` formulas into the new row
+  when the file has no `calculatedColumnFormula` for it (the spec builder writes none): the new S!D6 is empty
+  (FORMULATEXT #N/A, value 0). `SUM(Sales[Dbl])` stays 30 (table-insert-row-calc-column-inside-data). Whether a real
+  calculated column is filled is not probed.
+- Excel refuses a whole-row or whole-column insert that would push any cell of a table off the sheet, even when the
+  cells pushed off are empty. Two probes, `Sales` on S!B1048573:C1048576 with an insert above row 10 and `Sales` on
+  S!XFC3:XFD6 with an insert left of column C, both got Graph 409 `InsertDeleteConflict`, "This won't work because it
+  would move cells in a table on your worksheet." (T-2845, 2026-10-28; no eval case, because the oracle fill fails at
+  the edit).
 - A loaded formula naming a table the file does not have (`=SUM(Nope[Qty])`) or a column its table does not
   have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
   `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
@@ -2409,10 +2431,12 @@ it, row and column moves, cell shifts) leaves the table as it is, and an edit th
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
 its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
-moved or grown table's row there, a value change from before T-2297 (unprobed, T-2845). An insert at
-the first row of a table without a header row is a fallback too (unprobed, T-2845). So is an insert that would
-carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
-refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
+moved or grown table's row there, but a row on them is rewritten to the plain area it read, and a moved cell
+beside or inside the table is rewritten too. Excel keeps the text in all of them (the T-2845 bullet above; T-3037).
+FORMULATEXT prints the long `Sales[[#This Row],[Qty]]` where Excel prints `Sales[@Qty]` (T-1683). An insert at
+the first row of a table without a header row is a fallback too (unprobed, T-3039). An insert that would
+carry a table past the last row or column runs (the cells pushed off are empty) and leaves the table, where Excel
+refuses it (T-3038). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
 inside grow the table (T-2339). A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
@@ -2425,14 +2449,14 @@ registers a spec table with its totals row; an insert above the totals row grows
 `Sales[[#Totals],[Qty]]` (T-2321), and since T-2338 the totals row's deletes (delete it or the last data row) keep it too (decision 0128).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
-its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2845; desktop-only cut and paste T-2325).
+its value before step 2. Excel keeps `Sales[@Qty]` and reads the new row through a row insert (T-2845, above; T-3037); cut and paste is desktop-only and unprobed (T-2325).
 A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
 kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
 what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on
 every row, off the data rows too (before step 2 those were `#VALUE!`), which matches "Delete the table's sheet" below
 (table-delete-sheet: every structured reference becomes `#REF!`). A defined name has no cell, so its `#This Row` is resolved
 at row 1, where its body is parsed, as before step 2 (unprobed, hand: Excel may resolve it at the calling cell's row; T-2595).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845, T-2846
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845, T-2846, T-3037, T-3038, T-3039
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases

@@ -3,7 +3,7 @@ id: T-2845
 title: "Probe #This Row and headerless tables when a table moves or grows on a row insert"
 milestone: M8
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,10 +32,27 @@ rule (a cell whose lowered area changes prints it; one off the data rows keeps i
 Use the excel-probe skill; cases go in eval/suites/probes/cases/table-edits with `insert_row` sheet ops.
 
 ## Acceptance criteria
-- [ ] Probe cases for the items above, oracled (excel-graph) and in the probes baseline.
-- [ ] references.md "Structured references when the table changes" records the findings; implementation
+- [x] Probe cases for the items above, oracled (excel-graph) and in the probes baseline.
+- [x] references.md "Structured references when the table changes" records the findings; implementation
   tasks are filed for any mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probed 2026-10-28 on excel-graph. Four cases were added to probes/table-edits: table-insert-row-this-row-above-header,
+-this-row-inside-data, -calc-column-above-header and -calc-column-inside-data. They add 39 new-coverage known
+failures to eval/baseline/probes.txt and no regression. references.md "Structured references when the table
+changes" records the findings:
+- `#This Row` keeps its text through the move and the grow, in every cell (fixed cells on another sheet, moved
+  cells beside the table, formulas inside it), and reads its own row in the new table. Ours rewrites every cell
+  whose area changed to a plain area: T-3037.
+- FORMULATEXT prints the `@` form, and `[@Qty]` inside the table. Ours prints the long form: added as evidence to
+  T-1683.
+- Excel refuses a row or column insert that would push a table off the sheet (Graph 409 InsertDeleteConflict, on a
+  table at the last rows and one at the last columns). Ours runs the insert: T-3038. Those two probes cannot be kept
+  as eval cases, because the oracle fill fails at the edit.
+- A column of identical `Sales[@Qty]*2` formulas without calculatedColumnFormula metadata is not filled into the
+  inserted row.
+- The headerless-table item needs spec2xlsx support for a table with no header row first: T-3039.
