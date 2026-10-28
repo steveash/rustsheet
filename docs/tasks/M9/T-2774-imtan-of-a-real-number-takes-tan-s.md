@@ -36,6 +36,13 @@ Owned cells (41):
 - gen-m9/65ff9a692665eba9 A100, e882060cf4613302 A146, ef33be4fd2389f3c A225 (`IMTAN` of 123456789.123),
   79dac8dde81afda9 A154 (`IMTAN(3.14159)`).
 - probes/t2534-im-trig-real-limit Sheet1!D1, D8, D9, D10.
+- gen-m9/756a9f7bc3a06bcc Calc!A338 (`IMTAN` of Data!A12, "3.14159": Excel -2.65358979336212E-06, ours
+  -2.65358979336207E-06), from T-3054, dropped into this task.
+- probes/t3054-imtan-real-tan-kernel Sheet1!N1, A2, A4:A11 (T-3054, excel-graph, 2026-10-28): nine real arguments where TAN's
+  kernel and the double-angle form print different text, all TAN's. Its N1 is N6's own formula,
+  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, and the web gives -3.38051500624659 there, so the conflict is the platform, not the
+  formula. Decision 0030 rule 4 (kept by decision 0039) lists IMTAN among the last-digit web-vs-desktop functions: the
+  desktop N6 is the fitting target, and these web cells are not targets until T-1075 item 17 is answered.
 
 ## Acceptance criteria
 - [ ] The owned cells leave the baselines, and N6 is either still passing or recorded per a decision record that reviewers
