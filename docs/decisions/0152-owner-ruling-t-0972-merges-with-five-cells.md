@@ -1,4 +1,4 @@
-# 0144 — Owner ruling: T-0972 merges with five cells newly visibly off
+# 0152 — Owner ruling: T-0972 merges with five cells newly visibly off
 
 - **Status:** accepted (2026-10-28, T-0972; ruled by the owner in session
   https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr). It amends decision 0083's standing allowance for PR #1767 only,

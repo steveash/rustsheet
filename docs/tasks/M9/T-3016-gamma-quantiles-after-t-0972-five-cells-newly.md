@@ -12,13 +12,13 @@ depends_on: []
 ---
 
 ## Goal
-The five quantile cells T-0972 made visibly off (decision 0144) reach visible parity again, and the 49 gated cells it
+The five quantile cells T-0972 made visibly off (decision 0152) reach visible parity again, and the 49 gated cells it
 moved by 1-3 ulp match Excel's last digits where Excel's own algorithm can be reproduced.
 
 ## Context
 T-0972 refines GAMMA.INV, CHISQ.INV, CHISQ.INV.RT, GAMMAINV and CHIINV to the crossing of the smaller tail of the
 accurate incomplete gamma (`statistical/incomplete_gamma` `gamma_quantile`). Net it fixes 28 gated lines and lowers
-visibly-off cells by 27, but (decision 0144):
+visibly-off cells by 27, but (decision 0152):
 
 Newly visibly off:
 - gen-m9/ecc87f80077959e0 Calc!A168 `CHISQ.INV.RT(MIN(Data!A9:A12),7)`: Excel 8.383430828608388, ours 8.383430828608383 (3 ulp)

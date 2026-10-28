@@ -199,12 +199,12 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
 
 ## Outcome (2026-10-28, owner-unblocked)
 The baseline was recorded with `update-baseline --allow-regressions` under decision 0083's allowance as amended by
-**decision 0144**, with the owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. Measured on
+**decision 0152**, with the owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. Measured on
 the branch merged with `main` (3fe509e8):
 - gated: 28 lines fixed (gen-m9 23, ironcalc-calc 5); 49 cells regressed, all numeric (38 at 1 ulp, 9 at 2, 2 at 3);
 - every suite, against a `main` build: 90 other cells newly fail within the 15th digit; in-scope visibly-off cells
   101,602 -> 101,575;
-- five cells newly visibly off, accepted by decision 0144: gen-m9 ecc87f80077959e0 A168 and 146b46e74f2dac3b A167,
+- five cells newly visibly off, accepted by decision 0152: gen-m9 ecc87f80077959e0 A168 and 146b46e74f2dac3b A167,
   ironcalc-calc GAMMA.xlsx F21, probes-numeric m9-chisq-inv A27 and t1049-chisqinv A19.
 
 Follow-up **T-3016** owns those five cells and lists all 49 regressed cells with their values.
