@@ -47,5 +47,5 @@ ironcalc-calc row at 99.95%, `v15_checkpoint`'s per-function rate for every M9 f
 gen-m10's displayed-text items and the M10 probes' value and text cells; M11 from corpus-bench at the fixed 99.8%
 over at least 200,000 cells and the M11 probes. docs/milestones.md cites it in each of those sections. On the
 2026-10-28 numbers M1 and M11 are met, M8, M9 and M10 are not. T-2889, T-2890, T-2891 and T-0487 asked the same
-questions per milestone and are dropped as superseded; T-0089 carries the thresholds. No code, baseline or gate
+questions per milestone and are dropped as superseded; T-0089 and the tasks split from it (T-0092 to T-0097) carry the thresholds. No code, baseline or gate
 change; eval delta 0.

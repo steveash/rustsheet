@@ -94,9 +94,10 @@
 - **Consequences:**
   - docs/milestones.md's M1 and M8–M11 exit texts cite this decision. The steward and the planner
     run `make exit-owners MILESTONE=M<k>` for every Phase 1 milestone once T-0089 lands.
-  - T-0089 builds the rows and the report measures items 1–5 need (visibly-off counts on
-    `milestone_lists`, the poi M8 subset, text-item counts on probe rows, more than one generated
-    suite per row for M8), with unit tests for a met and an unmet row of each new measure.
+  - T-0089 and the tasks split from it build the rows and the report measures items 1–5 need:
+    visibly-off counts on `milestone_lists` (T-0092), text-item counts on probe rows (T-0093), the
+    poi M8 subset (T-0094), more than one suite per row with the M1 and M11 rows (T-0089), and the
+    M9, M8 and M10 rows (T-0095, T-0096, T-0097), each with unit tests for a met and an unmet row.
   - On today's numbers M1 is met; M8 is not (9 probe cells; the POI subset is `n/a`); M9 is not
     (138 > 36, 82 functions, 578 probe cells); M10 is not (76 text items, 50 probe cells); M11 is
     met on corpus-bench (99.834%, 205,366 cells) and its probes.
