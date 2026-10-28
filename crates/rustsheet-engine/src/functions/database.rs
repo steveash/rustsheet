@@ -71,16 +71,17 @@ fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> b
                     || (rows.contains(&(row + context.row))
                         && columns.contains(&moved(*column, *absolute_column, context.column)))
             }
+            // Each corner's row and column with its absolute flag, row first.
             Node::RangeKind {
-                sheet_index,
                 absolute_row1,
-                absolute_column1,
+                sheet_index,
                 row1,
                 column1,
+                absolute_column1,
                 absolute_row2,
-                absolute_column2,
                 row2,
                 column2,
+                absolute_column2,
                 ..
             } => {
                 *sheet_index != query.left.sheet

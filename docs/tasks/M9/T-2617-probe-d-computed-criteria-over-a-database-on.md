@@ -70,3 +70,4 @@ Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as
 - Implemented here (small): `retarget_unqualified_references` (sheet_edits.rs) and the record-area check in
   `reads_records` (functions/database.rs).
 - Eval delta: gen-m9 known failures 3562 -> 3554 (the 8 owned cells), probes +1 case at 245/245, no regressions.
+- Follow-up: T-3002 probes the mixed absolute and evaluation-time references ours decides unprobed.
