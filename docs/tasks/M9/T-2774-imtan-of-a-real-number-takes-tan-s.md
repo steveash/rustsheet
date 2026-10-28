@@ -26,7 +26,7 @@ web, once the web-vs-desktop conflict on ironcalc-calc COMPLEXs.xlsx N6 is settl
   record and `make eval-baseline --allow-regressions`, which the T-2534 run could not take.
 - Its open question is item 17 of T-1075 (desktop-only, decision 0039 rule 3: it blocks no milestone).
 
-Owned cells (44):
+Owned cells (54):
 - The 35 `=IMTAN("5")` cells of gen-m9: 01810fc89c5ec2c0 A18, A116; 060b18586fcff6e6 A16; 09e6a8028f5acfae A270;
   1068c44afcd56d53 A219; 3cf48801617a72ad A81; 408aa11aa923a4d9 A67, A114; 516488da78a6b08c A88, A182; 5b6cc12a94f7bf14 A220;
   5bdef392d16a5efb A324; 65dc4e4da669f98a A126, A314; 65ff9a692665eba9 A345; 6d16afd40600302b A53; 76b07b57099ccc8d A312;
@@ -36,6 +36,11 @@ Owned cells (44):
 - gen-m9/65ff9a692665eba9 A100, e882060cf4613302 A146, ef33be4fd2389f3c A225 (`IMTAN` of 123456789.123),
   79dac8dde81afda9 A154 and 756a9f7bc3a06bcc A338 (`IMTAN(3.14159)`; A338 since the T-3030 re-fill, T-3054).
 - probes/t2534-im-trig-real-limit Sheet1!D1, D8, D9, D10.
+- probes/t3054-imtan-real-tan-kernel Sheet1!N1, A2, A4:A11 (T-3054, excel-graph, 2026-10-28): nine real arguments where TAN's
+  kernel and the double-angle form print different text, all TAN's. Its N1 is N6's own formula,
+  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, and the web gives -3.38051500624659 there, so the conflict is the platform, not the
+  formula. Decision 0030 rule 4 (kept by decision 0039) lists IMTAN among the last-digit web-vs-desktop functions: the
+  desktop N6 is the fitting target, and these web cells are not targets until T-1075 item 17 is answered.
 
 ## Acceptance criteria
 - [ ] The owned cells leave the baselines, and N6 is either still passing or recorded per a decision record that reviewers
