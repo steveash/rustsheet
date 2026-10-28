@@ -104,8 +104,9 @@ named in the Outcome.
   - probes/yield-start-rate-term S!B39 and S!B49 (basis 1, 5 and 10 ulp off);
   - probes/yield-solver-sweep S!C7 (27 ulp).
   
-  Each sits past a 15th-digit rounding boundary. They are split to **T-2974** (`campaign: visible`), since no rule
-  change found in this session's time box (decision 0056) moves them. This task made no engine change, so the eval
+  Each sits past a 15th-digit rounding boundary. They are split to **T-2974** (`campaign: visible`), since moving them
+  needs a change to the fitted start or stop, which is out of this task's scope (T-1592, T-2740, T-2330). No refit was
+  tried here. This task made no engine change, so the eval
   delta is none and no baseline moved.
 - Test `fn_yield_matches_excel_off_the_fit` (test_fn_bond_functions.rs) pins four cells:
   - PRICE_YIELD!I30, bit-exact, with its PRICE input;
