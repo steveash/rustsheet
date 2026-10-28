@@ -3,7 +3,7 @@ id: T-3030
 title: "VSTACK/HSTACK: CELL('contents') of a blank target is #VALUE!, non-blank targets stack (T-2466 evidence)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
