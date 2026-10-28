@@ -3,7 +3,7 @@ id: T-2787
 title: "Probe IMCOT inputs where the two denominator groupings round differently"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,9 +23,12 @@ Oracle evidence confirming that IMCOT's denominator is grouped `(cosh 2y + 1) - 
   `cd tools && uv run rustsheet-oracle fill`.
 
 ## Acceptance criteria
-- [ ] The probe has oracle values for at least 10 such inputs. engineering.md records how many each grouping
+- [x] The probe has oracle values for at least 10 such inputs. engineering.md records how many each grouping
       matches. If the T-2537 grouping is not the better fit, a fix task is filed.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMCOT of a real number (TAN's kernel).
+
+## Outcome
+probes/t2787-imcot-denominator-grouping: 24 inputs where the groupings print different text, oracle-filled (excel-graph). The T-2537 grouping `(cosh 2y + 1) - 2cos²x` matches 21, the T-2044 grouping 2 (libm trig); ours matches the same 21. Three last-digit misses (A2, A9, A17) are baselined and filed as T-3032. Recorded in engineering.md.
