@@ -17,6 +17,7 @@ import math
 import sys
 from pathlib import Path
 
+from rustsheet_tools.fitlab.irr_fallback_sweep import excel_number
 from rustsheet_tools.fitlab.kernels.solvers import NoResultError, irr_secant_v
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -27,13 +28,6 @@ BASES: list[tuple[str, list[float]]] = [
 ]
 SCALES: list[tuple[str, float]] = [("x1", 1.0), ("x1e6", 1e6), ("x-1", -1.0)]
 J_RANGE = range(-5, 6)
-
-
-def literal(x: float) -> str:
-    """`x` as a 17-significant-digit formula literal."""
-    if float(x).is_integer() and abs(x) < 1e15:
-        return str(int(x))
-    return f"{x:.17g}".replace("e+", "E+").replace("e-", "E-")
 
 
 def iterates(flows: list[float]) -> list[float]:
@@ -60,11 +54,11 @@ def write_case() -> None:
     layout: list[str] = []
     row = 1
     for base, scale_id, flows, guesses in blocks():
-        array = "{" + ",".join(literal(c) for c in flows) + "}"
+        array = "{" + ",".join(excel_number(c) for c in flows) + "}"
         cells[f"A{row}"] = f"=IRR({array})"
         first = row
         for g in guesses:
-            cells[f"B{row}"] = literal(g)
+            cells[f"B{row}"] = excel_number(g)
             cells[f"C{row}"] = f"=IRR({array},B{row})"
             row += 1
         n_iter = len(guesses) - len(J_RANGE)
@@ -75,7 +69,7 @@ def write_case() -> None:
     description = (
         "IRR guess sweeps on large-root flows (T-2565): for {-0.0001,2,42} (c0681a8b) and {-2.5,-1,123456789.123}"
         " (67a4c03a), each as is, scaled by 1E6 and by -1: IRR(flows, g_k) at every iterate of the fit-lab secant run"
-        " from 0.1 (irr_secant_v trace, as 17-digit literals in column B) then IRR(flows, 0.1*(1+j*1E-4)), j = -5..5."
+        " from 0.1 (irr_secant_v trace, as shortest round-trip literals in column B) then IRR(flows, 0.1*(1+j*1E-4)), j = -5..5."
         " Column C = IRR(flows, B). Blocks: " + "; ".join(layout) + "."
     )
     case = {
