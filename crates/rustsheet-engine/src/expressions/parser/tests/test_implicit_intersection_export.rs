@@ -1193,3 +1193,32 @@ fn let_range_result_takes_the_at_and_lambda_call_removes_it() {
         assert!(!exported.contains('@'), "export of `{formula}`: {exported}");
     }
 }
+
+// A formula written with whitespace saves it in its `<f>` text (T-2948), and takes the same `@`s,
+// on import and on export, as the formula without it: the legacy rewrite decides on the tree with
+// no whitespace. `N( IF(1,{2;3}) )` takes no `@`, as `N(IF(1,{2;3}))` does not; the shape test
+// of N over IF does not look past the whitespace, so that formula loses it (T-2970).
+#[test]
+fn spaced_formulas_keep_their_whitespace_and_their_at() {
+    check(&[
+        ("SIN( A1:A3 )", "SIN( @A1:A3 )", "SIN( A1:A3 )"),
+        (
+            "SUM( _xlfn.SINGLE(J1:J10), 1)",
+            "SUM( @J1:J10, 1)",
+            "SUM( _xlfn.SINGLE(J1:J10), 1)",
+        ),
+        ("ABS( {5} )", "ABS( @{5} )", "ABS( {5} )"),
+        ("N( IF(1,{2;3}) )", "N(IF(1,{2;3}))", "N(IF(1,{2;3}))"),
+        (
+            "SUM(INDEX(B1:B6, {2;3} ))",
+            "SUM(INDEX(B1:B6, @{2;3} ))",
+            "SUM(INDEX(B1:B6, {2;3} ))",
+        ),
+        ("ABS( {2;3} + 0 )", "ABS( @{2;3} + 0 )", "ABS( {2;3} + 0 )"),
+        (
+            "N( _xlfn.SINGLE(IFERROR({2;3},0)) )",
+            "N( @IFERROR({2;3},0) )",
+            "N( IFERROR({2;3},0) )",
+        ),
+    ]);
+}
