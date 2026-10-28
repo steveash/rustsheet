@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The merge train (SPEC-0027 section 4): batched merges of ready PRs under the merge lock.
 
-  scripts/merge_train.py mode    # the mode on origin/main: lock, shadow or train
+  scripts/merge_train.py mode        # the mode on origin/main: lock, shadow or train
+  scripts/merge_train.py --dry-run   # steps 2-4: collect, build, id checks; prints, writes nothing
 
 The mode is read from `scripts/merge_train.toml` on a freshly fetched `origin/main`, never from
 the checkout, so a branch cannot switch its own flow. The read fails closed: a missing file, a
@@ -13,11 +14,15 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import tempfile
 import tomllib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import gh_client
+import merge_ready
+from gh_client import Client, GhError
 from merge_lock import GitError, git
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -160,11 +165,83 @@ def build(worktree: Path, scripts: Path, base: str, heads: Sequence[tuple[int, s
     return train
 
 
+@dataclass
+class Collected:
+    """Step 2: the ready PRs oldest marker first, and what the merger would do about the rest."""
+
+    ready: list[merge_ready.Verdict] = field(default_factory=list)
+    unlabel: list[tuple[int, str]] = field(default_factory=list)
+    keep: list[tuple[int, str]] = field(default_factory=list)
+
+
+def collect(client: Client, repo: merge_ready.Repo) -> Collected:
+    """Runs V1-V6 on every open PR labelled ready-to-merge (SPEC-0027 section 4, step 2)."""
+    found = Collected()
+    for pull in client.pulls():
+        labels = merge_ready.field_of(pull, "labels")
+        names = [merge_ready.text_of(label, "name") for label in labels] if isinstance(labels, list) else []
+        if merge_ready.READY_LABEL not in names:
+            continue
+        pr = gh_client.number(merge_ready.int_of(pull, "number"))
+        verdict = merge_ready.verify(client, pr, repo)
+        actions = {f.action for f in verdict.failures}
+        reasons = "; ".join(f.reason for f in verdict.failures)
+        if merge_ready.UNLABEL in actions:
+            found.unlabel.append((pr, reasons))
+        elif merge_ready.KEEP in actions:
+            found.keep.append((pr, reasons))
+        elif verdict.ready:
+            if merge_ready.text_of(client.pull(pr), "mergeable_state") == "dirty":
+                found.unlabel.append((pr, "conflict with main"))
+            else:
+                found.ready.append(verdict)
+    found.ready.sort(key=lambda v: (v.updated_at, v.comment_id or 0))
+    return found
+
+
+def dry_run(client: Client, root: Path = ROOT) -> str:
+    """Steps 2-4 against a fresh origin/main in scratch worktrees; returns the report. No writes:
+    no push, label, comment or lock (the write policy of SPEC-0027 section 4)."""
+    repo = merge_ready.Repo(root)
+    repo.fetch_base()
+    base = git("rev-parse", f"refs/merge-ready/{merge_ready.BASE_BRANCH}", root=root).stdout.strip()
+    found = collect(client, repo)
+    heads = [(v.pr, v.marker.head) for v in found.ready[:BATCH_MAX] if v.marker is not None]
+    with tempfile.TemporaryDirectory(prefix="merge-train-") as scratch:
+        train_tree, scripts_tree = Path(scratch) / "train", Path(scratch) / "m0"
+        try:
+            for tree in (train_tree, scripts_tree):
+                git("worktree", "add", "-q", "--detach", str(tree), base, root=root)
+            train = build(train_tree, scripts_tree / "scripts", base, heads)
+        finally:
+            for tree in (train_tree, scripts_tree):
+                git("worktree", "remove", "--force", str(tree), root=root, check=False)
+    lines = [f"dry run on main {base}: {len(heads)} candidate(s); nothing was written"]
+    lines.append("batch: " + (", ".join(f"#{m.pr} ({m.head[:12]})" for m in train.members) or "none"))
+    lines += [f"deferred #{pr}: {reason}" for pr, reason in train.deferred]
+    lines += [f"would eject #{pr}: {reason}" for pr, reason in train.ejected]
+    lines += [f"would unlabel #{pr}: {reason}" for pr, reason in found.unlabel]
+    lines += [f"skipped, label kept #{pr}: {reason}" for pr, reason in found.keep]
+    lines += [f"waiting for a later batch #{v.pr}" for v in found.ready[BATCH_MAX:]]
+    return "\n".join(lines)
+
+
 def main(argv: list[str], root: Path = ROOT) -> int:
-    if argv != ["mode"]:
-        print("usage: merge_train.py mode", file=sys.stderr)
+    if argv == ["mode"]:
+        print(read_mode(root))
+        return 0
+    if argv != ["--dry-run"]:
+        print("usage: merge_train.py mode | --dry-run", file=sys.stderr)
         return 2
-    print(read_mode(root))
+    client = gh_client.from_remote(root, REMOTE)
+    if client is None:
+        print("merge_train: origin is not a github.com repository", file=sys.stderr)
+        return 2
+    try:
+        print(dry_run(client, root))
+    except (GhError, GitError) as error:
+        print(f"merge_train: {error}", file=sys.stderr)
+        return 2
     return 0
 
 

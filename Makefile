@@ -158,6 +158,10 @@ merge-lock-release: ## Free your merge lock (after the merge, a red CI, or any s
 merge-lock-status: ## Who holds the merge lock, since when, and the queue of waiters
 	$(PY) scripts/merge_lock.py status
 
-.PHONY: merge-mode
+.PHONY: merge-mode merge-train
+merge-train: ## Build the merge train (SPEC-0027): only DRY_RUN=1 exists yet, which prints the batch and writes nothing
+	$(if $(DRY_RUN),,$(error only DRY_RUN=1 is implemented; merging is T-2994))
+	$(PY) scripts/merge_train.py --dry-run
+
 merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027)
 	$(PY) scripts/merge_train.py mode
