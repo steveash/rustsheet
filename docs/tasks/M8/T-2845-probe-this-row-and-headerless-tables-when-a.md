@@ -3,7 +3,7 @@ id: T-2845
 title: "Probe #This Row and headerless tables when a table moves or grows on a row insert"
 milestone: M8
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
