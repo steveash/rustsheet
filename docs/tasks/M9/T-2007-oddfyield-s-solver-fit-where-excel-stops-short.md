@@ -81,3 +81,4 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
 - probes/date-system-1900-oddf-issue-after-quasi: S!A17, S!A32
 - probes/date-system-1904-odd-threshold: S!C5, S!D5, S!E5, S!F5, S!G5, S!H5, S!I5, S!J5, S!K5, S!L5, S!M5
 - probes/date-system-1904-odd-years: S!C3, S!E3, S!F3, S!J3, S!L3, S!N3, S!S3
+Priority raised from P3 to P2 by this sweep: ODDFYIELD needs these 44 cells to reach the Phase 1 rate, and this task is their only owner.

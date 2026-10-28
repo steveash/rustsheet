@@ -64,6 +64,6 @@ holds and no function below the Phase 1 rate has cells nobody will pick.
   - T-2007 (ODDFYIELD solver, visible; P3 to P2): 44 ODDFYIELD date-system probe cells.
   - T-2981 (incomplete-beta sweep routing): F.DIST.RT 1 (held only by a parked task) and GAMMALN 1 (a t2464 sweep
     cell; T-2123 finished).
-  - T-2521 CUMIPMT 1, T-2774 IMTAN 1, T-2217 RRI 1, T-2974 YIELD 1, T-2131 the NPV-of-IRR cell (T-2672 finished).
+  - T-2521 CUMIPMT 1, T-2774 IMTAN 1 (a blocked task: owned, but not picked until its desktop blocker clears), T-2217 RRI 1, T-2974 YIELD 1, T-2131 the NPV-of-IRR cell (T-2672 finished).
 - After the edits `--all-off` reports 0 unowned cells on this report. The three unfetched suites are not covered
   here; the steward's daily full run is the check for them.
