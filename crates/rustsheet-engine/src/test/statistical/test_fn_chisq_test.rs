@@ -185,7 +185,7 @@ fn test_chisq_test_blank_range() {
     assert_eq!(model._get_text("A2"), *"#DIV/0!");
     assert_eq!(model._get_text("A3"), *"#DIV/0!");
     // the pair with the text cell adds nothing to the statistic: same as the pair dropped, df from 4 points
-    assert_ne!(model._get_text("A4"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"1");
     assert_eq!(model._get_text("A6"), *"1");
     assert_eq!(model._get_text("A5"), *"#N/A");
 }
