@@ -1,7 +1,7 @@
 //! YIELD's Newton as Excel runs it ([`yield_start`], [`excel_yield_newton`]), and ODDFYIELD's,
 //! the same Newton with its own slope ([`odd_first_yield`]).
 
-use super::{OddArgs, OddFirstSchedule, discount_growth, yield_start_years};
+use super::{discount_growth, yield_start_years, OddArgs, OddFirstSchedule};
 
 /// The yield YIELD's Newton starts from with more than one coupon left, `years` being the
 /// settlement-to-maturity term in years:
