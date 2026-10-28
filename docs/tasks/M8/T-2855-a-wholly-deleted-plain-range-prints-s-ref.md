@@ -6,7 +6,7 @@ lane: engine
 status: in-progress
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -41,3 +41,17 @@ of Excel's value, or has Excel's type, error and text. Bit-level criteria still 
 filed with `defer: phase-1b`.
 
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns visibly-off probes cells of ROWS (2), COLUMNS (1) and ROW (1). With T-2339 and T-2848 it lifts ROWS, COLUMNS and ROW.
+
+## Handoff
+Done and pushed: the harness half (`moved_input` in crates/rustsheet-eval/src/spill_extent.rs follows a
+table's kept last data row; probes/table-edits/table-delete-row-all-data-below S!C7 now passes and left
+eval/baseline/probes.txt) and the stringify half (stringify.rs `RangeKind` prints one `S!#REF!` when both
+corners are deleted; verified by a debug print that it is reached with `Some("S")`).
+
+Still failing: plain-range-delete-row-first F!A6 and table-delete-column-qty F!A7 still print `=SUM(#REF!)`.
+Cause: the displaced formula text is re-parsed, and the lexer (lexer/mod.rs ~915-922) turns `S!#REF!` into the
+bare `Node::ErrorKind(REF)`, which prints `#REF!` without the sheet. Fix needs the parser to keep the sheet
+qualifier of a sheet-qualified `#REF!` (a new node or a field, touching the Node matches in
+bound_variables.rs, rename_defined_name.rs, sheet_edits.rs, static_analysis*, reference_operators.rs), and the
+value must stay the `#REF!` error (references.md "A sheet-qualified #REF! is #REF!"). Then run
+`make eval-baseline`, `make check`, the `review` skill, and open the PR.
