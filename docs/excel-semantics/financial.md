@@ -2410,6 +2410,8 @@ build the per-period charges differently, so the same inputs give different last
   - The switch test uses the unclipped charge, so a clipped last piece under one period stays declining:
     `VDB(2400,300,10,9.25,10)` is 4.512314880000062, `0.75·(b - salvage)`, while `VDB(1000,5,10,9.25,10,4)` switches and
     charges all of `b - salvage`, 4.069926399999998 (fin-vdb-fractional-start A44, fin-vdb-fractional-start-edges A1).
+    This replaced T-1975's comparison with the clipped charge for whole starts too; a whole-start period rarely tells
+    the two apart, mostly only with a fractional life (edges A2, A9, A12), and every whole-start cell still passes.
   - The first partial charge is clipped: `VDB(1000,900,5,0.5,1)` is 25, and `VDB(1000,950,4,1.5,3)` is 0. With salvage
     above cost it is 0 and the negative charges follow: `VDB(2400,3000,10,0.5,1.5)` is -600 (edges A3:A7). The old
     "fractional end period capped at `cost - salvage`" reading of `VDB(2400,300,10,9.5,10)` = 0 (T-1764) is this rule
