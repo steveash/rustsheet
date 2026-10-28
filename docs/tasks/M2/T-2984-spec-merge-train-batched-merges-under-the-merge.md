@@ -45,7 +45,7 @@ writing this spec (2026-10-28).
 - [x] The rollout slices are filed with `make new-task`, each linking the spec, with `depends_on`.
 - [x] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`,
       `check_governance.py origin/main`, `make typos` and the scripts unit tests pass.
-- [ ] Reviewers approve (architecture for the spec). This box is ticked at merge, once every
+- [x] Reviewers approve (architecture for the spec). This box is ticked at merge, once every
       reviewer approves the final head.
 
 ## Out of scope
