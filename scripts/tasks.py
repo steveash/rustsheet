@@ -551,8 +551,23 @@ def arg(name: str) -> str | None:
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else None
 
 
+def set_root(root: Path) -> None:
+    """Judge the tree at `root` instead of this checkout: the merge train runs `main`'s copy of
+    this script against a train worktree, so a PR cannot change how its own tree is judged
+    (`validate --root`, SPEC-0027 section 4 step 4, decision 0066)."""
+    global ROOT, TASKS
+    ROOT = root.resolve()
+    TASKS = ROOT / "docs" / "tasks"
+
+
 def main() -> int:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
+    if "--root" in sys.argv:
+        root = arg("--root")
+        if cmd != "validate" or root is None or not Path(root).is_dir():
+            print("usage: tasks.py validate --root <dir>", file=sys.stderr)
+            return 2
+        set_root(Path(root))
     tasks = load()
     by_id = {str(t["id"]): t for t in tasks}
     if cmd == "validate":

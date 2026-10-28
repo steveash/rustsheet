@@ -196,6 +196,12 @@ def text_of(value: object, *keys: str) -> str:
     return found if isinstance(found, str) else ""
 
 
+def label_names(pull: object) -> list[str]:
+    """The names of a PR's (or issue's) labels."""
+    labels = field_of(pull, "labels")
+    return [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
+
+
 def int_of(value: object, *keys: str) -> int:
     found = field_of(value, *keys)
     return found if isinstance(found, int) and not isinstance(found, bool) else 0
@@ -225,18 +231,23 @@ class Authors:
 
 
 def ci_state(
-    runs: Sequence[object], check_runs: Sequence[object], docs_only: bool | None
+    runs: Sequence[object],
+    check_runs: Sequence[object],
+    docs_only: bool | None,
+    events: Sequence[str] = ("pull_request",),
 ) -> tuple[str, list[str]]:
     """GREEN, PENDING or RED for a PR head, with the jobs that are not green.
 
     `runs` are the head's workflow runs, `check_runs` its check runs, and `docs_only` whether the
     PR's diff is docs-only (`run_heavy=false`; None when it cannot be told, which counts as no).
+    `events` are the run events that count: a PR head's `pull_request`, a train's `push` and
+    `workflow_dispatch` (SPEC-0027 section 4, step 6).
     """
     ci = [
         r
         for r in runs
         if text_of(r, "path") == CI_WORKFLOW
-        and text_of(r, "event") == "pull_request"
+        and text_of(r, "event") in events
         and int_of(r, "id") > 0
     ]
     if not ci:
@@ -373,9 +384,7 @@ def pr_state_failures(pull: object, marker: Marker, head: str, repo: Repo) -> li
 def verify(client: Client, pr: int, repo: Repo) -> Verdict:
     """V1-V6 of SPEC-0027 section 2 on PR `pr`. Raises GhError or GitError when a read fails."""
     pull = client.pull(pr)
-    labels = field_of(pull, "labels")
-    names = [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
-    if READY_LABEL not in names:
+    if READY_LABEL not in label_names(pull):
         return Verdict(pr, failures=(Failure("label", f"no {READY_LABEL} label", IGNORE),))
     authors = Authors(client, text_of(pull, "base", "repo", "owner", "type") == "User")
     # V1: the newest marker by a writer; comments by anyone else have no effect.

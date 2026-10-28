@@ -162,3 +162,11 @@ merge-lock-status: ## Who holds the merge lock, since when, and the queue of wai
 merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads only): make merge-ready-verify PR=123 (exit 0: ready; 1: not ready; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
+
+.PHONY: merge-mode merge-train
+merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; TRAIN=1 merges a green train, in train mode only
+	$(if $(DRY_RUN)$(TRAIN),,$(error DRY_RUN=1 or TRAIN=1 is required))
+	$(PY) scripts/merge_train.py $(if $(DRY_RUN),--dry-run,--train)
+
+merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027)
+	$(PY) scripts/merge_train.py mode

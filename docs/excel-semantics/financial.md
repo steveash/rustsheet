@@ -90,6 +90,11 @@ values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly i
   as Excel's PMT until it is fitted with Excel's EXP and LN (T-3014). These ulps matter: RATE amplifies them,
   so 113 `RATE(n,PMT(..))` cells of m9-fin-irr-rate are visibly off on the engine's PMT and bit-exact on
   Excel's (probes/rate-excel-pmt-bits, T-2527).
+  At rate -0.9 with type 1 Excel's PMT is 3 to 6 ulp below the exact magnitude (`ironcalc-calc/FINANCIAL/PMT.xlsx`
+  F10 `PMT(-0.9,3,120,300,1)` = -2703.783783783783, exact on the double rate -2703.78378378378444...; F11, F18, F23
+  likewise), and no form tried so far (the P-1 forms with `pow` or `exp(n*log1p(r))`, the discount forms above,
+  `1+rate` snapped to 0.1) reproduces those bits; PV and NPER of those payments amplify the gap about 100-fold
+  into visibly-off cells (J10, H10; T-2243).
   Where PPMT cancels, Excel's error grows: the four period-1 cells of long terms A82, A166, A412,
   A418 are 7 to 41 ulp from the exact value and visibly different from it. For the 154 fv-0,
   type-0 PPMT cells, `PMT*exp((per-1-nper)*log1p(rate))` (the exact PMT rounded to a double, libm
@@ -852,6 +857,17 @@ Evidence: probes/xirr-irr-empty-guess A1-A22 (excel-graph, T-2688); calipers pv2
 Status: VERIFIED
 Implemented in: `fn_xirr` (an `EmptyArg` guess is dropped, so the default applies); `fn_irr` reads it as 0.
 Our IRR from guess 0 is a few ulps off Excel's on these flows (…3171 for …3149), a separate kernel gap.
+
+## XIRR: a mismatched value/date size is #NUM! whatever the guess, a written empty guess included
+Rule: `XIRR(v,d,)`, `XIRR(v,d)`, `XIRR(v,d,E1)` (E1 empty) and `XIRR(v,d,0.1)` all give `#NUM!` when the
+values and dates differ in length (3 vs 2, 2 vs 3, 3 vs 4), over ranges and array constants, and also when
+the longer flow holds a text or boolean element (G21-G36). A written empty guess and an empty-cell guess
+take the same error path as an absent or number guess; a text, boolean or error guess keeps `#VALUE!`
+(see "XIRR and XNPV under the gen-m9 statistical cells").
+Evidence: probes/xirr-size-mismatch-empty-guess G1-G36 (excel-graph, T-2773)
+Status: VERIFIED
+Implemented in: `fn_xirr` (`number_guess` counts `EmptyArg` and `EmptyCell`; before T-2773 they gave
+`#VALUE!` over text or boolean flows).
 
 ## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
 (One empty values cell on its own is the exception: see "XNPV reads one empty values cell as a single 0 cash flow".)
