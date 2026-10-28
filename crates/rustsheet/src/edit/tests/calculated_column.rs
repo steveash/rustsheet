@@ -92,6 +92,26 @@ fn rollback_restores_the_filled_column() {
     assert_eq!(dump(&wb), before);
 }
 
+/// A rolled-back fill leaves the column no calculated column (T-3024): identical stored formulas
+/// written afterwards are not re-filled by a typed one, as probes/t2983-identical-stored-refill.
+#[test]
+fn rollback_restores_the_column_formula() {
+    let mut wb = table_book();
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("C2", "=A2*2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(formula(&wb, "C3"), None);
+    for row in [2, 4] {
+        let stored = Input::StoredFormula(format!("=A{row}*2"));
+        wb.set(format!("C{row}").as_str(), stored).unwrap();
+    }
+    wb.set("C3", "=A3*3").unwrap();
+    assert_eq!(wb.value("C2").unwrap(), Value::Number(2.0));
+    assert_eq!(wb.value("C3").unwrap(), Value::Number(6.0));
+}
+
 /// probes/t2957-expand-right-data: a formula typed just right of the table grows it by a column
 /// named `Column1` and fills it, all in one edit (T-2968).
 #[test]

@@ -2238,7 +2238,24 @@ Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T
 ## ODDFYIELD stops short of ODDFPRICE's root
 Rule: ODDFYIELD's last digits are not the root of ODDFPRICE's price at the given price, and they fall on both sides
 of it, so they are not analytic Newton on that price stopped short (Newton on a convex, decreasing price stays below
-the root after its first step; "YIELD stops short of PRICE's root"). How Excel's solver stops is not known yet.
+the root after its first step; "YIELD stops short of PRICE's root").
+Fitted (T-2007 attempt 2): ODDFYIELD is YIELD's Newton ("YIELD stops short of PRICE's root": YIELD's closed-form
+start over the term in years from settlement to maturity, a step under 1e-10 not taken, 100 steps at most, #NUM!
+when a step is not finite) on ODDFPRICE, but its slope is not ODDFPRICE's: the odd first coupon weighs in the slope
+as a regular coupon (100 × rate / frequency at the odd coupon's exponent, not the odd amount DFC/E or DCNL of a
+coupon). That wrong slope is what lands Excel above the root. On probes/oddfyield-solver-sweep (a short-first 5%
+semiannual bond, the same bond at a 0% coupon, and a short-first annual 6% bond at redemption 120, over prices 50
+to 150, and two ODDFPRICE inversions over yields 0 to 0.3) this model puts 98 of 101 zero-coupon cells within 4 ulp
+(39 bit-exact; there the slope is exact) and 323 of 324 coupon-bond cells within 1e-13 relative on libm prices,
+against 15 for ODDFPRICE's exact slope; in the engine 320 of the 547 sweep cells and every probe ODDFYIELD cell of
+the date-system cases pass bit-exact or within the harness' ulp tolerance. Still off: the long first periods at
+frequency 2 of PRICE_YIELD.xlsx (K8-K11, K29-K33, K49-K52, issue 2020-01-15 to first coupon 2021-03-01 with the
+settlement on a quasi-coupon date), and sweep cells whose yield is near 0 (T-3031). For a long first period the
+lead-at-its-exponent form is unverified: no cell that fits has one (the sweep's first periods are short, and the
+annual PRICE_YIELD rows that fit have the settlement in the last quasi period). Tried there with no better score
+(PRICE_YIELD.xlsx cells passing, of 352; the committed slope 325): a regular coupon in the slope at every
+quasi-coupon date from settlement (325) and YIELD's own slope over the regular schedule from settlement to
+maturity (321).
 - Desktop (ironcalc-calc `FINANCIAL/PRICE_YIELD.xlsx` ODDFPRICE_ODDFYIELD, Mac 16.x cache; each K row inverts
   `J = ODDFPRICE(.., F, ..)` back to F): K2 is 0.04999999999851281 (1.49e-12 below F = 0.05, |ODDFPRICE(K2) - J|
   1.46e-9), K8 0.0499999999321231 (6.79e-11 below), and K23 0.05000000000085884, 8.59e-13 *above* the root. Of the
@@ -2265,10 +2282,11 @@ the root after its first step; "YIELD stops short of PRICE's root"). How Excel's
   below the root, and none of the iterates one to three steps back meets the coupon rate, 0, 0.1 or YIELD's fitted
   start. So whatever explains the above-root cells (a non-analytic slope, or a price inside ODDFYIELD that differs
   from ODDFPRICE's by about 1e-9 near the root) also has to explain these.
-Ours: `solve_yield` (functions/financial/financial_bonds/yield_solver.rs) converges to the root, so each cell is off by
-Excel's distance from it (1e-15 to 7e-11).
-Status: UNVERIFIED (values are oracle-backed; the algorithm is unknown)
-Tasks: T-2007, T-1374 (ODDFPRICE's own last digits), T-1592 (YIELD)
+Ours: `fn_oddfyield` calls `odd_first_yield` (functions/financial/financial_bonds/yield_solver.rs), which runs
+`excel_yield_newton` with `OddFirstSchedule::dprice`, the slope above; before T-2007 it was a central-difference Newton
+from the coupon rate with a bisection fallback, landing on the root.
+Status: UNVERIFIED (a fit; the long first periods at frequency 2 are not explained); the values are oracle-backed
+Tasks: T-2007 (the fit), T-3031 (the long first periods), T-1374 (ODDFPRICE's own last digits), T-1592 (YIELD)
 
 ## YIELD's #NUM! cells and its 100-step cap
 Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of
