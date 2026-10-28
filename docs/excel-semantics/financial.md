@@ -1397,9 +1397,10 @@ has 37 of its 89 cells to the bit, among them J1 `CUMPRINC(0.004,1024,1000,3,34,
 -2.3341923189629874 (2 ulps from the exact sum, which the closed form had) and J2.
 T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
 - Near period 1E15, rate 0.01 (fin-cumipmt-overflow-and-forms A9-A11, fin-remaining-later-argument-ranges K3): `v^nper`
-  underflows, so every payment form gives exactly 1000, and Excel's implied principal `-pmt·m - CUMIPMT` (A19's
-  CUMPRINC for m = 11) is above the exact sum: `CUMIPMT(0.01,1E15,100000,1E15,1E15,0)` -9.900990099009732 means a
-  principal of 990.0990099009903, 2 ulps above the correctly rounded `1000/1.01`; m = 2 (A10) is about 3 ulps above.
+  underflows, so every payment form gives exactly 1000, and Excel's implied principal `-pmt·m - CUMIPMT` (for m = 11
+  also fin-cumipmt-period-bound A19's CUMPRINC) is above the exact sum with r = fl(0.01):
+  `CUMIPMT(0.01,1E15,100000,1E15,1E15,0)` -9.900990099009732 means a principal of 990.0990099009903, 1.5 ulps above the
+  exact sum and 2 ulps above the double `1000/1.01`; m = 2 (A10) is 2.9 ulps above and m = 11 (A9) 2.0.
   Ours, the per-period sum of `exp((k-1-nper)·log1p r)`, is 1, 3 and 2 ulps from Excel's principal for m = 11, 2 and 1,
   and one ulp of a principal of 1,000 to 10,000 is visibly off in an interest of 10 to 632.
 - Tried on those three principals: L as `log1p`, PPMT's `growth_log`, Excel's LN of `1+r` and libm's `ln`; libm's
