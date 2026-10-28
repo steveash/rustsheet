@@ -1753,7 +1753,7 @@ total (P!A33), and an array result (`LAMBDA(v,v)`, P!A12: Excel's cells there ar
 `#VALUE!`, gen-m7/21b4eef18424ce94 Calc!A1504, T-2360). With the
 same functions over one value column, each gen-m7 call below is a pivot with error cells (value-cause `val1` rows). This is
 why five generated PIVOTBY calls are `#VALUE!` (gen-m7/18b80d3fd292d63a Calc!A913, 07d27aa0add0247f A708, A992, 90de8755a2e565e6
-A1, A285). Unprobed: an error only in a column subtotal.
+A1, A285). An error only in a hidden column subtotal cell counts too, where that cell is computed (T-2967, below).
 Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes the Total column cells of each line and the Total row.
 Which hidden Total cells count (T-2578, excel-graph, 2026-10-24: derived from a decode of all 256 layouts of four records over up to
 four column groups, run during T-2578 and not committed; checked by probes/t2578-pivotby-hidden-total-slot, 7 layouts with 2 and 3
@@ -1771,14 +1771,24 @@ T-2606 (excel-graph, 2026-10-27, probes/t2606-pivotby-total-gate-layouts): `col_
 1 (P!D1-D4 = C1-C4): with one column field p, q and 2 values the hidden Total cells count in the row with a q record only, so the
 Total column is not a line of the gate in either order. A LAMBDA returning `""` in the gating cell still counts: a record there is
 enough: only value 0's row total is an error (`LAMBDA(v,IF(SUM(v)=3,NA(),IF(SUM(v)=2,"",SUM(v))))`), its gating cell q/u is `""`, and
-the call is `#VALUE!` (P!F1), as is its control without the `""` (P!G1). Column subtotal lines (`col_total_depth` 2 / -2, same result for both signs;
-leaves p/x, p/y, q/x, 2 values, seven rows, one per non-empty leaf set, P!A1-A14) do NOT follow the single-gating-line rule: the
-hidden Total cell of value 1 counts in rows r1..r7 whichever lines they hold, value 0 in rows r2, r3, r4 and not in r1, r5, r6,
-r7 (r1 = p/x only, r2 = p/y, r3 = p/x+p/y, r4 = q/x, r5 = p/x+q/x, r6 = p/y+q/x, r7 = all). Not monotone in the records (r6 holds r2's
-record but differs, apparently), and rows r1-r4 are confounded: the row total equals a subtotal cell there. Not decoded; ours differs (14 of the 28 cells: A1, A2, A4, A6, A7, A9,
-A11, A13, B2, B4, B6, B7, B11, B13), baselined, T-2967.
-Status: VERIFIED (without subtotals); subtotal layouts UNVERIFIED (probe pending, T-2967)
-Tasks: T-2311, T-2578, T-2606
+the call is `#VALUE!` (P!F1), as is its control without the `""` (P!G1). Column subtotal lines (`col_total_depth` 2 / -2,
+same result for both signs) were confounded in that probe (P!A1-A14: rows whose total equals a subtotal cell).
+The general rule (T-2967, excel-graph, 2026-10-28, probes/t2967-pivotby-subtotal-gate, 359 cells: a full decode over every row
+subset of 4 layouts, p/x,p/y,q/x,q/y at 2 and -2, p/x,p/y,p/z,q/x, p/x,p/y,q/x with 3 values, and the first sorted by value with
+col_sort_order -3; also explains all of t2606) is the placement rule of "GROUPBY and PIVOTBY: column totals over several value
+columns": the total and each subtotal write their value `v` cell into placement column `f*V + k + v` (`f` the first line they
+cover, `k` how many lines they cover, the lines in key order with subtotals after their groups, before any value sort). A write
+that falls on a group column is dropped from the display but still computed, in the rows with a record in that group (the group
+as laid out after the sort), and an error there makes the call `#VALUE!`; a write that lands on a subtotal or Total column is
+shown and never counts. With no subtotals this is the `(G + v) div V` rule above. With p/x, p/y, P, q/x, Q (t2606), the Total's
+value 0 lands on P (never counts) and value 1 on q/x; P's both values on p/y; Q's value 0 on q/x and value 1 on Q itself. With p/x,
+p/y, p/z, P, q/x, Q both Total cells land on P, so no Total cell counts at all; P's values gate on p/y and p/z. The subtotal cell
+computed is the subtotal's own (its groups' records in the row), so an error in a hidden subtotal cell is now evidenced.
+Unprobed: three or more column fields (nested column subtotals) and row subtotal rows (`row_total_depth` 2), where ours
+applies the same rule.
+Ours: `Placement::checked_totals` (pivot_placement.rs) takes the dropped writes of `Placement::written_cells`.
+Status: VERIFIED (excel-graph)
+Tasks: T-2311, T-2578, T-2606, T-2967
 
 ## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
 Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
