@@ -300,7 +300,10 @@ pub(crate) fn compute_xnpv(
     for i in 1..n {
         let vi = values[i];
         let di = dates[i];
-        xnpv += vi / ((1.0 + rate).powf((di - d0) / 365.0));
+        // Excel's own `^` (docs/excel-semantics/financial.md "XNPV discounts with Excel's `^`").
+        let power = crate::arithmetic::power(1.0 + rate, (di - d0) / 365.0)
+            .map_err(|e| (e, "NaN".to_string()))?;
+        xnpv += vi / power;
     }
     if xnpv.is_infinite() || xnpv.is_nan() {
         return Err((Error::NUM, "NaN".to_string()));
@@ -320,8 +323,8 @@ fn xirr_xnpv(rate: f64, values: &[f64], dates: &[f64]) -> Option<f64> {
     for (&value, &date) in values.iter().zip(dates) {
         // As in the lab model, a power that overflows or underflows to 0 has no value (rather
         // than adding value/inf = 0): `XIRR({-1,1E+20,1},{45000,45365,63615},0.1)` is `#NUM!`.
-        let power = base.powf((date - d0) / 365.0);
-        if !power.is_finite() || power == 0.0 {
+        let power = crate::arithmetic::power(base, (date - d0) / 365.0).ok()?;
+        if power == 0.0 {
             return None;
         }
         total += value / power;
