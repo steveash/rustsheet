@@ -3,7 +3,7 @@ id: T-2951
 title: "PMT at rates -0.9 and 0.2 to Excel's bits so PMT.xlsx's 10 visibly-off chained NPER, PV and FV cells pass (parked in deferred T-2730)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
