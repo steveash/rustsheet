@@ -90,8 +90,8 @@ values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly i
   as Excel's PMT until it is fitted with Excel's EXP and LN (T-3014). These ulps matter: RATE amplifies them,
   so 113 `RATE(n,PMT(..))` cells of m9-fin-irr-rate are visibly off on the engine's PMT and bit-exact on
   Excel's (probes/rate-excel-pmt-bits, T-2527).
-  At rate -0.9 with type 1 Excel's PMT is 3 to 5 ulp below the exact magnitude (`ironcalc-calc/FINANCIAL/PMT.xlsx`
-  F10 `PMT(-0.9,3,120,300,1)` = -2703.783783783783, exact on the double rate -2703.7837837837844; F11, F18, F23
+  At rate -0.9 with type 1 Excel's PMT is 3 to 6 ulp below the exact magnitude (`ironcalc-calc/FINANCIAL/PMT.xlsx`
+  F10 `PMT(-0.9,3,120,300,1)` = -2703.783783783783, exact on the double rate -2703.78378378378444...; F11, F18, F23
   likewise), and no form tried so far (the P-1 forms with `pow` or `exp(n*log1p(r))`, the discount forms above,
   `1+rate` snapped to 0.1) reproduces those bits; PV and NPER of those payments amplify the gap about 100-fold
   into visibly-off cells (J10, H10; T-2243).
