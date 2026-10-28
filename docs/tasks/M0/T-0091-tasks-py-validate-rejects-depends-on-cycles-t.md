@@ -3,7 +3,7 @@ id: T-0091
 title: "tasks.py validate rejects depends_on cycles (T-0963 and T-0965 depend on each other, so neither is ever ready)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
