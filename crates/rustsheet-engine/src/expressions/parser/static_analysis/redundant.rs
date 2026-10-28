@@ -5,7 +5,7 @@
 use super::add_implicit_intersection;
 use super::legacy::{
     leaves_call_whole, legacy_array_context, legacy_context_intersects, remove_array_at,
-    remove_in_array_context, removes_automatic_at,
+    remove_in_array_context, remove_operand_array_at, removes_automatic_at,
 };
 use super::{
     add_legacy_intersection, for_each_chain_operand_mut, get_function_args_signature,
@@ -38,6 +38,9 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         // (`add_root_legacy_intersection`, probes/legacy-switch-callers).
         if add && removes_automatic_at(node) {
             return;
+        }
+        if add {
+            remove_operand_array_at(node); // `add_root_legacy_intersection`'s root constants
         }
         remove_redundant_legacy_intersection(node, add, add);
     });

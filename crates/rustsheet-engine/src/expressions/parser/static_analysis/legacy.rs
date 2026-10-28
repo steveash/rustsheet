@@ -142,12 +142,29 @@ pub(super) fn add_array_at(
     if shows_scalar_array_at(signature, arrays, arg) {
         *arg = Node::automatic_at(arg.clone());
     } else if arrays && matches!(signature, Some(Signature::Scalar)) {
-        for_each_value_operand(arg, &mut |operand| {
-            if matches!(operand, Node::ArrayKind(_)) {
-                *operand = Node::automatic_at(operand.clone());
-            }
-        });
+        add_operand_array_at(arg);
     }
+}
+
+/// Puts an `@` on each array constant `node` is made of through operators, parentheses and signs
+/// ([`for_each_value_operand`]): `{2;3}+0` becomes `@{2;3}+0`.
+fn add_operand_array_at(node: &mut Node) {
+    for_each_value_operand(node, &mut |operand| {
+        if matches!(operand, Node::ArrayKind(_)) {
+            *operand = Node::automatic_at(operand.clone());
+        }
+    });
+}
+
+/// Drops the `@`s [`add_operand_array_at`] adds again on import.
+pub(super) fn remove_operand_array_at(node: &mut Node) {
+    for_each_value_operand(node, &mut |operand| {
+        if let Node::ImplicitIntersection { child, .. } = operand {
+            if matches!(child.as_ref(), Node::ArrayKind(_)) {
+                *operand = child.as_ref().clone();
+            }
+        }
+    });
 }
 
 /// Drops the `@`s [`add_array_at`] adds again on import.
@@ -164,13 +181,7 @@ pub(super) fn remove_array_at(
             *arg = child.as_ref().clone();
         }
     } else if arrays && matches!(signature, Some(Signature::Scalar)) {
-        for_each_value_operand(arg, &mut |operand| {
-            if let Node::ImplicitIntersection { child, .. } = operand {
-                if matches!(child.as_ref(), Node::ArrayKind(_)) {
-                    *operand = child.as_ref().clone();
-                }
-            }
-        });
+        remove_operand_array_at(arg);
     }
 }
 
@@ -346,11 +357,20 @@ fn calls_bound_variable(node: &Node) -> bool {
 /// FORMULATEXT, while `=ABS(Z30:Z32)` keeps its (probes/legacy-switch-callers, legacy-switch-at-
 /// shapes; T-1964, T-2121). An `@` typed in such a formula is meaningful and stays; the export keeps
 /// it too (`remove_redundant_implicit_intersection`).
+///
+/// An array constant at the root, or under the root's operators, parentheses and signs, takes its
+/// own `@` like one in a scalar argument, and the cell shows its first element with no spill:
+/// `={2;3}` is `=@{2;3}` (2), `=0.1+{0.2;0.2}-0.3` `=0.1+@{0.2;0.2}-0.3` (0), `={1,2;3,4}*2`
+/// `=@{1,2;3,4}*2` (2), `={2;3}+Z1:Z2` `=@{2;3}+@Z1:Z2` (probes/t3051-legacy-root-array-operators,
+/// excel-graph, 2026-10-28, T-3051).
 pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
     if add && removes_automatic_at(node) {
         return;
     }
     add_legacy_intersection(node, add, add);
+    if add {
+        add_operand_array_at(node);
+    }
 }
 
 /// `node`, or the operand of an `@` over it.

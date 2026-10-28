@@ -27,12 +27,25 @@ own cell and spills nothing, as Excel does; the engine spills it (or is `#SPILL!
   constant or `=@(...)` on the whole) is unprobed: probe it first (excel-probe skill), then match it.
 
 ## Acceptance criteria
-- [ ] A probe case records FORMULATEXT and value of legacy root operators over array constants (row, column and 2-D
+- [x] A probe case records FORMULATEXT and value of legacy root operators over array constants (row, column and 2-D
       constants, the constant left and right of the operator, nested under a unary minus), and the rule is in
       docs/excel-semantics/references.md.
-- [ ] The engine matches it: probes/t3047-snap-array-operands L!F1, L!G2 and L!H3 leave eval/baseline/probes.txt, with
+- [x] The engine matches it: probes/t3047-snap-array-operands L!F1, L!G2 and L!H3 leave eval/baseline/probes.txt, with
       no new known failures.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The near-zero snap itself (T-3047); legacy CSE array formulas over a range (T-0950).
+
+## Outcome
+- Probe `probes/t3051-legacy-root-array-operators` (38 cells, excel-graph, 2026-10-28): in a legacy formula every
+  array constant the root is made of through operators, parentheses and signs takes its own `@` and the cell shows
+  its first element with no spill (`={2;3}` `=@{2;3}`, `=1+@{2,3}`, `=@{1,2;3,4}*2`, `=@{2;3}+@Z1:Z2`). Recorded in
+  docs/excel-semantics/references.md next to the in-call operator rule.
+- Engine: `add_root_legacy_intersection` puts the `@` on those constants (`add_operand_array_at`, shared with the
+  scalar-argument rule) and the export drops it again (`remove_operand_array_at`). Unit test
+  `legacy_root_array_constants_intersect_and_export_unchanged`.
+- Tools: spec2xlsx wrote any cell formula ending in `}` without its last brace (XlsxWriter's `_prepare_formula`
+  strips one trailing `}`), so Excel for the web refused the workbook (`FileCorruptTryRepair`); `_cell_formula` adds
+  it back (test_spec2xlsx_trailing_brace.py).
+- Eval: probes/t3047-snap-array-operands L!F1, L!G2, L!H3 leave eval/baseline/probes.txt; the new case passes 38/38.
