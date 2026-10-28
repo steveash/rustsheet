@@ -3,7 +3,7 @@ id: T-0491
 title: "SPEC-0020 amendment: bounded range leaves and ROW position leaves in the tailed reading"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
