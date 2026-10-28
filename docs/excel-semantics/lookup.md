@@ -853,8 +853,8 @@ Rule: TAKE and DROP of a range return a reference, so a one-cell result is a sca
 A scalar height of 1E-15 (literal or cell) gives 2 rows (UNVERIFIED mechanism; `OFFSET(B9:C12,5,1,1E-15,2)` rows 2, `INDEX(..,1,1)` 0).
 Evidence: probes/t2454-offset-array-height, probes/t2454-offset-one-cell-array-args, probes/t2414-gen-m7-unexplained A141, A151, A161, A171
 (excel-graph, 2026-10-23, T-2454).
-Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF picking one) is its reference; a CHOOSE or LET picking one is unprobed for OFFSET (T-2519). The `+0` and
-`N(..)` forms of a one-cell TAKE/DROP still lift here (T-2519).
+Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF picking one) is its reference; a CHOOSE or LET picking one is unprobed for OFFSET (T-2519). A one-cell
+TAKE/DROP of a single-sheet range stays its reference in value context (`take_drop_reference`), so the `+0` and `N(..)` forms are scalar too (T-2519).
 Status: VERIFIED (excel-graph); partly implemented (T-2454, T-2519)
 Tasks: T-2454, T-2519
 
