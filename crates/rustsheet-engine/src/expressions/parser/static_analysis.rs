@@ -17,6 +17,7 @@ mod broadcast;
 mod if_arm;
 mod legacy;
 mod lifted;
+mod operand_array;
 mod redundant;
 mod reference_parameter;
 mod reference_result;

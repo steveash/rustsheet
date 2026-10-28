@@ -51,3 +51,10 @@ Code: functions/financial/cumulative.rs.
 
 ## Out of scope
 - Bit-exact fits of cells that are already visibly right (T-1374).
+
+## Outcome (partial, 2026-10-28; the task stays open)
+The near-1E15 cells (A9-A11, K3) were fitted in float64 against 40 forms and are not solved. What was tried, and why
+the best form (the geometric sum on `growth_log`, within an ulp of all three) was not kept, is in financial.md "T-3067
+notes". Next: probe the near-1E15 principals directly (CUMPRINC at m = 1 to 12 and at rates 0.001, 0.01, 0.1) so
+Excel's discount error can be measured per period instead of inferred from three cancelled interests. Nothing else
+in the list above was started.
