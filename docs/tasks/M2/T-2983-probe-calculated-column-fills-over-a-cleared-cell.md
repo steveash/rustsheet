@@ -3,7 +3,7 @@ id: T-2983
 title: "Probe calculated-column fills over a cleared cell and over identical stored formulas without calculatedColumnFormula"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -34,9 +34,15 @@ not parse in the engine yet (T-2979):
 - (c) as (b), with C3 entered `=A3*3` (the blank cell typed into): does it fill C2 and C4?
 
 ## Acceptance criteria
-- [ ] The probe cases are filled on excel-graph and in the probes baseline.
-- [ ] references.md states both rules with the cells as evidence; an engine task is filed if ours differs.
-- [ ] `make check` green; reviewers approve.
+- [x] The probe cases are filled on excel-graph and in the probes baseline.
+- [x] references.md states both rules with the cells as evidence; an engine task is filed if ours differs.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A stored `calculatedColumnFormula` on load (T-2969); the engine's unqualified structured references (T-2979).
+
+## Outcome
+Three probes filled on excel-graph (t2983-*). Excel fills nothing in any of them, so a stored formula column without
+`calculatedColumnFormula` is not a calculated column and formulas mixed with blanks block the fill. The engine
+already passes all three (no baseline change); references.md rule 8 records the evidence. No engine task needed for
+A1 formulas; the stored-structured-formula case is noted as unprobed.

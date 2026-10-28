@@ -2558,8 +2558,16 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    D2:D4 stay blank. Typing a constant beside the table, below its last row, or beside a totals row is unprobed.
 What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
 `calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
-blank, or all the one calculated formula); whether a column whose cells hold one identical formula with no saved
-`calculatedColumnFormula` re-fills is unprobed (T-2969 probes a stored column formula).
+blank, or all the one calculated formula). Rule 8 (T-2983, excel-graph 2026-10-28, same table and `FORMULATEXT` in F;
+stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
+8. **A stored formula is not a calculated column, and blanks beside formulas block the fill.**
+   (a) Stored `=A2*2`, `=A3*2`, `=A4*2` in C2:C4, then `=A3*3` typed into C3: only C3 changes (C2 2, C3 6, C4 8; F2:F4
+   `=A2*2`, `=A3*3`, `=A4*2`), so a column of one stored formula shifted down with no `calculatedColumnFormula` is not
+   re-filled (t2983-identical-stored-refill). (b) Stored `=A2*2` in C2 and `=A4*2` in C4, C3 blank, then `=A4*3` typed
+   into C4: C2 stays 2, C3 stays blank (F3 `#N/A`), C4 is 12 (t2983-formulas-and-blank-enter-last). (c) The same
+   with `=A3*3` typed into the blank C3: C2 2, C3 6, C4 8, nothing filled (t2983-formulas-and-blank-enter-blank).
+   Only A1 formulas are probed; a stored structured formula identical in every row is not.
+(T-2969 probes a stored column formula.)
 Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
 C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
@@ -2570,8 +2578,9 @@ Ours (T-2958): rules 1-5 are implemented with no state on the table: a formula t
 (`Model::set_typed_user_input`, the facade's `Input::Parse` and `Input::Formula`) fills the column's other data rows
 when they are all blank or all hold one shared formula (`Model::calculated_column_targets`, calculated_columns.rs),
 by writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A blank cell
-beside formulas blocks the fill too, and a column of one identical stored formula with no saved
-`calculatedColumnFormula` re-fills as a calculated column: both are engine choices, unprobed (T-2983). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+beside formulas blocks the fill too, which rule 8 confirms. A column of one identical stored formula with no saved
+`calculatedColumnFormula` is also not re-filled for A1 formulas (rule 8a: the engine compares formula text, so
+shifted A1 formulas never match); a stored structured formula identical in every row would re-fill in the engine and is unprobed. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
 after the tables, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below). Neither import nor export
@@ -2587,7 +2596,7 @@ column whose other cells are not all blank, and a new column that another table 
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
 Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7, the same file (T-2968)
-Tasks: T-2957, T-2958, T-2968, T-2969
+Tasks: T-2957, T-2958, T-2968, T-2969, T-2983
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
