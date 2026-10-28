@@ -3,7 +3,7 @@ id: T-2855
 title: "A wholly deleted plain range prints S!#REF! as Excel does, and the spill-extent check follows cells moved by sheet ops"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -28,9 +28,9 @@ The two known failures T-2338's new probe cases left pass.
   task if it cannot ride with the engine change.
 
 ## Acceptance criteria
-- [ ] The three cells (the two above and table-delete-column-qty F!A7) pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failure.
-- [ ] references.md "Structured references when the table changes" no longer lists the `#REF!:#REF!` gap.
-- [ ] `make check` green; reviewers approve.
+- [x] The three cells (the two above and table-delete-column-qty F!A7) pass and leave eval/baseline/probes.txt (`make eval-baseline`), with no new known failure.
+- [x] references.md "Structured references when the table changes" no longer lists the `#REF!:#REF!` gap.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Column-delete range shrinking (unprobed).
@@ -55,3 +55,16 @@ qualifier of a sheet-qualified `#REF!` (a new node or a field, touching the Node
 bound_variables.rs, rename_defined_name.rs, sheet_edits.rs, static_analysis*, reference_operators.rs), and the
 value must stay the `#REF!` error (references.md "A sheet-qualified #REF! is #REF!"). Then run
 `make eval-baseline`, `make check`, the `review` skill, and open the PR.
+
+## Outcome
+- **Printing.** A wholly deleted plain range now prints one sheet-qualified `S!#REF!`
+  (stringify.rs).
+- **Parsing.** The lexer keeps the sheet of a sheet-qualified `#REF!`
+  (`TokenType::SheetRefError`). The parser holds it as `Node::SheetRefErrorKind`, a node that
+  exists only in the tree as written: `strip_spaces` turns it into the bare `#REF!` before
+  evaluation and analysis, so `=SUM(S!#REF!)` prints back as typed and still evaluates to `#REF!`.
+- **Harness.** The spill-extent check follows a table's kept last data row
+  (`moved_input` in spill_extent.rs).
+- **Eval delta.** probes known failures go from 2533 to 2531 (plain-range-delete-row-first F!A6
+  and table-delete-column-qty F!A7), and the handoff run fixed table-delete-row-all-data-below
+  S!C7. No regressions.

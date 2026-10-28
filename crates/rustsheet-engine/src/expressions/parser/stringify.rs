@@ -16,7 +16,7 @@ use super::{
 };
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
-use crate::expressions::token::OpUnary;
+use crate::expressions::token::{Error, OpUnary};
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
@@ -843,6 +843,7 @@ fn stringify(
             }
         }
         ErrorKind(kind) => format!("{kind}"),
+        SheetRefErrorKind { sheet_name } => format!("{}!{}", quote_name(sheet_name), Error::REF),
         ParseErrorKind { message, .. }
             if export_to_excel && is_unresolved_structured_reference(message) =>
         {

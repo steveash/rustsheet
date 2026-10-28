@@ -342,6 +342,14 @@ pub enum Node {
         child: Box<Node>,
     },
     ErrorKind(token::Error),
+    /// A `#REF!` written with the sheet prefix Excel keeps when a reference is deleted
+    /// (`=SUM(S!#REF!)`): printed back with its prefix, and the bare `#REF!` error to evaluation
+    /// and analysis (docs/excel-semantics/references.md, "A sheet-qualified #REF! is #REF!"). Like
+    /// [`Node::Spaced`], it is only in the tree as written: [`Node::strip_spaces`] turns it into
+    /// [`Node::ErrorKind`], so evaluation never sees it (T-2855).
+    SheetRefErrorKind {
+        sheet_name: String,
+    },
     ParseErrorKind {
         formula: String,
         message: String,
@@ -938,6 +946,7 @@ impl Parser {
             }
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),
+            TokenType::SheetRefError(sheet_name) => Node::SheetRefErrorKind { sheet_name },
             TokenType::Illegal(error) => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
                 expecting: vec![ExpectedTokens::Other],

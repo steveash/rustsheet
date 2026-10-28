@@ -52,6 +52,7 @@ fn for_each_sheet_reference_mut(node: &mut Node, f: &mut impl FnMut(&mut Node)) 
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::ParseErrorKind { .. }
         | Node::ArrayKind(_)
         | Node::NamedVariableKind { .. }
