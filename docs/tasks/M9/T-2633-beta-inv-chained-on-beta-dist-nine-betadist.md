@@ -8,7 +8,7 @@ priority: P1
 size: S
 tier: opus
 campaign: accuracy
-depends_on: []
+depends_on: [T-2510]
 ---
 
 ## Goal
@@ -68,3 +68,24 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Progress (opus run 2026-10-28: too little session budget left to port bgrat; diagnosis only, nothing implemented)
+- gen-m9/35e8168aae2b00f8 A159 `BETADIST(1E-10,0.5,10000000000.5)`: mpmath at 50 digits gives
+  0.84270079296528140805631583..., so Excel's 0.8427007929652814 is correctly rounded. Ours is 1.7E-7 relative off.
+- The cause is not the prefactor's logs: `large_prefactor` already takes ln(1 - y) near 1 (`ln_near_one`). The point
+  is reflected at the mean (x = 1E-10 > a/(a+b) = 5E-11) to I_y(1E10, 0.5), and Cephes' continued fraction cannot
+  converge there within its 300-term cap: the fraction needs on the order of sqrt(a) terms at a shape of 1E10.
+- bratio's dispatch (`bratio::small_shape_branch`) sends this point to `Branch::Bgrat`: a0 = 0.5 <= 1,
+  (x0 b0)^a0 = 1.00000000005^0.5 > 0.7, and b0 > 15. bgrat is not ported yet, so the point falls back to
+  `incomplete_beta::beta_tails`. The fix for A159 is the bgrat port that T-2510 owns (TOMS 708 `bgrat`, with its
+  incomplete-gamma start). This task should probably take T-2510 in `depends_on`, or narrow A159 out to it.
+  The next run decides.
+- Not looked at yet: the probes-numeric cells D85, D86, E56 and F6, and the nine BETA.INV ulp lines.
+
+## Resume (opus run 2026-10-28 14:00): wait on T-2510
+- The branch sat idle for over two hours with only the diagnosis above. A159 cannot pass without TOMS 708 `bgrat`,
+  which T-2510 ports (itself after T-2509, blocked on its baseline update). Fitting the cdf here first would be redone
+  by T-2510, and the nine chained BETA.INV lines follow BETA.DIST, so the whole task now waits on T-2510
+  (`depends_on`, status back to `todo`). The next run starts by re-measuring every cell above on T-2510's kernel.
+- If the nine chained BETA.INV lines are still 1-4 ulp on T-2510's kernel, SPEC-0025 gives them to T-2511 (the inverse
+  solved to the crossing); move them there rather than fitting them here.

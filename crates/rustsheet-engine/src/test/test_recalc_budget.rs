@@ -324,6 +324,114 @@ fn an_exhausted_recalculation_does_not_iterate() {
     assert_eq!(model._get_error_message("B1"), RECALC_EXHAUSTED);
 }
 
+/// `A1` iterates on itself, `B1` does not: each run of either is 18 units.
+fn sweeping(pass: u64, ceiling: u64) -> Model {
+    let mut model = model_with(pass, ceiling, &[("A1", "=A1+1"), ("B1", "=1+2")]);
+    model.workbook.settings.iteration = Some(Iteration {
+        max_iterations: 100,
+        max_change: 0.001,
+    });
+    model.evaluate();
+    model
+}
+
+#[test]
+fn sweeps_draw_on_the_ceiling_and_not_on_the_pass_allowance() {
+    let run = 3 * NODE_UNITS;
+    // The pass commits both formulas; the 100 sweep runs are spent but not committed, so an
+    // allowance of one pass is enough.
+    let model = sweeping(2 * run, MAX_RECALC_WORK);
+    assert_eq!(last(&model).mode, RecalcMode::Normal);
+    assert_eq!(last(&model).committed, 2 * run);
+    assert_eq!(last(&model).spent(), 2 * run + 100 * run);
+    assert_eq!(model._get_text("A1"), "100");
+}
+
+#[test]
+fn past_the_ceiling_the_sweeps_stop_where_they_are() {
+    let run = 3 * NODE_UNITS;
+    // Ten sweep runs fit; the eleventh runs out and stores nothing: A1 keeps the value the tenth
+    // gave it, as when `MAX_SWEEP_EVALUATIONS` runs out.
+    for ceiling in [12 * run, 13 * run - 1] {
+        let model = sweeping(MAX_PASS_WORK, ceiling);
+        assert_eq!(last(&model).mode, RecalcMode::Normal, "{ceiling}");
+        assert!(last(&model).spent() <= ceiling, "{ceiling}");
+        assert_eq!(model._get_text("A1"), "10", "{ceiling}");
+        assert_eq!(model._get_text("B1"), "3", "{ceiling}");
+    }
+}
+
+/// A column table B2:B5 over `B1` (`=A1*10`) with input A1, and a reader of its results: the
+/// pass is 30 units, the header read and each substitution 18.
+fn tabled(ceiling: u64) -> Model {
+    use crate::types::{DataTable, DataTableInput};
+    let cells = [
+        ("A1", "1"),
+        ("B1", "=A1*10"),
+        ("A2", "1"),
+        ("A3", "2"),
+        ("A4", "3"),
+        ("A5", "4"),
+        ("C1", "=SUM(B2:B5)"),
+    ];
+    let mut model = model_with(MAX_PASS_WORK, ceiling, &cells);
+    let table = DataTable {
+        range: (2, 2, 5, 2),
+        row_input: None,
+        column_input: Some(DataTableInput::Cell(1, 1)),
+    };
+    model.add_data_table(0, table).unwrap();
+    model.evaluate();
+    model
+}
+
+#[test]
+fn past_the_ceiling_this_and_later_data_table_results_are_num_errors() {
+    let run = 3 * NODE_UNITS;
+    let model = tabled(MAX_RECALC_WORK);
+    assert_eq!(last(&model).mode, RecalcMode::Normal);
+    let results = ["B2", "B3", "B4", "B5"];
+    assert_eq!(texts(&model, &results), ["10", "20", "30", "40"]);
+    assert_eq!(model._get_text("C1"), "100");
+    // The table's runs are spent but not committed: the second round's pass commits 30.
+    assert_eq!(last(&model).committed, 30);
+    assert_eq!(last(&model).spent(), 30 + 5 * run + 30);
+
+    // Two substitutions fit after the pass and the header read; the third runs out, so it and the
+    // fourth are `#NUM!`. The second round of passes then has nothing left: exhausted.
+    let model = tabled(30 + 3 * run + run - 1);
+    assert_eq!(texts(&model, &results), ["10", "20", "#NUM!", "#NUM!"]);
+    assert_eq!(last(&model).mode, RecalcMode::Exhausted);
+    assert_eq!(model._get_error_message("C1"), RECALC_EXHAUSTED);
+
+    // Out of it at the header read: every result is `#NUM!`.
+    let model = tabled(30 + run - 1);
+    assert_eq!(texts(&model, &results), ["#NUM!"; 4]);
+}
+
+#[test]
+fn a_table_the_memo_skips_charges_the_ceiling_what_its_recomputation_spent() {
+    let run = 3 * NODE_UNITS;
+    let results = ["B2", "B3", "B4", "B5", "C1"];
+    let mut model = tabled(MAX_RECALC_WORK);
+    assert_eq!(model.evaluation.data_tables_recomputed, 1);
+    // Nothing changed: the table is skipped, and charged its header read and four substitutions.
+    model.evaluate();
+    assert_eq!(model.evaluation.data_tables_recomputed, 1);
+    assert_eq!(last(&model).spent(), 30 + 5 * run);
+    assert_eq!(model._get_text("C1"), "100");
+
+    // One unit short of that charge: the table is recomputed instead, and gives what a model
+    // evaluated for the first time under that ceiling gives.
+    let ceiling = 30 + 5 * run - 1;
+    model.evaluation.recalc_limits = (MAX_PASS_WORK, ceiling);
+    model.evaluate();
+    assert_eq!(model.evaluation.data_tables_recomputed, 2);
+    let fresh = tabled(ceiling);
+    assert_eq!(texts(&model, &results), texts(&fresh, &results));
+    assert_eq!(model._get_text("B5"), "#NUM!");
+}
+
 #[test]
 fn formulas_outside_a_recalculation_draw_on_no_pool() {
     let mut model = model_with(10, 10, &[("A1", "=1")]);

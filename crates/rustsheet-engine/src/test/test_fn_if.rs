@@ -131,3 +131,20 @@ fn typed_if_with_one_argument_is_refused() {
     assert_eq!(model._get_text("E3"), "FALSE");
     assert_eq!(model._get_text("A9"), "#VALUE!");
 }
+
+#[test]
+fn test_fn_if_array_branch_no_element_takes_still_sizes_the_result() {
+    // A branch no condition element takes is only sized, not copied (T-1564); the result still
+    // spans it.
+    let mut model = new_empty_model();
+    model._set("C1", "5");
+    model._set("A1", "=ROWS(IF({TRUE},C1,D1:D4))");
+    model._set("A2", "=SUM(IF({TRUE},C1,D1:D4))");
+    model._set("A3", "=ROWS(IF({FALSE},C1:C3,D1))");
+    model._set("A4", "=SUM(IF({TRUE},C:C,D:D))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "4");
+    assert_eq!(model._get_text("A2"), "20");
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("A4"), "5");
+}

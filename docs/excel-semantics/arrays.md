@@ -605,7 +605,7 @@ top-left of its call.
     `{#N/A;FALSE}` is `#N/A`, x.
   - An error array is every element's result: `UNIQUE(SUMPRODUCT(<mismatched sizes>),HSTACK(0.2,1E+15))` is `#VALUE!`,
     `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434).
-  - Ours (T-2300): the driver option `CallResult::ArrayFirst` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
+  - Ours (T-2300): the driver option `CallResult::ArrayFirstColumn` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
     value is `#VALUE!` there (`scalar_as_one_element_array`). Only the empty element is evidenced (m7-lift-take-drop-sortby
     L25); other empty values in INDEX's first argument (`INDEX(IFERROR(B1,1),1,1)` with B1 blank) are `#VALUE!` too
     (probes/m7-unique-lift-corners, T-2348).
@@ -630,24 +630,24 @@ top-left of its call.
   on by_col (TRUE, FALSE and the by_col-only form give the same cells). Entries that are not all equal keep only the top-left
   (`{FALSE,TRUE;FALSE,FALSE;FALSE,FALSE}`: 1 then 0s). The same as gen-m7/2c156ba98ef0220a.case.json Calc!A1284 (3x3: 100
   down column A, 0 in B:C; excel-graph, 2026-10-22, T-2254 triage). Ours: UNIQUE only (`CallResult::ArrayFirstColumn`,
-  `empty_past_first_column` in lift/driver.rs) since T-2348. UNVERIFIED: whether an error element past the first column stays
-  (ours: it does, `UNIQUE(D1:D3,FALSE,{"a","a"})` is unprobed), and SORTBY's uniform 1xN sort_order, which keeps every
-  element's top-left in ours (`CallResult::ArrayFirst`; with a second by_array/sort_order pair its emptied elements are `#VALUE!`);
-  both belong with T-2349's SORTBY probes.
+  `empty_past_first_column` in lift/driver.rs) since T-2348. An error element past the first column stays
+  (`UNIQUE(D1:D3,FALSE,{"a","a"})` is `#VALUE!`, `#VALUE!`: I12, M12; `{FALSE,TRUE}` is x then empty: M13), and SORTBY's uniform 1xN sort_order empties the elements past the
+  first column the same way (`SORTBY(A1:A3,C1:C3,{1,1})` is 1 then empty; `{1,-1}` too; with a second by_array/sort_order pair and entries that
+  differ, the other elements are `#VALUE!`. A uniform 1xN order with a uniform second pair, `SORTBY(A1:A3,C1:C3,{1,1},A1:A3,1)`,
+  is UNVERIFIED, T-3027: ours 1 then empty); probes/sortby-lifted-element-corners (excel-graph, 2026-10-28, T-2349).
 - Lifted-element corners (same probe): text entries are `#VALUE!` elements whatever their case (`UNIQUE(D1:D3,FALSE,{"a";"A"})`
   and `{"a";"a"}` are `#VALUE!`, `#VALUE!`: exactly_once is not read as text), so the case question never arises; `{0;-0}` is
   x, x (equal). A call error from a non-error entry stays and the first good element is kept: `{"abc";FALSE;TRUE}` is
   `#VALUE!`, x, empty; `{FALSE;"abc";TRUE}` is x, `#VALUE!`, empty. INDEX of an empty value from IFERROR
   (`INDEX(IFERROR(AZ1,1),1,1)`, `LET(x,IFERROR(AZ1,1),INDEX(x,1,1))`, AZ1 blank) is `#VALUE!`, as for UNIQUE's empty element.
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
-UNVERIFIED for SORTBY (taken from UNIQUE's rule, unprobed; T-2349):
-- a leading invalid entry (`{2;1}`): ours `#VALUE!`, then the next element's top-left;
-- a mixed `{1;-1;2}`: ours 1, empty, `#VALUE!`, with the error per slot;
-- an error array: ours one scalar error;
-- an error by_array: ours the error in every element.
-Ours: implemented. The driver option `CallResult::ArrayFirst` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
+SORTBY follows UNIQUE's rule (probes/sortby-lifted-element-corners, excel-graph, T-2349): a leading invalid entry (`{2;1}`) is
+`#VALUE!` then the next element's top-left; a mixed `{1;-1;2}` is 1, empty, `#VALUE!`; an error array is that error in every
+element of the sort_orders' shape (`ROWS(SORTBY(NA(),C1:C3,{1;-1}))` is 2); an error by_array is the error in every element.
+UNVERIFIED (T-3027): which error wins inside an element when an error array meets an invalid or uniform 1xN sort_order (ours: the array's error, `SORTBY(NA(),C1:C3,{2;1})` is `#N/A` in every element; `SORTBY(NA(),C1:C3,{1,1})` likewise).
+Ours: implemented. The driver option `CallResult::ArrayFirstColumn` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
 Status: VERIFIED (web)
-Tasks: T-2300 (UNIQUE), T-1839 (SORTBY)
+Tasks: T-2300 (UNIQUE), T-1839 (SORTBY), T-2349 (SORTBY corners), T-3027 (error array with an invalid sort_order)
 
 ## Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule
 Rule: a function whose scalar argument gets an array lifts, one call per element, and the arguments
@@ -1404,7 +1404,8 @@ Rule: Excel has no known per-formula work limit; a formula whose LAMBDA helpers 
 Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
 Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
 units: 6 per node evaluated (each link of an operator chain is one), 3 per cell of each array value a node gives or a range
-is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
+is turned into (a range arm of a lifted IF or CHOOSE, or an HSTACK or VSTACK argument, is first read for 3 per cell of
+its used area, then a picked one copied for 3 per cell of the range; T-1564), one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
 `&` operator makes over an array, T-2806), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
@@ -1741,11 +1742,14 @@ own order and is `#VALUE!` on any other array. With A1:A3 = 3,1,2 and B1:B3 = 30
 - `SORTBY(A1:B3,{2,1})` and `SORTBY(A1:B3,{1,2},-1)` swap the columns (H69, H73); `SORTBY(A1:A3,{3,1,2})` and
   `SORTBY(A1:A3,A20:C20)` are `#VALUE!` (a row as long as the array's height does not sort its rows: H77, H81).
 - Mixed directions are `#VALUE!`: `SORTBY(A1:A3,5,1,A1:A3,-1)`, `SORTBY(A1:A3,A1:A3,1,5,1)`, `SORTBY(A1:B3,A1:A3,1,{2,1},1)`
-  (H85-H93). A one-value by_array on a one-row array next to a row by_array is unprobed (ours: `#VALUE!`).
-A sort_order reads as its floor, snapped up near an integer (the count rule of LEFT and INDEX, `near_integer_count`): -0.0001,
+  (H85-H93). So is a one-value by_array on a one-row array A20:C20 = 3,1,2 next to a row by_array, in either order and direction (`SORTBY(A20:C20,5,1,A20:C20,1)`, `(A20:C20,A20:C20,-1,5,1)`, `{7}` or the one-cell `A1` for the value): `#VALUE!`; two one-value pairs (`SORTBY(A20:C20,5,1,5,1)`) keep the order (probes/t2370-sortby-mixed-by-array-snap, excel-graph, 2026-10-28, T-2370).
+A sort_order reads as its floor, snapped up near an integer (`near_integer_whole`, below): -0.0001,
 -0.5, -0.9999 sort descending, 1.5 and 1.0000001 ascending; 0.0001, 0.5, 0.9999, -1.5, 2, -2 and -1E-300 (floor -1, snapped
-to 0) are `#VALUE!`; `"-1"` is descending and TRUE ascending (H97-H165). That the snap tolerance is LEFT's 2^-22 + 2^-33 is
-UNVERIFIED (only -1E-300 and 0.9999 bound it). SORT's own sort_order still truncates (unprobed for fractions).
+to 0) are `#VALUE!`; `"-1"` is descending and TRUE ascending (H97-H165). The snap is the one DATE, TIME and XMATCH use (`near_integer_whole`): LEFT's tolerance for a positive value, half of it below zero (T-2370, A1:A3 = 3,1,2). Just below 1 and 2 it lies between 2^-22 + 2^-33 and 2^-22 + 2^-32:
+`1-2^-22`, `1-2^-23`, `1-2^-24` and `1-(2^-22+2^-33)` sort ascending, `1-2^-21`, `1-2^-20` and `1-(2^-22+2^-32)` are `#VALUE!` (floor 0), `2-2^-22` is `#VALUE!`
+(snapped to 2) and `2-2^-21` ascending. Just below -1 it is at least 2^-23 + 2^-34 and under 2^-22 (the half, as DATE and TIME bracket it more tightly, T-2267): `-1-2^-23`, `-1-2^-24` and `-1-(2^-23+2^-34)` sort descending (snapped to -1), but `-1-2^-22`,
+`-1-(2^-22+2^-33)`, `-1-(2^-22+2^-32)` and `-1-2^-21` are `#VALUE!` (floor -2); the cells just above -1 and -2 (`-1+2^-22`, `-2+2^-22`) say nothing of
+the tolerance, their floor is -1 and -2 either way. SORT's own sort_order still truncates (unprobed for fractions).
 This is why `SORTBY(Data!E1:E12,MAX(..)%,-1)` (gen-m7/18b80d3fd292d63a Calc!A123:A134), `SORTBY(Data!C1:C12,IFNA(TIMEVALUE(..),..),1)`
 (7307132bb8820f17 A966:A977) keep their one-column arrays, `SORTBY(Data!B1:C12,(-1),1)` (0e40208f51c2454c Calc!A2) and the
 by_array 0.5 on Data!B1:C12 (7d67c559ce7536fa A1358) are `#VALUE!`, and `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,..)`
@@ -1912,7 +1916,7 @@ a text error and a join over 32,767 characters (`#CALC!`) fill every element, an
 (`TEXTJOIN({"-","+"},{TRUE;FALSE},"a","","b")` is "a-b", "a-+b"). The gen-m7 cell: `LAMBDA(y,TEXTJOIN(y,y,y))({TRUE;FALSE})` is
 "TRUETRUEFALSE" twice, so RIGHT of it spills and A1137's spill is blocked.
 SORT's lifted by_col elements (probes/t2366-sort-lifted-by-col, excel-graph, 2026-10-27, T-2366), `A1:A3` = 3,1,2: later elements
-do not follow SORTBY's `ArrayFirst` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
+do not follow SORTBY's `ArrayFirstColumn` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
 `{FALSE,TRUE}` spills 1 then `#VALUE!`, `{TRUE,TRUE}` 3 then `#VALUE!`, sort_index 3 with `{FALSE,TRUE}` `#VALUE!` then 3, and a range
 by_col (`E1:E2` = FALSE,TRUE) lifts like an array (`ROWS` 2, `COLUMNS` 1: spills 1 then `#VALUE!`). Of the later elements only the
 sort_index 3 one (I11) matches the call's top-left; the second (TRUE) element is `#VALUE!` with sort_index 1 (I1, I7, H18) although a

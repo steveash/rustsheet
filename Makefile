@@ -157,3 +157,8 @@ merge-lock-release: ## Free your merge lock (after the merge, a red CI, or any s
 
 merge-lock-status: ## Who holds the merge lock, since when, and the queue of waiters
 	$(PY) scripts/merge_lock.py status
+
+.PHONY: merge-ready-verify
+merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads only): make merge-ready-verify PR=123 (exit 0: ready; 1: not ready; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_ready.py verify --pr '$(PR)'

@@ -411,7 +411,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2793, T-2810
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
-- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
+- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). A variable bound to an omitted LAMBDA parameter or to an empty LET value hands the omission on and is `#N/A` too: `LAMBDA(a,b,IMSUB(a,b))("1",)`, `(,"1")`, `LAMBDA(a,b,IMDIV(a,b))("1",)`, `(,"1")` and `LET(e,,IMSUB("1",e))` are `#N/A` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12; T-2770), while `LET(e,IFERROR(Q1,"x"),…)` and `LET(e,IF(TRUE,Q1),…)` bind a real empty value that is 0, and `LAMBDA(a,b,IMSUB(a,b))("1")` (a missing argument) is `#VALUE!`. The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
 - Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.
 - An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER; a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
@@ -588,6 +588,16 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   `cosh 2y − cos 2x`, `cosh 2y − (1 − 2sin²x)` and `(cosh 2y − 2cos²x) + 1`. Exp-based cosh fits the same
   (scratch fit over the sweep, T-2537). Past `cosh 2y`'s range the
   value is `−i` for y > 0 and `i` for y < 0 (P27, P44, P49, P68, P69, P71; P52, P55). A real number keeps `1/tan x`.
+  T-2787 probed 24 more inputs where the two groupings print different text (probes/t2787-imcot-denominator-grouping,
+  excel-graph, 2026-10-28, libm trig): `(cosh 2y + 1) - 2cos²x` matches 21, T-2044's `cosh 2y - (2cos²x - 1)` 2 (A2, A9,
+  the cells ours misses in the last digit; A17 fits neither). The grouping was not the cause: the three cells need
+  IMSEC's sinh 2y and cosh 2y (`sec_sinh_cosh`: IMSINH's `1/u` kernel for 0.01 < |2y| <= 20, libm's outside) in
+  place of libm's. A2 and A17 need the kernel's sinh 2y (A17's imaginary part fits no other sinh and no cosh or cos²x
+  within 3 ulp), A9 its cosh 2y, one ulp above libm's. With `(cosh 2y + 1) - 2cos²x` that fits all 24 cells, the 54
+  sweep cells with a finite imaginary part (the tiny-y rows sit below the band, where libm's sinh is the kernel's) and
+  gen-m9's `-1.5+0.5i`, 79 of 79 (scratch fit with the engine's own primitives). Evaluating the denominator in x87
+  extended precision fits 61 at best, so the arithmetic is plain doubles. Status: VERIFIED (excel-graph); implemented
+  (T-3032).
 - IMABS: `a·sqrt(1 + (b/a)²)` with a the larger of |x|, |y|: 77 of 78 cells bit for bit (`hypot` 59,
   `sqrt(x²+y²)` 55, scaling by |x| or by |y| always 66); the miss is B33, `956.615+0.00387493i` (Excel
   956.6150000078482, ours 2 ulps lower). IMPOWER's modulus is still `hypot` (T-1950 evidence). A part near DBL_MAX overflows the scaled

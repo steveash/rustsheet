@@ -34,6 +34,22 @@ LN, EXP, log1p and GAMMALN, and brcmp1 = density·x·y), where that is a net vis
   - 1 gated bit-exact cell lost: gen-m9 FDIST c18dbf21 A151, bup+bgrat, 7 ulp.
 - Models: r2-bratio `bratio_excel.py` (`bgrat` and its incomplete-gamma helper, `Cfg(bgrat="orig")`), r2-tdist `xlk.py`.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells whose bratio dispatch (`bratio::dispatch`) is a bgrat branch (bgrat, bup+bgrat, L140 bup+bgrat, L140 bup+bup+bgrat); the cases' other cells are routed by branch in T-2981's Outcome. 1,879 visibly-off cells in 13 cases, per case:
+- probes-numeric/m9-beta-dist-a10: BETA.DIST cdf, L140BupBgrat 1
+- probes-numeric/m9-beta-dist-a100: BETA.DIST cdf, Bgrat 2, BETA.DIST cdf, L140BupBgrat 3
+- probes-numeric/m9-beta-dist-a5: BETA.DIST cdf, BupBgrat 1, BETA.DIST cdf, L140BupBgrat 1
+- probes-numeric/m9-beta-dist-a50: BETA.DIST cdf, Bgrat 1, BETA.DIST cdf, L140BupBgrat 1
+- probes-numeric/t1538-beta-dist-at-excel-inv: BETA.DIST cdf, L140BupBgrat 1, F.DIST cdf, L140BupBgrat 1, F.DIST.RT cdf, L140BupBgrat 2
+- probes-numeric/t2220-f-dist-sweep-cdf: F.DIST cdf, Bgrat 11, F.DIST cdf, BupBgrat 3, F.DIST cdf, L140BupBgrat 16, F.DIST cdf, L140BupBupBgrat 1
+- probes-numeric/t2220-f-dist-sweep-d1-1: F.DIST cdf, Bgrat 2, F.DIST.RT cdf, Bgrat 4
+- probes-numeric/t2220-f-dist-sweep-d2-1: F.DIST cdf, Bgrat 2, F.DIST cdf, BupBgrat 1, F.DIST.RT cdf, Bgrat 2, F.DIST.RT cdf, BupBgrat 1
+- probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, Bgrat 12, F.DIST.RT cdf, BupBgrat 2, F.DIST.RT cdf, L140BupBgrat 24, F.DIST.RT cdf, L140BupBupBgrat 1
+- probes-numeric/t2464-r2-bratio-x29: BETA.DIST cdf, BupBgrat 9
+- probes-numeric/t2464-w2f-absweep: BETA.DIST cdf, L140BupBgrat 985
+- probes-numeric/t2464-w2f-unit-shape: BETA.DIST cdf, BupBgrat 7
+- probes-numeric/t2464-w2f-xruns-2: BETA.DIST cdf, L140BupBgrat 782
+
 ## Acceptance criteria
 - [ ] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
       net negative. A branch that is not stays on today's kernel, with the measurement in the Outcome.

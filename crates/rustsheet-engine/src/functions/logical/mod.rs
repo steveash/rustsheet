@@ -23,7 +23,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::{
-        lift::{LiftCost, LiftOptions, LiftedArg},
+        lift::{BroadcastArg, LiftCost, LiftOptions, LiftedArg},
         Function,
     },
     limits::check_array_size,
@@ -43,44 +43,6 @@ pub(crate) enum IfBranchMode {
     /// As a cell-reading argument sees it ([`Model::evaluate_chosen_reference`]): a nested IFS,
     /// SWITCH, LET or CHOOSE branch stays the cell it picks.
     Chosen,
-}
-
-// ── IF array helpers ──────────────────────────────────────────────────────────
-
-/// A branch argument to IF/IFERROR/IFNA (and an arm of CHOOSE over an index array): either a
-/// scalar (broadcast to all positions) or a 2-D array (indexed by position with size-1
-/// broadcasting; a ragged out-of-range position → #N/A). See [`if_arg_at`].
-pub(crate) enum IfArg {
-    Scalar(ArrayNode),
-    Array(Vec<Vec<ArrayNode>>),
-}
-
-pub(crate) fn if_arg_dims(arg: &IfArg) -> (usize, usize) {
-    match arg {
-        IfArg::Scalar(_) => (1, 1),
-        IfArg::Array(arr) => (arr.len(), arr.first().map_or(0, |r| r.len())),
-    }
-}
-
-/// Index a branch argument at output position (row, col), applying Excel's
-/// size-1 broadcasting rule: a scalar covers every position, a length-1
-/// dimension repeats its only element to cover the whole output extent, and a
-/// ragged mismatch (e.g. length 2 against an extent of 3) yields `#N/A`.
-pub(crate) fn if_arg_at(arg: &IfArg, row: usize, col: usize) -> ArrayNode {
-    match arg {
-        IfArg::Scalar(node) => node.clone(),
-        IfArg::Array(arr) => {
-            let rows = arr.len();
-            let cols = arr.first().map_or(0, |r| r.len());
-            match bcast_idx(rows, row)
-                .and_then(|r| arr.get(r))
-                .and_then(|r| bcast_idx(cols, col).and_then(|c| r.get(c)))
-            {
-                Some(n) => n.clone(),
-                None => ArrayNode::Error(Error::NA),
-            }
-        }
-    }
 }
 
 /// IFS's and SWITCH's `#N/A` when nothing matches.
@@ -252,22 +214,6 @@ impl Model {
         Picked::Value(self.if_array(args, cond_array, cell))
     }
 
-    /// Evaluates a branch of IF over an array condition (or an arm of CHOOSE over an index
-    /// array) once, as a scalar or a 2-D array; `Err` is a range that cannot be read.
-    pub(crate) fn evaluate_if_arg(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<IfArg, CalcResult> {
-        Ok(match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, right } => {
-                IfArg::Array(self.evaluate_range(left, right, cell)?)
-            }
-            CalcResult::Array(a) => IfArg::Array(a),
-            other => IfArg::Scalar(calc_result_to_array_node(other)),
-        })
-    }
-
     /// IF over an array condition: one result per position, the branches broadcast.
     fn if_array(
         &mut self,
@@ -278,13 +224,21 @@ impl Model {
         let has_else = args.len() == 3;
         // Both branches are read here, so a parameter read once in each is read twice.
         self.variable_stack.copy_read_once();
-        // Evaluate branches once and normalise each to a scalar or 2-D array.
-        let true_arg = match self.evaluate_if_arg(&args[1], cell) {
+        // Evaluate branches once and normalise each to a scalar or 2-D array. A branch no
+        // element of the condition takes is only sized, not copied (T-1564).
+        let picks = |want: bool| {
+            cond_array
+                .iter()
+                .flatten()
+                .any(|node| matches!(array_node_to_bool(node), Ok(taken) if taken == want))
+        };
+        let (true_picked, false_picked) = (picks(true), picks(false));
+        let true_arg = match self.evaluate_broadcast_arm(&args[1], cell, true_picked) {
             Ok(arg) => arg,
             Err(error) => return error,
         };
-        let false_arg: Option<IfArg> = if has_else {
-            match self.evaluate_if_arg(&args[2], cell) {
+        let false_arg: Option<BroadcastArg> = if has_else {
+            match self.evaluate_broadcast_arm(&args[2], cell, false_picked) {
                 Ok(arg) => Some(arg),
                 Err(error) => return error,
             }
@@ -295,14 +249,24 @@ impl Model {
         // Output size = largest extent across all array arguments.
         let cond_rows = cond_array.len();
         let cond_cols = cond_array.first().map_or(0, |r| r.len());
-        let (true_rows, true_cols) = if_arg_dims(&true_arg);
-        let (false_rows, false_cols) = false_arg.as_ref().map_or((1, 1), if_arg_dims);
+        let (true_rows, true_cols) = true_arg.dims();
+        let (false_rows, false_cols) = false_arg.as_ref().map_or((1, 1), BroadcastArg::dims);
         let max_rows = cond_rows.max(true_rows).max(false_rows);
         let max_cols = cond_cols.max(true_cols).max(false_cols);
 
         if let Some((error, message)) = check_array_size(max_rows, max_cols) {
             return CalcResult::new_error(error, cell, message);
         }
+        // The size is checked, so a picked range branch is copied now (T-1564).
+        let true_arg = match self.read_broadcast_arm(true_arg, cell) {
+            Ok(arg) => arg,
+            Err(error) => return error,
+        };
+        let false_arg = match false_arg.map(|arg| self.read_broadcast_arm(arg, cell)) {
+            Some(Err(error)) => return error,
+            Some(Ok(arg)) => Some(arg),
+            None => None,
+        };
 
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(max_rows);
         for r in 0..max_rows {
@@ -317,9 +281,9 @@ impl Model {
                     None => ArrayNode::Error(Error::NA),
                     Some(cond_node) => match array_node_to_bool(cond_node) {
                         Err(err_node) => err_node,
-                        Ok(true) => if_arg_at(&true_arg, r, c),
+                        Ok(true) => true_arg.at(r, c),
                         Ok(false) => match &false_arg {
-                            Some(fa) => if_arg_at(fa, r, c),
+                            Some(fa) => fa.at(r, c),
                             None => ArrayNode::Boolean(false),
                         },
                     },
@@ -413,7 +377,7 @@ impl Model {
 
         // value is an array: replace each handled error element with the
         // fallback, broadcasting the fallback across positions.
-        let fallback_arg = match self.evaluate_if_arg(&args[1], cell) {
+        let fallback_arg = match self.evaluate_broadcast_arg(&args[1], cell) {
             Ok(arg) => arg,
             Err(error) => return error,
         };
@@ -421,7 +385,7 @@ impl Model {
         // Output size = largest extent across value and the fallback.
         let value_rows = value_array.len();
         let value_cols = value_array.first().map_or(0, |r| r.len());
-        let (fb_rows, fb_cols) = if_arg_dims(&fallback_arg);
+        let (fb_rows, fb_cols) = fallback_arg.dims();
         let max_rows = value_rows.max(fb_rows);
         let max_cols = value_cols.max(fb_cols);
 
@@ -440,12 +404,12 @@ impl Model {
                     .and_then(|vrow| bcast_idx(value_cols, c).and_then(|vc| vrow.get(vc)));
                 let node = match value_node {
                     // A handled error element → use the (broadcast) fallback.
-                    Some(ArrayNode::Error(e)) if is_handled(e) => if_arg_at(&fallback_arg, r, c),
+                    Some(ArrayNode::Error(e)) if is_handled(e) => fallback_arg.at(r, c),
                     // Anything else (including an unhandled error) passes through.
                     Some(n) => n.clone(),
                     // Out of range → #N/A. Both IFERROR and IFNA handle #N/A, so
                     // it takes the fallback; guard with the predicate for clarity.
-                    None if is_handled(&Error::NA) => if_arg_at(&fallback_arg, r, c),
+                    None if is_handled(&Error::NA) => fallback_arg.at(r, c),
                     None => ArrayNode::Error(Error::NA),
                 };
                 row.push(node);

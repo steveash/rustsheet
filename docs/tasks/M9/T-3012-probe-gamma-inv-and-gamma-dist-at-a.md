@@ -3,7 +3,7 @@ id: T-3012
 title: "Probe GAMMA.INV and GAMMA.DIST at a shape below 1 and p near 1E-16 (gen-m9 984cba67bbe6972b A43: Excel 4.1E-15 above the exact quantile)"
 milestone: M9
 lane: research
-status: blocked
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
@@ -56,6 +56,6 @@ eval/baseline/probes.txt only; no other suite moved. Five unrelated probe cases 
 unsupportedWorkbook), left pending.
 
 ## Blocked because
-Blocked because: review-round limit
+Resumed after the review-round limit (step 5c).
 Round 3 of reviewer-excel-fidelity asked for wording fixes (row 25 is bracketed, ulp range 30 to 90, T-3013 error
 summary), applied in the following commit but not re-reviewed. Security, architecture and quality approved.
