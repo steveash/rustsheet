@@ -84,6 +84,7 @@ pub(crate) fn bessel_i0(x: f64) -> f64 {
         p1 + y * (p2 + y * (p3 + y * (p4 + y * (p5 + y * (p6 + y * p7)))))
     } else {
         let y = k1 / ax;
+        // Excel's own EXP: the platform exp is 2 ulps off `BESSELI(100.21..,5)` (engineering.md, T-2548).
         (excel_exp(ax) / (ax).sqrt())
             * (q1
                 + y * (q2

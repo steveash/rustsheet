@@ -3,7 +3,7 @@ id: T-2548
 title: "BESSELJ, BESSELY and BESSELI last-ulp cells at x = 84 to 1E+5 in the gen-m9 engineering sweep (12 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -49,9 +49,9 @@ recurrence, n = x; visibly off in the 15th digit). Tried without a match: the st
 `bj*(2j*(1/x))`, `(2j/x)*bj`, `j*(tox*bj)`, and NR's ACC 160 and 100 for the starting order.
 
 ## Acceptance criteria
-- [ ] These 12 known-failure lines and gen-m9/2b0324e2de2e7b74 Calc!A295 disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new
+- [x] These 12 known-failure lines and gen-m9/2b0324e2de2e7b74 Calc!A295 disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
@@ -77,3 +77,17 @@ or steps rounded to 53 or 64 bits), the true value from the same port in exact a
   - `j*fl(tox*bj) - bjp` (...336154);
   - one rounding of `j*tox*bj - bjp` (...336324).
   These scatter by about 2E-16 (absolute) around Excel's value, so a fit needs the T-2881 points (several n near x).
+
+## Outcome
+- Excel's BESSELJ and BESSELY recurrences are x87 code stored to doubles: every product and sum of Miller's downward
+  recurrence (step, 1E-10 rescale, even-order sum) and of the upward recurrence rounds twice (64-bit significand, then
+  double). `jn_miller` and the new shared `upward_step` use `arithmetic.rs`'s `extended_product` / `extended_sum`.
+  This was found by emulation in Python (each op at 64 bits then stored): 43/43 Miller cells of the T-2881 sweep were
+  bit-exact, against 12/43 for plain doubles. Rejected: registers kept across steps, FMA, other associations, NR 3rd
+  edition's ACC 160 and power-of-two rescale, a division rescale, and other start orders.
+- BESSELI's I0/I1 at |x| >= 3.75 use Excel's x87 EXP (`excel_exp`), which fixes `BESSELI(100.21..,5)`. Its Miller steps
+  stay plain: rounding them twice left that cell unchanged.
+- Eval: probes 2655 -> 2602 (all 53 t2881 lines), gen-m9 3630 -> 3628 (A295, A299), 0 regressions.
+  poi 119 -> 117 records two NPV cells (FinanceLibTests O3, O5) that already pass on `main`; they are not from this change.
+  The other 11 gen-m9 lines this task listed had already left the baseline (T-2547 and earlier).
+- docs/excel-semantics/engineering.md "BESSELJ / BESSELY" and the BESSELI EXP entry.

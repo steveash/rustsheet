@@ -101,6 +101,10 @@ Excel past 100,000 (probes/t2546-bessel-past-cap, 83 cells, excel-graph, 2026-10
   (Numerical Recipes `bessj`, rescaled by 1E-10 when a term passes 1E+10) overflows when `j * 2/x` passes 1E+10 over many
   steps: `BESSELJ(1E-5,100001)`, `(1E-300,100001)`, `(3E-5,1E+6)` are `#NUM!`, `(2E-5,100001)` and `(3E-4,1E+6)` are 0.
   That also explains the `BESSELJ(1E-300,100001)` quirk above.
+- BESSELI's I0(x) and I1(x) (I0 is also the normalizer of its Miller recurrence) at |x| >= 3.75 are `e^x / sqrt(x) * poly(3.75/x)` with Excel's own
+  x87 EXP (`excel_exp`, numbers.md "EXP is an x87 2^(a*log2 e) evaluation"), not the correctly rounded exp:
+  `BESSELI(100.21..,5)` is 1.177055823943151E+42, which the platform exp misses by 2 ulps (gen-m9/59a16b5ab566ee5c
+  Calc!A299, excel-graph; T-2548). BESSELI's Miller steps keep plain doubles: rounding them twice changes nothing here.
 - BESSELI is 0 where I_n(x) underflows (`BESSELI(100,100001)`, `(700,100001)`, `(1E-3,100001)`, `(8,1E+6)`, `(-2.5,100001)`),
   `#NUM!` from x = 709.79, where Excel's I0(x) (the normalizer) overflows, even though I_n(x) underflows (`BESSELI(713,100001)`,
   `(1E+4,100001)`, `(2E+5,100001)`), and `#NUM!` for a tiny x, as J (`BESSELI(2E-5,100001)`; `(5E-5,100001)` is 0: BESSELI
@@ -937,7 +941,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
 - **BESSEL.** `BESSELJ(1E+15,0)`, `BESSELJ(1E+15,5)` and `BESSELY(214285740740749.06,2)` are `#NUM!`,
   while x = 123456789.123 (below 2^27) computes: `BESSELJ(..,1)` 4.9869177786549744E-05 and `BESSELY(..,3)`
   5.1668995876750464E-05 (matched since T-2547: the phase cut and Excel's sine, "BESSELJ / BESSELY" above);
-  `BESSELJ(1E+5,100000)` is 0.009636944011336267 (ours ...629, T-2548). `BESSELI(1E+15,n)` is `#NUM!` (ours 0), and BESSELK at 713 and 714 is 0 for orders 0, 1
+  `BESSELJ(1E+5,100000)` is 0.009636944011336267 (matched since T-2548: twice-rounded recurrence steps, "BESSELJ / BESSELY" above). `BESSELI(1E+15,n)` is `#NUM!` (ours 0), and BESSELK at 713 and 714 is 0 for orders 0, 1
   and 4, T-2421. Past the order cap Excel gives 0: `BESSELI(100,100001)`, `BESSELI(8,1E+6)`, `BESSELJ(0,1E+6)`,
   `BESSELK(25019,100001)` ("BESSEL order cap"; ours matches since T-2546). `BESSELK(700,3)` is 4.69979514014056E-306 (matched
   since T-2549: the subnormal recurrence term flush, "BESSELK near the bottom of the double range").
