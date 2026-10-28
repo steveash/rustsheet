@@ -1450,6 +1450,11 @@ C	probes/t2779-hebrew-saka-names.case.json	143
 C	probes/t2782-whitespace-run-wrap.case.json	36
 C	probes/t2786-whitespace-structured-refs-runs.case.json	49
 C	probes/t2787-imcot-denominator-grouping.case.json	24
+C	probes/t2800-stored-ws-0.case.json	2
+C	probes/t2800-stored-ws-1.case.json	2
+C	probes/t2800-stored-ws-2.case.json	2
+C	probes/t2800-stored-ws-3.case.json	2
+C	probes/t2800-this-row-whitespace.case.json	10
 C	probes/t2812-currency-tag-cost.case.json	54
 C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
@@ -3851,6 +3856,14 @@ F	probes/t2753-gamma-density-switch.case.json	S!B8
 F	probes/t2753-gamma-density-switch.case.json	S!B9
 F	probes/t2779-hebrew-saka-more.case.json	S!E7
 F	probes/t2779-hebrew-saka-names.case.json	S!E18
+F	probes/t2800-stored-ws-0.case.json	S!A6
+F	probes/t2800-stored-ws-0.case.json	S!B6
+F	probes/t2800-this-row-whitespace.case.json	S!B3
+F	probes/t2800-this-row-whitespace.case.json	S!C3
+F	probes/t2800-this-row-whitespace.case.json	S!D3
+F	probes/t2800-this-row-whitespace.case.json	S!E3
+F	probes/t2800-this-row-whitespace.case.json	S!F2
+F	probes/t2800-this-row-whitespace.case.json	S!F3
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
