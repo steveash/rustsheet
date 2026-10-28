@@ -3,7 +3,7 @@ id: T-0972
 title: "GAMMA.INV/CHISQ.INV/CHISQ.INV.RT: gamma quantile parity (39 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P1
 size: S
 tier: opus
@@ -215,3 +215,12 @@ Not done, so the task stays open (status todo):
 - Criterion 2 is not re-measured on this merged tree.
 - Criterion 3 is not met: `incomplete_gamma/mod.rs` still keeps the ported statrs search (`inverse_cdf_within`) as the
   refinement's start.
+
+## Blocked because
+Blocked because: the baseline record needs `rustsheet-eval update-baseline --allow-regressions` (decision 0152), and the
+scheduled workers' permission layer refuses it (three runs, last 2026-10-28). Re-measured on the branch merged with `main`
+bd7679c: identical to decision 0152 (gated: 28 fixed, 49 regressed at 1-3 ulp; visible-parity count 2601 -> 2592).
+To unblock: an owner-run session runs `make build`, then
+`scripts/eval_guard.sh target/release/rustsheet-eval update-baseline --allow-regressions` and
+`target/release/rustsheet-eval evidence-floor --update` on this branch, commits `eval/baseline/` and `quality/`, sets
+`status: todo`, and the PR then goes through the review skill. Workers should not resume this branch until then.
