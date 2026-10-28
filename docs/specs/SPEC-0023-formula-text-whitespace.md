@@ -94,7 +94,9 @@ applied to one.
   `after`.
 - A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped, except a run beside a
   missing argument. A run between two commas, or between the last comma and `)`, is the missing argument's own: a
-  `Spaced` around `EmptyArgKind` (T-2944). The run inside an empty call's `( )` is T-2966. These are
+  `Spaced` around `EmptyArgKind` (T-2944), and so is a run before a missing first argument (`=SUM( ,1)`). The run
+  inside an empty built-in call's `( )` (`=NOW( )`) is one such spaced empty argument, attached after the argument
+  count is taken and removed by `strip_spaces` (`is_empty_call_run`), so evaluation sees no argument (T-2966). These are
   exactly the places where Excel drops it (for the probed shapes; see Unknown).
 
 Attaching at the primary level, and never to a chain, leaves the value-operator chains of SPEC-0007

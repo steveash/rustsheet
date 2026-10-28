@@ -412,7 +412,7 @@ Ours: the runs SPEC-0023 keeps are in the entry above. A run between two commas 
 back (T-2944), and so does a run before a missing first argument (T-2966). The run inside an empty built-in call
 (`=NOW( )`, `=TRUE( )`) is held as one spaced empty argument that the evaluated tree drops (`Node::with_empty_call_run`),
 so the call still takes no argument; inside an empty call of a LAMBDA or a name (`=f( )`) it is still dropped
-(unprobed). A spaced missing argument is still missing where a function refuses one (`=SUBTOTAL(9,A1, )` is refused
+(unprobed, T-2976). A spaced missing argument is still missing where a function refuses one (`=SUBTOTAL(9,A1, )` is refused
 like `=SUBTOTAL(9,A1,)`, references.md; Excel refuses both spaced shapes typed). Inside a structured
 reference (T-2801) the lexer keeps the runs after the outer `[` and before the outer `]` as typed and whether any
 whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. Two choices are ours, not
