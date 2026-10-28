@@ -271,9 +271,9 @@ impl Txn<'_> {
                     None => match (self.model.calculated_column(sheet, row, col))
                         .map_err(EditError::Engine)?
                     {
-                        Some((table, targets)) => {
-                            self.undo.push(Undo::TableBefore(Box::new(table)));
-                            targets
+                        Some(fill) => {
+                            self.undo.push(Undo::TableBefore(Box::new(fill.table)));
+                            fill.targets
                         }
                         None => Vec::new(),
                     },

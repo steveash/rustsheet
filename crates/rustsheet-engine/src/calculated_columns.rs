@@ -22,6 +22,15 @@ pub struct TableExpansion {
     pub header: bool,
 }
 
+/// The table column a typed formula fills as a calculated column ([`Model::calculated_column`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CalculatedColumn {
+    /// The table, as it is before the formula is typed.
+    pub table: Table,
+    /// The column's other data rows, (row, column): the cells the formula fills.
+    pub targets: Vec<(i32, i32)>,
+}
+
 impl Model {
     /// The tables on the sheet named `sheet_name` whose range fits, with their [`Bounds`].
     fn table_bounds_on_sheet<'a>(
@@ -166,11 +175,16 @@ impl Model {
         sheet: u32,
         row: i32,
         column: i32,
-    ) -> Result<Option<(Table, Vec<(i32, i32)>)>, String> {
+    ) -> Result<Option<CalculatedColumn>, String> {
         let Some(fill) = self.calculated_column_fill(sheet, row, column)? else {
             return Ok(None);
         };
-        Ok((self.workbook.tables.get(&fill.table)).map(|table| (table.clone(), fill.targets)))
+        Ok(
+            (self.workbook.tables.get(&fill.table)).map(|table| CalculatedColumn {
+                table: table.clone(),
+                targets: fill.targets,
+            }),
+        )
     }
 
     /// What a formula typed into (`sheet`, `row`, `column`) fills ([`Model::calculated_column`]).
