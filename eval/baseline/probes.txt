@@ -732,6 +732,7 @@ C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
 C	probes/match-single-cell-forms-and-texts.case.json	36
 C	probes/match-single-value-lookup-array.case.json	26
+C	probes/match-type-error-reference.case.json	22
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/matdisc-serial-0-60.case.json	160
@@ -2971,7 +2972,6 @@ F	probes/logest-modes.case.json	Sheet1!M92
 F	probes/logest-modes.case.json	Sheet1!M93
 F	probes/logest-modes.case.json	Sheet1!N85
 F	probes/logest-modes.case.json	Sheet1!N86
-F	probes/m2-argument-kind-gaps.case.json	Calc!A25
 F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/odd-bond-argument-check-order.case.json	Calc!A258
 F	probes/regression-trend.case.json	Sheet1!N10

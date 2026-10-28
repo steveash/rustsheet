@@ -1205,3 +1205,12 @@ reference-index rule: a non-numeric value (text, `=""`, an error) read from a ce
 M1/M2 = 4 at A32, A35, while the literals give 3 and 7 at A31, A33). T-2965 extends `match_type_arg`, not a parallel path.
 Status: VERIFIED (web); other error kinds as the reference unprobed.
 Tasks: T-2861, T-2965. Implemented in: not yet (T-2965).
+
+## MATCH match_type that is a reference to an error cell is #REF!
+
+A `match_type` read from a cell holding any error (`#N/A`, `#DIV/0!`, `#NUM!`, `#REF!`, `#VALUE!`,
+`#NAME?`, `#NULL!`) gives `#REF!` (ERROR.TYPE 4), not the propagated error, like non-numeric text
+from a cell. It holds when the reference is picked by `IF` and for a multi-cell range (top-left
+cell). A literal error as `match_type` still propagates it (`NA()` gives `#N/A`, `#DIV/0!` gives
+`#DIV/0!`). VLOOKUP/HLOOKUP `range_lookup` as an error reference propagates the error.
+Evidence: probes/match-type-error-reference E1:E8, F1:F7 (excel-graph, 2026-10-28), T-2965.

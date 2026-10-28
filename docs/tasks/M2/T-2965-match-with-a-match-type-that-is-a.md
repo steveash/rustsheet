@@ -3,7 +3,7 @@ id: T-2965
 title: "MATCH with a match_type that is a reference to a #N/A cell gives #REF! in Excel (probes/m2-argument-kind-gaps Calc!A25)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ Stage 1: the cell is an error-type mismatch (visibly off); the target is the exa
 
 ## Out of scope
 - Other error kinds as the match_type reference until probed.
+
+## Outcome
+MATCH `match_type` read from a cell holding any error kind is now `#REF!` (probed all seven kinds,
+also through IF and a multi-cell range: probes/match-type-error-reference, new). Rule in
+docs/excel-semantics/lookup.md. Eval delta: probes Calc!A25 of m2-argument-kind-gaps now passes
+(baseline -1 failure); the new probe passes in full.
