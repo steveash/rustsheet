@@ -3,7 +3,7 @@ id: T-3048
 title: "Probe the near-zero snap of the final addition in SUMIF, SUMIFS, the AVERAGE family and SUMPRODUCT"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
