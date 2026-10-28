@@ -2684,38 +2684,78 @@ Evidence: probes-numeric case `m9-weibull-dist` (cells A1:A176). Oracle: excel-g
 Status: VERIFIED (excel-graph)
 Tasks: T-1046 (sweep), T-0978
 
-### The far-tail density is less accurate than exp(-t), consistent with t = (x/l)^k through EXP(k*LN(x/l)) (lead)
-In the tail, Excel's density is off the true value by about one rounded logarithm's error times t.
-Match it; do not correct it.
+### The far-tail density is less accurate than exp(-t): t = (x/l)^k is EXP(k*LN(x/l)) (rule, T-2239)
+Rule. WEIBULL.DIST and WEIBULL evaluate, with Excel's own LN and EXP kernels (`excel_ln`, `excel_exp`; numbers.md) and
+each operation a double:
+- t = EXP(k*LN(x/l)), not a correctly rounded power;
+- the density as `k/EXP(k*LN(l)) * EXP((k-1)*LN(x)) * EXP(-t)`, left to right: k over l^k, not `k/l*(x/l)^(k-1)`;
+- the cdf as minus Excel's expm1 of -t (Kahan's formula, numbers.md "Excel's expm1 is Kahan's formula") below t = 1, and
+  as `1-EXP(-t)` from t = 1 on (next entry).
+
+In the tail, Excel's density is off the true value by about one rounded logarithm's error times t. Match it; do not
+correct it.
 - `WEIBULL.DIST(100,1,1,FALSE)` = 3.7200759760206773E-44, while exp(-100) = 3.720075976020836E-44
   (4E-14 relative; m9-weibull-dist A64).
 - `WEIBULL.DIST(1000,1,9,FALSE)` = 6.177532755504216E-50 (A88).
 - `WEIBULL.DIST(5,3.7,1,FALSE)` = 9.363099887555361E-166 (A146).
+- The l^k divisor shows away from the tail too: `WEIBULL(10,3,8,FALSE)` is 0.08310360884023987 (t1048-weibull A8, B8),
+  where the true value, 0.08310360884023976, is what `k/l*(x/l)^(k-1)*exp(-t)` gives.
 
-Computing t = exp(k*ln(x/l)), not `powf`, reproduces this. A double-precision re-run covered the
-230 in-domain cells (x, k, l > 0 with a literal TRUE/FALSE cumulative; 116 cdf, 114 density) of
-m9-weibull-dist, t1048-weibull and t1049-weibulldist. Visibly-off and bit-exact counts are per form:
+Fit (T-2239), over the in-domain cells with literal arguments (x, k, l > 0; 123 cdf, 122 density) of m9-weibull-dist,
+t1048-weibull, t1049-weibulldist, the gen-m9 and probes cells. The cdf rows and the rule's density row use Excel's
+kernels; the other density rows are libm re-runs:
 
 | form | visibly off | bit-exact |
 |---|---|---|
-| cdf `-expm1(-t)` | 0 | 94 |
-| cdf `-expm1(-(x/l)^k)`, `(x/l)^k` via powf | 1 | 74 |
-| cdf, statrs form `-expm1(-x^k*l^-k)` (the engine today) | 1 (m9 A159) | 76 |
-| cdf `1-EXP(-t)` (loses the small-x cells) | 24 | |
-| density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | |
-| density `k/l^k*exp((k-1)*ln x)*exp(-t)` | 2 (t1048 A8, B8) | |
-| density `k/l*(x/l)^(k-1)*exp(-(x/l)^k)`, powf | 15 | |
-| density, statrs form `k/l*(x/l)^(k-1)*exp(-x^k*l^-k)` (the engine today) | 17 | |
+| cdf, the rule above | 0 | 121 (m9 A69 1 ulp; t2706 A34 is subnormal, flushed to 0 in the cell) |
+| cdf `-expm1(-t)` (Excel's expm1) throughout | 0 | 112 (loses near-1 cells: m9 A57, A85, A127, gen-m9 5919660b7bb4d195 A296, ...) |
+| cdf `-expm1(-t)`, libm expm1 | 0 | 99 |
+| cdf `1-EXP(-t)` throughout (loses the small-x cells) | 24 | |
+| cdf, statrs form `-expm1(-x^k*l^-k)` (the engine before T-2239) | 1 (m9 A159) | 80 |
+| density, the rule above | 0 | 120 (t1048 A14, B14 1 ulp) |
+| density `k*exp((k-1)*ln x - k*ln l)*exp(-t)` | 2 (m9 A156, A158) | 97 |
+| density `k/l*exp((k-1)*ln(x/l))*exp(-t)` | 4 (m9 A158, A168; t1048 A8, B8) | 72 |
+| density `k/l*(x/l)^(k-1)*exp(-t)`, powf | 3 (m9 A168; t1048 A8, B8) | 60 |
+| density `k*t/x*exp(-t)` | 7 | 49 |
+| density, statrs form `k/l*(x/l)^(k-1)*exp(-x^k*l^-k)` (the engine before T-2239) | 17 | |
 
-t1048 A8 is `WEIBULL(10,3,8,FALSE)` and B8 its WEIBULL.DIST twin, both 0.08310360884023987. The same t gives
-ironcalc-calc WEIBULL_DIST.xlsx E2 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.08505277126996899).
-The re-runs used libm `exp`/`log`, not Excel's EXP and LN kernels, so the bit-level form is still
-open (T-0978).
-Evidence: probes-numeric m9-weibull-dist A64, A88, A146, t1048-weibull, t1049-weibulldist (excel-graph);
-ironcalc-calc WEIBULL_DIST.xlsx E2 (excel-cached, Microsoft Macintosh Excel).
-Status: the values are VERIFIED (excel-graph); the `exp(k*ln(x/l))` form is UNVERIFIED (a fit lead,
-gap triage 2026-10-21; T-2239, T-0978).
-Tasks: T-2239 (15 digits), T-0978 (last digits)
+t computed as `exp(k*(ln x - ln l))`, `x^k/l^k` or `exp(k ln x)/exp(k ln l)` loses 8 density cells. Libm's `exp`/`log` in
+place of Excel's kernels give the same counts for the rule's density on this set, so it does not separate them; the
+engine uses Excel's.
+The same t gives ironcalc-calc WEIBULL_DIST.xlsx E2 and E3 exactly (`WEIBULL.DIST(0.8,1,9,TRUE)` = 0.08505277126996899).
+Evidence: probes-numeric m9-weibull-dist, t1048-weibull, t1049-weibulldist, t2239-weibull-cdf-switch (excel-graph); gen-m9
+(T-2256 cells, e.g. 5389dd4d5b5739d2 A378, 5cebac1f02bf30f2 A336); ironcalc-calc WEIBULL_DIST.xlsx E2, E3 (excel-cached,
+Microsoft Macintosh Excel).
+Ours: `functions/statistical/weibull.rs` (`scaled_power`, `weibull_cdf`, `weibull_density`).
+Status: VERIFIED (excel-graph) to 15 digits on every cell above; the 3 cells off by 1 ulp stay with T-0978.
+Tasks: T-2239 (15 digits, done), T-0978 (last digits)
+
+### WEIBULL.DIST's cdf switches from expm1 to 1-EXP(-t) near t = 1 (T-2239)
+Rule. Below t = 1 the cdf is minus Excel's expm1 of -t; above, `1-EXP(-t)`. The switch lies between t = 0.99868 and
+t = 1.35: on a 0.0003 grid of t over (0.99, 1.36) the two forms differ in only 29 cells, all below 0.99868 (expm1) or
+above 1.35 (`1-EXP(-t)`), so the exact cut is not observable from these cells; the engine cuts at t = 1.
+- `WEIBULL.DIST(0.9917,1,1,TRUE)` = 0.6290544527285032 (expm1; A113), `WEIBULL.DIST(1.3506,1,1,TRUE)` =
+  0.7409152368565803 (`1-EXP(-t)`; A114).
+- All 291 cells of the probe are cells where the two forms differ in the last bit: 226 below the cut match expm1, 65 above
+  it match `1-EXP(-t)`, for k = 1 and k = 2 alike.
+Evidence: probes-numeric t2239-weibull-cdf-switch (excel-graph, 2026-10-28), m9-weibull-dist A57, A85, A127.
+Ours: `functions/statistical/weibull.rs` `weibull_cdf`.
+Status: VERIFIED (excel-graph)
+
+### WEIBULL's density divides by l^k: #DIV/0! when it underflows, #NUM! when it overflows (T-2239)
+Rule. The density (cumulative FALSE) is `#DIV/0!` when l^k = EXP(k*LN(l)) underflows to 0 and `#NUM!` when it
+overflows, even where the density's limit is 0. The cdf does not form l^k and stays a number there; both forms are
+`#NUM!` when t = (x/l)^k overflows.
+- `WEIBULL.DIST(0.1,10000000000.5,0.2,FALSE)` is `#DIV/0!` (gen-m9/941c409532603d32 A142), as is
+  `WEIBULL(1E-15,<about 42843>,<about 0.32>,FALSE)` (0620505280d2ea6e A61).
+- `WEIBULL.DIST(0.3,99999,99999,"FALSE")` (a63d1c7d6f96c56d A352), `WEIBULL(1,1E+8,1E+10,FALSE)` (7fd0a98183c6babf
+  A390), `WEIBULL.DIST(2,100,10000000000.5,FALSE)` (9bc247733a1ca9fa A108) and `WEIBULL.DIST(1E-10,29178,1.5E+10,"FALSE")`
+  (f82473275380882e A356) are `#NUM!`.
+- t overflows: `WEIBULL.DIST(100,1E+10,0.01,1)` and `WEIBULL(1E+300,2.5,100,0.5)` are `#NUM!` (0bbab6206b5c9a07 A340,
+  329b177b5d5165ad A101), while `WEIBULL(1E+15,42,10000000001,TRUE)` is a number (7f7ca726c3f68554 A308).
+Evidence: gen-m9 cells above (excel-graph, T-2256 triage).
+Ours: `functions/statistical/weibull.rs` `weibull_density`.
+Status: VERIFIED (excel-graph)
 
 ## Legacy distribution names sweep (T-1047)
 Rule: each legacy name returns exactly the same value or error as its modern equivalent on every paired cell (BETADIST = BETA.DIST cum, BETAINV = BETA.INV, BINOMDIST = BINOM.DIST, CHIDIST = CHISQ.DIST.RT, CHIINV = CHISQ.INV.RT, CHITEST = CHISQ.TEST, CONFIDENCE = CONFIDENCE.NORM, CRITBINOM = BINOM.INV, EXPONDIST = EXPON.DIST, FDIST = F.DIST.RT, FINV = F.INV.RT, FTEST = F.TEST); the aliases need no separate kernel.

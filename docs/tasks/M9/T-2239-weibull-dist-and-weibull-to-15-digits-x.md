@@ -3,7 +3,7 @@ id: T-2239
 title: "WEIBULL.DIST and WEIBULL to 15 digits: (x/lambda)^k through exp(k*ln(x/lambda)), as Excel's tail values show (18 visibly-off sweep cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -103,17 +103,17 @@ Cells:
 - gen-m9/f82473275380882e.case.json (1): Calc!A356
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2256): these 44 known-failure lines (the T-2256 cells in Context) disappear from
+- [x] Visible parity (gen-m9, T-2256): these 44 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Every cell in the table is within half a unit of the 15th significant digit of Excel's value.
-- [ ] No other WEIBULL.DIST or WEIBULL cell in m9-weibull-dist, t1048-weibull, t1049-weibulldist or
+- [x] Every cell in the table is within half a unit of the 15th significant digit of Excel's value.
+- [x] No other WEIBULL.DIST or WEIBULL cell in m9-weibull-dist, t1048-weibull, t1049-weibulldist or
       ironcalc-calc WEIBULL_DIST.xlsx becomes visibly off. A cell that moves from bit-exact to
       4 ulp or less follows decision 0083's allowance and is listed in the Outcome.
-- [ ] eval/baseline/ironcalc-calc.txt gains no line. If WEIBULL_DIST.xlsx E2 or E3 leaves it, the
+- [x] eval/baseline/ironcalc-calc.txt gains no line. If WEIBULL_DIST.xlsx E2 or E3 leaves it, the
       baseline is updated with `make eval-baseline` and T-0978 is told in the Outcome.
-- [ ] The chosen form is recorded in statistics.md (the entry above moves from lead to rule, with
+- [x] The chosen form is recorded in statistics.md (the entry above moves from lead to rule, with
       the cells it matches).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - x = 0 densities and boolean arguments (T-2035: t1048-weibull A16/B16, t1049-weibulldist A27).
@@ -123,3 +123,38 @@ Cells:
 This whole task is the visible-parity stage (decision 0083). Its target is every cell it owns within
 half a unit of the 15th significant digit of Excel's value. Any bit-level miss left after that
 stays with T-0978.
+
+## Outcome
+`weibull_dist_of` no longer calls statrs. It now evaluates WEIBULL.DIST and WEIBULL with the engine's own
+`excel_ln`/`excel_exp`/`excel_expm1` kernels:
+- t = EXP(k*LN(x/l));
+- density `k/EXP(k*LN(l)) * EXP((k-1)*LN(x)) * EXP(-t)`;
+- cdf `-expm1(-t)` (Excel's Kahan expm1) below t = 1 and `1-EXP(-t)` from 1 on.
+
+The lead's density `k/l^k*exp((k-1)ln x)*exp(-t)` with l^k as EXP(k*LN(l)) fits t1048 A8/B8 as well, so it fits all 122
+literal density cells to 15 digits (120 of them bit-exact). Excel's expm1 alone lost near-1 cdf cells (m9 A57, A85, A127,
+gen-m9 5919660b7bb4d195 A296, ...). The new probe probes-numeric/t2239-weibull-cdf-switch (291 cells, excel-graph) puts
+the cdf's switch to `1-EXP(-t)` between t = 0.99868 and 1.35. The density's l^k gives Excel's edge errors: an l^k that
+underflows is `#DIV/0!` and one that overflows is `#NUM!`; a t that overflows is `#NUM!`. Unit tests are in
+`test/statistical/test_fn_weibull.rs`. docs/excel-semantics/statistics.md: the lead is now a rule, with the fit
+table, plus two new entries, the cdf switch and the l^k errors.
+
+Eval delta (`make eval`, against origin/main):
+- gen-m9: +36 cells pass, and 36 lines leave eval/baseline/gen-m9.txt. 34 are owned T-2256 lines. The other 10 owned
+  lines had already left on main, so none of the 44 is left. The other 2 are l^k-overflow density cells:
+  530c636749a85209 A61 and c468f5046aadfbbc A294.
+- ironcalc-calc: +2. WEIBULL_DIST.xlsx E2 and E3 both leave the baseline, so T-0978's ironcalc line is done.
+- probes-numeric (ungated): +116 existing cells (118 fixed, 2 newly 1 ulp off), plus the 291 new probe cells, all passing.
+- No other suite changes, and no baseline gains a line.
+
+All 18 cells of the table are now bit-exact.
+
+Cells moved from bit-exact to within 4 ulp (decision 0083): probes-numeric/t1048-weibull A14 and B14,
+`WEIBULL(4,2,4,FALSE)` and its WEIBULL.DIST twin, are now 1 ulp off (0.1839397205857212 vs 0.18393972058572117). No tested
+form fits them.
+
+Left for T-0978 (last digits):
+- t1048 A14, B14;
+- m9-weibull-dist A69, `WEIBULL.DIST(0.001,1,9,TRUE)`, now 1 ulp off (5 before).
+
+Unowned leftovers: none. Follow-ups: none filed; T-0978 already owns the bit-level stage.
