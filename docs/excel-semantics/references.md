@@ -1101,7 +1101,11 @@ its dense walk would read every position and record each blank one, unbounded in
 (`SUM(A:XFD)` beside one far cell is 1.7e10 positions), so past the cap such a formula is
 `#VALUE!` (DEVIATION; `=SUM(MAP(SEQUENCE(65536),LAMBDA(r,SUM(OFFSET(Sheet2!1:1,r,0)))))+SUM(A:J)`
 beside 1 in J1048576 is `#VALUE!`, one row fewer is 1). Smaller blocks alone never make a formula
-`#VALUE!`. Every area of
+`#VALUE!`. A bounded single-column operand of a tailed array argument (`SUM(A2:A70000*1)`, SPEC-0020
+Amendment 1, T-0491) records its rows past the used area as one such rectangle while the budget has
+room, where the materialized reading records them cell by cell, so a formula at the cap reaches it one
+rectangle sooner (DEVIATION, directive 5; never with the budget short, which reads it the ordinary
+way). Every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked

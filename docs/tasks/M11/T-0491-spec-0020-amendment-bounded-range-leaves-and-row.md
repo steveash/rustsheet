@@ -46,11 +46,16 @@ cells are recorded as one rectangle, where `evaluate_range` would read and recor
 corrected the amendment's "Records" bullet to say so.
 
 Tests in `test_tailed_array.rs`, each comparing the tailed result with `TAILED_OFF`:
-- 11 tailed forms: SUM, COUNTA, MIN, COUNT and SUMPRODUCT, with spans that start inside, at the end of and
-  below the used area, on another sheet, and with ROW in a branch.
-- 10 refused forms: mixed spans, a ROW-dependent tail, ROW in a condition, ROW with no range beside it,
-  too few tail rows, and COLUMN.
+- 12 tailed forms: SUM, COUNTA, MIN, COUNT and SUMPRODUCT, with spans that start inside, at the end of and
+  below the used area, on another sheet, and with ROW in a branch. One has a real `#N/IMPL` tail (H4 is
+  `FORECAST.ETS`, which is not implemented) and no ROW, which stays tailed as an ordinary tail error.
+- 11 refused forms: mixed spans, a ROW-dependent tail, ROW in a condition, a real `#N/IMPL` tail beside ROW
+  (taken for the sentinel), ROW with no range beside it, too few tail rows, and COLUMN.
 - A spill into a bounded tail.
+- SUMPRODUCT of bounded arguments with different first rows.
 
-A real `#N/IMPL` in the tail takes the same branch as the sentinel, so the ROW-dependent-tail tests
-exercise the fallback. Eval delta: none expected (`make check` gate). Speed-up measured by T-0492.
+`model.rs` shrinks by 3 lines because the guards moved into `tailed_array.rs`. `docs/excel-semantics/references.md`
+"Seen-range cap" notes that a bounded tailed operand can reach the cap one rectangle sooner (DEVIATION,
+directive 5).
+
+Eval delta: none (`make eval-check`: 0 regressions, 0 fixes). The speed-up is measured by T-0492.

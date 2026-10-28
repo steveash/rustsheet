@@ -18,10 +18,10 @@
 //! row numbers and its tail the sentinel `#N/IMPL`, and a tail element that is the sentinel
 //! leaves the argument to the ordinary reading (SPEC-0020 Amendment 1, T-0491). A range operand
 //! reads what `evaluate_range` reads: its used rows, the rest on record as read empty through
-//! `clip_block_to_used_area`. The tail reads the one-cell references again, which finds them evaluated
-//! and records nothing new. Should the used area grow while the head is evaluated (a spill
-//! evaluated on the way), the head is too short: the argument is then evaluated the ordinary
-//! way, its cells already evaluated.
+//! `clip_block_to_used_area`. The tail reads the one-cell references again, which finds them
+//! evaluated and records nothing new. Should the used area grow while the head is evaluated (a
+//! spill evaluated on the way), the head is too short: the argument is then evaluated the
+//! ordinary way, its cells already evaluated.
 
 use crate::calc_result::CalcResult;
 use crate::expressions::parser::{ArrayNode, Node};
@@ -279,8 +279,9 @@ impl Model {
         for sheet in &leaves.sheets {
             used_end = used_end.max(self.used_area_end_of(*sheet).ok()?.0);
         }
-        // The head is at least the span's first row.
-        let head_end = used_end.clamp(leaves.top, leaves.bottom);
+        // The head is at least the span's first row (`max` then `min`: never a panic, whatever
+        // the span).
+        let head_end = used_end.max(leaves.top).min(leaves.bottom);
         if leaves.bottom - head_end < MIN_TAILED_ROWS {
             return None;
         }
@@ -327,6 +328,9 @@ impl Model {
         cell: CellReferenceIndex,
         range: &CalcResult,
     ) -> Option<CalcResult> {
+        if self.tail_views.is_empty() {
+            return None;
+        }
         let at = address(node);
         let index = self
             .tail_views
@@ -365,8 +369,12 @@ impl Model {
     pub(crate) fn tailed_position(
         &self,
         node: &Node,
+        kind: &Function,
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
+        if *kind != Function::Row || self.tail_views.is_empty() {
+            return None;
+        }
         let at = address(node);
         let view = self
             .tail_views

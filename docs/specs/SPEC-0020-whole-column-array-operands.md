@@ -264,7 +264,9 @@ A range leaf may be any single-column `RangeKind` on one sheet, written with its
   as one rectangle, the record T-0405's block walks make, and makes the same cut as
   `clip_to_used_area` for a whole column. When the formula's seen-range budget cannot pay for the
   rectangle, the block is not cut: the head is then stale, and the argument is read the ordinary
-  way.
+  way. A rectangle spends one from the formula's seen-range budget, where the cell-by-cell
+  reading spends none, so a formula at the cap reaches it one rectangle sooner (references.md
+  "Seen-range cap"; a directive 5 limit, as for the stale-head read under Evaluation).
 - **Size checks.** They apply to the logical size `bottom - top + 1`. For one column that is never
   above the array bound, so as before no size check differs.
 - **Whole columns.** A whole column is the case `top = 1`, `bottom = 1,048,576`. A formula that

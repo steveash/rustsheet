@@ -604,23 +604,13 @@ impl Model {
                     return CalcResult::new_error(Error::ERROR, cell, String::new());
                 };
                 let range = CalcResult::Range { left, right };
-                // A whole-column operand of a tailed aggregate argument (`tailed_array.rs`).
-                if !self.tail_views.is_empty() {
-                    if let Some(value) = self.tailed_operand(node, cell, &range) {
-                        return value;
-                    }
-                }
-                range
+                // A range operand of a tailed argument (`tailed_array.rs`).
+                self.tailed_operand(node, cell, &range).unwrap_or(range)
             }
-            FunctionKind { kind, args } => {
-                // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
-                if *kind == crate::functions::Function::Row && !self.tail_views.is_empty() {
-                    if let Some(value) = self.tailed_position(node, cell) {
-                        return value;
-                    }
-                }
-                self.evaluate_function(kind, args, cell)
-            }
+            // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
+            FunctionKind { kind, args } => self
+                .tailed_position(node, kind, cell)
+                .unwrap_or_else(|| self.evaluate_function(kind, args, cell)),
             NamedFunctionKind { name, args, id } => {
                 self.evaluate_named_function_call(name, args, *id, cell)
             }
