@@ -513,10 +513,11 @@ pub struct TableColumn {
     pub totals_row_function: Option<String>,
     /// The column's calculated-column formula, Excel's `calculatedColumnFormula`. Only whether it
     /// is set is used; its text, the first data row's formula in English without `=`, is an engine
-    /// choice, not yet the file form xlsx stores (T-3033). Set when a typed formula filled the column (T-3024); only a
-    /// column that has one is re-filled by a different typed formula, since a column of identical
-    /// stored formulas without it is not a calculated column (docs/excel-semantics/references.md,
-    /// "Calculated columns", rule 8). Neither read from nor written to xlsx yet (T-2969).
+    /// choice, not yet the file form xlsx stores. Set when a typed formula filled the column
+    /// (T-3024); only a column that has one is re-filled by a different typed formula, since a
+    /// column of identical stored formulas without it is not a calculated column
+    /// (docs/excel-semantics/references.md, "Calculated columns", rule 8). Neither read from nor
+    /// written to xlsx yet (T-2969, T-3033).
     pub calculated_column_formula: Option<String>,
 }
 
