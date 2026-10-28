@@ -612,7 +612,7 @@ with the moves above them held fixed. `PLAN` lists the steps as `CH:stages:moves
 3. The D chain needs more readable stages before any D move counts. Add rungs or anchors where D4/D6 are unreadable
    (0.9517, 1.0309, 1.1023, 1.4531), or use the per-run cap score to pick D moves along the null direction.
 
-## 17. T-2122 run 5 (2026-10-28, single opus worker, ~50 minutes, K3 step 16.2.1)
+## 17. T-2122 run 5 (2026-10-28, single opus worker, K3 steps 16.2.1 and 17.4.2)
 
 Scripts: `t2122/k3_reread.py` (tabulates ladder logs made with a moved set as base; a row is "at zero" when it has
 ≥ 10 rungs and |slope| < 500 cycles/x), `t2122/k3_null.py` (SVD of the N-chain slope equations of the rows at zero:
@@ -670,3 +670,35 @@ and `w5/p5/{hypo,inj,peelk}.c`. The system python has no numpy; use a venv.
    control first; it starts at the same distance from truth.
 3. The D chain: run the same Newton iteration with D9 pinned (`k3_lower.py`'s `DD9`) once ≥ 6 D rows read at
    zero; until then, add anchors where D5/D6 are readable.
+
+### 17.5 Step 17.4.2, first part: the N.S7 box scan from C finds no top inside the ladder's box
+- `t2122/k3_topbox.py`: the ladder covariance from C, in scan2 units (ΔS_7 = (a + b dx + c dx²) u, dx = x − 1.1),
+  is σ_b 376, σ_c 550, corr −0.965. The 3σ box is |b| ≤ 1.1e3, |c| ≤ 1.65e3. The exact-rate tolerance is
+  c ±0.05, b ±0.31.
+- `t2122/k3_topscan.sh` (real) and `k3_topscan_ctl.sh` (planted control: base c7, truth `k3_run5_ctl_truth.txt`)
+  run scan2.py on the rows6 rebuild (`mkrows.py`, now 9.61 M points, 741 cases incl. the k3l ladders, 1,289 runs)
+  over c ±1800 (step 0.5) and |b| ≤ 5e3. They use 4 parts and take ~16 min each on 4 cores. scan2.py has a new
+  `CORDER=center` (c from the base outwards). Logs `k3_topscan{,_ctl}_p[0-3].log` and
+  `k3_topscan{,_ctl}_summary.log`. The checkpoints are not committed; rerun to regenerate them.
+- **The control passes.** S-only rank 0 is 948.6 at (a 0.453, b −9.10, c 227.5); truth is (0.431, −9.06, 227.77)
+  and scores S 961.8. Kept-candidate median 293, sd 53. **The control's base region (|b| < 1, |c| < 2.5) scores
+  643.5**: this is the base bias (the joint score ranks the base first, as in the far control of `w5/p5/README.md`).
+- **Real data: the best candidate in the whole box is the base ridge, 702.2 at (0.453, 0.32, 0.0).** It falls off
+  slowly along b ≈ −0.4c (610 at c −5.5). Kept-candidate median 269, sd 33. No separate peak exists anywhere in the box.
+- Reading: a truth inside the box would score near the control's ~950 (same x, same run count), well above the
+  base bias. The real maximum is the base ridge, only 59 above the control's base bias. So either
+  (1) the real N.S7 top lies outside |b| ≤ 5e3, |c| ≤ 1800, more than 3σ from C, which would contradict the ladder
+  fit (21/29 rows at zero); or (2) **Excel does not store S7 (or S7 and S8) to a double**: with an 80-bit top
+  there is no S7 rounding line to find. Section 3.4 already notes that the noise fingerprint cannot resolve the top
+  2-4 stages, and only 1 of 12 real N7 ladder rows reads at zero against C. (2) is the live hypothesis; it is
+  not yet evidence.
+
+### 17.6 Next steps (replace 17.4.2; 17.4.1 and 17.4.3 stand)
+1. Test the unstored top on the control. Synthesise B from `k3_run5_ctl_truth.txt` with N.S7 (then S7 + S8)
+   left in 80-bit (`maskmodel.res` kn/kd masks), rerun `k3_topscan_ctl.sh` with that data, and check that
+   the peak vanishes and only the base bias (~640) remains. That would be the same picture as the real data.
+2. If it does: re-read the ladders against C with the same unstored top in `phaselib.chain_off`, both for the
+   control and for real data, and check whether the real N7 rows become readable at zero. A structure that makes
+   them read is evidence (the ladder test, not a mask gain).
+3. Then peel from the top of the stored part: scan the first stored N stage (N.S6 with S7 unstored) with
+   scan2.py `J=6` from C, with the planted control first.

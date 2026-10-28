@@ -77,7 +77,10 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
   ladder's floor. Real data: run 4's move A is right, and two Newton steps give set `k3_run5_C.txt`, with 21/29 rows
   at zero (all 11 N3 rows within ±150 cycles/x). C's total move matches run 1's independent consensus. Remaining 1σ
   errors: N9 4.5e6, N8 3.2e3, N5 1.7e3 and N4/N6/N7 40-200 ulps, against exact-rate tolerances of about ±400, ±10
-  and ±1. Next: more N7/N5 ladder rows, then the W5 top grid and FFT peel from C (17.4).
+  and ±1. Then (17.5) scan2's N.S7 box scan from C (3σ box, 9.6 M points): the planted control finds its truth at
+  rank 0 (949 against a base bias of 644), but on real data nothing in the box beats the base ridge (702). Either
+  the top is more than 3σ out, or Excel keeps S7 in 80-bit; the second is the live hypothesis. Next: the
+  unstored-top control and the ladder re-read under it (17.6).
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses

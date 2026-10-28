@@ -1,0 +1,18 @@
+synthetic move [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] func change 0.0e+00
+runs 1289 prep 236s; u_S values [3.46944695e-18]
+truth (alpha, beta, gamma)/u_S = (-293.569, -9.064, 227.774), a mod 1 = 0.431
+at truth: S 961.8  P 82.6  joint 1044.4
+joint null mean -3.1 sd 85.6
+c values to scan: 1800 (resumed 0)
+scan 922s, 18000 candidates
+top S-only: 948.6 (a 0.45 b -9.1 c 227.50) | 866.4 (a 0.52 b -9.4 c 227.50) | 863.7 (a 0.39 b -8.8 c 227.50)
+top joint:
+  joint 1148.3 (Z 13.5)  S 569.4  a 0.469 b 0.00 c -0.50
+  joint 1109.9 (Z 13.0)  S 601.9  a 0.406 b 0.32 c -0.50
+  joint 1098.7 (Z 12.9)  S 591.9  a 0.484 b -0.65 c 1.50
+  joint 1046.9 (Z 12.3)  S 540.2  a 0.562 b -0.97 c 1.50
+  joint 1041.1 (Z 12.2)  S 948.6  a 0.453 b -9.10 c 227.50
+  joint 1026.1 (Z 12.0)  S 566.6  a 0.391 b 0.97 c -2.50
+  joint 1000.5 (Z 11.7)  S 621.1  a 0.469 b -0.32 c 1.50
+  joint 993.4 (Z 11.6)  S 529.0  a 0.469 b 0.65 c -2.50
+truth a mod 1 0.431 b -9.06 c 227.77

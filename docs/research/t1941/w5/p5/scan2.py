@@ -13,6 +13,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, ".."))
 from sc import res
 from meter import sites_and_weights, template, resid, L
+from maskmodel import res as mres
 
 mode = sys.argv[1]
 CH = os.environ.get("CHAIN", "N")
@@ -93,7 +94,8 @@ t0 = time.time()
 for s in segs:
     xx = x[s]
     W, ref = sites_and_weights(N0, D0, xx)
-    Bv = res(xx, Nt, Dt) if mode == "control" else b[s]
+    # KN (T-2122 run 5): synthesise the control's B with the N chain's ops j >= KN left in 80-bit (maskmodel.res)
+    Bv = (res(xx, Nt, Dt) if not os.environ.get("KN") else mres(xx, Nt, Dt, kn=int(os.environ["KN"]))) if mode == "control" else b[s]
     r = resid(xx, Bv, ref)
     c1, u1 = curves(kS, W, r)
     c2, u2 = curves(kP, W, r)
@@ -204,6 +206,9 @@ for fn in ([CKPT] if CKPT else []) + [f_ for f_ in os.environ.get("CKPTS", "").s
 if os.environ.get("MERGE"):
     cgrid = cgrid[:0]
 cgrid = np.array([c_ for c_ in cgrid if round(c_ / CSTEP) not in done])
+# CORDER=center (T-2122 run 5): scan c from the base outwards, so a partial (checkpointed) run covers the likeliest c first
+if os.environ.get("CORDER") == "center":
+    cgrid = cgrid[np.argsort(np.abs(cgrid), kind="stable")]
 print("c values to scan: %d (resumed %d)" % (len(cgrid), len(done)), flush=True)
 ck = open(CKPT, "a") if CKPT else None
 for cc in cgrid:
