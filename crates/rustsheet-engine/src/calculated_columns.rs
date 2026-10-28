@@ -35,8 +35,8 @@ impl Model {
         else {
             return Ok(Vec::new());
         };
-        // The column's one formula, and whether a blank cell was met: blank and formula cells
-        // mixed are no calculated column either.
+        // The column's one formula, and whether a blank cell was met: the other cells must be all
+        // blank or all that formula, so blank and formula cells mixed are no calculated column.
         let mut formula = None;
         let mut blank = false;
         let mut targets = Vec::new();
@@ -64,7 +64,9 @@ impl Model {
     /// [`Model::calculated_column_targets`] found before it was typed, each with its own style.
     /// The formula is stored relative to its cell, so an A1 reference fills shifted, like a fill
     /// down (`=A2*2` gives `=A3*2` a row below; probes/t2957-a1-reference). Nothing is written
-    /// when the cell holds no formula: a typed constant fills nothing.
+    /// when the cell holds no formula: a typed constant fills nothing. A target the write guards
+    /// refuse (`prepare_cell_for_user_input`) ends the fill with an error and the rows before it
+    /// filled; the facade's edit rolls the whole write back.
     pub(crate) fn fill_calculated_column(
         &mut self,
         sheet: u32,
