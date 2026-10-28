@@ -1410,8 +1410,8 @@ before the LAMBDA charge), with the body `r+c+z+r+c+z+r+c+z` 3.3 s, with `LAMBDA
 second call's charge fails) and of smaller RATE calls 5.2 s, of lifted YIELD 7.6-7.9 s (each call refused by its own cap
 since T-2879, so these are node units). One call at its visit cap (2026-10-27, before T-2923's re-fit, which does not change
 visit units): RATE 2.4 s, ODDLPRICE 1.1 s, CHISQ.DIST and POISSON.DIST 0.4 s, GAMMA.INV and GAMMA.DIST under 0.1 s, COUNTIF
-and SUMIFS over 1,024 cells 0.1 and 0.4 s. The LAMBDAs a formula makes stay stored until the evaluation ends, so a
-recalculation of many such formulas still slows each later one (T-2925). Array cells read by aggregates and other
+and SUMIFS over 1,024 cells 0.1 and 0.4 s. The LAMBDAs a formula makes are dropped once its root cell is evaluated, so a
+recalculation of many such formulas does not slow each later one (T-2925). Array cells read by aggregates and other
 whole-array readers are not charged yet (T-2804, T-2805).
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/area_budget.rs (`MAX_FORMULA_WORK`, `Model::spend_work`, `Model::with_area_budget`),

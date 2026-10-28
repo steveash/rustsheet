@@ -423,6 +423,7 @@ fn a_root_cells_lambdas_are_dropped_once_it_is_evaluated() {
     assert!(model.lambdas.is_empty());
     assert!(model.eta_lambdas.is_empty());
     assert!(model.lambda_captures.is_empty());
+    assert!(model.named_lambdas.is_empty());
     // Ids keep growing across root cells: a patched body's mark compares them.
     assert!(model.last_lambda_id > 0);
 

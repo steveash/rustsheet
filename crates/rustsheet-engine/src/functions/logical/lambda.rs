@@ -47,8 +47,8 @@ pub(crate) struct NamedLambdas {
 }
 
 impl NamedLambdas {
-    /// Drops the defined-name LAMBDAs given an id from `mark` on, with their patched bodies: the
-    /// root formula that named them is evaluated (`Model::evaluate_root_cell`, T-2925).
+    /// Drops the defined-name LAMBDAs made with an id of at least `mark`, with their patched bodies,
+    /// once the root formula that named them is evaluated (`Model::evaluate_root_cell`, T-2925).
     pub(crate) fn drop_since(&mut self, mark: usize) {
         if self.named.is_empty() {
             return;
@@ -56,6 +56,12 @@ impl NamedLambdas {
         self.ids.retain(|_, (_, id)| *id < mark);
         self.named.retain(|id| *id < mark);
         self.prepared.retain(|(id, _), _| *id < mark);
+    }
+
+    /// Whether no defined-name LAMBDA is kept (for the tests of T-2925).
+    #[cfg(test)]
+    pub(crate) fn is_empty(&self) -> bool {
+        self.ids.is_empty() && self.named.is_empty() && self.prepared.is_empty()
     }
 }
 

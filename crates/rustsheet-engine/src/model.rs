@@ -263,6 +263,11 @@ impl Model {
         let mark = self.last_lambda_id;
         self.evaluate_cell(cell);
         self.drop_lambdas_since(mark);
+        self.clear_formula_scratch();
+    }
+    /// Drops what LAMBDAs captured and the nested-array budgets: they belong to one formula, so a
+    /// root cell and a whole evaluation both end them.
+    fn clear_formula_scratch(&mut self) {
         self.lambda_captures.clear();
         self.captured_cells = 0;
         self.nested_budget = crate::nested_array::NestedBudget::default();
@@ -285,9 +290,7 @@ impl Model {
         self.lambdas.clear();
         self.eta_lambdas.clear();
         self.named_lambdas = NamedLambdas::default();
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
+        self.clear_formula_scratch();
         self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
