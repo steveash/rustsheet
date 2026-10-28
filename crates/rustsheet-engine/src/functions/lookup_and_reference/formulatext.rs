@@ -7,7 +7,9 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::limits::check_range_size;
-use crate::reference_operators::{not_a_reference_array, Ranges, RefArg, RefElement, RefGrid};
+use crate::reference_operators::{
+    not_a_reference_array, several_areas, Ranges, RefArg, RefElement, RefGrid,
+};
 use crate::{calc_result::CalcResult, model::Model};
 
 impl Model {
@@ -19,11 +21,14 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
+        // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it
+        // picks. A bare union is read the same way: its first area is the reference.
+        let picks_reference = match args[0].ungrouped() {
+            Node::FunctionKind { kind, .. } => kind.may_be_reference(),
+            node => matches!(node, Node::OpUnionKind { .. }),
+        };
         let reference = match args[0].ungrouped() {
-            // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it picks.
-            // A bare union is read the same way: its first area is the reference.
-            node @ (Node::FunctionKind { .. } | Node::OpUnionKind { .. }) if !matches!(node, Node::FunctionKind { kind, .. } if !kind.may_be_reference()) =>
-            {
+            _ if picks_reference => {
                 match self.evaluate_picked_reference_arg(&args[0], cell) {
                     RefArg::Ranges(Ranges::One(Range { left, right })) => {
                         CalcResult::Range { left, right }
@@ -33,7 +38,9 @@ impl Model {
                     // docs/excel-semantics/references.md "FORMULATEXT of a multi-area reference
                     // and of a multi-cell INDIRECT element").
                     RefArg::Ranges(Ranges::Areas(areas)) => {
-                        let Range { left, right } = areas.first();
+                        let Some(Range { left, right }) = areas.first() else {
+                            return several_areas(cell);
+                        };
                         CalcResult::Range { left, right }
                     }
                     RefArg::Grid(grid) => return self.formula_texts_of_grid(&grid, cell),
@@ -101,7 +108,7 @@ impl Model {
     /// FORMULATEXT of each element of a lifted reference call (`INDIRECT({"Data!A1","Data!A2"})`
     /// spills `#N/A`, `=A1+1`; probes/formulatext-pick-scalars-and-arrays K1:T1): a one-cell
     /// element is its cell's formula text, an error element itself. A multi-cell element is
-    /// `#VALUE!` (unprobed). The total text is bounded (CLAUDE.md directive 5).
+    /// its top-left cell's text. The total text is bounded (CLAUDE.md directive 5).
     fn formula_texts_of_grid(&self, grid: &RefGrid, cell: CellReferenceIndex) -> CalcResult {
         let (rows, columns) = grid.dims();
         let mut text_bytes = 0;
