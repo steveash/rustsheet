@@ -68,3 +68,16 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Progress (opus run 2026-10-28, session budget ran out; branch pushed, nothing implemented)
+- gen-m9/35e8168aae2b00f8 A159 `BETADIST(1E-10,0.5,10000000000.5)`: mpmath at 50 digits gives
+  0.84270079296528140805631583..., so Excel's 0.8427007929652814 is correctly rounded. Ours is 1.7E-7 relative off.
+- The cause is not the prefactor's logs: `large_prefactor` already takes ln(1 - y) near 1 (`ln_near_one`). The point
+  is reflected at the mean (x = 1E-10 > a/(a+b) = 5E-11) to I_y(1E10, 0.5), and Cephes' continued fraction cannot
+  converge there within its 300-term cap: the fraction needs on the order of sqrt(a) terms at a shape of 1E10.
+- bratio's dispatch (`bratio::small_shape_branch`) sends this point to `Branch::Bgrat`: a0 = 0.5 <= 1,
+  (x0 b0)^a0 = 1.00000000005^0.5 > 0.7, and b0 > 15. bgrat is not ported yet, so the point falls back to
+  `incomplete_beta::beta_tails`. The fix for A159 is the bgrat port that T-2510 owns (TOMS 708 `bgrat`, with `grat1`
+  for the incomplete-gamma start). This task should probably take T-2510 in `depends_on`, or narrow A159 out to it.
+  The next run decides.
+- Not looked at yet: the probes-numeric cells D85, D86, E56 and F6, and the nine BETA.INV ulp lines.
