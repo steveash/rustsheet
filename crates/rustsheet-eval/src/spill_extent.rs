@@ -253,7 +253,7 @@ mod tests {
             r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{}},
             "tables":[{{"name":"T","ref":"B3:C7"}}]}}],
             "sheet_ops":[{}]}}"#,
-            vec![r#"{"op":"delete_row","sheet":"S","row":4}"#; 4].join(",")
+            [r#"{"op":"delete_row","sheet":"S","row":4}"#; 4].join(",")
         );
         let spec: CaseSpec = serde_json::from_str(&json).expect("spec");
         let c10 = Addr::parse("C10").expect("addr");
