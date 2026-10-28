@@ -3,7 +3,7 @@ id: T-3010
 title: "Merge lock wait command, rate-limited PR-finished read, and skills that wait instead of retrying"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
