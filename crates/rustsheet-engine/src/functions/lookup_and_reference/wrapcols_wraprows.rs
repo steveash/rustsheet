@@ -58,7 +58,9 @@ impl Model {
             _ => false,
         };
         if empty {
-            return Err(VectorError::NotVector(CalcResult::new_error(
+            // Unlike a 2-D array, an empty cell's `#VALUE!` comes before an error wrap_count:
+            // `WRAPCOLS(Z1,NA())` is `#VALUE!` (probes/t2479-wrapcols-notvector-expand-padarray G9, G12).
+            return Err(VectorError::Error(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "An empty cell is not a vector".to_string(),
@@ -177,7 +179,7 @@ impl Model {
 enum VectorError {
     /// The argument is an error value, which is every element's result.
     Error(CalcResult),
-    /// The `#VALUE!` for a 2-D array or a single empty cell, which an error `wrap_count` replaces.
+    /// The `#VALUE!` for a 2-D array, which an error `wrap_count` replaces.
     NotVector(CalcResult),
 }
 
