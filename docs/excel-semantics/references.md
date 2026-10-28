@@ -890,6 +890,8 @@ body (`=#N/A`, `=#DIV/0!`, `=#REF!`) evaluate to that error; and `SHEET(name)` o
 Status: VERIFIED
 The formula text keeps the prefix: FORMULATEXT prints `=SUM(S!#REF!)` (probes/table-edits
 plain-range-delete-row-first F!A6 and table-delete-column-qty F!A7, excel-graph; T-2855).
+Unprobed (T-3062): the text after the sheet is renamed or deleted, a wholly deleted range with no sheet
+prefix (printed `#REF!`), and the case of a typed sheet name.
 Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula; the
 prefix is kept as `Node::SheetRefErrorKind` in the written tree only), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body), `fn_sheet` (SHEET of such a name).
 Tasks: T-0152, T-0169, T-2855
