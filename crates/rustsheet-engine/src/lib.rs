@@ -57,6 +57,7 @@ pub use crate::constants::{LAST_COLUMN, LAST_ROW};
 mod actions;
 mod area_budget;
 mod arithmetic;
+mod calculated_columns;
 mod call_arguments;
 mod cast;
 mod cf_styles;
