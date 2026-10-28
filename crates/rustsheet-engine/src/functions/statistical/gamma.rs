@@ -158,7 +158,7 @@ impl Model {
         if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
         }
-        let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && 0.0 < p && p < 1.0 {
+        let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && p > 0.0 && p < 1.0 {
             let z = normal_quantile(p, 0.0, 1.0, cell)?;
             wilson_hilferty_quantile(alpha, z) * beta_scale
         } else {

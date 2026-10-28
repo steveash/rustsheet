@@ -410,11 +410,36 @@ fn quantiles_in_the_tails_are_excel_s() {
 fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
     let close = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 4.0 * f64::EPSILON;
     // A34, A23: GAMMA.INV(0.5,1E13,1) and GAMMA.INV(0.5,1E300,1).
-    assert!(close(wilson_hilferty_quantile(1e13, 0.0), 10_002_658_235_505.422));
-    assert!(close(wilson_hilferty_quantile(1e300, 0.0), 1.000_265_823_550_575_5e300));
+    assert!(close(
+        wilson_hilferty_quantile(1e13, 0.0),
+        10_002_658_235_505.422
+    ));
+    assert!(close(
+        wilson_hilferty_quantile(1e300, 0.0),
+        1.000_265_823_550_575_5e300
+    ));
     // A32: p = 0.1, z = -1.2815515655446004.
     assert!(close(
         wilson_hilferty_quantile(1e13, -1.281_551_565_544_600_4),
         10_002_654_182_255.533
+    ));
+    // At shape 1E11 the fit is within 3E-13 relative (A62, A70, A77; 1,546, 149 and 721 ulps, the
+    // z^2 term T-3070 owns), as at 2E10 (A7, 599 ulps).
+    let near = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 3e-13;
+    assert!(near(
+        wilson_hilferty_quantile(1e11, -11.464_024_688_443_377),
+        100_022_956_593.373_21
+    ));
+    assert!(near(
+        wilson_hilferty_quantile(1e11, 0.0),
+        100_026_582_354.721_88
+    ));
+    assert!(near(
+        wilson_hilferty_quantile(1e11, 7.941_444_487_415_977),
+        100_029_094_070.505_65
+    ));
+    assert!(near(
+        wilson_hilferty_quantile(2e10, 0.0),
+        20_005_316_470.675_835
     ));
 }

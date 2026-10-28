@@ -41,38 +41,16 @@ recorded.
   - `INCOMPLETE_GAMMA_WEIGHT` (lift/kinds/statistical.rs): a cdf from shape 1E8 is now one term, so its bound only
     over-charges there; re-derive it if an inversion changes.
 
-## Progress (run 1, 2026-10-28; session budget, branch pushed in flight)
-- Probe probes/t2982-gamma-inv-huge-shape (123 cells, excel-graph) and docs/excel-semantics/statistics.md "GAMMA.INV and
-  CHISQ.INV at a huge shape": the quantile is close to true up to shape 5E9, mostly `#NUM!` at 7E9-1E10 (17 of 18 p at
-  1E10), and from 2E10 to 1E300 the true quantile times c = 1.0002658235505755 at p = 0.5, any scale. In the tails it
-  is not exactly c·q: at shape 1E13, p = 1E-300 (A24) Excel is 12,972 below c·Q(p, a) and 2,600 above Q(p, a·c); every
-  gen-m9 huge-shape cell (A327, A341, A239, A338, A296) and E5 is within about 1E-11 of c·q, so c·q alone is not
-  visibly right in the tails. The residual is linear in z: at shape 1E13, Excel - c·Q(p, a) = -1.10726E-4 · z · sqrt(a)
-  for p = 1E-300 ... 0.001 (A24-A30; constant to 6 digits, z the normal quantile of p), and the (z^2 - 1)/3 skew term
-  is the true gamma's (a plain normal would drift by 456 at z = -37). So Excel's centre is c·a and its spread
-  1.0001551·sqrt(a): as a gamma quantile, Q(p, a·1.00022144)·1.0000443, neither factor obviously meaningful. Check the
-  same at shape 1E11: k = 1.10726E-4 for p = 1E-5 ... 1E-10, drifting to 1.10740E-4 at p = 1E-300 (A60-A65), so the model
-  x = c·Q(p, a) - k·z·sqrt(a) is shape-independent to leading order, with a small z^2-order term left (0.13 at 1E11,
-  1E-12 relative: still visible). The scratch solver (mpmath, dps 60, Temme C_0..C_3, Anderson on ln P) fails for
-  p >= 0.01 at 1E11 and p >= 0.01 at 1E13: solve the upper tail there. Next: find what produces c (it is the inversion's: the cdf has no factor) — a shifted
-  start, a transformed search variable, or a mapped shape; fit A24-A77 (two p sweeps) to it. scratch tools: mpmath with
-  Temme's C_0..C_3 for the reference quantile (mpmath's gammainc does not converge at a = 1E13).
-- Done on the branch: the cdf where x / beta underflows is 0 at every shape (A117-A122; was 1 below a shape of about
-  1E-15), and the density where x / beta overflows is `#NUM!` (E18). E18, A118, A119 pass.
-- Not probed yet: the density #NUM! cut and the cdf cut near 1E76 (excel-graph refused the workbooks holding
-  `GAMMA.DIST(2,1E40..1E100,1E10,TRUE)` and densities at shapes 1E10-1E11; try one cell per workbook). Temme's tails at
-  the 1E8 cut: A144-A146 (shape 99999999, the series side) are about 1E-15 relative off, A145 (shape 1E8) too.
-
-## Progress (run 2, 2026-10-28)
-- Resumed the idle branch (opus worker, step 2 of the routine). Found the factor's form: c^(1/3) - 1 = 0.0000886, and
-  Excel's value from shape 2E10 is a·(1 + 0.0000886 - 1/(9a) + z·s/(3·sqrt a))^3 with s = 1 - 2.2106E-5 (fitted).
-
 ## Acceptance criteria
-- [ ] probes/incomplete-gamma-cap E5, E15, E18 pass, E13, E14, E19 bit-exact or named in the Outcome with their ulp; no
-      loop whose length depends on argument values beyond the T-1872 caps.
-- [ ] The underflow rule is probed below shape 1 and near 0 and matched or recorded.
-- [ ] The owned gen-m9 and t2435 cells are fixed or handed on with a reason; no new known-failure lines.
-- [ ] `make check` green; reviewers approve.
+Amended at the split (2026-10-28, run 2): the shapes below 2E10, the chi-square df cap and the last digits moved to
+T-3070 with their cells.
+- [x] probes/incomplete-gamma-cap E5 and E18 pass; E13, E14, E15, E19 named in T-3070 (E15 is the 1E9-5E9 band,
+      E13, E14, E19 1 ulp each, unchanged); no loop whose length depends on argument values (the closed form is O(1)).
+- [x] The underflow rule is probed below shape 1 and near 0 (A117-A122) and matched (0 at every shape).
+- [x] No new known-failure lines on existing cases (gen-m9 and probes shrink by 1 and 11); the new probe's remaining
+      known failures (the 63 `F` lines of probes/t2982-gamma-inv-huge-shape, new coverage) are each T-3070's, as are the
+      owned gen-m9 and t2435 cells, which sit at shapes 1E9 to 1E10 or are a small-shape inversion's (T-0972).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).
@@ -86,4 +64,8 @@ recorded.
 - Split to T-3070 (session budget and the evidence): shapes 1E9 to 2E10 (E15, A2-A4, the `#NUM!` band, A44), CHIINV and
   CHISQ.INV.RT above the 1E10 df cap (A92, A93), the 1E11 z^2 term, Temme's tails at the 1E8 cut (A144-A146), E13,
   E14, E19 and the gen-m9 cells. The underflow rule below shape 1 is probed and matched (criterion 2).
-- Eval delta: probes/t2982-gamma-inv-huge-shape 49 -> 60 passing of 123 (see the PR for the full delta).
+- How the form was found: c^(1/3) - 1 is 0.0000886 to 13 digits, and (x/a)^(1/3) less 1 + 0.0000886 - 1/(9a) is
+  linear in z with slope s/(3 sqrt a), s = 1 - 2.2106E-5, at shapes 1E11 and 1E13 alike (A25-A77); the earlier
+  reading as c times the true quantile plus a z term was the same cube expanded.
+- Eval delta: known failures gen-m9 3319 -> 3318, probes 2607 -> 2596 (fixed 12, regressions 0);
+  probes/t2982-gamma-inv-huge-shape 49 -> 60 of 123.
