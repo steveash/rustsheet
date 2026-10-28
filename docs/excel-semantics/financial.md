@@ -682,7 +682,7 @@ Which flows return does not depend on the guess.
 and the same scaled by 1E6 and negated (rows 101-112), while N = 163 to 375 and 400 return. The engine's Newton from v = 0
 converges there within its cap, so Excel's fallback gives up on a condition the rule lacks (a step cap below ours, or a stop on |P|
 that the large first flow defeats).
-Fit (T-2928 attempt 1, `uv run rustsheet-fitlab irr-fallback`, kernels/solvers.py `irr_fallback_candidates`; 212
+Fit (T-2928 attempt 1, `uv run rustsheet-fitlab irr-fallback`, kernels/irr_fallback.py `irr_fallback_candidates`; 212
 cells of the sweep and irr-fallback-roots, the `#NUM!` cells included; bit-exact / within 4 ulp / within 1E-9, each
 candidate run as the fallback alone, the engine with its secant first): the engine 72/108/191; Newton in v from 0 as
 the engine 63/98/179, with |P(next)| < 1E-7 added 69/104/183, |dv| < 1E-10 67/101/179, < 1E-8 65/101/179, < 1E-7

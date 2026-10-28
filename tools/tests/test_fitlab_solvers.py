@@ -8,7 +8,7 @@ import math
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import registry, solvers, xirr, yield_caret
+from rustsheet_tools.fitlab.kernels import irr_fallback, registry, solvers, xirr, yield_caret
 from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
 
 
@@ -341,7 +341,7 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
 def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:
     # The engine's fallback digits (T-2928): `{42,1,1,-1}` converges to -0.7467044766537408, the
     # correctly rounded root, where Excel returns -0.7467044766537371 (probes/irr-fallback-roots A12).
-    engine = solvers.irr_fallback_newton()
+    engine = irr_fallback.irr_fallback_newton()
     assert engine([42.0, 1.0, 1.0, -1.0]) == -0.7467044766537408
     assert engine([0.0, 2.0, -1.0]) == pytest.approx(-0.5)  # leading zeros dropped (T-2727)
     with pytest.raises(solvers.NoResultError):  # P's root nearest v = 0 is negative: #NUM! (T-2727)
@@ -351,4 +351,4 @@ def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -
     scaled = [-656e6, 1e6, 1e6, 1e6, 1e6, 1e6]
     assert engine(scaled) == pytest.approx(-0.7072347712570631)
     with pytest.raises(solvers.NoResultError):
-        solvers.irr_fallback_newton(residual=1e-7)(scaled)
+        irr_fallback.irr_fallback_newton(residual=1e-7)(scaled)

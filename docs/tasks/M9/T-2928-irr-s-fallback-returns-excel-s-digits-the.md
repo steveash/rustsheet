@@ -89,7 +89,7 @@ cell is still a few ulp off then, it moves to a follow-up task filed with `defer
 in the Outcome.
 
 ## Attempt 1 (decision 0056)
-2026-10-28, opus run. Added the fit-lab family `irr-fallback` (kernels/solvers.py `irr_fallback_candidates`,
+2026-10-28, opus run. Added the fit-lab family `irr-fallback` (kernels/irr_fallback.py `irr_fallback_candidates`,
 `irr_fallback_newton`; `uv run rustsheet-fitlab irr-fallback`) over the T-2927 sweep and probes/irr-fallback-roots
 (212 cells, `#NUM!` included). Every candidate the Context lists is scored, and none raises the bit-exact count: the
 engine is 72 bit-exact, the best fallback variant (Newton in v from 0 with |P| < 1E-7) 69 against the same Newton's
