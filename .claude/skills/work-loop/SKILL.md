@@ -106,8 +106,8 @@ file and its acceptance criteria.
    **squash-merge under the merge lock** (the `steward` skill's "Merge lock", decision 0075):
    `make merge-lock-acquire PR=<n>`, then, holding it, bring `origin/main` in if the branch is
    behind and wait for CI on that head, run the mechanical up-to-date check (decision 0028),
-   merge, and `make merge-lock-release`. If the lock is busy, start the next task and come back to the merge
-   at the PR's next event or check-in. Once the
+   merge, and `make merge-lock-release`. If the lock is busy, run `make merge-lock-wait PR=<n>` in
+   the background and start the next task; come back to the merge when it exits 0 (held). Once the
    merge queue is on (decision 0053; dormant while the merge lock of decision 0075 is in force), enqueue with `enable_pr_auto_merge` (`mergeMethod: SQUASH`)
    instead of merging, and skip the up-to-date check; the queue does it.
 4. Delete the branch.

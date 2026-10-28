@@ -23,6 +23,46 @@ fn test_frequency_basic() {
     assert_eq!(model._get_text("C3"), "1");
 }
 
+// Evidence: probes/frequency-bins (excel-graph, 2026-10-24, T-2427).
+#[test]
+fn test_frequency_rows_and_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("B1", "=ROWS(FREQUENCY({1;2;3},2))");
+    model._set("B2", "=ROWS(FREQUENCY({1;2},A1))");
+    model._set("B3", "=INDEX(FREQUENCY({1;2;3},\"a\"),2)");
+    model._set("B4", "=FREQUENCY(NA(),{1;2})");
+    model._set("B5", "=FREQUENCY({1;2},NA())");
+    model._set("B6", "=FREQUENCY({1;#DIV/0!},NA())");
+    model._set("B7", "=FREQUENCY(1/0,NA())");
+    model._set("B8", "=T.TEST({0.02,0.027},2,44,NA())");
+    model._set("B9", "=T.TEST({0.02,0.027},2,44,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("B8"), "#N/A");
+    assert_eq!(model._get_text("B9"), "#NUM!");
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "2");
+    assert_eq!(model._get_text("B3"), "3");
+    assert_eq!(model._get_text("B4"), "#N/A");
+    assert_eq!(model._get_text("B5"), "#N/A");
+    assert_eq!(model._get_text("B6"), "#N/A");
+    assert_eq!(model._get_text("B7"), "#DIV/0!");
+}
+
+/// What T-2427 leaves as on `main`, unprobed (T-2636): an error cell in a data range comes before a
+/// scalar bins error, and an error element of the bins array is `#VALUE!`.
+#[test]
+fn test_frequency_unprobed_orders_keep_main() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "=1/0");
+    model._set("B1", "=FREQUENCY(A1:A2,NA())");
+    model._set("B2", "=FREQUENCY({1;2},{1,#N/A})");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#DIV/0!");
+    assert_eq!(model._get_text("B2"), "#VALUE!");
+}
+
 // Evidence: probes/mode-typed-arguments A21-A29 (excel-graph, 2026-10-16, T-1291), which supersedes
 // the inference from poi EverythingTests row 936 (T-0947): typed and referenced text is skipped, a
 // direct error propagates, and a blank single-cell reference or an empty argument is `#VALUE!`.
