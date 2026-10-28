@@ -159,3 +159,20 @@ fn test_fn_gammaln_precise() {
 
     assert_eq!(model._get_text("A4"), *"#NUM!");
 }
+
+/// From a shape of 2E10 GAMMA.INV is Excel's closed form, 1.000266 times the shape at p = 0.5 and
+/// any scale (probes/t2982-gamma-inv-huge-shape A80, A86; T-2982); p = 1 stays `#NUM!`.
+#[test]
+fn test_fn_gamma_inv_huge_shape() {
+    let mut model = new_empty_model();
+    model._set("A1", "=GAMMA.INV(0.5,1E13,2)/(2*1E13)");
+    model._set("A2", "=GAMMAINV(0.5,1E300,1E8)/(1E8*1E300)");
+    model._set("A3", "=GAMMA.INV(1,1E13,1)");
+    model._set("A4", "=GAMMA.INV(0.5,1E9,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1.000265824");
+    assert_eq!(model._get_text("A2"), *"1.000265824");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    // Below the cut the search's true quantile, about a - 1/3.
+    assert_eq!(model._get_text("A4"), *"999999999.7");
+}
