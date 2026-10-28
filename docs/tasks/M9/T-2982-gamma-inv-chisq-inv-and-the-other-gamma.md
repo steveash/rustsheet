@@ -4,7 +4,7 @@ title: "GAMMA.INV, CHISQ.INV and the other gamma inversions give Excel's values 
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: [T-1891]

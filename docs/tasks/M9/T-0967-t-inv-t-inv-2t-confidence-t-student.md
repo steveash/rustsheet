@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-0969, T-1043]
+depends_on: [T-0969, T-1043, T-2511]
 ---
 
 ## Goal
@@ -168,6 +168,9 @@ T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T
 - gen-m9/5395b8a427764a3f Calc!A347 `=T.INV.2T(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
 - gen-m9/787ba8d801105a60 Calc!A265 `=TINV(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
 - gen-m9/1db18890916ee643 Calc!A106 `=TINV(1.5,10)`: Excel -0.6998120613124317, ours -0.6998120613124311
+
+Sequencing (T-0098, 2026-10-28): waits on T-2511, which inverts the ported incomplete beta for T.INV; fit the
+quantile on the ported kernel, not the current one, so the work is not done twice.
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 269 known-failure lines (35 from T-2255, 234 from T-2256) disappear from eval/baseline/gen-m9.txt
