@@ -3,7 +3,7 @@ id: T-2097
 title: "Displayed text: the minus goes before a leading literal in a General section (\"x\"General on -1.5 is -x1.5)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -50,3 +50,6 @@ minus, and Excel shows "-x0.5" (9a8b7d68 F!I1). `TEXT(5,"x General")` and `TEXT(
 ## Out of scope
 - `General` after a digit placeholder, a date token or `%`, and a second `General` (T-1614's probe).
   A negative value with `General` before the literal (`General x`) is unprobed: keep its current output.
+
+## Outcome
+Fixed in `format.rs` (shared with T-2850); unit tests in test_general.rs. 15 gen-m10 text cells now pass.

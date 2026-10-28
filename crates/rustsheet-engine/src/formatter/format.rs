@@ -1,6 +1,6 @@
 use super::elapsed::{elapsed_text, DisplayClock, ElapsedUnit};
 use super::fraction::{comma_exponent, format_fraction};
-use super::general::format_general;
+use super::general::{format_general, lead_abs};
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
     decimal_round::{round_engineering, round_scientific, round_shown_place},
@@ -787,9 +787,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let is_negative = value <= -(10.0_f64.powf(-(p.precision as f64)));
             let mut needs_period = false;
             // With no integer placeholder no digit carries the minus, so it leads the literals
-            // (`TEXT(-PI(),"x")` = "-x", `TEXT(-5,"2")` = "-2"; probes/text-format-bare-literals A3, A7).
+            // (`TEXT(-PI(),"x")` = "-x", `TEXT(-5,"2")` = "-2"; probes/text-format-bare-literals A3, A7;
+            // `"x"General` on -1.5 is "-x1.5", General then shows |value|: gen-m10 F!D19).
             let has_general = tokens.iter().any(|t| matches!(t, TextToken::General));
-            if digit_count == 0 && is_negative && !has_general {
+            if digit_count == 0 && (is_negative || (has_general && general_value < 0.0)) {
                 text = format!("-{text}");
             }
 
@@ -814,7 +815,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         text = format!("{text}{value}");
                     }
                     TextToken::General => {
-                        text.push_str(&general_text(general_value, locale));
+                        text.push_str(&general_text(lead_abs(general_value, digit_count), locale));
                     }
                     TextToken::Period => {
                         if p.precision == 0 {
