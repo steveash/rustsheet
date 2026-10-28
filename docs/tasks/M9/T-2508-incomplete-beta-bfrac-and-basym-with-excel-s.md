@@ -28,6 +28,15 @@ density times x·y (T-2507).
     density for a, b > 2 sets the floor.
 - r2-impact's expected change: -83 visibly-off pre-T2464 cells and -438 in the w2f probes, with 1 broke.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells whose bratio dispatch (`bratio::dispatch`) is bfrac (b0 >= 40); the cases' other cells are routed by branch in T-2981's Outcome. 64 visibly-off cells in 6 cases, per case:
+- probes-numeric/m9-beta-dist-a10: BETA.DIST cdf, bfrac 1
+- probes-numeric/m9-beta-dist-a100: BETA.DIST cdf, bfrac 2
+- probes-numeric/m9-beta-dist-a50: BETA.DIST cdf, bfrac 3
+- probes-numeric/t1538-beta-dist-at-excel-inv: BETA.DIST cdf, bfrac 3, F.DIST cdf, bfrac 2
+- probes-numeric/t2220-f-dist-sweep-cdf: F.DIST cdf, bfrac 24
+- probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, bfrac 29
+
 ## Acceptance criteria
 - [ ] The bfrac cells of r2-bratio's sets score at least 146 bit-exact and 685 within 15 digits of 1,316, with the
       engine's T-2507 density.

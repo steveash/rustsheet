@@ -136,6 +136,10 @@ class Client:
         """The PR's conversation comments (issue comments), oldest first."""
         return self.pages(f"issues/{number(pr)}/comments")
 
+    def reviews(self, pr: int | str) -> list[object]:
+        """The PR's reviews, oldest first."""
+        return self.pages(f"pulls/{number(pr)}/reviews")
+
     def permission(self, login: str) -> str:
         """`login`'s permission on the repository: admin, maintain, write, triage, read or none."""
         reply = as_dict(self.call("GET", f"collaborators/{checked(LOGIN, login, 'login')}/permission"))
