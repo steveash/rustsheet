@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2388: TEXT with a lone B1 calendar prefix. Column A: TEXT(3,code), B: TEXT(0,code), C: TEXT(-3,code), same code per row.",
+ "tags": [
+  "M10",
+  "probe",
+  "text",
+  "number-format"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(3,\"b1\")",
+    "B1": "=TEXT(0,\"b1\")",
+    "C1": "=TEXT(-3,\"b1\")",
+    "A2": "=TEXT(3,\"B1\")",
+    "B2": "=TEXT(0,\"B1\")",
+    "C2": "=TEXT(-3,\"B1\")",
+    "A3": "=TEXT(3,\"b1 x\")",
+    "B3": "=TEXT(0,\"b1 x\")",
+    "C3": "=TEXT(-3,\"b1 x\")",
+    "A4": "=TEXT(3,\"B1@\")",
+    "B4": "=TEXT(0,\"B1@\")",
+    "C4": "=TEXT(-3,\"B1@\")",
+    "A5": "=TEXT(3,\"[$-40C]B1\")",
+    "B5": "=TEXT(0,\"[$-40C]B1\")",
+    "C5": "=TEXT(-3,\"[$-40C]B1\")"
+   }
+  }
+ ],
+ "expected": {}
+}
