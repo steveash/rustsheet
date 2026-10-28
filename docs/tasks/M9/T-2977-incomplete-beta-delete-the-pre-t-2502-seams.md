@@ -3,7 +3,7 @@ id: T-2977
 title: "Incomplete beta: delete the pre-T-2502 seams and the T-2464 harness, move F.INV/BETA.INV crossings and F.TEST onto bratio, score the per-branch counts (T-2847 rest)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
