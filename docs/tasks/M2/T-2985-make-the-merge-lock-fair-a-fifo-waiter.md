@@ -27,20 +27,18 @@ tail, so no session can chain merges past waiters. (`wait` and the skill text ar
   - the `acquire` steps;
   - `WAITER_TTL` = 10 min, with refreshes written at most every 3 min;
   - a head that does not claim a free lock within 2 min of `freed` is dropped;
-  - a rate-limited PR-finished read (head changes or every 10th poll);
   - train locks (`pr: train`, `prs`): finished only when `prs` is non-empty and all of them are
     finished. An empty `prs` is never finished, only stale after the TTL;
   - renew and release retry until they succeed or the lock is no longer theirs; a lost holder
     gets exit code 4;
-  - `wait` every 30 s, with a timeout;
   - mixed-version clients during the rollout (fairness loss only, no loss of mutual exclusion)
     and clock skew.
 - Evidence: over the 48 h before 2026-10-25, #1860 and #2000 waited 30–40 min while one session
   chained #1859 and #1865. The lock was taken over 37 times (SPEC-0027 Problem).
-- Code to change: `scripts/merge_lock.py`, `scripts/test_merge_lock.py`, the Makefile's
-  merge-lock targets, the `steward` skill's "Merge lock" paragraph, and work-loop step 6.3.
-- This slice keeps `merge_lock.py`'s urllib PR-finished read, now rate-limited. T-3001 later moves
-  that read onto `scripts/gh_client.py`.
+- Code to change: `scripts/merge_lock.py`, `scripts/test_merge_lock.py`, and the Makefile's
+  `merge-lock-status` target.
+- This slice keeps `merge_lock.py`'s urllib PR-finished read. T-3001 later moves that read onto
+  `scripts/gh_client.py`.
 - Split at the seam named here when the first draft passed size M: this task keeps the format,
   validation, queue, `acquire`, renew/release retry, exit 4 and `status`; T-3010 takes `wait`,
   the rate-limited PR-finished read, `make merge-lock-wait` and the skill text.

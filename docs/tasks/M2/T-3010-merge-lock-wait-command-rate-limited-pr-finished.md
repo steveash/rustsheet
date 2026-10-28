@@ -24,7 +24,9 @@ of retrying later, and waiting costs few GitHub API reads.
   rule), so a waiter stays queued.
 - The PR-finished read (urllib, kept until T-3001 moves it onto `scripts/gh_client.py`) is
   re-read only when the head changes or every 10th poll, cached per PR (the caller's own, the
-  holder's and the head's), about 12 reads an hour per PR.
+  holder's and the head's), about 12 reads an hour per PR. Hoisting the reads (at most one per PR
+  per `acquire`, outside the CAS retries) is done in T-2985, so T-3010 adds the per-PR cross-poll
+  cache.
 - A draft of both is in T-2985's working notes: the `wait` loop and a `FinishedReads` cache.
 
 ## Acceptance criteria

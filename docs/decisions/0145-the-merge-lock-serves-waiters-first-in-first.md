@@ -29,11 +29,13 @@
   - With T-3010, agents wait with `make merge-lock-wait PR=<n>` in the background (polls every
     30 s, timeout 45 min by default) instead of retrying later; it exits 0 when the lock is theirs,
     3 when the PR is finished, 1 on the timeout. Until then a busy `acquire` keeps the caller's
-    place for 10 min, so retrying within that time keeps it.
+    place for 10 min, so retrying within that time keeps it. That covers a busy lock only: a head
+    that does not claim a freed lock within 2 min loses its place, so until `wait` polls for it,
+    a head that retries less often can be skipped.
 - **Consequences:** once T-3010 lands, this replaces 0075's "do other work and try again later":
   it changes the steward skill's "Merge lock" step 1 and work-loop step 6.3 to wait with
   `make merge-lock-wait`. The 30-minute TTL, the compare-and-swap and 0097's exit 3 are
   unchanged. During the rollout an older `merge_lock.py` ignores the queue and may take a lock
   reserved for the head; waiters then re-register at their next refresh. That loses fairness for
-  a while, never mutual exclusion, and ends once every session starts from a `main` with T-2985. The PR-finished read moves to
-  `scripts/gh_client.py` in T-3001.
+  a while, never mutual exclusion, and ends once every session starts from a `main` with T-2985.
+  The PR-finished read moves to `scripts/gh_client.py` in T-3001.

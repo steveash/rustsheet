@@ -41,7 +41,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -155,18 +155,12 @@ def parse_lock(sha: str, committed: int, message: str) -> Lock:
         else:
             fields.setdefault(key, value)
 
-    def stamp(value: str | None, default: int) -> int:
-        # Never clamped to the read time: that would keep a bad lock fresh forever.
-        if value is None or not UNIX.fullmatch(value):
-            return default
-        return committed if int(value) > committed + CLOCK_SLACK else int(value)
-
     version_2 = fields.get("version") == VERSION
-    renewed = stamp(fields.get("renewed"), committed) if version_2 else committed
+    renewed = clamp_stamp(fields.get("renewed"), committed, committed) if version_2 else committed
     waiters = parse_waiters(waiter_lines, committed) if version_2 else ()
     holder = fields.get("holder")
     if holder is None and fields.get("state") == "free":
-        return Lock(sha, None, freed=stamp(fields.get("freed"), committed), waiters=waiters)
+        return Lock(sha, None, freed=clamp_stamp(fields.get("freed"), committed, committed), waiters=waiters)
     # Fail closed: a lock that is not plainly free is held, by `unknown` when the holder is bad.
     pr = fields.get("pr", "")
     pr = pr if valid_pr(pr, train=True) else ""
@@ -177,6 +171,15 @@ def parse_lock(sha: str, committed: int, message: str) -> Lock:
     return Lock(sha, holder, pr, prs, renewed, waiters=waiters)
 
 
+def clamp_stamp(value: str | None, committed: int, fallback: int) -> int:
+    """A timestamp read from a lock commit with committer time `committed`, or `fallback` when it
+    is missing, malformed or more than CLOCK_SLACK past `committed`. Never clamped to the read
+    time: that would keep a bad lock fresh forever."""
+    if value is None or not UNIX.fullmatch(value) or int(value) > committed + CLOCK_SLACK:
+        return fallback
+    return int(value)
+
+
 def parse_waiters(lines: Sequence[str], committed: int) -> tuple[Waiter, ...]:
     """The queue: at most QUEUE_MAX well-formed lines, one per id. An out-of-range timestamp
     reads as 0, so that waiter has expired."""
@@ -185,8 +188,7 @@ def parse_waiters(lines: Sequence[str], committed: int) -> tuple[Waiter, ...]:
         parts = line.split(" ")
         if len(parts) != 4 or not valid_id(parts[0]) or not valid_pr(parts[1], train=True):
             continue
-        ok = [UNIX.fullmatch(p) is not None and int(p) <= committed + CLOCK_SLACK for p in parts[2:]]
-        registered, seen = (int(p) if fine else 0 for p, fine in zip(parts[2:], ok, strict=True))
+        registered, seen = (clamp_stamp(p, committed, 0) for p in parts[2:])
         waiters.setdefault(parts[0], Waiter(parts[0], parts[1], registered, seen))
     return tuple(waiters.values())
 
@@ -201,8 +203,7 @@ def render(lock: Lock) -> str:
         lines += ["state: free", f"freed: {int(lock.freed)}"]
     else:
         # A holder or PR that read as malformed is written back as it read, so the lock stays held.
-        if lock.holder != UNKNOWN or lock.pr:
-            check_claim(lock.holder if lock.holder != UNKNOWN else "x", lock.pr or "1", lock.prs)
+        check_claim(None if lock.holder == UNKNOWN else lock.holder, lock.pr or None, lock.prs)
         lines += [f"holder: {lock.holder}"] + ([f"pr: {lock.pr}"] if lock.pr else [])
         lines += [f"prs: {' '.join(lock.prs)}"] if lock.pr == TRAIN else []
         lines.append(f"renewed: {int(lock.renewed)}")
@@ -212,11 +213,12 @@ def render(lock: Lock) -> str:
     return "\n".join(lines) + "\n"
 
 
-def check_claim(holder: str, pr: str, prs: Sequence[str] = ()) -> None:
-    """Raises LockFormatError unless `holder` may hold or wait for the lock for `pr` (and `prs`)."""
-    if not valid_id(holder):
+def check_claim(holder: str | None, pr: str | None, prs: Sequence[str] = ()) -> None:
+    """Raises LockFormatError unless `holder` may hold or wait for the lock for `pr` (and `prs`).
+    A field given as None is absent and not checked."""
+    if holder is not None and not valid_id(holder):
         raise LockFormatError(f"bad holder id {holder!r}: want {ID.pattern}, not {UNKNOWN!r}")
-    if not valid_pr(pr, train=True):
+    if pr is not None and not valid_pr(pr, train=True):
         raise LockFormatError(f"bad PR {pr!r}: want a positive number or {TRAIN!r}")
     if (prs and pr != TRAIN) or len(prs) > BATCH_MAX or not all(valid_pr(p) for p in prs):
         raise LockFormatError(f"bad prs {list(prs)!r}: a train lists at most {BATCH_MAX} PR numbers")
@@ -295,27 +297,25 @@ def pr_finished(pr: str, root: Path = ROOT) -> bool | None:
     return bool(state.get("merged")) or state["state"] != "open"
 
 
-def lock_finished(lock: Lock, root: Path) -> bool:
+def lock_finished(lock: Lock, finished: Callable[[str], bool]) -> bool:
     """Whether `lock`'s PR is merged or closed. A train lock is finished only when its `prs` are
     non-empty and all finished: between batches the merger holds it with none, and must not be
     taken over mid-run."""
     if lock.pr == TRAIN:
-        return bool(lock.prs) and all(pr_finished(p, root) for p in lock.prs)
-    return bool(pr_finished(lock.pr, root))
+        return bool(lock.prs) and all(finished(p) for p in lock.prs)
+    return finished(lock.pr)
 
 
-def prune(lock: Lock, now: int, root: Path | None = None) -> Lock:
-    """`lock` without expired waiters. With `root`, also without a head that has not claimed a
-    freed lock within HEAD_CLAIM, or whose PR is finished; `freed` restarts then, so the next head
-    gets its own HEAD_CLAIM."""
-    waiters = [w for w in lock.waiters if now - w.seen <= WAITER_TTL]
-    freed = lock.freed
-    if root is not None and waiters:
-        head = waiters[0]
-        if (lock.free and now - lock.freed > HEAD_CLAIM) or (head.pr != TRAIN and pr_finished(head.pr, root)):
-            waiters.pop(0)
-            freed = now if lock.free else freed
-    return dataclasses.replace(lock, waiters=tuple(waiters), freed=freed)
+def drop_head(lock: Lock, now: int) -> Lock:
+    """`lock` without its head waiter. `freed` restarts, so the next head gets its own HEAD_CLAIM."""
+    return dataclasses.replace(lock, waiters=lock.waiters[1:], freed=now if lock.free else lock.freed)
+
+
+def prune(lock: Lock, now: int) -> Lock:
+    """`lock` without expired waiters, and without a head that has not claimed a freed lock within
+    HEAD_CLAIM."""
+    lock = dataclasses.replace(lock, waiters=tuple(w for w in lock.waiters if now - w.seen <= WAITER_TTL))
+    return drop_head(lock, now) if lock.free and lock.waiters and now - lock.freed > HEAD_CLAIM else lock
 
 
 def join(lock: Lock, holder: str, pr: str, now: int) -> tuple[Lock, int | None]:
@@ -356,13 +356,21 @@ def attempt(
     given. `renew` says the caller holds the lock, so a lock that is not theirs is lost (4), not
     busy."""
     check_claim(holder, pr, prs or ())
-    if pr != TRAIN and pr_finished(pr, root):
+    # One API read per PR per call, kept out of the CAS retries.
+    memo: dict[str, bool] = {}
+
+    def finished(number: str) -> bool:
+        if number not in memo:
+            memo[number] = valid_pr(number) and bool(pr_finished(number, root))
+        return memo[number]
+
+    if pr != TRAIN and finished(pr):
         return DONE, f"merge lock refused: PR {pr} is already merged or closed"
     renewing = renew
     for _ in range(ATTEMPTS):
         lock = read_lock(root)
         now = int(time.time())
-        pruned = prune(lock or Lock("", None), now, root)
+        pruned = prune(lock or Lock("", None), now)
         if pruned.holder == holder:
             renewing = True
             kept = pruned.prs if pr == TRAIN and prs is None else tuple(prs or ())
@@ -373,8 +381,13 @@ def attempt(
         if renewing:
             current = describe(pruned, now, ttl_minutes) if pruned.holder else "free"
             return LOST, f"merge lock lost: it was taken over ({current})"
-        live = not pruned.free and not pruned.is_stale(now, ttl_minutes) and not lock_finished(pruned, root)
+        live = (
+            not pruned.free and not pruned.is_stale(now, ttl_minutes) and not lock_finished(pruned, finished)
+        )
         head = pruned.waiters[0] if pruned.waiters else None
+        if not live and head is not None and head.id != holder and head.pr != TRAIN and finished(head.pr):
+            pruned = drop_head(pruned, now)
+            head = pruned.waiters[0] if pruned.waiters else None
         if not live and (head is None or head.id == holder):
             queue = tuple(w for w in pruned.waiters if w.id != holder)
             new = Lock("", holder, pr, tuple(prs or ()), now, waiters=queue)
@@ -385,32 +398,33 @@ def attempt(
         queued, place = join(pruned, holder, pr, now)
         if place is not None and not write(lock, queued, root):
             continue
-        ahead = (
-            f"held by {pruned.holder} for PR {pruned.pr or '?'}"
-            if live
-            else f"reserved for {head.id if head else '?'} (PR {head.pr if head else '?'})"
-        )
-        where = (
-            f"you are waiter {place} of {len(queued.waiters)}"
-            if place
-            else f"queue full ({QUEUE_MAX} waiters)"
-        )
-        return BUSY, f"merge lock busy: {ahead}; {where}"
+        return BUSY, busy_message(pruned, live, place, len(queued.waiters))
     return BUSY, f"merge lock busy: lost the race {ATTEMPTS} times"
+
+
+def busy_message(lock: Lock, live: bool, place: int | None, waiting: int) -> str:
+    """Who the lock is for, and the caller's place in the queue."""
+    head = lock.waiters[0] if lock.waiters else None
+    if live:
+        ahead = f"held by {lock.holder} for PR {lock.pr or '?'}"
+    else:
+        ahead = f"reserved for {head.id if head else '?'} (PR {head.pr if head else '?'})"
+    where = f"you are waiter {place} of {waiting}" if place else f"queue full ({QUEUE_MAX} waiters)"
+    return f"merge lock busy: {ahead}; {where}"
 
 
 def release(holder: str, root: Path = ROOT) -> int:
     """Frees the lock if `holder` has it, by writing the free marker and keeping the queue, so the
     head waiter takes it next. 0 when the lock is no longer `holder`'s, 1 when another agent holds
     it (it is never released for them)."""
-    for first in [True] + [False] * (ATTEMPTS - 1):
+    for attempt_no in range(ATTEMPTS):
         lock = read_lock(root)
         current = held(lock)
         if current is None:
             print("merge lock: not held")
             return 0
         if current.holder != holder:
-            if first:
+            if attempt_no == 0:
                 print(f"merge lock not yours: {describe(current, time.time(), TTL_MINUTES)}")
                 return 1
             print("merge lock: taken over before release")

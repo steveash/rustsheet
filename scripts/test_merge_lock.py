@@ -61,6 +61,11 @@ class MergeLock(unittest.TestCase):
     def lock(self) -> merge_lock.Lock | None:
         return merge_lock.read_lock(self.a)
 
+    def held_lock(self) -> merge_lock.Lock:
+        lock = self.lock()
+        assert lock is not None
+        return lock
+
     def queue(self) -> list[str]:
         lock = self.lock()
         return [w.id for w in lock.waiters] if lock else []
@@ -89,16 +94,14 @@ class MergeLock(unittest.TestCase):
 
     def test_acquire_takes_a_free_lock_with_an_empty_tree(self) -> None:
         self.assertEqual(merge_lock.acquire("agent-a", "101", root=self.a), 0)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual((lock.holder, lock.pr), ("agent-a", "101"))
         self.assertEqual(run("git", "ls-tree", lock.sha, cwd=self.a), "")
 
     def test_a_live_lock_is_busy_for_another_holder(self) -> None:
         merge_lock.acquire("agent-a", "101", root=self.a)
         self.assertEqual(merge_lock.acquire("agent-b", "202", root=self.b), 1)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual(lock.holder, "agent-a")
 
     def test_of_two_racing_acquirers_exactly_one_wins(self) -> None:
@@ -108,8 +111,7 @@ class MergeLock(unittest.TestCase):
         with mock.patch.object(merge_lock, "read_lock", side_effect=[None, self.lock()]):
             second = merge_lock.acquire("agent-b", "202", root=self.b)
         self.assertEqual((first, second), (0, 1))
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual(lock.holder, "agent-a")
 
     def test_a_finished_pr_is_refused_and_leaves_the_lock_alone(self) -> None:
@@ -126,17 +128,15 @@ class MergeLock(unittest.TestCase):
         merge_lock.acquire("agent-a", "101", root=self.a)
         self.finished.add("101")
         self.assertEqual(merge_lock.acquire("agent-b", "202", root=self.b), 0)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual((lock.holder, lock.pr), ("agent-b", "202"))
 
     def test_the_holder_renews_its_own_lock(self) -> None:
         with mock.patch.dict(os.environ, {"GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}):
             merge_lock.acquire("agent-a", "101", root=self.a)
-        before = self.lock()
+        before = self.held_lock()
         self.assertEqual(merge_lock.acquire("agent-a", "101", root=self.a), 0)
-        after = self.lock()
-        assert before is not None and after is not None
+        after = self.held_lock()
         self.assertGreater(after.renewed, before.renewed)
         self.assertEqual(after.holder, "agent-a")
 
@@ -144,8 +144,7 @@ class MergeLock(unittest.TestCase):
         with mock.patch.dict(os.environ, {"GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}):
             merge_lock.acquire("gone", "1", root=self.a)
         self.assertEqual(merge_lock.acquire("agent-b", "202", root=self.b), 0)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual((lock.holder, lock.pr), ("agent-b", "202"))
 
     def test_release_frees_only_the_callers_lock(self) -> None:
@@ -154,8 +153,7 @@ class MergeLock(unittest.TestCase):
         self.assertIsNotNone(merge_lock.held(self.lock()))
         self.assertEqual(merge_lock.release("agent-a", root=self.a), 0)
         # The branch stays, holding the free marker: the session git proxy refuses deletion (T-1938).
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertTrue(lock.free)
         self.assertIsNone(merge_lock.held(lock))
         self.assertEqual(merge_lock.release("agent-a", root=self.a), 0)
@@ -172,9 +170,7 @@ class MergeLock(unittest.TestCase):
         real = merge_lock.git
         pushes: list[tuple[str, ...]] = []
 
-        def spy(
-            *args: str, root: Path = merge_lock.ROOT, check: bool = True
-        ) -> subprocess.CompletedProcess[str]:
+        def spy(*args: str, root: Path = merge_lock.ROOT, check: bool = True) -> subprocess.CompletedProcess[str]:
             if args[:1] == ("push",):
                 pushes.append(args)
             return real(*args, root=root, check=check)
@@ -192,8 +188,7 @@ class MergeLock(unittest.TestCase):
         # The first read is stale, so the write loses; the retry finds the lock taken over.
         with self.first_read(stale):
             self.assertEqual(merge_lock.release("agent-a", root=self.a), 0)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual(lock.holder, "agent-b")
 
     def test_status_names_the_holder(self) -> None:
@@ -210,8 +205,7 @@ class MergeLock(unittest.TestCase):
 
     def test_a_lock_commit_without_fields_reads_as_an_unknown_holder(self) -> None:
         self.push("x")
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual(lock.holder, "unknown")
 
     def test_waiters_are_served_in_order_and_a_releaser_rejoins_at_the_tail(self) -> None:
@@ -235,20 +229,19 @@ class MergeLock(unittest.TestCase):
             merge_lock.acquire(holder, "2", root=self.b)
         self.tick(5)
         self.assertEqual(merge_lock.acquire("agent-a", "101", root=self.a), 0)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual((lock.renewed, [w.id for w in lock.waiters]), (self.now, ["b", "c"]))
 
     def test_waiter_refreshes_are_throttled_and_a_silent_waiter_expires(self) -> None:
         merge_lock.acquire("agent-a", "101", root=self.a)
         merge_lock.acquire("b", "2", root=self.b)
-        sha = self.lock().sha  # type: ignore[union-attr]
+        sha = self.held_lock().sha
         self.tick(1)
         merge_lock.acquire("b", "2", root=self.b)
-        self.assertEqual(self.lock().sha, sha)  # type: ignore[union-attr]  # no push within 3 min
+        self.assertEqual(self.held_lock().sha, sha)  # no push within 3 min
         self.tick(2)
         merge_lock.acquire("b", "2", root=self.b)
-        self.assertEqual(self.lock().waiters[0].seen, self.now)  # type: ignore[union-attr]
+        self.assertEqual(self.held_lock().waiters[0].seen, self.now)
         self.tick(merge_lock.WAITER_TTL / 60 + 1)
         merge_lock.acquire("c", "3", root=self.b)
         self.assertEqual(self.queue(), ["c"])
@@ -282,24 +275,36 @@ class MergeLock(unittest.TestCase):
 
     def test_a_renewal_or_release_that_loses_to_a_waiter_refresh_retries(self) -> None:
         merge_lock.acquire("agent-a", "101", root=self.a)
-        before = self.lock()
+        before = self.held_lock()
         merge_lock.acquire("b", "2", root=self.b)
-        assert before is not None
         with self.first_read(before):
             self.assertEqual(merge_lock.acquire("agent-a", "101", root=self.a), 0)
-        before = self.lock()
+        before = self.held_lock()
         merge_lock.acquire("c", "3", root=self.b)
-        assert before is not None
         with self.first_read(before):
             self.assertEqual(merge_lock.release("agent-a", root=self.a), 0)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual((lock.free, [w.id for w in lock.waiters]), (True, ["b", "c"]))
+
+    def test_each_pr_is_read_at_most_once_per_acquire(self) -> None:
+        reads: list[str] = []
+        with mock.patch.object(merge_lock, "pr_finished", lambda pr, root=None: reads.append(pr) or False):
+            merge_lock.acquire("agent-a", "101", root=self.a)
+            before = self.held_lock()
+            merge_lock.acquire("c", "303", root=self.b)
+            reads.clear()
+            with self.first_read(before):  # a stale first read: the write loses and is retried
+                merge_lock.acquire("b", "202", root=self.b)
+            self.assertEqual(reads, ["202", "101"])  # held: the holder's PR, once
+            merge_lock.release("agent-a", root=self.a)
+            for holder, pr, expected in (("b", "202", ["202", "303"]), ("c", "303", ["303"])):
+                reads.clear()
+                merge_lock.acquire(holder, pr, root=self.b)
+                self.assertEqual(reads, expected)  # reserved: the head's PR, unless the caller is the head
 
     def test_a_renewal_after_a_takeover_exits_4(self) -> None:
         merge_lock.acquire("agent-a", "101", root=self.a)
-        before = self.lock()
-        assert before is not None
+        before = self.held_lock()
         self.tick(31)
         self.assertEqual(merge_lock.acquire("agent-b", "202", root=self.b), 0)
         with self.first_read(before):  # taken over while this renewal ran
@@ -359,8 +364,7 @@ class MergeLock(unittest.TestCase):
         self.assertTrue(merge_lock.parse_lock("s", 1000, "merge-lock\n\nstate: free\n").free)
         self.push("merge-lock\n\nholder: old\npr: 7\n")
         self.assertEqual(merge_lock.acquire("agent-b", "202", root=self.b), 1)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual((lock.holder, [w.id for w in lock.waiters]), ("old", ["agent-b"]))
 
     def test_future_timestamps_clamp_to_the_committer_time_not_the_read_time(self) -> None:
@@ -388,10 +392,9 @@ class MergeLock(unittest.TestCase):
     def test_main_takes_a_train_and_replaces_its_prs(self) -> None:
         self.assertEqual(merge_lock.main(["acquire", "--train", "run-7", "--prs", "1", "2"], self.a), 0)
         self.assertEqual(merge_lock.main(["acquire", "--train", "run-7"], self.a), 0)
-        self.assertEqual(self.lock().prs, ("1", "2"))  # type: ignore[union-attr]
+        self.assertEqual(self.held_lock().prs, ("1", "2"))
         self.assertEqual(merge_lock.main(["acquire", "--train", "run-7", "--prs"], self.a), 0)
-        lock = self.lock()
-        assert lock is not None
+        lock = self.held_lock()
         self.assertEqual((lock.holder, lock.pr, lock.prs), ("run-7", "train", ()))
 
     def test_main_needs_a_holder_and_a_numeric_pr(self) -> None:
@@ -431,9 +434,7 @@ class PrFinished(unittest.TestCase):
         self.assertIsNone(self.read({"message": "Not Found"}))
         self.assertIsNone(self.read({"state": "open"}, url="git@example.com:o/r.git"))
         with (
-            mock.patch.object(
-                merge_lock, "git", return_value=subprocess.CompletedProcess([], 0, "https://github.com/o/r\n")
-            ),
+            mock.patch.object(merge_lock, "git", return_value=subprocess.CompletedProcess([], 0, "https://github.com/o/r\n")),
             mock.patch.object(merge_lock.urllib.request, "urlopen", side_effect=OSError("offline")),
         ):
             self.assertIsNone(merge_lock.pr_finished("7"))
