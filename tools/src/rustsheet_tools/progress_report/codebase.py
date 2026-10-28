@@ -77,7 +77,7 @@ def check_row(obj: Any, where: str) -> None:
 
 
 def block(counts: dict[str, int], last: dict[str, Any] | None) -> str:
-    """The block's Markdown. `last` is the last complete history row; the change column is blank
+    """The block's Markdown. `last` is the last complete history row; the change column is n/a
     for a row from before the block existed."""
     before = last.get("codebase") if last else None
     rows = []
