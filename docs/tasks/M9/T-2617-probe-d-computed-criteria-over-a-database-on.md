@@ -3,7 +3,7 @@ id: T-2617
 title: "Probe D* computed criteria over a database on another sheet: which records match (gen-m9, T-2553 leftovers)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -47,10 +47,10 @@ Cells:
 Code: `reads_records` and `db_computed_condition` in crates/rustsheet-engine/src/functions/database.rs (TODO(T-2617)).
 
 ## Acceptance criteria
-- [ ] A probe case (excel-probe skill) with oracle values for the placements under Context is committed under eval/suites/probes.
-- [ ] criteria.md records the rule; a functions-criteria task (campaign: visible) is filed to implement it for the 8 cells,
+- [x] A probe case (excel-probe skill) with oracle values for the placements under Context is committed under eval/suites/probes.
+- [x] criteria.md records the rule; a functions-criteria task (campaign: visible) is filed to implement it for the 8 cells,
       or this task implements it if it is small.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The same-sheet header-row rule (T-2553, done).
@@ -61,3 +61,12 @@ of Excel's value, or has Excel's type, error and text. Bit-level criteria still 
 filed with `defer: phase-1b`.
 
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off gen-m9 cells of DPRODUCT (3), DMAX, DVAR, DAVERAGE, DCOUNTA and DGET (1 each). Fixing them lifts all six D* functions to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+- Probe probes/db-computed-criteria-cross-sheet (245 cells, excel-graph 2026-10-28): a computed criterion's unprefixed
+  references read the database's sheet, and a record matches only when every moved relative reference onto that sheet
+  lies in the database's record area (a range: overlaps it); absolute references and references to other sheets are
+  not checked. Recorded in criteria.md "D* computed criteria and an unknown header in the gen-m9 database sweep (T-2258)".
+- Implemented here (small): `retarget_unqualified_references` (sheet_edits.rs) and the record-area check in
+  `reads_records` (functions/database.rs).
+- Eval delta: gen-m9 known failures 3562 -> 3554 (the 8 owned cells), probes +1 case at 245/245, no regressions.

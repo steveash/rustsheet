@@ -318,6 +318,7 @@ C	probes/datevalue-comma-spaces.case.json	32
 C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/db-argument-modes.case.json	121
+C	probes/db-computed-criteria-cross-sheet.case.json	245
 C	probes/db-computed-criteria-shapes.case.json	59
 C	probes/db-criteria-formula-placement.case.json	27
 C	probes/db-field-error-order.case.json	13
