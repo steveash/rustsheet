@@ -109,3 +109,75 @@ fn aggregate_and_subtotal_sum_snap() {
         assert_eq!(model._get_text(cell), "TRUE", "{cell}");
     }
 }
+
+/// The root `+`/`-` snaps every element of an array result on its own two addends, with the
+/// scalar bound: 7 ULP of 1 snaps on the `+` side, 4 ULP of the smaller addend does not on the
+/// `-` side (probes/t3047-snap-array-operands S!E1:L3).
+#[test]
+fn array_operands_snap_element_by_element() {
+    let mut model = new_empty_model();
+    for (row, (a, b, c)) in [
+        ("0.1", "0.2", "0.3"),
+        ("1", "1", "2"),
+        ("0.1", "0.2", "0.1"),
+        ("1", "-0.9", "0.1"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let row = row + 1;
+        model._set(&format!("A{row}"), a);
+        model._set(&format!("B{row}"), b);
+        model._set(&format!("C{row}"), c);
+    }
+    model._set("E1", "=A1:A4+B1:B4-C1:C4");
+    model._set("F1", "=-C1:C4+A1:A4+B1:B4");
+    model._set("G1", "=0+{0.1,1}+{0.2,1}-{0.3,2}");
+    model._set("G3", "=0.1+{0.2;0.2}-0.3");
+    model._set("H3", "=0+{0.1}+0.2-0.3");
+    model._set("I1", "=1+{3;7;8}*2^-52-1");
+    model._set("J1", "=1-{3;4;7}*2^-52-1");
+    model._set("K1", "=-1+(1+{3;7;8}*2^-52)");
+    model._set("M1", "=INDEX(E1#,1)=0");
+    model._set("M2", "=INDEX(A1:A4+B1:B4-C1:C4,1)=0");
+    model.evaluate();
+    let zero = [
+        "E1", "E2", "E4", "F1", "F2", "F4", "G1", "H1", "G3", "G4", "H3", "I1", "I2", "J1", "K1",
+        "K2",
+    ];
+    for cell in zero {
+        assert_eq!(model._get_text(cell), "0", "{cell}");
+    }
+    assert_eq!(model._get_text("E3"), "0.2");
+    assert_eq!(model._get_text("I3"), "1.77636E-15");
+    assert_eq!(model._get_text("J2"), "-8.88178E-16");
+    assert_eq!(model._get_text("J3"), "-1.55431E-15");
+    assert_eq!(model._get_text("K3"), "1.77636E-15");
+    // A reader of the spill sees the snapped value; an operator under a call is not snapped.
+    assert_eq!(model._get_text("M1"), "TRUE");
+    assert_eq!(model._get_text("M2"), "FALSE");
+}
+
+/// A legacy formula intersects its range operands with its own row and snaps the result
+/// (probes/t3047-snap-array-operands L!E1:E4).
+#[test]
+fn legacy_intersected_ranges_snap_per_row() {
+    let mut model = new_empty_model();
+    for (row, (a, b, c)) in [("0.1", "0.2", "0.3"), ("1", "-0.9", "0.1")]
+        .iter()
+        .enumerate()
+    {
+        let row = row + 1;
+        model._set(&format!("A{row}"), a);
+        model._set(&format!("B{row}"), b);
+        model._set(&format!("C{row}"), c);
+    }
+    for row in 1..=2 {
+        model
+            .set_cell_with_legacy_formula(0, row, 5, "=A1:A2+B1:B2-C1:C2")
+            .unwrap();
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "0");
+    assert_eq!(model._get_text("E2"), "0");
+}
