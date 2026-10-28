@@ -136,22 +136,14 @@ fn condition_for_records(node: &Node, sheet: u32, own_row: i32) -> Option<Node> 
     let mut node = node.clone();
     let mut pending = vec![&mut node];
     while let Some(node) = pending.pop() {
-        match node {
-            Node::ReferenceKind {
-                sheet_name: None,
-                sheet_index,
-                ..
+        if rewrites(node) {
+            match node {
+                Node::ReferenceKind { sheet_index, .. } | Node::RangeKind { sheet_index, .. } => {
+                    *sheet_index = sheet;
+                }
+                // `rewrites` holds only for those references and an argument-less `ROW()`.
+                _ => *node = Node::NumberKind(f64::from(own_row)),
             }
-            | Node::RangeKind {
-                sheet_name: None,
-                sheet_index,
-                ..
-            } => *sheet_index = sheet,
-            Node::FunctionKind {
-                kind: Function::Row,
-                args,
-            } if args.is_empty() => *node = Node::NumberKind(f64::from(own_row)),
-            _ => {}
         }
         node.push_children_mut(&mut pending);
     }

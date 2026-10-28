@@ -401,12 +401,19 @@ c9d7659896d95368 A82, A1, 6d16afd40600302b A365, cb80ca09be0e12bc A52, d9d55972b
     the rule above).
 Ours: since T-2617, `condition_for_records` (functions/database.rs) moves unqualified references onto the database's sheet
 and pins `ROW()` to the condition's row, and `reads_records` fails a record whose moved relative reference on the
-database's sheet lies above the first record or outside its columns (a range: wholly so); all 149 probe cells and the
-gen-m9 cells above match. Unprobed: a relative-column reference with an absolute row outside the columns (ours reads it
-as it is, like any absolute row), and `COLUMN()` (the shift is by rows only, so it cannot differ).
-Status: VERIFIED (excel-graph) for the values and for the reference rules (T-2525 for a criterion away from the
-database, T-2617 for the sheet, row, column and range rules and `ROW()`).
-Tasks: T-2258, T-2422, T-2525, T-2553, T-2617
+database's sheet lies above the first record or outside its columns (a range: wholly so); all 149 DSUM/DCOUNTA
+questions of the probe and the gen-m9 cells above match. Unprobed: a relative-column reference with an absolute row outside the columns (ours reads it
+as it is, like any absolute row), `COLUMN()` (the shift is by rows only, so it cannot differ), and the other reference
+forms in a condition (3-D spans, whole rows or columns, structured references; ours moves only plain unqualified cell and
+range references onto the database's sheet).
+Also unprobed (ours extends the rules to them): an unqualified absolute or mixed reference (moved to the database's
+sheet), a range with one absolute-row end (checked by its larger row), a range wholly outside the database's columns
+(fails), and `INDIRECT`, `OFFSET`, defined names, `SHEET()` and `CELL` without a reference (evaluated on the criteria
+sheet); T-3003 probes them.
+Status: VERIFIED (excel-graph) for the values and for the reference rules as probed (T-2525 for a criterion away from
+the database; T-2617 for relative cell references and relative-row ranges in the database's columns, the sheet rule and
+`ROW()`); the extensions above are UNVERIFIED (T-3003).
+Tasks: T-2258, T-2422, T-2525, T-2553, T-2617, T-3003
 
 ## Conditional-format text rules and wildcards (UNVERIFIED, T-2910)
 Rule (ours): the conditional-format text rules (contains, does not contain, begins with, ends with, equals;

@@ -63,7 +63,8 @@ filed with `defer: phase-1b`.
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off gen-m9 cells of DPRODUCT (3), DMAX, DVAR, DAVERAGE, DCOUNTA and DGET (1 each). Fixing them lifts all six D* functions to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
 
 ## Outcome
-probes/db-computed-criteria-other-sheet (149 questions, excel-graph 2026-10-28) settles it: an unqualified reference in a
+probes/db-computed-criteria-other-sheet (149 D* questions; the baseline's 170 scored cells add the 21 condition
+cells; excel-graph 2026-10-28) settles it: an unqualified reference in a
 D-function formula condition reads the database's sheet (the gen-m9 criterion `=B2>3` on Db read Data's B column, which
 is why no fixed shift of Db's B fitted); on the database's sheet a moved relative reference above the first record or
 outside the database's columns fails the record, a range only when all of it does; a reference qualified with another
