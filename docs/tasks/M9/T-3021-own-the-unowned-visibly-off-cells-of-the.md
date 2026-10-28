@@ -3,7 +3,7 @@ id: T-3021
 title: "Own the unowned visibly-off cells of the functions 1 to 5 cells short of the Phase 1 rate (cheapest-first triage)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -34,9 +34,25 @@ cell of these 39 functions is named by an open task; the FORECAST.ETS family's a
 evidence).
 
 ## Acceptance criteria
-- [ ] Each cell above is named by an open owner task, or is shown fixed on main.
-- [ ] Owners that lift a function to the rate are P1.
-- [ ] `make check` green; reviewers approve.
+- [x] Each cell above is named by an open owner task, or is shown fixed on main.
+- [x] Owners that lift a function to the rate are P1.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the cells (the owner tasks do), and functions more than 5 cells short.
+
+## Outcome
+Every cell above now has an open owner that names it (main 5b8c2ae7, `rustsheet-eval show`):
+- CHITEST m9-legacy-chitest `Calc!A23`: new **T-3058** (P1, sonnet, `campaign: accuracy`). Root cause: `fn_chisq_test`
+  takes `1 - P` for df above 1, where Excel's value is the direct upper tail: `CHITEST` at chi2 = 18, df 2 is `EXP(-9)`
+  to the bit. A trial of the direct tail passes m9-legacy-chitest 31/31 and t1049-chisqtest 28/29, with 0 regressions and
+  0 fixed in every gated suite.
+- GAMMADIST t2435-dist-extremes `S!B102`, and the GAMMA.DIST twin `S!B101`: these are `(A10x)=0` companions of A101
+  and A102, which are `#NUM!` in Excel and 0 in ours. They go to **T-2982**, which already owns A101 and A102.
+- GAMMAINV gen-m9/0a614cfe974b59c3 `Calc!A327` (`GAMMAINV(1-1E-10,1E+15,0.5)`, ours `#NUM!`): a huge-shape inversion,
+  so it goes to **T-2982** as well.
+- GAMMAINV t1048-gammainv `Calc!A7` (and the GAMMA.INV twin B7): **T-0972** now names them. They are last digits of an
+  ordinary-shape inversion.
+- LOGNORM.DIST m9-normpdf-lognorm-dist `Calc!A29`, `A41`, `A73`: **T-0975** now names them (the lognormal density).
+- NORM.INV NORM_DIST.xlsx `F70`: **T-0925** now names it.
+All the owners are P1. No new Excel quirk was found: the direct-tail rule is already in statistics.md (T-0971).
