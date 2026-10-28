@@ -445,7 +445,7 @@ impl Model {
             }
             if !matches!(
                 node.ungrouped(),
-                Node::LambdaDefKind { .. } | Node::ErrorKind(_)
+                Node::LambdaDefKind { .. } | Node::ErrorKind(_) | Node::SheetRefErrorKind { .. }
             ) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
