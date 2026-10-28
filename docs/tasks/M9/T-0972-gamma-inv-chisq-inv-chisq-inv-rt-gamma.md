@@ -3,7 +3,7 @@ id: T-0972
 title: "GAMMA.INV/CHISQ.INV/CHISQ.INV.RT: gamma quantile parity (39 known failures)"
 milestone: M9
 lane: functions-stat
-status: blocked
+status: todo
 priority: P1
 size: S
 tier: opus
@@ -192,27 +192,20 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
-## Blocked because
-Blocked because: the baseline update needs `rustsheet-eval update-baseline --allow-regressions` (decision 0083's
-standing ulp allowance), which the 2026-10-25 opus run's permission policy refused; a run allowed to use the
-allowance (or the owner) unblocks it. The branch carries the change and passes the engine's statistical tests and clippy.
+## Outcome (2026-10-28, owner-unblocked)
+The baseline was recorded with `update-baseline --allow-regressions` under decision 0083's allowance as amended by
+**decision 0144**, with the owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. Measured on
+the branch merged with `main` (3fe509e8):
+- gated: 28 lines fixed (gen-m9 23, ironcalc-calc 5); 49 cells regressed, all numeric (38 at 1 ulp, 9 at 2, 2 at 3);
+- every suite, against a `main` build: 90 other cells newly fail within the 15th digit; in-scope visibly-off cells
+  101,602 -> 101,575;
+- five cells newly visibly off, accepted by decision 0144: gen-m9 ecc87f80077959e0 A168 and 146b46e74f2dac3b A167,
+  ironcalc-calc GAMMA.xlsx F21, probes-numeric m9-chisq-inv A27 and t1049-chisqinv A19.
 
-What the branch does (incomplete_gamma.rs `gamma_quantile`, `quantile_tail`):
-- The quantile is always the crossing of the smaller tail (T-1634's shortcut keeping statrs' search where it solved
-  that tail to 1E-13 relative is gone; it left `GAMMA.INV(0.5,9,1)` 7E-15 off).
-- The lower tail's `powf * exp(-x - ln Gamma(a + 1))` form only at x * rate <= 1: up to x = a its large exponent
-  costs 1E-14 relative at shape 50 (`GAMMA.INV(0.5,50,1)` 13 ulps off Excel's true quantile).
+Follow-up **T-3016** owns those five cells and lists all 49 regressed cells with their values.
 
-Eval (`rustsheet-eval check` against main fe2d3ea): gen-m9 fixed 23, regressed 36; ironcalc-calc fixed 5, regressed 9;
-probes regressed 4. Every regression is numeric, at most 3 ulp, none visibly off (worst
-`ironcalc-calc/STATISTICAL/GAMMA.xlsx` F5, 3 ulp; the rest 1 to 2 ulp, e.g. `CHISQ.INV.RT(0.4,5)` 2 ulp). Visibly-off
-in-scope cells 5626 -> 5617; visibly-off quantile cells (formulas with GAMMA.INV, CHISQ.INV, CHIINV) 75 -> 56.
-A zero-regression variant (keep statrs' result within 3E-14) only reaches 5624.
-
-Evidence (docs/excel-semantics/statistics.md, T-0972 bullet): against mpmath, 509 of 545 literal-argument quantile
-cells of Excel are within half a unit of the 15th digit of the true quantile; the rest are Excel's own error where its
-double cdf is flat (p near 0.999, 40 to 100 ulps) or its far-tail cdf (p 1E-200, 1E-300). An accurate kernel
-therefore tops out near 509/545; the remaining visibly-off cells need Excel's iteration fitted (a follow-up).
-
-Next: update the baseline with the allowance, list the 49 regressed cells in the Outcome, file the ulp follow-up,
-review, PR.
+Not done, so the task stays open (status todo):
+- Criterion 1: of the 65 owned gen-m9 lines, 17 now pass, 42 are within the 15th digit and 6 are still visibly off.
+- Criterion 2 is not re-measured on this merged tree.
+- Criterion 3 is not met: `incomplete_gamma/mod.rs` still keeps the ported statrs search (`inverse_cdf_within`) as the
+  refinement's start.
