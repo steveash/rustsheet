@@ -25,6 +25,7 @@ probe:
 - a formula typed beside a table with a totals row (beside a data row, and beside the totals row);
 - a formula typed into D2 when D3 or D1 already holds a value;
 - a formula typed into the cell just below the last data row (row auto-expansion);
+- an unqualified structured formula (`=[@Col]*2`) typed into D2, which the engine refuses there as a parse error;
 - whether the header `0` of a formula typed into D1 is text or the number 0 (`ISTEXT(D1)`), and what `=2+3` or
   `="x"` typed there gives.
 
