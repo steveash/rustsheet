@@ -3,7 +3,7 @@ id: T-2094
 title: "CHISQ.TEST and CHITEST over a range with no numbers are #DIV/0!, not 1"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
