@@ -157,7 +157,7 @@ impl Model {
             model.evaluate_root_cell(cell);
             let state = &mut model.evaluation;
             state.blocking = false;
-            if state.restart.is_some() {
+            if state.abandoned() {
                 return Outcome::Stop;
             }
             let Some(precedent) = state.blocked_on.take() else {

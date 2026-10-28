@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use super::r#let::assign_variable_ids;
 use super::read_once::read_once;
-use crate::evaluation::stack_address;
+use crate::evaluation_limits::stack_address;
 use crate::variable_stack::Binding;
 
 /// A LAMBDA's parameters and body as `Model::lambdas` stores them, shared with the defined name
