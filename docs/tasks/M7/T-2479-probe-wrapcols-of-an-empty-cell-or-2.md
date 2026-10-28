@@ -24,4 +24,4 @@ T-2365 review: ours returns `#VALUE!` for `WRAPCOLS({1,2;3,4},-1)` and `#N/A` fo
 -
 
 ## Outcome
-Probed probes/t2479-wrapcols-notvector-expand-padarray (excel-graph, 2026-10-28). Recorded in arrays.md. Fixed `WRAPCOLS/WRAPROWS(<empty cell>, NA())`: the empty-cell `#VALUE!` precedes an error wrap_count (2-D arrays still follow it).
+Probed probes/t2479-wrapcols-notvector-expand-padarray (excel-graph, 2026-10-28). Recorded in arrays.md. Fixed `WRAPCOLS/WRAPROWS(<empty cell>, NA())`: the empty-cell `#VALUE!` precedes an error wrap_count (2-D arrays still follow it). EXPAND: rows past the grid are `#NUM!` before an array `pad_with`'s `#VALUE!` (G15, G16, G18), still before our cell bound.
