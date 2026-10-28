@@ -354,7 +354,8 @@ totals cell it built, with the cell formula `SUBTOTAL(109,Table1[Feb])` (calc_te
 `xl/tables/table1.xml`); `custom` with that formula is the form the T-1607 uploads showed Excel loads.
 The import keeps a table's `<filterColumn>` criteria (`filter_columns`: values filters with their blank choice,
 custom filters with `and`, values decoded from `_xHHHH_` escapes) and the export writes them back (T-2838), so
-those two kinds survive a round trip byte for byte; column inserts and deletes inside the table move them with their
+those two kinds survive a round trip with the same meaning (Excel's own tables.xlsx filters come back byte for
+byte; `blank="true"` is written `blank="1"`, `and="0"` is dropped, and a `<filter>` without `val` is dropped); column inserts and deletes inside the table move them with their
 columns. Every other kind (top 10, dynamic, color, icon, and a values filter with date groups or a `calendarType`)
 keeps only its column and is written back as a criterion-less `<filterColumn colId="N"/>`; a `<filterColumn>`
 without a valid `colId` is dropped, and the `hiddenButton`/`showButton` attributes are not kept. `has_filters`
