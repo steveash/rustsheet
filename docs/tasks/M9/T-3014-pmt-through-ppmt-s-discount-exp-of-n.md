@@ -73,6 +73,8 @@ unit of the 15th significant digit of Excel's value. Bit-level criteria still un
 - [ ] No new known-failure line in any baseline (PMT.xlsx, IPMT_PPMT.xlsx, CUMPRINC_CUMIPMT.xlsx, probes,
       gen-m9 included); `make eval-baseline` records the fixed ones; T-2243's 14 cells re-measured in the Outcome.
 - [ ] financial.md's PMT entry updated with the rule, its evidence cells and status.
+- [ ] Any fitting script reuses `docs/research/t2464/excelmath.py`'s kernels (Kahan expm1, atanh-series log,
+      rounding); `docs/research/t3014_pmt_discount_score.py` is then switched to them or deleted (one definition).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
