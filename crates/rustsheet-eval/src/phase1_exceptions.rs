@@ -7,15 +7,24 @@
 //! from the baseline or the gate, and every listed cell stays a known failure. The exit
 //! exceptions of decision 0087 ([`crate::exit_exceptions`]) are a separate list for a separate
 //! measure.
+//!
+//! The rate also leaves out the cells of [`DESKTOP_OWNED_PATH`] (decision 0143): known failures
+//! that only open M14 tasks own, which `scripts/desktop_owned.py` lists from the baselines and the
+//! task files before each `make eval` (`rustsheet-eval run --desktop-owned`). That list is
+//! generated, never committed, and needs no decision per cell.
 
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::exit_exceptions::{check_owner, read_optional, split_cell, ExceptionsError};
+use crate::exit_exceptions::{check_owner, check_task, read_optional, split_cell, ExceptionsError};
 use crate::probe_milestones::data_lines;
 
 /// The list, relative to the repository root.
 pub const PHASE1_EXCEPTIONS_PATH: &str = "eval/milestones/phase1-exceptions.tsv";
+
+/// The generated list of cells only open M14 tasks own (decision 0143), relative to the
+/// repository root: `case!Sheet!A1<TAB>T-<owner>` per line, written by `scripts/desktop_owned.py`.
+pub const DESKTOP_OWNED_PATH: &str = "eval/runs/desktop-owned.tsv";
 
 /// One line of the list.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,6 +42,8 @@ pub struct Phase1Exception {
 pub struct Phase1Exceptions {
     /// `(case, Sheet!A1)` → its line.
     pub cells: BTreeMap<(String, String), Phase1Exception>,
+    /// `(case, Sheet!A1)` → the M14 task that alone owns it ([`DESKTOP_OWNED_PATH`]).
+    pub desktop_owned: BTreeMap<(String, String), String>,
 }
 
 impl Phase1Exceptions {
@@ -85,10 +96,57 @@ impl Phase1Exceptions {
         )
     }
 
-    /// Whether the cell `key` (`Sheet!A1`) of `case` is listed.
+    /// Adds the cells of the generated desktop-owned list's text: `case!Sheet!A1<TAB>T-<owner>`
+    /// per line.
+    ///
+    /// # Errors
+    /// The first malformed line, or the first that repeats a cell.
+    pub fn with_desktop_owned(mut self, text: &str) -> Result<Phase1Exceptions, ExceptionsError> {
+        for (line, fields) in data_lines(text) {
+            let bad = |why| ExceptionsError::Line {
+                path: DESKTOP_OWNED_PATH,
+                line,
+                why,
+            };
+            let [cell, task] = fields.as_slice() else {
+                return Err(bad("expected `case!Sheet!A1<TAB>task`"));
+            };
+            let cell = split_cell(cell).ok_or(bad("the cell must be `suite/case!Sheet!A1`"))?;
+            check_task(task).map_err(bad)?;
+            if self.desktop_owned.contains_key(&cell) {
+                return Err(bad("the cell is listed twice"));
+            }
+            self.desktop_owned.insert(cell, (*task).to_string());
+        }
+        Ok(self)
+    }
+
+    /// [`Self::with_desktop_owned`] over [`DESKTOP_OWNED_PATH`] under `repo_root`.
+    ///
+    /// # Errors
+    /// When the file is absent (`make eval` writes it), unreadable or malformed.
+    pub fn load_desktop_owned(self, repo_root: &Path) -> Result<Phase1Exceptions, ExceptionsError> {
+        let text = read_optional(repo_root, DESKTOP_OWNED_PATH)?.ok_or_else(|| {
+            ExceptionsError::Unreadable {
+                path: DESKTOP_OWNED_PATH,
+                message: "not found; `scripts/desktop_owned.py --out` writes it (make eval does)"
+                    .to_string(),
+            }
+        })?;
+        self.with_desktop_owned(&text)
+    }
+
+    /// Whether the cell `key` (`Sheet!A1`) of `case` is listed in [`PHASE1_EXCEPTIONS_PATH`].
     #[must_use]
     pub fn contains(&self, case: &str, key: &str) -> bool {
         self.cells
+            .contains_key(&(case.to_string(), key.to_string()))
+    }
+
+    /// Whether the cell `key` (`Sheet!A1`) of `case` is in the desktop-owned list.
+    #[must_use]
+    pub fn desktop_owns(&self, case: &str, key: &str) -> bool {
+        self.desktop_owned
             .contains_key(&(case.to_string(), key.to_string()))
     }
 }
@@ -138,6 +196,37 @@ mod tests {
                 first: 1,
                 ..
             })
+        ));
+    }
+
+    #[test]
+    fn reads_the_desktop_owned_list() {
+        let text = "gen-m9/a.case.json!Calc!A4\tT-2425\npoi/a.xlsx!'My Sheet'!$b$2\tT-1075\n";
+        let exceptions = Phase1Exceptions::default()
+            .with_desktop_owned(text)
+            .expect("parses");
+        assert!(exceptions.desktop_owns("gen-m9/a.case.json", "Calc!A4"));
+        assert!(exceptions.desktop_owns("poi/a.xlsx", "My Sheet!B2"));
+        assert!(!exceptions.contains("gen-m9/a.case.json", "Calc!A4"));
+        for bad in [
+            "gen-m9/a.case.json!Calc!A4".to_string(),
+            "gen-m9/a.case.json!Calc!A4\t0143\tT-2425".to_string(),
+            "gen-m9/a.case.json!Calc!A4\t2425".to_string(),
+            "gen-m9/a.case.json!Calc\tT-2425".to_string(),
+            "gen-m9/a.case.json!Calc!A4\tT-2425\ngen-m9/a.case.json!Calc!A4\tT-1553".to_string(),
+        ] {
+            assert!(
+                matches!(
+                    Phase1Exceptions::default().with_desktop_owned(&bad),
+                    Err(ExceptionsError::Line { .. })
+                ),
+                "{bad}"
+            );
+        }
+        let missing = std::env::temp_dir().join(format!("no-desktop-owned-{}", std::process::id()));
+        assert!(matches!(
+            Phase1Exceptions::default().load_desktop_owned(&missing),
+            Err(ExceptionsError::Unreadable { .. })
         ));
     }
 

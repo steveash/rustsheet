@@ -181,18 +181,25 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     return out
 
 
-def open_task_texts(tasks_dir: Path, milestone: str | None, deferred: bool | None = None) -> list[str]:
-    """The text of every open task of `milestone` (any milestone when `None`) in `tasks_dir`;
-    with `deferred` set, only the tasks that do (`True`) or do not (`False`) carry `defer:`."""
+def open_tasks(tasks_dir: Path) -> list[tuple[dict[str, object], str]]:
+    """The front matter and text of every open task in `tasks_dir`, in path order."""
     out = []
     for path in sorted(tasks_dir.glob("*/T-*.md")):
         text = path.read_text()
         meta = tasks.front_matter(text, path)
-        if milestone not in (None, meta.get("milestone")) or meta.get("status") not in tasks.OPEN:
-            continue
-        if deferred in (None, "defer" in meta):
-            out.append(text)
+        if meta.get("status") in tasks.OPEN:
+            out.append((meta, text))
     return out
+
+
+def open_task_texts(tasks_dir: Path, milestone: str | None, deferred: bool | None = None) -> list[str]:
+    """The text of every open task of `milestone` (any milestone when `None`) in `tasks_dir`;
+    with `deferred` set, only the tasks that do (`True`) or do not (`False`) carry `defer:`."""
+    return [
+        text
+        for meta, text in open_tasks(tasks_dir)
+        if milestone in (None, meta.get("milestone")) and deferred in (None, "defer" in meta)
+    ]
 
 
 def names(text: str, token: str, word: str) -> bool:
