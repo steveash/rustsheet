@@ -3,7 +3,7 @@ id: T-2566
 title: "XNPV and XIRR discount with Excel's ^ (probes/xirr-exact-root-sign)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
