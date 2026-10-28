@@ -382,8 +382,13 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         };
         // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
-        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
-        if args.iter().any(|arg| matches!(arg, Node::EmptyArgKind)) {
+        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4. A variable bound to an omitted LAMBDA
+        // parameter or an empty LET value hands the omission on: `LAMBDA(a,b,IMSUB(a,b))("1",)`,
+        // `LET(e,,IMSUB("1",e))` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12).
+        if args
+            .iter()
+            .any(|arg| matches!(arg, Node::EmptyArgKind) || self.is_omitted_variable(arg))
+        {
             return Err(CalcResult::new_error(Error::NA, cell, String::new()));
         }
         let first = self.complex_of(first, EmptyText::ZeroIfBlank, cell)?;
