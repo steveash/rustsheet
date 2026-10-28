@@ -3,7 +3,7 @@ id: T-3028
 title: "TEXT: B2 before a calendar-4 (Taiwan) tag prints 01 years"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
