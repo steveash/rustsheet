@@ -2255,7 +2255,7 @@ odd-first schedule with `^` prices. None of the following reaches one bond bit-e
   1e-10 not taken) and forward differences from that start;
 - the chord method (the slope fixed at the start) with each slope above, and the secant method from each pair of the
   starts above, stopping when a step is under 1e-6 to 1e-10 or when the residual is under 1e-5 to 1e-9;
-- Newton with a mis-scaled slope (times or divided by the frequency, by 1 + y/m, or the slope with respect to ln(1 +
+- Newton with a wrongly scaled slope (times or divided by the frequency, by 1 + y/m, or the slope with respect to ln(1 +
   y/m)), and backward or forward differences of 1e-3 and 1e-4.
 Evidence: ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx ODDFPRICE_ODDFYIELD!K2-K11, K23-K27, K29-K33, K35-K39, K43-K46,
 K49-K52 (Excel-cached, desktop); probes/date-system-1900-odd-threshold, -1904-odd-threshold, -1900-odd-years,

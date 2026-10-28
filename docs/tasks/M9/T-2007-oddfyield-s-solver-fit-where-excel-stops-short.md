@@ -94,7 +94,7 @@ The scores, the evidence and what Excel's values show are in financial.md "ODDFY
   1e-7 to 1e-10 not taken, a step under 1e-6 to 1e-10 taken, a residual under 1e-6 to 1e-10); forward differences
   with h = 1e-3 to 1e-8, backward differences with h = 1e-3 and 1e-4, and central differences with h = 1e-3, 1e-5 and 1e-8; the
   chord method; the secant method over each pair of those starts; YIELD's T-1592 model (`yield_start`, analytic
-  slope, a step under 1e-10 not taken); slopes mis-scaled by the frequency, by 1 + y/m, or taken with respect to
+  slope, a step under 1e-10 not taken); slopes scaled wrongly by the frequency, by 1 + y/m, or taken with respect to
   ln(1 + y/m).
 - What constrains the next attempt: Excel lands above the root in 60 of the 111 cells, and analytic Newton on a convex,
   decreasing price never does after its first step. So either the slope is not ODDFPRICE's (a difference quotient
