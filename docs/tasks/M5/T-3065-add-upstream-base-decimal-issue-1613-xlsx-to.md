@@ -3,7 +3,7 @@ id: T-3065
 title: "Add upstream BASE_DECIMAL_issue_1613.xlsx to calc_tests"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
