@@ -18,7 +18,7 @@ while a blank reference read through the same wrappers stays a blank that stacks
 ## Context
 - Evidence (excel-graph, T-3030): probes/t3030-cell-contents-blank-shapers and probes/t2466-cell-contents-stack. The
   blank-target result has ISBLANK TRUE, TYPE 1, COUNTA 1, `+0` 0 and `&""` "" (A1, A11, A41, A51, A231). VSTACK, HSTACK,
-  TOCOL, TOROW, TAKE, WRAPROWS, CHOOSECOLS, FILTER, MAP, ROWS and INDEX reject it with `#VALUE!` (A21, A31, A121,
+  TOCOL, TOROW, TAKE, WRAPROWS, CHOOSECOLS, FILTER, MAP and ROWS reject it, as does VSTACK around an INDEX of it (A121; whether INDEX itself rejects it is unprobed) with `#VALUE!` (A21, A31, A121,
   A171, A191, A211, A311, A351, A381), and so does VSTACK through IF, LET, CHOOSE, IFERROR, `@` and parentheses
   (A131, A141, A161, A331; t2466 A111, A121, A151). SORT, UNIQUE and EXPAND accept it as 0 (A181, A201, A371).
 - docs/excel-semantics/information.md, "CELL("contents") in VSTACK" entry.
@@ -27,7 +27,7 @@ while a blank reference read through the same wrappers stays a blank that stacks
   IF/LET/CHOOSE/IFERROR/parentheses as a bare `CalcResult::EmptyCell`, the same value CELL returns. So a value-based
   rule would also break `VSTACK(IF(TRUE,Z1),1)`, where Excel stacks a blank reference. This needs a distinct
   non-reference empty value (a design question: a new `CalcResult` variant, or keeping wrapper results as references).
-  Probe `VSTACK(IF(TRUE,Z1),1)`, `VSTACK(LET(x,Z1,x),1)` and `VSTACK(CHOOSE(1,Z1),1)` first, since they are unprobed.
+  Probe a bare `INDEX(CELL("contents",Data!C11),1)`, `VSTACK(IF(TRUE,Z1),1)`, `VSTACK(LET(x,Z1,x),1)` and `VSTACK(CHOOSE(1,Z1),1)` first, since they are unprobed.
 
 ## Acceptance criteria
 - [ ] probes/t2466-cell-contents-stack A111, A121 and A151 pass, as do the rejecting cells of

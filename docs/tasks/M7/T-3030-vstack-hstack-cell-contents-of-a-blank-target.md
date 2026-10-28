@@ -42,7 +42,8 @@ other shapers is unprobed (T-2466 review).
   probes were re-filled twice with identical values, and new probes cover sheet order (t3030-cell-first-sheet) and
   nesting (t3030-cell-contents-nested-sheet). CELL now reads the named sheet. Every case with a cross-sheet
   `CELL("contents"|"type")` whose sidecar predated 2026-10-28 was re-filled from excel-graph: 201 sidecars, in which only
-  CELL cells and their spills changed (information.md, decision 0153).
+  CELL cells and their spills changed in value; 38 previously dropped rich-error cells are now scored as `#VALUE!` and
+  pass (information.md, decision 0153).
 - **Blank-target stack rule.** VSTACK and HSTACK reject a literal `CELL("contents", ref)` argument only when the target
   is blank. probes/t3030-cell-contents-blank-shapers shows that the blank-target result is an empty value: array-taking
   functions reject it even through LET/IF/IFERROR/CHOOSE. Ours cannot tell that value from a blank reference read
@@ -51,4 +52,4 @@ other shapers is unprobed (T-2466 review).
 - **Eval delta.** probes: 24 fixed and 3 new cases. gen-m9: 3 fixed (one of them the MODE.SNGL cell
   that the stale sidecar had masked). One IMTAN cell (gen-m9 756a9f7bc3a06bcc A338)
   was unmasked by the re-fill and allowed by decision 0153; it moved to T-3054. Visibly-off in-scope cells went from
-  2572 to 2494.
+  2572 to 2494, measured before the last merge of main (2587 on the merged head, where main had moved).
