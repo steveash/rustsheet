@@ -14,7 +14,7 @@ spec: docs/specs/SPEC-0027-merge-train.md
 ## Goal
 The merge lock serves waiters first-in, first-out. A waiter registers in the lock commit, and a
 free, stale or finished lock goes to the head of the queue. A holder that releases rejoins at the
-tail, so no session can chain merges past waiters. A `wait` command replaces polling.
+tail, so no session can chain merges past waiters. (`wait` and the skill text are T-3010.)
 
 ## Context
 - SPEC-0027 section 1 ("A fair merge lock") is the design:
@@ -41,27 +41,28 @@ tail, so no session can chain merges past waiters. A `wait` command replaces pol
   merge-lock targets, the `steward` skill's "Merge lock" paragraph, and work-loop step 6.3.
 - This slice keeps `merge_lock.py`'s urllib PR-finished read, now rate-limited. T-3001 later moves
   that read onto `scripts/gh_client.py`.
-- If the diff grows past size M, split it before review: the format and validation first, then
-  `wait` and the skill text.
+- Split at the seam named here when the first draft passed size M: this task keeps the format,
+  validation, queue, `acquire`, renew/release retry, exit 4 and `status`; T-3010 takes `wait`,
+  the rate-limited PR-finished read, `make merge-lock-wait` and the skill text.
+- `acquire --renew` (not in the spec) lets a caller state it holds the lock, so a takeover
+  between two calls exits 4 instead of reading as busy; the merger (T-2994) needs it.
 
 ## Acceptance criteria
 - [ ] `merge_lock.py` implements SPEC-0027 section 1: the version-2 format and its validation, the
-      FIFO queue, `acquire --pr/--train --prs`, exit code 4, `release` and `wait`. It still parses
-      version-1 commits.
-- [ ] `make merge-lock-wait PR=<n> [TIMEOUT=45]` exists, and `make merge-lock-status` prints the
-      queue.
+      FIFO queue, `acquire --pr/--train ID --prs`, exit code 4, renew/release retry and
+      `release`. It still parses version-1 commits.
+- [ ] `make merge-lock-status` prints the queue.
 - [ ] `test_merge_lock.py` covers every `test_merge_lock.py` case in SPEC-0027's Test plan,
       including these: an empty-`prs` train lock is never finished; a renewal that loses its CAS
       to a waiter's refresh retries and succeeds, and exit 4 follows a takeover; newline
       injection; future timestamps clamped to the committer time; a malformed holder reads as
       held.
-- [ ] Step 1 of the steward skill's "Merge lock" and work-loop step 6.3 say to wait with
-      `make merge-lock-wait` in the background, instead of retrying later.
 - [ ] A decision record, "The merge lock serves waiters first-in, first-out", lands in this PR.
       It amends 0075 and 0097 and cites SPEC-0027 section 1.
 - [ ] `make hygiene`, `make typos` and `check_governance.py origin/main` pass. The architecture
       and security reviewers approve the protected paths explicitly.
 
 ## Out of scope
+- `wait`, the rate-limited PR-finished read, `make merge-lock-wait` and the skill text (T-3010).
 - The readiness marker and the merge train (T-2986, T-2987).
 - Changing the 30-minute TTL.
