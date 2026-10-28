@@ -53,6 +53,19 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   fixes 30 Excel-cached cells but regresses 22 others (PMT.xlsx, IPMT_PPMT.xlsx,
   CUMPRINC_CUMIPMT.xlsx), and IPMT's recurrence on the fitted FV regresses 4 more. Both stay with
   T-1528: Excel's PMT is not the accurate value.
+- Operation orders against Excel's PMT bits (T-2951, `docs/research/t2951_pmt_order_score.py`, EXP and LN the
+  engine's Excel models, L and expm1 as in "PPMT discounts with an atanh-series log"). Bit-exact counts on the nine
+  PMT inputs of PMT.xlsx's visibly-off chained cells (F10, F11, F18, F23 at rate -0.9; F27, G27, F32, F33, G33 at
+  0.2), PMT.xlsx's 40 other PMT cells over constants, and the 308 of m9-fin-pmt: correctly rounded (the engine)
+  0/31/132; textbook `-(pv*P+fv)*r/(k*(P-1))` on Excel's `^` 1/28/68, with k divided out last 0/25/65; fv-first
+  `-(fv+pv*P)/(k*((P-1)/r))` 0/25/60, k last 0/23/64; the split `-(pv*r+(pv+fv)*r/(P-1))/k` 3/19/73; Excel-L/EXP
+  `-(pv+fv*Q)/(k*((1-Q)/r))` (Q = EXP(-n·L), 1-Q Excel's expm1; T-2730, T-3014) 1/24/175, k last 0/23/173; the
+  same Q and 1-Q doubles with the rest rounded once, `-(pv+fv*Q)*r/((1-Q)*k)`, 1/33/197, the best m9-fin-pmt
+  score so far, but not Excel's (an extended EXP result or a 64-bit Kahan step scores lower: 111 to 170). At rate
+  -0.9 with fv 300 and type 1 every form is 3 to 6 ulp below Excel's magnitude, and the miss does not move with L
+  (a consistent L cancels at n = 1: `PMT(-0.9,1,100,300,1)` is -3099.999999999999, every L within 10 ulp gives
+  -3100.0000000000005 or beyond), so the gap is in how fv or type 1 enters, which PMT.xlsx cannot separate (no
+  -0.9 cell has fv alone or type 1 alone). Probe: T-3071.
 - Extrapolated, not yet probed (T-1684): non-integer nper (where `^` is exp(y·ln x)), NPER with
   pmt = 0 (the general formula, not `-fv/pv`) or pv/fv = 0, and rates within a few ulps of -1 (`1+r`
   by Excel's `+`). The sweeps have integer nper and non-zero pmt only.
@@ -94,7 +107,8 @@ values of ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx), each model computed exactly i
   F10 `PMT(-0.9,3,120,300,1)` = -2703.783783783783, exact on the double rate -2703.78378378378444...; F11, F18, F23
   likewise), and no form tried so far (the P-1 forms with `pow` or `exp(n*log1p(r))`, the discount forms above,
   `1+rate` snapped to 0.1) reproduces those bits; PV and NPER of those payments amplify the gap about 100-fold
-  into visibly-off cells (J10, H10; T-2243).
+  into visibly-off cells (J10, H10; T-2243). T-2951's nine scored forms miss them too ("Annuity evaluation
+  order" above); the probe that separates fv from type 1 there is T-3071.
   Where PPMT cancels, Excel's error grows: the four period-1 cells of long terms A82, A166, A412,
   A418 are 7 to 41 ulp from the exact value and visibly different from it. For the 154 fv-0,
   type-0 PPMT cells, `PMT*exp((per-1-nper)*log1p(rate))` (the exact PMT rounded to a double, libm
