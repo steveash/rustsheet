@@ -30,7 +30,8 @@ PER_PAGE = 100
 MAX_PAGES = 50
 
 SHA = re.compile(r"[0-9a-f]{40}")
-# GitHub logins: alphanumerics and single inner hyphens, at most 39 characters; `[bot]` apps too.
+# An allowlist for logins in a URL (GitHub's own rule is stricter): alphanumerics and hyphens, at most
+# 39 characters, and `[bot]` apps.
 LOGIN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:\[bot\])?")
 LABEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,49}")
 WORKFLOW = re.compile(r"[A-Za-z0-9_.-]{1,64}\.ya?ml")
@@ -54,16 +55,19 @@ class Request:
     body: Mapping[str, object] | None = None
 
     def url(self) -> str:
+        """The path with its query string, as `gh api` takes it."""
         return f"{self.path}?{urllib.parse.urlencode(self.query)}" if self.query else self.path
 
 
 def checked(pattern: re.Pattern[str], value: str, what: str) -> str:
+    """`value` if it is ASCII and matches `pattern` in full; GhError otherwise."""
     if not (isinstance(value, str) and value.isascii() and pattern.fullmatch(value)):
         raise GhError(f"refused {what}: {value!r}")
     return value
 
 
 def number(value: int | str, what: str = "PR number") -> int:
+    """`value` as a positive integer below 10^9 (ASCII digits only); GhError otherwise."""
     text = str(value)
     if not (text.isascii() and text.isdigit()) or not 0 < int(text) < 10**9:
         raise GhError(f"refused {what}: {value!r}")
@@ -71,6 +75,7 @@ def number(value: int | str, what: str = "PR number") -> int:
 
 
 def as_dict(value: object) -> dict[str, object]:
+    """`value` if it is a JSON object; GhError otherwise."""
     if not isinstance(value, dict):
         raise GhError(f"expected a JSON object, got {type(value).__name__}")
     return value
