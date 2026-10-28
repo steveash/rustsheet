@@ -720,6 +720,15 @@ fn stringify(
                 full_row,
                 full_column,
             );
+            // Quirk (T-2855, probes/table-edits plain-range-delete-row-first F!A6 and
+            // table-delete-column-qty F!A7, excel-graph): a range whose every cell is deleted
+            // prints one sheet-qualified `#REF!` (`=SUM(S!#REF!)`), not a `#REF!` per corner.
+            if s1 == "#REF!" && s2 == "#REF!" {
+                return match sheet_name {
+                    Some(name) => format!("{}!#REF!", quote_name(name)),
+                    None => s1,
+                };
+            }
             format!("{s1}:{s2}")
         }
         // Rows and columns inserted or moved on one sheet of the span do not shift the span's
