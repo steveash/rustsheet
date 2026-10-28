@@ -3,7 +3,7 @@ id: T-0093
 title: "Probe-milestone rows count displayed-text items and list the failing ones as case!Sheet!A1"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
