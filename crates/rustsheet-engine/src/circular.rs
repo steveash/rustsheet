@@ -30,7 +30,7 @@ impl Model {
     /// Not while the recursion unwinds: cells that have not run yet are then
     /// on the stack above the reader, and the replay reads again.
     pub(crate) fn mark_readers_of(&mut self, key: CellKey) {
-        if self.evaluation.restart.is_none()
+        if !self.evaluation.abandoned()
             && !self.evaluation.unwinding
             && self.evaluation.circular.contains(&key)
         {

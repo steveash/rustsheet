@@ -42,3 +42,7 @@ crates/rustsheet-engine/src/functions/financial/financial_bonds/yield_solver.rs.
 ## Out of scope
 - Bit-level residue within 15 digits (T-2788).
 - YIELD's `#NUM!` cells and its 100-step cap (T-2391).
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): YIELD 1. This task now owns them:
+- probes/yield-newton-domain: P!B2

@@ -102,9 +102,7 @@ impl Model {
     /// the last one. A sheet keeps its load position after a move (SPEC-0017), so the sheets
     /// are ordered by `Worksheet::load_rank`, not by their tab.
     fn formula_positions(&self) -> Vec<CellReferenceIndex> {
-        let mut positions = self.positions_where(|cell| {
-            matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. })
-        });
+        let mut positions = self.positions_where(Cell::has_formula);
         positions.sort_unstable_by_key(|position| self.chain_key(*position));
         positions
     }
@@ -157,7 +155,7 @@ impl Model {
             model.evaluate_root_cell(cell);
             let state = &mut model.evaluation;
             state.blocking = false;
-            if state.restart.is_some() {
+            if state.abandoned() {
                 return Outcome::Stop;
             }
             let Some(precedent) = state.blocked_on.take() else {

@@ -2388,6 +2388,28 @@ through the edit (FORMULATEXT still prints `=SUM(Sales[Qty])`, `=COUNTA(Sales[Re
   an ordinary insert just below a range leaves it (as `S!C4:C7` stays for r = 8 without totals).
 - So SPEC-0016's edge-case table was wrong on two rows: an insert at r == d1 and at r == t *grows* the
   table (it said fallback); the move, grow-inside and none rows hold (fixed by T-2321).
+- `#This Row` through the move and the grow (excel-graph, 2026-10-28, T-2845; table-insert-row-this-row-above-header,
+  -this-row-inside-data, -calc-column-above-header, -calc-column-inside-data): every `Sales[@Qty]` keeps its text, on
+  every row. That includes a cell on sheet F that stays put, a cell beside the table that moves with the insert, and a
+  formula inside the table. Each one evaluates at its own row against the table as it is after the edit:
+  - insert above the header (r = 3, table now B4:C8, data rows 5-8): F!A4:A8 `=Sales[@Qty]` give #VALUE! (row 4 is the
+    header now), 1, 2, 4, 8, where before the edit they gave 1, 2, 4, 8, #VALUE!. F!A8 went from off the data rows to
+    on them (`ROW(Sales[@Qty])` 8, `ISREF` TRUE).
+  - insert inside the data (r = 6, table now B3:C8): F!A4:A8 give 1, 2, 0 (the new blank data row), 4, 8.
+  - S!E4:E7 `=Sales[@Qty]` beside the table move one row down and keep their text and values (1, 2, 4, 8); one below
+    or above the data rows stays #VALUE!.
+- FORMULATEXT prints a `#This Row` reference in its `@` form: `=Sales[@Qty]` for one typed (and stored)
+  `Sales[[#This Row],[Qty]]`, and, inside its own table, without the table name: `=Sales[@Qty]*2` in S!D4 prints
+  `=[@Qty]*2`, as the calculated-column rule says (same cases).
+- A whole-row insert inside the data does not fill a column of identical `=Sales[@Qty]*2` formulas into the new row
+  when the file has no `calculatedColumnFormula` for it (the spec builder writes none): the new S!D6 is empty
+  (FORMULATEXT #N/A, value 0). `SUM(Sales[Dbl])` stays 30 (table-insert-row-calc-column-inside-data). Whether a real
+  calculated column is filled is not probed.
+- Excel refuses a whole-row or whole-column insert that would push any cell of a table off the sheet, even when the
+  cells pushed off are empty. Two probes, `Sales` on S!B1048573:C1048576 with an insert above row 10 and `Sales` on
+  S!XFC3:XFD6 with an insert left of column C, both got Graph 409 `InsertDeleteConflict`, "This won't work because it
+  would move cells in a table on your worksheet." (T-2845, 2026-10-28; no eval case, because the oracle fill fails at
+  the edit).
 - A loaded formula naming a table the file does not have (`=SUM(Nope[Qty])`) or a column its table does not
   have (`=SUM(Sales[Nope])`) is loaded by Excel for the web with the reference rewritten: `#REF!`, and FORMULATEXT prints
   `=SUM(#REF!)` (table-unknown-name-load, table-unknown-column-load).
@@ -2409,10 +2431,12 @@ it, row and column moves, cell shifts) leaves the table as it is, and an edit th
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
 its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
-moved or grown table's row there, a value change from before T-2297 (unprobed, T-2845). An insert at
-the first row of a table without a header row is a fallback too (unprobed, T-2845). So is an insert that would
-carry a table past the last row or column (the cells pushed off are empty, so the insert runs; whether Excel
-refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
+moved or grown table's row there, but a row on them is rewritten to the plain area it read, and a moved cell
+beside or inside the table is rewritten too. Excel keeps the text in all of them (the T-2845 bullet above; T-3037).
+FORMULATEXT prints the long `Sales[[#This Row],[Qty]]` where Excel prints `Sales[@Qty]` (T-1683). An insert at
+the first row of a table without a header row is a fallback too (unprobed, T-3039). An insert that would
+carry a table past the last row or column runs (the cells pushed off are empty) and leaves the table, where Excel
+refuses it (T-3038). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
 inside grow the table (T-2339). A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
@@ -2425,14 +2449,14 @@ registers a spec table with its totals row; an insert above the totals row grows
 `Sales[[#Totals],[Qty]]` (T-2321), and since T-2338 the totals row's deletes (delete it or the last data row) keep it too (decision 0128).
 A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
 that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
-its value before step 2. That rewrite is unprobed: Excel very likely keeps `Sales[@Qty]` and reads the new row (T-2845; desktop-only cut and paste T-2325).
+its value before step 2. Excel keeps `Sales[@Qty]` and reads the new row through a row insert (T-2845, above; T-3037); cut and paste is desktop-only and unprobed (T-2325).
 A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
 kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
 what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on
 every row, off the data rows too (before step 2 those were `#VALUE!`), which matches "Delete the table's sheet" below
 (table-delete-sheet: every structured reference becomes `#REF!`). A defined name has no cell, so its `#This Row` is resolved
 at row 1, where its body is parsed, as before step 2 (unprobed, hand: Excel may resolve it at the calling cell's row; T-2595).
-Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845, T-2846
+Tasks: T-2194, T-2195, T-1699, T-2197, T-2297, T-2321, T-2322, T-2595, T-2845, T-2846, T-3037, T-3038, T-3039
 
 ## Structured references under row deletes, column edits, convert, table and sheet delete
 Rule (excel-graph, 2026-10-22, T-2324; probes/table-edits, the same `Sales` at S!B3:C7 as the insert cases
@@ -2558,24 +2582,39 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    D2:D4 stay blank. Typing a constant beside the table, below its last row, or beside a totals row is unprobed.
 What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
 `calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
-blank, or all the one calculated formula); whether a column whose cells hold one identical formula with no saved
-`calculatedColumnFormula` re-fills is unprobed (T-2969 probes a stored column formula).
+blank, or all the one calculated formula). Rule 8 (T-2983, excel-graph 2026-10-28, same table and `FORMULATEXT` in F;
+stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
+8. **A stored formula is not a calculated column.**
+   (a) Table A1:C5, stored `=A2*2`, `=A3*2`, `=A4*2` in C2:C4, C5 blank, then `=A5*3` typed into C5: only C5 changes
+   (C2:C4 stay 2, 4, 8; F2:F5 `=A2*2`, `=A3*2`, `=A4*2`, `=A5*3`), so a column of one stored formula with no
+   `calculatedColumnFormula` is not a calculated column and is not filled (t2983-identical-stored-refill).
+   (b) Stored `=A2*2` in C2 and `=A4*2` in C4, C3 blank, then `=A4*3` typed into C4: C2 stays 2, C3 stays blank (F3
+   `#N/A`), C4 is 12 (t2983-formulas-and-blank-enter-last). (c) The same with `=A3*3` typed into the blank C3: C2 2,
+   C3 6, C4 8, nothing filled (t2983-formulas-and-blank-enter-blank). (c) is a second witness for (a): C2 and C4 are
+   one relative formula. (b) follows from (a) too, so **whether a blank beside a real calculated-column formula blocks
+   the fill is unprobed** (T-3025). Only A1 formulas are probed.
+(T-2969 probes a stored column formula.)
 Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
 C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
 The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
 formula cells, so the sidecars do not hold them: they are read from each case's saved `xl/worksheets/sheet1.xml`
 (eval/.cache/oracle/excel-graph/<input_sha256>.xlsx).
-Ours (T-2958): rules 1-5 are implemented with no state on the table: a formula typed into a table's data rows
-(`Model::set_typed_user_input`, the facade's `Input::Parse` and `Input::Formula`) fills the column's other data rows
-when they are all blank or all hold one shared formula (`Model::calculated_column_targets`, calculated_columns.rs),
-by writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A blank cell
-beside formulas blocks the fill too, and a column of one identical stored formula with no saved
-`calculatedColumnFormula` re-fills as a calculated column: both are engine choices, unprobed (T-2983). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
-the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
-after the tables, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
-table holding the cell since T-2979 (below). Neither import nor export
-reads or writes `calculatedColumnFormula` (T-2969).
+Ours (T-2958, T-3024): a formula typed into a table's data rows (`Model::set_typed_user_input`, the facade's
+`Input::Parse` and `Input::Formula`) fills the column's other data rows when they are all blank, or when they all hold
+one shared formula and the column is a calculated column (`Model::calculated_column`, calculated_columns.rs), by
+writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A column is a
+calculated column when its `TableColumn::calculated_column_formula` is set, which a typed formula that fills or
+re-fills it does (only whether it is set is read; its text, the first data row's formula in English, is an engine
+choice); a typed constant
+keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
+removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
+fill in the engine, an unprobed choice (T-3025). The column formula is neither read from nor written to xlsx yet
+(T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
+calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
+types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
+table holding the cell since T-2979 (below).
 Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
 grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
 over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
@@ -2586,8 +2625,8 @@ and the cell is typed as before, in four unprobed cases: a constant typed there,
 column whose other cells are not all blank, and a new column that another table overlaps. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979): what Excel does with it there is unprobed (T-3003). The facade's edit holds
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
-Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7, the same file (T-2968)
-Tasks: T-2957, T-2958, T-2968, T-2969
+Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
+Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

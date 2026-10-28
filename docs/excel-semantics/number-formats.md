@@ -126,23 +126,50 @@ the bare `B2` path with its first-name quirk, `mmm` being the first name: `B2[$-
 Rule: any other calendar digit wins over a `B2` before the tag: `B2[$-10409]`, `B2[$-20409]`, `B2[$-90409]` and
 `B2[$-A0409]` print as without the `B2` ("2023-03-15|March"), `B2[$-110409]` the lunar date, `B2[$-80409]` the Hebrew
 date. An unresolved tag leaves a bare `B2` (`B2[$-zzz]`, `B2[$-]`).
-Rule (quirk, not modelled, T-2932): before a calendar-3 or calendar-7 tag `B2` applies the calendar's year once more:
-`B2[$-70409]yyyy|b|bbbb|e` is "3109|09|3109|2566" (2023 + 543 twice; `e` the Thai year), and `B2[$-30411]yyyy|e|g` and
-`B2[$-30409]yyyy|e|g` are "4294965434|4294965434|M" (the Reiwa era year 5 read as a Gregorian year: Meiji 5 - 1867,
--1862, printed as an unsigned 32-bit number).
+Rule (quirk, T-2932): before a calendar-3, -5 or -7 tag `B2` converts every year token once more than it would without
+the `B2`, wherever in the section before the tag it stands (`b2`, `B2B2`, `B2"x"` and `B2mmmm` before the tag too; `B1`
+before the tag and `B2` after it change nothing):
+- Thai (7): `yy`, `yyyy`, `b`, `bbbb` add 543 twice, `e` and `ee` once: `B2[$-70409]yyyy|yy|e|ee|b|bb|bbbb|g` of 45000 is
+  "3109|09|2566|2566|09|09|3109|", of 9999-12-31 "11085|85|10542|10542|08|08|11085|". Under a Japanese LCID the whole
+  year after a `g` is converted once (`B2[$-70411]g|yyyy` is "|2566").
+- Korean (5): `yy` and `yyyy` add 2333 twice, `e`, `b` and `bbbb` once: `B2[$-50409]yyyy|yy|e|b|bbbb` is
+  "6689|89|4356|56|4356", of 9999-12-31 "14665|65|12332|33|12332".
+- Japanese (3, any LCID): the era year is read as the Gregorian year of a date with the same month and day and converted
+  again. Every year below 1868 is Meiji, so the era year is year - 1867, negative, printed as an unsigned 32-bit number
+  by `yy`, `yyyy`, `e` and `ee` alike, and `g` is Meiji: 2023-03-15 (Reiwa 5) is "4294965434|M" (5 - 1867 = -1862),
+  2019-05-01 (Reiwa 1) 4294965430, 2019-04-30 (Heisei 31) 4294965460, 1989-01-07 (Showa 64) 4294965493, 1920-01-01
+  (Taisho 9) 4294965438, 1900-01-01 (Meiji 33) 4294965462. 9999-12-31 (Reiwa 7981) is "5963|R": 7981 is in Reiwa again.
+  From Gregorian 3886 to 4037 (Reiwa 1868 to 2019) the twice-converted year falls among the modern eras, and the era
+  changes on its own day of that year (`e|g` shown): 3930-07-29 (Reiwa 1912) is "45|M", 3930-07-30 "1|T"; 4007-01-07
+  "64|S", 4007-01-08 "1|H"; 4037-04-30 "31|H", 4037-05-01 "1|R"; 3886-01-01 is "1|M" (A69-A80). The Taisho-Showa
+  boundary is not probed (A72, A73 fall in Reiwa 1927).
+- Month and day tokens and names print as without the `B2` (`B2[$-30411]yyyy-mm-dd|mmmm|dddd` is
+  "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` under Thai (T-3029).
+- Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (not modelled,
+  T-3028).
+- The same as a cell number format (B1-B5).
+Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
+`b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"
+(probes/t2932-b2-calendar-twice A24, A64-A68). `yy` stays the last two digits.
+Rule (quirk): under a tag, a number token before the `mmm` switch does not turn the first-name quirk off, unlike in a bare
+`B2` section: `B2[$-409]yyyy|mmm|dddd` is "1444|شعبان|السبت" (Saturday, from the month) and so are `d|mmm|dddd` and
+`e|mmm|dddd`.
+`TEXT(45000,"B1@")` and `"B2@"` are "45000".
+Evidence: probes/t2932-b2-calendar-twice (85 cells), excel-graph 2026-10-28.
 Rule: a second calendar prefix after a tag is `#VALUE!` (`B2[$-409]B2mmmm`, `B2[$-409]B1mmmm`, `B1[$-409]B2mmmm`,
 `B2[$-60409]B1mmmm`, `[$-60409]B2B1mmmm`), as is any number token in a `B2` section (`B2[$-409]0`), but two before
 the tag are fine (`B2B2[$-409]mmmm` is "Sha'ban") and so is `B1` before a tag (`B1[$-40C]mmmm` is "mars").
 Evidence: probes/t2729-hijri-locale-tag (278 cells), probes/t2729-hijri-locale-tag-names (320 cells), excel-graph
 2026-10-27; text-locale-calendars A47-A49, A87, A88, A124; text-locale-calendars-detail A7, A8; text-locale-era-gregorian A21.
-Unprobed: a number token before the `mmm` switch (`B2[$-409]yyyy|mmm|dddd`; the engine applies the bare `B2` rule, so the
-weekday is the real one); calendar digits 15 and above after `B2` (the engine lets them win like the others); the extended-hex tags that
+Unprobed: calendar digits 15 and above after `B2` (the engine lets them win like the others); the extended-hex tags that
 resolve to a locale (`B2[$-g]`; the engine leaves them Gregorian); Hijri names of LCIDs with no table here (TODO(T-1875); the engine gives them the Arabic names
 of an LCID with no locale, so Persian `[$-60429]` prints "شعبان").
 Implemented in: `resolve_after_hijri_prefix`, `hijri_names` and `Calendar::Hijri` (formatter/locale_tag.rs), the
-lexer's `hijri_prefix`, `NameTokens` (formatter/date_names.rs), the Hijri tables in locale/excel_date_names.rs.
+lexer's `hijri_prefix`, `NameTokens` (formatter/date_names.rs), the Hijri tables in locale/excel_date_names.rs;
+the twice-converted years in `Localized::year_twice`, `japanese_era` (locale_tag.rs) and `year_token_text`
+(formatter/calendar_dates.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-2729
+Tasks: T-2729, T-2932
 
 ## Bare digits beside a date token
 Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
@@ -529,7 +556,7 @@ Tasks: T-1880
 
 ## TEXT of a text value: `@` with other tokens in one section (T-1656)
 
-Rule: a format whose section holds `@` is `#VALUE!` (for a text value, and for numbers too: see Sections below) when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd aaa h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. The calendar prefixes are not among them: `TEXT(45000,"B2[$-409]@")` is "45000" (probes/t2729-hijri-locale-tag-names A289; `B1@` and a bare `B2@` are inferred). These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A fill `*x` prints nothing in the text section (`"x@*-"` is "xabc") while `_x` leaves a space.
+Rule: a format whose section holds `@` is `#VALUE!` (for a text value, and for numbers too: see Sections below) when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd aaa h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. The calendar prefixes are not among them: `TEXT(45000,"B2[$-409]@")` is "45000" (probes/t2729-hijri-locale-tag-names A289; `B1@` and a bare `B2@` too, probes/t2932-b2-calendar-twice A58, A59). These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A fill `*x` prints nothing in the text section (`"x@*-"` is "xabc") while `_x` leaves a space.
 Sections (probes/text-at-token-sections, 96 cells: text, 1, -1 and 0 on each format): `@` may stand only in the last section, and a format that breaks either rule is `#VALUE!` for every value, numbers included. `"@;0"`, `"x@;0"`, `"[Red]x@;0"` and `"x@\y;0;0;@"` are `#VALUE!`; `"x@y;0"`, `"0;x@y"`, `"0;0;x@y"`, `"x@y;0;0;@"`, `"0;0;x@y;@"` and `"0;x@0"` are `#VALUE!` because one section holds `@` beside a token. A last section with `@` is the text section whatever the count: `TEXT("abc","0;x@")` and `"0;0;x@"` are "xabc", and numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1", `TEXT(0,"0;0;x@")` "0"). `"0;0;0;y"` stays `#VALUE!` (4th-section rule) and `"0;0;0;x@\y"` gives "xabcy". This reconciles the poi 4th-section entry: literals in a text section print, but a number or date token beside `@` invalidates the format.
 Evidence: probes/text-at-with-tokens (89 cells), probes/text-at-token-sections (96 cells) (excel-graph, 2026-10-16, T-1656).
 Implemented in: `exceeds_complexity_limit` (formatter/complexity.rs, both placement rules, checked by TEXT before formatting); `format_text_value` and `format_number` (formatter/format.rs: a trailing `@` section, `*x`, `AM/PM` as "AM"). `A/P` and `[$-409]` pass since T-1702. The same formatter paths serve cell display, where the trailing `@` section and `*x` follow TEXT's probed behavior (inferred for display: unprobed, and a display fill would repeat to the column width).
@@ -711,7 +738,7 @@ TEXT() with the same codes. Points the earlier probes did not show:
   (eec351e03ccedfe0 F!R2) and on `=""` two spaces (5255389143dbcef6 F!H11); the `$` variants do the same
   (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25). Ours shows
   the plain value (T-1736).
-- A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5". A value that rounds to
+- A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5" (implemented, T-2097: the minus leads and the General token prints the absolute value; gen-m10 F!D19 -1E15 is "-x1E+15"). A value that rounds to Unprobed: literals after General on a negative (`General x`, unchanged here).
   nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
   1000 "1".
 - `?.??` keeps the point on an integer ("1000.  "); `#%` on 0.0049 is "%".
@@ -955,4 +982,4 @@ branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel
 - Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 4c6a49fe4a6fa404 F!R4, 5eb95c63c7d6180c F!G13, bfbcd16cee266336 F!W12, excel-graph): a scientific
   code on zero prints every integer placeholder of the mantissa as `0`, `#` included (`##0.0E+0` → "000.0E+0",
   `##0.00E+00` → "000.00E+00", `#E+0` → "0E+0"). A carry out of the mantissa renormalises (`0.0E+00` on 99.5 is
-  "1.0E+02"; already correct, pinned by test). Still open (T-2850): the 1E+15 / 1.23457E+14 cells that show nothing, "-x1E+15" vs "x-1E+15", `#E+0` ties. UNVERIFIED: grouped (`#,##0.0E+0`) and `?` (`??0.0E+0`) codes on zero.
+  "1.0E+02"; already correct, pinned by test). "-x1E+15" is the General sign rule (T-2097, T-2850); no gen-m10 scientific cell with an empty text remains. Still open: `#E+0` ties. UNVERIFIED: grouped (`#,##0.0E+0`) and `?` (`??0.0E+0`) codes on zero.

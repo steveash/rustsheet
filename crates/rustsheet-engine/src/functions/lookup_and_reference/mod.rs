@@ -8,7 +8,6 @@ use crate::expressions::utils::{
     unquote_sheet_prefix,
 };
 use crate::external_reference::{one_external_area, PickedReference};
-use crate::functions::logical::{if_arg_at, if_arg_dims};
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::limits::check_array_size;
@@ -18,7 +17,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
+use crate::functions::lift::{BroadcastArg, LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::SearchVector;
@@ -45,6 +44,7 @@ mod lookup_each;
 pub(crate) mod lookup_table;
 pub(crate) mod offset;
 pub(crate) mod pivot_index;
+mod pivot_placement;
 mod pivotby;
 mod ref_lift;
 mod relative_to;
@@ -665,23 +665,39 @@ impl Model {
         index_array: &[Vec<ArrayNode>],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut values = Vec::with_capacity(args.len() - 1);
-        for arg in &args[1..] {
-            match self.evaluate_if_arg(arg, cell) {
-                Ok(value) => values.push(value),
+        // An argument no index element picks only sizes the result: it is not copied (T-1564).
+        let count = args.len() - 1;
+        let mut picked = vec![false; count];
+        for index in index_array.iter().flatten() {
+            if let Ok(arm) = self.choose_index_element(index, count) {
+                picked[arm] = true;
+            }
+        }
+        let mut arms = Vec::with_capacity(count);
+        for (arg, &is_picked) in args[1..].iter().zip(&picked) {
+            match self.evaluate_broadcast_arm(arg, cell, is_picked) {
+                Ok(arm) => arms.push(arm),
                 Err(error) => return error,
             }
         }
         let index_rows = index_array.len();
         let index_cols = index_array.first().map_or(0, Vec::len);
-        let (rows, cols) = values
+        let (rows, cols) = arms
             .iter()
-            .map(if_arg_dims)
+            .map(BroadcastArg::dims)
             .fold((index_rows, index_cols), |(r, c), (vr, vc)| {
                 (r.max(vr), c.max(vc))
             });
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
+        }
+        // The size is checked, so the picked range arms are copied now (T-1564).
+        let mut values = Vec::with_capacity(count);
+        for arm in arms {
+            match self.read_broadcast_arm(arm, cell) {
+                Ok(value) => values.push(value),
+                Err(error) => return error,
+            }
         }
         let mut output = Vec::with_capacity(rows);
         for row in 0..rows {
@@ -690,7 +706,7 @@ impl Model {
                 let node = match bcast_get(index_array, row, col) {
                     None => ArrayNode::Error(Error::NA),
                     Some(index) => match self.choose_index_element(index, values.len()) {
-                        Ok(picked) => if_arg_at(&values[picked], row, col),
+                        Ok(picked) => values[picked].at(row, col),
                         Err(error) => error,
                     },
                 };

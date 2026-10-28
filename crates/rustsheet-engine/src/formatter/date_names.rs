@@ -74,9 +74,9 @@ pub(crate) struct NameTokens {
     /// Whether a `mmm` switches the section to the Arabic path: `B2` before a tag.
     mmm_switches: bool,
     first: Option<FirstName>,
-    /// Whether a numeric date token came before any Arabic name, which turns the first-name
-    /// quirk off for the section (`B2yyyy-mm-dd|mmmm|dddd` is "1444-08-23|شعبان|الأربعاء";
-    /// probes/text-locale-calendars A124).
+    /// Whether a numeric date token came before any Arabic name in a bare `B2` section, which
+    /// turns the first-name quirk off for the section (`B2yyyy-mm-dd|mmmm|dddd` is
+    /// "1444-08-23|شعبان|الأربعاء"; probes/text-locale-calendars A124).
     real_names: bool,
 }
 
@@ -92,9 +92,11 @@ impl NameTokens {
         }
     }
 
-    /// Notes a day, month or year number token.
+    /// Notes a day, month or year number token. Under a tag, one before the `mmm` switch leaves
+    /// the quirk on (`B2[$-409]yyyy|mmm|dddd` is "1444|شعبان|السبت";
+    /// probes/t2932-b2-calendar-twice A60-A63).
     pub(crate) fn number(&mut self) {
-        if self.first.is_none() {
+        if self.arabic && self.first.is_none() {
             self.real_names = true;
         }
     }

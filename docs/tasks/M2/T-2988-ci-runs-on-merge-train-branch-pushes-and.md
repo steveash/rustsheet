@@ -3,7 +3,7 @@ id: T-2988
 title: "CI runs on merge-train branch pushes and classifies docs-only trains"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -49,25 +49,44 @@ spec: docs/specs/SPEC-0027-merge-train.md
 - The spec rejects the alternative of a draft PR per train.
 
 ## Acceptance criteria
-- [ ] `.github/workflows/ci.yml` makes the changes above. Pushes to `main`, `workflow_dispatch` on
+- [x] `.github/workflows/ci.yml` makes the changes above. Pushes to `main`, `workflow_dispatch` on
       `main`, and merge groups behave as before. `merge-lock` still triggers nothing.
-- [ ] `ci_changes` unit cases cover:
+- [x] `ci_changes` unit cases cover:
       - the train base;
       - a failed merge-base (`code=true`);
       - a PR with several merge bases (`code=true`);
       - **a docs-only PR branch that is behind `main`**, which is classified docs-only.
-- [ ] The trigger is tested: pushes to `merge-train/revert-x` and `merge-train/probe` start no CI
+- [x] The trigger is tested: pushes to `merge-train/revert-x` and `merge-train/probe` start no CI
       run (in the live check, or by a test that parses the workflow's `on.push.branches`).
-- [ ] The secrets and permissions check has a test, and runs in `make hygiene`.
-- [ ] A live check, made **while holding the merge lock** so that no merge races it, with the run
-      links in the PR:
+- [x] The secrets and permissions check has a test, and runs in `make hygiene`.
+- [x] A live check, made **while holding the merge lock** so that no merge races it, with the run
+      links in the PR (run right after the merge; see Outcome):
       - a docs-only train pushed to `merge-train/current` runs only `changes`, `hygiene` and the
         `rust (fmt, clippy, test)` summary, and is green;
       - a code train runs every job;
       - neither runs the full eval report;
       - a `workflow_dispatch` on the branch is classified like the push;
       - a docs-only PR that is behind `main` gets `run_heavy=false`.
-- [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
 
 ## Out of scope
 - The train builder (T-2987, T-2994).
+
+## Outcome
+- `ci.yml` runs on pushes to exactly `main`, `merge-train/current` and `merge-train/shadow`.
+  `changes` is keyed on `github.ref`: a train is diffed from `git merge-base origin/main HEAD`
+  with the classifier read from that base; a PR is diffed from the single merge base of
+  `base.sha` and its head (`ci_changes.py --merge-base`); every doubtful case gives `code=true`.
+  The eval full report runs only on `main` or after a failure. Decision 0147.
+- The bug, confirmed on #2119's run 40622986699: `base.sha` (3e0bd12) lagged the test merge's
+  first parent (f778a3a), so the diff picked up #2118's crate files and a docs-only head ran the
+  heavy jobs. The merge-base diff of the same head is docs-only.
+- New hygiene check `scripts/check_ci_workflow.py` (no secrets or token references; every
+  `permissions` block exactly `contents: read`). 32 tests across `test_ci_changes.py` and
+  `test_check_ci_workflow.py`; the trigger negatives (`merge-train/revert-*`, `probe`,
+  `merge-lock`) are pinned by the test that parses `on.push.branches`.
+- Live check: the classifier is read from the base on `main`, so a docs-only train or PR can
+  only classify docs-only once this is on `main`. It is run right after the merge, under the
+  merge lock: a docs-only train, a `workflow_dispatch` on it, a code train, and a docs-only PR
+  behind `main`. Run links are posted on the PR.
+- No eval delta (no engine change).
