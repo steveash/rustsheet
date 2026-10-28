@@ -57,4 +57,6 @@ filed.
   IMAGINARY (T-2841, finished on `main` meanwhile), XNPV (T-2566), PRICE, MDURATION, DURATION (T-2733), LINEST, GROWTH, LOGEST (T-2690),
   HYPGEOMDIST, HYPGEOM.DIST (T-2481), VALUE, IMABS (T-2641), PV, NPER, FV (T-2243),
   NORM.S.INV (T-0925) and about twenty more with one task each.
+- All counts here and in T-0086/T-0087 are point-in-time figures from the 2026-10-27 eval, not gates. The
+  triage is a harness-lane task because it edits only task metadata across lanes.
 - Follow-ups: T-2981, T-0085, T-0086, T-0087, T-0088, T-0089.

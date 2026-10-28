@@ -35,8 +35,9 @@ with no cell made visibly off.
 ## Out of scope
 - The four PPMT cells Excel computes inexactly (T-2242).
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+## Deferred (decision 0114), superseded
+This task was `defer: phase-1b` on the belief that all its cells were within 15 digits. The 2026-10-27 eval showed
+some of them visibly off, so T-0090 removed the key and gave it a `campaign:` stage (below), as this section foresaw.
 
 ## Visible-parity stage
 Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit

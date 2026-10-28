@@ -40,6 +40,9 @@ Phase 1 exit"). The report shows those cells in their own column, so nothing is 
       visibly-off count; cells owned by any non-M14 open task are unaffected.
 - [ ] The eval implements it with a unit test (a function whose only visibly-off cells are M14-owned meets the
       rate; one with a non-M14-owned cell does not), and report.md shows the new column.
+- [ ] One definition of ownership (directive 3): the generator of the desktop-owned list calls
+      `scripts/exit_owners.py`'s `owned` (or the eval ports it and exit_owners.py is changed to use the port), and a
+      test pins both to the same cases.
 - [ ] On a full `make eval`, the four FORECAST.ETS functions meet the Phase 1 rate if and only if all their
       visibly-off cells are T-2425's; no other function's verdict changes.
 - [ ] `make check` green (the generated list is up to date); reviewers approve.
