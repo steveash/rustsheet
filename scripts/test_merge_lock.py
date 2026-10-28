@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -14,7 +13,8 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import merge_lock  # noqa: E402 (the sys.path line above must run first)
+import gh_client  # noqa: E402 (the sys.path line above must run first)
+import merge_lock  # noqa: E402
 
 REAL_GIT = merge_lock.git
 
@@ -487,39 +487,24 @@ class MergeLock(unittest.TestCase):
 
 
 class PrFinished(unittest.TestCase):
-    """`pr_finished` over a stubbed API (no network)."""
+    """`pr_finished` over gh_client's fake (no network)."""
 
-    def read(self, payload: object, url: str = "https://github.com/o/r.git") -> bool | None:
-        class Response:
-            def __enter__(self) -> "Response":
-                return self
-
-            def __exit__(self, *exc: object) -> None:
-                return None
-
-            def read(self, *_: object) -> bytes:
-                return json.dumps(payload).encode()
-
-        remote = subprocess.CompletedProcess([], 0, stdout=url + "\n")
-        with (
-            mock.patch.object(merge_lock, "git", return_value=remote),
-            mock.patch.object(merge_lock.urllib.request, "urlopen", return_value=Response()),
-        ):
+    def read(self, reply: gh_client.Reply, url: str = "https://github.com/o/r.git") -> bool | None:
+        fake = gh_client.FakeGh("o", "r", {("GET", "repos/o/r/pulls/7"): reply})
+        client = fake if gh_client.owner_repo(url) else None
+        with mock.patch.object(gh_client, "from_remote", return_value=client):
             return merge_lock.pr_finished("7")
 
     def test_open_merged_and_closed(self) -> None:
-        self.assertIs(self.read({"state": "open", "merged": False}), False)
-        self.assertIs(self.read({"state": "closed", "merged": True}), True)
-        self.assertIs(self.read({"state": "closed", "merged": False}), True)
+        self.assertIs(self.read(gh_client.Reply({"state": "open", "merged": False})), False)
+        self.assertIs(self.read(gh_client.Reply({"state": "closed", "merged": True})), True)
+        self.assertIs(self.read(gh_client.Reply({"state": "closed", "merged": False})), True)
 
     def test_an_unreadable_state_is_unknown(self) -> None:
-        self.assertIsNone(self.read({"message": "Not Found"}))
-        self.assertIsNone(self.read({"state": "open"}, url="git@example.com:o/r.git"))
-        with (
-            mock.patch.object(merge_lock, "git", return_value=subprocess.CompletedProcess([], 0, "https://github.com/o/r\n")),
-            mock.patch.object(merge_lock.urllib.request, "urlopen", side_effect=OSError("offline")),
-        ):
-            self.assertIsNone(merge_lock.pr_finished("7"))
+        self.assertIsNone(self.read(gh_client.Reply({"message": "Not Found"})))
+        self.assertIsNone(self.read(gh_client.Reply({"state": "open"}), url="git@example.com:o/r.git"))
+        self.assertIsNone(self.read(gh_client.Reply(error="offline")))
+        self.assertIsNone(merge_lock.pr_finished("$(whoami)"))
 
 
 if __name__ == "__main__":
