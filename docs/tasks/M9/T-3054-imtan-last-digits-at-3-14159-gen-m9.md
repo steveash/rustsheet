@@ -28,14 +28,15 @@ depends_on: []
 ## Out of scope
 - Other complex functions.
 
-## Outcome (2026-10-28, dropped into T-2774)
-Excel for the web's IMTAN of a real number is TAN's x87 kernel (`excel_tan` gives -2.653589793362123E-06, which prints
-Excel's ...212E-06), the same change as the blocked T-2774. probes/t3054-imtan-real-tan-kernel (excel-graph) confirms it
-on nine discriminating real arguments, and its N1, ironcalc-calc COMPLEXs.xlsx N6's own formula, gives the web's
--3.38051500624659 against N6's Mac cache ...658.
+## Outcome (dropped, 2026-10-28)
+Duplicate of T-2774 (blocked on T-1075 item 17). A338's argument is the real number 3.14159, and IMTAN of a real is
+TAN's kernel on Excel for the web: `IMTAN(3.14159)` -2.65358979336212E-06 is already recorded in engineering.md "IM*
+trigonometry of a real number is SIN, COS and TAN" (probes/t2534-im-trig-real-limit) and owned by T-2774 through
+gen-m9/79dac8dde81afda9 A154. Following the web here regresses the Mac desktop cache COMPLEXs.xlsx N6, which decision
+0030 makes the reference, so it is not a kernel to fit. The cell is added to T-2774's owned list.
 
-The change is not made here. IMTAN is in numbers.md "Excel for the web and desktop Excel differ in the last digits", so
-decision 0030 rule 4 (kept by decision 0039) makes the desktop N6 the fitting target, and a web known failure the engine
-misses by less than 1e-9 relative (A338: 2e-14) is not a target for further fitting. Switching would also regress N6, which
-needs its own decision (decision 0039 rule 4). The cell and the probe cells move to T-2774, which waits on T-1075 item 17.
-Eval delta: 0 fixed, 0 regressions; the probe adds 10 known failures (new coverage, owned by T-2774): its nine discriminating IMTAN rows and N1.
+## Probe (2026-10-28, a second run on the same task)
+probes/t3054-imtan-real-tan-kernel (excel-graph) confirms the web's TAN kernel on nine more real arguments where the two
+kernels print different text, and its N1 is N6's own formula on N6's inputs, `IMREAL(IMTAN(COMPLEX(5,0,"i")))`: the web
+gives -3.38051500624659 against N6's Mac cache ...658, so the conflict is the platform, not the formula. Its 10 failing
+cells (N1, A2, A4:A11) are known failures owned by T-2774; eval delta 0 fixed, 0 regressions.
