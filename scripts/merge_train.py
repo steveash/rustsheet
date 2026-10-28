@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import unicodedata
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
@@ -28,7 +29,6 @@ import ci_changes
 import gh_client
 import merge_lock
 import merge_ready
-import tomllib
 from gh_client import SHA, Client, GhError
 from merge_lock import GitError, git
 
@@ -239,11 +239,12 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
     return "\n".join(lines)
 
 
-# The merge stage of a green train (SPEC-0027 section 4, steps 1 and 5-7; T-2994).
+# The merge stage of a green train (SPEC-0027 section 4, steps 1 and 5-7; T-2994). The
+# constants are section 4's.
 TRAIN_BRANCH = "merge-train/current"
 TRAIN_REF = f"refs/heads/{TRAIN_BRANCH}"
 MAIN_REF = "refs/heads/main"
-CI_WORKFLOW_FILE = "ci.yml"
+CI_WORKFLOW_FILE = Path(merge_ready.CI_WORKFLOW).name
 TRAIN_EVENTS = ("push", "workflow_dispatch")
 WINDOW = 40 * 60  # a merger run's polling window; the lock wait is capped at what is left of it
 HOLD_BUDGET = 40 * 60  # counted from the lock's acquisition
@@ -271,9 +272,10 @@ class Stop(Exception):
 
 
 def squash_title(title: str, pr: int) -> str:
-    """The squash commit title: control and format characters stripped, at most TITLE_MAX
+    """The squash commit title: control, format and line or paragraph separators stripped, at most TITLE_MAX
     characters, `@`, `#` and closing keywords neutralised by a zero-width joiner, then ` (#pr)`."""
-    clean = "".join(c for c in title if unicodedata.category(c)[0] != "C")[:TITLE_MAX].strip()
+    kept = (c for c in title if unicodedata.category(c)[0] != "C" and unicodedata.category(c) not in ("Zl", "Zp"))
+    clean = "".join(kept)[:TITLE_MAX].strip()
     clean = CLOSING_KEYWORD.sub(lambda m: m[0][0] + ZWJ + m[0][1:], clean)
     clean = clean.replace("@", "@" + ZWJ).replace("#", "#" + ZWJ)
     return f"{clean or 'merge train'} (#{pr})"

@@ -12,11 +12,14 @@ spec: docs/specs/SPEC-0027-merge-train.md
 ---
 
 ## Goal
-In `train` mode, `make merge-train` merges a green batch from start to finish under the fair
-lock. It pushes the train, waits for CI on the exact sha it built, and squash-merges the PRs in
-order with a check before and after each squash. At every checkpoint it honours the switch and
-any valid stop label. When a squash does not match, it opens a revert PR, never merges it, and
-stops. Red trains are T-2998.
+In `train` mode, `make merge-train TRAIN=1` merges a green batch from start to finish under the
+fair lock. It pushes the train, waits for CI on the exact sha it built, and squash-merges the PRs
+in order with a check before and after each squash. At every checkpoint it honours the switch.
+Any mismatch stops the train with nothing more merged and is reported as a P0. Red trains are
+T-2998.
+
+Split per the size clause below (decision 0151): the stop label, the revert PR and the P0
+filing moved to **T-3045**.
 
 ## Context
 - SPEC-0027 section 4: the write policy and steps 1, 5–7 and 9.
@@ -49,22 +52,21 @@ stops. Red trains are T-2998.
   revert PR.
 
 ## Acceptance criteria
-- [ ] `scripts/merge_train.py` implements all of the above in `train` mode. It stays unused while
-      `mode = "lock"`.
-- [ ] `scripts/test_merge_train.py` covers SPEC-0027's Test plan cases for the merge stage:
-      - the write policy;
-      - a mode flip or a valid stop label at each checkpoint, including right after acquisition
-        (nothing is pushed);
-      - a stop label on a PR that fails `merge-flip-check`, which is ignored and removed;
-      - a malformed mode, which reads as `lock`;
-      - `main` moving between squashes, and a merge ref that is never recomputed;
-      - the revert path: the PR is opened, the P0 is filed, the lock is released, and the merger
-        never merges the PR;
-      - lock exit 4, the hold budget gate with per-wait n, the capped lock wait and the exit
-        handler;
+- [ ] `scripts/merge_train.py --train` (`make merge-train TRAIN=1`) implements steps 1 and 5-7 of
+      SPEC-0027 section 4 for a green train, with the mode half of the stop checkpoints. It does
+      nothing (no lock, no write) while `mode = "lock"`.
+- [ ] `scripts/test_merge_train.py` covers SPEC-0027's Test plan cases for this slice:
+      - the write policy in `lock` mode (no lock, no write) and a malformed mode, which reads as `lock`;
+      - a mode flip at each checkpoint, including right after acquisition (nothing is pushed);
+      - `main` moving before the first squash, between squashes and during a squash, and a merge
+        ref that is never recomputed;
+      - lock exit 4, the hold budget gate, the capped lock wait and the exit handler;
+      - red, missing and overlong train CI;
       - a partly merged batch;
       - the squash text.
 - [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- Moved to T-3045 (decision 0151): the `merge-train-stop` label at each checkpoint, a stop label
+  on a PR that fails `merge-flip-check`, and the revert path (revert PR, P0 filing).
 
 ## Out of scope
 - Red trains (T-2998).

@@ -6,10 +6,12 @@ from __future__ import annotations
 import random
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from unittest import mock
 
@@ -341,11 +343,12 @@ class DryRun(unittest.TestCase):
 class SquashText(unittest.TestCase):
     def test_titles_are_sanitized(self) -> None:
         zwj = merge_train.ZWJ
-        title = merge_train.squash_title("T-1: fixes #12 for @bob\x07‮" + "x" * 200, 7)
+        title = merge_train.squash_title("T-1: fixes #12 for @bob\x07\u202e\u2028" + "x" * 200, 7)
         self.assertTrue(title.startswith(f"T-1: f{zwj}ixes #{zwj}12 for @{zwj}bob"))
         self.assertTrue(title.endswith(" (#7)"))
         self.assertNotIn("\x07", title)
-        self.assertNotIn("‮", title)
+        self.assertNotIn("\u202e", title)
+        self.assertNotIn("\u2028", title)
         self.assertEqual(merge_train.squash_title("Closed: resolve it", 1), f"C{zwj}losed: r{zwj}esolve it (#1)")
 
     def test_only_well_formed_trailers_are_kept_once(self) -> None:
@@ -366,15 +369,15 @@ class FakeLock(merge_train.LockOps):
         super().__init__("train-test", Path("."))
         self.renewals = renewals or []
         self.calls: list[tuple[str, object]] = []
-        self.on_wait: list[object] = []
+        self.on_wait: list[Callable[[], None]] = []
 
     def wait(self, timeout_minutes: float) -> int:
         self.calls.append(("wait", timeout_minutes))
         for hook in self.on_wait:
-            hook()  # type: ignore[operator]
+            hook()
         return 0
 
-    def renew(self, prs: list[int]) -> int:  # type: ignore[override]
+    def renew(self, prs: Sequence[int]) -> int:
         self.calls.append(("renew", list(prs)))
         return self.renewals.pop(0) if self.renewals else 0
 
@@ -404,7 +407,10 @@ class GitHub(Client):
         self.merged: list[int] = []
         self.writes: list[Request] = []
         self.ci = ["green"]
-        self.hooks: dict[tuple[str, str], object] = {}
+        self.hooks: dict[tuple[str, str], Callable[[], None]] = {}
+        self.after: dict[tuple[str, str], Callable[[], None]] = {}
+        self.bad_tree = False
+        self.lose_reply = False
         self.mergeable: object = True
         self.refuse: set[int] = set()
 
@@ -416,7 +422,10 @@ class GitHub(Client):
 
     def test_merge(self, pr: int) -> str:
         main, head = self.main(), self.heads[pr]
-        tree = self.git("merge-tree", "--write-tree", main, head)
+        if self.bad_tree:  # a test merge on the right parent whose tree is not the train's
+            tree = self.git("rev-parse", f"{main}^{{tree}}")
+        else:
+            tree = self.git("merge-tree", "--write-tree", main, head)
         return self.git("commit-tree", tree, "-p", main, "-p", head, "-m", "test merge")
 
     def runs(self, sha: str) -> object:
@@ -439,10 +448,18 @@ class GitHub(Client):
             for k, name in enumerate(jobs)
         ]}
 
-    def send(self, request: Request) -> object:  # noqa: PLR0911, PLR0912 (one branch per endpoint)
+    def send(self, request: Request) -> object:
+        try:
+            return self.answer(request)
+        finally:
+            after = self.after.pop((request.method, request.path.removeprefix("repos/o/r/")), None)
+            if after is not None:
+                after()
+
+    def answer(self, request: Request) -> object:  # noqa: PLR0911 (one return per endpoint)
         hook = self.hooks.pop((request.method, request.path.removeprefix("repos/o/r/")), None)
         if hook is not None:
-            hook()  # type: ignore[operator]
+            hook()
         path = request.path.removeprefix("repos/o/r/")
         if request.method != "GET":
             self.writes.append(request)
@@ -472,6 +489,8 @@ class GitHub(Client):
             squash = self.git("commit-tree", tree, "-p", main, "-m", message)
             self.git("update-ref", "refs/heads/main", squash, main)
             self.merged.append(pr)
+            if self.lose_reply:
+                raise GhError("gh api PUT: connection reset")
             return {"sha": squash, "merged": True}
         if path == "actions/runs":
             query = dict(request.query)
@@ -515,11 +534,11 @@ class MergeStage(unittest.TestCase):
         self.clock = Clock()
         self.stage = merge_train.Stage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
         at = {1: "2026-10-28T10:00:00Z", 2: "2026-10-28T11:00:00Z"}
-        verdicts = {pr: verdict(pr, head, at[pr]) for pr, head in self.heads.items()}
+        self.verdicts = {pr: verdict(pr, head, at[pr]) for pr, head in self.heads.items()}
 
         def verify(_client: object, pr: int, repo: merge_ready.Repo) -> merge_ready.Verdict:
             repo.fetch_head(pr)
-            return verdicts[pr]
+            return self.verdicts[pr]
 
         patch = mock.patch.object(merge_train.merge_ready, "verify", side_effect=verify)
         patch.start()
@@ -601,15 +620,7 @@ class MergeStage(unittest.TestCase):
         self.assertIn("P0: main moved without the lock before squashing #2", self.stage.log)
 
     def test_main_moving_during_a_squash_fails_the_post_squash_check(self) -> None:
-        original = self.gh.send
-
-        def send(request: Request) -> object:
-            reply = original(request)
-            if request.path.endswith("pulls/1/merge"):
-                self.push_main({"other.txt": "x"})
-            return reply
-
-        self.gh.send = send  # type: ignore[method-assign]
+        self.gh.after[("PUT", "pulls/1/merge")] = lambda: self.push_main({"other.txt": "x"})
         self.assertEqual(self.run_stage(), 1)
         self.assertEqual(self.gh.merged, [1])
         self.assertTrue(self.stage.log[-1].startswith("P0: main differs from the tested train after squashing #1"))
@@ -668,6 +679,75 @@ class MergeStage(unittest.TestCase):
         self.gh.hooks[("GET", "actions/runs")] = fail
         with self.assertRaises(GhError):
             self.run_stage()
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+
+    def add_pr(self, pr: int, files: dict[str, str], *failures: merge_ready.Failure) -> None:
+        self.git("checkout", "-q", "-f", "--detach", self.m0)
+        for path, text in files.items():
+            self.write(path, text)
+        self.heads[pr] = self.commit(f"pr {pr}")
+        self.git("push", "-q", "origin", f"HEAD:refs/pull/{pr}/head")
+        self.git("checkout", "-q", "-f", "main")
+        self.verdicts[pr] = verdict(pr, self.heads[pr], f"2026-10-28T0{pr}:00:00Z", *failures)
+
+    def test_train_mode_unlabels_failed_prs_and_ejects_with_a_label(self) -> None:
+        self.add_pr(3, {"docs/decisions/0001-b.md": "x"})  # collides with main's 0001
+        self.add_pr(4, {"f4.txt": "x"}, merge_ready.Failure("V3", "CI red", merge_ready.UNLABEL))
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+        writes = [
+            (r.method, r.path.removeprefix("repos/o/r/"), r.body)
+            for r in self.gh.writes
+            if "/3/" in r.path or "/4/" in r.path
+        ]
+        label = merge_ready.READY_LABEL
+        collision = "id collision with 0001; renumber per decision 0121 (2)"
+        self.assertEqual(writes, [
+            ("DELETE", f"issues/4/labels/{label}", None),
+            ("POST", "issues/4/comments", {"body": f"merge train: {label} removed: CI red"}),
+            ("DELETE", f"issues/3/labels/{label}", None),
+            ("POST", "issues/3/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
+            ("POST", "issues/3/comments", {"body": f"merge train: {label} removed: {collision}"}),
+        ])
+
+    def test_a_push_that_loses_its_lease_merges_nothing(self) -> None:
+        build = merge_train.build
+
+        def build_then_race(*args: object) -> merge_train.Train:
+            train = build(*args)  # type: ignore[arg-type]  # the stage's own arguments, passed through
+            run("git", "update-ref", merge_train.TRAIN_REF, self.m0, cwd=self.origin)
+            return train
+
+        with mock.patch.object(merge_train, "build", side_effect=build_then_race):
+            self.assertEqual(self.run_stage(), 1)
+        self.assertIn("lost its lease", self.stage.log[-1])
+        self.assertEqual((self.gh.merged, self.train_ref()), ([], self.m0))
+
+    def test_a_test_merge_with_another_tree_stops_with_a_p0(self) -> None:
+        self.gh.bad_tree = True
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [])
+        self.assertEqual(
+            self.stage.log[-1], "P0: main differs from the tested train at #1: GitHub's test merge has another tree"
+        )
+
+    def test_a_lost_merge_reply_is_read_back(self) -> None:
+        self.gh.lose_reply = True
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+
+    def test_the_ci_wait_renews_the_lock(self) -> None:
+        polls = merge_train.RENEW_EVERY // merge_train.CI_POLL
+        self.gh.ci = ["pending"] * (polls + 1) + ["green"]
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        renewals = [c for c in self.lock.calls if c == ("renew", [1, 2])]
+        self.assertEqual(len(renewals), 1 + 1 + 2)  # after the push, one in the wait, two in step 7
+
+    def test_sigterm_releases_the_lock(self) -> None:
+        self.gh.hooks[("GET", "actions/runs")] = lambda: merge_train.raise_on_term(signal.SIGTERM, None)
+        with self.assertRaises(SystemExit) as raised:
+            self.run_stage()
+        self.assertEqual(raised.exception.code, 128 + signal.SIGTERM)
         self.assertEqual(self.lock.calls[-1], ("release", None))
 
 
