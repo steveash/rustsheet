@@ -3,7 +3,7 @@ id: T-2217
 title: "RRI matches Excel's last ulp at RRI(0.5,3,4) (exp(ln(fv/pv)*(1/nper))-1, not ^)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
