@@ -395,7 +395,7 @@ agree):
   `T[ [#Data] , [Col] ]` prints `T[ [#Data], [Col] ]` (the space before the comma is dropped, as in a call),
   `T[[#Data]  ,  [Col]]` prints `T[[#Data], [Col]]` (the run after the comma collapses to one space; one data point) and `T[[#Data],[Col]:[Other]]` prints with no space (none written).
 - **A single column in outer-padded brackets is rewritten to the bare form**: `T[ [Col] ]` prints `T[ Col ]`, a form that
-  typing `T[ Col ]` itself refuses, and which Excel itself saves (cached value 7); Spaces around the specifier are kept as typed. **Loading a stored `<f>SUM(T[ Col ])</f>` gives `#REF!`**:
+  typing `T[ Col ]` itself refuses, and which Excel itself saves (cached value 7). Spaces around the specifier are kept as typed. **Loading a stored `<f>SUM(T[ Col ])</f>` gives `#REF!`**:
   Excel reads the padded bare column as no reference, the cell is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`; the same
   for the one-sided `T[ Col]` and `T[Col ]`. Stored `T[ [Col] ]` loads (value 5, prints `T[ Col ]`). A stored padded
   `T[ #Data ]` makes Graph reject the whole workbook (`501 FileCorruptTryRepair`, `unsupportedWorkbook`), so Excel does
@@ -403,8 +403,8 @@ agree):
 - Whitespace around the whole reference is an ordinary operand run (`=SUM( T[Col] )` prints as typed).
 - This-row shapes, each entered alone in its own column of a one-row table (so no calculated-column fill; T-2800):
   `T[[#This Row], [Col]]` and `T[[#This Row] , [Col]]` print `[@Col]` (value 5); `T[ [#This Row] , [Col] ]`,
-  `T[ [#This Row],[Col] ]` and `[@ Col]` print `[ @Col ]`, the outer padding kept and the `@` form substituted. Inside a
-  table Excel always prints the short `[@...]` form; the long `T[[#This Row],...]` text is not kept. (An earlier
+  `T[ [#This Row],[Col] ]` and `[@ Col]` print `[ @Col ]`, the outer padding kept and the `@` form substituted. In every
+  probed shape (B2:F2) Excel prints the short `[@...]` form; the long `T[[#This Row],...]` text is not kept. (An earlier
   T-2786 attempt typed three of these into one column, and the calculated-column fill rewrote them all; see references.md,
   "Calculated columns: a formula typed into a table column", T-2957, T-2958.)
   Ours: the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
@@ -420,11 +420,9 @@ so the call still takes no argument; inside an empty call of a LAMBDA or a name 
 (unprobed, T-2976). A spaced missing argument is still missing where a function refuses one (`=SUBTOTAL(9,A1, )` is refused
 like `=SUBTOTAL(9,A1,)`, references.md; Excel refuses both spaced shapes typed). Inside a structured
 reference (T-2801) the lexer keeps the runs after the outer `[` and before the outer `]` as typed and whether any
-whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. Two choices are ours, not
-probed: a run around a lone specifier keeps the outer brackets it was typed in (`T[ [#Data] ]` prints as typed), and a
-stored `T[ Col ]`, padded on both sides, reads back as column `Col` with its padding (so our own export round-trips).
-One-sided `T[ Col]` and `T[Col ]`, and padded `#` or `@` starts (`T[ #Data ]`), read as before, as a column whose
-name has the spaces. T-2962 probes these choices.
+whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. A run around a lone specifier keeps the outer brackets it was typed in (`T[ [#Data] ]` prints as typed; our choice, unprobed). Our stored
+`T[ Col ]` reading back as column `Col` now contradicts Excel, which gives `#REF!` (stored-ws-0, T-3069); the one-sided
+`T[ Col]` and `T[Col ]` already match (stored-ws-1 and -2 pass). Padded `#` or `@` starts (`T[ #Data ]`) read as before.
 Status: VERIFIED (excel-graph)
 Implemented in: expressions/lexer/structured_references.rs, expressions/parser/structured_reference.rs (`text`)
 Tasks: T-2786, T-2944, T-2966, T-2800, T-2801, T-2955, T-2956, T-2957, T-2958
