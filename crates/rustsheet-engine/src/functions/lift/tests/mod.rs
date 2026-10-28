@@ -340,7 +340,7 @@ fn an_array_first_entry_empties_later_elements_unless_every_entry_is_equal() {
     let options = LiftOptions {
         reuse: Reuse::Never,
         work: KernelWork::Output { weight: 1 },
-        result: CallResult::ArrayFirst,
+        result: CallResult::ArrayFirstColumn,
         later_error: false,
     };
     let mut kernel = |_: &mut Model, values: &[CalcResult]| match values {
