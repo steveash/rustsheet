@@ -48,8 +48,3 @@ Owned cells (41):
 ## Blocked because
 Web-vs-desktop conflict on IMTAN(5): see Context. Unblocks when T-1075 item 17 is answered, or a decision record
 authorizes following the web for N6.
-
-## Cells added by the T-0087 sweep (2026-10-28)
-Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): IMTAN 1. This task now owns them:
-- gen-m9/e85daedce5c2675e: Calc!A109
-The added cell is `IMTAN("5")`, the real-number case this task is blocked on, so the same desktop answer (T-1075 item 17) settles it; it is owned, but not picked, until then.
