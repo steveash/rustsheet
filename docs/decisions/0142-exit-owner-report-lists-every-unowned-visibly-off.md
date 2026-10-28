@@ -21,6 +21,8 @@
     `group<TAB>case!Sheet!A1<TAB>formula<TAB>expected<TAB>actual`, then per-group and total counts.
   - A cell owned only by a task with `defer:` is unowned: it is listed and counted, and its group
     reads `<group> (deferred)`.
+  - `--function` keeps one group: a function name, `unattributed` or `probe M<k>`; a probe case that
+    failed with no cell rows is listed once with the key `*`.
   - It gates nothing (`--strict` exits 1 when any cell is listed).
 - **Consequences:**
   - The steward and the gap-triager can run `make unowned-off ALL=1` after `make eval` instead of a

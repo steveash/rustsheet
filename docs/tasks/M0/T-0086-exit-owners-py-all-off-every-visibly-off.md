@@ -43,23 +43,11 @@ milestone, each with case, cell, formula, expected and actual.
 ## Out of scope
 - Filing the owners (T-0087).
 
-## Handoff (resumed)
-- Implemented and reviewed (security, architecture, fidelity, quality all APPROVE; `make check` green locally): the eval writes
-  `attributed_off` into report.json (`attribution::off_excel_cells` shared with `unattributed_off`), and
-  `scripts/exit_owners.py --all-off [--function NAME] [--strict]` + `make unowned-off ALL=1` list the unowned cells in ~30 s.
-  PR #2123 holds it.
-- What failed: CI job `hygiene` step `check_governance.py origin/main`: "protected paths changed without a decision record
-  in docs/decisions/: Makefile, scripts/exit_owners.py, scripts/test_exit_owners.py". Sonnet runs do not write decisions
-  for protected paths (work-loop 5b).
-- Next: `make new-decision TITLE="..."` (extend decision 0132/0096 `exit_owners.py` listing with `--all-off`), fill it in,
-  push, confirm CI green, re-tick the acceptance boxes, set `status: done` with an Outcome (eval delta none; 100,671
-  attributed cells, 111 unowned, ~30 s), then merge under the steward policy.
-
 ## Outcome
 - The eval writes `attributed_off` into report.json (`attribution::off_excel_cells` is the one filter behind it and
   `unattributed_off`; closeness.rs's tests pin the 4-ulp and half-unit boundaries), and
   `scripts/exit_owners.py --all-off [--function NAME] [--strict]` / `make unowned-off ALL=1 [FUNCTION=NAME]` list
   every unowned visibly-off Excel cell by function, then unattributed, then probe milestone; deferred-only owners
   show as `<group> (deferred)`. Decision 0142 records it.
-- On the full report of the handed-off run: 100,671 attributed off cells, 111 unowned listed, in about 30 s.
+- On the full report of the handed-off run (T-0086 handoff, 2026-10-28): 111 unowned cells listed, in about 30 s.
 - Eval delta: none (report-only change).
