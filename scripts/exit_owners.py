@@ -7,8 +7,9 @@
 Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every visibly-off cell of
 the milestone's exit criteria (decision 0085, read at visible parity by decisions 0114 and 0135:
 the `gen-m<k>` suite, the ironcalc-calc row of "Milestone function scope" less its exit
-exceptions, and the probes of the milestone's row of "Probe milestones", `M0-M2` for M2), plus
-each probe case that fails with no cell, that no open task of that milestone names, one per line as
+exceptions when the exit row requires it (not M7, decision 0140), and the probes of the
+milestone's row of "Probe milestones", `M0-M2` for M2), plus each probe case that fails with no
+cell, that no open task of that milestone names, one per line as
 `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count is
 not 0.
 
@@ -17,7 +18,9 @@ the case (`case_names`): by its file stem (the last path segment of the case id 
 a gen hash, an xlsx file name, a probe name; with or without that suffix) when no other case of the
 report has that stem, else only by a longer suffix of the case id that is unique in the report
 (`pv26_011/golden.xlsx`, `t2436/<hash>`, `gen-m9/<hash>`) or by its directory below the suite when
-no other case of the report is in a directory of that name (`pv26_011`; decision 0138), and
+no other case of the report is in a directory of that name (`pv26_011`; decision 0138), a
+unique stem also by its directory path when no other case is under it (`corpus-bench/53062`;
+a name may end a sentence with `.`; decision 0139), and
 either the cell's A1 name as a whole word, or a colon span (`A5:D5`) holding it on a line that
 names the case, or the case on a line with no A1-shaped token (a task that names only the case
 owns all of it). Hyphen spans (`D49-D65`) name their ends only (decision 0136). The ironcalc-calc
@@ -78,16 +81,24 @@ def case_names(cases: list[str]) -> dict[str, tuple[str, ...]]:
     names that case. A stem that several cases share (every calipers `golden.xlsx`, a gen-m9
     hash rerun as `probes/t2436/<hash>`) names none of them: such a case is named by each suffix
     of its id, of two segments or more, that no other case has, and by its directory (below the
-    suite, the id's first segment) when no other case is in a directory of that name."""
+    suite, the id's first segment) when no other case is in a directory of that name. A case with
+    its own stem that is below the suite is also named by its directory path (the id less its
+    last segment, suite included) when no other case of the report is under that path."""
     ids = sorted(set(cases))
     parts = {c: c.removesuffix(SPEC_SUFFIX).split("/") for c in ids}
     stems = Counter(p[-1] for p in parts.values())
     suffixes = Counter("/".join(p[k:]) for p in parts.values() for k in range(len(p) - 1))
     dirs = Counter(p[-2] for p in parts.values() if len(p) > 2)
+    # Cases under each directory path below the suite, and the ids a path may collide with.
+    under = Counter("/".join(p[:k]) for p in parts.values() for k in range(2, len(p)))
+    whole = {"/".join(p) for p in parts.values()}
     out: dict[str, tuple[str, ...]] = {}
     for c, p in parts.items():
         if stems[p[-1]] == 1:
-            out[c] = (p[-1],)
+            # `corpus-bench/53062` for `corpus-bench/53062/1_53062_input.xlsx` (decision 0139).
+            folder = "/".join(p[:-1])
+            alone = len(p) > 2 and under[folder] == 1 and folder not in whole
+            out[c] = (p[-1], folder) if alone else (p[-1],)
             continue
         found = ["/".join(p[k:]) for k in range(len(p) - 1) if suffixes["/".join(p[k:])] == 1]
         if len(p) > 2 and dirs[p[-2]] == 1:
@@ -131,7 +142,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
                 if f"{case['id']}!{key}" in gen_off:
                     out.append(ExitCell(gen, str(case["id"]), key, formula_of(c)))
 
-    scope = report.get("function_scope") or {}
+    # A function-scope row the exit row shows but does not require (counts with a null
+    # `calc_met`, M7) is no exit criterion (decision 0140).
+    shown_only = exit_row.get("calc_failing") is not None and exit_row.get("calc_met") is None
+    scope = {} if shown_only else report.get("function_scope") or {}
     for row in scope.get("rows") or []:
         if row.get("milestone") == milestone:
             excepted = set(row.get("excepted") or [])
@@ -173,8 +187,10 @@ def names(text: str, token: str, word: str) -> bool:
 
 
 # A case stem is bounded like a file name; an A1 name like a cell reference (`Calc!A107` names
-# A107, `A10` does not name A1).
+# A107, `A10` does not name A1). A name may end a sentence: a `.` that no file-name character
+# follows does not extend it (`corpus-bench/55049.`; decision 0139).
 STEM_WORD = r"[\w.-]"
+STEM_END = r"(?![\w-]|\.[\w.-])"
 A1_WORD = r"[\w$]"
 A1_PART = r"\$?([A-Z]{1,3})\$?([0-9]{1,7})"
 A1_TOKEN = re.compile(rf"(?<!{A1_WORD}){A1_PART}(?!\w)")
@@ -188,7 +204,7 @@ def names_case(text: str, names: tuple[str, ...]) -> bool:
     """Whether `text` holds one of a case's `names` (`case_names`), bare or followed by
     `.case.json` (decision 0136), bounded like a file name."""
     return any(
-        re.search(rf"(?<!{STEM_WORD}){re.escape(n)}(?:{re.escape(SPEC_SUFFIX)})?(?!{STEM_WORD})", text)
+        re.search(rf"(?<!{STEM_WORD}){re.escape(n)}(?:{re.escape(SPEC_SUFFIX)})?{STEM_END}", text)
         for n in names
     )
 

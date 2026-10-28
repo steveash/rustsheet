@@ -3,7 +3,7 @@ id: T-2957
 title: "Probe Excel's calculated-column fill when a formula is typed into a table column (probes/t2786 C2:C4)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -50,14 +50,29 @@ writes in xlsx-storage.md. Also record whether a stored workbook carrying `calcu
 (an engine import question; usually it does not).
 
 ## Acceptance criteria
-- [ ] Probe cases under eval/suites/probes/cases/ (tag M2, `entered` cells, excel-graph values), in the probes
+- [x] Probe cases under eval/suites/probes/cases/ (tag M2, `entered` cells, excel-graph values), in the probes
       baseline.
-- [ ] A docs/excel-semantics/ entry (references.md or a tables section) states the fill rules items 1-7 answer, with
+- [x] A docs/excel-semantics/ entry (references.md or a tables section) states the fill rules items 1-7 answer, with
       the cells as evidence, and links T-2958. syntax.md's "calculated-column fill" sentence links to it.
-- [ ] T-2958's Context and acceptance criteria name the new cases' cells. An implementation task is filed for any
+- [x] T-2958's Context and acceptance criteria name the new cases' cells. An implementation task is filed for any
       finding T-2958 does not cover (auto-expand, import of `calculatedColumnFormula`).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - This-row syntax without a fill (T-2800).
 - Table moves on row inserts (T-2845).
+
+## Outcome
+Eight probe cases, eval/suites/probes/cases/t2957-*.case.json (tag M2, `entered` cells, filled on excel-graph
+2026-10-27; every sequence row-major, so the engine adapter types in the same order). Findings in references.md
+("Calculated columns: a formula typed into a table column", rules 1-7) and xlsx-storage.md ("A calculated column is
+saved as `calculatedColumnFormula` plus one formula per row"): a typed formula fills a column whose other data cells
+are all blank (never the totals row); a different formula re-fills a filled column; a constant is an exception and
+stops later re-fills; a pre-existing value stops the fill; A1 formulas fill shifted; typing beside the table expands
+it (a header-row formula becomes the header text `0`). constant-then-refill came back once with every cell blank;
+three fresh reruns agree with the recorded sidecar, so that run is recorded as an anomaly. Every other case was
+re-run once fresh and matched. Not probed: typing twice into the same cell (the case format cannot), and fill on
+load of a stored `calculatedColumnFormula` (T-2969, needs a spec2xlsx option). T-2958's Context and criteria now
+name the cells it owns; follow-ups T-2968 (auto-expansion, engine) and T-2969 (stored column formula, harness).
+Eval delta: probes +8 cases, +30 known failures (new coverage; 0 regressions); visible parity +30 cells in new
+cases.
