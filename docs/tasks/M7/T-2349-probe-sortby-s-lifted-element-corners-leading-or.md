@@ -3,7 +3,7 @@ id: T-2349
 title: "Probe SORTBY's lifted-element corners: leading or mixed invalid sort_order entries, an error array or by_array"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,9 +24,12 @@ Write a probe case per the excel-probe skill (ROWS, and per element ISBLANK, `&"
 Also probe (from T-2348): SORTBY's uniform 1xN sort_order (`SORTBY(A1:A3,C1:C3,{1,1})`), with and without a second by_array/sort_order pair, and UNIQUE's error element past the first column (`UNIQUE(D1:D3,FALSE,{"a","a"})`); ours keeps SORTBY's top-lefts and UNIQUE's error.
 
 ## Acceptance criteria
-- [ ] A probe case with these cells, filled from excel-graph; arrays.md updated (the UNVERIFIED lines resolved).
-- [ ] Every cell of it passes, or each failing cell has its own task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with these cells, filled from excel-graph; arrays.md updated (the UNVERIFIED lines resolved).
+- [x] Every cell of it passes, or each failing cell has its own task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probes/sortby-lifted-element-corners (134 cells, excel-graph): leading and mixed invalid sort_order entries and an error by_array already matched; two differences fixed: an error array now lifts to the sort_orders shape (was one scalar error) and a uniform 1xN sort_order empties the elements past the first column (SORTBY moved to `CallResult::ArrayFirstColumn`, `ArrayFirst` removed as unused). arrays.md UNVERIFIED lines resolved.

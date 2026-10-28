@@ -569,16 +569,13 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-
-        if data.is_empty() || data[0].is_empty() {
+        // An error array is lifted like any other: every element is that error, in the sort_orders'
+        // shape (`ROWS(SORTBY(NA(),C1:C3,{1;-1}))` is 2; probes/sortby-lifted-element-corners F7,
+        // excel-graph, T-2349).
+        let data = self.eval_to_array(&args[0], cell);
+        if data.as_ref().is_ok_and(|d| d.is_empty() || d[0].is_empty()) {
             return CalcResult::Array(vec![]);
         }
-
-        let num_rows = data.len();
 
         // The array and the by_arrays are read once here; the sort_orders lift over an array and
         // a range (SPEC-0011 "Array-valued functions", T-1839). Each element sorts the whole
@@ -587,7 +584,7 @@ impl Model {
             .step_by(2)
             .map(|i| self.eval_to_array(&args[i], cell))
             .collect();
-        let cells = data.iter().map(Vec::len).sum::<usize>()
+        let cells = data.iter().flatten().map(Vec::len).sum::<usize>()
             + keys
                 .iter()
                 .flatten()
@@ -599,7 +596,7 @@ impl Model {
             args,
             LiftCost::Cells(cells),
             cell,
-            &mut |model, values| model.sortby_of(&data, &keys, values, num_rows, cell),
+            &mut |model, values| model.sortby_of(&data, &keys, values, cell),
         )
     }
 
@@ -609,12 +606,16 @@ impl Model {
     /// docs/excel-semantics/arrays.md).
     fn sortby_of(
         &mut self,
-        data: &[Vec<ArrayNode>],
+        data: &Result<Vec<Vec<ArrayNode>>, CalcResult>,
         keys: &[Result<SortByArray, CalcResult>],
         values: &[CalcResult],
-        num_rows: usize,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let data = match data {
+            Ok(data) => data,
+            Err(error) => return error.clone(),
+        };
+        let num_rows = data.len();
         let mut raw_keys: Vec<(&SortByArray, i32)> = Vec::with_capacity(keys.len());
         for (pair, key) in keys.iter().enumerate() {
             let key = match key {

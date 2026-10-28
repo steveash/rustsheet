@@ -212,7 +212,7 @@ pub(crate) struct LiftOptions {
     pub(crate) work: KernelWork,
     /// What one unlifted call returns: an `Array` entry's element is its call's top-left value.
     pub(crate) result: CallResult,
-    /// Whether a [`CallResult::ArrayFirst`] entry's emptied elements are `#VALUE!` instead: a
+    /// Whether a [`CallResult::ArrayFirstColumn`] entry's emptied elements are `#VALUE!` instead: a
     /// SORTBY call with a second `by_array`, `sort_order` pair (`lift_call_with` sets it).
     pub(crate) later_error: bool,
 }
@@ -278,7 +278,7 @@ struct Run<'r> {
 enum Later {
     /// Every element keeps its result.
     Kept,
-    /// [`CallResult::ArrayFirst`] over entries that are not all equal: an error result stays,
+    /// [`CallResult::ArrayFirstColumn`] over entries that are not all equal: an error result stays,
     /// the first other one is kept (`placed` once it is), and every later one is empty.
     EmptyAfterFirst { placed: bool },
     /// [`CallResult::ArrayFirstColumn`] over entries that are all equal: every element runs, then the
@@ -307,7 +307,7 @@ impl Run<'_> {
 }
 
 /// Whether every element's grid slots equal the first element's: then a
-/// [`CallResult::ArrayFirst`] entry keeps every element (`UNIQUE(D1:D3,{FALSE;FALSE})` is "x"
+/// [`CallResult::ArrayFirstColumn`] entry keeps every element (`UNIQUE(D1:D3,{FALSE;FALSE})` is "x"
 /// twice, probes/m7-lift-take-drop-sortby row 35). One slot comparison per element and argument,
 /// within the work the elements are charged.
 fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
@@ -626,10 +626,7 @@ impl Model {
             .then_some(index),
             _ => None,
         };
-        let array_first = matches!(
-            options.result,
-            CallResult::ArrayFirst | CallResult::ArrayFirstColumn
-        );
+        let array_first = options.result == CallResult::ArrayFirstColumn;
         let later = if array_first && !all_elements_equal(&lifted, rows, columns) {
             Later::EmptyAfterFirst { placed: false }
         } else if options.result == CallResult::ArrayFirstColumn && columns > 1 {
