@@ -111,7 +111,10 @@ Attempt 2 (2026-10-28) found the rule: ODDFYIELD is YIELD's Newton (`excel_yield
 only caller) are gone. Evidence: the new probes/oddfyield-solver-sweep (547 cells, excel-graph): 320 pass against 123
 before; the lab scores 323/324 coupon-bond cells within 1e-13 for this slope against 15 for the exact one.
 Eval delta: ironcalc-calc known failures 567 -> 558 (9 PRICE_YIELD ODDFYIELD cells fixed), probes 16 fixed and 0
-regressions; the new sweep case adds 227 known-failure lines (new coverage, mostly within a few ulps). The solver is
+regressions; no line of an existing case was added. The only added lines are the 227 of the new sweep case
+(new coverage, mostly within a few ulps, written by `make eval-baseline`), which the "no baseline gains a line"
+criterion, a guard against regressions, does not cover. `quality/oversized-files.json` was rewritten by
+`check_file_size.py --update` (every entry fell). The solver is
 the one YIELD runs under `YIELD_SOLVER_WEIGHT`, with fewer price sums per step than before.
 Left over, in T-3031: the long first periods at frequency 2 (PRICE_YIELD K8-K11, K29-K33, K49-K52) and the sweep
 cells near a zero yield; the bit-exact last ulps stay with them.

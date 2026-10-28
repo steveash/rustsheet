@@ -81,3 +81,35 @@ impl OddFirstSchedule {
         slope - t * self.redemption / discount_growth(x, t + 1.0) / self.m
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{discount_growth, OddFirstSchedule};
+
+    /// The probes/oddfyield-solver-sweep bond (settlement 2020-02-01, maturity 2025-06-30, issue
+    /// 2020-01-01, first coupon 2020-06-30, semiannual, basis 0) at the coupon `rate`.
+    fn sweep_bond(rate: f64) -> OddFirstSchedule {
+        OddFirstSchedule::new(43862, 45838, 43831, 44012, rate, 100.0, 2, 0).unwrap()
+    }
+
+    /// `dprice` against a central difference of `price` at 5%, as a relative gap.
+    fn slope_gap(schedule: &OddFirstSchedule) -> f64 {
+        let (y, h) = (0.05, 1e-6);
+        let numeric = (schedule.price(y + h, discount_growth)
+            - schedule.price(y - h, discount_growth))
+            / (2.0 * h);
+        ((schedule.dprice(y) - numeric) / numeric).abs()
+    }
+
+    #[test]
+    fn zero_coupon_slope_is_the_price_derivative() {
+        assert!(slope_gap(&sweep_bond(0.0)) < 1e-8);
+    }
+
+    #[test]
+    fn odd_first_coupon_weighs_as_a_regular_one_in_the_slope() {
+        // The short first coupon is 150/180 of a regular one, so the fitted slope is not the
+        // derivative (financial.md "ODDFYIELD stops short of ODDFPRICE's root").
+        assert!(slope_gap(&sweep_bond(0.05)) > 1e-6);
+    }
+}

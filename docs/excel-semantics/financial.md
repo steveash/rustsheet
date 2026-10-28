@@ -2285,8 +2285,8 @@ K49-K52 (Excel-cached, desktop); probes/date-system-1900-odd-threshold, -1904-od
 -1904-odd-years, -1900-odd-accrint-bound, -1900-oddf-issue-after-quasi, date-system-1904-financial S!A32,
 coup-calendar-edges J8, fin-argument-modes H200, fin-yield-odd-lift A5, odd-bond-argument-check-order A258
 (excel-graph).
-Ours: `fn_oddfyield` runs `excel_yield_newton` (functions/financial/financial_bonds/yield_solver.rs) with
-`OddFirstSchedule::dprice`, the slope above; before T-2007 it was a central-difference Newton from the coupon rate
+Ours: `fn_oddfyield` calls `odd_first_yield` (functions/financial/financial_bonds/yield_solver.rs), which runs
+`excel_yield_newton` with `OddFirstSchedule::dprice`, the slope above; before T-2007 it was a central-difference Newton from the coupon rate
 with a bisection fallback, landing within about 1e-14 of the root.
 Status: UNVERIFIED (a fit; the long first periods at frequency 2 are not explained); the values are Excel-cached and excel-graph
 Tasks: T-1374, T-2007 (the fit), T-3031 (the long first periods), T-1592 (YIELD's)
