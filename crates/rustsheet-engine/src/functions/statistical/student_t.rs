@@ -517,7 +517,7 @@ fn dd_atan(u: Dd) -> Dd {
 
 #[cfg(test)]
 mod tests {
-    use super::super::incomplete_beta::{beta_reg_complement, A1_CLOSED_FORM_MIN_X};
+    use super::super::incomplete_beta::beta_reg_complement;
     use super::*;
     use crate::test::util::ulps;
 
@@ -568,7 +568,7 @@ mod tests {
         // the incomplete beta's a = 1 tail is the uncancelled form there (T-0974) and gives
         // Excel's value.
         let y = 2.0 / (2.0 + 4.245 * 4.245);
-        assert!(y < A1_CLOSED_FORM_MIN_X);
+        assert!(y < 0.1);
         assert_eq!(closed_form_tail(y, 2.0), None);
         let closed = 0.5 * (1.0 - (0.5 * (1.0 - y).ln()).exp());
         assert_eq!(ulps(closed, 0.025_631_992_844_658_943), 1);
