@@ -308,7 +308,7 @@ impl Model {
         let head = read(self);
         let stale = self.tail_views.last().is_none_or(|view| view.stale);
         // A pass being abandoned discards the value; the tail would read in vain.
-        let abandoned = self.evaluation.restart.is_some() || self.evaluation.unwinding;
+        let abandoned = self.evaluation.abandoned() || self.evaluation.unwinding;
         if stale || abandoned {
             self.tail_views.pop();
             return (!stale).then_some(Tailed {

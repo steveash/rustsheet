@@ -72,7 +72,7 @@ impl Model {
         }
         for (sheet, ws) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in ws.sheet_data.cells() {
-                if matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. }) {
+                if cell.has_formula() {
                     state
                         .prior
                         .insert((sheet as u32, row, column), cell.clone());
