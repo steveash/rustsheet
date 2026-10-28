@@ -7,56 +7,49 @@ merged since its last run.
 
 **Progress dashboard:** [docs/progress.md](progress.md), regenerated daily by the steward.
 
-## Snapshot — 2026-10-27, 18:47 UTC run (M2 is current)
+## Snapshot — 2026-10-28, 05:47 UTC run (M2 is current)
 
-This is the scheduled 18:47 UTC run. It follows #2007, this morning's 05:47 UTC run, and covers the 64 commits merged to `main` from ed183978 (#1811) through a84da30f (#2052), the head when this run started.
+This is the scheduled 05:47 UTC run. It follows #2077, last night's 18:47 UTC run, and covers the 67 commits merged to `main` from 4e12e539 (T-1811) through a96b6063 (#2142), the head when this run started.
 
-`make eval` ran on a84da30f with a clean tree.
+`make eval` ran on a96b6063 with a clean tree.
 - All 17 suites were scored. calipers, corpus-bench and poi were not fetched in this container, so I ran `rustsheet-eval fetch` for them and ran `make eval` again. Timeouts: 0 in every suite.
-- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. It lowers the visible-parity lock from 3,337 to 3,254 (decision 0093).
+- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. It lowers the visible-parity lock from 3,284 to 2,775 (decision 0093).
 - The dashboard has this run's numbers (`make progress-report`; the judgment blocks pass `--check`).
 
-CI on `main` is green: every push run since #2007 succeeded or was cancelled by the next push, and none failed. The run on a84da30f succeeded. The nightly fuzz run (03:51 UTC, on 27f704eb) passed.
+CI on `main` is green: every push run since #2077 succeeded or was cancelled by the next push, and none failed. The run on a96b6063 was still in progress when this run started; the last completed run, on 0f43b80f, succeeded. The nightly fuzz run (03:41 UTC, on 81569726) passed.
 
-**M2 is still current: M0–M2 probes (decision 0051) have 9 known failures, 2 of them visibly off.** `make exit-owners MILESTONE=M2` now runs (T-2822 added the M2 exit row) and reports 0 unowned. It also reports 0 for M5 and M6.
-- `probes/t2772-unary-plus-in-range-rows` S!J2 and S!J5 are the 2 visibly-off cells. Owner: T-2885 (engine). T-2785 closed the earlier two.
-- `probes/t2756-roundup-smallest-normal-threshold` Sheet1!A52–A58 are within 15 digits but not bit-exact. Owner: T-2771 (research).
+**M2 is still current: M0–M2 probes (decision 0051) have 2 known failures, both visibly off.** `make exit-owners MILESTONE=M2` reports 0 unowned, and so do M5 and M6.
+- `probes/t2772-unary-plus-in-range-rows` S!J2 and S!J5 are the 2 cells. Owner: T-2885 (engine, todo).
+- T-2771 (#2075) closed the 7 ROUNDUP subnormal-cut cells. T-2910 (#2067) found M2's structural exit criterion met (decision 0137).
 - The frozen M1 list has 0 known failures (89/89 cases).
 
 Hygiene:
 - lint-debt: 91 allow entries (= last run);
-- duplicated lines: 2,931, equal to the committed baseline, which #2007's run measured at 2,951 and a later PR ratcheted down;
+- duplicated lines: 2,931 (= last run's committed baseline);
 - oversized files: 9 (= last run).
 
-Merged since #2007's eval (7bd9090e): 64 commits, none reverted, all through PRs: #1811, #1906, #1912, #1959, #1994, #1996, #1999–#2002, #2004, #2006–#2016, #2018, #2019, #2022–#2030, #2032, #2033, #2035, #2036, #2039, #2040, #2044, #2045, #2048, #2050–#2054, #2056–#2061 and #2063–#2065. #2007 is the last steward run.
-- Eight were squash-merged without the `(#n)` suffix in the title: b6b5ac36 (T-2366), ac1f85d8 (T-2552), c3d2bc1f (T-2516), cfa61d2b (T-2719), 9969ef5f (T-2299), 9786b0a6 (T-2403), 42ad9f86 (T-2358) and 401a121c (T-2344).
-- Task ids merged (55): T-0083, T-0465, T-0470, T-0471, T-0476, T-0485, T-1737, T-2173, T-2299, T-2338, T-2339, T-2344, T-2358, T-2366, T-2403, T-2434, T-2506, T-2516, T-2522, T-2527, T-2548, T-2552, T-2572, T-2635, T-2681, T-2719, T-2729, T-2753, T-2755, T-2762, T-2764, T-2772, T-2785, T-2799, T-2813, T-2814, T-2820, T-2822, T-2829, T-2837, T-2840, T-2841, T-2849, T-2866, T-2867, T-2868, T-2879, T-2882, T-2884, T-2912, T-2918, T-2920, T-2921, T-2923, T-2927.
-- Task-only PRs: #1811, #2011, #2016, #2028, #2030, #2035, #2054 and #2056.
+Merged since #2077's eval (a84da30f): 67 commits, none reverted, all through PRs: #1938, #1949, #2066, #2067, #2069–#2072, #2075–#2078, #2080, #2082–#2090, #2092, #2093, #2095–#2100, #2102, #2103, #2105–#2126, #2128, #2129, #2131–#2136, #2139 and #2142. #2077 is the last steward run.
+- Three were squash-merged without the `(#n)` suffix in the title: 4e12e539 (T-1811), 9ef05f44 (T-2786) and 104fce7f (T-2606). Each was committed by GitHub.
+- Task ids merged (63): T-0085, T-0086, T-0087, T-0090, T-0450, T-0488, T-0491, T-0492, T-0493, T-0494, T-1811, T-1891, T-2469, T-2548, T-2566, T-2587, T-2588, T-2598, T-2606, T-2613, T-2617, T-2672, T-2731, T-2741, T-2742, T-2759, T-2771, T-2779, T-2786, T-2801, T-2803, T-2806, T-2831, T-2834, T-2842, T-2847, T-2854, T-2861, T-2870, T-2880, T-2881, T-2888, T-2909, T-2910, T-2924, T-2928, T-2929, T-2938, T-2939, T-2944, T-2945, T-2948, T-2955, T-2956, T-2957, T-2958, T-2965, T-2966, T-2968, T-2975, T-2977, T-2979, T-2984.
+- Task-only PRs: #2072, #2086, #2089 and #2092.
 
-Blocked: 34 on `main` (33 last run). T-2548 is newly blocked (on the BESSELJ probe sweep, T-2881); none was unblocked. T-2803 (#1938), T-2778 (#1917), T-2657 (#1885), T-0972 (#1767), T-2131 (#1658) and T-2398 (#1583) are blocked on their draft branches. No task is `Blocked because: review-round limit`.
+Blocked: 35 on `main` (34 last run). T-2548 was unblocked and merged (#2122). Newly blocked: T-2924 (time-boxed, decision 0056) and T-2991 (merge-train switch-on; it waits on T-2989 and on the owner's merger routine from SPEC-0027, which is not needed yet). T-2733 (#2104), T-2509 (#2055), T-2778 (#1917), T-2657 (#1885), T-0972 (#1767), T-2131 (#1658) and T-2398 (#1583) are blocked on their draft branches; T-2507 is blocked on #1998's branch. No task is `Blocked because: review-round limit`.
 
-Open PRs: 29 at 18:50 UTC. This run closed three duplicates (#2046, #1950, #1817), merged one orphan (#1949) and merged `main` into four conflicted PRs (#1718, #1727, #1928; #1949 under the lock). Non-draft PRs older than 24 h:
-- **#1949 (T-2469, T.TEST text samples)**: met every orphan-merge condition. Green CI, idle since 05:45 UTC, task done, and all four reviewers APPROVE on its current diff (MINOR only). It was waiting on the merge lock, which other sessions held all run. I merged `main` in under the merge lock and squash-merged it once CI was green on that head (cc64bd91).
-- **#1817 (T-2469)**: the older duplicate of #1949, idle since 2026-10-25 and conflicting with `main`. Closed after #1949 merged (decision 0050).
-- **#1718 (T-2427, FREQUENCY)**: conflicted with `main` on baselines only. I merged `main` in and re-ran `make eval-baseline` (a2ffb8c7: gen-m9 −155 and probes −5 known failures, 0 regressions; `make check` green). All four reviewers APPROVE the current diff (MINOR only), and yesterday's REQUEST_CHANGES is answered by its 06:14 UTC commits. CI was green on that head. When I took the lock, #1949 had just changed the same T.TEST entry in statistics.md, so I released the lock, merged `main` in again (af6f354e, `make check` green) and re-ran the reviewers. reviewer-excel-fidelity now requests doc changes: the T.TEST notes contradict `main`'s order, and three unprobed FREQUENCY skips have no owning probe task. Not merged; the findings are on the PR.
-- **#1928 (T-2786, whitespace probes)**: conflicted in syntax.md and the probes baseline. I merged `main` in (ca95a297), kept both sides' findings, and renumbered its T-2799 to **T-2944** (`main` holds T-2799). `make check` is green; it needs CI and a review pass.
-- **#1727 (T-2622)**: conflicted in `sumproduct.rs` (`main`'s new factor walk against the branch's rename of `lambda_as_number_error` to `lambda_value_error`). I merged `main` in (a044bd1d), keeping `main`'s walk with the rename; the baseline did not change and `make check` is green. It needs CI and a review pass.
-- **#1950 (T-2072)**: closed. T-2072 was finished on `main` by T-2522 (#2040), and the branch conflicted. Its unmerged probe task T-2818 lived only on that branch; T-2522's comma factor covers most of it.
-- **#2046 (T-1737)**: closed as a duplicate of #1912, which merged.
-- #1583, #1658, #1767, #1885, #1917, #1938 and #2055 are drafts. The rest were opened in the last 24 h.
+Open PRs: 29 at 06:30 UTC. Non-draft PRs older than 24 h:
+- **#2003 (T-2250, ARRAYTOTEXT error vs format)**: idle since 2026-10-27 06:19 UTC, task done, green CI, but it conflicted with `main` in eval/baseline/gen-m5.txt. I merged `main` in (a merge commit), took `main`'s side and re-ran `make eval-baseline` (gen-m5 2 -> 1 known failures, 0 regressions), and am running the reviewers for an orphan merge (decision 0050).
+- **#1998 (T-2507)**: green and clean, but T-2507 is `status: blocked` on its branch, so the orphan rule does not apply. Commented.
+- **#1984 (T-0078, codebase-health block)**: idle since 2026-10-27 01:14 UTC, task done, green CI, but it conflicts with `main` in the generated dashboard files (docs/progress.md, docs/progress/*). It needs `main`'s side of those files and a regenerated page once this PR lands; left for its next round.
+- **#1727 (T-2622)** and **#1718 (T-2427)**: other sessions pushed to both at 06:14–06:19 UTC (merges of `main`, baselines, review wording), so they are live and I left them alone; #1718 has since merged.
+- #2005 opened 06:35 UTC yesterday and is just under 24 h old. #1583, #1658, #1767, #1885, #1917, #2055 and #2104 are drafts. The rest were opened in the last 24 h.
 
 Queues:
-- `make ready-tasks LANE=functions` printed 0 ready, so the gap-triager ran. Stat, text, engineering, financial and lookup are busy with live branches. The idle lanes (math, criteria, date, logic) hold only `defer: phase-1b` tasks or tasks waiting on dependencies. Every visibly-off root cause it found already has an open task except one, so it filed **T-2945** (TEXT of text with an empty fourth section, `;;;`, functions-text, sonnet). It made **T-2636** own corpus-bench/53062's 334 visibly-off cells (FREQUENCY bins), and filed **T-0084** (harness: `make new-task` breaks on a TITLE containing `"`). It found that T-2779 owns 147 of TEXT's 185 visibly-off cells.
-- The gap-triager confirms that `scripts/exit_owners.py` overstates unowned cells (`.case.json` stems and A1 spans: T-2731, open as #2069; calipers `golden.xlsx`: T-2880; corpus-bench directories: T-2909).
-- `TIER=sonnet` printed 15 (≥ 10).
-- engine, harness and research print 0 ready only because their lanes are busy. Their M2 queues hold 3, 3 and 6 todo tasks, so the planner did not run. api printed 9, quality 6 and perf 0 (Phase 2).
+- `make ready-tasks LANE=functions` printed 0 ready, so the gap-triager ran (results below in this PR). `TIER=sonnet` printed 15 (≥ 10).
+- engine, harness and research print 0 ready only because their lanes are busy. Their M2 queues hold 4, 15 and 10 todo tasks, so the planner did not run. api printed 9, quality 6 and perf 0 (Phase 2).
 
-Upstream IronCalc: 3 new commits in base, xlsx or bindings since 141a41d0. I triaged through e757b4f1 (UPSTREAM.md).
-- Filed **T-0490** (M11, engine): port b41cf6d5 and its test fix 7e9304a4. An xlsx whose styles.xml lacks `<cellXfs>`, or has empty font, fill or border lists, should load with default styles if Excel opens such files (probe first). Ours already reads the other lists as optional (T-0118) but refuses a missing `<cellXfs>` with a typed error.
-- e757b4f1 (trailing tokens after a formula are a parse error) is already our behaviour (`trailing_input_is_a_parse_error`). Upstream's test also rejects `A1 A2`, which Excel reads as an intersection and we keep. No port.
+Upstream IronCalc: `scripts/upstream-log.sh` lists no new commits in base, xlsx or bindings since e757b4f1. Nothing to file.
 
 Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-graph OK).
-- probes: 7 pending, 0 written, 5 failures, the same as #2007. `t2065-lift-large`, `-median` and `-small` are T-1075 item 18 (M14). `typed-if-one-argument` (T-1990) and `t0481-curly-quote-names-c` (T-0481) are refused by Excel for the web. The other 2 are the unfillable M10 locale cases.
+- probes: 7 pending, 0 written, 5 failures, the same as #2077. `t2065-lift-large`, `-median` and `-small` are T-1075 item 18 (M14); `typed-if-one-argument` (T-1990) and `t0481-curly-quote-names-c` (T-0481) are refused by Excel for the web. The other 2 are the unfillable M10 locale cases.
 - ironcalc-calc's 1 pending case is Excel-authored, and poi's 205 are web-vs-desktop conflicts (decision 0019), so neither was refilled. calipers (283 pending) and corpus-bench (592) are scored from their own cached values.
 
 Spot-audit: the last was 2026-10-25 (#1736), so none is due. The next is on or after 2026-11-01.
@@ -64,9 +57,9 @@ Spot-audit: the last was 2026-10-25 (#1736), so none is due. The next is on or a
 **Critical lane:** engine, research, harness
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-- engine: T-2885 owns the 2 visibly-off M0–M2 probe cells.
-- research: T-2771 owns the other 7 M0–M2 probe cells (ROUNDUP's subnormal cut). T-2910 audits M2's structural exit criterion (#2067 is open).
-- harness: T-2731 (#2069) and T-2909, which make the exit-owner report trustworthy.
+- engine: T-2885 owns the 2 visibly-off M0–M2 probe cells, the last ones in M2's exit row.
+- research: the M2 probe tasks for whitespace and structured references (T-2949, T-2962, T-2971, T-3000 and others) keep the probe evidence ahead of the engine work.
+- harness: the merge-train rollout (SPEC-0027, T-2985 onward) and the M2 generator criteria pool (T-2717, #2017).
 - api and quality have no M2 work. perf stays out: Phase 2.)
 
 ## Needs owner
