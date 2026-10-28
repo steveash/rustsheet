@@ -3,7 +3,7 @@ id: T-3032
 title: "IMCOT last digit: three T-2787 probe cells miss"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
