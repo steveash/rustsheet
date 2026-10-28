@@ -3,7 +3,7 @@ id: T-3012
 title: "Probe GAMMA.INV and GAMMA.DIST at a shape below 1 and p near 1E-16 (gen-m9 984cba67bbe6972b A43: Excel 4.1E-15 above the exact quantile)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
