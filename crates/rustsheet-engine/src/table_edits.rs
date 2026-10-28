@@ -297,6 +297,25 @@ fn edit_columns(columns: &mut Vec<TableColumn>, edit: ColumnEdit) {
     }
 }
 
+/// Appends one column to `columns`, named `name` when no column of the table has that name
+/// (compared ignoring case), else `ColumnN` as [`edit_columns`] names an inserted column; the
+/// name given.
+pub(crate) fn append_column(columns: &mut Vec<TableColumn>, name: Option<&str>) -> String {
+    let index = columns.len();
+    edit_columns(columns, ColumnEdit { index, delta: 1 });
+    let free = name.filter(|name| {
+        let lower = name.to_lowercase();
+        !columns.iter().any(|c| c.name.to_lowercase() == lower)
+    });
+    match (free, columns.last_mut()) {
+        (Some(name), Some(column)) => {
+            name.clone_into(&mut column.name);
+            column.name.clone()
+        }
+        (_, column) => column.map(|c| c.name.clone()).unwrap_or_default(),
+    }
+}
+
 /// The header cells (row, column, name) of the columns the insert `edit` added to `table`, whose
 /// reference and column list are already edited; none for a delete or a table without a header
 /// row.

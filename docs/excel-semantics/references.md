@@ -2575,9 +2575,18 @@ beside formulas blocks the fill too, and a column of one identical stored formul
 the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
 after the tables, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below). Neither import nor export
-reads or writes `calculatedColumnFormula` (T-2969); the auto-expansion is T-2968.
+reads or writes `calculatedColumnFormula` (T-2969).
+Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
+grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
+over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
+and the name is written into its header cell. A formula typed into the header cell itself is not stored: the header
+is the text `0`. This is only probed with `=1+1`. Whether Excel derives the `0` from the formula is unknown. If the
+table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
+and the cell is typed as before, in four unprobed cases: a constant typed there, a table with a totals row, a new
+column whose other cells are not all blank, and a new column that another table overlaps. The facade's edit holds
+the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
-Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7 no (T-2968)
+Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7, the same file (T-2968)
 Tasks: T-2957, T-2958, T-2968, T-2969
 
 ## Unknown function call names: spelling in FORMULATEXT

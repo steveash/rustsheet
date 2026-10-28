@@ -109,3 +109,99 @@ fn no_fill_outside_a_table() {
     model.evaluate();
     assert_eq!(model.get_formatted_cell_value(0, 3, 5).unwrap(), "");
 }
+
+/// `COLUMNS(T[#All])`, `ROWS(T[#All])`, D1's text and `ISFORMULA(D1)` after the typing, as the
+/// probes/t2957-expand-right-* cases read them in H1:H4.
+fn expansion_readout(model: &mut Model) -> Vec<String> {
+    for (row, formula) in [
+        (1, "=COLUMNS(T[#All])"),
+        (2, "=ROWS(T[#All])"),
+        (3, "=D1&\"\""),
+        (4, "=ISFORMULA(D1)"),
+    ] {
+        model.set_user_input(0, row, 8, formula.to_string()).unwrap();
+    }
+    model.evaluate();
+    (1..=4)
+        .map(|row| model.get_formatted_cell_value(0, row, 8).unwrap())
+        .collect()
+}
+
+/// The new column D's cells of rows 2..=4, formatted.
+fn column_d(model: &Model) -> Vec<String> {
+    (2..=4)
+        .map(|row| model.get_formatted_cell_value(0, row, 4).unwrap())
+        .collect()
+}
+
+/// probes/t2957-expand-right-data: `=A2*2` typed into D2, just right of `T` A1:C4, grows `T` to
+/// A1:D4, names the new column `Column1` and fills it shifted, like a fill-down.
+#[test]
+fn a_formula_typed_beside_a_data_row_grows_the_table() {
+    let mut model = model(false);
+    model
+        .set_typed_user_input(0, 2, 4, "=A2*2".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(column_d(&model), ["2", "4", "8"]);
+    assert_eq!(
+        model.get_cell_formula(0, 4, 4).unwrap().as_deref(),
+        Some("=A4*2")
+    );
+    assert_eq!(expansion_readout(&mut model), ["4", "4", "Column1", "FALSE"]);
+    // The new column is a column of the table by its name.
+    model
+        .set_user_input(0, 6, 1, "=SUM(T[Column1])".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 6, 1).unwrap(), "14");
+}
+
+/// probes/t2957-expand-right-header: `=1+1` typed into D1, just right of the header row, grows
+/// `T` too, but D1 holds the text `0` (the column's name) and the data rows stay blank.
+#[test]
+fn a_formula_typed_beside_the_header_row_names_the_new_column_0() {
+    let mut model = model(false);
+    model
+        .set_typed_user_input(0, 1, 4, "=1+1".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model.get_cell_formula(0, 1, 4).unwrap(), None);
+    assert_eq!(column_d(&model), ["", "", ""]);
+    assert_eq!(expansion_readout(&mut model), ["4", "4", "0", "FALSE"]);
+}
+
+/// A stored formula beside a table (xlsx import) does not grow it, nor does a typed constant, a
+/// formula beside a table with a totals row, or one whose new column already holds a value
+/// (each unprobed in Excel, so the cell is written as before).
+#[test]
+fn no_expansion_for_stored_formulas_constants_totals_or_occupied_columns() {
+    let mut stored = model(false);
+    stored
+        .set_loaded_user_input(0, 2, 4, "=A2*2".to_string())
+        .unwrap();
+    stored.set_user_input(0, 3, 4, "=A3*2".to_string()).unwrap();
+    assert_eq!(expansion_readout(&mut stored)[0], "3");
+    assert_eq!(column_d(&stored), ["2", "4", ""]);
+
+    let mut constant = model(false);
+    constant
+        .set_typed_user_input(0, 2, 4, "5".to_string())
+        .unwrap();
+    assert_eq!(expansion_readout(&mut constant)[0], "3");
+
+    let mut totals = model(true);
+    totals
+        .set_typed_user_input(0, 2, 4, "=A2*2".to_string())
+        .unwrap();
+    totals.evaluate();
+    assert_eq!(column_d(&totals), ["2", "", ""]);
+
+    let mut occupied = model(false);
+    occupied.set_user_input(0, 4, 4, "7".to_string()).unwrap();
+    occupied
+        .set_typed_user_input(0, 2, 4, "=A2*2".to_string())
+        .unwrap();
+    assert_eq!(expansion_readout(&mut occupied)[0], "3");
+    assert_eq!(column_d(&occupied), ["2", "", "7"]);
+}
