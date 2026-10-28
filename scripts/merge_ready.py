@@ -66,6 +66,8 @@ TASK_BRANCH = re.compile(r"agent/[a-z0-9-]+/(T-\d{4})-[A-Za-z0-9._-]+")
 # Authors (module docstring).
 WRITE_PERMISSIONS = ("admin", "maintain", "write")
 WRITE_ASSOCIATIONS = ("OWNER", "COLLABORATOR")
+# How `gh api` reports the session proxy's refusal of the permission read (T-3001's probe).
+PERMISSION_REFUSED = "HTTP 403"
 
 # The "green" rule (SPEC-0027 section 4, step 6). Only check runs created by the GitHub Actions
 # app count, and only those of the newest ci.yml `pull_request` run on the head.
@@ -209,10 +211,15 @@ class Authors:
 
     def writer(self, item: object) -> bool:
         login, association = text_of(item, "user", "login"), text_of(item, "author_association")
+        if not gh_client.LOGIN.fullmatch(login):
+            return False
         if login not in self.cache:
             try:
                 self.cache[login] = self.client.permission(login) in WRITE_PERMISSIONS
-            except GhError:
+            except GhError as error:
+                # Only the proxy's refusal falls back; any other failed read fails `verify`.
+                if PERMISSION_REFUSED not in str(error):
+                    raise
                 self.cache[login] = self.user_owned and association in WRITE_ASSOCIATIONS
         return self.cache[login]
 

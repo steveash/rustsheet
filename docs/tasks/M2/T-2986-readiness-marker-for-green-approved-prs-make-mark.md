@@ -45,24 +45,24 @@ check the marker mechanically, without reviewing the PR again.
   section 4 "GitHub access". T-2995's step mode extends the same schema.
 
 ## Acceptance criteria
-- [ ] `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
+- [ ] (moved to T-3034) `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
       each case in SPEC-0027 section 2, posts the marker and the label otherwise, and never posts
       a second marker for the same head.
-- [ ] `scripts/merge_ready.py verify --pr <n>` implements V1–V6 and the "green" rule. It exits 0
+- [x] `scripts/merge_ready.py verify --pr <n>` implements V1–V6 and the "green" rule. It exits 0
       when the PR is ready and 1 with the failed checks when it is not.
-- [ ] The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
+- [ ] (moved to T-3034) The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
       creates them when they are absent.
-- [ ] If T-3001 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
+- [ ] (moved to T-3034) If T-3001 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
       exactly two step-mode JSON actions, the label and a comment whose body the script generates,
       in SPEC-0027 section 4's schema. `verify` confirms the result afterwards, and a test covers
       it. If writes work, the PR says the fallback was not needed and omits it.
-- [ ] `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
+- [x] (verify's cases; `--carry`'s moved to T-3034) `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
       plan, including an outsider's `CHANGES_REQUESTED` review and the test that the
       applicability list matches the review skill. It runs in `make hygiene`.
-- [ ] No skill or routine uses it yet (T-2989 does that).
-- [ ] A decision record for the mechanism lands in this PR. The architecture and security
+- [x] No skill or routine uses it yet (T-2989 does that).
+- [x] A decision record for the mechanism lands in this PR. The architecture and security
       reviewers approve.
-- [ ] If the diff grows past size M, split it before review: the parser and `verify` first, then
+- [x] If the diff grows past size M, split it before review: the parser and `verify` first, then
       `mark`.
 
 ## Out of scope

@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -198,7 +199,7 @@ class Verify(unittest.TestCase):
         self.reviews: list[dict[str, object]] = []
         self.runs = [ci_run()]
         self.checks = green_checks()
-        self.pull: dict[str, object] = {
+        self.pull: dict[str, Any] = {
             "labels": [{"name": merge_ready.READY_LABEL}],
             "draft": False,
             "head": {"sha": self.head, "ref": "agent/harness/T-0001-x", "repo": {"full_name": "o/r"}},
@@ -308,10 +309,17 @@ class Verify(unittest.TestCase):
         # On an organization's repository the association alone is not enough.
         self.comments = [self.comment(1, marker(self.head).render(), "collab", "COLLABORATOR")]
         self.assertEqual(self.failures(), [])
-        self.pull["base"]["repo"]["owner"]["type"] = "Organization"  # type: ignore[index]
+        self.pull["base"]["repo"]["owner"]["type"] = "Organization"
         self.assertEqual(self.failures(), [("V1", IGNORE)])
         self.permissions["collab"] = Reply({"permission": "write"})
         self.assertEqual(self.failures(), [])
+        # Only the proxy's refusal falls back to the association; another failed read is an error.
+        self.permissions["collab"] = Reply(error="gh api GET x: HTTP 502")
+        with self.assertRaises(merge_ready.GhError):
+            self.verify()
+        # An item without a valid login is never a writer.
+        self.comments = [self.comment(1, marker(self.head).render(), "", "OWNER")]
+        self.assertEqual(self.failures(), [("V1", IGNORE)])
 
     def test_the_newest_writer_marker_wins_and_an_edit_rekeys(self) -> None:
         self.comments.append(self.comment(2, marker("b" * 40).render(), at="2026-10-28T11:00:00Z"))
@@ -325,10 +333,10 @@ class Verify(unittest.TestCase):
         self.assertEqual(self.failures(), [("V1", UNLABEL)])
 
     def test_a_stale_head_invalidates(self) -> None:
-        self.pull["head"]["sha"] = "c" * 40  # type: ignore[index]
+        self.pull["head"]["sha"] = "c" * 40
         self.assertEqual(self.failures(), [("V2", UNLABEL)])
         # GitHub's head agrees with the marker but origin's refs/pull/7/head moved.
-        self.pull["head"]["sha"] = self.head  # type: ignore[index]
+        self.pull["head"]["sha"] = self.head
         self.git("commit", "-q", "--allow-empty", "-m", "later")
         self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
         self.assertEqual(self.failures(), [("V2", UNLABEL)])
@@ -347,7 +355,7 @@ class Verify(unittest.TestCase):
         self.write("docs/tasks/M2/T-0001-x.md", TASK.format(status="done", outcome="## Outcome\n"))
         self.head = self.commit("code and task")
         self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
-        self.pull["head"]["sha"] = self.head  # type: ignore[index]
+        self.pull["head"]["sha"] = self.head
         self.comments = [self.comment(1, marker(self.head).render())]
         self.assertEqual(self.failures(), [("V3", UNLABEL)])
 
@@ -361,7 +369,7 @@ class Verify(unittest.TestCase):
         self.write("crates/rustsheet-engine/src/x.rs", "x")
         self.head = self.commit("engine")
         self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
-        self.pull["head"]["sha"] = self.head  # type: ignore[index]
+        self.pull["head"]["sha"] = self.head
         self.comments = [self.comment(1, marker(self.head).render())]
         self.checks = green_checks()
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
@@ -372,16 +380,16 @@ class Verify(unittest.TestCase):
 
     def test_pr_state_and_the_task_file(self) -> None:
         self.pull["draft"] = True
-        self.pull["base"]["ref"] = "release"  # type: ignore[index]
-        self.pull["head"]["repo"] = None  # type: ignore[index]
+        self.pull["base"]["ref"] = "release"
+        self.pull["head"]["repo"] = None
         self.assertEqual(self.failures(), [("V5", UNLABEL)] * 3)
         self.pull["draft"] = False
-        self.pull["base"]["ref"] = "main"  # type: ignore[index]
-        self.pull["head"]["repo"] = {"full_name": "o/r"}  # type: ignore[index]
+        self.pull["base"]["ref"] = "main"
+        self.pull["head"]["repo"] = {"full_name": "o/r"}
         for status, outcome in (("blocked", "## Outcome\n"), ("done", "")):
             with self.subTest(status=status):
                 self.head = self.push_head(TASK.format(status=status, outcome=outcome))
-                self.pull["head"]["sha"] = self.head  # type: ignore[index]
+                self.pull["head"]["sha"] = self.head
                 self.comments = [self.comment(1, marker(self.head).render())]
                 self.assertEqual(self.failures(), [("V5", UNLABEL)])
 
