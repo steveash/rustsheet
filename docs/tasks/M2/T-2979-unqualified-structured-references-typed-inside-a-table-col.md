@@ -3,7 +3,7 @@ id: T-2979
 title: "Unqualified structured references typed inside a table ([@Col], [Col]) resolve to that table, as Excel does"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
