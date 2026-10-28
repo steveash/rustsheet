@@ -32,7 +32,8 @@ rule (a cell whose lowered area changes prints it; one off the data rows keeps i
 Use the excel-probe skill; cases go in eval/suites/probes/cases/table-edits with `insert_row` sheet ops.
 
 ## Acceptance criteria
-- [x] Probe cases for the items above, oracled (excel-graph) and in the probes baseline.
+- [x] Probe cases for the items above, oracled (excel-graph) and in the probes baseline (except the headerless table,
+  T-3039, and the two refused inserts, which the oracle cannot keep as cases: see Outcome).
 - [x] references.md "Structured references when the table changes" records the findings; implementation
   tasks are filed for any mismatch.
 - [x] `make check` green; reviewers approve.

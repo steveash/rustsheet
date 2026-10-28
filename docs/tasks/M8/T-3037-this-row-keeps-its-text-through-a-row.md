@@ -35,8 +35,9 @@ table. Each one then evaluates at its own row against the table as it is after t
 - Cut and paste of a `#This Row` cell (desktop only) stays T-2325's.
 
 ## Acceptance criteria
-- [ ] The value cells of the four cases above pass in `make eval` (F!A4:A8, C8, D8, H1:H6, and the calc-column B
-      cells), and `make eval-baseline` removes their lines.
+- [ ] The value cells that fail today pass in `make eval` (this-row-above-header F!A4:A7, this-row-inside-data
+      F!A6:A7; C8, D8 and H1:H6 already pass and must keep passing), and `make eval-baseline` removes their lines.
+      The FORMULATEXT cells (B4:B8, G1:G6, calc-column A1:A6) also need T-1683's spelling.
 - [ ] Unit tests in `table_edits` cover a moved cell beside the table, a fixed cell on another sheet that goes from
       off the data rows to on them, and a formula inside the table.
 - [ ] references.md's "Implemented in" for the T-2845 paragraph is updated.
