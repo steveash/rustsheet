@@ -148,13 +148,13 @@ before the tag and `B2` after it change nothing):
 - Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (not modelled,
   T-3028). probes/t3028-b2-taiwan-years (excel-graph, 2026-10-28; eleven serials, each year token alone) shows every year
   token prints the Minguo year m = year - 1911, where the tag alone prints the Gregorian year: `yyyy`, `yy`, `y`, `yyy`, `e`,
-  `ee` and `bbbb` all print the same text, `y` and `yy` too. For m ≥ 1000 that is m in full (2995-01-23 "1084", 4637
+  `ee` and `bbbb` all print the same text. For m ≥ 1000 that is m in full (2995-01-23 "1084", 4637
   "2726", 9999-12-31 "8088"); below 1000 it is "0" and m's first digit (2023, m = 112: "01"; 2173, 262: "02"; 2100,
   189: "01"; 2000, 89: "08"; 1968, 57: "05"; 1927, 16: "01"; 1912-01-01, 1: "01"); m below 1 (1900-01-01) is `#VALUE!`
-  in every token. `g` and `ggg` print nothing. `b` and `bb` print m's third and fourth characters, and they read past the
+  in every token. The cuts are unprobed: no m between 262 and 1084, and no m = 0 (1911). `g` and `ggg` print nothing. `b` and `bb` print m's third and fourth characters, and they read past the
   end of m's text: m ≥ 1000 gives its last two digits ("84", "26", "88"); a three-digit m gives its third digit and then a
   character that depends on the rest of the format ("2X" alone, "2\u{1c}" after `yyyy|e|` or `yyyy|yy|e|`); a two- or
-  one-digit m gives U+0F01 and that character ("\u{f01}X"). The same under zh-TW (`B2[$-40404]`). Status: VERIFIED
+  one-digit m gives U+0F01 and that character ("\u{f01}X"). `yyyy|e|b` is the same under zh-TW (`B2[$-40404]`; the other tokens unprobed there). Status: VERIFIED
   (excel-graph) for the year tokens; `b` below m = 1000 is UNVERIFIED as a rule (its second character looks like memory
   past the year's text).
 - The same as a cell number format (B1-B5).
