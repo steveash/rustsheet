@@ -51,4 +51,5 @@ by the depth limit, abandoned passes and passes replaced by an Excel-order pass 
 formulas, and the worked example scaled by 2^14), plus an ignored release timing of the worked example at the default
 numbers (24 to 33 s; recalc.md). Calibration over every suite, calipers, poi and corpus-bench included: the heaviest pass
 and recalculation spend 180,967,707 units (probes/t2759-lunar-packed-7101), under a quarter of both numbers. Eval delta:
-0 (no regressions, no baseline line).
+0 (no regressions, no baseline line). The depth and stack limits (`set_max_evaluation_depth`, `set_max_evaluation_stack`)
+moved unchanged but for their doc comments to `evaluation_limits.rs`, so `evaluation.rs` stays under the 1,000-line limit.

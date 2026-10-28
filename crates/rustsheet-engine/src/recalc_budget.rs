@@ -298,16 +298,7 @@ impl Model {
     /// The number of formula cells (`Cell::CellFormula` and `Cell::ArrayFormula` anchors) of the
     /// workbook: the `N` of the share.
     fn formula_cell_count(&self) -> u64 {
-        let count: usize = (self.workbook.worksheets.iter())
-            .map(|ws| {
-                (ws.sheet_data.cells())
-                    .filter(|(_, _, cell)| {
-                        matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. })
-                    })
-                    .count()
-            })
-            .sum();
-        u64::try_from(count).unwrap_or(u64::MAX)
+        u64::try_from(self.positions_where(Cell::has_formula).len()).unwrap_or(u64::MAX)
     }
 }
 
