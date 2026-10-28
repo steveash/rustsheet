@@ -1348,10 +1348,55 @@ per-period sum (type 0) or the closed form (type 1), and the balance drop where 
 interest is the payments less the closed-form principal where `nper·L` is below 2^-10 (`TINY_RATE_GROWTH`).
 19 known failures are fixed, none regressed, and visibly-off cells go from 8281 to 8267. The gates have no
 oracle cell near their edges (T-2521).
+T-2521 (probes/fin-cumipmt-gate-edges, excel-graph 2026-10-28: 87 cells around the kernel's gates; float64 fit with
+the engine's own `growth_log`, `excel_exp` and `excel_expm1` against the type 0 and type 1 cells of the probes, the
+gen-m9 sweep and CUMPRINC_CUMIPMT.xlsx):
+- The short principal's geometric sum discounts with Excel's own `L = ln(1+rate)`, the one PPMT uses ("PPMT discounts
+  with an atanh-series log"), not `log1p`. That L is an ulp below libm's `log1p` at 0.1 and 0.1234 and an ulp above it
+  at 2 (where libm's `log1p(2)` is itself an ulp below the correctly rounded `ln 3`), and a deep discount carries it:
+  `CUMPRINC(2,151,319288,3,42,1)` -1.049166891970377E-47 and `CUMPRINC(0.1,1023,478581,7,24,1)` -1.589128180790285E-36
+  are to the bit with it, 245 and 67 ulps off with `log1p` (gen-m9 b73c6cc96e093f03 A62, 9d9ceba257f8001b A372).
+  Excel's EXP and expm1 in place of libm's fit about as many cells (in the kernel's order 25 against 24 of 54 type 1
+  principals, 19 against 21 of 33 type 0), and an eval run with them and type 1's payment below moved gen-m9 A193,
+  A383 and A398 off the bit, so libm's stay.
+- With that L the geometric sum is as close or closer than the per-period sum and the closed form from a discount
+  exponent of 3.62 up: gate-edges C1-C11 (type 0) and D1-D11 (type 1), rate 0.1 over exponents 3.62 to 9.34, are 12
+  of 22 to the bit and the rest within 2 ulps, where the other forms missed all 22 by 1 to 10 ulps. At 3.58
+  (`CUMPRINC(0.01,360,100000,1,12,0)`, fin-argument-modes H80) the per-period sum is to the bit and the geometric sum
+  2 ulps off; CUMPRINC_CUMIPMT.xlsx H25 (3.96), which T-2514 had to the bit only with the closed form, is to the bit
+  with the geometric sum on this L too.
+- Type 0's interest is the payments less the principal wherever the principal is no larger than the interest:
+  `CUMIPMT(0.5,60,100000,10,18,0)` is -449999.99609733943 to the bit with it and 74 ulps off with the balance form,
+  and so are gate-edges B1-B11 across the growth 2^10 (both sides), fin-argument-modes H72 and gen-m9 cells. There
+  `-pmt·m` and the principal do not cancel, so the principal's last bit does not move the result.
+- Not fitted (T-3058):
+  - Type 0 interest at tiny rates where the principal dominates: gate-edges A2-A7 (`CUMIPMT(1E-4,60,100000,3,10,0)`
+    -72.68628355221881) are 128 to 512 ulps off, one ulp of `pmt·m`, with the principal from the per-period sum, the
+    geometric sum, the closed form or the balance drop, and 14 to 354 with the balance form. Excel's implied principal
+    is -2 to +2 ulps from the exact sum. Across the growth 2^-10 (A1-A8) neither form is right on both sides, so
+    `BALANCE_GROWTH_MIN` stays.
+  - Type 1 interest at tiny rates: gate-edges E1-E10 (`CUMIPMT(r,100,100000,3,10,1)`, r from 2E-6 to 1E-4, across
+    `nper·L` = 2^-10) are 49 to 4096 ulps off with either the IPMT sum or the payments less the principal. Excel's
+    value is not `-pmt·m` less its own CUMPRINC (F1-F10) for any of 40 payment forms, so `TINY_RATE_GROWTH` stays.
+  - Type 1 from period 1: Excel's type 1 payment is `pv/((1+r)·(1-v^nper))·r` (`CUMPRINC(0.0083,36,8000,1,1,1)` =
+    `PMT(0.0083,36,8000,0,1)` = -255.86361744160234, G1, I1; also G7 at 0.1, and the 3 type 1 PMT cells of the suites),
+    and with it CUMIPMT is `-pmt·m - CUMPRINC` on Excel's own CUMPRINC to the bit on G2 (H5, H6, H8-H11). Our
+    CUMPRINC is 2 ulps off there (G5, G6), which the cancellation makes 6 ulps of CUMIPMT. The principal
+    `-(pmt0·((1-v^m)/r)·v^(nper-end+1))` on Excel's EXP fits G5 and G6 but moves gen-m9 A193 off the bit.
+  - A62 is 40 periods, past the kernel's 32-period short range, so the closed form still takes it (103 ulps off).
+    The geometric sum on Excel's L over every long range fixes it but moves fin-cumipmt-period-bound A6, A11 and A30
+    (1,024 to 99,998 periods) off the bit; where between 40 and 1,024 periods the closed form takes over is unprobed.
+  - `CUMIPMT(1E-15,283,(1.005+3.14159+1E15)%,2,16,0)` (A352), `CUMIPMT(1E-9,235,379138,7,14,1)` (A379) and the
+    periods near 1E15 (A9-A11, K3, A18): unchanged.
+Ours since T-2521: the geometric principal and the payment of type 0's `-pmt·m - principal` take `growth_log`'s L,
+the geometric sum starts at a discount exponent of 3.6 (`GEOMETRIC_MIN_DISCOUNT`, was 8), and type 0's short
+interest is the payments less the principal wherever the principal is no larger than the interest, the band
+deciding only the rest. 11 known failures are fixed (gen-m9 4, probes 7), none regressed, and the new probe case
+has 35 of its 87 cells to the bit.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
-fin-cumipmt-period-bound A18, and the gen-m9 cells A62, A372, A352, A379 above: T-2521; the short sums' last digits
-in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-1374
+fin-cumipmt-period-bound A18, the gen-m9 cells A62, A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
+T-3058; the short sums' last digits in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3058, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's

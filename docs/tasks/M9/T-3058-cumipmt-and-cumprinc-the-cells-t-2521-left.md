@@ -23,10 +23,14 @@ case probes/fin-cumipmt-gate-edges). Left, by cause:
 - Type 1 from period 1 at ordinary rates: `CUMPRINC_CUMIPMT.xlsx` G2 (= fin-cumipmt-overflow-and-forms A7 and
   fin-cumipmt-gate-edges H5, H6) is `-pmt·m - H2` with `pmt = pv/((1+r)·(1-v^nper))·r` and Excel's own H2, and
   H2 (gate-edges G5) is to the bit with `-(pmt0·((1-v^m)/r)·v^(nper-end+1))` on Excel's EXP and `growth_log`
-  (scratch "m" ordering, 33 of 54 type 1 principals) but that ordering misses gen-m9 a91bad4e84f49739 A193 by an
+  (33 of the 54 type 1 principals probed to the bit, every other within 2 ulps) but that ordering misses gen-m9 a91bad4e84f49739 A193 by an
   ulp, where the kernel's order (divide the type 0 sum by `1+r`, libm `exp`) is to the bit. Find the one ordering
   (and EXP: Excel's or libm's) that keeps A193, A383, A398 and fits G5, G6.
-- Type 0 interest where the principal is larger than the interest at tiny rates: fin-cumipmt-gate-edges A2-A7
+- Type 1 over a long range: gen-m9 b73c6cc96e093f03 A62 `CUMPRINC(2,151,319288,3,42,1)` (40 periods) is to the bit
+  with the geometric principal on `growth_log`, but past 32 periods the kernel takes the closed form (103 ulps off).
+  The geometric sum over every long range moves fin-cumipmt-period-bound A6, A11 and A30 (1,024 to 99,998 periods)
+  off the bit: probe where between 40 and 1,024 periods Excel's sum changes form.
+- Type 0 interest where the principal is larger than the interest at tiny rates: fin-cumipmt-gate-edges A2-A8
   (`CUMIPMT(1E-4,60,100000,3,10,0)`): `-pmt·m - P` with P one ulp off moves the result by 128-512 ulps; neither the
   balance form nor any principal form tried is exact on all.
 - Type 1 interest at tiny rates: fin-cumipmt-gate-edges E1-E10 on both sides of `TINY_RATE_GROWTH` and gen-m9
