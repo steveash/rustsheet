@@ -3,7 +3,7 @@ id: T-2639
 title: "Probe ODDLPRICE, ODDLYIELD and ACCRINT schedules for a 29th/30th date across a February (does the day drift?)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ ACCRINT with `first_interest` on such a day and an issue several periods before 
 
 ## Out of scope
 - Implementing the change (unless the probe shows ours already matches).
+
+## Outcome
+Probe `probes/oddl-accrint-february-day` (49 cells, excel-graph): ODDLPRICE/ODDLYIELD ignore whether the last
+interest is the 29th or 30th (single and multi-period spans across a February), and ACCRINT with a first interest on
+the 29th or 30th across a February matches Excel on every cell. The engine matched all 49, so no follow-up
+implementation task. Finding recorded in financial.md (the "unprobed" line replaced). Eval delta: +49 passing probe cells.

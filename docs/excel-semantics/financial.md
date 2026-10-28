@@ -2072,8 +2072,12 @@ Evidence: probes/coup-calendar-edges B1-B14, J1-J14 (excel-graph, 2026-10-25, T-
 Ours: matches since T-2486 (`coupon_period` in financial_bonds/coupon_schedule.rs, which the COUP*, PRICE, YIELD,
 DURATION, MDURATION and ODDF* schedules read); before it the walk stepped from each date to the next, so the day drifted
 to the 28th after the first February (COUPDAYBS was 51, the PRICE above 87.29662784091713, and the ODDF* first coupon
-had to be the 28th). The ODDL* and ACCRINT walks (`change_month` in financial_bonds.rs, accrint.rs) still step date to
-date; unprobed for this (T-2639).
+had to be the 28th). The ODDL* and ACCRINT walks (`change_month` in financial_bonds.rs, accrint.rs) step date to
+date, and Excel agrees with that where it matters: probes/oddl-accrint-february-day (excel-graph, T-2639) gives
+ODDLPRICE and ODDLYIELD the same value for a last interest on the 29th or the 30th, over one odd period and over
+several periods across a February, frequencies 2 and 4, bases 0 and 1 (A1-A15, A32-A49), so there the day is
+not observable. ACCRINT does depend on the day (a first interest on the 29th and the 30th differ, A16-A31, on
+bases 0 and 1 and calc_method TRUE and FALSE) and ours matches Excel's value on all 16 cells.
 Status: VERIFIED (excel-graph)
 Tasks: T-2486, T-2639
 
