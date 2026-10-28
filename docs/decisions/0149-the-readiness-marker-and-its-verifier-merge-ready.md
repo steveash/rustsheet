@@ -23,7 +23,7 @@
     the merger (T-2987) applies them. Only the merger's own constant texts and shas go into its
     reasons, never user text.
   - `mark` (the label and the marker comment, `--carry`, the step-mode write fallback) is split
-    out to T-3034, as T-2986 allowed past size M.
+    out to T-3040, as T-2986 allowed past size M.
 - **Consequences:**
   - `.claude/skills/review/SKILL.md` is in `CODE_READ_PATHS` (decision 0066): a PR that changes
     only it runs the heavy jobs, so the pinning test runs.

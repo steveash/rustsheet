@@ -4,7 +4,7 @@
   scripts/merge_ready.py verify --pr N    # exit 0: ready; 1: not ready (the failed checks); 2: error
 
 A worker whose PR head is green and approved marks it with the `ready-to-merge` label and a PR
-comment that ends with a `merge-train-ready v1` block (`make mark-ready`, T-3034). `verify` runs
+comment that ends with a `merge-train-ready v1` block (`make mark-ready`, T-3040). `verify` runs
 checks V1-V6 on a PR, reading GitHub only through scripts/gh_client.py and git only for
 repository-controlled data. It writes nothing: each failed check carries the side effect the
 merger applies (ignore, keep the label, or unlabel with a comment), and the merger (T-2987) acts

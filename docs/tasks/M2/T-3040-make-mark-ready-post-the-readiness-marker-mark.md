@@ -1,5 +1,5 @@
 ---
-id: T-3034
+id: T-3040
 title: "make mark-ready: post the readiness marker (mark, --carry, labels, step-mode fallback)"
 milestone: M2
 lane: harness

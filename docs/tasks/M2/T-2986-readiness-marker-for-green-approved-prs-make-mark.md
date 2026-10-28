@@ -45,18 +45,18 @@ check the marker mechanically, without reviewing the PR again.
   section 4 "GitHub access". T-2995's step mode extends the same schema.
 
 ## Acceptance criteria
-- [ ] (moved to T-3034) `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
+- [ ] (moved to T-3040) `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
       each case in SPEC-0027 section 2, posts the marker and the label otherwise, and never posts
       a second marker for the same head.
 - [x] `scripts/merge_ready.py verify --pr <n>` implements V1–V6 and the "green" rule. It exits 0
       when the PR is ready and 1 with the failed checks when it is not.
-- [ ] (moved to T-3034) The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
+- [ ] (moved to T-3040) The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
       creates them when they are absent.
-- [ ] (moved to T-3034) If T-3001 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
+- [ ] (moved to T-3040) If T-3001 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
       exactly two step-mode JSON actions, the label and a comment whose body the script generates,
       in SPEC-0027 section 4's schema. `verify` confirms the result afterwards, and a test covers
       it. If writes work, the PR says the fallback was not needed and omits it.
-- [x] (verify's cases; `--carry`'s moved to T-3034) `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
+- [x] (verify's cases; `--carry`'s moved to T-3040) `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
       plan, including an outsider's `CHANGES_REQUESTED` review and the test that the
       applicability list matches the review skill. It runs in `make hygiene`.
 - [x] No skill or routine uses it yet (T-2989 does that).
@@ -72,7 +72,7 @@ check the marker mechanically, without reviewing the PR again.
 
 ## Outcome
 - Split past size M, as the task allowed: this PR is the parser and `verify`; `mark`, `--carry`,
-  label creation and the step-mode write fallback are T-3034 (T-2989 now depends on it).
+  label creation and the step-mode write fallback are T-3040 (T-2989 now depends on it).
 - `scripts/merge_ready.py`: the `merge-train-ready v1` marker (render and strict parse), reviewer
   applicability (pinned to the `review` skill by a test; the skill is now in `CODE_READ_PATHS`),
   the "green" rule, and `verify --pr N` (`make merge-ready-verify`) running V1-V6 read-only, each
