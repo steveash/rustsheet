@@ -84,15 +84,15 @@
    },
    "J1": {
     "t": "s",
-    "v": "b"
+    "v": "l"
    },
    "J2": {
     "t": "s",
-    "v": "l"
+    "v": "b"
    },
    "J3": {
     "t": "s",
-    "v": "b"
+    "v": "v"
    },
    "J4": {
     "t": "s",
@@ -108,15 +108,15 @@
    },
    "K1": {
     "t": "s",
-    "v": "b"
+    "v": "l"
    },
    "K2": {
     "t": "s",
-    "v": "l"
+    "v": "b"
    },
    "K3": {
     "t": "s",
-    "v": "b"
+    "v": "v"
    },
    "K4": {
     "t": "s",
@@ -143,8 +143,8 @@
     "v": 2.0
    },
    "M6": {
-    "t": "s",
-    "v": "t2"
+    "t": "n",
+    "v": 0.0
    },
    "N1": {
     "t": "n",
@@ -159,8 +159,8 @@
     "v": 2.0
    },
    "N6": {
-    "t": "s",
-    "v": "t2"
+    "t": "n",
+    "v": 0.0
    }
   },
   "Data": {}
@@ -169,7 +169,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "6058796fef61bc9359f9f90d2ec4fb4ef0b6664abc63daeb06f9bfe4e05d97ad",
   "kind": "excel-graph",
-  "produced_at": "2026-10-15T03:09:03+00:00",
-  "version": null
+  "produced_at": "2026-10-28T15:39:07+00:00",
+  "version": null,
+  "workbook_name": "decff33cb8019a84345207b2aed24ae028f19d67b64b43b34e5102521c639896.xlsx"
  }
 }

@@ -22,7 +22,9 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
-pub(crate) use sheet_edits::{move_sheet_in_node, rename_sheet_in_node};
+pub(crate) use sheet_edits::{
+    move_sheet_in_node, rename_sheet_in_node, retarget_unqualified_references,
+};
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
@@ -75,6 +77,9 @@ pub(crate) struct Displacement<'a> {
     /// The data blocks of the tables that grow with a row insert at their first data row or at
     /// their totals row (T-2321).
     pub(crate) grown_edges: &'a [DataBlock],
+    /// The table columns a column delete removes, as lowercase (table, column) names: a
+    /// structured reference to one of them prints `#REF!` (T-2339).
+    pub(crate) deleted_columns: &'a [(String, String)],
 }
 
 /// The data rows `rows` and columns `columns` of a table on `sheet`, before the edit.
@@ -92,6 +97,7 @@ impl Displacement<'_> {
             data,
             kept_tables: &[],
             grown_edges: &[],
+            deleted_columns: &[],
         }
     }
 
@@ -814,7 +820,11 @@ fn stringify(
             }
             format!("{{{matrix_string}}}")
         }
-        DefinedNameKind((name, ..)) => name.to_string(),
+        DefinedNameKind((name, scope, _)) => crate::expressions::utils::defined_name_text(
+            name,
+            *scope,
+            context.is_none() || export_to_excel,
+        ),
         NamedVariableKind { name, id: _ } => variable_text(name, context),
         UnaryKind { kind, right } => {
             let operand = wrap(sub(right), binding(right) < binding(node));

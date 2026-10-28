@@ -14,13 +14,14 @@ mod amortization;
 mod annuity;
 mod cumulative;
 mod dates;
+pub(crate) use amortization::{amortization_values_valid, asset_life_refused};
 pub(crate) use dates::{day_count_basis, days_30_360_us_ymd};
 mod discount;
 mod financial_bonds;
 mod financial_depreciation;
 pub(crate) use financial_depreciation::MAX_DEPRECIATION_PERIODS;
 mod financial_util;
-pub(crate) use financial_util::RATE_MAX_STEPS;
+mod growth;
 mod mirr;
 mod rate_conversions;
 
@@ -642,8 +643,14 @@ impl Model {
             &mut |model, arguments| {
                 // A size error stands only beside a number guess: a text, boolean or error guess
                 // leaves the old reading's `#VALUE!` (gen-m9/b6a02893a8d6b151 A226, b72d952c5f52cb4d
-                // A50).
-                let number_guess = matches!(arguments.get(2), None | Some(CalcResult::Number(_)));
+                // A50). A written empty guess or an empty cell is a number guess here: both give
+                // `#NUM!` over text or boolean flows (probes/xirr-size-mismatch-empty-guess G21-G36).
+                let number_guess = matches!(
+                    arguments.get(2),
+                    None | Some(
+                        CalcResult::Number(_) | CalcResult::EmptyArg | CalcResult::EmptyCell
+                    )
+                );
                 if let (true, Some(size_error)) = (number_guess, &size_error) {
                     return size_error.clone();
                 }

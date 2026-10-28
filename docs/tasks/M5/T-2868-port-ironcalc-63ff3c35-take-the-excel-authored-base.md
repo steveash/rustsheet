@@ -3,7 +3,7 @@ id: T-2868
 title: "Port ironcalc 63ff3c35: take the Excel-authored BASE_DECIMAL_issue_1617.xlsx calc test workbook"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,11 +26,17 @@ code change needs no port; this task only takes the workbook as Excel evidence. 
 2026-10-27 steward run.
 
 ## Acceptance criteria
-- [ ] `BASE_DECIMAL_issue_1617.xlsx` is in the ironcalc-calc suite and `make eval` scores its cells.
-- [ ] New failures are fixed in `functions/math_and_trigonometry/` or recorded with
+- [x] `BASE_DECIMAL_issue_1617.xlsx` is in the ironcalc-calc suite and `make eval` scores its cells.
+- [x] New failures are fixed in `functions/math_and_trigonometry/` or recorded with
   `make eval-baseline` and filed as follow-ups; no regressions.
-- [ ] The commit carries `Ported-From: ironcalc@63ff3c35`.
-- [ ] `make check` green; reviewers approve.
+- [x] The commit carries `Ported-From: ironcalc@63ff3c35`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Upstream's unit test in `test_base_decimal.rs` is IronCalc-authored, not Excel evidence.
+
+## Outcome
+Took `BASE_DECIMAL_issue_1617.xlsx` (Excel 16.0300, `DECIMAL("",2)` cached 0) into the ironcalc-calc
+suite. It scores 3/3 cells passing with no code change, confirming the existing "DECIMAL of unreadable
+text" rule. ironcalc-calc: 221 cases, 72,961 cells, 72,338 pass; baseline gains one `C` line for the new case and no `F` lines (no known-failure
+shrink, no regressions).

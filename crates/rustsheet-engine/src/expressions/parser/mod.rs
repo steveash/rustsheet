@@ -593,6 +593,9 @@ pub struct Parser {
     /// The first call of a function with an argument count Excel refuses that the last parse
     /// read (see [`Parser::typed_refusal`]).
     wrong_count_call: Option<String>,
+    /// The workbook's file name (`Budget.xlsx`), which prefixes a workbook name read through a
+    /// sheet (`=Feb!loc` is `=Budget.xlsx!loc`); `None` for an unnamed workbook.
+    workbook_file: Option<String>,
 }
 
 pub fn new_parser_english(
@@ -639,6 +642,7 @@ impl Parser {
             loaded: false,
             cell_shaped_binding: None,
             wrong_count_call: None,
+            workbook_file: None,
         }
     }
     /// Reads the next formulas as a file loader does (`true`), or not (`false`, the default).
@@ -697,6 +701,12 @@ impl Parser {
     ) {
         self.worksheets = worksheets;
         self.defined_names = defined_names;
+    }
+
+    /// Sets the workbook's file name (`Budget.xlsx`, `None` for an unnamed workbook); see
+    /// `Parser::workbook_file`.
+    pub fn set_workbook_file(&mut self, file_name: Option<String>) {
+        self.workbook_file = file_name;
     }
 
     /// Replaces the tables structured references resolve against.
@@ -966,12 +976,19 @@ impl Parser {
             | TokenType::Percent => {
                 self.unexpected_operand(format!("Unexpected token: '{next_token:?}'"))
             }
-            TokenType::LeftBracket => self.unexpected_operand("Unexpected token: '['".to_string()),
+            TokenType::LeftBracket => self.unqualified_structured_reference(),
             TokenType::StructuredReference {
                 table_name,
                 specifier,
                 table_reference,
-            } => self.structured_reference_operand(table_name, specifier, table_reference, false),
+                spacing,
+            } => self.structured_reference_operand(
+                table_name,
+                specifier,
+                table_reference,
+                spacing,
+                false,
+            ),
         }
     }
 }

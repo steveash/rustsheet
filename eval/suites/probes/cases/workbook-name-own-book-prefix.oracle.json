@@ -1,0 +1,70 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A3": {
+    "t": "n",
+    "v": 6.0
+   },
+   "A4": {
+    "t": "b",
+    "v": true
+   },
+   "A5": {
+    "t": "n",
+    "v": 5.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=ed12285a0742ce5ac40f6b5550fd75fccd5f53cd4d5f5d6506613a983d845176.xlsx!loc"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=SUM(ed12285a0742ce5ac40f6b5550fd75fccd5f53cd4d5f5d6506613a983d845176.xlsx!loc)"
+   },
+   "B3": {
+    "t": "s",
+    "v": "=ed12285a0742ce5ac40f6b5550fd75fccd5f53cd4d5f5d6506613a983d845176.xlsx!loc+1"
+   },
+   "B5": {
+    "t": "s",
+    "v": "=ed12285a0742ce5ac40f6b5550fd75fccd5f53cd4d5f5d6506613a983d845176.xlsx!loc"
+   }
+  },
+  "Feb": {},
+  "Local": {
+   "A1": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A2": {
+    "t": "n",
+    "v": 7.0
+   },
+   "B1": {
+    "t": "s",
+    "v": "=ed12285a0742ce5ac40f6b5550fd75fccd5f53cd4d5f5d6506613a983d845176.xlsx!loc"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=loc"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "06819d17259f100f967b476c3c234f7d211738343afb55fa6ee3859e89b39f20",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-27T17:30:51+00:00",
+  "version": null,
+  "workbook_name": "ed12285a0742ce5ac40f6b5550fd75fccd5f53cd4d5f5d6506613a983d845176.xlsx"
+ }
+}

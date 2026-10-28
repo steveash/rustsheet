@@ -621,6 +621,9 @@ Every space is removed before the text is read, so `NUMBERVALUE("12:30 PM")` is 
 `VALUE("12:30 PM")` is 0.5208333333333334 (gen-m5/bbbd316c346ce645 A207, fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357
 against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVALUE page says spaces are ignored "even in the
 middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
+An omitted group separator defaults to "," unless the decimal separator starts with ",", when it defaults to ".":
+`NUMBERVALUE("1.5",",")` = 15, `("1.000,5",",")` = 1000.5, `("1.5.2",",")` = 152, while `("1,5",";")` = 15, `("1,5","x")` = 15
+and `("1.5",".")` = 1.5 (excel-graph, 2026-10-28, probes/numbervalue-default-group A1-A14, T-2441). A multi-character decimal separator starting with "," is unprobed (only the first character is read elsewhere).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
 A separator over 255 characters is `#VALUE!`, though only its first character counts: `NUMBERVALUE(0.2,REPT("A",255),"b")` is 0.2
@@ -630,7 +633,7 @@ and `NUMBERVALUE(0.2,REPT("A",256),"b")`, `NUMBERVALUE("2",REPT("A",256),"b")` a
 `NUMBERVALUE("1x5","x","X")` are 1.5, but `NUMBERVALUE("1,5","A","a")` is `#VALUE!` (the "," is no separator) and the decimal
 separator matches case (`NUMBERVALUE("1a5","A","b")` is `#VALUE!`). A letter decimal separator leaves "0.2" readable
 (`NUMBERVALUE("0.2","A","b")` and `NUMBERVALUE("0.2","A")` are 0.2). With a "," decimal separator and no group separator,
-`NUMBERVALUE("1.5",",")` is 15: the default group separator is then not "," (ours `#VALUE!`, T-2441). Separators whose first characters agree clash even when
+`NUMBERVALUE("1.5",",")` is 15: the default group separator is then "." (rule above, T-2441). Separators whose first characters agree clash even when
 the rest differs: `NUMBERVALUE("1A5","A","AB")` is `#VALUE!` (A20).
 Evidence: probes/numbervalue-separator-edges A1:A20 (excel-graph, 2026-10-22, T-2379). Whether the 255 counts characters or
 UTF-16 units is unprobed (the engine counts as for the text, `number_text_too_long`).
@@ -1120,3 +1123,15 @@ Evidence: probes/t2581-textsplit-textbefore A1-A29 (excel-graph, 2026-10-24). Th
 Ours: since T-2581 (`split_grid`, `textsplit_element` in functions/text/textsplit.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2581
+
+## ARRAYTOTEXT error before format
+An error value as ARRAYTOTEXT's first argument is the result before the format is looked at: `ARRAYTOTEXT(NA(),2)`
+is `#N/A`, `ARRAYTOTEXT(1/0,2)` `#DIV/0!`, `ARRAYTOTEXT(SINH(710),2)` `#NUM!`, `ARRAYTOTEXT(NA(),"x")` `#N/A`, and a
+reference to an error cell (also `B1:B1`) the same. With two errors the first argument's wins (`ARRAYTOTEXT(NA(),1/0)`
+`#N/A`, `ARRAYTOTEXT(1/0,NA())` `#DIV/0!`); a valid first argument with an error format gives the format's error
+(`ARRAYTOTEXT(1,NA())` `#N/A`). An error inside an array is not the argument's error: `ARRAYTOTEXT({1,#N/A},2)` is
+`#VALUE!`, as `ARRAYTOTEXT(1,2)` and `ARRAYTOTEXT(1,"x")` are. VERIFIED (probes/arraytotext-error-vs-format, excel-graph
+2026-10-27, T-2250). VALUETOTEXT differs: `VALUETOTEXT(NA(),2)` is `#VALUE!`, not the argument's error (matches today's
+engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`); a reference to an error cell with an error or text format, such as `ARRAYTOTEXT(B1,NA())` or `ARRAYTOTEXT(B1,"x")` with B1 holding `#N/A` (the engine reads the format first and returns its error).
+
+See also: RIGHT num_chars numeric-text coercion is recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).

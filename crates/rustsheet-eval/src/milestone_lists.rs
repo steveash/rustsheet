@@ -337,6 +337,7 @@ mod tests {
                 from_excel: true,
                 listed_deviation: verdict == Verdict::Deviation,
                 graph_subnormal: false,
+                kind: crate::runner::CellKind::Scored,
             })
             .collect();
         CaseResult {
@@ -359,6 +360,7 @@ mod tests {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: crate::poi_m8_subset::ReferenceFormCells::default(),
         }
     }
 

@@ -3,8 +3,8 @@ id: T-2007
 title: "ODDFYIELD's solver: fit where Excel stops short of ODDFPRICE's root (31 desktop cells with a known root, about 70 web cells)"
 milestone: M9
 lane: functions-financial
-status: todo
-priority: P3
+status: done
+priority: P2
 size: M
 tier: opus
 campaign: visible
@@ -49,6 +49,29 @@ T-2483 probe (excel-graph, 2026-10-24): probes/odd-bond-argument-check-order A25
 `ODDFYIELD(39448,43831,39300,39630,0.0575,95,100,2,0)` is 0.06342868471015199 in Excel, ours 0.06342868470999918 (a
 known-failure line in eval/baseline/probes.txt; the rest of that case is argument order and passes).
 
+## Notes from the first run (2026-10-28, attempt 1 of 2, decision 0056)
+Result: 0 bit-exact, no candidate raised the count (details and per-family counts in financial.md "ODDFYIELD stops
+short of ODDFPRICE's root").
+- Cells: 99 (the 31 numeric PRICE_YIELD K cells with Excel's cached J as the price, and 68 numeric web ODDFYIELD
+  cells whose arguments the lab sweep parses). probes/date-system-1904-financial S!A32 was left out: read as 1900
+  serials its dates price a different bond (2.6e-5 off), so it needs the 1904 offset first.
+- Excel's values sit on both sides of ODDFPRICE's root (6 of 31 desktop cells and web S!A5, S!A6, S!A17, A258
+  above it), which analytic Newton on that convex price cannot do from any start. So the stop is not YIELD's rule on
+  the same price.
+- Scratch grid (not committed): the engine's `OddFirstSchedule` fields were dumped per cell and the candidates run in
+  Python with `solvers.caret_pow`; 1,920 Newton variants (analytic, central, forward and backward differences;
+  starts rate, 0, 0.1, YIELD's fitted start; step and residual stops 1e-6 to 1e-12; `^` and libm prices; accrued
+  on the price or the target side) plus secants: all 0/99 bit-exact and 0/99 within 4 ulp.
+Next attempt:
+1. Port the odd-first schedule to the lab (`tools/src/rustsheet_tools/fitlab/kernels/solvers.py`, an `oddfyield`
+   fit over the probe cells; the PRICE_YIELD rows need Excel's J, so add a scratch sweep or a probe that
+   writes the literal J) so candidates are scored from the case files, as the first criterion asks.
+2. Test a price inside ODDFYIELD that differs from ODDFPRICE: the above-root cells need Excel's internal price
+   to be about 1e-9 (desktop K27: 3.8e-12 x slope) to 1e-12 below ODDFPRICE's near the root, e.g. a different
+   sum order, the documented formula's DSC/E split, or coupons discounted from the first coupon date.
+3. Probe (excel-probe) ODDFYIELD at prices from a one-coupon-left odd bond up to 30 years at a fixed bond, so
+   the step count and the side of the root can be read per term.
+
 ## Acceptance criteria
 - [ ] An `oddfyield` lab fit over the cells above (Excel's cached J as the price input) scores named candidates:
       Newton with an analytic or finite-difference derivative, secant, starts at the coupon rate / 0 / 0.1 / the
@@ -73,3 +96,50 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - ODDFYIELD: 106 cells (13-14 digits right 0, 10-12 77, 6-9 29, fewer or 0 vs nonzero 0); most in `ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx` 31; `probes/date-system-1900-odd-years.case.json` 19. e.g. `ODDFYIELD(A2,B2,C2,D2,E2,J2,G2,H2,I2)` Excel 0.04999999999851281, ours 0.05
 
 Excel stops short of the root by up to ~1e-9 relative; 15 digits means reproducing that stop.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): ODDFYIELD 44. This task now owns them:
+- probes/date-system-1900-odd-accrint-bound: S!A3, S!A4, S!A6, S!B3, S!B4, S!B6, S!C3, S!C4, S!D3, S!D4, S!D6
+- probes/date-system-1900-odd-threshold: S!A5, S!B5, S!C5, S!D5, S!E5, S!F5, S!G5, S!H5, S!I5, S!J5, S!K5, S!L5, S!M5
+- probes/date-system-1900-oddf-issue-after-quasi: S!A17, S!A32
+- probes/date-system-1904-odd-threshold: S!C5, S!D5, S!E5, S!F5, S!G5, S!H5, S!I5, S!J5, S!K5, S!L5, S!M5
+- probes/date-system-1904-odd-years: S!C3, S!E3, S!F3, S!J3, S!L3, S!N3, S!S3
+Priority raised from P3 to P2 by this sweep: ODDFYIELD needs these 44 cells to reach the Phase 1 rate, and this task is their only owner.
+
+## Attempt 1 of 2 (decision 0056), 2026-10-28: no candidate fits
+Result: 0 of 43 distinct bonds (behind the 111 failing ODDFYIELD cells of the 2026-10-28 eval at `main` 1a0b616) bit-exact
+or within 4 ulp for every candidate below, so the bit-exact count did not move and nothing changed in the engine.
+The scores, the evidence and what Excel's values show are in financial.md "ODDFYIELD stops short of ODDFPRICE's root".
+- Method: a temporary dump of `OddFirstSchedule`'s fields and the target price from `fn_oddfyield`, taken over every
+  case that calls ODDFYIELD with `RS_ODDF_DUMP=1 rustsheet-eval show <case>` (not committed), re-priced in Python
+  with the fit lab's `caret_pow`. Expected values are the `show` output's Excel values.
+- Candidates: the full grid (starts, slopes, stops and how each was scored) is in that financial.md entry, under
+  "T-2007 fit-lab attempt 1". Every candidate is 0/43 bit-exact and 0/43 within 4 ulp.
+- What constrains the next attempt: Excel lands above the root in 60 of the 111 cells, and analytic Newton on a convex,
+  decreasing price never does after its first step. So either the slope is not ODDFPRICE's (a difference quotient
+  or another function's), or the function Excel solves is not exactly ODDFPRICE. The annual redemption-120 rows
+  (K2-K5, K43-K46) all stop 1.34e-12 to 1.67e-12 below the root at a 1.1e-11 relative residual, whatever the yield.
+  The semiannual rows K8-K11 and K49-K52 repeat each other's gaps. Reverse-solving the iterate before Excel's value
+  for difference quotients with h = 1e-4 to 1e-7 gives no shared step tolerance.
+- Next (attempt 2): add the `oddfyield` kernel to tools/src/rustsheet_tools/fitlab/kernels/solvers.py (port
+  `OddFirstSchedule::new` so cells are scored from their formulas, as acceptance asks). Probe Excel's iterates
+  directly, as probes/solver-iteration-traces did for YIELD (T-1525): ODDFYIELD over a price sweep of one bond whose
+  root is known, at 1-unit steps of the price, to see how the stopping gap moves with distance from the start. Then try
+  starts from the dates (YIELD's start uses the term in years: T-2777).
+
+## Outcome
+Attempt 2 (2026-10-28) found the rule: ODDFYIELD is YIELD's Newton (`excel_yield_newton` from `yield_start` over
+`yield_start_years`) on ODDFPRICE with a slope that weighs the odd first coupon as a regular one
+(`OddFirstSchedule::dprice`); the old central-difference solver and its bisection fallback (`solve_yield`, ODDFYIELD's
+only caller) are gone. Evidence: the new probes/oddfyield-solver-sweep (547 cells, excel-graph): 320 pass against 123
+before; the lab scores 323/324 coupon-bond cells within 1e-13 for this slope against 15 for the exact one.
+Eval delta: ironcalc-calc known failures 567 -> 558 (9 PRICE_YIELD ODDFYIELD cells fixed), probes 16 fixed and 0
+regressions; no line of an existing case was added. The only added lines are the 227 of the new sweep case
+(new coverage, mostly within a few ulps, written by `make eval-baseline`), which the "no baseline gains a line"
+criterion, a guard against regressions, does not cover. `quality/oversized-files.json` was rewritten by
+`check_file_size.py --update` (every entry fell). The solver is
+the one YIELD runs under `YIELD_SOLVER_WEIGHT`, with fewer price sums per step than before.
+Left over, in T-3031: the long first periods at frequency 2 (PRICE_YIELD K8-K11, K29-K33, K49-K52) and the sweep
+cells near a zero yield; the bit-exact last ulps stay with them.
+Not met: criterion 1's committed `oddfyield` fit-lab kernel. The candidates were scored from a temporary dump of
+`OddFirstSchedule` (not committed), and committing the kernel moves to T-3031 with ODDFYIELD's untested #NUM! path.

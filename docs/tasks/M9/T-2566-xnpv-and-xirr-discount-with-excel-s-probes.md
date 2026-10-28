@@ -3,11 +3,12 @@ id: T-2566
 title: "XNPV and XIRR discount with Excel's ^ (probes/xirr-exact-root-sign)"
 milestone: M9
 lane: functions-financial
-status: todo
-priority: P2
+status: done
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -33,3 +34,13 @@ crates/rustsheet-engine/src/functions/financial/financial_util.rs use `powf`. Re
 
 ## Out of scope
 - XIRR's stop rule (already fitted, T-1583/T-2328).
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns 183 of the 185 visibly-off XNPV cells (probes/xirr-exact-root-sign) and 6 of the 14 XIRR cells. Fixing them lifts XNPV to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+XNPV and XIRR's trial XNPV use `arithmetic::power`; baseline shrank by 381 known failures (probes xirr-exact-root-sign, XIRR.xlsx Q21).

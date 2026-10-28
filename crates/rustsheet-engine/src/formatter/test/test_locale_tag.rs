@@ -74,8 +74,9 @@ fn tags_resolve_like_excel() {
     assert_eq!(names("11040C"), Some("三月"));
     assert_eq!(names("E0412"), Some("삼월"));
     assert_eq!(names("120411"), Some("March"));
+    assert_eq!(names("6040C"), Some("Rabi' Aoual"));
     for silent in [
-        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "6040C", "40C,1", "+40C",
+        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "40C,1", "+40C",
     ] {
         assert_eq!(resolve(silent), LocaleTag::Silent, "{silent}");
     }
@@ -186,4 +187,106 @@ fn a_calendar_digit_over_an_lcid_without_a_locale_keeps_its_date() {
     assert_eq!(text(0.75, "[$-708DE]h AM/PM"), "6 PM");
     // LCID 0 is one too (T-2764's cells).
     assert_eq!(text(45000.0, "[$-110000]mmmm|d"), "February|24");
+    assert_eq!(text(45000.0, "[$-120000]mmmm|d"), "February|24");
+    assert_eq!(text(45000.0, "[$-E0000]mmmm|dddd"), "February|Wednesday");
+    // A lunar digit wins over a `B2` before the tag (probes/text-locale-lunar-tokens A79).
+    assert_eq!(text(45300.0, "B2[$-110409]yyyy|m"), "2023|12");
+}
+
+#[test]
+fn hijri_under_a_tag() {
+    // probes/t2729-hijri-locale-tag and t2729-hijri-locale-tag-names (excel-graph, 2026-10-27).
+    assert_eq!(
+        text(45000.0, "[$-60409]yyyy-mm-dd|mmm|dddd"),
+        "1444-08-23|Sha'ban|AlArbia'a"
+    );
+    assert_eq!(text(45000.0, "[$-6040C]mmmm|ddd"), "Chaaban|mer.");
+    assert_eq!(text(45000.0, "[$-6041F]mmmm|ddd"), "Şaban|Çar");
+    assert_eq!(text(45000.0, "[$-60401]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "[$-608DE]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "[$-60409]yy|e|g|b|bbbb"), "44|1444||44|1444");
+    assert_eq!(text(45000.0, "B2[$-40C]mmmm|yyyy"), "Chaaban|1444");
+    assert_eq!(text(45000.0, "B2[$-0]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "B2[$-FFFF]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "B2mmmm[$-40C]"), "Chaaban");
+    // Other calendar digits win over the prefix; an unresolved tag leaves a bare `B2`.
+    assert_eq!(text(45000.0, "B2[$-10409]yyyy|mmmm"), "2023|March");
+    assert_eq!(text(45000.0, "B2[$-zzz]mmmm|dddd"), "شعبان|السبت");
+    // A second calendar prefix after a tag is #VALUE!; before it, it is not.
+    assert_eq!(text(45000.0, "B2[$-409]B1mmmm"), "#VALUE!");
+    assert_eq!(text(45000.0, "[$-60409]B2B1mmmm"), "#VALUE!");
+    assert_eq!(text(45000.0, "B2B2[$-409]mmmm"), "Sha'ban");
+}
+
+#[test]
+fn mmm_takes_a_b2_section_to_the_arabic_path() {
+    // probes/t2729-hijri-locale-tag-names A83-A121, A239-A277.
+    assert_eq!(
+        text(45000.0, "B2[$-409]mmmm|mmm|mmmm"),
+        "Sha'ban|شعبان|شعبان"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-409]dddd|mmm|dddd"),
+        "AlArbia'a|شعبان|السبت"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-409]mmmmm|mmmm|dddd"),
+        "S|Sha'ban|AlArbia'a"
+    );
+    assert_eq!(text(45000.0, "[$-60409]B2mmm|dddd"), "Sha'ban|AlArbia'a");
+    assert_eq!(text(45000.0, "B2dddd|mmm|dddd"), "الأربعاء|شعبان|السبت");
+    assert_eq!(text(45000.0, "B2dddd|mmmmm"), "الأربعاء|الأربعاء");
+    // A number token first turns the first-name quirk off (probes/text-locale-calendars A124).
+    assert_eq!(
+        text(45000.0, "B2yyyy-mm-dd|mmmm|dddd"),
+        "1444-08-23|شعبان|الأربعاء"
+    );
+}
+
+#[test]
+fn b2_before_calendars_3_5_and_7_converts_the_years_twice() {
+    // probes/t2932-b2-calendar-twice A1-A68, B1-B5.
+    assert_eq!(
+        text(45000.0, "B2[$-70409]yyyy|yy|e|ee|b|bb|bbbb|g"),
+        "3109|09|2566|2566|09|09|3109|"
+    );
+    assert_eq!(
+        text(2_958_465.0, "B2[$-70409]yyyy|yy|e|b|bbbb"),
+        "11085|85|10542|08|11085"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-50409]yyyy|yy|e|b|bbbb"),
+        "6689|89|4356|56|4356"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-30411]yyyy|yy|e|ee|g|gg|ggg"),
+        "4294965434|4294965434|4294965434|4294965434|M|明|明治"
+    );
+    assert_eq!(text(32515.0, "B2[$-30409]e|g"), "4294965493|M");
+    assert_eq!(text(2_958_465.0, "B2[$-30411]yyyy|e|g"), "5963|5963|R");
+    // The era read back changes on its own day: 3930-07-29 and -30 are Reiwa 1912.
+    assert_eq!(text(741_653.0, "B2[$-30411]e|g"), "45|M");
+    assert_eq!(text(741_654.0, "B2[$-30411]e|g"), "1|T");
+    assert_eq!(text(45000.0, "B2[$-70411]g|yyyy"), "|2566");
+    assert_eq!(text(45000.0, "B2\"x\"[$-70409]yyyy|e"), "x3109|2566");
+    // `B1`, or a `B2` after the tag, changes nothing.
+    assert_eq!(text(45000.0, "B1[$-70409]yyyy|e"), "2566|2023");
+    assert_eq!(text(45000.0, "[$-70409]B2yyyy|e"), "2566|2023");
+    // `b` prints the year's third and fourth digits, also with no `B2`.
+    assert_eq!(text(2_958_465.0, "b|bbbb|yy"), "54|10542|99");
+    assert_eq!(text(2_958_465.0, "[$-70409]b|yy"), "54|42");
+    // Under a tag a number token before the `mmm` switch leaves the first-name quirk on.
+    assert_eq!(text(45000.0, "B2[$-409]yyyy|mmm|dddd"), "1444|شعبان|السبت");
+}
+
+// An empty text section prints nothing (gen-m10/0e3d8eba9432a18d T!A24; `TRUE` and `0;0;0;` in
+// probes/text-format-text-sections, T-2975); fewer than four sections leave the text as it is
+// (docs/excel-semantics/number-formats.md; three sections probed there, one or two unprobed).
+#[test]
+fn empty_text_section_is_empty() {
+    assert_eq!(format_text_value("text", ";;;").text, "");
+    assert_eq!(format_text_value("TRUE", ";;;").text, "");
+    assert_eq!(format_text_value("x", "4;b").text, "x");
+    assert_eq!(format_text_value("x", "0;0;General").text, "x");
+    assert_eq!(format_text_value("x", "0;0;0;").text, "");
 }

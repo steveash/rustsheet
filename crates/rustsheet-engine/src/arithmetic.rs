@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::{text_units, NODE_UNITS},
     calc_result::CalcResult,
     cast::{
         array_node_to_string, array_node_to_text, NumberOrArray, StringOrArray, ValueOrArray,
@@ -332,6 +333,10 @@ fn finite_or_num(value: f64) -> Result<f64, Error> {
     finite_or_overflow(value).map(flush_subnormal)
 }
 
+/// 2^-1026, below which Excel's ROUND keeps a positive subnormal and unary minus keeps it positive
+/// (docs/excel-semantics/numbers.md; probes/t2771-roundup-subnormal-threshold, -sign-controls).
+pub(crate) const TINY_SUBNORMAL_BELOW: f64 = f64::MIN_POSITIVE / 16.0;
+
 /// 0 for a value below the smallest normal double, `value` otherwise. The postfix `%` and the
 /// multiplying and dividing functions (PRODUCT, SUMPRODUCT, SUMSQ, AVERAGE) flush their result
 /// like `*` and `/`; addition keeps subnormals (docs/excel-semantics/numbers.md "Subnormal results become 0",
@@ -504,6 +509,10 @@ impl Model {
         }
         match node {
             Node::OpSumKind { kind, left, right } => {
+                // The root `+` is a node, charged as `evaluate_node_in_context` charges one.
+                if let Err(error) = self.spend_work(NODE_UNITS, cell) {
+                    return error;
+                }
                 let left = self.evaluate_node_in_context(left, cell);
                 let left = self.collapse_single_cell(left);
                 let right = self.evaluate_node_in_context(right, cell);
@@ -575,8 +584,12 @@ impl Model {
     }
 
     /// A formula's outermost `+`/`-` over its evaluated left operand: like
-    /// [`Model::handle_arithmetic`], but a scalar result is snapped to 0 by [`snap_near_zero`].
-    /// Array operands are not snapped (no evidence).
+    /// [`Model::handle_arithmetic`], but every result, scalar or array element, is snapped to 0
+    /// by [`snap_near_zero`] on its own two addends. Excel snaps array and range operands element
+    /// by element, with the scalar bound (`=1+{3;7;8}*2^-52-1` spills 0, 0, 8 ULP;
+    /// `=A1:A4+B1:B4-C1:C4` spills 0 on the rows that cancel), and a legacy formula's
+    /// intersected rows the same way (probes/t3047-snap-array-operands, docs/excel-semantics/numbers.md
+    /// "Near-zero snapping in addition and subtraction").
     fn handle_outermost_sum(
         &mut self,
         left: CalcResult,
@@ -584,22 +597,18 @@ impl Model {
         cell: CellReferenceIndex,
         subtract: bool,
     ) -> CalcResult {
-        let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
+        // A subtraction adds the negated right operand, so its addends are `x` and `-y`.
+        let snapping_op = |x: f64, y: f64| {
+            let (total, y) = if subtract {
+                (minus(x, y)?, -y)
+            } else {
+                (plus(x, y)?, y)
+            };
+            Ok(snap_near_zero(x, y, total))
+        };
         let l = self.number_or_array(left, cell);
         let r = self.number_or_array(right, cell);
-        // The two addends of a scalar addition (a subtraction adds the negated right operand).
-        let addends = match (&l, &r) {
-            (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
-                Some((*x, if subtract { -*y } else { *y }))
-            }
-            _ => None,
-        };
-        match (self.arithmetic_on_values(l, r, cell, op), addends) {
-            (CalcResult::Number(total), Some((x, y))) => {
-                CalcResult::Number(snap_near_zero(x, y, total))
-            }
-            (result, _) => result,
-        }
+        self.arithmetic_on_values(l, r, cell, &snapping_op)
     }
 
     /// Applies `op` element‐wise for arrays/numbers to the evaluated operands `left` and `right`.
@@ -752,10 +761,23 @@ impl Model {
             (Err(error), _) | (_, Err(error)) => return error,
         };
 
-        // Concatenates two array elements, propagating errors as error nodes.
-        let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+        // Concatenates two array elements, propagating errors as error nodes. Each element is a
+        // new text, so its bytes go to the formula's work budget as they are made (SPEC-0024
+        // "text values"): 2^20 elements of 32,767 bytes would otherwise be 32 GB built by one
+        // operator, past every other charge (T-2806). Once the budget is spent the rest are
+        // `#VALUE!` without being built, and the formula is the budget's error.
+        let mut concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+            if self.work_exceeded() {
+                return ArrayNode::Error(Error::VALUE);
+            }
             match (array_node_to_text(a), array_node_to_text(b)) {
-                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_limited(&sa, &sb)),
+                (Ok(sa), Ok(sb)) => {
+                    let joined = concat_limited(&sa, &sb);
+                    match self.spend_work(text_units(joined.len()), cell) {
+                        Ok(()) => ArrayNode::String(joined),
+                        Err(_) => ArrayNode::Error(Error::VALUE),
+                    }
+                }
                 (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
             }
         };

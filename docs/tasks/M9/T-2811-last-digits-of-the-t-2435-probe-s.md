@@ -4,10 +4,11 @@ title: "Last digits of the T-2435 probe's distribution cells (BINOM pmf, GAMMA.D
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P1
 size: M
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -46,3 +47,10 @@ unprobed; fill it and either confirm the current 0 or key the test on x == A and
 ## Out of scope
 - The five rules of T-2435 (done), T-1891's huge gamma shapes, T-2808's F.INV.RT and BETAINV
   searches, T-2809's BINOM.INV count.
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns visibly-off cells of BINOM.INV (2), BETAINV (9), GAMMADIST (4), GAMMA.DIST (14) and F.INV.RT (15). Fixing them lifts BINOM.INV to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells. It is also the largest owner of BETAINV and GAMMADIST cells.

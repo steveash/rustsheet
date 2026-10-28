@@ -42,7 +42,9 @@ impl Default for Iteration {
 }
 
 /// Member evaluations all the sweeps of one recalculation may make together (CLAUDE.md
-/// directive 5); past it the sweeps stop where they are (recalc.md, DEVIATION).
+/// directive 5); past it the sweeps stop where they are (recalc.md, DEVIATION). Each run also draws
+/// on the recalculation's ceiling (SPEC-0028 section 4), and running out of it stops them the same
+/// way.
 const MAX_SWEEP_EVALUATIONS: usize = 1 << 25;
 
 /// What a recalculation with iteration on keeps about its circular references.
@@ -54,6 +56,9 @@ pub(crate) struct IterationState {
     prior: HashMap<Key, Cell>,
     /// The members as the first round's sweeps left them.
     settled: HashMap<Key, Cell>,
+    /// Calls of `join_stack` so far: a pass cache built while this moved read a member, so its
+    /// reader joined, and is not stored (`search_cache.rs`, `ifs_cache.rs`; T-0485).
+    joins: u64,
 }
 
 impl Model {
@@ -69,7 +74,7 @@ impl Model {
         }
         for (sheet, ws) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in ws.sheet_data.cells() {
-                if matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. }) {
+                if cell.has_formula() {
                     state
                         .prior
                         .insert((sheet as u32, row, column), cell.clone());
@@ -94,14 +99,37 @@ impl Model {
 
     /// A read of an evaluated cell: when it is a member, its readers on the stack become members.
     pub(crate) fn read_evaluated(&mut self, at: CellReferenceIndex) {
-        if self.iterating() && self.evaluation.iteration.members.contains(&key(at)) {
+        if self.iterating() && self.is_cycle_member(at) {
             self.join_stack();
         }
     }
 
+    /// Whether this round found a circular reference to iterate.
+    pub(crate) fn has_cycles(&self) -> bool {
+        !self.evaluation.iteration.members.is_empty()
+    }
+
+    /// Whether `at` is in the recalculated set, so that reading it joins its readers to it.
+    pub(crate) fn is_cycle_member(&self, at: CellReferenceIndex) -> bool {
+        self.evaluation.iteration.members.contains(&key(at))
+    }
+
+    /// [`IterationState::joins`] so far.
+    pub(crate) fn cycle_joins(&self) -> u64 {
+        self.evaluation.iteration.joins
+    }
+
+    /// Joins the stack to the recalculated set. A cached read skips the reads that would join its
+    /// reader, so a cached range holds no member: its build is not stored when it joined (the
+    /// count moved), and a cell joins only while it is on the stack, before it is evaluated, where
+    /// a range is cached only once every cell of it is (T-0485).
     fn join_stack(&mut self) {
-        let stack = self.evaluation.stack.iter().map(|c| key(*c));
-        self.evaluation.iteration.members.extend(stack);
+        let state = &mut self.evaluation;
+        state.iteration.joins += 1;
+        state
+            .iteration
+            .members
+            .extend(state.stack.iter().map(|c| key(*c)));
     }
 
     /// Starts the second round of passes, after data tables: the members are collected afresh.
@@ -174,6 +202,11 @@ impl Model {
                 self.evaluation.cells.remove(&key(at));
                 self.evaluation.clear_pass_caches();
                 self.evaluate_cell(at);
+                if self.take_overrun().is_some() {
+                    // The ceiling ran out: the run stored nothing, so the member keeps its value
+                    // from before it, and the sweeps stop as at `MAX_SWEEP_EVALUATIONS`.
+                    return;
+                }
                 let after = self.current_value(at);
                 largest = largest.max(change(&before, &after));
             }

@@ -57,7 +57,8 @@ where
             let depth = bound.len();
             let pair_count = (args.len() - 1) / 2;
             for i in 0..pair_count {
-                if let Node::NamedVariableKind { name, .. } = &mut args[2 * i] {
+                // The name may be written with whitespace around it, `LET( x, 1, x)` (T-2948).
+                if let Node::NamedVariableKind { name, .. } = args[2 * i].unwrap_spaced_mut() {
                     bound.push(name.clone());
                     let d = name.clone();
                     visit(NameSite::Declaration, name, Some(&d));

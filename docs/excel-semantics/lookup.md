@@ -55,10 +55,12 @@ Calipers note: `calipers/pv_goldens/pv26_020` and `pv26_2_020` `Summary!C17:...1
 for this rule: the corpus anonymisation renamed the text in `Summary!B17` to `Company0691` but left
 the sheet it names as `ConAgra` (whose `TargetName`, D24, is the cached `Company2277`), so the
 workbook as shipped has no `Company0691` sheet and `#REF!` is right for it (lookup.md "INDIRECT to
-a sheet that does not exist is #REF!").
+a sheet that does not exist is #REF!"). probes/t2867-calipers-anonymised-inputs (excel-graph,
+2026-10-27) confirms it on the shipped inputs: `#REF!` for C17:O17 and for MAX, AVERAGE, MEDIAN and
+MIN over M7:M21. Those cells are scored against the probe through cached overrides (decision 0133, T-2867).
 Implemented in: `indirect_defined_name` (functions/lookup_and_reference/mod.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-2660
+Tasks: T-2660, T-2867
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
 Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
@@ -829,9 +831,13 @@ So `COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))` and `RANK(10,CHOOSE(…))` are 2x2 gr
 Evidence: probes/choose-array-index-range-arms (excel-graph, 2026-10-14, T-1508); probes/countblank-array-values H20,
 H34; probes/array-context-legacy-sumproduct H1, H10; probes/external-ref-no-link-ifchoose A32.
 Status: VERIFIED (excel-graph)
-Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using IF's `evaluate_if_arg`/`if_arg_at`
-(functions/logical/mod.rs).
-Tasks: T-1508
+Ours: every range arm's cells are read in order, so a cycle through any arm is one (`=ROWS(CHOOSE({1,2},A:A,1:1))` in A1
+is circular, 0), but no arm is copied until the result's size, taken from the arms' bounds, is checked; then only the
+picked range arms are copied, so `CHOOSE({1},C:C,D:D,…)` with 254 whole-column arms holds one column (T-1564; IF over an
+array condition alike).
+Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using `BroadcastArg` and
+`evaluate_broadcast_arm` (functions/lift/broadcast_arg.rs).
+Tasks: T-1508, T-1564
 
 ## XMATCH/XLOOKUP reference-form lookup and return arrays; capital Thorn
 A single-cell reference is a one-cell vector for XMATCH `lookup_array` and XLOOKUP `lookup_array`/`return_array`: `XMATCH(5,A1)` is 1, `XMATCH(5,one)` (single-cell defined name) is 1, `LET(r,A1,XMATCH(5,r))` is 1 and `XLOOKUP(5,A1,B3)` returns B3's value. A blank single-cell `return_array` yields 0 (`XLOOKUP(5,one,B2)` is 0). `XMATCH(10,@A1:A3)` is `#N/A` (on row 1 the `@` yields the scalar 5, not a vector containing 10) and `XLOOKUP(5,A1,@B1:B3)` on row 7 is `#VALUE!` (the `@` finds no cell on row 7 to intersect, so the error arises before XLOOKUP runs; the probe cannot separate that from a scalar `return_array`). A 3-D span `Sheet1:Sheet3!A1` as lookup_array or return_array is `#VALUE!` (not `#REF!`). `"Þ"="TH"` is TRUE and `"Þ"<"TI"` is TRUE (Thorn collates as TH), so `XMATCH("Þ",D1:D3)` is 1, `XMATCH("TI",D1:D3,1)` is 3.
@@ -875,7 +881,13 @@ call's result), not a value. What the caller sees depends on who reads the eleme
   ROW, COLUMN, CELL, ISFORMULA, N and T lift, once per whole element (`SUBTOTAL(9,OFFSET(A1,0,0,{1;2;3}))`
   spills 1, 101, 10101). Operators, IS* functions, IFERROR, TEXTJOIN and AGGREGATE see `#VALUE!` per element;
   IF, CHOOSE, LET, VSTACK, TAKE and DROP inside SUM hand the elements on; OFFSET over such a result lifts
-  again. TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
+  again. A lifted TAKE's grid is handed on the same way by IF and CHOOSE in every consumer and
+  lifts again as OFFSET's reference (`SUMPRODUCT(IF(TRUE,TAKE(A1:B3,{1;2})))` is 0, `ROWS(OFFSET(TAKE(A1:B3,{1;2}),1,0))`
+  is 2), and TAKE over an error source with a lifted count is one error per element
+  (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby, T-2299). DROP behaves the same
+  (`ROWS(DROP(NA(),{1;2}))` is 2, `SUMPRODUCT(IF(TRUE,DROP(A1:B3,{1;2})))` and the CHOOSE form 0, `ROWS(OFFSET(DROP(A1:B3,{1;2}),1,0))` 2;
+  probes/drop-lifted-grid-handon F1:F3, F9, F10, excel-graph, T-2919), and an error source beats an invalid lifted count for both:
+  `ROWS(TAKE(NA(),{1;"x"}))` and the DROP form are 2, every element `#N/A` (same probe F4:F8, F11). TAKE and DROP keep the elements they count: `SUM(TAKE(OFFSET(A1,{0;1;2},0),1))` is 1 and
   `SUM(DROP(OFFSET(A1,{0;1;2},0),1))` 10100 (E101, -b2 E153). Ours: since T-2174 for an unlifted count. Inside SUM
   only a direct OFFSET or INDIRECT source keeps it (TRIMRANGE, IF, LET and nested TAKE/DROP sources there read
   values), and a lifted count over such a grid is unprobed (T-2212). Full table with cells: SPEC-0014 "Excel behavior to match" (probes/reference-lift-consumers,
@@ -1082,10 +1094,12 @@ Rule (excel-graph, 2026-10-22, probes/t2277-hyperlink-location-length A1-A15): a
 `#VALUE!`, with or without friendly_name and over an array friendly_name (one `#VALUE!`, no spill): `HYPERLINK(REPT("a",255),1)` = 1,
 `REPT("a",256)` is `#VALUE!` (also `HYPERLINK(REPT("a",256))`), `"#"&REPT("a",254)` = 1 and `"#"&REPT("a",255)` is `#VALUE!`: the
 `#` of an internal link counts. This was the cause of gen-m6/0bcac2d96e96b3df Calc!A17 (a 328-character TEXTJOIN location), not a
-TEXTJOIN error. Unprobed: characters outside the BMP (ours counts UTF-16 units).
-Ours: implemented (T-2277).
+TEXTJOIN error. Characters outside the BMP count as two (UTF-16 units, like LEN; excel-graph, 2026-10-27,
+probes/t2358-hyperlink-location-non-bmp A1-A9): `REPT("😀",127)&"a"` (255 units, 128 code points) = 1, `REPT("😀",128)`
+(256 units) is `#VALUE!`, as are 200 and 255 emoji; `LEN(REPT("😀",128))` = 256.
+Ours: implemented (T-2277, confirmed T-2358: counts UTF-16 units).
 Status: VERIFIED
-Tasks: T-2277
+Tasks: T-2277, T-2358
 
 ## LOOKUP past a short result vector gives a blank's empty value; MMULT of it is #VALUE! (T-2278)
 Rule: when LOOKUP's match position lies past a one-cell result vector, it reads on to the blank cell there and gives its
@@ -1185,3 +1199,19 @@ not yet (T-2824).
 probes/t2065-lift-median, -large, -small failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs).
 Status: UNVERIFIED (desktop question, M14 T-1075 item 18, decision 0039).
 Tasks: T-2065, T-2063, T-2064, T-2823, T-2824
+
+## MATCH match_type that is a reference to an error cell is #REF! (excel-graph)
+Rule: `MATCH(30,A1:A5,M2)` with M2 `=NA()` gives `#REF!` (ERROR.TYPE 4) in Excel for the web, not the #N/A the
+error carries; the literal `NA()` as match_type and the same reference as VLOOKUP/HLOOKUP range_lookup propagate #N/A.
+Evidence: probes/m2-argument-kind-gaps Calc!A25 (T-2861, excel-graph, 2026-10-27); the other 78 cells of that case (empty text,
+error, fraction, boolean and numeric text as literal and as a reference in DAY, YEAR, IF, INDEX, MATCH, VLOOKUP, HLOOKUP, LEFT, RIGHT,
+MID, SUMIF, SUMIFS) match ours.
+This extends Rule 2 of "MATCH descending search scans from the top; a text match_type read from a cell is #REF!" and the VLOOKUP/HLOOKUP
+reference-index rule: a non-numeric value (text, `=""`, an error) read from a cell in these arguments is #REF! (A22, A25; HLOOKUP row_index_num
+M1/M2 = 4 at A32, A35, while the literals give 3 and 7 at A31, A33). T-2965 extends `match_type_arg`, not a parallel path.
+All seven error kinds (#N/A, #DIV/0!, #NUM!, #REF!, #VALUE!, #NAME?, #NULL!) as the referenced cell give #REF!, also when
+IF picks the reference and for a multi-cell range of error cells (E8, no implicit intersection: its row is outside the range): probes/match-type-error-reference
+E1:E8, F1:F7 (excel-graph, 2026-10-28).
+A literal error as match_type still propagates it (`NA()` gives #N/A, `#DIV/0!` gives #DIV/0!; probes/m2-argument-kind-gaps A23, A24).
+Status: VERIFIED (web).
+Tasks: T-2861, T-2965. Implemented in: `match_type_arg` (lookup_and_reference/mod.rs).

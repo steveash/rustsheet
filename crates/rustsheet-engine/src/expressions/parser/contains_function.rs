@@ -1,5 +1,6 @@
 //! Walking a formula tree: the children of a node, and searching for calls of given functions.
 
+use super::spacing::is_empty_call_run;
 use super::{chain, Node};
 use crate::functions::Function;
 
@@ -36,6 +37,18 @@ impl Node {
             node.push_children(&mut pending);
         }
         false
+    }
+
+    /// How many nodes the tree holds, itself included: what cloning it costs (SPEC-0024 section 1,
+    /// "LAMBDA values made"). Walked with an explicit stack like [`Node::contains_function`].
+    pub(crate) fn node_count(&self) -> u64 {
+        let mut pending = vec![self];
+        let mut count: u64 = 0;
+        while let Some(node) = pending.pop() {
+            count = count.saturating_add(1);
+            node.push_children(&mut pending);
+        }
+        count
     }
 
     /// Whether the tree holds a LAMBDA call, written out as `LAMBDA(x,x)(1)`.
@@ -123,13 +136,19 @@ impl Node {
     }
 
     /// The tree without the whitespace written in it: every [`Node::Spaced`] replaced by its
-    /// child. An explicit stack keeps the walk off the call stack.
+    /// child, and the run of an empty call removed with the argument that holds it
+    /// ([`is_empty_call_run`]). An explicit stack keeps the walk off the call stack.
     pub(crate) fn strip_spaces(&mut self) {
         let mut pending = vec![self];
         while let Some(node) = pending.pop() {
             while let Node::Spaced { child, .. } = node {
                 let child = std::mem::replace(&mut **child, Node::EmptyArgKind);
                 *node = child;
+            }
+            if let Node::FunctionKind { args, .. } = node {
+                if is_empty_call_run(args) {
+                    args.clear();
+                }
             }
             node.push_children_mut(&mut pending);
         }

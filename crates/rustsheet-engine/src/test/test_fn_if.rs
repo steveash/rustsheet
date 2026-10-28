@@ -88,3 +88,63 @@ fn eta_if_with_one_argument() {
     assert_eq!(model._get_text("C5"), "#CALC!");
     assert_eq!(model._get_text("C6"), "FALSE");
 }
+
+#[test]
+fn typed_if_with_one_argument_is_refused() {
+    // Excel for the web refuses typing IF with only a condition (Graph PATCH 400 InvalidArgument
+    // for each of these, excel-graph 2026-10-28, T-2939) and takes IF with an empty or given second
+    // argument (probes/t2939-typed-if-two-argument-controls).
+    let mut model = new_empty_model();
+    for formula in [
+        "=IF(TRUE)",
+        "=IF(FALSE)",
+        "=IF(1)",
+        "=IF(0)",
+        "=IF({1,0})",
+        "=IF(A1:B1)",
+        "=IF(\"x\")",
+        "=IF(NA())",
+        "=ISLOGICAL(IF(TRUE))",
+        "=IF(TRUE)+1",
+    ] {
+        assert!(
+            model
+                .set_typed_user_input(0, 1, 5, formula.to_string())
+                .is_err(),
+            "{formula}"
+        );
+    }
+    model
+        .set_typed_user_input(0, 1, 5, "=IF(TRUE,)".to_string())
+        .unwrap();
+    model
+        .set_typed_user_input(0, 2, 5, "=IF(TRUE,1)".to_string())
+        .unwrap();
+    model
+        .set_typed_user_input(0, 3, 5, "=IF(FALSE,1)".to_string())
+        .unwrap();
+    // Stored text is not refused: it takes the one-argument eta path (`#VALUE!`, T-1947).
+    model._set("A9", "=IF(TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "0");
+    assert_eq!(model._get_text("E2"), "1");
+    assert_eq!(model._get_text("E3"), "FALSE");
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+}
+
+#[test]
+fn test_fn_if_array_branch_no_element_takes_still_sizes_the_result() {
+    // A branch no condition element takes is only sized, not copied (T-1564); the result still
+    // spans it.
+    let mut model = new_empty_model();
+    model._set("C1", "5");
+    model._set("A1", "=ROWS(IF({TRUE},C1,D1:D4))");
+    model._set("A2", "=SUM(IF({TRUE},C1,D1:D4))");
+    model._set("A3", "=ROWS(IF({FALSE},C1:C3,D1))");
+    model._set("A4", "=SUM(IF({TRUE},C:C,D:D))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "4");
+    assert_eq!(model._get_text("A2"), "20");
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("A4"), "5");
+}

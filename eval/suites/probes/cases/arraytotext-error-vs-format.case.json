@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ARRAYTOTEXT with an error argument beside an invalid, valid or error format, and VALUETOTEXT alike (T-2250).",
+  "tags": [
+    "M5",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": "=NA()",
+        "A1": "=ARRAYTOTEXT(NA(),2)",
+        "A2": "=ARRAYTOTEXT(1/0,2)",
+        "A3": "=ARRAYTOTEXT(B1,2)",
+        "A4": "=ARRAYTOTEXT(1,2)",
+        "A5": "=ARRAYTOTEXT(NA(),0)",
+        "A6": "=ARRAYTOTEXT(1,NA())",
+        "A7": "=ARRAYTOTEXT(NA(),1/0)",
+        "A8": "=ARRAYTOTEXT(1/0,NA())",
+        "A9": "=ARRAYTOTEXT(NA(),\"x\")",
+        "A10": "=ARRAYTOTEXT({1,#N/A},2)",
+        "A11": "=ARRAYTOTEXT(SINH(710),2)",
+        "A12": "=VALUETOTEXT(NA(),2)",
+        "A13": "=VALUETOTEXT(1,2)",
+        "A14": "=ARRAYTOTEXT(B1:B1,2)",
+        "A15": "=ARRAYTOTEXT(1,\"x\")"
+      }
+    }
+  ],
+  "expected": {}
+}
