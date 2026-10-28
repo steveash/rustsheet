@@ -169,7 +169,6 @@ fn cells_passed_by_decision_0042_are_listed() {
     r.cells = vec![
         CellResult {
             graph_subnormal: true,
-            kind: crate::runner::CellKind::Scored,
             ..cell("3E-308-2.5E-308", Verdict::Pass)
         },
         cell("ABS(1)", Verdict::Pass),

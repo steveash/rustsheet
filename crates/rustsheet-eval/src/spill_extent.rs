@@ -179,8 +179,13 @@ mod tests {
 
     #[test]
     fn spill_wider_than_excel_fails_the_extra_cells() {
-        let extra: Vec<(String, Value, Verdict)> = extent(&["A1"])
-            .unexpected_cells(&Spilled)
+        let cells = extent(&["A1"]).unexpected_cells(&Spilled);
+        // The report keeps only failing cells, and the M7 exit counts these from it (decision
+        // 0140), so each one is a failing, marked cell.
+        assert!(cells
+            .iter()
+            .all(|c| c.kind == CellKind::SpillExtent && !c.verdict.is_pass()));
+        let extra: Vec<(String, Value, Verdict)> = cells
             .into_iter()
             .map(|c| (c.key(), c.actual, c.verdict))
             .collect();

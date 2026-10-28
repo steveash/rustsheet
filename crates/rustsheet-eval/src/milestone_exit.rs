@@ -488,7 +488,7 @@ mod tests {
         probe_failures: usize,
     }
 
-    fn milestone_report(i: &Inputs) -> RunReport {
+    fn milestone_report(i: &Inputs<'_>) -> RunReport {
         let mut r = report(None);
         let (cells, visible) = i.gen;
         r.catalog_coverage.push(MilestoneCoverage {
