@@ -643,10 +643,10 @@ Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 3
 SORTBY follows UNIQUE's rule (probes/sortby-lifted-element-corners, excel-graph, T-2349): a leading invalid entry (`{2;1}`) is
 `#VALUE!` then the next element's top-left; a mixed `{1;-1;2}` is 1, empty, `#VALUE!`; an error array is that error in every
 element of the sort_orders' shape (`ROWS(SORTBY(NA(),C1:C3,{1;-1}))` is 2); an error by_array is the error in every element.
-UNVERIFIED: which error wins inside an element when an error array meets an invalid or uniform 1xN sort_order (ours: the array's error, `SORTBY(NA(),C1:C3,{2;1})` is `#N/A` in every element; `SORTBY(NA(),C1:C3,{1,1})` likewise).
+UNVERIFIED (T-3027): which error wins inside an element when an error array meets an invalid or uniform 1xN sort_order (ours: the array's error, `SORTBY(NA(),C1:C3,{2;1})` is `#N/A` in every element; `SORTBY(NA(),C1:C3,{1,1})` likewise).
 Ours: implemented. The driver option `CallResult::ArrayFirstColumn` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
 Status: VERIFIED (web)
-Tasks: T-2300 (UNIQUE), T-1839 (SORTBY)
+Tasks: T-2300 (UNIQUE), T-1839 (SORTBY), T-2349 (SORTBY corners), T-3027 (error array with an invalid sort_order)
 
 ## Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule
 Rule: a function whose scalar argument gets an array lifts, one call per element, and the arguments
