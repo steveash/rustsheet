@@ -3,7 +3,7 @@ id: T-3030
 title: "VSTACK/HSTACK: CELL('contents') of a blank target is #VALUE!, non-blank targets stack (T-2466 evidence)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -29,8 +29,27 @@ other shapers is unprobed (T-2466 review).
 
 ## Acceptance criteria
 - [ ] probes/t2466-cell-contents-stack passes in full, including the nested non-blank cells A51, A131, A141, A221, A231 and A241; probes/t2414-gen-m7-unexplained keeps passing.
-- [ ] information.md's "Ours" paragraph updated.
-- [ ] `make check` green; reviewers approve.
+      Partly met: every cell passes except the blank-target LET/IF/info-type cells A111, A121, A151, which moved to T-3053 (see Outcome).
+- [x] information.md's "Ours" paragraph updated.
+- [x] `make check` green; reviewers approve (round 2 after the fidelity review asked for a complete re-fill).
 
 ## Out of scope
 - TOCOL/WRAPROWS and other shapers with a blank target (unprobed; probe first if needed).
+
+## Outcome
+- **Root cause of the nested-0 cells.** Ours read `CELL("contents"|"type", Data!X)` on the formula's own sheet, per
+  T-1230/T-1433. Excel for the web (excel-graph) now reads the named sheet everywhere: on 2026-10-28 the T-1230/T-1433
+  probes were re-filled twice with identical values, and new probes cover sheet order (t3030-cell-first-sheet) and
+  nesting (t3030-cell-contents-nested-sheet). CELL now reads the named sheet. Every case with a cross-sheet
+  `CELL("contents"|"type")` whose sidecar predated 2026-10-28 was re-filled from excel-graph: 201 sidecars, in which only
+  CELL cells and their spills changed in value; 38 previously dropped rich-error cells are now scored as `#VALUE!` and
+  pass (information.md, decision 0153).
+- **Blank-target stack rule.** VSTACK and HSTACK reject a literal `CELL("contents", ref)` argument only when the target
+  is blank. probes/t3030-cell-contents-blank-shapers shows that the blank-target result is an empty value: array-taking
+  functions reject it even through LET/IF/IFERROR/CHOOSE. Ours cannot tell that value from a blank reference read
+  through those wrappers, so t2466 A111, A121, A151 and the other array-taking callers went to T-3053 (size M, a
+  CalcResult design question).
+- **Eval delta.** probes: 24 fixed and 3 new cases. gen-m9: 3 fixed (one of them the MODE.SNGL cell
+  that the stale sidecar had masked). One IMTAN cell (gen-m9 756a9f7bc3a06bcc A338)
+  was unmasked by the re-fill and allowed by decision 0153; it moved to T-3054. Visibly-off in-scope cells went from
+  2572 to 2494, measured before the last merge of main (2587 on the merged head, where main had moved).

@@ -1004,7 +1004,7 @@
    },
    "A324": {
     "t": "s",
-    "v": "b"
+    "v": "v"
    },
    "A325": {
     "t": "e",
@@ -1440,7 +1440,7 @@
    },
    "A62": {
     "t": "n",
-    "v": 0.0
+    "v": 0.2
    },
    "A63": {
     "t": "e",
@@ -1609,8 +1609,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "58b668aa3313b96d99d1eb6020bb758e86490dd6bf65fe7eb2247384df5d083c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-20T12:43:47+00:00",
+  "produced_at": "2026-10-28T16:02:19+00:00",
   "version": null,
-  "workbook_name": "d43b3f008f718c1bd9de50d651ee42df6e0bd4a08e24e8fcd790a3cca7bd193d.xlsx"
+  "workbook_name": "9fe729cbb59a2f558a2ac8c38c257a3a79f1aceb494baa76d7a8a24896763553.xlsx"
  }
 }
