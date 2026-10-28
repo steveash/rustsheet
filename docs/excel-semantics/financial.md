@@ -2227,6 +2227,46 @@ unit in the 15th digit): yield-start-rate-term S!B39 and S!B49 (basis 1, 8 and 3
 Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
 Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells)
 
+## ODDFYIELD stops short of ODDFPRICE's root
+Rule: ODDFYIELD's last digits are not the root of ODDFPRICE, and unlike YIELD's they fall on both sides of it: Excel's
+value is 1e-14 to 7e-11 from the root, above it in 60 of the 111 failing cells and below it in 51. The known-root
+rows of ironcalc-calc PRICE_YIELD.xlsx show it directly. Each prices a bond at a yield F with `J = ODDFPRICE(..)` and
+inverts it with `K = ODDFYIELD(..,J,..)`: K2 is 0.04999999999851281 (root 0.05, 1.5e-12 below), K8 is 0.0499999999321231
+(6.8e-11 below) and K23 is 0.05000000000085884 (8.6e-13 above). The annual rows with redemption 120 (K2-K5, K43-K46)
+all stop 1.34e-12 to 1.67e-12 below the root, at a price residual of 1.0e-11 to 1.2e-11 relative, whatever the yield
+(0.03 to 0.067). The semiannual rows K8-K11 and K49-K52 differ in settlement only, and repeat each other's gaps
+(-6.8e-11/-7.2e-11, -2.2e-11/-2.4e-11, -3.7e-11/-3.9e-11, -1.1e-11/-1.1e-11). The same bond at redemptions 10, 30, 50,
+60 and 300 (K23-K27) stops +8.6e-13, -2.1e-11, -4.0e-11, +1.7e-13 and +3.8e-12 from the root, which does not move
+smoothly with the redemption. The web probes agree: the bond `ODDFYIELD(DATE(8999,2,1),DATE(9000,6,30),DATE(8999,1,1),
+DATE(8999,6,30),0.05,98,100,2,0)` and its date-shifted twins (probes/date-system-1900-odd-threshold row 5,
+-1904-odd-threshold row 5, -1900-odd-years and -1904-odd-years row 3) are 0.06499377053016654, 1.6e-14 above the root,
+and probes/date-system-1900-oddf-issue-after-quasi S!A17 and S!A32 are 0.07294567529742481, 5.1e-11 above it.
+probes/odd-bond-argument-check-order A258 is 0.06342868471015199, 1.5e-13 above the root.
+Not yet explained. Newton with ODDFPRICE's analytic slope cannot be the whole rule: the price is convex and
+decreasing in the yield, so every analytic-Newton iterate after the first lies at or below the root, and Excel's
+values above the root (K23, K26, K27, K35, K37, K38, the 0.06499377053016654 bond, A17, A258) rule it out.
+T-2007 fit-lab attempt 1 (2026-10-28): 43 distinct bonds behind the 111 failing cells, each rebuilt from the engine's
+odd-first schedule with `^` prices. None of the following reaches one bond bit-exact or within 4 ulp, 0/43 for each:
+- Newton with the analytic slope, from the coupon rate, 0, 0.05 or 0.1, stopping when a step is under 1e-7 to 1e-10
+  (step not taken, as in YIELD) or under 1e-6 to 1e-10 (taken), or when the price residual is under 1e-6 to 1e-10;
+- the same starts and stops with forward differences (h = 1e-5, 1e-6, 1e-8) and central differences (1e-5, 1e-8),
+  ours being central with h = 1e-5 from the coupon rate, stopping when a taken step is under 1e-8;
+- YIELD's fitted model (T-1592: `yield_start` with the term in periods over the frequency, analytic slope, a step under
+  1e-10 not taken) and forward differences from that start;
+- the chord method (the slope fixed at the start) with each slope above, and the secant method from each pair of the
+  starts above, stopping when a step is under 1e-6 to 1e-10 or when the residual is under 1e-5 to 1e-9;
+- Newton with a mis-scaled slope (times or divided by the frequency, by 1 + y/m, or the slope with respect to ln(1 +
+  y/m)), and backward or forward differences of 1e-3 and 1e-4.
+Evidence: ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx ODDFPRICE_ODDFYIELD!K2-K11, K23-K27, K29-K33, K35-K39, K43-K46,
+K49-K52 (Excel-cached, desktop); probes/date-system-1900-odd-threshold, -1904-odd-threshold, -1900-odd-years,
+-1904-odd-years, -1900-odd-accrint-bound, -1900-oddf-issue-after-quasi, date-system-1904-financial S!A32,
+coup-calendar-edges J8, fin-argument-modes H200, fin-yield-odd-lift A5, odd-bond-argument-check-order A258
+(excel-graph).
+Ours: `solve_yield` in functions/financial/financial_bonds/yield_solver.rs, Newton with a central difference (h = 1e-5)
+from the coupon rate to a step under 1e-8, then bisection. It lands within about 1e-14 of the root.
+Status: UNVERIFIED (Excel's stopping rule is unknown; the values are Excel-cached and excel-graph)
+Tasks: T-1374, T-2007 (the fit), T-1592 (YIELD's)
+
 ## YIELD's #NUM! cells and its 100-step cap
 Rule: with more than one coupon left, YIELD is analytic Newton on PRICE from the fitted start ("YIELD stops short of
 PRICE's root") with no fallback. An iterate where the step is not finite (PRICE or its slope leaves its domain) makes
