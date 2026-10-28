@@ -41,6 +41,9 @@ m9-beta-dist-a5 A21 and t1745-beta-inv-roundtrip G178, G181, but the gated suite
 BETA.DIST(0.5,2,2,TRUE) (BETADIST_BETAINV.xlsx G15, Excel 0.4999999999999999) goes from 0.49999999999999994 (1 ulp,
 GAMMALN's sum) to 0.5 (2 ulp), and the BETA.INV chained on it (H15, Excel 0.7) from bit-exact to 0.6999999999999997.
 So a0 <= 8 keeps GAMMALN's sum; the 72 cells are left for whoever finds a form that fits both.
+(T-2847 correction: the workbook's G15 x is (0.7-0.2)/(1.2-0.2) = 0.49999999999999994, not the literal 0.5 measured
+here; at that x -LN(a0) gives Excel's G15 bit-exact, and H15's 2 ulp is BETA.INV's own. T-2847 takes -LN(a0) at every
+a0.)
 
 ## Against the acceptance criteria
 - Criterion 1 (>= 7,505 bit-exact and >= 11,713 w15 of 11,742): 8,800 and 11,721.
