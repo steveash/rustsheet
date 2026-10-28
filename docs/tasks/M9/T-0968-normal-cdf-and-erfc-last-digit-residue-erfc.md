@@ -103,3 +103,6 @@ Fit `norm-s-dist` over 1,773 NORM.S.DIST cells: glibc `0.5*erfc(-x*sqrt(0.5))` i
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+The 20 visibly-off NORM.S.INV cells of probes-numeric/t1746-norm-s-inv-central this task names are an inverse-normal problem, not CDF residue: T-0925 now owns that case and probes-numeric/t1759-norm-s-inv-roundtrip. This task stays `defer: phase-1b`.

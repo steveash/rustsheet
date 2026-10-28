@@ -714,6 +714,7 @@ C	probes/lotus-dot-range-offgrid.case.json	2
 C	probes/lotus-dot-range-space.case.json	2
 C	probes/lotus-dot-range-trailing-letter.case.json	2
 C	probes/lotus-dot-range.case.json	6
+C	probes/m2-argument-kind-gaps-b.case.json	12
 C	probes/m2-argument-kind-gaps.case.json	79
 C	probes/m7-argument-modes.case.json	174
 C	probes/m7-lift-take-drop-sortby.case.json	934
@@ -732,6 +733,7 @@ C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
 C	probes/match-single-cell-forms-and-texts.case.json	36
 C	probes/match-single-value-lookup-array.case.json	26
+C	probes/match-type-error-reference.case.json	22
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/matdisc-serial-0-60.case.json	160
@@ -1399,7 +1401,7 @@ C	probes/t2778-imsinh-sign-sweep.case.json	312
 C	probes/t2779-hebrew-saka-more.case.json	133
 C	probes/t2779-hebrew-saka-names.case.json	143
 C	probes/t2782-whitespace-run-wrap.case.json	36
-C	probes/t2786-whitespace-structured-refs-runs.case.json	51
+C	probes/t2786-whitespace-structured-refs-runs.case.json	49
 C	probes/t2812-currency-tag-cost.case.json	54
 C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
@@ -2974,7 +2976,6 @@ F	probes/logest-modes.case.json	Sheet1!M92
 F	probes/logest-modes.case.json	Sheet1!M93
 F	probes/logest-modes.case.json	Sheet1!N85
 F	probes/logest-modes.case.json	Sheet1!N86
-F	probes/m2-argument-kind-gaps.case.json	Calc!A25
 F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/odd-bond-argument-check-order.case.json	Calc!A258
 F	probes/regression-trend.case.json	Sheet1!N10
@@ -3500,8 +3501,6 @@ F	probes/t2779-hebrew-saka-names.case.json	S!G9
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C2
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C3
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C4
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H1
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!H11
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
