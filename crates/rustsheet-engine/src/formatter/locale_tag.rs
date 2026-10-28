@@ -3,6 +3,9 @@
 //! probes/text-locale-name-tables, probes/text-locale-am-neutral (excel-graph, 2026-10-18);
 //! docs/excel-semantics/number-formats.md "Locale tags localize date names".
 
+use chrono::NaiveDate;
+
+use super::dates::convert_to_serial_number;
 use crate::locale::calendar_date_names::{
     HEBREW_LATIN, HEBREW_LATIN_ADARS, HEBREW_SCRIPT, HEBREW_SCRIPT_ADARS, SAKA, SAKA_HINDI,
 };
@@ -75,6 +78,9 @@ pub struct Localized {
     /// non-Japanese calendars (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy` "|2023", but
     /// `[$-70409]g|yyyy` "|2566"; probes/text-locale-era-gregorian).
     pub japanese_lcid: bool,
+    /// A `B2` before a calendar-3, -5 or -7 tag: every year token converts once more than it
+    /// would without the `B2` ([`japanese_era`]; `calendar_dates::year_token_text`).
+    pub year_twice: bool,
 }
 
 /// What a `[$-...]` tag (with no currency symbol) does to its section.
@@ -123,8 +129,21 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// extended-hex tag, and so `[$-zzz]`, is not resolved this way: `B2[$-zzz]` is a bare `B2`
 /// (probes/t2729-hijri-locale-tag A243-A264, t2729-hijri-locale-tag-names A239-A277;
 /// text-locale-lunar-tokens A79). Calendar digits 15 and above are unprobed here.
+/// Under calendars 3, 5 and 7 the `B2` converts every year token once more
+/// ([`Localized::year_twice`]; `B2[$-70409]yyyy|e` of 2023-03-15 is "3109|2566",
+/// `B2[$-50409]yyyy|e` "6689|4356"; probes/t2932-b2-calendar-twice). Calendar 4 prints other
+/// years there ("01"), not modelled (TODO(T-3028)).
 pub fn resolve_after_hijri_prefix(tag: &str) -> LocaleTag {
-    resolve_with(tag, true)
+    match resolve_with(tag, true) {
+        LocaleTag::Names(localized) => LocaleTag::Names(Localized {
+            year_twice: matches!(
+                localized.calendar,
+                Calendar::Japanese { explicit: true } | Calendar::Korean | Calendar::Thai
+            ),
+            ..localized
+        }),
+        other => other,
+    }
 }
 
 /// [`resolve`], with digit 0 read as 6 when `hijri_prefix`.
@@ -233,6 +252,7 @@ fn resolve_lcid(value: u32) -> LocaleTag {
             day_half: Some(names),
             calendar,
             japanese_lcid: japanese,
+            year_twice: false,
         })
     };
     match value >> 16 {
@@ -340,6 +360,7 @@ fn without_locale(calendar: u32) -> LocaleTag {
         day_half: None,
         calendar,
         japanese_lcid: false,
+        year_twice: false,
     })
 }
 
@@ -405,13 +426,28 @@ fn era_of(serial: i64) -> (i32, &'static [&'static str; 3]) {
     (*first_year, names)
 }
 
-/// What a `g` run of `length` prints for 1900-system `serial`: the era's letter, first character
-/// or (`ggg` and longer) name.
-pub fn japanese_era_name(serial: i64, length: usize) -> &'static str {
-    era_of(serial).1[length.clamp(1, 3) - 1]
-}
-
-/// The year in its Japanese era of 1900-system `serial`, whose Gregorian year is `year`.
-pub fn japanese_era_year(serial: i64, year: i32) -> i32 {
-    year - era_of(serial).0 + 1
+/// The Japanese era of 1900-system `serial`, whose Gregorian date is `(year, month, day)`: the
+/// era year and what `g`, `gg` and `ggg` print. With `twice` (a `B2` before a calendar-3 tag)
+/// Excel converts once more, reading the era year as the Gregorian year of a date with the same
+/// month and day: Reiwa 5 (2023-03-15) is year 5, before Meiji, so Meiji 5 - 1868 + 1 = -1862,
+/// which Excel prints as an unsigned 32-bit number, "4294965434|M"; 9999-12-31, Reiwa 7981, is
+/// Reiwa 5963 (probes/t2932-b2-calendar-twice A1-A16). Which era a year from 1868 to 2019 takes
+/// on the day it changed is unprobed: no serial reaches such a year twice converted.
+pub fn japanese_era(
+    serial: i64,
+    (year, month, day): (i32, u32, u32),
+    twice: bool,
+) -> (i32, &'static [&'static str; 3]) {
+    let (first_year, names) = era_of(serial);
+    let era_year = year - first_year + 1;
+    if !twice {
+        return (era_year, names);
+    }
+    // Day 0 (serial 0, "1900-01-00") and a 29 February of a common year have no date: the
+    // month's 28th stands in for them, which no era boundary separates.
+    let again = NaiveDate::from_ymd_opt(era_year, month, day)
+        .or_else(|| NaiveDate::from_ymd_opt(era_year, month, 28))
+        .map_or(i64::MIN, |date| i64::from(convert_to_serial_number(date)));
+    let (first_year, names) = era_of(again);
+    (era_year - first_year + 1, names)
 }

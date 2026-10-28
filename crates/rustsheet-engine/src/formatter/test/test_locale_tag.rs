@@ -243,6 +243,39 @@ fn mmm_takes_a_b2_section_to_the_arabic_path() {
     );
 }
 
+#[test]
+fn b2_before_calendars_3_5_and_7_converts_the_years_twice() {
+    // probes/t2932-b2-calendar-twice A1-A68, B1-B5.
+    assert_eq!(
+        text(45000.0, "B2[$-70409]yyyy|yy|e|ee|b|bb|bbbb|g"),
+        "3109|09|2566|2566|09|09|3109|"
+    );
+    assert_eq!(
+        text(2_958_465.0, "B2[$-70409]yyyy|yy|e|b|bbbb"),
+        "11085|85|10542|08|11085"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-50409]yyyy|yy|e|b|bbbb"),
+        "6689|89|4356|56|4356"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-30411]yyyy|yy|e|ee|g|gg|ggg"),
+        "4294965434|4294965434|4294965434|4294965434|M|明|明治"
+    );
+    assert_eq!(text(32515.0, "B2[$-30409]e|g"), "4294965493|M");
+    assert_eq!(text(2_958_465.0, "B2[$-30411]yyyy|e|g"), "5963|5963|R");
+    assert_eq!(text(45000.0, "B2[$-70411]g|yyyy"), "|2566");
+    assert_eq!(text(45000.0, "B2\"x\"[$-70409]yyyy|e"), "x3109|2566");
+    // `B1`, or a `B2` after the tag, changes nothing.
+    assert_eq!(text(45000.0, "B1[$-70409]yyyy|e"), "2566|2023");
+    assert_eq!(text(45000.0, "[$-70409]B2yyyy|e"), "2566|2023");
+    // `b` prints the year's third and fourth digits, also with no `B2`.
+    assert_eq!(text(2_958_465.0, "b|bbbb|yy"), "54|10542|99");
+    assert_eq!(text(2_958_465.0, "[$-70409]b|yy"), "54|42");
+    // Under a tag a number token before the `mmm` switch leaves the first-name quirk on.
+    assert_eq!(text(45000.0, "B2[$-409]yyyy|mmm|dddd"), "1444|شعبان|السبت");
+}
+
 // An empty text section prints nothing (gen-m10/0e3d8eba9432a18d T!A24; `TRUE` and `0;0;0;` in
 // probes/text-format-text-sections, T-2975); fewer than four sections leave the text as it is
 // (docs/excel-semantics/number-formats.md; three sections probed there, one or two unprobed).
