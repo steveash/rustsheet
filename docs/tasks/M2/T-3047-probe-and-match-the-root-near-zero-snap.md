@@ -51,13 +51,13 @@ operand is an array or a multi-cell range, and the engine matching it in both th
 
 ## Outcome (2026-10-28)
 - Probe probes/t3047-snap-array-operands (70 cells, excel-graph): Excel snaps the root `+`/`-` **element by element** with
-  the scalar 8-ULP rule (`=1+{3;7;8}*2^-52-1` is 0, 0, 8 ULP; `=1-{3;4;7}*2^-52-1` is 0, -4 ULP, -7 ULP), over ranges,
+  the scalar 8-ULP rule (`=1+{3;7;8}*2^-52-1` is 0, 0, 8 ULP; `=1-{3;4;7}*2^-52-1` is 0, -4 ULP, -7 ULP) (the `-` side was probed at k = 3, 4, 7 rather than 7 and 8, because its boundary sits at 3/4), over ranges,
   array constants, broadcast scalars and 2-D constants; readers of the spill (`=E3`, `INDEX(E3#,1)`, `SUM(E3:E6)`) see
   the snapped values, `INDEX(A1:A4+B1:B4-C1:C4,1)` is not snapped, and a legacy formula's intersected rows snap.
   Recorded in docs/excel-semantics/numbers.md.
 - `Model::handle_outermost_sum` now snaps through the per-element operator, so scalars and array elements share one
   path; unit tests `array_operands_snap_element_by_element`, `legacy_intersected_ranges_snap_per_row`.
-- Eval delta: probes +1 case (70 cells, 67 pass); 3 new-coverage known failures L!F1, L!G2, L!H3 are not snap cells:
+- Eval delta: probes +1 case (`eval-show`: checked 70, passed 69; L!G2 and L!H3 are extra spill cells Excel leaves empty); 3 new-coverage known failures L!F1, L!G2, L!H3 are not snap cells:
   a legacy root operator over an array constant shows its first element in Excel and spills in ours. They are owned
   by follow-up **T-3051** (`make exit-owners MILESTONE=M2`: 0 unowned). No other suite changed (0 fixed, 0 regressions).
 - Follow-ups: T-3051 (legacy root over an array constant), T-3052 (spec2xlsx drops a formula's trailing `}`, which
