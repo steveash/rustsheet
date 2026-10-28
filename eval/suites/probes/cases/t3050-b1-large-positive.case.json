@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3050: TEXT of a positive value at/past the maximum date serial (2958465 is 9999-12-31) under a lone calendar prefix. Rows: 3000000, 2958465, 2958466; columns: b1, 'b1 x', b2.",
+ "tags": [
+  "M10",
+  "probe",
+  "text",
+  "number-format",
+  "T-3050"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(3000000,\"b1\")",
+    "B1": "=TEXT(3000000,\"b1 x\")",
+    "C1": "=TEXT(3000000,\"b2\")",
+    "A2": "=TEXT(2958465,\"b1\")",
+    "B2": "=TEXT(2958465,\"b1 x\")",
+    "C2": "=TEXT(2958465,\"b2\")",
+    "A3": "=TEXT(2958466,\"b1\")",
+    "B3": "=TEXT(2958466,\"b1 x\")",
+    "C3": "=TEXT(2958466,\"b2\")"
+   }
+  }
+ ],
+ "expected": {}
+}
