@@ -33,6 +33,8 @@ fn aggregates_beside_one_cell_in_the_last_row_read_a_few_cells() {
         ("J", "=COUNT(A:J)", "1"),
         ("J", "=SUM(FREQUENCY(A:J,1))", "1"),
         ("J", "=AND(A:J)", "TRUE"),
+        ("J", "=TEXTJOIN(\",\",TRUE,A:J)", "1"),
+        ("J", "=CONCAT(A:J)", "1"),
         ("J", "=MEDIAN(A:J)", "1"),
         ("J", "=SUMSQ(A:J)", "1"),
         ("J", "=SUBTOTAL(9,A:J)", "1"),
