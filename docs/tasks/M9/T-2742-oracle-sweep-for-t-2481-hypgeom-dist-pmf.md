@@ -3,7 +3,7 @@ id: T-2742
 title: "Oracle sweep for T-2481: HYPGEOM.DIST pmf and cdf over every small population (N 6 to 12)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
