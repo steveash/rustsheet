@@ -1740,16 +1740,25 @@ four column groups, run during T-2578 and not committed; checked by probes/t2578
 value columns and two column fields, 129 cells, and t2578-pivotby-total-error-scope): Excel computes the Total cell of value column `v`
 (0-based) in a row only when that row has a record under the column line at value-column position `G + v` of the grid, the
 line `(G + v) div V` with `G` column lines and `V` value columns (as if each line were one value column wide), and never when
-that is past the last line. So with `G` 2 and 2 values every row's Total cells count; with 3 column groups x, y, z and 2
+that is past the last line. So with `G` 2 and 2 values both look at the second line, so only the rows with a record there count (T-2606, P!C1-C4); with 3 column groups x, y, z and 2
 values, value 0 counts in the rows with a y record and value 1 in those with a z record; with 4 groups both look at the
 third; with one group only value 0 (the Total cells of the last value column are shown and never count). The Total row has
 records under every line, so its cells always count (P!A7, P!A35); the error decides with the true total (power-of-two
 sums decode to the row's own records). The gen-m9 calls with 7 column groups have no hidden Total error under their gates and
 so are arrays (`PIVOTBY(Data!B1:B12,Data!C1:C12,Data!D1:E12,_xleta.AVERAGE)` 11x17 although row 7's Total cells are `#DIV/0!`).
-Consistent with two column fields (four leaf lines). Unprobed: column subtotal lines and `col_total_depth` -1 (ours counts every
-line, subtotals included, in grid order); a LAMBDA returning `""` in the gating cell (ours: a record is enough).
-Status: VERIFIED
-Tasks: T-2311, T-2578
+Consistent with two column fields (four leaf lines).
+T-2606 (excel-graph, 2026-10-27, probes/t2606-pivotby-total-gate-layouts): `col_total_depth` -1 (Total column first) gates exactly as
+1 (P!D1-D4 = C1-C4): with one column field p, q and 2 values the hidden Total cells count in the row with a q record only, so the
+Total column is not a line of the gate in either order. A LAMBDA returning `""` in the gating cell still counts: a record there is
+enough: only value 0's row total is an error (`LAMBDA(v,IF(SUM(v)=3,NA(),IF(SUM(v)=2,"",SUM(v))))`), its gating cell q/u is `""`, and
+the call is `#VALUE!` (P!F1), as is its control without the `""` (P!G1). Column subtotal lines (`col_total_depth` 2 / -2, same result for both signs;
+leaves p/x, p/y, q/x, 2 values, seven rows, one per non-empty leaf set, P!A1-A14) do NOT follow the single-gating-line rule: the
+hidden Total cell of value 1 counts in rows r1..r7 whichever lines they hold, value 0 in rows r2, r3, r4 and not in r1, r5, r6,
+r7 (r1 = p/x only, r2 = p/y, r3 = p/x+p/y, r4 = q/x, r5 = p/x+q/x, r6 = p/y+q/x, r7 = all). Not monotone in the records (r6 holds r2's
+record but differs, apparently), and rows r1-r4 are confounded: the row total equals a subtotal cell there. Not decoded; ours differs (14 of the 28 cells: A1, A2, A4, A6, A7, A9,
+A11, A13, B2, B4, B6, B7, B11, B13), baselined, T-2967.
+Status: VERIFIED (without subtotals); subtotal layouts UNVERIFIED (probe pending, T-2967)
+Tasks: T-2311, T-2578, T-2606
 
 ## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
 Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
