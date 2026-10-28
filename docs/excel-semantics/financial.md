@@ -2066,8 +2066,8 @@ DATE(2027,5,30),4)` = 43799, `COUPNCD` 43890); maturity 2027-08-29 semiannual ha
 quarterly. PRICE, YIELD, DURATION, MDURATION, ODDFPRICE and ODDFYIELD use the same schedule:
 `PRICE(37913,46720,0.05,0.06,100,4,0)` = 87.29595935878451, `DURATION(37913,46720,0.05,0.06,4,0)` = 13.296825458940603,
 and with maturity 2027-11-29 an ODDFPRICE or ODDFYIELD first coupon of 2003-11-29 is on the schedule (87.29680647881554)
-while 2003-11-28 is `#NUM!`. Only COUPDAYS on basis 1 (and, below, ODDLPRICE, ODDLYIELD and ACCRINT) walks the chained schedule, each date clamped from the one after
-it ("COUPDAYS basis 1 counts from the chained next coupon").
+while 2003-11-28 is `#NUM!`. Only COUPDAYS on basis 1 (and, below, ODDLPRICE, ODDLYIELD and ACCRINT, each in its own walk direction) walks the chained schedule, each date clamped from its neighbour
+in the walk ("COUPDAYS basis 1 counts from the chained next coupon").
 Evidence: probes/coup-calendar-edges B1-B14, J1-J14 (excel-graph, 2026-10-25, T-2486); gen-m9/7d2979fba2c95d64 Calc!A304.
 Ours: matches since T-2486 (`coupon_period` in financial_bonds/coupon_schedule.rs, which the COUP*, PRICE, YIELD,
 DURATION, MDURATION and ODDF* schedules read); before it the walk stepped from each date to the next, so the day drifted
