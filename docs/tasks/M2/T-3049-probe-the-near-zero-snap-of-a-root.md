@@ -3,7 +3,7 @@ id: T-3049
 title: "Probe the near-zero snap of a root + or - under IF, IFS, IFERROR, CHOOSE, SWITCH, LET and a unary minus"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
