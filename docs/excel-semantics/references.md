@@ -2455,8 +2455,15 @@ Right/Left):
   Excel keeps the table's one data row, cleared: nothing below the table moves on that last delete. `=S!C10`
   below the table reads `=S!C7` after the four deletes (three rows up, not four), `=SUM(S!C9:C10)` reads
   `=SUM(S!C6:C7)`, and `ROWS(Sales)` is 1 (table-delete-row-all-data-below, excel-graph 2026-10-27, T-2338).
-  What happens to that row's cells outside the table, and to one delete of every data row at once, is
-  unprobed (T-2848).
+  The same last delete leaves the sheet row's cells outside the table alone: `S!E4` 5 beside `Sales` on
+  S!B3:C4 keeps its value, `S!E5` and `S!C5` below stay put, and a second table `Other` on S!E3:F7 keeps all
+  four data rows (`ROWS(Other)` 4, `SUM(Other[Val])` 100, `S!F4` 10); only `Sales`'s own cells are cleared
+  (`SUM(Sales[Qty])` 0, `ROWS(Sales)` 1, `#All` 2) (table-delete-row-only-data-outside, -second-table). With a
+  totals row the only data row is kept and cleared too, and the totals row does not move: `ROWS(Sales)` 1,
+  `#All` 3, `ROW(Sales[#Totals])` 5, `Sales[[#Totals],[Qty]]` 0 (SUBTOTAL over the cleared row), `S!C5` 0, a
+  cell below the table unchanged (table-delete-row-only-data-totals; all excel-graph 2026-10-28, T-2848).
+  Still unprobed (the case format deletes one row per op and has no header-less table): one delete of every
+  data row at once, a two-row delete reaching a data edge, and a delete on a table without a header row.
 - A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
