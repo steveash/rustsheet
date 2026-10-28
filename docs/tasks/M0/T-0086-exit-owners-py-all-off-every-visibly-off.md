@@ -43,7 +43,7 @@ milestone, each with case, cell, formula, expected and actual.
 ## Out of scope
 - Filing the owners (T-0087).
 
-## Handoff
+## Handoff (resumed)
 - Implemented and reviewed (security, architecture, fidelity, quality all APPROVE; `make check` green locally): the eval writes
   `attributed_off` into report.json (`attribution::off_excel_cells` shared with `unattributed_off`), and
   `scripts/exit_owners.py --all-off [--function NAME] [--strict]` + `make unowned-off ALL=1` list the unowned cells in ~30 s.
