@@ -1548,6 +1548,7 @@ C	probes/text-currency-locale-date.case.json	19
 C	probes/text-date-255-char-limit.case.json	43
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-elapsed-two-tokens.case.json	14
+C	probes/text-fill-char-date-clock-fraction.case.json	12
 C	probes/text-format-aaa-weekday-b.case.json	30
 C	probes/text-format-aaa-weekday-c.case.json	10
 C	probes/text-format-aaa-weekday.case.json	50
