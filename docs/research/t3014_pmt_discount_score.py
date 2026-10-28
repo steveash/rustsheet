@@ -78,6 +78,12 @@ def forms(rate: float, nper: int, pv: float, fv: float, typ: int) -> dict[str, f
     }
 
 
+def literal(arg: str) -> float:
+    """A PMT argument: a number literal or one `a/b` quotient (e.g. `0.05/12`), as Excel reads it."""
+    num, _, den = arg.partition("/")
+    return float(num) / float(den) if den else float(num)
+
+
 def main() -> None:
     case = json.loads((CASES / "m9-fin-pmt.case.json").read_text())
     oracle = json.loads((CASES / "m9-fin-pmt.oracle.json").read_text())["sheets"]["Calc"]
@@ -87,7 +93,7 @@ def main() -> None:
     for a1, text in cells.items():
         if not str(text).startswith("=PMT("):
             continue
-        args = [eval(a, {"__builtins__": {}}) for a in text[5:-1].split(",")]  # numeric literals only
+        args = [literal(a) for a in text[5:-1].split(",")]
         rate, nper, pv = float(args[0]), int(args[1]), float(args[2])
         fv = float(args[3]) if len(args) > 3 else 0.0
         typ = int(args[4]) if len(args) > 4 else 0
