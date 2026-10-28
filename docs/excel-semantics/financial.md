@@ -1361,9 +1361,10 @@ gen-m9 sweep and CUMPRINC_CUMIPMT.xlsx):
   A383 and A398 off the bit, so libm's stay.
 - With that L the geometric sum is as close or closer than the per-period sum and the closed form from a discount
   exponent of 3.62 up: gate-edges C1-C11 (type 0) and D1-D11 (type 1), rate 0.1 over exponents 3.62 to 9.34, are 12
-  of 22 to the bit and the rest within 2 ulps, where the other forms missed all 22 by 1 to 10 ulps. At 3.58
-  (`CUMPRINC(0.01,360,100000,1,12,0)`, fin-argument-modes H80) the per-period sum is to the bit and the geometric sum
-  2 ulps off; CUMPRINC_CUMIPMT.xlsx H25 (3.96), which T-2514 had to the bit only with the closed form, is to the bit
+  of 22 to the bit and the rest within 2 ulps, where the other forms missed all 22 by 1 to 10 ulps. Below 3.62 the
+  only probed cells are gen-m9 A300 (exponent 2E-7, the per-period sum to the bit, the geometric 2 ulps off) and
+  fin-argument-modes H80 (3.58, `CUMPRINC(0.01,360,100000,1,12,0)`: the per-period sum 4 ulps off, the geometric 2),
+  so the cut at 3.6 is a fit between 2E-7 and 3.62 (T-3058 probes it); CUMPRINC_CUMIPMT.xlsx H25 (3.96), which T-2514 had to the bit only with the closed form, is to the bit
   with the geometric sum on this L too.
 - Type 0's interest is the payments less the principal wherever the principal is no larger than the interest:
   `CUMIPMT(0.5,60,100000,10,18,0)` is -449999.99609733943 to the bit with it and 74 ulps off with the balance form,

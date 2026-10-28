@@ -67,7 +67,8 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
   from period 1.
 - Excel's short principal discounts with its own `ln(1+rate)`, PPMT's `growth_log`, not `log1p`: A372 is now to the
   bit (A62 too as a geometric sum, but its 40 periods still take the closed form). `GEOMETRIC_MIN_DISCOUNT` moved
-  from 8 to 3.6 on the evidence (gate-edges C/D 3.62 to 9.34 against fin-argument-modes H80 at 3.58).
+  from 8 to 3.6 on gate-edges C/D (3.62 to 9.34); below 3.62 the edge is a fit (H80 at 3.58 is 4 ulps with the
+  per-period sum, 2 with the geometric one), handed to T-3058.
 - Type 0's short interest is the payments less the principal wherever the principal is no larger than the interest
   (gate-edges B1-B11 across 2^10, H72). `BALANCE_GROWTH_MIN` and `TINY_RATE_GROWTH` stay: the probes across them are
   off with both forms.

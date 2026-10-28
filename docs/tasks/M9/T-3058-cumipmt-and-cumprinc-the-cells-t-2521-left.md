@@ -30,6 +30,9 @@ case probes/fin-cumipmt-gate-edges). Left, by cause:
   with the geometric principal on `growth_log`, but past 32 periods the kernel takes the closed form (103 ulps off).
   The geometric sum over every long range moves fin-cumipmt-period-bound A6, A11 and A30 (1,024 to 99,998 periods)
   off the bit: probe where between 40 and 1,024 periods Excel's sum changes form.
+- `GEOMETRIC_MIN_DISCOUNT` (3.6) is a fit between gen-m9 A300 (exponent 2E-7) and gate-edges C1/D1 (3.62):
+  probe exponents 0.5 to 3.5 and move it to the evidence (fin-argument-modes H80 at 3.58 is 4 ulps off with the
+  per-period sum and 2 with the geometric one).
 - Type 0 interest where the principal is larger than the interest at tiny rates: fin-cumipmt-gate-edges A2-A8
   (`CUMIPMT(1E-4,60,100000,3,10,0)`): `-pmt·m - P` with P one ulp off moves the result by 128-512 ulps; neither the
   balance form nor any principal form tried is exact on all.

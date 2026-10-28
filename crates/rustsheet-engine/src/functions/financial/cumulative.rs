@@ -45,11 +45,12 @@ const BALANCE_GROWTH_MAX: f64 = 1024.0;
 /// [`Periods::geometric_principal`]. Below it the per-period powers are close to exact and the
 /// per-period sum (type 0) or the closed form (type 1) is closer: `CUMPRINC(1E-9,192,2707,8,24,0)`
 /// is -239.68227237224258 to the bit with the sum and 2 ulps off with the geometric form (exponent
-/// 2E-7, gen-m9 d912671baa1364aa A300), and so is `CUMPRINC(0.01,360,100000,1,12,0)` (exponent
-/// 3.58, probes/fin-argument-modes H80). From 3.62 up every probed cell is as close or closer with
+/// 2E-7, gen-m9 d912671baa1364aa A300). From 3.62 up every probed cell is as close or closer with
 /// it: probes/fin-cumipmt-gate-edges C1-C11 and D1-D11 (rate 0.1, exponents 3.62 to 9.34) are 12
 /// to the bit and the rest within 2 ulps, where the per-period sum and the closed form missed all
-/// 22 by 1 to 10 ulps (T-2521). The cut lies between those two probed exponents.
+/// 22 by 1 to 10 ulps (T-2521). Between 2E-7 and 3.62 the cut is a fit: the one cell probed there,
+/// `CUMPRINC(0.01,360,100000,1,12,0)` (exponent 3.58, fin-argument-modes H80), is 4 ulps off with
+/// the per-period sum and 2 with the geometric one, both visibly right (TODO(T-3058): probe it).
 const GEOMETRIC_MIN_DISCOUNT: f64 = 3.6;
 
 /// The growth `nper·L` below which type 1's short interest is the payments less the principal
@@ -418,7 +419,9 @@ impl Periods {
     /// This form matches 19 of the 28 probe cells over many periods or past an overflow (22 of the
     /// case's 30 cells pass overall) bit for
     /// bit and the others within 6 ulps, but for 48 to 64 near period 1E15 (fin-remaining-later-
-    /// argument-ranges K3, A18; TODO(T-3058)). `None` when the result is not finite.
+    /// argument-ranges K3, A18; TODO(T-3058)). It keeps `log1p`, not the geometric sum's
+    /// `growth_log`: on Excel's L over every long range fin-cumipmt-period-bound A6, A11 and A30
+    /// leave the bit (T-2521). `None` when the result is not finite.
     fn closed_form(&self, paid: Paid) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
         let discount = |periods: f64| (periods * log_growth).exp();
