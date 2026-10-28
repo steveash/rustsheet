@@ -525,7 +525,7 @@ C	probes/groupby-custom-labels.case.json	262
 C	probes/groupby-eta-arity.case.json	101
 C	probes/groupby-lambda-forms.case.json	491
 C	probes/groupby-lifted-args.case.json	143
-C	probes/groupby-lifted-args2.case.json	47
+C	probes/groupby-lifted-args2.case.json	48
 C	probes/groupby-pivotby-followup.case.json	1081
 C	probes/groupby-pivotby-followup2.case.json	607
 C	probes/groupby-pivotby-followup3.case.json	499
