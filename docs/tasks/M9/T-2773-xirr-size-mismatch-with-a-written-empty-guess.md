@@ -3,7 +3,7 @@ id: T-2773
 title: "XIRR size mismatch with a written empty guess: probe XIRR(v,d,) vs XIRR(v,d) on mismatched ranges"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
