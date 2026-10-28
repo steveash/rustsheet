@@ -1975,7 +1975,7 @@ of the call with that element in the argument's place, or that call's error. A o
   args2 A1-A23, A56). A range broadcasts as an array does (A36), and so do PIVOTBY's options, `field_headers` with
   `row_total_depth` and `row_total_depth` with `col_total_depth` (A41, A46). Each element is its own call, so of two invalid or
   error elements the earlier argument's wins: `{#N/A,0}` with `{0;#DIV/0!}` is `#N/A`, `a`; `#N/A`, `#DIV/0!` (A31), and
-  `{0,"x"}` with `{0;5}` has `#VALUE!` wherever the text is (A26). A lifted `field_relationship` beside them is read per
+  `{0,"x"}` with `{0;5}` has `#VALUE!` wherever the text is (A26; the out-of-range 5 under the valid 0 is `#VALUE!` too, ERROR.TYPE 3 through INDEX, A61; T-2451). A lifted `field_relationship` beside them is read per
   element too (A51).
 - `sort_order` does not lift (it takes arrays of its own): `GROUPBY(k,v,SUM,0,1,{1,-1})` with one key is a single `#VALUE!` (A81).
 - REGEXEXTRACT with an invalid return mode (-1) is `#VALUE!`, inside a GROUPBY function too (K1-K10). excel-graph returns those
@@ -1991,7 +1991,7 @@ whole number within the valid range, another number, a boolean, text that is no 
 frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
-Tasks: T-2359, T-2397, T-2398, T-2399
+Tasks: T-2359, T-2397, T-2398, T-2399, T-2451
 
 ## An empty array as a function argument (T-2436)
 Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH's
@@ -2078,3 +2078,8 @@ Evidence: probes/t2479-* (excel-graph, 2026-10-27).
 Status: VERIFIED (excel-graph)
 Implemented in: `wrapcols_wraprows.rs` (`flatten_vector`), `expand.rs` (`expand_kernel`).
 Tasks: T-2479
+
+## IFERROR, IFNA, N and arithmetic over blank array elements (T-2999)
+Evidence: probes/blank-elements-iferror-n-arith (11 cells, excel-graph 2026-10-28; D1:D5 = 1, blank, "x", blank, 5). IFERROR and IFNA read a blank element of FILTER, a lifted INDEX (`INDEX(D1:D5,{1,2,3,4,5})`) and VSTACK as 0 (`COUNT(IFERROR(...,-1))` and the IFNA forms are 4, A1:A6; `TEXTJOIN("|",FALSE,IFERROR(FILTER(D1:D5,TRUE),"#"))` is "1|0|x|0|5", A7), while the bare FILTER keeps the blanks (`TEXTJOIN("|",FALSE,FILTER(D1:D5,TRUE))` is "1||x||5", A8). `N` turns a blank and the text "x" into 0 (`COUNT(N(FILTER(...)))` 5, A9), `+0` reads a blank as 0 and "x" is #VALUE! (`COUNT(FILTER(...)+0)` 4, A10), and IF passes a blank through (`COUNT(IF(TRUE,FILTER(...)))` 2, A11). Ours already matches all 11 cells.
+Implemented in: no engine change needed; ours already matched (`if_error_like` in crates/rustsheet-engine/src/functions/logical/mod.rs, T-2854).
+Status: VERIFIED (excel-graph)
