@@ -55,7 +55,8 @@ task is filed that names the cells.
 Excel for the web refuses every typed one-argument IF: `=IF(TRUE)`, `=IF(FALSE)`, `=IF(1)`, `=IF(0)`, `=IF({1,0})`,
 `=IF(A1:B1)`, `=IF("x")`, `=IF(NA())`, `=ISLOGICAL(IF(TRUE))` and `=IF(TRUE)+1`, each typed alone, gave Graph PATCH 400
 `InvalidArgument` (2026-10-28). The accepted controls are committed as probes/t2939-typed-if-two-argument-controls
-(`=IF(TRUE,)` 0, `=IF(TRUE,1)` 1, `=IF(FALSE,1)` FALSE, with FORMULATEXT and ISFORMULA; 9/9 pass). Ours already
+(`=IF(TRUE,)` 0, `=IF(TRUE,1)` 1, `=IF(FALSE,1)` FALSE, with FORMULATEXT and ISFORMULA; 9/9 pass). No TYPE column: the
+oracle-typed values already show each type. Ours already
 matches: the typed argument-count refusal (T-2568) refuses all ten, and the new unit test
 `typed_if_with_one_argument_is_refused` pins that. arrays.md now records the rule in place of "entry-only and
 unanswerable here". The stored-form case probes/typed-if-one-argument stays pending as the record of the 501. No fix

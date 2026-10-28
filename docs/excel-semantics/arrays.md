@@ -1528,7 +1528,7 @@ typed (probes/t2939-typed-if-two-argument-controls). So a one-argument IF has no
 stored; the refused entries cannot be committed as cases.
 Ours: typed entry (`Input::Parse`, `Input::Formula`, engine `set_typed_user_input`) refuses each of them through the
 typed argument-count check (`note_argument_count`, parser/operands.rs, T-2568), and stored text keeps the `#VALUE!` per
-element of the eta path (T-1947), the one case where ours gives a value Excel never shows (test
+element of the eta path (T-1947), a case where ours gives a value Excel never shows (test
 `typed_if_with_one_argument_is_refused`, test_fn_if.rs). Whether desktop Excel writes a one-argument IF to a file is
 unprobed.
 Evidence: Graph PATCH 400 for each refused entry (excel-graph, 2026-10-28, T-2939; reproduce by typing one of them as the
