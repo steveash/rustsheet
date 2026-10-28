@@ -145,7 +145,37 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         for dep in deps_of(t):
             if dep not in ids:
                 errors.append(f"{t['id']}: unknown dependency {dep}")
+    errors += [" -> ".join(c + c[:1]) + ": depends_on cycle" for c in dependency_cycles(tasks)]
     return errors
+
+
+def dependency_cycles(tasks: list[dict[str, object]]) -> list[list[str]]:
+    """The `depends_on` cycles among `tasks`, whatever their status (a cycle never lets any of
+    its tasks become ready), each once and starting at its smallest id; a self-dependency is a
+    cycle of one. A depth-first walk without recursion, so a long chain cannot overflow."""
+    deps = {str(t["id"]): deps_of(t) for t in tasks}
+    state: dict[str, int] = {}  # 1 on the walk's path, 2 finished
+    found: set[tuple[str, ...]] = set()
+    for root in sorted(deps):
+        if root in state:
+            continue
+        path = [root]
+        todo = [iter(deps[root])]
+        state[root] = 1
+        while todo:
+            dep = next(todo[-1], None)
+            if dep is None:
+                state[path.pop()] = 2
+                todo.pop()
+            elif state.get(dep) == 1:
+                cycle = path[path.index(dep) :]
+                start = cycle.index(min(cycle))
+                found.add(tuple(cycle[start:] + cycle[:start]))
+            elif dep not in state and dep in deps:
+                state[dep] = 1
+                path.append(dep)
+                todo.append(iter(deps[dep]))
+    return [list(c) for c in sorted(found)]
 
 
 def check(tasks: list[dict[str, object]]) -> list[str]:

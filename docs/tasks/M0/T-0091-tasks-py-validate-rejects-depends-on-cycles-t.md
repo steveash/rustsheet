@@ -3,7 +3,7 @@ id: T-0091
 title: "tasks.py validate rejects depends_on cycles (T-0963 and T-0965 depend on each other, so neither is ever ready)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,13 +27,20 @@ scripts/ is a protected path (scripts/check_governance.py), so the change needs 
 or a citation of an existing one that covers task-tool checks (agent-workflow.md step 6).
 
 ## Acceptance criteria
-- [ ] `validate` reports each `depends_on` cycle among open tasks once, e.g. `T-0963 -> T-0965 -> T-0963: depends_on cycle`;
+- [x] `validate` reports each `depends_on` cycle among open tasks once, e.g. `T-0963 -> T-0965 -> T-0963: depends_on cycle`;
       a cycle through done or dropped tasks is reported too (it is still malformed), and a self-dependency counts as a cycle.
-- [ ] scripts/test_tasks.py has tests for a two-task cycle, a three-task cycle, a self-dependency and an acyclic diamond
+- [x] scripts/test_tasks.py has tests for a two-task cycle, a three-task cycle, a self-dependency and an acyclic diamond
       (no error).
-- [ ] The T-0963/T-0965 cycle is broken in the task files (one `depends_on` edited, with a one-line reason in that task's
+- [x] The T-0963/T-0965 cycle is broken in the task files (one `depends_on` edited, with a one-line reason in that task's
       Context), and `python3 scripts/tasks.py validate` on main reports 0 errors.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Working T-0963 or T-0965 themselves.
+
+## Outcome
+Decision 0144. `tasks.dependency_cycles` (iterative depth-first walk, each cycle once from its smallest id, any status,
+self-dependencies included) feeds `validate`, which reports `T-a -> T-b -> T-a: depends_on cycle`. Tests in
+scripts/test_tasks.py (`DependencyCycles`: two- and three-task cycles, self-dependency, acyclic diamond, the validate
+message). On main before the task-file fix `validate` reported `T-0963 -> T-0965 -> T-0963: depends_on cycle`; T-0965
+no longer depends on T-0963 (reason in its Context), and `validate` reports 0 errors. No eval change.
