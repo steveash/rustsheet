@@ -45,7 +45,8 @@ build: ## Release build of the eval harness
 # ---------------------------------------------------------------- Eval (Excel compatibility)
 .PHONY: eval eval-check eval-gates eval-baseline eval-lower-visible-lock eval-show evidence-floor
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
-	$(EVAL_GUARDED) run
+	$(PY) scripts/desktop_owned.py --out eval/runs/desktop-owned.tsv
+	$(EVAL_GUARDED) run --desktop-owned
 
 eval-check: build ## Gate: fail on any regression vs eval/baseline
 	$(EVAL_GUARDED) check
@@ -93,6 +94,7 @@ hygiene: ## Lint-debt, file-size, duplication, tasks and governance ratchets
 	$(PY) scripts/tasks.py validate
 	$(PY) scripts/check_decisions.py
 	$(PY) scripts/check_docs_readers.py
+	$(PY) scripts/check_ci_workflow.py
 	$(PY) -m unittest discover -s scripts -p 'test_*.py' -q
 
 deny: ## License/advisory/source policy (needs cargo-deny)
@@ -134,20 +136,37 @@ exit-owners: ## Failing exit cells of a milestone that no open task of it owns, 
 	$(if $(MILESTONE),,$(error MILESTONE=M<n> is required))
 	$(PY) scripts/exit_owners.py --milestone '$(MILESTONE)' $(if $(STRICT),--strict)
 
-unowned-off: ## Visibly-off cells attributed to no function that no open task owns, after make eval (decision 0132)
-	$(PY) scripts/exit_owners.py --unattributed $(if $(STRICT),--strict)
+unowned-off: ## Visibly-off cells no open task owns, after make eval: unattributed (decision 0132), or ALL=1 [FUNCTION=NAME] every one by function (T-0086)
+	$(PY) scripts/exit_owners.py $(if $(ALL),--all-off $(if $(FUNCTION),--function $(FUNCTION)),--unattributed) $(if $(STRICT),--strict)
 
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board
 
-# ---------------------------------------------------------------- Merge lock (decision 0075)
-.PHONY: merge-lock-acquire merge-lock-release merge-lock-status
-merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 (exit 1: busy; 3: PR already done)
+# ---------------------------------------------------------------- Merge lock (decisions 0075, 0145)
+.PHONY: merge-lock-acquire merge-lock-wait merge-lock-release merge-lock-status
+merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 [RENEW=1] (exit 1: busy, you are queued; 3: PR already done; 4: lost)
 	$(if $(PR),,$(error PR=<number> is required))
-	$(PY) scripts/merge_lock.py acquire --pr '$(PR)'
+	$(PY) scripts/merge_lock.py acquire --pr '$(PR)' $(if $(RENEW),--renew)
+
+merge-lock-wait: ## Wait in the queue until the merge lock is yours (run it in the background): make merge-lock-wait PR=123 [TIMEOUT=45] (exit 0: held; 1: timed out; 2: error; 3: PR already done)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_lock.py wait --pr '$(PR)' --timeout '$(or $(TIMEOUT),45)'
 
 merge-lock-release: ## Free your merge lock (after the merge, a red CI, or any stop)
 	$(PY) scripts/merge_lock.py release
 
-merge-lock-status: ## Who holds the merge lock, and since when
+merge-lock-status: ## Who holds the merge lock, since when, and the queue of waiters
 	$(PY) scripts/merge_lock.py status
+
+.PHONY: merge-ready-verify
+merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads only): make merge-ready-verify PR=123 (exit 0: ready; 1: not ready; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
+
+.PHONY: merge-mode merge-train
+merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; TRAIN=1 merges a green train, in train mode only
+	$(if $(DRY_RUN)$(TRAIN),,$(error DRY_RUN=1 or TRAIN=1 is required))
+	$(PY) scripts/merge_train.py $(if $(DRY_RUN),--dry-run,--train)
+
+merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027)
+	$(PY) scripts/merge_train.py mode

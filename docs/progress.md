@@ -2,7 +2,7 @@
 # RustSheet progress
 
 <!-- progress:generated status -->
-The eval run of **2026-10-27** at commit `7bd9090e` (report.json `run`).
+The eval run of **2026-10-28** at commit `a96b6063` (report.json `run`).
 
 - **Suites run (17):** calipers, corpus-bench, fixtures, gen-m1, gen-m10, gen-m2, gen-m5, gen-m6, gen-m7, gen-m8a, gen-m8b, gen-m9, ironcalc-calc, poi, probes, probes-numeric, smoke.
 - **Suites skipped (0):** none.
@@ -13,22 +13,22 @@ The eval run of **2026-10-27** at commit `7bd9090e` (report.json `run`).
 ## Bottom line
 
 <!-- progress:judgment bottom-line -->
-<!-- as-of: 2026-10-27 7bd9090e -->
-Values match Excel on real workbooks and wrong types, errors and text are nearly gone; numeric accuracy is almost the whole gap, and Phase 1 has not exited.
+<!-- as-of: 2026-10-28 a96b6063 -->
+Values match Excel on real workbooks and wrong types, errors and text keep shrinking; numeric accuracy is almost the whole gap, and Phase 1 has not exited.
 
-- **Phase 1 has not exited.** 377 of 506 in-scope functions meet the exit rate (decision 0118), and no milestone's exit row is met: M5 and M6 miss only on their probes, with 7 and 5 visibly-off cells.
-- **Cells improved, the function count held.** Visibly-off numbers fell by −4,088 to 101,034 and visibly-off type, error or text cells by −219 to 1,265, while Phase 1 functions moved −1 and the below-99% tier +2. Judgment: with +1,739 attributed Excel cells, newly scored cells can drop a function a tier; the steward's eval gate found no regressed cell.
-- **Real-world files are close.** On calipers, 99.85% of cells are bit-exact and 157 of its 171 workbooks have every cell within 15 digits; corpus-bench has a visibly-off cell in 2 of 320 workbooks and poi in 3 of 115.
-- **The biggest gap is numeric accuracy** (judgment): 101,030 visibly-off numbers in the functions below the rate against 1,151 type, error or text cells. Fixing only the latter would lift 38 of the 129 functions below the rate, and 14 semantics tasks are ready.
-- **The current milestone's probes are nearly clean.** The M0-M2 probes have 9 known failures, only 2 of them visibly off, and both have an open owner (T-2785); the other cells are ROUNDUP's subnormal cut (T-2771).
+- **Phase 1 has not exited.** 413 of 506 in-scope functions meet the exit rate (decision 0118), and no milestone's exit row is met: M2 misses only on 2 visibly-off probe cells and M6 on 5.
+- **Another strong day.** Phase 1 functions moved +19 and the Exact tier +12, while the ≥ 99% tier moved −10; visibly-off numbers fell by −504 to 99,499 and visibly-off type, error or text cells by −154 to 981.
+- **Real-world files are close.** On calipers, 99.88% of cells are bit-exact and 160 of its 173 workbooks have every cell within 15 digits; corpus-bench has a visibly-off cell in 2 of 320 workbooks and poi in 3 of 115.
+- **The biggest gap is numeric accuracy** (judgment): 99,478 visibly-off numbers in the 93 functions below the rate against 876 type, error or text cells. Fixing only the latter would lift 21 of them, and 13 semantics tasks are ready.
+- **M2 is two cells from its probe exit.** The M0-M2 probes have 2 known failures, both visibly off (a unary plus inside a range row, owner T-2885); ROUNDUP's subnormal cut closed with T-2771.
 <!-- /progress:judgment -->
 
 <!-- progress:generated goals -->
 ## Goals
 
-**Phase 1 \(decision 0114\): not met \(377/506 functions covered with ≥ 99.9% of their attributed cells within 15 digits, decision 0118\)**
+**Phase 1 \(decision 0114\): not met \(413/506 functions covered with ≥ 99.9% of their attributed cells within 15 digits, decision 0118\)**
 
-**Fifteen-digit parity: not met \(coverage 506/506, visibly-off cells 104110\)** At the previous complete run, **2026-10-26** at commit `5dc93dd8`, the checkpoint was not met.
+**Fifteen-digit parity: not met \(coverage 506/506, visibly-off cells 102249\)** At the previous complete run, **2026-10-27** at commit `a84da30f`, the checkpoint was not met.
 
 Milestones whose exit row in the report is met: none.
 
@@ -43,38 +43,38 @@ such as M0–M2 is shown on each milestone it covers. Tasks are `scripts/tasks.p
 
 | Milestone | Phase | Exit criteria checked | Catalog coverage | Exit measures (report) | Frozen list and probes | Todo | In progress | Blocked | Done |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 2 visibly off, 9 known failures | 2 | 0 | 0 | 77 |
-| M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 2 visibly off, 9 known failures | 4 | 1 | 2 | 391 |
-| M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | – | probes M0-M2: 2 visibly off, 9 known failures | 14 | 0 | 0 | 383 |
+| M0 Scaffolding, harness, oracle, autonomous loop | 1 | 5/5 | – | – | probes M0-M2: 2 visibly off, 2 known failures | 5 | 0 | 0 | 82 |
+| M1 Core calculation semantics (no functions beyond trivial) | 1 | prose | – | – | frozen list m1-probes: 0 known failures in 0 cases (89 of 89 run); probes M0-M2: 2 visibly off, 2 known failures | 4 | 1 | 2 | 391 |
+| M2 Top functions (the everyday spreadsheet) | 1 | prose | 37/37 | **exit not met**; coverage 37/37 (not required); generated suite 0 visibly off of 16,200, allowance 0 (met); ironcalc-calc 0 visibly off (met); probes 2 visibly off (not met) | probes M0-M2: 2 visibly off, 2 known failures | 33 | 0 | 1 | 412 |
 | M3 Dependency graph, incremental and lazy recalculation (Phase 2) | 2 | prose | – | – | probes M3: 0 visibly off, 0 known failures | 6 | 0 | 4 | 11 |
 | M4 Storage, memory and structural edits (Phase 2) | 2 | prose | – | – | – | 0 | 0 | 0 | 0 |
-| M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 2 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 7 visibly off (not met) | probes M5: 7 visibly off, 7 known failures | 22 | 0 | 0 | 216 |
-| M6 Lookup & reference, date & time | 1 | prose | 39/39 | **exit not met**; coverage 39/39 (met); generated suite 0 visibly off of 25,240, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 5 visibly off (not met) | probes M6: 5 visibly off, 5 known failures | 16 | 0 | 0 | 99 |
-| M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | – | probes M7: 55 visibly off, 55 known failures | 41 | 0 | 0 | 156 |
-| M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 70 visibly off, 72 known failures | 17 | 0 | 0 | 41 |
-| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 845 visibly off, 2,544 known failures | 184 | 1 | 6 | 408 |
-| M10 Formatting & display | 1 | prose | no functions | – | probes M10: 199 visibly off, 199 known failures | 24 | 0 | 0 | 34 |
-| M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 23 | 0 | 1 | 42 |
-| M12 API v1, bindings & release | 3 | prose | – | – | – | 1 | 0 | 0 | 0 |
+| M5 Function families I: math, logical, text, information | 1 | prose | 135/135 | **exit not met**; coverage 135/135 (met); generated suite 1 visibly off of 41,640, allowance 41 (met); ironcalc-calc 0 visibly off (met); probes 28 visibly off (not met) | probes M5: 28 visibly off, 28 known failures | 21 | 0 | 0 | 224 |
+| M6 Lookup & reference, date & time | 1 | prose | 39/39 | **exit not met**; coverage 39/39 (met); generated suite 0 visibly off of 25,240, allowance 25 (met); ironcalc-calc 0 visibly off (met); probes 5 visibly off (not met) | probes M6: 5 visibly off, 5 known failures | 14 | 0 | 0 | 101 |
+| M7 Dynamic arrays & modern Excel | 1 | prose | 32/32 | **exit not met**; coverage 32/32 (not required); generated suite 0 visibly off of 36,641, allowance 36 (met); ironcalc-calc 0 visibly off (not required); probes 26 visibly off (not met); spill extents 0 failures (met) | probes M7: 26 visibly off, 30 known failures | 43 | 0 | 0 | 172 |
+| M8 Names, tables, structured references, multi-sheet | 1 | prose | no functions | – | probes M8: 9 visibly off, 9 known failures | 21 | 0 | 0 | 45 |
+| M9 Numerical parity: statistical, financial, engineering, database | 1 | prose | 263/263 | – | probes M9: 578 visibly off, 2,033 known failures | 191 | 1 | 7 | 441 |
+| M10 Formatting & display | 1 | prose | no functions | – | probes M10: 50 visibly off, 50 known failures | 25 | 0 | 0 | 42 |
+| M11 Real-world fidelity | 1 | prose | no functions | – | probes M11: 0 visibly off, 0 known failures | 22 | 0 | 1 | 52 |
+| M12 API v1, bindings & release | 3 | prose | – | – | – | 12 | 0 | 0 | 1 |
 | M13 Performance at scale (Phase 2) | 2 | prose | – | – | – | 1 | 0 | 1 | 0 |
-| M14 Desktop-oracle parity (Phase 4) | 4 | prose | – | – | – | 2 | 0 | 19 | 0 |
+| M14 Desktop-oracle parity (Phase 4) | 4 | prose | – | – | – | 3 | 0 | 19 | 0 |
 <!-- /progress:generated -->
 
 <!-- progress:generated campaign -->
 ## Campaign stages
 
 Decision 0114 works the visibly-off cells in stages, picked in this order: semantics, then
-accuracy, then visible. **129** in-scope functions are below the Phase 1 rate
+accuracy, then visible. **93** in-scope functions are below the Phase 1 rate
 (≥ 99.9% of their counted cells within 15 digits; tiers ≥ 99% and < 99%). Their attributed Excel cells hold
-**1,151** visibly-off type, error or text cells and **101,030** visibly-off numbers.
-Fixing only the type, error and text cells would lift **38** of them to ≥ 99.9%.
+**876** visibly-off type, error or text cells and **99,478** visibly-off numbers.
+Fixing only the type, error and text cells would lift **21** of them to ≥ 99.9%.
 
 | Stage | Fixes | Open | Ready | Blocked | Done | Visibly-off cells (functions under 99.9%) | Functions lifted to ≥ 99.9% |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Semantics | wrong type, error or text, and semantic rules | 14 | 14 | 0 | 82 | 1,151 type, error or text | 38 of 129 |
-| Accuracy | more accurate kernels where Excel is close to correctly rounded | 14 | 12 | 0 | 3 | 101,030 numbers, accuracy and visible together | – |
-| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 30 | 22 | 4 | 228 | in the accuracy row | – |
-| Parked (defer: phase-1b) | last-digit work on cells already within 15 digits (Phase 1b) | 39 | 0 | 6 | 1 | – | – |
+| Semantics | wrong type, error or text, and semantic rules | 13 | 13 | 0 | 100 | 876 type, error or text | 21 of 93 |
+| Accuracy | more accurate kernels where Excel is close to correctly rounded | 14 | 12 | 0 | 8 | 99,478 numbers, accuracy and visible together | – |
+| Visible | Excel's own algorithm where Excel is the inaccurate one (time-boxed) | 38 | 30 | 5 | 241 | in the accuracy row | – |
+| Parked (defer: phase-1b) | last-digit work on cells already within 15 digits (Phase 1b) | 35 | 0 | 6 | 1 | – | – |
 
 - **Tasks** are `scripts/tasks.py stats --json`. Open is todo, in progress or blocked. Ready is
   the tasks ready on `main`, ignoring branch claims, so a claimed task still counts. A task with a
@@ -84,28 +84,28 @@ Fixing only the type, error and text cells would lift **38** of them to ≥ 99.9
   shown for the accuracy and visible stages together: telling them apart needs a high-precision
   reference and per-family judgment, which a daily run cannot repeat (SPEC-0022, "Alternatives
   considered").
-- **Lifted by the semantic fixes alone:** AND, BESSELI, CELL, CHAR, CHISQ.TEST, COLUMN, COLUMNS, DAVERAGE, DGET, DVAR, FORECAST.ETS, FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY, FORECAST.ETS.STAT, FORMULATEXT, FREQUENCY, FVSCHEDULE, IMABS, IMCSCH, IMLN, IMSEC, IMSQRT, IMTAN, INDIRECT, INFO, MAX, MEDIAN, MIN, MODE, NUMBERVALUE, REPT, ROW, ROWS, SEARCH, SMALL, T, TEXT, VALUE.
+- **Lifted by the semantic fixes alone:** CELL, CHISQ.TEST, FORECAST.ETS, FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY, FORECAST.ETS.STAT, FORMULATEXT, FREQUENCY, FVSCHEDULE, IMABS, IMSQRT, IMTAN, INFO, NUMBERVALUE, REPT, SEARCH, SMALL, T, TEXT, VALUE, XNPV.
 <!-- /progress:generated -->
 
 <!-- progress:generated since-last-run -->
 ## Since the last run
 
-Against the last complete run, **2026-10-26** at commit `5dc93dd8` ([docs/progress/history.json](progress/history.json)). Git could not count the commits since then.
+Against the last complete run, **2026-10-27** at commit `a84da30f` ([docs/progress/history.json](progress/history.json)). **67** commits landed on `main` since then (`git rev-list --count --first-parent a84da30f..a96b6063`).
 
-| Measure | 2026-10-26 | 2026-10-27 | Change |
+| Measure | 2026-10-27 | 2026-10-28 | Change |
 | --- | ---: | ---: | ---: |
-| Phase 1: functions at ≥ 99.9% within 15 digits | 378 | 377 | −1 |
-| Functions in tier: Exact | 333 | 333 | 0 |
-| Functions in tier: ≤ 4 ulp | 26 | 25 | −1 |
-| Functions in tier: 15 digits | 10 | 10 | 0 |
-| Functions in tier: ≥ 99.9% | 9 | 9 | 0 |
-| Functions in tier: ≥ 99% | 53 | 52 | −1 |
-| Functions in tier: &lt; 99% | 75 | 77 | +2 |
+| Phase 1: functions at ≥ 99.9% within 15 digits | 394 | 413 | +19 |
+| Functions in tier: Exact | 347 | 359 | +12 |
+| Functions in tier: ≤ 4 ulp | 26 | 27 | +1 |
+| Functions in tier: 15 digits | 11 | 9 | −2 |
+| Functions in tier: ≥ 99.9% | 8 | 9 | +1 |
+| Functions in tier: ≥ 99% | 44 | 34 | −10 |
+| Functions in tier: &lt; 99% | 70 | 68 | −2 |
 | Functions in tier: Unscored | 0 | 0 | 0 |
-| Visibly-off attributed cells: number | 105,122 | 101,034 | −4,088 |
-| Visibly-off attributed cells: type, error or text | 1,484 | 1,265 | −219 |
-| Attributed Excel cells | 1,447,455 | 1,449,194 | +1,739 |
-| Tasks done | 1,817 | 1,858 | +41 |
+| Visibly-off attributed cells: number | 100,003 | 99,499 | −504 |
+| Visibly-off attributed cells: type, error or text | 1,135 | 981 | −154 |
+| Attributed Excel cells | 1,451,690 | 1,492,854 | +41,164 |
+| Tasks done | 1,912 | 1,974 | +62 |
 <!-- /progress:generated -->
 
 <!-- progress:generated trends -->
@@ -125,11 +125,11 @@ interpolated.
 <!-- progress:generated parity -->
 ## Parity
 
-**Phase 1 (decision 0114): not met.** **377 of 506** in-scope functions are covered with ≥ 99.9% of their attributed Excel cells within 15 digits (decision 0118; report.json `v15_checkpoint`).
+**Phase 1 (decision 0114): not met.** **413 of 506** in-scope functions are covered with ≥ 99.9% of their attributed Excel cells within 15 digits (decision 0118; report.json `v15_checkpoint`).
 
-_Information, gates nothing:_ 113 of 506 functions are covered with ≥ 99.9% of every Excel cell that calls them within 15 digits, each visibly-off cell blamed on every non-glue function of its formula (decision 0088).
+_Information, gates nothing:_ 119 of 506 functions are covered with ≥ 99.9% of every Excel cell that calls them within 15 digits, each visibly-off cell blamed on every non-glue function of its formula (decision 0088).
 
-Real-world calls: **99.94%** of the 1,327,360 calls to attributed in-scope functions in the calipers and poi formula cells land within 15 digits, weighting each function's attributed within-15-digit share by its calls (report.json `functions[].real_world_calls`).
+Real-world calls: **99.98%** of the 1,373,918 calls to attributed in-scope functions in the calipers and poi formula cells land within 15 digits, weighting each function's attributed within-15-digit share by its calls (report.json `functions[].real_world_calls`).
 
 Each in-scope function is placed by the **worst** of its counted Excel cells, so one off cell
 drops it a tier. A cell counts toward a function only when that function is its formula's only
@@ -139,16 +139,16 @@ value is the same. Every function is listed in [docs/progress/functions.md](prog
 
 ### Functions by worst-cell tier
 
-**368 of 506** in-scope functions (72.73%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **77** have fewer than 99% of their cells within 15 digits. The Phase 1 line above counts a function once 99.9% of its cells match; this stricter figure counts only functions with no cell off at all.
+**395 of 506** in-scope functions (78.06%) never differ from Excel in the 15 digits Excel shows, on every counted cell; **68** have fewer than 99% of their cells within 15 digits. The Phase 1 line above counts a function once 99.9% of its cells match; this stricter figure counts only functions with no cell off at all.
 
 | Tier | Meaning | Functions | Share | Placed by every Excel cell |
 | --- | --- | ---: | ---: | ---: |
-| Exact | every cell bit-exact | 333 | 65.81% | 3 |
-| ≤ 4 ulp | every cell within 4 ulp | 25 | 4.94% | 0 |
-| 15 digits | every cell within 15 significant digits | 10 | 1.98% | 0 |
+| Exact | every cell bit-exact | 359 | 70.95% | 3 |
+| ≤ 4 ulp | every cell within 4 ulp | 27 | 5.34% | 0 |
+| 15 digits | every cell within 15 significant digits | 9 | 1.78% | 0 |
 | ≥ 99.9% | ≥ 99.9% of cells within 15 digits | 9 | 1.78% | 0 |
-| ≥ 99% | 99–99.9% of cells within 15 digits | 52 | 10.28% | 0 |
-| &lt; 99% | &lt; 99% of cells within 15 digits | 77 | 15.22% | 0 |
+| ≥ 99% | 99–99.9% of cells within 15 digits | 34 | 6.72% | 0 |
+| &lt; 99% | &lt; 99% of cells within 15 digits | 68 | 13.44% | 0 |
 | Unscored | no scored Excel cell | 0 | 0.00% | 0 |
 | **All** |  | **506** |  | 3 |
 
@@ -158,33 +158,33 @@ value is the same. Every function is listed in [docs/progress/functions.md](prog
 
 | Category | Functions | Exact | ≤ 4 ulp | 15 digits | ≥ 99.9% | ≥ 99% | &lt; 99% | Unscored |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| statistical | 149 | 59 | 10 | 5 | 4 | 18 | 53 | 0 |
-| math | 83 | 63 | 9 | 3 | 2 | 5 | 1 | 0 |
-| financial | 55 | 32 | 2 | 1 | 0 | 6 | 14 | 0 |
-| engineering | 54 | 39 | 4 | 1 | 0 | 4 | 6 | 0 |
+| statistical | 149 | 64 | 13 | 6 | 3 | 11 | 52 | 0 |
+| math | 83 | 67 | 8 | 0 | 2 | 5 | 1 | 0 |
+| financial | 55 | 33 | 2 | 1 | 1 | 6 | 12 | 0 |
+| engineering | 54 | 45 | 4 | 2 | 0 | 2 | 1 | 0 |
 | text | 48 | 40 | 0 | 0 | 1 | 7 | 0 | 0 |
-| lookup | 38 | 32 | 0 | 0 | 0 | 5 | 1 | 0 |
+| lookup | 38 | 37 | 0 | 0 | 0 | 1 | 0 | 0 |
 | date | 25 | 25 | 0 | 0 | 0 | 0 | 0 | 0 |
-| information | 21 | 18 | 0 | 0 | 1 | 0 | 2 | 0 |
+| information | 21 | 17 | 0 | 0 | 1 | 1 | 2 | 0 |
 | logical | 19 | 17 | 0 | 0 | 1 | 1 | 0 | 0 |
-| database | 12 | 6 | 0 | 0 | 0 | 6 | 0 | 0 |
+| database | 12 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
 | web | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 ![Tiers by category](progress/tiers-by-category.svg)
 
 ### Attributed cells by closeness
 
-**1,449,194** attributed Excel cells: 81.49% bit-exact, 92.94% within 15 digits, **102,299** (7.06%) visibly off.
+**1,492,854** attributed Excel cells: 82.44% bit-exact, 93.27% within 15 digits, **100,480** (6.73%) visibly off.
 
 | Closeness | Attributed cells | Share |
 | --- | ---: | ---: |
-| Bit-exact | 1,181,018 | 81.49% |
-| Within 1 ulp | 57,485 | 3.97% |
-| Within 2–4 ulp | 68,941 | 4.76% |
-| Within 15 digits | 39,451 | 2.72% |
-| Visibly off: number | 101,034 | 6.97% |
-| Visibly off: type or text | 1,265 | 0.09% |
-| **All** | **1,449,194** |  |
+| Bit-exact | 1,230,707 | 82.44% |
+| Within 1 ulp | 57,532 | 3.85% |
+| Within 2–4 ulp | 66,864 | 4.48% |
+| Within 15 digits | 37,271 | 2.50% |
+| Visibly off: number | 99,499 | 6.67% |
+| Visibly off: type or text | 981 | 0.07% |
+| **All** | **1,492,854** |  |
 
 ![Attributed cells by closeness](progress/cells-by-closeness.svg)
 
@@ -197,22 +197,22 @@ displayed-text (`TF`) lines after "text".
 
 | Suite | Cases | Cells | Bit-exact | ≤ 4 ulp | Visibly off | Workbooks | All exact | All within 15 digits | Any visibly off | Timeouts | Known failures |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| calipers | 454 | 1,353,813 | 99.85% | 99.98% | 263 | 171 | 139 | 157 | 14 | 0 | 3,461 |
+| calipers | 456 | 1,621,891 | 99.88% | 99.98% | 212 | 173 | 143 | 160 | 13 | 0 | 3,461 |
 | corpus-bench | 912 | 205,366 | 99.83% | 99.83% | 340 | 320 | 317 | 318 | 2 | 0 | 4 |
 | fixtures | 24 | 325 | 100.00% | 100.00% | 0 | 24 | 24 | 24 | 0 | 0 | 0 |
 | gen-m1 | 15 | 3,750 | 100.00% | 100.00% | 0 | 15 | 15 | 15 | 0 | 0 | 0 |
-| gen-m10 | 20 | 1,690 | 99.94% | 99.94% | 1 | 20 | 19 | 19 | 1 | 0 | 1; text 77 |
-| gen-m2 | 39 | 15,600 | 100.00% | 100.00% | 0 | 39 | 39 | 39 | 0 | 0 | 0 |
-| gen-m5 | 115 | 41,640 | 99.99% | 99.99% | 2 | 115 | 109 | 113 | 2 | 0 | 6 |
+| gen-m10 | 20 | 1,690 | 100.00% | 100.00% | 0 | 20 | 20 | 20 | 0 | 0 | 0; text 76 |
+| gen-m2 | 41 | 16,200 | 100.00% | 100.00% | 0 | 41 | 41 | 41 | 0 | 0 | 0 |
+| gen-m5 | 115 | 41,640 | 99.99% | 99.99% | 1 | 115 | 113 | 114 | 1 | 0 | 2 |
 | gen-m6 | 91 | 25,240 | 100.00% | 100.00% | 0 | 91 | 91 | 91 | 0 | 0 | 0 |
 | gen-m7 | 55 | 36,641 | 100.00% | 100.00% | 0 | 55 | 55 | 55 | 0 | 0 | 0 |
 | gen-m8a | 12 | 3,577 | 100.00% | 100.00% | 0 | 12 | 12 | 12 | 0 | 0 | no baseline |
 | gen-m8b | 9 | 3,368 | 100.00% | 100.00% | 0 | 9 | 9 | 9 | 0 | 0 | no baseline |
-| gen-m9 | 264 | 96,462 | 96.11% | 97.66% | 2,000 | 264 | 43 | 45 | 219 | 0 | 3,753 |
-| ironcalc-calc | 219 | 72,843 | 99.14% | 99.73% | 151 | 218 | 186 | 203 | 15 | 0 | 623 |
-| poi | 336 | 27,209 | 99.61% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 119 |
-| probes | 1,671 | 117,946 | 97.55% | 98.80% | 1,183 | 1,661 | 1,518 | 1,553 | 108 | 0 | 2,891 |
-| probes-numeric | 265 | 612,244 | 57.22% | 77.28% | 100,075 | 265 | 71 | 114 | 151 | 0 | no baseline |
+| gen-m9 | 264 | 96,462 | 96.32% | 97.76% | 1,938 | 264 | 48 | 50 | 214 | 0 | 3,552 |
+| ironcalc-calc | 222 | 73,155 | 99.22% | 99.75% | 138 | 221 | 192 | 206 | 15 | 0 | 567 |
+| poi | 336 | 27,209 | 99.62% | 99.64% | 95 | 115 | 112 | 112 | 3 | 0 | 117 |
+| probes | 1,754 | 122,899 | 98.25% | 99.29% | 698 | 1,744 | 1,619 | 1,653 | 91 | 0 | 2,157 |
+| probes-numeric | 268 | 615,779 | 58.28% | 77.95% | 98,827 | 268 | 74 | 118 | 150 | 0 | no baseline |
 | smoke | 6 | 46 | 100.00% | 100.00% | 0 | 6 | 6 | 6 | 0 | 0 | 0 |
 <!-- /progress:generated -->
 
@@ -221,54 +221,54 @@ displayed-text (`TF`) lines after "text".
 
 The 40 in-scope functions with the highest real-world frequency `prior` in
 eval/catalog/functions.yaml, ties by name. These are the bulk of what everyday workbooks call.
-**28 of 40** never differ from Excel in the 15 digits Excel shows, on every counted
-cell; **35** meet the Phase 1 rate (≥ 99.9% within 15 digits, and covered). The columns
+**32 of 40** never differ from Excel in the 15 digits Excel shows, on every counted
+cell; **39** meet the Phase 1 rate (≥ 99.9% within 15 digits, and covered). The columns
 are those of [docs/progress/functions.md](progress/functions.md); Excel cells counts every
 Excel-evidence cell that calls the function, accepted deviations included; real-world calls
 counts the calipers and poi formula cells that call it (T-0079).
 
 | # | Function | Category | Tier | Prior | Attributed cells | Within 15 digits | Excel cells | Real-world calls |
 | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | SUM | math | ≥ 99.9% | 72 | 111,057 | 99.93% | 127,024 | 111,180 |
-| 2 | IF | logical | ≥ 99.9% | 20 | 42,985 | 99.99% | 354,287 | 273,106 |
-| 3 | AVERAGE | statistical | ≥ 99.9% | 10 | 13,585 | 99.96% | 16,752 | 12,888 |
-| 4 | VLOOKUP | lookup | Exact | 8.5 | 33,066 | 100.00% | 41,801 | 6,290 |
-| 5 | ROUND | math | Exact | 8 | 8,274 | 100.00% | 36,765 | 32,829 |
-| 6 | MAX | statistical | ≥ 99% | 7 | 2,836 | 99.79% | 6,805 | 1,897 |
-| 7 | COUNT | statistical | Exact | 6 | 850 | 100.00% | 3,494 | 97 |
-| 8 | INDEX | lookup | Exact | 6 | 1,295 | 100.00% | 72,794 | 59,043 |
-| 9 | MIN | statistical | ≥ 99% | 6 | 1,932 | 99.69% | 5,549 | 1,078 |
-| 10 | MATCH | lookup | Exact | 5 | 10,615 | 100.00% | 16,642 | 10,371 |
-| 11 | COUNTIF | statistical | ≥ 99.9% | 4 | 6,370 | 99.92% | 8,897 | 179 |
-| 12 | IFERROR | logical | Exact | 4 | 71,091 | 100.00% | 111,323 | 88,206 |
-| 13 | SUBTOTAL | math | Exact | 4 | 690 | 100.00% | 2,481 | 69 |
-| 14 | SUMIF | math | ≤ 4 ulp | 4 | 97,091 | 100.00% | 98,954 | 95,352 |
-| 15 | AND | logical | ≥ 99% | 3 | 466 | 99.79% | 7,556 | 4,506 |
-| 16 | COUNTA | statistical | ≥ 99% | 3 | 854 | 99.53% | 2,778 | 157 |
-| 17 | DATE | date | Exact | 3 | 1,491 | 100.00% | 38,761 | 22,688 |
-| 18 | LEFT | text | Exact | 3 | 22,979 | 100.00% | 24,707 | 22,474 |
-| 19 | OR | logical | Exact | 3 | 445 | 100.00% | 141,237 | 137,989 |
-| 20 | RIGHT | text | Exact | 3 | 333 | 100.00% | 3,539 | 655 |
-| 21 | SUMIFS | math | Exact | 3 | 4,147 | 100.00% | 13,168 | 8,730 |
-| 22 | ABS | math | Exact | 2 | 41,381 | 100.00% | 50,142 | 48,216 |
-| 23 | CONCATENATE | text | ≥ 99.9% | 2 | 21,800 | 99.97% | 23,595 | 22,325 |
-| 24 | COUNTIFS | statistical | ≥ 99.9% | 2 | 37,684 | 99.99% | 44,873 | 5,378 |
-| 25 | DAY | date | Exact | 2 | 390 | 100.00% | 2,237 | 271 |
-| 26 | FILTER | lookup | Exact | 2 | 314 | 100.00% | 2,451 | 16 |
-| 27 | INT | math | Exact | 2 | 492 | 100.00% | 1,676 | 59 |
-| 28 | ISERROR | information | Exact | 2 | 7,079 | 100.00% | 8,926 | 6,379 |
-| 29 | LEN | text | Exact | 2 | 562 | 100.00% | 2,834 | 59 |
-| 30 | MID | text | Exact | 2 | 284 | 100.00% | 1,635 | 65 |
-| 31 | MONTH | date | Exact | 2 | 469 | 100.00% | 28,551 | 22,662 |
-| 32 | NOT | logical | Exact | 2 | 135 | 100.00% | 1,165 | 55 |
-| 33 | OFFSET | lookup | Exact | 2 | 108,696 | 100.00% | 111,400 | 109,140 |
-| 34 | ROUNDDOWN | math | 15 digits | 2 | 1,050 | 100.00% | 2,440 | 125 |
-| 35 | ROUNDUP | math | 15 digits | 2 | 2,907 | 100.00% | 7,736 | 1,808 |
-| 36 | SUMPRODUCT | math | ≥ 99.9% | 2 | 1,836 | 99.95% | 3,978 | 247 |
-| 37 | TEXT | text | ≥ 99% | 2 | 30,959 | 99.35% | 34,909 | 24,820 |
+| 1 | SUM | math | ≥ 99.9% | 72 | 139,262 | 99.95% | 155,286 | 139,314 |
+| 2 | IF | logical | ≥ 99.9% | 20 | 42,997 | 99.99% | 361,004 | 279,588 |
+| 3 | AVERAGE | statistical | Exact | 10 | 15,717 | 100.00% | 18,886 | 15,014 |
+| 4 | VLOOKUP | lookup | Exact | 8.5 | 33,068 | 100.00% | 43,252 | 7,732 |
+| 5 | ROUND | math | Exact | 8 | 8,362 | 100.00% | 36,853 | 32,829 |
+| 6 | MAX | statistical | Exact | 7 | 3,041 | 100.00% | 7,013 | 2,095 |
+| 7 | COUNT | statistical | Exact | 6 | 853 | 100.00% | 3,550 | 97 |
+| 8 | INDEX | lookup | Exact | 6 | 1,302 | 100.00% | 72,883 | 59,043 |
+| 9 | MIN | statistical | Exact | 6 | 1,937 | 100.00% | 5,555 | 1,078 |
+| 10 | MATCH | lookup | Exact | 5 | 10,793 | 100.00% | 18,326 | 11,831 |
+| 11 | COUNTIF | statistical | ≥ 99.9% | 4 | 6,372 | 99.92% | 8,903 | 179 |
+| 12 | IFERROR | logical | Exact | 4 | 71,091 | 100.00% | 111,427 | 88,206 |
+| 13 | SUBTOTAL | math | Exact | 4 | 690 | 100.00% | 2,483 | 69 |
+| 14 | SUMIF | math | ≤ 4 ulp | 4 | 97,093 | 100.00% | 98,971 | 95,352 |
+| 15 | AND | logical | ≥ 99% | 3 | 466 | 100.00% | 7,558 | 4,506 |
+| 16 | COUNTA | statistical | Exact | 3 | 858 | 100.00% | 2,784 | 157 |
+| 17 | DATE | date | Exact | 3 | 1,493 | 100.00% | 39,341 | 22,688 |
+| 18 | LEFT | text | Exact | 3 | 22,979 | 100.00% | 24,770 | 22,532 |
+| 19 | OR | logical | Exact | 3 | 445 | 100.00% | 141,238 | 137,989 |
+| 20 | RIGHT | text | Exact | 3 | 333 | 100.00% | 3,964 | 655 |
+| 21 | SUMIFS | math | Exact | 3 | 4,349 | 100.00% | 13,386 | 8,730 |
+| 22 | ABS | math | Exact | 2 | 41,399 | 100.00% | 50,166 | 48,230 |
+| 23 | CONCATENATE | text | ≥ 99.9% | 2 | 21,800 | 99.97% | 24,289 | 23,019 |
+| 24 | COUNTIFS | statistical | ≥ 99.9% | 2 | 37,886 | 99.99% | 45,083 | 5,378 |
+| 25 | DAY | date | Exact | 2 | 390 | 100.00% | 2,241 | 271 |
+| 26 | FILTER | lookup | Exact | 2 | 314 | 100.00% | 3,029 | 16 |
+| 27 | INT | math | Exact | 2 | 492 | 100.00% | 1,680 | 59 |
+| 28 | ISERROR | information | Exact | 2 | 12,903 | 100.00% | 14,853 | 12,201 |
+| 29 | LEN | text | Exact | 2 | 563 | 100.00% | 2,876 | 59 |
+| 30 | MID | text | Exact | 2 | 284 | 100.00% | 1,805 | 65 |
+| 31 | MONTH | date | Exact | 2 | 469 | 100.00% | 28,553 | 22,662 |
+| 32 | NOT | logical | Exact | 2 | 194 | 100.00% | 1,242 | 55 |
+| 33 | OFFSET | lookup | Exact | 2 | 108,696 | 100.00% | 111,421 | 109,158 |
+| 34 | ROUNDDOWN | math | Exact | 2 | 1,119 | 100.00% | 2,509 | 125 |
+| 35 | ROUNDUP | math | Exact | 2 | 3,044 | 100.00% | 7,874 | 1,808 |
+| 36 | SUMPRODUCT | math | ≥ 99.9% | 2 | 1,991 | 100.00% | 4,133 | 353 |
+| 37 | TEXT | text | ≥ 99% | 2 | 32,051 | 99.84% | 36,833 | 24,820 |
 | 38 | TRIM | text | Exact | 2 | 231 | 100.00% | 1,321 | 26 |
-| 39 | YEAR | date | Exact | 2 | 36,084 | 100.00% | 64,158 | 55,001 |
-| 40 | CHOOSE | lookup | Exact | 1.5 | 376 | 100.00% | 3,098 | 1,278 |
+| 39 | YEAR | date | Exact | 2 | 36,084 | 100.00% | 64,163 | 55,001 |
+| 40 | CHOOSE | lookup | Exact | 1.5 | 376 | 100.00% | 3,110 | 1,278 |
 <!-- /progress:generated -->
 
 <!-- progress:generated evidence -->
@@ -280,18 +280,18 @@ Excel-saved cached values) and whose formula calls the function (report.json
 checkpoint (decision 0094) wants 400, 200 of them in a generated suite with
 the function as the outer call.
 
-The median in-scope function has **749.5** Excel cells. **506 of
+The median in-scope function has **758** Excel cells. **506 of
 506** (100.00%) are covered under decision 0094 (the report's `covered`: the two
 bars, or 20 cells for a function the catalog exempts). **8** have fewer than
-400 Excel cells, 0 of them fewer than 20: RAND (28), NOW (29), RANDARRAY (37), TODAY (37), RANDBETWEEN (99), INFO (234), TRUE (341), FALSE (345).
+400 Excel cells, 0 of them fewer than 20: RAND (28), NOW (29), RANDARRAY (37), TODAY (37), RANDBETWEEN (99), INFO (234), TRUE (342), FALSE (345).
 
 | Excel cells | Functions | Share |
 | --- | ---: | ---: |
 | &lt; 20 | 0 | 0.00% |
 | 20–199 | 5 | 0.99% |
 | 200–399 | 3 | 0.59% |
-| 400–999 | 320 | 63.24% |
-| ≥ 1000 | 178 | 35.18% |
+| 400–999 | 316 | 62.45% |
+| ≥ 1000 | 182 | 35.97% |
 | **All** | **506** |  |
 
 ![Excel cells per function](progress/evidence.svg)
@@ -302,38 +302,40 @@ bars, or 20 cells for a function the catalog exempts). **8** have fewer than
 
 Indicative, rule-based expected types. Each catalog parameter expects argument classes by its mode: a `range` parameter a reference; `lambda` and `name` parameters none (not counted); every other mode all eleven (positive number, zero, negative, fraction, numeric text, text, empty text, boolean, error, blank, range or array). A class is seen when an Excel-evidence cell passes it: a literal as written, a single-cell reference by the referenced cell's value; nested calls and operators are not classified (report.json `argument_coverage[]`).
 
-Average single-argument coverage is **87.5%** (median 90.9%) over 499 functions; 7 have no counted parameter. The one-off assessment of 2026-10-25 measured 94% with its own classifier. Lowest: JIS (0%), LAMBDA (0%), INFO (18%), GETPIVOTDATA (35%), RANDARRAY (40%), FILTER (42%), PIVOTBY (49%), AVERAGEIFS (54%), MAXIFS (54%), MINIFS (54%).
+Average single-argument coverage is **87.7%** (median 90.9%) over 499 functions; 7 have no counted parameter. The one-off assessment of 2026-10-25 measured 94% with its own classifier. Lowest: JIS (0%), LAMBDA (0%), INFO (18%), GETPIVOTDATA (35%), RANDARRAY (40%), FILTER (42%), PIVOTBY (49%), AVERAGEIFS (54%), MAXIFS (54%), MINIFS (54%).
+
+Pairwise coverage counts, for each two counted parameters, the pairs of an expected class of each that one Excel-evidence call passes together. Average pairwise coverage is **32.6%** (median 25.1%) over 318 functions with two or more counted parameters; the one-off assessment of 2026-10-25 measured a 44% median.
 
 | Coverage | Functions | Share |
 | --- | ---: | ---: |
 | &lt; 50% | 7 | 1.40% |
 | 50–74% | 16 | 3.21% |
-| 75–89% | 220 | 44.09% |
-| 90–99% | 142 | 28.46% |
-| 100% | 114 | 22.85% |
+| 75–89% | 216 | 43.29% |
+| 90–99% | 134 | 26.85% |
+| 100% | 126 | 25.25% |
 | **All** | **499** |  |
 <!-- /progress:generated -->
 
 ## Real-world readiness
 
 <!-- progress:judgment readiness -->
-<!-- as-of: 2026-10-27 7bd9090e -->
+<!-- as-of: 2026-10-28 a96b6063 -->
 Ratings are the steward's judgment, grounded in the numbers they cite. The page measures computed values only, not speed or saving.
 
-- **Read and compute: likely.** calipers matches Excel bit for bit on 99.85% of 1,353,813 cells, and 157 of its 171 workbooks have no cell off in the 15 digits Excel shows; corpus-bench has a visibly-off cell in 2 of 320 workbooks.
+- **Read and compute: likely.** calipers matches Excel bit for bit on 99.88% of 1,621,891 cells, and 160 of its 173 workbooks have no cell off in the 15 digits Excel shows; corpus-bench has a visibly-off cell in 2 of 320 workbooks.
 - **Edit and recalc: likely.** The frozen M1 probe list for core calculation semantics has 0 known failures, with 89 of 89 cases run. The page does not measure recalculation after an edit.
 - **Large ranges: partly.** No suite timed out on this run (0 timeouts in every suite), but the page does not measure recalculation time, and the dependency graph is Phase 2 work whose milestone row shows 4 blocked tasks. Judgment: large lookup or criteria ranges may be slow.
-- **Save and round-trip: partly.** Not measured: none of the page's numbers comes from writing a file. Judgment, from open export and structural-edit work on tables; the M8 row shows 17 tasks to do.
+- **Save and round-trip: partly.** Not measured: none of the page's numbers comes from writing a file. Judgment, from open export and structural-edit work on tables; the M8 row shows 21 tasks to do.
 <!-- /progress:judgment -->
 
 ## Risks
 
 <!-- progress:judgment risks -->
-<!-- as-of: 2026-10-27 7bd9090e -->
-1. **Statistical numerics.** 53 of 149 statistical functions have fewer than 99% of their cells within 15 digits, and the M9 probes show 845 visibly-off cells. Judgment: most of the 101,034 visibly-off numbers sit here. Owner: T-2510 (incomplete beta, accuracy stage).
-2. **Financial numerics.** 14 of 55 financial functions are below 99%. Judgment: IRR, YIELD and their kin are iterative fits whose last digits follow Excel's own algorithm, so this is slow, time-boxed work. Owner: T-2131 (IRR to 15 digits, blocked on evidence on its branch).
-3. **Everyday functions still off.** TEXT, the 37th most-used function, has 99.35% of its 30,959 attributed cells within 15 digits; MAX has 99.79% and MIN 99.69%. Judgment: these are visible in ordinary workbooks, so each visibly-off cell matters more than its count; the gap-triager found MIN and MAX's off cells are calipers anonymisation artifacts. Owner: T-2867 (MIN, MAX, AVERAGE) and T-1737 (TEXT number formats).
-4. **M5 and M6 exits wait on probe cells.** The M5 probes have 7 visibly-off cells and the M6 probes 5. Judgment: both exits are otherwise met, so these cells are the cheapest exits on the page. Owner: T-2627 and T-2441 (M5 overlong text and NUMBERVALUE separators), T-2824 (the M6 lifted-OFFSET cells).
+<!-- as-of: 2026-10-28 a96b6063 -->
+1. **Statistical numerics.** 52 of 149 statistical functions have fewer than 99% of their cells within 15 digits, and the M9 probes show 578 visibly-off cells. Judgment: most of the 99,499 visibly-off numbers sit here. Owner: T-2510 (incomplete beta, accuracy stage).
+2. **Financial numerics.** 12 of 55 financial functions are below 99%. Judgment: IRR, YIELD and their kin are iterative fits whose last digits follow Excel's own algorithm, so this is slow, time-boxed work. Owner: T-2131 (IRR to 15 digits, blocked on evidence on its branch).
+3. **Everyday functions still off.** TEXT, the 37th most-used function, has 99.84% of its 32,051 attributed cells within 15 digits; SUM has 99.95% and COUNTIF 99.92%. Judgment: these are visible in ordinary workbooks, so each visibly-off cell matters more than its count. Owner: T-1925 (numeral-system digits in locale tags) and T-2954 (Hebrew calendar digits), which own most of TEXT's off cells.
+4. **Milestone exits wait on probe cells.** The M0-M2 probes have 2 visibly-off cells, M5 28 and M6 5. Judgment: those exits are otherwise met, so these cells are the cheapest exits on the page. Owner: T-2885 (M2, unary plus), T-2992 (M5, FORMULATEXT of multi-area references, open as a PR) and T-2627 (M5 overlong text), T-2824 (M6 lifted OFFSET).
 5. **Large ranges are unmeasured.** 0 timeouts on this run, but the page has no recalculation timing, and recalculation stays full until the dependency graph lands (judgment). Owner: T-0401 (blocked: Phase 2).
 <!-- /progress:judgment -->
 
@@ -355,7 +357,8 @@ Ratings are the steward's judgment, grounded in the numbers they cite. The page 
   and the exit checklists, report.json `catalog_coverage`, `milestone_exit`, `milestone_lists`
   and `probe_milestones`, and tasks.json `by_milestone`.
 - **Campaign stages.** Task counts are tasks.json `by_campaign` and `deferred` (decision 0119).
-  The functions below the rate are those whose report tier is under `rate999`; a function is
+  The functions below the rate are those whose report tier is under `rate999` and whose
+  `meets_rate` is false (decision 0134 leaves listed cells out of the rate, not the tier); a function is
   lifted when its counted cells (`v15_checkpoint.functions[].rate_cells`) reach the report's rate
   (`rate_num / rate_den`) once its visibly-off type, error and text cells are fixed.
 - **Parity.** Tiers, attribution and the Phase 1 line are the eval report's own (report.json

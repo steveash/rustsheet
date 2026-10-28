@@ -547,8 +547,8 @@
     "v": "TRUE"
    },
    "A221": {
-    "t": "e",
-    "v": "#VALUE!"
+    "t": "s",
+    "v": "-0.0001"
    },
    "A222": {
     "t": "n",
@@ -1613,8 +1613,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "440783465c46fe678f40edc9aa85f62feb3a6aada83008e7f8a8df70a1db177d",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T16:36:28+00:00",
+  "produced_at": "2026-10-28T15:46:38+00:00",
   "version": null,
-  "workbook_name": "ac93d9524261fe5414ffaa90ba213d7034a8b7d1af3f7898d32a6d6079e4e173.xlsx"
+  "workbook_name": "30017a2a05c00887672e7151028ff8399d031cfa22e323e22fff214b71aac8d1.xlsx"
  }
 }

@@ -420,3 +420,19 @@ fn text_over_a_column_array_and_a_range_of_formats() {
     assert_eq!(model._get_text("A1"), *"2");
     assert_eq!(column(&model, 1, 3), ["2", "1", "1.0"]);
 }
+
+/// A 32,767-character code is over the 255-character limit, so every element of an array is
+/// `#VALUE!` before any formatting: the call stays linear in the code's length (number-formats.md
+/// "TEXT format code complexity limit"; probes/t2842-dollar-run-contexts J, K; T-2952).
+#[test]
+fn text_with_a_32767_character_code_over_an_array_is_value_error() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=SUM(--ISERROR(TEXT(SEQUENCE(1024),REPT(\"0\",32767))))",
+    );
+    model._set("A2", "=INDEX(TEXT(SEQUENCE(4,4),REPT(\"a\",32767)),4,4)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"1024");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+}

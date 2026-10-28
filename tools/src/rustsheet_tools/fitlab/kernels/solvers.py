@@ -7,6 +7,7 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
 - `xirr`, `xirr-oos`: in kernels/xirr.py.
 - `irr`: the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
+- `irr-fallback`: in kernels/irr_fallback.py.
 - `rate`: the T-2005 secant on the FV residual and its residual variants, traced (T-2527; a nested PMT is
   Excel's own value of that call, `Fit.calls`), and the rejected Newton candidates in r and IRR's secant
   applied to r (T-1533).

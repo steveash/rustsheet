@@ -21,6 +21,7 @@ use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
 use crate::formula_calls::calls_add_in;
 use crate::overrides;
+use crate::poi_m8_subset::{self, ReferenceFormCells};
 use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::text_expect::{self, TextExpectation, TextResult};
@@ -69,9 +70,50 @@ pub struct CellResult {
     /// the report lists these cells so the evidence stays visible (T-1142).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub graph_subnormal: bool,
+    /// A scored expectation, or a cell the spill-extent check added (decision 0140).
+    #[serde(default, skip_serializing_if = "CellKind::is_scored")]
+    pub kind: CellKind,
+}
+
+/// Where a [`CellResult`] comes from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CellKind {
+    /// One of the case's expectations, counted in `checked`.
+    #[default]
+    Scored,
+    /// A cell the engine filled and Excel left empty, outside `checked` (decision 0063); the M7
+    /// exit counts these (decision 0140).
+    SpillExtent,
+}
+
+impl CellKind {
+    /// Whether the cell is one of the case's expectations (the serialized default).
+    #[must_use]
+    pub fn is_scored(&self) -> bool {
+        *self == Self::Scored
+    }
 }
 
 impl CellResult {
+    /// A scored Excel-evidence cell of sheet `S` expecting 1 and giving 1, for tests.
+    #[cfg(test)]
+    pub(crate) fn for_test(cell: &str, formula: Option<&str>, verdict: Verdict) -> CellResult {
+        CellResult {
+            sheet: "S".to_string(),
+            cell: cell.to_string(),
+            formula: formula.map(str::to_string),
+            anchor_formula: None,
+            expected: Value::Number(1.0),
+            actual: Value::Number(1.0),
+            verdict,
+            from_excel: true,
+            listed_deviation: false,
+            graph_subnormal: false,
+            kind: CellKind::Scored,
+        }
+    }
+
     /// Stable identifier used in baselines: `Sheet!A1`.
     #[must_use]
     pub fn key(&self) -> String {
@@ -115,6 +157,10 @@ pub struct CaseResult {
     /// Only the run's own report reads them, so they are never serialized.
     #[serde(skip)]
     pub arguments: Vec<CallSeen>,
+    /// A poi case's formula cells in M8's subset and its unparsed formulas (decision 0146 item
+    /// 2(b), T-0094); empty for other suites. Only the run's own report reads them.
+    #[serde(skip)]
+    pub reference_forms: ReferenceFormCells,
 }
 
 #[derive(Debug, Clone)]
@@ -190,6 +236,7 @@ impl CaseResult {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: ReferenceFormCells::default(),
         }
     }
 
@@ -216,6 +263,7 @@ struct PreparedCase {
     tags: Vec<String>,
     text: Vec<TextExpectation>,
     defined_names: BTreeMap<String, String>,
+    reference_forms: ReferenceFormCells,
 }
 
 /// Runs all cases of the given suites in parallel.
@@ -272,6 +320,7 @@ pub fn run_case(
         skipped_add_in: prepared.skipped_add_in,
         tags: prepared.tags.clone(),
         defined_names: prepared.defined_names.clone(),
+        reference_forms: prepared.reference_forms.clone(),
         ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::Pending)
     };
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
@@ -393,6 +442,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 from_excel: e.from_excel,
                 listed_deviation: e.pinned.is_some(),
                 graph_subnormal,
+                kind: CellKind::Scored,
             }
         })
         .collect()
@@ -438,6 +488,15 @@ fn pin_deviations(
 fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
     let bytes = std::fs::read(&case.path).map_err(|e| e.to_string())?;
     let snapshot = read_snapshot(&bytes).map_err(|e| e.to_string())?;
+    // Every poi workbook, pending ones too: a crashed one holding a subset formula is listed. The
+    // parser reads third-party text here, outside the evaluation's panic isolation, so a panic
+    // leaves the workbook unclassified instead of ending the run.
+    let reference_forms = if suite.manifest.name == poi_m8_subset::SUITE {
+        catch_unwind(AssertUnwindSafe(|| ReferenceFormCells::classify(&snapshot)))
+            .unwrap_or_default()
+    } else {
+        ReferenceFormCells::default()
+    };
     let oracle = load_oracle(case)?;
     let workbook_name = oracle.as_ref().and_then(|o| o.source.workbook_name.clone());
     let (source, from_excel, lookup): (String, bool, Lookup) = if let Some(o) = oracle {
@@ -473,6 +532,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             tags: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            reference_forms,
         });
     };
     let (scorable, skipped_volatile) =
@@ -518,6 +578,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         tags: Vec::new(),
         text: Vec::new(),
         defined_names,
+        reference_forms,
     })
 }
 
@@ -653,6 +714,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         tags: spec.tags.clone(),
         text: text_expect::expectations(&spec, case)?,
         defined_names: BTreeMap::new(),
+        reference_forms: ReferenceFormCells::default(),
         input: Prepared::Spec {
             spec: Box::new(spec),
         },

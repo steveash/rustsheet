@@ -35,5 +35,5 @@ depends_on: []
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The M8 exit row and what M8's "oracle suites for each feature" means (T-2889).
+- The M8 exit row and what M8's "oracle suites for each feature" means (decision 0146; the row is T-0089).
 - Growing either suite or new suites for external references or sheet operations.

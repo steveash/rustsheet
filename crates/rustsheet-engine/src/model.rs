@@ -250,24 +250,6 @@ impl Model {
         self.last_lambda_id += 1;
         id
     }
-    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
-    /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
-    /// (`Model::close_over`) is dropped with it, not kept for the rest of the pass.
-    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
-        self.evaluate_cell(cell);
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-    }
-    pub(crate) fn clear_lambdas(&mut self) {
-        self.lambdas.clear();
-        self.eta_lambdas.clear();
-        self.named_lambdas = NamedLambdas::default();
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-        self.last_lambda_id = 0;
-    }
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
         node: &Node,
@@ -545,6 +527,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
+        parser.set_workbook_file(self.workbook.file_name());
         let node = parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
@@ -569,7 +552,10 @@ impl Model {
     ) -> CalcResult {
         use Node::*;
         let node = node.ungrouped(); // A written group is its child; a loop adds no frame.
-        match node {
+        if let Err(error) = self.spend_node(cell) {
+            return error;
+        }
+        let result = match node {
             OpSumKind { .. }
             | OpProductKind { .. }
             | OpPowerKind { .. }
@@ -578,12 +564,12 @@ impl Model {
             NumberKind(value) => CalcResult::Number(*value),
             BooleanKind(value) => CalcResult::Boolean(*value),
             ReferenceKind {
-                sheet_name: _,
                 sheet_index,
                 absolute_row,
                 absolute_column,
                 row,
                 column,
+                ..
             } => {
                 // Relative coordinates are offsets from the formula's cell.
                 let row1 = *row + if *absolute_row { 0 } else { cell.row };
@@ -600,15 +586,13 @@ impl Model {
                     return CalcResult::new_error(Error::ERROR, cell, String::new());
                 };
                 let range = CalcResult::Range { left, right };
-                // A whole-column operand of a tailed aggregate argument (`tailed_array.rs`).
-                if !self.tail_views.is_empty() {
-                    if let Some(value) = self.tailed_operand(node, cell, &range) {
-                        return value;
-                    }
-                }
-                range
+                // A range operand of a tailed argument (`tailed_array.rs`).
+                self.tailed_operand(node, cell, &range).unwrap_or(range)
             }
-            FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
+            // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
+            FunctionKind { kind, args } => self
+                .tailed_position(node, kind, cell)
+                .unwrap_or_else(|| self.evaluate_function(kind, args, cell)),
             NamedFunctionKind { name, args, id } => {
                 self.evaluate_named_function_call(name, args, *id, cell)
             }
@@ -630,6 +614,7 @@ impl Model {
             | DefinedNameKind(_)
             | UnaryKind { .. }
             | ErrorKind(_)
+            | SheetRefErrorKind { .. }
             | ParseErrorKind { .. }
             | Group { .. }
             | UnaryPlus { .. }
@@ -640,7 +625,8 @@ impl Model {
             | ImplicitIntersection { .. }
             | LambdaDefKind { .. }
             | LambdaCallKind { .. } => self.evaluate_cold_node(node, cell),
-        }
+        };
+        self.charged(result, cell)
     }
 
     fn cell_reference_to_string(
@@ -3075,6 +3061,14 @@ impl Model {
     /// in-engine reader of the time goes through here.
     pub(crate) fn now_unix_millis(&self) -> i64 {
         self.clock.now_unix_millis()
+    }
+
+    /// Renames the workbook (`name` without its extension). Formulas typed from now on show the
+    /// new file name as the prefix of a workbook name read through a sheet (T-2834); a formula
+    /// already parsed shows it after its next re-parse, as its stored text is `[0]!name`.
+    pub(crate) fn set_workbook_name(&mut self, name: &str) {
+        self.workbook.name = name.to_string();
+        self.parser.set_workbook_file(self.workbook.file_name());
     }
 
     /// Sets the timezone of the model

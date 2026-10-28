@@ -7,6 +7,7 @@ use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork, ValueWork};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+use crate::area_budget::{text_units, visit_units};
 use crate::arithmetic::{bcast_get, MISSING};
 use crate::cast::{calc_result_to_array_node, MAX_NUMBER_TEXT_LEN};
 use crate::expressions::types::CellReferenceIndex;
@@ -211,7 +212,7 @@ pub(crate) struct LiftOptions {
     pub(crate) work: KernelWork,
     /// What one unlifted call returns: an `Array` entry's element is its call's top-left value.
     pub(crate) result: CallResult,
-    /// Whether a [`CallResult::ArrayFirst`] entry's emptied elements are `#VALUE!` instead: a
+    /// Whether a [`CallResult::ArrayFirstColumn`] entry's emptied elements are `#VALUE!` instead: a
     /// SORTBY call with a second `by_array`, `sort_order` pair (`lift_call_with` sets it).
     pub(crate) later_error: bool,
 }
@@ -277,7 +278,7 @@ struct Run<'r> {
 enum Later {
     /// Every element keeps its result.
     Kept,
-    /// [`CallResult::ArrayFirst`] over entries that are not all equal: an error result stays,
+    /// [`CallResult::ArrayFirstColumn`] over entries that are not all equal: an error result stays,
     /// the first other one is kept (`placed` once it is), and every later one is empty.
     EmptyAfterFirst { placed: bool },
     /// [`CallResult::ArrayFirstColumn`] over entries that are all equal: every element runs, then the
@@ -306,7 +307,7 @@ impl Run<'_> {
 }
 
 /// Whether every element's grid slots equal the first element's: then a
-/// [`CallResult::ArrayFirst`] entry keeps every element (`UNIQUE(D1:D3,{FALSE;FALSE})` is "x"
+/// [`CallResult::ArrayFirstColumn`] entry keeps every element (`UNIQUE(D1:D3,{FALSE;FALSE})` is "x"
 /// twice, probes/m7-lift-take-drop-sortby row 35). One slot comparison per element and argument,
 /// within the work the elements are charged.
 fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
@@ -607,7 +608,7 @@ impl Model {
             LiftCost::Cells(cells) => cells.saturating_mul(units),
             LiftCost::Prepared(cells) => cells.saturating_add(units),
         };
-        if let Some(error) = too_many_visits(visits, cell) {
+        if let Some(error) = self.spend_visits(visits, cell) {
             return error;
         }
         let mut grids = lifted
@@ -625,11 +626,8 @@ impl Model {
             .then_some(index),
             _ => None,
         };
-        let array_first = matches!(
-            options.result,
-            CallResult::ArrayFirst | CallResult::ArrayFirstColumn
-        );
-        let later = if array_first && !all_elements_equal(&lifted, rows, columns) {
+        let first_only = options.result == CallResult::ArrayFirstColumn;
+        let later = if first_only && !all_elements_equal(&lifted, rows, columns) {
             Later::EmptyAfterFirst { placed: false }
         } else if options.result == CallResult::ArrayFirstColumn && columns > 1 {
             Later::EmptyPastFirstColumn
@@ -637,6 +635,7 @@ impl Model {
             Later::Kept
         };
         let past_first_column = matches!(later, Later::EmptyPastFirstColumn);
+        let up_front = visits;
         let mut visits = visits;
         let run = Run {
             options,
@@ -648,6 +647,10 @@ impl Model {
             Some(index) => self.lift_in_place(lifted, index, run, kernel, numbers),
             None => self.lift_broadcast(&lifted, rows, columns, &plan, run, kernel),
         };
+        // The elements' output charges, past the up-front cost, go to the formula's budget too.
+        if let Err(error) = self.spend_work(visit_units(visits.saturating_sub(up_front)), cell) {
+            return error;
+        }
         if past_first_column {
             return empty_past_first_column(result);
         }
@@ -678,7 +681,7 @@ impl Model {
             })
             .collect();
         let elements = rows.saturating_mul(columns);
-        if let Some(error) = too_many_visits(u64::try_from(elements).unwrap_or(u64::MAX), cell) {
+        if let Some(error) = self.spend_visits(u64::try_from(elements).unwrap_or(u64::MAX), cell) {
             return RefArg::Value(error);
         }
         let mut output = Vec::with_capacity(elements);
@@ -762,6 +765,10 @@ impl Model {
                 }
             }
         }
+        // The texts' bytes go to the formula's work budget (SPEC-0024 "text values").
+        if let Err(error) = self.spend_work(text_units(text_bytes), cell) {
+            return error;
+        }
         CalcResult::Array(output)
     }
 
@@ -843,6 +850,10 @@ impl Model {
                 out_row.push(value);
             }
             output.push(out_row);
+        }
+        // The texts' bytes go to the formula's work budget (SPEC-0024 "text values").
+        if let Err(error) = self.spend_work(text_units(text_bytes), cell) {
+            return error;
         }
         CalcResult::Array(output)
     }

@@ -101,10 +101,11 @@ fn trig_sinh_cosh(y: f64) -> (f64, f64) {
     (-sinh, cosh)
 }
 
-/// `(sinh y, cosh y)` for IMSEC: [`trig_sinh_cosh`] inside its band, libm's outside, where IMSEC keeps
-/// libm's digits (the EXP pair of [`trig_sinh_cosh`] loses 9 older IMSEC cells there). With cosh 2y
-/// taken the same way, IMSEC fits 32 of the 34 probes-numeric im-sec-csch-fused texts (27 with libm's
-/// parts) and keeps every older oracle cell (docs/excel-semantics/engineering.md, T-2884).
+/// `(sinh y, cosh y)` for IMSEC: [`trig_sinh_cosh`] inside its band, libm's outside, where IMSEC
+/// keeps libm's digits (the EXP pair of [`trig_sinh_cosh`] loses 9 older IMSEC cells there). With
+/// IMSEC's cosh 2y taken the same way, IMSEC fits 32 of the 34 probes-numeric im-sec-csch-fused
+/// texts (27 with libm's parts) and keeps every older oracle cell (docs/excel-semantics/engineering.md,
+/// T-2884). [`imcot`] takes its sinh 2y and cosh 2y from here too (T-3032).
 fn sec_sinh_cosh(y: f64) -> (f64, f64) {
     if in_inverse_exp_band(y) {
         trig_sinh_cosh(y)
@@ -222,20 +223,24 @@ pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// Excel loses for tiny arguments, where the denominator cancels (`IMCOT("1E-5+1E-5i")` real
 /// part 49999.9958596485, `IMCOT("0.00001i")` -99999.9917326303i; exact 50000 and 100000).
 /// UNVERIFIED (T-2531): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1 and the result is `#NUM!`.
+/// sinh 2y and cosh 2y are IMSEC's ([`sec_sinh_cosh`]): with libm's, the 24 cells of
+/// probes/t2787-imcot-denominator-grouping fit 21 (A2 and A17 need the kernel's sinh, A9 its cosh,
+/// one ulp above libm), and the 55 sweep and gen-m9 cells above keep fitting, the tiny-argument
+/// rows on libm's parts below the band (T-3032).
 /// Past `cosh 2y`'s range the value is `∓i` by the sign of y (Q27:R27, R55). A real number is 1
 /// over TAN's kernel ([`real_trig`]; `IMCOT("1E-20")` = 1E+20).
 pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, Some(0.0), |x| 1.0 / excel_tan(x));
     }
-    let cosh_2y = f64::cosh(2.0 * y);
+    let (sinh_2y, cosh_2y) = sec_sinh_cosh(2.0 * y);
     if cosh_2y.is_infinite() {
         return complex_result(0.0, -y.signum(), suffix);
     }
     let (_, cos_x) = trig_sin_cos(x);
     let (sin_2x, _) = trig_sin_cos(2.0 * x);
     let t = cosh_2y + 1.0 - 2.0 * cos_x * cos_x;
-    finite_complex_result(sin_2x / t, -f64::sinh(2.0 * y) / t, suffix, cell)
+    finite_complex_result(sin_2x / t, -sinh_2y / t, suffix, cell)
 }
 
 /// csc(x+iy) = `(sin x·(cosh y/t), -cos x·(sinh y/t))` with `t = sin²x + (cosh 2y - 1)/2` and SIN
@@ -295,7 +300,10 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// -0.065294027857947 (G23, K58). Each numerator divides its hyperbolic part by `t` first,
 /// `cos x·(cosh y/t)`: 27 of the 34 IMSEC texts of probes-numeric im-sec-csch-fused, against 23 for
 /// `cos x·cosh y/t`, with every older cell kept (T-2841). cosh y, sinh y and cosh 2y are
-/// [`sec_sinh_cosh`]'s: 32 of the 34 (T-2884).
+/// [`sec_sinh_cosh`]'s: 32 of the 34 (T-2884). Inside that kernel's `1/u` band sinh²y is
+/// `(cosh 2y - 1)/2`: the last two texts, `IMSEC("2.11217+0.627617i")` -0.86864314680255+0.803795556920423i
+/// and `IMSEC("-3.75483+1.33847i")` (B3, B31), need it, and rows 29 and 33 of the sweep, both below the
+/// band (|y| = 0.00977722 and 0.00387493), need cosh²y - 1 (T-2920).
 pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).1);
@@ -303,7 +311,13 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     let (x_sin, x_cos) = trig_sin_cos(x);
     let (y_sinh, y_cosh) = sec_sinh_cosh(y);
 
-    let t = x_cos * x_cos + ((sec_sinh_cosh(2.0 * y).1 + 1.0) / 2.0 - 1.0);
+    let cosh_2y = sec_sinh_cosh(2.0 * y).1;
+    let y_sinh_squared = if in_inverse_exp_band(y) {
+        (cosh_2y - 1.0) / 2.0
+    } else {
+        (cosh_2y + 1.0) / 2.0 - 1.0
+    };
+    let t = x_cos * x_cos + y_sinh_squared;
     if !t.is_finite() {
         return overflowed_reciprocal(x_cos, x_sin * y.signum(), y, suffix);
     }
@@ -388,7 +402,22 @@ pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 
 #[cfg(test)]
 mod tests {
-    use super::inverse_exp_sinh_cosh;
+    use super::{
+        imcot, imsec, inverse_exp_sinh_cosh, CalcResult, CellReferenceIndex, ComplexParts, Suffix,
+    };
+
+    /// The text a kernel prints for `x+yi`.
+    fn text(kernel: fn(ComplexParts, CellReferenceIndex) -> CalcResult, x: f64, y: f64) -> String {
+        let cell = CellReferenceIndex {
+            sheet: 0,
+            row: 1,
+            column: 1,
+        };
+        match kernel((x, y, Suffix::I), cell) {
+            CalcResult::String(t) => t.to_string(),
+            _ => panic!("the kernel returned no text"),
+        }
+    }
 
     #[test]
     fn inverse_exp_kernel_is_lopsided_in_x() {
@@ -404,6 +433,38 @@ mod tests {
         // probes/t2535-complex-text-tie: IMSINH("4") is 27.289917197127753, IMSINH("-4") libm's.
         assert_eq!(inverse_exp_sinh_cosh(4.0).0, 27.289_917_197_127_753);
         assert_eq!(inverse_exp_sinh_cosh(-4.0).0, -27.289_917_197_127_75);
+    }
+
+    // probes-numeric im-sec-csch-fused B3 and B31 (excel-graph): inside the band sinh²y is
+    // (cosh 2y - 1)/2 (T-2920).
+    #[test]
+    fn imsec_takes_the_half_angle_sinh_squared_inside_the_band() {
+        assert_eq!(
+            text(imsec, 2.112_17, 0.627_617),
+            "-0.86864314680255+0.803795556920423i"
+        );
+        assert_eq!(
+            text(imsec, -3.754_83, 1.338_47),
+            "-0.436112042213995+0.267414799382832i"
+        );
+    }
+
+    // probes/t2787-imcot-denominator-grouping A2, A9, A17 (excel-graph): IMCOT takes IMSEC's
+    // sinh 2y and cosh 2y, not libm's (T-3032).
+    #[test]
+    fn imcot_takes_the_kernel_sinh_and_cosh_of_2y() {
+        assert_eq!(
+            text(imcot, 1.0791, 0.6495),
+            "0.32986297844979-0.672267525838187i"
+        );
+        assert_eq!(
+            text(imcot, 2.2478, -0.4516),
+            "-0.591346564495611+0.624356304227604i"
+        );
+        assert_eq!(
+            text(imcot, -2.9144, 0.0359),
+            "4.21835302073736-0.690660946251302i"
+        );
     }
 
     #[test]
