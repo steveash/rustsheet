@@ -120,7 +120,8 @@ pub(crate) struct AreaBudget {
     /// Set once a charge did not fit; every later charge then fails at once, so the formula
     /// unwinds without doing more work.
     pub(crate) work_exceeded: bool,
-    /// Whether the run draws on the pools of the recalculation's pass (SPEC-0028 section 2).
+    /// Whether the run draws on the pools of the recalculation (SPEC-0028 sections 2 and 4): the
+    /// ceiling, and in a pass the pass allowance. False outside `Model::evaluate`.
     pub(crate) pooled: bool,
     /// Which bound gave the run its units, and so what running out of them means.
     pub(crate) bound: RunBound,

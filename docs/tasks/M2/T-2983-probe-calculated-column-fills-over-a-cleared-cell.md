@@ -3,7 +3,7 @@ id: T-2983
 title: "Probe calculated-column fills over a cleared cell and over identical stored formulas without calculatedColumnFormula"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -34,9 +34,17 @@ not parse in the engine yet (T-2979):
 - (c) as (b), with C3 entered `=A3*3` (the blank cell typed into): does it fill C2 and C4?
 
 ## Acceptance criteria
-- [ ] The probe cases are filled on excel-graph and in the probes baseline.
-- [ ] references.md states both rules with the cells as evidence; an engine task is filed if ours differs.
-- [ ] `make check` green; reviewers approve.
+- [x] The probe cases are filled on excel-graph and in the probes baseline.
+- [ ] references.md states both rules with the cells as evidence (first only; second is T-3025); an engine task is filed if ours differs. 
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A stored `calculatedColumnFormula` on load (T-2969); the engine's unqualified structured references (T-2979).
+
+## Outcome
+Three probes filled on excel-graph (t2983-*). Rule: a column of stored identical formulas with no `calculatedColumnFormula`
+is not a calculated column; typing beside it fills nothing (a: C5 typed beside stored C2:C4; c is a second witness).
+The engine re-fills in (a), so it is a known failure in the probes baseline and engine task T-3024 is filed. (c) passes in the engine only because the eval adapter types cells in row-major order with stored ones (T-3024); (b) passes via the engine's unprobed blank-blocks choice (T-3025).
+Whether a blank beside a real calculated-column formula blocks the fill stays unprobed (T-3025); a stored structured
+formula variant of (a) is T-3023. The task's original (a) typed into C3, but an `entered` cell starts blank, so (a)
+was redesigned (typed C5 of A1:C5). The acceptance criterion on the "cleared cell" half is not met; T-3025 carries it.
