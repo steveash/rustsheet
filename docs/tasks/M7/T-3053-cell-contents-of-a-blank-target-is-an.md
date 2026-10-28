@@ -3,7 +3,7 @@ id: T-3053
 title: "CELL('contents') of a blank target is an empty value that array arguments reject, through LET/IF/IFERROR/CHOOSE (T-3030 evidence)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
