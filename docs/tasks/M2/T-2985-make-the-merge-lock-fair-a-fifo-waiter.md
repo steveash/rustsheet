@@ -3,7 +3,7 @@ id: T-2985
 title: "Make the merge lock fair: a FIFO waiter list and a wait command"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
