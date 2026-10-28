@@ -45,6 +45,7 @@ mod lookup_each;
 pub(crate) mod lookup_table;
 pub(crate) mod offset;
 pub(crate) mod pivot_index;
+mod pivot_placement;
 mod pivotby;
 mod ref_lift;
 mod relative_to;
