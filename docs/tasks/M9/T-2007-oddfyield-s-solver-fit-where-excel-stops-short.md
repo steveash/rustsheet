@@ -3,7 +3,7 @@ id: T-2007
 title: "ODDFYIELD's solver: fit where Excel stops short of ODDFPRICE's root (31 desktop cells with a known root, about 70 web cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
