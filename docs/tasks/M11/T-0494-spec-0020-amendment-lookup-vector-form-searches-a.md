@@ -3,7 +3,7 @@ id: T-0494
 title: "SPEC-0020 amendment: LOOKUP vector form searches a tailed lookup_vector (corpus-bench 33935 under 1 s)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
