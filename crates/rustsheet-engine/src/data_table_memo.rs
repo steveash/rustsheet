@@ -84,8 +84,18 @@ pub(crate) struct Context {
     /// The locale and language, by address: they are `'static` tables.
     locale: usize,
     language: usize,
-    /// Name, id, state, hidden rows and hidden column spans of each sheet, in order.
-    sheets: Vec<(String, u32, SheetState, Vec<i32>, Vec<(i32, i32)>)>,
+    sheets: Vec<SheetContext>,
+}
+
+/// What formulas may read of a sheet besides its cells.
+#[derive(Debug, Clone, PartialEq)]
+struct SheetContext {
+    name: String,
+    sheet_id: u32,
+    state: SheetState,
+    hidden_rows: Vec<i32>,
+    /// `(min, max)` of each hidden column span.
+    hidden_columns: Vec<(i32, i32)>,
 }
 
 /// What one table's last recomputation read, and the results it wrote.
@@ -120,11 +130,14 @@ impl Model {
             locale: std::ptr::from_ref(self.locale) as usize,
             language: std::ptr::from_ref(self.language) as usize,
             sheets: (workbook.worksheets.iter())
-                .map(|ws| {
-                    let rows = ws.rows.iter().filter(|r| r.hidden).map(|r| r.r).collect();
-                    let cols = ws.cols.iter().filter(|c| c.hidden);
-                    let cols = cols.map(|c| (c.min, c.max)).collect();
-                    (ws.name.clone(), ws.sheet_id, ws.state.clone(), rows, cols)
+                .map(|ws| SheetContext {
+                    name: ws.name.clone(),
+                    sheet_id: ws.sheet_id,
+                    state: ws.state.clone(),
+                    hidden_rows: ws.rows.iter().filter(|r| r.hidden).map(|r| r.r).collect(),
+                    hidden_columns: (ws.cols.iter().filter(|c| c.hidden))
+                        .map(|c| (c.min, c.max))
+                        .collect(),
                 })
                 .collect(),
         }
