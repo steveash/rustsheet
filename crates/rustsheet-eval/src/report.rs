@@ -308,6 +308,10 @@ pub struct RunReport {
     /// in case order. Deviation cells are not among them.
     #[serde(default)]
     pub unattributed_off: Vec<attribution::UnattributedCell>,
+    /// Visibly-off, in-scope Excel cells attributed to one function (decision 0118), in case
+    /// order; `scripts/exit_owners.py --all-off` lists those no open task owns (T-0086).
+    #[serde(default)]
+    pub attributed_off: Vec<attribution::AttributedCell>,
     /// Commit, date, dirty flag and skipped suites ([`RunMeta`], T-0080); filled by the caller.
     #[serde(default)]
     pub run: RunMeta,
@@ -444,6 +448,7 @@ impl RunReport {
             argument_coverage: argument_coverage::summarize(catalog, results),
             real_world_suites: REAL_WORLD_SUITES.iter().map(ToString::to_string).collect(),
             unattributed_off: attribution::unattributed_off(catalog, results),
+            attributed_off: attribution::attributed_off(catalog, results),
             // The caller fills the milestone sections, the checkpoint and `run`.
             ..RunReport::default()
         }
