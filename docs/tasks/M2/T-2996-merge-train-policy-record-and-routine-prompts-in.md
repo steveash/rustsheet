@@ -37,8 +37,11 @@ the switch leaves `lock`.
     the head sha. The merging agent merges with `expectedHeadSha`;
   - `check_governance.py` waives only the decision-record rule for a passing diff. The
     test-deletion and probe-tag checks still run;
-  - the P0 task goes in a separate PR, and the `merge-train-stop` label is used;
-  - a revert PR that passes `make merge-revert-check` (T-2994) is also merged without reviewers;
+  - the P0 task goes in a separate PR;
+  - the `merge-train-stop` label is honoured only on an open PR that passes `make
+    merge-flip-check`. `make merge-mode` prints an honoured stop label;
+  - revert PRs opened by the merger (T-2994) are reviewed and merged under the normal flow, with
+    P0 priority. There is **no** review waiver and no governance waiver for them;
   - the flips to `shadow` and `train` stay fully gated.
 - routines.md gains:
   - the merger row (Sonnet, `5,35 * * * *`);

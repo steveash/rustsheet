@@ -36,9 +36,12 @@ prompt itself lands in T-2996; this task makes the skills match it.)
   - both skills: **the emergency-flip procedure** (SPEC-0027 "The switch", decision of T-2996).
     Open the one-line flip PR and label it `merge-train-stop`. Run `make merge-flip-check
     PR=<n>`. Merge it without reviewers, under the fair lock, with `expectedHeadSha` once CI is
-    green. File the P0 in a separate task-only PR. The skills also cover the 45-min stall
-    fallback, in `train` mode only, and the revert-PR handling for P0 handlers (`make
-    merge-revert-check`);
+    green. File the P0 in a separate task-only PR. Remove the stop label if the flip is
+    abandoned. The skills also cover:
+    - the 45-min stall fallback, in `train` mode only;
+    - the P0 handler's job for a merger-opened revert PR. The handler reviews it with the full
+      panel and merges or marks it ready under the normal flow, with P0 priority. No review
+      waiver applies to reverts;
   - `docs/process/agent-workflow.md`: loop step 9, and the merger in the roles table;
   - `scripts/merge_train.toml`: `mode = "shadow"`.
 

@@ -47,8 +47,11 @@ shadow predictions agree with reality, can be computed from the GitHub API. If T
 
 ## Acceptance criteria
 - [ ] `make merge-train SHADOW=1` implements "Shadow". Tests show that it takes no lock, makes no
-      PR-visible writes beyond the housekeeping, skips a round when the lease fails, and records
-      predictions and the tree check.
+      PR-visible writes beyond the closed-PR housekeeping, skips a round when the lease fails, and
+      records predictions and the tree check.
+- [ ] For a red shadow train, shadow reuses T-2998's binary search on `M0` (no second
+      implementation) to emit the `defer` and `eject:ci-red` predictions. Tests cover a red
+      shadow train with the culprit at `P_3`.
 - [ ] `make merge-train-stats [SINCE=<date>]` prints every metric above, plus the shadow agreement
       score and the load bar. It is unit-tested against fixtures from the fake client, including
       PR histories scripted for each agreement rule.

@@ -12,16 +12,18 @@ spec: docs/specs/SPEC-0027-merge-train.md
 ---
 
 ## Goal
-- CI runs on pushes to `merge-train/**`, and classifies a train's changes against its base on
-  `main` the way it does a PR's.
+- CI runs on pushes to `merge-train/current` and `merge-train/shadow`, and classifies a train's
+  changes against its base on `main` the way it does a PR's.
 - A docs-only PR whose branch is behind `main` is classified docs-only.
 - The full eval report runs only on `main`, or when a gate fails.
 
 ## Context
 - SPEC-0027 section 9 is the design:
-  - the `push` trigger gains `'merge-train/**'`;
+  - the `push` trigger gains exactly `merge-train/current` and `merge-train/shadow`.
+    `merge-train/revert-*` and `merge-train/probe` must not trigger it; a revert PR gets
+    `pull_request` CI;
   - the `changes` job is keyed on `github.ref`:
-    - for `refs/heads/merge-train/*` (a push or a `workflow_dispatch`), the base is
+    - for those two refs (a push or a `workflow_dispatch`), the base is
       `git merge-base origin/main HEAD`, and `scripts/ci_changes.py` is read from that base
       (decision 0066). If the merge-base fails, everything runs;
     - every other non-PR ref runs everything;
@@ -36,9 +38,12 @@ spec: docs/specs/SPEC-0027-merge-train.md
   classified `code=true`: on #2119, a622e22 touched only `docs/` and ran with `run_heavy=true`.
   Decision 0121 leaves branches behind until they hold the lock, so docs-only PRs often pay for
   the full CI. The fix:
-  - diff `git merge-base "$BASE" "$PR_HEAD"` to `"$PR_HEAD"`, with
-    `PR_HEAD = github.event.pull_request.head.sha`, so that only the PR's own changes count;
-  - fall back to `code=true` if the merge-base fails;
+  - run `git merge-base --all "$BASE" "$PR_HEAD"`, with
+    `PR_HEAD = github.event.pull_request.head.sha`, and require **exactly one** base. With
+    several bases, none, or a failed command, set `code=true`;
+  - diff that single base to `"$PR_HEAD"`, so that only the PR's own changes count;
+  - a docs-only result only skips jobs on the PR's own CI. When the PR merges through the train,
+    the train's CI classifies the combined diff, so the train stays the gate;
   - first confirm the mechanism (for example, that `base.sha` lags the first parent of the test
     merge being checked out) and record it in the PR.
 - The spec rejects the alternative of a draft PR per train.
@@ -49,7 +54,10 @@ spec: docs/specs/SPEC-0027-merge-train.md
 - [ ] `ci_changes` unit cases cover:
       - the train base;
       - a failed merge-base (`code=true`);
+      - a PR with several merge bases (`code=true`);
       - **a docs-only PR branch that is behind `main`**, which is classified docs-only.
+- [ ] The trigger is tested: pushes to `merge-train/revert-x` and `merge-train/probe` start no CI
+      run (in the live check, or by a test that parses the workflow's `on.push.branches`).
 - [ ] The secrets and permissions check has a test, and runs in `make hygiene`.
 - [ ] A live check, made **while holding the merge lock** so that no merge races it, with the run
       links in the PR:

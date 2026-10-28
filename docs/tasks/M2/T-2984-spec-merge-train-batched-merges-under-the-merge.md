@@ -54,7 +54,7 @@ writing this spec (2026-10-28).
 - Moving the repository to an organization or turning on the merge queue (decision 0053).
 
 ## Outcome
-SPEC-0027 (`docs/specs/SPEC-0027-merge-train.md`, revision 3 after two review rounds)
+SPEC-0027 (`docs/specs/SPEC-0027-merge-train.md`, revision 4 after three review rounds)
 designs the merge train:
 - a fair, validated FIFO merge lock with `wait`, as the first, independent slice;
 - a readiness marker that workers set before moving on. Its verdicts are an attestation, not a
@@ -62,7 +62,7 @@ designs the merge train:
 - an owner-created merger routine, every 30 min, that polls for a 40-min window, plus a stall
   fallback;
 - trains of up to 5 PRs on `merge-train/current`, squash-merged in order, with mandatory pre- and
-  post-squash tree checks that detect (not prevent) a differing `main` and revert first;
+  post-squash tree checks that detect (not prevent) a differing `main` and open a revert PR that is reviewed like any other;
 - a binary search for the first red prefix;
 - shadow mode on `merge-train/shadow`;
 - the CI trigger, and a fix (T-2988) for docs-only PRs that are behind `main` being classified as code;

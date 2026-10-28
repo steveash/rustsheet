@@ -47,8 +47,12 @@ check the marker mechanically, without reviewing the PR again.
       a second marker for the same head.
 - [ ] `scripts/merge_ready.py verify --pr <n>` implements V1–V6 and the "green" rule. It exits 0
       when the PR is ready and 1 with the failed checks when it is not.
-- [ ] The labels `ready-to-merge` and `merge-train-ejected` exist; the script creates them when
-      they are absent.
+- [ ] The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the script
+      creates them when they are absent.
+- [ ] If T-2993 found that `gh api` writes fail, `mark` uses the minimal write fallback. It prints
+      exactly two step-mode JSON actions, the label and a comment whose body the script generates,
+      in SPEC-0027 section 4's schema. `verify` confirms the result afterwards, and a test covers
+      it. If writes work, the PR says the fallback was not needed and omits it.
 - [ ] `scripts/test_merge_ready.py` covers every `test_merge_ready.py` case in SPEC-0027's Test
       plan, including an outsider's `CHANGES_REQUESTED` review and the test that the
       applicability list matches the review skill. It runs in `make hygiene`.
