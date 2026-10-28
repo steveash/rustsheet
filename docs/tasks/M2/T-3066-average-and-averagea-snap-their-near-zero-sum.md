@@ -24,14 +24,20 @@ the residue wherever SUM does.
 - AVERAGEIF, AVERAGEIFS, SUMIF, SUMIFS and SUMPRODUCT do not snap (same probe), so the change is AVERAGE's and
   AVERAGEA's only. Code: `fn_average` / `fn_averagea` (functions/statistical/count_and_average.rs); SUM's snap is
   `SumParts` (functions/math_and_trigonometry/sum.rs) and `snap_near_zero` (arithmetic.rs): reuse them, do not copy.
+- The probe has range arguments only. AGGREGATE(1) goes through AVERAGE (numbers.md "AGGREGATE"), so a change in
+  `fn_average` changes it too: probe AVERAGE/AVERAGEA over scalars and array constants and AGGREGATE(1) over the same
+  cancel and k = 7/8 data first (excel-probe skill) and match them. SUBTOTAL(1/101) uses `subtotal_average` and stays.
+- SPEC-0009 (docs/specs/SPEC-0009-aggregate-argument-walker.md, the row that says only SUM tracks its last addition)
+  must name AVERAGE and AVERAGEA too, in this task's PR.
 - Failing cells (known failures in eval/baseline/probes.txt): probes/t3048-snap-conditional-sums.case.json S!D5, S!D6,
   S!G5, S!G6, S!I5, S!I6, S!P5, S!P6.
 
 ## Acceptance criteria
+- [ ] The scalar, array-constant and AGGREGATE(1) forms are probed and match Excel.
 - [ ] The 8 cells above pass; the other 78 cells of the probe still pass (AVERAGEIF(S) keep their residue).
 - [ ] No regression in gen-m*/poi/calipers AVERAGE cells (`make eval-check`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - AVERAGEIF, AVERAGEIFS, SUMIF, SUMIFS, SUMPRODUCT (Excel does not snap them).
-- AGGREGATE(1) and SUBTOTAL(1/101) (unprobed; file a probe if needed).
+- SUBTOTAL(1/101) (its own `subtotal_average`; unprobed).
