@@ -118,14 +118,16 @@ PMT.xlsx's 40 other PMT cells over constants / m9-fin-pmt's 308:
 | Excel-L/EXP, `k` last | 0 (9) | 23 (40) | 173 (308) |
 | Excel-L/EXP, the rest rounded once: `-(pv+fv*Q)*r/((1-Q)*k)` | 1 (9) | 33 (40) | 197 (308) |
 
-Also tried in scratch, all lower: x87 (twice-rounded) operators in every shape above (the same or within one cell),
+Also tried in unscripted scratch runs (not in the committed script), all lower: x87 (twice-rounded) operators in every shape above (the same or within one cell),
 P = EXP(n·L) with Kahan's P-1 in eight shapes, the type-1 factor as EXP(L) or as a multiplication by EXP(-L), the
 annuity-due form `-(pv+fv*Q)/(1+(1-Q_(n-1))/r)`, the Kahan step and the EXP result held at 64 bits (111 to 170 on
 m9-fin-pmt), and L as libm log1p, Excel's LN of 1+rate, or correctly rounded (well below the series L).
 
-Findings: (1) at rate -0.9 with fv 300 and type 1 (F10, F11, F18, F23) every form is 3 to 6 ulp below Excel's
-magnitude and the miss does not move with L (every L within 10 ulp of Excel's LN gives the same F10 and F11, and F18
-within 2 ulp), so it is in how fv or type 1 enters; PMT.xlsx has no -0.9 cell with fv alone or type 1 alone, so the
+Findings: (1) at rate -0.9 with fv 300 and type 1 (F10, F11, F18, F23) every form is 3 to 6 ulp larger in
+magnitude than Excel (Excel sits 3 to 5 ulp toward zero from the exact payment), and the miss barely moves with L
+(scratch: every L within 10 ulp of Excel's LN gives the same F10 and F11 to an ulp, and F18 within 2 ulp). The fv 0,
+type 0 controls at -0.9 carry only a 1-ulp, form-dependent residue (G10: exact -1, Excel-L/EXP +1, rounded-once 0;
+G11: 0, +1, +1; G18 0 under each), so the 3 to 5 ulp gap comes from how fv or type 1 enters; PMT.xlsx has no -0.9 cell with fv alone or type 1 alone, so the
 cached values cannot separate them. (2) The rounded-once Excel-L/EXP form is the best PMT model so far on
 m9-fin-pmt (197/308, T-3014's 175 with plain operators), but it still misses about a third of the sweep by one ulp,
 and of the five 0.2 inputs it gets only G33 (F27, G27, F32 and F33 are 1 ulp off).

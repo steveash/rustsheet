@@ -61,11 +61,13 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   `-(fv+pv*P)/(k*((P-1)/r))` 0/25/60, k last 0/23/64; the split `-(pv*r+(pv+fv)*r/(P-1))/k` 3/19/73; Excel-L/EXP
   `-(pv+fv*Q)/(k*((1-Q)/r))` (Q = EXP(-n·L), 1-Q Excel's expm1; T-2730, T-3014) 1/24/175, k last 0/23/173; the
   same Q and 1-Q doubles with the rest rounded once, `-(pv+fv*Q)*r/((1-Q)*k)`, 1/33/197, the best m9-fin-pmt
-  score so far, but not Excel's (an extended EXP result or a 64-bit Kahan step scores lower: 111 to 170). At rate
-  -0.9 with fv 300 and type 1 every form is 3 to 6 ulp below Excel's magnitude, and the miss does not move with L
-  (a consistent L cancels at n = 1: `PMT(-0.9,1,100,300,1)` is -3099.999999999999, every L within 10 ulp gives
-  -3100.0000000000005 or beyond), so the gap is in how fv or type 1 enters, which PMT.xlsx cannot separate (no
-  -0.9 cell has fv alone or type 1 alone). Probe: T-3071.
+  score so far, but not Excel's (in unscripted scratch runs, an extended EXP result or a 64-bit Kahan step scored lower:
+  111 to 170). At rate -0.9 with fv 300 and type 1 every form is 3 to 6 ulp larger in magnitude than Excel, which
+  sits 3 to 5 ulp toward zero from the exact payment, and (unscripted) the miss barely moves with L: a consistent L
+  largely cancels at n = 1, so `PMT(-0.9,1,100,300,1)` is -3099.999999999999 in Excel, and every L within 10 ulp of
+  Excel's LN gives -3100.0000000000005 or beyond. The fv 0, type 0 controls at -0.9 are close but not settled:
+  G10 is -1 ulp exact and +1 Excel-L/EXP, G11 0 and +1, G18 0 under each. So the 3 to 5 ulp gap comes mostly from
+  how fv or type 1 enters, which PMT.xlsx cannot separate (no -0.9 cell has fv alone or type 1 alone). Probe: T-3071.
 - Extrapolated, not yet probed (T-1684): non-integer nper (where `^` is exp(y·ln x)), NPER with
   pmt = 0 (the general formula, not `-fv/pv`) or pv/fv = 0, and rates within a few ulps of -1 (`1+r`
   by Excel's `+`). The sweeps have integer nper and non-zero pmt only.
