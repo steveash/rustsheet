@@ -732,6 +732,7 @@ C	probes/match-fractional-match-type.case.json	8
 C	probes/match-lookup-value-lift.case.json	19
 C	probes/match-single-cell-forms-and-texts.case.json	36
 C	probes/match-single-value-lookup-array.case.json	26
+C	probes/match-type-error-reference.case.json	22
 C	probes/match-type-nested-passthrough.case.json	17
 C	probes/match-type-text-passthrough.case.json	9
 C	probes/matdisc-serial-0-60.case.json	160
@@ -1414,6 +1415,7 @@ C	probes/t2929-sort-lifted-by-col-errors.case.json	94
 C	probes/t2929-sort-lifted-by-col-index.case.json	84
 C	probes/t2929-sort-lifted-by-col-range.case.json	30
 C	probes/t2929-sort-lifted-by-col-shapes.case.json	121
+C	probes/t2939-typed-if-two-argument-controls.case.json	9
 C	probes/t2957-a1-reference.case.json	6
 C	probes/t2957-constant-exception.case.json	5
 C	probes/t2957-constant-then-refill.case.json	5
@@ -1422,6 +1424,8 @@ C	probes/t2957-expand-right-data.case.json	11
 C	probes/t2957-expand-right-header.case.json	8
 C	probes/t2957-fill-one-totals.case.json	8
 C	probes/t2957-refill-second.case.json	6
+C	probes/t2966-empty-call-runs.case.json	8
+C	probes/t2966-missing-first-arg-run.case.json	6
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -2971,7 +2975,6 @@ F	probes/logest-modes.case.json	Sheet1!M92
 F	probes/logest-modes.case.json	Sheet1!M93
 F	probes/logest-modes.case.json	Sheet1!N85
 F	probes/logest-modes.case.json	Sheet1!N86
-F	probes/m2-argument-kind-gaps.case.json	Calc!A25
 F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/odd-bond-argument-check-order.case.json	Calc!A258
 F	probes/regression-trend.case.json	Sheet1!N10
@@ -3497,8 +3500,6 @@ F	probes/t2779-hebrew-saka-names.case.json	S!G9
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C2
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C3
 F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C4
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I1
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!I11
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
