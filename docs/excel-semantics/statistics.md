@@ -1678,8 +1678,8 @@ its digits below, -expm1(b*ln1p(-x)) as far as the cells tell, the same cut as T
   (`FINV(1E-10,6,2)`) and 2801c1c11c21e134 A130 (`FDIST(1E+10,4,2)`) pass, which failed with 1 - exp below x = 0.1.
 - At df 2, half the uncancelled tail is Excel's `T.DIST.RT(4.245,2)` = 0.025631992844658943 (t0969-t-df2-cut
   B450) bit for bit, 1 ulp from the closed form.
-Ours: `incomplete_beta.rs` `beta_reg_complement` (`A1_CLOSED_FORM_MIN_X`), so F.DIST, F.DIST.RT and the F quantiles take it;
-since T-2119 BETA.DIST's cdf and BETA.INV take it too.
+Ours: `incomplete_beta.rs` `shape_one_tails` (oriented, x0 < 0.1 there) for BETA.DIST's cdf, BETA.INV and the F tails,
+and `fisher.rs` `unoriented_shape_one_tail` with the cut `A1_EXPM1_MAX_X` for F.TEST and the F quantiles' search (T-2977).
 Status: VERIFIED (excel-graph) at x from 1E-11 to 4E-4 below the cut and at 0.1; the cut itself between 4E-4 and 0.1
 is UNVERIFIED (assumed T.DIST.RT's).
 Tasks: T-0974, T-2119
@@ -2058,23 +2058,29 @@ Evidence: closed-form cells of docs/research/t2464/cells.tsv (m9-beta-dist-a1, t
 probes); w5-triangulation `closed_final.py` (`closed_final.out`), `closed_variants.py`;
 verify-w5-triangulation/verify_closed.out; verify-r2-bratio/analyze.out.
 Ours: all 1,286 cells bit-exact through the worksheet functions (T-2502). Still pending:
-- F.DIST, F.DIST.RT and FDIST pass w5's x = 1/(1 + d2/(d1·X)), y = 1/(1 + d1·X/d2) only where a closed form applies;
-  elsewhere they keep d1X/(d1X + d2) and d2/(d1X + d2), because w5's forms on today's Cephes kernel moved about 100
-  bit-exact F cells by 1 ulp (`F.DIST(1.5,5,5,TRUE)`, probes/stat-argument-modes H215; `F.DIST(0.1,2,100,TRUE)`,
-  probes-numeric/t2220-f-dist-sweep-cdf A191). T-2505.
-- F.INV, F.INV.RT and FINV (their crossing search), BETA.INV's huge-shape crossing (`inverse_beta.rs`) and F.TEST keep
-  the unoriented forms with std ln and exp (`beta_reg_complement_unoriented`): the oriented ones move `F.INV(0.05,2,5)`
-  (m9-f-inv A10) and F.TEST gen-m9/68d8ffb69ff739d8 A143 1 to 2 ulp off Excel. T-2505, T-2511.
-- a0 = 1 with y0 > 0.9 keeps the engine's earlier tail (-expm1(b ln1p(-x)) below x = 0.1, exp(a ln x) for a swapped
-  b = 1) until bratio's general branches land (T-2505).
+- F.DIST, F.DIST.RT and FDIST pass w5's x = 1/(1 + d2/(d1·X)), y = 1/(1 + d1·X/d2) to the closed forms and the bratio
+  port; where neither applies, today's Cephes kernel keeps d1X/(d1X + d2) and d2/(d1X + d2). w5's forms there move
+  gated cells off Excel: `FDIST(Data!$D5,1,9)` (gen-m9/c18dbf21f11093f3 A151, also 7c20351562a2d71d A205) by 9 ulp and
+  `2*F.DIST.RT(1E+12,22,5)` (probes/t2829-ftest-tail-over-b S!A17) visibly (T-2977, `fisher.rs::f_tail`).
+- F.INV, F.INV.RT and FINV search the crossing of the unoriented tail (Cephes on d1X/(d1X + d2), a shape of 1 by
+  x^a or 1 - (1 - x)^b, no closed forms; `fisher.rs::f_quantile_tail`): the ported F tail instead fixes 9 gated cells
+  and moves 9 others 2 to 8 ulp off Excel's quantile (T-2977; `FINV(0.025,7,10)`, gen-m9/fec39efaba9284c3 A336;
+  gen-m9/9cca17438a7e6f8a A114 by 8 ulp; ironcalc-calc F_DIST.xlsx J3, L3). T-2511.
+- F.TEST at a shape of 1 is not the oriented closed form: x^a at b = 1 and 1 - (1 - x)^b at a = 1 on F.TEST's own x
+  (no swap; -expm1(b ln1p(-x)) below x = 0.1) is bit-exact at gen-m9/68d8ffb69ff739d8 A143 (a = 1, b = 1/2,
+  x = 0.571), a790a4d4a6a82756 A192 (a = 4, b = 1) and bbdfc06cae0e0d71 A356 (a = 5.5, b = 1), which the closed
+  forms put 2, 3 and 10 ulp off (the last visibly; T-2977, `fisher.rs::unoriented_shape_one_tail`).
+- a0 = 1 with y0 > 0.9 keeps the engine's earlier tails, w = -expm1(b0 ln1p(-x0)) and w1 = y0^b0
+  (`incomplete_beta.rs::shape_one_tails`); bpser(1, b0, x0) is 1 ulp high at probes/ftest-decomposition B12. T-3007.
 - BINOM.DIST's k = 0 is BINOM's own shortcut, not this kernel (T-2645).
 Status: VERIFIED (excel-graph)
 Implemented in: `incomplete_beta.rs::closed_form_tails` (Excel's EXP and LN, `x87_exp.rs`, `x87_log10.rs`), through
 `beta_reg_complement` and `beta_reg_upper` (BETA.DIST's cdf and BETA.INV's refinement), `fisher.rs::f_tail` (F.DIST,
 F.DIST.RT, FDIST), `student_t.rs::closed_form_tail` (T.DIST* at df 2), `binom.rs` (BINOM.DIST at k = n - 1,
 NEGBINOM.DIST at r = 1 or f = 0); then `bratio/mod.rs::ported_tails` (bpser, w1 bpser and L140 bup+bpser) for BETA.DIST's
-cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf (T-2505, T-2506, T-2847)
-Tasks: T-2502, T-2505, T-2511
+cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf (T-2505, T-2506, T-2847), and for F.TEST's
+large shapes and BETA.INV's huge-shape crossing (`bratio/mod.rs::kernel_tails`, T-2977)
+Tasks: T-2502, T-2505, T-2511, T-2977, T-3007
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
 Rule: for ln(1 + a) with -0.375 <= a < 0, i.e. ln(1 - x) at x <= 0.375 (the beta density, BINOM.DIST(0,n,p), bgrat's
@@ -3300,6 +3306,8 @@ exp-of-a-product rounding (where a ln x is near -100 to -300 the exact p is tens
 179, from Excel's, and the model is within a few), while R itself is close to correctly rounded. The closed forms
 of the incomplete beta hold: b = 1 is exp(a ln x) and a = 1 (df_small = 2) is -expm1(b ln1p(-x))
 below x = 0.1, which is why the a = 1 deep tails are the correctly rounded value.
+Since T-2977 a tail outside the series (a + b above 200, or a shape that is not a half integer) takes the bratio port
+in front of today's kernel (`bratio::beta_dist_lower_tail`); a shape of 1 keeps the forms above, unswapped.
 A variance that overflows is `#NUM!`: `F.TEST({1E+200,1E+200,-1E+200},Data!A11:B12)` (gen-m9/
 7674c89c824aca43 A39, f2bd5f380ec002bf A210); the engine also returns `#NUM!` for two finite
 variances whose ratio overflows, `FTEST({1E-160,2E-160},{1E+150,2E+150})` (unprobed, T-2571).
