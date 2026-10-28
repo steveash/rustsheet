@@ -380,7 +380,9 @@ Tasks: T-2769, T-2776, SPEC-0023
 ## Whitespace beside a missing argument is kept; a structured reference keeps some and normalizes the rest
 Rule: a run beside a missing operand is kept as typed, and FORMULATEXT prints it back: `=NOW( )` and `=TODAY(  )`
 (value as without the run), `=IF(1, ,2)`, `=IF(1,  ,2)`, `=IF(1,` LF `,2)`, `=SUM(1, )`, `=SUM(1,  )`, `=IF(1,2, )`,
-`=SUM(1,` LF `)`, `=SUM(, 1)` and `=SUM(,1)` all print as typed. Values match the run-free formula (`=IF(1, ,2)` is
+`=SUM(1,` LF `)`, `=SUM(, 1)` and `=SUM(,1)` all print as typed, and so do `=PI( )`, `=ROW(  )` (2 in row 2),
+`=TRUE(` LF `)`, `=NA(` LF ` )`, and a run before a missing first argument, `=SUM( ,1)`, `=IF(  ,1,2)` (2) and
+`=SUM(` LF `,3)`. Values match the run-free formula (`=IF(1, ,2)` is
 0, `=SUM(1, )` is 1, `=SUM(, 1)` is 1). This differs from "a run followed by `,` ... is dropped" (above): a run before a
 comma is dropped only when an operand precedes it (`=SUM(1 ,2)`), and a run between two commas, or after the last comma,
 is the missing argument's own and stays. Two shapes are refused (see "Refused" above): `=SUM (1)` and `=SUM( )`.
@@ -398,15 +400,29 @@ agree):
 - The calculated-column fill rewrote `=T[[#This Row], [Col]]` and `=T[ [#This Row] , [Col] ]` typed into C2 and C3 to the
   formula typed into C4 (`T[[#This Row],[Col]] + T[[#This Row],[Other]]`), so this-row shapes are unanswered
   (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800). The cells were typed one at a
-  time in the order C2, C3, C4, so each later formula re-filled the whole column. The fill rules are T-2957, and the
-  engine fill is T-2958.
+  time in the order C2, C3, C4, so each later formula re-filled the whole column. The fill rules are in references.md
+  ("Calculated columns: a formula typed into a table column", T-2957), and the engine fill is T-2958.
   Ours: the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
 Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
-(I1:I13). Each refused formula was entered alone against the same case.
-Ours: the runs SPEC-0023 keeps are in the entry above; a run beside a missing argument is T-2944, and
-structured-reference whitespace is unimplemented (T-2801).
+(I1:I13). Each refused formula was entered alone against the same case. probes/t2966-empty-call-runs and
+t2966-missing-first-arg-run (excel-graph `entered`, 2026-10-28, T-2966; cache keys `input_sha256` 22b97392f143589e517cbf4a28cbe57cc7d474de238160fc867864e5597b7e36
+and 93468f85dd28e5322213f7a4284349feea5f1f526217a3daf17e0300fb11eb73). Typed `=SUBTOTAL(9,C1, )` and `=SUBTOTAL(9, ,C1)`
+are refused (Graph PATCH 400 `InvalidArgument`, 2026-10-28, T-2966; each entered alone, no case kept).
+Ours: the runs SPEC-0023 keeps are in the entry above. A run between two commas or after the last comma prints
+back (T-2944), and so does a run before a missing first argument (T-2966). The run inside an empty built-in call
+(`=NOW( )`, `=TRUE( )`) is held as one spaced empty argument that the evaluated tree drops (`Node::with_empty_call_run`),
+so the call still takes no argument; inside an empty call of a LAMBDA or a name (`=f( )`) it is still dropped
+(unprobed, T-2976). A spaced missing argument is still missing where a function refuses one (`=SUBTOTAL(9,A1, )` is refused
+like `=SUBTOTAL(9,A1,)`, references.md; Excel refuses both spaced shapes typed). Inside a structured
+reference (T-2801) the lexer keeps the runs after the outer `[` and before the outer `]` as typed and whether any
+whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. Two choices are ours, not
+probed: a run around a lone specifier keeps the outer brackets it was typed in (`T[ [#Data] ]` prints as typed), and a
+stored `T[ Col ]`, padded on both sides, reads back as column `Col` with its padding (so our own export round-trips).
+One-sided `T[ Col]` and `T[Col ]`, and padded `#` or `@` starts (`T[ #Data ]`), read as before, as a column whose
+name has the spaces. T-2962 probes these choices.
 Status: VERIFIED (excel-graph)
-Tasks: T-2786, T-2944, T-2800, T-2801, T-2955, T-2956, T-2957, T-2958
+Implemented in: expressions/lexer/structured_references.rs, expressions/parser/structured_reference.rs (`text`)
+Tasks: T-2786, T-2944, T-2966, T-2800, T-2801, T-2955, T-2956, T-2957, T-2958
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every

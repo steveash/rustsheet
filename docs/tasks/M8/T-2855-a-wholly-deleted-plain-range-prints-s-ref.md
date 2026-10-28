@@ -4,10 +4,11 @@ title: "A wholly deleted plain range prints S!#REF! as Excel does, and the spill
 milestone: M8
 lane: engine
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -33,3 +34,10 @@ The two known failures T-2338's new probe cases left pass.
 
 ## Out of scope
 - Column-delete range shrinking (unprobed).
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns visibly-off probes cells of ROWS (2), COLUMNS (1) and ROW (1). With T-2339 and T-2848 it lifts ROWS, COLUMNS and ROW.

@@ -59,8 +59,8 @@ pub struct NumberPart {
     pub condition: Option<(Compare, f64)>,
     pub use_thousands: bool,
     pub percent: i32, // multiply number by 100^percent
-    /// Scaling commas: divide the number by 1000^comma, or in a fraction section multiply it by
-    /// 10^((-3 * comma) mod 256) (`fraction::fraction_scale`).
+    /// Scaling commas: scale the number by 10^-3n, the exponent wrapping in a signed byte, or in a
+    /// fraction section an unsigned one (`fraction::comma_exponent`).
     pub comma: i32,
     pub tokens: Vec<TextToken>,
     pub digit_count: i32, // number of digit tokens (#, 0 or ?) to the left of the decimal point
@@ -214,6 +214,8 @@ pub(crate) fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
 
 pub struct Parser {
     pub parts: Vec<ParsePart>,
+    /// Whether the format ends in a `;`, so an empty section follows the last part.
+    ends_in_separator: bool,
     lexer: Lexer,
 }
 
@@ -320,7 +322,17 @@ impl Parser {
     pub fn new(format: &str) -> Self {
         let lexer = Lexer::new(format);
         let parts = vec![];
-        Parser { parts, lexer }
+        Parser {
+            parts,
+            ends_in_separator: false,
+            lexer,
+        }
+    }
+    /// Whether the format is three sections plus an empty fourth: the parser drops the empty
+    /// section after a trailing `;`, so `;;;` has three parts. Excel prints nothing for it
+    /// (`TEXT("text",";;;")` is ""; gen-m10/0e3d8eba9432a18d T!A24).
+    pub(crate) fn has_empty_text_section(&self) -> bool {
+        self.parts.len() == 3 && self.ends_in_separator && !self.parts.iter().any(is_text_section)
     }
     pub fn parse(&mut self) {
         while self.lexer.peek_token() != Token::EOF {
@@ -338,6 +350,8 @@ impl Parser {
     }
 
     fn parse_part(&mut self) -> ParsePart {
+        // Set from the last part read; error parts never reach the empty-section check.
+        self.ends_in_separator = false;
         let mut token = self.lexer.next_token();
         let mut digit_count = 0;
         let mut precision = 0;
@@ -411,6 +425,7 @@ impl Parser {
             match token {
                 Token::General => {
                     if tokens.is_empty() && matches!(next_token, Token::EOF | Token::Separator) {
+                        self.ends_in_separator = next_token == Token::Separator;
                         return ParsePart::General(GeneralPart {});
                     }
                     // Excel: literals around `General` print around the value (`TEXT(5,"General x")`
@@ -836,6 +851,7 @@ impl Parser {
             after_colon = is_colon;
             token = next_token;
         }
+        self.ends_in_separator = token == Token::Separator;
         // Excel: a bare digit 1-9 is a literal (`TEXT(5,"2")` is "2", `"4am/pm"` "4AM"), but beside a
         // date or time token anywhere in the section the code is #VALUE!: `"42abc"`, `"4b"`, `"b4"`,
         // `"4 d"`, `"4:mm"`, `"[h]4"`, `"4g"`; quoted or escaped it prints (`"\4b"` is "443";

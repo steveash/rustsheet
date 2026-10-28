@@ -172,3 +172,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - LOGNORM.INV: 12 cells (13-14 digits right 11, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1543-inverse-cdf-tiny-p.case.json` 11; `ironcalc-calc/STATISTICAL/LOGNORM.xlsx` 1. e.g. `LOGNORM.INV(1E-20,0,1)` Excel 9.493291347224372e-05, ours 9.493291347224338e-05
 
 Excel's centre is about 1e-15 from the true quantile while the engine is closer to the truth, so 15 digits needs Excel's centre formula; LOGNORM.INV still calls statrs `LogNormal::inverse_cdf` (log_normal.rs) and should move onto the same kernel.
+
+## Cases added by the Phase 1 triage (T-0090, 2026-10-27)
+NORM.S.INV is below the Phase 1 rate (45 visibly-off cells to fix at the 2026-10-27 eval), all in two probes-numeric cases no live task owned (T-0968, parked, named one). This task now owns both whole cases:
+- probes-numeric/t1746-norm-s-inv-central (20 visibly-off cells)
+- probes-numeric/t1759-norm-s-inv-roundtrip (20 visibly-off cells)

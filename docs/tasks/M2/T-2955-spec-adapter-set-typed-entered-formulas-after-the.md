@@ -3,7 +3,7 @@ id: T-2955
 title: "Spec adapter: set typed (entered) formulas after the tables, so a typed structured reference resolves (probes/t2786 E5, E8, E9, E13:E15)"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -63,16 +63,23 @@ A unit test worth keeping if T-2801 has none: a spec with table T over A1:A3 (`C
 `=SUM(T[Col])` gives -1, typed `=A3*2` gives -8.
 
 ## Acceptance criteria
-- [ ] Typed (`entered`) formula cells are entered in the formulas pass, after tables, pivots and
+- [x] Typed (`entered`) formula cells are entered in the formulas pass, after tables, pivots and
       structured-reference names. A typed non-formula (`{"entered":"(1)"}`) stays in the values pass. A
       rustsheet-eval unit test covers a typed `=SUM(T[Col])` next to a table.
-- [ ] These 6 known-failure lines disappear from eval/baseline/probes.txt with no new ones, except S!F8, which goes
+- [x] These 6 known-failure lines disappear from eval/baseline/probes.txt with no new ones, except S!F8, which goes
       only as described above (after T-2801, or with a decision record):
       `probes/t2786-whitespace-structured-refs-runs.case.json` S!E5, S!E8, S!E9, S!E13, S!E14, S!E15.
-- [ ] `make eval` shows no other suite moves (no other case types a formula into a sheet with a table).
-- [ ] `make check` green; reviewers approve.
+- [x] `make eval` shows no other suite moves (no other case types a formula into a sheet with a table).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Whitespace inside structured references, in values or text (T-2801).
 - Calculated-column fill on typed entry (T-2957, T-2958).
 - Skipping typed volatile formulas (T-2956).
+
+## Outcome
+Landed with T-2801 (PR #2093), which carries the adapter change: a typed `=...` joins the formulas pass in
+crates/rustsheet-eval/src/engine.rs, and typed non-formula text stays a value. The rustsheet-eval unit test
+`spec_typed_formulas_go_in_after_the_tables` is the one suggested above. The 6 lines (S!E5, S!E8, S!E9, S!E13, S!E14,
+S!E15) left eval/baseline/probes.txt together with E4, E7 and E12. S!F8 still passes, because T-2801 prints the space
+after the comma. No other suite moved in `make eval-check` (probes fixed 12, all in t2786; regressions 0).

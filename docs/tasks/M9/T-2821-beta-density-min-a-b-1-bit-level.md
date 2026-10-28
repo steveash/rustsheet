@@ -8,6 +8,7 @@ priority: P3
 size: M
 tier: opus
 depends_on: [T-2503, T-2122, T-2512]
+defer: phase-1b
 ---
 
 ## Goal
@@ -39,3 +40,6 @@ explained.
 ## Out of scope
 - GAMMALN's and algdiv's own kernels (T-2122, T-2512).
 - min(a,b) > 1 (T-2507).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+This task depends on T-2122 and T-2512, both `defer: phase-1b`, so it could never be picked before Phase 1 exits; its goal is bit-level, so it now carries `defer: phase-1b` too (decision 0114). Its Context names whole probes-numeric cases, which made it the nominal owner of about 6,800 BETA.DIST, 1,400 F.DIST and 2,100 T.DIST.RT visibly-off cells it does not set out to fix. T-2981 owns and routes those cells; the visibly-off cells listed above (m9-beta-dist-a0p0001, m9-beta-dist-a50, t2464-w2f-absweep, t2513-r3-m1-residual-a) are among them.

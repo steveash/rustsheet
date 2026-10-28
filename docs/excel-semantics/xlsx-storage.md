@@ -367,6 +367,28 @@ Status: UNVERIFIED (the exported file has not been opened in Excel)
 Implemented in: crates/rustsheet-xlsx/src/export/tables.rs
 Tasks: T-2196, T-2838
 
+## A calculated column is saved as `calculatedColumnFormula` plus one formula per row
+Rule (excel-graph downloads of the T-2957 probes, 2026-10-27): a column Excel filled (references.md, "Calculated
+columns") gets `<calculatedColumnFormula>` inside its `<tableColumn>`, plus a `dataDxfId`, and every data cell keeps
+its own `<f>` and cached value. The column formula is the typed formula in file form:
+`T[[#This Row],[Col]]*2` for a typed `=[@Col]*2` (the `@` written as `#This Row` with the table name, as in "Structured
+references in the file"), `A2*2` for `=A2*2` typed into C2 (which row's A1 text is saved when the formula is typed below the first
+data row is unprobed). Structured cells are written as plain `<f>` per
+cell; the A1 fill as a shared formula (`<f t="shared" ref="C2:C4" si="0">A2*2</f>`). A re-fill replaces the column
+formula (`*3` after references.md rule 2); an exception does not change it (`*2` is still saved after a
+constant in C3 and `*3` typed into C4). A column that was not filled (rule 4) gets no `calculatedColumnFormula`.
+A table that grew by typing beside it gets the new `<tableColumn name="Column1">` with the column formula, or
+`name="0"` and none for the header-row case. With a totals row, the table keeps `totalsRowCount="1"` and the
+label column's `totalsRowLabel`; the filled column gets no totals metadata.
+Whether a stored `calculatedColumnFormula` fills blank cells on load is unprobed (T-2969); the engine neither reads
+nor writes it.
+Evidence: the saved `xl/tables/table1.xml` and `xl/worksheets/sheet1.xml` of probes/t2957-fill-one-totals,
+-refill-second, -constant-exception, -constant-then-refill, -existing-constant, -a1-reference and -expand-right-*
+(the eval/.cache/oracle/excel-graph/<input_sha256>.xlsx of each sidecar).
+Status: VERIFIED (excel-graph)
+Implemented in: no (T-2958 for export, T-2969 for load)
+Tasks: T-2957, T-2958, T-2969
+
 ## A table part without a name attribute is named by its displayName
 Rule: Excel opens a workbook whose `xl/tables/tableN.xml` has `displayName` but no `name` attribute (as
 LibreOffice writes it), and its formulas reach the table by the displayName: `SUBTOTAL(109,Таблица1[Sum for Q3])`
@@ -390,10 +412,14 @@ the save. A structured reference is stored with its normalized spaces: typed `T[
 `T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`.
 Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
 T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac1b22c81cabb3f77c8, refetch with `rustsheet-oracle fill --force`), sheet1.xml H1:H17 and E4:E15. A typed `=T[#Headers]` (E13) is `#SPILL!` in the sidecar but `#VALUE!` in the saved array `<v>`; not relied on. Excel's whitespace semantics are in syntax.md.
-Ours: export writes the tree with no whitespace (SPEC-0023 keeps the written runs for printing only), so the saved text is
-canonical; the runs beside a missing argument are filed as T-2944; the export of kept whitespace as T-2948.
+Ours: export writes the tree as written, its kept whitespace included (T-2948), a line feed as the reference `&#xA;`,
+which reads back as LF like Excel's raw bytes. The runs beside a missing argument and inside an empty call print back and
+are saved (T-2944, T-2966). The legacy `@` rewrite on import and export decides on the formula with no whitespace; where one
+of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (`=N( IF(1,{2;3}) )`
+saves as `N(IF(1,{2;3}))`, T-2970). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
+reading stored text drops it (T-2784). The saved text beside `@`, LET names and a sign is derived, not probed (T-2971).
 Status: VERIFIED (excel-graph)
-Tasks: T-2786, T-2944, T-2801
+Tasks: T-2786, T-2944, T-2801, T-2948, T-2970, T-2971
 
 ## Cached volatile values are those of the last calculation, near the save time
 Rule: a workbook's cached values for `TODAY()`, `NOW()` and their dependents are those of Excel's last

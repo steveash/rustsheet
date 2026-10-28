@@ -1101,7 +1101,11 @@ its dense walk would read every position and record each blank one, unbounded in
 (`SUM(A:XFD)` beside one far cell is 1.7e10 positions), so past the cap such a formula is
 `#VALUE!` (DEVIATION; `=SUM(MAP(SEQUENCE(65536),LAMBDA(r,SUM(OFFSET(Sheet2!1:1,r,0)))))+SUM(A:J)`
 beside 1 in J1048576 is `#VALUE!`, one row fewer is 1). Smaller blocks alone never make a formula
-`#VALUE!`. Every area of
+`#VALUE!`. A bounded single-column operand of a tailed array argument (`SUM(A2:A70000*1)`, SPEC-0020
+Amendment 1, T-0491) records its rows past the used area as one such rectangle while the budget has
+room, where the materialized reading records them cell by cell, so a formula at the cap reaches it one
+rectangle sooner (DEVIATION, directive 5; never with the budget short, which reads it the ordinary
+way). Every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
@@ -1129,7 +1133,7 @@ Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range
 `Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
 (`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`);
 functions/util/existing_walk.rs (`Model::walks_sparsely`)
-Tasks: T-1463, T-1769, T-2710
+Tasks: T-1463, T-1769, T-2710, T-0491
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
@@ -2513,6 +2517,58 @@ existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's d
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
 Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899
+
+## Calculated columns: a formula typed into a table column
+Rule (excel-graph `entered` cells, typed one at a time in the case's order, 2026-10-27, T-2957; table `T` A1:C4,
+columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each `Calc` cell in F):
+1. **A formula typed into one data cell of a column whose other data cells are all blank fills every data row.**
+   `=[@Col]*2` typed into the middle row C3 fills C2:C4 (2, 4, 8, each printing `=[@Col]*2`); a totals row is not
+   filled (C5 of a table A1:C5 with totals row stays blank, `ISFORMULA` FALSE) (t2957-fill-one-totals).
+2. **A different formula typed into a cell of a filled column re-fills the whole column**, the earlier typed row
+   included: C2 `=T[[#This Row],[Col]]*2`, then C3 `=[@Col]*3`, leaves `=[@Col]*3` in C2:C4 (3, 6, 12)
+   (t2957-refill-second). probes/t2786-whitespace-structured-refs-runs C2:C4 (three typed this-row formulas, each
+   re-filling) agrees. Whether typing into the row typed first re-fills too is unprobed: the case format cannot type
+   one cell twice.
+3. **A constant typed into a filled column is an exception**: C2 `=[@Col]*2` then C3 `5` leaves C3 the number 5
+   (FORMULATEXT `#N/A`) and C2, C4 the formula (2, 8) (t2957-constant-exception). **A column with an exception is
+   not re-filled**: a later `=[@Col]*3` typed into C4 stays in C4 alone (12; C2 keeps `*2`, C3 keeps 5)
+   (t2957-constant-then-refill). One of four runs of this sequence came back with every `Calc` cell blank; three
+   reruns agree on the rule above, so that run is taken as a Graph anomaly.
+4. **No fill when another data cell already holds a value**: with the constant 5 in C2 (stored in the file),
+   `=[@Col]*2` typed into C3 stays in C3 alone (4), and C4 stays blank (t2957-existing-constant).
+5. **An A1 formula fills shifted, like a fill-down**: `=A2*2` typed into C2 gives `=A3*2`, `=A4*2` in C3:C4 (2, 4,
+   8) (t2957-a1-reference).
+6. **Every filled row prints the typed cell's text** for a structured formula (`=[@Col]*2`, `=[@Col]*3` in every
+   row); an A1 formula prints its shifted text. How a typed long form (`=T[[#This Row],[Col]]*2`) prints is not
+   answered: in refill-second it was re-filled over.
+7. **Typing just right of the table expands it** (t2957-expand-right-data, -header, each run twice): `=A2*2` typed
+   into D2 grows `T` to A1:D4 (`COLUMNS(T[#All])` 4), names the new column `Column1` (D1 holds that text, as for a
+   column insert above) and fills D2:D4 with `=A2*2`, `=A3*2`, `=A4*2`. `=1+1` typed into the header-row cell D1
+   grows `T` to A1:D4 too, but D1 becomes the **text** `0` (not 2, not a formula; the column is named `0`), and
+   D2:D4 stay blank. Typing a constant beside the table, below its last row, or beside a totals row is unprobed.
+What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
+`calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
+blank, or all the one calculated formula); whether a column whose cells hold one identical formula with no saved
+`calculatedColumnFormula` re-fills is unprobed (T-2969 probes a stored column formula).
+Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
+constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
+C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
+The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
+formula cells, so the sidecars do not hold them: they are read from each case's saved `xl/worksheets/sheet1.xml`
+(eval/.cache/oracle/excel-graph/<input_sha256>.xlsx).
+Ours (T-2958): rules 1-5 are implemented with no state on the table: a formula typed into a table's data rows
+(`Model::set_typed_user_input`, the facade's `Input::Parse` and `Input::Formula`) fills the column's other data rows
+when they are all blank or all hold one shared formula (`Model::calculated_column_targets`, calculated_columns.rs),
+by writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A blank cell
+beside formulas blocks the fill too, and a column of one identical stored formula with no saved
+`calculatedColumnFormula` re-fills as a calculated column: both are engine choices, unprobed (T-2983). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
+after the tables, as the oracle types them after load. The probes that type the unqualified `[@Col]` stay `#ERROR!`
+in their filled cells: an unqualified structured reference does not parse yet (T-2979). Neither import nor export
+reads or writes `calculatedColumnFormula` (T-2969); the auto-expansion is T-2968.
+Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
+Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7 no (T-2968)
+Tasks: T-2957, T-2958, T-2968, T-2969
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
