@@ -655,6 +655,33 @@ const STATRS_QUANTILE_RESIDUAL: f64 = 1e-13;
 /// which rest on statrs' search alone, so moving the cut needs both kinds of cell checked.
 const REFINE_SHAPE_MAX: f64 = 1e9;
 
+/// From this shape on, Excel's GAMMA.INV and GAMMAINV are not a search but
+/// [`wilson_hilferty_quantile`]: `GAMMA.INV(0.5,a,1)` / a is 1.0002658235505755 for a = 2E10 to
+/// 1E300 (probes/t2982-gamma-inv-huge-shape A7-A23), while at 5E9 the quantile is the true one and
+/// at 7E9 and 1E10 Excel is mostly `#NUM!` (A5, A6, A42-A59; that band and the shapes from 1E9 to
+/// it stay on the search, TODO(T-3070)).
+pub(crate) const WILSON_HILFERTY_SHAPE_MIN: f64 = 2e10;
+
+/// The offset Excel adds to the Wilson-Hilferty cube root: (1.0002658235505755)^(1/3) - 1 is
+/// 0.0000886 to 13 digits (A7-A23).
+const WILSON_HILFERTY_OFFSET: f64 = 0.000_088_6;
+
+/// The factor on Excel's z term, fitted to the p sweep at shape 1E13 (A25-A41, 1 - 2.2106E-5;
+/// the cells are within 7 ulps of it, 3 at most from p = 1E-16 to 1 - 1E-6).
+const WILSON_HILFERTY_SPREAD: f64 = 0.999_977_893_94;
+
+/// Excel's gamma quantile at a shape from [`WILSON_HILFERTY_SHAPE_MIN`], for a scale of 1, where
+/// `z` is the standard normal quantile of the lower tail's probability: the Wilson-Hilferty
+/// approximation a (1 - 1/(9a) + z/(3 sqrt a))^3 with Excel's offset and spread inside the cube
+/// (probes/t2982-gamma-inv-huge-shape, docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV
+/// at a huge shape"). It is within 7 ulps of Excel from a shape of 1E13 and about 100 to 1,500 ulps
+/// off at 1E11 (a term in z^2 that the fit does not have; T-3070).
+pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
+    let cube_root = 1.0 + WILSON_HILFERTY_OFFSET - 1.0 / (9.0 * shape)
+        + z * WILSON_HILFERTY_SPREAD / (3.0 * shape.sqrt());
+    shape * cube_root * cube_root * cube_root
+}
+
 /// The quantile of `dist` where the probability of `tail` is `p` (in [0, 1], else NaN): statrs'
 /// search ([`inverse_cdf_within`]) where its result solves the smaller tail to
 /// [`STATRS_QUANTILE_RESIDUAL`], else the crossing of that tail (`special::refine_increasing`,

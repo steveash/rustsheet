@@ -2,7 +2,7 @@
 use super::{
     cdf_terms_bound, continued_fraction_budget, gamma_cdf, gamma_density, gamma_inverse_cdf,
     gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
-    Tail, Terms, MAX_TERMS, TEMME_C,
+    wilson_hilferty_quantile, Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -402,4 +402,19 @@ fn quantiles_in_the_tails_are_excel_s() {
         (ours - 196_001.028_447_084_83).abs() < 1e-13 * ours,
         "{ours}"
     );
+}
+
+/// Excel's closed form at a huge shape (probes/t2982-gamma-inv-huge-shape; T-2982): the median
+/// is 1.0002658235505755 times the shape, and the p sweep at shape 1E13 is within a few ulps.
+#[test]
+fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
+    let close = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 4.0 * f64::EPSILON;
+    // A34, A23: GAMMA.INV(0.5,1E13,1) and GAMMA.INV(0.5,1E300,1).
+    assert!(close(wilson_hilferty_quantile(1e13, 0.0), 10_002_658_235_505.422));
+    assert!(close(wilson_hilferty_quantile(1e300, 0.0), 1.000_265_823_550_575_5e300));
+    // A32: p = 0.1, z = -1.2815515655446004.
+    assert!(close(
+        wilson_hilferty_quantile(1e13, -1.281_551_565_544_600_4),
+        10_002_654_182_255.533
+    ));
 }

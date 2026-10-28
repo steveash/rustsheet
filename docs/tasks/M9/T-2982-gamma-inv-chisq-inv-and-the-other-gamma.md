@@ -3,7 +3,7 @@ id: T-2982
 title: "GAMMA.INV, CHISQ.INV and the other gamma inversions give Excel's values at a huge shape (T-1891 rest: E5, E15, the gen-m9 cells, the underflow rule)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -64,7 +64,8 @@ recorded.
   the 1E8 cut: A144-A146 (shape 99999999, the series side) are about 1E-15 relative off, A145 (shape 1E8) too.
 
 ## Progress (run 2, 2026-10-28)
-- Resumed the idle branch (opus worker, step 2 of the routine).
+- Resumed the idle branch (opus worker, step 2 of the routine). Found the factor's form: c^(1/3) - 1 = 0.0000886, and
+  Excel's value from shape 2E10 is a·(1 + 0.0000886 - 1/(9a) + z·s/(3·sqrt a))^3 with s = 1 - 2.2106E-5 (fitted).
 
 ## Acceptance criteria
 - [ ] probes/incomplete-gamma-cap E5, E15, E18 pass, E13, E14, E19 bit-exact or named in the Outcome with their ulp; no
@@ -75,3 +76,14 @@ recorded.
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).
+
+## Outcome
+- GAMMA.INV and GAMMAINV from shape 2E10 are Excel's Wilson-Hilferty closed form (`incomplete_gamma`
+  `wilson_hilferty_quantile`, constants fitted on probes/t2982-gamma-inv-huge-shape): within 7 ulps at shape 1E13 and
+  above (A13-A41 and A78-A86 pass or are a few ulps off; ours was `#NUM!` everywhere above about 1E9), 100 to 1,500
+  ulps at 1E11. probes/incomplete-gamma-cap E5 (`GAMMA.INV(0.5,1E300,1E-300)`) and E18 now pass.
+- The cdf where x / beta underflows is 0 at every shape (A117-A122), the density where it overflows `#NUM!` (E18).
+- Split to T-3070 (session budget and the evidence): shapes 1E9 to 2E10 (E15, A2-A4, the `#NUM!` band, A44), CHIINV and
+  CHISQ.INV.RT above the 1E10 df cap (A92, A93), the 1E11 z^2 term, Temme's tails at the 1E8 cut (A144-A146), E13,
+  E14, E19 and the gen-m9 cells. The underflow rule below shape 1 is probed and matched (criterion 2).
+- Eval delta: probes/t2982-gamma-inv-huge-shape 49 -> 60 passing of 123 (see the PR for the full delta).

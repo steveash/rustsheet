@@ -3,7 +3,11 @@ use statrs::distribution::{Continuous, Gamma};
 use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, Tail, DIRECT_SHAPE_MAX};
+use super::incomplete_gamma::{
+    gamma_cdf, gamma_density, gamma_quantile, wilson_hilferty_quantile, Tail, DIRECT_SHAPE_MAX,
+    WILSON_HILFERTY_SHAPE_MIN,
+};
+use super::normal::normal_quantile;
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
@@ -154,8 +158,13 @@ impl Model {
         if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
         }
-        let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
-        let x = gamma_quantile(&dist, p, Tail::Lower);
+        let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && 0.0 < p && p < 1.0 {
+            let z = normal_quantile(p, 0.0, 1.0, cell)?;
+            wilson_hilferty_quantile(alpha, z) * beta_scale
+        } else {
+            let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
+            gamma_quantile(&dist, p, Tail::Lower)
+        };
         if !x.is_finite() || x < 0.0 {
             return Err(num_error(cell));
         }

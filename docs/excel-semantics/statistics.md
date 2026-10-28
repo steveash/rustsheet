@@ -3948,7 +3948,12 @@ constant c = 1.0002658235505755, at every shape up to 1E300 and every scale: `GA
 to 1E300 (A9-A23; `GAMMA.INV(0.5,1E13,1)` = 10002658235505.422 = c (1E13 - 1/3)), `GAMMA.INV(0.5,1E13,b)` is b times it
 for b = 1E-300 to 1E280 (A78-A85), and `GAMMA.INV(0.5,1E300,1E8)` = 1.0002658235505756E+308 (A86). The tails are not
 exactly c times the true quantile: at shape 1E13 and p = 1E-300 Excel's 10002541064587.973 is 12,972 below c times
-it and 2,600 above the true quantile at shape c·1E13 (A24); the exact model is open. CHISQ.INV and CHIINV differ at the
+it and 2,600 above the true quantile at shape c·1E13 (A24). The whole factor is a Wilson-Hilferty
+closed form with constants of Excel's own: c^(1/3) - 1 is 0.0000886 to 13 digits, and from shape 2E10
+Excel's value is a·(1 + 0.0000886 - 1/(9a) + z·s/(3·sqrt a))^3, z the normal quantile of p and s =
+1 - 2.2106E-5 (fitted on the 1E13 sweep A25-A41, all within 7 ulps of it; at 1E11, A61-A77, a term
+in z^2 of about 0.0002·z^2 absolute is left, 100 to 1,500 ulps). No search: the value has no
+(z^2 - 1)/3 skew of its own beyond the cube's. CHISQ.INV and CHIINV differ at the
 same df: `CHISQ.INV(0.5,2E13)` is `#NUM!` while `CHIINV(0.5,2E13)` = `CHISQ.INV.RT(0.5,2E13)` = 20005316471010.844 (A91-A93).
 The cdf itself has no such factor (`GAMMA.DIST(1E12,1E12,1,TRUE)` is correctly rounded, probes/incomplete-gamma-cap E9),
 so the factor is the inversion's.
@@ -3957,8 +3962,11 @@ E19; gen-m9 0a614cfe974b59c3 A327, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239,
 A296 (each within about 1E-11 of c times the true quantile). excel-graph refused (FileCorruptTryRepair) workbooks holding
 `GAMMA.DIST(2,a,1E10,TRUE)` for a from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells
 were dropped from the probe (T-2982).
-Ours: statrs' search, `#NUM!` at E5 and most cells above a shape of 1E9 (T-2982).
-Status: VERIFIED (excel-graph) for the factor at p = 0.5 and the #NUM! band; the tail model is open
+Ours: the closed form from shape 2E10 for GAMMA.INV and GAMMAINV (`incomplete_gamma` `wilson_hilferty_quantile`);
+below it statrs' search, `#NUM!` from a shape of about 1E9, where Excel has values to 5E9. CHISQ.INV.RT and CHIINV
+stay `#NUM!` above 1E10 degrees of freedom (`chisq.rs` `MAX_DEGREES_OF_FREEDOM`), where Excel takes 2E13 (A92, A93):
+both are T-3070's.
+Status: VERIFIED (excel-graph) for the factor at p = 0.5 and the #NUM! band; the closed form is a fit (7 ulps at 1E13)
 Tasks: T-2982
 
 ## GAMMA.DIST at a huge shape: #NUM! for a density at a tiny x, for the cdf above about 1E+76 (T-2435)
