@@ -54,6 +54,16 @@ pub enum TextToken {
     AMPM,
     AP(char, char),
 }
+
+impl TextToken {
+    /// Whether the token prints fixed text and no value (a literal, quoted text, a ghost or a fill).
+    pub fn is_literal(&self) -> bool {
+        matches!(
+            self,
+            TextToken::Literal(_) | TextToken::Text(_) | TextToken::Ghost(_) | TextToken::Spacer(_)
+        )
+    }
+}
 pub struct NumberPart {
     pub color: Option<i32>,
     pub condition: Option<(Compare, f64)>,
@@ -892,16 +902,9 @@ impl Parser {
             .filter(|t| matches!(t, TextToken::General))
             .count();
         if general_count > 0 {
-            let only_literals = tokens.iter().all(|t| {
-                matches!(
-                    t,
-                    TextToken::General
-                        | TextToken::Literal(_)
-                        | TextToken::Text(_)
-                        | TextToken::Ghost(_)
-                        | TextToken::Spacer(_)
-                )
-            });
+            let only_literals = tokens
+                .iter()
+                .all(|t| t.is_literal() || matches!(t, TextToken::General));
             if general_count > 1 || !only_literals || is_date || percent > 0 || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }

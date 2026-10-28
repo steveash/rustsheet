@@ -392,7 +392,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // in the 1900 system), and on the date system (`negative_serial_allowed`;
             // docs/excel-semantics/dates.md "The 1904 date system" and "Negative serials under
             // an explicit negative section").
-            if value_original < 0.0 && !negative_serial_allowed(&p.tokens, ctx.date_system) {
+            // A section whose only date-like token is a calendar prefix (`B1`) holds no date
+            // token, so a negative value prints its minus and the literals (`TEXT(-3,"b1")` is "-",
+            // `"b1 x"` "- x"; probes/t2388-b1-negative, excel-graph 2026-10-28, T-2388). The same
+            // holds for `B2`, a tagged prefix, an explicit negative section (`"0;b1 x"` is " x")
+            // and a magnitude past the maximum serial (`TEXT(-3000000,"b1")` is "-").
+            let literals_only = p.tokens.iter().all(TextToken::is_literal);
+            if value_original < 0.0
+                && !literals_only
+                && !negative_serial_allowed(&p.tokens, ctx.date_system)
+            {
                 return invalid_date(value_original);
             }
             // A negative that gets here (a one-section format) is formatted as its magnitude after
@@ -409,6 +418,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // #VALUE!: `TEXT(1234567890,"h:mm")`, `"[h]:mm"`, `"[mm]:ss.0"` (gen-m10
             // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20; gen-m5 6a511beadb56b932 Calc!A126).
             if value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0
+                && !(literals_only && value_original < 0.0)
                 && !negative_serial_allowed(tokens, DateSystem::Excel1900)
             {
                 return invalid_date(value_original);
