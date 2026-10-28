@@ -18,6 +18,9 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
 `checked_beta_reg`.
 
 ## Context
+- T-2977: F.INV, F.INV.RT and FINV search `fisher.rs::f_quantile_tail` (the unoriented tail,
+  `unoriented_shape_one_tail` at a shape of 1); delete both once they invert the ported F tail. Searching the ported
+  tail as of T-2977 fixes 9 gen-m9 cells and moves 9 gated cells 2 to 8 ulp off (T-2977 Outcome).
 - T-2464 research, step E8 of docs/research/t2464/r2-impact/RESULTS.md section 4 (`inverse.py` → `inverse.out`).
 - Rule: docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)". That holds at 155
   of 188 rows; 11 miss by 1 to 188 ulps of p, which suggests a tolerance stop that is not established.
@@ -60,3 +63,12 @@ This task is on the critical path of the Phase 1 exit: BETA.DIST, F.DIST, BINOM.
 
 ## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
 Deep-tail quantiles handed from the parked T-2695 (visibly off at the 2026-10-27 eval): F.INV gen-m9/0a614cfe974b59c3 Calc!A268 `F.INV(1E-200,8,10)` and gen-m9/85f48d5cdfb24555 Calc!A12 `F.INV(1E-300,9,3)`; FINV gen-m9/85f48d5cdfb24555 Calc!A10 `FINV(1E-300,5,10)`.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): F.INV 7, F.INV.RT 11, FINV 6. This task now owns them:
+- gen-m9/4ab2ba98d26c8a5e: Calc!A390
+- probes-numeric/m9-f-inv: Calc!A1, Calc!A4, Calc!A7, Calc!A21, Calc!A25
+- probes-numeric/m9-f-inv-rt: Calc!A1, Calc!A7, Calc!A15, Calc!A25
+- probes-numeric/m9-legacy-finv: Calc!A1, Calc!A2, Calc!A3, Calc!A4, Calc!A9, Calc!A10, Calc!A37, Calc!A38, Calc!A39, Calc!A40, Calc!A47, Calc!A48
+- probes-numeric/t1049-finv: Calc!A7
+- probes-numeric/t1049-finvrt: Calc!A14

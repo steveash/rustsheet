@@ -16,6 +16,10 @@ HYPGEOM.DIST and HYPGEOMDIST reproduce Excel's pmf where Excel's own value is mo
 off the exact rational, so the last visibly-off HYPGEOM cells pass.
 
 ## Context
+New evidence (T-2742): probes-numeric/t2742-hypgeom-small-n has Excel's pmf and cdf for every valid (x, n, K, N) with
+N 6-12. statistics.md "HYPGEOM.DIST is not exact for small integer arguments" summarizes it: 286 of 1442 pmf cells are
+exact, offsets reach 14 ulps, the pmf is not symmetric in n and K, the cdf is not the running sum of the pmf, and
+HYPGEOMDIST shares the kernel.
 T-0977 made the pmf and cdf the exact value rounded once (`discrete.rs` `hypergeometric_walk`). Excel is a few ulp off
 the exact value everywhere, and visibly off it at these cells (Excel vs ours = exact):
 - gen-m9/f2bd5f380ec002bf A52 `HYPGEOMDIST(2,2,3,11)`: 0.05454545454545458 vs 0.05454545454545454 (3/55)
