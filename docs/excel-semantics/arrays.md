@@ -1404,7 +1404,8 @@ Rule: Excel has no known per-formula work limit; a formula whose LAMBDA helpers 
 Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
 Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
 units: 6 per node evaluated (each link of an operator chain is one), 3 per cell of each array value a node gives or a range
-is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
+is turned into (a range arm of a lifted IF or CHOOSE, or an HSTACK or VSTACK argument, is first read for 3 per cell of
+its used area, then a picked one copied for 3 per cell of the range; T-1564), one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
 `&` operator makes over an array, T-2806), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
