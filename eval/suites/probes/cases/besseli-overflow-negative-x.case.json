@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3005: BESSELI overflow cut at negative x (-709.7 finite? -709.70001, -709.75).",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-3005",
+  "bessel"
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3",
+  "Calc!A4",
+  "Calc!A5",
+  "Calc!A6",
+  "Calc!A7",
+  "Calc!A8",
+  "Calc!A9",
+  "Calc!A10",
+  "Calc!A11",
+  "Calc!A12",
+  "Calc!A13"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=BESSELI(-709.7,0)",
+    "A2": "=BESSELI(-709.7,1)",
+    "A3": "=BESSELI(-709.7,2)",
+    "A4": "=BESSELI(-709.7,3)",
+    "A5": "=BESSELI(-709.7,4)",
+    "A6": "=BESSELI(-709.7,5)",
+    "A7": "=BESSELI(-709.70001,0)",
+    "A8": "=BESSELI(-709.70001,1)",
+    "A9": "=BESSELI(-709.70001,2)",
+    "A10": "=BESSELI(-709.70001,3)",
+    "A11": "=BESSELI(-709.70001,4)",
+    "A12": "=BESSELI(-709.70001,5)",
+    "A13": "=BESSELI(-709.75,1)"
+   }
+  }
+ ],
+ "expected": {},
+ "hypotheses": {
+  "Calc!A1": "besseli/x=-709.7/n=0",
+  "Calc!A2": "besseli/x=-709.7/n=1",
+  "Calc!A3": "besseli/x=-709.7/n=2",
+  "Calc!A4": "besseli/x=-709.7/n=3",
+  "Calc!A5": "besseli/x=-709.7/n=4",
+  "Calc!A6": "besseli/x=-709.7/n=5",
+  "Calc!A7": "besseli/x=-709.70001/n=0",
+  "Calc!A8": "besseli/x=-709.70001/n=1",
+  "Calc!A9": "besseli/x=-709.70001/n=2",
+  "Calc!A10": "besseli/x=-709.70001/n=3",
+  "Calc!A11": "besseli/x=-709.70001/n=4",
+  "Calc!A12": "besseli/x=-709.70001/n=5",
+  "Calc!A13": "besseli/x=-709.75/n=1"
+ }
+}

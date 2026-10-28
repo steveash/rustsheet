@@ -3,7 +3,7 @@ id: T-3005
 title: "Probe BESSELI overflow cut at negative x (T-2613 follow-up)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2613 probed the BESSELI cut only for positive x (finite at 709.7, `#NUM!` at 7
 
 ## Out of scope
 -
+
+## Outcome
+Probed probes/besseli-overflow-negative-x (excel-graph): the cut is symmetric in x (finite at -709.7 for orders 0-5, `#NUM!` at -709.70001 and -709.75). Our |x| rule already matches all 13 cells; engineering.md and the code comment updated. No engine change.

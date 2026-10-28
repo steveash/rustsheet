@@ -108,6 +108,7 @@ C	probes/bessel-large-x.case.json	24
 C	probes/besseli-overflow-cut-fine.case.json	33
 C	probes/besseli-overflow-cut-finest.case.json	12
 C	probes/besseli-overflow-cut-sweep.case.json	58
+C	probes/besseli-overflow-negative-x.case.json	13
 C	probes/bond-argument-check-order.case.json	298
 C	probes/bond-extreme-coupon-yield.case.json	579
 C	probes/bond-huge-yield-overflow.case.json	78

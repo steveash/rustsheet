@@ -7,7 +7,8 @@ use crate::x87_exp::excel_exp;
 
 /// BESSELI is `#NUM!` at every order past this |x|: `BESSELI(709.7,0)` is 2.4788083687166675E+306 and
 /// `BESSELI(709.70001,0)` is `#NUM!`, likewise at orders 1 and 5 (probes/besseli-overflow-cut-finest,
-/// -fine and -sweep; engineering.md "BESSELI overflow point"). Negative x is unprobed (taken as |x|).
+/// -fine and -sweep; engineering.md "BESSELI overflow point"). The cut is on |x|: `BESSELI(-709.7,0)` is finite and
+/// `(-709.70001,0)` is `#NUM!` (probes/besseli-overflow-negative-x).
 const BESSELI_OVERFLOW_X: f64 = 709.7;
 
 /// The even order BESSELI's Miller recurrence starts from, `2 (n + sqrt(MILLER_ACCURACY n))`.
