@@ -52,7 +52,8 @@ a unit of the 15th significant digit of Excel's value. Time-boxed (decision 0056
   - It is worse than today on cells that pass at 15 digits now: A23 (a = 0.9, x = 1.6E-18) +32 against ours -2.2,
     A20 (a = 0.75, x = 1.9E-7) +7.6, A24 and A25 (a = 0.9) +17. These cells decide the fit. Possible causes: the
     product a·LN(x) is kept in x87 extended precision, Excel's EXP differs from libm, the GAMMALN, or the form changes
-    with x or a.
+    with x or a. A24 is both a target (Excel 4.2E-15 below exact) and a cell the form misses, so the fit has to
+    explain it; if it cannot, the Outcome names A24, B24 and C24 as still open.
   - The power form `x^a/GAMMA(a+1)` never matches (2 ulps above at 1E-65, statistics.md).
 - Engine: crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/mod.rs, `incomplete_gamma_pair` →
   `gamma_prefactor` (a < `DIRECT_SHAPE_MAX`: `x.powf(a) * exp(-x) / tgamma(a)`) times `lower_series(a, x)` / a.

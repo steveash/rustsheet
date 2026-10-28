@@ -3129,8 +3129,9 @@ Tasks: T-1543, T-1634
     `EXP(a*LN(x))/EXP(GAMMALN(a+1))`, times EXP(-x) and the series, in doubles, gives Excel's value exactly at A16, A17
     and A18 (a = 0.75; Excel 1.18E-14, 3.5E-15 and 2.0E-15 relative above the exact cdf) and within 3 ulp at A21
     (a = 0.9, +1.15E-14) and A3-A5 (a = 0.1). The engine's exact form is 14 to 58 ulps off there. It does not fit
-    A20, A23-A25 (a = 0.75 and 0.9, x from 1.6E-18 up), where Excel is within a few ulp of exact and the form is
-    8 to 32 ulps off, so the form's region or its exact evaluation (x87, Excel's EXP) is still open.
+    A20, A23 and A25 (a = 0.75 and 0.9, x from 1.6E-18 up), where Excel is within a few ulp of exact and the form
+    is 8 to 32 ulps off, nor A24 (a = 0.9), where Excel is 4.2E-15 below exact (visibly off) and the form is 17 ulps
+    above Excel, so the form's region or its exact evaluation (x87, Excel's EXP) is still open.
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
