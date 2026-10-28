@@ -57,6 +57,12 @@ Cells:
 - gen-m9/23d82b62e9a85bdd.case.json (1): Calc!A261
 - gen-m9/a91bad4e84f49739.case.json (1): Calc!A73
 
+T-2216's sweep cells the engine misses today (gap triage 2026-10-28, `make eval` on dea28aa5; all 1 or 2 ulp, none
+visibly off; no task named them). The acceptance criterion "T-2216's sweep pass in full" already covers them, e.g. D1
+`RRI(0.5,3,4)` Excel 0.7777777777777775, ours 0.7777777777777777, and D4 Excel 8.000000000000002, ours 8:
+- probes-numeric/m9-fin-rri-sweep.case.json (19): Calc!D1, D4, D21, D22, D23, D42, D70, D84, D93, D98, D104, D109,
+  D115, D119, D120, D122, D125, D126, D129
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 2 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -86,3 +92,7 @@ to a follow-up task filed without the key.
 The sweep (financial.md "DURATION and RRI operation order") fits `EXP(LN(fv/pv)*(1/nper))-1` on 134 of 136 numeric points; `/nper` fits only 87. Implement the `*(1/nper)` form.
 
 Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/01523d247594952e Calc!A218 `=RRI(T.DIST.RT(TIME(5,2,16),1E+8),8370,40876)`: Excel 43.89282054161517, ours 43.892820541615116; gen-m9/5ded7594e597e31e Calc!A51 `=RRI(Data!B9,4299,42330)`: Excel 92554.9018325151, ours 92554.90183251501.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): RRI 1. This task now owns them:
+- probes-numeric/m9-fin-rri-sweep: Calc!D140
