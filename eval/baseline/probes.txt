@@ -1275,6 +1275,7 @@ C	probes/t2455-transpose-single-value.case.json	95
 C	probes/t2461-blank-array-sources.case.json	55
 C	probes/t2473-percentrank-significance.case.json	69
 C	probes/t2475-stat-subexpressions.case.json	574
+C	probes/t2479-expand-padarray-cellbound.case.json	2
 C	probes/t2479-expand-padarray-past-grid.case.json	1
 C	probes/t2479-expand-padarray-small.case.json	3
 C	probes/t2479-wrap-notvector-badcount.case.json	52
