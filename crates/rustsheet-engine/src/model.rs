@@ -612,7 +612,15 @@ impl Model {
                 }
                 range
             }
-            FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
+            FunctionKind { kind, args } => {
+                // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
+                if *kind == crate::functions::Function::Row && !self.tail_views.is_empty() {
+                    if let Some(value) = self.tailed_position(node, cell) {
+                        return value;
+                    }
+                }
+                self.evaluate_function(kind, args, cell)
+            }
             NamedFunctionKind { name, args, id } => {
                 self.evaluate_named_function_call(name, args, *id, cell)
             }

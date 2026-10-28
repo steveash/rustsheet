@@ -3,7 +3,7 @@ id: T-0491
 title: "SPEC-0020 amendment: bounded range leaves and ROW position leaves in the tailed reading"
 milestone: M11
 lane: perf
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -23,13 +23,34 @@ leaf range is a position leaf whose tail is the sentinel `{#N/IMPL}`, and a sent
 `read_tailed`, `tailed_operand`, `Tailed::elements`). Needed by T-0492 (corpus-bench 59969).
 
 ## Acceptance criteria
-- [ ] `tailed_leaves` takes single-column ranges of any one common span and `ROW(<leaf range>)`; mixed spans,
+- [x] `tailed_leaves` takes single-column ranges of any one common span and `ROW(<leaf range>)`; mixed spans,
       `ROW()` without an argument and COLUMN stay refused.
-- [ ] Equivalence tests in `test/test_tailed_array.rs` (tailed vs `TAILED_OFF`) for spans starting above, inside
+- [x] Equivalence tests in `test/test_tailed_array.rs` (tailed vs `TAILED_OFF`) for spans starting above, inside
       and below the used area, a ROW tail picked (fallback) and not picked (tailed), and a real `#N/IMPL` in the
       tail (fallback), over SUM, COUNT, MIN and SUMPRODUCT.
-- [ ] `rustsheet-eval check` 0 regressions; existing tailed tests unchanged.
-- [ ] `make check` green; reviewers approve.
+- [x] `rustsheet-eval check` 0 regressions; existing tailed tests unchanged.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SMALL/LARGE (T-0492), UNIQUE (T-0493), LOOKUP (T-0494).
+
+## Outcome
+`tailed_leaves` now accepts single-column ranges of any one common span, plus `ROW(<leaf range>)` as a position
+leaf. The head ends at `clamp(used_end, top, bottom)`, and the tail stands for `bottom - H` rows. In the head,
+a position leaf evaluates to its head row numbers. In the tail it evaluates to the `#N/IMPL` sentinel, and
+`Tailed::elements` refuses a sentinel tail element, so the argument is read the ordinary way. The hook for
+ROW sits in `evaluate_node_in_context`'s `FunctionKind` arm.
+
+For range operands, `tailed_operand` now calls `clip_block_to_used_area`. A bounded range's past-used-area
+cells are recorded as one rectangle, where `evaluate_range` would read and record them one by one. I
+corrected the amendment's "Records" bullet to say so.
+
+Tests in `test_tailed_array.rs`, each comparing the tailed result with `TAILED_OFF`:
+- 11 tailed forms: SUM, COUNTA, MIN, COUNT and SUMPRODUCT, with spans that start inside, at the end of and
+  below the used area, on another sheet, and with ROW in a branch.
+- 10 refused forms: mixed spans, a ROW-dependent tail, ROW in a condition, ROW with no range beside it,
+  too few tail rows, and COLUMN.
+- A spill into a bounded tail.
+
+A real `#N/IMPL` in the tail takes the same branch as the sentinel, so the ROW-dependent-tail tests
+exercise the fallback. Eval delta: none expected (`make check` gate). Speed-up measured by T-0492.

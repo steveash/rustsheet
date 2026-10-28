@@ -258,8 +258,13 @@ A range leaf may be any single-column `RangeKind` on one sheet, written with its
   last used row over the leaves' sheets (as before). Each leaf evaluates as rows `top..=H`, so a
   used area that ends above `top` still gives a one-row head. The tail stands for
   `tail_len = bottom - H` rows, and the gain rule becomes `tail_len >= MIN_TAILED_ROWS`.
-- **Records.** Unchanged. `tailed_operand` already makes the `clip_to_used_area` call on the
-  leaf's own corners, which is the one `evaluate_range` makes for any range (cast.rs).
+- **Records.** `clip_to_used_area` cuts only whole columns and rows. For a bounded range,
+  `evaluate_range` reads every cell past the used area one by one, each on record as read empty.
+  So `tailed_operand` calls `clip_block_to_used_area` instead (T-0491). It records the same cells
+  as one rectangle, the record T-0405's block walks make, and makes the same cut as
+  `clip_to_used_area` for a whole column. When the formula's seen-range budget cannot pay for the
+  rectangle, the block is not cut: the head is then stale, and the argument is read the ordinary
+  way.
 - **Size checks.** They apply to the logical size `bottom - top + 1`. For one column that is never
   above the array bound, so as before no size check differs.
 - **Whole columns.** A whole column is the case `top = 1`, `bottom = 1,048,576`. A formula that
