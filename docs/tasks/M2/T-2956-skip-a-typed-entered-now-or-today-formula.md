@@ -3,7 +3,7 @@ id: T-2956
 title: "Skip a typed (entered) NOW or TODAY formula as volatile, as a stored one is (probes/t2786 H1, H11)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,15 +39,21 @@ eval/baseline/probes.txt) and S!I1 and S!I11 stay scored. The stage is `semantic
 harness rule, not a numeric kernel.
 
 ## Acceptance criteria
-- [ ] `CellInput::formula()` returns the formula of a typed `=...` entry. `make eval-show
+- [x] `CellInput::formula()` returns the formula of a typed `=...` entry. `make eval-show
       CASE=probes/t2786-whitespace-structured-refs-runs.case.json` prints the typed formula, not `=`.
-- [ ] Unit tests in volatile.rs: a typed `NOW()` is tainted, `FORMULATEXT(H1)` of it is not, and
+- [x] Unit tests in volatile.rs: a typed `NOW()` is tainted, `FORMULATEXT(H1)` of it is not, and
       `FORMULATEXT(H1)&H1` is.
-- [ ] These 2 known-failure lines disappear from eval/baseline/probes.txt with no new ones:
+- [x] These 2 known-failure lines disappear from eval/baseline/probes.txt with no new ones:
       `probes/t2786-whitespace-structured-refs-runs.case.json` S!H1 and S!H11. The case's skipped-volatile count is 2,
       and S!I1 and S!I11 are still checked (their lines stay until T-2944).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Entering typed formulas after the tables (T-2955).
 - Printing the kept whitespace in I1:I13 (T-2944).
+
+## Outcome
+`CellInput::formula()` now returns the formula of a typed `=...` entry, so a typed `NOW( )`/`TODAY(  )` is skipped as volatile.
+`FORMULATEXT(ref)` / `ISFORMULA(ref)` with a lone A1 reference no longer carry the reference's taint (any other use still does).
+Eval: probes/t2786-whitespace-structured-refs-runs S!H1 and S!H11 left the baseline (2 known failures fewer, 0 regressions);
+S!I1 and S!I11 stay scored. Follow-up (not filed, fails safe): the lone-reference rule does not cover names or structured references.
