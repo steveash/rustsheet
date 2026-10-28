@@ -1133,7 +1133,7 @@ Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range
 `Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
 (`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`);
 functions/util/existing_walk.rs (`Model::walks_sparsely`)
-Tasks: T-1463, T-1769, T-2710
+Tasks: T-1463, T-1769, T-2710, T-0491
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
