@@ -3,7 +3,7 @@ id: T-2831
 title: "Probe FORMULATEXT of a multi-cell lifted INDIRECT element and a multi-area pick (T-2726)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
