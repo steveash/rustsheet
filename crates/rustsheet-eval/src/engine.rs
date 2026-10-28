@@ -232,8 +232,8 @@ impl Engine for RustSheetEngine {
                         if !formulas {
                             spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
-                        for (addr, a1, input) in row_major(&sheet.cells)? {
-                            let Some(mut input) = spec_input(input) else {
+                        for (addr, a1, input_spec) in row_major(&sheet.cells)? {
+                            let Some(mut input) = spec_input(input_spec) else {
                                 continue;
                             };
                             // spec2xlsx writes these as plain `<f>` formulas (T-1077).
@@ -242,12 +242,18 @@ impl Engine for RustSheetEngine {
                                     input = Input::LegacyFormula(text.clone());
                                 }
                             }
-                            // Text entered as typed is a formula when it starts with `=`: it
-                            // goes after the tables too, or a structured reference in it would
-                            // not parse (probes/t2786-whitespace-structured-refs-runs, T-2801).
+                            // Entered text goes after the tables, as the oracle types it after
+                            // the workbook loads: a structured reference in a typed formula
+                            // parses only once its table exists (probes/t2786-whitespace-
+                            // structured-refs-runs, T-2801), and a constant typed into a table
+                            // column after a typed formula is an exception to its calculated
+                            // column (probes/t2957-constant-exception, T-2958).
                             let is_formula = match &input {
                                 Input::StoredFormula(_) | Input::LegacyFormula(_) => true,
-                                Input::Parse(text) => text.starts_with('='),
+                                Input::Parse(text) => {
+                                    text.starts_with('=')
+                                        || matches!(input_spec, CellInput::Entered { .. })
+                                }
                                 _ => false,
                             };
                             if is_formula != formulas {

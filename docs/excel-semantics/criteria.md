@@ -403,3 +403,14 @@ wildcards would apply. No probe exists: the Graph oracle cannot evaluate conditi
 desktop Excel (decision 0039, T-1075 item 20).
 Status: UNVERIFIED.
 Tasks: T-2910, T-1075
+
+## Empty text in ABS and MONTH; fraction and numeric-text COUNTIFS criteria (VERIFIED, T-2870)
+Rule: `ABS("")`, `ABS(cell holding "")`, `MONTH("")` and `MONTH(cell holding "")` are `#VALUE!` (ERROR.TYPE 3). A
+COUNTIFS criterion of the number `0.5` or of a cell holding 0.5 counts the numeric 0.5 cells; the text criterion `"0.5"`
+counts them too. Numeric text (`"2"` literal or a cell holding the text "2") matches both the number 2 and the text "2"
+cells, as does the number 2 (the same rule as the numeric-criterion entry above). With a second criterion `">0"` on the
+same range (A21) the text "2" is not counted (2, not 3), which shows B3 is text. The `#VALUE!` of `ABS("")`/`MONTH("")` is
+argument coercion: see also the `--""` entry in coercion.md.
+Evidence: probes/m2-argument-kind-gaps-b (excel-graph), Calc!A11:A14 and A15:A21. Ours already matches (12/12).
+Status: VERIFIED.
+Tasks: T-2870

@@ -1,0 +1,44 @@
+---
+id: T-0086
+title: "exit_owners.py --all-off: every visibly-off Excel cell no open task owns, attributed, unattributed and probe, grouped by function"
+milestone: M0
+lane: harness
+status: todo
+priority: P1
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+One command lists every visibly-off Excel cell of the last eval run that no open task owns, so the steward and the
+gap-triager can keep the Phase 1 rule "each remaining failure has a filed task" (docs/milestones.md) true: attributed
+cells grouped by function (decision 0118), unattributed cells (decision 0132), and probe-milestone cells of every
+milestone, each with case, cell, formula, expected and actual.
+
+## Context
+- `scripts/exit_owners.py` today has `--milestone` (M5 and M6 only: it needs a `milestone_exit` row, which M0-M2
+  and M7-M11 lack until T-0089) and `--unattributed`. Nothing lists the attributed cells of functions below the
+  Phase 1 rate, which is most of the gap.
+- The T-0090 triage did this by hand: for every report.json `cases[].cells[]` entry with `from_excel`, it applied
+  the eval's visibly-off rule (`crates/rustsheet-eval/src/closeness.rs`: not within 4 ulp and not
+  `within_fifteen_digits`, or a non-numeric verdict), attributed the cell with `sole_call` (the GLUE list in
+  closeness.rs; the formula's single non-glue function), and checked `owned()` against the open tasks. It found
+  about 81,000 unowned cells; after the triage's own edits (T-2981 owns the incomplete-beta sweeps, T-2425 the
+  FORECAST.ETS cells) 478 attributed, 365 unattributed and 171 probe-milestone cells remain (T-0087's list). Cache the stem lookups per case: the naive loop over 100k cells x 380 tasks takes over 10 minutes.
+- The visibly-off rule must not be re-implemented divergently (directive 3): either have the eval write a
+  per-cell `visibly_off` flag (and the attributed function) into report.json `cases[].cells[]`, which is the
+  preferred route, or reuse one Python helper with a test that pins it to closeness.rs's boundary cases.
+
+## Acceptance criteria
+- [ ] `python3 scripts/exit_owners.py --all-off [--function NAME] [--strict]` (and `make unowned-off ALL=1` or a
+      new make target) prints the unowned visibly-off Excel cells, grouped by attributed function (then
+      unattributed, then probe milestone), one per line as `function<TAB>case!Sheet!A1<TAB>formula<TAB>expected
+      <TAB>actual`, then per-function and total counts; `--strict` exits 1 when any is listed.
+- [ ] It runs in under a minute on a full report.json; tests in scripts/test_exit_owners.py cover attribution,
+      the 4-ulp and half-unit boundaries, and deferred owners (a cell owned only by a `defer: phase-1b` task is
+      listed as `deferred` and counts as unowned).
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Filing the owners (T-0087).
