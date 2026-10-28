@@ -3,7 +3,7 @@ id: T-0086
 title: "exit_owners.py --all-off: every visibly-off Excel cell no open task owns, attributed, unattributed and probe, grouped by function"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -31,14 +31,14 @@ milestone, each with case, cell, formula, expected and actual.
   preferred route, or reuse one Python helper with a test that pins it to closeness.rs's boundary cases.
 
 ## Acceptance criteria
-- [ ] `python3 scripts/exit_owners.py --all-off [--function NAME] [--strict]` (and `make unowned-off ALL=1` or a
+- [x] `python3 scripts/exit_owners.py --all-off [--function NAME] [--strict]` (and `make unowned-off ALL=1` or a
       new make target) prints the unowned visibly-off Excel cells, grouped by attributed function (then
       unattributed, then probe milestone), one per line as `function<TAB>case!Sheet!A1<TAB>formula<TAB>expected
       <TAB>actual`, then per-function and total counts; `--strict` exits 1 when any is listed.
-- [ ] It runs in under a minute on a full report.json; tests in scripts/test_exit_owners.py cover attribution,
+- [x] It runs in under a minute on a full report.json; tests in scripts/test_exit_owners.py cover attribution,
       the 4-ulp and half-unit boundaries, and deferred owners (a cell owned only by a `defer: phase-1b` task is
       listed as `deferred` and counts as unowned).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Filing the owners (T-0087).
@@ -54,3 +54,12 @@ milestone, each with case, cell, formula, expected and actual.
 - Next: `make new-decision TITLE="..."` (extend decision 0132/0096 `exit_owners.py` listing with `--all-off`), fill it in,
   push, confirm CI green, re-tick the acceptance boxes, set `status: done` with an Outcome (eval delta none; 100,671
   attributed cells, 111 unowned, ~30 s), then merge under the steward policy.
+
+## Outcome
+- The eval writes `attributed_off` into report.json (`attribution::off_excel_cells` is the one filter behind it and
+  `unattributed_off`; closeness.rs's tests pin the 4-ulp and half-unit boundaries), and
+  `scripts/exit_owners.py --all-off [--function NAME] [--strict]` / `make unowned-off ALL=1 [FUNCTION=NAME]` list
+  every unowned visibly-off Excel cell by function, then unattributed, then probe milestone; deferred-only owners
+  show as `<group> (deferred)`. Decision 0142 records it.
+- On the full report of the handed-off run: 100,671 attributed off cells, 111 unowned listed, in about 30 s.
+- Eval delta: none (report-only change).
