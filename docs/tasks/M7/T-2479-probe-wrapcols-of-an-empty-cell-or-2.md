@@ -24,4 +24,4 @@ T-2365 review: ours returns `#VALUE!` for `WRAPCOLS({1,2;3,4},-1)` and `#N/A` fo
 -
 
 ## Outcome
-Probe cases t2479-* filled from excel-graph. Excel: empty-cell vector beats an error wrap_count (`#VALUE!`), and EXPAND rows past the grid beat an array pad_with (`#NUM!`). Both fixed; arrays.md updated. probes: 3 new cases, all pass (56 cells).
+Probe cases t2479-* filled from excel-graph. Excel: empty-cell vector beats an error wrap_count (`#VALUE!`), and EXPAND rows past the grid beat an array pad_with (`#NUM!`). Both fixed; arrays.md updated. probes: 4 new cases, all pass (58 cells); the review added t2479-expand-padarray-cellbound (pad_with beats the cell bound, not the columns cap).
