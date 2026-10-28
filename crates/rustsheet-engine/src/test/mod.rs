@@ -131,6 +131,7 @@ mod test_typographic_quote_names;
 mod test_union_operator;
 mod test_union_sum_metamorphic;
 mod test_union_vara_mode;
+mod test_unqualified_structured_references;
 mod test_weekday_return_types;
 mod test_weekday_weeknum_isoweeknum;
 mod test_weeknum_return_types;
