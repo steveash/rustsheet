@@ -229,11 +229,26 @@ fn fn_yield_start_term_whole_years_then_leftover_days() {
 #[test]
 fn fn_yield_matches_excel_off_the_fit() {
     let mut model = new_empty_model();
-    model._set("H30", "=PRICE(DATE(2025,4,1),DATE(2028,3,13),0.05,0.065,15,1,3)");
-    model._set("A1", "=YIELD(DATE(2025,4,1),DATE(2028,3,13),0.05,H30,15,1,3)");
-    model._set("A2", "=YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)");
-    model._set("A3", "=YIELD(DATE(2100,2,16),DATE(2104,3,1),0.05,98,100,2,0)");
-    model._set("A4", "=YIELD(DATE(2096,3,1),DATE(2110,6,30),0.12,98,100.5,1,0)");
+    model._set(
+        "H30",
+        "=PRICE(DATE(2025,4,1),DATE(2028,3,13),0.05,0.065,15,1,3)",
+    );
+    model._set(
+        "A1",
+        "=YIELD(DATE(2025,4,1),DATE(2028,3,13),0.05,H30,15,1,3)",
+    );
+    model._set(
+        "A2",
+        "=YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)",
+    );
+    model._set(
+        "A3",
+        "=YIELD(DATE(2100,2,16),DATE(2104,3,1),0.05,98,100,2,0)",
+    );
+    model._set(
+        "A4",
+        "=YIELD(DATE(2096,3,1),DATE(2110,6,30),0.12,98,100.5,1,0)",
+    );
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
         Ok(CellValue::Number(n)) => n.to_bits(),
