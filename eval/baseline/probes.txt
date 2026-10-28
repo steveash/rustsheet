@@ -3498,9 +3498,6 @@ F	probes/t2779-hebrew-saka-names.case.json	S!G6
 F	probes/t2779-hebrew-saka-names.case.json	S!G7
 F	probes/t2779-hebrew-saka-names.case.json	S!G8
 F	probes/t2779-hebrew-saka-names.case.json	S!G9
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C2
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C3
-F	probes/t2786-whitespace-structured-refs-runs.case.json	S!C4
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
@@ -3676,11 +3673,6 @@ F	probes/t2881-besselj-turning-point.case.json	Calc!A74
 F	probes/t2881-besselj-turning-point.case.json	Calc!A75
 F	probes/t2881-besselj-turning-point.case.json	Calc!A76
 F	probes/t2881-besselj-turning-point.case.json	Calc!A8
-F	probes/t2957-constant-exception.case.json	S!C2
-F	probes/t2957-constant-exception.case.json	S!C4
-F	probes/t2957-constant-then-refill.case.json	S!C2
-F	probes/t2957-constant-then-refill.case.json	S!C4
-F	probes/t2957-existing-constant.case.json	S!C3
 F	probes/t2957-expand-right-data.case.json	S!D3
 F	probes/t2957-expand-right-data.case.json	S!D4
 F	probes/t2957-expand-right-data.case.json	S!F3
@@ -3691,12 +3683,6 @@ F	probes/t2957-expand-right-header.case.json	S!F1
 F	probes/t2957-expand-right-header.case.json	S!H1
 F	probes/t2957-expand-right-header.case.json	S!H3
 F	probes/t2957-expand-right-header.case.json	S!H4
-F	probes/t2957-fill-one-totals.case.json	S!C2
-F	probes/t2957-fill-one-totals.case.json	S!C3
-F	probes/t2957-fill-one-totals.case.json	S!C4
-F	probes/t2957-refill-second.case.json	S!C2
-F	probes/t2957-refill-second.case.json	S!C3
-F	probes/t2957-refill-second.case.json	S!C4
 F	probes/table-edits/plain-range-delete-row-first.case.json	F!A6
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
