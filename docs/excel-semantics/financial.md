@@ -543,6 +543,19 @@ two other kinds:
   (gen-m9/31474c20fc1dafd6 A271) and `{0.3,-2.5,1.005}` (gen-m9/a91bad4e84f49739 A369), no
   secant run from any guess in -0.99 to 100 gives Excel's bits (the nearest is 2.6e-15 off), so
   Excel's fallback is not a retry of the same secant from another fixed guess (T-1686).
+- T-2565 (probes/t2565-irr-guess-sweeps, excel-graph 2026-10-28; {-0.0001,2,42} P!A1:C72 and {-2.5,-1,123456789.123}
+  P!A73:C175, each as is, x1E6 and x-1; `IRR(flows, g_k)` at every iterate of the model's run from 0.1 and the
+  j = -5..5 guess sweep): the departure is not in the early steps. Excel departs from the model by 1E-13 to 1E-12
+  relative from the very first guess g_1 (P!C1, C73) to the last (P!C13, C95, whose guess is the model's final
+  iterate), so no distance from the root at which the two agree exists; the model's rate for guess 0.1 + j*1E-5
+  slides with j (P!C14:C24), Excel's is constant over j = -5..5 in all three scalings of {-0.0001,2,42}
+  (P!C14:C24, C38:C48, C62:C72) and in the unscaled and x-1 blocks of the other flow except its last row. The
+  result is on a grid: in v = 1/(1 + result) Excel's results are integer multiples of 2^-53 (v is about 1.4E-4,
+  whose own spacing is 2^-65), and the model's v rounded to the nearest multiple of 2^-53, returned as 1/v - 1,
+  equals Excel's bits in 173 of the 175 cells (the other two within 1.5 grid steps). So the "0.1 to 0.4 %" error
+  of the large-root cells is the secant's final v held with 53 fractional bits (the iterate is stored as an offset
+  from 1 or in a 2^-53-granular fixed form), not a different early step. Unexplored: where in the step the
+  rounding happens (T-2131).
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
 for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
 Tasks: T-1525, T-1533, T-0916, T-2131, T-2565
