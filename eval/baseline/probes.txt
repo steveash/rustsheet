@@ -1452,6 +1452,9 @@ C	probes/table-edits/table-delete-row-first-data.case.json	12
 C	probes/table-edits/table-delete-row-inside-data.case.json	12
 C	probes/table-edits/table-delete-row-last-data-totals.case.json	15
 C	probes/table-edits/table-delete-row-last-data.case.json	12
+C	probes/table-edits/table-delete-row-only-data-outside.case.json	11
+C	probes/table-edits/table-delete-row-only-data-second-table.case.json	10
+C	probes/table-edits/table-delete-row-only-data-totals.case.json	14
 C	probes/table-edits/table-delete-row-totals.case.json	15
 C	probes/table-edits/table-delete-sheet.case.json	12
 C	probes/table-edits/table-delete-table-cells.case.json	6
@@ -3600,6 +3603,13 @@ F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
 F	probes/table-edits/table-delete-column-qty.case.json	F!A7
 F	probes/table-edits/table-delete-row-all-data-below.case.json	S!C7
+F	probes/table-edits/table-delete-row-only-data-outside.case.json	S!B5
+F	probes/table-edits/table-delete-row-only-data-outside.case.json	S!C5
+F	probes/table-edits/table-delete-row-only-data-outside.case.json	S!E5
+F	probes/table-edits/table-delete-row-only-data-second-table.case.json	S!E7
+F	probes/table-edits/table-delete-row-only-data-second-table.case.json	S!F7
+F	probes/table-edits/table-delete-row-only-data-totals.case.json	S!B5
+F	probes/table-edits/table-delete-row-only-data-totals.case.json	S!C7
 F	probes/table-edits/table-insert-column-inside-header.case.json	F!A4
 F	probes/table-edits/table-insert-two-columns-inside-header.case.json	F!A4
 F	probes/table-edits/table-insert-two-columns-inside-header.case.json	F!A5
