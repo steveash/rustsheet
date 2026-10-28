@@ -3,7 +3,7 @@ id: T-0092
 title: "Milestone probe lists report visibly-off cells: a count and the case!Sheet!A1 list on each milestone_lists row"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
