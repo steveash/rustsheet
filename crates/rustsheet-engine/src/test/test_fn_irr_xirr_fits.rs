@@ -223,3 +223,11 @@ fn irr_reads_the_guess_between_a_flows_error_and_an_element_error() {
         ("=IRR({1,\"a\"}+0,INDEX(B3:C9,2))", "#REF!"),
     ]);
 }
+
+#[test]
+fn xnpv_discounts_with_excels_caret_at_an_exact_root() {
+    // probes/xirr-exact-root-sign: a few ulps from 0, with Excel's sign (financial.md "XNPV
+    // discounts with Excel's `^`").
+    let got = results(&["=XNPV(0.1,{-1,6.727499949325611},{45000,52300})"]);
+    assert_eq!(got, [2.220_446_049_250_313e-16_f64.to_bits()]);
+}

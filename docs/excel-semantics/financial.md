@@ -1373,10 +1373,10 @@ with nontrivial values. A date at serial 0 makes XNPV `#NUM!` (J1:J5), although 
 (xirr-early-dates A8).
 Evidence: probes/xirr-exact-root-sign: 541 numeric cells, all matched by the lab's `xirr.xnpv` (tools/.../kernels/xirr.py) with
 `caret_pow` and 15-digit literals (excel-graph, 2026-10-24, T-2328).
-Ours: `compute_xnpv` and XIRR's `xirr_xnpv` (functions/financial/financial_util.rs) use `powf`, so they miss
-these cells. This is the follow-up task filed with T-2328.
+Ours: `compute_xnpv` and XIRR's `xirr_xnpv` use `arithmetic::power`, Excel's `^` (T-2566).
 Status: VERIFIED (excel-graph)
-Tasks: T-2328
+Implemented in: functions/financial/financial_util.rs (`compute_xnpv`, `xirr_xnpv`)
+Tasks: T-2328, T-2566
 
 ## XNPV, XIRR and FVSCHEDULE beside their whole data
 Rule: XNPV's rate, XIRR's guess and FVSCHEDULE's principal lift over an array and refuse a multi-cell range, as the other
