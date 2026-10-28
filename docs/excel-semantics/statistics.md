@@ -3130,7 +3130,7 @@ Tasks: T-1543, T-1634
     `EXP(a*LN(x))/EXP(GAMMALN(a+1))`, times EXP(-x) and the series, in doubles, gives Excel's value exactly at A16, A17
     and A18 (a = 0.75; Excel 1.18E-14, 3.5E-15 and 2.0E-15 relative above the exact cdf), within 1 ulp at A21
     (a = 0.9, +1.15E-14) and within 5 ulp at A3-A5 (a = 0.1), evaluated with CPython's `lgamma` and `exp` standing
-    in for Excel's GAMMALN and EXP. The engine's exact form is 14 to 58 ulps off there. It does not fit A20, A23, A24
+    in for Excel's GAMMALN and EXP. The engine's exact form is 6 to 58 ulps off there. It does not fit A20, A23, A24
     and A25 (a = 0.75 and 0.9, x from 1.6E-18 up). There Excel is 1.5E-15 to 4.2E-15 relative below the exact cdf
     (about 9 to 32 ulp; A24 is visibly off), and the form is 10 to 58 ulps above Excel. So the form's region, or its
     exact evaluation (x87, Excel's EXP), is still open.

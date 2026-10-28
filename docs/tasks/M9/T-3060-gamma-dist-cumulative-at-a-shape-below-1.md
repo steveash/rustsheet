@@ -50,7 +50,7 @@ a unit of the 15th significant digit of Excel's value. Time-boxed (decision 0056
   - It lands the visibly-off A..C cells other than row 24 within 3 to 5 ulp: A16, A17 and A18 exactly (ours -58, -17,
     -14), A21 +0.6 to +1 (ours -51), A3/A4/A5 +2.3 to +5 depending on the GAMMALN and EXP stand-ins (ours +8.7, -8.9,
     -6.4). Row 24 is open (below).
-  - It is worse than today on cells that pass at 15 digits now: A23 (a = 0.9, x = 1.6E-18) +32 against ours -2.2,
+  - It is worse than today on A20, A23 and A25, which pass at 15 digits now, and misses the target A24: A23 (a = 0.9, x = 1.6E-18) +32 against ours -2.2,
     A20 (a = 0.75, x = 1.9E-7) +7.6, A24 and A25 (a = 0.9) +17 (a fidelity re-run with CPython's
     lgamma and exp measured +10, +58, +30 and +22 at A20, A23, A24 and A25: the figures depend on the stand-ins).
     Excel itself is 9 to 32 ulp below exact at A20 and A23-A25. These cells decide the fit. Possible causes: the
