@@ -57,6 +57,7 @@ impl Lexer {
     /// Moves back to char index `position`, a position this lexer already passed: the parser
     /// re-reads a `[` operand as a structured reference once it knows the table (T-2979).
     pub(crate) fn rewind_to(&mut self, position: usize) {
+        // Never forward: moving ahead would skip text the caller has not read.
         self.position = position.min(self.position);
     }
 

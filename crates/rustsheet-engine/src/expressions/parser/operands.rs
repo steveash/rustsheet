@@ -664,25 +664,22 @@ impl Parser {
         Node::BooleanKind(value)
     }
 
-    /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
-    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` lowers to a
-    /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
-    /// does not resolve (unknown table or column) stays a parse error, which keeps the formula
-    /// text.
-    /// An operand starting with `[` (the lexer's `LeftBracket`, at char index `start`): a structured
+    /// An operand starting with `[` (the lexer's `LeftBracket`, just read): a structured
     /// reference written without its table name, which names the table holding the formula's
     /// cell, its totals row included (`=[@Col]*2`, `=SUBTOTAL(109,[Col])`; references.md
     /// "Structured references: this row, totals and ranges", T-2979). Stored (R1C1) text carries
     /// the table as a `[T]` prefix (`StructuredReference::stored_text`). Outside every table the
     /// operand is refused, as before.
-    pub(super) fn unqualified_structured_reference(&mut self, start: usize) -> Node {
+    pub(super) fn unqualified_structured_reference(&mut self) -> Node {
         let refused =
             |parser: &mut Self| parser.unexpected_operand("Unexpected token: '['".to_string());
         let table_name = if self.lexer.is_a1_mode() {
             let Some(name) = self.containing_table_name() else {
                 return refused(self);
             };
-            self.lexer.rewind_to(start);
+            // Back onto the `[` just read (any whitespace before it is already behind).
+            self.lexer
+                .rewind_to(self.lexer.get_position_index().saturating_sub(1));
             name
         } else {
             let Some(name) = self.lexer.stored_table_prefix() else {
@@ -726,6 +723,11 @@ impl Parser {
         })
     }
 
+    /// A structured reference, `Table1[Column]`, kept as written around the area it stands for
+    /// (SPEC-0016). `bare` marks a bare table name (`ROWS(Sales)`). `#This Row` lowers to a
+    /// [`Node::ThisRowKind`], resolved at the evaluating cell's row (T-1699); a reference that
+    /// does not resolve (unknown table or column) stays a parse error, which keeps the formula
+    /// text.
     pub(super) fn structured_reference_operand(
         &mut self,
         table_name: String,

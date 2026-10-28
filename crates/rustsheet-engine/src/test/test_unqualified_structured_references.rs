@@ -65,6 +65,8 @@ fn column_and_this_row_forms() {
     let mut model = model();
     typed(&mut model, 3, 3, "=SUM([Col])");
     assert_eq!(values(&model, 3)[1], "7");
+    typed(&mut model, 4, 3, "= [@Col]+1");
+    assert_eq!(values(&model, 3)[2], "5");
     typed(&mut model, 3, 7, "=[[#This Row],[Col]]+1");
     assert_eq!(values(&model, 7)[1], "201");
     assert_eq!(

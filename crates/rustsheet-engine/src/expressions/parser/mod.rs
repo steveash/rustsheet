@@ -976,7 +976,7 @@ impl Parser {
             | TokenType::Percent => {
                 self.unexpected_operand(format!("Unexpected token: '{next_token:?}'"))
             }
-            TokenType::LeftBracket => self.unqualified_structured_reference(start),
+            TokenType::LeftBracket => self.unqualified_structured_reference(),
             TokenType::StructuredReference {
                 table_name,
                 specifier,
