@@ -10,9 +10,12 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import merge_train  # noqa: E402 (the sys.path line above must run first)
+import merge_ready  # noqa: E402 (the sys.path line above must run first)
+import merge_train  # noqa: E402
+from gh_client import FakeGh, Reply  # noqa: E402
 
 SCRIPTS = Path(__file__).resolve().parent
 TASK = """---
@@ -252,6 +255,86 @@ class Build(unittest.TestCase):
                     tree = self.git("merge-tree", "--write-tree", squash, member.head)
                     squash = self.git("commit-tree", tree, "-p", squash, "-m", "squash")
                     self.assertEqual(tree, self.git("rev-parse", f"{member.merge}^{{tree}}"))
+
+
+def verdict(pr: int, head: str, at: str, *failures: merge_ready.Failure) -> merge_ready.Verdict:
+    mark = merge_ready.Marker(head, None, None, {}, "session-1")
+    return merge_ready.Verdict(pr, mark, pr, at, failures)
+
+
+class DryRun(unittest.TestCase):
+    """Collect and the dry run against a temporary origin whose refs/pull/<n>/head are PR heads;
+    V1-V6 themselves are scripts/test_merge_ready.py's."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name)
+        self.origin, self.clone = base / "origin.git", base / "clone"
+        run("git", "init", "-q", "--bare", "-b", "main", str(self.origin), cwd=base)
+        run("git", "clone", "-q", str(self.origin), str(self.clone), cwd=base)
+        for key, value in (("user.name", "t"), ("user.email", "t@invalid")):
+            self.git("config", key, value)
+        self.git("checkout", "-q", "-b", "main")
+        (self.clone / "scripts").mkdir()
+        for name in ("tasks.py", "check_decisions.py"):
+            shutil.copy(SCRIPTS / name, self.clone / "scripts" / name)
+        for path in ("docs/decisions/README.md", "docs/decisions/0001-a.md"):
+            (self.clone / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.clone / path).write_text("x")
+        self.base = self.commit("main")
+        self.git("push", "-q", "origin", "main")
+        self.heads = {}
+        for pr in (1, 2, 3, 4):
+            self.git("checkout", "-q", "-f", "--detach", self.base)
+            (self.clone / f"f{pr}.txt").write_text("x")
+            self.heads[pr] = self.commit(f"pr {pr}")
+            self.git("push", "-q", "origin", f"HEAD:refs/pull/{pr}/head")
+        self.git("checkout", "-q", "-f", "main")
+        # PR 2's marker is the oldest; PR 3 has red CI, PR 4 pending CI, PR 5 no label.
+        self.verdicts = {
+            1: verdict(1, self.heads[1], "2026-10-28T11:00:00Z"),
+            2: verdict(2, self.heads[2], "2026-10-28T10:00:00Z"),
+            3: verdict(3, self.heads[3], "2026-10-28T09:00:00Z", merge_ready.Failure("V3", "CI red", merge_ready.UNLABEL)),
+            4: verdict(4, self.heads[4], "2026-10-28T09:00:00Z", merge_ready.Failure("V3", "CI pending", merge_ready.KEEP)),
+        }
+        label = [{"name": merge_ready.READY_LABEL}]
+        pulls = [{"number": pr, "labels": label} for pr in (1, 2, 3, 4)] + [{"number": 5, "labels": []}]
+        replies = {("GET", "repos/o/r/pulls?state=open&per_page=100&page=1"): Reply(pulls)}
+        for pr in (1, 2):
+            replies[("GET", f"repos/o/r/pulls/{pr}")] = Reply({"mergeable_state": "clean"})
+        self.fake = FakeGh("o", "r", replies)
+
+    def git(self, *args: str) -> str:
+        return run("git", *args, cwd=self.clone)
+
+    def commit(self, message: str) -> str:
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", message)
+        return self.git("rev-parse", "HEAD")
+
+    def dry_run(self) -> str:
+        with mock.patch.object(merge_train.merge_ready, "verify", side_effect=lambda c, pr, repo: self.verdicts[pr]):
+            for pr in self.heads:  # verify fetches each head; the mock does not
+                self.git("fetch", "-q", "origin", f"+refs/pull/{pr}/head:refs/merge-ready/pull/{pr}")
+            return merge_train.dry_run(self.fake, self.clone)
+
+    def test_a_dry_run_reports_the_batch_and_writes_nothing(self) -> None:
+        refs = run("git", "for-each-ref", cwd=self.origin)
+        report = self.dry_run()
+        self.assertIn(f"batch: #2 ({self.heads[2][:12]}), #1 ({self.heads[1][:12]})", report)
+        self.assertIn("would unlabel #3: CI red", report)
+        self.assertIn("skipped, label kept #4: CI pending", report)
+        self.assertNotIn("#5", report)
+        self.assertEqual({r.method for r in self.fake.requests}, {"GET"})
+        self.assertEqual(run("git", "for-each-ref", cwd=self.origin), refs)
+        self.assertEqual(self.git("worktree", "list", "--porcelain").count("worktree "), 1)
+
+    def test_a_conflicting_pr_is_unlabelled(self) -> None:
+        self.fake.replies[("GET", "repos/o/r/pulls/1")] = Reply({"mergeable_state": "dirty"})
+        report = self.dry_run()
+        self.assertIn("would unlabel #1: conflict with main", report)
+        self.assertIn("batch: #2", report)
 
 
 if __name__ == "__main__":
