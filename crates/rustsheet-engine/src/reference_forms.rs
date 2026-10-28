@@ -48,16 +48,13 @@ impl ReferenceFormsReader {
         defined_names: &[(String, Option<String>, String)],
         tables: Vec<Table>,
     ) -> Self {
+        // A name local to a sheet the workbook lacks can never be read: it is left out.
         let names: Vec<DefinedNameS> = defined_names
             .iter()
             .filter_map(|(name, sheet, body)| {
                 let scope = match sheet {
                     None => None,
-                    // A name local to a sheet the workbook lacks names nothing.
-                    Some(sheet) => Some(
-                        u32::try_from(sheets.iter().position(|s| s.eq_ignore_ascii_case(sheet))?)
-                            .ok()?,
-                    ),
+                    Some(sheet) => Some(sheet_index(&sheets, sheet)?),
                 };
                 Some((name.clone(), scope, body.clone()))
             })
@@ -115,34 +112,24 @@ impl ReferenceFormsReader {
     }
 }
 
+/// The 0-based tab index of `sheet` among `sheets` (names match ignoring case).
+fn sheet_index(sheets: &[String], sheet: &str) -> Option<u32> {
+    let index = sheets.iter().position(|s| s.eq_ignore_ascii_case(sheet))?;
+    u32::try_from(index).ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::TableColumn;
 
     fn reader() -> ReferenceFormsReader {
-        let table = Table {
-            name: "Sales".to_string(),
-            display_name: "Sales".to_string(),
-            sheet_name: "Jan".to_string(),
-            reference: "A1:B4".to_string(),
-            totals_row_count: 0,
-            header_row_count: 1,
-            header_row_dxf_id: None,
-            data_dxf_id: None,
-            totals_row_dxf_id: None,
-            columns: ["Item", "Qty"]
-                .iter()
-                .zip(1..)
-                .map(|(name, id)| TableColumn {
-                    id,
-                    name: (*name).to_string(),
-                    ..TableColumn::default()
-                })
-                .collect(),
-            style_info: crate::types::TableStyleInfo::default(),
-            has_filters: false,
-        };
+        let table = Table::new(
+            "Sales",
+            "Jan",
+            "A1:B4",
+            (1, 0),
+            ["Item", "Qty"].map(str::to_string),
+        );
         ReferenceFormsReader::new(
             ["Jan", "Feb", "Mar"].map(str::to_string).to_vec(),
             &[

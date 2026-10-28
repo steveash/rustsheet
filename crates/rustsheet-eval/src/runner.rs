@@ -96,6 +96,24 @@ impl CellKind {
 }
 
 impl CellResult {
+    /// A scored Excel-evidence cell of sheet `S` expecting 1 and giving 1, for tests.
+    #[cfg(test)]
+    pub(crate) fn for_test(cell: &str, formula: Option<&str>, verdict: Verdict) -> CellResult {
+        CellResult {
+            sheet: "S".to_string(),
+            cell: cell.to_string(),
+            formula: formula.map(str::to_string),
+            anchor_formula: None,
+            expected: Value::Number(1.0),
+            actual: Value::Number(1.0),
+            verdict,
+            from_excel: true,
+            listed_deviation: false,
+            graph_subnormal: false,
+            kind: CellKind::Scored,
+        }
+    }
+
     /// Stable identifier used in baselines: `Sheet!A1`.
     #[must_use]
     pub fn key(&self) -> String {
@@ -470,9 +488,12 @@ fn pin_deviations(
 fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
     let bytes = std::fs::read(&case.path).map_err(|e| e.to_string())?;
     let snapshot = read_snapshot(&bytes).map_err(|e| e.to_string())?;
-    // Every poi workbook, pending ones too: a crashed one holding a subset formula is listed.
+    // Every poi workbook, pending ones too: a crashed one holding a subset formula is listed. The
+    // parser reads third-party text here, outside the evaluation's panic isolation, so a panic
+    // leaves the workbook unclassified instead of ending the run.
     let reference_forms = if suite.manifest.name == poi_m8_subset::SUITE {
-        ReferenceFormCells::classify(&snapshot)
+        catch_unwind(AssertUnwindSafe(|| ReferenceFormCells::classify(&snapshot)))
+            .unwrap_or_default()
     } else {
         ReferenceFormCells::default()
     };

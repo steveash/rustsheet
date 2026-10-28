@@ -11,12 +11,13 @@
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write as _;
 
-use rustsheet_engine::types::{Table, TableColumn, TableStyleInfo};
+use rustsheet_engine::types::Table;
 use rustsheet_engine::{ReferenceForms, ReferenceFormsReader};
 use serde::{Deserialize, Serialize};
 
 use crate::closeness::Visible;
 use crate::runner::{CaseResult, CaseStatus};
+use crate::value::Verdict;
 use crate::xlsx_snapshot::{FormulaKind, WorkbookSnapshot};
 
 /// The suite classified.
@@ -101,28 +102,14 @@ fn reader(snapshot: &WorkbookSnapshot) -> ReferenceFormsReader {
     let tables = snapshot
         .tables
         .iter()
-        .map(|t| Table {
-            name: t.name.clone(),
-            display_name: t.name.clone(),
-            sheet_name: t.sheet.clone(),
-            reference: t.range.clone(),
-            totals_row_count: t.totals_rows,
-            header_row_count: t.header_rows,
-            header_row_dxf_id: None,
-            data_dxf_id: None,
-            totals_row_dxf_id: None,
-            columns: t
-                .columns
-                .iter()
-                .zip(1..)
-                .map(|(name, id)| TableColumn {
-                    id,
-                    name: name.clone(),
-                    ..TableColumn::default()
-                })
-                .collect(),
-            style_info: TableStyleInfo::default(),
-            has_filters: false,
+        .map(|t| {
+            Table::new(
+                &t.name,
+                &t.sheet,
+                &t.range,
+                (t.header_rows, t.totals_rows),
+                t.columns.iter().cloned(),
+            )
         })
         .collect();
     ReferenceFormsReader::new(sheets, &names, tables)
@@ -146,7 +133,7 @@ pub struct PoiM8Subset {
 }
 
 /// Whether a case did not run to scoring.
-fn blocked(status: &CaseStatus) -> bool {
+fn blocked(status: CaseStatus) -> bool {
     matches!(
         status,
         CaseStatus::EngineError | CaseStatus::Panic | CaseStatus::Timeout
@@ -162,7 +149,7 @@ pub fn summarize(results: &[CaseResult]) -> Option<PoiM8Subset> {
     }
     let mut out = PoiM8Subset::default();
     for r in cases {
-        if blocked(&r.status) {
+        if blocked(r.status) {
             if !r.reference_forms.subset.is_empty() {
                 out.blocked_cases.push(format!("{}!*", r.id));
             }
@@ -176,7 +163,7 @@ pub fn summarize(results: &[CaseResult]) -> Option<PoiM8Subset> {
             if !r.reference_forms.subset.contains(&key) {
                 continue;
             }
-            if !c.verdict.is_pass() && !c.verdict.is_failure() {
+            if c.verdict == Verdict::Deviation {
                 out.deviations += 1;
                 continue;
             }
@@ -216,8 +203,8 @@ mod tests {
 
     use super::*;
     use crate::cellref::Addr;
-    use crate::runner::{CellKind, CellResult};
-    use crate::value::{Value, Verdict};
+    use crate::runner::CellResult;
+    use crate::value::Value;
     use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot};
 
     fn formula(text: &str, kind: FormulaKind) -> CellSnapshot {
@@ -302,42 +289,19 @@ mod tests {
 
     fn cell(cell: &str, verdict: Verdict, actual: f64) -> CellResult {
         CellResult {
-            sheet: "S".to_string(),
-            cell: cell.to_string(),
-            formula: Some("Rate".to_string()),
-            anchor_formula: None,
-            expected: Value::Number(1.0),
             actual: Value::Number(actual),
-            verdict,
-            from_excel: true,
-            listed_deviation: false,
-            graph_subnormal: false,
-            kind: CellKind::Scored,
+            ..CellResult::for_test(cell, Some("Rate"), verdict)
         }
     }
 
     fn case(id: &str, status: CaseStatus, cells: Vec<CellResult>, subset: &[&str]) -> CaseResult {
         CaseResult {
-            id: format!("{SUITE}/{id}"),
-            suite: SUITE.to_string(),
-            status,
-            message: None,
-            expected_source: String::new(),
-            checked: cells.len(),
-            passed: 0,
-            deviations: 0,
-            skipped_volatile: 0,
-            skipped_add_in: 0,
-            millis: 0,
-            tags: Vec::new(),
             cells,
-            text: Vec::new(),
-            defined_names: BTreeMap::new(),
-            arguments: Vec::new(),
             reference_forms: ReferenceFormCells {
                 subset: subset.iter().map(|s| (*s).to_string()).collect(),
                 unparsed: ["S!A9".to_string()].into(),
             },
+            ..CaseResult::empty(&format!("{SUITE}/{id}"), SUITE, status)
         }
     }
 
