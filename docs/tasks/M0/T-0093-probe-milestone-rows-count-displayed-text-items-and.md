@@ -3,7 +3,7 @@ id: T-0093
 title: "Probe-milestone rows count displayed-text items and list the failing ones as case!Sheet!A1"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -29,14 +29,20 @@ M10 probes (decision 0146 item 4(b)).
   text item takes that cell's milestone, as its value cell does).
 
 ## Acceptance criteria
-- [ ] `MilestoneRow` gains `text_items: usize`, `text_failing: usize` and `text_failing_cells: Vec<String>`
+- [x] `MilestoneRow` gains `text_items: usize`, `text_failing: usize` and `text_failing_cells: Vec<String>`
       (`#[serde(default)]`), filled from the cases the row already assigns.
-- [ ] Unit tests: a case with two text items, one failing, adds 2 / 1 and the failing item's `case!Sheet!A1` to
+- [x] Unit tests: a case with two text items, one failing, adds 2 / 1 and the failing item's `case!Sheet!A1` to
       its milestone's row and nothing to another row; a case with no text items leaves the counts at 0.
-- [ ] report.md's "Probe milestones" table gains `text items` and `failing text` columns; `make eval` on `main`
+- [x] report.md's "Probe milestones" table gains `text items` and `failing text` columns; `make eval` on `main`
       shows 410 text items in total across rows and 0 failing.
-- [ ] No change to baselines, gates or `scripts/`; `make check` green; reviewers approve.
+- [x] No change to baselines, gates or `scripts/`; `make check` green; reviewers approve.
 
 ## Out of scope
 - The M10 exit row and exit-owners support (T-0097).
 - Scoring text items in the eval gate (they stay information, T-1610).
+
+## Outcome
+`MilestoneRow` gained `text_items`, `text_failing` and `text_failing_cells` (`case!Sheet!A1`); a text item takes its
+value cell's milestone, else its case's. report.md's "Probe milestones" table has `text items` and `failing text`
+columns. Unit tests cover a case with two items (one failing), a case with none, and the markdown row. Eval delta:
+none; on this branch all 415 probe text items (the task's 410 has grown) sit in M10 and 0 fail.
