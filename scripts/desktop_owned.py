@@ -57,10 +57,11 @@ def desktop_owned(baseline_dir: Path, tasks_dir: Path) -> list[tuple[ExitCell, s
     """The failing cells only open M14 tasks own, each with its first M14 owner."""
     cases, cells = baseline_items(baseline_dir)
     called = exit_owners.case_names(cases + [c.case for c in cells])
+    open_tasks = exit_owners.open_tasks(tasks_dir)
     desktop = [
-        (str(m["id"]), t) for m, t in exit_owners.open_tasks(tasks_dir) if m.get("milestone") == DESKTOP
+        (str(m["id"]), t) for m, t in open_tasks if m.get("milestone") == DESKTOP
     ]
-    others = [t for m, t in exit_owners.open_tasks(tasks_dir) if m.get("milestone") != DESKTOP]
+    others = [t for m, t in open_tasks if m.get("milestone") != DESKTOP]
     # Texts narrowed to the ones naming the case, once per case (as exit_owners.unowned_off does);
     # the other milestones' texts only for a case some M14 task names.
     mine: dict[str, list[tuple[str, str]]] = {}

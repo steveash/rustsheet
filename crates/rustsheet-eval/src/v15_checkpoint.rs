@@ -6,7 +6,8 @@
 //! every Excel cell that calls it below the evidence floor). The stricter share, over every Excel
 //! cell that calls the function with decision 0088's blame, is kept as information. The cells of
 //! [`Phase1Exceptions`] are left out of the Phase 1 rate: its listed cells (decision 0134) and the
-//! cells only open M14 tasks own (decision 0143). It is a report, never a gate; "both hold on two consecutive steward runs" is the steward's to check.
+//! cells only open M14 tasks own (decision 0143). It is a report, never a gate; "both hold on two
+//! consecutive steward runs" is the steward's to check.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;

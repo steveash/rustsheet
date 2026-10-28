@@ -13,26 +13,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import desktop_owned  # noqa: E402 (the sys.path line above must run first)
 import exit_owners  # noqa: E402
 
-GEN = "gen-m9/22656c225ff4f22a.case.json"
-OTHER = "gen-m9/43a13a091907b402.case.json"
+GEN, OTHER = "gen-m9/22656c225ff4f22a.case.json", "gen-m9/43a13a091907b402.case.json"
 POI = "poi/FormulaEvalTestData_Copy.xlsx"
 
-BASELINE = "\n".join(
-    [
-        "# a comment line",
-        f"C\t{GEN}\t400",
-        f"C\t{OTHER}\t400",
-        f"C\t{POI}\t3000",
-        f"F\t{GEN}\tCalc!A4",
-        f"F\t{GEN}\tCalc!A7",
-        f"F\t{GEN}\tCalc!A15",
-        f"F\t{OTHER}\tCalc!A10",
-        f"F\t{OTHER}\t*",
-        f"F\t{POI}\tEverythingTests!J136",
-        f"F\t{POI}\t!EngineError",
-        f"TF\t{GEN}\tCalc!A4",
-    ]
-)
+# One baseline file: `C` lines name the cases, `F` lines their known failures; `*`,
+# `!EngineError` and the `TF` text line are no cells.
+BASELINE = f"""# a comment line
+C\t{GEN}\t400
+C\t{OTHER}\t400
+C\t{POI}\t3000
+F\t{GEN}\tCalc!A4
+F\t{GEN}\tCalc!A7
+F\t{GEN}\tCalc!A15
+F\t{OTHER}\tCalc!A10
+F\t{OTHER}\t*
+F\t{POI}\tEverythingTests!J136
+F\t{POI}\t!EngineError
+TF\t{GEN}\tCalc!A4
+"""
 
 
 class DesktopOwnedTest(unittest.TestCase):
@@ -41,7 +39,7 @@ class DesktopOwnedTest(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.baseline = self.root / "baseline"
         self.baseline.mkdir()
-        (self.baseline / "all.txt").write_text(BASELINE + "\n")
+        (self.baseline / "all.txt").write_text(BASELINE)
         self.tasks = self.root / "tasks"
         self.n = 0
 
