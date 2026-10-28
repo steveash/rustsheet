@@ -188,15 +188,21 @@ Ours: matches (probes/data-tables 20/20). Each table is the sheet's `DataTable` 
 results, row input and column input), and its result cells hold plain values. After an evaluation
 pass, the tables are recomputed in sheet order. For each result cell the input cells are replaced
 by the header values, the table's formula is evaluated on demand, and the inputs are put back. The
-workbook is then evaluated again, so readers see the results. ISFORMULA and FORMULATEXT of a result
+workbook is then evaluated again, so readers see the results. A table is not recomputed when
+nothing its last recomputation read has changed: while it is recomputed every sheet records the
+cells and areas read, and their contents (constants, formula texts, styles, spills), the sheets'
+extents, the names, tables, settings and hidden rows and columns are kept with its results. A
+formula that reaches RAND, RANDBETWEEN, RANDARRAY, NOW, TODAY, CELL, INFO or GETPIVOTDATA, or
+iterative calculation, recomputes every time; when no table is recomputed the second evaluation
+is skipped (`data_table_memo.rs`, T-0453). ISFORMULA and FORMULATEXT of a result
 cell are TRUE and `{=TABLE(row,column)}`. The xlsx import reads `dt2D`, `dtr`, `r1`, `r2`, `del1`
 and `del2`, and the export writes them back on the first result cell.
 Unprobed, our choices: a deleted input (`del1`/`del2`), or a table with no input, makes every
 result `#REF!`. A header cell or formula that spills or gives a range is read as its top-left
 value (`scalar_at`). Neither is in probes/data-tables (T-0459).
 Status: VERIFIED (excel-graph) for the rules above; the unprobed choices are not
-Implemented in: crates/rustsheet-engine/src/data_tables.rs, crates/rustsheet-xlsx/src/import/sheet_data.rs (`data_table`), crates/rustsheet-xlsx/src/export/data_tables.rs
-Tasks: T-0428, T-0441, T-0446
+Implemented in: crates/rustsheet-engine/src/data_tables.rs, crates/rustsheet-engine/src/data_table_memo.rs, crates/rustsheet-xlsx/src/import/sheet_data.rs (`data_table`), crates/rustsheet-xlsx/src/export/data_tables.rs
+Tasks: T-0428, T-0441, T-0446, T-0453
 
 ## Data tables re-evaluate the workbook at most 2^25 formulas per recalculation
 Rule: Excel's limit on the work of data tables is unprobed; it is expected to compute every
@@ -206,7 +212,8 @@ Ours: every result cell re-evaluates the formulas its table's formula depends on
 of one recalculation may evaluate at most 33,554,432 formulas together
 (`MAX_DATA_TABLE_EVALUATIONS`). The result cells computed after the budget is spent are `#NUM!`,
 so a large table over a large model cannot hold the evaluation without bound (CLAUDE.md
-directive 5).
+directive 5). A table that is not recomputed (T-0453) is charged what its last recomputation
+spent, so the tables after it find the budget as before; one that ran out is always recomputed.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`)
 Tasks: T-0441
