@@ -850,13 +850,36 @@ Rule: TAKE and DROP of a range return a reference, so a one-cell result is a sca
 1x1 array: `ROWS(OFFSET(B9:C12,5,1,DROP(H2:H4,-2,0),2))` is 3 for H2 = 3 (1 for H3 = 1), `COLUMNS(..)` 2, `INDEX(..,1,1)` the cell. The same holds through
 `IF(TRUE,DROP(..))`, `MAX(..)` and `N(..)`, and with `+0` (`TAKE(H2:H4,1)+0` is 3 rows). An array constant `{3}` or `{1E-15}`, `SEQUENCE(1,1,3)`,
 `INDEX(H2:H4,{1})` and `CHOOSE({1},3)` lift: 1 row, `INDEX(..,1,1)` is `#SPILL!`. A two-cell `DROP(H1:H3,1,0)` lifts to a 2x1 array of references.
-A scalar height of 1E-15 (literal or cell) gives 2 rows (UNVERIFIED mechanism; `OFFSET(B9:C12,5,1,1E-15,2)` rows 2, `INDEX(..,1,1)` 0).
+A scalar height or width that is not 0 but truncates to 0 gives 2 rows (columns) reaching one row *up* (left) from the start: the zero check
+sees the number, the end is start + trunc(height) - 1, so the area is the row above the start and the start itself. `ROWS(OFFSET(B9:C12,5,1,h,2))`
+is 2 for h = 1E-15, 1E-300, 0.1, 0.5, 0.9999, -1E-15 and -0.5, 1 for 1, 1.5, 1.9999, -1 and -1.5, 2 for 2.5; `COLUMNS(..,2,1E-15)` and
+`COLUMNS(..,2,0.5)` are 2; `ROWS(OFFSET(A1,0,0,1E-15))` is `#REF!` (no row above row 1); `ROWS(OFFSET(B9,0,0,-0.5))` is 2 and
+`ROW(OFFSET(B9,0,0,-0.5))` spills (`#SPILL!` in one cell), `ROW(OFFSET(B9,0,0,-1.5))` 9 (probes/t3072-take-drop-one-cell-reference P23-P41; T-3072).
+A CHOOSE or LET picking a one-cell DROP is a scalar height too: `ROWS(OFFSET(B9:C12,5,1,CHOOSE(1,DROP(H2:H4,-2,0))))` and
+`ROWS(OFFSET(B9:C12,5,1,LET(x,DROP(H2:H4,-2,0),x)))` are 3, also with `+0` (P19-P22).
 Evidence: probes/t2454-offset-array-height, probes/t2454-offset-one-cell-array-args, probes/t2414-gen-m7-unexplained A141, A151, A161, A171
 (excel-graph, 2026-10-23, T-2454).
-Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF picking one) is its reference; a CHOOSE or LET picking one is unprobed for OFFSET (T-2519). A one-cell
+Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF, CHOOSE or LET picking one) is its reference (T-2519). A one-cell
 TAKE/DROP of a single-sheet range stays its reference in value context (`take_drop_reference`), so the `+0` and `N(..)` forms are scalar too (T-2519).
 Status: VERIFIED (excel-graph); partly implemented (T-2454, T-2519)
-Tasks: T-2454, T-2519
+Tasks: T-2454, T-2519, T-3072
+
+## TAKE/DROP of a one-cell reference is a reference
+Rule: TAKE and DROP of a one-cell reference (`E7`, not only `E7:E7`) return that reference, so a one-cell result is a scalar under an operator and
+reads as a reference cell everywhere. With E7 text and E9 blank, `ROWS(E9-TAKE(E7,2,42))`, `ROWS(E9-TAKE(E7:E7,1))`, `ROWS(E9-DROP(E7,0))` and
+`ROWS(TAKE(E7,1)+0)` are `#VALUE!`; `TYPE(1+TAKE(C8,1))`, `TYPE(1+DROP(C8,0))` and `TYPE(1+TAKE(C8:C9,1))` are 1 while `TYPE(1+TAKE({5},1))`
+and `TYPE(1+TAKE(C8,{1}))` (a lifted count) are 64. A blank one-cell TAKE is SUMXMY2's blank one-cell reference: `SUMXMY2(TAKE(C11,-1,1),B6:C10)`
+and `SUMXMY2(TAKE(C11:C12,1),B6:C10)` are `#VALUE!` as `SUMXMY2(C11,B6:C10)`, while a number (`TAKE(C8,1)`, `C8`, `5`, `TAKE({5},1)`) against
+the 10-cell range is the count's `#N/A` (coercion.md "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing"). The information functions see the reference:
+`ISREF(TAKE(E7,1))`, `ISREF(TAKE(E7:E8,1))`, `ISREF(DROP(E7:E8,1))` and `ISREF(TAKE(E7:E8,2))` are TRUE; `ISBLANK(TAKE(C11,1))`,
+`ISBLANK(TAKE(C11:C12,1))` and `ISBLANK(DROP(C11:C12,1))` TRUE; `TYPE(TAKE(E7,1))` 2 but `TYPE(TAKE(E7:E8,2))` 64;
+`CELL("address",TAKE(E7:E8,-1))` `$E$8`, `CELL("address",TAKE(E7,1))` `$E$7`, `CELL("row",DROP(E7:E8,1))` 8, `CELL("type",TAKE(C11:C12,1))` `b`;
+`ISTEXT(TAKE(E7:E8,1))` TRUE and `ISFORMULA(TAKE(E7:E8,1))` FALSE.
+Evidence: probes/t3072-take-drop-one-cell-reference P1-P18, P42-P57 (excel-graph, 2026-10-28, T-3072); gen-m9/7674c89c824aca43 Calc!A305
+(`CHITEST((E9-TAKE(E7,2,42)),C8:C10)` `#VALUE!`), gen-m9/7c20351562a2d71d Calc!A277.
+Ours: `take_drop_reference` reads a one-cell reference argument as its one-cell range (T-3072).
+Status: VERIFIED (excel-graph); implemented
+Tasks: T-2519, T-3072
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or
