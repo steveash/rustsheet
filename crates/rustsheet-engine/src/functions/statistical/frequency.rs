@@ -56,11 +56,25 @@ impl Model {
             // An error element of the data array is the result, not the `#VALUE!` the shared reader
             // gives (gen-m9/05d44f6dd6cfc567 A126: `{-1,TRUE,0}` through CHISQ.DIST.RT is `#NUM!`),
             // and a scalar bins error beats it (`FREQUENCY({1;#DIV/0!},NA())` is `#N/A`,
-            // probes/frequency-bins B1-B3). A bins array keeps the shared reader's `#VALUE!`: no
-            // oracle cell shows an error element there (T-2636).
+            // probes/frequency-bins B1-B3).
             array @ CalcResult::Array(_) if is_data => self
                 .numeric_flat_with_element_errors(array, cell)
                 .map_err(FreqError::element),
+            // An error element of the bins array is skipped like a text one: `ROWS(FREQUENCY(0,
+            // {1,#VALUE!,3}))` is 3 (probes/array-error-element-order A1-A2, A4; desktop agrees,
+            // corpus-bench/53062 AE6).
+            CalcResult::Array(array) => {
+                let kept = array
+                    .into_iter()
+                    .map(|row| {
+                        row.into_iter()
+                            .filter(|item| !matches!(item, ArrayNode::Error(_)))
+                            .collect()
+                    })
+                    .collect();
+                self.numeric_flat_of(CalcResult::Array(kept), cell)
+                    .map_err(FreqError::element)
+            }
             // Every other data error, a range's error cell included, comes before the bins' as
             // on `main` (the reverse is unprobed); the bins' own lose to the data's.
             value if is_data => self.numeric_flat_of(value, cell).map_err(FreqError::scalar),
