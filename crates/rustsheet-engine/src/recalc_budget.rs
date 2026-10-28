@@ -22,8 +22,8 @@ use crate::{
 pub(crate) const MAX_PASS_WORK: u64 = 1 << 30;
 
 /// Work units one recalculation (`Model::evaluate`) may spend in all, committed or thrown away,
-/// in its rounds of passes (SPEC-0028): the time bound of directive 5. Sweeps and data tables do
-/// not draw on it yet (T-3009).
+/// in every phase: its rounds of passes, its iterative sweeps and its data tables (SPEC-0028):
+/// the time bound of directive 5.
 pub(crate) const MAX_RECALC_WORK: u64 = 1 << 32;
 
 /// Message of the `#VALUE!` of a formula past its share in share mode (SPEC-0028 section 3).
@@ -101,10 +101,11 @@ impl RecalcBudget {
     }
 
     /// The smallest of the pools a run may still draw on, and which one it is: the ceiling, and in
-    /// normal mode what the pass may still commit. Ties go to the ceiling.
-    fn pools_left(&self) -> (u64, RunBound) {
+    /// a pass in normal mode what the pass may still commit. A sweep or data-table run (`in_pass`
+    /// false) draws on the ceiling alone (SPEC-0028 section 4). Ties go to the ceiling.
+    fn pools_left(&self, in_pass: bool) -> (u64, RunBound) {
         let pass_left = self.pass_limit.saturating_sub(self.committed);
-        if self.mode == RecalcMode::Normal && pass_left < self.left {
+        if in_pass && self.mode == RecalcMode::Normal && pass_left < self.left {
             (pass_left, RunBound::Pass)
         } else {
             (self.left, RunBound::Ceiling)
@@ -147,24 +148,21 @@ impl Model {
     }
 
     /// The fresh budget of a formula run starting now, whose own limit is `formula_limit`, after
-    /// the run it interrupts has settled what it spent so far ([`Model::start_run`]): a run in a
-    /// pass may spend the least of its own limit (its share in share mode) and what the pools
-    /// have left.
+    /// the run it interrupts has settled what it spent so far ([`Model::start_run`]): a run may
+    /// spend the least of its own limit (its share in share mode) and what the pools have left
+    /// ([`RecalcBudget::pools_left`]).
     pub(crate) fn start_run(&mut self, formula_limit: u64) -> AreaBudget {
         let outer = &mut self.area_budget;
         let in_pass = self.evaluation.in_pass;
         let Some(recalc) = self.evaluation.recalc.as_mut() else {
             return AreaBudget::for_run(formula_limit, formula_limit, RunBound::Own, false);
         };
-        settle(recalc, outer);
+        settle(recalc, outer, in_pass);
         let (own, own_bound) = match recalc.mode {
             RecalcMode::Share(share) if share < formula_limit => (share, RunBound::Share),
             _ => (formula_limit, RunBound::Own),
         };
-        if !in_pass {
-            return AreaBudget::for_run(formula_limit, own, own_bound, false);
-        }
-        let (pool, pool_bound) = recalc.pools_left();
+        let (pool, pool_bound) = recalc.pools_left(in_pass);
         if pool < own {
             AreaBudget::for_run(formula_limit, pool, pool_bound, true)
         } else {
@@ -182,9 +180,10 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
         let unwinding = self.evaluation.unwinding;
+        let in_pass = self.evaluation.in_pass;
         if let Some(recalc) = self.evaluation.recalc.as_mut() {
-            settle(recalc, inner);
-            if inner.pooled && unwinding {
+            settle(recalc, inner, in_pass);
+            if inner.pooled && unwinding && in_pass {
                 // A run cut short by the depth limit runs again: what it spent is thrown away.
                 recalc.committed = recalc.committed.saturating_sub(inner.spent);
                 recalc.throw_away(inner.spent);
@@ -194,7 +193,7 @@ impl Model {
             }
             let outer = &mut self.area_budget;
             if outer.pooled {
-                let (pool, bound) = recalc.pools_left();
+                let (pool, bound) = recalc.pools_left(in_pass);
                 if outer.work > pool {
                     outer.work = pool;
                     outer.bound = bound;
@@ -302,12 +301,14 @@ impl Model {
     }
 }
 
-/// Settles what `run` spent since its last settle into `recalc`'s pools: the ceiling, and the
-/// pass's committed sum when the run draws on the pass ([`AreaBudget::pooled`]).
-fn settle(recalc: &mut RecalcBudget, run: &mut AreaBudget) {
+/// Settles what `run` spent since its last settle into `recalc`'s pools when it draws on them
+/// ([`AreaBudget::pooled`]): the ceiling, and in a pass the pass's committed sum.
+fn settle(recalc: &mut RecalcBudget, run: &mut AreaBudget, in_pass: bool) {
     let spent = run.settle_spent();
     if run.pooled {
         recalc.left = recalc.left.saturating_sub(spent);
-        recalc.committed = recalc.committed.saturating_add(spent);
+        if in_pass {
+            recalc.committed = recalc.committed.saturating_add(spent);
+        }
     }
 }

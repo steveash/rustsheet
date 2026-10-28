@@ -17,7 +17,8 @@ use crate::{
 
 /// Formula evaluations all the data tables of one recalculation may make together (CLAUDE.md
 /// directive 5). A table over a large model re-evaluates the model once per result cell; past
-/// the budget a result is `#NUM!` (recalc.md, DEVIATION).
+/// the budget a result is `#NUM!` (recalc.md, DEVIATION). Each run also draws on the
+/// recalculation's ceiling (SPEC-0028 section 4): once it runs out, the budget is spent.
 const MAX_DATA_TABLE_EVALUATIONS: usize = 1 << 25;
 
 /// Result cells all the data tables of one recalculation may fill together (directive 5). Each
@@ -95,6 +96,7 @@ impl Model {
         let column_values: Vec<ArrayNode> = (top..=bottom)
             .map(|r| self.scalar_at(at(r, left - 1)))
             .collect();
+        self.spend_all_past_ceiling(budget);
         let mut results = Vec::new();
         for (i, row) in (top..=bottom).enumerate() {
             for (j, column) in (left..=right).enumerate() {
@@ -143,6 +145,11 @@ impl Model {
         self.reset_on_demand_evaluation();
         let value = self.scalar_at(formula);
         *budget = budget.saturating_sub(self.evaluation.cells.len().max(1));
+        let value = if self.spend_all_past_ceiling(budget) {
+            ArrayNode::Error(Error::NUM)
+        } else {
+            value
+        };
         for (at, cell) in saved.into_iter().rev() {
             if let Ok(ws) = self.workbook.worksheet_mut(at.sheet) {
                 match cell {
@@ -152,6 +159,17 @@ impl Model {
             }
         }
         value
+    }
+
+    /// Whether a run ran out of the recalculation's ceiling (SPEC-0028 section 4); if so the
+    /// evaluation `budget` is spent, so this result and every later one is `#NUM!`, as past
+    /// [`MAX_DATA_TABLE_EVALUATIONS`].
+    fn spend_all_past_ceiling(&mut self, budget: &mut usize) -> bool {
+        let overran = self.take_overrun().is_some();
+        if overran {
+            *budget = 0;
+        }
+        overran
     }
 
     /// Forgets which formulas have been evaluated, so the next read evaluates them on demand.

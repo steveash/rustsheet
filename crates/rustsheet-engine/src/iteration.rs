@@ -42,7 +42,9 @@ impl Default for Iteration {
 }
 
 /// Member evaluations all the sweeps of one recalculation may make together (CLAUDE.md
-/// directive 5); past it the sweeps stop where they are (recalc.md, DEVIATION).
+/// directive 5); past it the sweeps stop where they are (recalc.md, DEVIATION). Each run also draws
+/// on the recalculation's ceiling (SPEC-0028 section 4), and running out of it stops them the same
+/// way.
 const MAX_SWEEP_EVALUATIONS: usize = 1 << 25;
 
 /// What a recalculation with iteration on keeps about its circular references.
@@ -200,6 +202,11 @@ impl Model {
                 self.evaluation.cells.remove(&key(at));
                 self.evaluation.clear_pass_caches();
                 self.evaluate_cell(at);
+                if self.take_overrun().is_some() {
+                    // The ceiling ran out: the run stored nothing, so the member keeps its value
+                    // from before it, and the sweeps stop as at `MAX_SWEEP_EVALUATIONS`.
+                    return;
+                }
                 let after = self.current_value(at);
                 largest = largest.max(change(&before, &after));
             }
