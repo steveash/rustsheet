@@ -7,7 +7,10 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
 - `xirr`, `xirr-oos`: in kernels/xirr.py.
 - `irr`: the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
-- `rate`: Newton candidates in r and IRR's secant applied to r (T-1533); none is Excel's method.
+- `irr-fallback`: in kernels/irr_fallback.py.
+- `rate`: the T-2005 secant on the FV residual and its residual variants, traced (T-2527; a nested PMT is
+  Excel's own value of that call, `Fit.calls`), and the rejected Newton candidates in r and IRR's secant
+  applied to r (T-1533).
 - `yield-one-period`: the documented closed form with each day-count choice.
 - `yield`: basis-0 bonds with more than one coupon left: Newton, secant and regula falsi on PRICE
   (`yield-caret`, kernels/yield_caret.py: the same on PRICE discounted with Excel's `^`, T-2207).
@@ -41,11 +44,19 @@ from rustsheet_tools.fitlab.sweep import (
 )
 
 FIT_CASES = ["probes-numeric/m9-fin-irr-rate", "probes/solver-iteration-traces"]
+RATE_CASES = [
+    *FIT_CASES,
+    "probes/rate-empty-arguments",
+    "probes/fin-argument-modes",
+    "probes/rate-zero-residual-guess",
+    "probes/rate-excel-pmt-bits",
+]
 YIELD_CASES = [
     "probes/solver-iteration-traces",
     "probes/bond-one-period-bases",
     "probes/yield-solver-sweep",
     "probes/yield-start-sweep",
+    "probes/yield-start-one-input",
 ]
 
 
@@ -345,6 +356,108 @@ def _literal_rate(cell: Cell) -> bool:
     return 3 <= len(cell.args) <= 6 and all(isinstance(a, float) for a in cell.args)
 
 
+# RATE's secant (T-2005, financial.md "RATE is a secant on the FV residual"), ported from the scratch
+# harness to the lab (T-2527): `compute_rate` (functions/financial/financial_util.rs) and its variants.
+
+Op = Callable[[float, float], float]
+Residual = Callable[[float, Annuity], float]
+RATE_MAX_STEPS = 200  # Excel's cap (probes/rate-step-cap); the engine's RATE_MAX_STEPS
+RATE_CAP_TOLERANCE = 1e-4  # the cap's looser return test (T-2689)
+
+
+def _plain_add(a: float, b: float) -> float:
+    return a + b
+
+
+def _plain_mul(a: float, b: float) -> float:
+    return a * b
+
+
+def _plain_div(a: float, b: float) -> float:
+    return a / b
+
+
+PLAIN: tuple[Op, Op, Op] = (_plain_add, _plain_mul, _plain_div)
+TWICE: tuple[Op, Op, Op] = (X87.add, X87.mul, X87.div)
+
+
+def fv_residual(ops: tuple[Op, Op, Op] = PLAIN, order: str = "pv,pmt,fv") -> Residual:
+    """f(r) = pv·P + pmt·(k·((P-1)/r)) + fv, P = Excel's `^` of Excel's 1+r, k = 1+r for type 1: FV's
+    evaluation (the T-2005 model with `PLAIN` and the default order; f(0) = pv + pmt·n + fv). `ops`
+    rounds the residual's own `+`, `*` and `/` (`TWICE`: Excel's operators); `order` is the order of
+    the three-term sum (`pv,pmt,fv` is ((pv·P + pmt·A) + fv))."""
+    add, mul, div = ops
+
+    def f(r: float, annuity: Annuity) -> float:
+        n, pmt, pv, fv, t = annuity
+        if r == 0:
+            return pv + pmt * n + fv
+        p = caret_pow(X87.add(1.0, r), n)
+        k = add(1.0, r) if t != 0 else 1.0
+        terms = {"pv": mul(pv, p), "pmt": mul(pmt, mul(k, div(add(p, -1.0), r))), "fv": fv}
+        a, b, c = (terms[name] for name in order.split(","))
+        total = add(add(a, b), c)
+        if not math.isfinite(total):
+            raise NoResultError("residual is not finite")
+        return total
+
+    return f
+
+
+def rate_secant_iterates(residual: Residual, *args: Arg) -> list[float]:
+    """The iterates r2 of RATE's secant on `residual` (the T-2005 model with `fv_residual()`), ending
+    with the returned rate; NoResultError (`#NUM!`) or ExcelError `#VALUE!` (a guess at or below -1)
+    where the model has no result."""
+    full = [numeric_arg(x) for x in args] + [0.0, 0.0, 0.1][len(args) - 3 :]
+    a: Annuity = (full[0], full[1], full[2], full[3], full[4])
+    guess = full[5]
+    if guess <= -1:
+        raise ExcelError("guess at or below -1", "#VALUE!")
+    r0, f0 = guess, residual(guess, a)
+    r1 = r0 - math.copysign(0.001, f0)
+    f1 = residual(r1, a)
+    out: list[float] = []
+    for step in range(1, RATE_MAX_STEPS + 1):
+        if f1 == f0:
+            raise NoResultError("flat secant")
+        r2 = X87.add(r1, -X87.div(X87.mul(f1, X87.add(r1, -r0)), X87.add(f1, -f0)))
+        if not math.isfinite(r2) or r2 <= -1:
+            raise NoResultError("iterate is not a rate")
+        f2 = residual(r2, a)
+        out.append(r2)
+        size = abs(r2 - r1)
+        if size < 1e-7 and abs(f2) < 1e-7:
+            return out
+        at_cap = step == RATE_MAX_STEPS and size < RATE_CAP_TOLERANCE
+        if at_cap and abs(f2) < RATE_CAP_TOLERANCE and 1 + r2 > RATE_CAP_TOLERANCE:
+            return out
+        r0, f0, r1, f1 = r1, f1, r2, f2
+    raise NoResultError("no convergence in 200 steps")
+
+
+def rate_secant(residual: Residual) -> Callable[..., float]:
+    """RATE's value under `rate_secant_iterates`."""
+    return lambda *args: rate_secant_iterates(residual, *args)[-1]
+
+
+def rate_secant_candidates() -> list[Candidate]:
+    """The T-2005 model (the engine's `compute_rate`) and residual variants, traced so the score
+    reports which iterate equals Excel's value (T-2527)."""
+    out = []
+    for ops_name, ops in (("plain", PLAIN), ("Excel operators", TWICE)):
+        for order in ("pv,pmt,fv", "pv,fv,pmt", "pmt,fv,pv", "fv,pv,pmt"):
+            f = fv_residual(ops, order)
+            out.append(
+                candidate(
+                    f"secant on FV residual, {ops_name}, sum {order}",
+                    rate_secant(f),
+                    "secant on FV residual",
+                    partial(rate_secant_iterates, f),
+                )
+            )
+    return out
+
+
 # ----------------------------------------------------------------------------- YIELD
 
 
@@ -638,6 +751,52 @@ def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[
     return chain
 
 
+def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> float:
+    """The term the fitted YIELD start takes (T-2777, probes/yield-start-term-basis): whole years from
+    `settle` (a 29 February settlement has its anniversaries on 1 March in common years), then the
+    basis' days from the last anniversary to `maturity` over 360 (bases 0, 2, 4), 365 (basis 3) or
+    the length of the maturity's calendar year (basis 1). The engine's `yield_start_years`."""
+
+    def anniversary(year: int) -> datetime.date:
+        if settle.month == 2 and settle.day == 29 and not calendar.isleap(year):
+            return datetime.date(year, 3, 1)
+        return settle.replace(year=year)
+
+    whole, last = maturity.year - settle.year, anniversary(maturity.year)
+    if last > maturity:
+        whole, last = whole - 1, anniversary(maturity.year - 1)
+    days = days360(last, maturity, basis == 4) if basis in (0, 4) else (maturity - last).days
+    year = {1: 366.0 if calendar.isleap(maturity.year) else 365.0, 3: 365.0}.get(basis, 360.0)
+    return whole + days / year
+
+
+def fitted_yield_start(*args: Arg) -> float:
+    """T-1592's fitted start: (100 rate + (100 - pr)/T) / ((100 + pr)/2 - (100 - pr)/(4T)), T the
+    `start_years` (T-2777; T-1592 fitted it with `_years_to_maturity`, the same on its basis-0 probes
+    but for a 29 February settlement). On yield-start-one-input the two-steps-back starts give a
+    denominator pr + w (100 - pr) with (1/2 - w) T = 0.25000 on every row below PRICE's root."""
+    settle, maturity, rate, pr, _, _, basis = _bond(args)
+    years = start_years(settle, maturity, basis)
+    return (100 * rate + (100 - pr) / years) / ((100 + pr) / 2 - (100 - pr) / (4 * years))
+
+
+def _newton_yield_short(start: Callable[..., float], tol: float) -> Callable[..., float]:
+    """Analytic Newton from `start(*cell_args)` that returns the iterate whose next step is below
+    `tol`, without taking that step (T-1592: Excel's values stop short of PRICE's root)."""
+
+    def call(*args: Arg) -> float:
+        price_of, bond, pr = _bond_price(args)
+        y = start(*args)
+        for _ in range(100):
+            step = (price_of(y) - pr) / dprice(y, bond)
+            if abs(step) < tol:
+                return y
+            y -= step
+        raise NoResultError("Newton did not converge")
+
+    return call
+
+
 def _fd_newton_yield(
     start: float, h: float, relative: bool, central: bool, tol: float
 ) -> Callable[..., float]:
@@ -754,6 +913,15 @@ def yield_candidates() -> list[Candidate]:
         )
         for name, start in model_starts.items()
     ]
+    # T-1592 (fourth round): the fitted start, and the step not taken once it is below the cut.
+    out += [
+        candidate(
+            f"Newton from the fitted start, returned before a step below {t:g}",
+            _newton_yield_short(fitted_yield_start, t),
+            "Newton, fitted start",
+        )
+        for t in (1e-9, 1e-10, 1e-11)
+    ]
     out += [
         candidate(
             f"Newton from {y0:g}, {'central' if c else 'forward'} difference {h:g}{' * |y|' if rel else ''}, "
@@ -777,11 +945,13 @@ FITS = [
     ),
     Fit(
         name="rate",
-        description="RATE literal cells of the fit set: Newton and secant candidates in r (none fits)",
-        cases=FIT_CASES,
+        description="RATE cells of the fit set, nested PMT at Excel's bits: the T-2005 secant, its variants, Newton",
+        cases=RATE_CASES,
         pattern=r"^=RATE\((.*)\)$",
-        candidates=rate_candidates,
+        candidates=lambda: rate_secant_candidates() + rate_candidates(),
         where=_literal_rate,
+        errors=True,
+        calls=["probes-numeric/m9-fin-pmt"],
     ),
     Fit(
         name="yield-one-period",

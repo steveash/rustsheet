@@ -3,7 +3,7 @@ id: T-2571
 title: "Identify Excel's F.TEST remainder: the last visibly-off F.TEST cells after T-2361"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -52,11 +52,34 @@ The T-2361 fit rows were extracted ad hoc and not committed: commit the extracti
 with this task so the scores are reproducible.
 
 ## Acceptance criteria
-- [ ] Visible parity: the 10 cells above have Excel's value to 15 significant digits, with no new
+- [ ] (not met: 8 remain, follow-up T-2681) Visible parity: the 10 cells above have Excel's value to 15 significant digits, with no new
       known-failure lines in any baseline beyond decision 0083's allowance.
-- [ ] The candidate scores (bit-exact / within 4 ulp / visibly off) are recorded in
+- [x] The candidate scores (bit-exact / within 4 ulp / visibly off) are recorded in
       docs/excel-semantics/statistics.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - F.DIST, F.DIST.RT and BETA.DIST, which use the shared `beta_reg_complement` kernel.
+
+## Progress (2026-10-25, opus run; resumed by a later opus run)
+- Committed the extraction the Context asked for: fits `f-test` (candidate remainders R) and `f-test-structure`
+  (variance, x/y and power alternatives) in tools/src/rustsheet_tools/fitlab/kernels/ftest.py, over every F.TEST/FTEST
+  cell on file with plain-range arguments (291 numeric cells). Scores are in statistics.md under the F.TEST entry.
+- Finding: no double-sum R (forward, backward, Gamma-ratio B) beats the correctly rounded R, and every R variant keeps
+  the same worst cells, so the visibly-off cells' residual probably lies outside R.
+- Found and implemented: df 1 against df 1 is Excel's closed form 2 asin(sqrt x)/pi (13 of 16 such cells exact);
+  `f_test_upper_tail` uses it. 6 gen-m9 cells fixed, 2 of them on this task's list (8f2ac25945af87da A241, c468f5046aadfbbc
+  A192); 8 visibly-off cells remain. Scored and rejected so far: double 2F1 sums, A&S 26.6.4 positive series for an even
+  df_big, the finite sums from the asin base, log1p / log-difference powers, pairwise and one-pass variances (statistics.md).
+- Next (was): candidates for the powers' arguments (ln x as log1p(-y), or ln(df_small) - ln(df_big f + df_small)), the
+  variance's summation order (pairwise, column-major for 2-D ranges), and the unprobed corners listed in Context.
+
+
+## Outcome
+Partial (decision 0083 follow-up T-2681). Excel's F.TEST with one degree of freedom on each side is the closed form
+2 asin(sqrt x)/pi (13 of 16 such cells bit-exact); `f_test_upper_tail` uses it, fixing 6 gen-m9 cells, 2 of this
+task's 10 (8f2ac25945af87da A241, c468f5046aadfbbc A192). The F.TEST fit is committed (`rustsheet-fitlab f-test`,
+`f-test-structure`, `f-test-finite`) and every candidate's score is in statistics.md. The remaining residual is in the
+tail's evaluation, not in the variance ratio (the double f matches Excel; the exact f is further off) and not in R
+alone (every R variant, NR `betai` in doubles and the alternative power forms score below the model). Eval delta:
+gen-m9 known failures 6 fewer, no regressions. The unprobed corners move to T-2681.

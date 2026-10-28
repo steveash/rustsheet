@@ -1,9 +1,9 @@
 use super::elapsed::{elapsed_text, DisplayClock, ElapsedUnit};
-use super::fraction::format_fraction;
+use super::fraction::{comma_exponent, format_fraction};
 use super::general::format_general;
 use crate::{
     constants::MAXIMUM_DATE_SERIAL_NUMBER,
-    decimal_round::{round_engineering, round_shown_place},
+    decimal_round::{round_engineering, round_scientific, round_shown_place},
     locale::Locale,
     number_format::{cut_15_digits, to_precision},
     text::Text,
@@ -17,12 +17,13 @@ pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
 use super::{
-    dates::{excel_serial_to_ymd, negative_serial_allowed},
-    lexer::Compare,
+    calendar_dates::{calendar_ymd, hebrew_month_name},
+    date_names::NameTokens,
+    dates::negative_serial_allowed,
     locale_tag::{japanese_era_name, japanese_era_year, Calendar},
     parser::{
-        is_text_section, numeric_section_count, section_tokens, ErrorPart, GeneralPart, ParsePart,
-        Parser, TextToken,
+        conditional_section, is_text_section, numeric_section_count, section_condition,
+        section_tokens, ErrorPart, GeneralPart, ParsePart, Parser, TextToken,
     },
 };
 
@@ -147,6 +148,7 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     }
     let section = match parts.last() {
         Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
+        _ if parser.has_empty_text_section() => return capped_text(String::new()),
         _ if parts.len() < 4 => return capped_text(text.to_string()),
         _ => 3,
     };
@@ -282,15 +284,6 @@ fn general_text(value: f64, locale: &Locale) -> String {
     }
 }
 
-/// The `[cond]` of a number or date section, if it has one.
-fn section_condition(part: &ParsePart) -> Option<(Compare, f64)> {
-    match part {
-        ParsePart::Number(p) => p.condition,
-        ParsePart::Date(p) => p.condition,
-        ParsePart::General(_) | ParsePart::Error(_) => None,
-    }
-}
-
 pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> Formatted {
     let locale = ctx.locale;
     let mut parser = Parser::new(format);
@@ -320,7 +313,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     let mut value = value_original;
     let general = ParsePart::General(GeneralPart {});
     let part;
+    let conditional = conditional_section(&parts, sections, value);
     match sections {
+        2..=4 if conditional.is_some() => {
+            let (index, drop_sign) = conditional.unwrap_or_default();
+            if drop_sign {
+                value = value.abs();
+            }
+            part = &parts[index];
+        }
         // Excel: an empty format shows nothing but a negative's minus, also for a value that
         // rounds to zero (`TEXT(-0.0001,"")` = "-", `TEXT(5,"")` = ""; probes/text-format-bare-literals
         // A32-A35).
@@ -420,7 +421,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
-            let clock = DisplayClock::new(value, fraction_digits, tokens);
+            let clock = DisplayClock::new(value, fraction_digits);
             let (hours, minutes, seconds) = clock.hms;
             let elapsed_fraction = clock.elapsed.as_ref();
             let day_serial = clock.days;
@@ -430,13 +431,19 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // -1 stands for no date. The fallback is never read: `ymd` is `None` exactly when
             // `date_valid` is false.
             let serial_1900 = ctx.date_system.to_1900_serial(day_serial).unwrap_or(-1);
-            let ymd = excel_serial_to_ymd(serial_1900);
+            let ymd = calendar_ymd(p.calendar, p.hijri, serial_1900);
             let date_valid = ymd.is_some();
+            // A Saka or Hebrew section of a date with no such date is `#VALUE!` even with only
+            // time tokens (`TEXT(60.5,"[$-80409]h:mm")`; probes/t2779-hebrew-saka-more E5, E6).
+            if !date_valid && matches!(p.calendar, Some(Calendar::Saka | Calendar::Hebrew(_))) {
+                return invalid_date(value);
+            }
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
             // Under a Japanese locale tag `yy` and `yyyy` after a `g` print the era year: the
             // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
             // year in the others (probes/text-locale-japanese-year A1-A13).
             let mut seen_era = false;
+            let mut names = NameTokens::new(p.hijri, p.names.is_some());
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -464,39 +471,22 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         text = format!("{text}{ymd_day}");
                     }
                     TextToken::DayPadded => {
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let day = ymd_day as usize;
                         text = format!("{text}{day:02}");
-                    }
-                    TextToken::DayNameShort => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let day = excel_weekday_index(serial_1900);
-                        text.push_str(
-                            p.names
-                                .map_or(&locale.dates.day_names_short[day], |n| n.days_short[day]),
-                        );
-                    }
-                    TextToken::DayName => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let day = excel_weekday_index(serial_1900);
-                        text.push_str(
-                            p.names
-                                .map_or(&locale.dates.day_names[day], |n| n.days[day]),
-                        );
                     }
                     TextToken::Month => {
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let month = ymd_month as usize;
                         text = format!("{text}{month}");
                     }
@@ -504,39 +494,32 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let month = ymd_month as usize;
                         text = format!("{text}{month:02}");
                     }
-                    TextToken::MonthNameShort => {
+                    TextToken::DayNameShort
+                    | TextToken::DayName
+                    | TextToken::MonthNameShort
+                    | TextToken::MonthName
+                    | TextToken::MonthLetter => {
                         if !date_valid {
                             return invalid_date(value);
                         }
-                        let month = ymd_month as usize;
-                        text.push_str(p.names.map_or(&locale.dates.months_short[month - 1], |n| {
-                            n.months_short[month - 1]
-                        }));
-                    }
-                    TextToken::MonthName => {
-                        if !date_valid {
-                            return invalid_date(value);
+                        let weekday = excel_weekday_index(serial_1900);
+                        if let (Some(Calendar::Hebrew(adars)), Some(names)) = (p.calendar, p.names)
+                        {
+                            if let Some(name) =
+                                hebrew_month_name(token, names, adars, (ymd_year, ymd_month))
+                            {
+                                text.push_str(name);
+                                continue;
+                            }
                         }
-                        let month = ymd_month as usize;
-                        text.push_str(
-                            p.names
-                                .map_or(&locale.dates.months[month - 1], |n| n.months[month - 1]),
-                        );
-                    }
-                    TextToken::MonthLetter => {
-                        if !date_valid {
-                            return invalid_date(value);
-                        }
-                        let month = ymd_month as usize;
-                        // Under a locale tag `mmmmm` is the first character of the month name
-                        // (`[$-804]mmmmm` of December is "十"; probes/text-locale-am-neutral A28).
-                        match p.names.and_then(|n| n.months[month - 1].chars().next()) {
-                            Some(letter) => text.push(letter),
-                            None => text.push_str(&locale.dates.months_letter[month - 1]),
-                        }
+                        // Lunar months 13 and 14 take the twelfth name (`[$-110409]mmmm` of
+                        // 2024-01-11 is "十二月"; probes/text-locale-lunar-edges A26).
+                        let month = ymd_month.min(12);
+                        names.push(token, &mut text, p.names, locale, month, weekday);
                     }
                     TextToken::YearShort
                     | TextToken::Year
@@ -545,6 +528,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         let buddhist = matches!(
                             token,
                             TextToken::BuddhistYearShort | TextToken::BuddhistYear
@@ -591,6 +575,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         if !date_valid {
                             return invalid_date(value);
                         }
+                        names.number();
                         if let Some(Calendar::Japanese { .. }) = p.calendar {
                             let era_year = japanese_era_year(serial_1900, ymd_year);
                             if *padded {
@@ -713,16 +698,18 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         }
         ParsePart::Number(p) => {
             if let Some(fraction) = &p.fraction {
-                return match format_fraction(value, p, fraction) {
+                // Past 255 characters a fraction cannot be shown either: `# ?/4,` on 2 would print
+                // 258 (255 `#`, TEXT #VALUE!; probes/fraction-overflow-scaled A49).
+                let text = format_fraction(value, p, fraction, &locale.numbers.symbols.group)
+                    .filter(|text| text.chars().count() <= MAX_TEXT_FORMAT_CHARS);
+                return match text {
                     Some(text) => Formatted {
                         text,
                         color: p.color,
                         error: None,
                         unshowable: false,
                     },
-                    None => {
-                        Formatted::unshowable(format!("Fraction numerator overflows: '{value}'"))
-                    }
+                    None => Formatted::unshowable(format!("Fraction overflows: '{value}'")),
                 };
             }
             let mut text = "".to_string();
@@ -732,7 +719,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let tokens = &p.tokens;
             // `General` among literals shows the value itself, with its sign
             let general_value = value;
-            let scaled = value * 100.0_f64.powi(p.percent) / (1000.0_f64.powi(p.comma));
+            // Excel keeps the scaling commas' exponent in a signed byte (`comma_exponent`). Up to
+            // 42 commas it does not wrap, and dividing keeps the usual rounding.
+            let percent_scaled = value * 100.0_f64.powi(p.percent);
+            let comma_exponent = comma_exponent(p.comma, true);
+            let scaled = if comma_exponent == p.comma.saturating_mul(-3) {
+                percent_scaled / 1000.0_f64.powi(p.comma)
+            } else {
+                percent_scaled * 10.0_f64.powi(comma_exponent)
+            };
             value = scaled;
             // p.precision is the number of significant digits _after_ the decimal point
             // Excel shows at most 15 significant digits (docs/excel-semantics/numbers.md, "Number → text";
@@ -755,7 +750,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
                     } else {
-                        exponent = value_abs.log10().floor();
+                        (value, exponent) = round_scientific(scaled, p.precision);
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
@@ -841,13 +836,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             if ln <= digit_count {
                                 // The number of digits is less or equal than the number of digit tokens
                                 // i.e. the value is 123 and the format_code is ##### (ln = 3 and digit_count = 5)
-                                // A zero mantissa still shows one integer digit, even for `#`:
+                                // A zero mantissa prints every integer placeholder, even `#`:
                                 // `|#.#|E-|#|` on 0 is "|0.|E|0|" (poi/NumberFormatApproxTests.xlsx
-                                // A136), where `#.#` alone gives ".".
-                                let zero_mantissa = p.is_scientific
-                                    && ln == 0
-                                    && number_index == -1
-                                    && digit.kind == '#';
+                                // A136), where `#.#` alone gives "."; `##0.0E+0` on 0 is "000.0E+0"
+                                // (gen-m10 659cd5776d423ce3 F!J14; T-2227).
+                                let zero_mantissa = p.is_scientific && ln == 0 && digit.kind == '#';
                                 if zero_mantissa {
                                     text = format!("{text}0");
                                 } else if !(number_index < 0 && digit.kind == '#') {
@@ -917,7 +910,13 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     text = format!("{text}0");
                                 }
                             } else if digit.kind == '?' {
-                                text = format!("{text} ");
+                                // A padding space, after the point when it is the first decimal:
+                                // `?.??` on 1000 is "1000.  " (gen-m10, T-1738).
+                                if needs_period {
+                                    text = format!("{text}{decimal_separator} ");
+                                } else {
+                                    text = format!("{text} ");
+                                }
                             } else if digit.kind == '#' && needs_period {
                                 // FIXME: This is what Excel does, but it transforms "3" into "3."
                                 text = format!("{text}{decimal_separator}");

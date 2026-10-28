@@ -60,29 +60,45 @@ impl Model {
         })
     }
 
-    /// FORECAST.ETS, FORECAST.ETS.CONFINT and FORECAST.ETS.STAT are recognized but not
-    /// implemented: every element is `#N/IMPL!`, after the lifted argument (`target_date`, or
-    /// `statistic_type` at `lifted`) is read as a number, so text there is `#VALUE!`
-    /// (probes/forecast-ets-longer-series K38; probes/stat-argument-modes H268-H280, T-2028).
+    /// The FORECAST.ETS family is recognized but not implemented: an element is `#N/IMPL!` once
+    /// its arguments pass the step Excel takes before it forecasts. That step reads the arguments
+    /// in order, and the first that fails decides: a scalar argument's error, or text that is not
+    /// a number (`#VALUE!`), or an error given directly as `values` or `timeline`. Every scalar
+    /// argument lifts over an array and a multi-cell range (statistics.md "FORECAST.ETS family on
+    /// excel-graph: argument errors, text and lifting decide before the #N/A (T-2255)";
+    /// probes/forecast-ets-longer-series K38; probes/stat-argument-modes H268-H280; T-2028,
+    /// T-2424). `whole` are the positions of `values` and `timeline`, read here once.
     fn forecast_ets_lifted(
         &mut self,
         kind: Function,
-        lifted: usize,
+        whole: [usize; 2],
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.lift_call(kind, args, cell, &mut |model, values| {
-            let read = values
-                .get(lifted)
-                .map_or(Ok(0.0), |value| model.kernel_number(value, cell));
-            match read {
-                Err(error) => error,
-                Ok(_) => CalcResult::new_error(
-                    Error::NIMPL,
-                    cell,
-                    "FORECAST.ETS family not implemented".to_string(),
-                ),
+        let mut direct_errors: [Option<CalcResult>; 2] = [None, None];
+        for (slot, &index) in direct_errors.iter_mut().zip(whole.iter()) {
+            if let Some(node) = args.get(index) {
+                let value = self.evaluate_node_with_reference(node, cell);
+                if value.is_error() {
+                    *slot = Some(value);
+                }
             }
+        }
+        self.lift_call(kind, args, cell, &mut |model, values| {
+            for (index, value) in values.iter().enumerate() {
+                if let Some(position) = whole.iter().position(|&w| w == index) {
+                    if let Some(error) = &direct_errors[position] {
+                        return error.clone();
+                    }
+                } else if let Err(error) = model.kernel_number(value, cell) {
+                    return error;
+                }
+            }
+            CalcResult::new_error(
+                Error::NIMPL,
+                cell,
+                "FORECAST.ETS family not implemented".to_string(),
+            )
         })
     }
 
@@ -91,7 +107,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEts, 0, args, cell)
+        self.forecast_ets_lifted(Function::ForecastEts, [1, 2], args, cell)
     }
 
     pub(crate) fn fn_forecast_ets_confint(
@@ -99,19 +115,15 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEtsConfint, 0, args, cell)
+        self.forecast_ets_lifted(Function::ForecastEtsConfint, [1, 2], args, cell)
     }
 
     pub(crate) fn fn_forecast_ets_seasonality(
         &mut self,
-        _args: &[Node],
+        args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        CalcResult::new_error(
-            Error::NIMPL,
-            cell,
-            "FORECAST.ETS.SEASONALITY not implemented".to_string(),
-        )
+        self.forecast_ets_lifted(Function::ForecastEtsSeasonality, [0, 1], args, cell)
     }
 
     pub(crate) fn fn_forecast_ets_stat(
@@ -119,6 +131,6 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEtsStat, 2, args, cell)
+        self.forecast_ets_lifted(Function::ForecastEtsStat, [0, 1], args, cell)
     }
 }

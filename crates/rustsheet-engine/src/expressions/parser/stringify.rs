@@ -1,5 +1,6 @@
 pub(super) mod bound_variables;
 mod rename_defined_name;
+mod sheet_edits;
 mod structured;
 mod wrong_reference;
 use super::reference_operators::{
@@ -8,8 +9,8 @@ use super::reference_operators::{
 };
 use super::structured_reference::is_unresolved_structured_reference;
 use super::{
-    super::utils::{name_needs_quoting, quote_name, rename_defined_name_sheet},
-    for_each_chain_operand_mut, left_chain,
+    super::utils::{name_needs_quoting, quote_name},
+    left_chain,
     move_formula::{moved_reference_text, MoveContext},
     value_operands, ArrayNode, Node, Reference,
 };
@@ -21,6 +22,9 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
+pub(crate) use sheet_edits::{
+    move_sheet_in_node, rename_sheet_in_node, retarget_unqualified_references,
+};
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
@@ -62,11 +66,108 @@ pub enum DisplaceData {
     None,
 }
 
+/// A structural edit as the printer applies it (SPEC-0016 "Structural edits").
+#[derive(Clone, Copy)]
+pub(crate) struct Displacement<'a> {
+    /// The displacement.
+    pub(crate) data: &'a DisplaceData,
+    /// The lowercase names of the tables that follow the edit, whose structured references keep
+    /// their text (T-2297).
+    pub(crate) kept_tables: &'a [String],
+    /// The data blocks of the tables that grow with a row insert at their first data row or at
+    /// their totals row (T-2321).
+    pub(crate) grown_edges: &'a [DataBlock],
+    /// The table columns a column delete removes, as lowercase (table, column) names: a
+    /// structured reference to one of them prints `#REF!` (T-2339).
+    pub(crate) deleted_columns: &'a [(String, String)],
+}
+
+/// The data rows `rows` and columns `columns` of a table on `sheet`, before the edit.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DataBlock {
+    pub(crate) sheet: u32,
+    pub(crate) rows: (i32, i32),
+    pub(crate) columns: (i32, i32),
+}
+
+impl Displacement<'_> {
+    /// A displacement that no table follows.
+    const fn plain(data: &DisplaceData) -> Displacement<'_> {
+        Displacement {
+            data,
+            kept_tables: &[],
+            grown_edges: &[],
+            deleted_columns: &[],
+        }
+    }
+
+    /// The displacements of the two corners of the plain range `rows` x `columns` on sheet
+    /// `sheet_index` where a row edit does not displace them one by one; `None` for any other
+    /// range, whose corners displace as usual.
+    ///
+    /// A row delete that takes a range's first or last rows, but not all of them, shrinks it to
+    /// the rows left (plain-range-delete-row-first and -last A1:A4, excel-graph, T-2338:
+    /// `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` either way), where displacing the
+    /// deleted corner alone would give `#REF!`. Only one-row deletes are probed; a wider delete
+    /// across an edge shrinks the same way (hand, T-2851).
+    ///
+    /// Quirk (T-2197, probes/table-edits): a range in the data block of a table that grows with a
+    /// row insert at an edge, and touching that edge, grows with the table, where an ordinary
+    /// insert at a range's first row shifts it and one just below it leaves it. `=SUM(S!C4:C7)`
+    /// onto data rows 4-7 becomes `=SUM(S!C4:C8)` both for the insert above row 4
+    /// (table-insert-row-above-first-data A7) and above the totals row 8
+    /// (table-insert-row-above-totals A7). Only that exact range is probed; a range inside the
+    /// block touching the edge is assumed to grow the same way (hand, unprobed: T-2846).
+    fn range_corners(
+        &self,
+        sheet_index: u32,
+        rows: (i32, i32),
+        columns: (i32, i32),
+    ) -> Option<(DisplaceData, DisplaceData)> {
+        let DisplaceData::Row { sheet, row, delta } = *self.data else {
+            return None;
+        };
+        if sheet != sheet_index {
+            return None;
+        }
+        // The corner on row `from` moved to row `to`.
+        let shift_to = |from: i32, to: i32| DisplaceData::Row {
+            sheet,
+            row: from.min(to),
+            delta: to - from,
+        };
+        if delta < 0 {
+            let deleted = row..=row - delta - 1;
+            return if deleted.contains(&rows.0) && !deleted.contains(&rows.1) {
+                Some((shift_to(rows.0, row), shift_to(rows.1, rows.1 + delta)))
+            } else if !deleted.contains(&rows.0) && deleted.contains(&rows.1) {
+                Some((DisplaceData::None, shift_to(rows.1, row - 1)))
+            } else {
+                None
+            };
+        }
+        let block = self.grown_edges.iter().find(|block| {
+            block.sheet == sheet_index
+                && block.rows.0 <= rows.0
+                && rows.1 <= block.rows.1
+                && block.columns.0 <= columns.0
+                && columns.1 <= block.columns.1
+        })?;
+        // The first row stays (at or above the insert) and the last grows by `delta`.
+        let at_edge = (row == block.rows.0 && rows.0 == row)
+            || (row == block.rows.1 + 1 && rows.1 == block.rows.1);
+        at_edge.then(|| (DisplaceData::None, shift_to(rows.1, rows.1 + delta)))
+    }
+}
+
 /// How the printer rewrites the references of a formula: displaced by a structural edit, or
 /// moved by a cut and paste. Everything else prints the same either way, so a moved formula
 /// has the text FORMULATEXT shows (SPEC-0007 step 5).
 enum Rewrite<'a> {
-    Displace(&'a DisplaceData),
+    /// Displaced by a structural edit; the structured references to the tables named here
+    /// (lowercase) keep their text, since those tables move, grow or shrink with the edit
+    /// (SPEC-0016 "Structural edits", T-2297).
+    Displace(Displacement<'a>),
     Move(&'a MoveContext<'a>),
     /// Prints the area of every structured reference to one of these tables (lowercase names)
     /// instead of its text: the tables of a sheet being deleted (SPEC-0016 "Sheet rename, delete
@@ -95,7 +196,7 @@ pub(crate) fn open_range_flags(
     )
 }
 
-const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
+const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(Displacement::plain(&DisplaceData::None));
 
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
@@ -158,7 +259,22 @@ pub fn to_string_displaced(
     locale: &Locale,
     language: &Language,
 ) -> String {
-    let rewrite = Rewrite::Displace(displace_data);
+    let displacement = Displacement::plain(displace_data);
+    to_string_displaced_keeping(node, context, displacement, locale, language)
+}
+
+/// [`to_string_displaced`] for a structural edit that moves, grows or shrinks the tables
+/// `displacement.kept_tables` (lowercase names): a structured reference to one of them keeps its
+/// text, and one to any other table prints the area it is displaced to where that area changes
+/// (SPEC-0016 "Structural edits", T-2297).
+pub(crate) fn to_string_displaced_keeping(
+    node: &Node,
+    context: &CellReferenceRC,
+    displacement: Displacement,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    let rewrite = Rewrite::Displace(displacement);
     stringify(node, Some(context), &rewrite, false, locale, language)
 }
 
@@ -494,7 +610,7 @@ fn stringify(
 ) -> String {
     use self::Node::*;
     let displace_data = match rewrite {
-        Rewrite::Displace(displace_data) => displace_data,
+        Rewrite::Displace(displacement) => displacement.data,
         Rewrite::Move(move_context) => {
             if let Some(text) = moved_reference_text(node, move_context) {
                 return text;
@@ -554,9 +670,31 @@ fn stringify(
                 (*absolute_row1, *row1, *absolute_row2, *row2),
                 (*absolute_column1, *column1, *absolute_column2, *column2),
             );
+            let grown = match (rewrite, context) {
+                (Rewrite::Displace(displacement), Some(context)) if !full_row && !full_column => {
+                    let at =
+                        |absolute, value, origin| if absolute { value } else { value + origin };
+                    displacement.range_corners(
+                        *sheet_index,
+                        (
+                            at(*absolute_row1, *row1, context.row),
+                            at(*absolute_row2, *row2, context.row),
+                        ),
+                        (
+                            at(*absolute_column1, *column1, context.column),
+                            at(*absolute_column2, *column2, context.column),
+                        ),
+                    )
+                }
+                _ => None,
+            };
+            let (displace1, displace2) = match &grown {
+                Some((first, last)) => (first, last),
+                None => (displace_data, displace_data),
+            };
             let s1 = stringify_reference(
                 context,
-                displace_data,
+                displace1,
                 &Reference {
                     sheet_name,
                     sheet_index: *sheet_index,
@@ -570,7 +708,7 @@ fn stringify(
             );
             let s2 = stringify_reference(
                 context,
-                displace_data,
+                displace2,
                 &Reference {
                     sheet_name: &None,
                     sheet_index: *sheet_index,
@@ -682,7 +820,11 @@ fn stringify(
             }
             format!("{{{matrix_string}}}")
         }
-        DefinedNameKind((name, ..)) => name.to_string(),
+        DefinedNameKind((name, scope, _)) => crate::expressions::utils::defined_name_text(
+            name,
+            *scope,
+            context.is_none() || export_to_excel,
+        ),
         NamedVariableKind { name, id: _ } => variable_text(name, context),
         UnaryKind { kind, right } => {
             let operand = wrap(sub(right), binding(right) < binding(node));
@@ -700,6 +842,8 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         Group { levels, child } => group_text(*levels, &sub(child)),
+        UnaryPlus { child } => format!("+{}", wrap(sub(child), binding(child) < binding(node))),
+        Spaced { space, child } => space.around(&sub(child)),
         ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
@@ -792,7 +936,8 @@ enum Binding {
 }
 
 fn binding(node: &Node) -> Binding {
-    match node {
+    // Whitespace binds as the operand it is written around.
+    match node.unwrap_spaced() {
         Node::CompareKind { .. } => Binding::Compare,
         Node::OpConcatenateKind { .. } => Binding::Concat,
         Node::OpSumKind { .. } => Binding::Sum,
@@ -805,7 +950,8 @@ fn binding(node: &Node) -> Binding {
         Node::UnaryKind {
             kind: OpUnary::Minus,
             ..
-        } => Binding::Minus,
+        }
+        | Node::UnaryPlus { .. } => Binding::Minus,
         _ => Binding::Operand,
     }
 }
@@ -845,105 +991,4 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
         wrap(left_text, binding(left) < level),
         wrap(sub(right), binding(right) <= level)
     )
-}
-
-pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
-    match node {
-        // Rename
-        Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::ThisRowKind { .. } => {
-            node.rename_reference_sheet(sheet_index, new_name);
-        }
-        Node::SheetSpanKind {
-            first_sheet,
-            last_sheet,
-            first_index,
-            last_index,
-            ..
-        } => {
-            if *first_index == sheet_index {
-                new_name.clone_into(first_sheet);
-            }
-            if *last_index == sheet_index {
-                new_name.clone_into(last_sheet);
-            }
-        }
-        Node::WrongReferenceKind { sheet_name, .. } => {
-            if let Some(name) = sheet_name {
-                if name.to_uppercase() == new_name.to_uppercase() {
-                    *sheet_name = Some(name.to_owned());
-                }
-            }
-        }
-        Node::WrongRangeKind { sheet_name, .. } => {
-            if sheet_name.is_some() {
-                *sheet_name = Some(new_name.to_owned());
-            }
-        }
-
-        // Go next level
-        Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right, .. }
-        | Node::OpUnionKind { left, right, .. } => {
-            rename_sheet_in_node(left, sheet_index, new_name);
-            rename_sheet_in_node(right, sheet_index, new_name);
-        }
-        Node::OpConcatenateKind { .. }
-        | Node::OpSumKind { .. }
-        | Node::OpProductKind { .. }
-        | Node::OpPowerKind { .. }
-        | Node::CompareKind { .. } => {
-            for_each_chain_operand_mut(node, |operand| {
-                rename_sheet_in_node(operand, sheet_index, new_name);
-            });
-        }
-        Node::FunctionKind { kind: _, args } => {
-            for arg in args {
-                rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-        Node::NamedFunctionKind {
-            name: _,
-            args,
-            id: _,
-        } => {
-            for arg in args {
-                rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-        Node::UnaryKind { kind: _, right } => {
-            rename_sheet_in_node(right, sheet_index, new_name);
-        }
-        Node::ImplicitIntersection { child, .. } => {
-            rename_sheet_in_node(child, sheet_index, new_name);
-        }
-        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
-            rename_sheet_in_node(child, sheet_index, new_name);
-        }
-        Node::StructuredReferenceKind { lowered, .. } => {
-            rename_sheet_in_node(lowered, sheet_index, new_name);
-        }
-
-        // Do nothing
-        Node::BooleanKind(_)
-        | Node::NumberKind(_)
-        | Node::StringKind(_)
-        | Node::ErrorKind(_)
-        | Node::ParseErrorKind { .. }
-        | Node::ArrayKind(_)
-        | Node::NamedVariableKind { .. }
-        | Node::EmptyArgKind => {}
-        Node::DefinedNameKind((n, s, _)) => rename_defined_name_sheet(n, *s, sheet_index, new_name),
-        Node::LambdaDefKind {
-            parameters: _,
-            body,
-        } => {
-            rename_sheet_in_node(body, sheet_index, new_name);
-        }
-        Node::LambdaCallKind { lambda, args } => {
-            rename_sheet_in_node(lambda, sheet_index, new_name);
-            for arg in args {
-                rename_sheet_in_node(arg, sheet_index, new_name);
-            }
-        }
-    }
 }

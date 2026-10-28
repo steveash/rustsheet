@@ -3,12 +3,12 @@ id: T-2618
 title: "NPV with a rate of -1 or 1E+300 is #DIV/0! (T-2475 probe)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -30,8 +30,11 @@ P!A116 and the others show `#NUM!` as the whole summary), so the fix returns `#D
 is unprobed: probe a few rates (1E+100, 1E+200, 1E+307) before building a rule.
 
 ## Acceptance criteria
-- [ ] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The owned gen-m9 cells leave eval/baseline/gen-m9.txt, with the probe's matching cells (`make eval-baseline`), and no new known-failure lines; each rule is in docs/excel-semantics/ with its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Outcome
+No code change. T-2493 (#1818, merged before this claim) already made NPV `#DIV/0!` at a rate of -1 and when a power leaves the double range (`excel_npv`). All six owned gen-m9 cells and their probe cells (probes/t2475-stat-subexpressions P!A116, A148, A177, A236, A297, A429) are already absent from eval/baseline/gen-m9.txt and eval/baseline/probes.txt on origin/main. Eval delta: 0.

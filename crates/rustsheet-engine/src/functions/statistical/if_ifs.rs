@@ -4,6 +4,8 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
+use crate::functions::statistical::ifs_cache::{count_bits, set_bits};
+use crate::functions::util::StoredWalk;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,
@@ -12,7 +14,7 @@ use crate::{
 };
 
 /// A compiled criterion predicate, as returned by `build_criteria`.
-type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
+pub(super) type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
 
 /// Rows and columns spanned by a range.
 fn range_shape(range: &Range) -> (i32, i32) {
@@ -93,28 +95,33 @@ impl Model {
     /// broadcast against each other (a position past a shorter array uses an `#N/A`
     /// criterion). Otherwise `compute` runs once with the criteria as they are.
     ///
-    /// `walked` is the range every element walks, as written and evaluated by reference (the value
-    /// range, or COUNTIFS's first criteria range): the call is `#ERROR!` when its used cells
-    /// ([`Model::range_walk_cost`], measured only when the call lifts) times the criteria count
-    /// times the elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
+    /// `walked` are the resolved ranges every element walks (the sum range, or every criteria range
+    /// of COUNTIFS; none when they did not resolve): the call is `#ERROR!` when the positions their
+    /// walks visit ([`Model::criteria_walk_cost`], measured only when the call lifts) times the
+    /// criteria count times the elements to compute exceed `limits::MAX_LIFTED_CELL_VISITS`.
     /// `compute` reads only its criteria and the ranges resolved before the lift, so every
     /// repeated criteria element (the blank tail of a whole-column criteria range, the
     /// occurrence-count idiom `COUNTIF(A2:A10000,A2:A10000)`) reuses its first result (T-0408).
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
-        walked: &CalcResult,
+        walked: &[Range],
         cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
         // An unlifted call runs once and is not charged: measuring would clip the walked range
         // to the used area on every plain SUMIFS.
         let walk_cost = if criteria.iter().any(LiftedArg::is_grid) {
-            self.range_walk_cost(walked)
+            walked
+                .iter()
+                .fold(0, |cost: u64, range| {
+                    cost.saturating_add(self.criteria_walk_cost(range))
+                })
+                .max(1)
         } else {
             1
         };
-        // Each element walks the range once per criterion.
+        // Each position an element visits reads a cell per criterion.
         let walks = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
         self.lift_values(
             criteria,
@@ -125,9 +132,24 @@ impl Model {
         )
     }
 
-    /// Cells of `node`'s range inside the used area (at least 1): what one criteria walk visits.
+    /// The positions a criteria walk of `walked` visits ([`Model::for_each_stored_position`]): its
+    /// stored cells, or its block within the used area when it is well filled. A range on a sheet
+    /// that does not exist is 0: the walk is its error.
+    fn criteria_walk_cost(&mut self, walked: &Range) -> u64 {
+        let mut cells: u64 = 0;
+        let counted = self.for_each_stored_position(walked, walked.left, &mut |_, _| {
+            cells += 1;
+            Ok(())
+        });
+        if counted.is_err() {
+            return 0;
+        }
+        cells
+    }
+
+    /// Cells of `node`'s range inside the used area (at least 1): what one dense walk visits.
     pub(crate) fn walk_cost(&mut self, node: &Node, cell: CellReferenceIndex) -> u64 {
-        let value = self.evaluate_node_with_reference(node, cell);
+        let value = self.ifs_range_arg(node, cell);
         self.range_walk_cost(&value)
     }
 
@@ -162,9 +184,12 @@ impl Model {
         }
         let criteria = self.criteria_values(args, 2, cell);
         // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
-        let sum_value = self.evaluate_node_with_reference(&args[0], cell);
-        let ranges = self.resolve_sum_ranges(args, sum_value.clone(), cell, shape);
-        self.lift_criteria(criteria, &sum_value, cell, |model, criteria| {
+        let sum_value = self.ifs_range_arg(&args[0], cell);
+        let ranges = self.resolve_sum_ranges(args, sum_value, cell, shape);
+        let walked = ranges
+            .as_ref()
+            .map_or(&[][..], |ranges| std::slice::from_ref(&ranges.sum_range));
+        self.lift_criteria(criteria, walked, cell, |model, criteria| {
             compute(model, &ranges, criteria)
         })
     }
@@ -203,7 +228,7 @@ impl Model {
         }
         let criteria = self.criteria_values(args, 1, cell);
         // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
-        let first = self.evaluate_node_with_reference(&args[0], cell);
+        let first = self.ifs_range_arg(&args[0], cell);
         let ranges = self
             .resolve_criteria_ranges(args, 0, first.clone(), cell)
             .and_then(|ranges| {
@@ -213,7 +238,8 @@ impl Model {
                     Err(shape_mismatch(cell))
                 }
             });
-        self.lift_criteria(criteria, &first, cell, |model, criteria| match &ranges {
+        let walked = ranges.as_deref().unwrap_or_default();
+        self.lift_criteria(criteria, walked, cell, |model, criteria| match &ranges {
             Ok(ranges) => model.count_ifs(ranges, criteria, cell),
             Err(error) => error.clone(),
         })
@@ -233,12 +259,19 @@ impl Model {
             }
             CalcResult::Range { left, right } => Ok(Range { left, right }),
             error if error.is_error() => Err(error),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected a range".to_string(),
-            )),
+            _ => Err(not_a_range(cell)),
         }
+    }
+
+    /// A range argument of the IF and IFS functions, evaluated by reference. A range of a linked
+    /// workbook is an array (of its cached cells, or of `#BLOCKED!`), which [`Self::ifs_range`]
+    /// turns into `#VALUE!`, so it is that error at once: building the array would cost a lookup
+    /// per cell, a whole column's 2^20 per call (corpus-bench 52450, T-0477).
+    fn ifs_range_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        if self.is_external_array(node, cell) {
+            return not_a_range(cell);
+        }
+        self.evaluate_node_with_reference(node, cell)
     }
 
     /// The criteria ranges `args[first]`, `args[first + 2]`, ... of COUNTIFS and the
@@ -254,7 +287,7 @@ impl Model {
     ) -> Result<Vec<Range>, CalcResult> {
         let mut ranges = vec![Self::ifs_range(first_value, cell)?];
         for node in args.iter().skip(first + 2).step_by(2) {
-            let value = self.evaluate_node_with_reference(node, cell);
+            let value = self.ifs_range_arg(node, cell);
             ranges.push(Self::ifs_range(value, cell)?);
         }
         Ok(ranges)
@@ -276,7 +309,7 @@ impl Model {
     ) -> Result<SumRanges, CalcResult> {
         let shared = (shape == IfsShape::ResizedSelf).then(|| sum_value.clone());
         Self::ifs_range(sum_value, cell).and_then(|sum_range| {
-            let first = shared.unwrap_or_else(|| self.evaluate_node_with_reference(&args[1], cell));
+            let first = shared.unwrap_or_else(|| self.ifs_range_arg(&args[1], cell));
             let ranges = self.resolve_criteria_ranges(args, 1, first, cell)?;
             if shape == IfsShape::Strict {
                 let sum_shape = range_shape(&sum_range);
@@ -323,113 +356,146 @@ impl Model {
 
     /// COUNTIFS over its resolved criteria ranges, with the criteria already evaluated
     /// (`criteria[k]` is the criterion of `ranges[k]`).
+    ///
+    /// A position at which no range stores a cell is blank in every range, so it matches as a
+    /// whole or not at all, and is counted without being read: the walk costs the stored cells,
+    /// not the ranges' extent (T-2711). Each range is put on record as read empty in one piece
+    /// ([`Model::stored_walk`]), so a spill into any of them restarts the pass. When every range
+    /// is well filled, the matches come from the match sets cached for this pass instead
+    /// (`ifs_cache.rs`, T-0449), over the block that holds every range's cells.
     fn count_ifs(
         &mut self,
         ranges: &[Range],
         criteria: &[CalcResult],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let case_count = criteria.len();
         let fn_criteria = match self.build_ifs_criteria(criteria, cell) {
             Ok(fn_criteria) => fn_criteria,
             Err(error) => return error,
         };
-
-        let mut total = 0.0;
-        let first_range = &ranges[0];
-        let left_row = first_range.left.row;
-        let left_column = first_range.left.column;
-        let right_row = first_range.right.row;
-        let right_column = first_range.right.column;
-
-        let (max_row, max_column) = match self.workbook.worksheet(first_range.left.sheet) {
-            Ok(s) => s.used_area_end(),
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::ERROR,
-                    cell,
-                    format!("Invalid worksheet index: '{}'", first_range.left.sheet),
-                )
-            }
-        };
-
-        let open_row = left_row == 1 && right_row == LAST_ROW;
-        let open_column = left_column == 1 && right_column == LAST_COLUMN;
-
-        // The cells beyond the used area are taken as empty without being
-        // read; every range depends on them, so they go on record first.
-        for range in ranges.iter() {
-            let sheet = range.left.sheet;
-            let (top, left) = (range.left.row, range.left.column);
-            let (bottom, right) = (range.right.row, range.right.column);
-            if open_row {
-                let first_skipped = top + (max_row + 1 - left_row);
-                self.record_seen_empty_range(sheet, first_skipped, left, bottom, right);
-            }
-            if open_column {
-                let first_skipped = left + (max_column + 1 - left_column);
-                let last_walked_row = if open_row {
-                    top + (max_row - left_row)
-                } else {
-                    bottom
-                };
-                self.record_seen_empty_range(sheet, top, first_skipped, last_walked_row, right);
+        let mut walks = Vec::with_capacity(ranges.len());
+        for range in ranges {
+            match self.stored_walk(range, cell) {
+                Ok(walk) => walks.push(walk),
+                Err(error) => return error,
             }
         }
+        let (rows, columns) = range_shape(&ranges[0]);
+        let positions_in_range = f64::from(rows + 1) * f64::from(columns + 1);
+        let blanks_match = fn_criteria
+            .iter()
+            .all(|fn_criterion| fn_criterion(&CalcResult::EmptyCell));
+        if let Some(total) = self.count_ifs_cached(ranges, &walks, criteria, &fn_criteria) {
+            return CalcResult::Number(
+                total
+                    + if blanks_match {
+                        positions_in_range
+                    } else {
+                        0.0
+                    },
+            );
+        }
 
-        for row in left_row..right_row + 1 {
-            if open_row && row > max_row {
-                // If the row is larger than the max row in the sheet then all cells are empty.
-                // We compute it only once
-                let mut is_true = true;
-                for fn_criterion in fn_criteria.iter() {
-                    if !fn_criterion(&CalcResult::EmptyCell) {
-                        is_true = false;
-                        break;
+        // The positions, relative to each range's top-left cell, at which some range may hold
+        // a cell, in row-major order.
+        let mut positions: Vec<(i32, i32)> = Vec::new();
+        for (range, walk) in ranges.iter().zip(&walks) {
+            let (top, left) = (range.left.row, range.left.column);
+            match *walk {
+                StoredWalk::Dense { row2, column2 } => {
+                    for row in top..=row2 {
+                        positions.extend((left..=column2).map(|column| (row - top, column - left)));
                     }
                 }
-                if is_true {
-                    total += ((LAST_ROW - max_row) * (right_column - left_column + 1)) as f64;
+                StoredWalk::Sparse => {
+                    let walked = self.for_each_existing_cell(range, cell, &mut |_, position| {
+                        positions.push((position.row - top, position.column - left));
+                        Ok(())
+                    });
+                    if let Err(error) = walked {
+                        return error;
+                    }
                 }
-                break;
             }
-            for column in left_column..right_column + 1 {
-                if open_column && column > max_column {
-                    // If the column is larger than the max column in the sheet then all cells are empty.
-                    // We compute it only once
-                    let mut is_true = true;
-                    for fn_criterion in fn_criteria.iter() {
-                        if !fn_criterion(&CalcResult::EmptyCell) {
-                            is_true = false;
-                            break;
-                        }
-                    }
-                    if is_true {
-                        total += (LAST_COLUMN - max_column) as f64;
-                    }
+        }
+        if ranges.len() > 1 {
+            positions.sort_unstable();
+            positions.dedup();
+        }
+        let mut total = 0.0;
+        for &(row, column) in &positions {
+            let mut is_true = true;
+            for (range, fn_criterion) in ranges.iter().zip(fn_criteria.iter()) {
+                let value = self.evaluate_cell(CellReferenceIndex {
+                    sheet: range.left.sheet,
+                    row: range.left.row + row,
+                    column: range.left.column + column,
+                });
+                if !fn_criterion(&value) {
+                    is_true = false;
                     break;
                 }
-                let mut is_true = true;
-                for case_index in 0..case_count {
-                    // We check if value in range n meets criterion n
-                    let range = &ranges[case_index];
-                    let fn_criterion = &fn_criteria[case_index];
-                    let value = self.evaluate_cell(CellReferenceIndex {
-                        sheet: range.left.sheet,
-                        row: range.left.row + row - first_range.left.row,
-                        column: range.left.column + column - first_range.left.column,
-                    });
-                    if !fn_criterion(&value) {
-                        is_true = false;
-                        break;
-                    }
-                }
-                if is_true {
-                    total += 1.0;
-                }
+            }
+            if is_true {
+                total += 1.0;
             }
         }
+        if blanks_match {
+            total += positions_in_range - positions.len() as f64;
+        }
         CalcResult::Number(total)
+    }
+
+    /// The cached path of [`Model::count_ifs`] when every range is walked densely: the count of
+    /// the positions of the block holding every range's cells that every criterion matches,
+    /// less the block's size when blanks match (the caller adds the whole range's positions
+    /// back). `None` when a range is sparse or not cacheable yet.
+    fn count_ifs_cached(
+        &mut self,
+        ranges: &[Range],
+        walks: &[StoredWalk],
+        criteria: &[CalcResult],
+        fn_criteria: &[Criterion<'_>],
+    ) -> Option<f64> {
+        // The rows and columns, from each range's top-left cell, that hold a cell in some range.
+        let (mut rows, mut columns) = (0, 0);
+        for (range, walk) in ranges.iter().zip(walks) {
+            let StoredWalk::Dense { row2, column2 } = *walk else {
+                return None;
+            };
+            rows = rows.max(row2 - range.left.row + 1);
+            columns = columns.max(column2 - range.left.column + 1);
+        }
+        if rows <= 0 || columns <= 0 {
+            return Some(0.0);
+        }
+        let rects: Vec<Range> = ranges
+            .iter()
+            .map(|range| Range {
+                left: range.left,
+                right: CellReferenceIndex {
+                    sheet: range.left.sheet,
+                    row: range.left.row + rows - 1,
+                    column: range.left.column + columns - 1,
+                },
+            })
+            .collect();
+        let matched = match (rects.as_slice(), criteria, fn_criteria) {
+            ([range], [criterion], [fn_criterion]) => {
+                self.ifs_count(range, criterion, fn_criterion)?
+            }
+            _ => count_bits(&self.ifs_all_matches(&rects, criteria, fn_criteria)?),
+        };
+        let block = f64::from(rows) * f64::from(columns);
+        let blanks_match = fn_criteria
+            .iter()
+            .all(|fn_criterion| fn_criterion(&CalcResult::EmptyCell));
+        let matched = matched as f64;
+        Some(if blanks_match {
+            matched - block
+        } else {
+            matched
+        })
     }
 
     /// The walk of the SUMIFS-shaped functions over their resolved ranges, with the criteria
@@ -447,18 +513,24 @@ impl Model {
     {
         let SumRanges { sum_range, ranges } = ranges.as_ref().map_err(Clone::clone)?;
         let fn_criteria = self.build_ifs_criteria(criteria, cell)?;
-        self.run_ifs(sum_range, ranges, &fn_criteria, cell, apply)
+        self.run_ifs(sum_range, ranges, criteria, &fn_criteria, cell, apply)
     }
 
     /// Walks `sum_range` and applies `apply` to every numeric cell whose parallel
-    /// cell in each criteria range satisfies the matching criterion. `ranges` and
-    /// `fn_criteria` are parallel (one criteria range and one predicate per case).
+    /// cell in each criteria range satisfies the matching criterion. `ranges`, `criteria` and
+    /// `fn_criteria` are parallel (one criteria range, criterion and predicate per case).
     ///
-    /// The walk behind [`Model::apply_ifs`].
+    /// The walk behind [`Model::apply_ifs`]. A matched position adds only a number or an error
+    /// held by its sum cell, so the walk visits the cells stored in the sum range only, in
+    /// row-major order: the first error is the same one, and the walk costs the stored cells,
+    /// not the range's extent (T-2711). A well-filled sum range is walked densely, from the match
+    /// sets cached for this pass when every range it reads is cached (`ifs_cache.rs`, T-0449),
+    /// else in place: the loop is the hot path of SUMIFS.
     fn run_ifs<F>(
         &mut self,
         sum_range: &Range,
         ranges: &[Range],
+        criteria: &[CalcResult],
         fn_criteria: &[Criterion<'_>],
         cell: CellReferenceIndex,
         mut apply: F,
@@ -466,53 +538,79 @@ impl Model {
     where
         F: FnMut(f64),
     {
-        let left_row = sum_range.left.row;
-        let left_column = sum_range.left.column;
-        let mut right_row = sum_range.right.row;
-        let mut right_column = sum_range.right.column;
-
-        match self.clip_to_used_area(
-            sum_range.left.sheet,
-            left_row,
-            left_column,
-            right_row,
-            right_column,
-        ) {
-            Ok((r, c)) => {
-                right_row = r;
-                right_column = c;
+        let (row2, column2) = match self.stored_walk(sum_range, cell)? {
+            StoredWalk::Dense { row2, column2 } => (row2, column2),
+            StoredWalk::Sparse => {
+                return self.for_each_existing_cell(sum_range, cell, &mut |model, position| {
+                    model.apply_ifs_at(sum_range, position, ranges, fn_criteria, &mut apply)
+                });
             }
-            Err(message) => return Err(CalcResult::new_error(Error::ERROR, cell, message)),
+        };
+        let (left_row, left_column) = (sum_range.left.row, sum_range.left.column);
+        if row2 >= left_row && column2 >= left_column {
+            let walked = |range: &Range| Range {
+                left: range.left,
+                right: CellReferenceIndex {
+                    sheet: range.left.sheet,
+                    row: range.left.row + row2 - left_row,
+                    column: range.left.column + column2 - left_column,
+                },
+            };
+            let rects: Vec<Range> = ranges.iter().map(walked).collect();
+            if let Some(matched) = self.ifs_all_matches(&rects, criteria, fn_criteria) {
+                if let Some(values) = self.ifs_values(&walked(sum_range)) {
+                    for index in set_bits(&matched) {
+                        match values.get(index) {
+                            Some(CalcResult::Number(n)) => apply(*n),
+                            Some(error @ CalcResult::Error { .. }) => return Err(error.clone()),
+                            _ => {}
+                        }
+                    }
+                    return Ok(());
+                }
+            }
         }
-
-        for row in left_row..right_row + 1 {
-            for column in left_column..right_column + 1 {
-                let mut is_true = true;
-                for (range, fn_criterion) in ranges.iter().zip(fn_criteria.iter()) {
-                    // We check if value in range n meets criterion n
-                    let value = self.evaluate_cell(CellReferenceIndex {
-                        sheet: range.left.sheet,
-                        row: range.left.row + row - sum_range.left.row,
-                        column: range.left.column + column - sum_range.left.column,
-                    });
-                    if !fn_criterion(&value) {
-                        is_true = false;
-                        break;
-                    }
-                }
-                if is_true {
-                    let v = self.evaluate_cell(CellReferenceIndex {
-                        sheet: sum_range.left.sheet,
-                        row,
-                        column,
-                    });
-                    match v {
-                        CalcResult::Number(n) => apply(n),
-                        CalcResult::Error { .. } => return Err(v),
-                        _ => {}
-                    }
-                }
+        for row in left_row..=row2 {
+            for column in left_column..=column2 {
+                let position = CellReferenceIndex {
+                    sheet: sum_range.left.sheet,
+                    row,
+                    column,
+                };
+                self.apply_ifs_at(sum_range, position, ranges, fn_criteria, &mut apply)?;
             }
+        }
+        Ok(())
+    }
+
+    /// One position of [`Model::run_ifs`]: `apply` gets the sum cell's number when every
+    /// criteria cell aligned with it meets its criterion, and its error is the walk's result.
+    #[inline(always)]
+    fn apply_ifs_at<F>(
+        &mut self,
+        sum_range: &Range,
+        position: CellReferenceIndex,
+        ranges: &[Range],
+        fn_criteria: &[Criterion<'_>],
+        apply: &mut F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        for (range, fn_criterion) in ranges.iter().zip(fn_criteria.iter()) {
+            let value = self.evaluate_cell(CellReferenceIndex {
+                sheet: range.left.sheet,
+                row: range.left.row + position.row - sum_range.left.row,
+                column: range.left.column + position.column - sum_range.left.column,
+            });
+            if !fn_criterion(&value) {
+                return Ok(());
+            }
+        }
+        match self.evaluate_cell(position) {
+            CalcResult::Number(n) => apply(n),
+            error @ CalcResult::Error { .. } => return Err(error),
+            _ => {}
         }
         Ok(())
     }
@@ -615,4 +713,9 @@ impl Model {
             CalcResult::Number(if max.is_infinite() { 0.0 } else { max })
         })
     }
+}
+
+/// The error of an IF or IFS range argument that is not a range.
+fn not_a_range(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "Expected a range".to_string())
 }

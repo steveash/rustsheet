@@ -3,12 +3,12 @@ id: T-2468
 title: "PROB: an error x_range or prob_range is that error, one value on each side is #DIV/0!, unequal counts #N/A (gen-m9, 116 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -128,18 +128,21 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 | gen-m9/c0681a8b150ce301 Calc!A290 | `PROB(Data!$E12,1000000000000000.0,Data!E2)` (E12 = TRUE, prob 1E+15, lower -2.5) | #DIV/0! | #VALUE! |
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 6 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 1 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 115 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2256): these 115 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `PROB(1/0,{0.5;0.5},1)` is `#DIV/0!` and `PROB({1;2},NA(),"a")` `#N/A` (data errors before the limits);
-      `PROB(2,0.5,1)` and `PROB(A1,B1,1)` with numbers in A1, B1 are `#DIV/0!`; `PROB(A1:A3,B1:B4,1)` is `#N/A`;
+      Met except 6 cells that keep their lines (Outcome): T-2685, T-2425 and T-2707 own them.
+- [x] Unit tests: `PROB(1/0,{0.5;0.5},1)` is `#DIV/0!` and `PROB({1;2},NA(),"a")` `#N/A` (data errors before the limits);
+      ~~`PROB(2,0.5,1)` and `PROB(A1,B1,1)` with numbers in A1, B1 are `#DIV/0!`~~ (contradicted by Excel: a pair of
+      numbers is checked as usual, `PROB(3,0.1,-1,-1)` is `#NUM!`, 0bbab6206b5c9a07 A322; replaced by: a single text or
+      boolean against a number is `#DIV/0!`, and cells pair by position); `PROB(A1:A3,B1:B4,1)` is `#N/A`;
       `PROB(D1:D3,F1:F3,"a")` with D2 = `#N/A` stays `#VALUE!` (T-1813).
-- [ ] statistics.md's T-2256 PROB entry gets an "Ours:" line naming this task.
-- [ ] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's T-2256 PROB entry gets an "Ours:" line naming this task.
+- [x] Visible parity (gen-m9, T-2496): the 2 known-failure lines of the T-2496 probe block above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The sum-of-probabilities `#NUM!` and the limits' lifting (unchanged).
@@ -152,3 +155,29 @@ criterion under Acceptance criteria states it.
 ## Also owns (from T-2426)
 Blank one-cell reference cells that need this function's argument order, left failing by T-2426 (which made the blank
 `#VALUE!` in the shared readers): 583ca2baea0bb30a A58, 9735c5ab72fa5ecf A164, 139684e68fb2fc3b A353, 46ac3ef5e61583ca A269, 5919660b7bb4d195 A1, d8f44d556674c2fd A192.
+
+## Handoff (resumed)
+Partly done in the first PR (95 gen-m9 and 6 probe known-failure lines removed, no regressions): `fn_prob` reads
+the data arguments before the limits: an error value as x_range, then prob_range, then a blank one-cell reference
+`#VALUE!`; each is the result of every lifted element, so array limits still spill (7 `#SPILL!` cells needed that).
+Not done, needs oracle evidence (sonnet could not decide it):
+- The "one value on each side is `#DIV/0!`" rule. Returning `#DIV/0!` whenever both sides are single values regressed 28
+  gen-m9 cells that are `#NUM!` in Excel (`PROB(COLUMNS(Data!C5:E10),0.1,-1,-1)` 0bbab6206b5c9a07 A322;
+  `PROB(SUM(<TRUE cell>),<-0.0001>,<#NUM!>)` 5919660b7bb4d195 A267; 329b177b5d5165ad A268, 7fd0a98183c6babf A27, A217,
+  c46359 A166 ...) while ERF/EFFECT (`PROB(-0.5,1023,<#NUM!>)`, 6e18550e9fc9c1b9 A394) and a TRUE/text cell on one side
+  are `#DIV/0!`. Probe which condition (value of x, prob, a non-number cell, limits) decides, then implement.
+- Pairing cell by cell with text and blank cells (`PROB(Data!D3:D8,Data!C5:C10,0.3,0.3)` is 0): `values_from_areas`
+  drops blank cells, so a position-keeping reader is needed.
+The remaining known-failure lines of this task stay in eval/baseline/gen-m9.txt.
+
+## Outcome
+`fn_prob` reads the data before the limits (an error value as x_range, then prob_range, then a blank one-cell
+reference `#VALUE!`), then per lifted element the limits, then the data: x_range and prob_range pair cell by cell
+(`paired_values`), unequal **cell** counts are `#N/A`, a pair counts only when both cells are numbers, no pair is
+`#DIV/0!`, then the probability checks. The earlier "one value on each side is `#DIV/0!`" reading was wrong and is
+corrected in statistics.md. Eval: gen-m9 known failures -139 (95 in the first part, 44 here), probes -54, no regressions.
+Every acceptance criterion is met except the visible-parity lines of these 6 cells, which move on: 6e18550e9fc9c1b9 A394 and 92d4fa29e5510f1e A70 (their lower limit is a PV at rate -0.9999999999,
+inferred `#DIV/0!` in Excel; T-2685); 17c110a53924beb8 A330 (its GROUPBY), 941c409532603d32 A324 (its
+FORECAST.ETS.SEASONALITY, T-2425), d37313406b9f6e55 A142 (its inner YIELD) and 80586b859b73c87d A353 (`RANK.EQ` of a
+PROB whose upper limit is a TINV; Excel's `#N/A` may be RANK.EQ's not-found) keep their lines: each needs its inner call
+traced first (T-2707 owns the trace of A330, A142 and A353, and the probes of the orders still UNVERIFIED in statistics.md).

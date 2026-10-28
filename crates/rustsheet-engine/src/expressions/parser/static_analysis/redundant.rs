@@ -29,15 +29,18 @@ use super::{
 /// be stringified as `_xlfn.SINGLE`.
 ///
 /// `add` mirrors the flag in `add_implicit_intersection` and must start `true`
-/// (a formula is evaluated in a scalar context).
+/// (a formula is evaluated in a scalar context). The operators dropped are those of the
+/// formula with no whitespace ([`Node::rewrite_as_unspaced`]), as the import decides them.
 pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
-    // The import adds no `@` to a formula holding a SWITCH or another `NO_AUTOMATIC_AT`
-    // function, so every `@` in it is meaningful
-    // (`add_root_legacy_intersection`, probes/legacy-switch-callers).
-    if add && removes_automatic_at(node) {
-        return;
-    }
-    remove_redundant_legacy_intersection(node, add, add);
+    node.rewrite_as_unspaced(|node| {
+        // The import adds no `@` to a formula holding a SWITCH or another `NO_AUTOMATIC_AT`
+        // function, so every `@` in it is meaningful
+        // (`add_root_legacy_intersection`, probes/legacy-switch-callers).
+        if add && removes_automatic_at(node) {
+            return;
+        }
+        remove_redundant_legacy_intersection(node, add, add);
+    });
 }
 
 /// [`remove_redundant_implicit_intersection`] with the `arrays` flag of
@@ -89,7 +92,9 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         Node::SpillRangeOperator { child } => {
             remove_redundant_legacy_intersection(child, add, false);
         }
-        Node::Group { child, .. } => remove_redundant_legacy_intersection(child, add, arrays),
+        Node::Group { child, .. } | Node::UnaryPlus { child } | Node::Spaced { child, .. } => {
+            remove_redundant_legacy_intersection(child, add, arrays);
+        }
         Node::UnaryKind { right, .. } => remove_redundant_legacy_intersection(right, add, arrays),
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }

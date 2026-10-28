@@ -3,12 +3,12 @@ id: T-2542
 title: "Probe and match where IM* text writes a large part in plain notation (IMPOWER('1-2i',59), gen-m9, 1 cell)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
 depends_on: [T-1966]
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -34,3 +34,6 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+IM* parts now write plain notation up to decimal exponent 20 (zero-padded past 15 digits) and E notation from 21 (`complex_part_to_text`). New probe `probes/eng-im-large-part` (36 cells, excel-graph) passes; engineering.md entry resolved. Eval delta: gen-m9 -1 known failure (A330), no new known failures.

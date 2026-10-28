@@ -4,10 +4,11 @@ title: "PMT, IPMT and PPMT back to Excel's bits on the 14 cells T-2130 moved by 
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: opus
 depends_on: [T-2130]
+campaign: visible
 ---
 
 ## Goal
@@ -33,3 +34,18 @@ with no cell made visibly off.
 
 ## Out of scope
 - The four PPMT cells Excel computes inexactly (T-2242).
+
+## Deferred (decision 0114), superseded
+This task was `defer: phase-1b` on the belief that all its cells were within 15 digits. The 2026-10-27 eval showed
+some of them visibly off, so T-0090 removed the key and gave it a `campaign:` stage (below), as this section foresaw.
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value. Bit-level criteria still unmet then move to a follow-up filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a): this task was `defer: phase-1b`, but it is the only
+live owner of visibly-off ironcalc-calc cells, so the key is removed (decision 0114 parks only tasks whose cells are
+all within 15 digits): FINANCIAL/PMT.xlsx Sheet1!J10, J11, J18, J23 (PV, e.g. 119.99999999977724 expected,
+120.00000000000462 today), H10, H11, H27, I27 (NPER), L32, L33 (FV), and FINANCIAL/CUMPRINC_CUMIPMT.xlsx Sheet1!G2
+(CUMIPMT). Fixing them lifts PV, NPER and FV to the Phase 1 rate. T-2730 names the same cells and stays parked
+for its PMT bit work.

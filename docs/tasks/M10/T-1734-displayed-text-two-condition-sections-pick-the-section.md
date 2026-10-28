@@ -3,11 +3,11 @@ id: T-1734
 title: "Displayed text: two-condition sections pick the section as Excel does"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
-campaign: visible
+campaign: semantics
 depends_on: []
 ---
 
@@ -33,3 +33,6 @@ Evidence: suite gen-m10 (excel-graph, 2026-10-16, T-1611): `make eval` report, "
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+A condition on the first section now chooses among two or three sections (first if it holds, then the second's condition, else the last); the matched section keeps the minus unless its condition holds for negatives only. gen-m10: 300 displayed-text/TEXT cells fixed, known failures 15 -> 2, no regressions. Unprobed edges in number-formats.md.

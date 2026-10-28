@@ -40,11 +40,12 @@ pub enum CellInput {
 }
 
 impl CellInput {
-    /// The formula text without its leading `=`, or `None` for any other input.
+    /// The formula text without its leading `=`, or `None` for any other input. A typed entry
+    /// (`{"entered": "=NOW( )"}`) is a formula when it starts with `=`, as Excel's input parser reads it.
     #[must_use]
     pub fn formula(&self) -> Option<&str> {
         match self {
-            Self::Str(f) => f.strip_prefix('='),
+            Self::Str(f) | Self::Entered { entered: f } => f.strip_prefix('='),
             _ => None,
         }
     }
@@ -148,9 +149,8 @@ pub struct TableSpec {
     pub range: String,
     #[serde(default)]
     pub filter: bool,
-    /// The last row of `range` is the table's totals row (T-1607). The facade cannot add one yet
-    /// (TODO(T-1671)), so the engine adapter registers the table without it: data references read
-    /// right, `#Totals` and `#All` do not.
+    /// The last row of `range` is the table's totals row (T-1607; the engine adapter adds it with
+    /// `Txn::add_table_with_totals`, T-1671).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub totals_row: bool,
 }

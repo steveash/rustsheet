@@ -1,21 +1,32 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::external_reference::ExternalArea;
 use crate::{calc_result::CalcResult, model::Model};
 
 use super::array_node_to_calc_result;
 use crate::functions::binary_search::Sequence;
+use crate::functions::criteria::{folded_units, WildcardPattern};
+use crate::functions::util::collation::{collation_key, CollationKey};
 use crate::functions::util::compare_values;
+use crate::number_format::excel_precision_key;
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
+use std::sync::{Arc, OnceLock};
 
 /// A two dimensional table for the LOOKUP family of functions. It abstracts over
-/// the two possible sources, a range reference or an in-formula array literal, so
-/// the lookup logic can be written once for both.
+/// its possible sources, a range reference, an in-formula array literal or a range of a
+/// linked workbook's cache, so the lookup logic can be written once for all.
 pub(super) enum LookupTable {
     Range {
         left: CellReferenceIndex,
         right: CellReferenceIndex,
     },
     Array(Vec<Vec<ArrayNode>>),
+    /// A range of a linked workbook's cached sheet, read in place: a whole column or row keeps
+    /// its full length, its cells past the cache empty (`Model::cached_external_lookup_area`).
+    External(ExternalArea),
 }
 
 impl LookupTable {
@@ -23,6 +34,7 @@ impl LookupTable {
         match self {
             LookupTable::Range { left, right } => right.row - left.row + 1,
             LookupTable::Array(array) => array.len() as i32,
+            LookupTable::External(area) => area.last_row - area.first_row + 1,
         }
     }
 
@@ -30,6 +42,7 @@ impl LookupTable {
         match self {
             LookupTable::Range { left, right } => right.column - left.column + 1,
             LookupTable::Array(array) => array.first().map_or(0, |row| row.len()) as i32,
+            LookupTable::External(area) => area.last_column - area.first_column + 1,
         }
     }
 
@@ -71,6 +84,7 @@ impl LookupTable {
             LookupTable::Array(array) => {
                 array_node_to_calc_result(&array[row as usize][column as usize], cell)
             }
+            LookupTable::External(area) => model.external_area_cell(*area, row, column, cell),
         }
     }
 
@@ -84,6 +98,7 @@ impl LookupTable {
                 };
                 model.range_search_vector(left, &end, false)
             }
+            LookupTable::External(area) => model.external_search_vector(*area, false, cell),
             LookupTable::Array(_) => SearchVector::new(
                 (0..self.columns())
                     .map(|column| self.get(model, 0, column, cell))
@@ -102,6 +117,7 @@ impl LookupTable {
                 };
                 model.range_search_vector(left, &end, true)
             }
+            LookupTable::External(area) => model.external_search_vector(*area, true, cell),
             LookupTable::Array(_) => SearchVector::new(
                 (0..self.rows())
                     .map(|row| self.get(model, row, 0, cell))
@@ -124,29 +140,191 @@ static EMPTY_CELL: CalcResult = CalcResult::EmptyCell;
 /// exactly the values the full walk would (binary searches probe the same
 /// positions, an exact match on an empty value finds the first empty tail
 /// cell), so the result never depends on where the used area ends.
+///
+/// Cloning shares the values: the per-pass search cache (`search_cache.rs`, T-0448) hands the
+/// same vector to every lookup into one range, and the exact-match indexes built on its second
+/// search serve them all.
+#[derive(Clone)]
 pub(crate) struct SearchVector {
+    data: Arc<SearchData>,
+}
+
+struct SearchData {
     /// The evaluated prefix.
     values: Vec<CalcResult>,
     /// The full length: `values` followed by `len - values.len()` empty cells.
     len: usize,
+    /// Exact searches made so far; the indexes are built on the second (a single search is
+    /// cheaper as a walk).
+    searches: AtomicU32,
+    /// First and last position of each value under MATCH's and VLOOKUP's exact equality.
+    exact: OnceLock<ExactIndex>,
+    /// First and last position of each value under XMATCH's and XLOOKUP's exact equality.
+    collated: OnceLock<CollatedIndex>,
+}
+
+/// What an indexed exact match found.
+pub(crate) enum Indexed {
+    /// The index applied: the match's position, or `None` when nothing matches.
+    Searched(Option<usize>),
+    /// The index does not apply; walk the candidates.
+    Unindexed,
+}
+
+/// The fewest evaluated values worth indexing: a shorter walk costs about what a lookup does.
+const MIN_INDEXED: usize = 16;
+
+/// A value's key under MATCH, VLOOKUP and HLOOKUP's exact match (`exact_position`, and
+/// `WildcardPattern` for text without wildcards): numbers equal exactly (-0 is 0, NaN equals
+/// nothing), text by its case-folded units, booleans by value. Blanks and errors have none.
+#[derive(PartialEq, Eq, Hash)]
+enum ExactKey {
+    Number(u64),
+    Text(Vec<u16>),
+    Boolean(bool),
+}
+
+impl ExactKey {
+    fn of(value: &CalcResult) -> Option<ExactKey> {
+        match value {
+            CalcResult::Number(x) if !x.is_nan() => Some(ExactKey::Number((x + 0.0).to_bits())),
+            CalcResult::String(s) => Some(ExactKey::Text(folded_units(s))),
+            CalcResult::Boolean(b) => Some(ExactKey::Boolean(*b)),
+            _ => None,
+        }
+    }
+}
+
+/// A value's key under XMATCH and XLOOKUP's exact match (`compare_values` is 0): numbers on
+/// their 15-digit values, text under Excel's collation, booleans by value. Blanks and errors
+/// have none: a blank only matches a blank lookup value and an error matches nothing.
+#[derive(PartialEq, Eq, Hash)]
+enum CollatedKey {
+    Number(u64),
+    Text(CollationKey),
+    Boolean(bool),
+}
+
+impl CollatedKey {
+    fn of(value: &CalcResult) -> Option<CollatedKey> {
+        match value {
+            CalcResult::Number(x) => Some(CollatedKey::Number(excel_precision_key(*x))),
+            CalcResult::String(s) => Some(CollatedKey::Text(collation_key(s))),
+            CalcResult::Boolean(b) => Some(CollatedKey::Boolean(*b)),
+            _ => None,
+        }
+    }
+}
+
+/// First and last position of every key in the evaluated prefix. The empty tail never matches a
+/// keyed value, so it needs no entry.
+struct PositionIndex<K>(HashMap<K, (usize, usize)>);
+
+type ExactIndex = PositionIndex<ExactKey>;
+type CollatedIndex = PositionIndex<CollatedKey>;
+
+impl<K: Eq + Hash> PositionIndex<K> {
+    fn build(values: &[CalcResult], key: impl Fn(&CalcResult) -> Option<K>) -> Self {
+        let mut map: HashMap<K, (usize, usize)> = HashMap::new();
+        for (index, value) in values.iter().enumerate() {
+            if let Some(k) = key(value) {
+                map.entry(k)
+                    .and_modify(|(_, last)| *last = index)
+                    .or_insert((index, index));
+            }
+        }
+        PositionIndex(map)
+    }
+
+    fn find(&self, key: &K, forward: bool) -> Option<usize> {
+        self.0
+            .get(key)
+            .map(|&(first, last)| if forward { first } else { last })
+    }
 }
 
 impl SearchVector {
     /// A vector with no virtual tail.
     pub(crate) fn new(values: Vec<CalcResult>) -> SearchVector {
         let len = values.len();
-        SearchVector { values, len }
+        SearchVector::with_len(values, len)
+    }
+
+    /// `values` followed by an empty tail up to `len`.
+    pub(super) fn with_len(values: Vec<CalcResult>, len: usize) -> SearchVector {
+        SearchVector {
+            data: Arc::new(SearchData {
+                values,
+                len,
+                searches: AtomicU32::new(0),
+                exact: OnceLock::new(),
+                collated: OnceLock::new(),
+            }),
+        }
+    }
+
+    /// Whether this search should go through an index: the vector has been searched before and
+    /// is long enough to make a walk dearer than a hash lookup.
+    fn index_worthwhile(&self) -> bool {
+        let earlier = self.data.searches.fetch_add(1, AtomicOrdering::Relaxed);
+        earlier >= 1 && self.data.values.len() >= MIN_INDEXED
+    }
+
+    /// The exact match of MATCH (type 0), VLOOKUP and HLOOKUP (`range_lookup` FALSE): text is
+    /// matched as a wildcard pattern (`WildcardPattern`), anything else by `exact_position`.
+    /// From the second search on, a pattern without wildcards and a non-text value are looked up
+    /// in an index with the same equality instead of walked (T-0448).
+    pub(super) fn exact_match(&self, target: &CalcResult) -> Option<usize> {
+        let pattern = match target {
+            CalcResult::String(s) => Some(WildcardPattern::new(s)),
+            _ => None,
+        };
+        if self.index_worthwhile() {
+            let key = match &pattern {
+                Some(pattern) => pattern.literal_units().map(ExactKey::Text),
+                None => ExactKey::of(lookup_key(target)),
+            };
+            if let Some(key) = key {
+                let index = self
+                    .data
+                    .exact
+                    .get_or_init(|| PositionIndex::build(&self.data.values, ExactKey::of));
+                return index.find(&key, true);
+            }
+        }
+        match pattern {
+            Some(pattern) => self.position(|value| pattern.matches_result(value)),
+            None => self.exact_position(target),
+        }
+    }
+
+    /// XMATCH's and XLOOKUP's exact match (match mode 0) of a non-blank, non-error `target`
+    /// through an index, `forward` for the first match and else the last;
+    /// [`Indexed::Unindexed`] when the index does not apply (first search, short vector, or a
+    /// target without a key) and the caller walks the candidates instead (T-0448).
+    pub(crate) fn collated_match(&self, target: &CalcResult, forward: bool) -> Indexed {
+        let Some(key) = CollatedKey::of(target) else {
+            return Indexed::Unindexed;
+        };
+        if !self.index_worthwhile() {
+            return Indexed::Unindexed;
+        }
+        let index = self
+            .data
+            .collated
+            .get_or_init(|| PositionIndex::build(&self.data.values, CollatedKey::of));
+        Indexed::Searched(index.find(&key, forward))
     }
 
     /// The full length, including the empty tail.
     pub(super) fn len(&self) -> usize {
-        self.len
+        self.data.len
     }
 
     /// The cells a search actually tests: the evaluated prefix, plus one for an empty tail
     /// (it is all one value, tested once). The cost of one lifted lookup (T-0270).
     pub(crate) fn search_cost(&self) -> usize {
-        self.values.len() + usize::from(self.len > self.values.len())
+        self.data.values.len() + usize::from(self.data.len > self.data.values.len())
     }
 
     /// [`SearchVector::search_cost`] as the cells one lifted element is charged
@@ -157,14 +335,15 @@ impl SearchVector {
 
     /// The value at `index`, which must be below `len`.
     pub(crate) fn get(&self, index: usize) -> &CalcResult {
-        self.values.get(index).unwrap_or(&EMPTY_CELL)
+        self.data.values.get(index).unwrap_or(&EMPTY_CELL)
     }
 
     /// The index of the first value that `matches`. The tail is all one
     /// value, so it is tested once.
     pub(super) fn position<F: Fn(&CalcResult) -> bool>(&self, matches: F) -> Option<usize> {
-        self.values.iter().position(&matches).or_else(|| {
-            (self.len > self.values.len() && matches(&EMPTY_CELL)).then_some(self.values.len())
+        self.data.values.iter().position(&matches).or_else(|| {
+            (self.data.len > self.data.values.len() && matches(&EMPTY_CELL))
+                .then_some(self.data.values.len())
         })
     }
 
@@ -172,8 +351,12 @@ impl SearchVector {
     /// is all one value, so only its first cell in that order is a candidate
     /// (T-0127): its first cell when walking forward, its last when backward.
     pub(crate) fn linear_candidates(&self, forward: bool) -> Vec<usize> {
-        let evaluated = self.values.len();
-        let tail = (self.len > evaluated).then_some(if forward { evaluated } else { self.len - 1 });
+        let evaluated = self.data.values.len();
+        let tail = (self.data.len > evaluated).then_some(if forward {
+            evaluated
+        } else {
+            self.data.len - 1
+        });
         if forward {
             (0..evaluated).chain(tail).collect()
         } else {
@@ -194,15 +377,15 @@ impl SearchVector {
         let target = lookup_key(target);
         let kind = value_kind(target)?;
         let equal = |index: usize| {
-            self.values.get(index).is_some_and(|value| {
+            self.data.values.get(index).is_some_and(|value| {
                 value_kind(value) == Some(kind) && compare_values(value, target) == 0
             })
         };
         // Cells in the virtual tail are empty, so the search never enters it.
-        let evaluated = self.values.len();
+        let evaluated = self.data.values.len();
         let mut best = None;
         let mut lo = 0;
-        let mut hi = self.len;
+        let mut hi = self.data.len;
         // The live range is lo..hi (hi exclusive); the midpoint is the floor
         // of the inclusive bounds' mean (the lower of two middles).
         while lo < hi {
@@ -210,7 +393,8 @@ impl SearchVector {
             // Every scan stays inside the live range, so a round costs O(n) and
             // the O(log n) rounds total O(n log n).
             let found = (mid..hi.min(evaluated)).find(|&index| {
-                self.values
+                self.data
+                    .values
                     .get(index)
                     .is_some_and(|value| value_kind(value) == Some(kind))
             });
@@ -218,7 +402,7 @@ impl SearchVector {
                 hi = mid;
                 continue;
             };
-            match compare_values(&self.values[m], target) {
+            match compare_values(&self.data.values[m], target) {
                 0 => {
                     // Linear in the run's length, as Excel's answer needs it.
                     let mut edge = m;
@@ -250,7 +434,7 @@ impl SearchVector {
         let target = lookup_key(target);
         let kind = value_kind(target)?;
         let mut best = None;
-        for (index, value) in self.values.iter().enumerate() {
+        for (index, value) in self.data.values.iter().enumerate() {
             if value_kind(value) != Some(kind) {
                 continue;
             }
@@ -271,10 +455,13 @@ impl SearchVector {
     pub(super) fn exact_position(&self, target: &CalcResult) -> Option<usize> {
         let target = lookup_key(target);
         let kind = value_kind(target)?;
-        self.values.iter().position(|value| match (value, target) {
-            (CalcResult::Number(a), CalcResult::Number(b)) => a == b,
-            _ => value_kind(value) == Some(kind) && compare_values(value, target) == 0,
-        })
+        self.data
+            .values
+            .iter()
+            .position(|value| match (value, target) {
+                (CalcResult::Number(a), CalcResult::Number(b)) => a == b,
+                _ => value_kind(value) == Some(kind) && compare_values(value, target) == 0,
+            })
     }
 }
 
@@ -298,6 +485,12 @@ enum ValueKind {
     Boolean,
 }
 
+/// Whether the approximate search can stop on `value`: a number, text or a boolean. It skips
+/// every other value (a blank, an error) whatever it searches for.
+pub(super) fn is_searched_kind(value: &CalcResult) -> bool {
+    value_kind(value).is_some()
+}
+
 fn value_kind(value: &CalcResult) -> Option<ValueKind> {
     match value {
         CalcResult::Number(_) => Some(ValueKind::Number),
@@ -309,7 +502,7 @@ fn value_kind(value: &CalcResult) -> Option<ValueKind> {
 
 impl Sequence<CalcResult> for SearchVector {
     fn seq_len(&self) -> usize {
-        self.len
+        self.data.len
     }
     fn at(&self, index: usize) -> &CalcResult {
         self.get(index)
@@ -339,11 +532,7 @@ impl Model {
                 CellReferenceIndex { column, ..*right },
             )
         };
-        let values = self.prepare_array(left, &end, down);
-        SearchVector {
-            values,
-            len: usize::try_from(len).unwrap_or(0),
-        }
+        self.cached_search_vector(left, &end, usize::try_from(len).unwrap_or(0), down)
     }
 
     /// The last row of `row1..=row2` worth evaluating down `column`: rows

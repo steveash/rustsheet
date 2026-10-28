@@ -409,7 +409,10 @@ impl Model {
             m2 += d * d;
         }
 
-        if m2 == 0.0 {
+        // A sum of squares that overflows is #DIV/0! too, not the 0 that dividing by an infinite
+        // deviation gives (`SKEW({1E+200,1E+200,-1E+200},2.5)`, probes/t2475-stat-subexpressions
+        // P!A245; SKEW.P and KURT alike, statistics.md "Overflowing squares (T-2432)").
+        if m2 == 0.0 || m2.is_infinite() {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -460,7 +463,9 @@ impl Model {
             m2 += d * d;
         }
 
-        if m2 == 0.0 {
+        // An overflowing sum of squares is #DIV/0! as in SKEW (`SKEW.P({1E+200,1E+200,-1E+200})`;
+        // statistics.md "Overflowing squares (T-2432)").
+        if m2 == 0.0 || m2.is_infinite() {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -508,7 +513,9 @@ impl Model {
             m2 += d * d;
         }
 
-        if m2 == 0.0 {
+        // An overflowing sum of squares is #DIV/0! as in SKEW (`KURT({1E+200,1E+200,-1E+200})`;
+        // statistics.md "Overflowing squares (T-2432)").
+        if m2 == 0.0 || m2.is_infinite() {
             return CalcResult::Error {
                 error: Error::DIV,
                 origin: cell,
@@ -622,14 +629,17 @@ impl Model {
 }
 
 /// The numbers LARGE and SMALL rank: a reference (one range or a union's areas), an array, or a
-/// scalar typed in place, read by [`Model::numbers_from_reference_arg`].
+/// scalar typed in place, read by [`Model::numbers_from_reference_arg`]; an element-wise
+/// expression of whole columns as its head and tail row
+/// ([`Model::tailed_numbers_from_reference_arg`]).
 fn ranked_numbers(
     model: &mut Model,
     node: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
     model
-        .numbers_from_reference_arg(node, cell)
+        .tailed_numbers_from_reference_arg(node, cell)
+        .unwrap_or_else(|| model.numbers_from_reference_arg(node, cell))
         .map(|numbers| numbers.into_iter().flatten().collect())
 }
 

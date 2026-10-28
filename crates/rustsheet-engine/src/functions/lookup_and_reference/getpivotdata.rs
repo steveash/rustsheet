@@ -1,4 +1,4 @@
-use super::pivot_index::PivotQuery;
+use super::pivot_index::{nested_axis, PivotQuery};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -25,7 +25,10 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if args.len() < 2 {
+        // Excel for the web refuses the workbook for 5, 7, ... arguments (a second or later field
+        // without its item), so, like every refused count, it is `#ERROR!`, before any argument
+        // is read (docs/excel-semantics/syntax.md "GETPIVOTDATA with an odd count").
+        if args.len() < 2 || (args.len() >= 5 && args.len() % 2 == 1) {
             return CalcResult::new_args_number_error(cell);
         }
         let data_field = self.evaluate_node_in_context(&args[0], cell);
@@ -112,8 +115,8 @@ impl Model {
             }
             _ => return None,
         }
-        // A field with no item (H15).
-        if pairs.len() % 2 == 1 {
+        // A field with no item (H15); a pair on a pivot with nested axis fields (unknown 10).
+        if pairs.len() % 2 == 1 || (!pairs.is_empty() && nested_axis(table)) {
             return None;
         }
         let axis_names: Vec<String> = axis
@@ -122,6 +125,7 @@ impl Model {
             .collect::<Option<_>>()?;
         let mut positions = Vec::with_capacity(pairs.len() / 2);
         let mut items = Vec::with_capacity(pairs.len() / 2);
+        let mut omitted = Vec::with_capacity(pairs.len() / 2);
         for pair in pairs.chunks_exact(2) {
             // A field name must be text naming a field on an axis (H8, J3), each field once
             // (H17; the same item twice is SPEC-0015 unknown 5).
@@ -134,6 +138,7 @@ impl Model {
                 return None;
             }
             positions.push(position);
+            omitted.push(matches!(pair[1], Node::EmptyArgKind));
             items.push(self.evaluate_node_in_context(&pair[1], cell));
         }
         let query_items = vec![None; axis.len()];
@@ -147,13 +152,17 @@ impl Model {
                     data_field: 0,
                     items: query_items.clone().into_boxed_slice(),
                 };
-                for (&position, item) in positions.iter().zip(items) {
-                    // An item is text, a label cell's value included (J6); a number, a date or
-                    // a boolean is SPEC-0015 unknown 3, an error in a pair unprobed.
-                    let CalcResult::String(name) = item else {
-                        return no_answer(cell);
+                for ((&position, item), &omitted) in positions.iter().zip(items).zip(&omitted) {
+                    // An item is text, a label cell's value included (J6), or an omitted
+                    // argument for the blank item (pv23_041 G5:G7); a number, a date or a
+                    // boolean is SPEC-0015 unknown 3, `""`, a blank cell or `"(blank)"`
+                    // unprobed, an error in a pair unprobed.
+                    let found = match item {
+                        _ if omitted => model.pivot_blank_item(pivot, position),
+                        CalcResult::String(name) => model.pivot_item(pivot, position, name),
+                        _ => None,
                     };
-                    let Some(found) = model.pivot_item(pivot, position, name) else {
+                    let Some(found) = found else {
                         return no_answer(cell);
                     };
                     if let Some(slot) = query.items.get_mut(position) {

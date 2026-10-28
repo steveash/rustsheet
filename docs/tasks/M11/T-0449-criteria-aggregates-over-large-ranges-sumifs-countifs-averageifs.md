@@ -3,7 +3,7 @@ id: T-0449
 title: "Criteria aggregates over large ranges: SUMIFS, COUNTIFS, AVERAGEIFS and friends stop rescanning the criteria ranges per formula"
 milestone: M11
 lane: perf
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -44,19 +44,50 @@ Shared constraints:
   the Outcome.
 
 ## Acceptance criteria
-- [ ] A bench in crates/rustsheet/benches/aggregate.rs reproduces the synthetic workload above at no
+- [x] A bench in crates/rustsheet/benches/aggregate.rs reproduces the synthetic workload above at no
       less than 2,000 SUMIFS + 2,000 COUNTIFS over 50,000 rows. Its recalc is at least 5x faster than on
       `main` before this task, and both timings are in the Outcome.
-- [ ] corpus-bench 52450's release-build calculation time is in the Outcome; its timeout leaves
+- [x] corpus-bench 52450's release-build calculation time is in the Outcome; its timeout leaves
       eval/baseline/corpus-bench.txt if it now runs under 60 s.
-- [ ] Calipers pv26_002 and pv26_2_002: release calculation times before and after in the Outcome. If
+- [x] Calipers pv26_002 and pv26_2_002: release calculation times before and after in the Outcome. If
       they now calculate within the 60 s case timeout, their `exclude` entries leave
       eval/suites/calipers/suite.toml and `rustsheet-eval update-baseline --suite calipers` records the result; otherwise file the
       remaining cause as a follow-up.
-- [ ] Unit tests cover cache invalidation within a pass, wildcard and comparison criteria,
+- [x] Unit tests cover cache invalidation within a pass, wildcard and comparison criteria,
       text-number coercion in criteria, and errors in criteria ranges.
-- [ ] `make eval` shows no new known failure; `make check` green; reviewers approve.
+- [x] `make eval` shows no new known failure; `make check` green; reviewers approve.
 
 ## Out of scope
 - Exact-match lookups (T-0448).
 - Database functions (DSUM…) and SUMPRODUCT-style masks, unless they share the matcher for free.
+
+## Outcome
+- A per-pass cache for the criteria aggregates (`functions/statistical/ifs_cache.rs`): each
+  criteria (and value) range's values are read once, and each criterion's matching cells once
+  per range, as a bit set; SUMIFS, AVERAGEIFS, MINIFS, MAXIFS, SUMIF, AVERAGEIF (`run_ifs`) and
+  COUNTIFS, COUNTIF (`count_ifs`) intersect their criteria's sets and walk the matches in row order,
+  so sums round as before and the first error in the value range still wins.
+- Reads stay what the lazy walk reads: a range is cached only once reading it evaluates nothing
+  (every formula cell of it already evaluated in this pass, spill cells' anchors too, no circular
+  cell); until then the walk runs and the check resumes where it stopped. As in `search_cache.rs`
+  (T-0448): one pass only, cleared with every reset of the cell states, nothing under iterative
+  calculation, Excel-order passes or outside a pass. Caps (directive 5): ranges of 64 to 4,000,000
+  cells, 4,000,000 cached values and 32,000,000 bits of match sets and their keys per pass. The pass
+  caches share `Model::pass_cache_safe` and `Evaluation::clear_pass_caches` with T-0448's.
+- Bench `cargo bench -p rustsheet --bench aggregate -- criteria` (new case: 2,000 SUMIFS +
+  2,000 COUNTIFS over 50,000 rows, five text criteria and 100 numeric thresholds), release, fastest of
+  5 recalculations: 15.558 s on `main` -> 0.112 s (about 140x).
+- Real files (release, no case timeout, `main` before T-0448 -> this branch):
+  - corpus-bench 52450: 342.1 s -> 338.4 s. Its 36,600 COUNTIFS each have new date bounds, so no
+    match set repeats; still past the 60 s timeout, so its baseline line stays.
+  - calipers pv26_002: 572.0 s -> 528.3 s, all 1,376,972 cells bit-exact both ways. Its rank
+    COUNTIFS and per-row SUMIFS also use a new criterion per call (and a growing prefix range), so
+    its `exclude` entry stays. pv26_2_002 is the same model.
+  - Both need value indexes per range and prefix ranges: follow-up T-0465.
+- Tests: `test_ifs_cache.rs` (every criterion pair of a mixed-type 240-row range through COUNTIFS,
+  SUMIFS, COUNTIF, SUMIF and MAXIFS equals the walks over its four 60-row blocks; a cache per pass
+  with formula criteria edited between evaluations; a cycle through a criteria range; a spill into
+  a criteria range that restarts the pass; 9,000 distinct long text criteria stay within the
+  match-set budget, which charges each entry its key's text). Mutation checks: keeping the cache across passes, and
+  treating every cell as readable, each fail a test.
+- Eval: `rustsheet-eval check` 0 regressions in every gated suite, corpus-bench included.

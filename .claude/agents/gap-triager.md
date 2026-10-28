@@ -15,9 +15,12 @@ the failing case ids/cells, expected vs actual, the suspected root cause, and ac
 criteria "these N known-failure lines disappear from eval/baseline/<suite>.txt with no new ones".
 Groups with visibly-off cells come first (decision 0083). A cell is visibly off when it is numeric
 and more than half a unit in the 15th significant digit from Excel's value, or when it has the
-wrong type, error or text. Each such group's task gets `campaign: visible` and a
-`## Visible-parity stage` section (docs/process/task-format.md). Exotic locales and calendars are
-the exception: they never get the key. Within that first band and among all other groups, rank
+wrong type, error or text. Each such group's task gets a `campaign:` stage and a
+`## Visible-parity stage` section (docs/process/task-format.md, decision 0114): `semantics` for
+wrong types, errors, text and semantic rules; `accuracy` when a high-precision reference (mpmath)
+shows Excel is close to correctly rounded and the engine is not; `visible` for the rest. Exotic
+locales and calendars are the exception: they never get the key. A group whose cells are all within
+15 digits already (last digits, ulps) gets `defer: phase-1b` instead. Within that first band and among all other groups, rank
 by the function's `milestone` in eval/catalog/functions.yaml, earliest first, then
 by failing cells × its `prior` (decision 0026): a current-milestone function comes before any M9
 last-digit tail, however many cells the tail has. Create each task with `--milestone` set to that

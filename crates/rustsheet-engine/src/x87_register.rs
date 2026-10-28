@@ -39,6 +39,21 @@ impl Register {
         }
     }
 
+    /// The sign, the significand and the exponent: the value is `(-1)^negative * significand *
+    /// 2^exponent`, and a zero has a zero significand.
+    pub(crate) fn parts(self) -> (bool, u128, i32) {
+        (self.negative, self.significand, self.exponent)
+    }
+
+    /// The register `(-1)^negative * significand * 2^exponent` for a significand below 2^64,
+    /// normalised as an operation leaves it.
+    pub(crate) fn from_parts(negative: bool, significand: u128, exponent: i32) -> Self {
+        if significand == 0 {
+            return Self::zero(negative);
+        }
+        Self::rounded(negative, significand, exponent, false)
+    }
+
     /// `self * other`, rounded to a 64-bit significand.
     pub(crate) fn mul(self, other: Self) -> Self {
         let negative = self.negative != other.negative;

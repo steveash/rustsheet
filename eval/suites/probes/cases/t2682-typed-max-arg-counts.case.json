@@ -1,0 +1,75 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2682 typed maximum argument counts: each call in column A is typed (Graph PATCH) at a count Excel accepts, at the maximum for XLOOKUP (6), IF (3), INDEX's reference form (4), FIND/FINDB/SEARCHB (3), LEFTB/RIGHTB (2), LENB (1), MIDB (3), REPLACEB (4), and on whole cycles for IFS (2, 4), LET (3, 5) and SWITCH (3, 4). The counts one past (and off-cycle IFS 3/5, LET 4/6) are refused with Graph PATCH 400 InvalidArgument (docs/excel-semantics/syntax.md \"Minimum argument counts\").",
+ "tags": [
+  "M7",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B1": 1,
+    "C1": 2,
+    "B2": 3,
+    "C2": 4,
+    "D1": 5,
+    "E1": 6,
+    "D2": 7,
+    "E2": 8,
+    "A1": {
+     "entered": "=XLOOKUP(1,{1,2},{3,4},0,0,1)"
+    },
+    "A2": {
+     "entered": "=IF(TRUE,2,3)"
+    },
+    "A3": {
+     "entered": "=INDEX((Sheet1!B1:C2,Sheet1!D1:E2),1,1,2)"
+    },
+    "A4": {
+     "entered": "=IFS(TRUE,1)"
+    },
+    "A5": {
+     "entered": "=IFS(FALSE,1,TRUE,2)"
+    },
+    "A6": {
+     "entered": "=LET(x,1,x)"
+    },
+    "A7": {
+     "entered": "=LET(x,1,y,2,x+y)"
+    },
+    "A8": {
+     "entered": "=FIND(\"a\",\"abc\",1)"
+    },
+    "A9": {
+     "entered": "=FINDB(\"a\",\"abc\",1)"
+    },
+    "A10": {
+     "entered": "=LEFTB(\"abc\",1)"
+    },
+    "A11": {
+     "entered": "=LENB(\"abc\")"
+    },
+    "A12": {
+     "entered": "=MIDB(\"abc\",1,1)"
+    },
+    "A13": {
+     "entered": "=REPLACEB(\"abc\",1,1,\"x\")"
+    },
+    "A14": {
+     "entered": "=RIGHTB(\"abc\",1)"
+    },
+    "A15": {
+     "entered": "=SEARCHB(\"a\",\"abc\",1)"
+    },
+    "A16": {
+     "entered": "=SWITCH(1,1,2)"
+    },
+    "A17": {
+     "entered": "=SWITCH(1,2,3,4)"
+    }
+   }
+  }
+ ]
+}

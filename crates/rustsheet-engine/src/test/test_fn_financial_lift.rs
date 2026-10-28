@@ -259,10 +259,20 @@ fn discount_securities_and_t_bills_lift_arrays_and_refuse_ranges() {
 fn the_table_enters_rate_as_weighted() {
     use crate::functions::Function;
     // RATE's secant has a fixed 200-step cap (Excel's, probes/rate-step-cap); each element is
-    // charged that weight.
+    // charged the time of a run to it, 2^13 units (T-2814), so a lift runs at most 16,384.
     let weight = |function: Function| function.arg_kinds().map(|kinds| kinds.work.weight());
-    assert_eq!(weight(Function::Rate), Some(200));
+    assert_eq!(weight(Function::Rate), Some(1 << 13));
     assert_eq!(weight(Function::Pmt), Some(1));
+}
+
+/// A lifted RATE runs up to 2^27 / 2^13 = 16,384 elements; one more makes the call `#ERROR!`
+/// before any element runs (T-2814; arrays.md, a DEVIATION).
+#[test]
+fn a_lifted_rate_past_its_work_cap_is_refused() {
+    check(&[
+        ("A1", "=ROWS(RATE(SEQUENCE(16384)*0+1,-1,100))", "16384"),
+        ("A2", "=ROWS(RATE(SEQUENCE(16385)*0+1,-1,100))", "#ERROR!"),
+    ]);
 }
 
 /// DB and VDB lift every argument (probes/fin-argument-modes; T-1820), each element the scalar
@@ -285,7 +295,8 @@ fn db_and_vdb_lift_and_bound_their_periods() {
             "=INDEX(VDB(2400,300,10,0,{1;2},2,FALSE),2)=VDB(2400,300,10,0,2,2,FALSE)",
             "TRUE",
         ),
-        ("H5", "=DB(1,0,1E15,1E15)", "#NUM!"),
+        // A period past i32::MAX is period 1 (probes/fin-syd-db-domain G1).
+        ("H5", "=DB(1,0,1E15,1E15)", "$1.00"),
         ("H6", "=VDB(1000,0,1E9,0,1E9)", "#NUM!"),
         ("H7", "=DB(1000,1,1E6,100000)>=0", "TRUE"),
         (

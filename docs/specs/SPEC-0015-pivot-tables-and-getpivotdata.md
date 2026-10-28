@@ -50,7 +50,7 @@ Unknowns. Each is probed by T-2085, and until then T-2083 answers `#REF!` for it
 T-1703 behavior where one exists), never a guessed value:
 1. several data fields: the `"Values"` field, what a blank `data_field` picks, and a source name
    shared by two data fields (Sum and Count of Sales);
-2. an empty intersection of any aggregate but Sum (H13 covers Sum only);
+2. an empty intersection of CountNums, Product, Var, VarP, StdDev and StdDevP (Sum, Count, Average, Max and Min are 0, T-2404);
 3. numbers, dates and booleans as items (match by value or by text);
 4. page (filter) fields with a selected item, and hidden items on an axis;
 5. the same field twice with the same item;
@@ -59,10 +59,10 @@ T-1703 behavior where one exists), never a guessed value:
    web.md records the others as unprobed; T-1703 gives one `#REF!`, kept);
 8. `""` as `data_field` against a pivot (J7 is an empty cell; `""` is only probed with no pivot);
 9. a reference overlapping two pivots, or pointing into a page-field area outside `<location>`;
-10. two row fields and their subtotals, tabular and outline form;
+10. two row fields and their subtotals, tabular and outline form (the no-pair grand total is evidenced, T-2662);
 11. whether the answer follows the cache when the records disagree with the rendered cells (a file
     saved without refreshing), and the summation order (cache order or display order) on
-    non-representable decimals;
+    non-representable decimals (one data point: web.md "GETPIVOTDATA on real-model pivots", T-2662);
 12. grouped fields (`<fieldGroup>`, date grouping), calculated fields, and a cache saved without
     records (`saveData="0"`): skipped at import (`#REF!`), a non-parity gap T-2085 records.
 13. an error in a field or item argument (ours `#REF!`), an error held by a single-cell
@@ -176,10 +176,13 @@ refers to the list in "Excel behavior to match".
    than one data field is `#REF!` (unknown 1).
 3. The pairs: an odd count is `#REF!` (H15); each field name must match (ignoring case) a cache field
    on the row or column axis (H8, J3); each item must match a text item of that field ignoring case
-   (H7, H18, J6, J8); a number, date or boolean item or field is `#REF!` (unknown 3); the same field
-   twice is `#REF!`, with different items (H17) or the same (unknown 5).
+   (H7, H18, J6, J8), or be an omitted argument, which picks the field's blank item (calipers
+   pv23_041, T-2662); a number, date or boolean item or field is `#REF!` (unknown 3); the same field
+   twice is `#REF!`, with different items (H17) or the same (unknown 5). A pivot with two fields on
+   an axis answers only with no pairs, its grand total (calipers formula_stress_test, T-2662); any
+   pair there is `#REF!` (unknown 10).
 4. The value: the data field's aggregate over the records whose fields equal every chosen item. A
-   Sum over no records is 0 (H13); any other aggregate over no records is `#REF!` (unknown 2). A
+   Sum, Count, Average, Max or Min over no records is 0 (H13, probes/getpivotdata-empty-intersection); any other aggregate over no records is `#REF!` (unknown 2, unprobed). A
    record holding an error, a blank or text in the data field makes the answer `#REF!` (unknown 6).
 5. An array of items lifts per SPEC-0011 (L1, L5), each element a scalar call; an array
    `data_field`, `pivot_table` or field name keeps T-1703's single `#REF!` (unknown 7).

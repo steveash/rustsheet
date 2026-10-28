@@ -3,11 +3,11 @@ id: T-0954
 title: "TEXT: a/p and A/P AM/PM markers in time formats (4 poi known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
-campaign: visible
+campaign: semantics
 depends_on: []
 ---
 
@@ -55,3 +55,8 @@ PM"; those cells also need fractional seconds and stay out of scope).
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+The `a/p` / `A/P` marker was already implemented by earlier formatter work (the four cells were no
+longer in eval/baseline/poi.txt). This task added the missing unit tests (morning, afternoon, noon,
+midnight, `am/pm` uppercase) and the `Implemented in:` line. Eval delta: none.

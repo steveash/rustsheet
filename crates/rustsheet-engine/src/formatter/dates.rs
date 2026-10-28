@@ -105,6 +105,33 @@ impl DateSystem {
         }
     }
 
+    /// The 1900-system serial ACCRINT, COUPNUM, TBILLEQ, TBILLPRICE and TBILLYIELD read for this
+    /// system's date argument `serial`, before truncation: the day itself, serial + 1462 in a 1904
+    /// workbook, as every non-financial reader takes it. Since 2026-10-21 Excel for the web gives
+    /// these five in a 1904 workbook exactly the values of a 1900 workbook with the same dates,
+    /// while the other financial functions still read `financial_1900_serial`
+    /// (probes/date-system-1904-accrint-settlement-bound, -coupon-bound, -financial-shift
+    /// A31:A33, re-filled 2026-10-27; dates.md "The 1904 date system: ACCRINT, COUPNUM and the
+    /// TBILL functions read the date itself"). A negative 1904 serial stays negative, so it is no
+    /// date, as in `financial_1900_serial`.
+    pub(crate) fn calendar_1900_serial(self, serial: f64) -> f64 {
+        match self {
+            Self::Excel1904 if serial >= 0.0 => serial + EPOCH_1904_IN_1900_SERIALS as f64,
+            Self::Excel1900 | Self::Excel1904 => serial,
+        }
+    }
+
+    /// The first 1900-system serial a coupon date may take in the reading of
+    /// `calendar_1900_serial`: 1900-01-01 (serial 1) in a 1900 workbook, 1904-01-01 (1904 serial 0)
+    /// in a 1904 one. COUPNUM and ACCRINT are #NUM! for a coupon date before it
+    /// (`COUPNUM(0,181,2)` with previous coupon 1903-12-31; probes/fin-coupnum-1904-epoch A1).
+    pub(crate) fn first_coupon_1900_serial(self) -> i64 {
+        match self {
+            Self::Excel1900 => 1,
+            Self::Excel1904 => EPOCH_1904_IN_1900_SERIALS,
+        }
+    }
+
     /// The 1900 serial ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD read for this system's date
     /// argument `serial`; `None` where they are #NUM!. In a 1904 workbook they read the 1904 serial
     /// as a 1900 serial twice over, `serial + 2 * 1462`: the date 1462 days later, so they count
@@ -122,20 +149,6 @@ impl DateSystem {
                 .checked_add(FINANCIAL_EPOCH_1904_IN_1900_SERIALS)
                 .filter(|moved| *moved <= i64::from(MAXIMUM_DATE_SERIAL_NUMBER)),
             Self::Excel1900 | Self::Excel1904 => Some(day),
-        }
-    }
-
-    /// The last serial ACCRINT reads for its settlement, in the space of `financial_1900_serial`.
-    /// With `calc_method` FALSE a 1904 workbook takes every settlement up to the last 1904 date,
-    /// 2957003, though that reads past 9999-12-31 (2957003 + 2 * 1462) where YEARFRAC and DISC are
-    /// #NUM! from 1904 serial 2955542 on; 2957004 is #NUM! (probes/date-system-1904-financial-
-    /// settlement-bound columns A and F, date-system-1904-accrint-settlement-bound A1:A17, excel-graph,
-    /// T-1492, T-1494). With `calc_method` TRUE the limit is 9999-12-31 (A18:A20 there).
-    pub(crate) fn accrint_settlement_limit(self, calc_method: bool) -> i64 {
-        let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
-        match self {
-            Self::Excel1904 if !calc_method => last + EPOCH_1904_IN_1900_SERIALS,
-            Self::Excel1900 | Self::Excel1904 => last,
         }
     }
 
@@ -277,12 +290,7 @@ fn is_date_within_range(date: NaiveDate) -> bool {
 }
 
 pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
-    from_excel_date_up_to(days, i64::from(MAXIMUM_DATE_SERIAL_NUMBER))
-}
-
-/// `from_excel_date` with a caller-chosen last serial, for readers whose limit is not 9999-12-31
-/// (`DateSystem::accrint_settlement_limit`). `last` must keep the date inside chrono's range.
-pub(crate) fn from_excel_date_up_to(days: i64, last: i64) -> Result<NaiveDate, String> {
+    let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
     if days < MINIMUM_DATE_SERIAL_NUMBER as i64 {
         return Err(format!(
             "Excel date must be greater than {MINIMUM_DATE_SERIAL_NUMBER}"
@@ -384,14 +392,6 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn from_excel_date_up_to_accepts_its_last_serial_only() {
-        use super::from_excel_date_up_to;
-        assert!(from_excel_date_up_to(2_959_927, 2_959_927).is_ok());
-        assert!(from_excel_date_up_to(2_959_928, 2_959_927).is_err());
-        assert!(from_excel_date_up_to(i64::MAX, 2_959_927).is_err());
-    }
-
     #[test]
     fn coupon_schedule_breaks_at_its_bounds_without_overflow() {
         use crate::types::DateSystem;

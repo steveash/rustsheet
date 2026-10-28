@@ -41,13 +41,15 @@ const MAX_FRACTION_TERMS: u32 = 300;
 /// The shape from which Stirling's series (with [`stirling_correction`]'s terms) is used.
 const STIRLING_MIN: f64 = 8.0;
 /// 1/sqrt(2 pi).
-const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
+pub(crate) const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
 /// Terms of the atanh series in [`rlog1`]: |r| <= 1/3 there, so (1/9)^20 is far below 2^-53.
 const RLOG1_TERMS: u32 = 20;
 
-/// Below this x the engine's own a = 1 tail outside Excel's closed forms ([`unoriented_shape_one`])
-/// is computed without the cancellation of 1 - exp(b ln(1 - x)) (T-0974).
-pub(crate) const A1_CLOSED_FORM_MIN_X: f64 = 0.1;
+/// Below this x an a = 1 tail outside Excel's closed forms is -expm1(b ln1p(-x)), which keeps the
+/// digits 1 - exp(b ln(1 - x)) cancels (T-0974): always so in [`shape_one_tails`] (x0 < 0.1 there),
+/// and the cut of F.TEST's and the F quantile's unswapped form (`fisher.rs`
+/// `unoriented_shape_one_tail`).
+pub(crate) const A1_EXPM1_MAX_X: f64 = 0.1;
 
 /// The largest oriented complement y0 at which a0 = 1 takes Excel's closed form
 /// ([`closed_form_tails`]): Excel takes it at `T.DIST.RT(4.24,2)` (y0 = 0.899888) and not at
@@ -71,56 +73,25 @@ pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
 /// (probes-numeric/m9-legacy-fdist A12), where forming 1 - w from w misses by 2E-14. A shape of 1
 /// takes Excel's closed forms ([`closed_form_tails`], T-2502).
 pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    beta_reg_tail(x, y, a, b, true, false)
+    beta_reg_tails(x, y, a, b).0
 }
 
-/// [`beta_reg_complement`] without [`closed_form_tails`]: a shape of 1 takes the forms the engine
-/// had before T-2502 ([`unoriented_shape_one`]). For the callers whose Excel cells the oriented
-/// closed forms were not measured on and which they would move off Excel's value: the inverses'
-/// crossing searches (`F.INV(0.05,2,5)` probes-numeric/m9-f-inv A10, `BETA.INV` in
-/// `BETADIST_BETAINV.xlsx` H30) and F.TEST (gen-m9/68d8ffb69ff739d8 A143), each 1 to 2 ulp off
-/// Excel with the closed forms and bit-exact without, until bratio's port reaches them (T-2505).
-pub(crate) fn beta_reg_complement_unoriented(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    beta_reg_tail(x, y, a, b, false, false)
-}
-
-/// The upper tail of [`beta_reg_complement_unoriented`].
-pub(crate) fn beta_reg_upper_unoriented(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    beta_reg_tail(x, y, a, b, false, true)
-}
-
-/// One tail (`upper`: 1 - `I_x(a, b)`) of the incomplete beta with y = 1 - x given, Excel's
-/// oriented closed forms included when `closed_forms`.
-fn beta_reg_tail(x: f64, y: f64, a: f64, b: f64, closed_forms: bool, upper: bool) -> f64 {
+/// (`I_x(a, b)`, 1 - `I_x(a, b)`) with y = 1 - x given: Excel's oriented closed forms
+/// ([`closed_form_tails`]), a shape of 1 outside them ([`shape_one_tails`]), else one evaluation of
+/// the Cephes kernel ([`beta_tails`]).
+pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     if x.is_nan() || y.is_nan() || a.is_nan() || b.is_nan() {
-        return f64::NAN;
+        return (f64::NAN, f64::NAN);
     }
     if x <= 0.0 {
-        return if upper { 1.0 } else { 0.0 };
+        return (0.0, 1.0);
     }
     if y <= 0.0 {
-        return if upper { 0.0 } else { 1.0 };
+        return (1.0, 0.0);
     }
-    if closed_forms {
-        if let Some((lower, upper_tail)) = closed_form_tails(x, y, a, b) {
-            return if upper { upper_tail } else { lower };
-        }
-    }
-    // Excel's closed forms read the other way round for the upper tail, `I_y(b, a)`.
-    let shape_one = if upper {
-        unoriented_shape_one(y, b, a)
-    } else {
-        unoriented_shape_one(x, a, b)
-    };
-    if let Some(tail) = shape_one {
-        return tail;
-    }
-    let (lower, upper_tail) = beta_tails(x, y, a, b);
-    if upper {
-        upper_tail
-    } else {
-        lower
-    }
+    closed_form_tails(x, y, a, b)
+        .or_else(|| shape_one_tails(x, y, a, b))
+        .unwrap_or_else(|| beta_tails(x, y, a, b))
 }
 
 /// Excel's closed forms of the incomplete beta, (`I_x(a, b)`, 1 - `I_x(a, b)`), for 0 < x, y < 1
@@ -154,24 +125,25 @@ pub(crate) fn closed_form_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, 
     Some(if swap { (w1, w) } else { (w, w1) })
 }
 
-/// `I_x(a, b)` at a shape of 1 as the engine took it before T-2502 (T-0970, T-0974): where
-/// [`closed_form_tails`] does not apply (a0 = 1 with y0 > 0.9, where Excel is near the exact
-/// value), and for [`beta_reg_complement_unoriented`], until bratio's general branches are ported
-/// (T-2505). `None` for other shapes.
-fn unoriented_shape_one(x: f64, a: f64, b: f64) -> Option<f64> {
-    if b == 1.0 {
-        return Some((a * x.ln()).exp());
+/// (`I_x(a, b)`, 1 - `I_x(a, b)`) at a shape of 1 where [`closed_form_tails`] does not apply, for
+/// 0 < x, y < 1: bratio's oriented a0 = 1 with y0 > 0.9 (x0 below about 0.1), where Excel is near
+/// the exact value. Each tail is formed on its own, without the other's cancellation:
+/// - w = -expm1(b0 ln1p(-x0)): `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)` is
+///   9.999999999999999E-11 (probes-numeric/t1745-beta-inv-roundtrip G35), which 1 - exp misses by
+///   8E-8 relative (T-0974);
+/// - w1 = y0^b0: `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966
+///   (probes/ftest-decomposition B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
+///
+/// `None` for other shapes and points. Excel's own form here is not known (TODO(T-3007)).
+fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
+    let swap = x > 0.5;
+    let (a0, b0, x0, y0) = if swap { (b, a, y, x) } else { (a, b, x, y) };
+    if a0 != 1.0 || b0 == 1.0 || y0 <= A1_CLOSED_FORM_MAX_Y {
+        return None;
     }
-    // Below x = 0.1 Excel keeps the digits that 1 - exp(b ln(1 - x)) cancels, -expm1(b ln1p(-x)):
-    // `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)` is 9.999999999999999E-11
-    // (probes-numeric/t1745-beta-inv-roundtrip G35), which 1 - exp misses by 8E-8 relative.
-    if a == 1.0 {
-        if x < A1_CLOSED_FORM_MIN_X {
-            return Some(-(b * (-x).ln_1p()).exp_m1());
-        }
-        return Some(1.0 - (b * (1.0 - x).ln()).exp());
-    }
-    None
+    let w = -(b0 * (-x0).ln_1p()).exp_m1();
+    let w1 = (b0 * y0.ln()).exp();
+    Some(if swap { (w1, w) } else { (w, w1) })
 }
 
 /// (`I_x(a, b)`, 1 - `I_x(a, b)`) from one evaluation, the unreflected side computed and the other
@@ -197,7 +169,7 @@ fn beta_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
 /// 1 - `I_x(a, b)`, the upper tail of [`beta_reg_complement`], with y = 1 - x given: the other tail
 /// of the same evaluation, Excel's closed forms ([`closed_form_tails`]) included.
 pub(crate) fn beta_reg_upper(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    beta_reg_tail(x, y, a, b, true, true)
+    beta_reg_tails(x, y, a, b).1
 }
 
 /// The beta density x^(a-1) (1-x)^(b-1) / B(a, b) for 0 < x < 1 while Gamma(a+b) is finite, by
@@ -395,14 +367,9 @@ pub(super) fn rlog1(t: f64) -> f64 {
 }
 
 #[cfg(test)]
-pub(super) mod tests {
+mod tests {
     use super::*;
-
-    /// The ulps between two doubles of the same sign.
-    pub(in crate::functions::statistical) fn ulps(a: f64, b: f64) -> u64 {
-        let (ia, ib) = (a.to_bits() as i64, b.to_bits() as i64);
-        ia.abs_diff(ib)
-    }
+    use crate::test::util::ulps;
 
     // T-2465: with one shape below 8 and a huge other, ln x of a rounded x near 1 lost most of its
     // digits; ln(1 - y) from the given y keeps them. References: 60-digit mpmath I_y(b, a) at the

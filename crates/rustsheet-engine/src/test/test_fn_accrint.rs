@@ -690,3 +690,43 @@ fn fn_accrint_freq4_nc2_basis1() {
         "freq=4 NC=2 basis=1 = {a1}, expected ~78.87363"
     );
 }
+
+/// A text `calc_method`, "TRUE" and "FALSE" too, is `#VALUE!`, before a negative rate's `#NUM!`; the
+/// boolean is taken (probes/t2492-vdb-ddb-arguments A47:A53, excel-graph 2026-10-25, T-2492).
+#[test]
+fn accrint_text_calc_method_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ACCRINT(39508,39691,39569,0.1,1000,2,0,\"FALSE\")");
+    model._set("A2", "=ACCRINT(39508,39691,39569,0.1,1000,2,0,\"TRUE\")");
+    model._set("A3", "=ACCRINT(39508,39691,39569,-1,1000,2,0,\"FALSE\")");
+    model._set("A4", "=ACCRINT(39508,39691,39569,0.1,1000,2,0,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"16.66666667");
+}
+
+/// `calc_method`'s own error comes before every other argument, an off-calendar date is `#NUM!` as
+/// soon as it is read, and a boolean par cell is `#VALUE!` (financial.md "ACCRINT check order:
+/// `calc_method` first, dates as read"; gen-m9/290180acf017709c A32, A117, 932b33b1ef8b7608 A233, T-2792).
+#[test]
+fn accrint_check_order() {
+    let mut model = new_empty_model();
+    model._set("B1", "a");
+    model._set("B2", "=FALSE");
+    // calc_method's text before a #DIV/0! rate and calc_method's error before an off-calendar date.
+    model._set("A1", "=ACCRINT(33996,35923,39160,1/0,2872,2,0,\"1\")");
+    model._set("A2", "=ACCRINT(34182,2958466,37446,0.1,4792,2,4,NA())");
+    // A date off the calendar before a later text rate or #DIV/0! par.
+    model._set("A3", "=ACCRINT(34205,2958466,43831,B1,1719,1,3)");
+    model._set("A4", "=ACCRINT(1.005,-3.05,37242,0.1,1/0,2)");
+    // A boolean par cell before frequency 100.
+    model._set("A5", "=ACCRINT(32965,35462,36817,10,B2,100,0,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#VALUE!");
+}

@@ -15,7 +15,7 @@ use rustsheet_xlsx::{export::save_to_xlsx, import::load_from_xlsx};
 fn test_cf_file() {
     // Text color is #9c0006
     // Background color is #ffc7ce
-    let model = load_from_xlsx(
+    let mut model = load_from_xlsx(
         "tests/conditional_formatting/cf_tests.xlsx",
         "en",
         "UTC",
@@ -180,4 +180,40 @@ fn test_x14_expression_conditional_formatting() {
     let imported = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
     assert_crossword_rules(imported);
     fs::remove_file(temp_file_name).unwrap();
+}
+
+/// Styles read one cell at a time (each read evaluates only the rules over that cell, T-0476)
+/// are the styles an evaluation of every cell gives, for every cell of every sheet of an
+/// Excel-authored workbook with every kind of rule, and for cells past its used area.
+#[test]
+fn styles_read_per_cell_match_the_evaluation_of_every_cell() {
+    let path = "tests/conditional_formatting/cf_tests.xlsx";
+    let mut per_cell = load_from_xlsx(path, "en", "UTC", "en").unwrap();
+    let mut every_cell = load_from_xlsx(path, "en", "UTC", "en").unwrap();
+    per_cell.evaluate();
+    every_cell.evaluate();
+    every_cell.evaluate_conditional_formatting();
+    let sheets = u32::try_from(per_cell.workbook.worksheets.len()).unwrap();
+    let mut compared = 0;
+    for sheet in 0..sheets {
+        let dimension = per_cell.workbook.worksheets[sheet as usize].dimension();
+        let (last_row, last_column) = (dimension.max_row, dimension.max_column);
+        for row in 1..=last_row + 3 {
+            for column in 1..=last_column + 3 {
+                let lazy = per_cell
+                    .get_extended_style_for_cell(sheet, row, column)
+                    .unwrap();
+                let eager = every_cell
+                    .get_extended_style_for_cell(sheet, row, column)
+                    .unwrap();
+                assert_eq!(
+                    format!("{lazy:?}"),
+                    format!("{eager:?}"),
+                    "sheet {sheet} R{row}C{column}"
+                );
+                compared += 1;
+            }
+        }
+    }
+    assert!(compared > 100, "{compared}");
 }

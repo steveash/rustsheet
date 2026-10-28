@@ -131,25 +131,9 @@ fn is_feb29_between_consecutive_years(start: chrono::NaiveDate, end: chrono::Nai
     }
 }
 
-/// A DATE or TIME argument as Excel reads it: [`near_integer_floor`] with the shared
-/// [`NEAR_INTEGER_TOLERANCE`], half of it for a negative value, in the argument's own unit, so
-/// `TIME(1-2^-22,0,0)` is 1:00, `TIME(1,0,-1E-7)` 1:00 and `DATE(1983,12,-1E-15)` day 0.
-// Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`" and "DATE: a
-// year, month or day just below an integer" (probes/time-argument-*, date-argument-window; T-2267,
-// T-2268): the positive edge lies in (2^-22+1E-12, 2.4E-7), the negative one in
-// (2^-23+1E-12, 1.2E-7), the same for every argument of both and at every magnitude probed.
-fn date_time_whole(value: f64) -> f64 {
-    let tolerance = if value < 0.0 {
-        NEAR_INTEGER_TOLERANCE / 2.0
-    } else {
-        NEAR_INTEGER_TOLERANCE
-    };
-    near_integer_floor(value, tolerance)
-}
-
-/// One TIME argument: [`date_time_whole`], then `#NUM!` outside -32768..=32767.
+/// One TIME argument: [`near_integer_whole`], then `#NUM!` outside -32768..=32767.
 fn time_argument(value: f64) -> Result<f64, Error> {
-    let whole = date_time_whole(value);
+    let whole = near_integer_whole(value);
     if (-32768.0..=32767.0).contains(&whole) {
         Ok(whole)
     } else {
@@ -180,7 +164,7 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::functions::lift::{num_error, number_result, value_error};
-use crate::functions::util::{near_integer_floor, NEAR_INTEGER_TOLERANCE};
+use crate::functions::util::near_integer::near_integer_whole;
 use crate::functions::Function;
 use crate::number_format::parse_excel_number;
 use crate::types::DateSystem;
@@ -275,7 +259,7 @@ impl Model {
     pub(crate) fn fn_date(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
         self.numbers_fn(Function::Date, args, [0.0; 3], cell, |[year, month, day]| {
-            let [year, month, day] = [year, month, day].map(date_time_whole);
+            let [year, month, day] = [year, month, day].map(near_integer_whole);
             let mut year = year as i32;
             if year < 0 {
                 return Err(Error::NUM);
@@ -780,7 +764,7 @@ impl Model {
         // ISOWEEKNUM of a valid serial keeps a Monday start in WEEKNUM's stale return_type state
         // (probes/weeknum-stale-reset-isoweeknum, SPEC-0017 rule 2).
         if matches!(result, CalcResult::Number(_)) {
-            self.evaluation.weeknum_start = Some(weeknum::WeeknumStart::Monday);
+            self.evaluation.order_state.weeknum_start = Some(weeknum::WeeknumStart::Monday);
         }
         result
     }

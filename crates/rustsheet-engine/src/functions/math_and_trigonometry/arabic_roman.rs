@@ -206,9 +206,9 @@ fn to_roman_with_form(n: u32, form: i32) -> Result<String, String> {
 
 impl Model {
     /// `ROMAN(number, [form])`: both arguments lift over arrays and ranges (T-2410). The
-    /// arguments are read in order, the first error winning, and checked in order: the number's
-    /// range, then the form's (numbers.md "ROMAN truncates before its sign check; BASE checks
-    /// the sign first").
+    /// arguments are read in order (number, then form), the first error winning over both range
+    /// checks, which then run number first, form second (numbers.md "ROMAN truncates before its
+    /// sign check; BASE checks the sign first").
     pub(crate) fn fn_roman(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Roman, args, cell, &mut |model, values| {
             let (number, form) = match values {
@@ -222,9 +222,6 @@ impl Model {
                 Ok(f) => f.trunc(),
                 Err(error) => return error,
             };
-            if number != 0.0 && !(1.0..=3999.0).contains(&number) {
-                return value_error(cell);
-            }
             let form = match form {
                 // TRUE is the classic form 0, FALSE the simplified form 4.
                 Some(CalcResult::Boolean(b)) => {
@@ -240,6 +237,12 @@ impl Model {
                 },
                 None => 0,
             };
+            // A form that is itself an error wins over a number out of range: `ROMAN(-5,NA())` is `#N/A`, while
+            // `ROMAN(-5,"x")` stays `#VALUE!` (probes/roman-lift-forms Calc!G1, L1; numbers.md
+            // "ROMAN probed (T-2423 ...)" paragraph).
+            if number != 0.0 && !(1.0..=3999.0).contains(&number) {
+                return value_error(cell);
+            }
             if !(0..=4).contains(&form) {
                 return value_error(cell);
             }

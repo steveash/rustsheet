@@ -5,7 +5,8 @@ use super::drop_take::Edge;
 use crate::arithmetic::bcast_get;
 use crate::cast::{calc_result_to_array_node, scalar_as_array, NumberOrArray};
 use crate::external_reference::{ExternalArea, PickedReference};
-use crate::functions::util::{array_element_value, near_integer_count, NEAR_INTEGER_TOLERANCE};
+use crate::functions::util::array_element_value;
+use crate::functions::util::near_integer::{near_integer_count, NEAR_INTEGER_TOLERANCE};
 use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::nested_array::NestedBudget;
@@ -578,14 +579,21 @@ impl Model {
         if numbers.area != 1.0 {
             return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
         }
-        if two_arg {
+        let (rows, columns) = grid.dims();
+        // One index into a one-element array of references picks that element:
+        // `F.TEST(INDEX(INDIRECT("B1",{1}),1),{-1,0,1})` is the `#DIV/0!` of B1's one value
+        // (probes/t2577-indirect-ref-array A100).
+        let numbers = if two_arg && (rows, columns) == (1, 1) && numbers.row == 1 {
+            IndexNumbers { col: 1, ..numbers }
+        } else if two_arg {
             return CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "INDEX of an array of references needs a row and a column".into(),
             );
-        }
-        let (rows, columns) = grid.dims();
+        } else {
+            numbers
+        };
         if numbers.row > rows || numbers.col > columns {
             return wrong_reference(cell);
         }

@@ -116,8 +116,8 @@ fn each_element_is_the_scalar_call_with_its_own_error() {
 fn a_cdf_sum_is_bounded() {
     // `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)` summed 25,000,001 terms on main
     // (about 4.8 s in release); it sums the 95,942 that are not 0 now, to main's value. A sum
-    // with more than 2^18 terms left is #NUM! (the widest distribution at a population of 2^32,
-    // and a population above 2^52, which skips nothing): a DEVIATION.
+    // with more than 2^18 terms left is #NUM! (the widest distribution at the largest population
+    // Excel takes, 2^31 - 2, x about 43 standard deviations above the mode): a DEVIATION.
     let mut model = new_empty_model();
     model._set(
         "A1",
@@ -125,18 +125,10 @@ fn a_cdf_sum_is_bounded() {
     );
     model._set(
         "A2",
-        "=HYPGEOM.DIST(1074741824,2147483648,2147483648,4294967296,TRUE)",
+        "=HYPGEOM.DIST(537370912,1073741823,1073741823,2147483646,TRUE)",
     );
-    model._set("A3", "=HYPGEOM.DIST(524288,1048576,2^59,2^60,TRUE)");
-    // The pmf is closed form; its binomials overflow at a large population, #NUM! as on main.
-    model._set("A4", "=HYPGEOM.DIST(524288,1048576,2^59,2^60,FALSE)");
     model.evaluate();
-    let expected = [
-        ("A1", "0.500079709"),
-        ("A2", "#NUM!"),
-        ("A3", "#NUM!"),
-        ("A4", "#NUM!"),
-    ];
+    let expected = [("A1", "0.500079709"), ("A2", "#NUM!")];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");
     }
@@ -144,36 +136,51 @@ fn a_cdf_sum_is_bounded() {
 
 #[test]
 fn hypgeom_dist_is_charged_its_weight() {
-    // HYPGEOM.DIST is charged 2^22 an element (the bound of one capped cdf): 2^27 / 2^22 = 32
-    // elements, so a lifted call of 33 is refused before it runs. HYPGEOMDIST is charged 2^13 (its
-    // pmf walk, T-0977): 16,384 elements.
+    // HYPGEOM.DIST is charged by its counts (T-2433): at most 2^22 an element (the bound of one
+    // capped cdf), so 32 elements whose least count is past the term cap fit under 2^27 and 33
+    // are refused before they run (here `number_pop` is 1, so each element would be a quick
+    // `#NUM!`: the charge reads the counts, not the outcome). Small counts are charged the walk's
+    // 2^14: 8,192 elements. HYPGEOMDIST's pmf walk is charged 2^13 (T-0977): 16,384 elements.
     let mut model = new_empty_model();
     let calls = [
-        "HYPGEOM.DIST(SEQUENCE(#)*0+2,3,5,10,TRUE)",
-        "HYPGEOM.DIST(2,3,5,10,SEQUENCE(#)>0)",
-        "HYPGEOM.DIST(1,4,8,SEQUENCE(#)+19,FALSE)",
+        (
+            "HYPGEOM.DIST(SEQUENCE(#)*0+1000000,1000000,1000000,1,TRUE)",
+            32,
+        ),
+        (
+            "HYPGEOM.DIST(1000000,SEQUENCE(#)*0+1000000,1000000,1,TRUE)",
+            32,
+        ),
+        (
+            "HYPGEOM.DIST(1000000,1000000,1000000+SEQUENCE(#)*0,1,TRUE)",
+            32,
+        ),
+        ("HYPGEOM.DIST(2,3,5,10,SEQUENCE(#)>0)", 8192),
+        ("HYPGEOM.DIST(3,3,2,1,SEQUENCE(#)>0)", 8192),
+        ("HYPGEOM.DIST(1,4,8,SEQUENCE(#)+19,FALSE)", 8192),
+        ("HYPGEOMDIST(1,4,8,SEQUENCE(#)+19)", 16384),
     ];
-    for (row, call) in calls.iter().enumerate() {
+    for (row, (call, most)) in calls.iter().enumerate() {
         let row = row + 1;
         model._set(
             &format!("A{row}"),
-            &format!("=ROWS({})", call.replace('#', "32")),
+            &format!("=ROWS({})", call.replace('#', &most.to_string())),
         );
         model._set(
             &format!("B{row}"),
-            &format!("=ROWS({})", call.replace('#', "33")),
+            &format!("=ROWS({})", call.replace('#', &(most + 1).to_string())),
         );
     }
-    model._set("C1", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16384)+19))");
-    model._set("C2", "=ROWS(HYPGEOMDIST(1,4,8,SEQUENCE(16385)+19))");
     model.evaluate();
-    for (row, call) in calls.iter().enumerate() {
+    for (row, (call, most)) in calls.iter().enumerate() {
         let row = row + 1;
-        assert_eq!(model._get_text(&format!("A{row}")), *"32", "{call}");
+        assert_eq!(
+            model._get_text(&format!("A{row}")),
+            most.to_string(),
+            "{call}"
+        );
         assert_eq!(model._get_text(&format!("B{row}")), *"#ERROR!", "{call}");
     }
-    assert_eq!(model._get_text("C1"), *"16384");
-    assert_eq!(model._get_text("C2"), *"#ERROR!");
 }
 
 #[test]
@@ -198,7 +205,8 @@ fn unlifted_calls_are_the_scalar_calls() {
         ("A6", "0.916666667"),
         ("A7", "0.083333333"),
         ("A8", "1"),
-        ("A9", "#NUM!"),
+        // Below number_sample + population_s - number_pop the cdf is 0 (T-2699).
+        ("A9", "0"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");

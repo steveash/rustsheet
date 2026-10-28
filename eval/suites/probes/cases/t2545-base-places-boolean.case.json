@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2545 (review follow-up): a boolean number with an invalid places (A1:A3, A5:A7) and a valid one (A4).",
+  "tags": [
+    "M9",
+    "engineering",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=DEC2BIN(TRUE,-1)",
+        "A2": "=DEC2OCT(TRUE,-1)",
+        "A3": "=DEC2HEX(TRUE,-1)",
+        "A4": "=DEC2BIN(TRUE,4)",
+        "A5": "=HEX2BIN(TRUE,0)",
+        "A6": "=OCT2HEX(FALSE,11)",
+        "A7": "=BIN2OCT(TRUE,0)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7"
+  ]
+}

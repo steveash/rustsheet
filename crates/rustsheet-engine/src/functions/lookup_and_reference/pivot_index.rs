@@ -73,13 +73,12 @@ struct PivotIndex {
     memo: HashMap<PivotQuery, Result<f64, Error>>,
 }
 
-/// A pivot GETPIVOTDATA can answer from: one data field, at most one field on each of the row
-/// and column axes, no page field and no hidden item. Every other shape is one of SPEC-0015's
-/// unknowns (1, 4 and 10), `#REF!` until T-2085 probes it.
+/// A pivot GETPIVOTDATA can answer from: one data field, no page field and no hidden item.
+/// Every other shape is one of SPEC-0015's unknowns (1 and 4), `#REF!` until T-2085 probes it.
+/// Several fields on an axis (unknown 10) are indexed too, but only their grand total is
+/// answered ([`nested_axis`]).
 fn supported(pivot: &PivotTable) -> Option<Vec<u32>> {
     if pivot.data_fields.len() != 1
-        || pivot.row_fields.len() > 1
-        || pivot.column_fields.len() > 1
         || pivot.fields.iter().any(|f| {
             f.axis == Some(crate::pivot::Axis::Page) || f.hidden.iter().any(|word| *word != 0)
         })
@@ -95,6 +94,13 @@ fn supported(pivot: &PivotTable) -> Option<Vec<u32>> {
             AxisField::Values => None,
         })
         .collect()
+}
+
+/// Whether `pivot` has several fields on its row or its column axis. GETPIVOTDATA answers such a
+/// pivot's grand total (calipers `formula_stress_test` `Database!B16`: two row and two column
+/// fields, `GETPIVOTDATA("Sum of Qux",B32)` is 57); any pair is SPEC-0015 unknown 10, `#REF!`.
+pub(crate) fn nested_axis(pivot: &PivotTable) -> bool {
+    pivot.row_fields.len() > 1 || pivot.column_fields.len() > 1
 }
 
 /// One pass over the records: `None` when an axis field or a record's index is not in the cache.
@@ -125,20 +131,27 @@ fn build(cache: &PivotCache, axis: Vec<u32>) -> Option<PivotIndex> {
     })
 }
 
-/// The data field's aggregate over `values` (cache order). A Sum over nothing is 0
-/// (probes/getpivotdata-real-pivot H13); any other aggregate with no defined value is `#REF!`
-/// (SPEC-0015 unknown 2), and a non-finite result `#NUM!` (unknown 16). Var and `StdDev` reuse
+/// The data field's aggregate over `values` (cache order). A Sum, Count, Average, Max or Min over
+/// nothing is 0 (probes/getpivotdata-real-pivot H13, probes/getpivotdata-empty-intersection);
+/// any other aggregate with no defined value is `#REF!` (SPEC-0015 unknown 2), and a non-finite result `#NUM!` (unknown 16). Var and `StdDev` reuse
 /// the worksheet functions' algorithm (`excel_variance`); that the pivot computes them alike is
 /// UNVERIFIED (unknown 15).
 fn aggregate(function: Aggregate, values: &[f64]) -> Result<f64, Error> {
     let n = values.len();
     let minimum = match function {
-        Aggregate::Sum => 0,
+        Aggregate::Sum
+        | Aggregate::Count
+        | Aggregate::Average
+        | Aggregate::Max
+        | Aggregate::Min => 0,
         Aggregate::StdDev | Aggregate::Var => 2,
         _ => 1,
     };
     if n < minimum {
         return Err(Error::REF);
+    }
+    if n == 0 {
+        return Ok(0.0);
     }
     let sum = || values.iter().fold(0.0, |acc, x| acc + x);
     let variance = |kind| excel_variance(values, kind);
@@ -223,6 +236,34 @@ impl Model {
             ItemMatch::One(item) => Some(*item),
             ItemMatch::Several => None,
         }
+    }
+
+    /// The blank item (`<m/>`, shown as `(blank)`) of the field at axis position `position` of
+    /// pivot `pivot`, which an omitted item argument picks (calipers `pv23_041` `Liability Summary`
+    /// G5:G7, `GETPIVOTDATA(...,"Remediation Status",)`); `None` when the field has none. Call
+    /// [`Model::pivot_axis`] first.
+    pub(crate) fn pivot_blank_item(&self, pivot: usize, position: usize) -> Option<u32> {
+        let field = *self
+            .evaluation
+            .pivot_indexes
+            .pivots
+            .get(&pivot)?
+            .axis
+            .get(position)?;
+        let table = self.workbook.pivot_tables.get(pivot)?;
+        let items = &self
+            .workbook
+            .pivot_caches
+            .get(table.cache as usize)?
+            .fields
+            .get(field as usize)?
+            .items;
+        let mut blanks = (0u32..)
+            .zip(items)
+            .filter(|(_, item)| matches!(item, CacheItem::Missing))
+            .map(|(i, _)| i);
+        let blank = blanks.next()?;
+        blanks.next().is_none().then_some(blank)
     }
 
     /// The answer of pivot `pivot` to `query`, memoized. Every record the query picks must hold

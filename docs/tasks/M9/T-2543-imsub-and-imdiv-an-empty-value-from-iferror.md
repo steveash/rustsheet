@@ -3,12 +3,12 @@ id: T-2543
 title: "IMSUB and IMDIV: an empty value from IFERROR or IFNA is #N/A in ours, not 0 (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -34,3 +34,6 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+`complex_pair_of` (IMSUB, IMDIV) raised `#N/A` for any `CalcResult::EmptyArg`, which is also the empty value IFERROR/IFNA hand on for a blank cell. It now checks the argument nodes: only an argument left out of the formula is `#N/A`; IFERROR's empty value is 0. New probe `probes/eng-imsub-imdiv-iferror-empty` (10 cells, excel-graph) passes. Eval delta: gen-m9 -1 known failure (A63), no new known failures.

@@ -9,14 +9,10 @@ include = ["**/golden.xlsx"]
 # `_disabled/`: hostile files Calipers itself never loads. pv26_002 and pv26_2_002 (1.4M formulas,
 # 560k COUNTIFS/SUMIFS) take about 11 minutes to calculate, and a timed-out case keeps its worker
 # running until the run ends; T-0449 puts them back once they calculate within the case timeout.
-# pv26_001 and pv26_2_001 (134k formulas) take 17 s to load and about 32 s in all, enough to push
-# them and other suites' heavy cases past the timeout in a parallel run; T-0450 puts them back.
 exclude = [
   "_disabled/**",
   "pv_goldens/pv26_002/**",
   "pv_goldens/pv26_2_002/**",
-  "pv_goldens/pv26_001/**",
-  "pv_goldens/pv26_2_001/**",
 ]
 # Calipers is MIT. The pv_goldens workbooks were imported into it from a non-public repository
 # (lyfegame/shortcut, anonymised by its authors), so the corpus is fetched, never vendored.
@@ -31,6 +27,9 @@ require_excel_authored = true
 gate = false
 baseline = "cells"
 milestone = ["M11"]
+# Kept subnormals Excel saves as 0 (decision 0090; T-2714) and cached values the corpus anonymisation broke
+# (decision 0133; T-2867), scored against excel-graph probes (decision 0032).
+cached_overrides = "cached-overrides.tsv"
 
 [fetch]
 url = "https://github.com/fundamental-research-labs/calipers.git"

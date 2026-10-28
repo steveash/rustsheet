@@ -21,6 +21,12 @@ use crate::{
 #[derive(Clone)]
 pub(crate) enum Binding {
     Value(CalcResult),
+    /// An optional LAMBDA parameter left out of the call, or an empty argument slot (`(1,)`):
+    /// it reads as the empty value, but unlike a parameter bound to that value (`IFERROR` of a
+    /// blank cell, a blank element MAP hands on) ISOMITTED of it is TRUE
+    /// (probes/t2461-blank-array-sources A12:A14, arrays.md "the empty value is not an omitted
+    /// argument"; T-2649).
+    Omitted,
     /// A LAMBDA parameter's value that the body reads exactly once per call
     /// (`Model::call_prepared`): that read takes the value instead of copying it, so an array
     /// accumulator handed through REDUCE is not deep-copied on each step (T-1588).
@@ -44,6 +50,7 @@ impl Binding {
     pub(crate) fn value(&self, cell: CellReferenceIndex) -> CalcResult {
         match self.resolved() {
             Binding::Value(value) | Binding::ReadOnce(value) => value.clone(),
+            Binding::Omitted => CalcResult::EmptyArg,
             Binding::Areas(_) => several_areas(cell),
             Binding::Span(_) => three_d_needs_one_sheet(cell),
             Binding::Grid(grid) => grid.to_values(),

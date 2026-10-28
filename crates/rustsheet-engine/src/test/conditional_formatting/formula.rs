@@ -44,7 +44,7 @@ fn model_with_elements() -> crate::Model {
     model
 }
 
-fn is_red(model: &crate::Model, row: i32, col: i32) -> bool {
+fn is_red(model: &mut crate::Model, row: i32, col: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, col)
         .unwrap()
@@ -100,13 +100,13 @@ fn test_formula_absolute_column_highlights_correct_rows() {
 
     for row in 6..=10 {
         assert!(
-            is_red(&model, row, 1),
+            is_red(&mut model, row, 1),
             "row {row} (atomic# {row}) should be highlighted"
         );
     }
     for row in 1..=5 {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "row {row} (atomic# {row}) should not be highlighted"
         );
     }
@@ -136,16 +136,22 @@ fn test_formula_relative_row_across_columns() {
 
     // Rows 6–10: both A and B columns should be red (formula checks $A of same row)
     for row in 6..=10 {
-        assert!(is_red(&model, row, 1), "A{row} should be highlighted");
+        assert!(is_red(&mut model, row, 1), "A{row} should be highlighted");
         assert!(
-            is_red(&model, row, 2),
+            is_red(&mut model, row, 2),
             "B{row} should be highlighted (same row check via $A)"
         );
     }
     // Rows 1–5: neither column
     for row in 1..=5 {
-        assert!(!is_red(&model, row, 1), "A{row} should not be highlighted");
-        assert!(!is_red(&model, row, 2), "B{row} should not be highlighted");
+        assert!(
+            !is_red(&mut model, row, 1),
+            "A{row} should not be highlighted"
+        );
+        assert!(
+            !is_red(&mut model, row, 2),
+            "B{row} should not be highlighted"
+        );
     }
 }
 
@@ -174,14 +180,14 @@ fn test_formula_cross_column_reference() {
     // Rows 5–10: atomic mass > 10
     for row in 5..=10 {
         assert!(
-            is_red(&model, row, 1),
+            is_red(&mut model, row, 1),
             "row {row} (mass > 10) should be highlighted"
         );
     }
     // Rows 1–4: atomic mass <= 10
     for row in 1..=4 {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "row {row} (mass <= 10) should not be highlighted"
         );
     }
@@ -210,7 +216,7 @@ fn test_formula_fully_absolute_always_true() {
 
     for row in 1..=10 {
         assert!(
-            is_red(&model, row, 1),
+            is_red(&mut model, row, 1),
             "row {row} should be highlighted (A1=1>0 is always true)"
         );
     }
@@ -237,12 +243,12 @@ fn test_formula_string_equality() {
     model.evaluate();
 
     assert!(
-        is_red(&model, 6, 1),
+        is_red(&mut model, 6, 1),
         "row 6 (Carbon, symbol C) should be highlighted"
     );
     for row in [1, 2, 3, 4, 5, 7, 8, 9, 10] {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "row {row} should not be highlighted"
         );
     }
@@ -270,7 +276,7 @@ fn test_formula_always_false_no_highlight() {
 
     for row in 1..=10 {
         assert!(
-            !is_red(&model, row, 1),
+            !is_red(&mut model, row, 1),
             "no row should be highlighted with FALSE formula"
         );
     }

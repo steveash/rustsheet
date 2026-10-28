@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="294" viewBox="0 0 760 294" role="img" aria-labelledby="t d">
+<title id="t">Functions by worst-cell tier</title><desc id="d">506 in-scope functions, each in the tier of its worst counted cell.</desc>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-exact{fill:#2a78d6}.b-ulp4{fill:#1baf7a}.b-digits15{fill:#6250d6}.b-rate999{fill:#d55181}.b-rate99{fill:#eda100}.b-below99{fill:#e34948}.b-unscored{fill:#4b5563}.in-exact{fill:#000000}.in-ulp4{fill:#000000}.in-digits15{fill:#ffffff}.in-rate999{fill:#000000}.in-rate99{fill:#000000}.in-below99{fill:#000000}.in-unscored{fill:#ffffff}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-exact{fill:#3987e5}.b-ulp4{fill:#199e70}.b-digits15{fill:#9085e9}.b-rate999{fill:#d55181}.b-rate99{fill:#c98500}.b-below99{fill:#d03f3f}.b-unscored{fill:#9ca3af}.in-exact{fill:#000000}.in-ulp4{fill:#000000}.in-digits15{fill:#000000}.in-rate999{fill:#000000}.in-rate99{fill:#000000}.in-below99{fill:#ffffff}.in-unscored{fill:#000000}}</style>
+<rect class="bg" fill="#ffffff" x="0" y="0" width="760" height="294"/>
+<g transform="translate(14,14)">
+<text x="0.0" y="16.0" class="ink title" fill="#1f2328" text-anchor="start" dominant-baseline="middle">Functions by worst-cell tier</text>
+<rect class="grid" fill="#d1d9e0" x="150.0" y="36" width="1" height="214"/>
+<text x="150.0" y="264.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">0</text>
+<rect class="grid" fill="#d1d9e0" x="265.5" y="36" width="1" height="214"/>
+<text x="265.5" y="264.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">100</text>
+<rect class="grid" fill="#d1d9e0" x="381.0" y="36" width="1" height="214"/>
+<text x="381.0" y="264.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">200</text>
+<rect class="grid" fill="#d1d9e0" x="496.5" y="36" width="1" height="214"/>
+<text x="496.5" y="264.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">300</text>
+<rect class="grid" fill="#d1d9e0" x="612.0" y="36" width="1" height="214"/>
+<text x="612.0" y="264.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">400</text>
+<text x="140.0" y="55.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Exact</text>
+<rect class="b-exact" fill="#2a78d6" x="150.0" y="46.0" width="400.8" height="18" rx="3"><title>Exact: 347</title></rect>
+<text x="558.8" y="55.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">347 (68.58%)</text>
+<text x="140.0" y="85.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≤ 4 ulp</text>
+<rect class="b-ulp4" fill="#1baf7a" x="150.0" y="76.0" width="30.0" height="18" rx="3"><title>≤ 4 ulp: 26</title></rect>
+<text x="188.0" y="85.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">26 (5.14%)</text>
+<text x="140.0" y="115.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">15 digits</text>
+<rect class="b-digits15" fill="#6250d6" x="150.0" y="106.0" width="12.7" height="18" rx="3"><title>15 digits: 11</title></rect>
+<text x="170.7" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">11 (2.17%)</text>
+<text x="140.0" y="145.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≥ 99.9%</text>
+<rect class="b-rate999" fill="#d55181" x="150.0" y="136.0" width="9.2" height="18" rx="3"><title>≥ 99.9%: 8</title></rect>
+<text x="167.2" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">8 (1.58%)</text>
+<text x="140.0" y="175.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≥ 99%</text>
+<rect class="b-rate99" fill="#eda100" x="150.0" y="166.0" width="50.8" height="18" rx="3"><title>≥ 99%: 44</title></rect>
+<text x="208.8" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">44 (8.70%)</text>
+<text x="140.0" y="205.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">&lt; 99%</text>
+<rect class="b-below99" fill="#e34948" x="150.0" y="196.0" width="80.9" height="18" rx="3"><title>&lt; 99%: 70</title></rect>
+<text x="238.9" y="205.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">70 (13.83%)</text>
+<text x="140.0" y="235.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">Unscored</text>
+<text x="158.0" y="235.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">0 (0.00%)</text>
+</g></svg>

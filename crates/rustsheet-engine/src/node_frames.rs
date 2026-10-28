@@ -5,10 +5,11 @@
 
 use std::sync::Arc;
 
+use crate::area_budget::NODE_UNITS;
 use crate::arithmetic::{divide, minus, plus, power, times};
 use crate::calc_result::CalcResult;
 use crate::defined_names::ParsedDefinedName;
-use crate::expressions::parser::{left_chain, Node};
+use crate::expressions::parser::{left_chain, value_operands, Node};
 use crate::expressions::token::{Error, OpProduct, OpSum};
 use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
@@ -49,12 +50,14 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
-            // `ungrouped` above sees through both.
-            Group { .. } | StructuredReferenceKind { .. } => CalcResult::new_error(
-                Error::ERROR,
-                cell,
-                "Unpeeled group or structured reference".to_string(),
-            ),
+            // `ungrouped` above sees through all three.
+            Group { .. } | UnaryPlus { .. } | Spaced { .. } | StructuredReferenceKind { .. } => {
+                CalcResult::new_error(
+                    Error::ERROR,
+                    cell,
+                    "Unpeeled group, unary plus or structured reference".to_string(),
+                )
+            }
             // The cell, range or `#VALUE!` it is on the cell's row (SPEC-0016 step 2, T-1699).
             ThisRowKind { .. } => match node.this_row_at(cell.row) {
                 Some(area) => self.evaluate_node_in_context(&area, cell),
@@ -66,6 +69,9 @@ impl Model {
                 self.implicit_intersection_to_value(result, cell)
             }
             LambdaDefKind { parameters, body } => {
+                if let Err(error) = self.spend_lambda_made(body, cell) {
+                    return error;
+                }
                 let definition = Arc::new((parameters.clone(), *body.clone()));
                 CalcResult::Lambda(self.store_lambda(definition))
             }
@@ -257,11 +263,23 @@ impl Model {
         let mut value = self.evaluate_node_in_context(first, cell);
         for link in links {
             value = self.apply_operator_link(value, link, cell);
+            // Each link below the chain's own node is a node of its own, and its value, an array
+            // a broadcast built, is charged as a node's is (SPEC-0024); the chain's value is
+            // charged where it is returned (`evaluate_node_in_context`).
+            if !std::ptr::eq(link, node) {
+                if let Err(error) = self
+                    .spend_work(NODE_UNITS, cell)
+                    .and_then(|()| self.spend_value(&value, cell))
+                {
+                    return error;
+                }
+            }
         }
         value
     }
 
-    /// The operator of `link` (of [`left_chain`]) over `value` and its right operand. Out of
+    /// The operator of `link` (of [`left_chain`]) over `value` and its right operand; a dynamic
+    /// array's root chain folds the same way in `Model::evaluate_spilling_chain`. Out of
     /// line, so the chain's frame, held while a nested call in its first operand runs, stays small.
     #[inline(never)]
     fn apply_operator_link(
@@ -270,21 +288,36 @@ impl Model {
         link: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // `left_chain` links are value operators only.
+        let Some((_, right)) = value_operands(link) else {
+            return value;
+        };
+        // A one-cell reference is read before the right operand, as the operators always have.
+        let value = self.collapse_single_cell(value);
+        let right = self.evaluate_node_in_context(right, cell);
+        self.apply_operator(value, link, right, cell)
+    }
+
+    /// The operator of `link` over its evaluated operands `value` and `right`.
+    pub(crate) fn apply_operator(
+        &mut self,
+        value: CalcResult,
+        link: &Node,
+        right: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         match link {
-            Node::OpSumKind { kind, right, .. } => match kind {
+            Node::OpSumKind { kind, .. } => match kind {
                 OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
                 OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
             },
-            Node::OpProductKind { kind, right, .. } => match kind {
+            Node::OpProductKind { kind, .. } => match kind {
                 OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
                 OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
             },
-            Node::OpPowerKind { right, .. } => self.handle_arithmetic(value, right, cell, &power),
-            Node::OpConcatenateKind { right, .. } => self.handle_concatenate(value, right, cell),
-            Node::CompareKind { kind, right, .. } => {
-                self.handle_comparison(value, right, cell, kind)
-            }
-            // `left_chain` links are value operators only.
+            Node::OpPowerKind { .. } => self.handle_arithmetic(value, right, cell, &power),
+            Node::OpConcatenateKind { .. } => self.handle_concatenate(value, right, cell),
+            Node::CompareKind { kind, .. } => self.handle_comparison(value, right, cell, kind),
             _ => value,
         }
     }

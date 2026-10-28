@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2586 r5-f-edges probe hold: F.DIST(x,d1,d2,FALSE) at its edges (x = 0, x < 0, df < 1, df > 1E10, non-integer df twins, tiny and huge x with a *2^600 column, the d1*x overflow, d = 1, 2 runs).",
+ "description": "T-2586 r5-f-edges probe hold: F.DIST(x,d1,d2,FALSE) at its edges (x = 0, x < 0, df < 1, df > 1E10, non-integer df twins, tiny and huge x with a *2^600 column, the d1*x overflow, d = 1, 2 runs). T-2693 adds `(x)=0` companions (decision 0042) in column E for the cells where excel-graph shows 0 and the engine keeps a subnormal.",
  "tags": [
   "M9",
   "probe",
@@ -832,10 +832,13 @@
     "B292": "=F.DIST(A292,12,7,FALSE)",
     "C292": "=F.DIST(A292,12,7,FALSE)*2^600",
     "A293": "=EXP(-730)",
+    "E293": "=(EXP(-730))=0",
     "B293": "=F.DIST(A293,1,5,FALSE)",
     "A294": "=EXP(-730)",
+    "E294": "=(EXP(-730))=0",
     "B294": "=F.DIST(A294,2,5,FALSE)",
     "A295": "=EXP(-730)",
+    "E295": "=(EXP(-730))=0",
     "B295": "=F.DIST(A295,4,5,FALSE)",
     "C295": "=F.DIST(A295,4,5,FALSE)*2^600",
     "A296": "=(67108864*2^26+0)*2^-500*2^-574",

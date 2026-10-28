@@ -274,16 +274,25 @@ pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
 
 /// [`cmp_excel_precision`] without its shortcuts: the order of the two 15-digit values.
 fn cmp_rounded(a: f64, b: f64) -> std::cmp::Ordering {
-    // total_cmp orders -0.0 below 0.0 and negative-sign NaN below every number, so canonicalise
-    // both first (`+ 0.0` turns -0.0 into 0.0).
-    let canon = |x: f64| {
-        if x.is_nan() {
-            f64::NAN
-        } else {
-            to_excel_precision(x, 15) + 0.0
-        }
-    };
-    canon(a).total_cmp(&canon(b))
+    excel_precision_canon(a).total_cmp(&excel_precision_canon(b))
+}
+
+/// The 15-digit value [`cmp_excel_precision`] orders by. `total_cmp` orders -0.0 below 0.0 and
+/// negative-sign NaN below every number, so both are canonicalised (`+ 0.0` turns -0.0 into 0.0).
+fn excel_precision_canon(x: f64) -> f64 {
+    if x.is_nan() {
+        f64::NAN
+    } else {
+        to_excel_precision(x, 15) + 0.0
+    }
+}
+
+/// A key for [`cmp_excel_precision`]'s equality: two numbers are equal under it exactly when
+/// their keys are. Its shortcuts only skip the cut where the cut cannot make two numbers equal,
+/// so equality is always that of the canonical 15-digit values. The exact-match lookup index of
+/// XMATCH and XLOOKUP hashes it (T-0448).
+pub(crate) fn excel_precision_key(x: f64) -> u64 {
+    excel_precision_canon(x).to_bits()
 }
 
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
@@ -410,6 +419,8 @@ pub(crate) fn number_to_text(value: f64) -> String {
 /// small part in plain notation past 20 characters (`0.0000602887066915739`), otherwise
 /// the 20-character rule holds (`1.22514845490862E-16`, probes/eng-impower A9). The exponent -5
 /// limit is evidenced exactly: probes/eng-im-small-part has -1 to -5 plain and -6 to -16 in E notation.
+/// A large part is plain up to exponent 20, padded with zeros past 15 digits
+/// (`123456789012345000000`), and E notation from 21 (probes/eng-im-large-part).
 pub(crate) fn complex_part_to_text(value: f64) -> String {
     value_to_text(value, TextRules::ComplexPart)
 }
@@ -426,6 +437,8 @@ fn value_to_text(value: f64, rules: TextRules) -> String {
     const MAX_PLAIN_LEN: usize = 20;
     /// Smallest decimal exponent an IM* part writes in plain notation whatever its length.
     const MIN_COMPLEX_PLAIN_EXPONENT: i32 = -5;
+    /// Largest decimal exponent an IM* part writes in plain notation whatever its length.
+    const MAX_COMPLEX_PLAIN_EXPONENT: i32 = 20;
     if !value.is_finite() {
         // Unreachable from formulas: Excel has no infinities or NaN (overflow is `#NUM!`).
         return format!("{value}");
@@ -455,7 +468,7 @@ fn value_to_text(value: f64, rules: TextRules) -> String {
         TextRules::Coercion => plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN,
         TextRules::ComplexPart => {
             plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN
-                || (MIN_COMPLEX_PLAIN_EXPONENT..0).contains(&exponent)
+                || (MIN_COMPLEX_PLAIN_EXPONENT..=MAX_COMPLEX_PLAIN_EXPONENT).contains(&exponent)
         }
     };
     if plain {
@@ -604,6 +617,20 @@ impl Model {
     }
 }
 
+/// Groups the digits of an integer part in threes with `separator` (`1234567` → `1,234,567`).
+/// Indian `#,##,##0` grouping is the formatter's own (`use_group_separator`); FIXED, DOLLAR and
+/// fraction formats group in threes.
+pub(crate) fn group_thousands(digits: &str, separator: &str) -> String {
+    let mut result = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            result.push_str(separator);
+        }
+        result.push(c);
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -722,6 +749,12 @@ mod tests {
                 assert_eq!(
                     cmp_excel_precision(a, b),
                     cmp_rounded(a, b),
+                    "{a:e} vs {b:e}"
+                );
+                // The lookup index's key has the same equality (T-0448).
+                assert_eq!(
+                    cmp_excel_precision(a, b) == std::cmp::Ordering::Equal,
+                    excel_precision_key(a) == excel_precision_key(b),
                     "{a:e} vs {b:e}"
                 );
                 checked += 1;

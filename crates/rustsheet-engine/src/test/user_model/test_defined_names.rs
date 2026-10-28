@@ -113,7 +113,7 @@ fn delete_sheet() {
 
     assert_eq!(
         model.get_cell_content(0, 2, 1),
-        Ok(r#"=CONCATENATE(MyName," my world!")"#.to_string())
+        Ok(r#"=CONCATENATE(MyName, " my world!")"#.to_string())
     );
 }
 
@@ -172,7 +172,7 @@ fn rename_defined_name() {
 
     assert_eq!(
         model.get_cell_content(0, 2, 1),
-        Ok(r#"=CONCATENATE(newName," world!")"#.to_string())
+        Ok(r#"=CONCATENATE(newName, " world!")"#.to_string())
     );
 }
 
@@ -208,7 +208,7 @@ fn rename_defined_name_operations() {
 
     assert_eq!(
         model.get_cell_content(0, 2, 1),
-        Ok("=IF(respuesta<2,respuesta*2,respuesta^2)".to_string())
+        Ok("=IF(respuesta<2, respuesta*2, respuesta^2)".to_string())
     );
 
     assert_eq!(

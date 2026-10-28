@@ -75,9 +75,10 @@ use signature::{
 ///  * A:A => @A:A
 ///  * SIN(A1:D1) => SIN(@A1:D1)
 ///
-/// Assumes formula return a scalar
+/// Assumes formula return a scalar. The operators are those of the formula with no whitespace
+/// ([`Node::rewrite_as_unspaced`]).
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
-    legacy::add_root_legacy_intersection(node, add);
+    node.rewrite_as_unspaced(|node| legacy::add_root_legacy_intersection(node, add));
 }
 
 /// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
@@ -177,7 +178,10 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         }
 
         // operations
-        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+        Node::UnaryKind { right: child, .. }
+        | Node::Group { child, .. }
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. } => {
             add_legacy_intersection(child, add, arrays);
         }
         Node::OpConcatenateKind { .. }
@@ -299,6 +303,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::WrongRangeKind { .. } => wrong_range_shape(node), // T-1454
         Node::UnaryKind { right: child, .. }
         | Node::Group { child, .. }
+        | Node::UnaryPlus { child }
+        | Node::Spaced { child, .. }
         | Node::StructuredReferenceKind { lowered: child, .. } => {
             run_static_analysis_on_node(child)
         }
@@ -386,8 +392,8 @@ fn criteria_static_result(args: &[Node], first: usize) -> StaticResult {
     broadcast_static_result(args.iter().skip(first).step_by(2))
 }
 
-/// COUNTIF, SUMIF and SUMIFS also call themselves once per element of an array of references in
-/// a range argument (`Function::per_reference_element`; SPEC-0014 rule 6,
+/// COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF and MAXIFS also call themselves once per element of
+/// an array of references in a range argument (`Function::per_reference_element`; SPEC-0014 rule 6,
 /// `COUNTIF(OFFSET(A1,{0;1},0),">0")` spills 1, 1, probes/reference-lift-consumers E57): a range
 /// argument that is a lifted OFFSET or INDIRECT gives the shape, the criteria
 /// (`args[first]`, `args[first + 2]`, ...) only without one. Anything else does not:
@@ -462,7 +468,7 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Na => args_signature_scalars(arg_count, 0, 0),
         // A reference argument (a range, a table's data area: `SHEET(Table1[])`) gives its sheet's
         // number and is not implicitly intersected (probes/info-logic-argument-modes A12; legacy formulas:
-        // calc_test_no_export/tables.xlsx sheet9 A5:A8).
+        // calc_test_tables/tables.xlsx sheet9 A5:A8).
         Function::Sheet if arg_count == 1 => args_signature_one_vector(arg_count),
         Function::Sheet => args_signature_scalars(arg_count, 0, 1),
         Function::Type => args_signature_one_vector(arg_count),
@@ -624,7 +630,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Intercept => vec![Signature::Vector; 2],
         Function::Slope => vec![Signature::Vector; 2],
         Function::Steyx => vec![Signature::Vector; 2],
-        Function::ForecastEtsSeasonality => vec![Signature::Vector; arg_count],
         Function::Frequency => vec![Signature::Vector, Signature::Vector],
         Function::Growth | Function::Trend => match arg_count {
             1 => vec![Signature::Vector],
@@ -771,14 +776,14 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),
-        Function::Averageif => criteria_static_result(args, 1),
+        Function::Averageif => criteria_and_grid_static_result(kind, args, 1),
         Function::Averageifs => criteria_static_result(args, 2),
         Function::Count => not_implemented(args),
         Function::Counta => not_implemented(args),
         Function::Countblank => reference_parameter::countblank_static_result(args),
         Function::Countif => criteria_and_grid_static_result(kind, args, 1),
-        Function::Countifs => criteria_static_result(args, 1),
-        Function::Maxifs => criteria_static_result(args, 2),
+        Function::Countifs => criteria_and_grid_static_result(kind, args, 1),
+        Function::Maxifs => criteria_and_grid_static_result(kind, args, 2),
         Function::Minifs => criteria_static_result(args, 2),
         Function::Now => not_implemented(args),
         Function::Today => not_implemented(args),
@@ -832,7 +837,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Intercept => StaticResult::Scalar,
         Function::Slope => StaticResult::Scalar,
         Function::Steyx => StaticResult::Scalar,
-        Function::ForecastEtsSeasonality => StaticResult::Scalar,
         // Spill-returning functions
         Function::Frequency => StaticResult::Unknown,
         Function::Growth => StaticResult::Unknown,

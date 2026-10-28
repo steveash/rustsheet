@@ -3,6 +3,7 @@ mod bycol_byrow;
 mod lambda;
 mod r#let;
 mod map_reduce;
+mod read_once;
 mod scan;
 mod switch;
 
@@ -141,7 +142,7 @@ impl Model {
     /// (T-0216, T-1026; docs/excel-semantics/references.md). In reference context a union in
     /// the chosen branch stays its areas: `SUM(IF(TRUE,(A1,B2)))` is 6 and
     /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2). The condition is evaluated
-    /// once, then the chosen branch once (`read_once` in functions/logical/lambda.rs relies on it).
+    /// once, then the chosen branch once (`read_once` in `functions/logical/read_once.rs` relies on it).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],
@@ -388,11 +389,19 @@ impl Model {
                 Ok(array) => array,
                 Err(error) => return error,
             },
-            CalcResult::Array(a) => a,
+            // So is a blank element of an array, such as GROUPBY's blank key (true blank to
+            // INDEX and COUNT): `TEXTJOIN("|",FALSE,IFERROR(GROUPBY(..),"#"))` reads it "0"
+            // (probes/groupby-sort-filter-args G!B15, B55; T-2854).
+            CalcResult::Array(a) => blanks_as_zero(a),
             CalcResult::Error { ref error, .. } if is_handled(error) => {
                 // Scalar handled error: evaluate the fallback branch directly.
-                // The branch result may itself be an array (it will spill).
-                return self.evaluate_node_in_context(&args[1], cell);
+                // The branch result may itself be an array (it will spill). A blank cell there
+                // is the empty value too, which STDEV.P counts as 0
+                // (`STDEV.P(A9:A12,IFERROR(1/0,E6),{1,..,10})` with E6 blank;
+                // probes/t2475-stat-subexpressions P!A158).
+                return self
+                    .evaluate_node_in_context(&args[1], cell)
+                    .blank_as_empty_value();
             }
             // A blank cell gives its value, not the reference: an empty value that OR reads as
             // FALSE and a lookup as 0 (T-0291; gen-m2 7469c3e920e1ade4 A351, ef5c55a81783b7d5 A291).
@@ -537,14 +546,45 @@ impl Model {
                 Ok(true) => return Picked::Node(&args[2 * case_index + 1]),
                 Ok(false) => {}
                 Err(error) if is_text => {
-                    return Picked::Value(CalcResult::Array(vec![vec![calc_result_to_array_node(
+                    return Picked::Value(self.ifs_text_condition_error(
+                        &args[2 * case_index + 1..],
                         error,
-                    )]]))
+                        cell,
+                    ))
                 }
                 Err(error) => return Picked::Value(error),
             }
         }
         Picked::Value(no_match(cell))
+    }
+
+    /// The result of an IFS text condition that does not read as a boolean: `error` as an array
+    /// of the broadcast shape of the pair's value and every later argument, at least 1x1. The
+    /// earlier arguments do not count (`IFS(FALSE,{1,2},"x",5)` is 1x1, `IFS("x",5,TRUE,{1,2})`
+    /// 1x2, `IFS("x",5,{TRUE,FALSE,TRUE},1)` 1x3; probes/t2653-ifs-text-condition-array-value
+    /// and -shape-sources, T-2653).
+    fn ifs_text_condition_error(
+        &mut self,
+        rest: &[Node],
+        error: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let lifted: Vec<CalcResult> = rest
+            .iter()
+            .map(|node| self.evaluate_node_in_context(node, cell))
+            .collect();
+        let units = u64::try_from(lifted.len()).unwrap_or(u64::MAX);
+        let shaped = self.lift_values(
+            lifted,
+            LiftCost::Cells(units),
+            &LiftOptions::REUSE_EQUAL_RUNS,
+            cell,
+            &mut |_, _| error.clone(),
+        );
+        match shaped {
+            CalcResult::Array(_) => shaped,
+            other => CalcResult::Array(vec![vec![calc_result_to_array_node(other)]]),
+        }
     }
 
     /// IFS on one element of lifted (condition, value) pairs: the value of the first TRUE

@@ -1,0 +1,29 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1864: F.DIST density at the edges of the large-df branch (huge x with a small df, tiny x with a large df2, a non-integer df) and the huge-x finite-0 cases of the direct form",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1864"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=F.DIST(1E10,30,5,FALSE)",
+    "A2": "=F.DIST(1E-300,1,1000,FALSE)",
+    "A3": "=F.DIST(1E-300,2,1000,FALSE)",
+    "A4": "=F.DIST(1E20,300,1,FALSE)",
+    "A5": "=F.DIST(2,150.7,3,FALSE)",
+    "A6": "=F.DIST(1E100,2,3,FALSE)",
+    "A7": "=F.DIST(1E200,1,1,FALSE)",
+    "A8": "=F.DIST(1E-300,3,1000,FALSE)",
+    "A9": "=F.DIST(1E-10,1,1000,FALSE)",
+    "A10": "=F.DIST(1E50,10,10,FALSE)",
+    "A11": "=F.DIST(1E300,1,1,FALSE)",
+    "A12": "=F.DIST(1E-300,1,1,FALSE)"
+   }
+  }
+ ]
+}

@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -53,3 +54,6 @@ n >= 89 integer values, or a high-precision gamma in the fit lab so the unit-int
 GAMMALN and GAMMA are mapped to Excel's own x87 routines (T-1941; `docs/research/t1941/HANDOFF2.md`). T-2128 and
 T-2129 ship them; the four open kernels' remaining coefficient bits are T-2122. This supersedes the hypotheses above
 (named library routines, Lanczos, ln of the product).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

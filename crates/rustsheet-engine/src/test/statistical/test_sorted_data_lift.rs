@@ -233,7 +233,8 @@ fn percentile_exc_checks_k_before_empty_data() {
 }
 
 /// A typed boolean or text is a one-element data array (probes-numeric/t1748-typed-boolean-data,
-/// T-1748); a single cell holding one is unprobed and keeps its old reading.
+/// T-1748); a single cell holding a boolean is no number, `#NUM!` after quart's or k's own error
+/// (probes/t2429-quartile-exc-no-number, T-2429).
 #[test]
 fn typed_scalar_data_is_a_one_element_array_but_a_cell_holding_one_is_not() {
     assert_cells(&[
@@ -242,6 +243,32 @@ fn typed_scalar_data_is_a_one_element_array_but_a_cell_holding_one_is_not() {
         ("=PERCENTILE(FALSE,0.5)", "0"),
         ("=QUARTILE(\"1\",1)", "1"),
         ("=QUARTILE(\"abc\",1)", "#VALUE!"),
-        ("=QUARTILE(C2,1)", "#VALUE!"),
+        ("=QUARTILE(C2,1)", "#NUM!"),
+        ("=QUARTILE.EXC(C2,1)", "#NUM!"),
+        ("=QUARTILE.EXC(C2,NA())", "#N/A"),
+        ("=QUARTILE.EXC(C2,1/0)", "#DIV/0!"),
+        ("=PERCENTILE.INC(C2,0.5)", "#NUM!"),
+        // INDEX, IF and CHOOSE of that cell keep it a reference (probes/t2344-percentile-name-
+        // index-data, T-2344).
+        ("=QUARTILE(INDEX(C2:C3,1),1)", "#NUM!"),
+        ("=QUARTILE.EXC(IF(TRUE,C2),NA())", "#N/A"),
+        ("=PERCENTRANK(CHOOSE(1,C2),1)", "#N/A"),
+        ("=QUARTILE(OFFSET(C2,0,0),1)", "#NUM!"),
+        ("=QUARTILE(IF(QUARTILE(IF(TRUE,C2),1)>0,C2,C2),1)", "#NUM!"),
+    ]);
+}
+
+/// PERCENTRANK cuts the scaled rank to 15 digits before the floor, and a significance whose
+/// 10^sig overflows is `#DIV/0!` (probes/t2473-percentrank-significance, T-2473).
+#[test]
+fn percentrank_truncation_keeps_a_digit_at_a_cut() {
+    assert_cells(&[
+        ("=PERCENTRANK.EXC({1E+15,1,-1E+15},0.3)", "0.5"),
+        ("=PERCENTRANK({0,3},2,15)", "0.666666667"),
+        ("=PERCENTRANK({0,1},0.499999999999999,3)", "0.499"),
+        ("=PERCENTRANK({1,2,3,4},2.5,308)", "0.5"),
+        ("=PERCENTRANK({1,2,3,4},2.5,309)", "#DIV/0!"),
+        ("=PERCENTRANK.EXC({1,2,3,4},2.5,2147483648)", "#DIV/0!"),
+        ("=PERCENTRANK.INC({1,2,3},1,2147483648)", "#DIV/0!"),
     ]);
 }

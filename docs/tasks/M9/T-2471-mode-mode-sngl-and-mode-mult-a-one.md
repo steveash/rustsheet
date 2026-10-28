@@ -3,12 +3,12 @@ id: T-2471
 title: "MODE, MODE.SNGL and MODE.MULT: a one-cell range reference to an empty cell is #VALUE! (gen-m9, 36 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -69,13 +69,13 @@ Cells:
 - gen-m9/ecc87f80077959e0.case.json (1): Calc!A187
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 36 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2256): these 36 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `MODE(Z1:Z1)`, `MODE.SNGL(1,1,Z1:Z1)` and `MODE.MULT(Z1:Z1,{5})` with Z1 empty are `#VALUE!`;
+- [x] Unit tests: `MODE(Z1:Z1)`, `MODE.SNGL(1,1,Z1:Z1)` and `MODE.MULT(Z1:Z1,{5})` with Z1 empty are `#VALUE!`;
       `MODE(A1:A1,A1:A2)` with numbers is unchanged.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MODE over multi-cell ranges with blanks (unchanged: blanks skipped).
@@ -84,3 +84,7 @@ Cells:
 Decision 0083 (gap triage 2026-10-23, T-2256): every cell it owns has the wrong type, error or text (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns
 has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity
 criterion under Acceptance criteria states it.
+
+## Outcome
+MODE, MODE.SNGL and MODE.MULT: a one-cell range to an empty cell is `#VALUE!`. Eval delta: 39 gen-m9 known-failure
+lines fixed (all 38 owned plus probes/t2475-stat-subexpressions P!A96 and one more nested cell), 18 probes lines fixed, 0 regressions.

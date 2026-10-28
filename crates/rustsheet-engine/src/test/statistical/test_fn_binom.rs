@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, round_trip_value};
 
 #[test]
 fn test_fn_binom_dist_smoke() {
@@ -247,6 +247,61 @@ fn no_trials_and_certain_outcomes() {
     }
 }
 
+// BINOM.DIST's closed forms (T-2645; statistics.md "BINOM.DIST pmf: closed forms at k = 0 and
+// k = n"): EXP(fl(n·l)) at k = 0, cumulative or not, with l Excel's own log1p, and EXP(fl(n·LN(p)))
+// for the pmf at k = n. Excel's bits from probes-numeric/t2145-binomial-sweep (A1541, A65, A1235,
+// A22, A429, A3259, A363, A93, A2923, A139) and t2645-binom-trials-limit A6, A17.
+#[test]
+fn binom_dist_end_closed_forms_are_excel_bits() {
+    let cases: [(&str, f64); 12] = [
+        ("=BINOM.DIST(0,12,0.5,FALSE)", 0.000_244_140_625_000_000_16),
+        ("=BINOM.DIST(0,2,0.2,FALSE)", 0.64),
+        ("=BINOM.DIST(0,10,0.9,FALSE)", 9.999_999_999_999_96e-11),
+        ("=BINOM.DIST(0,1,0.3,TRUE)", 0.7),
+        ("=BINOMDIST(0,6,0.125,FALSE)", 0.448_795_318_603_515_6),
+        ("=BINOM.DIST(100,100,0.999,FALSE)", 0.904_792_147_113_708_9),
+        ("=BINOM.DIST(5,5,0.7,FALSE)", 0.168_069_999_999_999_94),
+        ("=BINOM.DIST(2,2,0.99,FALSE)", 0.9801),
+        ("=BINOM.DIST(50,50,0.3,FALSE)", 7.178_979_876_918_459e-27),
+        ("=BINOM.DIST(3,3,0.2,FALSE)", 0.008_000_000_000_000_004),
+        ("=BINOM.DIST(0,2^31-2,1E-12,FALSE)", 0.997_854_820_547_302_9),
+        ("=BINOM.DIST(0,2^31-2,1E-12,TRUE)", 0.997_854_820_547_302_9),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, excel)) in cases.iter().enumerate() {
+        let value = round_trip_value(&model, &format!("A{}", row + 1));
+        assert_eq!(
+            value.parse::<f64>().unwrap().to_bits(),
+            excel.to_bits(),
+            "{formula}"
+        );
+    }
+}
+
+// From 2^31 - 1 trials BINOM.DIST and BINOMDIST are #NUM! for every k and p, and so is
+// BINOM.DIST.RANGE at number_s = 0 (probes-numeric/t2645-binom-trials-limit A7-A45); NEGBINOM.DIST
+// is not (A46).
+#[test]
+fn binom_dist_trials_limit() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BINOM.DIST(0,2^31-1,1E-12,FALSE)");
+    model._set("A2", "=BINOM.DIST(0,2^31-0.5,1E-12,TRUE)");
+    model._set("A3", "=BINOMDIST(0,2^31,1E-12,FALSE)");
+    model._set("A4", "=BINOM.DIST(3,2^31-1,1E-9,TRUE)");
+    model._set("A5", "=BINOM.DIST(0,2^31-1,1,FALSE)");
+    model._set("A6", "=BINOM.DIST.RANGE(2^31-1,1E-12,0)");
+    model._set("A7", "=NEGBINOM.DIST(2^31,1,1-1E-12,FALSE)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
+        assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
+    }
+    assert_eq!(model._get_text("A7"), "0");
+}
+
 /// BINOM.DIST's cdf at k = n - 1 is the upper tail of `I_p(n, 1)`, Excel's closed form on bratio's
 /// oriented arguments (T-2502): probes-numeric t2145-binomial-sweep A374 and A1894, Excel's values.
 #[test]
@@ -275,4 +330,22 @@ fn negbinom_dist_at_one_success_or_no_failures_takes_the_closed_form() {
             ),
         ],
     );
+}
+
+#[test]
+fn test_negative_fractional_count_is_num_before_truncation() {
+    // gen-m9 85f48d5cdfb24555 A35, d208bbafc3bc1997 A231: the sign is checked before truncation (T-2700).
+    let mut model = new_empty_model();
+    model._set("A1", "=BINOM.DIST(-0.0125, 10, 1E-16, FALSE)");
+    model._set("A2", "=NEGBINOMDIST(-0.5, 8, 0.5)");
+    model._set("A3", "=BINOM.DIST(2.9, 3.9, 0.5, FALSE)"); // a positive fraction still truncates
+    model._set("A4", "=BINOM.DIST(2, 3, 0.5, FALSE)");
+    model._set("A5", "=BINOM.DIST(-0, 3, 0.5, FALSE)"); // negative zero is no negative count
+    model._set("A6", "=BINOM.DIST(0, 3, 0.5, FALSE)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), model._get_text("A4"));
+    assert_eq!(model._get_text("A5"), model._get_text("A6"));
 }

@@ -25,6 +25,20 @@ fn snaps_below_eight_ulp_of_the_smaller_addend() {
     assert_eq!(snap_near_zero(1.0, -below, 1.0 - below), 1.0 - below);
 }
 
+// Excel flushes the 8-ULP bound when it is subnormal: addends of 1.5·2^-973 still snap (to a
+// subnormal total), those of 1.5·2^-974 never do (probes/t2714-snap-tiny-addends).
+#[test]
+fn the_bound_flushes_below_the_smallest_normal() {
+    let at = |p: i32| {
+        let a = 1.5 * 2f64.powi(-p);
+        let b = -ulps_above(a, 1.0);
+        snap_near_zero(a, b, a + b)
+    };
+    assert_eq!(at(973), 0.0);
+    let kept = at(974);
+    assert!(kept != 0.0 && kept.abs() < f64::MIN_POSITIVE);
+}
+
 #[test]
 fn only_opposite_signed_nonzero_addends_snap() {
     let tiny = f64::EPSILON;

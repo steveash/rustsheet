@@ -3,10 +3,11 @@ id: T-2572
 title: "Fit the IMSQRT range rule, the subnormal-square flush in the IM log modulus and IMABS 1-ulp differences"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
+campaign: visible
 depends_on: []
 ---
 
@@ -24,8 +25,22 @@ Excel's value by 1 ulp. Cases: probes/eng-imln-modulus A17, eng-imln-modulus-ran
 candidate modulus algorithms (scaled, flushed squares, long double).
 
 ## Acceptance criteria
-- [ ] The cells above pass, or each remaining one is documented with probe evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The cells above pass, or each remaining one is documented with probe evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMPOWER (T-1950).
+
+## Visible-parity stage
+Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: probes/eng-imln-modulus-range A79 `=IMLN("1E-154+1E-153i")`: Excel "-352.295519228089+1.47112767430373i", ours "-352.290544062662+1.47112767430373i"; A80 `=IMSQRT("1E-154+1E-153i")`: Excel "2.34467878292635E-77+2.12190513569646E-77i", ours "2.35051862586971E-77+2.12719012092489E-77i".
+
+## Outcome
+- Rule (fit to the probe cells, excel-graph): IMSQRT and the logs take a subnormal square as 0. IMSQRT is the
+  polar root of the flushed x² + y² (its overflow rules unchanged); with both parts nonzero the logs drop a part
+  whose square flushes from the modulus (`hypot` / IMLOG2's scaled modulus of the rest) and keep it in the argument.
+  A zero part still exempts a log, and IMABS does not flush. `flushed_square` in
+  functions/engineering/complex/mod.rs; docs/excel-semantics/engineering.md replaces the "Not yet fitted" note.
+- The IMABS 1E±150..155 cells (A57-A70) and eng-imln-modulus A17 already passed on main; nothing left unfitted.
+- Eval delta: probes known failures 2959 -> 2952 (eng-imln-modulus-range A51-A54, A56, A79, A80 fixed, the two
+  visibly-off cells A79 and A80 among them); every other suite unchanged, 0 regressions.

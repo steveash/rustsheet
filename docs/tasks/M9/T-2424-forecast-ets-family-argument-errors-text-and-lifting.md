@@ -3,12 +3,12 @@ id: T-2424
 title: "FORECAST.ETS family: argument errors, text and lifting decide the result before #N/IMPL! (gen-m9, 1196 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
 depends_on: [T-2028]
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -82,6 +82,7 @@ Cells:
 - gen-m9/17c110a53924beb8.case.json (1): Calc!A200
 - gen-m9/1db18890916ee643.case.json (1): Calc!A312
 - gen-m9/44a8841352dc48e9.case.json (1): Calc!A400
+- gen-m9/44a8841352dc48e9.case.json (1): Calc!A251 `TTEST(..,FORECAST.ETS.SEASONALITY({-1;..;-24},..,0),1,..)`: Excel #N/A, ours #N/IMPL! (moved from T-2469)
 - gen-m9/5389dd4d5b5739d2.case.json (2): Calc!A89, A210
 - gen-m9/5919660b7bb4d195.case.json (1): Calc!A87
 - gen-m9/607e85cfee83a689.case.json (2): Calc!A201, A355
@@ -139,10 +140,10 @@ Cells:
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 1215 known-failure lines (1196 from T-2255, 19 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: an error in each argument position (first one wins), a text target_date/seasonality/statistic_type
+- [x] Unit tests: an error in each argument position (first one wins), a text target_date/seasonality/statistic_type
       before a later error, and a 2-row target_date that spills; a call with no error or text stays `#N/IMPL!`.
-- [ ] statistics.md's T-2255 entry gets an "Ours:" line naming this task.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's T-2255 entry gets an "Ours:" line naming this task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any forecast value or the web `#N/A` of a valid call (T-2425, after T-1553).
@@ -153,3 +154,30 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Outcome
+`statistical/forecast.rs` `forecast_ets_lifted` is the argument step for all four functions. Each element reads the
+arguments in order, and the first that fails decides:
+- a scalar argument's error;
+- non-numeric text (`#VALUE!`);
+- an error given directly as `values` or `timeline`, which are evaluated once.
+
+Only a call with none of these stays `#N/IMPL!`. Every scalar argument lifts. FORECAST.ETS.SEASONALITY gets the lift
+entry `ETS_SEASONALITY`, so its data_completion and aggregation lift too, and `eval/catalog/lift-kinds.json` is
+regenerated. Unit test `forecast_ets_family_first_failing_argument_decides`; statistics.md's T-2255 entry has an
+"Ours:" line.
+
+Eval (main 2c34755d, 2026-10-25): gen-m9 5,223 -> 4,567 known failures (656 fixed), 0 regressions and no new lines
+in any baseline. In-scope cells visibly off: 4,872 (lock 6,039).
+
+Of the 1,234 owned gen-m9 cells, 97 still differ, and none is this step's to fix, so the visible-parity criteria
+stay unticked:
+- 84 are a web `#N/A` against ours `#N/IMPL!`. They are calls with no error argument (T-2425's values, after
+  T-1553), or with an error element inside `values` or `timeline`, which the web evidence does not settle (Context).
+- 13 differ in an inner function that their own tasks own. Examples: GETPIVOTDATA `#REF!` in 43a13a091907b402 A4
+  and 899f9555e67da2d6 A142, KURT in 43a13a091907b402 A256, XIRR in fa25422d6f18c157 A122, MODE.MULT in A100, NPV
+  at rate -1 in ec2a1d9194a84396 A38, SYD in A65, and PROB in 67f5e0fe790e6bec A50, 1db18890916ee643 A312 and
+  5389dd4d5b5739d2 A89.
+
+The 13 inner-function cells are owned by those functions' own tasks (statistics.md, the T-2255 FORECAST.ETS section
+lists them); none needs a FORECAST.ETS change.

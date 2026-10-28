@@ -3,12 +3,12 @@ id: T-2623
 title: "Trace the 33 T-2475 gen-m9 cells the sub-expression probe does not settle"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -55,8 +55,19 @@ Owned gen-m9 cells (33; known failures in eval/baseline/gen-m9.txt, and the prob
 The last two read Pivot! through GETPIVOTDATA and were not copied into the probe.
 
 ## Acceptance criteria
-- [ ] Each cell above is owned by a fix task (new or existing) naming its cause, with the evidence in that task; quirks recorded in docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] Each cell above is owned by a fix task (new or existing) naming its cause, with the evidence in that task; quirks recorded in docs/excel-semantics/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Outcome
+Traced on 2026-10-25 against main 2c34755: 29 of the 33 cells already pass, fixed since T-2475 by other tasks (among them
+T-2066, T-2412 and T-2426, per `git log -S` on eval/baseline/gen-m9.txt), so they need no owner. The other 4 diverge in a
+sub-expression after all, and existing or new tasks own them:
+- gen-m9/d37313406b9f6e55 A182 (TRIMMEAN over GROUPBY): the blank-key row is `""` in Excel and 0 in ours (P!A530, A531) → T-2460.
+- gen-m9/17c110a53924beb8 A300 (MEDIAN over GROUPBY(..,LAMBDA(z,z))-x): Excel's operator keeps the nested cells (#N/A), ours makes them
+  #VALUE! (P!A62, A63) → new T-2686 (after the T-2609 probe); arrays.md updated.
+- gen-m9/0620505280d2ea6e A4 and gen-m9/a63d1c7d6f96c56d A216 (GETPIVOTDATA on an empty intersection of an Average or a Count
+  pivot) → T-2404.
+Eval delta: none (docs and tasks only).

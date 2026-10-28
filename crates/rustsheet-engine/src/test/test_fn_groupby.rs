@@ -119,10 +119,35 @@ fn number_keys_compare_exactly() {
     assert_eq!(model._get_text("G1"), "TRUE");
 }
 
+/// Inside the array the blank key is a true blank: INDEX gives TYPE 1 and `&""` "" (probes/
+/// t2360-array-lambda-holidays G!A12), COUNT skips it; IFERROR reads it as 0, as it reads a blank
+/// range cell (probes/groupby-sort-filter-args G!B55). T-2460, T-2854.
 #[test]
-fn total_row_fillers_are_empty_text_and_blank_key_is_zero() {
+fn blank_key_is_a_true_blank_inside_the_array() {
+    let mut model = region_sales();
+    model._set(
+        "J1",
+        "=TYPE(INDEX(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x))),5,1))&INDEX(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x))),5,1)",
+    );
+    model._set("J2", "=COUNT(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x))))");
+    model._set(
+        "J3",
+        "=TEXTJOIN(\"|\",FALSE,IFERROR(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),,0),\"#\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("J1"), "1");
+    // The six sums; the blank key is not a number (it was 0, giving 7).
+    assert_eq!(model._get_text("J2"), "6");
+    assert_eq!(
+        model._get_text("J3"),
+        "East|45|North|7|South|-3|West|72.5|0|9"
+    );
+}
+
+#[test]
+fn total_row_fillers_are_empty_text_and_blank_key_spills_as_zero() {
     // G!AB25 and G!AC33: the second key cell of the Total row is "" (text), the blank key group
-    // shows the number 0.
+    // displays 0 when spilled (a true blank inside the array).
     let mut model = region_sales();
     for row in 2..=11 {
         model._set(&format!("C{row}"), "k");

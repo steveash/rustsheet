@@ -12,8 +12,8 @@ use super::groupby::{
     FieldHeaders,
 };
 use super::grouping::{
-    at, effective_depth, empty_text, shown_key, subtotal_levels, value_error, Aggregates, Axis,
-    Group, Grouping, Line, ParentOrder, Relative, SortOrder,
+    at, effective_depth, empty_text, subtotal_levels, value_error, Aggregates, Axis, Group,
+    Grouping, Line, ParentOrder, Relative, SortOrder,
 };
 use super::lifted_options::Bound;
 use super::relative_to::{Item, RelativeSets, RelativeTo};
@@ -804,12 +804,12 @@ fn header_rows(
                     .groups
                     .get(group)
                     .and_then(|g| g.keys.get(field))
-                    .map_or(ArrayNode::Empty, shown_key),
+                    .map_or(ArrayNode::Empty, Clone::clone),
                 Slot::Subtotal { level, start, .. } if field < level => cols
                     .groups
                     .get(start)
                     .and_then(|g| g.keys.get(field))
-                    .map_or_else(empty_text, shown_key),
+                    .map_or_else(empty_text, Clone::clone),
                 Slot::Total { .. } if field == 0 => grand_total_label(levels),
                 Slot::Subtotal { .. } | Slot::Total { .. } => empty_text(),
             }

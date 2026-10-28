@@ -7,8 +7,8 @@ status: todo
 priority: P3
 size: S
 tier: opus
-campaign: visible
 depends_on: [T-2219, T-2220]
+defer: phase-1b
 ---
 
 ## Goal
@@ -128,3 +128,9 @@ Decision 0083: this stage is met when the six visibly-off cells above (m9-f-dist
 m9-legacy-fdist A47, A48, A55, A56; t1049-fdist A16) are within half a unit of the 15th
 significant digit of Excel's value, and no other cell this task owns is newly visibly off. Bit-level
 criteria still unmet at that point move to a follow-up task without the campaign key.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+110 visibly-off F.DIST cells of probes-numeric/t2220-f-dist-sweep-cdf (and the other t2220 sweeps) are not last-digit residue; T-2981 owns them and routes them to the kernel task that fixes them (T-2219 / T-2790 first guess). This task stays `defer: phase-1b` for its bit-level fits.

@@ -3,11 +3,12 @@ id: T-2147
 title: "TAN near 1.2E+8 is 1 ulp off the pi64 reduction model (TAN(123456789.123))"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
 depends_on: [T-2172]
+defer: phase-1b
 ---
 
 ## Goal
@@ -43,10 +44,20 @@ gen-m5 round-2 triage (T-2252, excel-graph oracle, 2026-10-22): one more cell, T
 | gen-m5/02d59ba3e2c52190 Calc!A120 | `=MDETERM(TAN(Data!C1))` | 56.41575748007382 | 56.415757480073815 |
 
 ## Acceptance criteria
-- [ ] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
-- [ ] These 4 known-failure lines (3 from T-2114, 1 from T-2252) disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
-- [ ] No m9-trig-reduction or trig-huge-argument cell regresses; T-2172's TAN cells pass or are listed residuals.
-- [ ] `make check` green; reviewers approve.
+- [x] The 1 gen-m6 known-failure line above disappears from eval/baseline/gen-m6.txt (`make eval-baseline`), or each remaining one is named in the Outcome with its cause.
+- [x] These 4 known-failure lines (3 from T-2114, 1 from T-2252) disappear from eval/baseline/gen-m5.txt (`make eval-baseline`), with no new known failure in any suite.
+- [x] No m9-trig-reduction or trig-huge-argument cell regresses; T-2172's TAN cells pass or are listed residuals.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SIN/COS changes beyond what the sweep shows.
+
+## Outcome
+Excel's TAN is the pi64-reduced tangent rounded twice, RN53(RN64(tan)) (an x87 tangent stored to a double); `excel_tan` now
+rounds that way (COT, 1/TAN, inherits it). Evidence: all 311 earlier constant-argument TAN cells, and the new
+probes-numeric/t2147-tan-double-rounding (150 arguments chosen at 64-bit near-ties, excel-graph, two identical fills): 129 match,
+against 47 for the old single rounding. Guard-bit variants (65..72 bits) do no better beyond noise (numbers.md "TAN misses this
+model by 1 ulp"). The 21 residual cells of that probe (probes-numeric is not gated) are near-ties where Excel's own tangent
+carries up to about half a 64-bit ulp of error, so its bit is not predictable from the exact value (as decision 0112 for LN).
+Eval delta: gen-m5 known failures 9 -> 5 (the 4 lines above), gen-m6 2 -> 1 (the 1 line above); probes-numeric
+trig-odd-even-sumxmy2-sweep 778 -> 782 passing; m9-trig-reduction 666/666 and probes/trig-huge-argument 86/86 unchanged; no regressions.

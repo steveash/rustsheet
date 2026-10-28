@@ -3,7 +3,7 @@ id: T-2649
 title: "ISOMITTED of an empty value (IFERROR of a blank, a blank array element) handed to a LAMBDA is FALSE"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -25,9 +25,16 @@ binding (functions/logical/lambda.rs, `lambda_cells` in bycol_byrow.rs) has to t
 the empty value, without changing how the value reads elsewhere (COUNT counts it, ISBLANK TRUE).
 
 ## Acceptance criteria
-- [ ] probes/t2461-blank-array-sources A12, A13, A14 leave eval/baseline/probes.txt, no new known failures.
-- [ ] arrays.md's ISOMITTED entries say "Ours" for the empty value.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/t2461-blank-array-sources A12, A13, A14 leave eval/baseline/probes.txt, no new known failures.
+- [x] arrays.md's ISOMITTED entries say "Ours" for the empty value.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Omission is now a property of how a parameter was bound, not of its value: `Binding::Omitted` (variable_stack.rs) is bound
+for a missing argument and for an empty slot `(1,)`, reads as the empty value, and a LET name bound to it hands it on.
+`fn_isomitted` reads the binding for a variable argument, so a parameter bound to the empty value (IFERROR of a blank, a
+blank HSTACK element through MAP or INDEX) is FALSE. Eval: probes/t2461-blank-array-sources P!A12:A14 leave the baseline
+(3 known failures fewer), no new failures.

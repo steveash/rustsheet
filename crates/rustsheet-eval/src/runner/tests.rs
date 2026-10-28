@@ -356,6 +356,39 @@ fn invariant_volatile_cells_are_scored() {
     assert!(stale.is_some_and(|e| e.contains("not a volatile formula cell")));
 }
 
+/// A cell calling an add-in function (`_xll.`) is not scored and is counted; a cell reading it,
+/// and `_xll.` inside a string, are scored (decision 0027; T-0462).
+#[test]
+fn add_in_calls_are_not_scored() {
+    let dir = std::env::temp_dir().join(format!("rs-runner-{}-add-in", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("mkdir");
+    let path = dir.join("a.case.json");
+    std::fs::write(
+        &path,
+        format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=IFERROR(_xll.ciq.CIQHI(1),\"N/A\")","A2":"=A1","A3":"=LEN(\"_xll.x(\")"}}}}],
+               "expected":{{"S!A1":{{"t":"n","v":79.64}},"S!A2":{{"t":"n","v":79.64}},"S!A3":{{"t":"n","v":7}}}}}}"#
+        ),
+    )
+    .expect("write case");
+    let file = CaseFile {
+        id: "t/a".into(),
+        path: path.clone(),
+        sidecar: oracle_sidecar(&path),
+    };
+    let prepared = prepare_spec(&file);
+    let _ = std::fs::remove_dir_all(&dir);
+    let prepared = prepared.expect("prepare");
+    let mut cells: Vec<String> = prepared
+        .expectations
+        .iter()
+        .map(|e| e.addr.to_string())
+        .collect();
+    cells.sort();
+    assert_eq!(cells, ["A2", "A3"]);
+    assert_eq!(prepared.skipped_add_in, 1);
+}
+
 #[test]
 fn duplicate_hand_keys_and_bad_oracle_keys_are_errors() {
     let dir = std::env::temp_dir().join(format!("rs-runner-{}-bad-keys", std::process::id()));

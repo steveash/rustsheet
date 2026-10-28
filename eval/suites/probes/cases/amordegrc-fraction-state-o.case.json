@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 the 485 charge, A2 fractional with a period that depends on A1: does a dependency force A1 first?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(2400,39679,39813,300,2,0.15,1)",
+        "A2": "=AMORDEGRC(10000,39000,39400,500,0.3+0*A1,0.3,0)"
+      }
+    }
+  ],
+  "expected": {}
+}

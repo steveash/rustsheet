@@ -1,5 +1,5 @@
 //! How close a function's scored cells come to Excel: the six buckets of the parity page
-//! (`tools/src/rustsheet_tools/parity_report.py`, T-2041), counted by the report (T-2036).
+//! (`tools/src/rustsheet_tools/progress_report/parity.py`, T-2041), counted by the report (T-2036).
 //!
 //! The buckets follow decision 0083's order of parity: a cell is *visibly* right when the 15
 //! significant digits Excel shows are right (`digits15` and better), and visibly off otherwise
@@ -130,6 +130,12 @@ impl Visible {
     pub fn total(&self) -> usize {
         self.numeric + self.other
     }
+
+    /// Whether `cell` is visibly off (decision 0083): the one test every report section uses.
+    #[must_use]
+    pub fn is_off(cell: &CellResult) -> bool {
+        Visible::of(cell).total() > 0
+    }
 }
 
 /// Whether `actual` is within half a unit in the 15th significant digit of `expected`: the
@@ -185,6 +191,21 @@ pub fn blamed(called: &BTreeSet<String>) -> Vec<&String> {
     }
 }
 
+/// The function a cell is attributed to under decision 0118: the one function of `called` not in
+/// [`GLUE`], or, when the formula calls only glue, its one glue function. `None` when the formula
+/// calls two or more distinct non-glue functions, or only glue and two or more distinct ones (or
+/// nothing). `called` is the distinct-call set [`blamed`] takes, so repeated calls of one function
+/// count once: `GAMMA(1)+GAMMA(2)` is GAMMA's. Unlike [`blamed`], `IF(AND(..),..)` is nobody's.
+#[must_use]
+pub fn sole_call(called: &BTreeSet<String>) -> Option<&String> {
+    let mut specialised = called.iter().filter(|f| !GLUE.contains(&f.as_str()));
+    match (specialised.next(), specialised.next()) {
+        (Some(f), None) => Some(f),
+        (None, _) if called.len() == 1 => called.first(),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,6 +222,7 @@ mod tests {
             from_excel: true,
             listed_deviation: false,
             graph_subnormal: false,
+            kind: crate::runner::CellKind::Scored,
         }
     }
 
@@ -297,5 +319,23 @@ mod tests {
             }
         );
         assert_eq!(v.total(), 2);
+    }
+
+    #[test]
+    fn a_cell_is_attributed_to_its_sole_non_glue_call() {
+        use crate::formula_calls::functions_in;
+        let sole = |formula: &str| sole_call(&functions_in(formula)).cloned();
+        let name = |f: &str| Some(f.to_string());
+        assert_eq!(sole("IF(A1,GAMMA(B1))"), name("GAMMA"));
+        assert_eq!(sole("GAMMA(1)+GAMMA(2)"), name("GAMMA"));
+        assert_eq!(sole("SUM(A1:A3)"), name("SUM"));
+        assert_eq!(sole("IF(A1,1,2)"), name("IF"));
+        assert_eq!(sole("GAMMA(BETA.DIST(0.5,2,3,TRUE))"), None);
+        assert_eq!(sole("A1+1"), None);
+        // Decision 0118: a glue-only formula with two distinct calls is nobody's, though
+        // decision 0088's `blamed` still blames both.
+        let if_and = functions_in("IF(AND(A1,B1),1,2)");
+        assert_eq!(sole_call(&if_and), None);
+        assert_eq!(blamed(&if_and), vec!["AND", "IF"]);
     }
 }

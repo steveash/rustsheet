@@ -32,6 +32,7 @@
 
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{beta_reg_upper, closed_form_tails, incbcf, incbd};
+use crate::arithmetic::flush_subnormal;
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo` with |lo| <= ulp(hi)/2.
@@ -100,21 +101,12 @@ pub(crate) fn student_t_tails(t: f64, n: f64) -> (f64, f64) {
     }
 }
 
-/// L = P(T > t) for t > 0.
+/// L = P(T > t) for t > 0. A tail below the normal range is 0: main (statrs) returned 0 for a
+/// subnormal tail and `T.DIST.2T(...)` in gen-m9/3ec66461400faf2f A15 is 0 in Excel; the graph
+/// oracle cannot tell 0 from a kept subnormal (decision 0042), so the flush stays until a probe
+/// with a companion cell decides it.
 fn upper_tail(t: f64, n: f64) -> f64 {
     flush_subnormal(unflushed_upper_tail(t, n))
-}
-
-/// A tail below the normal range is 0. Main (statrs) returned 0 for a subnormal tail and
-/// `T.DIST.2T(...)` in gen-m9/3ec66461400faf2f A15 is 0 in Excel; the graph oracle cannot tell 0
-/// from a kept subnormal (decision 0042), so the flush stays until a probe with a companion cell
-/// decides it.
-fn flush_subnormal(tail: f64) -> f64 {
-    if tail < f64::MIN_POSITIVE {
-        0.0
-    } else {
-        tail
-    }
 }
 
 /// [`upper_tail`] before the subnormal flush.
@@ -525,9 +517,9 @@ fn dd_atan(u: Dd) -> Dd {
 
 #[cfg(test)]
 mod tests {
-    use super::super::incomplete_beta::tests::ulps;
-    use super::super::incomplete_beta::{beta_reg_complement, A1_CLOSED_FORM_MIN_X};
+    use super::super::incomplete_beta::{beta_reg_complement, A1_EXPM1_MAX_X};
     use super::*;
+    use crate::test::util::ulps;
 
     #[test]
     fn tail_beyond_one_is_taken_at_the_rounded_y() {
@@ -576,7 +568,7 @@ mod tests {
         // the incomplete beta's a = 1 tail is the uncancelled form there (T-0974) and gives
         // Excel's value.
         let y = 2.0 / (2.0 + 4.245 * 4.245);
-        assert!(y < A1_CLOSED_FORM_MIN_X);
+        assert!(y < A1_EXPM1_MAX_X);
         assert_eq!(closed_form_tail(y, 2.0), None);
         let closed = 0.5 * (1.0 - (0.5 * (1.0 - y).ln()).exp());
         assert_eq!(ulps(closed, 0.025_631_992_844_658_943), 1);

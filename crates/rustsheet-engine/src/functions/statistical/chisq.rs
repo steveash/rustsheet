@@ -6,6 +6,7 @@ use statrs::distribution::{Continuous, Gamma};
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
 use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
+use crate::arithmetic::flush_subnormal;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
 
@@ -100,6 +101,9 @@ impl Model {
         } else {
             gamma_density(dist.shape(), x, 1.0 / dist.rate()).unwrap_or_else(|| dist.pdf(x))
         };
+        // A subnormal cdf or density is 0, as in Excel (`(x)=0` TRUE: probes/
+        // t2706-subnormal-density-paths B35, probes/t2737-subnormal-cdf-shapes B15:B17).
+        let result = flush_subnormal(result);
         if !result.is_finite() {
             return Err(num_error(cell));
         }
@@ -237,6 +241,47 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
         self.numbers_from_ranked_arg(node, cell, false)
+    }
+
+    /// [`Self::numbers_from_reference_arg`] of an element-wise expression of whole columns or of
+    /// bounded spans past the used area, read as its used head and its tail row (SPEC-0020
+    /// Amendment 1 section 3, T-0492): the head's first error, else the tail's error, else the
+    /// head's numbers and `tail_len` copies of a numeric tail; what the materialized array gives,
+    /// whose elements come in that order. `None` when the argument is not tailed: then it is read
+    /// the ordinary way (its cells already evaluated if a head was read). LARGE and SMALL only;
+    /// the RANK family makes arrays `#VALUE!` and keeps the ordinary reading.
+    pub(crate) fn tailed_numbers_from_reference_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Result<Vec<Option<f64>>, CalcResult>> {
+        let (head, tail) = self
+            .read_tailed(node, cell, |model| model.evaluate_reference_arg(node, cell))?
+            .elements()?;
+        // One column, the head's elements and the tail element once, read by the ordinary
+        // reading's kernels: their first error is the head's, else the tail's.
+        let mut column: Vec<ArrayNode> = head.collect();
+        let mut repeats = 0;
+        if let Some((element, tail_len)) = tail {
+            repeats = tail_len;
+            column.push(element);
+        }
+        let column = vec![column];
+        if let Some(error) = nested_array_error(&column, cell) {
+            return Some(Err(error));
+        }
+        let mut numbers = match self.values_from_array(column) {
+            Ok(numbers) => numbers,
+            Err(error) => return Some(Err(array_element_error(error, cell))),
+        };
+        // A numeric tail counts once per tail row; any other tail adds nothing. No tail when
+        // the pass is being abandoned: the value is discarded.
+        if repeats > 0 {
+            if let Some(Some(number)) = numbers.pop() {
+                numbers.extend(std::iter::repeat_n(Some(number), repeats));
+            }
+        }
+        Some(Ok(numbers))
     }
 
     /// [`Self::numbers_from_reference_arg`] for the RANK family, whose `ref` must be a reference:

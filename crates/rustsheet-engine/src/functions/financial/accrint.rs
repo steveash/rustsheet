@@ -1,30 +1,30 @@
 use chrono::NaiveDate;
 
-use super::dates::{broken_schedule_error, day_count_basis, days_30_360_us_both_ymd};
+use super::dates::{day_count_basis, days_30_360_us_both_ymd, DateReading};
 use super::financial_bonds::coupon_schedule::{
     change_month, coupon_date, coupon_serial, is_last_day_of_month, serial_basis_days, serial_ymd,
 };
 use crate::{
     calc_result::CalcResult,
-    constants::MAXIMUM_DATE_SERIAL_NUMBER,
     expressions::{parser::Node, types::CellReferenceIndex},
-    formatter::dates::{
-        from_excel_date, from_excel_date_up_to, real_date_to_serial, EPOCH_1904_IN_1900_SERIALS,
-    },
-    functions::lift::num_error,
+    formatter::dates::{from_excel_date, real_date_to_serial},
+    functions::lift::{num_error, value_error},
     functions::Function,
     model::Model,
 };
 
-/// The serial of an ACCRINT coupon date. Excel reads the schedule in its 1900 calendar, where a
-/// coupon date before 1900-01-01 is serial 0, and ACCRINT is `#NUM!` for it: an issue whose
+/// The serial of an ACCRINT coupon date, `#NUM!` before the workbook's first coupon date `first`
+/// (`DateSystem::first_coupon_1900_serial`). Excel reads the schedule in its 1900 calendar, where
+/// a coupon date before 1900-01-01 is serial 0, and ACCRINT is `#NUM!` for it: an issue whose
 /// previous coupon date is 1899-12-31 has no accrual (`ACCRINT(DATE(1900,3,1),DATE(1900,6,30),
 /// DATE(1950,6,30),0.05,1000,4,0,TRUE)`, probes/fin-coupon-walk-bounds-c O1-O13,
-/// fin-accrint-1900-calendar; financial.md "Coupon schedules at the calendar's edges").
-fn accrint_coupon_serial(date: NaiveDate) -> Result<i64, String> {
+/// fin-accrint-1900-calendar; financial.md "ACCRINT at the calendar's start"). In a 1904 workbook
+/// the cut is 1904-01-01 (`ACCRINT(10,DATE(1904,6,30),DATE(1904,3,1),0.06,1000,2,0)`;
+/// probes/fin-coupnum-1904-maturity-sweep C10).
+fn accrint_coupon_serial(date: NaiveDate, first: i64) -> Result<i64, String> {
     let serial = coupon_serial(date);
-    if serial < 1 {
-        return Err("Coupon date before 1900-01-01".to_string());
+    if serial < first {
+        return Err("Coupon date before the calendar".to_string());
     }
     Ok(serial)
 }
@@ -52,7 +52,7 @@ fn stub_denominator(start: i64, end: i64, basis: u32) -> Result<f64, String> {
 // period contributes a prorated slice; each earlier full period contributes
 // `calc_method` (1 for the default issue→settlement, 0 for
 // first_interest→settlement); the issue-stub period contributes its own prorated
-// slice. `settlement_days`, when given, replaces the day count of the settlement slice.
+// slice. A coupon date the accrual reads before `first_coupon` is `#NUM!` (`accrint_coupon_serial`).
 //
 // The dates are Excel 1900 serials and the day counts read them as Excel does: the actual bases
 // count serials (Excel's fictitious 1900-02-29 included) and the 30/360 bases the `(year, month,
@@ -68,7 +68,7 @@ fn compute_accrint(
     frequency: u32,
     basis: u32,
     calc_method: bool,
-    settlement_days: Option<f64>,
+    first_coupon: i64,
 ) -> Result<f64, String> {
     let num_months = (12 / frequency) as i32;
     let freq = f64::from(frequency);
@@ -79,7 +79,16 @@ fn compute_accrint(
     // Regular coupon period [reg_pcd, first_interest]; its length is the
     // denominator used for the settlement slice.
     let reg_pcd_date = change_month(first_interest_date, -num_months, end_month_bond)?;
-    let reg_pcd = coupon_serial(reg_pcd_date);
+    // Excel: basis 1 reads that period's length, so its start must be in the calendar too, even
+    // when the settlement's period is later: `ACCRINT(33853,1.005,37554,1,9888,1,1)` is #NUM! on
+    // basis 1 at every frequency and a number on the other bases, and a first_interest of 367
+    // (regular period from 1900-01-01) is a number on basis 1 (probes/accrint-calendar-start-1900
+    // A1:A60; gen-m9 932b33b1ef8b7608 Calc!A118; financial.md "ACCRINT at the calendar's start").
+    let reg_pcd = if basis == 1 {
+        accrint_coupon_serial(reg_pcd_date, first_coupon)?
+    } else {
+        coupon_serial(reg_pcd_date)
+    };
     // Coupon date immediately before settlement. When settlement is past
     // first_interest (only meaningful for the default calc_method) walk the
     // schedule forward to find it; otherwise it is the regular coupon start.
@@ -104,13 +113,17 @@ fn compute_accrint(
     // Only the coupon dates the accrual reads must be in the calendar: a regular period that
     // starts before 1900 is fine when the settlement's period is later (`ACCRINT(33448,1,37714,
     // 1E+300,0.3,1,2,TRUE)` is a number; gen-m9 3b7990bd4e3307ba Calc!A317).
-    let pcd = accrint_coupon_serial(pcd_date)?;
+    let mut pcd = accrint_coupon_serial(pcd_date, first_coupon)?;
+    // Excel: first_interest 60 (the fictitious 1900-02-29) stays serial 60 as the settlement's
+    // coupon date, although the schedule steps from 1900-02-28, so an issue of 59 still has a
+    // period to walk back through and the walk reaches 1899: `ACCRINT(59,60,242,0.05,1000,2,0,
+    // TRUE)` is #NUM! while first_interest 59 is a number (probes/accrint-eom-1900 A9, A13).
+    if pcd_date == first_interest_date {
+        pcd = pcd.max(first_interest);
+    }
 
     let first_date = issue.max(pcd);
-    let days0 = match settlement_days {
-        Some(days) => days,
-        None => serial_basis_days(first_date, settlement, basis)?,
-    };
+    let days0 = serial_basis_days(first_date, settlement, basis)?;
     let coup_days0 = match basis {
         0 | 2 | 4 => 360.0 / freq,
         3 => 365.0 / freq,
@@ -123,7 +136,7 @@ fn compute_accrint(
     let mut period_end = pcd;
     while period_end > issue {
         front = change_month(front, -num_months, end_month_bond)?;
-        let period_start = accrint_coupon_serial(front)?;
+        let period_start = accrint_coupon_serial(front, first_coupon)?;
         if issue <= period_start {
             // Full coupon period inside the accrual span.
             acc += calc;
@@ -176,26 +189,50 @@ impl Model {
         })
     }
 
-    /// ACCRINT's kernel: every argument is read, in order, before any value is checked. A boolean
-    /// issue or rate is `#VALUE!`, also before a later argument's error (`ACCRINT(TRUE,39500,..)`,
-    /// `ACCRINT(TRUE,SQRT(-1),..)`, `ACCRINT(39000,39500,0.1,TRUE,..)`: probes/t2455-transpose-
-    /// single-value A52, A53, A56); the other dates and numbers take booleans (as `get_number`
-    /// did; unprobed), and `calc_method` reads as a boolean.
+    /// ACCRINT's kernel. Excel reads `calc_method` first: its error is the result and text, "TRUE"
+    /// and "FALSE" too, is `#VALUE!` (probes/t2492-vdb-ddb-arguments A47:A54), whatever the other
+    /// arguments hold. The other seven are then read in order: a date off the calendar is `#NUM!`
+    /// as soon as it is read, before a later argument's error, text or boolean, and a boolean
+    /// issue, rate or par is `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-
+    /// single-value A52, A53, A56; gen-m9/932b33b1ef8b7608 A233 for par; financial.md "ACCRINT
+    /// check order: `calc_method` first, dates as read"). The other numbers take booleans (as
+    /// `get_number` did; unprobed).
     fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
         };
         let read = || -> Result<_, CalcResult> {
+            let calc_method = rest.get(1).map_or(Ok(true), |value| match value {
+                CalcResult::String(_) => Err(value_error(cell)),
+                value => Self::cast_bool_ref(value, cell),
+            })?;
+            // Serial 0 still reads; below it, or past the calendar's end, is `#NUM!` at once. The
+            // settlement is not checked as it is read (`ACCRINT(34022,36149,0.5,NA(),..)` is `#N/A`,
+            // gen-m9/f81bd3b6dc373e5c A60 reads an issue of 0.5 past a text rate).
+            let reading = DateReading::of(&Function::Accrint);
+            let issue = self.financial_date_as(
+                reading,
+                self.financial_calendar_date_of(issue, reading, cell)?,
+            );
+            let first_interest = self.financial_date_as(
+                reading,
+                self.financial_calendar_serial(
+                    self.cast_number_ref(first_interest, cell)?,
+                    reading,
+                    cell,
+                )?,
+            );
+            let settlement =
+                self.financial_date_as(reading, self.cast_number_ref(settlement, cell)?);
             Ok((
-                self.financial_date(self.cast_number_no_bools_ref(issue, cell)?),
-                self.financial_date(self.cast_number_ref(first_interest, cell)?),
-                self.financial_date(self.cast_number_ref(settlement, cell)?),
+                issue,
+                first_interest,
+                settlement,
                 self.cast_number_no_bools_ref(rate, cell)?,
-                self.cast_number_ref(par, cell)?,
+                self.cast_number_no_bools_ref(par, cell)?,
                 self.cast_number_ref(frequency, cell)?.floor(),
                 day_count_basis(self.cast_number_or(rest.first(), 0.0, cell)?),
-                rest.get(1)
-                    .map_or(Ok(true), |value| Self::cast_bool_ref(value, cell))?,
+                calc_method,
             ))
         };
         let (
@@ -222,36 +259,20 @@ impl Model {
             return num_error(cell);
         };
 
-        // ACCRINT walks the coupon schedule of `first_interest`, which in a 1904 workbook breaks
-        // from 9995-12-31 on as a maturity's does: #NUM! for any settlement and calc_method,
-        // while 9995-12-30 still accrues (probes/date-system-1904-odd-accrint-bound A11:D15;
-        // docs/excel-semantics/dates.md; T-1447).
-        if self.coupon_schedule_breaks(first_interest_serial) {
-            return broken_schedule_error(cell);
-        }
-        // The serials must name dates of the calendar (a settlement up to the date system's limit).
-        if from_excel_date(issue_serial).is_err()
+        // The serials must name dates of the calendar. Issue and first_interest were only
+        // range-checked from serial 0 as they were read; in a 1900 workbook a serial 0 still fails
+        // here, as it did before the read-time check (no oracle cell reads a first_interest of 0
+        // there). An issue on serial 0 is `#NUM!` in a 1904 workbook too, though 1904-01-01 is a
+        // date there (`ACCRINT(0,DATE(1904,7,1),DATE(1904,3,1),0.06,1000,2,0)`, while an issue of
+        // 1 computes; probes/fin-coupnum-1904-maturity-sweep C2, C3, C9).
+        let date_system = self.workbook.settings.date_system;
+        if issue_serial <= self.financial_date_as(DateReading::Calendar, 0.0)
+            || from_excel_date(issue_serial).is_err()
             || from_excel_date(first_interest_serial).is_err()
-            || from_excel_date_up_to(
-                settlement_serial,
-                self.workbook
-                    .settings
-                    .date_system
-                    .accrint_settlement_limit(calc_method),
-            )
-            .is_err()
+            || from_excel_date(settlement_serial).is_err()
         {
             return num_error(cell);
         }
-
-        // Excel: a 1904 settlement read past 9999-12-31 (calc_method FALSE) has no 30/360 date;
-        // bases 0 and 4 then accrue first_interest's 1904 serial plus 1462 days in the settlement
-        // slice, whatever the settlement and the issue (410415.83 for first_interest 9990-06-30,
-        // 1904 serial 2953532; probes/date-system-1904-accrint-settlement-bound A1:A17,
-        // docs/excel-semantics/dates.md). Bases 1 to 3 count its actual days.
-        let settlement_days = (settlement_serial > i64::from(MAXIMUM_DATE_SERIAL_NUMBER)
-            && matches!(basis, 0 | 4))
-        .then(|| (first_interest_serial - EPOCH_1904_IN_1900_SERIALS) as f64);
         match compute_accrint(
             issue_serial,
             first_interest_serial,
@@ -261,7 +282,7 @@ impl Model {
             frequency as u32,
             basis,
             calc_method,
-            settlement_days,
+            date_system.first_coupon_1900_serial(),
         ) {
             Ok(value) => CalcResult::Number(value),
             Err(_) => num_error(cell),

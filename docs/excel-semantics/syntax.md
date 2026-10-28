@@ -32,12 +32,36 @@ in-scope catalog function loaded at the count in excel-functions.tsv (probes/cat
 `=XNPV(1,A1:B2,A1:B2)` loads and gives 9.962109338017495 (probes/xnpv-argument-count D1; D3 shows
 values and dates of different lengths are `#NUM!`). RustSheet gives `#ERROR!` for a call below the
 minimum, as for every other function (`fn_xnpv`).
-Typed (API `Input::Formula`/`Parse`), Excel for the web refuses `=PV(1)` (Graph PATCH 400, T-2567), so typed entry
-refuses a call with fewer or more arguments than the function takes, for the functions in the engine's lifting table, whose
-counts match excel-functions.tsv (ACCRINTM's `par` aside, which the engine takes as optional); UNVERIFIED: that a typed call with too
-many arguments is refused is inferred from the file form (T-2568; probe in T-2632). Only the least and most counts are checked: a
-count between them that ends inside a repeating group (`SORTBY(a,b1,1,b2)`, whose last sort_order Microsoft's syntax line
-marks optional) is accepted typed, its Excel behavior unprobed (`ArgKinds::takes_count`, tools/tests/test_catalog_arity.py).
+Typed (API `Input::Formula`/`Parse`), Excel for the web refuses a call with fewer or more arguments than the function
+takes: `=PV(1)` (Graph PATCH 400, T-2567), and `=SUM()`, `=IF(1)`, `=ABS(1,2)` (too many) and
+`=ACCRINTM(DATE(2020,1,1),DATE(2021,1,1),0.1)` (`par` is required) (Graph PATCH 400 `InvalidArgument`, 2026-10-25, T-2632;
+the control `=ABS(1)` is accepted; refused inputs cannot be committed). A count between the least and most that ends inside a
+repeating group is refused too: `=SORTBY(C1:C2,D1:D2,1,E1:E2)` (the second pair lacks its sort order; same probe). The engine
+refuses typed by the catalog's counts for every function (`functions/kinds/arg_counts.txt`: the minimum of excel-functions.tsv; the
+maximum of Microsoft's syntax line, 255 when it repeats, widened by a non-repeating functions.yaml signature, or a cited
+override in place of both: INDEX's reference form, `INDEX(reference,row,column,area_num)`, 4 (probes/index-area-num-snap); checked by tools/tests/test_catalog_arity.py) and, for lifted functions, whole
+`repeat` cycles (`ArgKinds::accepts`); stored text keeps such a call (`#ERROR!`).
+Maxima and pairs, typed (T-2682, Graph PATCH 2026-10-25). Excel accepts each call at its maximum: `XLOOKUP` 6, `IF` 3,
+INDEX's reference form 4, `FIND`/`FINDB`/`SEARCHB` 3, `LEFTB`/`RIGHTB` 2, `LENB` 1, `MIDB` 3, `REPLACEB` 4, and
+`TRANSLATE` 3 (`#BUSY!` at the PATCH, logged, no sidecar). It also accepts whole pairs, `IFS(TRUE,1)`,
+`IFS(FALSE,1,TRUE,2)`, `LET(x,1,x)` and `LET(x,1,y,2,x+y)`, and `SWITCH(1,1,2)` and `SWITCH(1,2,3,4)` (a default after
+the pairs). See probes/t2682-typed-max-arg-counts A1:A17.
+It refuses (400 `InvalidArgument`, refused inputs cannot be committed) one argument past each of those maxima
+(`=XLOOKUP(1,{1,2},{3,4},0,0,1,1)`, `=IF(TRUE,2,3,4)`, `=INDEX((Sheet1!B1:C2,Sheet1!D1:E2),1,1,2,1)`, `=FIND("a","abc",1,1)` and the
+same for FINDB, SEARCHB, LEFTB, RIGHTB, LENB, MIDB, REPLACEB, `=DETECTLANGUAGE("hello","x")`,
+`=TRANSLATE("hello","en","es","x")`) and a count that ends inside an IFS or LET pair (`=IFS(TRUE,1,2)`,
+`=IFS(FALSE,1,TRUE,2,3)`, `=LET(x,1,y,2)`, `=LET(x,1,y,2,z,3)`) and `=SWITCH(1,2)`, below its minimum of 3. The engine's table
+takes these maxima as cited overrides (tools/tests/test_catalog_arity.py `MAX_OVERRIDES`; DETECTLANGUAGE and TRANSLATE are
+not implemented, `#NAME?`), and `arg_counts::takes_count` refuses IFS and LET off whole pairs. UNVERIFIED: that `DETECTLANGUAGE("hello")` (1, the catalog minimum) is accepted
+typed (only the refusal at 2 is logged); the pair rule above 6 arguments (probed
+IFS 2 to 5, LET 3 to 6).
+The repeating maxima, typed (T-2709, excel-graph 2026-10-25): `SUM` and `MAX` take 255 arguments (probes/t2709-typed-sum-255,
+-max-255) and are refused at 256; `CONCAT` and `TEXTJOIN` take 254 (probes/t2709-typed-concat-253, -concat-254,
+-textjoin-254, which joins 252 texts) and are refused at 255 and 256 (Graph PATCH 400 `InvalidArgument`, "The argument is
+invalid or missing or has an incorrect format", the response to any formula Excel refuses). It is the count, not the
+length: 255 one-character arguments (`=CONCAT(1,...)`, 518 characters; `=TEXTJOIN("",TRUE,1,...)`, 524) are refused while
+254 (-concat-254-short, -textjoin-254-short) and a 2,548-character CONCAT of 254 arguments (-concat-254-long) are accepted. So CONCAT takes 254 texts, one more than Microsoft's
+documented 253, and TEXTJOIN the documented 252; the engine table holds 254 for both as cited overrides.
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`
@@ -75,10 +99,9 @@ Rule: Excel for the web refuses a whole workbook holding `GETPIVOTDATA(data_fiel
 field2)` (5 arguments) or `(..., field1, item1, field2, item2, field3)` (7), with or without a pivot table at the
 reference and inside `IFERROR` too. Three arguments (`data_field, pivot_table, field1`, the item missing) load and
 are `#REF!` (web.md "GETPIVOTDATA against a pivot table"), and even counts load. So the field/item pairs are checked
-when the formula is read, but only past the first pair. RustSheet loads such a formula and gives `#REF!`
-(`fn_getpivotdata` takes `chunks_exact(2)` and refuses a leftover field); with no Excel value to match, a known gap,
-not a deviation (T-2403 aligns it with the other refused argument counts, which give `#ERROR!`). The generator draws
-only the three-argument odd call (tools/src/rustsheet_tools/gen/pivots.py).
+when the formula is read, but only past the first pair. RustSheet loads such a formula and gives `#ERROR!` like the
+other refused argument counts (T-2403; `fn_getpivotdata` checks the count first); with no Excel value to match, a known
+gap, not a deviation. The generator draws only the three-argument odd call (tools/src/rustsheet_tools/gen/pivots.py).
 Evidence: single-formula workbooks over a generated pivot (`Pivot!H3`, a Count of Units pivot, rows Product,
 columns Rep) sent with `rustsheet-oracle fill -b excel-graph` on 2026-10-22 (T-2396): `=GETPIVOTDATA("Units",Pivot!$H$3,"Product","C","Rep")`,
 the same against `Pivot!$Z$40` (outside the pivot), wrapped in `IFERROR(...,-1)`, and
@@ -103,13 +126,25 @@ the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,0
 all load and evaluate). Non-BMP bodies count UTF-16 units the same way: probe `name-body-nonbmp-8191u` (8,191 units, emoji
 included) loads (it has the only sidecar) and a body of 8,192 units is refused (T-1397; that case was dropped). The importer refuses a name body over 8,191 units
 (`XlsxError::Workbook`, T-1397).
-Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, typed (API) formulas (the oracle builds workbooks from files; a manual Graph `range.formulas` call or desktop
-Excel is needed, deferred to M14 item 8 of T-1075, decision 0039), desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
+Typed (T-2709, Graph PATCH, excel-graph 2026-10-25): the same 8,192 limit holds, `=1+1+...+1` of 8,192 characters is
+accepted (probes/t2709-typed-sum-8192-chars, B1 `LEN(FORMULATEXT)` 8192) and one of 8,193 is refused (400
+`InvalidArgument`). A string literal holds at most 4,095 UTF-16 units, typed or stored (T-2739, excel-graph 2026-10-26 UTC): a typed
+`="a...a"` of 4,095 is accepted (probes/t2739-typed-4095, `LEN` 4095) and 4,096 is refused (400 `InvalidArgument`),
+the same in a function argument (t2739-typed-len-4095; `LEN("<4,096>")` refused). It counts the value, not the source:
+a doubled quote is one character (t2739-typed-dq-4094 and -dq-4095, 4,093 or 4,094 letters and `""`, are accepted;
+4,095 letters and `""` are refused). It counts UTF-16 units: 2,047 emoji (4,094 units, t2739-typed-emoji-2047, `LEN`
+4094) are accepted and 2,048 (4,096 units) refused. The limit is per literal (t2739-typed-two-4000, two literals of
+4,000, is accepted). Stored, 256 and 4,095 load (t2739-stored-256, -stored-4095) and 4,096 makes Excel refuse the
+workbook (createSession 501), so the published 255 is no limit at all. The engine refuses a literal over 4,095 units in the lexer: a typed one is rejected
+and the cell keeps its content (`is_limit_error`), and the importer refuses the workbook, for cell formulas and defined-name
+bodies (T-2762; name bodies are unprobed; the importer's scan stops at the first token the lexer rejects, so a literal
+after one loads as a parse error).
+Unprobed: built-in (`_xlnm.*`) and sheet-scoped name bodies (the limit is applied to every definedName), a name defined through the API, desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
 writer cannot emit them raw; T-1075 item 8).
-Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; a string-literal length limit (unprobed; 255 characters is the published figure) is the likely cause for the literals, which is why the cases split them.
+Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; the 4,095-unit string-literal limit (see "Typed" above; the published figure is 255) is the cause: 4,090 emoji are 8,180 units for the literals, which is why the cases split them.
 Status: VERIFIED (excel-graph, file load)
 Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
-Tasks: T-1091, T-1093, T-1386, T-1397
+Tasks: T-1091, T-1093, T-1386, T-1397, T-2739, T-2762
 
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
@@ -118,8 +153,10 @@ error ("Formula is nested too deeply"); typed into a cell through the API it is 
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
 one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
 `0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
-(T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
-(`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
+(T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
+(T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
+a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
+level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
 text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
 cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
@@ -252,6 +289,140 @@ An error inside an array ranks with the referenced errors in MIN, MAX, AVERAGE a
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315, T-1334, T-1379, T-1439, T-1604, T-1615, T-1629, T-1696
 Implemented in: statistical/variance.rs (`VARA_ARGS`), math_and_trigonometry/sum.rs (`sum_with_last_addition`, reference and array errors held back), product.rs, mathematical.rs (`fold_min_max`) and statistical/count_and_average.rs (`for_each_value`, AVERAGE; reference errors held back, T-1379), functions/criteria.rs (`build_criteria_with`, `#BUSY!` criterion matches nothing); expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
+
+## A typed unary plus stays in the formula text, except on a number literal
+Rule: typed (Graph PATCH), Excel keeps a unary plus in the formula text everywhere except when it is directly followed by
+a number literal, where it folds into the number. Typing `=+5` stores `=5`, `=+1E+3` stores `=1000`, `=+.5` stores
+`=0.5` and `=+5%` stores `=5%`. With more than one sign, only the plus directly before the number folds: `=++5` stores
+`=+5`, `=1++2` stores `=1+2` and `=-+5` stores `=-5`. A space breaks the fold: `=+ 5` stays as typed. On anything else the
+plus is kept as typed: `=+"a"`, `=+TRUE`, `=+B1`, `=+B1:B2`, `=+SUM(1,2)`, `=+(1)`, `=+-5`, `=++"a"`, `=1++"2"`,
+`=+{1,2}`, `=+#N/A`, `=+"a"&"b"`, `=SUM(+"1",2)`, `=IF(TRUE,+"a")`, `=+(+"a")`, `=+ "a"` and `=+LAMBDA(x,x)(1)`. The plus
+is the identity: every value matches the operand's.
+Evidence: probes/t2723-unary-plus-formula-text A1:C26 (excel-graph `entered`, 2026-10-25, T-2723). Stored, a plus on text
+or a boolean loads and is kept too (probes/t2601-index-scalar-forms-t-n B14, B15), and so do stored `=+10^1` and `=+Z1`
+forms (gen-m1/6462bf910ef9f28f, probes/lookup-argument-edges). The full set stored in one workbook was refused
+(FileCorruptTryRepair); which formula caused it is unprobed (`=+LAMBDA(x,x)(1)` is the likely one: T-2405 records
+`=SUM(1)(2)` the same way). The same rule appears in references.md (`=@+1` prints `=@1`) and lookup.md (INDEX's
+`+"a"`).
+Ours: matches since T-2723. A kept plus is a `Node::UnaryPlus`, the identity, which every analysis sees through as it
+sees through a written group. The fold is decided in `parse_power`. Two cells still fail: the tree keeps no whitespace, so
+`=+ 5` and `=+ "a"` print `=+5` and `=+"a"` (C24, C25; "Formula text keeps typed whitespace" below, T-2776).
+Stored, a plus on a number literal folds on load as it does typed: a plain `<f>+5</f>` prints `=5`, a dynamic one too,
+`<f>SUM(+5,1)</f>` prints `=SUM(5,1)` and `<f>+5+1</f>` prints `=5+1`, while a stored plus on anything else is kept
+(`ABS(+{5})`, `INDIRECT(+"K1")`, `+B1:B3` below) (probes/t2772-unary-plus-static-readings D19:E20,
+D27:E28; T-2772). Typed, Excel refuses a plus before a LET name or a LAMBDA parameter: `=LET(+x,1,x)` and
+`=LAMBDA(+x,x)(1)` both get Graph PATCH 400 `InvalidArgument` (docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md; refused inputs cannot be committed
+as cases). We refuse the LAMBDA form (`#ERROR!`, test_fn_let.rs) but evaluate the LET form to `#VALUE!` (T-2887). Where an analysis matches a literal, a plus changes nothing, legacy or
+dynamic: `N(IF(+TRUE,B1:B3))` and `N(CHOOSE(+TRUE,Z1,{2;3}))` match their plus-free controls (1 and 7 off the range's
+rows; 1 and 1 on row 2 of B1:B3, where no `@` is added either), `SUBTOTAL(9,TAKE(IF(INDIRECT(+"K1"),H1:H2,I1:I2),2))`
+is 7 like `INDIRECT("K1")`, legacy `ABS(+{5})` prints `=ABS(+@{5})` (5) and legacy `N(+{2;3})` prints `=N(+@{2;3})` (2);
+a dynamic `N(+{2;3})` lifts (`#SPILL!` there, blocked). FORMULATEXT keeps every such plus
+(probes/t2772-unary-plus-static-readings, probes/t2772-unary-plus-in-range-rows D:I). A plus on a whole N argument does
+make the range a value: legacy `=N(+B1:B3)` on row 2 prints `=N(+@B1:B3)` and is 2, where `=N(B1:B3)` is 1 with no `@`;
+legacy `=+B1:B3` and `=ABS(+B1:B3)` print `+@B1:B3` (2) (probes/t2772-unary-plus-in-range-rows J:M). We give 1 and print
+`=N(+B1:B3)`: `is_plain_reference` sees through the top-level plus (T-2885). Unprobed: a plus on an IF arm or on OFFSET's
+reference under N (T-2885 probes them).
+Status: VERIFIED (excel-graph)
+
+## Formula text keeps typed whitespace, except at the end, before a comma and in an array constant
+Rule: typed (Graph PATCH), Excel keeps the spaces and line feeds written in a formula, and FORMULATEXT prints them back:
+around a binary operator (`=1 + 2`, `=1 +2`, `=1+ 2`, `=1  +  2`, `=B1 + B2`, `=1+` line feed `2`), after `=` (`= 1+2`),
+after a unary sign (`=- 5`, `=-+ 5`, `=+  5`, and `=+ 5`, `=+ "a"` of T-2723), before `%` (`=5 %`), after `(` and
+before `)` of a call or a group (`=SUM( 1 )`, `=SUM(B1:B2 )`, `=(1 )+2`, `=( 1)+2`) and after a comma (`=SUM(1, 2)`).
+It drops three kinds: whitespace at the end of the formula (`=1+2 ` prints `=1+2`, `=1=1 ` prints `=1=1`), whitespace
+before a comma (`=SUM(1 ,2)` prints `=SUM(1,2)`, `=IF( TRUE ,1,2)` prints `=IF( TRUE,1,2)`) and whitespace inside an
+array constant (`={1, 2}` prints `={1,2}`). A plus that folds into a number literal keeps the spaces before it:
+`=  +5` prints `=  5`. Whitespace never changes a value (every probed value is the space-free formula's).
+Evidence: probes/t2769-formula-text-whitespace A1:C23 (excel-graph `entered`, 2026-10-26, T-2769).
+More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -after-bang, -after-colon,
+-before-colon; excel-graph `entered` and stored, 2026-10-26, T-2776):
+- Kept as typed: spaces between the references of an intersection beyond the one that is the operator
+  (`=B1:B2  B2`, `=SUM(B1:B2   B2)`), after `@` (`=@ B1:B2`), around `&`, `=` and `*` (`="a" & "b"`, `=B1 = 1`,
+  `=SUM(B1:B2) * 2`), inside LET (`=LET(x, 1, x + 1)`), between unary signs (`=-  -5`, `=1 +  - 5`), inside a group
+  (`=(  1  )`) and a line feed after `=` (`=` LF `1+2`). A folded plus keeps the spaces before it after an operator
+  too: `=1+  +5` prints `=1+  5`, `=1+ +5` prints `=1+ 5`.
+- Dropped: around `:` (`=SUM(B1 :B2)` and `=SUM(B1: B2)` print `=SUM(B1:B2)`), after a sheet prefix's `!` (`=S! B1`
+  prints `=S!B1`, value 1), a trailing line feed (`=1+2` LF and `=1+2 ` LF ` ` print `=1+2`).
+- **A run keeps only its line feeds and the spaces after the last one**: `=1+ ` LF ` 2` prints `=1+` LF ` 2`,
+  `=1+` LF ` ` LF `2` prints `=1+` LF LF `2`, 10 spaces, 3 line feeds and 2 spaces print as the 3 line feeds and 2
+  spaces.
+- **A run's two counts each wrap at 256, on their own**: `=1+` + 300 spaces + `2` prints with 44 spaces (`LEN` 48).
+  255, 256 and 257 typed spaces print 255, none and 1; 255, 256, 257 and 300 typed line feeds print 255, none, 1 and
+  44; 256 line feeds then 3 spaces print the 3 spaces; 3 spaces then 256 line feeds print nothing, so the spaces before
+  the last line feed are dropped even when the line-feed count wraps to none. Every value is 3
+  (probes/t2782-whitespace-run-wrap, excel-graph, 2026-10-26). Excel stores a run as a one-byte line-feed count and a
+  one-byte space count (the BIFF `PtgAttrSpace` shape; the counts are the probes' evidence, not the documentation's).
+- Refused: `=SUM (1)` (a space between a function name and its `(`) and `=SUM( )` (a run as the only argument):
+  Graph's PATCH answers `400 InvalidArgument` ("The argument is invalid or missing or has an incorrect format.") for
+  both (probes/t2786-whitespace-structured-refs-runs, each tried alone, 2026-10-26, T-2786); the same text for every
+  refusal below. Nothing is stored.
+- Stored in the file (`<f>` text, no typing): interior whitespace loads and prints as written (`1 + 2`, `SUM( 1 )`,
+  `1+` LF `2`, `B1:B2  B2`, `(1 )+2`), and the typed drops apply (`SUM(1 ,2)`, `SUM({1, 2})`, a trailing space), but
+  whitespace at the start of the stored text is dropped: `<f>  +5</f>` prints `=5` and `<f> 1+2</f>` prints `=1+2`,
+  where the same text typed after `=` keeps it. Every value matches the space-free formula.
+Whitespace beside a missing argument and inside a structured reference is the next entry; the `<f>` text Excel saves
+keeps the whitespace (xlsx-storage.md, T-2786).
+Ours (T-2781, SPEC-0023 step 1; line feeds T-2782, step 2): the parser keeps each run of spaces and line feeds as a
+`Node::Spaced` around the operand it touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the
+R1C1 storage text, row and column edits, sheet renames and moves print the runs back. Two runs that the parser joins
+around one operand (a folded plus) add their line feeds and keep the earlier spaces only when the later run has none;
+a later run of exactly 256 line feeds counts as none there (unprobed). A cell stores two trees: the written one, which
+prints, and one with no whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a
+`Spaced` (`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the
+stripped tree too. A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass);
+other leading whitespace characters are kept as before (unprobed). The spaces beyond an intersection's one are kept as the right operand's leading run (T-2783; C3, C5, E9 pass). Still open: FORMULATEXT of an
+intersection whose separator holds line feeds (`B1:B2` LF ` B2` drops the LF; unprobed, T-2949), whitespace around LAMBDA parameter names (dropped; unprobed, T-2949), and the xlsx export, which writes the
+stripped tree where Excel saves the kept whitespace (T-2948). `=S! B1` is a parse error (`#ERROR!`) where Excel reads `S!B1`
+(T-2785).
+Status: VERIFIED (excel-graph)
+Tasks: T-2769, T-2776, SPEC-0023
+
+## Whitespace beside a missing argument is kept; a structured reference keeps some and normalizes the rest
+Rule: a run beside a missing operand is kept as typed, and FORMULATEXT prints it back: `=NOW( )` and `=TODAY(  )`
+(value as without the run), `=IF(1, ,2)`, `=IF(1,  ,2)`, `=IF(1,` LF `,2)`, `=SUM(1, )`, `=SUM(1,  )`, `=IF(1,2, )`,
+`=SUM(1,` LF `)`, `=SUM(, 1)` and `=SUM(,1)` all print as typed, and so do `=PI( )`, `=ROW(  )` (2 in row 2),
+`=TRUE(` LF `)`, `=NA(` LF ` )`, and a run before a missing first argument, `=SUM( ,1)`, `=IF(  ,1,2)` (2) and
+`=SUM(` LF `,3)`. Values match the run-free formula (`=IF(1, ,2)` is
+0, `=SUM(1, )` is 1, `=SUM(, 1)` is 1). This differs from "a run followed by `,` ... is dropped" (above): a run before a
+comma is dropped only when an operand precedes it (`=SUM(1 ,2)`), and a run between two commas, or after the last comma,
+is the missing argument's own and stays. Two shapes are refused (see "Refused" above): `=SUM (1)` and `=SUM( )`.
+Inside a structured reference (table `T`, columns `Col`, `Other`; typed through Graph, FORMULATEXT and the saved `<f>`
+agree):
+- Refused by Graph's API (`400 InvalidArgument`; typing in desktop Excel unprobed, and Graph is stricter than Excel's own saved text): a space inside a bare column specifier (`T[ Col]`, `T[Col ]`, `T[ Col ]`), a space
+  before a column-specifier bracket (`T [Col]`), spaces around the `:` of a column range (`T[[Col] : [Other]]`) and a
+  union of two column specifiers (`T[[Col], [Other]]`).
+- Accepted: a space inside the outer brackets around nested specifiers (`T[ [Col]:[Other] ]` prints as typed, value 77),
+  `T[ [#Data] , [Col] ]` prints `T[ [#Data], [Col] ]` (the space before the comma is dropped, as in a call),
+  `T[[#Data]  ,  [Col]]` prints `T[[#Data], [Col]]` (the run after the comma collapses to one space; one data point) and `T[[#Data],[Col]:[Other]]` prints with no space (none written).
+- **A single column in outer-padded brackets is rewritten to the bare form**: `T[ [Col] ]` prints `T[ Col ]`, a form that
+  typing `T[ Col ]` itself refuses, and which Excel itself saves (cached value 7); loading a hand-written stored `T[ Col ]` is unprobed (T-2800). Spaces around the specifier are kept as typed.
+- Whitespace around the whole reference is an ordinary operand run (`=SUM( T[Col] )` prints as typed).
+- The calculated-column fill rewrote `=T[[#This Row], [Col]]` and `=T[ [#This Row] , [Col] ]` typed into C2 and C3 to the
+  formula typed into C4 (`T[[#This Row],[Col]] + T[[#This Row],[Other]]`), so this-row shapes are unanswered
+  (the case's C2:C4); a probe needs a table without a calculated column fill (T-2800). The cells were typed one at a
+  time in the order C2, C3, C4, so each later formula re-filled the whole column. The fill rules are in references.md
+  ("Calculated columns: a formula typed into a table column", T-2957), and the engine fill is T-2958.
+  Ours: the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
+Evidence: probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
+(I1:I13). Each refused formula was entered alone against the same case. probes/t2966-empty-call-runs and
+t2966-missing-first-arg-run (excel-graph `entered`, 2026-10-28, T-2966; cache keys `input_sha256` 22b97392f143589e517cbf4a28cbe57cc7d474de238160fc867864e5597b7e36
+and 93468f85dd28e5322213f7a4284349feea5f1f526217a3daf17e0300fb11eb73). Typed `=SUBTOTAL(9,C1, )` and `=SUBTOTAL(9, ,C1)`
+are refused (Graph PATCH 400 `InvalidArgument`, 2026-10-28, T-2966; each entered alone, no case kept).
+Ours: the runs SPEC-0023 keeps are in the entry above. A run between two commas or after the last comma prints
+back (T-2944), and so does a run before a missing first argument (T-2966). The run inside an empty built-in call
+(`=NOW( )`, `=TRUE( )`) is held as one spaced empty argument that the evaluated tree drops (`Node::with_empty_call_run`),
+so the call still takes no argument; inside an empty call of a LAMBDA or a name (`=f( )`) it is still dropped
+(unprobed, T-2976). A spaced missing argument is still missing where a function refuses one (`=SUBTOTAL(9,A1, )` is refused
+like `=SUBTOTAL(9,A1,)`, references.md; Excel refuses both spaced shapes typed). Inside a structured
+reference (T-2801) the lexer keeps the runs after the outer `[` and before the outer `]` as typed and whether any
+whitespace followed the comma, which prints as one space (`TableSpacing`); F4:F15 match. Two choices are ours, not
+probed: a run around a lone specifier keeps the outer brackets it was typed in (`T[ [#Data] ]` prints as typed), and a
+stored `T[ Col ]`, padded on both sides, reads back as column `Col` with its padding (so our own export round-trips).
+One-sided `T[ Col]` and `T[Col ]`, and padded `#` or `@` starts (`T[ #Data ]`), read as before, as a column whose
+name has the spaces. T-2962 probes these choices.
+Status: VERIFIED (excel-graph)
+Implemented in: expressions/lexer/structured_references.rs, expressions/parser/structured_reference.rs (`text`)
+Tasks: T-2786, T-2944, T-2966, T-2800, T-2801, T-2955, T-2956, T-2957, T-2958
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every

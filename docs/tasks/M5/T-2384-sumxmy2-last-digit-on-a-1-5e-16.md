@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2172]
+defer: phase-1b
 ---
 
 ## Goal
@@ -35,3 +36,6 @@ Failing cells (`make eval-show CASE=gen-m5/<case>.case.json`), 1 in eval/baselin
 
 ## Out of scope
 - Pairing, blanks and error order (coercion.md, T-0961, done).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

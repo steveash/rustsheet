@@ -333,6 +333,22 @@ fn is_identifier_text(name: &str) -> bool {
     true
 }
 
+/// The typographic quotes U+201C and U+201D, which Excel reads as name characters: a stored
+/// `“D”` (an app's "smart quotes" around a string) is an undefined name, so `=“D”` and
+/// `=“N/A”` are `#NAME?`, `ISREF(“D”)` is FALSE and `IF(FALSE,“D”,1)` is 1
+/// (corpus-bench/48354 D2:D6, probes/t0481-curly-quote-names; docs/excel-semantics/references.md
+/// "Undefined names may contain typographic quotes").
+pub(crate) fn is_typographic_quote(char: char) -> bool {
+    matches!(char, '\u{201C}' | '\u{201D}')
+}
+
+/// Whether `name` holds a typographic quote and is otherwise a valid name, read with each quote as
+/// a letter: never a cell or a column (`“A1”` is a name), in A1 and R1C1 mode alike.
+pub(crate) fn is_quoted_name(name: &str) -> bool {
+    name.contains(is_typographic_quote)
+        && is_valid_a1_identifier(&name.replace(is_typographic_quote, "_"))
+}
+
 /// Whether `name` is a valid defined or table name: one that Excel does not read as an R1C1
 /// reference ([`is_r1c1_shaped`]; that also refuses "R", "C", "r" and "c"). `R0C1` passes, as
 /// Excel loads it (T-1657: its uses are `#NAME?` there).
@@ -382,10 +398,44 @@ pub(crate) fn bare_defined_name(name: &str) -> &str {
     name.rsplit_once('!').map_or(name, |(_, bare)| bare)
 }
 
+/// Whether INDIRECT text may spell `prefix` without quotes: letters, digits, '_' and '.' only,
+/// a leading digit and a cell-shaped name included (`2024`, `Q1`, `x.y`; `Co A`, `P&L` and `O'B`
+/// are not). Looser than [`name_needs_quoting`] (probes/indirect-sheet-scoped-name,
+/// docs/excel-semantics/lookup.md "INDIRECT of `Sheet!Name` text").
+pub(crate) fn is_indirect_unquoted_sheet(prefix: &str) -> bool {
+    prefix
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+}
+
+/// INDIRECT text whose unquoted sheet prefix starts with a digit (`2024!B1`) with the prefix
+/// quoted (`'2024'!B1`), which the lexer reads; any other text is returned as it is.
+pub(crate) fn quote_digit_leading_sheet(text: &str) -> std::borrow::Cow<'_, str> {
+    match text.rsplit_once('!') {
+        Some((prefix, rest))
+            if prefix.starts_with(|c: char| c.is_ascii_digit())
+                && is_indirect_unquoted_sheet(prefix) =>
+        {
+            format!("'{prefix}'!{rest}").into()
+        }
+        _ => text.into(),
+    }
+}
+
+/// The sheet name a `Sheet!` prefix spells: `'O''B'` is `O'B`, an unquoted prefix is itself.
+/// `None` for a quoted prefix without its closing quote.
+pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {
+    match prefix.strip_prefix('\'') {
+        Some(quoted) => Some(quoted.strip_suffix('\'')?.replace("''", "'")),
+        None => Some(prefix.to_string()),
+    }
+}
+
 /// Points the sheet prefix of a qualified defined name (`Data!Local`) at `new_sheet` when the
 /// name is scoped to the renamed sheet (`scope == Some(renamed)`). A name with no prefix, and a
 /// linked workbook's `[1]!Name`, are left as they are. A workbook name read through a sheet
-/// prefix has no scope here: no Excel evidence yet for rewriting it.
+/// prefix has no scope here and is left alone: its text is the workbook's file name, which a sheet
+/// rename never touches (probes/sheet-ops/sheet-ops-rename-workbook-name-via-prefix, T-2834).
 pub(crate) fn rename_defined_name_sheet(
     name: &mut String,
     scope: Option<u32>,
@@ -395,6 +445,22 @@ pub(crate) fn rename_defined_name_sheet(
     let bare = bare_defined_name(name);
     if scope == Some(renamed) && bare.len() < name.len() && !name.starts_with('[') {
         *name = format!("{}!{bare}", quote_name(new_sheet));
+    }
+}
+
+/// The text of a defined name. Stored (R1C1) and exported, a workbook name written with a prefix
+/// (`'Budget.xlsx'!loc`, or `Feb!loc` in an unnamed workbook) is `[0]!loc`, the own-workbook
+/// prefix Excel reads from a file as that name, so the text survives a sheet or workbook rename
+/// (probes/workbook-name-own-book-prefix, T-2834). A linked workbook's `[1]!Name` and a
+/// sheet-scoped name keep their text.
+pub(crate) fn defined_name_text(name: &str, scope: Option<u32>, stored: bool) -> String {
+    match name.rsplit_once('!') {
+        Some((prefix, bare))
+            if stored && scope.is_none() && !prefix.is_empty() && !name.starts_with('[') =>
+        {
+            format!("[0]!{bare}")
+        }
+        _ => name.to_string(),
     }
 }
 
@@ -410,6 +476,32 @@ pub fn quote_name(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unquote_sheet_prefix_undoubles_quotes() {
+        assert_eq!(unquote_sheet_prefix("CoB").as_deref(), Some("CoB"));
+        assert_eq!(unquote_sheet_prefix("'Co A'").as_deref(), Some("Co A"));
+        assert_eq!(unquote_sheet_prefix("'O''B'").as_deref(), Some("O'B"));
+        assert_eq!(unquote_sheet_prefix("'CoB"), None);
+    }
+
+    #[test]
+    fn digit_leading_sheet_is_quoted() {
+        assert_eq!(quote_digit_leading_sheet("2024!B1"), "'2024'!B1");
+        for same in ["Q1!B1", "'2024'!B1", "B1", "2 4!B1", "2&4!B1"] {
+            assert_eq!(quote_digit_leading_sheet(same), same);
+        }
+    }
+
+    #[test]
+    fn indirect_unquoted_sheet_names() {
+        for ok in ["CoB", "2024", "Q1", "x.y", "a_b"] {
+            assert!(is_indirect_unquoted_sheet(ok), "{ok}");
+        }
+        for bad in ["Co A", "P&L", "O'B", "'CoB'"] {
+            assert!(!is_indirect_unquoted_sheet(bad), "{bad}");
+        }
+    }
 
     #[test]
     fn test_quote_name() {

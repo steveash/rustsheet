@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 fractional, B1 the 485 charge: the order within a row.",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)",
+        "B1": "=AMORDEGRC(2400,39679,39813,300,2,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

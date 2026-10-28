@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -22,3 +23,6 @@ Left over from T-0945. `DEVSQ("1","2",2)` expects 0.6666666666666666 (engine 0.6
 
 ## Out of scope
 -
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

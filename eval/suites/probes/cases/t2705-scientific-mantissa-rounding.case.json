@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2705: does a scientific code with one integer placeholder round the exact double or its 15-digit decimal? A1:A6 and A12 are doubles just below a decimal tie, where the two readings differ (the exact double rounds down, the 15-digit decimal half away rounds up). A7, A8, A10, A11 and A14 are controls, and A9 is the fixed code `0.00` on 1.005.",
+ "tags": [
+  "M5",
+  "number-format",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(1.005,\"0.00E+00\")",
+    "A2": "=TEXT(2.675,\"0.00E+00\")",
+    "A3": "=TEXT(2.5-2^-51,\"0E+0\")",
+    "A4": "=TEXT(0.285,\"0.0E+0\")",
+    "A5": "=TEXT(-1.005,\"0.00E+00\")",
+    "A6": "=TEXT(4.35,\"0.0E+0\")",
+    "A7": "=TEXT(12.345,\"0.00E+00\")",
+    "A8": "=TEXT(2.5,\"0E+0\")",
+    "A9": "=TEXT(1.005,\"0.00\")",
+    "A10": "=TEXT(0.125,\"0.0E+0\")",
+    "A11": "=TEXT(1234.5,\"0.000E+0\")",
+    "A12": "=TEXT(1.005,\"#.##E+00\")",
+    "A13": "=TEXT(2.675,\"0.00E+00%\")",
+    "A14": "=TEXT(100.5,\"0.0E+0\")"
+   }
+  }
+ ]
+}

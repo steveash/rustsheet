@@ -1,10 +1,8 @@
 #![deny(missing_docs)]
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use crate::defined_names::ParsedDefinedName;
-use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -15,7 +13,6 @@ use crate::{
             is_limit_error,
             move_formula::{move_formula, MoveContext},
             new_parser_english,
-            static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
             ArrayNode, CallNameSpellings, CompletionContext, Node, Parser,
         },
@@ -35,7 +32,9 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::{cf_types::CfCellResult, clock::Clock, tz::Tz, variable_stack::VariableStack};
+use crate::limits::{spill_past_grid_error, spills_past_grid};
+use crate::tailed_array::range_corners;
+use crate::{clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
 // * A single cell
@@ -140,7 +139,7 @@ pub struct Model {
     /// A list of parsed formulas. They are shared, not owned, so that the
     /// evaluation can hold on to the formula it is running, while the model is
     /// borrowed mutably, without copying it.
-    pub parsed_formulas: Vec<Vec<(Arc<Node>, StaticResult)>>,
+    pub parsed_formulas: Vec<Vec<crate::formula_cells::ParsedFormula>>,
     /// A list of parsed defined names
     pub(crate) parsed_defined_names: HashMap<(Option<u32>, String), ParsedDefinedName>,
     /// An optimization to lookup strings faster
@@ -174,6 +173,8 @@ pub struct Model {
     pub(crate) captured_cells: usize,
     /// What this evaluation spent of its nested-array budgets (SPEC-0018 "Bound").
     pub(crate) nested_budget: crate::nested_array::NestedBudget,
+    /// Aggregate arguments being read as a head and a tail (`tailed_array.rs`).
+    pub(crate) tail_views: Vec<crate::tailed_array::TailView>,
     /// Where the stack was when the outermost LAMBDA call running now started
     /// (`Model::lambda_stack_base`), `None` while no call runs.
     pub(crate) lambda_calls_base: Option<usize>,
@@ -185,8 +186,8 @@ pub struct Model {
     pub(crate) area_budget: crate::area_budget::AreaBudget,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
-    /// Evaluated CF results per cell by (`sheet_index`, row, column), rebuilt from scratch by `evaluate_conditional_formatting()`.
-    pub(crate) cf_cache: HashMap<(u32, i32, i32), Vec<CfCellResult>>,
+    /// The conditional formats evaluated so far, per cell (`cf_styles.rs`, SPEC-0021, T-0476).
+    pub(crate) cf: crate::cf_styles::CfState,
     /// Dynamic links: links created by formulas like HYPERLINK
     pub(crate) links: HashMap<(u32, i32, i32), Link>,
     /// For each sheet, where each of its shared formulas is. Only an aid to find a formula without
@@ -544,6 +545,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
+        parser.set_workbook_file(self.workbook.file_name());
         let node = parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
@@ -568,7 +570,10 @@ impl Model {
     ) -> CalcResult {
         use Node::*;
         let node = node.ungrouped(); // A written group is its child; a loop adds no frame.
-        match node {
+        if let Err(error) = self.spend_node(cell) {
+            return error;
+        }
+        let result = match node {
             OpSumKind { .. }
             | OpProductKind { .. }
             | OpPowerKind { .. }
@@ -577,12 +582,12 @@ impl Model {
             NumberKind(value) => CalcResult::Number(*value),
             BooleanKind(value) => CalcResult::Boolean(*value),
             ReferenceKind {
-                sheet_name: _,
                 sheet_index,
                 absolute_row,
                 absolute_column,
                 row,
                 column,
+                ..
             } => {
                 // Relative coordinates are offsets from the formula's cell.
                 let row1 = *row + if *absolute_row { 0 } else { cell.row };
@@ -593,37 +598,19 @@ impl Model {
                     column: column1,
                 })
             }
-            RangeKind {
-                sheet_index,
-                row1,
-                column1,
-                row2,
-                column2,
-                absolute_column1,
-                absolute_row2,
-                absolute_row1,
-                absolute_column2,
-                sheet_name: _,
-            } => {
-                // Relative corners are offsets from the formula's cell.
-                let r1 = *row1 + if *absolute_row1 { 0 } else { cell.row };
-                let r2 = *row2 + if *absolute_row2 { 0 } else { cell.row };
-                let c1 = *column1 + if *absolute_column1 { 0 } else { cell.column };
-                let c2 = *column2 + if *absolute_column2 { 0 } else { cell.column };
-                CalcResult::Range {
-                    left: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: r1.min(r2),
-                        column: c1.min(c2),
-                    },
-                    right: CellReferenceIndex {
-                        sheet: *sheet_index,
-                        row: r1.max(r2),
-                        column: c1.max(c2),
-                    },
-                }
+            RangeKind { .. } => {
+                // Never `None`: `node` is a `RangeKind`.
+                let Some((left, right)) = range_corners(node, cell) else {
+                    return CalcResult::new_error(Error::ERROR, cell, String::new());
+                };
+                let range = CalcResult::Range { left, right };
+                // A range operand of a tailed argument (`tailed_array.rs`).
+                self.tailed_operand(node, cell, &range).unwrap_or(range)
             }
-            FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
+            // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
+            FunctionKind { kind, args } => self
+                .tailed_position(node, kind, cell)
+                .unwrap_or_else(|| self.evaluate_function(kind, args, cell)),
             NamedFunctionKind { name, args, id } => {
                 self.evaluate_named_function_call(name, args, *id, cell)
             }
@@ -647,13 +634,16 @@ impl Model {
             | ErrorKind(_)
             | ParseErrorKind { .. }
             | Group { .. }
+            | UnaryPlus { .. }
+            | Spaced { .. }
             | StructuredReferenceKind { .. }
             | ThisRowKind { .. }
             | SpillRangeOperator { .. }
             | ImplicitIntersection { .. }
             | LambdaDefKind { .. }
             | LambdaCallKind { .. } => self.evaluate_cold_node(node, cell),
-        }
+        };
+        self.charged(result, cell)
     }
 
     fn cell_reference_to_string(
@@ -992,8 +982,8 @@ impl Model {
                 message.to_string(),
             ))
         };
-        if row + height - 1 > LAST_ROW || column + width - 1 > LAST_COLUMN {
-            return Ok(spill_error("Spill would exceed worksheet bounds"));
+        if spills_past_grid(anchor, array.len(), array[0].len()) {
+            return Ok(Some(spill_past_grid_error(anchor)));
         }
 
         // Is the area free? Another array's spill cell blocks, whichever anchor
@@ -1151,7 +1141,7 @@ impl Model {
     /// Sets the workbook theme.
     pub fn set_theme(&mut self, theme: crate::types::Theme) {
         self.workbook.theme = theme;
-        self.evaluate_conditional_formatting();
+        self.cf.stale = true;
     }
 
     /// Returns the Theme
@@ -1376,7 +1366,7 @@ impl Model {
 
         model.parse_formulas();
         model.parse_defined_names();
-        model.evaluate_conditional_formatting();
+        model.cf.stale = true;
 
         Ok(model)
     }
@@ -1557,8 +1547,7 @@ impl Model {
                     self.language,
                 ),
                 Some(i) => {
-                    let (formula, _static_result) =
-                        &self.parsed_formulas[sheet as usize][i as usize];
+                    let formula = self.parsed_formulas[sheet as usize][i as usize].written();
                     let cell_ref = CellReferenceRC {
                         sheet: self.workbook.worksheets[sheet as usize].get_name(),
                         row: target_row,
@@ -1676,12 +1665,7 @@ impl Model {
         match worksheet.cell(row, column) {
             Some(cell) => match cell.get_formula() {
                 Some(formula_index) => {
-                    let (formula, _static_result) = &self
-                        .parsed_formulas
-                        .get(sheet as usize)
-                        .ok_or("missing sheet")?
-                        .get(formula_index as usize)
-                        .ok_or("missing formula")?;
+                    let formula = self.written_formula(sheet, formula_index)?;
                     let cell_ref = CellReferenceRC {
                         sheet: worksheet.get_name(),
                         row,
@@ -2134,8 +2118,8 @@ impl Model {
 
                 // Update the style if needed
                 let cell = CellReferenceIndex { sheet, row, column };
-                let (parsed_formula, _static_result) =
-                    &self.parsed_formulas[sheet as usize][formula_index as usize];
+                let parsed_formula =
+                    &self.parsed_formulas[sheet as usize][formula_index as usize].evaluated;
 
                 if let Some(units) = self.compute_node_units(parsed_formula, &cell) {
                     let new_style_index = self
@@ -2206,7 +2190,6 @@ impl Model {
         &mut self,
         sheet: u32,
         mut parsed_formula: Node,
-        static_result: StaticResult,
     ) -> Result<i32, String> {
         self.call_name_spellings.apply(&mut parsed_formula);
         let text = to_rc_format(&parsed_formula);
@@ -2236,7 +2219,8 @@ impl Model {
         lookup.index.insert(text.clone(), index);
         shared_formulas.push(text);
         lookup.built_from = shared_formulas.len();
-        self.parsed_formulas[sheet_index].push((Arc::new(parsed_formula), static_result));
+        self.parsed_formulas[sheet_index]
+            .push(crate::formula_cells::stored_formula(parsed_formula));
         Ok(index)
     }
 
@@ -2282,9 +2266,7 @@ impl Model {
         height: i32,
     ) -> Result<i32, String> {
         let parsed_formula = self.parse_cell_formula(sheet, row, column, formula)?;
-        let static_result = run_static_analysis_on_node(&parsed_formula);
-
-        let formula_index = self.shared_formula_index(sheet, parsed_formula, static_result)?;
+        let formula_index = self.shared_formula_index(sheet, parsed_formula)?;
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         worksheet.set_cell_with_array_formula(row, column, formula_index, style, width, height)?;
         Ok(formula_index)
@@ -2487,7 +2469,8 @@ impl Model {
         };
         match cell.get_formula() {
             Some(formula_index) => {
-                let formula = &self.parsed_formulas[sheet as usize][formula_index as usize].0;
+                let formula =
+                    self.parsed_formulas[sheet as usize][formula_index as usize].written();
                 let cell_ref = CellReferenceRC {
                     sheet: worksheet.get_name(),
                     row,
@@ -3095,6 +3078,14 @@ impl Model {
     /// in-engine reader of the time goes through here.
     pub(crate) fn now_unix_millis(&self) -> i64 {
         self.clock.now_unix_millis()
+    }
+
+    /// Renames the workbook (`name` without its extension). Formulas typed from now on show the
+    /// new file name as the prefix of a workbook name read through a sheet (T-2834); a formula
+    /// already parsed shows it after its next re-parse, as its stored text is `[0]!name`.
+    pub(crate) fn set_workbook_name(&mut self, name: &str) {
+        self.workbook.name = name.to_string();
+        self.parser.set_workbook_file(self.workbook.file_name());
     }
 
     /// Sets the timezone of the model

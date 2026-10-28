@@ -4,11 +4,12 @@ title: "Incomplete beta bgrat family for BETA.DIST, F, BINOM and NEGBINOM (T-246
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: [T-2505, T-2506, T-2509]
+spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
 ## Goal
@@ -49,3 +50,9 @@ Decision 0083: this task is done when every bgrat-family cell it owns is within 
 digit of Excel's value, or the cells still off are named in the Outcome and handed to T-2512. r2-impact counts 381
 visibly off pre-T2464 across the four branches, T included; T's share is T-2509's. Bit-level criteria move to a
 follow-up task without the campaign key.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Phase 1 triage (T-0090, 2026-10-27)
+This task is on the critical path of the Phase 1 exit: BETA.DIST, F.DIST, BINOM.DIST, NEGBINOM.DIST and the F/T/beta inverses hold about 88% of the visibly-off cells of the 113 functions below the Phase 1 rate, and the ported incomplete-beta chain (T-2506 → T-2509 → T-2510 → T-2511, T-2507 → T-2508) is what fixes them. Priority raised to P1. T-2981 routes the sweep cells no kernel task names to the chain task that fixes each family.

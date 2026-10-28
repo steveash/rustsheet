@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -37,3 +38,6 @@ FYL2X path (`x87_log10.rs`).
 
 ## Out of scope
 - GAMMA and GAMMALN model shipping (T-2128, T-2129).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

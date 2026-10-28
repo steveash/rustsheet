@@ -1,0 +1,48 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1880: the aaa weekday code: letter case, locales, long runs and neighbours.",
+  "tags": [
+    "M10",
+    "probe",
+    "text",
+    "T-1880"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(1,\"AAA\")",
+        "A2": "=TEXT(1,\"AAAA\")",
+        "A3": "=TEXT(1,\"aAa\")",
+        "A4": "=TEXT(1,\"aaA\")",
+        "A5": "=TEXT(1,\"Aaa\")",
+        "A6": "=TEXT(1,\"AAa\")",
+        "A7": "=TEXT(1,\"aaaaaaaaaa\")",
+        "A8": "=TEXT(1,\"[$-411]aaa\")",
+        "A9": "=TEXT(1,\"[$-407]aaa\")",
+        "A10": "=TEXT(1,\"[$-407]aaaa\")",
+        "A11": "=TEXT(0.5,\"h aaa\")",
+        "A12": "=TEXT(1,\"aaa d\")",
+        "A13": "=TEXT(1,\"yyyy aaaa\")",
+        "A14": "=TEXT(1,\"a aa\")",
+        "A15": "=TEXT(1,\"aa a\")",
+        "A16": "=TEXT(1,\"aaa\\a\")",
+        "A17": "=TEXT(1,\"aaaa;aaa\")",
+        "A18": "=TEXT(-1,\"0;aaa\")",
+        "A19": "=TEXT(1,\"ddd aaa\")",
+        "A20": "=TEXT(1,\"[h] aaa\")",
+        "A21": "=TEXT(\"x\",\"@_\"\"AAa\")",
+        "A22": "=TEXT(\"x\",\"@_\"\"aAA\")",
+        "A23": "=TEXT(\"x\",\"@_\"\"aAa\")",
+        "A24": "=TEXT(1,\"\"\"x\"\"aaa\")",
+        "A25": "=TEXT(1,\"aaa\"\"x\"\"\")",
+        "A26": "=TEXT(2958465,\"aaa\")",
+        "A27": "=TEXT(0,\"aaa\")",
+        "A28": "=TEXT(60,\"aaa\")",
+        "A29": "=TEXT(0.75,\"aaa AM/PM\")",
+        "A30": "=TEXT(1,\"aaa A/P\")"
+      }
+    }
+  ]
+}

@@ -45,10 +45,48 @@ pub fn check_array_cells(rows: usize, columns: usize) -> Option<(Error, String)>
     None
 }
 
+/// Whether an array of `rows` x `columns` anchored at `anchor` runs past the last row or column.
+pub(crate) fn spills_past_grid(anchor: CellReferenceIndex, rows: usize, columns: usize) -> bool {
+    let last = |start: i32, count: usize| i64::from(start) + count as i64 - 1;
+    last(anchor.row, rows) > i64::from(LAST_ROW)
+        || last(anchor.column, columns) > i64::from(LAST_COLUMN)
+}
+
+/// The `#SPILL!` of a dynamic array anchored at `anchor` that runs past the grid.
+pub(crate) fn spill_past_grid_error(anchor: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::SPILL,
+        anchor,
+        "Spill would exceed worksheet bounds".to_string(),
+    )
+}
+
+/// The `#SPILL!` of a dynamic array of `rows` x `columns` anchored at `anchor` that is over the
+/// cell bound of [`check_array_cells`] and runs past the grid: Excel builds such an array and
+/// cannot spill it, where the engine would refuse to build it (`#ERROR!`), so the shape alone gives
+/// Excel's answer (docs/excel-semantics/arrays.md "Array results above 1,048,576 cells are
+/// #ERROR!"; T-0480, T-0483). `None` within the bound, where the array is built and the spill
+/// itself decides, and for a shape that fits the grid (the decision-0014 deviation).
+pub(crate) fn unspillable_shape(
+    anchor: CellReferenceIndex,
+    rows: usize,
+    columns: usize,
+) -> Option<CalcResult> {
+    check_array_cells(rows, columns)?;
+    spills_past_grid(anchor, rows, columns).then(|| spill_past_grid_error(anchor))
+}
+
 /// 2^31, the least size Excel reads as no longer a size: EXPAND's rows or columns (`#VALUE!`) and
 /// WRAPROWS/WRAPCOLS's `wrap_count` (`#NUM!`) refuse it (arrays.md "Stacked results past the grid",
 /// "WRAPROWS and WRAPCOLS with a huge `wrap_count`").
 pub(crate) const SIZE_LIMIT_EXCLUSIVE: f64 = 2_147_483_648.0;
+
+/// 2^31 - 1, the least count Excel's integer-count functions refuse with `#NUM!` (2^31 - 2 is the
+/// largest they take): PERMUT's number (probes/stat-overflow-arguments E5, B8), COMBIN's number and
+/// COMBINA's `number + number_chosen - 1` (probes/t2199-text-length-and-combin-cuts A20-A37, B20-B34),
+/// and BINOM.DIST's, BINOMDIST's and BINOM.DIST.RANGE's trials (probes-numeric/t2645-binom-trials-limit;
+/// statistics.md "BINOM.DIST is #NUM! from 2^31 - 1 trials").
+pub(crate) const COUNT_LIMIT_EXCLUSIVE: f64 = 2_147_483_647.0;
 
 /// The bound of a MAKEARRAY or SEQUENCE result, which Excel builds past the grid:
 /// `COLUMNS(MAKEARRAY(1,20000,..))` is 20000, `ROWS(MAKEARRAY(1048577,1,..))` 1048577 and

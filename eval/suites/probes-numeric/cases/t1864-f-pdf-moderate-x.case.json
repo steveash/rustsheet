@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1864: F.DIST density at moderate x where statrs' direct form overflows (one df above about 143)",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1864"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=F.DIST(20,100,3,FALSE)",
+    "A2": "=F.DIST(5,150,4,FALSE)",
+    "A3": "=F.DIST(50,200,2,FALSE)",
+    "A4": "=F.DIST(2,300,10,FALSE)",
+    "A5": "=F.DIST(10,160,8,FALSE)",
+    "A6": "=F.DIST(1.5,145,150,FALSE)",
+    "A7": "=F.DIST(3,170,20,FALSE)",
+    "A8": "=F.DIST(0.5,400,6,FALSE)",
+    "A9": "=F.DIST(100,150,1,FALSE)",
+    "A10": "=F.DIST(7,144,30,FALSE)"
+   }
+  }
+ ]
+}

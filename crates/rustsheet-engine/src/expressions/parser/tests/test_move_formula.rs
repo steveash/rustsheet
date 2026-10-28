@@ -176,7 +176,7 @@ fn test_move_formula_lambda_def() {
         },
     );
     // C2 is in area → M12; parameter x and the body's x are unchanged
-    assert_eq!(t, "LAMBDA(x,M12+x)");
+    assert_eq!(t, "LAMBDA(x, M12 + x)");
 
     // Reference outside the area stays put
     let node = parser.parse("LAMBDA(y, X9 * y)", context);
@@ -192,7 +192,7 @@ fn test_move_formula_lambda_def() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "LAMBDA(y,X9*y)");
+    assert_eq!(t, "LAMBDA(y, X9 * y)");
 }
 
 #[test]
@@ -232,7 +232,7 @@ fn test_move_formula_lambda_call() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "LAMBDA(x,M12+x)(N15)");
+    assert_eq!(t, "LAMBDA(x, M12 + x)(N15)");
 
     // Call arg outside area → unchanged
     let node = parser.parse("LAMBDA(x, x + 1)(X9)", context);
@@ -248,7 +248,7 @@ fn test_move_formula_lambda_call() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "LAMBDA(x,x+1)(X9)");
+    assert_eq!(t, "LAMBDA(x, x + 1)(X9)");
 }
 
 #[test]
@@ -537,7 +537,7 @@ fn test_move_formula_misc() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "P15*(-N15)*SUM(A1,X9,$N$15)");
+    assert_eq!(t, "P15*(-N15)*SUM(A1, X9, $N$15)");
 
     let node = parser.parse("IF(F5 < -D5, X9 & F5, FALSE)", context);
     let t = move_formula(
@@ -552,7 +552,7 @@ fn test_move_formula_misc() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "IF(P15<-N15,X9&P15,FALSE)");
+    assert_eq!(t, "IF(P15 < -N15, X9 & P15, FALSE)");
 }
 
 #[test]
@@ -669,7 +669,7 @@ fn move_formula_implicit_intersection_with_ranges() {
             column_delta: 10,
         },
     );
-    assert_eq!(t, "SUM(@F2:H4)+SUM(@M12:P16)+SUM(@A1,@X9,@$N$15)");
+    assert_eq!(t, "SUM(@F2:H4)+SUM(@M12:P16)+SUM(@A1, @X9, @$N$15)");
 }
 
 #[test]

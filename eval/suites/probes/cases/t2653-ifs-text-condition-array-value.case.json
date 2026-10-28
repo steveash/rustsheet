@@ -1,0 +1,57 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "IFS with a text (non-boolean) condition and array/range values: the shape of the #VALUE! array (T-2653).",
+  "tags": [
+    "M5",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ROWS(IFS(\"x\",{1,2;3,4}))",
+        "A2": "=COLUMNS(IFS(\"x\",{1,2;3,4}))",
+        "A3": "=TYPE(IFS(\"x\",{1,2;3,4}))",
+        "A4": "=ROWS(IFS(\"x\",Data!B1:C3))",
+        "A5": "=COLUMNS(IFS(\"x\",Data!B1:C3))",
+        "A6": "=TYPE(IFS(\"x\",Data!B1:C3))",
+        "A7": "=ROWS(IFS(FALSE,1,\"x\",{1,2}))",
+        "A8": "=COLUMNS(IFS(FALSE,1,\"x\",{1,2}))",
+        "A9": "=TYPE(IFS(FALSE,1,\"x\",{1,2}))",
+        "A10": "=ROWS(IFS(\"x\",5,TRUE,{1,2}))",
+        "A11": "=COLUMNS(IFS(\"x\",5,TRUE,{1,2}))",
+        "A12": "=TYPE(IFS(\"x\",5,TRUE,{1,2}))",
+        "A13": "=ROWS(IFS(Data!A1,{1,2;3,4}))",
+        "A14": "=COLUMNS(IFS(Data!A1,{1,2;3,4}))",
+        "A15": "=TYPE(IFS(Data!A1,{1,2;3,4}))",
+        "A16": "=ROWS(IFS(\"x\",{1,2;3,4},TRUE,5))",
+        "A17": "=COLUMNS(IFS(\"x\",{1,2;3,4},TRUE,5))",
+        "A18": "=TYPE(IFS(\"x\",{1,2;3,4},TRUE,5))",
+        "A19": "=ROWS(IFS({TRUE,FALSE},{1;2},\"x\",5))",
+        "A20": "=COLUMNS(IFS({TRUE,FALSE},{1;2},\"x\",5))",
+        "A21": "=TYPE(IFS({TRUE,FALSE},{1;2},\"x\",5))",
+        "A22": "=ROWS(IFS(\"x\",{1,2,3}))",
+        "A23": "=COLUMNS(IFS(\"x\",{1,2,3}))",
+        "A24": "=TYPE(IFS(\"x\",{1,2,3}))",
+        "A25": "=ROWS(IFS(\"x\",{1;2}))",
+        "A26": "=COLUMNS(IFS(\"x\",{1;2}))",
+        "A27": "=TYPE(IFS(\"x\",{1;2}))",
+        "A28": "=ROWS(IFS(\"x\",5))",
+        "A29": "=COLUMNS(IFS(\"x\",5))",
+        "A30": "=TYPE(IFS(\"x\",5))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "x",
+        "B1": 1,
+        "C1": 2,
+        "B2": 3,
+        "C2": 4,
+        "B3": 5,
+        "C3": 6
+      }
+    }
+  ]
+}

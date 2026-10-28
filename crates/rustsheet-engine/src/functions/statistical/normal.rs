@@ -9,7 +9,9 @@ use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
-use crate::functions::statistical::special::{normal_cdf, normal_pdf, standard_normal_pdf};
+use crate::functions::statistical::special::{
+    normal_cdf, normal_density_overflows, normal_pdf, standard_normal_pdf,
+};
 use crate::functions::statistical::t_dist::{t_upper_quantile, T_DF_MAX};
 use crate::functions::util::poly;
 use crate::functions::Function;
@@ -84,7 +86,7 @@ fn ppnd16_tail(p: f64) -> Option<f64> {
 
 /// The quantile of `p` in (0, 1) of the normal distribution with `mean` and `std_dev`, O(1): the
 /// PPND16 tail as `mean + z*std_dev`, else statrs' closed form (`erfc_inv`).
-fn normal_quantile(
+pub(crate) fn normal_quantile(
     p: f64,
     mean: f64,
     std_dev: f64,
@@ -124,6 +126,11 @@ impl Model {
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
         // Excel: standard_dev must be > 0
         if std_dev <= 0.0 {
+            return Err(num_error(cell));
+        }
+        // The density is #NUM! where the squared z-score overflows, not its limit 0
+        // (`NORMDIST(1E+300,0.3,2.5,0)`, probes/t2475-stat-subexpressions P!A572).
+        if !cumulative && normal_density_overflows((x - mean) / std_dev) {
             return Err(num_error(cell));
         }
         let result = if cumulative {
@@ -190,6 +197,12 @@ impl Model {
         cumulative: bool,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
+        // The density past |z| = 2^512 is #NUM!, as in NORM.DIST (`normal_density_overflows`;
+        // `NORM.S.DIST(1E+300,FALSE)` is #NUM! where `NORM.S.DIST(1E+154,FALSE)` is 0, gen-m9
+        // 8dd2312c96effb1b A228, 4ab2ba98d26c8a5e A341).
+        if !cumulative && normal_density_overflows(z) {
+            return Err(num_error(cell));
+        }
         let result = if cumulative {
             normal_cdf(z, 0.0, 1.0)
         } else {

@@ -216,9 +216,13 @@ for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria po
 (`COUNTIF(NA(),{"a","b"})`, `COUNTIFS(NA(),{"a"})`, `SUMIFS(NA(),...)`) made excel-graph reject the whole workbook as unsupported,
 so those cases are unprobed.
 DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
-(used cells of the walked range x criteria count x distinct criteria elements; T-0408 counts a
+(positions the walk visits x criteria count x distinct criteria elements; T-0408 counts a
 repeated element once wherever it repeats, where it counted each run of equal consecutive elements) is
-`#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
+`#ERROR!` before any walk; Excel computes it. The positions are those of the stored-cell walks
+(T-2711, "*IF(S) criteria ranges line up position by position"): the sum range's for the SUMIFS
+family, every criteria range's for COUNTIFS, each its stored cells, or its block within the used
+area when it is well filled (unit test `a_lifted_countifs_is_priced_by_every_criteria_range_it_walks`).
+Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
 over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`). VLOOKUP/HLOOKUP over an array lookup_value
 use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
 `lifted_lookup_over_an_array_table_hits_the_visit_cap`).
@@ -254,6 +258,31 @@ SUMIF and AVERAGEIF never error: they resize the sum/average range (probes/ifs-s
 Status: VERIFIED
 Implemented in: `fn_countifs` and `apply_ifs` (`strict_shape`) in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0209
+
+## *IF(S) criteria ranges line up position by position, whatever each sheet's used area
+Rule: COUNTIFS and the SUMIFS-shaped functions test position k of every range together, so a
+position counts only when every aligned cell meets its criterion, even when the ranges sit on
+sheets whose used areas end at different rows. With Sheet1 holding A1 = 1 and Sheet2 holding
+A100 = "x" and A200 = 5: `=COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"x")` = 1 (row 100 lies past
+Sheet1's used area), `=COUNTIFS(Sheet1!A:A,"",Sheet2!A:A,"<>x")` = 1048574,
+`=SUMIFS(Sheet2!A:A,Sheet1!A:A,"")` = 5, `=COUNTIF(Sheet2!A:B,"")` = 2097150.
+Evidence: probes/criteria-sparse-cross-sheet Calc!A1:A9 (excel-graph, 2026-10-25, T-2711).
+How the engine walks (no Excel-visible effect; directive 5): a position at which no range stores
+a cell is blank in every range, so it matches or fails as a whole and is counted without being
+read; COUNTIFS visits the positions where some range stores a cell, and the SUMIFS family the
+cells stored in its sum range (a matched position adds only a number or an error held by its sum
+cell; the first such error in row-major order is the result). A well-filled range is walked
+densely (its block within the used area is at most 4x the cells stored in its columns), any other
+over its stored cells only, so the work is at most a few times the stored cells plus the rows or
+chunks searched, not the ranges' extent: `COUNTIF(A:J,1)` beside one cell
+in J1048576 reads a few cells, `COUNTIF(A:J,"")` there is still 10,485,759. Each range is put on
+record as read empty in one piece, so a spill into it restarts the pass
+(references.md "Seen-range cap"). The engine used to treat every row past the first range's used
+area as blank in every range, which gave 0 and 1048575 for the first two calls above.
+Status: VERIFIED
+Implemented in: `count_ifs`, `run_ifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`;
+`stored_walk`, `for_each_stored_position` in `crates/rustsheet-engine/src/functions/util.rs`
+Tasks: T-2711
 
 ## SUMIF resizes sum_range from its top-left cell and never errors
 Rule: SUMIF sums the range of the criteria range's shape that starts at sum_range's top-left cell,
@@ -343,23 +372,60 @@ Qty 4, 10, 0, 2, 1, -4, 7, 5, Price 2.5, "x", 4, TRUE, 10, 0.5, 100, -1 and Date
   `#NUM!` (probes/db-get-blank-field N1-N8, excel-graph 2026-10-24, T-2422; implemented in `fn_dget`).
 - A database on another sheet (Data) with the criterion on Db matches no record: `DCOUNTA(Data!B4:B6,1,Db!O1:O2)`,
   `DMAX(Data!B2:E4,4,..)`, `DPRODUCT(Data!B11:E12,3,..)`, `DPRODUCT(Data!C10:E12,3,..)`, `DPRODUCT(Data!C6:D10,2,..)` are
-  0, `DAVERAGE(Data!A10:C12,2,..)` and `DVAR(Data!D2:E12,1,..)` `#DIV/0!` and `DGET(Data!A7:D11,2,..)` `#VALUE!` (ours
-  finds records: 1, 1, 1, -0.0042, 123456789.123, 3.14159, 549.25, `#NUM!`).
+  0, `DAVERAGE(Data!A10:C12,2,..)` and `DVAR(Data!D2:E12,1,..)` `#DIV/0!` and `DGET(Data!A7:D11,2,..)` `#VALUE!` (before
+  T-2617 ours found records: 1, 1, 1, -0.0042, 123456789.123, 3.14159, 549.25, `#NUM!`).
 - An unknown criteria header is ignored over a Data database too: `DGET(Data!B6:E8,4,Db!N1:N2)` (N1 "Nope") is -0.5
   (DGET skips the blank E8, above).
 Evidence: gen-m9 4dc761698ca23149 A129, 74779cff2810ccf4 A52, fa8ee59f2f1be7e0 A332, 7a819ffbbeff8fcc A303,
 5bdef392d16a5efb A161, f066968376660329 A292, A205, A313, d193e8b4ab820f52 A375, A260, f61a73cd9af21e6d A289,
 c9d7659896d95368 A82, A1, 6d16afd40600302b A365, cb80ca09be0e12bc A52, d9d55972b50e55e8 A106, 88cabddc4935351c A255
 (excel-graph, 2026-10-22/23, T-2258).
-Ours: the same-sheet cells match since T-2553: a record whose moved relative reference into the database's columns lands
-on its header row does not match (`reads_records` in functions/database.rs; the first record of Db!A2:D9
-reads B2). Ours extends this, unprobed, to a reference above the header row and to a range with either end there; a
-reference outside the database's columns, or below its records, is read as it is (all in T-2617's probe). The cells over
-a database on another sheet are T-2617's: the plain shift ours does gives Excel's `DCOUNTA(Data!A2:C10,3,Db!O1:O2)` = 3
-(02b7cfabebd2cc0a A231) and `DVARP(Data!A4:D9,1,Db!O1:O2)` = 0 (d193e8b4ab820f52 A114), but not the 8 cells above that
-match nothing, and no fixed shift fits all ten.
+Where a moved reference reads (probes/db-computed-criteria-cross-sheet, excel-graph 2026-10-28, T-2617; DSUM over
+field cells holding 2^(row-1), so each value is the set of matched records, and ROW bits of the moved reference):
+- A computed criterion's references without a sheet prefix read the **database's** sheet, not the criteria cell's: with
+  the criterion on Db (`=B2<0`, Db!B negative) over a database on Data (positive), no record ever matches, and
+  `ISODD(ROW(B2))` matches the same records as `ISODD(ROW(Data!B2))`. A reference qualified with the criteria sheet
+  (`=Db!B2<0`) reads Db, moved per record as usual, and every record matches.
+- As on one sheet (T-2525), the first record reads the reference as written and each later record one row lower.
+- A record matches only if every moved relative reference onto the database's sheet lies in the database's record
+  area: on a record row (not the header row or above, not below the last record) and in one of its columns. Over
+  Same!A5:C12 (header row 5): `=B5>0` fails the first record only, `=B4>0` the first two, `=B3>0` three, `=B2>0` four;
+  `=E6>0` (column E, outside A:C) and `=B13>0` (below row 12 for every record) match nothing though the cells hold
+  positive numbers; `=ROW(B5)>0` fails the first record too, so the position decides, not the value.
+- A range matches when it overlaps that area: `SUM(B5:B6)>0` matches every record, `SUM(B4:B5)>0` all but the first,
+  `SUM(B3:B4)>0` all but the first two.
+- An absolute reference stays put and is not checked: `=$B$5>0` (the header row) matches every record.
+- So over Data the 8 gen-m9 cells match nothing because their moved references land at or above the header row
+  (Data!B4:B6, A7:D11, A10:C12, B11:E12, C10:E12) or outside the columns (D2:E12, C6:D10); over Data!B2:E4 only
+  the second record matches, and `DMAX(Data!B2:E4,4,..)` is 0 from its field;
+  `DCOUNTA(Data!A2:C10,3,..)` and `DVARP(Data!A4:D9,1,..)` keep the records whose moved reference is a record row.
+Ours: matches every cell above since T-2617: `db_computed_condition` retargets unprefixed references to the
+database's sheet (`retarget_unqualified_references`) and `reads_records` checks the record area. Unprobed, ours
+also exempts a reference whose row is absolute but whose column is relative, and checks a range with one absolute
+row by its moved other corner.
 Status: VERIFIED (excel-graph) for the values; the reference rule for a criterion away from the database is VERIFIED
 (T-2525, probes/db-criteria-formula-placement: relative references rebase onto the first record, absolute ones
-stay put; ours agrees); the header-row rule is VERIFIED for Db!A2:D9 with `=B2>3` only (eight cells, one placement; T-2553),
-its general form and the other-sheet rule are UNVERIFIED (T-2617).
+stay put); the record-area rule and the database-sheet rule are VERIFIED (T-2617, probes/db-computed-criteria-cross-sheet).
 Tasks: T-2258, T-2422, T-2525, T-2553, T-2617
+
+## Conditional-format text rules and wildcards (UNVERIFIED, T-2910)
+Rule (ours): the conditional-format text rules (contains, does not contain, begins with, ends with, equals;
+`apply_cf_text` in conditional_formatting.rs) compare lower-cased text literally. `*`, `?` and `~` in the rule's text
+match only themselves. These rules do not use the criteria matcher in functions/criteria.rs, which every worksheet
+criteria and wildcard consumer uses (decision 0137).
+Excel: unknown. Excel saves a "text that contains" rule with a formula of its own, and if that formula is SEARCH-based,
+wildcards would apply. No probe exists: the Graph oracle cannot evaluate conditional formats, so the evidence needs
+desktop Excel (decision 0039, T-1075 item 20).
+Status: UNVERIFIED.
+Tasks: T-2910, T-1075
+
+## Empty text in ABS and MONTH; fraction and numeric-text COUNTIFS criteria (VERIFIED, T-2870)
+Rule: `ABS("")`, `ABS(cell holding "")`, `MONTH("")` and `MONTH(cell holding "")` are `#VALUE!` (ERROR.TYPE 3). A
+COUNTIFS criterion of the number `0.5` or of a cell holding 0.5 counts the numeric 0.5 cells; the text criterion `"0.5"`
+counts them too. Numeric text (`"2"` literal or a cell holding the text "2") matches both the number 2 and the text "2"
+cells, as does the number 2 (the same rule as the numeric-criterion entry above). With a second criterion `">0"` on the
+same range (A21) the text "2" is not counted (2, not 3), which shows B3 is text. The `#VALUE!` of `ABS("")`/`MONTH("")` is
+argument coercion: see also the `--""` entry in coercion.md.
+Evidence: probes/m2-argument-kind-gaps-b (excel-graph), Calc!A11:A14 and A15:A21. Ours already matches (12/12).
+Status: VERIFIED.
+Tasks: T-2870

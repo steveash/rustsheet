@@ -2,6 +2,7 @@
 
 use crate::cast::scalar_as_array;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::{array_node_to_calc_result, is_at_if, is_at_xlookup_take};
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
 };
 
 use super::lookup_index;
-use super::lookup_table::{LookupTable, SearchVector};
+use super::lookup_table::{is_searched_kind, LookupTable, SearchVector};
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 
 /// LOOKUP's `#N/A` for a value that is not found or a position its `result_vector` cannot give.
@@ -27,6 +28,8 @@ struct LookupSearchTable {
     table: LookupTable,
     by_row: bool,
     vector: SearchVector,
+    /// The cells one lifted search costs: the vector's, or a tailed vector's logical size.
+    scan: u64,
 }
 
 /// LOOKUP's `result_vector`, read once.
@@ -51,10 +54,9 @@ impl Model {
     /// returned as is.
     pub(super) fn as_vector(
         &mut self,
-        value: CalcResult,
+        table: LookupTable,
         cell: CellReferenceIndex,
     ) -> Result<SearchVector, CalcResult> {
-        let table = self.lookup_table(value, cell)?;
         let (rows, columns) = (table.rows(), table.columns());
         if rows > 1 && columns > 1 {
             return Err(CalcResult::Error {
@@ -72,6 +74,8 @@ impl Model {
                     .map(|node| array_node_to_calc_result(node, cell))
                     .collect(),
             ),
+            LookupTable::External(_) if rows > 1 => table.first_column(self, cell),
+            LookupTable::External(_) => table.first_row(self, cell),
         })
     }
 
@@ -99,7 +103,7 @@ impl Model {
         if target.is_error() {
             return target;
         }
-        let search = self.lookup_search(&args[1], cell);
+        let search = self.lookup_search(&args[1], cell, args.len() == 3);
         if !LiftedArg::is_grid(&target) {
             let position = match Self::lookup_position(&target, &search, cell) {
                 Ok(position) => position,
@@ -115,9 +119,7 @@ impl Model {
         }
         let result = args.get(2).map(|node| self.lookup_result(node, cell));
         // Each element tests the evaluated cells of the searched row or column once.
-        let scan = search
-            .as_ref()
-            .map_or(1, |search| search.vector.scan_cells());
+        let scan = search.as_ref().map_or(1, |search| search.scan);
         self.lift_values(
             vec![target],
             LiftCost::Cells(scan),
@@ -136,12 +138,20 @@ impl Model {
         )
     }
 
-    /// LOOKUP's `lookup_vector` or `array`, read as the table it searches.
+    /// LOOKUP's `lookup_vector` or `array`, read as the table it searches; a `lookup_vector`
+    /// with a `result_vector` (`vector_form`) possibly read as a head and a tail
+    /// ([`Model::tailed_lookup_search`]).
     fn lookup_search(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
+        vector_form: bool,
     ) -> Result<LookupSearchTable, CalcResult> {
+        if vector_form {
+            if let Some(search) = self.tailed_lookup_search(node, cell) {
+                return Ok(search);
+            }
+        }
         // Read as a reference so that a single cell is a one-element vector
         // (`LOOKUP(2,C1,D1)`; probes/lookup-vector-edges A1-A4).
         let value = self.evaluate_node_with_reference(node, cell);
@@ -159,10 +169,58 @@ impl Model {
         } else {
             table.first_column(self, cell)
         };
+        let scan = vector.scan_cells();
         Ok(LookupSearchTable {
             table,
             by_row,
             vector,
+            scan,
+        })
+    }
+
+    /// An element-wise `lookup_vector` of whole columns, or of bounded spans past the used area,
+    /// searched as its used head and its tail row (SPEC-0020 Amendment 1 section 3, T-0494). A
+    /// tail element of no searched kind (an error, as `1/(J:J<>"")` gives, or an empty element)
+    /// is skipped by the approximate search for every target, as `SearchVector`'s virtual empty
+    /// tail is: the vector is the head followed by that empty tail, its logical length the
+    /// materialized array's, so every position found is the same and in the head. `None` (the
+    /// ordinary reading) for any other shape or a tail of a searched kind, whose run of equal
+    /// keys the search's midpoints would enter. The table is the head: only the array form,
+    /// which never comes here, picks from it.
+    fn tailed_lookup_search(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<LookupSearchTable> {
+        let (head, tail) = self
+            .read_tailed(node, cell, |model| {
+                model.evaluate_node_with_reference(node, cell)
+            })?
+            .elements_by(|value| match value {
+                CalcResult::Array(array) => Some(array),
+                _ => None,
+            })?;
+        let head: Vec<Vec<ArrayNode>> = head.map(|element| vec![element]).collect();
+        let values: Vec<CalcResult> = head
+            .iter()
+            .flatten()
+            .map(|element| array_node_to_calc_result(element, cell))
+            .collect();
+        let len = match tail {
+            Some((element, tail_len)) => {
+                if is_searched_kind(&array_node_to_calc_result(&element, cell)) {
+                    return None;
+                }
+                values.len().saturating_add(tail_len)
+            }
+            // No tail when the pass is being abandoned: the value is discarded.
+            None => values.len(),
+        };
+        Some(LookupSearchTable {
+            table: LookupTable::Array(head),
+            by_row: false,
+            vector: SearchVector::with_len(values, len),
+            scan: u64::try_from(len).unwrap_or(u64::MAX).max(1),
         })
     }
 
@@ -198,6 +256,21 @@ impl Model {
                 }
             }
         }
+    }
+
+    /// MATCH's, VLOOKUP's and HLOOKUP's table argument read as a table: a range of a linked
+    /// workbook's cached sheet in place ([`Model::cached_external_lookup_area`]), anything else
+    /// through [`Model::evaluate_lookup_table_arg`] and [`Model::lookup_table`].
+    pub(super) fn lookup_table_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<LookupTable, CalcResult> {
+        if let Some(area) = self.cached_external_lookup_area(node, cell) {
+            return Ok(LookupTable::External(area));
+        }
+        let value = self.evaluate_lookup_table_arg(node, cell);
+        self.lookup_table(value, cell)
     }
 
     /// A LOOKUP, MATCH, VLOOKUP or HLOOKUP argument read as a table: a range or an array, or else
@@ -264,7 +337,9 @@ impl Model {
                 let vector = self.range_search_vector(&left, &right, down);
                 ResultVector::Range { left, down, vector }
             }
-            array @ LookupTable::Array(_) => ResultVector::Array { table: array, down },
+            table @ (LookupTable::Array(_) | LookupTable::External(_)) => {
+                ResultVector::Array { table, down }
+            }
         })
     }
 

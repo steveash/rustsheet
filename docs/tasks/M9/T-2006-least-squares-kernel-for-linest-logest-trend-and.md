@@ -7,8 +7,8 @@ status: todo
 priority: P2
 size: M
 tier: opus
-campaign: visible
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -83,3 +83,6 @@ K123, K219 (Excel 9.215274223288255, ours 9.21527422328826); gen-m9 8fec7b207f4d
 - Result shapes, `#N/A` fill, flags, omitted arguments and error choice (T-1741, T-1742, T-1743, T-1726).
 - FORECAST/FORECAST.LINEAR, SLOPE, INTERCEPT, STEYX and the CORREL family. They are closed forms in forecast.rs and
   correl.rs, not this solve (T-1725, T-1723, T-1707).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

@@ -47,6 +47,7 @@ use super::discrete::{hypergeometric_cdf_sum, hypergeometric_pmf};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
+use crate::limits::COUNT_LIMIT_EXCLUSIVE;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// The most terms one cdf may sum once the terms known to be 0 are skipped. The terms that do
@@ -59,9 +60,10 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// which 95,942 are not 0).
 ///
 /// What the cap costs, which the lifting table charges (lift/kinds/statistical.rs
-/// `HYPGEOM_DIST_WEIGHT`, 2^22 units an element): one term is three statrs `ln_binomial`s and an
-/// `exp` (six Lanczos `ln_gamma`s above 170). Measured in release (T-1873, load 1 to 2 on 4 cores):
-/// 167 to 193 ns a term where the terms are normal (statrs' own sum over the 25,000,001 terms of
+/// `HYPGEOM_DIST_WEIGHT`, 2^22 units an element at most; since T-2433 less by the counts): one
+/// term is three statrs `ln_binomial`s and an `exp` (six Lanczos `ln_gamma`s above 170). Measured
+/// in release (T-1873, load 1 to 2 on 4 cores): 167 to 193 ns a term where the terms are normal
+/// (statrs' own sum over the 25,000,001 terms of
 /// `HYPGEOM.DIST(25000000,50000000,50000000,100000000,TRUE)`, 4.8 s as on main; 32 elements of
 /// `HYPGEOM.DIST(45500000,90000000,90000000,180000000,TRUE)`, the widest distribution at a
 /// population of 1.8E8 with 258,239 terms each, 1.38 to 1.55 s in benches/lift.rs), and 206 to 234
@@ -280,31 +282,42 @@ impl Model {
         // A TRUE sample_s is 1 (probes-numeric/t1048-hypgeomdist A19, t1049-hypgeomdist A53); so
         // are the other counts from a cell or formula (gen-m9/ee2497a5e683c5d9 A356, statistics.md T-2255).
         let sample_s = self.cast_number_ref(sample_s, cell)?;
-        let number_sample = self.cast_number_ref(number_sample, cell)?.trunc();
-        let population_s = self.cast_number_ref(population_s, cell)?.trunc();
-        let number_pop = self.cast_number_ref(number_pop, cell)?.trunc();
+        let number_sample = self.cast_number_ref(number_sample, cell)?;
+        let population_s = self.cast_number_ref(population_s, cell)?;
+        let number_pop = self.cast_number_ref(number_pop, cell)?;
+        // Every argument is read before any count is checked: a text cumulative is `#VALUE!` beside
+        // a huge or negative count (probes/t2429-hypgeom-threshold A35-A37).
         let cumulative = match cumulative {
             Some(value) => Self::cast_bool_ref(value, cell)?,
             None => false,
         };
-        // A negative fraction is `#NUM!` before truncation (t1049-hypgeomdist A34
-        // `HYPGEOM.DIST(-0.5,4,8,20,TRUE)`).
-        if sample_s < 0.0 {
+        // A negative fraction in any count is `#NUM!` before truncation (t1049-hypgeomdist A34
+        // `HYPGEOM.DIST(-0.5,4,8,20,TRUE)`, t2429-hypgeom-threshold A40-A41), and so is a count of
+        // 2^31 - 1 or more, even a sample_s above the possible range (2147483646.9 computes,
+        // 2147483647 is `#NUM!`: t2429-hypgeom-huge-count A31-A36, t2429-hypgeom-threshold
+        // A25-A32; statistics.md "HYPGEOMDIST: ... a negative or huge count is #NUM!").
+        let counts = [sample_s, number_sample, population_s, number_pop];
+        if counts
+            .iter()
+            .any(|count| !(0.0..COUNT_LIMIT_EXCLUSIVE).contains(count))
+        {
             return Err(num_error(cell));
         }
-        let sample_s = sample_s.trunc();
+        let [sample_s, number_sample, population_s, number_pop] = counts.map(f64::trunc);
 
-        // sample_s >= number_sample + population_s - number_pop, 0 <= number_sample <= number_pop
-        // and 0 <= population_s <= number_pop, with number_pop > 0; anything else is #NUM!. A zero
-        // number_sample or population_s is valid (t1049-hypgeomdist A44, A46, A55, A56).
-        let valid = sample_s >= f64::max(0.0, number_sample + population_s - number_pop)
-            && number_sample >= 0.0
-            && number_sample <= number_pop
-            && population_s >= 0.0
-            && population_s <= number_pop
-            && number_pop > 0.0;
+        // number_sample <= number_pop and population_s <= number_pop, with number_pop > 0; anything
+        // else is #NUM!. A zero number_sample or population_s is valid (t1049-hypgeomdist A44,
+        // A46, A55, A56).
+        let valid = number_sample <= number_pop && population_s <= number_pop && number_pop > 0.0;
         if !valid {
             return Err(num_error(cell));
+        }
+        // Below number_sample + population_s - number_pop, the fewest successes a draw can hold,
+        // the density and the cdf are 0, not `#NUM!` (gen-m9/4250f880ab640c49 A339
+        // `HYPGEOMDIST(2,5,10,11)`, probes/t2436 `HYPGEOM.DIST(1,3,6,7,TRUE)`; statistics.md
+        // "HYPGEOMDIST: a sample below the possible range is 0", T-2699).
+        if sample_s < number_sample + population_s - number_pop {
+            return Ok(0.0);
         }
         // Above min(number_sample, population_s) the density is 0 and the cdf 1, not `#NUM!`
         // (t1048-hypgeomdist A13, A16; t1049-hypgeomdist A35, A36, A43, A45).

@@ -76,8 +76,12 @@ returns the value of the pivot cell the field/item pairs pick, including subtota
   source field the pivot does not show), the same field twice with different items, and a field with no
   item (an odd argument count).
 - An intersection that has no source rows (shown blank) is **0**, not `#REF!` (West/C).
-  An Average pivot's empty intersection is 0 too (three cells of a T-2396 generator sample, excel-graph 2026-10-22,
-  not committed; ours `#REF!`, T-2404 probes it with count, max and min).
+  The same holds for every aggregate the case builder writes: Average, Count, Max and Min pivots answer 0 on an
+  empty intersection (West/C), while the non-empty intersection, row total, column total and grand total are the
+  aggregate (Average East/A 7, Count 2, Max 10, Min 4) and the pair order does not matter. Evidence:
+  probes/getpivotdata-empty-intersection (excel-graph, 2026-10-26, T-2404), plus gen-m6 8641fa604c5b8e14 Calc!A19,
+  A25 and A39 (Count of Units; A19 names the source field `"Units"` as data_field on that Count pivot and Excel
+  accepts it). CountNums, Product, Var, VarP, StdDev and StdDevP over an empty intersection are not probed (the case builder cannot write them): ours stay `#REF!`.
 - `pivot_table` may be any cell of the pivot (`$C$6`, inside the data area) or a range covering it
   (`$A$3:$E$7`); a cell outside every pivot (`$H$30`, or the source data `Data!$A$1`) is `#REF!`.
 - An array of items lifts: `"Region",{"East";"West"}` spills 22, 27 and `"Product",{"A","B","C"}` spills
@@ -106,14 +110,33 @@ the 1904 epoch in a `date1904` workbook has no serial there and skips the cache 
 GETPIVOTDATA (T-2083, `functions/lookup_and_reference/getpivotdata.rs`, `pivot_index.rs`) aggregates the cache records the
 pairs pick, in cache order, rather than reading the rendered cell, and passes every cell of probes/getpivotdata-real-pivot.
 Until T-2085 probes them it answers `#REF!` for SPEC-0015's unknowns, never a guess: several data fields, page fields or
-hidden items, two fields on one axis, a reference meeting two pivots, `""` or an omitted data_field, a number, date or
+hidden items, a pair on a pivot with two fields on one axis, a reference meeting two pivots, `""` or an omitted
+data_field, a number, date or
 boolean as an item (or an item that matches two cache items differing only in case), the same field twice with the same
 item, an error in a field/item pair, an empty intersection of any aggregate but Sum, a picked record whose data-field value
 is not a number, a number or boolean data_field, and an array data_field, pivot_table or field name (an array of items
 lifts). An error in a single-cell pivot_table propagates even inside a pivot, and an overflowing aggregate is `#NUM!`
-(both unprobed, SPEC-0015 unknowns 13 and 16). Count, Max, Min, Product,
-Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
+(both unprobed, SPEC-0015 unknowns 13 and 16). Count pivots of an all-numeric field match
+Excel on gen-m6 8641fa604c5b8e14, b304d8cf05adcc5e and df85bc699c7e87bc (T-2674; they cannot tell COUNT from COUNTA).
+Max, Min, Product, Var and StdDev pivots are unprobed (UNVERIFIED: the worksheet functions' algorithms over the picked numbers).
 Structural edits: see "Pivot tables and structural edits" below. xlsx export drops pivots.
+
+## GETPIVOTDATA on real-model pivots: an omitted item is the blank item, nested axes' grand total (T-2662)
+Rule: an omitted item argument picks the field's blank item, the `(blank)` row of records whose value is missing (`<m/>`):
+`GETPIVOTDATA("For Review",Pivot!$C$9,"Year","2021","Remediation Status",)` is the 2021 `(blank)` cell, 244445.62. A pivot
+with two row fields and two column fields (outline form, subtotals shown) answers its grand total with no pairs
+(`GETPIVOTDATA("Sum of Qux",B32)` is 57). Two pivots of one cache can total the same records differently in the last
+bits: the 2021 total of the pivot at Pivot!C3 (Year columns only) is 1738748.6999999997, as is
+`GETPIVOTDATA("For Review",Pivot!$C$3,"Year","2021")`, while the pivot at Pivot!C9 (with Remediation Status rows) shows
+1738748.7000000002 for its 2021 grand total; folding the picked cache records in cache order gives the C3 values
+(SPEC-0015 unknown 11, one data point).
+Evidence: calipers goldens (desktop Excel cached values): pv_goldens/pv23_041 Liability Summary C5:G7 (the pivots on sheet
+Pivot, C3:G5, C9:G13), roundtrip/formula_stress_test Database!B16 (pivot GPD at B32:O45).
+Status: VERIFIED (desktop cached values). UNVERIFIED: whether `""`, a blank cell or `"(blank)"` also pick the blank item
+(ours `#REF!`), and any pair on a pivot with two fields on an axis (ours `#REF!`, SPEC-0015 unknown 10, T-2085).
+Implemented in: `fn_getpivotdata`, `Model::pivot_blank_item`, `nested_axis`
+(crates/rustsheet-engine/src/functions/lookup_and_reference/getpivotdata.rs, pivot_index.rs, T-2662).
+Tasks: T-2662, T-2085
 
 ## Pivot tables and structural edits
 Rule (engine; Excel UNVERIFIED): a whole-row or whole-column insert at or before a pivot's first line, or a delete wholly

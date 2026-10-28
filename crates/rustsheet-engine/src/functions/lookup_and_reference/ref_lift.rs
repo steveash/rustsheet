@@ -14,7 +14,7 @@ use crate::functions::aggregate::value_node;
 use crate::functions::lift::{ArgBuf, LiftedArg};
 use crate::functions::util::top_left_of_array;
 use crate::functions::Function;
-use crate::limits::{check_array_size, too_many_visits};
+use crate::limits::check_array_size;
 use crate::model::Model;
 use crate::reference_operators::{Picked, Ranges, RefArg, RefElement, RefGrid};
 
@@ -28,7 +28,8 @@ pub(crate) enum ElementCost {
     /// One visit: ROW, COLUMN, AREAS, CELL, ISFORMULA, N and T read no cells or one.
     Unit,
     /// The cells of the element's references inside the used area, times this many walks:
-    /// SUBTOTAL, COUNTIF, SUMIF and COUNTBLANK walk them once, SUMIFS once per criteria pair.
+    /// SUBTOTAL, COUNTIF, SUMIF, AVERAGEIF and COUNTBLANK walk them once, SUMIFS, COUNTIFS and
+    /// MAXIFS once per criteria pair.
     Cells(u64),
 }
 
@@ -46,10 +47,14 @@ impl Function {
     /// where they take a reference (SPEC-0014 rule 6), for a call of `count` arguments.
     /// `SUBTOTAL(9,OFFSET(A1,{0;1},0))` spills 1, 100; `ROW(OFFSET(A1,{0;1},0))` 1, 2
     /// (probes/reference-lift-consumers E57-E78, E97, E109, E165, E169, E185; -b1c E85-E93;
-    /// -b1d E97; -b2 E125-E133, E177, E193, E197). COUNTIFS and the other *IFS stay the value
-    /// view until T-2065 probes them.
+    /// -b1d E97; -b2 E125-E133, E177, E193, E197). COUNTIFS, AVERAGEIF and MAXIFS too:
+    /// `COUNTIFS(OFFSET(A1,{0;1},0),">0")` spills 1, 1, `AVERAGEIF(OFFSET(A1,0,0,{1;2}),">0")`
+    /// 1, 50.5 (probes/t2065-lift-countifs, -averageif, -maxifs). AVERAGEIFS and MINIFS are
+    /// unprobed and stay the value view.
     pub(crate) fn per_reference_element(&self, count: usize) -> Option<PerElement> {
         let first: fn(usize) -> bool = |index| index == 0;
+        // One walk per criteria pair (SUMIFS, COUNTIFS, MAXIFS).
+        let per_pair = ElementCost::Cells(u64::try_from(count / 2).unwrap_or(u64::MAX).max(1));
         let (takes_reference, cost): (fn(usize) -> bool, ElementCost) = match self {
             Function::Row
             | Function::Column
@@ -59,14 +64,13 @@ impl Function {
             | Function::T => (first, ElementCost::Unit),
             Function::Cell => (|index| index == 1, ElementCost::Unit),
             Function::Countif | Function::Countblank => (first, ElementCost::Cells(1)),
+            // Every criteria range.
+            Function::Countifs => (|index| index % 2 == 0, per_pair),
             Function::Subtotal => (|index| index > 0, ElementCost::Cells(1)),
             // The criteria range and the sum range.
-            Function::Sumif => (|index| index != 1, ElementCost::Cells(1)),
-            // The sum range and every criteria range.
-            Function::Sumifs => (
-                |index| index == 0 || index % 2 == 1,
-                ElementCost::Cells(u64::try_from(count / 2).unwrap_or(u64::MAX).max(1)),
-            ),
+            Function::Sumif | Function::Averageif => (|index| index != 1, ElementCost::Cells(1)),
+            // The sum (max) range and every criteria range.
+            Function::Sumifs | Function::Maxifs => (|index| index == 0 || index % 2 == 1, per_pair),
             _ => return None,
         };
         Some(PerElement {
@@ -178,9 +182,9 @@ fn array_cells(rows: &[Vec<ArrayNode>]) -> u64 {
         .fold(0, u64::saturating_add)
 }
 
-/// Whether an argument's value lifts INDIRECT or TRIMRANGE: an array or a range of more than
-/// one cell. A one-cell range and a 1x1 array are their value, as before (whether Excel lifts a
-/// 1x1 array there is unprobed, TODO(T-2347); OFFSET, TAKE and DROP do, [`lifts_one_by_one`]).
+/// Whether an argument's value lifts TRIMRANGE: an array or a range of more than one cell. A
+/// one-cell range and a 1x1 array are their value, as before (whether Excel lifts a 1x1 array
+/// there is unprobed, TODO(T-2347); OFFSET, INDIRECT, TAKE and DROP do, [`lifts_one_by_one`]).
 pub(super) fn lifts(value: &CalcResult) -> bool {
     match value {
         CalcResult::Range { left, right } => left != right,
@@ -189,11 +193,12 @@ pub(super) fn lifts(value: &CalcResult) -> bool {
     }
 }
 
-/// Whether an argument's value lifts OFFSET, TAKE or DROP: what [`lifts`] accepts, and a 1x1
-/// array too, which gives one element: `TAKE(A1:B3,{2})` is one element, A1:B2, so ROWS of it
-/// is 1 and spilled directly it is `#VALUE!` (probes/m7-lift-take-drop-sortby Sheet1 F13, G13,
+/// Whether an argument's value lifts OFFSET, INDIRECT, TAKE or DROP: what [`lifts`] accepts, and
+/// a 1x1 array too, which gives one element: `TAKE(A1:B3,{2})` is one element, A1:B2, so ROWS of
+/// it is 1 and spilled directly it is `#VALUE!` (probes/m7-lift-take-drop-sortby Sheet1 F13, G13,
 /// I13:K13, W65); ROWS of `DROP(A1:B3,{1})` and of `OFFSET(A1:B2,{1},0)` is 1 too
-/// (probes/m7-one-cell-operand-lift F6, F7, F16, F17; T-2298). A one-cell range is still its
+/// (probes/m7-one-cell-operand-lift F6, F7, F16, F17; T-2298), and `INDIRECT("B1",{1})` is
+/// `#VALUE!` (probes/t2577-indirect-ref-array A1, A25; T-2577). A one-cell range is still its
 /// value.
 pub(super) fn lifts_one_by_one(value: &CalcResult) -> bool {
     lifts(value) || matches!(value, CalcResult::Array(_))
@@ -210,6 +215,8 @@ pub(super) fn may_hand_on_grid(node: &Node) -> bool {
                 kind: Function::Offset
                     | Function::Indirect
                     | Function::Trimrange
+                    | Function::Take
+                    | Function::Drop
                     | Function::If
                     | Function::Choose
                     | Function::Let,
@@ -341,7 +348,7 @@ impl Model {
                 visits = visits.saturating_add(element_cost);
             }
         }
-        if let Some(error) = too_many_visits(visits, cell) {
+        if let Some(error) = self.spend_visits(visits, cell) {
             return error;
         }
         let mut output = Vec::with_capacity(rows);

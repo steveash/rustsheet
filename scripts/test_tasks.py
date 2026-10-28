@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 import sys
 import tempfile
 import time
@@ -102,11 +105,13 @@ def write_task(
     milestone: str = "M0",
     depends_on: str = "",
     campaign: str | None = None,
+    defer: str | None = None,
 ) -> Path:
     path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
     campaign_line = f"campaign: {campaign}\n" if campaign else ""
+    campaign_line += f"defer: {defer}\n" if defer else ""
     path.write_text(
         f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
         f"size: S\n{tier_line}{campaign_line}depends_on: [{depends_on}]\n---\n{body}"
@@ -203,6 +208,46 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-2146", tier="opus", milestone="M9", lane="functions-stat", depends_on="T-2145",
                        campaign="visible", status="done")
             self.assertEqual(run_next(root, "opus"), "T-0210")
+
+    def test_campaign_stages_order_semantics_then_accuracy_then_visible(self) -> None:
+        # Decision 0114: the stage beats milestone and priority among campaign tasks.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0210", tier="opus", priority="P0", milestone="M2", status="done")
+            write_task(root, "T-0501", tier="opus", priority="P1", milestone="M5", campaign="visible")
+            write_task(root, "T-0901", tier="opus", priority="P3", milestone="M9", campaign="accuracy")
+            write_task(root, "T-0902", tier="opus", priority="P3", milestone="M9", campaign="semantics")
+            self.assertEqual(run_next(root, "opus"), "T-0902")
+            self.assertEqual(run_next(root, "opus", claims=({"T-0902"}, set())), "T-0901")
+            self.assertEqual(run_next(root, "opus", claims=({"T-0902", "T-0901"}, set())), "T-0501")
+
+    def test_dependency_takes_the_earliest_stage_that_needs_it(self) -> None:
+        # Decision 0114: a sweep that a semantics task waits on comes before an accuracy task.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0901", tier="opus", milestone="M9", campaign="accuracy")
+            write_task(root, "T-0950", tier="opus", milestone="M9", lane="research")
+            write_task(root, "T-0951", tier="opus", milestone="M9", lane="functions-stat", depends_on="T-0950",
+                       campaign="visible")
+            write_task(root, "T-0952", tier="opus", milestone="M9", lane="functions-math", depends_on="T-0950",
+                       campaign="semantics")
+            self.assertEqual(run_next(root, "opus"), "T-0950")
+
+    def test_deferred_task_is_never_ready_but_validates(self) -> None:
+        # Decision 0114: `defer: phase-1b` parks last-digit work; an unknown deferral is rejected.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="opus", priority="P0", defer="phase-1b")
+            write_task(root, "T-0002", tier="opus", priority="P3", milestone="M9")
+            self.assertEqual(run_next(root, "opus"), "T-0002")
+            with mock.patch.object(tasks, "ROOT", root):
+                parsed = [
+                    tasks.parse(root / "docs/tasks/M0/T-0001-x.md"),
+                    tasks.parse(write_task(root, "T-0003", defer="later")),
+                ]
+                errors = tasks.validate(parsed)
+        self.assertTrue(any("defer=" in e and "T-0003" in e for e in errors))
+        self.assertFalse(any("T-0001" in e for e in errors))
 
     def test_unknown_campaign_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -481,6 +526,126 @@ class BranchClaims(unittest.TestCase):
         # T-0002 moved a minute ago (its run may still be at it); T-0003 is the owner's now; T-0005's
         # branch name is not one `next` will print for an agent to check out.
         self.assertEqual(limited, {"T-0001": "agent/engine/T-0001-limit"})
+
+
+class Stats(unittest.TestCase):
+    def run_stats(self, root: Path, *argv: str, files: dict[str, str] | None = None) -> tuple[int, str, str]:
+        """`tasks.py stats` on `root`'s tasks and the code `files` (path -> text, standing in for
+        `code_files`): (exit code, stdout, stderr). Any other git call fails the test."""
+        out, err = io.StringIO(), io.StringIO()
+        no_git = AssertionError("stats must not fetch or read branches")
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                mock.patch.object(tasks.sys, "argv", ["tasks.py", "stats", *argv]), \
+                mock.patch.object(tasks, "code_files", return_value=files or {}), \
+                mock.patch.object(tasks, "branch_claims", side_effect=no_git), \
+                mock.patch.object(tasks, "git_branch_names", side_effect=no_git), \
+                mock.patch.object(tasks.subprocess, "run", side_effect=no_git), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = tasks.main()
+        return code, out.getvalue(), err.getvalue()
+
+    def test_counts_per_milestone_campaign_stage_and_deferral(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", status="done")
+            write_task(root, "T-0002", depends_on="T-0001", campaign="semantics")  # ready
+            write_task(root, "T-0003", depends_on="T-0004", campaign="semantics")  # waits on T-0004
+            write_task(root, "T-0004", status="blocked", campaign="semantics")
+            write_task(root, "T-0005", status="dropped", campaign="visible")
+            write_task(root, "T-0006", status="done", campaign="visible", milestone="M10")
+            write_task(root, "T-0007", campaign="accuracy", defer="phase-1b", milestone="M10")  # never ready
+            write_task(root, "T-0008", status="done", defer="phase-1b", milestone="M10")
+            write_task(root, "T-0009", status="dropped", defer="phase-1b", milestone="M2")
+            write_task(root, "T-0010", status="in-progress", campaign="accuracy", milestone="M2")
+            code, out, err = self.run_stats(root, "--json")
+            rerun = self.run_stats(root, "--json")[1]
+        self.assertEqual((code, err), (0, ""))
+        zero = dict.fromkeys(tasks.STATUSES, 0)
+        self.assertEqual(json.loads(out), {
+            "by_milestone": {
+                "M0": {**zero, "todo": 2, "blocked": 1, "done": 1, "dropped": 1},
+                "M10": {**zero, "todo": 1, "done": 2},
+                "M2": {**zero, "in-progress": 1, "dropped": 1},
+            },
+            "by_campaign": {
+                "semantics": {**zero, "todo": 2, "blocked": 1, "ready": 1},
+                "accuracy": {**zero, "todo": 1, "in-progress": 1, "ready": 0},
+                "visible": {**zero, "done": 1, "dropped": 1, "ready": 0},
+            },
+            "deferred": {**zero, "todo": 1, "done": 1, "dropped": 1, "ready": 0},
+        })
+        # Deterministic: keys sorted at every level, and the same bytes on a rerun.
+        self.assertEqual(rerun, out)
+        self.assertLess(out.index('"by_campaign"'), out.index('"by_milestone"'))
+        self.assertLess(out.index('"M10"'), out.index('"M2"'))
+
+    def test_ready_ignores_branch_claims(self) -> None:
+        # `next` would skip a claimed task; the dashboard's count does not look at branches.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", campaign="visible")
+            _, out, _ = self.run_stats(root, "--json")
+        self.assertEqual(json.loads(out)["by_campaign"]["visible"]["ready"], 1)
+
+    def test_fails_on_what_validate_reports_and_prints_no_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", campaign="bits")
+            write_task(root, "T-0002", depends_on="T-0999")
+            code, out, err = self.run_stats(root, "--json")
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("campaign='bits'", err)
+        self.assertIn("unknown dependency T-0999", err)
+
+    def test_fails_on_a_stale_todo_like_validate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", status="done")
+            code, out, err = self.run_stats(root, "--json", files={"a.rs": f"// {T}(T-0001): x\n"})
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("names a task that is done", err)
+
+    def test_only_git_call_is_a_local_ls_files(self) -> None:
+        # The real `code_files` runs; record every subprocess call it makes.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001")
+            (root / "scripts").mkdir()
+            (root / "scripts/a.py").write_text(f"# {T}(T-0001): x\n")
+            calls: list[list[str]] = []
+
+            def record(cmd: list[str], **_: object) -> mock.Mock:
+                calls.append(cmd)
+                return mock.Mock(stdout="scripts/a.py\0")
+
+            argv = ["tasks.py", "stats", "--json"]
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", argv), \
+                    mock.patch.object(tasks.subprocess, "run", side_effect=record), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(tasks.main(), 0)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][:4], ["git", "-C", str(root), "ls-files"])
+
+    def test_missing_git_fails_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001")
+            err = io.StringIO()
+            argv = ["tasks.py", "stats", "--json"]
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", argv), \
+                    mock.patch.object(tasks.subprocess, "run", side_effect=FileNotFoundError("git")), \
+                    contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(err):
+                self.assertEqual(tasks.main(), 1)
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("git ls-files", err.getvalue())
+
+    def test_needs_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out, err = self.run_stats(Path(tmp))
+        self.assertEqual((code, out), (2, ""))
+        self.assertIn("usage", err)
 
 
 class Slug(unittest.TestCase):

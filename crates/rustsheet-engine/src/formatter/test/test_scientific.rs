@@ -87,3 +87,70 @@ fn scientific_literals_before_the_exponent_digits() {
         );
     }
 }
+
+// A one-digit mantissa rounds the 15-digit decimal half away from zero, once: 2.5 is "3E+0", 1.005
+// (the double 1.00499999…) "1.01E+00", and 12.345 "1.23E+01" (gen-m10 05c1c646c95a2d60 F!I10,
+// F!L11, 5eb95c63c7d6180c F!G8, F!G19; probes/t2705-scientific-mantissa-rounding; T-2705).
+#[test]
+fn scientific_mantissa_rounds_the_15_digit_decimal_half_away() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (2.5, "0E+0", "3E+0"),
+        (2.5, "#E+0", "3E+0"),
+        (-2.5, "#E+0", "-3E+0"),
+        (12.345, "0.00E+00", "1.23E+01"),
+        (1.005, "0.00E+00", "1.01E+00"),
+        (2.5 - 2f64.powi(-51), "0E+0", "3E+0"),
+        (0.285, "0.0E+0", "2.9E-1"),
+        (100.5, "0.0E+0", "1.0E+2"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{value} {code}"
+        );
+    }
+}
+
+// A scientific code never scales: a `%` anywhere is a literal and a trailing `,` is dropped
+// (probes/t2720-scientific-percent A1, A2, A7, A8, A15; excel-graph, T-2720).
+#[test]
+fn scientific_percent_and_comma_do_not_scale() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (2.675, "0.00E+00%", "2.68E+00%"),
+        (2.675, "0.00%E+00", "2.68%E+00"),
+        (0.5, "0%E+0", "5%E-1"),
+        (2675.0, "0.00E+00,", "2.68E+03"),
+        (2.675, "##0.0E+0%", "2.7E+0%"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{value} {code}"
+        );
+    }
+}
+
+// Zero prints every integer placeholder of a scientific code, `#` included, and a carry out of the
+// mantissa renormalises (gen-m10 659cd5776d423ce3 F!J14, 5eb95c63c7d6180c F!G13,
+// bfbcd16cee266336 F!W12; T-2227).
+#[test]
+fn scientific_zero_prints_all_integer_placeholders_and_carry_renormalises() {
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (0.0, "##0.0E+0", "000.0E+0"),
+        (0.0, "##0.00E+00", "000.00E+00"),
+        (0.0, "#E+0", "0E+0"),
+        (99.5, "0.0E+00", "1.0E+02"),
+    ];
+    for (value, code, expected) in cases {
+        assert_eq!(
+            format_number(value, code, &ctx).text,
+            expected,
+            "{value} {code}"
+        );
+    }
+}

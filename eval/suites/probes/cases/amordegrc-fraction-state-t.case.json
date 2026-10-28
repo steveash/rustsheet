@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2825: AMORDEGRC with 0 < period < 1 (left-over value). A1 fractional above AMORDEGRC(..,0,0.1) of 46117 (period 0): what does a period-0 AMORDEGRC leave behind?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)",
+        "A2": "=AMORDEGRC(46557,0,39881,440,0,0.1)"
+      }
+    }
+  ],
+  "expected": {}
+}

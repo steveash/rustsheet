@@ -1,4 +1,43 @@
-use super::bessel_excel::MAX_ORDER;
+use super::bessel_excel::{
+    miller_stays_finite, EXCEL_MAX_ORDER, LN_COMPUTED_ZERO, MAX_ORDER, MILLER_ACCURACY,
+    MILLER_RESCALE, MILLER_RESCALE_FACTOR,
+};
+use crate::functions::statistical::ln_gamma;
+use crate::x87_exp::excel_exp;
+
+/// BESSELI is `#NUM!` at every order past this |x|: `BESSELI(709.7,0)` is 2.4788083687166675E+306 and
+/// `BESSELI(709.70001,0)` is `#NUM!`, likewise at orders 1 and 5 (probes/besseli-overflow-cut-finest,
+/// -fine and -sweep; engineering.md "BESSELI overflow point"). Negative x is unprobed (taken as |x|).
+const BESSELI_OVERFLOW_X: f64 = 709.7;
+
+/// The even order BESSELI's Miller recurrence starts from, `2 (n + sqrt(MILLER_ACCURACY n))`.
+fn in_start_order(n: i32) -> f64 {
+    2.0 * ((MILLER_ACCURACY * f64::from(n)).sqrt().trunc() + f64::from(n))
+}
+
+/// `BESSELI(x, n)` for `MAX_ORDER < n` without the recurrence: 0 where Excel's is provably 0, else
+/// NaN. I0(x) overflows past `BESSELI_OVERFLOW_X`, which makes Excel's result `#NUM!` at every order
+/// (`BESSELI(713,100001)`, `(1E+4,100001)`); otherwise the bound
+/// `I_n(x) <= (x/2)^n / n! * e^(x^2 / (4 (n + 1)))` (the series with `(n + k)! >= n! (n + 1)^k`)
+/// below `LN_COMPUTED_ZERO` and a recurrence that stays finite give 0: `BESSELI(100,100001)`,
+/// `(700,100001)`, `(8,1E+6)` and `(100,1E+7)` are 0 (probes/t2546-bessel-past-cap).
+fn bessel_i_past_cap(n: i32, x: f64) -> f64 {
+    if n > EXCEL_MAX_ORDER {
+        return f64::NAN;
+    }
+    if x == 0.0 {
+        return 0.0;
+    }
+    let ax = x.abs();
+    let order = f64::from(n);
+    let ln_bound =
+        order * (ax / 2.0).ln() - ln_gamma(order + 1.0) + ax * ax / (4.0 * (order + 1.0));
+    if ln_bound < LN_COMPUTED_ZERO && miller_stays_finite(in_start_order(n), 2.0 / ax) {
+        0.0
+    } else {
+        f64::NAN
+    }
+}
 
 // This are somewhat lower precision than the BesselJ and BesselY
 
@@ -47,7 +86,8 @@ pub(crate) fn bessel_i0(x: f64) -> f64 {
         p1 + y * (p2 + y * (p3 + y * (p4 + y * (p5 + y * (p6 + y * p7)))))
     } else {
         let y = k1 / ax;
-        ((ax).exp() / (ax).sqrt())
+        // Excel's own EXP: the platform exp is 2 ulps off `BESSELI(100.21..,5)` (engineering.md, T-2548).
+        (excel_exp(ax) / (ax).sqrt())
             * (q1
                 + y * (q2
                     + y * (q3 + y * (q4 + y * (q5 + y * (q6 + y * (q7 + y * (q8 + y * q9))))))))
@@ -83,7 +123,7 @@ pub(crate) fn bessel_i1(x: f64) -> f64 {
         x * (p1 + y * (p2 + y * (p3 + y * (p4 + y * (p5 + y * (p6 + y * p7))))))
     } else {
         let y = k1 / ax;
-        let result = ((ax).exp() / (ax).sqrt())
+        let result = (excel_exp(ax) / (ax).sqrt())
             * (q1
                 + y * (q2
                     + y * (q3 + y * (q4 + y * (q5 + y * (q6 + y * (q7 + y * (q8 + y * q9))))))));
@@ -95,13 +135,15 @@ pub(crate) fn bessel_i1(x: f64) -> f64 {
 }
 
 pub(crate) fn bessel_i(n: i32, x: f64) -> f64 {
-    let accuracy = 40;
-    let large_number = 1e10;
-    let small_number = 1e-10;
-
     // The order cap bounds the downward recurrence below (about 2n steps).
-    if !(0..=MAX_ORDER).contains(&n) {
+    if n < 0 {
         return f64::NAN;
+    }
+    if x.abs() > BESSELI_OVERFLOW_X {
+        return f64::NAN;
+    }
+    if n > MAX_ORDER {
+        return bessel_i_past_cap(n, x);
     }
 
     if n == 0 {
@@ -117,23 +159,28 @@ pub(crate) fn bessel_i(n: i32, x: f64) -> f64 {
 
     // I_n(x) overflows long before 1e10: Excel is `#NUM!` for every order from x = 710 on, such as
     // `BESSELI(1E+15,2)` (probes/eng-besselk-underflow-bit-shift), so the overflow is returned.
-    if x.abs() > large_number {
+    if x.abs() > MILLER_RESCALE {
         return f64::INFINITY;
     };
+    in_miller(n, x)
+}
 
+/// BESSELI's Miller downward recurrence for `n >= 2`, `0 < |x| <= MILLER_RESCALE`, at any order
+/// (the callers cap it).
+pub(super) fn in_miller(n: i32, x: f64) -> f64 {
     let tox = 2.0 / x.abs();
     let mut bip = 0.0;
     let mut bi = 1.0;
     let mut result = 0.0;
-    let m = 2 * (((accuracy * n) as f64).sqrt().trunc() as i32 + n);
+    let m = in_start_order(n) as i32;
 
     for j in (1..=m).rev() {
         (bip, bi) = (bi, bip + (j as f64) * tox * bi);
         // Prevent overflow
-        if bi.abs() > large_number {
-            result *= small_number;
-            bi *= small_number;
-            bip *= small_number;
+        if bi.abs() > MILLER_RESCALE {
+            result *= MILLER_RESCALE_FACTOR;
+            bi *= MILLER_RESCALE_FACTOR;
+            bip *= MILLER_RESCALE_FACTOR;
         }
         if j == n {
             result = bip;

@@ -1,0 +1,135 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "s",
+    "v": "Sun"
+   },
+   "A10": {
+    "t": "s",
+    "v": "Sonntag"
+   },
+   "A11": {
+    "t": "s",
+    "v": "12 Sat"
+   },
+   "A12": {
+    "t": "s",
+    "v": "Sun 1"
+   },
+   "A13": {
+    "t": "s",
+    "v": "1900 Sunday"
+   },
+   "A14": {
+    "t": "s",
+    "v": "a aa"
+   },
+   "A15": {
+    "t": "s",
+    "v": "aa a"
+   },
+   "A16": {
+    "t": "s",
+    "v": "Suna"
+   },
+   "A17": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "A18": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A19": {
+    "t": "s",
+    "v": "Sun Sun"
+   },
+   "A2": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "A20": {
+    "t": "s",
+    "v": "24 Sun"
+   },
+   "A21": {
+    "t": "s",
+    "v": "x AAa"
+   },
+   "A22": {
+    "t": "s",
+    "v": "x aAA"
+   },
+   "A23": {
+    "t": "s",
+    "v": "x aAa"
+   },
+   "A24": {
+    "t": "s",
+    "v": "xSun"
+   },
+   "A25": {
+    "t": "s",
+    "v": "Sunx"
+   },
+   "A26": {
+    "t": "s",
+    "v": "Fri"
+   },
+   "A27": {
+    "t": "s",
+    "v": "Sat"
+   },
+   "A28": {
+    "t": "s",
+    "v": "Wed"
+   },
+   "A29": {
+    "t": "s",
+    "v": "Sat PM"
+   },
+   "A3": {
+    "t": "s",
+    "v": "aAa"
+   },
+   "A30": {
+    "t": "s",
+    "v": "Sun A"
+   },
+   "A4": {
+    "t": "s",
+    "v": "aaA"
+   },
+   "A5": {
+    "t": "s",
+    "v": "Aaa"
+   },
+   "A6": {
+    "t": "s",
+    "v": "AAa"
+   },
+   "A7": {
+    "t": "s",
+    "v": "Sunday"
+   },
+   "A8": {
+    "t": "s",
+    "v": "\u65e5"
+   },
+   "A9": {
+    "t": "s",
+    "v": "So"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a73270002c9dfd0e5dd72ed0040b08322a340cc2c0fa1a2eca6a6fef3c4119be",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-25T19:16:46+00:00",
+  "version": null,
+  "workbook_name": "7a02363c7f1cb01fe662c5f3164fc91b0e36b4f0909e28b56e6c60d0c2f8f79f.xlsx"
+ }
+}

@@ -1,17 +1,8 @@
-#![allow(clippy::unwrap_used)]
-
-use crate::{
-    formatter::{
-        format::{format_number, format_text_value, FormatContext},
-        locale_tag::{resolve, LocaleTag},
-    },
-    locale::get_locale,
+use super::text;
+use crate::formatter::{
+    format::format_text_value,
+    locale_tag::{resolve, LocaleTag},
 };
-
-fn text(value: f64, format: &str) -> String {
-    let ctx = FormatContext::new(get_locale("en").unwrap());
-    format_number(value, format, &ctx).text
-}
 
 // Values from probes/text-locale-date-names, text-locale-name-tables and text-locale-am-neutral.
 
@@ -79,8 +70,13 @@ fn tags_resolve_like_excel() {
     assert_eq!(names("fr-XX"), Some("mars"));
     assert_eq!(names("de"), Some("März"));
     assert_eq!(names("400"), Some("March"));
+    // Lunar calendar digits (probes/text-locale-lunar-edges, text-locale-lunar-tokens A61-A74).
+    assert_eq!(names("11040C"), Some("三月"));
+    assert_eq!(names("E0412"), Some("삼월"));
+    assert_eq!(names("120411"), Some("March"));
+    assert_eq!(names("6040C"), Some("Rabi' Aoual"));
     for silent in [
-        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "11040C", "40C,1", "+40C",
+        "", "zzz", "xx", "FFFF", "40C0", "0", "2000000", "40C,1", "+40C",
     ] {
         assert_eq!(resolve(silent), LocaleTag::Silent, "{silent}");
     }
@@ -149,4 +145,112 @@ fn buddhist_and_calendar_tokens_under_a_tag() {
     assert_eq!(text(45000.0, "[$-40C]B2mmmm"), "mars");
     assert_eq!(text(45000.0, "[$-401]B2yyyy-mm-dd"), "2023-03-15");
     assert_eq!(text(45000.0, "B1[$-411]g|e"), "R|5");
+}
+
+// probes/t1924-locale-tag-extended-hex and text-locale-calendars A136-A142 (T-1924).
+#[test]
+fn a_tag_neither_hex_nor_bcp47_reads_as_extended_hex() {
+    // Letters count from 10 in either case, `_` from `0` (47), `~` and `{` from `a`.
+    assert_eq!(text(45000.0, "[$-g]mmmm"), "marzo");
+    assert_eq!(text(45000.0, "[$-h]mmmm|e"), "3月|5");
+    assert_eq!(text(45000.0, "[$-3gC]mmmm"), "mars");
+    assert_eq!(text(45000.0, "[$-2wC]mmmm"), "mars");
+    assert_eq!(text(45000.0, "[$-6g40C]mmmm|yyyy"), "มีนาคม|2566");
+    assert_eq!(text(45000.0, "[$-r]mmmm|dddd"), "marec|streda");
+    // An LCID with a sublanguage and no table has no locale: 0x2412 is not Korean.
+    assert_eq!(text(45000.0, "[$-x_y]mmmm|yyyy-mm-dd"), "March|2023-03-15");
+    assert_eq!(text(0.75, "[$-Gg]h A/P"), "6 P");
+    assert_eq!(text(0.75, "[$-zzzz]h A/P"), "6 P");
+    // A BCP-47 language still comes first (`fr-FR_x` is French).
+    assert_eq!(text(45000.0, "[$-fr-FR_x]mmmm"), "mars");
+}
+
+#[test]
+fn a_calendar_digit_over_an_lcid_without_a_locale_keeps_its_date() {
+    // de_DE is 0xE0FDE and en_US 0xFA0FC (calendars E and F): lunar dates with en-US names.
+    assert_eq!(
+        text(45000.0, "[$-de_DE]mmmm|yyyy-mm-dd|dddd|e"),
+        "February|2023-02-24|Wednesday|2023"
+    );
+    assert_eq!(
+        text(45000.0, "[$-en_US]mmmm|yyyy-mm-dd"),
+        "February|2023-02-24"
+    );
+    assert_eq!(
+        text(45000.0, "[$-E08DE]mmmm|yyyy-mm-dd"),
+        "February|2023-02-24"
+    );
+    // Thai and Arabic calendars keep their own names; A/P stays as written.
+    assert_eq!(text(45000.0, "[$-708DE]mmmm|yyyy"), "มีนาคม|2566");
+    assert_eq!(text(45000.0, "[$-a_b_c]mmmm|dddd"), "مارس|الأربعاء");
+    assert_eq!(text(0.75, "[$-E08DE]h A/P"), "6 P");
+    assert_eq!(text(0.75, "[$-708DE]h AM/PM"), "6 PM");
+    // LCID 0 is one too (T-2764's cells).
+    assert_eq!(text(45000.0, "[$-110000]mmmm|d"), "February|24");
+    assert_eq!(text(45000.0, "[$-120000]mmmm|d"), "February|24");
+    assert_eq!(text(45000.0, "[$-E0000]mmmm|dddd"), "February|Wednesday");
+    // A lunar digit wins over a `B2` before the tag (probes/text-locale-lunar-tokens A79).
+    assert_eq!(text(45300.0, "B2[$-110409]yyyy|m"), "2023|12");
+}
+
+#[test]
+fn hijri_under_a_tag() {
+    // probes/t2729-hijri-locale-tag and t2729-hijri-locale-tag-names (excel-graph, 2026-10-27).
+    assert_eq!(
+        text(45000.0, "[$-60409]yyyy-mm-dd|mmm|dddd"),
+        "1444-08-23|Sha'ban|AlArbia'a"
+    );
+    assert_eq!(text(45000.0, "[$-6040C]mmmm|ddd"), "Chaaban|mer.");
+    assert_eq!(text(45000.0, "[$-6041F]mmmm|ddd"), "Şaban|Çar");
+    assert_eq!(text(45000.0, "[$-60401]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "[$-608DE]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "[$-60409]yy|e|g|b|bbbb"), "44|1444||44|1444");
+    assert_eq!(text(45000.0, "B2[$-40C]mmmm|yyyy"), "Chaaban|1444");
+    assert_eq!(text(45000.0, "B2[$-0]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "B2[$-FFFF]mmmm|dddd"), "شعبان|الأربعاء");
+    assert_eq!(text(45000.0, "B2mmmm[$-40C]"), "Chaaban");
+    // Other calendar digits win over the prefix; an unresolved tag leaves a bare `B2`.
+    assert_eq!(text(45000.0, "B2[$-10409]yyyy|mmmm"), "2023|March");
+    assert_eq!(text(45000.0, "B2[$-zzz]mmmm|dddd"), "شعبان|السبت");
+    // A second calendar prefix after a tag is #VALUE!; before it, it is not.
+    assert_eq!(text(45000.0, "B2[$-409]B1mmmm"), "#VALUE!");
+    assert_eq!(text(45000.0, "[$-60409]B2B1mmmm"), "#VALUE!");
+    assert_eq!(text(45000.0, "B2B2[$-409]mmmm"), "Sha'ban");
+}
+
+#[test]
+fn mmm_takes_a_b2_section_to_the_arabic_path() {
+    // probes/t2729-hijri-locale-tag-names A83-A121, A239-A277.
+    assert_eq!(
+        text(45000.0, "B2[$-409]mmmm|mmm|mmmm"),
+        "Sha'ban|شعبان|شعبان"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-409]dddd|mmm|dddd"),
+        "AlArbia'a|شعبان|السبت"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-409]mmmmm|mmmm|dddd"),
+        "S|Sha'ban|AlArbia'a"
+    );
+    assert_eq!(text(45000.0, "[$-60409]B2mmm|dddd"), "Sha'ban|AlArbia'a");
+    assert_eq!(text(45000.0, "B2dddd|mmm|dddd"), "الأربعاء|شعبان|السبت");
+    assert_eq!(text(45000.0, "B2dddd|mmmmm"), "الأربعاء|الأربعاء");
+    // A number token first turns the first-name quirk off (probes/text-locale-calendars A124).
+    assert_eq!(
+        text(45000.0, "B2yyyy-mm-dd|mmmm|dddd"),
+        "1444-08-23|شعبان|الأربعاء"
+    );
+}
+
+// An empty text section prints nothing (gen-m10/0e3d8eba9432a18d T!A24; `TRUE` and `0;0;0;` in
+// probes/text-format-text-sections, T-2975); fewer than four sections leave the text as it is
+// (docs/excel-semantics/number-formats.md; three sections probed there, one or two unprobed).
+#[test]
+fn empty_text_section_is_empty() {
+    assert_eq!(format_text_value("text", ";;;").text, "");
+    assert_eq!(format_text_value("TRUE", ";;;").text, "");
+    assert_eq!(format_text_value("x", "4;b").text, "x");
+    assert_eq!(format_text_value("x", "0;0;General").text, "x");
+    assert_eq!(format_text_value("x", "0;0;0;").text, "");
 }

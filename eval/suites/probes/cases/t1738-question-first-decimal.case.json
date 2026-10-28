@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1738: TEXT of an integer under formats whose first decimal is a padding `?`: whether the point prints before the space.",
+ "tags": [
+  "M10",
+  "probe",
+  "number-format"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(1000,\"?.??\")",
+    "A2": "=TEXT(3,\"0.?\")",
+    "A3": "=TEXT(3,\"#.?\")",
+    "A4": "=TEXT(3,\"0.?0\")",
+    "A5": "=TEXT(3,\"0.??\")",
+    "A6": "=TEXT(1000,\"?.??E+00\")",
+    "A7": "=TEXT(3,\"0.?#\")",
+    "A8": "=TEXT(3,\"#,##0.??\")",
+    "A9": "=TEXT(0,\"?.??\")",
+    "A10": "=TEXT(-3,\"0.?\")"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "S!A1",
+  "S!A2",
+  "S!A3",
+  "S!A4",
+  "S!A5",
+  "S!A6",
+  "S!A7",
+  "S!A8",
+  "S!A9",
+  "S!A10"
+ ]
+}

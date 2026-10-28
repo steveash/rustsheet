@@ -24,6 +24,20 @@ static STRING_LITERAL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#""(?:[^"]|"")*""#).unwrap_or_else(|e| unreachable!("static regex: {e}"))
 });
 
+/// An add-in function call (`_xll.` prefix), case-insensitive.
+static ADD_IN_CALL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b_xll\.").unwrap_or_else(|e| unreachable!("static regex: {e}"))
+});
+
+/// Whether a formula calls an add-in function (`_xll.`), outside string literals. Decision 0027
+/// puts add-in functions out of scope: no engine can compute them (Excel's cached value came from
+/// the add-in), so such a cell is not scored (T-0462). Only the calling cell is left out; its
+/// dependents are scored, so a miss they show stays visible.
+#[must_use]
+pub fn calls_add_in(formula: &str) -> bool {
+    ADD_IN_CALL.is_match(&STRING_LITERAL.replace_all(formula, "\"\""))
+}
+
 /// Upper-cased function names called by a formula (string literals ignored).
 #[must_use]
 pub fn functions_in(formula: &str) -> BTreeSet<String> {
@@ -51,13 +65,40 @@ pub fn outer_call(formula: &str) -> Option<String> {
                 depth -= 1;
                 if depth == 0 {
                     let rest = &stripped[open + i + 1..];
-                    return rest.trim().is_empty().then(|| call[1].to_ascii_uppercase());
+                    let name = call[1].to_ascii_uppercase();
+                    let whole = rest.trim().is_empty()
+                        || (name == "LAMBDA" && is_invocation_list(rest.trim()));
+                    return whole.then_some(name);
                 }
             }
             _ => {}
         }
     }
     None
+}
+
+/// Whether `text` is one or more `(...)` groups and nothing else: the arguments a LAMBDA is
+/// invoked with (`(1)(2)`). A generated LAMBDA cell is always invoked, since a bare one is
+/// `#CALC!` (T-2677).
+fn is_invocation_list(text: &str) -> bool {
+    let mut depth = 0usize;
+    for (i, ch) in text.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                let Some(inner) = depth.checked_sub(1) else {
+                    return false;
+                };
+                depth = inner;
+            }
+            _ if depth == 0 && !ch.is_whitespace() => return false,
+            _ => {}
+        }
+        if depth == 0 && i + ch.len_utf8() == text.len() {
+            return ch == ')';
+        }
+    }
+    false
 }
 
 /// Whether a cell calling `called` counts toward parity: it calls no out-of-scope catalog function
@@ -70,6 +111,18 @@ pub fn calls_only_in_scope(catalog: &Catalog, called: &BTreeSet<String>) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn add_in_calls_are_found_outside_string_literals() {
+        // calipers pv26_003 Model!C875 (T-0462).
+        assert!(calls_add_in(
+            r#"=IFERROR(_xll.ciqfunctions.udf.CIQHI(MO.Ticker.CapIQ,"IQ_LASTSALEPRICE"),"N/A")"#
+        ));
+        assert!(calls_add_in("=_XLL.FOO(1)+1"));
+        assert!(!calls_add_in(r#"=CONCAT("_xll.FOO(",A1)"#));
+        assert!(!calls_add_in("=SUM(my_xll.range)"));
+        assert!(!calls_add_in("=_xlfn.XLOOKUP(1,A:A,B:B)"));
+    }
 
     #[test]
     fn extracts_function_names() {
@@ -85,6 +138,29 @@ mod tests {
         assert_eq!(outer_call(r#"LEN(")+(")"#).as_deref(), Some("LEN"));
         assert_eq!(outer_call("SUM('a (b)'!A1:A2)").as_deref(), Some("SUM"));
         for other in ["ABS(1)+SQRT(4)", "-ABS(1)", "A1", "ABS(1", "(ABS(1))"] {
+            assert_eq!(outer_call(other), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn an_invoked_lambda_is_a_lambda_outer_call() {
+        // Decision 0094; a bare LAMBDA is `#CALC!`, so generated cells invoke it (T-2677).
+        for lambda in [
+            "LAMBDA(x,x+1)(3)",
+            "=_xlfn.LAMBDA(_xlpm.x,_xlpm.x)(1)",
+            "LAMBDA(x,x)(1)(2)",
+            "LAMBDA(x,x)(SUM(1,2)) ",
+        ] {
+            assert_eq!(outer_call(lambda).as_deref(), Some("LAMBDA"), "{lambda}");
+        }
+        for other in [
+            "LAMBDA(x,x)(1)+1",
+            "-LAMBDA(x,x)(1)",
+            "LAMBDA(x,x)(1",
+            "LAMBDA(x,x)(1))",
+            "LAMBDA(x,x)(1)A1",
+            "ABS(1)(2)",
+        ] {
             assert_eq!(outer_call(other), None, "{other}");
         }
     }

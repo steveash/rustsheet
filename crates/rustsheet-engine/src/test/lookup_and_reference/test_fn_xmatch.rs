@@ -393,3 +393,118 @@ fn linear_modes_over_blanks_match_excel() {
         );
     }
 }
+
+// ── fractional modes ──────────────────────────────────────────────────────────
+
+#[test]
+fn fractional_modes_floor_but_snap_just_below_an_integer() {
+    // probes/t2656-xmatch-mode-near-integer J2, -rounding, -snap-edge-fine and
+    // t2656-xlookup-mode-snap-edge B17, C2 (excel-graph, T-2656):
+    // a mode is floored, so -0.4 reads -1, but one within 2^-22 + 2^-33 below an integer (half
+    // that below a negative one) reads that integer.
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=XMATCH(FALSE,{1,2,3},0,0.5^1E-15)", "#N/A"),
+        ("A2", "=XMATCH(3,{3,1,2,3,0},0,1-2^-22*(1+2^-11))", "1"),
+        (
+            "A3",
+            "=XMATCH(3,{3,1,2,3,0},0,1-2^-22*(1+9*2^-14))",
+            "#VALUE!",
+        ),
+        (
+            "A4",
+            "=XMATCH(3,{3,1,2,3,0},0,-(2^-23*(1+2^-11)))",
+            "#VALUE!",
+        ),
+        ("A5", "=XMATCH(3,{3,1,2,3,0},0,-(2^-23*(1+9*2^-14)))", "4"),
+        ("A6", "=XMATCH(3,{3,1,2,3,0},0,-1.5)", "1"),
+        ("A7", "=XMATCH(2.5,{1,2,3},-0.4)", "2"),
+        ("A8", "=XMATCH(2.5,{1,2,3},1-2^-52)", "3"),
+        (
+            "A9",
+            "=XLOOKUP(3,{3,1,2,3,0},{10,20,30,40,50},\"nf\",0,-1-1E-8)",
+            "40",
+        ),
+        (
+            "A10",
+            "=XLOOKUP(2.5,{1,2,3},{10,20,30},\"nf\",1-1E-7)",
+            "30",
+        ),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}
+
+#[test]
+fn regex_mode_reads_values_as_text_in_xmatch_and_xlookup() {
+    // probes/t2669-xlookup-regex-mode and -blanks (excel-graph, T-2669): match_mode 3 finds the
+    // pattern anywhere, case-sensitively; numbers, booleans and blanks read as their text, on both
+    // sides; a binary search or an invalid pattern is #VALUE!.
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=XMATCH(\"TRUE\",{\"x\";TRUE},3)", "2"),
+        ("A2", "=XMATCH(\"true\",{\"x\";TRUE},3)", "#N/A"),
+        ("A3", "=XMATCH(12.5,{\"x\";12.5},3)", "2"),
+        ("A4", "=XMATCH(FALSE,{TRUE;FALSE},3)", "2"),
+        ("A5", "=XMATCH(\"^$\",C1:C2,3)", "1"),
+        ("A6", "=XLOOKUP(\"o\",{\"x\";\"Dog\"},{1;2},\"nf\",3)", "2"),
+        (
+            "A7",
+            "=XLOOKUP(\"zzz\",{\"x\";\"Dog\"},{1;2},\"nf\",3)",
+            "nf",
+        ),
+        (
+            "A8",
+            "=XLOOKUP(\"(\",{\"x\";\"Dog\"},{1;2},\"nf\",3)",
+            "#VALUE!",
+        ),
+        (
+            "A9",
+            "=XLOOKUP(\"o\",{\"x\";\"Dog\"},{1;2},\"nf\",3,2)",
+            "#VALUE!",
+        ),
+        ("A10", "=XLOOKUP(\"E\",{1E+20;0.00001},{1;2},\"nf\",3)", "1"),
+    ];
+    model._set("C2", "x");
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}
+
+#[test]
+fn regex_mode_reads_pcre2_syntax() {
+    // probes/t2680-lookup-regex-pcre2 (excel-graph, T-2680): the lookups' regex mode runs on the
+    // REGEX* engine, so lookbehind, backreferences, `\K` and possessive groups work.
+    let mut model = new_empty_model();
+    let cells = [
+        (
+            "A1",
+            "=XMATCH(\"(?<=D)og\",{\"cat\";\"Dog\";\"dog\"},3)",
+            "2",
+        ),
+        ("A2", "=XMATCH(\"(a)\\1\\1\",{\"cat\";\"aaa\"},3)", "2"),
+        (
+            "A3",
+            "=XLOOKUP(\"foo\\Kbar\",{\"x\";\"foobar\"},{1;2},\"nf\",3)",
+            "2",
+        ),
+        ("A4", "=XMATCH(\"a++a\",{\"aaa\"},3)", "#N/A"),
+        ("A5", "=XMATCH(\"\\p{Lu}\",{\"cat\";\"Dog\"},3)", "2"),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}

@@ -1,8 +1,8 @@
 # Calculation: circular references, iterative calculation, data tables
 
 Iterative calculation (T-0447) and data tables (T-0441) are implemented without the Phase 2
-dependency graph (M3, SPEC-0002 / T-0401); a circular reference without iteration is 0
-(T-0445, below). A case sets iteration with the spec's top-level `"calculation"`
+dependency graph (M3, SPEC-0002 / T-0401); a circular reference without iteration keeps the
+cells' values from before the recalculation, 0 for a new formula (T-0445, T-0461, below). A case sets iteration with the spec's top-level `"calculation"`
 and data tables with a sheet's `"data_tables"`
 (tools/src/rustsheet_tools/spec2xlsx.py, T-0428).
 
@@ -27,18 +27,29 @@ left. A cell that reads a formula cell not yet calculated is abandoned, moved to
 precedent, and re-run from its start at its new place; the cells in between run first. A sheet moved after loading keeps its load position, and `calcChain.xml` does not change
 the order on a full-calc load. Formulas entered or edited in a live session leave this order and
 are not reproducible from the file. The order is visible only through WEEKNUM's stale return_type
-state, the one calc-order-dependent value known so far (dates.md, "WEEKNUM's stale return_type
-state"); iterative calculation sweeps a cycle in forward row-major order instead (below).
+state (dates.md, "WEEKNUM's stale return_type state") and AMORDEGRC's left-over value below period 1
+(financial.md, "AMORDEGRC below period 1", which follows the same order: probes/amordegrc-fraction-state-n,
+-o, -p, -q), the calc-order-dependent values known so far; iterative calculation sweeps a cycle in forward row-major order instead (below).
 Evidence: probes/weeknum-stale-grid, -order-row, -order-column, -order-column-40, -order-2x3,
 -order-3x2, -sheet-order, -sheet-moved, -dependency, -precedent-between and -precedent-restart (excel-graph, 2026-10-19, T-1484);
 calcChain.xml and session edits: docs/research/t1484-weeknum-calc-order-2026-10-19.md.
 Ours: `Model::run_pass` evaluates spill anchors first, then every cell in forward storage order
-(sheet, row, column ascending). SPEC-0017 reproduces Excel's order where WEEKNUM's state needs it.
+(sheet, row, column ascending). SPEC-0017 reproduces Excel's order where WEEKNUM's or AMORDEGRC's
+state needs it (`OrderState`, decision 0131).
 Status: VERIFIED (excel-graph)
-Tasks: T-1484, T-2068, T-2069, T-2070
+Tasks: T-1484, T-2068, T-2069, T-2070, T-2825
 
-## A circular reference without iteration is 0, and so is every cell that reads it
-Rule: with iterative calculation off, every cell of a cycle is 0, with no error value: a
+## A circular reference without iteration keeps the cells' values from before the recalculation
+Rule: with iterative calculation off, every cell of a cycle, and every cell whose evaluation reads one, keeps the value
+it had before the recalculation, with no error value. In a loaded workbook that is the cached value; a formula never
+calculated (every cell of a spec probe, whose builder caches 0) is 0 in ours; Excel with no cached `<v>` is
+unprobed (T-0464). In fixtures/circular-keeps-cached-values the cached
+values are A1 `=B1+1` 5, B1 `=A1` 4, C1 `=A1*2` 999, D1 `=D1+1` 7, E1 `=D1+100` 0, F1 `=1+1` 55, G1 `=F1*3` 0, H1 `=C1+1` 0,
+I1 `=A1+F1` 0 and J1 `=IF(F1>100,A1,F1*10)` 0. After the recalculation, F1 is 2 and G1 6 (recalculated). A1 through E1,
+H1 and I1 keep 5, 4, 999, 7, 0, 0 and 0; I1 keeps its value though it also reads the changed F1. J1, which never evaluates its
+A1 branch, recalculates to 20. Calipers pv23_022, a Mac Excel model with two 3-statement loops, iteration off and `calcMode="manual"`, keeps
+its cached loop values, one-cell dynamic arrays (`cm="1"`, D88 `=D37`) included. The rest of this entry was probed on
+workbooks whose cached values are all 0, so each "is 0" below is "keeps 0". With no cached values, every cell of a cycle is 0: a
 self-reference `=A1+1`, `=A2`, and the 2- and 3-cell cycles `B1=C1+1, C1=B1+1` and `D1=E1+1,
 E1=F1+1, F1=D1+1`. A cell outside the cycle that reads it is also 0, whatever it computes:
 `=A1+10` is 0 (not 10), `=SUM(B1:C1)+5` is 0, and `=ISNUMBER(A1)` is the number 0 (not FALSE). So is a
@@ -53,12 +64,18 @@ Readers that take a reference without its value are not circular: `ISREF(A1)` TR
 `INDEX(A1:A2,2)` 7, `ROWS(OFFSET(A1,0,0,2,1))` 2; `INDIRECT("A1")` reads the value, so it is 0.
 Evidence: probes/circular-iteration-off (excel-graph, 2026-10-16, T-0428); probes/t0445-circular-readers
 (excel-graph, 2026-10-22, T-0445); probes/t0451-circular-spill-and-ref-readers (excel-graph, 2026-10-22, T-0451).
+Evidence (prior values): fixtures/circular-keeps-cached-values (excel-graph, 2026-10-25, T-0461); calipers
+pv23_022 (Excel-cached, and the same values from an excel-graph recalculation of the file, 2026-10-25).
 Ours: matches since T-0445, and the T-0451 probe passes in full (17/17). A read that closes a loop, or reads a cell
-already known to be circular, marks every cell on the evaluation stack circular, and a circular cell stores 0 and
-does not spill (`Model::mark_stack_circular`, crates/rustsheet-engine/src/circular.rs). An array anchor whose spill
-contradicts its own inputs, which the driver marks circular, is 0 the same way, and so are its readers.
+already known to be circular, marks every cell on the evaluation stack circular. A circular cell keeps its stored
+value, which is 0 for a formula never evaluated, and does not spill (`Model::mark_stack_circular` and
+`Model::circular_value`, crates/rustsheet-engine/src/circular.rs; T-0461). A spilling anchor on a loop is 0, and so are its
+readers. An array anchor whose spill contradicts its own inputs (which the driver marks circular) keeps a cached value
+when it is stored as a one-cell array, and is 0 otherwise. No probe covers an earlier spill kept on a loop, a loop
+member with no cached value, or a cached text, boolean or error on a loop (T-0464). The fixture is the reproducible
+evidence: pv23_022 is not vendored, and its file is in manual calculation mode.
 Status: VERIFIED (excel-graph)
-Tasks: T-0428, T-0401, T-0445, T-0451
+Tasks: T-0428, T-0401, T-0445, T-0451, T-0461, T-0464
 
 ## Iterative calculation sweeps the cycle in sheet order, in place
 Rule: with iteration on, each iteration recalculates the cycle's cells once in row-major sheet

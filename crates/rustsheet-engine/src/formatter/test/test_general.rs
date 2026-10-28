@@ -394,6 +394,8 @@ fn buddhist_year_era_and_calendar_tokens() {
         ("g", ""),
         ("B1", ""),
         ("B2", ""),
+        // Hijri 1317-12-09 (probes/t1613-hijri-b2 A34).
+        ("B2d", "9"),
         ("x d", "x 9"),
     ];
     for (format, expected) in cases {
@@ -403,7 +405,7 @@ fn buddhist_year_era_and_calendar_tokens() {
             "{format}"
         );
     }
-    for format in ["B", "dB", "a.b", "n", "E", "B2d", "0 General"] {
+    for format in ["B", "dB", "a.b", "n", "E", "0 General"] {
         assert!(
             format_number(100.0, format, &ctx).error.is_some(),
             "{format}"

@@ -337,6 +337,7 @@ mod tests {
                 from_excel: true,
                 listed_deviation: verdict == Verdict::Deviation,
                 graph_subnormal: false,
+                kind: crate::runner::CellKind::Scored,
             })
             .collect();
         CaseResult {
@@ -352,11 +353,13 @@ mod tests {
                 .filter(|v| **v == Verdict::Deviation)
                 .count(),
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis: 0,
             tags: Vec::new(),
             cells,
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            arguments: Vec::new(),
         }
     }
 

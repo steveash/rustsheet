@@ -1,0 +1,75 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2693: gen-m9/899f9555e67da2d6 Calc!A386 (LOGINV), where excel-graph shows 0 and the engine keeps a subnormal, with its `(x)=0` companion (decision 0042). Data is that case's Data sheet.",
+ "tags": [
+  "M9",
+  "probe",
+  "subnormal"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A10": "x",
+    "A11": -2.5,
+    "A12": true,
+    "A2": "abc",
+    "A3": " x ",
+    "A4": " x ",
+    "A5": -0.5,
+    "A6": 7,
+    "A8": -2.5,
+    "A9": 0.1,
+    "B11": 1e-15,
+    "B12": "a",
+    "B2": "a*",
+    "B4": 0.3,
+    "B5": 7,
+    "B6": 2.5,
+    "B7": -2.5,
+    "B8": "a",
+    "B9": "#N/A",
+    "C1": 0.2,
+    "C10": 2.5,
+    "C11": 0.2,
+    "C2": 100,
+    "C6": 0.3,
+    "C8": 42,
+    "C9": -2.5,
+    "D1": 2,
+    "D10": 3.14159,
+    "D11": "TRUE",
+    "D12": 2.5,
+    "D2": 0.1,
+    "D3": 0.3,
+    "D5": "1.5",
+    "D6": 1.005,
+    "D7": false,
+    "D8": 1000000000000000.0,
+    "D9": 0,
+    "E1": 1.005,
+    "E11": -2.5,
+    "E2": -0.5,
+    "E3": false,
+    "E4": 42,
+    "E5": "TRUE",
+    "E6": 0.1,
+    "E7": 7,
+    "E8": 0.1,
+    "E9": 2.5
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=LOGINV(1E-20,WEEKNUM(61,1),(Data!$D3+BITAND(765,337)))",
+    "A2": "=(LOGINV(1E-20,WEEKNUM(61,1),(Data!$D3+BITAND(765,337))))=0"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Calc!A1",
+  "Calc!A2"
+ ]
+}

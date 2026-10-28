@@ -4,7 +4,7 @@ title: "Fit VDB's switching schedule from a fractional start period"
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: opus
 campaign: visible
@@ -56,6 +56,12 @@ Examples:
 Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A336
 
+Handed over by T-2492. Once T-2492 read the text no_switch, these cells are left with only the fractional-start value,
+visibly off:
+- gen-m9/762cd0e4ec9a7aa9 Calc!A379 `=VDB(17334,389,36,0.2,9,3,"FALSE")`: Excel 9114.101951893414, ours 9123.7036444456
+- probes/t2492-vdb-ddb-arguments A1, A9, A10 (the same call, no_switch FALSE: 9114.101951893414) and A11, A12
+  (`VDB(17334,389,36,0.2,9,TRUE,FALSE)`: Excel 4147.934913793104, ours 4148.285714285714)
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -73,3 +79,6 @@ Replacing that path should delete `vdb_total_depr`, whose `straight_line` parame
 
 ## Visible-parity stage
 Decision 0083: the cells listed under Context are visibly off (VDB from a fractional start period differs from the 3rd digit), so this task is in the campaign. Its target is that every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 exactly 0), or has Excel's type, error and text; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet when that target is reached move to a follow-up task filed without the key and named in the Outcome (decision 0083).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+It owns all 12 visibly-off VDB cells and alone lifts VDB. Priority raised so it leads its stage in M9.

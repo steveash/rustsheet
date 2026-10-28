@@ -3,7 +3,7 @@ id: T-2125
 title: "COUPNUM in a 1904 workbook is #NUM! when the previous coupon falls before 1904 (fin-coupon-walk-bounds-1904 A5-A6)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,8 +31,13 @@ The fix is drafted in docs/research/excel-1904-drift-2026-10.md. It is parked be
 changed 111 cells. T-2337 settles the 1904 financial rules first.
 
 ## Acceptance criteria
-- [ ] probes/fin-coupon-walk-bounds-1904 A5 and A6 pass, with a probe sweep backing the rule in financial.md.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/fin-coupon-walk-bounds-1904 A5 and A6 pass, with a probe sweep backing the rule in financial.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 1904 schedule break near 9999 (T-1440).
+
+## Outcome
+Landed by T-2337 (2026-10-27). COUPNUM in a 1904 workbook now reads the date itself (`DateReading::Calendar`) and is
+`#NUM!` for a previous coupon before `DateSystem::first_coupon_1900_serial` (1904-01-01); fin-coupon-walk-bounds-1904 A5,
+A6 and every fin-coupnum-1904-* cell pass. The parked COUPNUM-only draft was dropped for that general rule.

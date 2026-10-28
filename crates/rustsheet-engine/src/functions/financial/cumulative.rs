@@ -183,7 +183,7 @@ impl Periods {
         let mut sum = 0.0;
         for offset in 0..=self.offsets() {
             let period = self.start + f64::from(offset);
-            let (interest, _) = period_payments(
+            let interest = period_payments(
                 self.rate,
                 period,
                 self.nper,
@@ -191,6 +191,7 @@ impl Periods {
                 0.0,
                 self.period_start,
             )
+            .0
             .ok()?;
             sum += interest;
         }

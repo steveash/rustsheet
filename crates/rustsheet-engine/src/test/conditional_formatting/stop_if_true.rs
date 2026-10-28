@@ -132,7 +132,7 @@ fn model_with_stop_if_true_over_data_bar() -> crate::Model {
 
 #[test]
 fn test_stop_if_true_matched_cell_has_no_data_bar() {
-    let model = model_with_stop_if_true_over_data_bar();
+    let mut model = model_with_stop_if_true_over_data_bar();
     // A4=4 and A5=5 match the stop_if_true rule → DataBar must be suppressed.
     let style_a4 = model.get_extended_style_for_cell(0, 4, 1).unwrap();
     assert!(
@@ -148,7 +148,7 @@ fn test_stop_if_true_matched_cell_has_no_data_bar() {
 
 #[test]
 fn test_stop_if_true_matched_cell_gets_matching_rule_fill() {
-    let model = model_with_stop_if_true_over_data_bar();
+    let mut model = model_with_stop_if_true_over_data_bar();
     let style_a4 = model.get_extended_style_for_cell(0, 4, 1).unwrap();
     assert_eq!(
         style_a4.style.fill.color,
@@ -159,7 +159,7 @@ fn test_stop_if_true_matched_cell_gets_matching_rule_fill() {
 
 #[test]
 fn test_stop_if_true_unmatched_cell_still_gets_data_bar() {
-    let model = model_with_stop_if_true_over_data_bar();
+    let mut model = model_with_stop_if_true_over_data_bar();
     // A1=1, A2=2, A3=3 do NOT match the stop_if_true rule → DataBar should still apply.
     for row in 1..=3 {
         let style = model.get_extended_style_for_cell(0, row, 1).unwrap();

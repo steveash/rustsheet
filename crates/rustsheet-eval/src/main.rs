@@ -4,6 +4,7 @@
 //! rustsheet-eval suites                         # list suites
 //! rustsheet-eval run [--suite S] [--filter X]   # run + write eval/runs/latest/{report.json,report.md}
 //! rustsheet-eval check                          # gate: fail on any baseline or visible-parity regression
+//! rustsheet-eval check --evidence-floor         # the gate and the evidence floor from one run
 //! rustsheet-eval update-baseline                # ratchet baselines and visible parity (refuses regressions)
 //! rustsheet-eval evidence-floor [--update]      # ratchet functions below the evidence floor
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
@@ -33,8 +34,10 @@ use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::lift_kinds;
 use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
+use rustsheet_eval::phase1_exceptions::Phase1Exceptions;
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
+use rustsheet_eval::run_meta::RunMeta;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
 use rustsheet_eval::text_expect;
@@ -88,11 +91,20 @@ enum Cmd {
         /// Failing examples shown per function in report.md.
         #[arg(long, default_value_t = 3)]
         examples: usize,
+        /// Also leave out of the Phase 1 rate the cells of eval/runs/desktop-owned.tsv, which
+        /// `scripts/desktop_owned.py` writes (decision 0143; `make eval` passes it).
+        #[arg(long)]
+        desktop_owned: bool,
     },
     /// Fail if anything in the committed baselines no longer passes.
     Check {
         #[command(flatten)]
         sel: Selection,
+        /// Also judge the evidence floor (as `evidence-floor` does) from the same run: the other
+        /// vendored suites run beside the gate suites, once (T-2761). `--timeout` applies to the
+        /// whole run; standalone `evidence-floor` uses the 60 s default, as `make eval-gates` does.
+        #[arg(long)]
+        evidence_floor: bool,
     },
     /// Rewrite baselines to the current passing set (ratchet).
     UpdateBaseline {
@@ -264,20 +276,22 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
-/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051)
-/// and the named exit exceptions (decision 0087).
+/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051),
+/// the named exit exceptions (decision 0087) and the Phase 1 rate exceptions (decision 0134).
 struct Milestones {
     lists: Vec<MilestoneList>,
     rules: Rules,
     exceptions: ExitExceptions,
+    phase1_exceptions: Phase1Exceptions,
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
 /// a case that no suite discovers, or a cell line names a cell its case holds no expectation for.
-/// A malformed line of the exit exceptions fails too.
+/// A malformed line of the exit exceptions or the Phase 1 rate exceptions fails too.
 fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
     let exceptions = ExitExceptions::load(root)?;
+    let phase1_exceptions = Phase1Exceptions::load(root)?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
         let mut files = BTreeMap::new();
@@ -303,6 +317,7 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
         lists,
         rules,
         exceptions,
+        phase1_exceptions,
     })
 }
 
@@ -339,7 +354,13 @@ fn score_milestones(
     report.catalog_coverage =
         catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
     let generated_names: Vec<&str> = generated.keys().map(String::as_str).collect();
-    report.v15_checkpoint = v15_checkpoint::summarize(catalog, results, report, &generated_names);
+    report.v15_checkpoint = v15_checkpoint::summarize(
+        catalog,
+        results,
+        report,
+        &generated_names,
+        &milestones.phase1_exceptions,
+    );
     report.milestone_exit = milestone_exit::summarize(report);
 }
 
@@ -424,32 +445,52 @@ fn visible_parity_gate(
     })
 }
 
+/// The baseline gate (`update` `None`) or the baseline ratchet; with `floor`, also the evidence
+/// floor judged from the same run, so `check --evidence-floor` passes exactly when `check` and
+/// `evidence-floor` both pass (T-2761).
 fn cmd_check(
     root: &Path,
     sel: &Selection,
     update: Option<visible_parity::Update>,
+    floor: bool,
 ) -> Result<ExitCode> {
     if sel.filter.is_some() {
         bail!(
             "--filter is not allowed for baseline operations (partial runs look like regressions)"
         );
     }
-    let suites = select(root, sel, true)?;
-    check_deviations(root, &suites)?;
+    if floor && !sel.suites.is_empty() {
+        bail!("--evidence-floor counts every vendored suite; it cannot be combined with --suite");
+    }
+    let gate = select(root, sel, true)?;
+    check_deviations(root, &gate)?;
     let catalog = Catalog::load(root)?;
     let milestones = load_milestones(root, &catalog)?;
-    let results = execute(&suites, sel);
+    let gate_len = gate.len();
+    let run = if floor {
+        evidence_floor::plan_run(gate, Suite::load_all(&root.join("eval/suites"))?)
+    } else {
+        gate
+    };
+    // `plan_run` keeps the gate suites first, unchanged.
+    let suites = &run[..gate_len];
+    let mut results = execute(&run, sel);
+    let floor_results = floor.then(|| evidence_floor::floor_results(&run, &results));
+    if floor {
+        // The baseline gate judges the gate suites' results only, as a plain `check` does.
+        results.retain(|r| suites.iter().any(|s| s.manifest.name == r.suite));
+    }
     let mut report = RunReport::build(
         RustSheetEngine.name(),
         &results,
         &RustSheetEngine.implemented_functions(),
         &catalog,
     );
-    score_milestones(&milestones, &catalog, &suites, &results, &mut report);
+    score_milestones(&milestones, &catalog, suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
     let mut visible = VisibleCount::default();
-    for suite in &suites {
+    for suite in suites {
         if suite.manifest.baseline == BaselineMode::None {
             continue;
         }
@@ -502,6 +543,11 @@ fn cmd_check(
     if sel.suites.is_empty() && !visible_parity_gate(root, visible, update)? {
         failed = true;
     }
+    if let Some(floor_results) = floor_results {
+        if !evidence_floor_gate(root, &catalog, &floor_results, false, false)? {
+            failed = true;
+        }
+    }
     Ok(if failed {
         ExitCode::FAILURE
     } else {
@@ -525,7 +571,7 @@ fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result
     let sel = Selection {
         suites: Suite::load_all(&root.join("eval/suites"))?
             .into_iter()
-            .filter(|s| s.manifest.fetch.is_none())
+            .filter(evidence_floor::counts)
             .map(|s| s.manifest.name)
             .collect(),
         filter: None,
@@ -534,11 +580,30 @@ fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result
     let suites = select(root, &sel, false)?;
     let catalog = Catalog::load(root)?;
     let results = execute(&suites, &sel);
+    Ok(
+        if evidence_floor_gate(root, &catalog, &results, update, allow_increase)? {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        },
+    )
+}
+
+/// Holds the number of functions below the floor in `results` (a run of the vendored suites) to
+/// [`LOCK_PATH`], recording it on `update` when [`evidence_floor::may_record`] allows; returns
+/// whether the gate passes (decision 0062).
+fn evidence_floor_gate(
+    root: &Path,
+    catalog: &Catalog,
+    results: &[CaseResult],
+    update: bool,
+    allow_increase: bool,
+) -> Result<bool> {
     let report = RunReport::build(
         RustSheetEngine.name(),
-        &results,
+        results,
         &RustSheetEngine.implemented_functions(),
-        &catalog,
+        catalog,
     );
     let count = report.below_floor.len();
     let lock = Lock::read(root)?;
@@ -575,11 +640,7 @@ fn cmd_evidence_floor(root: &Path, update: bool, allow_increase: bool) -> Result
             false
         }
     };
-    Ok(if ok {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    })
+    Ok(ok)
 }
 
 fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
@@ -643,7 +704,7 @@ fn run() -> Result<ExitCode> {
             for s in Suite::load_all(&root.join("eval/suites"))? {
                 let n = s.cases().map_or(0, |c| c.len());
                 let cases = match s.fetch_state() {
-                    FetchState::NotFetched => "not fetched".to_string(),
+                    FetchState::NotFetched => rustsheet_eval::run_meta::NOT_FETCHED.to_string(),
                     _ => format!("{n} cases"),
                 };
                 println!(
@@ -678,11 +739,21 @@ fn run() -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Run { sel, out, examples } => {
+        Cmd::Run {
+            sel,
+            out,
+            examples,
+            desktop_owned,
+        } => {
             let suites = select(&root, &sel, false)?;
             check_deviations(&root, &suites)?;
             let catalog = Catalog::load(&root)?;
-            let milestones = load_milestones(&root, &catalog)?;
+            let mut milestones = load_milestones(&root, &catalog)?;
+            if desktop_owned {
+                milestones.phase1_exceptions =
+                    std::mem::take(&mut milestones.phase1_exceptions).load_desktop_owned(&root)?;
+            }
+            let started = std::time::SystemTime::now();
             let results = execute(&suites, &sel);
             let mut report = RunReport::build(
                 RustSheetEngine.name(),
@@ -691,6 +762,8 @@ fn run() -> Result<ExitCode> {
                 &catalog,
             );
             score_milestones(&milestones, &catalog, &suites, &results, &mut report);
+            let all = Suite::load_all(&root.join("eval/suites"))?;
+            report.run = RunMeta::new(&root, started, &all, &suites);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(
@@ -702,7 +775,10 @@ fn run() -> Result<ExitCode> {
             println!("report: {}", out.join("report.md").display());
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Check { sel } => cmd_check(&root, &sel, None),
+        Cmd::Check {
+            sel,
+            evidence_floor,
+        } => cmd_check(&root, &sel, None, evidence_floor),
         Cmd::UpdateBaseline {
             sel,
             allow_regressions,
@@ -714,6 +790,7 @@ fn run() -> Result<ExitCode> {
                 allow_regressions,
                 lower: lower_visible_lock,
             }),
+            false,
         ),
         Cmd::EvidenceFloor {
             update,

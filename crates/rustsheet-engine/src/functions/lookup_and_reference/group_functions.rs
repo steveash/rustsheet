@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::{
+    area_budget::visit_units,
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{
@@ -24,8 +25,8 @@ use crate::{
     nested_array::{NestedArray, NestedKind},
 };
 
-use super::eta_min_args;
 use super::grouping::{at, empty_text, value_error, Relative, SetId};
+use crate::functions::kinds::arg_counts;
 
 /// What one aggregate cell is computed from: the rows of its group (or grid cell) and its
 /// relative set, the second argument of a two-argument function (SPEC-0006 `Aggregate`).
@@ -125,7 +126,7 @@ pub(crate) fn is_function_array(arg: &Node) -> bool {
 /// G!A281-A501, probes/groupby-eta-arity G!A1-A141 for the rest).
 fn eta_arity(kind: &Function) -> Option<usize> {
     let name = kind.to_localized_name(get_default_language());
-    let min = eta_min_args::min_args(&name);
+    let min = arg_counts::min_args(&name);
     match min {
         1 => Some(1),
         2 => Some(2),
@@ -609,6 +610,11 @@ impl Model {
             functions.refused = Some(error);
             return Err(ArrayNode::Error(Error::ERROR));
         }
+        // The call's visits go to the formula's work budget too (SPEC-0024); past it the formula
+        // is the budget's error (`with_area_budget`), whatever this cell holds.
+        if self.spend_work(visit_units(cost), cell).is_err() {
+            return Err(ArrayNode::Error(Error::VALUE));
+        }
         functions.visits = visits;
         let column_of = |rows: &[usize]| {
             CalcResult::Array(
@@ -674,33 +680,4 @@ fn transpose(grid: Vec<Vec<Element>>) -> Vec<Vec<Element>> {
         }
     }
     columns
-}
-
-#[cfg(test)]
-mod tests {
-    use super::eta_min_args::entries;
-
-    /// The table is generated from the catalog; it must list exactly the names whose minimum is not 1.
-    #[test]
-    fn table_matches_catalog() {
-        let catalog = include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../eval/catalog/excel-functions.tsv"
-        ));
-        let mut expected: Vec<(&str, u8)> = catalog
-            .lines()
-            .filter(|line| !line.starts_with('#'))
-            .skip(1)
-            .filter_map(|line| {
-                let mut columns = line.split('\t');
-                let name = columns.next()?;
-                let min: u8 = columns.nth(1)?.parse().ok()?;
-                (min != 1).then_some((name, min))
-            })
-            .collect();
-        expected.sort_unstable();
-        let mut actual: Vec<(&str, u8)> = entries().collect();
-        actual.sort_unstable();
-        assert_eq!(actual, expected);
-    }
 }

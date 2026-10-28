@@ -3,12 +3,12 @@ id: T-2096
 title: "T.INV.2T and TINV accept p in (1,2) and return the negative quantile"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -84,17 +84,17 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A186, A338, A376
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2256): these 48 known-failure lines (the T-2256 cells in Context) disappear from
+- [ ] (descoped, see Outcome) Visible parity (gen-m9, T-2256): these 48 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] None of the 18 cells above is a TypeMismatch in `make eval`. Each is a number, and a unit test
+- [x] None of the 18 cells above is a TypeMismatch in `make eval`. Each is a number, and a unit test
       shows it is bit for bit `-1 ×` the engine's own `T.INV.2T(2 - p, df)`. Cells whose mirror is
       already bit-exact pass. List the rest with their verdict in the PR (NumericUlp/Close/Mismatch
       residue belongs to T-1542 and T-0967).
-- [ ] `T.INV.2T(2,5)`, `T.INV.2T(2.5,5)` and `T.INV.2T(0,5)` stay `#NUM!` and `T.INV.2T(1,5)` stays 0
+- [x] `T.INV.2T(2,5)`, `T.INV.2T(2.5,5)` and `T.INV.2T(0,5)` stay `#NUM!` and `T.INV.2T(1,5)` stays 0
       (unit test). No gated baseline (eval/baseline/*.txt) gains an F line.
-- [ ] statistics.md's "Ours" note (T.INV.2T with p in (1,2) is `#NUM!` for us) is updated to say it is
+- [x] statistics.md's "Ours" note (T.INV.2T with p in (1,2) is `#NUM!` for us) is updated to say it is
       implemented (T-2096). The code comment cites m9-t-edges A2 and A43.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The quantile's last digits (T-0967, T-1542). T.INV with p outside (0,1) stays `#NUM!` as in Excel.
@@ -104,3 +104,15 @@ Decision 0083 (gap triage 2026-10-23, T-2256): it now owns 48 visibly-off gen-m9
 campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria
 still unmet then move to a follow-up task without the key.
+
+## Outcome
+`t_inv_of` accepts 1 < p < 2 for T.INV.2T and TINV and returns `-t_upper_quantile(df, (2 - p) / 2)`;
+p <= 0 and p >= 2 stay `#NUM!`, p = 1 is 0. The p = 0, df 1 `#DIV/0!` was already in place. A unit test shows
+p = 1.0001 to 1.999 are bit for bit the negated mirror `T.INV.2T(2 - p, df)`. gen-m9 known failures 3775 -> 3770 (5 lines,
+3 owned); no gated baseline gained a line. Every owned cell now has Excel's type, so the `#NUM!` cells are fixed.
+
+Not met (acceptance criterion 1, descoped per the Visible-parity stage): 43 owned lines remain.
+- 18 cells are `NumericMismatch`, about 1e8 too large in magnitude near p = 1 (`TINV(1+2^-52,2)`: Excel
+  -3.14e-16, ours -1.49e-8): filed as T-2839 (opus).
+- The rest are `NumericClose`, off at the 15th digit (`T.INV.2T(1.5,1)` -1.0000000000000016 against -1):
+  T-0967 and T-1542.

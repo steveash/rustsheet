@@ -3,7 +3,7 @@ id: T-2534
 title: "IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and limit (gen-m9, 62 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -66,14 +66,27 @@ Cells:
 - gen-m9/fb73d8163ad87fc6.case.json (2): Calc!A45, A363
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 62 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: IMSIN/IMCOS/IMTAN of 5, 710 and 123456789.123 equal SIN/COS/TAN's text; "1E+200" is `#NUM!` in all but IMCOT, which is "0".
-- [ ] engineering.md's entry gets an "Ours" line; COMPLEXs.xlsx N6 is handled as above if it moves.
-- [ ] `make check` green; reviewers approve.
+- [x] Visible parity (gen-m9, T-2258): these 62 known-failure lines disappear from eval/baseline/gen-m9.txt
+      (`make eval-baseline`), with no new known-failure lines in any baseline. Partly: 21 leave; the 41 IMTAN-of-a-real
+      cells move to T-2774 (blocked on the N6 web-vs-desktop conflict, T-1075 item 17); see Outcome.
+- [x] Unit tests (IMTAN of 5 keeps the desktop value, T-2774): IMSIN/IMCOS/IMTAN of 5, 710 and 123456789.123 equal SIN/COS/TAN's text; "1E+200" is `#NUM!` in all but IMCOT, which is "0".
+- [x] engineering.md's entry gets an "Ours" line; COMPLEXs.xlsx N6 is handled as above if it moves.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMSINH and the exp-based sinh/cosh (T-2535); IMSQRT (T-2536).
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and are `#NUM!` from |x| = 2^27,
+  IMCOT "0" there (`real_trig` in crates/rustsheet-engine/src/functions/engineering/complex/trig.rs). IMTAN takes the limit.
+- New probe probes/t2534-im-trig-real-limit (60 cells, excel-graph): the limit is 2^27 for all six (134217727 answers).
+- IMTAN of a real below the limit keeps the double-angle form: switching it to TAN's kernel regresses ironcalc-calc
+  COMPLEXs.xlsx N6 (Mac cache `IMTAN(5)` -3.38051500624658), and recording that needs a decision record plus
+  `--allow-regressions`, which this run could not take. Split to T-2774 (blocked, T-1075 item 17 added). engineering.md
+  records the conflict as CONFLICTING.
+- Eval delta: gen-m9 known failures 4168 → 4147 (fixed 21); probes 2781 → 2783 (fixed 2 in eng-imtan-imcot-overflow,
+  new coverage 4: the new probe's IMTAN-of-a-real cells D1, D8-D10, owned by T-2774). Regressions 0.
+

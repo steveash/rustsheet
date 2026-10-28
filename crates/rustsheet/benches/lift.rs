@@ -20,12 +20,16 @@
 //!
 //! - the incomplete-gamma functions at their lift cap (T-1872): GAMMA.DIST's continued fraction at
 //!   its 2^19-term cap, on its NaN path and converging with its rescales (the bound's slower term),
-//!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements.
+//!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements. Since T-2795 an element is
+//!   charged by its shape: CHIDIST of df 5 (150 units) at x = 7, where its continued fraction is
+//!   slowest, over the 894,784 elements the charge lets through.
 //!
 //! - HYPGEOM.DIST at its lift cap (T-1873): the cdf sum with 258,239 terms that are not known to
-//!   be 0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), and the cdf at
-//!   its cap whose window is mostly exact zeros and subnormal terms (the slowest terms: `exp`'s
-//!   subnormal path and additions with a subnormal operand), over 32 elements.
+//!   be 0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), over 32 elements.
+//!   The window of mostly subnormal terms T-1873 measured needs a population past 2^31 - 1, which
+//!   is `#NUM!` since T-2429, so it is no longer benched. Since T-2433 an element is charged by
+//!   its counts: a 4,000-step walk at the walk's floor (2^14 units) over 8,192 elements, and a
+//!   5,001-term cdf sum, (5,000 + 132) * 16 units, over 1,634, the most each charge lets through.
 //!
 //! - the financial functions' two paths (T-1823): PMT per row, unlifted, over 100,000 rows
 //!   (`=PMT(A{r}/100,10,100)` in each C{r}; C1 is read), and RATE at its work cap, a
@@ -50,6 +54,10 @@
 //!   longest schedule, over four-coupon schedules at the solver's slowest inputs and over
 //!   one-period ones, where the per-pass fixed part of the charge binds.
 //!
+//! - the criteria walks over sparse whole columns (T-2711): `=COUNTIFS(A:J,1)+SUMIFS(A:A,B:B,"")`
+//!   on a sheet whose only data cell is J1048576 (no rows of data), so the used area is every
+//!   row: the walks visit the stored cells, not the 10,485,760 positions of A:J.
+//!
 //! `cargo bench -p rustsheet --bench lift [-- FILTER...]` (only the cases whose name contains a
 //! FILTER, e.g. `SWITCH`)
 //!
@@ -71,11 +79,17 @@ const RUN_LENGTH: u32 = 10_000;
 const CYCLE: u32 = 100;
 const CYCLED_ROWS: u32 = 10_000;
 const RUNS: usize = 11;
+/// The criteria walks over sparse whole columns, beside J1048576 (T-2711).
+const SPARSE_CRITERIA: &str = "=COUNTIFS(A:J,1)+SUMIFS(A:A,B:B,\"\")";
 
 /// A workbook with `rows` rows of runs in column A, the row number in column B, at most
-/// `CYCLED_ROWS` rows of cycling values in column D, and `formula` in C1.
+/// `CYCLED_ROWS` rows of cycling values in column D, and `formula` in C1. With no rows, J1048576
+/// holds 1 instead, so the used area spans every row.
 fn workbook(rows: u32, formula: &str) -> Result<Workbook, Box<dyn Error>> {
     common::filled_workbook(|tx| {
+        if rows == 0 {
+            tx.set("J1048576", 1.0)?;
+        }
         for r in 1..=rows {
             tx.set(format!("A{r}").as_str(), f64::from((r - 1) / RUN_LENGTH))?;
             tx.set(format!("B{r}").as_str(), f64::from(r))?;
@@ -118,6 +132,11 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             "SUMIFS, 10,000-element criteria range of repeated values",
             10_000,
             "=SUM(SUMIFS(B1:B10000,D1:D10000,D1:D10000))",
+        ),
+        (
+            "COUNTIFS and SUMIFS, sparse whole columns",
+            0,
+            SPARSE_CRITERIA,
         ),
         (
             "SWITCH, numeric result",
@@ -200,20 +219,37 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             "=SUM(CHISQ.DIST(SEQUENCE(512)*0+1E10,1E10,TRUE))",
         ),
         (
+            "CHIDIST, df 5 at the continued fraction's slowest x, at its by-value element cap",
+            1,
+            "=SUM(CHIDIST(SEQUENCE(894784)*0+7,5))",
+        ),
+    ]
+    .into_iter()
+    .chain(hypgeom_cases())
+    .chain(lambda_cases())
+    .chain(coupon_cases())
+    .collect()
+}
+
+/// The HYPGEOM.DIST cases (T-1873, T-2433), apart to keep `cases` short.
+fn hypgeom_cases() -> Vec<(&'static str, u32, &'static str)> {
+    vec![
+        (
             "HYPGEOM.DIST, the cdf sum near its term cap, at the element cap",
             1,
             "=SUM(HYPGEOM.DIST(SEQUENCE(32)*0+45500000,90000000,90000000,180000000,TRUE))",
         ),
         (
-            "HYPGEOM.DIST, the cdf sum at its term cap through subnormal terms, at the element cap",
+            "HYPGEOM.DIST, a 4,000-step walk charged its floor, at the element cap",
             1,
-            "=ROWS(HYPGEOM.DIST(SEQUENCE(32)*0+99994114707,200000000000,200000000000,400000000000,TRUE))",
+            "=SUM(HYPGEOM.DIST(0,4000,4000,SEQUENCE(8192)*0+1E9,TRUE))",
+        ),
+        (
+            "HYPGEOM.DIST, a 5,001-term cdf sum charged by its counts, at the element cap",
+            1,
+            "=SUM(HYPGEOM.DIST(SEQUENCE(1634)*0+5000,10000,10000,1E9,TRUE))",
         ),
     ]
-    .into_iter()
-    .chain(lambda_cases())
-    .chain(coupon_cases())
-    .collect()
 }
 
 /// The LAMBDA call cases (T-0439), apart to keep `cases` short.

@@ -14,19 +14,20 @@ mod amortization;
 mod annuity;
 mod cumulative;
 mod dates;
+pub(crate) use amortization::{amortization_values_valid, asset_life_refused};
 pub(crate) use dates::{day_count_basis, days_30_360_us_ymd};
 mod discount;
 mod financial_bonds;
 mod financial_depreciation;
 pub(crate) use financial_depreciation::MAX_DEPRECIATION_PERIODS;
 mod financial_util;
-pub(crate) use financial_util::RATE_MAX_STEPS;
 mod mirr;
 mod rate_conversions;
 
-use financial_util::{compute_irr, compute_npv, compute_xirr, compute_xnpv};
+use financial_util::{compute_irr, compute_xirr, compute_xnpv, excel_npv};
 
 use crate::functions::lift::{num_error, number_or_error, number_result, LiftCost};
+use crate::functions::util::is_marked_number;
 use crate::functions::Function;
 
 /// The cash flows (or FVSCHEDULE's rates) a lifted NPV, IRR, MIRR, XNPV, XIRR or FVSCHEDULE
@@ -422,9 +423,7 @@ impl Model {
                 match (rate, &flows) {
                     (Err(error), _) => error,
                     (Ok(_), Err(error)) => error.clone(),
-                    (Ok(rate), Ok(flows)) => {
-                        number_result(compute_npv(rate, flows).map_err(|error| error.0), cell)
-                    }
+                    (Ok(rate), Ok(flows)) => number_result(excel_npv(rate, flows), cell),
                 }
             },
         )
@@ -437,6 +436,12 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
+        // Excel: an error inside a range or an array is the result only when no direct argument
+        // errs, whatever their order: `NPV(0.1,{1,#DIV/0!},"x")` is #VALUE!, `NPV(0.1,Q1:Q2,NA())`
+        // over a #DIV/0! cell #N/A, and the first range or array error wins among them
+        // (probes/npv-power-edges A36-A51, npv-power-edges-2 A31-A40). docs/excel-semantics/
+        // financial.md "NPV's error order".
+        let mut deferred = None;
         for arg in flows {
             // Excel: an argument read as a reference skips the text and booleans of its cells,
             // however the reference is written: `B1`, `(B1)`, `@B1:B1`, `IF(TRUE,B1)`,
@@ -452,7 +457,15 @@ impl Model {
                 .evaluate_reference_arg(arg, cell)
                 .into_ranges_or_value()
             {
-                Ok(areas) => self.for_each_number_in_areas(&areas, cell, |v| values.push(v))?,
+                Ok(areas) => {
+                    if deferred.is_none() {
+                        if let Err(error) =
+                            self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
+                        {
+                            deferred = Some(error);
+                        }
+                    }
+                }
                 Err(CalcResult::Number(value)) => values.push(value),
                 Err(direct @ (CalcResult::String(_) | CalcResult::Boolean(_))) => {
                     values.push(self.cast_number_ref(&direct, cell)?);
@@ -460,20 +473,27 @@ impl Model {
                 // A written empty argument is a cash flow of 0 (probes/npv-fvschedule-edges A2).
                 Err(CalcResult::EmptyArg) => values.push(0.0),
                 // An array is read whole: its numbers are the cash flows, its text and booleans
-                // are skipped and its first error is the result (H368; probes/npv-reference-forms
-                // A7, A8, A13).
-                Err(array @ CalcResult::Array(_)) => values.extend(self.array_of_numbers_from(
-                    array,
-                    &cell,
-                    true,
-                    || Ok(None),
-                    || Ok(None),
-                )?),
+                // are skipped and its first error is deferred like a range's (H368;
+                // probes/npv-reference-forms A7, A8, A13).
+                Err(array @ CalcResult::Array(_)) => {
+                    if deferred.is_none() {
+                        match self.array_of_numbers_from(
+                            array,
+                            &cell,
+                            true,
+                            || Ok(None),
+                            || Ok(None),
+                        ) {
+                            Ok(numbers) => values.extend(numbers),
+                            Err(error) => deferred = Some(error),
+                        }
+                    }
+                }
                 Err(error @ CalcResult::Error { .. }) => return Err(error),
                 Err(_) => {}
             }
         }
-        Ok(values)
+        deferred.map_or(Ok(values), Err)
     }
 
     /// `IRR(values, [guess])`: the internal rate of return of cash flows at regular intervals.
@@ -488,16 +508,21 @@ impl Model {
         // Excel: an error inside an array or a referenced range is #VALUE!, whatever its kind,
         // so the original error is dropped. An error argument that is not a single cell
         // passes through (docs/excel-semantics/financial.md, "IRR over an error element";
-        // probes/fin-irr-error-array).
-        let flows = match self.evaluate_node_in_context(values, cell) {
-            error @ CalcResult::Error { .. }
-                if !matches!(*values.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
-            {
-                Err(error)
-            }
-            result => self
-                .array_of_numbers_from(result, &cell, true, || Ok(None), || Ok(None))
-                .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new())),
+        // probes/fin-irr-error-array). That error comes before the guess's; the #VALUE! of an
+        // error element, or of a number straight from `CELL("row"|"col",..)` or ERROR.TYPE
+        // (where any other scalar flow is `#NUM!`), comes after it: `IRR(1/0,NA())` is
+        // `#DIV/0!`, and so are `IRR({1,"a"}+0,1/0)` and `IRR(CELL("row",D2),1/0)`
+        // (financial.md "IRR's error order", probes/t2728-irr-guess-ref-mark, T-2728).
+        let evaluated = self.evaluate_node_in_context(values, cell);
+        let flows_error_first = matches!(evaluated, CalcResult::Error { .. })
+            && !matches!(*values.ungrouped_at(cell.row), Node::ReferenceKind { .. });
+        let flows = if flows_error_first {
+            Err(evaluated)
+        } else if is_marked_number(values, &evaluated, cell.row) {
+            Err(CalcResult::new_error(Error::VALUE, cell, String::new()))
+        } else {
+            self.array_of_numbers_from(evaluated, &cell, true, || Ok(None), || Ok(None))
+                .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new()))
         }
         .map_err(CalcResult::without_message);
         self.lift_call_costed(
@@ -506,13 +531,16 @@ impl Model {
             LiftCost::Cells(flow_count(flows.as_deref())),
             cell,
             &mut |model, values| {
-                let flows = match &flows {
-                    Ok(flows) => flows,
-                    Err(error) => return error.clone(),
-                };
+                if let (true, Err(error)) = (flows_error_first, &flows) {
+                    return error.clone();
+                }
                 let guess = match model.cast_number_or(values.get(1), 0.1, cell) {
                     Ok(guess) => guess,
                     Err(error) => return error,
+                };
+                let flows = match &flows {
+                    Ok(flows) => flows,
+                    Err(error) => return error.clone(),
                 };
                 number_result(compute_irr(flows, guess).map_err(|error| error.0), cell)
             },
@@ -623,7 +651,14 @@ impl Model {
                     Ok(flows) => flows,
                     Err(error) => return error.clone(),
                 };
-                match model.cast_number_or(arguments.get(2), 0.1, cell) {
+                // Excel: a written empty guess (`XIRR(v,d,)`) is the default 0.1, but an empty
+                // cell is guess 0; IRR and RATE read both as 0 (financial.md "XIRR (and IRR): an
+                // empty guess argument is the default 0.1 for XIRR, guess 0 for IRR";
+                // probes/xirr-irr-empty-guess).
+                let guess = arguments
+                    .get(2)
+                    .filter(|guess| !matches!(guess, CalcResult::EmptyArg));
+                match model.cast_number_or(guess, 0.1, cell) {
                     Ok(guess) => {
                         let xirr = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
                             compute_xirr(values, dates, guess).map_err(|error| error.0)

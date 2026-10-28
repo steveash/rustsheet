@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: [T-1040]
+defer: phase-1b
 ---
 
 ## Goal
@@ -99,3 +100,9 @@ On the 341 points of probes-numeric/t1746-norm-s-inv-central, NORM.S.DIST(x,TRUE
 
 ## Fit result (T-1759)
 Fit `norm-s-dist` over 1,773 NORM.S.DIST cells: glibc `0.5*erfc(-x*sqrt(0.5))` is bit-exact on 1,103, Cody's rational approximations (R pnorm_both) on 991, the engine on 879. Within 4 ulp: 1,524, 1,562 and 1,473. The glibc form is the best interim kernel; Cody is not Excel's. The `0.5*erfc(-x*sqrt(0.5))` form, from the T-1746 lead, is the new hypothesis decision 0056 needs for reopening this task, not a third failed attempt.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+The 20 visibly-off NORM.S.INV cells of probes-numeric/t1746-norm-s-inv-central this task names are an inverse-normal problem, not CDF residue: T-0925 now owns that case and probes-numeric/t1759-norm-s-inv-roundtrip. This task stays `defer: phase-1b`.

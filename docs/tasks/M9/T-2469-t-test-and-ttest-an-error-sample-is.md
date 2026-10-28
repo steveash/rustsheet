@@ -3,12 +3,12 @@ id: T-2469
 title: "T.TEST and TTEST: an error sample is that error before tails and type, whose errors come before their range check (gen-m9, 64 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -85,16 +85,24 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 |---|---|---|---|
 | gen-m9/3c06f9298f65a3ba Calc!A312 | `T.TEST(Data!E11,Data!A6:C12,2,Data!$D8)` (E11 blank, type 123456789.123; inside TBILLEQ) | #VALUE! | #NUM! |
 
+
+Owned gen-m9 cells (T-2524 trace, 2026-10-26; arguments evaluated by the engine, which agree with Excel): 4 known-failure
+lines in eval/baseline/gen-m9.txt, 4 visibly off. Each is an error sample before an out-of-range or error tails/type:
+- gen-m9/3b7990bd4e3307ba Calc!A286 `T.TEST(Data!B7:D10,STDEV.S(..),DVARP(..)/(-0.5),1)`: array2 #DIV/0!, tails -16928; Excel #DIV/0!, ours #NUM!
+- gen-m9/607e85cfee83a689 Calc!A256 `T.TEST(DMIN(..),Data!B10:E11,..,3)`: array1 #VALUE!; Excel #VALUE!, ours #NUM!
+- gen-m9/9e2225ead8a6a07b Calc!A10 `T.TEST(Data!A6:C8,SEQUENCE(..),..,VLOOKUP(..))`: array2 #VALUE!, tails #NUM!, type #REF!; Excel #VALUE!, ours #NUM!
+- gen-m9/91e167cd8d7eb652 Calc!A148 `TTEST(Data!C7:D11,PEARSON(..),DSUM(..),NORM.S.DIST(..))`: array2 #N/A, tails and type #VALUE!; Excel #N/A, ours #VALUE!
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Visible parity (gen-m9, T-2256): these 64 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2256): these 64 known-failure lines disappear (all but A251 and A214, see Outcome) from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests: `T.TEST(1/0,A1:A3,3,2)` is `#DIV/0!`, `T.TEST(A1:A3,NA(),1,9)` `#N/A`, `T.TEST(A1:A3,B1:B3,-2.5,"a")`
+- [x] Unit tests: `T.TEST(1/0,A1:A3,3,2)` is `#DIV/0!`, `T.TEST(A1:A3,NA(),1,9)` `#N/A`, `T.TEST(A1:A3,B1:B3,-2.5,"a")`
       `#VALUE!`, `T.TEST("",A1:A4,1,3)` `#DIV/0!`; with D2 = `#N/A`, `T.TEST(D1:D3,A1:A3,3,2)` stays `#NUM!` (T-1813).
-- [ ] statistics.md's T-2256 T.TEST entry gets an "Ours:" line naming this task.
-- [ ] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's T-2256 T.TEST entry gets an "Ours:" line naming this task.
+- [x] Visible parity (gen-m9, T-2496): the known-failure line of the T-2496 probe block above disappears from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - T.TEST's numeric accuracy (T-0969).
@@ -107,3 +115,12 @@ criterion under Acceptance criteria states it.
 ## Also owns (from T-2426)
 Blank one-cell reference cells that need this function's argument order, left failing by T-2426 (which made the blank
 `#VALUE!` in the shared readers): 583ca2baea0bb30a A389, c2684066d8df263e A90, 0620505280d2ea6e A139, 91e167cd8d7eb652 A24, d8f44d556674c2fd A329.
+
+## Outcome
+Most owned cells already passed on `main` (the error-sample-first order was built under T-2475, T-2496 and T-2524); the
+one cell left that was this function's was `TTEST(IFERROR(#VALUE!,""),..,1,3)` (46ac3ef5e61583ca A344): T.TEST read a text
+sample as `#VALUE!`, now an array of one cell with no number (`#DIV/0!`), with unit tests for the four acceptance formulas.
+Two other owned cells stay failing for a cause outside T.TEST: 44a8841352dc48e9 A251 (`FORECAST.ETS.SEASONALITY` is
+`#N/IMPL!`, now listed in T-2424) and c2684066d8df263e A214 (`PIVOTBY` array2, ours 0.3720 against Excel's 0.3685; now T-2854).
+
+A typed or computed boolean sample takes the same path as text (shared with COVARIANCE.P/.S) and is unprobed for T.TEST; statistics.md records it as UNVERIFIED.

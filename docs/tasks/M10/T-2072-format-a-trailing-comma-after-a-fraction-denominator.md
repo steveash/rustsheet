@@ -3,11 +3,11 @@ id: T-2072
 title: "Format a trailing comma after a fraction denominator as #VALUE!"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
-campaign: visible
+campaign: semantics
 depends_on: []
 ---
 
@@ -26,3 +26,7 @@ Probe cells rows 5-6 of probes/fraction-format-features (docs/excel-semantics/nu
 
 ## Visible-parity stage
 Decision 0083: a wrong TEXT or displayed-text result is visible to every user of the format, so this task is in the campaign. Its acceptance criteria are already the visible-parity stage.
+
+## Outcome
+Done by T-2522, which probed the comma factor (10^((-3n) mod 256): 10^253 for one comma, 10^250 for two) and implemented
+it with the 255-character limit; probes/fraction-format-features rows 5-6 pass and left the baseline there.

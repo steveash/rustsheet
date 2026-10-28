@@ -3,12 +3,12 @@ id: T-2344
 title: "Probe a single cell, name or INDEX result holding a boolean or text as the data of QUARTILE/PERCENTILE/PERCENTRANK"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -18,6 +18,8 @@ The data argument of QUARTILE*, PERCENTILE* and PERCENTRANK* has Excel-evidenced
 T-1748 made a typed boolean or text a one-element array in `percentile_numbers` (percentile.rs) only when the node is not a `ReferenceKind`. Unprobed: `QUARTILE(B1,1)` with B1 = TRUE, "1", "abc"; a name pointing at such a cell; `QUARTILE(INDEX(C1:C3,2),1)`; `QUARTILE("abc",1)` (unit test only). SMALL/LARGE treat a cell holding a scalar as #NUM! (chisq.rs `numbers_from_ranked_arg`).
 
 T-2256 sweep (gen-m9 part 2, statistical M to Z; gap triage 2026-10-23): gen-m9 evidence answers the single-cell question: statistics.md "A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)": a single-cell reference holding text or a boolean is data with no number, `#NUM!` for QUARTILE*, PERCENTILE* and TRIMMEAN (also for an empty cell) and `#N/A` for PERCENTRANK*; ours `#VALUE!`. The name and INDEX forms stay to probe. This also settles T-2066's QUARTILE cell.
+
+T-2429 (2026-10-25) probed and implemented the single cell holding a boolean (probes/t2429-quartile-exc-no-number A1-A24: no number, `#NUM!`, PERCENTRANK `#N/A`; statistics.md "A single cell holding a boolean is no number in the PERCENTILE and QUARTILE data"): 24 of the cells below now pass, and `make eval-baseline` dropped them. The rest, and the name and INDEX forms, stay here.
 
 Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 72 known-failure lines in eval/baseline/gen-m9.txt, 72 visibly off.
 Examples:
@@ -131,3 +133,9 @@ Decision 0083 (gap triage 2026-10-23, T-2256): it now owns 72 visibly-off gen-m9
 campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria
 still unmet then move to a follow-up task without the key.
+
+## Outcome
+The 84 listed gen-m9 cells were already fixed by T-2429/T-2621 (none is in the baseline). T-2344 probed the name,
+INDEX, OFFSET, IF and CHOOSE forms (probes/t2344-percentile-name-index-data, 30 cells, oracle sidecar): a reference of
+any form holding text or a boolean is no number. `percentile_numbers` now asks `is_reference` instead of matching
+`ReferenceKind`; all 30 cells pass. statistics.md updated.

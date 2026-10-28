@@ -8,6 +8,7 @@ priority: P1
 size: M
 tier: opus
 depends_on: [T-1941]
+defer: phase-1b
 ---
 
 ## Goal
@@ -100,3 +101,6 @@ They are test points for the engine swap of `gamma_kernels.rs`.
 ## Out of scope
 - Engine implementation (T-2123, T-2128, T-2129 and follow-ups).
 - Incomplete gamma / beta kernels (T-0971, T-0970).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

@@ -33,12 +33,34 @@ impl Model {
         let lambda = self.cast_number_ref(lambda, cell)?;
         let cumulative = Self::cast_bool_ref(cumulative, cell)?;
 
-        // x < 0 or mean < 0 is #NUM!, and so is an x past u64 (the count truncates to one).
-        if x < 0.0 || lambda < 0.0 || x > (u64::MAX as f64) {
+        if x < 0.0 {
             return Err(num_error(cell));
+        }
+        // An x past u64 (the count truncates to one) is a cdf of 1 for a mean of 0 or more
+        // (`POISSON.DIST(2E+29,7,-1)` is 1, probes/t2475-stat-subexpressions P!A216); the
+        // pmf there, and a negative mean, stay #NUM! (unprobed).
+        if x > (u64::MAX as f64) {
+            return if cumulative && lambda >= 0.0 {
+                Ok(1.0)
+            } else {
+                Err(num_error(cell))
+            };
         }
 
         let k = x.trunc() as u64;
+
+        // A negative mean is #NUM! unless x truncates to 0: then both the pmf and the cdf are
+        // EXP(-mean), which only P(X = 0) = e^-mean gives (`POISSON(0,-1,0)` = 2.718281828459045,
+        // `POISSON(0.3,-0.5,TRUE)` = 1.6487212707001282; gen-m9 607e85cfee83a689 A189, b9a32ce9a1fd0d71
+        // A221; statistics.md "Scalar distributions at extreme arguments, part 2").
+        if lambda < 0.0 {
+            let prob = (-lambda).exp();
+            return if k == 0 && prob.is_finite() {
+                Ok(prob)
+            } else {
+                Err(num_error(cell))
+            };
+        }
 
         // A mean of 0 is the distribution at 0: P(X <= x) = 1, P(X = 0) = 1, P(X = k > 0) = 0.
         if lambda == 0.0 {

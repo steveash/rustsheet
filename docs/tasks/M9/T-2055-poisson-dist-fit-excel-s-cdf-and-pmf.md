@@ -8,7 +8,7 @@ priority: P3
 size: M
 tier: opus
 depends_on: []
-campaign: visible
+campaign: accuracy
 ---
 
 ## Goal
@@ -111,3 +111,6 @@ Decision 0083 (gap triage 2026-10-23, T-2256): it now owns 50 visibly-off gen-m9
 campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria
 still unmet then move to a follow-up task without the key.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

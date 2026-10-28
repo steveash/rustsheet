@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use regex_automata::Match;
 
 use super::{
-    lifted::COMPARED_BYTES_PER_VISIT,
+    lifted::{to_u64, COMPARED_BYTES_PER_VISIT},
     pcre::{self, BacktrackCache, FinalLf, Form},
     regex_engine::{within_size_limits, BuildFailure, Engine, Spent},
     regex_replacement::Replacement,
@@ -36,6 +36,14 @@ const HELD_LIMIT: usize = 64 << 20;
 /// about 1 s of the slowest searches, or 250 MB of text a simple pattern scans. A call past it
 /// is `#ERROR!` (DEVIATION, decision 0014).
 const SEARCH_BUDGET: u64 = 1 << 30;
+
+/// Bytes of [`COMPILE_BUDGET`] charged as one unit of the formula's work budget
+/// (`area_budget::MAX_FORMULA_WORK`): the whole compile budget, about 1 s, is 2^25 units.
+const COMPILE_BYTES_PER_WORK_UNIT: u64 = 4;
+
+/// Units of [`SEARCH_BUDGET`] (about a nanosecond each) charged as one unit of the formula's work
+/// budget (`area_budget::MAX_FORMULA_WORK`): the whole search budget, about 1 s, is 2^25 units.
+const SEARCH_UNITS_PER_WORK_UNIT: u64 = 32;
 
 /// A compiled pattern (`None` when invalid), its search caches and the heap they last held.
 struct Compiled {
@@ -181,13 +189,105 @@ impl PatternCache {
         })
     }
 
-    /// The call's result: `#ERROR!` when its work ran out in any element.
-    fn finish(&self, result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
-        if self.exhausted {
-            too_much_regex_work(cell)
+    /// The call's result: `#ERROR!` when its work ran out in any element. What the call spent of
+    /// its compile and search budgets is charged to the formula's work budget too, so a LAMBDA
+    /// cannot multiply a call within these budgets past the formula's (SPEC-0024). A call that ran
+    /// out is charged both whole budgets: it may have spent them, and a failed charge leaves the
+    /// counters short of what was done.
+    fn finish(
+        &self,
+        model: &mut Model,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (compiled, searched) = if self.exhausted {
+            (to_u64(COMPILE_BUDGET), SEARCH_BUDGET)
         } else {
-            result
+            (
+                to_u64(COMPILE_BUDGET.saturating_sub(self.budget)),
+                SEARCH_BUDGET.saturating_sub(self.work),
+            )
+        };
+        let units = (compiled / COMPILE_BYTES_PER_WORK_UNIT)
+            .saturating_add(searched / SEARCH_UNITS_PER_WORK_UNIT);
+        if let Err(error) = model.spend_work(units, cell) {
+            return error;
         }
+        if self.exhausted {
+            return too_much_regex_work(cell);
+        }
+        result
+    }
+}
+
+/// The regex state of one XMATCH or XLOOKUP call (`match_mode` 3): its patterns on the REGEX*
+/// engine, so a lookup reads the same PCRE2 syntax as REGEXTEST (lookbehind, backreferences,
+/// `\K`, possessive and atomic groups; probes/t2680-lookup-regex-pcre2; T-2680), and the call's
+/// one compile, held-memory and work budget, shared by every lifted element as in a REGEX* call
+/// (SPEC-0013). Past it the call is `#ERROR!`: a DEVIATION (decision 0014), lookup.md "XMATCH and
+/// XLOOKUP regex mode".
+pub(crate) struct LookupRegexes {
+    cache: PatternCache,
+}
+
+impl LookupRegexes {
+    pub(crate) fn new() -> Self {
+        LookupRegexes {
+            cache: PatternCache::new(),
+        }
+    }
+
+    /// `pattern`, compiled for a case-sensitive search: `#VALUE!` when it is invalid,
+    /// `#ERROR!` once the call's work is spent.
+    pub(crate) fn pattern(
+        &mut self,
+        pattern: String,
+        cell: CellReferenceIndex,
+    ) -> Result<LookupPattern<'_>, CalcResult> {
+        // The text-independent compile: a pattern holding `$` or `\Z` also compiles a variant for
+        // each kind of final line feed when a text needs it, but the variants parse alike, so
+        // one that compiles here compiles there too.
+        self.cache.with(&pattern, false, "", cell, |_| Ok(()))?;
+        Ok(LookupPattern {
+            regexes: self,
+            pattern,
+        })
+    }
+
+    /// The call's result: `#ERROR!` when its work ran out in any element.
+    pub(crate) fn finish(
+        &self,
+        model: &mut Model,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.cache.finish(model, result, cell)
+    }
+
+    #[cfg(test)]
+    fn spend(&mut self, left: u64) {
+        self.cache.work = left;
+    }
+}
+
+/// One element's compiled pattern, searching on its call's [`LookupRegexes`].
+pub(crate) struct LookupPattern<'a> {
+    regexes: &'a mut LookupRegexes,
+    pattern: String,
+}
+
+impl LookupPattern<'_> {
+    /// Whether the pattern matches anywhere in `text`; `#ERROR!` once the call's work is spent.
+    pub(crate) fn is_match(
+        &mut self,
+        text: &str,
+        cell: CellReferenceIndex,
+    ) -> Result<bool, CalcResult> {
+        self.regexes
+            .cache
+            .with(&self.pattern, false, text, cell, |search| {
+                search.is_match(text)
+            })
     }
 }
 
@@ -414,7 +514,7 @@ impl Model {
                 CalcResult::Array(vec![row])
             },
         );
-        cache.finish(result, cell)
+        cache.finish(self, result, cell)
     }
 
     /// REGEXREPLACE(text, `regular_expression`, replacement, [occurrence], [`case_sensitivity`])
@@ -514,9 +614,9 @@ impl Model {
         );
         if over_budget {
             // As a text broadcast past its cap: one `#VALUE!` (text.md, first entry).
-            return cache.finish(too_long(cell), cell);
+            return cache.finish(self, too_long(cell), cell);
         }
-        cache.finish(result, cell)
+        cache.finish(self, result, cell)
     }
 
     /// REGEXTEST(text, `regular_expression`, [`case_sensitivity`])
@@ -552,7 +652,7 @@ impl Model {
                 }
             },
         );
-        cache.finish(result, cell)
+        cache.finish(self, result, cell)
     }
 }
 
@@ -575,6 +675,41 @@ mod tests {
                 ..
             })
         )
+    }
+
+    // T-2680: a lookup's patterns share their call's budget; once it is spent the search and
+    // the call are `#ERROR!` (DEVIATION, decision 0014), and an invalid pattern is `#VALUE!`.
+    #[test]
+    fn lookup_regexes_share_the_call_budget() {
+        let mut regexes = super::LookupRegexes::new();
+        assert!(matches!(
+            regexes.pattern("(".into(), CELL),
+            Err(CalcResult::Error {
+                error: Error::VALUE,
+                ..
+            })
+        ));
+        let matched = regexes
+            .pattern("a".into(), CELL)
+            .and_then(|mut p| p.is_match("cat", CELL));
+        assert!(matches!(matched, Ok(true)));
+        regexes.spend(1_000);
+        let text = "y".repeat(1 << 16);
+        let spent = regexes
+            .pattern("x".into(), CELL)
+            .and_then(|mut p| p.is_match(&text, CELL));
+        assert!(is_error(&spent));
+        assert!(matches!(
+            regexes.finish(
+                &mut crate::test::util::new_empty_model(),
+                CalcResult::Number(1.0),
+                CELL
+            ),
+            CalcResult::Error {
+                error: Error::ERROR,
+                ..
+            }
+        ));
     }
 
     // T-1272 performance review: a simple pattern is charged what its lazy DFA scans, so a

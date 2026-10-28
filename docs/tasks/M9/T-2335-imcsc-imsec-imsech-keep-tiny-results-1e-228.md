@@ -3,12 +3,12 @@ id: T-2335
 title: "IMCSC, IMSEC, IMSECH keep tiny results (1E-228..1E-246) instead of flushing to 0"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -34,13 +34,21 @@ Cells:
 - gen-m9/fb73d8163ad87fc6.case.json (1): Calc!A228
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 9 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 9 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] E55, F55, H55, I55, K42, L42 of the sweep pass without regressing the overflow-to-0 cells already matched.
-- [ ] `make check` green; baseline updated; reviewers approve.
+- [x] E55, F55, H55, I55, K42, L42 of the sweep pass without regressing the overflow-to-0 cells already matched.
+- [x] `make check` green; baseline updated; reviewers approve.
 
 ## Out of scope
 - Last-digit kernels (T-2044).
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Where the denominator of IMSEC, IMCSC or IMSECH overflows, the result is now the trigonometric parts
+times `2e^-|v|` (`overflowed_reciprocal` in complex/trig.rs), which reproduces Excel's 15 digits for
+the six sweep cells; a subnormal result part prints as 0 in the complex number-to-text (IMEXP "0").
+Eval: gen-m9 known failures 5294 → 5285 (9 fixed, 0 regressions); probes-numeric
+im-last-digit-sweep 1385 → 1394 of 1404 cells (E55:I55, D55, J42:L42). IMCSCH's large non-real
+arguments stay 0 (unprobed; noted in engineering.md).

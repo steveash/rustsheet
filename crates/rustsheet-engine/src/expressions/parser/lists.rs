@@ -1,7 +1,7 @@
 //! Comma-separated lists inside an operand: function arguments and the rows
 //! of an array constant.
 
-use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{OpSum, TokenType};
 
 impl Parser {
@@ -41,7 +41,9 @@ impl Parser {
                 _ => Err(self.invalid_array_value()),
             };
         }
-        match self.parse_enclosed_expr() {
+        // Whitespace inside an array constant is dropped: `={1, 2}` prints `={1,2}` (syntax.md,
+        // probes/t2769-formula-text-whitespace).
+        match self.parse_enclosed_expr().unspaced().1 {
             Node::BooleanKind(s) => Ok(ArrayNode::Boolean(s)),
             Node::NumberKind(s) => Ok(ArrayNode::Number(s)),
             Node::StringKind(s) => Ok(ArrayNode::String(s.into())),
@@ -95,8 +97,10 @@ impl Parser {
         }
         // The cursor is currently in the first argument of `fn_name`.
         self.set_argument_hint(fn_name, 1);
+        // A run before a missing first argument is kept too (`=SUM( ,1)`,
+        // probes/t2966-missing-first-arg-run, T-2966).
         if &self.lexer.peek_token() == arg_separator_token {
-            args.push(Node::EmptyArgKind);
+            args.push(self.missing_argument());
         } else {
             let t = self.parse_argument(binds_names);
             if let Node::ParseErrorKind { .. } = t {
@@ -110,11 +114,14 @@ impl Parser {
             self.lexer.advance_token();
             arg_index += 1;
             self.set_argument_hint(fn_name, arg_index);
+            // A run between two commas, or after the last one, is the missing argument's own and
+            // prints back (`=IF(1, ,2)`, `=SUM(1,` LF `)`; syntax.md "Whitespace beside a missing
+            // argument is kept", probes/t2786-whitespace-structured-refs-runs I2:I10, T-2944).
             if &self.lexer.peek_token() == arg_separator_token {
-                args.push(Node::EmptyArgKind);
+                args.push(self.missing_argument());
                 next_token = arg_separator_token.clone();
             } else if self.lexer.peek_token() == TokenType::RightParenthesis {
-                args.push(Node::EmptyArgKind);
+                args.push(self.missing_argument());
                 return Ok(args);
             } else {
                 let p = self.parse_argument(binds_names && arg_index % 2 == 1);
@@ -126,6 +133,11 @@ impl Parser {
             }
         }
         Ok(args)
+    }
+
+    /// A missing argument, with the run written in its place.
+    fn missing_argument(&self) -> Node {
+        Node::EmptyArgKind.spaced(self.run_ahead(), Run::default())
     }
 
     /// Records that the position currently being parsed *starts* argument

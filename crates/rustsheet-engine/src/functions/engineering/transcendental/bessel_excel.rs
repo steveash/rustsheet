@@ -9,17 +9,38 @@
 //! `probes-numeric/m9-bessel` sweep (T-1004), every cell of which these formulas reproduce exactly
 //! (`docs/excel-semantics/engineering.md`, T-0908).
 
+use crate::arithmetic::{extended_product, extended_sum};
 use crate::functions::math_and_trigonometry::{excel_sin_cos, EXCEL_INNER_TRIG_LIMIT};
+use crate::functions::statistical::ln_gamma;
 use crate::functions::util::poly;
 
 /// `|x|` from which J0, J1, Y0 and Y1 switch from the rational to the asymptotic form.
 const SMALL_ARG_LIMIT: f64 = 8.0;
-/// Orders above this yield NaN (reported as `#NUM!`): every Bessel algorithm here, BESSELI's and
-/// BESSELK's included, is O(n) per cell and the formula layer truncates `n` from untrusted input.
-/// It is each kernel's own per-call cap (SPEC-0011 "Security rule for kernel work"). Excel's own cap
-/// is not measured; `100_000` is far beyond any n where results are finite anyway. Deliberate
-/// deviation: see docs/excel-semantics/engineering.md "BESSEL order cap" (decision 0014).
+/// Orders above this do not run a recurrence: every Bessel algorithm here, BESSELI's and BESSELK's
+/// included, is O(n) per cell and the formula layer truncates `n` from untrusted input. It is each
+/// kernel's own per-call cap (SPEC-0011 "Security rule for kernel work"). Above it, BESSELI,
+/// BESSELJ and BESSELK give Excel's 0 where an O(1) test proves the recurrence would end in 0, and
+/// NaN (reported as `#NUM!`) otherwise; Excel's own cap is `EXCEL_MAX_ORDER`. Deliberate
+/// deviation where Excel has a value: see docs/excel-semantics/engineering.md "BESSEL order cap"
+/// (decision 0014).
 pub(crate) const MAX_ORDER: i32 = 100_000;
+/// Excel's own order cap for BESSELI, BESSELJ and BESSELK: `#NUM!` from 10,000,001
+/// (`BESSELJ(0,1E+7)` is 0, `BESSELJ(0,10000001)`, `BESSELI(100,10000001)` and
+/// `BESSELK(800,10000001)` are `#NUM!`; probes/m9-bessel-order-limits, probes/t2546-bessel-past-cap).
+pub(super) const EXCEL_MAX_ORDER: i32 = 10_000_000;
+/// The Miller recurrences scale their terms by `1/MILLER_RESCALE` whenever one passes it.
+pub(super) const MILLER_RESCALE: f64 = 1e10;
+/// The Miller recurrences' accuracy parameter (Numerical Recipes `ACC`).
+pub(super) const MILLER_ACCURACY: f64 = 40.0;
+/// The factor of that rescale, `1/MILLER_RESCALE`.
+pub(super) const MILLER_RESCALE_FACTOR: f64 = 1e-10;
+/// ln of a bound below which a Bessel value past `MAX_ORDER` is certainly computed as exactly 0 by
+/// the Miller recurrence (e^-850 is about 1E-369, far enough below the subnormals that the scaled
+/// term at order n is rescaled to 0 before the recurrence ends; `past_cap_rules_agree_with_the_recurrence`).
+pub(super) const LN_COMPUTED_ZERO: f64 = -850.0;
+/// The largest ln of the growth a Miller recurrence may compound past `MILLER_RESCALE` and still
+/// provably stay finite: its terms stay below e^(23 + 50) * (m * 2/x), far from the largest double.
+const MAX_MILLER_GROWTH: f64 = 50.0;
 // Numerical Recipes truncates 2/pi; Excel's output bakes in the truncated constant.
 const TWO_OVER_PI: f64 = 636_619_772.0 / 1e9; // == 0.636619772 (correctly rounded)
 
@@ -246,25 +267,79 @@ fn y1(x: f64) -> f64 {
     num / den + TWO_OVER_PI * (j1(x) * x.ln() - 1.0 / x)
 }
 
+/// The even order BESSELJ's Miller recurrence starts from, as in Numerical Recipes (`ACC = 40`).
+fn jn_start_order(n: i32) -> i32 {
+    2 * ((n + (MILLER_ACCURACY * f64::from(n)).sqrt() as i32) / 2)
+}
+
+/// Whether a Miller downward recurrence from the order `m` with `tox = 2/|x|` provably never
+/// overflows. A step multiplies the terms by at most `j * tox + 1`, and the rescale divides by
+/// `MILLER_RESCALE` once, so only the steps with `j * tox > MILLER_RESCALE` grow the terms;
+/// their compound growth is `ln(m!/start!) + (m - start) * ln(tox / MILLER_RESCALE)`.
+/// A tiny x fails it, as Excel's own recurrence overflows to `#NUM!` there (`BESSELJ(1E-5,100001)`,
+/// `BESSELI(2E-5,100001)`; `BESSELJ(2E-5,100001)` and `BESSELI(5E-5,100001)` are 0).
+pub(super) fn miller_stays_finite(m: f64, tox: f64) -> bool {
+    let start = (MILLER_RESCALE / tox).floor();
+    if start >= m {
+        return true;
+    }
+    let growth =
+        ln_gamma(m + 1.0) - ln_gamma(start + 1.0) + (m - start) * (tox / MILLER_RESCALE).ln();
+    growth < MAX_MILLER_GROWTH
+}
+
+/// `BESSELJ(x, n)` for `MAX_ORDER < n`, `ax = |x|`, without the recurrence: 0 where Excel's is
+/// provably 0 (x = 0, or `ax <= n` with Kapteyn's bound `|J_n(nz)| <= (z e^w / (1 + w))^n`,
+/// `w = sqrt(1 - z^2)`, below `LN_COMPUTED_ZERO` and a recurrence that stays finite), else NaN:
+/// `BESSELJ(9E+4,100001)`, `(1E-3,100001)` and `(0,1E+7)` are 0 (probes/t2546-bessel-past-cap);
+/// `BESSELJ(1E+5,100001)` is 0.0094462635180178 (probes/m9-bessel-order-limits).
+fn bessel_j_past_cap(n: i32, ax: f64) -> f64 {
+    if n > EXCEL_MAX_ORDER {
+        return f64::NAN;
+    }
+    if ax == 0.0 {
+        return 0.0;
+    }
+    let order = f64::from(n);
+    if ax > order {
+        return f64::NAN;
+    }
+    let z = ax / order;
+    let w = (1.0 - z * z).sqrt();
+    let ln_bound = order * (z.ln() + w - w.ln_1p());
+    if ln_bound < LN_COMPUTED_ZERO && miller_stays_finite(f64::from(jn_start_order(n)), 2.0 / ax) {
+        0.0
+    } else {
+        f64::NAN
+    }
+}
+
 /// Miller's downward recurrence for `J_n(|x|)`, `n >= 2`, `0 < |x| <= n`.
-fn jn_miller(n: i32, ax: f64) -> f64 {
+pub(super) fn jn_miller(n: i32, ax: f64) -> f64 {
     let tox = 2.0 / ax;
-    // Even starting order, as in Numerical Recipes (`ACC = 40`).
-    let m = 2 * ((n + (40.0 * f64::from(n)).sqrt() as i32) / 2);
+    let m = jn_start_order(n);
     let (mut bj, mut bjp, mut ans, mut sum) = (1.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
     let mut odd = false;
     for j in (1..=m).rev() {
-        let bjm = f64::from(j) * tox * bj - bjp;
+        // Every step is x87 code stored to a double, so each product and sum rounds twice
+        // (64-bit significand, then double): plain doubles drift from Excel's value by up to
+        // 3E-14 near the turning point n = x, and these match all 43 Miller cells of
+        // probes/t2881-besselj-turning-point bit for bit (docs/excel-semantics/engineering.md
+        // "BESSELJ / BESSELY", T-2548).
+        let bjm = extended_sum(
+            extended_product(extended_product(f64::from(j), tox), bj),
+            -bjp,
+        );
         bjp = bj;
         bj = bjm;
-        if bj.abs() > 1e10 {
-            bj *= 1e-10;
-            bjp *= 1e-10;
-            ans *= 1e-10;
-            sum *= 1e-10;
+        if bj.abs() > MILLER_RESCALE {
+            bj = extended_product(bj, MILLER_RESCALE_FACTOR);
+            bjp = extended_product(bjp, MILLER_RESCALE_FACTOR);
+            ans = extended_product(ans, MILLER_RESCALE_FACTOR);
+            sum = extended_product(sum, MILLER_RESCALE_FACTOR);
         }
         if odd {
-            sum += bj;
+            sum = extended_sum(sum, bj);
         }
         odd = !odd;
         if j == n {
@@ -274,12 +349,22 @@ fn jn_miller(n: i32, ax: f64) -> f64 {
     ans / (2.0 * sum - bj)
 }
 
+/// One step of the upward recurrence `C_(j+1) = C_j * (2j * (1/x)) - C_(j-1)` of BESSELJ and BESSELY,
+/// from `a = C_(j-1)` and `b = C_j`. Each product and the difference round twice, as x87 code
+/// stored to doubles does (see `jn_miller`).
+fn upward_step(a: f64, b: f64, j: i32, inv_x: f64) -> f64 {
+    extended_sum(
+        extended_product(b, extended_product(2.0 * f64::from(j), inv_x)),
+        -a,
+    )
+}
+
 /// `BESSELJ(x, n)` for integer `n >= 0`.
 pub(crate) fn excel_bessel_j(n: i32, x: f64) -> f64 {
-    if n > MAX_ORDER {
-        return f64::NAN;
-    }
     let ax = x.abs();
+    if n > MAX_ORDER {
+        return bessel_j_past_cap(n, ax);
+    }
     let ans = match n {
         // J_0(0) is 1.00000000283141 in Excel (NR numerator/denominator ratio), not exactly 1.
         0 => return j0(x),
@@ -291,7 +376,7 @@ pub(crate) fn excel_bessel_j(n: i32, x: f64) -> f64 {
             let inv_x = 1.0 / ax;
             let (mut a, mut b) = (j0(ax), j1(ax));
             for j in 1..n {
-                (a, b) = (b, b * (2.0 * f64::from(j) * inv_x) - a);
+                (a, b) = (b, upward_step(a, b, j, inv_x));
             }
             b
         }
@@ -321,7 +406,7 @@ pub(crate) fn excel_bessel_y(n: i32, x: f64) -> f64 {
     let inv_x = 1.0 / x;
     let (mut a, mut b) = (y0(x), y1(x));
     for j in 1..n {
-        (a, b) = (b, b * (2.0 * f64::from(j) * inv_x) - a);
+        (a, b) = (b, upward_step(a, b, j, inv_x));
     }
     b
 }

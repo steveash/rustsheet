@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1864: F.DIST density at a tiny x (where Excel's F.DIST(1E-300,3,1000,FALSE) is 0 although the density is about 2E-150): which df and x give 0",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-1864"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=F.DIST(1E-300,3,5,FALSE)",
+    "A2": "=F.DIST(1E-300,3,100,FALSE)",
+    "A3": "=F.DIST(1E-200,3,1000,FALSE)",
+    "A4": "=F.DIST(1E-205,3,1000,FALSE)",
+    "A5": "=F.DIST(1E-210,3,1000,FALSE)",
+    "A6": "=F.DIST(1E-215,3,1000,FALSE)",
+    "A7": "=F.DIST(1E-220,3,1000,FALSE)",
+    "A8": "=F.DIST(1E-300,4,1000,FALSE)",
+    "A9": "=F.DIST(1E-150,4,1000,FALSE)",
+    "A10": "=F.DIST(1E-160,4,1000,FALSE)",
+    "A11": "=F.DIST(1E-170,4,1000,FALSE)",
+    "A12": "=F.DIST(1E-300,2,5,FALSE)",
+    "A13": "=F.DIST(1E-300,1,5,FALSE)",
+    "A14": "=F.DIST(1E-300,3,1,FALSE)",
+    "A15": "=F.DIST(1E-300,3,200,FALSE)",
+    "A16": "=F.DIST(1E-60,10,1000,FALSE)",
+    "A17": "=F.DIST(1E-65,10,1000,FALSE)",
+    "A18": "=F.DIST(1E-300,1000,1000,FALSE)",
+    "A19": "=F.DIST(1E-200,3,5,FALSE)",
+    "A20": "=F.DIST(1E-215,3,5,FALSE)"
+   }
+  }
+ ]
+}

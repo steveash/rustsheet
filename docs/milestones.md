@@ -13,21 +13,41 @@ whose exit criteria are not met.
 
 | Phase | Milestones, in order | Status |
 |---|---|---|
-| 1. Parity | M0, M1, M2, M5, M6, M7, M8, M9, M10, M11 | active |
+| 1. Parity (fifteen digits) | M0, M1, M2, M5, M6, M7, M8, M9, M10, M11 | active |
+| 1b. Bit parity | the `defer: phase-1b` tasks of every milestone | after Phase 1 exits (decision 0114) |
 | 2. Architecture and performance | M3, M4, M13 | deferred until Phase 1 exits |
 | 3. Release | M12 | after Phase 2 |
 | 4. Desktop oracle | M14 | after Phase 3; not started (decision 0039) |
 
-**Phase 1 exit:** every Excel function is in the catalog with its parity scope (T-0040). Every
-in-scope function has oracle-backed cases covering each parameter mode and edge pool, and
-reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a filed task or a
-`DEVIATION` entry. "Bit-exact" percentages here and in every milestone count only scored cells
-not listed as accepted deviations, which are scored in their own column (decision 0036). Accepted
-deviations are directive-5 limits only (decision 0052). The exit criteria of M1, M2, M5–M10 and M11 are met.
+**Phase 1 exit (decision 0114):** every Excel function is in the catalog with its parity scope
+(T-0040). Every in-scope function has oracle-backed cases covering each parameter mode and edge
+pool (decision 0094's coverage: 400 Excel cells, 200 of them generated), and has **≥ 99.9% of its
+Excel cells within 15 significant digits** of Excel's value with the right type, error and text
+(decision 0083's rule: not visibly off). A function's cells are counted as decision 0118 says:
+its attributed Excel cells, those whose formula calls it as the only function outside the harness
+glue list, or every Excel cell that calls it when it has fewer than 20 attributed cells. The
+stricter count over every cell that calls it is reported beside it as information and gates
+nothing. Each remaining failure, attributed to a function or not, has a filed task or a `DEVIATION`
+entry. Percentages here and in every milestone count only scored cells not listed as accepted
+deviations, which are scored in their own column (decision 0036). Accepted deviations are
+directive-5 limits only (decision 0052). The exit criteria of M1, M2, M5–M10 and M11 are met.
+
+Wherever a Phase 1 milestone below says "bit-exact" (including "100% bit-exact" probes and suite
+rates), Phase 1 reads it as "not visibly off"; the eval report's milestone exit rows and its
+"Phase 1" line measure it that way (decision 0114). The bit-level wording stays the target of
+**Phase 1b**: ≥ 99.9% bit-exact and 100% within 4 ulp per function, worked after Phase 1 exits and
+before Phase 3. Tasks that only move cells already within 15 digits carry `defer: phase-1b` and are
+not picked before then. The CI gate is unchanged: no cell may regress, bit for bit.
+
+Phase 1 works visibly-off cells in campaign stages (decision 0114): semantic fixes first (wrong
+type, error or text), then accurate kernels where Excel is close to correctly rounded, then
+reproducing Excel's algorithm where Excel is the inaccurate one (time-boxed, decision 0056).
 
 A failure whose only open question needs desktop Excel evidence has its filed task in M14
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
-the oracle of record for Phases 1–3 (decision 0039).
+the oracle of record for Phases 1–3 (decision 0039). Such a visibly-off cell, once a decision names
+it, is a line of `eval/milestones/phase1-exceptions.tsv` and leaves the Phase 1 rate (decision 0134).
+A visibly-off cell that only open M14 tasks own leaves it too, with no line (decision 0143).
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).
@@ -117,6 +137,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
   The exception is a line of `eval/milestones/exit-exceptions.tsv`; the M2 row's "failing excl. exceptions" leaves it out (decision 0087).
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
+  Met at 11592ab5 (decision 0137): every variadic aggregate uses the SPEC-0009 walker and every criteria or wildcard consumer uses functions/criteria.rs. Duplication fell 68.0% (9,153 → 2,931).
 
 ## M3 — Dependency graph, incremental and lazy recalculation (Phase 2)
 
@@ -195,7 +216,9 @@ its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** generated dynamic-array suite (≥ 10k cells, spill shapes included) at ≥ 99.9%;
 spill extents identical to Excel;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M7 row (decision 0140): gen-m7 alone, spill-extent failures of
+gen-m7 and the M7 probes required to be 0, at visible parity (decision 0114).
 
 ## M8 — Names, tables, structured references, multi-sheet
 

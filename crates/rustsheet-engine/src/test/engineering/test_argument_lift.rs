@@ -136,8 +136,8 @@ fn scalar_calls_are_unchanged() {
     assert_eq!(model._get_text("A10"), *"3.280839895");
 }
 
-/// The Bessel kernels loop once or twice per order: each caps the order at 100,000 (`#NUM!`
-/// above, docs/excel-semantics/engineering.md "BESSEL order cap"), and a lifted call is charged
+/// The Bessel kernels loop once or twice per order: each caps the order at 100,000 (an O(1) 0 or
+/// `#NUM!` above, docs/excel-semantics/engineering.md "BESSEL order cap"), and a lifted call is charged
 /// for that work by each element's order before its first element runs (SPEC-0011 "Security rule
 /// for kernel work", T-1819): small orders lift past 2,048 elements, orders at the cap do not.
 #[test]
@@ -153,10 +153,11 @@ fn bessel_work_is_bounded() {
     // A text order may read as a number, so it is charged as at the cap.
     model._set("A7", "=ROWS(BESSELJ(2.5,IF(SEQUENCE(2100),\"3\")))");
     model._set("A8", "=ROWS(BESSELJ(2.5,IF(SEQUENCE(2000),\"3\")))");
-    // Orders past the cap are refused before the kernel loops, so they cost 1 each.
+    // Orders past the cap never loop, so they cost 1 each.
     model._set("A9", "=ROWS(BESSELJ(2.5,SEQUENCE(2100,1,1E9,0)))");
+    model._set("A10", "=SUM(BESSELI(2.5,SEQUENCE(2100,1,1E6,0)))");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A1"), *"0");
     assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"0");
     assert_eq!(model._get_text("A4"), *"2000");
@@ -165,6 +166,7 @@ fn bessel_work_is_bounded() {
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"2000");
     assert_eq!(model._get_text("A9"), *"2100");
+    assert_eq!(model._get_text("A10"), *"0");
 }
 
 /// A lift of many order-0 elements runs, each the scalar call's value (T-1819 Goal).

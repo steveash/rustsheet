@@ -8,6 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: [T-0971]
+defer: phase-1b
 ---
 
 ## Goal
@@ -54,3 +55,9 @@ is now `#NUM!` (530,000 terms over its cdfs), shape 3E8 still finishes. docs/exc
 
 ## Out of scope
 -
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+Two visibly-off gen-m9 cells matched this parked task: IRR gen-m9/d0854366830dcdee Calc!A216 is handed to T-2131 and FREQUENCY gen-m9/fd9fa22d212080d6 Calc!A32 (an error-kind cell) to T-2636.

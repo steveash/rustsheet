@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::text;
 use crate::{
     formatter::format::{format_number, FormatContext},
     locale::{get_locale, Locale},
@@ -103,4 +104,58 @@ fn minutes_before_seconds_without_hour() {
             "{format}"
         );
     }
+}
+
+// `[h]` and `[m]` without a seconds token count from the serial rounded to the second, as the
+// clock does (probes/elapsed-no-seconds-boundary A1-A8, A20, T-2385).
+#[test]
+fn elapsed_without_seconds_rounds_to_the_second() {
+    let ctx = FormatContext::new(get_default_locale());
+    let short = |hours: f64, seconds: f64| (hours - seconds / 3600.0) / 24.0;
+    for (value, format, text) in [
+        (short(3.0, 0.4), "[h]", "3"),
+        (short(3.0, 0.4), "[h]:mm", "3:00"),
+        (short(3.0, 0.4), "[m]", "180"),
+        (short(3.0, 0.6), "[h]", "2"),
+        (short(3.0, 0.6), "[h]:mm", "2:59"),
+        (short(3.0, 0.6), "[m]", "179"),
+        ((5.0 - 0.4 / 60.0) / 1440.0, "[m]", "5"),
+    ] {
+        assert_eq!(format_number(value, format, &ctx).text, text, "{format}");
+    }
+}
+
+// poi/DateFormatTests.xlsx Tests!A11, A16, A30, A35 (desktop Excel); noon and midnight are hand expectations that follow `AM/PM` (no Excel cell).
+#[test]
+fn short_am_pm_marker_keeps_its_case() {
+    assert_eq!(text(17816.607951388887, "hh:mm:ss a/p"), "02:35:27 p");
+    assert_eq!(text(17816.607951388887, "HH:MM:SS A/P"), "02:35:27 P");
+    assert_eq!(text(36191.1702084375, "hh:mm:ss a/p"), "04:05:06 a");
+    assert_eq!(text(36191.1702084375, "HH:MM:SS A/P"), "04:05:06 A");
+    assert_eq!(text(0.5, "hh:mm:ss a/p"), "12:00:00 p");
+    assert_eq!(text(0.0, "hh:mm:ss a/p"), "12:00:00 a");
+}
+
+// DateFormatTests A13 and A18: lowercase `am/pm` still prints uppercase.
+#[test]
+fn long_am_pm_marker_prints_uppercase() {
+    assert_eq!(text(0.6079, "hh:mm:ss am/pm"), "02:35:23 PM");
+}
+
+// probes/negative-date-sections-1900 and -1904 A9, A21, A22: two bracketed elapsed tokens are #VALUE!.
+#[test]
+fn two_bracketed_elapsed_tokens_are_invalid() {
+    assert_eq!(text(1.5, "[h]:[mm]"), "#VALUE!");
+    assert_eq!(text(0.5, "[mm]:[ss]"), "#VALUE!");
+    // One bracketed token, with or without a bare `h` after it, stays valid (poi ElapsedFormatTests A10).
+    assert_eq!(text(1.5, "[h]:mm"), "36:00");
+}
+
+// probes/text-elapsed-two-tokens A1, A9-A11, A13 (excel-graph).
+#[test]
+fn elapsed_token_before_am_pm_marker_is_invalid() {
+    assert_eq!(text(1.5, "[ss] AM/PM"), "#VALUE!");
+    assert_eq!(text(1.5, "[h] AM/PM"), "#VALUE!");
+    assert_eq!(text(1.5, "[mm] AM/PM"), "#VALUE!");
+    assert_eq!(text(1.5, "[s] A/P"), "#VALUE!");
 }

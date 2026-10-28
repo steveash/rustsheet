@@ -8,7 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
-campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -82,6 +82,9 @@ Cells:
 - gen-m9/bc04c1f478c9896c.case.json (1): Calc!A392
 - gen-m9/c0681a8b150ce301.case.json (2): Calc!A57, A351
 
+Handed over by T-2734: `NPV(-0.9999999999999999,<19 ones>)` is 1.0153083415854513E+285, ours ...512E+285, and with 20 ones
+1.016120504184532E+300, ours ...319E+300 (probes/t2493-npv-rate-edges A60, A61; the rate is cut to 15 digits, -0.999999999999999).
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 3 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -134,9 +137,18 @@ so the candidate orders differ).
 where `pmt - ipmt` gives 0 (PMT -1, IPMT -1). That is exactly `-pv*rate/(P-1)` with P = 2^60, so Excel's first-period
 PPMT is not `PMT - IPMT` but a closed form of its own; PPMT's last digits may follow from that form.
 
+## New evidence (gap triage 2026-10-25)
+NPV's visibly-off cells moved to T-2672 (visible-parity stage), which waits on T-2671's decomposition probe (one-term, zero-padded and two-term NPVs at rates where the candidate orders differ). The new evidence is NPV at IRR's root in ironcalc-calc/FINANCIAL/IRR.xlsx: 12 cells whose rate is bit-exact in ours still differ in the residue (financial.md "NPV's residue at IRR's root is not the double sum"). NPV's last-digit tail stays here.
+Gap triage 2026-10-25 (second pass): that tail includes ironcalc-calc/FINANCIAL/NPV.xlsx, 15 known-failure lines, all 1-2 ulp
+(none visibly off), which no task named: Sheet1!K2, K4, K5, K6, K7, L4, L7, M2, M4, M9, N2, N4, N5, N6, N7, e.g. K2
+`NPV(A2,B2,C2,D2,E2:G2)` Excel 237.57926512731055, ours 237.5792651273106 (2 ulp). T-2671's probe should fit them too.
+
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2257): the gen-m9 cells listed under "T-2257 sweep" in Context are visibly off (wrong
 type, error, text, or a value off by more than half a unit of the 15th significant digit), so the task is in the campaign. Its
 target is that every one of them has Excel's type, error and text, or is within half a unit of the 15th significant digit of
 Excel's value; the T-2257 visible-parity criterion under Acceptance criteria states it. Bit-level criteria still unmet then move
 to a follow-up task filed without the key.
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

@@ -29,8 +29,9 @@ use crate::x87_register::Register;
 /// Below this (the double nearest 0.7, compared exactly) GAMMALN recurs once upward.
 const RECURSION_BELOW: f64 = f64::from_bits(0x3FE6_6666_6666_6666); // 0x1.6666666666666p-1
 
-/// ln √(2π) as Excel's Stirling sum adds it.
-const LN_SQRT_2PI: f64 = 0.918_938_533_204_672_7;
+/// ln √(2π) as Excel's Stirling sum adds it: one ulp below the correctly rounded double, which
+/// `loader.rs`'s `LN_SQRT_2PI_CORRECTLY_ROUNDED` is (the two stay distinct on purpose).
+pub(super) const LN_SQRT_2PI: f64 = 0.918_938_533_204_672_7;
 
 /// The Stirling series' Bernoulli terms `B_2k / (2k (2k - 1))`, k = 1..10, each a correctly rounded
 /// double quotient (as `gammaln_big_check.c`'s `1.0/12, -1.0/360, ...`). Excel uses exactly ten:

@@ -2,12 +2,14 @@
 //!
 //! Excel reduces an angle by multiples of `π₆₄/2`, where `π₆₄` is π rounded to a 64-bit
 //! significand (the x87 `FLDPI` constant, `0xC90FDAA22168C235·2^-62`), and then returns the
-//! correctly rounded sine, cosine or tangent of the remainder. So its SIN(x) is the true
+//! correctly rounded sine or cosine of the remainder. So its SIN(x) is the true
 //! sin(x + n·δ/2), with n = round(2x/π) and δ = π − π₆₄ ≈ -5.0166e-20: SIN(PI()) is
 //! 1.22514845490862E-16 (not 1.2246467991473532E-16), COS(PI()/2) is 6.1257422745431E-17 and
 //! SIN(2^27-1) is -0.9559933287726706. This reproduces all 672 numeric cells of
 //! probes-numeric/m9-trig-reduction and probes/trig-huge-argument bit for bit
 //! (docs/excel-semantics/numbers.md "Trig of a huge angle"; T-1563).
+//! The tangent is the quotient of those sums rounded twice, to a 64-bit significand and then to a
+//! double, as an x87 tangent is stored ([`excel_tan`], T-2147).
 //!
 //! The remainder `x − n·π₆₄/2` is computed exactly as a double-double and its sine and cosine
 //! are summed in double-double arithmetic, so the final rounding is the only one.
@@ -20,8 +22,7 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::ops::Neg;
 
-use crate::arithmetic::round_extended_to_double;
-use crate::x87_exp::dd_to_extended;
+use crate::x87_exp::dd_rounded_twice;
 
 /// `π₆₄/2 − FRAC_PI_2`: the 11 low bits of the 64-bit significand that a double drops
 /// (`0x235·2^-63`). It is COS(PI()/2) in Excel.
@@ -321,12 +322,12 @@ pub(crate) fn excel_fsin(v: f64) -> f64 {
         let r = DoubleDouble::two_sum(FRAC_PI_2 - magnitude.min(FRAC_PI_2), HALF_PI_TAIL);
         COSINE.full(r.mul(r))
     };
-    let (extended, exponent) = dd_to_extended((sine.hi, sine.lo));
-    round_extended_to_double(extended, exponent, v < 0.0).unwrap_or(if v < 0.0 {
-        -sine.hi
+    let rounded = dd_rounded_twice((sine.hi, sine.lo));
+    if v < 0.0 {
+        -rounded
     } else {
-        sine.hi
-    })
+        rounded
+    }
 }
 
 /// Excel's SIN(x), for |x| < [`EXCEL_TRIG_LIMIT`].
@@ -355,21 +356,16 @@ pub(crate) fn excel_sin_cos(x: f64) -> (f64, f64) {
     (rounded_sine(n, r, square), rounded_sine(n + 1, r, square))
 }
 
-/// Excel's TAN(x): the correctly rounded quotient of the unrounded sine and cosine
-/// (TAN(PI()/2) is 1.6324552277619072E+16, probes-numeric/m9-trig-reduction C82). The quotient
-/// of the fast sums is off by at most the sum of their errors (the division itself adds below
-/// 2^-100, inside their margins).
-pub(super) fn excel_tan(x: f64) -> f64 {
-    let (n, r) = reduce(x);
-    let square = r.mul(r);
-    let (sin, cos) = by_quadrant(n, r.mul(SINE.fast(square)), COSINE.fast(square));
+/// Excel's TAN(x): the quotient of the unrounded sine and cosine rounded twice, to a 64-bit
+/// significand and then to a double, RN53(RN64(tan)), as an x87 tangent is stored
+/// (TAN(PI()/2) is 1.6324552277619072E+16, probes-numeric/m9-trig-reduction C82; TAN(123456789.123)
+/// is 56.41575748007382, not the correctly rounded ...815: docs/excel-semantics/numbers.md "TAN
+/// misses this model by 1 ulp", T-2147). The fast sums' error (about 2^-63) is too coarse to
+/// decide a 64-bit rounding, so the full sums always run.
+pub(crate) fn excel_tan(x: f64) -> f64 {
+    let (sin, cos) = excel_sin_cos_exact(x);
     let tan = sin.div(cos);
-    if rounds_safely(tan, SINE.fast_error + COSINE.fast_error) {
-        tan.hi
-    } else {
-        let (sin, cos) = excel_sin_cos_exact(x);
-        sin.div(cos).hi
-    }
+    dd_rounded_twice((tan.hi, tan.lo))
 }
 
 #[cfg(test)]
@@ -432,7 +428,10 @@ mod tests {
             assert_eq!((excel_sin(x), excel_cos(x)), expected, "x = {x:e}");
             assert_eq!(
                 excel_tan(x).to_bits(),
-                sin.div(cos).hi.to_bits(),
+                {
+                    let tan = sin.div(cos);
+                    dd_rounded_twice((tan.hi, tan.lo)).to_bits()
+                },
                 "TAN({x:e})"
             );
         }
@@ -487,6 +486,12 @@ mod tests {
         assert_eq!(excel_sin_cos(pi).0, 1.225_148_454_908_62e-16);
         assert_eq!(excel_sin_cos(pi / 2.0).1, 6.125_742_274_543_1e-17);
         assert_eq!(excel_tan(pi / 2.0), 1.632_455_227_761_907_2e16);
+        // Rounded twice: gen-m5/d0419fa09d6a756a A311, c688ca172fe533dc A284 (T-2147).
+        assert_eq!(excel_tan(123_456_789.123), 56.415_757_480_073_82);
+        assert_eq!(excel_tan(123_456_788.123), 0.617_340_843_390_131_7);
+        assert_eq!(excel_tan(-123_456_789.123), -56.415_757_480_073_82);
+        // A negative tangent at a double-rounding tie: probes-numeric/t2147-tan-double-rounding B10.
+        assert_eq!(excel_tan(-488_594.0), -1.381_213_102_307_853_5);
         assert_eq!(excel_sin_cos(134_217_727.0).0, -0.955_993_328_772_670_6);
         // Small angles keep the correctly rounded value.
         assert_eq!(excel_sin_cos(0.5).0, 0.5_f64.sin());

@@ -15,6 +15,7 @@
 //! So `ROUND(1.005,2)` is 1.01 (1.00499999999999989… becomes 1.00500000000000 first) and
 //! `ROUNDDOWN(123456789.123,-5)` is exactly 123400000.
 
+use crate::arithmetic::{flush_subnormal, TINY_SUBNORMAL_BELOW};
 use crate::constants::EXCEL_PRECISION;
 use crate::number_format::{significant_15, to_precision};
 
@@ -62,11 +63,47 @@ fn effective_digits(num_digits: f64, exponent: i64, mode: RoundMode) -> i64 {
     }
 }
 
+/// The double Excel returns for the 15-digit cut 2.22507385850720E-308: 2^-1022 - 6·2^-1074, 3 ulps
+/// below the nearest double (probes/t2756-roundup-smallest-normal-threshold rows 52-58). It is the
+/// only subnormal cut a normal argument can have, since every normal value cuts to at least it.
+const SMALLEST_NORMAL_CUT: f64 = f64::from_bits(0x000F_FFFF_FFFF_FFFA);
+
+/// ROUND, ROUNDUP, ROUNDDOWN and TRUNC of `value` at `num_digits`: [`round_decimal`], except for
+/// tiny values, whatever `num_digits` (docs/excel-semantics/numbers.md "ROUNDUP and ROUNDDOWN of a
+/// number whose 15-digit cut is subnormal"; probes t2756-roundup-smallest-normal-threshold and
+/// t2771-roundup-subnormal-cuts, -sign, -threshold and -sign-controls, oracle excel-graph):
+/// - ROUNDUP, ROUNDDOWN and TRUNC return a subnormal `value` as it is, with no 15-digit cut, and a
+///   normal one whose cut is subnormal (`ROUNDUP(2^-1022,0)`) as ±[`SMALLEST_NORMAL_CUT`], while
+///   `ROUNDUP(2^-1022*(1+8*2^-52),0)`, whose cut 2.22507385850721E-308 is normal, is 1;
+/// - ROUND returns a positive subnormal below [`TINY_SUBNORMAL_BELOW`] (2^-1026) as it is
+///   (`ROUND(x,0)` is `x`); a negative one, or one from there up, is 0.
+///
+/// INT does not share this path.
+pub(crate) fn round_function(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
+    if mode == RoundMode::HalfAwayFromZero {
+        if value > 0.0 && value < TINY_SUBNORMAL_BELOW {
+            return Some(value);
+        }
+    } else {
+        if value.is_subnormal() {
+            return Some(value);
+        }
+        if cut_to_15_digits(value, true).is_subnormal() {
+            return Some(SMALLEST_NORMAL_CUT.copysign(value));
+        }
+    }
+    round_decimal(value, num_digits, mode)
+}
+
 /// Rounds `value` at `num_digits` decimal places the way Excel's ROUND family does.
 ///
 /// `num_digits` is truncated toward zero and then narrowed to an integer the way Excel does
 /// (see [`effective_digits`]). Returns `None` when the result is beyond the double range
-/// (`ROUNDUP(1.5,-400)` is `#NUM!` in Excel).
+/// (`ROUNDUP(1.5,-400)` is `#NUM!` in Excel). Each decimal it converts to a double (the rounded
+/// digits, and ROUNDUP's unit) is flushed to 0 when subnormal: `ROUND(2^-1022,309)` (2.2E-308)
+/// and `ROUNDDOWN(2^-1022*(1+8*2^-52),308)` (2E-308) are 0, and so is
+/// `ROUNDUP(2^-1022*(1+8*2^-52),308)`, its rounded-down 2E-308 and unit 1E-308 both being
+/// flushed (probes/t2756-roundup-smallest-normal-threshold rows 30-50).
 pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
     if value == 0.0 || !value.is_finite() {
         return Some(value);
@@ -89,9 +126,9 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
             (kept + u64::from(round_up), -num_digits, false)
         }
     };
-    let mut magnitude = decimal_to_f64(digits, place)?;
+    let mut magnitude = flush_subnormal(decimal_to_f64(digits, place)?);
     if add_unit {
-        magnitude += decimal_to_f64(1, place)?;
+        magnitude += flush_subnormal(decimal_to_f64(1, place)?);
     }
     if magnitude.is_infinite() {
         return None;
@@ -104,7 +141,7 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
 }
 
 /// The double nearest to `digits * 10^place`, where `digits <= 10^15`.
-fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
+pub(crate) fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
     // Fast path: `digits` (< 2^53) and 10^|place| (|place| <= 22) are exact doubles, so one
     // multiplication or division is correctly rounded, like the parse below.
     if let Ok(exact_power) = i32::try_from(place.unsigned_abs()) {
@@ -119,6 +156,20 @@ fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
         }
     }
     format!("{digits}e{place}").parse().ok()
+}
+
+/// `value` cut to 15 significant digits, as the double nearest that decimal: an exact tie at the
+/// 16th digit goes away from zero when `tie_away`, otherwise toward zero. A zero or non-finite
+/// `value` is itself. FLOOR's ratio snap and PERCENTRANK's truncation use it, so that a double
+/// just below a digit boundary counts as on it.
+pub(crate) fn cut_to_15_digits(value: f64, tie_away: bool) -> f64 {
+    if !value.is_finite() || value == 0.0 {
+        return value;
+    }
+    let (mantissa, exponent) = significant_15(value.abs(), tie_away);
+    // `mantissa` has 15 digits, so its last digit has place value 10^(exponent - 14).
+    decimal_to_f64(mantissa, exponent - (SIGNIFICANT_DIGITS - 1))
+        .map_or(value, |cut| cut.copysign(value))
 }
 
 /// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`: the digits kept, and whether
@@ -157,6 +208,29 @@ pub(crate) fn round_shown_place(value: f64, precision: i32, is_scientific: bool)
     })
 }
 
+/// `value` (nonzero, finite) rounded to the digits a scientific mantissa with one integer digit and
+/// `precision` decimals shows, and its exponent: the 15-digit decimal rounded half away from zero,
+/// once, at `precision + 1` digits, as the fixed codes round (`0.00E+00` on 1.005, the double
+/// 1.00499999…, is "1.01E+00"; `0E+0` on 2.5 "3E+0"; on 12.345 "1.23E+01", where rounding to four
+/// digits first gave "1.24E+01"; probes/t2705-scientific-mantissa-rounding, gen-m10; T-2705).
+pub(crate) fn round_scientific(value: f64, precision: i32) -> (f64, f64) {
+    let shown = (i64::from(precision) + 1).clamp(1, SIGNIFICANT_DIGITS);
+    let (mantissa, mut exponent) = significant_15(value.abs(), false);
+    let dropped = SIGNIFICANT_DIGITS - shown;
+    let (mut digits, round_up) = if dropped == 0 {
+        (mantissa, false)
+    } else {
+        round_off(mantissa, dropped, RoundMode::HalfAwayFromZero)
+    };
+    digits += u64::from(round_up);
+    if Some(digits) == u32::try_from(shown).ok().map(|shown| 10_u64.pow(shown)) {
+        digits /= 10;
+        exponent += 1;
+    }
+    let rounded = decimal_to_f64(digits, exponent - shown + 1).unwrap_or(f64::INFINITY);
+    (rounded.copysign(value), exponent as f64)
+}
+
 /// `value` rounded to the digits an engineering mantissa of `group` integer placeholders and
 /// `precision` decimals shows, and the exponent (a multiple of `group`) it is shown with.
 pub(crate) fn round_engineering(value: f64, group: f64, precision: i32) -> (f64, f64) {
@@ -178,7 +252,9 @@ pub(crate) fn round_engineering(value: f64, group: f64, precision: i32) -> (f64,
 
 #[cfg(test)]
 mod tests {
-    use super::{round_decimal, RoundMode};
+    use super::{
+        round_decimal, round_function, RoundMode, SMALLEST_NORMAL_CUT, TINY_SUBNORMAL_BELOW,
+    };
 
     fn round(value: f64, digits: f64) -> Option<f64> {
         round_decimal(value, digits, RoundMode::HalfAwayFromZero)
@@ -305,5 +381,120 @@ mod tests {
             round_decimal(0.5, 2_147_483_648.0, RoundMode::Up),
             Some(1.0)
         );
+    }
+
+    /// 2^-1022 * (1 + k * 2^-52), the k-th double above the smallest normal.
+    fn above_smallest_normal(k: u32) -> f64 {
+        f64::MIN_POSITIVE * (1.0 + f64::from(k) * f64::EPSILON)
+    }
+
+    /// probes/t2756-roundup-smallest-normal-threshold: up to k = 7 the 15-digit cut
+    /// (2.22507385850720E-308) is subnormal and ROUNDUP/ROUNDDOWN return it; from k = 8 it is
+    /// normal and ROUNDUP takes its step.
+    #[test]
+    fn subnormal_cut_is_returned_by_roundup_and_rounddown() {
+        // Rows 52-58 read it back as 2.8206162122887925E-278 through `*2^100`.
+        let cut = 2.820_616_212_288_792_5e-278_f64 / 2f64.powi(100);
+        assert_eq!(cut, SMALLEST_NORMAL_CUT);
+        for k in [0, 7] {
+            let x = above_smallest_normal(k);
+            // -400, ±1E10, ±2^31 and 2^53 too: no `#NUM!` and no wrap (t2771-roundup-subnormal-cuts rows 22-33).
+            for digits in [
+                0.0,
+                -2.0,
+                2.0,
+                300.0,
+                307.0,
+                330.0,
+                -400.0,
+                1e10,
+                -1e10,
+                2_147_483_648.0,
+                -2_147_483_648.0,
+                9_007_199_254_740_992.0,
+            ] {
+                assert_eq!(round_function(x, digits, RoundMode::Up), Some(cut));
+                assert_eq!(round_function(-x, digits, RoundMode::Down), Some(-cut));
+            }
+            // ROUND rounds the cut and flushes a subnormal result.
+            assert_eq!(
+                round_function(x, 330.0, RoundMode::HalfAwayFromZero),
+                Some(0.0)
+            );
+            assert_eq!(
+                round_function(x, 310.0, RoundMode::HalfAwayFromZero),
+                Some(2.23e-308)
+            );
+        }
+        let x = above_smallest_normal(8);
+        assert_eq!(round_function(x, 0.0, RoundMode::Up), Some(1.0));
+        assert_eq!(round_function(-x, -2.0, RoundMode::Up), Some(-100.0));
+        assert_eq!(round_function(x, 300.0, RoundMode::Up), Some(1e-300));
+        assert_eq!(round_function(x, 307.0, RoundMode::Up), Some(1e-307));
+    }
+
+    /// The rounded-down digits and ROUNDUP's unit are each flushed when subnormal (rows 44-50).
+    #[test]
+    fn subnormal_parts_are_flushed() {
+        let x = above_smallest_normal(8);
+        for digits in [308.0, 309.0, 315.0, 321.0] {
+            assert_eq!(round_decimal(x, digits, RoundMode::Up), Some(0.0));
+            assert_eq!(round_decimal(x, digits, RoundMode::Down), Some(0.0));
+        }
+        assert_eq!(
+            round_decimal(x, 322.0, RoundMode::Up),
+            Some(2.225_073_858_507_21e-308)
+        );
+    }
+
+    /// k·2^-1074: a subnormal.
+    fn subnormal(k: u64) -> f64 {
+        f64::from_bits(k)
+    }
+
+    /// probes/t2771-roundup-subnormal-cuts and -sign: from 2^-1026 up, ROUNDUP, ROUNDDOWN and TRUNC
+    /// return a subnormal as it is (no 15-digit cut), and ROUND flushes one from 2^-1026 up.
+    #[test]
+    fn subnormal_from_two_to_minus_1026_is_kept_by_roundup_and_rounddown() {
+        // 2^-1021 - 2^-1022*(1.1), whose 15-digit cut is a different double.
+        let x = 2f64.powi(-1021) - f64::MIN_POSITIVE * 1.1;
+        assert!(x.is_subnormal() && x.abs() >= TINY_SUBNORMAL_BELOW);
+        for digits in [0.0, 2.0, 330.0] {
+            assert_eq!(round_function(x, digits, RoundMode::Up), Some(x));
+            assert_eq!(round_function(x, digits, RoundMode::Down), Some(x));
+            assert_eq!(round_function(-x, digits, RoundMode::Up), Some(-x));
+        }
+        for digits in [0.0, 320.0, 330.0] {
+            assert_eq!(
+                round_function(x, digits, RoundMode::HalfAwayFromZero),
+                Some(0.0)
+            );
+        }
+    }
+
+    /// probes/t2771-roundup-subnormal-threshold and -sign-controls: ROUNDUP, ROUNDDOWN and TRUNC
+    /// keep a subnormal of either sign at any size; ROUND keeps a positive one below 2^-1026 only.
+    #[test]
+    fn tiny_subnormals_keep_their_sign_and_round_keeps_positive_ones_below_two_to_minus_1026() {
+        for k in [1, 12_345, (1 << 48) - 1, 1 << 48, (1 << 50) + 3] {
+            let x = subnormal(k);
+            for mode in [RoundMode::Up, RoundMode::Down] {
+                for digits in [0.0, 2.0, 330.0, -400.0, 2_147_483_648.0, 1e10] {
+                    assert_eq!(round_function(x, digits, mode), Some(x));
+                    assert_eq!(round_function(-x, digits, mode), Some(-x));
+                }
+            }
+            let kept = if k < 1 << 48 { x } else { 0.0 };
+            for digits in [0.0, 320.0, 330.0] {
+                assert_eq!(
+                    round_function(x, digits, RoundMode::HalfAwayFromZero),
+                    Some(kept)
+                );
+                assert_eq!(
+                    round_function(-x, digits, RoundMode::HalfAwayFromZero),
+                    Some(0.0)
+                );
+            }
+        }
     }
 }

@@ -23,9 +23,10 @@ use crate::baseline::Baseline;
 use crate::case::split_qualified;
 use crate::catalog::Catalog;
 use crate::cellref::Addr;
+use crate::closeness::Visible;
 use crate::formula_calls::functions_in;
 use crate::milestone_lists::MilestoneList;
-use crate::runner::{CaseResult, CellResult};
+use crate::runner::{CaseResult, CellKind, CellResult};
 use crate::suite::BaselineMode;
 use crate::value::Verdict;
 
@@ -69,7 +70,7 @@ pub(crate) fn row_of(milestone: u32) -> u32 {
     milestone.max(DEFAULT_MILESTONE)
 }
 
-fn row_label(row: u32) -> String {
+pub(crate) fn row_label(row: u32) -> String {
     if row == DEFAULT_MILESTONE {
         "M0-M2".to_string()
     } else {
@@ -327,6 +328,18 @@ pub struct MilestoneRow {
     /// The cases behind `known_failures`: case id and its known-failure items in this row,
     /// most first, then by id.
     pub failing_cases: Vec<(String, usize)>,
+    /// Scored cells that are visibly off (decision 0083): the Phase 1 exit counts these
+    /// (decision 0114).
+    #[serde(default)]
+    pub visibly_off: usize,
+    /// Those cells, as `case!Sheet!A1`, in case order: what `scripts/exit_owners.py` lists for the
+    /// row (decision 0135).
+    #[serde(default)]
+    pub visibly_off_cells: Vec<String>,
+    /// Cells the spill-extent check failed (filled by the engine, left empty by Excel; decision
+    /// 0063): the M7 exit requires none (decision 0140).
+    #[serde(default)]
+    pub spill_extent_failures: usize,
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -355,10 +368,16 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 .unwrap_or(DEFAULT_MILESTONE);
             let s = rows.entry(row).or_default();
             s.cells += 1;
+            if c.kind == CellKind::SpillExtent {
+                s.spill_extent_failures += 1;
+            }
             if c.verdict.is_pass() {
                 s.bit_exact += 1;
             } else if c.verdict == Verdict::Deviation {
                 s.deviations += 1;
+            } else if Visible::is_off(c) {
+                s.visibly_off += 1;
+                s.visibly_off_cells.push(format!("{}!{}", r.id, c.key()));
             }
             rows_of_case.insert(row);
         }
@@ -408,14 +427,20 @@ pub fn write_markdown(rows: &[MilestoneRow], md: &mut String) {
     );
     let _ = writeln!(
         md,
-        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) |\n\
-         |---|---|---|---|---|---|"
+        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) | visibly off |\n\
+         |---|---|---|---|---|---|---|"
     );
     for s in rows {
         let _ = writeln!(
             md,
-            "| {} | {} | {} | {} | {} | {} |",
-            s.milestone, s.cases, s.cells, s.bit_exact, s.deviations, s.known_failures
+            "| {} | {} | {} | {} | {} | {} | {} |",
+            s.milestone,
+            s.cases,
+            s.cells,
+            s.bit_exact,
+            s.deviations,
+            s.known_failures,
+            s.visibly_off
         );
     }
     for s in rows.iter().filter(|s| !s.failing_cases.is_empty()) {
@@ -568,6 +593,7 @@ mod tests {
             from_excel: true,
             listed_deviation: verdict == Verdict::Deviation,
             graph_subnormal: false,
+            kind: CellKind::Scored,
         }
     }
 
@@ -585,11 +611,13 @@ mod tests {
                 .filter(|c| c.verdict == Verdict::Deviation)
                 .count(),
             skipped_volatile: 0,
+            skipped_add_in: 0,
             millis: 0,
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             cells,
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            arguments: Vec::new(),
         }
     }
 
@@ -617,6 +645,7 @@ mod tests {
                 oracle: None,
                 v15: None,
                 v15_reason: None,
+                params: Vec::new(),
             }),
         );
         Rules::new(
@@ -749,6 +778,9 @@ mod tests {
                 deviations,
                 known_failures: failing.iter().map(|f| f.1).sum(),
                 failing_cases: failing.iter().map(|f| (f.0.to_owned(), f.1)).collect(),
+                visibly_off: 0,
+                visibly_off_cells: Vec::new(),
+                spill_extent_failures: 0,
             }
         };
         assert_eq!(
@@ -759,14 +791,18 @@ mod tests {
                 row("M6", 1, 1, 1, 0, &[]),
                 row("M7", 1, 0, 0, 0, &[("probes/p.case.json", 1)]),
                 row("M8", 0, 0, 0, 0, &[]),
-                row(
-                    "M9",
-                    2,
-                    2,
-                    0,
-                    0,
-                    &[("probes/catalog/c.case.json", 1), ("probes/d.case.json", 1)]
-                ),
+                MilestoneRow {
+                    visibly_off: 1,
+                    visibly_off_cells: vec!["probes/catalog/c.case.json!S!A2".into()],
+                    ..row(
+                        "M9",
+                        2,
+                        2,
+                        0,
+                        0,
+                        &[("probes/catalog/c.case.json", 1), ("probes/d.case.json", 1)],
+                    )
+                },
                 row("M10", 0, 0, 0, 0, &[]),
                 row("M11", 0, 0, 0, 0, &[]),
                 row("M12", 1, 0, 0, 0, &[]),
@@ -775,12 +811,36 @@ mod tests {
         let mut md = String::new();
         write_markdown(&rows, &mut md);
         assert!(md.contains("## Probe milestones (decision 0051)"), "{md}");
-        assert!(md.contains("| M0-M2 | 2 | 3 | 1 | 1 | 1 |"), "{md}");
-        assert!(md.contains("| M9 | 2 | 2 | 0 | 0 | 2 |"), "{md}");
+        assert!(md.contains("| M0-M2 | 2 | 3 | 1 | 1 | 1 | 0 |"), "{md}");
+        assert!(md.contains("| M9 | 2 | 2 | 0 | 0 | 2 | 1 |"), "{md}");
         assert!(
             md.contains("Failing cases in M9:\n\n- `probes/catalog/c.case.json`: 1\n- `probes/d.case.json`: 1\n"),
             "{md}"
         );
         assert!(summarize(&rules, &results[5..], BaselineMode::Cells).is_empty());
+    }
+
+    #[test]
+    fn spill_extent_cells_are_counted_in_their_row() {
+        let rules = rules("");
+        let extent = CellResult {
+            formula: None,
+            expected: Value::Empty,
+            kind: CellKind::SpillExtent,
+            ..cell("S!B1", "", Verdict::TypeMismatch)
+        };
+        let results = [case(
+            "probes/s.case.json",
+            &["M7"],
+            CaseStatus::Fail,
+            vec![pass("S!A1", "SEQUENCE(1)"), extent],
+        )];
+        let rows = summarize(&rules, &results, BaselineMode::Cells);
+        let m7 = rows.iter().find(|r| r.milestone == "M7").expect("M7 row");
+        assert_eq!((m7.cells, m7.spill_extent_failures), (2, 1));
+        assert!(rows
+            .iter()
+            .filter(|r| r.milestone != "M7")
+            .all(|r| r.spill_extent_failures == 0));
     }
 }

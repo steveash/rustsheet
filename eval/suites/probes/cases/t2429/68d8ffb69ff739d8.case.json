@@ -1,0 +1,78 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2429: the HYPGEOM.DIST/HYPGEOMDIST calls of gen-m9/68d8ffb69ff739d8 (A145) and each of their arguments, on that case's Data sheet.",
+  "tags": [
+    "M9",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=HYPGEOMDIST((GAMMALN(1000000000000000.0)*Data!A$11),4,COUNT(Data!A4:A4,Data!C$9,Data!E1:E10),13)",
+        "A2": "=(GAMMALN(1000000000000000.0)*Data!A$11)",
+        "A3": "=4",
+        "A4": "=COUNT(Data!A4:A4,Data!C$9,Data!E1:E10)",
+        "A5": "=13"
+      }
+    },
+    {
+      "cells": {
+        "A1": 1000000000000000.0,
+        "A10": true,
+        "A11": 42,
+        "A12": "abc",
+        "A2": 123456789.123,
+        "A3": 7,
+        "A5": 1.005,
+        "A6": 1,
+        "A8": "a*",
+        "A9": -0.5,
+        "B10": 1000000000000000.0,
+        "B11": -2.5,
+        "B12": 42,
+        "B3": "a*",
+        "B4": 100,
+        "B5": 7,
+        "B6": 1,
+        "B7": 3.14159,
+        "B8": 123456789.123,
+        "C1": -1,
+        "C10": 100,
+        "C11": true,
+        "C12": 1e-15,
+        "C2": -1,
+        "C3": 0,
+        "C4": 2.5,
+        "C5": 1e-15,
+        "C6": false,
+        "C7": -1,
+        "C8": 100,
+        "D1": false,
+        "D10": 1000000000000000.0,
+        "D11": false,
+        "D12": 7,
+        "D2": 100,
+        "D4": "a",
+        "D5": 123456789.123,
+        "D6": " x ",
+        "D7": 3.14159,
+        "D8": "Hello World",
+        "D9": 2,
+        "E1": "TRUE",
+        "E10": -2.5,
+        "E11": 0.3,
+        "E12": "a",
+        "E2": 0.3,
+        "E3": 2.5,
+        "E4": true,
+        "E5": 0.2,
+        "E6": -2.5,
+        "E7": "x~*",
+        "E9": " x "
+      },
+      "name": "Data"
+    }
+  ],
+  "expected": {}
+}

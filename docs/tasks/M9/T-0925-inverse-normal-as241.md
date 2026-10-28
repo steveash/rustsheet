@@ -140,6 +140,28 @@ stays centrally). With it ironcalc-calc lost 18 NORM.INV, 18 NORM.S.INV/NORM.S.D
 known-failure lines and none regressed. What remains here: the central region (an iterative search on Excel's
 NORM.S.DIST, statistics.md "NORM.S.INV is AS 241 PPND16 in the tails") and LOGNORM.INV, which still calls statrs.
 
+## Update (T-0925 part 1, 2026-10-25)
+Shipped:
+- LOGNORM.INV and LOGINV are EXP of `normal::normal_quantile`, so they take the PPND16 tails. That fixes 20
+  ironcalc-calc LOGNORM.xlsx lines and 17 gen-m9 lines, 11 of them among the 14 T-2255 visible-parity cells.
+- The third acceptance criterion (no other statrs normal `inverse_cdf` call) is still open. T.INV's large-df
+  series (`t_dist.rs`) keeps statrs' z. Moving it to the PPND16 hybrid moved 38 T.INV, TINV, T.INV.2T and
+  CONFIDENCE.T cells, all already failing: 28 went up to 4 ulp further from Excel and 10 closer. There is no Excel
+  evidence that T.INV builds on PPND16, so the change was reverted.
+
+Across every suite, in-scope visibly-off cells fall from 11,309 to 11,276, and no cell newly fails.
+
+The central region is still statrs. A bisection or Newton solve on Excel's own NORM.S.DIST, with every stop rule
+tried, matches at most 68 of the 341 central cells, against statrs' 164 (statistics.md "NORM.S.INV is AS 241
+PPND16 in the tails").
+
+Still visibly off in gen-m9, all central (|p - 0.5| <= 0.425):
+- 8d3588d8df0812df A28 `CONFIDENCE.NORM(FDIST(0.5,7,6),1E-300,26)` (11 ulp);
+- 8f2ac25945af87da A63 `LOGNORM.INV(...)` (256 ulp);
+- 8fec7b207f4dd753 A55 `LOGINV(0.2,250,30)` (78 ulp).
+
+NORM_DIST.xlsx (41 lines) and CONFIDENCE.xlsx (26) are unchanged: their cells are central.
+
 ## Visible-parity stage
 Decision 0083: this task is done when every cell it owns is within half a unit of the 15th significant digit of Excel's value (an expected 0 must be exactly 0). Criteria above that ask for bit-exact or ulp-level matches and are still unmet then move to a follow-up task (no campaign key), named in the Outcome. Regressions that stay within 4 ulp follow decision 0083's allowance.
 
@@ -150,3 +172,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - LOGNORM.INV: 12 cells (13-14 digits right 11, 10-12 1, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1543-inverse-cdf-tiny-p.case.json` 11; `ironcalc-calc/STATISTICAL/LOGNORM.xlsx` 1. e.g. `LOGNORM.INV(1E-20,0,1)` Excel 9.493291347224372e-05, ours 9.493291347224338e-05
 
 Excel's centre is about 1e-15 from the true quantile while the engine is closer to the truth, so 15 digits needs Excel's centre formula; LOGNORM.INV still calls statrs `LogNormal::inverse_cdf` (log_normal.rs) and should move onto the same kernel.
+
+## Cases added by the Phase 1 triage (T-0090, 2026-10-27)
+NORM.S.INV is below the Phase 1 rate (45 visibly-off cells to fix at the 2026-10-27 eval), all in two probes-numeric cases no live task owned (T-0968, parked, named one). This task now owns both whole cases:
+- probes-numeric/t1746-norm-s-inv-central (20 visibly-off cells)
+- probes-numeric/t1759-norm-s-inv-roundtrip (20 visibly-off cells)

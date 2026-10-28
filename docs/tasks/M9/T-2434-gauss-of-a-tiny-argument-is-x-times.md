@@ -3,12 +3,12 @@ id: T-2434
 title: "GAUSS of a tiny argument is x times phi(0), not 0 (gen-m9, 8 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: accuracy
 ---
 
 ## Goal
@@ -36,7 +36,7 @@ Cells:
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A34
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 8 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [ ] Visible parity (gen-m9, T-2255): 7 of these 8 known-failure lines disappear (the last, 1 ulp low, is T-2931) from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] No GAUSS cell that passes today fails (state the count checked in the PR).
 - [ ] `make check` green; reviewers approve.
@@ -49,3 +49,9 @@ Decision 0083 (gap triage 2026-10-23, T-2255): every cell this task owns has the
 last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text,
 or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria
 states it.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Outcome
+GAUSS returns z * phi(0) for |z| < 2E-15 (Excel still shows the cancelled Phi(z) - 0.5 from about 4E-15 up, so a 1E-8 cut regressed 8 gen-m9 cells). gen-m9 known failures 3724 -> 3717 (7 fixed, 0 regressions, no other suite changed). The GAUSS cells in the other suites (probes, probes-numeric, ironcalc-calc) show 0 regressions in the same baseline run. `GAUSS(1E-15)` (a54c738c697617c3 A235) stays 1 ulp low: T-2931.

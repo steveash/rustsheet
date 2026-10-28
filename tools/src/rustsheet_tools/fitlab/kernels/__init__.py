@@ -9,7 +9,10 @@ from rustsheet_tools.fitlab.kernels import (
     beta,
     beta_inv,
     erfc,
+    ftest,
+    ftest_adhoc,
     gamma,
+    irr_fallback,
     mirr,
     norm_inv,
     power,
@@ -18,7 +21,23 @@ from rustsheet_tools.fitlab.kernels import (
     yield_caret,
 )
 
-MODULES = [erfc, annuity, power, gamma, solvers, beta, norm_inv, beta_inv, mirr, asin, yield_caret, xirr]
+MODULES = [
+    erfc,
+    annuity,
+    power,
+    gamma,
+    solvers,
+    irr_fallback,
+    beta,
+    norm_inv,
+    beta_inv,
+    mirr,
+    asin,
+    yield_caret,
+    xirr,
+    ftest,
+    ftest_adhoc,
+]
 
 
 def registry() -> dict[str, Fit]:

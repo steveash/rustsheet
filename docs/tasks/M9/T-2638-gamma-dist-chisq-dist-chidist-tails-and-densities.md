@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-campaign: visible
+campaign: accuracy
 depends_on: []
 ---
 
@@ -45,6 +45,7 @@ Cells (Excel vs ours):
 - gen-m9/a54c738c697617c3 Calc!A212 `GAMMADIST(PERCENTOF(...),3,ASINH(...))`: 1.1618329542131368e-47 vs 1.1618329542131463e-47 (39 ulp)
 - gen-m9/bbdfc06cae0e0d71 Calc!A125 `CHIDIST(100,5)`: 5.2851483609432604e-20 vs 5.28514836094324e-20 (34 ulp)
 - gen-m9/c2974c061384fdd9 Calc!A13 `CHISQ.DIST(SUM(...),10,BYCOL(...))`: 0.09849448946078171 vs 0.09849448946078165 (4 ulp)
+- gen-m9/984cba67bbe6972b Calc!A217 `CHISQ.DIST(ACOTH(Data!B5),8,DGET(..))`: 1.1210083920801943e-35 vs 1.1210083920802015e-35 (14th digit; moved from T-2524, its DGET agrees)
 - new: gen-m9/285d87cea1aaa73c Calc!A261 and 4ab2ba98d26c8a5e Calc!A85 `CHIINV(0.975,5)`: 0.8312116134866638 vs 0.8312116134866628 (9 ulp; statrs gave ...6640)
 - new: gen-m9/984cba67bbe6972b Calc!A49 `CHISQ.DIST(1E-10,8,...)`: 1.0416666666145884e-32 vs 1.0416666666145834e-32 (37 ulp; statrs ...854)
 - new: gen-m9/a7bf0d8d81d33ba6 Calc!A152 `GAMMADIST(PERCENTILE.EXC(...),7,...)`: 2.920390518154494e-64 vs 2.9203905181544776e-64 (49 ulp; statrs ...904)
@@ -72,3 +73,6 @@ docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)".
 
 ## Out of scope
 - The 1-2 ulp residue of T-2367.
+
+## Stage (decision 0114)
+`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.

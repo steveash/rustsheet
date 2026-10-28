@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="290" viewBox="0 0 760 290" role="img" aria-labelledby="t d">
+<title id="t">Visibly-off attributed cells</title><desc id="d">Visibly-off attributed Excel cells by kind, per complete run; a date without one is a gap.</desc>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px}.title{font-size:15px;font-weight:600}.num{font-variant-numeric:tabular-nums}.bg{fill:#ffffff}.ink{fill:#1f2328}.muted{fill:#59636e}.grid{fill:#d1d9e0}.b-numeric{fill:#e34948}.b-other{fill:#4b5563}.s-numeric{stroke:#e34948}.s-other{stroke:#4b5563}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.ink{fill:#f0f6fc}.muted{fill:#9198a1}.grid{fill:#3d444d}.b-numeric{fill:#e66767}.b-other{fill:#9ca3af}.s-numeric{stroke:#e66767}.s-other{stroke:#9ca3af}}</style>
+<rect class="bg" fill="#ffffff" x="0" y="0" width="760" height="290"/>
+<g transform="translate(14,14)">
+<text x="0.0" y="16.0" class="ink title" fill="#1f2328" text-anchor="start" dominant-baseline="middle">Visibly-off attributed cells</text>
+<rect class="b-numeric" fill="#e34948" x="0.0" y="38" width="12" height="12" rx="2"/>
+<text x="17.0" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Number</text>
+<rect class="b-other" fill="#4b5563" x="80.0" y="38" width="12" height="12" rx="2"/>
+<text x="97.0" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Type, error or text</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="246.0" width="542" height="1"/>
+<text x="62.0" y="246.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">0</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="186.0" width="542" height="1"/>
+<text x="62.0" y="186.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">50,000</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="126.0" width="542" height="1"/>
+<text x="62.0" y="126.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">100,000</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="66.0" width="542" height="1"/>
+<text x="62.0" y="66.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">150,000</text>
+<text x="70.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-25</text>
+<text x="341.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-26</text>
+<text x="612.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-27</text>
+<polyline class="s-numeric" stroke="#e34948" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,88.4 341.0,119.9 612.0,126.0"><title>Number</title></polyline>
+<circle class="b-numeric" fill="#e34948" cx="612.0" cy="126.0" r="3.5"><title>Number, 2026-10-27: 100,003</title></circle>
+<polyline class="s-other" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,222.0 341.0,244.2 612.0,244.6"><title>Type, error or text</title></polyline>
+<circle class="b-other" fill="#4b5563" cx="612.0" cy="244.6" r="3.5"><title>Type, error or text, 2026-10-27: 1,135</title></circle>
+<text x="622.0" y="126.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">100,003</text>
+<text x="622.0" y="244.6" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">1,135</text>
+</g></svg>

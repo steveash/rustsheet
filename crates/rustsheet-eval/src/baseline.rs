@@ -325,20 +325,8 @@ mod tests {
             pass,
         };
         let run = |pass: bool| CaseResult {
-            id: "s/a".into(),
-            suite: "s".into(),
-            status: CaseStatus::Pass,
-            message: None,
-            expected_source: String::new(),
-            checked: 1,
-            passed: 1,
-            deviations: 0,
-            skipped_volatile: 0,
-            millis: 0,
-            tags: Vec::new(),
-            cells: Vec::new(),
             text: vec![text("A1", true), text("A2", pass)],
-            defined_names: BTreeMap::new(),
+            ..CaseResult::for_test("s/a", "s")
         };
         let before = run(true);
         let after = run(false);

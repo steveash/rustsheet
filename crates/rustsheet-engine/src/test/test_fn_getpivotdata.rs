@@ -197,6 +197,29 @@ fn names_ignore_case_and_an_item_may_be_a_label_cell() {
 }
 
 #[test]
+fn an_odd_count_of_five_or_more_arguments_is_error_but_three_stay_ref() {
+    check(&[
+        (
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","East","Product")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","East","Product","A","Sales")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$A$20,"Product","A","Region")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$H$30,"Product","A","Region")"#,
+            "#ERROR!",
+        ), // no pivot
+        (r#"=GETPIVOTDATA("Sales",$A$3,"Region")"#, "#REF!"), // H15
+    ]);
+}
+
+#[test]
 fn unknown_items_fields_repeats_and_odd_pairs_are_ref() {
     check(&[
         (r#"=GETPIVOTDATA("Sales",$A$3,"Region","North")"#, "#REF!"), // H7
@@ -298,16 +321,26 @@ fn every_aggregate_runs_over_the_picked_records() {
 }
 
 #[test]
-fn aggregates_with_no_records_other_than_sum_are_ref() {
-    let mut model = model();
-    model.workbook.pivot_tables[0].data_fields[0].function = Aggregate::Average;
-    model._set(
-        "H1",
-        r#"=GETPIVOTDATA("Sales",$A$3,"Region","West","Product","C")"#,
-    );
-    model.evaluate();
-    // SPEC-0015 unknown 2.
-    assert_eq!(model._get_text("H1"), "#REF!");
+fn aggregates_with_no_records_are_zero_except_var_and_stddev() {
+    // probes/getpivotdata-empty-intersection (Excel 0 for these five); Var/StdDev are unprobed
+    // and stay `#REF!` (SPEC-0015 unknown 2).
+    for (function, expected) in [
+        (Aggregate::Average, "0"),
+        (Aggregate::Count, "0"),
+        (Aggregate::Max, "0"),
+        (Aggregate::Min, "0"),
+        (Aggregate::Var, "#REF!"),
+        (Aggregate::StdDev, "#REF!"),
+    ] {
+        let mut model = model();
+        model.workbook.pivot_tables[0].data_fields[0].function = function;
+        model._set(
+            "H1",
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","West","Product","C")"#,
+        );
+        model.evaluate();
+        assert_eq!(model._get_text("H1"), expected, "{function:?}");
+    }
 }
 
 #[test]
@@ -344,14 +377,13 @@ fn a_non_finite_result_is_num() {
 
 #[test]
 fn unprobed_pivot_shapes_are_ref() {
-    // SPEC-0015 unknowns 1 (several data fields), 4 (page fields, hidden items) and 10 (two
-    // fields on an axis), and a malformed cache index.
+    // SPEC-0015 unknowns 1 (several data fields) and 4 (page fields, hidden items), and a
+    // malformed cache index.
     type Change = fn(&mut PivotTable);
-    let changes: [Change; 5] = [
+    let changes: [Change; 4] = [
         |p| p.data_fields.push(p.data_fields[0].clone()),
         |p| p.fields[2].axis = Some(Axis::Page),
         |p| p.fields[0].hide(1),
-        |p| p.column_fields.push(AxisField::Field(2)),
         |p| p.cache = 7,
     ];
     for change in changes {
@@ -361,6 +393,64 @@ fn unprobed_pivot_shapes_are_ref() {
         model.evaluate();
         assert_eq!(model._get_text("H1"), "#REF!");
     }
+}
+
+#[test]
+fn two_fields_on_an_axis_answer_only_the_grand_total() {
+    // calipers formula_stress_test Database!B16 (two row and two column fields) is the grand
+    // total; a pair is SPEC-0015 unknown 10.
+    let mut model = model();
+    let table = &mut model.workbook.pivot_tables[0];
+    table.fields[1].axis = Some(Axis::Row);
+    table.row_fields.push(AxisField::Field(1));
+    table.column_fields.clear();
+    model._set("H1", r#"=GETPIVOTDATA("Sales",$A$3)"#);
+    model._set("H2", r#"=GETPIVOTDATA("Sales",$A$3,"Region","East")"#);
+    model._set(
+        "H3",
+        r#"=GETPIVOTDATA("Sales",$A$3,"Region","East","Product","A")"#,
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "49");
+    assert_eq!(model._get_text("H2"), "#REF!");
+    assert_eq!(model._get_text("H3"), "#REF!");
+}
+
+#[test]
+fn an_omitted_item_is_the_blank_item() {
+    // calipers pv23_041 Liability Summary G5:G7: `GETPIVOTDATA(...,"Remediation Status",)` is
+    // the `(blank)` row. `""`, a blank cell and `"(blank)"` are unprobed, `#REF!`.
+    let mut model = model();
+    let mut builder = CacheBuilder::new(None, MAX_RECORD_VALUES);
+    for name in ["Region", "Product", "Sales"] {
+        builder.add_field(name.to_string()).unwrap();
+    }
+    for (region, sales) in [(Some("East"), 1.0), (None, 2.0), (None, 4.0)] {
+        let region = region.map_or(CacheItem::Missing, |r| CacheItem::Text(r.to_string()));
+        builder
+            .push_record(vec![
+                RecordValue::Inline(region),
+                RecordValue::Inline(CacheItem::Text("A".to_string())),
+                RecordValue::Inline(CacheItem::Number(sales)),
+            ])
+            .unwrap();
+    }
+    model.workbook.pivot_caches = vec![builder.finish()];
+    model._set("H1", r#"=GETPIVOTDATA("Sales",$A$3,"Region",)"#);
+    model._set(
+        "H2",
+        r#"=GETPIVOTDATA("Sales",$A$3,"Product","A","Region",)"#,
+    );
+    model._set("H3", r#"=GETPIVOTDATA("Sales",$A$3,"Product",)"#);
+    model._set("H4", r#"=GETPIVOTDATA("Sales",$A$3,"Region","")"#);
+    model._set("H5", r#"=GETPIVOTDATA("Sales",$A$3,"Region",$Z$99)"#);
+    model._set("H6", r#"=GETPIVOTDATA("Sales",$A$3,"Region","(blank)")"#);
+    model.evaluate();
+    let texts: Vec<String> = ["H1", "H2", "H3", "H4", "H5", "H6"]
+        .iter()
+        .map(|c| model._get_text(c))
+        .collect();
+    assert_eq!(texts, ["6", "6", "#REF!", "#REF!", "#REF!", "#REF!"]);
 }
 
 #[test]

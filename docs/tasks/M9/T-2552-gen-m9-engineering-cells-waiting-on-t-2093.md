@@ -3,12 +3,12 @@ id: T-2552
 title: "gen-m9 engineering cells waiting on T-2093's F.TEST of a scalar: BESSELI and COMPLEX over it (2 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
 depends_on: [T-2093, T-2532]
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -26,11 +26,18 @@ Cells:
 - gen-m9/df083d85b436b49a.case.json (1): Calc!A120
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+Note (T-2532): gen-m9/df083d85b436b49a Calc!A120 already passes on main with T-2532, so it left the baseline there; skip it here.
+
+## Outcome
+- Verified on origin/main: gen-m9/4e180f54ff140abc Calc!A186 (`#DIV/0!`) and gen-m9/df083d85b436b49a Calc!A120 (`#DIV/0!`)
+  both pass, and eval/baseline/gen-m9.txt has no known-failure line for either (T-2093 and T-2532 landed). No code change
+  was needed. Eval delta: none.

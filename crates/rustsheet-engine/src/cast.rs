@@ -1,4 +1,4 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{flush_subnormal, TINY_SUBNORMAL_BELOW};
 use crate::external_reference::{one_external_area, ExternalArea, PickedReference};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
@@ -122,7 +122,7 @@ pub(crate) fn array_node_to_text(node: &ArrayNode) -> Result<Cow<'_, Text>, Erro
 
 /// The text a scalar value reads as: a number as its text, a boolean as TRUE or FALSE, empty as
 /// "". `None` for an error, a range, an array or a LAMBDA.
-fn calc_scalar_to_string(value: &CalcResult) -> Option<String> {
+pub(crate) fn calc_scalar_to_string(value: &CalcResult) -> Option<String> {
     match value {
         CalcResult::Number(f) => Some(number_to_text(*f)),
         CalcResult::String(s) => Some((**s).to_owned()),
@@ -281,11 +281,16 @@ impl Model {
         if let Some((error, message)) = check_range_size(&left, &right) {
             return Err(CalcResult::new_error(error, cell, message));
         }
+        // The array is built whole, so it is charged its cells before it is (SPEC-0024). A caller
+        // may consume it without it becoming a node value; when it does become one, it is charged
+        // again at the node chokepoint, which the calibration (arrays.md) includes.
+        let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
+        let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+        self.spend_cells(rows, width, cell)?;
         let (last_row, last_column) = self
             .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
             .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-        let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
-        let mut result = Vec::with_capacity(usize::try_from(right.row - left.row + 1).unwrap_or(0));
+        let mut result = Vec::with_capacity(rows);
         for row in left.row..=right.row {
             let mut row_result = Vec::with_capacity(width);
             for column in left.column..=right.column {
@@ -382,18 +387,8 @@ impl Model {
         )
     }
 
-    /// Like `get_number_or_array` but preserves the full `CalcResult` type (no coercion to f64).
-    /// Used for element-wise comparison operators.
-    pub(crate) fn get_value_or_array(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<ValueOrArray, CalcResult> {
-        let value = self.evaluate_node_in_context(node, cell);
-        self.value_or_array(value, cell)
-    }
-
-    /// [`Model::get_value_or_array`] of an already evaluated `value`; a one-cell range is its
+    /// Like [`Model::number_or_array`] but preserves the full `CalcResult` type (no coercion to
+    /// f64), for element-wise comparison operators; a one-cell range is its
     /// cell's value ([`Model::number_or_array`]).
     pub(crate) fn value_or_array(
         &mut self,
@@ -440,9 +435,11 @@ impl Model {
 
     /// Evaluates a unary `-` or `%` node. A chain such as `B:B%%%` or `---B:B` is applied
     /// in one element-wise pass, so a whole column is lifted once rather than once per
-    /// operator (the `formula_eval` fuzz timeout, T-1078). The operators commute (negation is
-    /// exact and the subnormal flush is sign-symmetric), so only the minus parity and the
-    /// `%` count matter, and the walk allocates nothing.
+    /// operator (the `formula_eval` fuzz timeout, T-1078). Only the minus parity and the `%` count
+    /// are kept, and the walk allocates nothing. Negation is exact and the subnormal flush is
+    /// sign-symmetric, except that `-x` of a tiny positive x is +x; the chain applies that once,
+    /// to the parity, which is unprobed for `--x`, a tiny negative operand and references
+    /// (numbers.md "Unary minus of a tiny subnormal"; TODO(T-2942): probe those forms).
     pub(crate) fn apply_unary_chain(
         &mut self,
         node: &Node,
@@ -451,12 +448,19 @@ impl Model {
         let mut negate = false;
         let mut percents = 0_usize;
         let mut operand = node;
-        while let Node::UnaryKind { kind, right } = operand {
-            match kind {
-                OpUnary::Minus => negate = !negate,
-                OpUnary::Percentage => percents += 1,
+        loop {
+            match operand {
+                Node::UnaryKind { kind, right } => {
+                    match kind {
+                        OpUnary::Minus => negate = !negate,
+                        OpUnary::Percentage => percents += 1,
+                    }
+                    operand = right;
+                }
+                // The identity: `-+-B:B` is one chain too.
+                Node::UnaryPlus { child } | Node::Spaced { child, .. } => operand = child,
+                _ => break,
             }
-            operand = right;
         }
         self.apply_number_unary(operand, cell, |mut f| {
             // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
@@ -467,6 +471,11 @@ impl Model {
                     break;
                 }
                 f = flush_subnormal(f / 100.0);
+            }
+            // Excel's `-x` of a positive x below 2^-1026 is +x, while `0-x` keeps the sign
+            // (numbers.md "Unary minus of a tiny subnormal", probes/t2771-roundup-subnormal-sign-controls).
+            if negate && f > 0.0 && f < TINY_SUBNORMAL_BELOW {
+                return Ok(f);
             }
             Ok(if negate { -f } else { f })
         })

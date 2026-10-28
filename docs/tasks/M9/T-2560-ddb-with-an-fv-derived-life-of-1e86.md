@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -32,3 +33,6 @@ Known failure line: `F gen-m9/1dce4774f5c0e736.case.json Calc!A366` in eval/base
 
 ## Out of scope
 - Re-ordering DB/DDB again (T-2033 fits every other cell).
+
+## Deferred (decision 0114)
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).

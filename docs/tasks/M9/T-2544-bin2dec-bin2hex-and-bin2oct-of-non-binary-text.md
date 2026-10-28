@@ -3,12 +3,12 @@ id: T-2544
 title: "BIN2DEC, BIN2HEX and BIN2OCT of non-binary text are #NUM!, not #VALUE! (gen-m9, 7 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -63,3 +63,6 @@ T-2496 probe (probes/t2496-fin-subexpressions, each case's Data sheet copied as 
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+BIN2DEC/BIN2HEX/BIN2OCT of non-numeric text now give `#NUM!` (booleans and DEC2* text stay `#VALUE!`); unit tests added. Eval: gen-m9 known failures 5367 -> 5356 (11 fixed), probes 2539 -> 2524 (15 fixed), no regressions.

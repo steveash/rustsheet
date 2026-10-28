@@ -20,13 +20,24 @@ DOC_DIRS = ("docs/", ".claude/")
 # Paths under DOC_DIRS that code reads at build or test time, so they count as code. A new reader
 # must add its path here in the same PR; `scripts/check_docs_readers.py` (run by `make hygiene`)
 # fails until it does. docs/excel-semantics/: the eval harness validates DEVIATION anchors in it
-# (crates/rustsheet-eval/src/deviations.rs).
-CODE_READ_PATHS = ("docs/excel-semantics/",)
+# (crates/rustsheet-eval/src/deviations.rs). docs/milestones.md, docs/progress.md and
+# docs/progress/: the progress report generator reads them (tools/src/rustsheet_tools/
+# progress_report/, SPEC-0022, decision 0120), so a steward PR that changes only the page or its
+# history still runs the python job.
+# An entry ending in `/` is a directory and matches every path under it; any other entry is one
+# file and matches only itself, so docs/progress.md does not also claim docs/progress.mdx.
+CODE_READ_PATHS = ("docs/excel-semantics/", "docs/milestones.md", "docs/progress.md", "docs/progress/")
+CODE_READ_DIRS = tuple(p for p in CODE_READ_PATHS if p.endswith("/"))
+
+
+def is_code_read(path: str) -> bool:
+    """Whether `path` is one of CODE_READ_PATHS or under one of its directories."""
+    return path in CODE_READ_PATHS or path.startswith(CODE_READ_DIRS)
 
 
 def is_code(path: str) -> bool:
     """Whether changing `path` needs the heavy CI jobs."""
-    if path.startswith(CODE_READ_PATHS):
+    if is_code_read(path):
         return True
     if path.startswith(DOC_DIRS):
         return False

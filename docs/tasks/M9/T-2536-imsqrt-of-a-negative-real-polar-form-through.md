@@ -3,7 +3,7 @@ id: T-2536
 title: "IMSQRT of a negative real: polar form through Excel's ATAN2, COS and SIN (gen-m9, 5 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: blocked
 priority: P3
 size: S
 tier: opus
@@ -41,3 +41,14 @@ Cells:
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Blocked because
+Web-vs-desktop conflict on the same formula: the target (Excel's ATAN2 and SIN/COS of the half angle) reproduces the
+four web cells but regresses two Mac desktop 16.0300 cached cells the engine passes today, ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+Sheet1!AL12 (expected 2.12115047744981e-16, got 2.12201937071624e-16) and AL26 (expected 6.12323399573677e-17, got
+6.1257422745431e-17). Decision 0039 keeps desktop evidence that cells pass against today, and decision 0030 rule 4 says a web
+golden that misses the desktop fit only by a near-zero residue below 1e-15 absolute is not a fitting target. So nothing here is
+implementable before desktop evidence. Its open question is item 16 of the M14 task T-1075 (desktop-only, decision 0039 rule 3:
+it does not block a milestone). Recorded as CONFLICTING in engineering.md "IMSQRT of a negative real is polar through COS and ATAN2".
+Unblocks when T-1075 item 16 is answered: if Windows desktop gives the web values, implement them (the engine change is
+`excel_atan2` plus `excel_sin_cos` of the half angle in `imsqrt`) and update the two COMPLEXs.xlsx cells under decision 0030.

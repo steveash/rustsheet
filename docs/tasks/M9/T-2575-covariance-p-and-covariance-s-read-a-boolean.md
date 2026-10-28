@@ -3,12 +3,12 @@ id: T-2575
 title: "COVARIANCE.P and COVARIANCE.S read a boolean scalar argument as one value (size #N/A, one point #DIV/0!), not #VALUE! (gen-m9, 4 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
 depends_on: []
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -38,3 +38,8 @@ Cells:
 
 ## Out of scope
 - Cells of the same functions owned by other tasks.
+
+## Outcome
+A typed or computed boolean is now a one-cell sample with no number for COVARIANCE.P/.S (the typed-text path in `paired.rs`
+`sample_arg`), so the size `#N/A` and one-point `#DIV/0!` apply. gen-m9 -4 known failures (the 4 owned cells), probes -18, no
+new. T.TEST is unchanged (its typed values stay `#VALUE!`).

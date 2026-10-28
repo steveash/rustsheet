@@ -119,7 +119,10 @@ impl Model {
                 PickedReference::External(areas) => {
                     match areas {
                         Ok(areas) => {
-                            external += self.external_non_empty_count(&areas).unwrap_or(0) as f64;
+                            let count = self
+                                .external_non_empty_count(&areas)
+                                .or_else(|| self.external_blocked_count(arg, &areas, cell));
+                            external += count.unwrap_or(0) as f64;
                         }
                         Err(_) => external += 1.0,
                     }

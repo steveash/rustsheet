@@ -29,6 +29,11 @@ pub trait Evaluated {
     fn text(&self, _sheet: &str, _addr: Addr) -> Option<String> {
         None
     }
+    /// The sheet names in tab order, which the argument-coverage census parses formulas against
+    /// (T-0077); empty when the engine cannot list them.
+    fn sheet_names(&self) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 pub trait Engine: Sync {
@@ -103,6 +108,10 @@ impl RustSheetEvaluated {
 }
 
 impl Evaluated for RustSheetEvaluated {
+    fn sheet_names(&self) -> Vec<String> {
+        self.workbook.sheets().into_iter().map(|s| s.name).collect()
+    }
+
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
         let cell = self.cell(sheet, addr)?;
         Some(match self.workbook.value(cell).ok()? {
@@ -204,24 +213,7 @@ impl Engine for RustSheetEngine {
                 // any cell is set.
                 // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
                 // reads it.
-                for (name, formula) in &spec.names {
-                    match split_qualified(name) {
-                        Some((sheet, local)) => {
-                            let id = spec
-                                .sheets
-                                .iter()
-                                .position(|s| s.name.eq_ignore_ascii_case(&sheet))
-                                .and_then(|i| ids.get(i).copied())
-                                .ok_or_else(|| {
-                                    rustsheet::EditError::Engine(format!(
-                                        "name {name}: no sheet {sheet}"
-                                    ))
-                                })?;
-                            tx.load_defined_name(Some(id), &local, formula)?;
-                        }
-                        None => tx.load_defined_name(None, name, formula)?,
-                    }
-                }
+                define_names(tx, spec, &ids, false)?;
                 // Values first, then tables (they read their headers), then formulas (a
                 // structured reference parses only once its table exists).
                 for formulas in [false, true] {
@@ -229,18 +221,19 @@ impl Engine for RustSheetEngine {
                         if formulas {
                             spec_pivots::add_pivots(tx, spec, &ids, sheet, id)?;
                             for table in &sheet.tables {
-                                tx.add_table(
-                                    table_range(id, &table.range, table.totals_row)?,
+                                tx.add_table_with_totals(
+                                    range_ref(id, &table.range)?,
                                     &table.name,
                                     table.filter,
+                                    table.totals_row,
                                 )?;
                             }
                         }
                         if !formulas {
                             spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
-                        for (addr, a1, input) in row_major(&sheet.cells)? {
-                            let Some(mut input) = spec_input(input) else {
+                        for (addr, a1, input_spec) in row_major(&sheet.cells)? {
+                            let Some(mut input) = spec_input(input_spec) else {
                                 continue;
                             };
                             // spec2xlsx writes these as plain `<f>` formulas (T-1077).
@@ -249,8 +242,20 @@ impl Engine for RustSheetEngine {
                                     input = Input::LegacyFormula(text.clone());
                                 }
                             }
-                            let is_formula =
-                                matches!(input, Input::StoredFormula(_) | Input::LegacyFormula(_));
+                            // Entered text goes after the tables, as the oracle types it after
+                            // the workbook loads: a structured reference in a typed formula
+                            // parses only once its table exists (probes/t2786-whitespace-
+                            // structured-refs-runs, T-2801), and a constant typed into a table
+                            // column after a typed formula is an exception to its calculated
+                            // column (probes/t2957-constant-exception, T-2958).
+                            let is_formula = match &input {
+                                Input::StoredFormula(_) | Input::LegacyFormula(_) => true,
+                                Input::Parse(text) => {
+                                    text.starts_with('=')
+                                        || matches!(input_spec, CellInput::Entered { .. })
+                                }
+                                _ => false,
+                            };
                             if is_formula != formulas {
                                 continue;
                             }
@@ -258,6 +263,8 @@ impl Engine for RustSheetEngine {
                         }
                     }
                 }
+                // A name with a structured reference parses only once its table exists.
+                define_names(tx, spec, &ids, true)?;
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
                     for table in &sheet.data_tables {
                         let input = |a1: &Option<String>| -> Result<_, rustsheet::EditError> {
@@ -400,19 +407,36 @@ fn calculations(spec: &CaseSpec) -> usize {
     }
 }
 
-/// A spec table's `A1:B9` range on sheet `id`, without its last row when that is a totals row
-/// (`TableSpec::totals_row`).
-fn table_range(id: SheetId, a1: &str, totals_row: bool) -> Result<RangeRef, rustsheet::EditError> {
-    let range = range_ref(id, a1)
-        .map_err(|_| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
-    let bottom = range.bottom.saturating_sub(u32::from(totals_row));
-    Ok(RangeRef::new(
-        id,
-        range.top,
-        range.left,
-        bottom,
-        range.right,
-    )?)
+/// Defines the workbook and sheet-scoped names of `spec` whose formula has a structured
+/// reference (`structured`) or has none. A `[` anywhere in the formula counts, an approximation:
+/// a name whose `[` is in a string is only defined later, after the tables, which is harmless.
+fn define_names(
+    tx: &mut rustsheet::Txn<'_>,
+    spec: &CaseSpec,
+    ids: &[SheetId],
+    structured: bool,
+) -> Result<(), rustsheet::EditError> {
+    for (name, formula) in spec
+        .names
+        .iter()
+        .filter(|(_, f)| f.contains('[') == structured)
+    {
+        match split_qualified(name) {
+            Some((sheet, local)) => {
+                let id = spec
+                    .sheets
+                    .iter()
+                    .position(|s| s.name.eq_ignore_ascii_case(&sheet))
+                    .and_then(|i| ids.get(i).copied())
+                    .ok_or_else(|| {
+                        rustsheet::EditError::Engine(format!("name {name}: no sheet {sheet}"))
+                    })?;
+                tx.load_defined_name(Some(id), &local, formula)?;
+            }
+            None => tx.load_defined_name(None, name, formula)?,
+        }
+    }
+    Ok(())
 }
 
 /// An A1 range (`A1:B4`, one-based) of sheet `id` as a facade range.
@@ -783,23 +807,46 @@ mod tests {
     }
 
     #[test]
-    fn spec_totals_row_is_left_out_of_the_table() {
-        // Until the facade takes totals rows (T-1671) the adapter registers the table without
-        // its last row, so data references are right and the totals formula is not circular.
+    fn spec_typed_formulas_go_in_after_the_tables() {
+        // A typed `=...` reads a structured reference, so it goes in after the tables; typed text
+        // that is not a formula stays a value (`(4)` is -4). T-2955, T-2801.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":"Col","A2":3,"A3":{"entered":"(4)"},
+                "C1":{"entered":"=SUM(T[Col])"},"C2":{"entered":"=A3*2"}},
+                "tables":[{"name":"T","ref":"A1:A3"}]}]}"#,
+        );
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
+        assert_eq!(
+            evaluated.value("S", Addr { row: 1, col: 3 }),
+            Some(Value::Number(-1.0))
+        );
+        assert_eq!(
+            evaluated.value("S", Addr { row: 2, col: 3 }),
+            Some(Value::Number(-8.0))
+        );
+    }
+
+    #[test]
+    fn spec_totals_row_is_part_of_the_table() {
+        // The facade takes the totals row (T-1671): `#All` covers it and `#Totals` reads it.
         let spec = spec(
             r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
                 "A1":"Key","B1":"Val","A2":"a","B2":1,"A3":"b","B3":2,"A4":"Total",
-                "B4":"=SUBTOTAL(109,Data[Val])","D1":"=ROWS(Data[#All])"},
+                "B4":"=SUBTOTAL(109,Data[Val])","D1":"=ROWS(Data[#All])",
+                "D2":"=Data[[#Totals],[Val]]"},
                 "tables":[{"name":"Data","ref":"A1:B4","totals_row":true}]}]}"#,
         );
         let evaluated = RustSheetEngine
             .evaluate_spec(&spec, None)
             .expect("evaluates");
-        // B4 sums the two data rows; `#All` has no totals row (Excel: 4 rows).
-        for (row, col) in [(4, 2), (1, 4)] {
+        // B4 sums the two data rows (3); `#All` has four rows; `#Totals` reads B4.
+        for (row, col, want) in [(4, 2, 3.0), (1, 4, 4.0), (2, 4, 3.0)] {
             assert_eq!(
                 evaluated.value("S", Addr { row, col }),
-                Some(Value::Number(3.0))
+                Some(Value::Number(want))
             );
         }
     }

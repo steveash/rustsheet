@@ -3,12 +3,12 @@ id: T-2546
 title: "BESSELI, BESSELJ and BESSELK past the order cap: Excel's 0 instead of #NUM! (gen-m9, 5 cells)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
 depends_on: [T-2139]
-campaign: visible
+campaign: semantics
 ---
 
 ## Goal
@@ -32,12 +32,22 @@ Cells:
 - gen-m9/b5aef3645cec1b95.case.json (1): Calc!A213
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The DEVIATION entry states Excel's behavior and ours past the cap after the change; per-cell work stays bounded.
-- [ ] `make check` green; reviewers approve.
+- [x] The DEVIATION entry states Excel's behavior and ours past the cap after the change; per-cell work stays bounded.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+Past `MAX_ORDER` BESSELI, BESSELJ and BESSELK now decide in O(1) instead of always `#NUM!`: 0 where Kapteyn's bound (J) or
+the series bound (I) is below e^-850 and the Miller recurrence provably stays finite (from `ln Gamma`), and every order 0
+for K from x = 705.5 (K0 and K1 flushed); Excel's own cap 10,000,000 is matched. Probe `probes/t2546-bessel-past-cap`
+(83 cells, excel-graph) found Excel's tiny-x overflow (`BESSELJ(1E-5,100001)` `#NUM!`, `(2E-5,100001)` 0), I0's overflow
+at x = 709.79 and the K start flush; a unit test checks the rules against the uncapped recurrences. Recorded in
+engineering.md "BESSEL order cap" (DEVIATION shrunk to J near or past x = n and Y at large x). Eval: the 5 gen-m9 lines
+gone; 8 stale probe deviations removed and the 6 remaining probe cells pinned as deviations (decision 0116); no new
+known failures.
