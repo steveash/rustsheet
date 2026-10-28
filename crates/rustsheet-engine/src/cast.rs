@@ -321,6 +321,40 @@ impl Model {
         Ok(result)
     }
 
+    /// Reads the cells of `left:right` as [`Model::evaluate_range`] does, in the same order and
+    /// under the same size check, without keeping their values: an arm a lifted IF or CHOOSE
+    /// does not pick is read so, its cycles and dependencies recorded as before, without its
+    /// copy (T-1564). Only the cells within the used area are read, so only they are charged.
+    pub(crate) fn read_range_cells(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        if let Some((error, message)) = check_range_size(&left, &right) {
+            return Err(CalcResult::new_error(error, cell, message));
+        }
+        let (last_row, last_column) = self
+            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+        let (last_row, last_column) = (last_row.min(right.row), last_column.min(right.column));
+        let (rows, columns) = (
+            usize::try_from(last_row - left.row + 1).unwrap_or(0),
+            usize::try_from(last_column - left.column + 1).unwrap_or(0),
+        );
+        self.spend_cells(rows, columns, cell)?;
+        for row in left.row..=last_row {
+            for column in left.column..=last_column {
+                self.evaluate_cell(CellReferenceIndex {
+                    sheet: left.sheet,
+                    row,
+                    column,
+                });
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn get_number_or_array(
         &mut self,
         node: &Node,

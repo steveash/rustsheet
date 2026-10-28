@@ -831,9 +831,12 @@ So `COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))` and `RANK(10,CHOOSE(…))` are 2x2 gr
 Evidence: probes/choose-array-index-range-arms (excel-graph, 2026-10-14, T-1508); probes/countblank-array-values H20,
 H34; probes/array-context-legacy-sumproduct H1, H10; probes/external-ref-no-link-ifchoose A32.
 Status: VERIFIED (excel-graph)
-Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using IF's `evaluate_if_arg`/`if_arg_at`
-(functions/logical/mod.rs).
-Tasks: T-1508
+Ours: an arm no index element picks is sized from its range bounds and its cells are read (so a cycle through it is
+one) but not copied, so `CHOOSE({1},C:C,D:D,…)` with 254 whole-column arms holds one column (T-1564; IF over an array
+condition alike).
+Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using `BroadcastArg` and
+`evaluate_broadcast_arm` (functions/broadcast_arg.rs).
+Tasks: T-1508, T-1564
 
 ## XMATCH/XLOOKUP reference-form lookup and return arrays; capital Thorn
 A single-cell reference is a one-cell vector for XMATCH `lookup_array` and XLOOKUP `lookup_array`/`return_array`: `XMATCH(5,A1)` is 1, `XMATCH(5,one)` (single-cell defined name) is 1, `LET(r,A1,XMATCH(5,r))` is 1 and `XLOOKUP(5,A1,B3)` returns B3's value. A blank single-cell `return_array` yields 0 (`XLOOKUP(5,one,B2)` is 0). `XMATCH(10,@A1:A3)` is `#N/A` (on row 1 the `@` yields the scalar 5, not a vector containing 10) and `XLOOKUP(5,A1,@B1:B3)` on row 7 is `#VALUE!` (the `@` finds no cell on row 7 to intersect, so the error arises before XLOOKUP runs; the probe cannot separate that from a scalar `return_array`). A 3-D span `Sheet1:Sheet3!A1` as lookup_array or return_array is `#VALUE!` (not `#REF!`). `"Þ"="TH"` is TRUE and `"Þ"<"TI"` is TRUE (Thorn collates as TH), so `XMATCH("Þ",D1:D3)` is 1, `XMATCH("TI",D1:D3,1)` is 3.

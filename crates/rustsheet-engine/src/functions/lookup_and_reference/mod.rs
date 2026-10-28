@@ -8,7 +8,7 @@ use crate::expressions::utils::{
     unquote_sheet_prefix,
 };
 use crate::external_reference::{one_external_area, PickedReference};
-use crate::functions::logical::{if_arg_at, if_arg_dims};
+use crate::functions::broadcast_arg::BroadcastArg;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::limits::check_array_size;
@@ -666,9 +666,17 @@ impl Model {
         index_array: &[Vec<ArrayNode>],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut values = Vec::with_capacity(args.len() - 1);
-        for arg in &args[1..] {
-            match self.evaluate_if_arg(arg, cell) {
+        // An argument no index element picks only sizes the result: it is not copied (T-1564).
+        let count = args.len() - 1;
+        let mut picked = vec![false; count];
+        for index in index_array.iter().flatten() {
+            if let Ok(arm) = self.choose_index_element(index, count) {
+                picked[arm] = true;
+            }
+        }
+        let mut values = Vec::with_capacity(count);
+        for (arg, &is_picked) in args[1..].iter().zip(&picked) {
+            match self.evaluate_broadcast_arm(arg, cell, is_picked) {
                 Ok(value) => values.push(value),
                 Err(error) => return error,
             }
@@ -677,7 +685,7 @@ impl Model {
         let index_cols = index_array.first().map_or(0, Vec::len);
         let (rows, cols) = values
             .iter()
-            .map(if_arg_dims)
+            .map(BroadcastArg::dims)
             .fold((index_rows, index_cols), |(r, c), (vr, vc)| {
                 (r.max(vr), c.max(vc))
             });
@@ -691,7 +699,7 @@ impl Model {
                 let node = match bcast_get(index_array, row, col) {
                     None => ArrayNode::Error(Error::NA),
                     Some(index) => match self.choose_index_element(index, values.len()) {
-                        Ok(picked) => if_arg_at(&values[picked], row, col),
+                        Ok(picked) => values[picked].at(row, col),
                         Err(error) => error,
                     },
                 };

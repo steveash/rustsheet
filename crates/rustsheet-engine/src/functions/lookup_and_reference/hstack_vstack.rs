@@ -1,5 +1,6 @@
 use super::ref_lift::{lifts_into_references, put_back};
 use crate::calc_result::range_dims;
+use crate::functions::lift::grid_dims;
 use crate::functions::Function;
 use crate::{
     calc_result::CalcResult,
@@ -27,6 +28,16 @@ fn is_cell_contents_call(arg: &Node) -> bool {
     }
 }
 
+/// The rows and columns an evaluated stack argument has once read, without reading a range's
+/// cells; a scalar is 1x1.
+fn unread_dims(result: &CalcResult) -> (usize, usize) {
+    match result {
+        CalcResult::Range { left, right } => range_dims(*left, *right),
+        CalcResult::Array(array) => grid_dims(array),
+        _ => (1, 1),
+    }
+}
+
 impl Model {
     // ── HSTACK ────────────────────────────────────────────────────────────────
 
@@ -42,17 +53,21 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
+        // Every argument is evaluated first, a range without reading its cells, so the stack is
+        // sized and checked before any range is copied (T-1564), as VSTACK does.
+        let mut results: Vec<CalcResult> = Vec::with_capacity(args.len());
         for arg in args {
-            // A blank one-cell reference is a blank element, as for VSTACK:
-            // `SEARCH(HSTACK(Z1),"Hello World",8)` is 8 (probes/t2436, gen-m9 T-2436).
-            match self.eval_to_array_keep_blank(arg, cell) {
-                Ok(a) => arrays.push(a),
-                Err(e) => return e,
+            match self.evaluate_node_in_context(arg, cell) {
+                err @ CalcResult::Error { .. } => return err,
+                result => results.push(result),
             }
         }
 
-        let max_rows = arrays.iter().map(|a| a.len()).max().unwrap_or(0);
+        let max_rows = results
+            .iter()
+            .map(|result| unread_dims(result).0)
+            .max()
+            .unwrap_or(0);
         if max_rows == 0 {
             return CalcResult::Array(vec![]);
         }
@@ -61,12 +76,26 @@ impl Model {
         // any padding or copying (DEVIATION, arrays.md "Array results above 1,048,576 cells";
         // T-1780). A column next to a row is their product. Columns past the grid are allowed
         // (`check_stack_size`, T-1803).
-        let total_cols = arrays
+        let total_cols = results
             .iter()
-            .map(|a| a.first().map_or(0, Vec::len))
+            .map(|result| unread_dims(result).1)
             .fold(0_usize, usize::saturating_add);
         if let Some((error, message)) = check_stack_size(max_rows, total_cols) {
             return CalcResult::new_error(error, cell, message);
+        }
+
+        let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
+        for result in results {
+            // A blank one-cell reference is a blank element, as for VSTACK:
+            // `SEARCH(HSTACK(Z1),"Hello World",8)` is 8 (probes/t2436, gen-m9 T-2436).
+            let array = match result {
+                CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
+                result => self.result_to_array(result, cell),
+            };
+            match array {
+                Ok(a) => arrays.push(a),
+                Err(e) => return e,
+            }
         }
 
         let na = ArrayNode::Error(Error::NA);
@@ -111,6 +140,8 @@ impl Model {
         // range is evaluated to its corners, which reads nothing. Every argument's rows count.
         let mut results: Vec<Option<CalcResult>> = Vec::with_capacity(args.len());
         let mut known_rows = 0_usize;
+        // The widest argument, so the whole stack is checked before any range is copied (T-1564).
+        let mut known_cols = 0_usize;
         for arg in args {
             // `VSTACK(CELL("contents",ref),..)` is one `#VALUE!`, though CELL alone is fine
             // (probes/t2414-gen-m7-unexplained Calc!A41, A61, A81, excel-graph, T-2457).
@@ -123,23 +154,21 @@ impl Model {
             }
             if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) {
                 known_rows = known_rows.saturating_add(1);
+                known_cols = known_cols.max(1);
                 results.push(None);
                 continue;
             }
             match self.evaluate_node_in_context(arg, cell) {
                 err @ CalcResult::Error { .. } => return err,
                 result => {
-                    let rows = match &result {
-                        CalcResult::Range { left, right } => range_dims(*left, *right).0,
-                        CalcResult::Array(array) => array.len(),
-                        _ => 1,
-                    };
+                    let (rows, cols) = unread_dims(&result);
                     known_rows = known_rows.saturating_add(rows);
+                    known_cols = known_cols.max(cols);
                     results.push(Some(result));
                 }
             }
         }
-        if let Some((error, message)) = check_stack_size(known_rows, 1) {
+        if let Some((error, message)) = check_stack_size(known_rows, known_cols.max(1)) {
             return CalcResult::new_error(error, cell, message);
         }
 
@@ -167,18 +196,10 @@ impl Model {
             return CalcResult::Array(vec![]);
         }
 
-        // Refuse a padded shape above the array limit before any padding (T-1780, as HSTACK); rows
-        // past the grid are `#NUM!` (`check_stack_size`, T-1803).
-        let total_rows = arrays
-            .iter()
-            .map(Vec::len)
-            .fold(0_usize, usize::saturating_add);
-        if let Some((error, message)) = check_stack_size(total_rows, max_cols) {
-            return CalcResult::new_error(error, cell, message);
-        }
-
+        // The padded shape was refused above the array limit before any range was read (T-1780,
+        // T-1564); rows past the grid are `#NUM!` (`check_stack_size`, T-1803).
         let na = ArrayNode::Error(Error::NA);
-        let mut result: Vec<Vec<ArrayNode>> = Vec::with_capacity(total_rows);
+        let mut result: Vec<Vec<ArrayNode>> = Vec::with_capacity(known_rows);
         for arr in arrays {
             for row in arr {
                 let mut padded = row;
