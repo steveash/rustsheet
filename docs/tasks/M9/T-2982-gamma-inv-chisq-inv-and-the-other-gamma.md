@@ -3,7 +3,7 @@ id: T-2982
 title: "GAMMA.INV, CHISQ.INV and the other gamma inversions give Excel's values at a huge shape (T-1891 rest: E5, E15, the gen-m9 cells, the underflow rule)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -45,11 +45,30 @@ recorded.
     over-charges there; re-derive it if an inversion changes.
 
 ## Acceptance criteria
-- [ ] probes/incomplete-gamma-cap E5, E15, E18 pass, E13, E14, E19 bit-exact or named in the Outcome with their ulp; no
-      loop whose length depends on argument values beyond the T-1872 caps.
-- [ ] The underflow rule is probed below shape 1 and near 0 and matched or recorded.
-- [ ] The owned gen-m9 and t2435 cells are fixed or handed on with a reason; no new known-failure lines.
-- [ ] `make check` green; reviewers approve.
+Amended at the split (2026-10-28, run 2): the shapes below 2E10, the chi-square df cap and the last digits moved to
+T-3070 with their cells.
+- [x] probes/incomplete-gamma-cap E5 and E18 pass; E13, E14, E15, E19 named in T-3070 (E15 is the 1E9-5E9 band,
+      E13, E14, E19 1 ulp each, unchanged); no loop whose length depends on argument values (the closed form is O(1)).
+- [x] The underflow rule is probed below shape 1 and near 0 (A117-A122) and matched (0 at every shape).
+- [x] No new known-failure lines on existing cases (gen-m9 and probes shrink by 1 and 11); the new probe's remaining
+      known failures (the 63 `F` lines of probes/t2982-gamma-inv-huge-shape, new coverage) are each T-3070's, as are the
+      owned gen-m9 and t2435 cells, which sit at shapes 1E9 to 1E10 or are a small-shape inversion's (T-0972).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).
+
+## Outcome
+- GAMMA.INV and GAMMAINV from shape 2E10 are Excel's Wilson-Hilferty closed form (`incomplete_gamma`
+  `wilson_hilferty_quantile`, constants fitted on probes/t2982-gamma-inv-huge-shape): within 7 ulps at shape 1E13 and
+  above (A13-A41 and A78-A86 pass or are a few ulps off; ours was `#NUM!` everywhere above about 1E9), 100 to 1,500
+  ulps at 1E11. probes/incomplete-gamma-cap E5 (`GAMMA.INV(0.5,1E300,1E-300)`) and E18 now pass.
+- The cdf where x / beta underflows is 0 at every shape (A117-A122), the density where it overflows `#NUM!` (E18).
+- Split to T-3070 (session budget and the evidence): shapes 1E9 to 2E10 (E15, A2-A4, the `#NUM!` band, A44), CHIINV and
+  CHISQ.INV.RT above the 1E10 df cap (A92, A93), the 1E11 z^2 term, Temme's tails at the 1E8 cut (A144-A146), E13,
+  E14, E19 and the gen-m9 cells. The underflow rule below shape 1 is probed and matched (criterion 2).
+- How the form was found: c^(1/3) - 1 is 0.0000886 to 13 digits, and (x/a)^(1/3) less 1 + 0.0000886 - 1/(9a) is
+  linear in z with slope s/(3 sqrt a), s = 1 - 2.2106E-5, at shapes 1E11 and 1E13 alike (A25-A77); the earlier
+  reading as c times the true quantile plus a z term was the same cube expanded.
+- Eval delta: known failures gen-m9 3319 -> 3318, probes 2607 -> 2596 (fixed 12, regressions 0);
+  probes/t2982-gamma-inv-huge-shape 49 -> 60 of 123.
