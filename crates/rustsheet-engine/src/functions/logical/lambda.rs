@@ -889,7 +889,7 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
 /// (T-2925).
 const RETAINED_LAMBDA_SLOTS: usize = 1 << 10;
 
-/// The lifetime of the LAMBDAs a formula makes: one root cell's, or one evaluation's.
+// The lifetime of the LAMBDAs a formula makes: one root cell's, or one evaluation's.
 impl Model {
     /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
     /// made it (a cell holding one is `#CALC!`), so the LAMBDAs it made and what they captured
@@ -922,6 +922,8 @@ impl Model {
             self.lambdas = HashMap::new();
         }
     }
+    /// Drops every LAMBDA and restarts the ids at 0: a whole evaluation (a pass, a data table) ends,
+    /// so no caller holds an id.
     pub(crate) fn clear_lambdas(&mut self) {
         self.lambdas.clear();
         self.eta_lambdas.clear();
