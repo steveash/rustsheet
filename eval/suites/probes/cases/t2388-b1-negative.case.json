@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2388: TEXT with a lone B1 calendar prefix. Column A: TEXT(3,code), B: TEXT(0,code), C: TEXT(-3,code), same code per row.",
+ "description": "T-2388: TEXT with a lone B1/B2 calendar prefix. Rows 1-5, column A: TEXT(3,code), B: TEXT(0,code), C: TEXT(-3,code). Rows 6-13, column A: a negative value under explicit negative sections, tagged or Hijri prefixes and a value past the maximum serial.",
  "tags": [
   "M10",
   "probe",
@@ -25,7 +25,15 @@
     "C4": "=TEXT(-3,\"B1@\")",
     "A5": "=TEXT(3,\"[$-40C]B1\")",
     "B5": "=TEXT(0,\"[$-40C]B1\")",
-    "C5": "=TEXT(-3,\"[$-40C]B1\")"
+    "C5": "=TEXT(-3,\"[$-40C]B1\")",
+    "A6": "=TEXT(-3,\"0;b1\")",
+    "A7": "=TEXT(-3,\"0;b1 x\")",
+    "A8": "=TEXT(-3,\"b1;b1\")",
+    "A9": "=TEXT(-3,\"[$-40C]B2\")",
+    "A10": "=TEXT(-3,\"[$-409]B2\")",
+    "A11": "=TEXT(-3,\"b2\")",
+    "A12": "=TEXT(-3,\"B2 x\")",
+    "A13": "=TEXT(-3000000,\"b1\")"
    }
   }
  ],
