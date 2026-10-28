@@ -1235,8 +1235,11 @@ Rule (observed): SCAN whose array is a GROUPBY call is one cell, not a scan of t
 - `SCAN(GROUPBY(Data!A1:A4,Data!B1:B4,SUM),0,MIN)` is 0.
 - A LAMBDA that ignores the accumulator gives one value (`LAMBDA(a,v,TYPE(v))` is 1, `ROWS(v)*100+COLUMNS(v)` 101).
 - One that uses the accumulator (`LAMBDA(a,v,a+1)`) is `#CALC!`, also through LET, TAKE and VSTACK.
-- With `LAMBDA(w,w)` as the GROUPBY function, SCAN MIN is `#N/A`: the value cells hold the groups' arrays ("Aggregates
-  over nested GROUPBY and PIVOTBY cells" above), and MIN of one is `#N/A`.
+- With `LAMBDA(w,w)` as the GROUPBY function, SCAN MIN is `#N/A`, and with `LAMBDA(w,1/0)` it is `#DIV/0!`
+  (groupby-lifted-args A169). A hypothesis, not established: the eta-reduced MIN is given the whole GROUPBY result,
+  whose value cells hold the groups' arrays ("Aggregates over nested GROUPBY and PIVOTBY cells" above). An explicit
+  LAMBDA over the same `w,w` GROUPBY sees a 1x1 number (A45 `TYPE(v)` 1, A48 `ROWS(v)*100+COLUMNS(v)` 101), so eta MIN
+  and an explicit LAMBDA see different things.
 - MAP and REDUCE over the same GROUPBY see all of its cells (4x2; 8 elements).
 Evidence: probes/scan-over-groupby (excel-graph, 2026-10-23, T-2398); probes/groupby-lifted-args A153, I153, A161, A169;
 gen-m7/b24ce74f08d3f91a Calc!A1850.
