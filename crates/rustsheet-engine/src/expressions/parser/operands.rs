@@ -518,6 +518,7 @@ impl Parser {
             .trim_start_matches("_xlfn.")
             .trim_start_matches("_xlpm.")
             .to_string();
+        let empty_call_run = self.empty_call_run();
         let args = match self.parse_function_args(&display_name) {
             Ok(s) => s,
             Err(e) => return e,
@@ -594,7 +595,9 @@ impl Parser {
             .filter(|_| !self.calls_bound_name(&name))
         {
             self.note_argument_count(&function_kind, &display_name, args.len());
-            let node = self.function_call(function_kind, args);
+            let node = self
+                .function_call(function_kind, args)
+                .with_empty_call_run(empty_call_run);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
             // refuses `SUM(1)(2)`, `ABS(1)(2)` and `IFERROR(LAMBDA(x,x*2),0)(3)`
@@ -638,6 +641,7 @@ impl Parser {
             // We parse all the arguments, although technically this is moot
             // But is has the upside of transforming `=TRUE( 4 )` into `=TRUE(4)`
             let fn_name = if value { "TRUE" } else { "FALSE" };
+            let empty_call_run = self.empty_call_run();
             let args = match self.parse_function_args(fn_name) {
                 Ok(s) => s,
                 Err(e) => return e,
@@ -650,17 +654,12 @@ impl Parser {
                     message: err.message,
                 };
             }
-            if value {
-                return Node::FunctionKind {
-                    kind: Function::True,
-                    args,
-                };
+            let kind = if value {
+                Function::True
             } else {
-                return Node::FunctionKind {
-                    kind: Function::False,
-                    args,
-                };
-            }
+                Function::False
+            };
+            return Node::FunctionKind { kind, args }.with_empty_call_run(empty_call_run);
         }
         Node::BooleanKind(value)
     }
