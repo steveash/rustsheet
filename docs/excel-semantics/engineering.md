@@ -108,7 +108,7 @@ Excel past 100,000 (probes/t2546-bessel-past-cap, 83 cells, excel-graph, 2026-10
   `BESSELI(100.21..,5)` is 1.177055823943151E+42, which the platform exp misses by 2 ulps (gen-m9/59a16b5ab566ee5c
   Calc!A299, excel-graph; T-2548). Whether BESSELI's Miller steps round twice is undetermined: that cell is the same either way (ours keep plain doubles).
 - BESSELI is 0 where I_n(x) underflows (`BESSELI(100,100001)`, `(700,100001)`, `(1E-3,100001)`, `(8,1E+6)`, `(-2.5,100001)`),
-  `#NUM!` from x = 709.7 (T-2613), even though I_n(x) underflows (`BESSELI(713,100001)`,
+  `#NUM!` above x = 709.7 (T-2613, "BESSELI overflow point"), even though I_n(x) underflows (`BESSELI(713,100001)`,
   `(1E+4,100001)`, `(2E+5,100001)`), and `#NUM!` for a tiny x, as J (`BESSELI(2E-5,100001)`; `(5E-5,100001)` is 0: BESSELI
   starts its recurrence at 2(n + sqrt(40n)), twice J's order, so it overflows from a larger x).
 - BESSELK is 0 at every order from 2 on from x = 705.5 (inferred: 705 is `#NUM!` and 706 is 0 at order 100001), where K0 and
@@ -977,7 +977,7 @@ Not fixed here: `BESSELI(2.5,100001)` and `(2.5,1E+6)` are 0 in Excel and `#NUM!
 Evidence: probes-numeric/m9-besselk-underflow (147 cells, excel-graph): BESSELK(x,n) for n = 0 to 5 and BESSELI(x,0) at x = 500, 600, 650, 680, 690, 695, 700, 702, 705, 707, 708, 709, 709.5, 709.78, 710 to 713 in steps of 0.5 from 710 (21 x values x 7 cells = 147). Ours matches 134 of 147 cells.
 Rule: ours is bit-exact for BESSELK at every n probed up to x = 695, and at x = 700, 702 and 705 for n = 0 and 1; BESSELK is 0 for n = 0 to 5 from x = 707 on (T-2421 puts the flush between 705 and 705.5), as ours.
 Rule: in the upward recurrence `K(n+1) = K(n-1) + 2n/x * K(n)`, Excel sets the product `2n/x * K(n)` to 0 when it is subnormal (|product| < 2.2250738585072014E-308; inferred: the probe only brackets the threshold in (1.34E-308, 2.67E-308], from the x = 700 products of n = 1 (flushed) and n = 2 (kept)), as the other subnormal flushes here do (BESSELK below the smallest normal, T-2421). Replaying the recurrence from the oracle's K0 and K1 with that flush reproduces all 12 differing cells bit-exactly; without it, it reproduces our 12 values bit-exactly. At x = 700 only the n = 1 product (about 1.3E-308) is subnormal, so only K2 = K0 (4.669776528722504E-306) while K3 (4.69979514014056E-306), K4 (4.710060487066566E-306) and K5 (4.753624402849892E-306) still get their terms; at 702 and 705 every product is subnormal, so K2 = K4 = K0 and K3 = K5 = K1 (`BESSELK(702,4)` 6.310849433265845E-307, `(702,5)` 6.315342484400538E-307, `(705,4)` 3.135297088468052E-308). Ours adds the subnormal term and misses these 12 cells (n = 2 to 5 at x = 700, 702 and 705) by 1.6E-5 (`BESSELK(700,3)`) to 1.7% relative (`BESSELK(702,5)`, ours 6.4241464536256334E-307).
-Rule: BESSELI(x,0) is finite up to x = 709.5 (2.02976276636543E+306) and `#NUM!` at 709.78 and from there to 713; ours is finite at 709.78 (2.685109662266049E+306), so the overflow cut lies in (709.5, 709.78], below the true overflow of I0 near 713.98 (T-2421 has 710 on).
+Superseded by "BESSELI overflow point (T-2613)" below: the cut is at 709.7. Rule: BESSELI(x,0) is finite up to x = 709.5 (2.02976276636543E+306) and `#NUM!` at 709.78 and from there to 713; ours is finite at 709.78 (2.685109662266049E+306), so the overflow cut lies in (709.5, 709.78], below the true overflow of I0 near 713.98 (T-2421 has 710 on).
 Ours flushes that term since T-2549 and matches all 12 cells (146 of the probe's 147).
 
 ## BESSELI overflow point (T-2613)
