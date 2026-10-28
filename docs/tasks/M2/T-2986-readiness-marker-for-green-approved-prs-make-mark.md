@@ -3,7 +3,7 @@ id: T-2986
 title: "Readiness marker for green, approved PRs: make mark-ready and its verifier"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
