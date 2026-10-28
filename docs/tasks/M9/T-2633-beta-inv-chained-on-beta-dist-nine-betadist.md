@@ -69,7 +69,7 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
 
-## Progress (opus run 2026-10-28, session budget ran out; branch pushed, nothing implemented)
+## Progress (opus run 2026-10-28: too little session budget left to port bgrat; diagnosis only, nothing implemented)
 - gen-m9/35e8168aae2b00f8 A159 `BETADIST(1E-10,0.5,10000000000.5)`: mpmath at 50 digits gives
   0.84270079296528140805631583..., so Excel's 0.8427007929652814 is correctly rounded. Ours is 1.7E-7 relative off.
 - The cause is not the prefactor's logs: `large_prefactor` already takes ln(1 - y) near 1 (`ln_near_one`). The point
