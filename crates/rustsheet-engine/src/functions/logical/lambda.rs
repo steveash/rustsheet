@@ -883,3 +883,50 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
         }
     }
 }
+
+/// Slots of `Model::lambdas`' table kept once a root formula's LAMBDAs are dropped: past this the
+/// table is given back, so one formula that made millions holds no memory for the rest of the pass
+/// (T-2925).
+const RETAINED_LAMBDA_SLOTS: usize = 1 << 10;
+
+/// The lifetime of the LAMBDAs a formula makes: one root cell's, or one evaluation's.
+impl Model {
+    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
+    /// made it (a cell holding one is `#CALC!`), so the LAMBDAs it made and what they captured
+    /// (`Model::close_over`) are dropped with it, not kept for the rest of the pass: each later
+    /// formula's calls would otherwise slow down with the map's size (T-2925).
+    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
+        let mark = self.last_lambda_id;
+        self.evaluate_cell(cell);
+        self.drop_lambdas_since(mark);
+        self.clear_formula_scratch();
+    }
+    /// Drops what LAMBDAs captured and the nested-array budgets: they belong to one formula, so a
+    /// root cell and a whole evaluation both end them.
+    fn clear_formula_scratch(&mut self) {
+        self.lambda_captures.clear();
+        self.captured_cells = 0;
+        self.nested_budget = crate::nested_array::NestedBudget::default();
+    }
+    /// Drops the LAMBDAs made since `last_lambda_id` was `mark`, in time proportional to how many
+    /// were made. Ids keep growing (`last_lambda_id` is not reset): a `PreparedLambda`'s
+    /// `lambda_mark` compares them (T-2925).
+    fn drop_lambdas_since(&mut self, mark: usize) {
+        for id in mark..self.last_lambda_id {
+            self.lambdas.remove(&id);
+            self.eta_lambdas.remove(&id);
+        }
+        self.named_lambdas.drop_since(mark);
+        // A formula that made many leaves the map's table behind; give it back once empty.
+        if self.lambdas.is_empty() && self.lambdas.capacity() > RETAINED_LAMBDA_SLOTS {
+            self.lambdas = HashMap::new();
+        }
+    }
+    pub(crate) fn clear_lambdas(&mut self) {
+        self.lambdas.clear();
+        self.eta_lambdas.clear();
+        self.named_lambdas = NamedLambdas::default();
+        self.clear_formula_scratch();
+        self.last_lambda_id = 0;
+    }
+}
