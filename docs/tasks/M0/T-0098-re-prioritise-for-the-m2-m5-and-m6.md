@@ -36,7 +36,7 @@ rows (`milestone_exit`: coverage, generated suite and ironcalc-calc rows met), w
       task follows from it).
 - [x] T-2855 is P1 for M8's probe row: it owns probes/table-edits/plain-range-delete-row-first, table-delete-column-qty
       and table-delete-row-all-data-below, three of the six M8 cases with visibly-off cells.
-- [x] The cells of those functions no open task names are T-3017's (P1).
+- [x] The cells of those functions no open task names are T-3021's (P1).
 - [x] Last-digit work waits on the kernel it would redo: T-2146 depends on T-2510 (bgrat for BINOM/NEGBINOM), T-0967
       on T-2511 (T.INV on the ported incomplete beta). The kernel chain T-2507 to T-2511 was already ordered.
 
