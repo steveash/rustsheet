@@ -3,6 +3,7 @@ use super::bessel_excel::{
     MILLER_RESCALE, MILLER_RESCALE_FACTOR,
 };
 use crate::functions::statistical::ln_gamma;
+use crate::x87_exp::excel_exp;
 
 /// The even order BESSELI's Miller recurrence starts from, `2 (n + sqrt(MILLER_ACCURACY n))`.
 fn in_start_order(n: i32) -> f64 {
@@ -83,7 +84,7 @@ pub(crate) fn bessel_i0(x: f64) -> f64 {
         p1 + y * (p2 + y * (p3 + y * (p4 + y * (p5 + y * (p6 + y * p7)))))
     } else {
         let y = k1 / ax;
-        ((ax).exp() / (ax).sqrt())
+        (excel_exp(ax) / (ax).sqrt())
             * (q1
                 + y * (q2
                     + y * (q3 + y * (q4 + y * (q5 + y * (q6 + y * (q7 + y * (q8 + y * q9))))))))
@@ -119,7 +120,7 @@ pub(crate) fn bessel_i1(x: f64) -> f64 {
         x * (p1 + y * (p2 + y * (p3 + y * (p4 + y * (p5 + y * (p6 + y * p7))))))
     } else {
         let y = k1 / ax;
-        let result = ((ax).exp() / (ax).sqrt())
+        let result = (excel_exp(ax) / (ax).sqrt())
             * (q1
                 + y * (q2
                     + y * (q3 + y * (q4 + y * (q5 + y * (q6 + y * (q7 + y * (q8 + y * q9))))))));
