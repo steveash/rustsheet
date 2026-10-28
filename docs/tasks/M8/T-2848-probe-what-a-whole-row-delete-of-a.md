@@ -3,7 +3,7 @@ id: T-2848
 title: "Probe what a whole-row delete of a table's last data row does to that row's cells outside the table, and a multi-row delete of every data row"
 milestone: M8
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
