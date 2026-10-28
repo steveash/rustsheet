@@ -3,6 +3,8 @@
 - **Status:** accepted (2026-10-19, owner request, T-1937). It amends 0028 and replaces 0053's merge
   queue, which this repository cannot turn on. Amended by 0121: outside the lock, a PR branch takes
   `main` in only to fix a conflict or a known id collision, never only because it is behind.
+  Amended by 0145: the lock serves waiters first-in, first-out, and a waiting agent waits with
+  `make merge-lock-wait` instead of trying again later.
 - **Context:** Decision 0028 merges only a head that contains the current `main`, so a duplicate task
   or decision id (or any clash of two green PRs) fails in CI before it lands. Decision 0053 was to hand
   that guarantee to GitHub's merge queue, but the queue needs a repository owned by an organization
