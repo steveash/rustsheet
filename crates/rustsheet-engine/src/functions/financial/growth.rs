@@ -40,11 +40,11 @@ impl Model {
         }
         // Excel computes `EXP(LN(fv/pv)*(1/nper))-1` with its own `/`, LN, `*`, EXP and `-`,
         // taking the reciprocal first: `RRI(0.5,3,4)` is 0.7777777777777775 where `(4/3)^2-1` is
-        // ...777 (RRI.xlsx D12), and the form fits 134 of the 136 numeric points of the T-2216 sweep, the
-        // other two being the fv = 0 edges below (probes-numeric/m9-fin-rri-sweep; `^` fits 112, `/nper` 87) plus probes/fin-rri and
-        // fin-mduration-rri-fit A37-A59. Unlike `^`, a negative ratio is always #NUM!:
-        // `RRI(1,-100,200)` is #NUM! where `(200/-100)^1-1` is -3, and so are odd roots
-        // (probes/fin-rri-vdb-edges A1-A16).
+        // ...777 (RRI.xlsx D12). The form fits 134 of the 136 numeric points of the T-2216 sweep,
+        // the other two being the fv = 0 edges below (probes-numeric/m9-fin-rri-sweep; `^` fits
+        // 112, `/nper` 87), and probes/fin-rri and fin-mduration-rri-fit A37-A59. Unlike `^`, a
+        // negative ratio is always #NUM!: `RRI(1,-100,200)` is #NUM! where `(200/-100)^1-1` is -3,
+        // and so are odd roots (probes/fin-rri-vdb-edges A1-A16).
         let ratio = extended_quotient(fv, pv);
         if ratio < 0.0 {
             return Err(num_error(cell));
