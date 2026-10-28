@@ -3656,13 +3656,20 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-2430 and T-2093.
 Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3},(<FALSE>/"x~*"))` and `COVARIANCE.S({1,#N/A,3},RANK(<#VALUE!>))`
 are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
 (gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
+Probed on excel-graph (T-2636, probes/array-error-element-order): PROB (`PROB({1,#N/A,3},{0.2,0.3,0.5},1)`, an element in
+either data argument, with a limit error or an extra upper limit) and SLOPE, INTERCEPT, STEYX, RSQ, FORECAST.LINEAR and
+CHISQ.TEST with the element in either position are all `#N/A`; with an element error in each data argument the first
+argument's wins (`SLOPE({1,#N/A,3},{1,#DIV/0!,3})` is `#N/A`). A scalar bins error beats a data-array error element
+(`FREQUENCY({1;#DIV/0!;3},NA())` is `#N/A`), but an error element of FREQUENCY's *bins* array is skipped like text:
+`ROWS(FREQUENCY(0,{1,#VALUE!,3}))` is 3, `INDEX(FREQUENCY(0,{1,#VALUE!,3}),1)` is 1, and
+`ROWS(FREQUENCY(0,ABS({13,15,17,""}-13)))` is 4 (A1, A2, A4), as desktop Excel's cached value for corpus-bench/53062 shows.
+A typed or computed boolean as data or bins, and numeric text `"2"` as a bin, are skipped (A8-A11). `FREQUENCY({1;2},{#N/A})` is
+`#SPILL!` on the web (A3, a one-cell spill of an array result; not a rule). Still unprobed: a data-array error element against an
+error cell in a bins range.
 Ours: T-2430 implements it for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST and the paired functions
-(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB, and FREQUENCY's bins array, still map an array's error element to `#VALUE!` (T-2636; FREQUENCY's data array
-propagates it since T-2427),
-F.TEST and FTEST since T-2692 (`f_test_sample`, fisher.rs). UNVERIFIED (shared reader, no oracle cell): SLOPE, INTERCEPT, STEYX, RSQ, FORECAST, FORECAST.LINEAR,
-CHISQ.TEST and CHITEST now return the element's error too; the other argument's error winning is verified only for PERCENTILE, TRIMMEAN
-and COVARIANCE.S and applied to every function above; an array with an error element as the second argument against a plain first
-one, and an empty argument in the other position, are unprobed (T-2636).
+(COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB since T-2636; FREQUENCY's data array since T-2427 and its bins array
+skips an error element since T-2636; F.TEST and FTEST since T-2692 (`f_test_sample`, fisher.rs). The other argument's error winning is verified only for
+PERCENTILE, TRIMMEAN and COVARIANCE.S and applied to every function above.
 Status: VERIFIED (excel-graph)
 
 ## F.TEST: an error argument is that error; overflowing squares are #NUM!, KURT's #DIV/0! (T-2255)

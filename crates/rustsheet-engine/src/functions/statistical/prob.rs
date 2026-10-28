@@ -30,8 +30,10 @@ impl Model {
             Err(_) => Err(error(Error::VALUE)),
         };
         let (x_arg, prob_arg) = (as_arg(x_value)?, as_arg(prob_value)?);
-        // TODO(T-2636): PROB should propagate an array's error element too.
-        let data = self.paired_values(x_arg, prob_arg, cell, |_, _| error(Error::VALUE))?;
+        // An array's error element is the result, the other argument's own error winning
+        // (probes/array-error-element-order A12-A18).
+        let data =
+            self.paired_values(x_arg, prob_arg, cell, |_, e| array_element_error(e, cell))?;
         if !data.same_size {
             return Err(error(Error::NA));
         }
@@ -121,7 +123,7 @@ impl Model {
 
     /// [`Self::numeric_flat_of`] where an error element of an array is the result, marked as
     /// [`super::element_errors::is_array_element_error`] reads it (statistics.md "An error element of an array argument
-    /// is that error"); PROB and FREQUENCY's bins array keep `#VALUE!` (T-2636).
+    /// is that error").
     pub(crate) fn numeric_flat_with_element_errors(
         &mut self,
         value: CalcResult,
@@ -144,7 +146,6 @@ impl Model {
             CalcResult::Array(arr) => match self.values_from_array(arr) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
                 Err(error) if element_errors => Err(array_element_error(error, cell)),
-                // TODO(T-2636): PROB and FREQUENCY's bins array, once their order is probed.
                 Err(e) => Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
             },
             CalcResult::Number(n) => Ok(vec![n]),

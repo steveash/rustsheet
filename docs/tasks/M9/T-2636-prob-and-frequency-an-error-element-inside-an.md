@@ -3,7 +3,7 @@ id: T-2636
 title: "PROB and FREQUENCY: an error element inside an array argument is that error (T-2430 follow-up)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
