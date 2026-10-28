@@ -32,10 +32,17 @@ DOC_DIRS = ("docs/", ".claude/")
 # (crates/rustsheet-eval/src/deviations.rs). docs/milestones.md, docs/progress.md and
 # docs/progress/: the progress report generator reads them (tools/src/rustsheet_tools/
 # progress_report/, SPEC-0022, decision 0120), so a steward PR that changes only the page or its
-# history still runs the python job.
+# history still runs the python job. .claude/skills/review/SKILL.md: scripts/test_merge_ready.py
+# checks that merge_ready.py's reviewer-applicability list matches the skill's (decision 0149).
 # An entry ending in `/` is a directory and matches every path under it; any other entry is one
 # file and matches only itself, so docs/progress.md does not also claim docs/progress.mdx.
-CODE_READ_PATHS = ("docs/excel-semantics/", "docs/milestones.md", "docs/progress.md", "docs/progress/")
+CODE_READ_PATHS = (
+    "docs/excel-semantics/",
+    "docs/milestones.md",
+    "docs/progress.md",
+    "docs/progress/",
+    ".claude/skills/review/SKILL.md",
+)
 CODE_READ_DIRS = tuple(p for p in CODE_READ_PATHS if p.endswith("/"))
 
 
