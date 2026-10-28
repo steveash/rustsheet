@@ -1,5 +1,5 @@
 use crate::functions::util::array_node_to_calc_result;
-use crate::functions::util::near_integer::near_integer_count;
+use crate::functions::util::near_integer::near_integer_whole;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
@@ -636,9 +636,11 @@ impl Model {
                 None | Some(CalcResult::EmptyArg) => 1,
                 // A fraction reads as its floor, snapped up near an integer: -0.0001 and -0.9999
                 // are -1 and 1.5 is 1, while 0.5, -1.5 and -1E-300 are `#VALUE!`
-                // (probes/t2310-sortby-single-by-array H97-H165).
+                // (probes/t2310-sortby-single-by-array H97-H165). The snap is `near_integer_whole`'s,
+                // half the tolerance below zero: `-1-2^-23` is -1, `-1-2^-22` `#VALUE!`
+                // (probes/t2370-sortby-mixed-by-array-snap, T-2370).
                 Some(value) => match self.cast_to_number(value.clone(), cell) {
-                    Ok(order) => near_integer_count(order) as i32,
+                    Ok(order) => near_integer_whole(order) as i32,
                     Err(error) => return error,
                 },
             };
