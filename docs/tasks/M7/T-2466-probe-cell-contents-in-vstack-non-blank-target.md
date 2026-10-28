@@ -3,7 +3,7 @@ id: T-2466
 title: "Probe CELL('contents') in VSTACK: non-blank target, HSTACK, upper-case info type, beside an error argument"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
