@@ -20,6 +20,9 @@ pub struct StructuredReference {
     pub spacing: TableSpacing,
     /// A bare table name (`ROWS(Sales)`), or `Sales[]`, which the lexer reads as the bare name.
     pub bare: bool,
+    /// Written without the table name in a cell of the table (`=[@Col]*2`), which names the
+    /// containing table (references.md "Structured references: this row, totals and ranges", T-2979).
+    pub unqualified: bool,
 }
 
 /// The parse error of a structured reference to a table that is not there.
@@ -101,6 +104,43 @@ impl StructuredReference {
     /// missing argument is kept; a structured reference keeps some and normalizes the rest";
     /// probes/t2786-whitespace-structured-refs-runs F4:F15, T-2801).
     pub(crate) fn text(&self) -> String {
+        let qualified = self.qualified_text();
+        if !self.unqualified {
+            return qualified;
+        }
+        // Excel shows a `#This Row` reference in its `@` form (references.md "Calculated
+        // columns" rule 6: FORMULATEXT prints `=[@Col]*2` in every filled row).
+        if self.specifier == Some(TableSpecifier::ThisRow) {
+            return match &self.table_reference {
+                None => "[@]".to_string(),
+                Some(TableReference::ColumnReference(column)) if prints_bare(column) => {
+                    format!("[@{}]", escaped_column(column))
+                }
+                Some(reference) => format!("[@{}]", table_reference_text(reference)),
+            };
+        }
+        qualified[self.table_name.len()..].to_string()
+    }
+
+    /// The text kept in storage (R1C1), which the parser reads back with no table to infer the
+    /// name from: an unqualified reference keeps its table as a `[T]` prefix (`[T][[#This
+    /// Row],[Col]]`), so two tables on one sheet never share `[@Col]*2` (T-2979). Any other
+    /// reference is [`Self::text`].
+    pub(crate) fn stored_text(&self) -> String {
+        if self.unqualified {
+            let qualified = self.qualified_text();
+            format!(
+                "[{}]{}",
+                self.table_name,
+                &qualified[self.table_name.len()..]
+            )
+        } else {
+            self.text()
+        }
+    }
+
+    /// [`Self::text`] with the table name, whether or not it was written.
+    fn qualified_text(&self) -> String {
         let name = &self.table_name;
         if self.bare {
             return name.clone();
@@ -146,7 +186,7 @@ impl StructuredReference {
         if self.bare {
             format!("{}[]", self.table_name)
         } else {
-            self.text()
+            self.qualified_text()
         }
     }
 }
