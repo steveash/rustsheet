@@ -47,6 +47,7 @@ use statrs::prec;
 
 use super::incomplete_beta::{rlog1, stirling_correction};
 use super::special::refine_increasing;
+use crate::functions::util::poly;
 
 /// The most series or continued-fraction terms one cdf, or one whole inversion, may take. The
 /// series needs about 6.8 * sqrt(a) terms at its slowest, x = a (it is used for x <= a, and needs
@@ -333,71 +334,73 @@ const TEMME_SHAPE_MIN: f64 = 1e8;
 /// and the expansion's polynomials are not evaluated (their variable may overflow there).
 const TEMME_EXPONENT_MAX: f64 = 800.0;
 
-/// Temme's coefficients C_k(z) of the expansion, as polynomials in z, lowest power first (Temme
-/// 1979; DiDonato and Morris 1986; the 53-bit table of Boost's `igamma_temme_large`). From a shape
-/// of [`TEMME_SHAPE_MIN`] the terms past C_3 are below 1E-32 of the tail.
+/// Temme's coefficients `C_k(z)` of the expansion, as polynomials in z, lowest power first (Temme
+/// 1979; Didonato and Morris 1986; the 53-bit table of Boost's `igamma_temme_large`). From a shape
+/// of [`TEMME_SHAPE_MIN`] each `C_k/a^k` falls by about 1/a, so the `C_3` term is about 1E-28 of the
+/// `C_0` term and later ones are dropped; checked against Excel on probes/incomplete-gamma-cap
+/// E1-E4, E8-E12.
 const TEMME_C: [&[f64]; 4] = [
     &[
-        -0.333_333_333_333_333_33,
-        0.083_333_333_333_333_333,
+        -0.333_333_333_333_333_3,
+        0.083_333_333_333_333_33,
         -0.014_814_814_814_814_815,
-        0.001_157_407_407_407_407_4,
+        0.001_157_407_407_407_407_3,
         0.000_352_733_686_067_019_4,
-        -0.000_178_755_144_032_921_81,
-        0.391_926_317_852_243_78e-4,
-        -0.218_544_851_067_999_22e-5,
-        -0.185_406_221_071_516e-5,
-        0.829_671_134_095_308_6e-6,
-        -0.176_659_527_368_260_79e-6,
-        0.670_785_354_340_149_86e-8,
-        0.102_618_097_842_403_08e-7,
-        -0.438_203_601_845_335_32e-8,
-        0.914_769_958_223_679_02e-9,
+        -0.000_178_755_144_032_921_8,
+        3.919_263_178_522_438e-05,
+        -2.185_448_510_679_992_4e-06,
+        -1.854_062_210_715_16e-06,
+        8.296_711_340_953_087e-07,
+        -1.766_595_273_682_607_8e-07,
+        6.707_853_543_401_498e-09,
+        1.026_180_978_424_030_9e-08,
+        -4.382_036_018_453_353e-09,
+        9.147_699_582_236_79e-10,
     ],
     &[
-        -0.001_851_851_851_851_851_9,
-        -0.003_472_222_222_222_222_2,
-        0.002_645_502_645_502_645_5,
-        -0.000_990_226_337_448_559_67,
+        -0.001_851_851_851_851_852,
+        -0.003_472_222_222_222_222,
+        0.002_645_502_645_502_645_4,
+        -0.000_990_226_337_448_559_6,
         0.000_205_761_316_872_427_98,
-        -0.401_877_572_016_460_91e-6,
-        -0.180_985_503_344_899_78e-4,
-        0.764_916_091_608_111_01e-5,
-        -0.161_209_008_945_634_46e-5,
-        0.464_712_780_280_743_43e-8,
-        0.137_863_344_691_572_1e-6,
-        -0.575_254_560_351_770_5e-7,
-        0.119_516_285_997_781_47e-7,
+        -4.018_775_720_164_609e-07,
+        -1.809_855_033_448_997_7e-05,
+        7.649_160_916_081_11e-06,
+        -1.612_090_089_456_344_6e-06,
+        4.647_127_802_807_434e-09,
+        1.378_633_446_915_721e-07,
+        -5.752_545_603_517_705e-08,
+        1.195_162_859_977_814_8e-08,
     ],
     &[
-        0.004_133_597_883_597_883_6,
-        -0.002_681_327_160_493_827_2,
-        0.000_771_604_938_271_604_94,
-        0.200_938_786_008_230_45e-5,
+        0.004_133_597_883_597_883,
+        -0.002_681_327_160_493_827_3,
+        0.000_771_604_938_271_604_9,
+        2.009_387_860_082_304_7e-06,
         -0.000_107_366_532_263_651_61,
-        0.529_234_488_291_201_25e-4,
-        -0.127_606_351_886_187_28e-4,
-        0.342_357_873_409_613_81e-7,
-        0.137_219_573_090_629_33e-5,
-        -0.629_899_213_838_005_5e-6,
-        0.142_806_142_060_642_42e-6,
+        5.292_344_882_912_012_5e-05,
+        -1.276_063_518_861_872_8e-05,
+        3.423_578_734_096_138e-08,
+        1.372_195_730_906_293_2e-06,
+        -6.298_992_138_380_055e-07,
+        1.428_061_420_606_424_2e-07,
     ],
     &[
-        0.000_649_434_156_378_600_82,
-        0.000_229_472_093_621_399_18,
-        -0.000_469_189_494_395_255_71,
+        0.000_649_434_156_378_600_8,
+        0.000_229_472_093_621_399_17,
+        -0.000_469_189_494_395_255_7,
         0.000_267_720_632_062_838_85,
-        -0.756_180_167_188_397_64e-4,
-        -0.239_650_511_386_729_67e-6,
-        0.110_826_541_153_473_02e-4,
-        -0.567_495_282_699_159_66e-5,
-        0.142_309_007_324_358_84e-5,
+        -7.561_801_671_883_977e-05,
+        -2.396_505_113_867_297e-07,
+        1.108_265_411_534_730_2e-05,
+        -5.674_952_826_991_596_5e-06,
+        1.423_090_073_243_588_3e-06,
     ],
 ];
 
 /// (P(a, x), Q(a, x)) by Temme's uniform asymptotic expansion, for a shape of at least
 /// [`TEMME_SHAPE_MIN`] (T-1891). With phi = (x - a)/a - ln(x/a) and z = ±sqrt(2 phi) (the sign of
-/// x - a), the smaller tail is erfc(sqrt(a phi))/2 ± e^(-a phi)/sqrt(2 pi a) · sum C_k(z)/a^k
+/// x - a), the smaller tail is erfc(sqrt(a phi))/2 ± e^(-a phi)/sqrt(2 pi a) · sum `C_k(z)/a^k`
 /// (- for P below a, + for Q from a on), and the other tail 1 minus it. Excel is close to
 /// correctly rounded here: `GAMMA.DIST(1E10,1E10,1,TRUE)` = 0.5000013298076014 and
 /// `GAMMA.DIST(1E16,1E16,1,TRUE)` = 0.5000000013298076 (probes/incomplete-gamma-cap E8, E1).
@@ -423,8 +426,11 @@ fn temme_pair(a: f64, x: f64) -> (f64, f64) {
         let series = TEMME_C
             .iter()
             .rev()
-            .fold(0.0, |acc, c| acc * inverse + horner(c, z));
+            .fold(0.0, |acc, c| acc * inverse + poly(c, z));
         let correction = series * (-exponent).exp() / (2.0 * std::f64::consts::PI * a).sqrt();
+        // libm's erfc, within an ulp, not Excel's ERFC.PRECISE (`erf::erfc`), whose
+        // EXP(-fl(x*x)) loses about 2x^2 ulps in the tail: this family is close to correctly
+        // rounded in Excel (decision 0114, accuracy stage).
         let base = libm::erfc(exponent.sqrt()) / 2.0;
         if below {
             base - correction
@@ -437,11 +443,6 @@ fn temme_pair(a: f64, x: f64) -> (f64, f64) {
     } else {
         (1.0 - small, small)
     }
-}
-
-/// c\[0] + c\[1] z + c\[2] z^2 + ..., by Horner's rule.
-fn horner(c: &[f64], z: f64) -> f64 {
-    c.iter().rev().fold(0.0, |acc, &k| acc * z + k)
 }
 
 /// The accurate regularized incomplete gamma pair (P(a, x), Q(a, x)) for a > 0, x > 0 (T-0971):
@@ -755,8 +756,8 @@ mod tests {
     #![allow(clippy::unwrap_used)]
     use super::{
         cdf_terms_bound, continued_fraction_budget, gamma_cdf, gamma_density, gamma_inverse_cdf,
-        gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, Tail, Terms,
-        MAX_TERMS,
+        gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
+        Tail, Terms, MAX_TERMS, TEMME_C,
     };
     use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
     use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -1020,6 +1021,33 @@ mod tests {
         assert!(gamma_ur(0.0, 1.0).is_nan());
         assert!(gamma_ur(1.0, f64::NAN).is_nan());
         assert!(gamma_ur(2.0, f64::INFINITY).is_nan());
+    }
+
+    // Temme's expansion (T-1891): the table's C_k(0) are Temme's closed forms, its far tails are
+    // the 0/1 limits, and at its shape cut it agrees with the series it replaces.
+    #[test]
+    fn temme_expansion_matches_its_closed_forms_and_the_series() {
+        let closed = [-1.0 / 3.0, -1.0 / 540.0, 25.0 / 6048.0, 101.0 / 155_520.0];
+        for (c, want) in TEMME_C.iter().zip(closed) {
+            assert!(within_ulps(c[0], want, 2.0), "{} vs {want}", c[0]);
+        }
+        assert_eq!(temme_pair(1e8, 3e8), (1.0, 0.0));
+        assert_eq!(temme_pair(1e8, 1e7), (0.0, 1.0));
+        assert_eq!(temme_pair(1e300, 1e301), (1.0, 0.0));
+        // Just below the cut the series runs; Temme's value there is within a few ulps of it.
+        let a = 0.999_999_99e8;
+        for x in [0.9999e8, 1e8, 1.0001e8] {
+            let series = incomplete_gamma_pair(a, x, &mut Terms(MAX_TERMS));
+            let temme = temme_pair(a, x);
+            assert!(
+                within_ulps(temme.0, series.0, 8.0),
+                "{x}: {temme:?} {series:?}"
+            );
+            assert!(
+                within_ulps(temme.1, series.1, 8.0),
+                "{x}: {temme:?} {series:?}"
+            );
+        }
     }
 
     /// The terms `incomplete_gamma_pair(a, x)` takes, checked to be the exact boundary: the

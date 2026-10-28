@@ -12,9 +12,9 @@ campaign: accuracy
 ---
 
 ## Goal
-GAMMA.DIST, GAMMADIST, POISSON, POISSON.DIST, CHISQ.DIST*, CHIDIST and the gamma inversions (GAMMA.INV, GAMMAINV,
-CHISQ.INV, CHISQ.INV.RT, CHIINV) give Excel's value at a huge shape, and where statrs panicked or never finished,
-instead of `#NUM!`, within the per-call cap and lift weight T-1872 set.
+GAMMA.DIST, GAMMADIST, POISSON, POISSON.DIST, CHISQ.DIST* and CHIDIST give Excel's value at a huge shape, where statrs
+panicked or never finished, instead of `#NUM!`, within the per-call cap and lift weight T-1872 set. (Narrowed
+2026-10-28: the gamma inversions GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV moved to T-2982.)
 
 ## Context
 T-1872 capped statrs' incomplete gamma (`statistical/incomplete_gamma.rs`: 2^19 series or continued-fraction terms per
