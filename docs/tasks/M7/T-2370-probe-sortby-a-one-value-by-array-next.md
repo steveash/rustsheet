@@ -3,7 +3,7 @@ id: T-2370
 title: "Probe SORTBY: a one-value by_array next to a row by_array on a one-row array, and the sort_order snap tolerance"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
