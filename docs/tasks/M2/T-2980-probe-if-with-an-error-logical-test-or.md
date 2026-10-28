@@ -3,7 +3,7 @@ id: T-2980
 title: "Probe IF with an error logical_test or value_if_false, SUMIFS criteria that are zero or negative, and RIGHT with a numeric-text num_chars (M2 argument kinds T-2861 and T-2870 leave)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
