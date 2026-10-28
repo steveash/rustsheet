@@ -14,13 +14,20 @@ use crate::{
 };
 
 /// An argument broadcast over the output: a scalar (every position), a 2-D array (indexed by
-/// position with size-1 broadcasting; a ragged out-of-range position → #N/A), or a range no
-/// position takes, kept as its extent only. See [`BroadcastArg::at`].
+/// position with size-1 broadcasting; a ragged out-of-range position → #N/A), or a range arm,
+/// sized from its bounds until [`Model::read_broadcast_arm`] reads it. See [`BroadcastArg::at`].
 pub(crate) enum BroadcastArg {
     Scalar(ArrayNode),
     Array(Vec<Vec<ArrayNode>>),
+    /// A range not read yet: the caller checks the output's size from every arm's extent first,
+    /// so no arm is copied for an output that is refused (T-1564).
+    Range {
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        picked: bool,
+    },
     /// A range arm no position picks: it sizes the output like any arm (lookup.md "CHOOSE over
-    /// an index array broadcasts its value arguments") but its values are never copied.
+    /// an index array broadcasts its value arguments"); its cells were read, not copied.
     Unpicked {
         rows: usize,
         columns: usize,
@@ -33,6 +40,7 @@ impl BroadcastArg {
         match self {
             BroadcastArg::Scalar(_) => (1, 1),
             BroadcastArg::Array(arr) => (arr.len(), arr.first().map_or(0, Vec::len)),
+            BroadcastArg::Range { left, right, .. } => range_dims(*left, *right),
             BroadcastArg::Unpicked { rows, columns } => (*rows, *columns),
         }
     }
@@ -40,7 +48,7 @@ impl BroadcastArg {
     /// The argument at output position (row, col), under Excel's size-1 broadcasting rule: a
     /// scalar covers every position, a length-1 dimension repeats its only element to cover the
     /// whole output extent, and a ragged mismatch (e.g. length 2 against an extent of 3) yields
-    /// `#N/A`. An unpicked arm is never read; it gives `#N/A` if it is.
+    /// `#N/A`.
     pub(crate) fn at(&self, row: usize, col: usize) -> ArrayNode {
         match self {
             BroadcastArg::Scalar(node) => node.clone(),
@@ -55,8 +63,9 @@ impl BroadcastArg {
                     None => ArrayNode::Error(Error::NA),
                 }
             }
-            BroadcastArg::Unpicked { .. } => {
-                debug_assert!(false, "an unpicked arm is never read");
+            // Never read: a range is read before any position is, and an unpicked arm is picked
+            // by no position.
+            BroadcastArg::Range { .. } | BroadcastArg::Unpicked { .. } => {
                 ArrayNode::Error(Error::NA)
             }
         }
@@ -71,30 +80,53 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<BroadcastArg, CalcResult> {
-        self.evaluate_broadcast_arm(node, cell, true)
+        let arg = self.evaluate_broadcast_arm(node, cell, true);
+        self.read_broadcast_arm(arg, cell)
     }
 
-    /// [`Model::evaluate_broadcast_arg`] for an arm that a position may or may not pick. An
-    /// unpicked range is not copied: its cells are read in the same order as a copy reads them,
-    /// so cycles and the dependencies they record are as before, but only its extent is kept
-    /// (T-1564).
+    /// Evaluates an arm that a position may or may not pick (`picked`), a range without reading
+    /// its cells: [`Model::read_broadcast_arm`] reads it once the output's size is checked.
     pub(crate) fn evaluate_broadcast_arm(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
         picked: bool,
+    ) -> BroadcastArg {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, right } => BroadcastArg::Range {
+                left,
+                right,
+                picked,
+            },
+            CalcResult::Array(a) => BroadcastArg::Array(a),
+            other => BroadcastArg::Scalar(calc_result_to_array_node(other)),
+        }
+    }
+
+    /// Reads a range arm: a picked one is copied, an unpicked one only read, its cells in the
+    /// same order as a copy reads them, so cycles and the dependencies they record are as
+    /// before, and only its extent kept (T-1564). `Err` is a range that cannot be read.
+    pub(crate) fn read_broadcast_arm(
+        &mut self,
+        arg: BroadcastArg,
+        cell: CellReferenceIndex,
     ) -> Result<BroadcastArg, CalcResult> {
-        Ok(match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, right } if picked => {
-                BroadcastArg::Array(self.evaluate_range(left, right, cell)?)
-            }
-            CalcResult::Range { left, right } => {
+        Ok(match arg {
+            BroadcastArg::Range {
+                left,
+                right,
+                picked: true,
+            } => BroadcastArg::Array(self.evaluate_range(left, right, cell)?),
+            BroadcastArg::Range {
+                left,
+                right,
+                picked: false,
+            } => {
                 self.read_range_cells(left, right, cell)?;
                 let (rows, columns) = range_dims(left, right);
                 BroadcastArg::Unpicked { rows, columns }
             }
-            CalcResult::Array(a) => BroadcastArg::Array(a),
-            other => BroadcastArg::Scalar(calc_result_to_array_node(other)),
+            other => other,
         })
     }
 }

@@ -88,11 +88,7 @@ impl Model {
         for result in results {
             // A blank one-cell reference is a blank element, as for VSTACK:
             // `SEARCH(HSTACK(Z1),"Hello World",8)` is 8 (probes/t2436, gen-m9 T-2436).
-            let array = match result {
-                CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
-                result => self.result_to_array(result, cell),
-            };
-            match array {
+            match self.result_to_array_keep_blank(result, cell) {
                 Ok(a) => arrays.push(a),
                 Err(e) => return e,
             }

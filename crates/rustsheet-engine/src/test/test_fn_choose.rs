@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, whole_column_arms};
 
 #[test]
 fn test_fn_choose_args_number() {
@@ -169,17 +169,6 @@ fn test_fn_choose_arithmetic_arm_under_dynamic_index_spills() {
     assert_eq!(model._get_text("E2"), "1");
 }
 
-/// The whole-column arms `C:C,D:D,…` of `count` columns from C, for the T-1564 tests.
-fn whole_column_arms(count: u32) -> String {
-    (0..count)
-        .map(|i| {
-            let name = crate::expressions::utils::number_to_column(3 + i as i32).unwrap();
-            format!("{name}:{name}")
-        })
-        .collect::<Vec<_>>()
-        .join(",")
-}
-
 #[test]
 fn test_fn_choose_index_array_unpicked_arms_are_not_copied() {
     // 120 whole-column arms would be 120 x 1,048,576 cells copied, past the formula's work budget
@@ -192,8 +181,15 @@ fn test_fn_choose_index_array_unpicked_arms_are_not_copied() {
         "A1",
         &format!("=SUM(CHOOSE({{1}},{}))", whole_column_arms(120)),
     );
+    // Three picked whole columns side by side are past the array-cell limit: refused from the
+    // arms' extents before any is copied.
+    model._set(
+        "A2",
+        &format!("=ROWS(CHOOSE({{1,2,3}},{}))", whole_column_arms(120)),
+    );
     model.evaluate();
     assert_eq!(model._get_text("A1"), "12");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
 }
 
 #[test]

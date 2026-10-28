@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, whole_column_arms};
 
 // ── HSTACK ────────────────────────────────────────────────────────────────────
 
@@ -70,14 +70,8 @@ fn test_vstack_unequal_cols() {
 fn test_hstack_refuses_an_oversized_stack_before_copying() {
     // 300 whole columns side by side are past the array-cell limit: refused from the arguments'
     // extents before any column is copied (T-1564), while an error argument still wins.
-    let columns: Vec<String> = (0..300)
-        .map(|i| {
-            let name = crate::expressions::utils::number_to_column(3 + i).unwrap();
-            format!("{name}:{name}")
-        })
-        .collect();
     let mut model = new_empty_model();
-    model._set("A1", &format!("=ROWS(HSTACK({}))", columns.join(",")));
+    model._set("A1", &format!("=ROWS(HSTACK({}))", whole_column_arms(300)));
     model._set("A2", "=ROWS(HSTACK(C:C,D:D,1/0))");
     model._set("A3", "=ROWS(VSTACK(C1:XFD2,C1:XFD100))");
     model.evaluate();

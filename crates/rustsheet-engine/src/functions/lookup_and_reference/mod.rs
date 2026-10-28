@@ -674,16 +674,14 @@ impl Model {
                 picked[arm] = true;
             }
         }
-        let mut values = Vec::with_capacity(count);
-        for (arg, &is_picked) in args[1..].iter().zip(&picked) {
-            match self.evaluate_broadcast_arm(arg, cell, is_picked) {
-                Ok(value) => values.push(value),
-                Err(error) => return error,
-            }
-        }
+        let arms: Vec<BroadcastArg> = args[1..]
+            .iter()
+            .zip(&picked)
+            .map(|(arg, &is_picked)| self.evaluate_broadcast_arm(arg, cell, is_picked))
+            .collect();
         let index_rows = index_array.len();
         let index_cols = index_array.first().map_or(0, Vec::len);
-        let (rows, cols) = values
+        let (rows, cols) = arms
             .iter()
             .map(BroadcastArg::dims)
             .fold((index_rows, index_cols), |(r, c), (vr, vc)| {
@@ -691,6 +689,14 @@ impl Model {
             });
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
+        }
+        // The size is checked, so the range arms are read now, in order (T-1564).
+        let mut values = Vec::with_capacity(count);
+        for arm in arms {
+            match self.read_broadcast_arm(arm, cell) {
+                Ok(value) => values.push(value),
+                Err(error) => return error,
+            }
         }
         let mut output = Vec::with_capacity(rows);
         for row in 0..rows {
