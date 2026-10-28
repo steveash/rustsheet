@@ -3,7 +3,7 @@ id: T-3024
 title: "Do not re-fill a column of identical stored formulas that is not a calculated column (T-2983)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
