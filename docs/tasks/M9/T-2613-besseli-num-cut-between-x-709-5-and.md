@@ -3,7 +3,7 @@ id: T-2613
 title: "BESSELI #NUM! cut between x = 709.5 and 709.78 (T-2550 sweep)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
