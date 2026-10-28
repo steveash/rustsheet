@@ -3,7 +3,7 @@ id: T-2521
 title: "CUMIPMT and CUMPRINC: the cells T-2514 left (type 1 long ranges, log1p at 0.1, 1E-15 cancellation, periods near 1E15, balance-band edge probes)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
