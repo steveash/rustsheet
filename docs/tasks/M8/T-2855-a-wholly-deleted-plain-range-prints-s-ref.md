@@ -42,7 +42,7 @@ filed with `defer: phase-1b`.
 
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns visibly-off probes cells of ROWS (2), COLUMNS (1) and ROW (1). With T-2339 and T-2848 it lifts ROWS, COLUMNS and ROW.
 
-## Handoff
+## Handoff (resumed)
 Done and pushed: the harness half (`moved_input` in crates/rustsheet-eval/src/spill_extent.rs follows a
 table's kept last data row; probes/table-edits/table-delete-row-all-data-below S!C7 now passes and left
 eval/baseline/probes.txt) and the stringify half (stringify.rs `RangeKind` prints one `S!#REF!` when both
