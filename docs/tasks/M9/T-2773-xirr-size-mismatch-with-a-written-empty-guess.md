@@ -32,6 +32,7 @@ guess. So `XIRR(A1:A3,B1:B2,)` may take a different error path from `XIRR(A1:A3,
 - XIRR's bisection and its empty-guess value rule (T-2688).
 
 ## Outcome
-Probe `probes/xirr-size-mismatch-empty-guess` (20 cells, excel-graph) shows `#NUM!` in every cell, whatever the
-guess (written empty, absent, empty cell, 0.1). The engine already matched on all 20, so no engine change was
-needed; the finding is in financial.md. Eval delta: +20 passing probe cells.
+Probe `probes/xirr-size-mismatch-empty-guess` (36 cells, excel-graph): every cell is `#NUM!`, whatever the guess
+(written empty, absent, empty cell, 0.1) and whether or not the flows hold text or booleans. The engine matched
+on the 20 numeric-flow cells but gave `#VALUE!` for a written empty or empty-cell guess over text/boolean flows;
+fixed in `fn_xirr` (`number_guess`). Finding in financial.md. Eval delta: +36 passing probe cells.
