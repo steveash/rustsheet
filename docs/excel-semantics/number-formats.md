@@ -187,7 +187,8 @@ number, "3", "0", "-3"). A section of only literals plus the prefix prints the m
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
 Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
-code with any bad number section (formatter/format.rs).
+code with any bad number section (formatter/format.rs); the literal-only `B1` section of a negative value is exempt
+from the negative-date refusal in `format_number` (a lone `B2` is not probed, so it keeps the refusal).
 Tasks: T-2377, T-2388
 
 ## Text and booleans use the format's text section
