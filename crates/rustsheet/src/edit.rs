@@ -9,6 +9,7 @@
 //! captures every formula and spill cell, ops add the cells they touch, and after the recalc
 //! the captured values are compared with the current ones (see `diff`).
 
+mod calculated_column;
 mod diff;
 mod pivot;
 
@@ -252,41 +253,8 @@ impl Txn<'_> {
         let key = (range.sheet.get(), row, col);
         self.log_cell(sheet, key, cell)?;
         let input = input.into();
-        // A typed formula can fill its table column (a calculated column, T-2958): those
-        // cells are part of this edit and its undo.
         if let Input::Parse(text) | Input::Formula(text) = &input {
-            if text.starts_with('=') {
-                // Typed just right of a table, it grows the table by a column first (T-2968):
-                // the table, the new column's header and the rows it fills are this edit's too.
-                let expansion = self
-                    .model
-                    .table_expansion(sheet, row, col, text)
-                    .map_err(EditError::Engine)?;
-                let targets = match expansion {
-                    Some(expansion) => {
-                        self.sheet_op = true;
-                        self.undo.push(Undo::TableBefore(Box::new(expansion.table)));
-                        expansion.cells
-                    }
-                    None => match (self.model.calculated_column(sheet, row, col))
-                        .map_err(EditError::Engine)?
-                    {
-                        Some(fill) => {
-                            self.undo.push(Undo::TableBefore(Box::new(fill.table)));
-                            fill.targets
-                        }
-                        None => Vec::new(),
-                    },
-                };
-                // The targets are the other rows of the cell's column.
-                for (r, c) in targets {
-                    let target = CellRef {
-                        row: u32::try_from(r - 1).map_err(|_| RefError::OutOfBounds)?,
-                        ..cell
-                    };
-                    self.log_cell(sheet, (key.0, r, c), target)?;
-                }
-            }
+            self.log_typed_fill(sheet, key, cell, text)?;
         }
         self.apply(sheet, row, col, input, cell)
     }
