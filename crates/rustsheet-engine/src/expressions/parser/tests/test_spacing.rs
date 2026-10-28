@@ -84,8 +84,8 @@ fn whitespace_beside_a_missing_argument_prints_back() {
 }
 
 /// The run inside an empty call and before a missing first argument is kept (T-2966,
-/// probes/t2966-empty-call-runs, t2966-missing-first-arg-run, t2786 I1, I11). The empty call's run is
-/// no argument: the tree evaluation reads has none.
+/// probes/t2966-empty-call-runs, t2966-missing-first-arg-run, t2786 I1, I11). The empty call's
+/// run is no argument: the tree evaluation reads has none.
 #[test]
 fn whitespace_inside_an_empty_call_prints_back() {
     for formula in [
