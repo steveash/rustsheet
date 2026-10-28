@@ -3,7 +3,7 @@ id: T-2999
 title: "Probe IFERROR, N and arithmetic over blank elements of FILTER, lifted INDEX and VSTACK arrays"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
