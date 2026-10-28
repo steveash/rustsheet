@@ -3,7 +3,7 @@ id: T-2870
 title: "Probe ABS and MONTH of empty text and COUNTIFS criteria that are a fraction or numeric text (M2 argument kinds T-2861 leaves)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -32,15 +32,20 @@ in two forms where they differ: a literal (`""`, `NA()`, `#DIV/0!`, `"2"`, `TRUE
 cell `=""`, `=NA()`), and wrap each error-valued cell in `ERROR.TYPE` too, so the error kind is scored.
 
 ## Acceptance criteria
-- [ ] probes/m2-argument-kind-gaps-b is committed with oracle values (excel-graph) and covers every parameter/kind pair listed
+- [x] probes/m2-argument-kind-gaps-b is committed with oracle values (excel-graph) and covers every parameter/kind pair listed
       above; after `make eval`, report.json `argument_coverage` shows `covered == expected` for them.
-- [ ] Every cell where ours differs from Excel is either fixed in this PR (a one-line coercion fix in the function's
+- [x] Every cell where ours differs from Excel is either fixed in this PR (a one-line coercion fix in the function's
       own module) or listed in a new functions-* task (campaign: semantics, with a `## Visible-parity stage`
       section) filed with `make new-task`, naming the case and cells; the new known failures are recorded with
       `make eval-baseline` and each has that owner.
-- [ ] Any new Excel rule is recorded in docs/excel-semantics/coercion.md or criteria.md citing the probe cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Any new Excel rule is recorded in docs/excel-semantics/coercion.md or criteria.md citing the probe cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The parameters T-2861 lists (that task's probe); M5 and later functions (T-2862 to T-2865, T-2871 to T-2878).
 - Generator pools (T-2866).
+
+## Outcome
+Added `probes/m2-argument-kind-gaps-b` (12 checked cells, excel-graph 2026-10-28, tag M2): ABS and MONTH of empty text as a literal and
+as a cell (`#VALUE!`), and COUNTIFS criteria as a fraction and as numeric text, literal and cell. Ours matches Excel on every cell, so
+no fix and no new task. Recorded in docs/excel-semantics/criteria.md.
