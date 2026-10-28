@@ -115,7 +115,7 @@ impl Model {
 const COLUMNS_REFUSED: usize = 1_048_577;
 
 /// One EXPAND call: `data` padded with `pad` to `target_rows` x `target_cols`. `pad` is `None`
-/// for an array or multi-cell pad_with, which is `#VALUE!` only after the size checks.
+/// for an array or multi-cell `pad_with`, which is `#VALUE!` only after the size checks.
 fn expand_kernel(
     data: &[Vec<ArrayNode>],
     target_rows: usize,
