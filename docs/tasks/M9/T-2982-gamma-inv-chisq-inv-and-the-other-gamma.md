@@ -51,7 +51,10 @@ recorded.
   for p = 1E-300 ... 0.001 (A24-A30; constant to 6 digits, z the normal quantile of p), and the (z^2 - 1)/3 skew term
   is the true gamma's (a plain normal would drift by 456 at z = -37). So Excel's centre is c·a and its spread
   1.0001551·sqrt(a): as a gamma quantile, Q(p, a·1.00022144)·1.0000443, neither factor obviously meaningful. Check the
-  same at shape 1E11 (A60-A77; the bracket of ±45 sqrt(a) in the scratch solver fails at 1E-300, narrow it). Next: find what produces c (it is the inversion's: the cdf has no factor) — a shifted
+  same at shape 1E11: k = 1.10726E-4 for p = 1E-5 ... 1E-10, drifting to 1.10740E-4 at p = 1E-300 (A60-A65), so the model
+  x = c·Q(p, a) - k·z·sqrt(a) is shape-independent to leading order, with a small z^2-order term left (0.13 at 1E11,
+  1E-12 relative: still visible). The scratch solver (mpmath, dps 60, Temme C_0..C_3, Anderson on ln P) fails for
+  p >= 0.01 at 1E11 and p >= 0.01 at 1E13: solve the upper tail there. Next: find what produces c (it is the inversion's: the cdf has no factor) — a shifted
   start, a transformed search variable, or a mapped shape; fit A24-A77 (two p sweeps) to it. scratch tools: mpmath with
   Temme's C_0..C_3 for the reference quantile (mpmath's gammainc does not converge at a = 1E13).
 - Done on the branch: the cdf where x / beta underflows is 0 at every shape (A117-A122; was 1 below a shape of about
