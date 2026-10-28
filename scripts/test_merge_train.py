@@ -415,7 +415,7 @@ class GitHub(Client):
         self.refuse: set[int] = set()
 
     def git(self, *args: str) -> str:
-        return run("git", *args, cwd=self.origin)
+        return run("git", *merge_train.IDENTITY, *args, cwd=self.origin)  # CI has no git identity
 
     def main(self) -> str:
         return self.git("rev-parse", "refs/heads/main")
