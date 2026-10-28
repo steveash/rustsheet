@@ -73,15 +73,6 @@ pub(crate) enum SetId {
     },
 }
 
-/// A key as its group shows it: the blank key as the number 0 (G!A1, PIVOTBY's column keys too:
-/// probes/groupby-pivotby-followup G!A821), every other key as first spelled.
-pub(crate) fn shown_key(key: &ArrayNode) -> ArrayNode {
-    match key {
-        ArrayNode::Empty => ArrayNode::Number(0.0),
-        other => other.clone(),
-    }
-}
-
 /// Empty text, the filler of total rows, corners and empty PIVOTBY cells (not a blank: G!AC33).
 pub(crate) fn empty_text() -> ArrayNode {
     ArrayNode::String("".into())
@@ -453,7 +444,9 @@ impl Grouping {
         match line {
             Line::Group(index) => {
                 let group = self.groups.get(index)?;
-                let label = group.keys.iter().map(shown_key).collect();
+                // A blank key is a true blank in the array (INDEX TYPE 1, COUNT skips it); it displays 0
+                // when spilled (G!A1; T-2460, T-2854).
+                let label = group.keys.clone();
                 Some((label, Cow::Borrowed(&group.rows[..])))
             }
             Line::Subtotal { level, start, end } => Some((
@@ -577,7 +570,7 @@ impl Grouping {
             .map_or(&[][..], |group| &group.keys[..]);
         (0..key_columns)
             .map(|field| match keys.get(field) {
-                Some(key) if field < level => shown_key(key),
+                Some(key) if field < level => key.clone(),
                 _ => empty_text(),
             })
             .collect()

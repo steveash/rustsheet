@@ -42,15 +42,19 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   further out is `#NUM!` for all orders (1E+14, 2E+14, 1E+15, 1E+10). Whether the phase 134217727 itself answers is
   unprobed (ours `#NUM!`, as IMPOWER).
   Evidence: probes/t2547-bessel-phase-cut A1:A74, bessel-large-x (excel-graph, 2026-10-24, T-2547).
-  Not fitted: `BESSELJ(1E+5,100000)` is 0.009636944011336267 in Excel, 0.00963694401133629 in Miller's recurrence
-  here (n = x); no association of the recurrence step nor NR's ACC 160 reproduces it (T-2548). The true value is 0.0096369440113378623: Excel's and ours
-  are both about 1.6E-13 low (relative), mostly from `tox = 2/x` rounding to a double, and differ only in per-step rounding
-  (x87 64-bit and FMA steps don't reproduce it either). Turning-point sweep (76 cells, n = 1000..100000, x = n, n±1/10/100, n+0.5, n-2/3/5):
-  probes/t2881-besselj-turning-point (excel-graph, 2026-10-27, T-2881), for T-2548 to fit.
-  It shows: Miller cells (x <= n) miss by about 1E-15 to 3E-14 relative from n = 1000 up; BESSELJ(84,84), (84,83), (100,100) and
-  all n = 1000 cells except `BESSELJ(990,1000)` are bit-exact; the branch switch at x > n matches Excel's, but the upward
-  recurrence is NOT bit-exact at large n (22 cells: `BESSELJ(2001,2000)`, `BESSELJ(5100,5000)` and all 20 upward cells at n >= 10000, up to 1.6E-13 relative, e.g.
-  `BESSELJ(100100,100000)` Excel -0.006729033731473101, ours -0.006729033731474205). T-2548 owns both branches.
+  BESSELJ's and BESSELY's recurrences round twice (T-2548): every product and sum in Miller's downward recurrence
+  (`j*tox*bj - bjp`, the 1E-10 rescale, the even-order sum) and in the upward recurrence (`b*(2j*(1/x)) - a`) is x87
+  code stored to a double after each operation, so it rounds first to a 64-bit significand and then to a double
+  (`extended_product`, `extended_sum`). `tox = 2/x`, `1/x` and the final `ans/(2*sum - bj)` are plain doubles as far
+  as the evidence tells. Plain double steps drift from Excel by 1E-15 to 1.6E-13 relative from n = 2000 up (the
+  result is most sensitive near the turning point n = x); the twice-rounded steps match all 76 cells of the
+  turning-point sweep (n = 1000..100000, x = n, n±1/10/100, n+0.5, n-2/3/5) bit for bit, e.g. `BESSELJ(1E+5,100000)`
+  0.009636944011336267 and `BESSELJ(100100,100000)` -0.006729033731473101. Rejected: x87 registers kept across
+  steps (64-bit state; 0-2 of 43 Miller cells), FMA steps, other associations of the step, NR 3rd edition's ACC 160
+  and power-of-two rescale, a 1E10 division rescale, and every other start order.
+  Evidence: probes/t2881-besselj-turning-point (excel-graph, 2026-10-27, T-2881).
+  BESSELY shares the upward step by inference only: its oracle cells (BESSELY(1,1000) among them) pass either way, and
+  no cell yet tells plain from twice-rounded steps for it.
   Web vs desktop: Mac Excel 16.0300's cached `BESSELJ(100000,5)` 0.001846551246313725 and `BESSELY(100000,5)`
   0.001719431947654535 (ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18, F18) differ from the web's 0.0018465512463137278
   and 0.0017194319476545319 (t2547-bessel-phase-cut A85, A86), which the engine gives; a Mac has no x87 sine. The engine
@@ -99,6 +103,10 @@ Excel past 100,000 (probes/t2546-bessel-past-cap, 83 cells, excel-graph, 2026-10
   (Numerical Recipes `bessj`, rescaled by 1E-10 when a term passes 1E+10) overflows when `j * 2/x` passes 1E+10 over many
   steps: `BESSELJ(1E-5,100001)`, `(1E-300,100001)`, `(3E-5,1E+6)` are `#NUM!`, `(2E-5,100001)` and `(3E-4,1E+6)` are 0.
   That also explains the `BESSELJ(1E-300,100001)` quirk above.
+- BESSELI's I0(x) and I1(x) (I0 is also the normalizer of its Miller recurrence) at |x| >= 3.75 are `e^x / sqrt(x) * poly(3.75/x)` with Excel's own
+  x87 EXP (`excel_exp`, numbers.md "EXP is an x87 2^(a*log2 e) evaluation"), not the correctly rounded exp:
+  `BESSELI(100.21..,5)` is 1.177055823943151E+42, which the platform exp misses by 2 ulps (gen-m9/59a16b5ab566ee5c
+  Calc!A299, excel-graph; T-2548). Whether BESSELI's Miller steps round twice is undetermined: that cell is the same either way (ours keep plain doubles).
 - BESSELI is 0 where I_n(x) underflows (`BESSELI(100,100001)`, `(700,100001)`, `(1E-3,100001)`, `(8,1E+6)`, `(-2.5,100001)`),
   `#NUM!` from x = 709.79, where Excel's I0(x) (the normalizer) overflows, even though I_n(x) underflows (`BESSELI(713,100001)`,
   `(1E+4,100001)`, `(2E+5,100001)`), and `#NUM!` for a tiny x, as J (`BESSELI(2E-5,100001)`; `(5E-5,100001)` is 0: BESSELI
@@ -935,7 +943,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
 - **BESSEL.** `BESSELJ(1E+15,0)`, `BESSELJ(1E+15,5)` and `BESSELY(214285740740749.06,2)` are `#NUM!`,
   while x = 123456789.123 (below 2^27) computes: `BESSELJ(..,1)` 4.9869177786549744E-05 and `BESSELY(..,3)`
   5.1668995876750464E-05 (matched since T-2547: the phase cut and Excel's sine, "BESSELJ / BESSELY" above);
-  `BESSELJ(1E+5,100000)` is 0.009636944011336267 (ours ...629, T-2548). `BESSELI(1E+15,n)` is `#NUM!` (ours 0), and BESSELK at 713 and 714 is 0 for orders 0, 1
+  `BESSELJ(1E+5,100000)` is 0.009636944011336267 (matched since T-2548: twice-rounded recurrence steps, "BESSELJ / BESSELY" above). `BESSELI(1E+15,n)` is `#NUM!` (ours 0), and BESSELK at 713 and 714 is 0 for orders 0, 1
   and 4, T-2421. Past the order cap Excel gives 0: `BESSELI(100,100001)`, `BESSELI(8,1E+6)`, `BESSELJ(0,1E+6)`,
   `BESSELK(25019,100001)` ("BESSEL order cap"; ours matches since T-2546). `BESSELK(700,3)` is 4.69979514014056E-306 (matched
   since T-2549: the subnormal recurrence term flush, "BESSELK near the bottom of the double range").

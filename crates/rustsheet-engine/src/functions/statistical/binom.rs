@@ -8,6 +8,7 @@
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
+use super::bratio::{closed_or_ported_tails, ported_tails};
 use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio};
 use super::incomplete_beta::closed_form_tails;
 
@@ -99,8 +100,9 @@ impl Model {
         // which at k = n - 1 takes Excel's closed form (T-2464 w5-triangulation, T-2502). k = 0 is
         // BINOM's own shortcut, not the kernel's (T-2645).
         if cumulative && k >= 1 && k < n {
+            // Then the bratio port's branches (T-2847).
             if let Some((_, upper)) =
-                closed_form_tails(p, 1.0 - p, number_s + 1.0, trials - number_s)
+                closed_or_ported_tails(p, 1.0 - p, number_s + 1.0, trials - number_s)
             {
                 return Ok(flush_subnormal(upper));
             }
@@ -295,10 +297,16 @@ impl Model {
         // Excel's cdf is the incomplete beta I_p(r, f+1) at x = p, y = fl(1 - p), which at r = 1 or
         // f = 0 takes Excel's closed form (T-2464 w5-triangulation, T-2502).
         if cumulative {
-            if let Some((lower, _)) =
-                closed_form_tails(probability_s, 1.0 - probability_s, number_s, number_f + 1.0)
-            {
+            // Then the bratio port's branches (T-2847), whose subnormal cdf is 0 in Excel
+            // (`NEGBINOM.DIST(1,1000,0.48,TRUE)` = 0: probes/t2706-subnormal-density-paths A9:B9).
+            // Not [`closed_or_ported_tails`]: the flush is backed for the port only, so the closed
+            // form's result is returned as it was.
+            let (x, y, a, b) = (probability_s, 1.0 - probability_s, number_s, number_f + 1.0);
+            if let Some((lower, _)) = closed_form_tails(x, y, a, b) {
                 return Ok(lower);
+            }
+            if let Some((lower, _)) = ported_tails(a, b, x, y) {
+                return Ok(flush_subnormal(lower));
             }
         }
         // F failures before the r-th success: P(F <= f) is P(at most f failures in f + r trials),

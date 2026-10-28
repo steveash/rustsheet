@@ -2,6 +2,7 @@ use super::*;
 use crate::value::{ErrorKind, XlError};
 use crate::WorkbookOptions;
 
+mod calculated_column;
 mod typed_entry;
 
 fn book() -> Workbook {
