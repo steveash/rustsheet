@@ -3076,6 +3076,33 @@ Tasks: T-1543, T-1634
   (p·Γ(1.25))^4·1E15 is 6.7496978931117296E-50 (40-digit Decimal), and ours is 6.74969789311173E-50. So Excel is
   4.1E-15 relative high, about 1E-15 relative in P at a = 0.25. Not yet known: whether this is the crossing of
   Excel's own GAMMA.DIST cdf (T-3012 probes it, T-3013 matches it).
+  T-3012 evidence (probes/t3012-gamma-inv-small-shape, probes/t3012-gamma-dist-at-quantile, excel-graph):
+  - Excel's GAMMA.INV is not the crossing of its own GAMMA.DIST. `GAMMA.DIST(x,a,1,TRUE)` at Excel's
+    `GAMMA.INV(p,a,1)` quantile (second case, column B, exact relative error in P against the decimal p; the
+    `cdf/p-1` column D is zero-snapped by Excel and proves nothing) is within 6E-16 of p at a = 0.05, 0.25 (except
+    row 8, +9.7E-16) and 0.5, and further off at a = 0.1 (row 3, p = 1E-30: -8.5E-15), a = 0.75 (row 16, p = 1E-100:
+    +2.6E-14; row 17 -3.2E-15; row 18 -1.9E-15; row 19 +1.2E-15; row 20 -1.3E-15) and a = 0.9 (row 21 +1.9E-15,
+    row 22 +1.1E-15, row 23 -4.7E-15, row 25 -3.0E-15). No shape is exact at every p. The sign is positive at a = 0.05, negative at a = 0.1 and changes with p
+    at a = 0.25, 0.5, 0.75 and 0.9.
+    One ulp of x moves the cdf by a quarter ulp at a = 0.25, so columns A..C agree there; at a = 0.5 and 0.9 they
+    differ (rows 15, 24, 25). The errors of 6 to 205 ulps of P at a = 0.1, 0.75, 0.9 (rows 3, 16-23) are more than one ulp of x
+    can explain, so the quantile is Excel's own inversion, not a crossing; the same holds at a = 0.05 (+5.5E-16 and
+    +5.9E-16 with A = B = C, rows 1-2) and row 8 of a = 0.25, about 30 to 90 ulps of x from a crossing. Rows 15 (a = 0.5) and 25 (a = 0.9)
+    are bracketed: at row 15 Excel returns the first x whose cdf reaches p, at row 25 the last x below p (C25, one
+    ulp of x higher, is above p; Excel's cdf jumps 3.6E-15 across that ulp).
+  - The scale is a plain final product: in all 36 rows of the first case column B equals the double product
+    A * 1E+15 exactly (`GAMMA.INV(1E-16,0.1,1)` = 6.073048362407876E-161 and `GAMMA.INV(1E-16,0.1,1E+15)` =
+    6.0730483624078755E-146 are the same value to the rounding of the product, row 10).
+  - Range: `GAMMA.INV(p,0.05,1)` is 0 for p <= 1E-30 and `#DIV/0!` at p = 1E-16 (row 4); shape 0.1 gives 0 for
+    p <= 1E-100 and shape 0.25 / 0.5 / 0.75 / 0.9 give 0 for p = 1E-300 (0.25 also at 1E-100).
+  - GAMMA.DIST's cdf at shape 0.25 (second case, rows 27-35): for x <= 1E-30 it equals
+    `EXP(0.25*LN(x))/EXP(GAMMALN(1.25))` at x = 6.7497E-65 and 1E-30 and is 1 ulp above it at x = 1E-65; it never
+    equals `x^0.25/GAMMA(1.25)` (2 ulps above at 1E-65, 1 ulp above at 6.7497E-65 and 1E-30). From x = 1E-10 up it includes the series' second
+    term (0.0034888228355002 against 0.0034888228355700 for the one-term forms), so only the x^a / Gamma(a+1) factor
+    is comparable. The `cdf/p-1` columns are zero-snapped by Excel's subtraction rule and prove nothing; compare the
+    raw cdf values.
+  - T-3013 should therefore not expect a crossing-based fix to reproduce Excel at a = 0.1, 0.75, 0.9; only the
+    exp(a ln x) form of the leading term is indicated.
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
