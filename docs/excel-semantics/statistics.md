@@ -3086,8 +3086,8 @@ Tasks: T-1543, T-1634
     -3.0E-15 (1E-5, row 25). So the quantile is Excel's own inversion, a few ulps of P from the crossing, with an
     error sign that changes with p.
   - The scale is not always a plain final product: `GAMMA.INV(1E-16,0.1,1)` = 6.073048362407876E-161 but
-    `GAMMA.INV(1E-16,0.1,1E+15)` = 6.0730483624078755E-146 (1 ulp lower); the same happens at 0.25 / 1E-30 and
-    0.75 / 1E-30 (first case rows 3, 15, 17).
+    `GAMMA.INV(1E-16,0.1,1E+15)` = 6.0730483624078755E-146 (1 ulp lower); the same happens at 0.25 / 1E-30,
+    0.25 / 1E-10 and 0.75 / 1E-30 (first case rows 10, 15, 17, 27).
   - Range: `GAMMA.INV(p,0.05,1)` is 0 for p <= 1E-30 and `#DIV/0!` at p = 1E-16 (row 4); shape 0.1 gives 0 for
     p <= 1E-100 and shape 0.25 / 0.5 / 0.75 / 0.9 give 0 for p = 1E-300 (0.25 also at 1E-100).
   - GAMMA.DIST's cdf at shape 0.25 (second case, rows 27-35): for x <= 1E-30 it equals
