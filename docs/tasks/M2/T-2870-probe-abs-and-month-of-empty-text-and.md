@@ -3,7 +3,7 @@ id: T-2870
 title: "Probe ABS and MONTH of empty text and COUNTIFS criteria that are a fraction or numeric text (M2 argument kinds T-2861 leaves)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
