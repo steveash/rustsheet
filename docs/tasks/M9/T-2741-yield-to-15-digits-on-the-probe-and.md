@@ -3,7 +3,7 @@ id: T-2741
 title: "YIELD to 15 digits on the probe and ironcalc-calc cells T-1592 does not list (PRICE_YIELD.xlsx I column and the YIELD sweeps, 370 visibly-off cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
