@@ -3,7 +3,7 @@ id: T-2770
 title: "Probe IMSUB/IMDIV with an omitted LAMBDA parameter and a LET-bound empty value"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
