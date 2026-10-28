@@ -3,7 +3,7 @@ id: T-1564
 title: "Size array arms of CHOOSE, IF and HSTACK/VSTACK from range bounds and copy only picked arms"
 milestone: M13
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
