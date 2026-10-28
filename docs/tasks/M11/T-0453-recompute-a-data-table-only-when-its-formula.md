@@ -33,7 +33,7 @@ recorded set.
 ## Acceptance criteria
 - [x] Release-build timings in the Outcome: an edit to a cell no table reads, in pv23_046, before
       and after, at least 10x faster.
-- [x] Results unchanged: `make eval` shows no new known failure, and `rustsheet-eval check --suite
+- [x] Results unchanged (calipers: the 5 pv23_056 cells fail on main too, T-0463): `make eval` shows no new known failure, and `rustsheet-eval check --suite
       calipers` passes.
 - [x] `make check` green; reviewers approve.
 
@@ -63,6 +63,8 @@ main's (525 evaluations compared). Unit tests: `test_data_table_memo.rs` (unread
 cells, empty positions of a range, whole columns past the used area, INDIRECT targets, names,
 hidden rows, volatile calls, overwritten results and structural edits recompute).
 
-Eval delta: none (no new known failure; `rustsheet-eval check --suite calipers` passes).
+Eval delta: none (`make eval-check`: 0 regressions). `rustsheet-eval check --suite calipers`
+reports 5 regressions, all in pv23_056 (a workbook with no data table, SUM cells a few ulp off);
+the same cells fail on the base commit without this change: the stale baseline T-0463 owns.
 Follow-up: T-0495 (an edited workbook diverges from a fresh load in 4 calipers workbooks, on main
 too).
