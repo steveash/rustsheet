@@ -168,7 +168,7 @@ value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@
 `TEXT(TRUE,"General")` = "TRUE". An empty 4th section prints nothing: `TEXT("text",";;;")` is ""
 (gen-m10/0e3d8eba9432a18d T!A24; ours "text", T-2945), as `;;;` hides a number (gen-m10/810fee377a42575b A19).
 Empty and missing text sections (probes/text-format-text-sections B2:J15, excel-graph 2026-10-28, T-2975): an empty
-4th section gives "" for text, TRUE, FALSE and "" alike (`;;;`, `0;0;0;`, `0;0;General;`; LEN 0), and `;;;` hides numbers
+4th section gives "" for text, TRUE, FALSE and "" alike (`;;;`, `0;0;0;`, `0;0;General;`; LEN 0), while numbers keep their own sections there (5 and -5 give "5", 0 "0"); `;;;` hides numbers
 too. A format with no 4th section (`0;0;0`) and `0;0;0;@` give the text, "TRUE" or "FALSE" unchanged. Any format with
 five or more sections (`0;;;;`, `0;;;;@`, `0;0;0;;`, `;;;@;`) is `#VALUE!` for every value, text and booleans included.
 Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73; gen-m10/0e3d8eba9432a18d T!A24; probes/text-format-text-sections.
