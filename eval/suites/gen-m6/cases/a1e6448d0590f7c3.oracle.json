@@ -276,7 +276,7 @@
    },
    "A160": {
     "t": "e",
-    "v": "#N/A"
+    "v": "#VALUE!"
    },
    "A161": {
     "t": "e",
@@ -1641,8 +1641,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "63be648f3f7367cf5906b5d55bfd45909b17d6f51bf48e6f2b21616f8ec13905",
   "kind": "excel-graph",
-  "produced_at": "2026-10-21T06:47:17+00:00",
+  "produced_at": "2026-10-28T15:49:16+00:00",
   "version": null,
-  "workbook_name": "b3fb85d1cb229a7ea5cd1ede4e732b044b199fbd3f323e29c4f511b55bea6f51.xlsx"
+  "workbook_name": "5261e2293c38d1e1ded3fcdf12bc940f64fda4b3f1bc3d18e0fbf1a18a5a953f.xlsx"
  }
 }
