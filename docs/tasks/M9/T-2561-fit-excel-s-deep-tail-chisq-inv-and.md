@@ -50,7 +50,7 @@ Cells:
 - gen-m9/4e55500bb8ad3cd8.case.json (2): Calc!A111, A217
 - gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A88
 - gen-m9/623663cacea53bbc.case.json (1): Calc!A98
-- gen-m9/984cba67bbe6972b.case.json (1): Calc!A13
+- gen-m9/984cba67bbe6972b.case.json (2): Calc!A13, A43 (A43 added by the gap triage of 2026-10-28: `GAMMA.INV(1E-16,ABS(TIMEVALUE("6:00")),Data!A10)`, shape 0.25, Excel 6.749697893111757E-50, ours 6.74969789311173E-50; it was attributed to no function because TIMEVALUE is not glue)
 - gen-m9/a612e89321a6df9c.case.json (2): Calc!A169, A317
 - gen-m9/a61e547a1cab994c.case.json (1): Calc!A184
 - gen-m9/a790a4d4a6a82756.case.json (1): Calc!A293

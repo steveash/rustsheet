@@ -79,6 +79,7 @@ C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/array-context-legacy-sumproduct.case.json	31
 C	probes/arraytotext-empty-ref.case.json	25
+C	probes/arraytotext-error-vs-format.case.json	16
 C	probes/arraytotext-number-text.case.json	15
 C	probes/asin-argument-sweep.case.json	268
 C	probes/asin-atan-sign-source.case.json	840
@@ -485,6 +486,7 @@ C	probes/fraction-numerator-overflow2.case.json	69
 C	probes/fraction-overflow-scaled.case.json	80
 C	probes/fraction-placeholder-past-2-30.case.json	75
 C	probes/fraction-six-digit-denominator.case.json	5
+C	probes/frequency-bins.case.json	38
 C	probes/ftest-decomposition.case.json	91
 C	probes/gamma-x87-edges.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
@@ -833,6 +835,7 @@ C	probes/npv-term-order.case.json	402
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
+C	probes/numbervalue-default-group.case.json	14
 C	probes/numbervalue-separator-edges.case.json	20
 C	probes/odd-bond-argument-check-order.case.json	1091
 C	probes/off-grid-corners.case.json	6
@@ -1269,6 +1272,7 @@ C	probes/t2436/f2bd5f380ec002bf.case.json	78
 C	probes/t2436/f34f66fb7f81e673.case.json	54
 C	probes/t2436/fd9fa22d212080d6.case.json	18
 C	probes/t2436/fec39efaba9284c3.case.json	79
+C	probes/t2437-fit-separators.case.json	114
 C	probes/t2452-expand-1048576x2.case.json	1
 C	probes/t2452-expand-2x524288.case.json	1
 C	probes/t2452-expand-2x524289.case.json	1
@@ -1433,6 +1437,7 @@ C	probes/t2957-fill-one-totals.case.json	8
 C	probes/t2957-refill-second.case.json	6
 C	probes/t2966-empty-call-runs.case.json	8
 C	probes/t2966-missing-first-arg-run.case.json	6
+C	probes/t2967-pivotby-subtotal-gate.case.json	359
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -2968,7 +2973,6 @@ F	probes/logest-modes.case.json	Sheet1!M92
 F	probes/logest-modes.case.json	Sheet1!M93
 F	probes/logest-modes.case.json	Sheet1!N85
 F	probes/logest-modes.case.json	Sheet1!N86
-F	probes/numbervalue-separator-edges.case.json	Sheet1!A8
 F	probes/odd-bond-argument-check-order.case.json	Calc!A258
 F	probes/pivotby-ttest-array2.case.json	P!A36
 F	probes/pivotby-ttest-array2.case.json	P!A37
@@ -3200,7 +3204,6 @@ F	probes/t2436/05d44f6dd6cfc567.case.json	Calc!A61
 F	probes/t2436/4250f880ab640c49.case.json	Calc!A121
 F	probes/t2436/4250f880ab640c49.case.json	Calc!T121
 F	probes/t2436/4250f880ab640c49.case.json	Calc!U121
-F	probes/t2436/4ab2ba98d26c8a5e.case.json	Calc!A256
 F	probes/t2436/7674c89c824aca43.case.json	Calc!A31
 F	probes/t2436/7674c89c824aca43.case.json	Calc!T16
 F	probes/t2436/7674c89c824aca43.case.json	Calc!T31
@@ -3263,11 +3266,6 @@ F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A12
 F	probes/t2492-vdb-ddb-arguments.case.json	Sheet1!A9
 F	probes/t2496-fin-subexpressions.case.json	P!A24
 F	probes/t2496-fin-subexpressions.case.json	P!A25
-F	probes/t2496-fin-subexpressions.case.json	P!A43
-F	probes/t2496-fin-subexpressions.case.json	P!A44
-F	probes/t2496-fin-subexpressions.case.json	P!A69
-F	probes/t2496-fin-subexpressions.case.json	P!A74
-F	probes/t2496-fin-subexpressions.case.json	P!A79
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D1
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D10
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D8
@@ -3291,20 +3289,6 @@ F	probes/t2577-indirect-ref-array.case.json	Calc!T64
 F	probes/t2577-indirect-ref-array.case.json	Calc!U148
 F	probes/t2577-indirect-ref-array.case.json	Calc!U157
 F	probes/t2577-indirect-ref-array.case.json	Calc!U64
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A1
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A11
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A13
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A2
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A4
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A6
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A7
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!A9
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!B11
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!B13
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!B2
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!B4
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!B6
-F	probes/t2606-pivotby-total-gate-layouts.case.json	P!B7
 F	probes/t2729-hijri-locale-tag-names.case.json	S!A296
 F	probes/t2729-hijri-locale-tag-names.case.json	S!A297
 F	probes/t2729-hijri-locale-tag-names.case.json	S!A316

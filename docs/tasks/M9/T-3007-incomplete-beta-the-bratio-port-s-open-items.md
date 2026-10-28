@@ -1,0 +1,61 @@
+---
+id: T-3007
+title: "Incomplete beta: the bratio port's open items after T-2977 (shape of 1 outside the closed forms, TOMS betaln for both shapes >= 1 above 8, fl(a LN x) overflow, SPEC-0025 layout)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P1
+size: M
+tier: opus
+campaign: accuracy
+depends_on: [T-2977]
+spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
+---
+
+## Goal
+The bratio port reaches the points it still hands to today's kernel for want of a piece, and its code has SPEC-0025's
+layout and tests.
+
+## Context
+- T-2977 deleted the pre-T-2502 seams and the T-2464 harness and scored the engine per bratio branch
+  (docs/research/t2977/score_branches.out; T-2977 Outcome). These items from T-2847's Context were left open:
+  - a caller's shape of exactly 1 outside the closed forms (a0 = 1, y0 > 0.9) stays on
+    `incomplete_beta.rs::shape_one_tails` (`TODO(T-3007)` in `bratio::ported_tails`): bpser(1, 3.5, x0) is 1 ulp
+    high at probes/ftest-decomposition B12, where y0^b0 is Excel's value. Find Excel's form before moving it;
+  - bpser for both shapes >= 1 with max > 8 (`bpser_neg_ln_beta` returns `None`): 509 r2-bratio bpser_large rows
+    and the F tails' fallback there (for example probes/t2829-ftest-tail-over-b S!A17, `2*F.DIST.RT(1E+12,22,5)`)
+    keep today's kernel. Gap triage 2026-10-28 (origin/main 1a0b616f): the same probe's other visibly-off cells,
+    all this branch (shapes df2/2 in {2.5, 6} and df1/2 from 8.5 to 13), had no open owner and are this item's too:
+    probes/t2829-ftest-tail-over-b S!A1 (`2*F.DIST.RT(1E+12,17,12)`, Excel 5.654118407649194E-70, ours
+    5.6541184076491873E-70), A3, A4, A6, A7 (Excel 4.032210775559413E-70, ours 4.032210775559509E-70), A9 and A18
+    (`2*F.DIST.RT(1E+12,23,5)`). statistics.md (F.TEST section) puts them off ours by T-2924's k plus whole steps of
+    the fl(a·LN x) grid; a TOMS `betaln` (gamln + algdiv, or bcorr for both >= 8) is the natural port, against
+    T-2924's fit of Excel's betaln;
+    Seven more cells of that fallback are visibly off (owner since the 2026-10-28 triage): probes/t2829-ftest-tail-over-b S!A1, A3, A4, A6, A7, A9, A18
+    (`2*F.DIST.RT(1E+12,d1,d2)`, d1 17 to 26, d2 12 or 5); A1 Excel 5.654118407649194E-70, ours 5.6541184076491873E-70; A7 Excel 4.032210775559413E-70, ours 4.032210775559509E-70;
+  - probe (excel-probe) Excel's value where fl(a·LN x) overflows, `BETA.DIST(0.1,1E308,0.5,TRUE)`;
+  - SPEC-0025's `bpser.rs`/`ln_beta.rs` split, the hex-bits branch fixture and the complement, swap and
+    monotonicity property tests, or a spec amendment; unify `beta_density::ln_beta_small_shape` with
+    `bratio::bpser_neg_ln_beta` or say in the code why they differ;
+  - the 987 probes-numeric cells T-2505's port moved off the Cephes kernel (T-2847 Context), scored against the
+    model with the bindings venv (decision 0114).
+- From T-2977's Context: re-score docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells that L = -LN(a0) at
+  a whole b0 makes bit-exact at a0 <= 8, and count the L140 cells it moves off; and the bpser criterion's shortfall on
+  t2464-r2-bpser-small-shapes (w15 4,601 of 4,602 at 1 < b0 < 8, 2,859 of 2,868 at b0 >= 8 against 2,861 for the
+  model; `bpser_neg_ln_beta` takes `beta_density::algdiv` in double arithmetic for b0 >= 8, the model x87 stored).
+- The model's w_bpser counts beat the engine's (6,767 against 5,458 bit-exact of 11,845; T-2977 Outcome): the
+  model scores 6,767 with w3_lg = toms and 6,072 with gl (the engine's GL53), so part of the gap is the L form.
+- Gap triage 2026-10-28 (eval on origin/main abefb50): the visibly-off cells of that same case, which no open task
+  named, are this item's too (both shapes >= 1 with one above 8, so no ported ln B; T-2977 Outcome):
+  probes/t2829-ftest-tail-over-b S!A1, A3, A4, A6, A7, A9, A18 (e.g. A1 `2*F.DIST.RT(1E+12,17,12)`, Excel
+  5.654118407649194E-70, ours 5.6541184076491873E-70; A7 `2*F.DIST.RT(1E+12,23,12)`, Excel 4.032210775559413E-70,
+  ours 4.032210775559509E-70). statistics.md (F.TEST, T-2829) says they are off by T-2924's ln B k plus whole steps
+  of the fl(a·LN x) grid, so a TOMS betaln alone may not reach them: score them and say which part is left.
+
+## Acceptance criteria
+- [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
+      its scores.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- bfrac/basym (T-2508), the bgrat family (T-2509, T-2510), the inverses (T-2511), T-2978's ulp cells.
