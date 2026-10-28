@@ -62,7 +62,7 @@ Cells:
 - [x] Either the fitted order is implemented and these lines leave eval/baseline/gen-m9.txt (`make eval-baseline`) with no
       new known-failure line in any baseline, or the task is `blocked` with "Blocked because: time-boxed (decision 0056)"
       and the candidates' bit-exact counts in statistics.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Visibly-off cells of these functions (other tasks).
@@ -94,4 +94,5 @@ Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by 
   - gen-m9/caa1eed48b1883fe A382 `EXPON.DIST(T.DIST(DAYS(14246,10047),4,Data!D$11),...)` -> T-2585 (Student t density):
     Excel's T.DIST(4199,4,FALSE) is 9.192880751152396E-18 (probed during this task), ours 9.192880751152399E-18.
 - The time-box alternative (decision 0056) was not needed: every fit raised the bit-exact count on its first attempt.
-- `make check` green; the review skill has not run yet (criterion 3 stays open until reviewers approve).
+- `make check` green; all five reviewers approved. Review follow-up: twice-rounded sums (`1 ± x`, `e ± 1`) tie the
+  chosen forms (FISHER 152/155, FISHERINV 133/143), so the sums stay plain.

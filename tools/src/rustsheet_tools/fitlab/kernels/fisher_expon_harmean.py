@@ -136,6 +136,14 @@ def fisher_candidates() -> list[Candidate]:
                 return 0.5 * ln(div(1 + x, 1 - x))
 
             out.append(candidate(f"0.5*{ln_name}((1+x){div_name}(1-x))", f, ln_name))
+
+    def sums_twice(a: Arg) -> float:
+        x = _number(a)
+        return 0.5 * X87.ln(X87.div(X87.add(1, x), X87.sub(1, x)))
+
+    out.append(
+        candidate("0.5*LN((1+x)/(1-x)), sums and quotient rounded twice", sums_twice, "sums rounded twice")
+    )
     return out
 
 
@@ -153,6 +161,17 @@ def fisherinv_candidates() -> list[Candidate]:
                 return 1.0 if math.isinf(e) else div(e - 1, e + 1)
 
             out.append(candidate(f"(e-1){div_name}(e+1), e={exp_name}(2y)", f, exp_name))
+
+    def sums_twice(a: Arg) -> float:
+        try:
+            e = X87.exp(2 * _number(a))
+        except OverflowError:
+            return 1.0
+        return 1.0 if math.isinf(e) else X87.div(X87.sub(e, 1), X87.add(e, 1))
+
+    out.append(
+        candidate("(e-1)/(e+1), e=EXP(2y), sums and quotient rounded twice", sums_twice, "sums rounded twice")
+    )
     return out
 
 

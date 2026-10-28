@@ -457,6 +457,8 @@ fn f_pdf_loader(m: f64, n: f64, x: f64) -> f64 {
 /// EXPON.DIST and HARMEAN are Excel operators around LN and EXP"). The twice-rounded quotient is
 /// what makes `FISHER(1E-15/3.14159)` 2.2204460492503126E-16 (gen-m9/4ab2ba98d26c8a5e A395,
 /// excel-graph), where a plain quotient gives 3.3306690738754686E-16; fit lab `fisher`, T-2437.
+/// `1 + x` and `1 - x` stay plain: twice-rounded sums score the same 152 of 155 there, so the data
+/// do not ask for them.
 fn fisher(x: f64) -> f64 {
     0.5 * excel_ln(extended_quotient(1.0 + x, 1.0 - x))
 }
@@ -465,6 +467,7 @@ fn fisher(x: f64) -> f64 {
 /// twice, not a correctly rounded tanh, and 1 once EXP(2y) overflows (docs/excel-semantics/
 /// statistics.md "FISHERINV is (EXP(2y)-1)/(EXP(2y)+1)"). The twice-rounded quotient makes
 /// `FISHERINV(TAN(PI()))` -2^-53 (gen-m9/ee2497a5e683c5d9 A30, excel-graph); fit lab `fisherinv`, T-2437.
+/// `e - 1` and `e + 1` stay plain: twice-rounded sums score the same 133 of 143 there.
 fn fisher_inv(y: f64) -> f64 {
     let e = excel_exp(2.0 * y);
     if e.is_infinite() {

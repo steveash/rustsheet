@@ -44,12 +44,14 @@ functions appear in; bit-exact cells, the misses of the winners are the sweep's 
 
 | fit (cells) | chosen form | other candidates | engine before |
 |---|---|---|---|
-| `fisher` (155) | **152**: 0.5*LN(q), q rounded twice | libm ln, q twice 150; LN, plain q 142; libm, plain q 140; 0.5*(LN(1+x)-LN(1-x)) 94; atanh 68 | 143 |
-| `fisherinv` (143) | **133**: EXP, quotient twice | libm exp, quotient twice 133; plain quotient 121 (either exp); tanh 85 | 131 |
+| `fisher` (155) | **152**: 0.5*LN(q), q rounded twice | sums 1±x also twice 152 (tie); libm ln, q twice 150; LN, plain q 142; libm, plain q 140; 0.5*(LN(1+x)-LN(1-x)) 94; atanh 68 | 143 |
+| `fisherinv` (143) | **133**: EXP, quotient twice | sums e±1 also twice 133 (tie); libm exp, quotient twice 133; plain quotient 121 (either exp); tanh 85 | 131 |
 | `expon-cdf` (132) | **129**: Kahan below t = 1, else 1-EXP | cut at 2: 121, 0.5: 115, 4: 114, 8: 105; libm expm1 95; Kahan everywhere 91; 1-EXP 74 | 98 |
 | `harmean` (122) | **119**: 1/AVERAGE(1/x), + and / twice | plain +: 118; plain /: 116; both plain 115; n/sum(1/x) 103-104 | 106 |
 
-The libm/EXP and LN choices tie on these sweeps; the engine uses Excel's kernels (`excel_ln`,
+The sums `1 ± x` and `e ± 1` stay plain doubles: rounding them twice as well scores the same (FISHER 152,
+FISHERINV 133), so the sweeps do not separate the two and the simpler form is kept. The libm/EXP and LN choices
+tie on these sweeps too; the engine uses Excel's kernels (`excel_ln`,
 `excel_exp`, `excel_expm1`). Two owned gen-m9 cells stay off for their inputs, not these kernels: on
 Excel's own input bits both are exact. `FISHER(T.DIST.RT((1.005^1e-15),4))` (a612e89321a6df9c A191)
 needs Excel's `T.DIST.RT(1,4)` = 0.18695048315002957 (probes-numeric/m9-t-dist-rt A49; ours, correctly
