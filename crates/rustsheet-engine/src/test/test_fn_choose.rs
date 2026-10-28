@@ -215,5 +215,25 @@ fn test_fn_choose_index_array_unpicked_arm_reads_its_cells() {
     model._set("A1", "=ROWS(CHOOSE({1},5,A1:A2))");
     model._set("B1", "=ROWS(CHOOSE({2},5,B1:B2))");
     model.evaluate();
-    assert_eq!(model._get_text("A1"), model._get_text("B1"));
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("B1"), "0");
+}
+
+#[test]
+fn test_fn_choose_index_array_cycle_wins_over_an_oversized_result() {
+    // Every range arm is read before the result's size is checked, so a formula that reads its
+    // own cell through an arm is circular (0), not the cell-count `#ERROR!` (T-1564).
+    for formula in [
+        "=ROWS(CHOOSE({1,2},A:A,1:1))",
+        "=ROWS(CHOOSE({1},B:B,1:1))",
+        "=ROWS(CHOOSE({1,2},A:A,1/0))",
+        "=ROWS(IF({TRUE,FALSE},A:A,1:1))",
+        "=ROWS(IF({TRUE},B:B,1:1))",
+        "=ROWS(IF({TRUE;FALSE},A1:A2,B1:XFD1048576))",
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "0", "{formula}");
+    }
 }

@@ -91,4 +91,9 @@ fn test_hstack_reads_its_ranges_before_the_size_check() {
     model.evaluate();
     assert_eq!(model._get_text("W1"), "0");
     assert_eq!(model._get_text("G1"), "0");
+    // VSTACK alike: each range is under the range-size limit, the stack past the cell-count one.
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(VSTACK(A1:XFD60,B1:XFD60))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
 }

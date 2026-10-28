@@ -37,7 +37,6 @@ pub fn within_fifteen_digits(expected: f64, actual: f64) -> bool {
     (actual - expected).abs() <= 0.5 * 10f64.powi(exponent - 14)
 }
 
-/// An empty en-US model in UTC on the fixed test clock.
 /// The whole-column references `C:C,D:D,…`, `count` of them from column C, as one argument list.
 pub fn whole_column_arms(count: i32) -> String {
     (0..count)
@@ -47,6 +46,7 @@ pub fn whole_column_arms(count: i32) -> String {
         .join(",")
 }
 
+/// An empty en-US model in UTC on the fixed test clock.
 pub fn new_empty_model() -> Model {
     Model::new_empty_with_clock("model", "en", "UTC", "en", fixed_clock(TEST_CLOCK_MS)).unwrap()
 }

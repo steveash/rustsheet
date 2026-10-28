@@ -28,6 +28,12 @@ fn is_cell_contents_call(arg: &Node) -> bool {
     }
 }
 
+/// A VSTACK argument once its cells are read: copied, or a range read but not copied yet.
+enum Stacked {
+    Copied(Vec<Vec<ArrayNode>>),
+    Read(CellReferenceIndex, CellReferenceIndex),
+}
+
 /// The rows and columns an evaluated stack argument has once read, without reading a range's
 /// cells; a scalar is 1x1.
 fn unread_dims(result: &CalcResult) -> (usize, usize) {
@@ -172,21 +178,42 @@ impl Model {
                 }
             }
         }
-        if let Some((error, message)) = check_stack_size(known_rows, known_cols.max(1)) {
+        if let Some((error, message)) = check_stack_size(known_rows, 1) {
             return CalcResult::new_error(error, cell, message);
         }
 
-        let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(args.len());
+        // Every cell is read in argument order, as before, but a range is not copied yet: a cycle
+        // through it stays one, and a stack past the cell-count limit is refused without copying
+        // any range (T-1564).
+        let mut stacked: Vec<Stacked> = Vec::with_capacity(args.len());
         for (arg, result) in args.iter().zip(results) {
-            let array = match result {
-                Some(result) => self.result_to_array(result, cell),
+            let item = match result {
+                Some(CalcResult::Range { left, right }) => self
+                    .read_range_cells(left, right, cell)
+                    .map(|()| Stacked::Read(left, right)),
+                Some(result) => self.result_to_array(result, cell).map(Stacked::Copied),
                 // A blank one-cell reference stacks as a blank element, not 0 (`ISBLANK(INDEX(
                 // VSTACK(Z1,1),1,1))` is TRUE; probes/t2413-blank-in-stacked-arrays A13:A23).
-                None => self.eval_to_array_keep_blank(arg, cell),
+                None => self
+                    .eval_to_array_keep_blank(arg, cell)
+                    .map(Stacked::Copied),
             };
-            match array {
-                Ok(a) => arrays.push(a),
+            match item {
+                Ok(item) => stacked.push(item),
                 Err(e) => return e,
+            }
+        }
+        if let Some((error, message)) = check_stack_size(known_rows, known_cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        let mut arrays: Vec<Vec<Vec<ArrayNode>>> = Vec::with_capacity(stacked.len());
+        for item in stacked {
+            match item {
+                Stacked::Copied(array) => arrays.push(array),
+                Stacked::Read(left, right) => match self.evaluate_range(left, right, cell) {
+                    Ok(array) => arrays.push(array),
+                    Err(e) => return e,
+                },
             }
         }
 

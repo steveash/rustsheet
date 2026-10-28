@@ -234,9 +234,18 @@ impl Model {
                 .any(|node| matches!(array_node_to_bool(node), Ok(taken) if taken == want))
         };
         let (true_picked, false_picked) = (picks(true), picks(false));
-        let true_arg = self.evaluate_broadcast_arm(&args[1], cell, true_picked);
-        let false_arg: Option<BroadcastArg> =
-            has_else.then(|| self.evaluate_broadcast_arm(&args[2], cell, false_picked));
+        let true_arg = match self.evaluate_broadcast_arm(&args[1], cell, true_picked) {
+            Ok(arg) => arg,
+            Err(error) => return error,
+        };
+        let false_arg: Option<BroadcastArg> = if has_else {
+            match self.evaluate_broadcast_arm(&args[2], cell, false_picked) {
+                Ok(arg) => Some(arg),
+                Err(error) => return error,
+            }
+        } else {
+            None
+        };
 
         // Output size = largest extent across all array arguments.
         let cond_rows = cond_array.len();
@@ -249,7 +258,7 @@ impl Model {
         if let Some((error, message)) = check_array_size(max_rows, max_cols) {
             return CalcResult::new_error(error, cell, message);
         }
-        // The size is checked, so a range branch is read now (T-1564).
+        // The size is checked, so a picked range branch is copied now (T-1564).
         let true_arg = match self.read_broadcast_arm(true_arg, cell) {
             Ok(arg) => arg,
             Err(error) => return error,

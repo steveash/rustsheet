@@ -27,13 +27,13 @@ T-1508 performance review: `choose_array` (functions/lookup_and_reference/mod.rs
 ## Outcome
 CHOOSE over an index array and IF over an array condition take each arm's extent from its range bounds
 (`BroadcastArg::Range`, functions/broadcast_arg.rs; IF's `IfArg`, `if_arg_at`, `if_arg_dims` and `evaluate_if_arg`
-moved there as `BroadcastArg`, `BroadcastArg::at`, `BroadcastArg::dims` and `evaluate_broadcast_arg`). They check the
-output size before any range arm is read. A picked range arm is then copied. An unpicked one is read cell by cell
-within the used area, in the same order, but not kept (`Model::read_range_cells`, cast.rs), so a cycle through it and
-the dependencies it records are as before. It is charged only the cells it reads. HSTACK reads each range argument in
-turn as before, without copying it (so a cycle through it is still one: probes/scalar-lift-open-c3 W1 stays 0), and
-HSTACK and VSTACK check the stacked shape from the arguments' extents before copying any range. Unread ranges are charged
-3 work units per used cell (arrays.md work-units entry).
+moved there as `BroadcastArg`, `BroadcastArg::at`, `BroadcastArg::dims` and `evaluate_broadcast_arg`). Each range arm's
+cells are read in order as before (`Model::read_range_cells`, cast.rs, which shares `range_used_corner` with
+`evaluate_range`), so a cycle through any arm is still one, also when the result is too big
+(`=ROWS(CHOOSE({1,2},A:A,1:1))` in A1 stays 0, as probes/scalar-lift-open-c3 W1 shows for HSTACK). But no arm is copied
+until the output's size is checked, and then only the picked ones are. HSTACK and VSTACK read each range argument in
+turn the same way and copy only after the stacked shape is checked. A read before the copy is charged 3 work units per
+used cell (arrays.md work-units entry).
 
 Measurement (release build, peak resident memory `VmHWM` of a process with C1:BJ10 filled and one formula in A1;
 "N columns" are the whole-column arms `C:C,D:D,…`):

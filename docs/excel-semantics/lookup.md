@@ -831,9 +831,10 @@ So `COUNTBLANK(CHOOSE({1,2},D1:D2,D3:D4))` and `RANK(10,CHOOSE(…))` are 2x2 gr
 Evidence: probes/choose-array-index-range-arms (excel-graph, 2026-10-14, T-1508); probes/countblank-array-values H20,
 H34; probes/array-context-legacy-sumproduct H1, H10; probes/external-ref-no-link-ifchoose A32.
 Status: VERIFIED (excel-graph)
-Ours: the result is sized from the range arms' bounds and checked before any arm is read; then a picked range arm is
-copied, and an arm no index element picks has its cells read (so a cycle through it is one) but not copied, so
-`CHOOSE({1},C:C,D:D,…)` with 254 whole-column arms holds one column (T-1564; IF over an array condition alike).
+Ours: every range arm's cells are read in order, so a cycle through any arm is one (`=ROWS(CHOOSE({1,2},A:A,1:1))` in A1
+is circular, 0), but no arm is copied until the result's size, taken from the arms' bounds, is checked; then only the
+picked range arms are copied, so `CHOOSE({1},C:C,D:D,…)` with 254 whole-column arms holds one column (T-1564; IF over an
+array condition alike).
 Implemented in: `choose_array` (functions/lookup_and_reference/mod.rs), using `BroadcastArg` and
 `evaluate_broadcast_arm` (functions/broadcast_arg.rs).
 Tasks: T-1508, T-1564
