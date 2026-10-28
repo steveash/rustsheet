@@ -1132,4 +1132,4 @@ reference to an error cell (also `B1:B1`) the same. With two errors the first ar
 (`ARRAYTOTEXT(1,NA())` `#N/A`). An error inside an array is not the argument's error: `ARRAYTOTEXT({1,#N/A},2)` is
 `#VALUE!`, as `ARRAYTOTEXT(1,2)` and `ARRAYTOTEXT(1,"x")` are. VERIFIED (probes/arraytotext-error-vs-format, excel-graph
 2026-10-27, T-2250). VALUETOTEXT differs: `VALUETOTEXT(NA(),2)` is `#VALUE!`, not the argument's error (matches today's
-engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`).
+engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`); a reference to an error cell with an error or text format, such as `ARRAYTOTEXT(B1,NA())` or `ARRAYTOTEXT(B1,"x")` with B1 holding `#N/A` (the engine reads the format first and returns its error).
