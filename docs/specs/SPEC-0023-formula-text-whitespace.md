@@ -27,7 +27,7 @@ Goals:
 1. Whitespace that Excel keeps survives parse → print, in every printer:
    - `to_english_string`, `to_localized_string`, `to_rc_format`, `to_string_displaced` and
      `to_string_moved`;
-   - the xlsx export text, Excel saves kept whitespace as typed, with a line feed as raw CR LF bytes that read back as LF (T-2786, xlsx-storage.md); export should write it (T-2948).
+   - the xlsx export text, Excel saves kept whitespace as typed, with a line feed as raw CR LF bytes that read back as LF (T-2786, xlsx-storage.md); export writes it (T-2948).
 2. Whitespace that Excel drops is dropped at parse time, so the tree only ever holds what prints.
 3. No value changes. Whitespace is transparent to evaluation and to every shape test, as a `Group`
    is.
@@ -81,7 +81,7 @@ probes/t2776-* (excel-graph, 2026-10-26).
   kept as typed (`=NOW( )`, `=IF(1, ,2)`, `=SUM(1, )`, `=SUM(, 1)`), unlike a run before a comma that follows an
   operand, so the rule above "a run followed by `,` ... is dropped" holds only after an operand (T-2944). `=SUM (1)` and
   `=SUM( )` are refused. Structured references normalize their whitespace (T-2801). Excel saves kept whitespace in the
-  `<f>` text, a line feed as raw CR LF bytes that read back as LF (xlsx-storage.md), so export should print the tree's whitespace and not strip it (T-2948; today it writes none).
+  `<f>` text, a line feed as raw CR LF bytes that read back as LF (xlsx-storage.md), so export prints the tree's whitespace (T-2948).
 
 ## Design
 ### Where whitespace attaches
@@ -94,7 +94,9 @@ applied to one.
   `after`.
 - A run followed by `,`, by the end of the formula, or found inside `{…}` is dropped, except a run beside a
   missing argument. A run between two commas, or between the last comma and `)`, is the missing argument's own: a
-  `Spaced` around `EmptyArgKind` (T-2944). The run inside an empty call's `( )` is T-2966. These are
+  `Spaced` around `EmptyArgKind` (T-2944), and so is a run before a missing first argument (`=SUM( ,1)`). The run
+  inside an empty built-in call's `( )` (`=NOW( )`) is one such spaced empty argument, attached after the argument
+  count is taken and removed by `strip_spaces` (`is_empty_call_run`), so evaluation sees no argument (T-2966). These are
   exactly the places where Excel drops it (for the probed shapes; see Unknown).
 
 Attaching at the primary level, and never to a chain, leaves the value-operator chains of SPEC-0007
@@ -173,6 +175,13 @@ Changes from the design above, found while implementing step 1 (decision 0127):
 Step 3 attaches the spaces after the intersection's first (the operator) to the right operand as its `before` run,
 not as a printed separator on the intersection node, so no node field is added; `intersection_operand` peels
 `Spaced` so the operand is not parenthesised.
+
+### Implementation note (T-2948)
+Export prints the written tree. The legacy `@` rewrite (`add_implicit_intersection` on import,
+`remove_redundant_implicit_intersection` on export) decides on the tree with no whitespace
+(`Node::rewrite_as_unspaced`): the written tree keeps its runs only when its rewrite, stripped, is the
+bare tree's, so a shape site that does not peel `Spaced` costs the whitespace, never a value
+(`N( IF(1,{2;3}) )`, T-2970).
 
 ### What does not change
 Public API, the depth and operator caps, every parse error, and every value.
