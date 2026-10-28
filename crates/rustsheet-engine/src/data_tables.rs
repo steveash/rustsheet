@@ -50,11 +50,14 @@ impl Model {
                 continue;
             };
             results_left = left;
-            if memoizable {
-                if let Some(cost) = self.data_table_unchanged(&context, index, (*sheet, table)) {
-                    budget = budget.saturating_sub(cost);
-                    continue;
-                }
+            // A table skipped costs what its recomputation would, and only a recomputation that
+            // would not run out keeps the results it had.
+            let cost = (memoizable)
+                .then(|| self.data_table_unchanged(&context, index, (*sheet, table)))
+                .flatten();
+            if let Some(left) = cost.and_then(|cost| budget.checked_sub(cost)) {
+                budget = left;
+                continue;
             }
             recomputed = true;
             self.evaluation.data_tables_recomputed += 1;

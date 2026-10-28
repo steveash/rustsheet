@@ -213,7 +213,9 @@ of one recalculation may evaluate at most 33,554,432 formulas together
 (`MAX_DATA_TABLE_EVALUATIONS`). The result cells computed after the budget is spent are `#NUM!`,
 so a large table over a large model cannot hold the evaluation without bound (CLAUDE.md
 directive 5). A table that is not recomputed (T-0453) is charged what its last recomputation
-spent, so the tables after it find the budget as before; one that ran out is always recomputed.
+spent, so the tables after it find the budget as a recomputation would leave it. It is skipped
+only while the budget left covers that cost, and one whose recomputation ran out is always
+recomputed, so the results are those of a recomputation either way.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/data_tables.rs (`MAX_DATA_TABLE_EVALUATIONS`)
 Tasks: T-0441
