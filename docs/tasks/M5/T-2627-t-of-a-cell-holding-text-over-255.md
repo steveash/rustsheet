@@ -3,7 +3,7 @@ id: T-2627
 title: "T of a cell holding text over 255 units is empty text; T of a long array element and REPT with an error count (T-2305 probes)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
