@@ -307,3 +307,14 @@ fn test_let_name_spelled_like_function_called() {
         assert_eq!(model._get_text(&format!("A{row}")), expected, "{formula}");
     }
 }
+
+#[test]
+fn test_lambda_parameter_under_a_unary_plus_is_refused() {
+    // Excel for the web refuses `=LAMBDA(+x,x)(1)` typed (Graph PATCH 400,
+    // docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md). `=LET(+x,1,x)` is refused
+    // too; we give `#VALUE!` (TODO(T-2887)).
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(+x,x)(1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+}

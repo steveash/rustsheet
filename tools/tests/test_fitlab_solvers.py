@@ -8,7 +8,7 @@ import math
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import registry, solvers, xirr, yield_caret
+from rustsheet_tools.fitlab.kernels import irr_fallback, registry, solvers, xirr, yield_caret
 from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
 
 
@@ -19,6 +19,25 @@ def test_parse_arg_reads_array_literals_and_dates() -> None:
     assert parse_arg("DATE(1900,3,1)", "S", book) == 61.0  # after Excel's phantom 1900-02-29
     with pytest.raises(UnparsedError):
         parse_arg("DATE(2024,2,30)", "S", book)
+
+
+def test_parse_arg_reads_a_nested_call_from_the_calls_cases() -> None:
+    book = Workbook({}, {}, {"PMT(0.2,1,10000)": -12000.0})
+    assert parse_arg("PMT(0.2, 1, 10000)", "S", book) == -12000.0  # whitespace is not part of the key
+    with pytest.raises(UnparsedError):
+        parse_arg("PMT(0.2,2,10000)", "S", book)
+
+
+def test_rate_secant_needs_excel_operators_in_the_residual() -> None:
+    # m9-fin-irr-rate A218, RATE(1,PMT(0.2,1,10000,-500,1),10000,-500,1), with Excel's PMT
+    # (m9-fin-pmt A2): Excel 0.19999999999999138; FV's once-rounded residual is 157 ulp off (T-2527).
+    args: tuple[Arg, ...] = (1.0, -9583.333333333332, 10000.0, -500.0, 1.0)
+    assert solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(*args) == 0.19999999999999138
+    assert solvers.rate_secant(solvers.fv_residual())(*args) == 0.19999999999998702
+    with pytest.raises(solvers.NoResultError):  # residual 0 everywhere: the flat secant, not the guess
+        solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(1.0, 0.0, 0.0, 0.0)
+    with pytest.raises(solvers.ExcelError, match="guess"):
+        solvers.rate_secant(solvers.fv_residual())(1.0, -1.0, 1.0, 0.0, 0.0, -1.0)
 
 
 def test_day_counts_and_schedule() -> None:
@@ -127,8 +146,17 @@ def test_irr_secant_on_a_two_flow_root() -> None:
 @pytest.mark.usefixtures("real_cases")
 def test_rate_results_are_rates() -> None:
     cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
-    assert len(cells) == 136
-    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 7
+    assert len(cells) == 782  # nested PMT included (T-2527), error cells too
+    assert sum(c.error is not None for c in cells) == 77
+    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 40
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_rate_secant_model_is_bit_exact_on_the_fit_set() -> None:
+    # financial.md "RATE is a secant on the FV residual" quotes this score (T-2527).
+    result = fit.run(registry()["rate"], engine=False, only=r"Excel operators, sum pv,pmt,fv$")
+    (s,) = result.scores
+    assert (s.exact, s.total) == (782, 782)
 
 
 def test_iterate_converges_or_reports_no_result() -> None:
@@ -308,3 +336,19 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
         assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
     assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
     assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
+
+
+def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:
+    # The engine's fallback digits (T-2928): `{42,1,1,-1}` converges to -0.7467044766537408, the
+    # correctly rounded root, where Excel returns -0.7467044766537371 (probes/irr-fallback-roots A12).
+    engine = irr_fallback.irr_fallback_newton()
+    assert engine([42.0, 1.0, 1.0, -1.0]) == -0.7467044766537408
+    assert engine([0.0, 2.0, -1.0]) == pytest.approx(-0.5)  # leading zeros dropped (T-2727)
+    with pytest.raises(solvers.NoResultError):  # P's root nearest v = 0 is negative: #NUM! (T-2727)
+        engine([1.0, 3.0, -1.0])
+    # A residual test on |P| makes the run on the 1E6-scaled {-656,1,1,1,1,1} reach the cap, as
+    # Excel does (t2927-irr-fallback-sweep A103), where the engine's step test returns.
+    scaled = [-656e6, 1e6, 1e6, 1e6, 1e6, 1e6]
+    assert engine(scaled) == pytest.approx(-0.7072347712570631)
+    with pytest.raises(solvers.NoResultError):
+        irr_fallback.irr_fallback_newton(residual=1e-7)(scaled)

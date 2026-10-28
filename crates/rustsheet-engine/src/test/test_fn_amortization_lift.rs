@@ -116,7 +116,7 @@ fn many_periods_are_excels_walk_bit_for_bit() {
 
 #[test]
 fn degressive_walks_and_their_closed_form_are_excels_values() {
-    // fin-amor-period-bound B1-B16, B18: up to 2^20 periods the walk (B6-B14: 10^6 periods,
+    // fin-amor-period-bound B1-B16, B18: up to 2^22 periods the walk (B6-B14: 10^6 periods,
     // the half period at 999,998 and the rest at 999,999), and fin-amor-period-bound-b B1, 5E8
     // periods, past it in closed form.
     check(&[
@@ -181,17 +181,17 @@ fn degressive_walks_and_their_closed_form_are_excels_values() {
 }
 
 #[test]
-fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
-    // fin-amor-period-bound-c (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION): the closed
-    // form drifts from the walk by about 1e-13 relative, so a charge of 1E12 or more can be a unit
-    // off. Excel is A1 18989305437102, A2 16344246350030, A3 13720292047582, A4 5154670166168, A6
-    // 151632679; main's walk, rounded the Excel way, gives A1, A3, A4 but stays past the work cap,
-    // and gives A2 ...031: Excel's own walk drifts a few ulps from main's. TODO(T-2849).
+fn up_to_2_to_the_22_periods_the_twice_rounded_walk_is_excels_value() {
+    // fin-amor-period-bound-c A1-A6 (1.1E6 to 2.4E6 periods; financial.md "AMORDEGRC past 2^22
+    // periods"): a charge of 1E12 or more is where the closed form's drift of about 1e-13
+    // relative shows, so before T-2918 raised `DEGRESSIVE_LOOP_PERIODS` to 2^22 the closed form
+    // past 2^20 periods made A1, A3, A4 and A5 a unit (A5 a 15th digit) off Excel. Excel's own
+    // walk, each subtraction rounded twice (T-2849), gives all of them.
     check(&[
         (
             "A1",
             "=AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)",
-            "18989305437101",
+            "18989305437102",
         ),
         (
             "A2",
@@ -201,12 +201,17 @@ fn past_2_to_the_20_periods_the_closed_form_drifts_from_the_walk() {
         (
             "A3",
             "=AMORDEGRC(1E20,39679,39813,300,2400000,1E-7,1)",
-            "13720292047583",
+            "13720292047582",
         ),
         (
             "A4",
             "=AMORDEGRC(3E19,39679,39813,300,1500000,1E-7,1)",
-            "5154670166167",
+            "5154670166168",
+        ),
+        (
+            "A5",
+            "=AMORDEGRC(1E300,39679,39813,300,2000000,1E-7,1)",
+            "1.51632679480347e293",
         ),
         (
             "A6",
@@ -344,8 +349,8 @@ fn a_range_is_refused_in_every_argument() {
 fn a_lifted_call_is_charged_for_its_walk() {
     // SPEC-0011 "Security rule for kernel work": an AMORLINC element is charged 2^9 units (its
     // exact walk, at most 1,024 subtractions, about 7.9 us in release) and an AMORDEGRC
-    // element 2^18 (2^20 periods walked, about 4 ms), so a lifted call runs at most
-    // 2^27 / 2^9 = 262,144 and 2^27 / 2^18 = 512 elements, whatever their periods, and the next
+    // element 2^20 (2^22 periods walked, about 32 ms), so a lifted call runs at most
+    // 2^27 / 2^9 = 262,144 and 2^27 / 2^20 = 128 elements, whatever their periods, and the next
     // element makes it #ERROR! before any runs (financial.md "AMORLINC and AMORDEGRC work cap",
     // a DEVIATION).
     check(&[
@@ -361,17 +366,17 @@ fn a_lifted_call_is_charged_for_its_walk() {
         ),
         (
             "A3",
-            "=ROWS(AMORDEGRC(SEQUENCE(512)*0+2400,39679,39813,300,1,0.15,1))",
-            "512",
+            "=ROWS(AMORDEGRC(SEQUENCE(128)*0+2400,39679,39813,300,1,0.15,1))",
+            "128",
         ),
         (
             "A4",
-            "=ROWS(AMORDEGRC(SEQUENCE(513)*0+2400,39679,39813,300,1,0.15,1))",
+            "=ROWS(AMORDEGRC(SEQUENCE(129)*0+2400,39679,39813,300,1,0.15,1))",
             "#ERROR!",
         ),
         (
             "A5",
-            "=ROWS(AMORDEGRC(SEQUENCE(1,513)*0+1E15,39679,39813,1,5E6,1E-7,1))",
+            "=ROWS(AMORDEGRC(SEQUENCE(1,129)*0+1E15,39679,39813,1,5E6,1E-7,1))",
             "#ERROR!",
         ),
     ]);

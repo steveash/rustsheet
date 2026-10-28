@@ -10,7 +10,9 @@ from rustsheet_tools.fitlab.kernels import (
     beta_inv,
     erfc,
     ftest,
+    ftest_adhoc,
     gamma,
+    irr_fallback,
     mirr,
     norm_inv,
     power,
@@ -25,6 +27,7 @@ MODULES = [
     power,
     gamma,
     solvers,
+    irr_fallback,
     beta,
     norm_inv,
     beta_inv,
@@ -33,6 +36,7 @@ MODULES = [
     yield_caret,
     xirr,
     ftest,
+    ftest_adhoc,
 ]
 
 

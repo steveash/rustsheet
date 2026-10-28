@@ -314,10 +314,9 @@ impl Parser {
             Function::Areas => 0,
             _ => return Node::FunctionKind { kind, args },
         };
-        let refused = args
-            .iter()
-            .skip(first_reference)
-            .any(|arg| matches!(arg, Node::EmptyArgKind) || !is_reference_operand(arg));
+        let refused = args.iter().skip(first_reference).any(|arg| {
+            matches!(arg.unwrap_spaced(), Node::EmptyArgKind) || !is_reference_operand(arg)
+        });
         if refused {
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),

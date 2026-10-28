@@ -393,6 +393,41 @@ class FunctionLanes(unittest.TestCase):
 T = "TODO"
 
 
+class DependencyCycles(unittest.TestCase):
+    """`validate` reports each `depends_on` cycle once (T-0091), whatever the tasks' status."""
+
+    @staticmethod
+    def cycles(graph: dict[str, list[str]], done: tuple[str, ...] = ()) -> list[str]:
+        parsed = [
+            {"id": tid, "depends_on": deps, "status": "done" if tid in done else "todo"}
+            for tid, deps in graph.items()
+        ]
+        return [" -> ".join(c + c[:1]) for c in tasks.dependency_cycles(parsed)]
+
+    def test_two_and_three_task_cycles_are_reported_once_from_the_smallest_id(self) -> None:
+        self.assertEqual(self.cycles({"T-0965": ["T-0963"], "T-0963": ["T-0965"]}), ["T-0963 -> T-0965 -> T-0963"])
+        three = {"T-0003": ["T-0001"], "T-0001": ["T-0002"], "T-0002": ["T-0003"], "T-0004": ["T-0002"]}
+        self.assertEqual(self.cycles(three, done=("T-0002",)), ["T-0001 -> T-0002 -> T-0003 -> T-0001"])
+
+    def test_a_self_dependency_is_a_cycle(self) -> None:
+        self.assertEqual(self.cycles({"T-0001": ["T-0001"], "T-0002": ["T-0001"]}), ["T-0001 -> T-0001"])
+
+    def test_an_acyclic_diamond_and_an_unknown_dependency_are_no_cycle(self) -> None:
+        diamond = {"T-0001": ["T-0002", "T-0003"], "T-0002": ["T-0004"], "T-0003": ["T-0004"], "T-0004": ["T-9999"]}
+        self.assertEqual(self.cycles(diamond), [])
+
+    def test_validate_reports_the_cycle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(tasks, "ROOT", root):
+                parsed = [
+                    tasks.parse(write_task(root, "T-0001", depends_on="T-0002")),
+                    tasks.parse(write_task(root, "T-0002", depends_on="T-0001")),
+                ]
+                errors = tasks.validate(parsed)
+        self.assertEqual(errors, ["T-0001 -> T-0002 -> T-0001: depends_on cycle"])
+
+
 class StaleTodos(unittest.TestCase):
     # The TODOs are built from T so this file holds none for the check itself to flag.
     TASKS = [

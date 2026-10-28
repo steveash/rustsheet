@@ -45,7 +45,9 @@ reproducing Excel's algorithm where Excel is the inaccurate one (time-boxed, dec
 
 A failure whose only open question needs desktop Excel evidence has its filed task in M14
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
-the oracle of record for Phases 1–3 (decision 0039).
+the oracle of record for Phases 1–3 (decision 0039). Such a visibly-off cell, once a decision names
+it, is a line of `eval/milestones/phase1-exceptions.tsv` and leaves the Phase 1 rate (decision 0134).
+A visibly-off cell that only open M14 tasks own leaves it too, with no line (decision 0143).
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).
@@ -135,6 +137,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
   The exception is a line of `eval/milestones/exit-exceptions.tsv`; the M2 row's "failing excl. exceptions" leaves it out (decision 0087).
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
+  Met at 11592ab5 (decision 0137): every variadic aggregate uses the SPEC-0009 walker and every criteria or wildcard consumer uses functions/criteria.rs. Duplication fell 68.0% (9,153 → 2,931).
 
 ## M3 — Dependency graph, incremental and lazy recalculation (Phase 2)
 
@@ -213,7 +216,9 @@ its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** generated dynamic-array suite (≥ 10k cells, spill shapes included) at ≥ 99.9%;
 spill extents identical to Excel;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M7 row (decision 0140): gen-m7 alone, spill-extent failures of
+gen-m7 and the M7 probes required to be 0, at visible parity (decision 0114).
 
 ## M8 — Names, tables, structured references, multi-sheet
 

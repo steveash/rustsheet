@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::argument_coverage::{self, ArgumentSeen};
+use crate::argument_coverage::{self, CallSeen};
 use crate::case::{
     canonical_key, cell_key, is_excel_evidence, kept_nonzero_formulas, load_oracle,
     split_qualified, CaseSpec, CASE_FORMAT,
@@ -69,6 +69,29 @@ pub struct CellResult {
     /// the report lists these cells so the evidence stays visible (T-1142).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub graph_subnormal: bool,
+    /// A scored expectation, or a cell the spill-extent check added (decision 0140).
+    #[serde(default, skip_serializing_if = "CellKind::is_scored")]
+    pub kind: CellKind,
+}
+
+/// Where a [`CellResult`] comes from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CellKind {
+    /// One of the case's expectations, counted in `checked`.
+    #[default]
+    Scored,
+    /// A cell the engine filled and Excel left empty, outside `checked` (decision 0063); the M7
+    /// exit counts these (decision 0140).
+    SpillExtent,
+}
+
+impl CellKind {
+    /// Whether the cell is one of the case's expectations (the serialized default).
+    #[must_use]
+    pub fn is_scored(&self) -> bool {
+        *self == Self::Scored
+    }
 }
 
 impl CellResult {
@@ -111,10 +134,10 @@ pub struct CaseResult {
     /// the milestone function scope follows the names a formula calls (T-1970).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub defined_names: BTreeMap<String, String>,
-    /// The argument classes the case's Excel-evidence cells pass each function (T-0077). Only the
-    /// run's own report reads them, so they are never serialized.
+    /// The calls the case's Excel-evidence cells make, arguments classified (T-0077, T-0083).
+    /// Only the run's own report reads them, so they are never serialized.
     #[serde(skip)]
-    pub arguments: Vec<ArgumentSeen>,
+    pub arguments: Vec<CallSeen>,
 }
 
 #[derive(Debug, Clone)]
@@ -393,6 +416,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 from_excel: e.from_excel,
                 listed_deviation: e.pinned.is_some(),
                 graph_subnormal,
+                kind: CellKind::Scored,
             }
         })
         .collect()

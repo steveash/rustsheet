@@ -4,10 +4,11 @@ title: "Probe what a whole-row delete of a table's last data row does to that ro
 milestone: M8
 lane: research
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -39,3 +40,10 @@ delete" records the finding.
 
 ## Out of scope
 - Changing the engine.
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns visibly-off probes cells of SUM (2), ROWS (2), COUNTA (1), COLUMN (1) and COLUMNS (1). With T-2339, T-2855 and the T-0087 sweep it lifts SUM, COUNTA, COLUMN, ROWS and COLUMNS.

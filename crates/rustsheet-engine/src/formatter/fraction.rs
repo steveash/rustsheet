@@ -16,7 +16,9 @@
 //! - a comma between integer placeholders groups the integer digits (`#,##0 ?/4` on 1234.5 is
 //!   "1,234 2/4", probes/fraction-format-features I10);
 //! - with no integer part a numerator past Excel's bound cannot be shown ([`format_fraction`]
-//!   returns `None`).
+//!   returns `None`);
+//! - a `,` right after the denominator scales the value up ([`fraction_scale`]), and a fixed
+//!   denominator past 32768 is replaced by a picked one ([`LARGE_FIXED_MAX_DENOMINATOR`]).
 
 use super::parser::{Denominator, Fraction, NumberPart, TextToken};
 use crate::decimal_round::{round_decimal, RoundMode};
@@ -35,30 +37,66 @@ pub(super) fn format_fraction(
     group_separator: &str,
 ) -> Option<String> {
     let negative = value < 0.0;
-    let value = value.abs() * 100.0_f64.powi(part.percent) / 1000.0_f64.powi(part.comma);
+    let mut value = value.abs() * 100.0_f64.powi(part.percent);
+    if part.comma > 0 {
+        // The scaled value is cut to 15 significant digits: `?/?,,` on 1E-251 is "0/1", where the
+        // double product (0.10000000000000002) would pick 1/9 (probes/fraction-overflow-scaled A65).
+        value = to_precision(value * fraction_scale(part.comma), 15);
+    }
+    // A scaled value past f64's range would print past 255 characters, which Excel cannot show.
+    if !value.is_finite() {
+        return None;
+    }
     let tokens = &part.tokens;
     let has_integer = tokens[..fraction.numerator_start]
         .iter()
         .any(|t| matches!(t, TextToken::Digit(_)));
     let mut integer = if has_integer { value.trunc() } else { 0.0 };
-    let (mut numerator, denominator) = match &fraction.denominator {
-        // The parser only builds a fixed denominator from ASCII digits starting with 1-9.
+    let numerator_kinds =
+        placeholder_kinds(&tokens[fraction.numerator_start..fraction.numerator_end]);
+    // The parser only builds a fixed denominator from ASCII digits starting with 1-9.
+    let fixed = match &fraction.denominator {
+        Denominator::Fixed(digits) => digits
+            .parse::<f64>()
+            .ok()
+            .filter(|d| *d <= MAX_FIXED_DENOMINATOR),
+        Denominator::Placeholders(_) => None,
+    };
+    // A picked denominator's placeholder kinds. A fixed one past 32768 prints its digits as
+    // placeholders that pad with spaces under a `?` numerator and with nothing otherwise
+    // (`?/40000` on 0.5 is "1/4    ", `0/40000` and `#/40000` "1/4", `??/40000` " 1/4    ").
+    let denominator_kinds: Vec<char> = match &fraction.denominator {
+        Denominator::Fixed(_) if fixed.is_some() => Vec::new(),
         Denominator::Fixed(digits) => {
-            let denominator = digits.parse::<f64>().unwrap_or(1.0);
-            (
-                round_numerator((value - integer) * denominator),
-                denominator,
-            )
+            let kind = if numerator_kinds.last() == Some(&'?') {
+                '?'
+            } else {
+                '#'
+            };
+            vec![kind; digits.len()]
         }
-        Denominator::Placeholders(kinds) => {
-            // Past 15 digits 10^n - 1 is no longer exact in a double; no such bound can bind.
-            let digits = i32::try_from(kinds.len()).unwrap_or(i32::MAX).min(15);
-            last_convergent(value - integer, 10.0_f64.powi(digits) - 1.0)
+        Denominator::Placeholders(kinds) => kinds.clone(),
+    };
+    let (mut numerator, denominator) = match fixed {
+        Some(denominator) => (
+            round_numerator((value - integer) * denominator),
+            denominator,
+        ),
+        None => {
+            let max_denominator = match &fraction.denominator {
+                Denominator::Fixed(_) => LARGE_FIXED_MAX_DENOMINATOR,
+                // Past 15 digits 10^n - 1 is no longer exact in a double; no such bound can bind.
+                Denominator::Placeholders(kinds) => {
+                    let digits = i32::try_from(kinds.len()).unwrap_or(i32::MAX).min(15);
+                    10.0_f64.powi(digits) - 1.0
+                }
+            };
+            last_convergent(value - integer, max_denominator)
         }
     };
-    let overflows = match &fraction.denominator {
-        Denominator::Fixed(_) => numerator > MAX_FIXED_NUMERATOR,
-        Denominator::Placeholders(_) => value >= MAX_PLACEHOLDER_VALUE,
+    let overflows = match fixed {
+        Some(_) => numerator > MAX_FIXED_NUMERATOR,
+        None => value >= MAX_PLACEHOLDER_VALUE,
     };
     if !has_integer && overflows {
         return None;
@@ -68,12 +106,6 @@ pub(super) fn format_fraction(
         numerator = 0.0;
     }
     let integer_kinds = placeholder_kinds(&tokens[..fraction.numerator_start]);
-    let numerator_kinds =
-        placeholder_kinds(&tokens[fraction.numerator_start..fraction.numerator_end]);
-    let denominator_kinds: &[char] = match &fraction.denominator {
-        Denominator::Fixed(_) => &[],
-        Denominator::Placeholders(kinds) => kinds,
-    };
     // A zero numerator blanks the fraction unless a `0` placeholder prints it (`# 00/16` on 0 is
     // "00/16"; `#\:0=/=#` on 1 "1:0=/=1", poi/NumberFormatTests A258).
     let blank = has_integer && numerator == 0.0 && !numerator_kinds.contains(&'0');
@@ -106,9 +138,16 @@ pub(super) fn format_fraction(
     } else {
         format!("{numerator}")
     };
+    let denominator_digits = format!("{denominator}");
     let denominator_text = match &fraction.denominator {
-        Denominator::Fixed(digits) => digits.clone(),
-        Denominator::Placeholders(kinds) => fill_left(&format!("{denominator}"), kinds),
+        Denominator::Fixed(digits) if fixed.is_some() => digits.clone(),
+        // The code's own digits print, cut to the picked denominator's length: 512/625 under
+        // `?/40000` is "512/400  ", 4095937/5000000 "4095937/40000".
+        Denominator::Fixed(digits) => {
+            let shown: String = digits.chars().take(denominator_digits.len()).collect();
+            fill_left(&shown, &denominator_kinds)
+        }
+        Denominator::Placeholders(_) => fill_left(&denominator_digits, &denominator_kinds),
     };
 
     let separator = separator_kind(
@@ -254,6 +293,38 @@ fn last_convergent(x: f64, max_denominator: f64) -> (f64, f64) {
     }
 }
 
+/// The factor `n` scaling commas right after a fraction's denominator apply:
+/// 10^((-3n) mod 256), as if Excel kept the exponent -3n in an unsigned byte. `?/?,` on 1E-250 is
+/// "1000/1" (10^253), `?/?,,` "1/1" (10^250), `?/?,,,` on 1E-238 "1000000000/1" (10^247); a
+/// nonzero value that scales past the bounds is 255 `#` and `#VALUE!` from TEXT (`?/?,` on 0.5;
+/// probes/fraction-overflow-scaled, number-formats.md "Scaling commas in fraction formats").
+fn fraction_scale(commas: i32) -> f64 {
+    10.0_f64.powi(comma_exponent(commas, false))
+}
+
+/// The exponent of ten that `commas` scaling commas apply: -3n, which Excel keeps in a byte,
+/// unsigned in a fraction section ([`fraction_scale`]) and signed elsewhere (`signed`), where 252
+/// commas on 5 print "5000000000000" (-756 wraps to 12; probes/t2842-dollar-run-contexts K1:K3,
+/// number-formats.md "Many scaling commas wrap").
+pub(super) fn comma_exponent(commas: i32, signed: bool) -> i32 {
+    let exponent = commas.saturating_mul(-3).rem_euclid(256);
+    if signed && exponent > 127 {
+        exponent - 256
+    } else {
+        exponent
+    }
+}
+
+/// The largest fixed denominator Excel uses as written (2^15); past it Excel picks the
+/// denominator as for placeholders, up to [`LARGE_FIXED_MAX_DENOMINATOR`] (`?/32768` on 0.5 is
+/// "16384/32768", `?/32769` "1/3    "; probes/fraction-large-fixed-denominator).
+const MAX_FIXED_DENOMINATOR: f64 = 32768.0;
+
+/// The largest denominator Excel picks for a fixed denominator past 32768 (10^7 - 1), whatever
+/// its digit count: `?/40000` on 1/9999999 is "1/40000" and on 1E-7 "0/4    ", and `?/32769` alike
+/// (probes/fraction-large-fixed-denominator).
+const LARGE_FIXED_MAX_DENOMINATOR: f64 = 9_999_999.0;
+
 /// The largest numerator a fixed denominator shows with no integer part (2^15 - 1).
 const MAX_FIXED_NUMERATOR: f64 = 32767.0;
 
@@ -321,4 +392,18 @@ fn fill_left(digits: &str, kinds: &[char]) -> String {
         }
     }
     format!("{zeros}{digits}{spaces}")
+}
+
+#[cfg(test)]
+mod comma_tests {
+    use super::comma_exponent;
+
+    #[test]
+    fn comma_exponents_wrap_in_a_byte() {
+        assert_eq!(comma_exponent(1, true), -3);
+        assert_eq!(comma_exponent(42, true), -126);
+        assert_eq!(comma_exponent(252, true), 12);
+        assert_eq!(comma_exponent(254, true), 6);
+        assert_eq!(comma_exponent(1, false), 253);
+    }
 }

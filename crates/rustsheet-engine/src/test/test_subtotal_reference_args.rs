@@ -47,6 +47,10 @@ fn non_reference_arguments_are_refused() {
         ("H18", "=SUBTOTAL(9,A1:A2,SUBTOTAL(9,A1:A2))", "#ERROR!"),
         ("H19", "=AREAS(1)", "#ERROR!"),
         ("H20", "=AREAS(\"A1\")", "#ERROR!"),
+        // A run in the missing argument's place keeps it missing (T-2944). Excel refuses both typed
+        // (Graph 400 InvalidArgument, T-2966), so only stored text reaches them.
+        ("H21", "=SUBTOTAL(9,A1, )", "#ERROR!"),
+        ("H22", "=SUBTOTAL(9, ,A1)", "#ERROR!"),
     ]);
 }
 

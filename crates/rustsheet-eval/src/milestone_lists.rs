@@ -337,6 +337,7 @@ mod tests {
                 from_excel: true,
                 listed_deviation: verdict == Verdict::Deviation,
                 graph_subnormal: false,
+                kind: crate::runner::CellKind::Scored,
             })
             .collect();
         CaseResult {

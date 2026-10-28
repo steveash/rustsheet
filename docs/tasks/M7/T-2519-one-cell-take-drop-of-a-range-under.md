@@ -27,6 +27,10 @@ Cells:
 - gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A171
 - gen-m9/7c20351562a2d71d.case.json (1): Calc!A277
 
+Exit owners (decision 0096; the 2026-10-27 planner run names each cell the ranges above hold):
+- probes/t2454-offset-one-cell-array-args Sheet1!C5, Sheet1!C9
+- probes/t2454-offset-array-height Sheet1!B12
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

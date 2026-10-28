@@ -552,6 +552,7 @@ constant `#VALUE!`. The engine matches, FORMULATEXT's `#REF!` and `#VALUE!` form
 `IF(1/0,..)` `#DIV/0!`, and an error in the arm taken, `IF(TRUE,NA(),..)`, is `#N/A`. An array-shaped result is not a reference:
 `INDEX({1,2;3,4},0,1)`, `INDEX({1,2;3,4},1,0)` and `INDEX({1,2;3,4},0,0)` spill `#VALUE!` over the shape of the result (2x1, 1x2, 2x2),
 `INDEX({1,2;3,4},2,2)` is one `#VALUE!`, and `IF({TRUE,FALSE},..)` and `CHOOSE({1,2},..)` spill a 1x2 of `#VALUE!`. The engine matches all 28 cells (`fn_formulatext`, T-2526). FORMULATEXT of the forms T-2526 left open (probes/formulatext-pick-scalars-and-arrays, excel-graph 2026-10-25, T-2529; Data!A1 `1`, A2 `=A1+1`, A3 `3`): a pick call is a reference only when the arm it takes is a cell, and then FORMULATEXT reads that cell. `IF(FALSE,5,Data!A2)`, `CHOOSE(2,5,Data!A2)`, `IF(TRUE,Data!A2,5)`, `SWITCH(1,1,Data!A2,Data!A1)`, `SWITCH(9,1,5,Data!A2)`, `IFS(TRUE,Data!A2,..)` and `LET(x,Data!A2,x)` give `=A1+1`; a taken arm that is a plain value gives `#VALUE!` (`IF(TRUE,5,Data!A1)`, `CHOOSE(1,5,Data!A1)`, `SWITCH(1,1,5,Data!A1)`, `IFS(TRUE,5,..)`, `LET(x,5,x)`, `LET(x,Data!A2,x+1)`, `XLOOKUP(9,..,..,"nf")`, and TAKE or DROP of `SEQUENCE(3)`). No match is the call's own error: `SWITCH(9,1,5)` and `IFS(FALSE,5)` are `#N/A`, and `XLOOKUP(9,Data!A1:A3,Data!A1:A3)` is `#N/A`. XLOOKUP, TAKE and DROP that pick a cell read it: `XLOOKUP(2,Data!B1:B3,Data!A1:A3)` and `DROP(Data!A1:A3,1,0)` (spills `=A1+1`, `#N/A`), `TAKE(Data!A1:A3,2)` (spills `#N/A`, `=A1+1`), `TAKE(Data!A1:A3,1)`, `TAKE(Data!A1:A3,-1)`, `TAKE(Data!A1:A3,1,-1)`, `DROP(Data!A1:A3,2)` and `XLOOKUP(3,..)` pick the constant cells A1 or A3 and give `#N/A`. An array selector or lookup value is not a reference: `XLOOKUP({1,3},..)` spills 1x2 `#VALUE!`. Array elements keep their own error: `IF({TRUE,FALSE},NA(),Data!A2)` spills `#N/A`, `#VALUE!`; `IF({TRUE,FALSE},Data!A2,NA())` spills `#VALUE!`, `#N/A`; `CHOOSE({1,2},NA(),Data!A2)` spills `#N/A`, `#VALUE!`; `IF({TRUE,TRUE},NA(),Data!A2)` spills `#N/A`, `#N/A`. `INDIRECT` of an array is evaluated per element, each element read as FORMULATEXT of that reference: `INDIRECT({"Data!A2"})` is `=A1+1`; `INDIRECT({"Data!A1","Data!A2"})` spills `#N/A`, `=A1+1`; the column form spills down; `INDIRECT({"Data!A2","zz zz"})` spills `=A1+1`, `#REF!`; `INDIRECT(Data!C1:D1)` (cells holding the text) behaves the same. The no-match errors are read as the call's own `#N/A`, which the probe cannot tell apart from FORMULATEXT's not-a-formula `#N/A`. The engine matches all 49 cells: `fn_formulatext` reads a pick call's argument as SUBTOTAL does (`evaluate_picked_reference_arg`), a lifted INDIRECT per element (`formula_texts_of_grid`), and a value as `#VALUE!` per element with an error element kept (T-2726).
+FORMULATEXT of a multi-area reference and of a multi-cell INDIRECT element (probes/t2831-formulatext-indirect-multi-cell, excel-graph, 2026-10-28, T-2831; Data!A1 `1`, A2 `=A1+1`, A3 `3`, A4 `=A3*2`, B1 `=A1*10`): a multi-area reference is read as its first area, and a lifted INDIRECT element that names several cells as its top-left cell. `FORMULATEXT((Data!A2,Data!B1))` is `=A1+1` and `FORMULATEXT((Data!A1,Data!A2))` `#N/A` (the first area's cell is a constant), and pick calls that return the union read the same way: `CHOOSE(1,(Data!A2,Data!B1))`, `IF(TRUE,..)`, `CHOOSE(2,5,..)`, `IF(FALSE,5,..)`, `LET(x,..,x)`, `SWITCH(1,1,..)` and `IFS(TRUE,..)` give `=A1+1`, and `CHOOSE(1,(Data!A1,Data!A2))` and `IF(TRUE,(Data!A1,Data!A2))` `#N/A`. A first area of several cells spills as FORMULATEXT of a range does: `CHOOSE(1,(Data!A2:A3,Data!B1))` spills `=A1+1`, `#N/A` down. AREAS of the two picks is 2. A lifted INDIRECT element gives one result per element, never a spill of its own: `INDIRECT({"Data!A1:A2","Data!A3"})` spills `#N/A`, `#N/A`; `INDIRECT({"Data!A2:A3","Data!A4"})` spills `=A1+1`, `=A3*2`; `INDIRECT({"Data!A2:B2"})` is the single `=A1+1`; `INDIRECT({"Data!A2:A2"})` `=A1+1`; the column forms spill down the same way; `INDIRECT({"Data!A2","Data!A1:B2";"Data!A3:A4","Data!B1"})` spills `=A1+1`, `#N/A`; `#N/A`, `=A1*10`; and `INDIRECT(Data!C1:D1)` over cells holding `Data!A1:A2` and `Data!A3` spills `#N/A`, `#N/A`. The engine gives `#VALUE!` for each multi-cell element (`formula_texts_of_grid`) and for each multi-area pick (`several_areas`), and `#ERROR!` for the bare sheet-qualified union: 21 of the probe's 34 cells fail (T-2992).
 XLOOKUP, TAKE, DROP and TRIMRANGE are references to ISREF when they pick cells of a range:
 `ISREF(XLOOKUP(2,A1:A3,B1:B3))`, `ISREF(TAKE(A1:B3,1))`, `ISREF(DROP(A1:B3,1))` and `ISREF(TRIMRANGE(A1:B3))` are
 TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a range return); over an array
@@ -576,7 +577,7 @@ LARGE of a one-cell reference with no number is `#NUM!`; RANK of a number absent
 from a one-cell reference is `#N/A` (statistics.md, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
 AVERAGEA 2.2, PRODUCT 21, LARGE(,1) 7, RANK(3,) 2.
 Probe T-1378 (probes/subtotal-reference-operands-f, excel-graph, 2026-10-11): TAKE and DROP pick cells (SUBTOTAL reads them, AREAS 1, ISREF TRUE) or values (SUBTOTAL and AREAS spill `#VALUE!` per element, ISREF FALSE) according to the arm the IF, CHOOSE, SWITCH or IFS actually selects: `TAKE(IF(TRUE,A1:A4,SEQUENCE(4)),2)`, `TAKE(CHOOSE(1,A1:A4,SEQUENCE(4)),2)` and `TAKE(IFS(TRUE,A1:A4,FALSE,SEQUENCE(4)),2)` are cells, `CHOOSE(2,...)` and `IF(FALSE,A1:A4,SEQUENCE(4))` are values. An array selector lifts the call to values even when every arm is a range: `SUBTOTAL(9,TAKE(SWITCH({1,2},1,H1:H2,2,I1:I2),2))` and `SUBTOTAL(9,TAKE(IFS({TRUE,FALSE},H1:H2,{FALSE,TRUE},I1:I2),2))` spill a 2x2 of `#VALUE!` as `TAKE(CHOOSE({1,2},H1:H2,I1:I2),2)` does, while the IF twin `SUBTOTAL(9,TAKE(IF({TRUE,FALSE},H1:H2,I1:I2),1))` spills 1x2 (probes/subtotal-take-array-selector A20:B20, A30:B31, A40:B41, excel-graph, T-1909; implemented in `lifts_to_values`, T-1914). The array need not be the selector (probes/subtotal-take-array-selector-b, excel-graph, 2026-10-19, T-1984): an array SWITCH case value, `SUBTOTAL(9,TAKE(SWITCH(1,{1,2},H1:H2,I1:I2),2))`, spills a 2x2 of `#VALUE!` (implemented in `switch_pick`, which lifts on an array case value, T-2012). IFS with a first condition TRUE short-circuits and stays cells, `IFS(TRUE,H1:H2,{FALSE,TRUE},I1:I2)` is 7; `IFS({TRUE,FALSE},H1:H2,TRUE,I1:I2)` is a 2x2 `#VALUE!`; `IFS(FALSE,H1:H2,{TRUE,FALSE},I1:I2)` (an earlier FALSE, then an array condition) spills `#VALUE!` in column A and `#N/A` in column B, in both rows. Wrapping does not matter: the SWITCH/IFS array form under `IF(TRUE,...)`, `CHOOSE(1,...)` or `LET(x,...,x)`, and an array LET variable as the selector (SWITCH, IFS, CHOOSE), all spill a 2x2 of `#VALUE!`. A multi-cell range selector, `IF(H1:H2>3,H1:H2,I1:I2)` or `CHOOSE(J1:J2,H1:H2,I1:I2)`, spills a 2x1 (one column) of `#VALUE!`. The one-cell `INDIRECT("K1")` (TRUE) is read as a scalar condition: `SUBTOTAL(9,TAKE(IF(INDIRECT("K1"),H1:H2,I1:I2),2))` is 7 (implemented in `if_pick`, which reads a one-cell range as a scalar condition, T-2012). Every one-cell range condition is read the same way (probes/if-switch-one-cell-selector, excel-graph, 2026-10-20, T-2079): `IF(K1:K1,...)`, `IF(OFFSET(K1,0,0),...)`, `IF(INDEX(K1:K3,1),...)`, `IF(INDIRECT("$K$1"),...)` and `IF(INDIRECT("K1",TRUE),...)` under `SUBTOTAL(9,TAKE(...,2))` are all 7, and `ISREF(IF(K1:K1,H1,I1))` and `ISREF(IF(OFFSET(K1,0,0),H1,I1))` are TRUE; a one-cell condition holding text is `#VALUE!` and one holding `#N/A` is `#N/A`. SWITCH lifts only when it reaches the array case: an earlier match short-circuits and stays cells (`SWITCH(1,1,H1:H2,{1,2},I1:I2)` 7), and an earlier error case value is that error, not a lifted array (`SWITCH(1,NA(),H1:H2,{1,2},I1:I2)` and `SWITCH(1,#N/A,...)` are `#N/A`). LET variable names and LAMBDA parameters are case-insensitive (`LET(x,A1:A4,X)` reads `x`; probes/let-lambda-name-case: `LAMBDA(x,X+1)(2)` 3, `LAMBDA(Ab,aB*2)(4)` 8, `LET(f,LAMBDA(x,x+1),F(2))` 3, and a parameter of another case shadows the LET name, `LET(x,1,LAMBDA(X,x*10)(2))` 20, `LET(x,1,LET(X,5,x))` 5); an inner LET rebinding a name shadows the outer one. FORMULATEXT shows each use of a LET or LAMBDA name, called or not, in the spelling of the innermost declaration that binds it, not as typed: `LET(x,5,X*2)` reads `LET(x,5,x*2)`, `LAMBDA(Ab,aB*2)(4)` reads `LAMBDA(Ab,Ab*2)(4)`, `LET(Ab,LAMBDA(Q,q+1),aB(2))` reads `LET(Ab,LAMBDA(Q,Q+1),Ab(2))`, `LET(x,1,y,X+1,Y)` reads `LET(x,1,y,x+1,y)`, and a shadowing `LET(x,1,LET(X,5,x))` reads `LET(x,1,LET(X,5,X))` (probes/let-name-use-spelling, excel-graph, 2026-10-17, T-1720; implemented in `CallNameSpellings::apply`). A LET or LAMBDA that binds one name twice is refused in any case: Excel for the web refuses (createSession 501 `FileCorruptTryRepair`) a single-cell workbook holding `LET(x,1,x,2,x)`, `LET(x,1,X,2,x)`, `LET(é,1,É,2,é)`, `LAMBDA(x,x,x)(1,2)`, `LAMBDA(x,X,x+X)(1,2)`, `LAMBDA(ä,Ä,ä+Ä)(1,2)` or `LAMBDA(x,[X],x)(1)` (an optional parameter too) (`rustsheet-oracle recalc -b excel-graph`, 2026-10-12, T-1387; refused inputs cannot be committed), while `LET(x,1,LET(X,2,x))` loads and gives 2. The engine gives `#ERROR!` for each (a parse error for LAMBDA, the LET duplicate check). Names may start with a non-ASCII letter, and one-to-one letter pairs fold case (probes/let-name-non-ascii: `LET(é,1,É+1)` 2, `LET(Ä,2,ä*10)` 20, `LET(Ärger,5,äRGER+1)` 6, `LAMBDA(ß,ß*2)(3)` 6, `LET(é,1,LAMBDA(É,é*10)(2))` 20); a fold that changes length does not: `LET(ß,1,ẞ+1)` is 2 but `LET(ß,1,SS+1)` is `#NAME?` (probes/let-name-sharp-s, which stores the use as `_xlpm.SS`: spec2xlsx decides which names are bound with Python `str.lower()`, so a probe of a fold where Python and Excel may differ must write the `_xlpm.` prefix itself). Other scripts follow the same rules (probes/let-name-non-ascii-scripts, excel-graph, 2026-10-18, T-1431): `LET(名前,1,名前+1)` is 2; the Turkish dotless `ı` is its own letter that folds to neither `I` nor `i`, `LET(ı,1,ı+1)` is 2 and `LET(ı,1,I+1)` and `LET(ı,1,i+1)` are `#NAME?`; the letter number `Ⅻ` folds to `ⅻ` (`LET(Ⅻ,1,Ⅻ+1)` and `LET(Ⅻ,1,ⅻ+1)` are 2). Excel refuses (createSession 501 `FileCorruptTryRepair`, `rustsheet-oracle recalc -b excel-graph`) a single-cell workbook whose LET names the Turkish dotted `İ` or the circled letter `Ⓐ`, in any spelling of the use (`LET(İ,1,İ+1)`, `LET(İ,1,i+1)`, `LET(Ⓐ,1,Ⓐ+1)`, `LET(Ⓐ,1,ⓐ+1)`); refused inputs cannot be committed, and the engine accepts them (an open gap for formulas entered through the API: T-1859). The earlier refusal of `LET(é,1,É+1)` was spec2xlsx leaving a non-ASCII name without its `_xlpm.` prefix; before T-1387 the engine also rejected a name whose first letter is non-ASCII, unless it uppercased to ASCII (`ß` → `SS`). The same identifier check (`is_valid_a1_identifier`) validates defined names, so a defined name may now start with a non-ASCII letter too; probes/defined-name-non-ascii (excel-graph, T-1431) confirms it: defined names `é1` and `名前` work (`=é1+1` 6, `=É1+1` 6, `=名前+1` 8).
-Tasks: T-0216, T-0235, T-0940, T-1003, T-1378, T-1387, T-1431, T-1453, T-1859, T-1984, T-2012, T-2079
+Tasks: T-0216, T-0235, T-0940, T-1003, T-1378, T-1387, T-1431, T-1453, T-1859, T-1984, T-2012, T-2079, T-2831, T-2992
 
 ## Names, LET/LAMBDA variables and @ are references; FILTER's scalar if_empty is a value
 Rule: a defined name for a single cell, a LET variable or LAMBDA parameter bound to a reference, and `@range`
@@ -847,6 +848,35 @@ distinct names, a body that uses names often enough to pass 10,000 evaluations (
 `d1` = `d2+d2`, …), and deeply nested bodies that pass the stack budget.
 Tasks: T-0158
 
+## The names in a sheet-local name's body are the workbook's, wherever it is used
+Rule: a name used inside a defined name's body resolves as if from no sheet: a sheet-local body
+does not see its own sheet's local names. With workbook `Rate` = 1, `Data!Rate` = 10,
+`Data!DoubleRate` = `Rate*2` and workbook `TripleRate` = `Rate*3`: `=Data!DoubleRate` from Sheet1
+and `=DoubleRate` from Data are both 2 (not 20), `=TripleRate` is 3 from Sheet1 and from Data,
+`=Rate` from Data is 10, and `=DoubleRate` from Sheet1 is an error (`ISERROR` TRUE).
+Evidence: probes/defined-name-local-formula-scope (excel-graph, 2026-10-27, T-2635; the body is
+stored in the file as `Rate*2` with `localSheetId` of Data). Upstream IronCalc f8f68e27 resolves the
+body in the name's sheet (20); Excel does not, so it is not ported. Ours matches. A body typed into
+Name Manager on desktop (which may bind `Rate` as it is typed) is unprobed.
+Status: VERIFIED (Excel for the web).
+Tasks: T-2635
+
+## A sheet-qualified name may start like a cell reference
+Rule: after a sheet prefix, a cell address that more name characters follow (letters, digits,
+`_` or `.`) is a name, not the cell. With workbook `Q1_Total` = 100, `Q1.Rate` = 5 and Data!Q1 =
+77: `=Data!Q1_Total` is 100, `=Data!Q1` is 77, `=Sheet1!Q1_Total*2` is 200,
+`=SUM(Data!Q1_Total,Data!Q1)` and `=Data!Q1_Total+Data!Q1` are 177 (Q1 a number), and `=Data!Q1.Rate` is 5. An
+undefined one (`=Data!A1B`) is `#NAME?` (`ERROR.TYPE` 5). Being a workbook name reached through a
+sheet prefix, Excel's FORMULATEXT shows it with the file name as the prefix (see "A
+sheet-qualified workbook name is rewritten to the workbook's file name"; T-2834).
+Evidence: probes/defined-name-qualified-like-reference and
+probes/defined-name-qualified-like-reference-more (excel-graph, 2026-10-27, T-2635; upstream
+IronCalc 2aa0e653 lexes `_` the same way). Unprobed, and read as a name by ours: a `\` or a
+typographic quote after the cell, and a rejected dotted corner (`Data!A1.B2x`); a range that name
+characters follow (`Data!A1:B2x`) is unprobed and stays a range then an error. Ours matches except that FORMULATEXT cell (T-2834).
+Status: VERIFIED (Excel for the web).
+Tasks: T-2635, T-2834
+
 ## A sheet-qualified #REF! is #REF!
 Rule: a reference that Excel has already replaced by `#REF!` but that keeps its sheet prefix
 evaluates to `#REF!`. That holds as a cell formula (`='1'!#REF!`) and as the body of a defined name:
@@ -1072,7 +1102,11 @@ its dense walk would read every position and record each blank one, unbounded in
 (`SUM(A:XFD)` beside one far cell is 1.7e10 positions), so past the cap such a formula is
 `#VALUE!` (DEVIATION; `=SUM(MAP(SEQUENCE(65536),LAMBDA(r,SUM(OFFSET(Sheet2!1:1,r,0)))))+SUM(A:J)`
 beside 1 in J1048576 is `#VALUE!`, one row fewer is 1). Smaller blocks alone never make a formula
-`#VALUE!`. Every area of
+`#VALUE!`. A bounded single-column operand of a tailed array argument (`SUM(A2:A70000*1)`, SPEC-0020
+Amendment 1, T-0491) records its rows past the used area as one such rectangle while the budget has
+room, where the materialized reading records them cell by cell, so a formula at the cap reaches it one
+rectangle sooner (DEVIATION, directive 5; never with the budget short, which reads it the ordinary
+way). Every area of
 a union is recorded whole, whatever its size, as is a multi-cell range a MAP or SCAN LAMBDA returns
 for an element (read over its existing cells only, since the whole call is `#CALC!` whatever they hold,
 arrays.md "MAP and SCAN with a LAMBDA that returns a multi-cell range"; T-1769); which every spill commit of the pass is checked
@@ -1100,7 +1134,7 @@ Implemented in: area_budget.rs (`MAX_SEEN_RANGES`, `AreaBudget::spend_seen_range
 `Model::with_area_budget`); seen_ranges.rs (`SeenRanges::push`); evaluation.rs
 (`Model::record_seen_empty_range`); functions/logical/bycol_byrow.rs (`Model::lambda_result_value`);
 functions/util/existing_walk.rs (`Model::walks_sparsely`)
-Tasks: T-1463, T-1769, T-2710
+Tasks: T-1463, T-1769, T-2710, T-0491
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
@@ -2106,8 +2140,16 @@ were read as absolute (from Calc!K1 `=rel_same+1` was Jan!A1+1, not Jan!K1+1; fi
   `='53aa…f48.xlsx'!loc+1` (values 5, 5, 6; `ISREF` TRUE) with no rename (probe
   `sheet-ops-workbook-name-via-prefix-no-rename`), and `=ebfe…145.xlsx!loc` (unquoted: the name starts with a
   letter) after renaming Feb to Mar, values still 5 (probe `sheet-ops-rename-workbook-name-via-prefix`;
-  excel-graph 2026-10-26, T-1701). So a rename never touches it. Ours: the text keeps `Feb!`, and after the
-  rename both values are `#NAME?` (T-2834). An unnamed workbook is unprobed.
+  excel-graph 2026-10-26, T-1701). So a rename never touches it. The formula's own sheet is rewritten too
+  (`=Calc!loc` on Calc shows `=<file>.xlsx!loc`), and a file that stores `[0]!loc` (the own-workbook prefix)
+  loads as the workbook name with the same file-name text, even on a sheet with its own `loc`
+  (`Local!loc` = 7 beside workbook `loc` = 5: `=[0]!loc` on Local is 5, `=loc` 7; probe
+  `workbook-name-own-book-prefix`, excel-graph 2026-10-27, T-2834). Ours matches (T-2834): the parser
+  writes the file-name prefix, reads `<file>.xlsx!loc` (any case) back as the workbook name, and stores and
+  saves it as `[0]!loc`, so a sheet rename, a workbook rename and an xlsx round trip keep it. Unprobed: a
+  file name with a space or other characters a sheet name would quote (ours quotes it as a sheet name),
+  an unnamed workbook (ours keeps the typed `Feb!loc` until a re-parse shows `[0]!loc`), and `[0]!loc` inside a
+  defined name's body in the file (ours writes it there too; T-2937).
 - A sheet named like a cell address (`S1`) makes Excel Online refuse the whole workbook when a
   formula or name refers to it unquoted (`createSession` 501 `unsupportedWorkbook`), so the
   generator avoids such names.
@@ -2276,6 +2318,15 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   probes/table-edits/table-this-row-off-data-isref).
 - Inside the table (a formula column) `[@Col]` reads the same row; `Sales[Col]` there is the whole column
   (in-table 19fdc25163755713).
+  Ours (T-2979): an operand that starts with `[` in a cell of a table (its header and totals rows included) is a
+  structured reference to that table: `[@Col]`, `[Col]`, `[[#This Row],[Col]]`. It prints without the name, a
+  `#This Row` one in its `@` form (`=[[#This Row],[Col]]` prints `=[@Col]`, as calculated-column rule 6 shows for
+  `=[@Col]*2`; how Excel prints the typed long form is unprobed). Counting the header and totals rows as inside the
+  table is an engine choice too, unprobed (T-3000). Storage (R1C1) keeps the table as a `[T]` prefix
+  (`[T][[#This Row],[Col]]*2`), so the same text in two tables of one sheet reads each its own table and a re-parse
+  (a sheet rename) prints it unqualified again; the export writes the qualified form Excel saves
+  (`T[[#This Row],[Col]]*2`, xlsx-storage.md). Outside every table the operand is still a parse error. Clears the
+  `[@Col]` cells of probes/t2786-whitespace-structured-refs-runs and the t2957 calculated-column cases.
 - `Table[#Totals]` and `Table[[#Totals],[Col]]` of a table without a totals row are `#REF!`
   (names-case 5b5c0e20e82153bb K100 `ROWS(Stock[#totals])`; also the throwaway T-1607 probe
   `SUM(Sales[[#Totals],[A]])`). With one, they are the totals row; `#All` counts it, `#Data` does not
@@ -2364,7 +2415,7 @@ carry a table past the last row or column (the cells pushed off are empty, so th
 refuses it is unprobed, T-2845). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
-inside are T-2339. A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
+inside grow the table (T-2339). A wholly deleted plain range prints `#REF!:#REF!` where Excel prints `S!#REF!`
 (plain-range-delete-row-first A6, T-2855). With no table of that name (engine API `remove_table`), the formula is a parse
 error that keeps its text and is exported as `#REF!`; a loaded formula naming an unknown table or column
 (xlsx import, `Input::StoredFormula`) is `#REF!` and FORMULATEXT prints `=SUM(#REF!)`, as Excel does
@@ -2416,7 +2467,11 @@ Right/Left):
 - Column inserts. At A or B (left of or at the table's first column) the table moves right
   (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
   (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes
-  (table-insert-column-before, -left-edge, -inside, -right-edge).
+  (table-insert-column-before, -left-edge, -inside, -right-edge). The new table column is named `Column1`
+  and its header cell holds that text (`INDEX(Sales[#Headers],1,2)` and `INDIRECT("S!C3")` "Column1", the data
+  cells blank, `INDIRECT("Sales[Column1]")` a column COUNTA counts 0 in); a second insert at C names the new
+  C `Column2` and the first moves to D (table-insert-column-inside-header, table-insert-two-columns-inside-header,
+  excel-graph 2026-10-27, T-2339).
 - Column deletes. Deleting A moves the table left (table-delete-column-before). Deleting a table column drops
   it: deleting C (Qty) makes `SUM(Sales[Qty])` `#REF!`, printed `=SUM(#REF!)`, and the plain `S!C4:C7`
   `=SUM(S!#REF!)`, while `COLUMNS(Sales)` is 1 and `ROWS(Sales)` 4 (table-delete-column-qty); deleting B
@@ -2450,8 +2505,13 @@ Status: VERIFIED (excel-graph)
 Implemented in: partly. The engine treats every table as SPEC-0016's fallback (above): the row delete above,
 inside and below the table, the column inserts at D, the sheet rename and the totals-row delete already
 match in value, and FORMULATEXT prints the displaced plain range where Excel keeps the text (T-2297 for the
-move and inside classes); the edge row deletes (T-2338), the column grow and table-column delete (T-2339)
-do not. Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
+move and inside classes); the edge row deletes (T-2338) and the column grow and table-column delete match
+too (T-2339: `column_span` and `edit_columns` in table_edits.rs grow or shrink the table and its column list,
+naming an inserted column `ColumnN` in its header cell, and `deleted_column` in stringify/structured.rs
+prints a reference to a deleted column as `#REF!`, a column range that loses both ends too; one that loses
+one end prints its displaced plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
+`ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). A wholly deleted plain range still prints `#REF!:#REF!` (T-2855), and INDIRECT of a
+structured reference's text is `#REF!` (T-2911). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
 in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
@@ -2466,7 +2526,68 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899
+
+## Calculated columns: a formula typed into a table column
+Rule (excel-graph `entered` cells, typed one at a time in the case's order, 2026-10-27, T-2957; table `T` A1:C4,
+columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each `Calc` cell in F):
+1. **A formula typed into one data cell of a column whose other data cells are all blank fills every data row.**
+   `=[@Col]*2` typed into the middle row C3 fills C2:C4 (2, 4, 8, each printing `=[@Col]*2`); a totals row is not
+   filled (C5 of a table A1:C5 with totals row stays blank, `ISFORMULA` FALSE) (t2957-fill-one-totals).
+2. **A different formula typed into a cell of a filled column re-fills the whole column**, the earlier typed row
+   included: C2 `=T[[#This Row],[Col]]*2`, then C3 `=[@Col]*3`, leaves `=[@Col]*3` in C2:C4 (3, 6, 12)
+   (t2957-refill-second). probes/t2786-whitespace-structured-refs-runs C2:C4 (three typed this-row formulas, each
+   re-filling) agrees. Whether typing into the row typed first re-fills too is unprobed: the case format cannot type
+   one cell twice.
+3. **A constant typed into a filled column is an exception**: C2 `=[@Col]*2` then C3 `5` leaves C3 the number 5
+   (FORMULATEXT `#N/A`) and C2, C4 the formula (2, 8) (t2957-constant-exception). **A column with an exception is
+   not re-filled**: a later `=[@Col]*3` typed into C4 stays in C4 alone (12; C2 keeps `*2`, C3 keeps 5)
+   (t2957-constant-then-refill). One of four runs of this sequence came back with every `Calc` cell blank; three
+   reruns agree on the rule above, so that run is taken as a Graph anomaly.
+4. **No fill when another data cell already holds a value**: with the constant 5 in C2 (stored in the file),
+   `=[@Col]*2` typed into C3 stays in C3 alone (4), and C4 stays blank (t2957-existing-constant).
+5. **An A1 formula fills shifted, like a fill-down**: `=A2*2` typed into C2 gives `=A3*2`, `=A4*2` in C3:C4 (2, 4,
+   8) (t2957-a1-reference).
+6. **Every filled row prints the typed cell's text** for a structured formula (`=[@Col]*2`, `=[@Col]*3` in every
+   row); an A1 formula prints its shifted text. How a typed long form (`=T[[#This Row],[Col]]*2`) prints is not
+   answered: in refill-second it was re-filled over.
+7. **Typing just right of the table expands it** (t2957-expand-right-data, -header, each run twice): `=A2*2` typed
+   into D2 grows `T` to A1:D4 (`COLUMNS(T[#All])` 4), names the new column `Column1` (D1 holds that text, as for a
+   column insert above) and fills D2:D4 with `=A2*2`, `=A3*2`, `=A4*2`. `=1+1` typed into the header-row cell D1
+   grows `T` to A1:D4 too, but D1 becomes the **text** `0` (not 2, not a formula; the column is named `0`), and
+   D2:D4 stay blank. Typing a constant beside the table, below its last row, or beside a totals row is unprobed.
+What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
+`calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
+blank, or all the one calculated formula); whether a column whose cells hold one identical formula with no saved
+`calculatedColumnFormula` re-fills is unprobed (T-2969 probes a stored column formula).
+Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
+constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
+C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
+The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
+formula cells, so the sidecars do not hold them: they are read from each case's saved `xl/worksheets/sheet1.xml`
+(eval/.cache/oracle/excel-graph/<input_sha256>.xlsx).
+Ours (T-2958): rules 1-5 are implemented with no state on the table: a formula typed into a table's data rows
+(`Model::set_typed_user_input`, the facade's `Input::Parse` and `Input::Formula`) fills the column's other data rows
+when they are all blank or all hold one shared formula (`Model::calculated_column_targets`, calculated_columns.rs),
+by writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A blank cell
+beside formulas blocks the fill too, and a column of one identical stored formula with no saved
+`calculatedColumnFormula` re-fills as a calculated column: both are engine choices, unprobed (T-2983). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+the facade logs the filled cells, so they are one edit with the typed cell. The eval adapter types `entered` cells
+after the tables, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
+table holding the cell since T-2979 (below). Neither import nor export
+reads or writes `calculatedColumnFormula` (T-2969).
+Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
+grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
+over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
+and the name is written into its header cell. A formula typed into the header cell itself is not stored: the header
+is the text `0`. This is only probed with `=1+1`, and the oracle's H3 (`D1&""`) does not tell the text `0` from the number 0; headers are text, so the engine writes text. Whether Excel derives the `0` from the formula is unknown. If the
+table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
+and the cell is typed as before, in four unprobed cases: a constant typed there, a table with a totals row, a new
+column whose other cells are not all blank, and a new column that another table overlaps. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979): what Excel does with it there is unprobed (T-3003). The facade's edit holds
+the growth, the header cell and the filled rows, and its rollback puts the table back.
+Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
+Implemented in: rules 1-5, crates/rustsheet-engine/src/calculated_columns.rs (T-2958); rule 7, the same file (T-2968)
+Tasks: T-2957, T-2958, T-2968, T-2969
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

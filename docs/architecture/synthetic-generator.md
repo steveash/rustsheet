@@ -297,16 +297,23 @@ Key schema elements:
   `enum` lists the usual text values of a parameter (CELL's info_type; T-1088), soft like `int`.
 - `cell: true` (a `range` parameter): the generator passes one cell. ISFORMULA lifts over a range, which would spill into
   the next formula, and Excel refuses a literal (T-1088).
-- `vector: true` (a `range` or `array` parameter): the generator passes a one-column range. LOOKUP and the XLOOKUP/XMATCH lookup
+- `vector: true` (a `range` or `array` parameter): the generator passes a one-column range (unless `wide_rate` or `row_rate` below say otherwise). LOOKUP and the XLOOKUP/XMATCH lookup
   vectors give only `#N/A` or `#VALUE!` for a 2-D range, which would hide the search itself (T-1238); WRAPROWS/WRAPCOLS
   wrap one column (T-1083).
+  `wide_rate: <share>` makes that share of the draws 2-D and `row_rate: <share>` makes it a one-row range, so MATCH's
+  lookup_array is mostly one-dimensional with a few 2-D `#N/A` cases (T-2719).
+- `same_shape: true` (`range` parameters of one call): the ranges share one rows x columns shape, except in about 1 call
+  in 10, so the *IFS functions compute a real match and the shape-mismatch `#VALUE!` stays covered (T-2719).
+- `probe: <param>` (a `value` parameter): drawn from the cells of that `range` parameter 95% of the time, so MATCH's
+  lookup_value usually exists in the array (T-2719).
 - `full: true` (an `array` parameter): every range spans all data rows, so GROUPBY's, SORTBY's and FILTER's arrays are the
   same height; `mask: true` makes FILTER's include a comparison of one full column (T-1083).
 - `mode: lambda` (with `arity`, or `arity: repeat` for MAP's one parameter per array) is a LAMBDA whose body may use its
   parameters, or 30% of the time an eta-reduced name written `_xleta.SUM`; `mode: name` declares a LET variable or LAMBDA
   parameter, visible after its value (LET) or in the `body: true` calculation; `invoke: true` calls the LAMBDA at once.
   `spelled` is the formula spelling where the case builder adds no prefix (`_xlfn.GROUPBY`; T-1083).
-- `always: true` (an optional parameter): the generator never omits it. CELL without a reference reads the cell last
+- `always: true` (an optional parameter): the generator never omits it (MATCH's match_type, whose default 1 on unsorted
+  data is mostly `#N/A`, T-2719). CELL without a reference reads the cell last
   changed, which no oracle value can match.
 - `edge_classes`: named, function-specific value or structure generators. They join the
   global type pools (§6) and become coverage-matrix columns (§13).
@@ -610,7 +617,10 @@ These are first-class and distinct from `""`:
 All error values, appearing as literals (`#N/A`, `NA()`, `1/0`), in cells, and inside
 ranges at the first, last and middle positions. Ranges with **two different errors**
 test which error wins (the first in evaluation order). Edge class `error_order` covers
-`=#N/A+#DIV/0!` and the reverse.
+`=#N/A+#DIV/0!` and the reverse. A number- or bool-typed `value` parameter that has no `hard` domain and was
+not drawn from its edge pool receives `""` with share `EMPTY_TEXT_RATE` (3%) and an entry of the `errors`
+pool with share `ERROR_RATE` (3%), so generated suites reach the `empty_text` and `error` argument kinds
+(T-2866; decision 0094).
 
 ### 6.6 Arrays and references
 - Array literals: `{1,2,3}`, `{1;2;3}`, `{1,2;3,4}`, mixed-type `{1,"a",TRUE,#N/A}`,

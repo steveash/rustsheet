@@ -200,8 +200,8 @@ impl Model {
         )
     }
 
-    /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
-    /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
+    /// MATCH's `match_type` as a number. Text that is not a number, or an error, that comes from a
+    /// cell (a reference) is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search scans from the top", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or
@@ -213,17 +213,21 @@ impl Model {
         };
         let from_cell = matches!(value, CalcResult::Range { .. });
         let value = self.dereference(value, cell);
-        // Only non-numeric text is remapped: an error in the cell, or a failed implicit
-        // intersection, propagates unchanged (no oracle evidence for remapping those).
+        // Non-numeric text and any error in the cell are #REF!, whatever the error kind
+        // (probes/match-type-error-reference E1:E8, F1:F7; docs/excel-semantics/lookup.md). A
+        // failed implicit intersection is not a cell value and propagates unchanged.
         if from_cell {
-            if let CalcResult::String(text) = &value {
-                if self.cast_number(text).is_none() {
-                    return CalcResult::Error {
-                        error: Error::REF,
-                        origin: cell,
-                        message: "Invalid reference".to_string(),
-                    };
-                }
+            let invalid = match &value {
+                CalcResult::String(text) => self.cast_number(text).is_none(),
+                CalcResult::Error { .. } => true,
+                _ => false,
+            };
+            if invalid {
+                return CalcResult::Error {
+                    error: Error::REF,
+                    origin: cell,
+                    message: "Invalid reference".to_string(),
+                };
             }
         }
         value
@@ -392,8 +396,9 @@ impl Model {
 
     /// A `link_location` as HYPERLINK reads it, or the error it gives whatever `friendly_name`
     /// is: the location's own error, or `#VALUE!` for more than 255 characters, a `#` of an
-    /// internal link included (probes/t2277-hyperlink-location-length A1-A15; lookup.md
-    /// "HYPERLINK: a `link_location` past 255 characters").
+    /// internal link included, counted in UTF-16 units like `LEN`
+    /// (probes/t2277-hyperlink-location-length A1-A15, probes/t2358-hyperlink-location-non-bmp
+    /// A1-A9; lookup.md "HYPERLINK: a `link_location` past 255 characters").
     fn hyperlink_location(
         location: &CalcResult,
         cell: CellReferenceIndex,
