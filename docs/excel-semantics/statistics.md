@@ -3082,10 +3082,13 @@ Tasks: T-1543, T-1634
     `cdf/p-1` column D is zero-snapped by Excel and proves nothing) is within 6E-16 of p at a = 0.05, 0.25 (except
     row 8, +9.7E-16) and 0.5, and further off at a = 0.1 (row 3, p = 1E-30: -8.5E-15), a = 0.75 (row 16, p = 1E-100:
     +2.6E-14; row 17 -3.2E-15; row 18 -1.9E-15; row 19 +1.2E-15; row 20 -1.3E-15) and a = 0.9 (row 21 +1.9E-15,
-    row 22 +1.1E-15, row 23 -4.7E-15, row 25 -3.0E-15). No shape is exact at every p, and the sign changes with p.
+    row 22 +1.1E-15, row 23 -4.7E-15, row 25 -3.0E-15). No shape is exact at every p. The sign is positive at a = 0.05, negative at a = 0.1 and changes with p
+    at a = 0.25, 0.5, 0.75 and 0.9.
     One ulp of x moves the cdf by a quarter ulp at a = 0.25, so columns A..C agree there; at a = 0.5 and 0.9 they
-    differ (rows 15, 24, 25). The errors of 15 to 205 ulps of P at a = 0.1, 0.75, 0.9 are far more than one ulp of x
-    can explain, so the quantile is Excel's own inversion, not a crossing.
+    differ (rows 15, 24, 25). The errors of 6 to 205 ulps of P at a = 0.1, 0.75, 0.9 (rows 3, 16-23, 25) are more than one ulp of x
+    can explain, so the quantile is Excel's own inversion, not a crossing; the same holds at a = 0.05 (+5.5E-16
+    with A = B = C, rows 1-2) and row 8 of a = 0.25, about 30 to 50 ulps of x from a crossing. Only a = 0.5 is
+    bracketed (row 15).
   - The scale is a plain final product: in all 36 rows of the first case column B equals the double product
     A * 1E+15 exactly (`GAMMA.INV(1E-16,0.1,1)` = 6.073048362407876E-161 and `GAMMA.INV(1E-16,0.1,1E+15)` =
     6.0730483624078755E-146 are the same value to the rounding of the product, row 10).

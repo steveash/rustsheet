@@ -50,7 +50,7 @@ without guessing.
 
 ## Outcome
 Two probe cases (probes/t3012-gamma-inv-small-shape, probes/t3012-gamma-dist-at-quantile) with excel-graph values;
-findings in docs/excel-semantics/statistics.md (Excel's GAMMA.INV is not the crossing of its GAMMA.DIST at shapes
-0.1, 0.25, 0.75, 0.9) and T-3013's Context. Eval delta: two new probe cases, known-failure lines added to
+findings in docs/excel-semantics/statistics.md (Excel's GAMMA.INV is not the crossing of its GAMMA.DIST at any
+shape tried except possibly 0.5) and T-3013's Context. Eval delta: two new probe cases, known-failure lines added to
 eval/baseline/probes.txt only; no other suite moved. Five unrelated probe cases failed to fill (graph
 unsupportedWorkbook), left pending.
