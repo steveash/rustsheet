@@ -42,15 +42,17 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   further out is `#NUM!` for all orders (1E+14, 2E+14, 1E+15, 1E+10). Whether the phase 134217727 itself answers is
   unprobed (ours `#NUM!`, as IMPOWER).
   Evidence: probes/t2547-bessel-phase-cut A1:A74, bessel-large-x (excel-graph, 2026-10-24, T-2547).
-  Not fitted: `BESSELJ(1E+5,100000)` is 0.009636944011336267 in Excel, 0.00963694401133629 in Miller's recurrence
-  here (n = x); no association of the recurrence step nor NR's ACC 160 reproduces it (T-2548). The true value is 0.0096369440113378623: Excel's and ours
-  are both about 1.6E-13 low (relative), mostly from `tox = 2/x` rounding to a double, and differ only in per-step rounding
-  (x87 64-bit and FMA steps don't reproduce it either). Turning-point sweep (76 cells, n = 1000..100000, x = n, n±1/10/100, n+0.5, n-2/3/5):
-  probes/t2881-besselj-turning-point (excel-graph, 2026-10-27, T-2881), for T-2548 to fit.
-  It shows: Miller cells (x <= n) miss by about 1E-15 to 3E-14 relative from n = 1000 up; BESSELJ(84,84), (84,83), (100,100) and
-  all n = 1000 cells except `BESSELJ(990,1000)` are bit-exact; the branch switch at x > n matches Excel's, but the upward
-  recurrence is NOT bit-exact at large n (22 cells: `BESSELJ(2001,2000)`, `BESSELJ(5100,5000)` and all 20 upward cells at n >= 10000, up to 1.6E-13 relative, e.g.
-  `BESSELJ(100100,100000)` Excel -0.006729033731473101, ours -0.006729033731474205). T-2548 owns both branches.
+  BESSELJ's and BESSELY's recurrences round twice (T-2548): every product and sum in Miller's downward recurrence
+  (`j*tox*bj - bjp`, the 1E-10 rescale, the even-order sum) and in the upward recurrence (`b*(2j*(1/x)) - a`) is x87
+  code stored to a double after each operation, so it rounds first to a 64-bit significand and then to a double
+  (`extended_product`, `extended_sum`). `tox = 2/x`, `1/x` and the final `ans/(2*sum - bj)` are plain doubles as far
+  as the evidence tells. Plain double steps drift from Excel by 1E-15 to 1.6E-13 relative from n = 2000 up (the
+  result is most sensitive near the turning point n = x); the twice-rounded steps match all 76 cells of the
+  turning-point sweep (n = 1000..100000, x = n, n±1/10/100, n+0.5, n-2/3/5) bit for bit, e.g. `BESSELJ(1E+5,100000)`
+  0.009636944011336267 and `BESSELJ(100100,100000)` -0.006729033731473101. Rejected: x87 registers kept across
+  steps (64-bit state; 0-2 of 43 Miller cells), FMA steps, other associations of the step, NR 3rd edition's ACC 160
+  and power-of-two rescale, a 1E10 division rescale, and every other start order.
+  Evidence: probes/t2881-besselj-turning-point (excel-graph, 2026-10-27, T-2881).
   Web vs desktop: Mac Excel 16.0300's cached `BESSELJ(100000,5)` 0.001846551246313725 and `BESSELY(100000,5)`
   0.001719431947654535 (ironcalc-calc/ENGINEERING/BESSEL.xlsx All!D18, F18) differ from the web's 0.0018465512463137278
   and 0.0017194319476545319 (t2547-bessel-phase-cut A85, A86), which the engine gives; a Mac has no x87 sine. The engine
