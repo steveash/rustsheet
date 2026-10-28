@@ -4,7 +4,7 @@ title: "ODDFYIELD's solver: fit where Excel stops short of ODDFPRICE's root (31 
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P3
+priority: P2
 size: M
 tier: opus
 campaign: visible
@@ -73,3 +73,11 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - ODDFYIELD: 106 cells (13-14 digits right 0, 10-12 77, 6-9 29, fewer or 0 vs nonzero 0); most in `ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx` 31; `probes/date-system-1900-odd-years.case.json` 19. e.g. `ODDFYIELD(A2,B2,C2,D2,E2,J2,G2,H2,I2)` Excel 0.04999999999851281, ours 0.05
 
 Excel stops short of the root by up to ~1e-9 relative; 15 digits means reproducing that stop.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): ODDFYIELD 44. This task now owns them:
+- probes/date-system-1900-odd-accrint-bound: S!A3, S!A4, S!A6, S!B3, S!B4, S!B6, S!C3, S!C4, S!D3, S!D4, S!D6
+- probes/date-system-1900-odd-threshold: S!A5, S!B5, S!C5, S!D5, S!E5, S!F5, S!G5, S!H5, S!I5, S!J5, S!K5, S!L5, S!M5
+- probes/date-system-1900-oddf-issue-after-quasi: S!A17, S!A32
+- probes/date-system-1904-odd-threshold: S!C5, S!D5, S!E5, S!F5, S!G5, S!H5, S!I5, S!J5, S!K5, S!L5, S!M5
+- probes/date-system-1904-odd-years: S!C3, S!E3, S!F3, S!J3, S!L3, S!N3, S!S3

@@ -191,3 +191,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - CHIINV: 28 cells (13-14 digits right 22, 10-12 2, 6-9 4, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-legacy-chiinv.case.json` 26; `probes/stat-argument-modes.case.json` 1. e.g. `CHIINV(0.4,5)` Excel 5.131867074401821, ours 5.131867074401809
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): CHISQ.INV 3, CHISQ.INV.RT 5. This task now owns them:
+- probes-numeric/t1049-chisqinv: Calc!A9, Calc!A20, Calc!A27
+- probes-numeric/t1049-chisqinvrt: Calc!A3, Calc!A9, Calc!A19, Calc!A20, Calc!A27

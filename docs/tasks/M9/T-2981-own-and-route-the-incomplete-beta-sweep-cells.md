@@ -134,3 +134,8 @@ Cases (visibly-off cells per function at the triage eval):
 ## Visible-parity stage
 Target (decision 0114): every visibly-off cell named here has an owning campaign task the queue picks before the
 milestone order. This task changes no value; its stage only makes sure it is picked first in M9.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): F.DIST.RT 1, GAMMALN 1. This task now owns them:
+- probes-numeric/m9-f-dist-rt: Calc!A19
+- probes-numeric/t2464-r2-bpser-small-gl: Calc!A3188

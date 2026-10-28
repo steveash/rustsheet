@@ -60,3 +60,12 @@ This task is on the critical path of the Phase 1 exit: BETA.DIST, F.DIST, BINOM.
 
 ## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
 Deep-tail quantiles handed from the parked T-2695 (visibly off at the 2026-10-27 eval): F.INV gen-m9/0a614cfe974b59c3 Calc!A268 `F.INV(1E-200,8,10)` and gen-m9/85f48d5cdfb24555 Calc!A12 `F.INV(1E-300,9,3)`; FINV gen-m9/85f48d5cdfb24555 Calc!A10 `FINV(1E-300,5,10)`.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): F.INV 7, F.INV.RT 11, FINV 6. This task now owns them:
+- gen-m9/4ab2ba98d26c8a5e: Calc!A390
+- probes-numeric/m9-f-inv: Calc!A1, Calc!A4, Calc!A7, Calc!A21, Calc!A25
+- probes-numeric/m9-f-inv-rt: Calc!A1, Calc!A7, Calc!A15, Calc!A25
+- probes-numeric/m9-legacy-finv: Calc!A1, Calc!A2, Calc!A3, Calc!A4, Calc!A9, Calc!A10, Calc!A37, Calc!A38, Calc!A39, Calc!A40, Calc!A47, Calc!A48
+- probes-numeric/t1049-finv: Calc!A7
+- probes-numeric/t1049-finvrt: Calc!A14

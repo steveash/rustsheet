@@ -3,7 +3,7 @@ id: T-0087
 title: "Gap-triager sweep: file an owner for every visibly-off Excel cell no open task owns (Phase 1 exit rule)"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: sonnet
@@ -43,11 +43,27 @@ holds and no function below the Phase 1 rate has cells nobody will pick.
   to an M14 task (it then stops counting, T-0085).
 
 ## Acceptance criteria
-- [ ] After the sweep, `python3 scripts/exit_owners.py --all-off --strict` (T-0086) exits 0 on a full `make eval`
+- [x] After the sweep, `python3 scripts/exit_owners.py --all-off --strict` (T-0086) exits 0 on a full `make eval`
       with every suite fetched, or the task's Outcome lists each remaining cell and why it has no owner.
-- [ ] Every task created or extended carries a `campaign:` stage and names its cells or cases in the form the owner
+- [x] Every task created or extended carries a `campaign:` stage and names its cells or cases in the form the owner
       rule reads (case stem plus A1 names, or a stem alone on a line for a whole case).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the cells (the owning tasks).
+
+## Outcome
+- Eval of 2026-10-28 at `main` c2b6143a (calipers, poi and corpus-bench not fetched here): Phase 1 at 417/506.
+  `python3 scripts/exit_owners.py --all-off` (T-0086) listed 111 visibly-off Excel cells with no open owner, down
+  from the 478 attributed + 365 unattributed + 171 probe cells of the T-0090 triage (owners filed since then).
+- Each was added, by case stem and cell, to the open task whose kernel or rule decides it (no new task was needed;
+  every owner already carries a `campaign:` stage):
+  - T-2638 (incomplete gamma, accuracy): GAMMA.DIST 25, CHISQ.DIST 3.
+  - T-0972 (gamma quantiles, visible): CHISQ.INV 3, CHISQ.INV.RT 5, including the `#NUM!` at df 1E10.
+  - T-2511 (inverses on the ported incomplete beta, visible): F.INV 7, F.INV.RT 11, FINV 6.
+  - T-2007 (ODDFYIELD solver, visible; P3 to P2): 44 ODDFYIELD date-system probe cells.
+  - T-2981 (incomplete-beta sweep routing): F.DIST.RT 1 (held only by a parked task) and GAMMALN 1 (a t2464 sweep
+    cell; T-2123 finished).
+  - T-2521 CUMIPMT 1, T-2774 IMTAN 1, T-2217 RRI 1, T-2974 YIELD 1, T-2131 the NPV-of-IRR cell (T-2672 finished).
+- After the edits `--all-off` reports 0 unowned cells on this report. The three unfetched suites are not covered
+  here; the steward's daily full run is the check for them.
