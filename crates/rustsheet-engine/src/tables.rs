@@ -15,7 +15,7 @@ use crate::{
     },
     formula_rewrite::RewrittenFormula,
     model::Model,
-    types::{Cell, Table, Worksheet},
+    types::{Cell, Table, TableColumn, TableStyleInfo, Worksheet},
 };
 
 /// Gives every formula cell of `worksheet` whose shared formula is one of `by_row` (index, parsed
@@ -63,6 +63,48 @@ pub(crate) fn lower_this_row_cells(
             worksheet.cell_mut(row, column)
         {
             *f = new_index;
+        }
+    }
+}
+
+impl Table {
+    /// A table named `name` over `reference` (`A1:C4`, header and totals rows included) on
+    /// `sheet_name`, with the columns `column_names` left to right, no differential formats and
+    /// no filter buttons, styled as the xlsx reader defaults a table without `tableStyleInfo`.
+    #[must_use]
+    pub fn new(
+        name: &str,
+        sheet_name: &str,
+        reference: &str,
+        (header_row_count, totals_row_count): (u32, u32),
+        column_names: impl IntoIterator<Item = String>,
+    ) -> Table {
+        Table {
+            name: name.to_string(),
+            display_name: name.to_string(),
+            sheet_name: sheet_name.to_string(),
+            reference: reference.to_string(),
+            totals_row_count,
+            header_row_count,
+            header_row_dxf_id: None,
+            data_dxf_id: None,
+            totals_row_dxf_id: None,
+            columns: (1..)
+                .zip(column_names)
+                .map(|(id, name)| TableColumn {
+                    id,
+                    name,
+                    ..TableColumn::default()
+                })
+                .collect(),
+            style_info: TableStyleInfo {
+                name: None,
+                show_first_column: false,
+                show_last_column: false,
+                show_row_stripes: true,
+                show_column_stripes: false,
+            },
+            has_filters: false,
         }
     }
 }

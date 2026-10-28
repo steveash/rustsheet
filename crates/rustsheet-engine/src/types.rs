@@ -494,46 +494,6 @@ pub(crate) fn sheet_names_match(a: &str, b: &str) -> bool {
 }
 
 impl Table {
-    /// A table named `name` over `reference` (`A1:C4`, header and totals rows included) on
-    /// `sheet_name`, with the columns `column_names` left to right, no differential formats and
-    /// no filter buttons, styled as the xlsx reader defaults a table without `tableStyleInfo`.
-    #[must_use]
-    pub fn new(
-        name: &str,
-        sheet_name: &str,
-        reference: &str,
-        (header_row_count, totals_row_count): (u32, u32),
-        column_names: impl IntoIterator<Item = String>,
-    ) -> Table {
-        Table {
-            name: name.to_string(),
-            display_name: name.to_string(),
-            sheet_name: sheet_name.to_string(),
-            reference: reference.to_string(),
-            totals_row_count,
-            header_row_count,
-            header_row_dxf_id: None,
-            data_dxf_id: None,
-            totals_row_dxf_id: None,
-            columns: (1..)
-                .zip(column_names)
-                .map(|(id, name)| TableColumn {
-                    id,
-                    name,
-                    ..TableColumn::default()
-                })
-                .collect(),
-            style_info: TableStyleInfo {
-                name: None,
-                show_first_column: false,
-                show_last_column: false,
-                show_row_stripes: true,
-                show_column_stripes: false,
-            },
-            has_filters: false,
-        }
-    }
-
     /// Whether the table is on the sheet `sheet_name` (sheet names match ignoring case).
     pub fn is_on_sheet(&self, sheet_name: &str) -> bool {
         sheet_names_match(&self.sheet_name, sheet_name)
