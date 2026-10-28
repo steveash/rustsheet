@@ -1745,9 +1745,11 @@ own order and is `#VALUE!` on any other array. With A1:A3 = 3,1,2 and B1:B3 = 30
   (H85-H93). So is a one-value by_array on a one-row array A20:C20 = 3,1,2 next to a row by_array, in either order and direction (`SORTBY(A20:C20,5,1,A20:C20,1)`, `(A20:C20,A20:C20,-1,5,1)`, `{7}` or the one-cell `A1` for the value): `#VALUE!`; two one-value pairs (`SORTBY(A20:C20,5,1,5,1)`) keep the order (probes/t2370-sortby-mixed-by-array-snap, excel-graph, 2026-10-28, T-2370).
 A sort_order reads as its floor, snapped up near an integer (the count rule of LEFT and INDEX, `near_integer_count`): -0.0001,
 -0.5, -0.9999 sort descending, 1.5 and 1.0000001 ascending; 0.0001, 0.5, 0.9999, -1.5, 2, -2 and -1E-300 (floor -1, snapped
-to 0) are `#VALUE!`; `"-1"` is descending and TRUE ascending (H97-H165). The snap tolerance is LEFT's, between 2^-22 + 2^-33 and 2^-22 + 2^-32 (T-2370, A1:A3 = 3,1,2): `1-2^-22`, `1-2^-23`, `1-2^-24` and
-`1-(2^-22+2^-33)` sort ascending, `1-2^-21`, `1-2^-20` and `1-(2^-22+2^-32)` are `#VALUE!` (floor 0), `2-2^-22` is `#VALUE!` (snapped to 2) and `2-2^-21`
-ascending; `-1+2^-21` and everything down to `-1+2^-23` is descending (floor -1), and `-2+2^-22`, `-2+2^-21` are `#VALUE!` (no snap down). Ours matches (45 cells). SORT's own sort_order still truncates (unprobed for fractions).
+to 0) are `#VALUE!`; `"-1"` is descending and TRUE ascending (H97-H165). The snap is the one DATE and TIME use (`near_integer_whole`): LEFT's tolerance for a positive value, half of it below zero (T-2370, A1:A3 = 3,1,2). Above 1, it lies between 2^-22 + 2^-33 and 2^-22 + 2^-32:
+`1-2^-22`, `1-2^-23`, `1-2^-24` and `1-(2^-22+2^-33)` sort ascending, `1-2^-21`, `1-2^-20` and `1-(2^-22+2^-32)` are `#VALUE!` (floor 0), `2-2^-22` is `#VALUE!`
+(snapped to 2) and `2-2^-21` ascending. Below -1 it is the half: `-1-2^-23`, `-1-2^-24` and `-1-(2^-23+2^-34)` sort descending (snapped to -1), but `-1-2^-22`,
+`-1-(2^-22+2^-33)`, `-1-(2^-22+2^-32)` and `-1-2^-21` are `#VALUE!` (floor -2); the cells just above -1 and -2 (`-1+2^-22`, `-2+2^-22`) say nothing of
+the tolerance, their floor is -1 and -2 either way. Ours snapped negatives by the full tolerance before T-2370. SORT's own sort_order still truncates (unprobed for fractions).
 This is why `SORTBY(Data!E1:E12,MAX(..)%,-1)` (gen-m7/18b80d3fd292d63a Calc!A123:A134), `SORTBY(Data!C1:C12,IFNA(TIMEVALUE(..),..),1)`
 (7307132bb8820f17 A966:A977) keep their one-column arrays, `SORTBY(Data!B1:C12,(-1),1)` (0e40208f51c2454c Calc!A2) and the
 by_array 0.5 on Data!B1:C12 (7d67c559ce7536fa A1358) are `#VALUE!`, and `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,..)`
