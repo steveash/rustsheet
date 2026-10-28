@@ -161,6 +161,13 @@ Cells:
 Sequencing (T-0098, 2026-10-28): waits on T-2510, which ports Excel's bgrat for BINOM and NEGBINOM; fit the last
 digits on the ported kernel, not the current one, so the work is not done twice.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): the BINOM.DIST and NEGBINOM.DIST pmf cells (interior k; dbinom_raw on T-2507's saddle point); the cases' BETA.DIST density cells are T-2507's. 4,415 visibly-off cells in 4 cases, per case:
+- probes-numeric/t2513-r3-binom-pmf-a: BINOM.DIST pmf (interior) 1,213
+- probes-numeric/t2513-r3-binom-pmf-hold: BINOM.DIST pmf (interior) 628, NEGBINOM.DIST pmf 780
+- probes-numeric/t2513-r3-binom-pmf-n: BINOM.DIST pmf (interior) 997, NEGBINOM.DIST pmf 629
+- probes-numeric/t2513-verify-r3-binom-pmf-h: BINOM.DIST pmf (interior) 54, NEGBINOM.DIST pmf 114
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 93 known-failure lines (8 from T-2255, 85 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

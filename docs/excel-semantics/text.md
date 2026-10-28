@@ -1133,3 +1133,5 @@ reference to an error cell (also `B1:B1`) the same. With two errors the first ar
 `#VALUE!`, as `ARRAYTOTEXT(1,2)` and `ARRAYTOTEXT(1,"x")` are. VERIFIED (probes/arraytotext-error-vs-format, excel-graph
 2026-10-27, T-2250). VALUETOTEXT differs: `VALUETOTEXT(NA(),2)` is `#VALUE!`, not the argument's error (matches today's
 engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`); a reference to an error cell with an error or text format, such as `ARRAYTOTEXT(B1,NA())` or `ARRAYTOTEXT(B1,"x")` with B1 holding `#N/A` (the engine reads the format first and returns its error).
+
+See also: RIGHT num_chars numeric-text coercion is recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).

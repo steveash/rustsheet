@@ -853,6 +853,17 @@ Status: VERIFIED
 Implemented in: `fn_xirr` (an `EmptyArg` guess is dropped, so the default applies); `fn_irr` reads it as 0.
 Our IRR from guess 0 is a few ulps off Excel's on these flows (…3171 for …3149), a separate kernel gap.
 
+## XIRR: a mismatched value/date size is #NUM! whatever the guess, a written empty guess included
+Rule: `XIRR(v,d,)`, `XIRR(v,d)`, `XIRR(v,d,E1)` (E1 empty) and `XIRR(v,d,0.1)` all give `#NUM!` when the
+values and dates differ in length (3 vs 2, 2 vs 3, 3 vs 4), over ranges and array constants, and also when
+the longer flow holds a text or boolean element (G21-G36). A written empty guess and an empty-cell guess
+take the same error path as an absent or number guess; a text, boolean or error guess keeps `#VALUE!`
+(see "XIRR and XNPV under the gen-m9 statistical cells").
+Evidence: probes/xirr-size-mismatch-empty-guess G1-G36 (excel-graph, T-2773)
+Status: VERIFIED
+Implemented in: `fn_xirr` (`number_guess` counts `EmptyArg` and `EmptyCell`; before T-2773 they gave
+`#VALUE!` over text or boolean flows).
+
 ## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
 (One empty values cell on its own is the exception: see "XNPV reads one empty values cell as a single 0 cash flow".)
 Rule: XIRR reads an empty value or date cell as 0. It does not skip it. A zero value adds nothing, so
@@ -2515,12 +2526,16 @@ T-2216 sweep (probes-numeric/m9-fin-rri-sweep, excel-graph, 143 rows: the web ag
 `EXP(LN(fv/pv)*(1/nper))-1`, with the reciprocal taken first; the `/nper` candidate is refuted (it misses 49 of 136).
 RRI is no worksheet form at the edges (rows 131-139): fv=0 is -1 and pv=fv=0 is 0; pv=0 with fv<>0 is `#NUM!`; nper <= 0 is
 `#NUM!` even where the worksheet forms are numbers (nper -1 and -0.5 give -0.25 and -0.4375); `RRI(1E-5,1,2)` is `#NUM!`
-(overflow) while `RRI(0.001,1,2)` is 1.0715086071861939e+301. Fix: T-2217.
+(overflow) while `RRI(0.001,1,2)` is 1.0715086071861939e+301.
+nper exactly 1 skips EXP/LN: RRI is `fv/pv-1` there. `RRI(1,826,40633)` is 48.19249394673123, `40633/826-1`, where
+`EXP(LN(40633/826)*(1/1))-1` is ...124; 32 of 32 nper-1 rows agree, while nper 0.9999999999999999 and 1.0000000000000002 (one
+ulp either side) follow the EXP/LN form (probes-numeric/m9-fin-rri-nper-one, excel-graph, 2026-10-28, T-2217; the case that
+showed it is gen-m9/1cd3096e3e87c965 Calc!A291).
 Status: VERIFIED (excel-graph)
-Implemented (T-1975): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in annuity.rs.
+Implemented (T-1975, RRI's EXP/LN form and nper-1 case T-2217): `duration_of` in functions/financial/financial_bonds.rs, `rri_of` in functions/financial/growth.rs.
 Resolved by the T-2216 sweep above: RRI.xlsx Sheet1!D12 `RRI(0.5,3,4)` is 0.7777777777777775 (Mac cached, and the web), ours
 0.7777777777777777; E12 `POWER(4/3,1/0.5)-1` is 0.7777777777777777, so RRI is not POWER/`^`. The engine's `excel_exp`/`excel_ln`
-form with `*(1/nper)` fits D12, RRI.xlsx D3-D6 and every excel-graph RRI cell above. Fix: T-2217 (supersedes T-2222).
+form with `*(1/nper)` fits D12, RRI.xlsx D3-D6 and every excel-graph RRI cell above. Implemented: T-2217 (supersedes T-2222).
 Tasks: T-1975, T-2216, T-2217
 
 ## NPV with a rate of -1 or 1E+300 is #DIV/0!
