@@ -3,7 +3,7 @@ id: T-2954
 title: "Hebrew calendar digit 8 past Cheshvan 5999 (2238-11-07): Excel's drifting dates and its #VALUE! limit"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
