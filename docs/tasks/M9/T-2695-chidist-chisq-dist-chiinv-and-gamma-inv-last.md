@@ -112,3 +112,6 @@ Cells:
 
 ## Out of scope
 - Visibly-off chi-squared and gamma cells (T-2638), and the GAMMA, GAMMALN and LN kernels themselves (T-2122).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+Four visibly-off gen-m9 cells this task named are handed on so this parked task holds only last-digit work: F.INV gen-m9/0a614cfe974b59c3 Calc!A268 and gen-m9/85f48d5cdfb24555 Calc!A12 and FINV gen-m9/85f48d5cdfb24555 Calc!A10 to T-2511; CONFIDENCE.T gen-m9/85f48d5cdfb24555 Calc!A372 to T-0967.

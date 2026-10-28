@@ -2,7 +2,8 @@
 //! the area it resolves to (SPEC-0016).
 
 use super::super::lexer::{Lexer, LexerMode};
-use super::super::token::{TableReference, TableSpecifier, TokenType};
+use super::super::token::{TableReference, TableSpacing, TableSpecifier, TokenType};
+use super::{Node, Parser};
 use crate::language::get_language;
 use crate::locale::get_locale;
 
@@ -16,8 +17,13 @@ pub struct StructuredReference {
     pub specifier: Option<TableSpecifier>,
     /// The column or column range, if any.
     pub table_reference: Option<TableReference>,
+    /// The whitespace kept inside the outer brackets (T-2801).
+    pub spacing: TableSpacing,
     /// A bare table name (`ROWS(Sales)`), or `Sales[]`, which the lexer reads as the bare name.
     pub bare: bool,
+    /// Written without the table name in a cell of the table (`=[@Col]*2`), which names the
+    /// containing table (references.md "Structured references: this row, totals and ranges", T-2979).
+    pub unqualified: bool,
 }
 
 /// The parse error of a structured reference to a table that is not there.
@@ -56,16 +62,29 @@ fn specifier_text(specifier: &TableSpecifier) -> &'static str {
 /// `#This Row`: Excel's own file has `Table9[Totals '[']^&*@'#$,,<>]` (`calc_test_tables/tables.xlsx`
 /// Escape!E6).
 fn column_text(name: &str) -> String {
-    let mut text = String::with_capacity(name.len() + 2);
-    text.push('[');
+    format!("[{}]", escaped_column(name))
+}
+
+/// [`column_text`] without its brackets.
+fn escaped_column(name: &str) -> String {
+    let mut text = String::with_capacity(name.len());
     for (index, c) in name.chars().enumerate() {
         if matches!(c, '[' | ']' | '#' | '\'') || (c == '@' && index == 0) {
             text.push('\'');
         }
         text.push(c);
     }
-    text.push(']');
     text
+}
+
+/// Whether a single column prints in the bare form `T[Col]`: an empty name or one that starts
+/// with a space keeps its own brackets, since `T[]` is the bare name and the lexer skips the
+/// space, and so does one that ends with a space, as Excel stores it (`Table3[[the two ]]`,
+/// `calc_test_tables/tables.xlsx` Hidden!B6).
+fn prints_bare(column: &str) -> bool {
+    !column.is_empty()
+        && !column.starts_with(char::is_whitespace)
+        && !column.ends_with(char::is_whitespace)
 }
 
 fn table_reference_text(table_reference: &TableReference) -> String {
@@ -79,34 +98,82 @@ fn table_reference_text(table_reference: &TableReference) -> String {
 
 impl StructuredReference {
     /// The canonical long form: `T[[#Spec],[Col]]`, `T[[#Spec],[A]:[B]]`, `T[Col]`,
-    /// `T[[A]:[B]]`, `T[#Spec]`, `T[]`, or the bare name as written (SPEC-0016 "Printing").
+    /// `T[[A]:[B]]`, `T[#Spec]`, `T[]`, or the bare name as written (SPEC-0016 "Printing"), with
+    /// the whitespace Excel keeps inside the outer brackets: the runs after `[` and before `]` as
+    /// typed, and one space after the comma where any was typed. A single column in padded
+    /// brackets drops its own: `T[ [Col] ]` prints `T[ Col ]` (syntax.md "Whitespace beside a
+    /// missing argument is kept; a structured reference keeps some and normalizes the rest";
+    /// probes/t2786-whitespace-structured-refs-runs F4:F15, T-2801).
     pub(crate) fn text(&self) -> String {
+        let qualified = self.qualified_text();
+        if !self.unqualified {
+            return qualified;
+        }
+        // Excel shows a `#This Row` reference in its `@` form (references.md "Calculated
+        // columns" rule 6: FORMULATEXT prints `=[@Col]*2` in every filled row).
+        if self.specifier == Some(TableSpecifier::ThisRow) {
+            return match &self.table_reference {
+                None => "[@]".to_string(),
+                Some(TableReference::ColumnReference(column)) if prints_bare(column) => {
+                    format!("[@{}]", escaped_column(column))
+                }
+                Some(reference) => format!("[@{}]", table_reference_text(reference)),
+            };
+        }
+        qualified[self.table_name.len()..].to_string()
+    }
+
+    /// The text kept in storage (R1C1), which the parser reads back with no table to infer the
+    /// name from: an unqualified reference keeps its table as a `[T]` prefix (`[T][[#This
+    /// Row],[Col]]`), so two tables on one sheet never share `[@Col]*2` (T-2979). Any other
+    /// reference is [`Self::text`].
+    pub(crate) fn stored_text(&self) -> String {
+        if self.unqualified {
+            let qualified = self.qualified_text();
+            format!(
+                "[{}]{}",
+                self.table_name,
+                &qualified[self.table_name.len()..]
+            )
+        } else {
+            self.text()
+        }
+    }
+
+    /// [`Self::text`] with the table name, whether or not it was written.
+    fn qualified_text(&self) -> String {
         let name = &self.table_name;
         if self.bare {
             return name.clone();
         }
+        let TableSpacing {
+            open,
+            close,
+            comma_space,
+        } = &self.spacing;
+        let comma = if *comma_space { ", " } else { "," };
         match (&self.specifier, &self.table_reference) {
             (None, None) => format!("{name}[]"),
-            (Some(specifier), None) => match specifier {
-                TableSpecifier::HeadersData | TableSpecifier::DataTotals => {
-                    format!("{name}[{}]", specifier_text(specifier))
-                }
-                _ => format!("{name}{}", specifier_text(specifier)),
-            },
-            // `T[Col]`; an empty name or one that starts with a space keeps its own brackets,
-            // since `T[]` is the bare name and the lexer skips the space, and so does one that ends
-            // with a space, as Excel stores it (`Table3[[the two ]]`, calc_test_tables/tables.xlsx
-            // Hidden!B6).
-            (None, Some(TableReference::ColumnReference(column)))
-                if !column.is_empty()
-                    && !column.starts_with(char::is_whitespace)
-                    && !column.ends_with(char::is_whitespace) =>
+            // A specifier pair keeps its outer brackets, and so does a lone specifier typed with
+            // padding inside them (unprobed).
+            (Some(specifier), None)
+                if self.spacing.is_padded()
+                    || matches!(
+                        specifier,
+                        TableSpecifier::HeadersData | TableSpecifier::DataTotals
+                    ) =>
             {
-                format!("{name}{}", column_text(column))
+                format!("{name}[{open}{}{close}]", specifier_text(specifier))
             }
-            (None, Some(reference)) => format!("{name}[{}]", table_reference_text(reference)),
+            (Some(specifier), None) => format!("{name}{}", specifier_text(specifier)),
+            (None, Some(TableReference::ColumnReference(column))) if prints_bare(column) => {
+                format!("{name}[{open}{}{close}]", escaped_column(column))
+            }
+            (None, Some(reference)) => {
+                format!("{name}[{open}{}{close}]", table_reference_text(reference))
+            }
             (Some(specifier), Some(reference)) => format!(
-                "{name}[{},{}]",
+                "{name}[{open}{}{comma}{}{close}]",
                 specifier_text(specifier),
                 table_reference_text(reference)
             ),
@@ -120,8 +187,69 @@ impl StructuredReference {
         if self.bare {
             format!("{}[]", self.table_name)
         } else {
-            self.text()
+            self.qualified_text()
         }
+    }
+}
+
+impl Parser {
+    /// An operand starting with `[` (the lexer's `LeftBracket`, just read): a structured
+    /// reference written without its table name, which names the table holding the formula's
+    /// cell, its totals row included (`=[@Col]*2`, `=SUBTOTAL(109,[Col])`; references.md
+    /// "Structured references: this row, totals and ranges", T-2979). Stored (R1C1) text carries
+    /// the table as a `[T]` prefix (`StructuredReference::stored_text`). Outside every table the
+    /// operand is refused, as before.
+    pub(super) fn unqualified_structured_reference(&mut self) -> Node {
+        let refused =
+            |parser: &mut Self| parser.unexpected_operand("Unexpected token: '['".to_string());
+        let table_name = if self.lexer.is_a1_mode() {
+            let Some(name) = self.containing_table_name() else {
+                return refused(self);
+            };
+            // Back onto the `[` just read (any whitespace before it is already behind).
+            self.lexer
+                .rewind_to(self.lexer.get_position_index().saturating_sub(1));
+            name
+        } else {
+            let Some(name) = self.lexer.stored_table_prefix() else {
+                return refused(self);
+            };
+            name
+        };
+        let Ok(TokenType::StructuredReference {
+            table_name,
+            specifier,
+            table_reference,
+            spacing,
+        }) = self.lexer.consume_structured_reference(&table_name)
+        else {
+            return refused(self);
+        };
+        let mut node = self.structured_reference_operand(
+            table_name,
+            specifier,
+            table_reference,
+            spacing,
+            false,
+        );
+        if let Node::StructuredReferenceKind { reference, .. } = &mut node {
+            reference.unqualified = true;
+        }
+        node
+    }
+
+    /// The name of the table whose range (headers and totals row included) holds the formula's
+    /// cell, if any.
+    fn containing_table_name(&self) -> Option<String> {
+        let context = &self.context;
+        self.tables.values().find_map(|table| {
+            let (column_start, row_start, column_end, row_end) =
+                parse_range(&table.reference).ok()?;
+            (table.is_on_sheet(&context.sheet)
+                && (column_start..=column_end).contains(&context.column)
+                && (row_start..=row_end).contains(&context.row))
+            .then(|| table.name.clone())
+        })
     }
 }
 

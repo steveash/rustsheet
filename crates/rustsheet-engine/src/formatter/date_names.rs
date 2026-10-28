@@ -2,15 +2,14 @@
 //! Hijri calendar of the `B2` prefix. Evidence for Hijri: probes/t1613-hijri-b2 and
 //! t1613-hijri-b2-weekday (excel-graph, 2026-10-25); number-formats.md "The `B2` (Hijri) calendar".
 
-use super::parser::TextToken;
+use super::{calendar_dates::real_day, parser::TextToken};
 use crate::locale::{
     excel_date_names::{DateNames, HIJRI_ARABIC},
     Locale,
 };
 
-/// Days from 1 Muharram 1 AH to the proleptic Gregorian 1899-12-30, the day a serial from 61 on
-/// counts from: the Hijri epoch Excel uses is 622-07-18, which replays all 103 probed dates. Serials
-/// 1 to 59 sit one day later because Excel's serials count a fictitious 1900-02-29 (serial 60).
+/// Days from 1 Muharram 1 AH to the proleptic Gregorian 1899-12-30, the day [`real_day`] counts
+/// from: the Hijri epoch Excel uses is 622-07-18, which replays all 103 probed dates.
 const HIJRI_DAYS_TO_1899_12_30: i64 = 466_580;
 
 /// Days in a 30-year Hijri cycle: 19 years of 354 days and 11 of 355.
@@ -26,13 +25,7 @@ fn is_hijri_leap(year_in_cycle: i64) -> bool {
 /// calendar above. Serial 0 shows serial 1's date ("1317-08-29") and serial 60, the fictitious
 /// 1900-02-29, is `None` (`#VALUE!`), as are serials outside `0..=2958465`.
 pub(crate) fn hijri_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
-    let days = match serial_1900 {
-        // Serial 0 shows serial 1's date.
-        0 => 1 + HIJRI_DAYS_TO_1899_12_30 + 1,
-        1..=59 => serial_1900 + HIJRI_DAYS_TO_1899_12_30 + 1,
-        61..=2_958_465 => serial_1900 + HIJRI_DAYS_TO_1899_12_30,
-        _ => return None,
-    };
+    let days = real_day(serial_1900)? + HIJRI_DAYS_TO_1899_12_30;
     let (cycles, mut rest) = (days / HIJRI_CYCLE_DAYS, days % HIJRI_CYCLE_DAYS);
     let mut year_in_cycle = 1;
     loop {

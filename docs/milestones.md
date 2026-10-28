@@ -47,6 +47,7 @@ A failure whose only open question needs desktop Excel evidence has its filed ta
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
 the oracle of record for Phases 1–3 (decision 0039). Such a visibly-off cell, once a decision names
 it, is a line of `eval/milestones/phase1-exceptions.tsv` and leaves the Phase 1 rate (decision 0134).
+A visibly-off cell that only open M14 tasks own leaves it too, with no line (decision 0143).
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).
@@ -215,7 +216,9 @@ its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** generated dynamic-array suite (≥ 10k cells, spill shapes included) at ≥ 99.9%;
 spill extents identical to Excel;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M7 row (decision 0140): gen-m7 alone, spill-extent failures of
+gen-m7 and the M7 probes required to be 0, at visible parity (decision 0114).
 
 ## M8 — Names, tables, structured references, multi-sheet
 

@@ -1200,3 +1200,19 @@ not yet (T-2824).
 probes/t2065-lift-median, -large, -small failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs).
 Status: UNVERIFIED (desktop question, M14 T-1075 item 18, decision 0039).
 Tasks: T-2065, T-2063, T-2064, T-2823, T-2824
+
+## MATCH match_type that is a reference to an error cell is #REF! (excel-graph)
+Rule: `MATCH(30,A1:A5,M2)` with M2 `=NA()` gives `#REF!` (ERROR.TYPE 4) in Excel for the web, not the #N/A the
+error carries; the literal `NA()` as match_type and the same reference as VLOOKUP/HLOOKUP range_lookup propagate #N/A.
+Evidence: probes/m2-argument-kind-gaps Calc!A25 (T-2861, excel-graph, 2026-10-27); the other 78 cells of that case (empty text,
+error, fraction, boolean and numeric text as literal and as a reference in DAY, YEAR, IF, INDEX, MATCH, VLOOKUP, HLOOKUP, LEFT, RIGHT,
+MID, SUMIF, SUMIFS) match ours.
+This extends Rule 2 of "MATCH descending search scans from the top; a text match_type read from a cell is #REF!" and the VLOOKUP/HLOOKUP
+reference-index rule: a non-numeric value (text, `=""`, an error) read from a cell in these arguments is #REF! (A22, A25; HLOOKUP row_index_num
+M1/M2 = 4 at A32, A35, while the literals give 3 and 7 at A31, A33). T-2965 extends `match_type_arg`, not a parallel path.
+All seven error kinds (#N/A, #DIV/0!, #NUM!, #REF!, #VALUE!, #NAME?, #NULL!) as the referenced cell give #REF!, also when
+IF picks the reference and for a multi-cell range of error cells (E8, no implicit intersection: its row is outside the range): probes/match-type-error-reference
+E1:E8, F1:F7 (excel-graph, 2026-10-28).
+A literal error as match_type still propagates it (`NA()` gives #N/A, `#DIV/0!` gives #DIV/0!; probes/m2-argument-kind-gaps A23, A24).
+Status: VERIFIED (web).
+Tasks: T-2861, T-2965. Implemented in: `match_type_arg` (lookup_and_reference/mod.rs).

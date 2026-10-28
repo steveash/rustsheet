@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A2": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "B2": {
+    "t": "s",
+    "v": "=FTEST({1;2;3},@ERROR.TYPE(#REF!))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "4cd9357c77ee7d87a401c526ff7f5e66b0475c07a4e6499427ff295890ad66d5",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-27T20:36:49+00:00",
+  "version": null,
+  "workbook_name": "98fa3fa7df77b80f230fc8b3a73a65e9f1280784045ce6648908196ee3d6ed6a.xlsx"
+ }
+}

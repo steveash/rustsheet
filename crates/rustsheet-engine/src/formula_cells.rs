@@ -148,17 +148,30 @@ impl Model {
         style: i32,
     ) -> Result<i32, String> {
         let formula_index = self.shared_formula_index(sheet, node)?;
+        self.set_cell_with_formula_index(sheet, row, column, formula_index, style)?;
+        Ok(formula_index)
+    }
+
+    /// Stores the sheet's shared formula `formula_index` in the cell, as a dynamic anchor unless
+    /// its static result is a scalar.
+    fn set_cell_with_formula_index(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula_index: i32,
+        style: i32,
+    ) -> Result<(), String> {
         let is_dynamic = !matches!(
             self.parsed_formulas[sheet as usize][formula_index as usize].static_result,
             StaticResult::Scalar
         );
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         if is_dynamic {
-            worksheet.set_cell_with_dynamic_formula(row, column, formula_index, style, 1, 1)?;
+            worksheet.set_cell_with_dynamic_formula(row, column, formula_index, style, 1, 1)
         } else {
-            worksheet.set_cell_with_formula(row, column, formula_index, style)?;
+            worksheet.set_cell_with_formula(row, column, formula_index, style)
         }
-        Ok(formula_index)
     }
 
     /// Stores `node` as `set_user_input` stores a formula: with `style`, then the number format
@@ -171,7 +184,20 @@ impl Model {
         node: Node,
         style: i32,
     ) -> Result<(), String> {
-        let formula_index = self.set_cell_with_formula_node(sheet, row, column, node, style)?;
+        let formula_index = self.shared_formula_index(sheet, node)?;
+        self.set_formula_index_with_units(sheet, row, column, formula_index, style)
+    }
+
+    /// [`Model::set_formula_node_with_units`] for a formula the sheet already shares, by index.
+    pub(crate) fn set_formula_index_with_units(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula_index: i32,
+        style: i32,
+    ) -> Result<(), String> {
+        self.set_cell_with_formula_index(sheet, row, column, formula_index, style)?;
         let cell = CellReferenceIndex { sheet, row, column };
         let parsed_formula =
             &self.parsed_formulas[sheet as usize][formula_index as usize].evaluated;

@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Typed SINGLE (T-2938, 5/9): =SINGLE(ERROR.TYPE(#REF!)) entered as typed text in A2 (ERROR.TYPE of #REF!); does Excel take SINGLE as the @ operator? FORMULATEXT beside it shows what Excel stores.",
+  "tags": [
+    "M2",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": 10,
+        "C2": 20,
+        "C3": 30,
+        "A2": {
+          "entered": "=SINGLE(ERROR.TYPE(#REF!))"
+        },
+        "B2": "=FORMULATEXT(A2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A2",
+    "Sheet1!B2"
+  ]
+}

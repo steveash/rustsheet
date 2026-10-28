@@ -297,6 +297,26 @@ fn edit_columns(columns: &mut Vec<TableColumn>, edit: ColumnEdit) {
     }
 }
 
+/// Appends one column to `columns` and returns its name: `name` when no column of the table has
+/// that name (compared ignoring case), else `ColumnN` as [`edit_columns`] names an inserted
+/// column.
+pub(crate) fn append_column(columns: &mut Vec<TableColumn>, name: Option<&str>) -> String {
+    let free = name.filter(|name| {
+        let lower = name.to_lowercase();
+        !columns.iter().any(|c| c.name.to_lowercase() == lower)
+    });
+    let index = columns.len();
+    edit_columns(columns, ColumnEdit { index, delta: 1 });
+    let Some(column) = columns.last_mut() else {
+        // `edit_columns` has just appended the column.
+        return String::new();
+    };
+    if let Some(name) = free {
+        name.clone_into(&mut column.name);
+    }
+    column.name.clone()
+}
+
 /// The header cells (row, column, name) of the columns the insert `edit` added to `table`, whose
 /// reference and column list are already edited; none for a delete or a table without a header
 /// row.
@@ -432,7 +452,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{column_span, edit_columns, row_span, ColumnEdit, Span};
+    use super::{append_column, column_span, edit_columns, row_span, ColumnEdit, Span};
     use crate::types::TableColumn;
 
     /// Header row 3, data rows 4-7, no totals row.
@@ -519,6 +539,26 @@ mod tests {
 
     fn names(columns: &[TableColumn]) -> Vec<(u32, &str)> {
         columns.iter().map(|c| (c.id, c.name.as_str())).collect()
+    }
+
+    /// A typed header names the appended column unless the table has that name already; then the
+    /// column is `ColumnN` (T-2968).
+    #[test]
+    fn appended_columns_take_a_free_name_or_column_n() {
+        let mut columns = named(&["Col", "Other"]);
+        assert_eq!(append_column(&mut columns, None), "Column1");
+        assert_eq!(append_column(&mut columns, Some("0")), "0");
+        assert_eq!(append_column(&mut columns, Some("0")), "Column2");
+        assert_eq!(
+            names(&columns),
+            [
+                (1, "Col"),
+                (2, "Other"),
+                (3, "Column1"),
+                (4, "0"),
+                (5, "Column2")
+            ]
+        );
     }
 
     #[test]

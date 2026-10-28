@@ -232,8 +232,8 @@ impl Engine for RustSheetEngine {
                         if !formulas {
                             spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
-                        for (addr, a1, input) in row_major(&sheet.cells)? {
-                            let Some(mut input) = spec_input(input) else {
+                        for (addr, a1, input_spec) in row_major(&sheet.cells)? {
+                            let Some(mut input) = spec_input(input_spec) else {
                                 continue;
                             };
                             // spec2xlsx writes these as plain `<f>` formulas (T-1077).
@@ -242,8 +242,20 @@ impl Engine for RustSheetEngine {
                                     input = Input::LegacyFormula(text.clone());
                                 }
                             }
-                            let is_formula =
-                                matches!(input, Input::StoredFormula(_) | Input::LegacyFormula(_));
+                            // Entered text goes after the tables, as the oracle types it after
+                            // the workbook loads: a structured reference in a typed formula
+                            // parses only once its table exists (probes/t2786-whitespace-
+                            // structured-refs-runs, T-2801), and a constant typed into a table
+                            // column after a typed formula is an exception to its calculated
+                            // column (probes/t2957-constant-exception, T-2958).
+                            let is_formula = match &input {
+                                Input::StoredFormula(_) | Input::LegacyFormula(_) => true,
+                                Input::Parse(text) => {
+                                    text.starts_with('=')
+                                        || matches!(input_spec, CellInput::Entered { .. })
+                                }
+                                _ => false,
+                            };
                             if is_formula != formulas {
                                 continue;
                             }
@@ -792,6 +804,29 @@ mod tests {
         assert_eq!(at(1), Some(Value::Number(5.0)));
         assert_eq!(at(2), Some(Value::Number(5.0)));
         assert_eq!(at(3), Some(Value::Number(7.0)));
+    }
+
+    #[test]
+    fn spec_typed_formulas_go_in_after_the_tables() {
+        // A typed `=...` reads a structured reference, so it goes in after the tables; typed text
+        // that is not a formula stays a value (`(4)` is -4). T-2955, T-2801.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":"Col","A2":3,"A3":{"entered":"(4)"},
+                "C1":{"entered":"=SUM(T[Col])"},"C2":{"entered":"=A3*2"}},
+                "tables":[{"name":"T","ref":"A1:A3"}]}]}"#,
+        );
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
+        assert_eq!(
+            evaluated.value("S", Addr { row: 1, col: 3 }),
+            Some(Value::Number(-1.0))
+        );
+        assert_eq!(
+            evaluated.value("S", Addr { row: 2, col: 3 }),
+            Some(Value::Number(-8.0))
+        );
     }
 
     #[test]

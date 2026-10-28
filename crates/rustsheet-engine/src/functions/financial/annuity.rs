@@ -183,9 +183,11 @@ fn accurate_period_split(
 /// is a round point between them, not pinned).
 const GROWTH_LOG_SERIES_TO: f64 = 0.375;
 
-/// At or below this rate PPMT keeps the exact form, which matches `PPMT(-0.5,1,277,73630,609)`
-/// (-37119.5) where the discounted one is 25 ulp off; other -0.5 cells fit neither (T-2588).
-const DISCOUNTED_RATE_FROM: f64 = -0.375;
+/// At or below this rate `1+rate` has no log and PPMT keeps the exact form; above it, Excel's is
+/// the discounted one, probed down to -0.9 (probes-numeric/ppmt-negative-rate-sweep, T-2588).
+const DISCOUNTED_RATE_FROM: f64 = -1.0;
+/// 2^-600: [`discounted_principal`] scales `pv+fv` by it where the double product overflows.
+const OVERFLOW_SCALE: f64 = 2.409_919_865_102_884e-181;
 
 /// The series stops once a term leaves the sum unchanged; for |rate| < 0.375 each term is under
 /// 0.025 of the one before, so about 11 terms. This only bounds the loop.
@@ -228,9 +230,10 @@ const SHORT_GROWTH: f64 = 1e-6;
 /// Excel's expm1 of `-nper*L` and the whole divided by `1+rate` for type 1, rounded once. It is the
 /// exact `-(pv+fv)*rate*P_e/(P-1)` with Excel's own power, several ulp off the exact one for long
 /// terms (`PPMT(0.1,1,360,10000)` is -1.2549699967849914E-12, the exact value
-/// -1.254969996784983E-12). `None` for a rate at or below [`DISCOUNTED_RATE_FROM`], where Excel is
-/// the exact form instead (`PPMT(-0.5,1,277,73630,609)` is -37119.5, gen-m9 762cd0e4ec9a7aa9 A5),
-/// below [`SHORT_GROWTH`], and where a factor or the result is not finite and normal.
+/// -1.254969996784983E-12). `None` for a rate at or below [`DISCOUNTED_RATE_FROM`], below
+/// [`SHORT_GROWTH`], and where a factor or the result is not finite and normal. Where `pv+fv`
+/// times the discount passes the double range, the product is rescaled ([`OVERFLOW_SCALE`]), which
+/// gives Excel's value there.
 ///
 /// `past_range` is the form where the exact one declines, `(1+rate)^nper` past about 1E+270: a
 /// discount below the normal range is then 0 and so is PPMT, as Excel's is (`PPMT(42,10,303,8292,
@@ -261,12 +264,25 @@ fn discounted_principal(
     if !discount.is_normal() {
         return past_range.then_some(0.0);
     }
-    let owed = dd_mul(dd_mul(two_sum(pv, fv), (rate, 0.0)), (discount, 0.0));
-    let mut principal = negated(dd_div(owed, (periods, 0.0)));
-    if period_start {
-        principal = dd_div(principal, two_sum(1.0, rate));
+    let principal_at = |scale: f64| {
+        let (hi, lo) = two_sum(pv, fv);
+        let owed = dd_mul(
+            dd_mul((hi * scale, lo * scale), (rate, 0.0)),
+            (discount, 0.0),
+        );
+        let mut principal = negated(dd_div(owed, (periods, 0.0)));
+        if period_start {
+            principal = dd_div(principal, two_sum(1.0, rate));
+        }
+        principal.0 / scale
+    };
+    let mut principal = principal_at(1.0);
+    if !principal.is_finite() {
+        // Excel has the exact value where the double product overflows (an extended-range
+        // intermediate?): `PPMT(-0.5,4,230,1E+300)` is -6.249999999999966E+298 (gen-m9
+        // 67a4c03afd63f988 A180). A power-of-two scale keeps every bit of the product.
+        principal = principal_at(OVERFLOW_SCALE);
     }
-    let principal = principal.0;
     let usable = if past_range {
         principal.is_finite()
     } else {
@@ -912,6 +928,31 @@ mod tests {
         // Period 1 of type 1 is 0 even where PMT is #NUM!; PPMT is PMT there.
         assert_eq!(ipmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Ok(0.0));
         assert_eq!(ppmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Err(Error::NUM));
+    }
+
+    /// PPMT at negative rates down to -1 is the discounted form, and where `pv+fv` times the
+    /// discount passes the double range it still has Excel's value (gen-m9 79d87fc527927626 A46,
+    /// 5422bdbf173fc233 A383, d0854366830dcdee A335, 762cd0e4ec9a7aa9 A5, 67a4c03afd63f988 A180;
+    /// financial.md "PPMT discounts with an atanh-series log").
+    #[test]
+    fn principal_at_negative_rates() {
+        let ppmt = |r, per, n, pv, fv| period_payments(r, per, n, pv, fv, false).1;
+        assert_eq!(
+            ppmt(-0.5, 5.0, 294.0, 171_132.0, 0.0),
+            Ok(-5_347.875_000_000_112)
+        );
+        assert_eq!(
+            ppmt(-0.5, 13.0, 246.0, 37_796.0, 36.0),
+            Ok(-4.618_164_062_499_897)
+        );
+        // A fractional period is an ulp off Excel's -56630.48966324223 (bits are T-2243's).
+        let fractional = ppmt(-0.5, 1.999, 97.0, 226_365.0, 0.0).unwrap_or(f64::NAN);
+        assert!((fractional / -56_630.489_663_242_23 - 1.0).abs() < 5e-16);
+        assert_eq!(ppmt(-0.5, 1.0, 277.0, 73_630.0, 609.0), Ok(-37_119.5));
+        assert_eq!(
+            ppmt(-0.5, 4.0, 230.0, 1e300, 0.0),
+            Ok(-6.249_999_999_999_966e298)
+        );
     }
 
     /// IPMT takes Excel's own discount where it moves the value past a few ulp: long terms at

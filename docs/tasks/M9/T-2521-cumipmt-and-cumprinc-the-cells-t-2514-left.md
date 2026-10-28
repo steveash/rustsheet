@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: [T-2514]
+campaign: visible
 ---
 
 ## Goal
@@ -49,3 +50,14 @@ Code: functions/financial/cumulative.rs.
 
 ## Out of scope
 - Bit-exact fits of cells that are already visibly right (T-1374).
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off cells of CUMIPMT (6 of 9) and CUMPRINC (3). Fixing them lifts CUMPRINC to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells. CUMIPMT also needs its other 3 cells owned (T-0087 sweep).
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): CUMIPMT 1. This task now owns them:
+- probes/fin-cumipmt-overflow-and-forms: Sheet1!A10

@@ -2,7 +2,8 @@
 
 - **Status:** accepted
 - **Milestone / lane:** M11 / perf
-- **Tasks:** T-0456 (this spec); T-0469, T-0470, T-0471 (Rollout)
+- **Tasks:** T-0456 (this spec); T-0469, T-0470, T-0471 (Rollout); T-0488 (Amendment 1); T-0491,
+  T-0492, T-0493, T-0494 (its Rollout)
 
 ## Problem
 In an aggregate over an element-wise expression of whole columns, every operand becomes a
@@ -224,3 +225,186 @@ Only a walk whose visitor folds numbers skips the repeats.
    element sequence per argument.
 
 Until a task lands, its expressions take today's path unchanged.
+
+## Amendment 1 (T-0488): UNIQUE, LOOKUP, SMALL and LARGE; bounded ranges; ROW()
+Status: accepted with the spec. It widens what is tailed and adds consumers, and supersedes
+three things above for what it lists. The non-goals "every other consumer keeps today's code"
+and "lookups" no longer cover LOOKUP's vector form, UNIQUE, SMALL and LARGE. "Which expressions
+are tailed" now also takes bounded single-column spans and `ROW(<leaf range>)`. `Tailed` covers
+such a span. For the expressions T-0469 already takes, nothing changes.
+
+### Problem
+Gap triage 2026-10-27 found the three slowest corpus-bench cases, all passing, outside the
+aggregate walk. Each formula still builds 1,048,576-row arrays, or 69,999-row ones in 59969:
+- **45896** (17.6 s): 27 `TEXTJOIN(",",TRUE,UNIQUE(IF(A2=ZORD!A:A,ZORD!C:C,"")))` over a 75-row
+  sheet. UNIQUE consumes the whole-column IF. TEXTJOIN gets UNIQUE's short result, so TEXTJOIN
+  need not be tailed for this file.
+- **33935** (8.6 s): 29 `IF(L3>1,LOOKUP(2,1/(J:J<>""),J:J))`, the last-non-empty idiom. LOOKUP's
+  approximate search consumes the whole-column quotient.
+- **59969** (5.7 s): `IFERROR(INDEX(Report!G:G,SMALL(IF((Report!$A$2:$A$70000=Form!$B$3)*
+  (Report!$B$2:$B$70000=Form!$B$5),ROW(Report!$A$2:$A$70000)),ROWS($A$1:A1))),"")`. Its ranges
+  are bounded, they run far past the used area, and ROW() is a position-dependent operand. SMALL is
+  the consumer.
+
+The bench `aggregate -- tailed_consumers` (T-0488) reproduces the three shapes over 2,000 rows.
+
+### 1. Bounded ranges past the used area are tailed leaves
+A range leaf may be any single-column `RangeKind` on one sheet, written with its rows `top` to
+`bottom`, not only rows 1 to 1,048,576.
+- **Common span.** Every range leaf of the argument has the same `top` and `bottom`. If they
+  differ, the argument is refused. Today's evaluation broadcasts and pads ragged operands with
+  `#N/A` (arrays.md), and one head length cannot express that.
+- **Head and tail.** The head ends at `H = clamp(used_end, top, bottom)`, where `used_end` is the
+  last used row over the leaves' sheets (as before). Each leaf evaluates as rows `top..=H`, so a
+  used area that ends above `top` still gives a one-row head. The tail stands for
+  `tail_len = bottom - H` rows, and the gain rule becomes `tail_len >= MIN_TAILED_ROWS`.
+- **Records.** `clip_to_used_area` cuts only whole columns and rows. For a bounded range,
+  `evaluate_range` reads every cell past the used area one by one, each on record as read empty.
+  So `tailed_operand` calls `clip_block_to_used_area` instead (T-0491). It records the same cells
+  as one rectangle, the record T-0405's block walks make, and makes the same cut as
+  `clip_to_used_area` for a whole column. When the formula's seen-range budget cannot pay for the
+  rectangle, the block is not cut: the head is then stale, and the argument is read the ordinary
+  way. A rectangle spends one from the formula's seen-range budget, where the cell-by-cell
+  reading spends none, so a formula at the cap reaches it one rectangle sooner (references.md
+  "Seen-range cap"; a directive 5 limit, as for the stale-head read under Evaluation).
+- **Size checks.** They apply to the logical size `bottom - top + 1`. For one column that is never
+  above the array bound, so as before no size check differs.
+- **Whole columns.** A whole column is the case `top = 1`, `bottom = 1,048,576`. A formula that
+  mixes `F:F` with `F2:F70000` has two spans and is refused.
+
+### 2. ROW() over a leaf range: a position leaf with a sentinel tail
+`ROW(r)` is position-dependent, so its tail row is not one value. Within the argument's
+expression it is an arithmetic sequence. Only one thing matters: whether a tail row's
+*result* depends on that sequence. In 59969 it does not, because the IF's condition is 0 in
+every tail row and the IF picks FALSE.
+
+The sentinel rule:
+- **Static check.** A `FunctionKind { kind: Row, args: [r] }` node is a **position leaf** when `r`
+  is a range leaf node with the argument's common span. The leaf is the ROW node. `r`'s sheet joins
+  the leaves' sheets. ROW with no argument, or over anything else, keeps the refusal. COLUMN is not
+  taken: no corpus formula needs it.
+- **Head.** The position leaf evaluates as the column `{top; top+1; …; H}`, which is ROW of the
+  head range. ROW reads no cell, so there is nothing to record.
+- **Tail.** The position leaf evaluates as the one-element array `{#N/IMPL}` (`Error::NIMPL`), the
+  sentinel.
+- **Fallback.** If the tail element *is* `Error::NIMPL`, the argument has no tail row:
+  `Tailed::elements` returns `None`, and the consumer reads the argument the ordinary way. Every
+  consumer already does this for a shape it cannot take. A `Tailed` built with position leaves
+  carries a flag saying the sentinel check applies.
+
+Why a tail element other than the sentinel is the value of every tail row:
+- The tailed expressions are value operators and IF (with ROW only as a leaf). Each output element
+  is a function of the same-position operand elements.
+- Each operator returns an error operand's error regardless of the other operand's value, the
+  left one first (arithmetic.rs). IF returns its condition's error, and otherwise one branch.
+- By induction, each subexpression is either independent of the ROW values or the sentinel.
+  - An operator with a sentinel operand returns the sentinel, unless the other operand is an error
+    that takes precedence. In that case the result is that error for every ROW value too.
+  - An IF with a sentinel condition returns the sentinel. Otherwise the IF returns the branch it
+    picks.
+- A real `#N/IMPL` from a cell or scalar in the tail is mistaken for the sentinel. That only causes
+  the fallback, which is today's path, so the collision is safe.
+- The argument holds only for the value operators and IF. A function that turns an error into a
+  value (IFERROR, ISERROR, ISNA, …) would hide the sentinel, so any task that adds a tailed
+  function must prove the rule again for it, or refuse ROW leaves beneath it.
+
+### 3. Consumers
+Each consumer reads its argument with `read_tailed` and the reading it uses today, so the head and
+the tail are that reading's two evaluations. When `Tailed::elements` returns `None`, the consumer
+falls back as the aggregate walk does. The shape checks and the lift costs use the logical size,
+`head + tail_len` rows.
+- **UNIQUE** (`fn_unique`, `eval_to_array_keep_blank`). `unique_of` keys rows, keeps the first
+  occurrence of each key, and with `exactly_once` keeps the keys counted once. For any `n >= 2`,
+  the head followed by `n` copies of the tail row gives the same result as the head followed by
+  exactly two copies, and `tail_len >= 4,096`. So the consumer runs `unique_of` unchanged on
+  `head ++ [t, t]`. The value, the `#CALC!` of an empty result, and the order are identical by
+  construction.
+  - Tailed only when `by_col` and `exactly_once` are absent or literals; this is a static check.
+    With `by_col` TRUE, one column is one key over 1,048,576 rows, and the result is the full
+    column. The lifted flags (an array `by_col`) keep today's path.
+  - The lift cost is `LiftCost::Cells` of the logical size, so the budget is charged as today.
+- **LOOKUP, vector form** (`lookup_search`, `evaluate_node_with_reference`). This applies to
+  `lookup_vector` with a `result_vector` present. In the array form the result is taken from the
+  table itself, so that form keeps today's path.
+  - `SearchData` is already a head followed by a virtual tail of empty cells (`len` past
+    `values`). `approximate_search` never enters that tail, because it only stops on elements of
+    the target's kind.
+  - A tail element of no `value_kind` (an error, as `1/FALSE` gives in 33935, or an empty
+    element) is skipped the same way for every target. The search vector is then
+    `values = head`, `len = head + tail_len`, and every position it finds is in the head.
+  - A tail of a searched kind (number, text, boolean) keeps today's path. A run of equal keys at
+    the end would need the binary search's midpoints over the run, and no corpus formula needs it.
+  - The vector checks (`rows > 1`, the by-row rule) use the logical size. `result_vector` is read
+    as today, after the search.
+- **SMALL and LARGE** (`ranked_numbers`, through `numbers_from_reference_arg`). Today the
+  argument's array is first checked by `nested_array_error`, which returns `#N/A` if any element is
+  a nested array, whatever comes before it. Then `values_from_array` gives the first plain error in
+  row-major order (a Lambda or nested element is `#VALUE!` there), or else the numbers. Any other
+  element is no number. A tailed argument has literals, one-cell references, ranges, the value
+  operators and IF, none of which can give a nested or Lambda element, so only the plain-error rule
+  applies.
+  - Tailed: the head's first error. Failing that, the tail's error if the tail is one. Failing
+    that, the head's numbers, followed by `tail_len` copies of the tail if it is a number.
+  - A FALSE, text or empty tail adds nothing (59969). A numeric tail allocates `tail_len` numbers,
+    at most 1,048,576 `f64`s, which is today's bound.
+  - The RANK family (`numbers_from_rank_ref_arg`) keeps today's path. Its arrays become arrays of
+    `#VALUE!`.
+- **TEXTJOIN** (contract only; not filed). No corpus file needs it: 45896's TEXTJOIN consumes a
+  short UNIQUE result. If a file does, the contract below holds. In each case the first visit of
+  the tail element decides what every later copy does:
+  - An empty-text or `Empty` tail with ignore_empty TRUE adds nothing.
+  - With ignore_empty FALSE, an `Empty` tail adds `tail_len` delimiters through `push_empties`, the
+    count used for blank runs. An empty-text tail also adds `tail_len` delimiters, by the same count.
+  - Any other text, number or boolean tail is pushed copy by copy until the join is over the limit.
+    That takes at most 32,768 pushes, since each copy adds at least one unit. Past the limit,
+    nothing more changes.
+  - An error tail is returned at its first copy, unless the join is over the limit once the
+    delimiter before that copy is counted (`exceeds_with_separator`). In that case the error is
+    dropped, as `push_cell` drops it (probes/text-result-limit-errors,
+    probes/textjoin-array-limit-empty-strings).
+
+### 4. Invariants per consumer
+- **Values and errors.** Each consumer sees its argument's element sequence through the same
+  reading and kernel as today: `unique_of`, `approximate_search`, `nested_array_error` with
+  `values_from_array`, or the TEXTJOIN walk. The value, the error kind and the error precedence are
+  the materialized path's, so later arguments are evaluated or skipped exactly as today.
+- **Reads and records.** These are the T-0469 rules: the same clip records, the one-cell
+  references read again in the tail, the stale-head fallback, and no tail when the pass is
+  abandoned. A bounded leaf records the rectangle its own `evaluate_range` records. A position leaf
+  reads nothing.
+- **Size checks.** The `#ERROR!` bound above 1,048,576 cells and the VSTACK/EXPAND caps
+  (arrays.md) apply to the logical size, as do the lift costs. One column never exceeds the bound,
+  so no check changes outcome. The cell budget (SPEC-0024) is charged for the cells
+  `evaluate_range` builds, which is the head, as in T-0469.
+
+### Test plan (per Rollout task)
+- **Equivalence tests** in `test/test_tailed_array.rs`, each formula with `TAILED_OFF` and without,
+  as T-0469 does, and with a count of tailed reads:
+  - bounded spans that start above, inside and below the used area;
+  - mixed spans (refused);
+  - a ROW tail picked (fallback) and not picked (tailed);
+  - a real `#N/IMPL` in the tail (fallback);
+  - UNIQUE with `exactly_once` TRUE and FALSE, a tail equal to a head value, an all-tail result,
+    and by_col (refused);
+  - LOOKUP with an error tail, an empty tail and a numeric tail (refused), and the array form
+    (refused), with a target whose kind differs from the head's last element, so the search's
+    midpoints are exercised;
+  - SMALL and LARGE with an error in the head and in the tail, and with numeric, FALSE and empty
+    tails.
+- **Eval.** `rustsheet-eval check`, 0 regressions in every gated suite.
+- **Measures.** The corpus-bench file each task names, under 1 s through the harness, and the
+  matching `aggregate -- tailed_consumers` line.
+
+### Rollout
+1. **T-0491 (M).** Bounded range leaves and ROW position leaves in `tailed_leaves`, `read_tailed` and
+   `tailed_operand`, with the sentinel check in `Tailed::elements`, for the existing consumers
+   (aggregate walk, SUMPRODUCT). Measure: the equivalence tests; the speed-up is measured by T-0492.
+2. **T-0492 (S, after T-0491).** SMALL and LARGE as consumers. Measure: corpus-bench 59969 under 1 s,
+   and the SMALL bench line.
+3. **T-0493 (S).** UNIQUE as a consumer. Measure: corpus-bench 45896 under 1 s, and the
+   TEXTJOIN/UNIQUE bench line.
+4. **T-0494 (S).** LOOKUP's vector-form search over a tailed `lookup_vector` with a skipped-kind tail.
+   Measure: corpus-bench 33935 under 1 s, and the LOOKUP bench line.
+
+TEXTJOIN, COLUMN, LOOKUP's searched-kind tail and UNIQUE's lifted flags are not filed. Each is
+filed when a corpus file needs it. Until a task lands, its expressions take today's path unchanged.

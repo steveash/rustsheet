@@ -45,7 +45,8 @@ build: ## Release build of the eval harness
 # ---------------------------------------------------------------- Eval (Excel compatibility)
 .PHONY: eval eval-check eval-gates eval-baseline eval-lower-visible-lock eval-show evidence-floor
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
-	$(EVAL_GUARDED) run
+	$(PY) scripts/desktop_owned.py --out eval/runs/desktop-owned.tsv
+	$(EVAL_GUARDED) run --desktop-owned
 
 eval-check: build ## Gate: fail on any regression vs eval/baseline
 	$(EVAL_GUARDED) check
@@ -134,8 +135,8 @@ exit-owners: ## Failing exit cells of a milestone that no open task of it owns, 
 	$(if $(MILESTONE),,$(error MILESTONE=M<n> is required))
 	$(PY) scripts/exit_owners.py --milestone '$(MILESTONE)' $(if $(STRICT),--strict)
 
-unowned-off: ## Visibly-off cells attributed to no function that no open task owns, after make eval (decision 0132)
-	$(PY) scripts/exit_owners.py --unattributed $(if $(STRICT),--strict)
+unowned-off: ## Visibly-off cells no open task owns, after make eval: unattributed (decision 0132), or ALL=1 [FUNCTION=NAME] every one by function (T-0086)
+	$(PY) scripts/exit_owners.py $(if $(ALL),--all-off $(if $(FUNCTION),--function $(FUNCTION)),--unattributed) $(if $(STRICT),--strict)
 
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board
