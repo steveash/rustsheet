@@ -913,8 +913,6 @@ error element anywhere in the array (ours checks for a nested cell first), and t
 value columns (`COUNT(PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))` 140, A13; gen-m9/e85daedce5c2675e A35's 142)
 differs from ours only in the blank keys, which Excel shows as true blanks in the row keys and in every column-key row
 (A28:A31; ours was 0, so COUNT 165): fixed by T-2854 (see above).
-Blank elements outside GROUPBY/PIVOTBY (T-2999, probes/blank-elements-iferror-n-arith, 11 cells, excel-graph 2026-10-28; D1:D5 = 1, blank, "x", blank, 5): IFERROR and IFNA read a blank element of FILTER, a lifted INDEX (`INDEX(D1:D5,{1,2,3,4,5})`) and VSTACK as 0 (`COUNT(IFERROR(...,-1))` and the IFNA forms are 4, A1:A6; `TEXTJOIN("|",FALSE,IFERROR(FILTER(D1:D5,TRUE),"#"))` is "1|0|x|0|5", A7), while the bare FILTER keeps the blanks (`TEXTJOIN("|",FALSE,FILTER(D1:D5,TRUE))` is "1||x||5", A8). `N` turns a blank and the text "x" into 0 (`COUNT(N(FILTER(...)))` 5, A9), `+0` reads a blank as 0 and "x" is #VALUE! (`COUNT(FILTER(...)+0)` 4, A10), and IF passes a blank through (`COUNT(IF(TRUE,FILTER(...)))` 2, A11). Ours already matches all 11 cells.
-Status: VERIFIED (excel-graph).
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
@@ -2064,3 +2062,8 @@ lifted TRIMRANGE), IFNA through TRIMRANGE and a TRIMRANGE trimmed to one blank c
 T-2600; the REDUCE/TRIMRANGE reference since T-2596.
 Status: VERIFIED (excel-graph)
 Tasks: T-2579, T-2600, T-2596
+
+## IFERROR, IFNA, N and arithmetic over blank array elements (T-2999)
+Evidence: probes/blank-elements-iferror-n-arith (11 cells, excel-graph 2026-10-28; D1:D5 = 1, blank, "x", blank, 5). IFERROR and IFNA read a blank element of FILTER, a lifted INDEX (`INDEX(D1:D5,{1,2,3,4,5})`) and VSTACK as 0 (`COUNT(IFERROR(...,-1))` and the IFNA forms are 4, A1:A6; `TEXTJOIN("|",FALSE,IFERROR(FILTER(D1:D5,TRUE),"#"))` is "1|0|x|0|5", A7), while the bare FILTER keeps the blanks (`TEXTJOIN("|",FALSE,FILTER(D1:D5,TRUE))` is "1||x||5", A8). `N` turns a blank and the text "x" into 0 (`COUNT(N(FILTER(...)))` 5, A9), `+0` reads a blank as 0 and "x" is #VALUE! (`COUNT(FILTER(...)+0)` 4, A10), and IF passes a blank through (`COUNT(IF(TRUE,FILTER(...)))` 2, A11). Ours already matches all 11 cells.
+Implemented in: no engine change needed; ours already matched (`if_error_like` in crates/rustsheet-engine/src/functions/logical/mod.rs, T-2854).
+Status: VERIFIED (excel-graph)
