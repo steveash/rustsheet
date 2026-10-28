@@ -719,3 +719,15 @@ consistent with (2) of 17.5, but not yet proof: a stored top more than 3σ from 
 of 17.6 are the discriminating tests. Run the re-read with the unstored top first (cheap, ~1 min per base): if the
 real N7 rows then read at zero against C and the control's do too, that is structure evidence from the ladders.
 Also try KN = 8 (only S8 unstored).
+
+### 17.8 Step 17.6.2: the ladder re-read cannot see the top's store structure
+`KN` (env) in `w5/p5/phaselib.py` and `ladder.py` keeps the N ops j ≥ KN in 80-bit, both in the base model and
+(control) in the synthesised B. Logs `ladder_real_run5_C_kn{8,7}.log`, `ladder_ctl_run5_c7_kn8.log`, table
+`k3_reread_kn.log`. Against C, the real reads hardly change with the mask: N6 rows agree to a few cycles/x under
+KN = 99 / 8 / 7 (e.g. N6@1.4531 +345.9 / +344.0 / +345.2), rows at zero are 21 / 20 / 20, and KN = 8 makes no
+further real N7 row read at zero (N7@1.4129 goes from +403 to +16798). So the ladders do not discriminate a stored
+from an 80-bit top, and the 17.7 picture stays the only evidence for it.
+Next (unchanged from 17.6 step 3, now first): scan the first stored stage below an unstored top, i.e. scan2.py
+`J=6` (N.S6, cubic tail: use scan3-style c and d grids) from C. Run it on the KN = 7 control first: the
+planted truth must come out at rank 0 there before the real scan counts. If the real J=6 scan shows a peak where the
+J=7 scan showed none, that is the structure evidence. Also run the KN = 8 variant of the 17.7 control.

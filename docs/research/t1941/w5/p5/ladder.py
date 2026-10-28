@@ -24,7 +24,7 @@ def run(tag, kk):
     a = ANCH[tag]; x0 = a if kk == 0 else a+2.0**-kk; xs = [x0]
     for _ in range(8191): xs.append(math.nextafter(xs[-1], math.inf))
     xs = np.array(xs)
-    if mode == 'control': return xs, k3res(xs, Nt, Dt)
+    if mode == 'control': return xs, k3res(xs, Nt, Dt, kn=int(os.environ.get('KN', 99)))   # KN: T-2122 run 5
     o = os.path.join(CASES, 'kmyst-gam-k3l%s%02d.oracle.json' % (tag, kk))
     if not os.path.exists(o): return None
     v = json.load(open(o))['sheets']['Calc']; y = np.array([float(v.get('B%d' % (r+1), {}).get('v', np.nan)) for r in range(8192)])

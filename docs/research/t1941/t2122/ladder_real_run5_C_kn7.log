@@ -1,0 +1,106 @@
+anchor a (x 0.8013), 22 runs
+   N7: base run unreadable
+   N6: slope +134733006.5 cycles/x from 14 rungs (29,28,26,25,24,23,22,21,19,17,15,13,12,11)
+   N5: slope  +33570976.7 cycles/x from 11 rungs (29,26,25,23,22,21,20,19,18,13,11)
+   N3: slope        +71.1 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope -336447072.9 cycles/x from 9 rungs (30,26,23,20,17,15,12,11,10)
+   D5: slope  -46158754.2 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: base run unreadable
+anchor b (x 0.9517), 22 runs
+   N7: base run unreadable
+   N6: base run unreadable
+   N5: slope        +56.5 cycles/x from 17 rungs (30,29,26,25,24,23,22,21,19,18,17,16,15,13,12,11,10)
+   N3: slope        +43.3 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope -160812237.2 cycles/x from 15 rungs (30,29,28,26,22,21,20,18,17,16,15,14,13,12,11)
+   D5: slope  -43166125.6 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: base run unreadable
+anchor c (x 1.1023), 22 runs
+   N7: base run unreadable
+   N6: slope       -275.1 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   N5: base run unreadable
+   N3: slope         +6.9 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope -135473493.7 cycles/x from 15 rungs (30,28,27,22,21,20,19,18,16,15,14,13,12,11,10)
+   D5: slope  -28856267.5 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: base run unreadable
+anchor d (x 1.2519), 22 runs
+   N7: base run unreadable
+   N6: slope       -216.2 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   N5: base run unreadable
+   N3: slope         -7.3 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope  +21799879.7 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D5: base run unreadable
+   D4: slope +177173298.4 cycles/x from 9 rungs (30,27,26,24,23,20,19,17,11)
+anchor e (x 1.3527), 22 runs
+   N7: base run unreadable
+   N6: slope       +129.7 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,17,16,15,14,13,12,11,10)
+   N5: base run unreadable
+   N3: slope        +59.0 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope  +89781258.1 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,12,11,10)
+   D5: slope  +11193179.0 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: slope +292959229.9 cycles/x from 12 rungs (30,28,24,21,19,18,17,16,15,12,11,10)
+anchor f (x 1.4531), 22 runs
+   N7: base run unreadable
+   N6: slope       +345.2 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   N5: base run unreadable
+   N3: base run unreadable
+   D6: slope +176872964.7 cycles/x from 17 rungs (29,28,26,24,23,22,21,20,19,18,17,16,15,14,13,12,11)
+   D5: slope  +26659174.5 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: base run unreadable
+anchor g (x 0.7311), 22 runs
+   N7: base run unreadable
+   N6: base run unreadable
+   N5: base run unreadable
+   N3: slope       +141.0 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,19,18,17,16,15,14,13,12,11,10)
+   D6: base run unreadable
+   D5: slope  -43931134.8 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: slope   +4156883.3 cycles/x from 5 rungs (25,24,17,12,10)
+anchor h (x 0.8741), 22 runs
+   N7: base run unreadable
+   N6: slope      -6533.4 cycles/x from 18 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,16,14,13,11,10)
+   N5: slope  -17827044.8 cycles/x from 15 rungs (30,29,27,24,23,21,20,19,18,17,16,15,14,13,10)
+   N3: slope        -44.0 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: base run unreadable
+   D5: slope  -37609583.0 cycles/x from 18 rungs (30,29,28,27,25,23,22,21,19,18,17,16,15,14,13,12,11,10)
+   D4: slope +424286899.4 cycles/x from 15 rungs (30,28,26,25,24,23,22,21,19,17,15,14,13,11,10)
+anchor i (x 1.0309), 22 runs
+   N7: base run unreadable
+   N6: slope       -323.5 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,14,13,12,11,10)
+   N5: base run unreadable
+   N3: slope        -15.8 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope -185139506.9 cycles/x from 17 rungs (30,29,26,25,24,23,22,21,20,18,17,16,15,14,12,11,10)
+   D5: slope  -37106684.7 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: slope    +148358.8 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+anchor j (x 1.1789), 22 runs
+   N7: base run unreadable
+   N6: slope       -171.4 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,18,17,16,15,14,13,12,11,10)
+   N5: base run unreadable
+   N3: slope         +2.4 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope -110047626.0 cycles/x from 17 rungs (30,29,28,27,26,25,23,22,21,20,19,18,16,15,14,12,10)
+   D5: slope  +12576490.8 cycles/x from 7 rungs (26,25,24,23,21,15,12)
+   D4: slope -318264199.9 cycles/x from 12 rungs (30,28,27,26,25,23,22,21,20,15,13,10)
+anchor k (x 1.3021), 22 runs
+   N7: base run unreadable
+   N6: slope         +5.0 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,11,10)
+   N5: base run unreadable
+   N3: slope        +12.5 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D6: slope  +55327879.9 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D5: slope +158419562.3 cycles/x from 9 rungs (30,29,28,27,21,20,19,16,15)
+   D4: base run unreadable
+anchor l (x 1.4129), 22 runs
+   N7: base run unreadable
+   N6: slope       +217.5 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   N5: base run unreadable
+   N3: slope        +77.4 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11)
+   D6: slope  +98075183.7 cycles/x from 15 rungs (30,29,28,27,25,24,23,22,21,20,17,16,15,14,11)
+   D5: slope  +20094126.3 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10)
+   D4: base run unreadable
+   alias shifts: none
+N chain: 24 slope equations (20 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: N6@0.8013 N5@0.8013 N6@0.8741 N5@0.8741
+   residual per equation (in cycles/x): -134734138 -33570980 -0 +12 -33 -9 -22 +211 +13 +0 -12 -123 -34 +5642 +17827068 +82 -127 +7 +42 -13 +63 +11 -27 +4
+   solved moves (ulps): N4 +981.3 N5 -5628.3 N6 +3273.3 N7 -20983.0 N8 +436585.4 N9 -22993667.4
+   alias shifts: none
+D chain: 22 slope equations (7 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   dropped: D5@0.8013 D6@0.9517 D6@1.1023 D6@1.2519 D4@1.3527 D6@1.4531 D5@0.7311 D5@0.8741 D4@0.8741 D6@1.0309 D5@1.0309 D6@1.1789 D4@1.1789 D6@1.3021 D6@1.4129
+   residual per equation (in cycles/x): +9162 -4448949 +91 +61149936 -187 -17963 +25 +221 -276658199 -16766051 +91 +10604 -8451614 -421653020 +66975346 -2012 +0 +84214514 +321944387 -7648 +33562444 -264
+   solved moves (ulps): D5 +45709263.1 D6 +369659202.4 D7 -4840877523.0 D8 +87004643821.2 D9 +5749746812046571.0
