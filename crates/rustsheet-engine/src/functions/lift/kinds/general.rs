@@ -80,9 +80,9 @@ const UNIQUE: ArgKinds =
 /// F26:H26), the array and the by arrays are read once by the function. Unless every entry is
 /// equal only the first element keeps its call's top-left (`CallResult::ArrayFirstColumn`;
 /// `SORTBY(A1:A3,C1:C3,{1;-1;1})` is {1;0;0}, probes/sort-error-args H97-H99), `#VALUE!` once the
-/// call has a second pair (probes/m7-lift-take-drop-sortby sheet Sort). A uniform 1xN `sort_order`
-/// keeps only the first column too (probes/sortby-lifted-element-corners L9:O9, T-2349). Each element sorts the
-/// whole array: read and charged as [`TOCOL`].
+/// call has a second pair (probes/m7-lift-take-drop-sortby sheet Sort). A uniform 1xN
+/// `sort_order` keeps only the first column too (probes/sortby-lifted-element-corners L9:O9,
+/// T-2349). Each element sorts the whole array: read and charged as [`TOCOL`].
 const SORTBY: ArgKinds = ArgKinds {
     required: 2,
     params: &[WholeByCaller, WholeByCaller, Lift],

@@ -626,8 +626,8 @@ impl Model {
             .then_some(index),
             _ => None,
         };
-        let array_first = options.result == CallResult::ArrayFirstColumn;
-        let later = if array_first && !all_elements_equal(&lifted, rows, columns) {
+        let first_only = options.result == CallResult::ArrayFirstColumn;
+        let later = if first_only && !all_elements_equal(&lifted, rows, columns) {
             Later::EmptyAfterFirst { placed: false }
         } else if options.result == CallResult::ArrayFirstColumn && columns > 1 {
             Later::EmptyPastFirstColumn

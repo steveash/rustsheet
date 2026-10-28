@@ -849,7 +849,7 @@ elements are `#VALUE!` instead when an entry is not 1 or -1 or the call has a la
 by_array/sort_order pair. This is one driver option the two entries opt into (T-2300 builds it for
 UNIQUE, T-1839 reuses it); TOCOL, SEQUENCE, MAKEARRAY, EXPAND, WRAPROWS, WRAPCOLS, TAKE and DROP do
 not show it (their later elements are their calls' own).
-*As built (T-2300):* the option is `CallResult::ArrayFirstColumn` (`ArgKinds::array_first()`), an
+*As built (T-2300):* the option is `CallResult::ArrayFirstColumn` (`ArgKinds::array_first_column()`), an
 `Array` result whose elements `lift_grids` keeps per `Later`. "Entries all equal" means every
 element's grid slots equal the first element's (`ArrayNode` equality, so `{0;FALSE}` differs:
 probes/m7-unique-lift-elements row 15); with several lifted arguments they all must be uniform
