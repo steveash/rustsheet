@@ -3,7 +3,7 @@ id: T-0094
 title: "Classify poi formula cells into the M8 subset of decision 0146 (defined name, structured, 3-D or external reference) and report its counts"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
