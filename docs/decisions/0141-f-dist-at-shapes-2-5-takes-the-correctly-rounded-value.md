@@ -1,4 +1,4 @@
-# 0141 — F at (2.5, 2.5, x = 0.6000000000000001) takes the correctly rounded bratio value, 5 ulp from Excel
+# 0141 — F at (2.5, 2.5, x = 0.6000000000000001) takes the bratio port's value, 5 ulp from Excel
 
 - **Status:** accepted (2026-10-28, T-2847).
 - **Context:**
@@ -10,8 +10,9 @@
     0.33360956282916665, 5 ulp lower. Both are within 15 significant digits (0.333609562829167).
   - The point is I_x(2.5, 2.5) at Excel's own argument x = 1/(1 + 5/7.5) = 0.6000000000000001, the L140
     branch (bup(0.5, 2.5, 0.6, 0.4, 2) + bpser(2.5, 0.5, 0.4)). A 40-digit mpmath reference at that double x
-    gives the upper tail 0.33360956282916662: the port is the nearest double to it, Excel is 5 ulp high (at
-    the real-number x = 0.6 the reference is 0.33360956282916676, still 3 ulp from Excel). The companion
+    gives the upper tail 0.333609562829166621; its nearest double is 0.3336095628291666. The port is 1 ulp
+    above it, Excel 6 ulp above it (at the real-number x = 0.6 the reference is 0.33360956282916676, still
+    3 ulp from Excel). The companion
     `F.DIST(1.5,5,5,TRUE)` (H215) moves 2 ulp, inside the allowance.
   - docs/research/t2464/r2-impact/RESULTS.md section 6 hypothesis 1 already found the r2-bratio model 2-4 ulp
     off Excel here; no model of Excel's L140 at b0' = 0.5, n = 2 reproduces it yet.

@@ -95,10 +95,10 @@ the seams T-2502 left for the Cephes kernel, the T-2464 harness and the per-bran
   ironcalc-calc 617 -> 595 (23 fixed), probes 2,913 -> 2,912 (4 fixed); visibly-off in-scope cells 3,145 (lock
   3,284).
 - Regressed, all numeric and within 15 digits, recorded with `update-baseline --allow-regressions` (decision 0083
-  allowance; H221 and H226 past 4 ulp under decision 0141, where the port is the correctly rounded value and Excel is
-  5 ulp high): probes/stat-argument-modes H215 (+2 ulp), H221 and H226 (-5); gen-m9 0a614cfe A19 (+1), 05d44f6d A175
-  (-1), 27601819 A49 (-1), 4ab2ba98 A157 (+1), eced4bb6 A213 (-1); ironcalc-calc BETADIST_BETAINV.xlsx H15 (-2, the
-  BETA.INV chained on BETA.DIST(0.5,2,2,TRUE)). Follow-up ulp task: T-2978.
+  allowance; H221 and H226 past 4 ulp under decision 0141, where Excel is 6 ulp above the correctly rounded value
+  and the port 1 ulp): probes/stat-argument-modes H215 (+2 ulp), H221 and H226 (-5); gen-m9 0a614cfe A19 (+1),
+  05d44f6d A175 (-1), 27601819 A49 (-1), 4ab2ba98 A157 (+1), eced4bb6 A213 (-1); ironcalc-calc BETADIST_BETAINV.xlsx H15 (-2:
+  BETA.INV's own search, since its input G15 became bit-exact here). Follow-up ulp task: T-2978.
 - probes/t2829-ftest-tail-over-b's F.TEST cells are not moved by this (F.TEST's bratio tail is T-2681's); T-2977
   records them.
 - Follow-ups: T-2977 (the seams, the harness, F.INV/BETA.INV crossings, per-branch counts), T-2978 (the 9 ulp

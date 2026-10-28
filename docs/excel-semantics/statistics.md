@@ -2301,7 +2301,11 @@ fractions; L140's bpser(a0, 1, x0) at a whole b0 takes L = -LN(a0) (T-2506 above
 probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
 bit-exact cells moved off and 7 became visibly off (listed in T-2847). T-2847 moved F, BINOM and NEGBINOM onto it: gen-m9
 3,666 -> 3,602 known failures, ironcalc-calc 617 -> 595, probes 2,913 -> 2,912, with 9 cells 1 to 5 ulp off recorded
-(T-2847 Outcome, decision 0141).
+(T-2847 Outcome, decision 0141). L = -LN(a0) at a0 <= 8 too (T-2847) makes BINOM.DIST's whole shapes exact
+(ironcalc-calc BINOM.xlsx E5:E8, E75, 7/64-type dyadic values) and fixes BETADIST_BETAINV.xlsx G15 (BETA.DIST at the
+workbook's x = (0.7-0.2)/(1.2-0.2) = 0.49999999999999994, Excel 0.4999999999999999, now bit-exact), while the BETA.INV
+on it (H15, Excel 0.7) goes 2 ulp low, 0.6999999999999997: BETA.INV's own search, its input now exact (T-2978).
+docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells it adds at a0 <= 8 are not re-scored here (T-2977).
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%
 Tasks: T-2505, T-2512, T-2122
@@ -2340,9 +2344,10 @@ eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_
 Ours: L140 bup+bpser for BETA.DIST's cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf
 (`functions/statistical/bratio/mod.rs` `l140_bup_bpser`, `bup`, T-2506, T-2847). Excel is not correctly rounded on
 every L140 cell: `F.DIST.RT(1.5,5,5)` = `FDIST(1.5,5,5)` = 0.33360956282916693 (probes/stat-argument-modes H221, H226),
-I_x(2.5, 2.5) at x = 0.6000000000000001 through bup(0.5, 2.5, 0.6, 0.4, 2) + bpser(2.5, 0.5, 0.4), is 5 ulp above the
-40-digit value at that x (0.33360956282916662), and `F.DIST(1.5,5,5,TRUE)` 0.6663904371708331 (H215) is its
-complement; the port gives the nearest double (decision 0141; Excel's form is unknown, r2-impact section 6);
+I_x(2.5, 2.5) at x = 0.6000000000000001 through bup(0.5, 2.5, 0.6, 0.4, 2) + bpser(2.5, 0.5, 0.4), is 6 ulp above the
+correctly rounded value at that x (0.333609562829166621, nearest double 0.3336095628291666), and
+`F.DIST(1.5,5,5,TRUE)` 0.6663904371708331 (H215) is its complement; the port is 1 ulp above it, 0.33360956282916665
+(decision 0141; Excel's form is unknown, r2-impact section 6);
 L140 with bgrat and bfrac on Cephes incbcf/incbd with exp(a ln x)·exp(b ln y)·Gamma ratio.
 Status: VERIFIED (excel-graph) for L140 bup+bpser to 15 digits (11,724 of 11,753; 64% bit-exact); bfrac's fraction
 UNVERIFIED
