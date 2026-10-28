@@ -32,7 +32,8 @@ ACCRINT with `first_interest` on such a day and an issue several periods before 
 - Implementing the change (unless the probe shows ours already matches).
 
 ## Outcome
-Probe `probes/oddl-accrint-february-day` (49 cells, excel-graph): ODDLPRICE/ODDLYIELD ignore whether the last
-interest is the 29th or 30th (single and multi-period spans across a February), and ACCRINT with a first interest on
-the 29th or 30th across a February matches Excel on every cell. The engine matched all 49, so no follow-up
-implementation task. Finding recorded in financial.md (the "unprobed" line replaced). Eval delta: +49 passing probe cells.
+Probe `probes/oddl-accrint-february-day` (49 cells, excel-graph): Excel's ODDLPRICE, ODDLYIELD and ACCRINT coupon walks
+drift date to date across a February, unlike the COUP*, PRICE and ODDF* schedules (the 29th and 30th last-interest
+dates give identical ODDL* values; ACCRINT's stub ends on the drifted date). The engine already drifts the same way and
+matched all 49 cells, so no implementation task. financial.md records the exception to "Coupon dates keep the
+maturity's day" (the "unprobed" line replaced). Eval delta: +49 passing probe cells.
