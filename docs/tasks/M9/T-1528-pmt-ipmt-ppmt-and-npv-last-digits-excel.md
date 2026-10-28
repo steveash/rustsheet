@@ -143,6 +143,13 @@ Gap triage 2026-10-25 (second pass): that tail includes ironcalc-calc/FINANCIAL/
 (none visibly off), which no task named: Sheet1!K2, K4, K5, K6, K7, L4, L7, M2, M4, M9, N2, N4, N5, N6, N7, e.g. K2
 `NPV(A2,B2,C2,D2,E2:G2)` Excel 237.57926512731055, ours 237.5792651273106 (2 ulp). T-2671's probe should fit them too.
 
+## New hypothesis (gap triage 2026-10-28): PMT through PPMT's discount, split to T-3014
+PPMT's discount (T-2242: Excel's atanh-series L, `Q = EXP(-n*L)`, Kahan's expm1 for `1-Q`) in the form
+`-(pv+fv*Q)/(k*((1-Q)/rate))` is bit-exact on 175/308 m9-fin-pmt PMT cells even with libm EXP and LN
+(docs/research/t3014_pmt_discount_score.py), above this task's best 133. T-3014 (`campaign: visible`) fits and ships it
+for PMT, because 113 RATE(n,PMT(..)) cells of probes-numeric/m9-fin-irr-rate are visibly off on PMT's last ulps. If
+T-3014 lands, re-score IPMT on the new PMT here; if it reaches its time-box, its scores are recorded here.
+
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2257): the gen-m9 cells listed under "T-2257 sweep" in Context are visibly off (wrong
 type, error, text, or a value off by more than half a unit of the 15th significant digit), so the task is in the campaign. Its
