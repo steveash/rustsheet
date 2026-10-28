@@ -611,3 +611,62 @@ with the moves above them held fixed. `PLAN` lists the steps as `CH:stages:moves
    `k3_refit_noise.sh`) and compare distributions, never single numbers.
 3. The D chain needs more readable stages before any D move counts. Add rungs or anchors where D4/D6 are unreadable
    (0.9517, 1.0309, 1.1023, 1.4531), or use the per-run cap score to pick D moves along the null direction.
+
+## 17. T-2122 run 5 (2026-10-28, single opus worker, ~50 minutes, K3 step 16.2.1)
+
+Scripts: `t2122/k3_reread.py` (tabulates ladder logs made with a moved set as base; a row is "at zero" when it has
+≥ 10 rungs and |slope| < 500 cycles/x), `t2122/k3_null.py` (SVD of the N-chain slope equations of the rows at zero:
+the move the ladder cannot see), `t2122/k3_tol.py` (exact-rate tolerance of one-coefficient moves on a planted
+truth). Sets `t2122/k3_run5_{A,B,C}.txt` (real) and `k3_run5_ctl_*.txt` (control: truth = `make_truth` TSIZE 1e10,
+seed 1, kmin 15 on ss_fc, i.e. the truth of `ladder_ctl30_1e10_12a.log`). Logs `ladder_real_run5_*.log`,
+`ladder_ctl_run5_*.log`, `k3_reread_{real,ctl}.log`, `k3_null_{real_C,ctl_c7}.log`, `k3_tol_ctl.log`.
+Environment notes: the `.so` scorers are not committed; build them with the `Build:` line at the top of `w5/sc.c`
+and `w5/p5/{hypo,inj,peelk}.c`. The system python has no numpy; use a venv.
+
+### 17.1 The re-read score (16.2 step 1): ladder.py with the moved set as BASE
+- It reads the **residual** slope of every stage, and it depends only on the coefficients above the stage, so the
+  low bits of the lower chain (15.3's noise) do not enter. Calibrated on the control (`k3_reread_ctl.log`):
+  - base = truth N (D still ss_fc), or truth with N6 +1 ulp: 15/25 and 22/28 rows at zero, rms 52 and 36 cycles/x.
+    The other rows mis-unwrap by near multiples of 2^24 (e.g. +16777298); they are few-rung or isolated rows.
+  - base = the control's own run-4 solve (c2, 0.2% off): N3 rows read +241 to +10463, N6 rows ~+1500, and each
+    read matches that base's true residual slope to ≤ 1% (e.g. N3@0.9517 +9487.6 against truth +9465.2).
+  - base with N5 +1e7 ulps wrong (c3): every N3 row reads about −1e6, matching its truth.
+  So the score separates right from wrong moves, and the reads are themselves the next correction.
+- **Newton iteration (re-read, solve the residual with ladder.py's joint solve, apply, repeat) converges.**
+  Control: c2 → c6 → c7. The residual truth after c7 is N4 +3.6e3, N5 −3.2e4, N6 +5.9e3, N7 −8, N8 −1.6e4,
+  N9 +1.9e6 ulps, and every row of c7 reads at zero, so this is the ladder's floor, not a failure to converge.
+
+### 17.2 Real data: head move A plus N4-N6 is right, and two more steps reach the floor
+- Re-read against A (run 4's head + N4-N6 move): N6 rows fall from ~3e8 to −5.4e4 … −2.4e4 cycles/x and N3 rows
+  from ~1e7 to ±7e5. Both follow smooth laws in x, the c2 signature. (Base ss_fc: no row at zero.)
+- Step 1 (A → B): N4 +3.34e7, N5 −2.49e8, N6 +3.74e7, N7 +8.1e5, N8 −3.05e7, N9 +2.41e9. 10/28 rows at zero.
+- Step 2 (B → C, the solve printed in `ladder_real_run5_B.log`): N4 −9.46e3, N5 +1.24e5, N6 −2.64e4, N7 −9.2e3,
+  N8 +4.06e5, N9 −3.80e7. **C: 21/29 rows at zero (rms 177 cycles/x), all 11 N3 rows within ±150.** C's own solve
+  (N4 +647, N5 −3.8e3, N6 +401, N7 +5.9e3, N8 −2.8e5, N9 +2.7e7) is inside the 17.3 error bars; it is not applied.
+- **C's total move from ss_fc: N4 +7.207e7, N5 −1.8522e9, N6 +7.742e8, N7 +4.0150e8, N8 −4.6140e10,
+  N9 +3.50537e12 ulps.** Run 1's independent 12-anchor consensus (13.4) was N4 +7.2e7, N5 −1.85e9, N6 +7.74e8,
+  N7 +4.02e8, N8 −4.616e10, N9 +3.5075e12: the same move.
+- The D chain is still unsolved: 0/22 D rows at zero against C; the joint D solve returns D9 +5.7e15 (null).
+
+### 17.3 What the ladder cannot see, against what the exact rate needs
+- `k3_null.py`, read noise σ = 100 cycles/x. The 1σ error per singular direction in ulps (control c7 / real C):
+  dir0 (N4,N6,N7 mix) 71 / 40; dir1 (≈ N7) 165 / 131; dir2 (N4−N6) 712 / 203; dir3 (≈ N8 on control, ≈ N5 on
+  real) 3.2e3 / 1.7e3; dir4 (≈ N5 on control, ≈ N8 on real) 7.4e4 / 3.2e3; dir5 (≈ N9) 6.9e6 / 4.5e6.
+  The control's true residual projects at 0.2-1.8σ on each, so σ = 100 is a fair noise model.
+- `k3_tol_ctl.log` (planted truth, one coefficient moved, exact rate): N9 +389 → 0.9967, +1e4 → 0.915,
+  +1e5 → 0.47; N8 +3 → 0.995, +10 → 0.983, +100 → 0.83; N7 +1 → 0.959, +10 → 0.62; N5 +1 → 0.90, +10 → 0.50;
+  N4 +1 → 0.63.
+- So C is still 2-4 orders of magnitude too coarse on N9, N8 and N5, and 1-2 on N4, N6 and N7. Its exact rate is
+  not a useful measure yet (lambda_path in `w5/p5/README.md`: no partial credit outside ±1-2 ulps).
+
+### 17.4 Next steps (in order)
+1. More ladder rows on the weak directions: N7 is readable at only 1 real anchor (1.4129) and N5 at 1 (0.9517).
+   Add anchors where N7 and N5 read (N7 is readable above 1.17 on the control; see the `N7:` lines of
+   `ladder_ctl_run5_c4.log`) and rungs 31-33 (`KMAX=33 python3 w5/gen_k3ladder.py`). Then re-run the Newton step from
+   C. Each 1σ shrink is a factor of fewer hypotheses in step 2.
+2. Close the top with W5's exact tools from C: `topgrid2.py` (N8, N9 grid on the S-only objective; widen R8 to
+   about ±3σ of dir4 and R9 to ±3σ of dir5, or search along the SVD directions instead of N8/N9). Then `fscan.py`
+   (±2e6 FFT peel) for N6 … N1 and `n0scan.py` for N0, as in `e2e_hchain.sh`. Run the same chain on the c7
+   control first; it starts at the same distance from truth.
+3. The D chain: run the same Newton iteration with D9 pinned (`k3_lower.py`'s `DD9`) once ≥ 6 D rows read at
+   zero; until then, add anchors where D5/D6 are readable.

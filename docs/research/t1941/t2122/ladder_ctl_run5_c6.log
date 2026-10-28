@@ -1,0 +1,108 @@
+anchor a (x 0.8013), 22 runs
+   N7: base run unreadable
+   N6: base run unreadable
+   N5: base run unreadable
+   N3: slope        -98.2 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth        -77.3
+   D6: slope -562676269.0 cycles/x from 8 rungs (30,29,27,25,24,23,17,14) | truth -158499170.0
+   D5: slope -383662163.4 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -383665359.1
+   D4: slope -321616787.8 cycles/x from 9 rungs (30,29,25,23,21,16,14,12,11) | truth -487489000.9
+anchor b (x 0.9517), 22 runs
+   N7: base run unreadable
+   N6: base run unreadable
+   N5: slope         +0.0 cycles/x from 0 rungs () | truth      -1109.8
+   N3: slope        -34.6 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth        -25.5
+   D6: slope -158580021.3 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -158579944.5
+   D5: slope -395610315.9 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -395605233.5
+   D4: base run unreadable
+anchor c (x 1.1023), 22 runs
+   N7: base run unreadable
+   N6: slope   -2097190.3 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,21,20,19,18,17,16,15,14,13,12,11,10) | truth       +108.0
+   N5: base run unreadable
+   N3: slope        -71.0 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth         -9.2
+   D6: base run unreadable
+   D5: slope -407575235.4 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -407570117.9
+   D4: base run unreadable
+anchor d (x 1.2519), 22 runs
+   N7: slope +672202901.6 cycles/x from 16 rungs (30,29,28,26,25,24,22,20,19,17,16,14,13,12,11,10) | truth        +78.2
+   N6: slope        +73.5 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,11,10) | truth        +91.8
+   N5: base run unreadable
+   N3: base run unreadable
+   D6: slope -156643366.3 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,21,20,19,18,17,16,15,14,13,12,11,10) | truth -158741201.3
+   D5: base run unreadable
+   D4: slope +219212698.6 cycles/x from 10 rungs (30,26,25,23,19,18,17,16,13,11) | truth -343404198.7
+anchor e (x 1.3527), 22 runs
+   N7: slope  +25182156.5 cycles/x from 14 rungs (30,29,26,25,23,22,21,18,17,16,14,13,12,11) | truth        +20.1
+   N6: slope       +154.7 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth        +75.3
+   N5: base run unreadable
+   N3: base run unreadable
+   D6: slope -158795639.7 cycles/x from 18 rungs (29,28,27,26,25,24,23,22,21,20,19,18,17,15,14,12,11,10) | truth -158795356.5
+   D5: slope -213743195.6 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -213742078.1
+   D4: base run unreadable
+anchor f (x 1.4531), 22 runs
+   N7: slope   +4194437.9 cycles/x from 14 rungs (30,28,27,26,22,21,19,18,17,16,15,14,12,11) | truth        -37.7
+   N6: slope       +111.9 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth        +54.6
+   N5: base run unreadable
+   N3: base run unreadable
+   D6: slope  -89641503.4 cycles/x from 16 rungs (29,28,25,24,23,21,20,19,18,17,16,15,13,12,11,10) | truth -158849301.4
+   D5: slope -217739099.8 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -217737978.5
+   D4: base run unreadable
+anchor g (x 0.7311), 22 runs
+   N7: base run unreadable
+   N6: slope   +1003548.2 cycles/x from 8 rungs (25,23,20,18,13,12,11,10) | truth       +106.7
+   N5: base run unreadable
+   N3: slope     +16269.8 cycles/x from 16 rungs (30,29,27,26,25,24,23,22,21,19,15,14,13,12,11,10) | truth       -113.5
+   D6: base run unreadable
+   D5: slope -378100409.6 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -378095478.7
+   D4: slope  -56877260.8 cycles/x from 7 rungs (27,26,19,18,17,16,11) | truth -458617380.1
+anchor h (x 0.8741), 22 runs
+   N7: base run unreadable
+   N6: slope  +33562766.5 cycles/x from 14 rungs (29,28,25,24,23,22,21,20,19,18,16,13,11,10) | truth       +114.3
+   N5: base run unreadable
+   N3: slope        -30.3 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth        -47.9
+   D6: base run unreadable
+   D5: slope -389440279.9 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,19,18,17,16,15,14,13,12,11,10) | truth -389443628.4
+   D4: slope  -60999638.1 cycles/x from 9 rungs (30,29,28,25,24,23,17,14,10) | truth -518050389.6
+anchor i (x 1.0309), 22 runs
+   N7: slope  -61842266.3 cycles/x from 9 rungs (28,27,24,20,17,15,13,12,10) | truth       +205.5
+   N6: slope  +16801984.8 cycles/x from 15 rungs (30,28,27,24,23,22,21,20,18,15,14,13,12,11,10) | truth       +112.4
+   N5: base run unreadable
+   N3: slope         -6.9 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth        -12.4
+   D6: slope -139633313.0 cycles/x from 17 rungs (29,28,27,26,23,21,20,19,18,17,16,15,14,13,12,11,10) | truth -158622484.0
+   D5: slope -401901400.1 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -401896383.9
+   D4: slope -293017769.3 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -293011003.4
+anchor j (x 1.1789), 22 runs
+   N7: slope  +69215814.2 cycles/x from 14 rungs (30,29,26,25,24,21,20,19,17,16,15,13,12,11) | truth       +120.2
+   N6: slope       +239.6 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth       +100.9
+   N5: base run unreadable
+   N3: base run unreadable
+   D6: slope -158702265.8 cycles/x from 14 rungs (30,28,27,26,25,24,22,20,18,16,15,14,12,10) | truth -158701984.6
+   D5: slope  -27255366.7 cycles/x from 10 rungs (29,27,26,23,21,18,17,16,15,10) | truth -413659349.3
+   D4: base run unreadable
+anchor k (x 1.3021), 22 runs
+   N7: base run unreadable
+   N6: slope        +85.1 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,11,10) | truth        +84.1
+   N5: base run unreadable
+   N3: base run unreadable
+   D6: base run unreadable
+   D5: slope  -82978308.6 cycles/x from 10 rungs (30,27,26,22,21,20,19,17,14,13) | truth -423457956.1
+   D4: slope    +893116.9 cycles/x from 10 rungs (21,20,19,16,15,14,13,12,11,10) | truth -355257753.6
+anchor l (x 1.4129), 22 runs
+   N7: slope       -132.3 cycles/x from 18 rungs (30,29,28,27,26,25,24,23,22,21,19,18,17,16,14,13,12,11) | truth        -14.5
+   N6: slope        +37.5 cycles/x from 20 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,13,12,11,10) | truth        +63.4
+   N5: base run unreadable
+   N3: base run unreadable
+   D6: slope -234587753.4 cycles/x from 17 rungs (30,29,28,26,25,23,22,21,20,19,18,17,15,14,13,12,11) | truth -158827701.4
+   D5: slope -216138915.8 cycles/x from 21 rungs (30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10) | truth -216137782.5
+   D4: slope   -8320597.7 cycles/x from 7 rungs (27,25,24,21,19,16,12) | truth -381954036.7
+   alias shifts: none
+N chain: 20 slope equations (12 kept), unknowns N4,N5,N6,N7,N8,N9, rank 6
+   dropped: N6@1.1023 N7@1.2519 N7@1.3527 N7@1.4531 N3@0.7311 N6@0.8741 N6@1.0309 N7@1.1789
+   residual per equation (in cycles/x): +2 +20 +2097374 +6 -672202884 +72 -25182242 -45 -4194627 -45 -16449 -33562558 -10 -16801789 -18 -69215721 -73 +44 -16 +47
+   solved moves (ulps): N4 -5570.8 N5 +46398.4 N6 -8278.7 N7 -271.6 N8 +41897.9 N9 -4224780.1
+   truth moves  (ulps): N4 -1945.0 N5 +14505.0 N6 -2381.0 N7 -280.0 N8 +25573.0 N9 -2358874.0
+   alias shifts: none
+D chain: 21 slope equations (8 kept), unknowns D5,D6,D7,D8,D9, rank 5
+   dropped: D5@0.8013 D6@0.9517 D5@1.1023 D6@1.2519 D4@1.2519 D6@1.4531 D5@0.8741 D6@1.0309 D6@1.1789 D5@1.1789 D5@1.3021 D4@1.3021 D6@1.4129
+   residual per equation (in cycles/x): -8423 -13204 +56 +743 -2100940 -562623745 -295 -231 -69206304 +148 -194 -8544 -18999381 +286 +0 -4932 -386407900 -340482718 -356157686 +75760769 +10
+   solved moves (ulps): D5 -385578274.9 D6 -1280793192.1 D7 -1265126163.1 D8 -116286612.4 D9 -995314260984.3
+   truth moves  (ulps): D5 -385558251.0 D6 -1280823037.0 D7 -1264551929.0 D8 -137388071.0 D9 -10000000000.0

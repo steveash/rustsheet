@@ -1,0 +1,10 @@
+12 rows: N3@0.8013 N3@0.9517 N3@1.1023 N6@1.2519 N6@1.3527 N7@1.4531 N6@1.4531 N3@0.8741 N3@1.0309 N6@1.1789 N6@1.3021 N6@1.4129
+dir 0: 70.6 ulps of move per unit of read noise; N4 -0.7832 N5 -0.1882 N6 -0.5493 N7 -0.2220 N8 -0.0105 N9 -0.0001
+dir 1: 165 ulps of move per unit of read noise; N4 -0.1933 N5 -0.0410 N6 -0.1044 N7 +0.9712 N8 +0.0821 N9 +0.0006
+dir 2: 712 ulps of move per unit of read noise; N4 -0.5796 N5 +0.0735 N6 +0.8111 N7 -0.0237 N8 -0.0159 N9 -0.0002
+dir 3: 3.19e+03 ulps of move per unit of read noise; N4 +0.0015 N5 -0.0025 N6 -0.0158 N7 +0.0828 N8 -0.9964 N9 -0.0114
+dir 4: 7.44e+04 ulps of move per unit of read noise; N4 +0.1152 N5 -0.9785 N6 +0.1710 N7 -0.0000 N8 -0.0001 N9 +0.0000
+dir 5: 6.85e+06 ulps of move per unit of read noise; N4 -0.0000 N5 +0.0000 N6 -0.0000 N7 +0.0003 N8 -0.0114 N9 +0.9999
+truth move (ulps): N4 +3626 N5 -31893 N6 +5898 N7 -8 N8 -16325 N9 +1865906
+projections (ulps): dir0 -17.47 dir1 -152.8 dir2 +275.6 dir3 -4992 dir4 +3.265e+04 dir5 +1.866e+06
+truth slope residual on the rows (cycles/x): +19 -11 +56 -54 -34 +152 -12 -7 +12 -65 -45 -21

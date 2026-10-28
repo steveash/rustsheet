@@ -1,0 +1,7 @@
+21 rows: N3@0.8013 N5@0.9517 N3@0.9517 N6@1.1023 N3@1.1023 N6@1.2519 N3@1.2519 N6@1.3527 N3@1.3527 N6@1.4531 N3@0.7311 N3@0.8741 N6@1.0309 N3@1.0309 N6@1.1789 N3@1.1789 N6@1.3021 N3@1.3021 N7@1.4129 N6@1.4129 N3@1.4129
+dir 0: 40.4 ulps of move per unit of read noise; N4 -0.6429 N5 -0.1829 N6 -0.6797 N7 -0.3017 N8 -0.0153 N9 -0.0001
+dir 1: 131 ulps of move per unit of read noise; N4 -0.4928 N5 -0.0819 N6 +0.1061 N7 +0.8572 N8 +0.0660 N9 +0.0005
+dir 2: 203 ulps of move per unit of read noise; N4 -0.5561 N5 -0.0438 N6 +0.7206 N7 -0.4097 N8 -0.0426 N9 -0.0003
+dir 3: 1.72e+03 ulps of move per unit of read noise; N4 +0.1861 N5 -0.9777 N6 +0.0851 N7 +0.0066 N8 -0.0467 N9 -0.0006
+dir 4: 3.15e+03 ulps of move per unit of read noise; N4 -0.0077 N5 +0.0452 N6 -0.0173 N7 +0.0787 N8 -0.9956 N9 -0.0111
+dir 5: 4.5e+06 ulps of move per unit of read noise; N4 +0.0000 N5 -0.0001 N6 -0.0000 N7 +0.0003 N8 -0.0112 N9 +0.9999

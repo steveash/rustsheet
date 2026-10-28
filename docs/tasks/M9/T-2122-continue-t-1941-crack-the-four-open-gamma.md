@@ -3,7 +3,7 @@ id: T-2122
 title: "Continue T-1941: crack the four open gamma kernels to the bit"
 milestone: M9
 lane: research
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -71,6 +71,13 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
   N6 +7.4e8, which agrees with ladder.py's joint consensus. The D chain is still unidentified below D6. The 15.3 refit
   score swings up to 10 points on a 1-ulp change of N6, so run 3's +3.9 points for the head move is noise. Next: a
   score that is invariant to the lower chain's low bits (HANDOFF2 16.2).
+- Run 5 (2026-10-28, one opus worker, K3 step 16.2.1): HANDOFF2 section 17, `t2122/k3_reread.py`, `k3_null.py`,
+  `k3_tol.py`. Re-reading the ladders with a moved set as base gives a score that the lower chain's low bits do not
+  affect. It is calibrated on the control, and its reads are the next correction: Newton steps converge to the
+  ladder's floor. Real data: run 4's move A is right, and two Newton steps give set `k3_run5_C.txt`, with 21/29 rows
+  at zero (all 11 N3 rows within ±150 cycles/x). C's total move matches run 1's independent consensus. Remaining 1σ
+  errors: N9 4.5e6, N8 3.2e3, N5 1.7e3 and N4/N6/N7 40-200 ulps, against exact-rate tolerances of about ±400, ±10
+  and ±1. Next: more N7/N5 ladder rows, then the W5 top grid and FFT peel from C (17.4).
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses
