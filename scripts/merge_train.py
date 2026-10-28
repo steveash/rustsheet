@@ -178,9 +178,7 @@ def collect(client: Client, repo: merge_ready.Repo) -> Collected:
     """Runs V1-V6 on every open PR labelled ready-to-merge (SPEC-0027 section 4, step 2)."""
     found = Collected()
     for pull in client.pulls():
-        labels = merge_ready.field_of(pull, "labels")
-        names = [merge_ready.text_of(label, "name") for label in labels] if isinstance(labels, list) else []
-        if merge_ready.READY_LABEL not in names:
+        if merge_ready.READY_LABEL not in merge_ready.label_names(pull):
             continue
         pr = gh_client.number(merge_ready.int_of(pull, "number"))
         verdict = merge_ready.verify(client, pr, repo)
