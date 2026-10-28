@@ -25,4 +25,4 @@ references. Use the excel-probe skill; see docs/excel-semantics/syntax.md "A typ
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-None. Also probe `N((+B1:B3))` (a plus under written parentheses).
+None. Also probe `N((+B1:B3))` (a plus under written parentheses) and `T(+B1:B3)` (T shares the N rule unprobed, T-2885).
