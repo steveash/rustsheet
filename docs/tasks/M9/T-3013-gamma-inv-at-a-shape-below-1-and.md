@@ -18,7 +18,9 @@ not the correctly rounded quantile.
 ## Visible-parity stage
 `visible`: Excel is the inaccurate one here. Ours is the correctly rounded quantile, so the fix reproduces Excel's
 form; it is not an accuracy fix. The target is gen-m9/984cba67bbe6972b.case.json Calc!A43 within half a unit of the
-15th significant digit, plus the visibly-off cells of T-3012's probe. This is time-boxed (decision 0056).
+15th significant digit, plus the visibly-off cells of T-3012's probe
+probes/t3012-gamma-inv-small-shape (all of it; its GAMMA.DIST companion, probes/t3012-gamma-dist-at-quantile, is
+T-3060's). This is time-boxed (decision 0056).
 
 ## Context
 - gen-m9/984cba67bbe6972b.case.json Calc!A43, `GAMMA.INV(1E-16,ABS(TIMEVALUE("6:00")),Data!A10)` =

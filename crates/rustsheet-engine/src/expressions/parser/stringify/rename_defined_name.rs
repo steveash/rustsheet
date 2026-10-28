@@ -61,7 +61,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::BooleanKind(_) => {}
         Node::NumberKind(_) => {}
         Node::StringKind(_) => {}
-        Node::ErrorKind(_) => {}
+        Node::ErrorKind(_) | Node::SheetRefErrorKind { .. } => {}
         Node::ParseErrorKind { .. } => {}
         Node::ArrayKind(_) => {}
         Node::EmptyArgKind => {}
