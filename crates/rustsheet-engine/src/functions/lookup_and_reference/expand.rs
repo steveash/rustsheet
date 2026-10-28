@@ -11,6 +11,7 @@ use crate::{
 };
 
 use super::wrapcols_wraprows::pad_with_of;
+use crate::constants::LAST_ROW;
 use crate::limits::SIZE_LIMIT_EXCLUSIVE;
 
 impl Model {
@@ -139,6 +140,23 @@ fn expand_kernel(
         );
     }
 
+    // Rows past the grid are `#NUM!` before an array pad_with is `#VALUE!` (probes/t2479-wrapcols-
+    // notvector-expand-padarray G15, G16, G18), which comes before our own cell bound so that
+    // bound (a DEVIATION) is not reached by what Excel answers `#VALUE!` (G19); whether the
+    // columns cap below also follows it is unprobed.
+    if target_rows > LAST_ROW as usize {
+        if let Some((error, message)) = check_stack_size(target_rows, 0) {
+            return CalcResult::new_error(error, cell, message);
+        }
+    }
+    let Some(pad) = pad else {
+        return CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "pad_with must be a single value".to_string(),
+        );
+    };
+
     // Excel refuses columns past a cap of its own after the sizes above: 1,048,576 are built and
     // 1,048,577 are `#NUM!` in one row (probes/t2452-expand-cols-*), and the cap counts columns,
     // not cells (`COLUMNS(EXPAND(1,2,524289))` is 524289, probes/t2452-expand-2x524289); a
@@ -159,13 +177,6 @@ fn expand_kernel(
         return CalcResult::new_error(error, cell, message);
     }
 
-    let Some(pad) = pad else {
-        return CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "pad_with must be a single value".to_string(),
-        );
-    };
     let mut result: Vec<Vec<ArrayNode>> = Vec::with_capacity(target_rows);
     for r in 0..target_rows {
         let mut row: Vec<ArrayNode> = Vec::with_capacity(target_cols);

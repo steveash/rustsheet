@@ -1826,14 +1826,14 @@ A3517); a 2-D vector beside a clean lifted argument fills the shape (`ROWS(WRAPC
 error array beside a lifted argument is one error per element (`ROWS(EXPAND(1/0,{3;4}))` and `ROWS(EXPAND(NA(),3,{1;2}))`
 are 2), and a 1x1 array pad_with is `#VALUE!` (`INDEX(EXPAND(A1:A2,3,1,{0}),3,1)`). TOCOL of an error array beside a lifted
 argument also fills the shape (`ROWS(TOCOL(1/0,0,{0;1}))`, `ROWS(TOCOL(1/0,{0;1}))` are 2). The multi-cell range pad_with
-is T-2415's; an array pad_with with rows past the grid hung the Graph workbook (unprobed).
+is T-2415's; an array pad_with with far more rows past the grid hung the Graph workbook (T-2479 probed only 1048577 rows).
 VERIFIED (excel-graph, 2026-10-28, probes/t2479-wrapcols-notvector-expand-padarray; T-2479): on a 2-D array vector a non-error bad
 wrap_count (-1, 0, "a") is `#VALUE!`, and an error wrap_count wins (`WRAPCOLS({1,2;3,4},NA())` `#N/A`, `1/0` `#DIV/0!`, same for
 WRAPROWS; G1-G7). An empty-cell vector is different: its `#VALUE!` comes BEFORE the wrap_count, so `WRAPCOLS(Z1,NA())` and
 `WRAPROWS(Z1,NA())` are `#VALUE!`, not `#N/A` (G8-G13). An error pad_with beside a 2-D vector is `#VALUE!` (G14). EXPAND with an
 array pad_with: rows past the grid are `#NUM!` first (`ROWS(EXPAND(1,1048577,1,{0;1}))`, `{0}`, and with a range `A1:A2` vector; G15,
 G16, G18), at the grid's last row or with columns past the grid or in range it is `#VALUE!` (G17, G19-G21; the array pad_with check
-comes after the grid-size check). Ours: matches (T-2479: `flatten_vector`, `expand_kernel`).
+comes after the rows-past-grid check; whether the 1048577-column cap also precedes it is unprobed). Ours: matches (T-2479: `flatten_vector`, `expand_kernel`).
 A multi-cell *range* pad_with is one `#VALUE!` too, with nothing spilled, whatever the range's shape and whether any cell is padded:
 `EXPAND({1;2;3},5,100,Data!A7:D7)` (gen-m7/0624b684889e9228 Calc!A2004), `EXPAND(Data!C11:D12,2,2,Data!E1:E3)` (gen-m7/2c156ba98ef0220a.case.json A185),
 `EXPAND("a",4,4,Data!C7:C11)` (2d9b48c6363e7a16 A366), `EXPAND({1,2,3},5,4,Data!B5:C11)` (A2686), a 1x1 result that pads nothing,
