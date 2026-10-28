@@ -52,3 +52,4 @@ Case `eval/suites/probes/cases/t2565-irr-guess-sweeps` (generator `fitlab/irr_gu
 excel-graph. Excel departs from the model from the first guess on (no agreement distance); the large-root
 "error" is Excel's v rounded to a 2^-53 grid: rounding the model's v to it matches 173/175 cells. Recorded in
 financial.md; fitting it is T-2131.
+The case has no `hypotheses` field: the guesses are the column-B literals, named by block in the description.
