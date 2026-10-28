@@ -23,6 +23,11 @@ Excel evidence decides the D* computed-criterion cases T-2617 left unprobed, so 
   column (`B$5`), and checks a range with one absolute row by its moved other corner (`SUM(B$5:B6)`, `SUM($B5:B6)`).
 - Unprobed, only parsed references are retargeted: `INDIRECT("B2")`, `OFFSET(B2,0,0)`, `ROW()`/`COLUMN()` with no
   argument and a structured `[@Col]` reference in a criterion on another sheet keep the criteria cell's sheet.
+- Evidence for `ROW()` exists: the duplicate T-2617 run (closed PR #2127, branch
+  agent/research/T-2617-d-computed-criteria-other-sheet, probes/db-computed-criteria-other-sheet Calc A138-A149,
+  excel-graph 2026-10-28) found `ROW()` with no argument is the criteria cell's own row for every record (`=ROW()=2`
+  on Crit row 2 matches every record of Data!A1:C7, Data!A4:C10 and Crit!A10:C16; `=ROW()>2` and `=ROW()<2` none).
+  That branch's case and oracle can be copied, and its `condition_for_records` pins `ROW()` that way.
 - Use T-2617's design: field cells holding 2^(row-1) so a DSUM is the set of matched records, over Same!A5:C12 and a
   Data/Db pair. Implementation detail to revisit when touching the code: the cross-sheet path clones the criterion's
   AST once per record (`Arc::make_mut`); retargeting once per criteria cell would avoid it.
