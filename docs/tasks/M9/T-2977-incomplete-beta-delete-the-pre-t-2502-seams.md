@@ -90,5 +90,8 @@ the bratio port's per-branch accuracy is measured and on record.
   (`#NUM!`) instead of inf.
   `docs/research/t2506/score_l140.py`, `t2681/score_bratio.py` and `t2977/score_branches.py` still need the harness
   back from git history.
+- Not measured here, handed to T-3003: the re-score of docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells
+  (L = -LN(a0) at a whole b0, a0 <= 8) and the L140 cells it moves off; the bpser shortfall above (1 cell at
+  1 < b0 < 8, 9 at b0 >= 8, where `bpser_neg_ln_beta` takes algdiv in double arithmetic).
 - Follow-up: T-3003 (the port's open items: a shape of 1 outside the closed forms, a TOMS betaln, fl(a LN x)
   overflow, SPEC-0025's layout).

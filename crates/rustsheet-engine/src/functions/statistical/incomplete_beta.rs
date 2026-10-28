@@ -45,6 +45,12 @@ pub(crate) const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
 /// Terms of the atanh series in [`rlog1`]: |r| <= 1/3 there, so (1/9)^20 is far below 2^-53.
 const RLOG1_TERMS: u32 = 20;
 
+/// Below this x an a = 1 tail outside Excel's closed forms is -expm1(b ln1p(-x)), which keeps the
+/// digits 1 - exp(b ln(1 - x)) cancels (T-0974): always so in [`shape_one_tails`] (x0 < 0.1 there),
+/// and the cut of F.TEST's and the F quantile's unswapped form (`fisher.rs`
+/// `unoriented_shape_one_tail`).
+pub(crate) const A1_EXPM1_MAX_X: f64 = 0.1;
+
 /// The largest oriented complement y0 at which a0 = 1 takes Excel's closed form
 /// ([`closed_form_tails`]): Excel takes it at `T.DIST.RT(4.24,2)` (y0 = 0.899888) and not at
 /// `T.DIST.RT(4.245,2)` (y0 = 0.900100), probes-numeric t0969-t-df2-cut, and takes it at y0 = 0.9

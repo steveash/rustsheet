@@ -4,7 +4,9 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
-use crate::functions::statistical::incomplete_beta::{beta_density, beta_reg_tails};
+use crate::functions::statistical::incomplete_beta::{
+    beta_density, beta_reg_tails, A1_EXPM1_MAX_X,
+};
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::loader::dbinom_raw_dev;
 use crate::functions::statistical::paired::marked_number_error;
@@ -174,10 +176,6 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
 }
 
-/// Below this x [`unoriented_shape_one_tail`]'s a = 1 tail is -expm1(b ln1p(-x)), above it
-/// 1 - exp(b ln(1 - x)) (T-0974).
-const A1_EXPM1_MAX_X: f64 = 0.1;
-
 /// `I_x(a, b)` at a shape of 1 as F.TEST and the F quantile's search ([`f_quantile_tail`]) take it,
 /// for 0 < x < 1, on the caller's x without bratio's swap:
 /// x^a at b = 1, and 1 - (1 - x)^b at a = 1 (as -expm1(b ln1p(-x)) below
@@ -185,7 +183,8 @@ const A1_EXPM1_MAX_X: f64 = 0.1;
 /// closed forms of F.DIST and BETA.DIST (`incomplete_beta::closed_form_tails`): with them
 /// `F.TEST` moves 2 to 10 ulp off Excel at gen-m9/68d8ffb69ff739d8 A143 (a = 1, b = 1/2, x = 0.571),
 /// a790a4d4a6a82756 A192 (a = 4, b = 1, x = 0.618) and bbdfc06cae0e0d71 A356 (a = 5.5, b = 1,
-/// x = 0.579; visibly off), each bit-exact on this form (T-2977).
+/// x = 0.579; visibly off), each bit-exact on this form (T-2977). The kernel's own tails at a
+/// shape of 1 outside the closed forms are `incomplete_beta::shape_one_tails`, oriented.
 fn unoriented_shape_one_tail(x: f64, a: f64, b: f64) -> Option<f64> {
     if b == 1.0 {
         return Some((a * x.ln()).exp());

@@ -1657,8 +1657,8 @@ its digits below, -expm1(b*ln1p(-x)) as far as the cells tell, the same cut as T
   (`FINV(1E-10,6,2)`) and 2801c1c11c21e134 A130 (`FDIST(1E+10,4,2)`) pass, which failed with 1 - exp below x = 0.1.
 - At df 2, half the uncancelled tail is Excel's `T.DIST.RT(4.245,2)` = 0.025631992844658943 (t0969-t-df2-cut
   B450) bit for bit, 1 ulp from the closed form.
-Ours: `incomplete_beta.rs` `beta_reg_complement` (`A1_CLOSED_FORM_MIN_X`), so F.DIST, F.DIST.RT and the F quantiles take it;
-since T-2119 BETA.DIST's cdf and BETA.INV take it too.
+Ours: `incomplete_beta.rs` `shape_one_tails` (oriented, x0 < 0.1 there) for BETA.DIST's cdf, BETA.INV and the F tails,
+and `fisher.rs` `unoriented_shape_one_tail` with the cut `A1_EXPM1_MAX_X` for F.TEST and the F quantiles' search (T-2977).
 Status: VERIFIED (excel-graph) at x from 1E-11 to 4E-4 below the cut and at 0.1; the cut itself between 4E-4 and 0.1
 is UNVERIFIED (assumed T.DIST.RT's).
 Tasks: T-0974, T-2119
@@ -3285,6 +3285,8 @@ exp-of-a-product rounding (where a ln x is near -100 to -300 the exact p is tens
 179, from Excel's, and the model is within a few), while R itself is close to correctly rounded. The closed forms
 of the incomplete beta hold: b = 1 is exp(a ln x) and a = 1 (df_small = 2) is -expm1(b ln1p(-x))
 below x = 0.1, which is why the a = 1 deep tails are the correctly rounded value.
+Since T-2977 a tail outside the series (a + b above 200, or a shape that is not a half integer) takes the bratio port
+in front of today's kernel (`bratio::beta_dist_lower_tail`); a shape of 1 keeps the forms above, unswapped.
 A variance that overflows is `#NUM!`: `F.TEST({1E+200,1E+200,-1E+200},Data!A11:B12)` (gen-m9/
 7674c89c824aca43 A39, f2bd5f380ec002bf A210); the engine also returns `#NUM!` for two finite
 variances whose ratio overflows, `FTEST({1E-160,2E-160},{1E+150,2E+150})` (unprobed, T-2571).

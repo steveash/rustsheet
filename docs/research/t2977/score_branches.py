@@ -11,49 +11,29 @@ Usage (repo root; data rebuilt per docs/research/t2506/RESULTS.md "Data"):
   T2464_HARNESS=<engine test binary> bindings/python/.venv/bin/python docs/research/t2977/score_branches.py
 Scores: bit-exact / within 4 ulp / within half a unit of the 15th significant digit (w15).
 """
-import os
-import struct
-import subprocess
 import sys
-import tempfile
 from collections import defaultdict
 from dataclasses import replace
 from pathlib import Path
 
-T2464 = Path(__file__).resolve().parent.parent / "t2464"
+RESEARCH = Path(__file__).resolve().parent.parent
+T2464 = RESEARCH / "t2464"
 sys.path.insert(0, str(T2464 / "r2-bratio"))
 sys.path.insert(0, str(T2464 / "r2-bpser-small"))
+sys.path.insert(0, str(RESEARCH / "t2506"))
 import bratio_excel as bx  # noqa: E402
 import lib as bsl  # noqa: E402
+import score_l140  # noqa: E402 - the harness runner (T2464_HARNESS)
 from score_lib import load, tally  # noqa: E402
 
 BRANCHES = ["zero", "one", "tiny", "fpser", "apser", "w_bpser", "w1_bpser", "bup_bgrat", "bgrat", "bpser_large",
             "l140_bup_bpser", "l140_bup_bgrat", "l140_bup_bup_bgrat", "bfrac", "basym"]
-HARNESS = os.environ["T2464_HARNESS"]
-
-
-def hx(v: float) -> str:
-    return f"{struct.unpack('<Q', struct.pack('<d', float(v)))[0]:016x}"
-
-
-def fl(h: str) -> float:
-    return struct.unpack("<d", struct.pack("<Q", int(h, 16)))[0]
 
 
 def engine(rows):
-    with tempfile.TemporaryDirectory() as d:
-        inp, out = os.path.join(d, "in"), os.path.join(d, "out")
-        with open(inp, "w") as f:
-            for r in rows:
-                f.write(f"BRATIO {hx(r['a'])} {hx(r['b'])} {hx(r['x'])} {hx(r['y'])}\n")
-        env = dict(os.environ, T2464_IN=inp, T2464_OUT=out)
-        subprocess.run([HARNESS, "--ignored", "--exact", "functions::statistical::t2464_harness::t2464_kernels",
-                        "--quiet"], env=env, check=True, capture_output=True)
-        res = []
-        for line in open(out):
-            w, w1, br, ported = line.split()
-            res.append((fl(w), fl(w1), BRANCHES[int(br)] if int(br) < len(BRANCHES) else "none", ported == "1"))
-        return res
+    """score_l140's harness run, with bratio's branch index as a name."""
+    return [(w, w1, BRANCHES[br] if br < len(BRANCHES) else "none", ported)
+            for w, w1, br, ported in score_l140.engine(rows)]
 
 
 def b0_class(r) -> str:

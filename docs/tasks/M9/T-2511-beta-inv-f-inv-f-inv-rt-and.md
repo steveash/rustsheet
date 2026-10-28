@@ -18,6 +18,9 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
 `checked_beta_reg`.
 
 ## Context
+- T-2977: F.INV, F.INV.RT and FINV search `fisher.rs::f_quantile_tail` (the unoriented tail,
+  `unoriented_shape_one_tail` at a shape of 1); delete both once they invert the ported F tail. Searching the ported
+  tail as of T-2977 fixes 9 gen-m9 cells and moves 9 gated cells 2 to 8 ulp off (T-2977 Outcome).
 - T-2464 research, step E8 of docs/research/t2464/r2-impact/RESULTS.md section 4 (`inverse.py` → `inverse.out`).
 - Rule: docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)". That holds at 155
   of 188 rows; 11 miss by 1 to 188 ulps of p, which suggests a tolerance stop that is not established.

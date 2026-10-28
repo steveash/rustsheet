@@ -32,6 +32,10 @@ layout and tests.
     `bratio::bpser_neg_ln_beta` or say in the code why they differ;
   - the 987 probes-numeric cells T-2505's port moved off the Cephes kernel (T-2847 Context), scored against the
     model with the bindings venv (decision 0114).
+- From T-2977's Context: re-score docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells that L = -LN(a0) at
+  a whole b0 makes bit-exact at a0 <= 8, and count the L140 cells it moves off; and the bpser criterion's shortfall on
+  t2464-r2-bpser-small-shapes (w15 4,601 of 4,602 at 1 < b0 < 8, 2,859 of 2,868 at b0 >= 8 against 2,861 for the
+  model; `bpser_neg_ln_beta` takes `beta_density::algdiv` in double arithmetic for b0 >= 8, the model x87 stored).
 - The model's w_bpser counts beat the engine's (6,767 against 5,458 bit-exact of 11,845; T-2977 Outcome): the
   model scores 6,767 with w3_lg = toms and 6,072 with gl (the engine's GL53), so part of the gap is the L form.
 
