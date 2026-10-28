@@ -3,7 +3,7 @@ id: T-3012
 title: "Probe GAMMA.INV and GAMMA.DIST at a shape below 1 and p near 1E-16 (gen-m9 984cba67bbe6972b A43: Excel 4.1E-15 above the exact quantile)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -37,13 +37,22 @@ without guessing.
     to name Excel's cdf form.
 
 ## Acceptance criteria
-- [ ] probes/t3012-gamma-inv-small-shape exists with excel-graph expectations (canary-verified, `oracle.json`
+- [x] probes/t3012-gamma-inv-small-shape exists with excel-graph expectations (canary-verified, `oracle.json`
       sidecar). Its known-failure lines are recorded with `make eval-baseline`, so no case of any other suite moves.
-- [ ] docs/excel-semantics/statistics.md records, with cell citations, whether each GAMMA.INV value is the crossing
+- [x] docs/excel-semantics/statistics.md records, with cell citations, whether each GAMMA.INV value is the crossing
       of Excel's GAMMA.DIST and which cdf form matches Excel's GAMMA.DIST at those x.
-- [ ] T-3013's Context is updated with the result.
-- [ ] `make check` green; reviewers approve.
+- [x] T-3013's Context is updated with the result.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine (T-3013).
 - Huge shapes (T-2982) and ordinary-shape last digits (T-0972).
+
+## Outcome
+Two probe cases (probes/t3012-gamma-inv-small-shape, probes/t3012-gamma-dist-at-quantile) with excel-graph values;
+findings in docs/excel-semantics/statistics.md (Excel's GAMMA.INV is its own inversion, not the crossing of its
+GAMMA.DIST: rows 3 and 16-23 are 6 to 205 ulps of P off, rows 1-2 and 8 about 30 to 90 ulps of x from a
+crossing; only rows 15 and 25 are bracketed by a crossing, and row 12 is exactly double(1E-30) in A..C so it cannot rule one
+out) and T-3013's Context. Eval delta: two new probe cases, known-failure lines added to
+eval/baseline/probes.txt only; no other suite moved. Five unrelated probe cases failed to fill (graph
+unsupportedWorkbook), left pending.
