@@ -394,6 +394,7 @@ C	probes/eng-imln-modulus-range.case.json	84
 C	probes/eng-imln-modulus.case.json	20
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
+C	probes/eng-impower-overflow-shapes.case.json	14
 C	probes/eng-impower-overflow.case.json	12
 C	probes/eng-impower-past-cut.case.json	19
 C	probes/eng-impower.case.json	22
