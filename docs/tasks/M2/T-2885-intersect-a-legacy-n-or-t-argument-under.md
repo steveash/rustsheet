@@ -3,7 +3,7 @@ id: T-2885
 title: "Intersect a legacy N or T argument under a unary plus: N(+B1:B3) stores N(+@B1:B3)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -31,3 +31,9 @@ task (excel-probe skill) before deciding how deep the rule goes.
 
 ## Out of scope
 - Dynamic-array formulas (a dynamic `N(+B1:B3)` lifts; not probed here).
+
+## Outcome
+`is_plain_reference` (static_analysis/legacy.rs) now returns false for an argument that is itself a unary plus, so legacy
+`N(+B1:B3)` gets an `@` and intersects. t2772-unary-plus-in-range-rows J2, J5 pass and left the baseline; no other cell
+changed. The plus-on-IF-arm and plus-on-OFFSET shapes need the oracle and are not probed here: filed as a follow-up
+(research lane) and noted in syntax.md.
