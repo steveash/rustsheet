@@ -3,7 +3,7 @@ id: T-3072
 title: "An error or one-cell TAKE/DROP result under arithmetic is a scalar, not a lifted 1x1 array (CHITEST, SUMXMY2, ROWS)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
