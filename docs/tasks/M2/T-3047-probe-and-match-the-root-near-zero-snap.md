@@ -38,9 +38,10 @@ operand is an array or a multi-cell range, and the engine matching it in both th
       (`=A1:A3+B1:B3-C1:C3` typed into row 1 as a legacy formula) and an `INDEX(...)` of a spilled snapping root.
 - [x] numbers.md "Near-zero snapping" records the rule with the cell ids and drops the "(unprobed)" note; the
       "Implemented in" line and the `handle_outermost_sum` doc comment cite the evidence.
-- [x] The engine matches every cell of the new case (`make eval-show CASE=probes/t3047-snap-array-operands` shows no
+- [ ] The engine matches every cell of the new case (`make eval-show CASE=probes/t3047-snap-array-operands` shows no
       failing cell), with unit tests in the engine's arithmetic tests for each probed shape; probes known failures do
-      not rise.
+      not rise. **Partly met:** every snap cell matches; the 3 legacy array-constant cells (L!F1, L!G2, L!H3) are
+      new-coverage known failures owned by T-3051 (not snap behavior); no existing known failure rose.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
