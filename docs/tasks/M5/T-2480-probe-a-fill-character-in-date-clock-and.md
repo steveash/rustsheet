@@ -3,7 +3,7 @@ id: T-2480
 title: "Probe a * fill character in date, clock and fraction format codes"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1735 made a fill add nothing in number text and (unprobed) in date/clock text;
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/text-fill-char-date-clock-fraction` (12 cells, excel-graph): a `*x` fill adds nothing in date, clock and fraction codes. Date/clock already matched; fraction.rs printed a space, now nothing. Probe passes 12/12 (was 6/12). Blank-fraction fill unprobed (noted in number-formats.md).
