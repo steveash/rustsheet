@@ -4,7 +4,7 @@ title: "Last digits of the T-2435 probe's distribution cells (BINOM pmf, GAMMA.D
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []

@@ -343,6 +343,7 @@ C	probes/discount-security-modes.case.json	135
 C	probes/discount-serial-zero.case.json	50
 C	probes/displayed-text-formats.case.json	10
 C	probes/dollar-fixed-unichar-edges.case.json	76
+C	probes/drop-lifted-grid-handon.case.json	11
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/dynamic-array-reshape-and-isomitted.case.json	132
 C	probes/dynamic-array-reshape-reprobe.case.json	20
@@ -393,6 +394,7 @@ C	probes/eng-imln-modulus-range.case.json	84
 C	probes/eng-imln-modulus.case.json	20
 C	probes/eng-impower-angle-cut.case.json	19
 C	probes/eng-impower-imdiv-edges.case.json	35
+C	probes/eng-impower-overflow-shapes.case.json	14
 C	probes/eng-impower-overflow.case.json	12
 C	probes/eng-impower-past-cut.case.json	19
 C	probes/eng-impower.case.json	22
@@ -1025,6 +1027,7 @@ C	probes/scalar-lift-open-e.case.json	22
 C	probes/scalar-lift-shapes-b.case.json	26
 C	probes/scalar-lift-shapes-c.case.json	18
 C	probes/scalar-lift-shapes.case.json	67
+C	probes/scan-over-groupby.case.json	72
 C	probes/search-wildcard-newline.case.json	30
 C	probes/second-rounding.case.json	40
 C	probes/securities-argument-error-order.case.json	192

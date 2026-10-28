@@ -72,7 +72,7 @@ impl Model {
         }
         for (sheet, ws) in self.workbook.worksheets.iter().enumerate() {
             for (row, column, cell) in ws.sheet_data.cells() {
-                if matches!(cell, Cell::CellFormula { .. } | Cell::ArrayFormula { .. }) {
+                if cell.has_formula() {
                     state
                         .prior
                         .insert((sheet as u32, row, column), cell.clone());
@@ -100,6 +100,11 @@ impl Model {
         if self.iterating() && self.is_cycle_member(at) {
             self.join_stack();
         }
+    }
+
+    /// Whether this round found a circular reference to iterate.
+    pub(crate) fn has_cycles(&self) -> bool {
+        !self.evaluation.iteration.members.is_empty()
     }
 
     /// Whether `at` is in the recalculated set, so that reading it joins its readers to it.

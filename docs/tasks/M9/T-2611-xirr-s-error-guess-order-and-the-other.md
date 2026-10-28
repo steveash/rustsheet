@@ -4,7 +4,7 @@ title: "XIRR's error-guess order and the other financial functions' domain-befor
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []

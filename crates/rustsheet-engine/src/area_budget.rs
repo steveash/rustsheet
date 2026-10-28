@@ -9,6 +9,7 @@ use crate::{
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     limits::too_many_visits,
     model::Model,
+    recalc_budget::RunBound,
 };
 
 /// Most pairs of areas one formula evaluation may compare ([`AreaBudget`]). Each intersection
@@ -113,11 +114,20 @@ pub(crate) struct AreaBudget {
     /// Whether a rectangle went unrecorded for want of [`MAX_SEEN_RANGES`]: the formula's value
     /// may then depend on a read the pass does not know of, so it is not used.
     seen_ranges_exceeded: bool,
-    /// Work units left ([`MAX_FORMULA_WORK`]).
-    work: u64,
+    /// Work units left ([`MAX_FORMULA_WORK`], or less when a pool of the recalculation has less
+    /// left, SPEC-0028).
+    pub(crate) work: u64,
     /// Set once a charge did not fit; every later charge then fails at once, so the formula
     /// unwinds without doing more work.
-    work_exceeded: bool,
+    pub(crate) work_exceeded: bool,
+    /// Whether the run draws on the pools of the recalculation's pass (SPEC-0028 section 2).
+    pub(crate) pooled: bool,
+    /// Which bound gave the run its units, and so what running out of them means.
+    pub(crate) bound: RunBound,
+    /// `work` when the run last settled what it spent ([`Model::start_run`]).
+    pub(crate) unsettled_from: u64,
+    /// Units the run spent, as of its last settle.
+    pub(crate) spent: u64,
     /// The work each formula run started from this one gets, [`MAX_FORMULA_WORK`] unless a test
     /// lowers it on the model's own budget (SPEC-0024 section 2: a security bound, not an API option).
     #[cfg(test)]
@@ -153,13 +163,16 @@ impl AreaBudget {
 
 impl Default for AreaBudget {
     fn default() -> AreaBudget {
-        AreaBudget::with_work(MAX_FORMULA_WORK)
+        AreaBudget::for_run(MAX_FORMULA_WORK, MAX_FORMULA_WORK, RunBound::Own, false)
     }
 }
 
 impl AreaBudget {
-    /// A fresh budget that may spend `work` units: [`MAX_FORMULA_WORK`], or a test's lower limit.
-    fn with_work(work: u64) -> AreaBudget {
+    /// A fresh budget for a run whose own limit is `limit` ([`MAX_FORMULA_WORK`], or a test's lower
+    /// one) and which may spend `work` units, given by `bound` ([`Model::start_run`]).
+    pub(crate) fn for_run(limit: u64, work: u64, bound: RunBound, pooled: bool) -> AreaBudget {
+        #[cfg(not(test))]
+        let _ = limit;
         AreaBudget {
             pairs: MAX_AREA_PAIRS,
             walk: MAX_AREA_WALK,
@@ -167,11 +180,23 @@ impl AreaBudget {
             seen_ranges_exceeded: false,
             work,
             work_exceeded: false,
+            pooled,
+            bound,
+            unsettled_from: work,
+            spent: 0,
             #[cfg(test)]
-            limit: work,
+            limit,
             #[cfg(test)]
             last_spent: 0,
         }
+    }
+
+    /// Adds what the run spent since its last settle to `spent` and returns it.
+    pub(crate) fn settle_spent(&mut self) -> u64 {
+        let units = self.unsettled_from.saturating_sub(self.work);
+        self.unsettled_from = self.work;
+        self.spent = self.spent.saturating_add(units);
+        units
     }
 }
 
@@ -211,7 +236,9 @@ pub(crate) fn visit_units(visits: u64) -> u64 {
 impl Model {
     /// Runs `f`, one formula's evaluation in `cell`, with a fresh [`AreaBudget`], and gives the
     /// budget it interrupted back afterwards: a cell evaluated while another formula runs has its
-    /// own budget and leaves the other's as it was. A run that read more rectangles than
+    /// own budget and leaves the other's as it was, but for what the pools of the recalculation
+    /// have left (SPEC-0028: the runs' spend is settled into them here, [`Model::start_run`] and
+    /// [`Model::end_run`]). A run that read more rectangles than
     /// [`MAX_SEEN_RANGES`] lets it record is `#VALUE!`, whatever `f` returned: a spill into a
     /// rectangle it could not record would not restart the pass, so its value cannot be trusted,
     /// and an error here, unlike one at the read, cannot be caught (`IFERROR`) and replaced by a
@@ -222,20 +249,21 @@ impl Model {
         f: impl FnOnce(&mut Self) -> CalcResult,
     ) -> CalcResult {
         #[cfg(not(test))]
-        let fresh = AreaBudget::default();
+        let fresh = self.start_run(MAX_FORMULA_WORK);
         #[cfg(test)]
-        let fresh = AreaBudget::with_work(self.area_budget.limit);
+        let fresh = self.start_run(self.area_budget.limit);
         let outer = std::mem::replace(&mut self.area_budget, fresh);
         let result = f(self);
-        let inner = std::mem::replace(&mut self.area_budget, outer);
-        #[cfg(test)]
-        {
-            self.area_budget.last_spent = inner.limit.saturating_sub(inner.work);
-        }
+        let mut inner = std::mem::replace(&mut self.area_budget, outer);
         // Past the work budget, the run was cut short wherever the charge failed, and `f` may have
         // turned that into a value (`IFERROR`), so the formula's value is the error (SPEC-0024).
-        if inner.work_exceeded {
-            return too_much_work(cell);
+        let exceeded = self.end_run(&mut inner, cell);
+        #[cfg(test)]
+        {
+            self.area_budget.last_spent = inner.spent;
+        }
+        if let Some(error) = exceeded {
+            return error;
         }
         if inner.seen_ranges_exceeded {
             return CalcResult::new_error(Error::VALUE, cell, TOO_MANY_SEEN_RANGES.to_string());
