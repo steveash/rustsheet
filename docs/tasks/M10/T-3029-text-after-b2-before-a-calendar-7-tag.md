@@ -40,4 +40,4 @@ before any tag whose calendar wins over it (1, 2, 3, 4, 5, 7, 9, A, 11 probed), 
 prints weekday min(month, 7) of the calendar's month in the tag's names; `mmmm`, `mmmmm` and number tokens neither
 start nor stop it. Implemented as `DatePart::b2_overridden` and `NameTokens::month_after_mmm`. t2932 A55 and 119 of
 the new probe's cells pass; the 9 TEXT cells and B3 left fail on the names' language under calendars 1, 3 and 5 after
-`B2` (a separate quirk, recorded in number-formats.md and filed as T-3098).
+`B2` (a separate quirk, recorded in number-formats.md and filed as T-3101).
