@@ -403,6 +403,9 @@ Cells:
 - gen-m9/d910f000b60e2eac.case.json (5): Calc!A48, A106, A217, A234, A358 (A358 `TDIST(DCOUNTA(..),6,2)` = `TDIST(3,6,2)`, 1 ulp; moved from T-2524)
 - gen-m9/eedd629f3d69fdda.case.json (11): Calc!A23, A28, A108, A176, A193, A210, A227, A244, A278, A295, A329
 - gen-m9/f82473275380882e.case.json (8): Calc!A60, A142, A178, A199, A204, A308, A328, A390
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/285d87cea1aaa73c.case.json: Calc!A293
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2256): these 247 known-failure lines (the T-2256 cells in Context) disappear from

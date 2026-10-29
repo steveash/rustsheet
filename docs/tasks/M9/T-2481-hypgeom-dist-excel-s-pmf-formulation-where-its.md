@@ -43,6 +43,9 @@ Bit-level scope left by T-0977 (decision 0083), which the same formulation shoul
 STATISTICAL/HYPERGEOM_DIST.xlsx F2, F3; the 65 last-digit HYPGEOM gen-m9 lines in T-0977's task file; and
 t1049-hypgeomdist A5 `HYPGEOM.DIST(0,3,5,12,TRUE)` (Excel 0.15909090909090923, now the exact 7/44, 5 ulp off; it was 2
 ulp off under statrs).
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - probes-numeric/t1049-hypgeomdist.case.json: Calc!A14, A16
 
 ## Acceptance criteria
 - [ ] The ten cells above are within half a unit of the 15th digit of Excel's value, no new known-failure lines.
