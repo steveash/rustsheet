@@ -41,6 +41,21 @@ fn year_2026() -> Option<i32> {
 //
 // All of them are case insensitive.
 
+// Excel: a blank-cell or omitted criterion is the criterion 0 (probes/t3138-blank-criterion D1:H9).
+#[test]
+fn test_build_criteria_is_empty() {
+    for c in [CalcResult::EmptyCell, CalcResult::EmptyArg] {
+        let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
+        assert!(fn_criteria(&CalcResult::Number(0.0)));
+        assert!(fn_criteria(&CalcResult::Number(-0.0)));
+        assert!(fn_criteria(&CalcResult::String("0".into())));
+        assert!(!fn_criteria(&CalcResult::EmptyCell));
+        assert!(!fn_criteria(&CalcResult::String("".into())));
+        assert!(!fn_criteria(&CalcResult::Number(1E-17)));
+        assert!(!fn_criteria(&CalcResult::Boolean(false)));
+    }
+}
+
 #[test]
 fn test_build_criteria_is_number() {
     let c = CalcResult::Number(42.0);
