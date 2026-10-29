@@ -105,4 +105,4 @@ alone and type 1 alone and sweeps |x| around 1.
 - T-2243's 14 cells: the eight PMT.xlsx cells (F15, F33, G10, J15, J33, K10, L15, M10) now pass; IPMT_PPMT.xlsx G12,
   G14, H13, H31, H4 and probes/fin-cumipmt-overflow-and-forms A13 are unchanged (IPMT/PPMT keep the exact payment).
 - T-2951 is done by this change (its 10 cells pass); T-1528 keeps IPMT/PPMT/NPV.
-- Follow-up: T-3171 (does PPMT/IPMT's `1-Q` switch at |x| = 1 too; a scratch try fixes 7 cells and regresses 3).
+- Follow-up: T-3179 (does PPMT/IPMT's `1-Q` switch at |x| = 1 too; a scratch try fixes 7 cells and regresses 3).

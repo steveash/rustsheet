@@ -162,4 +162,4 @@ to a follow-up task filed without the key.
 
 ## PMT fitted by T-3014 (2026-10-29)
 PMT's bits are solved: `-(((pv+fv)/(1-Q) - fv) * d)` with PPMT's L and Q, 308/308 on m9-fin-pmt (financial.md "PMT is
-a discounted payment"). This task keeps IPMT, PPMT and NPV; T-3171 tries the same `1-Q` switch in PPMT and IPMT.
+a discounted payment"). This task keeps IPMT, PPMT and NPV; T-3179 tries the same `1-Q` switch in PPMT and IPMT.
