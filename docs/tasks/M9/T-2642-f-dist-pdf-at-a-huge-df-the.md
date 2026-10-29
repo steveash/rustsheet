@@ -37,3 +37,7 @@ gen-m9, and the unit tests in test_fn_f_pdf_large_df.rs; reuse `crate::arithmeti
 ## Out of scope
 - Excel's own large-shape noise on other F pdf cells (T-2586).
 - The beta and Student-t densities (T-2507, T-2585).
+
+## Note (T-3034)
+`f_pdf_loader` and `loader.rs` are gone: T-3034 made every x > 0 density Excel's own chain M-final
+(`functions/statistical/f_density.rs`). Re-triage this task's cells against it before working it.

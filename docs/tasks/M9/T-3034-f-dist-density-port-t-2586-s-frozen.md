@@ -105,9 +105,13 @@ is left is T-2586's open power term.
   suite passes 359,597 → 370,270. Per cell 21,404 cells move to within 15 digits and 2,591 out. By r5-f-final's
   (side, r <= 0.375, df small/mid/large, |c ln x| < 4 / < 32 / >= 32) regions on the 64,883 research rows, every one of
   the 36 gains (smallest: side 1, r > 0.375, mid df, |P| >= 32, 13 → 19 of 92), so no region keeps the old form.
+  (That region map is over the research rows, which are the owned cases' density cells; the other probes-numeric
+  F.DIST density cells are in the per-cell count above.) Some cells the old form had bit-exact are lost, such as
+  t2586-r5-f-bigconst-a B889 (Excel 1.1626735695122385, now ...388): they stay with T-2586's open residue.
 - Removed: the beta-density-times-Jacobian form, its Loader fallback `f_pdf_loader` and `loader.rs` (stirlerr, bd0,
   dbinom_raw_dev: the F density was its only user; restore from git for T-2507 / T-2585 if they want an accurate
-  Loader form). `test_fn_f_pdf_large_df` now checks those cells within 5E-14 relative of the exact density (M-final's
+  Loader form; its half-integer stirlerr values now live, with double-double tails, as `f_density.rs`'s
+  `BINET_TABLE`). `test_fn_f_pdf_large_df` now checks those cells within 5E-14 relative of the exact density (M-final's
   error there is up to 4.5E-14; Excel's own up to 3E-14), and B889 of t2586-r5-f-bigconst-a within 1E-13 of Excel
   (M-final 1.1626735695122388 against Excel's ...385).
 - T-2790 (removing the engine's own 1 - y cancellation in `f_pdf_accurate`) has no code left to change: re-triage it

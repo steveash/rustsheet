@@ -21,3 +21,5 @@
   It stays with T-2586's open small-df constant residue.
 - **Consequences:** `eval/baseline/gen-m9.txt` gains this one line and loses 4; `eval/baseline/ironcalc-calc.txt`
   loses 1. Reviewers confirm the baseline diff adds no other line.
+  Ungated probes-numeric cells the old form had bit-exact, such as t2586-r5-f-bigconst-a B889, can be lost too; they
+  are in the T-3034 Outcome's per-cell count (2,591 out against 21,404 in) and stay with T-2586's open residue.
