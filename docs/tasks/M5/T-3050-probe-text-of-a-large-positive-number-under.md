@@ -3,7 +3,7 @@ id: T-3050
 title: "Probe TEXT of a large positive number under a lone calendar prefix (TEXT(3000000,'b1'))"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
