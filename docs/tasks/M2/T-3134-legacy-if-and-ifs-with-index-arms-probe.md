@@ -3,7 +3,7 @@ id: T-3134
 title: "Legacy IF and IFS with INDEX arms: probe which shapes Excel shows without @ (IFS, 2-D range, computed row, mixed arms) and generalize returns_single_cell_index"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
