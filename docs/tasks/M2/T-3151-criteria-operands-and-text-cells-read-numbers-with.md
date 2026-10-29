@@ -19,7 +19,8 @@ cells read numbers with VALUE's grammar", T-3136).
 - Evidence: probes/t3136-criteria-formatted-number-operands (excel-graph 2026-10-29). Failing cells: A1:G52 (SUMIF, SUMIFS,
   COUNTIF, COUNTIFS, DSUM over the operands `50%`, `$1`, `1,000`, `$1,000`, `12:00`, `12:00 PM`, `1 1/2`, `(1)`, `$-1`,
   `-$1`, `1/2/2020 12:00`, `1e2%`, `1,000.5%` under plain, `=`, `<>`, `>=`) and H25 (`VALUE("1 1/2")` = 1.5).
-  Rows 53-56 (`1,00`, text for both VALUE and the criteria) already pass and must keep passing.
+  (B, D and F rows 25, 26, 39, 41, 42, 49 and 50 already pass by chance; they and rows 53-56 (`1,00`, text for both VALUE
+  and the criteria) must keep passing.)
 - Rule: the operand side reads with VALUE's grammar (`1,00` is `#VALUE!` there, so it stays text). Text cells: `=` and the
   plain operand match a text cell whose VALUE is the number (`"12:00"`, `"12:00 PM"` and `"50%"` all match `50%`); `<>`
   counts every text cell; `<`/`>=` never match a text cell.
@@ -30,7 +31,8 @@ cells read numbers with VALUE's grammar", T-3136).
 - VALUE does not read a mixed fraction yet (`VALUE("1 1/2")` is `#VALUE!` in the engine): T-2646 (M9) owns that for
   VALUE. Rows 25-28 and H25 need it here; land it with this task, or after T-2646 if that lands first.
 - Check that typed or plain operands that pass today (probes/criteria-padded-text, criteria-operands, date-text-dotted-
-  criteria) do not regress: VALUE's grammar trims more than the criteria do (CHAR(160) must stay text).
+  criteria) do not regress: CHAR(160)-padded number text is a text criterion (criteria.md "Numeric criteria against text
+  cells and non-ASCII spaces"); whether Excel's VALUE reads it is unprobed, so keep that case as it is.
 
 ## Acceptance criteria
 - [ ] Every cell of probes/t3136-criteria-formatted-number-operands passes; `make eval-check` shows 0 regressions.

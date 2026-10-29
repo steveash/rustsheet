@@ -471,8 +471,8 @@ it as one. Percent (`"50%"`, `"1,000.5%"` = 10.005, `"1e2%"` = 1), `$` currency 
 (`"1/2/2020 12:00"` = 43832.5), a mixed fraction (`"1 1/2"`) and a parenthesised negative (`"(1)"`) are all numbers, under
 the plain operand, `=`, `<>` and `>=`. Misplaced grouping is not: `"1,00"` is text in the criterion, as `VALUE("1,00")` is
 `#VALUE!`, so it matches only the text cell "1,00" and `">=1,00"` compares texts by the collation. Calc!H gives VALUE of each
-operand: every one agrees with the criteria. So the criteria read numbers with VALUE's grammar (`parse_formatted_number`
-plus VALUE's own forms), not the typed-input grammar or the plain parser the engine uses.
+operand: every one agrees with the criteria. So the criteria read numbers consistently with VALUE's grammar (`parse_formatted_number` plus VALUE's own forms), not
+with the plain parser the engine uses; no probed form tells VALUE apart from typed input.
 Rule (text-cell side): a numeric criterion under the plain operand or `=` matches the text cells that VALUE reads as the
 same number: `50%`, `12:00` and `12:00 PM` match the text cells "50%", "12:00" and "12:00 PM"; `$1` and `1e2%` match "$1",
 "1e2%" and "1"; `1,000` matches "1,000" and "$1,000"; `(1)`, `$-1` and `-$1` match "(1)" and "$-1". `<>` with a numeric
@@ -482,9 +482,10 @@ SUMIF, SUMIFS (the indexed path), COUNTIF, COUNTIFS and DSUM agree on every row,
 Evidence: probes/t3136-criteria-formatted-number-operands (excel-graph, 2026-10-29): Data!A1:A8 numbers 0.5, 1, -1, 1.5, 1000,
 10.005, 43832.5, 100 and Data!C1:C14 text cells with power-of-two SUMIF weights. Rows 1-56 are 14 operands × 4 operators.
 Calc!A (SUMIF numbers), B (SUMIF text), C/D (SUMIFS), E (COUNTIF), F (COUNTIFS text), G (DSUM) and H1-H53 (VALUE).
-UNVERIFIED: other VALUE forms (`- 5`, `1-1-1`, month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
+UNVERIFIED: euro operands (`€1`, `1€`), other VALUE forms (`- 5`, `1-1-1`, month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
 analogy with `>=`), a percent rounding at the 15-digit tie, CHAR(160)-padded formatted text, and non-en-US locales.
 Ours: the plain parser only (`parse_criterion_number`, `parse_date_criterion`, `result_is_equal_to_number` in
-functions/criteria.rs), so A1:G52 and H25 fail; rows 53-56 pass. Owner: T-3151.
+functions/criteria.rs), so A, C, E and G fail on rows 1-52, B, D and F on rows 1-52 except 25, 26, 39, 41, 42, 49 and 50
+(the text sums match by chance), and H25; rows 53-56 pass. Owner: T-3151.
 Status: VERIFIED (excel-graph); not implemented (T-3151).
 Tasks: T-3136, T-3151
