@@ -163,6 +163,7 @@ impl Model {
                 return Ok(sum);
             }
         }
+        // Type 1 from here on, and type 0's long principal (its short sums returned above).
         let sum = match (paid, short) {
             (Paid::Interest, true) => periods
                 .tiny_rate_interest()

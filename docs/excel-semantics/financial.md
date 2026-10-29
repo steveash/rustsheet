@@ -1417,7 +1417,7 @@ gen-m9 sweep and CUMPRINC_CUMIPMT.xlsx):
   - `CUMIPMT(1E-15,283,(1.005+3.14159+1E15)%,2,16,0)` (A352), `CUMIPMT(1E-9,235,379138,7,14,1)` (A379) and the
     periods near 1E15 (A9-A11, K3, A18): unchanged.
 Ours since T-2521: the geometric principal and the payment of type 0's `-pmt·m - principal` take `growth_log`'s L,
-the geometric sum starts at a discount exponent of 3.6 (`GEOMETRIC_MIN_DISCOUNT`, was 8), and type 0's short
+the geometric sum starts at a discount exponent of 3.6 (`GEOMETRIC_MIN_DISCOUNT`, was 8; `GEOMETRIC_MIN_LEAD` since T-3067), and type 0's short
 interest is the payments less the principal wherever the principal is no larger than the interest, the band
 deciding only the rest. 11 known failures are fixed (gen-m9 4, probes 7), none regressed, and the new probe case
 has 37 of its 89 cells to the bit, among them J1 `CUMPRINC(0.004,1024,1000,3,34,1)`
