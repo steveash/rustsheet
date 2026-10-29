@@ -105,8 +105,11 @@ fn len_element(text: &CalcResult) -> Result<ArrayNode, Error> {
 /// Computes a single REPT result from one element of each argument.
 fn rept_element(text: &CalcResult, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let text = calc_result_to_text(text)?;
+    // An error count is the result even over a text past the limit: `REPT(REPT("x",256),#N/A)` is
+    // `#N/A` (probes/text-255-units-rept-error-count A1, A4; T-2627).
+    let number_times = number_times?;
     reject_over_short_limit(&text)?;
-    let number_times = number_times?.floor();
+    let number_times = number_times.floor();
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
     let units = text.len_utf16() as f64;

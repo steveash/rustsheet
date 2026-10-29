@@ -1101,3 +1101,30 @@ fn nested_groupby_evaluates_each_level_once() {
     assert!(start.elapsed().as_secs() < 5, "{:?}", start.elapsed());
     assert!(!model._get_text("D1").is_empty());
 }
+
+#[test]
+fn multi_cell_reference_from_a_function_lifts_like_a_written_range() {
+    // probes/t2707-prob-orders A50, A63:A65 (T-3088): `INDEX(range,0)` returns a reference, and a
+    // multi-cell one lifts the call as the written range does, not one #VALUE!.
+    let mut model = region_sales();
+    model._set("H1", "0");
+    model._set("I1", "1");
+    model._set(
+        "D1",
+        "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),INDEX(H1:I1,0))",
+    );
+    model._set("D3", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),H1:I1)");
+    model.evaluate();
+    assert_eq!(
+        [
+            model._get_text("D1"),
+            model._get_text("E1"),
+            model._get_text("F1")
+        ],
+        ["East", "East", ""]
+    );
+    assert_eq!(
+        [model._get_text("D3"), model._get_text("E3")],
+        ["East", "East"]
+    );
+}
