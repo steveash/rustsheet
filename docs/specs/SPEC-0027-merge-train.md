@@ -590,18 +590,18 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
      lost). When `S_k` itself has the tested parent and tree but `main` has a foreign commit on top
      of it, that is the "before the squash" case for the next PR: a P0, no revert (T-3055).
 
-   **Task filing** (T-3055). The P0, and the P1 of a red train that did not reproduce (section 6),
-   are task files written with `main`'s `tasks.py new` (milestone M2, lane `harness`, tier `opus`,
-   so the id is collision-free) in a scratch worktree at the current `main`. Their text is the
-   script's own (shas, PR numbers, run links). One commit on `merge-train/tasks-<first id>` and
-   one task-only PR per hold carry them. A failure to file is logged with the unfiled tasks.
-
      **The revert PR is reviewed and merged like any other PR, with P0 priority, under the normal
      flow of the current mode.** The P0 handler (any agent) runs the review panel, then merges it
      under the lock (mode `lock`) or marks it ready (mode `train`), where it rides the next batch
      as an ordinary PR. No review waiver applies to reverts. Revert PRs get `pull_request` CI only,
      because the push trigger matches only `merge-train/current` and `merge-train/shadow`
      (section 9).
+
+   **Task filing** (T-3055). The P0, and the P1 of a red train that did not reproduce (section 6),
+   are task files written with `main`'s `tasks.py new` (milestone M2, lane `harness`, tier `opus`,
+   so the id is collision-free) in a scratch worktree at the current `main`. Their text is the
+   script's own (shas, PR numbers, run links). One commit on `merge-train/tasks-<first id>` and
+   one task-only PR per hold carry them. A failure to file is logged with the unfiled tasks.
 
    A merge call that fails (the head moved, so `expectedHeadSha` refused) also stops the sequence
    at k, without a revert, because nothing landed. PRs after k are not merged in this pass. The

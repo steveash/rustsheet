@@ -994,4 +994,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    # Run the imported module, not `__main__`, so merge_train_shadow subclasses the same `Stage`.
+    import merge_train
+
+    sys.exit(merge_train.main(sys.argv[1:]))
