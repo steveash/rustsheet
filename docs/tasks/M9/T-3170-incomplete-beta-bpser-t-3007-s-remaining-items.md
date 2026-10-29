@@ -3,7 +3,7 @@ id: T-3170
 title: "Incomplete beta bpser: T-3007's remaining items (b0 >= 8 algdiv shortfall, Excel's w at a shape of 1, the 987 cells T-2505's port moved off)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
