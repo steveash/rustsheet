@@ -3,7 +3,7 @@ id: T-3014
 title: "PMT through PPMT's discount (EXP of n·L with the atanh-series L, Kahan's expm1): the 113 RATE(n,PMT(..)) cells of m9-fin-irr-rate that ride on PMT's last bits"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
