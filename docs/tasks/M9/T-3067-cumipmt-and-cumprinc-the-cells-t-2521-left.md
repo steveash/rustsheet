@@ -3,7 +3,7 @@ id: T-3067
 title: "CUMIPMT and CUMPRINC: the cells T-2521 left (type 1 operation order of G2/H2, tiny-rate interest of both types, periods near 1E15)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -58,3 +58,11 @@ the best form (the geometric sum on `growth_log`, within an ulp of all three) wa
 notes". Next: probe the near-1E15 principals directly (CUMPRINC at m = 1 to 12 and at rates 0.001, 0.01, 0.1) so
 Excel's discount error can be measured per period instead of inferred from three cancelled interests. Nothing else
 in the list above was started.
+
+## Outcome (partial, run 2, 2026-10-29; the task stays open)
+Probed the near-1E15 principals directly, as the run 1 note suggested (probes/fin-cumprinc-near-1e15: CUMPRINC over
+the last 1 to 12 periods at three rates, the PPMTs, CUMIPMT and type 1). The best of 30 forms, the balance drop on
+Excel's EXPM1 and `growth_log`, is exact on 23 of 36 principals and within an ulp on the rest. In the kernel it
+takes 8 to 14 bit-exact cells off, so nothing in the kernel changed. The details and the next probe (nper 1E6 and
+1E10) are in financial.md "T-3067 notes". Eval delta: one new probe case, 84 cells, 44 passing; the 40 failing
+cells are new known failures; no regressions.
