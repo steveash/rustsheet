@@ -138,6 +138,11 @@ class Client:
         closed PR."""
         return self.pages("issues", [("state", "closed"), ("labels", checked(LABEL, label, "label"))])
 
+    def pull_files(self, pr: int | str) -> list[object]:
+        """The files the PR changes against its merge base, as GitHub lists them (renames as
+        `renamed`; the head blob sha of each file in `sha`)."""
+        return self.pages(f"pulls/{number(pr)}/files")
+
     def comments(self, pr: int | str) -> list[object]:
         """The PR's conversation comments (issue comments), oldest first."""
         return self.pages(f"issues/{number(pr)}/comments")

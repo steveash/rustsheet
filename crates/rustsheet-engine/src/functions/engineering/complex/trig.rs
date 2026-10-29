@@ -405,7 +405,8 @@ pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 #[cfg(test)]
 mod tests {
     use super::{
-        imcot, imsec, inverse_exp_sinh_cosh, CalcResult, CellReferenceIndex, ComplexParts, Suffix,
+        imcot, imcsc, imsec, inverse_exp_sinh_cosh, CalcResult, CellReferenceIndex, ComplexParts,
+        Suffix,
     };
 
     /// The text a kernel prints for `x+yi`.
@@ -467,6 +468,15 @@ mod tests {
             text(imcot, -2.9144, 0.0359),
             "4.21835302073736-0.690660946251302i"
         );
+    }
+
+    // probes-numeric im-last-digit-sweep P43, D18, P18 (excel-graph): a part that is -0.9999999999999999
+    // keeps its "1", and a real 1E+20 is written plain (T-2554).
+    #[test]
+    fn text_keeps_the_one_and_writes_1e20_plain() {
+        assert_eq!(text(imcot, -57.9375, 18.7089), "-4.00011374673746E-17-1i");
+        assert_eq!(text(imcsc, 1e-20, 0.0), "100000000000000000000");
+        assert_eq!(text(imcot, 1e-20, 0.0), "100000000000000000000");
     }
 
     #[test]
