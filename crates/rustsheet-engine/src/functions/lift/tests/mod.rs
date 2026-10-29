@@ -340,7 +340,7 @@ fn an_array_first_entry_empties_later_elements_unless_every_entry_is_equal() {
     let options = LiftOptions {
         reuse: Reuse::Never,
         work: KernelWork::Output { weight: 1 },
-        result: CallResult::ArrayFirst,
+        result: CallResult::ArrayFirstColumn,
         later_error: false,
     };
     let mut kernel = |_: &mut Model, values: &[CalcResult]| match values {
@@ -818,15 +818,16 @@ fn a_weighted_kernel_is_charged_its_weight() {
 #[test]
 fn a_lifted_yield_over_many_elements_is_refused_before_its_first_element() {
     // YIELD's elements across the whole calendar quarterly are charged its solver bound
-    // (`YIELD_SOLVER_WEIGHT`, 2^24): 8 elements run, the ninth makes the call #ERROR! with no
-    // kernel call (T-1842); a shorter schedule is charged less (T-1869), so 9 ten-year ones run.
+    // (`YIELD_SOLVER_WEIGHT`, 2^26 since T-2879): 2 elements run, the third makes the call #ERROR!
+    // with no kernel call (T-1842); a shorter schedule is charged less (T-1869), so 9 ones of
+    // 120 years run.
     let mut model = model_with(&[]);
     let Some(kinds) = Function::Yield.arg_kinds() else {
         panic!("YIELD has a lifting table entry");
     };
     for (elements, maturity, runs) in [
-        (8, 2_958_465, true),
-        (9, 2_958_465, false),
+        (2, 2_958_465, true),
+        (3, 2_958_465, false),
         (1 << 20, 2_958_465, false),
         (9, 43_831, true),
     ] {

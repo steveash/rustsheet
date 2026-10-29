@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2947: SORT lifted by_col corners: a sort-invalid call between two that sort, and a number by_col beside a boolean.",
+ "tags": [
+  "M7",
+  "probe",
+  "lookup",
+  "T-2947"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 13,
+    "B1": 7,
+    "C1": 22,
+    "D1": 5,
+    "A2": 9,
+    "B2": 31,
+    "C2": 2,
+    "D2": 17,
+    "A3": 26,
+    "B3": 4,
+    "C3": 15,
+    "D3": 11,
+    "A4": 3,
+    "B4": 19,
+    "C4": 8,
+    "D4": 28,
+    "F7": 5,
+    "F8": 6,
+    "F9": 4,
+    "K20": "=SORT(F7:F9,2,1,{TRUE,FALSE,TRUE})",
+    "K25": "=SORT(F7:F9,2,1,{TRUE;FALSE;TRUE})",
+    "K30": "=SORT(F7:F9,2,1,{TRUE;FALSE;FALSE})",
+    "K35": "=SORT(F7:F9,2,1,{FALSE;TRUE;TRUE})",
+    "K45": "=SORT(A1:D4,2,1,{1,TRUE,TRUE,TRUE})",
+    "K50": "=SORT(A1:D4,2,1,{TRUE,1,TRUE,TRUE})",
+    "K55": "=SORT(A1:D4,2,1,{1,1,TRUE,TRUE})",
+    "K60": "=SORT(A1:D4,2,1,{TRUE;1;TRUE;TRUE})",
+    "K65": "=SORT(A1:D4,2,1,{1,2,TRUE,TRUE})",
+    "K70": "=SORT(A1:D4,2,1,{2,TRUE,TRUE,TRUE})",
+    "K75": "=SORT(A1:D4,2,1,{TRUE,TRUE;1,1})",
+    "K80": "=SORT(A1:D4,2,1,{TRUE,TRUE;1,TRUE})",
+    "K85": "=SORT(A1:D4,2,1,{1,1,1,1})"
+   }
+  }
+ ],
+ "expected": {}
+}

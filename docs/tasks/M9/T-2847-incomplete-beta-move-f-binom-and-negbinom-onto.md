@@ -1,9 +1,9 @@
 ---
 id: T-2847
-title: "Incomplete beta: move F, BINOM and NEGBINOM onto the bratio port's bpser branches, delete the pre-T-2502 seams and the T-2464 harness (T-2505 rest)"
+title: "Incomplete beta: move F, BINOM and NEGBINOM onto the bratio port's bpser branches (T-2505 rest; seams and harness split to T-2977)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -13,8 +13,8 @@ spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
 ## Goal
-Every incomplete-beta caller, not only BETA.DIST, takes the bratio port's bpser branches, and the seams T-2502 left
-for the Cephes kernel are gone.
+Every incomplete-beta caller, not only BETA.DIST, takes the bratio port's bpser branches. (Narrowed 2026-10-28: deleting
+the seams T-2502 left for the Cephes kernel, the T-2464 harness and the per-branch counts moved to T-2977.)
 
 ## Context
 - T-2505 split (its session budget): T-2505 landed Excel's bpser (`functions/statistical/bratio/mod.rs` `bpser`) and
@@ -61,14 +61,45 @@ for the Cephes kernel are gone.
     `bratio`/`Tails`/`bratio_or` entry before T-2506 adds bup and bgrat (or amend the spec), and add the hex-bits
     branch fixture and the complement, swap and monotonicity property tests. `beta_density::ln_beta_small_shape` and
     `bratio::bpser_neg_ln_beta` overlap; unify them or say in the code why they differ.
+- T-2506 (L140 bup+bpser for BETA.DIST's cdf) moved 128 ungated probes-numeric cells from bit-exact to 1-3 ulp off
+  (none visibly off; counted against main 81c3d27e, cells not listed). The per-branch scoring here re-measures them
+  with the L140 cells. When F's callers move to bratio, test r2-impact's next hypothesis 1 (F's x as
+  1/(1 + (d2/d1)/X), or bup's W rounding at b0' = 0.5, n = 2) on probes/stat-argument-modes F.DIST H215,
+  F.DIST.RT H221 and FDIST H226 (2.5, 2.5, x = 0.6000000000000001), which are bit-exact today on Cephes.
+- Gap triage 2026-10-27 (origin/main cc64bd91): the 9 visibly-off cells of probes/t2829-ftest-tail-over-b
+  (`2*F.DIST.RT(1E+12,df1,df2)`; S!A1, A3, A4, A6, A7, A9, A14, A18, A21) had no open owner, so this task owns them.
+  At S!A7 (a = 6, b = 11.5), the w5 form y = 1/(1 + d1·X/d2) moves fl(a·LN y) by -2.84E-14 relative against
+  today's d2/(d1·X + d2). That is most of the -2.38E-14 between Excel and ours. Of the case's 21 cells, the two y
+  forms differ at A1, A6 and A7 only, and fl(a·LN y) moves only at A7. The other cells are 0.2E-15 to 2.5E-15 off,
+  about the size of the ln B offset k that T-2924 fits (statistics.md "F.TEST / FTEST"). Record in the Outcome which
+  of the 9 cells reach 15 digits on the port, and leave the rest to T-2924.
 
 ## Acceptance criteria
-- [ ] F.DIST, F.DIST.RT, FDIST, F.TEST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's
-      caller arguments; no gated cell regresses except as recorded under decision 0083.
-- [ ] The per-branch and per-probe counts above are measured and recorded in the Outcome.
-- [ ] The pre-T-2502 seams and the T-2464 harness listed above are deleted.
-- [ ] statistics.md's bratio and bpser entries name every caller in their "Implemented in" lines.
-- [ ] `make check` green; reviewers approve.
+- [x] F.DIST, F.DIST.RT, FDIST, BINOM.DIST and NEGBINOM.DIST take `bratio`'s bpser branches with SPEC-0025's
+      caller arguments; no gated cell regresses except as recorded under decision 0083 (and decision 0141 for two
+      cells past its 4 ulp). F.TEST's bratio tail already takes them (T-2681); its other tail moves with T-2977.
+- [x] statistics.md's bratio and bpser entries name every caller in their "Implemented in" lines.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - L140 (T-2506), bfrac/basym (T-2508), the bgrat family (T-2509, T-2510) and the inverses (T-2511).
+
+## Outcome
+- F.DIST, F.DIST.RT, FDIST (`fisher.rs::f_tail`, w5 arguments), BINOM.DIST's cdf and NEGBINOM.DIST's cdf (`binom.rs`)
+  take `bratio::ported_tails` after Excel's closed forms, with today's kernel as the fallback off the ported
+  branches. NEGBINOM flushes a subnormal port result to 0 (probes/t2706-subnormal-density-paths A9:B9).
+- bpser's L for a shape of 1 (only L140's bpser(a0, 1, x0) at a whole b0 reaches it) is -LN(a0) at every a0, not
+  only above 8: B(1, b) = 1/b exactly. This makes BINOM.DIST's whole shapes exact (`BINOM.DIST(1,6,0.5,TRUE)`,
+  ironcalc-calc BINOM.xlsx E5:E8, E75, which the GAMMALN sum left 2 ulp off).
+- Eval delta against origin/main (`rustsheet-eval check`): gen-m9 3,666 -> 3,602 known failures (69 fixed),
+  ironcalc-calc 617 -> 595 (23 fixed), probes 2,913 -> 2,912 (4 fixed); visibly-off in-scope cells 3,145 (lock
+  3,284).
+- Regressed, all numeric and within 15 digits, recorded with `update-baseline --allow-regressions` (decision 0083
+  allowance; H221 and H226 past 4 ulp under decision 0141, where Excel is 6 ulp above the correctly rounded value and
+  the port 1 ulp): probes/stat-argument-modes H215 (+2 ulp), H221 and H226 (-5); gen-m9 0a614cfe A19 (+1), 05d44f6d
+  A175 (-1), 27601819 A49 (-1), 4ab2ba98d26c8a5e A157 (+1), eced4bb6 A213 (-1); ironcalc-calc BETADIST_BETAINV.xlsx
+  H15 (-2: BETA.INV's own search, since its input G15 became bit-exact here). Follow-up ulp task: T-2978.
+- probes/t2829-ftest-tail-over-b's F.TEST cells are not moved by this (F.TEST's bratio tail is T-2681's); T-2977
+  records them.
+- Follow-ups: T-2977 (the seams, the harness, F.INV/BETA.INV crossings, per-branch counts), T-2978 (the 9 ulp
+  cells).

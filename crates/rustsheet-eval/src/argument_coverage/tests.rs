@@ -34,6 +34,7 @@ fn cell(formula: &str, from_excel: bool) -> CellResult {
         from_excel,
         listed_deviation: false,
         graph_subnormal: false,
+        kind: crate::runner::CellKind::Scored,
     }
 }
 
@@ -63,7 +64,8 @@ fn observed(formula: &str) -> Vec<(usize, ArgClass)> {
     let sheets = vec!["Calc".to_string(), "Data".to_string()];
     observe(&Data, &sheets, &[cell(formula, true)])
         .into_iter()
-        .map(|a| (a.index, a.class))
+        .flat_map(|call| call.args.into_iter().enumerate())
+        .filter_map(|(i, a)| Some((i, a?.class)))
         .collect()
 }
 
@@ -125,8 +127,16 @@ fn single_cell_references_are_classified_by_the_cell_value() {
     // ABS's nested call is left unclassified; SQRT's literal is classified.
     let sheets = vec!["Calc".to_string()];
     let got = observe(&Data, &sheets, &[cell("=ABS(SQRT(4))", true)]);
-    let calls: Vec<(&str, ArgClass)> = got.iter().map(|a| (a.function.as_str(), a.class)).collect();
-    assert_eq!(calls, vec![("SQRT", ArgClass::Number)]);
+    let calls: Vec<(&str, &[Option<ArgumentSeen>])> = got
+        .iter()
+        .map(|c| (c.function.as_str(), c.args.as_slice()))
+        .collect();
+    let four = Some(ArgumentSeen {
+        class: ArgClass::Number,
+        reference: false,
+    });
+    // A call without a classified argument is left out.
+    assert_eq!(calls, vec![("SQRT", &[four][..])]);
 }
 
 #[test]
@@ -208,4 +218,76 @@ fn summary_counts_expected_classes_per_parameter() {
     assert_eq!(rows[2].params[0].seen, vec![ArgClass::Range]);
     assert_eq!(rows[2].params[1].seen, vec![ArgClass::Number]);
     assert_eq!(rows[2].single, Some(2.0 / 12.0));
+}
+
+#[test]
+fn pairwise_counts_expected_class_pairs_one_call_passes_together() {
+    let catalog = Catalog::from_functions([
+        function(
+            "ROUND",
+            vec![
+                param("number", "value", None),
+                param("num_digits", "value", None),
+            ],
+        ),
+        function(
+            "SUMIF",
+            vec![
+                param("range", "range", None),
+                param("criteria", "criteria", None),
+                param("sum_range", "range", None),
+            ],
+        ),
+        function("ABS", vec![param("number", "value", None)]),
+    ]);
+    let sheets = vec!["Calc".to_string(), "Data".to_string()];
+    let cells = [
+        cell("=ROUND(2.5,0)", true),
+        cell("=ROUND(-1,0)", true),
+        // Seen apart, (fraction, negative) is not seen together.
+        cell("=ROUND(2.5,SQRT(4))", true),
+        cell("=ROUND(SQRT(4),-1)", true),
+        // A literal where a `range` parameter expects a reference counts for no pair.
+        cell("=SUMIF(Data!A1:A2,1,5)", true),
+        cell("=SUMIF(Data!A1,TRUE,Data!A3)", true),
+    ];
+    let mut result = CaseResult::empty("c", "s", crate::runner::CaseStatus::Pass);
+    result.arguments = observe(&Data, &sheets, &cells);
+    let rows = summarize(&catalog, &[result]);
+    // ROUND: (fraction, zero) and (negative, zero) of 11 × 11 pairs.
+    assert_eq!(rows[1].name, "ROUND");
+    assert_eq!(rows[1].pairwise, Some(2.0 / 121.0));
+    // SUMIF: (range, number), (range, boolean), (boolean, range), (range, range) of
+    // 1·11 + 1·1 + 11·1 pairs.
+    assert_eq!(rows[2].pairwise, Some(4.0 / 23.0));
+    assert_eq!(
+        rows[2].params[2].seen,
+        vec![ArgClass::Number, ArgClass::Range]
+    );
+    assert_eq!(rows[2].params[2].covered, 1);
+    // One counted parameter has no pairs.
+    assert_eq!(rows[0].pairwise, None);
+}
+
+#[test]
+fn a_repeated_parameter_pairs_with_the_others_not_itself() {
+    let catalog = Catalog::from_functions([function(
+        "SUMIFS",
+        vec![
+            param("sum_range", "range", None),
+            param("criteria_range", "range", Some(2)),
+            param("criteria", "criteria", None),
+        ],
+    )]);
+    let sheets = vec!["Calc".to_string(), "Data".to_string()];
+    let cells = [cell(
+        "=SUMIFS(Data!A1:A2,Data!A1:A2,1,Data!A1:A2,\"x\")",
+        true,
+    )];
+    let mut result = CaseResult::empty("c", "s", crate::runner::CaseStatus::Pass);
+    result.arguments = observe(&Data, &sheets, &cells);
+    let rows = summarize(&catalog, &[result]);
+    // (sum, crit_range), (sum, number), (sum, text), (crit_range, number), (crit_range, text)
+    // of 1·1 + 1·11 + 1·11 pairs.
+    assert_eq!(rows[0].pairwise, Some(5.0 / 23.0));
 }

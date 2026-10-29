@@ -3,18 +3,43 @@ use statrs::distribution::{Continuous, Gamma};
 use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, Tail};
+use super::incomplete_gamma::{
+    gamma_cdf, gamma_density, gamma_quantile, wilson_hilferty_quantile, Tail, DIRECT_SHAPE_MAX,
+    WILSON_HILFERTY_SHAPE_MIN,
+};
+use super::normal::normal_quantile;
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
+use crate::x87_exp::excel_exp;
+use crate::x87_log10::excel_ln;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// The one shape whose cdf Excel takes from its ERF kernel, on exact equality: `a = 0.5 +- 1 ulp`
 /// already takes the generic path (docs/excel-semantics/statistics.md, T-1778,
 /// `kmyst-erf-ashape`).
 const HALF_SHAPE: f64 = 0.5;
+
+/// The x / beta up to which GAMMA.DIST's density is Excel's log-space form (probes/
+/// t2753-gamma-density-switch: 0 to 3 ulp from Excel up to 3E-16 at shapes 0.5, 1 and 2, 4 to 7
+/// at 1E-15, where the direct form is 4 to 12 off; T-2753, T-2852).
+const LOG_FORM_RATIO: f64 = 1E-15;
+
+/// GAMMA.DIST's density where y = x / beta is at most [`LOG_FORM_RATIO`]: Excel forms
+/// EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
+/// result, so `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235, not 1 (probes/
+/// t2753-gamma-density-ratio-sweep A1, B1; t2738-gamma-dist-tiny-ratio A2, A4, A15, A19).
+/// With Excel's own LN, EXP and GAMMA it is 0 to 1 ulp from Excel at most probed cells there and
+/// 2 to 3 at a few (`GAMMA.DIST(2E-16,1,1,FALSE)`, `(1E-20,2,1,FALSE)`; T-2852). Only shapes 0.5,
+/// 1 and 2 are probed; it keeps to the prefactor's direct shapes. `None` elsewhere, and at x = 0,
+/// which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
+fn tiny_ratio_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
+    let y = x / beta;
+    (x > 0.0 && alpha < DIRECT_SHAPE_MAX && y <= LOG_FORM_RATIO)
+        .then(|| excel_exp(alpha * excel_ln(y) - y) / excel_gamma(alpha) / x)
+}
 
 /// GAMMA.DIST's cdf for the gamma `dist` of scale `beta`, through Excel's identities
 /// (docs/excel-semantics/statistics.md, T-1778): GAMMA.DIST(x,a,b,TRUE) = GAMMA.DIST(x/b,a,1,TRUE),
@@ -83,7 +108,9 @@ impl Model {
         // The density of a positive x whose x / beta is subnormal is #NUM!, whatever the shape or
         // the size of the result, while the cdf there is 0 (probes/t2738-gamma-dist-tiny-ratio:
         // `GAMMA.DIST(4.4E-308,1,2,FALSE)` is #NUM!, 4.5E-308 is 0.4999...; T-2738).
-        if !cumulative && x > 0.0 && x / beta_scale < f64::MIN_POSITIVE {
+        // An x / beta that overflows is #NUM! for the density as for the cdf
+        // (`GAMMA.DIST(1E300,1,1E-10,FALSE)` and `TRUE`, probes/incomplete-gamma-cap E18, E6; T-2982).
+        if !cumulative && x > 0.0 && !(f64::MIN_POSITIVE..=f64::MAX).contains(&(x / beta_scale)) {
             return Err(num_error(cell));
         }
         let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
@@ -94,7 +121,11 @@ impl Model {
         } else {
             // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/m9-gamma-dist-a500
             // B22; docs/excel-semantics/numbers.md "Distribution densities").
-            flush_subnormal(gamma_density(alpha, x, beta_scale).unwrap_or_else(|| dist.pdf(x)))
+            flush_subnormal(
+                tiny_ratio_density(alpha, x, beta_scale)
+                    .or_else(|| gamma_density(alpha, x, beta_scale))
+                    .unwrap_or_else(|| dist.pdf(x)),
+            )
         };
         if !result.is_finite() {
             return Err(num_error(cell));
@@ -127,8 +158,13 @@ impl Model {
         if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
         }
-        let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
-        let x = gamma_quantile(&dist, p, Tail::Lower);
+        let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && p > 0.0 && p < 1.0 {
+            let z = normal_quantile(p, 0.0, 1.0, cell)?;
+            wilson_hilferty_quantile(alpha, z) * beta_scale
+        } else {
+            let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
+            gamma_quantile(&dist, p, Tail::Lower)
+        };
         if !x.is_finite() || x < 0.0 {
             return Err(num_error(cell));
         }

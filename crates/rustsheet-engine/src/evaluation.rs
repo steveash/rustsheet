@@ -45,11 +45,13 @@ use std::sync::Arc;
 
 use crate::calc_result::{range_dims, CalcResult};
 use crate::circular::circular_reference;
+use crate::evaluation_limits::{default_max_depth, stack_address, DEFAULT_MAX_STACK};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::date_and_time::weeknum::WeeknumStart;
 use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::model::Model;
+use crate::recalc_budget::RunBound;
 use crate::restart_log::RestartLog;
 use crate::seen_ranges::SeenRange;
 use crate::types::{ArrayKind, Cell};
@@ -255,6 +257,8 @@ pub(crate) struct Evaluation {
     pub(crate) seen: HashMap<CellKey, SeenRecord, KeyBuild>,
     /// Rectangles read as empty in one go, with their root (`SeenRange`).
     pub(crate) seen_ranges: crate::seen_ranges::SeenRanges,
+    /// What the data tables read when they were last recomputed (`data_table_memo.rs`).
+    pub(crate) data_table_memo: crate::data_table_memo::DataTableMemo,
     /// Set when the current pass must be abandoned. Every evaluation in
     /// progress then returns without storing anything.
     pub(crate) restart: Option<Restart>,
@@ -309,41 +313,31 @@ pub(crate) struct Evaluation {
     pub(crate) blocked_on: Option<CellReferenceIndex>,
     /// Number of passes the last `evaluate()` ran, restarted ones included. For tests.
     pub(crate) passes_in_last_evaluation: u32,
+    /// Number of data-table recomputations so far (`data_tables.rs`). For tests.
+    pub(crate) data_tables_recomputed: u64,
     /// Circular references under iterative calculation (`iteration.rs`).
     pub(crate) iteration: crate::iteration::IterationState,
-}
-
-/// How deep the recursion may go when nobody has said otherwise, in formulas
-/// and in bytes of stack. Measured on a chain of `=A2+1`: a formula takes about
-/// 3 KB of stack in a release build and 16 KB in a debug build, and three to
-/// four times that when it nests a few functions. The limits are far below
-/// what the smallest common stacks hold (1 MB in WebAssembly, 2 MB for a
-/// thread) and cost nothing to workbooks that never reach them.
-const DEFAULT_MAX_DEPTH: usize = 64;
-const DEFAULT_MAX_STACK: usize = 256 * 1024;
-
-/// Roughly where the stack is: the address of a local.
-#[inline(never)]
-pub(crate) fn stack_address() -> usize {
-    let marker = 0u8;
-    std::hint::black_box(&marker) as *const u8 as usize
-}
-
-/// The limit a new model starts with. Under test it can be set from outside,
-/// `IRONCALC_MAX_DEPTH=1 cargo test`, so that every test of the crate runs
-/// through the unwind and the replay.
-fn default_max_depth() -> usize {
+    /// The work budget of the recalculation running now (SPEC-0028); `None` outside `evaluate()`.
+    pub(crate) recalc: Option<crate::recalc_budget::RecalcBudget>,
+    /// The pass allowance and the ceiling of the next recalculation, lowered by tests.
     #[cfg(test)]
-    if let Some(max_depth) = std::env::var("IRONCALC_MAX_DEPTH")
-        .ok()
-        .and_then(|value| value.parse().ok())
-    {
-        return max_depth;
-    }
-    DEFAULT_MAX_DEPTH
+    pub(crate) recalc_limits: (u64, u64),
+    /// The budget of the last recalculation as it ended, for tests.
+    #[cfg(test)]
+    pub(crate) last_recalc: Option<crate::recalc_budget::RecalcBudget>,
+    /// Turns the pass caches off, so a test can compare cached values with the walk's.
+    #[cfg(test)]
+    pub(crate) no_pass_caches: bool,
 }
 
 impl Evaluation {
+    /// Whether the current pass is being abandoned: a restart is pending, or a formula run ran out
+    /// of a pool of the recalculation (SPEC-0028). Every evaluation in progress then returns
+    /// without storing anything.
+    pub(crate) fn abandoned(&self) -> bool {
+        self.restart.is_some() || self.recalc.as_ref().is_some_and(|r| r.overrun.is_some())
+    }
+
     /// Drops what the caches of this pass hold: called wherever `cells` is cleared or loses an
     /// entry.
     pub(crate) fn clear_pass_caches(&mut self) {
@@ -364,6 +358,7 @@ impl Default for Evaluation {
             circular_below: 0,
             seen: HashMap::default(),
             seen_ranges: crate::seen_ranges::SeenRanges::default(),
+            data_table_memo: Default::default(),
             restart: None,
             in_pass: false,
             restarts_in_last_evaluation: 0,
@@ -384,42 +379,65 @@ impl Default for Evaluation {
             blocking: false,
             blocked_on: None,
             passes_in_last_evaluation: 0,
+            data_tables_recomputed: 0,
             iteration: Default::default(),
+            recalc: None,
+            #[cfg(test)]
+            recalc_limits: (
+                crate::recalc_budget::MAX_PASS_WORK,
+                crate::recalc_budget::MAX_RECALC_WORK,
+            ),
+            #[cfg(test)]
+            last_recalc: None,
+            #[cfg(test)]
+            no_pass_caches: false,
         }
     }
 }
 
 impl Model {
     /// Whether the caches of this pass (`search_cache.rs`, `ifs_cache.rs`) may be read or filled
-    /// now: inside a pass that is neither abandoned, unwinding, blocked, in Excel order nor
-    /// iterating, so a value read now stays the pass's value.
+    /// now: inside a pass that is neither abandoned, unwinding, blocked nor in Excel order, so a
+    /// value read now stays the pass's value. Under iterative calculation too: a cached range holds
+    /// no cycle member (`Model::join_stack`, T-0485). The sweeps run outside a pass.
     pub(crate) fn pass_cache_safe(&self) -> bool {
         let evaluation = &self.evaluation;
+        #[cfg(test)]
+        if evaluation.no_pass_caches {
+            return false;
+        }
         evaluation.in_pass
-            && evaluation.restart.is_none()
+            && !evaluation.abandoned()
             && !evaluation.unwinding
             && !evaluation.excel_order
             && !evaluation.blocking
-            && !self.iterating()
     }
 
     /// Evaluates every formula in the workbook, then its data tables and, if there are any,
     /// everything again so that their readers see the results (`data_tables.rs`). With
     /// iterative calculation on, each round's circular references are then iterated
     /// (`iteration.rs`).
+    ///
+    /// The formula runs of one recalculation spend a bounded amount of work (SPEC-0028,
+    /// `recalc_budget.rs`): past it, the formulas past their share are `#VALUE!`, or every formula
+    /// is and the remaining phases do not run.
     pub fn evaluate(&mut self) {
         self.evaluation.evaluations += 1;
+        self.begin_recalc_budget();
         self.begin_iteration();
-        self.evaluate_passes();
-        self.iterate_cycles(true);
-        if self.evaluate_data_tables() {
-            self.restart_iteration_round();
-            self.evaluate_passes();
-            self.iterate_cycles(false);
+        if self.evaluate_passes() {
+            self.iterate_cycles(true);
+            if self.evaluate_data_tables() {
+                self.restart_iteration_round();
+                if self.evaluate_passes() {
+                    self.iterate_cycles(false);
+                }
+            }
         }
         self.end_iteration();
+        self.end_recalc_budget();
         // Conditional formats are evaluated on the next style read (SPEC-0021).
-        self.cf_stale = true;
+        self.cf.stale = true;
     }
 
     /// Runs passes until one completes without a restart. `RestartLog` learns
@@ -427,7 +445,11 @@ impl Model {
     /// circular; see there for why the loop ends. A marked anchor stores
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
-    fn evaluate_passes(&mut self) {
+    ///
+    /// A pass that runs out of the recalculation's pass allowance is run again in share mode
+    /// (SPEC-0028 section 3); one that runs out of its ceiling exhausts the recalculation, and
+    /// `false` is returned.
+    fn evaluate_passes(&mut self) -> bool {
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
@@ -437,14 +459,32 @@ impl Model {
         let mut spills_before = self.dynamic_spills();
         let mut log = RestartLog::new();
         self.evaluation.passes_in_last_evaluation = 0;
+        self.begin_round_budget();
         loop {
             self.evaluation.passes_in_last_evaluation += 1;
-            let Some(restart) = self.run_pass(&log.circular) else {
+            let restart = self.run_pass(&log.circular);
+            // An overrun is not a restart: the log learns nothing from it (SPEC-0028 section 2).
+            match self.take_overrun() {
+                Some(RunBound::Ceiling) => {
+                    self.restore_dynamic_spills(&spills_before);
+                    self.exhaust_recalc();
+                    self.evaluation.order_state = OrderState::default();
+                    return false;
+                }
+                Some(_) => {
+                    self.enter_share_mode();
+                    self.restore_dynamic_spills(&spills_before);
+                    continue;
+                }
+                None => {}
+            }
+            let Some(restart) = restart else {
                 // A call read the state earlier calls left (`OrderState`): its value depends on
                 // the order, so the pass that counts is one in Excel's order (SPEC-0017). It starts
                 // from the same sheet as any other pass. Without a reader the order is not observable.
                 let read = self.evaluation.order_state_read;
                 if read && !self.evaluation.excel_order {
+                    self.throw_away_pass();
                     self.evaluation.excel_order = true;
                     self.restore_dynamic_spills(&spills_before);
                     continue;
@@ -452,6 +492,7 @@ impl Model {
                 self.evaluation.excel_order = read;
                 break;
             };
+            self.throw_away_pass();
             let marked = log.record(&restart, &mut self.evaluation.anchor_order);
             spills_before.retain(|(position, cell)| {
                 let dropped = match &restart {
@@ -470,35 +511,7 @@ impl Model {
         }
         self.evaluation.restarts_in_last_evaluation = log.restarts;
         self.evaluation.order_state = OrderState::default();
-    }
-
-    /// Sets how many formulas deep the evaluation may recurse. A formula that
-    /// reads a formula that reads a formula, and so on, uses the stack of the
-    /// thread for every step. Beyond this limit the evaluation unwinds and
-    /// carries on from where it stopped instead of going deeper, so the limit
-    /// bounds the stack used and never changes a result. Lower it where the
-    /// stack is small. The least it can be is 1. See also
-    /// `set_max_evaluation_stack`: whichever limit is reached first applies.
-    pub fn set_max_evaluation_depth(&mut self, max_depth: usize) {
-        self.evaluation.max_depth = max_depth.max(1);
-    }
-
-    /// The limit set by `set_max_evaluation_depth`.
-    pub fn get_max_evaluation_depth(&self) -> usize {
-        self.evaluation.max_depth
-    }
-
-    /// Sets how many bytes of stack the evaluation may use before it unwinds,
-    /// counted from the first formula of the recursion. The evaluation can
-    /// overshoot by what one formula needs, so leave room: a quarter of the
-    /// stack is a reasonable value.
-    pub fn set_max_evaluation_stack(&mut self, bytes: usize) {
-        self.evaluation.max_stack = bytes;
-    }
-
-    /// The limit set by `set_max_evaluation_stack`.
-    pub fn get_max_evaluation_stack(&self) -> usize {
-        self.evaluation.max_stack
+        true
     }
 
     /// One pass over the workbook: anchors first, then every cell. Returns the
@@ -523,6 +536,7 @@ impl Model {
         self.links.clear();
         self.clear_variable_stack();
         self.clear_lambdas();
+        self.begin_pass_budget();
 
         let anchors = self.evaluation.anchor_order.clone();
         let mut restart = None;
@@ -534,12 +548,12 @@ impl Model {
         for cell in anchors.into_iter().chain(everything) {
             self.evaluation.root = Some(cell);
             self.evaluate_root_cell(cell);
-            if self.evaluation.restart.is_some() {
+            if self.evaluation.abandoned() {
                 restart = self.evaluation.restart.take();
                 break;
             }
         }
-        if restart.is_none() && self.evaluation.excel_order {
+        if !self.evaluation.abandoned() && restart.is_none() && self.evaluation.excel_order {
             restart = self.run_excel_order();
         }
         self.evaluation.in_pass = false;
@@ -552,7 +566,7 @@ impl Model {
     /// cell on top of the stack.
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
         self.evaluation.cell_reads += 1;
-        if self.evaluation.restart.is_some() || self.evaluation.unwinding {
+        if self.evaluation.abandoned() || self.evaluation.unwinding {
             // The pass is being abandoned, or the recursion is unwinding;
             // nothing computed now is kept. This comes before anything is put
             // on record: a read that was not made is nobody's dependency.
@@ -705,7 +719,7 @@ impl Model {
         // the stack, and the replay carries on from the new top. Every cell is
         // pushed once in a pass, so this ends.
         self.replay(base);
-        if self.evaluation.restart.is_some() {
+        if self.evaluation.abandoned() {
             return CalcResult::EmptyCell;
         }
         self.mark_readers_of(key);
@@ -731,7 +745,7 @@ impl Model {
             self.evaluation.unwinding = false;
             while self.evaluation.stack.len() > base
                 && !self.evaluation.unwinding
-                && self.evaluation.restart.is_none()
+                && !self.evaluation.abandoned()
             {
                 let Some(&top) = self.evaluation.stack.last() else {
                     break;
@@ -784,7 +798,7 @@ impl Model {
         } else {
             result
         };
-        let stored = if self.evaluation.restart.is_some() {
+        let stored = if self.evaluation.abandoned() {
             // Abandoned pass: store nothing.
             Ok(())
         } else {
@@ -796,7 +810,7 @@ impl Model {
             self.evaluation.cells.insert(key, CellState::Evaluated);
             return CalcResult::new_error(Error::ERROR, cell_reference, message);
         }
-        if self.evaluation.restart.is_some() {
+        if self.evaluation.abandoned() {
             return CalcResult::EmptyCell;
         }
         self.evaluation.cells.insert(key, CellState::Evaluated);
@@ -815,8 +829,9 @@ impl Model {
         spills: bool,
     ) -> CalcResult {
         // Shares the formula, it does not copy it.
-        let node =
-            Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
+        let node = Arc::clone(
+            &self.parsed_formulas[cell_reference.sheet as usize][formula as usize].evaluated,
+        );
         match self.run_cell_formula(&node, cell_reference, spills) {
             CalcResult::Range { left, right } => {
                 let (rows, columns) = range_dims(left, right);

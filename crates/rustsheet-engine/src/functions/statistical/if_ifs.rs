@@ -480,12 +480,17 @@ impl Model {
                 },
             })
             .collect();
-        let matched = self.ifs_all_matches(&rects, criteria, fn_criteria)?;
+        let matched = match (rects.as_slice(), criteria, fn_criteria) {
+            ([range], [criterion], [fn_criterion]) => {
+                self.ifs_count(range, criterion, fn_criterion)?
+            }
+            _ => count_bits(&self.ifs_all_matches(&rects, criteria, fn_criteria)?),
+        };
         let block = f64::from(rows) * f64::from(columns);
         let blanks_match = fn_criteria
             .iter()
             .all(|fn_criterion| fn_criterion(&CalcResult::EmptyCell));
-        let matched = count_bits(&matched) as f64;
+        let matched = matched as f64;
         Some(if blanks_match {
             matched - block
         } else {

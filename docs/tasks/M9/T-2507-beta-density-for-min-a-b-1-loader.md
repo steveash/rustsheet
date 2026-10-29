@@ -54,6 +54,31 @@ BETA.DIST(x,a,b,FALSE) with both shapes > 1 follows Excel's Loader (2000) saddle
 - Code: `incomplete_beta::beta_density` (and statrs above a + b = 171.6). Exact stirlerr can come from Excel-independent
   code (a table plus a Stirling series); it must be accurate to well under an ulp of the result.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): BETA.DIST(x,a,b,FALSE) cells with min(a,b) > 1, the Loader branch this task ships (the min(a,b) <= 1 cells of the same cases are T-3035's). 43,401 visibly-off cells in 22 cases, per case:
+- probes-numeric/m9-beta-dist-a10: BETA.DIST density, min(a,b) > 1 5
+- probes-numeric/m9-beta-dist-a100: BETA.DIST density, min(a,b) > 1 13
+- probes-numeric/m9-beta-dist-a2: BETA.DIST density, min(a,b) > 1 4
+- probes-numeric/m9-beta-dist-a2p5: BETA.DIST density, min(a,b) > 1 5
+- probes-numeric/m9-beta-dist-a5: BETA.DIST density, min(a,b) > 1 4
+- probes-numeric/m9-beta-dist-a50: BETA.DIST density, min(a,b) > 1 9
+- probes-numeric/t2464-r2-density-large-p1: BETA.DIST density, min(a,b) > 1 2,889
+- probes-numeric/t2464-r2-log1p-hix: BETA.DIST density, min(a,b) > 1 5,264
+- probes-numeric/t2464-w2f-absweep: BETA.DIST density, min(a,b) > 1 1,345
+- probes-numeric/t2464-w2f-xruns-2: BETA.DIST density, min(a,b) > 1 2,048
+- probes-numeric/t2513-r3-binom-pmf-a: BETA.DIST density, min(a,b) > 1 1,945
+- probes-numeric/t2513-r3-binom-pmf-hold: BETA.DIST density, min(a,b) > 1 1,608
+- probes-numeric/t2513-r3-fdensity-a: BETA.DIST density, min(a,b) > 1 978
+- probes-numeric/t2513-r3-loader-bd0-a: BETA.DIST density, min(a,b) > 1 7,749
+- probes-numeric/t2513-r3-loader-bd0-b: BETA.DIST density, min(a,b) > 1 113
+- probes-numeric/t2513-r3-loader-bd0-hold: BETA.DIST density, min(a,b) > 1 4,633
+- probes-numeric/t2513-r3-loader-const-diverse1: BETA.DIST density, min(a,b) > 1 5,630
+- probes-numeric/t2513-r3-loader-const-grid1: BETA.DIST density, min(a,b) > 1 1,275
+- probes-numeric/t2513-r3-loader-const-sweep1: BETA.DIST density, min(a,b) > 1 5,918
+- probes-numeric/t2513-verify-r3-binom-pmf-h: BETA.DIST density, min(a,b) > 1 73
+- probes-numeric/t2513-verify-r3-loader-bd0-hold: BETA.DIST density, min(a,b) > 1 950
+- probes-numeric/t2513-verify-r3-loader-const-hold: BETA.DIST density, min(a,b) > 1 943
+
 ## Acceptance criteria
 - [ ] On the 32,264 a, b > 1 density cells of r2-density-large's data, the engine is within 15 digits on at least
       31,385 and bit-exact on at least 5,765 (M3 reaches 31,461 and 6,312).

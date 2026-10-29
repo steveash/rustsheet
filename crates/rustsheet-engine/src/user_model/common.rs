@@ -315,7 +315,7 @@ impl UserModel {
             old_value,
             new_value: name.to_string(),
         }]);
-        self.model.workbook.name = name.to_string();
+        self.model.set_workbook_name(name);
     }
 
     /// Undoes last change if any, places the change in the redo list and evaluates the model if needed
@@ -1112,17 +1112,16 @@ impl UserModel {
     ///
     /// See also [`Model::delete_rows`].
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
+        if let Some(area) = self.model.last_data_row(sheet, row, row_count) {
+            // The delete keeps a table's only data row and clears it ([`Model::delete_rows`],
+            // T-2338): record it as the clear it is, so undo restores the cells and moves nothing.
+            return self.range_clear_contents(&area);
+        }
         let worksheet = self.model.workbook.worksheet(sheet)?;
         let mut old_data = Vec::new();
         // Collect data for all rows to be deleted
         for r in row..row + row_count {
-            let mut row_data = None;
-            for rd in &worksheet.rows {
-                if rd.r == r {
-                    row_data = Some(rd.clone());
-                    break;
-                }
-            }
+            let row_data = worksheet.rows.iter().find(|rd| rd.r == r).cloned();
             // SpillCells are transient; save their style as EmptyCell so undo can
             // restore the style index, letting evaluate() recreate the SpillCell correctly.
             let data = worksheet

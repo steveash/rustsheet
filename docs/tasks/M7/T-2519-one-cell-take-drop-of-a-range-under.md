@@ -3,7 +3,7 @@ id: T-2519
 title: "One-cell TAKE/DROP of a range under +0 or N() is a scalar, not a lifting 1x1 array (OFFSET height/width/rows)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -27,13 +27,19 @@ Cells:
 - gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A171
 - gen-m9/7c20351562a2d71d.case.json (1): Calc!A277
 
+Exit owners (decision 0096; the 2026-10-27 planner run names each cell the ranges above hold):
+- probes/t2454-offset-one-cell-array-args Sheet1!C5, Sheet1!C9
+- probes/t2454-offset-array-height Sheet1!B12
+
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): these 3 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The cells listed above pass and leave eval/baseline/probes.txt; `{3}+0` and SEQUENCE rows keep passing.
-- [ ] `make check` green; reviewers approve.
+- [ ] ~~Visible parity (gen-m9, T-2436)~~ moved to T-3072: the 3 gen-m9 cells need the arithmetic path, not OFFSET.
+- [x] The cells listed above pass and leave eval/baseline/probes.txt; `{3}+0` and SEQUENCE rows keep passing.
+- [x] `make check` green; reviewers approve.
 
 Also probe `CHOOSE(1,DROP(H2:H4,-2,0))` and `LET(x,DROP(H2:H4,-2,0),x)` as OFFSET's height, and find the mechanism of the scalar height 1E-15 giving 2 rows (lookup.md, probes/t2454-offset-array-height A1).
 
 ## Out of scope
 - Arguments the probes did not cover.
+
+## Outcome
+`take_drop_reference` (drop_take.rs) now returns the one-cell reference in value context, so a one-cell TAKE/DROP of a single-sheet range under `+0`/`N()` is a scalar. probes known failures 2564 -> 2551 (13 cells fixed: the 12 failing cells of t2454-offset-array-height and t2454-offset-one-cell-array-args, plus probes/t2475-stat-subexpressions P!A279, a TAKE under subtraction that is a scalar #DIV/0! in Excel), no regressions. The gen-m9 cells are not fixed by this (the binary-operator path still lifts a 1x1 array): moved to T-3072. Not done: CHOOSE/LET as OFFSET's height and the 1E-15 height mechanism probes (need the oracle).

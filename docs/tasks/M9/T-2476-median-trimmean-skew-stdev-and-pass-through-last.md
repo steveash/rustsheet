@@ -26,6 +26,13 @@ TREND: T-2221, T-2033, T-2207, T-2131, T-2044); if the inner function's own task
 fixes them first, close them here. Fit in the fit lab (tools, `rustsheet-fitlab`) on these cells plus the passing ones of
 the same functions in eval/ (a candidate must not break a passing cell).
 Code: functions/statistical/ (median in sorted_data.rs or count_and_average.rs; trimmean.rs; standard_dev.rs; permut.rs).
+MEDIAN moved to T-3017 (gap triage 2026-10-28): `a + (b - a)/2` over the two middle values fits all 50 even-count
+gen-m* MEDIAN cells over plain ranges (statistics.md "MEDIAN of an even count is a + (b - a)/2"). That covers 10 of
+this list's MEDIAN cells, and T-3017 owns them; A264 and A168 pass an inner function's digits through and stay here.
+More TRIMMEAN evidence (same triage, corpus-bench, Excel-cached; no task named it). In corpus-bench/50442/1_50442_input.xlsx
+`TRIMMEAN(IF(Table1[MAX GAIN]>=4,Table1[POINTS G/L]),10%)` is 4.779374999999999 in Excel and 4.779375 in ours. All 7 cells
+are 1 to 2 ulp off, and the case is a whole-case F line of eval/baseline/corpus-bench.txt:
+- corpus-bench/50442/1_50442_input.xlsx (7): RESULTS 1!Q3, T3, Q4, T4, Q5, D52, D53
 
 Owned gen-m9 cells (T-2256 triage, excel-graph, 2026-10-23): 29 known-failure lines in eval/baseline/gen-m9.txt, 0 visibly off.
 Examples:

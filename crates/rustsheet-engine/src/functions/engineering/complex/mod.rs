@@ -25,7 +25,9 @@ use crate::{
     number_format::{complex_part_to_text, to_precision},
 };
 
+mod reading;
 mod trig;
+use reading::{has_inner_minus, strip_currency_symbols};
 use trig::{imcos, imcosh, imcot, imcsc, imcsch, imsec, imsech, imsin, imsinh, imtan};
 
 /// This implements all functions with complex arguments in the standard
@@ -226,21 +228,6 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
-/// Whether `text`, past its leading spaces, has a `-` that is neither its first character nor an
-/// exponent's sign (`1E-3`, an `E` after a digit or a `.`): Excel's complex reader does not hand
-/// such text to VALUE.
-fn has_inner_minus(text: &str) -> bool {
-    let bytes = text.trim_start_matches(' ').as_bytes();
-    (1..bytes.len()).any(|i| {
-        let exponent_sign = matches!(bytes.get(i - 1), Some(b'E' | b'e'))
-            && matches!(
-                i.checked_sub(2).and_then(|j| bytes.get(j)),
-                Some(b'0'..=b'9' | b'.')
-            );
-        bytes.get(i) == Some(&b'-') && !exponent_sign
-    })
-}
-
 /// A parsed complex number: the real part, the imaginary part and the suffix.
 type ComplexParts = (f64, f64, Suffix);
 
@@ -330,7 +317,11 @@ impl Model {
         if number_text_too_long(&value) {
             return Err(value_error(cell));
         }
-        if value.starts_with(['\t', '\u{3000}']) {
+        // A tab, U+3000, NBSP, LF or CR at either end, past leading spaces, is `#NUM!`, where a space
+        // is read: `IMABS` of tab&"5", " "&tab&"5", "5"&tab, "3+4i"&LF and NBSP&"3+4i" are `#NUM!`
+        // (probes/eng-inumber-reading, probes/eng-inumber-currency-shapes A13:A26).
+        const UNREAD_EDGE: [char; 5] = ['\t', '\u{3000}', '\u{a0}', '\n', '\r'];
+        if value.trim_start_matches(' ').starts_with(UNREAD_EDGE) || value.ends_with(UNREAD_EDGE) {
             return Err(num_error(cell));
         }
         // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",
@@ -338,7 +329,7 @@ impl Model {
         // `IMABS` of "2024-01-01", "1-2-2020", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
         // while " -5", "- 5", "1E-3%" and "1,000E-2" are read (probes/eng-inumber-reading A4,
         // probes/eng-inumber-date-boundary column A).
-        match parse_complex_number(&value) {
+        match parse_complex_number(&strip_currency_symbols(&value)) {
             Ok(z) => Ok(z),
             Err(_) if has_inner_minus(&value) => Err(num_error(cell)),
             Err(_) => self
@@ -382,8 +373,13 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         };
         // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
-        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
-        if args.iter().any(|arg| matches!(arg, Node::EmptyArgKind)) {
+        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4. A variable bound to an omitted LAMBDA
+        // parameter or an empty LET value hands the omission on: `LAMBDA(a,b,IMSUB(a,b))("1",)`,
+        // `LET(e,,IMSUB("1",e))` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12).
+        if args
+            .iter()
+            .any(|arg| matches!(arg, Node::EmptyArgKind) || self.is_omitted_variable(arg))
+        {
             return Err(CalcResult::new_error(Error::NA, cell, String::new()));
         }
         let first = self.complex_of(first, EmptyText::ZeroIfBlank, cell)?;
@@ -890,40 +886,61 @@ fn imexp_cap_window(quarter_turns: i64) -> f64 {
     }
 }
 
-/// The logs are `#NUM!` if both parts are nonzero and `x²+y²` is inf or subnormal (eng-imln-modulus-range).
-fn log_modulus_out_of_range(x: f64, y: f64) -> bool {
-    x != 0.0 && y != 0.0 && !(x * x + y * y).is_normal()
+/// A part's square as IMSQRT and the logs take it: a subnormal square is 0. With it,
+/// `IMLN("1E-154+1E-153i")` is ln 1E-153, -352.295519228089 (`hypot` gives -352.290544062662), and
+/// `IMSQRT("1E-154+1E-153i")` is 2.34467878292635E-77+2.12190513569646E-77i, the root of
+/// 1E-153 at half the unflushed angle (probes/eng-imln-modulus-range A79, A80; T-2572).
+fn flushed_square(part: f64) -> f64 {
+    let square = part * part;
+    if square.is_subnormal() {
+        0.0
+    } else {
+        square
+    }
 }
 
-/// IMLN, IMLOG10 and IMLOG2: the real and imaginary parts that `parts` makes of `(x, y)`. The
-/// log of 0 is `#NUM!`, not "-inf" (T-2389).
+/// IMLN, IMLOG10 and IMLOG2: the real and imaginary parts that `parts` makes of the parts the
+/// modulus is taken of and the argument `atan2(y, x)` (eng-imln-modulus-range, T-2117, T-2572):
+/// - with both parts nonzero a part whose square is subnormal drops out of the modulus
+///   ([`flushed_square`]), so the log is `#NUM!` when both squares flush to 0 or their sum
+///   overflows (`IMLN("1E-154+1E-154i")`, `IMLN("1E154+1E154i")`);
+/// - a pure real or imaginary number keeps its part (`IMLN("1E-160+0i")` is -368.413614879047).
+///
+/// The log of 0 is `#NUM!`, not "-inf" (T-2389).
 fn complex_log(
     p: ComplexParts,
     c: CellReferenceIndex,
-    parts: fn(f64, f64) -> (f64, f64),
+    parts: fn(f64, f64, f64) -> (f64, f64),
 ) -> CalcResult {
     let (x, y, suffix) = p;
-    if log_modulus_out_of_range(x, y) {
-        return num_error(c);
+    let (mut mx, mut my) = (x, y);
+    if x != 0.0 && y != 0.0 {
+        let (xx, yy) = (flushed_square(x), flushed_square(y));
+        if !(xx + yy).is_normal() {
+            return num_error(c);
+        }
+        if xx == 0.0 {
+            mx = 0.0;
+        }
+        if yy == 0.0 {
+            my = 0.0;
+        }
     }
-    let (re, im) = parts(x, y);
+    let (re, im) = parts(mx, my, f64::atan2(y, x));
     finite_complex_result(re, im, suffix, c)
 }
 
-/// IMLN is `ln` of the [`modulus`] and the argument (`atan2`).
-fn imln_parts(x: f64, y: f64) -> (f64, f64) {
-    (modulus(x, y).ln(), f64::atan2(y, x))
+/// IMLN is `ln` of the [`modulus`] and the argument.
+fn imln_parts(x: f64, y: f64, angle: f64) -> (f64, f64) {
+    (modulus(x, y).ln(), angle)
 }
 
 /// IMLOG10 divides the argument by ln 10: multiplying by log10 e misses
 /// `IMLOG10("711+1.5i")`'s 0.000916231724847909 (probes/eng-im-overflow-edges A95) and the
 /// reciprocal `1/ln 10` misses `IMLOG10("1.5+710.4i")`; the division fits all 36 IMLOG10 cells
 /// of the eval suites (T-2231).
-fn imlog10_parts(x: f64, y: f64) -> (f64, f64) {
-    (
-        modulus(x, y).log10(),
-        f64::atan2(y, x) / std::f64::consts::LN_10,
-    )
+fn imlog10_parts(x: f64, y: f64, angle: f64) -> (f64, f64) {
+    (modulus(x, y).log10(), angle / std::f64::consts::LN_10)
 }
 
 /// IMLOG2 is `ln` of IMABS's [`scaled_modulus`] and the argument, both times the double one ulp
@@ -932,9 +949,9 @@ fn imlog10_parts(x: f64, y: f64) -> (f64, f64) {
 /// `IMLOG2("1E-20")` -66.4385618977473 among them, where `log2` and `atan2·log2 e` print the digit
 /// below (probes/eng-im-overflow-edges A104, A107, A109; probes-numeric im-last-digit-sweep N, O;
 /// T-2231). `hypot` instead of the scaled modulus misses `-0.66925-0.233532i` (sweep row 53).
-fn imlog2_parts(x: f64, y: f64) -> (f64, f64) {
+fn imlog2_parts(x: f64, y: f64, angle: f64) -> (f64, f64) {
     let k = std::f64::consts::LOG2_E.next_up();
-    (scaled_modulus(x, y).ln() * k, f64::atan2(y, x) * k)
+    (scaled_modulus(x, y).ln() * k, angle * k)
 }
 
 fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -944,10 +961,11 @@ fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// Excel squares each part first: a part past `sqrt(DBL_MAX)` (1.34078E154) is `#NUM!`
 /// (`IMSQRT("1.35E154")`, `IMSQRT("1E307")`), but when only the sum of the squares overflows
 /// (`IMSQRT("1E154+1E154i")`) the result is `0`, not an error (probes/eng-imsqrt-large,
-/// eng-imsqrt-large-b; docs/excel-semantics/engineering.md, T-1996). Not `modulus`: Excel gives
-/// "0" on underflow (probes/eng-imln-modulus A18, A20).
+/// eng-imsqrt-large-b; docs/excel-semantics/engineering.md, T-1996). Not `modulus`: a subnormal
+/// square is 0 ([`flushed_square`]), so `IMSQRT("1E-154+1E-154i")` and `IMSQRT("1E-160+0i")` are
+/// "0" (probes/eng-imln-modulus A18, A20; eng-imln-modulus-range A51-A56, A80; T-2572).
 fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    let (xx, yy) = (x * x, y * y);
+    let (xx, yy) = (flushed_square(x), flushed_square(y));
     if !xx.is_finite() || !yy.is_finite() {
         return num_error(cell);
     }

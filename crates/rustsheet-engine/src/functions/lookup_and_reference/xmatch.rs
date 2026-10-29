@@ -272,7 +272,7 @@ impl Model {
                 )
             },
         );
-        regexes.finish(result, cell)
+        regexes.finish(self, result, cell)
     }
 
     /// XMATCH of one element. The errors come in argument order: `lookup_value`, `match_mode`,

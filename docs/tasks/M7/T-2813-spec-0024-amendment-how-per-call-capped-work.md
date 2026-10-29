@@ -1,0 +1,60 @@
+---
+id: T-2813
+title: "SPEC-0024 amendment: how per-call capped work is charged to the formula work budget"
+milestone: M7
+lane: engine
+status: done
+priority: P2
+size: S
+tier: opus
+spec: docs/specs/SPEC-0024-formula-work-budget.md
+depends_on: []
+---
+
+## Goal
+SPEC-0024 says how the per-call caps' work (lifted kernel units and cell visits, `limits::MAX_LIFTED_CELL_VISITS`) is
+charged to the per-formula work budget so that both calibration constraints of its section 4 can hold, and T-2803 can
+resume from its pushed branch.
+
+## Context
+T-2803 (branch `agent/engine/T-2803-formula-work-budget`) implemented SPEC-0024 step 1 and blocked at its calibration
+rule (section 4: stop and report if the heaviest eval formula spends more than 2^26 units, or no weights meet both
+constraints). Measurements (release build, local instrumentation, 2026-10-26):
+- Eval: with per-call visits charged 1 unit each, `make eval-check` has 0 regressions, but the heaviest eval formulas
+  spend 124,806,376 units (gen-m9/0a614cfe974b59c3 Calc!A117) and 124,783,848 (gen-m9/984cba67bbe6972b Calc!A14), about
+  2^26.9: lifted financial and statistics kernels (CHISQ.DIST, GAMMAINV, POISSON.DIST, ODDLPRICE, YIELD) over PIVOTBY
+  results, each one call near the 2^27 per-call cap. With 6 units per visit, 13 gen-m9 cells regress (`#VALUE!`).
+- Time: `=SUM(MAKEARRAY(1000,1000,LAMBDA(r,c,SUM(RATE(SEQUENCE(1000),-1,100)))))` needs at least 5 units per visit to stop
+  within 10 s (8.5 s at 6; about 50 s at 1), because a lifted RATE element costs about 190 ns per kernel unit (T-2814).
+- Without the per-call caps' charges (nodes 2, built cells 2, 4 text bytes a unit, regex compile and search work), eval
+  has 0 regressions and the heaviest eval formula spends 8,388,620 units (about 2^23), within the 2^26 rule; every other
+  kind's worst case stops within 10 s (arrays.md "One formula evaluation does at most 268,435,456 work units").
+So no single visit weight meets both constraints: an eval cell may legitimately use most of one per-call cap (2^27,
+half the 2^28 formula budget), so the 2^26 rule cannot hold for any weight above about 0.5 while the per-call cap stays
+2^27. Options to weigh: charge per-call work only inside a LAMBDA call (multiplication needs a helper); lower the
+per-call cap or raise the formula limit for this kind; charge it at weight 1 and fix the kernel weights that make a
+unit slow (T-2814) so the 10 s target holds; or relax the 2^26 margin for this kind only. Read the T-2803 branch's
+`area_budget.rs` (`VISIT_UNITS`, `spend_visits`) and the task's "Blocked because" section.
+T-2814 (2026-10-27) changed the RATE numbers above: a lifted RATE element is now charged 2^13 units (`RATE_WEIGHT`),
+not 200, about 2.4 s for one call at the 2^27 cap (16,384 elements), so the RATE time case reaches the per-call cap
+about 40x sooner and must be re-measured. YIELD and ODDFYIELD still take about 17 s at the cap (T-2879).
+
+## Acceptance criteria
+- [x] SPEC-0024 sections 1 and 4 state the rule for per-call capped work, with the measurements above, and the chosen
+      rule meets: no eval regression, and each kind's worst case stops within 10 s (or the spec records why not).
+- [x] T-2803's "Blocked because" section, on its draft branch (#1938, `agent/engine/T-2803-formula-work-budget`), points at the amendment, so the next opus run can resume it.
+- [x] `make check` green; reviewers approve.
+
+## Out of scope
+- Implementing the rule (T-2803 resumes with it).
+- Kernel weight calibration (T-2814).
+
+## Outcome
+SPEC-0024 amended (sections 1, 4 and Rollout step 1): a visit cap's spend (lift driver visits and kernel units, *IF(S) and
+AGGREGATE visits, GROUPBY/PIVOTBY) is charged 1 unit each, everywhere; its time belongs to the call's own cap, so the
+formula budget (twice the cap) needs each visit cap's worst case within 5 s. Section 4's quarter-limit margin now applies
+outside the visit caps' charges, which must stay within one cap (2^27). Measured on the T-2803 branch with main merged in
+(release, local instrumentation): 0 eval regressions; heaviest formula 118,754,196 units (118,751,450 visit-cap,
+2,746 other); heaviest outside the visit caps 8,388,620; a MAKEARRAY of worst-case RATE stops in 2.1-4.2 s; YIELD and
+ODDFYIELD 17.6-28.1 s, owned by T-2879 (its acceptance now cites the amendment). T-2803's "Blocked because" on its branch
+(#1938) points at the amendment and says how to resume. Eval delta: none (docs only).

@@ -8,6 +8,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::lift::{grid_dims, ArgBuf, LiftCost, LiftOptions},
+    functions::spill_functions::reject_empty_value,
     functions::Function,
     model::Model,
     reference_operators::{Picked, RefArg, RefGrid},
@@ -107,7 +108,13 @@ impl Model {
                 }
             );
         let mut grid = None;
-        let source = if reads_grid {
+        let source = if matches!(args[0].ungrouped(), Node::ReferenceKind { .. }) {
+            // A one-cell reference is a range of one cell, as `E7:E7` is, so TAKE/DROP keeps it a
+            // reference: `ROWS(E9-TAKE(E7,2,42))` is `#VALUE!` with E7 text, not a 1x1 array, and
+            // `ISREF(TAKE(E7,1))` is TRUE (probes/t3072-take-drop-one-cell-reference P1, P42;
+            // T-3072).
+            self.evaluate_node_with_reference(&args[0], cell)
+        } else if reads_grid {
             match self.evaluate_value_or_grid(&args[0], cell) {
                 RefArg::Grid(elements) => {
                     let values = elements.to_values();
@@ -129,16 +136,33 @@ impl Model {
             return self.take_drop_of_grid(&grid, counts.as_slice(), edge, cell);
         }
         if let CalcResult::Range { left, right } = source {
-            if as_reference && left.sheet == right.sheet {
+            if left.sheet == right.sheet {
                 let (num_rows, num_cols) = range_dims(left, right);
-                return RefArg::from(
-                    match self.edge_spans(counts.as_slice(), cell, edge, num_rows, num_cols) {
-                        Ok((rows, columns)) => sub_range(left, &rows, &columns),
-                        Err(error) => error,
-                    },
-                );
+                match self.edge_spans(counts.as_slice(), cell, edge, num_rows, num_cols) {
+                    // Excel's TAKE/DROP of a range is a reference, so a one-cell result is a
+                    // scalar under `+0` or `N()`, not a lifting 1x1 array
+                    // (probes/t2454-offset-one-cell-array-args A5:D5, A9:D9; T-2519).
+                    Ok((rows, columns))
+                        if as_reference || (rows.len() == 1 && columns.len() == 1) =>
+                    {
+                        return RefArg::from(sub_range(left, &rows, &columns));
+                    }
+                    Err(error) if as_reference => return RefArg::from(error),
+                    // A multi-cell value-context result, or an `edge_spans` error, takes the array
+                    // path below, which recomputes the same span or error.
+                    _ => {}
+                }
             }
         }
+        // TAKE rejects the empty value (`TAKE(CELL("contents",<blank>),1)` `#VALUE!`,
+        // probes/t3030-cell-contents-blank-shapers A171, T-3053); DROP of it is unprobed.
+        let source = match edge {
+            Edge::Take => match reject_empty_value(&args[0], source, cell) {
+                Ok(source) => source,
+                Err(error) => return RefArg::Value(error),
+            },
+            Edge::Drop => source,
+        };
         let data = match self.result_to_array(source, cell) {
             Ok(d) => d,
             Err(e) => return RefArg::Value(e),
@@ -172,12 +196,6 @@ impl Model {
                 });
             }
         }
-        let data = match self.result_to_array(source, cell) {
-            Ok(d) => d,
-            Err(e) => return RefArg::Value(e),
-        };
-        let (num_rows, num_cols) = grid_dims(&data);
-        let cells = u64::try_from(num_rows.saturating_mul(num_cols)).unwrap_or(u64::MAX);
         let kind = match edge {
             Edge::Take => Function::Take,
             Edge::Drop => Function::Drop,
@@ -189,6 +207,23 @@ impl Model {
                 "TAKE or DROP has no lifting table entry".to_string(),
             ));
         };
+        // An error source does not short-circuit a lifted count: it is one error per element
+        // (`ROWS(TAKE(NA(),{1;2}))` is 2; probes/m7-lift-take-drop-sortby Sheet1 F33, G33, U10).
+        if let CalcResult::Error { .. } = source {
+            return RefArg::Value(self.lift_values(
+                counts.into_iter().collect(),
+                LiftCost::Cells(1),
+                &LiftOptions::for_entry(kinds),
+                cell,
+                &mut |_, _| source.clone(),
+            ));
+        }
+        let data = match self.result_to_array(source, cell) {
+            Ok(d) => d,
+            Err(e) => return RefArg::Value(e),
+        };
+        let (num_rows, num_cols) = grid_dims(&data);
+        let cells = u64::try_from(num_rows.saturating_mul(num_cols)).unwrap_or(u64::MAX);
         RefArg::Value(self.lift_values(
             counts.into_iter().collect(),
             LiftCost::Cells(cells),
