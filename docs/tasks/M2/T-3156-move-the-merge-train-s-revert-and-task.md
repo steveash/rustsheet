@@ -47,3 +47,6 @@ files) without a decision record in `docs/decisions/`. A sonnet run may not add 
 record with `make new-decision TITLE="..."` saying the move is behaviour-neutral, push it, re-run the architecture
 reviewer (it asked for changes only over a `ruff format` blank line, already fixed and not a gate), set `status: done`,
 and continue at work-loop step 6.
+
+Resolved by the opus run: decision 0165 now records the behaviour-neutral split (its last Consequences entry),
+`check_governance.py` passes, and the architecture reviewer approved; nothing above is still to do.
