@@ -16,10 +16,10 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 **not** happen when the whole formula is parenthesized (`=(X-b)`) or another operation follows
 (`=X-b+0`, `=(X-b)*1`). For X = b·(1±k·2^-52): k ≤ 3 always snaps, k = 4–7 snaps for some bases only
 (15, 9, 9, 9 of 24), k = 8 never; identical for `X-b`, `X+(-b)` and `SUM(X,-b)`. The exact
-threshold (T-0110, fitted on all 1,296 cells; refined by T-3100): snap iff the two addends of the final addition
-have opposite signs and |result| < 8 ULP of the **left** addend in magnitude (= 2^(e-49), e
-its binary exponent; for SUM, the total before its last addend). The opposite-sign condition is implied, not observed: every probe cell
-subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
+threshold (T-0110, fitted on all 1,296 cells; refined by T-3100): snap iff the two addends of
+the final addition have opposite signs and |result| < 8 ULP of the **left** addend in magnitude
+(= 2^(e-49), e its binary exponent; for SUM, the total before its last addend). The
+opposite-sign condition is implied, not observed: every probe cell subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
 addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
 up to k = 7 but the `-` side, whose left addend 1-k·2^-52 has half the ULP, only up to k = 3 (see "Operand order" below).
 The earlier hypothesis (no snapping with parentheses or in SUM) was wrong for SUM; it holds for `+`/`-`.
