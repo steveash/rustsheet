@@ -3,7 +3,7 @@ id: T-2941
 title: "Phase 1 checkpoint: a phase1-exceptions line in a suite the run skipped is not stale (the 4 poi lines read 'remove their lines' when poi is not fetched)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,15 +31,23 @@ as not checked, so no agent is told to delete a line that still applies.
   always run. It needs no change. Say so in the PR.
 
 ## Acceptance criteria
-- [ ] A unit test in v15_checkpoint.rs: an exception line whose suite has no case in `results` is not in
+- [x] A unit test in v15_checkpoint.rs: an exception line whose suite has no case in `results` is not in
       `stale_exceptions`. It is counted (and listed in report.json, for example `unchecked_exceptions`) as not checked
       in this run. The existing test `stale_exceptions == ["probes/a!S!C1", "probes/a!S!Z9"]` still passes.
-- [ ] The markdown says "N listed cells were not checked: their suite was skipped" for such lines, and shows the
+- [x] The markdown says "N listed cells were not checked: their suite was skipped" for such lines, and shows the
       "remove their lines" warning only for lines in suites that were scored.
-- [ ] `make eval` without poi fetched shows no "remove their lines" warning for the four poi lines.
+- [x] `make eval` without poi fetched shows no "remove their lines" warning for the four poi lines.
       docs/architecture/eval-harness.md describes the new rule.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Editing eval/milestones/phase1-exceptions.tsv (a protected path, decision 0044).
 - The Phase 1 rate itself: an excepted cell in a skipped suite is not scored, so the rate does not change.
+
+## Outcome
+`excepted_cells` (v15_checkpoint.rs) now splits listed cells that were not left out into `stale_exceptions` (their
+suite, the first segment of the case id, was scored) and the new `unchecked_exceptions` (no case of the suite in
+the run). The report prints "N listed cells were not checked: their suite was skipped" for the latter and the
+"remove their lines" warning only for the former. The four poi lines are therefore no longer reported when poi is not
+fetched. `function_scope.rs`'s stale check (exit-exceptions.tsv) reads only ironcalc-calc, which is vendored and
+always run, so it needs no change. Docs: eval-harness.md. No eval cell delta.
