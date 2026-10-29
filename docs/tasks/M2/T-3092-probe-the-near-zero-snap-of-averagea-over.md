@@ -22,9 +22,9 @@ functions/subtotal.rs does not snap). Write a probe case, fill it with the excel
 `fn_averagea` (`for_each_value_a`) and `subtotal_average`.
 
 ## Acceptance criteria
-- [ ] A probe case with an oracle sidecar covers each unprobed form; numbers.md records the result.
-- [ ] The engine matches every cell of it (or the mismatch is a documented, task-owned known failure).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with an oracle sidecar covers each unprobed form; numbers.md records the result.
+- [x] The engine matches every cell of it (or the mismatch is a documented, task-owned known failure).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SUBTOTAL(1/101) over a hidden-row or filtered mix beyond the probed forms.
