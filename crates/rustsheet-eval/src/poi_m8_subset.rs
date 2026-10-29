@@ -169,7 +169,8 @@ pub fn summarize(results: &[CaseResult]) -> Option<PoiM8Subset> {
             }
             out.scored += 1;
             if c.verdict.is_failure() && Visible::is_off(c) {
-                out.visibly_off_cells.push(format!("{}!{key}", r.id));
+                out.visibly_off_cells
+                    .push(crate::runner::cell_id(&r.id, &key));
             }
         }
     }
