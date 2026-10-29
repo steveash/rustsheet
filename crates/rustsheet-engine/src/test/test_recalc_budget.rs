@@ -13,9 +13,9 @@ use crate::test::util::new_empty_model;
 use crate::types::Iteration;
 use crate::Model;
 
-/// The units of `=SUM(SEQUENCE(k))`: three nodes and the `k` cells SEQUENCE builds.
+/// The units of `=SUM(SEQUENCE(k))`: three nodes, the `k` cells SEQUENCE builds and the `k` SUM reads.
 fn sum_units(k: u64) -> u64 {
-    3 * NODE_UNITS + k * CELL_UNITS
+    3 * NODE_UNITS + 2 * k * CELL_UNITS
 }
 
 /// A model with `cells` set, whose recalculations have a pass allowance of `pass` units and a
@@ -449,9 +449,9 @@ fn worked_example(heavy: usize, light: usize) -> Model {
     const LIMIT: u64 = 1 << 14;
     let mut model = model_with(4 * LIMIT, 16 * LIMIT, &[]);
     model.area_budget.limit = LIMIT;
-    // 3 nodes and 5,073 cells: 15,237 units, 93% of the limit.
+    // 3 nodes and 2,536 cells built and read: 15,234 units, 93% of the limit.
     for row in 1..=heavy {
-        model._set(&format!("A{row}"), "=SUM(SEQUENCE(5073))");
+        model._set(&format!("A{row}"), "=SUM(SEQUENCE(2536))");
     }
     for row in 1..=light {
         model._set(&format!("B{row}"), &format!("=C{row}*2"));
@@ -463,14 +463,14 @@ fn worked_example(heavy: usize, light: usize) -> Model {
 #[test]
 fn the_worked_example() {
     const LIMIT: u64 = 1 << 14;
-    let heavy = sum_units(5073);
-    assert_eq!(heavy, 15_237);
+    let heavy = sum_units(2536);
+    assert_eq!(heavy, 15_234);
 
     // A1:A4: four heavy cells fit the allowance; every value computed.
     let model = worked_example(4, 0);
     assert_eq!(last(&model).mode, RecalcMode::Normal);
     assert_eq!(last(&model).spent(), 4 * heavy);
-    assert_eq!(model._get_text("A4"), "12870201");
+    assert_eq!(model._get_text("A4"), "3216916");
 
     // A1:A5: the fifth overruns; every heavy cell gives up at its share.
     let model = worked_example(5, 0);

@@ -116,6 +116,7 @@ def write_task(
     defer: str | None = None,
     issue: str | None = None,
     issue_author: str | None = None,
+    issue_origin: str | None = None,
 ) -> Path:
     path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -124,6 +125,7 @@ def write_task(
     campaign_line += f"defer: {defer}\n" if defer else ""
     campaign_line += f"issue: {issue}\n" if issue is not None else ""
     campaign_line += f"issue_author: {issue_author}\n" if issue_author is not None else ""
+    campaign_line += f"issue_origin: {issue_origin}\n" if issue_origin is not None else ""
     path.write_text(
         f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
         f"size: S\n{tier_line}{campaign_line}depends_on: [{depends_on}]\n---\n{body}"
@@ -595,6 +597,31 @@ class Issues(unittest.TestCase):
         self.assertFalse(any("T-000" in e for e in errors), errors)
         for tid in [f"T-001{i}" for i in range(6)] + ["T-0020", "T-0021", "T-0022"]:
             self.assertTrue(any(tid in e and "issue" in e for e in errors), tid)
+
+    def test_issue_origin_must_be_a_positive_integer_and_never_with_issue(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(tasks, "ROOT", root):
+                good = [tasks.parse(write_task(root, f"T-000{i}", issue_origin=v)) for i, v in enumerate(("1", '"42"'))]
+                bad = [tasks.parse(write_task(root, f"T-001{i}", issue_origin=v))
+                       for i, v in enumerate(("0", "-3", "12a", "", "\u0661"))]
+                bad.append(tasks.parse(write_task(root, "T-0020", issue="5", issue_author="octo", issue_origin="5")))
+                bad.append(tasks.parse(write_task(root, "T-0021", issue_origin="5", issue_author="octo")))
+                errors = tasks.validate(good + bad)
+        self.assertFalse(any("T-000" in e for e in errors), errors)
+        for tid in [f"T-001{i}" for i in range(5)] + ["T-0020", "T-0021"]:
+            self.assertTrue(any(tid in e and "issue" in e for e in errors), tid)
+
+    def test_issue_origin_follow_ups_are_not_the_issues_tasks(self) -> None:
+        root = Path("/repo")
+        on_tree = [
+            {"id": "T-0001", "issue": "12", "issue_author": "alice", "path": root / "docs/tasks/M0/T-0001-a.md"},
+            {"id": "T-0002", "issue_origin": "12", "status": "todo", "path": root / "docs/tasks/M0/T-0002-a.md"},
+        ]
+        _, run = self.fake_git("", grep_code=1)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            self.assertEqual(tasks.issue_tasks("12", on_tree, fetch=False), [("T-0001", "working tree")])
+            self.assertEqual([c["id"] for c in tasks.issue_copies(on_tree, fetch=False)], ["T-0001"])
 
     GREP = (
         "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:1:---\n"

@@ -28,5 +28,10 @@ Code: `resolve_after_hijri_prefix` (formatter/locale_tag.rs), `NameTokens::push`
 - [ ] number-formats.md records the rule with the new evidence.
 - [ ] `make check` green; reviewers approve.
 
+## Cells added by the gap triage (2026-10-29)
+The hyphen spans above name only their end cells (decision 0136), so `make unowned-off` lists these cells as
+unowned. This task owns them: probes/t3029-b2-calendar-weekday S!A74, A80, A81, A82 and A83. On `main` 9235b7c3,
+A74 `TEXT(44941,"B2[$-10409]mmm|ddd")` is Excel "يناير|الأحد" and ours "Jan|Sun".
+
 ## Out of scope
 - The weekday after `mmm` (T-3029).
