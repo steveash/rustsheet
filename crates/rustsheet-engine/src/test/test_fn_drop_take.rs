@@ -423,3 +423,31 @@ fn take_drop_of_a_one_cell_reference_is_a_reference() {
     assert_eq!(model._get_text("A9"), "#VALUE!");
     assert_eq!(model._get_text("A10"), "TRUE");
 }
+
+/// A variable bound to one cell is that reference as TAKE's, DROP's or TRIMRANGE's array, while one
+/// bound to a value stays a 1x1 array (probes/t2622-take-let-reference-lambda-text P1-P30; T-2622).
+#[test]
+fn take_drop_of_a_variable_bound_to_one_cell() {
+    let mut model = new_empty_model();
+    model._set("A2", "5");
+    model._set("A3", "t");
+    model._set("B1", "=TYPE(TAKE(LET(v,A2,v),1))");
+    model._set("B2", "=ISREF(TAKE(LET(v,A2,v),1))");
+    model._set("B3", "=LET(v,A2,TYPE(TAKE(IF(TRUE,v),1)))");
+    model._set("B4", "=TYPE(LAMBDA(v,TAKE(v,1))(A2))");
+    model._set("B5", "=ISREF(TRIMRANGE(LET(v,A2,v)))");
+    model._set("B6", "=ROWS(A2-TAKE(LET(v,A3,v),2,42))");
+    model._set("B7", "=TAKE(LET(v,A1,acc,v,acc),-1,-1)&\"\"");
+    model._set("B8", "=TYPE(TAKE(LET(v,5,v),1))");
+    model._set("B9", "=TYPE(TAKE(LET(v,A1,v),{1;1}))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "TRUE");
+    assert_eq!(model._get_text("B3"), "1");
+    assert_eq!(model._get_text("B4"), "1");
+    assert_eq!(model._get_text("B5"), "TRUE");
+    assert_eq!(model._get_text("B6"), "#VALUE!");
+    assert_eq!(model._get_text("B7"), "");
+    assert_eq!(model._get_text("B8"), "64");
+    assert_eq!(model._get_text("B9"), "64");
+}

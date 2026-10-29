@@ -347,6 +347,22 @@ impl Model {
         RefArg::from(self.variable_value(node, cell))
     }
 
+    /// The one-cell reference `node` is bound to, when it is a variable bound to one: what TAKE,
+    /// DROP and TRIMRANGE read for their array, where a value read gives the cell's value
+    /// (`TYPE(TAKE(LET(v,A2,v),1))` is 1, not a 1x1 array's 64, and `ISREF` of it TRUE;
+    /// probes/t2622-take-let-reference-lambda-text P2, P15, P21-P29; T-2622).
+    pub(crate) fn cell_variable_reference(&self, node: &Node) -> Option<CalcResult> {
+        match self.variable_binding(node.ungrouped())? {
+            Binding::Value(reference @ CalcResult::Range { left, right })
+            | Binding::ReadOnce(reference @ CalcResult::Range { left, right })
+                if left == right =>
+            {
+                Some(reference.clone())
+            }
+            _ => None,
+        }
+    }
+
     /// What `node` is bound to when it is a variable in scope.
     fn variable_binding(&self, node: &Node) -> Option<&Binding> {
         match node {
