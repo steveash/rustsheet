@@ -7,7 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{information::map_elements, text::common::reject_over_short_limit},
+    functions::{information::map_elements, text::common::reject_over_short_limit, Function},
     model::Model,
     reference_operators::Picked,
 };
@@ -35,7 +35,7 @@ impl Model {
         // A range is its top-left cell, with no lift and no implicit intersection, legacy or
         // dynamic: `T(A1:A3)` with A1 "x" is "x" from any row, and with A1 5 "" even from A2's
         // row (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
-        let (result, read) = self.t_argument(&args[0], cell);
+        let (result, read) = self.t_argument(&args[0], None, cell);
         // Text over 255 units read from a cell is "" however the cell is reached: a range, name,
         // INDIRECT, OFFSET, INDEX, IF, CHOOSE, LET, spill reference, sheet-qualified, parenthesised
         // or legacy reference, or structured reference. A computed value stays `#VALUE!`, and so
@@ -82,25 +82,36 @@ impl Model {
     /// IFS and SWITCH at the argument's root is replaced by the argument it picks, its condition
     /// or index read once, so the value and the reference test see one pick:
     /// `T(CHOOSE(RANDBETWEEN(1,2),D1,REPT("x",256)))` with 256 units in D1 is "" or `#VALUE!` by
-    /// the pick it made, never the value of one pick and the test of another (T-3142).
+    /// the pick it made, never the value of one pick and the test of another (T-3142). A LET there
+    /// is read and tested while its names are bound, and the `@` of a picker is read once, so
+    /// `T(LET(i,RANDBETWEEN(1,2),CHOOSE(i,D1,…)))` and `T(@CHOOSE(RANDBETWEEN(1,2),D1,…))` see
+    /// one draw too (T-3157). `outer` is the picker that picked `node`, when a LET was picked.
     fn t_argument<'a>(
         &mut self,
         node: &'a Node,
+        outer: Option<&Function>,
         cell: CellReferenceIndex,
     ) -> (CalcResult, ArgumentRead<'a>) {
         let mut arm = node;
-        let mut picker = None;
+        let mut picker = outer;
         loop {
             match arm {
                 // Not `ungrouped`: a unary plus makes a value.
                 Node::Group { child, .. } | Node::Spaced { child, .. } => arm = child,
+                Node::FunctionKind {
+                    kind: Function::Let,
+                    args,
+                } => return self.t_let_argument(args, picker, cell),
+                Node::ImplicitIntersection { child, .. } if is_picker(child) => {
+                    return self.t_at_picker_argument(child, cell)
+                }
                 Node::FunctionKind { kind, args } => match self.pick_step(kind, args, cell) {
                     Some(Picked::Node(picked)) => {
                         picker = Some(kind);
                         arm = picked;
                     }
                     Some(Picked::Value(value)) => {
-                        return (self.top_left(value), ArgumentRead::Value)
+                        return (self.top_left(value), ArgumentRead::Settled(false))
                     }
                     None => break,
                 },
@@ -113,16 +124,56 @@ impl Model {
                 (self.top_left(value), ArgumentRead::Picked(arm))
             }
             None => (
-                self.evaluate_node_top_left(node, cell),
-                ArgumentRead::Written(node),
+                self.evaluate_node_top_left(arm, cell),
+                ArgumentRead::Written(arm),
             ),
         }
+    }
+
+    /// T's argument when it is a LET (`args`): its body read as [`Self::t_argument`] reads an
+    /// argument, and tested for cell text, while the LET's names are bound, so a volatile value
+    /// is drawn once for both (T-3157). LET's own error is a value.
+    fn t_let_argument(
+        &mut self,
+        args: &[Node],
+        outer: Option<&Function>,
+        cell: CellReferenceIndex,
+    ) -> (CalcResult, ArgumentRead<'static>) {
+        let mut cell_text = false;
+        let value = self.let_scope(args, cell, |model, body| {
+            let (value, read) = model.t_argument(body, outer, cell);
+            // A body as written is tested as `is_reference` tests a LET, in reference context:
+            // `T(LET(x,D1,+x))` keeps the reading it had (unprobed).
+            let read = match read {
+                ArgumentRead::Written(body) => ArgumentRead::Picked(body),
+                read => read,
+            };
+            cell_text = over_short_limit(&value) && model.reads_cell_text(read, cell);
+            value
+        });
+        (
+            value.unwrap_or_else(|error| error),
+            ArgumentRead::Settled(cell_text),
+        )
+    }
+
+    /// T's argument when it is the `@` of an IF, CHOOSE, IFS or SWITCH (`picker`): read once as
+    /// `@` reads its operand, and a cell's text when that operand was a reference (T-3157).
+    fn t_at_picker_argument(
+        &mut self,
+        picker: &Node,
+        cell: CellReferenceIndex,
+    ) -> (CalcResult, ArgumentRead<'static>) {
+        let operand = self.evaluate_implicit_intersection_operand(picker, cell);
+        let is_reference = matches!(operand, CalcResult::Range { .. });
+        let value = self.implicit_intersection_to_value(operand, cell);
+        (self.top_left(value), ArgumentRead::Settled(is_reference))
     }
 
     /// Whether T's argument, read as [`Self::t_argument`] says, hands T a cell's text.
     fn reads_cell_text(&mut self, read: ArgumentRead<'_>, cell: CellReferenceIndex) -> bool {
         match read {
-            ArgumentRead::Value => false,
+            ArgumentRead::Settled(cell_text) => cell_text,
             ArgumentRead::Picked(arm) => self.picked_arm_is_reference(arm, cell),
             ArgumentRead::Written(node) => self.written_reads_cell_text(node, cell),
         }
@@ -146,11 +197,28 @@ impl Model {
     }
 }
 
+/// Whether `node` is an IF, CHOOSE, IFS or SWITCH call, parentheses aside.
+fn is_picker(node: &Node) -> bool {
+    matches!(
+        node.ungrouped(),
+        Node::FunctionKind {
+            kind: Function::If | Function::Choose | Function::Ifs | Function::Switch,
+            ..
+        }
+    )
+}
+
+/// Whether `value` is text over T's 255-unit limit, the only value whose cell-text test matters.
+fn over_short_limit(value: &CalcResult) -> bool {
+    matches!(value, CalcResult::String(text) if reject_over_short_limit(text).is_err())
+}
+
 /// How T tells whether its argument is a cell's text ([`Model::t_argument`]).
 #[derive(Clone, Copy)]
 enum ArgumentRead<'a> {
-    /// The value an IF, CHOOSE, IFS or SWITCH gives in place of an argument: never a cell.
-    Value,
+    /// Already decided: false for the value an IF, CHOOSE, IFS or SWITCH gives in place of an
+    /// argument; for a LET or the `@` of a picker, what its single reading showed.
+    Settled(bool),
     /// The argument a picker picked, tested as the picker's own reference test tests it.
     Picked(&'a Node),
     /// The argument as written.
