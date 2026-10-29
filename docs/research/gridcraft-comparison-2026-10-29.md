@@ -42,11 +42,11 @@ docs/progress.md (eval run of 2026-10-28, commit 180c8194).
 | | gridcraft | RustSheet |
 |---|---|---|
 | Source of truth | Public documentation and black-box observation of Excel. Excel-produced files are never committed (AGENTS.md "Clean-room"). | Values computed by Excel (excel-graph oracle), committed as evidence (CLAUDE.md directive 1). |
-| Automated check | `gridcraft-cli check` recalculates saved files and compares with their cached values: numbers within a relative tolerance of 1e-9, errors by kind (docs/cli.md). The corpus lives in a separate repository not named here. | 17 suites scored bit for bit, with ulp and 15-digit buckets, and a baseline that refuses regressions. |
-| Function tests | 238 `#[test]` functions in `crates/functions` and `crates/calc`. | Per-function probe cases filled by the oracle, plus generated cases for each milestone. |
+| Automated check | `gridcraft-cli check` recalculates saved files and compares with their cached values: numbers within 1e-9 times the larger magnitude, or within an absolute 1e-9 below magnitude 1, and errors by kind (docs/cli.md; `apps/gridcraft-cli/src/check/calc.rs`). The corpus lives in a separate repository not named here. | 17 suites scored bit for bit, with ulp and 15-digit buckets, and a baseline that refuses regressions. |
+| Function tests | 238 `#[test]` attributes in `crates/functions` and `crates/calc` (`grep -c '#\[test\]'`; its docs say 96 test functions in `crates/functions`). | Per-function probe cases filled by the oracle, plus generated cases for each milestone. |
 | Reported result | Function depth about 82% "estimated" (docs/function-parity.md "Depth") *(gridcraft's claim)*. | 423 of 506 in-scope functions have at least 99.9% of their cells within 15 digits. Calipers: 99.88% of cells bit-exact, and 160 of 173 workbooks have every cell within 15 digits. |
 
-A 1e-9 relative tolerance passes values that differ in the 10th to 15th significant digit. RustSheet's
+A 1e-9 tolerance passes values that differ in the 10th to 15th significant digit. RustSheet's
 remaining gap is almost entirely there: 99,419 visibly-off numbers against 850 wrong types, errors or
 texts (docs/progress.md). gridcraft's check cannot see that class of difference.
 
@@ -54,11 +54,13 @@ texts (docs/progress.md). gridcraft's check cannot see that class of difference.
 gridcraft's function names were taken from the source: every `f!`, `base_fn!` and `im1!` spec in
 `crates/functions/src`, plus `SPECIAL_FUNCTIONS` in `crates/calc/src/eval/special.rs`, without the
 test-only `ADD2`. That gives 514 names: 513 from eval/catalog/excel-functions.tsv, plus USDOLLAR. This
-agrees with the README's 513. The totals in docs/function-parity.md's own table (505) are out of date,
+agrees with the README's 513. The total row of the "Coverage" table in docs/function-parity.md (505) is out of date,
 and several rows of that doc and of docs/file-format-parity.md appear more than once.
 
 Against RustSheet's catalog (527 names, 506 in scope, eval/catalog/scope.json):
-- gridcraft lacks 2 in-scope functions, ECMA.CEILING and GETPIVOTDATA. RustSheet has both.
+- gridcraft lacks 2 in-scope functions, ECMA.CEILING and GETPIVOTDATA. RustSheet has both. This
+  comes from the source scan: gridcraft's own list of missing functions names GETPIVOTDATA but not
+  ECMA.CEILING, which is not on Microsoft's list.
 - gridcraft has 9 functions RustSheet treats as out of scope: the 7 CUBE functions (they return
   `#N/A`), WEBSERVICE (it returns `#VALUE!`) and EUROCONVERT.
 - gridcraft also has USDOLLAR, which is not on Microsoft's list. T-3119 probes whether Excel
@@ -77,7 +79,8 @@ Against RustSheet's catalog (527 names, 506 in scope, eval/catalog/scope.json):
 gridcraft's docs describe Excel behaviours as observed. Where RustSheet already has oracle evidence:
 - **They agree.**
   - INDEX with one index on a reference of several rows and columns is `#REF!` (probes/index-single-index, T-2273).
-  - Exact-match lookups compare doubles exactly, while `=` and the criteria functions use 15 digits (excel-semantics/lookup.md, "Approximate-match lookups"; criteria.md, "Numeric `<`, `<=`, `>`, `>=` criteria compare the 15-digit value of the cell").
+  - MATCH, VLOOKUP and HLOOKUP compare doubles exactly, while `=` and the criteria functions use 15 digits (excel-semantics/lookup.md, "Approximate-match lookups"; criteria.md, "Numeric `<`, `<=`, `>`, `>=` criteria compare the 15-digit value of the cell"). gridcraft also claims
+    this for XLOOKUP, XMATCH and LOOKUP, which RustSheet has not probed yet (T-3106 probes them).
   - MIRR with only negative flows is -1 (financial.md, "MIRR error and edge cases").
   - The Analysis ToolPak functions give `#VALUE!` for a multi-cell reference in a value argument (`lift: arrays`, SPEC-0011).
   - Excel nests LAMBDA calls deeper than gridcraft's limit of 140. RustSheet's probe evaluates 300 levels (T-0444).
