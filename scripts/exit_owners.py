@@ -151,19 +151,17 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
 
     # Every required suite (decision 0146): the row's first (`gen_suite`, `gen-m<k>` before it
     # existed; empty when the row requires none, M9) and `more_suites`, each with its own
-    # visibly-off list.
+    # visibly-off list; a measure over another suite's cells (M8's poi subset) also lists the
+    # cases that did not run as `case!*` (`blocked_cases`).
     first = exit_row.get("gen_suite", f"gen-{milestone.lower()}")
     suites = [(first, exit_row.get("gen_visibly_off_cells"))] if first else []
-    more = exit_row.get("more_suites") or []
-    suites += [(str(s.get("name")), s.get("visibly_off_cells")) for s in more]
+    for s in exit_row.get("more_suites") or []:
+        listed = [*(s.get("visibly_off_cells") or []), *(s.get("blocked_cases") or [])]
+        suites.append((str(s.get("name")), listed))
     for suite, cells_off in suites:
-        off = set(cells_off or [])
-        for case in report.get("cases") or []:
-            if case.get("suite") == suite:
-                for c in by_case.get(str(case["id"]), []):
-                    key = f"{c['sheet']}!{c['cell']}"
-                    if f"{case['id']}!{key}" in off:
-                        out.append(ExitCell(suite, str(case["id"]), key, formula_of(c)))
+        for name in cells_off or []:
+            case, key = split_cell_name(str(name))
+            out.append(ExitCell(suite, case, key, formulas.get((case, key), "")))
 
     # A function-scope row the exit row shows but does not require (counts with a null
     # `calc_met`, M7) is no exit criterion (decision 0140).
