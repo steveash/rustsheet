@@ -22,7 +22,7 @@ oracle case, not from inference.
   lookups and criteria"). The engine implements that with `ExactKey` (case-folded UTF-16 units) in
   crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs.
 - The approximate searches (`SearchVector::approximate_search`, `descending_search`) compare text through
-  `compare_searched` → `compare_values` → `cmp_text_excel`, the collation. lookup.md "Approximate match" only says
+  `compare_searched` → `compare_values` → `cmp_text_excel`, the collation. lookup.md "Approximate-match lookups: type-skipping binary search" only says
   "Text comparison uses Excel's collation, not code-point order (T-0220)". That came from ordinary ASCII text. No
   probe puts collation-equal or hyphen-skipped texts in an approximate search, so Excel could use the exact-match key
   in its binary search instead.
@@ -39,10 +39,10 @@ oracle case, not from inference.
       MATCH 1 and MATCH -1 with keys and tables built from `æ`/`ae`, `ß`/`ss`, `œ`/`oe`, `co-op`/`coop`, `'a`/`a`,
       `résumé`/`resume` and case pairs (`"A"`/`"a"`). It has at least one table per model above in which the models
       give different results.
-- [ ] lookup.md "Approximate match" says which model Excel uses, with the case id and cells (VERIFIED). The
+- [ ] lookup.md "Approximate-match lookups: type-skipping binary search" says which model Excel uses, with the case id and cells (VERIFIED). The
       inference sentence is replaced.
 - [ ] Every cell of the new case passes. If Excel does not use the collation, the approximate searches compare text
-      through one shared comparator (reuse `ExactKey`'s folding, do not copy it). probes/t3073-lookup-near-equal-approximate,
+      through one shared comparator (reuse `ExactKey`'s folding, `folded_units` in functions/criteria.rs, do not copy it). probes/t3073-lookup-near-equal-approximate,
       probes/text-collation-lookups and the gen-m2 VLOOKUP/HLOOKUP/MATCH cells show 0 regressions (`make eval-check`).
 - [ ] `make check` green; reviewers approve.
 
