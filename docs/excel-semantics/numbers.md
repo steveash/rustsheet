@@ -655,7 +655,8 @@ E:J COUNTIF, K:P SUMIF, Q:V COUNTIFS, W:AB SUMIFS in the order `<`, `<=`, `>`, `
 `COUNTIF(B5,"<=1")` = 1 and G5 `">1"` = 0 for 1+22·2^-52, G6 = 1 for 1+23·2^-52; E10 `"<1"` = 0 for 1-4·2^-53,
 E11 = 1 for 1-5·2^-53.
 Status: VERIFIED
-Implemented in: the four ordering matchers of functions/criteria.rs, on `cmp_excel_precision`. Tasks: T-3084, T-3103
+Implemented in: the four ordering matchers of functions/criteria.rs and the indexed *IFS cache's `number_interval`
+(functions/statistical/ifs_cache.rs), on `cmp_excel_precision`. Tasks: T-3084, T-3103
 
 ## Comparison tolerance
 Rule: comparisons round both numbers to 15 significant digits and compare the results exactly, so
