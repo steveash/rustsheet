@@ -46,7 +46,7 @@ The eval report has an M8 `milestone_exit` row measured as decision 0146 item 2 
 
 ## Outcome
 - `milestone_exit` has an M8 row (decision 0146 item 2): gen-m8a (`gen_suite`) and gen-m8b (`more_suites`), each
-  3,000 scored cells with none visibly off; the `poi M8 subset` (`more_suites`, read from T-0094's
+  at least 3,000 scored cells with none visibly off; the `poi M8 subset` (`more_suites`, read from T-0094's
   `poi_m8_subset`) at 99.5% (`M8_SUBSET_RATE_NUM` 9,950 over 10,000) with no `blocked_cases`, `n/a` when poi did
   not run; the M8 probe row. No coverage or ironcalc-calc criterion. `SuiteExit` gained `blocked_cases`
   (`case!*`), shown in report.md and on the progress page as "N cases blocked".
@@ -54,5 +54,7 @@ The eval report has an M8 `milestone_exit` row measured as decision 0146 item 2 
   own lists (no suite match, so a measure over poi cells works); a blocked case is owned by a task naming its stem.
 - `make eval` on this branch with poi fetched (calipers and corpus-bench not): M8 not met. gen-m8a 3,577 and
   gen-m8b 3,368 scored, 0 visibly off; poi M8 subset 4,084 scored, 0 visibly off (allowance 20), 0 blocked cases;
-  M8 probes 45 visibly off [45]. `make exit-owners MILESTONE=M8`: 45 exit cells (all probes), 0 unowned.
+  M8 probes 45 visibly off [45] (9 on decision 0146's 2026-10-28 run; 45 is today's measure).
+  `make exit-owners MILESTONE=M8`: 45 exit cells (all probes), 0 unowned.
+- `summarize` lost its M9 rate block to a `function_rate` helper (clippy's line limit), unchanged in behavior.
 - Eval delta: none (report-only change).
