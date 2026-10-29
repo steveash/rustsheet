@@ -136,7 +136,7 @@ pub(crate) fn closed_form_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, 
 ///   A718), which y0^b0 puts 3 ulp low.
 ///
 /// `None` for other shapes and points. Excel's own w here is still 1 ulp off this form at 52 cells
-/// (TODO(T-3007)).
+/// (TODO(T-3007)), and a w1 below 2^-53, which the complement rounds to 0, has no evidence (TODO(T-3150)).
 fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
     let swap = x > 0.5;
     let (a0, b0, x0, y0) = if swap { (b, a, y, x) } else { (a, b, x, y) };

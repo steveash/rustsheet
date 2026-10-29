@@ -85,8 +85,9 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
 - 2026-10-29: the shape-of-1 item: Excel forms w1 = (0.5 - w) + 0.5 from w there, not y0^b0 (statistics.md
   "Incomplete beta at a shape of 1 outside the closed forms"); `incomplete_beta::shape_one_tails` does so. Over every
   suite 77 cells become bit-exact and 2 move 1 ulp off (t2220-f-dist-sweep-cdf A518, A815); the ported bpser at a0 = 1
-  scores 64 against 90 and stays unused. Excel's w there is still open (52 cells 1 ulp off). BETA.INV's crossing at
-  two quantiles moves to about 6 ulp off (T-2511's, noted there). Gated: gen-m9 3 and probes 1 newly bit-exact.
+  scores 64 against 90 and stays unused. Excel's w there is still open (52 cells 1 ulp off). BETA.INV's crossing moves
+  at three quantiles (-4 to -40, +1 to -5, -16 to -6 ulp; T-2511's, noted there). Tails w1 below 2^-53 are now 0 or
+  a multiple of 2^-53, with no oracle evidence there yet (T-3150). Gated: gen-m9 3 and probes 1 newly bit-exact.
 
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
