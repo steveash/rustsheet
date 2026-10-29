@@ -201,7 +201,8 @@ fn errors() {
     assert_eq!(parse("Hello 23", &["$"]), Err(PARSE_ERROR_MSG.to_string()));
     assert_eq!(parse("2 3", &["$"]), Err(PARSE_ERROR_MSG.to_string()));
     // No space between
-    assert_eq!(parse("- 23", &["$"]), Err(PARSE_ERROR_MSG.to_string()));
+    // Excel skips spaces after a sign: VALUE("- 5") is -5 (probes/value-sign-space-mixed-fraction-dash-date A1).
+    assert_eq!(parse("- 23", &["$"]), Ok((-23.0, None)));
 }
 
 #[test]
