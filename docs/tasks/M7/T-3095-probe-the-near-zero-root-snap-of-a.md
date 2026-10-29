@@ -16,7 +16,7 @@ element (and every accumulator step) of a helper result holds Excel's 0 or Excel
 
 ## Context
 - docs/excel-semantics/numbers.md "Near-zero snapping", "Pickers, LET, LAMBDA and unary signs": a LAMBDA body called in
-  place is snapped at its own root (probes/t3049-snap-under-pickers B17:D17, T-3049); the helpers are listed there
+  place is snapped at its own root (row 17 of probes/t3049-snap-under-pickers, T-3049); the helpers are listed there
   as unprobed. T-3094 probes the other single-call forms (name, LET, group, nested call) first, so this probe can
   reuse its reading of where a call's root is.
 - Element-wise snapping is already known for root operators over arrays (T-3047, probes/t3047-snap-array-operands:
