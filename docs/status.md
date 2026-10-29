@@ -55,7 +55,7 @@ Queues:
 Upstream IronCalc: `scripts/upstream-log.sh` listed no commits since the last triage, so nothing was filed.
 
 Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-graph OK).
-- probes: the same 7 pending cases as the last two runs, all known unfillable (T-1075 item 18, two cases refused by Excel for the web, two M10 locale cases). I ran `rustsheet-oracle fill -b excel-graph --suite probes` with a 15-minute cap.
+- probes: the same 7 pending cases as the last two runs, all known unfillable (T-1075 item 18, two cases refused by Excel for the web, two M10 locale cases). `rustsheet-oracle fill -b excel-graph --suite probes` hit my 15-minute cap again and wrote no sidecar: Excel for the web refused t0481-curly-quote-names-c (unsupportedWorkbook), and the t2065-lift cases exhausted their createSession retries.
 - As before, ironcalc-calc's 1 pending case is Excel-authored, and poi's 205 are web-vs-desktop conflicts (decision 0019), so I refilled neither. calipers (283 pending) and corpus-bench (592) are scored from their own cached values.
 
 Spot-audit: the last was 2026-10-25 (#1736), so none is due. The next is on or after 2026-11-01.
