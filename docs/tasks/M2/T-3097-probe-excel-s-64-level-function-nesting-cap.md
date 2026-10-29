@@ -3,7 +3,7 @@ id: T-3097
 title: "Probe Excel's 64-level function nesting cap on load and when typed, and refuse deeper formulas as Excel does"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
