@@ -516,14 +516,13 @@ impl Model {
             }
         };
 
-        // The capped cdf. A sheet's cell count keeps the shape under 2^33, where the series can
-        // need about 630,000 terms, past the 2^19 cap, so a very large test is #NUM! (the cap's
-        // DEVIATION). A statistic whose half underflows is a cdf of 0 (incomplete_gamma.rs), so p 1.
-        let mut p = if is_one_degree(&dist) {
-            chi_squared_sf(&dist, chi2)
-        } else {
-            1.0 - gamma_cdf(&dist, chi2)
-        };
+        // The capped right tail, taken directly for every df and not as 1 - P, which cancels digits
+        // as p gets small: CHITEST(F1:F3,G1:G3) at chi2 = 18, df 2 is EXP(-9) in Excel, and 1 - P is
+        // off in the 13th digit (probes-numeric/m9-legacy-chitest A23; statistics.md "Incomplete
+        // gamma: accurate kernel", T-0971, T-3058). A sheet's cell count keeps the shape under 2^33,
+        // where the series can need about 630,000 terms, past the 2^19 cap, so a very large test is
+        // #NUM! (the cap's DEVIATION). A statistic whose half underflows gives p 1.
+        let mut p = chi_squared_sf(&dist, chi2);
         if p.is_nan() {
             return CalcResult::new_error(
                 Error::NUM,

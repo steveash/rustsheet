@@ -1,0 +1,39 @@
+---
+id: T-3077
+title: "Merge-train step mode: session writes as validated JSON actions"
+milestone: M2
+lane: harness
+status: todo
+priority: P1
+size: M
+tier: opus
+depends_on: [T-2995]
+spec: docs/specs/SPEC-0027-merge-train.md
+---
+
+## Goal
+A routine session can perform the merge train's GitHub writes safely: the script decides every write, the session
+only carries it out with the GitHub MCP tools, and the script checks the result.
+
+## Context
+Split out of T-2995 (its fourth criterion). T-3001's probe (SPEC-0027 section 4, "T-3001's probe", 2026-10-28)
+found that a routine session's `gh api` comment, label and unlabel writes are refused by the tool-permission
+layer, while the GitHub MCP tools write. So the step mode is needed (SPEC-0027 section 4, "GitHub access"):
+- the script prints the next write as one JSON action from a closed enum (`merge`, `label`, `unlabel`,
+  `comment`), and fills every field itself: PR numbers validated as integers the script selected, label names
+  from a fixed list (`ready-to-merge`, `merge-train-ejected`), comment bodies generated in full, and
+  `expectedHeadSha` for merges;
+- the session performs exactly that action and runs the script again; the script reads GitHub's state back and
+  aborts on any difference from the expected result;
+- the session never adds, skips, reorders or changes an action;
+- T-2986's minimal fallback uses the same schema.
+
+## Acceptance criteria
+- [ ] The step mode is built on `scripts/merge_train.py`'s single write path, with the action schema
+      validated on output and the read-back checked on the next run.
+- [ ] Tests cover each action type, a read-back that differs (abort), and an action the session did not
+      perform (abort, nothing skipped).
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Routine prompts (T-2996). Shadow mode (T-2995). Stats (T-3076).

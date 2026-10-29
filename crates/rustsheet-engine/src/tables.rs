@@ -105,6 +105,7 @@ impl Table {
                 show_column_stripes: false,
             },
             has_filters: false,
+            filter_columns: Vec::new(),
         }
     }
 }

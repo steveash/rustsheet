@@ -20,7 +20,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
+        let data = match self.eval_array_arg(&args[0], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };

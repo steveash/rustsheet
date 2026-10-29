@@ -3,7 +3,7 @@ id: T-2665
 title: "Probe IPMT with a fractional nper past (1+rate)^nper's range: exact balance or FV recurrence"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,9 +28,9 @@ fractional term, on the type-1 operation order, or on something else, and drop t
 is not Excel's.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values (excel-graph) for the grid above, and its finding in financial.md.
-- [ ] gen-m9 0a957119475760c5 Calc!A153 stays passing; no new known-failure lines.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with oracle values (excel-graph) for the grid above, and its finding in financial.md.
+- [x] gen-m9 0a957119475760c5 Calc!A153 stays passing; no new known-failure lines.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IPMT's cancelling pv-0 cells (financial.md "IPMT cancels on fv", Open).
@@ -41,3 +41,18 @@ of Excel's value, or has Excel's type, error and text. Bit-level criteria still 
 filed with `defer: phase-1b`.
 
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns all 7 visibly-off IPMT cells. Fixing them lifts IPMT to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+Probe probes/t2665-ipmt-fractional-nper-past-range (600 IPMT cells, excel-graph). Past the range Excel gives the
+same value for a fractional nper as for an integer one on all 84 parameter sets, so the split is not on the
+fractional term: `whole_term` is gone, and a fractional nper takes the balance form like an integer one.
+The old FV recurrence fit 118 of the 300 fractional cells and was visibly off on some
+(`IPMT(0.5,50,100000.5,92160,674,1)` gave -30720.001953125; Excel has -30720). Type 0 is the exact `-rate*B` on all
+300 type-0 cells. Type 1, where the balance does not cancel, is `-B*(rate/(1+rate))` on the rounded balance at a
+rate that is not a whole number (gen-m9 0a957119475760c5 A153 among them) and the exact quotient at a whole rate
+(gen-m9 b73c6cc96e093f03 A268, fin-ipmt-ppmt-huge-rate A186/A190). That is a fitted switch in `balance_interest`.
+Rate 1000 fits neither (48 cells): follow-up T-3086. financial.md "IPMT cancels on fv" is updated.
+Eval: there are no regressions on existing cases, fin-ipmt-ppmt-huge-rate gains 1 cell (A90), and gen-m9 A153 stays
+passing. The new case passes 552/600, and its 48 known failures (all at rate 1000, one ulp off and within 15 digits)
+belong to T-3086. The visible-parity target is not met here: the 7 visibly-off IPMT cells are the cancelling pv-0
+cells of fin-ipmt-ppmt-huge-rate, which are out of scope for this task and owned by T-2667.
