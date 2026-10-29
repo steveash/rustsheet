@@ -106,34 +106,34 @@ pub(crate) fn compute_rate(
     Err(Error::NUM)
 }
 
-/// The worksheet NPV: the sum of `value[i]/(1+rate)^i` with Excel's range rules
-/// (financial.md "NPV's discount past the double range", probes/npv-power-edges and
-/// npv-power-edges-2). Excel divides each value by the previous period's power (kept as a
-/// double) times 1+rate, so the call is `#DIV/0!` when 1+rate is 0 (a rate of -1, also with no
-/// flow but 0s) or when a power that a later period builds on overflows or is below the
-/// smallest normal double: `NPV(1E+300,1,1)` is 1E-300 but `NPV(1E+300,0,0,0)` is `#DIV/0!`, and
-/// `NPV(1,SEQUENCE(1024))` is a number but 1025 flows are `#DIV/0!`. The last period's power
-/// may overflow: its quotient is taken in two steps (`NPV(1E+300,1,1E+300)` is 2E-300). A
-/// subnormal quotient is 0, as for `/` (`NPV(9E+307,1)` is 0).
+/// The worksheet NPV with Excel's arithmetic and range rules: (v1/d0 + v2/d1 + ... + vn/d(n-1))
+/// / (1+rate), where d0 = 1 and d(i) = d(i-1)*(1+rate) is a running product, every step a double
+/// and the quotients summed left to right (financial.md "NPV's residue at IRR's root is not the
+/// double sum"; T-2671, probes/npv-term-order 382/382 and m9-fin-nper-npv 88/88 in the fit lab).
+/// The call is `#DIV/0!` when 1+rate is 0 (a rate of -1, also with no flow but 0s) or when a
+/// discount a period divides by overflows or is below the smallest normal double (financial.md
+/// "NPV's discount past the double range", probes/npv-power-edges and npv-power-edges-2):
+/// `NPV(1E+300,1,1)` is 1E-300 but `NPV(1E+300,0,0,0)` is `#DIV/0!`, and `NPV(1,SEQUENCE(1024))`
+/// is a number but 1025 flows are `#DIV/0!`. A subnormal quotient is 0, as for `/`
+/// (`NPV(9E+307,1)` is 0).
 pub(crate) fn excel_npv(rate: f64, values: &[f64]) -> Result<f64, Error> {
     let base = 1.0 + rate;
-    let mut npv = 0.0;
-    // base^i as a double, the power period i + 1 builds on.
-    let mut previous = 1.0_f64;
+    if base == 0.0 {
+        return Err(Error::DIV);
+    }
+    let mut sum = 0.0;
+    // d(i), the running product this period divides by.
+    let mut discount = 1.0_f64;
     for (i, item) in values.iter().enumerate() {
-        if base == 0.0 || previous == 0.0 || !previous.is_finite() {
+        if i > 0 {
+            discount = flush_subnormal(discount * base);
+        }
+        if discount == 0.0 || !discount.is_finite() {
             return Err(Error::DIV);
         }
-        let power = base.powi(i as i32 + 1);
-        let quotient = if power.is_finite() && power.abs() >= f64::MIN_POSITIVE {
-            item / power
-        } else {
-            item / previous / base
-        };
-        npv += flush_subnormal(quotient);
-        previous = flush_subnormal(power);
+        sum += flush_subnormal(item / discount);
     }
-    Ok(npv)
+    Ok(flush_subnormal(sum / base))
 }
 
 /// NPV at the discount factor `v` = 1/(1 + r), as IRR's search evaluates it: the sum of
@@ -288,7 +288,7 @@ fn irr_fallback(values: &[f64]) -> Option<f64> {
 }
 
 /// XNPV: the sum of `value_i / (1 + rate)^((date_i - date_0)/365)`, days counted from the first date;
-/// `#NUM!` when the sum is not finite.
+/// `#NUM!` when the sum is not finite or a power is `#NUM!` for a base <= 0.
 pub(crate) fn compute_xnpv(
     rate: f64,
     values: &[f64],
@@ -300,7 +300,13 @@ pub(crate) fn compute_xnpv(
     for i in 1..n {
         let vi = values[i];
         let di = dates[i];
-        xnpv += vi / ((1.0 + rate).powf((di - d0) / 365.0));
+        // Excel's own `^` (docs/excel-semantics/financial.md "XNPV discounts with Excel's `^`").
+        // A positive base whose power overflows (`#NUM!`) still adds value/inf = 0, as `powf` did (unprobed, unchanged).
+        match crate::arithmetic::power(1.0 + rate, (di - d0) / 365.0) {
+            Ok(power) => xnpv += vi / power,
+            Err(Error::NUM) if 1.0 + rate > 0.0 => {}
+            Err(e) => return Err((e, "NaN".to_string())),
+        }
     }
     if xnpv.is_infinite() || xnpv.is_nan() {
         return Err((Error::NUM, "NaN".to_string()));
@@ -320,8 +326,8 @@ fn xirr_xnpv(rate: f64, values: &[f64], dates: &[f64]) -> Option<f64> {
     for (&value, &date) in values.iter().zip(dates) {
         // As in the lab model, a power that overflows or underflows to 0 has no value (rather
         // than adding value/inf = 0): `XIRR({-1,1E+20,1},{45000,45365,63615},0.1)` is `#NUM!`.
-        let power = base.powf((date - d0) / 365.0);
-        if !power.is_finite() || power == 0.0 {
+        let power = crate::arithmetic::power(base, (date - d0) / 365.0).ok()?;
+        if power == 0.0 {
             return None;
         }
         total += value / power;

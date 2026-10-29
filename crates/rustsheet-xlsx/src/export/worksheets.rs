@@ -301,7 +301,7 @@ pub(crate) fn get_worksheet_xml(
             // (calc_tests/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx sheet6 F3 `SUM(ROW(C2:C4))`, T-1552).
             let plain_formula = |f: i32| {
                 let index = usize::try_from(f).ok()?;
-                let node = &parsed_formulas.get(index)?.evaluated;
+                let node = parsed_formulas.get(index)?.written();
                 Some(if *legacy_reading.get(index)? {
                     let formula = formula_attribute(node, to_excel_array_formula_string);
                     (
@@ -491,7 +491,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = formula_attribute(&node.evaluated, to_excel_array_formula_string);
+                    let formula = formula_attribute(node.written(), to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
@@ -526,7 +526,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = formula_attribute(&node.evaluated, to_excel_array_formula_string);
+                    let formula = formula_attribute(node.written(), to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
@@ -560,7 +560,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = formula_attribute(&node.evaluated, to_excel_array_formula_string);
+                    let formula = formula_attribute(node.written(), to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
@@ -595,7 +595,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = formula_attribute(&node.evaluated, to_excel_array_formula_string);
+                    let formula = formula_attribute(node.written(), to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,

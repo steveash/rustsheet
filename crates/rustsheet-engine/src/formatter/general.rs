@@ -89,3 +89,13 @@ fn significant_digits(text: &str) -> usize {
         .skip_while(|c| *c == '0')
         .count()
 }
+
+/// The value a `General` token shows among literals. With no digit placeholder the minus leads the
+/// literals (`"x"General` on -1.5 is "-x1.5", gen-m10 F!D19; T-2097), so the token shows |value|.
+pub(super) fn lead_abs(value: f64, digit_count: i32) -> f64 {
+    if digit_count == 0 {
+        value.abs()
+    } else {
+        value
+    }
+}

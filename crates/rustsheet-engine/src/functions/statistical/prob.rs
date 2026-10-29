@@ -30,8 +30,19 @@ impl Model {
             Err(_) => Err(error(Error::VALUE)),
         };
         let (x_arg, prob_arg) = (as_arg(x_value)?, as_arg(prob_value)?);
-        // TODO(T-2636): PROB should propagate an array's error element too.
-        let data = self.paired_values(x_arg, prob_arg, cell, |_, _| error(Error::VALUE))?;
+        // Unequal cell counts are `#N/A` before an error element of either side:
+        // `PROB(0,IF({1,1,1,1},1/0),0)` and `PROB(IF({1,1},1/0),{0.5,0.5,0},1)` are `#N/A`
+        // (probes/t2707-prob-orders A54, A56), as in the paired functions (`PairedSamplesError`).
+        if let (Some(x_cells), Some(prob_cells)) = (x_arg.cell_count(), prob_arg.cell_count()) {
+            if x_cells != prob_cells {
+                return Err(error(Error::NA));
+            }
+        }
+        // An array's error element is the result (probes/array-error-element-order A12-A14, A18),
+        // the other argument's own error winning; the order against a limit's error is inferred
+        // from a range error cell (probes/stat-test-lift P14), no probe cell separates them.
+        let data =
+            self.paired_values(x_arg, prob_arg, cell, |_, e| array_element_error(e, cell))?;
         if !data.same_size {
             return Err(error(Error::NA));
         }
@@ -75,21 +86,21 @@ impl Model {
         };
         let x_value = self.evaluate_node_in_context(x_range, cell);
         let prob_value = self.evaluate_node_in_context(prob_range, cell);
-        // Before the limits, an error value given as a data argument is the result (x_range's
-        // first), then a one-cell reference to an empty cell is `#VALUE!`
-        // (statistics.md "PROB: an error data argument first", T-2468).
+        // Before the limits, each data argument in turn, x_range first, is the result when it is
+        // an error value, or `#VALUE!` when it is a one-cell reference to an empty cell: a blank
+        // x_range beats prob_range's error (`PROB(<blank>,NA(),1)` is `#VALUE!`,
+        // probes/t2707-prob-orders A9) and x_range's error a blank prob_range (A11)
+        // (statistics.md "PROB: an error data argument first", T-2468, T-2707).
         // It is each lifted element's result, not the call's: with an array limit the errors
         // spill (gen-m9/329b177b5d5165ad A144).
-        let direct = [&x_value, &prob_value]
-            .into_iter()
-            .find(|value| matches!(value, CalcResult::Error { .. }))
-            .cloned()
-            .or_else(|| {
-                [&x_value, &prob_value]
-                    .into_iter()
-                    .any(|value| self.is_blank_one_cell(value))
+        let direct = [&x_value, &prob_value].into_iter().find_map(|value| {
+            if matches!(value, CalcResult::Error { .. }) {
+                Some(value.clone())
+            } else {
+                self.is_blank_one_cell(value)
                     .then(|| CalcResult::new_error(Error::VALUE, cell, String::new()))
-            });
+            }
+        });
         let data = self
             .prob_data(x_value, prob_value, cell)
             .map_err(CalcResult::without_message);
@@ -121,7 +132,7 @@ impl Model {
 
     /// [`Self::numeric_flat_of`] where an error element of an array is the result, marked as
     /// [`super::element_errors::is_array_element_error`] reads it (statistics.md "An error element of an array argument
-    /// is that error"); FREQUENCY keeps `#VALUE!`.
+    /// is that error").
     pub(crate) fn numeric_flat_with_element_errors(
         &mut self,
         value: CalcResult,
@@ -144,7 +155,6 @@ impl Model {
             CalcResult::Array(arr) => match self.values_from_array(arr) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
                 Err(error) if element_errors => Err(array_element_error(error, cell)),
-                // TODO(T-2636): FREQUENCY should propagate an error element too.
                 Err(e) => Err(CalcResult::new_error(Error::VALUE, cell, format!("{e:?}"))),
             },
             CalcResult::Number(n) => Ok(vec![n]),

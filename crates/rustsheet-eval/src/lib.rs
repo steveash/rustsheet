@@ -33,6 +33,7 @@ pub mod milestone_lists;
 pub mod out_of_scope;
 pub mod overrides;
 pub mod phase1_exceptions;
+pub mod poi_m8_subset;
 pub mod probe_milestones;
 pub mod report;
 pub mod run_meta;

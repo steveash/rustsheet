@@ -347,7 +347,13 @@ impl Parser {
             if table_name.to_lowercase() == name_lower {
                 // A bare table name is its data area, like `Table[]` (gen-m8b specials
                 // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(name, None, None, true);
+                return self.structured_reference_operand(
+                    name,
+                    None,
+                    None,
+                    token::TableSpacing::default(),
+                    true,
+                );
             }
         }
         // xlpm: Excel Lambda Parameter
@@ -487,6 +493,14 @@ impl Parser {
         let refused = !arg_counts::takes_count(&english, count)
             || kind.arg_kinds().is_some_and(|kinds| !kinds.accepts(count));
         if refused {
+            self.note_wrong_count(name);
+        }
+    }
+
+    /// Records `name` as the first call of the formula with a count of arguments Excel refuses
+    /// typed ([`Parser::typed_refusal`]); stored text records nothing.
+    fn note_wrong_count(&mut self, name: &str) {
+        if self.typed && self.wrong_count_call.is_none() {
             self.wrong_count_call = Some(name.to_ascii_uppercase());
         }
     }
@@ -504,6 +518,7 @@ impl Parser {
             .trim_start_matches("_xlfn.")
             .trim_start_matches("_xlpm.")
             .to_string();
+        let empty_call_run = self.empty_call_run();
         let args = match self.parse_function_args(&display_name) {
             Ok(s) => s,
             Err(e) => return e,
@@ -530,9 +545,13 @@ impl Parser {
                 message: err.message,
             };
         }
-        // We should do this *only* importing functions from xlsx: Implicit Intersection
-        if &name == "_xlfn.SINGLE" {
+        // Implicit intersection: `_xlfn.SINGLE(x)` is how a file stores `@x`, and Excel takes a
+        // typed `SINGLE(x)`, in any case, as `@x` too and shows it so (`=SINGLE(C1:C3)` beside row 2
+        // is the row's cell, FORMULATEXT `=@C1:C3`; probes/single-typed-*, xlsx-storage.md "Typed
+        // SINGLE(x) is the @ operator", T-2938). Excel refuses `=SINGLE()` and `=SINGLE(1,2)` typed.
+        if display_name.eq_ignore_ascii_case("SINGLE") {
             if args.len() != 1 {
+                self.note_wrong_count(&display_name);
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
                     expecting: vec![ExpectedTokens::Other],
@@ -576,7 +595,9 @@ impl Parser {
             .filter(|_| !self.calls_bound_name(&name))
         {
             self.note_argument_count(&function_kind, &display_name, args.len());
-            let node = self.function_call(function_kind, args);
+            let node = self
+                .function_call(function_kind, args)
+                .with_empty_call_run(empty_call_run);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
             // refuses `SUM(1)(2)`, `ABS(1)(2)` and `IFERROR(LAMBDA(x,x*2),0)(3)`
@@ -620,6 +641,7 @@ impl Parser {
             // We parse all the arguments, although technically this is moot
             // But is has the upside of transforming `=TRUE( 4 )` into `=TRUE(4)`
             let fn_name = if value { "TRUE" } else { "FALSE" };
+            let empty_call_run = self.empty_call_run();
             let args = match self.parse_function_args(fn_name) {
                 Ok(s) => s,
                 Err(e) => return e,
@@ -632,17 +654,12 @@ impl Parser {
                     message: err.message,
                 };
             }
-            if value {
-                return Node::FunctionKind {
-                    kind: Function::True,
-                    args,
-                };
+            let kind = if value {
+                Function::True
             } else {
-                return Node::FunctionKind {
-                    kind: Function::False,
-                    args,
-                };
-            }
+                Function::False
+            };
+            return Node::FunctionKind { kind, args }.with_empty_call_run(empty_call_run);
         }
         Node::BooleanKind(value)
     }
@@ -657,13 +674,16 @@ impl Parser {
         table_name: String,
         specifier: Option<token::TableSpecifier>,
         table_reference: Option<TableReference>,
+        spacing: token::TableSpacing,
         bare: bool,
     ) -> Node {
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
+            spacing,
             bare,
+            unqualified: false,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
         if let Node::ParseErrorKind { message, .. } = &lowered {

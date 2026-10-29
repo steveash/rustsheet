@@ -250,24 +250,6 @@ impl Model {
         self.last_lambda_id += 1;
         id
     }
-    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
-    /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
-    /// (`Model::close_over`) is dropped with it, not kept for the rest of the pass.
-    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
-        self.evaluate_cell(cell);
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-    }
-    pub(crate) fn clear_lambdas(&mut self) {
-        self.lambdas.clear();
-        self.eta_lambdas.clear();
-        self.named_lambdas = NamedLambdas::default();
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-        self.last_lambda_id = 0;
-    }
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
         node: &Node,
@@ -604,15 +586,13 @@ impl Model {
                     return CalcResult::new_error(Error::ERROR, cell, String::new());
                 };
                 let range = CalcResult::Range { left, right };
-                // A whole-column operand of a tailed aggregate argument (`tailed_array.rs`).
-                if !self.tail_views.is_empty() {
-                    if let Some(value) = self.tailed_operand(node, cell, &range) {
-                        return value;
-                    }
-                }
-                range
+                // A range operand of a tailed argument (`tailed_array.rs`).
+                self.tailed_operand(node, cell, &range).unwrap_or(range)
             }
-            FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
+            // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
+            FunctionKind { kind, args } => self
+                .tailed_position(node, kind, cell)
+                .unwrap_or_else(|| self.evaluate_function(kind, args, cell)),
             NamedFunctionKind { name, args, id } => {
                 self.evaluate_named_function_call(name, args, *id, cell)
             }
@@ -634,6 +614,7 @@ impl Model {
             | DefinedNameKind(_)
             | UnaryKind { .. }
             | ErrorKind(_)
+            | SheetRefErrorKind { .. }
             | ParseErrorKind { .. }
             | Group { .. }
             | UnaryPlus { .. }

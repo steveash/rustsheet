@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+"""The readiness handoff of the merge train: the marker and its verifier (SPEC-0027 section 2).
+
+  scripts/merge_ready.py verify --pr N    # exit 0: ready; 1: not ready (the failed checks); 2: error
+
+A worker whose PR head is green and approved marks it with the `ready-to-merge` label and a PR
+comment that ends with a `merge-train-ready v1` block (`make mark-ready`, T-3040). `verify` runs
+checks V1-V6 on a PR, reading GitHub only through scripts/gh_client.py and git only for
+repository-controlled data. It writes nothing: each failed check carries the side effect the
+merger applies (ignore, keep the label, or unlabel with a comment), and the merger (T-2987) acts
+on it. This module holds the single definitions of the marker format, reviewer applicability and
+the "green" rule (SPEC-0027 section 4, step 6), which the worker and the merger both import.
+
+Authors (V1, V6, decision 0149): a comment or review counts only when its author has `admin`,
+`maintain` or `write` permission. The permission API answers that in CI; the session proxy
+refuses it (HTTP 403, T-3001), and then only `author_association` `OWNER` or `COLLABORATOR` on a
+repository owned by a user (not an organization) counts, because there every collaborator can
+push. Anything else counts as an outsider, and an outsider's comments and reviews have no effect.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import ci_changes
+import gh_client
+import merge_lock
+import tasks
+from gh_client import Client, GhError
+from merge_lock import GitError, git
+
+ROOT = Path(__file__).resolve().parent.parent
+REMOTE = "origin"
+BASE_BRANCH = "main"
+
+# Labels of the merge train (SPEC-0027 sections 2, 4 and "The switch").
+READY_LABEL = "ready-to-merge"
+EJECTED_LABEL = "merge-train-ejected"
+STOP_LABEL = "merge-train-stop"
+LABELS = (READY_LABEL, EJECTED_LABEL, STOP_LABEL)
+
+# Reviewer applicability. The one definition is the `review` skill (.claude/skills/review/SKILL.md,
+# step 3); scripts/test_merge_ready.py fails when this copy differs from it.
+ALWAYS_REVIEWERS = ("security", "architecture", "quality")
+EXCEL_FIDELITY = "excel-fidelity"
+EXCEL_FIDELITY_PATHS = ("crates/rustsheet-engine", "crates/rustsheet-xlsx", "eval/suites", "eval/baseline")
+REVIEWERS = (*ALWAYS_REVIEWERS, EXCEL_FIDELITY)
+APPROVE = "APPROVE"
+NOT_APPLICABLE = "n/a"
+VERDICTS = (APPROVE, "REQUEST_CHANGES", NOT_APPLICABLE)
+
+# The marker block, which ends the marking comment.
+MARKER_OPEN = "<!-- merge-train-ready v1"
+MARKER_CLOSE = "-->"
+MARKER_KEYS = ("head", "prev", "task", "reviewers", "marked-by")
+NONE = "none"
+TASK_ID = re.compile(r"T-\d{4}")
+# The task id comes from the branch name (agent/<lane>/T-XXXX-<slug>); other branches have none.
+TASK_BRANCH = re.compile(r"agent/[a-z0-9-]+/(T-\d{4})-[A-Za-z0-9._-]+")
+
+# Authors (module docstring).
+WRITE_PERMISSIONS = ("admin", "maintain", "write")
+WRITE_ASSOCIATIONS = ("OWNER", "COLLABORATOR")
+# How `gh api` reports the session proxy's refusal of the permission read (T-3001's probe).
+PERMISSION_REFUSED = "HTTP 403"
+
+# The "green" rule (SPEC-0027 section 4, step 6). Only check runs created by the GitHub Actions
+# app count, and only those of the newest ci.yml `pull_request` run on the head.
+ACTIONS_APP_ID = 15368
+CI_WORKFLOW = ".github/workflows/ci.yml"
+CHANGES_JOB = "changes (docs-only?)"
+REQUIRED_JOBS = (
+    CHANGES_JOB,
+    "hygiene (ratchets, deny, machete, typos, governance)",
+    "rust (fmt, clippy, test)",
+)
+# Skipped counts as green for these only when the PR's diff is docs-only (`run_heavy=false`).
+HEAVY_JOBS = ("eval (Excel-compatibility gate)", "python (tools + bindings)")
+GREEN, PENDING, RED = "green", "pending", "red"
+
+# What the merger does about a failed check (SPEC-0027 section 2, "Verification by the merger").
+IGNORE = "ignore"  # skip the PR silently
+KEEP = "keep"  # skip the PR this round, keep its label
+UNLABEL = "unlabel"  # remove the label and comment the reason
+
+
+class MarkerError(ValueError):
+    """A marker block that does not follow the `merge-train-ready v1` format."""
+
+
+@dataclass(frozen=True)
+class Marker:
+    """The parsed `merge-train-ready v1` block: every field validated."""
+
+    head: str
+    prev: str | None
+    task: str | None
+    reviewers: Mapping[str, str]
+    marked_by: str
+
+    def render(self) -> str:
+        verdicts = " ".join(f"{name}={self.reviewers.get(name, NOT_APPLICABLE)}" for name in REVIEWERS)
+        lines = [
+            MARKER_OPEN,
+            f"head: {self.head}",
+            f"prev: {self.prev or NONE}",
+            f"task: {self.task or NONE}",
+            f"reviewers: {verdicts}",
+            f"marked-by: {self.marked_by}",
+            MARKER_CLOSE,
+        ]
+        return "\n".join(lines)
+
+
+def sha_field(value: str, what: str) -> str:
+    if not gh_client.SHA.fullmatch(value):
+        raise MarkerError(f"{what} is not a 40-hex sha")
+    return value
+
+
+def parse_reviewers(value: str) -> dict[str, str]:
+    """`name=VERDICT` pairs, each name a known reviewer at most once, each verdict a known one."""
+    verdicts: dict[str, str] = {}
+    for pair in value.split():
+        name, _, verdict = pair.partition("=")
+        if name not in REVIEWERS or name in verdicts:
+            raise MarkerError(f"unknown or repeated reviewer {name[:40]!r}")
+        if verdict not in VERDICTS:
+            raise MarkerError(f"unknown verdict for {name}")
+        verdicts[name] = verdict
+    return verdicts
+
+
+def has_marker(body: str) -> bool:
+    return MARKER_OPEN in body
+
+
+def parse_marker(body: str) -> Marker:
+    """The marker block that ends comment `body`; MarkerError when it is malformed."""
+    lines = body[body.rfind(MARKER_OPEN) :].strip().splitlines()
+    if not has_marker(body) or len(lines) != len(MARKER_KEYS) + 2 or lines[0] != MARKER_OPEN:
+        raise MarkerError("no complete marker block at the end of the comment")
+    if lines[-1] != MARKER_CLOSE:
+        raise MarkerError("the marker block is not closed")
+    fields: dict[str, str] = {}
+    for key, line in zip(MARKER_KEYS, lines[1:-1], strict=True):
+        name, sep, value = line.partition(": ")
+        if name != key or not sep:
+            raise MarkerError(f"expected `{key}:`")
+        fields[key] = value.strip()
+    prev, task = fields["prev"], fields["task"]
+    if task != NONE and not TASK_ID.fullmatch(task):
+        raise MarkerError("task is not T-XXXX or none")
+    if not merge_lock.valid_id(fields["marked-by"]):
+        raise MarkerError("marked-by is not a valid id")
+    return Marker(
+        head=sha_field(fields["head"], "head"),
+        prev=None if prev == NONE else sha_field(prev, "prev"),
+        task=None if task == NONE else task,
+        reviewers=parse_reviewers(fields["reviewers"]),
+        marked_by=fields["marked-by"],
+    )
+
+
+def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
+    """The reviewers a diff of `paths` needs; every reviewer when the paths are unknown (None)."""
+    if paths is None:
+        return REVIEWERS
+    touches = any(p == root or p.startswith(root + "/") for p in paths for root in EXCEL_FIDELITY_PATHS)
+    return REVIEWERS if touches else ALWAYS_REVIEWERS
+
+
+def missing_approvals(verdicts: Mapping[str, str], needed: Sequence[str]) -> list[str]:
+    return [name for name in needed if verdicts.get(name) != APPROVE]
+
+
+def task_of_branch(branch: str) -> str | None:
+    match = TASK_BRANCH.fullmatch(branch)
+    return match[1] if match else None
+
+
+# GitHub objects are JSON; these read one field of one without trusting its shape.
+def field_of(value: object, *keys: str) -> object:
+    for key in keys:
+        value = value.get(key) if isinstance(value, dict) else None
+    return value
+
+
+def text_of(value: object, *keys: str) -> str:
+    found = field_of(value, *keys)
+    return found if isinstance(found, str) else ""
+
+
+def label_names(pull: object) -> list[str]:
+    """The names of a PR's (or issue's) labels."""
+    labels = field_of(pull, "labels")
+    return [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
+
+
+def int_of(value: object, *keys: str) -> int:
+    found = field_of(value, *keys)
+    return found if isinstance(found, int) and not isinstance(found, bool) else 0
+
+
+@dataclass
+class Authors:
+    """Who counts as a writer of the repository (module docstring), one lookup per login."""
+
+    client: Client
+    user_owned: bool
+    cache: dict[str, bool] = field(default_factory=dict)
+
+    def writer(self, item: object) -> bool:
+        login, association = text_of(item, "user", "login"), text_of(item, "author_association")
+        if not gh_client.LOGIN.fullmatch(login):
+            return False
+        if login not in self.cache:
+            try:
+                self.cache[login] = self.client.permission(login) in WRITE_PERMISSIONS
+            except GhError as error:
+                # Only the proxy's refusal falls back; any other failed read fails `verify`.
+                if PERMISSION_REFUSED not in str(error):
+                    raise
+                self.cache[login] = self.user_owned and association in WRITE_ASSOCIATIONS
+        return self.cache[login]
+
+
+def ci_state(
+    runs: Sequence[object],
+    check_runs: Sequence[object],
+    docs_only: bool | None,
+    events: Sequence[str] = ("pull_request",),
+) -> tuple[str, list[str]]:
+    """GREEN, PENDING or RED for a PR head, with the jobs that are not green.
+
+    `runs` are the head's workflow runs, `check_runs` its check runs, and `docs_only` whether the
+    PR's diff is docs-only (`run_heavy=false`; None when it cannot be told, which counts as no).
+    `events` are the run events that count: a PR head's `pull_request`, a train's `push` and
+    `workflow_dispatch` (SPEC-0027 section 4, step 6).
+    """
+    ci = [
+        r
+        for r in runs
+        if text_of(r, "path") == CI_WORKFLOW
+        and text_of(r, "event") in events
+        and int_of(r, "id") > 0
+    ]
+    if not ci:
+        return PENDING, ["no ci.yml run yet"]
+    run = max(ci, key=lambda r: int_of(r, "id"))
+    if text_of(run, "status") != "completed":
+        return PENDING, ["the ci.yml run is still running"]
+    if text_of(run, "conclusion") != "success":
+        return RED, [f"the ci.yml run concluded {text_of(run, 'conclusion') or 'nothing'}"]
+    suite = field_of(run, "check_suite_id")
+    latest: dict[str, object] = {}
+    for check in check_runs:
+        if field_of(check, "app", "id") != ACTIONS_APP_ID or field_of(check, "check_suite", "id") != suite:
+            continue
+        name = text_of(check, "name")
+        if int_of(check, "id") > int_of(latest.get(name), "id"):
+            latest[name] = check
+    pending, red = [], []
+    for name in (*REQUIRED_JOBS, *HEAVY_JOBS):
+        check = latest.get(name)
+        conclusion = text_of(check, "conclusion")
+        if check is None:
+            red.append(f"{name}: missing")
+        elif text_of(check, "status") != "completed":
+            pending.append(name)
+        elif conclusion == "skipped" and name in HEAVY_JOBS and docs_only is True:
+            continue
+        elif conclusion != "success":
+            red.append(f"{name}: {conclusion or 'no conclusion'}")
+    if red:
+        return RED, red
+    return (PENDING, pending) if pending else (GREEN, [])
+
+
+@dataclass(frozen=True)
+class Failure:
+    check: str
+    reason: str
+    action: str
+
+
+@dataclass(frozen=True)
+class Verdict:
+    """V1-V6 for one PR: ready when nothing failed."""
+
+    pr: int
+    marker: Marker | None = None
+    comment_id: int | None = None
+    updated_at: str = ""
+    failures: tuple[Failure, ...] = ()
+
+    @property
+    def ready(self) -> bool:
+        return self.marker is not None and not self.failures
+
+
+class Repo:
+    """The git reads of `verify`, in a clone whose `origin` is the PR's repository."""
+
+    def __init__(self, root: Path = ROOT) -> None:
+        self.root = root
+
+    def git(self, *args: str, check: bool = True) -> str:
+        return git(*args, root=self.root, check=check).stdout
+
+    def fetch_head(self, pr: int) -> str:
+        """The sha `refs/pull/<pr>/head` has on origin, fetched (branch names can be re-pointed)."""
+        ref = f"refs/merge-ready/pull/{pr}"
+        self.git("fetch", "-q", "--no-tags", REMOTE, f"+refs/pull/{pr}/head:{ref}")
+        return self.git("rev-parse", "--verify", f"{ref}^{{commit}}").strip()
+
+    def fetch_base(self) -> None:
+        self.git(
+            "fetch", "-q", "--no-tags", REMOTE, f"+refs/heads/{BASE_BRANCH}:refs/merge-ready/{BASE_BRANCH}"
+        )
+
+    def changed_paths(self, base: str, head: str) -> list[str] | None:
+        """The paths changed from the single merge base of `base` and `head` to `head`; None when
+        there is not exactly one merge base (every reviewer then applies)."""
+        bases = self.git("merge-base", "--all", base, head, check=False).split()
+        if len(bases) != 1:
+            return None
+        out = self.git("diff", "-z", "--no-renames", "--name-only", bases[0], head, "--")
+        return [p for p in out.split("\0") if p]
+
+    def task_file(self, head: str, task: str) -> str | None:
+        """The text of task `task`'s file in `head`'s tree, or None when it has none."""
+        names = self.git("ls-tree", "-r", "-z", "--name-only", head, "--", "docs/tasks").split("\0")
+        found = [n for n in names if (m := tasks.TASK_FILE.search(n)) and m[1] == task]
+        return self.git("show", f"{head}:{found[0]}") if len(found) == 1 else None
+
+
+def task_done(text: str | None) -> bool:
+    """Whether a task file is `status: done` with an `## Outcome` section."""
+    if text is None:
+        return False
+    try:
+        meta = tasks.front_matter(text, Path("task"))
+    except ValueError:
+        return False
+    return meta.get("status") == "done" and re.search(r"^## Outcome\s*$", text, re.M) is not None
+
+
+def newest_marker(comments: Sequence[object], authors: Authors) -> tuple[object, Marker | MarkerError] | None:
+    """The newest marker comment by a writer (by `updated_at`, then id), parsed; None if none."""
+    candidates = [c for c in comments if has_marker(text_of(c, "body")) and authors.writer(c)]
+    if not candidates:
+        return None
+    newest = max(candidates, key=lambda c: (text_of(c, "updated_at"), int_of(c, "id")))
+    try:
+        return newest, parse_marker(text_of(newest, "body"))
+    except MarkerError as error:
+        return newest, error
+
+
+def pr_state_failures(pull: object, marker: Marker, head: str, repo: Repo) -> list[Failure]:
+    """V5: draft flag, base, head repository and the task file, all repository-controlled."""
+    failures = []
+    if field_of(pull, "draft") is not False:
+        failures.append(Failure("V5", "the PR is a draft", UNLABEL))
+    if text_of(pull, "base", "ref") != BASE_BRANCH:
+        failures.append(Failure("V5", f"the base is not {BASE_BRANCH}", UNLABEL))
+    head_repo = text_of(pull, "head", "repo", "full_name")
+    if not head_repo or head_repo != text_of(pull, "base", "repo", "full_name"):
+        failures.append(Failure("V5", "the head is not in this repository", UNLABEL))
+    task = task_of_branch(text_of(pull, "head", "ref"))
+    if marker.task != task:
+        failures.append(Failure("V5", f"the marker's task is not the branch's ({task or NONE})", UNLABEL))
+    elif task is not None and not task_done(repo.task_file(head, task)):
+        failures.append(Failure("V5", f"{task} is not status: done with an Outcome on the head", UNLABEL))
+    return failures
+
+
+def verify(client: Client, pr: int, repo: Repo) -> Verdict:
+    """V1-V6 of SPEC-0027 section 2 on PR `pr`. Raises GhError or GitError when a read fails."""
+    pull = client.pull(pr)
+    if READY_LABEL not in label_names(pull):
+        return Verdict(pr, failures=(Failure("label", f"no {READY_LABEL} label", IGNORE),))
+    authors = Authors(client, text_of(pull, "base", "repo", "owner", "type") == "User")
+    # V1: the newest marker by a writer; comments by anyone else have no effect.
+    found = newest_marker(client.comments(pr), authors)
+    if found is None:
+        return Verdict(pr, failures=(Failure("V1", "no marker by a writer", IGNORE),))
+    comment, marker = found
+    comment_id, updated_at = int_of(comment, "id") or None, text_of(comment, "updated_at")
+    if isinstance(marker, MarkerError):
+        failure = Failure("V1", f"malformed marker: {marker}", UNLABEL)
+        return Verdict(pr, None, comment_id, updated_at, (failure,))
+
+    # V2: the marker names the current head, and origin's refs/pull/<n>/head agrees.
+    head = text_of(pull, "head", "sha")
+    if marker.head != head or repo.fetch_head(pr) != head:
+        failure = Failure("V2", f"readiness invalidated by a push (now {head[:40] or 'unknown'})", UNLABEL)
+        return Verdict(pr, marker, comment_id, updated_at, (failure,))
+
+    failures = pr_state_failures(pull, marker, head, repo)
+    # V4: every applicable reviewer approved (an attestation; SPEC-0027 section 2, "Trust").
+    base_sha = text_of(pull, "base", "sha")
+    repo.fetch_base()
+    paths = repo.changed_paths(base_sha, head) if gh_client.SHA.fullmatch(base_sha) else None
+    missing = missing_approvals(marker.reviewers, applicable_reviewers(paths))
+    if missing:
+        failures.append(Failure("V4", f"no APPROVE from {', '.join(missing)}", UNLABEL))
+
+    # V3: CI on the head by the "green" rule. `run_heavy=false` is told by the same classifier CI
+    # runs, because the proxy refuses the job-log download where CI prints it (decision 0149).
+    docs_only = None if paths is None else not ci_changes.classify_range(base_sha, head, cwd=repo.root)
+    state, jobs = ci_state(client.workflow_runs(head_sha=head), client.check_runs(head), docs_only)
+    if state == RED:
+        failures.append(Failure("V3", f"CI red on {head}: {'; '.join(jobs)}", UNLABEL))
+    elif state == PENDING:
+        failures.append(Failure("V3", f"CI pending on {head}: {'; '.join(jobs)}", KEEP))
+
+    # V6: no CHANGES_REQUESTED from a writer since the marker; anyone else's reviews have no effect.
+    if any(
+        text_of(review, "state") == "CHANGES_REQUESTED"
+        and text_of(review, "submitted_at") > updated_at
+        and authors.writer(review)
+        for review in client.reviews(pr)
+    ):
+        failures.append(Failure("V6", "changes were requested after the marker", UNLABEL))
+    return Verdict(pr, marker, comment_id, updated_at, tuple(failures))
+
+
+def report(verdict: Verdict) -> str:
+    if verdict.ready and verdict.marker is not None:
+        return f"#{verdict.pr} ready: head {verdict.marker.head}, marker comment {verdict.comment_id} ({verdict.updated_at})"
+    lines = [f"#{verdict.pr} not ready:"]
+    lines += [f"  {f.check} ({f.action}): {f.reason}" for f in verdict.failures]
+    return "\n".join(lines)
+
+
+def main(argv: list[str], root: Path = ROOT) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    sub = parser.add_subparsers(dest="command", required=True)
+    check = sub.add_parser("verify", help="run V1-V6 on a PR (reads only)")
+    check.add_argument("--pr", required=True)
+    args = parser.parse_args(argv)
+    client = gh_client.from_remote(root, REMOTE)
+    if client is None:
+        print("merge_ready: origin is not a github.com repository", file=sys.stderr)
+        return 2
+    try:
+        verdict = verify(client, gh_client.number(args.pr), Repo(root))
+    except (GhError, GitError) as error:
+        print(f"merge_ready: {error}", file=sys.stderr)
+        return 2
+    print(report(verdict))
+    return 0 if verdict.ready else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

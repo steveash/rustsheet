@@ -195,7 +195,7 @@ impl Model {
             Node::OpRangeKind { .. } => None,
             Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => None,
             Node::OpConcatenateKind { .. } => None,
-            Node::ErrorKind(_) => None,
+            Node::ErrorKind(_) | Node::SheetRefErrorKind { .. } => None,
             Node::ParseErrorKind { .. } => None,
             Node::EmptyArgKind => None,
             Node::NamedFunctionKind { .. } => None,

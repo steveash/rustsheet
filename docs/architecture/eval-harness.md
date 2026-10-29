@@ -269,6 +269,15 @@ leaves `rate_cells` and `rate_visible` of the function whose count holds it (`ra
 function under the Phase 1 line, and warns about a listed cell the run does not score or that is not
 visibly off (`stale_exceptions`). The same validation refuses a malformed line in `run` and `check`.
 
+The rate also leaves out the cells only open M14 tasks own (decision 0143), with no hand-kept line:
+`make eval` runs `scripts/desktop_owned.py`, which applies exit_owners.py's `owned` rule to every
+cell `F` line of eval/baseline and writes `case!Sheet!A1<TAB>T-<owner>` lines to the git-ignored
+`eval/runs/desktop-owned.tsv`, then `rustsheet-eval run --desktop-owned` reads it
+(`Phase1Exceptions::load_desktop_owned`). Such a visibly-off cell leaves `rate_cells` and
+`rate_visible` as `desktop_owned` (per function and in total; report.md's "M14-owned, left out"
+column); a cell both lists hold counts once, as `rate_excepted`. A generated cell that is not
+visibly off is not stale. Without the flag, `run` leaves no such cell out.
+
 ## Catalog coverage per milestone
 `crates/rustsheet-eval/src/catalog_coverage.rs` (T-2112, T-2175) adds a "Catalog coverage per milestone"
 section to report.md (report.json: `catalog_coverage`), one row per function milestone. A function is

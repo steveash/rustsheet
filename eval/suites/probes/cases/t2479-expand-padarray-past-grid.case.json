@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "EXPAND rows one past the grid with an array pad_with (T-2479); own case, hung the Graph workbook beside others.",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-2479"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "G1": "=ROWS(_xlfn.EXPAND(1,1048577,1,{0;1}))"
+   }
+  }
+ ]
+}

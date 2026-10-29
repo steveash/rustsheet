@@ -19,7 +19,7 @@ use rustsheet_engine::{
         types::CellReferenceRC,
         utils::number_to_column,
     },
-    types::{Cell, Table, Workbook, Worksheet},
+    types::{Cell, FilterColumn, FilterCriterion, Table, Workbook, Worksheet},
     ParsedFormula,
 };
 
@@ -121,10 +121,11 @@ fn totals_row_metadata(
 }
 
 /// The `<autoFilter>` of a table with a header row, over its header and data rows, as Excel writes
-/// it. The import keeps only whether a filter is applied (`Table::has_filters`, which makes every
-/// hidden row of the sheet filtered for SUBTOTAL), not its criteria, so an applied filter is
-/// written as a `<filterColumn>` with no criterion: schema-valid, but how Excel reads it is
-/// unprobed (xlsx-storage.md "Table parts in the export"; TODO(T-2838) keeps the criteria).
+/// it, with the imported filter columns written back (`Table::filter_columns`). A table that is
+/// filtered with no kept criterion (`Txn::add_table` with `filtered`, which makes every hidden row
+/// of the sheet filtered for SUBTOTAL) is written as a `<filterColumn>` with no criterion:
+/// schema-valid, but how Excel reads it is unprobed (xlsx-storage.md "Table parts in the
+/// export"; T-3081 probes it).
 fn auto_filter(table: &Table, (c1, r1, c2, r2): (i32, i32, i32, i32)) -> String {
     if table.header_row_count == 0 {
         return String::new();
@@ -137,12 +138,57 @@ fn auto_filter(table: &Table, (c1, r1, c2, r2): (i32, i32, i32, i32)) -> String 
     let (Some(left), Some(right)) = (number_to_column(c1), number_to_column(c2)) else {
         return String::new();
     };
-    let filter = if table.has_filters {
-        "<filterColumn colId=\"0\"/>"
+    let filter = if !table.filter_columns.is_empty() {
+        table.filter_columns.iter().map(filter_column).collect()
+    } else if table.has_filters {
+        "<filterColumn colId=\"0\"/>".to_string()
     } else {
-        ""
+        String::new()
     };
     format!("<autoFilter ref=\"{left}{r1}:{right}{last_row}\">{filter}</autoFilter>")
+}
+
+/// A `<filterColumn>` as ECMA-376-1:2016 section 18.3.2.7 writes it.
+fn filter_column(column: &FilterColumn) -> String {
+    let col_id = column.col_id;
+    let mut xml = format!("<filterColumn colId=\"{col_id}\">");
+    match &column.criterion {
+        FilterCriterion::Values { values, blank } => {
+            xml.push_str(if *blank {
+                "<filters blank=\"1\">"
+            } else {
+                "<filters>"
+            });
+            for value in values {
+                xml.push_str("<filter val=\"");
+                xml.push_str(&escape_xml(value));
+                xml.push_str("\"/>");
+            }
+            xml.push_str("</filters>");
+        }
+        FilterCriterion::Custom { and, conditions } => {
+            xml.push_str(if *and {
+                "<customFilters and=\"1\">"
+            } else {
+                "<customFilters>"
+            });
+            for condition in conditions {
+                xml.push_str("<customFilter");
+                if let Some(operator) = &condition.operator {
+                    xml.push_str(" operator=\"");
+                    xml.push_str(&escape_xml(operator));
+                    xml.push('"');
+                }
+                xml.push_str(" val=\"");
+                xml.push_str(&escape_xml(&condition.val));
+                xml.push_str("\"/>");
+            }
+            xml.push_str("</customFilters>");
+        }
+        FilterCriterion::Other => return format!("<filterColumn colId=\"{col_id}\"/>"),
+    }
+    xml.push_str("</filterColumn>");
+    xml
 }
 
 /// The part `xl/tables/table{id}.xml` of `table`, which is on `worksheet`.

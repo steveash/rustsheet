@@ -22,7 +22,9 @@ use crate::locale::{get_default_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
-pub(crate) use sheet_edits::{move_sheet_in_node, rename_sheet_in_node};
+pub(crate) use sheet_edits::{
+    move_sheet_in_node, rename_sheet_in_node, retarget_unqualified_references,
+};
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
@@ -718,6 +720,11 @@ fn stringify(
                 full_row,
                 full_column,
             );
+            // Quirk (T-2855, probes/table-edits plain-range-delete-row-first F!A6, excel-graph):
+            // a wholly deleted range prints one `S!#REF!`, not a `#REF!` per corner.
+            if s1 == "#REF!" && s2 == "#REF!" {
+                return wrong_reference::ref_error_text(sheet_name.as_deref());
+            }
             format!("{s1}:{s2}")
         }
         // Rows and columns inserted or moved on one sheet of the span do not shift the span's
@@ -832,6 +839,7 @@ fn stringify(
             }
         }
         ErrorKind(kind) => format!("{kind}"),
+        SheetRefErrorKind { sheet_name } => wrong_reference::ref_error_text(Some(sheet_name)),
         ParseErrorKind { message, .. }
             if export_to_excel && is_unresolved_structured_reference(message) =>
         {

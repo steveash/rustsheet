@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-0969, T-1043]
+depends_on: [T-0969, T-1043, T-2511]
 ---
 
 ## Goal
@@ -169,6 +169,14 @@ T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T
 - gen-m9/787ba8d801105a60 Calc!A265 `=TINV(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
 - gen-m9/1db18890916ee643 Calc!A106 `=TINV(1.5,10)`: Excel -0.6998120613124317, ours -0.6998120613124311
 
+Sequencing (T-0098, 2026-10-28): waits on T-2511, which inverts the ported incomplete beta for T.INV; fit the
+quantile on the ported kernel, not the current one, so the work is not done twice.
+
+T-3061 (gap triage 2026-10-28) takes the cells away from the centre where Excel's quantile is SQRT(df*(1/y-1)) of the
+rounded beta quantile, at df 1000 to 1E10 and wherever the one-sided q is at most 0.45 (statistics.md "Student-t
+quantile is SQRT(df*(1/y-1)) of the rounded beta quantile"). It does not depend on T-0969. Rescore this task's
+cells after it lands.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 269 known-failure lines (35 from T-2255, 234 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -194,3 +202,6 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - CONFIDENCE.T: 66 cells (13-14 digits right 31, 10-12 29, 6-9 3, fewer or 0 vs nonzero 3); most in `probes-numeric/m9-confidence-t.case.json` 30; `ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx` 18. e.g. `CONFIDENCE.T(0.1,1,2)` Excel 4.464496510753559, ours 4.464496510753552
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
+From the parked T-2695: CONFIDENCE.T gen-m9/85f48d5cdfb24555 Calc!A372 `CONFIDENCE.T(0.3,0.3,29)`, 0.0588276537815129 expected, 0.05882765378149652 today.

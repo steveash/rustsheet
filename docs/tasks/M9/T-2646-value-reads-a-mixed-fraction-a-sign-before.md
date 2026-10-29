@@ -4,7 +4,7 @@ title: "VALUE reads a mixed fraction, a sign before a space and a dash date with
 milestone: M9
 lane: functions-text
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: sonnet
 depends_on: []

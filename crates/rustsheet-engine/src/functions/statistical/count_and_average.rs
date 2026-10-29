@@ -15,6 +15,22 @@ use crate::{
 };
 use std::cmp::Ordering;
 
+/// HARMEAN from the sum of the reciprocals (each `1/x` and each `+` an Excel operator, rounded
+/// twice): `1 / AVERAGE(1/x)`, the mean divided first, not `n / sum`. `HARMEAN(Data!D6:D10,
+/// Data!C6:C9)` is 0.569594502522996 (gen-m9/06b4e8f5de409d5e A278, excel-graph), `n / sum` one
+/// ulp above (docs/excel-semantics/statistics.md "FISHER, FISHERINV, EXPON.DIST and HARMEAN are
+/// Excel operators around LN and EXP"; fit lab `harmean`, T-2437).
+fn harmonic_mean(sum_recip: f64, count: f64) -> f64 {
+    extended_quotient(1.0, extended_quotient(sum_recip, count))
+}
+
+/// The sum of `1/x` in argument order, HARMEAN's accumulator (see [`harmonic_mean`]).
+fn reciprocal_sum(values: &[f64]) -> f64 {
+    values
+        .iter()
+        .fold(0.0, |sum, &v| extended_sum(sum, extended_quotient(1.0, v)))
+}
+
 /// The AVERAGE family: a referenced error ranks below a direct scalar error whichever comes
 /// first, and the leftmost of the referenced and array errors wins
 /// (docs/excel-semantics/syntax.md "Aggregate error precedence"; probes/aggregate-error-precedence
@@ -328,8 +344,7 @@ impl Model {
             };
         }
 
-        let n = values.len() as f64;
-        let sum_recip: f64 = values.iter().map(|v| 1.0 / v).sum();
+        let sum_recip = reciprocal_sum(&values);
 
         if sum_recip == 0.0 {
             return CalcResult::Error {
@@ -339,7 +354,7 @@ impl Model {
             };
         }
 
-        CalcResult::Number(n / sum_recip)
+        CalcResult::Number(harmonic_mean(sum_recip, values.len() as f64))
     }
 
     pub(crate) fn fn_mina(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -629,14 +644,17 @@ impl Model {
 }
 
 /// The numbers LARGE and SMALL rank: a reference (one range or a union's areas), an array, or a
-/// scalar typed in place, read by [`Model::numbers_from_reference_arg`].
+/// scalar typed in place, read by [`Model::numbers_from_reference_arg`]; an element-wise
+/// expression of whole columns as its head and tail row
+/// ([`Model::tailed_numbers_from_reference_arg`]).
 fn ranked_numbers(
     model: &mut Model,
     node: &Node,
     cell: CellReferenceIndex,
 ) -> Result<Vec<f64>, CalcResult> {
     model
-        .numbers_from_reference_arg(node, cell)
+        .tailed_numbers_from_reference_arg(node, cell)
+        .unwrap_or_else(|| model.numbers_from_reference_arg(node, cell))
         .map(|numbers| numbers.into_iter().flatten().collect())
 }
 
@@ -653,3 +671,31 @@ const RANKED_ASCENDING: DataArg = DataArg {
     order: DataOrder::Ascending,
     cost: LiftCost::Prepared,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::{harmonic_mean, reciprocal_sum};
+
+    fn harmean(values: &[f64]) -> f64 {
+        harmonic_mean(reciprocal_sum(values), values.len() as f64)
+    }
+
+    // Excel's values (excel-graph; T-2437): `1 / AVERAGE(1/x)`, not `n / sum(1/x)`.
+    #[test]
+    fn harmean_is_one_over_the_mean_reciprocal() {
+        // gen-m9/06b4e8f5de409d5e A278: HARMEAN(Data!D6:D10,Data!C6:C9).
+        assert_eq!(
+            harmean(&[100.0, 1e15, 2.0, 42.0, 123_456_789.123, 0.1]),
+            0.569_594_502_522_996
+        );
+        // probes/t2437-fit-separators A58.
+        assert_eq!(
+            harmean(&[
+                0.064_670_873_453_164_3,
+                56.411_241_233_403_5,
+                4.894_824_715_157_32
+            ]),
+            0.191_266_320_978_780_8
+        );
+    }
+}

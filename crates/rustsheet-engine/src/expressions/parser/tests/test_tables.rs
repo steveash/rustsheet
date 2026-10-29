@@ -49,6 +49,7 @@ fn create_test_table(
             },
             totals_row_dxf_id: None,
             has_filters: false,
+            filter_columns: Vec::new(),
         },
     );
     table
@@ -116,6 +117,70 @@ fn simple_table() {
         to_excel_string(&t, &cell_reference),
         "SUBTOTAL(109, tblIncome[Jan])"
     );
+}
+
+/// Whitespace inside a structured reference prints as Excel normalizes it: the runs inside the
+/// outer brackets as typed, one space after a comma where any was typed, none before it, and a
+/// single padded column without its own brackets (probes/t2786-whitespace-structured-refs-runs
+/// F4:F15, T-2801). The printed text parses back to the same text.
+#[test]
+fn whitespace_inside_a_structured_reference() {
+    let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 6,
+        column: 5,
+    };
+    for (typed, printed) in [
+        ("SUM(T[ [Col] ])", "SUM(T[ Col ])"),
+        ("SUM(T[ [Col]:[Other] ])", "SUM(T[ [Col]:[Other] ])"),
+        ("SUM(T[ [#Data] , [Col] ])", "SUM(T[ [#Data], [Col] ])"),
+        ("SUM(T[[#Data], [Col]])", "SUM(T[[#Data], [Col]])"),
+        ("SUM(T[[#Data]  ,  [Col]])", "SUM(T[[#Data], [Col]])"),
+        (
+            "SUM(T[[#Data],[Col]:[Other]])",
+            "SUM(T[[#Data],[Col]:[Other]])",
+        ),
+        ("SUM(T[[Col]:[Other]])", "SUM(T[[Col]:[Other]])"),
+        ("SUM( T[Col] )", "SUM( T[Col] )"),
+        ("T[#Headers]", "T[#Headers]"),
+    ] {
+        let t = parser.parse(typed, &cell_reference);
+        assert_eq!(to_excel_string(&t, &cell_reference), printed, "{typed}");
+        let again = parser.parse(printed, &cell_reference);
+        assert_eq!(
+            to_excel_string(&again, &cell_reference),
+            printed,
+            "{printed}"
+        );
+    }
+}
+
+/// An unterminated structured reference is a parse error, never a panic (directive 5): the
+/// lexer used to step past the missing `]` and leave its position beyond the formula.
+#[test]
+fn unterminated_structured_reference_is_a_parse_error() {
+    let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 6,
+        column: 5,
+    };
+    for formula in [
+        "SUM(T[[Col)",
+        "T[[Col",
+        "T[[A]:[B",
+        "T[[#Data],[Col",
+        "T[ [Col",
+        "T[ Col ",
+        "T[@[Col",
+        "T[@Col",
+    ] {
+        let t = parser.parse(formula, &cell_reference);
+        assert!(matches!(t, Node::ParseErrorKind { .. }), "{formula}: {t:?}");
+    }
 }
 
 #[test]
@@ -265,7 +330,7 @@ fn reversed_column_range_is_the_same_area() {
 #[test]
 fn every_form_round_trips_through_the_printer() {
     use crate::expressions::parser::{Node, StructuredReference};
-    use crate::expressions::token::{TableReference, TableSpecifier};
+    use crate::expressions::token::{TableReference, TableSpacing, TableSpecifier};
 
     let names = [
         "Qty",
@@ -314,7 +379,9 @@ fn every_form_round_trips_through_the_printer() {
         table_name: "T".to_string(),
         specifier: None,
         table_reference: None,
+        spacing: TableSpacing::default(),
         bare: true,
+        unqualified: false,
     }];
     for specifier in &specifiers {
         if specifier.is_some() {
@@ -322,7 +389,9 @@ fn every_form_round_trips_through_the_printer() {
                 table_name: "T".to_string(),
                 specifier: specifier.clone(),
                 table_reference: None,
+                spacing: TableSpacing::default(),
                 bare: false,
+                unqualified: false,
             });
         }
         for (i, left) in names.iter().enumerate() {
@@ -335,7 +404,9 @@ fn every_form_round_trips_through_the_printer() {
                     table_name: "T".to_string(),
                     specifier: specifier.clone(),
                     table_reference: Some(table_reference),
+                    spacing: TableSpacing::default(),
                     bare: false,
+                    unqualified: false,
                 });
             }
         }
@@ -352,4 +423,55 @@ fn every_form_round_trips_through_the_printer() {
         assert_eq!(**parsed, reference, "{text}");
         assert_eq!(to_rc_format(&node), text);
     }
+}
+
+/// A structured reference typed without its table name in a cell of the table names that table
+/// (T-2979): it prints as typed, in its `@` form, is stored with a `[T]` prefix that a re-parse
+/// reads back, and is exported qualified; outside every table it is refused.
+#[test]
+fn unqualified_reference_inside_its_table() {
+    let worksheets = vec!["Sheet One".to_string()];
+    let tables = create_test_table("tblIncome", &["Jan", "Feb"], "A1", 3);
+    let mut parser = new_parser(worksheets, vec![], tables);
+    let inside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 2,
+        column: 3,
+    };
+    for (typed, shown, stored, exported) in [
+        (
+            "[@Jan]*2",
+            "[@Jan]*2",
+            "[tblIncome][[#This Row],[Jan]]*2",
+            "tblIncome[[#This Row],[Jan]]*2",
+        ),
+        (
+            "[[#This Row],[Feb]]",
+            "[@Feb]",
+            "[tblIncome][[#This Row],[Feb]]",
+            "tblIncome[[#This Row],[Feb]]",
+        ),
+        (
+            "SUM([Jan])",
+            "SUM([Jan])",
+            "SUM([tblIncome][Jan])",
+            "SUM(tblIncome[Jan])",
+        ),
+    ] {
+        let t = parser.parse(typed, &inside);
+        assert_eq!(to_english_localized_string(&t, &inside), shown);
+        assert_eq!(to_rc_format(&t), stored);
+        assert_eq!(to_excel_string(&t, &inside), exported);
+        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::R1C1);
+        let reparsed = parser.parse(stored, &inside);
+        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::A1);
+        assert_eq!(to_english_localized_string(&reparsed, &inside), shown);
+    }
+    let outside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 9,
+        column: 9,
+    };
+    let t = parser.parse("[@Jan]*2", &outside);
+    assert!(matches!(t, Node::ParseErrorKind { .. }), "{t:?}");
 }
