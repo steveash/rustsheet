@@ -1441,6 +1441,23 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   0a957119475760c5 A383, 9d9ceba257f8001b A372, 5c6a23c4f6597f1c A7; gate-edges C1, C2, C11, D1, D2, D11) and put 8 on
   it (ba4ddb817a8e700e A116, CUMPRINC_CUMIPMT.xlsx H7, gate-edges C3, C9, C10, D3, D9, D10), none visibly, so it is not
   kept.
+- Near period 1E15 measured directly (T-3067 run 2, probes/fin-cumprinc-near-1e15): CUMPRINC over the last m = 1 to
+  12 periods of nper 1E15 at rates 0.01, 0.001 and 0.1 (A-C), PPMT of each of those periods at 0.01 (D), the
+  CUMIPMT (E, which A9-A11 and K3 sample) and type 1 CUMPRINC (F). Excel's CUMPRINC is not the sum of its own PPMTs:
+  `CUMPRINC(0.01,1E15,100000,1E15,1E15,0)` is -990.0990099009903 where `PPMT(0.01,1E15,1E15,100000)` is
+  -990.09900990099, 2 ulps apart. Each E cell is `PMT·m - A` (G - A) exactly, with PMT a whole -1000 (G).
+  Of 30 forms fitted to the 36 A-C principals (with L as `log1p`, `growth_log`, Excel's LN of `1+r` and libm's `ln`,
+  each shifted by -4 to 4 ulps; with libm's and Excel's EXP and expm1; and with the exponent kept in an x87
+  register), the best is the drop in the remaining balance, `pv/(1-v^nper)·(v^(nper-end)·(1-v^m))` with
+  `1-v^m = -EXPM1(-m·L)`, Excel's EXP and expm1, and `growth_log`'s L. It is exact on 23 of the 36 and within an ulp
+  on the rest, and exact on 8 of the 12 at 0.01, where the kernel's per-period sum is exact on 4. Neither pv's
+  factor nor the order of `pmt·…/r` moves it. libm's expm1 gives 19 of the 36, and `log1p` 12. As the first type 0
+  short principal it puts 3 gen-m9 cells on the bit and takes 8 off. Gated on an underflowed `v^nper`
+  (`1-v^nper = 1`), it fixes 4 probe cells and still takes 14 off: 8 at a rate of 1E10
+  (fin-cumipmt-overflow-and-forms A15-A17, A20-A24) and 6 at integer rates (gen-m9 1cd3096e3e87c965 A147,
+  67a4c03afd63f988 A110, 81bcdc0bec0c8e6b A226, 9a1fa5366bc50918 A18 and A361, d912671baa1364aa A104). So it is not
+  kept. Next: probe the same last-m ranges at nper 1E6 and 1E10, where `v^nper` underflows but the periods stay
+  exact, to see whether the balance-drop form holds wherever the range ends at nper.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
 fin-cumipmt-period-bound A18, the gen-m9 cells A62, A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
 T-3067; the short sums' last digits in T-1374)
