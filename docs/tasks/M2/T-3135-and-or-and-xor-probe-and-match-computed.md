@@ -56,6 +56,8 @@ The answer comes from a committed oracle case, and coercion.md drops the "unprob
       their passing cells (`make eval-check`: 0 regressions; `make eval-baseline` run).
 - [ ] coercion.md "AND/OR/XOR text arguments" states the probed rule as VERIFIED with the case id and cells. The
       "unprobed" clauses are removed or narrowed to what is still open. `logical_nary`'s doc comment matches.
+- [ ] If the probe shows cells no single rule fits within size S, the fitted cells pass, the rest are recorded as
+      known failures by `make eval-baseline` (never hand-edited), and a follow-up task names them.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -1,5 +1,5 @@
 ---
-id: T-3132
+id: T-3136
 title: "Probe the criteria operand number grammar beyond plain numbers and dates (percent, currency, grouping, time, fraction, parentheses) on the criterion and the text-cell side"
 milestone: M2
 lane: research
@@ -41,14 +41,14 @@ engine follow-up that makes the cells pass is filed and owns every failing cell.
   - cross every operand with every operator (`=`, `<>`, `<`, `>=`) and with number cells and text cells.
   The answer also has to cover the indexed *IFS path (`number_interval` in functions/statistical/ifs_cache.rs) and
   the D-functions, which share `build_criteria_with`.
-- Method: the `excel-probe` skill, excel-graph backend, one case `probes/t3132-criteria-formatted-number-operands`
+- Method: the `excel-probe` skill, excel-graph backend, one case `probes/t3136-criteria-formatted-number-operands`
   (milestone M2). Hold the data in number cells (0.5, 1, -1, 1.5, 1000, 0.5 as a 12:00 time, a date serial with a
   time) and in text cells holding the same forms (`="50%"`, `="$1"`, ...). Put the criteria in literals and in cells.
   Read them with COUNTIF, SUMIF, COUNTIFS, SUMIFS, AVERAGEIF and DCOUNT, and use SUMIF weights that are powers of
   two, so that one sum tells exactly which cells matched.
 
 ## Acceptance criteria
-- [ ] `probes/t3132-criteria-formatted-number-operands` is committed with its excel-graph oracle sidecar. It covers
+- [ ] `probes/t3136-criteria-formatted-number-operands` is committed with its excel-graph oracle sidecar. It covers
       at least these operand forms: percent, `$` currency (with and without grouping and sign), thousands
       grouping, time, date plus time, mixed fraction, parenthesised negative and exponent-with-percent. Each form
       is read under `=`, `<>`, an ordering operator and a plain operand, against number cells and against text

@@ -57,6 +57,8 @@ that covers the shapes T-2326 left UNVERIFIED.
       cells. A parser unit test covers one shape that gains `@` and one that loses it.
 - [ ] references.md's IF/IFS arm section replaces the "UNVERIFIED, so still `@`" sentence with the probed rule
       (VERIFIED, case id and cells). Shapes the probe did not cover are listed as UNVERIFIED.
+- [ ] If the probe shows cells no single rule fits within size S, the fitted cells pass, the rest are recorded as
+      known failures by `make eval-baseline` (never hand-edited), and a follow-up task names them.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

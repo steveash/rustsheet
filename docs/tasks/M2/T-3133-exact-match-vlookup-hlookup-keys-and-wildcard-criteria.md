@@ -63,12 +63,16 @@ neither.
       regressions; `make eval-baseline` run).
 - [ ] The fold the case fits is defined once and shared by `WildcardPattern`, `folded_units` and `ExactKey`. If it
       equals `fold_case` or `fold_match_char`, the existing function in functions/text/casefold.rs is reused
-      rather than copied. A unit test shows that an indexed exact search (`ExactIndex`) and a linear one agree on
+      rather than copied: `fold_case` is `pub(super)` and `fold_match_char` is private, so move the shared fold
+      to one home that both functions/text and functions/criteria.rs import (no ad hoc re-export, no copy). A unit test shows that an indexed exact search (`ExactIndex`) and a linear one agree on
       `İ`, `ΟΣ` and the Kelvin sign.
 - [ ] criteria.md "Wildcard escapes, case and trailing tilde" and lookup.md, at the exact-match key, record the
       probed fold as VERIFIED with the case id and cells. Characters the probe did not cover are named as
       UNVERIFIED.
 - [ ] `make check` green; reviewers approve.
+
+- [ ] If T-3114 (open PR #2287, collation) has merged first, `origin/main` is merged in and the fold sits beside
+      its collation changes in functions/criteria.rs, criteria.md and lookup.md without undoing them.
 
 ## Out of scope
 - The collation used by `=`, `<`, `>` and by plain-text criteria equality (T-3114) and approximate-match text
