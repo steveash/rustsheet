@@ -57,5 +57,5 @@ CHOOSECOLS, FILTER and MAP; it replaces the literal-call check `blank_cell_conte
 empty-value instance_num as 0, not omitted (gen-m7/9359f03972e94026 A1420 would otherwise have regressed; text.md).
 Eval: probes known failures 2733 -> 2711 (22 fixed: t2466 A111/A121/A151, t3030 blank-shapers and nested-sheet A231, t3053
 A41/A141/A161/A171 with their spill cells), the new case probes/t3053-blank-reference-wrappers passes 25/25, no regressions.
-Follow-up: T-3083 (probe the empty value in DROP, CHOOSEROWS, WRAPCOLS, COLUMNS, TRANSPOSE, SCAN, REDUCE, BYROW, BYCOL and an
+Follow-up: T-3087 (probe the empty value in DROP, CHOOSEROWS, WRAPCOLS, COLUMNS, TRANSPOSE, SCAN, REDUCE, BYROW, BYCOL and an
 omitted stack argument).

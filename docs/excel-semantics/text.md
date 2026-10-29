@@ -1059,7 +1059,7 @@ TEXTBEFORE reads it the same way (A16-A30): with the delimiter not found, a valu
 An instance_num that is the empty value (`CELL("contents",<blank>)`) behaves as 0 (`#VALUE!`), not as an omitted argument:
 `TEXTAFTER(((Data!C$12&"")&Data!E10),"-",CELL("contents",Data!B3),1,1)` with Data!B3 blank (gen-m7/9359f03972e94026 Calc!A1420,
 excel-graph). A left-out argument (`TEXTAFTER(..,"-",,1)`) keeps the default 1. Ours: matches since T-3053 (`around_options` reads
-a written empty value as 0, so match_mode and match_end do too, unprobed: T-3083; information.md "CELL("contents", ref) as a VSTACK argument").
+a written empty value as 0, so match_mode and match_end do too, unprobed: T-3087; information.md "CELL("contents", ref) as a VSTACK argument").
 TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
 `ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
 `ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference

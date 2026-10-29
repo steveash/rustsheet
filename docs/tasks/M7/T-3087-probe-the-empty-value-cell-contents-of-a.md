@@ -1,5 +1,5 @@
 ---
-id: T-3083
+id: T-3087
 title: "Probe the empty value (CELL contents of a blank, IFERROR of a blank) in DROP, CHOOSEROWS, WRAPCOLS, COLUMNS, SCAN, REDUCE, BYROW, BYCOL and VSTACK(,1)"
 milestone: M7
 lane: research

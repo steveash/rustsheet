@@ -330,7 +330,7 @@ LET, CHOOSE, `@` and parentheses pass it on, while a blank reference read throug
 `reject_empty_value` (spill_functions.rs) makes it `#VALUE!` as the array argument of VSTACK, HSTACK, TOCOL, TOROW, TAKE,
 CHOOSECOLS, FILTER and MAP (INDEX, WRAPROWS and ROWS rejected it before). All cells of the four probes above match. DROP,
 CHOOSEROWS, WRAPCOLS, COLUMNS, SCAN, REDUCE, BYROW and BYCOL of the empty value are unprobed and keep reading it as 0
-(T-3083), as does an omitted argument (`VSTACK(,1)`). From T-3030 to T-3053 only a literal `CELL("contents", ref)`
+(T-3087), as does an omitted argument (`VSTACK(,1)`). From T-3030 to T-3053 only a literal `CELL("contents", ref)`
 VSTACK or HSTACK argument was caught.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
