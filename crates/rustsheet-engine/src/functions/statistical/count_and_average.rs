@@ -132,9 +132,10 @@ impl Model {
         };
         let mut walk = AggregateWalk::new(A_ARGS);
         let mut visit = |model: &mut Self, source, value| {
-            // A text cell or array element counts as 0 but is no addend of a sum (`true` below).
-            let text =
-                matches!(value, CalcResult::String(_)) && !matches!(source, ItemSource::Direct);
+            // A text or FALSE cell or array element counts as 0 but is no addend of a sum (`true`
+            // below); a direct "0" or FALSE is one (probes/t3092-averagea-subtotal-snap D1, D3, D5-D10).
+            let text = matches!(value, CalcResult::String(_) | CalcResult::Boolean(_))
+                && !matches!(source, ItemSource::Direct);
             if let Some(number) = model.aggregate_number(rules, source, value, cell)? {
                 f(number, text && number == 0.0);
             }

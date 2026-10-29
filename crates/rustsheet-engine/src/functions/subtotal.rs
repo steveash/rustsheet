@@ -506,10 +506,11 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
-        let mut result = 0.0;
         let l = values.len();
+        // Snaps a near-zero final addition like SUM does (probes/t3092-averagea-subtotal-snap D15-D27).
+        let mut sum = SumParts::default();
         for value in values {
-            result += value;
+            sum.add(value);
         }
         if l == 0 {
             return CalcResult::Error {
@@ -519,7 +520,7 @@ impl Model {
             };
         }
         // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
-        CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(result, l as f64)), cell)
+        CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(sum.snapped(), l as f64)), cell)
     }
 
     fn subtotal_sum(
