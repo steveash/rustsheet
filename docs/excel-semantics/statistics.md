@@ -3130,11 +3130,27 @@ Tasks: T-1543, T-1634
     The boundary p between 1E-20 and 1E-100 is unprobed; the engine takes `#NUM!` below 1E-20
     for df 3 to 10 (df 22 at `CHISQ.INV.RT(1E-100,...)` is 542.4417060011164 in Excel, gen-m9; df 11 to 21 unprobed, UNVERIFIED).
   - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
-- Ours (T-1634): the quantile is statrs' search where its result solves the smaller tail to 1E-13 relative, else the
-  crossing of that tail's capped incomplete gamma (the lower tail with `x^a` by `powf`, so `GAMMA.INV(1E-300,1,1)` is
+- Excel's gamma quantiles (T-0972, against an mpmath 50-digit reference of the 545 literal-argument CHISQ.INV,
+  CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV cells in eval/, df truncated, df 1 right tail as the lower quantile of
+  1 - p): 509 are within half a unit of the 15th significant digit of the true quantile, 256 within half an ulp.
+  The misses are where the cdf is flat in its double: near p = 0.999 Excel is 40 to 100 ulps off the truth
+  (`GAMMA.INV(0.999,5,1)` = 14.794149222537294, true 14.79414922253720821; `CHISQ.INV.RT(0.999,20)` 72 ulps low), near
+  the edge of the band of doubles whose cdf rounds to p, so it solves the tail it is given (the lower one for
+  CHISQ.INV and GAMMA.INV, the upper for CHISQ.INV.RT) on a double-valued cdf, and at p = 1E-200 and 1E-300 with
+  df 4 to 50 it is 20 to 2,500 ulps off (`CHISQ.INV(1E-300,4)` 81 ulps low), its own far-tail cdf's error. Neither
+  is fitted.
+- Ours (T-0972): the crossing of the smaller tail's capped incomplete gamma, always (T-1634 kept statrs' search where
+  its result solved that tail to 1E-13 relative, up to 7E-15 off Excel and the truth: `GAMMA.INV(0.5,9,1)`). The
+  lower tail's `powf * exp(-x - ln Gamma(a + 1))` form is used only at x * rate up to 1 (T-1634 used it up to the
+  shape: at shape 50 its exponent's rounding is 1E-14 of the tail). With `x^a` by `powf`, `GAMMA.INV(1E-300,1,1)` is
   9.999999999999999E-301, one ulp under Excel's 1E-300: the crossing is exact, and the ulp is lost to
-  `refine_increasing`'s midpoint; `special::nearest_crossing` would return 1E-300, a lead for T-2561). Above shape 1E9 it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
-  The cells still off are Excel's own last digits: `CHISQ.INV(1E-300,50)` is 2.0354283669760313E-11 in Excel while the
+  `refine_increasing`'s midpoint (`special::nearest_crossing` would return 1E-300, a lead for T-2561). Above shape 1E9
+  it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
+  The crossing is not always the correctly rounded quantile: on 49 gated cells it lands 1 to 3 ulps off Excel where
+  Excel is the correctly rounded closed form (`CHISQ.INV(0.5,2)` is 1.3862943611198906 = 2 ln 2 in Excel, ours
+  1.3862943611198908; `CHISQ.INV.RT(0.5,2)` ours 1.3862943611198904; GAMMA.xlsx F75 Excel 0.6931471805599453 = ln 2,
+  ours 0.6931471805599454), so those last digits are ours to fix (T-3016). Other cells still off are Excel's own last
+  digits: `CHISQ.INV(1E-300,50)` is 2.0354283669760313E-11 in Excel while the
   correctly rounded quantile (ours) is 2.035428366976834E-11, and `GAMMAINV(0.5,0.01,100)` is 4.4655350189103716E-29
   in Excel against the true 4.46553501891034868E-29 (ours ...0346E-29): Excel's tail kernel is not fitted (T-2561 for the visibly-off cells, T-0972 for the last digits).
   Since T-0971 the search and the refinement run on the accurate incomplete gamma pair (section "Incomplete gamma:

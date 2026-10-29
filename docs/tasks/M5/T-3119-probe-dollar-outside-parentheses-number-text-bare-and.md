@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: sonnet
 depends_on: []
+issue_origin: 2277
 ---
 
 ## Goal

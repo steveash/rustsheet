@@ -433,6 +433,11 @@ impl OddFirstSchedule {
         }
     }
 
+    /// Whether the redemption's discount power overflows, so ODDFPRICE is #NUM! (T-2659).
+    fn discount_overflows(&self, yld: f64) -> bool {
+        power(yld / self.m + 1.0, self.front_exponent).is_err()
+    }
+
     /// The clean price at the yield `yld`: a sum over the coupons after the first, no walk.
     fn price(&self, yld: f64, growth: fn(f64, f64) -> f64) -> f64 {
         let x = yld / self.m + 1.0;
@@ -869,7 +874,11 @@ impl Model {
             number_or_error(
                 model
                     .odd_first_of(values, false, cell)
-                    .map(|(odd, schedule)| schedule.price(odd.yld_or_pr, discount_growth)),
+                    .and_then(|(odd, schedule)| {
+                        (!schedule.discount_overflows(odd.yld_or_pr))
+                            .then(|| schedule.price(odd.yld_or_pr, discount_growth))
+                            .ok_or_else(|| num_error(cell))
+                    }),
             )
         })
     }

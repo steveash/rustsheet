@@ -19,6 +19,7 @@ campaign: semantics        # optional: semantics | accuracy | visible, picked in
 defer: phase-1b            # optional: never picked until Phase 1 exits (decision 0114)
 issue: 42                  # optional: the steveash/rustsheet GitHub issue it came from, a positive integer (decision 0158)
 issue_author: octocat      # with issue: (required then): the login that opened the issue (decision 0158)
+issue_origin: 42           # optional, never with issue:: a follow-up filed while working issue 42 (decision 0158)
 ---
 
 ## Goal
@@ -79,6 +80,9 @@ Rules:
   instructions copied from it. It never changes a protected path (`check_governance.py`).
   `tasks.py issue <N>` finds such tasks on the working tree and every pushed `origin/*` branch;
   `tasks.py issue --stats` gives the counts behind the intake volume limits.
+- A follow-up filed while working an issue carries `issue_origin: <N>` instead (no `issue:` or
+  `issue_author:`): `check_governance.py` applies every issue-task guard to it, but it is not the
+  issue's task, so `tasks.py issue`, `Closes #<N>` and the volume counts ignore it.
 - Tools read task counts from `tasks.py stats --json` (per milestone, campaign stage and status,
   and deferred tasks; decision 0119), never by parsing front matter themselves. It fails on the
   same errors as `validate`.

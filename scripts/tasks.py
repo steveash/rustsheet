@@ -27,7 +27,7 @@
                                          # filed today (UTC), and the limits (decision 0158)
 
 Front matter keys: id, title, milestone, lane, status, priority, size, tier, depends_on, spec,
-campaign, defer, issue and issue_author (optional; decisions 0083, 0114, 0158).
+campaign, defer, issue, issue_author and issue_origin (optional; decisions 0083, 0114, 0158).
 See docs/process/task-format.md.
 """
 
@@ -72,6 +72,10 @@ DEFERRALS = ["phase-1b"]
 # `issue:` value (matched whole): the number of the steveash/rustsheet GitHub issue the task came
 # from; `issue_author:` is the login that opened it (decision 0158). ASCII only, never `\d`.
 ISSUE = re.compile(r"[1-9][0-9]*")
+# `issue_origin:` (same values) marks a follow-up filed while working an issue: it keeps the
+# provenance for the governance guards but is not the issue's task, so dedup, `Closes #N` and the
+# volume counts (which read `issue:` only) ignore it. A task carries at most one of the two.
+ISSUE_GUARD_KEYS = ("issue", "issue_origin")
 LOGIN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})")
 # Issue-intake volume limits (decision 0158): open issue tasks per author without write access,
 # and issue tasks filed per UTC day in total.
@@ -159,6 +163,12 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             )
         if "issue_author" in t and "issue" not in t:
             errors.append(f"{where}: issue_author without issue (decision 0158)")
+        if "issue_origin" in t and not ISSUE.fullmatch(str(t.get("issue_origin"))):
+            errors.append(
+                f"{where}: issue_origin={t.get('issue_origin')!r} is not a positive issue number (decision 0158)"
+            )
+        if "issue_origin" in t and "issue" in t:
+            errors.append(f"{where}: issue and issue_origin together; a task carries one (decision 0158)")
         if not MILESTONE.match(str(t.get("milestone", ""))):
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
