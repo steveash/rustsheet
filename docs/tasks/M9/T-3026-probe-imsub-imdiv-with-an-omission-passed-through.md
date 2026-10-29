@@ -3,7 +3,7 @@ id: T-3026
 title: "Probe IMSUB/IMDIV with an omission passed through two LET or LAMBDA bindings (T-2770 follow-up)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2770 made `complex_pair_of` (complex/mod.rs) raise `#N/A` for a variable bound
 
 ## Out of scope
 -
+
+## Outcome
+Probe `eng-imsub-imdiv-omission-forwarded` (16 cells, excel-graph oracle) covers LET→LET, LET→LAMBDA, LAMBDA→LAMBDA and LAMBDA→LET forwarding for IMSUB/IMDIV. The engine already matched all 16 cells; no code change. Finding recorded in engineering.md. Eval delta: probes +16 cells passing.

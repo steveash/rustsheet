@@ -405,6 +405,7 @@ C	probes/eng-imsqrt-large.case.json	18
 C	probes/eng-imsub-imdiv-blank-j.case.json	25
 C	probes/eng-imsub-imdiv-iferror-empty.case.json	10
 C	probes/eng-imsub-imdiv-lambda-let-empty.case.json	12
+C	probes/eng-imsub-imdiv-omission-forwarded.case.json	16
 C	probes/eng-imsub.case.json	21
 C	probes/eng-imsum-improduct-3d-j-empty.case.json	61
 C	probes/eng-imsum-improduct-whole.case.json	45
