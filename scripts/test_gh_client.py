@@ -29,6 +29,7 @@ FIXTURES: list[tuple[str, Callable[[Client], object], str, str, object, object]]
         None,
         [],
     ),
+    ("pull_files", lambda c: c.pull_files(7), "GET", f"repos/o/r/pulls/7/files?{PAGE}", None, []),
     ("comments", lambda c: c.comments(7), "GET", f"repos/o/r/issues/7/comments?{PAGE}", None, []),
     ("reviews", lambda c: c.reviews(7), "GET", f"repos/o/r/pulls/7/reviews?{PAGE}", None, []),
     (
