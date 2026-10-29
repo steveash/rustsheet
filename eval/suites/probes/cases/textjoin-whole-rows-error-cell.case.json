@@ -1,7 +1,7 @@
 {
   "format": "rustsheet-case/v1",
   "description": "TEXTJOIN(ignore_empty FALSE) over whole rows 1:3 with an error cell in A3, after the clipped columns' delimiters have passed the 32,767-unit limit (T-3098).",
-  "tags": ["M1", "probe", "text"],
+  "tags": ["M5", "probe", "text"],
   "sheets": [
     {
       "name": "Sheet1",

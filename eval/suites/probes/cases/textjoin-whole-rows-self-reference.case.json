@@ -1,7 +1,7 @@
 {
   "format": "rustsheet-case/v1",
   "description": "TEXTJOIN over whole rows that include its own cell, below the row where ignore_empty FALSE passes the 32,767-unit limit: circular or #CALC! (T-3098).",
-  "tags": ["M1", "probe", "text"],
+  "tags": ["M5", "probe", "text"],
   "sheets": [
     {
       "name": "Sheet1",
