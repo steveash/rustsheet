@@ -5,7 +5,7 @@ use bitcode::{Decode, Encode};
 
 use crate::types::sheet_names_match;
 
-// ECMA-376-1:2016 section 18.5.1.2
+/// A table on a worksheet (ECMA-376-1:2016 section 18.5.1.2).
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Table {
     pub name: String,
@@ -33,8 +33,7 @@ impl Table {
     }
 }
 
-// totals_row_label vs totals_row_function might be mutually exclusive. Use an enum?
-// the totals_row_function is an enum not String methinks
+/// One column of a table (ECMA-376-1:2016 section 18.5.1.3).
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct TableColumn {
     pub id: u32,
@@ -69,6 +68,7 @@ impl Default for TableColumn {
     }
 }
 
+/// A table's style name and banding flags (ECMA-376-1:2016 section 18.5.1.5).
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone, Default)]
 pub struct TableStyleInfo {
     pub name: Option<String>,
