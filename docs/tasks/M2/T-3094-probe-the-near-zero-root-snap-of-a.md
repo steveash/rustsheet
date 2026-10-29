@@ -28,7 +28,7 @@ LAMBDA. Each form is recorded per cell, so the engine snaps exactly where Excel 
   body's root" (the call is the root) against "only a call that is itself the cell's root does" (`=f(0.1)+0`
   would then keep the residue, as `=LET(x,..,x)+0` does).
 - Why opus: the answer decides where the snap is applied for every LAMBDA caller (named, LET-bound, recursive),
-  and the rows need the k = 7 / k = 8 boundary (`1+k*2^-52-1`; T-3047 found the `-` side's boundary at 3/4) so that a
+  and the rows need the k = 7 / k = 8 boundary (`1+k*2^-52-1`; T-3047 found the `-` side snaps only up to k = 3) so that a
   "snapped" reading is not confused with a residue that happens to be 0. Groups also interact with the name-body rule
   (T-1164: a name body written as a group is not snapped).
 
