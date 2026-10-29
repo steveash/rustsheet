@@ -314,12 +314,21 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
             f"{label} {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
             f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})"
         )
-    # The other required suites (M1's smoke), each with its own floor and rate.
+    # Only M10 reads the generated suite's displayed text: none of its items may fail (decision
+    # 0146 item 4(a)); its verdict is the suite's `gen_met`.
+    if row.get("gen_text_items") is not None:
+        measures.append(
+            f"{label} text {_num(get('gen_text_failing'))} failing of {_num(get('gen_text_items'))}"
+        )
+    # The other required suites (M1's smoke, M8's gen-m8b and poi subset), each with its own
+    # floor and rate; the poi subset also counts the cases that did not run (decision 0146).
     for i, more in enumerate(row.get("more_suites") or []):
         mwhere = f"{where} more_suites[{i}]"
+        blocked = len(more.get("blocked_cases") or [])
         measures.append(
             f"{_text(more, 'name', mwhere)} {_num(_optional(more, 'visibly_off', mwhere))} visibly off of "
-            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))} "
+            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))}"
+            f"{f', {blocked:,} cases blocked' if blocked else ''} "
             f"({_verdict(_optional(more, 'met', mwhere, boolean=True))})"
         )
     # M9's ironcalc-calc is a rate with an allowance (decision 0146 item 3).
@@ -328,10 +337,16 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
         if row.get("calc_allowance") is not None
         else ""
     )
+    # M10's probe row also needs no failing text item (decision 0146 item 4(b)).
+    probe_text = (
+        f", text {_num(get('probe_text_failing'))} failing of {_num(get('probe_text_items'))}"
+        if row.get("probe_text_items") is not None
+        else ""
+    )
     measures += [
         f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off{calc_of} "
         f"({shown('calc_visibly_off', 'calc_met')})",
-        f"probes {_num(get('probe_visibly_off'))} visibly off ({met('probes_met')})",
+        f"probes {_num(get('probe_visibly_off'))} visibly off{probe_text} ({met('probes_met')})",
     ]
     # Only M9 requires every function at the Phase 1 rate (decision 0146 item 3).
     if row.get("rate_functions") is not None or row.get("rate_met") is not None:

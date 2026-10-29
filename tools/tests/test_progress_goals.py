@@ -302,3 +302,41 @@ def test_an_m9_row_shows_no_suite_its_calc_allowance_and_the_functions_below_the
     assert "ironcalc-calc 138 visibly off of 73,150, allowance 36 (not met)" in text
     assert text.endswith("functions at the Phase 1 rate 82 below of 263 (not met)")
     assert "Phase 1 rate" not in goals.exit_measures("M5", exit_row("M5", True))
+
+
+def test_an_m8_row_shows_both_gen_suites_and_the_poi_subset_with_its_blocked_cases() -> None:
+    # Decision 0146 item 2: gen-m8b and the poi subset are `more_suites` beside gen-m8a.
+    m8 = exit_row("M8", False) | {
+        "gen_suite": "gen-m8a",
+        "more_suites": [
+            {"name": "gen-m8b", "scored": 3_368, "visibly_off": 0, "allowance": 0, "met": True},
+            {
+                "name": "poi M8 subset",
+                "scored": 2_000,
+                "visibly_off": 3,
+                "allowance": 10,
+                "met": False,
+                "blocked_cases": ["poi/a.xlsx!*", "poi/b.xls!*"],
+            },
+        ],
+    }
+    text = goals.exit_measures("M8", m8)
+    assert "gen-m8a 4 visibly off of 20,000" in text
+    assert "gen-m8b 0 visibly off of 3,368, allowance 0 (met)" in text
+    assert "poi M8 subset 3 visibly off of 2,000, allowance 10, 2 cases blocked (not met)" in text
+
+
+def test_an_m10_row_shows_the_text_items_of_gen_m10_and_its_probe_row() -> None:
+    # Decision 0146 item 4: gen-m10's text items and the M10 probe row's, none failing.
+    m10 = exit_row("M10", False) | {
+        "gen_suite": "gen-m10",
+        "gen_text_items": 10_400,
+        "gen_text_failing": 76,
+        "probe_text_items": 415,
+        "probe_text_failing": 0,
+    }
+    text = goals.exit_measures("M10", m10)
+    assert "generated suite text 76 failing of 10,400" in text
+    assert ", text 0 failing of 415 (" in text
+    plain = goals.exit_measures("M5", exit_row("M5", True))
+    assert "text" not in plain

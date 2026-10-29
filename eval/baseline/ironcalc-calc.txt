@@ -65,6 +65,7 @@ C	ironcalc-calc/INFORMATION/CELL.xlsx	32
 C	ironcalc-calc/INFORMATION/ERROR.TYPE.xlsx	16
 C	ironcalc-calc/INFORMATION/FORMULATEXT.xlsx	27
 C	ironcalc-calc/INFORMATION/ISOMITTED.xlsx	3
+C	ironcalc-calc/INFORMATION/ISREF.xlsx	43
 C	ironcalc-calc/INFORMATION/ISREF_ISFORMULA_ISODD_ISEVEN.xlsx	66
 C	ironcalc-calc/INFORMATION/IS_INFORMATION.xlsx	106
 C	ironcalc-calc/INFORMATION/N.xlsx	21

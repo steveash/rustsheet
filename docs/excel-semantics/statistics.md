@@ -2371,7 +2371,7 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
 Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*; docs/research/t2464/
 w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `zforms.py`, `bscore.py`,
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
-Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505) through `ported_tails`, for BETA.DIST's cdf
+Implemented in: `functions/statistical/bratio/bpser.rs` `bpser` (T-2505) through `ported_tails`, for BETA.DIST's cdf
 (`beta_dist_lower_tail`), F.DIST, F.DIST.RT and FDIST (`fisher.rs::f_tail`), BINOM.DIST's cdf and NEGBINOM.DIST's cdf
 (`binom.rs`; T-2847), and F.TEST's tail with its own L (`f_test_tail.rs`, T-2681): the w3 series and
 EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
@@ -2430,6 +2430,20 @@ Status: VERIFIED (excel-graph) for the values; the refusal threshold is between 
 implemented: 11 of the 27 cells are off (T-3104 owns them).
 Tasks: T-3007, T-3104
 
+## BETA.DIST's cdf is not monotone in its last bit (T-3007)
+Rule: Excel's BETA.DIST(x, a, b, TRUE) can fall by an ulp between two x one double apart: `BETA.DIST(x,2.5,2.5,TRUE)` is
+0.05000000000000001 at x = 0.16528026665565798 and 0.05 at the next double, 0.165280266655658; `BETA.DIST(x,2.5,100,TRUE)`
+is 0.0009999999999999998 at 0.001042717872682154 and 0.0009999999999999996 at 0.0010427178726821543, and 0.5 at
+0.021364564784887012 but 0.4999999999999999 at 0.021364564784887016. Those are the only three falls among the 1,007
+cumulative four-argument BETA.DIST cells of docs/research/t2464/cells.tsv (sorted by x per shape pair). It is the
+kernel's rounding (bpser at (2.5, 2.5), bfrac at (2.5, 100)), not a rule to model: a monotonicity check on the kernel
+has to allow a fall where Excel's own values fall. The engine matches the (2.5, 2.5) pair bit for bit (bpser) and is
+monotone at the two (2.5, 100) pairs (bfrac, not ported yet), so off Excel at one cell of each.
+Evidence: probes-numeric/t1745-beta-inv-roundtrip G84/H84, G97/H97, G99/H99 (excel-graph; G, H and I are
+BETA.DIST at D, E and F, three consecutive doubles around BETA.INV's x).
+Status: VERIFIED (excel-graph), observation; checked by `bratio::tests::ported_tails_rise_with_x_where_excel_does`.
+Tasks: T-3007
+
 ## Incomplete beta L140 and bfrac: the prefactor is Excel's own density times x·y (T-2464)
 Rule: for a, b > 1 with b0 < 40 and b0·x0 > 0.7 (bratio's L140), I = fl(bup(b0', a0, y0, x0, n) + bpser(a0, b0', x0))
 for x0 <= 0.7 (bgrat after bup beyond), n = int(b0), b0' = b0 - n (1 for integer b0, n one less). bup's brcmp1 is
@@ -2462,7 +2476,7 @@ Evidence: probes-numeric t2464-w2f-xruns-1, -xruns-2, -absweep; w4's probe w4p1 
 eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_lambda.py`, `t25_old.py`), r2-bratio
 (`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio; docs/research/t2506.
 Ours: L140 bup+bpser for BETA.DIST's cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf
-(`functions/statistical/bratio/mod.rs` `l140_bup_bpser`, `bup`, T-2506, T-2847). Excel is not correctly rounded on
+(`functions/statistical/bratio/bup.rs` `l140_bup_bpser`, `bup`, T-2506, T-2847). Excel is not correctly rounded on
 every L140 cell: `F.DIST.RT(1.5,5,5)` = `FDIST(1.5,5,5)` = 0.33360956282916693 (probes/stat-argument-modes H221, H226),
 I_x(2.5, 2.5) at x = 0.6000000000000001 through bup(0.5, 2.5, 0.6, 0.4, 2) + bpser(2.5, 0.5, 0.4), is 6 ulp above the
 correctly rounded value at that x (0.333609562829166621, nearest double 0.3336095628291666), and
