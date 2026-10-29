@@ -599,9 +599,10 @@ pub struct Parser {
     /// The first call of a function with an argument count Excel refuses that the last parse
     /// read (see [`Parser::typed_refusal`]).
     wrong_count_call: Option<String>,
-    /// Function calls open on the current parse path, and the most open at once in the last
-    /// parse (see [`Parser::nests_too_many_calls`]).
+    /// Function calls open on the current parse path ([`Parser::in_call`]).
     open_calls: usize,
+    /// The most function calls open at once in the last parse (see
+    /// [`Parser::nests_too_many_calls`]).
     deepest_calls: usize,
     /// The workbook's file name (`Budget.xlsx`), which prefixes a workbook name read through a
     /// sheet (`=Feb!loc` is `=Budget.xlsx!loc`); `None` for an unnamed workbook.

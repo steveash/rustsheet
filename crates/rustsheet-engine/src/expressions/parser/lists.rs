@@ -68,7 +68,7 @@ impl Parser {
         // The names a LET binds are in scope up to its `)`.
         let scope = self.bound_names.len();
         // `SINGLE(x)` and `ANCHORARRAY(x)` are the `@` and `#` operators, which Excel shows as
-        // such, so they are not counted as calls (unprobed; T-3097).
+        // such, so they are not counted as calls (unprobed, TODO(T-3143)).
         let operator =
             fn_name.eq_ignore_ascii_case("SINGLE") || fn_name.eq_ignore_ascii_case("ANCHORARRAY");
         let args = if operator {

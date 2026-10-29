@@ -386,13 +386,14 @@ fn formula_longer_than_8192_characters_refuses_the_workbook() -> TestResult {
     Ok(())
 }
 
-/// A sheet whose A100 holds `calls` nested function calls of `form` as Excel stores them, the
-/// innermost one being `inner` (probes/t3097-nesting-*).
+/// A sheet whose A100 holds `calls` nested function calls as Excel stores them: levels of `open`
+/// (each closed by `)`) around `inner` (probes/t3097-nesting-*).
 fn sheet_with_nested_calls(
     open: &str,
     inner: &str,
     calls: usize,
 ) -> Result<Vec<u8>, Box<dyn Error>> {
+    // An innermost other than `1` (the LET or the called LAMBDA) is itself one of the calls.
     let outer = calls - usize::from(inner != "1");
     let formula = format!("{}{inner}{}", open.repeat(outer), ")".repeat(outer));
     let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{formula}</f></c></row>");

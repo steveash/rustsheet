@@ -58,7 +58,7 @@ refuses, the API refuses a typed formula Excel refuses, and every formula Excel 
 - Defined-name bodies, conditional-format and data-validation formulas: file a follow-up if the rule applies to them.
 - Desktop Excel's typed-formula dialog (M14).
 
-## Progress (run 1, 2026-10-29; the task stays in progress)
+## Run 1 (2026-10-29)
 - Probed on excel-graph (60 inputs; 44 committed as `probes/t3097-nesting-*`, stored and typed). Excel accepts 65 nested
   function calls and refuses 66 (stored: createSession 501; typed: 400 `InvalidArgument`) for every form: ABS, IF, SUM,
   a mixed chain, an operator between levels, calls inside parentheses, and LET or LAMBDA innermost. Parentheses add no
@@ -66,7 +66,7 @@ refuses, the API refuses a typed formula Excel refuses, and every formula Excel 
   records the rule, and the UNVERIFIED sentence is gone.
 - The engine refuses 8 of the committed cases, all of which Excel accepts (paren-128, paren-255 and paren-abs-64/65,
   past `MAX_FORMULA_DEPTH`). They are new known failures and listed as the DEVIATION.
-- Left: count function-call nesting in the parser (depth.rs), refuse 66+ calls on import (`XlsxError::Workbook`) and
+- Left for run 2 (done, see Outcome): count function-call nesting in the parser (depth.rs), refuse 66+ calls on import (`XlsxError::Workbook`) and
   through the API (`EditError::InvalidInput`), with unit tests at 65 and 66 for each form.
 
 ## Outcome
@@ -80,3 +80,4 @@ refuses, the API refuses a typed formula Excel refuses, and every formula Excel 
   (the DEVIATION), so it has no 66-call test.
 - Eval delta: 44 new probe cases, of which the 8 past the depth bound are baselined known failures
   (DEVIATION); 0 regressions. The mixed form is covered by the probes only.
+- Follow-up: T-3143 (SINGLE/ANCHORARRAY, name bodies, conditional formats, data validation).
