@@ -3,7 +3,7 @@ id: T-3099
 title: "Approximate VLOOKUP, HLOOKUP and MATCH compare numbers exactly, not at 15 digits"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,9 +27,16 @@ exact doubles, as Excel does, so a table number a few ULP from the key is larger
   or the probes. If their approximate or binary modes need cells of their own, file an M6 probe task.
 
 ## Acceptance criteria
-- [ ] Every lookup cell of probes/t3073-lookup-near-equal-approximate listed above passes, `make eval-baseline` is run, and there are no regressions.
-- [ ] lookup.md's "Implemented in" names the exact compare.
-- [ ] `make check` green; reviewers approve.
+- [x] Every lookup cell of probes/t3073-lookup-near-equal-approximate listed above passes, `make eval-baseline` is run, and there are no regressions.
+- [x] lookup.md's "Implemented in" names the exact compare.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Text and boolean keys; criteria operators (T-3084).
+
+## Outcome
+`SearchVector::approximate_search` (and its equal-run walk) and `SearchVector::descending_search` now order numbers
+through a new `compare_searched` (lookup_table.rs): exact doubles for number pairs, `compare_values` otherwise. All 69
+lookup cells of probes/t3073-lookup-near-equal-approximate pass (eval/baseline/probes.txt -69 lines, no regressions,
+no other cell of any suite moved, so LOOKUP's shared search, gen-m2 and gen-m6 are unchanged). Sheet1!E8 stays with
+T-3100. Unit test `approximate_searches_compare_numbers_as_exact_doubles`; lookup.md names the exact compare.
