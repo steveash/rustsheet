@@ -38,6 +38,11 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
     Re-triage them in the Outcome and close what this settles.
   - T-2119 (done) already refines BETA.INV to its crossing on today's kernel; its leftover chained cells are T-2633's
     (decision 0111).
+  - T-3007 (2026-10-29): at a shape of 1 outside the closed forms BETA.DIST's w1 is now (0.5 - w) + 0.5, a step of one
+    ulp of w, so the crossing BETA.INV searches is flat there: `BETA.INV(0.999,1,100)` and `BETA.INV(0.001,100,1)`
+    (probes-numeric/m9-beta-inv A69, A149; t1745-beta-inv-roundtrip J67, J144) went from 1 to about 6 ulp off while
+    Excel's BETA.DIST at those quantiles became bit-exact. Find where in the step Excel's search stops
+    (statistics.md "Incomplete beta at a shape of 1 outside the closed forms").
 
 ## Acceptance criteria
 - [ ] Every listed inverse calls one crossing search on the ported CDF (no statrs inversion left).

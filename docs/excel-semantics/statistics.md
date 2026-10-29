@@ -2130,8 +2130,7 @@ Ours: all 1,286 cells bit-exact through the worksheet functions (T-2502). Still 
   (no swap; -expm1(b ln1p(-x)) below x = 0.1) is bit-exact at gen-m9/68d8ffb69ff739d8 A143 (a = 1, b = 1/2,
   x = 0.571), a790a4d4a6a82756 A192 (a = 4, b = 1) and bbdfc06cae0e0d71 A356 (a = 5.5, b = 1), which the closed
   forms put 2, 3 and 10 ulp off (the last visibly; T-2977, `fisher.rs::unoriented_shape_one_tail`).
-- a0 = 1 with y0 > 0.9 keeps the engine's earlier tails, w = -expm1(b0 ln1p(-x0)) and w1 = y0^b0
-  (`incomplete_beta.rs::shape_one_tails`); bpser(1, b0, x0) is 1 ulp high at probes/ftest-decomposition B12. T-3007.
+- a0 = 1 with y0 > 0.9: see "Incomplete beta at a shape of 1 outside the closed forms" (T-3007).
 - BINOM.DIST's k = 0 is BINOM's own shortcut, not this kernel (T-2645).
 Status: VERIFIED (excel-graph)
 Implemented in: `incomplete_beta.rs::closed_form_tails` (Excel's EXP and LN, `x87_exp.rs`, `x87_log10.rs`), through
@@ -2141,6 +2140,33 @@ NEGBINOM.DIST at r = 1 or f = 0); then `bratio/mod.rs::ported_tails` (bpser, w1 
 cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf (T-2505, T-2506, T-2847), and for F.TEST's
 large shapes and BETA.INV's huge-shape crossing (`bratio/mod.rs::kernel_tails`, T-2977)
 Tasks: T-2502, T-2505, T-2511, T-2977, T-3007
+
+## Incomplete beta at a shape of 1 outside the closed forms (T-3007)
+Rule: after bratio's swap, at a0 = 1 with y0 > 0.9 (x0 below about 0.1, b0 not 1), Excel computes one tail, w, and
+forms the other as (0.5 - w) + 0.5, as bratio does on every branch; it does not form w1 = y0^b0 on its own. Its w is
+near the exact value: -expm1(b0·ln1p(-x0)) in doubles is bit-exact at most cells and 1 ulp off at the rest, and TOMS
+bpser(1, b0, x0) (bratio's dispatch there: WBpser) is further off.
+- Variants, scored as per-cell changes against the engine's earlier w = -expm1(b0·ln1p(-x0)), w1 = y0^b0 over every
+  suite (`make eval`, origin/main 5f35109): w1 = (0.5 - w) + 0.5 from that w fixes 77 cells and moves 2 off
+  (`F.DIST(1.5,50,2,TRUE)` and `F.DIST(5,7,2,TRUE)`, probes-numeric/t2220-f-dist-sweep-cdf A815 and A518, 1 ulp);
+  the ported bpser for w with its complement fixes 64 and moves 90 off, most of them cells that return w.
+- `F.DIST(5,20,2,TRUE)` = 0.8203482998751552 (t2220-f-dist-sweep-cdf A718; y0^b0 3 ulp low), `F.DIST(5,4,2,TRUE)` =
+  0.8264462809917356 (A318), `FDIST(1E-10,2,7)` = 0.9999999999 (gen-m9/58e3253bbd3a7a82 A273), and
+  `F.DIST.RT` at probes/ftest-decomposition B5 = 0.7381591796246967, which the same cell's BETA.DIST (B12,
+  0.7381591796246966, x formed by BETA.DIST's caller) also matches.
+- Of the shape-of-1 cells with literal arguments in the eval, 116 were off before (52 returning w, all within 4 ulp;
+  64 returning w1, 18 of them beyond 4 ulp) and 59 after (the same 52, and 7 returning w1 within 4 ulp).
+- BETA.INV searches this cdf where w1 is now a step of 1 ulp of w: `BETA.INV(0.999,1,100)` and
+  `BETA.INV(0.001,100,1)` (probes-numeric/m9-beta-inv A69, A149; t1745-beta-inv-roundtrip J67, J144) move from 1 to
+  about 6 ulp off Excel's quantile, while Excel's BETA.DIST at those quantiles (t1745 G144, H144, I144, G145, H145,
+  I145) is now bit-exact. Where in the flat step Excel's search stops is T-2511's.
+Evidence: probes-numeric t2220-f-dist-sweep-cdf, t2220-f-dist-sweep-rt, t2220-f-dist-sweep-d1-1, t2220-f-dist-sweep-d2-1,
+t1745-beta-inv-roundtrip; probes/ftest-decomposition; gen-m9 58e3253bbd3a7a82, 60b0b6e69ad35a45, fd9fa22d212080d6
+(excel-graph).
+Ours: `incomplete_beta.rs::shape_one_tails` (w = -expm1(b0·ln1p(-x0)), w1 = (0.5 - w) + 0.5), through
+`bratio::kernel_tails` and `fisher.rs::f_tail`. Excel's w is open: 52 cells still 1 ulp off (TODO(T-3007)).
+Status: VERIFIED (excel-graph) for the complement; w's arithmetic UNVERIFIED
+Tasks: T-3007, T-2511
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
 Rule: for ln(1 + a) with -0.375 <= a < 0, i.e. ln(1 - x) at x <= 0.375 (the beta density, BINOM.DIST(0,n,p), bgrat's

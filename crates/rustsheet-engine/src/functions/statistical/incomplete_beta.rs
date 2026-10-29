@@ -126,15 +126,17 @@ pub(crate) fn closed_form_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, 
 }
 
 /// (`I_x(a, b)`, 1 - `I_x(a, b)`) at a shape of 1 where [`closed_form_tails`] does not apply, for
-/// 0 < x, y < 1: bratio's oriented a0 = 1 with y0 > 0.9 (x0 below about 0.1), where Excel is near
-/// the exact value. Each tail is formed on its own, without the other's cancellation:
+/// 0 < x, y < 1: bratio's oriented a0 = 1 with y0 > 0.9 (x0 below about 0.1). Like bratio, Excel
+/// computes w and forms w1 as (0.5 - w) + 0.5 (statistics.md "Incomplete beta at a shape of 1
+/// outside the closed forms", T-3007):
 /// - w = -expm1(b0 ln1p(-x0)): `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)` is
 ///   9.999999999999999E-11 (probes-numeric/t1745-beta-inv-roundtrip G35), which 1 - exp misses by
-///   8E-8 relative (T-0974);
-/// - w1 = y0^b0: `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966
-///   (probes/ftest-decomposition B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
+///   8E-8 relative (T-0974); bpser(1, b0, x0) is further off Excel's w than this form;
+/// - w1 from w: `F.DIST(5,20,2,TRUE)` = 0.8203482998751552 (probes-numeric/t2220-f-dist-sweep-cdf
+///   A718), which y0^b0 puts 3 ulp low.
 ///
-/// `None` for other shapes and points. Excel's own form here is not known (TODO(T-3007)).
+/// `None` for other shapes and points. Excel's own w here is still 1 ulp off this form at 52 cells
+/// (TODO(T-3007)).
 fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
     let swap = x > 0.5;
     let (a0, b0, x0, y0) = if swap { (b, a, y, x) } else { (a, b, x, y) };
@@ -142,7 +144,7 @@ fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
         return None;
     }
     let w = -(b0 * (-x0).ln_1p()).exp_m1();
-    let w1 = (b0 * y0.ln()).exp();
+    let w1 = (0.5 - w) + 0.5;
     Some(if swap { (w1, w) } else { (w, w1) })
 }
 
