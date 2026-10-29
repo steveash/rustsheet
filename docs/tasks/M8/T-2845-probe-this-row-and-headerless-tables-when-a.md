@@ -52,7 +52,7 @@ changes" records the findings:
 - FORMULATEXT prints the `@` form, and `[@Qty]` inside the table. Ours prints the long form: added as evidence to
   T-1683.
 - Excel refuses a row or column insert that would push a table off the sheet (Graph 409 InsertDeleteConflict, on a
-  table at the last rows and one at the last columns). Ours runs the insert: T-3038. Those two probes cannot be kept
+  table at the last rows and one at the last columns). Ours refuses it too (T-3038). Those two probes cannot be kept
   as eval cases, because the oracle fill fails at the edit.
 - A column of identical `Sales[@Qty]*2` formulas without calculatedColumnFormula metadata is not filled into the
   inserted row.
