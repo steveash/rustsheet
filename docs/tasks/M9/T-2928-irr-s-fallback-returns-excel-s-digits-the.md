@@ -3,7 +3,7 @@ id: T-2928
 title: "IRR's fallback returns Excel's digits: the polynomial Newton from v = 0 lands 15 to 35 ulp from Excel (10 visibly-off cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
