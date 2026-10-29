@@ -3,7 +3,7 @@ id: T-2974
 title: "YIELD basis-1 long terms and the 4-year sweep row miss Excel's 15th digit by 5 to 27 ulp (yield-start-rate-term B39, B49; yield-solver-sweep C7)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -76,3 +76,18 @@ A, which repeat existing cells. No regressions.
   the engine's PRICE (T-3144). P!B2 is unchanged.
 - Next: rounding up fits C7, B39 and B49. Look for what moves those cells up and not the others, for example a second
   rounding of the denominator.
+
+## Outcome (partial, attempt 3, 2026-10-29; the task stays open, decision 0056)
+- New evidence: probes/yield-one-step-start (360 cells, excel-graph). Its bonds take exactly one Newton step, so each
+  value shows the start's last bit (280 distinct starts). Frequency twins always agree on the start.
+- The lab's bit-exact count rose with a named candidate. Excel's start is the term-scaled formula in doubles with one
+  fused multiply-add, `((r·T)·100 + q) / (fma(pr, T, 100·T)/2 - q/4)`: 229 of the 290 one-step starts, against 152 for the
+  engine's rounded-once start. The full lab has 787 of 1,101 YIELD probe cells bit-exact against 704. On the groups
+  whose term is a double exactly it matches all 63 starts. Every candidate and its counts are in financial.md "YIELD
+  stops short of PRICE's root", T-2974 attempt 3.
+- Not ported to the engine: on the older probe cells the form scores 488 against 503. Its losses are on the
+  4 + 119/360 bond, one of the two groups where `100·T` is a rounding tie. A tie rule fixes yield-solver-sweep C2, C7,
+  C8 and yield-newton-domain P!B2 (lab 936 of 1,101), but its mechanism is unknown, so it was not kept.
+  yield-start-rate-term B39 stays 5 ulps off under every candidate.
+- Next: find what the tie groups do to `pr·T`, then put the FMA form in `yield_start`. ODDFYIELD shares the start.
+- Eval delta: EVAL_DELTA

@@ -2571,6 +2571,49 @@ T-2974 (attempt 2, 2026-10-29): Excel's start is the fitted formula **rounded on
   correctly rounded one,
   and yield-newton-domain P!B2 needs one below. So the single rounding is the closest model found, not Excel's exact
   arithmetic.
+T-2974 (attempt 3, 2026-10-29): Excel's start looks like the term-scaled formula in doubles, with one multiply-add fused:
+`S = ((r·T)·100 + (100 - pr)) / (fma(pr, T, 100·T)/2 - (100 - pr)/4)`, where `T` is the double `whole + days/year` and
+each other operation rounds. That is what a compiler emits for `(100·T + pr·T)/2` when it contracts `a·b + c` into an
+FMA. The fit is not complete: about one start in five is still 1 or 2 ulps off.
+- Evidence: probes/yield-one-step-start (excel-graph, 2026-10-29; 360 cells). Each bond takes exactly one Newton step
+  from the start, because its redemption (which the start does not read) puts PRICE's root 5e-5 relative above the
+  start. `^` rounds PRICE's base `1 + y/f` to a double, so PRICE is a step function of y. Between two steps the one-step
+  value moves one ulp per ulp of start, so the cell shows the start's last bit. All 360 cells match the lab model for
+  a start within 2 ulps of the rounded-once one: 280 distinct starts, plus the 10 one-step starts of the older probes
+  (yield-solver-sweep A1:A12, C1:C8, yield-start-sweep D1, D2, yield-newton-domain D8). Twins at frequency 1, 2 and 4
+  always need the same start, so the start's bits do not depend on the frequency.
+- Starts matched exactly (lab arithmetic; 290 one-step starts, then 266 start sets read off multi-step cells, which
+  carry less information):
+  | start | one-step | multi-step |
+  |---|---|---|
+  | rounded once (the engine since attempt 2) | 152 | 159 |
+  | x87 64-bit intermediates, any term | 147 to 152 | 156 to 159 |
+  | the formula in doubles (T-1592's arrangement) | 129 | 134 |
+  | `((100r)·T + q) / ((100+pr)·T/2 - q/4)`, `q = 100 - pr` | 174 | 142 |
+  | `((r·T)·100 + q) / ((100+pr)·T/2 - q/4)` | 212 | 172 |
+  | the same with `fma(r·T, 100, q)` | 203 | 168 |
+  | `((r·T)·100 + q) / (100·T/2 + pr·T/2 - q/4)` | 217 | 171 |
+  | `((r·T)·100 + q) / (fma(pr, T, 100·T)/2 - q/4)` | **229** | **209** |
+  | about 60 others: `N·(1/D)`, rate plus a correction, other FMA placements, per-100 prices | below 229 | at most 209 |
+- On the groups whose term is a double exactly (4.75, 12 and 12.5 years; 63 starts), every term-scaled form with
+  `(r·T)·100` matches all 63 starts. Rounded-once matches 48 and the formula in doubles 39. So the misses come from how
+  `T` enters, not from the arrangement. Per group, no single double `T` (scanned ±3,000 ulps), no real-valued `T` in the
+  products, no coupon-schedule term `(N - 1 + DSC/E)/f`, no day-count form (`(whole·year + days)/year`,
+  `whole + days·(1/year)`, years + months/12 + days/360) and no split `r·whole + r·(days/year)` fits every start.
+- Ties: in the two groups where `100·T` is an exact rounding tie that rounds down to even (3 + 119/360 and
+  4 + 119/360 years), Excel's starts match only if `pr·T` takes `T`'s predecessor (30 of 30 and 8 of 8 one-step
+  starts). The ties that round up (7 + 167/360 and 10 + 289/360 years, 3 cells each) do not need that. Computing `100·T`
+  as `(10T)·10`, `25T·4`, `50T·2`, `T/0.01`, `75T + 25T` or `64T + 36T`, or rounding its ties up or down, does not
+  explain it. The tie rule is a diagnostic, not kept: it lifts the lab to 936 of 1,101 YIELD probe cells bit-exact
+  (yield-solver-sweep C2, C7, C8 and yield-newton-domain P!B2 become exact; yield-start-rate-term B39 stays 5 ulps off),
+  but without the mechanism it is a branch fitted to two terms.
+- Full lab (Newton on the `^` PRICE with the short stop; 1,101 cells, the 741 older probe cells plus the new 360):
+  rounded-once 704 bit-exact and 1,080 within 4 ulps; the FMA form 787 and 1,089. On the older cells alone the FMA form
+  scores 488 against 503. It loses 157 cells, 141 of them on the 4 + 119/360 bond (a tie group), and gains 142.
+  Finite-difference slopes (central, step 1e-7 to 1e-4 absolute or 1e-5 to 1e-3 relative, from the rounded-once start)
+  score at most 16 of 741, so the slope stays analytic.
+Next: find what the tie groups do to `pr·T`, then put the FMA form in `yield_start` (it changes ODDFYIELD too, which
+shares the start).
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
 T-2777's term (`yield_start_term`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
