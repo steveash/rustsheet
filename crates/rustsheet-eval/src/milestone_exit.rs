@@ -5,7 +5,9 @@
 //! 10,000 scored cells, no spill-extent failure in gen-m7 or the M7 probes, and coverage and
 //! ironcalc-calc shown but not required; and M1's and M11's (decision 0146 items 1 and 5): gen-m1
 //! and smoke with nothing visibly off and the frozen `m1-probes` list as M1's probe measure, and
-//! corpus-bench at 0.998 over 200,000 scored cells. Decision 0114 reads them at visible
+//! corpus-bench at 0.998 over 200,000 scored cells; and M9's (decision 0146 item 3): ironcalc-calc
+//! at 0.9995 less its exit exceptions, every M9 function at the Phase 1 rate of `v15_checkpoint`,
+//! and no M9 probe visibly off. Decision 0114 reads them at visible
 //! parity: the generated suite, ironcalc-calc and probes count visibly-off cells, and the bit-level
 //! counts are shown beside them for Phase 1b. Every input is a row the report already computes, so
 //! nothing here scores anything; a missing input is `None`, never met. It is an exit measure, not
@@ -20,8 +22,8 @@ use crate::probe_milestones::{parse_milestone, row_label};
 use crate::report::RunReport;
 use crate::runner::CellKind;
 
-/// The milestones this section covers. M8, M9 and M10 are T-0096, T-0095 and T-0097.
-pub const MILESTONES: [&str; 6] = ["M1", "M2", "M5", "M6", "M7", "M11"];
+/// The milestones this section covers. M8 and M10 are T-0096 and T-0097.
+pub const MILESTONES: [&str; 7] = ["M1", "M2", "M5", "M6", "M7", "M9", "M11"];
 /// Fewest scored cells the generated suite must have (decision 0085 item 2).
 pub const MIN_SCORED: usize = 20_000;
 /// M2's fewest scored cells of `gen-m2` (docs/milestones.md "M2", decision 0058).
@@ -34,16 +36,19 @@ pub const M1_MIN_SCORED: usize = 3_000;
 pub const M11_MIN_SCORED: usize = 200_000;
 /// M11's corpus-bench rate over [`RATE_DEN`]: 99.8%, the best published `SpreadsheetBench` score
 /// (decision 0146 item 5).
-pub const M11_RATE_NUM: usize = 998;
+pub const M11_RATE_NUM: usize = 9_980;
+/// M9's ironcalc-calc rate over [`RATE_DEN`]: 99.95% of the row's scored cells not visibly off
+/// (decision 0146 item 3).
+pub const M9_CALC_RATE_NUM: usize = 9_995;
 /// The frozen probe list M1's probe measure reads instead of a probe row (decision 0146 item 1).
 pub const M1_PROBE_LIST: &str = "m1-probes";
-/// The generated suite's pass rate must reach 999/1000 of its scored cells; decision 0114's
+/// The generated suite's pass rate must reach 99.9% of its scored cells; decision 0114's
 /// per-function Phase 1 rate (`v15_checkpoint`) shares it.
-pub(crate) const RATE_NUM: usize = 999;
-/// The denominator of [`RATE_NUM`].
-pub(crate) const RATE_DEN: usize = 1000;
+pub(crate) const RATE_NUM: usize = 9_990;
+/// The denominator of every rate here: fine enough for M9's 99.95% ([`M9_CALC_RATE_NUM`]).
+pub(crate) const RATE_DEN: usize = 10_000;
 /// 99% over [`RATE_DEN`]: the next parity tier below [`RATE_NUM`] (`attribution::Tier`, T-0068).
-pub(crate) const RATE99_NUM: usize = 990;
+pub(crate) const RATE99_NUM: usize = 9_900;
 
 /// Whether `within` of `scored` cells is a share of at least `num` / [`RATE_DEN`]; never with no
 /// scored cell. The one definition of "at the rate" for the generated suite here, the Phase 1
@@ -51,6 +56,12 @@ pub(crate) const RATE99_NUM: usize = 990;
 #[must_use]
 pub(crate) fn meets_rate(within: usize, scored: usize, num: usize) -> bool {
     scored > 0 && within.saturating_mul(RATE_DEN) >= scored.saturating_mul(num)
+}
+
+/// Visibly-off cells a rate of `num` / [`RATE_DEN`] allows over `scored` cells: the most that
+/// still [`meets_rate`].
+fn allowance(scored: usize, num: usize) -> usize {
+    scored * (RATE_DEN - num) / RATE_DEN
 }
 
 /// One suite a milestone's exit requires.
@@ -82,6 +93,16 @@ impl SuiteNeed {
     }
 }
 
+/// What the ironcalc-calc function-scope row must meet.
+#[derive(Clone, Copy)]
+enum CalcRule {
+    /// No visibly-off cell once exit exceptions are excluded (decision 0085).
+    NoneOff,
+    /// At least this share over [`RATE_DEN`] of the row's scored cells not visibly off (M9,
+    /// decision 0146 item 3).
+    Rate(usize),
+}
+
 /// A milestone's required suites and which other measures are its criteria.
 struct Criteria {
     /// The required suites; the first is the row's `gen_*` suite (decision 0146).
@@ -90,10 +111,13 @@ struct Criteria {
     probe_list: Option<&'static str>,
     /// Catalog coverage is an exit criterion (M5, M6; not M2, decision 0135, nor M7).
     coverage: bool,
-    /// The ironcalc-calc function-scope row is an exit criterion (not M7, decision 0140).
-    calc: bool,
+    /// The ironcalc-calc function-scope row's exit criterion; `None` where it is none (M7,
+    /// decision 0140; M1, M11).
+    calc: Option<CalcRule>,
     /// Spill extents are an exit criterion (M7, decision 0140).
     extent: bool,
+    /// Every in-scope function of the milestone meets `v15_checkpoint`'s Phase 1 rate (M9).
+    function_rate: bool,
 }
 
 impl Criteria {
@@ -102,7 +126,7 @@ impl Criteria {
     /// function measures (coverage, ironcalc-calc, spill extents), so both stay `n/a` there
     /// (decision 0146).
     fn shows_scope(&self) -> bool {
-        self.coverage || self.calc || self.extent
+        self.coverage || self.calc.is_some() || self.extent
     }
 }
 
@@ -118,23 +142,35 @@ fn criteria(milestone: &str) -> Criteria {
             ],
             probe_list: Some(M1_PROBE_LIST),
             coverage: false,
-            calc: false,
+            calc: None,
             extent: false,
+            function_rate: false,
         },
         // "100%": no gen-m2 cell visibly off.
         "M2" => Criteria {
             suites: generated(M2_MIN_SCORED, RATE_DEN),
             probe_list: None,
             coverage: false,
-            calc: true,
+            calc: Some(CalcRule::NoneOff),
             extent: false,
+            function_rate: false,
         },
         "M7" => Criteria {
             suites: generated(M7_MIN_SCORED, RATE_NUM),
             probe_list: None,
             coverage: false,
-            calc: false,
+            calc: None,
             extent: true,
+            function_rate: false,
+        },
+        // No suite: gen-m9 alone is not a criterion, and catalog coverage is shown, not required.
+        "M9" => Criteria {
+            suites: Vec::new(),
+            probe_list: None,
+            coverage: false,
+            calc: Some(CalcRule::Rate(M9_CALC_RATE_NUM)),
+            extent: false,
+            function_rate: true,
         },
         "M11" => Criteria {
             suites: vec![SuiteNeed::named(
@@ -144,15 +180,17 @@ fn criteria(milestone: &str) -> Criteria {
             )],
             probe_list: None,
             coverage: false,
-            calc: false,
+            calc: None,
             extent: false,
+            function_rate: false,
         },
         _ => Criteria {
             suites: generated(MIN_SCORED, RATE_NUM),
             probe_list: None,
             coverage: true,
-            calc: true,
+            calc: Some(CalcRule::NoneOff),
             extent: false,
+            function_rate: false,
         },
     }
 }
@@ -198,7 +236,7 @@ fn suite_exit(report: &RunReport, need: &SuiteNeed) -> SuiteExit {
     out.known_failures = Some(scored - passed);
     out.visibly_off = Some(visible);
     out.rate15 = (scored > 0).then(|| s.rate(scored - visible));
-    out.allowance = Some(scored * (RATE_DEN - need.rate_num) / RATE_DEN);
+    out.allowance = Some(allowance(scored, need.rate_num));
     out.met =
         Some(scored >= need.min_scored && meets_rate(scored - visible, scored, need.rate_num));
     out.visibly_off_cells = report
@@ -258,11 +296,19 @@ pub struct ExitRow {
     pub more_suites: Vec<SuiteExit>,
     /// `ironcalc-calc` failing cells less the named exit exceptions (Phase 1b).
     pub calc_failing: Option<usize>,
+    /// Scored cells of the row less its deviations and exit exceptions, for a milestone whose
+    /// ironcalc-calc measure is a rate (M9, decision 0146 item 3); `None` for the others.
+    #[serde(default)]
+    pub calc_scored: Option<usize>,
+    /// Visibly-off cells that rate allows: `floor(0.0005 * calc_scored)` for M9.
+    #[serde(default)]
+    pub calc_allowance: Option<usize>,
     /// Of those, the visibly-off cells (decision 0114).
     #[serde(default)]
     pub calc_visibly_off: Option<usize>,
-    /// No visibly-off cell is left; `None` too for a milestone without an ironcalc-calc
-    /// criterion (M7), whose counts are shown but not required.
+    /// No visibly-off cell is left (at most `calc_allowance` for M9); `None` too for a
+    /// milestone without an ironcalc-calc criterion (M7), whose counts are shown but not
+    /// required.
     pub calc_met: Option<bool>,
     /// Known failures of the milestone's probe row (Phase 1b).
     pub probe_known_failures: Option<usize>,
@@ -282,6 +328,20 @@ pub struct ExitRow {
     /// No spill-extent failure.
     #[serde(default)]
     pub extent_met: Option<bool>,
+    /// In-scope functions of the milestone in `v15_checkpoint` (M9, decision 0146 item 3);
+    /// `None` for a milestone without the criterion or a run without them.
+    #[serde(default)]
+    pub rate_functions: Option<usize>,
+    /// Of those, the functions not `meets_rate` (not covered or under the Phase 1 rate).
+    #[serde(default)]
+    pub below_rate: Option<usize>,
+    /// No function is below the rate.
+    #[serde(default)]
+    pub rate_met: Option<bool>,
+    /// The functions below the rate, by name, for `scripts/exit_owners.py`, which lists their
+    /// `attributed_off` cells (decision 0142).
+    #[serde(default)]
+    pub below_rate_functions: Vec<String>,
     /// Every measure the milestone requires is met.
     pub exit: bool,
 }
@@ -330,7 +390,37 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                     .count();
                 row.calc_failing = Some(failing);
                 row.calc_visibly_off = Some(visible);
-                row.calc_met = need.calc.then_some(visible == 0);
+                row.calc_met = match need.calc {
+                    None => None,
+                    Some(CalcRule::NoneOff) => Some(visible == 0),
+                    Some(CalcRule::Rate(num)) => {
+                        let scored = r.cells.saturating_sub(r.deviations + r.excepted.len());
+                        row.calc_scored = Some(scored);
+                        row.calc_allowance = Some(allowance(scored, num));
+                        Some(meets_rate(scored.saturating_sub(visible), scored, num))
+                    }
+                };
+            }
+            if need.function_rate {
+                let below: Vec<String> = report
+                    .v15_checkpoint
+                    .functions
+                    .iter()
+                    .filter(|f| f.milestone == m && !f.meets_rate)
+                    .map(|f| f.name.clone())
+                    .collect();
+                let n = report
+                    .v15_checkpoint
+                    .functions
+                    .iter()
+                    .filter(|f| f.milestone == m)
+                    .count();
+                if n > 0 {
+                    row.rate_functions = Some(n);
+                    row.below_rate = Some(below.len());
+                    row.rate_met = Some(below.is_empty());
+                    row.below_rate_functions = below;
+                }
             }
             let probes = &report.probe_milestones;
             let probe = probes.iter().find(|p| p.milestone == row.probe_row);
@@ -366,10 +456,11 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 |criterion: bool, met: Option<bool>| if criterion { met } else { Some(true) };
             row.exit = [
                 required(need.coverage, row.coverage_met),
-                row.gen_met,
-                required(need.calc, row.calc_met),
+                required(!need.suites.is_empty(), row.gen_met),
+                required(need.calc.is_some(), row.calc_met),
                 row.probes_met,
                 required(need.extent, row.extent_met),
+                required(need.function_rate, row.rate_met),
             ]
             .into_iter()
             .chain(row.more_suites.iter().map(|s| s.met))
@@ -416,13 +507,13 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
     let _ = writeln!(md, "\n## Milestone exit (decisions 0085, 0114)\n");
     let _ = writeln!(
         md,
-        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. M7 (decision 0140): gen-m7 needs {M7_MIN_SCORED} scored cells at the 0.999 rate, gen-m7 and the M7 probes have no spill-extent failure (a cell the engine filled that Excel left empty, decision 0063), and coverage and ironcalc-calc are shown but not required. M1 (decision 0146): gen-m1 needs {M1_MIN_SCORED} scored cells and smoke any number, both with none visibly off, and its probes are the frozen `{M1_PROBE_LIST}` list; M11: corpus-bench needs {M11_MIN_SCORED} scored cells with at least 0.998 not visibly off, `n/a` when it was not fetched; neither has a coverage or ironcalc-calc criterion. A suite other than the milestone's gen suite is named in its column. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
+        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. M7 (decision 0140): gen-m7 needs {M7_MIN_SCORED} scored cells at the 0.999 rate, gen-m7 and the M7 probes have no spill-extent failure (a cell the engine filled that Excel left empty, decision 0063), and coverage and ironcalc-calc are shown but not required. M1 (decision 0146): gen-m1 needs {M1_MIN_SCORED} scored cells and smoke any number, both with none visibly off, and its probes are the frozen `{M1_PROBE_LIST}` list; M11: corpus-bench needs {M11_MIN_SCORED} scored cells with at least 0.998 not visibly off, `n/a` when it was not fetched; neither has a coverage or ironcalc-calc criterion. M9 (decision 0146 item 3): no suite is required; ironcalc-calc, less its exit exceptions and deviations, needs at least 0.9995 of its scored cells not visibly off (allowance `floor(0.0005 * scored)`); every in-scope M9 function must be covered and at the Phase 1 rate of the v1.5 checkpoint; coverage is shown, not required. A suite other than the milestone's gen suite is named in its column. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
     );
     let _ = writeln!(
         md,
-        "| milestone | coverage (covered/functions) | gen suite (scored, 15-digit rate, visibly off/allowance [bit failures]) | ironcalc-calc (visibly off [bit failures], excl. exceptions) | probes (visibly off [bit failures]) | spill extents (failures) | exit |"
+        "| milestone | coverage (covered/functions) | gen suite (scored, 15-digit rate, visibly off/allowance [bit failures]) | ironcalc-calc (visibly off [bit failures], excl. exceptions) | probes (visibly off [bit failures]) | spill extents (failures) | functions at the Phase 1 rate (below/in scope) | exit |"
     );
-    let _ = writeln!(md, "|---|---|---|---|---|---|---|");
+    let _ = writeln!(md, "|---|---|---|---|---|---|---|---|");
     for r in rows {
         let coverage = format!(
             "{}/{} {}",
@@ -454,14 +545,26 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
             })
             .collect::<Vec<_>>()
             .join("; ");
-        if r.gen_scored.is_none() && r.more_suites.is_empty() {
+        if r.gen_suite.is_empty() && r.more_suites.is_empty() {
+            generated = "none required".to_string();
+        } else if r.gen_scored.is_none() && r.more_suites.is_empty() {
             generated = "n/a".to_string();
         }
+        // M9's ironcalc-calc is a rate: visibly off over the allowance, of the scored cells.
+        let calc_off = match (r.calc_allowance, r.calc_scored) {
+            (Some(allowance), Some(scored)) => {
+                format!("{}/{allowance} of {scored}", count(r.calc_visibly_off))
+            }
+            _ => count(r.calc_visibly_off),
+        };
+        let at_rate = match r.rate_functions {
+            Some(n) => format!("{}/{n} {}", count(r.below_rate), verdict(r.rate_met)),
+            None => "n/a".to_string(),
+        };
         let _ = writeln!(
             md,
-            "| {} | {coverage} | {generated} | {} [{}] {} | {} [{}] {} | {} {} | {} |",
+            "| {} | {coverage} | {generated} | {calc_off} [{}] {} | {} [{}] {} | {} {} | {at_rate} | {} |",
             r.milestone,
-            count(r.calc_visibly_off),
             count(r.calc_failing),
             verdict(r.calc_met),
             count(r.probe_visibly_off),
