@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3053: a blank reference through IF, LET, CHOOSE, IFERROR, IFNA, parentheses, @ and INDEX inside VSTACK/TOCOL/ROWS/COUNTA (does it stack like a blank reference?), and a bare INDEX of the blank-target CELL(\"contents\") result.",
+  "tags": [
+    "M7",
+    "information",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=INDEX(CELL(\"contents\",Data!C11),1)",
+        "A11": "=VSTACK(IF(TRUE,Data!C11),1)",
+        "A21": "=VSTACK(LET(x,Data!C11,x),1)",
+        "A31": "=VSTACK(CHOOSE(1,Data!C11),1)",
+        "A41": "=VSTACK(IFERROR(Data!C11,5),1)",
+        "A51": "=VSTACK((Data!C11),1)",
+        "A61": "=VSTACK(@Data!C11,1)",
+        "A71": "=VSTACK(INDEX(Data!C11,1),1)",
+        "A81": "=TOCOL(IF(TRUE,Data!C11))",
+        "A91": "=TOCOL(LET(x,Data!C11,x))",
+        "A101": "=ROWS(IF(TRUE,Data!C11))",
+        "A111": "=COUNTA(IF(TRUE,Data!C11))",
+        "A121": "=COUNTA(LET(x,Data!C11,x))",
+        "A131": "=VSTACK(INDEX(Data!C11:C12,1),1)",
+        "A141": "=VSTACK(IFNA(Data!C11,5),1)",
+        "A151": "=TYPE(INDEX(CELL(\"contents\",Data!C11),1))",
+        "A161": "=VSTACK(LET(x,CELL(\"contents\",Data!C11),x),1)",
+        "A171": "=VSTACK(IF(TRUE,CELL(\"contents\",Data!C11)),1)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "B1": 7
+      }
+    }
+  ],
+  "expected": {}
+}

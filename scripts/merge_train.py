@@ -4,6 +4,7 @@
   scripts/merge_train.py mode        # the mode on origin/main: lock, shadow or train
   scripts/merge_train.py --dry-run   # steps 2-4: collect, build, id checks; prints, writes nothing
   scripts/merge_train.py --train     # steps 1-9 and section 6 (red trains), in `train` mode only
+  scripts/merge_train.py --shadow    # steps 2-6 and section 6 on merge-train/shadow, in `shadow` mode only
 
 The mode is read from `scripts/merge_train.toml` on a freshly fetched `origin/main`, never from
 the checkout, so a branch cannot switch its own flow. The read fails closed: a missing file, a
@@ -30,12 +31,12 @@ import gh_client
 import merge_lock
 import merge_ready
 from gh_client import SHA, Client, GhError
+from merge_flip import LOCK, SWITCH
 from merge_lock import GitError, git
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
-SWITCH = "scripts/merge_train.toml"
-LOCK, SHADOW, TRAIN = "lock", "shadow", "train"
+SHADOW, TRAIN = "shadow", "train"
 MODES = (LOCK, SHADOW, TRAIN)
 # The id checks of step 4; each takes `--root <tree>`. They run from `main`'s scripts (M0).
 ID_CHECKS = (("tasks.py", "validate"), ("check_decisions.py",))
@@ -412,18 +413,25 @@ class Stage:
     renewed: float = 0.0
     main: str = ""
     lease: str = ""
+    branch: str = TRAIN_BRANCH
     log: list[str] = field(default_factory=list)
     # The tasks this hold asks for, as (priority, title, body); filing them is T-3055's.
     tasks: list[tuple[str, str, str]] = field(default_factory=list)
 
+    mode = TRAIN
+
+    @property
+    def ref(self) -> str:
+        return f"refs/heads/{self.branch}"
+
     def checkpoint(self) -> None:
         """A stop checkpoint: when `main` moved since the last one, re-read the switch from it
-        (failing closed) and stop unless it still says `train`. The stop label is T-3055's."""
+        (failing closed) and stop unless it still says this stage's mode. The stop label is T-3055's."""
         sha = remote_sha(MAIN_REF, self.root)
         if sha != self.main:
             self.main = sha
             mode = read_mode(self.root)
-            if mode != TRAIN:
+            if mode != self.mode:
                 raise Stop(f"the mode on main is now {mode}")
 
     def renew(self, prs: Sequence[int]) -> None:
@@ -436,7 +444,7 @@ class Stage:
 
     def push(self, train: Train, notes: Sequence[str] = ()) -> str:
         """Step 5: push a record commit on the train's tip (same tree; its message lists the
-        batch, then `notes`) to TRAIN_REF, leased on the last sha this hold read or pushed there.
+        batch, then `notes`) to the train branch, leased on the last sha this hold read or pushed there.
         Returns the pushed sha."""
         lines = [f"merge train on main {train.base}", ""]
         lines += [f"#{m.pr} {m.head}" for m in train.members]
@@ -445,16 +453,19 @@ class Stage:
 
     def write_train_ref(self, tree: str, parent: str, message: str) -> str:
         tip = git(*IDENTITY, "commit-tree", tree, "-p", parent, "-m", message, root=self.root).stdout.strip()
-        pushed = git("push", "-q", f"--force-with-lease={TRAIN_REF}:{self.lease}", REMOTE, f"{tip}:{TRAIN_REF}",
+        pushed = git("push", "-q", f"--force-with-lease={self.ref}:{self.lease}", REMOTE, f"{tip}:{self.ref}",
                      root=self.root, check=False)
         if pushed.returncode != 0:
-            raise Stop(f"infrastructure: the push to {TRAIN_BRANCH} lost its lease under the lock")
+            self.lost_lease()
         self.lease = tip
         return tip
 
+    def lost_lease(self) -> None:
+        raise Stop(f"infrastructure: the push to {self.branch} lost its lease under the lock")
+
     def record(self, state: Resume) -> None:
         """A cut-off's search state, as a `[skip ci]` commit on the last train tip."""
-        git("fetch", "-q", "--no-tags", REMOTE, f"+{TRAIN_REF}:refs/merge-train/current", root=self.root)
+        git("fetch", "-q", "--no-tags", REMOTE, f"+{self.ref}:refs/{self.branch}", root=self.root)
         self.write_train_ref(tree_of(self.lease, self.root), self.lease, state.render())
         self.log.append("recorded known-red " + ", ".join(f"#{pr}" for pr, _ in state.known_red)
                         + f" on {state.base[:12]}")
@@ -468,8 +479,8 @@ class Stage:
     def ci(self, tip: str, docs_only: bool | None) -> tuple[str, list[str], list[int]]:
         """The train CI's state on exactly `tip` (step 6), and the ids of the matching runs."""
         runs = [
-            r for r in self.client.workflow_runs(branch=TRAIN_BRANCH, head_sha=tip)
-            if merge_ready.text_of(r, "head_sha") == tip and merge_ready.text_of(r, "head_branch") == TRAIN_BRANCH
+            r for r in self.client.workflow_runs(branch=self.branch, head_sha=tip)
+            if merge_ready.text_of(r, "head_sha") == tip and merge_ready.text_of(r, "head_branch") == self.branch
         ]
         ids = sorted(
             merge_ready.int_of(r, "id") for r in runs
@@ -501,7 +512,7 @@ class Stage:
                 return Outcome(INFRA if infra else state, tuple(jobs), tuple(ids))
             now = self.clock()
             if not ids and dispatched is None and now - start >= DISPATCH_AFTER:
-                self.client.dispatch(CI_WORKFLOW_FILE, TRAIN_BRANCH)
+                self.client.dispatch(CI_WORKFLOW_FILE, self.branch)
                 dispatched = now
             elif not ids and dispatched is not None and now - dispatched >= DISPATCH_AFTER:
                 return Outcome(INFRA, ("no CI run on the train, even after a dispatch",))
@@ -517,7 +528,7 @@ class Stage:
             self.gate(n)
             tip = self.push(train, notes if attempt == 1 else (*notes, "retry after an infrastructure failure"))
             names = ", ".join(f"#{m.pr}" for m in train.members)
-            self.log.append(f"pushed {tip} to {TRAIN_BRANCH}: {names}")
+            self.log.append(f"pushed {tip} to {self.branch}: {names}")
             self.renew(prs)
             docs_only = not ci_changes.classify_range(train.base, tip, cwd=self.root)
             self.checkpoint()  # before the CI wait
@@ -614,7 +625,8 @@ class Stage:
         if not heads:
             self.log.append("no ready PR")
             return []
-        self.lease = remote_sha(TRAIN_REF, self.root)
+        self.lease = remote_sha(self.ref, self.root)
+        self.collected(base, heads)
         state = self.recorded()
         merged: list[int] = []
         while heads:
@@ -634,6 +646,9 @@ class Stage:
             done, base, heads = self.resolve(train, known_red, notes)
             merged += done
         return merged
+
+    def collected(self, base: str, heads: Sequence[tuple[int, str]]) -> None:
+        """A hook between step 2 and the first build; shadow mode skips a repeated round there."""
 
     def build_on(self, base: str, heads: Sequence[tuple[int, str]]) -> Train:
         """Steps 3 and 4 on `base` in scratch worktrees, with step 3's ejections made."""
@@ -737,6 +752,168 @@ class Stage:
             self.lock.release()
 
 
+# Shadow mode (SPEC-0027 section 4, "Shadow"; T-2995): steps 2-6 and section 6 against M0 on their own
+# branch, with no lock and no merge. The predicted outcome of each PR goes into a `[skip ci]` commit on
+# the shadow train, where `make merge-train-stats` (T-3076) reads it back through the commits API.
+SHADOW_BRANCH = "merge-train/shadow"
+PREDICTION_HEADER = "merge train shadow prediction [skip ci]"
+NO_RESULT = "no result"
+
+
+class Skip(Stop):
+    """A shadow round that ends with nothing pushed: nothing changed since the last shadow train,
+    or another shadow build won the race to the branch."""
+
+
+def eject_reason(reason: str) -> str:
+    """The `eject:<reason>` of a PR leaving the ready set: a conflict, an id collision, or a failed
+    readiness check (`invalidated`). It reads the reasons that `build`, `id_collision` and `collect`
+    write, so rewording one of those means updating this mapping and its test."""
+    if reason == "conflict with main":
+        return "eject:conflict"
+    if reason.startswith("id collision"):
+        return "eject:id-collision"
+    return "eject:invalidated"
+
+
+@dataclass
+class ShadowStage(Stage):
+    """One shadow round. It shares the train's build, CI wait and bisection, and swaps every write
+    for a prediction: no lock, no merge, no label or comment but the closed-PR housekeeping, and no
+    push but to `merge-train/shadow`."""
+
+    branch: str = SHADOW_BRANCH
+    predicted: dict[int, str] = field(default_factory=dict)
+    inputs: str = ""
+    tree_check: str = ""
+    batch: list[int] = field(default_factory=list)
+    pushed: bool = False
+
+    mode = SHADOW
+
+    def renew(self, prs: Sequence[int]) -> None:
+        """Shadow mode holds no lock."""
+
+    def lost_lease(self) -> None:
+        raise Skip(f"another shadow build won the race to {self.branch}; this round is skipped")
+
+    def unlabel(self, pr: int, reason: str, *, eject: bool = False) -> None:
+        self.predicted.setdefault(pr, eject_reason(reason))
+        self.log.append(f"would {'eject' if eject else 'unlabel'} #{pr}: {reason}")
+
+    def merge_green(self, train: Train, tip: str) -> list[int]:
+        """A green (prefix of a) train is predicted to merge; nothing merges, so `main` stays M0."""
+        for member in train.members:
+            self.predicted.setdefault(member.pr, "merge")
+        self.log.append("would merge " + ", ".join(f"#{m.pr}" for m in train.members) + f" (tested {tip[:12]})")
+        return []
+
+    def merge_prefix(self, train: Train, k: int, tip: str) -> str:
+        """The predicted merge of a green prefix; the confirmation and the rest stay on M0, even
+        when `main` moved during the round."""
+        self.merge_green(Train(train.base, train.members[:k]), tip)
+        return train.base
+
+    def eject_red(self, member: Member, jobs: Sequence[str], links: str) -> None:
+        self.predicted.setdefault(member.pr, "eject:ci-red")
+        self.log.append(f"would eject #{member.pr}: ci-red ({'; '.join(jobs)}; runs: {links})")
+
+    def collected(self, base: str, heads: Sequence[tuple[int, str]]) -> None:
+        """Skips the round when neither `main` nor the ready set (PRs and heads) changed since the
+        last shadow train, whose commits name their input, so CI is not spent on repeats."""
+        self.batch = [pr for pr, _ in heads]
+        self.inputs = f"shadow-input: {base} " + " ".join(f"#{pr} {head}" for pr, head in heads)
+        if self.lease and self.inputs in merge_ready.text_of(self.client.commit(self.lease), "message").splitlines():
+            raise Skip("main and the ready set are unchanged since the last shadow train")
+
+    def build_on(self, base: str, heads: Sequence[tuple[int, str]]) -> Train:
+        train = super().build_on(base, heads)
+        for pr, _ in train.deferred:
+            self.predicted.setdefault(pr, "defer")
+        if not self.tree_check and train.members:
+            self.tree_check = self.check_tree(train)
+        return train
+
+    def check_tree(self, train: Train) -> str:
+        """The shadow tree check: the first PR's GitHub test merge sits on M0 while `main` has not
+        moved, so its tree must be `tree(T_1)`. `n/a` when `main` moved or there is no test merge."""
+        first = train.members[0]
+        merge = merge_ready.text_of(self.client.pull(first.pr), "merge_commit_sha")
+        if not SHA.fullmatch(merge) or remote_sha(MAIN_REF, self.root) != train.base:
+            return "n/a"
+        commit = self.client.commit(merge)
+        parents = merge_ready.field_of(commit, "parents")
+        parent = parents[0] if isinstance(parents, list) and parents else None
+        if merge_ready.text_of(parent, "sha") != train.base:
+            return "n/a"
+        return "match" if merge_ready.text_of(commit, "tree", "sha") == tree_of(first.merge, self.root) else "mismatch"
+
+    def push(self, train: Train, notes: Sequence[str] = ()) -> str:
+        tip = super().push(train, [*notes, self.inputs])
+        self.pushed = True
+        return tip
+
+    def housekeeping(self) -> None:
+        """The one PR-visible write of shadow mode: `ready-to-merge` comes off closed PRs, which a
+        worker merged by the per-PR flow. A failure is logged and the round goes on: the
+        housekeeping is not what the round tests."""
+        try:
+            for item in self.client.closed_labelled(merge_ready.READY_LABEL):
+                if merge_ready.field_of(item, "pull_request") is None:
+                    continue
+                pr = gh_client.number(merge_ready.int_of(item, "number"))
+                self.client.remove_label(pr, merge_ready.READY_LABEL)
+                self.log.append(f"removed {merge_ready.READY_LABEL} from closed #{pr}")
+        except GhError as error:
+            self.log.append(f"housekeeping failed: {error}")
+
+    def prediction(self) -> str:
+        """The predicted-outcome record: each PR's prediction (`no result` where a stopped round
+        decided nothing), the would-be unlabels and the tree check."""
+        lines = [PREDICTION_HEADER, "", self.inputs]
+        for pr in dict.fromkeys([*self.batch, *self.predicted]):
+            lines.append(f"#{pr} {self.predicted.get(pr, NO_RESULT)}")
+        unlabel = [pr for pr, outcome in self.predicted.items() if outcome != "defer"]
+        lines.append("unlabel: " + (", ".join(f"#{pr}" for pr in unlabel) or "none"))
+        lines.append(f"tree-check: {self.tree_check or 'n/a'}")
+        return "\n".join(lines)
+
+    def finish(self) -> None:
+        """Records the prediction on the shadow train this round pushed; a lost lease skips it."""
+        if not self.pushed:
+            return
+        try:
+            self.write_train_ref(tree_of(self.lease, self.root), self.lease, self.prediction())
+        except Skip as skip:
+            self.log.append(f"skipped: {skip}")
+            return
+        self.log.append(f"recorded the prediction on {self.branch}")
+
+    def run(self, window: float = WINDOW) -> int:
+        """One shadow round in `shadow` mode. 0 when it ended normally or was skipped, 1 when it
+        stopped. A cut-off keeps its search-state record as the branch tip, so the next round
+        resumes the bisection; any other stop records `no result` for the PRs it did not decide."""
+        mode = read_mode(self.root)
+        if mode != SHADOW:
+            self.log.append(f"the mode on main is {mode}: shadow mode stops")
+            return 0
+        self.housekeeping()
+        try:
+            self.hold()
+        except Skip as skip:
+            self.log.append(f"skipped: {skip}")
+            return 0
+        except CutOff as stop:
+            self.log.append(f"stopped: {stop}")
+            return 1
+        except Stop as stop:
+            self.log.append(f"stopped: {stop}")
+            self.finish()
+            return 1
+        self.finish()
+        return 0
+
+
 def raise_on_term(signum: int, _frame: object) -> None:
     """SIGTERM unwinds like an error, so the hold's `finally` releases the lock."""
     raise SystemExit(128 + signum)
@@ -746,8 +923,8 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     if argv == ["mode"]:
         print(read_mode(root))
         return 0
-    if argv not in (["--dry-run"], ["--train"]):
-        print("usage: merge_train.py mode | --dry-run | --train", file=sys.stderr)
+    if argv not in (["--dry-run"], ["--train"], ["--shadow"]):
+        print("usage: merge_train.py mode | --dry-run | --train | --shadow", file=sys.stderr)
         return 2
     client = gh_client.from_remote(root, REMOTE)
     if client is None:
@@ -758,7 +935,8 @@ def main(argv: list[str], root: Path = ROOT) -> int:
             print(dry_run(client, root))
             return 0
         signal.signal(signal.SIGTERM, raise_on_term)
-        stage = Stage(client, root, LockOps(f"train-{int(time.time())}", root))
+        kind = ShadowStage if argv == ["--shadow"] else Stage
+        stage = kind(client, root, LockOps(f"train-{int(time.time())}", root))
         code = stage.run()
         print("\n".join(stage.log))
         return code

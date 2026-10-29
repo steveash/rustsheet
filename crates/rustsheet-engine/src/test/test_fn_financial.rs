@@ -905,3 +905,23 @@ fn fn_xirr_empty_guess_is_the_default() {
     assert_eq!(model._get_text("A3"), *"TRUE");
     assert_eq!(model._get_text("A4"), *"TRUE");
 }
+
+// Past `(1+rate)^nper`'s range a fractional nper gives what an integer one does; type 1 at a rate
+// that is not a whole number is `-B*(rate/(1+rate))`, at a whole rate the exact quotient
+// (probes/t2665-ipmt-fractional-nper-past-range A160, A208; gen-m9 b73c6cc96e093f03 A268; T-2665).
+#[test]
+fn ipmt_past_the_range_fractional_nper_is_the_integer_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=IPMT(0.5,50,100000.5,92160,674,1)");
+    model._set("A2", "=IPMT(1.005,7,18518518.44345,92160,674,1)");
+    model._set("A3", "=IPMT(1.005,7,100000,92160,674,1)");
+    model._set("A4", "=IPMT(42,8,290,392736,-0.5,1)");
+    model._set("A5", "=IPMT(0.1,7,1000000.25,1000,0,0)");
+    model.evaluate();
+    let number = |row| model.get_cell_value_by_index(0, row, 1);
+    assert_eq!(number(1), Ok(CellValue::Number(-30720.0)));
+    assert_eq!(number(2), Ok(CellValue::Number(-46194.91271820449)));
+    assert_eq!(number(3), Ok(CellValue::Number(-46194.91271820449)));
+    assert_eq!(number(4), Ok(CellValue::Number(-383602.6046511628)));
+    assert_eq!(number(5), Ok(CellValue::Number(-100.0)));
+}

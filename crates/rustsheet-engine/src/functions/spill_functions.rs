@@ -270,6 +270,28 @@ fn by_array_axes(key: &[Vec<ArrayNode>], rows: usize, cols: usize) -> (bool, boo
     )
 }
 
+/// An argument that must be an array rejects the empty value a value-returning call gives for a
+/// blank cell (`EmptyArg`: `CELL("contents",<blank>)`, `IFERROR(<blank>,5)`, `IFNA(..)`), through
+/// IF, LET, CHOOSE, `@` and parentheses too, with `#VALUE!`, while a blank reference read through
+/// those wrappers is a blank cell that stacks as 0 (`VSTACK(IFERROR(Data!C11,5),1)` and
+/// `TOCOL(CELL("contents",Data!C11))` `#VALUE!`, `VSTACK(IF(TRUE,Data!C11),1)` 0;1;
+/// probes/t3030-cell-contents-blank-shapers, probes/t3053-blank-reference-wrappers, excel-graph,
+/// T-3053; information.md). An argument left out of the formula is not checked (unprobed).
+pub(crate) fn reject_empty_value(
+    arg: &Node,
+    result: CalcResult,
+    cell: CellReferenceIndex,
+) -> Result<CalcResult, CalcResult> {
+    if matches!(result, CalcResult::EmptyArg) && !matches!(arg, Node::EmptyArgKind) {
+        return Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "an empty value is not an array".to_string(),
+        ));
+    }
+    Ok(result)
+}
+
 impl Model {
     /// Evaluate a node and convert the result to a 2-D array of `ArrayNodes`.
     /// Handles Range references, inline Arrays, and scalar values.
@@ -282,6 +304,17 @@ impl Model {
         self.result_to_array(result, cell)
     }
 
+    /// [`Model::eval_to_array`] for an argument that must be an array ([`reject_empty_value`]).
+    pub(crate) fn eval_array_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        let result = self.evaluate_node_in_context(node, cell);
+        let result = reject_empty_value(node, result, cell)?;
+        self.result_to_array(result, cell)
+    }
+
     /// [`Model::eval_to_array`] that keeps a lone blank cell blank, as a blank cell of a range is:
     /// `TOROW(Z1,3)` is `#CALC!` and `UNIQUE(Z1)&"x"` is "x" (docs/excel-semantics/arrays.md
     /// "TOROW and UNIQUE of a lone blank cell", T-2409).
@@ -291,6 +324,18 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
+        self.result_to_array_keep_blank(result, cell)
+    }
+
+    /// [`Model::eval_array_arg`] that keeps a lone blank cell blank, as
+    /// [`Model::eval_to_array_keep_blank`] does.
+    pub(crate) fn eval_array_arg_keep_blank(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        let result = self.evaluate_node_in_context(node, cell);
+        let result = reject_empty_value(node, result, cell)?;
         self.result_to_array_keep_blank(result, cell)
     }
 
@@ -800,7 +845,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
+        let data = match self.eval_array_arg(&args[0], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };

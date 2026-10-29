@@ -1030,7 +1030,9 @@ Tasks: T-1872, T-1891, T-0971, T-0972, T-2795
 ## Incomplete gamma: accurate kernel (T-0971)
 Rule: Excel's regularized incomplete gamma (GAMMA.DIST, GAMMADIST, CHISQ.DIST, CHISQ.DIST.RT, CHIDIST, CHISQ.TEST,
 CHITEST, POISSON.DIST and POISSON cdfs) is close to correctly rounded against a 50-digit reference, in both tails:
-the upper tail is not 1 - P. A shape of 1 is the exponential distribution in doubles: `GAMMA.DIST(1,1,1,TRUE)` =
+the upper tail is not 1 - P.
+CHISQ.TEST and CHITEST take the direct tail at every df (T-3058; `CHITEST` at chi2 = 18, df 2 is `EXP(-9)`,
+probes-numeric/m9-legacy-chitest A23). A shape of 1 is the exponential distribution in doubles: `GAMMA.DIST(1,1,1,TRUE)` =
 0.6321205588285577 = `-EXPM1(-1)` (BETA_GAMMA.xlsx L2, GAMMA.xlsx E4, E6). At a huge shape Excel keeps its digits
 where statrs lost them: `CHISQ.DIST(1E10,1E10,TRUE)` = 0.5000018806319452 (probes/incomplete-gamma-cap E16; statrs
 0.4999982128217492), and `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)` is 1 (E4), where statrs' continued fraction never
@@ -2374,8 +2376,7 @@ Implemented in: `functions/statistical/bratio/mod.rs` `bpser` (T-2505) through `
 (`binom.rs`; T-2847), and F.TEST's tail with its own L (`f_test_tail.rs`, T-2681): the w3 series and
 EXP of the extended z, with GL53/glalgdiv's L for min(a, b) < 1 and the extended GAMMALN sum for min >= 1, max <= 8.
 Its algdiv (b0 >= 8) is `beta_density::algdiv` in doubles, where the model runs TOMS algdiv x87 stored.
-Both shapes > 1 with max > 8 (the model's accurate ln B) and a caller's shape of exactly 1 stay on Cephes'
-fractions; L140's bpser(a0, 1, x0) at a whole b0 takes L = -LN(a0) (T-2506 above a0 = 8, T-2847 at every a0). On
+A caller's shape of exactly 1 stays on Cephes' fractions (both shapes > 1 with max > 8 did until T-3007, below); L140's bpser(a0, 1, x0) at a whole b0 takes L = -LN(a0) (T-2506 above a0 = 8, T-2847 at every a0). On
 probes-numeric it moves a net 12,408 cells to bit-exact and takes visibly-off numbers from 104,206 to 100,013; 987
 bit-exact cells moved off and 7 became visibly off (listed in T-2847). T-2847 moved F, BINOM and NEGBINOM onto it: gen-m9
 3,666 -> 3,602 known failures, ironcalc-calc 617 -> 595, probes 2,913 -> 2,912, with 9 cells 1 to 5 ulp off recorded
@@ -2384,9 +2385,28 @@ bit-exact cells moved off and 7 became visibly off (listed in T-2847). T-2847 mo
 workbook's x = (0.7-0.2)/(1.2-0.2) = 0.49999999999999994, Excel 0.4999999999999999, now bit-exact), while the BETA.INV
 on it (H15, Excel 0.7) goes 2 ulp low, 0.6999999999999997: BETA.INV's own search, its input now exact (T-2978).
 docs/research/t2506/RESULTS.md's 72 probes-numeric L140 cells it adds at a0 <= 8 are not re-scored here (T-2977).
+Both shapes > 1 with max > 8 (T-3007): bpser's L is the accurate ln B at half-integer shapes with a + b <= 400 (the
+model's `w3_big = "acc"`, the double-double B F.TEST's tail already took; `bratio/ln_beta.rs`
+`neg_ln_beta_half_integer`) and TOMS `betaln` in doubles with Excel's GAMMALN and LN elsewhere (`toms_betaln`: bcorr for
+both >= 8, gamln + algdiv for a < 2, the reduction of a otherwise). Against the previous Cephes fractions on the full
+eval: bit-exact +67, visibly off -79 (BETA.DIST +6/-4, BINOM.DIST +27/-62, F.DIST +11/-4, F.DIST.RT +16/-3, FDIST 0/-1,
+NEGBINOM.DIST +7/-5, BETADIST -1/0, BINOMDIST +1/0); gen-m9 3,312 -> 3,311 known failures (c6cfda6bd10cae93 A289),
+probes 2,746 -> 2,741 (t2829-ftest-tail-over-b A12, A13, A15, A19, A20 now within the gate), no gated regression.
+Gross, on every scored cell (`docs/research/t3007/cell_diff.py`): 281 cells closer to Excel, 63 further; 15 bit-exact
+cells moved off (all probes-numeric, ungated: t2145-binomial-sweep A1700, m9-legacy-betadist A17, A18, t2220-f-dist-sweep-rt
+A480, A858, A860, t0969-beta-prefactor D129, D131, t2145-negbinom-sweep A932, A1060, t1745-beta-inv-roundtrip G123, H123,
+I123, t2220-f-dist-sweep-cdf A828, m9-beta-dist-a100 A19) and 4 became visibly off (t2145-binomial-sweep A2114, A2748,
+A2750, t2220-f-dist-sweep-cdf A828). The a + b <= 400 cap bounds `half_integer_beta`'s recurrence (directive 5) and is a
+choice between the two research forms, not an Excel boundary: no oracle cell has half-integer shapes above it on this
+branch. The half-integer/TOMS split is provisional: T-2924's fit of Excel's ln B, once found, replaces both forms.
+TOMS `betaln` at every shape (half-integers included) scores bit-exact +150, visibly off -73, but moves gen-m9
+05d44f6dd6cfc567 A222 (`BINOM.DIST(1,10,0.05,2)`, a = 2, b = 9, Excel 0.9138616441006836) 1 ulp low, where the accurate
+-LN(90) is exact; per betaln branch it wins on every one (bcorr 35 better/9 worse cells, a < 2 16/13, reduction
+189/42), so Excel's L is neither form alone (T-2924). Still visibly off: t2829-ftest-tail-over-b A1, A3, A4, A6, A7,
+A9 (A18 is now within 4 ulp): T-2924's k plus whole fl(a·LN x) steps, as above.
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
-b0 >= 8, all others); bit-exact 52-75%
-Tasks: T-2505, T-2512, T-2122
+b0 >= 8, all others); bit-exact 52-75%; both > 1 with max > 8 a provisional form (T-3007)
+Tasks: T-2505, T-2512, T-2122, T-3007
 
 ## Incomplete beta L140 and bfrac: the prefactor is Excel's own density times x·y (T-2464)
 Rule: for a, b > 1 with b0 < 40 and b0·x0 > 0.7 (bratio's L140), I = fl(bup(b0', a0, y0, x0, n) + bpser(a0, b0', x0))
@@ -3710,7 +3730,9 @@ has one point or the error is not the k-th value: `LARGE({1,#N/A,3},3)` and `LAR
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-2430 and T-2093.
 Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3},(<FALSE>/"x~*"))` and `COVARIANCE.S({1,#N/A,3},RANK(<#VALUE!>))`
 are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
-(gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
+(gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36). That holds for an element's error that an inner call has already
+returned as a value: `SMALL((SMALL({1,#N/A,3},2)/1.005),Data!C8)` with Data!C8 = `a*` is `#N/A`, not k's `#VALUE!` (gen-m9/1b31092a0d79e5f1
+A363). Ours gives `#VALUE!` because the inner call's tag stays on the error (T-3080).
 Probed on excel-graph (T-2636, probes/array-error-element-order): PROB (`PROB({1,#N/A,3},{0.2,0.3,0.5},1)`, an element in
 either data argument, with a limit error or an extra upper limit) and SLOPE, INTERCEPT, STEYX, RSQ, FORECAST.LINEAR and
 CHISQ.TEST with the element in either position are all `#N/A`; with an element error in each data argument the first
