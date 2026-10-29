@@ -52,7 +52,8 @@ and T-2586 sweeps after T-3034 fall to the share the new model measures, with no
 ### Cases owned
 F.DIST density cells per case at this triage, the visibly-off count without T-3174's |P| < 4 cells (of all
 visibly-off F.DIST cells in the case):
-- probes-numeric/t2220-f-dist-sweep-pdf: 52 (of 58)
+- probes-numeric/t2220-f-dist-sweep-pdf: 52 (of 58); disjoint from T-2790's 89 named cells (the one
+  shared address, A797, is one T-2790 lists as not its target)
 - probes-numeric/t2513-r3-fdensity-hold: 176 (of 176)
 - probes-numeric/t2513-verify-r3-fdensity-hold: 174 (of 174)
 - probes-numeric/t2586-r4-f-brcomp-big: 570 (of 570)
