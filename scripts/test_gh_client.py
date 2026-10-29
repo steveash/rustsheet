@@ -21,6 +21,14 @@ PAGE = "per_page=100&page=1"
 FIXTURES: list[tuple[str, Callable[[Client], object], str, str, object, object]] = [
     ("pull", lambda c: c.pull(7), "GET", "repos/o/r/pulls/7", None, {"state": "open"}),
     ("pulls", lambda c: c.pulls(), "GET", f"repos/o/r/pulls?state=open&{PAGE}", None, []),
+    (
+        "closed_labelled",
+        lambda c: c.closed_labelled("ready-to-merge"),
+        "GET",
+        f"repos/o/r/issues?state=closed&labels=ready-to-merge&{PAGE}",
+        None,
+        [],
+    ),
     ("comments", lambda c: c.comments(7), "GET", f"repos/o/r/issues/7/comments?{PAGE}", None, []),
     ("reviews", lambda c: c.reviews(7), "GET", f"repos/o/r/pulls/7/reviews?{PAGE}", None, []),
     (
