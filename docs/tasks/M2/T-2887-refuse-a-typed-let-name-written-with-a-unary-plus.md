@@ -3,7 +3,7 @@ id: T-2887
 title: "Refuse a typed LET name written with a unary plus: =LET(+x,1,x)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,9 +25,12 @@ LET name the same way. Other declarations that are not names (`LET(1,1,1)`) are 
 refusal beyond a plus.
 
 ## Acceptance criteria
-- [ ] Typed `=LET(+x,1,x)` gives `#ERROR!`, pinned by a unit test; the TODO(T-2887) in test_fn_let.rs is resolved.
-- [ ] syntax.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] Typed `=LET(+x,1,x)` gives `#ERROR!`, pinned by a unit test; the TODO(T-2887) in test_fn_let.rs is resolved.
+- [x] syntax.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A plus inside a LET value or body (`LET(x,1,+x)` is valid).
+
+## Outcome
+`LET(+x,1,x)` now gives `#ERROR!` (a `UnaryPlus` declaration in `let.rs`, like a repeated name); other non-name declarations stay `#VALUE!` (unprobed). Pinned in test_fn_let.rs; syntax.md updated. Eval: no change expected (refused input has no cases).
