@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3063: WRAPCOLS of a one-cell empty range; error type, else rows.",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-3063"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "G1": "=IFERROR(ERROR.TYPE(ROWS(_xlfn.WRAPCOLS(Z1:Z1,NA()))),ROWS(_xlfn.WRAPCOLS(Z1:Z1,NA())))"
+   }
+  }
+ ]
+}

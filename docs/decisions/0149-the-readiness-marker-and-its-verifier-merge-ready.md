@@ -2,7 +2,7 @@
 
 - **Status:** accepted (2026-10-28, T-2986). It implements SPEC-0027 section 2 ("The readiness
   handoff", checks V1-V6) and section 4 step 6 (the "green" rule), and is not in force for any
-  merge until `scripts/merge_train.toml`'s mode says so (T-2996).
+  merge until `scripts/merge_train.toml`'s mode says so (T-2996). Amended by 0161 (`mark`).
 - **Context:** The merge train needs a mechanical check that a PR was marked ready by a writer
   for its current head, is green and approved, without reviewing it again. T-3001's probe found
   that the session proxy refuses the permission API (HTTP 403), which V1 and V6 were specified

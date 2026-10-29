@@ -167,6 +167,13 @@ Examples:
 - gen-m9/73f053591a54bc43 Calc!A108 `=NORMSDIST(MOD(SUMIF(Data!A10:D12,"",Data!B4:E12),CHISQ.INV.RT(0.975,5)))`: Excel 0.6004864351048662, ours 0.6004864351048611
 Cells:
 - gen-m9/73f053591a54bc43.case.json (1): Calc!A108
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/8f2ac25945af87da.case.json: Calc!A240
+  - gen-m9/b4173fe25109a238.case.json: Calc!A252
+  - gen-m9/c2974c061384fdd9.case.json: Calc!A355, A179
+  - gen-m9/146b46e74f2dac3b.case.json: Calc!A152
+  - gen-m9/60b0b6e69ad35a45.case.json: Calc!A210
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 65 known-failure lines (64 from T-2255, 1 from T-2256) disappear from eval/baseline/gen-m9.txt
