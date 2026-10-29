@@ -94,9 +94,16 @@ struct Criteria {
     calc: bool,
     /// Spill extents are an exit criterion (M7, decision 0140).
     extent: bool,
-    /// Coverage and ironcalc-calc counts are shown even where not required (M2, M7); M1 and M11
-    /// have neither measure, so both stay `n/a` (decision 0146).
-    scope_shown: bool,
+}
+
+impl Criteria {
+    /// Whether the row shows the coverage and ironcalc-calc counts. M2 to M7 show them, also
+    /// where they are not required (M2's coverage, M7's both). M1 and M11 have none of the
+    /// function measures (coverage, ironcalc-calc, spill extents), so both stay `n/a` there
+    /// (decision 0146).
+    fn shows_scope(&self) -> bool {
+        self.coverage || self.calc || self.extent
+    }
 }
 
 fn criteria(milestone: &str) -> Criteria {
@@ -113,7 +120,6 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: false,
             extent: false,
-            scope_shown: false,
         },
         // "100%": no gen-m2 cell visibly off.
         "M2" => Criteria {
@@ -122,7 +128,6 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: true,
             extent: false,
-            scope_shown: true,
         },
         "M7" => Criteria {
             suites: generated(M7_MIN_SCORED, RATE_NUM),
@@ -130,7 +135,6 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: false,
             extent: true,
-            scope_shown: true,
         },
         "M11" => Criteria {
             suites: vec![SuiteNeed::named(
@@ -142,7 +146,6 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: false,
             extent: false,
-            scope_shown: false,
         },
         _ => Criteria {
             suites: generated(MIN_SCORED, RATE_NUM),
@@ -150,7 +153,6 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: true,
             calc: true,
             extent: false,
-            scope_shown: true,
         },
     }
 }
@@ -297,7 +299,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 ..ExitRow::default()
             };
             let coverage = report.catalog_coverage.iter().find(|c| c.milestone == m);
-            if let Some(c) = coverage.filter(|_| need.scope_shown) {
+            if let Some(c) = coverage.filter(|_| need.shows_scope()) {
                 row.functions = Some(c.functions);
                 row.covered = Some(c.covered);
                 row.coverage_met = need.coverage.then_some(c.covered == c.functions);
@@ -315,7 +317,10 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             row.gen_visibly_off_cells = first.visibly_off_cells;
             row.gen_suite = first.name;
             let suite = &row.gen_suite;
-            let scope = report.function_scope.as_ref().filter(|_| need.scope_shown);
+            let scope = report
+                .function_scope
+                .as_ref()
+                .filter(|_| need.shows_scope());
             if let Some(r) = scope.and_then(|s| s.rows.iter().find(|r| r.milestone == m)) {
                 let failing = r.failing.len().saturating_sub(r.excepted.len());
                 let visible = r
