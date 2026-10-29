@@ -7,7 +7,7 @@ use crate::{
     cast::value_number_text,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::collation::{cmp_text, fold_final_sigma},
+    functions::util::collation::{cmp_text, fold_case},
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     text::Text,
@@ -196,7 +196,7 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
 fn result_starts_with_units(calc_result: &CalcResult, target: &[u16]) -> bool {
     match calc_result {
         CalcResult::String(s) => {
-            let folded = s.map_runs(fold_run);
+            let folded = s.map_runs(fold_case);
             let mut units = folded.units();
             target.iter().all(|unit| units.next() == Some(*unit))
         }
@@ -517,7 +517,7 @@ pub(crate) fn build_criteria_with<'a>(
                         // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
                         Box::new(move |x| matches!(x, CalcResult::EmptyCell))
                     } else if flavor == CriteriaFlavor::Database && !explicit_equals {
-                        let folded = operand_text(s, "").map_runs(fold_run);
+                        let folded = operand_text(s, "").map_runs(fold_case);
                         let prefix: Vec<u16> = folded.units().collect();
                         Box::new(move |x| result_starts_with_units(x, &prefix))
                     } else {
@@ -566,28 +566,15 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
     criterion.slice_utf16(prefix.len(), criterion.len_utf16())
 }
 
-/// The case fold of the exact, wildcard and D-function prefix text matches: `run` lower-cased,
-/// then through [`fold_final_sigma`] (Excel's `MATCH("ς",...,0)` finds `σ`). Unlike SEARCH's
-/// one-char fold (`text::casefold`), the run may grow (`İ` lower-cases to `i` + U+0307); match
-/// folds have no positions to keep, so this keeps the fold MATCH had before T-3114.
-pub(crate) fn fold_run(run: &str) -> String {
-    let lower = run.to_lowercase();
-    if lower.contains('ς') {
-        lower.chars().map(fold_final_sigma).collect()
-    } else {
-        lower
-    }
-}
-
 /// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run folded by
-/// [`fold_run`], then read as UTF-16 units (for ASCII text, each byte lower-cased).
+/// [`fold_case`], one character to one, then read as UTF-16 units (for ASCII text, each byte lower-cased).
 pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
     match text {
         Text::Utf8(s) if s.is_ascii() => s
             .bytes()
             .map(|byte| u16::from(byte.to_ascii_lowercase()))
             .collect(),
-        _ => text.map_runs(fold_run).units().collect(),
+        _ => text.map_runs(fold_case).units().collect(),
     }
 }
 
@@ -622,11 +609,11 @@ pub(crate) struct WildcardPattern {
 impl WildcardPattern {
     /// Compiles `pattern`.
     pub(crate) fn new(pattern: &Text) -> WildcardPattern {
-        Self::from_units(pattern.map_runs(fold_run).units())
+        Self::from_units(pattern.map_runs(fold_case).units())
     }
 
-    /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds with its
-    /// own rules, see `fold_case` in functions/text/casefold.rs).
+    /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds the whole
+    /// text once with [`fold_case`] and searches its units).
     pub(crate) fn from_units(units: impl Iterator<Item = u16>) -> WildcardPattern {
         let mut units = units;
         let mut tokens = Vec::new();

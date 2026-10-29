@@ -3,7 +3,7 @@ id: T-3133
 title: "Exact MATCH/VLOOKUP/HLOOKUP keys and wildcard criteria fold case one character to one, as Excel does (İ, final sigma, Kelvin sign, ẞ, titlecase digraphs)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -55,23 +55,23 @@ neither.
   - one `COUNTIFS` cell per pair, so that both criteria entry points are seen.
 
 ## Acceptance criteria
-- [ ] `probes/t3133-lookup-criteria-case-fold` is committed with its excel-graph oracle sidecar. It covers the
+- [x] `probes/t3133-lookup-criteria-case-fold` is committed with its excel-graph oracle sidecar. It covers the
       characters above in exact MATCH, VLOOKUP(..,FALSE), HLOOKUP(..,FALSE), wildcard COUNTIF/COUNTIFS (with `?`,
       `*` and a literal suffix) and wildcard MATCH/XMATCH, both ways round for each pair.
-- [ ] Every cell of that case passes. The cells of probes/criteria-lone-surrogates, text-collation-lookups,
+- [x] Every cell of that case passes. The cells of probes/criteria-lone-surrogates, text-collation-lookups,
       criteria-wildcard-tilde, criteria-wildcard-newline and the gen-m2 suite still pass (`make eval-check`: 0
       regressions; `make eval-baseline` run).
-- [ ] The fold the case fits is defined once and shared by `WildcardPattern`, `folded_units` and `ExactKey`. If it
+- [x] The fold the case fits is defined once and shared by `WildcardPattern`, `folded_units` and `ExactKey`. If it
       equals `fold_case` or `fold_match_char`, the existing function in functions/text/casefold.rs is reused
       rather than copied: `fold_case` is `pub(super)` and `fold_match_char` is private, so move the shared fold
       to one home that both functions/text and functions/criteria.rs import (no ad hoc re-export, no copy). A unit test shows that an indexed exact search (`ExactIndex`) and a linear one agree on
       `İ`, `ΟΣ` and the Kelvin sign.
-- [ ] criteria.md "Wildcard escapes, case and trailing tilde" and lookup.md, at the exact-match key, record the
+- [x] criteria.md "Wildcard escapes, case and trailing tilde" and lookup.md, at the exact-match key, record the
       probed fold as VERIFIED with the case id and cells. Characters the probe did not cover are named as
       UNVERIFIED.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
-- [ ] If T-3114 (open PR #2287, collation) has merged first, `origin/main` is merged in and the fold sits beside
+- [x] If T-3114 (open PR #2287, collation) has merged first, `origin/main` is merged in and the fold sits beside
       its collation changes in functions/criteria.rs, criteria.md and lookup.md without undoing them.
 
 ## Out of scope
@@ -79,3 +79,17 @@ neither.
   order (T-3115).
 - SEARCH, TEXTSPLIT, TEXTBEFORE and TEXTAFTER folds, which are already probed. Do not change them.
 - XLOOKUP/XMATCH binary search modes (M6).
+
+## Outcome
+- probes/t3133-lookup-criteria-case-fold (426 cells, excel-graph): 35 characters looked up both ways through exact
+  MATCH, VLOOKUP/HLOOKUP(..,FALSE), XMATCH exact and wildcard, wildcard MATCH, SUMIF/SUMIFS/COUNTIFS with `x*`, `*x`,
+  `x?`, and `?`/`??`/`???`/`*`. Excel's lookup and wildcard fold is SEARCH's one-to-one per-character fold: `İ`
+  matches only itself, `ΟΣ = οσ = ος`, Kelvin = `k`, `ẞ = ß`, `ǅ = ǆ = Ǆ`, `ſ` and `µ` apart.
+- The fold now has one home, `fold_case`/`fold_char` in functions/util/collation.rs, used by SEARCH,
+  TEXTSPLIT/TEXTBEFORE (through `fold_char`), `folded_units`, `WildcardPattern::new` and `ExactKey`; `criteria::fold_run`
+  (Rust's full lowercase) is gone. D-function prefixes follow it (UNVERIFIED).
+- XMATCH's exact mode uses the collation, where Excel equates `İ` with `i` + U+0307 (and not with `I`): `decompose`
+  now gives `İ` that decomposition (it folded to a plain `i`). Rank and `=` equality of `İ` inferred, UNVERIFIED.
+- Unit test: the indexed and linear exact searches agree on `İ`, `ΟΣ`, the Kelvin sign and `ẞ`.
+- Eval delta: +1 case (426 cells) passing; 36 cells were failing before the change. No regressions.
+- Docs: criteria.md, lookup.md, coercion.md, text.md.
