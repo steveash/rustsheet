@@ -97,6 +97,12 @@ for s in segs:
     # KN (T-2122 run 6, as scan2.py): the control's B with the N chain's ops j >= KN left in 80-bit (maskmodel.res)
     Bv = (res(xx, Nt, Dt) if not os.environ.get("KN") else mres(xx, Nt, Dt, kn=int(os.environ["KN"]))) if mode == "control" else b[s]
     r = resid(xx, Bv, ref)
+    # BIASFILE (T-2122 run 7, HANDOFF2 19): subtract the residual the base set itself leaves when its N ops j >= BIASKN
+    # are kept in 80-bit (the base's own bias under an unstored top). Every step from r to the scan's score is linear in
+    # r up to the per-run norm, so this scans data minus bias in one pass instead of ranking two maps against each other.
+    if os.environ.get("BIASFILE"):
+        Nb_, Db_ = ld(os.environ["BIASFILE"])
+        r = r - resid(xx, mres(xx, Nb_, Db_, kn=int(os.environ.get("BIASKN", 7))), ref)
     c1, u1 = curves(kS, W, r)
     c2, u2 = curves(kP, W, r)
     CS.append(c1)
