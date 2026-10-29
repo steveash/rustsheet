@@ -790,7 +790,8 @@ Next evidence: T-3117 scales the same flows by exact powers of two, where only a
 negates them.
 Evidence: probes/irr-fallback-roots A1-A24 (excel-graph, 2026-10-26); the gen-m9 cells above;
 probes-numeric/t2927-irr-fallback-sweep (excel-graph, 2026-10-27).
-Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the step cap (between 29 and 119)
+Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method (not Newton, finding 6) and the step cap
+(between 29 and 119)
 Implemented in: `irr_fallback`, `IRR_FALLBACK_STEPS` (functions/financial/financial_util.rs)
 Tasks: T-2727, T-1686, T-2131, T-2927 (sweep), T-2928 (returned digits), T-3117 (power-of-two probe)
 
