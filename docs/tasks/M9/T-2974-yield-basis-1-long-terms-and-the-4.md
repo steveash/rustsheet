@@ -3,7 +3,7 @@ id: T-2974
 title: "YIELD basis-1 long terms and the 4-year sweep row miss Excel's 15th digit by 5 to 27 ulp (yield-start-rate-term B39, B49; yield-solver-sweep C7)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -96,3 +96,16 @@ A, which repeat existing cells. No regressions.
 - Next: find what the tie groups do to `pr·T`, then put the FMA form in `yield_start`. ODDFYIELD shares the start.
 - Eval delta: one new probe case, 360 cells. The engine (rounded-once start) passes 202. The 158 new known failures
   are YIELD cells of that case 1 to 67 ulps off. No other cell changed and nothing regressed.
+
+## Outcome
+Attempt 4, 2026-10-29; the task is done.
+- Excel's start reads `pr·T` with the term unrounded: `D = fl(pr·(whole + fl(days/year)) + fl(100·T))`, the rest of
+  attempt 3's term-scaled form in doubles. Lab: 960 of 1,115 YIELD probe cells bit-exact, against 790 for attempt 3's
+  FMA form and 709 for the rounded-once start. Every candidate and its counts are in financial.md "YIELD stops short of
+  PRICE's root", T-2974 attempt 4.
+- Engine: `yield_start` computes `D` in double-double. yield-solver-sweep C7, yield-start-rate-term B39,
+  yield-newton-domain P!B2 and yield-one-step-start A68 are bit-exact. B49 has Excel's start but stays off on the
+  engine's PRICE; it moves to T-3144.
+- Eval delta: 515 known failures fixed (probes 494, ironcalc-calc 12, gen-m9 9). 58 YIELD and ODDFYIELD cells moved off
+  the bit (decision 0166; follow-up T-3152 lists them), one visibly (yield-one-step-start A37, 32 ulps). In-scope
+  visibly-off cells go from 3,166 to 3,141.

@@ -2614,8 +2614,38 @@ FMA, but that explanation is a hypothesis. The fit is not complete: about one st
   score at most 16 of 741, so the slope stays analytic.
 Next: find what the tie groups do to `pr·T`, then put the FMA form in `yield_start` (it changes ODDFYIELD too, which
 shares the start).
+T-2974 (attempt 4, 2026-10-29): the tie anomaly is the term's rounding. Excel's denominator reads `pr·T` with `T` as the
+exact sum `whole + fl(days/year)`, not that sum rounded to a double, and rounds `pr·T + fl(100·T)` once:
+`S = ((r·T)·100 + q) / (D/2 - q/4)`, `D = fl(pr·(whole + fl(days/year)) + fl(100·T))`, every other `T` the rounded
+double. An 80-bit register holding `T` for that one product would do it; that is a hypothesis.
+- Found by shifting `fl(100·T)` per term group: where its rounding is a tie that rounds down, Excel needs it one ulp
+  lower, and the best shift has the opposite sign of `100·T`'s rounding error elsewhere too. So the products see a `T`
+  other than the double. Scoring the term in each product as the double, the exact `N/Y`, `N/Y` rounded to 64 bits,
+  or `whole + fl(days/year)` exact or rounded to 64 bits, showed only `pr·T` wants the unrounded one.
+- Lab (`^`-priced PRICE, the short stop; 1,115 YIELD probe cells, attempt 3's set plus yield-price-at-iterates):
+  | start | bit-exact | within 4 ulps | tie groups (360 cells) |
+  |---|---|---|---|
+  | rounded once (decision 0162) | 709 | 1,087 | - |
+  | attempt 3's `fma(pr, T, 100·T)` | 790 | 1,097 | 134 |
+  | the same, `fl(100·T)` one ulp lower on down-rounded ties only (diagnostic) | 987 | 1,109 | 331 |
+  | `pr·T` with `T` = `N/Y` exact | 945 | 1,105 | 334 |
+  | `pr·T` with `T` = `whole + fl(days/year)` rounded to 64 bits | 954 | 1,106 | 334 |
+  | `pr·T` with `T` = `whole + fl(days/year)` exact | **960** | **1,108** | 334 |
+  | the same with the numerator `fma(r·T, 100, q)` | 935 | 1,106 | 335 |
+  | the same with the numerator in 64 bits on the unrounded term | 820 | 1,097 | 319 |
+  | `100·T` also from the unrounded term (numerator `fma(r·T, 100, q)`) | 857 | 1,103 | 335 |
+  | `100·T` as `100·whole + 100·(days/year)` or `(100·days)/year + 100·whole` | 697 to 699 | 1,094 | 134 |
+  | x87: `pr·T` rounded to 64 bits, the sum to 64 then 53 | 945 to 960 | 1,105 to 1,108 | 334 |
+  Twelve denominator arrangements around the FMA form (`(100 + pr)·T`, `fma(100, T, pr·T)`, `q/2` inside the FMA, halves
+  first) score 657 to 790.
+- yield-solver-sweep C7 and E12, yield-start-rate-term B39, yield-newton-domain P!B2 and yield-one-step-start A68 are
+  bit-exact under it, in the lab and in the engine. yield-start-rate-term B49 has Excel's start but stays 15 ulps off on
+  the engine's PRICE (T-3144).
+- The engine (`yield_start`, double-double for `D`): 515 known failures fixed, 58 YIELD and ODDFYIELD cells moved off
+  the bit (51 by 1 ulp, one visibly: yield-one-step-start A37, 32 ulps; decision 0166, follow-up T-3152). In-scope
+  visibly-off cells go from 3,166 to 3,141. The lab still misses 155 of 1,115 cells.
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
-T-2777's term (`yield_start_term`). Since
+T-2777's term (`yield_start_term`) and, since T-2974 attempt 4, `pr·T` on the unrounded term (`yield_start`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
 cells and its 100-step cap").
 Off the fit (T-2741, `make eval` on de48145d): of the 370 probe and ironcalc-calc YIELD cells that were visibly off
