@@ -272,8 +272,7 @@ pub(crate) fn year_token_text(
     serial_1900: i64,
     ymd: (i32, u32, u32),
 ) -> Option<String> {
-    let twice = part.year_twice;
-    if twice && part.calendar == Some(Calendar::Taiwan) {
+    if part.year_twice && part.calendar == Some(Calendar::Taiwan) {
         return taiwan_after_b2(part, token, ymd.0);
     }
     Some(calendar_year_text(part, token, seen_era, serial_1900, ymd))
@@ -299,6 +298,7 @@ fn taiwan_after_b2(part: &DatePart, token: &TextToken, year: i32) -> Option<Stri
         return None;
     }
     let digits = minguo.to_string();
+    let first = digits.chars().next().unwrap_or('0');
     Some(match token {
         TextToken::Era(_) => String::new(),
         TextToken::BuddhistYearShort => {
@@ -310,7 +310,7 @@ fn taiwan_after_b2(part: &DatePart, token: &TextToken, year: i32) -> Option<Stri
             format!("{third}{fourth}")
         }
         _ if minguo >= 1000 => digits,
-        _ => format!("0{}", &digits[..1]),
+        _ => format!("0{first}"),
     })
 }
 
@@ -349,7 +349,10 @@ fn first_token_code(tokens: &[TextToken]) -> u8 {
         Some(TextToken::EraYear(true)) => 57,
         Some(TextToken::MonthLetter) => 59,
         Some(TextToken::BuddhistYear) => 89,
-        _ => 88,
+        Some(TextToken::BuddhistYearShort) | None => 88,
+        // Every other token is `#VALUE!` in a `B2` section before this is reached (digits, `@`,
+        // `E`; probes/t3028-b2-taiwan-cuts A19, A46, A47, A50, A63), so this arm is unprobed.
+        Some(_) => 88,
     }
 }
 
