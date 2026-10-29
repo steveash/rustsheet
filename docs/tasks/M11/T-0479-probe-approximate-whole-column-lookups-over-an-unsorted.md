@@ -37,4 +37,4 @@ its "Unprobed" note (T-0474).
 ## Outcome
 Built `external-link-unsorted-approx-lookups.xlsx` (23 cells) and filled it from excel-graph. The engine matches Excel
 on every cell, so no engine change or follow-up; references.md now cites the cells. Fixtures suite 325 -> 348 cells,
-all passing; no baseline change.
+all passing; no known-failure change (the baseline gains the new case's C line only).
