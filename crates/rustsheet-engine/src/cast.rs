@@ -202,17 +202,13 @@ pub(crate) fn value_number_text(
         .or_else(|| mixed_fraction(trimmed))
 }
 
-/// A mixed fraction `w n/d` (ASCII digits, one space, an optional leading `-`) as `w + n/d`.
+/// A mixed fraction `w n/d` (ASCII digits, one space) as `w + n/d`.
 /// Excel: `VALUE("3 1/2")` is 3.5 and `VALUE("1 1/2")` 1.5 (docs/excel-semantics/text.md "VALUE
 /// reads a mixed fraction", probes/eng-inumber-date-boundary B22, probes/t3136-criteria-formatted-
-/// number-operands H25). A zero denominator is not a number. UNVERIFIED: a sign, two spaces, an
-/// improper fraction (`1 3/2`) and `w n/0` (T-2646 probes them).
+/// number-operands H25). A zero denominator is not a number. UNVERIFIED: an improper fraction
+/// (`1 3/2`) and `w n/0`; a sign (`-3 1/2`) and two spaces are not read until T-2646 probes them.
 fn mixed_fraction(text: &str) -> Option<f64> {
-    let (negative, unsigned) = match text.strip_prefix('-') {
-        Some(rest) => (true, rest),
-        None => (false, text),
-    };
-    let (whole, fraction) = unsigned.split_once(' ')?;
+    let (whole, fraction) = text.split_once(' ')?;
     let (numerator, denominator) = fraction.split_once('/')?;
     let digits = |part: &str| -> Option<f64> {
         if part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()) {
@@ -226,9 +222,7 @@ fn mixed_fraction(text: &str) -> Option<f64> {
         return None;
     }
     let value = whole + numerator / denominator;
-    value
-        .is_finite()
-        .then_some(if negative { -value } else { value })
+    value.is_finite().then_some(value)
 }
 
 /// The `#N/IMPL!` of a range, an array or a LAMBDA where a scalar cast expects a value.

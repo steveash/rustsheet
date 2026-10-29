@@ -49,5 +49,8 @@ as a free function, and `Model::value_text_number` and the criteria (`criterion_
 The criteria try the plain parser first, then VALUE's reader, then the date parser. Text padded with a non-ASCII space stays
 text, and text without a digit is skipped. VALUE also reads a mixed fraction now (`mixed_fraction`), which takes the first
 part of T-2646. A numeric `=` criterion reads the current year once per criterion, for year-less text cells.
+A new probe, probes/t3151-number-criterion-formatted-text (11 formulas, excel-graph 2026-10-29), confirms the same reading
+for a number-cell, blank-cell and omitted criterion. It also confirms that an operand followed by a tab is text.
+VALUE does not read a signed mixed fraction (`-3 1/2`) yet; T-2646 probes it.
 Eval: probes 346 fixed, 0 regressions: all 344 failing cells of t3136-criteria-formatted-number-operands, plus
 eng-inumber-date-boundary S!A22 and B22 (T-2646's mixed fraction).

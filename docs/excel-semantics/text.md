@@ -968,8 +968,8 @@ is read").
 Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
 A criterion reads `"1 1/2"` as 1.5 too (criteria.md "Criterion operands and text cells read numbers with VALUE's grammar",
 probes/t3136-criteria-formatted-number-operands H25).
-Ours: the mixed fraction reads (`mixed_fraction` under `value_number_text`, cast.rs, T-3151): `w n/d` with ASCII digits, one
-space and an optional leading `-`; `w n/0` is not a number. UNVERIFIED: the sign, two spaces and an improper fraction.
+Ours: the mixed fraction reads (`mixed_fraction` under `value_number_text`, cast.rs, T-3151): `w n/d` with ASCII digits and one
+space; `w n/0` is not a number. UNVERIFIED: an improper fraction; a sign and two spaces are not read yet (T-2646 probes them).
 `"- 5"` and `"1-1-1"` are still `#VALUE!` (T-2646).
 Status: VERIFIED (excel-graph); mixed fraction implemented (T-3151), the other two not (T-2646).
 Tasks: T-2646, T-3151

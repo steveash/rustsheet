@@ -667,7 +667,8 @@ fn criteria_read_numbers_with_value_grammar() {
     assert!(!matches(">=50%", text("50%")));
     assert!(matches("<>50%", text("50%")));
     assert!(matches("1,000", text("$1,000")));
-    // A number criterion (from a cell) reads text cells the same way.
+    // A number criterion (from a cell) reads text cells the same way
+    // (probes/t3151-number-criterion-formatted-text C1, C6).
     let one = build_criteria(
         &CalcResult::Number(1.0),
         en_locale(),

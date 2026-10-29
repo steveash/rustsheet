@@ -216,8 +216,8 @@ impl Model {
         })
     }
 
-    /// A text value read as VALUE reads it ([`value_number_text`]): `None` when it is over the number-text length cap or
-    /// does not read as a number. VALUE trims spaces around date and clock text, unlike number
+    /// A text value read as VALUE reads it, in the model's locale and date system
+    /// ([`value_number_text`]). VALUE trims spaces around date and clock text, unlike number
     /// coercion, but only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!, and clock
     /// text and date text with a clock suffix read as in number coercion (probes/date-text-grammar
     /// C7, C30, C31, C53, C55, C63; probes/value-clock-text B14, B44, column B against C).

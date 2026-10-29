@@ -242,10 +242,12 @@ fn test_value_mixed_fraction() {
     model._set("A3", "=VALUE(\"1 1/0\")");
     model._set("A4", "=VALUE(\"1 1/\")");
     model._set("A5", "=VALUE(\"1 a/2\")");
+    // Unprobed, so not read yet (T-2646).
+    model._set("A6", "=VALUE(\"-3 1/2\")");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "3.5");
     assert_eq!(model._get_text("A2"), "1.5");
-    for cell in ["A3", "A4", "A5"] {
+    for cell in ["A3", "A4", "A5", "A6"] {
         assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
     }
 }
