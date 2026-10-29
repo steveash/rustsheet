@@ -7,9 +7,10 @@
 
 Reads `eval/runs/latest/report.json` (written by `make eval`) and lists every visibly-off cell of
 the milestone's exit criteria (decision 0085, read at visible parity by decisions 0114 and 0135:
-the `gen-m<k>` suite, the ironcalc-calc row of "Milestone function scope" less its exit
+the `gen-m<k>` suite and any other required suite of the exit row (decision 0146: M1's smoke,
+M11's corpus-bench), the ironcalc-calc row of "Milestone function scope" less its exit
 exceptions when the exit row requires it (not M7, decision 0140), and the probes of the
-milestone's row of "Probe milestones", `M0-M2` for M2), plus each probe case that fails with no
+milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list), plus each probe case that fails with no
 cell, that no open task of that milestone names, one per line as
 `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count is
 not 0.
@@ -144,14 +145,18 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     }
     out: list[ExitCell] = []
 
-    gen = f"gen-{milestone.lower()}"
-    gen_off = set(exit_row.get("gen_visibly_off_cells") or [])
-    for case in report.get("cases") or []:
-        if case.get("suite") == gen:
-            for c in by_case.get(str(case["id"]), []):
-                key = f"{c['sheet']}!{c['cell']}"
-                if f"{case['id']}!{key}" in gen_off:
-                    out.append(ExitCell(gen, str(case["id"]), key, formula_of(c)))
+    # Every required suite (decision 0146): the row's first (`gen_suite`, `gen-m<k>` before it
+    # existed) and `more_suites`, each with its own visibly-off list.
+    suites = [(exit_row.get("gen_suite") or f"gen-{milestone.lower()}", exit_row.get("gen_visibly_off_cells"))]
+    suites += [(str(s.get("name")), s.get("visibly_off_cells")) for s in exit_row.get("more_suites") or []]
+    for suite, cells_off in suites:
+        off = set(cells_off or [])
+        for case in report.get("cases") or []:
+            if case.get("suite") == suite:
+                for c in by_case.get(str(case["id"]), []):
+                    key = f"{c['sheet']}!{c['cell']}"
+                    if f"{case['id']}!{key}" in off:
+                        out.append(ExitCell(suite, str(case["id"]), key, formula_of(c)))
 
     # A function-scope row the exit row shows but does not require (counts with a null
     # `calc_met`, M7) is no exit criterion (decision 0140).
@@ -167,6 +172,12 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
 
     probe_row = exit_row.get("probe_row") or milestone
+    # M1's probe measure is the frozen `m1-probes` list, not a probe row (decision 0146 item 1).
+    for row in report.get("milestone_lists") or []:
+        if row.get("name") == probe_row:
+            for name in row.get("visibly_off_cells") or []:
+                case, key = split_cell_name(str(name))
+                out.append(ExitCell(probe_row, case, key, formulas.get((case, key), "")))
     for row in report.get("probe_milestones") or []:
         if row.get("milestone") == probe_row:
             probe_off = set(row.get("visibly_off_cells") or [])
