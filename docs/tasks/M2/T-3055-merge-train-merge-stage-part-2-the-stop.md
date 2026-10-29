@@ -3,7 +3,7 @@ id: T-3055
 title: "Merge-train merge stage, part 2: the stop label and the revert PR"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
