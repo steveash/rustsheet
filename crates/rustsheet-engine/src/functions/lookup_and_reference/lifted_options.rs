@@ -72,16 +72,21 @@ impl Model {
             let Some(node) = args.get(index) else {
                 continue;
             };
-            let frozen = self.frozen(node, cell);
+            let (frozen, reference) = self.freeze(node, cell);
+            // A written range, and a reference a function returns: a multi-cell one lifts as the
+            // range does (`INDEX(Data!A4:D4,0)` as a total depth is 1x4, probes/t2707-prob-orders
+            // A50, A63:A65; T-3088).
+            let reference = match (&frozen, reference) {
+                (Node::RangeKind { .. }, _) => Some(self.evaluate_node_in_context(&frozen, cell)),
+                (_, reference) => reference,
+            };
             // A one-element array lifts too: `GROUPBY(k,v,SUM,{3})` is one cell (A113).
-            let elements = match &frozen {
-                Node::ArrayKind(elements) => elements.clone(),
-                Node::RangeKind { .. } => match self.evaluate_node_in_context(&frozen, cell) {
-                    range @ CalcResult::Range { left, right } if left != right => {
-                        self.result_to_array(range, cell)?
-                    }
-                    _ => continue,
-                },
+            let elements = match (&frozen, reference) {
+                (Node::ArrayKind(elements), _) => elements.clone(),
+                (_, Some(range @ CalcResult::Range { left, right })) if left != right => {
+                    self.result_to_array(range, cell)?
+                }
+                (Node::RangeKind { .. }, _) => continue,
                 _ => {
                     // Text that is no number is `#VALUE!` in the option's place, ahead of a later
                     // argument's error value, scalar or lifted (A201, A97).
@@ -174,22 +179,27 @@ impl Model {
     /// Omitted arguments, literals, references (cheap to read again, and a blank cell is not a
     /// literal) and anything that evaluates to a reference or a LAMBDA are kept as they are.
     fn frozen(&mut self, node: &Node, cell: CellReferenceIndex) -> Node {
+        self.freeze(node, cell).0
+    }
+
+    /// [`Model::frozen`], with the reference a kept node evaluated to, so a caller can read it
+    /// without evaluating the node a second time.
+    fn freeze(&mut self, node: &Node, cell: CellReferenceIndex) -> (Node, Option<CalcResult>) {
         // A `#This Row` area is the cell or range on the formula's row (SPEC-0016 step 2).
         let node: &Node = &node.resolved_at(cell.row);
         if is_scalar_node(node) || matches!(node, Node::RangeKind { .. } | Node::ArrayKind(_)) {
-            return node.clone();
+            return (node.clone(), None);
         }
-        match self.evaluate_node_in_context(node, cell) {
+        let frozen = match self.evaluate_node_in_context(node, cell) {
             CalcResult::Number(number) => Node::NumberKind(number),
             CalcResult::String(text) => Node::StringKind(text.to_string()),
             CalcResult::Boolean(value) => Node::BooleanKind(value),
             CalcResult::Error { error, .. } => Node::ErrorKind(error),
             CalcResult::Array(array) => Node::ArrayKind(array),
-            CalcResult::Range { .. }
-            | CalcResult::EmptyCell
-            | CalcResult::EmptyArg
-            | CalcResult::Lambda(_) => node.clone(),
-        }
+            range @ CalcResult::Range { .. } => return (node.clone(), Some(range)),
+            CalcResult::EmptyCell | CalcResult::EmptyArg | CalcResult::Lambda(_) => node.clone(),
+        };
+        (frozen, None)
     }
 
     /// `elements` lifted: each element's value is `run` of the first element of its class, so
