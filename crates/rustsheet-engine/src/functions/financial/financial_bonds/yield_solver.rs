@@ -5,7 +5,7 @@ use super::super::dates::{days_30_360_eu_ymd, days_30_360_us_ymd};
 use super::{discount_growth, OddArgs, OddFirstSchedule};
 use crate::formatter::dates::{date_to_serial_number, excel_serial_to_ymd};
 use crate::functions::date_and_time::is_leap_year;
-use crate::x87_exp::{dd_add, dd_div, dd_mul, two_sum};
+use crate::x87_exp::{dd_add, dd_mul};
 
 /// The settlement-to-maturity term of [`yield_start`]: `whole_years + days / year_days` years,
 /// kept as its parts so the start can take it exactly ([`yield_start_term`]).
@@ -74,36 +74,37 @@ pub(super) fn yield_start_term(settlement: i64, maturity: i64, basis: u32) -> Op
 /// 30.3 years), and it moves with neither the redemption nor the frequency (financial.md "YIELD
 /// stops short of PRICE's root").
 ///
-/// Excel's start is this value rounded once, with the term exact (T-2974): one Newton step from
-/// it shows its last bit on the cells that take one step, and the correctly rounded start makes
-/// 503 of the lab's 761 YIELD probe cells bit-exact, against 441 for the formula in doubles
-/// (yield-start-rate-term B49 from 11 ulps to 0). So the start is
-/// `(400 rate N + 4 (100 - pr) Y) / (2 N (100 + pr) - (100 - pr) Y)`, the formula times `4N/4N`
-/// with `T = N / Y` (`N = whole_years Y + days`, an integer), in double-double arithmetic. A zero
-/// term, or a start past the double range, keeps the formula in doubles.
+/// Excel's start is this formula multiplied through by `T`, `((r T) 100 + q) / (D/2 - q/4)` with
+/// `q = 100 - pr`, in doubles but for `D = pr T + 100 T`, which is rounded once with `100 T`
+/// rounded and `T` in `pr T` the exact sum `whole_years + fl(days / year_days)`, as if that
+/// product read the term before it was rounded to a double (T-2974 attempt 4; an 80-bit register
+/// would do it, a hypothesis). Elsewhere `T` is that sum rounded. Fit lab, `^`-priced PRICE, 1,115
+/// YIELD probe cells: 960 bit-exact, against 790 with `T` rounded in `pr T` (a fused
+/// multiply-add) and 709 for the exact start rounded once. It is the only candidate that makes
+/// yield-solver-sweep C7, yield-start-rate-term B39 and B49 and yield-newton-domain P!B2 exact
+/// (financial.md "YIELD stops short of PRICE's root", T-2974 attempts 3 and 4). A zero term keeps
+/// the formula in doubles (a NaN start, so `#NUM!`).
 pub(super) fn yield_start(rate: f64, pr: f64, term: &StartTerm) -> f64 {
-    let years = term.whole_years + term.days / term.year_days;
-    let plain =
-        (100.0 * rate + (100.0 - pr) / years) / ((100.0 + pr) / 2.0 - (100.0 - pr) / (4.0 * years));
-    // Whole years, days and a year's days are integers well below 2^53, so N and the scaled
-    // integers below are exact.
-    let n = term.whole_years * term.year_days + term.days;
-    if n == 0.0 {
-        return plain;
+    let fraction = term.days / term.year_days;
+    let years = term.whole_years + fraction;
+    let discount = 100.0 - pr;
+    if years == 0.0 {
+        return (100.0 * rate + discount / years) / ((100.0 + pr) / 2.0 - discount / (4.0 * years));
     }
-    let discount = two_sum(100.0, -pr);
-    let numerator = dd_add(
-        dd_mul((rate, 0.0), (400.0 * n, 0.0)),
-        dd_mul(discount, (4.0 * term.year_days, 0.0)),
+    // pr * whole_years + pr * fraction + 100 * years with each product exact, summed in
+    // double-double and rounded to its high word (the lab rounds the exact sum once).
+    let products = dd_add(
+        dd_mul((pr, 0.0), (term.whole_years, 0.0)),
+        dd_mul((pr, 0.0), (fraction, 0.0)),
     );
-    let premium = dd_mul(two_sum(100.0, pr), (2.0 * n, 0.0));
-    let shortfall = dd_mul(discount, (term.year_days, 0.0));
-    let start = dd_div(numerator, dd_add(premium, (-shortfall.0, -shortfall.1))).0;
-    if start.is_finite() {
-        start
+    let sum = dd_add(products, (100.0 * years, 0.0)).0;
+    // Past the double range the error terms are NaN; the rounded products keep the overflow.
+    let sum = if sum.is_finite() {
+        sum
     } else {
-        plain
-    }
+        pr * years + 100.0 * years
+    };
+    ((rate * years) * 100.0 + discount) / (sum / 2.0 - discount / 4.0)
 }
 
 /// Newton on `price(y) - target` with the analytic slope `dprice`, from `start`: each step is
@@ -190,19 +191,27 @@ mod tests {
     }
 
     #[test]
-    fn the_start_is_rounded_once_over_the_exact_term() {
-        // yield-start-rate-term B49's bond: 30 + 119/360 years, rate 0.08, price 90. The exact
-        // start (a rational, rounded once) is 0x1.677417c665554p-4; the formula in doubles
-        // rounds to the double below it (T-2974).
-        let term = StartTerm {
+    fn the_start_reads_the_unrounded_term_in_pr_times_t() {
+        // yield-start-rate-term B49's bond: 30 + 119/360 years, rate 0.08, price 90. The formula in
+        // doubles rounds to the double below Excel's start 0x1.677417c665554p-4 (T-2974).
+        let b49 = StartTerm {
             whole_years: 30.0,
             days: 119.0,
             year_days: 360.0,
         };
-        assert_eq!(yield_start(0.08, 90.0, &term), 0.087_757_199_164_419_32);
+        assert_eq!(yield_start(0.08, 90.0, &b49), 0.087_757_199_164_419_32);
         let years = 30.0 + 119.0 / 360.0;
         let plain = (100.0 * 0.08 + 10.0 / years) / (95.0 - 10.0 / (4.0 * years));
         assert_eq!(plain, 0.087_757_199_164_419_3);
+        // yield-solver-sweep C7's bond: 4 + 119/360 years, where `100 T` is a rounding tie. With
+        // the rounded `T` in `pr T` (a fused multiply-add) the start is one ulp low,
+        // 0.06534726681845603, and C7 is 27 ulps off; Excel's value needs this start (T-2974).
+        let c7 = StartTerm {
+            whole_years: 4.0,
+            days: 119.0,
+            year_days: 360.0,
+        };
+        assert_eq!(yield_start(0.06, 98.0, &c7), 0.065_347_266_818_456_04);
         // A zero term keeps the formula in doubles (not a finite start).
         let zero = StartTerm {
             whole_years: 0.0,

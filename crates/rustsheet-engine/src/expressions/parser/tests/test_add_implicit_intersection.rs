@@ -73,8 +73,30 @@ fn simple_test() {
         // (probes/legacy-if-arm-other-references M12, T-2326).
         ("IF(TRUE,INDEX(B1:B6,3))", "IF(TRUE,INDEX(B1:B6,3))"),
         ("IF(TRUE,INDEX(B1:C6,0,1))", "@IF(TRUE,INDEX(B1:C6,0,1))"),
-        // Unevidenced shapes keep the `@`: a 2-D range (INDEX gives a row) and IFS.
-        ("IF(TRUE,INDEX(B1:C6,3))", "@IF(TRUE,INDEX(B1:C6,3))"),
+        // Any range shape with literal whole-number indexes, a literal arm and CHOOSE lose it; a
+        // computed or non-integer index and IFS keep it (probes/t3134-legacy-if-index-arm-shapes).
+        ("IF(TRUE,INDEX(B1:C6,3))", "IF(TRUE,INDEX(B1:C6,3))"),
+        (
+            "ABS(IF(TRUE,INDEX(B1:B6,3),5))",
+            "ABS(IF(TRUE,INDEX(B1:B6,3),5))",
+        ),
+        ("CHOOSE(1,INDEX(B1:B6,3))", "CHOOSE(1,INDEX(B1:B6,3))"),
+        ("IF(TRUE,INDEX(B1:B6,3.5))", "@IF(TRUE,INDEX(B1:B6,3.5))"),
+        (
+            "ABS(IF(TRUE,INDEX(B1:B6,1+2)))",
+            "ABS(@IF(TRUE,INDEX(B1:B6,1+2)))",
+        ),
+        (
+            "IF(TRUE,INDEX(B1:B6,3),B1:B6)",
+            "@IF(TRUE,INDEX(B1:B6,3),B1:B6)",
+        ),
+        // A bare range condition (unprobed) is intersected first, so the call is still one cell; an
+        // array one is not a scalar, so the call keeps its `@` (probes/t3134-legacy-if-index-arm-shapes I50).
+        ("IF(B1:B6,INDEX(B1:B6,3))", "IF(@B1:B6,INDEX(B1:B6,3))"),
+        (
+            "IF({TRUE,FALSE},INDEX(B1:B6,3))",
+            "@IF({TRUE,FALSE},INDEX(B1:B6,3))",
+        ),
         (
             "_xlfn.IFS(TRUE,INDEX(B1:B6,3))",
             "@IFS(TRUE,INDEX(B1:B6,3))",
@@ -235,4 +257,31 @@ fn a_unary_plus_changes_no_implicit_intersection() {
             "{plus}"
         );
     }
+}
+
+// T-3134 review: the single-cell IF test decides on the shape the analysis already has, so IFs
+// nested in each other's condition stay linear (an extra pass over each condition doubled the work
+// per level: depth 22 took 2 s).
+#[test]
+fn nested_if_conditions_stay_linear() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let depth = 60;
+    let formula = format!(
+        "{}A1:A2,1,1){}",
+        "IF(".repeat(depth),
+        ",1,1)".repeat(depth - 1)
+    );
+    let start = std::time::Instant::now();
+    let mut t = parser.parse(&formula, &cell_reference);
+    add_implicit_intersection(&mut t, true);
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(5),
+        "{:?}",
+        start.elapsed()
+    );
 }

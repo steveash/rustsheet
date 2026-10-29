@@ -172,6 +172,24 @@ fn collation_key_equality_is_cmp_text_equality() {
         "😀a",
         "x",
         "X",
+        "ča",
+        "Ča",
+        "c\u{30c}a",
+        "C\u{30c}-a",
+        "č-a",
+        "ca",
+        "á",
+        "a\u{301}",
+        "ϊ",
+        "ΐ",
+        "ϊ\u{301}",
+        "σ",
+        "ς",
+        "Σ",
+        "е",
+        "ё",
+        "a\u{301}\u{30c}",
+        "\u{301}a",
     ]
     .iter()
     .map(|s| Text::from(*s))
@@ -188,4 +206,68 @@ fn collation_key_equality_is_cmp_text_equality() {
             );
         }
     }
+}
+
+/// Latin Extended-A, Greek and Cyrillic letters are their base letter plus an accent, and a
+/// combining mark is the accent of the letter before it (probes/t3114-collation-beyond-latin1).
+#[test]
+fn letters_beyond_latin1_and_combining_marks() {
+    assert_increasing(&["c", "ć", "č", "ca", "ča", "cb", "čb", "cz", "d"]);
+    assert_increasing(&["a", "á", "ă", "ā", "ą", "b"]);
+    assert_increasing(&["e", "é", "ė", "ě", "ē", "ę", "ea", "ěa", "eb"]);
+    assert_increasing(&["o", "ö", "ő", "oa", "őa", "ob", "p"]);
+    assert_increasing(&["u", "ū", "ů", "ų", "ű", "v", "z", "ź", "ż", "ž", "α"]);
+    assert_increasing(&[
+        "ι", "ί", "ϊ", "ΐ", "κ", "ω", "ώ", "а", "е", "ё", "ж", "и", "й", "к", "я",
+    ]);
+    for (a, b) in [
+        ("a\u{301}", "á"),
+        ("c\u{30c}", "č"),
+        ("C\u{30c}", "č"),
+        ("c\u{30c}a", "Ča"),
+        ("Ő", "o\u{30b}"),
+        ("Σ", "ς"),
+        ("σ", "ς"),
+        ("Ё", "ё"),
+        ("Ά", "ά"),
+        // These two pin unprobed engine choices (a stacked mark, a mark before a hyphen); T-3154
+        // probes them and may overturn them.
+        ("ϊ\u{301}", "ΐ"),
+        ("C\u{30c}-a", "č-a"),
+    ] {
+        assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
+    }
+}
+
+/// `decompose` binary-searches the table, so it must stay sorted by letter.
+#[test]
+fn decomposed_table_is_sorted() {
+    use crate::functions::util::collation::DECOMPOSED;
+    assert!(DECOMPOSED.windows(2).all(|pair| pair[0].0 < pair[1].0));
+}
+
+/// The exact and wildcard matches fold `ς` to `σ` on both sides
+/// (probes/t3114-collation-beyond-latin1 Calc!H10; Rust's final-sigma rule lower-cases a word-final
+/// `Σ` to `ς`).
+#[test]
+fn final_sigma_folds_in_exact_and_wildcard_matches() {
+    use crate::functions::criteria::{folded_units, WildcardPattern};
+    for pattern in ["ς", "σ", "Σ"] {
+        let compiled = WildcardPattern::new(&Text::from(pattern));
+        for text in ["ς", "σ", "Σ"] {
+            assert!(
+                compiled.matches(&Text::from(text)),
+                "{pattern:?} matches {text:?}"
+            );
+        }
+    }
+    assert!(WildcardPattern::new(&Text::from("ς*")).matches(&Text::from("σx")));
+    assert_eq!(
+        folded_units(&Text::from("ΟΔΟΣ")),
+        folded_units(&Text::from("οδοσ"))
+    );
+    assert_eq!(
+        WildcardPattern::new(&Text::from("οδοσ")).literal_units(),
+        Some(folded_units(&Text::from("ΟΔΟΣ")))
+    );
 }
