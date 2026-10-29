@@ -28,4 +28,4 @@ Steward re-review of #2062 (T-2479), reviewer-excel-fidelity MINOR findings, 202
 -
 
 ## Outcome
-Five probe cases (probes/t3063-*, excel-graph 2026-10-29): `EXPAND(1,1,1048577,{0;1})` is `#NUM!`, `EXPAND(1,2,600000,{0;1})` is `#VALUE!`, and `WRAPCOLS(Z1:Z1,NA())`, `WRAPROWS(Z1:Z1,1/0)`, `WRAPCOLS(,NA())` are `#VALUE!`. The engine already matched all five, so no code changed; arrays.md records the rules. Eval delta: five new passing probe cells, no baseline change.
+Five probe cases (probes/t3063-*, excel-graph 2026-10-29): `EXPAND(1,1,1048577,{0;1})` is `#NUM!`, `EXPAND(1,2,600000,{0;1})` is `#VALUE!`, and `WRAPCOLS(Z1:Z1,NA())`, `WRAPROWS(Z1:Z1,1/0)`, `WRAPCOLS(,NA())` are `#VALUE!`. The engine already matched all five, so no code changed; arrays.md records the rules. Eval delta: five new passing probe cells (five `C` lines in eval/baseline/probes.txt from `make eval-baseline`), no known-failure change.
