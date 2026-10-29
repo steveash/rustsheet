@@ -24,7 +24,8 @@ the small-root last digits, and T-2928 keeps the fallback path.
 
 Evidence (excel-graph), all in eval/:
 - probes/t2565-irr-guess-sweeps (T-2565): has 181 cells, and every one is a known failure in eval/baseline/probes.txt.
-  173 are visibly off, from the 12th digit on, and 8 are within 15 digits. The failing cells are P!A1, A25,
+  180 are visibly off (from the 12th digit on, except P!C157 from the 10th) and 1 (P!C96) is within 15 digits
+  (crates/rustsheet-eval/src/closeness.rs `within_fifteen_digits`). The failing cells are P!A1, A25,
   A49, A73, A107, A142 and P!C1-C175 (each listed as an F line). Examples:
   - P!C31 `IRR({-100,2000000,42000000},B31)`: Excel 20019.977996174617, ours 20019.977996176563.
   - P!C49 `IRR({0.0001,-2,-42},B49)`: Excel 20019.977187036908, ours 20019.977187028708.
@@ -74,7 +75,7 @@ counts. After two attempts that do not raise the bit-exact count, the task is bl
       other candidate tried, on the t2565 cells, the seven irr-fallback-roots cells above and the existing IRR fit
       set. The task's Outcome records each candidate's bit-exact and within-4-ulp counts, including rejected ones.
 - [ ] The shipped rule does not lower the existing IRR fit set's bit-exact count (189/263, financial.md).
-- [ ] Visible parity: at least 171 of the 173 visibly-off t2565 lines (P!C95 and C157 may stay, each with a
+- [ ] Visible parity: at least 178 of the 180 visibly-off t2565 lines (P!C95 and C157 may stay, each with a
       sentence in financial.md) and irr-fallback-roots P!A25, A26, A28, A36, A37, A38 and A39 disappear from
       eval/baseline/probes.txt (`make eval-baseline`), with no new known-failure lines in any baseline
       (decision 0083's allowance otherwise).
@@ -91,5 +92,6 @@ counts. After two attempts that do not raise the bit-exact count, the task is bl
 
 ## Visible-parity stage
 Visible stage (decision 0114): Excel's own iterate is the target, not the exact root. The task is done when the
-t2565 and irr-fallback-roots cells above are within half a unit of the 15th significant digit of Excel's value.
+t2565 and irr-fallback-roots cells above are within half a unit of the 15th significant digit of Excel's value,
+except P!C95 and C157 as the acceptance criteria allow.
 Any bit-level residue goes to a follow-up with `defer: phase-1b`.
