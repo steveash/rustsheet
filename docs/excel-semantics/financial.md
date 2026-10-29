@@ -2260,8 +2260,8 @@ reaches 0.0593019, 98 / 0.05 / 2110 (A18) 0.0519331, 90 / 0 / 2098 (A26) 0.04568
 and the root cells). The cells at the root need no S.
 These cells also contradict the stop rule above (first step below about 7e-6): B2 stops with PRICE 2.0e-8 above the
 target after a last step of 7.54e-6, above T-2187's 7.11e-6 upper bound (B17), so the absolute cut is ruled out; B2
-(2.4e-4 relative) and A26 (last step 6.87e-6, 1.43e-4 relative) rule out the relative cut. The stop rule needs
-re-probing (T-2330).
+(2.4e-4 relative) and A26 (last step 6.87e-6, 1.43e-4 relative) rule out the relative cut. Resolved by T-1592's short stop (T-2330, below): B2 and A26 return the iterate
+before a 9.13e-11 and a 6.52e-11 step that is not taken, each 1 ulp from Excel.
 T-1592 (third round, 2026-10-24): a numerical derivative does not explain S either. Newton with a finite-difference
 derivative (forward or central, step 1e-8 to 1e-2 absolute or relative to y, also -1e-4 and -1e-3; from 0, 0.1, the coupon rate
 or the current yield; stops on the step at 1e-10 to 1e-5 or on |PRICE - pr| at 1e-8 to 1e-6; 560 variants in a scratch grid)
@@ -2270,7 +2270,7 @@ variants: 5/178 bit-exact and 14 within 4 ulp at best; the family union 14/178, 
 back-chained S is not an artefact of assuming an analytic derivative. Nor is S an iterate of Newton on the frequency-free annuity
 model (redemption 100, compounding 1, 2, 3, 4, 6, 12 or 365 times a year, or continuous, over the basis term T) from 0, 0.01,
 0.05, 0.1, 0.5 or 1: no iterate comes within 5e-4 relative of the starts of A1, D2, E1, E4 or E5 (scratch arithmetic).
-Next (T-1592, T-2330): fit S on the T-2304 grid (it moves with term, rate and price) and re-probe the stop rule.
+Next (T-1592): fit S on the T-2304 grid (it moves with term, rate and price); the stop rule is settled below (T-2330).
 T-2740 (probes/yield-start-one-input, excel-graph 2026-10-25; T-2304's A8 bond `YIELD(DATE(2096,3,1),M,R,P,100.5,F,0)`,
 M = DATE(2100,6,30), R = 0.05, P = 98 unless varied; column A frequency 2, B frequency 1; rows 1-41 P 80 to 100 by 0.5,
 42-66 R 0 to 0.12 by 0.005, 67-96 M on 30 June 2097 to 2126). The lab's `newton_back_chain` gives:
@@ -2298,8 +2298,24 @@ T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
   at the root, so the back-chain cannot reach their start.
 - Stop: an analytic-Newton step on PRICE (the `^`-priced PRICE that PRICE itself computes) that is below 1e-10 is not
   taken, so the value is the iterate before it. That is why the values sit short of the root. The cut lies between 9.67e-11
-  (a step yield-start-sweep C18 does not take) and 1.01e-10 (one yield-start-one-input B21 takes). This replaces the step-size
+  (a step yield-start-sweep C18 does not take) and 1.01e-10 (one yield-start-one-input B21 takes; tightened by T-2330 below). This replaces the step-size
   cuts tried in T-2187 and T-2304: their 6e-6 to 7e-6 "last steps" are the step before the one that is not taken.
+- Stop re-checked on every cell (T-2330, lab arithmetic, `^`-priced, from the fitted start with T-2777's term): of the 741
+  YIELD probe cells with more than one coupon left (solver-iteration-traces, bond-one-period-bases, yield-solver-sweep,
+  yield-start-sweep, yield-start-one-input, yield-start-rate-term, yield-start-term-basis, yield-newton-domain), 721 are
+  matched within 4 ulp by some cut, and every one of them by any cut in (9.6715e-11, 1.0063e-10] (706 by the cut; the
+  15 large-redemption cells yield-newton-domain C1-C10 and C12-C16 return the 100th iterate whatever the cut): the largest step not
+  taken is yield-start-sweep C18's 9.6715e-11 (bit-exact) and the smallest taken is yield-start-one-input A5's
+  1.0063e-10 (1 ulp off; with bit-exact cells alone, yield-start-rate-term B1's 1.0081e-10). 1e-10 is inside;
+  whether the test is `<` or `<=` is not observable. No cut brings the other 20 within 4 ulp, so their miss is not the
+  stop: solver-iteration-traces Y!E2, yield-solver-sweep C7 and C11, yield-start-one-input B11, B17, B31, B54, B62 and
+  B69, yield-start-rate-term A20, B39 and B49, yield-start-term-basis A9, C11, C20, A26 and A38 (root-level last
+  digits), and yield-newton-domain A6, B2 and B3. Other stop tests score lower on the same cells: a step relative to the
+  iterate (best cut 1.5e-9) 677/741 and the residual |PRICE - pr| before the step (best cut 3.7e-8) 681/741; the
+  residual is ruled out by the bracketing pair itself (C18 does not step at a residual of 3.66e-8, A5 steps at 3.06e-8),
+  the relative step likewise (1.7e-9 not taken, 9.7e-10 taken). Lab test:
+  `test_yield_short_stop_cut_is_bracketed_by_two_cells`; T-2187's 6.9e-6 pin in
+  `test_yield_start_sweep_newton_from_a_shared_start` is now the short stop at 1e-10.
 - Lab fit `yield-caret` (family "Newton, fitted start"): 240/370 bit-exact and 361/370 within 4 ulp (`yield`, libm-priced:
   212 and 340). Cut 1e-9: 194/370; 1e-11: 145/370. The previous best was 4/178. The 9 cells left are 7 to 33 ulp off
   (solver-iteration-traces Y!E2; yield-solver-sweep C7 and C11, where the rate is 0.4 or 0.2; yield-start-one-input B11,
