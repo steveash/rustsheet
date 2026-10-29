@@ -93,10 +93,11 @@ order. (3) Hyphens and apostrophes as (position, weight), a later position first
 hyphen. `þ`, `ð`, `œ` and the Latin-1 symbols were placed later (T-1590, T-1595, T-1662, T-1669,
 below), and the Latin Extended-A, Greek and Cyrillic letters by T-3114 (next section). Every other
 character (CJK, other scripts, other symbols) keeps code-point order after the letters, UNVERIFIED.
+
 ### Letters beyond Latin-1 and combining marks (T-3114)
 Evidence: probes/t3114-collation-beyond-latin1 (excel-graph, 2026-10-29), 282 strings ranked against
 each other (Calc!A = count less, Calc!B = count equal) plus pairwise `<`/`=`/`>` (Calc!D:F), exact
-MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status: VERIFIED for these:
+MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K). Status: VERIFIED for these:
 - Every Latin Extended-A letter probed (`ā ă ą ć č ď ē ė ę ě ğ ģ ī į ķ ĺ ľ ń ņ ň ő ŕ ř ś ş š ţ ť ū ů ű
   ų ź ż ž`) is its **base letter plus an accent**, not a letter of its own: `"ca" < "ča" < "cb"`,
   `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A121:A140).
@@ -120,6 +121,9 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
   Whether `ё` and `й` are accented `е` and `и` (the engine, by their canonical decompositions) or
   letters of their own is not told apart by single letters: UNVERIFIED.
 - Exact MATCH, COUNTIF `=`, `<` and `<>` agree with the above over these letters (Calc!H1:K10).
+- Inferred, UNVERIFIED: the engine gives every other lower- or upper-case letter of Latin Extended-A,
+  Greek and Cyrillic that has a canonical decomposition (`ĉ ĝ ĥ ĵ ŝ ŵ ŷ ĩ ĭ ŭ ŏ ō ĕ ġ ċ ļ ŗ`, `ϋ ΰ`,
+  `ѐ ѓ ї ќ ѝ ў`) the same base-plus-accent rule.
 Implemented (T-3114): `collation.rs` case-folds, then decomposes each letter through its canonical
 decomposition (`DECOMPOSED`) and gives a combining mark's accent to the letter before it.
 `folded_units` (the exact MATCH and wildcard key) folds `ς` to `σ`.
