@@ -3,7 +3,7 @@ id: T-1867
 title: "SLOPE and INTERCEPT: arrays of different sizes are #N/A, not #VALUE!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -20,8 +20,14 @@ group's values and all values, which differ in size: Excel gives `#N/A` per grou
 `SLOPE({1;2},{1;2;3})` too; check SUMX2MY2 (passes through GROUPBY) and FORECAST.
 
 ## Acceptance criteria
-- [ ] Those cells pass and leave eval/baseline/probes.txt.
-- [ ] `make check` green; reviewers approve.
+- [x] Those cells pass and leave eval/baseline/probes.txt.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Already fixed on `origin/main` before this task was picked: `probes/groupby-eta-arity` passes 101/101 with no
+`F` lines in `eval/baseline/probes.txt`, and `fn_get_two_matrices` (sum.rs) returns `#N/A` for unequal cell
+counts (T-1292, T-1620, T-2431), which covers plain `SLOPE({1;2},{1;2;3})`, INTERCEPT, FORECAST, CORREL, PEARSON, RSQ and STEYX
+(via paired_moments). SUMX2MY2 does not use that helper and was not checked. No code change; eval delta 0.
