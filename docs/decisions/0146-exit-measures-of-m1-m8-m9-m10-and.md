@@ -123,3 +123,12 @@
     holds one. `scripts/exit_owners.py` lists each `more_suites` entry's visibly-off cells and
     blocked cases from the entry's own lists, so a measure over another suite's cells needs no suite
     match.
+  - T-0097 (2026-10-29) builds the M10 row of item 4. gen-m10 is the row's `gen_suite` with no
+    value-cell floor and none visibly off, and its displayed-text items are a criterion of the same
+    suite measure: at least 10,000 (`M10_MIN_TEXT`) with none failing, reported as
+    `gen_text_items`, `gen_text_failing` and `gen_text_failing_cells` (`case!Sheet!A1`, from the
+    report's failing text items). The M10 probe row's `text_items` and `text_failing` (T-0093) are
+    copied to `probe_text_items` and `probe_text_failing`, and `probes_met` needs both counts of
+    failures at 0. Other rows leave the text fields null. `scripts/exit_owners.py` lists the failing
+    text items as `gen-m10 text` and `probes text` (the probe row's `text_failing_cells`, only when
+    the exit row carries `probe_text_items`), and the progress page shows both text counts.

@@ -269,6 +269,58 @@ class ExitOwners(TaskDir):
         self.assertNotIn(f"{crashed}!*", listed)
         self.assertIn(f"{poi}!Data!C3", listed)
 
+    def test_m10_lists_gen_m10_and_probe_text_items_beside_value_cells(self) -> None:
+        # Decision 0146 item 4: gen-m10's visibly-off value cells and failing text items, and the
+        # M10 probe row's visibly-off cells and failing text items.
+        gen10, text_probe = "gen-m10/ab.case.json", "probes/text-locale.case.json"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M10",
+                "gen_suite": "gen-m10",
+                "gen_visibly_off_cells": [f"{gen10}!S!A1"],
+                "gen_text_failing_cells": [f"{gen10}!S!B2"],
+                "probe_text_items": 2,
+                "calc_failing": None,
+                "calc_met": None,
+                "probe_row": "M10",
+            }
+        ]
+        r["cases"] = [
+            {"id": gen10, "suite": "gen-m10", "cells": [cell("S", "A1")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2")]},
+            {"id": TRIG, "suite": "ironcalc-calc", "cells": [cell("S", "C51")]},
+        ]
+        # The report has an M10 function-scope row, but ironcalc-calc is no M10 criterion (a
+        # null `calc_met`, decision 0146 item 4), so none of its cells is listed.
+        r["function_scope"]["rows"][0]["milestone"] = "M10"  # type: ignore[index]
+        r["probe_milestones"] = [
+            {
+                "milestone": "M10",
+                "failing_cases": [[PROBE, 1]],
+                "visibly_off_cells": [f"{PROBE}!P!B2"],
+                "text_failing_cells": [f"{text_probe}!T!C4"],
+            }
+        ]
+        cells = exit_owners.exit_cells(r, "M10")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}") for c in cells],
+            [
+                ("gen-m10", f"{gen10}!S!A1"),
+                ("gen-m10 text", f"{gen10}!S!B2"),
+                ("probes", f"{PROBE}!P!B2"),
+                ("probes text", f"{text_probe}!T!C4"),
+            ],
+        )
+        self.task("text-locale T!C4", milestone="M10")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M10", self.tasks)]
+        self.assertNotIn(f"{text_probe}!T!C4", listed)
+        self.assertIn(f"{gen10}!S!B2", listed)
+        # A row without the text criterion lists no probe text item.
+        del r["milestone_exit"][0]["probe_text_items"]  # type: ignore[index]
+        cells = exit_owners.exit_cells(r, "M10")
+        self.assertNotIn("probes text", [c.criterion for c in cells])
+
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")
         listed = self.listed()

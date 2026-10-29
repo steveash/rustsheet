@@ -7,7 +7,9 @@
 //! and smoke with nothing visibly off and the frozen `m1-probes` list as M1's probe measure, and
 //! corpus-bench at 0.998 over 200,000 scored cells; and M9's (decision 0146 item 3): ironcalc-calc
 //! at 0.9995 less its exit exceptions, every M9 function at the Phase 1 rate of `v15_checkpoint`,
-//! and no M9 probe visibly off. Decision 0114 reads them at visible
+//! and no M9 probe visibly off; and M10's (decision 0146 item 4): gen-m10's displayed-text items,
+//! at least 10,000 with none failing, and its value cells with none visibly off, and the M10 probe
+//! row with no visibly-off value cell and no failing text item. Decision 0114 reads them at visible
 //! parity: the generated suite, ironcalc-calc and probes count visibly-off cells, and the bit-level
 //! counts are shown beside them for Phase 1b. Every input is a row the report already computes, so
 //! nothing here scores anything; a missing input is `None`, never met. It is an exit measure, not
@@ -22,8 +24,8 @@ use crate::probe_milestones::{parse_milestone, row_label};
 use crate::report::RunReport;
 use crate::runner::CellKind;
 
-/// The milestones this section covers. M10 is T-0097.
-pub const MILESTONES: [&str; 8] = ["M1", "M2", "M5", "M6", "M7", "M8", "M9", "M11"];
+/// The milestones this section covers.
+pub const MILESTONES: [&str; 9] = ["M1", "M2", "M5", "M6", "M7", "M8", "M9", "M10", "M11"];
 /// Fewest scored cells the generated suite must have (decision 0085 item 2).
 pub const MIN_SCORED: usize = 20_000;
 /// M2's fewest scored cells of `gen-m2` (docs/milestones.md "M2", decision 0058).
@@ -39,6 +41,8 @@ pub const M8_MIN_SCORED: usize = M1_MIN_SCORED;
 pub const M8_SUBSET_RATE_NUM: usize = 9_950;
 /// The name M8's poi subset measure goes by among the row's `more_suites`.
 pub const M8_SUBSET: &str = "poi M8 subset";
+/// M10's fewest displayed-text items of `gen-m10`; none may fail (decision 0146 item 4(a)).
+pub const M10_MIN_TEXT: usize = 10_000;
 /// M11's fewest scored cells of `corpus-bench` (decision 0146 item 5).
 pub const M11_MIN_SCORED: usize = 200_000;
 /// M11's corpus-bench rate over [`RATE_DEN`]: 99.8%, the best published `SpreadsheetBench` score
@@ -79,6 +83,9 @@ struct SuiteNeed {
     min_scored: usize,
     /// Share of the scored cells, over [`RATE_DEN`], that must not be visibly off.
     rate_num: usize,
+    /// Fewest displayed-text items, none of them failing, when the suite's text is a criterion
+    /// (gen-m10, decision 0146 item 4(a)).
+    min_text: Option<usize>,
 }
 
 impl SuiteNeed {
@@ -96,6 +103,7 @@ impl SuiteNeed {
             name: name.to_string(),
             min_scored,
             rate_num,
+            min_text: None,
         }
     }
 }
@@ -110,12 +118,23 @@ enum CalcRule {
     Rate(usize),
 }
 
+/// What a milestone's probe measure reads.
+#[derive(Clone, Copy)]
+enum ProbeMeasure {
+    /// The milestone's "Probe milestones" row, none of its value cells visibly off.
+    Row,
+    /// That row, and none of its displayed-text items failing (M10, decision 0146 item 4(b)).
+    RowAndText,
+    /// A frozen milestone list instead of a probe row (M1's `m1-probes`, decision 0146 item 1).
+    List(&'static str),
+}
+
 /// A milestone's required suites and which other measures are its criteria.
 struct Criteria {
     /// The required suites; the first is the row's `gen_*` suite (decision 0146).
     suites: Vec<SuiteNeed>,
-    /// The milestone list the probe measure reads instead of a probe row (M1).
-    probe_list: Option<&'static str>,
+    /// What the probe measure reads.
+    probe: ProbeMeasure,
     /// Catalog coverage is an exit criterion (M5, M6; not M2, decision 0135, nor M7).
     coverage: bool,
     /// The ironcalc-calc function-scope row's exit criterion; `None` where it is none (M7,
@@ -150,7 +169,7 @@ fn criteria(milestone: &str) -> Criteria {
                 SuiteNeed::generated(milestone, M1_MIN_SCORED, RATE_DEN),
                 SuiteNeed::named("smoke", 0, RATE_DEN),
             ],
-            probe_list: Some(M1_PROBE_LIST),
+            probe: ProbeMeasure::List(M1_PROBE_LIST),
             coverage: false,
             calc: None,
             extent: false,
@@ -160,7 +179,7 @@ fn criteria(milestone: &str) -> Criteria {
         // "100%": no gen-m2 cell visibly off.
         "M2" => Criteria {
             suites: generated(M2_MIN_SCORED, RATE_DEN),
-            probe_list: None,
+            probe: ProbeMeasure::Row,
             coverage: false,
             calc: Some(CalcRule::NoneOff),
             extent: false,
@@ -169,7 +188,7 @@ fn criteria(milestone: &str) -> Criteria {
         },
         "M7" => Criteria {
             suites: generated(M7_MIN_SCORED, RATE_NUM),
-            probe_list: None,
+            probe: ProbeMeasure::Row,
             coverage: false,
             calc: None,
             extent: true,
@@ -182,7 +201,7 @@ fn criteria(milestone: &str) -> Criteria {
                 SuiteNeed::named("gen-m8a", M8_MIN_SCORED, RATE_DEN),
                 SuiteNeed::named("gen-m8b", M8_MIN_SCORED, RATE_DEN),
             ],
-            probe_list: None,
+            probe: ProbeMeasure::Row,
             coverage: false,
             calc: None,
             extent: false,
@@ -192,11 +211,24 @@ fn criteria(milestone: &str) -> Criteria {
         // No suite: gen-m9 alone is not a criterion, and catalog coverage is shown, not required.
         "M9" => Criteria {
             suites: Vec::new(),
-            probe_list: None,
+            probe: ProbeMeasure::Row,
             coverage: false,
             calc: Some(CalcRule::Rate(M9_CALC_RATE_NUM)),
             extent: false,
             function_rate: true,
+            poi_subset: None,
+        },
+        // gen-m10's text items and value cells, and the M10 probe row's; no function scope.
+        "M10" => Criteria {
+            suites: vec![SuiteNeed {
+                min_text: Some(M10_MIN_TEXT),
+                ..SuiteNeed::generated(milestone, 0, RATE_DEN)
+            }],
+            probe: ProbeMeasure::RowAndText,
+            coverage: false,
+            calc: None,
+            extent: false,
+            function_rate: false,
             poi_subset: None,
         },
         "M11" => Criteria {
@@ -205,7 +237,7 @@ fn criteria(milestone: &str) -> Criteria {
                 M11_MIN_SCORED,
                 M11_RATE_NUM,
             )],
-            probe_list: None,
+            probe: ProbeMeasure::Row,
             coverage: false,
             calc: None,
             extent: false,
@@ -214,7 +246,7 @@ fn criteria(milestone: &str) -> Criteria {
         },
         _ => Criteria {
             suites: generated(MIN_SCORED, RATE_NUM),
-            probe_list: None,
+            probe: ProbeMeasure::Row,
             coverage: true,
             calc: Some(CalcRule::NoneOff),
             extent: false,
@@ -250,6 +282,16 @@ pub struct SuiteExit {
     /// a subset formula (decision 0146 item 2(b)).
     #[serde(default)]
     pub blocked_cases: Vec<String>,
+    /// Displayed-text items scored, when the suite's text is a criterion (gen-m10, decision 0146
+    /// item 4(a)); `None` otherwise.
+    #[serde(default)]
+    pub text_items: Option<usize>,
+    /// Of those, the items whose text differs from Excel's.
+    #[serde(default)]
+    pub text_failing: Option<usize>,
+    /// Those items as `case!Sheet!A1`, for `scripts/exit_owners.py`.
+    #[serde(default)]
+    pub text_failing_cells: Vec<String>,
 }
 
 /// M8's poi subset measure from the report's `poi_m8_subset` section, at `num` over
@@ -293,10 +335,8 @@ fn suite_exit(report: &RunReport, need: &SuiteNeed) -> SuiteExit {
     out.allowance = Some(allowance(scored, need.rate_num));
     out.met =
         Some(scored >= need.min_scored && meets_rate(scored - visible, scored, need.rate_num));
-    out.visibly_off_cells = report
-        .cases
-        .iter()
-        .filter(|r| r.suite == need.name)
+    let cases = || report.cases.iter().filter(|r| r.suite == need.name);
+    out.visibly_off_cells = cases()
         .flat_map(|r| {
             r.cells
                 .iter()
@@ -304,6 +344,23 @@ fn suite_exit(report: &RunReport, need: &SuiteNeed) -> SuiteExit {
                 .map(move |c| crate::runner::cell_id(&r.id, &c.key()))
         })
         .collect();
+    if let Some(min_text) = need.min_text {
+        // The report keeps only the failing text items of each case (`report::failing_only`).
+        let failing = s.text_cells.saturating_sub(s.text_passed);
+        out.text_items = Some(s.text_cells);
+        out.text_failing = Some(failing);
+        out.met = out
+            .met
+            .map(|m| m && s.text_cells >= min_text && failing == 0);
+        out.text_failing_cells = cases()
+            .flat_map(|r| {
+                r.text
+                    .iter()
+                    .filter(|t| !t.pass)
+                    .map(move |t| crate::runner::cell_id(&r.id, &format!("{}!{}", t.sheet, t.cell)))
+            })
+            .collect();
+    }
     out
 }
 
@@ -344,6 +401,16 @@ pub struct ExitRow {
     /// `scripts/exit_owners.py` (decision 0135).
     #[serde(default)]
     pub gen_visibly_off_cells: Vec<String>,
+    /// Displayed-text items of the generated suite, when its text is a criterion (M10, decision
+    /// 0146 item 4(a)); `None` otherwise.
+    #[serde(default)]
+    pub gen_text_items: Option<usize>,
+    /// Of those, the failing items.
+    #[serde(default)]
+    pub gen_text_failing: Option<usize>,
+    /// Those items as `case!Sheet!A1`, for `scripts/exit_owners.py`.
+    #[serde(default)]
+    pub gen_text_failing_cells: Vec<String>,
     /// The other required suites (M1's smoke, decision 0146 item 1), each with its own floor
     /// and rate.
     #[serde(default)]
@@ -369,7 +436,14 @@ pub struct ExitRow {
     /// Visibly-off cells of the milestone's probe row (decision 0114).
     #[serde(default)]
     pub probe_visibly_off: Option<usize>,
-    /// No probe cell is visibly off.
+    /// Text items of the milestone's probe row, when they are a criterion (M10, decision 0146
+    /// item 4(b)); `None` otherwise. The row's own `text_failing_cells` lists the failing ones.
+    #[serde(default)]
+    pub probe_text_items: Option<usize>,
+    /// Of those, the failing items.
+    #[serde(default)]
+    pub probe_text_failing: Option<usize>,
+    /// No probe cell is visibly off (and, for M10, no probe text item fails).
     pub probes_met: Option<bool>,
     /// The "Probe milestones" row the probe measure reads: `M0-M2` for M2 (decision 0051); for M1
     /// the name of the milestone list it reads instead, `m1-probes` (decision 0146 item 1).
@@ -451,6 +525,9 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             row.gen_allowance = first.allowance;
             row.gen_met = first.met;
             row.gen_visibly_off_cells = first.visibly_off_cells;
+            row.gen_text_items = first.text_items;
+            row.gen_text_failing = first.text_failing;
+            row.gen_text_failing_cells = first.text_failing_cells;
             row.gen_suite = first.name;
             let suite = row.gen_suite.clone();
             let scope = report
@@ -482,7 +559,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             }
             let probes = &report.probe_milestones;
             let probe = probes.iter().find(|p| p.milestone == row.probe_row);
-            if let Some(list) = need.probe_list {
+            if let ProbeMeasure::List(list) = need.probe {
                 row.probe_row = list.to_string();
                 let lists = &report.milestone_lists;
                 if let Some(l) = lists.iter().find(|l| l.name == list && l.cases_run > 0) {
@@ -494,6 +571,11 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 row.probe_known_failures = Some(p.known_failures);
                 row.probe_visibly_off = Some(p.visibly_off);
                 row.probes_met = Some(p.visibly_off == 0);
+                if matches!(need.probe, ProbeMeasure::RowAndText) {
+                    row.probe_text_items = Some(p.text_items);
+                    row.probe_text_failing = Some(p.text_failing);
+                    row.probes_met = Some(p.visibly_off == 0 && p.text_failing == 0);
+                }
             }
             if need.extent && row.gen_scored.is_some() {
                 if let Some(p) = probe {
@@ -550,8 +632,12 @@ fn suite_text(s: &SuiteExit) -> String {
                 0 => String::new(),
                 n => format!(", {n} cases blocked"),
             };
+            let text = match (s.text_failing, s.text_items) {
+                (Some(failing), Some(items)) => format!(", text {failing} failing of {items}"),
+                _ => String::new(),
+            };
             format!(
-                "{scored}, {}, {}/{} [{}]{blocked} {}",
+                "{scored}, {}, {}/{} [{}]{blocked}{text} {}",
                 s.rate15
                     .map_or_else(|| "n/a".to_string(), |x| format!("{x:.5}")),
                 count(s.visibly_off),
@@ -571,7 +657,7 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
     let _ = writeln!(md, "\n## Milestone exit (decisions 0085, 0114)\n");
     let _ = writeln!(
         md,
-        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. M7 (decision 0140): gen-m7 needs {M7_MIN_SCORED} scored cells at the 0.999 rate, gen-m7 and the M7 probes have no spill-extent failure (a cell the engine filled that Excel left empty, decision 0063), and coverage and ironcalc-calc are shown but not required. M1 (decision 0146): gen-m1 needs {M1_MIN_SCORED} scored cells and smoke any number, both with none visibly off, and its probes are the frozen `{M1_PROBE_LIST}` list; M11: corpus-bench needs {M11_MIN_SCORED} scored cells with at least 0.998 not visibly off, `n/a` when it was not fetched; neither has a coverage or ironcalc-calc criterion. M8 (decision 0146 item 2): gen-m8a and gen-m8b each need {M8_MIN_SCORED} scored cells with none visibly off, and the `{M8_SUBSET}` (the poi cells holding a defined name, structured, 3-D or external reference) needs at least 0.995 of its scored cells not visibly off and no crashed or errored case holding such a formula, `n/a` when poi did not run; no coverage or ironcalc-calc criterion. M9 (decision 0146 item 3): no suite is required; ironcalc-calc, less its exit exceptions and deviations, needs at least 0.9995 of its scored cells not visibly off (allowance `floor(0.0005 * scored)`); every in-scope M9 function must be covered and at the Phase 1 rate of the v1.5 checkpoint; coverage is shown, not required. A suite other than the milestone's gen suite is named in its column. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
+        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. M7 (decision 0140): gen-m7 needs {M7_MIN_SCORED} scored cells at the 0.999 rate, gen-m7 and the M7 probes have no spill-extent failure (a cell the engine filled that Excel left empty, decision 0063), and coverage and ironcalc-calc are shown but not required. M1 (decision 0146): gen-m1 needs {M1_MIN_SCORED} scored cells and smoke any number, both with none visibly off, and its probes are the frozen `{M1_PROBE_LIST}` list; M11: corpus-bench needs {M11_MIN_SCORED} scored cells with at least 0.998 not visibly off, `n/a` when it was not fetched; neither has a coverage or ironcalc-calc criterion. M8 (decision 0146 item 2): gen-m8a and gen-m8b each need {M8_MIN_SCORED} scored cells with none visibly off, and the `{M8_SUBSET}` (the poi cells holding a defined name, structured, 3-D or external reference) needs at least 0.995 of its scored cells not visibly off and no crashed or errored case holding such a formula, `n/a` when poi did not run; no coverage or ironcalc-calc criterion. M9 (decision 0146 item 3): no suite is required; ironcalc-calc, less its exit exceptions and deviations, needs at least 0.9995 of its scored cells not visibly off (allowance `floor(0.0005 * scored)`); every in-scope M9 function must be covered and at the Phase 1 rate of the v1.5 checkpoint; coverage is shown, not required. M10 (decision 0146 item 4): gen-m10 needs at least {M10_MIN_TEXT} displayed-text items with none failing and no visibly-off value cell, and the M10 probe row needs no visibly-off value cell and no failing text item (`text failing of items`); no coverage or ironcalc-calc criterion. A suite other than the milestone's gen suite is named in its column. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
     );
     let _ = writeln!(
         md,
@@ -593,6 +679,8 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
             allowance: r.gen_allowance,
             known_failures: r.gen_known_failures,
             met: r.gen_met,
+            text_items: r.gen_text_items,
+            text_failing: r.gen_text_failing,
             ..SuiteExit::default()
         };
         // The generated suite `gen-m<k>` goes unnamed, as before decision 0146; any other is named.
@@ -621,13 +709,17 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
             }
             _ => count(r.calc_visibly_off),
         };
+        let probe_text = match (r.probe_text_failing, r.probe_text_items) {
+            (Some(failing), Some(items)) => format!(", text {failing} failing of {items}"),
+            _ => String::new(),
+        };
         let at_rate = match r.rate_functions {
             Some(n) => format!("{}/{n} {}", count(r.below_rate), verdict(r.rate_met)),
             None => "n/a".to_string(),
         };
         let _ = writeln!(
             md,
-            "| {} | {coverage} | {generated} | {calc_off} [{}] {} | {} [{}] {} | {} {} | {at_rate} | {} |",
+            "| {} | {coverage} | {generated} | {calc_off} [{}] {} | {} [{}]{probe_text} {} | {} {} | {at_rate} | {} |",
             r.milestone,
             count(r.calc_failing),
             verdict(r.calc_met),
