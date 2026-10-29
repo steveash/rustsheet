@@ -3,7 +3,7 @@ id: T-3107
 title: "Probe T of long text through a range, name, INDIRECT, OFFSET, INDEX, IF, CHOOSE, LET and a sheet-qualified or legacy reference"
 milestone: M5
 lane: functions-text
-status: todo
+status: in_progress
 priority: P2
 size: S
 tier: sonnet
