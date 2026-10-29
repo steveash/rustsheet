@@ -4,7 +4,7 @@ title: "Last-digit fits from the T-2475 probe: F.INV.RT(1-1E-10,8,7), NEGBINOMDI
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 depends_on: []

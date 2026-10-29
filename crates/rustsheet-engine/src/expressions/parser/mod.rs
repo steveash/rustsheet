@@ -342,6 +342,11 @@ pub enum Node {
         child: Box<Node>,
     },
     ErrorKind(token::Error),
+    /// `S!#REF!`, printed with its sheet (references.md "A sheet-qualified #REF! is #REF!"). Only
+    /// in the tree as written: [`Node::strip_spaces`] makes it a bare `#REF!` (T-2855).
+    SheetRefErrorKind {
+        sheet_name: String,
+    },
     ParseErrorKind {
         formula: String,
         message: String,
@@ -938,6 +943,7 @@ impl Parser {
             }
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),
+            TokenType::SheetRefError(sheet_name) => Node::SheetRefErrorKind { sheet_name },
             TokenType::Illegal(error) => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
                 expecting: vec![ExpectedTokens::Other],
@@ -976,7 +982,7 @@ impl Parser {
             | TokenType::Percent => {
                 self.unexpected_operand(format!("Unexpected token: '{next_token:?}'"))
             }
-            TokenType::LeftBracket => self.unexpected_operand("Unexpected token: '['".to_string()),
+            TokenType::LeftBracket => self.unqualified_structured_reference(),
             TokenType::StructuredReference {
                 table_name,
                 specifier,

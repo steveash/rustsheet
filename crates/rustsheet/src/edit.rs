@@ -9,6 +9,7 @@
 //! captures every formula and spill cell, ops add the cells they touch, and after the recalc
 //! the captured values are compared with the current ones (see `diff`).
 
+mod calculated_column;
 mod diff;
 mod pivot;
 
@@ -16,7 +17,7 @@ pub use self::pivot::{PivotError, PivotFunction, PivotTableInput};
 
 use rustsheet_engine::clock::Clock;
 use rustsheet_engine::types::{
-    Cell, DataTable, DataTableInput, Link, Worksheet, MAX_DATA_TABLE_CELLS,
+    Cell, DataTable, DataTableInput, Link, Table, Worksheet, MAX_DATA_TABLE_CELLS,
 };
 use rustsheet_engine::Model;
 use rustsheet_engine::TakenSheet;
@@ -188,6 +189,9 @@ enum Undo {
     },
     /// A table added by `add_table`.
     Table(String),
+    /// A table as it was before a typed formula grew it (T-2968) or made one of its columns a
+    /// calculated column (T-3024).
+    TableBefore(Box<Table>),
     /// A data table added by `add_data_table`: its sheet and result range.
     DataTable {
         sheet_id: u32,
@@ -249,23 +253,8 @@ impl Txn<'_> {
         let key = (range.sheet.get(), row, col);
         self.log_cell(sheet, key, cell)?;
         let input = input.into();
-        // A typed formula can fill its table column (a calculated column, T-2958): those
-        // cells are part of this edit and its undo.
         if let Input::Parse(text) | Input::Formula(text) = &input {
-            if text.starts_with('=') {
-                let targets = self
-                    .model
-                    .calculated_column_targets(sheet, row, col)
-                    .map_err(EditError::Engine)?;
-                // The targets are the other rows of the cell's column.
-                for (r, c) in targets {
-                    let target = CellRef {
-                        row: u32::try_from(r - 1).map_err(|_| RefError::OutOfBounds)?,
-                        ..cell
-                    };
-                    self.log_cell(sheet, (key.0, r, c), target)?;
-                }
-            }
+            self.log_typed_fill(sheet, key, cell, text)?;
         }
         self.apply(sheet, row, col, input, cell)
     }
@@ -873,6 +862,7 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                 let undone = model.remove_table(&name);
                 debug_assert!(undone.is_ok(), "undo of add_table failed: {undone:?}");
             }
+            Undo::TableBefore(table) => model.restore_table(*table),
             Undo::DataTable { sheet_id, range } => {
                 let sheet = (model.workbook.worksheets.iter())
                     .position(|ws| ws.get_sheet_id() == sheet_id)

@@ -139,11 +139,14 @@ fn up_to_32_periods_are_the_per_period_sum() {
     model.evaluate();
     let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
     assert_eq!(number("A1").to_bits(), number("B1").to_bits());
-    // The PPMT sum cancels (each principal is a fiftieth of its payment); the closed form is
-    // within an ulp of the exact -2.33419231896298640 (T-1890).
-    assert!((number("A2") / -2.334_192_318_962_986_4 - 1.0).abs() < 4E-16);
+    // The PPMT sum cancels (each principal is a fiftieth of its payment). The geometric sum on
+    // Excel's own `ln(1+rate)` is Excel's value, an ulp or two from the exact
+    // -2.33419231896298640 (probes/fin-cumipmt-gate-edges J1; T-1890, T-2521).
+    assert_eq!(number("A2"), -2.334_192_318_962_987_4);
     assert!((number("A2") / number("B2") - 1.0).abs() < 1E-12);
-    // 33 periods: the closed form, within an ulp or two of the sum.
+    // 33 periods: past the per-period sums, Excel's value (gate-edges J2), within an ulp of the
+    // IPMT sum.
+    assert_eq!(number("A3"), -131.849_721_045_626_13);
     assert_ne!(number("A3").to_bits(), number("B3").to_bits());
     assert!((number("A3") / number("B3") - 1.0).abs() < 1E-14);
     check(&[

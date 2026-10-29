@@ -3,7 +3,7 @@ id: T-2566
 title: "XNPV and XIRR discount with Excel's ^ (probes/xirr-exact-root-sign)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -41,3 +41,6 @@ of Excel's value, or has Excel's type, error and text. Bit-level criteria still 
 filed with `defer: phase-1b`.
 
 Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns 183 of the 185 visibly-off XNPV cells (probes/xirr-exact-root-sign) and 6 of the 14 XIRR cells. Fixing them lifts XNPV to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+XNPV and XIRR's trial XNPV use `arithmetic::power`; baseline shrank by 381 known failures (probes xirr-exact-root-sign, XIRR.xlsx Q21).

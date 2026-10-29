@@ -22,7 +22,8 @@
         "A41": "=_xlfn.PIVOTBY(Data!A1:A4,Data!C1:C4,Data!B1:B4,_xleta.SUM,{0,2},{0;-1})",
         "A46": "=_xlfn.PIVOTBY(Data!A1:A4,Data!C1:C4,Data!B1:B4,_xleta.SUM,0,{0,-1},,{0;-1})",
         "A51": "=_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2},{0;-1},,,{0,1;1,0})",
-        "A56": "=ROWS(_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2;3,0},{0;-1;1}))&\",\"&COLUMNS(_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2;3,0},{0;-1;1}))"
+        "A56": "=ROWS(_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2;3,0},{0;-1;1}))&\",\"&COLUMNS(_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,2;3,0},{0;-1;1}))",
+        "A61": "=IFERROR(ERROR.TYPE(INDEX(_xlfn.GROUPBY(Data!A1:A4,Data!B1:B4,_xleta.SUM,{0,\"x\"},{0;5}),2,1)),0)"
       }
     },
     {

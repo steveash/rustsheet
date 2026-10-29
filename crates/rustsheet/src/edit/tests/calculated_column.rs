@@ -91,3 +91,57 @@ fn rollback_restores_the_filled_column() {
     assert!(result.is_err());
     assert_eq!(dump(&wb), before);
 }
+
+/// A rolled-back fill leaves the column no calculated column (T-3024): identical stored formulas
+/// written afterwards are not re-filled by a typed one, as probes/t2983-identical-stored-refill.
+#[test]
+fn rollback_restores_the_column_formula() {
+    let mut wb = table_book();
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("C2", "=A2*2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(formula(&wb, "C3"), None);
+    for row in [2, 4] {
+        let stored = Input::StoredFormula(format!("=A{row}*2"));
+        wb.set(format!("C{row}").as_str(), stored).unwrap();
+    }
+    wb.set("C3", "=A3*3").unwrap();
+    assert_eq!(wb.value("C2").unwrap(), Value::Number(2.0));
+    assert_eq!(wb.value("C3").unwrap(), Value::Number(6.0));
+}
+
+/// probes/t2957-expand-right-data: a formula typed just right of the table grows it by a column
+/// named `Column1` and fills it, all in one edit (T-2968).
+#[test]
+fn a_formula_typed_beside_the_table_grows_it_in_one_edit() {
+    let mut wb = table_book();
+    wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+    let changes = wb.set("D2", "=A2*2").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+    assert_eq!(wb.value("D1").unwrap(), Value::Text("Column1".into()));
+    assert_eq!(formula(&wb, "D4").as_deref(), Some("=A4*2"));
+    assert_eq!(wb.value("D4").unwrap(), Value::Number(8.0));
+    // D1:D4 are the edit's inputs.
+    assert_eq!(changes.inputs.len(), 4);
+}
+
+/// Rolling the growing edit back puts the table, its header cell and the filled rows back.
+#[test]
+fn rollback_restores_the_table_a_typed_formula_grew() {
+    let mut wb = table_book();
+    wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("D1", "=1+1")?;
+        tx.set("D2", "=A2*2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(3.0));
+    // The table is its old size again: typing beside it grows it once more.
+    wb.set("D2", "=A2*2").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+}

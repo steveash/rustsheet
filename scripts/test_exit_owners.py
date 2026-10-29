@@ -140,6 +140,51 @@ class ExitOwners(TaskDir):
         self.task("probes/index-reference-args P!B3", milestone="M2")
         self.assertEqual(exit_owners.unowned(r, "M2", self.tasks), [])
 
+    def test_m1_lists_gen_m1_smoke_and_the_m1_probes_list(self) -> None:
+        # Decision 0146 item 1: two required suites and the frozen list as the probe measure.
+        gen1, smoke = "gen-m1/abc.case.json", "smoke/basic.case.json"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M1",
+                "gen_suite": "gen-m1",
+                "gen_visibly_off_cells": [f"{gen1}!Calc!A3"],
+                "more_suites": [{"name": "smoke", "visibly_off_cells": [f"{smoke}!S!B1"]}],
+                "probe_row": "m1-probes",
+            }
+        ]
+        r["cases"] = [
+            {"id": gen1, "suite": "gen-m1", "cells": [cell("Calc", "A3")]},
+            {"id": smoke, "suite": "smoke", "cells": [cell("S", "B1")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B4", "=INDEX(A1:B2,1)")]},
+        ]
+        r["function_scope"] = {"rows": []}
+        r["milestone_lists"] = [{"name": "m1-probes", "visibly_off_cells": [f"{PROBE}!P!B4"]}]
+        cells = exit_owners.exit_cells(r, "M1")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}", c.formula) for c in cells],
+            [
+                ("gen-m1", f"{gen1}!Calc!A3", "=X()"),
+                ("smoke", f"{smoke}!S!B1", "=X()"),
+                ("m1-probes", f"{PROBE}!P!B4", "=INDEX(A1:B2,1)"),
+            ],
+        )
+        self.task("smoke/basic S!B1 and index-reference-args P!B4", milestone="M1")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M1", self.tasks)]
+        self.assertEqual(listed, [f"{gen1}!Calc!A3"])
+
+    def test_m11_lists_corpus_bench_as_its_suite(self) -> None:
+        corpus = "corpus-bench/53062/1_53062_input.xlsx"
+        r = report()
+        r["milestone_exit"] = [
+            {"milestone": "M11", "gen_suite": "corpus-bench", "gen_visibly_off_cells": [f"{corpus}!Sheet1!D4"]}
+        ]
+        r["cases"] = [{"id": corpus, "suite": "corpus-bench", "cells": [cell("Sheet1", "D4")]}]
+        r["function_scope"] = {"rows": []}
+        r["probe_milestones"] = []
+        cells = exit_owners.exit_cells(r, "M11")
+        self.assertEqual([(c.criterion, f"{c.case}!{c.key}") for c in cells], [("corpus-bench", f"{corpus}!Sheet1!D4")])
+
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")
         listed = self.listed()
@@ -342,6 +387,67 @@ class UnattributedOwners(TaskDir):
         path.write_text("{}")
         with redirect_stdout(io.StringIO()):
             self.assertEqual(exit_owners.main([*args, "--strict"]), 0)
+
+
+class AllOff(TaskDir):
+    """`--all-off` (T-0086): the visibly-off rule is the eval's (closeness.rs pins the 4-ulp and
+    half-unit boundaries); the report's lists arrive already filtered."""
+
+    @staticmethod
+    def report() -> dict[str, object]:
+        return {
+            "cases": [
+                {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2"), cell("P", "B3"), cell("P", "B4")]}
+            ],
+            "attributed_off": [
+                {"case": PROBE, "cell": "P!B3", "function": "GAMMA", "formula": "GAMMA(1)",
+                 "expected": "1.0", "actual": "2.0"},
+                {"case": PROBE, "cell": "P!B2", "function": "BETA.DIST", "formula": "BETA.DIST(1)",
+                 "expected": "1.0", "actual": "2.0"},
+            ],
+            "unattributed_off": [{"case": PROBE, "cell": "P!B4", "formula": "A()+B()"}],
+            "probe_milestones": [
+                {"milestone": "M9", "failing_cases": [[PROBE, 3]],
+                 "visibly_off_cells": [f"{PROBE}!P!B3", f"{PROBE}!P!B5"]},
+            ],
+        }
+
+    def listed(self) -> list[tuple[str, str, bool]]:
+        return [
+            (o.cell.criterion, o.cell.key, deferred)
+            for o, deferred in exit_owners.unowned_off(self.report(), self.tasks)
+        ]
+
+    def test_groups_by_function_then_unattributed_then_probe(self) -> None:
+        self.assertEqual(
+            self.listed(),
+            [
+                ("BETA.DIST", "P!B2", False),
+                ("GAMMA", "P!B3", False),
+                ("unattributed", "P!B4", False),
+                ("probe M9", "P!B5", False),
+            ],
+        )
+
+    def test_an_open_task_owns_its_cell_and_a_deferred_one_does_not(self) -> None:
+        self.task("index-reference-args B3")
+        self.assertNotIn("P!B3", [k for _, k, _ in self.listed()])
+        d = self.tasks / "M5" / "T-9100-d.md"
+        d.write_text(
+            "---\nid: T-9100\nmilestone: M5\nstatus: todo\ndefer: phase-1b\n---\n\nindex-reference-args B2\n"
+        )
+        self.assertIn(("BETA.DIST", "P!B2", True), self.listed())
+
+    def test_output_function_filter_and_strict(self) -> None:
+        path = self.tasks / "report.json"
+        path.write_text(json.dumps(self.report()))
+        args = ["--all-off", "--report", str(path), "--tasks", str(self.tasks)]
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(exit_owners.main([*args, "--function", "GAMMA", "--strict"]), 1)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], f"GAMMA\t{PROBE}!P!B3\tGAMMA(1)\t1.0\t2.0")
+        self.assertEqual(lines[-1], "1 visibly-off cells have no open owner")
 
 
 if __name__ == "__main__":

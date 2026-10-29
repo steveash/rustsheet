@@ -54,6 +54,29 @@ impl Lexer {
         }))
     }
 
+    /// Moves back to char index `position`, a position this lexer already passed: the parser
+    /// re-reads a `[` operand as a structured reference once it knows the table (T-2979).
+    pub(crate) fn rewind_to(&mut self, position: usize) {
+        // Never forward: moving ahead would skip text the caller has not read.
+        self.position = position.min(self.position);
+    }
+
+    /// The stored (R1C1) prefix of an unqualified structured reference, after its `[`: the table
+    /// name up to `]`, consumed when a `[` follows it (`[T][@Col]`, `StructuredReference::stored_text`).
+    /// `None`, position unchanged, otherwise.
+    pub(crate) fn stored_table_prefix(&mut self) -> Option<String> {
+        let start = self.position;
+        let end = (start..self.len).find(|&i| self.chars[i] == ']')?;
+        let name: String = self.chars[start..end].iter().collect();
+        if self.chars.get(end + 1) != Some(&'[')
+            || !crate::expressions::utils::is_valid_a1_identifier(&name)
+        {
+            return None;
+        }
+        self.position = end + 1;
+        Some(name)
+    }
+
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier

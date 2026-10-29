@@ -3,8 +3,8 @@ id: T-2951
 title: "PMT at rates -0.9 and 0.2 to Excel's bits so PMT.xlsx's 10 visibly-off chained NPER, PV and FV cells pass (parked in deferred T-2730)"
 milestone: M9
 lane: functions-financial
-status: todo
-priority: P2
+status: blocked
+priority: P1
 size: S
 tier: opus
 campaign: visible
@@ -99,3 +99,38 @@ cells and the three -0.9 values, the next step is a research sweep of PMT at rat
 Decision 0083/0114, stage `visible`: Excel is the inaccurate one here (the engine's PMT is correctly rounded). The task
 is done when the 10 owned cells are within half a unit of the 15th significant digit of Excel's value, which needs the
 PMT inputs bit-exact. PMT cells left 1 ulp off after that move to T-2730 (deferred), named in the Outcome.
+
+## Blocked because
+Blocked because: time-boxed (decision 0056). One attempt (2026-10-28) scored the named candidates with
+`docs/research/t2951_pmt_order_score.py` (EXP and LN the engine's Excel models through the python bindings, L and
+expm1 as PPMT's; the fit lab has no Excel EXP/LN model). Bit-exact (within 4 ulp) on the 9 owned PMT inputs /
+PMT.xlsx's 40 other PMT cells over constants / m9-fin-pmt's 308:
+
+| candidate | owned | PMT.xlsx other | m9-fin-pmt |
+|---|---|---|---|
+| correctly rounded (the engine) | 0 (8) | 31 (40) | 132 (308) |
+| textbook `-(pv*P+fv)*r/(k*(P-1))`, Excel's `^` | 1 (8) | 28 (40) | 68 (177) |
+| textbook, `k` divided out last | 0 (8) | 25 (40) | 65 (176) |
+| fv-first `-(fv+pv*P)/(k*((P-1)/r))` | 0 (8) | 25 (40) | 60 (176) |
+| fv-first, `k` last | 0 (8) | 23 (40) | 64 (176) |
+| split `-(pv*r+(pv+fv)*r/(P-1))/k` | 3 (9) | 19 (33) | 73 (179) |
+| Excel-L/EXP `-(pv+fv*Q)/(k*((1-Q)/r))` (T-2730, T-3014) | 1 (9) | 24 (40) | 175 (308) |
+| Excel-L/EXP, `k` last | 0 (9) | 23 (40) | 173 (308) |
+| Excel-L/EXP, the rest rounded once: `-(pv+fv*Q)*r/((1-Q)*k)` | 1 (9) | 33 (40) | 197 (308) |
+
+Also tried in unscripted scratch runs (not in the committed script), all lower: x87 (twice-rounded) operators in every shape above (the same or within one cell),
+P = EXP(n·L) with Kahan's P-1 in eight shapes, the type-1 factor as EXP(L) or as a multiplication by EXP(-L), the
+annuity-due form `-(pv+fv*Q)/(1+(1-Q_(n-1))/r)`, the Kahan step and the EXP result held at 64 bits (111 to 170 on
+m9-fin-pmt), and L as libm log1p, Excel's LN of 1+rate, or correctly rounded (well below the series L).
+
+Findings: (1) at rate -0.9 with fv 300 and type 1 (F10, F11, F18, F23) every form is 3 to 6 ulp larger in
+magnitude than Excel (Excel sits 3 to 5 ulp toward zero from the exact payment), and the miss barely moves with L
+(scratch: every L within 10 ulp of Excel's LN gives the same F10 and F11 to an ulp, and F18 within 2 ulp). The fv 0,
+type 0 controls at -0.9 carry only a 1-ulp, form-dependent residue (G10: exact -1, Excel-L/EXP +1, rounded-once 0;
+G11: 0, +1, +1; G18 0 under each of these), so the 3 to 5 ulp gap comes from how fv or type 1 enters; PMT.xlsx has no -0.9 cell with fv alone or type 1 alone, so the
+cached values cannot separate them. (2) The rounded-once Excel-L/EXP form is the best PMT model so far on
+m9-fin-pmt (197/308, T-3014's 175 with plain operators), but it still misses about a third of the sweep by one ulp,
+and of the five 0.2 inputs it gets only G33 (F27, G27, F32 and F33 are 1 ulp off).
+
+Reopen hypothesis: T-3071's probe of PMT at rates -0.95 to -0.5 with fv alone, type 1 alone and both (new oracle
+evidence); with it, fit the -0.9 shift first, then rescore the 0.2 cells with the rounded-once form.

@@ -781,14 +781,17 @@ impl Model {
                     message: "info_type not implemented".to_string(),
                 }
             }
-            // The top-left cell of the reference taken on the formula's own sheet, whatever sheet
-            // the reference names, with no implicit intersection: `CELL("contents",Data!A2)` on
-            // Calc reads Calc!A2 (probes/info-cell-contents-range, excel-graph, T-1230). Desktop
-            // Excel is unverified (T-1075 item 9); excel-graph is the oracle of record (decision 0039).
-            "CONTENTS" => self.evaluate_cell(CellReferenceIndex {
-                sheet: cell.sheet,
-                ..reference
-            }),
+            // The top-left cell of the reference, on the sheet it names, with no implicit
+            // intersection (probes/info-cell-contents-range, excel-graph re-filled 2026-10-28,
+            // T-3030; the 2026-10-12 fill read the formula's own sheet, T-1230).
+            // A blank target gives the empty value, as IFERROR of a blank cell does (`EmptyArg`):
+            // COUNTA counts it and array arguments reject it (`COUNTA(CELL("contents",<blank>))` 1,
+            // `TOCOL(CELL("contents",<blank>))` `#VALUE!`; probes/t3030-cell-contents-blank-shapers
+            // A21, A231, excel-graph, T-3053; information.md "CELL("contents", ref) as a VSTACK argument").
+            "CONTENTS" => match self.evaluate_cell(reference) {
+                CalcResult::EmptyCell => CalcResult::EmptyArg,
+                value => value,
+            },
             // Excel for the web gives #VALUE! for every form (probes/info-cell-address-cross-sheet
             // Calc!B1:B4, excel-graph, T-2052); desktop's full-path form is M14.
             "FILENAME" => CalcResult::Error {
@@ -797,14 +800,11 @@ impl Model {
                 message: "CELL(\"filename\") is #VALUE! in Excel for the web".to_string(),
             },
             "ROW" => CalcResult::Number(reference.row as f64),
-            // Like "contents", "type" reads the reference's address on the formula's own sheet
-            // (`CELL("type",Data!A7)` is "b" when Calc!A7 is blank although Data!A7 is text;
-            // probes/info-cell-legacy-range J1:K3, excel-graph, T-1433).
+            // Like "contents", "type" reads the top-left cell on the sheet the reference names
+            // (`CELL("type",Data!A7)` is "l" for text in Data!A7 although Calc!A7 is blank;
+            // probes/info-cell-legacy-range J1:K3, excel-graph re-filled 2026-10-28, T-3030).
             "TYPE" => {
-                let cell_type = match self.evaluate_cell(CellReferenceIndex {
-                    sheet: cell.sheet,
-                    ..reference
-                }) {
+                let cell_type = match self.evaluate_cell(reference) {
                     CalcResult::EmptyCell => "b",
                     CalcResult::String(_) => "l",
                     CalcResult::Number(_) => "v",

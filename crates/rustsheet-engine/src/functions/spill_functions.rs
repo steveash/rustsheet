@@ -1,5 +1,5 @@
 use crate::functions::util::array_node_to_calc_result;
-use crate::functions::util::near_integer::near_integer_count;
+use crate::functions::util::near_integer::near_integer_whole;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
@@ -198,12 +198,12 @@ fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
 /// sorting call leads it, and the leads keep their call's top-left when all their `by_col` values
 /// are equal (else only the first does); every other sorting call is empty when `only_key_two`
 /// and it is the first such element or sits below an empty-able one with the same `by_col`, and
-/// `#VALUE!` otherwise (probes/t2929-sort-lifted-by-col-*, T-2929; the rule and its UNVERIFIED
-/// corners are in arrays.md).
+/// `#VALUE!` otherwise (probes/t2929-sort-lifted-by-col-*, T-2929;
+/// the rule is in arrays.md and T-3090 tracks its one known gap).
 // Excel: docs/excel-semantics/arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments".
 fn sort_lifted_elements(
     result: CalcResult,
-    sorted: &[Option<bool>],
+    sorted: &[Option<ByCol>],
     only_key_two: bool,
 ) -> CalcResult {
     let CalcResult::Array(mut rows) = result else {
@@ -251,6 +251,14 @@ fn sort_lifted_elements(
     CalcResult::Array(rows)
 }
 
+/// The `by_col` an element of a lifted SORT sorted with: its value, and whether it was written as a
+/// number (a number is never equal to a boolean).
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct ByCol {
+    value: bool,
+    is_number: bool,
+}
+
 /// An evaluated SORTBY `by_array` argument.
 type SortByArray = Vec<Vec<ArrayNode>>;
 
@@ -270,6 +278,28 @@ fn by_array_axes(key: &[Vec<ArrayNode>], rows: usize, cols: usize) -> (bool, boo
     )
 }
 
+/// An argument that must be an array rejects the empty value a value-returning call gives for a
+/// blank cell (`EmptyArg`: `CELL("contents",<blank>)`, `IFERROR(<blank>,5)`, `IFNA(..)`), through
+/// IF, LET, CHOOSE, `@` and parentheses too, with `#VALUE!`, while a blank reference read through
+/// those wrappers is a blank cell that stacks as 0 (`VSTACK(IFERROR(Data!C11,5),1)` and
+/// `TOCOL(CELL("contents",Data!C11))` `#VALUE!`, `VSTACK(IF(TRUE,Data!C11),1)` 0;1;
+/// probes/t3030-cell-contents-blank-shapers, probes/t3053-blank-reference-wrappers, excel-graph,
+/// T-3053; information.md). An argument left out of the formula is not checked (unprobed).
+pub(crate) fn reject_empty_value(
+    arg: &Node,
+    result: CalcResult,
+    cell: CellReferenceIndex,
+) -> Result<CalcResult, CalcResult> {
+    if matches!(result, CalcResult::EmptyArg) && !matches!(arg, Node::EmptyArgKind) {
+        return Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "an empty value is not an array".to_string(),
+        ));
+    }
+    Ok(result)
+}
+
 impl Model {
     /// Evaluate a node and convert the result to a 2-D array of `ArrayNodes`.
     /// Handles Range references, inline Arrays, and scalar values.
@@ -282,6 +312,17 @@ impl Model {
         self.result_to_array(result, cell)
     }
 
+    /// [`Model::eval_to_array`] for an argument that must be an array ([`reject_empty_value`]).
+    pub(crate) fn eval_array_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        let result = self.evaluate_node_in_context(node, cell);
+        let result = reject_empty_value(node, result, cell)?;
+        self.result_to_array(result, cell)
+    }
+
     /// [`Model::eval_to_array`] that keeps a lone blank cell blank, as a blank cell of a range is:
     /// `TOROW(Z1,3)` is `#CALC!` and `UNIQUE(Z1)&"x"` is "x" (docs/excel-semantics/arrays.md
     /// "TOROW and UNIQUE of a lone blank cell", T-2409).
@@ -290,7 +331,29 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let result = self.evaluate_node_in_context(node, cell);
+        self.result_to_array_keep_blank(result, cell)
+    }
+
+    /// [`Model::eval_array_arg`] that keeps a lone blank cell blank, as
+    /// [`Model::eval_to_array_keep_blank`] does.
+    pub(crate) fn eval_array_arg_keep_blank(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        let result = self.evaluate_node_in_context(node, cell);
+        let result = reject_empty_value(node, result, cell)?;
+        self.result_to_array_keep_blank(result, cell)
+    }
+
+    /// [`Model::result_to_array`], a blank cell kept as a blank element.
+    pub(crate) fn result_to_array_keep_blank(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match result {
             CalcResult::EmptyCell => Ok(vec![vec![ArrayNode::Empty]]),
             result => self.result_to_array(result, cell),
         }
@@ -403,7 +466,7 @@ impl Model {
             .max(1);
         // Each call's by_col when it sorted, in row-major order (one entry per element: every
         // element runs, `Reuse::Never`).
-        let mut sorted: Vec<Option<bool>> = Vec::new();
+        let mut sorted: Vec<Option<ByCol>> = Vec::new();
         let result = self.lift_call_costed(
             kind,
             args,
@@ -414,15 +477,26 @@ impl Model {
                     None | Some(CalcResult::EmptyArg) => Ok(false),
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
+                // A number by_col is not the boolean it reads as when leads are compared
+                // (probes/t2947-sort-lifted-by-col-corners).
+                let is_number = matches!(values.get(3), Some(CalcResult::Number(_)));
                 let (result, read) = match (by_col, &raw_order) {
                     (Err(error), _) => (error, None),
                     (Ok(_), Err(error)) => (error.clone(), None),
                     (Ok(by_col), Ok(raw_order)) => (
                         model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell),
-                        Some(by_col),
+                        Some(ByCol {
+                            value: by_col,
+                            is_number,
+                        }),
                     ),
                 };
-                sorted.push(read.filter(|_| !matches!(result, CalcResult::Error { .. })));
+                // A call failing on its sort_index counts as a sorting call unless no call has
+                // sorted yet, while an invalid by_col is always skipped (arrays.md, probes/
+                // t2947-sort-lifted-by-col-corners).
+                let failed = matches!(result, CalcResult::Error { .. });
+                let sorted_before = sorted.iter().any(Option::is_some);
+                sorted.push(read.filter(|_| !failed || sorted_before));
                 result
             },
         );
@@ -569,16 +643,13 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-
-        if data.is_empty() || data[0].is_empty() {
+        // An error array is lifted like any other: every element is that error, in the sort_orders'
+        // shape (`ROWS(SORTBY(NA(),C1:C3,{1;-1}))` is 2; probes/sortby-lifted-element-corners F7,
+        // excel-graph, T-2349).
+        let data = self.eval_to_array(&args[0], cell);
+        if data.as_ref().is_ok_and(|d| d.is_empty() || d[0].is_empty()) {
             return CalcResult::Array(vec![]);
         }
-
-        let num_rows = data.len();
 
         // The array and the by_arrays are read once here; the sort_orders lift over an array and
         // a range (SPEC-0011 "Array-valued functions", T-1839). Each element sorts the whole
@@ -587,7 +658,7 @@ impl Model {
             .step_by(2)
             .map(|i| self.eval_to_array(&args[i], cell))
             .collect();
-        let cells = data.iter().map(Vec::len).sum::<usize>()
+        let cells = data.iter().flatten().map(Vec::len).sum::<usize>()
             + keys
                 .iter()
                 .flatten()
@@ -599,7 +670,7 @@ impl Model {
             args,
             LiftCost::Cells(cells),
             cell,
-            &mut |model, values| model.sortby_of(&data, &keys, values, num_rows, cell),
+            &mut |model, values| model.sortby_of(&data, &keys, values, cell),
         )
     }
 
@@ -609,12 +680,16 @@ impl Model {
     /// docs/excel-semantics/arrays.md).
     fn sortby_of(
         &mut self,
-        data: &[Vec<ArrayNode>],
+        data: &Result<Vec<Vec<ArrayNode>>, CalcResult>,
         keys: &[Result<SortByArray, CalcResult>],
         values: &[CalcResult],
-        num_rows: usize,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let data = match data {
+            Ok(data) => data,
+            Err(error) => return error.clone(),
+        };
+        let num_rows = data.len();
         let mut raw_keys: Vec<(&SortByArray, i32)> = Vec::with_capacity(keys.len());
         for (pair, key) in keys.iter().enumerate() {
             let key = match key {
@@ -625,9 +700,11 @@ impl Model {
                 None | Some(CalcResult::EmptyArg) => 1,
                 // A fraction reads as its floor, snapped up near an integer: -0.0001 and -0.9999
                 // are -1 and 1.5 is 1, while 0.5, -1.5 and -1E-300 are `#VALUE!`
-                // (probes/t2310-sortby-single-by-array H97-H165).
+                // (probes/t2310-sortby-single-by-array H97-H165). The snap is `near_integer_whole`'s,
+                // half the tolerance below zero: `-1-2^-23` is -1, `-1-2^-22` `#VALUE!`
+                // (probes/t2370-sortby-mixed-by-array-snap, T-2370).
                 Some(value) => match self.cast_to_number(value.clone(), cell) {
-                    Ok(order) => near_integer_count(order) as i32,
+                    Ok(order) => near_integer_whole(order) as i32,
                     Err(error) => return error,
                 },
             };
@@ -787,7 +864,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
+        let data = match self.eval_array_arg(&args[0], cell) {
             Ok(d) => d,
             Err(e) => return e,
         };

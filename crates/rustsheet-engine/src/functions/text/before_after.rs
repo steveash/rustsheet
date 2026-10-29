@@ -41,6 +41,11 @@ impl Model {
         if !(2..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
+        // Which arguments are written: an empty value an argument evaluates to is not omitted.
+        let written: Vec<bool> = args
+            .iter()
+            .map(|arg| !matches!(arg, Node::EmptyArgKind))
+            .collect();
         let (operands, mut lists) = self.lift_text_operands(args, &[1], cell);
         let delimiters = match lists.pop() {
             Some(list) => self.around_delimiters(list, cell).map(Delimiters::new),
@@ -54,9 +59,7 @@ impl Model {
             cell,
             &scanned,
             COMPARED_BYTES_PER_VISIT,
-            |model, values, _| {
-                model.text_around_element(values, arg_count, &delimiters, side, cell)
-            },
+            |model, values, _| model.text_around_element(values, &written, &delimiters, side, cell),
         )
     }
 
@@ -79,7 +82,7 @@ impl Model {
     fn text_around_element(
         &mut self,
         values: &[CalcResult],
-        arg_count: usize,
+        written: &[bool],
         delimiters: &Result<Delimiters, CalcResult>,
         side: Side,
         cell: CellReferenceIndex,
@@ -92,7 +95,8 @@ impl Model {
             Ok(list) => list,
             Err(error) => return error.clone(),
         };
-        let options = match self.around_options(values, cell) {
+        let arg_count = written.len();
+        let options = match self.around_options(values, written, cell) {
             Ok(options) => options,
             Err(error) => return error,
         };
@@ -155,14 +159,20 @@ impl Model {
 
     /// The `instance_num`, `match_mode` and `match_end` of one element, read in that order (the
     /// defaults 1, case-sensitive and 0 when omitted, also as an empty argument:
-    /// probes/textbefore-delimiter-range A22, A37). An `instance_num` of 0 is `#VALUE!`.
+    /// probes/textbefore-delimiter-range A22, A37). An `instance_num` of 0 is `#VALUE!`. A written
+    /// argument that is the empty value is 0, not omitted: `TEXTAFTER(..,"-",CELL("contents",
+    /// <blank>),1,1)` is `#VALUE!` (gen-m7/9359f03972e94026 A1420, T-3053).
     fn around_options(
         &self,
         values: &[CalcResult],
+        written: &[bool],
         cell: CellReferenceIndex,
     ) -> Result<AroundOptions, CalcResult> {
         let number_at = |index: usize| -> Result<Option<f64>, CalcResult> {
             match values.get(index) {
+                Some(CalcResult::EmptyArg) if written.get(index) == Some(&true) => {
+                    self.cast_number_ref(&CalcResult::EmptyCell, cell).map(Some)
+                }
                 Some(CalcResult::EmptyArg) | None => Ok(None),
                 Some(value) => self.cast_number_ref(value, cell).map(Some),
             }

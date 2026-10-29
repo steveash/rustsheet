@@ -268,3 +268,16 @@ def test_an_m7_row_shows_calc_not_required_and_its_spill_extents() -> None:
     assert "ironcalc-calc 3 visibly off (not required)" in text
     assert text.endswith("spill extents 0 failures (met)")
     assert "spill extents" not in goals.exit_measures("M5", exit_row("M5", True))
+
+
+def test_m1_and_m11_rows_name_their_suites() -> None:
+    # Decision 0146: M1 adds smoke beside gen-m1; M11's one suite is corpus-bench.
+    m1 = exit_row("M1", True) | {
+        "gen_suite": "gen-m1",
+        "more_suites": [{"name": "smoke", "scored": 46, "visibly_off": 0, "allowance": 0, "met": True}],
+    }
+    text = goals.exit_measures("M1", m1)
+    assert "generated suite 4 visibly off of 20,000" in text
+    assert "smoke 0 visibly off of 46, allowance 0 (met)" in text
+    m11 = exit_row("M11", True) | {"gen_suite": "corpus-bench"}
+    assert "corpus-bench 4 visibly off of 20,000, allowance 20 (met)" in goals.exit_measures("M11", m11)

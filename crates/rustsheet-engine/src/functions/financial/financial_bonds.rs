@@ -15,7 +15,7 @@ use coupon_schedule::{
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 use odd_last::odd_l_func;
-use yield_solver::{excel_yield_newton, solve_yield, yield_start};
+use yield_solver::{excel_yield_newton, odd_first_yield, yield_start};
 
 use super::number_or_error;
 use crate::{
@@ -881,10 +881,7 @@ impl Model {
                 model
                     .odd_first_of(values, true, cell)
                     .and_then(|(odd, schedule)| {
-                        solve_yield(odd.yld_or_pr, odd.rate, |yld| {
-                            Some(schedule.price(yld, discount_growth))
-                        })
-                        .map_err(|_| num_error(cell))
+                        odd_first_yield(&odd, &schedule).ok_or_else(|| num_error(cell))
                     }),
             )
         })

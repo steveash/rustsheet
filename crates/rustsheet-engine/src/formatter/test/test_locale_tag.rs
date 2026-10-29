@@ -243,9 +243,71 @@ fn mmm_takes_a_b2_section_to_the_arabic_path() {
     );
 }
 
-// An empty text section prints nothing (gen-m10/0e3d8eba9432a18d T!A24); fewer than four sections
-// leave the text as it is (docs/excel-semantics/number-formats.md). Only `;;;` on text has oracle
-// evidence; the `TRUE` and `0;0;0;` expectations are inferred and unprobed (T-2975).
+#[test]
+fn b2_before_calendars_3_5_and_7_converts_the_years_twice() {
+    // probes/t2932-b2-calendar-twice A1-A68, B1-B5.
+    assert_eq!(
+        text(45000.0, "B2[$-70409]yyyy|yy|e|ee|b|bb|bbbb|g"),
+        "3109|09|2566|2566|09|09|3109|"
+    );
+    assert_eq!(
+        text(2_958_465.0, "B2[$-70409]yyyy|yy|e|b|bbbb"),
+        "11085|85|10542|08|11085"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-50409]yyyy|yy|e|b|bbbb"),
+        "6689|89|4356|56|4356"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-30411]yyyy|yy|e|ee|g|gg|ggg"),
+        "4294965434|4294965434|4294965434|4294965434|M|明|明治"
+    );
+    assert_eq!(text(32515.0, "B2[$-30409]e|g"), "4294965493|M");
+    assert_eq!(text(2_958_465.0, "B2[$-30411]yyyy|e|g"), "5963|5963|R");
+    // The era read back changes on its own day: 3930-07-29 and -30 are Reiwa 1912.
+    assert_eq!(text(741_653.0, "B2[$-30411]e|g"), "45|M");
+    assert_eq!(text(741_654.0, "B2[$-30411]e|g"), "1|T");
+    assert_eq!(text(45000.0, "B2[$-70411]g|yyyy"), "|2566");
+    assert_eq!(text(45000.0, "B2\"x\"[$-70409]yyyy|e"), "x3109|2566");
+    // `B1`, or a `B2` after the tag, changes nothing.
+    assert_eq!(text(45000.0, "B1[$-70409]yyyy|e"), "2566|2023");
+    assert_eq!(text(45000.0, "[$-70409]B2yyyy|e"), "2566|2023");
+    // `b` prints the year's third and fourth digits, also with no `B2`.
+    assert_eq!(text(2_958_465.0, "b|bbbb|yy"), "54|10542|99");
+    assert_eq!(text(2_958_465.0, "[$-70409]b|yy"), "54|42");
+    // Under a tag a number token before the `mmm` switch leaves the first-name quirk on.
+    assert_eq!(text(45000.0, "B2[$-409]yyyy|mmm|dddd"), "1444|شعبان|السبت");
+}
+
+#[test]
+fn b2_before_calendar_4_prints_a_garbled_minguo_year() {
+    // probes/t3028-b2-taiwan-years, t3028-b2-taiwan-cuts; t2932-b2-calendar-twice A37, A38.
+    assert_eq!(
+        text(45000.0, "B2[$-40409]yyyy|yy|e|b|bbbb|g"),
+        "01|01|01|2\u{1c}|01|"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-40404]yyyy|yy|e|b|bbbb|mmmm"),
+        "01|01|01|2\u{1c}|01|三月"
+    );
+    // m = 999, 1000 and 8088; m below 1 is `#VALUE!`.
+    assert_eq!(text(369_261.0, "B2[$-40409]yyyy|y|ee"), "09|09|09");
+    assert_eq!(text(369_262.0, "B2[$-40409]yyyy|b|bb"), "1000|00|00");
+    assert_eq!(text(2_958_465.0, "B2[$-40409]yyyy|b"), "8088|88");
+    assert_eq!(text(4383.0, "B2[$-40409]yyyy|mmmm"), "#VALUE!");
+    // `b` past the end of a short year: U+0F01, then the code of the first date token.
+    assert_eq!(text(45000.0, "B2[$-40409]b"), "2X");
+    assert_eq!(text(36526.0, "B2[$-40409]b|bb"), "\u{f01}X|\u{f01}X");
+    assert_eq!(text(45000.0, "B2[$-40409]e|b"), "01|28");
+    assert_eq!(text(45000.0, "B2[$-40409]d|b"), "15|2\r");
+    assert_eq!(text(45000.0, "B2[$-40409]bbbb|b"), "01|2Y");
+    assert_eq!(text(45000.0, "B2[$-40409]\"x\"b|yyyy"), "x2X|01");
+    assert_eq!(text(45000.0, "B2[$-40409][s]|b"), "3888000000|22");
+}
+
+// An empty text section prints nothing (gen-m10/0e3d8eba9432a18d T!A24; `TRUE` and `0;0;0;` in
+// probes/text-format-text-sections, T-2975); fewer than four sections leave the text as it is
+// (docs/excel-semantics/number-formats.md; three sections probed there, one or two unprobed).
 #[test]
 fn empty_text_section_is_empty() {
     assert_eq!(format_text_value("text", ";;;").text, "");
