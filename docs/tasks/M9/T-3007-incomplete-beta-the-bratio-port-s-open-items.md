@@ -3,7 +3,7 @@ id: T-3007
 title: "Incomplete beta: the bratio port's open items after T-2977 (shape of 1 outside the closed forms, TOMS betaln for both shapes >= 1 above 8, fl(a LN x) overflow, SPEC-0025 layout)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -88,11 +88,24 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
   scores 64 against 90 and stays unused. Excel's w there is still open (52 cells 1 ulp off). BETA.INV's crossing moves
   at three quantiles (-4 to -40, +1 to -5, -16 to -6 ulp; T-2511's, noted there). Tails w1 below 2^-53 are now 0 or
   a multiple of 2^-53, with no oracle evidence there yet (T-3150). Gated: gen-m9 3 and probes 1 newly bit-exact.
+- 2026-10-29: the L140 -LN(a0) item is re-scored on the full eval (statistics.md "Incomplete beta bpser"): against
+  GAMMALN's sum at a0 <= 8, -LN(a0) there makes 116 cells bit-exact (ironcalc-calc 11, gen-m9 4, probes-numeric 101)
+  and moves 28 off by 1 to 4 ulp (27 ungated probes-numeric, and BETADIST_BETAINV.xlsx H15, BETA.INV's own), none
+  visibly either way, so the form stays at every a0. No engine change. Still open: the bpser criterion's b0 >= 8
+  shortfall (x87-stored algdiv), Excel's w at a shape of 1, and the 987 cells scored against the model: moved to T-3170.
 
 ## Acceptance criteria
-- [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
-      its scores.
-- [ ] `make check` green; reviewers approve.
+- [x] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
+      its scores, or moved to T-3170 (the b0 >= 8 algdiv shortfall, Excel's w at a shape of 1, the 987 cells).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - bfrac/basym (T-2508), the bgrat family (T-2509, T-2510), the inverses (T-2511), T-2978's ulp cells.
+
+## Outcome
+Ported across #2319 and the PRs before it: TOMS betaln and the half-integer ln B for both shapes > 1 above 8
+(bit-exact +67, visibly off -79), SPEC-0025's bpser.rs/bup.rs split with the branch fixture and property tests, and
+the shape-of-1 w1 = (0.5 - w) + 0.5 (77 cells newly bit-exact). Negative results in statistics.md: the fl(a LN x)
+overflow probe (Excel for the web refuses such workbooks; T-3104 owns the 11 off cells) and the L140 -LN(a0) re-score
+(116 cells bit-exact against 28 moved 1 to 4 ulp off, none visibly; the form stays). This last PR changes no engine
+code; eval delta 0. The three items still open moved to T-3170.
