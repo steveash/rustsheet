@@ -69,7 +69,7 @@ cells, `=-"0.3"+0.1+0.2`, `="12:00"+"12:00"-1` and `=TRUE-(1-3*2^-52)` are 0; `=
 -3.2337466038256935e-12, as `VALUE(..)` in its place does: that residue is the serial's own error (dates.md), far
 above 8 ULP of the left addend 0.69097222222. A blank cell, FALSE or a FALSE cell is a 0 addend and never snaps
 (`=0.1+0.2-0.3+Z1`, `-FALSE`: 5.551115123125783e-17, like `+0`; `=Z1-2^-1000` and `="1E-300"-1E-300*(1+2^-52)`
-keep their totals, the latter a kept subnormal whose `(x)=0` companion M!C24 is FALSE). So Excel coerces before it
+keep their totals, the latter a kept subnormal whose `(x)=0` companion M!C24 is FALSE, so its Graph 0 scores by decision 0042). So Excel coerces before it
 snaps, and the engine, which snaps the coerced `f64` addends in `Model::handle_outermost_sum`, needed no change; it
 matches every cell. Every X in this probe lies above c, so the left-addend and smaller-addend bounds agree here
 (the operand-order question is T-3100's, settled above). Status: VERIFIED.
