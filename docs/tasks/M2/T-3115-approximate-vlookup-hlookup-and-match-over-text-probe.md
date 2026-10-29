@@ -3,7 +3,7 @@ id: T-3115
 title: "Approximate VLOOKUP, HLOOKUP and MATCH over text: probe whether the search orders by the collation or by the exact-match key, and match it"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
