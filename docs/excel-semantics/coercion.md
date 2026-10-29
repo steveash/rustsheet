@@ -88,11 +88,57 @@ Fitted key (T-0220; all 486 probe cells and the gen-m2 cells above pass): compar
 case folded throughout. (1) Letter weights: control characters, space, CHAR(160), the punctuation
 in the order above, digits, letters; an accented Latin-1 letter weighs as its base letter, `æ` as
 `a e`, `ß` as `s s`; hyphen and apostrophe weigh nothing. (2) Accents, letter by letter: none <
-acute < grave < circumflex < diaeresis < ring, then tilde, cedilla and stroke (`ø`). Tilde and
-cedilla are placed by Windows' sort-key order, UNVERIFIED. (3) Hyphens and apostrophes as (position,
-weight), a later position first, apostrophe before hyphen. Characters outside ASCII and the Latin-1
-letters (`þ`, `ð`, `œ`, Greek, symbols such as `§`) are UNVERIFIED: they keep code-point order after
-the letters.
+acute < grave < circumflex < diaeresis < tilde < ring, then stroke (`ø`); T-3114 below extends this
+order. (3) Hyphens and apostrophes as (position, weight), a later position first, apostrophe before
+hyphen. `þ`, `ð`, `œ` and the Latin-1 symbols were placed later (T-1590, T-1595, T-1662, T-1669,
+below), and the Latin Extended-A, Greek and Cyrillic letters by T-3114 (next section). Every other
+character (CJK, other scripts, other symbols) keeps code-point order after the letters, UNVERIFIED.
+
+### Letters beyond Latin-1 and combining marks (T-3114)
+Evidence: probes/t3114-collation-beyond-latin1 (excel-graph, 2026-10-29), 282 strings ranked against
+each other (Calc!A = count less, Calc!B = count equal) plus pairwise `<`/`=`/`>` (Calc!D:F), exact
+MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status: VERIFIED for these:
+- Every Latin Extended-A letter probed (`ā ă ą ć č ď ē ė ę ě ğ ģ ī į ķ ĺ ľ ń ņ ň ő ŕ ř ś ş š ţ ť ū ů ű
+  ų ź ż ž`) is its **base letter plus an accent**, not a letter of its own: `"ca" < "ča" < "cb"`,
+  `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A123:A139).
+  Upper and lower case are equal (`"Č" = "č"`, Calc!E1).
+- Accents on one base letter, in order: `a á ă ā ą`, `c ć č`, `e é ė ě ē ę`, `g ğ ģ`, `i ī į`, `l ĺ ľ`,
+  `n ń ň ņ`, `o ö ő`, `r ŕ ř`, `s ś š ş`, `t ť ţ`, `u ū ů ų ű`, `z ź ż ž`. One order fits them all:
+  acute < breve < dot above < caron < macron < ring < ogonek < double acute < cedilla (with diaeresis
+  before ring and double acute). The relative place of breve, dot above and caron against the
+  Latin-1 grave, circumflex and tilde is never ranked on one letter: the engine puts them after
+  tilde, UNVERIFIED (T-3154).
+- A base letter plus a combining mark equals the precomposed letter: `"a"&UNICHAR(769) = "á"`,
+  `"c"&UNICHAR(780) = "č"` (also `"C"&UNICHAR(780)`), `"e"&UNICHAR(769) = "é"`,
+  `"c"&UNICHAR(780)&"a" = "ča"`, and `o`+U+030B, `s`+U+030C, `z`+U+0307 tie with `ő`, `š`, `ż` (Calc!B
+  counts 3 or 4, D7:F10, D25:F25). Only four combining marks are probed as such: U+0301, U+0307,
+  U+030B and U+030C (UNICHAR 769, 775, 779, 780). The engine maps nine more (U+0300, U+0302-U+0304,
+  U+0306, U+0308, U+030A, U+0327, U+0328) by inference from the precomposed letters, UNVERIFIED.
+  Marks after an accented letter and all other marks are unprobed: the engine appends a second
+  accent weight, and a mark with no letter before it weighs only as an accent, UNVERIFIED (T-3154).
+- Greek: `α < ά < β`, … `ι < ί < ϊ < ΐ < κ`, … `ω < ώ` (tonos is the acute accent, dialytika the
+  diaeresis); `Σ = σ = ς` (Calc!B168, B192, B216, E20), and exact MATCH of `"ς"` finds `σ` (Calc!H10). Base
+  letters keep code-point order.
+- Cyrillic: `а < б < … < е < ё < ж < … < и < й < к < … < я`, each upper case equal to its lower case.
+  Whether `ё` and `й` are accented `е` and `и` (the engine, by their canonical decompositions) or
+  letters of their own is not told apart by single letters: UNVERIFIED (T-3154).
+- COUNTIF `=`, `<` and `<>` agree with the ranking above (Calc!I1:K10; `I8` = 4 and `I9` = 2 count the
+  combining-mark spellings with the precomposed letters). Exact MATCH folds case and `ς` (H1:H7, H10)
+  but does **not** equate a base letter plus a combining mark with the precomposed letter:
+  `MATCH("c"&UNICHAR(780),r,0)` = 144 and `MATCH("a"&UNICHAR(769),r,0)` = 143 find the decomposed
+  spellings, not `č` (row 57) or `á` (row 140) (H8, H9), as T-1590 found for `æ`/`ae`. XMATCH and
+  VLOOKUP with a decomposed key are unprobed. The engine's current choice, UNVERIFIED (T-3154): MATCH
+  and VLOOKUP exact match fold through `folded_units`, which does not decompose, so they keep the
+  spellings apart; XMATCH and XLOOKUP exact match compare `collation_key`s (`CollatedKey`), so
+  `XMATCH("c"&UNICHAR(780),{"č"},0)` finds `č`.
+- Inferred, UNVERIFIED: the engine gives every other lower- or upper-case letter of Latin Extended-A,
+  Greek and Cyrillic that has a canonical decomposition (`ĉ ĝ ĥ ĵ ŝ ŵ ŷ ĩ ĭ ŭ ŏ ō ĕ ġ ċ ļ ŗ`, `ϋ ΰ`,
+  `ѐ ѓ ї ќ ѝ ў`) the same base-plus-accent rule.
+Implemented (T-3114): `collation.rs` case-folds, then decomposes each letter through its canonical
+decomposition (`DECOMPOSED`) and gives a combining mark's accent to the letter before it.
+`criteria::fold_run` (the exact MATCH, wildcard and D-function prefix fold) folds `ς` to `σ`; only
+exact MATCH and COUNTIF `=`/`<`/`<>` are probed, so the fold in wildcard patterns (`"ς*"`, `"ς?"`) and
+D-function prefixes is inferred, UNVERIFIED (T-3154).
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
 Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by
 `SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.
@@ -122,7 +168,7 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   letter position (`"¹"` > `"1"`, `"¹a"` < `"1b"`, `"¹b"` > `"1a"`; XMATCH of `"1"` against `¹` `#N/A`); `ç đ ð ł ñ ı` are accents on `c d d l n i` (`"ða"` < `"db"`, > `"da"`).
   CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þ"&"a"` = `"t"&"h"&"a"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1). Implemented (T-1669): `cmp_text_excel` makes `þ` an `expansion('t','h')`.
   A single-cell reference as XMATCH `lookup_array` or XLOOKUP `lookup_array`/`return_array` is a one-cell vector, not `#VALUE!`/`#N/A` (probes/text-collation-longer A96, A97, A102, A104, A105, A107).
-Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669
+Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669, T-3114
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,

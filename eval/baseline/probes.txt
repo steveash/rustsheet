@@ -1565,6 +1565,7 @@ C	probes/t3097-nesting-sum-65-typed.case.json	2
 C	probes/t3100-snap-operand-order.case.json	540
 C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3106-lookup-xmatch-near-equal.case.json	786
+C	probes/t3114-collation-beyond-latin1.case.json	986
 C	probes/t3115-approximate-text-collation.case.json	625
 C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
 C	probes/t3136-criteria-formatted-number-operands.case.json	590
