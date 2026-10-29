@@ -119,12 +119,12 @@
     "v": 22.0
    },
    "K36": {
-    "t": "n",
-    "v": 22.0
+    "t": "e",
+    "v": "#VALUE!"
    },
    "K37": {
-    "t": "n",
-    "v": 22.0
+    "t": "e",
+    "v": "#VALUE!"
    },
    "K4": {
     "t": "n",
@@ -255,12 +255,12 @@
     "v": 0.0
    },
    "L36": {
-    "t": "n",
-    "v": 0.0
+    "t": "e",
+    "v": "#VALUE!"
    },
    "L37": {
-    "t": "n",
-    "v": 0.0
+    "t": "e",
+    "v": "#VALUE!"
    },
    "L4": {
     "t": "e",
@@ -492,8 +492,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "993d0aeca32a2a40fb912a2bfdece0bc3d14dc912a7c868e8114d874aa0f3a3a",
   "kind": "excel-graph",
-  "produced_at": "2026-10-27T19:35:42+00:00",
+  "produced_at": "2026-10-29T16:04:29+00:00",
   "version": null,
-  "workbook_name": "4abb60ad854c4788eae1bee1bfa94a866662e6d590ef60a5ec0a1247acf638b2.xlsx"
+  "workbook_name": "eb3f565007b1447e5c2f166ed6b51cb7f8a0d0f61bb423dfcf65159a4cccbb2f.xlsx"
  }
 }

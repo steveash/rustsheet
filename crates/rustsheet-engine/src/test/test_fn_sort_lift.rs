@@ -44,15 +44,16 @@ fn an_element_error_stays_in_its_position() {
     ]);
 }
 
-/// Elements past each row's first, and later rows whose `by_col` differs (T-2929;
-/// probes/t2929-sort-lifted-by-col-*; a `by_col` FALSE with `sort_index` 2 needs two columns).
+/// Every sorting element past the first is `#VALUE!`, but for the next one with `sort_index` 2,
+/// which is empty, whatever the rows and the `by_col` values (T-3090; probes/t3090-sort-lifted-
+/// by-col-broken-lead and the t2929 probes refilled on 2026-10-29).
 #[test]
 fn later_elements_are_empty_or_value_errors() {
     check(&[
-        // sort_index 1: past the first sorting element of a row, `#VALUE!` (t2366 I1, H18).
+        // sort_index 1: every element past the first sorting one is `#VALUE!` (t2366 I1, H18).
         ("C1", "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2)", "#VALUE!"),
         ("C2", "=INDEX(SORT(A1:A3,1,1,{FALSE;TRUE}),2,1)", "#VALUE!"),
-        // sort_index 2 (by_col TRUE, so a row): the first broken element is empty, the next not.
+        // sort_index 2 (by_col TRUE, so a row): the second sorting element is empty, the next not.
         (
             "C3",
             "=ISBLANK(INDEX(SORT(A1:A3,2,1,{TRUE,TRUE,TRUE}),1,2))",
@@ -63,24 +64,26 @@ fn later_elements_are_empty_or_value_errors() {
             "=INDEX(SORT(A1:A3,2,1,{TRUE,TRUE,TRUE}),1,3)",
             "#VALUE!",
         ),
-        // An empty-able broken element passes it down a column of equal by_col values.
+        // Down a column too, equal by_col values or not (t3090 K137, K71).
         (
             "C5",
-            "=ISBLANK(INDEX(SORT({1,2,3;3,1,2;2,3,1},2,1,{TRUE;FALSE;FALSE}),3,1))",
+            "=ISBLANK(INDEX(SORT({1,2,3;3,1,2;2,3,1},2,1,{TRUE;FALSE;FALSE}),2,1))",
             "TRUE",
         ),
         (
             "C6",
-            "=INDEX(SORT({1,2,3;3,1,2;2,3,1},2,1,{TRUE;FALSE;TRUE}),3,1)",
+            "=INDEX(SORT({1,2,3;3,1,2;2,3,1},2,1,{TRUE;FALSE;FALSE}),3,1)",
             "#VALUE!",
         ),
-        // Equal leads all keep their call's top-left; an invalid element is skipped.
-        ("C7", "=INDEX(SORT(A1:A3,1,1,{TRUE;TRUE;TRUE}),3,1)", "3"),
-        ("C8", "=INDEX(SORT(A1:A3,1,1,{\"x\";TRUE;TRUE}),3,1)", "3"),
+        // Equal rows do not keep their call's top-left (t2929-index P1, t3090 K155); an invalid
+        // element is skipped (t2929-column S6).
+        ("C7", "=INDEX(SORT(A1:A3,1,1,{TRUE;TRUE;TRUE}),3,1)", "#VALUE!"),
+        ("C8", "=INDEX(SORT(A1:A3,1,1,{\"x\";TRUE;TRUE}),2,1)", "3"),
+        ("C9", "=INDEX(SORT(A1:A3,1,1,{\"x\";TRUE;TRUE}),3,1)", "#VALUE!"),
         (
-            "C9",
+            "C10",
             "=INDEX(SORT(A1:A3,2,1,{TRUE,TRUE;TRUE,TRUE}),2,1)",
-            "3",
+            "#VALUE!",
         ),
     ]);
 }
