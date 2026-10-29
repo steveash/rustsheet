@@ -3,7 +3,7 @@ id: T-3057
 title: "Probe a * fill character in a blank fraction"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
