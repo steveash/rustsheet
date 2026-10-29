@@ -3,7 +3,7 @@ id: T-3052
 title: "spec2xlsx keeps a formula's trailing } (XlsxWriter strips it and corrupts the workbook)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
