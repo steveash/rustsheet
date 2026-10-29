@@ -3,7 +3,7 @@ id: T-0099
 title: "Exit-owner rule: an A1 name owns a cell only beside its own case, not anywhere in a task that names the case (F.INV(0.5,3,9) left out of the Phase 1 rate as T-2425's)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
