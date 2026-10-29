@@ -968,10 +968,17 @@ is read").
 Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
 A criterion reads `"1 1/2"` as 1.5 too (criteria.md "Criterion operands and text cells read numbers with VALUE's grammar",
 probes/t3136-criteria-formatted-number-operands H25).
-Ours: the mixed fraction reads (`mixed_fraction` under `value_number_text`, cast.rs, T-3151): `w n/d` with ASCII digits and one
-space; `w n/0` is not a number. UNVERIFIED: an improper fraction; a sign and two spaces are not read yet (T-2646 probes them).
-`"- 5"` and `"1-1-1"` are still `#VALUE!` (T-2646).
-Status: VERIFIED (excel-graph); mixed fraction implemented (T-3151), the other two not (T-2646).
+Edges (probes/value-sign-space-mixed-fraction-dash-date, excel-graph, 2026-10-29): spaces after a sign are skipped
+(`"- 5"`, `"-  5"` -5, `"+ 5"` 5, `"- 5.5"` -5.5, and `="- 5"+0` -5, so number coercion shares it). A mixed fraction takes
+a sign (`"-3 1/2"`, `"- 3 1/2"`, `"-  3 1/2"` -3.5, `"+3 1/2"` 3.5), a `$` (3.5) and a `%` (`"3 1/2%"` is
+0.034999999999999996, the whole and the fraction divided by 100 apart); an improper fraction reads (`"1 3/2"` 2.5), a
+numerator with a leading zero too (`"3 01/02"` 3.5), many digits (`"123456789 1/2"`), a denominator of 200 (3.005); but
+`"3 1/0"`, `"3  1/2"` (two spaces), `"3 1 /2"` and `"3 1/ 2"` are `#VALUE!`. A dash date reads a one-digit year as 200x
+and `"1/1/1"` is the same 36892 (`"1-1-0"` 36526, `"1-1-99"` 36161, `"1-1-30"` 1930); `"13-1-1"` and `"0-1-1"` are `#VALUE!`.
+UNVERIFIED: typed cell input and criteria also read `- 5` and a one-digit-year date now (shared grammar), and the mixed-fraction
+combinations `€3 1/2`, `-$3 1/2`, `-3 1/2%`, `$3 1/2%`, `+ 3 1/2` are extrapolated (T-2646 follow-up probe).
+Ours: all implemented (`mixed_fraction`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
 Tasks: T-2646, T-3151
 
 ## REGEX* POSIX classes are Unicode (T-1903)
