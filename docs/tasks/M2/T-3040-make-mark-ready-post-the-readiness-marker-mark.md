@@ -3,7 +3,7 @@ id: T-3040
 title: "make mark-ready: post the readiness marker (mark, --carry, labels, step-mode fallback)"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -27,16 +27,29 @@ it posts passes `scripts/merge_ready.py verify`.
   Adding a label through the REST issue-labels endpoint creates a missing label.
 
 ## Acceptance criteria
-- [ ] `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
+- [x] `scripts/merge_ready.py mark [--carry]` (`make mark-ready PR=<n> REVIEW="..."`) refuses
       each case in SPEC-0027 section 2, posts the marker and the label otherwise (or prints the
       two step-mode actions), and never posts a second marker for the same head.
-- [ ] The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the
+- [x] The labels `ready-to-merge`, `merge-train-ejected` and `merge-train-stop` exist; the
       script creates them when they are absent (through `scripts/gh_client.py`).
-- [ ] `verify` passes on what `mark` posts, and a test covers the step-mode round trip.
-- [ ] `scripts/test_merge_ready.py` covers the `--carry` cases of SPEC-0027's Test plan (a clean
+- [x] `verify` passes on what `mark` posts, and a test covers the step-mode round trip.
+- [x] `scripts/test_merge_ready.py` covers the `--carry` cases of SPEC-0027's Test plan (a clean
       merge of `main` is accepted, an edited one refused) and each refusal.
-- [ ] A decision record amends 0149; the architecture and security reviewers approve.
-- [ ] `make check` green; reviewers approve.
+- [x] A decision record amends 0149; the architecture and security reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Skill and prompt changes (T-2989).
+
+## Outcome
+- `scripts/merge_ready.py mark` (`make mark-ready PR=<n> REVIEW="..." [CARRY=1] [STEP=1]`) refuses
+  each case of SPEC-0027 section 2, never posts a second marker for a head, writes the comment
+  before the label, and either writes through `gh_client` and reads the result back with
+  `verify`, or (`--step`) prints the two writes as step-mode JSON actions (decision 0161).
+- `--carry` takes the verdicts and `prev:` from the newest earlier writer marker, only for a clean
+  merge of `main` (`Repo.carry_problem`); `verify` and `mark` share `head_state`.
+- `gh_client` gains `label` and `create_label`; `make merge-labels` created `ready-to-merge`,
+  `merge-train-ejected` and `merge-train-stop` on the repository (2026-10-29).
+- Tests: the step-mode round trip passes `verify`, direct writes in order, each refusal, the
+  `--carry` cases (clean merge accepted; edited merge, plain commit and a non-`main` merge refused).
+- Eval delta: none (scripts only).
