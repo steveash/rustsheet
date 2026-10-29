@@ -3,7 +3,7 @@ id: T-3090
 title: "SORT lifted by_col: an empty-able element below one with an equal by_col when the row's lead is broken"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -28,12 +28,7 @@ lifted arguments").
 -
 
 ## Handoff (resumed)
-Sonnet run (2026-10-29): no code change. The rule in `sort_lifted_elements` (spill_functions.rs) is an empirical
-fit (`broken_seen` / `same_above` / `above`); L81 needs a new condition on rows whose lead is a broken `#VALUE!` element,
-and the task already records that "no earlier #VALUE! in the row" broke t2929 M2 and N5. This needs several oracle
-probe rounds (excel-graph is OK) to find the rule from edge cells, then a re-fit against t2929 and t2947 together: beyond
-a sonnet run (unclear evidence / rule fitting). Next: probe variants of L81 (vary the lead's value, by_col mix, row
-position), tabulate against t2929 M2/N5, then adjust the loop.
+Sonnet run (2026-10-29) handed off for rule fitting; superseded by the Outcome below.
 
 ## Outcome
 Excel changed: re-running the unchanged t2366, t2929 and t2947 workbooks on excel-graph (2026-10-29 16:00 UTC, twice, and as
@@ -42,4 +37,4 @@ order, the first sorting call keeps its top-left, the next is empty with sort_in
 no lead comparison, no row keeping, no chain down a column. The seven sidecars were refilled (`fill --force`), the new probe
 probes/t3090-sort-lifted-by-col-broken-lead (239 cells, three rounds) pins the corners, and `sort_lifted_elements` was rewritten to
 the rule (`ByCol` removed). All eight SORT-lift cases pass (678 cells); L81 passes. arrays.md entry "TOROW, TOCOL, SORT and
-TEXTJOIN lifted arguments" rewritten with the drift recorded.
+TEXTJOIN lifted arguments" rewritten with the drift recorded. Follow-up: T-3153 (re-fill later; text by_col).

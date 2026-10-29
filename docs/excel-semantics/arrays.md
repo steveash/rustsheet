@@ -1943,6 +1943,8 @@ Excel changed: the same workbooks gave other values on 2026-10-27 and at 02:04 U
 top-left, `{TRUE;TRUE;TRUE}` was 5, 5, 5, and an empty element passed emptiness down a column of equal by_col values: the T-2929 and
 T-2947 rule), and gave today's values twice in a row on 2026-10-29 16:00 UTC, also as one-formula workbooks. Older sidecars of these
 cases were refilled with `rustsheet-oracle fill --force`; another change of Excel's would show as a refill diff.
+UNVERIFIED (T-3153): a text by_col that reads as a boolean ("1", "TRUE") and a number by_col read from a range cell; T-3153
+also re-fills these cases later in case Excel's change was a staged rollout.
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col, probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column, probes/t2947-sort-lifted-by-col-corners and probes/t3090-sort-lifted-by-col-broken-lead (excel-graph, 2026-10-29, T-3090).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order

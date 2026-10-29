@@ -1503,6 +1503,7 @@ C	probes/t3072-criteria-near-equal-order.case.json	360
 C	probes/t3072-take-drop-one-cell-reference.case.json	57
 C	probes/t3073-lookup-near-equal-approximate.case.json	218
 C	probes/t3085-take-drop-one-cell-forms.case.json	16
+C	probes/t3090-sort-lifted-by-col-broken-lead.case.json	239
 C	probes/t3094-snap-lambda-call-forms.case.json	44
 C	probes/t3095-snap-lambda-helpers.case.json	148
 C	probes/t3096-lookup-value-blank-elements.case.json	203
@@ -4394,7 +4395,6 @@ F	probes/t2829-ftest-tail-over-b.case.json	S!A6
 F	probes/t2829-ftest-tail-over-b.case.json	S!A7
 F	probes/t2829-ftest-tail-over-b.case.json	S!A8
 F	probes/t2829-ftest-tail-over-b.case.json	S!A9
-F	probes/t2947-sort-lifted-by-col-corners.case.json	Sheet1!L81
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A1
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A10
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A11
