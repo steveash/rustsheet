@@ -3,7 +3,7 @@ id: T-3083
 title: "Snap a LAMBDA body's near-zero root + or - at its own root"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
