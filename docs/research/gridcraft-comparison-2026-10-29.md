@@ -46,9 +46,10 @@ docs/progress.md (eval run of 2026-10-28, commit 180c8194).
 | Function tests | 238 `#[test]` attributes in `crates/functions` and `crates/calc` (`grep -c '#\[test\]'`; its docs say 96 test functions in `crates/functions`). | Per-function probe cases filled by the oracle, plus generated cases for each milestone. |
 | Reported result | Function depth about 82% "estimated" (docs/function-parity.md "Depth") *(gridcraft's claim)*. | 423 of 506 in-scope functions have at least 99.9% of their cells within 15 digits. Calipers: 99.88% of cells bit-exact, and 160 of 173 workbooks have every cell within 15 digits. |
 
-A 1e-9 tolerance passes values that differ in the 10th to 15th significant digit. RustSheet's
-remaining gap is almost entirely there: 99,419 visibly-off numbers against 850 wrong types, errors or
-texts (docs/progress.md). gridcraft's check cannot see that class of difference.
+A 1e-9 tolerance passes values that differ in the 10th to 15th significant digit. Most of
+RustSheet's remaining gap is numeric: 99,419 visibly-off numbers against 850 wrong types, errors or
+texts (docs/progress.md). A 1e-9 check would hide the part of that gap that lies in the 10th to 15th
+digit, though not the numbers that are further off.
 
 ## Function coverage
 gridcraft's function names were taken from the source: every `f!`, `base_fn!` and `im1!` spec in
