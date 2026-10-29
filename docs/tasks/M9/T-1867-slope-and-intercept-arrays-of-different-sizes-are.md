@@ -29,5 +29,5 @@ group's values and all values, which differ in size: Excel gives `#N/A` per grou
 ## Outcome
 Already fixed on `origin/main` before this task was picked: `probes/groupby-eta-arity` passes 101/101 with no
 `F` lines in `eval/baseline/probes.txt`, and `fn_get_two_matrices` (sum.rs) returns `#N/A` for unequal cell
-counts (T-1292, T-1620, T-2431), which covers plain `SLOPE({1;2},{1;2;3})`, INTERCEPT, SUMX2MY2 and FORECAST
-callers. No code change; eval delta 0.
+counts (T-1292, T-1620, T-2431), which covers plain `SLOPE({1;2},{1;2;3})`, INTERCEPT, FORECAST, CORREL, PEARSON, RSQ and STEYX
+(via paired_moments). SUMX2MY2 does not use that helper and was not checked. No code change; eval delta 0.
