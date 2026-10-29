@@ -388,7 +388,7 @@ same reference. `ThisRowKind` evaluation is O(1).
    an `<autoFilter>` over the header and data rows. The export prints every resolved structured
    reference from `reference` (`StructuredReference::file_text`), so a `#This Row` is no longer
    lowered at the cell's row there; an unresolved one is still `#REF!`. The criteria of an applied
-   filter are not kept (T-2838).
+   filter are kept and written back (T-2838).
 4. **T-1683** picks the FORMULATEXT spelling over the preserved node, and adds the lexer
    rejection of unterminated references.
 5. **T-2197 (probe):** how Excel resizes, converts and deletes a table on row and column inserts

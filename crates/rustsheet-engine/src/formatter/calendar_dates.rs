@@ -263,8 +263,101 @@ const KOREAN_ERA_OFFSET: i32 = 2333;
 /// a `B2` before a calendar-3, -5 or -7 tag (`part.year_twice`) every year token converts once
 /// more: `B2[$-70409]yyyy|e|bbbb` of 2023-03-15 is "3109|2566|3109", `B2[$-50409]yyyy|e|bbbb`
 /// "6689|4356|4356" (probes/t2932-b2-calendar-twice; the Japanese eras in
-/// [`japanese_era`]).
+/// [`japanese_era`]). Before a calendar-4 tag the years are [`taiwan_after_b2`]'s.
+/// `None` is `#VALUE!`.
 pub(crate) fn year_token_text(
+    part: &DatePart,
+    token: &TextToken,
+    seen_era: bool,
+    serial_1900: i64,
+    ymd: (i32, u32, u32),
+) -> Option<String> {
+    if part.year_twice && part.calendar == Some(Calendar::Taiwan) {
+        return taiwan_after_b2(part, token, ymd.0);
+    }
+    Some(calendar_year_text(part, token, seen_era, serial_1900, ymd))
+}
+
+/// The Minguo (Taiwan) calendar counts from 1912: 2023 is its year 112.
+const MINGUO_ERA_OFFSET: i32 = 1911;
+
+/// What a year or era token prints after a `B2` before a calendar-4 (Taiwan) tag, for Gregorian
+/// `year`; `None` is `#VALUE!`.
+///
+/// Excel: every year token (`y`, `yy`, `yyy`, `yyyy`, `e`, `ee`, `bbbb`) prints the Minguo year
+/// m = year - 1911 in full from 1000 ("1000", "8088"), and below that "0" and m's first digit
+/// (112 is "01", 999 "09", 89 "08"); m below 1 is `#VALUE!`; `g` prints nothing. `b` and `bb`
+/// print m's third and fourth characters and read past the end of its text: a missing third one
+/// is U+0F01, a missing fourth one a character set by the section's first date or time token
+/// ([`first_token_code`]): `B2[$-40409]b` of 2023-03-15 is "2X", `yyyy|b` "01|2\u{1c}", of
+/// 2000-01-01 `b` "\u{f01}X" (probes/t3028-b2-taiwan-years, t3028-b2-taiwan-cuts,
+/// t2932-b2-calendar-twice A37, A38).
+fn taiwan_after_b2(part: &DatePart, token: &TextToken, year: i32) -> Option<String> {
+    let minguo = year - MINGUO_ERA_OFFSET;
+    if minguo < 1 {
+        return None;
+    }
+    let digits = minguo.to_string();
+    let first = digits.chars().next().unwrap_or('0');
+    Some(match token {
+        TextToken::Era(_) => String::new(),
+        TextToken::BuddhistYearShort => {
+            let third = digits.chars().nth(2).unwrap_or('\u{f01}');
+            let fourth = digits
+                .chars()
+                .nth(3)
+                .unwrap_or_else(|| char::from(first_token_code(&part.tokens)));
+            format!("{third}{fourth}")
+        }
+        _ if minguo >= 1000 => digits,
+        _ => format!("0{first}"),
+    })
+}
+
+/// The character `b` reads past the end of a short Minguo year after `B2[$-40409]`: the code of
+/// the section's first date or time token, as these probes show (probes/t3028-b2-taiwan-cuts
+/// A8-A74): `d` 13, `dd` 14, `ddd` 15, `dddd` 16, `m` 17, `mm` 18 (also as minutes), `mmm` 19,
+/// `mmmm` 20, `h` 21, `hh` 22, `s` 25, `ss` 26, `y` and `yy` 27, `yyy` and `yyyy` 28, `AM/PM`
+/// and `A/P` 34, `[h]` 48, `[m]` 49, `[s]` 50, `g` 53, `gg` 54, `ggg` 55, `e` 56, `ee` 57,
+/// `mmmmm` 59, `b` (also first itself) 88 ("X"), `bbbb` 89 ("Y"). Literals do not count. `aaa`
+/// is 51 in Excel but lexes as `ddd` here (TODO(T-3089)).
+fn first_token_code(tokens: &[TextToken]) -> u8 {
+    let first = tokens.iter().find(|t| !t.is_literal());
+    match first {
+        Some(TextToken::Day) => 13,
+        Some(TextToken::DayPadded) => 14,
+        Some(TextToken::DayNameShort) => 15,
+        Some(TextToken::DayName) => 16,
+        Some(TextToken::Month | TextToken::Minute) => 17,
+        Some(TextToken::MonthPadded | TextToken::MinutePadded) => 18,
+        Some(TextToken::MonthNameShort) => 19,
+        Some(TextToken::MonthName) => 20,
+        Some(TextToken::Hour) => 21,
+        Some(TextToken::HourPadded) => 22,
+        Some(TextToken::Second) => 25,
+        Some(TextToken::SecondPadded) => 26,
+        Some(TextToken::YearShort) => 27,
+        Some(TextToken::Year) => 28,
+        Some(TextToken::AMPM | TextToken::AP(..)) => 34,
+        Some(TextToken::ElapsedHour | TextToken::ElapsedHourPadded) => 48,
+        Some(TextToken::ElapsedMinute | TextToken::ElapsedMinutePadded) => 49,
+        Some(TextToken::ElapsedSecond | TextToken::ElapsedSecondPadded) => 50,
+        Some(TextToken::Era(1)) => 53,
+        Some(TextToken::Era(2)) => 54,
+        Some(TextToken::Era(_)) => 55,
+        Some(TextToken::EraYear(false)) => 56,
+        Some(TextToken::EraYear(true)) => 57,
+        Some(TextToken::MonthLetter) => 59,
+        Some(TextToken::BuddhistYear) => 89,
+        Some(TextToken::BuddhistYearShort) | None => 88,
+        // Every other token is `#VALUE!` in a `B2` section before this is reached (digits, `@`,
+        // `E`; probes/t3028-b2-taiwan-cuts A19, A46, A47, A50, A63), so this arm is unprobed.
+        Some(_) => 88,
+    }
+}
+
+/// [`year_token_text`] in every case but a `B2` before a calendar-4 tag.
+fn calendar_year_text(
     part: &DatePart,
     token: &TextToken,
     seen_era: bool,

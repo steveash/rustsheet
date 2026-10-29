@@ -542,7 +542,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             names.number();
                         }
                         let ymd = (ymd_year, ymd_month, ymd_day);
-                        text.push_str(&year_token_text(p, token, seen_era, serial_1900, ymd));
+                        let Some(year) = year_token_text(p, token, seen_era, serial_1900, ymd)
+                        else {
+                            return invalid_date(value);
+                        };
+                        text.push_str(&year);
                     }
                     TextToken::Hour => {
                         let mut hour = hours as i32;
