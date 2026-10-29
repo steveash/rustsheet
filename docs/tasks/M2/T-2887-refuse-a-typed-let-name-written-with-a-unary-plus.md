@@ -3,7 +3,7 @@ id: T-2887
 title: "Refuse a typed LET name written with a unary plus: =LET(+x,1,x)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
