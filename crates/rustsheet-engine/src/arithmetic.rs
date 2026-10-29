@@ -748,8 +748,18 @@ impl Model {
         right: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let l = self.string_or_array(left, cell);
-        let r = self.string_or_array(right, cell);
+        // An uncalled LAMBDA joined as text is `#VALUE!` (`LAMBDA(x,x)&""`, `"a"&LET(f,
+        // LAMBDA(x,x),f)`; arrays.md "An uncalled LAMBDA is one value", T-2622).
+        let mut operand = |value| match value {
+            CalcResult::Lambda(_) => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "A LAMBDA joined as text".to_string(),
+            )),
+            value => self.string_or_array(value, cell),
+        };
+        let l = operand(left);
+        let r = operand(right);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
             (Err(error), Ok(StringOrArray::Array(array))) => {

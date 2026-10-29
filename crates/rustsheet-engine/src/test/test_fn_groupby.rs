@@ -991,6 +991,8 @@ fn one_parameter_calls_are_charged_against_the_visit_cap_too() {
     // Every call is charged the cells it is given: one group of 1048575 records and its total
     // row cost 2^21 cells per function, so 10 functions compute and 100 (2E8 cells) are #ERROR!.
     let mut model = new_empty_model();
+    // The visit cap under test, not the formula work budget, which the reads now also charge.
+    model.area_budget.limit = u64::MAX;
     model._set(
         "A1",
         "=549755289600=INDEX(GROUPBY(SEQUENCE(1048575,,1,0),SEQUENCE(1048575),HSTACK(_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM)),3,11)",
@@ -1098,4 +1100,31 @@ fn nested_groupby_evaluates_each_level_once() {
     model.evaluate();
     assert!(start.elapsed().as_secs() < 5, "{:?}", start.elapsed());
     assert!(!model._get_text("D1").is_empty());
+}
+
+#[test]
+fn multi_cell_reference_from_a_function_lifts_like_a_written_range() {
+    // probes/t2707-prob-orders A50, A63:A65 (T-3088): `INDEX(range,0)` returns a reference, and a
+    // multi-cell one lifts the call as the written range does, not one #VALUE!.
+    let mut model = region_sales();
+    model._set("H1", "0");
+    model._set("I1", "1");
+    model._set(
+        "D1",
+        "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),INDEX(H1:I1,0))",
+    );
+    model._set("D3", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),H1:I1)");
+    model.evaluate();
+    assert_eq!(
+        [
+            model._get_text("D1"),
+            model._get_text("E1"),
+            model._get_text("F1")
+        ],
+        ["East", "East", ""]
+    );
+    assert_eq!(
+        [model._get_text("D3"), model._get_text("E3")],
+        ["East", "East"]
+    );
 }

@@ -12,7 +12,9 @@ M11's corpus-bench), the ironcalc-calc row of "Milestone function scope" less it
 exceptions when the exit row requires it (not M7, decision 0140), and the probes of the
 milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list;
 and for M9 the report's `attributed_off` cells of each function the exit row lists below the
-Phase 1 rate, as `rate:<FUNCTION>`, decision 0146 item 3), plus each probe case that fails with
+Phase 1 rate, as `rate:<FUNCTION>`, decision 0146 item 3; and for M10 the failing displayed-text
+items of gen-m10 and of the M10 probe row, as `gen-m10 text` and `probes text`, decision 0146
+item 4), plus each probe case that fails with
 no cell, that no open task of that milestone names, one per line as
 `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count
 is not 0.
@@ -70,6 +72,8 @@ CALC_SUITE = "ironcalc-calc"
 PROBES_SUITE = "probes"
 # The criterion of an M9 function below the Phase 1 rate: `rate:IRR`.
 RATE_PREFIX = "rate:"
+# The criterion of a failing displayed-text item (M10, decision 0146 item 4): `gen-m10 text`.
+TEXT_SUFFIX = " text"
 # A failing item of a case that is not a cell (`*`, `!Panic`, ...): the whole case.
 WHOLE_CASE = "*"
 PASSING = ("pass", "deviation")
@@ -151,24 +155,27 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
 
     # Every required suite (decision 0146): the row's first (`gen_suite`, `gen-m<k>` before it
     # existed; empty when the row requires none, M9) and `more_suites`, each with its own
-    # visibly-off list.
+    # visibly-off list; a measure over another suite's cells (M8's poi subset) also lists the
+    # cases that did not run as `case!*` (`blocked_cases`).
     first = exit_row.get("gen_suite", f"gen-{milestone.lower()}")
     suites = [(first, exit_row.get("gen_visibly_off_cells"))] if first else []
-    more = exit_row.get("more_suites") or []
-    suites += [(str(s.get("name")), s.get("visibly_off_cells")) for s in more]
+    for s in exit_row.get("more_suites") or []:
+        listed = [*(s.get("visibly_off_cells") or []), *(s.get("blocked_cases") or [])]
+        suites.append((str(s.get("name")), listed))
     for suite, cells_off in suites:
-        off = set(cells_off or [])
-        for case in report.get("cases") or []:
-            if case.get("suite") == suite:
-                for c in by_case.get(str(case["id"]), []):
-                    key = f"{c['sheet']}!{c['cell']}"
-                    if f"{case['id']}!{key}" in off:
-                        out.append(ExitCell(suite, str(case["id"]), key, formula_of(c)))
+        for name in cells_off or []:
+            case, key = split_cell_name(str(name))
+            out.append(ExitCell(suite, case, key, formulas.get((case, key), "")))
+    # M10's generated suite also needs every displayed-text item to match (decision 0146 item 4(a)).
+    for name in exit_row.get("gen_text_failing_cells") or []:
+        case, key = split_cell_name(str(name))
+        out.append(ExitCell(f"{first}{TEXT_SUFFIX}", case, key, formulas.get((case, key), "")))
 
-    # A function-scope row the exit row shows but does not require (counts with a null
-    # `calc_met`, M7) is no exit criterion (decision 0140).
-    shown_only = exit_row.get("calc_failing") is not None and exit_row.get("calc_met") is None
-    scope = {} if shown_only else report.get("function_scope") or {}
+    # A function-scope row is an exit criterion only where the exit row gives it a verdict: a
+    # null `calc_met` is a row shown but not required (M7, decision 0140) or one without the
+    # criterion (M1, M8, M10, M11, decision 0146), even when the report has a scope row for it.
+    no_calc = "calc_met" in exit_row and exit_row["calc_met"] is None
+    scope = {} if no_calc else report.get("function_scope") or {}
     for row in scope.get("rows") or []:
         if row.get("milestone") == milestone:
             excepted = set(row.get("excepted") or [])
@@ -203,6 +210,11 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
                     key = f"{c['sheet']}!{c['cell']}"
                     if f"{case}!{key}" in probe_off:
                         out.append(ExitCell(PROBES_SUITE, case, key, formula_of(c)))
+            # M10's probe row also needs no failing text item (decision 0146 item 4(b)).
+            if exit_row.get("probe_text_items") is not None:
+                for name in row.get("text_failing_cells") or []:
+                    case, key = split_cell_name(str(name))
+                    out.append(ExitCell(f"{PROBES_SUITE}{TEXT_SUFFIX}", case, key, formulas.get((case, key), "")))
     return out
 
 
