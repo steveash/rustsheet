@@ -3185,22 +3185,28 @@ Tasks: T-1543, T-1634
   1 - 1E-10 the same probes are within 2 ulps. The landing rule is open: T-3148 probes it, T-3146 fits it.
   Evidence from probes-numeric t3148-gamma-quantile-flat-band (T-3148, excel-graph, 361 literal cells; ulp errors
   against a 50-digit bisection of the cdf at the double p):
-  - Where Excel leaves the true quantile by more than 4 ulp. `GAMMA.INV(p,a,1)` over a in 0.5 to 50: p = 0.99 is
-    within 4.5 ulp (one of nine shapes, a = 0.5, over 4), p = 0.995 up to 20 ulp, 0.998 up to 25, 0.999 up to 49,
-    0.9995 up to 92 and 0.9999 up to 473. `CHISQ.INV.RT(p,df)` over df 1 to 100: p = 0.99 up to 21 ulp (df 3 the
-    only one of eight over 4), 0.995 up to 28, 0.998 up to 149, 0.999 up to 107, 0.9995 up to 838 and 0.9999 up to
-    3,084. At p = 0.99999 both are within 3.4 ulp (GAMMA.INV 0.5). So the error starts between 0.99 and 0.995, grows with p to
-    0.9999, and is gone at 0.99999, which is the 1 - 1E-10 behaviour above.
-  - The error follows the p double, not the shape: at the three doubles either side of 0.999, `GAMMA.INV(p,2,1)` and
-    `GAMMA.INV(p,5,1)` are 35 to 620 ulp off and `CHISQ.INV.RT(p,5)` 42 to 2,770 ulp off, in a direction that
-    flips across 0.999 (CHISQ.INV.RT(p,5) is low at 0.999, 300 to 990 ulp high above it, 2,000 to 2,800 high below).
-  - Excel's own cdf is not a monotone step across its quantile. At p = 0.999 the doubles `x = q + k ulp`,
-    k in 0, +-1 ... +-128, give `GAMMA.DIST(x,a,1,TRUE)` or `CHISQ.DIST.RT` equal to 0.999 for k in [-32, 64] (a = 1),
-    only k = 32 (a = 2, so Excel's own quantile does not evaluate back to p), [-32, 2] (a = 5), [-8, 0] (a = 25)
-    and [-2, 8] (a = 50); `CHISQ.DIST.RT` equals 0.999 for k in [-16, 128] (df 3), [-32, 128] (df 5),
-    [-64, 8] (df 10) and [-16, -4] (df 50), with 0.99900000000000011 inside some of these bands. Excel's quantile
-    (k = 0) is inside the equal-to-p band in every case but a = 2, and sits at the high edge only for a = 25; it is
-    not at a fixed edge of the band, so the landing rule is not "an edge of the band". T-3146 fits from these cells.
+  - Where Excel leaves the true quantile by more than 4 ulp. `GAMMA.INV(p,a,1)` over a in 0.5 to 50: the worst
+    shape is already 4.5 ulp off at p = 0.99 (a = 2; the other eight are within 4), then up to 20 ulp at p = 0.995,
+    25 at 0.998, 49 at 0.999, 92 at 0.9995 and 473 at 0.9999. `CHISQ.INV.RT(p,df)` over df 1 to 100: 21 ulp at
+    p = 0.99 (df 3; the other seven are within 4), 28 at 0.995, 149 at 0.998, 107 at 0.999, 838 at 0.9995 and
+    3,084 at 0.9999. At p = 0.99999 both are within 3.4 ulp (GAMMA.INV within 0.5), the 1 - 1E-10 behaviour above.
+    The onset is at or below p = 0.99, which this case does not cover; the error grows with p to 0.9999 and is gone
+    at 0.99999.
+  - Excel's quantile is constant across neighbouring p doubles, with one break at 0.999. For p = 0.99899999999999967,
+    ...78 and ...89 (the three doubles below 0.999) `GAMMA.INV(p,2,1)`, `GAMMA.INV(p,5,1)` and `CHISQ.INV.RT(p,5)`
+    each return one value: 9.233413476450405, 14.794149222535964 and 0.21021260262930572 (A120 to A128). At 0.999
+    and the three doubles above they return another: 9.233413476451513, 14.794149222537294 and 0.210212602629218
+    (A129 to A140). The ulp errors in this range only reflect the true quantile moving under a constant Excel
+    output (`GAMMA.INV(p,2,1)` is low at all seven p, 40 to 595 ulp; `CHISQ.INV.RT(p,5)` is high at the six
+    neighbours, 302 to 2,769 ulp, and 44 ulp low at 0.999).
+  - Excel's cdf is monotone in x at every sampled series, with a flat run at 0.999. For the doubles
+    `x = q + k ulp`, k in 0, +-1 ... +-128 (q Excel's p = 0.999 quantile), `GAMMA.DIST(x,a,1,TRUE)` (and
+    `CHISQ.DIST.RT(x,df)`) equals 0.999 for k in [-32, 64] (a = 1), only k = 32 (a = 2), [-32, 2] (a = 5),
+    [-8, 0] (a = 25) and [-2, 8] (a = 50); `CHISQ.DIST.RT` equals 0.999 for k in [-16, 128] (df 3), [-32, 128]
+    (df 5), [-64, 8] (df 10) and [-16, -4] (df 50). These are the sampled k (powers of two), so the true band edges
+    lie within one step of them. Excel's own quantile (k = 0) is inside the band except for a = 2 and df 50, where
+    Excel's quantile does not evaluate back to p (`CHISQ.DIST.RT(24.673905271877409,50)` = 0.9989999999999999); it
+    sits at the high edge only for a = 25. So it is not at a fixed edge of the band. T-3146 fits from these cells.
 - Ours (T-0972): the crossing of the smaller tail's capped incomplete gamma, always (T-1634 kept statrs' search where
   its result solved that tail to 1E-13 relative, up to 7E-15 off Excel and the truth: `GAMMA.INV(0.5,9,1)`). The
   lower tail's `powf * exp(-x - ln Gamma(a + 1))` form is used only at x * rate up to 1 (T-1634 used it up to the

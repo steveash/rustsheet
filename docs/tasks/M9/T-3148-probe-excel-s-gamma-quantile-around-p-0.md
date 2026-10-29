@@ -48,6 +48,7 @@ same probes are within 2 ulp, so whatever Excel does changes between those two p
 Added `probes-numeric/t3148-gamma-quantile-flat-band` (361 literal cells, excel-graph filled, none pending):
 GAMMA.INV and CHISQ.INV.RT over p 0.99 to 0.99999, the three doubles each side of 0.999, and Excel's cdf at the
 p = 0.999 quantile moved by up to 128 ulp for four shapes of GAMMA.DIST and CHISQ.DIST / DIST.RT. Findings in
-statistics.md under the gamma-quantile bullet: the error is over 4 ulp from p = 0.995, peaks around 0.9999 and is
-gone at 0.99999; Excel's cdf is non-monotone across its quantile and the quantile is not at a fixed edge of the
-equal-to-p band. Engine unchanged (T-3146 fits the rule).
+statistics.md under the gamma-quantile bullet: the error is over 4 ulp for some shape already at p = 0.99, peaks
+around 0.9999 and is gone at 0.99999; Excel's quantile is constant across the three p doubles below 0.999 and across
+0.999 and the three above, with a break at 0.999; Excel's cdf is monotone with a flat run at p, and its quantile is
+not at a fixed edge of that run (outside it for a = 2 and df 50). Engine unchanged (T-3146 fits the rule).
