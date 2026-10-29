@@ -24,7 +24,7 @@ Probe before generalizing: `B2[$-10411]`, `B2[$-1040C]`, `B2[$-10401]`, `B2[$-30
 Code: `resolve_after_hijri_prefix` (formatter/locale_tag.rs), `NameTokens::push` (formatter/date_names.rs).
 
 ## Acceptance criteria
-- [ ] probes/t3029-b2-calendar-weekday A73-A75, A79-A84 and B3 pass, with the new probe's cells, and no new known failure.
+- [ ] probes/t3029-b2-calendar-weekday A73, A74, A75, A79, A80, A81, A82, A83, A84 and B3 pass, with the new probe's cells, and no new known failure.
 - [ ] number-formats.md records the rule with the new evidence.
 - [ ] `make check` green; reviewers approve.
 

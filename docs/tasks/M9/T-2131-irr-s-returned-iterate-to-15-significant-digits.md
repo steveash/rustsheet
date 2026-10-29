@@ -18,6 +18,8 @@ not converging further.
 
 ## Context
 - probes/t2565-irr-guess-sweeps (T-2565): on large-root flows Excel's v = 1/(1+r) is a multiple of 2^-53; the model's v rounded to that grid gives Excel's bits in 173/175 cells (P!C95 0.84 grid steps off; P!C157 is an unexplained outlier, ~100 steps; financial.md "IRR is a secant in v").
+- The whole of probes/t2565-irr-guess-sweeps is this task's (T-2565's Outcome hands its fit here; gap triage 2026-10-29
+  found its 173 visibly-off cells unowned because the line above names only two of them).
 - probes/xirr-irr-empty-guess A11, A13, A15, A17, A19, A21 (T-2688): IRR from guess 0 (`IRR(v,0)`, `IRR(v,)`)
   on -70000, 12000, 15000, 18000, 21000, 26000. Excel 0.08663094803653149, ours 0.08663094803653171.
 - `financial/financial_util.rs` `compute_irr` runs:
