@@ -40,6 +40,10 @@ regression.rs when touching either. A multi-cell range as const or stats falls b
 probe `LINEST(y,x,A1:A2)` and `LINEST(y,x,TRUE,A1:B1)`. The collinear fallback (`independent_columns`, O(p·n·kept)) and the
 range read have no work budget beyond the normal equations' O(n·p²); consider a cell budget (directive 5) when the kernel
 is revisited.
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/b8ee55934c5b824c.case.json: Calc!A161
+  - gen-m9/c2974c061384fdd9.case.json: Calc!A89
 
 ## Acceptance criteria
 - [ ] The cells listed above pass or name another open task that owns their root cause; their lines leave

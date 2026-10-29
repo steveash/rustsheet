@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3063: EXPAND(1,2,600000,{0;1}): 1.2M cells beside an array pad_with; error type, else rows.",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-3063"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "G1": "=IFERROR(ERROR.TYPE(ROWS(_xlfn.EXPAND(1,2,600000,{0;1}))),ROWS(_xlfn.EXPAND(1,2,600000,{0;1})))"
+   }
+  }
+ ]
+}
