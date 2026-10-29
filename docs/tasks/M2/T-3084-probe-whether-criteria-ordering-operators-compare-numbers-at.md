@@ -56,7 +56,7 @@ cell holding `1+2^-52` is not at once "equal to 1" and "greater than 1" in the e
 - Text and boolean ordering criteria.
 
 ## Outcome
-Probe probes/t3072-criteria-near-equal-order (excel-graph, 372 cells): `"<1"`, `"<=1"`, `">1"` and `">=1"` compare the
+Probe probes/t3072-criteria-near-equal-order (excel-graph, 372 cells of which 360 formula cells are scored): `"<1"`, `"<=1"`, `">1"` and `">=1"` compare the
 cell's 15-digit value in COUNTIF, SUMIF, COUNTIFS and SUMIFS, like `=`/`<>`; the flip is at the 15th-digit rounding
 boundary (1+22/23·2^-52 above, 1-4/5·2^-53 below), so neither exact nor a relative tolerance. The plain `<` and `>=`
 controls follow the same rule. Recorded in numbers.md ("Criteria ordering operators compare at 15 digits too",

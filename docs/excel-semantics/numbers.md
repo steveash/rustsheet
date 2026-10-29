@@ -645,8 +645,8 @@ Implemented in: `numbers_equal` (functions/criteria.rs), `Ord for CalcResult` (c
 ## Criteria ordering operators compare at 15 digits too
 Rule: the ordering criteria `"<1"`, `"<=1"`, `">1"` and `">=1"` of COUNTIF, SUMIF, COUNTIFS and SUMIFS compare the
 cell's 15-digit value, exactly as `"=1"` and `"<>1"` do: a cell is never at once "equal to 1" and "greater than 1".
-Over one-cell ranges holding `=1+k*2^-52` and `=1-k*2^-53`, every cell up to k = 22 above and k = 4 below (all of
-which print as 1) counts for `"<=1"`, `">=1"` and `"=1"` and not for `"<1"` or `">1"`; `1+23*2^-52`
+Over one-cell ranges holding `=1+k*2^-52` and `=1-k*2^-53`, the cells at k = 1, 2, 3, 8, 22 above and k = 1-4 below (all
+of which print as 1) counts for `"<=1"`, `">=1"` and `"=1"` and not for `"<1"` or `">1"`; `1+23*2^-52`
 (1.00000000000001) and `1-5*2^-53` (0.999999999999999) flip all six at once. The flip sits on the 15th-digit rounding
 boundary (5E-15 above 1, 5E-16 below), not at a fixed ULP count, so it is neither an exact comparison nor a relative
 tolerance. All four functions agree on all 288 criteria cells.
