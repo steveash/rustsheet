@@ -3,7 +3,7 @@ id: T-3091
 title: "m1-probes exit measure: no verdict on a partial list run; exit-owners lists a crashing listed case"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
