@@ -3,7 +3,7 @@ id: T-0095
 title: "M9 milestone exit row: ironcalc-calc at 0.9995, every M9 function at the Phase 1 rate, M9 probes (decision 0146 item 3)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -35,14 +35,33 @@ can give every one of them an owner (decision 0096).
   Consequences (or add a record) in the same PR.
 
 ## Acceptance criteria
-- [ ] report.md and report.json have an M9 row with the three measures, their counts beside the bit-level counts,
+- [x] report.md and report.json have an M9 row with the three measures, their counts beside the bit-level counts,
       and the count of M9 functions below the rate; unit tests cover a met row and each measure failing alone,
       and an exception line that keeps (a) met.
-- [ ] `python3 scripts/exit_owners.py --milestone M9` runs on a fresh `make eval` and lists cells from all three
+- [x] `python3 scripts/exit_owners.py --milestone M9` runs on a fresh `make eval` and lists cells from all three
       sources; `scripts/test_exit_owners.py` covers each source.
-- [ ] The Outcome note records the row's numbers and the unowned count `make exit-owners MILESTONE=M9` prints.
-- [ ] `make progress-report` renders the row; `make check` green; reviewers approve.
+- [x] The Outcome note records the row's numbers and the unowned count `make exit-owners MILESTONE=M9` prints.
+- [x] `make progress-report` renders the row; `make check` green; reviewers approve.
 
 ## Out of scope
 - Owning or fixing the M9 cells the new report lists (planner and gap-triager follow-ups).
 - Changing `v15_checkpoint`'s rate or attribution rule (decisions 0114, 0118).
+
+## Outcome
+- `milestone_exit` has an M9 row (decision 0146 item 3). It requires no suite (`gen_suite` empty, printed
+  `none required`). (a) ironcalc-calc: the cumulative M9 function-scope row less its deviations and exit
+  exceptions (`calc_scored`), met when at most `floor(0.0005 * calc_scored)` (`calc_allowance`) cells are visibly
+  off, through `meets_rate` with `M9_CALC_RATE_NUM` = 9,995: every rate now has the denominator 10,000 (same
+  shares; `v15_checkpoint.rate_num/rate_den` in report.json read 9990/10000). (b) `v15_checkpoint`'s rows carry
+  each function's catalog `milestone`; the row counts the M9 ones (`rate_functions`) not `meets_rate`
+  (`below_rate`, names in `below_rate_functions`). (c) the M9 probe row. Coverage is shown, not required. The
+  report table has a new "functions at the Phase 1 rate" column (`n/a` on every other row).
+- `scripts/exit_owners.py --milestone M9` lists the ironcalc-calc cells, the `attributed_off` cells of each
+  function below the rate (`rate:<FUNCTION>`, through the reader `--all-off` uses) and the probe cells. The
+  progress page shows the M9 measures (`goals.exit_measures`).
+- `make eval` on this branch (calipers, corpus-bench and poi not fetched): M9 not met. ironcalc-calc 119 visibly
+  off of 73,155 scored against an allowance of 36 [546 bit failures]; 74 of the 263 M9 functions below the
+  rate; M9 probes 629 visibly off [2,613]; coverage 263/263. Exit cells: 119 ironcalc-calc, 99,994 `rate:`
+  cells (BETA.DIST 51,668 and F.DIST 38,036 of them), 629 probe cells. `make exit-owners MILESTONE=M9`: 514
+  unowned (459 `rate:` cells, 55 probe cells; every ironcalc-calc cell has an owner).
+- Eval delta: none (report-only change).
