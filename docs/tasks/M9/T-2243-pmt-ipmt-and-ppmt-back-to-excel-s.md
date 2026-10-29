@@ -3,7 +3,7 @@ id: T-2243
 title: "PMT, IPMT and PPMT back to Excel's bits on the 14 cells T-2130 moved by 1 to 4 ulp"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
