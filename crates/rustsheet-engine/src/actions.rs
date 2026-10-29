@@ -11,7 +11,6 @@ use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
 use crate::pivot::PivotLines;
-use crate::table_edits::bounds;
 use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
@@ -615,15 +614,9 @@ impl Model {
                 "Cannot insert columns because that would break an array formula".to_string(),
             );
         }
-        if self.table_would_leave_sheet(sheet, column, column_count, false)? {
-            return Err(
-                "Cannot insert columns because that would move cells in a table off the sheet"
-                    .to_string(),
-            );
-        }
+        self.refuse_table_off_sheet(sheet, column, column_count, false)?;
         // check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_column = dimensions.max_column + column_count;
+        let last_column = self.workbook.worksheet(sheet)?.dimension().max_column + column_count;
         if last_column > LAST_COLUMN {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a row"
@@ -905,31 +898,6 @@ impl Model {
         Ok(true)
     }
 
-    // Whether inserting `count` rows (or columns) at `at` would push a cell of a table on `sheet` past
-    // the last row (column), even when the cells pushed off are empty: Excel answers 409
-    // InsertDeleteConflict (excel-graph 2026-10-28, T-2845). A table that merely ends exactly at the
-    // last row afterwards is unprobed; no table cell leaves the sheet, so it is allowed.
-    fn table_would_leave_sheet(
-        &self,
-        sheet: u32,
-        at: i32,
-        count: i32,
-        rows: bool,
-    ) -> Result<bool, String> {
-        let sheet_name = self.workbook.worksheet(sheet)?.get_name();
-        let limit = if rows { LAST_ROW } else { LAST_COLUMN };
-        Ok(self
-            .workbook
-            .tables
-            .values()
-            .filter(|table| table.is_on_sheet(&sheet_name))
-            .filter_map(bounds)
-            .any(|b| {
-                let last = if rows { b.bottom } else { b.right };
-                last >= at && last.saturating_add(count) > limit
-            }))
-    }
-
     // Returns true if inserting columns at `column` would not split any array formula.
     fn can_insert_columns(
         &self,
@@ -1031,15 +999,9 @@ impl Model {
         if !self.can_insert_rows(sheet, row, row_count)? {
             return Err("Cannot insert rows because that would break an array formula".to_string());
         }
-        if self.table_would_leave_sheet(sheet, row, row_count, true)? {
-            return Err(
-                "Cannot insert rows because that would move cells in a table off the sheet"
-                    .to_string(),
-            );
-        }
+        self.refuse_table_off_sheet(sheet, row, row_count, true)?;
         // Check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_row = dimensions.max_row + row_count;
+        let last_row = self.workbook.worksheet(sheet)?.dimension().max_row + row_count;
         if last_row > LAST_ROW {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a column"
