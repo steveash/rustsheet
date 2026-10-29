@@ -181,5 +181,5 @@ merge-flip-check: ## Whether a PR only sets the merge-train switch to lock (SPEC
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_flip.py check '$(PR)'
 
-merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027)
+merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027); `train (stop pending: #n)` while a valid merge-train-stop label is on PR n
 	$(PY) scripts/merge_train.py mode

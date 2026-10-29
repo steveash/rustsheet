@@ -233,3 +233,22 @@ fn test_value_date_text_with_clock_suffix() {
     // probes/date-text-grammar C63.
     assert_eq!(model._get_text("A2"), "43832.75");
 }
+
+#[test]
+fn test_value_mixed_fraction() {
+    // probes/eng-inumber-date-boundary B22, probes/t3136-criteria-formatted-number-operands H25.
+    let mut model = new_empty_model();
+    model._set("A1", "=VALUE(\"3 1/2\")");
+    model._set("A2", "=VALUE(\" 1 1/2 \")");
+    model._set("A3", "=VALUE(\"1 1/0\")");
+    model._set("A4", "=VALUE(\"1 1/\")");
+    model._set("A5", "=VALUE(\"1 a/2\")");
+    // Unprobed, so not read yet (T-2646).
+    model._set("A6", "=VALUE(\"-3 1/2\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3.5");
+    assert_eq!(model._get_text("A2"), "1.5");
+    for cell in ["A3", "A4", "A5", "A6"] {
+        assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
+    }
+}
