@@ -60,30 +60,33 @@ fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     }
 }
 
+// Excel: the ordering criteria compare the cell's 15-digit value too, so a cell holding 1+22*2^-52 meets
+// "<=1" and not ">1" (docs/excel-semantics/numbers.md#criteria-ordering-operators-compare-at-15-digits-too,
+// probes/t3072-criteria-near-equal-order).
 fn result_is_less_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f < target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_lt(),
         _ => false,
     }
 }
 
 fn result_is_less_or_equal_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f <= target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_le(),
         _ => false,
     }
 }
 
 fn result_is_greater_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f > target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_gt(),
         _ => false,
     }
 }
 
 fn result_is_greater_or_equal_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f >= target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_ge(),
         _ => false,
     }
 }
