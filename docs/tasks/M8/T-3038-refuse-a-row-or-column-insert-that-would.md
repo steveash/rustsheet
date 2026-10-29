@@ -3,7 +3,7 @@ id: T-3038
 title: "Refuse a row or column insert that would push a table's cells off the sheet, as Excel does (InsertDeleteConflict)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
