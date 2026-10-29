@@ -3,7 +3,7 @@ id: T-3099
 title: "Approximate VLOOKUP, HLOOKUP and MATCH compare numbers exactly, not at 15 digits"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
