@@ -14,15 +14,24 @@ fn ulps_above(b: f64, k: f64) -> f64 {
 }
 
 #[test]
-fn snaps_below_eight_ulp_of_the_smaller_addend() {
+fn snaps_below_eight_ulp_of_the_left_addend() {
     // 7 ULP of 1.0 snaps, 8 ULP is kept.
     let seven = ulps_above(1.0, 7.0);
     assert_eq!(snap_near_zero(seven, -1.0, seven - 1.0), 0.0);
     let eight = ulps_above(1.0, 8.0);
     assert_eq!(snap_near_zero(eight, -1.0, eight - 1.0), eight - 1.0);
-    // The smaller addend sets the scale: 1 - 4·2^-52 has half the ULP of 1.
+    // The left addend sets the scale: 1 - 4·2^-52 has half the ULP of 1, so `(1-4·2^-52)-1` is
+    // kept and `1-(1-4·2^-52)` snaps (probes/t3100-snap-operand-order row 8, columns A and B).
     let below = 1.0 - 4.0 * f64::EPSILON;
-    assert_eq!(snap_near_zero(1.0, -below, 1.0 - below), 1.0 - below);
+    assert_eq!(snap_near_zero(below, -1.0, below - 1.0), below - 1.0);
+    assert_eq!(snap_near_zero(1.0, -below, 1.0 - below), 0.0);
+    assert_eq!(snap_near_zero(-1.0, below, below - 1.0), 0.0);
+    // 8 ULP of the left 1.0 is kept either way.
+    let eight_below = 1.0 - 4.0 * f64::EPSILON - 4.0 * f64::EPSILON;
+    assert_eq!(
+        snap_near_zero(1.0, -eight_below, 1.0 - eight_below),
+        1.0 - eight_below
+    );
 }
 
 // Excel flushes the 8-ULP bound when it is subnormal: addends of 1.5·2^-973 still snap (to a
