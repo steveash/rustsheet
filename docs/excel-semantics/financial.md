@@ -1434,7 +1434,7 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   12 periods of nper 1E15 at rates 0.01, 0.001 and 0.1 (A-C), PPMT of each of those periods at 0.01 (D), the
   CUMIPMT (E, which A9-A11 and K3 sample) and type 1 CUMPRINC (F). Excel's CUMPRINC is not the sum of its own PPMTs:
   `CUMPRINC(0.01,1E15,100000,1E15,1E15,0)` is -990.0990099009903 where `PPMT(0.01,1E15,1E15,100000)` is
-  -990.09900990099, 2 ulps apart. Each E cell is `-PMT·m - A` exactly, with the payment a whole 1000 (G).
+  -990.09900990099, 2 ulps apart. Each E cell is `PMT·m - A` (G - A) exactly, with PMT a whole -1000 (G).
   Of 30 forms fitted to the 36 A-C principals (with L as `log1p`, `growth_log`, Excel's LN of `1+r` and libm's `ln`,
   each shifted by -4 to 4 ulps; with libm's and Excel's EXP and expm1; and with the exponent kept in an x87
   register), the best is the drop in the remaining balance, `pv/(1-v^nper)·(v^(nper-end)·(1-v^m))` with
