@@ -654,7 +654,8 @@ Evidence: probes/t3072-criteria-near-equal-order (excel-graph, 2026-10-29): rows
 E:J COUNTIF, K:P SUMIF, Q:V COUNTIFS, W:AB SUMIFS in the order `<`, `<=`, `>`, `>=`, `=`, `<>`; e.g. F5
 `COUNTIF(B5,"<=1")` = 1 and G5 `">1"` = 0 for 1+22·2^-52, G6 = 1 for 1+23·2^-52; E10 `"<1"` = 0 for 1-4·2^-53,
 E11 = 1 for 1-5·2^-53.
-Status: VERIFIED (engine not yet: the ordering matchers compare raw doubles, T-3103)
+Status: VERIFIED
+Implemented in: the four ordering matchers of functions/criteria.rs, on `cmp_excel_precision`. Tasks: T-3084, T-3103
 
 ## Comparison tolerance
 Rule: comparisons round both numbers to 15 significant digits and compare the results exactly, so

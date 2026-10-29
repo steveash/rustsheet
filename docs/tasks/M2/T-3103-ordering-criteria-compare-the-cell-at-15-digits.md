@@ -3,7 +3,7 @@ id: T-3103
 title: "Ordering criteria (<, <=, >, >=) compare the cell at 15 digits, as = and <> do"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,10 +27,17 @@ against `"<n"`, `"<=n"`, `">n"` and `">=n"` by its 15-digit value, as Excel does
   `numbers_equal` does, so the six matchers share one comparison.
 
 ## Acceptance criteria
-- [ ] Every cell of probes/t3072-criteria-near-equal-order passes (`make eval-baseline` drops its known failures),
+- [x] Every cell of probes/t3072-criteria-near-equal-order passes (`make eval-baseline` drops its known failures),
       with no regressions elsewhere (D-functions and AVERAGEIFS/MINIFS/MAXIFS share the matchers).
-- [ ] numbers.md and criteria.md entries cite the implementation (Status line).
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md and criteria.md entries cite the implementation (Status line).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Text and boolean ordering criteria; approximate lookups.
+
+## Outcome
+The four numeric ordering matchers in functions/criteria.rs (`result_is_less_than_number` and the rest) now compare
+with `cmp_excel_precision`, the 15-digit comparison `numbers_equal` already uses, so every criteria consumer
+(COUNTIF(S), SUMIF(S), AVERAGEIF(S), MINIFS/MAXIFS, the D-functions) orders a number cell by its 15-digit value. A unit
+test (`ordering_criteria_compare_the_cell_at_15_digits`) covers both rounding boundaries. Eval delta: 72 known
+failures fixed (all of probes/t3072-criteria-near-equal-order), 0 regressions; visible parity 2720 -> 2648 cells off.
