@@ -39,7 +39,6 @@ impl Model {
         // INDIRECT, OFFSET, INDEX, IF, CHOOSE, LET, spill reference, sheet-qualified, parenthesised
         // or legacy reference, or structured reference. A computed value stays `#VALUE!`, and so
         // does `+D1` (probes/text-255-units-reference-shapes A1:A19; T-3107).
-        let from_cell = self.reads_cell_text(&args[0], cell);
         match result {
             // Text over 255 UTF-16 units is #VALUE!, as in REPT, CODE and UNICODE:
             // `T(REPT("x",256))` (docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a
@@ -48,7 +47,11 @@ impl Model {
             // #VALUE! (probes/text-255-units-from-cell A4, A12; -array-element A4; T-2627).
             CalcResult::String(ref text) => match reject_over_short_limit(text) {
                 Ok(()) => result,
-                Err(_) if from_cell => CalcResult::String(String::new().into()),
+                // Checked only here: `is_reference` can evaluate the argument again, which every
+                // T call would pay and nested T(IF(…T(IF(…)))) would double per level.
+                Err(_) if self.reads_cell_text(&args[0], cell) => {
+                    CalcResult::String(String::new().into())
+                }
                 Err(error) => CalcResult::new_error(error, cell, String::new()),
             },
             error @ CalcResult::Error { .. } => error,
@@ -81,8 +84,9 @@ impl Model {
         loop {
             match node {
                 Node::UnaryPlus { .. } => return false,
-                Node::Group { child, .. } | Node::Spaced { child, .. } => node = child,
-                Node::ImplicitIntersection { child, .. } => node = child,
+                Node::Group { child, .. }
+                | Node::Spaced { child, .. }
+                | Node::ImplicitIntersection { child, .. } => node = child,
                 Node::SpillRangeOperator { .. } => return true,
                 _ => return self.is_reference(node, cell),
             }
