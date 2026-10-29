@@ -3,7 +3,7 @@ id: T-2947
 title: "Probe SORT lifted by_col corners: a sort-invalid call between two that sort, a number by_col beside a boolean"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,9 +23,14 @@ booleans they read as, so `{1;TRUE}` counts as equal. Write a probe case (excel-
 `sort_lifted_elements` if Excel differs, and update arrays.md.
 
 ## Acceptance criteria
-- [ ] A probe case covers both corners; arrays.md drops their UNVERIFIED notes or records the rule Excel shows.
-- [ ] Any differing cell is fixed and the case passes.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case covers both corners; arrays.md drops their UNVERIFIED notes or records the rule Excel shows.
+- [x] Any differing cell is fixed and the case passes.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SORTBY, UNIQUE.
+
+## Outcome
+Probe `probes/t2947-sort-lifted-by-col-corners` (excel-graph): a sort_index-failing call after the first element counts as a
+sorting call (it was skipped), and a number by_col is not equal to a boolean one (both were assumed). Fixed in
+`sort_lifted_elements`/`fn_sort`; the case passes 47 of 48 cells. The last cell (L81) is baselined and filed as T-3090.

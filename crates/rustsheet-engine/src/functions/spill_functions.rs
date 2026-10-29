@@ -203,7 +203,7 @@ fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
 // Excel: docs/excel-semantics/arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments".
 fn sort_lifted_elements(
     result: CalcResult,
-    sorted: &[Option<bool>],
+    sorted: &[Option<ByCol>],
     only_key_two: bool,
 ) -> CalcResult {
     let CalcResult::Array(mut rows) = result else {
@@ -249,6 +249,14 @@ fn sort_lifted_elements(
         above = here;
     }
     CalcResult::Array(rows)
+}
+
+/// The by_col an element of a lifted SORT sorted with: its value, and whether it was written as a
+/// number (a number is never equal to a boolean).
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct ByCol {
+    value: bool,
+    is_number: bool,
 }
 
 /// An evaluated SORTBY `by_array` argument.
@@ -413,7 +421,7 @@ impl Model {
             .max(1);
         // Each call's by_col when it sorted, in row-major order (one entry per element: every
         // element runs, `Reuse::Never`).
-        let mut sorted: Vec<Option<bool>> = Vec::new();
+        let mut sorted: Vec<Option<ByCol>> = Vec::new();
         let result = self.lift_call_costed(
             kind,
             args,
@@ -424,15 +432,26 @@ impl Model {
                     None | Some(CalcResult::EmptyArg) => Ok(false),
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
+                // A number by_col is not the boolean it reads as when leads are compared
+                // (probes/t2947-sort-lifted-by-col-corners).
+                let is_number = matches!(values.get(3), Some(CalcResult::Number(_)));
                 let (result, read) = match (by_col, &raw_order) {
                     (Err(error), _) => (error, None),
                     (Ok(_), Err(error)) => (error.clone(), None),
                     (Ok(by_col), Ok(raw_order)) => (
                         model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell),
-                        Some(by_col),
+                        Some(ByCol {
+                            value: by_col,
+                            is_number,
+                        }),
                     ),
                 };
-                sorted.push(read.filter(|_| !matches!(result, CalcResult::Error { .. })));
+                // A call failing on its sort_index counts as a sorting call unless no call
+                // has sorted yet (`{FALSE;TRUE;TRUE}` keeps the later two; `{FALSE,FALSE,TRUE,TRUE}`), while an invalid by_col
+                // is always skipped (probes/t2947-sort-lifted-by-col-corners).
+                let failed = matches!(result, CalcResult::Error { .. });
+                let sorted_before = sorted.iter().any(Option::is_some);
+                sorted.push(read.filter(|_| !failed || sorted_before));
                 result
             },
         );

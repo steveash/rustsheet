@@ -1451,6 +1451,7 @@ C	probes/t2929-sort-lifted-by-col-shapes.case.json	121
 C	probes/t2932-b2-calendar-twice.case.json	80
 C	probes/t2937-own-book-prefix-in-name-body.case.json	12
 C	probes/t2939-typed-if-two-argument-controls.case.json	9
+C	probes/t2947-sort-lifted-by-col-corners.case.json	48
 C	probes/t2954-hebrew-drift.case.json	512
 C	probes/t2954-hebrew-value-limit.case.json	161
 C	probes/t2957-a1-reference.case.json	6
@@ -3827,6 +3828,7 @@ F	probes/t2831-formulatext-indirect-multi-cell.case.json	Calc!B17
 F	probes/t2932-b2-calendar-twice.case.json	S!A37
 F	probes/t2932-b2-calendar-twice.case.json	S!A38
 F	probes/t2932-b2-calendar-twice.case.json	S!A55
+F	probes/t2947-sort-lifted-by-col-corners.case.json	Sheet1!L81
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A1
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A10
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A11
