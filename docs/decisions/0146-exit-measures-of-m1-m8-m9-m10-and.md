@@ -116,3 +116,10 @@
     `meets_rate`. `scripts/exit_owners.py` lists, beside the function-scope and probe cells, the
     `attributed_off` cells of each function the row names in `below_rate_functions`, as
     `rate:<FUNCTION>`, through the same reader `--all-off` uses.
+  - T-0096 (2026-10-29) builds the M8 row of item 2. gen-m8a is the row's `gen_suite`; gen-m8b and
+    the poi subset (`poi M8 subset`, read from the report's `poi_m8_subset` section, T-0094) are
+    `more_suites`, each with 3,000 scored cells (gen-m8a and gen-m8b) or 99.5% (the subset, 9,950 over
+    10,000). A `more_suites` entry carries `blocked_cases` (`case!*`); the subset is not met while it
+    holds one. `scripts/exit_owners.py` lists each `more_suites` entry's visibly-off cells and
+    blocked cases from the entry's own lists, so a measure over another suite's cells needs no suite
+    match.

@@ -674,3 +674,107 @@ fn m9_without_checkpoint_functions_is_not_applicable() {
     assert_eq!((row.rate_functions, row.rate_met), (None, None));
     assert!(!row.exit);
 }
+
+/// A run with gen-m8a and gen-m8b of 3,577 and 3,368 cells (`m8b_off` visibly off), a poi
+/// subset of `subset` (scored, visibly off) when poi ran, and a clean M8 probe row.
+fn m8_report(m8b_off: usize, subset: Option<(usize, usize)>) -> RunReport {
+    use crate::poi_m8_subset::PoiM8Subset;
+    let mut r = report(None);
+    r.suites.push(suite("gen-m8a", 3_577, 0));
+    r.suites.push(suite("gen-m8b", 3_368, m8b_off));
+    r.poi_m8_subset = subset.map(|(scored, off)| PoiM8Subset {
+        scored,
+        visibly_off: off,
+        visibly_off_cells: (0..off)
+            .map(|i| format!("poi/a.xls!S!A{}", i + 1))
+            .collect(),
+        ..PoiM8Subset::default()
+    });
+    r.probe_milestones.push(MilestoneRow {
+        milestone: "M8".into(),
+        ..MilestoneRow::default()
+    });
+    r
+}
+
+fn m8(r: &RunReport) -> ExitRow {
+    row(r, "M8")
+}
+
+#[test]
+fn m8_needs_both_gen_suites_the_poi_subset_at_99_5_and_clean_probes() {
+    // 2,000 scored subset cells: the allowance is floor(0.005 * 2,000) = 10.
+    let r = m8_report(0, Some((2_000, 10)));
+    let row = m8(&r);
+    assert_eq!(row.gen_suite, "gen-m8a");
+    assert_eq!(row.gen_met, Some(true));
+    let names: Vec<&str> = row.more_suites.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, ["gen-m8b", M8_SUBSET]);
+    let subset = &row.more_suites[1];
+    assert_eq!((subset.allowance, subset.met), (Some(10), Some(true)));
+    assert_eq!(subset.visibly_off_cells.len(), 10);
+    assert_eq!((row.coverage_met, row.calc_met), (None, None));
+    assert!(row.exit, "{row:?}");
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains(
+            "| M8 | n/a/n/a n/a | gen-m8a: 3577, 1.00000, 0/0 [0] met; gen-m8b: 3368, 1.00000, 0/0 [0] met; poi M8 subset: 2000, 0.99500, 10/10 [n/a] met | n/a [n/a] n/a | 0 [0] met | n/a n/a | n/a | met |"
+        ),
+        "{md}"
+    );
+}
+
+#[test]
+fn m8_a_visibly_off_gen_m8b_cell_fails_alone() {
+    let row = m8(&m8_report(1, Some((2_000, 0))));
+    assert_eq!(row.more_suites[0].met, Some(false));
+    assert_eq!(
+        (row.gen_met, row.more_suites[1].met),
+        (Some(true), Some(true))
+    );
+    assert!(!row.exit);
+}
+
+#[test]
+fn m8_a_subset_below_99_5_fails_alone() {
+    let row = m8(&m8_report(0, Some((2_000, 11))));
+    assert_eq!(row.more_suites[1].met, Some(false));
+    assert_eq!(row.more_suites[0].met, Some(true));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m8_a_blocked_subset_case_fails_alone() {
+    let mut r = m8_report(0, Some((2_000, 0)));
+    r.poi_m8_subset.as_mut().unwrap().blocked_cases = vec!["poi/b.xlsx!*".into()];
+    let row = m8(&r);
+    let subset = &row.more_suites[1];
+    assert_eq!(subset.met, Some(false));
+    assert_eq!(subset.blocked_cases, ["poi/b.xlsx!*"]);
+    assert!(!row.exit);
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains("poi M8 subset: 2000, 1.00000, 0/10 [n/a], 1 cases blocked not met"),
+        "{md}"
+    );
+}
+
+#[test]
+fn m8_a_visibly_off_probe_fails_alone() {
+    let mut r = m8_report(0, Some((2_000, 0)));
+    r.probe_milestones.last_mut().unwrap().visibly_off = 1;
+    let row = m8(&r);
+    assert_eq!(row.probes_met, Some(false));
+    assert!(row.more_suites.iter().all(|s| s.met == Some(true)));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m8_without_poi_is_not_applicable() {
+    let row = m8(&m8_report(0, None));
+    let subset = &row.more_suites[1];
+    assert_eq!((subset.scored, subset.met), (None, None));
+    assert!(!row.exit);
+}

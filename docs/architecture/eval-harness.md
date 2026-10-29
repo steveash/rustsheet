@@ -308,7 +308,9 @@ exceptions (`calc_scored`) with at most `floor(0.0005 * calc_scored)` visibly of
 and every `v15_checkpoint` function of catalog milestone M9 must be `meets_rate` (`rate_functions`,
 `below_rate`, `rate_met`; `below_rate_functions` names the others, whose `attributed_off` cells
 `exit_owners.py` lists as `rate:<FUNCTION>`). Rates are over a denominator of 10,000 so that 99.95% is
-one `meets_rate` call.
+one `meets_rate` call. The M8 row (decision 0146 item 2, T-0096) reads gen-m8a (`gen_suite`), and as
+`more_suites` gen-m8b and the `poi M8 subset` (the report's `poi_m8_subset`, at 99.5% with no
+`blocked_cases`, the crashed or errored poi cases holding a subset formula, listed as `case!*`).
 
 The "Fifteen-digit parity checkpoint" section (`v15_checkpoint`, decision 0094) also prints the
 Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one cell in

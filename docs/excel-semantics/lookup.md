@@ -352,8 +352,8 @@ and 1-k·2^-53 against a 1 in the table give the mirror answers (A9-C16; row 16 
 models: 0.1+0.2 against 0.3 is decided by the 0.5, and the pair either side of 1+5E-15 reads differently at 15
 digits too. The run of equal cells is a run of exactly equal
 doubles. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52 give 1, 2 and 3, where a 15-digit run would
-give 3 for all three (A30-C31; A32-C32 fit both). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine still compares at 15 digits
-there (`compare_values`): T-3099.
+give 3 for all three (A30-C31; A32-C32 fit both). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine compares
+exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too (unverified in Excel: T-3106).
 Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
 2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
 a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
@@ -361,7 +361,8 @@ a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c5
 crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/MATCH.xlsx C7 (duplicate run, Excel-cached).
 Status: VERIFIED
 Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
-`crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
+`crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`; numbers are ordered as exact doubles by
+`compare_searched` there.
 Tasks: T-0212, T-0220, T-3073, T-3099
 
 ## MATCH descending search scans from the top; a text match_type read from a cell is #REF!
@@ -392,7 +393,7 @@ excel-graph 2026-10-29):
   first equal one. It is `#N/A` where X is a few ULP below, because the first cell is already below (Sheet1 D1-D20). A
   15-digit compare would give 1 on D1-D7, D9-D15, D17 and D18. D8, D16, D19 and D20 fit both models.
 - Over 2, 1+2·2^-52, 1+2^-52, 1, 0.5 the keys 1, 1+2^-52 and 1+2·2^-52 give 4, 3 and 2 (D30-D32; D32 fits both).
-The engine compares at 15 digits there (T-3099).
+Implemented in `SearchVector::descending_search` through `compare_searched` (T-3099).
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
