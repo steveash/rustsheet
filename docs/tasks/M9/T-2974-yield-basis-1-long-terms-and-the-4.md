@@ -3,7 +3,7 @@ id: T-2974
 title: "YIELD basis-1 long terms and the 4-year sweep row miss Excel's 15th digit by 5 to 27 ulp (yield-start-rate-term B39, B49; yield-solver-sweep C7)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -46,3 +46,15 @@ crates/rustsheet-engine/src/functions/financial/financial_bonds/yield_solver.rs.
 ## Cells added by the T-0087 sweep (2026-10-28)
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): YIELD 1. This task now owns them:
 - probes/yield-newton-domain: P!B2
+
+## Outcome (partial, attempt 1, 2026-10-29; the task stays open, decision 0056)
+probes/yield-price-at-iterates (59 PRICE cells, excel-graph) asks Excel's PRICE at the exact iterates of our Newton and
+at Excel's YIELD values. The lab's `^`-priced PRICE equals Excel's to the bit on all 59 (the engine's misses 4 by 1 to 2 ulps: follow-up T-3144), so the three cells (and P!B2) are not off through PRICE:
+Excel's iterates differ from ours. On C7, which steps once from the start, Excel's bits need a start 2e-10 to 1.5e-9
+relative below the fitted one. The others ride on the rounding of the iterate before the last step. Tried in the lab
+and not kept (counts in financial.md "YIELD stops short of PRICE's root", T-2974 paragraph): 51 PRICE summation and
+slope forms (best 240/370, the engine's), 8 residual structures, and about 20 arrangements of the start and its term.
+The best of these, `pr + (0.5 - 0.25/T)(100 - pr)`, fixes P!B2 but nets +2 of 570 and makes ODDFYIELD sweep S!C92
+visibly off. Next attempt: fit the start to 1e-9 on cells that step once from it. Eval delta: one new probe case,
+73 cells, 57 passing. The 16 new known failures are 4 PRICE cells 1 to 2 ulps off (T-3144) and 12 YIELD cells in column
+A, which repeat existing cells. No regressions.
