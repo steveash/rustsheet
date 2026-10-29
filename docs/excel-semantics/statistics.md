@@ -3728,7 +3728,9 @@ has one point or the error is not the k-th value: `LARGE({1,#N/A,3},3)` and `LAR
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255); cells in T-2430 and T-2093.
 Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3},(<FALSE>/"x~*"))` and `COVARIANCE.S({1,#N/A,3},RANK(<#VALUE!>))`
 are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
-(gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36).
+(gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36). That holds for an element's error that an inner call has already
+returned as a value: `SMALL((SMALL({1,#N/A,3},2)/1.005),Data!C8)` with Data!C8 = `a*` is `#N/A`, not k's `#VALUE!` (gen-m9/1b31092a0d79e5f1
+A363). Ours gives `#VALUE!` because the inner call's tag stays on the error (T-3080).
 Probed on excel-graph (T-2636, probes/array-error-element-order): PROB (`PROB({1,#N/A,3},{0.2,0.3,0.5},1)`, an element in
 either data argument, with a limit error or an extra upper limit) and SLOPE, INTERCEPT, STEYX, RSQ, FORECAST.LINEAR and
 CHISQ.TEST with the element in either position are all `#N/A`; with an element error in each data argument the first

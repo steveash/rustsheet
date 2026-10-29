@@ -784,7 +784,14 @@ impl Model {
             // The top-left cell of the reference, on the sheet it names, with no implicit
             // intersection (probes/info-cell-contents-range, excel-graph re-filled 2026-10-28,
             // T-3030; the 2026-10-12 fill read the formula's own sheet, T-1230).
-            "CONTENTS" => self.evaluate_cell(reference),
+            // A blank target gives the empty value, as IFERROR of a blank cell does (`EmptyArg`):
+            // COUNTA counts it and array arguments reject it (`COUNTA(CELL("contents",<blank>))` 1,
+            // `TOCOL(CELL("contents",<blank>))` `#VALUE!`; probes/t3030-cell-contents-blank-shapers
+            // A21, A231, excel-graph, T-3053; information.md "CELL("contents", ref) as a VSTACK argument").
+            "CONTENTS" => match self.evaluate_cell(reference) {
+                CalcResult::EmptyCell => CalcResult::EmptyArg,
+                value => value,
+            },
             // Excel for the web gives #VALUE! for every form (probes/info-cell-address-cross-sheet
             // Calc!B1:B4, excel-graph, T-2052); desktop's full-path form is M14.
             "FILENAME" => CalcResult::Error {
