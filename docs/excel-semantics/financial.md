@@ -300,7 +300,7 @@ period 6 is `#NUM!`); with month 12 there is no partial last year and any period
 `#NUM!` runs before the cost-0 shortcut (`DB(0,10,1E+10,1)` and `DB(0,10,2147483648,1)` are `#NUM!`), but a period below 1 at a huge
 life still reads the partial-year path (`DB(0,10,1E+10,0.5,8)` is 0). SYD's negative-salvage `#NUM!` beats the `life*(life+1)`
 overflow `#DIV/0!` (`SYD(100,-1,1E+200,1)` and `SYD(1E+300,-1E+300,1E+200,1)` are `#NUM!`).
-Evidence: probes/fin-syd-db-domain (excel-graph, 2026-10-25, T-2491; T-2718); gen-m9 cells of T-2491.
+Evidence: probes/fin-syd-db-domain (excel-graph, 2026-10-25, T-2491); probes/fin-db-syd-domain-order (excel-graph, 2026-10-29, T-2718); gen-m9 cells of T-2491.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_db`, `fn_syd`, `DB_INTEGER_MAX`, `DB_WRAPPED_LIFE`, `db_wrapped_last_year` (crates/rustsheet-engine/src/functions/financial/financial_depreciation.rs, T-2491).
 Tasks: T-2491, T-2718
