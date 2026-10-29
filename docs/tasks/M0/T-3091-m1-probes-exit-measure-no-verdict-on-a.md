@@ -3,7 +3,7 @@ id: T-3091
 title: "m1-probes exit measure: no verdict on a partial list run; exit-owners lists a crashing listed case"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,10 +26,15 @@ whole list, and `make exit-owners MILESTONE=M1` lists a listed case that fails w
 - `scripts/` is a protected path: amend decision 0146's Consequences in the same PR.
 
 ## Acceptance criteria
-- [ ] The M1 row's `probes_met` is `None` unless `cases_run == cases`; a unit test covers a partial run.
-- [ ] `exit_owners.py --milestone M1` prints a failing listed case with no cells as `case!*`;
+- [x] The M1 row's `probes_met` is `None` unless `cases_run == cases`; a unit test covers a partial run.
+- [x] `exit_owners.py --milestone M1` prints a failing listed case with no cells as `case!*`;
       `scripts/test_exit_owners.py` covers it.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Probe-milestone rows' partial-run verdicts.
+
+## Outcome
+`probes_met` for the M1 list row is `Some` only when `cases_run == cases` (unit test for a partial run);
+`exit_owners.py` prints a failing listed case with no cells as `case!*` (test added); decision 0146
+Consequences amended. No eval delta.
