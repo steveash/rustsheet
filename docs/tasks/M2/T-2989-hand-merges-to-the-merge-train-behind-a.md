@@ -3,7 +3,7 @@ id: T-2989
 title: "Hand merges to the merge train behind a switch: skills and process docs"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
