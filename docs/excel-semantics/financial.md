@@ -1547,10 +1547,33 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   from period 2 (the geometric sum `pmt·((1-v^m)/(r/(1+r)))·v^(nper-end+1)` on `log1p` or `growth_log`, Excel's
   expm1) is exact on 22 of the 58 type 1 principals and within 3 ulps of the rest, so CUMPRINC's own form is open too.
   Next: Excel's PMT bits (T-3014), then CUMIPMT as `PMT·m - CUMPRINC` (T-3118).
-Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
-fin-cumipmt-period-bound A18, the gen-m9 cells A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
-T-3067; the short sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-1374
+- Where `v^nper` underflows, measured (T-3067 run 5, probes/fin-cumprinc-underflow-ends, excel-graph 2026-10-29, 124
+  cells): Excel's principal over the last m periods does not depend on nper. Type 0 CUMPRINC over the last 1 to 12
+  periods of nper 1E6, 1E10 and 1E12 (A, B, G at 0.01; C, H at 0.1; D at 0.001) is the same double as at nper 1E15
+  (fin-cumprinc-near-1e15 A-C) on every one of the 72 cells, and so are the CUMIPMT (I) and type 1 CUMPRINC (J) of
+  those ranges: `CUMPRINC(0.01,1E6,100000,1E6,1E6,0)` is -990.0990099009903 as at 1E15, 2 ulps from
+  `PPMT(0.01,1E6,1E6,100000)` -990.09900990099 (E1). So the near-1E15 cells are no question about huge periods: only
+  the remaining periods `nper-end` and m reach the result, and PMT is the whole `pv·r` (K1, K2, K4).
+  Excel is 0 to 2.7 ulps above the exact sum at 0.01 and 0.001 and -0.5 to 1.4 at 0.1, and the errors are not one
+  biased L: solving each cell for the L that gives it, the windows for m = 2 (-152 to -107 ulps of L) and m = 8 (-28 to
+  -12) at 0.01 do not overlap, so the error is in the operation order. 20 forms (the geometric sums, the balance drop
+  in four orders, the per-period sums forward and back, `powi`, `powf`, `expm1` quotients), each on `log1p` or
+  `growth_log` and on libm's or Excel's EXP and expm1, fitted to A, C, D and the non-underflowed nper 1000 (F, which
+  rides on `1 - v^nper` too): the best is the balance drop `pv/(1-v^nper)·(1-v^m)`, 28 of 48 to the bit, the
+  per-period sum 21. None is exact on all.
+  Ours since T-3067 run 5: where `1 - v^nper` is 1 and the leading exponent is below `GEOMETRIC_MIN_LEAD`, type 0's
+  short principal is the balance drop `-(pv·(v^(nper-end)·(1-v^m)))` on Excel's EXP, Kahan's expm1 and `growth_log`
+  (`underflowed_principal`); in the kernel it beat the libm variant (22 against 18 fixed, 7 against 8 regressed). It
+  is exact on 70 of the 108 underflowed principals probed (A-D, G, H; near-1e15 A-C), where the per-period sum had 16
+  of the 36 near 1E15. 22 known failures are fixed (fin-cumipmt-overflow-and-forms A9, A11, fin-cumipmt-period-bound
+  A19, fin-remaining-later-argument-ranges K3 and 18 near-1e15 cells) and 7 near-1e15 cells leave the bit (A7, B1, B4,
+  B9, C6, C10 by an ulp; E7 `CUMIPMT(0.01,1E15,100000,1E15-6,1E15,0)` by 16, A7's ulp in the interest, visibly):
+  decision 0160, follow-up T-3141. Visibly-off cells go from 2,833 to 2,822.
+Status: PARTLY VERIFIED (excel-graph; visibly right but for A7 (= G2) and A10 near period 1E15, fin-cumipmt-period-bound
+A18, fin-cumprinc-near-1e15 E7, the gen-m9 cells A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6: T-3118 (the
+interest as `PMT·m - CUMPRINC`, after T-3014's PMT bits) and T-3141 (the underflowed principal's bits); the short
+sums' last digits in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
