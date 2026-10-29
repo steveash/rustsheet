@@ -3,7 +3,7 @@ id: T-3029
 title: "TEXT: after B2 before a calendar-7 tag a weekday after mmm reads the month number"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
