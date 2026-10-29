@@ -50,5 +50,5 @@ rules got a direct probe, probes/t2622-take-let-reference-lambda-text (40 cells,
 - an uncalled LAMBDA joined with `&` is `#VALUE!` (was `#N/IMPL!`): `handle_concatenate`; arrays.md "An uncalled LAMBDA is one value".
 Eval delta: gen-m9 known failures 3305 -> 3304 (1b31092a0d79e5f1 Calc!A143), probes 2977 -> 2969 (8 t2475-stat-subexpressions cells)
 plus the new 40-cell case passing; no regressions. Unit tests: test_fn_drop_take.rs
-`take_drop_of_a_variable_bound_to_one_cell`, test_fn_lambda.rs `uncalled_lambda_joined_as_text_is_value_error`. Follow-up: T-3118
+`take_drop_of_a_variable_bound_to_one_cell`, test_fn_lambda.rs `uncalled_lambda_joined_as_text_is_value_error`. Follow-up: T-3130
 (CONCATENATE, CONCAT and TEXTJOIN of a LAMBDA, TRIMRANGE's value read of a cell variable; both unprobed).
