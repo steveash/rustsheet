@@ -23,11 +23,11 @@ the oracle can evaluate it.
   not in the case files.
 
 ## Acceptance criteria
-- [ ] A tools unit test builds a case whose dynamic and legacy formulas end with `}` and reads the `<f>` text back
+- [x] A tools unit test builds a case whose dynamic and legacy formulas end with `}` and reads the `<f>` text back
       unchanged.
-- [ ] Every existing probe case's xlsx is byte-identical except for formulas that ended with `}` (none should exist
+- [x] Every existing probe case's xlsx is byte-identical except for formulas that ended with `}` (none should exist
       in committed cases, since they could not be filled).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any engine change.
@@ -36,3 +36,5 @@ the oracle can evaluate it.
 Already fixed by T-3051 (`_cell_formula` in spec2xlsx.py re-appends the `}` XlsxWriter strips; covered by
 `tools/tests/test_spec2xlsx_trailing_brace.py`, dynamic, legacy and bare-name cells). Verified the test passes on
 current `origin/main`; no code change. Eval delta: none.
+Byte-identity (criterion 2): `_cell_formula` changes only text ending in `}`; the only committed strings of that
+shape are `={1,2,3}` in the 21 synthetic `eval/suites/gen-m8a` cases (not oracle-filled), so no probe case's xlsx moves.
