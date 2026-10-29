@@ -2511,7 +2511,7 @@ come from these. Each miss is 2 to 10 ulps
 of price on the iterate before the last step taken (C7 1.4e-13, P!B2 1.3e-13, B49 1.4e-13, B39 3.4e-14), or a slope
 4e-10 to 1e-9 relative off, far above rounding. So Excel's iterates are not ours: its start or slope differ, or its
 solver prices with something other than its PRICE function. More findings:
-- On C7, which takes one step from the start, Excel's bits come from starts 2.2e-10 to 1.45e-9 relative below the
+- On yield-solver-sweep S!C7 (yield-price-at-iterates P!A1), which takes one step from the start, Excel's bits come from starts 2.2e-10 to 1.45e-9 relative below the
   fitted start (4 of 6,001 starts scanned in steps of 1e-11 relative). So the fitted start, accurate only to the
   back-chain's 1e-8, is off there.
 - On the cells with two or more steps (B39, B49, P!B2, and B11, B54, B62, B69, C11, Y!E2), Excel's bits come from 1%

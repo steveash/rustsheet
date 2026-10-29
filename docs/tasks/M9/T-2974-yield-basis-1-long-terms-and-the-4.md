@@ -47,6 +47,12 @@ crates/rustsheet-engine/src/functions/financial/financial_bonds/yield_solver.rs.
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): YIELD 1. This task now owns them:
 - probes/yield-newton-domain: P!B2
 
+## Cells added by probes/yield-price-at-iterates (2026-10-29)
+Its column A repeats owned YIELD cells, one row per bond: P!A1 (yield-solver-sweep S!C7), P!A2 and P!A3
+(yield-start-rate-term S!B39, S!B49) and P!A4 (yield-newton-domain P!B2) belong to this task; P!A5 to P!A12 repeat
+T-2788's ulp-level cells (yield-start-one-input B54, B62, B69, B11, A54, A62; yield-solver-sweep C11;
+solver-iteration-traces Y!E2). P!B4, C3, C7 and D4 (PRICE) belong to T-3144.
+
 ## Outcome (partial, attempt 1, 2026-10-29; the task stays open, decision 0056)
 probes/yield-price-at-iterates (59 PRICE cells, excel-graph) asks Excel's PRICE at the exact iterates of our Newton and
 at Excel's YIELD values. The lab's `^`-priced PRICE equals Excel's to the bit on all 59 (the engine's misses 4 by 1 to 2 ulps: follow-up T-3144), so the three cells (and P!B2) are not off through PRICE:
