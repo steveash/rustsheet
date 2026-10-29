@@ -137,6 +137,7 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// ([`Localized::year_twice`]; `B2[$-70409]yyyy|e` of 2023-03-15 is "3109|2566",
 /// `B2[$-50409]yyyy|e` "6689|4356"; probes/t2932-b2-calendar-twice). Under calendar 4 it prints
 /// a garbled Minguo year ("01"; `calendar_dates::taiwan_after_b2`).
+///
 /// Under calendar 1 the names from the first `mmm` on are the ar-SA Gregorian ones, and under
 /// calendars 3 and 5 the en-US ones, whatever the LCID: `B2[$-10411]mmmm|ddd|mmm|mmmm|dddd` of
 /// 2023-03-15 is "3月|水|مارس|مارس|الثلاثاء" and `B2[$-30411]dddd|mmm|mmmm` "水曜日|Mar|March"

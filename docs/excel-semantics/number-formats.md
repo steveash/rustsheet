@@ -190,7 +190,8 @@ Evidence: probes/t3029-b2-calendar-weekday (128 TEXT cells, 3 cell formats; exce
 probes/t3101-b2-calendar-names (194 TEXT cells, 3 cell formats; excel-graph, 2026-10-29).
 It starts under a calendar-3 Japanese LCID too, where the tag alone prints `mmm` as a number: `B2[$-30411]mmm|ddd` of
 2023-03-15 is "Mar|Tue" (A79-A84).
-Unprobed for the names: calendars B, C, 14 and 15 and above after `B2`, and an LCID with no locale under 1, 3 or 5.
+Unprobed for the names: calendars B, C, 14 and 15 and above after `B2`, an LCID with no locale under 1, 3 or 5, and a
+currency tag (`B2[$€-10409]`).
 Unprobed: calendar 8 (Hebrew) and Saka.
 Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
 `b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"
@@ -214,7 +215,7 @@ the names after `mmm` in `Localized::names_after_mmm`; the twice-converted years
 `japanese_era` (locale_tag.rs) and `year_token_text`
 (formatter/calendar_dates.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-2729, T-2932, T-3029
+Tasks: T-2729, T-2932, T-3029, T-3101
 
 ## Bare digits beside a date token
 Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
