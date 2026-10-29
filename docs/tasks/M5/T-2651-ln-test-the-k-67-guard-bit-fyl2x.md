@@ -25,6 +25,10 @@ near-tie subset of the full T-1941 rows (2.89M cells; `RUSTSHEET_T1941_ROWS`, do
 agent/research/T-1941-crack-gammaln-gamma-ln): every x whose product is within 4e-4 ulp53 of a 53-bit midpoint. Also check
 the T-2133 ASINH/ACOSH cells (probes-numeric/t2133-asinh-acosh-ln) and the LOG10 and GAMMALN probes that call the shared
 FYL2X path (`x87_log10.rs`).
+- Gap triage 2026-10-29: the known-failure lines of T-2143's three fills are this task's (T-2144 left them, no open task
+  named them; all within 15 digits):
+  - probes-numeric/t2143-ln-near-ties-fill1 (29 lines), probes-numeric/t2143-ln-near-ties-fill2 (29 lines) and
+    probes-numeric/t2143-ln-near-ties-fill3 (18 lines), all `LN(A<n>)` in column B.
 
 ## Acceptance criteria
 - [ ] numbers.md "LN is FLDLN2 then FYL2X" records k=67 rn's count against the shipped model's on the T-1941 near-tie subset,

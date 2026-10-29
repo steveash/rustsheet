@@ -45,10 +45,12 @@ Cells:
 - gen-m9/ef33be4fd2389f3c.case.json (1): Calc!A368
 - gen-m9/f280df8ba95f96b9.case.json (2): Calc!A213, A260
 - gen-m9/f8bc18a0e45a0e1a.case.json (2): Calc!A28, A183
+- probes-numeric/im-last-digit-sweep Calc!B33 (gap triage 2026-10-29, not visibly off): `=IMABS(A33)`, Excel
+  956.6150000078482, ours 956.6150000078479; the same IMABS kernel fit.
 
 ## Acceptance criteria
-- [ ] These 27 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new
-      known-failure lines in any baseline.
+- [ ] These 27 known-failure lines disappear from eval/baseline/gen-m9.txt, and the im-last-digit-sweep B33 line from
+      eval/baseline/probes-numeric.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

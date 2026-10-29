@@ -37,6 +37,8 @@ statrs' search, and the closed form's last digits at 1E11 are Excel's.
     docs/tasks/M9/T-1891-gamma-dist-poisson-and-the-gamma-inversions-give.md) and t2435 cells (gen-m9 2801c1c11c21e134
     A241, 40425341c5034eed A265; probes/t2435-dist-extremes A25, A26, A101, A102), leaving any small-shape inversion's
     last digits to T-0972.
+  - The same lines as colon spans, so `make unowned-off` sees them (its hyphen spans name only their ends; gap triage
+    2026-10-29): probes/t2982-gamma-inv-huge-shape S!A1:A4, S!A7:A13, S!A22:A30, S!A36:A41, S!A60:A85, S!A144:A146.
 
 ## Acceptance criteria
 - [ ] The cells above pass or are named with their ulp in the Outcome; no new known-failure lines.

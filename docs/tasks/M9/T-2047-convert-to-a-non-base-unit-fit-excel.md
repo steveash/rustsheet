@@ -29,11 +29,14 @@ Needs an oracle sweep: T-2046 (only two m→ft points exist).
   `=CONVERT((0--(-0.0001)),"in","mi")` (the number is -0.0001): Excel -1.5782828282828283E-9, ours -1.578282828282828E-9
   (one ulp). A non-base to non-base pair (in to mi), so the same factor question as m to ft; add in and mi to the
   T-2046 sweep's units if they are not there.
+- Gap triage 2026-10-29: probes/eng-convert-boolean-unit Sheet1!A7 `CONVERT(1,{"m",TRUE},"ft")` and its spilled
+  A29 and B8 are the same m to ft value one ulp low (T-2810 Outcome); not visibly off.
 - Engine: `fn_convert` and the unit table in crates/rustsheet-engine/src/functions/engineering/convert.rs.
 
 ## Acceptance criteria
 - [ ] The three known-failure lines (probes/scalar-lift-open-a Sheet1!Z8, Z9, Z10) leave eval/baseline/probes.txt, and
-      gen-m9/932b33b1ef8b7608 Calc!A14 leaves eval/baseline/gen-m9.txt,
+      gen-m9/932b33b1ef8b7608 Calc!A14 leaves eval/baseline/gen-m9.txt, and probes/eng-convert-boolean-unit Sheet1!A7, A29
+      and B8 leave eval/baseline/probes.txt,
       with no new lines in any suite.
 - [ ] The T-2046 sweep matches >= 99.9% bit for bit (or the misses are listed in engineering.md and
       filed), and CONVERT.xlsx and probes/convert-targets still pass in full.
