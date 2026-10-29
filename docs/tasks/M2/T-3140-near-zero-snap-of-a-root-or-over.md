@@ -3,7 +3,7 @@ id: T-3140
 title: "Near-zero snap of a root + or - over coerced operands (number, percent, time and date text, booleans, blank cells): probe and match"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
