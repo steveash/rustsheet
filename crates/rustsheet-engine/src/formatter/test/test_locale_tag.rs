@@ -280,6 +280,23 @@ fn b2_before_calendars_3_5_and_7_converts_the_years_twice() {
 }
 
 #[test]
+fn b2_before_a_winning_calendar_reads_the_month_as_the_weekday_after_mmm() {
+    // probes/t3029-b2-calendar-weekday; t2932-b2-calendar-twice A55.
+    assert_eq!(text(45000.0, "B2[$-70409]mmm|ddd"), "มี.ค.|อ.");
+    assert_eq!(text(45275.0, "B2[$-70409]mmm|ddd|ddd"), "ธ.ค.|ส.|ส.");
+    assert_eq!(text(45000.0, "B2[$-70409]dddd|mmm|dddd"), "พุธ|มี.ค.|อังคาร");
+    assert_eq!(text(45000.0, "B2[$-70409]mmm|d|aaa"), "มี.ค.|15|อ.");
+    assert_eq!(text(45000.0, "B2[$-20409]mmm|ddd"), "Mar|Tue");
+    assert_eq!(text(45000.0, "B2[$-40409]mmm|ddd"), "三月|週二");
+    // The lunar calendar's own month: 2023-03-15 is in lunar month 2.
+    assert_eq!(text(45000.0, "B2[$-110409]mmm|ddd"), "二月|周一");
+    // Only `mmm` starts it, and only after a `B2`.
+    assert_eq!(text(45000.0, "B2[$-70409]mmmm|dddd"), "มีนาคม|พุธ");
+    assert_eq!(text(45000.0, "B2[$-70409]mmmmm|ddd"), "ม|พ.");
+    assert_eq!(text(45000.0, "[$-70409]mmm|ddd"), "มี.ค.|พ.");
+}
+
+#[test]
 fn b2_before_calendar_4_prints_a_garbled_minguo_year() {
     // probes/t3028-b2-taiwan-years, t3028-b2-taiwan-cuts; t2932-b2-calendar-twice A37, A38.
     assert_eq!(

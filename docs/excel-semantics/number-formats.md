@@ -144,7 +144,7 @@ before the tag and `B2` after it change nothing):
   "64|S", 4007-01-08 "1|H"; 4037-04-30 "31|H", 4037-05-01 "1|R"; 3886-01-01 is "1|M" (A69-A80). The Taisho-Showa
   boundary is not probed (A72, A73 fall in Reiwa 1927).
 - Month and day tokens and names print as without the `B2` (`B2[$-30411]yyyy-mm-dd|mmmm|dddd` is
-  "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` under Thai (T-3029).
+  "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` (the next rule).
 - Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (matched
   since T-3028). probes/t3028-b2-taiwan-years and t3028-b2-taiwan-cuts (excel-graph, 2026-10-28/29) show every year
   token prints the Minguo year m = year - 1911, where the tag alone prints the Gregorian year: `yyyy`, `yy`, `y`, `yyy`,
@@ -163,6 +163,22 @@ before the tag and `B2` after it change nothing):
   the same under zh-TW (`B2[$-40404]`). Status: VERIFIED (excel-graph). The engine gives `aaa` `ddd`'s 15 (T-3089);
   `aaaa` and other year tokens' effect on non-year tokens (`B2[$-40409]d` of 1911) are unprobed.
 - The same as a cell number format (B1-B5).
+Rule (quirk, T-3029): after a `B2` before a tag whose calendar wins over it (every digit probed: 1, 2, 3, 4, 5, 7, 9, A
+and 11), every weekday token (`ddd`, `dddd`, `aaa`) after a `mmm` prints weekday number min(month, 7), Sunday being 1,
+of the calendar's month, in the tag's names: the Arabic path's first-name quirk without the Arabic names.
+`B2[$-70409]mmm|ddd` of 2023-03-15 is "มี.ค.|อ." (Tuesday) and of every month from July on "ส." (Saturday);
+`B2[$-70409]dddd|mmm|dddd` "พุธ|มี.ค.|อังคาร" (the weekday before the `mmm` is the real one); `mmm|ddd|ddd` both
+Tuesday. Numbers anywhere in the section change nothing (`yyyy-mm-dd|mmm|dddd`, `mmm|d|ddd`), nor does a `mmmm` after
+the `mmm` (`mmm|mmmm|ddd` is "มี.ค.|มีนาคม|อ."), and a month name after the weekday is the real month
+(`B2[$-7041E]mmm|dddd|mmmm`). Only `mmm` starts it: `mmmm|dddd`, `mmmmm|ddd` and `ddd|mmm` print the real weekday.
+The lunar calendar reads its own month: `B2[$-110409]mmm|ddd` of 2023-03-15 (lunar month 2) is "二月|周一" (Monday).
+`[$-70409]mmm|ddd` with no `B2` is the real weekday ("มี.ค.|พ."). The same as a cell number format (B1-B3).
+Rule (quirk, unimplemented, T-3098): under some of these tags the `B2` also changes the names' language: `B2[$-10409]mmm|ddd` is
+"مارس|الثلاثاء" (Arabic Gregorian names, where `[$-10409]` is English), and `B2[$-30411]mmm|ddd` and `B2[$-50412]mmm|ddd`
+are "Mar|Tue" (English, where the tags alone print Japanese and Korean names). `B2[$-30409]`, `B2[$-50409]`,
+`B2[$-7041E]`, `B2[$-90409]` (French) and `B2[$-A0409]` (Levantine Arabic) keep the tag's names.
+Evidence: probes/t3029-b2-calendar-weekday (128 TEXT cells, 3 cell formats; excel-graph, 2026-10-29), t2932-b2-calendar-twice A55.
+Unprobed: calendar 8 (Hebrew) and Saka; whether `mmm` under a calendar-3 Japanese LCID (the tag alone prints a number) starts it.
 Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
 `b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"
 (probes/t2932-b2-calendar-twice A24, A64-A68). `yy` stays the last two digits.
@@ -184,7 +200,7 @@ lexer's `hijri_prefix`, `NameTokens` (formatter/date_names.rs), the Hijri tables
 the twice-converted years in `Localized::year_twice`, `japanese_era` (locale_tag.rs) and `year_token_text`
 (formatter/calendar_dates.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-2729, T-2932
+Tasks: T-2729, T-2932, T-3029
 
 ## Bare digits beside a date token
 Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
