@@ -3,7 +3,7 @@ id: T-2947
 title: "Probe SORT lifted by_col corners: a sort-invalid call between two that sort, a number by_col beside a boolean"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
