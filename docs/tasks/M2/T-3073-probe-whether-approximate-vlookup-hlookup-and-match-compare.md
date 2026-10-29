@@ -3,7 +3,7 @@ id: T-3073
 title: "Probe whether approximate VLOOKUP, HLOOKUP and MATCH compare numbers at 15 digits or exactly (exact match is exact)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
