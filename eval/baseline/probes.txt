@@ -1550,6 +1550,7 @@ C	probes/t3097-nesting-sum-64-stored.case.json	2
 C	probes/t3097-nesting-sum-64-typed.case.json	2
 C	probes/t3097-nesting-sum-65-stored.case.json	2
 C	probes/t3097-nesting-sum-65-typed.case.json	2
+C	probes/t3100-snap-operand-order.case.json	540
 C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
 C	probes/t3138-blank-criterion.case.json	111
@@ -4614,7 +4615,6 @@ F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A7
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A8
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A9
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!N1
-F	probes/t3073-lookup-near-equal-approximate.case.json	Sheet1!E8
 F	probes/t3094-snap-lambda-call-forms.case.json	Calc!C2
 F	probes/t3094-snap-lambda-call-forms.case.json	Calc!C3
 F	probes/t3094-snap-lambda-call-forms.case.json	Calc!C5
