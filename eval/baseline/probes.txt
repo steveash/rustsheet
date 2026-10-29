@@ -852,6 +852,7 @@ C	probes/number-to-text-notation.case.json	52
 C	probes/numbervalue-default-group.case.json	14
 C	probes/numbervalue-separator-edges.case.json	20
 C	probes/odd-bond-argument-check-order.case.json	1091
+C	probes/odd-bond-huge-yield-overflow.case.json	53
 C	probes/oddfyield-solver-sweep.case.json	547
 C	probes/oddl-accrint-february-day.case.json	49
 C	probes/off-grid-corners.case.json	6
