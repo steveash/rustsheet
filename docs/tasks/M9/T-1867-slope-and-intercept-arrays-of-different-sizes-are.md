@@ -3,7 +3,7 @@ id: T-1867
 title: "SLOPE and INTERCEPT: arrays of different sizes are #N/A, not #VALUE!"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
