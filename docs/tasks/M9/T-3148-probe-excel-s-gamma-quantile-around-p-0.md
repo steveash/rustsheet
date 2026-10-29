@@ -3,7 +3,7 @@ id: T-3148
 title: "Probe Excel's gamma quantile around p = 0.999: GAMMA.INV, CHISQ.INV and CHISQ.INV.RT at p near 0.999 and the cdf at the doubles beside Excel's quantile"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
