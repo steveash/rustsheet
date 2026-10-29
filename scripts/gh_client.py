@@ -79,6 +79,15 @@ def number(value: int | str, what: str = "PR number") -> int:
     return int(text)
 
 
+def branch_name(name: str) -> str:
+    """A branch name safe in a URL path: `BRANCH`, and no empty, `.`-led or `.lock` segment, so
+    no `..` can climb out of `git/refs/heads/`."""
+    checked(BRANCH, name, "branch")
+    if any(not part or part.startswith(".") or part.endswith(".lock") for part in name.split("/")):
+        raise GhError(f"refused branch: {name!r}")
+    return name
+
+
 def as_dict(value: object) -> dict[str, object]:
     """`value` if it is a JSON object; GhError otherwise."""
     if not isinstance(value, dict):
@@ -172,6 +181,21 @@ class Client:
             raise GhError("refused comment: empty or over 65536 characters")
         return as_dict(self.call("POST", f"issues/{number(pr)}/comments", body={"body": body}))
 
+    def create_pull(self, title: str, head: str, body: str, base: str = "main") -> dict[str, object]:
+        """Opens a PR from the same-repository branch `head` into `base`."""
+        if not title or "\n" in title or len(title) > 256:
+            raise GhError("refused PR title: empty, multi-line or over 256 characters")
+        if not body or len(body) > 65536:
+            raise GhError("refused PR body: empty or over 65536 characters")
+        payload = {"title": title, "head": branch_name(head), "base": branch_name(base), "body": body}
+        return as_dict(self.call("POST", "pulls", body=payload))
+
+    def delete_branch(self, name: str) -> object:
+        """Deletes the branch `name` (never `main`)."""
+        if branch_name(name) == "main":
+            raise GhError("refused branch deletion: main")
+        return self.call("DELETE", f"git/refs/heads/{name}")
+
     # Labels.
     def add_label(self, pr: int | str, label: str) -> object:
         return self.call(
@@ -206,13 +230,13 @@ class Client:
     def workflow_runs(self, *, branch: str | None = None, head_sha: str | None = None) -> list[object]:
         query = []
         if branch is not None:
-            query.append(("branch", checked(BRANCH, branch, "branch")))
+            query.append(("branch", branch_name(branch)))
         if head_sha is not None:
             query.append(("head_sha", checked(SHA, head_sha, "sha")))
         return self.pages("actions/runs", query, key="workflow_runs")
 
     def dispatch(self, workflow: str, ref: str, inputs: Mapping[str, str] | None = None) -> object:
-        body: dict[str, object] = {"ref": checked(BRANCH, ref, "ref")}
+        body: dict[str, object] = {"ref": branch_name(ref)}
         if inputs:
             body["inputs"] = {checked(NAME, k, "input"): str(v) for k, v in inputs.items()}
         return self.call(
