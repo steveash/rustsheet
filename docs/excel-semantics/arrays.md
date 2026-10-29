@@ -634,7 +634,7 @@ top-left of its call.
   (`UNIQUE(D1:D3,FALSE,{"a","a"})` is `#VALUE!`, `#VALUE!`: I12, M12; `{FALSE,TRUE}` is x then empty: M13), and SORTBY's uniform 1xN sort_order empties the elements past the
   first column the same way (`SORTBY(A1:A3,C1:C3,{1,1})` is 1 then empty; `{1,-1}` too; with a second by_array/sort_order pair and entries that
   differ, the other elements are `#VALUE!`. A uniform 1xN order with a uniform second pair, `SORTBY(A1:A3,C1:C3,{1,1},A1:A3,1)`,
-  is UNVERIFIED, T-3027: ours 1 then empty); probes/sortby-lifted-element-corners (excel-graph, 2026-10-28, T-2349).
+  is 1 then `#VALUE!` (a second pair makes the emptied elements `#VALUE!` even when every entry is equal; row 16, excel-graph, 2026-10-29, T-3027)); probes/sortby-lifted-element-corners (excel-graph, 2026-10-28, T-2349).
 - Lifted-element corners (same probe): text entries are `#VALUE!` elements whatever their case (`UNIQUE(D1:D3,FALSE,{"a";"A"})`
   and `{"a";"a"}` are `#VALUE!`, `#VALUE!`: exactly_once is not read as text), so the case question never arises; `{0;-0}` is
   x, x (equal). A call error from a non-error entry stays and the first good element is kept: `{"abc";FALSE;TRUE}` is
@@ -644,7 +644,7 @@ Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 3
 SORTBY follows UNIQUE's rule (probes/sortby-lifted-element-corners, excel-graph, T-2349): a leading invalid entry (`{2;1}`) is
 `#VALUE!` then the next element's top-left; a mixed `{1;-1;2}` is 1, empty, `#VALUE!`; an error array is that error in every
 element of the sort_orders' shape (`ROWS(SORTBY(NA(),C1:C3,{1;-1}))` is 2); an error by_array is the error in every element.
-UNVERIFIED (T-3027): which error wins inside an element when an error array meets an invalid or uniform 1xN sort_order (ours: the array's error, `SORTBY(NA(),C1:C3,{2;1})` is `#N/A` in every element; `SORTBY(NA(),C1:C3,{1,1})` likewise).
+When an error array meets an invalid or uniform 1xN sort_order the array's error wins: `SORTBY(NA(),C1:C3,{2;1})` is `#N/A` in both elements and `SORTBY(NA(),C1:C3,{1,1})` is `#N/A` in the first two, `#REF!` past them (rows 14-15, excel-graph, 2026-10-29, T-3027).
 Ours: implemented. The driver option `CallResult::ArrayFirstColumn` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
 Status: VERIFIED (web)
 Tasks: T-2300 (UNIQUE), T-1839 (SORTBY), T-2349 (SORTBY corners), T-3027 (error array with an invalid sort_order)
