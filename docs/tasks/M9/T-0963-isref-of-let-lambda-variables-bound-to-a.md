@@ -3,7 +3,7 @@ id: T-0963
 title: "ISREF of LET/LAMBDA variables bound to a reference (ISREF.xlsx A19-A26)"
 milestone: M9
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
