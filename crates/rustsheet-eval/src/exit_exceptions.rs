@@ -77,7 +77,7 @@ pub(crate) fn split_cell(cell: &str) -> Option<(String, String)> {
 fn cell_id(cell: &str) -> Option<String> {
     let (case, key) = split_cell(cell)?;
     case.starts_with(&format!("{SUITE}/"))
-        .then(|| format!("{case}!{key}"))
+        .then(|| crate::runner::cell_id(&case, &key))
 }
 
 /// Checks a line's decision (four digits) and owning task (`T-<digits>`) fields.
