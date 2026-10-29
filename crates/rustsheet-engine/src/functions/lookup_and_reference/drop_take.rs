@@ -108,11 +108,20 @@ impl Model {
                 }
             );
         let mut grid = None;
-        let source = if matches!(args[0].ungrouped(), Node::ReferenceKind { .. }) {
+        let source = if matches!(
+            args[0].ungrouped(),
+            Node::ReferenceKind { .. }
+                | Node::DefinedNameKind(_)
+                | Node::FunctionKind {
+                    kind: Function::Index,
+                    ..
+                }
+        ) {
             // A one-cell reference is a range of one cell, as `E7:E7` is, so TAKE/DROP keeps it a
             // reference: `ROWS(E9-TAKE(E7,2,42))` is `#VALUE!` with E7 text, not a 1x1 array, and
             // `ISREF(TAKE(E7,1))` is TRUE (probes/t3072-take-drop-one-cell-reference P1, P42;
-            // T-3072).
+            // T-3072). So is a one-cell defined name or INDEX result (LET variables and OFFSET
+            // already were; probes/t3085-take-drop-one-cell-forms; T-3085).
             self.evaluate_node_with_reference(&args[0], cell)
         } else if reads_grid {
             match self.value_or_grid(&args[0], cell, true) {

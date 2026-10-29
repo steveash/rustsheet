@@ -1502,6 +1502,7 @@ C	probes/t3054-imtan-real-tan-kernel.case.json	22
 C	probes/t3072-criteria-near-equal-order.case.json	360
 C	probes/t3072-take-drop-one-cell-reference.case.json	57
 C	probes/t3073-lookup-near-equal-approximate.case.json	218
+C	probes/t3085-take-drop-one-cell-forms.case.json	16
 C	probes/t3094-snap-lambda-call-forms.case.json	44
 C	probes/t3095-snap-lambda-helpers.case.json	148
 C	probes/t3096-lookup-value-blank-elements.case.json	203
