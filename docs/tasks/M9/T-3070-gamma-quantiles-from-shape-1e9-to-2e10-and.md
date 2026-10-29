@@ -26,7 +26,11 @@ statrs' search, and the closed form's last digits at 1E11 are Excel's.
     where between 1E10 and 2E10 the closed form starts (probe it);
   - CHISQ.INV.RT and CHIINV above `chisq.rs` `MAX_DEGREES_OF_FREEDOM` (1E10): Excel's `CHIINV(0.5,2E13)` =
     `CHISQ.INV.RT(0.5,2E13)` = 20005316471010.844 (A92, A93), the closed form at scale 2; `CHISQ.INV(0.5,2E13)` is
-    `#NUM!` (A91). Probe other p and which other chi-square functions take df above 1E10;
+    `#NUM!` (A91). Probe other p and which other chi-square functions take df above 1E10. gen-m9
+    4e55500bb8ad3cd8 Calc!A341 `CHIINV(0.001,(ROUND(9999999999999999,2)+(Data!$B$12*Data!D12)))` (df about 1E16)
+    is 1.0002658672598378E+16 in Excel, ours `#NUM!`: about 2.66E-4 relative above df, far more than the
+    z·sqrt(2·df) spread of the true quantile, so the closed form's constants at this scale need checking too
+    (gap triage 2026-10-29; no other open task names this cell);
   - at shape 1E11 the fit is 100 to 1,500 ulps off (A60-A77, a z^2 term of about 2E-4 z^2 absolute and a constant of
     about -2.3E-3 at z = 0 for shapes 2E10 to 1E11, A7-A9): find the exact form; A24 and A60 (p = 1E-300) are about
     250 ulps off at 1E13 and 1E11;
