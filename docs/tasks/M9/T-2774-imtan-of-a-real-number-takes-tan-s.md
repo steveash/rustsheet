@@ -41,6 +41,9 @@ Owned cells (54):
   `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, and the web gives -3.38051500624659 there, so the conflict is the platform, not the
   formula. Decision 0030 rule 4 (kept by decision 0039) lists IMTAN among the last-digit web-vs-desktop functions: the
   desktop N6 is the fitting target, and these web cells are not targets until T-1075 item 17 is answered.
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/5b6cc12a94f7bf14.case.json: Calc!A220
 
 ## Acceptance criteria
 - [ ] The owned cells leave the baselines, and N6 is either still passing or recorded per a decision record that reviewers
