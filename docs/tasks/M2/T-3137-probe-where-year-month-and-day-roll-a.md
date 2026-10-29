@@ -3,7 +3,7 @@ id: T-3137
 title: "Probe where YEAR, MONTH and DAY roll a serial just below midnight to the next day, and fit the rule"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -49,21 +49,32 @@ VERIFIED and names the cut. If the engine differs, a follow-up task owns every f
   (`45000+1-0.5/86400`, `2958466-2^-30`), not as typed decimals. Typed decimals are cut to 15 digits on entry.
 
 ## Acceptance criteria
-- [ ] A probe case `probes/t3137-date-parts-near-midnight` (milestone tag M2), oracle-filled on excel-graph, holds
+- [x] A probe case `probes/t3137-date-parts-near-midnight` (milestone tag M2), oracle-filled on excel-graph, holds
       YEAR, MONTH, DAY, WEEKDAY and HOUR of the serials and offsets listed above, at 0, 59, 60, 45000, 45016, 45291
       and 2958465, plus the tiny negatives. That is at least 150 formula cells.
-- [ ] dates.md has a section "YEAR, MONTH and DAY of a serial just below midnight". It gives the rule that fits
+- [x] dates.md has a section "YEAR, MONTH and DAY of a serial just below midnight". It gives the rule that fits
       every cell, citing cells: floor, half-second carry, millisecond rounding or a near-integer bound. It states
       the cut to the resolution probed, and whether WEEKDAY shares it. The model the evidence rules out is named.
       dates.md's "HOUR, MINUTE and SECOND past 9999-12-31" section says what YEAR does at 2958465.9999949.
-- [ ] `make eval-baseline` records the case as new coverage with no regressions. If any cell fails, a functions-date
+- [x] `make eval-baseline` records the case as new coverage with no regressions. If any cell fails, a functions-date
       M2 task is filed. It names this case and each failing cell (or the whole case), and implements the rule
       through one shared helper with `time_of_day_parts` if the carry is shared. `make exit-owners MILESTONE=M2`
       reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `date_part` or `time_of_day_parts` (the follow-up task).
 - The 1904 date system, EDATE/EOMONTH, DATEDIF, YEARFRAC, WORKDAY and the other date readers. File a follow-up (M5
   or M9, by the function's milestone) if the rule should carry to them.
 - Desktop Excel (M14, decision 0039).
+
+## Outcome
+probes/t3137-date-parts-near-midnight (1,134 cells, excel-graph 2026-10-29) settles it. YEAR, MONTH, DAY and WEEKDAY
+take HOUR's half-second carry, at the same double: the day is `floor(x + 0.5/86400)` in double precision. At every
+base (0, 1, 59, 60, 45000, 45016, 45291, 2958465), `fl(N-0.5/86400)` and above is the next day (HOUR 0). One ULP
+below it, and 0.6 s and 1 s below N, are the old day (HOUR 23). The evidence rules out a plain floor (the engine's),
+a millisecond rounding and a `near_integer_whole`-style bound. At the top, every part of all seven functions is
+`#NUM!` from the exact tie 2958465.9999942128 up, so `YEAR(2958465.9999949)` is `#NUM!`. Negatives are `#NUM!` before
+any carry. dates.md has the new section and the T-3137 paragraph under "past 9999-12-31". Eval delta: +1,134 probe
+cells (911 pass, 223 baselined as known failures). No regressions. The 223 failing cells go to T-3176
+(functions-date, M2): one carried-day helper shared by date_part, WEEKDAY and time_part.
