@@ -2126,10 +2126,25 @@ huge coupon) is `#NUM!` too. There is no separate cap on the yield or the coupon
   in Excel for the web (`FileCorruptTryRepair`).
 Evidence: probes/bond-huge-yield-overflow (78 cells, excel-graph, 2026-10-25, T-2488); gen-m9 cells such as
 `PRICE(39050,44044,0.5,123456789.123,110,4,2)` and `MDURATION(38368,44642,1%,1E+300,4,3)`, both `#NUM!`.
-Unprobed: ODDFPRICE and ODDLPRICE at an overflowing yield; YIELD's solver near the boundary (T-2391).
+Unprobed: YIELD's solver near the boundary (T-2391). ODDFPRICE and ODDLPRICE: see "ODDFPRICE and ODDLPRICE at a huge yield".
 Ours: matches since T-2488 (`CouponSchedule::discount_overflows` in financial_bonds.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2488
+
+## ODDFPRICE and ODDLPRICE at a huge yield
+Rule: ODDFPRICE is `#NUM!` when `(1+yld/frequency)^t` overflows a double at the redemption's term `t` (the exponent of
+the redemption's discount: `n - 1 + DSC/E` for a short first period), although the overflowing flows would just discount
+to 0; the same rule as PRICE. ODDLPRICE is linear in the yield and never overflows.
+- Semiannual, 10 years, first coupon half a year after settlement (t = 20): `ODDFPRICE(43831,47484,43800,44013,0.05,5.12154E+15,100,2,0)`
+  is -0.41666666666666546 and 5.22501E+15 `#NUM!`; with settlement mid-period (t = 19.5) 1.27233E+16 is a number and
+  1.29803E+16 `#NUM!`; a long first period (issue 43000) has the same boundary as t = 20. Annual (t = 10) 1E+17 is a
+  number and 1E+300 `#NUM!`. Basis 1 behaves alike.
+- ODDLPRICE stays a number at every yield up to 9.99999999999999E+307 (`ODDLPRICE(47300,47484,47119,0.05,9.99999999999999E+307,100,2,0)`
+  is -2.5; a few periods, -0.41666666666666663).
+Evidence: probes/odd-bond-huge-yield-overflow (excel-graph, 2026-10-29, T-2659).
+Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary are unprobed (T-3122).
+Status: VERIFIED (excel-graph)
+Tasks: T-2659
 
 ## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
 Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:
