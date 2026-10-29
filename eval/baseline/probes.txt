@@ -3634,7 +3634,9 @@ F	probes/solver-iteration-traces.case.json	Y!E7
 F	probes/solver-iteration-traces.case.json	Y!E8
 F	probes/stat-argument-modes.case.json	Sheet1!H117
 F	probes/stat-argument-modes.case.json	Sheet1!H13
+F	probes/stat-argument-modes.case.json	Sheet1!H140
 F	probes/stat-argument-modes.case.json	Sheet1!H144
+F	probes/stat-argument-modes.case.json	Sheet1!H148
 F	probes/stat-argument-modes.case.json	Sheet1!H163
 F	probes/stat-argument-modes.case.json	Sheet1!H168
 F	probes/stat-argument-modes.case.json	Sheet1!H173
@@ -3656,6 +3658,8 @@ F	probes/stat-argument-modes.case.json	Sheet1!H276
 F	probes/stat-argument-modes.case.json	Sheet1!H277
 F	probes/stat-argument-modes.case.json	Sheet1!H278
 F	probes/stat-argument-modes.case.json	Sheet1!H281
+F	probes/stat-argument-modes.case.json	Sheet1!H305
+F	probes/stat-argument-modes.case.json	Sheet1!H310
 F	probes/stat-argument-modes.case.json	Sheet1!H318
 F	probes/stat-argument-modes.case.json	Sheet1!H319
 F	probes/stat-argument-modes.case.json	Sheet1!H321
