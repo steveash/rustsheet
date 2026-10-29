@@ -23,9 +23,11 @@
   scripts/tasks.py issue <N> [--no-fetch]  # tasks with `issue: <N>` on the working tree and every
                                          # origin/* branch; exit 1 when none (issue-intake
                                          # dedup, decision 0158)
+  scripts/tasks.py issue --stats [--no-fetch]  # JSON: open issue tasks per author, issue tasks
+                                         # filed today (UTC), and the limits (decision 0158)
 
 Front matter keys: id, title, milestone, lane, status, priority, size, tier, depends_on, spec,
-campaign, defer and issue (optional; decisions 0083, 0114, 0158).
+campaign, defer, issue and issue_author (optional; decisions 0083, 0114, 0158).
 See docs/process/task-format.md.
 """
 
@@ -67,8 +69,13 @@ CAMPAIGNS = ["semantics", "accuracy", "visible"]
 # `defer:` values: a deferred task is never ready (decision 0114 parks bit-level work until
 # Phase 1 exits).
 DEFERRALS = ["phase-1b"]
-# `issue:` value: the number of the steveash/rustsheet GitHub issue the task came from (decision 0158).
-ISSUE = re.compile(r"^[1-9]\d*$")
+# `issue:` value (matched whole): the number of the steveash/rustsheet GitHub issue the task came
+# from; `issue_author:` is the login that opened it (decision 0158). ASCII only, never `\d`.
+ISSUE = re.compile(r"[1-9][0-9]*")
+LOGIN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})")
+# Issue-intake volume limits (decision 0158): open issue tasks per author without write access,
+# and issue tasks filed per UTC day in total.
+ISSUE_LIMITS = {"per_author": 2, "per_day": 6}
 OPEN = ("todo", "in-progress", "blocked")  # not done or dropped
 ACTIVE = ("todo", "in-progress")
 MILESTONE = re.compile(r"^M\d+$")
@@ -145,6 +152,13 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             errors.append(f"{where}: defer={t.get('defer')!r} not in {DEFERRALS}")
         if "issue" in t and not ISSUE.fullmatch(str(t.get("issue"))):
             errors.append(f"{where}: issue={t.get('issue')!r} is not a positive issue number (decision 0158)")
+        if "issue" in t and not LOGIN.fullmatch(str(t.get("issue_author", ""))):
+            errors.append(
+                f"{where}: issue_author={t.get('issue_author')!r} is not a GitHub login; a task with "
+                "`issue:` names the issue's author (decision 0158)"
+            )
+        if "issue_author" in t and "issue" not in t:
+            errors.append(f"{where}: issue_author without issue (decision 0158)")
         if not MILESTONE.match(str(t.get("milestone", ""))):
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
@@ -285,6 +299,26 @@ def stats(tasks: list[dict[str, object]], by_id: dict[str, dict[str, object]]) -
     return {"by_milestone": by_milestone, "by_campaign": by_campaign, "deferred": deferred}
 
 
+def _git(*args: str, ok: tuple[int, ...] = (0,)) -> str:
+    """`git -C ROOT <args>`'s stdout; an exit code outside `ok` raises CalledProcessError."""
+    done = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=ok == (0,))
+    if ok != (0,) and done.returncode not in ok:
+        raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
+    return done.stdout
+
+
+def origin_refs(fetch: bool = True) -> list[str]:
+    """Every `refs/remotes/origin/*` ref, after `git fetch origin` when `fetch`. Raises like `_git`."""
+    if fetch:
+        _git("fetch", "-q", "origin")
+    return _git("for-each-ref", "--format=%(refname)", "refs/remotes/origin").split()
+
+
+def branches_unreadable(e: Exception, fallback: str) -> None:
+    """The warning of a best-effort read of origin branches that failed (no git, no network)."""
+    print(f"warning: could not read origin branches ({e}); {fallback}", file=sys.stderr)
+
+
 def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = True) -> set[str]:
     """`pattern`'s first group for every file name under `directory` on every `origin/*` branch:
     ids that other sessions have pushed (task ids, decision numbers; decisions 0016, 0029).
@@ -292,24 +326,16 @@ def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = Tru
     Best effort: without git or a network the working tree alone decides, and the validators in
     CI still catch a collision.
     """
-
-    def git(*args: str) -> str:
-        return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout
-
     try:
-        if fetch:
-            git("fetch", "-q", "origin")
-        refs = git("for-each-ref", "--format=%(refname)", "refs/remotes/origin").split()
         found: set[str] = set()
-        for ref in refs:
-            for name in git("ls-tree", "-r", "--name-only", ref, "--", directory).splitlines():
+        for ref in origin_refs(fetch):
+            for name in _git("ls-tree", "-r", "--name-only", ref, "--", directory).splitlines():
                 m = pattern.search(name.rsplit("/", 1)[-1])
                 if m:
                     found.add(m.group(1))
         return found
     except (OSError, subprocess.CalledProcessError) as e:
-        print(f"warning: could not read origin branches ({e}); ids checked against the working tree only",
-              file=sys.stderr)
+        branches_unreadable(e, "ids checked against the working tree only")
         return set()
 
 
@@ -318,43 +344,94 @@ def git_task_ids(fetch: bool = True) -> set[str]:
     return git_branch_names("docs/tasks", TASK_FILE, fetch)
 
 
-def issue_tasks(number: str, tasks: list[dict[str, object]], fetch: bool = True) -> list[tuple[str, str]]:
-    """(task id, where) for every task file whose front matter says `issue: <number>`: the working
-    tree first ("working tree"), then each `origin/*` branch (its name). The issue-intake skill's
-    dedup step (decision 0158): a fired routine, a steward sweep and a re-delivered event must not
-    file the same issue twice. Best effort on branches, like `git_task_ids`.
+ISSUE_KEYS = ("id", "status", "issue", "issue_author")
+
+
+def issue_copies(tasks: list[dict[str, object]], number: str | None = None, fetch: bool = True) -> list[dict[str, object]]:
+    """Every copy of a task filed from an issue (front matter with `issue:`; only `issue: <number>`
+    when given): its `ISSUE_KEYS` plus "where" ("working tree" or the branch name), "ref" (the full
+    ref, "" on the working tree) and "file". Working-tree copies come first. Decision 0158: the
+    issue-intake dedup and volume limits read these. Best effort on branches, like `git_task_ids`.
+
+    One `git grep` over every branch prints the front-matter lines of the matching files (it needs
+    the `---` line, `issue:` and another key in the same file); only lines between the first two
+    `---` lines count, so a body line that reads `issue: N` does not.
     """
-    found = [(str(t["id"]), "working tree") for t in tasks if str(t.get("issue")) == number]
-
-    def git(*args: str, ok: tuple[int, ...] = (0,)) -> str:
-        done = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=False)
-        if done.returncode not in ok:
-            raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
-        return done.stdout
-
+    copies: list[dict[str, object]] = [
+        {**{k: t[k] for k in ISSUE_KEYS if k in t}, "where": "working tree", "ref": "",
+         "file": str(path_of(t).relative_to(ROOT))}
+        for t in tasks
+        if "issue" in t and (number is None or str(t["issue"]) == number)
+    ]
+    want = number or "[0-9]+"
     try:
-        if fetch:
-            git("fetch", "-q", "origin")
-        refs = git("for-each-ref", "--format=%(refname)", "refs/remotes/origin").split()
-        # `git grep` finds the candidate files in one call (exit 1: no match); the front matter of
-        # each hit decides, so a body line that happens to read `issue: N` does not count.
-        pattern = rf'^issue: *"?{number}"? *$'
-        hits = git("grep", "-l", "-E", pattern, *refs, "--", "docs/tasks", ok=(0, 1)) if refs else ""
-        for line in hits.splitlines():
-            ref, _, name = line.partition(":")
-            m = TASK_FILE.search(name)
-            if not m:
-                continue
-            try:
-                meta = front_matter(git("show", f"{ref}:{name}"), Path(name))
-            except ValueError:  # malformed front matter on a branch: not a task we can match
-                continue
-            if str(meta.get("issue")) == number:
-                found.append((m.group(1), ref.removeprefix("refs/remotes/origin/")))
+        refs = origin_refs(fetch)
+        out = _git(
+            "grep", "-n", "--all-match", "-E", "-e", "^---$", "-e", rf'^issue: *"?{want}"? *$',
+            "-e", "^(id|status|issue_author): ", *refs, "--", "docs/tasks", ok=(0, 1),
+        ) if refs else ""
     except (OSError, subprocess.CalledProcessError) as e:
-        print(f"warning: could not read origin branches ({e}); only the working tree was searched",
-              file=sys.stderr)
+        branches_unreadable(e, "only the working tree was searched")
+        return copies
+    files: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for line in out.splitlines():
+        parts = line.split(":", 3)
+        if len(parts) == 4:
+            files.setdefault((parts[0], parts[1]), []).append((parts[2], parts[3]))
+    for (ref, name), lines in files.items():
+        if not TASK_FILE.search(name) or not lines or lines[0] != ("1", "---"):
+            continue
+        meta: dict[str, object] = {}
+        for _, text in lines[1:]:
+            if text == "---":
+                break
+            key, _, value = text.partition(":")
+            meta.setdefault(key.strip(), unquote(value.strip()))
+        if "issue" in meta and (number is None or meta["issue"] == number):
+            short = ref.removeprefix("refs/remotes/origin/")
+            copies.append({**{k: meta[k] for k in ISSUE_KEYS if k in meta}, "where": short, "ref": ref, "file": name})
+    return copies
+
+
+def issue_tasks(number: str, tasks: list[dict[str, object]], fetch: bool = True) -> list[tuple[str, str]]:
+    """(task id, where) for every copy of a task with `issue: <number>` (`issue_copies`): the
+    issue-intake skill's dedup step (decision 0158), so a fired routine, a steward sweep and a
+    re-delivered event never file the same issue twice."""
+    return [(str(c.get("id")), str(c["where"])) for c in issue_copies(tasks, number, fetch)]
+
+
+def filed_today(copies: list[dict[str, object]], now: float) -> set[str]:
+    """Ids of the issue tasks first committed on the current UTC day (`now`): the earliest commit
+    adding the task file, on its own agent branch, on origin/main or on HEAD. `--since` keeps each
+    `git log` short; a file not yet committed has not been filed. Best effort."""
+    today = time.strftime("%Y-%m-%d", time.gmtime(now))
+    found: set[str] = set()
+    for c in copies:
+        tid, ref = str(c.get("id")), str(c["ref"])
+        m = AGENT_BRANCH.match(ref)
+        if tid in found or (ref and ref != "refs/remotes/origin/main" and not (m and m.group(2) == tid)):
+            continue
+        try:
+            stamps = _git("log", "--since=2 days ago", "--diff-filter=A", "--format=%ct", ref or "HEAD", "--",
+                          str(c["file"])).split()
+        except (OSError, subprocess.CalledProcessError):
+            continue
+        if stamps and stamps[-1].isdigit() and time.strftime("%Y-%m-%d", time.gmtime(int(stamps[-1]))) == today:
+            found.add(tid)
     return found
+
+
+def issue_stats(copies: list[dict[str, object]], today_ids: set[str]) -> dict[str, object]:
+    """The counts behind the issue-intake volume limits (decision 0158): `open_by_author` counts
+    task ids with no copy done or dropped, per `issue_author`; `filed_today` counts `today_ids`."""
+    closed = {str(c.get("id")) for c in copies if c.get("status") in ("done", "dropped")}
+    author: dict[str, str] = {}
+    for c in copies:
+        if c.get("issue_author"):
+            author.setdefault(str(c.get("id")), str(c["issue_author"]))
+    by_author = Counter(a for tid, a in author.items() if tid not in closed)
+    return {"open_by_author": dict(sorted(by_author.items())), "filed_today": len(today_ids),
+            "limits": ISSUE_LIMITS}
 
 
 def next_id(milestone: str, tasks: list[dict[str, object]], taken: set[str]) -> str:
@@ -456,9 +533,7 @@ def branch_claims(
     (decision 0095). Best effort, like `git_task_ids`.
     """
 
-    def git(*args: str) -> str:
-        return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout
-
+    git = _git
     try:
         if fetch:
             git("fetch", "-q", "--prune", "origin")
@@ -659,8 +734,12 @@ def main() -> int:
         return new_task(tasks, fetch="--no-fetch" not in sys.argv)
     if cmd == "issue":
         number = sys.argv[2] if len(sys.argv) > 2 else ""
+        if number == "--stats":
+            copies = issue_copies(tasks, fetch="--no-fetch" not in sys.argv)
+            print(json.dumps(issue_stats(copies, filed_today(copies, time.time())), indent=2, sort_keys=True))
+            return 0
         if not ISSUE.fullmatch(number):
-            print("usage: tasks.py issue <N> [--no-fetch]", file=sys.stderr)
+            print("usage: tasks.py issue <N> | --stats [--no-fetch]", file=sys.stderr)
             return 2
         found = issue_tasks(number, tasks, fetch="--no-fetch" not in sys.argv)
         for tid, where in found:

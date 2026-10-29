@@ -5,7 +5,9 @@ Some paths define the rules agents work under (CI, lint policy, baselines, agent
 instructions). A PR that changes them must also add or update a decision record in
 docs/decisions/ explaining why, so rules are never silently weakened. Additionally,
 `--allow-regressions` baseline changes and test deletions are flagged, and a newly added probes
-case must carry exactly one milestone tag, M2 or later (decisions 0043, 0051, 0057).
+case must carry exactly one milestone tag, M2 or later (decisions 0043, 0051, 0057). A diff that
+adds or changes a task filed from a GitHub issue (`issue:` in its front matter) may not touch a
+protected path at all, decision record or not (decision 0158).
 
 Usage: scripts/check_governance.py [BASE_REF]   (default: origin/main)
 """
@@ -17,8 +19,10 @@ import re
 import subprocess
 import sys
 from collections.abc import Callable, Iterable
+from pathlib import Path
 
 import merge_flip
+import tasks
 
 PROTECTED = (
     ".github/",
@@ -93,6 +97,27 @@ def case_tags(path: str) -> list[str]:
     return [tag for tag in tags if isinstance(tag, str)] if isinstance(tags, list) else []
 
 
+def task_has_issue(path: str) -> bool:
+    """Whether the task file at `path`, as committed on HEAD, has `issue:` in its front matter."""
+    try:
+        return "issue" in tasks.front_matter(git("show", f"HEAD:{path}"), Path(path))
+    except (subprocess.CalledProcessError, ValueError):
+        return False
+
+
+def issue_task_files(changed: list[str], has_issue: Callable[[str], bool]) -> list[str]:
+    """Task files a diff's `--name-status` lines add or change (not delete) that came from a GitHub
+    issue (decision 0158)."""
+    return [
+        path
+        for line in changed
+        if not line.startswith("D")
+        and (path := line.split("\t")[-1]).startswith("docs/tasks/")
+        and tasks.TASK_FILE.search(path)
+        and has_issue(path)
+    ]
+
+
 def deleted_test_files(changed: list[str]) -> list[str]:
     """The test files a diff's `--name-status` lines delete."""
     return [
@@ -102,9 +127,15 @@ def deleted_test_files(changed: list[str]) -> list[str]:
     ]
 
 
-def failures(changed: list[str], read_tags: Callable[[str], list[str]], flip: bool) -> list[list[str]]:
+def failures(
+    changed: list[str],
+    read_tags: Callable[[str], list[str]],
+    flip: bool,
+    has_issue: Callable[[str], bool] = task_has_issue,
+) -> list[list[str]]:
     """The failed rules for a diff's `--name-status` lines, each as its report lines. `flip` says
-    the diff is a lock flip (decision 0157): it waives the decision-record rule and nothing else."""
+    the diff is a lock flip (decision 0157): it waives the decision-record rule and nothing else.
+    `has_issue(path)` says whether a task file on HEAD came from a GitHub issue (decision 0158)."""
     paths = [line.split("\t")[-1] for line in changed]
     protected = [p for p in paths if is_protected(p)]
     decisions = [p for p in paths if p.startswith("docs/decisions/") and p.endswith(".md")]
@@ -113,6 +144,18 @@ def failures(changed: list[str], read_tags: Callable[[str], list[str]], flip: bo
         found.append(
             [
                 "FAIL governance: protected paths changed without a decision record in docs/decisions/:",
+                *(f"  {p}" for p in protected),
+            ]
+        )
+    from_issue = issue_task_files(changed, has_issue) if protected else []
+    if from_issue:
+        found.append(
+            [
+                "FAIL governance: a task filed from a GitHub issue may not change protected paths, "
+                "even with a decision record (decision 0158). Label the issue `needs-owner` and leave "
+                "the protected change to an owner-directed task. Issue tasks in this diff:",
+                *(f"  {p}" for p in from_issue),
+                "Protected paths changed:",
                 *(f"  {p}" for p in protected),
             ]
         )

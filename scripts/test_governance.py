@@ -79,5 +79,62 @@ class NewProbeCaseTags(unittest.TestCase):
         )
 
 
+class IssueTasks(unittest.TestCase):
+    """Decision 0158: a diff with a task filed from a GitHub issue never changes a protected path."""
+
+    ISSUE_TASKS = {"docs/tasks/M2/T-0500-from-issue.md"}
+
+    def failures(self, *lines: str) -> list[list[str]]:
+        return gov.failures(list(lines), lambda _p: ["M2"], flip=False, has_issue=lambda p: p in self.ISSUE_TASKS)
+
+    def test_issue_task_with_a_protected_path_fails_even_with_a_decision_record(self) -> None:
+        for status in ("A", "M"):
+            found = self.failures(
+                f"{status}\tdocs/tasks/M2/T-0500-from-issue.md",
+                "M\t.claude/skills/work-loop/SKILL.md",
+                "A\tdocs/decisions/0999-x.md",
+            )
+            self.assertEqual(len(found), 1, status)
+            self.assertIn("GitHub issue", found[0][0])
+            self.assertIn("  .claude/skills/work-loop/SKILL.md", found[0])
+
+    def test_issue_task_with_code_baseline_and_docs_passes(self) -> None:
+        self.assertEqual(
+            self.failures(
+                "A\tdocs/tasks/M2/T-0500-from-issue.md",
+                "M\tcrates/rustsheet-engine/src/functions/text/mod.rs",
+                "M\teval/baseline/probes.txt",
+                "A\tdocs/research/issue-answer.md",
+                "M\tdocs/excel-semantics/text.md",
+            ),
+            [],
+        )
+
+    def test_other_tasks_and_deleted_issue_tasks_keep_the_normal_rule(self) -> None:
+        self.assertEqual(
+            self.failures(
+                "A\tdocs/tasks/M2/T-0501-planner.md",
+                "D\tdocs/tasks/M2/T-0500-from-issue.md",
+                "M\tscripts/tasks.py",
+                "A\tdocs/decisions/0999-x.md",
+            ),
+            [],
+        )
+
+    def test_issue_task_files_reads_front_matter_through_has_issue(self) -> None:
+        seen: list[str] = []
+
+        def has_issue(path: str) -> bool:
+            seen.append(path)
+            return True
+
+        self.assertEqual(
+            gov.issue_task_files(["R100\tdocs/tasks/M0/T-0001-a.md\tdocs/tasks/M1/T-0001-a.md", "M\tdocs/tasks/README.md"],
+                                 has_issue),
+            ["docs/tasks/M1/T-0001-a.md"],
+        )
+        self.assertEqual(seen, ["docs/tasks/M1/T-0001-a.md"])
+
+
 if __name__ == "__main__":
     unittest.main()
