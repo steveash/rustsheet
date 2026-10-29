@@ -132,3 +132,7 @@
     failures at 0. Other rows leave the text fields null. `scripts/exit_owners.py` lists the failing
     text items as `gen-m10 text` and `probes text` (the probe row's `text_failing_cells`, only when
     the exit row carries `probe_text_items`), and the progress page shows both text counts.
+    `scripts/exit_owners.py` reads a function-scope row only where the exit row gives `calc_met` a
+    verdict: a null `calc_met` (M7's shown-only row, and M1, M8, M10 and M11, which have no
+    ironcalc-calc criterion) lists no ironcalc-calc cell, even when the report has a scope row for
+    the milestone (it had listed 119 for M10 and for M11).
