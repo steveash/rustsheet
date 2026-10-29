@@ -3,7 +3,7 @@ id: T-2941
 title: "Phase 1 checkpoint: a phase1-exceptions line in a suite the run skipped is not stale (the 4 poi lines read 'remove their lines' when poi is not fetched)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
