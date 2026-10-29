@@ -14,7 +14,8 @@
 //!    (`"-1" > "0"`).
 //! 2. **Accents**, letter by letter: none, the ordinal indicators `ª º`, acute, grave,
 //!    circumflex, diaeresis, tilde (`"a" < "ª" < "á" < "à" < "â" < "ä" < "ã" < "å"`), breve, dot
-//!    above, caron, macron, ring, ogonek, double acute, cedilla, then the stroke (`"ö" < "ø"`, `"d" < "đ"`, `"l" < "ł"`) and last the letter variants
+//!    above, caron, macron, ring, ogonek, double acute, cedilla, then the stroke (`"ö" < "ø"`,
+//!    `"d" < "đ"`, `"l" < "ł"`) and last the letter variants
 //!    `ð ı` (`"đ" < "ð"`). `þ` is not an accent: it is the letters `th`.
 //! 3. **Skipped characters**: by position, a later one first, then control characters (by code
 //!    point) before apostrophe, hyphen, en dash, em dash (`"ab" < "a'b" < "a-b" < "a–b" <
@@ -510,7 +511,8 @@ fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
     }
 }
 
-/// The iterator of [`accents`]: `last` is held back so that a combining mark after it can change it.
+/// The iterator of [`accents`]: `last` is held back so that a combining mark after it can
+/// change it.
 struct Accents<I> {
     elements: I,
     ready: Option<u8>,
