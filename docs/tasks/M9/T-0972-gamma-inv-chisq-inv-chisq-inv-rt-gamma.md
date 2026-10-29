@@ -222,4 +222,6 @@ The owner-run session https://claude.ai/code/session_01Xbmds2YtTrK9a9T4mMitSB ra
 0152). Gated: 28 lines fixed (gen-m9 23, ironcalc-calc 5), 49 regressed, all numeric at 1-3 ulp, none visibly off.
 Against a `main` build over gen-m9, ironcalc-calc, probes and probes-numeric, the quantile cells visibly off fall from 166
 to 139 (30 fixed). Three are newly visibly off: gen-m9 146b46e74f2dac3b A167, probes-numeric m9-chisq-inv A27 and
-t1049-chisqinv A19. All three are on decision 0152's list.
+t1049-chisqinv A19. All three are on decision 0152's list. The other two cells the 2026-10-28 Outcome counts among its five (gen-m9
+ecc87f80077959e0 A168 and ironcalc-calc GAMMA.xlsx F21) are within the 15th digit on this merge, so that count of five
+is superseded. Follow-ups from review: a gamma-quantile bench case (performance) and exact-value unit tests are in T-3016.

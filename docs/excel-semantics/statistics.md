@@ -3128,10 +3128,10 @@ Tasks: T-1543, T-1634
 - Ours (T-0972): the crossing of the smaller tail's capped incomplete gamma, always (T-1634 kept statrs' search where
   its result solved that tail to 1E-13 relative, up to 7E-15 off Excel and the truth: `GAMMA.INV(0.5,9,1)`). The
   lower tail's `powf * exp(-x - ln Gamma(a + 1))` form is used only at x * rate up to 1 (T-1634 used it up to the
-  shape: at shape 50 its exponent's rounding is 1E-14 of the tail). Before T-0972: the crossing
-  of that tail's capped incomplete gamma (the lower tail with `x^a` by `powf`, so `GAMMA.INV(1E-300,1,1)` is
+  shape: at shape 50 its exponent's rounding is 1E-14 of the tail). With `x^a` by `powf`, `GAMMA.INV(1E-300,1,1)` is
   9.999999999999999E-301, one ulp under Excel's 1E-300: the crossing is exact, and the ulp is lost to
-  `refine_increasing`'s midpoint; `special::nearest_crossing` would return 1E-300, a lead for T-2561). Above shape 1E9 it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
+  `refine_increasing`'s midpoint (`special::nearest_crossing` would return 1E-300, a lead for T-2561). Above shape 1E9
+  it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
   The cells still off are Excel's own last digits: `CHISQ.INV(1E-300,50)` is 2.0354283669760313E-11 in Excel while the
   correctly rounded quantile (ours) is 2.035428366976834E-11, and `GAMMAINV(0.5,0.01,100)` is 4.4655350189103716E-29
   in Excel against the true 4.46553501891034868E-29 (ours ...0346E-29): Excel's tail kernel is not fitted (T-2561 for the visibly-off cells, T-0972 for the last digits).

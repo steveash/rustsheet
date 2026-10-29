@@ -87,3 +87,11 @@ The 49 gated cells newly 1-3 ulp off (eval/baseline lines added by T-0972):
 
 ## Out of scope
 - The CDF kernel (T-0971 and its follow-ups T-2367, T-2638).
+
+## Added by the T-0972 review (2026-10-29)
+- Add a lift bench case for the gamma quantile (for example `=SUM(GAMMA.INV(SEQUENCE(512)/513,9,1))` in
+  crates/rustsheet/benches/lift.rs) and record before/after numbers: T-0972 makes every call run `refine_increasing`
+  (bounded by `MAX_TERMS`, about 129 cdfs), likely a constant-factor slowdown nobody has measured.
+- Pin `GAMMA.INV(0.5,50,1)` = 49.66706461799423 and `GAMMA.INV(0.5,9,1)` (Excel's value) in
+  `incomplete_gamma/tests.rs` as exact-value tests.
+
