@@ -172,6 +172,24 @@ fn collation_key_equality_is_cmp_text_equality() {
         "😀a",
         "x",
         "X",
+        "ča",
+        "Ča",
+        "c\u{30c}a",
+        "C\u{30c}-a",
+        "č-a",
+        "ca",
+        "á",
+        "a\u{301}",
+        "ϊ",
+        "ΐ",
+        "ϊ\u{301}",
+        "σ",
+        "ς",
+        "Σ",
+        "е",
+        "ё",
+        "a\u{301}\u{30c}",
+        "\u{301}a",
     ]
     .iter()
     .map(|s| Text::from(*s))
@@ -187,5 +205,34 @@ fn collation_key_equality_is_cmp_text_equality() {
                 "{a:?} vs {b:?}"
             );
         }
+    }
+}
+
+/// Latin Extended-A, Greek and Cyrillic letters are their base letter plus an accent, and a
+/// combining mark is the accent of the letter before it (probes/t3114-collation-beyond-latin1).
+#[test]
+fn letters_beyond_latin1_and_combining_marks() {
+    assert_increasing(&["c", "ć", "č", "ca", "ča", "cb", "čb", "cz", "d"]);
+    assert_increasing(&["a", "á", "ă", "ā", "ą", "b"]);
+    assert_increasing(&["e", "é", "ė", "ě", "ē", "ę", "ea", "ěa", "eb"]);
+    assert_increasing(&["o", "ö", "ő", "oa", "őa", "ob", "p"]);
+    assert_increasing(&["u", "ū", "ů", "ų", "ű", "v", "z", "ź", "ż", "ž", "α"]);
+    assert_increasing(&[
+        "ι", "ί", "ϊ", "ΐ", "κ", "ω", "ώ", "а", "е", "ё", "ж", "и", "й", "к", "я",
+    ]);
+    for (a, b) in [
+        ("a\u{301}", "á"),
+        ("c\u{30c}", "č"),
+        ("C\u{30c}", "č"),
+        ("c\u{30c}a", "Ča"),
+        ("Ő", "o\u{30b}"),
+        ("Σ", "ς"),
+        ("σ", "ς"),
+        ("Ё", "ё"),
+        ("Ά", "ά"),
+        ("ϊ\u{301}", "ΐ"),
+        ("C\u{30c}-a", "č-a"),
+    ] {
+        assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
     }
 }

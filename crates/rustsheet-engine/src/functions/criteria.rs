@@ -500,14 +500,19 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
 }
 
 /// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run lower-cased,
-/// then read as UTF-16 units (for ASCII text, each byte lower-cased).
+/// then read as UTF-16 units (for ASCII text, each byte lower-cased). The final sigma `ς` folds to
+/// `σ`, as `Σ` does: Excel's `MATCH("ς",...,0)` finds `σ` (probes/t3114-collation-beyond-latin1
+/// Calc!H10).
 pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
     match text {
         Text::Utf8(s) if s.is_ascii() => s
             .bytes()
             .map(|byte| u16::from(byte.to_ascii_lowercase()))
             .collect(),
-        _ => text.map_runs(str::to_lowercase).units().collect(),
+        _ => text
+            .map_runs(|run| run.to_lowercase().replace('ς', "σ"))
+            .units()
+            .collect(),
     }
 }
 
