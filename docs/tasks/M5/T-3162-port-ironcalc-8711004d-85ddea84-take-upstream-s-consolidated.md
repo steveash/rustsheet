@@ -3,7 +3,7 @@ id: T-3162
 title: "Port ironcalc 8711004d/85ddea84: take upstream's consolidated Excel-authored BASE_DECIMAL.xlsx (issues 1611, 1615, 1616, 1618)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -41,3 +41,7 @@ Precedents: T-2868, T-2819. Triaged by the 2026-10-29 18:47 UTC steward run.
 
 ## Out of scope
 - Upstream's unit tests in `test_base_decimal.rs` are IronCalc-authored, not Excel evidence.
+
+## Outcome
+Replaced `BASE_DECIMAL.xlsx` with upstream ironcalc@85ddea84 (BASE, DECIMAL plus issue_1611/1613/1615/1616/1617/1618 sheets). The file scores 390 cells (was 358), all passing; no new known failures, no regressions, no code change needed (our DECIMAL/BASE already follow the four upstream rules).
+`BASE_DECIMAL_issue_1613.xlsx` and `_1617.xlsx` are kept: upstream's issue_1617 sheet has 5 formula cells against our file's 3, so the cells are not scored identically and dropping them would lose coverage; redundant but harmless.
