@@ -1,6 +1,6 @@
 # 0158 — GitHub issues enter the task workflow through an intake routine
 
-- **Status:** accepted (2026-10-29, T-3109). Owner decisions made in session
+- **Status:** accepted (2026-10-29, T-3110). Owner decisions made in session
   https://claude.ai/code/session_014ASuNyVecGvKjcZUDfWLKA.
 - **Context:** Tasks come only from agents (planner, gap-triager, steward, follow-ups). People who
   find a wrong value or want a feature have no way in except asking the owner. GitHub issues are
