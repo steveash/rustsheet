@@ -2408,6 +2408,28 @@ Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the
 b0 >= 8, all others); bit-exact 52-75%; both > 1 with max > 8 a provisional form (T-3007)
 Tasks: T-2505, T-2512, T-2122, T-3007
 
+## Incomplete beta at a shape near the double range: no overflowing fl(a LN x), and bpser is #NUM! once 1/B overflows (T-3007)
+Rule: Excel never evaluates a bpser whose fl(a·LN x) overflows: Excel for the web refuses a workbook that holds
+`BETA.DIST(0.1,a,0.5,TRUE)` at a = 1E+295, 1E+300, 1E+308 or `1E+150*1E+150` (the upload's `createSession` fails 501
+`FileCorruptTryRepair` / `unsupportedWorkbook`, as for a malformed file; 1E+295 did not answer in 10 minutes), while
+a = 1E+290 is 0. a·LN(0.1) only overflows above 7.8E+307, so the question T-3007 asked (`BETA.DIST(0.1,1E308,0.5,TRUE)`)
+has no Excel value from excel-graph; the engine keeps today's kernel there (`bratio::bpser_with_ln_beta`'s non-finite
+guard), and desktop Excel's answer is an M14 question.
+Where both shapes are above 1 and bratio takes bpser (b0·x0 <= 0.7), the cdf is `#NUM!` once 1/B(a, b) overflows a
+double, though the value it would give is 0: `BETA.DIST(0.1,a,2,TRUE)` is 0 at a = 6E+153 and 1.3E+154 (a(a + 1) =
+1.69E+308) and `#NUM!` at 1.4E+154 (1.96E+308) and 1E+200; at a = 1E+290 it is 0 for b = 1.01 (1/B about 1E+293) and 1, and
+`#NUM!` for b = 1.5 and 9; b = 2 at 1E+100, 3 at 1E+100 and 4 at 1E+77 are 0. The density `BETA.DIST(0.1,1E+200,2,FALSE)`
+is `#NUM!` too. The other branches at the same shapes are values: `BETA.DIST(0.9,1E+200,2,TRUE)` (L140 bup+bgrat) is 0 and
+`BETA.DIST(0.1,2,1E+200,TRUE)` (swapped, the same point) 1; `BETA.DIST(0.1,0.5,1E+290,TRUE)` (bgrat) is 1 and
+`BETA.DIST(0.9,1E+290,0.5,TRUE)` 0, and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours are `#NUM!`; but
+`BETA.DIST(0.1,1E+200,1E+100,TRUE)` (bfrac too) is `#NUM!`, as ours is. The form behind the cut (1/B, or a^b, in
+doubles) is not pinned: B(a, 2) does not separate 1/B from a(a + 1).
+Evidence: probes/t3007-beta-dist-ln-x-overflow (excel-graph, 2026-10-29), 27 cells; the refusals are upload errors from
+throwaway fills, not cells.
+Status: VERIFIED (excel-graph) for the values; the refusal threshold is between 1E+290 and 1E+295 (not bisected); not
+implemented: 11 of the 27 cells are off (T-3104 owns them).
+Tasks: T-3007, T-3104
+
 ## Incomplete beta L140 and bfrac: the prefactor is Excel's own density times x·y (T-2464)
 Rule: for a, b > 1 with b0 < 40 and b0·x0 > 0.7 (bratio's L140), I = fl(bup(b0', a0, y0, x0, n) + bpser(a0, b0', x0))
 for x0 <= 0.7 (bgrat after bup beyond), n = int(b0), b0' = b0 - n (1 for integer b0, n one less). bup's brcmp1 is
@@ -3462,7 +3484,11 @@ and an error k its own error even where the array holds an error or no numbers, 
 TRUE or "2" k is coerced and the array decides (no numbers: `#NUM!`). A k that is a reference,
 written or returned by OFFSET, INDIRECT or IF, reads its top-left cell (a multi-cell range does not
 lift), and a referenced cell holding an error is `#VALUE!`, not that error (options 0, 4 and 6
-probed, the others assumed alike).
+probed; options 1, 2, 3, 5 and 7 too, T-2336: `AGGREGATE(14,o,A1:A5,D1)` with D1 `=NA()` is `#VALUE!`
+for every one of them, probes/aggregate-error-k-picked-ref Calc!A1:A5). Under function 9, a fourth argument that
+is IF or CHOOSE returning a reference is summed as that reference: `AGGREGATE(9,0,A1:A2,IF(TRUE,B1))` and the
+`CHOOSE(1,B1)` form give 13, the same as plain `B1` (Calc!A6:A8; B1 = 10, A1:A2 = 1, 2). Other functions in 1-13 are
+assumed alike.
 Cells (probes/aggregate-range-k-first-cell, excel-graph 2026-10-21; Data A1:A5 = 1..5, B1 "x",
 B2 blank, B3 0.5, B4 2, C1:C2 no numbers, D1 `=NA()`, E1 `=NA()`, E2 2):
 - `AGGREGATE(18,3,C1:C2,B1:B3)`, `AGGREGATE(14,6,C1:C2,"x")`, functions 14-19 over C1:C2 with
