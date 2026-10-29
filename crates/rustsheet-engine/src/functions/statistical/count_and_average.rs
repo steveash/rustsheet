@@ -8,6 +8,7 @@ use crate::arithmetic::{extended_quotient, extended_sum, flush_subnormal};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::LiftCost;
+use crate::functions::math_and_trigonometry::SumParts;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::{
@@ -122,7 +123,7 @@ impl Model {
         mut f: F,
     ) -> Result<(), CalcResult>
     where
-        F: FnMut(f64),
+        F: FnMut(f64, bool),
     {
         let rules = NumberRules {
             direct: DirectNumbers::CastA,
@@ -131,8 +132,11 @@ impl Model {
         };
         let mut walk = AggregateWalk::new(A_ARGS);
         let mut visit = |model: &mut Self, source, value| {
+            // A text cell or array element counts as 0 but is no addend of a sum (`true` below).
+            let text =
+                matches!(value, CalcResult::String(_)) && !matches!(source, ItemSource::Direct);
             if let Some(number) = model.aggregate_number(rules, source, value, cell)? {
-                f(number);
+                f(number, text && number == 0.0);
             }
             Ok(())
         };
@@ -179,7 +183,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut count = 0.0;
-        let mut sum = 0.0;
+        let mut sum = SumParts::default();
         if let Err(e) = self.for_each_aggregate_number(
             args,
             cell,
@@ -187,7 +191,7 @@ impl Model {
             AVERAGE_NUMBERS,
             |f| {
                 count += 1.0;
-                sum = extended_sum(sum, f);
+                sum.add(f);
             },
         ) {
             return e;
@@ -202,7 +206,12 @@ impl Model {
         }
         // The division rounds twice like the operator `/` (probes-numeric/average-large-count-division,
         // 24 cells at n = 2051..4095; docs/excel-semantics/numbers.md "Division rounds twice").
-        CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(sum, count)), cell)
+        // The sum's final addition snaps a near-zero total to 0 as SUM's does, and the quotient
+        // follows (probes/t3048-snap-conditional-sums D5, G5, H5; probes/t3066-average-snap-forms).
+        CalcResult::finite_number_or_num(
+            flush_subnormal(extended_quotient(sum.snapped(), count)),
+            cell,
+        )
     }
 
     pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -210,14 +219,20 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut count = 0.0;
-        let mut sum = 0.0;
+        let mut sum = SumParts::default();
         // Coerced as MAXA coerces, a cached range of a linked workbook included
         // (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2; fixtures/external-link-cached-ranges Refs!B53).
-        if let Err(error) = self.for_each_value_a(args, ArrayNumbers::TextZero, cell, |value| {
-            count += 1.0;
-            // Rounds each addition twice like AVERAGE's (probes-numeric/double-rounding-accumulators).
-            sum = extended_sum(sum, value);
-        }) {
+        if let Err(error) =
+            self.for_each_value_a(args, ArrayNumbers::TextZero, cell, |value, text| {
+                count += 1.0;
+                // Rounds each addition twice like AVERAGE's (probes-numeric/double-rounding-accumulators).
+                // A text counts in `count` but adds no 0 addend, so a snap before it still holds
+                // (probes/t3048-snap-conditional-sums I6).
+                if !text {
+                    sum.add(value);
+                }
+            })
+        {
             return error;
         }
         if count == 0.0 {
@@ -227,8 +242,9 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
-        CalcResult::Number(flush_subnormal(extended_quotient(sum, count)))
+        // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636), after the sum's
+        // near-zero snap (numbers.md "Near-zero snapping", T-3066).
+        CalcResult::Number(flush_subnormal(extended_quotient(sum.snapped(), count)))
     }
 
     pub(crate) fn fn_avedev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -362,7 +378,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut mina: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f| {
+        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f, _| {
             if let Some(m) = mina {
                 mina = Some(m.min(f));
             } else {
@@ -381,7 +397,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut maxa: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f| {
+        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f, _| {
             if let Some(m) = maxa {
                 maxa = Some(m.max(f));
             } else {
