@@ -78,8 +78,8 @@ class Mode(unittest.TestCase):
             self.assertEqual(merge_train.read_mode(clone), merge_train.TRAIN)
             self.assertEqual(merge_train.read_mode(base / "nowhere"), merge_train.LOCK)
 
-    def test_the_switch_file_says_lock(self) -> None:
-        self.assertEqual(merge_train.parse_mode((SCRIPTS / "merge_train.toml").read_text()), merge_train.LOCK)
+    def test_the_switch_file_says_shadow(self) -> None:
+        self.assertEqual(merge_train.parse_mode((SCRIPTS / "merge_train.toml").read_text()), merge_train.SHADOW)
 
 
 class IdChecks(unittest.TestCase):

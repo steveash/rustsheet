@@ -40,9 +40,9 @@ The prompts defer to the skills (`work-loop`, `review`, `steward`, `issue-intake
 add scheduling-specific rules: lane choice, overlap avoidance, secrets hygiene, untrusted input.
 
 The merge clauses follow the merge-train switch (`make merge-mode`, decision 0157). While it
-says `lock`, they ask for exactly the per-PR flow under the merge lock. The owner creates the
-merger routine now, and moves the worker and steward routines to these texts after T-2989
-merges (SPEC-0027 "Owner steps").
+says `lock` or `shadow`, they ask for the per-PR flow under the merge lock (in `shadow` mode the
+PR is also marked ready first). The owner creates the merger routine, and moves the worker and
+steward routines to these texts now that T-2989 has merged (SPEC-0027 "Owner steps").
 
 ## Prompt — worker: sonnet
 ```
