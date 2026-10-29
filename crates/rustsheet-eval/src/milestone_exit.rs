@@ -32,7 +32,7 @@ pub const M7_MIN_SCORED: usize = 10_000;
 pub const M1_MIN_SCORED: usize = 3_000;
 /// M11's fewest scored cells of `corpus-bench` (decision 0146 item 5).
 pub const M11_MIN_SCORED: usize = 200_000;
-/// M11's corpus-bench rate over [`RATE_DEN`]: 99.8%, the best published SpreadsheetBench score
+/// M11's corpus-bench rate over [`RATE_DEN`]: 99.8%, the best published `SpreadsheetBench` score
 /// (decision 0146 item 5).
 pub const M11_RATE_NUM: usize = 998;
 /// The frozen probe list M1's probe measure reads instead of a probe row (decision 0146 item 1).
@@ -94,6 +94,9 @@ struct Criteria {
     calc: bool,
     /// Spill extents are an exit criterion (M7, decision 0140).
     extent: bool,
+    /// Coverage and ironcalc-calc counts are shown even where not required (M2, M7); M1 and M11
+    /// have neither measure, so both stay `n/a` (decision 0146).
+    scope_shown: bool,
 }
 
 fn criteria(milestone: &str) -> Criteria {
@@ -110,6 +113,7 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: false,
             extent: false,
+            scope_shown: false,
         },
         // "100%": no gen-m2 cell visibly off.
         "M2" => Criteria {
@@ -118,6 +122,7 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: true,
             extent: false,
+            scope_shown: true,
         },
         "M7" => Criteria {
             suites: generated(M7_MIN_SCORED, RATE_NUM),
@@ -125,6 +130,7 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: false,
             extent: true,
+            scope_shown: true,
         },
         "M11" => Criteria {
             suites: vec![SuiteNeed::named(
@@ -136,6 +142,7 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: false,
             calc: false,
             extent: false,
+            scope_shown: false,
         },
         _ => Criteria {
             suites: generated(MIN_SCORED, RATE_NUM),
@@ -143,6 +150,7 @@ fn criteria(milestone: &str) -> Criteria {
             coverage: true,
             calc: true,
             extent: false,
+            scope_shown: true,
         },
     }
 }
@@ -288,7 +296,8 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 probe_row: parse_milestone(m).map_or_else(|| m.to_string(), row_label),
                 ..ExitRow::default()
             };
-            if let Some(c) = report.catalog_coverage.iter().find(|c| c.milestone == m) {
+            let coverage = report.catalog_coverage.iter().find(|c| c.milestone == m);
+            if let Some(c) = coverage.filter(|_| need.scope_shown) {
                 row.functions = Some(c.functions);
                 row.covered = Some(c.covered);
                 row.coverage_met = need.coverage.then_some(c.covered == c.functions);
@@ -306,7 +315,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             row.gen_visibly_off_cells = first.visibly_off_cells;
             row.gen_suite = first.name;
             let suite = &row.gen_suite;
-            let scope = report.function_scope.as_ref();
+            let scope = report.function_scope.as_ref().filter(|_| need.scope_shown);
             if let Some(r) = scope.and_then(|s| s.rows.iter().find(|r| r.milestone == m)) {
                 let failing = r.failing.len().saturating_sub(r.excepted.len());
                 let visible = r
@@ -942,6 +951,21 @@ mod tests {
             milestone: "M11".into(),
             ..MilestoneRow::default()
         });
+        // A real report has M11 coverage and function-scope rows; M11's exit shows neither.
+        r.catalog_coverage.push(MilestoneCoverage {
+            milestone: "M11".into(),
+            ..MilestoneCoverage::default()
+        });
+        r.function_scope
+            .as_mut()
+            .unwrap()
+            .rows
+            .push(MilestoneScope {
+                milestone: "M11".into(),
+                failing: vec!["c!S!A1".into()],
+                visibly_off: vec!["c!S!A1".into()],
+                ..MilestoneScope::default()
+            });
         r
     }
 
