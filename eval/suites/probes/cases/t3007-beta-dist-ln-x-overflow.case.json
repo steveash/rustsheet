@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "BETA.DIST with a shape near the top of the double range (T-3007). Excel for the web refuses a workbook holding BETA.DIST(0.1,a,0.5,TRUE) with a = 1E+295 or more (createSession FileCorruptTryRepair; 1E+290 answers 0), so fl(a LN x) never overflows in a cell it answers. Here: shapes up to 1E+290 on both sides of the swap, the density, the bpser cells that are #NUM! once 1/B(a,b) overflows (B(a,2) between a = 1.3E+154 and 1.4E+154), and F.DIST's own #NUM! above 1E+10.",
+  "tags": [
+    "M9",
+    "statistical",
+    "beta",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=BETA.DIST(0.1,1E+290,0.5,TRUE)",
+        "A2": "=BETA.DIST(0.9,0.5,1E+290,TRUE)",
+        "A3": "=BETA.DIST(0.9,1E+290,0.5,TRUE)",
+        "A4": "=BETA.DIST(0.1,0.5,1E+290,TRUE)",
+        "A5": "=BETA.DIST(0.1,1E+290,2,TRUE)",
+        "A6": "=BETA.DIST(0.1,1E+290,0.5,FALSE)",
+        "A7": "=BETA.DIST(1E-10,1E+290,0.5,TRUE)",
+        "A8": "=BETA.DIST(0.999999999,1E+15,0.5,TRUE)",
+        "A9": "=BETA.DIST(1E-300,1.5,0.5,TRUE)",
+        "A10": "=1-BETA.DIST(0.9,0.5,1E+290,TRUE)",
+        "A11": "=F.DIST(0.1,1E+300,1,TRUE)",
+        "A12": "=BETA.DIST(0.1,1E+200,1E+200,TRUE)",
+        "A13": "=BETA.DIST(0.1,6E+153,2,TRUE)",
+        "A14": "=BETA.DIST(0.1,1.3E+154,2,TRUE)",
+        "A15": "=BETA.DIST(0.1,1.4E+154,2,TRUE)",
+        "A16": "=BETA.DIST(0.1,1E+200,2,TRUE)",
+        "A17": "=BETA.DIST(0.1,1E+290,1.01,TRUE)",
+        "A18": "=BETA.DIST(0.1,1E+290,1.5,TRUE)",
+        "A19": "=BETA.DIST(0.1,1E+290,9,TRUE)",
+        "A20": "=BETA.DIST(0.1,1E+200,2,FALSE)",
+        "A21": "=BETA.DIST(0.1,2,1E+200,TRUE)",
+        "A22": "=BETA.DIST(0.9,1E+200,2,TRUE)",
+        "A23": "=BETA.DIST(0.1,1E+200,1E+100,TRUE)",
+        "A24": "=BETA.DIST(0.1,1E+100,3,TRUE)",
+        "A25": "=BETA.DIST(0.1,1E+77,4,TRUE)",
+        "A26": "=BETA.DIST(0.1,1E+290,1,TRUE)",
+        "A27": "=BETA.DIST(0.1,1E+100,2,TRUE)"
+      }
+    }
+  ],
+  "expected": {}
+}

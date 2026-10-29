@@ -10,10 +10,12 @@ the milestone's exit criteria (decision 0085, read at visible parity by decision
 the `gen-m<k>` suite and any other required suite of the exit row (decision 0146: M1's smoke,
 M11's corpus-bench), the ironcalc-calc row of "Milestone function scope" less its exit
 exceptions when the exit row requires it (not M7, decision 0140), and the probes of the
-milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list),
-plus each probe case that fails with no cell, that no open task of that milestone names, one per
-line as `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the
-count is not 0.
+milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list;
+and for M9 the report's `attributed_off` cells of each function the exit row lists below the
+Phase 1 rate, as `rate:<FUNCTION>`, decision 0146 item 3), plus each probe case that fails with
+no cell, that no open task of that milestone names, one per line as
+`criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count
+is not 0.
 
 A task owns a cell when its front matter has the milestone and an open status, and its text names
 the case (`case_names`): by its file stem (the last path segment of the case id less `.case.json`:
@@ -66,6 +68,8 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "eval" / "runs" / "latest" / "report.json"
 CALC_SUITE = "ironcalc-calc"
 PROBES_SUITE = "probes"
+# The criterion of an M9 function below the Phase 1 rate: `rate:IRR`.
+RATE_PREFIX = "rate:"
 # A failing item of a case that is not a cell (`*`, `!Panic`, ...): the whole case.
 WHOLE_CASE = "*"
 PASSING = ("pass", "deviation")
@@ -146,9 +150,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     out: list[ExitCell] = []
 
     # Every required suite (decision 0146): the row's first (`gen_suite`, `gen-m<k>` before it
-    # existed) and `more_suites`, each with its own visibly-off list.
-    first = exit_row.get("gen_suite") or f"gen-{milestone.lower()}"
-    suites = [(first, exit_row.get("gen_visibly_off_cells"))]
+    # existed; empty when the row requires none, M9) and `more_suites`, each with its own
+    # visibly-off list.
+    first = exit_row.get("gen_suite", f"gen-{milestone.lower()}")
+    suites = [(first, exit_row.get("gen_visibly_off_cells"))] if first else []
     more = exit_row.get("more_suites") or []
     suites += [(str(s.get("name")), s.get("visibly_off_cells")) for s in more]
     for suite, cells_off in suites:
@@ -172,6 +177,13 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
                 if name not in excepted and name in visible:
                     case, key = split_cell_name(str(name))
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
+
+    # The functions below the Phase 1 rate (M9, decision 0146 item 3): their attributed cells.
+    below = set(exit_row.get("below_rate_functions") or [])
+    for o in attributed_off_cells(report):
+        if o.cell.criterion in below:
+            c = o.cell
+            out.append(ExitCell(f"{RATE_PREFIX}{c.criterion}", c.case, c.key, c.formula))
 
     probe_row = exit_row.get("probe_row") or milestone
     # M1's probe measure is the frozen `m1-probes` list, not a probe row (decision 0146 item 1).
@@ -338,6 +350,20 @@ def show_value(value: Any) -> str:
     return json.dumps(inner) if kind == "s" else str(inner)
 
 
+def attributed_off_cells(report: dict[str, Any]) -> list[OffCell]:
+    """The report's `attributed_off` cells, grouped by function (sorted; stable: case order
+    within a function), each with its function as the criterion."""
+    attributed = sorted(report.get("attributed_off") or [], key=lambda c: str(c["function"]))
+    return [
+        OffCell(
+            ExitCell(str(c["function"]), str(c["case"]), str(c["cell"]), str(c.get("formula") or "")),
+            str(c.get("expected", "")),
+            str(c.get("actual", "")),
+        )
+        for c in attributed
+    ]
+
+
 def all_off_cells(report: dict[str, Any]) -> list[OffCell]:
     """Every visibly-off Excel cell of the report: attributed (by function, sorted), unattributed,
     then the probe-milestone cells the first two lists lack."""
@@ -347,19 +373,11 @@ def all_off_cells(report: dict[str, Any]) -> list[OffCell]:
         for c in case.get("cells") or []
     }
 
-    def off(group: str, case: str, key: str, formula: str, got: tuple[str, str] | None = None) -> OffCell:
+    def off(group: str, case: str, key: str, formula: str) -> OffCell:
         c = by_key.get((case, key), {})
-        e, a = got or (show_value(c.get("expected")), show_value(c.get("actual")))
-        return OffCell(ExitCell(group, case, key, formula), e, a)
+        return OffCell(ExitCell(group, case, key, formula), show_value(c.get("expected")), show_value(c.get("actual")))
 
-    attributed = sorted(
-        report.get("attributed_off") or [], key=lambda c: str(c["function"])
-    )  # stable: case order within a function
-    out = [
-        off(str(c["function"]), str(c["case"]), str(c["cell"]), str(c.get("formula") or ""),
-            (str(c.get("expected", "")), str(c.get("actual", ""))))
-        for c in attributed
-    ]
+    out = attributed_off_cells(report)
     out += [
         off(UNATTRIBUTED, str(c["case"]), str(c["cell"]), str(c.get("formula") or ""))
         for c in report.get("unattributed_off") or []

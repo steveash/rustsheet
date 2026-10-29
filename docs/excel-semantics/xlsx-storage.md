@@ -422,8 +422,8 @@ T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac
 Ours: export writes the tree as written, its kept whitespace included (T-2948), a line feed as the reference `&#xA;`,
 which reads back as LF like Excel's raw bytes. The runs beside a missing argument and inside an empty call print back and
 are saved (T-2944, T-2966). The legacy `@` rewrite on import and export decides on the formula with no whitespace; where one
-of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (`=N( IF(1,{2;3}) )`
-saves as `N(IF(1,{2;3}))`, T-2970). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
+of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (no shape is known to
+fall back since T-2970: `=N( IF(1,{2;3}) )` keeps its spaces). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
 reading stored text drops it (T-2784). The saved text beside `@`, LET names and a sign is derived, not probed (T-2971).
 Status: VERIFIED (excel-graph)
 Tasks: T-2786, T-2944, T-2801, T-2948, T-2970, T-2971

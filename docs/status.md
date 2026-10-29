@@ -13,7 +13,7 @@ This is the scheduled 05:47 UTC run (it started at 05:50 UTC). It follows #2216,
 
 `make eval` ran on 2bebf56b with a clean tree.
 - All 17 suites were scored. As before, calipers, corpus-bench and poi were not fetched in this container, so I ran `rustsheet-eval fetch` before `make eval`. Timeouts: 0 in every suite.
-- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. The visible-parity lock drops from 2,750 to 2,648 (decision 0093). It had risen from 2,590 because probes merged since #2216 added visibly-off cells as new coverage. The drop despite 0 fixed is slack that fix PRs left under the lock (their fixes were already in the baseline files, e.g. T-2992 #2130), which this run takes back.
+- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. On 2bebf56b it lowered the visible-parity lock from 2,750 to 2,648 (decision 0093). Probes merged since #2216 had raised it from 2,590 as new coverage, and fix PRs had left slack under it (e.g. T-2992 #2130). Before merging this PR I merged `main` in and re-ran it: the count on the merged tree is 2,857, equal to `main`'s lock after #2137 (below), so this PR leaves the lock unchanged.
 - The dashboard has this run's numbers (`make progress-report`; the judgment blocks pass `--check`).
 
 CI on `main` is green. Every push run since #2216 succeeded, except one cancelled by the next push (776c9b16, #2233). None failed. The run on d1dcff70 (T-3027) was in progress when I checked.
@@ -34,13 +34,13 @@ Merged since #2216's eval (ca1245cf): 53 commits up to 2bebf56b. None were rever
 - PRs: #2017, #2062, #2130, #2205, #2209–#2219, #2221–#2223, #2225–#2230, #2232–#2235, #2237–#2249 and #2251–#2262. #2017 and #2062 were yesterday's orphan merges, and #2216 is the last steward run.
 - Three were squash-merged without the `(#n)` suffix in the title, each committed by GitHub: c9f9dba4 (T-2926, #2259), c2643aa4 (T-3026, #2254) and f7567f7e (T-2531, #2229). d1dcff70 (T-3027, #2263) landed the same way just after the eval.
 - Task-only PRs: #2212, #2233 and #2256.
-- After the eval, another session merged #2081 (T-2892: gen-m8a and gen-m8b are now gated), and this run merged #2074 (T-2336) as an orphan (below).
+- After the eval, another session merged #2081 (T-2892: gen-m8a and gen-m8b are now gated), and this run merged #2074 (T-2336) and #2137 (T-2565) as orphans (below).
 
 Blocked: 36 on `main` (35 last run). T-2951 joined (time-boxed, decision 0056, #2228). No task is `Blocked because: review-round limit`.
 
 Open PRs: 22 at 06:15 UTC. Non-draft PRs older than 24 h:
 - **#2074 (T-2336, AGGREGATE error-cell k probe)**: idle since 2026-10-27 19:30 UTC, task done, green CI. All four reviewers APPROVE its diff with MINOR notes only (doc wording; functions other than 9 are assumed, as statistics.md says). Under the merge lock I merged `main` in (ae7c9d07), waited for green CI on that head, and squash-merged it (71e48ad5, orphan merge, decision 0050).
-- **#2137 (T-2565, IRR guess-sweep probe)**: idle since 2026-10-28 05:22 UTC, task done, green CI, merges `main` cleanly. All four reviewers APPROVE with MINOR notes only (financial.md wording; the case has no `hypotheses` field, which the Outcome records). It is queued for the merge lock behind two other sessions' PRs. See the PR for the outcome.
+- **#2137 (T-2565, IRR guess-sweep probe)**: idle since 2026-10-28 05:22 UTC, task done, green CI. All four reviewers APPROVE with MINOR notes only (financial.md wording; the case has no `hypotheses` field, which the Outcome records). Its first CI run under the lock failed the visible-parity gate. The branch's baseline already listed the probe's 181 cells, so the gate did not count them as new coverage against `main`'s lock. I took `main`'s `probes.txt` and lock and re-ran `make eval-baseline`, which recorded the case as new coverage (lock 2,857). I then waited for green CI and squash-merged it (d58bed00, orphan merge, decision 0050).
 - **#2081 (T-2892)**: all four reviewers APPROVE. Another session took the lock for it first and merged it (5a480b89).
 - **#2079 (T-2926), #2073 (T-2531) and #2091 (T-2554)**: closed as duplicates. Their tasks merged through #2259, #2229 and #2240, and each branch had been idle since 2026-10-27.
 - **#1727 (T-2622)**: still conflicts with `main` (the steps are in yesterday's comment on the PR).
