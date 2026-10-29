@@ -642,11 +642,27 @@ Rule: COUNTIF/SUMIF-style numeric criteria compare the 15-digit rounded values (
 Evidence: probes/tiny-vs-zero-criteria (A1-A33); the general 15-digit rule rests on the Comparison tolerance entry below. The blank-cell criterion path (`result_is_equal_to_empty`) uses the same rule but is inferred, not probed.
 Implemented in: `numbers_equal` (functions/criteria.rs), `Ord for CalcResult` (calc_result.rs). Tasks: T-1028. Oracle: excel-graph, 2026-10-06. Status: VERIFIED
 
+## Criteria ordering operators compare at 15 digits too
+Rule: the ordering criteria `"<1"`, `"<=1"`, `">1"` and `">=1"` of COUNTIF, SUMIF, COUNTIFS and SUMIFS compare the
+cell's 15-digit value, exactly as `"=1"` and `"<>1"` do: a cell is never at once "equal to 1" and "greater than 1".
+Over one-cell ranges holding `=1+k*2^-52` and `=1-k*2^-53`, the cells at k = 1, 2, 3, 8, 22 above and k = 1-4 below (all
+of which print as 1) counts for `"<=1"`, `">=1"` and `"=1"` and not for `"<1"` or `">1"`; `1+23*2^-52`
+(1.00000000000001) and `1-5*2^-53` (0.999999999999999) flip all six at once. The flip sits on the 15th-digit rounding
+boundary (5E-15 above 1, 5E-16 below), not at a fixed ULP count, so it is neither an exact comparison nor a relative
+tolerance. All four functions agree on all 288 criteria cells.
+Evidence: probes/t3072-criteria-near-equal-order (excel-graph, 2026-10-29): rows 1-12 (B = value, D = its text),
+E:J COUNTIF, K:P SUMIF, Q:V COUNTIFS, W:AB SUMIFS in the order `<`, `<=`, `>`, `>=`, `=`, `<>`; e.g. F5
+`COUNTIF(B5,"<=1")` = 1 and G5 `">1"` = 0 for 1+22·2^-52, G6 = 1 for 1+23·2^-52; E10 `"<1"` = 0 for 1-4·2^-53,
+E11 = 1 for 1-5·2^-53.
+Status: VERIFIED (engine not yet: the ordering matchers compare raw doubles, T-3103)
+
 ## Comparison tolerance
 Rule: comparisons round both numbers to 15 significant digits and compare the results exactly, so
 operands a few ULP apart can be equal or not depending on where the 15th digit falls. Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
 k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
-uninformative here because X ≥ b in every probe. No absolute tolerance exists: rounding both operands to 15 significant digits and comparing exactly
+uninformative there because X ≥ b in every probe; probes/t3072-criteria-near-equal-order AC:AF add them on both
+sides of 1 (`=B<1`, `=1<B`, `=B>=1`, `=1>=B` for B = 1±k ULP): `<` and `>=` follow the same 15-digit rule (AC11 `=B11<1`
+is TRUE for 1-5·2^-53, AC10 FALSE for 1-4·2^-53; AD6 `=1<B6` TRUE for 1+23·2^-52, AD5 FALSE for 1+22·2^-52). No absolute tolerance exists: rounding both operands to 15 significant digits and comparing exactly
 reproduces all 648 cells (T-0989; it also fixed the 2^-10 base, where an absolute epsilon wrongly said equal).
 Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
