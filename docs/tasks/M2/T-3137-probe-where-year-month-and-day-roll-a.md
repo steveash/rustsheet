@@ -3,7 +3,7 @@ id: T-3137
 title: "Probe where YEAR, MONTH and DAY roll a serial just below midnight to the next day, and fit the rule"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
