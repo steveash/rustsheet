@@ -14,6 +14,8 @@ depends_on: []
 VALUE (and every reader built on `value_text_number`) reads `"- 5"`, `"3 1/2"` and `"1-1-1"` as Excel does.
 
 ## Context
+T-3151 landed the mixed fraction (`mixed_fraction` in cast.rs; A22 and B22 pass): what is left is `"- 5"`, `"1-1-1"`
+and probing the mixed-fraction edges below, plus an improper fraction (`"1 3/2"`) and many-digit parts.
 Found in T-2541's boundary probe probes/eng-inumber-date-boundary (excel-graph, 2026-10-25): `VALUE("- 5")` is -5 (B21),
 `VALUE("3 1/2")` 3.5 (B22; so `IMABS("3 1/2")` is 3.5, A22), `VALUE("1-1-1")` 36892, 2001-01-01 (B23); ours `#VALUE!` for
 all three. Record each in docs/excel-semantics/text.md (or coercion.md where number coercion shares the rule) and probe
