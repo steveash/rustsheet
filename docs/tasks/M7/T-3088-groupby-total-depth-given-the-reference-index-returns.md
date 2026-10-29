@@ -3,7 +3,7 @@ id: T-3088
 title: "GROUPBY lifts over a multi-cell reference INDEX returns as total_depth"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
