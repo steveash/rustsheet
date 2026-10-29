@@ -48,7 +48,28 @@ T-3016 (`CHISQ.INV(0.999,5)` in the m9 and T-1049 CHISQ.INV probes) and T-3131 (
 first takes them all; the others then only check their cells. `GAMMA.INV(0.999,9,1)` and `(0.999,9,1000000)` are 2-3E-15
 relative off, within 15 digits; it should follow the same rule.
 
+### Also owned: T-3148's probe (gap triage 2026-10-29)
+`make eval` on main a2ecf005b, `python3 scripts/exit_owners.py --all-off`: T-3148 (done) added
+probes-numeric/t3148-gamma-quantile-flat-band, and its visibly-off quantile cells had no owner. Same cause as the 12
+cells above (Excel's landing point where its double cdf is flat), over p 0.995 to 0.9999, so this task owns them:
+- probes-numeric/t3148-gamma-quantile-flat-band GAMMA.INV (37): A13, A21, A22, A23, A26, A30, A31, A33, A35, A39, A40,
+  A41, A42, A43, A44, A45, A48, A49, A50, A51, A52, A53, A54, A120, A121, A123, A124, A126, A127, A129, A130, A132,
+  A133, A135, A136, A138, A139
+- probes-numeric/t3148-gamma-quantile-flat-band CHISQ.INV.RT (28): A74, A75, A76, A82, A83, A84, A85, A90, A91, A92,
+  A93, A94, A95, A98, A100, A101, A102, A103, A106, A107, A108, A109, A110, A111, A131, A134, A137, A140
+
+Caution when fitting from this probe: Excel truncates formula literals to 15 significant digits, so the 17-digit p
+literals of A120 to A140 are not the neighbouring doubles of 0.999 the probe meant. `0.99899999999999967`, `...78`
+and `...89` all read as 0.998999999999999 and `0.99900000000000011` to `...33` as 0.999 (the engine parses them the
+same way). Check: `GAMMA.INV(p,2,1)` moves by 1.108E-12 between the two groups (9.233413476450405 to
+9.233413476451513), which is 1E-15 of p over the density 9.04E-4 at the quantile. So "Excel's quantile is constant
+across neighbouring p doubles, with one break at 0.999" in statistics.md is an artifact of the literals, and the
+x = q + k ulp series of the cdf cells (A141 on) collapse onto 15-digit x for small k too. T-3175 re-probes them with
+exact-piece literals; do not fit the landing rule to A120 to A140's p as doubles.
+
 ## Acceptance criteria
+- [ ] The t3148 cells listed above are within half a unit of Excel's 15th significant digit, or the ones the landing
+      rule cannot reach are named in the Outcome with their ulps.
 - [ ] The 12 cells above are within half a unit of Excel's 15th significant digit (`python3 scripts/exit_owners.py
       --all-off` no longer lists them), with no new known-failure line in any eval/baseline file
       (`make eval-baseline`) and no p = 0.999 cell of T-3016 or T-3131 made worse.
