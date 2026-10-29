@@ -3,7 +3,7 @@ id: T-3135
 title: "AND, OR and XOR: probe and match computed, array and padded TRUE/FALSE text and a FALSE text beside a logical"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
