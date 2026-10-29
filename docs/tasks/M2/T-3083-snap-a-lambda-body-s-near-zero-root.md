@@ -29,7 +29,7 @@ so `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0.
 - [x] probes/t3049-snap-under-pickers Sheet1!B17 and C17 pass and leave eval/baseline/probes.txt; no other cell
       regresses.
 - [x] numbers.md "Implemented in" names where the LAMBDA body is snapped.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - LAMBDA helpers (MAP, REDUCE, BYROW, ...) and a LAMBDA bound to a defined name: unprobed; probe them first.

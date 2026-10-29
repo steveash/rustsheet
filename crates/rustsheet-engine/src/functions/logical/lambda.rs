@@ -333,10 +333,6 @@ impl Model {
         // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
         let provided = call_args.len();
         let mut caller = self.lambda_caller(&lambda_result, provided);
-        // A called LAMBDA's body is a formula root: a `+`/`-` there snaps a near-zero result,
-        // `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0, where a LET body does not
-        // (docs/excel-semantics/numbers.md "Near-zero snapping", probes/t3049-snap-under-pickers
-        // B17, C17). The helpers' calls (MAP, REDUCE, ...) and a defined-name LAMBDA are unprobed.
         // A defined-name LAMBDA starts from the body its last call patched (`NamedLambdas`). It
         // is taken out while this call runs, so a call inside it (recursion, `MyFn(MyFn(x))`)
         // patches its own. No LAMBDA created since it was put back reads its ids: only an
@@ -347,6 +343,10 @@ impl Model {
             }
             _ => None,
         };
+        // A called LAMBDA's body is a formula root: a `+`/`-` there snaps a near-zero result,
+        // `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0, where a LET body does not
+        // (docs/excel-semantics/numbers.md "Near-zero snapping", probes/t3049-snap-under-pickers
+        // B17, C17). The helpers' calls (MAP, REDUCE, ...) and a defined-name LAMBDA are unprobed.
         caller.root_snap = named.is_none();
         if let Some(key) = named {
             caller.prepared = self
