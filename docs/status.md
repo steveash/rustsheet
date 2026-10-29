@@ -53,7 +53,7 @@ Upstream IronCalc: `scripts/upstream-log.sh` listed seven commits (05f9b8be … 
 
 Issues: the one open issue, #2277, already has its task (T-0496, done in #2293).
 
-Merge mode: `shadow` on `main` (T-2989, #2332). `make merge-train-stats` does not exist yet (T-3076, todo), so the merge-train daily check was skipped.
+Merge mode: `shadow` on `main` (T-2989, #2332). `make merge-train-stats` does not exist yet (T-3076, todo), so the merge-train daily check was skipped. `make mark-ready` on this PR posted its marker and then refused it (V1, "malformed marker"): the comment tool appends the attribution footer after the marker block, which `parse_marker` rejects. Filed **T-3166** (harness, P1); in `train` mode no PR could be marked ready. This PR merged by the per-PR lock flow, as `shadow` mode allows.
 
 Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-graph OK).
 - probes: the same 7 pending cases as the last three runs, all known unfillable (T-1075 item 18, two cases refused by Excel for the web, two M10 locale cases). `rustsheet-oracle fill -b excel-graph --suite probes` finished inside my 15-minute cap this time and **wrote 3 sidecars**: t2065-lift-large, t2065-lift-median and t2065-lift-small now have their excel-graph value (`#VALUE!`), and all three pass; this PR records them in the baseline. Excel for the web refused t0481-curly-quote-names-c and typed-if-one-argument again (unsupportedWorkbook), so 4 cases stay pending.
