@@ -3,7 +3,7 @@ id: T-3076
 title: "make merge-train-stats: merge-train metrics and the shadow agreement score"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
