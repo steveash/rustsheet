@@ -3,7 +3,7 @@ id: T-2707
 title: "Probe PROB's unprobed argument orders and trace the inner calls of three T-2468 cells"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
