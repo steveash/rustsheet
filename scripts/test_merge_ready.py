@@ -530,7 +530,7 @@ class Mark(PrFixture):
             ("draft", True, "draft"),
             ("draft", None, "draft"),
             ("base", {**self.pull["base"], "ref": "release"}, "base is not main"),
-            ("head", {**self.pull["head"], "repo": {"full_name": "fork/r"}}, "fork"),
+            ("head", {**self.pull["head"], "repo": {"full_name": "fork/r"}}, "not in this repository"),
             ("head", {**self.pull["head"], "sha": "c" * 40}, "differ"),
         ):
             with self.subTest(reason):
@@ -549,6 +549,10 @@ class Mark(PrFixture):
         self.head = self.push_head(TASK.format(status="done", outcome="## Outcome\n"))
         self.pull["head"]["sha"] = self.head
         self.plan()  # the reasons above were the only ones
+        # A label name gh_client would refuse never reaches a step-mode action.
+        self.pull["labels"] = [{"name": "../x"}]
+        with self.assertRaises(merge_ready.GhError):
+            self.plan()
 
     def test_an_engine_change_needs_excel_fidelity(self) -> None:
         self.write("crates/rustsheet-engine/src/x.rs", "x")
@@ -580,8 +584,11 @@ class Mark(PrFixture):
         plan = self.plan(review=None, carry=True)
         self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
         self.assertEqual(plan.marker.reviewers, {**APPROVED, "excel-fidelity": "n/a"})
-        for action in plan.actions():
-            self.perform(action)
+        self.perform(plan.actions()[0])
+        # A re-run after the comment landed but not the label adds only the label.
+        again = self.plan(review=None, carry=True)
+        self.assertEqual([a["action"] for a in again.actions()], ["label"])
+        self.perform(again.actions()[0])
         verdict, _ = self.verify()
         self.assertTrue(verdict.ready, verdict.failures)
 

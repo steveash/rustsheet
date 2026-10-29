@@ -19,11 +19,15 @@
     earlier marker by a writer, and only for a head that `Repo.carry_problem` accepts (a merge
     commit, first parent `prev`, second parent on `origin/main`, tree equal to
     `git merge-tree --write-tree` of the parents).
+  - The draft, base, fork and task-file refusals are V5's own `pr_state_failures` on the marker
+    `mark` would post. A branch without a task id (task-only and steward PRs) is marked with
+    `task: none` and no task-file check, as SPEC-0027 section 2 allows.
   - A head that already has a writer's marker gets no second comment; only a missing label is
     added.
   - Writes go comment first, then label, so a labelled PR always carries its marker. Direct mode
     writes through `scripts/gh_client.py`, creates any missing train label first (with
-    `gh_client.create_label`), then runs `verify` to read the result back (exit 2 on a mismatch).
+    `gh_client.create_label`), then runs `verify` to read the result back (exit 2 on a mismatch, a push between the reads
+    and the writes included: the marker names the head it checked).
     `--step` prints the same writes as step-mode JSON actions, one per line: `comment` (`pr`,
     `body`, generated in full by the script) and `label` (`pr`, `label`, and `labels`, the PR's
     whole label set afterwards, for a tool that replaces the set). The session performs them in

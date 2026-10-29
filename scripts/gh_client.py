@@ -189,6 +189,7 @@ class Client:
             raise
 
     def create_label(self, label: str, color: str, description: str) -> dict[str, object]:
+        """Creates the repository label `label` (colour as six hex digits, a short description)."""
         if not COLOR.fullmatch(color) or not description or len(description) > 100:
             raise GhError(f"refused label color or description for {label!r}")
         body = {"name": checked(LABEL, label, "label"), "color": color, "description": description}

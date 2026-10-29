@@ -373,12 +373,18 @@ def task_done(text: str | None) -> bool:
     return meta.get("status") == "done" and re.search(r"^## Outcome\s*$", text, re.M) is not None
 
 
-def newest_marker(comments: Sequence[object], authors: Authors) -> tuple[object, Marker | MarkerError] | None:
-    """The newest marker comment by a writer (by `updated_at`, then id), parsed; None if none."""
+def marker_comments(comments: Sequence[object], authors: Authors) -> list[object]:
+    """The comments by writers that carry a marker, oldest first (by `updated_at`, then id)."""
     candidates = [c for c in comments if has_marker(text_of(c, "body")) and authors.writer(c)]
+    return sorted(candidates, key=lambda c: (text_of(c, "updated_at"), int_of(c, "id")))
+
+
+def newest_marker(comments: Sequence[object], authors: Authors) -> tuple[object, Marker | MarkerError] | None:
+    """The newest marker comment by a writer, parsed; None if none."""
+    candidates = marker_comments(comments, authors)
     if not candidates:
         return None
-    newest = max(candidates, key=lambda c: (text_of(c, "updated_at"), int_of(c, "id")))
+    newest = candidates[-1]
     try:
         return newest, parse_marker(text_of(newest, "body"))
     except MarkerError as error:
@@ -509,14 +515,14 @@ def marker_body(marker: Marker) -> str:
     )
 
 
-def writer_markers(comments: Sequence[object], authors: Authors) -> list[tuple[object, Marker]]:
-    """The well-formed markers by writers, oldest first (by `updated_at`, then id)."""
+def writer_markers(comments: Sequence[object], authors: Authors) -> list[Marker]:
+    """The well-formed markers by writers, oldest first. A malformed one is skipped: it holds no
+    head or verdicts to match or carry, and `verify` already unlabels a PR whose newest is one."""
     found = []
-    for comment in comments:
-        if has_marker(text_of(comment, "body")) and authors.writer(comment):
-            with contextlib.suppress(MarkerError):
-                found.append((comment, parse_marker(text_of(comment, "body"))))
-    return sorted(found, key=lambda pair: (text_of(pair[0], "updated_at"), int_of(pair[0], "id")))
+    for comment in marker_comments(comments, authors):
+        with contextlib.suppress(MarkerError):
+            found.append(parse_marker(text_of(comment, "body")))
+    return found
 
 
 def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bool, by: str) -> Plan:
@@ -527,25 +533,18 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
     if carry == (review is not None):
         raise Refusal("give the verdicts (REVIEW) or --carry, which takes the previous marker's")
     pull = client.pull(pr)
-    if field_of(pull, "draft") is not False:
-        raise Refusal("the PR is a draft")
-    head_repo = text_of(pull, "head", "repo", "full_name")
-    if not head_repo or head_repo != text_of(pull, "base", "repo", "full_name"):
-        raise Refusal("the PR comes from a fork")
-    if text_of(pull, "base", "ref") != BASE_BRANCH:
-        raise Refusal(f"the PR's base is not {BASE_BRANCH}")
     head = text_of(pull, "head", "sha")
     local = repo.git("rev-parse", "--verify", "HEAD^{commit}").strip()
     if not gh_client.SHA.fullmatch(head) or not local == head == repo.fetch_head(pr):
         raise Refusal(f"the local HEAD, refs/pull/{pr}/head and the PR's head.sha differ")
-    task = task_of_branch(text_of(pull, "head", "ref"))
-    if task is not None and not task_done(repo.task_file(head, task)):
-        raise Refusal(f"{task} is not status: done with an ## Outcome on the head")
-
     authors = Authors(client, text_of(pull, "base", "repo", "owner", "type") == "User")
-    markers = [m for _, m in writer_markers(client.comments(pr), authors)]
+    markers = writer_markers(client.comments(pr), authors)
+    already = next((m for m in markers if m.head == head), None)
     prev = None
-    if carry:
+    if carry and already is not None:
+        # A re-run after a partial write: the head's own marker carries the verdicts.
+        prev, verdicts = already.prev, dict(already.reviewers)
+    elif carry:
         older = [m for m in markers if m.head != head]
         if not older:
             raise Refusal("--carry needs an earlier marker by a writer on this PR")
@@ -560,6 +559,13 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
         except MarkerError as error:
             raise Refusal(f"REVIEW: {error}") from error
 
+    # V5's own checks: draft, base, fork and the task file (none for a branch without a task id:
+    # task-only and steward PRs, SPEC-0027 section 2).
+    task = task_of_branch(text_of(pull, "head", "ref"))
+    marker = already or Marker(head, prev, task, verdicts, by)
+    failures = pr_state_failures(pull, marker, head, repo)
+    if failures:
+        raise Refusal("; ".join(f.reason for f in failures))
     paths, state, jobs = head_state(client, pull, head, repo)
     missing = missing_approvals(verdicts, applicable_reviewers(paths))
     if missing:
@@ -567,9 +573,8 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
     if state != GREEN:
         raise Refusal(f"CI is {state} on {head}: {'; '.join(jobs)}")
 
-    labels = label_names(pull)
-    already = next((m for m in markers if m.head == head), None)
-    marker = already or Marker(head, prev, task, verdicts, by)
+    # Every name goes back into a step-mode action, so each must be a label name gh_client accepts.
+    labels = [gh_client.checked(gh_client.LABEL, name, "label") for name in label_names(pull)]
     return Plan(
         pr,
         marker,
@@ -580,23 +585,25 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
 
 
 def missing_labels(client: Client) -> list[str]:
+    """The merge-train labels the repository does not have."""
     return [name for name in LABELS if client.label(name) is None]
 
 
 def create_labels(client: Client, names: Iterable[str]) -> None:
+    """Creates the merge-train labels `names` with their colour and description."""
     for name in names:
         color, description = LABEL_STYLES[name]
         client.create_label(name, color, description)
 
 
 def apply(client: Client, plan: Plan) -> None:
-    """Performs the plan's writes through the client (CI, or a session allowed to write)."""
+    """Performs the plan's writes through the client (CI, or a session allowed to write), in
+    `Plan.actions`' order. A push in between is caught by the caller's `verify` (V2)."""
     create_labels(client, missing_labels(client))
-    for action in plan.actions():
-        if action["action"] == STEP_COMMENT:
-            client.comment(plan.pr, str(action["body"]))
-        else:
-            client.add_label(plan.pr, READY_LABEL)
+    if plan.body is not None:
+        client.comment(plan.pr, plan.body)
+    if plan.label:
+        client.add_label(plan.pr, READY_LABEL)
 
 
 def report(verdict: Verdict) -> str:
