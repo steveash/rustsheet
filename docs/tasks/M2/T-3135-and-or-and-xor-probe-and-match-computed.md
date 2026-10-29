@@ -3,7 +3,7 @@ id: T-3135
 title: "AND, OR and XOR: probe and match computed, array and padded TRUE/FALSE text and a FALSE text beside a logical"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -45,22 +45,32 @@ The answer comes from a committed oracle case, and coercion.md drops the "unprob
   `#VALUE!`).
 
 ## Acceptance criteria
-- [ ] `probes/t3135-and-or-xor-computed-bool-text` is committed with its excel-graph oracle sidecar. It covers, for
+- [x] `probes/t3135-and-or-xor-computed-bool-text` is committed with its excel-graph oracle sidecar. It covers, for
       AND, OR and XOR:
       - computed "TRUE" and "FALSE" (`&`, IF, T, LOWER, a LET-bound string);
       - array-constant and array-result elements;
       - leading and trailing spaces, and a CHAR(160) pad;
       - "FALSE" beside TRUE and beside FALSE;
       - each form alone.
-- [ ] Every cell of that case passes, and probes/and-or-xor-text-arguments, -picked-text and -error-order keep all
+- [x] Every cell of that case passes, and probes/and-or-xor-text-arguments, -picked-text and -error-order keep all
       their passing cells (`make eval-check`: 0 regressions; `make eval-baseline` run).
-- [ ] coercion.md "AND/OR/XOR text arguments" states the probed rule as VERIFIED with the case id and cells. The
+- [x] coercion.md "AND/OR/XOR text arguments" states the probed rule as VERIFIED with the case id and cells. The
       "unprobed" clauses are removed or narrowed to what is still open. `logical_nary`'s doc comment matches.
-- [ ] If the probe shows cells no single rule fits within size S, the fitted cells pass, the rest are recorded as
+- [x] If the probe shows cells no single rule fits within size S, the fitted cells pass, the rest are recorded as
       known failures by `make eval-baseline` (never hand-edited), and a follow-up task names them.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - NOT (already probed: probes/not-array-cast, ironcalc-calc LOGICAL/NOT.xlsx).
 - Text "TRUE" in referenced or picked cells (already probed, T-1685).
 - IF's own condition coercion.
+
+## Outcome
+probes/t3135-and-or-xor-computed-bool-text (21 forms × AND/OR/XOR beside TRUE, beside FALSE and alone; 189 cells,
+excel-graph) settles the rule. A direct scalar text that is exactly "TRUE" or "FALSE" (any case) counts, however it
+was computed (`&`, IF, T, LOWER, LET). Padded text (spaces, CHAR(160)) is skipped, because the parse does not trim.
+Array elements are skipped, in constants and in computed arrays. This is the engine's existing "by source" model
+(`ItemSource::Direct` through `cast_to_bool`), so the engine already passed all 189 cells and needed no code change.
+The fallback criterion did not apply: every cell fits the one rule. coercion.md drops the "unprobed" clauses and
+states the rule as VERIFIED, and the doc comment on `logical_nary` matches it.
+Eval delta: +189 passing probe cells (new case), 0 regressions.

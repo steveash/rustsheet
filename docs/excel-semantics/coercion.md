@@ -387,7 +387,8 @@ whether it is literal or computed, empty or not: `AND("1",TRUE)`, `AND("abc",TRU
 `AND("",TRUE)`, `AND(""&"1",TRUE)`, `AND(IFERROR("1",0),TRUE)`, `AND(T("1"),TRUE)`, `AND(("1"),TRUE)`
 and `AND("1",1)` are TRUE, and `AND("1",FALSE)` is FALSE. Text in an array literal (`{"1",TRUE}`) and in
 referenced cells (A1 = "x", A2 = "1") is skipped as well. A literal "TRUE" argument counts as TRUE,
-case-insensitively (`OR("true",FALSE)` = TRUE; computed and array "TRUE" text are unprobed; "FALSE" next to a logical is unprobed, while `AND("FALSE")` alone is FALSE in ironcalc E48), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+case-insensitively (`OR("true",FALSE)` = TRUE), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+What counts is a direct scalar text whose whole value is "TRUE" or "FALSE" (any case), however it was computed: `""&"TRUE"`, `IF(TRUE,"TRUE")`, `T("TRUE")`, `LOWER("TRUE")` and `LET(s,"TRUE",s)` count as TRUE and their "FALSE" forms as FALSE, beside a logical and alone (`AND(""&"FALSE",TRUE)` and `AND("FALSE",TRUE)` are FALSE, `XOR(T("TRUE"),TRUE)` is FALSE, `OR(LOWER("TRUE"))` is TRUE). The parse does not trim: `" TRUE"`, `"TRUE "`, `" FALSE"`, `"FALSE "` and a CHAR(160) pad are skipped like any other text (`AND(" FALSE",TRUE)` is TRUE, `OR(" TRUE")` is `#VALUE!`). Array elements are skipped whatever their text, in a constant or a computed array: `{"TRUE"}`, `{"FALSE"}`, `IF({1},"TRUE")` and `{"TRUE","FALSE"}` change nothing beside a logical and are `#VALUE!` alone. So text counts by its source (a direct value, not a reference or array element), not by the argument's syntax. Evidence: probes/t3135-and-or-xor-computed-bool-text (21 forms in rows 2-22 × AND/OR/XOR beside TRUE, beside FALSE and alone in B:J, 189 cells, excel-graph, T-3135); `AND("FALSE")` alone is also FALSE in ironcalc E48.
 A "TRUE"/"FALSE" text cell is skipped as well, also when a function picks it: with A1 = "TRUE" and A2 = "FALSE",
 `AND`, `OR` and `XOR` of `IF(TRUE,A1)`, `INDEX(A1:A2,1)`, `XLOOKUP(1,{1},A1:A1)`, `CHOOSE(1,A1)`, `LET(x,A1,x)`,
 `TAKE(A1:A2,1)` and `OFFSET(A1,0,0)` are all `#VALUE!` (picked cells are references; evidence:
@@ -402,9 +403,10 @@ EverythingTests!J136 caches `#VALUE!` for `AND("1",1)`, where current Excel for 
 follows the web, and J136 stays a known failure until a 16.x desktop value decides (M14). I136 `AND(E14,E17,"1")`
 is not a conflict: E14 and E17 hold text or are empty, so every argument is skipped and both versions give `#VALUE!`.
 Evidence: probes/and-or-xor-text-arguments (84 cells, excel-graph, 2026-10-11, T-0258); ironcalc-calc
-LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53; gen-m2/893302d6c5b99e2e Calc!A108 (excel-graph).
+LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53; gen-m2/893302d6c5b99e2e Calc!A108 (excel-graph); probes/t3135-and-or-xor-computed-bool-text (189 cells,
+excel-graph, 2026-10-29, T-3135).
 Status: VERIFIED (web); CONFLICTING with the Excel 15 cached J136. The engine passes every probe cell.
-Tasks: T-0258, T-1075
+Tasks: T-0258, T-1075, T-3135
 
 ## GCD / LCM / MULTINOMIAL range cells
 Rule: GCD, LCM and MULTINOMIAL take ranges, but unlike SUM they do not skip what is not a number: a
