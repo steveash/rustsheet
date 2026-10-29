@@ -3,7 +3,7 @@ id: T-3157
 title: "T reads a LET-bound or @-wrapped volatile pick once"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
