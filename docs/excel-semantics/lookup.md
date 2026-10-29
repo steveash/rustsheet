@@ -157,7 +157,18 @@ column lifts too (`ROWS(VLOOKUP(D:D,A1:B4,2,FALSE))` is 1048576) and the engine 
 shared cell-visit cap (criteria.md): elements times the evaluated cells of the searched column or row,
 whatever the table is (DEVIATION, decision 0014: `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)`
 is `#ERROR!`).
-Unprobed: blank elements of a multi-cell lookup_value.
+A blank element of a multi-cell lookup_value is looked up exactly as the scalar blank-cell key: as the number 0, in every
+form. That holds for the blank middle cell of a range (`VLOOKUP(Keys!A1:A3,..)`, `HLOOKUP(Keys!C1:E1,..)`,
+`MATCH(Keys!A1:A3,..)`), for the blank element of an array (`IF({1;0;1},Keys!A1:A3,Keys!G1)`), and for a whole-column
+lookup_value read inside the used area and far below it (`INDEX(VLOOKUP(Keys!A:A,..),1000)`). Against tables holding a 0
+row, a `=""` row, a FALSE row or only a blank row among numbers, the blank element finds the 0 row and nothing else in
+exact mode (`#N/A` against the `""`, FALSE and blank tables), lands on the 0 row where there is one and otherwise on
+the last number below 0 (the -1 row) in the approximate VLOOKUP/HLOOKUP TRUE and `MATCH(..,1)`, and takes the smallest number at or above 0 in `MATCH(..,-1)`. It is
+never `""` or FALSE, and it never matches a blank row. The non-blank elements of the same lookup_value are unaffected.
+Evidence for the blank elements: probes/t3096-lookup-value-blank-elements (200 Calc cells, plus the 3 `=""` table
+cells on Data that make the baseline's 203; excel-graph, 2026-10-29, T-3096; Calc rows 16-22 the range middle, 37-43
+the array element, 44-51 the whole column, each identical to the scalar control rows 2-8 across the four tables in
+columns B-E). The engine matches every cell: `lift_values` hands a blank element to `lookup_index` as the blank key.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
 `Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
@@ -660,11 +671,13 @@ MATCH, XMATCH, XLOOKUP and LOOKUP.
   row: `XMATCH(J5,A1:A5,-1)` is 5 and `XLOOKUP(J5,A1:A5,B1:B5,"nf",-1)` is "e". That is the existing blank-key behavior, not a new
   rule: the blank is the number 0 in the approximate lookups (below 10, so `#N/A`; see "Approximate-match lookups") and larger than
   every number in XMATCH/XLOOKUP (so -1 takes the last row; see "XMATCH / XLOOKUP linear search over blanks"). The probe has no 0,
-  `""` or blank candidates, so it does not test those against a reference-shaped key.
+  `""` or blank candidates, so it does not test those against a reference-shaped key. The plain blank-cell key against
+  tables that do hold a 0, a `=""`, a FALSE or a blank row is probes/t3096-lookup-value-blank-elements Calc rows 2-8: it
+  finds only the 0 row (exact), and lands as the number 0 would in the approximate searches (above).
 Evidence: probes/lookup-reference-lookup-value-blank-error (165 cells: 5 shapes x {blank, #DIV/0!, #N/A} x 11 lookups;
 excel-graph, 2026-10-12, T-1371). The engine already matches every cell.
 Status: VERIFIED
-Tasks: T-1371
+Tasks: T-1371, T-3096
 
 ## XMATCH and XLOOKUP next-smaller mode: text sorts above every number
 Rule: with match_mode -1 (exact or next smaller), a text lookup_value that is not found among numbers takes the last number:
@@ -902,6 +915,26 @@ Ours: `take_drop_reference` reads a one-cell reference argument, on this sheet o
 one-cell range, before choosing its value or reference read (T-3072).
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2519, T-3072
+
+## TAKE/DROP of a variable bound to one cell is a reference
+Rule: a LET variable or LAMBDA parameter bound to a one-cell reference is that reference as TAKE's, DROP's or TRIMRANGE's array, read
+bare, as a LET body (nested LETs too) or as the arm IF picks, as a written one-cell reference is (above): `TYPE(TAKE(LET(v,A2,v),1))`,
+`TYPE(TAKE(LET(v,A2,acc,v,y,"?b",acc),-1,-1))`, `TYPE(TAKE(LET(v,A2,LET(w,v,w)),1))`, `LET(v,A2,TYPE(TAKE(v,1)))`,
+`LET(v,A2,TYPE(TAKE(IF(TRUE,v),1)))`, `TYPE(DROP(LET(v,A2,v),0))` and `TYPE(LAMBDA(v,TAKE(v,1))(A2))` are 1 (not a 1x1 array's 64), and
+`ISREF` of `TAKE(LET(v,A2,v),1)`, `TAKE(v,1)`, `TAKE(IF(TRUE,v),1)`, `DROP(LET(v,A2,v),0)`, `TRIMRANGE(LET(v,A2,v))` and of the LAMBDA
+form is TRUE. So a blank one reads as a blank cell: `TAKE(LET(v,A1,v),1)` is 0 in a cell, `TAKE(LET(v,A1,acc,v,acc),-1,-1)&""` is "",
+`TYPE(TAKE(LET(v,A1,v),1)+0)` 1; and with A3 text `ROWS(A2-TAKE(LET(v,A3,v),2,42))` is `#VALUE!`. A variable bound to a value stays an
+array: `TYPE(TAKE(LET(v,5,v),1))`, `TYPE(TAKE(5,1))`, `TYPE(TAKE(LET(v,A2+0,v),1))` and `TYPE(TAKE(LET(v,{5},v),1))` are 64, as is a lifted
+count, `TYPE(TAKE(LET(v,A1,v),{1;1}))`. A multi-cell binding was already its range (`TYPE(TAKE(LET(v,B1:B4,v),-1))` 1,
+`TYPE(TAKE(LET(v,B1:B4,v),2)-1)` 64, `ROWS(TAKE(LET(v,B1:B4,v),3))` 3).
+Evidence: probes/t2622-take-let-reference-lambda-text P1-P30 (excel-graph, 2026-10-29, T-2622); gen-m9/1b31092a0d79e5f1 Calc!A143
+(probes/t2475-stat-subexpressions P!A70, `TAKE(LET(v,D05!A$11,acc,v,y,"?b",acc),-1,-1)` 0 with TYPE 1).
+Ours: `Model::cell_variable_reference` (functions/logical/let.rs), read by TAKE's and DROP's value path (`value_or_grid` with
+`keep_cell_variables`) and by `evaluate_picked_source` for TAKE, DROP and TRIMRANGE as a reference argument; OFFSET's counts and every
+other consumer still read such a variable as its cell's value (T-2622). TRIMRANGE's value read of one (`TYPE(TRIMRANGE(LET(v,A2,v)))`) is
+unprobed.
+Status: VERIFIED (excel-graph); implemented
+Tasks: T-2622
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or

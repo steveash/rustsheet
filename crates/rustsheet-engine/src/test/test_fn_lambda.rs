@@ -432,3 +432,19 @@ fn a_root_cells_lambdas_are_dropped_once_it_is_evaluated() {
     assert_eq!(model._get_text("A2"), *"133");
     assert!(model.lambdas.is_empty());
 }
+
+/// An uncalled LAMBDA joined as text is `#VALUE!` on either side of `&`
+/// (probes/t2622-take-let-reference-lambda-text Q1-Q10; T-2622).
+#[test]
+fn uncalled_lambda_joined_as_text_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(x,x)&\"\"");
+    model._set("A2", "=\"a\"&LET(f,LAMBDA(x,x),f)");
+    model._set("A3", "=ERROR.TYPE(LAMBDA(x,x)&LAMBDA(y,y))");
+    model._set("A4", "=IFERROR(LAMBDA(x,x)&\"\",\"e\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("A4"), "e");
+}
