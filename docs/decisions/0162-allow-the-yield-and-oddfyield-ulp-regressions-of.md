@@ -11,7 +11,7 @@
   - The same start, evaluated exactly with an exact term and rounded once, makes 503 of the lab's
     761 YIELD probe cells bit-exact, against 441 for the formula in doubles. x87 64-bit
     intermediates score the same 503, and 64 mixes of rounded and exact intermediates score no
-    better. In the engine (double-double, `yield_start`), it fixes 245 known failures in probes,
+    better. In the engine (double-double, `yield_start`), it fixes 237 YIELD and ODDFYIELD known failures in probes (and 8 t3097 nesting cells whose baseline was stale),
     9 in ironcalc-calc and 2 in gen-m9. ODDFYIELD shares the start and gains with YIELD: in
     oddfyield-solver-sweep alone, 112 fixed and 8 regressed. In-scope visibly-off cells go from
     2,885 (the lock) to 2,862.

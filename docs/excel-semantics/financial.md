@@ -2563,7 +2563,7 @@ T-2974 (attempt 2, 2026-10-29): Excel's start is the fitted formula **rounded on
 - Rounding up fixes C2, C7, C8, B39 and B49, but not P!B2. No single perturbation of `T` fits all eight basis-0 rates
   (r = 0 needs none, r = 0.06 needs 6 to 20 ulps of `T`).
 - The engine now computes `(400 r N + 4 (100 - pr) Y) / (2 N (100 + pr) - (100 - pr) Y)`, with `T = N/Y`, in
-  double-double (`yield_start`). In the eval this fixes 256 known failures and moves 148 YIELD and ODDFYIELD cells off
+  double-double (`yield_start`). In the eval this fixes 248 YIELD and ODDFYIELD known failures and moves 148 YIELD and ODDFYIELD cells off
   the bit, 9 of them visibly (decision 0162, follow-up T-3152). In-scope visibly-off cells go from 2,885 to 2,862.
 - yield-start-rate-term B49 has Excel's start now, but stays off (15 ulps) on the engine's PRICE, which differs from
   the lab's `^` PRICE in the last bits (T-3144). In the lab it is bit-exact.
