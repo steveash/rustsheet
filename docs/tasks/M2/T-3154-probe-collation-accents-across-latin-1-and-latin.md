@@ -3,7 +3,7 @@ id: T-3154
 title: "Probe collation accents across Latin-1 and Latin Extended-A on one letter, stacked combining marks, and Cyrillic ё/й as accent or letter"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
