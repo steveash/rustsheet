@@ -97,7 +97,11 @@ file and its acceptance criteria.
    Do not add a line to `docs/status.md`: the squash commit and the Outcome are the record, and the
    steward summarizes merged work daily (decision 0024).
 2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
-   `.github/pull_request_template.md`, pasting the eval delta and the review table.
+   `.github/pull_request_template.md`, pasting the eval delta and the review table. When the
+   task has `issue: <N>` (it came from a GitHub issue; the `issue-intake` skill, decision 0158),
+   the PR body says `Closes #<N>`, or `Part of #<N>` while `python3 scripts/tasks.py issue <N>`
+   shows other open tasks for that issue, or `Refs #<N>` when part of the issue waits on the owner
+   (`needs-owner`). A follow-up with `issue_origin: <N>` says none of these.
 3. Check the PR's `mergeable_state` at once and after every push: a conflicting PR gets no CI,
    so resolve conflicts immediately per the `steward` skill ("Merge conflicts are never waiting
    on CI"). Merge `origin/main` in before the lock only as the `steward` skill's "When to merge

@@ -586,3 +586,31 @@ fn test_database_prefix_criteria_keep_lone_surrogates() {
     );
     assert!(prefix_a(&text(&a_low)));
 }
+
+#[test]
+fn ordering_criteria_compare_the_cell_at_15_digits() {
+    // probes/t3072-criteria-near-equal-order (excel-graph, T-3084): 1+22*2^-52 and 1-4*2^-53 print as 1
+    // and meet "<=1" and ">=1" but neither "<1" nor ">1"; 1+23*2^-52 and 1-5*2^-53 do not round to 1.
+    let mut model = crate::test::util::new_empty_model();
+    model._set("A1", "=1+22*2^-52");
+    model._set("A2", "=1-4*2^-53");
+    model._set("A3", "=1+23*2^-52");
+    model._set("A4", "=1-5*2^-53");
+    for (row, cell) in ["A1", "A2", "A3", "A4"].iter().enumerate() {
+        let r = row + 1;
+        model._set(&format!("B{r}"), &format!("=COUNTIF({cell},\"<1\")"));
+        model._set(&format!("C{r}"), &format!("=COUNTIF({cell},\"<=1\")"));
+        model._set(&format!("D{r}"), &format!("=COUNTIFS({cell},\">1\")"));
+        model._set(
+            &format!("E{r}"),
+            &format!("=SUMIF({cell},\">=1\",{cell})>0"),
+        );
+    }
+    model.evaluate();
+
+    let row = |r: u32| ["B", "C", "D", "E"].map(|c| model._get_text(&format!("{c}{r}")));
+    assert_eq!(row(1), ["0", "1", "0", "TRUE"]);
+    assert_eq!(row(2), ["0", "1", "0", "TRUE"]);
+    assert_eq!(row(3), ["0", "0", "1", "TRUE"]);
+    assert_eq!(row(4), ["1", "1", "0", "FALSE"]);
+}

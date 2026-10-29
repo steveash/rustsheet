@@ -429,6 +429,18 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
+        self.value_or_grid(node, cell, false)
+    }
+
+    /// [`Self::evaluate_value_or_grid`], where `keep_cell_variables` reads a variable bound to
+    /// one cell as that reference ([`Model::cell_variable_reference`]), also as the arm IF or
+    /// CHOOSE picks or a LET body: TAKE's and DROP's array (T-2622).
+    pub(crate) fn value_or_grid(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        keep_cell_variables: bool,
+    ) -> RefArg {
         match node.ungrouped() {
             Node::FunctionKind {
                 kind:
@@ -444,7 +456,7 @@ impl Model {
                 args,
             } => match self.if_pick(args, cell) {
                 Picked::Node(arm) if may_hand_on_grid(arm) => {
-                    self.evaluate_value_or_grid(arm, cell)
+                    self.value_or_grid(arm, cell, keep_cell_variables)
                 }
                 Picked::Node(arm) => RefArg::from(self.if_branch_value(arm, cell)),
                 Picked::Value(value) => RefArg::Value(value),
@@ -454,7 +466,7 @@ impl Model {
                 args,
             } => match self.choose_pick(args, cell) {
                 Picked::Node(arm) if may_hand_on_grid(arm) => {
-                    self.evaluate_value_or_grid(arm, cell)
+                    self.value_or_grid(arm, cell, keep_cell_variables)
                 }
                 Picked::Node(arm) => RefArg::from(self.choose_arm_value(arm, cell)),
                 Picked::Value(value) => RefArg::Value(value),
@@ -464,9 +476,15 @@ impl Model {
                 args,
             } => self
                 .let_scope(args, cell, |model, body| {
-                    model.evaluate_value_or_grid(body, cell)
+                    model.value_or_grid(body, cell, keep_cell_variables)
                 })
                 .unwrap_or_else(RefArg::Value),
+            node @ Node::NamedVariableKind { .. } if keep_cell_variables => {
+                match self.cell_variable_reference(node) {
+                    Some(reference) => RefArg::from(reference),
+                    None => self.value_or_grid(node, cell, false),
+                }
+            }
             node @ Node::NamedVariableKind { .. } if self.is_grid_variable(node) => {
                 self.variable_reference(node, cell)
             }
