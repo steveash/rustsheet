@@ -3,7 +3,7 @@ id: T-3067
 title: "CUMIPMT and CUMPRINC: the cells T-2521 left (type 1 operation order of G2/H2, tiny-rate interest of both types, periods near 1E15)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -87,3 +87,16 @@ cells off and nothing in the kernel changed. Follow-up: T-3118 (the rule, after 
 bits (the best type 1 form on Excel's PMT is exact on 22 of 58), A352 and the cells near period 1E15 (financial.md
 "T-3067 notes"). Eval delta: one new probe case, 226 cells, 66 passing; the 160 failing cells are new known failures
 (68 visibly off, all interests that ride on PMT's or CUMPRINC's ulps); no regressions.
+
+## Outcome (run 5, 2026-10-29; done)
+Probed where `v^nper` underflows (probes/fin-cumprinc-underflow-ends, 124 cells): Excel's last-m principal does not
+depend on nper (nper 1E6, 1E10, 1E12 and 1E15 give the same doubles), so the near-1E15 cells are an m-period sum on a
+whole `pv·r` payment. Type 0's short principal there is now the balance drop on Excel's EXP, Kahan's expm1 and
+`growth_log` (`underflowed_principal`, below `GEOMETRIC_MIN_LEAD`), exact on 70 of 108 underflowed principals.
+Eval delta: 22 known failures fixed (fin-cumipmt-overflow-and-forms A9, A11; fin-cumipmt-period-bound A19;
+fin-remaining-later-argument-ranges K3; fin-cumprinc-near-1e15 A1, A5, A6, A8, A11, B2, B3, B5-B8, C3, C12, E1, E5, E6,
+E8, E11); 7 regressions under decision 0160 (fin-cumprinc-near-1e15 A7, B1, B4, B9, C6, C10 by an ulp; E7 by 16 ulps,
+visibly); the new case 72 of 124 to the bit (52 new known failures); visibly-off in-scope cells 2,833 to 2,822.
+Every cell the Goal lists is now visibly right or documented in financial.md with the forms tried ("T-3067 notes"), so
+the task is done. Left to follow-ups: the interest as `PMT·m - CUMPRINC` with G2/H2, the tiny-rate interests, A352 and
+A379 (T-3118, after T-3014); the underflowed principal's bits, E7, A10 and type 1's A18 (T-3141); last digits (T-1374).
