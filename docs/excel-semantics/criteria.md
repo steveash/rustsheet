@@ -127,8 +127,11 @@ Rule: a number cell meets an ordering criterion by its 15-digit value, like `=` 
 COUNTIFS and SUMIFS. The criterion's own operand is text, already cut to 15 digits when parsed.
 Evidence: probes/t3072-criteria-near-equal-order (288 criteria cells); details in numbers.md "Criteria ordering
 operators compare at 15 digits too".
-Status: VERIFIED (engine not yet: `result_is_less_than_number` and the other three ordering matchers in
-functions/criteria.rs compare raw doubles, T-3103)
+Status: VERIFIED
+Implemented in: `result_is_less_than_number` and the other three ordering matchers (functions/criteria.rs), on
+`cmp_excel_precision`, and in the indexed *IFS cache (`number_interval`, functions/statistical/ifs_cache.rs).
+AVERAGEIF(S), MINIFS/MAXIFS and the D-functions share these matchers but have no oracle cell near a rounding
+boundary yet. Tasks: T-3084, T-3103
 
 ## Text `<=` / `>=` criteria, and dotted dates are text in en-US
 Rule: `"<=text"` and `">=text"` compare the cell text with the operand, case-insensitively, like
