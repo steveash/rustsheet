@@ -77,6 +77,14 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
   same probe found bpser `#NUM!` once 1/B(a, b) overflows and 5 bgrat/bfrac cells where ours are `#NUM!` (11 off cells,
   T-3104). No engine change; eval: +27 probe cells (16 pass, 11 baselined as known failures).
 
+- 2026-10-29: SPEC-0025's layout and tests: `bratio/mod.rs` is split into `bpser.rs` (bpser and its ln B) and `bup.rs`
+  (bup, L140); the branch fixture `test/fixtures/bratio_beta_dist.fixture` (857 BETA.DIST cdf cells, branch and swap from
+  r2-bratio's model; `docs/research/t3007/make_bratio_fixture.py`) backs the dispatch test (857 of 857 agree), a per-branch
+  bit-exact ratchet and the complement, swap and monotonicity properties (spec amended for the single fixture). Excel's
+  cdf itself falls by an ulp at three adjacent-double pairs (statistics.md "BETA.DIST's cdf is not monotone in its last
+  bit"). `beta_density::ln_beta_small_shape` stays separate from bpser's ln B, with the reason in its doc comment. No
+  value changes.
+
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
       its scores.

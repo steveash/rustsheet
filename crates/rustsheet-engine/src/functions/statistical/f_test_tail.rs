@@ -17,8 +17,9 @@
 //! Every loop is bounded (bratio's series bound, and `bup`'s n below 40).
 
 use super::beta_density::beta_density_small_shape;
+use super::bratio::bpser::bpser_with_ln_beta;
 use super::bratio::ln_beta::neg_ln_beta_half_integer;
-use super::bratio::{bpser_with_ln_beta, EPS};
+use super::bratio::EPS;
 use super::gammaln::excel_gammaln;
 use crate::arithmetic::{extended_quotient, extended_sum};
 use crate::x87_log10::excel_ln;
@@ -141,7 +142,7 @@ fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::bratio::bpser_neg_ln_beta;
+    use super::super::bratio::bpser::bpser_neg_ln_beta;
     use super::{f_test_bratio_p, neg_ln_beta};
     use crate::test::util::ulps;
     use crate::x87_register::Register;
@@ -233,7 +234,7 @@ mod tests {
         }
     }
 
-    // F.TEST's ln B is not BETA.DIST's bpser ln B (`bratio::bpser_neg_ln_beta`), so bpser takes it
+    // F.TEST's ln B is not BETA.DIST's bpser ln B (`bratio::bpser::bpser_neg_ln_beta`), so bpser takes it
     // as an argument: at the L140 shape 1/2 it reads GAMMALN(1/2) as gamln1(1/2) - LN(1/2), an ulp
     // apart once stored (A141 and A119 are bit-exact with it). Above a shape of 8 with both shapes
     // above 1 the two share the accurate half-integer value (T-3007).
