@@ -3,7 +3,7 @@ id: T-2989
 title: "Hand merges to the merge train behind a switch: skills and process docs"
 milestone: M2
 lane: quality
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -46,18 +46,34 @@ prompt itself lands in T-2996; this task makes the skills match it.)
   - `scripts/merge_train.toml`: `mode = "shadow"`.
 
 ## Acceptance criteria
-- [ ] The texts above agree with SPEC-0027 for `lock`, `shadow` and `train`. In `lock` mode they
+- [x] The texts above agree with SPEC-0027 for `lock`, `shadow` and `train`. In `lock` mode they
       describe today's flow under the fair lock.
-- [ ] The steward skill's daily step runs `make merge-train-stats` and applies SPEC-0027's
+- [x] The steward skill's daily step runs `make merge-train-stats` and applies SPEC-0027's
       thresholds.
-- [ ] The work-loop and steward skills describe the emergency-flip procedure and the revert-PR
+- [x] The work-loop and steward skills describe the emergency-flip procedure and the revert-PR
       handling exactly as SPEC-0027 states them.
-- [ ] docs/status.md's "Needs owner" entry for owner step 3 (update the worker and steward
+- [x] docs/status.md's "Needs owner" entry for owner step 3 (update the worker and steward
       routines) now says it is due, since this task's merge is what makes it due.
-- [ ] `scripts/merge_train.toml` says `mode = "shadow"`. A short decision record lands in this PR,
+- [x] `scripts/merge_train.toml` says `mode = "shadow"`. A short decision record lands in this PR,
       and the architecture and security reviewers approve.
-- [ ] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`, `make typos` and the
+- [x] `tasks.py validate`, `check_decisions.py`, `check_docs_readers.py`, `make typos` and the
       scripts unit tests pass.
 
 ## Out of scope
 - Setting `mode = "train"` (T-2991). Creating routines, which only the owner can do.
+
+## Outcome
+- `scripts/merge_train.toml` says `mode = "shadow"` (decision 0164); `test_the_switch_file_says_shadow`
+  pins it.
+- work-loop step 6.3: `make merge-mode`, then per mode: `lock` = the per-PR flow under the fair lock;
+  `shadow` = `make mark-ready` (with the `STEP=1` fallback) and then the per-PR flow, unlabelling after the
+  merge; `train` = mark ready and move on, with the 45-min stall fallback. Also ejections, `CARRY=1`, revert
+  PRs and the emergency flip.
+- steward skill: merge-policy condition (c) per mode; a "Merge train" section (modes, marking, ejections,
+  stall fallback, revert PRs, `lock`-mode housekeeping); "Emergency flip to `lock`"; orphaned PRs marked
+  ready in `train` mode; the daily `make merge-train-stats` check and its thresholds (the target is T-3076,
+  still todo, so the skill says to note its absence and skip); the merge queue stays dormant.
+- agent-workflow.md: the Merger role and loop step 9 per mode. routines.md and docs/status.md: owner step 3
+  is due now.
+- Follow-up: T-3155 (`mark-ready` drops `merge-train-ejected` itself).
+- Eval delta: none (process docs and a config switch).
