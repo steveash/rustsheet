@@ -115,7 +115,7 @@ impl Model {
             // T-3072).
             self.evaluate_node_with_reference(&args[0], cell)
         } else if reads_grid {
-            match self.evaluate_value_or_grid(&args[0], cell) {
+            match self.value_or_grid(&args[0], cell, true) {
                 RefArg::Grid(elements) => {
                     let values = elements.to_values();
                     grid = Some(elements);
@@ -124,7 +124,7 @@ impl Model {
                 other => other.into_single_area(cell),
             }
         } else {
-            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context, true)
         };
         let counts = self.reference_lift_values(&args[1..], cell);
         if counts.as_slice().iter().any(lifts_one_by_one) {
@@ -301,13 +301,22 @@ impl Model {
     /// returns an array gives values (probes/take-drop-trimrange-over-xlookup, -b; T-1998;
     /// `TAKE(IFS(TRUE,XLOOKUP(..)),1,1)` too, probes/take-drop-over-ifs-switch-picks, T-2071).
     /// Any other node is read as `read` says (TAKE's own read, or the picking function's read of
-    /// its arm). Each condition, index and binding is read once; bounded by the parser's depth cap.
+    /// its arm), except that `keep_cell_variables` reads a variable bound to one cell, there too,
+    /// as that reference ([`Model::cell_variable_reference`]): TAKE's, DROP's and TRIMRANGE's
+    /// array (`ISREF(TAKE(LET(v,A2,v),1))` is TRUE, T-2622), not OFFSET's counts. Each condition,
+    /// index and binding is read once; bounded by the parser's depth cap.
     pub(super) fn evaluate_picked_source(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
         read: fn(&mut Self, &Node, CellReferenceIndex) -> CalcResult,
+        keep_cell_variables: bool,
     ) -> CalcResult {
+        if keep_cell_variables {
+            if let Some(reference) = self.cell_variable_reference(node) {
+                return reference;
+            }
+        }
         let Node::FunctionKind { kind, args } = node.ungrouped() else {
             return read(self, node, cell);
         };
@@ -319,14 +328,21 @@ impl Model {
                 _ => Self::evaluate_node_in_context,
             };
             return match picked {
-                Picked::Node(arm) => self.evaluate_picked_source(arm, cell, read_arm),
+                Picked::Node(arm) => {
+                    self.evaluate_picked_source(arm, cell, read_arm, keep_cell_variables)
+                }
                 Picked::Value(value) => value,
             };
         }
         match kind {
             Function::Let => self
                 .let_scope(args, cell, |model, body| {
-                    model.evaluate_picked_source(body, cell, Self::evaluate_node_in_context)
+                    model.evaluate_picked_source(
+                        body,
+                        cell,
+                        Self::evaluate_node_in_context,
+                        keep_cell_variables,
+                    )
                 })
                 .unwrap_or_else(|error| error),
             _ if kind.picks_reference() => self
