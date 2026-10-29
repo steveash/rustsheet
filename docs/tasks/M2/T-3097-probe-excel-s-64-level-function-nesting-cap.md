@@ -57,3 +57,14 @@ refuses, the API refuses a typed formula Excel refuses, and every formula Excel 
 - Raising `MAX_FORMULA_DEPTH` or `MAX_VALUE_OPERATORS` (a spec first, if the probe shows Excel accepts deeper trees).
 - Defined-name bodies, conditional-format and data-validation formulas: file a follow-up if the rule applies to them.
 - Desktop Excel's typed-formula dialog (M14).
+
+## Progress (run 1, 2026-10-29; the task stays in progress)
+- Probed on excel-graph (60 inputs; 44 committed as `probes/t3097-nesting-*`, stored and typed). Excel accepts 65 nested
+  function calls and refuses 66 (stored: createSession 501; typed: 400 `InvalidArgument`) for every form: ABS, IF, SUM,
+  a mixed chain, an operator between levels, calls inside parentheses, and LET or LAMBDA innermost. Parentheses add no
+  level (255 load). The 16 refused 66-call inputs were dropped after the run. syntax.md "Formula nesting depth cap"
+  records the rule, and the UNVERIFIED sentence is gone.
+- The engine refuses 8 of the committed cases, all of which Excel accepts (paren-128, paren-255 and paren-abs-64/65,
+  past `MAX_FORMULA_DEPTH`). They are new known failures and listed as the DEVIATION.
+- Left: count function-call nesting in the parser (depth.rs), refuse 66+ calls on import (`XlsxError::Workbook`) and
+  through the API (`EditError::InvalidInput`), with unit tests at 65 and 66 for each form.

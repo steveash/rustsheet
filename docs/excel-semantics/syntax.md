@@ -158,9 +158,21 @@ one, so up to 127 nested parentheses or function calls are accepted (126 around 
 a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
 level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
-text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
-cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
-its published limit (UNVERIFIED: no oracle probe yet).
+text at 8,192 characters.
+Excel's rule (T-3097, probes/t3097-nesting-*, excel-graph 2026-10-29, stored and typed alike): a formula
+may nest 65 function calls (the outermost and 64 levels inside it) and not 66. At 66 Excel for the web
+refuses the whole workbook (createSession 501 `FileCorruptTryRepair`), and a typed formula is refused
+(Graph PATCH 400 `InvalidArgument`). The cap counts function calls only, and the same 65 holds for ABS,
+IF, SUM, a mixed ABS/SUM/INT/ROUND chain, an operator between levels (`=ABS(1+ABS(1+...))`), calls
+wrapped in parentheses (`=(ABS((ABS(...))))`), and a LET or a called LAMBDA at the innermost level
+(both count as a level). Parentheses add no level: `=((...(1)...))` loads and evaluates at 64, 65, 127,
+128 and 255 levels. The 66-call inputs (`abs`, `if`, `sum`, `mixed`, `op-abs`, `paren-abs`, `let`,
+`lambda`, stored and typed) cannot keep a sidecar, so they were dropped after the run, as T-1091's
+were. The committed 63- to 65-call cases evaluate on both sides.
+So RustSheet accepts 66 to 127 nested calls, which Excel refuses (T-3097 follow-up work). It refuses
+128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
+(t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. That is
+the DEVIATION below: the depth bound protects the stack (directive 5).
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
@@ -191,7 +203,7 @@ stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested p
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.
-Evidence: probes/operator-chain-limit (chains at and one character past the published limit) and the T-1091 refusals above; otherwise only the published limits; this is a resource limit.
+Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; the parentheses RustSheet refuses past its bound); this is a resource limit.
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
 
