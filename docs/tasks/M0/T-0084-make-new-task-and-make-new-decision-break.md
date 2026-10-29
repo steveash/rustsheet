@@ -3,7 +3,7 @@ id: T-0084
 title: "make new-task and make new-decision break on a TITLE containing a double quote"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -40,7 +40,7 @@ recipes. Another fix: escape it with `$(subst ...)`. Pick one and use it for eve
 itself (write `$$`); the help text says so. `scripts/test_makefile_titles.py` covers it (run by `make hygiene`).
 Eval delta: none. Other targets splice no free text except `CASE=` in `eval-show` (a path; left as is).
 
-## Handoff
+## Handoff (resumed)
 - Tried: `new-task`/`new-decision` recipes now use `"$$TITLE"`, `"$$LANE"`, `"$$MILESTONE"`; added
   `scripts/test_makefile_titles.py` (3 tests, pass; `make check` green locally; security/architecture/quality reviewers APPROVE).
 - Failed: CI `hygiene` job, `scripts/check_governance.py origin/main`: "protected paths changed without a decision
