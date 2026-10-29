@@ -3,7 +3,7 @@ id: T-3058
 title: "CHISQ.TEST and CHITEST take the p-value from the direct upper tail, not 1 - P"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
