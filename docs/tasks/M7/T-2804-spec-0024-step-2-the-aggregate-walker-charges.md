@@ -3,7 +3,7 @@ id: T-2804
 title: "SPEC-0024 step 2: the aggregate walker charges the array cells it reads"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,12 @@ the aggregate walker behind SUM, COUNT, AVERAGE, MIN, MAX, PRODUCT and the other
 
 ## Out of scope
 - Other whole-array readers (T-2805).
+
+## Outcome
+`walk_array_items` (aggregate_args.rs) charges `spend_cells` for the array it is about to walk, so SUM, COUNT,
+AVERAGE and the other `for_each_value` readers pay for every array cell they read. The LET/REDUCE/SUM example is
+`#VALUE!` (TOO_MUCH_WORK) in `test_formula_work.rs`; `=SUM(SEQUENCE(10))` now spends 10 more cells' units (20 C).
+Tests whose unit counts assumed a free read were updated (`sum_units`, the SPEC-0028 worked example rescaled to
+2,536 cells so a heavy cell is still 93% of the formula budget). Two cap tests (nested GROUPBY walk budget, GROUPBY
+visit cap) now raise `area_budget.limit` so the cap they cover, not the work budget, is what fires. No eval delta
+(no cases changed), no baseline change.
