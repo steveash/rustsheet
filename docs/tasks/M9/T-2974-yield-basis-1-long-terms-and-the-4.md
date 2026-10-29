@@ -3,7 +3,7 @@ id: T-2974
 title: "YIELD basis-1 long terms and the 4-year sweep row miss Excel's 15th digit by 5 to 27 ulp (yield-start-rate-term B39, B49; yield-solver-sweep C7)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
