@@ -12,7 +12,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_ready  # noqa: E402 (the sys.path line above must run first)
 import merge_train  # noqa: E402
-from test_merge_train import TYPICAL, StageFixture, run, verdict  # noqa: E402
+import merge_train_shadow  # noqa: E402
+from test_merge_train import StageFixture, run, verdict  # noqa: E402
+from test_merge_train_red import TYPICAL  # noqa: E402
 
 
 class Shadow(StageFixture):
@@ -26,9 +28,9 @@ class Shadow(StageFixture):
         for pr, head in self.heads.items():
             self.verdicts[pr] = verdict(pr, head, f"2026-10-28T0{pr}:00:00Z")
         self.push_main({merge_train.SWITCH: 'mode = "shadow"\n'})
-        self.gh.branch = merge_train.SHADOW_BRANCH
+        self.gh.branch = merge_train_shadow.SHADOW_BRANCH
         self.script(lambda prs: False)
-        self.stage = merge_train.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
+        self.stage = merge_train_shadow.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
 
     def script(self, red: Callable[[set[int]], bool]) -> None:
         def oracle(sha: str) -> str:
@@ -38,7 +40,7 @@ class Shadow(StageFixture):
         self.gh.oracle, self.gh.polls = oracle, TYPICAL
 
     def shadow_ref(self) -> str:
-        ref = f"refs/heads/{merge_train.SHADOW_BRANCH}"
+        ref = f"refs/heads/{merge_train_shadow.SHADOW_BRANCH}"
         return run("git", "for-each-ref", "--format=%(objectname)", ref, cwd=self.origin)
 
     def prediction(self) -> list[str]:
@@ -52,7 +54,7 @@ class Shadow(StageFixture):
         self.assertEqual(self.run_stage(), 0, self.stage.log)
         self.assert_no_pr_write()
         lines = self.prediction()
-        self.assertEqual(lines[0], merge_train.PREDICTION_HEADER)
+        self.assertEqual(lines[0], merge_train_shadow.PREDICTION_HEADER)
         self.assertEqual(lines[3:], [*(f"#{pr} merge" for pr in (1, 2, 3, 4, 5)),
                                      "unlabel: #1, #2, #3, #4, #5", "tree-check: match"])
         self.assertTrue(lines[2].startswith("shadow-input: "))
@@ -61,16 +63,16 @@ class Shadow(StageFixture):
     def test_a_repeated_round_pushes_nothing_and_a_moved_main_pushes_again(self) -> None:
         self.assertEqual(self.run_stage(), 0)
         tip = self.shadow_ref()
-        self.stage = merge_train.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
+        self.stage = merge_train_shadow.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
         self.assertEqual(self.run_stage(), 0)
         self.assertEqual(self.shadow_ref(), tip)
         self.assertIn("skipped: main and the ready set are unchanged", self.stage.log[-1])
         self.add_pr(6, {"f6.txt": "x"})  # sixth by marker time: not in the batch, so nothing changed
-        self.stage = merge_train.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
+        self.stage = merge_train_shadow.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
         self.assertEqual(self.run_stage(), 0)
         self.assertEqual(self.shadow_ref(), tip)
         self.push_main({"g.txt": "y"})
-        self.stage = merge_train.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
+        self.stage = merge_train_shadow.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
         self.assertEqual(self.run_stage(), 0, self.stage.log)
         self.assertNotEqual(self.shadow_ref(), tip)
 
@@ -79,7 +81,7 @@ class Shadow(StageFixture):
 
         def race(base: str, heads: Sequence[tuple[int, str]]) -> None:
             collected(base, heads)  # another shadow build pushes between the lease read and our push
-            self.gh.git("update-ref", f"refs/heads/{merge_train.SHADOW_BRANCH}", self.m0)
+            self.gh.git("update-ref", f"refs/heads/{merge_train_shadow.SHADOW_BRANCH}", self.m0)
 
         self.stage.collected = race  # type: ignore[method-assign]
         self.assertEqual(self.run_stage(), 0, self.stage.log)
@@ -123,7 +125,7 @@ class Shadow(StageFixture):
 
     def test_the_reasons_map_to_their_ejections(self) -> None:
         reasons = ("conflict with main", merge_train.id_collision(["FAIL duplicate id T-0001"]), "V2: head moved")
-        predicted = [merge_train.eject_reason(reason) for reason in reasons]
+        predicted = [merge_train_shadow.eject_reason(reason) for reason in reasons]
         self.assertEqual(predicted, ["eject:conflict", "eject:id-collision", "eject:invalidated"])
 
     def test_a_flip_before_the_push_records_nothing(self) -> None:
