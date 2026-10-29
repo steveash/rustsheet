@@ -341,7 +341,9 @@ pub(super) fn bpser_with_ln_beta(a: f64, b: f64, x: f64, neg_ln_beta: Register) 
         return None;
     }
     // A load reads a non-finite double as 0, so fl(a·LN x) = -inf (a shape near 1E308) would
-    // drop out of z: such points keep today's kernel.
+    // drop out of z: such points keep today's kernel. Excel for the web has no value to match
+    // there: it refuses a workbook holding BETA.DIST with a shape of 1E+295 or more
+    // (statistics.md "Incomplete beta at a shape near the double range", T-3007).
     let a_ln_x = extended_product(a, excel_ln(x));
     if !a_ln_x.is_finite() {
         return None;

@@ -185,6 +185,42 @@ class ExitOwners(TaskDir):
         cells = exit_owners.exit_cells(r, "M11")
         self.assertEqual([(c.criterion, f"{c.case}!{c.key}") for c in cells], [("corpus-bench", f"{corpus}!Sheet1!D4")])
 
+    def test_m9_lists_calc_the_functions_below_the_rate_and_probes(self) -> None:
+        # Decision 0146 item 3: no required suite; ironcalc-calc less exceptions, the
+        # `attributed_off` cells of each function below the rate, and the M9 probe row.
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M9",
+                "gen_suite": "",
+                "gen_visibly_off_cells": [],
+                "calc_failing": 2,
+                "calc_met": False,
+                "below_rate_functions": ["IRR"],
+                "probe_row": "M9",
+            }
+        ]
+        r["function_scope"]["rows"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["probe_milestones"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["attributed_off"] = [
+            {"case": GEN, "cell": "Calc!A1", "function": "IRR", "formula": "IRR(A1:A3)"},
+            {"case": GEN, "cell": "Calc!A107", "function": "PMT", "formula": "PMT(1,2,3)"},
+        ]
+        cells = exit_owners.exit_cells(r, "M9")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}") for c in cells],
+            [
+                ("ironcalc-calc", f"{TRIG}!S!C51"),
+                ("rate:IRR", f"{GEN}!Calc!A1"),
+                ("probes", f"{PROBE}!P!B2"),
+                ("probes", f"{PROBE}!P!B3"),
+            ],
+        )
+        self.task("1d22a002d4f380b3 Calc!A1 is IRR's", milestone="M9")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M9", self.tasks)]
+        self.assertNotIn(f"{GEN}!Calc!A1", listed)
+        self.assertIn(f"{TRIG}!S!C51", listed)
+
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")
         listed = self.listed()

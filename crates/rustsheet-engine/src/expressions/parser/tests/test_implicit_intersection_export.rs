@@ -1236,7 +1236,17 @@ fn spaced_formulas_keep_their_whitespace_and_their_at() {
             "SUM( _xlfn.SINGLE(J1:J10), 1)",
         ),
         ("ABS( {5} )", "ABS( @{5} )", "ABS( {5} )"),
-        ("N( IF(1,{2;3}) )", "N(IF(1,{2;3}))", "N(IF(1,{2;3}))"),
+        ("N( IF(1,{2;3}) )", "N( IF(1,{2;3}) )", "N( IF(1,{2;3}) )"),
+        (
+            "T( IF(1,{\"a\";\"b\"}) )",
+            "T( IF(1,{\"a\";\"b\"}) )",
+            "T( IF(1,{\"a\";\"b\"}) )",
+        ),
+        (
+            "N( CHOOSE(1,{2;3}) )",
+            "N( CHOOSE(1,{2;3}) )",
+            "N( CHOOSE(1,{2;3}) )",
+        ),
         (
             "SUM(INDEX(B1:B6, {2;3} ))",
             "SUM(INDEX(B1:B6, @{2;3} ))",
