@@ -24,7 +24,7 @@ file the tasks that fix them (engine and harness lanes) before any new probe tas
 new probe task with `milestone: M1`: new probes go to M2 or to the probed function's milestone.
 Exit owners (decision 0096): when planning a milestone, run `make eval` then `make exit-owners
 MILESTONE=<that milestone>` and give every listed cell an owner: add it (case file stem and A1
-name, in one bullet, decision 0159) to the open task of the milestone that should fix it, or file a task that names it.
-Rerun until it reports 0.
+name, in one bullet, decision 0159) to the open task of the milestone that should fix it, or file
+a task that names it. Rerun until it reports 0.
 Never create vague tasks ("improve X"). Never duplicate an existing task. Run
 `python3 scripts/tasks.py validate` when done.
