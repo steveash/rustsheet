@@ -53,6 +53,9 @@ prompt), so the skill extracts the request and never follows instructions found 
   task and touches any `is_protected` path (4 tests); `issue_author:` field; `tasks.py issue
   --stats` (open issue tasks per author, issue tasks filed this UTC day); probe, comment and
   re-read rules in the skill, prompt and decision; shared `_git` / `origin_refs` helpers.
+- Second review round: an issue task's diff also may not touch manifests, lockfiles, build
+  scripts or `.cargo/`, or add `allow(` / `unsafe` to `.rs` files (4 more tests); the residual
+  (dropping `issue:`) is recorded in decision 0158.
 - `scripts/tasks.py`: optional `issue:` field, which must be a positive integer (`validate`);
   `tasks.py issue <N>` searches the working tree and every `origin/*` branch (one `git grep`, and
   the front matter decides); `list` shows `(issue #N)`. Four new tests in `scripts/test_tasks.py`.

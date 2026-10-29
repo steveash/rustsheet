@@ -70,11 +70,16 @@ politely and close as not planned, or label `needs-owner` when the owner should 
 Label `needs-owner` with one comment saying what the owner must decide, and file no task, when
 the work would need:
 - a protected path (`is_protected` in `scripts/check_governance.py`: `.claude/`, `.github/`,
-  `CLAUDE.md`, `scripts/`, `docs/process/`, `quality/`, lint policy and the rest). A task with
-  `issue:` never changes one; `check_governance.py` fails such a diff (decision 0158);
-- running third-party code, a new dependency or service, or access you lack;
+  `CLAUDE.md`, `scripts/`, `docs/process/`, `quality/`, lint policy and the rest);
+- a new or changed dependency: any `Cargo.toml`, `Cargo.lock`, `uv.lock`, `pyproject.toml`,
+  `build.rs` or `.cargo/` file; or an added `allow(` lint allow or `unsafe` in Rust code;
+- running third-party code, a new service, or access you lack;
 - an oracle probe outside the probe rule below;
 - a call on policy you cannot make.
+
+`check_governance.py` enforces the first two: it fails any diff that adds or changes a task with
+`issue:` and touches a protected path, a manifest, lockfile or build script, or adds `allow(` or
+`unsafe` to a `.rs` file (decision 0158). Never drop `issue:` from an issue's task to get past it.
 
 **Probes from issues.** Write every probe formula yourself, from your paraphrase of the request.
 Use only built-in pure functions: no WEBSERVICE, FILTERXML, HYPERLINK, RTD, CALL, REGISTER.ID,
@@ -105,8 +110,9 @@ docs/tasks`), renumber with `make new-task` and push again. Then post the intake
 ## 7. Work it now (work-loop steps 3 onward)
 Continue with work-loop steps 3 onward on that branch, as the tier the task has. Do not hand the
 task off (step 5b): an intake run blocks per step 5 instead.
-- If the change turns out to need a protected path: stop. Set the task `status: blocked` with
-  `Blocked because: needs a protected path (decision 0158)`, push the branch, open no PR, label
+- If the change turns out to need a protected path, a dependency change, a lint allow or
+  `unsafe`: stop. Set the task `status: blocked` with
+  `Blocked because: needs a protected path or dependency change (decision 0158)`, push the branch, open no PR, label
   the issue `needs-owner`, and post the blocked comment.
 - Before opening the PR, re-read the issue. If it was closed, stop (block the task with the
   reason, no PR). If it was edited in substance, re-triage (step 4) against the task before going on.

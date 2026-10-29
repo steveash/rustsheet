@@ -121,6 +121,50 @@ class IssueTasks(unittest.TestCase):
             [],
         )
 
+    def supply(self, *lines: str, added: list[tuple[str, str]] | None = None) -> list[list[str]]:
+        return gov.failures(
+            list(lines), lambda _p: ["M2"], flip=False, has_issue=lambda p: p in self.ISSUE_TASKS,
+            added=lambda: added or [],
+        )
+
+    def test_issue_task_may_not_touch_a_manifest_lockfile_or_build_script(self) -> None:
+        for path in ("crates/rustsheet-engine/Cargo.toml", "Cargo.lock", "tools/uv.lock",
+                     "crates/rustsheet-engine/build.rs", "bindings/python/pyproject.toml", ".cargo/config.toml"):
+            found = self.supply("A\tdocs/tasks/M2/T-0500-from-issue.md", f"M\t{path}")
+            self.assertEqual(len(found), 1, path)
+            self.assertIn("manifests", found[0][0])
+            self.assertIn(f"  {path} (manifest, lockfile or build script)", found[0])
+
+    def test_issue_task_may_not_add_a_lint_allow_or_unsafe(self) -> None:
+        for text in ("#[allow(clippy::unwrap_used)]", "#![allow(dead_code)]", "    unsafe { f() }"):
+            found = self.supply(
+                "A\tdocs/tasks/M2/T-0500-from-issue.md", "M\tcrates/rustsheet-engine/src/lib.rs",
+                added=[("crates/rustsheet-engine/src/lib.rs", text)],
+            )
+            self.assertEqual(len(found), 1, text)
+            self.assertIn("lint allow or unsafe", found[0][-1])
+        self.assertEqual(
+            self.supply("A\tdocs/tasks/M2/T-0500-from-issue.md", "M\tcrates/a/src/lib.rs",
+                        added=[("crates/a/src/lib.rs", "let safe = unsafely_named + 1;")]),
+            [],
+        )
+
+    def test_ordinary_pr_may_touch_a_crate_manifest_and_add_allows(self) -> None:
+        self.assertEqual(
+            self.supply("A\tdocs/tasks/M2/T-0501-planner.md", "M\tcrates/rustsheet-engine/Cargo.toml",
+                        "M\tCargo.lock", added=[("crates/a/src/lib.rs", "#[allow(dead_code)]")]),
+            [],
+        )
+
+    def test_added_rust_lines_reads_plus_lines_of_rs_files_only(self) -> None:
+        diff = (
+            "diff --git a/crates/a/src/lib.rs b/crates/a/src/lib.rs\n--- a/crates/a/src/lib.rs\n"
+            "+++ b/crates/a/src/lib.rs\n@@ -1,0 +2 @@\n+unsafe fn f() {}\n-old\n"
+            "diff --git a/x.md b/x.md\n--- a/x.md\n+++ b/x.md\n@@ -0,0 +1 @@\n+unsafe prose\n"
+            "diff --git a/crates/a/src/gone.rs b/crates/a/src/gone.rs\n--- a/crates/a/src/gone.rs\n+++ /dev/null\n"
+        )
+        self.assertEqual(gov.added_rust_lines(diff), [("crates/a/src/lib.rs", "unsafe fn f() {}")])
+
     def test_issue_task_files_reads_front_matter_through_has_issue(self) -> None:
         seen: list[str] = []
 

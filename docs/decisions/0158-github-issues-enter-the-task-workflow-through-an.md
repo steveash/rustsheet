@@ -41,6 +41,11 @@
     not protected there and stay allowed: baseline shrinkage from `make eval-baseline` is the
     normal result of fixing cells, and the eval gate already refuses regressions. Work that needs
     a protected path gets `needs-owner`, one comment and no PR.
+  - **No supply-chain or lint surface.** A further list, applied only to a diff with an `issue:`
+    task (ordinary PRs are unaffected): it fails when the diff touches `Cargo.lock`, `uv.lock`,
+    any `Cargo.toml`, `build.rs` or `pyproject.toml` at any depth, or `.cargo/`, or when its added
+    lines (`git diff -U0` from the merge base) put `allow(` (`#[allow`, `#![allow`) or `unsafe`
+    in a `.rs` file. Such work also gets `needs-owner`.
   - **Volume.** At most 2 open issue tasks per author without write access; at most 6 issue tasks
     filed per UTC day in total (first commit of the task file, from git); spam, abuse and floods of
     duplicates get `needs-owner` and no task. `scripts/tasks.py issue --stats` gives the counts.
@@ -53,10 +58,13 @@
   - **Comments.** At most 3 per issue (intake, PR opened, merged or blocked); an outcome with no
     task is a single comment. Each ends with the "Generated with Claude Code" footer and carries
     no session link.
+- **Accepted residual:** both guards key on the `issue:` field, so a session that dropped it from
+  an issue's task would pass CI. This is accepted: the skill requires `issue:` (and `Closes #<N>`
+  ties the PR to the issue visibly), and the reviewer panel, security included, reads every diff.
 - **Protected paths changed:** `.claude/skills/issue-intake/SKILL.md` (new), the `work-loop` and
   `steward` skills, `docs/process/routines.md`, `docs/process/agent-workflow.md`,
   `docs/process/task-format.md`, `scripts/tasks.py` and `scripts/check_governance.py` with their
-  tests. The governance check gains the issue-task rule above; no other gate, CI job, lint policy
+  tests. The governance check gains the two issue-task rules above; no other gate, CI job, lint policy
   or baseline changes.
 - **Consequences:** the owner creates the "rustsheet issue intake" routine and adds the steward
   sweep step to the steward routine (docs/process/routines.md). An issue costs one session at
