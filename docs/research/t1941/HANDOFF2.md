@@ -731,3 +731,7 @@ Next (unchanged from 17.6 step 3, now first): scan the first stored stage below 
 `J=6` (N.S6, cubic tail: use scan3-style c and d grids) from C. Run it on the KN = 7 control first: the
 planted truth must come out at rank 0 there before the real scan counts. If the real J=6 scan shows a peak where the
 J=7 scan showed none, that is the structure evidence. Also run the KN = 8 variant of the 17.7 control.
+
+## 18. T-2122 run 6 (2026-10-29, single opus worker, 17.8 next step: J=6 scan below an unstored top)
+
+In progress.
