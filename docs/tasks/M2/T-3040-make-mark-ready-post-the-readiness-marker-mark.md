@@ -3,7 +3,7 @@ id: T-3040
 title: "make mark-ready: post the readiness marker (mark, --carry, labels, step-mode fallback)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
