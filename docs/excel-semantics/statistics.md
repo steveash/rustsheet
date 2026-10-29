@@ -2183,7 +2183,7 @@ t1745-beta-inv-roundtrip; probes/ftest-decomposition; gen-m9 58e3253bbd3a7a82, 6
 Ours: `incomplete_beta.rs::shape_one_tails` (w = -expm1(b0·ln1p(-x0)), w1 = (0.5 - w) + 0.5), through
 `bratio::kernel_tails` and `fisher.rs::f_tail`. Excel's w is open: 52 cells still 1 ulp off (TODO(T-3170)).
 Status: VERIFIED (excel-graph) for the complement down to w1 of about 1E-16; below 2^-53 and w's arithmetic UNVERIFIED
-Tasks: T-3007, T-2511, T-3150
+Tasks: T-3007, T-2511, T-3150, T-3170
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
 Rule: for ln(1 + a) with -0.375 <= a < 0, i.e. ln(1 - x) at x <= 0.375 (the beta density, BINOM.DIST(0,n,p), bgrat's
