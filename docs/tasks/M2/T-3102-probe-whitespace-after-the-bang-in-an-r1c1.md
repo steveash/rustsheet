@@ -23,7 +23,7 @@ T-2869 probed the A1-mode forms only (docs/excel-semantics/syntax.md, "drop afte
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Tried: scoped the probe. Blocker found: no spec cell can enter R1C1-mode text today. `{"entered": ...}` is
 written by the excel-graph backend as a `values` PATCH (tools/src/rustsheet_tools/spec2xlsx.py `entered_cells`
 via docProps `rustsheet.entered.<n>`, tools/src/rustsheet_tools/oracle/backends.py line ~84, docs/architecture/oracle.md
