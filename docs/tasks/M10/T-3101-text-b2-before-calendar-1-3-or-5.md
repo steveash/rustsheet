@@ -3,7 +3,7 @@ id: T-3101
 title: "TEXT: B2 before calendar 1, 3 or 5 tags changes the names' language"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
