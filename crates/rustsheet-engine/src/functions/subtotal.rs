@@ -520,7 +520,10 @@ impl Model {
             };
         }
         // Rounds twice like AVERAGE's (numbers.md "Division rounds twice", T-1636).
-        CalcResult::finite_number_or_num(flush_subnormal(extended_quotient(sum.snapped(), l as f64)), cell)
+        CalcResult::finite_number_or_num(
+            flush_subnormal(extended_quotient(sum.snapped(), l as f64)),
+            cell,
+        )
     }
 
     fn subtotal_sum(
