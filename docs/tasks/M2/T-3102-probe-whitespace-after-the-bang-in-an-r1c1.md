@@ -3,7 +3,7 @@ id: T-3102
 title: "Probe whitespace after the bang in an R1C1-mode formula (formulasR1C1) and what we do with S! R1C2 typed in A1 mode"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
