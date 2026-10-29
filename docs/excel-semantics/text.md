@@ -188,7 +188,7 @@ reference, while `=TEXTJOIN(",",TRUE,1:10)` in D3 is circular (0), since ignore_
 every cell (probes/textjoin-whole-rows-self-reference B5, D3, excel-graph, 2026-10-29, T-3098). The engine's
 whole-row walk with ignore_empty FALSE and clipped columns stops at the limit (`textjoin_push_padded_range`);
 the unclipped single-walk path still reads past it (unprobed).
-Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114).
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098).
 Status: VERIFIED
 Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
 sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row when
