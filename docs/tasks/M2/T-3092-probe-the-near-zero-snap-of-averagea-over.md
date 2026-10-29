@@ -3,7 +3,7 @@ id: T-3092
 title: "Probe the near-zero snap of AVERAGEA over array-constant text, FALSE cells and numeric text, and of SUBTOTAL 1 and 101"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
