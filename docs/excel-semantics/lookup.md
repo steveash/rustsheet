@@ -911,6 +911,11 @@ the 10-cell range is the count's `#N/A` (coercion.md "SUMX2MY2 / SUMX2PY2 / SUMX
 `ISTEXT(TAKE(E7:E8,1))` TRUE and `ISFORMULA(TAKE(E7:E8,1))` FALSE.
 Evidence: probes/t3072-take-drop-one-cell-reference P1-P18, P42-P57 (excel-graph, 2026-10-28, T-3072); gen-m9/7674c89c824aca43 Calc!A305
 (`CHITEST((E9-TAKE(E7,2,42)),C8:C10)` `#VALUE!`), gen-m9/7c20351562a2d71d Calc!A277.
+
+Every other one-cell reference form is the same: a defined name for `$E$7`, a LET variable bound to `E7`, `INDEX(E7:E8,1)` and `OFFSET(E7,0,0)` as the
+array of TAKE or DROP keep the reference. `ROWS(E9-TAKE(x,1))` and `ROWS(E9-DROP(x,0))` are `#VALUE!` (E7 text), `ISREF(TAKE(x,1))` is TRUE and
+`TYPE(1+TAKE(x,1))` is 1 for a number cell, for each form.
+Evidence: probes/t3085-take-drop-one-cell-forms P1-P16 (excel-graph, 2026-10-29, T-3085).
 Ours: `take_drop_reference` reads a one-cell reference argument, on this sheet or another, through `evaluate_node_with_reference`, as a
 one-cell range, before choosing its value or reference read (T-3072).
 Status: VERIFIED (excel-graph); implemented
