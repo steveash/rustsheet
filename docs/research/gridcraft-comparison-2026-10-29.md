@@ -78,7 +78,7 @@ Against RustSheet's catalog (527 names, 506 in scope, eval/catalog/scope.json):
 ## gridcraft's Excel claims against RustSheet's evidence
 gridcraft's docs describe Excel behaviours as observed. Where RustSheet already has oracle evidence:
 - **They agree.**
-  - INDEX with one index on a reference of several rows and columns is `#REF!` (probes/index-single-index, T-2273).
+  - INDEX with one index on a reference of several rows and columns is `#REF!` (probes/index-single-index, T-0213).
   - MATCH, VLOOKUP and HLOOKUP compare doubles exactly, while `=` and the criteria functions use 15 digits (excel-semantics/lookup.md, "Approximate-match lookups"; criteria.md, "Numeric `<`, `<=`, `>`, `>=` criteria compare the 15-digit value of the cell"). gridcraft also claims
     this for XLOOKUP, XMATCH and LOOKUP, which RustSheet has not probed yet (T-3106 probes them).
   - MIRR with only negative flows is -1 (financial.md, "MIRR error and edge cases").
