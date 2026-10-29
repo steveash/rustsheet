@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 def load(path):
-    report = json.load(open(path))
+    report = json.loads(Path(path).read_text())
     return {(c["id"], cell["sheet"], cell["cell"]): cell for c in report["cases"] for cell in c.get("cells", [])}
 
 
@@ -41,7 +41,7 @@ def main():
         rows.append((m.group(1) if m else "?", "better" if eb < ea else "worse", key, formula, ea, eb))
     for k, v in sorted(collections.Counter((r[0], r[1]) for r in rows).items()):
         print(k, v)
-    pickle.dump(rows, open(Path(sys.argv[2]).with_name("rows.pkl"), "wb"))
+    Path(sys.argv[2]).with_name("rows.pkl").write_bytes(pickle.dumps(rows))
 
 
 if __name__ == "__main__":
