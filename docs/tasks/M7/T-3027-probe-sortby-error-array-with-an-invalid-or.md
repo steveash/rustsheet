@@ -3,7 +3,7 @@ id: T-3027
 title: "Probe SORTBY: error array with an invalid or uniform 1xN sort_order (which error wins)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ From T-2349's Excel-fidelity review. Ours returns the array's error first (`sort
 
 ## Out of scope
 -
+
+## Outcome
+Probed rows 14-16 of probes/sortby-lifted-element-corners (excel-graph). Error array wins over an invalid or uniform order (already ours). A uniform 1xN order with a uniform second pair gives 1 then `#VALUE!` (was empty): `empty_past_first_column` now honors `later_error`. arrays.md UNVERIFIED lines resolved.

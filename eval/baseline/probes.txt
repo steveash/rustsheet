@@ -23,6 +23,7 @@ C	probes/aggregate-array-error-vs-ref-error-average-family.case.json	87
 C	probes/aggregate-array-error-vs-ref-error.case.json	40
 C	probes/aggregate-direct-lambda-average-family.case.json	31
 C	probes/aggregate-direct-lambda-product-min-max.case.json	36
+C	probes/aggregate-error-k-picked-ref.case.json	9
 C	probes/aggregate-error-precedence-a-variants.case.json	76
 C	probes/aggregate-error-precedence-stat-family.case.json	132
 C	probes/aggregate-error-precedence.case.json	92
@@ -1092,7 +1093,7 @@ C	probes/solver-iteration-traces.case.json	353
 C	probes/sort-error-args.case.json	48
 C	probes/sort-index-key-ties.case.json	25
 C	probes/sort-omitted-args.case.json	75
-C	probes/sortby-lifted-element-corners.case.json	134
+C	probes/sortby-lifted-element-corners.case.json	180
 C	probes/sqrtpi-range-operands.case.json	10
 C	probes/stat-a-computed-arrays.case.json	18
 C	probes/stat-argument-modes.case.json	573
