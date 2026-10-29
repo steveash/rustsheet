@@ -178,8 +178,10 @@ small the used area: `TEXTJOIN(",",FALSE,D:D)` is `#CALC!` (1,048,576 values joi
 characters) and `TEXTJOIN(",",FALSE,10:10)` with H10 = "x" and J10 = "y" is ",,,,,,,x,,y" followed by
 16,374 more commas. With ignore_empty TRUE only the non-empty cells count (`TEXTJOIN(",",TRUE,D:D)` =
 "a,c"). `TEXTJOIN(",",FALSE,D1:D16385)` over the same sheet has length 16,386.
-Unprobed: an error cell met after the skipped empties have taken the join over the limit (for example
-`TEXTJOIN(",",FALSE,1:3)` with an error in A3); the engine gives `#CALC!`, as for a walked range (C20).
+An error cell met after the skipped empties have taken the join over the limit is dropped: with A1 = "x",
+A2 = "y" and A3 = `=NA()`, `TEXTJOIN(",",FALSE,1:3)` and `1:2` are `#CALC!`, while `1:1` joins to 16,384
+characters and `TEXTJOIN(",",TRUE,1:3)`, `3:3` and `A1:A3` are `#N/A` (probes/textjoin-whole-rows-error-cell
+A1-A7, excel-graph, 2026-10-29, T-3098).
 Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114).
 Status: VERIFIED
 Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared

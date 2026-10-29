@@ -3,7 +3,7 @@ id: T-3098
 title: "TEXTJOIN ignore_empty FALSE over whole rows: break at the length limit, split the Range arm, and probe 1:3 with an error cell"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,10 @@ ignore_empty FALSE clipped-column path has no read-count assertion.
 
 ## Out of scope
 - TEXTJOIN over unions and the 32,767-unit limit rules.
+
+## Outcome
+The ignore_empty FALSE clipped-column row loop now stops once the limit is passed
+(`textjoin_push_padded_range`, one clip); `textjoin_ignore_empty_false_stops_walking_rows_past_the_limit`
+bounds its reads (about 1.0k with the break, about 1.0M without). Probe
+`textjoin-whole-rows-error-cell` pins `TEXTJOIN(",",FALSE,1:3)` with an error cell as `#CALC!`,
+matching the engine; text.md updated. Eval delta: none expected (new probe cells pass).
