@@ -41,6 +41,7 @@ fn test_t_picked_shapes_keep_their_reading() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "");
     assert_eq!(model._get_text("A2"), "");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
     assert_eq!(model._get_text("A4"), "");
 }
 

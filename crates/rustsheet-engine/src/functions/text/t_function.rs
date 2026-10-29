@@ -10,6 +10,7 @@ use crate::{
     functions::{information::map_elements, text::common::reject_over_short_limit, Function},
     model::Model,
     reference_operators::Picked,
+    text::Text,
 };
 
 impl Model {
@@ -67,7 +68,7 @@ impl Model {
             }
             CalcResult::Array(values) => {
                 CalcResult::Array(map_elements(&values, |value| match value {
-                    ArrayNode::String(text) if reject_over_short_limit(text).is_err() => {
+                    ArrayNode::String(text) if over_short_limit(text) => {
                         ArrayNode::Error(Error::VALUE)
                     }
                     ArrayNode::String(_) | ArrayNode::Error(_) => value.clone(),
@@ -143,12 +144,13 @@ impl Model {
         let value = self.let_scope(args, cell, |model, body| {
             let (value, read) = model.t_argument(body, outer, cell);
             // A body as written is tested as `is_reference` tests a LET, in reference context:
-            // `T(LET(x,D1,+x))` keeps the reading it had (unprobed).
+            // `T(LET(x,D1,+x))` keeps the reading it had (unprobed, TODO(T-3167)).
             let read = match read {
                 ArgumentRead::Written(body) => ArgumentRead::Picked(body),
                 read => read,
             };
-            cell_text = over_short_limit(&value) && model.reads_cell_text(read, cell);
+            cell_text = matches!(&value, CalcResult::String(text) if over_short_limit(text))
+                && model.reads_cell_text(read, cell);
             value
         });
         (
@@ -197,7 +199,8 @@ impl Model {
     }
 }
 
-/// Whether `node` is an IF, CHOOSE, IFS or SWITCH call, parentheses aside.
+/// Whether `node` is an IF, CHOOSE, IFS or SWITCH call, parentheses aside: the functions
+/// [`Model::pick_step`] picks through, which this list must track.
 fn is_picker(node: &Node) -> bool {
     matches!(
         node.ungrouped(),
@@ -208,9 +211,10 @@ fn is_picker(node: &Node) -> bool {
     )
 }
 
-/// Whether `value` is text over T's 255-unit limit, the only value whose cell-text test matters.
-fn over_short_limit(value: &CalcResult) -> bool {
-    matches!(value, CalcResult::String(text) if reject_over_short_limit(text).is_err())
+/// Whether `text` is over T's 255-unit limit: `#VALUE!` computed or as an array element, "" read
+/// from a cell, so the only text whose cell-text test matters.
+fn over_short_limit(text: &Text) -> bool {
+    reject_over_short_limit(text).is_err()
 }
 
 /// How T tells whether its argument is a cell's text ([`Model::t_argument`]).
