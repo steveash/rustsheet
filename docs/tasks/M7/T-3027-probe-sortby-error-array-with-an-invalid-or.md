@@ -3,7 +3,7 @@ id: T-3027
 title: "Probe SORTBY: error array with an invalid or uniform 1xN sort_order (which error wins)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
