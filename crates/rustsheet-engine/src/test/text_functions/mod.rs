@@ -10,6 +10,7 @@ mod fn_fixed_negative_zero;
 mod fn_left_right_mid_arrays;
 mod fn_regex;
 mod fn_regex_backtrack;
+mod fn_t_volatile_pick;
 mod fn_text_arrays;
 mod fn_text_sections;
 mod fn_textbefore;
