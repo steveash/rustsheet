@@ -300,11 +300,12 @@ impl Periods {
     /// K3). It is exact on 70 of the 108 underflowed principals probed and within an ulp of the rest
     /// (the per-period sum: 16 of the 36 near 1E15), not on all: decision 0160, TODO(T-3141). Only
     /// below [`GEOMETRIC_MIN_LEAD`]: above it the geometric sum is Excel's, at a rate of 1E10 and at
-    /// integer rates too (T-3067). `None` where `v^nper` has not underflowed or the result is not
-    /// finite.
+    /// integer rates too (T-3067). `None` for type 1, where `v^nper` has not underflowed or where
+    /// the result is not finite.
     fn underflowed_principal(&self) -> Option<f64> {
         let log_growth = growth_log(self.rate);
-        if self.unpaid_share(log_growth) != 1.0 {
+        // Type 1's last periods take another form (probes/fin-cumprinc-underflow-ends J).
+        if self.period_start || self.unpaid_share(log_growth) != 1.0 {
             return None;
         }
         let count = self.end - self.start + 1.0;

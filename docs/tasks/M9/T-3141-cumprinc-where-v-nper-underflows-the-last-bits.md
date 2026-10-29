@@ -23,7 +23,7 @@ probed and within an ulp of the rest. Decision 0160 let it move these 7 cells of
 - probes/fin-cumprinc-near-1e15 A7 (+1 ulp), B1, B4, B9, C10 (-1 ulp each), C6 (+1 ulp);
 - probes/fin-cumprinc-near-1e15 E7 `CUMIPMT(0.01,1E15,100000,1E15-6,1E15,0)` (16 ulps, visibly off: A7's ulp through
   the payments less the principal).
-Also open: the underflow-ends misses in A-D, G, H (each within an ulp), fin-cumipmt-overflow-and-forms A10 and the
+Start with E7, the one visibly-off cell. Also open: the underflow-ends misses in A-D, G, H (each within an ulp), fin-cumipmt-overflow-and-forms A10 and the
 type 1 ranges (column J, fin-cumipmt-period-bound A18), which still take the closed form. The implied L per cell is not
 one biased log (the windows for m = 2 and m = 8 at 0.01 do not overlap), so the error is in the operation order; try
 x87-register intermediates (`Register`) and the twice-rounded operators of numbers.md before more double orderings.
