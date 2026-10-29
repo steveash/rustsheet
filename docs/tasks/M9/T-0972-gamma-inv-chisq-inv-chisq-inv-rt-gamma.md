@@ -3,7 +3,7 @@ id: T-0972
 title: "GAMMA.INV/CHISQ.INV/CHISQ.INV.RT: gamma quantile parity (39 known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -210,7 +210,7 @@ the branch merged with `main` (3fe509e8):
 
 Follow-up **T-3016** owns those five cells and lists all 49 regressed cells with their values.
 
-Not done, so the task stays open (status todo):
+Open at that point (closed below):
 - Criterion 1: of the 65 owned gen-m9 lines, 17 now pass, 42 are within the 15th digit and 6 are still visibly off.
 - Criterion 2 is not re-measured on this merged tree.
 - Criterion 3 is not met: `incomplete_gamma/mod.rs` still keeps the ported statrs search (`inverse_cdf_within`) as the
@@ -225,3 +225,12 @@ to 139 (30 fixed). Three are newly visibly off: gen-m9 146b46e74f2dac3b A167, pr
 t1049-chisqinv A19. All three are on decision 0152's list. The other two cells the 2026-10-28 Outcome counts among its five (gen-m9
 ecc87f80077959e0 A168 and ironcalc-calc GAMMA.xlsx F21) are within the 15th digit on this merge, so that count of five
 is superseded. Follow-ups from review: a gamma-quantile bench case (performance) and exact-value unit tests are in T-3016.
+
+## Closed (2026-10-29)
+Closed at decision 0083's visible-parity stage, as T-0971 was (decision 0111), with the remainder in follow-ups:
+- On the merged branch (local `make eval`), 10 cells this task owns are still visibly off. T-3016 owns the two this
+  task made newly visibly off (gen-m9 146b46e74f2dac3b A167, ecc87f80077959e0 A168 at 3 ulp) with the 49 ulp lines
+  and the three cells of decision 0152; **T-3131** owns the other eight and criterion 3 (the statrs search start).
+- The 2026-10-28 section's count of five newly visibly-off cells is superseded by the 2026-10-29 section.
+- Review: `docs/excel-semantics/statistics.md` now records that the crossing lands 1 to 3 ulps off on closed forms
+  where Excel is correctly rounded (`CHISQ.INV(0.5,2)` = 2 ln 2), so those last digits are ours (T-3016).
