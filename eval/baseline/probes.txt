@@ -23,6 +23,7 @@ C	probes/aggregate-array-error-vs-ref-error-average-family.case.json	87
 C	probes/aggregate-array-error-vs-ref-error.case.json	40
 C	probes/aggregate-direct-lambda-average-family.case.json	31
 C	probes/aggregate-direct-lambda-product-min-max.case.json	36
+C	probes/aggregate-error-k-picked-ref.case.json	9
 C	probes/aggregate-error-precedence-a-variants.case.json	76
 C	probes/aggregate-error-precedence-stat-family.case.json	132
 C	probes/aggregate-error-precedence.case.json	92
@@ -1092,7 +1093,7 @@ C	probes/solver-iteration-traces.case.json	353
 C	probes/sort-error-args.case.json	48
 C	probes/sort-index-key-ties.case.json	25
 C	probes/sort-omitted-args.case.json	75
-C	probes/sortby-lifted-element-corners.case.json	134
+C	probes/sortby-lifted-element-corners.case.json	180
 C	probes/sqrtpi-range-operands.case.json	10
 C	probes/stat-a-computed-arrays.case.json	18
 C	probes/stat-argument-modes.case.json	573
@@ -1446,6 +1447,9 @@ C	probes/t2831-formulatext-indirect-multi-cell.case.json	34
 C	probes/t2836-dollar-run-cost.case.json	95
 C	probes/t2842-dollar-run-contexts.case.json	218
 C	probes/t2867-calipers-anonymised-inputs.case.json	26
+C	probes/t2869-quoted-lf-after-bang.case.json	2
+C	probes/t2869-quoted-ws-after-bang.case.json	2
+C	probes/t2869-ws-lf-after-bang.case.json	2
 C	probes/t2881-besselj-turning-point.case.json	76
 C	probes/t2921-sumproduct-one-cell-numeric-text.case.json	47
 C	probes/t2929-sort-lifted-by-col-column.case.json	50
