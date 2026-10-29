@@ -85,6 +85,11 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
   unstored top (17.6 step 2), then KN = 8. The re-read turned out blind to the top's stores (17.8), so the next test is
   a J=6 (N.S6) box scan from C, on the KN = 7 control first.
 
+- Run 7 (2026-10-29, one opus worker, K3 18.5 step 1): HANDOFF2 section 19, scan3.py `BIASFILE`/`BIASKN`,
+  `t2122/k3_j6bias.sh`. Subtracting the base's own 80-bit-top residual before the J=6 scan makes the KN = 7 control rank its
+  planted S_6 first with no b cut (1468 against the base's 1432). On real data the same subtraction leaves the base ridge and
+  the mirror sidelobes, with no isolated top, so the real store structure is not "S_7/S_8 80-bit over C". Next: use BIASKN
+  as a store-structure meter (19.3).
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses
       only at documented x87 near-ties) committed with its verifier, or an updated best model plus a measured
