@@ -26,10 +26,10 @@ whole list, and `make exit-owners MILESTONE=M1` lists a listed case that fails w
 - `scripts/` is a protected path: amend decision 0146's Consequences in the same PR.
 
 ## Acceptance criteria
-- [ ] The M1 row's `probes_met` is `None` unless `cases_run == cases`; a unit test covers a partial run.
-- [ ] `exit_owners.py --milestone M1` prints a failing listed case with no cells as `case!*`;
+- [x] The M1 row's `probes_met` is `None` unless `cases_run == cases`; a unit test covers a partial run.
+- [x] `exit_owners.py --milestone M1` prints a failing listed case with no cells as `case!*`;
       `scripts/test_exit_owners.py` covers it.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Probe-milestone rows' partial-run verdicts.
