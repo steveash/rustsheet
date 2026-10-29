@@ -2571,10 +2571,10 @@ T-2974 (attempt 2, 2026-10-29): Excel's start is the fitted formula **rounded on
   correctly rounded one,
   and yield-newton-domain P!B2 needs one below. So the single rounding is the closest model found, not Excel's exact
   arithmetic.
-T-2974 (attempt 3, 2026-10-29): Excel's start looks like the term-scaled formula in doubles, with one multiply-add fused:
+T-2974 (attempt 3, 2026-10-29): the best-fitting candidate for Excel's start is the term-scaled formula in doubles, with one multiply-add fused:
 `S = ((r·T)·100 + (100 - pr)) / (fma(pr, T, 100·T)/2 - (100 - pr)/4)`, where `T` is the double `whole + days/year` and
-each other operation rounds. That is what a compiler emits for `(100·T + pr·T)/2` when it contracts `a·b + c` into an
-FMA. The fit is not complete: about one start in five is still 1 or 2 ulps off.
+each other operation rounds. A compiler would emit that for `(100·T + pr·T)/2` if it contracted `a·b + c` into an
+FMA, but that explanation is a hypothesis. The fit is not complete: about one start in five is still 1 or 2 ulps off.
 - Evidence: probes/yield-one-step-start (excel-graph, 2026-10-29; 360 cells). Each bond takes exactly one Newton step
   from the start, because its redemption (which the start does not read) puts PRICE's root 5e-5 relative above the
   start. `^` rounds PRICE's base `1 + y/f` to a double, so PRICE is a step function of y. Between two steps the one-step

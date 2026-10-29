@@ -80,7 +80,7 @@ A, which repeat existing cells. No regressions.
 ## Outcome (partial, attempt 3, 2026-10-29; the task stays open, decision 0056)
 - New evidence: probes/yield-one-step-start (360 cells, excel-graph). Its bonds take exactly one Newton step, so each
   value shows the start's last bit (280 distinct starts). Frequency twins always agree on the start.
-- The lab's bit-exact count rose with a named candidate. Excel's start is the term-scaled formula in doubles with one
+- The lab's bit-exact count rose with a named candidate. The best fit for Excel's start is the term-scaled formula in doubles with one
   fused multiply-add, `((r·T)·100 + q) / (fma(pr, T, 100·T)/2 - q/4)`: 229 of the 290 one-step starts, against 152 for the
   engine's rounded-once start. The full lab has 787 of 1,101 YIELD probe cells bit-exact against 704. On the groups
   whose term is a double exactly it matches all 63 starts. Every candidate and its counts are in financial.md "YIELD
