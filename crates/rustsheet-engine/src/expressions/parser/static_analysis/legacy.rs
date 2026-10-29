@@ -355,8 +355,8 @@ pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
 
 /// `node`, or the operand of an `@` over it.
 fn under_at(node: &Node) -> &Node {
-    match node {
-        Node::ImplicitIntersection { child, .. } => child,
+    match node.unwrap_spaced() {
+        Node::ImplicitIntersection { child, .. } => child.unwrap_spaced(),
         node => node,
     }
 }
@@ -550,10 +550,13 @@ fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
 /// ([`chooses_references_by_an_array_index`]) goes too: `=N(CHOOSE({1},X1:X2,Y1:Y2))` shows none
 /// (probes/legacy-n-t-choose-array-index-shapes L, T-2100).
 pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
-    let [Node::FunctionKind {
+    let [arg] = args else {
+        return;
+    };
+    let Node::FunctionKind {
         kind: call,
         args: call_args,
-    }] = args
+    } = arg.unwrap_spaced_mut()
     else {
         return;
     };
