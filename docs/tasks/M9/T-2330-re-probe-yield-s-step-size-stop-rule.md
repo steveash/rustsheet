@@ -3,7 +3,7 @@ id: T-2330
 title: "Re-probe YIELD's step-size stop rule against yield-start-rate-term"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
