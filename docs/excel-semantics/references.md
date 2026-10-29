@@ -1895,14 +1895,28 @@ Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2
 Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
 shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
 `=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
-`@` at all in Excel; ours matches (`returns_single_cell_index`, T-2326) for exactly that shape: an IF whose value arms are all `INDEX(one-column range, literal non-zero row)`. UNVERIFIED, so still `@`: IFS, a 2-D range (two-argument INDEX gives a whole row), a computed row (`INDEX(B1:B6,1+2)`), mixed arms.
+`@` at all in Excel (T-2326). The rule (probes/t3134-legacy-if-index-arm-shapes, 167 cells, excel-graph,
+2026-10-29, T-3134; `returns_single_cell_index`): a legacy IF or CHOOSE shows no `@`, at the root or under ABS,
+when every value arm is a literal, an IF/CHOOSE of the same kind, or `INDEX(range,row[,column])` whose indexes
+are all literal whole numbers of 1 or more, whatever the range's shape. No `@` (I/K 31-33, 38-42, 49):
+`INDEX(B1:C6,3,1)`, `INDEX(B1:F1,3)` (100), `INDEX(B1:B6,3,1)`, the 2-D `INDEX(B1:C6,3)` (`#REF!` everywhere),
+`IF(TRUE,INDEX(B1:B6,3),5)`, `IF(FALSE,INDEX(B1:B6,3),INDEX(C1:C6,2))` (20),
+`IF(TRUE,IF(TRUE,INDEX(B1:B6,3)))`, `CHOOSE(1,INDEX(B1:B6,3))`, `CHOOSE(1,INDEX(B1:C6,3))`. `@` (I/K 30, 34-37,
+43-48): every IFS (`=@IFS(TRUE,INDEX(B1:B6,3))`, `=@IFS(TRUE,INDEX(B1:B6,3),FALSE,5)`), an index that is computed
+(`1+2`), a cell (A20 = 3 or 0), text (`"3"`), non-integer (`3.5`, still 3) or 0 (`INDEX(B1:B6,0)` and
+`INDEX(B1:C6,3,0)`: the whole column or row, intersected, `#VALUE!` off it; `=ABS(@IF(TRUE,INDEX(B1:C6,3,0)))`
+is 30 in column C), and a range beside the INDEX arm (`=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`). Under SUM none shows an
+`@` (M30-M49; 21 for the whole column, 33 for row 3). UNVERIFIED, the engine keeps the `@`: a cell reference or
+other non-literal scalar arm (`IF(TRUE,INDEX(B1:B6,3),A1)`), a non-scalar condition or CHOOSE index, an INDEX of a
+defined name, a one-argument or four-argument INDEX. UNVERIFIED, the engine drops it: parentheses around the
+INDEX, its range or an index (`INDEX((B1:B6),(3))`), a table area as the range.
 Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
 `=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
 `=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
 Excel drops the `@` for both one-cell arms (M12, S12).
 Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
-Tasks: T-1935, T-1969, T-2326
+Tasks: T-1935, T-1969, T-2326, T-3134
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value

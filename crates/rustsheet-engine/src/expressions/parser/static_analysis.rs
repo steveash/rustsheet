@@ -239,9 +239,7 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                 && (add || arrays)
                 && !legacy_call_reads_a_value(kind, args)
                 && match static_analysis_on_function(kind, args) {
-                    StaticResult::Range(_, _) | StaticResult::Unknown => {
-                        add && !returns_single_cell_index(kind, args)
-                    }
+                    StaticResult::Range(_, _) | StaticResult::Unknown => add,
                     // A one-cell array gives the same value with or without the `@`. Excel shows
                     // none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, a 1x1 array shape here
                     // (probes/legacy-one-cell-shape-intersection J3); other one-cell calls are
@@ -683,6 +681,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
 /// The hand-written shapes of the functions not in the lifting table; `None` for one in it.
 fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
     Some(match kind {
+        // One cell whatever the condition: no `@` on the call or a call over it (T-3134).
+        Function::If | Function::Choose if returns_single_cell_index(kind, args) => {
+            StaticResult::Scalar
+        }
         Function::And => StaticResult::Scalar,
         Function::False => StaticResult::Scalar,
         Function::If => scalar_arguments(args),

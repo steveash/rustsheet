@@ -73,8 +73,23 @@ fn simple_test() {
         // (probes/legacy-if-arm-other-references M12, T-2326).
         ("IF(TRUE,INDEX(B1:B6,3))", "IF(TRUE,INDEX(B1:B6,3))"),
         ("IF(TRUE,INDEX(B1:C6,0,1))", "@IF(TRUE,INDEX(B1:C6,0,1))"),
-        // Unevidenced shapes keep the `@`: a 2-D range (INDEX gives a row) and IFS.
-        ("IF(TRUE,INDEX(B1:C6,3))", "@IF(TRUE,INDEX(B1:C6,3))"),
+        // Any range shape with literal whole-number indexes, a literal arm and CHOOSE lose it; a
+        // computed or non-integer index and IFS keep it (probes/t3134-legacy-if-index-arm-shapes).
+        ("IF(TRUE,INDEX(B1:C6,3))", "IF(TRUE,INDEX(B1:C6,3))"),
+        (
+            "ABS(IF(TRUE,INDEX(B1:B6,3),5))",
+            "ABS(IF(TRUE,INDEX(B1:B6,3),5))",
+        ),
+        ("CHOOSE(1,INDEX(B1:B6,3))", "CHOOSE(1,INDEX(B1:B6,3))"),
+        ("IF(TRUE,INDEX(B1:B6,3.5))", "@IF(TRUE,INDEX(B1:B6,3.5))"),
+        (
+            "ABS(IF(TRUE,INDEX(B1:B6,1+2)))",
+            "ABS(@IF(TRUE,INDEX(B1:B6,1+2)))",
+        ),
+        (
+            "IF(TRUE,INDEX(B1:B6,3),B1:B6)",
+            "@IF(TRUE,INDEX(B1:B6,3),B1:B6)",
+        ),
         (
             "_xlfn.IFS(TRUE,INDEX(B1:B6,3))",
             "@IFS(TRUE,INDEX(B1:B6,3))",

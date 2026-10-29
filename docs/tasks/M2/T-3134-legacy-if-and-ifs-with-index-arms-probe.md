@@ -3,7 +3,7 @@ id: T-3134
 title: "Legacy IF and IFS with INDEX arms: probe which shapes Excel shows without @ (IFS, 2-D range, computed row, mixed arms) and generalize returns_single_cell_index"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -47,22 +47,31 @@ that covers the shapes T-2326 left UNVERIFIED.
   Each shape is read at the root and under ABS.
 
 ## Acceptance criteria
-- [ ] `probes/t3134-legacy-if-index-arm-shapes` is committed with its excel-graph oracle sidecar. For every shape
+- [x] `probes/t3134-legacy-if-index-arm-shapes` is committed with its excel-graph oracle sidecar. For every shape
       above it has a FORMULATEXT cell and at least one value cell off the range's rows (and off its columns, for
       2-D and one-row ranges).
-- [ ] Every cell of that case passes. probes/legacy-if-arm-range-argument, -b, legacy-if-arm-other-references and
+- [x] Every cell of that case passes. probes/legacy-if-arm-range-argument, -b, legacy-if-arm-other-references and
       legacy-match-lookup-array-intersection keep all their passing cells (`make eval-check`: 0 regressions;
       `make eval-baseline` run).
-- [ ] `returns_single_cell_index` (or its replacement) states the fitted rule in its doc comment and cites the
+- [x] `returns_single_cell_index` (or its replacement) states the fitted rule in its doc comment and cites the
       cells. A parser unit test covers one shape that gains `@` and one that loses it.
-- [ ] references.md's IF/IFS arm section replaces the "UNVERIFIED, so still `@`" sentence with the probed rule
+- [x] references.md's IF/IFS arm section replaces the "UNVERIFIED, so still `@`" sentence with the probed rule
       (VERIFIED, case id and cells). Shapes the probe did not cover are listed as UNVERIFIED.
-- [ ] If the probe shows cells no single rule fits within size S, the fitted cells pass, the rest are recorded as
+- [x] If the probe shows cells no single rule fits within size S, the fitted cells pass, the rest are recorded as
       known failures by `make eval-baseline` (never hand-edited), and a follow-up task names them.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - `@` insertion for functions other than IF, IFS and CHOOSE, and for OFFSET/INDIRECT arms (already probed,
   T-1969).
 - Dynamic-array (cm) formulas, which get no `@`.
 - The harness's legacy-parse adapter (T-1096).
+
+## Outcome
+probes/t3134-legacy-if-index-arm-shapes (167 cells, excel-graph) separates the candidates: Excel's line is (a),
+literal arguments only, with whole numbers of 1 or more, and it ignores the range's shape (even the 2-D
+`INDEX(B1:C6,3)`, `#REF!`). Literal arms beside the INDEX, nested IFs and CHOOSE drop the `@` too; IFS, a computed,
+cell, text, non-integer or 0 index, and a range arm beside the INDEX keep it. `returns_single_cell_index` now
+fits that rule and makes such an IF or CHOOSE a static scalar, so a call over it (ABS) gets no `@` either.
+Eval delta: probes 0 regressions, the new case 167/167; the four neighbouring probes unchanged. No cell needed a
+follow-up.
