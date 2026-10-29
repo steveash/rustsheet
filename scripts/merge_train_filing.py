@@ -21,6 +21,7 @@ from merge_lock import GitError, git
 REMOTE = "origin"
 MAIN_REF = "refs/heads/main"
 ID_CHECK_TIMEOUT = 300
+# The committer of train merge commits, so a clone with no git identity can still build.
 IDENTITY = ("-c", "user.name=merge-train", "-c", "user.email=merge-train@invalid")
 
 REVERT_PREFIX = "merge-train/revert-"

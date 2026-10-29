@@ -42,7 +42,6 @@ MODES = (LOCK, SHADOW, TRAIN)
 # The id checks of step 4; each takes `--root <tree>`. They run from `main`'s scripts (M0).
 ID_CHECKS = (("tasks.py", "validate"), ("check_decisions.py",))
 BATCH_MAX = 5
-# The committer of train merge commits, so a clone with no git identity can still build.
 # Ids that an id-check failure line names; only these, never its file names, reach a reason.
 COLLIDING_ID = re.compile(r"\b(?:duplicate id (T-\d{4})|decision number (\d{4}))\b")
 
@@ -798,6 +797,7 @@ class Stage:
             return code
         finally:
             self.lock.release()
+
 
 def raise_on_term(signum: int, _frame: object) -> None:
     """SIGTERM unwinds like an error, so the hold's `finally` releases the lock."""
