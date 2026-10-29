@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -178,6 +179,33 @@ class IssueTasks(unittest.TestCase):
             ["docs/tasks/M1/T-0001-a.md"],
         )
         self.assertEqual(seen, ["docs/tasks/M1/T-0001-a.md"])
+
+
+    TASK = "---\nid: T-0500\ntitle: \"x\"\nmilestone: M2\nlane: engine\nstatus: todo\n{extra}---\n"
+
+    def real_guard(self, extra: str, *lines: str) -> list[list[str]]:
+        """`failures` with the real `task_has_issue`, reading a task whose front matter adds `extra`."""
+        with mock.patch.object(gov, "git", return_value=self.TASK.format(extra=extra)):
+            return gov.failures(
+                ["A\tdocs/tasks/M2/T-0500-from-issue.md", *lines], lambda _p: ["M2"], flip=False,
+                added=lambda: [("crates/a/src/lib.rs", "#[allow(dead_code)]")],
+            )
+
+    def test_issue_origin_follow_up_gets_every_issue_guard(self) -> None:
+        for extra in ("issue: 12\nissue_author: octo\n", "issue_origin: 12\n"):
+            found = self.real_guard(extra, "M\t.claude/skills/x/SKILL.md", "A\tdocs/decisions/0999-x.md",
+                                    "M\tCargo.lock", "M\tcrates/a/src/lib.rs")
+            self.assertEqual(len(found), 2, extra)
+            self.assertIn("protected paths", found[0][0])
+            self.assertIn("  Cargo.lock (manifest, lockfile or build script)", found[1])
+            self.assertIn("lint allow or unsafe", found[1][-1])
+
+    def test_task_with_neither_key_keeps_the_normal_rule(self) -> None:
+        self.assertEqual(
+            self.real_guard("", "M\t.claude/skills/x/SKILL.md", "A\tdocs/decisions/0999-x.md",
+                            "M\tCargo.lock", "M\tcrates/a/src/lib.rs"),
+            [],
+        )
 
 
 if __name__ == "__main__":
