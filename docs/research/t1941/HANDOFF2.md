@@ -818,7 +818,21 @@ residual under an 80-bit top (`mres(x, base, kn=BIASKN) - ref`) from the data re
 to the score (template correlation, FFT over b, phase interpolation) is linear in r up to the per-run norm, so one pass
 scores "data minus bias". On the control this is mres(truth) - mres(c7), the move alone; on real data it is
 real - mres(C, KN=7).
-- Run state: the control scan (`k3_j6bias.sh PY ROWS control OUT`, 22,303 pairs) and the real scan (14,331 pairs) were
+### 19.1 The KN = 7 control passes with the bias subtracted
+`t2122/k3_j6bias_control_p[0-3].log`, summary `t2122/k3_j6bias_control_summary.log` (22,303 pairs; ~6,800 s a part,
+partly paused).
+- **The planted truth ranks 1 over the whole map with no b cut**: 1467.8 at (a 0.25, b -75.7, c 60, d 56), against truth
+  (0.271, -75.84, 60.42, 56.49). Its neighbours follow (1425.5 at d 60, 1409.4 at d 52). In 18.4 the same pair was rank 243
+  of the off-ridge pairs.
+- The base peak is cut from 2051.8 (18.2) to **1431.9** (b 0, c 0, d 0), now rank 2, 36 below the truth. It is not removed
+  fully: the subtraction removes the base's 80-bit-top residual, but the planted data's base-phase lines are not exactly the
+  base's (the move changes the sites below S_6 too). The base cluster stays inside |b| <= 1.3, |c| <= 2, |d| <= 12.
+- The mirror-paired sidelobes of 18.3/18.4 are gone: the top 12 are the truth cluster and the base cluster only.
+  Median 632, sd 146; the truth is Z 5.7.
+- So the bias-subtracted scan sees a stored S_6 under an 80-bit S_7/S_8 at |b| <= 30 too, as long as the move is not
+  inside the base cluster (|b| <= ~1.5 and |c|, |d| near 0).
+
+- Run state: the control scan (`k3_j6bias.sh PY ROWS control OUT`, 22,303 pairs; 19.1) and the real scan (14,331 pairs) were
   started in this run (logs `t2122/k3_j6bias_{control,real}_p[0-3].log`). They had not finished when the session budget
   ran out (the control was paused for ~30 min for another task's eval run). The `.npy` maps are not committed.
 - To finish: rerun both (about 53 + 32 min on 4 cores), then `TRUTH=60.42,56.49 python3 t2122/k3_j6map.py OUT control`

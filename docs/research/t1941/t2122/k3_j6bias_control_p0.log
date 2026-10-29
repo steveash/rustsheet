@@ -5,3 +5,6 @@ truth (alpha, beta, gamma)/u_S = (5817.271, -75.839, 60.418), a mod 1 = 0.271
 at truth: S 1410.5  P 204.2  joint 1614.7
 joint null mean -32.1 sd 215.5
 (c, d) pairs to scan: 5576
+scan 6746s, 5576 candidates
+top S-only: 1467.8 (a 0.25 b -75.7 c 60.00 d 56.00) | 1329.7 (a 0.66 b 0.3 c -2.00 d -4.00) | 1328.3 (a 0.30 b -76.0 c 58.00 d 64.00) | 1301.0 (a 0.41 b -0.6 c 2.00 d 0.00) | 1300.2 (a 0.17 b -75.4 c 64.00 d 44.00)
+truth a mod 1 0.271 b -75.84 c 60.42 d 56.49
