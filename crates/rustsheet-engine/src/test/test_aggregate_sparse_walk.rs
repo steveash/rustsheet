@@ -150,3 +150,23 @@ fn textjoin_pads_clipped_columns_after_each_row() {
     );
     assert_eq!(value, "8194");
 }
+
+#[test]
+fn textjoin_ignore_empty_false_stops_walking_rows_past_the_limit() {
+    // With ignore_empty FALSE the clipped columns' delimiters pass the 32,767-unit limit within a
+    // few rows, so the stored cells far below that are not read (T-3098).
+    let mut model = new_empty_model();
+    model.new_sheet();
+    for row in 500_000..501_000 {
+        model._set(&format!("Sheet1!B{row}"), "x");
+    }
+    model.evaluate();
+    let (value, reads) = evaluate_counting_reads(
+        &mut model,
+        "Sheet2!A1",
+        "=TEXTJOIN(\",\",FALSE,Sheet1!1:1048576)",
+    );
+    assert_eq!(value, "#CALC!");
+    // The 1,000 constants are read by the recalculation itself; walking the rows would read them again.
+    assert!(reads < 1500, "read {reads} cells");
+}
