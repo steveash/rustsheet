@@ -3,10 +3,10 @@ id: T-3090
 title: "SORT lifted by_col: an empty-able element below one with an equal by_col when the row's lead is broken"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -26,3 +26,11 @@ lifted arguments").
 
 ## Out of scope
 -
+
+## Handoff
+Sonnet run (2026-10-29): no code change. The rule in `sort_lifted_elements` (spill_functions.rs) is an empirical
+fit (`broken_seen` / `same_above` / `above`); L81 needs a new condition on rows whose lead is a broken `#VALUE!` element,
+and the task already records that "no earlier #VALUE! in the row" broke t2929 M2 and N5. This needs several oracle
+probe rounds (excel-graph is OK) to find the rule from edge cells, then a re-fit against t2929 and t2947 together: beyond
+a sonnet run (unclear evidence / rule fitting). Next: probe variants of L81 (vary the lead's value, by_col mix, row
+position), tabulate against t2929 M2/N5, then adjust the loop.
