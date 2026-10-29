@@ -61,6 +61,11 @@ def report() -> dict[str, object]:
     }
 
 
+def criteria_cells(r: dict[str, object], milestone: str) -> list[tuple[str, str]]:
+    """`(criterion, case!Sheet!A1)` of each exit cell of `milestone`, in order."""
+    return [(c.criterion, f"{c.case}!{c.key}") for c in exit_owners.exit_cells(r, milestone)]
+
+
 class TaskDir(unittest.TestCase):
     """A temporary tasks directory and a helper that writes a task into it."""
 
@@ -182,8 +187,7 @@ class ExitOwners(TaskDir):
         r["cases"] = [{"id": corpus, "suite": "corpus-bench", "cells": [cell("Sheet1", "D4")]}]
         r["function_scope"] = {"rows": []}
         r["probe_milestones"] = []
-        cells = exit_owners.exit_cells(r, "M11")
-        self.assertEqual([(c.criterion, f"{c.case}!{c.key}") for c in cells], [("corpus-bench", f"{corpus}!Sheet1!D4")])
+        self.assertEqual(criteria_cells(r, "M11"), [("corpus-bench", f"{corpus}!Sheet1!D4")])
 
     def test_m9_lists_calc_the_functions_below_the_rate_and_probes(self) -> None:
         # Decision 0146 item 3: no required suite; ironcalc-calc less exceptions, the
@@ -206,9 +210,8 @@ class ExitOwners(TaskDir):
             {"case": GEN, "cell": "Calc!A1", "function": "IRR", "formula": "IRR(A1:A3)"},
             {"case": GEN, "cell": "Calc!A107", "function": "PMT", "formula": "PMT(1,2,3)"},
         ]
-        cells = exit_owners.exit_cells(r, "M9")
         self.assertEqual(
-            [(c.criterion, f"{c.case}!{c.key}") for c in cells],
+            criteria_cells(r, "M9"),
             [
                 ("ironcalc-calc", f"{TRIG}!S!C51"),
                 ("rate:IRR", f"{GEN}!Calc!A1"),
@@ -302,9 +305,8 @@ class ExitOwners(TaskDir):
                 "text_failing_cells": [f"{text_probe}!T!C4"],
             }
         ]
-        cells = exit_owners.exit_cells(r, "M10")
         self.assertEqual(
-            [(c.criterion, f"{c.case}!{c.key}") for c in cells],
+            criteria_cells(r, "M10"),
             [
                 ("gen-m10", f"{gen10}!S!A1"),
                 ("gen-m10 text", f"{gen10}!S!B2"),
@@ -312,14 +314,13 @@ class ExitOwners(TaskDir):
                 ("probes text", f"{text_probe}!T!C4"),
             ],
         )
+        # A task naming the probe text item owns it; the others stay unowned.
         self.task("text-locale T!C4", milestone="M10")
-        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M10", self.tasks)]
-        self.assertNotIn(f"{text_probe}!T!C4", listed)
-        self.assertIn(f"{gen10}!S!B2", listed)
+        unowned = {f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M10", self.tasks)}
+        self.assertEqual(unowned, {f"{gen10}!S!A1", f"{gen10}!S!B2", f"{PROBE}!P!B2"})
         # A row without the text criterion lists no probe text item.
         del r["milestone_exit"][0]["probe_text_items"]  # type: ignore[index]
-        cells = exit_owners.exit_cells(r, "M10")
-        self.assertNotIn("probes text", [c.criterion for c in cells])
+        self.assertNotIn("probes text", [criterion for criterion, _ in criteria_cells(r, "M10")])
 
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")
