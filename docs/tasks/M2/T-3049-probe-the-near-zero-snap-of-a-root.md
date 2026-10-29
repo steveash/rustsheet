@@ -3,7 +3,7 @@ id: T-3049
 title: "Probe the near-zero snap of a root + or - under IF, IFS, IFERROR, CHOOSE, SWITCH, LET and a unary minus"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,17 +29,24 @@ result to 0, so the engine's notion of the "root" sum is backed by cells.
   not for addends near 1, T-0110), which needs boundary pairs, not one sample.
 
 ## Acceptance criteria
-- [ ] A new excel-graph probe case `probes/t3049-snap-under-pickers` (milestone M2, decision 0043) reads back
+- [x] A new excel-graph probe case `probes/t3049-snap-under-pickers` (milestone M2, decision 0043) reads back
       `0.1+0.2-0.3` and a k = 7 / k = 8 boundary pair under each of: `IF(TRUE,..)`, `IF(FALSE,0,..)`, `IFS(TRUE,..)`,
       `IFERROR(..,0)`, `IFNA(..,0)`, `CHOOSE(1,..)`, `SWITCH(1,1,..)`, `LET(x,..,x)`, `LET(x,0.1,x+0.2-0.3)`,
       `LAMBDA(x,x+0.2-0.3)(0.1)`, a unary minus (`=-(0.1+0.2-0.3)` and `=-0.1-0.2+0.3`), and a cell reference to a
       snapped cell under `+0` as the control.
-- [ ] numbers.md "Near-zero snapping" records which shapes snap, citing the cells, and states the rule the evidence
+- [x] numbers.md "Near-zero snapping" records which shapes snap, citing the cells, and states the rule the evidence
       supports (tree root, last executed operator, or another).
-- [ ] Cells the engine does not match are known failures in eval/baseline/probes.txt with one filed engine follow-up
+- [x] Cells the engine does not match are known failures in eval/baseline/probes.txt with one filed engine follow-up
       task (milestone M2, tier opus) naming them; `make exit-owners MILESTONE=M2` reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes (the follow-up task owns them).
 - Array operands of the root `+`/`-` (T-3047) and the summing functions (T-3048).
+
+## Outcome
+probes/t3049-snap-under-pickers (57 cells, excel-graph 2026-10-28): the snap follows the **tree root**. No picker
+(IF, IFS, IFERROR, IFNA, CHOOSE, SWITCH), LET form or unary sign passes a root `+`/`-` through: all keep the
+residue at `0.1+0.2-0.3` and at k = 7. A LAMBDA body snaps at its own root, like a defined-name body
+(`=LAMBDA(x,x+0.2-0.3)(0.1)` is 0, k = 8 kept). `=-0.1-0.2+0.3` snaps (its root is the `+`). Recorded in
+numbers.md. The engine matches 55 of 57; the two LAMBDA cells (B17, C17) are known failures owned by T-3083.
