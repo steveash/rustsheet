@@ -1,15 +1,69 @@
 //! YIELD's Newton as Excel runs it ([`yield_start`], [`excel_yield_newton`]), and ODDFYIELD's,
 //! the same Newton with its own slope ([`odd_first_yield`]).
 
-use super::{discount_growth, yield_start_term, OddArgs, OddFirstSchedule};
+use super::super::dates::{days_30_360_eu_ymd, days_30_360_us_ymd};
+use super::{discount_growth, OddArgs, OddFirstSchedule};
+use crate::formatter::dates::{date_to_serial_number, excel_serial_to_ymd};
+use crate::functions::date_and_time::is_leap_year;
 use crate::x87_exp::{dd_add, dd_div, dd_mul, two_sum};
 
 /// The settlement-to-maturity term of [`yield_start`]: `whole_years + days / year_days` years,
-/// kept as its parts so the start can take it exactly ([`super::yield_start_term`]).
+/// kept as its parts so the start can take it exactly ([`yield_start_term`]).
 pub(super) struct StartTerm {
     pub(super) whole_years: f64,
     pub(super) days: f64,
     pub(super) year_days: f64,
+}
+
+/// The term [`yield_start`] takes, as its parts ([`StartTerm`]), from the `settlement` and
+/// `maturity` serials: the whole years from settlement to maturity, then the basis' days from the
+/// last anniversary of the settlement to maturity over 360 (bases 0, 2 and 4), 365 (basis 3) or the
+/// length of the maturity's calendar year (basis 1). A 29 February settlement has its anniversaries
+/// on 1 March in common years; the 30/360 count's end-of-February rule looks at the anniversary.
+/// Fitted on probes/yield-start-term-basis (T-2777, lab arithmetic: 153 of 159 cells within 4e-16
+/// relative, 5 of the other 6 at PRICE's root, against 34 for the basis' days over its year):
+/// `YIELD(DATE(2010,1,31),DATE(2020,1,30),..,1)` starts from 9 + 364/366 (2020 is a leap year), and
+/// `YIELD(DATE(2012,2,29),DATE(2019,8,15),..,0)` from 7 + DAYS360(1 March 2019, maturity)/360, not
+/// DAYS360 over the whole term (financial.md "YIELD stops short of PRICE's root"). The dates are
+/// the ones Excel shows, so serial 60 is 29 February 1900 (`YIELD(60,36585,0.05,90,100,4)` starts
+/// from 100 years; probes/fin-coupon-walk-bounds-c H12). `None` off the calendar.
+pub(super) fn yield_start_term(settlement: i64, maturity: i64, basis: u32) -> Option<StartTerm> {
+    let (year, month, day) = excel_serial_to_ymd(settlement)?;
+    let end = excel_serial_to_ymd(maturity)?;
+    let anniversary = |y: i32| {
+        if month == 2 && day == 29 && !(y == 1900 || is_leap_year(y)) {
+            (y, 3, 1)
+        } else {
+            (y, month, day)
+        }
+    };
+    let mut whole_years = end.0 - year;
+    let mut last = anniversary(end.0);
+    if last > end {
+        whole_years -= 1;
+        last = anniversary(end.0 - 1);
+    }
+    let days = match basis {
+        0 => days_30_360_us_ymd(last, end),
+        4 => days_30_360_eu_ymd(last, end),
+        _ if whole_years == 0 => (maturity - settlement) as f64,
+        // An anniversary after 1900 is a real date; counting from the month's first day keeps a
+        // serial-0 settlement's day 0 (1900-01-00).
+        _ => {
+            let first = date_to_serial_number(1, last.1, last.0).ok()?;
+            (maturity - i64::from(first) - i64::from(last.2) + 1) as f64
+        }
+    };
+    let year_days = match basis {
+        1 if is_leap_year(end.0) => 366.0,
+        1 | 3 => 365.0,
+        _ => 360.0,
+    };
+    Some(StartTerm {
+        whole_years: f64::from(whole_years),
+        days,
+        year_days,
+    })
 }
 
 /// The yield YIELD's Newton starts from with more than one coupon left, over the term `T`:
