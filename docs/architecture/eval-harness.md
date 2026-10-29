@@ -268,7 +268,8 @@ leaves `rate_cells` and `rate_visible` of the function whose count holds it (`ra
 `cells`, `visible`, the tier and the strict count keep it. report.md prints the number left out per
 function under the Phase 1 line, and warns about a listed cell whose suite the run scored but that is
 not scored or not visibly off (`stale_exceptions`). A line in a suite the run skipped (not fetched or
-not selected) is listed as not checked (`unchecked_exceptions`), never as stale. The same validation refuses a malformed line in `run` and `check`.
+not selected) is listed as not checked (`unchecked_exceptions`), never as stale. The same validation
+refuses a malformed line in `run` and `check`.
 
 The rate also leaves out the cells only open M14 tasks own (decision 0143), with no hand-kept line:
 `make eval` runs `scripts/desktop_owned.py`, which applies exit_owners.py's `owned` rule to every
