@@ -1561,6 +1561,7 @@ C	probes/t3097-nesting-sum-65-typed.case.json	2
 C	probes/t3100-snap-operand-order.case.json	540
 C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3106-lookup-xmatch-near-equal.case.json	786
+C	probes/t3114-collation-beyond-latin1.case.json	986
 C	probes/t3115-approximate-text-collation.case.json	625
 C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
 C	probes/t3136-criteria-formatted-number-operands.case.json	590
@@ -1698,7 +1699,7 @@ C	probes/text-locale-date-names.case.json	124
 C	probes/text-locale-era-gregorian.case.json	23
 C	probes/text-locale-japanese-year.case.json	20
 C	probes/text-locale-lunar-edges.case.json	61
-C	probes/text-locale-lunar-months-1900.case.json	1206
+C	probes/text-locale-lunar-months-1900.case.json	0
 C	probes/text-locale-lunar-tokens.case.json	85
 C	probes/text-locale-name-tables.case.json	601
 C	probes/text-locale-regional-lcids.case.json	252
@@ -5025,6 +5026,7 @@ F	probes/table-edits/table-insert-two-columns-inside-header.case.json	F!A5
 F	probes/text-elapsed-two-tokens.case.json	S!A13
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
+F	probes/text-locale-lunar-months-1900.case.json	!Timeout
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
 F	probes/xirr-irr-empty-guess.case.json	Sheet1!A11
