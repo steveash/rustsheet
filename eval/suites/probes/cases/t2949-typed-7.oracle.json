@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "D7": {
+    "t": "n",
+    "v": 1.0
+   },
+   "E7": {
+    "t": "s",
+    "v": "=LAMBDA(x, x)(1)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "55d9faa2103aa588eea41c4e8af3f1434fd1d266fa577c82cb6a36d7da2d73b6",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-29T20:56:10+00:00",
+  "version": null,
+  "workbook_name": "1d2f30ea988f3a981612935a08777be212038c7baaf27ff733ae02a27522c9be.xlsx"
+ }
+}
