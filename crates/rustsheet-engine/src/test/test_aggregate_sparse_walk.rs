@@ -167,6 +167,7 @@ fn textjoin_ignore_empty_false_stops_walking_rows_past_the_limit() {
         "=TEXTJOIN(\",\",FALSE,Sheet1!1:1048576)",
     );
     assert_eq!(value, "#CALC!");
-    // The 1,000 constants are read by the recalculation itself; walking the rows would read them again.
+    // The 1,000 constants are read by the recalculation itself; walking the rows would read
+    // them again.
     assert!(reads < 1500, "read {reads} cells");
 }

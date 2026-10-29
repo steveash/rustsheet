@@ -1679,6 +1679,7 @@ C	probes/textjoin-delimiter-array.case.json	6
 C	probes/textjoin-delimiter-elements.case.json	24
 C	probes/textjoin-ignore-empty-lift.case.json	132
 C	probes/textjoin-whole-rows-error-cell.case.json	8
+C	probes/textjoin-whole-rows-self-reference.case.json	2
 C	probes/textsplit-casefold-length.case.json	8
 C	probes/textsplit-empty-delimiter.case.json	13
 C	probes/textsplit-empty-text.case.json	19
