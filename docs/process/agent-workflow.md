@@ -108,7 +108,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
    the task blocked.
 8. **PR:** use the template. Set the task to `done` with an Outcome note.
 9. **Merge:** once CI is green and reviews are approved, take the merge lock (`make
-   merge-lock-acquire PR=<n>`; decision 0075), bring `origin/main` in if the branch is behind and
+   merge-lock-acquire PR=<n>`; decision 0075; if busy, `make merge-lock-wait PR=<n>` in the
+   background, decision 0145), bring `origin/main` in if the branch is behind and
    wait for CI on that head, and when the PR head contains the current `origin/main` (the steward
    skill's mechanical check, decision 0028), squash-merge and release the lock. Before the lock,
    merge `origin/main` in only as the `steward` skill's "When to merge `main` in" allows

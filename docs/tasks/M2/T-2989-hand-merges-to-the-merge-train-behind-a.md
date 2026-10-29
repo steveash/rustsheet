@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-2996]
+depends_on: [T-2996, T-3040]
 spec: docs/specs/SPEC-0027-merge-train.md
 ---
 

@@ -121,6 +121,15 @@ Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::bool_or_error_operand_matcher
 
+## Numeric `<`, `<=`, `>`, `>=` criteria compare the 15-digit value of the cell
+Rule: a number cell meets an ordering criterion by its 15-digit value, like `=` and `<>`: a cell holding `1+22*2^-52`
+(prints 1) meets `"<=1"`, `">=1"` and `"=1"` but not `">1"`; `1+23*2^-52` meets `">1"`. Same in COUNTIF, SUMIF,
+COUNTIFS and SUMIFS. The criterion's own operand is text, already cut to 15 digits when parsed.
+Evidence: probes/t3072-criteria-near-equal-order (288 criteria cells); details in numbers.md "Criteria ordering
+operators compare at 15 digits too".
+Status: VERIFIED (engine not yet: `result_is_less_than_number` and the other three ordering matchers in
+functions/criteria.rs compare raw doubles, T-3103)
+
 ## Text `<=` / `>=` criteria, and dotted dates are text in en-US
 Rule: `"<=text"` and `">=text"` compare the cell text with the operand, case-insensitively, like
 `"<"` and `">"`: over "10.1.2026", "10.3.2026", "10.6.2026", `">=10.3.2026"` counts 2,
@@ -429,3 +438,9 @@ argument coercion: see also the `--""` entry in coercion.md.
 Evidence: probes/m2-argument-kind-gaps-b (excel-graph), Calc!A11:A14 and A15:A21. Ours already matches (12/12).
 Status: VERIFIED.
 Tasks: T-2870
+
+## Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars (VERIFIED, T-2980)
+Evidence: `probes/m2-argument-kind-gaps-c` (excel-graph). Criteria `0`/`"0"`/`"=0"` match a numeric 0 and a `"0"`
+text cell but not a blank; `-2`/`"-2"`/`"=-2"` match numeric -2 and a `"-2"` text cell; `"<0"` matches only numbers.
+An error `logical_test` (literal or cell) propagates; an error `value_if_false` surfaces only on the FALSE branch.
+`RIGHT(text,"2")`, `" 2 "` and `"1E1"` coerce num_chars as numbers. `RIGHT("abcdef","2.7")` is "ef" (truncated; Calc!A27) and `RIGHT(..,"x")` is #VALUE! (Calc!A31). IF cells: Calc!A1:A12; RIGHT cells: Calc!A25:A31. Our engine already matches every cell.

@@ -430,8 +430,8 @@ impl Model {
         // A pair with a non-number on either side adds nothing; the degrees of freedom still come
         // from the first range's shape (statistics.md, CHITEST text rule; for two different shapes
         // that choice is UNVERIFIED, TODO(T-2650)). Pairs of only text and
-        // blanks are 1.0 for most shapes (gen-m9/8dd2312c96effb1b A343), but
-        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is #DIV/0! (0a9226016e8f5f33 A333), unexplained: TODO(T-2650).
+        // blanks are 1.0 when both sides hold numbers that are never paired (gen-m9/8dd2312c96effb1b
+        // A343); a side with no number at all is #DIV/0! (checked below).
         let values: Vec<(f64, f64)> = values_left
             .iter()
             .zip(&values_right)
@@ -447,6 +447,18 @@ impl Model {
                 Error::NA,
                 cell,
                 "CHISQ.TEST requires at least two data points".to_string(),
+            );
+        }
+
+        // Excel: a side holding no number at all is #DIV/0!, not p = 1
+        // (probes-numeric/t1049-chisqtest A23 `CHISQ.TEST(B1:B4,Z1:Z4)` and A24, Z1:Z4 blank;
+        // m9-legacy-chitest A28 `CHITEST(P1:P3,G1:G3)`; gen-m9/0a9226016e8f5f33 A333
+        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)`, a side of text, a boolean and blanks).
+        if values_left.iter().all(Option::is_none) || values_right.iter().all(Option::is_none) {
+            return CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "CHISQ.TEST range holds no number".to_string(),
             );
         }
 
@@ -504,14 +516,13 @@ impl Model {
             }
         };
 
-        // The capped cdf. A sheet's cell count keeps the shape under 2^33, where the series can
-        // need about 630,000 terms, past the 2^19 cap, so a very large test is #NUM! (the cap's
-        // DEVIATION). A statistic whose half underflows is a cdf of 0 (incomplete_gamma.rs), so p 1.
-        let mut p = if is_one_degree(&dist) {
-            chi_squared_sf(&dist, chi2)
-        } else {
-            1.0 - gamma_cdf(&dist, chi2)
-        };
+        // The capped right tail, taken directly for every df and not as 1 - P, which cancels digits
+        // as p gets small: CHITEST(F1:F3,G1:G3) at chi2 = 18, df 2 is EXP(-9) in Excel, and 1 - P is
+        // off in the 13th digit (probes-numeric/m9-legacy-chitest A23; statistics.md "Incomplete
+        // gamma: accurate kernel", T-0971, T-3058). A sheet's cell count keeps the shape under 2^33,
+        // where the series can need about 630,000 terms, past the 2^19 cap, so a very large test is
+        // #NUM! (the cap's DEVIATION). A statistic whose half underflows gives p 1.
+        let mut p = chi_squared_sf(&dist, chi2);
         if p.is_nan() {
             return CalcResult::new_error(
                 Error::NUM,

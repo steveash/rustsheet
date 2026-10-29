@@ -265,7 +265,7 @@ fn excepted_cells(
         .cells
         .keys()
         .filter(|cell| !found.contains(*cell))
-        .map(|(case, key)| format!("{case}!{key}"))
+        .map(|(case, key)| crate::runner::cell_id(case, key))
         .collect();
     (left_out, stale)
 }

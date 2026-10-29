@@ -69,7 +69,7 @@ impl Phase1Exceptions {
                 return Err(ExceptionsError::Duplicate {
                     path: PHASE1_EXCEPTIONS_PATH,
                     line,
-                    cell: format!("{}!{}", cell.0, cell.1),
+                    cell: crate::runner::cell_id(&cell.0, &cell.1),
                     first: first.line,
                 });
             }

@@ -3,7 +3,7 @@ id: T-2987
 title: "Merge-train builder scripts/merge_train.py with a dry-run mode"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -36,21 +36,37 @@ file exists and says `lock`.
   would-be unlabels and ejections.
 
 ## Acceptance criteria
-- [ ] `scripts/merge_train.py --dry-run` implements steps 2–4 and makes no writes (no push, no
+- [x] `scripts/merge_train.py --dry-run` implements steps 2–4 and makes no writes (no push, no
       label, no comment, no lock).
-- [ ] `tasks.py validate --root` and `check_decisions.py --root` exist and are tested.
-- [ ] `scripts/test_merge_train.py` covers SPEC-0027's Test plan cases for collect, build,
+- [x] `tasks.py validate --root` and `check_decisions.py --root` exist and are tested.
+- [x] `scripts/test_merge_train.py` covers SPEC-0027's Test plan cases for collect, build,
       independence (criss-cross included), the id checks and dry-run. It includes the
       tree-equality property test, and runs in `make hygiene`.
-- [ ] `scripts/merge_train.toml` says `mode = "lock"`, and `make merge-mode` reads it from
+- [x] `scripts/merge_train.toml` says `mode = "lock"`, and `make merge-mode` reads it from
       `origin/main` and fails closed. A test covers a missing file, a malformed file, a duplicate
       key and an unknown value.
-- [ ] A test shows that a planted `tasks.py` or module in the train tree is not imported by the id
+- [x] A test shows that a planted `tasks.py` or module in the train tree is not imported by the id
       checks.
-- [ ] A dry run against the live repository prints a plausible batch; the output is pasted in the
+- [x] A dry run against the live repository prints a plausible batch; the output is pasted in the
       PR.
-- [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
 
 ## Out of scope
 - Push, CI, merging and the lock (T-2994). Bisection (T-2998).
 - Shadow mode and the step-mode fallback (T-2995).
+
+## Outcome
+- `scripts/merge_train.py`: `mode` (`make merge-mode`) reads `scripts/merge_train.toml` from a
+  fresh `origin/main` and fails closed; `--dry-run` (`make merge-train DRY_RUN=1`) collects with
+  `merge_ready.verify`, builds up to 5 PRs in scratch worktrees (independence by
+  `merge-base --all`, deferral, ejection), runs `main`'s id checks after each merge with
+  `python3 -I`, and prints the batch. It writes nothing.
+- `tasks.py validate --root` and `check_decisions.py --root`; `scripts/merge_train.toml` says
+  `mode = "lock"`. Decision 0150.
+- `scripts/test_merge_train.py`: the fail-closed mode read, the id checks and a planted module,
+  build (cap, defer, eject, criss-cross, id collisions), the tree-equality property test (with
+  renames, deletions and merges of `main` into PRs), and a dry run that writes nothing.
+- Live (2026-10-28, `main` 45bacab): `make merge-train DRY_RUN=1` printed "0 candidate(s)": no
+  PR carries the label yet (`mark` is T-3040). Building the first 5 open non-draft PRs directly
+  (#2191, #2190, #2189, #2162, #2151) merged all 5 with no deferral or ejection.
+- Eval delta: none (scripts and docs only).

@@ -154,8 +154,7 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
     // panicked where x / beta overflows (E6, which Excel also makes #NUM!) or underflows to 0
     // (E7, now 0 as in Excel). From a shape of 1E8 the cdf is Temme's expansion, a fixed amount of
     // work, so those cdfs are Excel's numbers (E1-E4, E8, E9; T-1891). The inversion at a shape
-    // of 1E300 is still #NUM! where Excel has a number (E5): probes/incomplete-gamma-cap, a
-    // DEVIATION; TODO(T-2982).
+    // of 1E300 is Excel's closed form, 1.0002658235505755 (E5; T-2982).
     let mut model = new_empty_model();
     model._set("C1", "1E300");
     model._set("C2", "1.0000001E300");
@@ -182,7 +181,7 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
         ("A2", "0.499999999"),
         ("A3", "0.5"),
         ("A4", "1"),
-        ("A5", "#NUM!"),
+        ("A5", "1.000265824"),
         ("A6", "#NUM!"),
         ("A7", "0"),
         ("A8", "0.50000133"),

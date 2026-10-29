@@ -142,7 +142,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
                 if c.verdict.is_pass() {
                     row.bit_exact += 1;
                 } else if c.verdict.is_failure() {
-                    let key = format!("{}!{}", r.id, c.key());
+                    let key = crate::runner::cell_id(&r.id, &c.key());
                     if Visible::is_off(c) {
                         row.visibly_off.push(key.clone());
                     }
@@ -256,7 +256,7 @@ mod tests {
     use super::*;
     use crate::catalog::{CatalogFunction, Scope};
     use crate::runner::{CaseStatus, CellResult};
-    use crate::value::{Value, Verdict};
+    use crate::value::Verdict;
 
     fn function(name: &str, milestone: &str) -> CatalogFunction {
         CatalogFunction {
@@ -273,19 +273,7 @@ mod tests {
     }
 
     fn cell(cell: &str, formula: Option<&str>, verdict: Verdict) -> CellResult {
-        CellResult {
-            sheet: "S".to_string(),
-            cell: cell.to_string(),
-            formula: formula.map(str::to_string),
-            anchor_formula: None,
-            expected: Value::Number(1.0),
-            actual: Value::Number(1.0),
-            verdict,
-            from_excel: true,
-            listed_deviation: false,
-            graph_subnormal: false,
-            kind: crate::runner::CellKind::Scored,
-        }
+        CellResult::for_test(cell, formula, verdict)
     }
 
     fn case(suite: &str, cells: Vec<CellResult>) -> CaseResult {
@@ -306,6 +294,7 @@ mod tests {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: crate::poi_m8_subset::ReferenceFormCells::default(),
         }
     }
 

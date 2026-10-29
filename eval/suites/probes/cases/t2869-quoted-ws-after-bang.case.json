@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2869: typed `='My S'! B1` (space after the bang of a quoted sheet prefix): value and FORMULATEXT.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "My S",
+   "cells": {
+    "B1": 1,
+    "B2": 2,
+    "A1": {
+     "entered": "='My S'! B1"
+    },
+    "C1": "=FORMULATEXT(A1)"
+   }
+  }
+ ],
+ "expected": {}
+}

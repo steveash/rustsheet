@@ -59,6 +59,12 @@ pub(crate) fn hijri_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
     Some((year, month, u32::try_from(rest + 1).ok()?))
 }
 
+/// The Sunday-first weekday index Excel's `B2` name quirks read from a month: weekday number
+/// min(month, 7), Sunday being 1 (`NameTokens`).
+fn month_as_weekday(month: u32) -> usize {
+    month.clamp(1, 7) as usize - 1
+}
+
 /// What the first name token of a `B2` section showed.
 #[derive(Clone, Copy)]
 enum FirstName {
@@ -73,28 +79,37 @@ pub(crate) struct NameTokens {
     arabic: bool,
     /// Whether a `mmm` switches the section to the Arabic path: `B2` before a tag.
     mmm_switches: bool,
+    /// Whether a `B2` came before a tag whose calendar wins over it (`DatePart::b2_overridden`).
+    b2_overridden: bool,
+    /// The month a `mmm` printed in a `b2_overridden` section, which every weekday after it reads.
+    month_after_mmm: Option<u32>,
     first: Option<FirstName>,
-    /// Whether a numeric date token came before any Arabic name, which turns the first-name
-    /// quirk off for the section (`B2yyyy-mm-dd|mmmm|dddd` is "1444-08-23|شعبان|الأربعاء";
-    /// probes/text-locale-calendars A124).
+    /// Whether a numeric date token came before any Arabic name in a bare `B2` section, which
+    /// turns the first-name quirk off for the section (`B2yyyy-mm-dd|mmmm|dddd` is
+    /// "1444-08-23|شعبان|الأربعاء"; probes/text-locale-calendars A124).
     real_names: bool,
 }
 
 impl NameTokens {
     /// `hijri` is whether a `B2` prefix put the section in Hijri (`DatePart::hijri`), `tagged`
-    /// whether the section's locale tag gives names.
-    pub(crate) fn new(hijri: bool, tagged: bool) -> Self {
+    /// whether the section's locale tag gives names, `b2_overridden` whether a `B2` came before a
+    /// tag whose calendar wins over it (`DatePart::b2_overridden`).
+    pub(crate) fn new(hijri: bool, tagged: bool, b2_overridden: bool) -> Self {
         NameTokens {
             arabic: hijri && !tagged,
             mmm_switches: hijri && tagged,
+            b2_overridden,
+            month_after_mmm: None,
             first: None,
             real_names: false,
         }
     }
 
-    /// Notes a day, month or year number token.
+    /// Notes a day, month or year number token. Under a tag, one before the `mmm` switch leaves
+    /// the quirk on (`B2[$-409]yyyy|mmm|dddd` is "1444|شعبان|السبت";
+    /// probes/t2932-b2-calendar-twice A60-A63).
     pub(crate) fn number(&mut self) {
-        if self.first.is_none() {
+        if self.arabic && self.first.is_none() {
             self.real_names = true;
         }
     }
@@ -118,6 +133,18 @@ impl NameTokens {
             text.push_str(self.hijri_name(token, month, weekday));
             return;
         }
+        // Excel: after a `B2` before a tag whose calendar wins over it, every weekday after a
+        // `mmm` is weekday number min(month, 7), Sunday being 1, in the tag's names, as in the
+        // Arabic path's first-name quirk: `B2[$-70409]mmm|ddd` of 2023-03-15 is "มี.ค.|อ."
+        // (Tuesday), `dddd|mmm|dddd` "พุธ|มี.ค.|อังคาร"; `mmmm` and `mmmmm` do not do it
+        // (probes/t3029-b2-calendar-weekday).
+        if self.b2_overridden && matches!(token, TextToken::MonthNameShort) {
+            self.month_after_mmm = Some(month);
+        }
+        let weekday = match self.month_after_mmm {
+            Some(m) => month_as_weekday(m),
+            None => weekday,
+        };
         let m = month as usize - 1;
         let dates = &locale.dates;
         match token {
@@ -165,7 +192,7 @@ impl NameTokens {
         };
         let names = &HIJRI_ARABIC;
         let name = match (is_day, read) {
-            (true, FirstName::Month(m)) => names.days[m.clamp(1, 7) as usize - 1],
+            (true, FirstName::Month(m)) => names.days[month_as_weekday(m)],
             (_, FirstName::Weekday(w)) => names.days[w],
             (false, FirstName::Month(m)) => names.months[m as usize - 1],
         };

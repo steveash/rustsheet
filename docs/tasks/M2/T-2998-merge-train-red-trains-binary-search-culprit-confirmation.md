@@ -3,7 +3,7 @@ id: T-2998
 title: "Merge-train red trains: binary search, culprit confirmation, ejection and infrastructure retry"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -44,9 +44,9 @@ ran a green CI makes progress, and an infrastructure failure ejects nobody.
   first, then confirmation, ejection and resume.
 
 ## Acceptance criteria
-- [ ] `scripts/merge_train.py` implements SPEC-0027 section 6 in `train` mode, with the per-wait
+- [x] `scripts/merge_train.py` implements SPEC-0027 section 6 in `train` mode, with the per-wait
       gate, merge-on-cut-off and required resume.
-- [ ] `scripts/test_merge_train.py` covers SPEC-0027's binary-search cases with a scripted CI
+- [x] `scripts/test_merge_train.py` covers SPEC-0027's binary-search cases with a scripted CI
       oracle:
       - one culprit at each position, including `P_5` of 5 (exactly 5 runs, `P_1..P_4` merged);
       - **a 5-PR red train with the culprit at `P_4`, and again at `P_5`, with CI at the 10-min
@@ -61,7 +61,31 @@ ran a green CI makes progress, and an infrastructure failure ejects nobody.
 
       In every case only culprits are ejected, every innocent PR merges, and no untested tree
       lands.
-- [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
 
 ## Out of scope
 - Shadow-mode predictions. T-2995 reuses this search for them.
+
+## Outcome
+`scripts/merge_train.py` implements SPEC-0027 section 6 in `train` mode (decision 0154):
+- the binary search for the first red prefix;
+- merge of the green prefix, then one confirmation run of the culprit alone on the new `main`:
+  - red: the culprit is ejected, with labels, a comment and the `merge-train-ejected v1` block;
+  - green: nobody is ejected and a P1 is queued on `Stage.tasks` (T-3055 files it);
+- the rest is re-tested as a new train in the same hold;
+- the step 6 gate with n = the PRs each run can merge;
+- one retry of an infrastructure failure, on a fresh record commit;
+- on a cut-off, the known-green prefix merges and a `[skip ci]` state record goes onto
+  `merge-train/current`. The next hold resumes from it, or restarts and records the reason.
+
+`scripts/test_merge_train.py` adds a scripted CI oracle and 11 red-train tests:
+- one culprit at each position;
+- `P_5` of 5 in exactly 5 runs, with the gate n sequence 5, 2, 3, 4, 1;
+- `P_4` and `P_5` at the 10-min timeout, resumed in the second hold;
+- `P_1` and `P_2` at the timeout, confirmed in the next hold;
+- a restart when `main` or a head changed;
+- two culprits, an interaction, a failure that does not reproduce, and an infrastructure failure;
+- a forged state record, and the infrastructure-conclusion wording.
+
+In every case only culprits are ejected and `main` ends on a green-tested tree. Eval delta: none
+(harness only).

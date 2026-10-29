@@ -312,16 +312,16 @@ Stored, a plus on a number literal folds on load as it does typed: a plain `<f>+
 (`ABS(+{5})`, `INDIRECT(+"K1")`, `+B1:B3` below) (probes/t2772-unary-plus-static-readings D19:E20,
 D27:E28; T-2772). Typed, Excel refuses a plus before a LET name or a LAMBDA parameter: `=LET(+x,1,x)` and
 `=LAMBDA(+x,x)(1)` both get Graph PATCH 400 `InvalidArgument` (docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md; refused inputs cannot be committed
-as cases). We refuse the LAMBDA form (`#ERROR!`, test_fn_let.rs) but evaluate the LET form to `#VALUE!` (T-2887). Where an analysis matches a literal, a plus changes nothing, legacy or
+as cases). We refuse both (`#ERROR!`, test_fn_let.rs; the LET form since T-2887). Where an analysis matches a literal, a plus changes nothing, legacy or
 dynamic: `N(IF(+TRUE,B1:B3))` and `N(CHOOSE(+TRUE,Z1,{2;3}))` match their plus-free controls (1 and 7 off the range's
 rows; 1 and 1 on row 2 of B1:B3, where no `@` is added either), `SUBTOTAL(9,TAKE(IF(INDIRECT(+"K1"),H1:H2,I1:I2),2))`
 is 7 like `INDIRECT("K1")`, legacy `ABS(+{5})` prints `=ABS(+@{5})` (5) and legacy `N(+{2;3})` prints `=N(+@{2;3})` (2);
 a dynamic `N(+{2;3})` lifts (`#SPILL!` there, blocked). FORMULATEXT keeps every such plus
 (probes/t2772-unary-plus-static-readings, probes/t2772-unary-plus-in-range-rows D:I). A plus on a whole N argument does
 make the range a value: legacy `=N(+B1:B3)` on row 2 prints `=N(+@B1:B3)` and is 2, where `=N(B1:B3)` is 1 with no `@`;
-legacy `=+B1:B3` and `=ABS(+B1:B3)` print `+@B1:B3` (2) (probes/t2772-unary-plus-in-range-rows J:M). We give 1 and print
-`=N(+B1:B3)`: `is_plain_reference` sees through the top-level plus (T-2885). Unprobed: a plus on an IF arm or on OFFSET's
-reference under N (T-2885 probes them).
+legacy `=+B1:B3` and `=ABS(+B1:B3)` print `+@B1:B3` (2) (probes/t2772-unary-plus-in-range-rows J:M). Ours: matches since T-2885
+(`is_plain_reference` no longer treats a plus on the whole argument as a plain reference). Unprobed: a plus on an IF arm
+or on OFFSET's reference under N; they still read as plain references (follow-up task).
 Status: VERIFIED (excel-graph)
 
 ## Formula text keeps typed whitespace, except at the end, before a comma and in an array constant
@@ -343,6 +343,11 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
   too: `=1+  +5` prints `=1+  5`, `=1+ +5` prints `=1+ 5`.
 - Dropped: around `:` (`=SUM(B1 :B2)` and `=SUM(B1: B2)` print `=SUM(B1:B2)`), after a sheet prefix's `!` (`=S! B1`
   prints `=S!B1`, value 1), a trailing line feed (`=1+2` LF and `=1+2 ` LF ` ` print `=1+2`).
+- **The drop after `!` holds for every sheet-prefix form** (probes/t2869-quoted-ws-after-bang, -quoted-lf-after-bang,
+  -ws-lf-after-bang; excel-graph `entered`, 2026-10-29, T-2869): `='My S'! B1`, `='My S'!` LF `B1` and `=S!` LF `B1`
+  read as 1 and print `='My S'!B1` / `=S!B1`. An external prefix takes it too (`=[1]S! A1` is accepted and prints
+  `'...[1]S'!A1` (the quote closes the file path Excel prepends) with no space; the value is Graph's `#BLOCKED!` because the link has no target, so no case is kept).
+  `=S! R1C2` (R1C1 text after a prefix and a space, typed in A1 mode) is refused: PATCH answers `400 InvalidArgument`.
 - **A run keeps only its line feeds and the spaces after the last one**: `=1+ ` LF ` 2` prints `=1+` LF ` 2`,
   `=1+` LF ` ` LF `2` prints `=1+` LF LF `2`, 10 spaces, 3 line feeds and 2 spaces print as the 3 line feeds and 2
   spaces.

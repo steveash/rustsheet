@@ -54,6 +54,16 @@ pub enum TextToken {
     AMPM,
     AP(char, char),
 }
+
+impl TextToken {
+    /// Whether the token prints fixed text and no value (a literal, quoted text, a ghost or a fill).
+    pub fn is_literal(&self) -> bool {
+        matches!(
+            self,
+            TextToken::Literal(_) | TextToken::Text(_) | TextToken::Ghost(_) | TextToken::Spacer(_)
+        )
+    }
+}
 pub struct NumberPart {
     pub color: Option<i32>,
     pub condition: Option<(Compare, f64)>,
@@ -112,10 +122,15 @@ pub struct DatePart {
     pub calendar: Option<Calendar>,
     /// Whether the section's locale tag names a Japanese LCID (`Localized::japanese_lcid`).
     pub japanese_lcid: bool,
+    /// Whether a `B2` before the tag converts the years once more (`Localized::year_twice`).
+    pub year_twice: bool,
     /// Whether a `B2` prefix before any tag puts the section in the Hijri calendar
     /// (`date_names::hijri_ymd`) and, with no tag or from its first `mmm` on, Excel's Arabic
     /// name path (`date_names::NameTokens`).
     pub hijri: bool,
+    /// Whether a `B2` prefix came before a tag whose calendar wins over it: a weekday after a
+    /// `mmm` then reads the month number (`date_names::NameTokens`).
+    pub b2_overridden: bool,
 }
 
 #[derive(Default)]
@@ -884,22 +899,16 @@ impl Parser {
         };
         // A calendar digit other than Hijri wins over a `B2` before the tag (`B2[$-10409]yyyy` is
         // "2023"); an unresolved tag leaves it a bare `B2` (`B2[$-zzz]`).
-        hijri &= localized.is_none_or(|l| l.calendar == Calendar::Hijri);
+        let b2_overridden = hijri && localized.is_some_and(|l| l.calendar != Calendar::Hijri);
+        hijri &= !b2_overridden;
         let general_count = tokens
             .iter()
             .filter(|t| matches!(t, TextToken::General))
             .count();
         if general_count > 0 {
-            let only_literals = tokens.iter().all(|t| {
-                matches!(
-                    t,
-                    TextToken::General
-                        | TextToken::Literal(_)
-                        | TextToken::Text(_)
-                        | TextToken::Ghost(_)
-                        | TextToken::Spacer(_)
-                )
-            });
+            let only_literals = tokens
+                .iter()
+                .all(|t| t.is_literal() || matches!(t, TextToken::General));
             if general_count > 1 || !only_literals || is_date || percent > 0 || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
@@ -922,7 +931,9 @@ impl Parser {
                 day_half: localized.and_then(|l| l.day_half),
                 calendar: localized.map(|l| l.calendar),
                 japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
+                year_twice: localized.is_some_and(|l| l.year_twice),
                 hijri,
+                b2_overridden,
             })
         } else {
             ParsePart::Number(NumberPart {
@@ -977,6 +988,7 @@ impl Parser {
                 day_half: Some(EN_US),
                 calendar: Some(Calendar::Gregorian),
                 japanese_lcid: false,
+                year_twice: false,
                 ..part
             }),
             _ => ParsePart::Error(ErrorPart::default()),

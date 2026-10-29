@@ -8,9 +8,9 @@ use chrono::{Datelike, Duration, NaiveDate};
 use super::{
     date_names::hijri_ymd,
     dates::excel_serial_to_ymd,
-    locale_tag::Calendar,
+    locale_tag::{japanese_era, Calendar},
     lunar_calendar::{lunar_ymd, LAST_SERIAL},
-    parser::TextToken,
+    parser::{DatePart, TextToken},
 };
 use crate::{functions::date_and_time::is_leap_year, locale::excel_date_names::DateNames};
 
@@ -86,20 +86,24 @@ fn saka_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
 /// The day number (0001-01-01 being 1) of 1 Tishrei of Hebrew year 1, the arithmetic calendar's
 /// epoch.
 const HEBREW_EPOCH: i64 = -1_373_427;
-/// The day number of 1899-12-30, from which [`real_day`] counts.
-const DAY_NUMBER_1899_12_30: i64 = 693_594;
-/// The last serial whose Hebrew date is modelled: 2238-11-07, 29 Cheshvan 5999. Excel's dates match
-/// the arithmetic calendar at every probed date to 2238-11-01 (A10); the days to 29 Cheshvan are
-/// extrapolated (a drift that starts there would not show before Kislev). Excel's dates drift from it from Kislev 5999 on (2238-12-01 is "5999-03-24",
-/// not 23; 2239-09-24 is "6000-01-01", not 5999-13-24) and are `#VALUE!` from some date between
-/// 4000-01-01 and 5000-01-01 to 9999-12-31 (probes/t2779-hebrew-saka-more A1:A35). Past it the
-/// date is `#VALUE!` here (TODO(T-2954)).
-const HEBREW_LAST_SERIAL: i64 = 123_764;
-
-/// Whether Hebrew `year` has 13 months: years 3, 6, 8, 11, 14, 17 and 19 of the 19-year cycle.
-pub(crate) fn is_hebrew_leap_year(year: i32) -> bool {
-    (7 * i64::from(year) + 1).rem_euclid(19) < 7
-}
+/// The Gregorian years of Excel's Hebrew year table. A date's Hebrew month and day come from the
+/// table entry of its Gregorian year: the Hebrew date of 1 January and the length of the Hebrew year
+/// it falls in, then the next year's entry from 1 Tishrei on. Each entry agrees with the arithmetic
+/// calendar, but past 2238 the table wraps: Gregorian year `y` reads the entry of
+/// 1585 + (y - 1585) mod 654. So Cheshvan 5999 has 29 days (2238-11-08 is "5999-03-01", the
+/// arithmetic 5999-02-30) and 2239-01-01 is "5999-05-01", as 1585-01-01 is 5345-05-01; this matches
+/// all 512 cells of probes/t2954-hebrew-drift and every later date of t2779-hebrew-saka-more.
+const HEBREW_TABLE_FIRST_YEAR: i32 = 1585;
+/// The last Gregorian year of Excel's Hebrew year table ([`HEBREW_TABLE_FIRST_YEAR`]).
+const HEBREW_TABLE_LAST_YEAR: i32 = 2238;
+/// The Hebrew year of 1 January of a Gregorian year is the Gregorian year plus 3760.
+const HEBREW_YEAR_OF_JANUARY: i32 = 3760;
+/// The last Hebrew year whose months have names: from 1 Tishrei 8263 (4502-09-30) a month name
+/// token under a locale (`[$-80409]mmm`, `mmmm`, `mmmmm`) is `#VALUE!` while the numbers and the
+/// weekday names still print (`[$-80409]yyyy-mm-dd|ddd` of 4502-09-30 is "8263-01-01|Shabat");
+/// with no locale the Gregorian names by month number still print (`[$-80000]mmm` is "Jan";
+/// probes/t2954-hebrew-value-limit).
+pub(crate) const HEBREW_LAST_NAMED_YEAR: i32 = 8262;
 
 /// Days from the epoch to 1 Tishrei of `year` before the postponements of the year's length: the
 /// molad of Tishrei, a day later when it falls on a Sunday, Wednesday or Friday.
@@ -132,48 +136,83 @@ fn hebrew_new_year(year: i64) -> i64 {
     HEBREW_EPOCH + this + delay
 }
 
-/// The Hebrew date of `serial_1900` by the arithmetic calendar, months numbered from Tishrei (1),
-/// so a leap year's Adar I and Adar II are 6 and 7 and its Elul 13 (`[$-80409]yyyy-mm-dd` of
-/// 2023-03-15 is "5783-06-22", of 2024-09-20 "5784-13-17"). `None` past [`HEBREW_LAST_SERIAL`].
-fn hebrew_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
-    if serial_1900 > HEBREW_LAST_SERIAL {
-        return None;
+/// The days of month `month` (from Tishrei, 1) of a Hebrew year of `length` days: Cheshvan has 30
+/// days in a 355- or 385-day year, Kislev 29 in a 353- or 383-day one; Tevet has 29 and a leap
+/// year's Adar I 30; the other months alternate from there.
+fn hebrew_month_length(month: u32, length: i64) -> i64 {
+    match (month, length > 380) {
+        (2, _) => 29 + i64::from(length % 10 == 5),
+        (3, _) => 30 - i64::from(length % 10 == 3),
+        (1 | 5, _) | (6, true) => 30,
+        (4, _) => 29,
+        (m, true) => 30 - i64::from(m % 2),
+        (m, false) => 29 + i64::from(m % 2),
     }
-    let day = DAY_NUMBER_1899_12_30 + real_day(serial_1900)?;
-    // 1900-01-01 is in year 5660; the loop walks at most the years to 5999.
-    let mut year = 5660;
+}
+
+/// The arithmetic calendar's Hebrew month and day of day number `day`, and the length of its year.
+fn arithmetic_hebrew_date(day: i64) -> (u32, i64, i64) {
+    // A first guess from the mean year of 35,975,351 / 98,496 days, then exact.
+    let mut year = (day - HEBREW_EPOCH) * 98_496 / 35_975_351 + 1;
     while hebrew_new_year(year + 1) <= day {
         year += 1;
     }
+    while hebrew_new_year(year) > day {
+        year -= 1;
+    }
     let length = hebrew_new_year(year + 1) - hebrew_new_year(year);
-    let leap = is_hebrew_leap_year(i32::try_from(year).ok()?);
     let mut rest = day - hebrew_new_year(year);
-    let mut month: u32 = 1;
-    loop {
-        // Cheshvan has 30 days in a 355- or 385-day year, Kislev 29 in a 353- or 383-day one;
-        // Tevet has 29 and a leap year's Adar I 30; the other months alternate from there.
-        let days = match (month, leap) {
-            (2, _) => 29 + i64::from(length % 10 == 5),
-            (3, _) => 30 - i64::from(length % 10 == 3),
-            (1 | 5, _) | (6, true) => 30,
-            (4, _) => 29,
-            (m, true) => 30 - i64::from(m % 2),
-            (m, false) => 29 + i64::from(m % 2),
-        };
-        if rest < days || month == 13 {
-            break;
-        }
-        rest -= days;
+    let mut month = 1;
+    while month < 13 && rest >= hebrew_month_length(month, length) {
+        rest -= hebrew_month_length(month, length);
         month += 1;
     }
-    Some((
-        i32::try_from(year).ok()?,
-        month,
-        u32::try_from(rest + 1).ok()?,
-    ))
+    (month, rest + 1, length)
 }
 
-/// What a month name token prints in the Hebrew calendar for month `month` of `year`, with the
+/// The entry of Excel's Hebrew year table for Gregorian `year` ([`HEBREW_TABLE_FIRST_YEAR`]): the
+/// Hebrew month and day of 1 January and the length of the Hebrew year it falls in.
+fn hebrew_table_entry(year: i32) -> Option<(u32, i64, i64)> {
+    let year = if year <= HEBREW_TABLE_LAST_YEAR {
+        year
+    } else {
+        let size = HEBREW_TABLE_LAST_YEAR - HEBREW_TABLE_FIRST_YEAR + 1;
+        HEBREW_TABLE_FIRST_YEAR + (year - HEBREW_TABLE_FIRST_YEAR).rem_euclid(size)
+    };
+    let january = NaiveDate::from_ymd_opt(year, 1, 1)?;
+    Some(arithmetic_hebrew_date(i64::from(
+        january.num_days_from_ce(),
+    )))
+}
+
+/// The Hebrew date of `serial_1900` as Excel reads it from its year table
+/// ([`HEBREW_TABLE_FIRST_YEAR`]), months numbered from Tishrei (1), so a leap year's Adar I and
+/// Adar II are 6 and 7 and its Elul 13 (`[$-80409]yyyy-mm-dd` of 2023-03-15 is "5783-06-22", of
+/// 2024-09-20 "5784-13-17"; 9999-12-31 is "13760-04-22"), and the length of that Hebrew year.
+fn hebrew_date(serial_1900: i64) -> Option<(i32, u32, u32, i64)> {
+    let date = real_date(serial_1900)?;
+    let (mut month, mut day, mut length) = hebrew_table_entry(date.year())?;
+    let mut year = date.year() + HEBREW_YEAR_OF_JANUARY;
+    day += i64::from(date.ordinal0());
+    // At most a year of months, plus the new year's.
+    while day > hebrew_month_length(month, length) {
+        day -= hebrew_month_length(month, length);
+        month += 1;
+        if month > if length > 380 { 13 } else { 12 } {
+            month = 1;
+            year += 1;
+            (_, _, length) = hebrew_table_entry(date.year() + 1)?;
+        }
+    }
+    Some((year, month, u32::try_from(day).ok()?, length))
+}
+
+/// The `(year, month, day)` of [`hebrew_date`].
+fn hebrew_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
+    hebrew_date(serial_1900).map(|(year, month, day, _)| (year, month, day))
+}
+
+/// What a month name token prints in the Hebrew calendar for the date of `serial_1900`, with the
 /// leap-year Adars `adars` of the tag's names, or `None` when the token reads `names` by month
 /// number as usual (and for a weekday token). With a locale every month token is the whole name (`[$-80409]mmmmm` of Adar is
 /// "Adar", of a leap year's month 7 "`AdarII`"). With no locale (`adars` `None`) month 13 prints
@@ -183,11 +222,14 @@ pub(crate) fn hebrew_month_name(
     token: &TextToken,
     names: &'static DateNames,
     adars: Option<&'static [&'static str; 2]>,
-    (year, month): (i32, u32),
+    serial_1900: i64,
 ) -> Option<&'static str> {
     if matches!(token, TextToken::DayName | TextToken::DayNameShort) {
         return None;
     }
+    // Leap or not by the year table, which past 2238 differs from the arithmetic calendar's
+    // (`[$-80409]mmmm` of 4502-03-01, 8262-06-24, is "AdarI"; probes/t2954-hebrew-value-limit F2).
+    let (_, month, _, length) = hebrew_date(serial_1900)?;
     let Some(adars) = adars else {
         return match (month, token) {
             (13, TextToken::MonthLetter) => Some("\u{1}"),
@@ -195,7 +237,7 @@ pub(crate) fn hebrew_month_name(
             _ => None,
         };
     };
-    let index = match (is_hebrew_leap_year(year), month) {
+    let index = match (length > 380, month) {
         (true, 6 | 7) => return Some(adars[month as usize - 6]),
         (true, 8..) => month - 2,
         _ => month - 1,
@@ -203,9 +245,190 @@ pub(crate) fn hebrew_month_name(
     names.months.get(index as usize).copied()
 }
 
+/// The Buddhist era counts from 543 BC: serial 100 (1900-04-09) is "43" under `b` and "2443" under
+/// `bbbb` (probes/text-format-bare-literals A41-A46; gen-m7/6db767d720c5b55a A30).
+const BUDDHIST_ERA_OFFSET: i32 = 543;
+
+/// The Korean calendar (locale tag calendar digit 5) counts from 2333 BC: `[$-50409]yyyy` of 45000
+/// is "4356" (probes/text-locale-calendars A44-A46).
+const KOREAN_ERA_OFFSET: i32 = 2333;
+
+/// What a year or era token (`yy`, `yyyy`, `b`, `bbbb`, `e`, `ee`, `g`) of the date section `part`
+/// prints for 1900-system `serial_1900`, whose date in the section's calendar is `ymd`; `seen_era`
+/// when a `g` came earlier in the section.
+///
+/// Excel: `b` is the Buddhist year with no locale tag and the Gregorian one under a tag but in the
+/// Thai calendar (`[$-40C]bbbb` is "2023", `[$-7041E]bbbb` "2566"); `yy` and `yyyy` count in the
+/// tag's calendar (probes/text-locale-calendars, text-locale-calendars-detail A2, A14-A23). After
+/// a `B2` before a calendar-3, -5 or -7 tag (`part.year_twice`) every year token converts once
+/// more: `B2[$-70409]yyyy|e|bbbb` of 2023-03-15 is "3109|2566|3109", `B2[$-50409]yyyy|e|bbbb`
+/// "6689|4356|4356" (probes/t2932-b2-calendar-twice; the Japanese eras in
+/// [`japanese_era`]). Before a calendar-4 tag the years are [`taiwan_after_b2`]'s.
+/// `None` is `#VALUE!`.
+pub(crate) fn year_token_text(
+    part: &DatePart,
+    token: &TextToken,
+    seen_era: bool,
+    serial_1900: i64,
+    ymd: (i32, u32, u32),
+) -> Option<String> {
+    if part.year_twice && part.calendar == Some(Calendar::Taiwan) {
+        return taiwan_after_b2(part, token, ymd.0);
+    }
+    Some(calendar_year_text(part, token, seen_era, serial_1900, ymd))
+}
+
+/// The Minguo (Taiwan) calendar counts from 1912: 2023 is its year 112.
+const MINGUO_ERA_OFFSET: i32 = 1911;
+
+/// What a year or era token prints after a `B2` before a calendar-4 (Taiwan) tag, for Gregorian
+/// `year`; `None` is `#VALUE!`.
+///
+/// Excel: every year token (`y`, `yy`, `yyy`, `yyyy`, `e`, `ee`, `bbbb`) prints the Minguo year
+/// m = year - 1911 in full from 1000 ("1000", "8088"), and below that "0" and m's first digit
+/// (112 is "01", 999 "09", 89 "08"); m below 1 is `#VALUE!`; `g` prints nothing. `b` and `bb`
+/// print m's third and fourth characters and read past the end of its text: a missing third one
+/// is U+0F01, a missing fourth one a character set by the section's first date or time token
+/// ([`first_token_code`]): `B2[$-40409]b` of 2023-03-15 is "2X", `yyyy|b` "01|2\u{1c}", of
+/// 2000-01-01 `b` "\u{f01}X" (probes/t3028-b2-taiwan-years, t3028-b2-taiwan-cuts,
+/// t2932-b2-calendar-twice A37, A38).
+fn taiwan_after_b2(part: &DatePart, token: &TextToken, year: i32) -> Option<String> {
+    let minguo = year - MINGUO_ERA_OFFSET;
+    if minguo < 1 {
+        return None;
+    }
+    let digits = minguo.to_string();
+    let first = digits.chars().next().unwrap_or('0');
+    Some(match token {
+        TextToken::Era(_) => String::new(),
+        TextToken::BuddhistYearShort => {
+            let third = digits.chars().nth(2).unwrap_or('\u{f01}');
+            let fourth = digits
+                .chars()
+                .nth(3)
+                .unwrap_or_else(|| char::from(first_token_code(&part.tokens)));
+            format!("{third}{fourth}")
+        }
+        _ if minguo >= 1000 => digits,
+        _ => format!("0{first}"),
+    })
+}
+
+/// The character `b` reads past the end of a short Minguo year after `B2[$-40409]`: the code of
+/// the section's first date or time token, as these probes show (probes/t3028-b2-taiwan-cuts
+/// A8-A74): `d` 13, `dd` 14, `ddd` 15, `dddd` 16, `m` 17, `mm` 18 (also as minutes), `mmm` 19,
+/// `mmmm` 20, `h` 21, `hh` 22, `s` 25, `ss` 26, `y` and `yy` 27, `yyy` and `yyyy` 28, `AM/PM`
+/// and `A/P` 34, `[h]` 48, `[m]` 49, `[s]` 50, `g` 53, `gg` 54, `ggg` 55, `e` 56, `ee` 57,
+/// `mmmmm` 59, `b` (also first itself) 88 ("X"), `bbbb` 89 ("Y"). Literals do not count. `aaa`
+/// is 51 in Excel but lexes as `ddd` here (TODO(T-3089)).
+fn first_token_code(tokens: &[TextToken]) -> u8 {
+    let first = tokens.iter().find(|t| !t.is_literal());
+    match first {
+        Some(TextToken::Day) => 13,
+        Some(TextToken::DayPadded) => 14,
+        Some(TextToken::DayNameShort) => 15,
+        Some(TextToken::DayName) => 16,
+        Some(TextToken::Month | TextToken::Minute) => 17,
+        Some(TextToken::MonthPadded | TextToken::MinutePadded) => 18,
+        Some(TextToken::MonthNameShort) => 19,
+        Some(TextToken::MonthName) => 20,
+        Some(TextToken::Hour) => 21,
+        Some(TextToken::HourPadded) => 22,
+        Some(TextToken::Second) => 25,
+        Some(TextToken::SecondPadded) => 26,
+        Some(TextToken::YearShort) => 27,
+        Some(TextToken::Year) => 28,
+        Some(TextToken::AMPM | TextToken::AP(..)) => 34,
+        Some(TextToken::ElapsedHour | TextToken::ElapsedHourPadded) => 48,
+        Some(TextToken::ElapsedMinute | TextToken::ElapsedMinutePadded) => 49,
+        Some(TextToken::ElapsedSecond | TextToken::ElapsedSecondPadded) => 50,
+        Some(TextToken::Era(1)) => 53,
+        Some(TextToken::Era(2)) => 54,
+        Some(TextToken::Era(_)) => 55,
+        Some(TextToken::EraYear(false)) => 56,
+        Some(TextToken::EraYear(true)) => 57,
+        Some(TextToken::MonthLetter) => 59,
+        Some(TextToken::BuddhistYear) => 89,
+        Some(TextToken::BuddhistYearShort) | None => 88,
+        // Every other token is `#VALUE!` in a `B2` section before this is reached (digits, `@`,
+        // `E`; probes/t3028-b2-taiwan-cuts A19, A46, A47, A50, A63), so this arm is unprobed.
+        Some(_) => 88,
+    }
+}
+
+/// [`year_token_text`] in every case but a `B2` before a calendar-4 tag.
+fn calendar_year_text(
+    part: &DatePart,
+    token: &TextToken,
+    seen_era: bool,
+    serial_1900: i64,
+    ymd: (i32, u32, u32),
+) -> String {
+    let twice = part.year_twice;
+    if let Some(Calendar::Japanese { explicit }) = part.calendar {
+        let (era_year, names) = japanese_era(serial_1900, ymd, twice);
+        // Twice converted, the era year is negative and prints as an unsigned 32-bit number
+        // ("4294965434"), also under `yy`.
+        let era_year = era_year.cast_unsigned();
+        match token {
+            TextToken::Era(length) => return names[(*length).clamp(1, 3) - 1].to_string(),
+            TextToken::EraYear(false) => return format!("{era_year}"),
+            TextToken::EraYear(true) => return format!("{era_year:02}"),
+            TextToken::YearShort | TextToken::Year if explicit || seen_era => {
+                return format!("{era_year:02}");
+            }
+            _ => {}
+        }
+    }
+    let year = ymd.0;
+    // The one more conversion of a `B2` before the tag.
+    let again = match (twice, part.calendar) {
+        (true, Some(Calendar::Thai)) => BUDDHIST_ERA_OFFSET,
+        (true, Some(Calendar::Korean)) => KOREAN_ERA_OFFSET,
+        _ => 0,
+    };
+    let buddhist = matches!(
+        token,
+        TextToken::BuddhistYearShort | TextToken::BuddhistYear
+    );
+    let short = matches!(token, TextToken::YearShort | TextToken::BuddhistYearShort);
+    let year = match (token, part.calendar, buddhist) {
+        (TextToken::Era(_), ..) => return String::new(),
+        (TextToken::EraYear(_), ..) => year + again,
+        // After a `g` a Japanese LCID's other calendars print the whole Gregorian year
+        // (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy` "|2023"); other LCIDs are unaffected
+        // (`[$-70409]g|yyyy` is "|2566"; probes/text-locale-japanese-year A13,
+        // text-locale-era-gregorian), and a `B2` converts it once (`B2[$-70411]g|yyyy` is
+        // "|2566"; probes/t2932-b2-calendar-twice A44).
+        (_, Some(_), false) if seen_era && part.japanese_lcid => {
+            return format!("{}", year + again)
+        }
+        (_, None, true) => year + BUDDHIST_ERA_OFFSET,
+        (_, Some(Calendar::Thai), _) => year + BUDDHIST_ERA_OFFSET + again,
+        (_, Some(Calendar::Korean), false) => year + KOREAN_ERA_OFFSET + again,
+        _ => year + again,
+    };
+    if matches!(token, TextToken::EraYear(_)) {
+        return format!("{year}");
+    }
+    if buddhist && short {
+        // `b` prints the third and fourth digits of the year, which differ from its last two
+        // past 9999: `B2[$-70409]b|yy` of 9999-12-31 (Thai 11085) is "08|85"
+        // (probes/t2932-b2-calendar-twice A24).
+        let digits = year.to_string();
+        return digits.get(2..4).unwrap_or(&digits).to_string();
+    }
+    // The Taiwan calendar's `yy` is four digits (probes/text-locale-japanese-year A15).
+    if short && (buddhist || part.calendar != Some(Calendar::Taiwan)) {
+        format!("{:02}", year % 100)
+    } else {
+        format!("{year}")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{hebrew_ymd, real_day, saka_ymd, HEBREW_LAST_SERIAL};
+    use super::{hebrew_ymd, real_day, saka_ymd};
 
     #[test]
     fn real_days_skip_the_fictitious_leap_day() {
@@ -237,8 +460,13 @@ mod tests {
         assert_eq!(hebrew_ymd(61), Some((5660, 6, 30)));
         assert_eq!(hebrew_ymd(1), Some((5660, 5, 1)));
         assert_eq!(hebrew_ymd(123_758), Some((5999, 2, 23)));
-        assert_eq!(hebrew_ymd(HEBREW_LAST_SERIAL), Some((5999, 2, 29)));
-        assert_eq!(hebrew_ymd(HEBREW_LAST_SERIAL + 1), None);
+        // probes/t2954-hebrew-drift A6, A7, B13, B46; t2779-hebrew-saka-more A14; t1923 A204.
+        assert_eq!(hebrew_ymd(123_764), Some((5999, 2, 29)));
+        assert_eq!(hebrew_ymd(123_765), Some((5999, 3, 1)));
+        assert_eq!(hebrew_ymd(123_819), Some((5999, 5, 1)));
+        assert_eq!(hebrew_ymd(124_085), Some((6000, 1, 1)));
+        assert_eq!(hebrew_ymd(124_823), Some((6001, 13, 28)));
+        assert_eq!(hebrew_ymd(2_958_465), Some((13760, 4, 22)));
         assert_eq!(hebrew_ymd(60), None);
     }
 }

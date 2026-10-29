@@ -250,24 +250,6 @@ impl Model {
         self.last_lambda_id += 1;
         id
     }
-    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
-    /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
-    /// (`Model::close_over`) is dropped with it, not kept for the rest of the pass.
-    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
-        self.evaluate_cell(cell);
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-    }
-    pub(crate) fn clear_lambdas(&mut self) {
-        self.lambdas.clear();
-        self.eta_lambdas.clear();
-        self.named_lambdas = NamedLambdas::default();
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-        self.last_lambda_id = 0;
-    }
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
         node: &Node,
@@ -632,6 +614,7 @@ impl Model {
             | DefinedNameKind(_)
             | UnaryKind { .. }
             | ErrorKind(_)
+            | SheetRefErrorKind { .. }
             | ParseErrorKind { .. }
             | Group { .. }
             | UnaryPlus { .. }

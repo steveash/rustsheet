@@ -411,7 +411,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2793, T-2810
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
-- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
+- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). A variable bound to an omitted LAMBDA parameter or to an empty LET value hands the omission on and is `#N/A` too: `LAMBDA(a,b,IMSUB(a,b))("1",)`, `(,"1")`, `LAMBDA(a,b,IMDIV(a,b))("1",)`, `(,"1")` and `LET(e,,IMSUB("1",e))` are `#N/A` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12; T-2770), while `LET(e,IFERROR(Q1,"x"),…)` and `LET(e,IF(TRUE,Q1),…)` bind a real empty value that is 0, and `LAMBDA(a,b,IMSUB(a,b))("1")` (a missing argument) is `#VALUE!`. The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543. An omission forwarded through a second binding stays `#N/A`: `LET(e,,LET(f,e,IMSUB("1",f)))` (also IMDIV, and with the omission as first argument), `LET(e,,LAMBDA(b,IMSUB("1",b))(e))` and `LAMBDA(a,b,LAMBDA(c,IMSUB("1",c))(b))("1",)` / `LAMBDA(a,b,LET(f,b,IMDIV(f,"1")))("1",)` are `#N/A`, while a parameter that was never passed at all (`LAMBDA(a,LAMBDA(b,IMSUB("1",b))(a))()`, `LAMBDA(a,LET(f,a,…))()`) is `#VALUE!` (probes/eng-imsub-imdiv-omission-forwarded A1:A16, excel-graph 2026-10-29, T-3026; engine matched without change).
 - Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.
 - An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER; a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
@@ -488,9 +488,11 @@ Also found by the sweep (same case; Ours is what RustSheet gives):
 - Excel keeps tiny results where the denominator is huge: `IMCSC("-724.227-562.884i")` is -6.94796703439417E-245-6.26263832046024E-246i (E55, F55; the IMSEC of it is -6.26263832046024E-246+6.94796703439417E-245i, G55:I55) and `IMSECH("-524.561+5.3113i")` is 1.73046857535442E-228-2.53533899849465E-228i (K42, L42). Rule: past the point where the denominator overflows (the hyperbolic argument v above about 355), cosh v and |sinh v| are both M = e^|v|/2, and the result is the trigonometric parts over M, i.e. times 2e^-|v| (IMSEC `(cos x, sgn(y)·sin x)`, IMCSC `(sin x, -sgn(y)·cos x)`, IMSECH `(cos y, -sgn(x)·sin y)`); this reproduces all 15 digits of the 6 cells. Where 2e^-|v| is subnormal the parts print 0 (`IMSEC("1.5+711i")`, `IMSECH("711+1.5i")`). Status: VERIFIED; implemented (T-2335; ours was 0 before). IMCSCH of a large non-real argument (`IMCSCH("-524.561+5.3113i")`) is unprobed and still answers 0.
 - `IMCSC("0")`, `IMLOG2("0")` and `IMCOT("0")` are `#NUM!` (D21, M21, P21), `IMARGUMENT("0")` is #DIV/0!. Implemented (T-2334); before it we answered the text `NaNNaNi`, `-inf`, `inf`. Status: VERIFIED.
 - Text quirks (not kernels): `IMCOT("-57.9375+18.7089i")` prints "-4.00011374673746E-17-1i" (P43): the
-  imaginary part -0.9999999999999999 keeps its "1", while an exact -1 is "-i" (P44); ours "-i" for both.
-  `IMCSC("1E-20")` and `IMCOT("1E-20")` print "100000000000000000000" (D18, P18); ours "1E+20". Owned by T-2554 (after
-  the IM* text-formatting tasks T-2001, T-2056). Status: VERIFIED (excel-graph).
+  imaginary part -0.9999999999999999 keeps its "1", because the coefficient is dropped only for an
+  unrounded part that is exactly ±1 (an exact -1 is "-i", P44). `IMCSC("1E-20")` and `IMCOT("1E-20")` print
+  "100000000000000000000" (D18, P18): an IM* part is plain up to decimal exponent 20 and E notation from 21.
+  Status: VERIFIED (excel-graph); implemented (`Display for Complex`, `complex_part_to_text`; T-2554 found it
+  already passing and added the regression test `text_keeps_the_one_and_writes_1e20_plain`).
 Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2 and IMCOT #NUM! (D21:F21, M21:R21).
 
 ## IM* reciprocal kernels, IMABS and IMARGUMENT (T-2044)
@@ -588,6 +590,16 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   `cosh 2y − cos 2x`, `cosh 2y − (1 − 2sin²x)` and `(cosh 2y − 2cos²x) + 1`. Exp-based cosh fits the same
   (scratch fit over the sweep, T-2537). Past `cosh 2y`'s range the
   value is `−i` for y > 0 and `i` for y < 0 (P27, P44, P49, P68, P69, P71; P52, P55). A real number keeps `1/tan x`.
+  T-2787 probed 24 more inputs where the two groupings print different text (probes/t2787-imcot-denominator-grouping,
+  excel-graph, 2026-10-28, libm trig): `(cosh 2y + 1) - 2cos²x` matches 21, T-2044's `cosh 2y - (2cos²x - 1)` 2 (A2, A9,
+  the cells ours misses in the last digit; A17 fits neither). The grouping was not the cause: the three cells need
+  IMSEC's sinh 2y and cosh 2y (`sec_sinh_cosh`: IMSINH's `1/u` kernel for 0.01 < |2y| <= 20, libm's outside) in
+  place of libm's. A2 and A17 need the kernel's sinh 2y (A17's imaginary part fits no other sinh and no cosh or cos²x
+  within 3 ulp), A9 its cosh 2y, one ulp above libm's. With `(cosh 2y + 1) - 2cos²x` that fits all 24 cells, the 54
+  sweep cells with a finite imaginary part (the tiny-y rows sit below the band, where libm's sinh is the kernel's) and
+  gen-m9's `-1.5+0.5i`, 79 of 79 (scratch fit with the engine's own primitives). Evaluating the denominator in x87
+  extended precision fits 61 at best, so the arithmetic is plain doubles. Status: VERIFIED (excel-graph); implemented
+  (T-3032).
 - IMABS: `a·sqrt(1 + (b/a)²)` with a the larger of |x|, |y|: 77 of 78 cells bit for bit (`hypot` 59,
   `sqrt(x²+y²)` 55, scaling by |x| or by |y| always 66); the miss is B33, `956.615+0.00387493i` (Excel
   956.6150000078482, ours 2 ulps lower). IMPOWER's modulus is still `hypot` (T-1950 evidence). A part near DBL_MAX overflows the scaled
@@ -597,9 +609,13 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   A318, `IMSECH("1.5")` 0.42509603494228; every real row of the sweep agrees).
 - IMARGUMENT: ATAN2's kernel, `atan(y/x)` plus or minus π (numbers.md "ATAN2 is ATAN(y/x) plus or minus π"): 77 of 77
   (libm `atan2` 67). The overflow and subnormal edges of that kernel are UNVERIFIED for IMARGUMENT.
-- UNVERIFIED: below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1, so IMCSC and IMCOT of a tiny imaginary part
-  (`IMCSC("1E-9i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")`) are `#NUM!` in ours (before T-2044 about -1E+9i), and
-  between 1E-8 and 1E-6 only a few digits survive; the sweep stops at 1E-5. Probe: T-2531.
+- IMCSC and IMCOT of a tiny imaginary part (probes-numeric/im-csc-cot-tiny-imag, T-2531, excel-graph, 56 of 56
+  cells agree with ours): `cosh 2y` rounding to 1 is Excel's behavior too. `IMCSC("1E-9i")`, `IMCSC("1E-20i")`,
+  `IMCOT("1E-8i")`, `IMCOT("1.1E-8i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")` and `IMCOT("1E-20i")` are `#NUM!`;
+  `IMCSC("1E-8i")` is `-90071992.5474099i`, `IMCSC("1.1E-8i")` `-99079191.8021509i`, `IMCSC("1E-9+1E-9i")`
+  `1000000000-1000000000i`; `IMCOT("1E-6i")` is `-999911.107320937i` (only a few digits survive between 1E-8 and 1E-6);
+  `IMCSC("1+1E-9i")` is `1.18839510577812-7.6305972223263E-10i` and `IMCOT("1+1E-9i")`
+  `0.642092615934331-1.41228292743739E-09i` (a real part of 1 keeps the kernel well conditioned).
 - UNVERIFIED: for |x| ≥ 2^27 (SIN's own `#NUM!` cut) the reciprocal kernels take libm's sine and cosine.
 - IMLOG2 (T-2231, superseding the T-2044 time-box): `ln` of IMABS's scaled modulus and the argument (`atan2`),
   both times K = 1.4426950408889636, the double one ulp above log2 e (= `1/ln 2` with the double one ulp below ln 2).
@@ -833,8 +849,16 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `IMCSC("1E+200")`, `IMSIN("7777777777")` (`IMSIN(HEX2OCT("FFFFFFFFFF"))`, 1068c44afcd56d53 A57), IMSEC of 1E+15 and
   `IMTAN("1.05966105763914E+57")`; but `IMCOT("1E+200")` is "0" (060b18586fcff6e6 A119). probes/t2534-im-trig-real-limit
   (excel-graph, 2026-10-26) confirms the limit for all six at 2^27: at 134217727 they answer, and at ±134217728, 1E+10,
-  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". IMTAN of a real is CONFLICTING (web vs desktop): COMPLEXs.xlsx N6
-  (Mac 16.0300) caches `IMTAN(5)` as -3.38051500624658, the libm double-angle value (T-1075 item 17).
+  1E+15 and ±1E+200 five are `#NUM!` and IMCOT is "0". probes/t3054-imtan-real-tan-kernel (excel-graph, 2026-10-28)
+  settles IMTAN's kernel on the web: nine real arguments where TAN's kernel and the double-angle form
+  `sin 2x / (cos 2x + 1)` print different text are all TAN's (`IMTAN("3.14159")` -2.65358979336212E-06, double-angle
+  ...207E-06; `IMTAN("-17.2737")` -197.642601323436, ...305; `IMTAN("-17.3011")` 44.7544983375159, ...163; row 3,
+  `IMTAN("4")`, prints 1.15782128234958 either way), and so is row 1, COMPLEXs.xlsx row 6's own
+  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, -3.38051500624659. IMTAN of a real is still CONFLICTING (web vs desktop):
+  COMPLEXs.xlsx N6 (Mac 16.0300) caches that formula as -3.38051500624658, the libm double-angle value (T-1075 item 17). IMTAN is one of numbers.md's "Excel for the web and desktop Excel
+  differ in the last digits" functions, so decision 0030 rule 4 (kept by decision 0039) makes the desktop N6 the fitting
+  target and the web cells, which the double-angle form misses by far less than 1e-9 relative, no target for further
+  fitting until T-1075 item 17 is answered (T-3054, dropped into T-2774).
   Ours (T-2534): IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real take SIN, COS and TAN's kernels and the limit
   (`real_trig`); IMTAN takes the limit but keeps the double-angle form below it, so the desktop N6 still passes and the 35
   web `IMTAN("5")` cells and the other IMTAN-of-a-real cells stay known failures (T-2774).
@@ -924,9 +948,22 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   43832.125, "Jan 1, 2020" 43831, "1/2/20" 43832, "12:00 PM" 0.5), and so are " -5", "- 5", "(5)", "1E-3%" 1E-05,
   "1,000E-2" 10 and "3 1/2" 3.5. Ours matches all of these since T-2541 (`has_inner_minus`) except "3 1/2", which
   VALUE does not read yet (text.md, T-2646).
-  Not yet matched: `IMABS("$1+2i")` is 2.23606797749979 (ours `#NUM!`; T-2641).
-  Unprobed (ours in brackets): a "+" inside non-complex text; "$ -5", "(-5)" and "June-2020" [`#NUM!`, the inner-minus
-  rule]; a tab after leading spaces [read]; a leading tab on text over 255 characters [`#VALUE!`].
+  A currency sign, `$` or `€`, that starts the text or a part (after a `+` or `-` that is not an exponent's, spaces
+  allowed on both sides) and stands before a digit or a `.` (past spaces) is dropped (probes/eng-inumber-reading A5,
+  A20:A26, excel-graph, 2026-10-28; probes/eng-inumber-currency-shapes A1:A12, A27:A40, excel-graph, 2026-10-27 and
+  2026-10-28): `IMABS` of "$1+2i", "-$1+2i", "+$1+2i", "- $1+2i", "$1-2i", "$1+2j", "$ 1+2i", "1+$2i", "1-$2i",
+  "1+ $2i", "1+$ 2i", "$1+$2i" and "€1+2i" is 2.23606797749979, "$3i" 3, "$.5" 0.5 and "$.5+2i" 2.06155281280883.
+  Not read (`#NUM!`): "$i" and "-$i" (no number after the sign), "$$1", "$-5", "$ -5", a sign inside a number ("1$2",
+  "1.$5", "1E-$3", "$1e+$2") and the other currency signs "£1+2i", "¥1+2i". Implemented in T-2641
+  (`strip_currency_symbols`).
+  End whitespace (probes/eng-inumber-currency-shapes A13:A26): a tab, NBSP, LF, CR or U+3000 at either end, past
+  leading spaces, is `#NUM!` for a complex number and a plain real alike, where a space is read ("$1+2i " 2.23606797749979):
+  `IMABS` of NBSP&"3+4i", "3+4i"&tab, "3+4i"&LF, "3+4i"&CR, LF&"3+4i", "5"&tab, "5"&NBSP, CR&"5", "5"&U+3000,
+  " 5"&tab and " "&tab&"5" are `#NUM!`. Implemented in T-2641 (`complex_of`).
+  Unprobed (ours in brackets): a "+" inside non-complex text; "(-5)" and "June-2020" [`#NUM!`, the inner-minus rule];
+  "1E$3" and "12$3i" [`#NUM!`]; leading spaces before NBSP, LF, CR or U+3000 (only tab is probed) [`#NUM!`]; one of
+  the five followed by trailing spaces ("5"&tab&" ") [read]; these five inside the text; a leading tab on text over
+  255 characters [`#VALUE!`]. T-3059 holds them.
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
   past 15 significant digits (`IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i";
   `IMSUM("123456789012345678901","0")` is "123456789012345000000"), and in E notation from exponent 21
@@ -995,9 +1032,15 @@ Tasks: T-2547, T-2544, T-2580
 
 ## IMPOWER of a base whose squared modulus overflows (T-2539)
 Evidence: probes/eng-impower-overflow (12 cells, excel-graph, 2026-10-24).
-Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is not probed (treated as the real one). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
+Rule: IMPOWER is `#NUM!` when both parts are nonzero and `x²+y²` overflows, whatever the power and even when the result is tiny: `IMPOWER("1E+300+1E+300i",-0.5)`, `(…,-1)`, `(…,0.5)`, `(…,1)`, `(…,0)`, `IMPOWER("1E+154+1E+154i",-0.5)` and `(…,2)`, `IMPOWER("1E+155+1E+155i",1)`. A pure real base is not refused: `IMPOWER("1E+300",-0.5)` is `1E-150`, `IMPOWER("1E+200",-0.5)` is `1E-100`. An underflowing square gives "0" (`IMPOWER("1E-200+1E-200i",2)`, `("1E-170+1E-170i",2)`). A pure imaginary base is probed in T-2626 (below). `IMLN("1E+200")`, `IMLOG10("1E+200")` and `IMLOG2("1E+200")` already match after T-2117.
 Status: VERIFIED (excel-graph)
 Tasks: T-2539
+
+## IMPOWER of a pure imaginary or lopsided base (T-2626)
+Evidence: probes/eng-impower-overflow-shapes (14 cells, excel-graph, 2026-10-28).
+Rule: a pure imaginary base is not subject to the both-parts-nonzero `x²+y²` overflow refusal (the modulus is `|y|`): `IMPOWER("1E+300i",-0.5)` is `7.07106781186548E-151-7.07106781186547E-151i`, `("1E+300i",-1)` is `-1E-300i`, `("-1E+300i",-0.5)` is `7.07106781186548E-151+7.07106781186547E-151i`, `("1E+200i",-0.5)` is `7.07106781186548E-101-7.07106781186548E-101i`; the result is `#NUM!` only when the radius overflows (`("1E+300i",2)`). `IMPOWER("1E+300i",1)` is `6.1257422745431E+283+1E+300i` (the x87-reduced cosine of the angle, not 0). A lopsided base with both parts nonzero is `#NUM!` as soon as `x²+y²` overflows, whatever the power and however small `y` is: `IMPOWER("1E+200+1E-300i",-0.5)`, `(…,-1)`, `(…,2)`, `(…,1)`, `IMPOWER("1E+300+1E-300i",-0.5)`, `IMPOWER("1E-300+1E+200i",-0.5)`, `IMPOWER("1E+200+1E+10i",-0.5)` and `(…,2)`. The existing guard in `fn_impower` already matches all 14 cells.
+Status: VERIFIED (excel-graph)
+Tasks: T-2626
 
 ## IMCOSH and IMSINH past |x| = 709 work in log space (T-2231)
 Evidence: probes/eng-im-overflow-edges A6-A21, probes/eng-im-overflow-edges-2 A1-A24, A58-A114 (excel-graph, 2026-10-24).
