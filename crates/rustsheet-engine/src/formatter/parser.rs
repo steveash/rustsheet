@@ -131,6 +131,8 @@ pub struct DatePart {
     /// Whether a `B2` prefix came before a tag whose calendar wins over it: a weekday after a
     /// `mmm` then reads the month number (`date_names::NameTokens`).
     pub b2_overridden: bool,
+    /// The names from the section's first `mmm` on (`Localized::names_after_mmm`).
+    pub names_after_mmm: Option<&'static DateNames>,
 }
 
 #[derive(Default)]
@@ -934,6 +936,7 @@ impl Parser {
                 year_twice: localized.is_some_and(|l| l.year_twice),
                 hijri,
                 b2_overridden,
+                names_after_mmm: localized.and_then(|l| l.names_after_mmm),
             })
         } else {
             ParsePart::Number(NumberPart {
