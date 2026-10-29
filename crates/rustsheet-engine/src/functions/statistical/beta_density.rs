@@ -17,7 +17,7 @@
 //! Excel's at some shapes below 1 (T-2122), which moves last bits, not the 15 digits.
 
 use super::gammaln::excel_gammaln;
-use crate::arithmetic::{extended_product, extended_sum};
+use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
 use crate::x87_exp::{excel_exp, two_sum};
 use crate::x87_log10::excel_ln;
 use crate::x87_log1p::excel_ln_one_minus;
@@ -88,41 +88,82 @@ fn ln_beta_small_shape(a: f64, b: f64) -> f64 {
     extended_sum(excel_gammaln(small), algdiv(small, large))
 }
 
+/// The arithmetic a TOMS 708 helper runs in: plain doubles, or x87 ops each stored to a double
+/// (`extended_*`, Excel's compiled code; docs/excel-semantics/numbers.md "Division rounds twice").
+#[derive(Clone, Copy)]
+pub(super) struct Arith {
+    add: fn(f64, f64) -> f64,
+    mul: fn(f64, f64) -> f64,
+    div: fn(f64, f64) -> f64,
+}
+
+impl Arith {
+    /// Every op a double op.
+    pub(super) const DOUBLE: Self = Self {
+        add: |x, y| x + y,
+        mul: |x, y| x * y,
+        div: |x, y| x / y,
+    };
+    /// Every op an x87 op stored to a double.
+    pub(super) const X87_STORED: Self = Self {
+        add: extended_sum,
+        mul: extended_product,
+        div: extended_quotient,
+    };
+
+    fn sub(self, x: f64, y: f64) -> f64 {
+        (self.add)(x, -y)
+    }
+}
+
 /// TOMS 708 `algdiv(a, b)` = ln(Gamma(b) / Gamma(a + b)) for a < b, b >= 8, in double arithmetic
 /// with Excel's LN for ln b: the best of the variants T-2513 tried for Excel's own (T-2512 owns the
 /// exact form).
 pub(super) fn algdiv(a: f64, b: f64) -> f64 {
-    let h = a / b;
-    let w = stirling_del(h / (h + 1.0), 1.0 / (h + 1.0), b);
-    let d = b + (a - 0.5);
-    let u = d * alnrel_positive(a / b);
-    let v = a * (excel_ln(b) - 1.0);
+    algdiv_in(Arith::DOUBLE, a, b)
+}
+
+/// [`algdiv`] in the arithmetic `op`. Only ln b - 1 stays a double op whatever `op` is: the
+/// research model (`r2-bpser-small/lib.py` `algdiv_x87`) runs it on Excel's LN result, a double.
+pub(super) fn algdiv_in(op: Arith, a: f64, b: f64) -> f64 {
+    let h = (op.div)(a, b);
+    let h1 = (op.add)(h, 1.0);
+    let w = stirling_del_in(op, (op.div)(h, h1), (op.div)(1.0, h1), b);
+    let d = (op.add)(b, op.sub(a, 0.5));
+    let u = (op.mul)(d, alnrel_positive_in(op, (op.div)(a, b)));
+    let v = (op.mul)(a, excel_ln(b) - 1.0);
     if u > v {
-        (w - v) - u
+        op.sub(op.sub(w, v), u)
     } else {
-        (w - u) - v
+        op.sub(op.sub(w, u), v)
     }
 }
 
 /// The Stirling correction TOMS 708 `algdiv` and `bcorr` share, in doubles: c/b times the series
 /// in t = (1/b)^2 whose coefficients are scaled by `s_n = (1 - x^n)/(1 - x)`, n = 3, 5, ..., 11.
 pub(super) fn stirling_del(c: f64, x: f64, b: f64) -> f64 {
+    stirling_del_in(Arith::DOUBLE, c, x, b)
+}
+
+/// [`stirling_del`] in the arithmetic `op`.
+fn stirling_del_in(op: Arith, c: f64, x: f64, b: f64) -> f64 {
     let [c0, c1, c2, c3, c4, c5] = ALGDIV_C;
+    let (add, mul) = (op.add, op.mul);
     // `s_n` by TOMS's recurrence.
-    let x2 = x * x;
-    let s3 = (x + x2) + 1.0;
-    let s5 = (x + x2 * s3) + 1.0;
-    let s7 = (x + x2 * s5) + 1.0;
-    let s9 = (x + x2 * s7) + 1.0;
-    let s11 = (x + x2 * s9) + 1.0;
-    let t = 1.0 / b;
-    let t = t * t;
-    let mut w = c5 * s11 * t;
-    w = (w + c4 * s9) * t;
-    w = (w + c3 * s7) * t;
-    w = (w + c2 * s5) * t;
-    w = (w + c1 * s3) * t;
-    (w + c0) * (c / b)
+    let x2 = mul(x, x);
+    let s3 = add(add(x, x2), 1.0);
+    let s5 = add(add(x, mul(x2, s3)), 1.0);
+    let s7 = add(add(x, mul(x2, s5)), 1.0);
+    let s9 = add(add(x, mul(x2, s7)), 1.0);
+    let s11 = add(add(x, mul(x2, s9)), 1.0);
+    let t = (op.div)(1.0, b);
+    let t = mul(t, t);
+    let mut w = mul(mul(c5, s11), t);
+    w = mul(add(w, mul(c4, s9)), t);
+    w = mul(add(w, mul(c3, s7)), t);
+    w = mul(add(w, mul(c2, s5)), t);
+    w = mul(add(w, mul(c1, s3)), t);
+    mul(add(w, c0), (op.div)(c, b))
 }
 
 /// TOMS 708 `alnrel(q)` = ln(1 + q) for q > -1: the rational ([`alnrel_positive`]'s) for
@@ -138,13 +179,19 @@ pub(super) fn alnrel(q: f64) -> f64 {
 /// TOMS 708 `alnrel(q)` = ln(1 + q) for |q| <= 0.375 (algdiv's a/b is at most 1/8): the (3,3)
 /// rational in t = q/(q + 2), in doubles.
 fn alnrel_positive(q: f64) -> f64 {
+    alnrel_positive_in(Arith::DOUBLE, q)
+}
+
+/// [`alnrel_positive`] in the arithmetic `op`.
+fn alnrel_positive_in(op: Arith, q: f64) -> f64 {
     let [p1, p2, p3] = ALNREL_P;
     let [q1, q2, q3] = ALNREL_Q;
-    let t = q / (q + 2.0);
-    let t2 = t * t;
-    let numerator = ((p3 * t2 + p2) * t2 + p1) * t2 + 1.0;
-    let denominator = ((q3 * t2 + q2) * t2 + q1) * t2 + 1.0;
-    (2.0 * t) * (numerator / denominator)
+    let (add, mul) = (op.add, op.mul);
+    let t = (op.div)(q, add(q, 2.0));
+    let t2 = mul(t, t);
+    let numerator = add(mul(add(mul(add(mul(p3, t2), p2), t2), p1), t2), 1.0);
+    let denominator = add(mul(add(mul(add(mul(q3, t2), q2), t2), q1), t2), 1.0);
+    mul(mul(2.0, t), (op.div)(numerator, denominator))
 }
 
 #[cfg(test)]
