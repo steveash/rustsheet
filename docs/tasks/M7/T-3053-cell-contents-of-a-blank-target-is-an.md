@@ -3,7 +3,7 @@ id: T-3053
 title: "CELL('contents') of a blank target is an empty value that array arguments reject, through LET/IF/IFERROR/CHOOSE (T-3030 evidence)"
 milestone: M7
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -30,11 +30,11 @@ while a blank reference read through the same wrappers stays a blank that stacks
   Probe a bare `INDEX(CELL("contents",Data!C11),1)`, `VSTACK(IF(TRUE,Z1),1)`, `VSTACK(LET(x,Z1,x),1)` and `VSTACK(CHOOSE(1,Z1),1)` first, since they are unprobed.
 
 ## Acceptance criteria
-- [ ] probes/t2466-cell-contents-stack A111, A121 and A151 pass, as do the rejecting cells of
+- [x] probes/t2466-cell-contents-stack A111, A121 and A151 pass, as do the rejecting cells of
       probes/t3030-cell-contents-blank-shapers listed above, its A231 (`COUNTA(..)` is 1 in Excel, 0 in ours) and
       probes/t3030-cell-contents-nested-sheet A231 (TOCOL of a blank target). No blank-reference stack cell regresses.
-- [ ] information.md "Ours" updated.
-- [ ] `make check` green; reviewers approve.
+- [x] information.md "Ours" updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CELL's other info types.
@@ -47,3 +47,15 @@ INDEX stacks as 0 (ours matches). IFERROR and IFNA of a blank reference return t
 A171), and `INDEX(CELL("contents",Data!C11),1)` is `#VALUE!` (A1). So the empty value comes from value-returning calls
 (CELL, IFERROR, IFNA), and the reference-returning wrappers pass a blank reference on unchanged. The 8 new known failures
 (A41, A42, A141, A142, A161, A162, A171, A172) are in eval/baseline/probes.txt and belong to this task too.
+
+## Outcome
+No new `CalcResult` variant was needed: the engine already had the empty value, `CalcResult::EmptyArg`, which IFERROR and
+IFNA give for a blank cell (logic.md), and our IF, LET, CHOOSE, `@` and parentheses already pass it on while a blank reference
+through them is `EmptyCell`. So `CELL("contents", ref)` of a blank target now returns `EmptyArg` (COUNTA counts it), and
+`reject_empty_value` (spill_functions.rs) makes it `#VALUE!` as the array argument of VSTACK, HSTACK, TOCOL, TOROW, TAKE,
+CHOOSECOLS, FILTER and MAP; it replaces the literal-call check `blank_cell_contents`. TEXTBEFORE and TEXTAFTER read a written
+empty-value instance_num as 0, not omitted (gen-m7/9359f03972e94026 A1420 would otherwise have regressed; text.md).
+Eval: probes known failures 2733 -> 2711 (22 fixed: t2466 A111/A121/A151, t3030 blank-shapers and nested-sheet A231, t3053
+A41/A141/A161/A171 with their spill cells), the new case probes/t3053-blank-reference-wrappers passes 25/25, no regressions.
+Follow-up: T-3083 (probe the empty value in DROP, CHOOSEROWS, WRAPCOLS, COLUMNS, TRANSPOSE, SCAN, REDUCE, BYROW, BYCOL and an
+omitted stack argument).

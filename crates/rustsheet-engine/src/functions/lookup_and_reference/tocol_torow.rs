@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{lift::LiftCost, Function},
+    functions::{lift::LiftCost, spill_functions::reject_empty_value, Function},
     model::Model,
 };
 
@@ -54,7 +54,11 @@ impl Model {
         }
         // An array that is an error is every element's result: `TOROW(<#NUM!>,3,<5x3 SCAN>)`
         // spills 15 `#NUM!`s (gen-m7/611ce3bbfab27cef A919:C923); unlifted it is the one error.
-        let data = self.eval_to_array_keep_blank(&args[0], cell);
+        let data = {
+            let result = self.evaluate_node_in_context(&args[0], cell);
+            reject_empty_value(&args[0], result, cell)
+                .and_then(|result| self.result_to_array_keep_blank(result, cell))
+        };
         let cells = data.as_ref().map_or(1, |data| {
             let cells = data.iter().map(Vec::len).sum::<usize>();
             u64::try_from(cells).unwrap_or(u64::MAX).max(1)
