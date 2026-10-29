@@ -111,10 +111,11 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
 - A base letter plus a combining mark equals the precomposed letter: `"a"&UNICHAR(769) = "á"`,
   `"c"&UNICHAR(780) = "č"` (also `"C"&UNICHAR(780)`), `"e"&UNICHAR(769) = "é"`,
   `"c"&UNICHAR(780)&"a" = "ča"`, and `o`+U+030B, `s`+U+030C, `z`+U+0307 tie with `ő`, `š`, `ż` (Calc!B
-  counts 3 or 4, D7:F10, D25:F25). Marks after an accented letter, and marks other than the 13 of
-  Latin Extended-A and Latin-1 (U+0300-U+0304, U+0306-U+0308, U+030A-U+030C, U+0327, U+0328), are
-  unprobed: the engine appends a second accent weight, and a mark with no letter before it
-  weighs only as an accent, UNVERIFIED (T-3154).
+  counts 3 or 4, D7:F10, D25:F25). Only four combining marks are probed as such: U+0301, U+0307,
+  U+030B and U+030C (UNICHAR 769, 775, 779, 780). The engine maps nine more (U+0300, U+0302-U+0304,
+  U+0306, U+0308, U+030A, U+0327, U+0328) by inference from the precomposed letters, UNVERIFIED.
+  Marks after an accented letter and all other marks are unprobed: the engine appends a second
+  accent weight, and a mark with no letter before it weighs only as an accent, UNVERIFIED (T-3154).
 - Greek: `α < ά < β`, … `ι < ί < ϊ < ΐ < κ`, … `ω < ώ` (tonos is the acute accent, dialytika the
   diaeresis); `Σ = σ = ς` (Calc!B168, B192, B216, E20), and exact MATCH of `"ς"` finds `σ` (Calc!H10). Base
   letters keep code-point order.
@@ -126,7 +127,10 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
   but does **not** equate a base letter plus a combining mark with the precomposed letter:
   `MATCH("c"&UNICHAR(780),r,0)` = 144 and `MATCH("a"&UNICHAR(769),r,0)` = 143 find the decomposed
   spellings, not `č` (row 57) or `á` (row 140) (H8, H9), as T-1590 found for `æ`/`ae`. XMATCH and
-  VLOOKUP with a decomposed key are unprobed (T-3154).
+  VLOOKUP with a decomposed key are unprobed. The engine's current choice, UNVERIFIED (T-3154): MATCH
+  and VLOOKUP exact match fold through `folded_units`, which does not decompose, so they keep the
+  spellings apart; XMATCH and XLOOKUP exact match compare `collation_key`s (`CollatedKey`), so
+  `XMATCH("c"&UNICHAR(780),{"č"},0)` finds `č`.
 - Inferred, UNVERIFIED: the engine gives every other lower- or upper-case letter of Latin Extended-A,
   Greek and Cyrillic that has a canonical decomposition (`ĉ ĝ ĥ ĵ ŝ ŵ ŷ ĩ ĭ ŭ ŏ ō ĕ ġ ċ ļ ŗ`, `ϋ ΰ`,
   `ѐ ѓ ї ќ ѝ ў`) the same base-plus-accent rule.

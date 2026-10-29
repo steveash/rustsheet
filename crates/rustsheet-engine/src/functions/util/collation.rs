@@ -358,7 +358,7 @@ fn punctuation(c: char) -> Option<u32> {
 
 /// The final sigma `ς` as `σ`, every other character as is: Excel's `Σ = σ = ς` in comparisons
 /// and in exact MATCH (probes/t3114-collation-beyond-latin1 Calc!B168, B192, B216, D20:E20, H10).
-/// The collation key and `criteria::fold_run` both fold through it.
+/// The collation key, `criteria::fold_run` and SEARCH's `text::casefold` all fold through it.
 pub(crate) fn fold_final_sigma(c: char) -> char {
     if c == 'ς' {
         'σ'

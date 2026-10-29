@@ -567,7 +567,9 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
 }
 
 /// The case fold of the exact, wildcard and D-function prefix text matches: `run` lower-cased,
-/// then through [`fold_final_sigma`] (Excel's `MATCH("ς",...,0)` finds `σ`).
+/// then through [`fold_final_sigma`] (Excel's `MATCH("ς",...,0)` finds `σ`). Unlike SEARCH's
+/// one-char fold (`text::casefold`), the run may grow (`İ` lower-cases to `i` + U+0307); match
+/// folds have no positions to keep, so this keeps the fold MATCH had before T-3114.
 pub(crate) fn fold_run(run: &str) -> String {
     let lower = run.to_lowercase();
     if lower.contains('ς') {
