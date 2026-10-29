@@ -162,13 +162,13 @@ form. That holds for the blank middle cell of a range (`VLOOKUP(Keys!A1:A3,..)`,
 `MATCH(Keys!A1:A3,..)`), for the blank element of an array (`IF({1;0;1},Keys!A1:A3,Keys!G1)`), and for a whole-column
 lookup_value read inside the used area and far below it (`INDEX(VLOOKUP(Keys!A:A,..),1000)`). Against tables holding a 0
 row, a `=""` row, a FALSE row or only a blank row among numbers, the blank element finds the 0 row and nothing else in
-exact mode (`#N/A` against the `""`, FALSE and blank tables), steps to the last number below 0 in the approximate
-VLOOKUP/HLOOKUP TRUE and `MATCH(..,1)` (the -1 row), and takes the smallest number at or above 0 in `MATCH(..,-1)`. It is
+exact mode (`#N/A` against the `""`, FALSE and blank tables), lands on the 0 row where there is one and otherwise on
+the last number below 0 (the -1 row) in the approximate VLOOKUP/HLOOKUP TRUE and `MATCH(..,1)`, and takes the smallest number at or above 0 in `MATCH(..,-1)`. It is
 never `""` or FALSE, and it never matches a blank row. The non-blank elements of the same lookup_value are unaffected.
-Evidence for the blank elements: probes/t3096-lookup-value-blank-elements (200 cells, excel-graph, 2026-10-29, T-3096;
-Calc rows 16-22 the range middle, 37-43 the array element, 44-51 the whole column, each identical to the scalar control
-rows 2-8 across the four tables in columns B-E). The engine matches every cell: `lift_values` hands a blank element to `lookup_index` as the
-blank key.
+Evidence for the blank elements: probes/t3096-lookup-value-blank-elements (200 Calc cells, plus the 3 `=""` table
+cells on Data that make the baseline's 203; excel-graph, 2026-10-29, T-3096; Calc rows 16-22 the range middle, 37-43
+the array element, 44-51 the whole column, each identical to the scalar control rows 2-8 across the four tables in
+columns B-E). The engine matches every cell: `lift_values` hands a blank element to `lookup_index` as the blank key.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
 `Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
