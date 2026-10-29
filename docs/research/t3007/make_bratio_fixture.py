@@ -19,11 +19,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "docs/research/t2464/r2-bratio"))
-import bratio_excel  # noqa: E402  (importable only once sys.path has r2-bratio)
+# Importable only once sys.path has r2-bratio.
+import bratio_excel
 
 CELLS = ROOT / "docs/research/t2464/cells.tsv"
 OUT = ROOT / "crates/rustsheet-engine/src/test/fixtures/bratio_beta_dist.fixture"
 CAP = 400
+
 
 def hexbits(v: float) -> str:
     return struct.pack(">d", v).hex()
