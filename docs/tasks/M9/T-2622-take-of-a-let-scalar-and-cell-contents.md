@@ -37,14 +37,8 @@ before implementing it.
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
 
 ## Handoff (resumed)
-Tried: read the task and the existing "empty value" handling (`CELL("contents",<blank>)` is the empty value, special-cased in
-functions/information/mod.rs ~788, drop_take.rs, hstack_vstack.rs, spill_functions.rs ~282; information.md "CELL("contents", ref)
-as a VSTACK argument"). No code changed. Why handed off: the five owned cells need five distinct rules (TAKE of a LET scalar,
-CELL("contents") as COUNT's and MODE.SNGL's argument, XMATCH match-mode cell, LAMBDA joined as text) whose evidence is inferred from
-a wrapper probe, and the task itself says the LAMBDA-as-text rule needs a direct probe cell first (`LAMBDA(x,x)&""`). That is a
-probe-then-design job across the empty-value representation, not a one-function fix.
-Next: add the direct probe cells (oracle excel-graph is OK), fill them, record each rule in docs/excel-semantics/, then fix the
-empty-value reads in COUNT / MODE.SNGL, TAKE's scalar path and XMATCH's match_mode coercion, and `make eval-baseline`.
+A sonnet run handed this to opus (2026-10-29) after reading the empty-value code, with no code changed; the opus run resumed it,
+probed the open rules directly and finished it (Outcome below).
 
 ## Outcome
 Four of the five owned cells (Calc!A235, A98, A201, A21: TAKE of a range, CELL("contents") in MODE.SNGL and COUNT, XMATCH's regex
@@ -55,4 +49,6 @@ rules got a direct probe, probes/t2622-take-let-reference-lambda-text (40 cells,
   `evaluate_picked_source(.., keep_cell_variables)`; lookup.md "TAKE/DROP of a variable bound to one cell is a reference".
 - an uncalled LAMBDA joined with `&` is `#VALUE!` (was `#N/IMPL!`): `handle_concatenate`; arrays.md "An uncalled LAMBDA is one value".
 Eval delta: gen-m9 known failures 3305 -> 3304 (1b31092a0d79e5f1 Calc!A143), probes 2977 -> 2969 (8 t2475-stat-subexpressions cells)
-plus the new 40-cell case passing; no regressions.
+plus the new 40-cell case passing; no regressions. Unit tests: test_fn_drop_take.rs
+`take_drop_of_a_variable_bound_to_one_cell`, test_fn_lambda.rs `uncalled_lambda_joined_as_text_is_value_error`. Follow-up: T-3118
+(CONCATENATE, CONCAT and TEXTJOIN of a LAMBDA, TRIMRANGE's value read of a cell variable; both unprobed).

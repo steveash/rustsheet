@@ -479,15 +479,14 @@ impl Model {
                     model.value_or_grid(body, cell, keep_cell_variables)
                 })
                 .unwrap_or_else(RefArg::Value),
-            node @ Node::NamedVariableKind { .. } => {
-                match keep_cell_variables
-                    .then(|| self.cell_variable_reference(node))
-                    .flatten()
-                {
+            node @ Node::NamedVariableKind { .. } if keep_cell_variables => {
+                match self.cell_variable_reference(node) {
                     Some(reference) => RefArg::from(reference),
-                    None if self.is_grid_variable(node) => self.variable_reference(node, cell),
-                    None => RefArg::from(self.evaluate_node_in_context(node, cell)),
+                    None => self.value_or_grid(node, cell, false),
                 }
+            }
+            node @ Node::NamedVariableKind { .. } if self.is_grid_variable(node) => {
+                self.variable_reference(node, cell)
             }
             _ => RefArg::from(self.evaluate_node_in_context(node, cell)),
         }
