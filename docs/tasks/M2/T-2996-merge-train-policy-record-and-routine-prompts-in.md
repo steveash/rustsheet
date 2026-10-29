@@ -3,7 +3,7 @@ id: T-2996
 title: "Merge-train policy record and routine prompts in routines.md"
 milestone: M2
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
