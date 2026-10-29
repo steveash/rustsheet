@@ -235,7 +235,7 @@ fn mark(c: char) -> Option<u8> {
 /// that have one (`unicodedata.normalize("NFD", c)`): letter, base, mark, second mark or `'\0'`.
 /// Excel ranks each as its base letter plus the mark's accent (`"ča"` between `"ca"` and `"cb"`,
 /// `ё` between `е` and `ж`; probes/t3114-collation-beyond-latin1). Sorted by letter.
-const DECOMPOSED: [(char, char, char, char); 72] = [
+pub(crate) const DECOMPOSED: [(char, char, char, char); 72] = [
     ('ā', 'a', '\u{0304}', '\0'),
     ('ă', 'a', '\u{0306}', '\0'),
     ('ą', 'a', '\u{0328}', '\0'),
@@ -362,7 +362,8 @@ fn fold(c: char) -> char {
         'A'..='Z' => c.to_ascii_lowercase(),
         'À'..='Þ' if c != '×' => char::from_u32(u32::from(c) + 0x20).unwrap_or(c),
         _ if c.is_ascii() => c,
-        // Excel: `Σ = σ = ς` (probes/t3114-collation-beyond-latin1 Calc!B168, B190, B216, D20:E20).
+        // Excel: `Σ = σ = ς` (probes/t3114-collation-beyond-latin1 Calc!B168, B190, B216, D20:E20);
+        // `criteria::fold_run` folds the exact and wildcard matches the same way.
         'ς' => 'σ',
         _ => c.to_lowercase().next().unwrap_or(c),
     }
@@ -460,6 +461,7 @@ fn element(c: Char) -> Element {
 fn decompose(c: Char) -> impl Iterator<Item = Char> {
     let folded = match c {
         Char::Scalar(c) => fold(c),
+        // Every arm yields a `[Char; 3]` iterator so that the function has one return type.
         Char::Lone(_) => return [c, c, c].into_iter().take(1),
     };
     let entry = if ('\u{100}'..='\u{45f}').contains(&folded) {

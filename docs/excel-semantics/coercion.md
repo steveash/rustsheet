@@ -97,7 +97,7 @@ character (CJK, other scripts, other symbols) keeps code-point order after the l
 ### Letters beyond Latin-1 and combining marks (T-3114)
 Evidence: probes/t3114-collation-beyond-latin1 (excel-graph, 2026-10-29), 282 strings ranked against
 each other (Calc!A = count less, Calc!B = count equal) plus pairwise `<`/`=`/`>` (Calc!D:F), exact
-MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K). Status: VERIFIED for these:
+MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status: VERIFIED for these:
 - Every Latin Extended-A letter probed (`ā ă ą ć č ď ē ė ę ě ğ ģ ī į ķ ĺ ľ ń ņ ň ő ŕ ř ś ş š ţ ť ū ů ű
   ų ź ż ž`) is its **base letter plus an accent**, not a letter of its own: `"ca" < "ča" < "cb"`,
   `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A121:A140).
@@ -107,26 +107,26 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K). Status: VERIFIED for these
   acute < breve < dot above < caron < macron < ring < ogonek < double acute < cedilla (with diaeresis
   before ring and double acute). The relative place of breve, dot above and caron against the
   Latin-1 grave, circumflex and tilde is never ranked on one letter: the engine puts them after
-  tilde, UNVERIFIED.
+  tilde, UNVERIFIED (T-3154).
 - A base letter plus a combining mark equals the precomposed letter: `"a"&UNICHAR(769) = "á"`,
   `"c"&UNICHAR(780) = "č"` (also `"C"&UNICHAR(780)`), `"e"&UNICHAR(769) = "é"`,
   `"c"&UNICHAR(780)&"a" = "ča"`, and `o`+U+030B, `s`+U+030C, `z`+U+0307 tie with `ő`, `š`, `ż` (Calc!B
   counts 3 or 4, D7:F10, D25:F25). Marks after an accented letter, and marks other than the 13 of
   Latin Extended-A and Latin-1 (U+0300-U+0304, U+0306-U+0308, U+030A-U+030C, U+0327, U+0328), are
-  unprobed: the engine appends a second accent weight, UNVERIFIED.
+  unprobed: the engine appends a second accent weight, UNVERIFIED (T-3154).
 - Greek: `α < ά < β`, … `ι < ί < ϊ < ΐ < κ`, … `ω < ώ` (tonos is the acute accent, dialytika the
   diaeresis); `Σ = σ = ς` (Calc!B168, B190, B216, E20), and exact MATCH of `"ς"` finds `σ` (Calc!H10). Base
   letters keep code-point order.
 - Cyrillic: `а < б < … < е < ё < ж < … < и < й < к < … < я`, each upper case equal to its lower case.
   Whether `ё` and `й` are accented `е` and `и` (the engine, by their canonical decompositions) or
-  letters of their own is not told apart by single letters: UNVERIFIED.
+  letters of their own is not told apart by single letters: UNVERIFIED (T-3154).
 - Exact MATCH, COUNTIF `=`, `<` and `<>` agree with the above over these letters (Calc!H1:K10).
 - Inferred, UNVERIFIED: the engine gives every other lower- or upper-case letter of Latin Extended-A,
   Greek and Cyrillic that has a canonical decomposition (`ĉ ĝ ĥ ĵ ŝ ŵ ŷ ĩ ĭ ŭ ŏ ō ĕ ġ ċ ļ ŗ`, `ϋ ΰ`,
   `ѐ ѓ ї ќ ѝ ў`) the same base-plus-accent rule.
 Implemented (T-3114): `collation.rs` case-folds, then decomposes each letter through its canonical
 decomposition (`DECOMPOSED`) and gives a combining mark's accent to the letter before it.
-`folded_units` (the exact MATCH and wildcard key) folds `ς` to `σ`.
+`criteria::fold_run` (the exact MATCH, wildcard and D-function prefix fold) folds `ς` to `σ`.
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
 Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by
 `SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.

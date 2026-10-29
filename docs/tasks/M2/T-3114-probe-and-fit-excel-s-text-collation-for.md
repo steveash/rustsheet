@@ -3,7 +3,7 @@ id: T-3114
 title: "Probe and fit Excel's text collation for letters beyond Latin-1 (Latin Extended-A, combining marks, accented Greek, Cyrillic)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -62,22 +62,16 @@ backed by a committed oracle case. Today every such letter sorts after `z` by co
 - The approximate lookups' text order (T-3115) and the exact MATCH/VLOOKUP key beyond the confirming cells above.
 - Case mapping in UPPER/LOWER/PROPER (text.md, T-1747).
 
-## In flight (2026-10-29 opus run, stopped at the session budget)
-Done on this branch: the probe `probes/t3114-collation-beyond-latin1` (excel-graph, committed), the
-collation fit in `collation.rs` (canonical decomposition after case folding, combining marks as accents,
-new accent order, `ς` folds to `σ`), unit tests in `test/test_collation.rs`, and the coercion.md section.
-With a fresh build, every collation probe passes except Calc!H10 of the new case.
-Round-1 review: security APPROVE, quality APPROVE, architecture REQUEST_CHANGES (task file not done and
-no Outcome yet), excel-fidelity REQUEST_CHANGES:
-- BLOCKING: `folded_units` (criteria.rs) folds `ς` to `σ` on the text side only. `WildcardPattern::new`
-  and `result_starts_with_units` still use plain `to_lowercase`, so a `ς` pattern matches nothing
-  (`MATCH("ς",...,0)` is #N/A; H10 expects 168). Fix: define one run fold (lower-case plus `ς` to `σ`)
-  and use it in `folded_units`, `WildcardPattern::new` and the D-function prefix fold. Add a unit test
-  that a `ς` pattern matches `ς`, `σ`, `Σ` and that `ΟΔΟΣ` matches `οδοσ`. `collation.rs` `fold` should
-  point to the same definition.
-- Then: `make check` (rebuild first: `target/release` was stale for the first pass count), `make
-  eval-baseline` to record the new case, and the Outcome.
-- MINOR: a test that `DECOMPOSED` is sorted; a comment on the `take(1)` arms of `decompose`; a direct
-  test of `accents()` for `a\u{301}`, `æ`, `ΐ`; follow-up probe tasks for Latin-1 against Extended-A
-  accents on one letter (`à` against `ă`, `ã` against `ā`), for marks after an accented letter, and for
-  `ё`/`й` as accent or letter (`"йа"` against `"иб"`).
+## Outcome
+- Probe `probes/t3114-collation-beyond-latin1` (excel-graph, 2026-10-29): 282 strings ranked, plus
+  pairwise, exact MATCH and COUNTIF cells; 986 cells, all pass.
+- Finding (coercion.md "Letters beyond Latin-1 and combining marks"): every Latin Extended-A, Greek
+  accented and Cyrillic letter probed is its base letter plus an accent; a base letter plus a combining
+  mark equals the precomposed letter; `Σ = σ = ς`, and exact MATCH of `ς` finds `σ`.
+- Engine: `collation.rs` folds case, then decomposes canonically (`DECOMPOSED`) and gives a combining
+  mark's accent to the letter before it; the accent order gains breve, dot above, caron, macron,
+  ogonek and double acute. `criteria::fold_run` folds `ς` to `σ` for the exact, wildcard and
+  D-function prefix matches on both sides.
+- Eval delta: +1 probe case (986 cells, all passing), 0 regressions; the five earlier collation
+  probes and t3115 still pass in full.
+- Follow-up: T-3154 (accents across Latin-1 and Extended-A on one letter, stacked marks, `ё`/`й`).

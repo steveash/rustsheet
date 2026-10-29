@@ -236,3 +236,35 @@ fn letters_beyond_latin1_and_combining_marks() {
         assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
     }
 }
+
+/// `decompose` binary-searches the table, so it must stay sorted by letter.
+#[test]
+fn decomposed_table_is_sorted() {
+    use crate::functions::util::collation::DECOMPOSED;
+    assert!(DECOMPOSED.windows(2).all(|pair| pair[0].0 < pair[1].0));
+}
+
+/// The exact and wildcard matches fold `ς` to `σ` on both sides (probes/t3114-collation-beyond-latin1
+/// Calc!H10; Rust's final-sigma rule lower-cases a word-final `Σ` to `ς`).
+#[test]
+fn final_sigma_folds_in_exact_and_wildcard_matches() {
+    use crate::functions::criteria::{folded_units, WildcardPattern};
+    for pattern in ["ς", "σ", "Σ"] {
+        let compiled = WildcardPattern::new(&Text::from(pattern));
+        for text in ["ς", "σ", "Σ"] {
+            assert!(
+                compiled.matches(&Text::from(text)),
+                "{pattern:?} matches {text:?}"
+            );
+        }
+    }
+    assert!(WildcardPattern::new(&Text::from("ς*")).matches(&Text::from("σx")));
+    assert_eq!(
+        folded_units(&Text::from("ΟΔΟΣ")),
+        folded_units(&Text::from("οδοσ"))
+    );
+    assert_eq!(
+        WildcardPattern::new(&Text::from("οδοσ")).literal_units(),
+        Some(folded_units(&Text::from("ΟΔΟΣ")))
+    );
+}

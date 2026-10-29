@@ -139,7 +139,7 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
 fn result_starts_with_units(calc_result: &CalcResult, target: &[u16]) -> bool {
     match calc_result {
         CalcResult::String(s) => {
-            let folded = s.map_runs(str::to_lowercase);
+            let folded = s.map_runs(fold_run);
             let mut units = folded.units();
             target.iter().all(|unit| units.next() == Some(*unit))
         }
@@ -454,7 +454,7 @@ pub(crate) fn build_criteria_with<'a>(
                         // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
                         Box::new(move |x| matches!(x, CalcResult::EmptyCell))
                     } else if flavor == CriteriaFlavor::Database && !explicit_equals {
-                        let folded = operand_text(s, "").map_runs(str::to_lowercase);
+                        let folded = operand_text(s, "").map_runs(fold_run);
                         let prefix: Vec<u16> = folded.units().collect();
                         Box::new(move |x| result_starts_with_units(x, &prefix))
                     } else {
@@ -499,20 +499,27 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
     criterion.slice_utf16(prefix.len(), criterion.len_utf16())
 }
 
-/// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run lower-cased,
-/// then read as UTF-16 units (for ASCII text, each byte lower-cased). The final sigma `ς` folds to
-/// `σ`, as `Σ` does: Excel's `MATCH("ς",...,0)` finds `σ` (probes/t3114-collation-beyond-latin1
-/// Calc!H10).
+/// The case fold of the exact and wildcard text matches: `run` lower-cased, the final sigma `ς`
+/// folded to `σ` as `Σ` is. Excel's `MATCH("ς",...,0)` finds `σ` (probes/t3114-collation-beyond-latin1
+/// Calc!H10). The collation's `fold` (functions/util/collation.rs) folds `ς` the same way.
+pub(crate) fn fold_run(run: &str) -> String {
+    let lower = run.to_lowercase();
+    if lower.contains('ς') {
+        lower.replace('ς', "σ")
+    } else {
+        lower
+    }
+}
+
+/// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run folded by
+/// [`fold_run`], then read as UTF-16 units (for ASCII text, each byte lower-cased).
 pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
     match text {
         Text::Utf8(s) if s.is_ascii() => s
             .bytes()
             .map(|byte| u16::from(byte.to_ascii_lowercase()))
             .collect(),
-        _ => text
-            .map_runs(|run| run.to_lowercase().replace('ς', "σ"))
-            .units()
-            .collect(),
+        _ => text.map_runs(fold_run).units().collect(),
     }
 }
 
@@ -547,7 +554,7 @@ pub(crate) struct WildcardPattern {
 impl WildcardPattern {
     /// Compiles `pattern`.
     pub(crate) fn new(pattern: &Text) -> WildcardPattern {
-        Self::from_units(pattern.map_runs(str::to_lowercase).units())
+        Self::from_units(pattern.map_runs(fold_run).units())
     }
 
     /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds with its
