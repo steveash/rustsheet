@@ -3,7 +3,7 @@ id: T-2718
 title: "Probe DB and SYD domain orderings: fractional life near life+1, cost 0 with a huge life, SYD negative salvage vs life overflow"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
