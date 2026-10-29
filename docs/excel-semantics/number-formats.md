@@ -178,7 +178,9 @@ Rule (quirk, unimplemented, T-3098): under some of these tags the `B2` also chan
 are "Mar|Tue" (English, where the tags alone print Japanese and Korean names). `B2[$-30409]`, `B2[$-50409]`,
 `B2[$-7041E]`, `B2[$-90409]` (French) and `B2[$-A0409]` (Levantine Arabic) keep the tag's names.
 Evidence: probes/t3029-b2-calendar-weekday (128 TEXT cells, 3 cell formats; excel-graph, 2026-10-29), t2932-b2-calendar-twice A55.
-Unprobed: calendar 8 (Hebrew) and Saka; whether `mmm` under a calendar-3 Japanese LCID (the tag alone prints a number) starts it.
+It starts under a calendar-3 Japanese LCID too, where the tag alone prints `mmm` as a number: `B2[$-30411]mmm|ddd` of
+2023-03-15 is "Mar|Tue" (A79-A84, with the T-3098 names).
+Unprobed: calendar 8 (Hebrew) and Saka.
 Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
 `b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"
 (probes/t2932-b2-calendar-twice A24, A64-A68). `yy` stays the last two digits.

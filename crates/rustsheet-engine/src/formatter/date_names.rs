@@ -59,6 +59,12 @@ pub(crate) fn hijri_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
     Some((year, month, u32::try_from(rest + 1).ok()?))
 }
 
+/// The Sunday-first weekday index Excel's `B2` name quirks read from a month: weekday number
+/// min(month, 7), Sunday being 1 (`NameTokens`).
+fn month_as_weekday(month: u32) -> usize {
+    month.clamp(1, 7) as usize - 1
+}
+
 /// What the first name token of a `B2` section showed.
 #[derive(Clone, Copy)]
 enum FirstName {
@@ -136,7 +142,7 @@ impl NameTokens {
             self.month_after_mmm = Some(month);
         }
         let weekday = match self.month_after_mmm {
-            Some(m) => m.clamp(1, 7) as usize - 1,
+            Some(m) => month_as_weekday(m),
             None => weekday,
         };
         let m = month as usize - 1;
@@ -186,7 +192,7 @@ impl NameTokens {
         };
         let names = &HIJRI_ARABIC;
         let name = match (is_day, read) {
-            (true, FirstName::Month(m)) => names.days[m.clamp(1, 7) as usize - 1],
+            (true, FirstName::Month(m)) => names.days[month_as_weekday(m)],
             (_, FirstName::Weekday(w)) => names.days[w],
             (false, FirstName::Month(m)) => names.months[m as usize - 1],
         };
