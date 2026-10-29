@@ -1476,6 +1476,7 @@ C	probes/t3030-cell-contents-nested-sheet.case.json	39
 C	probes/t3030-cell-first-sheet.case.json	20
 C	probes/t3047-snap-array-operands.case.json	70
 C	probes/t3048-snap-conditional-sums.case.json	86
+C	probes/t3049-snap-under-pickers.case.json	57
 C	probes/t3051-legacy-root-array-operators.case.json	38
 C	probes/t3054-imtan-real-tan-kernel.case.json	22
 C	probes/t3072-take-drop-one-cell-reference.case.json	57
@@ -3789,15 +3790,10 @@ F	probes/t2829-ftest-ln-beta-grid.case.json	S!A99
 F	probes/t2829-ftest-tail-over-b.case.json	S!A1
 F	probes/t2829-ftest-tail-over-b.case.json	S!A10
 F	probes/t2829-ftest-tail-over-b.case.json	S!A11
-F	probes/t2829-ftest-tail-over-b.case.json	S!A12
-F	probes/t2829-ftest-tail-over-b.case.json	S!A13
 F	probes/t2829-ftest-tail-over-b.case.json	S!A14
-F	probes/t2829-ftest-tail-over-b.case.json	S!A15
 F	probes/t2829-ftest-tail-over-b.case.json	S!A16
 F	probes/t2829-ftest-tail-over-b.case.json	S!A18
-F	probes/t2829-ftest-tail-over-b.case.json	S!A19
 F	probes/t2829-ftest-tail-over-b.case.json	S!A2
-F	probes/t2829-ftest-tail-over-b.case.json	S!A20
 F	probes/t2829-ftest-tail-over-b.case.json	S!A21
 F	probes/t2829-ftest-tail-over-b.case.json	S!A22
 F	probes/t2829-ftest-tail-over-b.case.json	S!A3
@@ -4167,6 +4163,8 @@ F	probes/t3048-snap-conditional-sums.case.json	S!I5
 F	probes/t3048-snap-conditional-sums.case.json	S!I6
 F	probes/t3048-snap-conditional-sums.case.json	S!P5
 F	probes/t3048-snap-conditional-sums.case.json	S!P6
+F	probes/t3049-snap-under-pickers.case.json	Sheet1!B17
+F	probes/t3049-snap-under-pickers.case.json	Sheet1!C17
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A10
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A11
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A2

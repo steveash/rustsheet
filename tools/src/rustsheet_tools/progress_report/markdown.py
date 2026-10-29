@@ -45,3 +45,12 @@ def md_text(text: str) -> str:
     punctuation and `\\` escaped, then md_cell (whose entities hold a `#` that must stay unescaped)."""
     amp = text.replace("&", "&amp;")
     return md_cell("".join(f"\\{c}" if c in MD_INLINE else c for c in amp))
+
+
+def signed(delta: int) -> str:
+    """`delta` with its sign: +3, \N{MINUS SIGN}2 or 0."""
+    if delta > 0:
+        return f"+{delta:,}"
+    if delta < 0:
+        return f"\N{MINUS SIGN}{-delta:,}"
+    return "0"
