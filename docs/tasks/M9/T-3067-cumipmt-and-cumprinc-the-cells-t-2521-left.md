@@ -41,7 +41,7 @@ case probes/fin-cumipmt-gate-edges). Left, by cause:
   CUMPRINC (F1-F10) for any payment form tried.
 - 79d87fc527927626 A352 `CUMIPMT(1E-15,283,(1.005+3.14159+1E15)%,2,16,0)`: 3 ulps of `pmt·m`.
 - Periods near 1E15 (untouched by T-2514 and T-2521): fin-remaining-later-argument-ranges K3,
-  fin-cumipmt-overflow-and-forms A9-A11, fin-cumipmt-period-bound A18 and A6.
+  fin-cumipmt-overflow-and-forms A9:A11, fin-cumipmt-period-bound A18 and A6.
 Code: functions/financial/cumulative.rs.
 
 ## Acceptance criteria
