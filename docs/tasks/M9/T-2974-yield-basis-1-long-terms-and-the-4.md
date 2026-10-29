@@ -97,7 +97,8 @@ A, which repeat existing cells. No regressions.
 - Eval delta: one new probe case, 360 cells. The engine (rounded-once start) passes 202. The 158 new known failures
   are YIELD cells of that case 1 to 67 ulps off. No other cell changed and nothing regressed.
 
-## Outcome (attempt 4, 2026-10-29; done)
+## Outcome
+Attempt 4, 2026-10-29; the task is done.
 - Excel's start reads `pr·T` with the term unrounded: `D = fl(pr·(whole + fl(days/year)) + fl(100·T))`, the rest of
   attempt 3's term-scaled form in doubles. Lab: 960 of 1,115 YIELD probe cells bit-exact, against 790 for attempt 3's
   FMA form and 709 for the rounded-once start. Every candidate and its counts are in financial.md "YIELD stops short of
