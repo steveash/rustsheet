@@ -370,6 +370,7 @@ class FakeLock(merge_train.LockOps):
         self.renewals = renewals or []
         self.calls: list[tuple[str, object]] = []
         self.on_wait: list[Callable[[], None]] = []
+        self.on_renew: list[Callable[[], None]] = []
 
     def wait(self, timeout_minutes: float) -> int:
         self.calls.append(("wait", timeout_minutes))
@@ -379,6 +380,8 @@ class FakeLock(merge_train.LockOps):
 
     def renew(self, prs: Sequence[int]) -> int:
         self.calls.append(("renew", list(prs)))
+        if self.on_renew:
+            self.on_renew.pop(0)()
         return self.renewals.pop(0) if self.renewals else 0
 
     def release(self) -> int:
@@ -415,6 +418,12 @@ class GitHub(Client):
         self.refuse: set[int] = set()
         self.unlabelled: set[int] = set()
         self.closed: list[int] = []  # closed PRs still labelled ready-to-merge
+        self.stop: set[int] = set()  # open PRs labelled merge-train-stop
+        self.squashes: dict[int, str] = {}
+        self.bad_squash: set[int] = set()  # PRs whose squash gets the tree of a merge with #2 instead
+        self.opened: list[dict[str, object]] = []  # the bodies of the PRs the stage opened
+        self.deleted: list[str] = []
+        self.deny_delete = False  # the session proxy refuses branch deletion (T-1938)
         self.branch = merge_train.TRAIN_BRANCH  # the branch whose push CI runs report
         # The scripted CI oracle (T-2998): when set, each tested sha is pending for `polls` polls,
         # then concludes `oracle(sha)` ("green", "red" or "cancelled"), judged once per sha.
@@ -492,16 +501,25 @@ class GitHub(Client):
         path = request.path.removeprefix("repos/o/r/")
         if request.method != "GET":
             self.writes.append(request)
+        if path == "pulls" and request.method == "POST":
+            assert isinstance(request.body, dict)
+            self.opened.append(request.body)
+            return {"number": 100 + len(self.opened)}
         if path == "pulls":
             label = [{"name": merge_ready.READY_LABEL}]
             gone = {*self.merged, *self.unlabelled}
-            return [{"number": pr, "labels": label} for pr in self.heads if pr not in gone]
+            stop = [{"number": pr, "labels": [{"name": merge_ready.STOP_LABEL}]} for pr in sorted(self.stop)]
+            return [{"number": pr, "labels": label} for pr in self.heads if pr not in gone] + stop
         if m := re.fullmatch(r"pulls/(\d+)", path):
             pr = int(m[1])
+            if pr in self.merged:
+                merge_commit: str | None = self.squashes[pr]
+            else:
+                merge_commit = self.test_merge(pr) if self.mergeable is not None else None
             return {
                 "number": pr, "title": f"T-000{pr}: change {pr}", "mergeable_state": "clean",
-                "mergeable": self.mergeable, "merged": pr in self.merged,
-                "merge_commit_sha": self.test_merge(pr) if self.mergeable is not None else None,
+                "mergeable": self.mergeable, "merged": pr in self.merged, "merge_commit_sha": merge_commit,
+                "head": {"ref": f"agent/harness/T-000{pr}-x", "sha": self.heads[pr], "repo": {"full_name": "o/r"}},
             }
         if re.fullmatch(r"pulls/(\d+)/commits", path):
             return [{"commit": {"message": "x\n\nCo-Authored-By: A <a@b.c>"}}]
@@ -513,17 +531,26 @@ class GitHub(Client):
         if m := re.fullmatch(rf"issues/(\d+)/labels/{merge_ready.READY_LABEL}", path):
             self.unlabelled.add(int(m[1]))
             return {}
+        if m := re.fullmatch(rf"issues/(\d+)/labels/{merge_ready.STOP_LABEL}", path):
+            self.stop.discard(int(m[1]))
+            return {}
+        if path.startswith("git/refs/heads/") and request.method == "DELETE":
+            if self.deny_delete:
+                raise GhError("gh api DELETE: HTTP 403 Access to this GitHub API path is not permitted")
+            self.deleted.append(path.removeprefix("git/refs/heads/"))
+            return None
         if m := re.fullmatch(r"pulls/(\d+)/merge", path):
             pr = int(m[1])
             assert request.body is not None
             if pr in self.refuse or request.body["sha"] != self.heads[pr]:
                 raise GhError("HTTP 409: head moved")
             main = self.main()
-            tree = self.git("merge-tree", "--write-tree", main, self.heads[pr])
+            tree = self.git("merge-tree", "--write-tree", main, self.heads[2 if pr in self.bad_squash else pr])
             message = f"{request.body['commit_title']}\n\n{request.body['commit_message']}"
             squash = self.git("commit-tree", tree, "-p", main, "-m", message)
             self.git("update-ref", "refs/heads/main", squash, main)
             self.merged.append(pr)
+            self.squashes[pr] = squash
             if self.lose_reply:
                 raise GhError("gh api PUT: connection reset")
             return {"sha": squash, "merged": True}
@@ -582,6 +609,15 @@ class StageFixture(unittest.TestCase):
         patch = mock.patch.object(merge_train.merge_ready, "verify", side_effect=verify)
         patch.start()
         self.addCleanup(patch.stop)
+        # `make merge-flip-check` per PR (scripts/test_merge_flip.py tests the rule itself).
+        self.flips: dict[int, list[str]] = {}
+
+        def flip_check(_client: object, pr: int, _root: Path) -> tuple[str, list[str]]:
+            return "f" * 40, self.flips.get(pr, ["not a flip PR"])
+
+        patch = mock.patch.object(merge_train.merge_flip, "pr_problems", side_effect=flip_check)
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def git(self, *args: str) -> str:
         return run("git", *args, cwd=self.clone)
@@ -610,6 +646,25 @@ class StageFixture(unittest.TestCase):
     def train_ref(self) -> str:
         return run("git", "for-each-ref", "--format=%(objectname)", merge_train.TRAIN_REF, cwd=self.origin)
 
+    def tasks_title(self) -> str:
+        [line] = [line for line in self.stage.log if line.startswith("filed ")]
+        return "tasks: merge train " + line.removeprefix("filed ").split(" in #")[0]
+
+    def filed(self) -> str:
+        """The one task file on the task-only PR's branch, after checking it with main's tasks.py."""
+        [opened] = [o for o in self.gh.opened if str(o["head"]).startswith(merge_train.TASKS_PREFIX)]
+        branch = f"refs/heads/{opened['head']}"
+        [path] = self.gh.git("diff", "--name-only", f"{branch}^", branch).split()
+        self.assertRegex(path, r"^docs/tasks/M2/T-\d{4}-[a-z0-9-]+\.md$")
+        with tempfile.TemporaryDirectory() as tmp:
+            tree = Path(tmp) / "t"
+            self.gh.git("worktree", "add", "-q", "--detach", str(tree), branch)
+            check = subprocess.run([sys.executable, "-I", str(tree / "scripts/tasks.py"), "validate", "--root",
+                                    str(tree)], capture_output=True, text=True, check=False)
+            self.gh.git("worktree", "remove", "--force", str(tree))
+        self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+        return self.gh.git("show", f"{branch}:{path}")
+
     def run_stage(self) -> int:
         return self.stage.run()
 
@@ -637,8 +692,10 @@ class MergeStage(StageFixture):
         self.assertEqual(message, "T-0002: change 2 (#2)\n\nCo-Authored-By: A <a@b.c>")
         self.assertEqual(self.lock.calls[-1], ("release", None))
         self.assertIn(("renew", [2]), self.lock.calls)
-        removed = [r.path for r in self.gh.writes if r.method == "DELETE"]
+        removed = [r.path for r in self.gh.writes if r.method == "DELETE" and "/issues/" in r.path]
         self.assertEqual(removed, [f"repos/o/r/issues/{pr}/labels/ready-to-merge" for pr in (1, 2)])
+        self.assertEqual(self.gh.deleted, [f"agent/harness/T-000{pr}-x" for pr in (1, 2)])
+        self.assertEqual(self.gh.opened, [])  # nothing to file
 
     def test_lock_mode_stops_at_once_with_no_lock_and_no_write(self) -> None:
         self.push_main({merge_train.SWITCH: "mode = \n"})  # malformed reads as lock
@@ -672,10 +729,12 @@ class MergeStage(StageFixture):
         self.assertIn("P0: main moved without the lock before squashing #2", self.stage.log)
 
     def test_main_moving_during_a_squash_fails_the_post_squash_check(self) -> None:
+        # Our squash is the tested tree, so the foreign commit on top is not ours to revert.
         self.gh.after[("PUT", "pulls/1/merge")] = lambda: self.push_main({"other.txt": "x"})
         self.assertEqual(self.run_stage(), 1)
         self.assertEqual(self.gh.merged, [1])
-        self.assertTrue(self.stage.log[-1].startswith("P0: main differs from the tested train after squashing #1"))
+        self.assertIn("P0: main moved without the lock after squashing #1", self.stage.log)
+        self.assertEqual([o["title"] for o in self.gh.opened], [self.tasks_title()])
 
     def test_main_moved_before_the_first_squash(self) -> None:
         self.gh.hooks[("GET", "actions/runs")] = lambda: self.push_main({"other.txt": "x"})
@@ -776,9 +835,16 @@ class MergeStage(StageFixture):
         self.gh.bad_tree = True
         self.assertEqual(self.run_stage(), 1)
         self.assertEqual(self.gh.merged, [])
-        self.assertEqual(
-            self.stage.log[-1], "P0: main differs from the tested train at #1: GitHub's test merge has another tree"
-        )
+        self.assertIn("P0: main differs from the tested train at #1: GitHub's test merge has another tree",
+                      self.stage.log)
+        # Before the squash nothing of ours landed: a P0 only, no revert PR.
+        [opened] = self.gh.opened
+        self.assertEqual(opened["title"], self.tasks_title())
+        task = self.filed()
+        self.assertIn("priority: P0", task)
+        self.assertIn('title: "merge train: main differs from the tested train at #1"', task)
+        self.assertIn("no revert PR", task)
+        self.assertEqual(self.lock.calls[-1], ("release", None))
 
     def test_a_lost_merge_reply_is_read_back(self) -> None:
         self.gh.lose_reply = True
@@ -798,6 +864,103 @@ class MergeStage(StageFixture):
             self.run_stage()
         self.assertEqual(raised.exception.code, 128 + signal.SIGTERM)
         self.assertEqual(self.lock.calls[-1], ("release", None))
+
+
+class StopAndRevert(StageFixture):
+    """T-3055: the stop label at every checkpoint, `make merge-mode`, the revert path and step 7.5."""
+
+    def add_stop(self, pr: int = 50) -> None:
+        self.flips[pr] = []
+        self.gh.stop.add(pr)
+
+    def test_a_valid_stop_label_stops_at_each_checkpoint(self) -> None:
+        def at_acquisition() -> None:
+            self.lock.on_wait.append(self.add_stop)
+
+        def before_the_ci_wait() -> None:
+            self.lock.on_renew.append(self.add_stop)  # the renewal right after the push
+
+        def on_a_ci_poll() -> None:
+            self.gh.ci = ["pending", "green"]
+            self.gh.hooks[("GET", "actions/runs")] = self.add_stop
+
+        def before_a_squash() -> None:
+            self.gh.hooks[("POST", "issues/1/comments")] = self.add_stop
+
+        for arm, pushed, merged in ((at_acquisition, False, []), (before_the_ci_wait, True, []),
+                                    (on_a_ci_poll, True, []), (before_a_squash, True, [1])):
+            with self.subTest(arm.__name__):
+                self.setUp()
+                arm()
+                self.assertEqual(self.run_stage(), 1)
+                self.assertIn(f"stopped: a flip to lock is pending: #50 carries {merge_ready.STOP_LABEL}",
+                              self.stage.log)
+                self.assertEqual((self.train_ref() != "", self.gh.merged), (pushed, merged))
+                self.assertEqual(self.gh.stop, {50})  # an honoured label stays
+                self.assertEqual(self.lock.calls[-1], ("release", None))
+                if not pushed:
+                    self.assertEqual(self.gh.writes, [])
+
+    def test_a_stop_label_on_a_pr_that_is_not_a_flip_is_removed_and_ignored(self) -> None:
+        self.gh.stop = {51}
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual((self.gh.merged, self.gh.stop), ([1, 2], set()))
+        writes = [(r.method, r.path.removeprefix("repos/o/r/"), r.body) for r in self.gh.writes if "/51/" in r.path]
+        self.assertEqual(writes, [
+            ("DELETE", f"issues/51/labels/{merge_ready.STOP_LABEL}", None),
+            ("POST", "issues/51/comments", {"body": "merge train: stop label removed: not a valid flip PR "
+                                                    f"(`make merge-flip-check` fails at {'f' * 40})"}),
+        ])
+
+    def test_a_flip_check_that_cannot_run_git_honours_the_label(self) -> None:
+        self.gh.stop = {52}
+        self.flips[52] = ["git: fetch failed"]
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual((self.gh.writes, self.gh.stop), ([], {52}))
+
+    def test_merge_mode_names_a_pending_stop_and_writes_nothing(self) -> None:
+        for flips, line in (({50: []}, "train (stop pending: #50)"), ({}, "train")):
+            with self.subTest(line=line):
+                self.flips = flips
+                self.gh.stop = {50}
+                with mock.patch.object(merge_train.gh_client, "from_remote", return_value=self.gh):
+                    self.assertEqual(merge_train.mode_line(self.clone), line)
+                self.assertEqual((self.gh.writes, self.gh.stop), ([], {50}))
+        self.flip()
+        self.assertEqual(merge_train.mode_line(self.clone), merge_train.LOCK)
+
+    def test_a_mismatch_after_a_squash_opens_a_revert_pr_and_files_a_p0(self) -> None:
+        self.gh.bad_squash = {1}
+        self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.merged, [1])  # #2 is not squashed past the mismatch
+        squash = self.gh.squashes[1]
+        self.assertIn(f"P0: main differs from the tested train after squashing #1 ({squash})", self.stage.log)
+        revert, tasks = self.gh.opened
+        branch = f"{merge_train.REVERT_PREFIX}{squash}"
+        self.assertEqual((revert["title"], revert["head"], revert["base"]),
+                         ("revert: merge train mismatch at #1", branch, "main"))
+        tested = self.gh.git("rev-parse", f"{self.train_ref()}~2^{{tree}}")  # T_1: the record commit is on T_2
+        self.assertIn(f"- actual tree: {self.gh.git('rev-parse', f'{squash}^{{tree}}')}", str(revert["body"]))
+        self.assertIn(f"- squash: {squash}", str(revert["body"]))
+        self.assertIn(f"- expected tree: {tested}", str(revert["body"]))
+        # The revert branch undoes exactly the squash on the current main.
+        self.assertEqual(self.gh.git("rev-parse", f"refs/heads/{branch}^"), self.gh.main())
+        self.assertEqual(self.gh.git("rev-parse", f"refs/heads/{branch}^{{tree}}"),
+                         self.gh.git("rev-parse", f"{self.m0}^{{tree}}"))
+        task = self.filed()
+        self.assertIn("priority: P0", task)
+        self.assertIn("- revert PR: #101;", task)
+        self.assertEqual(tasks["title"], self.tasks_title())
+        # The revert PR is never merged by the merger, and the lock is released last.
+        self.assertFalse([r for r in self.gh.writes if r.path.endswith("/merge") and "/101/" in r.path])
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+
+    def test_a_refused_branch_deletion_is_logged_and_the_train_goes_on(self) -> None:
+        self.gh.deny_delete = True
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+        self.assertIn("the branch of #2 was not deleted: gh api DELETE: HTTP 403 Access to this GitHub API path "
+                      "is not permitted", self.stage.log)
 
 
 TYPICAL, TIMEOUT = 5, 10  # CI polls before a result: about 5 min, and the 10-min timeout
@@ -947,8 +1110,12 @@ class RedTrain(StageFixture):
         self.script(lambda prs: self.runs() == 1)  # only the first run is red
         self.holds(1)
         self.assert_outcome(set())
-        self.assertEqual([(p, t) for p, t, _ in self.stage.tasks], [("P1", "possible flaky test or interaction")])
+        title = "merge train: possible flaky test or interaction at #5"
+        self.assertEqual([(p, t) for p, t, _ in self.stage.tasks], [("P1", title)])
         self.assertIn("#5's train prefix was red", self.stage.tasks[0][2])
+        [opened] = self.gh.opened
+        self.assertTrue(opened["head"].startswith(merge_train.TASKS_PREFIX), opened)
+        self.assertIn(f"(P1): {title}", opened["body"])
 
     def test_an_infrastructure_failure_is_retried_once_and_ejects_nobody(self) -> None:
         def oracle(cancelled: int) -> Callable[[str], str]:
