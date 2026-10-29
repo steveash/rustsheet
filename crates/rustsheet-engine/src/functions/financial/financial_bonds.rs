@@ -433,10 +433,7 @@ impl OddFirstSchedule {
         }
     }
 
-    /// Whether `(1 + yld/frequency)^t` overflows at the redemption's term `t = front_exponent`, the
-    /// longest one: ODDFPRICE is then #NUM!, as PRICE is, where the overflowing flows would discount
-    /// to 0 (probes/odd-bond-huge-yield-overflow; financial.md "ODDFPRICE and ODDLPRICE at a huge
-    /// yield", T-2659).
+    /// Whether the redemption's discount power overflows, so ODDFPRICE is #NUM! (T-2659).
     fn discount_overflows(&self, yld: f64) -> bool {
         power(yld / self.m + 1.0, self.front_exponent).is_err()
     }
@@ -878,10 +875,9 @@ impl Model {
                 model
                     .odd_first_of(values, false, cell)
                     .and_then(|(odd, schedule)| {
-                        if schedule.discount_overflows(odd.yld_or_pr) {
-                            return Err(num_error(cell));
-                        }
-                        Ok(schedule.price(odd.yld_or_pr, discount_growth))
+                        (!schedule.discount_overflows(odd.yld_or_pr))
+                            .then(|| schedule.price(odd.yld_or_pr, discount_growth))
+                            .ok_or_else(|| num_error(cell))
                     }),
             )
         })
