@@ -3,7 +3,7 @@ id: T-3105
 title: "Snap the near-zero root of a LAMBDA body called through a defined name, as an in-place call does"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
