@@ -3,10 +3,10 @@ id: T-0084
 title: "make new-task and make new-decision break on a TITLE containing a double quote"
 milestone: M0
 lane: harness
-status: done
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -34,8 +34,17 @@ recipes. Another fix: escape it with `$(subst ...)`. Pick one and use it for eve
 ## Out of scope
 - Changing `scripts/tasks.py new` itself beyond what the test needs.
 
-## Outcome
+## Outcome (draft, from the sonnet attempt; PR #2245)
 `new-task` and `new-decision` now read `MILESTONE`, `LANE` and `TITLE` from the environment (`"$$TITLE"`), so `"`,
 `;`, backticks and parentheses pass through unchanged. A single `$` on the make command line is still expanded by make
 itself (write `$$`); the help text says so. `scripts/test_makefile_titles.py` covers it (run by `make hygiene`).
 Eval delta: none. Other targets splice no free text except `CASE=` in `eval-show` (a path; left as is).
+
+## Handoff
+- Tried: `new-task`/`new-decision` recipes now use `"$$TITLE"`, `"$$LANE"`, `"$$MILESTONE"`; added
+  `scripts/test_makefile_titles.py` (3 tests, pass; `make check` green locally; security/architecture/quality reviewers APPROVE).
+- Failed: CI `hygiene` job, `scripts/check_governance.py origin/main`: "protected paths changed without a decision
+  record in docs/decisions/: Makefile, scripts/test_makefile_titles.py". `make check` did not catch it locally.
+- Next: `make new-decision TITLE="Makefile passes free-text variables via the environment"` (record why, and that a
+  single `$` must be written `$$`), commit it with the branch, confirm `python3 scripts/check_governance.py origin/main`
+  passes, set `status: done`, rename the Outcome heading back, then merge per work-loop step 6.
