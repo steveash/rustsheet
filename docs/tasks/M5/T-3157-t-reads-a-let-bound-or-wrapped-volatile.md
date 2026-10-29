@@ -35,7 +35,9 @@ SWITCH do.
   read inside the LET's scope (`t_let_argument`, through `let_scope`), so its body's value and its cell-text test
   share the LET's bindings and a volatile value is drawn once. The `@` of a picker is read once as `@` reads its
   operand (`t_at_picker_argument`); its cell-text test is whether that operand was a reference. A LET body as
-  written keeps the reference-context test `is_reference` gave a LET, so `T(LET(x,D1,+x))` keeps its (unprobed) "".
+  written keeps the reference-context test `is_reference` gave a LET, so `T(LET(x,D1,+x))` keeps its (unprobed) "";
+  T-3167 probes it.
 - Tests: `text_functions/fn_t_volatile_pick.rs`. The volatile test fails on the old code within 200
   recalculations; the LET and `@` shape test pins the readings the old code gave.
 - Eval delta: none (`make check`: 0 regressions, 0 fixes; probes known failures 3534 → 3534).
+- Follow-up: T-3167 (probe T of a LET body under unary plus or `#`).
