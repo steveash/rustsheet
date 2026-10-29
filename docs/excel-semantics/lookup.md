@@ -335,11 +335,13 @@ The approximate searches compare numbers as exact doubles, not at 15 digits like
 probes/t3073-lookup-near-equal-approximate, excel-graph 2026-10-29). A table number a few ULP from the key is larger
 or smaller than it, never equal, so the search steps past it. In VLOOKUP and HLOOKUP (TRUE) and in `MATCH(key,…,1)`
 over the unsorted {2; X; 0.5}, key 1 gives `#N/A` for X = 1+k·2^-52 and 3 for X = 1-k·2^-53 (k = 1, 2, 3, 8;
-Sheet1 A1-C8). A 15-digit compare would give 2. `MATCH(0.3,{2;0.1+0.2;0.5},1)` is `#N/A` (A17-C17). The keys 1+k·2^-52
-and 1-k·2^-53 against a 1 in the table give the mirror answers (A9-C16). A pair 4 ULP apart on either side of the
-15th-digit boundary 1+5E-15 is ordered exactly too (A19-C20). The run of equal cells is a run of exactly equal
+Sheet1 A1-C8). A 15-digit compare would give 2 for every X that rounds to 1 at 15 digits: all of A1-C7. 1-8·2^-53
+reads 0.999999999999999, so row 8 fits both. `MATCH(0.3,{2;0.1+0.2;0.5},1)` is `#N/A` (A17-C17). The keys 1+k·2^-52
+and 1-k·2^-53 against a 1 in the table give the mirror answers (A9-C16; row 16 fits both). Rows 18-20 fit both
+models: 0.1+0.2 against 0.3 is decided by the 0.5, and the pair either side of 1+5E-15 reads differently at 15
+digits too. The run of equal cells is a run of exactly equal
 doubles. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52 give 1, 2 and 3, where a 15-digit run would
-give 3 for all three (A30-C32). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine still compares at 15 digits
+give 3 for all three (A30-C31; A32-C32 fit both). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine still compares at 15 digits
 there (`compare_values`): T-3099.
 Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
 2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
@@ -377,8 +379,8 @@ The scan compares numbers as exact doubles, as the ascending search does (T-3073
 excel-graph 2026-10-29):
 - `MATCH(key,{X;key;0.5},-1)` is 2 where X is a few ULP above the key, because X is above it and the key cell is the
   first equal one. It is `#N/A` where X is a few ULP below, because the first cell is already below (Sheet1 D1-D20). A
-  15-digit compare would give 1 on both.
-- Over 2, 1+2·2^-52, 1+2^-52, 1, 0.5 the keys 1, 1+2^-52 and 1+2·2^-52 give 4, 3 and 2 (D30-D32).
+  15-digit compare would give 1 on D1-D7, D9-D15, D17 and D18. D8, D16, D19 and D20 fit both models.
+- Over 2, 1+2·2^-52, 1+2^-52, 1, 0.5 the keys 1, 1+2^-52 and 1+2·2^-52 give 4, 3 and 2 (D30-D32; D32 fits both).
 The engine compares at 15 digits there (T-3099).
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D

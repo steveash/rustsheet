@@ -57,7 +57,8 @@ cells.
 ## Outcome
 probes/t3073-lookup-near-equal-approximate (excel-graph, 2026-10-29):
 - VLOOKUP and HLOOKUP (TRUE), MATCH 1 and MATCH -1 compare numbers as exact doubles, never at 15 digits. All 92
-  lookup cells fit an exact compare and none fits a 15-digit one.
+  lookup cells fit an exact compare. The 69 that tell the two models apart contradict a 15-digit compare; rows 8,
+  16, 18-20 and 32 fit both.
 - The run of equal cells is a run of exactly equal doubles.
 - Recorded in lookup.md "Approximate-match lookups" and "MATCH descending search".
 - Side finding: Sheet1!E8 `1-(1-8·2^-53)` snaps to 0 against numbers.md's smaller-addend rule. Recorded there.
