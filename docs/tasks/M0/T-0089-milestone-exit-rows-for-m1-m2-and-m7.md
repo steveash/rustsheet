@@ -3,7 +3,7 @@ id: T-0089
 title: "Milestone exit rows for M1 and M11 in the eval report (decision 0146 items 1 and 5), with rows that read several suites"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -38,16 +38,32 @@ on this one (T-0096, T-0095, T-0097).
   renders the new rows.
 
 ## Acceptance criteria
-- [ ] `milestone_exit` reads a list of required suites per milestone (name, floor, rate); unit tests show the M2,
+- [x] `milestone_exit` reads a list of required suites per milestone (name, floor, rate); unit tests show the M2,
       M5, M6 and M7 rows are unchanged, and cover a met and an unmet M1 row (gen-m1 short of 3,000 cells; a
       visibly-off smoke cell; a visibly-off `m1-probes` cell) and a met, an unmet and an `n/a` (corpus-bench
       absent) M11 row.
-- [ ] report.md and report.json show the M1 and M11 rows; `make eval` reports M1 met on `main`.
-- [ ] `python3 scripts/exit_owners.py --milestone M1` and `--milestone M11` run and list every visibly-off cell
+- [x] report.md and report.json show the M1 and M11 rows; `make eval` reports M1 met on `main`.
+- [x] `python3 scripts/exit_owners.py --milestone M1` and `--milestone M11` run and list every visibly-off cell
       of each required suite and list; `scripts/test_exit_owners.py` covers a cell
       from each source.
-- [ ] `make progress-report` renders the new rows; `make check` green; reviewers approve.
+- [x] `make progress-report` renders the new rows; `make check` green; reviewers approve.
 
 ## Out of scope
 - The M8, M9 and M10 rows (T-0096, T-0095, T-0097).
 - Making the milestones pass (their tasks).
+
+## Outcome
+- `milestone_exit` reads a list of required suites per milestone (`SuiteNeed`: name, floor, rate). The first
+  suite fills the row's `gen_*` fields and is named in `gen_suite`. The rest are `more_suites`, each a
+  `SuiteExit` with its own measure. M2, M5, M6 and M7 read and print as before; their unit tests are unchanged.
+- M1 (decision 0146 item 1): gen-m1 with at least 3,000 scored cells and smoke, both with 0 visibly off.
+  The probe measure is the `m1-probes` list row (`probe_row` names it), `n/a` when the run did not execute
+  the list. M11 (item 5): corpus-bench with at least 200,000 scored cells at 0.998 (`M11_RATE_NUM`), `n/a`
+  when not fetched, plus the M11 probe row. Neither milestone has a coverage or ironcalc-calc criterion.
+- `scripts/exit_owners.py` lists every required suite's visibly-off cells and the `m1-probes` list's
+  (decision 0146 Consequences amended). The progress page names a suite that is not `gen-m<k>` and shows
+  `more_suites`.
+- `make eval` on this branch: M1 met (gen-m1 3,750 cells, smoke 46, list 0 visibly off); M11 `n/a`
+  (corpus-bench not fetched here; 99.834% of 205,366 on decision 0146's run). `exit_owners.py --milestone
+  M1` and `--milestone M11` list 0 cells.
+- Eval delta: none (report-only change).
