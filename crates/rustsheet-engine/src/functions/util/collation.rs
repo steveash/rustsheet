@@ -356,16 +356,24 @@ fn punctuation(c: char) -> Option<u32> {
         .map(|index| PUNCTUATION_BASE + index)
 }
 
+/// The final sigma `ς` as `σ`, every other character as is: Excel's `Σ = σ = ς` in comparisons
+/// and in exact MATCH (probes/t3114-collation-beyond-latin1 Calc!B168, B190, B216, D20:E20, H10).
+/// The collation key and `criteria::fold_run` both fold through it.
+pub(crate) fn fold_final_sigma(c: char) -> char {
+    if c == 'ς' {
+        'σ'
+    } else {
+        c
+    }
+}
+
 /// `c` with case removed: ASCII and Latin-1 letters directly, others through `to_lowercase`.
 fn fold(c: char) -> char {
     match c {
         'A'..='Z' => c.to_ascii_lowercase(),
         'À'..='Þ' if c != '×' => char::from_u32(u32::from(c) + 0x20).unwrap_or(c),
         _ if c.is_ascii() => c,
-        // Excel: `Σ = σ = ς` (probes/t3114-collation-beyond-latin1 Calc!B168, B190, B216, D20:E20);
-        // `criteria::fold_run` folds the exact and wildcard matches the same way.
-        'ς' => 'σ',
-        _ => c.to_lowercase().next().unwrap_or(c),
+        _ => fold_final_sigma(c.to_lowercase().next().unwrap_or(c)),
     }
 }
 

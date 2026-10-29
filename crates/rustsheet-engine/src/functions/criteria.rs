@@ -6,7 +6,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::collation::cmp_text,
+    functions::util::collation::{cmp_text, fold_final_sigma},
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     text::Text,
@@ -499,13 +499,12 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
     criterion.slice_utf16(prefix.len(), criterion.len_utf16())
 }
 
-/// The case fold of the exact and wildcard text matches: `run` lower-cased, the final sigma `ς`
-/// folded to `σ` as `Σ` is. Excel's `MATCH("ς",...,0)` finds `σ` (probes/t3114-collation-beyond-latin1
-/// Calc!H10). The collation's `fold` (functions/util/collation.rs) folds `ς` the same way.
+/// The case fold of the exact, wildcard and D-function prefix text matches: `run` lower-cased,
+/// then through [`fold_final_sigma`] (Excel's `MATCH("ς",...,0)` finds `σ`).
 pub(crate) fn fold_run(run: &str) -> String {
     let lower = run.to_lowercase();
     if lower.contains('ς') {
-        lower.replace('ς', "σ")
+        lower.chars().map(fold_final_sigma).collect()
     } else {
         lower
     }

@@ -113,7 +113,8 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
   `"c"&UNICHAR(780)&"a" = "ča"`, and `o`+U+030B, `s`+U+030C, `z`+U+0307 tie with `ő`, `š`, `ż` (Calc!B
   counts 3 or 4, D7:F10, D25:F25). Marks after an accented letter, and marks other than the 13 of
   Latin Extended-A and Latin-1 (U+0300-U+0304, U+0306-U+0308, U+030A-U+030C, U+0327, U+0328), are
-  unprobed: the engine appends a second accent weight, UNVERIFIED (T-3154).
+  unprobed: the engine appends a second accent weight, and a mark with no letter before it
+  weighs only as an accent, UNVERIFIED (T-3154).
 - Greek: `α < ά < β`, … `ι < ί < ϊ < ΐ < κ`, … `ω < ώ` (tonos is the acute accent, dialytika the
   diaeresis); `Σ = σ = ς` (Calc!B168, B190, B216, E20), and exact MATCH of `"ς"` finds `σ` (Calc!H10). Base
   letters keep code-point order.
