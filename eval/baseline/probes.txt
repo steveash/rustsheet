@@ -1579,6 +1579,9 @@ C	probes/table-edits/table-delete-row-first-data.case.json	12
 C	probes/table-edits/table-delete-row-inside-data.case.json	12
 C	probes/table-edits/table-delete-row-last-data-totals.case.json	15
 C	probes/table-edits/table-delete-row-last-data.case.json	12
+C	probes/table-edits/table-delete-row-only-data-outside.case.json	11
+C	probes/table-edits/table-delete-row-only-data-second-table.case.json	10
+C	probes/table-edits/table-delete-row-only-data-totals.case.json	14
 C	probes/table-edits/table-delete-row-totals.case.json	15
 C	probes/table-edits/table-delete-sheet.case.json	12
 C	probes/table-edits/table-delete-table-cells.case.json	6
