@@ -323,7 +323,7 @@ while lo <= hi:
     mid = floor((lo+hi)/2)
     m = first index >= mid with the lookup value's type   # skips blanks, errors, other types
     if m > hi: hi = mid-1; continue
-    c = compare(v[m], key)                                  # text case-insensitive
+    c = compare(v[m], key)                                  # text by the collation: æ=ae, a=A (T-3115)
     if c == 0: return the last index of the run of adjacent equal cells starting at m
     if c < 0: best = m; lo = m+1
     else: hi = m-1
@@ -348,7 +348,8 @@ agree on every row: `"ae"` and `"æ"` (also `"ß"`/`"ss"`, `"œ"`/`"oe"`, `"Æ"`
 `MATCH("ae",{"ae";"æ"},1)` and `MATCH("ae",{"æ";"ae"},1)` are both 2 (rows 1-13); a code-point tiebreak would give 1 and
 `#N/A`. The order is the collation's, not ordinal: `"az"` over {"æ";"b"} is 1, as is `"oz"` over {"œ";"p"} (rows 14-20). Hyphen,
 apostrophe and accent tiebreaks count (they are not equal): `"coop"` over {"co-op"} and {"co-op";"cop"}, `"a"` over {"'a";"b"},
-`"resume"` over {"résumé"} and `"e"` over {"é"} are `#N/A`; `"résumé"` over {"resume";"resumf"} is 1 (rows 21-46). Case is
+`"resume"` over {"résumé"} and `"e"` over {"é"} are `#N/A`; `"résumé"` over {"resume";"resumf"} is 1 (rows 21-44).
+Accents order against each other too: `"ä"` over {a;á;ä;å;b} is 3 and `"á"` over {a;å;b} is 1 (rows 45-46). Case is
 ignored outright: `"A"` over {"A";"a"} is 2 (rows 47-50). MATCH -1's top-down scan (Calc!E-F, rows 51-69) uses the same
 collation: `"ae"` over {"æ";"ae"} is 1 (the first equal cell), `"ae"` over {"b";"a-e"} is 2.
 The engine already compared text this way (`compare_searched` → `compare_values` → `cmp_text_excel`); all 625 cells pass.
