@@ -190,3 +190,31 @@ fn legacy_intersected_ranges_snap_per_row() {
     assert_eq!(model._get_text("E1"), "0");
     assert_eq!(model._get_text("E2"), "0");
 }
+
+/// A coerced addend (number, percent, time or date-time text, a text cell, TRUE) snaps exactly as
+/// its number does: 7 ULP of the left addend snap and 8 keep, on either side
+/// (probes/t3140-snap-coerced-operands, every S cell; M!A4, M!A7, M!A11).
+#[test]
+fn coerced_addends_snap_like_numbers() {
+    let mut model = new_empty_model();
+    model._set("T1", "=\"1.5\"");
+    let cases = [
+        ("A1", "=\"1.5\"-(1.5+7*2^-52)", "0"),
+        ("A2", "=\"1.5\"-(1.5+8*2^-52)", "-1.77636E-15"),
+        ("A3", "=(1.5+7*2^-52)-T1", "0"),
+        ("A4", "=(1.5+8*2^-52)-T1", "1.77636E-15"),
+        ("A5", "=\"50%\"-(0.5+7*2^-53)", "0"),
+        ("A6", "=-\"12:00\"+(0.5+7*2^-53)", "0"),
+        ("A7", "=\"1/2/1900 12:00\"-(2.5+8*2^-51)", "-3.55271E-15"),
+        ("A8", "=TRUE-(1+7*2^-52)", "0"),
+        ("A9", "=\"30%\"-0.1-0.2", "0"),
+        ("A10", "=\"0.1\"+\"0.2\"-\"0.3\"", "0"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cases {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
+}
