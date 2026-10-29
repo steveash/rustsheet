@@ -27,7 +27,7 @@ impl Model {
             return lambda_result;
         }
 
-        let data = match self.lambda_cells(&args[array_idx], cell, false) {
+        let data = match self.lambda_cells(&args[array_idx], cell, false, false) {
             Ok(d) => d,
             Err(e) => return e,
         };
