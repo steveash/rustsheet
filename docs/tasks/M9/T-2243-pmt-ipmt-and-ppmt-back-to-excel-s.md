@@ -68,3 +68,9 @@ all within 15 digits): FINANCIAL/PMT.xlsx Sheet1!J10, J11, J18, J23 (PV, e.g. 11
 120.00000000000462 today), H10, H11, H27, I27 (NPER), L32, L33 (FV), and FINANCIAL/CUMPRINC_CUMIPMT.xlsx Sheet1!G2
 (CUMIPMT). Fixing them lifts PV, NPER and FV to the Phase 1 rate. T-2730 names the same cells and stays parked
 for its PMT bit work.
+
+## After T-3014 (2026-10-29)
+T-3014's PMT (financial.md "PMT is a discounted payment") makes the whole of PMT.xlsx pass, so the eight PMT.xlsx
+cells here (F15, F33, G10, J15, J33, K10, L15, M10) are fixed. Left: IPMT_PPMT.xlsx G12, G14, H13, H31, H4 and
+probes/fin-cumipmt-overflow-and-forms A13, all IPMT/PPMT, which still start from the exact payment; T-3179 tries
+PMT's `1-Q` switch there.

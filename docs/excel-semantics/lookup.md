@@ -611,9 +611,9 @@ key/X pair of probes/t3073-lookup-near-equal-approximate's row: 1 against 1+k·2
 the reverse, 0.3 against 0.1+0.2 both ways, and the pair either side of 1+5E-15. The columns are LOOKUP (A-D),
 XMATCH (E-P) and XLOOKUP (Q-AB). Rows 30-32 and 34-36 hold the runs. Rows 8, 16, 19 and 20 fit both models.
 AC8 (`=1-(1-8*2^-53)` from cells, 0) repeats T-3073's E8 (numbers.md "Operand order", T-3100).
-The engine's LOOKUP matches every cell: it shares `SearchVector::approximate_search` and `compare_searched`
-(lookup_table.rs, T-3099). XMATCH and XLOOKUP still compare at 15 digits (`compare_values` in `linear_scan`,
-`CollatedKey` in the exact index, `impl Ord for CalcResult` in `binary_search`), so 332 of their cells fail: T-3132.
+The engine matches every cell: LOOKUP shares `SearchVector::approximate_search` and `compare_searched`
+(lookup_table.rs, T-3099); XMATCH and XLOOKUP compare through `compare_searched` in `linear_scan`, `cmp_searched` in
+`binary_search_by` and exact-bit `CollatedKey`s in the exact index (T-3132).
 Unprobed: the wildcard and regex modes with a numeric key.
 Status: VERIFIED
 Tasks: T-3106, T-3132

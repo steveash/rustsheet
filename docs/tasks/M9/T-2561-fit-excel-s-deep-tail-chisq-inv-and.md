@@ -97,3 +97,8 @@ Cells:
 Decision 0083: the cells above are visibly off, so the task is in the campaign. Its target is that
 every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the
 15th significant digit of Excel's value.
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- gen-m9/b4173fe25109a238 Calc!A252 `CHISQ.INV(1E-200,9)`: Excel 1.732023266119695e-44, ours 1.7320232661196884e-44
+- gen-m9/c2974c061384fdd9 Calc!A355 `CHISQ.INV(1E-20,10)`: Excel 0.0005210568413974334, ours 0.0005210568413974328
