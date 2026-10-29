@@ -74,7 +74,7 @@ pub(crate) fn split_cell(cell: &str) -> Option<(String, String)> {
 }
 
 /// `ironcalc-calc/<path>!Sheet!A1` in the form the function-scope rows use, or `None`.
-fn cell_id(cell: &str) -> Option<String> {
+fn ironcalc_cell_id(cell: &str) -> Option<String> {
     let (case, key) = split_cell(cell)?;
     case.starts_with(&format!("{SUITE}/"))
         .then(|| crate::runner::cell_id(&case, &key))
@@ -133,8 +133,8 @@ impl ExitExceptions {
                     "expected `case!Sheet!A1<TAB>milestone<TAB>decision<TAB>task`",
                 ));
             };
-            let cell =
-                cell_id(cell).ok_or(bad("the cell must be `ironcalc-calc/<case>!Sheet!A1`"))?;
+            let cell = ironcalc_cell_id(cell)
+                .ok_or(bad("the cell must be `ironcalc-calc/<case>!Sheet!A1`"))?;
             let milestone =
                 parse_milestone(milestone).ok_or(bad("the milestone must be `M<digits>`"))?;
             check_owner(decision, task).map_err(bad)?;
