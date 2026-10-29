@@ -832,12 +832,32 @@ partly paused).
 - So the bias-subtracted scan sees a stored S_6 under an 80-bit S_7/S_8 at |b| <= 30 too, as long as the move is not
   inside the base cluster (|b| <= ~1.5 and |c|, |d| near 0).
 
-- Run state: the control scan (`k3_j6bias.sh PY ROWS control OUT`, 22,303 pairs; 19.1) and the real scan (14,331 pairs) were
-  started in this run (logs `t2122/k3_j6bias_{control,real}_p[0-3].log`). They had not finished when the session budget
-  ran out (the control was paused for ~30 min for another task's eval run). The `.npy` maps are not committed.
-- To finish: rerun both (about 53 + 32 min on 4 cores), then `TRUTH=60.42,56.49 python3 t2122/k3_j6map.py OUT control`
-  and `python3 t2122/k3_j6map.py OUT real` (the .npy names are the same as run 6's; use separate OUT dirs).
-  Pass test for the method: on the control the truth pair (c 60, d 56, b -75.7) must rank 1 with no b cut, and the
-  base ridge (2051.8 in 18.2) must be gone. Only then read the real map's |b| <= 30 region.
+### 19.2 The real bias-subtracted J=6 map: no stored S_6 top, and the KN = 7 bias does not match the real base
+`t2122/k3_j6bias_real_p[0-3].log`, summary `t2122/k3_j6bias_real_summary.log` (14,331 pairs, BIASFILE = C, BIASKN 7).
+- Maximum 1378.9 at the base (b 0, c 0, d 0). Every top-15 pair is on the base ridge c = -0.558 d - 2.1 (the 18.3 ridge)
+  with |b| <= 4. Off the ridge (|r| > 8) the best are 1157 (b 12.0, c -44, d 52) and 1152 (b 9.4, c -36, d 44); further off
+  (> 16) 1088 (b -12.0, c 46, d -56) and 1087 (b 12.3, c -36, d 32): the mirror-paired sidelobes of 18.3 again.
+- Best by b cut: |b| > 5 1211 (Z 6.8), > 10 1157 (Z 7.8), > 20 879 (Z 6.2), > 30 774 (Z 4.9). All are ridge or sidelobe
+  points; none is an isolated peak like the control's truth (19.1: 1468, off the ridge, no mirror).
+- **Reading.** On the control, subtracting the base's own KN = 7 residual removes the base sidelobes and the ridge falls to
+  a compact cluster (19.1). On real data the same subtraction leaves the ridge and the mirror sidelobes in place (the
+  maximum only falls from 2005 to 1379). So the real data's base-phase structure is not that of C with S_7 and S_8 in
+  80-bit. Either the real store structure differs from KN = 7 (a deeper 80-bit top, KN = 6 or below, or a different
+  stored/unstored pattern), or C is wrong below S_6 by more than the subtraction tolerates. And within the 3-sigma ridge
+  there is no stored S_6 top of the control's height at any |b| outside the base cluster. Together with 18.4, the simplest
+  form of 17.5 (2), "S_7 and S_8 unstored, S_6 stored, C right below", is now unlikely.
+
+### 19.3 Next steps (in order)
+1. Use the subtraction as a store-structure meter (cheap: ~10 min a variant with NEAR windows around the base, or the full
+   ridge at 32 min): scan real data with BIASKN = 8, 6, 5 (and 99 = all stored) and see which bias removes the real base
+   ridge and its sidelobes the way KN = 7 removes the control's (19.1). Calibrate first on controls synthesised with
+   KN = 6 and KN = 8: the matching BIASKN must leave only a compact base cluster, a wrong one must leave the ridge.
+2. If one KN matches: scan the first stored stage under it (J = KN - 1) with that bias subtracted, control first (18.5
+   step 2; J = 5 needs the quartic term in scan3.py).
+3. 18.5 step 3 (joint S + P rescoring) and 17.4.1 / 17.4.3 still stand.
+
+- Reproduce: `sh t2122/k3_j6bias.sh PY ROWS control|real OUT` (about 53 / 32 min on 4 cores), then
+  `TRUTH=60.42,56.49 python3 t2122/k3_j6map.py OUT control` and `python3 t2122/k3_j6map.py OUT real` (separate OUT dirs;
+  the `.npy` maps are not committed).
 - Build notes as 17/18: build the four `.so` files from their `Build:` lines, venv with numpy; rows from
   `w5/p5/mkrows.py OUT/rows.txt.near1.npz` (scan3 reads `ROWS + ".near1.npz"` when it exists), 9,606,590 points.
