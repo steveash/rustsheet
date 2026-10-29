@@ -3,7 +3,7 @@ id: T-3162
 title: "Port ironcalc 8711004d/85ddea84: take upstream's consolidated Excel-authored BASE_DECIMAL.xlsx (issues 1611, 1615, 1616, 1618)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
