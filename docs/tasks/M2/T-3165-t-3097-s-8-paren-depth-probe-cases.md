@@ -15,7 +15,7 @@ The M2 exit row's probes column no longer counts T-3097's eight paren-depth case
 known failures: each is either an accepted, pinned deviation (decision 0036) or matches Excel.
 
 ## Context
-T-3097 (#2312) added 44 nesting probes. Eight of them do not run: `probes/t3097-nesting-paren-128-stored`, `probes/t3097-nesting-paren-128-typed`, `probes/t3097-nesting-paren-255-stored`, `probes/t3097-nesting-paren-255-typed`, `probes/t3097-nesting-paren-abs-64-stored`, `probes/t3097-nesting-paren-abs-64-typed`, `probes/t3097-nesting-paren-abs-65-stored` and `probes/t3097-nesting-paren-abs-65-typed` (the whole case, `!*`) fail with "Formula: Formula is nested too deeply"
+T-3097 (#2312) added 44 nesting probes. Eight of them do not run: `probes/t3097-nesting-paren-128-stored`, `probes/t3097-nesting-paren-128-typed`, `probes/t3097-nesting-paren-255-stored`, `probes/t3097-nesting-paren-255-typed`, `probes/t3097-nesting-paren-abs-64-stored`, `probes/t3097-nesting-paren-abs-64-typed`, `probes/t3097-nesting-paren-abs-65-stored` and `probes/t3097-nesting-paren-abs-65-typed` fail to load as a whole (not only some cells) with "Formula: Formula is nested too deeply"
 (`MAX_FORMULA_DEPTH` = 256 in `crates/rustsheet-engine/src/expressions/parser/depth.rs`), where
 Excel accepts them. T-3097's Outcome calls this the depth-bound DEVIATION (directive 5, decision
 0014) but baselined them as known failures, so the 2026-10-29 18:47 UTC steward run's

@@ -30,8 +30,7 @@ runs).
 ## Acceptance criteria
 - [ ] Exported shared strings with leading or trailing whitespace carry `xml:space="preserve"`;
       other strings are written unchanged.
-- [ ] A round-trip test (export, then import) keeps `" a"`, `"a "`, `"
-"` and `"a b"` exactly.
+- [ ] A round-trip test (export, then import) keeps `" a"`, `"a "`, `"\n"` and `"a b"` exactly.
 - [ ] The commit carries `Ported-From: ironcalc@06f12748`.
 - [ ] `make check` green; reviewers approve.
 
