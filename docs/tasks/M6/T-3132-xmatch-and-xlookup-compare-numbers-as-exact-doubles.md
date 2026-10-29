@@ -3,7 +3,7 @@ id: T-3132
 title: "XMATCH and XLOOKUP compare numbers as exact doubles in every match_mode and search_mode"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
