@@ -61,6 +61,11 @@ def report() -> dict[str, object]:
     }
 
 
+def criteria_cells(r: dict[str, object], milestone: str) -> list[tuple[str, str]]:
+    """`(criterion, case!Sheet!A1)` of each exit cell of `milestone`, in order."""
+    return [(c.criterion, f"{c.case}!{c.key}") for c in exit_owners.exit_cells(r, milestone)]
+
+
 class TaskDir(unittest.TestCase):
     """A temporary tasks directory and a helper that writes a task into it."""
 
@@ -140,6 +145,193 @@ class ExitOwners(TaskDir):
         self.task("probes/index-reference-args P!B3", milestone="M2")
         self.assertEqual(exit_owners.unowned(r, "M2", self.tasks), [])
 
+    def test_m1_lists_gen_m1_smoke_and_the_m1_probes_list(self) -> None:
+        # Decision 0146 item 1: two required suites and the frozen list as the probe measure.
+        gen1, smoke = "gen-m1/abc.case.json", "smoke/basic.case.json"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M1",
+                "gen_suite": "gen-m1",
+                "gen_visibly_off_cells": [f"{gen1}!Calc!A3"],
+                "more_suites": [{"name": "smoke", "visibly_off_cells": [f"{smoke}!S!B1"]}],
+                "probe_row": "m1-probes",
+            }
+        ]
+        r["cases"] = [
+            {"id": gen1, "suite": "gen-m1", "cells": [cell("Calc", "A3")]},
+            {"id": smoke, "suite": "smoke", "cells": [cell("S", "B1")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B4", "=INDEX(A1:B2,1)")]},
+        ]
+        r["function_scope"] = {"rows": []}
+        r["milestone_lists"] = [{"name": "m1-probes", "visibly_off_cells": [f"{PROBE}!P!B4"]}]
+        cells = exit_owners.exit_cells(r, "M1")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}", c.formula) for c in cells],
+            [
+                ("gen-m1", f"{gen1}!Calc!A3", "=X()"),
+                ("smoke", f"{smoke}!S!B1", "=X()"),
+                ("m1-probes", f"{PROBE}!P!B4", "=INDEX(A1:B2,1)"),
+            ],
+        )
+        self.task("smoke/basic S!B1 and index-reference-args P!B4", milestone="M1")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M1", self.tasks)]
+        self.assertEqual(listed, [f"{gen1}!Calc!A3"])
+
+    def test_m1_lists_a_failing_listed_case_with_no_cells_whole(self) -> None:
+        # T-3091: a listed case that crashes has no cell; it prints as `case!*`, as in a probe row.
+        r = report()
+        r["milestone_exit"] = [{"milestone": "M1", "gen_suite": "", "probe_row": "m1-probes"}]
+        r["cases"] = [{"id": PROBE, "suite": "probes", "cells": []}]
+        r["function_scope"] = {"rows": []}
+        r["milestone_lists"] = [{"name": "m1-probes", "failing_cases": [PROBE], "visibly_off_cells": []}]
+        cells = exit_owners.exit_cells(r, "M1")
+        self.assertEqual([(c.criterion, c.case, c.key) for c in cells], [("m1-probes", PROBE, exit_owners.WHOLE_CASE)])
+
+    def test_m11_lists_corpus_bench_as_its_suite(self) -> None:
+        corpus = "corpus-bench/53062/1_53062_input.xlsx"
+        r = report()
+        r["milestone_exit"] = [
+            {"milestone": "M11", "gen_suite": "corpus-bench", "gen_visibly_off_cells": [f"{corpus}!Sheet1!D4"]}
+        ]
+        r["cases"] = [{"id": corpus, "suite": "corpus-bench", "cells": [cell("Sheet1", "D4")]}]
+        r["function_scope"] = {"rows": []}
+        r["probe_milestones"] = []
+        self.assertEqual(criteria_cells(r, "M11"), [("corpus-bench", f"{corpus}!Sheet1!D4")])
+
+    def test_m9_lists_calc_the_functions_below_the_rate_and_probes(self) -> None:
+        # Decision 0146 item 3: no required suite; ironcalc-calc less exceptions, the
+        # `attributed_off` cells of each function below the rate, and the M9 probe row.
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M9",
+                "gen_suite": "",
+                "gen_visibly_off_cells": [],
+                "calc_failing": 2,
+                "calc_met": False,
+                "below_rate_functions": ["IRR"],
+                "probe_row": "M9",
+            }
+        ]
+        r["function_scope"]["rows"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["probe_milestones"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["attributed_off"] = [
+            {"case": GEN, "cell": "Calc!A1", "function": "IRR", "formula": "IRR(A1:A3)"},
+            {"case": GEN, "cell": "Calc!A107", "function": "PMT", "formula": "PMT(1,2,3)"},
+        ]
+        self.assertEqual(
+            criteria_cells(r, "M9"),
+            [
+                ("ironcalc-calc", f"{TRIG}!S!C51"),
+                ("rate:IRR", f"{GEN}!Calc!A1"),
+                ("probes", f"{PROBE}!P!B2"),
+                ("probes", f"{PROBE}!P!B3"),
+            ],
+        )
+        self.task("1d22a002d4f380b3 Calc!A1 is IRR's", milestone="M9")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M9", self.tasks)]
+        self.assertNotIn(f"{GEN}!Calc!A1", listed)
+        self.assertIn(f"{TRIG}!S!C51", listed)
+
+    def test_m8_lists_both_gen_suites_the_poi_subset_and_its_blocked_cases(self) -> None:
+        # Decision 0146 item 2: gen-m8a, gen-m8b, the poi M8 subset (its visibly-off cells and,
+        # as `case!*`, the cases holding a subset formula that did not run) and the M8 probes.
+        gen_a, gen_b = "gen-m8a/aa.case.json", "gen-m8b/bb.case.json"
+        poi, crashed = "poi/names.xls", "poi/tables.xlsx"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M8",
+                "gen_suite": "gen-m8a",
+                "gen_visibly_off_cells": [f"{gen_a}!S!A1"],
+                "more_suites": [
+                    {"name": "gen-m8b", "visibly_off_cells": [f"{gen_b}!S!B2"]},
+                    {
+                        "name": "poi M8 subset",
+                        "visibly_off_cells": [f"{poi}!Data!C3"],
+                        "blocked_cases": [f"{crashed}!*"],
+                    },
+                ],
+                "probe_row": "M8",
+            }
+        ]
+        r["cases"] = [
+            {"id": gen_a, "suite": "gen-m8a", "cells": [cell("S", "A1")]},
+            {"id": gen_b, "suite": "gen-m8b", "cells": [cell("S", "B2")]},
+            {"id": poi, "suite": "poi", "cells": [cell("Data", "C3", "=SUM(Prices)")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2"), cell("P", "B3")]},
+        ]
+        r["function_scope"] = {"rows": []}
+        r["probe_milestones"][0]["milestone"] = "M8"  # type: ignore[index]
+        cells = exit_owners.exit_cells(r, "M8")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}", c.formula) for c in cells],
+            [
+                ("gen-m8a", f"{gen_a}!S!A1", "=X()"),
+                ("gen-m8b", f"{gen_b}!S!B2", "=X()"),
+                ("poi M8 subset", f"{poi}!Data!C3", "=SUM(Prices)"),
+                ("poi M8 subset", f"{crashed}!*", ""),
+                ("probes", f"{PROBE}!P!B2", "=X()"),
+                ("probes", f"{PROBE}!P!B3", "=X()"),
+            ],
+        )
+        # A blocked case is owned by a task naming its stem (decision 0139).
+        self.task("poi `tables.xlsx` crashes on import", milestone="M8")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M8", self.tasks)]
+        self.assertNotIn(f"{crashed}!*", listed)
+        self.assertIn(f"{poi}!Data!C3", listed)
+
+    def test_m10_lists_gen_m10_and_probe_text_items_beside_value_cells(self) -> None:
+        # Decision 0146 item 4: gen-m10's visibly-off value cells and failing text items, and the
+        # M10 probe row's visibly-off cells and failing text items.
+        gen10, text_probe = "gen-m10/ab.case.json", "probes/text-locale.case.json"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M10",
+                "gen_suite": "gen-m10",
+                "gen_visibly_off_cells": [f"{gen10}!S!A1"],
+                "gen_text_failing_cells": [f"{gen10}!S!B2"],
+                "probe_text_items": 2,
+                "calc_failing": None,
+                "calc_met": None,
+                "probe_row": "M10",
+            }
+        ]
+        r["cases"] = [
+            {"id": gen10, "suite": "gen-m10", "cells": [cell("S", "A1")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2")]},
+            {"id": TRIG, "suite": "ironcalc-calc", "cells": [cell("S", "C51")]},
+        ]
+        # The report has an M10 function-scope row, but ironcalc-calc is no M10 criterion (a
+        # null `calc_met`, decision 0146 item 4), so none of its cells is listed.
+        r["function_scope"]["rows"][0]["milestone"] = "M10"  # type: ignore[index]
+        r["probe_milestones"] = [
+            {
+                "milestone": "M10",
+                "failing_cases": [[PROBE, 1]],
+                "visibly_off_cells": [f"{PROBE}!P!B2"],
+                "text_failing_cells": [f"{text_probe}!T!C4"],
+            }
+        ]
+        self.assertEqual(
+            criteria_cells(r, "M10"),
+            [
+                ("gen-m10", f"{gen10}!S!A1"),
+                ("gen-m10 text", f"{gen10}!S!B2"),
+                ("probes", f"{PROBE}!P!B2"),
+                ("probes text", f"{text_probe}!T!C4"),
+            ],
+        )
+        # A task naming the probe text item owns it; the others stay unowned.
+        self.task("text-locale T!C4", milestone="M10")
+        unowned = {f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M10", self.tasks)}
+        self.assertEqual(unowned, {f"{gen10}!S!A1", f"{gen10}!S!B2", f"{PROBE}!P!B2"})
+        # A row without the text criterion lists no probe text item.
+        del r["milestone_exit"][0]["probe_text_items"]  # type: ignore[index]
+        self.assertNotIn("probes text", [criterion for criterion, _ in criteria_cells(r, "M10")])
+
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")
         listed = self.listed()
@@ -180,6 +372,45 @@ class ExitOwners(TaskDir):
         listed = self.listed()
         self.assertIn(f"{PROBE}!P!B2", listed)
         self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_an_a1_name_beside_another_case_does_not_own(self) -> None:
+        # The T-2425 leak (decision 0159): B2 is listed for the gen case, so the probe's B2 is not owned
+        # although the same task names the probe on another line.
+        self.task("- gen-m5/1d22a002d4f380b3: Calc!A107, B2\n- probes/index-reference-args: P!B3")
+        listed = self.listed()
+        self.assertIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+        self.assertNotIn(f"{GEN}!Calc!A107", listed)
+
+    def test_an_indented_continuation_line_owns_beside_its_case(self) -> None:
+        # The T-3031 form: a cell list that wraps onto indented lines of the same bullet.
+        self.task("- probes/index-reference-args P!B3,\n  B2 and the rest")
+        listed = self.listed()
+        self.assertNotIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_a_new_line_bullet_row_or_blank_line_opens_a_block(self) -> None:
+        for body in (
+            "probes/index-reference-args P!B3\nB2",
+            "- probes/index-reference-args P!B3\n  - B2",
+            "- probes/index-reference-args P!B3\n  * B2",
+            "- probes/index-reference-args P!B3\n  2. B2",
+            "| probes/index-reference-args | P!B3 |\n| B2 |",
+            "- probes/index-reference-args P!B3\n\n    B2",
+        ):
+            with self.subTest(body=body):
+                for f in self.tasks.glob("*/*.md"):
+                    f.unlink()
+                self.task(body)
+                listed = self.listed()
+                self.assertIn(f"{PROBE}!P!B2", listed)
+                self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_blocks(self) -> None:
+        self.assertEqual(
+            exit_owners.blocks("a\n  b\n- c\n  d\n\n  e\n| f"),
+            ("a\n  b", "- c\n  d", "\n  e", "| f"),
+        )
 
     def test_output_and_strict_exit(self) -> None:
         path = self.tasks / "report.json"

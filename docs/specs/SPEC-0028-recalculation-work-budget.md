@@ -193,7 +193,9 @@ so "stop at the bound" is deterministic for them, as their count caps already ar
   workbook at most 2^25 formulas per recalculation"). The second round of passes after the tables
   is a round like the first: its own allowance, the same share rule (share mode, once entered, stays
   for the rest of the recalculation), and the ceiling's remainder; if the ceiling runs out there, the
-  recalculation is exhausted.
+  recalculation is exhausted. A table the memo skips (T-0453) is charged the units its last
+  recomputation spent, as it is already charged its evaluations, and is skipped only in normal mode
+  and while the ceiling has that many left, so its results stay those of a recomputation (T-3009).
 
 A sweep or data-table run that stops at its formula limit or its share (not at the ceiling) is the
 formula's `#VALUE!`, as today.

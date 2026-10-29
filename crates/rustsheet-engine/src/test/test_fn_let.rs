@@ -311,10 +311,16 @@ fn test_let_name_spelled_like_function_called() {
 #[test]
 fn test_lambda_parameter_under_a_unary_plus_is_refused() {
     // Excel for the web refuses `=LAMBDA(+x,x)(1)` typed (Graph PATCH 400,
-    // docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md). `=LET(+x,1,x)` is refused
-    // too; we give `#VALUE!` (TODO(T-2887)).
+    // docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md), and so is `=LET(+x,1,x)`;
+    // a plus inside the value or the body is valid (`LET(x,1,+x)`).
     let mut model = new_empty_model();
     model._set("A1", "=LAMBDA(+x,x)(1)");
+    model._set("A2", "=LET(+x,1,x)");
+    model._set("A3", "=LET(x,1,+x)");
+    model._set("A4", "=LET(x,+1,y,+x,x+y)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+    assert_eq!(model._get_text("A3"), "1");
+    assert_eq!(model._get_text("A4"), "2");
 }

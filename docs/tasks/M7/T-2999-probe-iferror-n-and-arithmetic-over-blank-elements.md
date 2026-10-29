@@ -3,7 +3,7 @@ id: T-2999
 title: "Probe IFERROR, N and arithmetic over blank elements of FILTER, lifted INDEX and VSTACK arrays"
 milestone: M7
 lane: harness
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ through (probes/pivotby-ttest-array2 P!A41). Probe cases (tag M7, under eval/sui
 
 ## Out of scope
 - GROUPBY/PIVOTBY blank keys (T-2854, done).
+
+## Outcome
+Probe `probes/blank-elements-iferror-n-arith` (11 cells, excel-graph) filled; ours matches all 11, so no engine task. Rule recorded in arrays.md.

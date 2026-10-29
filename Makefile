@@ -126,11 +126,11 @@ next-task: ## Best ready task in a non-busy lane: make next-task LANE=functions 
 ready-tasks: ## Every task next-task could pick, then "N ready": make ready-tasks TIER=sonnet [LANE=..] (decision 0021)
 	$(PY) scripts/tasks.py ready $(if $(LANE),--lane $(LANE)) $(if $(TIER),--tier $(TIER))
 
-new-task: ## New task file with a collision-free id: make new-task MILESTONE=M1 LANE=engine TITLE="..." [PRIORITY=P1] [SIZE=S] [TIER=opus] (fetches origin)
-	$(PY) scripts/tasks.py new --milestone "$(MILESTONE)" --lane "$(LANE)" --title "$(TITLE)" $(if $(PRIORITY),--priority $(PRIORITY)) $(if $(SIZE),--size $(SIZE)) $(if $(TIER),--tier $(TIER))
+new-task: ## New task file with a collision-free id: make new-task MILESTONE=M1 LANE=engine TITLE="..." [PRIORITY=P1] [SIZE=S] [TIER=opus] (fetches origin; write a literal $ as $$)
+	$(PY) scripts/tasks.py new --milestone "$$MILESTONE" --lane "$$LANE" --title "$$TITLE" $(if $(PRIORITY),--priority $(PRIORITY)) $(if $(SIZE),--size $(SIZE)) $(if $(TIER),--tier $(TIER))
 
 new-decision: ## New decision record with a collision-free number: make new-decision TITLE="..." (fetches origin; decision 0029)
-	$(PY) scripts/new_decision.py --title "$(TITLE)"
+	$(PY) scripts/new_decision.py --title "$$TITLE"
 
 exit-owners: ## Failing exit cells of a milestone that no open task of it owns, after make eval: make exit-owners MILESTONE=M5 [STRICT=1] (decision 0096)
 	$(if $(MILESTONE),,$(error MILESTONE=M<n> is required))
@@ -157,3 +157,29 @@ merge-lock-release: ## Free your merge lock (after the merge, a red CI, or any s
 
 merge-lock-status: ## Who holds the merge lock, since when, and the queue of waiters
 	$(PY) scripts/merge_lock.py status
+
+.PHONY: merge-ready-verify
+merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads only): make merge-ready-verify PR=123 (exit 0: ready; 1: not ready; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
+
+.PHONY: mark-ready merge-labels
+mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123 REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" (or CARRY=1 after a clean merge of main) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(if $(REVIEW)$(CARRY),,$(error REVIEW="..." or CARRY=1 is required))
+	$(PY) scripts/merge_ready.py mark --pr '$(PR)' $(if $(CARRY),--carry,--review '$(REVIEW)') $(if $(STEP),--step)
+
+merge-labels: ## Create the merge-train labels that are missing (ready-to-merge, merge-train-ejected, merge-train-stop)
+	$(PY) scripts/merge_ready.py labels --create
+
+.PHONY: merge-mode merge-train merge-flip-check
+merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; SHADOW=1 tests and predicts on merge-train/shadow, in shadow mode only; TRAIN=1 merges a green train, in train mode only
+	$(if $(DRY_RUN)$(TRAIN)$(SHADOW),,$(error DRY_RUN=1 or SHADOW=1 or TRAIN=1 is required))
+	$(PY) scripts/merge_train.py $(if $(DRY_RUN),--dry-run,$(if $(SHADOW),--shadow,--train))
+
+merge-flip-check: ## Whether a PR only sets the merge-train switch to lock (SPEC-0027 "The switch", decision 0157); prints the head sha to merge with expectedHeadSha: make merge-flip-check PR=123 (exit 0: a flip PR; 1: not one; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_flip.py check '$(PR)'
+
+merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027)
+	$(PY) scripts/merge_train.py mode

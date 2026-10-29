@@ -352,12 +352,19 @@ a totals-row text cell as `totalsRowLabel`, and formulas keep their structured r
 name, `[#This Row]` for `@`). Excel itself writes `totalsRowFunction="sum"` (and the other named functions) for a
 totals cell it built, with the cell formula `SUBTOTAL(109,Table1[Feb])` (calc_test_tables/tables.xlsx
 `xl/tables/table1.xml`); `custom` with that formula is the form the T-1607 uploads showed Excel loads.
-The import keeps only whether a table's `<autoFilter>` applies a filter (`has_filters`, which makes SUBTOTAL call
-the sheet's hidden rows filtered), not its criteria, so the export writes an applied filter as a
-`<filterColumn colId="0"/>` without a criterion. That is schema-valid and our own import reads it back as
-filtered; whether Excel opens it without repair, and still calls the hidden rows filtered, is unprobed (T-2838).
+The import keeps a table's `<filterColumn>` criteria (`filter_columns`: values filters with their blank choice,
+custom filters with `and`, values decoded from `_xHHHH_` escapes) and the export writes them back (T-2838), so
+those two kinds survive a round trip with the same meaning (Excel's own tables.xlsx filters come back byte for
+byte; `blank="true"` is written `blank="1"`, `and="0"` is dropped, and a `<filter>` without `val` is dropped); column inserts and deletes inside the table move them with their
+columns. Every other kind (top 10, dynamic, color, icon, and a values filter with date groups or a `calendarType`)
+keeps only its column and is written back as a criterion-less `<filterColumn colId="N"/>`; a `<filterColumn>`
+without a valid `colId` is dropped, and the `hiddenButton`/`showButton` attributes are not kept. `has_filters`
+still makes SUBTOTAL call the sheet's hidden rows filtered. A table filtered through the API with no criterion is
+written as `<filterColumn colId="0"/>`. Both criterion-less forms are schema-valid and our own import reads them
+back as filtered; whether Excel opens any of these forms without repair, and still calls the hidden rows filtered,
+is unprobed (T-3081).
 A totals-row cell holding a number, boolean or error constant gets no metadata (T-1607 covered label and formula
-cells only); whether Excel loads that is unprobed too (T-2838's probe). A structured reference that lowers to an
+cells only); whether Excel loads that is unprobed too (T-3081). A structured reference that lowers to an
 error because the table's metadata does not fit (an unparsable `ref`, an overflowing row count; directive 5) is
 written as that error.
 Evidence: crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx (Excel-authored, 9 tables) now round-trips
@@ -365,7 +372,7 @@ Evidence: crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx (Excel-author
 (`excel_authored_tables_keep_their_formula_text`, export/test/test_tables.rs).
 Status: UNVERIFIED (the exported file has not been opened in Excel)
 Implemented in: crates/rustsheet-xlsx/src/export/tables.rs
-Tasks: T-2196, T-2838
+Tasks: T-2196, T-2838, T-3081
 
 ## A calculated column is saved as `calculatedColumnFormula` plus one formula per row
 Rule (excel-graph downloads of the T-2957 probes, 2026-10-27): a column Excel filled (references.md, "Calculated
@@ -415,8 +422,8 @@ T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac
 Ours: export writes the tree as written, its kept whitespace included (T-2948), a line feed as the reference `&#xA;`,
 which reads back as LF like Excel's raw bytes. The runs beside a missing argument and inside an empty call print back and
 are saved (T-2944, T-2966). The legacy `@` rewrite on import and export decides on the formula with no whitespace; where one
-of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (`=N( IF(1,{2;3}) )`
-saves as `N(IF(1,{2;3}))`, T-2970). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
+of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (no shape is known to
+fall back since T-2970: `=N( IF(1,{2;3}) )` keeps its spaces). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
 reading stored text drops it (T-2784). The saved text beside `@`, LET names and a sign is derived, not probed (T-2971).
 Status: VERIFIED (excel-graph)
 Tasks: T-2786, T-2944, T-2801, T-2948, T-2970, T-2971

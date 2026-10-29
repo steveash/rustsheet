@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2787: IMCOT at 24 random x+iy (4 decimals) where the two denominator groupings, (cosh 2y + 1) - 2cos^2 x (T-2537) and cosh 2y - (2cos^2 x - 1) (T-2044), print different 15-digit text. Generator: docs/research/t2787_imcot_probe.py.",
+  "tags": [
+    "M9",
+    "engineering",
+    "complex",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=IMCOT(\"-2.6342-0.188i\")",
+        "A2": "=IMCOT(\"1.0791+0.6495i\")",
+        "A3": "=IMCOT(\"0.6881-0.5337i\")",
+        "A4": "=IMCOT(\"0.0076-0.3039i\")",
+        "A5": "=IMCOT(\"-3.1753-0.1786i\")",
+        "A6": "=IMCOT(\"2.1761+0.4192i\")",
+        "A7": "=IMCOT(\"0.2073+0.3071i\")",
+        "A8": "=IMCOT(\"-0.1344+0.2596i\")",
+        "A9": "=IMCOT(\"2.2478-0.4516i\")",
+        "A10": "=IMCOT(\"-3.2478-0.4293i\")",
+        "A11": "=IMCOT(\"-0.0321-0.2377i\")",
+        "A12": "=IMCOT(\"-1.1026-0.7132i\")",
+        "A13": "=IMCOT(\"-2.4972+0.2659i\")",
+        "A14": "=IMCOT(\"3.7265+0.3911i\")",
+        "A15": "=IMCOT(\"-0.8739+0.6441i\")",
+        "A16": "=IMCOT(\"0.5443-0.2027i\")",
+        "A17": "=IMCOT(\"-2.9144+0.0359i\")",
+        "A18": "=IMCOT(\"3.3095-0.4426i\")",
+        "A19": "=IMCOT(\"3.1945+0.5437i\")",
+        "A20": "=IMCOT(\"1.094-0.3557i\")",
+        "A21": "=IMCOT(\"-2.9954+0.0763i\")",
+        "A22": "=IMCOT(\"1.4885+0.0272i\")",
+        "A23": "=IMCOT(\"-1.6392-1.6903i\")",
+        "A24": "=IMCOT(\"3.7046+0.2846i\")"
+      }
+    }
+  ],
+  "expected": {}
+}

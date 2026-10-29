@@ -4,7 +4,7 @@ title: "Fit Excel's deep-tail CHISQ.INV and GAMMA.INV kernel (T-1634 residue)"
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []
@@ -68,6 +68,15 @@ One more visibly-off deep-tail cell (gap triage 2026-10-26, `make eval` on 1c8b3
   6.436215297435568E-07 (5 ulp)
 Cells:
 - gen-m9/a5828d3925575713.case.json (1): Calc!A338
+
+One more (gap triage 2026-10-28, `make eval` on dea28aa5, excel-graph; the report attributes it to no function because
+TIMEVALUE is nested, and no task listed it):
+- gen-m9/984cba67bbe6972b Calc!A43 `=GAMMA.INV(1E-16,ABS(TIMEVALUE("6:00")),Data!A10)` = `GAMMA.INV(1E-16,0.25,1E+15)`:
+  Excel 6.749697893111757E-50, ours 6.74969789311173E-50 (4E-15 relative, visibly off). A 60-digit mpmath bisection on
+  `gammainc(0.25,0,x)/Gamma(0.25) = 1E-16` gives 6.7496978931117296E-50, which ours rounds correctly, so this is Excel's own
+  deep-tail rounding at a shape below 1, the same kind of cell as the rest of this list.
+Cells:
+- gen-m9/984cba67bbe6972b.case.json (1): Calc!A43
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-1634 residue): these 30 known-failure lines disappear from

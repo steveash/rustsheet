@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-0969, T-1043]
+depends_on: [T-0969, T-1043, T-2511]
 ---
 
 ## Goal
@@ -168,6 +168,27 @@ T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T
 - gen-m9/5395b8a427764a3f Calc!A347 `=T.INV.2T(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
 - gen-m9/787ba8d801105a60 Calc!A265 `=TINV(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
 - gen-m9/1db18890916ee643 Calc!A106 `=TINV(1.5,10)`: Excel -0.6998120613124317, ours -0.6998120613124311
+
+Sequencing (T-0098, 2026-10-28): waits on T-2511, which inverts the ported incomplete beta for T.INV; fit the
+quantile on the ported kernel, not the current one, so the work is not done twice.
+
+T-3061 (gap triage 2026-10-28) takes the cells away from the centre where Excel's quantile is SQRT(df*(1/y-1)) of the
+rounded beta quantile, at df 1000 to 1E10 and wherever the one-sided q is at most 0.45 (statistics.md "Student-t
+quantile is SQRT(df*(1/y-1)) of the rounded beta quantile"). It does not depend on T-0969. Rescore this task's
+cells after it lands.
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/334f3dc9ca937f10.case.json: Calc!A252
+  - gen-m9/91e167cd8d7eb652.case.json: Calc!A226
+  - gen-m9/a2262ea466fcc142.case.json: Calc!A7
+  - gen-m9/a63d1c7d6f96c56d.case.json: Calc!A370
+  - gen-m9/5919660b7bb4d195.case.json: Calc!A395
+  - gen-m9/5be29fa316931f05.case.json: Calc!A127
+  - gen-m9/afc00c8b70e78baf.case.json: Calc!A188, A371
+  - gen-m9/ede0323c389fc703.case.json: Calc!A186
+  - gen-m9/1b31092a0d79e5f1.case.json: Calc!A57
+  - gen-m9/c2684066d8df263e.case.json: Calc!A64
+  - gen-m9/ee2497a5e683c5d9.case.json: Calc!A319
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 269 known-failure lines (35 from T-2255, 234 from T-2256) disappear from eval/baseline/gen-m9.txt

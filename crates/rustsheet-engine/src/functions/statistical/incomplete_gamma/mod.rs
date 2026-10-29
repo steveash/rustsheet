@@ -143,7 +143,7 @@ fn cdf_within(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
     }
     let scaled = x * dist.rate();
     if scaled == 0.0 {
-        return lower_of_underflow(dist.shape());
+        return LOWER_OF_UNDERFLOW;
     }
     if !scaled.is_finite() {
         return f64::NAN;
@@ -151,17 +151,11 @@ fn cdf_within(dist: &Gamma, x: f64, terms: &mut Terms) -> f64 {
     incomplete_gamma_pair(dist.shape(), scaled, terms).0
 }
 
-/// P(a, x) where `x / beta` underflows to 0 for an x above 0: statrs panics there (a domain
-/// error), so this is statrs' value at the smallest x it takes, its `x < 1.1E-15` branch: 0, or 1
-/// for a shape that small too. Excel's `GAMMA.DIST(1E-300,2,1E100,TRUE)` is 0
-/// (probes/incomplete-gamma-cap E7).
-fn lower_of_underflow(a: f64) -> f64 {
-    if prec::almost_eq(a, 0.0, prec::DEFAULT_F64_ACC) {
-        1.0
-    } else {
-        0.0
-    }
-}
+/// P(a, x) where `x / beta` underflows to 0 for an x above 0 (statrs panics there, a domain
+/// error): 0 at every shape, as Excel's `GAMMA.DIST(1E-300,a,1E100,TRUE)` is for a = 2, 1, 0.5,
+/// 0.01, 1E-17 and 1E-300 (probes/incomplete-gamma-cap E7, probes/t2982-gamma-inv-huge-shape
+/// A117-A122), although the true P(1E-17, 1E-400) is 1 - 9E-15 (T-2982).
+const LOWER_OF_UNDERFLOW: f64 = 0.0;
 
 /// The shape below which [`gamma_prefactor`] forms x^a e^-x / Gamma(a) directly, and above which
 /// it takes TOMS 654's `rcomp`; GAMMA.DIST's tiny-ratio log form keeps to the same split.
@@ -549,7 +543,7 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
     }
     let scaled = x * dist.rate();
     if scaled == 0.0 {
-        return 1.0 - lower_of_underflow(dist.shape());
+        return 1.0 - LOWER_OF_UNDERFLOW;
     }
     if !scaled.is_finite() {
         return f64::NAN;
@@ -643,15 +637,6 @@ pub(crate) enum Tail {
     Upper,
 }
 
-/// The search's quantile (statrs' search over the accurate cdf, T-0971) is kept where the smaller
-/// tail's probability at it is within this relative distance of the target; elsewhere it is
-/// refined. Kept quantiles match Excel's at ordinary probabilities (T-1045's m9-chisq-inv and
-/// m9-gamma-inv sweeps); the search misses in the tails, where it works on the lower cdf only:
-/// statrs' `CHISQ.INV(1-1E-10,10)` was
-/// 68.16761840669743, 2E-7 relative off its upper tail, where Excel's 68.16761795190413 is the
-/// crossing (T-1634).
-const STATRS_QUANTILE_RESIDUAL: f64 = 1e-13;
-
 /// Above this shape the quantile is statrs' search alone, its NaN included: Excel is `#NUM!` for
 /// `GAMMAINV(0.999999,10000000000.5,1E+10)` and for a CHISQ.INV.RT of 10000000000.5 degrees of
 /// freedom (gen-m9), where statrs' search ends as NaN and a refinement would find the quantile
@@ -661,14 +646,43 @@ const STATRS_QUANTILE_RESIDUAL: f64 = 1e-13;
 /// which rest on statrs' search alone, so moving the cut needs both kinds of cell checked.
 const REFINE_SHAPE_MAX: f64 = 1e9;
 
-/// The quantile of `dist` where the probability of `tail` is `p` (in [0, 1], else NaN): statrs'
-/// search ([`inverse_cdf_within`]) where its result solves the smaller tail to
-/// [`STATRS_QUANTILE_RESIDUAL`], else the crossing of that tail (`special::refine_increasing`,
-/// at most 129 cdfs, from statrs' result when it has one). The smaller tail is `p` or its exact
-/// complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in F.INV
-/// (T-0974), and the lower tail is the accurate pair's series, which has no shortcut at a tiny x, so
-/// `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200 (T-1543, T-1634). All cdfs share one
-/// budget of [`MAX_TERMS`] terms; NaN once it is spent.
+/// From this shape on, Excel's GAMMA.INV and GAMMAINV are not a search but
+/// [`wilson_hilferty_quantile`]: `GAMMA.INV(0.5,a,1)` / a tends to c = 1.0002658235505755, and is
+/// c (a - 1/3) / a from 1E13 to 1E300 (probes/t2982-gamma-inv-huge-shape A7-A23; the one cell at 2E10, A7, is at
+/// p = 0.5), while at 5E9 the quantile is the true one and
+/// at 7E9 and 1E10 Excel is mostly `#NUM!` (A5, A6, A42-A59; that band and the shapes from 1E9 to
+/// it stay on the search, TODO(T-3070)).
+pub(crate) const WILSON_HILFERTY_SHAPE_MIN: f64 = 2e10;
+
+/// The offset Excel adds to the Wilson-Hilferty cube root: (1.0002658235505755)^(1/3) - 1 is
+/// 0.0000886 to 13 digits (A7-A23).
+const WILSON_HILFERTY_OFFSET: f64 = 0.000_088_6;
+
+/// The factor on Excel's z term, fitted to the p sweep at shape 1E13 (A25-A41, 1 - 2.2106E-5;
+/// the cells are within 7 ulps of it, 3 at most from p = 1E-16 to 1 - 1E-6).
+const WILSON_HILFERTY_SPREAD: f64 = 0.999_977_893_94;
+
+/// Excel's gamma quantile at a shape from [`WILSON_HILFERTY_SHAPE_MIN`], for a scale of 1, where
+/// `z` is the standard normal quantile of the lower tail's probability: the Wilson-Hilferty
+/// approximation a (1 - 1/(9a) + z/(3 sqrt a))^3 with Excel's offset and spread inside the cube
+/// (probes/t2982-gamma-inv-huge-shape, docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV
+/// at a huge shape"). It is within 7 ulps of Excel from a shape of 1E13 and about 100 to 1,500 ulps
+/// off at 1E11 (a term in z^2 that the fit does not have; T-3070).
+pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
+    let cube_root = 1.0 + WILSON_HILFERTY_OFFSET - 1.0 / (9.0 * shape)
+        + z * WILSON_HILFERTY_SPREAD / (3.0 * shape.sqrt());
+    shape * cube_root * cube_root * cube_root
+}
+
+/// The quantile of `dist` where the probability of `tail` is `p` (in [0, 1], else NaN): always the
+/// crossing of the smaller tail (`special::refine_increasing`, at most 129 cdfs, from statrs'
+/// search, [`inverse_cdf_within`], when it has a result). Excel is close to the true quantile
+/// (against mpmath, 509 of 545 literal-argument quantile cells are within half a unit of the 15th
+/// digit), so statrs' result is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`).
+/// The smaller tail is `p` or its exact complement `1 - p`, so a tiny right-tail `p` keeps the
+/// digits `1 - p` loses, as in F.INV (T-0974), and the lower tail is the accurate pair's series,
+/// which has no shortcut at a tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200
+/// (T-1543, T-1634). All cdfs share one budget of [`MAX_TERMS`] terms; NaN once it is spent.
 pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
     if !(0.0..=1.0).contains(&p) {
         return f64::NAN;
@@ -694,10 +708,7 @@ pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
     let terms = RefCell::new(Terms(MAX_TERMS));
     let probability = |x: f64| quantile_tail(dist, x, small, &mut terms.borrow_mut());
     let estimate = inverse_cdf_within(dist, lower, &mut terms.borrow_mut());
-    if dist.shape() > REFINE_SHAPE_MAX
-        || estimate.is_finite()
-            && (probability(estimate) - target).abs() <= STATRS_QUANTILE_RESIDUAL * target
-    {
+    if dist.shape() > REFINE_SHAPE_MAX {
         return estimate;
     }
     let x = match small {
@@ -730,14 +741,17 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
         };
     }
     let a = dist.shape();
-    // In the series' range the lower tail is `x^a * e^(-x - ln Gamma(a + 1))` times the series
-    // (T-1634): `powf` keeps a tiny quantile's digits (`GAMMA.INV(1E-300,1,1)` is within an ulp
-    // of Excel's 1E-300), and against `x^a e^-x / Gamma(a)` of the pair it is Excel's double in
-    // the far lower tail at shape 1/2 (`CHISQ.INV(1E-16,1)` = 1.5707963267948967E-32 and
-    // `CHISQ.INV(0.001,1)` = 1.57079714926249E-6, gen-m9; the pair's quantiles are 2 ulps
-    // off). Both factors must be normal doubles: at a large shape `x^a` overflows or the
-    // exponential underflows, and the pair's prefactor is used.
-    if tail == Tail::Lower && (scaled <= 1.0 || scaled <= a) {
+    // At x * rate up to 1 the lower tail is `x^a * e^(-x - ln Gamma(a + 1))` times the series
+    // (T-1634). Only there: at a larger x the exponent is large and its absolute error becomes
+    // the tail's relative error (1E-14 at `GAMMA.INV(0.5,50,1)`, whose true quantile is Excel's
+    // 49.66706461799423, 13 ulps off with this form; T-0972). `powf` keeps a tiny quantile's
+    // digits (`GAMMA.INV(1E-300,1,1)` is within an ulp of Excel's 1E-300), and against
+    // `x^a e^-x / Gamma(a)` of the pair it is Excel's double in the far lower tail at shape 1/2
+    // (`CHISQ.INV(1E-16,1)` = 1.5707963267948967E-32 and `CHISQ.INV(0.001,1)` =
+    // 1.57079714926249E-6, gen-m9; the pair's quantiles are 2 ulps off). Both factors must be
+    // normal doubles: at a large shape `x^a` overflows or the exponential underflows, and the
+    // pair's prefactor is used.
+    if tail == Tail::Lower && scaled <= 1.0 {
         let power = scaled.powf(a);
         let rest = (-scaled - super::special::ln_gamma(a + 1.0)).exp();
         if power.is_finite() && power >= f64::MIN_POSITIVE && rest >= f64::MIN_POSITIVE {

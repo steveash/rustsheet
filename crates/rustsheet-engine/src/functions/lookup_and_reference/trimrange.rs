@@ -103,7 +103,7 @@ impl Model {
             return self.lifted_trimrange(&args[0], values, cell);
         }
         let source = if as_reference {
-            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context, true)
         } else {
             self.evaluate_node_in_context(&args[0], cell)
         };

@@ -55,8 +55,13 @@ Gap triage 2026-10-28 (eval on origin/main abefb50).
   "Blocked because" and leave the cells to T-1528.
 - Interactions: T-1528 (blocked, PMT/IPMT/PPMT/NPV bits) gets this as its reopen hypothesis; T-2243's 14 cells
   (PMT.xlsx F15, F33, G10, J15, J33, K10, L15, M10; IPMT_PPMT.xlsx G12, G14, H13, H31, H4; probes/fin-cumipmt-overflow-and-forms
-  A13) are this change's regression list, and if the form makes them bit-exact say so in T-2243. RATE's own model
+  A13) are this change's regression list, and if the form makes them bit-exact say so in T-2243. T-2243 waits on this task: its
+  "Findings" section shows PMT.xlsx rows 10, 11, 18 and 23 (rate -0.9, type 1) 3 to 5 ulp off under every form tried,
+  the discount forms included, so score candidates on them first. RATE's own model
   (`rate_residual`, T-2527) is not to be touched.
+- T-2951 (2026-10-28, `docs/research/t2951_pmt_order_score.py`, Excel's EXP/LN models): the discount form scores 175/308
+  with Excel's EXP and LN as well; with the double Q and 1-Q but the rest of `-(pv+fv*Q)*r/((1-Q)*k)` rounded once it
+  scores 197/308, the best PMT model so far, and 33 of PMT.xlsx's 40 other PMT cells. Start the fit from it.
 
 ## Visible-parity stage
 Decision 0114, `visible`: the 113 RATE cells above are visibly off because Excel's PMT is not the exact payment, so

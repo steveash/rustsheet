@@ -5,7 +5,10 @@ Some paths define the rules agents work under (CI, lint policy, baselines, agent
 instructions). A PR that changes them must also add or update a decision record in
 docs/decisions/ explaining why, so rules are never silently weakened. Additionally,
 `--allow-regressions` baseline changes and test deletions are flagged, and a newly added probes
-case must carry exactly one milestone tag, M2 or later (decisions 0043, 0051, 0057).
+case must carry exactly one milestone tag, M2 or later (decisions 0043, 0051, 0057). A diff that
+adds or changes a task filed from a GitHub issue (`issue:` or `issue_origin:` in its front
+matter) may not touch a protected path at all, decision record or not, nor a dependency manifest,
+lockfile or build script, nor add `allow(` or `unsafe` to Rust code (decision 0158).
 
 Usage: scripts/check_governance.py [BASE_REF]   (default: origin/main)
 """
@@ -17,6 +20,10 @@ import re
 import subprocess
 import sys
 from collections.abc import Callable, Iterable
+from pathlib import Path
+
+import merge_flip
+import tasks
 
 PROTECTED = (
     ".github/",
@@ -91,6 +98,143 @@ def case_tags(path: str) -> list[str]:
     return [tag for tag in tags if isinstance(tag, str)] if isinstance(tags, list) else []
 
 
+def task_has_issue(path: str) -> bool:
+    """Whether the task file at `path`, as committed on HEAD, came from a GitHub issue: `issue:`
+    (the issue's task) or `issue_origin:` (a follow-up filed while working it) in its front matter."""
+    try:
+        meta = tasks.front_matter(git("show", f"HEAD:{path}"), Path(path))
+        return any(key in meta for key in tasks.ISSUE_GUARD_KEYS)
+    except (subprocess.CalledProcessError, ValueError):
+        return False
+
+
+def issue_task_files(changed: list[str], has_issue: Callable[[str], bool]) -> list[str]:
+    """Task files a diff's `--name-status` lines add or change (not delete) that came from a GitHub
+    issue (decision 0158)."""
+    return [
+        path
+        for line in changed
+        if not line.startswith("D")
+        and (path := line.split("\t")[-1]).startswith("docs/tasks/")
+        and tasks.TASK_FILE.search(path)
+        and has_issue(path)
+    ]
+
+
+# Supply-chain and lint surface an issue task may not touch (decision 0158), on top of
+# `is_protected`. Ordinary PRs are unaffected: these apply only to a diff with an `issue:` task.
+ISSUE_FORBIDDEN_NAMES = ("Cargo.lock", "uv.lock", "Cargo.toml", "build.rs", "pyproject.toml")
+ISSUE_FORBIDDEN_DIRS = (".cargo/",)
+# Added Rust lines an issue task may not contain: lint allows (`#[allow(`, `#![allow(`) and `unsafe`.
+ISSUE_FORBIDDEN_RUST = re.compile(r"allow\(|\bunsafe\b")
+
+
+def issue_forbidden_path(path: str) -> bool:
+    """A dependency manifest, lockfile, build script or cargo config, at any depth."""
+    return path.rsplit("/", 1)[-1] in ISSUE_FORBIDDEN_NAMES or path.startswith(ISSUE_FORBIDDEN_DIRS)
+
+
+def added_rust_lines(unified_diff: str) -> list[tuple[str, str]]:
+    """(path, text) of each line a `git diff -U0` adds to a `.rs` file."""
+    added, path = [], ""
+    for line in unified_diff.splitlines():
+        if line.startswith("+++ "):
+            target = line[4:]
+            path = target[2:] if target.startswith("b/") else ""
+        elif line.startswith("+") and path.endswith(".rs"):
+            added.append((path, line[1:]))
+    return added
+
+
+def issue_task_problems(changed: list[str], added: Callable[[], list[tuple[str, str]]]) -> list[str]:
+    """What an issue task's diff may not do beyond `is_protected` paths (decision 0158): touch a
+    manifest, lockfile or build script (both sides of a rename count), or add a lint allow or
+    `unsafe` to a `.rs` file. `added()` gives the diff's added Rust lines."""
+    paths = {p for line in changed for p in line.split("\t")[1:]}
+    problems = [f"  {p} (manifest, lockfile or build script)" for p in sorted(paths) if issue_forbidden_path(p)]
+    problems += [
+        f"  {path}: +{text.strip()} (lint allow or unsafe)"
+        for path, text in added()
+        if ISSUE_FORBIDDEN_RUST.search(text)
+    ]
+    return problems
+
+
+def deleted_test_files(changed: list[str]) -> list[str]:
+    """The test files a diff's `--name-status` lines delete."""
+    return [
+        line.split("\t")[-1]
+        for line in changed
+        if line.startswith("D") and ("/tests/" in line or "/test/" in line or line.endswith("_test.py"))
+    ]
+
+
+def failures(
+    changed: list[str],
+    read_tags: Callable[[str], list[str]],
+    flip: bool,
+    has_issue: Callable[[str], bool] = task_has_issue,
+    added: Callable[[], list[tuple[str, str]]] = list,
+) -> list[list[str]]:
+    """The failed rules for a diff's `--name-status` lines, each as its report lines. `flip` says
+    the diff is a lock flip (decision 0157): it waives the decision-record rule and nothing else.
+    `has_issue(path)` says whether a task file on HEAD came from a GitHub issue, and `added()`
+    gives the diff's added Rust lines, read only for such a diff (decision 0158)."""
+    paths = [line.split("\t")[-1] for line in changed]
+    protected = [p for p in paths if is_protected(p)]
+    decisions = [p for p in paths if p.startswith("docs/decisions/") and p.endswith(".md")]
+    found = []
+    if protected and not decisions and not flip:
+        found.append(
+            [
+                "FAIL governance: protected paths changed without a decision record in docs/decisions/:",
+                *(f"  {p}" for p in protected),
+            ]
+        )
+    from_issue = issue_task_files(changed, has_issue)
+    if from_issue and protected:
+        found.append(
+            [
+                "FAIL governance: a task filed from a GitHub issue may not change protected paths, "
+                "even with a decision record (decision 0158). Label the issue `needs-owner` and leave "
+                "the protected change to an owner-directed task. Issue tasks in this diff:",
+                *(f"  {p}" for p in from_issue),
+                "Protected paths changed:",
+                *(f"  {p}" for p in protected),
+            ]
+        )
+    supply = issue_task_problems(changed, added) if from_issue else []
+    if supply:
+        found.append(
+            [
+                "FAIL governance: a task filed from a GitHub issue may not touch dependency manifests, "
+                "lockfiles or build scripts, or add lint allows or `unsafe` (decision 0158). Label the "
+                "issue `needs-owner`. Issue tasks in this diff:",
+                *(f"  {p}" for p in from_issue),
+                "Not allowed:",
+                *supply,
+            ]
+        )
+    deleted_tests = deleted_test_files(changed)
+    if deleted_tests and not decisions:
+        found.append(
+            [
+                "FAIL governance: test files deleted (requires a decision record and reviewer sign-off):",
+                *(f"  {p}" for p in deleted_tests),
+            ]
+        )
+    probe_problems = probe_tag_problems(changed, read_tags)
+    if probe_problems:
+        found.append(
+            [
+                "FAIL governance: new probe cases need exactly one milestone tag, M2 or later, the "
+                "milestone of the function or feature they probe (decision 0057):",
+                *(f"  {problem}" for problem in probe_problems),
+            ]
+        )
+    return found
+
+
 def main() -> int:
     base = sys.argv[1] if len(sys.argv) > 1 else "origin/main"
     try:
@@ -99,40 +243,21 @@ def main() -> int:
         print(f"note: base {base} not found; skipping governance check")
         return 0
     changed = git("diff", "--name-status", merge_base, "HEAD").splitlines()
-    paths = [line.split("\t")[-1] for line in changed]
-    protected = [p for p in paths if is_protected(p)]
-    decisions = [p for p in paths if p.startswith("docs/decisions/") and p.endswith(".md")]
-    failed = False
-    if protected and not decisions:
-        failed = True
-        print("FAIL governance: protected paths changed without a decision record in docs/decisions/:")
-        for p in protected:
-            print(f"  {p}")
-    deleted_tests = [
-        line.split("\t")[-1]
-        for line in changed
-        if line.startswith("D") and ("/tests/" in line or "/test/" in line or line.endswith("_test.py"))
-    ]
-    if deleted_tests:
-        failed = True
-        print("FAIL governance: test files deleted (requires a decision record and reviewer sign-off):")
-        for p in deleted_tests:
-            print(f"  {p}")
-        if decisions:
-            failed = False
-            print("  (decision record present — allowed; reviewers must confirm)")
-    probe_problems = probe_tag_problems(changed, case_tags)
-    if probe_problems:
-        failed = True
-        print(
-            "FAIL governance: new probe cases need exactly one milestone tag, M2 or later, the "
-            "milestone of the function or feature they probe (decision 0057):"
-        )
-        for problem in probe_problems:
-            print(f"  {problem}")
-    if not failed:
-        print(f"governance ok ({len(paths)} files changed, {len(protected)} protected)")
-    return 1 if failed else 0
+    flip = not merge_flip.local_problems(merge_flip.ROOT, merge_base, "HEAD")
+    if flip:
+        print(f"governance: a lock flip of {merge_flip.SWITCH} (decision 0157); no decision record needed")
+    found = failures(
+        changed, case_tags, flip,
+        added=lambda: added_rust_lines(git("diff", "-U0", "--no-color", merge_base, "HEAD", "--", "*.rs")),
+    )
+    if deleted_test_files(changed) and any(line.split("\t")[-1].startswith("docs/decisions/") for line in changed):
+        print("note: test files deleted with a decision record present: allowed; reviewers must confirm")
+    for lines in found:
+        print("\n".join(lines))
+    if not found:
+        protected = sum(is_protected(line.split("\t")[-1]) for line in changed)
+        print(f"governance ok ({len(changed)} files changed, {protected} protected)")
+    return 1 if found else 0
 
 
 if __name__ == "__main__":

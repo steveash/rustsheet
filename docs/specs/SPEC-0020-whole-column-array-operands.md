@@ -106,7 +106,7 @@ A node is tailed when all of the following hold:
   - Every IF's condition contains a whole-column leaf, so `if_pick` takes the array path
     (`if_array`). An IF whose condition is scalar (`MIN(IF($K$1,F:F,G:G))`) picks and evaluates one
     branch as a reference, and is rejected along with the whole argument.
-  - A bare range may still be an operand, or an IF branch, which `evaluate_if_arg` reads as an
+  - A bare range may still be an operand, or an IF branch, which `evaluate_broadcast_arg` reads as an
     array today.
 - **Gain.** At least `MIN_TAILED_ROWS` rows (4,096) lie past the last used row over the leaves'
   sheets (`used_area_end_of`, which reads and records nothing).

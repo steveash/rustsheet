@@ -75,7 +75,8 @@ use chain::ChainLevel;
 pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
 pub(crate) use depth::is_limit_error;
 pub use depth::{
-    MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
+    TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
 pub(crate) use spacing::Run;
 pub use spacing::Spacing;
@@ -342,6 +343,11 @@ pub enum Node {
         child: Box<Node>,
     },
     ErrorKind(token::Error),
+    /// `S!#REF!`, printed with its sheet (references.md "A sheet-qualified #REF! is #REF!"). Only
+    /// in the tree as written: [`Node::strip_spaces`] makes it a bare `#REF!` (T-2855).
+    SheetRefErrorKind {
+        sheet_name: String,
+    },
     ParseErrorKind {
         formula: String,
         message: String,
@@ -593,6 +599,11 @@ pub struct Parser {
     /// The first call of a function with an argument count Excel refuses that the last parse
     /// read (see [`Parser::typed_refusal`]).
     wrong_count_call: Option<String>,
+    /// Function calls open on the current parse path ([`Parser::in_call`]).
+    open_calls: usize,
+    /// The most function calls open at once in the last parse (see
+    /// [`Parser::nests_too_many_calls`]).
+    deepest_calls: usize,
     /// The workbook's file name (`Budget.xlsx`), which prefixes a workbook name read through a
     /// sheet (`=Feb!loc` is `=Budget.xlsx!loc`); `None` for an unnamed workbook.
     workbook_file: Option<String>,
@@ -642,6 +653,8 @@ impl Parser {
             loaded: false,
             cell_shaped_binding: None,
             wrong_count_call: None,
+            open_calls: 0,
+            deepest_calls: 0,
             workbook_file: None,
         }
     }
@@ -658,26 +671,6 @@ impl Parser {
     /// [`Parser::typed_refusal`].
     pub(crate) fn set_typed(&mut self, typed: bool) {
         self.typed = typed;
-    }
-
-    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
-    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
-    /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
-    /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
-    /// PATCH 400, T-2568). `None` when parsing stored text or nothing is refused.
-    pub(crate) fn typed_refusal(&self) -> Option<String> {
-        if !self.typed {
-            return None;
-        }
-        if let Some(name) = &self.cell_shaped_binding {
-            return Some(format!(
-                "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
-            ));
-        }
-        let name = self.wrong_count_call.as_ref()?;
-        Some(format!(
-            "Formula: {name} is called with the wrong number of arguments"
-        ))
     }
 
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -740,6 +733,8 @@ impl Parser {
         self.bound_names.clear();
         self.cell_shaped_binding = None;
         self.wrong_count_call = None;
+        self.open_calls = 0;
+        self.deepest_calls = 0;
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;
@@ -938,6 +933,7 @@ impl Parser {
             }
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),
+            TokenType::SheetRefError(sheet_name) => Node::SheetRefErrorKind { sheet_name },
             TokenType::Illegal(error) => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
                 expecting: vec![ExpectedTokens::Other],

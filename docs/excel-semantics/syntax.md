@@ -151,16 +151,34 @@ Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` 
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
-one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
+one, so the depth bound admits up to 127 nested parentheses or function calls (126 around the operator chain
 `0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
 (T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
 a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
-level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Excel caps function nesting at 64
+level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Calls are further capped at 65 (below).
+Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
-text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
-cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
-its published limit (UNVERIFIED: no oracle probe yet).
+text at 8,192 characters.
+Excel's rule (T-3097, probes/t3097-nesting-*, excel-graph 2026-10-29, stored and typed alike): a formula
+may nest 65 function calls (the outermost and 64 levels inside it) and not 66. At 66 Excel for the web
+refuses the whole workbook (createSession 501 `FileCorruptTryRepair`), and a typed formula is refused
+(Graph PATCH 400 `InvalidArgument`). The cap counts function calls only, and the same 65 holds for ABS,
+IF, SUM, a mixed ABS/SUM/INT/ROUND chain, an operator between levels (`=ABS(1+ABS(1+...))`), calls
+wrapped in parentheses (`=(ABS((ABS(...))))`), and a LET or a called LAMBDA at the innermost level
+(both count as a level). Parentheses add no level: `=((...(1)...))` loads and evaluates at 64, 65, 127,
+128 and 255 levels. The 66-call inputs (`abs`, `if`, `sum`, `mixed`, `op-abs`, `paren-abs`, `let`,
+`lambda`, stored and typed) cannot keep a sidecar, so they were dropped after the run, as T-1091's
+were. The committed 63- to 65-call cases evaluate on both sides.
+RustSheet counts the same calls (`MAX_NESTED_CALLS`, depth.rs): a typed formula nesting 66 or more is
+refused through the API (`EditError::InvalidInput`, the cell keeps its content) and the xlsx importer
+refuses a workbook holding one (`XlsxError::Workbook`), T-3097. `TRUE()`, `FALSE()` and a call of a
+LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY(x)` (stored `@` and
+`#`) do not (unprobed). Defined-name bodies, conditional formats, data validation and
+`Input::StoredFormula` are not checked (unprobed; T-3143). It also refuses
+128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
+(t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. That is
+the DEVIATION below: the depth bound protects the stack (directive 5).
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
@@ -191,9 +209,9 @@ stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested p
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.
-Evidence: probes/operator-chain-limit (chains at and one character past the published limit) and the T-1091 refusals above; otherwise only the published limits; this is a resource limit.
+Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; the parentheses RustSheet refuses past its bound); this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,
@@ -312,16 +330,16 @@ Stored, a plus on a number literal folds on load as it does typed: a plain `<f>+
 (`ABS(+{5})`, `INDIRECT(+"K1")`, `+B1:B3` below) (probes/t2772-unary-plus-static-readings D19:E20,
 D27:E28; T-2772). Typed, Excel refuses a plus before a LET name or a LAMBDA parameter: `=LET(+x,1,x)` and
 `=LAMBDA(+x,x)(1)` both get Graph PATCH 400 `InvalidArgument` (docs/research/t2772-let-lambda-plus-refusal-2026-10-27.md; refused inputs cannot be committed
-as cases). We refuse the LAMBDA form (`#ERROR!`, test_fn_let.rs) but evaluate the LET form to `#VALUE!` (T-2887). Where an analysis matches a literal, a plus changes nothing, legacy or
+as cases). We refuse both (`#ERROR!`, test_fn_let.rs; the LET form since T-2887). Where an analysis matches a literal, a plus changes nothing, legacy or
 dynamic: `N(IF(+TRUE,B1:B3))` and `N(CHOOSE(+TRUE,Z1,{2;3}))` match their plus-free controls (1 and 7 off the range's
 rows; 1 and 1 on row 2 of B1:B3, where no `@` is added either), `SUBTOTAL(9,TAKE(IF(INDIRECT(+"K1"),H1:H2,I1:I2),2))`
 is 7 like `INDIRECT("K1")`, legacy `ABS(+{5})` prints `=ABS(+@{5})` (5) and legacy `N(+{2;3})` prints `=N(+@{2;3})` (2);
 a dynamic `N(+{2;3})` lifts (`#SPILL!` there, blocked). FORMULATEXT keeps every such plus
 (probes/t2772-unary-plus-static-readings, probes/t2772-unary-plus-in-range-rows D:I). A plus on a whole N argument does
 make the range a value: legacy `=N(+B1:B3)` on row 2 prints `=N(+@B1:B3)` and is 2, where `=N(B1:B3)` is 1 with no `@`;
-legacy `=+B1:B3` and `=ABS(+B1:B3)` print `+@B1:B3` (2) (probes/t2772-unary-plus-in-range-rows J:M). We give 1 and print
-`=N(+B1:B3)`: `is_plain_reference` sees through the top-level plus (T-2885). Unprobed: a plus on an IF arm or on OFFSET's
-reference under N (T-2885 probes them).
+legacy `=+B1:B3` and `=ABS(+B1:B3)` print `+@B1:B3` (2) (probes/t2772-unary-plus-in-range-rows J:M). Ours: matches since T-2885
+(`is_plain_reference` no longer treats a plus on the whole argument as a plain reference). Unprobed: a plus on an IF arm
+or on OFFSET's reference under N; they still read as plain references (follow-up task).
 Status: VERIFIED (excel-graph)
 
 ## Formula text keeps typed whitespace, except at the end, before a comma and in an array constant
@@ -343,6 +361,11 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
   too: `=1+  +5` prints `=1+  5`, `=1+ +5` prints `=1+ 5`.
 - Dropped: around `:` (`=SUM(B1 :B2)` and `=SUM(B1: B2)` print `=SUM(B1:B2)`), after a sheet prefix's `!` (`=S! B1`
   prints `=S!B1`, value 1), a trailing line feed (`=1+2` LF and `=1+2 ` LF ` ` print `=1+2`).
+- **The drop after `!` holds for every sheet-prefix form** (probes/t2869-quoted-ws-after-bang, -quoted-lf-after-bang,
+  -ws-lf-after-bang; excel-graph `entered`, 2026-10-29, T-2869): `='My S'! B1`, `='My S'!` LF `B1` and `=S!` LF `B1`
+  read as 1 and print `='My S'!B1` / `=S!B1`. An external prefix takes it too (`=[1]S! A1` is accepted and prints
+  `'...[1]S'!A1` (the quote closes the file path Excel prepends) with no space; the value is Graph's `#BLOCKED!` because the link has no target, so no case is kept).
+  `=S! R1C2` (R1C1 text after a prefix and a space, typed in A1 mode) is refused: PATCH answers `400 InvalidArgument`.
 - **A run keeps only its line feeds and the spaces after the last one**: `=1+ ` LF ` 2` prints `=1+` LF ` 2`,
   `=1+` LF ` ` LF `2` prints `=1+` LF LF `2`, 10 spaces, 3 line feeds and 2 spaces print as the 3 line feeds and 2
   spaces.
