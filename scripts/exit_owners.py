@@ -291,6 +291,31 @@ def names_in_span(text: str, names: tuple[str, ...], a1: str) -> bool:
     return False
 
 
+# A block of a task's text is a line plus its continuation lines (decision 0159). A line opens a new
+# block when it is blank, is not indented, or starts (after its indentation) a list item (`- `,
+# `* `, `1. `) or a table row (`|`); any other indented line continues the block above it.
+BLOCK_START = re.compile(r"\s*$|\S|\s*(?:[-*] |\||[0-9]+\. )")
+
+
+@functools.lru_cache(maxsize=None)
+def blocks(text: str) -> tuple[str, ...]:
+    """`text` split into blocks, each its lines joined by newlines."""
+    out: list[list[str]] = []
+    for line in text.splitlines():
+        if out and not BLOCK_START.match(line):
+            out[-1].append(line)
+        else:
+            out.append([line])
+    return tuple("\n".join(b) for b in out)
+
+
+def names_beside_case(text: str, called: tuple[str, ...], a1: str) -> bool:
+    """Whether a block of `text` names both the case and the cell `a1`: a single A1 name owns a
+    cell only beside its own case, so a task that lists cells of one case and also names a second
+    one does not own the second case's cells of the same names (decision 0159)."""
+    return any(names_case(b, called) and names(b, a1, A1_WORD) for b in blocks(text))
+
+
 @functools.lru_cache(maxsize=None)
 def names_whole_case(text: str, names: tuple[str, ...]) -> bool:
     """Whether a line of `text` names the case and no cell: a task that lists cells beside a case
@@ -303,7 +328,9 @@ def owned(cell: ExitCell, texts: list[str], called: tuple[str, ...]) -> bool:
     for text in texts:
         if not names_case(text, called):
             continue
-        if cell.a1 is not None and (names(text, cell.a1, A1_WORD) or names_in_span(text, called, cell.a1)):
+        if cell.a1 is not None and (
+            names_beside_case(text, called, cell.a1) or names_in_span(text, called, cell.a1)
+        ):
             return True
         if names_whole_case(text, called):
             return True

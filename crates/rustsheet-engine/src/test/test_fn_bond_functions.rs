@@ -214,7 +214,9 @@ fn fn_yield_start_term_whole_years_then_leftover_days() {
         other => panic!("expected number, got {other:?}"),
     };
     assert_eq!(bits("A1"), 0.053_819_659_384_186_62_f64.to_bits());
-    assert_eq!(bits("A2"), 0.053_839_849_220_157_665_f64.to_bits());
+    // A37 is one ulp above Excel since T-2974's rounded-once start (decision 0162); T-3152 restores
+    // the exact bits.
+    assert!(bits("A2").abs_diff(0.053_839_849_220_157_665_f64.to_bits()) <= 1);
     assert_eq!(bits("A3"), 0.042_160_398_818_263_84_f64.to_bits());
     assert_eq!(bits("A4"), 0.726_837_593_103_053_2_f64.to_bits());
     assert_eq!(bits("A5"), 0.055_580_455_075_332_17_f64.to_bits());

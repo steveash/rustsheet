@@ -2138,8 +2138,7 @@ Ours: all 1,286 cells bit-exact through the worksheet functions (T-2502). Still 
   (no swap; -expm1(b ln1p(-x)) below x = 0.1) is bit-exact at gen-m9/68d8ffb69ff739d8 A143 (a = 1, b = 1/2,
   x = 0.571), a790a4d4a6a82756 A192 (a = 4, b = 1) and bbdfc06cae0e0d71 A356 (a = 5.5, b = 1), which the closed
   forms put 2, 3 and 10 ulp off (the last visibly; T-2977, `fisher.rs::unoriented_shape_one_tail`).
-- a0 = 1 with y0 > 0.9 keeps the engine's earlier tails, w = -expm1(b0 ln1p(-x0)) and w1 = y0^b0
-  (`incomplete_beta.rs::shape_one_tails`); bpser(1, b0, x0) is 1 ulp high at probes/ftest-decomposition B12. T-3007.
+- a0 = 1 with y0 > 0.9: see "Incomplete beta at a shape of 1 outside the closed forms" (T-3007).
 - BINOM.DIST's k = 0 is BINOM's own shortcut, not this kernel (T-2645).
 Status: VERIFIED (excel-graph)
 Implemented in: `incomplete_beta.rs::closed_form_tails` (Excel's EXP and LN, `x87_exp.rs`, `x87_log10.rs`), through
@@ -2149,6 +2148,42 @@ NEGBINOM.DIST at r = 1 or f = 0); then `bratio/mod.rs::ported_tails` (bpser, w1 
 cdf, F.DIST, F.DIST.RT, FDIST, BINOM.DIST's cdf and NEGBINOM.DIST's cdf (T-2505, T-2506, T-2847), and for F.TEST's
 large shapes and BETA.INV's huge-shape crossing (`bratio/mod.rs::kernel_tails`, T-2977)
 Tasks: T-2502, T-2505, T-2511, T-2977, T-3007
+
+## Incomplete beta at a shape of 1 outside the closed forms (T-3007)
+Rule: after bratio's swap, at a0 = 1 with y0 > 0.9 (x0 below about 0.1, b0 not 1), Excel computes one tail, w, and
+forms the other as (0.5 - w) + 0.5, as bratio does on every branch; it does not form w1 = y0^b0 on its own. Its w is
+near the exact value: -expm1(b0·ln1p(-x0)) in doubles is bit-exact at most cells and 1 ulp off at the rest, and TOMS
+bpser(1, b0, x0) (bratio's dispatch there: WBpser) is further off.
+- Variants, scored as per-cell changes against the engine's earlier w = -expm1(b0·ln1p(-x0)), w1 = y0^b0 over every
+  suite (`make eval`, origin/main 5f35109): w1 = (0.5 - w) + 0.5 from that w fixes 77 cells and moves 2 off
+  (`F.DIST(1.5,50,2,TRUE)` and `F.DIST(5,7,2,TRUE)`, probes-numeric/t2220-f-dist-sweep-cdf A815 and A518, 1 ulp);
+  the ported bpser for w with its complement fixes 64 and moves 90 off, most of them cells that return w.
+- `F.DIST(5,20,2,TRUE)` = 0.8203482998751552 (t2220-f-dist-sweep-cdf A718; y0^b0 3 ulp low), `F.DIST(5,4,2,TRUE)` =
+  0.8264462809917356 (A318), `FDIST(1E-10,2,7)` = 0.9999999999 (gen-m9/58e3253bbd3a7a82 A273), and
+  `F.DIST.RT` at probes/ftest-decomposition B5 = 0.7381591796246967, which the same cell's BETA.DIST (B12,
+  0.7381591796246966, x formed by BETA.DIST's caller) also matches.
+- Of the shape-of-1 cells with literal arguments in the eval, 116 were off before (52 returning w, all within 4 ulp;
+  64 returning w1, 18 of them beyond 4 ulp) and 59 after (the same 52, and 7 returning w1 within 4 ulp).
+- Other off cells that moved, still off: t1745-beta-inv-roundtrip G112 (1 to 2 ulp), ironcalc-calc
+  BETADIST_BETAINV.xlsx H31 (-4 to -3 ulp), t2220-f-dist-sweep-cdf A616, A817, A818 and t2220-f-dist-sweep-rt A162, A163
+  (closer, mostly to 1 ulp).
+- Every literal cell agrees with the complement, including the cells where x0·b0 > 0.7, where TOMS would dispatch
+  w1 to bgrat (`F.DIST.RT(5,2,100)`, `F.DIST(0.25,100,2,TRUE)`, w1 down to about 0.0085). UNVERIFIED below
+  w1 = 2^-53, where the complement is 0 or a multiple of 2^-53 (`BETA.DIST(0.95,1000,1,TRUE)` was about 5.3E-23 on the
+  earlier y0^b0 and is now 0): no oracle cell has w1 below about 1E-16 (T-3150).
+- BETA.INV searches this cdf, and w1 is now a step of one ulp of w, signed ulp from Excel's quantile, before and
+  after: `BETA.INV(0.999,1,100)` (probes-numeric/m9-beta-inv A69, t1745-beta-inv-roundtrip J67) -4 to -40;
+  `BETA.INV(0.001,100,1)` (A149, J144) +1 to -5; `BETA.INV(0.95,1,100)` (A68, J66) -16 to -6. Excel's BETA.DIST at
+  those quantiles (t1745 G144, H144, I144, G145, H145, I145) is now bit-exact. Where in the flat step Excel's search
+  stops is T-2511's. `BETA.INV(1E-20,1000,1)` (Excel `#NUM!`, probes-numeric/t1543-inverse-cdf-tiny-p A88) moves from
+  0.9549925860214359 to 0.9632618940201478 (see "Inverse CDF functions at a tiny or near-1 probability").
+Evidence: probes-numeric t2220-f-dist-sweep-cdf, t2220-f-dist-sweep-rt, t2220-f-dist-sweep-d1-1, t2220-f-dist-sweep-d2-1,
+t1745-beta-inv-roundtrip; probes/ftest-decomposition; gen-m9 58e3253bbd3a7a82, 60b0b6e69ad35a45, fd9fa22d212080d6
+(excel-graph).
+Ours: `incomplete_beta.rs::shape_one_tails` (w = -expm1(b0·ln1p(-x0)), w1 = (0.5 - w) + 0.5), through
+`bratio::kernel_tails` and `fisher.rs::f_tail`. Excel's w is open: 52 cells still 1 ulp off (TODO(T-3007)).
+Status: VERIFIED (excel-graph) for the complement down to w1 of about 1E-16; below 2^-53 and w's arithmetic UNVERIFIED
+Tasks: T-3007, T-2511, T-3150
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
 Rule: for ln(1 + a) with -0.375 <= a < 0, i.e. ln(1 - x) at x <= 0.375 (the beta density, BINOM.DIST(0,n,p), bgrat's
@@ -3217,7 +3252,7 @@ Tasks: T-1543, T-1634
     and A25 (a = 0.75 and 0.9, x from 1.6E-18 up). There Excel is 1.5E-15 to 4.2E-15 relative below the exact cdf
     (about 9 to 32 ulp; A24 is visibly off), and the form is 10 to 58 ulps above Excel. So the form's region, or its
     exact evaluation (x87, Excel's EXP), is still open.
-- Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368 (ours). These are not implemented.
+- Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368. Ours is 0.9632618940201478 since T-3007 (the crossing of a cdf whose w1 is now the complement of w, "Incomplete beta at a shape of 1 outside the closed forms"). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
 - Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 

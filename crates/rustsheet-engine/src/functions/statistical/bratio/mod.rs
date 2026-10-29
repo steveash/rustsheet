@@ -197,12 +197,9 @@ pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(
 /// tail and forms the other as (0.5 - w) + 0.5, each step an x87 op stored to a double
 /// (statistics.md "Incomplete beta is TOMS 708 `bratio`").
 ///
-/// A shape of 1 outside the closed forms (a0 = 1 with y0 > 0.9) stays on today's kernel
-/// (`incomplete_beta::shape_one_tails`), whose y0^b0 there is Excel's value:
-/// `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966 (probes/ftest-decomposition
-/// B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
+/// A shape of 1 outside the closed forms (a0 = 1 with y0 > 0.9) stays on
+/// `incomplete_beta::shape_one_tails`: bpser(1, b0, x0) is further off Excel's w there (T-3007).
 pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
-    // TODO(T-3007): find Excel's form at a0 = 1 outside the closed forms before moving it.
     if a == 1.0 || b == 1.0 {
         return None;
     }

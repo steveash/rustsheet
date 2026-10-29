@@ -1,6 +1,8 @@
 # 0096 — Exit-owner report for milestone exit cells
 
 - **Status:** accepted (2026-10-21, T-2259). Implements the check that decision 0085 item 3 implies.
+  Its ownership rule is amended by decisions 0136 (case.json stems, colon spans) and 0159 (an A1 name owns only in
+  the block that names its case).
 - **Context:**
   - Decision 0085 item 3: a failing cell of an M5 exit criterion is owned by a task with milestone
     M5, so the pick order reaches it while M5 is current. Nothing checked this; the planner grepped

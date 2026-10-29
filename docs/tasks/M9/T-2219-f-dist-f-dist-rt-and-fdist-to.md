@@ -87,6 +87,10 @@ Cells:
 - gen-m9/d8266bc15533702a.case.json (3): Calc!A120, A337, A364
 - gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A118
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A250
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/60b0b6e69ad35a45.case.json: Calc!A151
+  - gen-m9/2801c1c11c21e134.case.json: Calc!A374
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 42 known-failure lines disappear from eval/baseline/gen-m9.txt
