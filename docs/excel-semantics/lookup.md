@@ -342,7 +342,7 @@ models: 0.1+0.2 against 0.3 is decided by the 0.5, and the pair either side of 1
 digits too. The run of equal cells is a run of exactly equal
 doubles. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52 give 1, 2 and 3, where a 15-digit run would
 give 3 for all three (A30-C31; A32-C32 fit both). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine compares
-exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too (no cell of its own yet).
+exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too (unverified in Excel: T-3106).
 Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
 2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
 a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
