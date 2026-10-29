@@ -25,11 +25,11 @@ One fix: pass the value through the environment (`--title "$$TITLE"`). GNU make 
 recipes. Another fix: escape it with `$(subst ...)`. Pick one and use it for every free-text variable.
 
 ## Acceptance criteria
-- [ ] `make new-task MILESTONE=M0 LANE=harness TITLE='a "quoted" ;;; title' SIZE=S` writes a task whose front-matter title is
+- [x] `make new-task MILESTONE=M0 LANE=harness TITLE='a "quoted" ;;; title' SIZE=S` writes a task whose front-matter title is
       `a "quoted" ;;; title` (test it in a scratch checkout or with a dry-run flag, and delete the file it writes).
-- [ ] The same for `make new-decision TITLE='a "quoted" title'`.
-- [ ] A test (scripts/ or a Makefile smoke test in `make check`) covers a title with `"`, `;`, `$` and a backtick.
-- [ ] `make check` green; reviewers approve.
+- [x] The same for `make new-decision TITLE='a "quoted" title'`.
+- [x] A test (scripts/ or a Makefile smoke test in `make check`) covers a title with `"`, `;`, `$` and a backtick.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `scripts/tasks.py new` itself beyond what the test needs.
@@ -41,13 +41,6 @@ line is still expanded by make itself (write `$$`); the help text says so. `scri
 into `'`: it writes the title as an escaped YAML double-quoted string (`\"`, `\\`), and the front-matter parser undoes
 those escapes, so `make tasks` shows existing titles such as `CELL(\"address\")` unescaped too.
 `scripts/test_makefile_titles.py` and a round-trip test in `scripts/test_tasks.py` cover it (run by `make hygiene`).
+A sonnet run handed the task to opus because the Makefile is a protected path that needed a decision record, hence
+`tier: opus`.
 Eval delta: none. Other targets splice no free text except `CASE=` in `eval-show` (a path; left as is).
-
-## Handoff (resumed)
-- Tried: `new-task`/`new-decision` recipes now use `"$$TITLE"`, `"$$LANE"`, `"$$MILESTONE"`; added
-  `scripts/test_makefile_titles.py` (3 tests, pass; `make check` green locally; security/architecture/quality reviewers APPROVE).
-- Failed: CI `hygiene` job, `scripts/check_governance.py origin/main`: "protected paths changed without a decision
-  record in docs/decisions/: Makefile, scripts/test_makefile_titles.py". `make check` did not catch it locally.
-- Next: `make new-decision TITLE="Makefile passes free-text variables via the environment"` (record why, and that a
-  single `$` must be written `$$`), commit it with the branch, confirm `python3 scripts/check_governance.py origin/main`
-  passes, set `status: done`, rename the Outcome heading back, then merge per work-loop step 6.
