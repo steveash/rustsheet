@@ -3,7 +3,7 @@ id: T-3083
 title: "Snap a LAMBDA body's near-zero root + or - at its own root"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,10 +26,18 @@ so `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0.
 - Row 16 (`LET(x,0.1,x+0.2-0.3)`) must stay unsnapped: a LET body is not a root.
 
 ## Acceptance criteria
-- [ ] probes/t3049-snap-under-pickers Sheet1!B17 and C17 pass and leave eval/baseline/probes.txt; no other cell
+- [x] probes/t3049-snap-under-pickers Sheet1!B17 and C17 pass and leave eval/baseline/probes.txt; no other cell
       regresses.
-- [ ] numbers.md "Implemented in" names where the LAMBDA body is snapped.
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md "Implemented in" names where the LAMBDA body is snapped.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - LAMBDA helpers (MAP, REDUCE, BYROW, ...) and a LAMBDA bound to a defined name: unprobed; probe them first.
+
+## Outcome
+- `Model::call_lambda` marks its caller `root_snap` (new `LambdaCaller` field), and `call_prepared` evaluates
+  such a body through `Model::evaluate_formula_root`, so a root `+`/`-` snaps as at a cell formula's root.
+  `=LAMBDA(x,x+0.2-0.3)(0.1)` and `=LAMBDA(x,x+7*2^-52-1)(1)` are 0. The LAMBDA helpers and a defined-name LAMBDA
+  keep the unsnapped body: they are unprobed (out of scope).
+- numbers.md "Implemented in" names it.
+- Eval delta: probes fixed 2 (t3049-snap-under-pickers B17, C17), regressions 0.

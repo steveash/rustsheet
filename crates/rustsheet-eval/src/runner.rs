@@ -121,6 +121,13 @@ impl CellResult {
     }
 }
 
+/// The `case!Sheet!A1` name report sections use for one cell; `exit_owners.py` compares these
+/// strings across sections (decision 0135), so every report builds them here.
+#[must_use]
+pub fn cell_id(case: &str, key: &str) -> String {
+    format!("{case}!{key}")
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CaseResult {
     pub id: String,

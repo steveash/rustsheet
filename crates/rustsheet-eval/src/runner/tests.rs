@@ -426,3 +426,8 @@ fn pending_case_with_engine_error_is_reported() {
     let r = run_pending("error");
     assert_eq!(r.status, CaseStatus::EngineError);
 }
+
+#[test]
+fn cell_id_joins_case_and_cell_key() {
+    assert_eq!(cell_id("suite/case", "Sheet1!A1"), "suite/case!Sheet1!A1");
+}

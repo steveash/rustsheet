@@ -66,3 +66,13 @@ Excel's EXPM1 and `growth_log`, is exact on 23 of 36 principals and within an ul
 takes 8 to 14 bit-exact cells off, so nothing in the kernel changed. The details and the next probe (nper 1E6 and
 1E10) are in financial.md "T-3067 notes". Eval delta: one new probe case, 84 cells, 44 passing; the 40 failing
 cells are new known failures; no regressions.
+
+## Outcome (partial, run 3, 2026-10-29; the task stays open)
+Probed where Excel's CUMPRINC changes form (probes/fin-cumprinc-form-boundaries, 132 cells): it is the leading
+discount `(nper-end+1)·L` that decides, not the range's length or its deepest discount. The geometric principal now
+takes a short range from a leading exponent of 0.3 (`GEOMETRIC_MIN_LEAD`, replacing `GEOMETRIC_MIN_DISCOUNT`) and a
+long range from 3.6 (`LONG_GEOMETRIC_MIN_LEAD`), which closes the "type 1 over a long range" (A62) and
+`GEOMETRIC_MIN_DISCOUNT` items above. Eval delta: 7 known failures fixed (gen-m9 A62; CUMPRINC_CUMIPMT.xlsx H9, H10,
+H15, H21; gate-edges G9, G11), 0 regressions; the new case is visibly right on all 132 cells, 73 to the bit (59 new
+known failures, each within 2 ulps). Left: type 1 from period 1 (G2/H2), the tiny-rate interests (gate-edges A2-A8,
+E1-E10, A379), A352 and the cells near period 1E15 (financial.md "T-3067 notes").
