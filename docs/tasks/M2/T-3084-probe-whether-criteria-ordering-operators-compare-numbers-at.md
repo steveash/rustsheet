@@ -3,7 +3,7 @@ id: T-3084
 title: "Probe whether criteria ordering operators (<, <=, >, >=) compare numbers at 15 digits or exactly, as = and <> do"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -35,22 +35,31 @@ cell holding `1+2^-52` is not at once "equal to 1" and "greater than 1" in the e
   apart, and the follow-up touches the shared criteria grammar every *IF(S) and D-function consumer uses.
 
 ## Acceptance criteria
-- [ ] A new excel-graph probe case `probes/t3072-criteria-near-equal-order` (milestone M2, decision 0043; not M1)
+- [x] A new excel-graph probe case `probes/t3072-criteria-near-equal-order` (milestone M2, decision 0043; not M1)
       reads back COUNTIF, SUMIF (with a sum_range), COUNTIFS and SUMIFS with each of `"<1"`, `"<=1"`, `">1"`,
       `">=1"`, `"=1"`, `"<>1"` over cells built by formula (literals are cut to 15 digits): `=1+k*2^-52` for
       k = 1, 2, 3, 8, `=1-k*2^-53` for k = 1, 2, 3, 8, and a pair a few ULP apart on either side of a 15th-digit
       rounding boundary, each in a one-cell range so every count is 0 or 1. Control rows give the plain operators on the
       same cells with the cell on each side (`=C1<1`, `=1<C1`, `=C1>=1`, `=1>=C1`).
-- [ ] numbers.md "Criteria equality" (or a new section beside it) and docs/excel-semantics/criteria.md record, per
+- [x] numbers.md "Criteria equality" (or a new section beside it) and docs/excel-semantics/criteria.md record, per
       operator, whether the cell side is compared at 15 digits or exactly, citing the cells; the "Comparison
       tolerance" entry gains the `<`/`>=` control cells.
-- [ ] Every cell the engine does not match is a known failure in eval/baseline/probes.txt, and one follow-up task
+- [x] Every cell the engine does not match is a known failure in eval/baseline/probes.txt, and one follow-up task
       (milestone M2, lane functions-criteria, tier opus) names those cells and the criteria.rs functions to change;
       `make exit-owners MILESTONE=M2` reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes (the follow-up task owns them).
 - Approximate lookups (VLOOKUP/HLOOKUP/MATCH with a non-zero match type): their own probe task.
 - Conditional-format value operators (T-1051, M14) and D-function criteria ranges (M9).
 - Text and boolean ordering criteria.
+
+## Outcome
+Probe probes/t3072-criteria-near-equal-order (excel-graph, 372 cells): `"<1"`, `"<=1"`, `">1"` and `">=1"` compare the
+cell's 15-digit value in COUNTIF, SUMIF, COUNTIFS and SUMIFS, like `=`/`<>`; the flip is at the 15th-digit rounding
+boundary (1+22/23·2^-52 above, 1-4/5·2^-53 below), so neither exact nor a relative tolerance. The plain `<` and `>=`
+controls follow the same rule. Recorded in numbers.md ("Criteria ordering operators compare at 15 digits too",
+"Comparison tolerance") and criteria.md. Eval delta: one new case, 360 checked cells, 288 passing; 72 new known
+failures (the ordering columns of rows 1-5 and 7-10), owned by follow-up T-3103 (functions-criteria, opus); no
+regressions.
