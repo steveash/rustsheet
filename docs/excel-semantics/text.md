@@ -658,12 +658,11 @@ units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (
 (A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
 from a numeral-length limit. From a cell, as an array element and with an error count (T-2305; probes/text-255-units-from-cell, -array-element,
 -rept-error-count, excel-graph 2026-10-24): a cell holding 256 "x" (typed, D1, or a formula result, D3) is `#VALUE!` in
-`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!` (ours `#VALUE!`); 255 from a cell works in all
-four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!` (ours keeps T's element);
+`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!`; 255 from a cell works in all
+four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!`;
 255 works. excel-graph refused to open a workbook whose array constants held 256-character literals (cause not isolated), so the probe builds the long text with REPT. REPT with a
-long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!` (ours
-`#VALUE!`); `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Unprobed: `T` of a multi-cell range whose top-left cell holds long text.
-Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count differences are T-2627.
+long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!`; `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Only a plain single-cell reference is implemented as "" (`T(D1)`, `T(D3)`, VERIFIED; a sheet-qualified reference, a legacy formula, a parenthesised or unary-plus reference and a single-cell structured reference are implemented as "" too, UNPROBED); unprobed, and ours keeps `#VALUE!` for them: `T` of a multi-cell range (`T(D1:D2)`), a name, `INDIRECT`, `OFFSET`, `INDEX`, `IF`, `CHOOSE`, `LET` or a spill reference whose cell holds long text (follow-up task).
+Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count rules are implemented (T-2627: `T` of a plain single-cell reference reads "" (other reference shapes unprobed, kept `#VALUE!`), an array element is `#VALUE!`, REPT reads its count's error before the text limit).
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
