@@ -3,7 +3,7 @@ id: T-3138
 title: "Blank-cell and omitted criteria in COUNTIF, SUMIF and the IFS family: probe what they match (0, tiny numbers, blanks, empty text, FALSE) and match it"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -45,21 +45,32 @@ records the rule as VERIFIED.
   and read it from several *IFS cells. Keep a short-range copy for the plain path.
 
 ## Acceptance criteria
-- [ ] `probes/t3138-blank-criterion` (milestone tag M2) is committed with its excel-graph sidecar. It holds the data
+- [x] `probes/t3138-blank-criterion` (milestone tag M2) is committed with its excel-graph sidecar. It holds the data
       cells and criterion sources above, read through COUNTIF, SUMIF (with and without sum_range), AVERAGEIF,
       COUNTIFS, SUMIFS, AVERAGEIFS, MINIFS and MAXIFS, with power-of-two weights.
-- [ ] Every cell of the case passes. The engine's blank/omitted criterion goes through one matcher, shared by the
+- [x] Every cell of the case passes. The engine's blank/omitted criterion goes through one matcher, shared by the
       plain path (`build_criteria_with`) and the indexed path (`CriterionKey::Empty` in ifs_cache.rs). Reuse
       `numbers_equal` or the empty-text matchers that already exist; do not add a parallel comparison.
-- [ ] criteria.md has a VERIFIED section "A blank-cell or omitted criterion", citing cells. numbers.md "Criteria
+- [x] criteria.md has a VERIFIED section "A blank-cell or omitted criterion", citing cells. numbers.md "Criteria
       equality" no longer calls the blank path inferred, and states the comparison Excel uses there.
-- [ ] Unit tests in criteria.rs cover a blank criterion against a blank cell, an empty-string cell and a 1E-17 cell.
+- [x] Unit tests in criteria.rs cover a blank criterion against a blank cell, an empty-string cell and a 1E-17 cell.
       probes/tiny-vs-zero-criteria, criteria-gaps, criteria-grammar and criteria-ifs-bare-equals, and the gen-m2
       criteria cells, show 0 regressions (`make eval-check`). `make eval-baseline` is run.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The D-functions' blank criteria-range cells (database.rs), which follow their own criteria-range rules.
 - Formatted-number criterion operands (T-3136) and ordering operators (T-3103).
 - An array criterion holding an empty element (`{""}`) and lifted criteria (criteria.md "*IF(S) lift array
   criteria"). File a follow-up if the evidence suggests they differ.
+
+## Outcome
+Excel treats a blank-cell or omitted criterion as the number criterion 0: it matches 0, `=-0`, `=2^-1074`
+(0 in Excel) and the text "0", and never a blank, `=""`, FALSE, `" "`, 1E-17, -1E-300 or 5E-16. All five
+sources (blank cell, omitted argument, `IF(FALSE,1,)`, a blank on Sheet2, `INDEX` of a blank) and all nine
+function forms agree, on the short walk and the 80-cell indexed *IFS range. The engine matched only exact
+number 0, so the text "0" was missed. `indexed_criterion` now returns `Number(Eq, 0.0)` for an empty criterion,
+so the walk and the *IFS index share one matcher; `result_is_equal_to_empty` is gone. criteria.md has a
+VERIFIED section, and numbers.md no longer calls the blank path inferred.
+Eval delta: +1 probe case `probes/t3138-blank-criterion` (M2), 111/111 cells pass (77 failed before the
+fix); 0 regressions, known failures unchanged elsewhere.
