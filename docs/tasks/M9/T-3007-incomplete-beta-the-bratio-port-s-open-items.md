@@ -75,7 +75,7 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
   double range", probes/t3007-beta-dist-ln-x-overflow): Excel for the web refuses any workbook holding BETA.DIST with a
   shape of 1E+295 or more, so `BETA.DIST(0.1,1E308,0.5,TRUE)` has no excel-graph value and keeps today's kernel. The
   same probe found bpser `#NUM!` once 1/B(a, b) overflows and 5 bgrat/bfrac cells where ours are `#NUM!` (11 off cells,
-  T-3104). No engine change; eval: +25 probe cells (14 pass, 11 baselined as known failures).
+  T-3104). No engine change; eval: +27 probe cells (16 pass, 11 baselined as known failures).
 
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with

@@ -1474,7 +1474,7 @@ C	probes/t2982-gamma-inv-huge-shape.case.json	123
 C	probes/t2983-formulas-and-blank-enter-blank.case.json	6
 C	probes/t2983-formulas-and-blank-enter-last.case.json	5
 C	probes/t2983-identical-stored-refill.case.json	8
-C	probes/t3007-beta-dist-ln-x-overflow.case.json	25
+C	probes/t3007-beta-dist-ln-x-overflow.case.json	27
 C	probes/t3012-gamma-dist-at-quantile.case.json	136
 C	probes/t3012-gamma-inv-small-shape.case.json	72
 C	probes/t3028-b2-taiwan-cuts.case.json	240

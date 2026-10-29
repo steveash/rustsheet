@@ -2424,10 +2424,10 @@ is `#NUM!` too. The other branches at the same shapes are values: `BETA.DIST(0.9
 `BETA.DIST(0.9,1E+290,0.5,TRUE)` 0, and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours are `#NUM!`; but
 `BETA.DIST(0.1,1E+200,1E+100,TRUE)` (bfrac too) is `#NUM!`, as ours is. The form behind the cut (1/B, or a^b, in
 doubles) is not pinned: B(a, 2) does not separate 1/B from a(a + 1).
-Evidence: probes/t3007-beta-dist-ln-x-overflow (excel-graph, 2026-10-29), 25 cells; the refusals are upload errors from
+Evidence: probes/t3007-beta-dist-ln-x-overflow (excel-graph, 2026-10-29), 27 cells; the refusals are upload errors from
 throwaway fills, not cells.
 Status: VERIFIED (excel-graph) for the values; the refusal threshold is between 1E+290 and 1E+295 (not bisected); not
-implemented: 11 of the 25 cells are off (T-3104 owns them).
+implemented: 11 of the 27 cells are off (T-3104 owns them).
 Tasks: T-3007, T-3104
 
 ## Incomplete beta L140 and bfrac: the prefactor is Excel's own density times x·y (T-2464)
