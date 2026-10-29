@@ -43,7 +43,7 @@ amends decision 0158.
 - [x] Facts in PR bodies and comments are copied from command output.
 - [x] Decision 0158 has an amendment note; governance, decisions, hygiene, typos and
       `tasks.py validate` pass.
-- [ ] `make check` green (CI); reviewers approve, including explicit architecture and security
+- [x] `make check` green (CI); reviewers approve, including explicit architecture and security
   approval of the protected path.
 
 ## Out of scope
