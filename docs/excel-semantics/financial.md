@@ -2087,7 +2087,7 @@ to 0; the same rule as PRICE. ODDLPRICE is linear in the yield and never overflo
 - ODDLPRICE stays a number at every yield up to 9.99999999999999E+307 (`ODDLPRICE(47300,47484,47119,0.05,9.99999999999999E+307,100,2,0)`
   is -2.5; a few periods, -0.41666666666666663).
 Evidence: probes/odd-bond-huge-yield-overflow (excel-graph, 2026-10-29, T-2659).
-Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD unprobed (T-2391).
+Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary are unprobed (T-3122).
 Status: VERIFIED (excel-graph)
 Tasks: T-2659
 
