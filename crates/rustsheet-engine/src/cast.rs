@@ -318,7 +318,13 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.top_left(value)
+    }
+
+    /// `value` with a range read as its top-left cell ([`Self::evaluate_node_top_left`]).
+    pub(crate) fn top_left(&mut self, value: CalcResult) -> CalcResult {
+        match value {
             CalcResult::Range { left, .. } => self.evaluate_cell(left),
             other => other,
         }
