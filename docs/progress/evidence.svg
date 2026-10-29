@@ -23,9 +23,9 @@
 <rect class="b-cells" fill="#2a78d6" x="150.0" y="106.0" width="3.5" height="18" rx="3"><title>200–399: 3</title></rect>
 <text x="161.5" y="115.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">3 (0.59%)</text>
 <text x="140.0" y="145.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">400–999</text>
-<rect class="b-cells" fill="#2a78d6" x="150.0" y="136.0" width="361.5" height="18" rx="3"><title>400–999: 313</title></rect>
-<text x="519.5" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">313 (61.86%)</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="136.0" width="360.4" height="18" rx="3"><title>400–999: 312</title></rect>
+<text x="518.4" y="145.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">312 (61.66%)</text>
 <text x="140.0" y="175.0" class="ink" fill="#1f2328" text-anchor="end" dominant-baseline="middle">≥ 1000</text>
-<rect class="b-cells" fill="#2a78d6" x="150.0" y="166.0" width="213.7" height="18" rx="3"><title>≥ 1000: 185</title></rect>
-<text x="371.7" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">185 (36.56%)</text>
+<rect class="b-cells" fill="#2a78d6" x="150.0" y="166.0" width="214.8" height="18" rx="3"><title>≥ 1000: 186</title></rect>
+<text x="372.8" y="175.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">186 (36.76%)</text>
 </g></svg>
