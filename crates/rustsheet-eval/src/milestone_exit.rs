@@ -400,6 +400,25 @@ pub struct ExitRow {
     pub exit: bool,
 }
 
+/// `row`'s Phase 1 rate measure (M9, decision 0146 item 3): the `v15_checkpoint` functions of
+/// its catalog milestone not `meets_rate`; left `None` when the run has none of them.
+fn function_rate(report: &RunReport, row: &mut ExitRow) {
+    let functions = report.v15_checkpoint.functions.iter();
+    let mine: Vec<_> = functions.filter(|f| f.milestone == row.milestone).collect();
+    if mine.is_empty() {
+        return;
+    }
+    let below: Vec<String> = mine
+        .iter()
+        .filter(|f| !f.meets_rate)
+        .map(|f| f.name.clone())
+        .collect();
+    row.rate_functions = Some(mine.len());
+    row.below_rate = Some(below.len());
+    row.rate_met = Some(below.is_empty());
+    row.below_rate_functions = below;
+}
+
 /// One row per milestone of [`MILESTONES`].
 #[must_use]
 pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
@@ -433,7 +452,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             row.gen_met = first.met;
             row.gen_visibly_off_cells = first.visibly_off_cells;
             row.gen_suite = first.name;
-            let suite = &row.gen_suite;
+            let suite = row.gen_suite.clone();
             let scope = report
                 .function_scope
                 .as_ref()
@@ -459,25 +478,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 };
             }
             if need.function_rate {
-                let below: Vec<String> = report
-                    .v15_checkpoint
-                    .functions
-                    .iter()
-                    .filter(|f| f.milestone == m && !f.meets_rate)
-                    .map(|f| f.name.clone())
-                    .collect();
-                let n = report
-                    .v15_checkpoint
-                    .functions
-                    .iter()
-                    .filter(|f| f.milestone == m)
-                    .count();
-                if n > 0 {
-                    row.rate_functions = Some(n);
-                    row.below_rate = Some(below.len());
-                    row.rate_met = Some(below.is_empty());
-                    row.below_rate_functions = below;
-                }
+                function_rate(report, &mut row);
             }
             let probes = &report.probe_milestones;
             let probe = probes.iter().find(|p| p.milestone == row.probe_row);
@@ -500,7 +501,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                     let generated = report
                         .cases
                         .iter()
-                        .filter(|r| &r.suite == suite)
+                        .filter(|r| r.suite == suite)
                         .flat_map(|r| &r.cells)
                         .filter(|c| c.kind == CellKind::SpillExtent)
                         .count();

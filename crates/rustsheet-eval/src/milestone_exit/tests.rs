@@ -685,7 +685,9 @@ fn m8_report(m8b_off: usize, subset: Option<(usize, usize)>) -> RunReport {
     r.poi_m8_subset = subset.map(|(scored, off)| PoiM8Subset {
         scored,
         visibly_off: off,
-        visibly_off_cells: (0..off).map(|i| format!("poi/a.xls!S!A{}", i + 1)).collect(),
+        visibly_off_cells: (0..off)
+            .map(|i| format!("poi/a.xls!S!A{}", i + 1))
+            .collect(),
         ..PoiM8Subset::default()
     });
     r.probe_milestones.push(MilestoneRow {
@@ -727,7 +729,10 @@ fn m8_needs_both_gen_suites_the_poi_subset_at_99_5_and_clean_probes() {
 fn m8_a_visibly_off_gen_m8b_cell_fails_alone() {
     let row = m8(&m8_report(1, Some((2_000, 0))));
     assert_eq!(row.more_suites[0].met, Some(false));
-    assert_eq!((row.gen_met, row.more_suites[1].met), (Some(true), Some(true)));
+    assert_eq!(
+        (row.gen_met, row.more_suites[1].met),
+        (Some(true), Some(true))
+    );
     assert!(!row.exit);
 }
 
