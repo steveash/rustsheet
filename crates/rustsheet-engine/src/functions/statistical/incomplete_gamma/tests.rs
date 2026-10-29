@@ -2,7 +2,7 @@
 use super::{
     cdf_terms_bound, continued_fraction_budget, gamma_cdf, gamma_density, gamma_inverse_cdf,
     gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
-    Tail, Terms, MAX_TERMS, TEMME_C,
+    wilson_hilferty_quantile, Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -250,10 +250,12 @@ fn statrs_panics_and_hangs_end_as_nan() {
     );
     // x * rate overflows (statrs: an unwrapped domain error).
     assert!(gamma_cdf(&Gamma::new(1.0, 1e10).unwrap(), 1e300).is_nan());
-    // Where it underflows to 0 (statrs panicked too) the value is statrs' at its smallest x.
+    // Where it underflows to 0 (statrs panicked too) the cdf is Excel's 0 at every shape
+    // (probes/t2982-gamma-inv-huge-shape A117-A122; T-2982).
     assert_eq!(gamma_cdf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300), 0.0);
     assert_eq!(gamma_sf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300), 1.0);
-    assert_eq!(gamma_cdf(&Gamma::new(1e-16, 1e-100).unwrap(), 1e-300), 1.0);
+    assert_eq!(gamma_cdf(&Gamma::new(1e-16, 1e-100).unwrap(), 1e-300), 0.0);
+    assert_eq!(gamma_sf(&Gamma::new(1e-300, 1e-100).unwrap(), 1e-300), 1.0);
     // A shape of 1E300 and a mean of 1: the inversion's cdfs never finish.
     assert!(gamma_inverse_cdf(&Gamma::new(1e300, 1e300).unwrap(), 0.5).is_nan());
     // The ends and invalid arguments are statrs' (its panics outside [0, 1] are NaN).
@@ -400,4 +402,44 @@ fn quantiles_in_the_tails_are_excel_s() {
         (ours - 196_001.028_447_084_83).abs() < 1e-13 * ours,
         "{ours}"
     );
+}
+
+/// Excel's closed form at a huge shape (probes/t2982-gamma-inv-huge-shape; T-2982): the median
+/// is 1.0002658235505755 times the shape, and the p sweep at shape 1E13 is within a few ulps.
+#[test]
+fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
+    let close = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 4.0 * f64::EPSILON;
+    // A34, A23: GAMMA.INV(0.5,1E13,1) and GAMMA.INV(0.5,1E300,1).
+    assert!(close(
+        wilson_hilferty_quantile(1e13, 0.0),
+        10_002_658_235_505.422
+    ));
+    assert!(close(
+        wilson_hilferty_quantile(1e300, 0.0),
+        1.000_265_823_550_575_5e300
+    ));
+    // A32: p = 0.1, z = -1.2815515655446004.
+    assert!(close(
+        wilson_hilferty_quantile(1e13, -1.281_551_565_544_600_4),
+        10_002_654_182_255.533
+    ));
+    // At shape 1E11 the fit is within 3E-13 relative (A62, A70, A77; 1,546, 149 and 721 ulps, the
+    // z^2 term T-3070 owns), as at 2E10 (A7, 599 ulps).
+    let near = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 3e-13;
+    assert!(near(
+        wilson_hilferty_quantile(1e11, -11.464_024_688_443_377),
+        100_022_956_593.373_21
+    ));
+    assert!(near(
+        wilson_hilferty_quantile(1e11, 0.0),
+        100_026_582_354.721_88
+    ));
+    assert!(near(
+        wilson_hilferty_quantile(1e11, 7.941_444_487_415_977),
+        100_029_094_070.505_65
+    ));
+    assert!(near(
+        wilson_hilferty_quantile(2e10, 0.0),
+        20_005_316_470.675_835
+    ));
 }

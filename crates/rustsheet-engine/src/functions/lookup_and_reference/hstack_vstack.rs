@@ -1,7 +1,7 @@
 use super::ref_lift::{lifts_into_references, put_back};
 use crate::calc_result::range_dims;
 use crate::functions::lift::grid_dims;
-use crate::functions::Function;
+use crate::functions::spill_functions::reject_empty_value;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -13,40 +13,6 @@ use crate::{
     model::Model,
     reference_operators::{RefArg, RefElement, RefGrid},
 };
-
-/// `CELL("contents", ref)` written out as a call with a literal info type.
-fn is_cell_contents_call(arg: &Node) -> bool {
-    match arg.ungrouped() {
-        Node::FunctionKind {
-            kind: Function::Cell,
-            args,
-        } => matches!(
-            (args.first().map(Node::ungrouped), args.len()),
-            (Some(Node::StringKind(info)), 2) if info.eq_ignore_ascii_case("contents")
-        ),
-        _ => false,
-    }
-}
-
-/// A stack argument written as `CELL("contents", ref)` whose target is blank makes the whole
-/// stack one `#VALUE!`; a non-blank target stacks its value (probes/t2466-cell-contents-stack A1,
-/// A31, A41, A51; probes/t3030-cell-contents-blank-shapers A291, excel-graph, T-3030). Excel's CELL
-/// result for a blank target is an empty value that array arguments reject, which reaches through
-/// LET, IF and an info type read from a cell too (information.md); ours cannot tell it from a blank
-/// reference read through those, so only the literal call is caught here (TODO(T-3053)).
-fn blank_cell_contents(
-    arg: &Node,
-    result: &CalcResult,
-    cell: CellReferenceIndex,
-) -> Option<CalcResult> {
-    (matches!(result, CalcResult::EmptyCell) && is_cell_contents_call(arg)).then(|| {
-        CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "CELL(\"contents\") of a blank cell is not stackable".to_string(),
-        )
-    })
-}
 
 /// A VSTACK argument once its cells are read: copied, or a range read but not copied yet.
 enum Stacked {
@@ -86,19 +52,18 @@ impl Model {
         // flags as a Graph-backend answer, not trusted as Excel's).
         let mut results: Vec<CalcResult> = Vec::with_capacity(args.len());
         for arg in args {
+            // The empty value is `#VALUE!` (`HSTACK(CELL("contents",<blank>),1)`,
+            // probes/t2466-cell-contents-stack A41; `reject_empty_value`, T-3053).
             let result = self.evaluate_node_in_context(arg, cell);
-            if let Some(error) = blank_cell_contents(arg, &result, cell) {
-                return error;
-            }
-            match result {
-                err @ CalcResult::Error { .. } => return err,
-                CalcResult::Range { left, right } => {
+            match reject_empty_value(arg, result, cell) {
+                Err(err) | Ok(err @ CalcResult::Error { .. }) => return err,
+                Ok(CalcResult::Range { left, right }) => {
                     if let Err(error) = self.read_range_cells(left, right, cell) {
                         return error;
                     }
                     results.push(CalcResult::Range { left, right });
                 }
-                result => results.push(result),
+                Ok(result) => results.push(result),
             }
         }
 
@@ -184,13 +149,15 @@ impl Model {
                 results.push(None);
                 continue;
             }
+            // An argument that is the empty value makes the whole stack one `#VALUE!`, through
+            // LET, IF, CHOOSE, `@` and parentheses too, where a blank reference stacks as 0
+            // (probes/t2466-cell-contents-stack A31, A111, A121; t3053-blank-reference-wrappers;
+            // `reject_empty_value`, T-3053). It is checked in argument order, so an earlier error
+            // argument wins (`VSTACK(1/0,CELL("contents",<blank>))` `#DIV/0!`, t2466 A91).
             let result = self.evaluate_node_in_context(arg, cell);
-            if let Some(error) = blank_cell_contents(arg, &result, cell) {
-                return error;
-            }
-            match result {
-                err @ CalcResult::Error { .. } => return err,
-                result => {
+            match reject_empty_value(arg, result, cell) {
+                Err(err) | Ok(err @ CalcResult::Error { .. }) => return err,
+                Ok(result) => {
                     let (rows, cols) = unread_dims(&result);
                     known_rows = known_rows.saturating_add(rows);
                     known_cols = known_cols.max(cols);

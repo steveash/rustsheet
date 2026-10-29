@@ -374,10 +374,10 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                 continue  # written with its table (`_totals_column`)
             if a1 in bare:
                 text = _formula_text(raw, tables, prefix_functions=False)
-                ws.write_dynamic_array_formula(row, col, row, col, text, formats.get(a1))
+                ws.write_dynamic_array_formula(row, col, row, col, _cell_formula(text), formats.get(a1))
                 continue
             if a1 in legacy:
-                ws.write_formula(row, col, _formula_text(raw, tables), formats.get(a1))
+                ws.write_formula(row, col, _cell_formula(_formula_text(raw, tables)), formats.get(a1))
                 continue
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
                 # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
@@ -918,6 +918,14 @@ def _formula_text(raw: str, tables: frozenset[str], *, prefix_functions: bool = 
     return prefix_future_functions(text) if prefix_functions else text
 
 
+def _cell_formula(text: str) -> str:
+    """`text` as handed to XlsxWriter's formula writers, which drop one trailing `}` from every cell
+    formula (`_prepare_formula` strips CSE braces even without a leading `{=`), so `=1+{2;3}` would
+    reach the file as `1+{2;3` and Excel for the web refuse the workbook (T-3051). Defined names
+    keep it."""
+    return text + "}" if text.endswith("}") else text
+
+
 def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None, *, tables: frozenset[str]) -> float | None:
     """Writes one spec cell (with number format `fmt`, if any; formulas may name `tables`); returns
     the number when it went through `write_number`, else None."""
@@ -928,7 +936,7 @@ def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None, *, tables: fr
         return float(raw)
     elif isinstance(raw, str):
         if raw.startswith("="):
-            ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw, tables), fmt)
+            ws.write_dynamic_array_formula(row, col, row, col, _cell_formula(_formula_text(raw, tables)), fmt)
         elif raw == "":
             ws.write_formula(row, col, '=""', fmt)
         else:
