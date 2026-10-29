@@ -121,6 +121,15 @@ Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::bool_or_error_operand_matcher
 
+## Numeric `<`, `<=`, `>`, `>=` criteria compare the 15-digit value of the cell
+Rule: a number cell meets an ordering criterion by its 15-digit value, like `=` and `<>`: a cell holding `1+22*2^-52`
+(prints 1) meets `"<=1"`, `">=1"` and `"=1"` but not `">1"`; `1+23*2^-52` meets `">1"`. Same in COUNTIF, SUMIF,
+COUNTIFS and SUMIFS. The criterion's own operand is text, already cut to 15 digits when parsed.
+Evidence: probes/t3072-criteria-near-equal-order (288 criteria cells); details in numbers.md "Criteria ordering
+operators compare at 15 digits too".
+Status: VERIFIED (engine not yet: `result_is_less_than_number` and the other three ordering matchers in
+functions/criteria.rs compare raw doubles, T-3103)
+
 ## Text `<=` / `>=` criteria, and dotted dates are text in en-US
 Rule: `"<=text"` and `">=text"` compare the cell text with the operand, case-insensitively, like
 `"<"` and `">"`: over "10.1.2026", "10.3.2026", "10.6.2026", `">=10.3.2026"` counts 2,

@@ -302,6 +302,13 @@ verdict is `n/a` and `exit` ignores it), needs 10,000 scored `gen-m2` cells with
 and reads the `M0-M2` probe row (`probe_row`). Each row lists its gen suite's visibly-off cells
 (`gen_visibly_off_cells`) and each probe row its own (`visibly_off_cells`), so
 `scripts/exit_owners.py` lists exactly the visibly-off exit cells without re-deriving closeness.
+The M9 row (decision 0146 item 3, T-0095) requires no suite (`gen_suite` is empty and prints `none
+required`); its ironcalc-calc measure is a rate: the function-scope row less its deviations and exit
+exceptions (`calc_scored`) with at most `floor(0.0005 * calc_scored)` visibly off (`calc_allowance`),
+and every `v15_checkpoint` function of catalog milestone M9 must be `meets_rate` (`rate_functions`,
+`below_rate`, `rate_met`; `below_rate_functions` names the others, whose `attributed_off` cells
+`exit_owners.py` lists as `rate:<FUNCTION>`). Rates are over a denominator of 10,000 so that 99.95% is
+one `meets_rate` call.
 
 The "Fifteen-digit parity checkpoint" section (`v15_checkpoint`, decision 0094) also prints the
 Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one cell in

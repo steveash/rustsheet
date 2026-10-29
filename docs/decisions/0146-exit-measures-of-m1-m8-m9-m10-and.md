@@ -108,3 +108,11 @@
     visibly-off cells of every required suite (by `gen_suite`, falling back to `gen-m<k>`, then
     `more_suites`) and of a `milestone_lists` row whose name is the exit row's `probe_row`. The
     M2, M5, M6 and M7 rows read and print as before.
+  - T-0095 (2026-10-29) builds the M9 row of item 3. It requires no suite (`gen_suite` is empty).
+    (a) reads the cumulative M9 function-scope row: scored cells are its cells less deviations and
+    exit exceptions, met at `meets_rate` with 9,995 over a denominator of 10,000 (every rate in
+    `milestone_exit` moved from over 1,000 to over 10,000, same shares). (b) reads `v15_checkpoint`'s
+    rows, which now carry each function's catalog `milestone`, and counts the M9 ones not
+    `meets_rate`. `scripts/exit_owners.py` lists, beside the function-scope and probe cells, the
+    `attributed_off` cells of each function the row names in `below_rate_functions`, as
+    `rate:<FUNCTION>`, through the same reader `--all-off` uses.
