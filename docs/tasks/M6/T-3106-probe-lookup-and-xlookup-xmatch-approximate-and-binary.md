@@ -3,7 +3,7 @@ id: T-3106
 title: "Probe LOOKUP and XLOOKUP/XMATCH approximate and binary modes with a key a few ULP from a table number"
 milestone: M6
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
