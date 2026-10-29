@@ -3,7 +3,7 @@ id: T-0965
 title: "Add upstream ISREF.xlsx to calc_tests once its remaining cells pass"
 milestone: M9
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -19,8 +19,11 @@ No dependency on T-0963 (T-0091): T-0223 landed its code, and T-0963 only confir
 the workbook, so T-0963 depends on this task and not the reverse (the two formed a `depends_on` cycle).
 
 ## Acceptance criteria
-- [ ] ISREF.xlsx added; `rustsheet-eval show ironcalc-calc/INFORMATION/ISREF.xlsx` shows 43/43; baseline updated, 0 regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] ISREF.xlsx added; `rustsheet-eval show ironcalc-calc/INFORMATION/ISREF.xlsx` shows 43/43; baseline updated, 0 regressions.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Added upstream `INFORMATION/ISREF.xlsx` (ironcalc 9add6b67) to calc_tests; 43/43 cells pass; baseline gained the new case with 0 regressions.
