@@ -157,7 +157,18 @@ column lifts too (`ROWS(VLOOKUP(D:D,A1:B4,2,FALSE))` is 1048576) and the engine 
 shared cell-visit cap (criteria.md): elements times the evaluated cells of the searched column or row,
 whatever the table is (DEVIATION, decision 0014: `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)`
 is `#ERROR!`).
-Unprobed: blank elements of a multi-cell lookup_value.
+A blank element of a multi-cell lookup_value is looked up exactly as the scalar blank-cell key: as the number 0, in every
+form. That holds for the blank middle cell of a range (`VLOOKUP(Keys!A1:A3,..)`, `HLOOKUP(Keys!C1:E1,..)`,
+`MATCH(Keys!A1:A3,..)`), for the blank element of an array (`IF({1;0;1},Keys!A1:A3,Keys!G1)`), and for a whole-column
+lookup_value read inside the used area and far below it (`INDEX(VLOOKUP(Keys!A:A,..),1000)`). Against tables holding a 0
+row, a `=""` row, a FALSE row or only a blank row among numbers, the blank element finds the 0 row and nothing else in
+exact mode (`#N/A` against the `""`, FALSE and blank tables), steps to the last number below 0 in the approximate
+VLOOKUP/HLOOKUP TRUE and `MATCH(..,1)` (the -1 row), and takes the smallest number at or above 0 in `MATCH(..,-1)`. It is
+never `""` or FALSE, and it never matches a blank row. The non-blank elements of the same lookup_value are unaffected.
+Evidence for the blank elements: probes/t3096-lookup-value-blank-elements (200 cells, excel-graph, 2026-10-29, T-3096;
+Calc rows 16-22 the range middle, 37-43 the array element, 44-51 the whole column, each identical to the scalar control
+rows 2-8 across the four tables in columns B-E). The engine matches every cell: `lift_values` hands a blank element to `lookup_index` as the
+blank key.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
 `Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
@@ -659,11 +670,13 @@ MATCH, XMATCH, XLOOKUP and LOOKUP.
   row: `XMATCH(J5,A1:A5,-1)` is 5 and `XLOOKUP(J5,A1:A5,B1:B5,"nf",-1)` is "e". That is the existing blank-key behavior, not a new
   rule: the blank is the number 0 in the approximate lookups (below 10, so `#N/A`; see "Approximate-match lookups") and larger than
   every number in XMATCH/XLOOKUP (so -1 takes the last row; see "XMATCH / XLOOKUP linear search over blanks"). The probe has no 0,
-  `""` or blank candidates, so it does not test those against a reference-shaped key.
+  `""` or blank candidates, so it does not test those against a reference-shaped key. The plain blank-cell key against
+  tables that do hold a 0, a `=""`, a FALSE or a blank row is probes/t3096-lookup-value-blank-elements Calc rows 2-8: it
+  finds only the 0 row (exact), and lands as the number 0 would in the approximate searches (above).
 Evidence: probes/lookup-reference-lookup-value-blank-error (165 cells: 5 shapes x {blank, #DIV/0!, #N/A} x 11 lookups;
 excel-graph, 2026-10-12, T-1371). The engine already matches every cell.
 Status: VERIFIED
-Tasks: T-1371
+Tasks: T-1371, T-3096
 
 ## XMATCH and XLOOKUP next-smaller mode: text sorts above every number
 Rule: with match_mode -1 (exact or next smaller), a text lookup_value that is not found among numbers takes the last number:
