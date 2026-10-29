@@ -565,7 +565,8 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                 if let Some(l) = lists.iter().find(|l| l.name == list && l.cases_run > 0) {
                     row.probe_known_failures = Some(l.known_failures);
                     row.probe_visibly_off = Some(l.visibly_off);
-                    row.probes_met = Some(l.visibly_off == 0);
+                    // A subset run (`--filter`, `--suite`) is no verdict on the list (decision 0146).
+                    row.probes_met = (l.cases_run == l.cases).then_some(l.visibly_off == 0);
                 }
             } else if let Some(p) = probe {
                 row.probe_known_failures = Some(p.known_failures);
