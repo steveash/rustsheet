@@ -3,7 +3,7 @@ id: T-2804
 title: "SPEC-0024 step 2: the aggregate walker charges the array cells it reads"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
