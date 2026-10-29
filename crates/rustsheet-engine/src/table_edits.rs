@@ -13,7 +13,7 @@ use crate::expressions::parser::stringify::{DataBlock, DisplaceData, Displacemen
 use crate::expressions::types::Area;
 use crate::expressions::utils::number_to_column;
 use crate::model::Model;
-use crate::types::{Table, TableColumn};
+use crate::types::{FilterColumn, Table, TableColumn};
 
 /// What a structural edit does to the tables of the edited sheet.
 #[derive(Debug, Default, PartialEq)]
@@ -297,6 +297,27 @@ fn edit_columns(columns: &mut Vec<TableColumn>, edit: ColumnEdit) {
     }
 }
 
+/// Moves the kept autoFilter criteria with their columns through the column edit `edit`, as
+/// [`edit_columns`] moves the columns: a criterion right of the edit shifts by its delta, and one
+/// on a deleted column goes with it. Without this, an export would write a criterion on the wrong
+/// column, or past the table's last one.
+fn edit_filter_columns(filters: &mut Vec<FilterColumn>, edit: ColumnEdit) {
+    let index = u32::try_from(edit.index).unwrap_or(u32::MAX);
+    if edit.delta < 0 {
+        let deleted = u32::try_from(edit.deleted()).unwrap_or(u32::MAX);
+        let end = index.saturating_add(deleted);
+        filters.retain(|f| f.col_id < index || f.col_id >= end);
+        for filter in filters.iter_mut().filter(|f| f.col_id >= end) {
+            filter.col_id -= deleted;
+        }
+    } else {
+        let inserted = u32::try_from(edit.delta).unwrap_or(0);
+        for filter in filters.iter_mut().filter(|f| f.col_id >= index) {
+            filter.col_id = filter.col_id.saturating_add(inserted);
+        }
+    }
+}
+
 /// Appends one column to `columns` and returns its name: `name` when no column of the table has
 /// that name (compared ignoring case), else `ColumnN` as [`edit_columns`] names an inserted
 /// column.
@@ -438,6 +459,7 @@ impl Model {
                 }
                 if let Some(edit) = resized.columns {
                     edit_columns(&mut table.columns, edit);
+                    edit_filter_columns(&mut table.filter_columns, edit);
                     headers.extend(inserted_headers(table, edit));
                 }
             }
@@ -452,8 +474,10 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{append_column, column_span, edit_columns, row_span, ColumnEdit, Span};
-    use crate::types::TableColumn;
+    use super::{
+        append_column, column_span, edit_columns, edit_filter_columns, row_span, ColumnEdit, Span,
+    };
+    use crate::types::{FilterColumn, FilterCriterion, TableColumn};
 
     /// Header row 3, data rows 4-7, no totals row.
     fn rows(at: i32, delta: i32) -> Span {
@@ -585,5 +609,37 @@ mod tests {
             },
         );
         assert_eq!(names(&columns), [(3, "Price")]);
+    }
+
+    /// Kept filter criteria follow their columns through an insert and a delete (T-2838).
+    #[test]
+    fn filter_criteria_follow_their_columns() {
+        let filter = |col_id| FilterColumn {
+            col_id,
+            criterion: FilterCriterion::Other,
+        };
+        let ids = |filters: &[FilterColumn]| filters.iter().map(|f| f.col_id).collect::<Vec<_>>();
+        let mut filters = vec![filter(0), filter(2)];
+        edit_filter_columns(&mut filters, ColumnEdit { index: 1, delta: 2 });
+        assert_eq!(ids(&filters), [0, 4]);
+        edit_filter_columns(&mut filters, ColumnEdit { index: 4, delta: 1 });
+        assert_eq!(ids(&filters), [0, 5]);
+        // Deleting columns 1-2 shifts the criterion on 5 to 3; deleting column 0 drops its own.
+        edit_filter_columns(
+            &mut filters,
+            ColumnEdit {
+                index: 1,
+                delta: -2,
+            },
+        );
+        assert_eq!(ids(&filters), [0, 3]);
+        edit_filter_columns(
+            &mut filters,
+            ColumnEdit {
+                index: 0,
+                delta: -1,
+            },
+        );
+        assert_eq!(ids(&filters), [2]);
     }
 }

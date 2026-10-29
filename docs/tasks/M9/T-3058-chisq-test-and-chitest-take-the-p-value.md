@@ -3,7 +3,7 @@ id: T-3058
 title: "CHISQ.TEST and CHITEST take the p-value from the direct upper tail, not 1 - P"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -50,3 +50,8 @@ The `p > 1` / `p < 0` clamps that follow stay; a direct Q never exceeds 1.
 Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
 of Excel's value, or has Excel's type, error and text. It owns m9-legacy-chitest Calc!A23, and fixing it lifts
 CHITEST to the Phase 1 rate (T-3021).
+
+## Outcome
+`fn_chisq_test` takes `chi_squared_sf` (the direct right tail) at every df. New unit test pins `CHITEST` at chi2 = 18, df 2 to
+`exp(-9)` bit for bit. statistics.md's T-0971 rule notes it. Eval: `rustsheet-eval check` 0 regressions, 0 fixed, no baseline
+change (probes-numeric is not gated); m9-legacy-chitest A23 now matches Excel.
