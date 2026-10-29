@@ -3,7 +3,7 @@ id: T-0965
 title: "Add upstream ISREF.xlsx to calc_tests once its remaining cells pass"
 milestone: M9
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
