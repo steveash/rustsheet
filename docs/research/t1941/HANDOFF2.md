@@ -776,4 +776,36 @@ Summary `t2122/k3_j6scan_real_summary.log` (`t2122/k3_j6map.py OUT real`; the `.
   c -46, d 56). Further off (> 16) the best is 1577 at (b -12.0, c 46, d -56), the mirror of the last one. The off-ridge
   tops come as (b, c, d) and (-b, -c, -d) pairs, the signature of the base's sidelobes, not of a planted top (the
   control's truth peak has no mirror). Off-ridge median 742, sd 139.
-CONTROL_PLACEHOLDER
+### 18.4 The KN = 7 control on the same grid, and what the two maps say
+`sh t2122/k3_j6scan.sh PY ROWS control OUT` (box from c7: |d| <= 628, c within 0.380 d +- 75; 22,303 pairs, 53 min).
+Summary `t2122/k3_j6scan_control_summary.log` (`TRUTH=60.42,56.49 k3_j6map.py OUT control`).
+- **The control's map looks like the real one.** Base 2051.8 at (0, 0, 0). Base ridge c = -0.513 d + 1.5 (real: -0.553 d
+  - 2.1). The same mirror-paired sidelobes: 1757 at (b 7.8, c -42, d 60) and 1706 at (b -13.0, c 50, d -60). Median
+  801, sd 200 (real 747, 207).
+- **Ranked over the whole map, the S-only score does not find the planted top.** The grid pair at the truth scores 1495.0
+  at (b -75.7, c 60, d 56). That is only rank 243 of 21,966 off-ridge pairs, under the base's sidelobes. So the J=6 map
+  is no evidence either way as it stands.
+- **A cut on b separates them**, because the sidelobes sit at |b| <= 14 and the truth at b -75.7:
+
+| map | best at abs(b) > 20 | best at abs(b) > 30 | median / sd at abs(b) > 30 |
+|---|---|---|---|
+| control (planted, S_7 and S_8 in 80-bit) | **1495 at the truth (rank 1)**, then 1447 and 1434 next to it | 1495 at the truth (rank 1), Z 6.1 | 784 / 116 |
+| real, from C | 1294 at (b 20.1, c -54, d 40), with its mirror 1265 at (b -20.1, c 56, d -40) | 1108 at (b -30.2, c 62, d -20), Z 4.6 | 730 / 83 |
+
+- Reading: **inside the 3-sigma ridge and at |b| > 30 (most of the ladder's |b| <= 158), the real data has no J=6 top of
+  the height a stored S_6 under an 80-bit S_7/S_8 gives the control.** The real maxima there are at the cut's edge and
+  come in mirror pairs, like sidelobes. Region |b| <= 30 stays blind under the base's sidelobes. So either the stored
+  S_6's move lies at |b| <= 30, or S_6 is not stored either (an 80-bit top deeper than S_7), or the move lies outside the
+  3-sigma ridge. This weighs against the simplest form of 17.5 (2), "S_7 (and S_8) unstored, S_6 stored", but does not
+  rule it out.
+
+### 18.5 Next steps (in order)
+1. Open the |b| <= 30 region: subtract the base's own bias map. Run the same ridge scan on a control whose truth is the
+   base itself (`TRUTHFILE` = the base set, KN = 7), then rank real minus bias per (c, d) pair. Check on the planted control
+   first: the truth must rank 1 with no b cut.
+2. Test a deeper unstored top: synthesise the control with KN = 6 (S_6 also 80-bit) and check that the J=6 truth peak
+   vanishes the way the J=7 one did in 17.7. Then scan J=5 (N.S5, quartic dS: scan3 needs a fourth term) at |b| > 30
+   with the same cut.
+3. Add the joint (S + P_5) rescoring of scan2.py to scan3.py for the kept candidates. At the truth the joint score is
+   1624 (S 1414, P 211). It may lift the truth above the sidelobes without a b cut.
+4. 17.4.1 and 17.4.3 (more ladder rows on N5 and N7; the D chain) still stand.
