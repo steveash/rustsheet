@@ -1367,6 +1367,7 @@ C	probes/t2693-subnormal-loginv.case.json	2
 C	probes/t2693-subnormal-weibull.case.json	2
 C	probes/t2705-scientific-mantissa-rounding.case.json	14
 C	probes/t2706-subnormal-density-paths.case.json	70
+C	probes/t2707-prob-orders.case.json	79
 C	probes/t2709-typed-concat-253.case.json	2
 C	probes/t2709-typed-concat-254-long.case.json	2
 C	probes/t2709-typed-concat-254-short.case.json	2
@@ -3566,6 +3567,19 @@ F	probes/t2577-indirect-ref-array.case.json	Calc!T64
 F	probes/t2577-indirect-ref-array.case.json	Calc!U148
 F	probes/t2577-indirect-ref-array.case.json	Calc!U157
 F	probes/t2577-indirect-ref-array.case.json	Calc!U64
+F	probes/t2707-prob-orders.case.json	Calc!A37
+F	probes/t2707-prob-orders.case.json	Calc!A38
+F	probes/t2707-prob-orders.case.json	Calc!A39
+F	probes/t2707-prob-orders.case.json	Calc!A43
+F	probes/t2707-prob-orders.case.json	Calc!A44
+F	probes/t2707-prob-orders.case.json	Calc!A49
+F	probes/t2707-prob-orders.case.json	Calc!A50
+F	probes/t2707-prob-orders.case.json	Calc!A60
+F	probes/t2707-prob-orders.case.json	Calc!A64
+F	probes/t2707-prob-orders.case.json	Calc!A65
+F	probes/t2707-prob-orders.case.json	Calc!B51
+F	probes/t2707-prob-orders.case.json	Calc!C51
+F	probes/t2707-prob-orders.case.json	Calc!D51
 F	probes/t2738-gamma-dist-tiny-ratio.case.json	S!A4
 F	probes/t2753-gamma-density-ratio-sweep.case.json	S!A1
 F	probes/t2753-gamma-density-ratio-sweep.case.json	S!A10

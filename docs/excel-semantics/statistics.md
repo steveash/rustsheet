@@ -4122,17 +4122,24 @@ Status: VERIFIED (excel-graph), one cell
 Tasks: T-2614
 
 ## PROB: an error data argument first, one value on each side is #DIV/0!, unequal counts #N/A (T-2256)
-Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error,
-then prob_range given as an error value (`PROB(2,SINH(1E+8),DAY(..)<#VALUE!>)` is `#NUM!`, d8f44d556674c2fd A40;
-`PROB(<#CALC!>,Data!A4:A7,<#VALUE!>)` `#CALC!`, eccd03df42e40006 A16); a one-cell reference to an empty cell is `#VALUE!`
-(as in the paired functions, T-2426); then an error lower or upper limit (T-1813); then x_range and prob_range of
+Rule: PROB checks its data in this order, each step before the next: x_range given as an error value is that error, and a
+blank one-cell x_range `#VALUE!`; then prob_range the same way (a blank x_range beats prob_range's error:
+`PROB(<blank>,NA(),1)` and `PROB(<blank>,1/0,1)` are `#VALUE!`, `PROB(NA(),<blank>,1)` `#N/A`, probes/t2707-prob-orders
+A9:A12; `PROB(2,SINH(1E+8),DAY(..)<#VALUE!>)` is `#NUM!`, d8f44d556674c2fd A40;
+`PROB(<#CALC!>,Data!A4:A7,<#VALUE!>)` `#CALC!`, eccd03df42e40006 A16; the blank's `#VALUE!` as in the paired functions,
+T-2426); then an error lower or upper limit (T-1813); then x_range and prob_range of
 different **cell** counts are `#N/A`, blanks, text and booleans counted (`PROB(Data!C7:D7,1E-15,2)`, a number and a
 blank against one number, is `#N/A`, 787ba8d801105a60 A108; `PROB(Data!C1:E6,"b",1.3)` 18 against a typed text,
 329b177b5d5165ad A206; `PROB(Data!C2:D11,Data!C5:E8,..)`, 20 against 12 cells, 873f30d2bf76f8db A300;
-`PROB((7/-(-2.5)),Data!A8:D8,1.005)`, 1 against 4, 5be29fa316931f05 A215). Equal counts pair cell by cell, row-major
+`PROB((7/-(-2.5)),Data!A8:D8,1.005)`, 1 against 4, 5be29fa316931f05 A215), ahead of an error element of an array on either
+side (`PROB(0,IF({1,1,1,1},1/0),0)` and `PROB(IF({1,1},1/0),{0.5,0.5,0},1)` are `#N/A`, t2707 A54, A56); with equal counts an
+error cell or element is the result, x_range's first (`PROB(<1;#DIV/0!;3>,<0.2;#N/A;0.5>,1)` is `#DIV/0!`, A19; A20, A21,
+A55), and a direct error value on the other side still comes first (A16:A18). Equal counts pair cell by cell, row-major
 whatever the shapes, and a pair counts only when both cells are numbers: `PROB(Data!D3:D8,Data!C5:C10,0.3,0.3)` is 0
 because the probabilities -1 and 3.14159 sit beside a blank and a text and are dropped, leaving 0.3, 0.2 and 0.5
-(e6cf3b20a014e6a3 A229, T-2436 probe). No pair of numbers is `#DIV/0!`: a single text or boolean against a number
+(e6cf3b20a014e6a3 A229, T-2436 probe). Text and booleans inside an array constant are dropped the same way, numeric text
+too (`PROB({1;"a";3},{0.5;0;0.5},1)` is 0.5, `PROB({1;"a";3},{0.2;0.3;0.5},1)` `#NUM!` for the remaining sum 0.7,
+`PROB({1;2;3},{0.5;"0.3";0.5},1)` 0.5, `PROB({1;2;3},{0.2;TRUE;0.8},1)` 0.2; A24:A34). No pair of numbers is `#DIV/0!`: a single text or boolean against a number
 (`PROB(Data!C$4,13,-2.5)` with C4 TRUE, 334f3dc9ca937f10 A82; `PROB(<"#N/A" text cell>,1.2,3.8,1)`, 583ca2baea0bb30a
 A182; a typed boolean `PROB(-5.99,TRANSPOSE(" x "<>Data!A$11),0,3.14159)`, 5cebac1f02bf30f2 A372). A pair of numbers
 then goes through the probability checks (`#NUM!` for a probability outside [0, 1] or a sum other than 1:
@@ -4142,17 +4149,17 @@ against 4, 873f30d2bf76f8db A72). The `#DIV/0!` of `PROB((ERF(1E-10)+(-0.5)),EFF
 limit's: Excel's PV at a rate of -0.9999999999 over 78 or 161 periods would be `#DIV/0!` (ours `#NUM!`; inferred,
 UNVERIFIED, the PV itself is not probed). These are direct error values; an error inside a range still loses to a
 lower/upper error (T-1813, section "RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Whether a
-lower_limit error beats unequal counts rests on cells whose lower_limit is an inner function ours computes differently
-(d37313406b9f6e55 A142, a YIELD, `#NUM!`): UNVERIFIED. A bare typed text or boolean (`PROB(1,"a",1)`, `PROB(-6,1=1,0,3)`)
-taken as one cell with no number, so `#DIV/0!` against a single number, is inferred from the typed text's `#N/A`
-against 18 cells (A206) and the TRANSPOSE'd boolean (A372): UNVERIFIED. A blank one-cell x_range against an error
-prob_range (ours: the error) has no cell: UNVERIFIED.
-Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256): the top-level PROB cells of T-2468 and T-2426; probes/t2436 (T-2436).
+lower_limit error beats unequal counts rests on a cell whose lower_limit is an inner YIELD (d37313406b9f6e55 A142,
+`#NUM!`, which ours now matches); no probe cell separates them (t2707 A57 has the same error on both sides): UNVERIFIED.
+A bare typed text, numeric text or boolean on either side is one cell with no number, so `#DIV/0!` against a single
+number (`PROB(1,"a",1)`, `PROB("1",1,1)`, `PROB(-6,1=1,0,3)`, `PROB(1,TRUE,1)`; t2707 A1:A8).
+Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256): the top-level PROB cells of T-2468 and T-2426; probes/t2436 (T-2436);
+probes/t2707-prob-orders (excel-graph, 2026-10-29, T-2707).
 An earlier reading of this entry ("a single value on both sides is `#DIV/0!`") was wrong: a pair of numbers is checked
 as usual (T-2468).
-Ours: since T-2468 (`statistical/prob.rs`) an error value as x_range, then prob_range, comes before the limits, then a
-blank one-cell reference is `#VALUE!`; the data pairs by position (`paired_values`), unequal cell counts are `#N/A`, no
-pair of numbers `#DIV/0!`, each after the limits.
+Ours: since T-2468 (`statistical/prob.rs`) an error value or a blank one-cell reference as x_range, then as prob_range
+(T-2707), comes before the limits; the data pairs by position (`paired_values`), unequal cell counts are `#N/A` before an
+array's error element (T-2707), no pair of numbers `#DIV/0!`, each after the limits.
 Status: VERIFIED (excel-graph) except the noted UNVERIFIED parts
 
 ## T.TEST: an error sample first, then tails and type errors, then their range check (T-2256)

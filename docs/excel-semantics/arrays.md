@@ -1965,6 +1965,13 @@ of the call with that element in the argument's place, or that call's error. A o
   `#VALUE!`, `#N/A` (A97).
 - A multi-cell range lifts as an array does (`Data!D1:E1` holding 0 and 1, as field_headers or total_depth: A177, A225), and a
   blank element is valid (A185; whether as 0 or as omitted is unprobed: the data has no header to tell them apart).
+- The reference INDEX returns does not lift where a written range does: with Data!A4:D4 holding 2.5, 1E+15, "1" and FALSE,
+  `GROUPBY(..,0,INDEX(Data!A4:D4,0),-2)` (also `INDEX(Data!A4:D4,1,0)` and `INDEX(Data!A4:D4,<blank>)`) is one `#VALUE!` under
+  ROWS, COLUMNS, ISERROR, ERROR.TYPE, ARRAYTOTEXT and SUM, while `Data!A4:D4` and `INDEX(Data!A4:D4,<blank>)+0` lift to 1x4
+  (probes/t2707-prob-orders A37:A39, A49:A51, A61, A63:A65, A68). Under PROB's data argument the same INDEX call lifts:
+  `PROB(0,GROUPBY(..,INDEX(Data!A4:D4,<blank>),-2),0)` is `#N/A`, one cell against four (A44, through LET A60;
+  gen-m9/17c110a53924beb8 A330). What decides it (the caller's argument kind?) is unprobed. Ours lifts the INDEX reference
+  everywhere it is evaluated as a value and gives one `#VALUE!` under PROB, the reverse: T-3088.
 - An invalid number comes after a later argument's error value (`GROUPBY(k,v,SUM,0,{5},,,1/0)` and the scalar
   `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number, typed or computed, comes before it,
   scalar or lifted (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201). Text read from a one-cell reference is unprobed (ours
@@ -1983,15 +1990,15 @@ of the call with that element in the argument's place, or that call's error. A o
 - Not yet matched: `SCAN(GROUPBY(..,LAMBDA(w,w)),0,MIN)` is a single `#N/A` and `SCAN(GROUPBY(..,SUM),0,MIN)` a single 0
   (A153, A161; T-2398).
 Evidence: probes/groupby-lifted-args (excel-graph, 2026-10-22, T-2359), probes/groupby-lifted-args2 (excel-graph, 2026-10-23,
-T-2399); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
+T-2399), probes/t2707-prob-orders (excel-graph, 2026-10-29, T-2707); gen-m7/18b80d3fd292d63a A1481, 611ce3bbfab27cef A1584,
 b24ce74f08d3f91a A1778.
 Ours: `Model::lift_options` (functions/lookup_and_reference/lifted_options.rs) evaluates each option once, broadcasts the array
 options with the lifting driver's `broadcast_shape`, and re-runs the call once per class of the elements at a position (a
 whole number within the valid range, another number, a boolean, text that is no number, an error), with every other argument
 frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
-Status: VERIFIED (excel-graph)
-Tasks: T-2359, T-2397, T-2398, T-2399, T-2451
+Status: VERIFIED (excel-graph), except the INDEX-reference bullet, not yet matched (T-3088)
+Tasks: T-2359, T-2397, T-2398, T-2399, T-2451, T-3088
 
 ## An empty array as a function argument (T-2436)
 Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH's
