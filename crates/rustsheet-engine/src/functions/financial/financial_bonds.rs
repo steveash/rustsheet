@@ -15,7 +15,7 @@ use coupon_schedule::{
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 use odd_last::odd_l_func;
-use yield_solver::{excel_yield_newton, odd_first_yield, yield_start};
+use yield_solver::{excel_yield_newton, odd_first_yield, yield_start, StartTerm};
 
 use super::number_or_error;
 use crate::{
@@ -191,19 +191,19 @@ fn compute_price(
 /// that Newton leaves PRICE's domain YIELD is #NUM!, with no fallback, even where PRICE has a root
 /// (`YIELD(36665,44491,42,106,100,4,0)`, `YIELD(39448,43831,0.05,1E+5,100,2)`; T-2391).
 fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
-    let years = yield_start_years(bond.settlement, bond.maturity, bond.basis)
+    let term = yield_start_years(bond.settlement, bond.maturity, bond.basis)
         .ok_or_else(|| "#NUM!".to_string())?;
     let (rate, redemption, frequency) = (bond.rate, bond.redemption, bond.frequency);
     excel_yield_newton(
         bond.yld_or_pr,
-        yield_start(rate, bond.yld_or_pr, years),
+        yield_start(rate, bond.yld_or_pr, &term),
         |y| schedule.price(rate, y, redemption, frequency, discount_growth),
         |y| schedule.dprice(rate, y, redemption, frequency),
     )
     .ok_or_else(|| "#NUM!".to_string())
 }
 
-/// The term [`yield_start`] takes, in years, from the `settlement` and `maturity` serials: the
+/// The term [`yield_start`] takes, as its parts ([`StartTerm`]), from the `settlement` and `maturity` serials: the
 /// whole years from settlement to maturity, then the basis' days from the last anniversary of the
 /// settlement to maturity over 360 (bases 0, 2 and 4), 365 (basis 3) or the length of the
 /// maturity's calendar year (basis 1). A 29 February settlement has its anniversaries on 1 March
@@ -215,7 +215,7 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
 /// not DAYS360 over the whole term (financial.md "YIELD stops short of PRICE's root"). The dates
 /// are the ones Excel shows, so serial 60 is 29 February 1900 (`YIELD(60,36585,0.05,90,100,4)`
 /// starts from 100 years; probes/fin-coupon-walk-bounds-c H12). `None` off the calendar.
-fn yield_start_years(settlement: i64, maturity: i64, basis: u32) -> Option<f64> {
+fn yield_start_years(settlement: i64, maturity: i64, basis: u32) -> Option<StartTerm> {
     let (year, month, day) = excel_serial_to_ymd(settlement)?;
     let end = excel_serial_to_ymd(maturity)?;
     let anniversary = |y: i32| {
@@ -247,7 +247,11 @@ fn yield_start_years(settlement: i64, maturity: i64, basis: u32) -> Option<f64> 
         1 | 3 => 365.0,
         _ => 360.0,
     };
-    Some(f64::from(whole_years) + days / year_days)
+    Some(StartTerm {
+        whole_years: f64::from(whole_years),
+        days,
+        year_days,
+    })
 }
 
 // ============================================================

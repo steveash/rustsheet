@@ -2,17 +2,54 @@
 //! the same Newton with its own slope ([`odd_first_yield`]).
 
 use super::{discount_growth, yield_start_years, OddArgs, OddFirstSchedule};
+use crate::x87_exp::{dd_add, dd_div, dd_mul, two_sum};
 
-/// The yield YIELD's Newton starts from with more than one coupon left, `years` being the
-/// settlement-to-maturity term in years:
+/// The settlement-to-maturity term of [`yield_start`]: `whole_years + days / year_days` years,
+/// kept as its parts so the start can take it exactly ([`super::yield_start_years`]).
+pub(super) struct StartTerm {
+    pub(super) whole_years: f64,
+    pub(super) days: f64,
+    pub(super) year_days: f64,
+}
+
+/// The yield YIELD's Newton starts from with more than one coupon left, over the term `T`:
 /// `(100 rate + (100 - pr)/T) / ((100 + pr)/2 - (100 - pr)/(4T))`. Fitted (T-1592) on the starts
 /// two analytic-Newton steps back from Excel's values on probes/yield-start-one-input: the
 /// denominator is `pr + w (100 - pr)` with `(1/2 - w) T` = 0.25000 on every row whose values sit
 /// below PRICE's root (rows 22-96 but 67: prices 90.5 to 99.5, rates 0 to 0.12, terms 2.3 to
 /// 30.3 years), and it moves with neither the redemption nor the frequency (financial.md "YIELD
 /// stops short of PRICE's root").
-pub(super) fn yield_start(rate: f64, pr: f64, years: f64) -> f64 {
-    (100.0 * rate + (100.0 - pr) / years) / ((100.0 + pr) / 2.0 - (100.0 - pr) / (4.0 * years))
+///
+/// Excel's start is this value rounded once, with the term exact (T-2974): one Newton step from
+/// it shows its last bit on the cells that take one step, and the correctly rounded start makes
+/// 503 of the lab's 761 YIELD probe cells bit-exact, against 441 for the formula in doubles
+/// (yield-start-rate-term B49 from 11 ulps to 0). So the start is
+/// `(400 rate N + 4 (100 - pr) Y) / (2 N (100 + pr) - (100 - pr) Y)`, the formula times `4N/4N`
+/// with `T = N / Y` (`N = whole_years Y + days`, an integer), in double-double arithmetic. A zero
+/// term, or a start past the double range, keeps the formula in doubles.
+pub(super) fn yield_start(rate: f64, pr: f64, term: &StartTerm) -> f64 {
+    let years = term.whole_years + term.days / term.year_days;
+    let plain =
+        (100.0 * rate + (100.0 - pr) / years) / ((100.0 + pr) / 2.0 - (100.0 - pr) / (4.0 * years));
+    // Whole years, days and a year's days are integers well below 2^53, so N and the scaled
+    // integers below are exact.
+    let n = term.whole_years * term.year_days + term.days;
+    if n == 0.0 {
+        return plain;
+    }
+    let discount = two_sum(100.0, -pr);
+    let numerator = dd_add(
+        dd_mul((rate, 0.0), (400.0 * n, 0.0)),
+        dd_mul(discount, (4.0 * term.year_days, 0.0)),
+    );
+    let premium = dd_mul(two_sum(100.0, pr), (2.0 * n, 0.0));
+    let shortfall = dd_mul(discount, (term.year_days, 0.0));
+    let start = dd_div(numerator, dd_add(premium, (-shortfall.0, -shortfall.1))).0;
+    if start.is_finite() {
+        start
+    } else {
+        plain
+    }
 }
 
 /// Newton on `price(y) - target` with the analytic slope `dprice`, from `start`: each step is
@@ -50,10 +87,10 @@ pub(super) fn excel_yield_newton(
 /// the calendar or where the Newton leaves ODDFPRICE's domain.
 pub(super) fn odd_first_yield(odd: &OddArgs<4>, schedule: &OddFirstSchedule) -> Option<f64> {
     let [settlement, maturity, ..] = odd.dates;
-    let years = yield_start_years(settlement, maturity, odd.basis)?;
+    let term = yield_start_years(settlement, maturity, odd.basis)?;
     excel_yield_newton(
         odd.yld_or_pr,
-        yield_start(odd.rate, odd.yld_or_pr, years),
+        yield_start(odd.rate, odd.yld_or_pr, &term),
         |y| schedule.price(y, discount_growth),
         |y| schedule.dprice(y),
     )
@@ -81,7 +118,7 @@ impl OddFirstSchedule {
 
 #[cfg(test)]
 mod tests {
-    use super::{discount_growth, OddFirstSchedule};
+    use super::{discount_growth, yield_start, OddFirstSchedule, StartTerm};
 
     /// The probes/oddfyield-solver-sweep bond (settlement 2020-02-01, maturity 2025-06-30, issue
     /// 2020-01-01, first coupon 2020-06-30, semiannual, basis 0) at the coupon `rate`.
@@ -96,6 +133,29 @@ mod tests {
             - schedule.price(y - h, discount_growth))
             / (2.0 * h);
         ((schedule.dprice(y) - numeric) / numeric).abs()
+    }
+
+    #[test]
+    fn the_start_is_rounded_once_over_the_exact_term() {
+        // yield-start-rate-term B49's bond: 30 + 119/360 years, rate 0.08, price 90. The exact
+        // start (a rational, rounded once) is 0x1.677417c665554p-4; the formula in doubles
+        // rounds to the double below it (T-2974).
+        let term = StartTerm {
+            whole_years: 30.0,
+            days: 119.0,
+            year_days: 360.0,
+        };
+        assert_eq!(yield_start(0.08, 90.0, &term), 0.087_757_199_164_419_32);
+        let years = 30.0 + 119.0 / 360.0;
+        let plain = (100.0 * 0.08 + 10.0 / years) / (95.0 - 10.0 / (4.0 * years));
+        assert_eq!(plain, 0.087_757_199_164_419_3);
+        // A zero term keeps the formula in doubles (not a finite start).
+        let zero = StartTerm {
+            whole_years: 0.0,
+            days: 0.0,
+            year_days: 360.0,
+        };
+        assert!(yield_start(0.05, 98.0, &zero).is_nan());
     }
 
     #[test]

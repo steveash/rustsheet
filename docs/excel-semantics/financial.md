@@ -2543,6 +2543,33 @@ solver prices with something other than its PRICE function. More findings:
   `(whole·year + days)/year` makes no difference.
 Next: refine the start on cells that step once from it (as C7 does). There, Excel's bits fix the start to about 1e-9.
 Collect such cells over rates, prices and terms, and fit the start to that precision instead of the back-chain's 1e-8.
+T-2974 (attempt 2, 2026-10-29): Excel's start is the fitted formula **rounded once, over the exact term**.
+- The cells that take one Newton step from the start show its last bit, not its value to 1e-9. One ulp of start moves
+  PRICE at the start by about a price ulp, which is about 25 yield ulps of the step. Excel's value then jumps by that
+  much between neighbouring starts: on yield-solver-sweep C7, our start gives +27 ulps and the next double up gives
+  Excel's bits. A linear fit of the step's result against the start's value finds Excel's start within
+  ±0.5e-9 relative of the fitted one on all 15 distinct one-step bonds. The miss is in the rounding, not the formula.
+- Arrangements of the start (lab, `^`-priced, 761 YIELD probe cells, bit-exact):
+  | arrangement | bit-exact |
+  |---|---|
+  | the formula in doubles | 441 |
+  | the exact value rounded once, with `T` as the double `whole + days/year` | 498 |
+  | the same with `T` exact | 503 |
+  | x87 64-bit intermediates | 498 |
+  | the 64 mixes of rounded and exact intermediates, with `T` double or exact | 486 to 503 |
+  | rounded up | 437 |
+  | rounded down | 296 |
+  | 13 algebraic rearrangements in doubles | 337 to 447 |
+- Rounding up fixes C2, C7, C8, B39 and B49, but not P!B2. No single perturbation of `T` fits all eight basis-0 rates
+  (r = 0 needs none, r = 0.06 needs 6 to 20 ulps of `T`).
+- The engine now computes `(400 r N + 4 (100 - pr) Y) / (2 N (100 + pr) - (100 - pr) Y)`, with `T = N/Y`, in
+  double-double (`yield_start`). In the eval this fixes 256 known failures and moves 148 YIELD and ODDFYIELD cells off
+  the bit, 9 of them visibly (decision 0162, follow-up T-3152). In-scope visibly-off cells go from 2,885 to 2,862.
+- yield-start-rate-term B49 has Excel's start now, but stays off (15 ulps) on the engine's PRICE, which differs from
+  the lab's `^` PRICE in the last bits (T-3144). In the lab it is bit-exact.
+- yield-solver-sweep C7 (one step) and yield-start-rate-term B39 need a start one ulp above the correctly rounded one,
+  and yield-newton-domain P!B2 needs one below. So the single rounding is the closest model found, not Excel's exact
+  arithmetic.
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
 T-2777's term (`yield_start_years`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
