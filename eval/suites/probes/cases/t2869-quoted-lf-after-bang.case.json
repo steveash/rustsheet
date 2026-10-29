@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2869: typed `='My S'!` LF `B1`.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "My S",
+   "cells": {
+    "B1": 1,
+    "B2": 2,
+    "A1": {
+     "entered": "='My S'!\nB1"
+    },
+    "C1": "=FORMULATEXT(A1)"
+   }
+  }
+ ],
+ "expected": {}
+}
