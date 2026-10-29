@@ -3,7 +3,7 @@ id: T-3007
 title: "Incomplete beta: the bratio port's open items after T-2977 (shape of 1 outside the closed forms, TOMS betaln for both shapes >= 1 above 8, fl(a LN x) overflow, SPEC-0025 layout)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
@@ -82,6 +82,12 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
   cdf itself falls by an ulp at three adjacent-double pairs (statistics.md "BETA.DIST's cdf is not monotone in its last
   bit"). `beta_density::ln_beta_small_shape` stays separate from bpser's ln B, with the reason in its doc comment. No
   value changes.
+- 2026-10-29: the shape-of-1 item: Excel forms w1 = (0.5 - w) + 0.5 from w there, not y0^b0 (statistics.md
+  "Incomplete beta at a shape of 1 outside the closed forms"); `incomplete_beta::shape_one_tails` does so. Over every
+  suite 77 cells become bit-exact and 2 move 1 ulp off (t2220-f-dist-sweep-cdf A518, A815); the ported bpser at a0 = 1
+  scores 64 against 90 and stays unused. Excel's w there is still open (52 cells 1 ulp off). BETA.INV's crossing moves
+  at three quantiles (-4 to -40, +1 to -5, -16 to -6 ulp; T-2511's, noted there). Tails w1 below 2^-53 are now 0 or
+  a multiple of 2^-53, with no oracle evidence there yet (T-3150). Gated: gen-m9 3 and probes 1 newly bit-exact.
 
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
