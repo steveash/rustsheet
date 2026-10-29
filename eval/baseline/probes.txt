@@ -1164,15 +1164,6 @@ C	probes/t1738-question-first-decimal.case.json	10
 C	probes/t1883-currency-locale-edges.case.json	63
 C	probes/t1923-calendar-digits.case.json	213
 C	probes/t1924-locale-tag-extended-hex.case.json	60
-C	probes/t2065-lift-averagea.case.json	1
-C	probes/t2065-lift-averageif.case.json	2
-C	probes/t2065-lift-concat.case.json	1
-C	probes/t2065-lift-countifs.case.json	2
-C	probes/t2065-lift-maxa.case.json	1
-C	probes/t2065-lift-maxifs.case.json	2
-C	probes/t2065-lift-stdevs.case.json	1
-C	probes/t2065-lift-sumsq.case.json	1
-C	probes/t2065-lift-vars.case.json	1
 C	probes/t2127-trimrange-blank-shapes.case.json	63
 C	probes/t2184-dollar-neg-rounds-to-zero.case.json	4
 C	probes/t2189-ifs-omitted-concat.case.json	1
@@ -1501,6 +1492,7 @@ C	probes/t3054-imtan-real-tan-kernel.case.json	22
 C	probes/t3072-criteria-near-equal-order.case.json	360
 C	probes/t3072-take-drop-one-cell-reference.case.json	57
 C	probes/t3073-lookup-near-equal-approximate.case.json	218
+C	probes/t3085-take-drop-one-cell-forms.case.json	16
 C	probes/t3094-snap-lambda-call-forms.case.json	44
 C	probes/t3095-snap-lambda-helpers.case.json	148
 C	probes/t3096-lookup-value-blank-elements.case.json	203
@@ -3724,11 +3716,6 @@ F	probes/t1924-locale-tag-extended-hex.case.json	S!B28
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B29
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B3
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B4
-F	probes/t2065-lift-averagea.case.json	Sheet1!E1
-F	probes/t2065-lift-maxa.case.json	Sheet1!E1
-F	probes/t2065-lift-stdevs.case.json	Sheet1!E1
-F	probes/t2065-lift-sumsq.case.json	Sheet1!E1
-F	probes/t2065-lift-vars.case.json	Sheet1!E1
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A1
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A13
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A19
