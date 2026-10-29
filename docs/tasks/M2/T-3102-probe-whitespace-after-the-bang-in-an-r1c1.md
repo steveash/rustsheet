@@ -3,11 +3,11 @@ id: T-3102
 title: "Probe whitespace after the bang in an R1C1-mode formula (formulasR1C1) and what we do with S! R1C2 typed in A1 mode"
 milestone: M2
 lane: engine
-status: in-progress
+status: blocked
 priority: P3
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-3113]
 ---
 
 ## Goal
@@ -22,6 +22,13 @@ T-2869 probed the A1-mode forms only (docs/excel-semantics/syntax.md, "drop afte
 
 ## Out of scope
 -
+
+## Blocked because
+Blocked because: no spec cell can be entered in R1C1 mode. T-3113 (harness, opus) adds that entry mode, a change to
+the case schema and the oracle client that is bigger than this S task. Unblock this task when T-3113 merges, then
+follow the notes below. The opus resume on 2026-10-29 confirmed the gap: the lexer already has `LexerMode::R1C1`
+and drops whitespace after a sheet prefix's `!` in both modes (`consume_range`, expressions/lexer/mod.rs), so the
+only open question is Excel's.
 
 ## Handoff (resumed)
 Tried: scoped the probe. Blocker found: no spec cell can enter R1C1-mode text today. `{"entered": ...}` is
