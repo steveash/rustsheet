@@ -1480,6 +1480,7 @@ C	probes/t3049-snap-under-pickers.case.json	57
 C	probes/t3051-legacy-root-array-operators.case.json	38
 C	probes/t3053-blank-reference-wrappers.case.json	25
 C	probes/t3054-imtan-real-tan-kernel.case.json	22
+C	probes/t3066-average-snap-forms.case.json	24
 C	probes/t3072-take-drop-one-cell-reference.case.json	57
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
@@ -4134,14 +4135,6 @@ F	probes/t3028-b2-taiwan-years.case.json	Sheet1!O6
 F	probes/t3028-b2-taiwan-years.case.json	Sheet1!O7
 F	probes/t3028-b2-taiwan-years.case.json	Sheet1!O8
 F	probes/t3028-b2-taiwan-years.case.json	Sheet1!O9
-F	probes/t3048-snap-conditional-sums.case.json	S!D5
-F	probes/t3048-snap-conditional-sums.case.json	S!D6
-F	probes/t3048-snap-conditional-sums.case.json	S!G5
-F	probes/t3048-snap-conditional-sums.case.json	S!G6
-F	probes/t3048-snap-conditional-sums.case.json	S!I5
-F	probes/t3048-snap-conditional-sums.case.json	S!I6
-F	probes/t3048-snap-conditional-sums.case.json	S!P5
-F	probes/t3048-snap-conditional-sums.case.json	S!P6
 F	probes/t3049-snap-under-pickers.case.json	Sheet1!B17
 F	probes/t3049-snap-under-pickers.case.json	Sheet1!C17
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A10
