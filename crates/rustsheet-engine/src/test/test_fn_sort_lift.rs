@@ -77,9 +77,17 @@ fn later_elements_are_empty_or_value_errors() {
         ),
         // Equal rows do not keep their call's top-left (t2929-index P1, t3090 K155); an invalid
         // element is skipped (t2929-column S6).
-        ("C7", "=INDEX(SORT(A1:A3,1,1,{TRUE;TRUE;TRUE}),3,1)", "#VALUE!"),
+        (
+            "C7",
+            "=INDEX(SORT(A1:A3,1,1,{TRUE;TRUE;TRUE}),3,1)",
+            "#VALUE!",
+        ),
         ("C8", "=INDEX(SORT(A1:A3,1,1,{\"x\";TRUE;TRUE}),2,1)", "3"),
-        ("C9", "=INDEX(SORT(A1:A3,1,1,{\"x\";TRUE;TRUE}),3,1)", "#VALUE!"),
+        (
+            "C9",
+            "=INDEX(SORT(A1:A3,1,1,{\"x\";TRUE;TRUE}),3,1)",
+            "#VALUE!",
+        ),
         (
             "C10",
             "=INDEX(SORT(A1:A3,2,1,{TRUE,TRUE;TRUE,TRUE}),2,1)",

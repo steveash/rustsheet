@@ -21,8 +21,8 @@ t2929-sort-lifted-by-col-errors M2 and N5, so the rule needs more probes (arrays
 lifted arguments").
 
 ## Acceptance criteria
-- [ ] L81 passes, with probes for the rule's edge cells; t2929 cases still pass.
-- [ ] `make check` green; reviewers approve.
+- [x] L81 passes, with probes for the rule's edge cells; t2929 cases still pass.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -34,3 +34,12 @@ and the task already records that "no earlier #VALUE! in the row" broke t2929 M2
 probe rounds (excel-graph is OK) to find the rule from edge cells, then a re-fit against t2929 and t2947 together: beyond
 a sonnet run (unclear evidence / rule fitting). Next: probe variants of L81 (vary the lead's value, by_col mix, row
 position), tabulate against t2929 M2/N5, then adjust the loop.
+
+## Outcome
+Excel changed: re-running the unchanged t2366, t2929 and t2947 workbooks on excel-graph (2026-10-29 16:00 UTC, twice, and as
+one-formula workbooks) gives different values from the 2026-10-27 and 02:04 UTC fills. Today's rule is much simpler: in row-major
+order, the first sorting call keeps its top-left, the next is empty with sort_index 2 (else `#VALUE!`), every later one `#VALUE!`;
+no lead comparison, no row keeping, no chain down a column. The seven sidecars were refilled (`fill --force`), the new probe
+probes/t3090-sort-lifted-by-col-broken-lead (239 cells, three rounds) pins the corners, and `sort_lifted_elements` was rewritten to
+the rule (`ByCol` removed). All eight SORT-lift cases pass (678 cells); L81 passes. arrays.md entry "TOROW, TOCOL, SORT and
+TEXTJOIN lifted arguments" rewritten with the drift recorded.
