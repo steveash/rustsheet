@@ -3,7 +3,7 @@ id: T-2665
 title: "Probe IPMT with a fractional nper past (1+rate)^nper's range: exact balance or FV recurrence"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
