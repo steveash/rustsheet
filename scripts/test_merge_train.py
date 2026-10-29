@@ -433,7 +433,7 @@ class GitHub(Client):
         self.tested: dict[str, list[object]] = {}
 
     def git(self, *args: str) -> str:
-        return run("git", *merge_train.IDENTITY, *args, cwd=self.origin)  # CI has no git identity
+        return run("git", *merge_train_filing.IDENTITY, *args, cwd=self.origin)  # CI has no git identity
 
     def main(self) -> str:
         return self.git("rev-parse", "refs/heads/main")

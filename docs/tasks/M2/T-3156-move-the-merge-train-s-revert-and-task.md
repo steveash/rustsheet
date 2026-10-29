@@ -24,10 +24,10 @@ mismatch response and task filing (`Stage.respond`, `open_revert`, `file_tasks`,
 and `REMOTE` stay in `merge_train.py` or move to a module both import; avoid an import cycle.
 
 ## Acceptance criteria
-- [ ] The code moves without a behaviour change; `scripts/test_merge_train_stop.py` passes unchanged except for
+- [x] The code moves without a behaviour change; `scripts/test_merge_train_stop.py` passes unchanged except for
       import paths.
-- [ ] `scripts/merge_train.py` is at most 900 lines.
-- [ ] `make check` green; reviewers approve.
+- [x] `scripts/merge_train.py` is at most 900 lines.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any change to what the train does.
