@@ -324,3 +324,19 @@ def test_an_m8_row_shows_both_gen_suites_and_the_poi_subset_with_its_blocked_cas
     assert "gen-m8a 4 visibly off of 20,000" in text
     assert "gen-m8b 0 visibly off of 3,368, allowance 0 (met)" in text
     assert "poi M8 subset 3 visibly off of 2,000, allowance 10, 2 cases blocked (not met)" in text
+
+
+def test_an_m10_row_shows_the_text_items_of_gen_m10_and_its_probe_row() -> None:
+    # Decision 0146 item 4: gen-m10's text items and the M10 probe row's, none failing.
+    m10 = exit_row("M10", False) | {
+        "gen_suite": "gen-m10",
+        "gen_text_items": 10_400,
+        "gen_text_failing": 76,
+        "probe_text_items": 415,
+        "probe_text_failing": 0,
+    }
+    text = goals.exit_measures("M10", m10)
+    assert "generated suite text 76 failing of 10,400" in text
+    assert ", text 0 failing of 415 (" in text
+    plain = goals.exit_measures("M5", exit_row("M5", True))
+    assert "text" not in plain

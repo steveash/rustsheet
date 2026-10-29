@@ -614,9 +614,9 @@ impl Model {
                 "Cannot insert columns because that would break an array formula".to_string(),
             );
         }
+        self.refuse_table_off_sheet(sheet, column, column_count, false)?;
         // check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_column = dimensions.max_column + column_count;
+        let last_column = self.workbook.worksheet(sheet)?.dimension().max_column + column_count;
         if last_column > LAST_COLUMN {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a row"
@@ -999,9 +999,9 @@ impl Model {
         if !self.can_insert_rows(sheet, row, row_count)? {
             return Err("Cannot insert rows because that would break an array formula".to_string());
         }
+        self.refuse_table_off_sheet(sheet, row, row_count, true)?;
         // Check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_row = dimensions.max_row + row_count;
+        let last_row = self.workbook.worksheet(sheet)?.dimension().max_row + row_count;
         if last_row > LAST_ROW {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a column"
