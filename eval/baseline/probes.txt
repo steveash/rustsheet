@@ -4126,8 +4126,6 @@ F	probes/t3048-snap-conditional-sums.case.json	S!I5
 F	probes/t3048-snap-conditional-sums.case.json	S!I6
 F	probes/t3048-snap-conditional-sums.case.json	S!P5
 F	probes/t3048-snap-conditional-sums.case.json	S!P6
-F	probes/t3049-snap-under-pickers.case.json	Sheet1!B17
-F	probes/t3049-snap-under-pickers.case.json	Sheet1!C17
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A10
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A11
 F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A2
