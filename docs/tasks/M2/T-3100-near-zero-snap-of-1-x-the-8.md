@@ -3,7 +3,7 @@ id: T-3100
 title: "Near-zero snap of 1-X: the 8-ULP bound follows the left operand, not the smaller addend"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,10 +28,22 @@ where the operand order decides it.
 - Code: `snap_near_zero` (arithmetic.rs).
 
 ## Acceptance criteria
-- [ ] An excel-graph probe case (milestone M2) with the cells above. numbers.md records the rule that fits every cell
+- [x] An excel-graph probe case (milestone M2) with the cells above. numbers.md records the rule that fits every cell
       of it and of snap-addsub.
-- [ ] t3073-lookup-near-equal-approximate Sheet1!E8 and the new cells pass. `make eval-baseline` is run, with no regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] t3073-lookup-near-equal-approximate Sheet1!E8 and the new cells pass. `make eval-baseline` is run, with no regressions.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The lookup comparator (T-3099).
+
+## Outcome
+- Probe `probes/t3100-snap-operand-order` (excel-graph, 540 cells): b = 1, 2, 1.5, 3, 0.75, X = b±k·2^(e-52), k = 3..8,
+  in `X-b`, `b-X`, `-X+b`, `X+(-b)`, `-b+X` and SUM with the addends in both orders. Every cell fits a bound of 8 ULP
+  of the **left** addend (SUM: the total before its last addend); the smaller-addend rule misses 32 cells and a
+  larger-addend rule 40. numbers.md "Near-zero snapping" states the rule (snap-addsub, where X was always on the left,
+  fits it too).
+- `snap_near_zero` (arithmetic.rs) takes its scale from the left addend `x`; every caller already passes the left
+  operand (or SUM's running total) first. The hand-written unit expectation `1-(1-4·2^-52)` kept was wrong by this
+  evidence and now snaps.
+- Eval delta: probes fixed 1 (t3073-lookup-near-equal-approximate Sheet1!E8), new case 540/540, regressions 0 in every
+  suite.
