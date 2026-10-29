@@ -114,12 +114,16 @@ def write_task(
     depends_on: str = "",
     campaign: str | None = None,
     defer: str | None = None,
+    issue: str | None = None,
+    issue_author: str | None = None,
 ) -> Path:
     path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
     campaign_line = f"campaign: {campaign}\n" if campaign else ""
     campaign_line += f"defer: {defer}\n" if defer else ""
+    campaign_line += f"issue: {issue}\n" if issue is not None else ""
+    campaign_line += f"issue_author: {issue_author}\n" if issue_author is not None else ""
     path.write_text(
         f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
         f"size: S\n{tier_line}{campaign_line}depends_on: [{depends_on}]\n---\n{body}"
@@ -569,6 +573,150 @@ class BranchClaims(unittest.TestCase):
         # T-0002 moved a minute ago (its run may still be at it); T-0003 is the owner's now; T-0005's
         # branch name is not one `next` will print for an agent to check out.
         self.assertEqual(limited, {"T-0001": "agent/engine/T-0001-limit"})
+
+
+class Issues(unittest.TestCase):
+    """The optional `issue:` / `issue_author:` fields, the dedup lookup and the volume counts
+    (decision 0158)."""
+
+    def test_issue_must_be_a_positive_integer_with_an_author(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            good, bad = [], []
+            with mock.patch.object(tasks, "ROOT", root):
+                for i, value in enumerate(("1", "42", '"7"')):
+                    good.append(tasks.parse(write_task(root, f"T-000{i}", issue=value, issue_author="octo-cat")))
+                for i, value in enumerate(("0", "-3", "12a", "[4]", "", "\u0661")):
+                    bad.append(tasks.parse(write_task(root, f"T-001{i}", issue=value, issue_author="octo")))
+                bad.append(tasks.parse(write_task(root, "T-0020", issue="5")))
+                bad.append(tasks.parse(write_task(root, "T-0021", issue="5", issue_author="-bad")))
+                bad.append(tasks.parse(write_task(root, "T-0022", issue_author="octo")))
+                errors = tasks.validate(good + bad)
+        self.assertFalse(any("T-000" in e for e in errors), errors)
+        for tid in [f"T-001{i}" for i in range(6)] + ["T-0020", "T-0021", "T-0022"]:
+            self.assertTrue(any(tid in e and "issue" in e for e in errors), tid)
+
+    GREP = (
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:1:---\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:2:id: T-0001\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:3:status: done\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:4:issue: 12\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:5:issue_author: alice\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:6:---\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:1:---\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:2:id: T-0004\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:3:status: in-progress\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:4:issue: \"12\"\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:5:issue_author: bob\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:6:---\n"
+        # `issue: 12` only below the front matter: not this issue's task.
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:1:---\n"
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:2:id: T-0005\n"
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:3:---\n"
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:9:issue: 12\n"
+    )
+
+    def fake_git(self, grep_out: str, grep_code: int = 0) -> tuple[list[list[str]], object]:
+        calls: list[list[str]] = []
+
+        def run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            calls.append(args)
+            if args[0] == "for-each-ref":
+                return mock.Mock(returncode=0, stdout="refs/remotes/origin/main\nrefs/remotes/origin/agent/x\n")
+            return mock.Mock(returncode=grep_code, stdout=grep_out, stderr="")
+
+        return calls, run
+
+    def test_finds_the_issue_on_the_working_tree_and_on_branches_by_front_matter(self) -> None:
+        root = Path("/repo")
+        on_tree = [
+            {"id": "T-0001", "issue": "12", "issue_author": "alice", "path": root / "docs/tasks/M0/T-0001-a.md"},
+            {"id": "T-0002", "issue": "120", "path": root / "docs/tasks/M0/T-0002-a.md"},
+            {"id": "T-0003", "path": root / "docs/tasks/M0/T-0003-a.md"},
+        ]
+        calls, run = self.fake_git(self.GREP)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            found = tasks.issue_tasks("12", on_tree, fetch=False)
+        self.assertEqual(
+            found, [("T-0001", "working tree"), ("T-0001", "main"), ("T-0004", "agent/harness/T-0004-b")]
+        )
+        self.assertFalse(any(a[0] == "fetch" for a in calls))
+        self.assertEqual(sum(a[0] == "grep" for a in calls), 1)
+
+    def test_no_match_on_branches_and_no_git_fall_back_to_the_working_tree(self) -> None:
+        root = Path("/repo")
+        on_tree = [{"id": "T-0001", "issue": "3", "path": root / "docs/tasks/M0/T-0001-a.md"}]
+        _, run = self.fake_git("", grep_code=1)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+            self.assertEqual(tasks.issue_tasks("4", on_tree, fetch=False), [])
+        _, broken = self.fake_git("", grep_code=2)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=broken), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+        self.assertIn("warning: could not read origin branches", err.getvalue())
+        with mock.patch.object(tasks, "ROOT", root), \
+                mock.patch.object(tasks.subprocess, "run", side_effect=OSError("no git")), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+
+    def test_stats_count_open_tasks_per_author_and_todays_filings(self) -> None:
+        copies = [
+            {"id": "T-0001", "status": "todo", "issue_author": "alice"},
+            {"id": "T-0001", "status": "done", "issue_author": "alice"},  # done on its branch
+            {"id": "T-0002", "status": "in-progress", "issue_author": "alice"},
+            {"id": "T-0003", "status": "blocked", "issue_author": "bob"},
+            {"id": "T-0004", "status": "dropped", "issue_author": "bob"},
+        ]
+        self.assertEqual(
+            tasks.issue_stats(copies, {"T-0002", "T-0003"}),
+            {"open_by_author": {"alice": 1, "bob": 1}, "filed_today": 2, "limits": tasks.ISSUE_LIMITS},
+        )
+
+    def test_filed_today_reads_the_earliest_adding_commit_on_its_own_branch_or_main(self) -> None:
+        now = 1_800_000_000.0  # 2027-01-15 08:00 UTC
+        copies = [
+            {"id": "T-0001", "ref": "refs/remotes/origin/main", "file": "a.md"},
+            {"id": "T-0002", "ref": "refs/remotes/origin/agent/harness/T-0002-x", "file": "b.md"},
+            {"id": "T-0003", "ref": "refs/remotes/origin/agent/harness/T-0009-other", "file": "c.md"},
+            {"id": "T-0004", "ref": "", "file": "d.md"},
+        ]
+        stamps = {"a.md": f"{int(now) - 60}\n", "b.md": f"{int(now) - 3600}\n{int(now) - 86400}\n",
+                  "c.md": f"{int(now)}\n", "d.md": ""}
+        seen: list[str] = []
+
+        def run(cmd: list[str], **_: object) -> mock.Mock:
+            seen.append(cmd[-1])
+            return mock.Mock(returncode=0, stdout=stamps[cmd[-1]])
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            # T-0002 was first added yesterday; T-0003's copy is on another task's branch (not read);
+            # T-0004 is not committed.
+            self.assertEqual(tasks.filed_today(copies, now), {"T-0001"})
+        self.assertNotIn("c.md", seen)
+
+    def test_cli_rejects_a_bad_number_and_exits_1_when_nothing_is_found(self) -> None:
+        for argv, code in ((["issue"], 2), (["issue", "0"], 2), (["issue", "5\n"], 2), (["issue", "5"], 1)):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                        mock.patch.object(tasks.sys, "argv", ["tasks.py", *argv, "--no-fetch"]), \
+                        mock.patch.object(tasks, "issue_tasks", return_value=[]), \
+                        contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(tasks.main(), code, argv)
+
+    def test_cli_stats_prints_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out = io.StringIO()
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", ["tasks.py", "issue", "--stats", "--no-fetch"]), \
+                    mock.patch.object(tasks, "issue_copies", return_value=[]), \
+                    mock.patch.object(tasks, "filed_today", return_value=set()), \
+                    contextlib.redirect_stdout(out):
+                self.assertEqual(tasks.main(), 0)
+        self.assertEqual(json.loads(out.getvalue())["limits"], {"per_author": 2, "per_day": 6})
 
 
 class Stats(unittest.TestCase):
