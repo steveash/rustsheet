@@ -96,7 +96,7 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
 
 ## Acceptance criteria
 - [x] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
-      its scores.
+      its scores, or moved to T-3170 (the b0 >= 8 algdiv shortfall, Excel's w at a shape of 1, the 987 cells).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
