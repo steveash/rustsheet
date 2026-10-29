@@ -3,7 +3,7 @@ id: T-3095
 title: "Probe the near-zero root snap of a LAMBDA body called by MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
