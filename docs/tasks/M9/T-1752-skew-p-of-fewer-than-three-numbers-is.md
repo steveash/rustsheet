@@ -3,7 +3,7 @@ id: T-1752
 title: "SKEW.P of fewer than three numbers is #DIV/0!, not 0"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
