@@ -3,7 +3,7 @@ id: T-2970
 title: "The legacy @ rewrite looks past typed whitespace (N/T over IF keeps its spaces)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,9 @@ dropped. Known: `N( IF(1,{2;3}) )` (`leaves_call_whole` via `under_at`, and at l
 
 ## Out of scope
 - Removing the `rewrite_as_unspaced` guard: it stays as the safety net for sites not yet covered.
+
+## Outcome
+`under_at` and `mark_legacy_reading` (the two shape sites that did not look past `Node::Spaced`) now peel it with
+`unwrap_spaced`/`unwrap_spaced_mut`. `N( IF(1,{2;3}) )`, `T( IF(1,{"a";"b"}) )` and `N( CHOOSE(1,{2;3}) )` keep their
+whitespace through `add_implicit_intersection` and the export; the test expectation is updated. No eval delta
+(engine unit-test change only).
