@@ -3,7 +3,7 @@ id: T-0084
 title: "make new-task and make new-decision break on a TITLE containing a double quote"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -34,10 +34,13 @@ recipes. Another fix: escape it with `$(subst ...)`. Pick one and use it for eve
 ## Out of scope
 - Changing `scripts/tasks.py new` itself beyond what the test needs.
 
-## Outcome (draft, from the sonnet attempt; PR #2245)
+## Outcome
 `new-task` and `new-decision` now read `MILESTONE`, `LANE` and `TITLE` from the environment (`"$$TITLE"`), so `"`,
-`;`, backticks and parentheses pass through unchanged. A single `$` on the make command line is still expanded by make
-itself (write `$$`); the help text says so. `scripts/test_makefile_titles.py` covers it (run by `make hygiene`).
+`;`, backticks and parentheses pass through unchanged; decision 0156 records the rule. A single `$` on the make command
+line is still expanded by make itself (write `$$`); the help text says so. `scripts/tasks.py new` no longer turns `"`
+into `'`: it writes the title as an escaped YAML double-quoted string (`\"`, `\\`), and the front-matter parser undoes
+those escapes, so `make tasks` shows existing titles such as `CELL(\"address\")` unescaped too.
+`scripts/test_makefile_titles.py` and a round-trip test in `scripts/test_tasks.py` cover it (run by `make hygiene`).
 Eval delta: none. Other targets splice no free text except `CASE=` in `eval-show` (a path; left as is).
 
 ## Handoff (resumed)
