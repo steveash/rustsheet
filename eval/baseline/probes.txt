@@ -1446,6 +1446,9 @@ C	probes/t2831-formulatext-indirect-multi-cell.case.json	34
 C	probes/t2836-dollar-run-cost.case.json	95
 C	probes/t2842-dollar-run-contexts.case.json	218
 C	probes/t2867-calipers-anonymised-inputs.case.json	26
+C	probes/t2869-quoted-lf-after-bang.case.json	2
+C	probes/t2869-quoted-ws-after-bang.case.json	2
+C	probes/t2869-ws-lf-after-bang.case.json	2
 C	probes/t2881-besselj-turning-point.case.json	76
 C	probes/t2921-sumproduct-one-cell-numeric-text.case.json	47
 C	probes/t2929-sort-lifted-by-col-column.case.json	50
