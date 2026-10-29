@@ -209,7 +209,7 @@ fn suite_exit(report: &RunReport, need: &SuiteNeed) -> SuiteExit {
             r.cells
                 .iter()
                 .filter(|c| Visible::is_off(c))
-                .map(move |c| format!("{}!{}", r.id, c.key()))
+                .map(move |c| crate::runner::cell_id(&r.id, &c.key()))
         })
         .collect();
     out

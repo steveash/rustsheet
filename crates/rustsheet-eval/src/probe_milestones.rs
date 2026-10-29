@@ -355,7 +355,7 @@ pub struct MilestoneRow {
 /// `case!Sheet!A1` when cell `c` of case `r` is visibly off (decision 0114): neither bit-exact nor
 /// a pinned deviation, and outside what `Visible` tolerates.
 pub(crate) fn visibly_off_name(r: &CaseResult, c: &CellResult) -> Option<String> {
-    (c.verdict.is_failure() && Visible::is_off(c)).then(|| format!("{}!{}", r.id, c.key()))
+    (c.verdict.is_failure() && Visible::is_off(c)).then(|| crate::runner::cell_id(&r.id, &c.key()))
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -406,7 +406,8 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
             s.text_items += 1;
             if !t.pass {
                 s.text_failing += 1;
-                s.text_failing_cells.push(format!("{}!{key}", r.id));
+                s.text_failing_cells
+                    .push(crate::runner::cell_id(&r.id, &key));
             }
             rows_of_case.insert(row);
         }
