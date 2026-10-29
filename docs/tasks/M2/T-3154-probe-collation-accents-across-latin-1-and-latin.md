@@ -36,6 +36,8 @@ combining mark, and whether Cyrillic `ё`/`й` are accented letters are backed b
       U+0323) and `"йа"` against `"иб"`, `"ёа"` against `"еб"`.
 - [ ] It checks the final-sigma fold beyond exact MATCH: `COUNTIF(r,"ς*")`, `MATCH("ς*",r,0)`,
       `XMATCH("ς",r,2)`, `VLOOKUP("ς?",r,1,FALSE)` and a D-function criterion `ς` over `σx`, `ςx`, `Σ`.
+- [ ] It ranks Latin Extended-B letters (`ǎ`, `ș`, `ț`, `ơ`, `ư`) against their base letters and
+      their combining spellings (U+0326, U+031B), and XMATCH/VLOOKUP with a decomposed key.
 - [ ] `collation.rs` and coercion.md follow the evidence; every collation probe still passes.
 - [ ] `make check` green; reviewers approve.
 

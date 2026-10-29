@@ -100,7 +100,7 @@ each other (Calc!A = count less, Calc!B = count equal) plus pairwise `<`/`=`/`>`
 MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status: VERIFIED for these:
 - Every Latin Extended-A letter probed (`ā ă ą ć č ď ē ė ę ě ğ ģ ī į ķ ĺ ľ ń ņ ň ő ŕ ř ś ş š ţ ť ū ů ű
   ų ź ż ž`) is its **base letter plus an accent**, not a letter of its own: `"ca" < "ča" < "cb"`,
-  `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A123:A142).
+  `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A123:A139).
   Upper and lower case are equal (`"Č" = "č"`, Calc!E1).
 - Accents on one base letter, in order: `a á ă ā ą`, `c ć č`, `e é ė ě ē ę`, `g ğ ģ`, `i ī į`, `l ĺ ľ`,
   `n ń ň ņ`, `o ö ő`, `r ŕ ř`, `s ś š ş`, `t ť ţ`, `u ū ů ų ű`, `z ź ż ž`. One order fits them all:
@@ -121,7 +121,12 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
 - Cyrillic: `а < б < … < е < ё < ж < … < и < й < к < … < я`, each upper case equal to its lower case.
   Whether `ё` and `й` are accented `е` and `и` (the engine, by their canonical decompositions) or
   letters of their own is not told apart by single letters: UNVERIFIED (T-3154).
-- Exact MATCH, COUNTIF `=`, `<` and `<>` agree with the above over these letters (Calc!H1:K10).
+- COUNTIF `=`, `<` and `<>` agree with the ranking above (Calc!I1:K10; `I8` = 4 and `I9` = 2 count the
+  combining-mark spellings with the precomposed letters). Exact MATCH folds case and `ς` (H1:H7, H10)
+  but does **not** equate a base letter plus a combining mark with the precomposed letter:
+  `MATCH("c"&UNICHAR(780),r,0)` = 144 and `MATCH("a"&UNICHAR(769),r,0)` = 143 find the decomposed
+  spellings, not `č` (row 57) or `á` (row 140) (H8, H9), as T-1590 found for `æ`/`ae`. XMATCH and
+  VLOOKUP with a decomposed key are unprobed (T-3154).
 - Inferred, UNVERIFIED: the engine gives every other lower- or upper-case letter of Latin Extended-A,
   Greek and Cyrillic that has a canonical decomposition (`ĉ ĝ ĥ ĵ ŝ ŵ ŷ ĩ ĭ ŭ ŏ ō ĕ ġ ċ ļ ŗ`, `ϋ ΰ`,
   `ѐ ѓ ї ќ ѝ ў`) the same base-plus-accent rule.
