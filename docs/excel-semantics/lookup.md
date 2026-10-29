@@ -341,7 +341,17 @@ matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `VLOOKUP("",{blank;blank;b
 `MATCH(blank,{"";0},0)` = 2). Numbers must be exactly equal, without the 15-digit rounding of the
 comparison operators: `MATCH(0.1+0.2,{0.3},0)` and `VLOOKUP(0.1+0.2,{0.3},1,FALSE)` are `#N/A`.
 A match_type that is not a number is `#VALUE!` even with a blank key (`MATCH(blank,…,"x")`).
-Text comparison uses Excel's collation, not code-point order (T-0220).
+Text comparison uses Excel's collation, not code-point order (T-0220), and unlike exact match (MATCH 0, VLOOKUP FALSE,
+which compare case-folded code units, T-1590) the approximate searches take collation-equal texts as equal (T-3115,
+probes/t3115-approximate-text-collation, excel-graph 2026-10-29, VERIFIED). VLOOKUP TRUE, HLOOKUP TRUE and MATCH 1 (Calc!A-D)
+agree on every row: `"ae"` and `"æ"` (also `"ß"`/`"ss"`, `"œ"`/`"oe"`, `"Æ"`) form one run of equal cells, so
+`MATCH("ae",{"ae";"æ"},1)` and `MATCH("ae",{"æ";"ae"},1)` are both 2 (rows 1-13); a code-point tiebreak would give 1 and
+`#N/A`. The order is the collation's, not ordinal: `"az"` over {"æ";"b"} is 1, as is `"oz"` over {"œ";"p"} (rows 14-20). Hyphen,
+apostrophe and accent tiebreaks count (they are not equal): `"coop"` over {"co-op"} and {"co-op";"cop"}, `"a"` over {"'a";"b"},
+`"resume"` over {"résumé"} and `"e"` over {"é"} are `#N/A`; `"résumé"` over {"resume";"resumf"} is 1 (rows 21-46). Case is
+ignored outright: `"A"` over {"A";"a"} is 2 (rows 47-50). MATCH -1's top-down scan (Calc!E-F, rows 51-69) uses the same
+collation: `"ae"` over {"æ";"ae"} is 1 (the first equal cell), `"ae"` over {"b";"a-e"} is 2.
+The engine already compared text this way (`compare_searched` → `compare_values` → `cmp_text_excel`); all 625 cells pass.
 The approximate searches compare numbers as exact doubles, not at 15 digits like the comparison operators (T-3073,
 probes/t3073-lookup-near-equal-approximate, excel-graph 2026-10-29). A table number a few ULP from the key is larger
 or smaller than it, never equal, so the search steps past it. In VLOOKUP and HLOOKUP (TRUE) and in `MATCH(key,…,1)`
@@ -363,7 +373,7 @@ Status: VERIFIED
 Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`; numbers are ordered as exact doubles by
 `compare_searched` there.
-Tasks: T-0212, T-0220, T-3073, T-3099
+Tasks: T-0212, T-0220, T-3073, T-3099, T-3115
 
 ## MATCH descending search scans from the top; a text match_type read from a cell is #REF!
 Rule 1: a descending search (negative match_type) is a linear scan from the first cell, not a binary
