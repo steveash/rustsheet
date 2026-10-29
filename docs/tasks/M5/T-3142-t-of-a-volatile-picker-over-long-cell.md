@@ -3,7 +3,7 @@ id: T-3142
 title: "T of a volatile picker over long cell text re-evaluates the pick"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
