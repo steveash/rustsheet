@@ -472,6 +472,40 @@ impl Model {
     }
 }
 
+impl Model {
+    /// Refuses an insert of `count` rows (`rows`) or columns at `at` that would push a cell of a
+    /// table on `sheet` past the last row (column), even when the cells pushed off are empty: Excel
+    /// answers 409 `InsertDeleteConflict` (excel-graph 2026-10-28, T-2845). A table that merely ends
+    /// exactly at the last row afterwards is unprobed; no table cell leaves the sheet, so it is allowed.
+    pub(crate) fn refuse_table_off_sheet(
+        &self,
+        sheet: u32,
+        at: i32,
+        count: i32,
+        rows: bool,
+    ) -> Result<(), String> {
+        let sheet_name = self.workbook.worksheet(sheet)?.get_name();
+        let (limit, what) = if rows {
+            (LAST_ROW, "rows")
+        } else {
+            (LAST_COLUMN, "columns")
+        };
+        let off = (self.workbook.tables.values())
+            .filter(|table| table.is_on_sheet(&sheet_name))
+            .filter_map(bounds)
+            .any(|b| {
+                let last = if rows { b.bottom } else { b.right };
+                last >= at && last.saturating_add(count) > limit
+            });
+        if off {
+            return Err(format!(
+                "Cannot insert {what} because that would move cells in a table off the sheet"
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -641,39 +675,5 @@ mod tests {
             },
         );
         assert_eq!(ids(&filters), [2]);
-    }
-}
-
-impl Model {
-    /// Refuses an insert of `count` rows (`rows`) or columns at `at` that would push a cell of a
-    /// table on `sheet` past the last row (column), even when the cells pushed off are empty: Excel
-    /// answers 409 `InsertDeleteConflict` (excel-graph 2026-10-28, T-2845). A table that merely ends
-    /// exactly at the last row afterwards is unprobed; no table cell leaves the sheet, so it is allowed.
-    pub(crate) fn refuse_table_off_sheet(
-        &self,
-        sheet: u32,
-        at: i32,
-        count: i32,
-        rows: bool,
-    ) -> Result<(), String> {
-        let sheet_name = self.workbook.worksheet(sheet)?.get_name();
-        let (limit, what) = if rows {
-            (LAST_ROW, "rows")
-        } else {
-            (LAST_COLUMN, "columns")
-        };
-        let off = (self.workbook.tables.values())
-            .filter(|table| table.is_on_sheet(&sheet_name))
-            .filter_map(bounds)
-            .any(|b| {
-                let last = if rows { b.bottom } else { b.right };
-                last >= at && last.saturating_add(count) > limit
-            });
-        if off {
-            return Err(format!(
-                "Cannot insert {what} because that would move cells in a table off the sheet"
-            ));
-        }
-        Ok(())
     }
 }
