@@ -44,7 +44,14 @@ Last-digit (within 15 digits) in the same workbooks, also unowned:
 - pv26_014 and pv26_2_014 Returns: IRR D44, D53, D54, D65, D66 (and the Sensitivity cells that copy D54).
 - formula_stress_test: Finance B10, B17, B20, B21, B25, B32; Statistical B6, B8, B10, B11, B14-B16, B23-B26,
   B29-B32, B33, B37, B39, B40, B49, B50, B54, B55, B57, B77, B118-B123, B130, B138-B144 (LINEST, LOGEST, TREND
-  members). Some functions already have Phase 1b owners (PMT and NPV T-1528, LINEST T-2006): once a cell is shown
+  members).
+- Gap triage 2026-10-29 (`make eval` on origin/main e129a5d3 with calipers fetched), also unowned: pv23_003
+  Bond-Refinancing YIELD K15 (golden 0.251101533693552, ours 0.2511015336935525), P15 (0.21359343320572396, ours
+  ...724) and N28 (0.2569055032209079, ours ...0794), and the MDURATION fed by K15 at K20 (1.7065727670290547, ours
+  ...0536): T-1592 fixed their visible error, these are the remaining last digits. pv23_065 Valuation & Returns!N35
+  `IRR(J35:M35)` (and P9 `=N35`; golden 0.5915053043955218, ours ...5216) has pv23_064's inputs and value, which
+  T-2131 owns: list its web value only, no new owner is needed if it matches pv23_064's.
+  Some functions already have Phase 1b owners (PMT and NPV T-1528, LINEST T-2006): once a cell is shown
   to be an engine miss, name it in that owner's task or a new one rather than duplicating it.
 
 Method: one probe case, probes/t2906-calipers-financial-stat (excel-probe skill, excel-graph), that rebuilds each
