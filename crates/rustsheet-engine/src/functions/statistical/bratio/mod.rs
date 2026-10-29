@@ -354,9 +354,11 @@ pub(super) fn bpser_with_ln_beta(a: f64, b: f64, x: f64, neg_ln_beta: Register) 
 ///   b0 = 8. T-2503's density form (`beta_density::ln_beta_small_shape`) differs at its edges: it
 ///   takes b0 = 8 by GAMMALN, B(a0, 1) as 1/a0 and a plain a0 + b0;
 /// - both >= 1 and max <= 8: GL(a) + (GL(b) - GL(fl(a + b))) in argument order, held unstored;
-/// - min(a, b) = 1: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506, T-2847).
+/// - min(a, b) = 1: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506, T-2847);
+/// - both > 1 and max > 8: the accurate ln B at half-integer shapes, TOMS `betaln` elsewhere
+///   ([`ln_beta`], T-3007; Excel's own form there is open, T-2924).
 ///
-/// `None` for both shapes > 1 with one above 8, where the model takes an accurate ln B.
+/// `None` only for a non-finite shape.
 pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
     let (small, large) = if a < b { (a, b) } else { (b, a) };
     if small < 1.0 {
@@ -383,7 +385,8 @@ pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
         return Some(Register::load(excel_ln(large)));
     }
     if large > BPSER_GAMMALN_FORM_MAX {
-        return None;
+        return ln_beta::neg_ln_beta_half_integer(a, b)
+            .or_else(|| Some(Register::load(-ln_beta::toms_betaln(a, b)?)));
     }
     // -(p + q) rounds as (-p) + (-q) does: round to nearest is symmetric.
     let inner =
@@ -396,6 +399,8 @@ pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
 fn half_complement(v: f64) -> f64 {
     extended_sum(extended_sum(0.5, -v), 0.5)
 }
+
+pub(super) mod ln_beta;
 
 #[cfg(test)]
 mod tests;

@@ -26,8 +26,8 @@ use crate::x87_log1p::excel_ln_one_minus;
 /// `algdiv` at 8 exclusive; Excel at 8 inclusive, statistics.md).
 const GAMMALN_FORM_MAX: f64 = 8.0;
 
-/// TOMS 708 `algdiv`'s Stirling coefficients c0..c5.
-const ALGDIV_C: [f64; 6] = [
+/// TOMS 708 `algdiv`'s (and `bcorr`'s) Stirling coefficients c0..c5.
+pub(super) const ALGDIV_C: [f64; 6] = [
     0.083_333_333_333_333_3,
     -0.002_777_777_777_609_91,
     7.936_506_668_253_9e-4,
@@ -85,12 +85,23 @@ fn ln_beta_small_shape(a: f64, b: f64) -> f64 {
 /// with Excel's LN for ln b: the best of the variants T-2513 tried for Excel's own (T-2512 owns the
 /// exact form).
 pub(super) fn algdiv(a: f64, b: f64) -> f64 {
-    let [c0, c1, c2, c3, c4, c5] = ALGDIV_C;
     let h = a / b;
-    let c = h / (h + 1.0);
-    let x = 1.0 / (h + 1.0);
+    let w = stirling_del(h / (h + 1.0), 1.0 / (h + 1.0), b);
     let d = b + (a - 0.5);
-    // s_n = (1 - x^n) / (1 - x) for n = 3, 5, ..., 11, by TOMS's recurrence.
+    let u = d * alnrel_positive(a / b);
+    let v = a * (excel_ln(b) - 1.0);
+    if u > v {
+        (w - v) - u
+    } else {
+        (w - u) - v
+    }
+}
+
+/// The Stirling correction TOMS 708 `algdiv` and `bcorr` share, in doubles: c/b times the series
+/// in t = (1/b)^2 whose coefficients are scaled by s_n = (1 - x^n)/(1 - x), n = 3, 5, ..., 11.
+pub(super) fn stirling_del(c: f64, x: f64, b: f64) -> f64 {
+    let [c0, c1, c2, c3, c4, c5] = ALGDIV_C;
+    // s_n by TOMS's recurrence.
     let x2 = x * x;
     let s3 = (x + x2) + 1.0;
     let s5 = (x + x2 * s3) + 1.0;
@@ -104,18 +115,21 @@ pub(super) fn algdiv(a: f64, b: f64) -> f64 {
     w = (w + c3 * s7) * t;
     w = (w + c2 * s5) * t;
     w = (w + c1 * s3) * t;
-    w = (w + c0) * (c / b);
-    let u = d * alnrel_positive(a / b);
-    let v = a * (excel_ln(b) - 1.0);
-    if u > v {
-        (w - v) - u
+    (w + c0) * (c / b)
+}
+
+/// TOMS 708 `alnrel(q)` = ln(1 + q) for q > -1: the rational ([`alnrel_positive`]'s) for
+/// |q| <= 0.375, else Excel's LN of 1 + q.
+pub(super) fn alnrel(q: f64) -> f64 {
+    if q.abs() > 0.375 {
+        excel_ln(1.0 + q)
     } else {
-        (w - u) - v
+        alnrel_positive(q)
     }
 }
 
-/// TOMS 708 `alnrel(q)` = ln(1 + q) for 0 < q <= 1/8 (algdiv's a/b): the (3,3) rational in
-/// t = q/(q + 2), in doubles.
+/// TOMS 708 `alnrel(q)` = ln(1 + q) for |q| <= 0.375 (algdiv's a/b is at most 1/8): the (3,3)
+/// rational in t = q/(q + 2), in doubles.
 fn alnrel_positive(q: f64) -> f64 {
     let [p1, p2, p3] = ALNREL_P;
     let [q1, q2, q3] = ALNREL_Q;

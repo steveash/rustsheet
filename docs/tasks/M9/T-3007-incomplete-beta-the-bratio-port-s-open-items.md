@@ -3,7 +3,7 @@ id: T-3007
 title: "Incomplete beta: the bratio port's open items after T-2977 (shape of 1 outside the closed forms, TOMS betaln for both shapes >= 1 above 8, fl(a LN x) overflow, SPEC-0025 layout)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -64,6 +64,13 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
 - probes-numeric/t2220-f-dist-sweep-d2-1: F.DIST cdf, ported W1Bpser 1
 - probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, ported BpserLarge 7, F.DIST.RT cdf, ported L140BupBpser 10, F.DIST.RT cdf, shape of 1 5
 - probes-numeric/t2464-w2f-absweep: BETA.DIST cdf, ported WBpser 5
+
+## Progress
+- 2026-10-29: the "bpser for both shapes >= 1 with max > 8" item is ported (`bratio/ln_beta.rs`): accurate ln B at
+  half-integer shapes, TOMS `betaln` elsewhere; scores and the rejected all-TOMS variant in statistics.md
+  ("Incomplete beta bpser", T-3007). Eval: bit-exact +67, visibly off -79 on the beta family; gen-m9 and probes known
+  failures -1 and -5. t2829-ftest-tail-over-b A1, A3, A4, A6, A7, A9 stay visibly off (T-2924's ln B k plus fl(a LN x)
+  steps); the other items above remain open.
 
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with

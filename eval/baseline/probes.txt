@@ -3814,15 +3814,10 @@ F	probes/t2829-ftest-ln-beta-grid.case.json	S!A99
 F	probes/t2829-ftest-tail-over-b.case.json	S!A1
 F	probes/t2829-ftest-tail-over-b.case.json	S!A10
 F	probes/t2829-ftest-tail-over-b.case.json	S!A11
-F	probes/t2829-ftest-tail-over-b.case.json	S!A12
-F	probes/t2829-ftest-tail-over-b.case.json	S!A13
 F	probes/t2829-ftest-tail-over-b.case.json	S!A14
-F	probes/t2829-ftest-tail-over-b.case.json	S!A15
 F	probes/t2829-ftest-tail-over-b.case.json	S!A16
 F	probes/t2829-ftest-tail-over-b.case.json	S!A18
-F	probes/t2829-ftest-tail-over-b.case.json	S!A19
 F	probes/t2829-ftest-tail-over-b.case.json	S!A2
-F	probes/t2829-ftest-tail-over-b.case.json	S!A20
 F	probes/t2829-ftest-tail-over-b.case.json	S!A21
 F	probes/t2829-ftest-tail-over-b.case.json	S!A22
 F	probes/t2829-ftest-tail-over-b.case.json	S!A3
