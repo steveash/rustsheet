@@ -21,5 +21,8 @@
 - **Consequences:**
   - In `shadow` mode nothing merges through a train; workers still merge every PR themselves
     under the lock. Marking costs one comment and one label per PR.
+  - SPEC-0027's daily thresholds trigger the emergency flip only in `train` mode. In `shadow` mode
+    the steward only reports the numbers: nothing merges through a train there, so a flip would
+    change nothing, and the numbers are T-2991's evidence.
   - Owner step 3 (move the worker and steward routines to routines.md's texts) is now due.
   - Rollback: a flip PR to `lock` (decision 0157), or a revert of this record and its texts.
