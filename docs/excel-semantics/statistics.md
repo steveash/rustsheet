@@ -3188,8 +3188,8 @@ Tasks: T-1543, T-1634
   - Where Excel leaves the true quantile by more than 4 ulp. `GAMMA.INV(p,a,1)` over a in 0.5 to 50: p = 0.99 is
     within 4.5 ulp (one of nine shapes, a = 0.5, over 4), p = 0.995 up to 20 ulp, 0.998 up to 25, 0.999 up to 49,
     0.9995 up to 92 and 0.9999 up to 473. `CHISQ.INV.RT(p,df)` over df 1 to 100: p = 0.99 up to 21 ulp (df 3 the
-    only one of eight over 4), 0.995 up to 28, 0.998 up to 149, 0.999 up to 107, 0.9995 up to 838 and 0.9999 up to 3,084. At
-    p = 0.99999 both are within 3.4 ulp (GAMMA.INV 0.5). So the error starts between 0.99 and 0.995, grows with p to
+    only one of eight over 4), 0.995 up to 28, 0.998 up to 149, 0.999 up to 107, 0.9995 up to 838 and 0.9999 up to
+    3,084. At p = 0.99999 both are within 3.4 ulp (GAMMA.INV 0.5). So the error starts between 0.99 and 0.995, grows with p to
     0.9999, and is gone at 0.99999, which is the 1 - 1E-10 behaviour above.
   - The error follows the p double, not the shape: at the three doubles either side of 0.999, `GAMMA.INV(p,2,1)` and
     `GAMMA.INV(p,5,1)` are 35 to 620 ulp off and `CHISQ.INV.RT(p,5)` 42 to 2,770 ulp off, in a direction that
