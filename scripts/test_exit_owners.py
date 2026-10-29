@@ -178,6 +178,16 @@ class ExitOwners(TaskDir):
         listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M1", self.tasks)]
         self.assertEqual(listed, [f"{gen1}!Calc!A3"])
 
+    def test_m1_lists_a_failing_listed_case_with_no_cells_whole(self) -> None:
+        # T-3091: a listed case that crashes has no cell; it prints as `case!*`, as in a probe row.
+        r = report()
+        r["milestone_exit"] = [{"milestone": "M1", "gen_suite": "", "probe_row": "m1-probes"}]
+        r["cases"] = [{"id": PROBE, "suite": "probes", "cells": []}]
+        r["function_scope"] = {"rows": []}
+        r["milestone_lists"] = [{"name": "m1-probes", "failing_cases": [PROBE], "visibly_off_cells": []}]
+        cells = exit_owners.exit_cells(r, "M1")
+        self.assertEqual([(c.criterion, c.case, c.key) for c in cells], [("m1-probes", PROBE, exit_owners.WHOLE_CASE)])
+
     def test_m11_lists_corpus_bench_as_its_suite(self) -> None:
         corpus = "corpus-bench/53062/1_53062_input.xlsx"
         r = report()
