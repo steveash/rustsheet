@@ -173,13 +173,24 @@ the `mmm` (`mmm|mmmm|ddd` is "มี.ค.|มีนาคม|อ."), and a month
 (`B2[$-7041E]mmm|dddd|mmmm`). Only `mmm` starts it: `mmmm|dddd`, `mmmmm|ddd` and `ddd|mmm` print the real weekday.
 The lunar calendar reads its own month: `B2[$-110409]mmm|ddd` of 2023-03-15 (lunar month 2) is "二月|周一" (Monday).
 `[$-70409]mmm|ddd` with no `B2` is the real weekday ("มี.ค.|พ."). The same as a cell number format (B1-B3).
-Rule (quirk, unimplemented, T-3101): under some of these tags the `B2` also changes the names' language: `B2[$-10409]mmm|ddd` is
-"مارس|الثلاثاء" (Arabic Gregorian names, where `[$-10409]` is English), and `B2[$-30411]mmm|ddd` and `B2[$-50412]mmm|ddd`
-are "Mar|Tue" (English, where the tags alone print Japanese and Korean names). `B2[$-30409]`, `B2[$-50409]`,
-`B2[$-7041E]`, `B2[$-90409]` (French) and `B2[$-A0409]` (Levantine Arabic) keep the tag's names.
-Evidence: probes/t3029-b2-calendar-weekday (128 TEXT cells, 3 cell formats; excel-graph, 2026-10-29), t2932-b2-calendar-twice A55.
+Rule (quirk, T-3101): under calendars 1, 3 and 5 the `B2` also changes the names' language from that `mmm` on: every name
+token from the section's first `mmm` on (`mmm`, `mmmm`, `mmmmm`, `ddd`, `dddd`) prints the ar-SA Gregorian names under
+calendar 1 and the en-US names under calendars 3 and 5, whatever the LCID; name tokens before it, and sections with no
+`mmm`, keep the tag's names. `B2[$-10409]mmm|ddd` of 2023-03-15 is "مارس|الثلاثاء" (where `[$-10409]` is English),
+`B2[$-10411]mmmm|ddd|mmm|mmmm|dddd` "3月|水|مارس|مارس|الثلاثاء", `B2[$-10409]mmm|mmmmm|mmmm|dddd` "مارس|م|مارس|الثلاثاء",
+`B2[$-1040C]mmmm|dddd` "mars|mercredi" and `B2[$-1040C]mmm` "مارس"; `B2[$-30411]mmm|ddd` and `B2[$-50412]mmm|ddd` are
+"Mar|Tue" (the tags alone print "3|水" and "3|수"), `B2[$-30411]dddd|mmm|mmmm` "水曜日|Mar|March",
+`B2[$-30411]mmm|mmmm|mmmmm|dddd` "Mar|March|M|Tuesday", while `B2[$-30411]mmmm|dddd` is "3月|水曜日". Probed LCIDs: 409,
+411, 40C, 401, 407, 412 and 41E under 1; 409, 411, 412, 40C and 404 under 3; 409, 411, 412 and 40C under 5. A number token
+before the `mmm` changes nothing (`B2[$-10409]yyyy-mm-dd|mmm|dddd` is "2023-03-15|مارس|الثلاثاء"), nor does a literal
+between the `B2` and the tag (`B2"x"[$-30411]mmm|mmmm` is "xMar|March"). Calendar 2 prints en-US names with or without
+the `B2` (`[$-20411]mmm` is "Mar"). `B2[$-70411]`, `B2[$-90411]` (French) and `B2[$-A0411]` (Levantine Arabic) keep the
+tag's names, as do `B2[$-30409]`, `B2[$-50409]`, `B2[$-7041E]`, `B2[$-90409]` and `B2[$-A0409]`.
+Evidence: probes/t3029-b2-calendar-weekday (128 TEXT cells, 3 cell formats; excel-graph, 2026-10-29), t2932-b2-calendar-twice A55;
+probes/t3101-b2-calendar-names (194 TEXT cells, 3 cell formats; excel-graph, 2026-10-29).
 It starts under a calendar-3 Japanese LCID too, where the tag alone prints `mmm` as a number: `B2[$-30411]mmm|ddd` of
-2023-03-15 is "Mar|Tue" (A79-A84, with the T-3101 names).
+2023-03-15 is "Mar|Tue" (A79-A84).
+Unprobed for the names: calendars B, C, 14 and 15 and above after `B2`, and an LCID with no locale under 1, 3 or 5.
 Unprobed: calendar 8 (Hebrew) and Saka.
 Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
 `b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"
@@ -199,7 +210,8 @@ resolve to a locale (`B2[$-g]`; the engine leaves them Gregorian); Hijri names o
 of an LCID with no locale, so Persian `[$-60429]` prints "شعبان").
 Implemented in: `resolve_after_hijri_prefix`, `hijri_names` and `Calendar::Hijri` (formatter/locale_tag.rs), the
 lexer's `hijri_prefix`, `NameTokens` (formatter/date_names.rs), the Hijri tables in locale/excel_date_names.rs;
-the twice-converted years in `Localized::year_twice`, `japanese_era` (locale_tag.rs) and `year_token_text`
+the names after `mmm` in `Localized::names_after_mmm`; the twice-converted years in `Localized::year_twice`,
+`japanese_era` (locale_tag.rs) and `year_token_text`
 (formatter/calendar_dates.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2729, T-2932, T-3029

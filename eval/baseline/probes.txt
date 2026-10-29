@@ -1505,6 +1505,7 @@ C	probes/t3073-lookup-near-equal-approximate.case.json	218
 C	probes/t3094-snap-lambda-call-forms.case.json	44
 C	probes/t3095-snap-lambda-helpers.case.json	148
 C	probes/t3096-lookup-value-blank-elements.case.json	203
+C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3138-blank-criterion.case.json	111
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
@@ -4548,15 +4549,6 @@ F	probes/t3012-gamma-inv-small-shape.case.json	S!B6
 F	probes/t3012-gamma-inv-small-shape.case.json	S!B9
 F	probes/t3028-b2-taiwan-cuts.case.json	Sheet1!A65
 F	probes/t3028-b2-taiwan-cuts.case.json	Sheet1!C65
-F	probes/t3029-b2-calendar-weekday.case.json	S!A73
-F	probes/t3029-b2-calendar-weekday.case.json	S!A74
-F	probes/t3029-b2-calendar-weekday.case.json	S!A75
-F	probes/t3029-b2-calendar-weekday.case.json	S!A79
-F	probes/t3029-b2-calendar-weekday.case.json	S!A80
-F	probes/t3029-b2-calendar-weekday.case.json	S!A81
-F	probes/t3029-b2-calendar-weekday.case.json	S!A82
-F	probes/t3029-b2-calendar-weekday.case.json	S!A83
-F	probes/t3029-b2-calendar-weekday.case.json	S!A84
 F	probes/t3048-snap-conditional-sums.case.json	S!D5
 F	probes/t3048-snap-conditional-sums.case.json	S!D6
 F	probes/t3048-snap-conditional-sums.case.json	S!G5
@@ -5006,4 +4998,4 @@ TC	probes/t2729-hijri-locale-tag-names.case.json	3
 TC	probes/t2729-hijri-locale-tag.case.json	5
 TC	probes/t2932-b2-calendar-twice.case.json	5
 TC	probes/t3029-b2-calendar-weekday.case.json	3
-TF	probes/t3029-b2-calendar-weekday.case.json	S!B3
+TC	probes/t3101-b2-calendar-names.case.json	3
