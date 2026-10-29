@@ -2432,9 +2432,9 @@ L = -LN(a0) there, `docs/research/t3007/cell_diff.py`): -LN(a0) at a0 <= 8 makes
 probes-numeric, 11 ironcalc-calc, 4 gen-m9; 114 from 1 to 4 ulp, 2 from within 15 digits) and moves 28 off by 1 to 4
 ulp, none visibly: 27 probes-numeric BETA.DIST, BINOM.DIST, NEGBINOM.DIST and F cells (t2464-w2f-xruns-1's (4, 4) run
 A10247 to A12259 has 21 of them; t2145-binomial-sweep A358, A1710, t2145-negbinom-sweep A556, A578,
-t2220-f-dist-sweep-cdf and -rt A234), and BETADIST_BETAINV.xlsx H15, BETA.INV's own (above). Per function, closer
-to Excel / further: BETA.DIST 71/28, BINOM.DIST 32/2, NEGBINOM.DIST 11/2, BINOMDIST 6/0, F.DIST.RT 1/1, FDIST 1/0,
-F.DIST 0/1, BETA.INV 0/1. So the form stays at every a0; no visibly-off count changes either way.
+t2220-f-dist-sweep-cdf and -rt A234), and BETADIST_BETAINV.xlsx H15, BETA.INV's own (above). Per function, cells
+closer to Excel / further (every cell that moved, so more than the bit-exact counts): BETA.DIST 71/28, BINOM.DIST
+32/2, NEGBINOM.DIST 11/2, BINOMDIST 6/0, F.DIST.RT 1/1, FDIST 1/0, F.DIST 0/1, BETA.INV 0/1. So the form stays at every a0; no visibly-off count changes either way.
 Both shapes > 1 with max > 8 (T-3007): bpser's L is the accurate ln B at half-integer shapes with a + b <= 400 (the
 model's `w3_big = "acc"`, the double-double B F.TEST's tail already took; `bratio/ln_beta.rs`
 `neg_ln_beta_half_integer`) and TOMS `betaln` in doubles with Excel's GAMMALN and LN elsewhere (`toms_betaln`: bcorr for
