@@ -251,7 +251,7 @@ fn sort_lifted_elements(
     CalcResult::Array(rows)
 }
 
-/// The by_col an element of a lifted SORT sorted with: its value, and whether it was written as a
+/// The `by_col` an element of a lifted SORT sorted with: its value, and whether it was written as a
 /// number (a number is never equal to a boolean).
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct ByCol {
