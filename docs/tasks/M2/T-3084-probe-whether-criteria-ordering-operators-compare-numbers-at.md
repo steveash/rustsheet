@@ -3,7 +3,7 @@ id: T-3084
 title: "Probe whether criteria ordering operators (<, <=, >, >=) compare numbers at 15 digits or exactly, as = and <> do"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
