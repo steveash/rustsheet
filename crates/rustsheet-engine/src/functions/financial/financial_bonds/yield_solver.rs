@@ -1,11 +1,11 @@
 //! YIELD's Newton as Excel runs it ([`yield_start`], [`excel_yield_newton`]), and ODDFYIELD's,
 //! the same Newton with its own slope ([`odd_first_yield`]).
 
-use super::{discount_growth, yield_start_years, OddArgs, OddFirstSchedule};
+use super::{discount_growth, yield_start_term, OddArgs, OddFirstSchedule};
 use crate::x87_exp::{dd_add, dd_div, dd_mul, two_sum};
 
 /// The settlement-to-maturity term of [`yield_start`]: `whole_years + days / year_days` years,
-/// kept as its parts so the start can take it exactly ([`super::yield_start_years`]).
+/// kept as its parts so the start can take it exactly ([`super::yield_start_term`]).
 pub(super) struct StartTerm {
     pub(super) whole_years: f64,
     pub(super) days: f64,
@@ -83,11 +83,11 @@ pub(super) fn excel_yield_newton(
 }
 
 /// ODDFYIELD: [`excel_yield_newton`] on ODDFPRICE from YIELD's start over the settlement-to-maturity
-/// term ([`yield_start_years`]), with the slope of [`OddFirstSchedule::dprice`]. `None` (#NUM!) off
+/// term ([`yield_start_term`]), with the slope of [`OddFirstSchedule::dprice`]. `None` (#NUM!) off
 /// the calendar or where the Newton leaves ODDFPRICE's domain.
 pub(super) fn odd_first_yield(odd: &OddArgs<4>, schedule: &OddFirstSchedule) -> Option<f64> {
     let [settlement, maturity, ..] = odd.dates;
-    let term = yield_start_years(settlement, maturity, odd.basis)?;
+    let term = yield_start_term(settlement, maturity, odd.basis)?;
     excel_yield_newton(
         odd.yld_or_pr,
         yield_start(odd.rate, odd.yld_or_pr, &term),

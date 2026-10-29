@@ -2572,7 +2572,7 @@ T-2974 (attempt 2, 2026-10-29): Excel's start is the fitted formula **rounded on
   and yield-newton-domain P!B2 needs one below. So the single rounding is the closest model found, not Excel's exact
   arithmetic.
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
-T-2777's term (`yield_start_years`). Since
+T-2777's term (`yield_start_term`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
 cells and its 100-step cap").
 Off the fit (T-2741, `make eval` on de48145d): of the 370 probe and ironcalc-calc YIELD cells that were visibly off
@@ -2624,7 +2624,7 @@ maturity (321).
   cells): every candidate below is 0/99 bit-exact and 0/99 within 4 ulp. The engine's central-difference Newton from
   the coupon rate (stop at |dy| < 1e-8, then bisection), which lands on the root, is 0/99 as well.
   - Newton with an analytic slope, or a central (h = 1e-5), forward or backward (h = 1e-4, 1e-5, 1e-6, 1e-8)
-    difference; from the coupon rate, 0, 0.1 or YIELD's fitted start (`yield_start` over `yield_start_years`);
+    difference; from the coupon rate, 0, 0.1 or YIELD's fitted start (`yield_start` over `yield_start_term`);
     stopping on a step below 1e-6, 1e-8, 1e-10 or 1e-12 (the iterate before the step, or after it) or on
     |price - pr| below the same values; prices discounted with Excel's `^` or with libm, and with the accrued
     interest subtracted from the price or added to the target instead (1,920 variants).

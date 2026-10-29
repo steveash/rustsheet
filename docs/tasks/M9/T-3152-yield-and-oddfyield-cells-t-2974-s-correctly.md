@@ -37,6 +37,7 @@ bit are bit-exact again, or within 15 digits, while the cells it fixed stay fixe
 - [ ] The nine visibly-off cells are within 15 digits, and no known-failure line is added
       (`make eval-baseline`). Otherwise the task records the candidates tried with their lab
       counts (decision 0056).
+- [ ] `fn_yield_start_term_whole_years_then_leftover_days` asserts A2's exact bits again.
 - [ ] `uv run rustsheet-fitlab yield-caret` scores the rounded-once start.
 - [ ] `make check` green; reviewers approve.
 

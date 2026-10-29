@@ -33,6 +33,8 @@
 - **Decision:** run `rustsheet-eval update-baseline --allow-regressions` once in the T-2974
   attempt 2 PR, for the probes, ironcalc-calc and gen-m9 suites and exactly these 148 cells. The
   task T-2974 keeps the remaining cells, and the follow-up T-3152 owns the 148.
-- **Consequences:** the baselines gain exactly these 148 lines and lose the fixed ones. Reviewers
+- **Consequences:** the baselines gain exactly these 148 lines and lose the fixed ones. The unit test
+  `fn_yield_start_term_whole_years_then_leftover_days` pins A37 (its A2) to within one ulp of Excel's
+  bits instead of the bits, until T-3152. Reviewers
   check that the added lines are all YIELD or ODDFYIELD cells. The visible-parity lock is not
   lowered here; the steward lowers it (decision 0093).
