@@ -622,6 +622,15 @@ fn count(n: Option<usize>) -> String {
     n.map_or_else(|| "n/a".to_string(), |n| n.to_string())
 }
 
+/// The text-item counts a measure adds to its cell of the report table (M10, decision 0146 item
+/// 4); empty where text items are not a criterion.
+fn text_suffix(failing: Option<usize>, items: Option<usize>) -> String {
+    match (failing, items) {
+        (Some(failing), Some(items)) => format!(", text {failing} failing of {items}"),
+        _ => String::new(),
+    }
+}
+
 /// One suite's cell of the report table: scored cells, 15-digit rate, visibly off over the
 /// allowance, bit failures and the verdict.
 fn suite_text(s: &SuiteExit) -> String {
@@ -632,10 +641,7 @@ fn suite_text(s: &SuiteExit) -> String {
                 0 => String::new(),
                 n => format!(", {n} cases blocked"),
             };
-            let text = match (s.text_failing, s.text_items) {
-                (Some(failing), Some(items)) => format!(", text {failing} failing of {items}"),
-                _ => String::new(),
-            };
+            let text = text_suffix(s.text_failing, s.text_items);
             format!(
                 "{scored}, {}, {}/{} [{}]{blocked}{text} {}",
                 s.rate15
@@ -709,10 +715,7 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
             }
             _ => count(r.calc_visibly_off),
         };
-        let probe_text = match (r.probe_text_failing, r.probe_text_items) {
-            (Some(failing), Some(items)) => format!(", text {failing} failing of {items}"),
-            _ => String::new(),
-        };
+        let probe_text = text_suffix(r.probe_text_failing, r.probe_text_items);
         let at_rate = match r.rate_functions {
             Some(n) => format!("{}/{n} {}", count(r.below_rate), verdict(r.rate_met)),
             None => "n/a".to_string(),

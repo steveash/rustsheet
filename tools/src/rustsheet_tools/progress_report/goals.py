@@ -317,7 +317,9 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
     # Only M10 reads the generated suite's displayed text: none of its items may fail (decision
     # 0146 item 4(a)); its verdict is the suite's `gen_met`.
     if row.get("gen_text_items") is not None:
-        measures.append(f"{label} text {_num(get('gen_text_failing'))} failing of {_num(get('gen_text_items'))}")
+        measures.append(
+            f"{label} text {_num(get('gen_text_failing'))} failing of {_num(get('gen_text_items'))}"
+        )
     # The other required suites (M1's smoke, M8's gen-m8b and poi subset), each with its own
     # floor and rate; the poi subset also counts the cases that did not run (decision 0146).
     for i, more in enumerate(row.get("more_suites") or []):
