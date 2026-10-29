@@ -157,10 +157,17 @@ fn nested_calls(form: &str, calls: usize) -> String {
         "if" => ("IF(TRUE,", "1", ")"),
         "sum" => ("SUM(", "1", ")"),
         "op-abs" => ("ABS(1+", "1", ")"),
+        "mixed" => ("ABS(SUM(INT(", "1", ")))"),
         "let" => ("ABS(", "LET(x,1,x)", ")"),
         _ => ("ABS(", "LAMBDA(x,x)(1)", ")"),
     };
-    let outer = if inner == "1" { calls } else { calls - 1 };
+    // A mixed level is three calls (`calls` is then a multiple of three); a LET or a called
+    // LAMBDA innermost is one of the calls.
+    let outer = match (form, inner) {
+        ("mixed", _) => calls / 3,
+        (_, "1") => calls,
+        _ => calls - 1,
+    };
     format!("={}{inner}{}", open.repeat(outer), close.repeat(outer))
 }
 
@@ -170,21 +177,23 @@ fn nested_calls(form: &str, calls: usize) -> String {
 #[test]
 fn typed_formulas_nesting_more_than_65_calls_are_refused() {
     let mut wb = book();
-    for (row, form) in ["abs", "if", "sum", "op-abs", "let", "lambda"]
+    for (row, form) in ["abs", "if", "sum", "op-abs", "let", "lambda", "mixed"]
         .into_iter()
         .enumerate()
     {
         let accepted = format!("A{}", row + 1);
         let refused = format!("B{}", row + 1);
-        wb.set(accepted.as_str(), Input::Formula(nested_calls(form, 65)))
+        // 63 and 66 for the mixed form, whose levels come three at a time.
+        let (fits, past) = if form == "mixed" { (63, 66) } else { (65, 66) };
+        wb.set(accepted.as_str(), Input::Formula(nested_calls(form, fits)))
             .unwrap();
         assert!(
             matches!(wb.value(accepted.as_str()).unwrap(), Value::Number(_)),
             "{form}"
         );
         for input in [
-            Input::Formula(nested_calls(form, 66)),
-            Input::Parse(nested_calls(form, 66)),
+            Input::Formula(nested_calls(form, past)),
+            Input::Parse(nested_calls(form, past)),
         ] {
             let err = wb.set(refused.as_str(), input).unwrap_err();
             assert!(

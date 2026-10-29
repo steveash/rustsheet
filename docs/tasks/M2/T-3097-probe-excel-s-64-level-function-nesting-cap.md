@@ -75,9 +75,9 @@ refuses, the API refuses a typed formula Excel refuses, and every formula Excel 
   the stored `SINGLE`/`ANCHORARRAY` operators do not). A typed formula past it is refused through
   `typed_refusal` (`EditError::InvalidInput`), and `from_a1_to_rc` refuses the workbook
   (`XlsxError::Workbook`). Unit tests at 65 and 66 calls for ABS, IF, SUM, an operator between levels,
-  LET and LAMBDA innermost, typed (crates/rustsheet/src/edit/tests/typed_entry.rs) and stored
+  LET and LAMBDA innermost and a mixed chain, typed (crates/rustsheet/src/edit/tests/typed_entry.rs) and stored
   (crates/rustsheet-xlsx/tests/malformed_import.rs). The paren-abs form reaches the depth bound first
   (the DEVIATION), so it has no 66-call test.
 - Eval delta: 44 new probe cases, of which the 8 past the depth bound are baselined known failures
-  (DEVIATION); 0 regressions. The mixed form is covered by the probes only.
+  (DEVIATION); 0 regressions. The mixed form (ABS/SUM/INT, three calls a level) is tested at 63 and 66.
 - Follow-up: T-3143 (SINGLE/ANCHORARRAY, name bodies, conditional formats, data validation).

@@ -386,6 +386,18 @@ fn formula_longer_than_8192_characters_refuses_the_workbook() -> TestResult {
     Ok(())
 }
 
+/// A sheet whose A100 holds the stored formula `formula`.
+fn sheet_with_a100_formula(formula: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{formula}</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
 /// A sheet whose A100 holds `calls` nested function calls as Excel stores them: levels of `open`
 /// (each closed by `)`) around `inner` (probes/t3097-nesting-*).
 fn sheet_with_nested_calls(
@@ -395,15 +407,11 @@ fn sheet_with_nested_calls(
 ) -> Result<Vec<u8>, Box<dyn Error>> {
     // An innermost other than `1` (the LET or the called LAMBDA) is itself one of the calls.
     let outer = calls - usize::from(inner != "1");
-    let formula = format!("{}{inner}{}", open.repeat(outer), ")".repeat(outer));
-    let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{formula}</f></c></row>");
-    rewrite(|name, content| {
-        if name == "xl/worksheets/sheet1.xml" {
-            content.replacen("<sheetData>", &cell, 1)
-        } else {
-            content
-        }
-    })
+    sheet_with_a100_formula(&format!(
+        "{}{inner}{}",
+        open.repeat(outer),
+        ")".repeat(outer)
+    ))
 }
 
 // Excel for the web loads 65 nested function calls and refuses the workbook at 66 (createSession
@@ -424,6 +432,14 @@ fn formula_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
             "Formula in Sheet1!A100 nests more than 65 function calls",
         );
     }
+    // A mixed chain, three calls a level: 63 load and 66 are refused.
+    let mixed =
+        |levels: usize| format!("{}1{}", "ABS(SUM(INT(".repeat(levels), ")))".repeat(levels));
+    assert_imports(&sheet_with_a100_formula(&mixed(21))?)?;
+    assert_import_error(
+        &sheet_with_a100_formula(&mixed(22))?,
+        "Formula in Sheet1!A100 nests more than 65 function calls",
+    );
     Ok(())
 }
 
