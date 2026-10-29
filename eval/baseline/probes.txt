@@ -1559,6 +1559,7 @@ C	probes/tbilleq-nonpositive-price.case.json	9
 C	probes/tbilleq-zero-price.case.json	4
 C	probes/text-255-units-array-element.case.json	8
 C	probes/text-255-units-from-cell.case.json	13
+C	probes/text-255-units-reference-shapes.case.json	22
 C	probes/text-255-units-rept-error-count.case.json	5
 C	probes/text-ap-locale-bracket.case.json	28
 C	probes/text-ap-locale-inferences.case.json	81
