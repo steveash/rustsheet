@@ -605,7 +605,7 @@ top-left of its call.
     `{#N/A;FALSE}` is `#N/A`, x.
   - An error array is every element's result: `UNIQUE(SUMPRODUCT(<mismatched sizes>),HSTACK(0.2,1E+15))` is `#VALUE!`,
     `#VALUE!` (gen-m7/8044dce50616cfe9 Calc!A1434:B1434).
-  - Ours (T-2300): the driver option `CallResult::ArrayFirst` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
+  - Ours (T-2300): the driver option `CallResult::ArrayFirstColumn` (SPEC-0011 rule 2, "As built (T-2300)"). INDEX of any empty
     value is `#VALUE!` there (`scalar_as_one_element_array`). Only the empty element is evidenced (m7-lift-take-drop-sortby
     L25); other empty values in INDEX's first argument (`INDEX(IFERROR(B1,1),1,1)` with B1 blank) are `#VALUE!` too
     (probes/m7-unique-lift-corners, T-2348).
@@ -630,24 +630,24 @@ top-left of its call.
   on by_col (TRUE, FALSE and the by_col-only form give the same cells). Entries that are not all equal keep only the top-left
   (`{FALSE,TRUE;FALSE,FALSE;FALSE,FALSE}`: 1 then 0s). The same as gen-m7/2c156ba98ef0220a.case.json Calc!A1284 (3x3: 100
   down column A, 0 in B:C; excel-graph, 2026-10-22, T-2254 triage). Ours: UNIQUE only (`CallResult::ArrayFirstColumn`,
-  `empty_past_first_column` in lift/driver.rs) since T-2348. UNVERIFIED: whether an error element past the first column stays
-  (ours: it does, `UNIQUE(D1:D3,FALSE,{"a","a"})` is unprobed), and SORTBY's uniform 1xN sort_order, which keeps every
-  element's top-left in ours (`CallResult::ArrayFirst`; with a second by_array/sort_order pair its emptied elements are `#VALUE!`);
-  both belong with T-2349's SORTBY probes.
+  `empty_past_first_column` in lift/driver.rs) since T-2348. An error element past the first column stays
+  (`UNIQUE(D1:D3,FALSE,{"a","a"})` is `#VALUE!`, `#VALUE!`: I12, M12; `{FALSE,TRUE}` is x then empty: M13), and SORTBY's uniform 1xN sort_order empties the elements past the
+  first column the same way (`SORTBY(A1:A3,C1:C3,{1,1})` is 1 then empty; `{1,-1}` too; with a second by_array/sort_order pair and entries that
+  differ, the other elements are `#VALUE!`. A uniform 1xN order with a uniform second pair, `SORTBY(A1:A3,C1:C3,{1,1},A1:A3,1)`,
+  is UNVERIFIED, T-3027: ours 1 then empty); probes/sortby-lifted-element-corners (excel-graph, 2026-10-28, T-2349).
 - Lifted-element corners (same probe): text entries are `#VALUE!` elements whatever their case (`UNIQUE(D1:D3,FALSE,{"a";"A"})`
   and `{"a";"a"}` are `#VALUE!`, `#VALUE!`: exactly_once is not read as text), so the case question never arises; `{0;-0}` is
   x, x (equal). A call error from a non-error entry stays and the first good element is kept: `{"abc";FALSE;TRUE}` is
   `#VALUE!`, x, empty; `{FALSE;"abc";TRUE}` is x, `#VALUE!`, empty. INDEX of an empty value from IFERROR
   (`INDEX(IFERROR(AZ1,1),1,1)`, `LET(x,IFERROR(AZ1,1),INDEX(x,1,1))`, AZ1 blank) is `#VALUE!`, as for UNIQUE's empty element.
 Evidence: probes/m7-lift-take-drop-sortby (sheet Sort, Sheet1 rows 25, 26, 29, 30, 35-37; excel-graph, 2026-10-21, T-1960).
-UNVERIFIED for SORTBY (taken from UNIQUE's rule, unprobed; T-2349):
-- a leading invalid entry (`{2;1}`): ours `#VALUE!`, then the next element's top-left;
-- a mixed `{1;-1;2}`: ours 1, empty, `#VALUE!`, with the error per slot;
-- an error array: ours one scalar error;
-- an error by_array: ours the error in every element.
-Ours: implemented. The driver option `CallResult::ArrayFirst` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
+SORTBY follows UNIQUE's rule (probes/sortby-lifted-element-corners, excel-graph, T-2349): a leading invalid entry (`{2;1}`) is
+`#VALUE!` then the next element's top-left; a mixed `{1;-1;2}` is 1, empty, `#VALUE!`; an error array is that error in every
+element of the sort_orders' shape (`ROWS(SORTBY(NA(),C1:C3,{1;-1}))` is 2); an error by_array is the error in every element.
+UNVERIFIED (T-3027): which error wins inside an element when an error array meets an invalid or uniform 1xN sort_order (ours: the array's error, `SORTBY(NA(),C1:C3,{2;1})` is `#N/A` in every element; `SORTBY(NA(),C1:C3,{1,1})` likewise).
+Ours: implemented. The driver option `CallResult::ArrayFirstColumn` serves UNIQUE (T-2300) and SORTBY (T-1839). SORTBY's sort_orders lift (`repeat: [WholeByCaller, Lift]`), and its later elements are `#VALUE!` once the call has a second by_array/sort_order pair (`LiftOptions::later_error`).
 Status: VERIFIED (web)
-Tasks: T-2300 (UNIQUE), T-1839 (SORTBY)
+Tasks: T-2300 (UNIQUE), T-1839 (SORTBY), T-2349 (SORTBY corners), T-3027 (error array with an invalid sort_order)
 
 ## Scalar arguments lift: shapes, element errors, and the Analysis ToolPak range rule
 Rule: a function whose scalar argument gets an array lifts, one call per element, and the arguments
@@ -817,7 +817,7 @@ Tasks: T-1767 (SPEC-0011), T-1770, T-1290, T-1372, T-1383, T-1236, T-1822, T-187
 
 ## GROUPBY and PIVOTBY
 Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
-numbers < text < FALSE < TRUE < blank, with the blank-key group shown as the number 0 and kept last even
+numbers < text < FALSE < TRUE < blank, with the blank-key group displayed as 0 when spilled (a true blank inside the array) and kept last even
 when sorting descending. Function inputs keep source order, and the total row applies the function to all
 (filtered) values, not to the group results (AVERAGE total 13.05 = 130.5/10). Filler cells of total rows, the
 corner and PIVOTBY combinations without records are empty text `""`, not blanks (a combination summing to 0
@@ -856,7 +856,15 @@ and the gen-m7 REGEXEXTRACT whose return_mode is such a GROUPBY gets a valid mod
 while MAP over the result is not an error (T-2592 below). Blank keys show as true blanks in INDEX (`TYPE` 1,
 `&""` is "", G!A12, B3), not 0. Ours since T-2593: each such cell is a nested array (`ArrayNode::Nested`), shown as `#VALUE!`, which
 INDEX returns (TYPE 64) and an element-wise lift reads as its top-left (P!B3:E37, C1:C33 and gen-m7/21b4eef18424ce94 A1504 pass);
-0 for a blank key (T-2460).
+0 for a blank key until T-2854, which keeps the blank key a true blank (`ArrayNode::Empty`) inside the array: INDEX gives
+TYPE 1 and `&""` "", COUNT skips it (probes/pivotby-ttest-array2: `COUNT(PIVOTBY(..))` 108, and the TTEST that reads it,
+gen-m9/c2684066d8df263e Calc!A214), while a spilled blank element still displays 0. IFERROR and IFNA read a blank array
+element as 0, as they read a blank cell of a multi-cell range: `TEXTJOIN("|",FALSE,IFERROR(GROUPBY(..),"#"))` shows the blank
+key as "0" (probes/groupby-sort-filter-args G!B15, B55, groupby-sort-filter-args2 G!B10; `if_error_like`, logical/mod.rs).
+IF passes a blank element through as a blank: `TTEST(..,IF(TRUE,PIVOTBY(..)),1,2)` equals the TTEST without the IF
+(probes/pivotby-ttest-array2 P!A41, P!A31). Whether IFERROR reads blanks of other arrays (FILTER, INDEX lifted over blank
+cells, VSTACK) as 0, and what N and arithmetic do with a blank element, is unprobed (T-2999); ours reads every array's
+blank as 0 in IFERROR and IFNA.
 T-2592 (probes/t2592-nested-groupby-cells, excel-graph, 2026-10-24; `GROUPBY(D!A1:A5,D!C1:D5,LAMBDA(v,v))` is 3x3: keys a, b, Total by
 key, C, D; group a `{1;2}`/`{10;20}`, b `{3;4}`/`{30;40}`, Total 4x1; the shown headers are off). Nested cells in practice:
 - A LAMBDA whose body is a one-cell reference (`LAMBDA(x,D!D2)`) still displays `#VALUE!` in every spilled cell (probes/groupby-lambda-forms
@@ -904,7 +912,7 @@ LARGE, SMALL and the PERCENTILE/QUARTILE family read their data outside the walk
 error element anywhere in the array (ours checks for a nested cell first), and the 0 holds for multi-argument SUMPRODUCT. COUNT over a PIVOTBY with several key and
 value columns (`COUNT(PIVOTBY(Data!C1:C12,Data!B1:D12,Data!B1:E12,LAMBDA(y,y)))` 140, A13; gen-m9/e85daedce5c2675e A35's 142)
 differs from ours only in the blank keys, which Excel shows as true blanks in the row keys and in every column-key row
-(A28:A31; ours 0, so COUNT 165): T-2460.
+(A28:A31; ours was 0, so COUNT 165): fixed by T-2854 (see above).
 Implemented in: crates/rustsheet-engine/src/nested_array.rs (`NestedArray`, `ArrayNode::scalar`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/group_functions.rs (`Model::nest`),
 crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs (`index_from_array`),
@@ -1222,6 +1230,23 @@ crates/rustsheet-engine/src/limits.rs (`too_many_visits`, `MAX_LIFTED_CELL_VISIT
 crates/rustsheet-engine/src/functions/lookup_and_reference/relative_to.rs (`RelativeSets::new`, `MAX_SET_ENTRIES`)
 Tasks: T-1325, T-1327
 
+## SCAN over a GROUPBY result (T-2398)
+Rule (observed): SCAN whose array is a GROUPBY call is one cell, not a scan of the GROUPBY's cells:
+- `SCAN(GROUPBY(Data!A1:A4,Data!B1:B4,SUM),0,MIN)` is 0.
+- A LAMBDA that ignores the accumulator gives one value (`LAMBDA(a,v,TYPE(v))` is 1, `ROWS(v)*100+COLUMNS(v)` 101).
+- One that uses the accumulator (`LAMBDA(a,v,a+1)`) is `#CALC!`, also through LET, TAKE and VSTACK.
+- With `LAMBDA(w,w)` as the GROUPBY function, SCAN MIN is `#N/A`, and with `LAMBDA(w,1/0)` it is `#DIV/0!`
+  (groupby-lifted-args A169). A hypothesis, not established: the eta-reduced MIN is given the whole GROUPBY result,
+  whose value cells hold the groups' arrays ("Aggregates over nested GROUPBY and PIVOTBY cells" above). An explicit
+  LAMBDA over the same `w,w` GROUPBY sees a 1x1 number (A45 `TYPE(v)` 1, A48 `ROWS(v)*100+COLUMNS(v)` 101), so eta MIN
+  and an explicit LAMBDA see different things.
+- MAP and REDUCE over the same GROUPBY see all of its cells (4x2; 8 elements).
+Evidence: probes/scan-over-groupby (excel-graph, 2026-10-23, T-2398); probes/groupby-lifted-args A153, I153, A161, A169;
+gen-m7/b24ce74f08d3f91a Calc!A1850.
+Status: VERIFIED for these cells; why SCAN collapses the call to one cell is not understood.
+Ours: matches every cell since T-2593 and T-2594 (nested GROUPBY cells); unit test
+`test_nested_groupby_cells::scan_over_a_groupby_call_is_one_cell`.
+
 ## Nested GROUPBY and PIVOTBY cells: bounds
 Rule: Excel keeps a GROUPBY or PIVOTBY function's array result in its cell, at any size and depth (SPEC-0018 rules 1, 8;
 "A LAMBDA array result is shown as `#VALUE!`" above). RustSheet bounds them (CLAUDE.md directive 5): one call keeps at most
@@ -1379,7 +1404,8 @@ Rule: Excel has no known per-formula work limit; a formula whose LAMBDA helpers 
 Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
 Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
 units: 6 per node evaluated (each link of an operator chain is one), 3 per cell of each array value a node gives or a range
-is turned into, one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
+is turned into (a range arm of a lifted IF or CHOOSE, or an HSTACK or VSTACK argument, is first read for 3 per cell of
+its used area, then a picked one copied for 3 per cell of the range; T-1564), one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
 `&` operator makes over an array, T-2806), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
@@ -1402,8 +1428,8 @@ before the LAMBDA charge), with the body `r+c+z+r+c+z+r+c+z` 3.3 s, with `LAMBDA
 second call's charge fails) and of smaller RATE calls 5.2 s, of lifted YIELD 7.6-7.9 s (each call refused by its own cap
 since T-2879, so these are node units). One call at its visit cap (2026-10-27, before T-2923's re-fit, which does not change
 visit units): RATE 2.4 s, ODDLPRICE 1.1 s, CHISQ.DIST and POISSON.DIST 0.4 s, GAMMA.INV and GAMMA.DIST under 0.1 s, COUNTIF
-and SUMIFS over 1,024 cells 0.1 and 0.4 s. The LAMBDAs a formula makes stay stored until the evaluation ends, so a
-recalculation of many such formulas still slows each later one (T-2925). Array cells read by aggregates and other
+and SUMIFS over 1,024 cells 0.1 and 0.4 s. The LAMBDAs a formula makes are dropped once its root cell is evaluated, so a
+recalculation of many such formulas does not slow each later one (T-2925). Array cells read by aggregates and other
 whole-array readers are not charged yet (T-2804, T-2805).
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/area_budget.rs (`MAX_FORMULA_WORK`, `Model::spend_work`, `Model::with_area_budget`),
@@ -1716,11 +1742,14 @@ own order and is `#VALUE!` on any other array. With A1:A3 = 3,1,2 and B1:B3 = 30
 - `SORTBY(A1:B3,{2,1})` and `SORTBY(A1:B3,{1,2},-1)` swap the columns (H69, H73); `SORTBY(A1:A3,{3,1,2})` and
   `SORTBY(A1:A3,A20:C20)` are `#VALUE!` (a row as long as the array's height does not sort its rows: H77, H81).
 - Mixed directions are `#VALUE!`: `SORTBY(A1:A3,5,1,A1:A3,-1)`, `SORTBY(A1:A3,A1:A3,1,5,1)`, `SORTBY(A1:B3,A1:A3,1,{2,1},1)`
-  (H85-H93). A one-value by_array on a one-row array next to a row by_array is unprobed (ours: `#VALUE!`).
-A sort_order reads as its floor, snapped up near an integer (the count rule of LEFT and INDEX, `near_integer_count`): -0.0001,
+  (H85-H93). So is a one-value by_array on a one-row array A20:C20 = 3,1,2 next to a row by_array, in either order and direction (`SORTBY(A20:C20,5,1,A20:C20,1)`, `(A20:C20,A20:C20,-1,5,1)`, `{7}` or the one-cell `A1` for the value): `#VALUE!`; two one-value pairs (`SORTBY(A20:C20,5,1,5,1)`) keep the order (probes/t2370-sortby-mixed-by-array-snap, excel-graph, 2026-10-28, T-2370).
+A sort_order reads as its floor, snapped up near an integer (`near_integer_whole`, below): -0.0001,
 -0.5, -0.9999 sort descending, 1.5 and 1.0000001 ascending; 0.0001, 0.5, 0.9999, -1.5, 2, -2 and -1E-300 (floor -1, snapped
-to 0) are `#VALUE!`; `"-1"` is descending and TRUE ascending (H97-H165). That the snap tolerance is LEFT's 2^-22 + 2^-33 is
-UNVERIFIED (only -1E-300 and 0.9999 bound it). SORT's own sort_order still truncates (unprobed for fractions).
+to 0) are `#VALUE!`; `"-1"` is descending and TRUE ascending (H97-H165). The snap is the one DATE, TIME and XMATCH use (`near_integer_whole`): LEFT's tolerance for a positive value, half of it below zero (T-2370, A1:A3 = 3,1,2). Just below 1 and 2 it lies between 2^-22 + 2^-33 and 2^-22 + 2^-32:
+`1-2^-22`, `1-2^-23`, `1-2^-24` and `1-(2^-22+2^-33)` sort ascending, `1-2^-21`, `1-2^-20` and `1-(2^-22+2^-32)` are `#VALUE!` (floor 0), `2-2^-22` is `#VALUE!`
+(snapped to 2) and `2-2^-21` ascending. Just below -1 it is at least 2^-23 + 2^-34 and under 2^-22 (the half, as DATE and TIME bracket it more tightly, T-2267): `-1-2^-23`, `-1-2^-24` and `-1-(2^-23+2^-34)` sort descending (snapped to -1), but `-1-2^-22`,
+`-1-(2^-22+2^-33)`, `-1-(2^-22+2^-32)` and `-1-2^-21` are `#VALUE!` (floor -2); the cells just above -1 and -2 (`-1+2^-22`, `-2+2^-22`) say nothing of
+the tolerance, their floor is -1 and -2 either way. SORT's own sort_order still truncates (unprobed for fractions).
 This is why `SORTBY(Data!E1:E12,MAX(..)%,-1)` (gen-m7/18b80d3fd292d63a Calc!A123:A134), `SORTBY(Data!C1:C12,IFNA(TIMEVALUE(..),..),1)`
 (7307132bb8820f17 A966:A977) keep their one-column arrays, `SORTBY(Data!B1:C12,(-1),1)` (0e40208f51c2454c Calc!A2) and the
 by_array 0.5 on Data!B1:C12 (7d67c559ce7536fa A1358) are `#VALUE!`, and `SORTBY(Data!B1:E12,Data!E1:E12,-0.0001,..)`
@@ -1745,7 +1774,7 @@ total (P!A33), and an array result (`LAMBDA(v,v)`, P!A12: Excel's cells there ar
 `#VALUE!`, gen-m7/21b4eef18424ce94 Calc!A1504, T-2360). With the
 same functions over one value column, each gen-m7 call below is a pivot with error cells (value-cause `val1` rows). This is
 why five generated PIVOTBY calls are `#VALUE!` (gen-m7/18b80d3fd292d63a Calc!A913, 07d27aa0add0247f A708, A992, 90de8755a2e565e6
-A1, A285). Unprobed: an error only in a column subtotal.
+A1, A285). An error only in a hidden column subtotal cell counts too, where that cell is computed (T-2967, below).
 Ours: implemented (T-2311): `check_totals` (pivotby.rs) computes the Total column cells of each line and the Total row.
 Which hidden Total cells count (T-2578, excel-graph, 2026-10-24: derived from a decode of all 256 layouts of four records over up to
 four column groups, run during T-2578 and not committed; checked by probes/t2578-pivotby-hidden-total-slot, 7 layouts with 2 and 3
@@ -1763,14 +1792,24 @@ T-2606 (excel-graph, 2026-10-27, probes/t2606-pivotby-total-gate-layouts): `col_
 1 (P!D1-D4 = C1-C4): with one column field p, q and 2 values the hidden Total cells count in the row with a q record only, so the
 Total column is not a line of the gate in either order. A LAMBDA returning `""` in the gating cell still counts: a record there is
 enough: only value 0's row total is an error (`LAMBDA(v,IF(SUM(v)=3,NA(),IF(SUM(v)=2,"",SUM(v))))`), its gating cell q/u is `""`, and
-the call is `#VALUE!` (P!F1), as is its control without the `""` (P!G1). Column subtotal lines (`col_total_depth` 2 / -2, same result for both signs;
-leaves p/x, p/y, q/x, 2 values, seven rows, one per non-empty leaf set, P!A1-A14) do NOT follow the single-gating-line rule: the
-hidden Total cell of value 1 counts in rows r1..r7 whichever lines they hold, value 0 in rows r2, r3, r4 and not in r1, r5, r6,
-r7 (r1 = p/x only, r2 = p/y, r3 = p/x+p/y, r4 = q/x, r5 = p/x+q/x, r6 = p/y+q/x, r7 = all). Not monotone in the records (r6 holds r2's
-record but differs, apparently), and rows r1-r4 are confounded: the row total equals a subtotal cell there. Not decoded; ours differs (14 of the 28 cells: A1, A2, A4, A6, A7, A9,
-A11, A13, B2, B4, B6, B7, B11, B13), baselined, T-2967.
-Status: VERIFIED (without subtotals); subtotal layouts UNVERIFIED (probe pending, T-2967)
-Tasks: T-2311, T-2578, T-2606
+the call is `#VALUE!` (P!F1), as is its control without the `""` (P!G1). Column subtotal lines (`col_total_depth` 2 / -2,
+same result for both signs) were confounded in that probe (P!A1-A14: rows whose total equals a subtotal cell).
+The general rule (T-2967, excel-graph, 2026-10-28, probes/t2967-pivotby-subtotal-gate, 359 cells: a full decode over every row
+subset of 4 layouts, p/x,p/y,q/x,q/y at 2 and -2, p/x,p/y,p/z,q/x, p/x,p/y,q/x with 3 values, and the first sorted by value with
+col_sort_order -3; also explains all of t2606) is the placement rule of "GROUPBY and PIVOTBY: column totals over several value
+columns": the total and each subtotal write their value `v` cell into placement column `f*V + k + v` (`f` the first line they
+cover, `k` how many lines they cover, the lines in key order with subtotals after their groups, before any value sort). A write
+that falls on a group column is dropped from the display but still computed, in the rows with a record in that group (the group
+as laid out after the sort), and an error there makes the call `#VALUE!`; a write that lands on a subtotal or Total column is
+shown and never counts. With no subtotals this is the `(G + v) div V` rule above. With p/x, p/y, P, q/x, Q (t2606), the Total's
+value 0 lands on P (never counts) and value 1 on q/x; P's both values on p/y; Q's value 0 on q/x and value 1 on Q itself. With p/x,
+p/y, p/z, P, q/x, Q both Total cells land on P, so no Total cell counts at all; P's values gate on p/y and p/z. The subtotal cell
+computed is the subtotal's own (its groups' records in the row), so an error in a hidden subtotal cell is now evidenced.
+Unprobed: three or more column fields (nested column subtotals) and row subtotal rows (`row_total_depth` 2), where ours
+applies the same rule.
+Ours: `Placement::checked_totals` (pivot_placement.rs) takes the dropped writes of `Placement::written_cells`.
+Status: VERIFIED (excel-graph)
+Tasks: T-2311, T-2578, T-2606, T-2967
 
 ## EXPAND, WRAPROWS and WRAPCOLS: scalar arguments lift, EXPAND's pad_with does not
 Rule (probes/m7-argument-modes F7:H8, G42, K5-K7, excel-graph 2026-10-09; probes/m7-lift-take-drop-sortby rows 20-23,
@@ -1787,7 +1826,7 @@ A3517); a 2-D vector beside a clean lifted argument fills the shape (`ROWS(WRAPC
 error array beside a lifted argument is one error per element (`ROWS(EXPAND(1/0,{3;4}))` and `ROWS(EXPAND(NA(),3,{1;2}))`
 are 2), and a 1x1 array pad_with is `#VALUE!` (`INDEX(EXPAND(A1:A2,3,1,{0}),3,1)`). TOCOL of an error array beside a lifted
 argument also fills the shape (`ROWS(TOCOL(1/0,0,{0;1}))`, `ROWS(TOCOL(1/0,{0;1}))` are 2). The multi-cell range pad_with
-is T-2415's; an array pad_with with rows past the grid hung the Graph workbook (unprobed).
+is T-2415's; an array pad_with with rows past the grid hung the Graph workbook beside other cells; alone it is `#NUM!` (see "WRAPCOLS/WRAPROWS of an empty cell" below, T-2479).
 A multi-cell *range* pad_with is one `#VALUE!` too, with nothing spilled, whatever the range's shape and whether any cell is padded:
 `EXPAND({1;2;3},5,100,Data!A7:D7)` (gen-m7/0624b684889e9228 Calc!A2004), `EXPAND(Data!C11:D12,2,2,Data!E1:E3)` (gen-m7/2c156ba98ef0220a.case.json A185),
 `EXPAND("a",4,4,Data!C7:C11)` (2d9b48c6363e7a16 A366), `EXPAND({1,2,3},5,4,Data!B5:C11)` (A2686), a 1x1 result that pads nothing,
@@ -1877,7 +1916,7 @@ a text error and a join over 32,767 characters (`#CALC!`) fill every element, an
 (`TEXTJOIN({"-","+"},{TRUE;FALSE},"a","","b")` is "a-b", "a-+b"). The gen-m7 cell: `LAMBDA(y,TEXTJOIN(y,y,y))({TRUE;FALSE})` is
 "TRUETRUEFALSE" twice, so RIGHT of it spills and A1137's spill is blocked.
 SORT's lifted by_col elements (probes/t2366-sort-lifted-by-col, excel-graph, 2026-10-27, T-2366), `A1:A3` = 3,1,2: later elements
-do not follow SORTBY's `ArrayFirst` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
+do not follow SORTBY's `ArrayFirstColumn` (`ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))` is FALSE; with sort_index 2 some are empty, T-2929 below). Values:
 `{FALSE,TRUE}` spills 1 then `#VALUE!`, `{TRUE,TRUE}` 3 then `#VALUE!`, sort_index 3 with `{FALSE,TRUE}` `#VALUE!` then 3, and a range
 by_col (`E1:E2` = FALSE,TRUE) lifts like an array (`ROWS` 2, `COLUMNS` 1: spills 1 then `#VALUE!`). Of the later elements only the
 sort_index 3 one (I11) matches the call's top-left; the second (TRUE) element is `#VALUE!` with sort_index 1 (I1, I7, H18) although a
@@ -1936,7 +1975,7 @@ of the call with that element in the argument's place, or that call's error. A o
   args2 A1-A23, A56). A range broadcasts as an array does (A36), and so do PIVOTBY's options, `field_headers` with
   `row_total_depth` and `row_total_depth` with `col_total_depth` (A41, A46). Each element is its own call, so of two invalid or
   error elements the earlier argument's wins: `{#N/A,0}` with `{0;#DIV/0!}` is `#N/A`, `a`; `#N/A`, `#DIV/0!` (A31), and
-  `{0,"x"}` with `{0;5}` has `#VALUE!` wherever the text is (A26). A lifted `field_relationship` beside them is read per
+  `{0,"x"}` with `{0;5}` has `#VALUE!` wherever the text is (A26; the out-of-range 5 under the valid 0 is `#VALUE!` too, ERROR.TYPE 3 through INDEX, A61; T-2451). A lifted `field_relationship` beside them is read per
   element too (A51).
 - `sort_order` does not lift (it takes arrays of its own): `GROUPBY(k,v,SUM,0,1,{1,-1})` with one key is a single `#VALUE!` (A81).
 - REGEXEXTRACT with an invalid return mode (-1) is `#VALUE!`, inside a GROUPBY function too (K1-K10). excel-graph returns those
@@ -1952,7 +1991,7 @@ whole number within the valid range, another number, a boolean, text that is no 
 frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
 Status: VERIFIED (excel-graph)
-Tasks: T-2359, T-2397, T-2398, T-2399
+Tasks: T-2359, T-2397, T-2398, T-2399, T-2451
 
 ## An empty array as a function argument (T-2436)
 Rule: an empty array (`#CALC!`, from TAKE or DROP of nothing) given as a value argument is `#VALUE!` in SWITCH's
@@ -2023,3 +2062,24 @@ lifted TRIMRANGE), IFNA through TRIMRANGE and a TRIMRANGE trimmed to one blank c
 T-2600; the REDUCE/TRIMRANGE reference since T-2596.
 Status: VERIFIED (excel-graph)
 Tasks: T-2579, T-2600, T-2596
+
+## WRAPCOLS/WRAPROWS of an empty cell, and EXPAND's array pad_with past the grid
+Rule (excel-graph, 2026-10-27, T-2479; probes/t2479-wrap-notvector-badcount, t2479-expand-padarray-small, t2479-expand-padarray-past-grid, t2479-expand-padarray-cellbound):
+a single empty cell as the vector of WRAPCOLS or WRAPROWS is `#VALUE!` even beside an error wrap_count
+(`WRAPCOLS(Z1,NA())` and `WRAPROWS(Z1,1/0)` are `#VALUE!`, not `#N/A`/`#DIV/0!`), whereas a 2-D array vector
+beside an error wrap_count gives the wrap_count's error (T-2365). A bad non-error wrap_count (-1, 0, text) beside either
+not-a-vector input is `#VALUE!`. EXPAND's array pad_with is `#VALUE!` as before for sizes inside the grid, but rows
+past the grid are `#NUM!` first: `ROWS(EXPAND(1,1048577,1,{0;1}))` is `#NUM!` (run as its own case; beside others it hung the workbook),
+and so are columns past EXPAND's cap (`ROWS(EXPAND(1,3,1048577,{0;1}))` is `#NUM!`, T-2452's cap), but `ROWS(EXPAND(1,1000,1100,{0;1}))`
+(above our 2^20-cell bound) is `#VALUE!`, so ours checks the pad_with before the cell bound DEVIATION
+(probes/t2479-expand-padarray-cellbound). `WRAPCOLS(,NA())` (omitted vector) is unprobed.
+`ROWS(WRAPCOLS(Z1,2,{0;1}))` and `ROWS(WRAPROWS(Z1,2,{0;1}))` are 2: the empty-cell `#VALUE!` fills the lifted shape (the 2 rows come from the array pad_with, so G25 alone proves nothing; G51/G52 and the error-wrap_count cells separate the sources).
+Evidence: probes/t2479-* (excel-graph, 2026-10-27).
+Status: VERIFIED (excel-graph)
+Implemented in: `wrapcols_wraprows.rs` (`flatten_vector`), `expand.rs` (`expand_kernel`).
+Tasks: T-2479
+
+## IFERROR, IFNA, N and arithmetic over blank array elements (T-2999)
+Evidence: probes/blank-elements-iferror-n-arith (11 cells, excel-graph 2026-10-28; D1:D5 = 1, blank, "x", blank, 5). IFERROR and IFNA read a blank element of FILTER, a lifted INDEX (`INDEX(D1:D5,{1,2,3,4,5})`) and VSTACK as 0 (`COUNT(IFERROR(...,-1))` and the IFNA forms are 4, A1:A6; `TEXTJOIN("|",FALSE,IFERROR(FILTER(D1:D5,TRUE),"#"))` is "1|0|x|0|5", A7), while the bare FILTER keeps the blanks (`TEXTJOIN("|",FALSE,FILTER(D1:D5,TRUE))` is "1||x||5", A8). `N` turns a blank and the text "x" into 0 (`COUNT(N(FILTER(...)))` 5, A9), `+0` reads a blank as 0 and "x" is #VALUE! (`COUNT(FILTER(...)+0)` 4, A10), and IF passes a blank through (`COUNT(IF(TRUE,FILTER(...)))` 2, A11). Ours already matches all 11 cells.
+Implemented in: no engine change needed; ours already matched (`if_error_like` in crates/rustsheet-engine/src/functions/logical/mod.rs, T-2854).
+Status: VERIFIED (excel-graph)

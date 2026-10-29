@@ -1,5 +1,6 @@
 use super::lambda::LambdaCaller;
 use crate::cast::calc_result_to_element;
+use crate::functions::spill_functions::reject_empty_value;
 use crate::functions::util::{array_element_value, array_node_to_calc_result};
 use crate::functions::Function;
 use crate::nested_array::NestedKind;
@@ -204,7 +205,7 @@ impl Model {
         if args.len() != 2 {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let source = self.by_slices_source(&args[0], cell, false)?;
+        let source = self.by_slices_source(&args[0], cell, false, false)?;
         let lambda_result = self.by_slices_lambda(&args[1], cell)?;
         Ok((source, self.lambda_caller(&lambda_result, 1)))
     }
@@ -236,11 +237,15 @@ impl Model {
     /// second and later arrays: `MAP(1,{2},LAMBDA(x,y,x+y))` is 3 but `MAP({1},2,..)` and
     /// `MAP(1,2,..)` are `#VALUE!` (probes/lambda-value-arguments A28, B1-B10; arrays.md "MAP over
     /// single values").
+    /// With `refuse_empty_value` the empty value is `#VALUE!` ([`reject_empty_value`]), as MAP reads
+    /// its arrays (`MAP(CELL("contents",<blank>),LAMBDA(v,v))`; probes/t3030-cell-contents-blank-shapers
+    /// A351, T-3053); SCAN, REDUCE, BYROW and BYCOL of it are unprobed.
     fn by_slices_source(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
         refuse_scalar: bool,
+        refuse_empty_value: bool,
     ) -> Result<Source, CalcResult> {
         let data = match self.evaluate_picked_reference_arg(arg, cell) {
             RefArg::Ranges(Ranges::One(range)) if range.left.sheet == range.right.sheet => {
@@ -250,7 +255,10 @@ impl Model {
                 return Ok(Source::Range(range));
             }
             other => {
-                let value = other.into_single_area(cell);
+                let mut value = other.into_single_area(cell);
+                if refuse_empty_value {
+                    value = reject_empty_value(arg, value, cell)?;
+                }
                 if refuse_scalar && is_scalar_value(&value) {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
@@ -276,49 +284,53 @@ impl Model {
     /// the cell), over anything else its value (probes/lambda-helper-range-slices, excel-graph
     /// 2026-10-12, T-1442). Over a range the references are built on demand ([`LambdaGrid::at`]),
     /// not stored per cell (T-1465).
-    /// `refuse_scalar` as in [`Model::by_slices_source`].
+    /// `refuse_scalar` and `refuse_empty_value` as in [`Model::by_slices_source`].
     pub(super) fn lambda_cells(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
         refuse_scalar: bool,
+        refuse_empty_value: bool,
     ) -> Result<LambdaGrid, CalcResult> {
-        Ok(match self.by_slices_source(arg, cell, refuse_scalar)? {
-            Source::Range(range) => LambdaGrid::Cells {
-                origin: range.left,
-                rows: usize::try_from(range.right.row - range.left.row + 1).unwrap_or(0),
-                columns: usize::try_from(range.right.column - range.left.column + 1).unwrap_or(0),
-            },
-            // A blank element of an array value reaches the LAMBDA as the empty value IFERROR gives
-            // a blank cell: ISBLANK TRUE, yet COUNT and AVERAGE count it as 0
-            // (`MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT)` is 1,1,1,1, probes/t2413-blank-in-stacked-arrays
-            // A7:A11, T-2413). A range's blank cell stays a blank cell (A43:A47).
-            // A nested cell of a GROUPBY or PIVOTBY result reaches the LAMBDA whole, as its array
-            // (`MAP(GROUPBY(..,LAMBDA(v,v)),LAMBDA(x,ROWS(x)))` gives 2 for a two-record group,
-            // `REDUCE(0,..,LAMBDA(a,x,a+ROWS(x)))` 19; SPEC-0018 rule 5, probes/t2592-nested-groupby-cells
-            // A100:A105, A15). Its cells are charged to the walk budget (`NestedArray::value`), and
-            // past it the whole call is `#ERROR!` (DEVIATION, decision 0014).
-            Source::Values(data) => {
-                let mut grid = Vec::with_capacity(data.len());
-                for row in &data {
-                    let mut values = Vec::with_capacity(row.len());
-                    for node in row {
-                        values.push(match node {
-                            ArrayNode::Empty => CalcResult::EmptyArg,
-                            ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array => {
-                                match nested.value(&mut self.nested_budget, cell) {
-                                    array @ CalcResult::Array(_) => array,
-                                    error => return Err(error),
+        Ok(
+            match self.by_slices_source(arg, cell, refuse_scalar, refuse_empty_value)? {
+                Source::Range(range) => LambdaGrid::Cells {
+                    origin: range.left,
+                    rows: usize::try_from(range.right.row - range.left.row + 1).unwrap_or(0),
+                    columns: usize::try_from(range.right.column - range.left.column + 1)
+                        .unwrap_or(0),
+                },
+                // A blank element of an array value reaches the LAMBDA as the empty value IFERROR gives
+                // a blank cell: ISBLANK TRUE, yet COUNT and AVERAGE count it as 0
+                // (`MAP(HSTACK(Z1:Z2,{1;2}),_xleta.COUNT)` is 1,1,1,1, probes/t2413-blank-in-stacked-arrays
+                // A7:A11, T-2413). A range's blank cell stays a blank cell (A43:A47).
+                // A nested cell of a GROUPBY or PIVOTBY result reaches the LAMBDA whole, as its array
+                // (`MAP(GROUPBY(..,LAMBDA(v,v)),LAMBDA(x,ROWS(x)))` gives 2 for a two-record group,
+                // `REDUCE(0,..,LAMBDA(a,x,a+ROWS(x)))` 19; SPEC-0018 rule 5, probes/t2592-nested-groupby-cells
+                // A100:A105, A15). Its cells are charged to the walk budget (`NestedArray::value`), and
+                // past it the whole call is `#ERROR!` (DEVIATION, decision 0014).
+                Source::Values(data) => {
+                    let mut grid = Vec::with_capacity(data.len());
+                    for row in &data {
+                        let mut values = Vec::with_capacity(row.len());
+                        for node in row {
+                            values.push(match node {
+                                ArrayNode::Empty => CalcResult::EmptyArg,
+                                ArrayNode::Nested(nested) if nested.kind() == NestedKind::Array => {
+                                    match nested.value(&mut self.nested_budget, cell) {
+                                        array @ CalcResult::Array(_) => array,
+                                        error => return Err(error),
+                                    }
                                 }
-                            }
-                            node => array_element_value(node, cell),
-                        });
+                                node => array_element_value(node, cell),
+                            });
+                        }
+                        grid.push(values);
                     }
-                    grid.push(values);
+                    LambdaGrid::Values(grid)
                 }
-                LambdaGrid::Values(grid)
-            }
-        })
+            },
+        )
     }
 
     /// A LAMBDA's result as a value: a reference it returns (`LAMBDA(v,v)` over a range cell)

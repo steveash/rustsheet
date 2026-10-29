@@ -374,3 +374,52 @@ fn take_cols_error_beats_zero_rows() {
     assert_eq!(model._get_text("D4"), "#CALC!");
     assert_eq!(model._get_text("D5"), "1");
 }
+
+// A one-cell TAKE/DROP of a range is a reference, so it is a scalar under `+0` or `N()`, while an
+// array constant still lifts (probes/t2454-offset-one-cell-array-args A5:D5, A9:D9; T-2519).
+#[test]
+fn one_cell_take_drop_of_a_range_is_a_scalar_height() {
+    let mut model = new_empty_model();
+    model._set("H2", "3");
+    model._set("H3", "4");
+    model._set("A1", "=ROWS(OFFSET(B9:C12,5,1,TAKE(H2:H3,1)+0))");
+    model._set("A2", "=ROWS(OFFSET(B9:C12,5,1,N(DROP(H2:H3,-1,0))))");
+    model._set("A3", "=ROWS(OFFSET(B9:C12,5,1,{3}+0))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "1");
+}
+
+// A TAKE/DROP of a one-cell reference keeps the reference, as one of `E7:E7` does: under
+// arithmetic it is a scalar, so a text cell makes the operator `#VALUE!` (not a 1x1 array), and
+// ISREF sees a reference (probes/t3072-take-drop-one-cell-reference P1-P4, P42; T-3072).
+#[test]
+fn take_drop_of_a_one_cell_reference_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("E7", "a*");
+    model._set("C8", "5");
+    model._set("A1", "=ROWS(E9-TAKE(E7,2,42))");
+    model._set("A2", "=ROWS(E9-DROP(E7,0))");
+    model._set("A3", "=ROWS(TAKE(E7,1)+0)");
+    model._set("A4", "=ISREF(TAKE(E7,1))");
+    model._set("A5", "=CELL(\"address\",TAKE(E7,1))");
+    model._set("A6", "=SUMXMY2(TAKE(C11,-1,1),B6:C10)");
+    model._set("A7", "=SUMXMY2(TAKE(C8,1),B6:C10)");
+    model._set("A8", "=TYPE(1+TAKE(C8,{1}))");
+    model.add_sheet("Data").unwrap();
+    model._set("Data!A1", "x");
+    model._set("A9", "=ROWS(E9-TAKE(Data!A1,1))");
+    model._set("A10", "=ISREF(DROP(Data!A1,0))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "TRUE");
+    assert_eq!(model._get_text("A5"), "$E$7");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#N/A");
+    assert_eq!(model._get_text("A8"), "64");
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+    assert_eq!(model._get_text("A10"), "TRUE");
+}

@@ -4,7 +4,7 @@ title: "Incomplete beta bgrat family for BETA.DIST, F, BINOM and NEGBINOM (T-246
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 campaign: accuracy
@@ -34,6 +34,22 @@ LN, EXP, log1p and GAMMALN, and brcmp1 = density·x·y), where that is a net vis
   - 1 gated bit-exact cell lost: gen-m9 FDIST c18dbf21 A151, bup+bgrat, 7 ulp.
 - Models: r2-bratio `bratio_excel.py` (`bgrat` and its incomplete-gamma helper, `Cfg(bgrat="orig")`), r2-tdist `xlk.py`.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells whose bratio dispatch (`bratio::dispatch`) is a bgrat branch (bgrat, bup+bgrat, L140 bup+bgrat, L140 bup+bup+bgrat); the cases' other cells are routed by branch in T-2981's Outcome. 1,879 visibly-off cells in 13 cases, per case:
+- probes-numeric/m9-beta-dist-a10: BETA.DIST cdf, L140BupBgrat 1
+- probes-numeric/m9-beta-dist-a100: BETA.DIST cdf, Bgrat 2, BETA.DIST cdf, L140BupBgrat 3
+- probes-numeric/m9-beta-dist-a5: BETA.DIST cdf, BupBgrat 1, BETA.DIST cdf, L140BupBgrat 1
+- probes-numeric/m9-beta-dist-a50: BETA.DIST cdf, Bgrat 1, BETA.DIST cdf, L140BupBgrat 1
+- probes-numeric/t1538-beta-dist-at-excel-inv: BETA.DIST cdf, L140BupBgrat 1, F.DIST cdf, L140BupBgrat 1, F.DIST.RT cdf, L140BupBgrat 2
+- probes-numeric/t2220-f-dist-sweep-cdf: F.DIST cdf, Bgrat 11, F.DIST cdf, BupBgrat 3, F.DIST cdf, L140BupBgrat 16, F.DIST cdf, L140BupBupBgrat 1
+- probes-numeric/t2220-f-dist-sweep-d1-1: F.DIST cdf, Bgrat 2, F.DIST.RT cdf, Bgrat 4
+- probes-numeric/t2220-f-dist-sweep-d2-1: F.DIST cdf, Bgrat 2, F.DIST cdf, BupBgrat 1, F.DIST.RT cdf, Bgrat 2, F.DIST.RT cdf, BupBgrat 1
+- probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, Bgrat 12, F.DIST.RT cdf, BupBgrat 2, F.DIST.RT cdf, L140BupBgrat 24, F.DIST.RT cdf, L140BupBupBgrat 1
+- probes-numeric/t2464-r2-bratio-x29: BETA.DIST cdf, BupBgrat 9
+- probes-numeric/t2464-w2f-absweep: BETA.DIST cdf, L140BupBgrat 985
+- probes-numeric/t2464-w2f-unit-shape: BETA.DIST cdf, BupBgrat 7
+- probes-numeric/t2464-w2f-xruns-2: BETA.DIST cdf, L140BupBgrat 782
+
 ## Acceptance criteria
 - [ ] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
       net negative. A branch that is not stays on today's kernel, with the measurement in the Outcome.
@@ -53,3 +69,6 @@ follow-up task without the campaign key.
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Phase 1 triage (T-0090, 2026-10-27)
+This task is on the critical path of the Phase 1 exit: BETA.DIST, F.DIST, BINOM.DIST, NEGBINOM.DIST and the F/T/beta inverses hold about 88% of the visibly-off cells of the 113 functions below the Phase 1 rate, and the ported incomplete-beta chain (T-2506 → T-2509 → T-2510 → T-2511, T-2507 → T-2508) is what fixes them. Priority raised to P1. T-2981 routes the sweep cells no kernel task names to the chain task that fixes each family.

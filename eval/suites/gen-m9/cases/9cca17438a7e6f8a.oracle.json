@@ -626,6 +626,10 @@
     "t": "e",
     "v": "#REF!"
    },
+   "A24": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A240": {
     "t": "e",
     "v": "#NUM!"
@@ -1606,8 +1610,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "7c614fff713c891d79eda8683335627ca211524e4f1ca1493d02f969d84aac8c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:48:52+00:00",
+  "produced_at": "2026-10-28T16:55:39+00:00",
   "version": null,
-  "workbook_name": "ad0d0213c034d26fb91fd015286a1da8c43a387b93587459abd16a5387380752.xlsx"
+  "workbook_name": "d4624a07b04bbdf7fbb719e19431a3921d4960aeaa15b0ffada32255fac0422b.xlsx"
  }
 }

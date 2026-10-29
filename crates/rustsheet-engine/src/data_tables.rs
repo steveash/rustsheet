@@ -4,10 +4,12 @@
 //! each table is recomputed in storage order: for every result cell the input cell (or the two
 //! input cells) is replaced by the values from the table's header row and column, the table's
 //! formula is evaluated on demand, and the inputs are put back. The caller then evaluates the
-//! workbook again, so the cells that read the results see them.
+//! workbook again, so the cells that read the results see them. A table nothing it read has
+//! changed for since its last recomputation keeps its results (`data_table_memo.rs`, T-0453).
 
 use crate::{
     calc_result::CalcResult,
+    data_table_memo::{names_memoizable, TableCost},
     expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
     model::Model,
     types::{Cell, DataTable, DataTableError, DataTableInput},
@@ -15,7 +17,8 @@ use crate::{
 
 /// Formula evaluations all the data tables of one recalculation may make together (CLAUDE.md
 /// directive 5). A table over a large model re-evaluates the model once per result cell; past
-/// the budget a result is `#NUM!` (recalc.md, DEVIATION).
+/// the budget a result is `#NUM!` (recalc.md, DEVIATION). Each run also draws on the
+/// recalculation's ceiling (SPEC-0028 section 4): once it runs out, the budget is spent.
 const MAX_DATA_TABLE_EVALUATIONS: usize = 1 << 25;
 
 /// Result cells all the data tables of one recalculation may fill together (directive 5). Each
@@ -24,8 +27,9 @@ const MAX_DATA_TABLE_EVALUATIONS: usize = 1 << 25;
 const MAX_DATA_TABLE_RESULTS: u64 = 1 << 22;
 
 impl Model {
-    /// Recomputes every data table, sheet by sheet in the order the sheets store them. Returns
-    /// whether there was any, in which case the readers of their results must be evaluated again.
+    /// Recomputes every data table, sheet by sheet in the order the sheets store them, except
+    /// those whose results cannot have changed. Returns whether any was recomputed, in which case
+    /// the readers of their results must be evaluated again.
     pub(crate) fn evaluate_data_tables(&mut self) -> bool {
         let tables: Vec<(u32, DataTable)> = (self.workbook.worksheets.iter().enumerate())
             .flat_map(|(sheet, ws)| {
@@ -34,19 +38,64 @@ impl Model {
                     .map(move |t| (sheet as u32, t.clone()))
             })
             .collect();
+        // With circular references to iterate, every evaluation runs another round of the
+        // cycles, which the tables' readers must see.
+        let memoizable = !self.has_cycles() && names_memoizable(&self.workbook.defined_names);
+        let context = self.data_table_context();
         let mut budget = MAX_DATA_TABLE_EVALUATIONS;
         let mut results_left = MAX_DATA_TABLE_RESULTS;
-        for (sheet, table) in &tables {
+        let mut recomputed = false;
+        for (index, (sheet, table)) in tables.iter().enumerate() {
             let Some(left) = results_left.checked_sub(table.cell_count()) else {
+                self.forget_data_table_memo(index);
                 continue;
             };
             results_left = left;
-            self.evaluate_data_table(*sheet, table, &mut budget);
+            // A table skipped costs what its recomputation would, in evaluations and in work
+            // units of the ceiling, and only a recomputation that would not run out of either
+            // keeps the results it had.
+            let cost = (memoizable)
+                .then(|| self.data_table_unchanged(&context, index, (*sheet, table)))
+                .flatten();
+            if let Some(cost) = cost {
+                if let Some(left) = budget.checked_sub(cost.evaluations) {
+                    if self.charge_skipped_work(cost.work) {
+                        budget = left;
+                        continue;
+                    }
+                }
+            }
+            recomputed = true;
+            self.evaluation.data_tables_recomputed += 1;
+            let before = (budget, self.recalc_work_left());
+            let spills = self.start_data_table_reads();
+            let results = self.evaluate_data_table(*sheet, table, &mut budget);
+            // A table that ran out of budget wrote `#NUM!` for what the tables before it spent.
+            // One recomputed in share mode spent less than a normal recomputation would, so its
+            // cost is not one a later evaluation could charge (SPEC-0028 section 4).
+            let memoize = memoizable && budget > 0 && self.recalc_in_normal_mode();
+            let cost = TableCost {
+                evaluations: before.0 - budget,
+                work: before.1.saturating_sub(self.recalc_work_left()),
+            };
+            let at = (index, *sheet, table);
+            self.finish_data_table_reads(&context, at, (cost, &spills), memoize);
+            for (position, value) in &results {
+                self.write_constant(*position, value);
+            }
+            self.seal_data_table_memo(index, *sheet, table);
         }
-        !tables.is_empty()
+        self.truncate_data_table_memo(tables.len());
+        recomputed || (!tables.is_empty() && !memoizable)
     }
 
-    fn evaluate_data_table(&mut self, sheet: u32, table: &DataTable, budget: &mut usize) {
+    /// The results of one table, by position.
+    fn evaluate_data_table(
+        &mut self,
+        sheet: u32,
+        table: &DataTable,
+        budget: &mut usize,
+    ) -> Vec<(CellReferenceIndex, ArrayNode)> {
         let (top, left, bottom, right) = table.range;
         let at = |row, column| CellReferenceIndex { sheet, row, column };
         // The header values as the workbook has them now: an earlier table's substitutions are
@@ -58,6 +107,7 @@ impl Model {
         let column_values: Vec<ArrayNode> = (top..=bottom)
             .map(|r| self.scalar_at(at(r, left - 1)))
             .collect();
+        self.spend_all_past_ceiling(budget);
         let mut results = Vec::new();
         for (i, row) in (top..=bottom).enumerate() {
             for (j, column) in (left..=right).enumerate() {
@@ -86,9 +136,7 @@ impl Model {
                 results.push((at(row, column), value));
             }
         }
-        for (position, value) in &results {
-            self.write_constant(*position, value);
-        }
+        results
     }
 
     /// The value of `formula` with each input cell holding its value, the inputs restored after.
@@ -108,6 +156,11 @@ impl Model {
         self.reset_on_demand_evaluation();
         let value = self.scalar_at(formula);
         *budget = budget.saturating_sub(self.evaluation.cells.len().max(1));
+        let value = if self.spend_all_past_ceiling(budget) {
+            ArrayNode::Error(Error::NUM)
+        } else {
+            value
+        };
         for (at, cell) in saved.into_iter().rev() {
             if let Ok(ws) = self.workbook.worksheet_mut(at.sheet) {
                 match cell {
@@ -117,6 +170,17 @@ impl Model {
             }
         }
         value
+    }
+
+    /// Whether a run ran out of the recalculation's ceiling (SPEC-0028 section 4); if so the
+    /// evaluation `budget` is spent, so this result and every later one is `#NUM!`, as past
+    /// [`MAX_DATA_TABLE_EVALUATIONS`].
+    fn spend_all_past_ceiling(&mut self, budget: &mut usize) -> bool {
+        let overran = self.take_overrun().is_some();
+        if overran {
+            *budget = 0;
+        }
+        overran
     }
 
     /// Forgets which formulas have been evaluated, so the next read evaluates them on demand.

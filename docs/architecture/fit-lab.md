@@ -13,7 +13,7 @@ From `tools/`:
 uv run rustsheet-fitlab --list                 # shipped fits
 uv run rustsheet-fitlab erfc                   # ERFC + ERFC.PRECISE, engine vs libm (530 cells)
 uv run rustsheet-fitlab erfc-tail --top 10     # the T-1187 grid, about 5,800 candidates (~10 s)
-uv run rustsheet-fitlab xirr                   # T-1525 solvers: also xirr-oos, irr, rate, yield-one-period, yield
+uv run rustsheet-fitlab xirr                   # T-1525 solvers: also xirr-oos, irr, irr-fallback, rate, yield-one-period, yield
 uv run rustsheet-fitlab beta-dist              # T-1744: I_x(a,b); also f-dist, t-dist
 uv run rustsheet-fitlab norm-s-inv             # T-1746: NORM.S.INV, AS 241 tails vs the unfitted centre
 uv run rustsheet-fitlab erfc-tail --only 'bu_even' --worst 10 --no-engine
@@ -154,8 +154,10 @@ Candidates that model Excel's rounding use `Fraction`s:
 | `beta-inv`, `f-inv`, `f-inv-rt`, `t-inv`, `t-inv-2t` | 212, 54, 121, 130, 162 (m9-beta-inv, m9-legacy-betainv; m9-f-inv, t1049-finv; m9-f-inv-rt, m9-legacy-finv, t1049-finvrt; m9-t-inv; m9-t-inv-2t, t1048-tinv) | bisection to adjacent doubles (lower end, upper end, the even-significand "mid") on the correctly rounded I_x, the T-1744 best combination, Cephes incbet and NR betai, through T-1744's F and t mappings (T-1745) |
 | `norm-s-inv` | 1,024 (m9-norm-s-inv, t1048-normsinv, t1048-norminv, t1746-norm-s-inv-central; nested p is Excel's own NORM.S.DIST(k)) | AS 241 PPND16 and PPND7 per evaluation order (Horner, FMA Horner, power sum) and upper-tail log, Newton and Halley steps on two CDF forms, Newton solves from four starts under two stop rules, AS 111's centre alone and with 1 or 3 Newton steps on Cody or glibc (T-1759), statrs and a PPND16-tails/statrs-centre hybrid, Acklam, Moro, correctly rounded (T-1746) |
 | `norm-s-dist` | 1,773 (t1040-norm-s-dist-cdf-a/b, m9-normpdf-norm-s-dist, t1048-normsdist, m9-norm-s-inv, t1746-norm-s-inv-central, t1759-norm-s-inv-roundtrip) | glibc erfc as `0.5*erfc(-x*sqrt(0.5))` and `0.5*erfc(-x/sqrt(2))`, Cody's rational approximations (T-1759; exact / ≤4 ulp: 1,103 / 1,524, 869 / 1,477, 991 / 1,562, engine 879 / 1,473) |
+| `irr-fallback` | 212 (t2927-irr-fallback-sweep, irr-fallback-roots; error cells scored) | Newton on P(v) from v = 0 (the engine's fallback) with its stop test, returned iterate, start, residual test and summation order varied; Newton in r and x = 1 + r; the fitted secant with a 1000-step cap; none beats the engine's 72 bit-exact (T-2928 attempt 1) |
 | `rate` | 782 (m9-fin-irr-rate, solver-iteration-traces, rate-empty-arguments, fin-argument-modes, rate-zero-residual-guess, rate-excel-pmt-bits; error cells scored; a nested PMT is Excel's own value of that call in m9-fin-pmt, the fit's `calls`) | the T-2005 secant on the FV residual with the residual's operators rounded once or twice and four orders of its sum, traced; Newton and IRR's secant in r; the twice-rounded residual in FV's order is 782/782 (T-2527) |
 | `mirr` | 467 (m9-fin-mirr, m9-fin-irr-rate) | four ratio shapes (Microsoft's NPV form, direct FV/PV, period-0 sums compounded to (1+rr)^(n-1) or as (1+rr)^n/(1+rr)) x three roots (libm pow, exp ln, Excel's `^`); the last shape with Excel's `^` is 467/467 (T-1687) |
+| `fisher`, `fisherinv`, `expon-cdf`, `harmean` | 155, 143, 132, 122 (every JSON case of eval/ the function appears in, with probes/t2437-fit-separators) | FISHER and FISHERINV with the quotient plain or rounded twice under libm or Excel's LN/EXP, and with the sums rounded twice too, atanh, tanh; EXPON.DIST's cdf as libm expm1, Kahan expm1, 1-EXP and Kahan below a cut; HARMEAN as n/sum(1/x) or 1/AVERAGE(1/x) with + and / plain or twice rounded (T-2437) |
 
 The `erfc-tail` fit replaces `docs/research/t1187-erfc-candidates.py`. It reproduces that
 script's counts: best 57, 58, 38 and 4, with a union of 174/205.

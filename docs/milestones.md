@@ -47,6 +47,7 @@ A failure whose only open question needs desktop Excel evidence has its filed ta
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
 the oracle of record for Phases 1–3 (decision 0039). Such a visibly-off cell, once a decision names
 it, is a line of `eval/milestones/phase1-exceptions.tsv` and leaves the Phase 1 rate (decision 0134).
+A visibly-off cell that only open M14 tasks own leaves it too, with no line (decision 0143).
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).
@@ -109,6 +110,9 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 - Known parity bugs from the IronCalc assessment fixed: `ROUND(1.005,2)`, `CONCAT(0.1+0.2)`,
   `DATE(1900,2,29)`, and the parser accepting trailing garbage.
 - API v0 spec merged and implemented. Python `rustsheet.Workbook` passes binding tests.
+- Measured by report.json's `milestone_exit` M1 row (decision 0146): gen-m1 (≥ 3,000 scored cells),
+  smoke and the frozen `m1-probes` list with no visibly-off cell (decision 0114); the parity-bug and
+  API criteria are checked outside the row.
 
 ## M2 — Top functions (the everyday spreadsheet)
 
@@ -229,7 +233,11 @@ gen-m7 and the M7 probes required to be 0, at visible parity (decision 0114).
 - Sheet add, rename and move with reference rewriting.
 
 **Exit criteria:** oracle suites for each feature at 100%; POI corpus subset ≥ 99.5%;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M8 row (decision 0146): gen-m8a and gen-m8b (≥ 3,000 scored cells
+each, none visibly off; external references and sheet operations through the M8 probes), the poi
+cells whose formulas use a defined name or a structured, 3-D or external reference, and the M8
+probes, at visible parity (decision 0114).
 
 ## M9 — Numerical parity: statistical, financial, engineering, database
 
@@ -242,7 +250,10 @@ its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** ironcalc-calc at ≥ 99.95% bit-exact overall (from 97.33%); dense oracle sweeps
 per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M9 row (decision 0146): the cumulative M9 ironcalc-calc function-scope
+row less exit exceptions at ≥ 99.95% not visibly off, every M9 function covered and at the
+`v15_checkpoint` rate, and the M9 probes, at visible parity (decision 0114); 4-ulp parity is Phase 1b.
 
 ## M10 — Formatting & display
 
@@ -255,7 +266,9 @@ its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviati
 - Locale plumbing (en-US first).
 
 **Exit criteria:** formatted-text oracle suite (≥ 10k cells) at 100%;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M10 row (decision 0146): gen-m10's displayed-text items (≥ 10,000,
+none failing) and value cells, and the M10 probes' value cells and text items.
 
 ## M11 — Real-world fidelity
 
@@ -267,7 +280,10 @@ its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** formula-cell match on xlsx-corpus-bench ≥ 99.8%, matching or beating the best
 published engine;
-its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations. Measured by
+report.json's `milestone_exit` M11 row (decision 0146): corpus-bench's Excel-backed formula cells
+(≥ 200,000) at ≥ 99.8% not visibly off, the fixed rate of the best published engine, and the M11
+probes; `n/a` when corpus-bench was not fetched.
 
 ## M12 — API v1, bindings & release
 

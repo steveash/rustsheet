@@ -4,7 +4,7 @@ title: "XIRR's error-guess order and the other financial functions' domain-befor
 milestone: M9
 lane: functions-financial
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []
@@ -115,3 +115,6 @@ settlement past 9999-12-31 is `#NUM!` as it is read); both lines are gone from t
 
 ## Out of scope
 - XIRR/XNPV values (their solver tasks).
+
+## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
+From the parked T-2730: XIRR gen-m9/1dce4774f5c0e736 Calc!A91 `XIRR(Data!D10:D10,Data!B7:E8)`, #NUM! expected, #VALUE! today (an error-order cell).

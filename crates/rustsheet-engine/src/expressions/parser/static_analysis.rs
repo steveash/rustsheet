@@ -17,6 +17,7 @@ mod broadcast;
 mod if_arm;
 mod legacy;
 mod lifted;
+mod operand_array;
 mod redundant;
 mod reference_parameter;
 mod reference_result;
@@ -92,6 +93,7 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
@@ -297,6 +299,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,

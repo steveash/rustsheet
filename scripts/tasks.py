@@ -91,8 +91,20 @@ def front_matter(text: str, path: Path) -> dict[str, object]:
         if value.startswith("[") and value.endswith("]"):
             meta[key.strip()] = [v.strip() for v in value[1:-1].split(",") if v.strip()]
         else:
-            meta[key.strip()] = value.strip('"')
+            meta[key.strip()] = unquote(value)
     return meta
+
+
+def quote(text: str) -> str:
+    """`text` as the body of a YAML double-quoted scalar: `\\` and `"` escaped (T-0084)."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def unquote(value: str) -> str:
+    """The text of a front-matter value; a double-quoted one has its `\\"` and `\\\\` escapes undone."""
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        return re.sub(r'\\(["\\])', r"\1", value[1:-1])
+    return value.strip('"')
 
 
 def path_of(t: dict[str, object]) -> Path:
@@ -145,7 +157,39 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         for dep in deps_of(t):
             if dep not in ids:
                 errors.append(f"{t['id']}: unknown dependency {dep}")
+    errors += [" -> ".join(c + c[:1]) + ": depends_on cycle" for c in dependency_cycles(tasks)]
     return errors
+
+
+def dependency_cycles(tasks: list[dict[str, object]]) -> list[list[str]]:
+    """`depends_on` cycles among `tasks`, whatever their status (a cycle never lets any of its
+    tasks become ready), each once and starting at its smallest id; a self-dependency is a cycle
+    of one. A depth-first walk without recursion, so a long chain cannot overflow; it reports
+    the cycle each back edge it meets closes, so at least one per tangled group of tasks, not
+    every overlapping cycle (fixing one and re-running shows the next)."""
+    deps = {str(t["id"]): deps_of(t) for t in tasks}
+    state: dict[str, int] = {}  # 1 on the walk's path, 2 finished
+    found: set[tuple[str, ...]] = set()
+    for root in sorted(deps):
+        if root in state:
+            continue
+        path = [root]
+        todo = [iter(deps[root])]
+        state[root] = 1
+        while todo:
+            dep = next(todo[-1], None)
+            if dep is None:
+                state[path.pop()] = 2
+                todo.pop()
+            elif state.get(dep) == 1:
+                cycle = path[path.index(dep) :]
+                start = cycle.index(min(cycle))
+                found.add(tuple(cycle[start:] + cycle[:start]))
+            elif dep not in state and dep in deps:
+                state[dep] = 1
+                path.append(dep)
+                todo.append(iter(deps[dep]))
+    return [list(c) for c in sorted(found)]
 
 
 def check(tasks: list[dict[str, object]]) -> list[str]:
@@ -331,7 +375,7 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     tid = next_id(milestone, tasks, taken)
     path = TASKS / milestone / f"{tid}-{slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(TEMPLATE.format(id=tid, title=title.replace('"', "'"), milestone=milestone,
+    path.write_text(TEMPLATE.format(id=tid, title=quote(title), milestone=milestone,
                                     lane=lane, priority=priority, size=size, tier=tier))
     print(f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}")
     return 0
@@ -519,8 +563,23 @@ def arg(name: str) -> str | None:
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else None
 
 
+def set_root(root: Path) -> None:
+    """Judge the tree at `root` instead of this checkout: the merge train runs `main`'s copy of
+    this script against a train worktree, so a PR cannot change how its own tree is judged
+    (`validate --root`, SPEC-0027 section 4 step 4, decision 0066)."""
+    global ROOT, TASKS
+    ROOT = root.resolve()
+    TASKS = ROOT / "docs" / "tasks"
+
+
 def main() -> int:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
+    if "--root" in sys.argv:
+        root = arg("--root")
+        if cmd != "validate" or root is None or not Path(root).is_dir():
+            print("usage: tasks.py validate --root <dir>", file=sys.stderr)
+            return 2
+        set_root(Path(root))
     tasks = load()
     by_id = {str(t["id"]): t for t in tasks}
     if cmd == "validate":

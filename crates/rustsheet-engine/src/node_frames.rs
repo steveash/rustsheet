@@ -42,6 +42,8 @@ impl Model {
             // Their operand is turned into a number, element by element on a range or an array.
             UnaryKind { .. } => self.apply_unary_chain(node, cell),
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
+            // Stripped before evaluation (`Node::strip_spaces`); the bare `#REF!` it stands for.
+            SheetRefErrorKind { .. } => CalcResult::new_error(Error::REF, cell, "".to_string()),
             ParseErrorKind {
                 formula, message, ..
             } => CalcResult::new_error(

@@ -1,12 +1,17 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2957: D2 (just right of table T, A1:C4) typed =A2*2: does T auto-expand (COLUMNS/ROWS of T[#All] in H1:H2, header D1 in H3:H4) and is the new column filled (FORMULATEXT in F1:F4).",
+ "description": "T-2957: D2 (just right of table T, A1:C4) typed =A2*2: does T auto-expand (COLUMNS/ROWS of T[#All] in H1:H2, header D1 in H3:H4) and is the new column filled (FORMULATEXT in F1:F4). D1 is the header text Excel writes (not a formula, so the sidecar does not record it): `Column1`, as the oracle's H3 (`=D1&\"\"`) and H4 (`ISFORMULA(D1)` FALSE) read it (T-2968).",
  "tags": [
   "M2",
   "tables",
   "probe"
  ],
- "expected": {},
+ "expected": {
+  "S!D1": {
+   "t": "s",
+   "v": "Column1"
+  }
+ },
  "sheets": [
   {
    "name": "S",

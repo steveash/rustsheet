@@ -3,7 +3,7 @@ id: T-0078
 title: "Progress report phase 2: codebase health section from the quality ratchet files"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,3 +37,12 @@ hygiene line can leave docs/status.md.
 ## Out of scope
 - Line coverage, which needs a coverage tool.
 - Removing the hygiene line from docs/status.md: the steward does that once this lands.
+
+## Outcome
+`progress_report/codebase.py` writes the generated `codebase` block (lint-debt allow entries,
+duplicated lines, oversized files, functions below the evidence floor, decision records and
+excel-semantics lines), each with its change against the last complete history row that has the
+new optional `codebase` object (`n/a` until one exists, so the first run shows no deltas). History
+rows without `codebase` still load (tested). `signed` moved from history.py to markdown.py so both
+use one definition. The page is not regenerated in this PR (the worker has no calipers/corpus-bench/poi suites, so a run is stale and must not be committed); the steward's next complete run writes the `codebase` block (no eval delta; no harness or
+engine behavior changed). The judgment blocks are from the previous run; the steward refreshes them.

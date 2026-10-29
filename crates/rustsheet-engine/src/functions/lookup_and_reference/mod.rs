@@ -8,7 +8,6 @@ use crate::expressions::utils::{
     unquote_sheet_prefix,
 };
 use crate::external_reference::{one_external_area, PickedReference};
-use crate::functions::logical::{if_arg_at, if_arg_dims};
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::limits::check_array_size;
@@ -18,7 +17,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
+use crate::functions::lift::{BroadcastArg, LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::SearchVector;
@@ -45,6 +44,7 @@ mod lookup_each;
 pub(crate) mod lookup_table;
 pub(crate) mod offset;
 pub(crate) mod pivot_index;
+mod pivot_placement;
 mod pivotby;
 mod ref_lift;
 mod relative_to;
@@ -200,8 +200,8 @@ impl Model {
         )
     }
 
-    /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
-    /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
+    /// MATCH's `match_type` as a number. Text that is not a number, or an error, that comes from a
+    /// cell (a reference) is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search scans from the top", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or
@@ -213,17 +213,21 @@ impl Model {
         };
         let from_cell = matches!(value, CalcResult::Range { .. });
         let value = self.dereference(value, cell);
-        // Only non-numeric text is remapped: an error in the cell, or a failed implicit
-        // intersection, propagates unchanged (no oracle evidence for remapping those).
+        // Non-numeric text and any error in the cell are #REF!, whatever the error kind
+        // (probes/match-type-error-reference E1:E8, F1:F7; docs/excel-semantics/lookup.md). A
+        // failed implicit intersection is not a cell value and propagates unchanged.
         if from_cell {
-            if let CalcResult::String(text) = &value {
-                if self.cast_number(text).is_none() {
-                    return CalcResult::Error {
-                        error: Error::REF,
-                        origin: cell,
-                        message: "Invalid reference".to_string(),
-                    };
-                }
+            let invalid = match &value {
+                CalcResult::String(text) => self.cast_number(text).is_none(),
+                CalcResult::Error { .. } => true,
+                _ => false,
+            };
+            if invalid {
+                return CalcResult::Error {
+                    error: Error::REF,
+                    origin: cell,
+                    message: "Invalid reference".to_string(),
+                };
             }
         }
         value
@@ -661,23 +665,39 @@ impl Model {
         index_array: &[Vec<ArrayNode>],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut values = Vec::with_capacity(args.len() - 1);
-        for arg in &args[1..] {
-            match self.evaluate_if_arg(arg, cell) {
-                Ok(value) => values.push(value),
+        // An argument no index element picks only sizes the result: it is not copied (T-1564).
+        let count = args.len() - 1;
+        let mut picked = vec![false; count];
+        for index in index_array.iter().flatten() {
+            if let Ok(arm) = self.choose_index_element(index, count) {
+                picked[arm] = true;
+            }
+        }
+        let mut arms = Vec::with_capacity(count);
+        for (arg, &is_picked) in args[1..].iter().zip(&picked) {
+            match self.evaluate_broadcast_arm(arg, cell, is_picked) {
+                Ok(arm) => arms.push(arm),
                 Err(error) => return error,
             }
         }
         let index_rows = index_array.len();
         let index_cols = index_array.first().map_or(0, Vec::len);
-        let (rows, cols) = values
+        let (rows, cols) = arms
             .iter()
-            .map(if_arg_dims)
+            .map(BroadcastArg::dims)
             .fold((index_rows, index_cols), |(r, c), (vr, vc)| {
                 (r.max(vr), c.max(vc))
             });
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
+        }
+        // The size is checked, so the picked range arms are copied now (T-1564).
+        let mut values = Vec::with_capacity(count);
+        for arm in arms {
+            match self.read_broadcast_arm(arm, cell) {
+                Ok(value) => values.push(value),
+                Err(error) => return error,
+            }
         }
         let mut output = Vec::with_capacity(rows);
         for row in 0..rows {
@@ -686,7 +706,7 @@ impl Model {
                 let node = match bcast_get(index_array, row, col) {
                     None => ArrayNode::Error(Error::NA),
                     Some(index) => match self.choose_index_element(index, values.len()) {
-                        Ok(picked) => if_arg_at(&values[picked], row, col),
+                        Ok(picked) => values[picked].at(row, col),
                         Err(error) => error,
                     },
                 };
