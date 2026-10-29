@@ -33,9 +33,10 @@ SWITCH do.
 ## Outcome
 - T's kernel (`t_function.rs`): a LET in T's argument, at its root or picked by a root IF, CHOOSE, IFS or SWITCH, is
   read inside the LET's scope (`t_let_argument`, through `let_scope`), so its body's value and its cell-text test
-  share the LET's bindings and a volatile value is drawn once. The `@` of a picker picks as the picker does and
+  share the LET's bindings and a volatile value is drawn once. The `@` of a picker at the root picks as the picker does and
   reads the arm it picked in reference context through `@`, tested as a picked arm (`picked_arm_is_reference`), so
-  `@IFS` and `@SWITCH` keep the reference reading of IFS and SWITCH. A LET body as
+  `@IFS` and `@SWITCH` keep the reference reading of IFS and SWITCH. An `@`-picker a picker picked is not
+  unwrapped, so nested shapes such as `T(IF(TRUE,@IF(TRUE,D1)))` keep their old `#VALUE!` (and their double read). A LET body as
   written keeps the reference-context test `is_reference` gave a LET, so `T(LET(x,D1,+x))` keeps its (unprobed) "";
   T-3167 probes it.
 - Tests: `text_functions/fn_t_volatile_pick.rs`. The volatile test fails on the old code within 200

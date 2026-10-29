@@ -86,6 +86,10 @@ fn test_t_let_and_at_shapes_keep_their_reading() {
     model._set("A8", "=T(@IFS(TRUE,D1))");
     model._set("A9", "=T(@SWITCH(1,1,D1))");
     model._set("A10", "=T(@IF(TRUE,+D1))");
+    model._set("A11", "=T(IF(TRUE,@IF(TRUE,D1)))");
+    model._set("A12", "=T(IF(TRUE,@IF(TRUE,+D1)))");
+    model._set("A13", "=T(CHOOSE(1,@IFS(TRUE,D1)))");
+    model._set("A14", "=T(@IF(TRUE,@IF(TRUE,D1)))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "");
     assert_eq!(model._get_text("A2"), "#VALUE!");
@@ -96,4 +100,7 @@ fn test_t_let_and_at_shapes_keep_their_reading() {
     assert_eq!(model._get_text("A8"), "");
     assert_eq!(model._get_text("A9"), "");
     assert_eq!(model._get_text("A10"), "");
+    for cell in ["A11", "A12", "A13", "A14"] {
+        assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
+    }
 }

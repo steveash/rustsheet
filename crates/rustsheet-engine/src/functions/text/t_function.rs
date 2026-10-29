@@ -107,8 +107,11 @@ impl Model {
                     kind: Function::Let,
                     args,
                 } if !at => return self.t_let_argument(args, picker, cell),
-                // The `@` of a picker picks as the picker does; `@` then intersects what it picked.
-                Node::ImplicitIntersection { child, .. } if is_picker(child) => {
+                // The `@` of a picker at the root picks as the picker does; `@` then intersects
+                // what it picked. One a picker picked keeps its old reading (unprobed, T-3167).
+                Node::ImplicitIntersection { child, .. }
+                    if picker.is_none() && is_picker(child) =>
+                {
                     at = true;
                     arm = child;
                 }
