@@ -317,7 +317,8 @@ class Stats:
         self.out: list[str] = []
         self.laters: dict[int, Later] = {}
         self.conclusions: dict[str, list[str]] = {}
-        # Job queue delays (s) of the window's completed ci.yml runs; read once, used twice.
+        # Job queue delays (s) of the window's completed ci.yml runs: `merge_stage` reads them (one
+        # call per run) and `load` reuses them, so `report` calls `merge_stage` first.
         self.delays: list[float] = []
 
     # Reads.
@@ -551,7 +552,7 @@ class Stats:
         mismatches = sum(1 for p in predictions if p.tree_check == "mismatch")
         self.emit(
             f"shadow predictions: {len(predictions)}; ejections {ejections or 'none'}; deferral rate "
-            f"{deferral}; effective batch size mean {mean}, p90 {percentile(sizes, 0.9) or 'n/a'}"
+            f"{deferral}; effective batch size mean {mean}, p90 {'n/a' if not sizes else percentile(sizes, 0.9)}"
         )
         self.emit(f"tree-check failures: {mismatches}")
         return mismatches

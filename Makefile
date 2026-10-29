@@ -182,7 +182,7 @@ merge-flip-check: ## Whether a PR only sets the merge-train switch to lock (SPEC
 	$(PY) scripts/merge_flip.py check '$(PR)'
 
 merge-train-stats: ## The merge train's metrics, the shadow agreement score and T-2991's evidence and load bar, from the GitHub API (SPEC-0027 "Metrics"): make merge-train-stats [SINCE=2026-10-29]
-	$(PY) scripts/merge_train_stats.py $(if $(SINCE),--since $(SINCE))
+	$(PY) scripts/merge_train_stats.py $(if $(SINCE),--since '$(SINCE)')
 
 merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027); `train (stop pending: #n)` while a valid merge-train-stop label is on PR n
 	$(PY) scripts/merge_train.py mode
