@@ -3,7 +3,7 @@ id: T-2869
 title: "Probe whitespace after the bang of quoted, external and R1C1 sheet prefixes"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
