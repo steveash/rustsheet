@@ -293,10 +293,17 @@ salvage the rate rounds to 0 at such lives. A period above 2147483647 is period 
 while 2147483647 is past life+1 and `#NUM!`; the life+1 bound is on the period's whole part (`DB(0.01,488,32,33.5,10)` is
 period 33's value; C1 and C2 are one ulp off ours, T-2697). A negative salvage is `#NUM!` for DB too, even at cost 0 (`DB(0,-1,4,1)`, `DB(100,-0.0001,4,1)`), while
 `DB(0,0,4,1)` is 0. So a huge period needs no schedule walk and is not under "DB and VDB period cap".
-Evidence: probes/fin-syd-db-domain (excel-graph, 2026-10-25, T-2491); gen-m9 cells of T-2491.
+Domain orderings (T-2718, probes/fin-db-syd-domain-order, excel-graph 2026-10-29; the engine already matched all 24 cells): with
+a fractional life, DB's period bound compares the period's whole part with life+1 (life 4.5, month 6: periods 5, 5.5 and 5.7 are
+period 5's value 3.445191064925025, period 6 and 6.5 are `#NUM!`; life 4.25: periods 5, 5.25 and 5.5 are 3.2590552540392004,
+period 6 is `#NUM!`); with month 12 the periods probed past the life (5, 5.25, 5.5 and 6) are `#NUM!`, 5 included (no fractional period between the life and the next whole number was probed). DB's huge-life
+`#NUM!` runs before the cost-0 shortcut (`DB(0,10,1E+10,1)` and `DB(0,10,2147483648,1)` are `#NUM!`), while `DB(0,10,1E+10,0.5,8)` is 0 (consistent with the u32-max wrap rule above;
+period and month both differ from the `#NUM!` cell, so it does not isolate either). SYD's negative-salvage `#NUM!` beats the `life*(life+1)`
+overflow `#DIV/0!` (`SYD(100,-1,1E+200,1)` and `SYD(1E+300,-1E+300,1E+200,1)` are `#NUM!`).
+Evidence: probes/fin-syd-db-domain (excel-graph, 2026-10-25, T-2491); probes/fin-db-syd-domain-order (excel-graph, 2026-10-29, T-2718); gen-m9 cells of T-2491.
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_db`, `fn_syd`, `DB_INTEGER_MAX`, `DB_WRAPPED_LIFE`, `db_wrapped_last_year` (crates/rustsheet-engine/src/functions/financial/financial_depreciation.rs, T-2491).
-Tasks: T-2491
+Tasks: T-2491, T-2718
 
 ## ISPMT's operation order
 Rule: Excel computes `ISPMT(rate, per, nper, pv)` as `(per - nper) * pv * rate / nper`, left to right in doubles. Each
