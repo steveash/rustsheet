@@ -279,6 +279,49 @@ fn b2_before_calendars_3_5_and_7_converts_the_years_twice() {
     assert_eq!(text(45000.0, "B2[$-409]yyyy|mmm|dddd"), "1444|شعبان|السبت");
 }
 
+#[test]
+fn b2_before_a_winning_calendar_reads_the_month_as_the_weekday_after_mmm() {
+    // probes/t3029-b2-calendar-weekday; t2932-b2-calendar-twice A55.
+    assert_eq!(text(45000.0, "B2[$-70409]mmm|ddd"), "มี.ค.|อ.");
+    assert_eq!(text(45275.0, "B2[$-70409]mmm|ddd|ddd"), "ธ.ค.|ส.|ส.");
+    assert_eq!(text(45000.0, "B2[$-70409]dddd|mmm|dddd"), "พุธ|มี.ค.|อังคาร");
+    assert_eq!(text(45000.0, "B2[$-70409]mmm|d|aaa"), "มี.ค.|15|อ.");
+    assert_eq!(text(45000.0, "B2[$-20409]mmm|ddd"), "Mar|Tue");
+    assert_eq!(text(45000.0, "B2[$-40409]mmm|ddd"), "三月|週二");
+    // The lunar calendar's own month: 2023-03-15 is in lunar month 2.
+    assert_eq!(text(45000.0, "B2[$-110409]mmm|ddd"), "二月|周一");
+    // Only `mmm` starts it, and only after a `B2`.
+    assert_eq!(text(45000.0, "B2[$-70409]mmmm|dddd"), "มีนาคม|พุธ");
+    assert_eq!(text(45000.0, "B2[$-70409]mmmmm|ddd"), "ม|พ.");
+    assert_eq!(text(45000.0, "[$-70409]mmm|ddd"), "มี.ค.|พ.");
+}
+
+#[test]
+fn b2_before_calendar_4_prints_a_garbled_minguo_year() {
+    // probes/t3028-b2-taiwan-years, t3028-b2-taiwan-cuts; t2932-b2-calendar-twice A37, A38.
+    assert_eq!(
+        text(45000.0, "B2[$-40409]yyyy|yy|e|b|bbbb|g"),
+        "01|01|01|2\u{1c}|01|"
+    );
+    assert_eq!(
+        text(45000.0, "B2[$-40404]yyyy|yy|e|b|bbbb|mmmm"),
+        "01|01|01|2\u{1c}|01|三月"
+    );
+    // m = 999, 1000 and 8088; m below 1 is `#VALUE!`.
+    assert_eq!(text(369_261.0, "B2[$-40409]yyyy|y|ee"), "09|09|09");
+    assert_eq!(text(369_262.0, "B2[$-40409]yyyy|b|bb"), "1000|00|00");
+    assert_eq!(text(2_958_465.0, "B2[$-40409]yyyy|b"), "8088|88");
+    assert_eq!(text(4383.0, "B2[$-40409]yyyy|mmmm"), "#VALUE!");
+    // `b` past the end of a short year: U+0F01, then the code of the first date token.
+    assert_eq!(text(45000.0, "B2[$-40409]b"), "2X");
+    assert_eq!(text(36526.0, "B2[$-40409]b|bb"), "\u{f01}X|\u{f01}X");
+    assert_eq!(text(45000.0, "B2[$-40409]e|b"), "01|28");
+    assert_eq!(text(45000.0, "B2[$-40409]d|b"), "15|2\r");
+    assert_eq!(text(45000.0, "B2[$-40409]bbbb|b"), "01|2Y");
+    assert_eq!(text(45000.0, "B2[$-40409]\"x\"b|yyyy"), "x2X|01");
+    assert_eq!(text(45000.0, "B2[$-40409][s]|b"), "3888000000|22");
+}
+
 // An empty text section prints nothing (gen-m10/0e3d8eba9432a18d T!A24; `TRUE` and `0;0;0;` in
 // probes/text-format-text-sections, T-2975); fewer than four sections leave the text as it is
 // (docs/excel-semantics/number-formats.md; three sections probed there, one or two unprobed).

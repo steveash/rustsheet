@@ -144,10 +144,43 @@ before the tag and `B2` after it change nothing):
   "64|S", 4007-01-08 "1|H"; 4037-04-30 "31|H", 4037-05-01 "1|R"; 3886-01-01 is "1|M" (A69-A80). The Taisho-Showa
   boundary is not probed (A72, A73 fall in Reiwa 1927).
 - Month and day tokens and names print as without the `B2` (`B2[$-30411]yyyy-mm-dd|mmmm|dddd` is
-  "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` under Thai (T-3029).
-- Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (not modelled,
-  T-3028).
+  "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` (the next rule).
+- Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (matched
+  since T-3028). probes/t3028-b2-taiwan-years and t3028-b2-taiwan-cuts (excel-graph, 2026-10-28/29) show every year
+  token prints the Minguo year m = year - 1911, where the tag alone prints the Gregorian year: `yyyy`, `yy`, `y`, `yyy`,
+  `e`, `ee` and `bbbb` all print the same text. For m ≥ 1000 that is m in full (2911-01-01, m = 1000: "1000"; 2995-01-23
+  "1084", 4637 "2726", 9999-12-31 "8088"); below 1000 it is "0" and m's first digit (2910-12-31, m = 999: "09"; 2023,
+  m = 112: "01"; 2173, 262: "02"; 2000, 89: "08"; 1912-01-01, 1: "01"); m below 1 (1911-12-31, m = 0; 1900-01-01) is
+  `#VALUE!` in every year token. `g` and `ggg` print nothing. `b` and `bb` print m's third and fourth characters and read
+  past the end of m's text: m ≥ 1000 gives its third and fourth digits ("00", "84", "88"); a missing third character is
+  U+0F01, and a missing fourth one is a character whose code is set by the section's first date or time token, literals
+  skipped, whatever comes after the `b` and whatever the serial: `d` 13, `dd` 14, `ddd` 15, `dddd` (and longer) 16,
+  `m` 17, `mm` 18 (also as minutes, `mm:ss|b`), `mmm` 19, `mmmm` 20, `h` 21, `hh` 22, `s` 25, `ss` 26 (also `ss.00`),
+  `y` and `yy` 27, `yyy` to `yyyyy` 28, `AM/PM` and `A/P` (any case) 34, `[h]` and `[hh]` 48, `[m]` and `[mm]` 49,
+  `[s]` and `[ss]` 50, `aaa` 51, `g` 53, `gg` 54, `ggg` 55, `e` 56, `ee` 57, `mmmmm` 59, `b` and `bb` 88 ("X", also when
+  the `b` is first itself), `bbbb` 89 ("Y"). So `B2[$-40409]b` of 2023-03-15 is "2X", `yyyy|b` "01|2\u{1c}", `e|b`
+  "01|28", `"x"b` "x2X", of 2000-01-01 `b` "\u{f01}X". (A guess, not evidence: the codes look like Excel's internal token codes.) `yyyy|e|b` is
+  the same under zh-TW (`B2[$-40404]`). Status: VERIFIED (excel-graph). The engine gives `aaa` `ddd`'s 15 (T-3089);
+  `aaaa` and other year tokens' effect on non-year tokens (`B2[$-40409]d` of 1911) are unprobed.
 - The same as a cell number format (B1-B5).
+Rule (quirk, T-3029): after a `B2` before a tag whose calendar wins over it (every digit probed: 1, 2, 3, 4, 5, 7, 9, A
+and 11), every weekday token (`ddd`, `dddd`, `aaa`) after a `mmm` prints weekday number min(month, 7), Sunday being 1,
+of the calendar's month, in the tag's names: the Arabic path's first-name quirk without the Arabic names.
+`B2[$-70409]mmm|ddd` of 2023-03-15 is "มี.ค.|อ." (Tuesday) and of every month from July on "ส." (Saturday);
+`B2[$-70409]dddd|mmm|dddd` "พุธ|มี.ค.|อังคาร" (the weekday before the `mmm` is the real one); `mmm|ddd|ddd` both
+Tuesday. Numbers anywhere in the section change nothing (`yyyy-mm-dd|mmm|dddd`, `mmm|d|ddd`), nor does a `mmmm` after
+the `mmm` (`mmm|mmmm|ddd` is "มี.ค.|มีนาคม|อ."), and a month name after the weekday is the real month
+(`B2[$-7041E]mmm|dddd|mmmm`). Only `mmm` starts it: `mmmm|dddd`, `mmmmm|ddd` and `ddd|mmm` print the real weekday.
+The lunar calendar reads its own month: `B2[$-110409]mmm|ddd` of 2023-03-15 (lunar month 2) is "二月|周一" (Monday).
+`[$-70409]mmm|ddd` with no `B2` is the real weekday ("มี.ค.|พ."). The same as a cell number format (B1-B3).
+Rule (quirk, unimplemented, T-3101): under some of these tags the `B2` also changes the names' language: `B2[$-10409]mmm|ddd` is
+"مارس|الثلاثاء" (Arabic Gregorian names, where `[$-10409]` is English), and `B2[$-30411]mmm|ddd` and `B2[$-50412]mmm|ddd`
+are "Mar|Tue" (English, where the tags alone print Japanese and Korean names). `B2[$-30409]`, `B2[$-50409]`,
+`B2[$-7041E]`, `B2[$-90409]` (French) and `B2[$-A0409]` (Levantine Arabic) keep the tag's names.
+Evidence: probes/t3029-b2-calendar-weekday (128 TEXT cells, 3 cell formats; excel-graph, 2026-10-29), t2932-b2-calendar-twice A55.
+It starts under a calendar-3 Japanese LCID too, where the tag alone prints `mmm` as a number: `B2[$-30411]mmm|ddd` of
+2023-03-15 is "Mar|Tue" (A79-A84, with the T-3101 names).
+Unprobed: calendar 8 (Hebrew) and Saka.
 Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
 `b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"
 (probes/t2932-b2-calendar-twice A24, A64-A68). `yy` stays the last two digits.
@@ -169,7 +202,7 @@ lexer's `hijri_prefix`, `NameTokens` (formatter/date_names.rs), the Hijri tables
 the twice-converted years in `Localized::year_twice`, `japanese_era` (locale_tag.rs) and `year_token_text`
 (formatter/calendar_dates.rs).
 Status: VERIFIED (excel-graph)
-Tasks: T-2729, T-2932
+Tasks: T-2729, T-2932, T-3029
 
 ## Bare digits beside a date token
 Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
@@ -994,7 +1027,7 @@ A `*x` fill (repeat) character contributes nothing to the displayed text or to T
 `TEXT(3,"*.0.00")` is "3.00", PI() under `0.00*-` is "3.14", and 1000 under `_(* #,##0_);...` is " 1,000 " (only the `_(`
 and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
 2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in both the number and the date
-branch of `format_number` (formatter/format.rs, T-1735). Date, clock and fraction codes alike (T-2480, probes/text-fill-char-date-clock-fraction, 12 cells, excel-graph 2026-10-28): `TEXT(1,"d*x")` is "1", `TEXT(0.5,"h:mm*-")` "12:00", `TEXT(0.75,"h*x:mm AM/PM")` "6:00 PM", `TEXT(1,"*xd")` "1", `TEXT(1,"d*xm")` "11", `TEXT(1.5,"# ?/?*x")` "1 1/2", `TEXT(0.5,"?/?*x")` "1/2", `TEXT(0.5,"*x# ?/?")` " 1/2". Ours printed a space for a fraction fill; fixed in T-2480. A fill inside a blank fraction (zero under `?/?`) is unprobed and still prints a space (T-3057).
+branch of `format_number` (formatter/format.rs, T-1735). Date, clock and fraction codes alike (T-2480, probes/text-fill-char-date-clock-fraction, 12 cells, excel-graph 2026-10-28): `TEXT(1,"d*x")` is "1", `TEXT(0.5,"h:mm*-")` "12:00", `TEXT(0.75,"h*x:mm AM/PM")` "6:00 PM", `TEXT(1,"*xd")` "1", `TEXT(1,"d*xm")` "11", `TEXT(1.5,"# ?/?*x")` "1 1/2", `TEXT(0.5,"?/?*x")` "1/2", `TEXT(0.5,"*x# ?/?")` " 1/2". Ours printed a space for a fraction fill; fixed in T-2480. A fill inside a blank fraction adds nothing either (T-3057, probes/text-fill-char-blank-fraction, 10 cells, excel-graph 2026-10-29): zero under a bare `?/?` is not blank but "0/1", fill or not (`TEXT(0,"?/?*x")` "0/1", length 3); only with an integer placeholder is it blank, `TEXT(0,"# ?/?*x")` is "0" plus four spaces (length 5, the fill adds no sixth); `TEXT(0,"?/?*xy")` is `#VALUE!` (a fill takes one character); a literal space after the fill still counts (`LEN(TEXT(0,"?/?*x "))` 4) and a fill between the numerator and the `/` adds nothing (`LEN(TEXT(0,"?*x/?"))` 3). Ours already matched.
 Status: VERIFIED (excel-graph); implemented (T-1735, T-2480).
 
 - Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 4c6a49fe4a6fa404 F!R4, 5eb95c63c7d6180c F!G13, bfbcd16cee266336 F!W12, excel-graph): a scientific

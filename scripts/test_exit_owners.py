@@ -140,6 +140,87 @@ class ExitOwners(TaskDir):
         self.task("probes/index-reference-args P!B3", milestone="M2")
         self.assertEqual(exit_owners.unowned(r, "M2", self.tasks), [])
 
+    def test_m1_lists_gen_m1_smoke_and_the_m1_probes_list(self) -> None:
+        # Decision 0146 item 1: two required suites and the frozen list as the probe measure.
+        gen1, smoke = "gen-m1/abc.case.json", "smoke/basic.case.json"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M1",
+                "gen_suite": "gen-m1",
+                "gen_visibly_off_cells": [f"{gen1}!Calc!A3"],
+                "more_suites": [{"name": "smoke", "visibly_off_cells": [f"{smoke}!S!B1"]}],
+                "probe_row": "m1-probes",
+            }
+        ]
+        r["cases"] = [
+            {"id": gen1, "suite": "gen-m1", "cells": [cell("Calc", "A3")]},
+            {"id": smoke, "suite": "smoke", "cells": [cell("S", "B1")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B4", "=INDEX(A1:B2,1)")]},
+        ]
+        r["function_scope"] = {"rows": []}
+        r["milestone_lists"] = [{"name": "m1-probes", "visibly_off_cells": [f"{PROBE}!P!B4"]}]
+        cells = exit_owners.exit_cells(r, "M1")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}", c.formula) for c in cells],
+            [
+                ("gen-m1", f"{gen1}!Calc!A3", "=X()"),
+                ("smoke", f"{smoke}!S!B1", "=X()"),
+                ("m1-probes", f"{PROBE}!P!B4", "=INDEX(A1:B2,1)"),
+            ],
+        )
+        self.task("smoke/basic S!B1 and index-reference-args P!B4", milestone="M1")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M1", self.tasks)]
+        self.assertEqual(listed, [f"{gen1}!Calc!A3"])
+
+    def test_m11_lists_corpus_bench_as_its_suite(self) -> None:
+        corpus = "corpus-bench/53062/1_53062_input.xlsx"
+        r = report()
+        r["milestone_exit"] = [
+            {"milestone": "M11", "gen_suite": "corpus-bench", "gen_visibly_off_cells": [f"{corpus}!Sheet1!D4"]}
+        ]
+        r["cases"] = [{"id": corpus, "suite": "corpus-bench", "cells": [cell("Sheet1", "D4")]}]
+        r["function_scope"] = {"rows": []}
+        r["probe_milestones"] = []
+        cells = exit_owners.exit_cells(r, "M11")
+        self.assertEqual([(c.criterion, f"{c.case}!{c.key}") for c in cells], [("corpus-bench", f"{corpus}!Sheet1!D4")])
+
+    def test_m9_lists_calc_the_functions_below_the_rate_and_probes(self) -> None:
+        # Decision 0146 item 3: no required suite; ironcalc-calc less exceptions, the
+        # `attributed_off` cells of each function below the rate, and the M9 probe row.
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M9",
+                "gen_suite": "",
+                "gen_visibly_off_cells": [],
+                "calc_failing": 2,
+                "calc_met": False,
+                "below_rate_functions": ["IRR"],
+                "probe_row": "M9",
+            }
+        ]
+        r["function_scope"]["rows"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["probe_milestones"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["attributed_off"] = [
+            {"case": GEN, "cell": "Calc!A1", "function": "IRR", "formula": "IRR(A1:A3)"},
+            {"case": GEN, "cell": "Calc!A107", "function": "PMT", "formula": "PMT(1,2,3)"},
+        ]
+        cells = exit_owners.exit_cells(r, "M9")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}") for c in cells],
+            [
+                ("ironcalc-calc", f"{TRIG}!S!C51"),
+                ("rate:IRR", f"{GEN}!Calc!A1"),
+                ("probes", f"{PROBE}!P!B2"),
+                ("probes", f"{PROBE}!P!B3"),
+            ],
+        )
+        self.task("1d22a002d4f380b3 Calc!A1 is IRR's", milestone="M9")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M9", self.tasks)]
+        self.assertNotIn(f"{GEN}!Calc!A1", listed)
+        self.assertIn(f"{TRIG}!S!C51", listed)
+
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")
         listed = self.listed()

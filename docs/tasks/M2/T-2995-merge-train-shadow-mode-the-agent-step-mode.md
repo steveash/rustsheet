@@ -1,9 +1,9 @@
 ---
 id: T-2995
-title: "Merge-train shadow mode, the agent step mode fallback and make merge-train-stats"
+title: "Merge-train shadow mode (stats split to T-3076, step mode to T-3077)"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -46,18 +46,31 @@ shadow predictions agree with reality, can be computed from the GitHub API. If T
     list --workflow ci.yml --branch merge-train/shadow`, plus the commits API).
 
 ## Acceptance criteria
-- [ ] `make merge-train SHADOW=1` implements "Shadow". Tests show that it takes no lock, makes no
+- [x] `make merge-train SHADOW=1` implements "Shadow". Tests show that it takes no lock, makes no
       PR-visible writes beyond the closed-PR housekeeping, skips a round when the lease fails, and
       records predictions and the tree check.
-- [ ] For a red shadow train, shadow reuses T-2998's binary search on `M0` (no second
+- [x] For a red shadow train, shadow reuses T-2998's binary search on `M0` (no second
       implementation) to emit the `defer` and `eject:ci-red` predictions. Tests cover a red
       shadow train with the culprit at `P_3`.
-- [ ] `make merge-train-stats [SINCE=<date>]` prints every metric above, plus the shadow agreement
-      score and the load bar. It is unit-tested against fixtures from the fake client, including
-      PR histories scripted for each agreement rule.
-- [ ] The step mode is built and tested, or dropped, depending on T-3001's answer, as stated in
-      the PR.
-- [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
 
 ## Out of scope
+- `make merge-train-stats` (split to T-3076, 2026-10-28) and the step mode (split to T-3077: T-3001's probe
+  found that session writes fail, so it is needed).
 - Routine prompts and policy (T-2996). Skills (T-2989).
+
+## Outcome
+- `scripts/merge_train.py`: `ShadowStage` and `--shadow` (`make merge-train SHADOW=1`), per decision 0155. `Stage`
+  now takes its branch and mode as attributes, and has a hook between collection and the first build, so shadow
+  shares the build, CI wait and bisection code.
+- `scripts/test_merge_train_shadow.py` (7 tests on test_merge_train's simulator):
+  - a green round takes no lock and makes no PR write, and records `merge` for each PR and `tree-check: match`;
+  - a repeated round pushes nothing, and a moved `main` pushes again;
+  - a lost lease skips the round;
+  - the closed-PR housekeeping is the only PR write;
+  - a red train with the culprit at `P_3` bisects on `M0` and predicts `eject:ci-red` for #3 and `merge` for the rest;
+  - ejections (`eject:invalidated`) and deferrals are predicted;
+  - another mode stops at once.
+- Split out: `make merge-train-stats` (T-3076) and the step mode (T-3077). T-3001's probe found that session writes
+  fail, so the step mode is needed and gets its own task.
+- Eval delta: none (scripts and docs only).

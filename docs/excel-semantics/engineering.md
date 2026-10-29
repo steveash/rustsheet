@@ -411,7 +411,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2793, T-2810
 
 ## T-1625 probes: IMPOWER, IMSUB, IMDIV
-- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). A variable bound to an omitted LAMBDA parameter or to an empty LET value hands the omission on and is `#N/A` too: `LAMBDA(a,b,IMSUB(a,b))("1",)`, `(,"1")`, `LAMBDA(a,b,IMDIV(a,b))("1",)`, `(,"1")` and `LET(e,,IMSUB("1",e))` are `#N/A` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12; T-2770), while `LET(e,IFERROR(Q1,"x"),…)` and `LET(e,IF(TRUE,Q1),…)` bind a real empty value that is 0, and `LAMBDA(a,b,IMSUB(a,b))("1")` (a missing argument) is `#VALUE!`. The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543.
+- The empty value IFERROR or IFNA hand on for a blank cell is 0 in IMSUB and IMDIV, as the blank cell is (`IMSUB("1",IFERROR(Q1,"x"))` "1", `IMSUB(IFERROR(Q1,"x"),"1")` "-1", `IMDIV(IFERROR(Q1,"x"),"1")` "0", `IMDIV("1",IFERROR(Q1,"x"))` `#NUM!`); only an argument left out of the formula is `#N/A` (`IMSUB("1",)`). A variable bound to an omitted LAMBDA parameter or to an empty LET value hands the omission on and is `#N/A` too: `LAMBDA(a,b,IMSUB(a,b))("1",)`, `(,"1")`, `LAMBDA(a,b,IMDIV(a,b))("1",)`, `(,"1")` and `LET(e,,IMSUB("1",e))` are `#N/A` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12; T-2770), while `LET(e,IFERROR(Q1,"x"),…)` and `LET(e,IF(TRUE,Q1),…)` bind a real empty value that is 0, and `LAMBDA(a,b,IMSUB(a,b))("1")` (a missing argument) is `#VALUE!`. The first argument's own error still wins (`IMSUB("a*abc",IFERROR(Q1,"x"))` `#NUM!`). Probes/eng-imsub-imdiv-iferror-empty; matched since T-2543. An omission forwarded through a second binding stays `#N/A`: `LET(e,,LET(f,e,IMSUB("1",f)))` (also IMDIV, and with the omission as first argument), `LET(e,,LAMBDA(b,IMSUB("1",b))(e))` and `LAMBDA(a,b,LAMBDA(c,IMSUB("1",c))(b))("1",)` / `LAMBDA(a,b,LET(f,b,IMDIV(f,"1")))("1",)` are `#N/A`, while a parameter that was never passed at all (`LAMBDA(a,LAMBDA(b,IMSUB("1",b))(a))()`, `LAMBDA(a,LET(f,a,…))()`) is `#VALUE!` (probes/eng-imsub-imdiv-omission-forwarded A1:A16, excel-graph 2026-10-29, T-3026; engine matched without change).
 - Mixed suffixes (`"3+4i"` with `"1+2j"`) are `#NUM!` in IMSUB and IMDIV.
 - An empty-string argument is `#NUM!` in IMSUB, IMDIV and IMPOWER; a boolean second argument is `#VALUE!`.
 - `IMPOWER("0",0)` is `#NUM!`; `IMDIV` with a tiny divisor gives a large result (`IMDIV("1","1E-200")` = `1E+200`), not #NUM!.
@@ -488,9 +488,11 @@ Also found by the sweep (same case; Ours is what RustSheet gives):
 - Excel keeps tiny results where the denominator is huge: `IMCSC("-724.227-562.884i")` is -6.94796703439417E-245-6.26263832046024E-246i (E55, F55; the IMSEC of it is -6.26263832046024E-246+6.94796703439417E-245i, G55:I55) and `IMSECH("-524.561+5.3113i")` is 1.73046857535442E-228-2.53533899849465E-228i (K42, L42). Rule: past the point where the denominator overflows (the hyperbolic argument v above about 355), cosh v and |sinh v| are both M = e^|v|/2, and the result is the trigonometric parts over M, i.e. times 2e^-|v| (IMSEC `(cos x, sgn(y)·sin x)`, IMCSC `(sin x, -sgn(y)·cos x)`, IMSECH `(cos y, -sgn(x)·sin y)`); this reproduces all 15 digits of the 6 cells. Where 2e^-|v| is subnormal the parts print 0 (`IMSEC("1.5+711i")`, `IMSECH("711+1.5i")`). Status: VERIFIED; implemented (T-2335; ours was 0 before). IMCSCH of a large non-real argument (`IMCSCH("-524.561+5.3113i")`) is unprobed and still answers 0.
 - `IMCSC("0")`, `IMLOG2("0")` and `IMCOT("0")` are `#NUM!` (D21, M21, P21), `IMARGUMENT("0")` is #DIV/0!. Implemented (T-2334); before it we answered the text `NaNNaNi`, `-inf`, `inf`. Status: VERIFIED.
 - Text quirks (not kernels): `IMCOT("-57.9375+18.7089i")` prints "-4.00011374673746E-17-1i" (P43): the
-  imaginary part -0.9999999999999999 keeps its "1", while an exact -1 is "-i" (P44); ours "-i" for both.
-  `IMCSC("1E-20")` and `IMCOT("1E-20")` print "100000000000000000000" (D18, P18); ours "1E+20". Owned by T-2554 (after
-  the IM* text-formatting tasks T-2001, T-2056). Status: VERIFIED (excel-graph).
+  imaginary part -0.9999999999999999 keeps its "1", because the coefficient is dropped only for an
+  unrounded part that is exactly ±1 (an exact -1 is "-i", P44). `IMCSC("1E-20")` and `IMCOT("1E-20")` print
+  "100000000000000000000" (D18, P18): an IM* part is plain up to decimal exponent 20 and E notation from 21.
+  Status: VERIFIED (excel-graph); implemented (`Display for Complex`, `complex_part_to_text`; T-2554 found it
+  already passing and added the regression test `text_keeps_the_one_and_writes_1e20_plain`).
 Errors in the sweep (row 21, input "0"): IMARGUMENT #DIV/0! (C21); IMCSC, IMLOG2 and IMCOT #NUM! (D21:F21, M21:R21).
 
 ## IM* reciprocal kernels, IMABS and IMARGUMENT (T-2044)
@@ -607,9 +609,13 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   A318, `IMSECH("1.5")` 0.42509603494228; every real row of the sweep agrees).
 - IMARGUMENT: ATAN2's kernel, `atan(y/x)` plus or minus π (numbers.md "ATAN2 is ATAN(y/x) plus or minus π"): 77 of 77
   (libm `atan2` 67). The overflow and subnormal edges of that kernel are UNVERIFIED for IMARGUMENT.
-- UNVERIFIED: below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1, so IMCSC and IMCOT of a tiny imaginary part
-  (`IMCSC("1E-9i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")`) are `#NUM!` in ours (before T-2044 about -1E+9i), and
-  between 1E-8 and 1E-6 only a few digits survive; the sweep stops at 1E-5. Probe: T-2531.
+- IMCSC and IMCOT of a tiny imaginary part (probes-numeric/im-csc-cot-tiny-imag, T-2531, excel-graph, 56 of 56
+  cells agree with ours): `cosh 2y` rounding to 1 is Excel's behavior too. `IMCSC("1E-9i")`, `IMCSC("1E-20i")`,
+  `IMCOT("1E-8i")`, `IMCOT("1.1E-8i")`, `IMCOT("1E-9i")`, `IMCOT("1E-9+1E-9i")` and `IMCOT("1E-20i")` are `#NUM!`;
+  `IMCSC("1E-8i")` is `-90071992.5474099i`, `IMCSC("1.1E-8i")` `-99079191.8021509i`, `IMCSC("1E-9+1E-9i")`
+  `1000000000-1000000000i`; `IMCOT("1E-6i")` is `-999911.107320937i` (only a few digits survive between 1E-8 and 1E-6);
+  `IMCSC("1+1E-9i")` is `1.18839510577812-7.6305972223263E-10i` and `IMCOT("1+1E-9i")`
+  `0.642092615934331-1.41228292743739E-09i` (a real part of 1 keeps the kernel well conditioned).
 - UNVERIFIED: for |x| ≥ 2^27 (SIN's own `#NUM!` cut) the reciprocal kernels take libm's sine and cosine.
 - IMLOG2 (T-2231, superseding the T-2044 time-box): `ln` of IMABS's scaled modulus and the argument (`atan2`),
   both times K = 1.4426950408889636, the double one ulp above log2 e (= `1/ln 2` with the double one ulp below ln 2).

@@ -4,7 +4,8 @@
   queue, which this repository cannot turn on. Amended by 0121: outside the lock, a PR branch takes
   `main` in only to fix a conflict or a known id collision, never only because it is behind.
   Amended by 0145: the lock serves waiters first-in, first-out; a busy `acquire` queues the
-  caller, and a holder that releases rejoins at the tail.
+  caller, and a holder that releases rejoins at the tail. Amended by 0157: in `train` mode
+  the merger holds the lock for a batch and workers hand over with the readiness marker.
 - **Context:** Decision 0028 merges only a head that contains the current `main`, so a duplicate task
   or decision id (or any clash of two green PRs) fails in CI before it lands. Decision 0053 was to hand
   that guarantee to GitHub's merge queue, but the queue needs a repository owned by an organization

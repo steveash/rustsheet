@@ -331,6 +331,18 @@ matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `VLOOKUP("",{blank;blank;b
 comparison operators: `MATCH(0.1+0.2,{0.3},0)` and `VLOOKUP(0.1+0.2,{0.3},1,FALSE)` are `#N/A`.
 A match_type that is not a number is `#VALUE!` even with a blank key (`MATCH(blank,…,"x")`).
 Text comparison uses Excel's collation, not code-point order (T-0220).
+The approximate searches compare numbers as exact doubles, not at 15 digits like the comparison operators (T-3073,
+probes/t3073-lookup-near-equal-approximate, excel-graph 2026-10-29). A table number a few ULP from the key is larger
+or smaller than it, never equal, so the search steps past it. In VLOOKUP and HLOOKUP (TRUE) and in `MATCH(key,…,1)`
+over the unsorted {2; X; 0.5}, key 1 gives `#N/A` for X = 1+k·2^-52 and 3 for X = 1-k·2^-53 (k = 1, 2, 3, 8;
+Sheet1 A1-C8). A 15-digit compare would give 2 for every X that rounds to 1 at 15 digits: all of A1-C7. 1-8·2^-53
+reads 0.999999999999999, so row 8 fits both. `MATCH(0.3,{2;0.1+0.2;0.5},1)` is `#N/A` (A17-C17). The keys 1+k·2^-52
+and 1-k·2^-53 against a 1 in the table give the mirror answers (A9-C16; row 16 fits both). Rows 18-20 fit both
+models: 0.1+0.2 against 0.3 is decided by the 0.5, and the pair either side of 1+5E-15 reads differently at 15
+digits too. The run of equal cells is a run of exactly equal
+doubles. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52 give 1, 2 and 3, where a 15-digit run would
+give 3 for all three (A30-C31; A32-C32 fit both). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine compares
+exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too (unverified in Excel: T-3106).
 Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
 2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
 a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
@@ -338,8 +350,9 @@ a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c5
 crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/MATCH.xlsx C7 (duplicate run, Excel-cached).
 Status: VERIFIED
 Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
-`crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
-Tasks: T-0212, T-0220
+`crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`; numbers are ordered as exact doubles by
+`compare_searched` there.
+Tasks: T-0212, T-0220, T-3073, T-3099
 
 ## MATCH descending search scans from the top; a text match_type read from a cell is #REF!
 Rule 1: a descending search (negative match_type) is a linear scan from the first cell, not a binary
@@ -363,6 +376,13 @@ binary search with the scan changed no other cell of any suite (T-2278). A key-e
 reached (`MATCH(5,{1,9,5},-1)` `#N/A`, a binary search gives 3; with 5, 9, 5 in B1:B3 `MATCH(5,B1:B3,-1)` = 1), and a 100-cell
 unsorted vector gives the scan's answers too (no switch of algorithm by size): probes/lookup-t2278-followups A8-A14
 (excel-graph, 2026-10-22).
+The scan compares numbers as exact doubles, as the ascending search does (T-3073, probes/t3073-lookup-near-equal-approximate,
+excel-graph 2026-10-29):
+- `MATCH(key,{X;key;0.5},-1)` is 2 where X is a few ULP above the key, because X is above it and the key cell is the
+  first equal one. It is `#N/A` where X is a few ULP below, because the first cell is already below (Sheet1 D1-D20). A
+  15-digit compare would give 1 on D1-D7, D9-D15, D17 and D18. D8, D16, D19 and D20 fit both models.
+- Over 2, 1+2·2^-52, 1+2^-52, 1, 0.5 the keys 1, 1+2^-52 and 1+2·2^-52 give 4, 3 and 2 (D30-D32; D32 fits both).
+Implemented in `SearchVector::descending_search` through `compare_searched` (T-3099).
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
@@ -850,13 +870,38 @@ Rule: TAKE and DROP of a range return a reference, so a one-cell result is a sca
 1x1 array: `ROWS(OFFSET(B9:C12,5,1,DROP(H2:H4,-2,0),2))` is 3 for H2 = 3 (1 for H3 = 1), `COLUMNS(..)` 2, `INDEX(..,1,1)` the cell. The same holds through
 `IF(TRUE,DROP(..))`, `MAX(..)` and `N(..)`, and with `+0` (`TAKE(H2:H4,1)+0` is 3 rows). An array constant `{3}` or `{1E-15}`, `SEQUENCE(1,1,3)`,
 `INDEX(H2:H4,{1})` and `CHOOSE({1},3)` lift: 1 row, `INDEX(..,1,1)` is `#SPILL!`. A two-cell `DROP(H1:H3,1,0)` lifts to a 2x1 array of references.
-A scalar height of 1E-15 (literal or cell) gives 2 rows (UNVERIFIED mechanism; `OFFSET(B9:C12,5,1,1E-15,2)` rows 2, `INDEX(..,1,1)` 0).
+A scalar height or width that is not 0 but truncates to 0 gives 2 rows (columns) reaching one row *up* (left) from the start: the zero check
+sees the number, the end is start + trunc(height) - 1, so the area is the row above the start and the start itself (the mechanism is inferred
+from the values below, which it explains in full). `ROWS(OFFSET(B9:C12,5,1,h,2))`
+is 2 for h = 1E-15, 1E-300, 0.1, 0.5, 0.9999, -1E-15 and -0.5, 1 for 1, 1.5, 1.9999, -1 and -1.5, 2 for 2.5; `COLUMNS(..,2,1E-15)` and
+`COLUMNS(..,2,0.5)` are 2; `ROWS(OFFSET(A1,0,0,1E-15))` is `#REF!` (no row above row 1); `ROWS(OFFSET(B9,0,0,-0.5))` is 2 and
+`ROW(OFFSET(B9,0,0,-0.5))` spills (`#SPILL!` in one cell), `ROW(OFFSET(B9,0,0,-1.5))` 9 (probes/t3072-take-drop-one-cell-reference P23-P41; T-3072).
+A CHOOSE or LET picking a one-cell DROP is a scalar height too: `ROWS(OFFSET(B9:C12,5,1,CHOOSE(1,DROP(H2:H4,-2,0))))` and
+`ROWS(OFFSET(B9:C12,5,1,LET(x,DROP(H2:H4,-2,0),x)))` are 3, also with `+0` (P19-P22).
 Evidence: probes/t2454-offset-array-height, probes/t2454-offset-one-cell-array-args, probes/t2414-gen-m7-unexplained A141, A151, A161, A171
 (excel-graph, 2026-10-23, T-2454).
-Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF picking one) is its reference; a CHOOSE or LET picking one is unprobed for OFFSET (T-2519). The `+0` and
-`N(..)` forms of a one-cell TAKE/DROP still lift here (T-2519).
-Status: VERIFIED (excel-graph); partly implemented (T-2454, T-2519)
-Tasks: T-2454, T-2519
+Ours: `offset_values` reads each number through `evaluate_picked_source`, so a TAKE/DROP (or an IF, CHOOSE or LET picking one) is its reference (T-2519). A one-cell
+TAKE/DROP of a single-sheet range stays its reference in value context (`take_drop_reference`), so the `+0` and `N(..)` forms are scalar too (T-2519).
+Status: VERIFIED (excel-graph); implemented: the engine matches every cell of the three probes, the near-zero heights included (T-2454, T-2519, T-3072)
+Tasks: T-2454, T-2519, T-3072
+
+## TAKE/DROP of a one-cell reference is a reference
+Rule: TAKE and DROP of a one-cell reference (`E7`, not only `E7:E7`) return that reference, so a one-cell result is a scalar under an operator and
+reads as a reference cell everywhere. With E7 text and E9 blank, `ROWS(E9-TAKE(E7,2,42))`, `ROWS(E9-TAKE(E7:E7,1))`, `ROWS(E9-DROP(E7,0))` and
+`ROWS(TAKE(E7,1)+0)` are `#VALUE!`; `TYPE(1+TAKE(C8,1))`, `TYPE(1+DROP(C8,0))` and `TYPE(1+TAKE(C8:C9,1))` are 1 while `TYPE(1+TAKE({5},1))`
+and `TYPE(1+TAKE(C8,{1}))` (a lifted count) are 64. A blank one-cell TAKE is SUMXMY2's blank one-cell reference: `SUMXMY2(TAKE(C11,-1,1),B6:C10)`
+and `SUMXMY2(TAKE(C11:C12,1),B6:C10)` are `#VALUE!` as `SUMXMY2(C11,B6:C10)`, while a number (`TAKE(C8,1)`, `C8`, `5`, `TAKE({5},1)`) against
+the 10-cell range is the count's `#N/A` (coercion.md "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing"). The information functions see the reference:
+`ISREF(TAKE(E7,1))`, `ISREF(TAKE(E7:E8,1))`, `ISREF(DROP(E7:E8,1))` and `ISREF(TAKE(E7:E8,2))` are TRUE; `ISBLANK(TAKE(C11,1))`,
+`ISBLANK(TAKE(C11:C12,1))` and `ISBLANK(DROP(C11:C12,1))` TRUE; `TYPE(TAKE(E7,1))` 2 but `TYPE(TAKE(E7:E8,2))` 64;
+`CELL("address",TAKE(E7:E8,-1))` `$E$8`, `CELL("address",TAKE(E7,1))` `$E$7`, `CELL("row",DROP(E7:E8,1))` 8, `CELL("type",TAKE(C11:C12,1))` `b`;
+`ISTEXT(TAKE(E7:E8,1))` TRUE and `ISFORMULA(TAKE(E7:E8,1))` FALSE.
+Evidence: probes/t3072-take-drop-one-cell-reference P1-P18, P42-P57 (excel-graph, 2026-10-28, T-3072); gen-m9/7674c89c824aca43 Calc!A305
+(`CHITEST((E9-TAKE(E7,2,42)),C8:C10)` `#VALUE!`), gen-m9/7c20351562a2d71d Calc!A277.
+Ours: `take_drop_reference` reads a one-cell reference argument, on this sheet or another, through `evaluate_node_with_reference`, as a
+one-cell range, before choosing its value or reference read (T-3072).
+Status: VERIFIED (excel-graph); implemented
+Tasks: T-2519, T-3072
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or

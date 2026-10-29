@@ -65,6 +65,18 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells on branches 
 - probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, ported BpserLarge 7, F.DIST.RT cdf, ported L140BupBpser 10, F.DIST.RT cdf, shape of 1 5
 - probes-numeric/t2464-w2f-absweep: BETA.DIST cdf, ported WBpser 5
 
+## Progress
+- 2026-10-29: the "bpser for both shapes >= 1 with max > 8" item is ported (`bratio/ln_beta.rs`): accurate ln B at
+  half-integer shapes, TOMS `betaln` elsewhere; scores and the rejected all-TOMS variant in statistics.md
+  ("Incomplete beta bpser", T-3007). Eval: bit-exact +67, visibly off -79 on the beta family; gen-m9 and probes known
+  failures -1 and -5. t2829-ftest-tail-over-b A1, A3, A4, A6, A7, A9 stay visibly off (T-2924's ln B k plus fl(a LN x)
+  steps); the other items above remain open.
+- 2026-10-29: the fl(a LN x) overflow item is a negative result (statistics.md "Incomplete beta at a shape near the
+  double range", probes/t3007-beta-dist-ln-x-overflow): Excel for the web refuses any workbook holding BETA.DIST with a
+  shape of 1E+295 or more, so `BETA.DIST(0.1,1E308,0.5,TRUE)` has no excel-graph value and keeps today's kernel. The
+  same probe found bpser `#NUM!` once 1/B(a, b) overflows and 5 bgrat/bfrac cells where ours are `#NUM!` (11 off cells,
+  T-3104). No engine change; eval: +27 probe cells (16 pass, 11 baselined as known failures).
+
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
       its scores.

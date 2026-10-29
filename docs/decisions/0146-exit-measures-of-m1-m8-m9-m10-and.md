@@ -101,3 +101,18 @@
   - On today's numbers M1 is met; M8 is not (9 probe cells; the POI subset is `n/a`); M9 is not
     (138 > 36, 82 functions, 578 probe cells); M10 is not (76 text items, 50 probe cells); M11 is
     met on corpus-bench (99.834%, 205,366 cells) and its probes.
+  - T-0089 (2026-10-29) builds the M1 and M11 rows. Each row reads a list of required suites, each
+    with its own floor and rate. The first suite is the row's `gen_*` measure, named in
+    `gen_suite` (`gen-m1`, or `corpus-bench` for M11). The rest go in `more_suites` (M1's smoke).
+    M1's `probe_row` names the `m1-probes` list it reads. `scripts/exit_owners.py` lists the
+    visibly-off cells of every required suite (by `gen_suite`, falling back to `gen-m<k>`, then
+    `more_suites`) and of a `milestone_lists` row whose name is the exit row's `probe_row`. The
+    M2, M5, M6 and M7 rows read and print as before.
+  - T-0095 (2026-10-29) builds the M9 row of item 3. It requires no suite (`gen_suite` is empty).
+    (a) reads the cumulative M9 function-scope row: scored cells are its cells less deviations and
+    exit exceptions, met at `meets_rate` with 9,995 over a denominator of 10,000 (every rate in
+    `milestone_exit` moved from over 1,000 to over 10,000, same shares). (b) reads `v15_checkpoint`'s
+    rows, which now carry each function's catalog `milestone`, and counts the M9 ones not
+    `meets_rate`. `scripts/exit_owners.py` lists, beside the function-scope and probe cells, the
+    `attributed_off` cells of each function the row names in `below_rate_functions`, as
+    `rate:<FUNCTION>`, through the same reader `--all-off` uses.

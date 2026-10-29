@@ -182,8 +182,9 @@ Unprobed: an error cell met after the skipped empties have taken the join over t
 `TEXTJOIN(",",FALSE,1:3)` with an error in A3); the engine gives `#CALC!`, as for a walked range (C20).
 Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114).
 Status: VERIFIED
-Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area and adds the skipped
-empty cells per row and after the last row through `JoinSize::push_empties`, which stops at the limit.
+Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
+sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row when
+columns are clipped) and after the last row through `JoinSize::push_empties`, which stops at the limit.
 Tasks: T-1114
 
 ## JIS is `#NAME?` in en-US Excel for the web
@@ -1056,6 +1057,10 @@ delimiter is found and beside an if_not_found: 1.5 (also from a cell), 1.9999, T
 -0.5 and FALSE are 0, while 2, -1 and -1.5 are `#VALUE!` (`TEXTAFTER("ab","b",1,0,2)` is `#VALUE!`, not ""), and the text "TRUE" is `#VALUE!`.
 TEXTBEFORE reads it the same way (A16-A30): with the delimiter not found, a value cut to 1 gives the whole text "ab", one cut to 0 `#N/A`, and the same values are `#VALUE!`. `TEXTAFTER("a","zz",1,0,<any>)` is `#VALUE!` for every value (the longer-delimiter rule above; for 2 and -1 both checks give `#VALUE!`, so their order is not shown). Evidence: probes/t2498-textafter-match-end (excel-graph,
 2026-10-25, T-2498). Ours: matches (`around_options`).
+An instance_num that is the empty value (`CELL("contents",<blank>)`) behaves as 0 (`#VALUE!`), not as an omitted argument:
+`TEXTAFTER(((Data!C$12&"")&Data!E10),"-",CELL("contents",Data!B3),1,1)` with Data!B3 blank (gen-m7/9359f03972e94026 Calc!A1420,
+excel-graph). A left-out argument (`TEXTAFTER(..,"-",,1)`) keeps the default 1. Ours: matches since T-3053 (`around_options` reads
+a written empty value as 0, so match_mode and match_end do too, unprobed: T-3087; information.md "CELL("contents", ref) as a VSTACK argument").
 TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
 `ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
 `ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference

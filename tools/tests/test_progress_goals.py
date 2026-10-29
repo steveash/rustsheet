@@ -268,3 +268,37 @@ def test_an_m7_row_shows_calc_not_required_and_its_spill_extents() -> None:
     assert "ironcalc-calc 3 visibly off (not required)" in text
     assert text.endswith("spill extents 0 failures (met)")
     assert "spill extents" not in goals.exit_measures("M5", exit_row("M5", True))
+
+
+def test_m1_and_m11_rows_name_their_suites() -> None:
+    # Decision 0146: M1 adds smoke beside gen-m1; M11's one suite is corpus-bench.
+    m1 = exit_row("M1", True) | {
+        "gen_suite": "gen-m1",
+        "more_suites": [{"name": "smoke", "scored": 46, "visibly_off": 0, "allowance": 0, "met": True}],
+    }
+    text = goals.exit_measures("M1", m1)
+    assert "generated suite 4 visibly off of 20,000" in text
+    assert "smoke 0 visibly off of 46, allowance 0 (met)" in text
+    m11 = exit_row("M11", True) | {"gen_suite": "corpus-bench"}
+    assert "corpus-bench 4 visibly off of 20,000, allowance 20 (met)" in goals.exit_measures("M11", m11)
+
+
+def test_an_m9_row_shows_no_suite_its_calc_allowance_and_the_functions_below_the_rate() -> None:
+    # Decision 0146 item 3: no required suite, ironcalc-calc at 0.9995, every M9 function at the rate.
+    m9 = exit_row("M9", False) | {
+        "gen_suite": "",
+        "gen_scored": None,
+        "calc_visibly_off": 138,
+        "calc_scored": 73_150,
+        "calc_allowance": 36,
+        "calc_met": False,
+        "rate_functions": 263,
+        "below_rate": 82,
+        "rate_met": False,
+    }
+    text = goals.exit_measures("M9", m9)
+    assert "no suite required" in text
+    assert "generated suite" not in text
+    assert "ironcalc-calc 138 visibly off of 73,150, allowance 36 (not met)" in text
+    assert text.endswith("functions at the Phase 1 rate 82 below of 263 (not met)")
+    assert "Phase 1 rate" not in goals.exit_measures("M5", exit_row("M5", True))
