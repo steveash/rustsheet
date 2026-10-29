@@ -81,13 +81,13 @@ fn all_met() {
     write_markdown(&rows, &mut md);
     assert!(
         md.contains(
-            "| M5 | 10/10 met | 22400, 0.99911, 20/22 [20] met | 0 [0] met | 0 [0] met | n/a n/a | met |"
+            "| M5 | 10/10 met | 22400, 0.99911, 20/22 [20] met | 0 [0] met | 0 [0] met | n/a n/a | n/a | met |"
         ),
         "{md}"
     );
     assert!(
         md.contains(
-            "| M6 | n/a/n/a n/a | n/a | n/a [n/a] n/a | n/a [n/a] n/a | n/a n/a | not met |"
+            "| M6 | n/a/n/a n/a | n/a | n/a [n/a] n/a | n/a [n/a] n/a | n/a n/a | n/a | not met |"
         ),
         "{md}"
     );
@@ -262,7 +262,7 @@ fn m2_needs_ten_thousand_gen_cells_none_visibly_off_and_no_coverage() {
     write_markdown(&summarize(&r), &mut md);
     assert!(
         md.contains(
-            "| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0] met | 0 [0] met | 0 [3] met | n/a n/a | met |"
+            "| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0] met | 0 [0] met | 0 [3] met | n/a n/a | n/a | met |"
         ),
         "{md}"
     );
@@ -349,7 +349,7 @@ fn m7_needs_ten_thousand_gen_cells_at_the_rate_and_no_extent_failure() {
     write_markdown(&summarize(&r), &mut md);
     assert!(
         md.contains(
-            "| M7 | 39/40 n/a | 10000, 0.99900, 10/10 [10] met | 1 [1] n/a | 0 [2] met | 0 met | met |"
+            "| M7 | 39/40 n/a | 10000, 0.99900, 10/10 [10] met | 1 [1] n/a | 0 [2] met | 0 met | n/a | met |"
         ),
         "{md}"
     );
@@ -441,7 +441,7 @@ fn m1_needs_gen_m1_and_smoke_none_visibly_off_and_the_m1_probes_list() {
     write_markdown(&summarize(&r), &mut md);
     assert!(
         md.contains(
-            "| M1 | n/a/n/a n/a | 3750, 1.00000, 0/0 [0] met; smoke: 46, 1.00000, 0/0 [0] met | n/a [n/a] n/a | 0 [1] met | n/a n/a | met |"
+            "| M1 | n/a/n/a n/a | 3750, 1.00000, 0/0 [0] met; smoke: 46, 1.00000, 0/0 [0] met | n/a [n/a] n/a | 0 [1] met | n/a n/a | n/a | met |"
         ),
         "{md}"
     );
@@ -511,7 +511,7 @@ fn m11_needs_corpus_bench_at_the_leaderboard_rate_and_is_na_without_it() {
     write_markdown(&summarize(&r), &mut md);
     assert!(
         md.contains(
-            "| M11 | n/a/n/a n/a | corpus-bench: 205366, 0.99834, 340/410 [340] met | n/a [n/a] n/a | 0 [0] met | n/a n/a | met |"
+            "| M11 | n/a/n/a n/a | corpus-bench: 205366, 0.99834, 340/410 [340] met | n/a [n/a] n/a | 0 [0] met | n/a n/a | n/a | met |"
         ),
         "{md}"
     );
@@ -530,7 +530,147 @@ fn m11_needs_corpus_bench_at_the_leaderboard_rate_and_is_na_without_it() {
     let mut md = String::new();
     write_markdown(&summarize(&r), &mut md);
     assert!(
-        md.contains("| M11 | n/a/n/a n/a | n/a | n/a [n/a] n/a | 0 [0] met | n/a n/a | not met |"),
+        md.contains(
+            "| M11 | n/a/n/a n/a | n/a | n/a [n/a] n/a | 0 [0] met | n/a n/a | n/a | not met |"
+        ),
         "{md}"
     );
+}
+
+/// A run with an M9 function-scope row of `cells` with `off` visibly-off cells (one of them,
+/// `x!S!A1`, under an exit exception when `excepted`), two M9 functions of the checkpoint at the
+/// rate and one of M8 below it, and a clean M9 probe row.
+fn m9_report(cells: usize, off: usize, excepted: bool) -> RunReport {
+    use crate::v15_checkpoint::V15Function;
+    let mut r = report(None);
+    let visibly_off: Vec<String> = (0..off).map(|i| format!("x!S!A{}", i + 1)).collect();
+    r.function_scope
+        .as_mut()
+        .unwrap()
+        .rows
+        .push(MilestoneScope {
+            milestone: "M9".into(),
+            cells,
+            deviations: 5,
+            failing: visibly_off
+                .iter()
+                .cloned()
+                .chain(["x!S!B1".into()])
+                .collect(),
+            excepted: if excepted {
+                vec!["x!S!A1".into()]
+            } else {
+                Vec::new()
+            },
+            visibly_off,
+            ..MilestoneScope::default()
+        });
+    r.catalog_coverage.push(MilestoneCoverage {
+        milestone: "M9".into(),
+        functions: 2,
+        covered: 1,
+        ..MilestoneCoverage::default()
+    });
+    let function = |name: &str, milestone: &str, meets_rate: bool| V15Function {
+        name: name.into(),
+        milestone: milestone.into(),
+        covered: true,
+        meets_rate,
+        ..V15Function::default()
+    };
+    r.v15_checkpoint.functions = vec![
+        function("PMT", "M9", true),
+        function("IRR", "M9", true),
+        function("SUMIFS", "M8", false),
+    ];
+    r.probe_milestones.push(MilestoneRow {
+        milestone: "M9".into(),
+        ..MilestoneRow::default()
+    });
+    r
+}
+
+fn m9(r: &RunReport) -> ExitRow {
+    row(r, "M9")
+}
+
+#[test]
+fn m9_needs_ironcalc_calc_at_99_95_every_m9_function_at_the_rate_and_clean_probes() {
+    // 73,160 cells less 5 deviations: 73,155 scored, the allowance is floor(0.0005 * 73,155) = 36.
+    let r = m9_report(73_160, 36, false);
+    let row = m9(&r);
+    assert_eq!(
+        (row.calc_scored, row.calc_allowance),
+        (Some(73_155), Some(36))
+    );
+    assert_eq!(
+        (row.calc_visibly_off, row.calc_failing),
+        (Some(36), Some(37))
+    );
+    assert_eq!(row.calc_met, Some(true));
+    assert_eq!((row.rate_functions, row.below_rate), (Some(2), Some(0)));
+    assert_eq!(row.rate_met, Some(true));
+    assert_eq!(row.probes_met, Some(true));
+    // Coverage is shown, not required, and no suite is required.
+    assert_eq!((row.covered, row.coverage_met), (Some(1), None));
+    assert_eq!((row.gen_suite.as_str(), row.gen_met), ("", None));
+    assert!(row.exit, "{row:?}");
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains(
+            "| M9 | 1/2 n/a | none required | 36/36 of 73155 [37] met | 0 [0] met | n/a n/a | 0/2 met | met |"
+        ),
+        "{md}"
+    );
+}
+
+#[test]
+fn m9_calc_past_the_allowance_fails_alone() {
+    let row = m9(&m9_report(73_160, 37, false));
+    assert_eq!(row.calc_met, Some(false));
+    assert_eq!((row.rate_met, row.probes_met), (Some(true), Some(true)));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m9_an_exit_exception_keeps_ironcalc_calc_met() {
+    // 37 visibly off, one excepted: 36 left over 73,154 scored cells, still within 36.
+    let row = m9(&m9_report(73_160, 37, true));
+    assert_eq!(
+        (row.calc_scored, row.calc_visibly_off),
+        (Some(73_154), Some(36))
+    );
+    assert_eq!((row.calc_allowance, row.calc_met), (Some(36), Some(true)));
+    assert!(row.exit, "{row:?}");
+}
+
+#[test]
+fn m9_a_function_below_the_rate_fails_alone() {
+    let mut r = m9_report(73_160, 0, false);
+    r.v15_checkpoint.functions[1].meets_rate = false;
+    let row = m9(&r);
+    assert_eq!((row.below_rate, row.rate_met), (Some(1), Some(false)));
+    assert_eq!(row.below_rate_functions, ["IRR"]);
+    assert_eq!(row.calc_met, Some(true));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m9_a_visibly_off_probe_fails_alone() {
+    let mut r = m9_report(73_160, 0, false);
+    r.probe_milestones.last_mut().unwrap().visibly_off = 1;
+    let row = m9(&r);
+    assert_eq!(row.probes_met, Some(false));
+    assert_eq!((row.calc_met, row.rate_met), (Some(true), Some(true)));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m9_without_checkpoint_functions_is_not_applicable() {
+    let mut r = m9_report(73_160, 0, false);
+    r.v15_checkpoint.functions.clear();
+    let row = m9(&r);
+    assert_eq!((row.rate_functions, row.rate_met), (None, None));
+    assert!(!row.exit);
 }

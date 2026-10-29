@@ -1479,6 +1479,7 @@ C	probes/t2982-gamma-inv-huge-shape.case.json	123
 C	probes/t2983-formulas-and-blank-enter-blank.case.json	6
 C	probes/t2983-formulas-and-blank-enter-last.case.json	5
 C	probes/t2983-identical-stored-refill.case.json	8
+C	probes/t3007-beta-dist-ln-x-overflow.case.json	27
 C	probes/t3012-gamma-dist-at-quantile.case.json	136
 C	probes/t3012-gamma-inv-small-shape.case.json	72
 C	probes/t3028-b2-taiwan-cuts.case.json	240
@@ -1584,6 +1585,7 @@ C	probes/text-currency-locale-date.case.json	19
 C	probes/text-date-255-char-limit.case.json	43
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-elapsed-two-tokens.case.json	14
+C	probes/text-fill-char-blank-fraction.case.json	10
 C	probes/text-fill-char-date-clock-fraction.case.json	12
 C	probes/text-format-aaa-weekday-b.case.json	30
 C	probes/text-format-aaa-weekday-c.case.json	10
@@ -4215,6 +4217,17 @@ F	probes/t2982-gamma-inv-huge-shape.case.json	S!A9
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A90
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A92
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A93
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A12
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A15
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A16
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A18
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A19
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A20
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A21
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A22
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A3
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A4
+F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A5
 F	probes/t3012-gamma-dist-at-quantile.case.json	S!A10
 F	probes/t3012-gamma-dist-at-quantile.case.json	S!A16
 F	probes/t3012-gamma-dist-at-quantile.case.json	S!A17
