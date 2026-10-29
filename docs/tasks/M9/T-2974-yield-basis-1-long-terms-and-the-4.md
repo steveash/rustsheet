@@ -90,4 +90,5 @@ A, which repeat existing cells. No regressions.
   C8 and yield-newton-domain P!B2 (lab 936 of 1,101), but its mechanism is unknown, so it was not kept.
   yield-start-rate-term B39 stays 5 ulps off under every candidate.
 - Next: find what the tie groups do to `pr·T`, then put the FMA form in `yield_start`. ODDFYIELD shares the start.
-- Eval delta: EVAL_DELTA
+- Eval delta: one new probe case, 360 cells. The engine (rounded-once start) passes 202. The 158 new known failures
+  are YIELD cells of that case 1 to 67 ulps off. No other cell changed and nothing regressed.
