@@ -809,3 +809,6 @@ Summary `t2122/k3_j6scan_control_summary.log` (`TRUTH=60.42,56.49 k3_j6map.py OU
 3. Add the joint (S + P_5) rescoring of scan2.py to scan3.py for the kept candidates. At the truth the joint score is
    1624 (S 1414, P 211). It may lift the truth above the sidelobes without a b cut.
 4. 17.4.1 and 17.4.3 (more ladder rows on N5 and N7; the D chain) still stand.
+
+## 19. T-2122 run 7 (2026-10-29, single opus worker, 18.5 step 1: the J=6 scans with the base bias subtracted)
+In progress.
