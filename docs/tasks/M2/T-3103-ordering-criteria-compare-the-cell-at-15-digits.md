@@ -3,7 +3,7 @@ id: T-3103
 title: "Ordering criteria (<, <=, >, >=) compare the cell at 15 digits, as = and <> do"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
