@@ -3,7 +3,11 @@ use statrs::distribution::{Continuous, Gamma};
 use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, Tail, DIRECT_SHAPE_MAX};
+use super::incomplete_gamma::{
+    gamma_cdf, gamma_density, gamma_quantile, wilson_hilferty_quantile, Tail, DIRECT_SHAPE_MAX,
+    WILSON_HILFERTY_SHAPE_MIN,
+};
+use super::normal::normal_quantile;
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
@@ -104,7 +108,9 @@ impl Model {
         // The density of a positive x whose x / beta is subnormal is #NUM!, whatever the shape or
         // the size of the result, while the cdf there is 0 (probes/t2738-gamma-dist-tiny-ratio:
         // `GAMMA.DIST(4.4E-308,1,2,FALSE)` is #NUM!, 4.5E-308 is 0.4999...; T-2738).
-        if !cumulative && x > 0.0 && x / beta_scale < f64::MIN_POSITIVE {
+        // An x / beta that overflows is #NUM! for the density as for the cdf
+        // (`GAMMA.DIST(1E300,1,1E-10,FALSE)` and `TRUE`, probes/incomplete-gamma-cap E18, E6; T-2982).
+        if !cumulative && x > 0.0 && !(f64::MIN_POSITIVE..=f64::MAX).contains(&(x / beta_scale)) {
             return Err(num_error(cell));
         }
         let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
@@ -152,8 +158,13 @@ impl Model {
         if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
         }
-        let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
-        let x = gamma_quantile(&dist, p, Tail::Lower);
+        let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && p > 0.0 && p < 1.0 {
+            let z = normal_quantile(p, 0.0, 1.0, cell)?;
+            wilson_hilferty_quantile(alpha, z) * beta_scale
+        } else {
+            let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
+            gamma_quantile(&dist, p, Tail::Lower)
+        };
         if !x.is_finite() || x < 0.0 {
             return Err(num_error(cell));
         }
