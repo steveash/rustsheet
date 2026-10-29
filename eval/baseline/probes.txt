@@ -1170,8 +1170,11 @@ C	probes/t2065-lift-averagea.case.json	1
 C	probes/t2065-lift-averageif.case.json	2
 C	probes/t2065-lift-concat.case.json	1
 C	probes/t2065-lift-countifs.case.json	2
+C	probes/t2065-lift-large.case.json	1
 C	probes/t2065-lift-maxa.case.json	1
 C	probes/t2065-lift-maxifs.case.json	2
+C	probes/t2065-lift-median.case.json	1
+C	probes/t2065-lift-small.case.json	1
 C	probes/t2065-lift-stdevs.case.json	1
 C	probes/t2065-lift-sumsq.case.json	1
 C	probes/t2065-lift-vars.case.json	1
