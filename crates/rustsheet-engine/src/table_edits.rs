@@ -470,9 +470,7 @@ impl Model {
         self.reset_tables();
         Ok(())
     }
-}
 
-impl Model {
     /// Refuses an insert of `count` rows (`rows`) or columns at `at` that would push a cell of a
     /// table on `sheet` past the last row (column), even when the cells pushed off are empty: Excel
     /// answers 409 `InsertDeleteConflict` (excel-graph 2026-10-28, T-2845). A table that merely ends

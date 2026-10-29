@@ -2451,7 +2451,8 @@ beside or inside the table is rewritten too. Excel keeps the text in all of them
 FORMULATEXT prints the long `Sales[[#This Row],[Qty]]` where Excel prints `Sales[@Qty]` (T-1683). An insert at
 the first row of a table without a header row is a fallback too (unprobed, T-3039). An insert that would
 carry a table past the last row or column is refused with an error and changes nothing, as Excel does
-(`Model::refuse_table_off_sheet`, T-3038; a table that ends exactly at the last row afterwards is allowed, unprobed). The plain-range quirk is implemented for every range inside the table's
+(`Model::refuse_table_off_sheet`, T-3038; a table that ends exactly at the last row afterwards is
+allowed, unprobed). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
 inside grow the table (T-2339). A wholly deleted plain range prints one sheet-qualified `S!#REF!`, not a `#REF!` per corner
