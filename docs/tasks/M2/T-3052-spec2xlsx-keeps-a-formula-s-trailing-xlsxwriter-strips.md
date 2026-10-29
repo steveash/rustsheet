@@ -3,7 +3,7 @@ id: T-3052
 title: "spec2xlsx keeps a formula's trailing } (XlsxWriter strips it and corrupts the workbook)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,8 @@ the oracle can evaluate it.
 
 ## Out of scope
 - Any engine change.
+
+## Outcome
+Already fixed by T-3051 (`_cell_formula` in spec2xlsx.py re-appends the `}` XlsxWriter strips; covered by
+`tools/tests/test_spec2xlsx_trailing_brace.py`, dynamic, legacy and bare-name cells). Verified the test passes on
+current `origin/main`; no code change. Eval delta: none.
