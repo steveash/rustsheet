@@ -465,6 +465,7 @@ C	probes/fin-cumipmt-tiny-rate-structure.case.json	226
 C	probes/fin-cumprinc-form-boundaries.case.json	132
 C	probes/fin-cumprinc-near-1e15.case.json	84
 C	probes/fin-cumprinc-underflow-ends.case.json	124
+C	probes/fin-db-syd-domain-order.case.json	24
 C	probes/fin-fvschedule-bool-ref.case.json	6
 C	probes/fin-fvschedule.case.json	20
 C	probes/fin-ipmt-ppmt-huge-rate.case.json	1194

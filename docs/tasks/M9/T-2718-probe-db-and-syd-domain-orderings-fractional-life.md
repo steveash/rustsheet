@@ -3,7 +3,7 @@ id: T-2718
 title: "Probe DB and SYD domain orderings: fractional life near life+1, cost 0 with a huge life, SYD negative salvage vs life overflow"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,10 +24,14 @@ T-2491 Excel-fidelity review (PR #1789) found three rules in `fn_db` and `fn_syd
 docs/excel-semantics/financial.md "DB and SYD argument domains".
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers: fractional lives (4.5, 4.25) with periods between life and life+2 at months 6 and 12;
+- [x] A probe case (excel-graph) covers: fractional lives (4.5, 4.25) with periods between life and life+2 at months 6 and 12;
       `DB(0,10,1E10,1)`, `DB(0,10,1E10,0.5,8)`, `DB(0,10,2147483648,1)`; `SYD(100,-1,1E200,1)`, `SYD(1E300,-1E300,1E200,1)`.
-- [ ] Any mismatch is fixed in `fn_db` or `fn_syd`, and financial.md records the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] Any mismatch is fixed in `fn_db` or `fn_syd`, and financial.md records the rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - DB's one-ulp partial last year (T-2697).
+
+## Outcome
+Probe case probes/fin-db-syd-domain-order (24 cells, excel-graph) fills all three orderings; the engine already
+matched every cell, so no code change. financial.md "DB and SYD argument domains" records the rules.
