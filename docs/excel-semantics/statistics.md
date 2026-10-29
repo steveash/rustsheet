@@ -2583,7 +2583,7 @@ mx = fl(m·x):
 - Not established: that ln x enters as a stored Excel LN product (that product gets coefficient 0). Open: the x-power
   term's form, large-shape noise (sd 20-200 units on a lattice of a [32, 64) stored term at (100,100)), a +3 to +5 unit
   offset at d1 = 1, the d <= 2 cells, non-integer df.
-- The engine's beta density × y(1-y)/x form is not Excel's.
+- The beta density × y(1-y)/x form the engine used before T-3034 is not Excel's.
 - Round 4 (T-2586, verified on untouched hold-outs; still PARTIAL):
   - Not TOMS 708 brcomp(a,b,y,q)/x in any branch: below CR on every set (hold-out 69/501/822 of 1,536, CR
     111/646/904), and the s = fl(1+r) response appears at r > 0.375 in the Stirling region too (15 of 15 runs).
@@ -2628,12 +2628,17 @@ docs/research/t2464/cells.tsv; docs/research/t2464/r3-fdensity (`a8_pair.out`, `
 -hold and the verifiers' t2586-verify-* cases; docs/research/t2464/r4-f-brcomp, r4-f-power, r4-f-small-df and
 verify-r4-*; round 5: probes-numeric t2586-r5-f-*, t2586-verify-r5-*; docs/research/t2464/r5-f-combine, r5-f-smallr,
 r5-f-bigconst, r5-f-edges, r5-f-final and verify-r5-*.
-Ours: `fisher.rs` `f_pdf`, `beta_density(y, d1/2, d2/2)·y·(1 - y)/x` where statrs' direct form is finite, an accurate
-Loader form where it overflows or underflows ("F density at large degrees of freedom (T-1864)"); neither is Excel's
-formula.
+Ours (T-3034): `f_density.rs` `excel_f_density` is M-final for every x > 0, bit for bit: it equals
+`fdensity_excel.value(x, d1, d2, "div")` on all 64,883 positive value rows of the r5-f-final score sets and the
+final hold-out (unit test `final_hold_is_model_m_final` pins the hold-out's 1,549). K's exact part is formed in
+double-double from Stirling's formula, ln(w)/2 + (h - 1/2)·ln(h/o) - ln(2π)/2 - μ(a) - μ(b) + μ(h) with μ Binet's
+function, and the offset table (r3-loader-const's stirlerr errors, the +5.33 and -0.42 constants, numpy's linear
+extrapolation above 28) is carried as data. `make eval` (probes-numeric, F.DIST): visibly-off cells 38,027 → 18,722,
+bit-exact 5,595 → 16,268; per cell 21,404 move to within 15 digits and 2,591 out, and none of the 36 (side, r, df,
+|P|) regions loses net, so no region keeps the old beta-density form (which, with its Loader fallback, is gone).
 Status: PARTIAL (excel-graph): the argument and range rules (round 5), the negatives, the swap symmetry, the x = 1
-values and the ratio switch are measured; the formula for the value is unsolved
-Tasks: T-2586, T-2219, T-2095
+values and the ratio switch are measured; the value is M-final, at parity only for |P| < 4
+Tasks: T-2586, T-2219, T-2095, T-3034
 
 ## Incomplete beta: the integrated model, what is open and what is rejected (T-2464)
 Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN; x0 >= 0.3), r2-bratio's
@@ -3027,22 +3032,12 @@ literal-argument cells of t2220-f-dist-sweep-pdf/-d2-1, m9-f-dist and t1530-f-df
 Evidence: probes-numeric t2220-f-dist-sweep-pdf (A897, A994), t2220-f-dist-sweep-d2-1 (A710, A776), t1530-f-df-cut
 A9-A10, m9-f-dist A30, t1864-f-pdf-moderate-x, t1864-f-pdf-edges A1-A12, t1864-f-pdf-tiny-x A1-A20 (excel-graph,
 2026-10-25), t2586-r5-f-edges-a, -hold, t2586-verify-r5-f-edges-hold, t2586-r5-f-bigconst-a; gen-m9 285d87cea1aaa73c A64 (`F.DIST(0.1,123456792,1,FALSE)` 0.085003679623665).
-Ours: an accurate form, not Excel's algorithm. Where statrs' direct form overflows (a df above about 143, or a huge x
-that does not underflow), `fisher.rs` `f_pdf_loader` is Loader's saddle-point binomial form as in R's `df`: with
-q = n/(n + x m), p = x m/(n + x m), (m q/2)·dbinom_raw((m-2)/2, (m+n-2)/2, p, q) for m >= 2 and
-m² q/(2p(m+n))·dbinom_raw(m/2, (m+n)/2, p, q) for m = 1 (`loader.rs`: stirlerr, bd0, dbinom_raw_dev). Two departures
-from R keep digits: the binomial deviation k - N p is formed without cancellation as q(2k - x m)/2, with x m's
-rounding error, and passed to bd0 (whose closed form becomes x ln(x/np) - diff); and ln(2πx(1 - x/n)) is one logarithm,
-with 1 - x/n from the exact n - x past n/2 (R's log1p(-x/n) is 4E-8 relative off at `F.DIST(2,1E10,5,FALSE)`, R's bd0
-up to 9,000 ulp at `F.DIST(57400,50,1,FALSE)`). A plain log-space form misses by up to about 300 ulp (T-1290). The
-error grows with |ln density| (about 100 ulp at `F.DIST(100,50,100,FALSE)` = 2.2E-67, 171 at `F.DIST(1E200,1,1,FALSE)`).
-Written with q = n/(n + x m), no intermediate of the deviation overflows at an x m near f64::MAX. The form replaces a non-finite statrs result, and a 0 from both statrs and the beta-density path (a positive
-beta-density value is kept: `F.DIST(1+2^-51,20,127,FALSE)` 1.1626735695122385, t2586-r5-f-bigconst-a B889, where
-statrs' own form is a finite 0); the log-form underflow check still gives 0 where the density underflows; x <= 0 keeps
-its value. Then `excel_density_range` applies round 5's range steps (a subnormal Y re-formed as fl(fl(density·x)/x), an
-F below 2^-1022 flushed to 0), and `f_dist_of` makes a subnormal x `#DIV/0!` (t2586-r5-f-edges-a B931, B932). The last
-1E-14 of the subnormal-Y cells is T-2647's, the last ulp of gen-m9 285d87cea1aaa73c A64 T-2642's.
-Status: VERIFIED (excel-graph) for the values and the range rules; the form is ours
+Ours: since T-3034, Excel's own chain M-final (`f_density.rs`, "F density is not the beta density, R's df or a
+GAMMALN formula (T-2513)"), which gives a number at every one of these cells and keeps the range steps; before it, an
+accurate Loader saddle-point form (T-1864, T-1290), now removed. `f_dist_of` makes a subnormal x `#DIV/0!`
+(t2586-r5-f-edges-a B931, B932).
+Status: VERIFIED (excel-graph) for the range rules; the values are M-final's, within 15 digits of Excel where |c·ln x|
+is small (T-2586)
 Tasks: T-1864, T-1290, T-2586, T-2642, T-2647
 
 ## F quantile at a huge df goes through Excel's BETA.INV (T-1538)

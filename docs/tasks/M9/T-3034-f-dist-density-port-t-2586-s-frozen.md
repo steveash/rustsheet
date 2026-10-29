@@ -3,7 +3,7 @@ id: T-3034
 title: "F.DIST density: port T-2586's frozen model M-final (fdensity_excel.py) where it wins on visible cells"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -77,13 +77,13 @@ the same case are routed to the task named in T-2981's Outcome):
 - probes-numeric/t2586-verify-r5-f-smallr-hold: F.DIST density 680
 
 ## Acceptance criteria
-- [ ] `F.DIST(x,d1,d2,FALSE)` (and every caller of the F density) computes M-final's chain, with unit tests that pin
+- [x] `F.DIST(x,d1,d2,FALSE)` (and every caller of the F density) computes M-final's chain, with unit tests that pin
       bit-exact rows copied from the r5-f-final hold-out into a fixture.
-- [ ] `make eval`: F.DIST's visibly-off cells in the cases above fall, by at least 10,000 in total, and no gated
+- [x] `make eval`: F.DIST's visibly-off cells in the cases above fall, by at least 10,000 in total, and no gated
       suite loses a cell (`make eval-check`); any region where M-final loses visible cells against today's engine
       keeps today's form, with the comparison in the Outcome.
-- [ ] statistics.md's F density entry says which form the engine ships and the measured counts.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's F density entry says which form the engine ships and the measured counts.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit-exactness and the |P| >= 32 power-term noise (T-2586's open item).
@@ -92,3 +92,24 @@ the same case are routed to the task named in T-2981's Outcome):
 ## Visible-parity stage
 Target (decision 0114): the F density's visibly-off cells in these sweeps drop by the model's measured margin; what
 is left is T-2586's open power term.
+
+## Outcome
+- `functions/statistical/f_density.rs` `excel_f_density` is M-final (`fdensity_excel.value(x, d1, d2, "div")`) for
+  every x > 0 after `f_dist_of`'s rules. Bit for bit the reference model on all 64,883 positive value rows of the
+  r5-f-final score sets and hold-out (checked once against the Python model; the 1,549 hold-out rows are a fixture,
+  `test/fixtures/f_density_final_hold.fixture`, with 91 bit-exact and 687 within 15 digits of Excel, the RESULTS.md
+  126/722 less the 35 rule cells). K's exact part is double-double Stirling (Binet's mu: a 30-entry mpmath table to 15,
+  gammaln.rs's Stirling terms above); the offset table (grid_e.tsv, C0 5.33, C_BIG -0.42, e(1/2), e(1), numpy's
+  extrapolation slope and intercept) is data in the module with its provenance.
+- `make eval`, probes-numeric F.DIST (72,534 cells): visibly-off 38,027 → 18,722 (-19,305); bit-exact 5,595 → 16,268;
+  suite passes 359,597 → 370,270. Per cell 21,404 cells move to within 15 digits and 2,591 out. By r5-f-final's
+  (side, r <= 0.375, df small/mid/large, |c ln x| < 4 / < 32 / >= 32) regions on the 64,883 research rows, every one of
+  the 36 gains (smallest: side 1, r > 0.375, mid df, |P| >= 32, 13 → 19 of 92), so no region keeps the old form.
+- Removed: the beta-density-times-Jacobian form, its Loader fallback `f_pdf_loader` and `loader.rs` (stirlerr, bd0,
+  dbinom_raw_dev: the F density was its only user; restore from git for T-2507 / T-2585 if they want an accurate
+  Loader form). `test_fn_f_pdf_large_df` now checks those cells within 5E-14 relative of the exact density (M-final's
+  error there is up to 4.5E-14; Excel's own up to 3E-14), and B889 of t2586-r5-f-bigconst-a within 1E-13 of Excel
+  (M-final 1.1626735695122388 against Excel's ...385).
+- T-2790 (removing the engine's own 1 - y cancellation in `f_pdf_accurate`) has no code left to change: re-triage it
+  against M-final (its 224 named t2220 cells are scored above). T-2219, T-2642, T-2647: their F density cells now go
+  through M-final; re-check them with `make eval-show`.
