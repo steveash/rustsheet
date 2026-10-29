@@ -25,14 +25,19 @@ bit are bit-exact again, or within 15 digits, while the cells it fixed stay fixe
   - yield-start-term-basis S!C47.
 - Code: `yield_start` in crates/rustsheet-engine/src/functions/financial/financial_bonds/yield_solver.rs.
 - Semantics: financial.md "YIELD stops short of PRICE's root", T-2974 attempt 2. One-step cells
-  show the start's last bit. On yield-solver-sweep C2, C7 and C8, Excel's start is one ulp
+  show the start's last bit. On yield-solver-sweep C2, C7 and C8 (one step each, still known failures), Excel's start is one ulp
   above the correctly rounded one. First check whether the regressed cells are one-step or
   multi-step cells, and whether ODDFYIELD's start is rounded like YIELD's.
+
+- T-2974 attempt 2 scored its start arrangements with scratch scripts, not a committed kernel.
+  Add the rounded-once start (exact term) to the `yield-caret` fit as a named candidate first, so
+  the financial.md table can be reproduced.
 
 ## Acceptance criteria
 - [ ] The nine visibly-off cells are within 15 digits, and no known-failure line is added
       (`make eval-baseline`). Otherwise the task records the candidates tried with their lab
       counts (decision 0056).
+- [ ] `uv run rustsheet-fitlab yield-caret` scores the rounded-once start.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

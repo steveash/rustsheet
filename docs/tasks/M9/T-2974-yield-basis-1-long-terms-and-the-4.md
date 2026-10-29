@@ -69,10 +69,10 @@ A, which repeat existing cells. No regressions.
 - The one-step cells show the start's last bit, so the start was refit on its rounding. Excel's start is the fitted
   formula rounded once over the exact term: lab bit-exact 503/761, against 441 for the formula in doubles. Every
   arrangement and its score is in financial.md "YIELD stops short of PRICE's root", T-2974 attempt 2.
-- The engine's `yield_start` computes that rounded-once start in double-double. Eval delta: 248 YIELD/ODDFYIELD known failures fixed (and 8 t3097 nesting cells that already pass on main, a stale baseline),
+- The engine's `yield_start` computes that rounded-once start in double-double. Eval delta: 256 YIELD/ODDFYIELD known failures fixed,
   148 YIELD/ODDFYIELD cells regressed (9 visibly off, decision 0162, follow-up T-3152). In-scope visibly-off cells
   go from 2,885 to 2,862.
-- Still off: C7 and B39 need a start one ulp above the correctly rounded one. B49 has Excel's start but stays off on
+- Still off: yield-solver-sweep C2, C7 and C8 and yield-start-rate-term B39 need a start one ulp above the correctly rounded one. B49 has Excel's start but stays off on
   the engine's PRICE (T-3144). P!B2 is unchanged.
 - Next: rounding up fits C7, B39 and B49. Look for what moves those cells up and not the others, for example a second
   rounding of the denominator.
