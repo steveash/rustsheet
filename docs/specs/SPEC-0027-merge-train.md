@@ -361,6 +361,12 @@ count `author_association` `OWNER` or `COLLABORATOR` on a user-owned repository 
 rule tells `run_heavy=false` by running the CI classifier (`ci_changes.classify_range`) on the
 PR's base and head, because the job log is not readable from a session.
 
+**As built (T-3040, decision 0161).** `make mark-ready` takes the verdicts from `REVIEW` or,
+with `CARRY=1`, from the newest earlier writer marker; the two are exclusive. It writes the
+comment before the label. `STEP=1` prints the two writes as step-mode JSON lines (`comment` with
+the full body, `label` with the PR's whole label set afterwards); without it the script writes
+through `gh_client` and runs `verify` on the result. `make merge-labels` creates the train labels.
+
 **Comment hygiene.** The merger's comments quote no user text. Any `@` in names or reasons it
 echoes (job names, PR titles) is escaped (`@` → `@​`), so a comment never notifies anyone.
 

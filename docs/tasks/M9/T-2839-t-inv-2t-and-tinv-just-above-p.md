@@ -37,6 +37,11 @@ Gap triage 2026-10-28 (eval on origin/main abefb50): one more cell of this branc
 df and p further from 1: gen-m9/5389dd4d5b5739d2 Calc!A288 `T.INV.2T(Data!E4,Data!C$10)` = `T.INV.2T(1.005,3.14159)`,
 Excel -0.006801817544729202, ours -0.006801817544722885 (9E-13 relative, visibly off; known failure in
 eval/baseline/gen-m9.txt). It counts toward the first criterion.
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/941c409532603d32.case.json: Calc!A108
+  - gen-m9/139684e68fb2fc3b.case.json: Calc!A394
+  - gen-m9/a4090567758520df.case.json: Calc!A307
 
 ## Acceptance criteria
 - [ ] The cells above are within half a unit of the 15th significant digit of Excel's value, or the residue is filed.

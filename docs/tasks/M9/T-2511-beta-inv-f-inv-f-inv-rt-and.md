@@ -44,6 +44,19 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
     from -4, +1 and -16 ulp to -40, -5 and -6 ulp off Excel's quantile, while Excel's BETA.DIST at those quantiles
     became bit-exact. Find where in the step Excel's search stops
     (statistics.md "Incomplete beta at a shape of 1 outside the closed forms").
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/eced4bb6a0234c9e.case.json: Calc!A291
+  - gen-m9/320d51765af9b6b7.case.json: Calc!A379, A15
+  - gen-m9/589f42e67f4b4b8d.case.json: Calc!A365
+  - gen-m9/60b0b6e69ad35a45.case.json: Calc!A197, A150
+  - gen-m9/c18dbf21f11093f3.case.json: Calc!A92
+  - gen-m9/e6cf3b20a014e6a3.case.json: Calc!A135
+  - gen-m9/f34f66fb7f81e673.case.json: Calc!A209
+  - gen-m9/7674c89c824aca43.case.json: Calc!A212
+  - gen-m9/40425341c5034eed.case.json: Calc!A108
+  - gen-m9/a63d1c7d6f96c56d.case.json: Calc!A320
+  - gen-m9/c6cfda6bd10cae93.case.json: Calc!A183
 
 ## Acceptance criteria
 - [ ] Every listed inverse calls one crossing search on the ported CDF (no statrs inversion left).
