@@ -398,6 +398,9 @@ impl Model {
     where
         F: FnMut(&mut Self, ItemSource, CalcResult) -> Result<(), CalcResult>,
     {
+        // The cells read are charged before they are walked, so a LAMBDA that reads one bound
+        // array again and again is bounded by the formula work budget (SPEC-0024 section 1).
+        self.spend_cells(array.len(), array.first().map_or(0, Vec::len), cell)?;
         self.walk_array_nodes(array.into_iter().flatten(), cell, walk, visit)
     }
 
