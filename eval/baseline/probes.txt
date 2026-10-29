@@ -1498,6 +1498,7 @@ C	probes/t3072-criteria-near-equal-order.case.json	360
 C	probes/t3072-take-drop-one-cell-reference.case.json	57
 C	probes/t3073-lookup-near-equal-approximate.case.json	218
 C	probes/t3094-snap-lambda-call-forms.case.json	44
+C	probes/t3096-lookup-value-blank-elements.case.json	203
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
