@@ -39,6 +39,10 @@ BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,199}")
 # Owner, repository and input names; a name of dots only (`..`) is refused, it would change the path.
 NAME = re.compile(r"(?!\.+$)[A-Za-z0-9_.-]{1,100}")
 REMOTE_URL = re.compile(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$")
+# A label's colour: six hex digits, no `#` (the REST labels endpoint's form).
+COLOR = re.compile(r"[0-9a-f]{6}")
+# How `gh api` reports a missing object.
+NOT_FOUND = "HTTP 404"
 MERGE_METHODS = ("squash", "merge", "rebase")
 
 
@@ -73,6 +77,15 @@ def number(value: int | str, what: str = "PR number") -> int:
     if not (text.isascii() and text.isdigit() and len(text) <= 9) or int(text) == 0:
         raise GhError(f"refused {what}: {value!r}")
     return int(text)
+
+
+def branch_name(name: str) -> str:
+    """A branch name safe in a URL path: `BRANCH`, and no empty, `.`-led or `.lock` segment, so
+    no `..` can climb out of `git/refs/heads/`."""
+    checked(BRANCH, name, "branch")
+    if any(not part or part.startswith(".") or part.endswith(".lock") for part in name.split("/")):
+        raise GhError(f"refused branch: {name!r}")
+    return name
 
 
 def as_dict(value: object) -> dict[str, object]:
@@ -168,11 +181,43 @@ class Client:
             raise GhError("refused comment: empty or over 65536 characters")
         return as_dict(self.call("POST", f"issues/{number(pr)}/comments", body={"body": body}))
 
+    def create_pull(self, title: str, head: str, body: str, base: str = "main") -> dict[str, object]:
+        """Opens a PR from the same-repository branch `head` into `base`."""
+        if not title or "\n" in title or len(title) > 256:
+            raise GhError("refused PR title: empty, multi-line or over 256 characters")
+        if not body or len(body) > 65536:
+            raise GhError("refused PR body: empty or over 65536 characters")
+        payload = {"title": title, "head": branch_name(head), "base": branch_name(base), "body": body}
+        return as_dict(self.call("POST", "pulls", body=payload))
+
+    def delete_branch(self, name: str) -> object:
+        """Deletes the branch `name` (never `main`)."""
+        if branch_name(name) == "main":
+            raise GhError("refused branch deletion: main")
+        return self.call("DELETE", f"git/refs/heads/{name}")
+
     # Labels.
     def add_label(self, pr: int | str, label: str) -> object:
         return self.call(
             "POST", f"issues/{number(pr)}/labels", body={"labels": [checked(LABEL, label, "label")]}
         )
+
+    def label(self, label: str) -> dict[str, object] | None:
+        """The repository's label `label`, or None when it does not exist (HTTP 404)."""
+        name = urllib.parse.quote(checked(LABEL, label, "label"), safe="")
+        try:
+            return as_dict(self.call("GET", f"labels/{name}"))
+        except GhError as error:
+            if NOT_FOUND in str(error):
+                return None
+            raise
+
+    def create_label(self, label: str, color: str, description: str) -> dict[str, object]:
+        """Creates the repository label `label` (colour as six hex digits, a short description)."""
+        if not COLOR.fullmatch(color) or not description or len(description) > 100:
+            raise GhError(f"refused label color or description for {label!r}")
+        body = {"name": checked(LABEL, label, "label"), "color": color, "description": description}
+        return as_dict(self.call("POST", "labels", body=body))
 
     def remove_label(self, pr: int | str, label: str) -> object:
         name = urllib.parse.quote(checked(LABEL, label, "label"), safe="")
@@ -185,13 +230,13 @@ class Client:
     def workflow_runs(self, *, branch: str | None = None, head_sha: str | None = None) -> list[object]:
         query = []
         if branch is not None:
-            query.append(("branch", checked(BRANCH, branch, "branch")))
+            query.append(("branch", branch_name(branch)))
         if head_sha is not None:
             query.append(("head_sha", checked(SHA, head_sha, "sha")))
         return self.pages("actions/runs", query, key="workflow_runs")
 
     def dispatch(self, workflow: str, ref: str, inputs: Mapping[str, str] | None = None) -> object:
-        body: dict[str, object] = {"ref": checked(BRANCH, ref, "ref")}
+        body: dict[str, object] = {"ref": branch_name(ref)}
         if inputs:
             body["inputs"] = {checked(NAME, k, "input"): str(v) for k, v in inputs.items()}
         return self.call(

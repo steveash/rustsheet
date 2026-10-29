@@ -49,6 +49,15 @@ FIXTURES: list[tuple[str, Callable[[Client], object], str, str, object, object]]
         {"labels": ["ready-to-merge"]},
         [],
     ),
+    ("label", lambda c: c.label("merge train"), "GET", "repos/o/r/labels/merge%20train", None, {"name": "x"}),
+    (
+        "create_label",
+        lambda c: c.create_label("ready-to-merge", "0e8a16", "Ready"),
+        "POST",
+        "repos/o/r/labels",
+        {"name": "ready-to-merge", "color": "0e8a16", "description": "Ready"},
+        {"name": "ready-to-merge"},
+    ),
     (
         "remove_label",
         lambda c: c.remove_label(7, "merge train"),
@@ -81,6 +90,22 @@ FIXTURES: list[tuple[str, Callable[[Client], object], str, str, object, object]]
         "repos/o/r/pulls/7/merge",
         {"merge_method": "squash", "sha": SHA, "commit_title": "T-0001: x (#7)", "commit_message": "body"},
         {"merged": True},
+    ),
+    (
+        "create_pull",
+        lambda c: c.create_pull("revert: x", "merge-train/revert-1", "body"),
+        "POST",
+        "repos/o/r/pulls",
+        {"title": "revert: x", "head": "merge-train/revert-1", "base": "main", "body": "body"},
+        {"number": 8},
+    ),
+    (
+        "delete_branch",
+        lambda c: c.delete_branch("agent/harness/T-0001-x"),
+        "DELETE",
+        "repos/o/r/git/refs/heads/agent/harness/T-0001-x",
+        None,
+        None,
     ),
     (
         "dispatch",
@@ -145,6 +170,9 @@ class Refusals(unittest.TestCase):
             lambda: fake.pull("٧"),
             lambda: fake.permission("a/b"),
             lambda: fake.add_label(7, "../x"),
+            lambda: fake.label("../x"),
+            lambda: fake.create_label("x", "#00ff00", "d"),
+            lambda: fake.create_label("x", "00ff00", ""),
             lambda: fake.check_runs("HEAD"),
             lambda: fake.commit(SHA.upper()),
             lambda: fake.workflow_runs(branch="-x"),
@@ -152,6 +180,14 @@ class Refusals(unittest.TestCase):
             lambda: fake.merge(7, SHA, title="a\nb"),
             lambda: fake.merge(7, SHA, title="t", method="fast-forward"),
             lambda: fake.comment(7, ""),
+            lambda: fake.delete_branch("main"),
+            lambda: fake.delete_branch("a/../../../pulls"),
+            lambda: fake.delete_branch("a//b"),
+            lambda: fake.delete_branch("a/.x"),
+            lambda: fake.delete_branch("a.lock"),
+            lambda: fake.create_pull("t", "../x", "body"),
+            lambda: fake.create_pull("a\nb", "x", "body"),
+            lambda: fake.create_pull("t", "x", ""),
             lambda: FakeGh("o/x", "r"),
             lambda: FakeGh("..", "r"),
             lambda: fake.pull("1" * 5000),
@@ -171,6 +207,9 @@ class Failures(unittest.TestCase):
             with self.assertRaisesRegex(GhError, "HTTP 404"):
                 GhApi("o", "r").pull(7)
             self.assertIsNone(GhApi("o", "r").pr_finished(7))
+            # A missing label is an answer, not a failure; any other failed read raises.
+            self.assertIsNone(GhApi("o", "r").label("ready-to-merge"))
+        self.assertRaises(GhError, FakeGh().label, "ready-to-merge")
         with mock.patch("gh_client.subprocess.run", side_effect=FileNotFoundError("gh")):
             self.assertIsNone(GhApi("o", "r").pr_finished(7))
         bad = subprocess.CompletedProcess([], 0, "<html>", "")

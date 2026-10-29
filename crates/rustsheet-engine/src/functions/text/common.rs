@@ -1,6 +1,6 @@
 use super::text_kernel::{lambda_argument_error, text_result};
 use super::util::substitute_element;
-use crate::cast::number_text_too_long;
+use crate::cast::value_number_text;
 use crate::{
     calc_result::CalcResult,
     cast::{calc_result_to_string, calc_result_to_text, MAX_SHORT_TEXT_UNITS, MAX_TEXT_UNITS},
@@ -216,18 +216,18 @@ impl Model {
         })
     }
 
-    /// A text value read as VALUE reads it: `None` when it is over the number-text length cap or
-    /// does not read as a number. VALUE trims spaces around date and clock text, unlike number
+    /// A text value read as VALUE reads it, in the model's locale and date system
+    /// ([`value_number_text`]). VALUE trims spaces around date and clock text, unlike number
     /// coercion, but only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!, and clock
     /// text and date text with a clock suffix read as in number coercion (probes/date-text-grammar
     /// C7, C30, C31, C53, C55, C63; probes/value-clock-text B14, B44, column B against C).
     pub(crate) fn value_text_number(&self, text: &str) -> Option<f64> {
-        if number_text_too_long(text) {
-            return None;
-        }
-        self.parse_number_text(text.trim_matches(' '), &["$", "€"], &|| {
-            self.current_year()
-        })
+        value_number_text(
+            text,
+            self.locale,
+            &|| self.current_year(),
+            self.workbook.settings.date_system,
+        )
     }
 
     /// `FIND(find_text`, `within_text`, [`start_num`])
