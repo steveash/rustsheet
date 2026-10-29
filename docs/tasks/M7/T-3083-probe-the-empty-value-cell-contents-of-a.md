@@ -25,6 +25,10 @@ information.md entry recording it.
   `WRAPCOLS(..,1)`, `COLUMNS(..)`, `TRANSPOSE(..)`, `SCAN(0,..,LAMBDA(a,v,a+v))`, `REDUCE(0,..,LAMBDA(a,v,a+v))`,
   `BYROW(..,LAMBDA(r,1))`, `BYCOL(..,LAMBDA(c,1))`, the same with `IFERROR(Data!C11,5)` in place of CELL, and
   `VSTACK(,1)`, `HSTACK(,1)`, `TOCOL(,)`, with Data!C11 blank.
+- Also optional number arguments that ours reads as 0 when written as the empty value: TEXTAFTER's match_mode and
+  match_end (`TEXTAFTER("a-b","-",1,CELL("contents",Data!C11))`, `..,1,0,IFERROR(Data!C11,5))`), the instance_num from
+  `IFERROR(Data!C11,5)`, and `ROUND(1.5,CELL("contents",Data!C11))` (text.md "TEXTBEFORE and TEXTAFTER: instance_num past
+  the text").
 
 ## Acceptance criteria
 - [ ] The probe case is oracle-filled; its known failures are in eval/baseline/probes.txt.
