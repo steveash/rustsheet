@@ -2082,12 +2082,17 @@ not-a-vector input is `#VALUE!`. EXPAND's array pad_with is `#VALUE!` as before 
 past the grid are `#NUM!` first: `ROWS(EXPAND(1,1048577,1,{0;1}))` is `#NUM!` (run as its own case; beside others it hung the workbook),
 and so are columns past EXPAND's cap (`ROWS(EXPAND(1,3,1048577,{0;1}))` is `#NUM!`, T-2452's cap), but `ROWS(EXPAND(1,1000,1100,{0;1}))`
 (above our 2^20-cell bound) is `#VALUE!`, so ours checks the pad_with before the cell bound DEVIATION
-(probes/t2479-expand-padarray-cellbound). `WRAPCOLS(,NA())` (omitted vector) is unprobed.
+(probes/t2479-expand-padarray-cellbound). Probed in T-3063 (excel-graph, 2026-10-29, each in its own case, as `IFERROR(ERROR.TYPE(ROWS(f)),ROWS(f))`):
+`EXPAND(1,1,1048577,{0;1})` (columns past the grid) is `#NUM!` (t3063-expand-pad-col-past-grid), so the column cap beats the array pad_with as the
+row cap does; `EXPAND(1,2,600000,{0;1})` (1.2M cells, over our 2^20-cell bound) is `#VALUE!` (t3063-expand-pad-over-bound), the pad_with error
+again before any size limit. The empty-cell `#VALUE!` is not special to a bare `Z1`: `WRAPCOLS(Z1:Z1,NA())`, `WRAPROWS(Z1:Z1,1/0)` and `WRAPCOLS(,NA())`
+(omitted vector) are all `#VALUE!`, not the wrap_count's error (t3063-wrapcols-empty-range, t3063-wraprows-empty-range, t3063-wrapcols-omitted-vector).
+Ours already matches all five.
 `ROWS(WRAPCOLS(Z1,2,{0;1}))` and `ROWS(WRAPROWS(Z1,2,{0;1}))` are 2: the empty-cell `#VALUE!` fills the lifted shape (the 2 rows come from the array pad_with, so G25 alone proves nothing; G51/G52 and the error-wrap_count cells separate the sources).
-Evidence: probes/t2479-* (excel-graph, 2026-10-27).
+Evidence: probes/t2479-* (excel-graph, 2026-10-27), probes/t3063-* (2026-10-29).
 Status: VERIFIED (excel-graph)
 Implemented in: `wrapcols_wraprows.rs` (`flatten_vector`), `expand.rs` (`expand_kernel`).
-Tasks: T-2479
+Tasks: T-2479, T-3063
 
 ## IFERROR, IFNA, N and arithmetic over blank array elements (T-2999)
 Evidence: probes/blank-elements-iferror-n-arith (11 cells, excel-graph 2026-10-28; D1:D5 = 1, blank, "x", blank, 5). IFERROR and IFNA read a blank element of FILTER, a lifted INDEX (`INDEX(D1:D5,{1,2,3,4,5})`) and VSTACK as 0 (`COUNT(IFERROR(...,-1))` and the IFNA forms are 4, A1:A6; `TEXTJOIN("|",FALSE,IFERROR(FILTER(D1:D5,TRUE),"#"))` is "1|0|x|0|5", A7), while the bare FILTER keeps the blanks (`TEXTJOIN("|",FALSE,FILTER(D1:D5,TRUE))` is "1||x||5", A8). `N` turns a blank and the text "x" into 0 (`COUNT(N(FILTER(...)))` 5, A9), `+0` reads a blank as 0 and "x" is #VALUE! (`COUNT(FILTER(...)+0)` 4, A10), and IF passes a blank through (`COUNT(IF(TRUE,FILTER(...)))` 2, A11). Ours already matches all 11 cells.

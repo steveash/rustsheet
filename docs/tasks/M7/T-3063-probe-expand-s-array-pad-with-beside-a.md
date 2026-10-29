@@ -3,7 +3,7 @@ id: T-3063
 title: "Probe EXPAND's array pad_with beside a column count past the grid or a target over the cell bound, and WRAPCOLS/WRAPROWS of an empty one-cell range or omitted vector"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ Steward re-review of #2062 (T-2479), reviewer-excel-fidelity MINOR findings, 202
 
 ## Out of scope
 -
+
+## Outcome
+Five probe cases (probes/t3063-*, excel-graph 2026-10-29): `EXPAND(1,1,1048577,{0;1})` is `#NUM!`, `EXPAND(1,2,600000,{0;1})` is `#VALUE!`, and `WRAPCOLS(Z1:Z1,NA())`, `WRAPROWS(Z1:Z1,1/0)`, `WRAPCOLS(,NA())` are `#VALUE!`. The engine already matched all five, so no code changed; arrays.md records the rules. Eval delta: five new passing probe cells, no baseline change.
