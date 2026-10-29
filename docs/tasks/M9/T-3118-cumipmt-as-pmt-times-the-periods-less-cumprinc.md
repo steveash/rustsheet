@@ -1,5 +1,5 @@
 ---
-id: T-3106
+id: T-3118
 title: "CUMIPMT as PMT times the periods less CUMPRINC (and type 1 from period 1 through period 2), once PMT has Excel's bits"
 milestone: M9
 lane: functions-financial

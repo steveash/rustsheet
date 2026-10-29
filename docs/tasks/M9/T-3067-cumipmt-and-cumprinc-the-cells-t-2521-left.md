@@ -83,7 +83,7 @@ PMT times the period count less its own CUMPRINC, and a type 1 range from period
 2 (`CUMPRINC = PMT + CUMPRINC(2..e)`, `CUMIPMT = PMT·(e-1) - CUMPRINC(2..e)`), to the bit on all 82 probed relations.
 So the tiny-rate interests (gate-edges A2-A8, E1-E10, A379) and G2/H2 are visibly off only through an ulp of PMT or
 CUMPRINC; the engine's PMT is an ulp off Excel's at those rates (T-3014), so taking the rule now takes 29 bit-exact
-cells off and nothing in the kernel changed. Follow-up: T-3106 (the rule, after T-3014). Left here: CUMPRINC's own
+cells off and nothing in the kernel changed. Follow-up: T-3118 (the rule, after T-3014). Left here: CUMPRINC's own
 bits (the best type 1 form on Excel's PMT is exact on 22 of 58), A352 and the cells near period 1E15 (financial.md
 "T-3067 notes"). Eval delta: one new probe case, 226 cells, 66 passing; the 160 failing cells are new known failures
 (68 visibly off, all interests that ride on PMT's or CUMPRINC's ulps); no regressions.

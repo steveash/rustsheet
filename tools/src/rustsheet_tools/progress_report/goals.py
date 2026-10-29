@@ -305,21 +305,43 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
     measures = [
         exited,
         f"coverage {_num(get('covered'))}/{_num(get('functions'))} ({shown('covered', 'coverage_met')})",
-        f"{label} {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
-        f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})",
     ]
-    # The other required suites (M1's smoke), each with its own floor and rate.
+    # A row that requires no suite (M9, decision 0146 item 3) has an empty `gen_suite`.
+    if "gen_suite" in row and not suite:
+        measures.append("no suite required")
+    else:
+        measures.append(
+            f"{label} {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
+            f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})"
+        )
+    # The other required suites (M1's smoke, M8's gen-m8b and poi subset), each with its own
+    # floor and rate; the poi subset also counts the cases that did not run (decision 0146).
     for i, more in enumerate(row.get("more_suites") or []):
         mwhere = f"{where} more_suites[{i}]"
+        blocked = len(more.get("blocked_cases") or [])
         measures.append(
             f"{_text(more, 'name', mwhere)} {_num(_optional(more, 'visibly_off', mwhere))} visibly off of "
-            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))} "
+            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))}"
+            f"{f', {blocked:,} cases blocked' if blocked else ''} "
             f"({_verdict(_optional(more, 'met', mwhere, boolean=True))})"
         )
+    # M9's ironcalc-calc is a rate with an allowance (decision 0146 item 3).
+    calc_of = (
+        f" of {_num(get('calc_scored'))}, allowance {_num(get('calc_allowance'))}"
+        if row.get("calc_allowance") is not None
+        else ""
+    )
     measures += [
-        f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off ({shown('calc_visibly_off', 'calc_met')})",
+        f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off{calc_of} "
+        f"({shown('calc_visibly_off', 'calc_met')})",
         f"probes {_num(get('probe_visibly_off'))} visibly off ({met('probes_met')})",
     ]
+    # Only M9 requires every function at the Phase 1 rate (decision 0146 item 3).
+    if row.get("rate_functions") is not None or row.get("rate_met") is not None:
+        measures.append(
+            f"functions at the Phase 1 rate {_num(get('below_rate'))} below of "
+            f"{_num(get('rate_functions'))} ({met('rate_met')})"
+        )
     # Only a milestone with the criterion (M7, decision 0140) reports spill extents.
     if row.get("extent_failures") is not None or row.get("extent_met") is not None:
         measures.append(f"spill extents {_num(get('extent_failures'))} failures ({met('extent_met')})")

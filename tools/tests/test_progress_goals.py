@@ -281,3 +281,46 @@ def test_m1_and_m11_rows_name_their_suites() -> None:
     assert "smoke 0 visibly off of 46, allowance 0 (met)" in text
     m11 = exit_row("M11", True) | {"gen_suite": "corpus-bench"}
     assert "corpus-bench 4 visibly off of 20,000, allowance 20 (met)" in goals.exit_measures("M11", m11)
+
+
+def test_an_m9_row_shows_no_suite_its_calc_allowance_and_the_functions_below_the_rate() -> None:
+    # Decision 0146 item 3: no required suite, ironcalc-calc at 0.9995, every M9 function at the rate.
+    m9 = exit_row("M9", False) | {
+        "gen_suite": "",
+        "gen_scored": None,
+        "calc_visibly_off": 138,
+        "calc_scored": 73_150,
+        "calc_allowance": 36,
+        "calc_met": False,
+        "rate_functions": 263,
+        "below_rate": 82,
+        "rate_met": False,
+    }
+    text = goals.exit_measures("M9", m9)
+    assert "no suite required" in text
+    assert "generated suite" not in text
+    assert "ironcalc-calc 138 visibly off of 73,150, allowance 36 (not met)" in text
+    assert text.endswith("functions at the Phase 1 rate 82 below of 263 (not met)")
+    assert "Phase 1 rate" not in goals.exit_measures("M5", exit_row("M5", True))
+
+
+def test_an_m8_row_shows_both_gen_suites_and_the_poi_subset_with_its_blocked_cases() -> None:
+    # Decision 0146 item 2: gen-m8b and the poi subset are `more_suites` beside gen-m8a.
+    m8 = exit_row("M8", False) | {
+        "gen_suite": "gen-m8a",
+        "more_suites": [
+            {"name": "gen-m8b", "scored": 3_368, "visibly_off": 0, "allowance": 0, "met": True},
+            {
+                "name": "poi M8 subset",
+                "scored": 2_000,
+                "visibly_off": 3,
+                "allowance": 10,
+                "met": False,
+                "blocked_cases": ["poi/a.xlsx!*", "poi/b.xls!*"],
+            },
+        ],
+    }
+    text = goals.exit_measures("M8", m8)
+    assert "gen-m8a 4 visibly off of 20,000" in text
+    assert "gen-m8b 0 visibly off of 3,368, allowance 0 (met)" in text
+    assert "poi M8 subset 3 visibly off of 2,000, allowance 10, 2 cases blocked (not met)" in text

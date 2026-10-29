@@ -583,6 +583,22 @@ two other kinds:
   (gen-m9/31474c20fc1dafd6 A271) and `{0.3,-2.5,1.005}` (gen-m9/a91bad4e84f49739 A369), no
   secant run from any guess in -0.99 to 100 gives Excel's bits (the nearest is 2.6e-15 off), so
   Excel's fallback is not a retry of the same secant from another fixed guess (T-1686).
+- T-2565 (probes/t2565-irr-guess-sweeps, excel-graph 2026-10-28; {-0.0001,2,42} P!A1:C72 and {-2.5,-1,123456789.123}
+  P!A73:C175, each as is, x1E6 and x-1; `IRR(flows, g_k)` at every iterate of the model's run from 0.1 and the
+  j = -5..5 guess sweep): the departure is not in the early steps. Excel departs from the model by 1E-13 to 1E-12
+  relative over the iterates (6E-15 at the lowest, 1.1E-12 at the highest; P!C157 is the one outlier, below) from the very first
+  guess g_1 (P!C1, C73) to the last (P!C13, C95, whose guess is the model's final iterate), so no distance from the root at which the two agree exists; the model's rate for guess 0.1 + j*1E-5
+  slides with j (P!C14:C24; not in the 67a4c03a x1E6 block, C131:C141), Excel's is constant over j = -5..5 in all three scalings of {-0.0001,2,42}
+  (P!C14:C24, C38:C48, C62:C72) and in the unscaled and x1E6 blocks of the other flow (P!C96:C106, C131:C141); its
+  x-1 block (P!C165:C175) is constant except C175. The
+  result is on a grid: in v = 1/(1 + result) Excel's results are integer multiples of 2^-53 (v is about 1.4E-4 or 5E-5, whose own
+  spacing is 2^-65 or 2^-67), and the model's v rounded to the nearest multiple of 2^-53, returned as 1/v - 1,
+  equals Excel's bits in 173 of the 175 cells; P!C95 is 1 grid step off after rounding (0.84 before) and P!C157 (flow 67a4c03a x-1, guess
+  = an iterate) is an unexplained outlier, about 100 grid steps and 7.9E-11 relative off, perhaps another step
+  count or path. So the "0.1 to 0.4 %" error
+  of the large-root cells is the secant's final v held with 53 fractional bits (the iterate is stored as an offset
+  from 1 or in a 2^-53-granular fixed form), not a different early step. Unexplored: where in the step the
+  rounding happens (T-2131).
 Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
 for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
 Tasks: T-1525, T-1533, T-0916, T-2131, T-2565
@@ -1497,7 +1513,7 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   So nothing in the kernel changed. With Excel's PMT bits plugged in, the best principal form for a type 1 range
   from period 2 (the geometric sum `pmt·((1-v^m)/(r/(1+r)))·v^(nper-end+1)` on `log1p` or `growth_log`, Excel's
   expm1) is exact on 22 of the 58 type 1 principals and within 3 ulps of the rest, so CUMPRINC's own form is open too.
-  Next: Excel's PMT bits (T-3014), then CUMIPMT as `PMT·m - CUMPRINC` (T-3106).
+  Next: Excel's PMT bits (T-3014), then CUMIPMT as `PMT·m - CUMPRINC` (T-3118).
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
 fin-cumipmt-period-bound A18, the gen-m9 cells A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
 T-3067; the short sums' last digits in T-1374)
