@@ -3,7 +3,7 @@ id: T-3007
 title: "Incomplete beta: the bratio port's open items after T-2977 (shape of 1 outside the closed forms, TOMS betaln for both shapes >= 1 above 8, fl(a LN x) overflow, SPEC-0025 layout)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
