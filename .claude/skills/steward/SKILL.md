@@ -7,7 +7,12 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Merge policy**: no human approval is required. A PR may be squash-merged by the agent that
   opened it, or by the steward under "Orphaned agent PRs" below (decision 0050), when (a) all required CI jobs are green on the latest head, (b) the `review` skill
   table shows APPROVE from every applicable reviewer, (c) the branch is up to date with `main`.
-  Check (c) mechanically right before every merge call (decision 0028): `git fetch origin main
+  How (c) is met depends on the merge-train mode (`make merge-mode`; "Merge train" below):
+  in `lock` and `shadow` mode, by the check below under the merge lock; in `train` mode, by the
+  merger alone (decision 0157 amending 0028: the head was merged into a train built on the
+  current `main`, with the PRs before it, and that train's CI passed). In `train` mode an agent
+  that established (a) and (b) marks the PR ready and never merges it itself.
+  In `lock` and `shadow` mode, check (c) mechanically right before every merge call (decision 0028): `git fetch origin main
   <branch>`, then `git merge-base --is-ancestor origin/main origin/<branch>`, and pass that same
   `origin/<branch>` sha as `expectedHeadSha`. In a shallow clone the check can fail for want of
   history, not because `main` moved: deepen first (`git fetch --unshallow origin`, or `git fetch
@@ -43,8 +48,68 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   PR exits 3 (stop; the PR is done) and any acquirer takes over a finished PR's lock, whatever its age.
   A lock older than 30 minutes is stale and the next acquirer takes it over; renew yours by
   acquiring again if CI runs long. `make merge-lock-status` shows the holder. Orphaned-PR merges,
-  the steward's PR and task-only PRs take the lock too.
-- **Merge queue** (decision 0053; dormant while the merge lock is in force, decision 0075: this
+  the steward's PR and task-only PRs take the lock too. This is the flow of `lock` and `shadow`
+  mode; in `train` mode only the merger (and an emergency flip PR) takes the lock.
+- **Merge train** (SPEC-0027, decisions 0157 and 0164). `scripts/merge_train.toml` on `origin/main`
+  holds the switch; `make merge-mode` reads it from a freshly fetched `origin/main` (never the
+  checkout; anything invalid reads as `lock`) and also prints a pending stop (`train (stop
+  pending: #n)`). Read it right before each merge decision.
+  | mode | the PR's agent, once (a) and (b) hold | the merger routine |
+  |---|---|---|
+  | `lock` | the per-PR flow under "Merge lock" above | stops at once |
+  | `shadow` | `make mark-ready`, then the per-PR flow; remove `ready-to-merge` after its merge | builds and tests trains on `merge-train/shadow`, takes no lock, merges nothing |
+  | `train` | `make mark-ready`, then move on | batches ready PRs, tests them on `merge-train/current`, squash-merges the green ones in order |
+  - **Marking.** `make mark-ready PR=<n> REVIEW="security=APPROVE architecture=APPROVE
+    quality=APPROVE [excel-fidelity=APPROVE]"` with the PR head checked out. It posts a marker
+    comment (head sha, verdicts) and the `ready-to-merge` label, and refuses a draft, a red or
+    pending head, a task not `done` with an Outcome, or a missing verdict. When a session cannot
+    write through `gh api`, add `STEP=1`: perform each printed JSON action in order with the
+    GitHub MCP tools, exactly as printed (never add, skip, reorder or change one), then `make
+    merge-ready-verify PR=<n>`. Who may mark: the PR's own worker after its panel approved, the
+    steward for an orphaned PR after running the reviewers itself, and an opus run after
+    work-loop step 5c. The merger never marks or reviews.
+  - **Any push** makes the marker stale: mark again after CI and the reviewers the change
+    concerns. `CARRY=1` carries the verdicts over only for a head that is a clean merge of
+    `origin/main` onto the marked head, checked by the script.
+  - **Ejections** (`merge-train-ejected` label and a comment with the reason: `ci-red`,
+    `conflict with main`, an id collision, or invalidated) are the PR's worker's to fix per
+    work-loop step 6.3; an idle ejected branch is resumed like any idle agent branch. Remove
+    `merge-train-ejected` once the PR is marked again. A PR that conflicts only with another PR
+    of its batch is deferred, not ejected: it stays ready.
+  - **Stall fallback** (`train` mode only): any session may run one `make merge-train TRAIN=1`
+    pass when a PR has been ready for more than 45 min (by its marker's `updated_at`), the last
+    CI run on `merge-train/current` was created more than 45 min ago (workflow-runs
+    `created_at`), and the lock is neither held by nor queued for a `train` (`make
+    merge-lock-status`). Two passes at once are harmless: the lock's queue serialises them. It
+    replaces "wait for the lock and merge it yourself" as the safety net.
+  - **Revert PRs.** When a squash lands with a tree other than the tested one, the merger opens
+    (never merges) `revert: merge train mismatch at #k` from `merge-train/revert-<sha>` and files a
+    P0 naming it. The P0's handler (any agent) runs the full review panel on the revert, then
+    merges it under the lock (`lock`, `shadow`) or marks it ready (`train`), with P0 priority. No
+    review waiver and no governance waiver apply to reverts. A mismatch before any squash (main
+    moved without the lock) is a P0 with nothing to revert: the handler judges the foreign
+    commit.
+  - **Housekeeping.** In `lock` mode the merger does none: the steward removes `ready-to-merge`
+    from closed PRs, and may at once merge (per-PR flow) or unlabel a PR still labelled
+    `ready-to-merge`, without the 24 h orphan clock (decision 0157 amending 0050).
+- **Emergency flip to `lock`** (decision 0157; any agent, any mode, no reviewers, no decision
+  record). When the train must stop (a daily threshold below, a merge that should not have
+  landed, `main` broken by a train):
+  1. Branch from `origin/main`; change only `mode = "lock"` in `scripts/merge_train.toml` (one
+     file, nothing else in it); push and open the **flip PR**; label it `merge-train-stop` at once
+     (a live train stops at its next checkpoint, within about 1 min).
+  2. `make merge-flip-check PR=<n>` must exit 0; it prints the head sha.
+  3. File the P0 task explaining the flip in a **separate task-only PR**, so the flip PR stays one
+     file.
+  4. Once the flip PR's CI is green (full CI, about 5 min), merge it under the merge lock
+     ("Merge lock" above; in `train` mode the train releases it after the stop) with
+     `expectedHeadSha` set to the sha `merge-flip-check` printed, then release.
+  5. If you abandon the flip, close the PR and remove `merge-train-stop`.
+  Workers fall back to the per-PR flow at their next `make merge-mode`; PRs still labelled
+  `ready-to-merge` are merged or unlabelled per "Housekeeping" above. Going to `shadow` or
+  `train` is a normal, fully gated PR (decision record, architecture and security approval).
+- **Merge queue** (decision 0053; dormant while the merge lock is in force, decision 0075, and
+  under the merge train, which needs no queue; this
   repository cannot turn the queue on): once the owner has turned on the merge queue for `main` (a merge
   call is refused with "merge queue" in the message, or the PR shows as queued), do not merge and
   skip check (c): on a head that meets (a) and (b), call `enable_pr_auto_merge` with `mergeMethod:
@@ -76,6 +141,20 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   other's branch has not moved for 2 h, so a live session is never cut off. The 24 h age does not
   apply to closing a duplicate. When any condition fails, do what you did before: fix CI, comment
   the blocker, or mark the task blocked with reasons.
+  In `train` mode (decision 0157 amending 0050) these are the conditions for **marking** an
+  orphaned PR ready (`make mark-ready` with the verdicts of your own panel), not for merging it,
+  and the up-to-date condition drops out: the train provides it. A PR whose worker already
+  marked it ready, on its current head, is not orphaned. In `shadow` mode, mark it ready and then
+  merge it per the per-PR flow, as its worker would.
+- **Merge-train daily check** (SPEC-0027 "Daily thresholds"): in `shadow` and `train` mode, the
+  daily run runs `make merge-train-stats` (T-3076; until it exists, say so in docs/status.md and
+  skip the check) and records p90 latency, stranded PRs, the red-train rate and the bisection
+  runs in docs/status.md. In `train` mode, any of these triggers the emergency flip to `lock`
+  ("Emergency flip to `lock`" above) and a P0: p90 latency over 60 min on any day; more than 2
+  trains in a day needing more than 6 CI runs; a stranded PR (marked ready, unmerged after 2 h,
+  not ejected); any tree-check failure. In `shadow` mode the numbers are only reported: they are
+  T-2991's evidence (its bar needs zero `tree-check: mismatch`). In `train` mode the daily run ends with one `make merge-train TRAIN=1`
+  pass, after marking orphaned PRs ready.
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
