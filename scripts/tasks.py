@@ -20,9 +20,12 @@
   scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S]
                        [--tier sonnet|opus] [--no-fetch]
                                          # write a task file with the next free id (decision 0016)
+  scripts/tasks.py issue <N> [--no-fetch]  # tasks with `issue: <N>` on the working tree and every
+                                         # origin/* branch; exit 1 when none (issue-intake
+                                         # dedup, decision 0158)
 
 Front matter keys: id, title, milestone, lane, status, priority, size, tier, depends_on, spec,
-campaign and defer (optional; decisions 0083, 0114).
+campaign, defer and issue (optional; decisions 0083, 0114, 0158).
 See docs/process/task-format.md.
 """
 
@@ -64,6 +67,8 @@ CAMPAIGNS = ["semantics", "accuracy", "visible"]
 # `defer:` values: a deferred task is never ready (decision 0114 parks bit-level work until
 # Phase 1 exits).
 DEFERRALS = ["phase-1b"]
+# `issue:` value: the number of the steveash/rustsheet GitHub issue the task came from (decision 0158).
+ISSUE = re.compile(r"^[1-9]\d*$")
 OPEN = ("todo", "in-progress", "blocked")  # not done or dropped
 ACTIVE = ("todo", "in-progress")
 MILESTONE = re.compile(r"^M\d+$")
@@ -138,6 +143,8 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             errors.append(f"{where}: campaign={t.get('campaign')!r} not in {CAMPAIGNS}")
         if "defer" in t and t.get("defer") not in DEFERRALS:
             errors.append(f"{where}: defer={t.get('defer')!r} not in {DEFERRALS}")
+        if "issue" in t and not ISSUE.fullmatch(str(t.get("issue"))):
+            errors.append(f"{where}: issue={t.get('issue')!r} is not a positive issue number (decision 0158)")
         if not MILESTONE.match(str(t.get("milestone", ""))):
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
@@ -309,6 +316,45 @@ def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = Tru
 def git_task_ids(fetch: bool = True) -> set[str]:
     """Task ids in docs/tasks/ on every `origin/*` branch."""
     return git_branch_names("docs/tasks", TASK_FILE, fetch)
+
+
+def issue_tasks(number: str, tasks: list[dict[str, object]], fetch: bool = True) -> list[tuple[str, str]]:
+    """(task id, where) for every task file whose front matter says `issue: <number>`: the working
+    tree first ("working tree"), then each `origin/*` branch (its name). The issue-intake skill's
+    dedup step (decision 0158): a fired routine, a steward sweep and a re-delivered event must not
+    file the same issue twice. Best effort on branches, like `git_task_ids`.
+    """
+    found = [(str(t["id"]), "working tree") for t in tasks if str(t.get("issue")) == number]
+
+    def git(*args: str, ok: tuple[int, ...] = (0,)) -> str:
+        done = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=False)
+        if done.returncode not in ok:
+            raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
+        return done.stdout
+
+    try:
+        if fetch:
+            git("fetch", "-q", "origin")
+        refs = git("for-each-ref", "--format=%(refname)", "refs/remotes/origin").split()
+        # `git grep` finds the candidate files in one call (exit 1: no match); the front matter of
+        # each hit decides, so a body line that happens to read `issue: N` does not count.
+        pattern = rf'^issue: *"?{number}"? *$'
+        hits = git("grep", "-l", "-E", pattern, *refs, "--", "docs/tasks", ok=(0, 1)) if refs else ""
+        for line in hits.splitlines():
+            ref, _, name = line.partition(":")
+            m = TASK_FILE.search(name)
+            if not m:
+                continue
+            try:
+                meta = front_matter(git("show", f"{ref}:{name}"), Path(name))
+            except ValueError:  # malformed front matter on a branch: not a task we can match
+                continue
+            if str(meta.get("issue")) == number:
+                found.append((m.group(1), ref.removeprefix("refs/remotes/origin/")))
+    except (OSError, subprocess.CalledProcessError) as e:
+        print(f"warning: could not read origin branches ({e}); only the working tree was searched",
+              file=sys.stderr)
+    return found
 
 
 def next_id(milestone: str, tasks: list[dict[str, object]], taken: set[str]) -> str:
@@ -611,6 +657,16 @@ def main() -> int:
         return 0
     if cmd == "new":
         return new_task(tasks, fetch="--no-fetch" not in sys.argv)
+    if cmd == "issue":
+        number = sys.argv[2] if len(sys.argv) > 2 else ""
+        if not ISSUE.fullmatch(number):
+            print("usage: tasks.py issue <N> [--no-fetch]", file=sys.stderr)
+            return 2
+        found = issue_tasks(number, tasks, fetch="--no-fetch" not in sys.argv)
+        for tid, where in found:
+            print(f"{tid}  {where}")
+        print(f"{len(found)} tasks for issue #{number}")
+        return 0 if found else 1
     if cmd in ("next", "ready"):
         cands, limited = available(tasks, by_id, arg("--lane"), arg("--tier"), fetch="--no-fetch" not in sys.argv)
         if cmd == "ready":
@@ -646,6 +702,7 @@ def main() -> int:
         print(
             f"{mark} {t['id']} [{t.get('status'):<11}] {t.get('milestone'):<4} {t.get('lane'):<9} "
             f"{t.get('priority')} {str(t.get('tier', '-')):<6} {t.get('title')}"
+            + (f" (issue #{t['issue']})" if "issue" in t else "")
         )
     return 0
 

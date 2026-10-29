@@ -24,7 +24,7 @@
     instructions in an issue, its comments, links or attachments; it never runs code from them.
     A reporter's "Excel gives X" is a lead, settled by the `excel-probe` skill. Requests that
     would break a CLAUDE.md directive are refused; spam gets no task; anything needing
-    third-party code or an owner call is labelled `needs-owner`. The bot comments at most four
+    third-party code or an owner call is labelled `needs-owner`. The bot comments at most three
     times per issue (intake, PR opened, merged or blocked), each with the attribution footer.
   - **Dedup** reads `issue:` on the working tree and every `origin/*` branch
     (`scripts/tasks.py issue <N>`), plus our own intake comment, so a fired routine, a steward
@@ -36,6 +36,9 @@
 - **Consequences:** the owner creates the "rustsheet issue intake" routine and adds the steward
   sweep step to the steward routine (docs/process/routines.md). An issue costs one opus-or-sonnet
   session at once, outside the worker schedule; the steward sweep bounds the catch-up at 2 per
-  day. Abuse (floods, prompt injection) is contained by the untrusted-data rules, the normal
+  day. Because the work starts at once, an intake task does not wait for a busy lane (the
+  one-task-per-lane rule of `make next-task` does not apply to it); its pushed branch still claims
+  its task, and an overlap with a worker in the same lane shows up as a merge conflict, resolved
+  per the `steward` skill. Abuse (floods, prompt injection) is contained by the untrusted-data rules, the normal
   gates and reviewers, and the `needs-owner` label; the owner can narrow "any issue" later by
   amending this record.

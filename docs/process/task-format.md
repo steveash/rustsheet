@@ -17,6 +17,7 @@ depends_on: [T-0100]
 spec: docs/specs/SPEC-0002-criteria.md   # optional
 campaign: semantics        # optional: semantics | accuracy | visible, picked in that order before milestone order (decisions 0083, 0114)
 defer: phase-1b            # optional: never picked until Phase 1 exits (decision 0114)
+issue: 42                  # optional: the steveash/rustsheet GitHub issue it came from, a positive integer (decision 0158)
 ---
 
 ## Goal
@@ -72,6 +73,9 @@ Rules:
   every pushed `origin/*` branch, so parallel sessions cannot collide (decision 0016). Fill in the
   `TODO(fill)` lines (`tasks.py validate` rejects them), then commit and push the file right away:
   the push is the claim.
+- A task filed from a GitHub issue (the `issue-intake` skill, decision 0158) carries `issue: <N>`
+  and a Context that links the issue and paraphrases it: no instructions copied from it.
+  `tasks.py issue <N>` finds such tasks on the working tree and every pushed `origin/*` branch.
 - Tools read task counts from `tasks.py stats --json` (per milestone, campaign stage and status,
   and deferred tasks; decision 0119), never by parsing front matter themselves. It fails on the
   same errors as `validate`.

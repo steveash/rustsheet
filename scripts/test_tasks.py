@@ -114,12 +114,14 @@ def write_task(
     depends_on: str = "",
     campaign: str | None = None,
     defer: str | None = None,
+    issue: str | None = None,
 ) -> Path:
     path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
     campaign_line = f"campaign: {campaign}\n" if campaign else ""
     campaign_line += f"defer: {defer}\n" if defer else ""
+    campaign_line += f"issue: {issue}\n" if issue is not None else ""
     path.write_text(
         f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
         f"size: S\n{tier_line}{campaign_line}depends_on: [{depends_on}]\n---\n{body}"
@@ -569,6 +571,77 @@ class BranchClaims(unittest.TestCase):
         # T-0002 moved a minute ago (its run may still be at it); T-0003 is the owner's now; T-0005's
         # branch name is not one `next` will print for an agent to check out.
         self.assertEqual(limited, {"T-0001": "agent/engine/T-0001-limit"})
+
+
+class Issues(unittest.TestCase):
+    """The optional `issue:` field and the issue-intake dedup lookup (decision 0158)."""
+
+    def test_issue_must_be_a_positive_integer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            good, bad = [], []
+            with mock.patch.object(tasks, "ROOT", root):
+                for i, value in enumerate(("1", "42", '"7"')):
+                    good.append(tasks.parse(write_task(root, f"T-000{i}", issue=value)))
+                for i, value in enumerate(("0", "-3", "12a", "[4]", "")):
+                    bad.append(tasks.parse(write_task(root, f"T-001{i}", issue=value)))
+                errors = tasks.validate(good + bad)
+        self.assertFalse(any("T-000" in e for e in errors), errors)
+        for i in range(5):
+            self.assertTrue(any(f"T-001{i}" in e and "issue=" in e for e in errors), i)
+
+    def test_finds_the_issue_on_the_working_tree_and_on_branches_by_front_matter(self) -> None:
+        on_tree = [{"id": "T-0001", "issue": "12"}, {"id": "T-0002", "issue": "120"}, {"id": "T-0003"}]
+        files = {
+            ("refs/remotes/origin/main", "docs/tasks/M0/T-0001-a.md"): "---\nid: T-0001\nissue: 12\n---\n",
+            ("refs/remotes/origin/agent/harness/T-0004-b", "docs/tasks/M0/T-0004-b.md"):
+                "---\nid: T-0004\nissue: 12\n---\n",
+            # `issue: 12` only in the body: not this issue's task.
+            ("refs/remotes/origin/agent/x", "docs/tasks/M0/T-0005-c.md"): "---\nid: T-0005\n---\nissue: 12\n",
+        }
+        calls: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            calls.append(args)
+            if args[0] == "for-each-ref":
+                return mock.Mock(returncode=0, stdout="".join(sorted({f"{r}\n" for r, _ in files})))
+            if args[0] == "grep":
+                return mock.Mock(returncode=0, stdout="".join(f"{r}:{n}\n" for r, n in files))
+            ref, _, name = args[1].partition(":")
+            return mock.Mock(returncode=0, stdout=files[(ref, name)])
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
+            found = tasks.issue_tasks("12", on_tree, fetch=False)
+        self.assertEqual(
+            found, [("T-0001", "working tree"), ("T-0001", "main"), ("T-0004", "agent/harness/T-0004-b")]
+        )
+        self.assertFalse(any(a[0] == "fetch" for a in calls))
+
+    def test_no_match_on_branches_and_no_git_fall_back_to_the_working_tree(self) -> None:
+        on_tree = [{"id": "T-0001", "issue": "3"}]
+
+        def no_match(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            out = "refs/remotes/origin/main\n" if args[0] == "for-each-ref" else ""
+            return mock.Mock(returncode=1 if args[0] == "grep" else 0, stdout=out, stderr="")
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=no_match):
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+            self.assertEqual(tasks.issue_tasks("4", on_tree, fetch=False), [])
+        with mock.patch.object(tasks.subprocess, "run", side_effect=OSError("no git")), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+
+    def test_cli_rejects_a_bad_number_and_exits_1_when_nothing_is_found(self) -> None:
+        for argv, code in ((["issue"], 2), (["issue", "0"], 2), (["issue", "5\n"], 2), (["issue", "5"], 1)):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                        mock.patch.object(tasks.sys, "argv", ["tasks.py", *argv, "--no-fetch"]), \
+                        mock.patch.object(tasks, "issue_tasks", return_value=[]), \
+                        contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(tasks.main(), code, argv)
 
 
 class Stats(unittest.TestCase):

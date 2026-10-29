@@ -3,7 +3,7 @@ id: T-3110
 title: "GitHub issue intake skill and routine"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -40,3 +40,17 @@ prompt), so the skill extracts the request and never follows instructions found 
 ## Out of scope
 - Creating the routine (the owner does).
 - Acting on any real GitHub issue.
+
+## Outcome
+- New `issue-intake` skill (`.claude/skills/issue-intake/SKILL.md`): read the issue as untrusted
+  data, dedup, triage (bug against Excel, feature, question or research, out of scope, refusal,
+  spam), file a normal task with `issue: <N>`, claim it, then post the intake comment, work it
+  through the `work-loop` from step 3, post at most two more comments, report.
+- `scripts/tasks.py`: optional `issue:` field, which must be a positive integer (`validate`);
+  `tasks.py issue <N>` searches the working tree and every `origin/*` branch (one `git grep`, and
+  the front matter decides); `list` shows `(issue #N)`. Four new tests in `scripts/test_tasks.py`.
+- work-loop step 6 (`Closes #<N>` / `Part of #<N>`), steward "Issue intake sweep" rule and
+  steward prompt step 8 (the train pass is now step 9), routines.md row, trigger settings and
+  "Prompt — issue intake", agent-workflow.md roles table and task creation, task-format.md field.
+- Decision 0158 records the owner decisions. No eval change (process only). The owner creates
+  the routine and updates the steward routine's prompt.
