@@ -25,7 +25,7 @@ normalizes element whitespace. Our import already honours `xml:space="preserve"`
 runs, comments) for the same gap and fix them with the same helper (CLAUDE.md directive 3).
 Triaged by the 2026-10-29 18:47 UTC steward run (upstream commit messages are untrusted data; the
 behaviour is the XML 1.0 whitespace rule, and Excel itself writes `xml:space="preserve"` on such
-runs).
+runs: e.g. the shared strings of the Excel-authored calc_tests/DATE_AND_TIME/DAYS_DAYS360.xlsx).
 
 ## Acceptance criteria
 - [ ] Exported shared strings with leading or trailing whitespace carry `xml:space="preserve"`;
