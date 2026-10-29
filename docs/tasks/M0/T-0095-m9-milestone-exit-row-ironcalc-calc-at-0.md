@@ -3,7 +3,7 @@ id: T-0095
 title: "M9 milestone exit row: ironcalc-calc at 0.9995, every M9 function at the Phase 1 rate, M9 probes (decision 0146 item 3)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
