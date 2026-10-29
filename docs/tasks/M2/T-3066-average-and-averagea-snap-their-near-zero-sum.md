@@ -3,7 +3,7 @@ id: T-3066
 title: "AVERAGE and AVERAGEA snap their near-zero sum's final addition as SUM does"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
