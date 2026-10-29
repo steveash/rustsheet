@@ -3,7 +3,7 @@ id: T-3148
 title: "Probe Excel's gamma quantile around p = 0.999: GAMMA.INV, CHISQ.INV and CHISQ.INV.RT at p near 0.999 and the cdf at the doubles beside Excel's quantile"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -43,3 +43,11 @@ same probes are within 2 ulp, so whatever Excel does changes between those two p
 ## Out of scope
 - Fitting or implementing the landing rule (T-3146).
 - The deep tails (T-2561) and shapes above 1E9 (T-3070).
+
+## Outcome
+Added `probes-numeric/t3148-gamma-quantile-flat-band` (361 literal cells, excel-graph filled, none pending):
+GAMMA.INV and CHISQ.INV.RT over p 0.99 to 0.99999, the three doubles each side of 0.999, and Excel's cdf at the
+p = 0.999 quantile moved by up to 128 ulp for four shapes of GAMMA.DIST and CHISQ.DIST / DIST.RT. Findings in
+statistics.md under the gamma-quantile bullet: the error is over 4 ulp from p = 0.995, peaks around 0.9999 and is
+gone at 0.99999; Excel's cdf is non-monotone across its quantile and the quantile is not at a fixed edge of the
+equal-to-p band. Engine unchanged (T-3146 fits the rule).
