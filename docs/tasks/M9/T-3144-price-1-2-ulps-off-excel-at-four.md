@@ -40,3 +40,8 @@ Semantics: financial.md "PRICE and ODDFPRICE discount with Excel's `^`" and "YIE
 
 ## Out of scope
 - YIELD's own last digits (T-2974, T-2788): Excel's YIELD iterates differ from ours, not its PRICE.
+
+## Cells added by T-2974 attempt 4 (2026-10-29)
+- probes/yield-start-rate-term: S!B49. Since T-2974 attempt 4 the engine starts YIELD from Excel's start here (lab
+  bit-exact), but the cell stays 15 ulps off on the engine's PRICE, which differs from the lab's `^` PRICE in the last
+  bits. This task now owns it.
