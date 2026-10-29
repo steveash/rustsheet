@@ -163,6 +163,15 @@ merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads 
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
 
+.PHONY: mark-ready merge-labels
+mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123 REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" (or CARRY=1 after a clean merge of main) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(if $(REVIEW)$(CARRY),,$(error REVIEW="..." or CARRY=1 is required))
+	$(PY) scripts/merge_ready.py mark --pr '$(PR)' $(if $(CARRY),--carry,--review '$(REVIEW)') $(if $(STEP),--step)
+
+merge-labels: ## Create the merge-train labels that are missing (ready-to-merge, merge-train-ejected, merge-train-stop)
+	$(PY) scripts/merge_ready.py labels --create
+
 .PHONY: merge-mode merge-train merge-flip-check
 merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; SHADOW=1 tests and predicts on merge-train/shadow, in shadow mode only; TRAIN=1 merges a green train, in train mode only
 	$(if $(DRY_RUN)$(TRAIN)$(SHADOW),,$(error DRY_RUN=1 or SHADOW=1 or TRAIN=1 is required))
