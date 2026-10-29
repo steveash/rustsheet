@@ -82,6 +82,9 @@ pub struct Localized {
     /// would without the `B2` ([`japanese_era`]; `calendar_dates::year_token_text`). Before a
     /// calendar-4 tag the years are a garbled Minguo year instead (`calendar_dates::taiwan_after_b2`).
     pub year_twice: bool,
+    /// A `B2` before a calendar-1, -3 or -5 tag: the names every name token prints from the
+    /// section's first `mmm` on, in place of [`Localized::names`] (`date_names::NameTokens`).
+    pub names_after_mmm: Option<&'static DateNames>,
 }
 
 /// What a `[$-...]` tag (with no currency symbol) does to its section.
@@ -134,6 +137,12 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// ([`Localized::year_twice`]; `B2[$-70409]yyyy|e` of 2023-03-15 is "3109|2566",
 /// `B2[$-50409]yyyy|e` "6689|4356"; probes/t2932-b2-calendar-twice). Under calendar 4 it prints
 /// a garbled Minguo year ("01"; `calendar_dates::taiwan_after_b2`).
+///
+/// Under calendar 1 the names from the first `mmm` on are the ar-SA Gregorian ones, and under
+/// calendars 3 and 5 the en-US ones, whatever the LCID: `B2[$-10411]mmmm|ddd|mmm|mmmm|dddd` of
+/// 2023-03-15 is "3月|水|مارس|مارس|الثلاثاء" and `B2[$-30411]dddd|mmm|mmmm` "水曜日|Mar|March"
+/// ([`Localized::names_after_mmm`]; probes/t3101-b2-calendar-names, t3029-b2-calendar-weekday
+/// A73-A84). The other digits keep the tag's names.
 pub fn resolve_after_hijri_prefix(tag: &str) -> LocaleTag {
     match resolve_with(tag, true) {
         LocaleTag::Names(localized) => LocaleTag::Names(Localized {
@@ -144,6 +153,11 @@ pub fn resolve_after_hijri_prefix(tag: &str) -> LocaleTag {
                     | Calendar::Taiwan
                     | Calendar::Thai
             ),
+            names_after_mmm: match hex_value(tag).map(|value| value >> 16) {
+                Some(1) => Some(ARABIC),
+                Some(3 | 5) => Some(EN_US),
+                _ => None,
+            },
             ..localized
         }),
         other => other,
@@ -160,9 +174,7 @@ fn resolve_with(tag: &str, hijri_prefix: bool) -> LocaleTag {
     }
     // A tag that reads as hex is an LCID first, but one with no locale may still be a language
     // (`[$-de]` is German, not LCID 0xDE; `[$-C]` is French).
-    let hex = u32::from_str_radix(tag, 16)
-        .ok()
-        .filter(|_| tag.len() <= 8 && tag.chars().all(|c| c.is_ascii_hexdigit()));
+    let hex = hex_value(tag);
     if let Some(value) = hex {
         if resolve_lcid(value) != LocaleTag::Silent {
             return resolve_lcid(hijri_default(value, hijri_prefix));
@@ -180,6 +192,13 @@ fn resolve_with(tag: &str, hijri_prefix: bool) -> LocaleTag {
         }
         Some(hijri) => hijri,
     }
+}
+
+/// `tag` read as a hex LCID with its calendar digits, if it is one.
+fn hex_value(tag: &str) -> Option<u32> {
+    u32::from_str_radix(tag, 16)
+        .ok()
+        .filter(|_| tag.len() <= 8 && tag.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 /// The value Excel reads from a tag that is neither hex nor BCP-47, as if it were hex with every
@@ -257,6 +276,7 @@ fn resolve_lcid(value: u32) -> LocaleTag {
             calendar,
             japanese_lcid: japanese,
             year_twice: false,
+            names_after_mmm: None,
         })
     };
     match value >> 16 {
@@ -365,6 +385,7 @@ fn without_locale(calendar: u32) -> LocaleTag {
         calendar,
         japanese_lcid: false,
         year_twice: false,
+        names_after_mmm: None,
     })
 }
 

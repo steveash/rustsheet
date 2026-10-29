@@ -3,7 +3,7 @@ id: T-3101
 title: "TEXT: B2 before calendar 1, 3 or 5 tags changes the names' language"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -24,9 +24,9 @@ Probe before generalizing: `B2[$-10411]`, `B2[$-1040C]`, `B2[$-10401]`, `B2[$-30
 Code: `resolve_after_hijri_prefix` (formatter/locale_tag.rs), `NameTokens::push` (formatter/date_names.rs).
 
 ## Acceptance criteria
-- [ ] probes/t3029-b2-calendar-weekday A73:A75, A79:A84 and B3 pass, with the new probe's cells, and no new known failure.
-- [ ] number-formats.md records the rule with the new evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/t3029-b2-calendar-weekday A73:A75, A79:A84 and B3 pass, with the new probe's cells, and no new known failure.
+- [x] number-formats.md records the rule with the new evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Cells added by the gap triage (2026-10-29)
 The hyphen spans above name only their end cells (decision 0136), so `make unowned-off` lists these cells as
@@ -35,3 +35,12 @@ A74 `TEXT(44941,"B2[$-10409]mmm|ddd")` is Excel "يناير|الأحد" and ours
 
 ## Out of scope
 - The weekday after `mmm` (T-3029).
+
+## Outcome
+New probe probes/t3101-b2-calendar-names (194 TEXT cells, 3 cell formats; excel-graph 2026-10-29) shows the rule: after a
+`B2` before a calendar-1 tag, every name token from the section's first `mmm` on prints the ar-SA Gregorian names, and
+before a calendar-3 or -5 tag the en-US names, whatever the LCID (`mmmm`, `mmmmm`, `ddd`, `dddd` too); names before the
+`mmm` and `mmm`-free sections keep the tag's names, and calendars 2, 7, 9 and A keep theirs. `resolve_after_hijri_prefix`
+sets the new `Localized::names_after_mmm`, which `NameTokens` switches to at that `mmm`. number-formats.md records the
+rule. Eval: probes known failures 3163 -> 3154 and text 1 -> 0 (t3029-b2-calendar-weekday A73:A75, A79:A84 and B3 fixed),
+the new case passes 194/194 with its 3 text cells; 0 regressions.

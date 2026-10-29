@@ -199,6 +199,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
             for name in row.get("visibly_off_cells") or []:
                 case, key = split_cell_name(str(name))
                 out.append(ExitCell(probe_row, case, key, formulas.get((case, key), "")))
+            # A listed case that crashes or errors has no cell; list it whole, as a probe row does.
+            for case in row.get("failing_cases") or []:
+                if not by_case.get(case):
+                    out.append(ExitCell(probe_row, str(case), WHOLE_CASE, ""))
     for row in report.get("probe_milestones") or []:
         if row.get("milestone") == probe_row:
             probe_off = set(row.get("visibly_off_cells") or [])

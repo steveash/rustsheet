@@ -350,22 +350,23 @@ pub fn flush_subnormal(value: f64) -> f64 {
     }
 }
 
-/// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
-/// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
-/// Excel returns exactly 0. It applies when the cell formula's outermost operation is `+`/`-`
-/// (not when the whole formula is parenthesized) and to every SUM call (the callers decide that).
-/// Across the 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
-/// least 8 (docs/excel-semantics/numbers.md "Near-zero snapping in addition and subtraction",
-/// probes-numeric/30bc5f8fab02d0a2).
+/// Excel's near-zero snapping of a formula's final addition: `total` is `x + y` (`x` the left
+/// operand, or what a SUM has added before its last addend), and when the two addends have
+/// opposite signs and `total` is below 8 ULP of the **left** addend `x` in magnitude, Excel returns
+/// exactly 0. It applies when the cell formula's outermost operation is `+`/`-` (not when the
+/// whole formula is parenthesized) and to every SUM call (the callers decide that). The left
+/// operand, not the smaller addend, sets the bound: `=1-(1-4*2^-52)` snaps and
+/// `=(1-4*2^-52)-1` does not (probes/t3100-snap-operand-order, all 540 cells, and the 1,296 of
+/// probes-numeric/30bc5f8fab02d0a2; docs/excel-semantics/numbers.md "Near-zero snapping in
+/// addition and subtraction").
 pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
     if x == 0.0 || y == 0.0 || x.is_sign_negative() == y.is_sign_negative() {
         return total;
     }
-    let smaller = x.abs().min(y.abs());
-    // 2^floor(log2(smaller)) for a normal double (its exponent bits alone); 0 for a subnormal.
-    let scale = f64::from_bits(smaller.to_bits() & 0x7FF0_0000_0000_0000);
-    // 8 ULP of `smaller` is scale * 2^-49. Excel flushes that bound when it is subnormal, so
-    // addends below 2^-973 never snap, even to a subnormal total: `=1.5*2^-973-x` snaps for
+    // 2^floor(log2(|x|)) for a normal double (its exponent bits alone); 0 for a subnormal.
+    let scale = f64::from_bits(x.abs().to_bits() & 0x7FF0_0000_0000_0000);
+    // 8 ULP of `x` is scale * 2^-49. Excel flushes that bound when it is subnormal, so
+    // left addends below 2^-973 never snap, even to a subnormal total: `=1.5*2^-973-x` snaps for
     // x = 1.5*2^-973*(1+2^-52) but not at 2^-974 (probes/t2714-snap-tiny-addends).
     if total.abs() < flush_subnormal(scale * 2f64.powi(-49)) {
         0.0
