@@ -73,21 +73,20 @@ impl Model {
                 continue;
             };
             let (frozen, reference) = self.freeze(node, cell);
+            // A written range, and a reference a function returns: a multi-cell one lifts as the
+            // range does (`INDEX(Data!A4:D4,0)` as a total depth is 1x4, probes/t2707-prob-orders
+            // A50, A63:A65; T-3088).
+            let reference = match (&frozen, reference) {
+                (Node::RangeKind { .. }, _) => Some(self.evaluate_node_in_context(&frozen, cell)),
+                (_, reference) => reference,
+            };
             // A one-element array lifts too: `GROUPBY(k,v,SUM,{3})` is one cell (A113).
             let elements = match (&frozen, reference) {
                 (Node::ArrayKind(elements), _) => elements.clone(),
-                // A multi-cell reference a function returns lifts as a written range does:
-                // `INDEX(Data!A4:D4,0)` as a total depth is 1x4 (probes/t2707-prob-orders A50,
-                // A63:A65; T-3088).
                 (_, Some(range @ CalcResult::Range { left, right })) if left != right => {
                     self.result_to_array(range, cell)?
                 }
-                (Node::RangeKind { .. }, _) => match self.evaluate_node_in_context(&frozen, cell) {
-                    range @ CalcResult::Range { left, right } if left != right => {
-                        self.result_to_array(range, cell)?
-                    }
-                    _ => continue,
-                },
+                (Node::RangeKind { .. }, _) => continue,
                 _ => {
                     // Text that is no number is `#VALUE!` in the option's place, ahead of a later
                     // argument's error value, scalar or lifted (A201, A97).
