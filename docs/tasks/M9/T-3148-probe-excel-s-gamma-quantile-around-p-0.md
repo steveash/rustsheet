@@ -25,7 +25,7 @@ same probes are within 2 ulp, so whatever Excel does changes between those two p
 `excel-probe` skill; formulas are literal calls (no cell references) so `rustsheet-fitlab` can read the arguments.
 
 ## Acceptance criteria
-- [ ] A spec case `probes-numeric/t3145-gamma-quantile-flat-band`, oracle-filled (excel-graph), no pending cells,
+- [ ] A spec case `probes-numeric/t3148-gamma-quantile-flat-band`, oracle-filled (excel-graph), no pending cells,
       about 350 literal cells:
   - `GAMMA.INV(p,a,1)` for p in 0.99, 0.995, 0.998, 0.999, 0.9995, 0.9999, 0.99999 and a in 0.5, 1, 1.5, 2, 2.5,
     5, 9, 25, 50;
