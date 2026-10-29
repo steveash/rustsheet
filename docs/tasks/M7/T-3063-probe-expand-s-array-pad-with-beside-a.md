@@ -3,7 +3,7 @@ id: T-3063
 title: "Probe EXPAND's array pad_with beside a column count past the grid or a target over the cell bound, and WRAPCOLS/WRAPROWS of an empty one-cell range or omitted vector"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
