@@ -13,7 +13,7 @@ This is the scheduled 05:47 UTC run (it started at 05:50 UTC). It follows #2216,
 
 `make eval` ran on 2bebf56b with a clean tree.
 - All 17 suites were scored. As before, calipers, corpus-bench and poi were not fetched in this container, so I ran `rustsheet-eval fetch` before `make eval`. Timeouts: 0 in every suite.
-- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. The visible-parity lock drops from 2,750 to 2,648 (decision 0093). It had risen from 2,590 because probes merged since #2216 added visibly-off cells as new coverage.
+- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. The visible-parity lock drops from 2,750 to 2,648 (decision 0093). It had risen from 2,590 because probes merged since #2216 added visibly-off cells as new coverage. The drop despite 0 fixed is slack that fix PRs left under the lock (their fixes were already in the baseline files, e.g. T-2992 #2130), which this run takes back.
 - The dashboard has this run's numbers (`make progress-report`; the judgment blocks pass `--check`).
 
 CI on `main` is green. Every push run since #2216 succeeded, except one cancelled by the next push (776c9b16, #2233). None failed. The run on d1dcff70 (T-3027) was in progress when I checked.
