@@ -1,8 +1,10 @@
 use crate::arithmetic::{flush_subnormal, TINY_SUBNORMAL_BELOW};
 use crate::external_reference::{one_external_area, ExternalArea, PickedReference};
 use crate::formatter::date_text::CurrentYear;
+use crate::locale::Locale;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
+use crate::types::DateSystem;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -166,6 +168,69 @@ pub(crate) fn number_text_too_long(text: &str) -> bool {
     text.len() > MAX_NUMBER_TEXT_LEN && text.chars().count() > MAX_NUMBER_TEXT_LEN
 }
 
+/// [`Model::parse_number_text`] in an explicit `locale` and `date_system`, for readers that run
+/// without the model (the criteria matchers).
+pub(crate) fn number_text_in(
+    text: &str,
+    currencies: &[&str],
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    if let Ok((v, _number_format)) =
+        parse_formatted_number(text, currencies, locale, year, date_system)
+    {
+        return Some(flush_subnormal(v));
+    }
+    crate::functions::date_and_time::time_text::parse_time_serial(text, locale, year, date_system)
+}
+
+/// Text read as VALUE reads it (`Model::value_text_number`): `None` when it is over the
+/// number-text length cap or does not read as a number. VALUE trims only the space character
+/// around the text, then reads number coercion's grammar with `$` and `€`, else a mixed fraction.
+pub(crate) fn value_number_text(
+    text: &str,
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    if number_text_too_long(text) {
+        return None;
+    }
+    let trimmed = text.trim_matches(' ');
+    number_text_in(trimmed, &["$", "€"], locale, year, date_system)
+        .or_else(|| mixed_fraction(trimmed))
+}
+
+/// A mixed fraction `w n/d` (ASCII digits, one space, an optional leading `-`) as `w + n/d`.
+/// Excel: `VALUE("3 1/2")` is 3.5 and `VALUE("1 1/2")` 1.5 (docs/excel-semantics/text.md "VALUE
+/// reads a mixed fraction", probes/eng-inumber-date-boundary B22, probes/t3136-criteria-formatted-
+/// number-operands H25). A zero denominator is not a number. UNVERIFIED: a sign, two spaces, an
+/// improper fraction (`1 3/2`) and `w n/0` (T-2646 probes them).
+fn mixed_fraction(text: &str) -> Option<f64> {
+    let (negative, unsigned) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text),
+    };
+    let (whole, fraction) = unsigned.split_once(' ')?;
+    let (numerator, denominator) = fraction.split_once('/')?;
+    let digits = |part: &str| -> Option<f64> {
+        if part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        part.parse::<f64>().ok()
+    };
+    let (whole, numerator, denominator) =
+        (digits(whole)?, digits(numerator)?, digits(denominator)?);
+    if denominator == 0.0 {
+        return None;
+    }
+    let value = whole + numerator / denominator;
+    value
+        .is_finite()
+        .then_some(if negative { -value } else { value })
+}
+
 /// The `#N/IMPL!` of a range, an array or a LAMBDA where a scalar cast expects a value.
 fn not_a_scalar(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NIMPL, cell, "Arrays not supported yet".to_string())
@@ -234,22 +299,15 @@ impl Model {
         currencies: &[&str],
         year: CurrentYear,
     ) -> Option<f64> {
-        if let Ok((v, _number_format)) = parse_formatted_number(
+        number_text_in(
             text,
             currencies,
             self.locale,
             year,
             self.workbook.settings.date_system,
-        ) {
-            return Some(crate::arithmetic::flush_subnormal(v));
-        }
-        crate::functions::date_and_time::time_text::parse_time_serial(
-            text,
-            self.locale,
-            year,
-            self.workbook.settings.date_system,
         )
     }
+
     /// Lifts the range `left:right` into a 2-D array of its cell values, for a function or
     /// operator that works on it element by element (or a formula that spills it).
     ///

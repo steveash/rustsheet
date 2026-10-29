@@ -966,9 +966,13 @@ Rule: `VALUE("- 5")` is -5, `VALUE("3 1/2")` 3.5 and `VALUE("1-1-1")` 36892 (200
 one-digit year). Readers built on VALUE's grammar follow it: `IMABS("3 1/2")` is 3.5 (engineering.md "How an inumber
 is read").
 Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
-Ours: `#VALUE!` for all three (`value_text_number`, functions/text/common.rs).
-Status: VERIFIED (excel-graph); not implemented (T-2646).
-Tasks: T-2646
+A criterion reads `"1 1/2"` as 1.5 too (criteria.md "Criterion operands and text cells read numbers with VALUE's grammar",
+probes/t3136-criteria-formatted-number-operands H25).
+Ours: the mixed fraction reads (`mixed_fraction` under `value_number_text`, cast.rs, T-3151): `w n/d` with ASCII digits, one
+space and an optional leading `-`; `w n/0` is not a number. UNVERIFIED: the sign, two spaces and an improper fraction.
+`"- 5"` and `"1-1-1"` are still `#VALUE!` (T-2646).
+Status: VERIFIED (excel-graph); mixed fraction implemented (T-3151), the other two not (T-2646).
+Tasks: T-2646, T-3151
 
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:

@@ -3,7 +3,7 @@ id: T-3151
 title: "Criteria operands and text cells read numbers with VALUE's grammar (percent, currency, grouping, time, date-time, mixed fraction, parentheses)"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -35,10 +35,19 @@ cells read numbers with VALUE's grammar", T-3136).
   cells and non-ASCII spaces"); whether Excel's VALUE reads it is unprobed, so keep that case as it is.
 
 ## Acceptance criteria
-- [ ] Every cell of probes/t3136-criteria-formatted-number-operands passes; `make eval-check` shows 0 regressions.
-- [ ] criteria.md's T-3136 section says the engine implements the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] Every cell of probes/t3136-criteria-formatted-number-operands passes; `make eval-check` shows 0 regressions.
+- [x] criteria.md's T-3136 section says the engine implements the rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Non-en-US locales.
 - VALUE's other T-2646 forms (`- 5`, `1-1-1`) beyond what these cells need.
+
+## Outcome
+Criterion operands and text cells now read numbers with VALUE's grammar. `value_number_text` (cast.rs) is VALUE's reader
+as a free function, and `Model::value_text_number` and the criteria (`criterion_text_number`, functions/criteria.rs) share it.
+The criteria try the plain parser first, then VALUE's reader, then the date parser. Text padded with a non-ASCII space stays
+text, and text without a digit is skipped. VALUE also reads a mixed fraction now (`mixed_fraction`), which takes the first
+part of T-2646. A numeric `=` criterion reads the current year once per criterion, for year-less text cells.
+Eval: probes 346 fixed, 0 regressions: all 344 failing cells of t3136-criteria-formatted-number-operands, plus
+eng-inumber-date-boundary S!A22 and B22 (T-2646's mixed fraction).

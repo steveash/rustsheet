@@ -484,8 +484,9 @@ Evidence: probes/t3136-criteria-formatted-number-operands (excel-graph, 2026-10-
 Calc!A (SUMIF numbers), B (SUMIF text), C/D (SUMIFS), E (COUNTIF), F (COUNTIFS text), G (DSUM) and H1-H53 (VALUE).
 UNVERIFIED: euro operands (`€1`, `1€`), other VALUE forms (`- 5`, `1-1-1`, month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
 analogy with `>=`), a percent rounding at the 15-digit tie, CHAR(160)-padded formatted text, and non-en-US locales.
-Ours: the plain parser only (`parse_criterion_number`, `parse_date_criterion`, `result_is_equal_to_number` in
-functions/criteria.rs), so A, C, E and G fail on rows 1-52, B, D and F on rows 1-52 except 25, 26, 39, 41, 42, 49 and 50
-(the text sums match by chance), and H25; rows 53-56 pass. Owner: T-3151.
-Status: VERIFIED (excel-graph); not implemented (T-3151).
+Ours: the operand and the text cells read with the plain parser, then VALUE's reader (`criterion_text_number` in
+functions/criteria.rs over `value_number_text` in cast.rs, which VALUE uses too), then the date parser; text padded with a
+non-ASCII space stays text on both sides, as the section above requires. The indexed *IFS path and the D-functions build
+their predicates there too. Every cell of the probe passes (T-3151).
+Status: VERIFIED (excel-graph); implemented (T-3151).
 Tasks: T-3136, T-3151
