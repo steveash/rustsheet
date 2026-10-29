@@ -364,7 +364,8 @@ models: 0.1+0.2 against 0.3 is decided by the 0.5, and the pair either side of 1
 digits too. The run of equal cells is a run of exactly equal
 doubles. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52 give 1, 2 and 3, where a 15-digit run would
 give 3 for all three (A30-C31; A32-C32 fit both). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine compares
-exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too (unverified in Excel: T-3106).
+exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too, as Excel does
+(T-3106, "XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles" below).
 Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
 2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
 a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
@@ -585,6 +586,37 @@ cell ascending, its last descending, match_mode 1 included (Run!M5, M11, M17, M3
 Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153
+
+## XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles (T-3106)
+Rule: XMATCH and XLOOKUP equate and order numbers as exact doubles, not at 15 digits like the comparison operators, in
+the exact (0), next-smaller (-1) and next-larger (1) match modes and in every search mode (1, -1, 2, -2). LOOKUP does
+too, in its vector form and its tall and wide array forms, as VLOOKUP, HLOOKUP and MATCH do ("Approximate-match
+lookups" above). A table number X a few ULP from the key is never equal to it, so (the braces stand for ranges whose
+cells compute X, since an array constant cannot hold `1+2^-52`):
+- the exact mode is `#N/A` for every near-equal pair: `XMATCH(1,{2;1+2^-52;0.5},0)` and
+  `XMATCH(0.3,{2;0.1+0.2;0.5},0)` are `#N/A`, linear or binary;
+- next-smaller takes the 0.5 when X is above the key (3 over {2;X;0.5}, 1 over {0.5;X;2}) and X itself when below (2);
+- next-larger takes X when it is above the key (2) and the 2 when below (1 over {2;X;0.5}, 3 over {0.5;X;2});
+- LOOKUP over the unsorted {2;X;0.5} is `#N/A` when X is above the key and 3 when below, and over the sorted
+  {0.5;X;2} it is 1 and 2.
+A 15-digit compare would give 2 in all of these.
+Runs of near-equal numbers are distinct values. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52
+give 1, 2 and 3 in every match mode, under search_mode 1, -1 and 2 and in LOOKUP's three forms. Over the
+descending 2, 1+2·2^-52, 1+2^-52, 1, 0.5 they give 4, 3 and 2 in every match mode, linear (1, -1) and binary (-2).
+A 15-digit run would make the three equal, so search_mode -1 would give the run's last cell. LOOKUP over the descending
+run (D30-D32: `#N/A`, 3, 5) is its binary search on data out of order, which the engine reproduces.
+XLOOKUP returns the result-vector cell of XMATCH's position in every cell, and its if_not_found where XMATCH is `#N/A`.
+Evidence: probes/t3106-lookup-xmatch-near-equal (excel-graph, 2026-10-29), Sheet1 rows 1-20. Each row is the
+key/X pair of probes/t3073-lookup-near-equal-approximate's row: 1 against 1+k·2^-52 and 1-k·2^-53 (k = 1, 2, 3, 8),
+the reverse, 0.3 against 0.1+0.2 both ways, and the pair either side of 1+5E-15. The columns are LOOKUP (A-D),
+XMATCH (E-P) and XLOOKUP (Q-AB). Rows 30-32 and 34-36 hold the runs. Rows 8, 16, 19 and 20 fit both models.
+AC8 (`=1-(1-8*2^-53)` from cells, 0) repeats T-3073's E8 (numbers.md "Operand order", T-3100).
+The engine's LOOKUP matches every cell: it shares `SearchVector::approximate_search` and `compare_searched`
+(lookup_table.rs, T-3099). XMATCH and XLOOKUP still compare at 15 digits (`compare_values` in `linear_scan`,
+`CollatedKey` in the exact index, `impl Ord for CalcResult` in `binary_search`), so 332 of their cells fail: T-3132.
+Unprobed: the wildcard and regex modes with a numeric key.
+Status: VERIFIED
+Tasks: T-3106, T-3132
 
 ## XLOOKUP / XMATCH with an omitted lookup_value is a blank cell
 Rule: an omitted lookup_value (`XMATCH(,H1:H4)`, `XLOOKUP(,...)`) is indistinguishable from a reference to a blank cell, in every

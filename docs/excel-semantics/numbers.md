@@ -52,7 +52,8 @@ the smaller-addend rule misses 32 and a larger-addend rule 40. They differ only 
 below it, so X has half b's ULP: `1-(1-4·2^-52)` snaps (left 1, bound 2^-49) and `(1-4·2^-52)-1` keeps
 -8.881784197001252e-16 (left X, bound 2^-50); likewise `-1+(1-4·2^-52)` and `SUM(1,-(1-4·2^-52))` snap. Every earlier
 probe had X on the left, which is why the smaller-addend fit held there. This also explains
-probes/t3073-lookup-near-equal-approximate Sheet1!E8 (`1-(1-8·2^-53)`, 0) and E16 (`(1-8·2^-53)-1`, kept).
+probes/t3073-lookup-near-equal-approximate Sheet1!E8 (`1-(1-8·2^-53)`, 0) and E16 (`(1-8·2^-53)-1`, kept);
+probes/t3106-lookup-xmatch-near-equal Sheet1!AC8 is the same pair as E8 and gives 0 too.
 The engine matches all of them since T-3100. Status: VERIFIED.
 Tasks: T-0110 (implementation), T-1131 (SUM forms), T-3048 (summing functions), T-3049 (pickers, LET, LAMBDA and unary signs), T-3083 (LAMBDA body snap), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound), T-3047 (array and range operands), T-3100 (operand order)
 
