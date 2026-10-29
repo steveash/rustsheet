@@ -327,6 +327,18 @@ impl Model {
         self.result_to_array_keep_blank(result, cell)
     }
 
+    /// [`Model::eval_array_arg`] that keeps a lone blank cell blank, as
+    /// [`Model::eval_to_array_keep_blank`] does.
+    pub(crate) fn eval_array_arg_keep_blank(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        let result = self.evaluate_node_in_context(node, cell);
+        let result = reject_empty_value(node, result, cell)?;
+        self.result_to_array_keep_blank(result, cell)
+    }
+
     /// [`Model::result_to_array`], a blank cell kept as a blank element.
     pub(crate) fn result_to_array_keep_blank(
         &mut self,
