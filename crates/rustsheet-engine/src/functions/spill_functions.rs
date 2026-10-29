@@ -198,8 +198,8 @@ fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
 /// sorting call leads it, and the leads keep their call's top-left when all their `by_col` values
 /// are equal (else only the first does); every other sorting call is empty when `only_key_two`
 /// and it is the first such element or sits below an empty-able one with the same `by_col`, and
-/// `#VALUE!` otherwise (probes/t2929-sort-lifted-by-col-*, T-2929; the rule and its UNVERIFIED
-/// corners are in arrays.md).
+/// `#VALUE!` otherwise (probes/t2929-sort-lifted-by-col-*, T-2929;
+/// the rule is in arrays.md and T-3090 tracks its one known gap).
 // Excel: docs/excel-semantics/arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments".
 fn sort_lifted_elements(
     result: CalcResult,
@@ -446,9 +446,9 @@ impl Model {
                         }),
                     ),
                 };
-                // A call failing on its sort_index counts as a sorting call unless no call
-                // has sorted yet (`{FALSE;TRUE;TRUE}` keeps the later two; `{FALSE,FALSE,TRUE,TRUE}`), while an invalid by_col
-                // is always skipped (probes/t2947-sort-lifted-by-col-corners).
+                // A call failing on its sort_index counts as a sorting call unless no call has
+                // sorted yet, while an invalid by_col is always skipped (arrays.md, probes/
+                // t2947-sort-lifted-by-col-corners).
                 let failed = matches!(result, CalcResult::Error { .. });
                 let sorted_before = sorted.iter().any(Option::is_some);
                 sorted.push(read.filter(|_| !failed || sorted_before));
