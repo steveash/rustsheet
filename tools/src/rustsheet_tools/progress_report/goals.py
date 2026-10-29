@@ -292,20 +292,38 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
     def met(key: str) -> str:
         return _verdict(_optional(row, key, where, boolean=True))
 
+    def shown(count_key: str, met_key: str) -> str:
+        """Counts without a verdict: not one of the milestone's criteria (coverage for M2,
+        decision 0135; coverage and ironcalc-calc for M7, decision 0140)."""
+        required = get(count_key) is None or field(row, met_key, where) is not None
+        return met(met_key) if required else "not required"
+
     exited = "**exit met**" if flag(row, "exit", where) else "**exit not met**"
-    # Counts without a verdict: coverage is not one of the milestone's criteria (M2, decision 0135).
-    required = get("covered") is None or field(row, "coverage_met", where) is not None
-    coverage = met("coverage_met") if required else "not required"
-    return "; ".join(
-        [
-            exited,
-            f"coverage {_num(get('covered'))}/{_num(get('functions'))} ({coverage})",
-            f"generated suite {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
-            f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})",
-            f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off ({met('calc_met')})",
-            f"probes {_num(get('probe_visibly_off'))} visibly off ({met('probes_met')})",
-        ]
-    )
+    # The first required suite is the generated one but for M11's corpus-bench (decision 0146).
+    suite = row.get("gen_suite") or ""
+    label = suite if suite and suite != f"gen-{milestone.lower()}" else "generated suite"
+    measures = [
+        exited,
+        f"coverage {_num(get('covered'))}/{_num(get('functions'))} ({shown('covered', 'coverage_met')})",
+        f"{label} {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
+        f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})",
+    ]
+    # The other required suites (M1's smoke), each with its own floor and rate.
+    for i, more in enumerate(row.get("more_suites") or []):
+        mwhere = f"{where} more_suites[{i}]"
+        measures.append(
+            f"{_text(more, 'name', mwhere)} {_num(_optional(more, 'visibly_off', mwhere))} visibly off of "
+            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))} "
+            f"({_verdict(_optional(more, 'met', mwhere, boolean=True))})"
+        )
+    measures += [
+        f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off ({shown('calc_visibly_off', 'calc_met')})",
+        f"probes {_num(get('probe_visibly_off'))} visibly off ({met('probes_met')})",
+    ]
+    # Only a milestone with the criterion (M7, decision 0140) reports spill extents.
+    if row.get("extent_failures") is not None or row.get("extent_met") is not None:
+        measures.append(f"spill extents {_num(get('extent_failures'))} failures ({met('extent_met')})")
+    return "; ".join(measures)
 
 
 def _check_known(what: str, names: set[str], docs: list[MilestoneDoc]) -> None:

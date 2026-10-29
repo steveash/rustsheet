@@ -2,7 +2,7 @@
 
 use crate::{
     cell::CellValue,
-    test::util::{check_cells, new_empty_model},
+    test::util::{check_cells, check_cells_with_numbers, new_empty_model},
 };
 
 #[test]
@@ -782,6 +782,43 @@ fn fn_irr_guess_at_or_above_two_to_the_53() {
     assert_eq!(model._get_text("A5"), *"#NUM!");
 }
 
+/// NPV sums v_i/d(i-1) left to right with d the running product of 1+rate, then divides by
+/// 1+rate once: Excel's residues at IRR's root, to the bit (financial.md "NPV's residue at IRR's
+/// root is not the double sum"; IRR.xlsx General!M2, M3, M8, Three Parameters!E2,
+/// probes/fin-argument-modes H367, m9-fin-nper-npv A148; T-2672).
+#[test]
+fn fn_npv_running_product_then_one_division() {
+    check_cells_with_numbers(
+        &[
+            ("B1", 0.079_308_261_160_397_24),
+            ("B2", -0.101_500_676_053_584_7),
+            ("B3", -0.443_506_941_334_327_55),
+            ("B4", 1.091_399_510_766_422E-7),
+        ],
+        &[],
+        &[
+            ("A1", "=NPV(B1,-20,5,5,5,5,5)", "6.4212018552224666E-12"),
+            (
+                "A2",
+                "=NPV(B2,-1000,230,200,125,200,10)",
+                "-2.8358465972398184E-11",
+            ),
+            ("A3", "=NPV(B3,-70,12,15)", "-1.579429159894141E-10"),
+            ("A4", "=NPV(B4,1,-2,1)", "1.187938506697367E-14"),
+            (
+                "A5",
+                "=NPV(0.1,-10000,2750,4250,3250,2750)",
+                "302.233453999042",
+            ),
+            (
+                "A6",
+                "=NPV(0.1,-1E6,250000,250000,250000,250000,250000)",
+                "-47548.46149808013",
+            ),
+        ],
+    );
+}
+
 /// NPV is #DIV/0! where 1+rate is 0 or a power a later period builds on leaves the double range;
 /// the last period's power may overflow (probes/npv-power-edges, npv-power-edges-2; T-2493).
 #[test]
@@ -867,4 +904,24 @@ fn fn_xirr_empty_guess_is_the_default() {
     assert_eq!(model._get_text("A2"), *"FALSE");
     assert_eq!(model._get_text("A3"), *"TRUE");
     assert_eq!(model._get_text("A4"), *"TRUE");
+}
+
+// Past `(1+rate)^nper`'s range a fractional nper gives what an integer one does; type 1 at a rate
+// that is not a whole number is `-B*(rate/(1+rate))`, at a whole rate the exact quotient
+// (probes/t2665-ipmt-fractional-nper-past-range A160, A208; gen-m9 b73c6cc96e093f03 A268; T-2665).
+#[test]
+fn ipmt_past_the_range_fractional_nper_is_the_integer_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=IPMT(0.5,50,100000.5,92160,674,1)");
+    model._set("A2", "=IPMT(1.005,7,18518518.44345,92160,674,1)");
+    model._set("A3", "=IPMT(1.005,7,100000,92160,674,1)");
+    model._set("A4", "=IPMT(42,8,290,392736,-0.5,1)");
+    model._set("A5", "=IPMT(0.1,7,1000000.25,1000,0,0)");
+    model.evaluate();
+    let number = |row| model.get_cell_value_by_index(0, row, 1);
+    assert_eq!(number(1), Ok(CellValue::Number(-30720.0)));
+    assert_eq!(number(2), Ok(CellValue::Number(-46194.91271820449)));
+    assert_eq!(number(3), Ok(CellValue::Number(-46194.91271820449)));
+    assert_eq!(number(4), Ok(CellValue::Number(-383602.6046511628)));
+    assert_eq!(number(5), Ok(CellValue::Number(-100.0)));
 }

@@ -110,9 +110,8 @@ and passes (decision 0101).
   and the counts, and any data you derive. Do not edit files outside it, do not run git commit/push, and do not
   touch the engine source. The coordinator merges findings.
 
-## Rebuilding the harness
-`excelmath.py` runs the ignored test `functions::statistical::t2464_harness::t2464_kernels`
-(crates/rustsheet-engine/src/functions/statistical/t2464_harness.rs). Build it with
-`cargo test --release -p rustsheet_engine --lib t2464_kernels --no-run`, then copy the newest
-`target/release/deps/rustsheet_engine-*` executable to `docs/research/t2464/.harness-bin` (git-ignored), or point
-`T2464_HARNESS` at it.
+## Evaluating Excel's elementary functions
+`excelmath.excel` evaluates `=NAME(x)` on the engine's own kernels through the python bindings (`import rustsheet`;
+`make py-bindings` builds bindings/python/.venv, run the scripts with its python). The ignored test harness
+(`t2464_harness.rs`) that did this before is gone (T-2977); its `BRATIO` op is the engine's BETA.DIST, F.DIST and
+F.DIST.RT cells now, which take bratio's port where it reaches (`bratio::kernel_tails`).

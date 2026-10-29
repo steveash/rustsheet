@@ -26,6 +26,9 @@ docs/excel-semantics/xlsx-storage.md, "Newer functions need `_xlfn.` in the file
   the list of names that need a prefix (`Function::to_xlsx_string`).
 - Export: `Function::to_xlsx_string` writes `_xlfn.` names, but nothing writes `_xleta.` for a
   function passed by name. Excel reads such a bare name as `#NAME?`.
+- `parse_named_call` (expressions/parser/operands.rs) maps a bare `SINGLE(` to `@` and a bare `ANCHORARRAY(` to `#` before
+  the name lookup, in every mode (typed SINGLE is `@` in Excel, T-2938). The import rule must cover those two arms too: a
+  bare `SINGLE(` or `ANCHORARRAY(` read from a file is likely `#NAME?` (probe it first).
 Tests need xlsx inputs (an import test with a bare `_xlfn`-less newer name) and an export test.
 - corpus-bench/1726 `July-KPIs!A1` `=IMAGE("https://...")` stored without `_xlfn.`: Excel `#NAME?`, engine `#BLOCKED!` (T-0427 run; the case's other 33 cells are T-1770).
 

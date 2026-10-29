@@ -18,6 +18,8 @@ import subprocess
 import sys
 from collections.abc import Callable, Iterable
 
+import merge_flip
+
 PROTECTED = (
     ".github/",
     ".claude/",
@@ -91,6 +93,49 @@ def case_tags(path: str) -> list[str]:
     return [tag for tag in tags if isinstance(tag, str)] if isinstance(tags, list) else []
 
 
+def deleted_test_files(changed: list[str]) -> list[str]:
+    """The test files a diff's `--name-status` lines delete."""
+    return [
+        line.split("\t")[-1]
+        for line in changed
+        if line.startswith("D") and ("/tests/" in line or "/test/" in line or line.endswith("_test.py"))
+    ]
+
+
+def failures(changed: list[str], read_tags: Callable[[str], list[str]], flip: bool) -> list[list[str]]:
+    """The failed rules for a diff's `--name-status` lines, each as its report lines. `flip` says
+    the diff is a lock flip (decision 0157): it waives the decision-record rule and nothing else."""
+    paths = [line.split("\t")[-1] for line in changed]
+    protected = [p for p in paths if is_protected(p)]
+    decisions = [p for p in paths if p.startswith("docs/decisions/") and p.endswith(".md")]
+    found = []
+    if protected and not decisions and not flip:
+        found.append(
+            [
+                "FAIL governance: protected paths changed without a decision record in docs/decisions/:",
+                *(f"  {p}" for p in protected),
+            ]
+        )
+    deleted_tests = deleted_test_files(changed)
+    if deleted_tests and not decisions:
+        found.append(
+            [
+                "FAIL governance: test files deleted (requires a decision record and reviewer sign-off):",
+                *(f"  {p}" for p in deleted_tests),
+            ]
+        )
+    probe_problems = probe_tag_problems(changed, read_tags)
+    if probe_problems:
+        found.append(
+            [
+                "FAIL governance: new probe cases need exactly one milestone tag, M2 or later, the "
+                "milestone of the function or feature they probe (decision 0057):",
+                *(f"  {problem}" for problem in probe_problems),
+            ]
+        )
+    return found
+
+
 def main() -> int:
     base = sys.argv[1] if len(sys.argv) > 1 else "origin/main"
     try:
@@ -99,40 +144,18 @@ def main() -> int:
         print(f"note: base {base} not found; skipping governance check")
         return 0
     changed = git("diff", "--name-status", merge_base, "HEAD").splitlines()
-    paths = [line.split("\t")[-1] for line in changed]
-    protected = [p for p in paths if is_protected(p)]
-    decisions = [p for p in paths if p.startswith("docs/decisions/") and p.endswith(".md")]
-    failed = False
-    if protected and not decisions:
-        failed = True
-        print("FAIL governance: protected paths changed without a decision record in docs/decisions/:")
-        for p in protected:
-            print(f"  {p}")
-    deleted_tests = [
-        line.split("\t")[-1]
-        for line in changed
-        if line.startswith("D") and ("/tests/" in line or "/test/" in line or line.endswith("_test.py"))
-    ]
-    if deleted_tests:
-        failed = True
-        print("FAIL governance: test files deleted (requires a decision record and reviewer sign-off):")
-        for p in deleted_tests:
-            print(f"  {p}")
-        if decisions:
-            failed = False
-            print("  (decision record present — allowed; reviewers must confirm)")
-    probe_problems = probe_tag_problems(changed, case_tags)
-    if probe_problems:
-        failed = True
-        print(
-            "FAIL governance: new probe cases need exactly one milestone tag, M2 or later, the "
-            "milestone of the function or feature they probe (decision 0057):"
-        )
-        for problem in probe_problems:
-            print(f"  {problem}")
-    if not failed:
-        print(f"governance ok ({len(paths)} files changed, {len(protected)} protected)")
-    return 1 if failed else 0
+    flip = not merge_flip.local_problems(merge_flip.ROOT, merge_base, "HEAD")
+    if flip:
+        print(f"governance: a lock flip of {merge_flip.SWITCH} (decision 0157); no decision record needed")
+    found = failures(changed, case_tags, flip)
+    if deleted_test_files(changed) and any(line.split("\t")[-1].startswith("docs/decisions/") for line in changed):
+        print("note: test files deleted with a decision record present: allowed; reviewers must confirm")
+    for lines in found:
+        print("\n".join(lines))
+    if not found:
+        protected = sum(is_protected(line.split("\t")[-1]) for line in changed)
+        print(f"governance ok ({len(changed)} files changed, {protected} protected)")
+    return 1 if found else 0
 
 
 if __name__ == "__main__":

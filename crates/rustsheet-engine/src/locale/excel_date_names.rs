@@ -24,7 +24,7 @@ pub struct DateNames {
     pub pm: &'static str,
 }
 
-static EN: DateNames = DateNames {
+pub(super) static EN: DateNames = DateNames {
     months_short: [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ],

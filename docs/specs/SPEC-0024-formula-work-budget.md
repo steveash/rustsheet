@@ -49,7 +49,7 @@ Non-goals:
   formulas times the budget. This is a residual risk: 1,000 cells each near the limit is about
   1,000 times the per-formula time. A per-recalculation bound needs its own design, because the
   result of an over-budget pass, and which cells give up, must be deterministic. It is filed as
-  T-2807 (a spec task).
+  T-2807 (a spec task) and designed in SPEC-0028.
 - Wall-clock deadlines. They are non-deterministic and are not used (Alternatives).
 
 ## Excel behavior to match
@@ -104,7 +104,7 @@ Why these charges:
   5.2 at 4M, 11.8 at about 11M), not from the nesting depth: three helpers deep over 32 by 32 arrays
   cost the same 4.5 us a cell as two. So the charge counts each LAMBDA stored, and each body clone by
   its nodes. `LAMBDA_UNITS` is fitted by time like the other weights (section 4). Releasing a
-  formula's LAMBDAs after its root cell, so that a recalculation does not pile them up, is T-2925.
+  formula's LAMBDAs after its root cell, so that a recalculation does not pile them up, is T-2925 (done).
 - **Built cells** bound the three formulas above. Each call builds a SEQUENCE.
 - **Read cells** bound the variant that builds once and reads many times:
   `=LET(s,SEQUENCE(100000),REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(s))))`. It builds 2E5 cells
@@ -119,13 +119,15 @@ Why these charges:
   arrays are charged by their length where step 3 charges array reads.
 
 Known gaps (out of scope, recorded for later work):
-- **LAMBDAs stored across formulas** (T-2925). The budget bounds the LAMBDAs one formula makes, but
-  `self.lambdas` keeps them until the whole evaluation ends. So a recalculation of many such formulas
-  holds all of them, and each later formula's calls slow down with the map's size.
-- **Retained memory.** The budget counts work, not what a formula holds at once. Memory stays bounded
-  by the existing per-value caps: arrays of 2^20 cells, 32,767-unit texts, `MAX_CAPTURED_CELLS`, and
-  the nested-array caps. 2^20 cells of 32 KB texts is still about 64 GB in principle, as it is today.
-  This is pre-existing and is filed as T-2806.
+- **LAMBDAs stored across formulas** (T-2925, closed: a root cell's LAMBDAs are now dropped once it is
+  evaluated). The budget bounds the LAMBDAs one formula makes, but before T-2925
+  `self.lambdas` kept them until the whole evaluation ended, so a recalculation of many such formulas
+  held all of them, and each later formula's calls slowed down with the map's size.
+- **Retained memory.** The budget counts work, not what a formula holds at once. Copies of one text
+  (an IF, IFERROR, EXPAND or INDEX broadcast into 2^20 cells) were 32 GB of owned bytes before T-2806;
+  since then a text's bytes are shared, so a copy costs a pointer, and the `&` operator over an array
+  charges each text it makes, so one formula makes at most about 2^30 bytes of text (arrays.md "Copies
+  of a text share its bytes", T-2806).
 - **Super-linear work inside one scalar call** that has no per-call cap and touches no text: none is
   known. A function found to have one gets a per-call cap of its own, charged to the formula like the
   others.

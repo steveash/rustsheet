@@ -15,8 +15,9 @@ fn true_false_arguments() {
     assert_eq!(model._get_text("A1"), *"TRUE");
     assert_eq!(model._get_text("A2"), *"FALSE");
 
-    assert_eq!(model._get_formula("A1"), *"=TRUE()");
-    assert_eq!(model._get_formula("A2"), *"=FALSE()");
+    // The run inside an empty call prints back (`=TRUE(` LF `)`; probes/t2966-empty-call-runs B3).
+    assert_eq!(model._get_formula("A1"), *"=TRUE( )");
+    assert_eq!(model._get_formula("A2"), *"=FALSE( )");
 
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");

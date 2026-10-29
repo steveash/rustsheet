@@ -1,0 +1,47 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "NUMBERVALUE default group separator for each decimal separator (T-2441).",
+  "tags": [
+    "M5",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=NUMBERVALUE(\"1.5\",\",\")",
+        "A2": "=NUMBERVALUE(\"1.000,5\",\",\")",
+        "A3": "=NUMBERVALUE(\"1.5.2\",\",\")",
+        "A4": "=NUMBERVALUE(\"1,5\",\";\")",
+        "A5": "=NUMBERVALUE(\"1,000.5\",\";\")",
+        "A6": "=NUMBERVALUE(\"1.5\",\";\")",
+        "A7": "=NUMBERVALUE(\"1,5\",\"x\")",
+        "A8": "=NUMBERVALUE(\"1.5\",\"x\")",
+        "A9": "=NUMBERVALUE(\"1x5\",\"x\")",
+        "A10": "=NUMBERVALUE(\"1.5\",\".\")",
+        "A11": "=NUMBERVALUE(\"1 5\",\",\")",
+        "A12": "=NUMBERVALUE(\"1.5\",\"0\")",
+        "A13": "=NUMBERVALUE(\"1,5\",\"5\")",
+        "A14": "=NUMBERVALUE(\"1.5\",\"1\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12",
+    "Sheet1!A13",
+    "Sheet1!A14"
+  ]
+}

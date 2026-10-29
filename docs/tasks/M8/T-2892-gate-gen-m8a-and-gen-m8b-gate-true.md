@@ -3,7 +3,7 @@ id: T-2892
 title: "Gate gen-m8a and gen-m8b: gate = true with recorded baselines, so a names, 3-D or table regression fails make check"
 milestone: M8
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,5 +35,12 @@ depends_on: []
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The M8 exit row and what M8's "oracle suites for each feature" means (T-2889).
+- The M8 exit row and what M8's "oracle suites for each feature" means (decision 0146; the row is T-0089).
 - Growing either suite or new suites for external references or sheet operations.
+
+## Outcome
+gen-m8a and gen-m8b are `gate = true`; `make eval-baseline` wrote eval/baseline/gen-m8a.txt (12 `C`
+lines) and gen-m8b.txt (9 `C` lines), no `F` lines. In an uncommitted scratch edit of
+gen-m8b/19fdc25163755713.oracle.json (Data!D11 13.25 -> 99.5) `make eval-check` failed with
+`[gen-m8b] known failures 0 -> 1 ... REGRESSIONS 1` / `REGRESSION gen-m8b/19fdc25163755713.case.json Data!D11`
+(exit 1); the edit was reverted. Eval delta: no cells fixed; two suites newly gated.

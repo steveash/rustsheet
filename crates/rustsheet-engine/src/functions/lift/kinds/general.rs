@@ -69,7 +69,7 @@ const TOCOL: ArgKinds =
 /// `UNIQUE(array, [by_col], [exactly_once])`: `by_col` lifts over an array and a range
 /// (`UNIQUE(D1:D3,{FALSE;TRUE})` is 2x1, probes/m7-argument-modes F12:H12; over a range,
 /// gen-m9/4df1b22d3ed63f58 Calc!A36), `exactly_once` too (probes/m7-lift-take-drop-sortby rows
-/// 25-26). Its later elements are empty unless every entry is equal (`CallResult::ArrayFirst`,
+/// 25-26). Its later elements are empty unless every entry is equal (`CallResult::ArrayFirstColumn`,
 /// probes/m7-unique-lift-elements; T-2300). Read and charged as [`TOCOL`].
 const UNIQUE: ArgKinds =
     ArgKinds::fixed(1, &[WholeByCaller, Lift, Lift], Output { weight: 1 }).array_first_column();
@@ -78,26 +78,27 @@ const UNIQUE: ArgKinds =
 /// `SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2], ...)`: each sort order lifts
 /// over an array and a range (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1, probes/m7-argument-modes
 /// F26:H26), the array and the by arrays are read once by the function. Unless every entry is
-/// equal only the first element keeps its call's top-left (`CallResult::ArrayFirst`;
+/// equal only the first element keeps its call's top-left (`CallResult::ArrayFirstColumn`;
 /// `SORTBY(A1:A3,C1:C3,{1;-1;1})` is {1;0;0}, probes/sort-error-args H97-H99), `#VALUE!` once the
-/// call has a second pair (probes/m7-lift-take-drop-sortby sheet Sort). Each element sorts the
-/// whole array: read and charged as [`TOCOL`].
+/// call has a second pair (probes/m7-lift-take-drop-sortby sheet Sort). A uniform 1xN
+/// `sort_order` keeps only the first column too (probes/sortby-lifted-element-corners L9:O9,
+/// T-2349). Each element sorts the whole array: read and charged as [`TOCOL`].
 const SORTBY: ArgKinds = ArgKinds {
     required: 2,
     params: &[WholeByCaller, WholeByCaller, Lift],
     repeat: &[WholeByCaller, Lift],
     max: 255,
     work: Output { weight: 1 },
-    result: CallResult::ArrayFirst,
+    result: CallResult::ArrayFirstColumn,
 };
 // --- End M7 (T-1839) ---
 // --- M7 (T-2319) ---
 /// `SORT(array, [sort_index], [sort_order], [by_col])`: `by_col` lifts over an array
 /// (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`, gen-m7/7307132bb8820f17 A1076);
 /// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
-/// sorts the whole array: read and charged as [`TOCOL`]. Later elements are not
-/// empty (`.array()`, not SORTBY's `ArrayFirst`: probes/t2366-sort-lifted-by-col); a TRUE element past the first column with
-/// `sort_index` 1 is `#VALUE!` in Excel, not the call's top-left (T-2929).
+/// sorts the whole array: read and charged as [`TOCOL`]. Later elements do not follow SORTBY's
+/// `ArrayFirstColumn` (`.array()`: probes/t2366-sort-lifted-by-col); `fn_sort` keeps, empties or errs them
+/// by its own rule (`sort_lifted_elements`, T-2929).
 const SORT: ArgKinds = ArgKinds::fixed(
     1,
     &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],

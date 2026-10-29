@@ -1,0 +1,36 @@
+1. lattice
+  a+(b-ab)           16 of 99 cells unreachable with every g within 2 ulp
+  (a+b)-ab           29 of 99 cells unreachable with every g within 2 ulp
+  (a-ab)+b           23 of 99 cells unreachable with every g within 2 ulp
+  b+(a-ab)           23 of 99 cells unreachable with every g within 2 ulp
+  x87 a+(b-ab)       16 of 99 cells unreachable with every g within 2 ulp
+  x87 (a+b)-ab       29 of 99 cells unreachable with every g within 2 ulp
+  one extended sum   16 of 99 cells unreachable with every g within 2 ulp
+2. reduction (integer a)
+   0 of 11 b values fit one A(b)   w: h/(1+h) double down
+   1 of 11 b values fit one A(b)   w: h/(1+h) double up
+   0 of 11 b values fit one A(b)   w: h/(1+h) x87 down
+   1 of 11 b values fit one A(b)   w: h/(1+h) x87 up
+   0 of 11 b values fit one A(b)   w: h/(1+h) ext down
+   0 of 11 b values fit one A(b)   w: h/(1+h) ext up
+   1 of 11 b values fit one A(b)   w: t/(t+b) double down
+   1 of 11 b values fit one A(b)   w: t/(t+b) double up
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored down
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored up
+   0 of 11 b values fit one A(b)   w: t/(t+b) ext down
+   0 of 11 b values fit one A(b)   w: t/(t+b) ext up
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored double down
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored double up
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored x87 down
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored x87 up
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored ext down
+   1 of 11 b values fit one A(b)   w: t/(t+b) stored ext up
+   0 of 11 b values fit one A(b)   w: exact ln of the product
+3. separable
+  Excel: all 99 False, integer a False
+  control: one extended sum of correctly rounded lnGamma: all 99 True, integer a True
+  control: TOMS betaln (Excel LN, GAMMALN): all 99 False, integer a True
+  control: random k in -2..2: all 99 False, integer a False
+4. most cells a separable error explains
+  Excel 94 of 99
+  random k in -2..2: 82 of 99

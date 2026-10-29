@@ -25,7 +25,9 @@ use crate::{
     number_format::{complex_part_to_text, to_precision},
 };
 
+mod reading;
 mod trig;
+use reading::{has_inner_minus, strip_currency_symbols};
 use trig::{imcos, imcosh, imcot, imcsc, imcsch, imsec, imsech, imsin, imsinh, imtan};
 
 /// This implements all functions with complex arguments in the standard
@@ -226,21 +228,6 @@ fn parse_complex_number(s: &str) -> Result<(f64, f64, Suffix), String> {
     }
 }
 
-/// Whether `text`, past its leading spaces, has a `-` that is neither its first character nor an
-/// exponent's sign (`1E-3`, an `E` after a digit or a `.`): Excel's complex reader does not hand
-/// such text to VALUE.
-fn has_inner_minus(text: &str) -> bool {
-    let bytes = text.trim_start_matches(' ').as_bytes();
-    (1..bytes.len()).any(|i| {
-        let exponent_sign = matches!(bytes.get(i - 1), Some(b'E' | b'e'))
-            && matches!(
-                i.checked_sub(2).and_then(|j| bytes.get(j)),
-                Some(b'0'..=b'9' | b'.')
-            );
-        bytes.get(i) == Some(&b'-') && !exponent_sign
-    })
-}
-
 /// A parsed complex number: the real part, the imaginary part and the suffix.
 type ComplexParts = (f64, f64, Suffix);
 
@@ -330,7 +317,11 @@ impl Model {
         if number_text_too_long(&value) {
             return Err(value_error(cell));
         }
-        if value.starts_with(['\t', '\u{3000}']) {
+        // A tab, U+3000, NBSP, LF or CR at either end, past leading spaces, is `#NUM!`, where a space
+        // is read: `IMABS` of tab&"5", " "&tab&"5", "5"&tab, "3+4i"&LF and NBSP&"3+4i" are `#NUM!`
+        // (probes/eng-inumber-reading, probes/eng-inumber-currency-shapes A13:A26).
+        const UNREAD_EDGE: [char; 5] = ['\t', '\u{3000}', '\u{a0}', '\n', '\r'];
+        if value.trim_start_matches(' ').starts_with(UNREAD_EDGE) || value.ends_with(UNREAD_EDGE) {
             return Err(num_error(cell));
         }
         // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",
@@ -338,7 +329,7 @@ impl Model {
         // `IMABS` of "2024-01-01", "1-2-2020", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
         // while " -5", "- 5", "1E-3%" and "1,000E-2" are read (probes/eng-inumber-reading A4,
         // probes/eng-inumber-date-boundary column A).
-        match parse_complex_number(&value) {
+        match parse_complex_number(&strip_currency_symbols(&value)) {
             Ok(z) => Ok(z),
             Err(_) if has_inner_minus(&value) => Err(num_error(cell)),
             Err(_) => self
@@ -382,8 +373,13 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         };
         // Excel: an empty argument, in either place, is `#N/A` (`IMSUB("3+4j",)`, `IMDIV(,"3+4j")`):
-        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4.
-        if args.iter().any(|arg| matches!(arg, Node::EmptyArgKind)) {
+        // probes/eng-imsub-imdiv-blank-j A3, A4, B3, B4. A variable bound to an omitted LAMBDA
+        // parameter or an empty LET value hands the omission on: `LAMBDA(a,b,IMSUB(a,b))("1",)`,
+        // `LET(e,,IMSUB("1",e))` (probes/eng-imsub-imdiv-lambda-let-empty A1:A4, A12).
+        if args
+            .iter()
+            .any(|arg| matches!(arg, Node::EmptyArgKind) || self.is_omitted_variable(arg))
+        {
             return Err(CalcResult::new_error(Error::NA, cell, String::new()));
         }
         let first = self.complex_of(first, EmptyText::ZeroIfBlank, cell)?;

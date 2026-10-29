@@ -25,8 +25,7 @@ Known failures left in eval/baseline/probes.txt for probes/t2576-error-type-cell
   `fn_get_two_matrices`; SUMX2MY2 and SUMX2PY2 are unprobed).
 - Calc!E34 `LINEST(ERROR.TYPE(#REF!))`: Excel #VALUE! where `LINEST(2)` is 0 (gen-m9 8d3588d8df0812df A186), ours a fit,
   and its spill F34.
-- Calc!D27 `FTEST({1;2;3},SINGLE(ERROR.TYPE(#REF!)))`: Excel #DIV/0!, ours #NAME? (SINGLE is not parsed; move it to the
-  task that owns SINGLE if one exists).
+- Calc!D27 `FTEST({1;2;3},SINGLE(ERROR.TYPE(#REF!)))`: fixed by T-2938 (typed `SINGLE(x)` is `@x`).
 - probes/t2577-indirect-ref-array (T-2577; an OFFSET or INDIRECT lifted into an array of references carries the same mark,
   statistics.md "An array of references is #NUM! in the paired functions"): Calc!A64
   `F.TEST(LET(x,INDIRECT("B1",{1}),x),{-1,0,1})` Excel #NUM!, ours #VALUE! (`Model::evaluate_sample_arg` follows only a

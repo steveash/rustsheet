@@ -368,6 +368,11 @@ fn bare_letters_digits_and_empty_format() {
         (-0.0001, "", "-"),
         (5.0, "General x", "5 x"),
         (5.0, "x General", "x 5"),
+        // The minus leads the literal (T-2097; gen-m10 039accabcfe1e6c7 F!N1, 9a8b7d68507d7ada F!I1,
+        // bfbcd16cee266336 F!D19).
+        (-1.5, "\"x\"General", "-x1.5"),
+        (-0.5, "\"x\"General", "-x0.5"),
+        (-1e15, "\"x\"General", "-x1E+15"),
         (1.0, "0\\:\\:", "1::"),
         (1.0, "0::a", "1:a"),
     ];

@@ -6,9 +6,11 @@
 //! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
 //! migration).
 
+pub(super) mod ln_beta;
+
 use super::beta_density::{algdiv, beta_density_small_shape};
 use super::gammaln::excel_gammaln;
-use super::incomplete_beta::{beta_reg_complement, closed_form_tails};
+use super::incomplete_beta::{beta_reg_tails, closed_form_tails};
 use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
 use crate::x87_exp::excel_exp_extended;
 use crate::x87_log10::excel_ln;
@@ -182,24 +184,35 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
 }
 
 /// BETA.DIST's cdf, w of K(a, b, x, y) with y = fl(1 - x) formed by the caller (SPEC-0025's caller
-/// table): Excel's closed forms first (T-2502), then the bpser branches of the port, and today's
-/// kernel for every branch not ported yet.
+/// table): [`kernel_tails`]'s w.
 pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    if let Some((w, _)) = closed_form_tails(x, y, a, b) {
-        return w;
-    }
-    ported_tails(a, b, x, y).map_or_else(|| beta_reg_complement(x, y, a, b), |(w, _)| w)
+    kernel_tails(x, y, a, b).0
+}
+
+/// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table:
+/// [`closed_or_ported_tails`], and today's kernel (`incomplete_beta::beta_reg_tails`) for every
+/// branch not ported yet.
+pub(crate) fn kernel_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+    closed_or_ported_tails(x, y, a, b).unwrap_or_else(|| beta_reg_tails(x, y, a, b))
+}
+
+/// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table: Excel's
+/// closed forms first (`incomplete_beta::closed_form_tails`, T-2502), then the branches of the
+/// port ([`ported_tails`]). `None` where neither applies, and the caller keeps today's kernel.
+pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
+    closed_form_tails(x, y, a, b).or_else(|| ported_tails(a, b, x, y))
 }
 
 /// (w, w1) of K(a, b, x, y) on the branches ported so far, `None` elsewhere. bratio computes one
 /// tail and forms the other as (0.5 - w) + 0.5, each step an x87 op stored to a double
 /// (statistics.md "Incomplete beta is TOMS 708 `bratio`").
 ///
-/// A shape of 1 outside the closed forms (a0 = 1 with y0 > 0.9) stays on today's kernel, whose
-/// x^a there is Excel's value: `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966
-/// (probes/ftest-decomposition B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
+/// A shape of 1 outside the closed forms (a0 = 1 with y0 > 0.9) stays on today's kernel
+/// (`incomplete_beta::shape_one_tails`), whose y0^b0 there is Excel's value:
+/// `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966 (probes/ftest-decomposition
+/// B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
 pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
-    // TODO(T-2847): find Excel's form at a0 = 1 outside the closed forms before moving it.
+    // TODO(T-3007): find Excel's form at a0 = 1 outside the closed forms before moving it.
     if a == 1.0 || b == 1.0 {
         return None;
     }
@@ -343,9 +356,12 @@ pub(super) fn bpser_with_ln_beta(a: f64, b: f64, x: f64, neg_ln_beta: Register) 
 ///   b0 = 8. T-2503's density form (`beta_density::ln_beta_small_shape`) differs at its edges: it
 ///   takes b0 = 8 by GAMMALN, B(a0, 1) as 1/a0 and a plain a0 + b0;
 /// - both >= 1 and max <= 8: GL(a) + (GL(b) - GL(fl(a + b))) in argument order, held unstored;
-/// - min(a, b) = 1 and max > 8: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506).
+/// - min(a, b) = 1: -LN(max(a, b)), B(1, b) = 1/b as the density takes it (T-2506, T-2847);
+/// - both > 1 and max > 8: the accurate ln B at half-integer shapes, TOMS `betaln` elsewhere
+///   ([`ln_beta`], T-3007; Excel's own form there is open, T-2924).
 ///
-/// `None` for both shapes > 1 with one above 8, where the model takes an accurate ln B.
+/// `None` where [`ln_beta::toms_betaln`] is off its domain, which only a non-finite shape reaches
+/// here.
 pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
     let (small, large) = if a < b { (a, b) } else { (b, a) };
     if small < 1.0 {
@@ -362,15 +378,18 @@ pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
         };
         return Some(Register::load(-ln_beta));
     }
+    if small == 1.0 {
+        // B(1, b) = 1/b, so L = -LN(b), the density's form (`beta_density::ln_beta_small_shape`),
+        // exact where the GAMMALN sum is not. Only L140's bpser(a0, 1, x0) at a whole b0 reaches
+        // it (`ported_tails` keeps a caller's shape of 1 on today's kernel), which BINOM.DIST's
+        // whole shapes always take (ironcalc-calc BINOM.xlsx E5:E8, E75 are Excel's exact value
+        // here and 2 ulp off on the sum). Counts and the cells it moves: statistics.md "Incomplete
+        // beta bpser" (T-2506, T-2847).
+        return Some(Register::load(excel_ln(large)));
+    }
     if large > BPSER_GAMMALN_FORM_MAX {
-        // B(1, b) = 1/b, so L = -LN(b), the density's form (`beta_density::ln_beta_small_shape`).
-        // Only L140's bpser(a0, 1, x0) at a whole b0 reaches it (`ported_tails` keeps a caller's
-        // shape of 1 on today's kernel): on r2-bratio's L140 cells it takes the 548 with a0 > 8
-        // off today's kernel, within 15 digits 11,603 -> 11,721 of 11,742. At a0 <= 8 it would add
-        // 72 bit-exact cells there but moves BETA.DIST(0.5,2,2,TRUE) from 1 to 2 ulp off Excel
-        // (ironcalc-calc BETADIST_BETAINV.xlsx G15) and the BETA.INV chained on it
-        // (docs/research/t2506/RESULTS.md).
-        return (small == 1.0).then(|| Register::load(excel_ln(large)));
+        return ln_beta::neg_ln_beta_half_integer(a, b)
+            .or_else(|| Some(Register::load(-ln_beta::toms_betaln(a, b)?)));
     }
     // -(p + q) rounds as (-p) + (-q) does: round to nearest is symmetric.
     let inner =

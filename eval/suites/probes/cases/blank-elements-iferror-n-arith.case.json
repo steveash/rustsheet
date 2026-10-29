@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "IFERROR, IFNA, N and arithmetic over blank elements of FILTER, lifted INDEX and VSTACK arrays (T-2999).",
+  "tags": [
+    "M7",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "D1": 1,
+        "D3": "x",
+        "D5": 5,
+        "A1": "=COUNT(IFERROR(FILTER(D1:D5,TRUE),-1))",
+        "A2": "=COUNT(IFERROR(INDEX(D1:D5,{1,2,3,4,5}),-1))",
+        "A3": "=COUNT(IFERROR(VSTACK(D1:D5),-1))",
+        "A4": "=COUNT(IFNA(FILTER(D1:D5,TRUE),-1))",
+        "A5": "=COUNT(IFNA(INDEX(D1:D5,{1,2,3,4,5}),-1))",
+        "A6": "=COUNT(IFNA(VSTACK(D1:D5),-1))",
+        "A7": "=TEXTJOIN(\"|\",FALSE,IFERROR(FILTER(D1:D5,TRUE),\"#\"))",
+        "A8": "=TEXTJOIN(\"|\",FALSE,FILTER(D1:D5,TRUE))",
+        "A9": "=COUNT(N(FILTER(D1:D5,TRUE)))",
+        "A10": "=COUNT(FILTER(D1:D5,TRUE)+0)",
+        "A11": "=COUNT(IF(TRUE,FILTER(D1:D5,TRUE)))"
+      }
+    }
+  ],
+  "expected": {}
+}
