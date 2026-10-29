@@ -3,7 +3,7 @@ id: T-0096
 title: "M8 milestone exit row: gen-m8a and gen-m8b, the poi subset at 99.5%, M8 probes (decision 0146 item 2)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
