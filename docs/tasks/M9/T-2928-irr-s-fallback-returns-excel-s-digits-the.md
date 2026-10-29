@@ -119,7 +119,7 @@ stay in eval/baseline/.
 - What the next attempt starts from: (1) Newton in any variable is ruled out. Negating every flow leaves each Newton
   iterate bit-for-bit unchanged, but Excel's negated rows differ from their positive rows by up to 1,251 ulp
   (A74 against A12). So the step depends on the sign of P, as a secant's signed first offset does.
-  (2) Where v < 1, Excel's results lie on a 2^-53 grid in v, as T-2565 found for the secant: 29 of the 32 distinct values, where chance gives 3.3.
-  So the iterate is held as d = 1 - v or in a fixed-point form.
+  (2) Where v < 1, Excel's results lie on a 2^-53 grid in v, as T-2565 found for the secant: 29 of the 32 distinct
+  values, where chance gives 3.3. So the iterate is held as d = 1 - v or in a fixed-point form.
 - Reopen on new evidence: T-3117 probes the same families scaled by exact powers of two and negated. That separates an
   absolute residual test from the iteration's arithmetic, which a 2^j scale does not change.
