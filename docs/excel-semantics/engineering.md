@@ -1019,10 +1019,11 @@ Ours flushes that term since T-2549 and matches all 12 cells (146 of the probe's
 
 ## BESSELI overflow point (T-2613)
 Evidence: probes/besseli-overflow-cut-sweep (x = 709.50 to 709.78 step 0.01, orders 0 and 1), -fine (709.700 to 709.710 step 0.001, orders 0, 1 and 5), -finest (709.7001 to 709.7009, 709.70001, 709.70005, 709.70009, order 0), excel-graph.
-Rule: BESSELI(x,n) is finite up to x = 709.7 (`BESSELI(709.7,0)` is 2.4788083687166675E+306, `(709.7,1)` 2.4770621409647947E+306, `(709.7,5)` 1.9147648105012915E+306) and `#NUM!` at every probed x above it, to 709.78 and on, at orders 0, 1 and 5. The cut is in (709.7, 709.70001], far below the true overflow of I0 near 713.98 and of `exp` at 709.78, so it is a constant in Excel's code, taken as 709.7. Negative x is unprobed (ours takes |x|).
-Status: VERIFIED (excel-graph) for positive x
+Rule: BESSELI(x,n) is finite up to x = 709.7 (`BESSELI(709.7,0)` is 2.4788083687166675E+306, `(709.7,1)` 2.4770621409647947E+306, `(709.7,5)` 1.9147648105012915E+306) and `#NUM!` at every probed x above it, to 709.78 and on, at orders 0, 1 and 5. The cut is in (709.7, 709.70001], far below the true overflow of I0 near 713.98 and of `exp` at 709.78, so it is a constant in Excel's code, taken as 709.7.
+Rule (T-3005, probes/besseli-overflow-cut-negative, excel-graph, 2026-10-29): negative x has the same cut on |x|. `BESSELI(-709.7,n)` is finite for n = 0 to 5 with the sign of (-1)^n (`(-709.7,0)` 2.4788083687166675E+306, `(-709.7,1)` -2.4770621409647947E+306, `(-709.7,5)` -1.9147648105012915E+306), and `BESSELI(-709.70001,n)` for n = 0 to 5 and `(-709.75,1)` are `#NUM!`. Ours takes |x| and matches all 13 cells.
+Status: VERIFIED (excel-graph)
 Implemented in: functions/engineering/transcendental/bessel_i.rs (`BESSELI_OVERFLOW_X`)
-Tasks: T-2613
+Tasks: T-2613, T-3005
 
 ## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
 Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (matched since T-2544); an `IMSUM` of
