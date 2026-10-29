@@ -3,7 +3,7 @@ id: T-3176
 title: "YEAR, MONTH, DAY and WEEKDAY take HOUR's half-second carry past midnight, through one helper with time_of_day_parts"
 milestone: M2
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,13 +31,18 @@ failing cells of probes/t3137-date-parts-near-midnight pass.
   days360_serial's other callers keep their behavior. Do not write a second rounding.
 
 ## Acceptance criteria
-- [ ] Every cell of probes/t3137-date-parts-near-midnight passes. `make eval-baseline` shrinks the known failures, with
+- [x] Every cell of probes/t3137-date-parts-near-midnight passes. `make eval-baseline` shrinks the known failures, with
       0 regressions in every suite (probes/second-rounding, time-parts-rounding-window, time-parts-past-max-date,
       weekday-serial-zero included).
-- [ ] A unit test pins `DAY(1-0.5/86400)` = 1, one ULP below it = 0, and `YEAR(2958466-0.5/86400)` = `#NUM!`.
-- [ ] dates.md's "Ours" line says the engine matches.
-- [ ] `make check` green; reviewers approve.
+- [x] A unit test pins `DAY(1-0.5/86400)` = 1, one ULP below it = 0, and `YEAR(2958466-0.5/86400)` = `#NUM!`.
+- [x] dates.md's "Ours" line says the engine matches.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - EDATE, EOMONTH, DATEDIF, YEARFRAC, WORKDAY and the other date readers (unprobed at the carry).
 - The 1904 date system.
+
+## Outcome
+Added `carried_day` in `date_and_time.rs`, used by `date_part`, WEEKDAY and `time_part`'s bound (explicit
+`> 2958465` check in `date_part`). Unit test `date_parts_carry_past_midnight`. Eval: 223 known failures fixed
+(probes/t3137-date-parts-near-midnight), 0 regressions.

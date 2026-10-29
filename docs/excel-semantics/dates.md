@@ -934,9 +934,8 @@ negatives are `#NUM!` for all seven functions (R!B121:H126), not serial 0. (A fo
 unary minus binds before `^`, so the probe writes `0-2^-40`.)
 Evidence: probes/t3137-date-parts-near-midnight R!A1:H126 (V!A holds the serials, built exactly in formulas;
 excel-graph, 2026-10-29, T-3137).
-Ours: `date_part` floors the serial and `time_part` bounds it with `days360_serial`, so 223 cells differ (each date
-part that changes across the carry in the 10 carried rows per base, and HOUR, MINUTE and SECOND at the exact tie 2958465.9999942128); T-3176 shares
-one helper between the two.
+Ours: matches. `carried_day` (`floor(v + 0.5/86400)`, negatives only floored) serves YEAR, MONTH, DAY, WEEKDAY and the bound of HOUR,
+MINUTE and SECOND (T-3176; all 223 cells of the probe pass).
 Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second
