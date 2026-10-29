@@ -66,6 +66,15 @@ Already visibly off, and further from Excel with T-0971 (unowned until now):
   12 ulp).
 
 docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)".
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - probes-numeric/m9-gamma-dist-a50.case.json: Calc!A1, A11, A13, A2, A21, A3
+  - probes-numeric/m9-gamma-dist-a500.case.json: Calc!A13, A2, A24, A3
+  - gen-m9/40425341c5034eed.case.json: Calc!A265
+  - gen-m9/2801c1c11c21e134.case.json: Calc!A241
+  - gen-m9/4e55500bb8ad3cd8.case.json: Calc!A341
+  - gen-m9/7bd219ec0c0c5e22.case.json: Calc!A239
+  - gen-m9/a013a45a8fbcab4f.case.json: Calc!A338
 
 ## Acceptance criteria
 - [ ] Each cell above is within half a unit of Excel's 15th significant digit, with no new baseline line.

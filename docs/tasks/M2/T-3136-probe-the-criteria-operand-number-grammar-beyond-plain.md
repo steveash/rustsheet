@@ -3,7 +3,7 @@ id: T-3136
 title: "Probe the criteria operand number grammar beyond plain numbers and dates (percent, currency, grouping, time, fraction, parentheses) on the criterion and the text-cell side"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -48,21 +48,29 @@ engine follow-up that makes the cells pass is filed and owns every failing cell.
   two, so that one sum tells exactly which cells matched.
 
 ## Acceptance criteria
-- [ ] `probes/t3136-criteria-formatted-number-operands` is committed with its excel-graph oracle sidecar. It covers
+- [x] `probes/t3136-criteria-formatted-number-operands` is committed with its excel-graph oracle sidecar. It covers
       at least these operand forms: percent, `$` currency (with and without grouping and sign), thousands
       grouping, time, date plus time, mixed fraction, parenthesised negative and exponent-with-percent. Each form
       is read under `=`, `<>`, an ordering operator and a plain operand, against number cells and against text
       cells holding each form. Every cell is read through COUNTIF, SUMIF (power-of-two weights), COUNTIFS or SUMIFS,
       and at least one D-function.
-- [ ] criteria.md has a new VERIFIED section with the rule for the criterion side and for the text-cell side,
+- [x] criteria.md has a new VERIFIED section with the rule for the criterion side and for the text-cell side,
       citing cells. It names which existing reader (if any) the rule matches: `parse_formatted_number`, typed input
       or the date grammar. Forms the probe did not cover are listed as UNVERIFIED.
-- [ ] Every failing cell of the case has an open owner: an engine follow-up task (lane functions-criteria,
+- [x] Every failing cell of the case has an open owner: an engine follow-up task (lane functions-criteria,
       milestone M2) names the case and the cells, and `make exit-owners MILESTONE=M2` reports 0.
       `make eval-baseline` records the case as new coverage, with no regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine's criteria parser (the follow-up task).
 - Wildcard patterns, text ordering and the collation (T-3114, T-3115).
 - Non-en-US locales.
+
+## Outcome
+probes/t3136-criteria-formatted-number-operands (406 formula cells, excel-graph 2026-10-29): a criterion operand reads a
+number exactly when VALUE does (percent, currency, grouping, time, date-time, mixed fraction, parentheses, `1e2%`; `1,00`
+stays text, as `VALUE("1,00")` is `#VALUE!`), and `=`/plain numeric criteria match the text cells VALUE reads as that
+number; `<>` counts every text cell and `>=` none. SUMIF, SUMIFS, COUNTIF, COUNTIFS and DSUM agree. criteria.md has the
+VERIFIED section. The engine fails A1:G52 and H25 (VALUE mixed fraction), owned by follow-up T-3151 (functions-criteria,
+opus); rows 53-56 pass. Eval delta: new case, recorded as new coverage, 0 regressions.

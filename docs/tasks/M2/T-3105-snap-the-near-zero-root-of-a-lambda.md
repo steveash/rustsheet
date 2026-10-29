@@ -3,7 +3,7 @@ id: T-3105
 title: "Snap the near-zero root of a LAMBDA body called through a defined name, as an in-place call does"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,11 +26,17 @@ and as the engine already does for an in-place, LET-bound or nested call.
   reach it. Route it through the same root evaluation instead of adding a second snap.
 
 ## Acceptance criteria
-- [ ] Every cell of probes/t3094-snap-lambda-call-forms passes (`make eval-baseline` drops its 15 known failures),
+- [x] Every cell of probes/t3094-snap-lambda-call-forms passes (`make eval-baseline` drops its 15 known failures),
       no regressions.
-- [ ] numbers.md's paragraph says the engine matches the named-call cells.
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md's paragraph says the engine matches the named-call cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - LAMBDA helpers (MAP, BYROW, REDUCE, ...): T-3095.
 - Sheet-scoped names.
+
+## Outcome
+`Model::call_lambda` now evaluates a defined-name LAMBDA's body through `Model::evaluate_formula_root`, as it already
+did for an in-place call (`root_snap` is set for every direct call; the helpers' callers still leave it off, T-3095).
+probes/t3094-snap-lambda-call-forms passes 44/44; numbers.md says so. Eval delta: probes known failures -15 (C2:F2,
+C3:F3, C5:F5, J2, J3, J5), 0 regressions. Follow-up: T-3149 (probe sheet-scoped names).
