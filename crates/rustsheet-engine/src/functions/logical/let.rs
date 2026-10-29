@@ -193,17 +193,22 @@ impl Model {
                 )),
                 // Excel refuses a name under a unary plus typed (`LET(+x,1,x)`, Graph PATCH 400,
                 // docs/excel-semantics/syntax.md "A typed unary plus stays in the formula text",
-                // T-2887), as it refuses a repeated name.
-                Node::UnaryPlus { .. } => Err(CalcResult::new_error(
-                    Error::ERROR,
-                    cell,
-                    format!("LET: argument {} must be a variable name", 2 * i + 1),
-                )),
-                _ => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    format!("LET: argument {} must be a variable name", 2 * i + 1),
-                )),
+                // T-2887), as it refuses a repeated name. A plus over a non-name is unprobed.
+                other => {
+                    let plus_name = matches!(
+                        other,
+                        Node::UnaryPlus { child } if matches!(**child, Node::NamedVariableKind { .. })
+                    );
+                    Err(CalcResult::new_error(
+                        if plus_name {
+                            Error::ERROR
+                        } else {
+                            Error::VALUE
+                        },
+                        cell,
+                        format!("LET: argument {} must be a variable name", 2 * i + 1),
+                    ))
+                }
             };
             let name = match name {
                 Ok(name) => {
