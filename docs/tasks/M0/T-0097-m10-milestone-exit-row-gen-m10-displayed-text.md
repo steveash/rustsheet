@@ -3,7 +3,7 @@ id: T-0097
 title: "M10 milestone exit row: gen-m10 displayed text and value cells, M10 probe value and text cells (decision 0146 item 4)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
