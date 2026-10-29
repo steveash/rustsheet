@@ -3,7 +3,7 @@ id: T-3114
 title: "Probe and fit Excel's text collation for letters beyond Latin-1 (Latin Extended-A, combining marks, accented Greek, Cyrillic)"
 milestone: M2
 lane: engine
-status: blocked
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -77,7 +77,7 @@ backed by a committed oracle case. Today every such letter sorts after `z` by co
 - Follow-up: T-3154 (accents across Latin-1 and Extended-A on one letter, stacked marks, `ё`/`й`).
 
 ## Blocked because
-Blocked because: review-round limit
+Resumed after the review-round limit (step 5c).
 - Round 3 (excel-fidelity, REQUEST_CHANGES; security, architecture and quality had approved): one
   MAJOR finding, a coercion.md line said exact MATCH equates combining-mark spellings with precomposed
   letters, which Calc!H8/H9 contradict. It is fixed on this branch (doc only; the engine already
