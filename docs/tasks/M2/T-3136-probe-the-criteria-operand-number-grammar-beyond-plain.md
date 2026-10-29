@@ -3,7 +3,7 @@ id: T-3136
 title: "Probe the criteria operand number grammar beyond plain numbers and dates (percent, currency, grouping, time, fraction, parentheses) on the criterion and the text-cell side"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
