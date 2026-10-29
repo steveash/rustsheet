@@ -7,6 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
+defer: phase-1b
 depends_on: []
 ---
 
@@ -22,4 +23,4 @@ T-2665 found that, past the range and where the balance does not cancel, Excel's
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- IPMT's cancelling pv-0 cells (T-2667).

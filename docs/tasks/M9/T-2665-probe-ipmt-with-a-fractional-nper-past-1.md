@@ -52,5 +52,7 @@ The old FV recurrence fit 118 of the 300 fractional cells and was visibly off on
 rate that is not a whole number (gen-m9 0a957119475760c5 A153 among them) and the exact quotient at a whole rate
 (gen-m9 b73c6cc96e093f03 A268, fin-ipmt-ppmt-huge-rate A186/A190). That is a fitted switch in `balance_interest`.
 Rate 1000 fits neither (48 cells): follow-up T-3086. financial.md "IPMT cancels on fv" is updated.
-Eval: the new case passes 552/600, fin-ipmt-ppmt-huge-rate gains 1 cell, there are no regressions, and gen-m9 A153
-stays passing.
+Eval: there are no regressions on existing cases, fin-ipmt-ppmt-huge-rate gains 1 cell (A90), and gen-m9 A153 stays
+passing. The new case passes 552/600, and its 48 known failures (all at rate 1000, one ulp off and within 15 digits)
+belong to T-3086. The visible-parity target is not met here: the 7 visibly-off IPMT cells are the cancelling pv-0
+cells of fin-ipmt-ppmt-huge-rate, which are out of scope for this task and owned by T-2667.
