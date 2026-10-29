@@ -261,7 +261,14 @@ fn parse_separated(
     };
     let (day, day_format) = parse_day(day_str)?;
     let (month, month_format) = parse_month_number(month_str)?;
-    let (year, year_format) = parse_year(year_str)?;
+    // Excel: `VALUE("1-1-1")` and `VALUE("1/1/1")` are 2001-01-01, a one-digit year being 200x
+    // (docs/excel-semantics/text.md "VALUE reads a sign before a space...",
+    // probes/value-sign-space-mixed-fraction-dash-date A13, A14, A18, A19).
+    let (year, year_format) = if is_digits(year_str, 1..=1) {
+        (two_digit_year(year_str.parse::<i32>().map_err(|e| e.to_string())?), "yy")
+    } else {
+        parse_year(year_str)?
+    };
     let format = if short_format.starts_with('d') {
         format!("{day_format}{separator}{month_format}{separator}{year_format}")
     } else {
