@@ -98,10 +98,10 @@ pub(super) fn algdiv(a: f64, b: f64) -> f64 {
 }
 
 /// The Stirling correction TOMS 708 `algdiv` and `bcorr` share, in doubles: c/b times the series
-/// in t = (1/b)^2 whose coefficients are scaled by s_n = (1 - x^n)/(1 - x), n = 3, 5, ..., 11.
+/// in t = (1/b)^2 whose coefficients are scaled by `s_n = (1 - x^n)/(1 - x)`, n = 3, 5, ..., 11.
 pub(super) fn stirling_del(c: f64, x: f64, b: f64) -> f64 {
     let [c0, c1, c2, c3, c4, c5] = ALGDIV_C;
-    // s_n by TOMS's recurrence.
+    // `s_n` by TOMS's recurrence.
     let x2 = x * x;
     let s3 = (x + x2) + 1.0;
     let s5 = (x + x2 * s3) + 1.0;

@@ -6,6 +6,8 @@
 //! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
 //! migration).
 
+pub(super) mod ln_beta;
+
 use super::beta_density::{algdiv, beta_density_small_shape};
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{beta_reg_tails, closed_form_tails};
@@ -358,7 +360,8 @@ pub(super) fn bpser_with_ln_beta(a: f64, b: f64, x: f64, neg_ln_beta: Register) 
 /// - both > 1 and max > 8: the accurate ln B at half-integer shapes, TOMS `betaln` elsewhere
 ///   ([`ln_beta`], T-3007; Excel's own form there is open, T-2924).
 ///
-/// `None` only for a non-finite shape.
+/// `None` where [`ln_beta::toms_betaln`] is off its domain, which only a non-finite shape reaches
+/// here.
 pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
     let (small, large) = if a < b { (a, b) } else { (b, a) };
     if small < 1.0 {
@@ -399,8 +402,6 @@ pub(super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
 fn half_complement(v: f64) -> f64 {
     extended_sum(extended_sum(0.5, -v), 0.5)
 }
-
-pub(super) mod ln_beta;
 
 #[cfg(test)]
 mod tests;
