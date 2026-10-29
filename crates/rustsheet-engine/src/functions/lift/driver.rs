@@ -319,14 +319,22 @@ fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
 /// errors excepted (`UNIQUE(D1:D3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is x, x in column one and
 /// empty in column two, `by_col` or not; a 1x3 `{FALSE,FALSE,FALSE}` is 1, empty, empty;
 /// probes/m7-unique-lift-corners, T-2348; docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's
-/// lifted elements").
-fn empty_past_first_column(result: CalcResult) -> CalcResult {
+/// lifted elements"). With `later_error` (SORTBY's second pair) they are `#VALUE!` instead.
+fn empty_past_first_column(result: CalcResult, later_error: bool) -> CalcResult {
+    // SORTBY with a second pair makes them `#VALUE!` instead, as for entries that differ
+    // (`SORTBY(A1:A3,C1:C3,{1,1},A1:A3,1)`: 1, `#VALUE!`; probes/sortby-lifted-element-corners
+    // row 16, T-3027).
+    let emptied = if later_error {
+        ArrayNode::Error(Error::VALUE)
+    } else {
+        ArrayNode::Empty
+    };
     match result {
         CalcResult::Array(mut rows) => {
             for row in &mut rows {
                 for node in row.iter_mut().skip(1) {
                     if !matches!(node, ArrayNode::Error(_)) {
-                        *node = ArrayNode::Empty;
+                        *node = emptied.clone();
                     }
                 }
             }
@@ -652,7 +660,7 @@ impl Model {
             return error;
         }
         if past_first_column {
-            return empty_past_first_column(result);
+            return empty_past_first_column(result, options.later_error);
         }
         result
     }
