@@ -79,7 +79,8 @@ pub struct Localized {
     /// `[$-70409]g|yyyy` "|2566"; probes/text-locale-era-gregorian).
     pub japanese_lcid: bool,
     /// A `B2` before a calendar-3, -5 or -7 tag: every year token converts once more than it
-    /// would without the `B2` ([`japanese_era`]; `calendar_dates::year_token_text`).
+    /// would without the `B2` ([`japanese_era`]; `calendar_dates::year_token_text`). Before a
+    /// calendar-4 tag the years are a garbled Minguo year instead (`calendar_dates::taiwan_after_b2`).
     pub year_twice: bool,
 }
 
@@ -131,14 +132,17 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// text-locale-lunar-tokens A79). Calendar digits 15 and above are unprobed here.
 /// Under calendars 3, 5 and 7 the `B2` converts every year token once more
 /// ([`Localized::year_twice`]; `B2[$-70409]yyyy|e` of 2023-03-15 is "3109|2566",
-/// `B2[$-50409]yyyy|e` "6689|4356"; probes/t2932-b2-calendar-twice). Calendar 4 prints other
-/// years there ("01"), not modelled (TODO(T-3028)).
+/// `B2[$-50409]yyyy|e` "6689|4356"; probes/t2932-b2-calendar-twice). Under calendar 4 it prints
+/// a garbled Minguo year ("01"; `calendar_dates::taiwan_after_b2`).
 pub fn resolve_after_hijri_prefix(tag: &str) -> LocaleTag {
     match resolve_with(tag, true) {
         LocaleTag::Names(localized) => LocaleTag::Names(Localized {
             year_twice: matches!(
                 localized.calendar,
-                Calendar::Japanese { explicit: true } | Calendar::Korean | Calendar::Thai
+                Calendar::Japanese { explicit: true }
+                    | Calendar::Korean
+                    | Calendar::Taiwan
+                    | Calendar::Thai
             ),
             ..localized
         }),

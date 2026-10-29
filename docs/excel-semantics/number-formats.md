@@ -145,18 +145,23 @@ before the tag and `B2` after it change nothing):
   boundary is not probed (A72, A73 fall in Reiwa 1927).
 - Month and day tokens and names print as without the `B2` (`B2[$-30411]yyyy-mm-dd|mmmm|dddd` is
   "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` under Thai (T-3029).
-- Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (not modelled,
-  T-3028). probes/t3028-b2-taiwan-years (excel-graph, 2026-10-28; eleven serials, each year token alone) shows every year
-  token prints the Minguo year m = year - 1911, where the tag alone prints the Gregorian year: `yyyy`, `yy`, `y`, `yyy`, `e`,
-  `ee` and `bbbb` all print the same text. For m ≥ 1000 that is m in full (2995-01-23 "1084", 4637
-  "2726", 9999-12-31 "8088"); below 1000 it is "0" and m's first digit (2023, m = 112: "01"; 2173, 262: "02"; 2100,
-  189: "01"; 2000, 89: "08"; 1968, 57: "05"; 1927, 16: "01"; 1912-01-01, 1: "01"); m below 1 (1900-01-01) is `#VALUE!`
-  in every token. The cuts are unprobed: no m between 262 and 1084, and no m = 0 (1911). `g` and `ggg` print nothing. `b` and `bb` print m's third and fourth characters, and they read past the
-  end of m's text: m ≥ 1000 gives its last two digits ("84", "26", "88"); a three-digit m gives its third digit and then a
-  character that depends on the rest of the format ("2X" alone, "2\u{1c}" after `yyyy|e|` or `yyyy|yy|e|`); a two- or
-  one-digit m gives U+0F01 and that character ("\u{f01}X"). `yyyy|e|b` is the same under zh-TW (`B2[$-40404]`; the other tokens unprobed there). Status: VERIFIED
-  (excel-graph) for the year tokens; `b` below m = 1000 is UNVERIFIED as a rule (its second character looks like memory
-  past the year's text).
+- Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (matched
+  since T-3028). probes/t3028-b2-taiwan-years and t3028-b2-taiwan-cuts (excel-graph, 2026-10-28/29) show every year
+  token prints the Minguo year m = year - 1911, where the tag alone prints the Gregorian year: `yyyy`, `yy`, `y`, `yyy`,
+  `e`, `ee` and `bbbb` all print the same text. For m ≥ 1000 that is m in full (2911-01-01, m = 1000: "1000"; 2995-01-23
+  "1084", 4637 "2726", 9999-12-31 "8088"); below 1000 it is "0" and m's first digit (2910-12-31, m = 999: "09"; 2023,
+  m = 112: "01"; 2173, 262: "02"; 2000, 89: "08"; 1912-01-01, 1: "01"); m below 1 (1911-12-31, m = 0; 1900-01-01) is
+  `#VALUE!` in every year token. `g` and `ggg` print nothing. `b` and `bb` print m's third and fourth characters and read
+  past the end of m's text: m ≥ 1000 gives its third and fourth digits ("00", "84", "88"); a missing third character is
+  U+0F01, and a missing fourth one is a character whose code is set by the section's first date or time token, literals
+  skipped, whatever comes after the `b` and whatever the serial: `d` 13, `dd` 14, `ddd` 15, `dddd` (and longer) 16,
+  `m` 17, `mm` 18 (also as minutes, `mm:ss|b`), `mmm` 19, `mmmm` 20, `h` 21, `hh` 22, `s` 25, `ss` 26 (also `ss.00`),
+  `y` and `yy` 27, `yyy` to `yyyyy` 28, `AM/PM` and `A/P` (any case) 34, `[h]` and `[hh]` 48, `[m]` and `[mm]` 49,
+  `[s]` and `[ss]` 50, `aaa` 51, `g` 53, `gg` 54, `ggg` 55, `e` 56, `ee` 57, `mmmmm` 59, `b` and `bb` 88 ("X", also when
+  the `b` is first itself), `bbbb` 89 ("Y"). So `B2[$-40409]b` of 2023-03-15 is "2X", `yyyy|b` "01|2\u{1c}", `e|b`
+  "01|28", `"x"b` "x2X", of 2000-01-01 `b` "\u{f01}X". (A guess, not evidence: the codes look like Excel's internal token codes.) `yyyy|e|b` is
+  the same under zh-TW (`B2[$-40404]`). Status: VERIFIED (excel-graph). The engine gives `aaa` `ddd`'s 15 (T-3089);
+  `aaaa` and other year tokens' effect on non-year tokens (`B2[$-40409]d` of 1911) are unprobed.
 - The same as a cell number format (B1-B5).
 Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
 `b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"

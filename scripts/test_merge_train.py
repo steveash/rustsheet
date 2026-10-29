@@ -414,6 +414,8 @@ class GitHub(Client):
         self.mergeable: object = True
         self.refuse: set[int] = set()
         self.unlabelled: set[int] = set()
+        self.closed: list[int] = []  # closed PRs still labelled ready-to-merge
+        self.branch = merge_train.TRAIN_BRANCH  # the branch whose push CI runs report
         # The scripted CI oracle (T-2998): when set, each tested sha is pending for `polls` polls,
         # then concludes `oracle(sha)` ("green", "red" or "cancelled"), judged once per sha.
         self.oracle: Callable[[str], str] | None = None
@@ -460,7 +462,7 @@ class GitHub(Client):
         done = state in ("green", "red", "cancelled")
         run_ = {
             "id": 9 + len(self.tested), "path": merge_ready.CI_WORKFLOW, "event": "push", "head_sha": sha,
-            "head_branch": merge_train.TRAIN_BRANCH, "status": "completed" if done else "in_progress",
+            "head_branch": self.branch, "status": "completed" if done else "in_progress",
             "conclusion": {"green": "success", "red": "failure", "cancelled": "cancelled"}.get(state),
             "check_suite_id": 5,
         }
@@ -530,6 +532,10 @@ class GitHub(Client):
             return self.runs(query["head_sha"])
         if path.endswith("/check-runs"):
             return self.checks()
+        if path == "issues" and dict(request.query) == {"state": "closed", "labels": merge_ready.READY_LABEL,
+                                                          "per_page": "100", "page": "1"}:
+            closed = [pr for pr in self.closed if pr not in self.unlabelled]
+            return [{"number": pr, "pull_request": {}} for pr in closed] + [{"number": 99}]  # 99: an issue
         if path.startswith(("issues/", "actions/workflows/")):
             return {}
         raise GhError(f"sim: no endpoint for {request.method} {path}")

@@ -163,10 +163,14 @@ merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads 
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
 
-.PHONY: merge-mode merge-train
-merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; TRAIN=1 merges a green train, in train mode only
-	$(if $(DRY_RUN)$(TRAIN),,$(error DRY_RUN=1 or TRAIN=1 is required))
-	$(PY) scripts/merge_train.py $(if $(DRY_RUN),--dry-run,--train)
+.PHONY: merge-mode merge-train merge-flip-check
+merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; SHADOW=1 tests and predicts on merge-train/shadow, in shadow mode only; TRAIN=1 merges a green train, in train mode only
+	$(if $(DRY_RUN)$(TRAIN)$(SHADOW),,$(error DRY_RUN=1 or SHADOW=1 or TRAIN=1 is required))
+	$(PY) scripts/merge_train.py $(if $(DRY_RUN),--dry-run,$(if $(SHADOW),--shadow,--train))
+
+merge-flip-check: ## Whether a PR only sets the merge-train switch to lock (SPEC-0027 "The switch", decision 0157); prints the head sha to merge with expectedHeadSha: make merge-flip-check PR=123 (exit 0: a flip PR; 1: not one; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_flip.py check '$(PR)'
 
 merge-mode: ## The merge-train mode on a freshly fetched origin/main: lock, shadow or train (anything else reads as lock; SPEC-0027)
 	$(PY) scripts/merge_train.py mode
