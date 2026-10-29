@@ -273,7 +273,11 @@ fn excepted_cells(
         }
     }
     let (mut stale, mut unchecked) = (Vec::new(), Vec::new());
-    for cell in exceptions.cells.keys().filter(|cell| !found.contains(*cell)) {
+    for cell in exceptions
+        .cells
+        .keys()
+        .filter(|cell| !found.contains(*cell))
+    {
         let id = crate::runner::cell_id(&cell.0, &cell.1);
         let suite = cell.0.split('/').next().unwrap_or_default();
         if scored.contains(suite) {
