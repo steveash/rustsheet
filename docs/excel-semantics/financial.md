@@ -2298,12 +2298,13 @@ T-1592 (fourth round, 2026-10-26): the start and the stop rule are fitted.
   at the root, so the back-chain cannot reach their start.
 - Stop: an analytic-Newton step on PRICE (the `^`-priced PRICE that PRICE itself computes) that is below 1e-10 is not
   taken, so the value is the iterate before it. That is why the values sit short of the root. The cut lies between 9.67e-11
-  (a step yield-start-sweep C18 does not take) and 1.01e-10 (one yield-start-one-input B21 takes). This replaces the step-size
+  (a step yield-start-sweep C18 does not take) and 1.01e-10 (one yield-start-one-input B21 takes; tightened by T-2330 below). This replaces the step-size
   cuts tried in T-2187 and T-2304: their 6e-6 to 7e-6 "last steps" are the step before the one that is not taken.
 - Stop re-checked on every cell (T-2330, lab arithmetic, `^`-priced, from the fitted start with T-2777's term): of the 741
   YIELD probe cells with more than one coupon left (solver-iteration-traces, bond-one-period-bases, yield-solver-sweep,
   yield-start-sweep, yield-start-one-input, yield-start-rate-term, yield-start-term-basis, yield-newton-domain), 721 are
-  matched within 4 ulp by some cut, and every one of them by any cut in (9.6715e-11, 1.0063e-10]: the largest step not
+  matched within 4 ulp by some cut, and every one of them by any cut in (9.6715e-11, 1.0063e-10] (706 by the cut; the
+  15 large-redemption cells yield-newton-domain C1-C10 and C12-C16 return the 100th iterate whatever the cut): the largest step not
   taken is yield-start-sweep C18's 9.6715e-11 (bit-exact) and the smallest taken is yield-start-one-input A5's
   1.0063e-10 (1 ulp off; with bit-exact cells alone, yield-start-rate-term B1's 1.0081e-10). 1e-10 is inside;
   whether the test is `<` or `<=` is not observable. No cut brings the other 20 within 4 ulp, so their miss is not the

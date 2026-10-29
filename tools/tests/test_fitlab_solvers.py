@@ -226,7 +226,7 @@ def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
 def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     # T-2187: yield-start-sweep A1 (frequency 2) and B1 (frequency 1) step back to the same iterate as
     # yield-solver-sweep S!A1; C1 (frequency 4) is at PRICE's root. Run forward from that start,
-    # analytic Newton returning the iterate after the first step below the cut gives Excel's value on
+    # analytic Newton returning the iterate before the first step below the cut gives Excel's value on
     # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 5e-14 relative (worst 1.2e-14).
     # T-2330: the stop is T-1592's short stop (a step below 1e-10 is not taken); the 6e-6 to 7e-6 "last steps"
     # T-2187 read as a cut are the steps before it.
