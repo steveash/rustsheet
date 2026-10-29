@@ -3,7 +3,7 @@ id: T-2622
 title: "TAKE of a LET scalar, CELL(contents) in COUNT and MODE.SNGL, XMATCH, and a LAMBDA joined as text is #VALUE! (T-2475 probe)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -36,7 +36,7 @@ before implementing it.
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
 
-## Handoff
+## Handoff (resumed)
 Tried: read the task and the existing "empty value" handling (`CELL("contents",<blank>)` is the empty value, special-cased in
 functions/information/mod.rs ~788, drop_take.rs, hstack_vstack.rs, spill_functions.rs ~282; information.md "CELL("contents", ref)
 as a VSTACK argument"). No code changed. Why handed off: the five owned cells need five distinct rules (TAKE of a LET scalar,
