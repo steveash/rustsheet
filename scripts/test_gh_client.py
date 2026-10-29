@@ -49,6 +49,15 @@ FIXTURES: list[tuple[str, Callable[[Client], object], str, str, object, object]]
         {"labels": ["ready-to-merge"]},
         [],
     ),
+    ("label", lambda c: c.label("merge train"), "GET", "repos/o/r/labels/merge%20train", None, {"name": "x"}),
+    (
+        "create_label",
+        lambda c: c.create_label("ready-to-merge", "0e8a16", "Ready"),
+        "POST",
+        "repos/o/r/labels",
+        {"name": "ready-to-merge", "color": "0e8a16", "description": "Ready"},
+        {"name": "ready-to-merge"},
+    ),
     (
         "remove_label",
         lambda c: c.remove_label(7, "merge train"),
@@ -145,6 +154,9 @@ class Refusals(unittest.TestCase):
             lambda: fake.pull("٧"),
             lambda: fake.permission("a/b"),
             lambda: fake.add_label(7, "../x"),
+            lambda: fake.label("../x"),
+            lambda: fake.create_label("x", "#00ff00", "d"),
+            lambda: fake.create_label("x", "00ff00", ""),
             lambda: fake.check_runs("HEAD"),
             lambda: fake.commit(SHA.upper()),
             lambda: fake.workflow_runs(branch="-x"),
@@ -171,6 +183,9 @@ class Failures(unittest.TestCase):
             with self.assertRaisesRegex(GhError, "HTTP 404"):
                 GhApi("o", "r").pull(7)
             self.assertIsNone(GhApi("o", "r").pr_finished(7))
+            # A missing label is an answer, not a failure; any other failed read raises.
+            self.assertIsNone(GhApi("o", "r").label("ready-to-merge"))
+        self.assertRaises(GhError, FakeGh().label, "ready-to-merge")
         with mock.patch("gh_client.subprocess.run", side_effect=FileNotFoundError("gh")):
             self.assertIsNone(GhApi("o", "r").pr_finished(7))
         bad = subprocess.CompletedProcess([], 0, "<html>", "")

@@ -494,12 +494,16 @@ MATCH read a range of several cells of a cached sheet in place (`LookupTable::Ex
 `Model::cached_external_lookup_area`) instead of building it as an array, so whole columns and rows
 match B17, B21, B49 and B50 (T-0474). The search vector keeps the area's full length (the cached
 cells, then an empty tail), as a whole column of this workbook does; a vector cut to the cache's
-extent would move the approximate search's midpoints (lookup.md "Approximate match"). UNVERIFIED, a hand
-expectation awaiting an oracle cell (T-0479): an approximate whole-column lookup over an unsorted cached
-column (cache 1,5,2,9,3) is the local result. `VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as
-over a local whole column, and a unit test pins that in test_external_links.rs.
-Status: VERIFIED for the oracle cells above (excel-graph only; no desktop evidence, decision 0030); the
-unsorted approximate case is UNVERIFIED
+extent would move the approximate search's midpoints (lookup.md "Approximate match"). Verified against
+Excel (T-0479, fixtures/external-link-unsorted-approx-lookups, excel-graph, 2026-10-29; cache `Col` A1:A5 = 1,5,2,9,3,
+B = 10..50, `Row` A1:E1 = 1,5,2,9,3, A2:E2 = 10..50): over the unsorted whole column the approximate lookups give the
+result of the binary search over the full-length (1048576-cell) vector, as over a local whole column (lookup.md "Approximate match"; no local Excel control cell), and the engine matches every cell. `VLOOKUP(4,[1]Col!$A:$B,2,TRUE)` is 10 (B1), keys 6, 9 and
+100 give 30, 40 and 50, key 0.5 `#N/A`; `MATCH(4,..$A:$A,1)` is 1, key 6 gives 3 and key 100 gives 5; `MATCH(4,..,-1)` is
+`#N/A`, key 6 `#N/A`, key 0.5 gives 5; `HLOOKUP(4,[1]Row!$1:$2,2,TRUE)` is 10, keys 6 and 100 give 30 and 50; whole-row
+`MATCH 1` of 4 is 1 and of 100 is 5, `MATCH -1` of 4 and 6 `#N/A`. The bounded controls differ from the whole-column
+cells only where the search midpoints move (`VLOOKUP(4,..$A$1:$B$5,2,TRUE)` 30, `$A$1:$B$100` 30, `MATCH(4,..$A$1:$A$5,1)` 3;
+Excel gives these for the bounded ranges, so the full-length vector is what makes the whole-column cells differ).
+Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
 Tasks: T-0457, T-0472, T-0474, T-0479
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
@@ -2496,8 +2500,15 @@ Right/Left):
   Excel keeps the table's one data row, cleared: nothing below the table moves on that last delete. `=S!C10`
   below the table reads `=S!C7` after the four deletes (three rows up, not four), `=SUM(S!C9:C10)` reads
   `=SUM(S!C6:C7)`, and `ROWS(Sales)` is 1 (table-delete-row-all-data-below, excel-graph 2026-10-27, T-2338).
-  What happens to that row's cells outside the table, and to one delete of every data row at once, is
-  unprobed (T-2848).
+  The same last delete leaves the sheet row's cells outside the table alone: `S!E4` 5 beside `Sales` on
+  S!B3:C4 keeps its value, `S!E5` and `S!C5` below stay put, and a second table `Other` on S!E3:F7 keeps all
+  four data rows (`ROWS(Other)` 4, `SUM(Other[Val])` 100, `S!F4` 10); only `Sales`'s own cells are cleared
+  (`SUM(Sales[Qty])` 0, `ROWS(Sales)` 1, `#All` 2) (table-delete-row-only-data-outside, -second-table). With a
+  totals row the only data row is kept and cleared too, and the totals row does not move: `ROWS(Sales)` 1,
+  `#All` 3, `ROW(Sales[#Totals])` 5, `Sales[[#Totals],[Qty]]` 0 (SUBTOTAL over the cleared row), `S!C5` 0, a
+  cell below the table unchanged (table-delete-row-only-data-totals; all excel-graph 2026-10-28, T-2848).
+  Still unprobed (the case format deletes one row per op and has no header-less table): one delete of every
+  data row at once, a two-row delete reaching a data edge, and a delete on a table without a header row.
 - A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted

@@ -53,6 +53,10 @@ Its column A repeats owned YIELD cells, one row per bond: P!A1 (yield-solver-swe
 T-2788's ulp-level cells (yield-start-one-input B54, B62, B69, B11, A54, A62; yield-solver-sweep C11;
 solver-iteration-traces Y!E2). P!B4, C3, C7 and D4 (PRICE) belong to T-3144.
 
+## Cells added by probes/yield-one-step-start (2026-10-29)
+This task owns the case's YIELD cells the engine misses (158 known failures, 1 to 67 ulps). The visibly-off one:
+- probes/yield-one-step-start: S!A68
+
 ## Outcome (partial, attempt 1, 2026-10-29; the task stays open, decision 0056)
 probes/yield-price-at-iterates (59 PRICE cells, excel-graph) asks Excel's PRICE at the exact iterates of our Newton and
 at Excel's YIELD values. The lab's `^`-priced PRICE equals Excel's to the bit on all 59 (the engine's misses 4 by 1 to 2 ulps: follow-up T-3144), so the three cells (and P!B2) are not off through PRICE:
@@ -64,3 +68,31 @@ The best of these, `pr + (0.5 - 0.25/T)(100 - pr)`, fixes P!B2 but nets +2 of 57
 visibly off. Next attempt: fit the start to 1e-9 on cells that step once from it. Eval delta: one new probe case,
 73 cells, 57 passing. The 16 new known failures are 4 PRICE cells 1 to 2 ulps off (T-3144) and 12 YIELD cells in column
 A, which repeat existing cells. No regressions.
+
+## Outcome (partial, attempt 2, 2026-10-29; the task stays open, decision 0056)
+- The one-step cells show the start's last bit, so the start was refit on its rounding. Excel's start is the fitted
+  formula rounded once over the exact term: lab bit-exact 503/761, against 441 for the formula in doubles. Every
+  arrangement and its score is in financial.md "YIELD stops short of PRICE's root", T-2974 attempt 2.
+- The engine's `yield_start` computes that rounded-once start in double-double. Eval delta: 256 YIELD/ODDFYIELD known failures fixed,
+  148 YIELD/ODDFYIELD cells regressed (9 visibly off, decision 0162, follow-up T-3152). In-scope visibly-off cells
+  go from 2,885 to 2,862.
+- Still off: yield-solver-sweep C2, C7 and C8 and yield-start-rate-term B39 need a start one ulp above the correctly rounded one. B49 has Excel's start but stays off on
+  the engine's PRICE (T-3144). P!B2 is unchanged.
+- Next: rounding up fits C7, B39 and B49. Look for what moves those cells up and not the others, for example a second
+  rounding of the denominator.
+
+## Outcome (partial, attempt 3, 2026-10-29; the task stays open, decision 0056)
+- New evidence: probes/yield-one-step-start (360 cells, excel-graph). Its bonds take exactly one Newton step, so each
+  value shows the start's last bit (280 distinct starts). Frequency twins always agree on the start.
+- The lab's bit-exact count rose with a named candidate. The best fit for Excel's start is the term-scaled formula in doubles with one
+  fused multiply-add, `((r·T)·100 + q) / (fma(pr, T, 100·T)/2 - q/4)`: 229 of the 290 one-step starts, against 152 for the
+  engine's rounded-once start. The full lab has 787 of 1,101 YIELD probe cells bit-exact against 704. On the groups
+  whose term is a double exactly it matches all 63 starts. Every candidate and its counts are in financial.md "YIELD
+  stops short of PRICE's root", T-2974 attempt 3.
+- Not ported to the engine: on the older probe cells the form scores 488 against 503. Its losses are on the
+  4 + 119/360 bond, one of the two groups where `100·T` is a rounding tie. A tie rule fixes yield-solver-sweep C2, C7,
+  C8 and yield-newton-domain P!B2 (lab 936 of 1,101), but its mechanism is unknown, so it was not kept.
+  yield-start-rate-term B39 stays 5 ulps off under every candidate.
+- Next: find what the tie groups do to `pr·T`, then put the FMA form in `yield_start`. ODDFYIELD shares the start.
+- Eval delta: one new probe case, 360 cells. The engine (rounded-once start) passes 202. The 158 new known failures
+  are YIELD cells of that case 1 to 67 ulps off. No other cell changed and nothing regressed.

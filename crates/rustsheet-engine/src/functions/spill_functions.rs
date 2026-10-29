@@ -193,19 +193,13 @@ fn first_unequal(mut orderings: impl Iterator<Item = Ordering>) -> Ordering {
         .unwrap_or(Ordering::Equal)
 }
 
-/// The elements of a SORT lifted over its `by_col`, `result`, given each call's `by_col` when it
-/// sorted (`None` when it failed), row-major. Failed calls keep their error; each row's first
-/// sorting call leads it, and the leads keep their call's top-left when all their `by_col` values
-/// are equal (else only the first does); every other sorting call is empty when `only_key_two`
-/// and it is the first such element or sits below an empty-able one with the same `by_col`, and
-/// `#VALUE!` otherwise (probes/t2929-sort-lifted-by-col-*, T-2929;
-/// the rule is in arrays.md and T-3090 tracks its one known gap).
+/// The elements of a SORT lifted over its `by_col`, `result`, given whether each call counts as a
+/// sorting call, row-major. Calls that do not count keep their error; the first sorting call keeps
+/// its top-left, the next is empty when `only_key_two` and `#VALUE!` otherwise, and every later
+/// one is `#VALUE!`, whatever the `by_col` values and the shape (probes/t3090-sort-lifted-by-col-
+/// broken-lead and the t2929 and t2947 probes refilled on 2026-10-29, T-3090).
 // Excel: docs/excel-semantics/arrays.md "TOROW, TOCOL, SORT and TEXTJOIN lifted arguments".
-fn sort_lifted_elements(
-    result: CalcResult,
-    sorted: &[Option<ByCol>],
-    only_key_two: bool,
-) -> CalcResult {
+fn sort_lifted_elements(result: CalcResult, sorted: &[bool], only_key_two: bool) -> CalcResult {
     let CalcResult::Array(mut rows) = result else {
         return result;
     };
@@ -213,50 +207,23 @@ fn sort_lifted_elements(
     if columns == 0 || rows.len().saturating_mul(columns) != sorted.len() {
         return CalcResult::Array(rows);
     }
-    let by_col = |row: usize, column: usize| sorted.get(row * columns + column).copied().flatten();
-    let lead = |row: usize| (0..columns).find(|&column| by_col(row, column).is_some());
-    let mut leads = (0..rows.len()).filter_map(|row| lead(row).and_then(|c| by_col(row, c)));
-    let first_lead = leads.next();
-    let leads_equal = leads.all(|value| Some(value) == first_lead);
-    let mut first_lead_placed = false;
-    let mut broken_seen = false;
-    // Whether each element of the row above is a broken element that may be empty.
-    let mut above = vec![false; columns];
-    for (row, nodes) in rows.iter_mut().enumerate() {
-        let row_lead = lead(row);
-        let mut here = vec![false; columns];
-        for (column, node) in nodes.iter_mut().enumerate() {
-            let Some(value) = by_col(row, column) else {
-                continue;
-            };
-            if Some(column) == row_lead && (leads_equal || !first_lead_placed) {
-                first_lead_placed = true;
-                continue;
-            }
-            let same_above = row > 0
-                && above.get(column).copied().unwrap_or(false)
-                && by_col(row - 1, column) == Some(value);
-            let may_be_empty = !std::mem::replace(&mut broken_seen, true) || same_above;
-            if let Some(slot) = here.get_mut(column) {
-                *slot = may_be_empty;
-            }
-            *node = if may_be_empty && only_key_two {
-                ArrayNode::Empty
-            } else {
-                ArrayNode::Error(Error::VALUE)
-            };
-        }
-        above = here;
+    // Every sorting call but the first, which keeps its top-left.
+    let mut broken = sorted
+        .iter()
+        .zip(rows.iter_mut().flatten())
+        .filter_map(|(&sorted, node)| sorted.then_some(node))
+        .skip(1);
+    if let Some(node) = broken.next() {
+        *node = if only_key_two {
+            ArrayNode::Empty
+        } else {
+            ArrayNode::Error(Error::VALUE)
+        };
+    }
+    for node in broken {
+        *node = ArrayNode::Error(Error::VALUE);
     }
     CalcResult::Array(rows)
-}
-
-/// The `by_col` an element of a lifted SORT sorted with: its value, and whether it was written as a
-/// number (a number is never equal to a boolean).
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct ByCol {
-    value: bool,
-    is_number: bool,
 }
 
 /// An evaluated SORTBY `by_array` argument.
@@ -464,9 +431,9 @@ impl Model {
         let cells = u64::try_from(num_rows.saturating_mul(num_cols))
             .unwrap_or(u64::MAX)
             .max(1);
-        // Each call's by_col when it sorted, in row-major order (one entry per element: every
-        // element runs, `Reuse::Never`).
-        let mut sorted: Vec<Option<ByCol>> = Vec::new();
+        // Whether each call counts as a sorting call, in row-major order (one entry per element:
+        // every element runs, `Reuse::Never`).
+        let mut sorted: Vec<bool> = Vec::new();
         let result = self.lift_call_costed(
             kind,
             args,
@@ -477,26 +444,20 @@ impl Model {
                     None | Some(CalcResult::EmptyArg) => Ok(false),
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
-                // A number by_col is not the boolean it reads as when leads are compared
-                // (probes/t2947-sort-lifted-by-col-corners).
-                let is_number = matches!(values.get(3), Some(CalcResult::Number(_)));
                 let (result, read) = match (by_col, &raw_order) {
-                    (Err(error), _) => (error, None),
-                    (Ok(_), Err(error)) => (error.clone(), None),
+                    (Err(error), _) => (error, false),
+                    (Ok(_), Err(error)) => (error.clone(), false),
                     (Ok(by_col), Ok(raw_order)) => (
                         model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell),
-                        Some(ByCol {
-                            value: by_col,
-                            is_number,
-                        }),
+                        true,
                     ),
                 };
                 // A call failing on its sort_index counts as a sorting call unless no call has
                 // sorted yet, while an invalid by_col is always skipped (arrays.md, probes/
                 // t2947-sort-lifted-by-col-corners).
                 let failed = matches!(result, CalcResult::Error { .. });
-                let sorted_before = sorted.iter().any(Option::is_some);
-                sorted.push(read.filter(|_| !failed || sorted_before));
+                let sorted_before = sorted.contains(&true);
+                sorted.push(read && (!failed || sorted_before));
                 result
             },
         );

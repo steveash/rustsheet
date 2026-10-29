@@ -1,17 +1,15 @@
-use statrs::distribution::{Continuous, FisherSnedecor};
+use statrs::distribution::FisherSnedecor;
 
 use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
+use crate::functions::statistical::f_density::excel_f_density;
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
-use crate::functions::statistical::incomplete_beta::{
-    beta_density, beta_reg_tails, A1_EXPM1_MAX_X,
-};
+use crate::functions::statistical::incomplete_beta::{beta_reg_tails, A1_EXPM1_MAX_X};
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
-use crate::functions::statistical::loader::dbinom_raw_dev;
 use crate::functions::statistical::paired::marked_number_error;
-use crate::functions::statistical::special::{ln_gamma, refine_increasing};
+use crate::functions::statistical::special::refine_increasing;
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp};
@@ -341,115 +339,17 @@ fn f_quantile_through_beta(df1: f64, df2: f64, p: f64) -> f64 {
     (df2 / df1) * (y / (1.0 - y))
 }
 
-/// The F density. statrs' direct form raises `df1*x` and `df1*x + df2` to the power `df1` and
-/// `df1 + df2`, which overflows to inf/inf (NaN) for a huge x or a degrees of freedom above about
-/// 143 although the density is an ordinary number. Where the direct form is finite the beta
-/// density times the Jacobian is kept (every value that passed before T-1864 is unchanged).
-/// Where it is not finite: an overflow from x alone (`df1^df1`, `df2^df2` and
-/// `(df1+df2)^(df1+df2)` finite) that the logarithmic form takes to 0 is 0 (Excel's
-/// `F.DIST(1E308,1,3,FALSE)`, probes/stat-overflow-arguments E11, -b A6); every other positive x
-/// is [`f_pdf_loader`], which a plain logarithmic form is not accurate enough to replace (T-1290:
-/// `F.DIST(1,1000,1000,FALSE)` 6.306254544584165 against the true 6.3062545445902005). Excel's
-/// range steps ([`excel_density_range`]) come last.
-fn f_pdf(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
-    excel_density_range(f_pdf_accurate(dist, df1, df2, x), x)
-}
-
-/// Excel's last steps on an F density (docs/excel-semantics/statistics.md, "F density is not
-/// the beta density, R's df or a GAMMALN formula (T-2513)", round 5): it stores Y = density·x, so
-/// a subnormal Y keeps only its own bits, takes F = fl(Y/x), and an F below 2^-1022 is 0. Only a
-/// subnormal Y is re-formed here (a normal one would move bit-exact cells by the extra rounding).
-/// Evidence: `F.DIST(1E-300,3,1000,FALSE)` is 0 (Y = 2E-450 underflows; exact density 2.1E-150),
-/// `F.DIST(1E-215,3,1000,FALSE)` is 6.42285339593616E-108 and `F.DIST(1E-65,10,1000,FALSE)`
-/// 1.4821969375236873E-258 (Y = 13 and 3 subnormal units, to about 1E-14 relative of Excel's
-/// own; probes-numeric t1864-f-pdf-tiny-x A6, A17); and t2586-r5-f-edges-a B1285-B1303,
-/// B1350-B1360 are 0 where the density is about 1.8E-310 (their `*2^600` companions, such as
-/// C1296 and C1301, show the 0 is Excel's, not Graph's).
-fn excel_density_range(density: f64, x: f64) -> f64 {
-    if !(density > 0.0 && density.is_finite() && x > 0.0) {
-        return density;
-    }
-    let stored = density * x;
-    let value = if stored < f64::MIN_POSITIVE {
-        stored / x
+/// The F density at x >= 0 once the caller's argument rules have passed: Excel's own chain
+/// ([`excel_f_density`], T-2586's model M-final) for x > 0, and 0 at x = 0 (df1 >= 3; df1 = 1 and
+/// 2 are the caller's). Against the beta density times the Jacobian it replaces, it moves 21,404
+/// probes-numeric F.DIST density cells to within 15 digits of Excel and 2,591 out, and no
+/// (side, r, df, |c ln x|) region of r5-f-final's map loses cells (T-3034 Outcome).
+fn f_pdf(df1: f64, df2: f64, x: f64) -> f64 {
+    if x > 0.0 {
+        excel_f_density(x, df1, df2)
     } else {
-        density
-    };
-    if value < f64::MIN_POSITIVE {
         0.0
-    } else {
-        value
     }
-}
-
-/// The F density before Excel's range steps ([`excel_density_range`]).
-fn f_pdf_accurate(dist: &FisherSnedecor, df1: f64, df2: f64, x: f64) -> f64 {
-    let direct = dist.pdf(x);
-    // Where the direct form is finite: the beta density at y = df1 x / (df1 x + df2) times
-    // dy/dx = y (1 - y) / x, while Gamma((df1 + df2)/2) is finite. `F.DIST(0.7,4,2,FALSE)` is
-    // then 1 ulp from Excel's 0.40509259259259256 (`F_DIST.xlsx` F3), statrs' form 28 ulp (T-0970).
-    // The beta path is kept whenever it gives a positive value, even where statrs' own form is a
-    // finite 0 (its (df1 + df2)^(df1 + df2) overflowing): `F.DIST(1+2^-51,20,127,FALSE)` is then
-    // Excel's 1.1626735695122385 (probes-numeric t2586-r5-f-bigconst-a B889). Only a 0 from both
-    // goes on to Loader's form: Excel gives the positive density at `F.DIST(1E100,2,3,FALSE)`
-    // 2.7556759606310174E-250 and `F.DIST(1E200,1,1,FALSE)` 3.1830988618378795E-301
-    // (t1864-f-pdf-edges A6, A7), and the log-form underflow check below keeps
-    // `F.DIST(1E300,1,1,FALSE)` 0 (A11).
-    if direct.is_finite() {
-        let scaled = df1 * x;
-        let y = scaled / (scaled + df2);
-        let value = beta_density(y, df1 / 2.0, df2 / 2.0)
-            .map_or(direct, |density| density * y * (1.0 - y) / x);
-        if value != 0.0 || x <= 0.0 {
-            return value;
-        }
-    }
-    if x <= 0.0 {
-        return direct;
-    }
-    let total = df1 + df2;
-    let small_powers =
-        df1.powf(df1).is_finite() && df2.powf(df2).is_finite() && total.powf(total).is_finite();
-    if small_powers {
-        let scaled = df1 * x;
-        let ln_beta = ln_gamma(df1 / 2.0) + ln_gamma(df2 / 2.0) - ln_gamma((df1 + df2) / 2.0);
-        let ln_density = 0.5
-            * (df1 * scaled.ln() + df2 * df2.ln() - (df1 + df2) * (scaled + df2).ln())
-            - x.ln()
-            - ln_beta;
-        // Only the evidence-backed underflow: ln of the smallest positive double is about -744.44.
-        if ln_density.exp() == 0.0 {
-            return 0.0;
-        }
-    }
-    f_pdf_loader(df1, df2, x)
-}
-
-/// The F density for x > 0 by Loader's saddle-point binomial form (R's `df`): with
-/// q = n/(n + x m) and p = x m/(n + x m), the density is (m q / 2)
-/// `dbinom_raw((m-2)/2, (m+n-2)/2, p, q)` for m >= 2 and m^2 q / (2 p (m + n))
-/// `dbinom_raw(m/2, (m+n)/2, p, q)` for m < 2 (m = df1, n = df2). The binomial's deviation
-/// k - N p, k = (m-2)/2 or m/2, is formed without cancellation as q (2k - x m) / 2,
-/// with x m's rounding error (an fma) included, so the bd0 terms keep their digits. It is an
-/// accurate form, not Excel's (docs/excel-semantics/statistics.md, "F density at large degrees
-/// of freedom (T-1864)"): within a few ulp of the exact density on the probes-numeric cells,
-/// more in a deep tail, where the error grows with |ln density| (about 100 ulp at 1E-67).
-fn f_pdf_loader(m: f64, n: f64, x: f64) -> f64 {
-    let scaled = x * m;
-    let scaled_err = x.mul_add(m, -scaled);
-    let total = n + scaled;
-    let q = n / total;
-    let p = scaled / total;
-    let (k, size, factor) = if m >= 2.0 {
-        ((m - 2.0) / 2.0, (m + n - 2.0) / 2.0, m * q / 2.0)
-    } else {
-        (m / 2.0, (m + n) / 2.0, m * m * q / (2.0 * p * (m + n)))
-    };
-    // q (2k - x m) / 2 rather than n (2k - x m) / (2 (n + x m)): with x m near f64::MAX the
-    // latter's n (2k - x m) overflows (inf / inf, then #NUM!), where Excel's density is 0
-    // (probes-numeric t2586-r5-f-edges-a B1437, t2586-verify-r5-f-edges-hold B91, B92).
-    let diff = q * ((2.0 * k - scaled) - scaled_err) / 2.0;
-    factor * dbinom_raw_dev(k, size, p, q, diff)
 }
 
 /// FISHER's kernel for -1 < x < 1: `0.5 * LN((1 + x) / (1 - x))` with Excel's LN and the quotient
@@ -574,11 +474,11 @@ impl Model {
                 return Ok(1.0);
             }
         }
-        let dist = FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
+        FisherSnedecor::new(df1, df2).map_err(|_| num_error(cell))?;
         let result = if cumulative {
             f_cdf(df1, df2, x)
         } else {
-            f_pdf(&dist, df1, df2, x)
+            f_pdf(df1, df2, x)
         };
         if result.is_nan() || result.is_infinite() {
             return Err(num_error(cell));
