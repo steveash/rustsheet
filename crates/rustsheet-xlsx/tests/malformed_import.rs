@@ -386,6 +386,46 @@ fn formula_longer_than_8192_characters_refuses_the_workbook() -> TestResult {
     Ok(())
 }
 
+/// A sheet whose A100 holds `calls` nested function calls of `form` as Excel stores them, the
+/// innermost one being `inner` (probes/t3097-nesting-*).
+fn sheet_with_nested_calls(
+    open: &str,
+    inner: &str,
+    calls: usize,
+) -> Result<Vec<u8>, Box<dyn Error>> {
+    let outer = calls - usize::from(inner != "1");
+    let formula = format!("{}{inner}{}", open.repeat(outer), ")".repeat(outer));
+    let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{formula}</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+// Excel for the web loads 65 nested function calls and refuses the workbook at 66 (createSession
+// 501; probes/t3097-nesting-*, docs/excel-semantics/syntax.md "Formula nesting depth cap", T-3097).
+#[test]
+fn formula_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
+    for (open, inner) in [
+        ("ABS(", "1"),
+        ("IF(TRUE,", "1"),
+        ("SUM(", "1"),
+        ("ABS(1+", "1"),
+        ("ABS(", "_xlfn.LET(_xlpm.x,1,_xlpm.x)"),
+        ("ABS(", "_xlfn.LAMBDA(_xlpm.x,_xlpm.x)(1)"),
+    ] {
+        assert_imports(&sheet_with_nested_calls(open, inner, 65)?)?;
+        assert_import_error(
+            &sheet_with_nested_calls(open, inner, 66)?,
+            "Formula in Sheet1!A100 nests more than 65 function calls",
+        );
+    }
+    Ok(())
+}
+
 /// A workbook whose only defined name `nm` has `body` as its stored text.
 fn workbook_with_name_body(body: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     let names = format!(

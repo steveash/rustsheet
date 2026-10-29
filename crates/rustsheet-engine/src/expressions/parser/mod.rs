@@ -75,7 +75,8 @@ use chain::ChainLevel;
 pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
 pub(crate) use depth::is_limit_error;
 pub use depth::{
-    MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
+    TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
 pub(crate) use spacing::Run;
 pub use spacing::Spacing;
@@ -598,6 +599,10 @@ pub struct Parser {
     /// The first call of a function with an argument count Excel refuses that the last parse
     /// read (see [`Parser::typed_refusal`]).
     wrong_count_call: Option<String>,
+    /// Function calls open on the current parse path, and the most open at once in the last
+    /// parse (see [`Parser::nests_too_many_calls`]).
+    open_calls: usize,
+    deepest_calls: usize,
     /// The workbook's file name (`Budget.xlsx`), which prefixes a workbook name read through a
     /// sheet (`=Feb!loc` is `=Budget.xlsx!loc`); `None` for an unnamed workbook.
     workbook_file: Option<String>,
@@ -647,6 +652,8 @@ impl Parser {
             loaded: false,
             cell_shaped_binding: None,
             wrong_count_call: None,
+            open_calls: 0,
+            deepest_calls: 0,
             workbook_file: None,
         }
     }
@@ -669,10 +676,14 @@ impl Parser {
     /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
     /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
     /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
-    /// PATCH 400, T-2568). `None` when parsing stored text or nothing is refused.
+    /// PATCH 400, T-2568), or it nests more function calls than Excel takes
+    /// ([`MAX_NESTED_CALLS`], T-3097). `None` when parsing stored text or nothing is refused.
     pub(crate) fn typed_refusal(&self) -> Option<String> {
         if !self.typed {
             return None;
+        }
+        if self.nests_too_many_calls() {
+            return Some(format!("Formula: {TOO_MANY_NESTED_CALLS_MESSAGE}"));
         }
         if let Some(name) = &self.cell_shaped_binding {
             return Some(format!(
@@ -745,6 +756,8 @@ impl Parser {
         self.bound_names.clear();
         self.cell_shaped_binding = None;
         self.wrong_count_call = None;
+        self.open_calls = 0;
+        self.deepest_calls = 0;
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;

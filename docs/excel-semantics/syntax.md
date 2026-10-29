@@ -151,7 +151,7 @@ Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` 
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
-one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
+one, so the depth bound admits up to 127 nested parentheses or function calls (calls are further capped at 65, below) (126 around the operator chain
 `0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
 (T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
@@ -169,7 +169,12 @@ wrapped in parentheses (`=(ABS((ABS(...))))`), and a LET or a called LAMBDA at t
 128 and 255 levels. The 66-call inputs (`abs`, `if`, `sum`, `mixed`, `op-abs`, `paren-abs`, `let`,
 `lambda`, stored and typed) cannot keep a sidecar, so they were dropped after the run, as T-1091's
 were. The committed 63- to 65-call cases evaluate on both sides.
-So RustSheet accepts 66 to 127 nested calls, which Excel refuses (T-3097 follow-up work). It refuses
+RustSheet counts the same calls (`MAX_NESTED_CALLS`, depth.rs): a typed formula nesting 66 or more is
+refused through the API (`EditError::InvalidInput`, the cell keeps its content) and the xlsx importer
+refuses a workbook holding one (`XlsxError::Workbook`), T-3097. `TRUE()`, `FALSE()` and a call of a
+LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY(x)` (stored `@` and
+`#`) do not (unprobed). Defined-name bodies, conditional formats, data validation and
+`Input::StoredFormula` are not checked (unprobed). It also refuses
 128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
 (t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. That is
 the DEVIATION below: the depth bound protects the stack (directive 5).
@@ -205,7 +210,7 @@ re-measured against these limits (the at-limit tests run on a 1 MiB stack in rel
 must walk operator chains with `expressions/parser/chain.rs`.
 Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; the parentheses RustSheet refuses past its bound); this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,

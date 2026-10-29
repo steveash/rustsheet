@@ -67,7 +67,15 @@ impl Parser {
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         // The names a LET binds are in scope up to its `)`.
         let scope = self.bound_names.len();
-        let args = self.parse_function_args_in_scope(fn_name);
+        // `SINGLE(x)` and `ANCHORARRAY(x)` are the `@` and `#` operators, which Excel shows as
+        // such, so they are not counted as calls (unprobed; T-3097).
+        let operator =
+            fn_name.eq_ignore_ascii_case("SINGLE") || fn_name.eq_ignore_ascii_case("ANCHORARRAY");
+        let args = if operator {
+            self.parse_function_args_in_scope(fn_name)
+        } else {
+            self.in_call(|parser| parser.parse_function_args_in_scope(fn_name))
+        };
         self.bound_names.truncate(scope);
         args
     }

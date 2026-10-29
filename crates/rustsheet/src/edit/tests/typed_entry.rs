@@ -148,3 +148,54 @@ fn let_name_spelled_like_function_typed_and_stored() {
         assert_eq!(wb.value(a1).unwrap(), Value::Number(expected), "{text}");
     }
 }
+
+/// `calls` nested function calls in the shape of `form`, as typed: the innermost call is the LET or
+/// the called LAMBDA for those forms (probes/t3097-nesting-*).
+fn nested_calls(form: &str, calls: usize) -> String {
+    let (open, inner, close) = match form {
+        "abs" => ("ABS(", "1", ")"),
+        "if" => ("IF(TRUE,", "1", ")"),
+        "sum" => ("SUM(", "1", ")"),
+        "op-abs" => ("ABS(1+", "1", ")"),
+        "let" => ("ABS(", "LET(x,1,x)", ")"),
+        _ => ("ABS(", "LAMBDA(x,x)(1)", ")"),
+    };
+    let outer = if inner == "1" { calls } else { calls - 1 };
+    format!("={}{inner}{}", open.repeat(outer), close.repeat(outer))
+}
+
+/// Excel takes 65 nested function calls typed and refuses 66 (Graph PATCH 400; syntax.md "Formula
+/// nesting depth cap", probes/t3097-nesting-*, T-3097), whatever the function, with an operator
+/// between levels, and with a LET or a called LAMBDA innermost.
+#[test]
+fn typed_formulas_nesting_more_than_65_calls_are_refused() {
+    let mut wb = book();
+    for (row, form) in ["abs", "if", "sum", "op-abs", "let", "lambda"]
+        .into_iter()
+        .enumerate()
+    {
+        let accepted = format!("A{}", row + 1);
+        let refused = format!("B{}", row + 1);
+        wb.set(accepted.as_str(), Input::Formula(nested_calls(form, 65)))
+            .unwrap();
+        assert!(
+            matches!(wb.value(accepted.as_str()).unwrap(), Value::Number(_)),
+            "{form}"
+        );
+        for input in [
+            Input::Formula(nested_calls(form, 66)),
+            Input::Parse(nested_calls(form, 66)),
+        ] {
+            let err = wb.set(refused.as_str(), input).unwrap_err();
+            assert!(
+                matches!(err, EditError::InvalidInput { .. }),
+                "{form}: {err:?}"
+            );
+        }
+        assert_eq!(wb.value(refused.as_str()).unwrap(), Value::Empty, "{form}");
+    }
+    // Parentheses add no level: 66 calls are refused, 65 calls inside 100 parentheses are not.
+    let deep = format!("=(((((((((({}))))))))))", &nested_calls("abs", 65)[1..]);
+    wb.set("C1", Input::Formula(deep)).unwrap();
+    assert_eq!(wb.value("C1").unwrap(), Value::Number(1.0));
+}
