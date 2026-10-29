@@ -3,7 +3,7 @@ id: T-3133
 title: "Exact MATCH/VLOOKUP/HLOOKUP keys and wildcard criteria fold case one character to one, as Excel does (İ, final sigma, Kelvin sign, ẞ, titlecase digraphs)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
