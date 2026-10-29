@@ -67,11 +67,6 @@ impl AreaList {
 pub(crate) struct Areas(Arc<[Range]>);
 
 impl Areas {
-    /// The first area in formula order (an `Areas` holds at least two).
-    pub(crate) fn first(&self) -> Option<Range> {
-        self.0.first().cloned()
-    }
-
     /// How many areas the reference has: 2..=[`MAX_AREAS`].
     pub(crate) fn len(&self) -> usize {
         self.0.len()

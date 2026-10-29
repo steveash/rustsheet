@@ -7,9 +7,7 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::limits::check_range_size;
-use crate::reference_operators::{
-    not_a_reference_array, several_areas, Ranges, RefArg, RefElement, RefGrid,
-};
+use crate::reference_operators::{not_a_reference_array, RefArg, RefElement, RefGrid};
 use crate::{calc_result::CalcResult, model::Model};
 
 impl Model {
@@ -21,25 +19,20 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it
-        // picks. A bare union is read the same way: its first area is the reference.
-        let picks_reference = match args[0].ungrouped() {
-            Node::FunctionKind { kind, .. } => kind.may_be_reference(),
-            node => matches!(node, Node::OpUnionKind { .. }),
-        };
         let reference = match args[0].ungrouped() {
-            _ if picks_reference => {
+            // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it
+            // picks. A bare union is read the same way: its first area is the reference.
+            node if matches!(node, Node::OpUnionKind { .. })
+                || matches!(node, Node::FunctionKind { kind, .. } if kind.may_be_reference()) =>
+            {
                 match self.evaluate_picked_reference_arg(&args[0], cell) {
-                    RefArg::Ranges(Ranges::One(Range { left, right })) => {
-                        CalcResult::Range { left, right }
-                    }
                     // A multi-area reference is FORMULATEXT of its first area, which spills when it
                     // covers several cells (probes/t2831-formulatext-indirect-multi-cell A33-A78;
                     // docs/excel-semantics/references.md "FORMULATEXT of a multi-area reference
                     // and of a multi-cell INDIRECT element").
-                    RefArg::Ranges(Ranges::Areas(areas)) => {
-                        let Some(Range { left, right }) = areas.first() else {
-                            return several_areas(cell);
+                    RefArg::Ranges(ranges) => {
+                        let Some(Range { left, right }) = ranges.first().cloned() else {
+                            return not_a_reference(cell);
                         };
                         CalcResult::Range { left, right }
                     }
