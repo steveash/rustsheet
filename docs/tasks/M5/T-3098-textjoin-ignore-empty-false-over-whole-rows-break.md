@@ -3,7 +3,7 @@ id: T-3098
 title: "TEXTJOIN ignore_empty FALSE over whole rows: break at the length limit, split the Range arm, and probe 1:3 with an error cell"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
