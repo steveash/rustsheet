@@ -3,7 +3,7 @@ id: T-0084
 title: "make new-task and make new-decision break on a TITLE containing a double quote"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
