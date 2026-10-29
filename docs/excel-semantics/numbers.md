@@ -43,7 +43,8 @@ Summing functions (T-3048, probes/t3048-snap-conditional-sums, excel-graph 2026-
 
 Operand order (T-3073, one cell, unverified as a rule):
 - `1-(1-8·2^-53)` with both values read from cells snaps to 0, although |result| = 2^-50 equals 8 ULP of the smaller
-  addend (probes/t3073-lookup-near-equal-approximate Sheet1!E8, `=V!C29-V!A30`, excel-graph 2026-10-29).
+  addend (probes/t3073-lookup-near-equal-approximate Sheet1!E8, `=V!C29-V!A30`, excel-graph 2026-10-29; the same pair
+  in probes/t3106-lookup-xmatch-near-equal Sheet1!AC8 gives 0 too).
 - `(1-8·2^-53)-1` keeps -8.881784197001252e-16 (E16), as the rule above says.
 - Both fit a bound of 8 ULP of the left operand, and so does every snap-addsub cell, where X is always on the left.
 The engine keeps E8 (8.881784197001252e-16). T-3100 probes the reversed orders. Status: UNVERIFIED (one cell; the
