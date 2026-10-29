@@ -1937,7 +1937,7 @@ shape (4x4, 3x1, 1x3, 3x2, an array constant) and a range by_col change nothing.
 that it counts as a sorting call, so `{TRUE,FALSE,TRUE}` and `{TRUE;FALSE;TRUE}` are 5, empty, `#VALUE!`, `{TRUE;FALSE;FALSE}`
 5, empty, empty, and `{FALSE;TRUE;TRUE}` `#VALUE!`, 5, 5. A number by_col is not equal to the boolean it reads as when the leads are
 compared: `{TRUE;1;TRUE;TRUE}` on a 4x4 array is 22, empty, `#VALUE!`, `#VALUE!` and `{TRUE,TRUE;1,1}` keeps only the first row,
-while `{1,1,1,1}` keeps all (a horizontal `{1,TRUE,TRUE,TRUE}` or `{TRUE,1,TRUE,TRUE}` is as `{TRUE,TRUE,TRUE,TRUE}`). UNVERIFIED
+while a horizontal `{1,1,1,1}`, `{1,TRUE,TRUE,TRUE}`, `{TRUE,1,TRUE,TRUE}`, `{1,1,TRUE,TRUE}`, `{1,2,TRUE,TRUE}` and `{2,TRUE,TRUE,TRUE}` are as `{TRUE,TRUE,TRUE,TRUE}`. UNVERIFIED (T-3090): a number by_col read from a range cell or a text one ("1", "TRUE") beside a boolean;
 (T-3090): `{TRUE,TRUE;1,TRUE}` row 2 is `#VALUE!`, `#VALUE!` in Excel, ours has an empty second element; a 4-row by_col over a 3-row
 array is unprobed (evidence: probes/t2947-sort-lifted-by-col-corners, excel-graph, 2026-10-29, T-2947).
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col (excel-graph, 2026-10-27, T-2366); probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column (excel-graph, 2026-10-27, T-2929).
