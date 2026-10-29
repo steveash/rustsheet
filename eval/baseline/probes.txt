@@ -1491,6 +1491,7 @@ C	probes/t2983-identical-stored-refill.case.json	8
 C	probes/t3007-beta-dist-ln-x-overflow.case.json	27
 C	probes/t3012-gamma-dist-at-quantile.case.json	136
 C	probes/t3012-gamma-inv-small-shape.case.json	72
+C	probes/t3014-pmt-fv-type-alone.case.json	371
 C	probes/t3028-b2-taiwan-cuts.case.json	240
 C	probes/t3028-b2-taiwan-years.case.json	165
 C	probes/t3029-b2-calendar-weekday.case.json	128
@@ -2333,7 +2334,6 @@ F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!B8
 F	probes/eng-inumber-date-boundary.case.json	S!B21
 F	probes/eng-inumber-date-boundary.case.json	S!B23
-F	probes/fin-argument-modes.case.json	Sheet1!H236
 F	probes/fin-argument-modes.case.json	Sheet1!H374
 F	probes/fin-argument-modes.case.json	Sheet1!H375
 F	probes/fin-argument-modes.case.json	Sheet1!H80
@@ -2391,7 +2391,6 @@ F	probes/fin-cumipmt-gate-edges.case.json	Sheet1!H3
 F	probes/fin-cumipmt-gate-edges.case.json	Sheet1!H4
 F	probes/fin-cumipmt-gate-edges.case.json	Sheet1!H5
 F	probes/fin-cumipmt-gate-edges.case.json	Sheet1!H6
-F	probes/fin-cumipmt-gate-edges.case.json	Sheet1!I1
 F	probes/fin-cumipmt-gate-edges.case.json	Sheet1!I4
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A10
 F	probes/fin-cumipmt-overflow-and-forms.case.json	Sheet1!A13
@@ -2498,10 +2497,6 @@ F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!L2
 F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!L4
 F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!L8
 F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!L9
-F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!M1
-F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!M2
-F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!M4
-F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!M5
 F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!N10
 F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!N11
 F	probes/fin-cumipmt-tiny-rate-structure.case.json	Sheet1!N2
@@ -3670,9 +3665,6 @@ F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U1
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U16
 F	probes/t2475-stat-subexpressions.case.json	P!A317
 F	probes/t2475-stat-subexpressions.case.json	P!A417
-F	probes/t2475-stat-subexpressions.case.json	P!A458
-F	probes/t2475-stat-subexpressions.case.json	P!A461
-F	probes/t2475-stat-subexpressions.case.json	P!A462
 F	probes/t2475-stat-subexpressions.case.json	P!A520
 F	probes/t2475-stat-subexpressions.case.json	P!A62
 F	probes/t2475-stat-subexpressions.case.json	P!A63

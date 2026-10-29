@@ -3,7 +3,7 @@ id: T-3014
 title: "PMT through PPMT's discount (EXP of n·L with the atanh-series L, Kahan's expm1): the 113 RATE(n,PMT(..)) cells of m9-fin-irr-rate that ride on PMT's last bits"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -70,19 +70,39 @@ unit of the 15th significant digit of Excel's value. Bit-level criteria still un
 `defer: phase-1b`.
 
 ## Acceptance criteria
-- [ ] Visible parity: the 113 owned RATE cells of probes-numeric/m9-fin-irr-rate are within half a unit of the 15th
+- [x] Visible parity: the 113 owned RATE cells of probes-numeric/m9-fin-irr-rate are within half a unit of the 15th
       significant digit of Excel's value in `make eval` (the case is ungated: show the before/after counts from the
       report or `make eval-show CASE=probes-numeric/m9-fin-irr-rate.case.json`), or the time-box is reached and the
       forms tried, with their m9-fin-pmt scores, are recorded in financial.md and in T-1528.
-- [ ] m9-fin-pmt: PMT bit-exact count above the engine's current one, and no PMT cell visibly off.
-- [ ] No new known-failure line in any baseline (PMT.xlsx, IPMT_PPMT.xlsx, CUMPRINC_CUMIPMT.xlsx, probes,
+- [x] m9-fin-pmt: PMT bit-exact count above the engine's current one, and no PMT cell visibly off.
+- [x] No new known-failure line in any baseline (PMT.xlsx, IPMT_PPMT.xlsx, CUMPRINC_CUMIPMT.xlsx, probes,
       gen-m9 included); `make eval-baseline` records the fixed ones; T-2243's 14 cells re-measured in the Outcome.
-- [ ] financial.md's PMT entry updated with the rule, its evidence cells and status.
-- [ ] Any fitting script reuses `docs/research/t2464/excelmath.py`'s kernels (Kahan expm1, atanh-series log,
+- [x] financial.md's PMT entry updated with the rule, its evidence cells and status.
+- [x] Any fitting script reuses `docs/research/t2464/excelmath.py`'s kernels (Kahan expm1, atanh-series log,
       rounding); `docs/research/t3014_pmt_discount_score.py` is then switched to them or deleted (one definition).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IPMT, PPMT, CUMIPMT, CUMPRINC and NPV (they keep their current forms unless a test proves they share the change).
 - RATE's secant and stop rule (T-2005, T-2527: done and bit-exact on Excel's PMT bits).
 - IRR's cells of the same case (T-2131).
+
+## Outcome
+Done (2026-10-29). Excel's PMT is `-(((pv+fv)/(1-Q) - fv) * d)` in plain doubles, with PPMT's L, `1-Q` Kahan's
+expm1 of `x = -nper*L` below |x| = 1 and `1 - EXP(x)` from 1 on, and `d` the rate (type 0) or `1/(1/rate + 1)`
+(type 1): financial.md "PMT is a discounted payment", `discounted_payment` in annuity.rs. The key evidence was a new
+probe, probes/t3014-pmt-fv-type-alone (371 cells, excel-graph), that splits m9-fin-pmt's fv-with-type-1 cells into fv
+alone and type 1 alone and sweeps |x| around 1.
+- PMT bit-exact: m9-fin-pmt 308/308 (was 132), t3014-pmt-fv-type-alone 371/371, PMT.xlsx's 49 constant-argument
+  cells 49/49 (the whole workbook now passes, 309/309, including T-2951's rate -0.9 rows). Scores of the rejected
+  forms: `docs/research/t3014_pmt_discount_score.py` (now on T-2951's Excel EXP/LN helpers; the libm scratch scorer
+  is gone).
+- probes-numeric/m9-fin-irr-rate: 482 -> 636 of 691 cells pass; every one of its 308 `RATE(n,PMT(..))` cells passes
+  (the 113 owned cells included); what is left is IRR's (T-2131).
+- Baselines: ironcalc-calc 540 -> 482 known failures (58 fixed, all PMT.xlsx), probes 3097 -> 3088 (9 fixed:
+  fin-argument-modes H236, fin-cumipmt-gate-edges I1, fin-cumipmt-tiny-rate-structure M1, M2, M4, M5,
+  t2475-stat-subexpressions P!A458, A461, A462), gen-m9 3303 -> 3302 (1 fixed); no regressions.
+- T-2243's 14 cells: the eight PMT.xlsx cells (F15, F33, G10, J15, J33, K10, L15, M10) now pass; IPMT_PPMT.xlsx G12,
+  G14, H13, H31, H4 and probes/fin-cumipmt-overflow-and-forms A13 are unchanged (IPMT/PPMT keep the exact payment).
+- T-2951 is done by this change (its 10 cells pass); T-1528 keeps IPMT/PPMT/NPV.
+- Follow-up: T-3171 (does PPMT/IPMT's `1-Q` switch at |x| = 1 too; a scratch try fixes 7 cells and regresses 3).

@@ -396,6 +396,42 @@ pub(super) fn payment_overflows(rate: f64, nper: f64, pv: f64, period_start: boo
     !fitted_payment(rate, payment_growth(rate, nper), pv, 0.0, period_start).is_finite()
 }
 
+/// Below this |nper*L| PMT's `1-Q` is Excel's expm1, from it on `1 - EXP(-nper*L)`
+/// (probes/t3014-pmt-fv-type-alone column C: expm1 through |nper*L| 0.9896, `1-Q` from 1.0648).
+const PAYMENT_EXPM1_TO: f64 = 1.0;
+
+/// Excel's PMT (docs/excel-semantics/financial.md "PMT is a discounted payment"): with
+/// [`growth_log`]'s L and `x = -nper*L`, `1-Q` is `-expm1(x)` (Excel's expm1) for
+/// |x| < [`PAYMENT_EXPM1_TO`] and `1 - EXP(x)` beyond, and PMT is
+/// `-(((pv+fv)/(1-Q) - fv) * d)` in doubles, `d` the rate for type 0 and `1/(1/rate + 1)` for
+/// type 1. Bit-exact on the 308 PMT cells of probes-numeric/m9-fin-pmt, the 371 of
+/// probes/t3014-pmt-fv-type-alone and the 49 constant-argument ones of ironcalc-calc
+/// FINANCIAL/PMT.xlsx, where the exact payment matches 132, 154 and 31 (T-3014). `None` where
+/// `1-Q` is not finite and normal (no periods, or `(1+rate)^-nper` past the double range) or the
+/// payment is not finite; [`payment_pair`]'s forms decide there.
+fn discounted_payment(rate: f64, nper: f64, pv: f64, fv: f64, period_start: bool) -> Option<f64> {
+    let x = -nper * growth_log(rate);
+    let periods = if x.abs() < PAYMENT_EXPM1_TO {
+        -excel_expm1(x)
+    } else {
+        1.0 - excel_exp(x)
+    };
+    if !periods.is_normal() {
+        return None;
+    }
+    let factor = if period_start {
+        1.0 / (1.0 / rate + 1.0)
+    } else {
+        rate
+    };
+    let payment = -(((pv + fv) / periods - fv) * factor);
+    payment.is_finite().then_some(payment)
+}
+
+/// PMT: [`payment_pair`] decides the errors (rate 0 with no periods, a rate at or below -1, a
+/// power whose reciprocal overflows) and the cases [`discounted_payment`] declines; elsewhere
+/// the value is [`discounted_payment`]'s. IPMT, PPMT, CUMIPMT and CUMPRINC keep
+/// [`payment_pair`]'s exact payment (T-3014 measured PMT only).
 fn compute_payment(
     rate: f64,
     nper: f64,
@@ -403,7 +439,11 @@ fn compute_payment(
     fv: f64,
     period_start: bool,
 ) -> Result<f64, Error> {
-    payment_pair(rate, nper, pv, fv, period_start).map(|payment| payment.0)
+    let (payment, _) = payment_pair(rate, nper, pv, fv, period_start)?;
+    if rate == 0.0 {
+        return Ok(payment);
+    }
+    Ok(discounted_payment(rate, nper, pv, fv, period_start).unwrap_or(payment))
 }
 
 /// PMT as a double-double: [`accurate_payment`] where it applies, else a double form (low part 0).
@@ -824,7 +864,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{growth_log, period_payments};
+    use super::{compute_payment, growth_log, period_payments};
     use crate::expressions::token::Error;
 
     /// IPMT and PPMT past `(1+rate)^nper`'s range and where IPMT's balance cancels on fv
@@ -931,5 +971,35 @@ mod tests {
         assert_eq!(growth_log(0.37), 0.314_810_739_840_033_5);
         assert_eq!(growth_log(0.38), 0.322_083_499_169_113_2); // LN(1.38)
         assert_eq!(growth_log(0.6), 0.470_003_629_245_735_63);
+    }
+
+    /// PMT is Excel's discounted payment, not the exact one (financial.md "PMT is a discounted
+    /// payment", T-3014): each value below is Excel's, and the exact payment misses each by an ulp
+    /// or more.
+    #[test]
+    fn payment_is_excels_discounted_form() {
+        let pmt = |rate, nper, pv, fv, period_start| {
+            compute_payment(rate, nper, pv, fv, period_start).unwrap_or(f64::NAN)
+        };
+        // probes-numeric/m9-fin-pmt A169, A85: the exact -10500 and -11000 at nper 1.
+        assert_eq!(pmt(0.05, 1.0, 10000.0, 0.0, false), -10_499.999_999_999_998);
+        assert_eq!(pmt(0.1, 1.0, 10000.0, 0.0, false), -11_000.000_000_000_002);
+        // ironcalc-calc FINANCIAL/PMT.xlsx F10, G18: rate -0.9 with fv and type 1, and alone.
+        assert_eq!(pmt(-0.9, 3.0, 120.0, 300.0, true), -2_703.783_783_783_783);
+        assert_eq!(pmt(-0.9, 1.0, 100.0, 0.0, false), -9.999_999_999_999_998);
+        // probes/t3014-pmt-fv-type-alone A7 (fv alone), C41 (|nper*L| 0.9896, expm1) and C42
+        // (|nper*L| 1.0648, 1-Q).
+        assert_eq!(
+            pmt(0.2, 8.0, 10000.0, -500.0, false),
+            -2_575.789_512_882_557
+        );
+        assert_eq!(
+            pmt(-0.05, 19.293, 10000.0, 0.0, false),
+            -295.829_576_962_597_2
+        );
+        assert_eq!(
+            pmt(-0.1, 10.106, 10000.0, 0.0, false),
+            -526.265_477_108_976_1
+        );
     }
 }
