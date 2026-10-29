@@ -445,7 +445,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
             // year in the others (probes/text-locale-japanese-year A1-A13).
             let mut seen_era = false;
-            let mut names = NameTokens::new(p.hijri, p.names.is_some());
+            let mut names = NameTokens::new(p);
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {

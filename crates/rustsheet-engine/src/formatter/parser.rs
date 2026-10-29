@@ -128,6 +128,11 @@ pub struct DatePart {
     /// (`date_names::hijri_ymd`) and, with no tag or from its first `mmm` on, Excel's Arabic
     /// name path (`date_names::NameTokens`).
     pub hijri: bool,
+    /// Whether a `B2` prefix came before a tag whose calendar wins over it: a weekday after a
+    /// `mmm` then reads the month number (`date_names::NameTokens`).
+    pub b2_overridden: bool,
+    /// The names from the section's first `mmm` on (`Localized::names_after_mmm`).
+    pub names_after_mmm: Option<&'static DateNames>,
 }
 
 #[derive(Default)]
@@ -896,7 +901,8 @@ impl Parser {
         };
         // A calendar digit other than Hijri wins over a `B2` before the tag (`B2[$-10409]yyyy` is
         // "2023"); an unresolved tag leaves it a bare `B2` (`B2[$-zzz]`).
-        hijri &= localized.is_none_or(|l| l.calendar == Calendar::Hijri);
+        let b2_overridden = hijri && localized.is_some_and(|l| l.calendar != Calendar::Hijri);
+        hijri &= !b2_overridden;
         let general_count = tokens
             .iter()
             .filter(|t| matches!(t, TextToken::General))
@@ -929,6 +935,8 @@ impl Parser {
                 japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
                 year_twice: localized.is_some_and(|l| l.year_twice),
                 hijri,
+                b2_overridden,
+                names_after_mmm: localized.and_then(|l| l.names_after_mmm),
             })
         } else {
             ParsePart::Number(NumberPart {

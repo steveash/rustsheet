@@ -256,7 +256,7 @@ fn a_short_principal_at_a_large_rate_is_one_geometric_sum() {
             "=CUMIPMT(1E-10,296,197540,13,19,1)",
             "-0.00013127066813467536",
         ),
-        // Below `GEOMETRIC_MIN_DISCOUNT` the old forms keep these to the bit: the per-period
+        // Below `GEOMETRIC_MIN_LEAD` the old forms keep these to the bit: the per-period
         // sum (gen-m9 d912671baa1364aa A300) and type 1's closed form (CUMPRINC_CUMIPMT.xlsx H25).
         (
             "A6",
@@ -267,6 +267,24 @@ fn a_short_principal_at_a_large_rate_is_one_geometric_sum() {
             "A7",
             "=CUMPRINC(0.1234,36,8000,3,10,1)",
             "-212.62776661477534",
+        ),
+        // Past 32 periods a range that ends a deep discount before nper is the geometric sum
+        // too (gen-m9 b73c6cc96e093f03 A62, probes/fin-cumprinc-form-boundaries A2; T-3067), and
+        // one that ends near nper keeps the closed form (fin-cumipmt-period-bound A6).
+        (
+            "A8",
+            "=CUMPRINC(2,151,319288,3,42,1)",
+            "-1.049166891970377E-47",
+        ),
+        (
+            "A9",
+            "=CUMPRINC(2,600,319288,3,42,1)",
+            "-6.214428680002485E-262",
+        ),
+        (
+            "A10",
+            "=CUMPRINC(0.005,100000,1000,2,99999,1)",
+            "-990.0745031063589",
         ),
     ]);
 }

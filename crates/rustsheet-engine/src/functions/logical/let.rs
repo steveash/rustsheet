@@ -191,11 +191,24 @@ impl Model {
                     cell,
                     format!("LET: variable name '{name}' is already bound"),
                 )),
-                _ => Err(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    format!("LET: argument {} must be a variable name", 2 * i + 1),
-                )),
+                // Excel refuses a name under a unary plus typed (`LET(+x,1,x)`, Graph PATCH 400,
+                // docs/excel-semantics/syntax.md "A typed unary plus stays in the formula text",
+                // T-2887), as it refuses a repeated name. A plus over a non-name is unprobed.
+                other => {
+                    let plus_name = matches!(
+                        other,
+                        Node::UnaryPlus { child } if matches!(**child, Node::NamedVariableKind { .. })
+                    );
+                    Err(CalcResult::new_error(
+                        if plus_name {
+                            Error::ERROR
+                        } else {
+                            Error::VALUE
+                        },
+                        cell,
+                        format!("LET: argument {} must be a variable name", 2 * i + 1),
+                    ))
+                }
             };
             let name = match name {
                 Ok(name) => {
@@ -332,6 +345,22 @@ impl Model {
             }
         }
         RefArg::from(self.variable_value(node, cell))
+    }
+
+    /// The one-cell reference `node` is bound to, when it is a variable bound to one: what TAKE,
+    /// DROP and TRIMRANGE read for their array, where a value read gives the cell's value
+    /// (`TYPE(TAKE(LET(v,A2,v),1))` is 1, not a 1x1 array's 64, and `ISREF` of it TRUE;
+    /// probes/t2622-take-let-reference-lambda-text P2, P15, P21-P29; T-2622).
+    pub(crate) fn cell_variable_reference(&self, node: &Node) -> Option<CalcResult> {
+        match self.variable_binding(node.ungrouped())? {
+            Binding::Value(reference @ CalcResult::Range { left, right })
+            | Binding::ReadOnce(reference @ CalcResult::Range { left, right })
+                if left == right =>
+            {
+                Some(reference.clone())
+            }
+            _ => None,
+        }
     }
 
     /// What `node` is bound to when it is a variable in scope.

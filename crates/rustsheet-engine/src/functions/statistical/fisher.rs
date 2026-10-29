@@ -826,7 +826,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{f_quantile, fisher, fisher_inv};
+    use super::{f_cdf, f_quantile, fisher, fisher_inv};
 
     // FISHER and FISHERINV round their quotient twice, like Excel's `/` (excel-graph; T-2437).
     #[test]
@@ -846,6 +846,14 @@ mod tests {
             fisher(-6.605_891_778_770_15e-16),
             -6.661_338_147_750_943e-16
         );
+    }
+
+    // A shape of 1 outside the closed forms forms w1 as (0.5 - w) + 0.5 (T-3007): y0^b0 is 3 ulp
+    // low at probes-numeric/t2220-f-dist-sweep-cdf A718 and 1 ulp low at A318.
+    #[test]
+    fn shape_one_other_tail_is_the_complement() {
+        assert_eq!(f_cdf(20.0, 2.0, 5.0), 0.820_348_299_875_155_2);
+        assert_eq!(f_cdf(4.0, 2.0, 5.0), 0.826_446_280_991_735_6);
     }
 
     #[test]

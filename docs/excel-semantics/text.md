@@ -178,12 +178,21 @@ small the used area: `TEXTJOIN(",",FALSE,D:D)` is `#CALC!` (1,048,576 values joi
 characters) and `TEXTJOIN(",",FALSE,10:10)` with H10 = "x" and J10 = "y" is ",,,,,,,x,,y" followed by
 16,374 more commas. With ignore_empty TRUE only the non-empty cells count (`TEXTJOIN(",",TRUE,D:D)` =
 "a,c"). `TEXTJOIN(",",FALSE,D1:D16385)` over the same sheet has length 16,386.
-Unprobed: an error cell met after the skipped empties have taken the join over the limit (for example
-`TEXTJOIN(",",FALSE,1:3)` with an error in A3); the engine gives `#CALC!`, as for a walked range (C20).
-Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114).
+An error cell met after the skipped empties have taken the join over the limit is dropped: with A1 = "x",
+A2 = "y" and A3 = `=NA()`, `TEXTJOIN(",",FALSE,1:3)` and `1:2` are `#CALC!`, while `1:1` joins to 16,384
+characters and `TEXTJOIN(",",TRUE,1:3)`, `3:3` and `A1:A3` are `#N/A` (probes/textjoin-whole-rows-error-cell
+A1-A7, excel-graph, 2026-10-29, T-3098).
+Past the limit Excel stops reading cells: with A1 = "x", A2 = "y" and `=TEXTJOIN(",",FALSE,1:10)` in B5 (a cell
+of its own range, below the row where the padding passes the limit) the result is `#CALC!`, not a circular
+reference, while `=TEXTJOIN(",",TRUE,1:10)` in D3 is circular (0), since ignore_empty TRUE adds no padding and reads
+every cell (probes/textjoin-whole-rows-self-reference B5, D3, excel-graph, 2026-10-29, T-3098). The engine's
+whole-row walk with ignore_empty FALSE and clipped columns stops at the limit (`textjoin_push_padded_range`);
+the unclipped single-walk path still reads past it (unprobed).
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098).
 Status: VERIFIED
-Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area and adds the skipped
-empty cells per row and after the last row through `JoinSize::push_empties`, which stops at the limit.
+Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
+sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row when
+columns are clipped) and after the last row through `JoinSize::push_empties`, which stops at the limit.
 Tasks: T-1114
 
 ## JIS is `#NAME?` in en-US Excel for the web
@@ -657,12 +666,11 @@ units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (
 (A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
 from a numeral-length limit. From a cell, as an array element and with an error count (T-2305; probes/text-255-units-from-cell, -array-element,
 -rept-error-count, excel-graph 2026-10-24): a cell holding 256 "x" (typed, D1, or a formula result, D3) is `#VALUE!` in
-`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!` (ours `#VALUE!`); 255 from a cell works in all
-four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!` (ours keeps T's element);
+`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!`; 255 from a cell works in all
+four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!`;
 255 works. excel-graph refused to open a workbook whose array constants held 256-character literals (cause not isolated), so the probe builds the long text with REPT. REPT with a
-long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!` (ours
-`#VALUE!`); `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Unprobed: `T` of a multi-cell range whose top-left cell holds long text.
-Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count differences are T-2627.
+long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!`; `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. T of such a cell is "" however the cell is reached (T-3107; probes/text-255-units-reference-shapes, excel-graph 2026-10-29): `T(D1:D2)` (top-left cell), a defined name, `INDIRECT`, `OFFSET`, `INDEX`, `IF`, `CHOOSE`, `LET`, a spill reference (`T(F1#)`), a sheet-qualified reference (same sheet or another), `T((D1))`, a single-cell structured reference, and a legacy formula's `T(D1)`, `T(D1:D2)` and `T(name)` are all "". A computed value stays `#VALUE!`, and so does the unary plus: `T(+D1)` is `#VALUE!`. Implemented by `reads_cell_text` in t_function.rs.
+Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count rules are implemented (T-2627, T-3107: `T` of any reference reads "", an array element is `#VALUE!`, REPT reads its count's error before the text limit).
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or

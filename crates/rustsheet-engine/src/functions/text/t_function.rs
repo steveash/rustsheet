@@ -7,7 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::information::map_elements,
+    functions::{information::map_elements, text::common::reject_over_short_limit},
     model::Model,
 };
 
@@ -35,12 +35,23 @@ impl Model {
         // dynamic: `T(A1:A3)` with A1 "x" is "x" from any row, and with A1 5 "" even from A2's
         // row (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
         let result = self.evaluate_node_top_left(&args[0], cell);
+        // Text over 255 units read from a cell is "" however the cell is reached: a range, name,
+        // INDIRECT, OFFSET, INDEX, IF, CHOOSE, LET, spill reference, sheet-qualified, parenthesised
+        // or legacy reference, or structured reference. A computed value stays `#VALUE!`, and so
+        // does `+D1` (probes/text-255-units-reference-shapes A1:A19; T-3107).
         match result {
             // Text over 255 UTF-16 units is #VALUE!, as in REPT, CODE and UNICODE:
             // `T(REPT("x",256))` (docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a
             // text argument over 255 UTF-16 units", probes/t2199-text-length-and-combin-cuts A12).
-            CalcResult::String(ref text) => match super::common::reject_over_short_limit(text) {
+            // Read from a cell, such text is "" instead, and an array element over the limit is
+            // #VALUE! (probes/text-255-units-from-cell A4, A12; -array-element A4; T-2627).
+            CalcResult::String(ref text) => match reject_over_short_limit(text) {
                 Ok(()) => result,
+                // Checked only here: `is_reference` can evaluate the argument again, which every
+                // T call would pay and nested T(IF(…T(IF(…)))) would double per level.
+                Err(_) if self.reads_cell_text(&args[0], cell) => {
+                    CalcResult::String(String::new().into())
+                }
                 Err(error) => CalcResult::new_error(error, cell, String::new()),
             },
             error @ CalcResult::Error { .. } => error,
@@ -54,11 +65,31 @@ impl Model {
             }
             CalcResult::Array(values) => {
                 CalcResult::Array(map_elements(&values, |value| match value {
+                    ArrayNode::String(text) if reject_over_short_limit(text).is_err() => {
+                        ArrayNode::Error(Error::VALUE)
+                    }
                     ArrayNode::String(_) | ArrayNode::Error(_) => value.clone(),
                     _ => ArrayNode::String("".into()),
                 }))
             }
             _ => CalcResult::String("".into()),
+        }
+    }
+
+    /// Whether `node` hands T a cell's text rather than a computed value. A legacy formula's
+    /// automatic `@` and a spill reference still stand for cells; a unary plus makes a value
+    /// (probes/text-255-units-reference-shapes A9, A13, A18; T-3107).
+    fn reads_cell_text(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+        let mut node = node;
+        loop {
+            match node {
+                Node::UnaryPlus { .. } => return false,
+                Node::Group { child, .. }
+                | Node::Spaced { child, .. }
+                | Node::ImplicitIntersection { child, .. } => node = child,
+                Node::SpillRangeOperator { .. } => return true,
+                _ => return self.is_reference(node, cell),
+            }
         }
     }
 }

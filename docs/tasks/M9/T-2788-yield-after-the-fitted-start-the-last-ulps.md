@@ -46,6 +46,10 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
   S!E8, its -shifted twin S!E8 and yield-start-rate-term S!B20 are each 1 ulp off
   (`fn_yield_matches_excel_off_the_fit`).
 
+- Added by T-2974 (2026-10-29): probes/yield-price-at-iterates P!A5 to P!A12, which repeat yield-start-one-input B54,
+  B62, B69, B11, A54 and A62, yield-solver-sweep C11 and solver-iteration-traces Y!E2. The same probe shows Excel's PRICE
+  at our iterates equals the lab's `^` PRICE to the bit (financial.md "YIELD stops short of PRICE's root", T-2974).
+
 ## Acceptance criteria
 - [ ] The three regressed probe cells pass bit for bit (their lines leave eval/baseline/probes.txt), or the task
       records the PRICE kernels and stop rules tried with their lab bit-exact counts (decision 0056).

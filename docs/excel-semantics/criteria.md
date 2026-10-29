@@ -112,6 +112,22 @@ Also verified for SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MAXIFS (`"="`)
 probes/criteria-ifs-bare-equals C1-C12. Oracle: excel-graph, 2026-10-05 (T-0246).
 Tasks: T-0227, T-0246
 
+## A blank-cell or omitted criterion is the criterion 0
+Rule: a criterion that is a blank cell (`COUNTIF(r,Z1)` with Z1 empty, on this sheet, another sheet or picked by
+`INDEX`) or an omitted argument (`COUNTIF(r,)`, `IF(FALSE,1,)`) matches what the number criterion `0` does on
+every probed cell kind (padded text such as `" 0"` is not probed; the engine treats it as `0` does), in COUNTIF, SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MINIFS and MAXIFS: number cells equal to 0 at 15
+digits (0 and `=-0`; `=2^-1074` is 0 in Excel) and the text `"0"`. It never matches a blank cell, an empty-string
+cell, FALSE, `" "`, 1E-17, -1E-300 or 5E-16. So it is neither `""` (which matches blanks and empty strings) nor
+`"="` (blanks only). With no matching cell, AVERAGEIF and AVERAGEIFS are `#DIV/0!`.
+Evidence: probes/t3138-blank-criterion. Over A1:A14 = blank, `=""`, 0, `=-0`, 1E-17, -1E-300, `=2^-1074`, 5E-16,
+FALSE, "0", " ", "x", `=NA()`, 1 with weights B = 2^0..2^13, every source gives COUNTIF 4, SUMIF 588 (= 4 + 8 + 64
++ 512: the 0, -0, `2^-1074` and "0" rows), AVERAGEIF 147, MINIFS 4, MAXIFS 512 (D1:H9), and the same on the
+80-cell range A21:A100 that the *IFS cache indexes (D21:H29, J31:J39). N1:N4: `#DIV/0!` and 0 with no match.
+Oracle: excel-graph, 2026-10-29 (T-3138).
+Status: VERIFIED
+Implemented in: `indexed_criterion` (`crates/rustsheet-engine/src/functions/criteria.rs`), which turns the empty
+criterion into the number criterion 0 for both the walk and the indexed *IFS path.
+
 ## `<`, `>`, `<=`, `>=` with a boolean or error operand
 Rule: `COUNTIF(r,">TRUE")`, `"<TRUE"`, `">#N/A"` and `"<#N/A"` match nothing, even over TRUE or
 #N/A cells; `"<=TRUE"`/`">=TRUE"` (and `<=`/`>=` with `#N/A`) behave as equality and count exactly
@@ -120,6 +136,18 @@ Evidence: probes/criteria-operands C1-C8 over 10, "abc", TRUE, #N/A, "abd", 5: 0
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::bool_or_error_operand_matcher
+
+## Numeric `<`, `<=`, `>`, `>=` criteria compare the 15-digit value of the cell
+Rule: a number cell meets an ordering criterion by its 15-digit value, like `=` and `<>`: a cell holding `1+22*2^-52`
+(prints 1) meets `"<=1"`, `">=1"` and `"=1"` but not `">1"`; `1+23*2^-52` meets `">1"`. Same in COUNTIF, SUMIF,
+COUNTIFS and SUMIFS. The criterion's own operand is text, already cut to 15 digits when parsed.
+Evidence: probes/t3072-criteria-near-equal-order (288 criteria cells); details in numbers.md "Criteria ordering
+operators compare at 15 digits too".
+Status: VERIFIED
+Implemented in: `result_is_less_than_number` and the other three ordering matchers (functions/criteria.rs), on
+`cmp_excel_precision`, and in the indexed *IFS cache (`number_interval`, functions/statistical/ifs_cache.rs).
+AVERAGEIF(S), MINIFS/MAXIFS and the D-functions share these matchers but have no oracle cell near a rounding
+boundary yet. Tasks: T-3084, T-3103
 
 ## Text `<=` / `>=` criteria, and dotted dates are text in en-US
 Rule: `"<=text"` and `">=text"` compare the cell text with the operand, case-insensitively, like
@@ -435,3 +463,29 @@ Evidence: `probes/m2-argument-kind-gaps-c` (excel-graph). Criteria `0`/`"0"`/`"=
 text cell but not a blank; `-2`/`"-2"`/`"=-2"` match numeric -2 and a `"-2"` text cell; `"<0"` matches only numbers.
 An error `logical_test` (literal or cell) propagates; an error `value_if_false` surfaces only on the FALSE branch.
 `RIGHT(text,"2")`, `" 2 "` and `"1E1"` coerce num_chars as numbers. `RIGHT("abcdef","2.7")` is "ef" (truncated; Calc!A27) and `RIGHT(..,"x")` is #VALUE! (Calc!A31). IF cells: Calc!A1:A12; RIGHT cells: Calc!A25:A31. Our engine already matches every cell.
+
+## Criterion operands and text cells read numbers with VALUE's grammar (VERIFIED, T-3136)
+Rule (criterion side): a *IF(S) or D-function criterion operand, after its operator, is a number exactly when VALUE reads
+it as one. Percent (`"50%"`, `"1,000.5%"` = 10.005, `"1e2%"` = 1), `$` currency with and without grouping and sign (`"$1"`,
+`"$1,000"`, `"$-1"`, `"-$1"`), thousands grouping (`"1,000"`), a time (`"12:00"`, `"12:00 PM"` = 0.5), a date with a time
+(`"1/2/2020 12:00"` = 43832.5), a mixed fraction (`"1 1/2"`) and a parenthesised negative (`"(1)"`) are all numbers, under
+the plain operand, `=`, `<>` and `>=`. Misplaced grouping is not: `"1,00"` is text in the criterion, as `VALUE("1,00")` is
+`#VALUE!`, so it matches only the text cell "1,00" and `">=1,00"` compares texts by the collation. Calc!H gives VALUE of each
+operand: every one agrees with the criteria. So the criteria read numbers consistently with VALUE's grammar (`parse_formatted_number` plus VALUE's own forms), not
+with the plain parser the engine uses; no probed form tells VALUE apart from typed input.
+Rule (text-cell side): a numeric criterion under the plain operand or `=` matches the text cells that VALUE reads as the
+same number: `50%`, `12:00` and `12:00 PM` match the text cells "50%", "12:00" and "12:00 PM"; `$1` and `1e2%` match "$1",
+"1e2%" and "1"; `1,000` matches "1,000" and "$1,000"; `(1)`, `$-1` and `-$1` match "(1)" and "$-1". `<>` with a numeric
+operand counts every text cell, the equal ones included; `>=` never matches a text cell (Calc!B, D, F: 0). This extends
+"Numeric criteria against text cells and non-ASCII spaces" above from plain number text to VALUE's grammar.
+SUMIF, SUMIFS (the indexed path), COUNTIF, COUNTIFS and DSUM agree on every row, with criteria from cells and from literals.
+Evidence: probes/t3136-criteria-formatted-number-operands (excel-graph, 2026-10-29): Data!A1:A8 numbers 0.5, 1, -1, 1.5, 1000,
+10.005, 43832.5, 100 and Data!C1:C14 text cells with power-of-two SUMIF weights. Rows 1-56 are 14 operands × 4 operators.
+Calc!A (SUMIF numbers), B (SUMIF text), C/D (SUMIFS), E (COUNTIF), F (COUNTIFS text), G (DSUM) and H1-H53 (VALUE).
+UNVERIFIED: euro operands (`€1`, `1€`), other VALUE forms (`- 5`, `1-1-1`, month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
+analogy with `>=`), a percent rounding at the 15-digit tie, CHAR(160)-padded formatted text, and non-en-US locales.
+Ours: the plain parser only (`parse_criterion_number`, `parse_date_criterion`, `result_is_equal_to_number` in
+functions/criteria.rs), so A, C, E and G fail on rows 1-52, B, D and F on rows 1-52 except 25, 26, 39, 41, 42, 49 and 50
+(the text sums match by chance), and H25; rows 53-56 pass. Owner: T-3151.
+Status: VERIFIED (excel-graph); not implemented (T-3151).
+Tasks: T-3136, T-3151

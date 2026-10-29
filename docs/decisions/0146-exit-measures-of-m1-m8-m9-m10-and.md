@@ -101,3 +101,42 @@
   - On today's numbers M1 is met; M8 is not (9 probe cells; the POI subset is `n/a`); M9 is not
     (138 > 36, 82 functions, 578 probe cells); M10 is not (76 text items, 50 probe cells); M11 is
     met on corpus-bench (99.834%, 205,366 cells) and its probes.
+  - T-0089 (2026-10-29) builds the M1 and M11 rows. Each row reads a list of required suites, each
+    with its own floor and rate. The first suite is the row's `gen_*` measure, named in
+    `gen_suite` (`gen-m1`, or `corpus-bench` for M11). The rest go in `more_suites` (M1's smoke).
+    M1's `probe_row` names the `m1-probes` list it reads. `scripts/exit_owners.py` lists the
+    visibly-off cells of every required suite (by `gen_suite`, falling back to `gen-m<k>`, then
+    `more_suites`) and of a `milestone_lists` row whose name is the exit row's `probe_row`. The
+    M2, M5, M6 and M7 rows read and print as before.
+  - T-0095 (2026-10-29) builds the M9 row of item 3. It requires no suite (`gen_suite` is empty).
+    (a) reads the cumulative M9 function-scope row: scored cells are its cells less deviations and
+    exit exceptions, met at `meets_rate` with 9,995 over a denominator of 10,000 (every rate in
+    `milestone_exit` moved from over 1,000 to over 10,000, same shares). (b) reads `v15_checkpoint`'s
+    rows, which now carry each function's catalog `milestone`, and counts the M9 ones not
+    `meets_rate`. `scripts/exit_owners.py` lists, beside the function-scope and probe cells, the
+    `attributed_off` cells of each function the row names in `below_rate_functions`, as
+    `rate:<FUNCTION>`, through the same reader `--all-off` uses.
+  - T-0096 (2026-10-29) builds the M8 row of item 2. gen-m8a is the row's `gen_suite`; gen-m8b and
+    the poi subset (`poi M8 subset`, read from the report's `poi_m8_subset` section, T-0094) are
+    `more_suites`, each with 3,000 scored cells (gen-m8a and gen-m8b) or 99.5% (the subset, 9,950 over
+    10,000). A `more_suites` entry carries `blocked_cases` (`case!*`); the subset is not met while it
+    holds one. `scripts/exit_owners.py` lists each `more_suites` entry's visibly-off cells and
+    blocked cases from the entry's own lists, so a measure over another suite's cells needs no suite
+    match.
+  - T-0097 (2026-10-29) builds the M10 row of item 4. gen-m10 is the row's `gen_suite` with no
+    value-cell floor and none visibly off, and its displayed-text items are a criterion of the same
+    suite measure: at least 10,000 (`M10_MIN_TEXT`) with none failing, reported as
+    `gen_text_items`, `gen_text_failing` and `gen_text_failing_cells` (`case!Sheet!A1`, from the
+    report's failing text items). The M10 probe row's `text_items` and `text_failing` (T-0093) are
+    copied to `probe_text_items` and `probe_text_failing`, and `probes_met` needs both counts of
+    failures at 0. Other rows leave the text fields null. `scripts/exit_owners.py` lists the failing
+    text items as `gen-m10 text` and `probes text` (the probe row's `text_failing_cells`, only when
+    the exit row carries `probe_text_items`), and the progress page shows both text counts.
+    `scripts/exit_owners.py` reads a function-scope row only where the exit row gives `calc_met` a
+    verdict: a null `calc_met` (M7's shown-only row, and M1, M8, M10 and M11, which have no
+    ironcalc-calc criterion) lists no ironcalc-calc cell, even when the report has a scope row for
+    the milestone (it had listed 119 for M10 and for M11).
+  - T-3091 (2026-10-29): M1's `probes_met` has a verdict only when the run executed the whole
+    `m1-probes` list (`cases_run == cases`); a run under `--filter` or `--suite` gives `n/a`, as a
+    missing input does. `scripts/exit_owners.py` lists a listed case in the list row's
+    `failing_cases` that has no cell (it crashed or errored) as `case!*`, as it does for a probe row.

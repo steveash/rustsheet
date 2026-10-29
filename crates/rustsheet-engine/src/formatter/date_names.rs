@@ -2,7 +2,10 @@
 //! Hijri calendar of the `B2` prefix. Evidence for Hijri: probes/t1613-hijri-b2 and
 //! t1613-hijri-b2-weekday (excel-graph, 2026-10-25); number-formats.md "The `B2` (Hijri) calendar".
 
-use super::{calendar_dates::real_day, parser::TextToken};
+use super::{
+    calendar_dates::real_day,
+    parser::{DatePart, TextToken},
+};
 use crate::locale::{
     excel_date_names::{DateNames, HIJRI_ARABIC},
     Locale,
@@ -59,6 +62,12 @@ pub(crate) fn hijri_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
     Some((year, month, u32::try_from(rest + 1).ok()?))
 }
 
+/// The Sunday-first weekday index Excel's `B2` name quirks read from a month: weekday number
+/// min(month, 7), Sunday being 1 (`NameTokens`).
+fn month_as_weekday(month: u32) -> usize {
+    month.clamp(1, 7) as usize - 1
+}
+
 /// What the first name token of a `B2` section showed.
 #[derive(Clone, Copy)]
 enum FirstName {
@@ -73,6 +82,13 @@ pub(crate) struct NameTokens {
     arabic: bool,
     /// Whether a `mmm` switches the section to the Arabic path: `B2` before a tag.
     mmm_switches: bool,
+    /// Whether a `B2` came before a tag whose calendar wins over it (`DatePart::b2_overridden`).
+    b2_overridden: bool,
+    /// The month a `mmm` printed in a `b2_overridden` section, which every weekday after it reads.
+    month_after_mmm: Option<u32>,
+    /// The names every name token prints from a `b2_overridden` section's first `mmm` on
+    /// (`DatePart::names_after_mmm`).
+    names_after_mmm: Option<&'static DateNames>,
     first: Option<FirstName>,
     /// Whether a numeric date token came before any Arabic name in a bare `B2` section, which
     /// turns the first-name quirk off for the section (`B2yyyy-mm-dd|mmmm|dddd` is
@@ -81,12 +97,15 @@ pub(crate) struct NameTokens {
 }
 
 impl NameTokens {
-    /// `hijri` is whether a `B2` prefix put the section in Hijri (`DatePart::hijri`), `tagged`
-    /// whether the section's locale tag gives names.
-    pub(crate) fn new(hijri: bool, tagged: bool) -> Self {
+    /// The name tokens of `part`'s section.
+    pub(crate) fn new(part: &DatePart) -> Self {
+        let tagged = part.names.is_some();
         NameTokens {
-            arabic: hijri && !tagged,
-            mmm_switches: hijri && tagged,
+            arabic: part.hijri && !tagged,
+            mmm_switches: part.hijri && tagged,
+            b2_overridden: part.b2_overridden,
+            month_after_mmm: None,
+            names_after_mmm: part.names_after_mmm,
             first: None,
             real_names: false,
         }
@@ -120,6 +139,20 @@ impl NameTokens {
             text.push_str(self.hijri_name(token, month, weekday));
             return;
         }
+        // Excel: after a `B2` before a tag whose calendar wins over it, every weekday after a
+        // `mmm` is weekday number min(month, 7), Sunday being 1, in the tag's names, as in the
+        // Arabic path's first-name quirk: `B2[$-70409]mmm|ddd` of 2023-03-15 is "มี.ค.|อ."
+        // (Tuesday), `dddd|mmm|dddd` "พุธ|มี.ค.|อังคาร"; `mmmm` and `mmmmm` do not do it
+        // (probes/t3029-b2-calendar-weekday). Under calendars 1, 3 and 5 every name from that
+        // `mmm` on is in another language too (`B2[$-30411]dddd|mmm|mmmm` is "水曜日|Mar|March";
+        // probes/t3101-b2-calendar-names).
+        if self.b2_overridden && matches!(token, TextToken::MonthNameShort) {
+            self.month_after_mmm = Some(month);
+        }
+        let (weekday, names) = match self.month_after_mmm {
+            Some(m) => (month_as_weekday(m), self.names_after_mmm.or(names)),
+            None => (weekday, names),
+        };
         let m = month as usize - 1;
         let dates = &locale.dates;
         match token {
@@ -167,7 +200,7 @@ impl NameTokens {
         };
         let names = &HIJRI_ARABIC;
         let name = match (is_day, read) {
-            (true, FirstName::Month(m)) => names.days[m.clamp(1, 7) as usize - 1],
+            (true, FirstName::Month(m)) => names.days[month_as_weekday(m)],
             (_, FirstName::Weekday(w)) => names.days[w],
             (false, FirstName::Month(m)) => names.months[m as usize - 1],
         };

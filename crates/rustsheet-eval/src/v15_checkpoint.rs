@@ -35,6 +35,10 @@ pub const GENERATED_BAR: usize = 200;
 pub struct V15Function {
     /// Upper-case Excel name.
     pub name: String,
+    /// The catalog milestone, `M<n>`: the M9 exit reads the rows of its own milestone
+    /// (decision 0146 item 3).
+    #[serde(default)]
+    pub milestone: String,
     /// Excel-evidence cells that call it (the report's `evidence`).
     pub cells: usize,
     /// Excel-evidence cells of generated suites whose formula is one call of it.
@@ -265,7 +269,7 @@ fn excepted_cells(
         .cells
         .keys()
         .filter(|cell| !found.contains(*cell))
-        .map(|(case, key)| format!("{case}!{key}"))
+        .map(|(case, key)| crate::runner::cell_id(case, key))
         .collect();
     (left_out, stale)
 }
@@ -334,6 +338,7 @@ pub fn summarize(
                 .saturating_sub(rate_excepted + desktop_owned);
             V15Function {
                 name: f.name.clone(),
+                milestone: f.milestone.clone(),
                 cells: n,
                 generated,
                 exempt,
@@ -651,7 +656,7 @@ mod tests {
         let json = serde_json::to_value(&v).unwrap();
         assert_eq!(
             (json["rate_num"].as_u64(), json["rate_den"].as_u64()),
-            (Some(999), Some(1000))
+            (Some(9_990), Some(10_000))
         );
         assert_eq!(
             json["verdict_line"].as_str(),

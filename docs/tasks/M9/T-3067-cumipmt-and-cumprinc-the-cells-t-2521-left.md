@@ -3,7 +3,7 @@ id: T-3067
 title: "CUMIPMT and CUMPRINC: the cells T-2521 left (type 1 operation order of G2/H2, tiny-rate interest of both types, periods near 1E15)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -58,3 +58,45 @@ the best form (the geometric sum on `growth_log`, within an ulp of all three) wa
 notes". Next: probe the near-1E15 principals directly (CUMPRINC at m = 1 to 12 and at rates 0.001, 0.01, 0.1) so
 Excel's discount error can be measured per period instead of inferred from three cancelled interests. Nothing else
 in the list above was started.
+
+## Outcome (partial, run 2, 2026-10-29; the task stays open)
+Probed the near-1E15 principals directly, as the run 1 note suggested (probes/fin-cumprinc-near-1e15: CUMPRINC over
+the last 1 to 12 periods at three rates, the PPMTs, CUMIPMT and type 1). The best of 30 forms, the balance drop on
+Excel's EXPM1 and `growth_log`, is exact on 23 of 36 principals and within an ulp on the rest. In the kernel it
+takes 8 to 14 bit-exact cells off, so nothing in the kernel changed. The details and the next probe (nper 1E6 and
+1E10) are in financial.md "T-3067 notes". Eval delta: one new probe case, 84 cells, 44 passing; the 40 failing
+cells are new known failures; no regressions.
+
+## Outcome (partial, run 3, 2026-10-29; the task stays open)
+Probed where Excel's CUMPRINC changes form (probes/fin-cumprinc-form-boundaries, 132 cells): it is the leading
+discount `(nper-end+1)·L` that decides, not the range's length or its deepest discount. The geometric principal now
+takes a short range from a leading exponent of 0.3 (`GEOMETRIC_MIN_LEAD`, replacing `GEOMETRIC_MIN_DISCOUNT`) and a
+long range from 3.6 (`LONG_GEOMETRIC_MIN_LEAD`), which closes the "type 1 over a long range" (A62) and
+`GEOMETRIC_MIN_DISCOUNT` items above. Eval delta: 7 known failures fixed (gen-m9 A62; CUMPRINC_CUMIPMT.xlsx H9, H10,
+H15, H21; gate-edges G9, G11), 0 regressions; the new case is visibly right on all 132 cells, 73 to the bit (59 new
+known failures, each within 2 ulps). Left: type 1 from period 1 (G2/H2), the tiny-rate interests (gate-edges A2-A8,
+E1-E10, A379), A352 and the cells near period 1E15 (financial.md "T-3067 notes").
+
+## Outcome (partial, run 4, 2026-10-29; the task stays open)
+Measured how Excel builds the interest (probes/fin-cumipmt-tiny-rate-structure, 226 cells): CUMIPMT is exactly its own
+PMT times the period count less its own CUMPRINC, and a type 1 range from period 1 is built from the range from period
+2 (`CUMPRINC = PMT + CUMPRINC(2..e)`, `CUMIPMT = PMT·(e-1) - CUMPRINC(2..e)`), to the bit on all 82 probed relations.
+So the tiny-rate interests (gate-edges A2-A8, E1-E10, A379) and G2/H2 are visibly off only through an ulp of PMT or
+CUMPRINC; the engine's PMT is an ulp off Excel's at those rates (T-3014), so taking the rule now takes 29 bit-exact
+cells off and nothing in the kernel changed. Follow-up: T-3118 (the rule, after T-3014). Left here: CUMPRINC's own
+bits (the best type 1 form on Excel's PMT is exact on 22 of 58), A352 and the cells near period 1E15 (financial.md
+"T-3067 notes"). Eval delta: one new probe case, 226 cells, 66 passing; the 160 failing cells are new known failures
+(68 visibly off, all interests that ride on PMT's or CUMPRINC's ulps); no regressions.
+
+## Outcome (run 5, 2026-10-29; done)
+Probed where `v^nper` underflows (probes/fin-cumprinc-underflow-ends, 124 cells): Excel's last-m principal does not
+depend on nper (nper 1E6, 1E10, 1E12 and 1E15 give the same doubles), so the near-1E15 cells are an m-period sum on a
+whole `pv·r` payment. Type 0's short principal there is now the balance drop on Excel's EXP, Kahan's expm1 and
+`growth_log` (`underflowed_principal`, below `GEOMETRIC_MIN_LEAD`), exact on 70 of 108 underflowed principals.
+Eval delta: 22 known failures fixed (fin-cumipmt-overflow-and-forms A9, A11; fin-cumipmt-period-bound A19;
+fin-remaining-later-argument-ranges K3; fin-cumprinc-near-1e15 A1, A5, A6, A8, A11, B2, B3, B5-B8, C3, C12, E1, E5, E6,
+E8, E11); 7 regressions under decision 0160 (fin-cumprinc-near-1e15 A7, B1, B4, B9, C6, C10 by an ulp; E7 by 16 ulps,
+visibly); the new case 72 of 124 to the bit (52 new known failures); visibly-off in-scope cells 2,833 to 2,822.
+Every cell the Goal lists is now visibly right or documented in financial.md with the forms tried ("T-3067 notes"), so
+the task is done. Left to follow-ups: the interest as `PMT·m - CUMPRINC` with G2/H2, the tiny-rate interests, A352 and
+A379 (T-3118, after T-3014); the underflowed principal's bits, E7, A10 and type 1's A18 (T-3141); last digits (T-1374).

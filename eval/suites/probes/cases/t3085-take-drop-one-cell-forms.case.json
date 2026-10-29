@@ -1,0 +1,39 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3085 probe: TAKE/DROP of a one-cell reference reached as a defined name, LET variable, INDEX or OFFSET result.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "names": {
+    "nm": "=Sheet1!$E$7",
+    "nmn": "=Sheet1!$C$8"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "E7": "a*",
+        "E8": "x",
+        "C8": 5,
+        "P1": "=ROWS(E9-TAKE(nm,1))",
+        "P2": "=ISREF(TAKE(nm,1))",
+        "P3": "=TYPE(1+TAKE(nmn,1))",
+        "P4": "=ROWS(E9-DROP(nm,0))",
+        "P5": "=LET(x,E7,ROWS(E9-TAKE(x,1)))",
+        "P6": "=LET(x,E7,ISREF(TAKE(x,1)))",
+        "P7": "=LET(x,C8,TYPE(1+TAKE(x,1)))",
+        "P8": "=LET(x,E7,ROWS(E9-DROP(x,0)))",
+        "P9": "=ROWS(E9-TAKE(INDEX(E7:E8,1),1))",
+        "P10": "=ISREF(TAKE(INDEX(E7:E8,1),1))",
+        "P11": "=TYPE(1+TAKE(INDEX(C8:C9,1),1))",
+        "P12": "=ROWS(E9-DROP(INDEX(E7:E8,1),0))",
+        "P13": "=ROWS(E9-TAKE(OFFSET(E7,0,0),1))",
+        "P14": "=ISREF(TAKE(OFFSET(E7,0,0),1))",
+        "P15": "=TYPE(1+TAKE(OFFSET(C8,0,0),1))",
+        "P16": "=ROWS(E9-DROP(OFFSET(E7,0,0),0))"
+      }
+    }
+  ],
+  "expected": {}
+}
