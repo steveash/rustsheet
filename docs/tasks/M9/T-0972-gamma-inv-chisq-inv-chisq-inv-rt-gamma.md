@@ -228,7 +228,10 @@ is superseded. Follow-ups from review: a gamma-quantile bench case (performance)
 
 ## Closed (2026-10-29)
 Closed at decision 0083's visible-parity stage, as T-0971 was (decision 0111), with the remainder in follow-ups:
-- On the merged branch (local `make eval`), 10 cells this task owns are still visibly off. T-3016 owns the two this
+- On the merged branch (local `make eval`), 10 cells this task owns are still visibly off by decision 0083's measure
+  (|actual - expected| over half a unit of the 15th significant digit). ecc87f80077959e0 A168 counts: it is 5.3E-15 off
+  against a half unit of 5E-15, though the harness buckets it NumericUlp, which is why the section above calls it
+  within the 15th digit. T-3016 owns the two this
   task made newly visibly off (gen-m9 146b46e74f2dac3b A167, ecc87f80077959e0 A168 at 3 ulp) with the 49 ulp lines
   and the three cells of decision 0152; **T-3131** owns the other eight and criterion 3 (the statrs search start).
 - The 2026-10-28 section's count of five newly visibly-off cells is superseded by the 2026-10-29 section.
