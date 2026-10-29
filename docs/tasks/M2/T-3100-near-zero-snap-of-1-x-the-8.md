@@ -3,7 +3,7 @@ id: T-3100
 title: "Near-zero snap of 1-X: the 8-ULP bound follows the left operand, not the smaller addend"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
