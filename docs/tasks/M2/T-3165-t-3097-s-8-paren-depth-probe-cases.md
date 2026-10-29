@@ -28,6 +28,25 @@ M0-M2 probe row's known failures. Two ways out; the implementer picks with evide
   entry in docs/excel-semantics (decision 0036; check that the deviations file can pin a case that
   fails to load, and extend `crates/rustsheet-eval/src/deviations.rs` if it cannot).
 
+## Progress
+- 2026-10-29 (opus run, session budget ran out before an implementation): all eight cases are `status=EngineError`,
+  `checked=0` (`make eval-show`: "invalid input for A1: Formula: Formula is nested too deeply"), for the `-stored`
+  cases too. The spec adapter enters every formula through the API, and the parser refuses the too-deep formula.
+  The baseline records them as `F <case> !EngineError` with `C <case> 0`. So the "keep the bound" route cannot pin
+  them with today's `deviations` file: `deviations.rs` pins a scored cell (`Sheet!A1`, compared in
+  `runner.rs` around line 437), and an EngineError case scores no cells (`runner.rs` `Ok(Ok(Err(e)))` branch).
+  Options seen, not yet weighed:
+  (1) a case-level deviation line (pinned `!EngineError` for the whole case), which needs a format extension in
+  deviations.rs and its readers (report, probe_milestones, milestone_lists, and `scripts/exit_owners.py`
+  `PASSING`);
+  (2) have the spec adapter mirror what RustSheet does by design: a refused typed formula leaves the cell as it
+  was (`EditError::InvalidInput`), and a stored one loads as a parse error like the xlsx importer's. The cells then
+  score, and per-cell deviation lines pin A1/B1;
+  (3) lift `MAX_FORMULA_DEPTH`. 255 parentheses cost about 510 levels at `PRIMARY_DEPTH` 2, about 1 MiB of parser
+  stack by depth.rs's 2 KB per level, so a group would have to cost less than a call frame.
+  (2) changes harness policy (today any refused input fails the case loudly), so it probably needs a decision
+  record.
+
 ## Acceptance criteria
 - [ ] `make exit-owners MILESTONE=M2` no longer lists the eight t3097-nesting-paren cases.
 - [ ] The DEVIATION entry (if kept) names the bound, the cases, and Excel's own limit as probed.
