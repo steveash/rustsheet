@@ -17,6 +17,7 @@ workbook cells. Excel returns an un-converged iterate, so this means stopping wh
 not converging further.
 
 ## Context
+- probes/t2565-irr-guess-sweeps (T-2565): on large-root flows Excel's v = 1/(1+r) is a multiple of 2^-53; the model's v rounded to that grid gives Excel's bits in 173/175 cells (P!C95 0.84 grid steps off; P!C157 is an unexplained outlier, ~100 steps; financial.md "IRR is a secant in v").
 - probes/xirr-irr-empty-guess A11, A13, A15, A17, A19, A21 (T-2688): IRR from guess 0 (`IRR(v,0)`, `IRR(v,)`)
   on -70000, 12000, 15000, 18000, 21000, 26000. Excel 0.08663094803653149, ours 0.08663094803653171.
 - `financial/financial_util.rs` `compute_irr` runs:
@@ -112,3 +113,9 @@ From the parked T-2367: IRR gen-m9/d0854366830dcdee Calc!A216 `IRR(Data!A4:D10)`
 ## Cells added by the T-0087 sweep (2026-10-28)
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): unattributed 1. This task now owns them:
 - gen-m9/abb7d565af89b849: Calc!A387
+
+## Split by the gap triage (2026-10-29)
+T-3120 now owns the far-root cells: probes/t2565-irr-guess-sweeps (all 181 cells) and the probes/irr-fallback-roots
+cells P!A25, A26, A28, A36, A37, A38 and A39 listed above. Their v is on Excel's 2^-53 grid (financial.md "IRR's
+far-root bound"). The gen-m9 far-root cells (c0681a8b150ce301 A218, 67a4c03afd63f988 A3, A199, A346, 1dce4774f5c0e736
+A285) stay here. T-3120 re-measures them.

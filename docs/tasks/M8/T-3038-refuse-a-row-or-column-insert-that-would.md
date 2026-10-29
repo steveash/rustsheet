@@ -3,7 +3,7 @@ id: T-3038
 title: "Refuse a row or column insert that would push a table's cells off the sheet, as Excel does (InsertDeleteConflict)"
 milestone: M8
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,3 +37,6 @@ leaves the sheet unchanged, even when the cells pushed off are empty. That is wh
 
 ## Out of scope
 - Other refusals of the same Graph error (array formulas already refuse; merged cells unprobed).
+
+## Outcome
+`insert_rows`/`insert_columns` refuse an insert that would push a table cell past the last row/column (`Model::refuse_table_off_sheet`, table_edits.rs); unit tests in `test_table_insert_limit.rs`. No eval delta.
