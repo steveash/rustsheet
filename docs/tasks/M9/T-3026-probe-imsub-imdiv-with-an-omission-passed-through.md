@@ -3,7 +3,7 @@ id: T-3026
 title: "Probe IMSUB/IMDIV with an omission passed through two LET or LAMBDA bindings (T-2770 follow-up)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
