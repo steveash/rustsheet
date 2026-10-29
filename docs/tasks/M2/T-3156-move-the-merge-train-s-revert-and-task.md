@@ -3,10 +3,10 @@ id: T-3156
 title: "Move the merge train's revert and task filing out of merge_train.py"
 milestone: M2
 lane: harness
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: [T-3055]
 spec: docs/specs/SPEC-0027-merge-train.md
 ---
@@ -38,3 +38,12 @@ the prefixes, `Stop`/`Landed`/`CutOff`, `worktrees`, `fetch_main`, `REMOTE`, `MA
 `ID_CHECK_TIMEOUT`) to `scripts/merge_train_filing.py`, which imports nothing from the train (no cycle).
 `scripts/merge_train.py` is 1000 -> 840 lines. No behaviour change; tests only changed import and patch
 paths. No eval delta.
+
+## Handoff
+Pushed on `agent/harness/T-3156-merge-train-revert` (PR #2357). The move is done and `make check` was green locally
+(326 script tests), security and quality reviewers approved. CI `hygiene` fails in `check_governance.py`: the diff
+changes protected paths (`scripts/merge_train.py`, `scripts/merge_train_filing.py` and three `scripts/test_merge_train*.py`
+files) without a decision record in `docs/decisions/`. A sonnet run may not add one (work-loop step 5b). Next: create a
+record with `make new-decision TITLE="..."` saying the move is behaviour-neutral, push it, re-run the architecture
+reviewer (it asked for changes only over a `ruff format` blank line, already fixed and not a gate), set `status: done`,
+and continue at work-loop step 6.
