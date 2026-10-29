@@ -6,8 +6,7 @@
   says so (T-2996).
 - **Context:** T-3001 found that a routine session's tool-permission layer refuses `gh api`
   writes, while the GitHub MCP tools write. The three merge-train labels did not exist on the
-  repository (checked 2026-10-29). The GitHub MCP tools can add labels to a PR (which creates a
-  missing label) but cannot create a label on its own.
+  repository (checked 2026-10-29).
 - **Decision:** `scripts/merge_ready.py mark --pr N (--review "..." | --carry) [--step] [--by ID]`
   (`make mark-ready PR=<n> REVIEW="..." [CARRY=1] [STEP=1]`).
   - It refuses (exit 1) every case of SPEC-0027 section 2: a draft or fork PR, a base other than
@@ -29,10 +28,10 @@
     `body`, generated in full by the script) and `label` (`pr`, `label`, and `labels`, the PR's
     whole label set afterwards, for a tool that replaces the set). The session performs them in
     order with the GitHub MCP tools and then runs `make merge-ready-verify`.
-  - The label `ready-to-merge` is created by the step-mode label action if it is missing (the
-    issue-labels endpoint creates labels); `merge-train-ejected` and `merge-train-stop` are
-    created by the first direct-mode `mark` (CI, or a session allowed to write), or by
-    `make merge-labels`.
+  - `make merge-labels` creates the missing train labels. T-3040's run created all three with it
+    on 2026-10-29 (`gh api` writes from inside the script ran in that session, unlike T-3001's
+    direct `gh api` calls). Should one be deleted, the step-mode label action still recreates
+    `ready-to-merge` (the issue-labels endpoint creates a missing label).
 - **Consequences:**
   - `scripts/gh_client.py` gains the label read (`label`, None on HTTP 404) and `create_label`.
   - Workers do not use `make mark-ready` yet: the skill and prompt changes are T-2989.

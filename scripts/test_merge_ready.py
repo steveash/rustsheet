@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import re
 import subprocess
 import sys
@@ -15,9 +16,10 @@ from typing import Any
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gh_client
 import merge_ready
 from gh_client import FakeGh, Reply
-from merge_ready import IGNORE, KEEP, UNLABEL, Marker, MarkerError
+from merge_ready import APPROVE, IGNORE, KEEP, UNLABEL, Marker, MarkerError
 
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = "per_page=100&page=1"
@@ -178,8 +180,8 @@ class Green(unittest.TestCase):
         self.assertEqual(self.state([ci_run()], pending), merge_ready.PENDING)
 
 
-class Verify(unittest.TestCase):
-    """V1-V6 on PR #7, whose head adds a task file on a branch cut from `main`."""
+class PrFixture(unittest.TestCase):
+    """PR #7, whose head adds a task file on a branch cut from `main`, marked, green and approved."""
 
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -273,6 +275,11 @@ class Verify(unittest.TestCase):
         # verify only reads.
         self.assertEqual({r.method for r in fake.requests}, {"GET"})
         return [(f.check, f.action) for f in verdict.failures]
+
+
+
+class Verify(PrFixture):
+    """V1-V6 on PR #7."""
 
     def test_a_marked_green_approved_pr_is_ready(self) -> None:
         verdict, _ = self.verify()
@@ -417,6 +424,191 @@ class Verify(unittest.TestCase):
         self.assertEqual(self.failures(), [])
         self.reviews.append({**review, "user": {"login": "collab"}, "author_association": "COLLABORATOR"})
         self.assertEqual(self.failures(), [("V6", UNLABEL)])
+
+
+class Mark(PrFixture):
+    """`mark` on the same PR #7, unmarked and unlabelled, its head checked out locally."""
+
+    REVIEW = "security=APPROVE architecture=APPROVE quality=APPROVE"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.comments.clear()
+        self.pull["labels"] = [{"name": "bug"}]
+
+    def plan(self, review: str | None = REVIEW, carry: bool = False, by: str = "s-1") -> merge_ready.Plan:
+        with contextlib.redirect_stderr(io.StringIO()):
+            return merge_ready.plan_mark(self.fake(), 7, merge_ready.Repo(self.clone), review, carry, by)
+
+    def refused(self, reason: str, **kwargs: Any) -> None:
+        with self.assertRaisesRegex(merge_ready.Refusal, reason):
+            self.plan(**kwargs)
+
+    def perform(self, action: dict[str, object]) -> None:
+        """What a session does with one step-mode action through the GitHub MCP tools."""
+        if action["action"] == merge_ready.STEP_COMMENT:
+            self.comments.append(self.comment(len(self.comments) + 1, str(action["body"])))
+        else:
+            self.assertEqual(action["label"], merge_ready.READY_LABEL)
+            self.pull["labels"] = [{"name": name} for name in action["labels"]]  # type: ignore[attr-defined]
+
+    def mark_main(self, *args: str, fake: FakeGh | None = None) -> tuple[int, str, str]:
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.object(merge_ready.gh_client, "from_remote", return_value=fake or self.fake()),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
+            code = merge_ready.main(["mark", "--pr", "7", "--by", "s-1", *args], root=self.clone)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_step_mode_round_trip_passes_verify(self) -> None:
+        code, out, _ = self.mark_main("--review", self.REVIEW, "--step")
+        self.assertEqual(code, 0)
+        actions = [json.loads(line) for line in out.splitlines()]
+        self.assertEqual([a["action"] for a in actions], ["comment", "label"])
+        self.assertEqual(actions[1]["labels"], ["bug", merge_ready.READY_LABEL])
+        for action in actions:
+            self.perform(action)
+        verdict, _ = self.verify()
+        self.assertTrue(verdict.ready, verdict.failures)
+        assert verdict.marker is not None
+        reviewers = {**APPROVED, "excel-fidelity": "n/a"}
+        self.assertEqual(verdict.marker, marker(self.head, reviewers=reviewers, marked_by="s-1"))
+        # Never a second marker for the same head: nothing left to do.
+        code, out, _ = self.mark_main("--review", self.REVIEW, "--step")
+        self.assertEqual((code, out.strip()), (0, f"#7 is already marked at {self.head}"))
+        # A lost label is put back without a second comment.
+        self.pull["labels"] = []
+        self.assertEqual([a["action"] for a in self.plan().actions()], ["label"])
+
+    def test_direct_mode_creates_labels_comments_then_labels_and_reads_back(self) -> None:
+        test = self
+
+        class Writing(FakeGh):
+            def send(self, request: gh_client.Request) -> object:
+                if request.method == "POST" and request.path.endswith("/comments"):
+                    test.perform({"action": "comment", "body": (request.body or {})["body"]})
+                elif request.method == "POST" and request.path.endswith("/issues/7/labels"):
+                    test.pull["labels"].append({"name": merge_ready.READY_LABEL})
+                return super().send(request)
+
+        fake = Writing("o", "r", self.fake().replies)
+        missing = Reply(error="gh: Not Found (HTTP 404)")
+        fake.replies[("GET", "repos/o/r/labels/ready-to-merge")] = Reply({"name": "ready-to-merge"})
+        fake.replies[("GET", "repos/o/r/labels/merge-train-ejected")] = missing
+        fake.replies[("GET", "repos/o/r/labels/merge-train-stop")] = missing
+        for write in ("labels", "issues/7/comments", "issues/7/labels"):
+            fake.replies[("POST", f"repos/o/r/{write}")] = Reply({})
+        code, out, _ = self.mark_main("--review", self.REVIEW, fake=fake)
+        self.assertEqual(code, 0)
+        self.assertIn("#7 ready", out)
+        writes = [(r.method, r.path, (r.body or {}).get("name")) for r in fake.requests if r.method != "GET"]
+        self.assertEqual(
+            writes,
+            [
+                ("POST", "repos/o/r/labels", "merge-train-ejected"),
+                ("POST", "repos/o/r/labels", "merge-train-stop"),
+                ("POST", "repos/o/r/issues/7/comments", None),
+                ("POST", "repos/o/r/issues/7/labels", None),
+            ],
+        )
+
+    def test_each_refusal(self) -> None:
+        self.refused("--by", by="")
+        self.refused("REVIEW", review=None)
+        self.refused("REVIEW", carry=True)
+        self.refused("unknown or repeated reviewer", review="security=APPROVE lint=APPROVE")
+        self.refused("no APPROVE from quality", review="security=APPROVE architecture=APPROVE")
+        self.refused("no APPROVE from quality", review=self.REVIEW.replace("quality=APPROVE", "quality=n/a"))
+        self.runs = [ci_run("", "in_progress")]
+        self.refused("CI is pending")
+        self.runs = [ci_run("failure")]
+        self.refused("CI is red")
+        self.runs = [ci_run()]
+        for key, value, reason in (
+            ("draft", True, "draft"),
+            ("draft", None, "draft"),
+            ("base", {**self.pull["base"], "ref": "release"}, "base is not main"),
+            ("head", {**self.pull["head"], "repo": {"full_name": "fork/r"}}, "fork"),
+            ("head", {**self.pull["head"], "sha": "c" * 40}, "differ"),
+        ):
+            with self.subTest(reason):
+                saved = self.pull[key]
+                self.pull[key] = value
+                self.refused(reason)
+                self.pull[key] = saved
+        # The local checkout is not the PR head.
+        self.git("checkout", "-q", "main")
+        self.refused("differ")
+        self.git("checkout", "-q", "pr")
+        # The task file on the head is not done.
+        self.head = self.push_head(TASK.format(status="in-progress", outcome="## Outcome\n"))
+        self.pull["head"]["sha"] = self.head
+        self.refused("T-0001 is not status: done")
+        self.head = self.push_head(TASK.format(status="done", outcome="## Outcome\n"))
+        self.pull["head"]["sha"] = self.head
+        self.plan()  # the reasons above were the only ones
+
+    def test_an_engine_change_needs_excel_fidelity(self) -> None:
+        self.write("crates/rustsheet-engine/src/x.rs", "x")
+        self.head = self.commit("engine")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.refused("no APPROVE from excel-fidelity")
+        plan = self.plan(review=self.REVIEW + " excel-fidelity=APPROVE")
+        self.assertEqual(plan.marker.reviewers["excel-fidelity"], APPROVE)
+
+    def merge_main(self) -> str:
+        """Advances `main` by one commit and merges it into the PR head, cleanly."""
+        old = self.head
+        self.git("checkout", "-q", "main")
+        self.write("other.txt", "main moved")
+        self.commit("main moves")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        self.git("merge", "-q", "--no-edit", "main")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.comments.append(self.comment(1, marker(old, reviewers={**APPROVED, "excel-fidelity": "n/a"}).render()))
+        return old
+
+    def test_carry_accepts_a_clean_merge_of_main(self) -> None:
+        self.refused("earlier marker", review=None, carry=True)
+        old = self.merge_main()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+        self.assertEqual(plan.marker.reviewers, {**APPROVED, "excel-fidelity": "n/a"})
+        for action in plan.actions():
+            self.perform(action)
+        verdict, _ = self.verify()
+        self.assertTrue(verdict.ready, verdict.failures)
+
+    def test_carry_refuses_an_edited_merge_or_another_commit(self) -> None:
+        self.merge_main()
+        self.write("scripts/x.py", "edited in the merge")
+        self.git("add", "-A")
+        self.git("commit", "-q", "--amend", "--no-edit")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.refused("not clean", review=None, carry=True)
+        # A plain commit on the marked head is not a merge.
+        self.git("reset", "-q", "--hard", "HEAD^1")
+        self.write("scripts/x.py", "a later change")
+        self.head = self.commit("later")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.refused("not a merge commit", review=None, carry=True)
+        # A merge of a commit that is not on main.
+        self.git("reset", "-q", "--hard", "HEAD^1")
+        side = self.git("commit-tree", "-p", self.base_sha, "-m", "side", f"{self.base_sha}^{{tree}}")
+        self.git("merge", "-q", "--no-edit", side)
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.refused("not on main", review=None, carry=True)
 
 
 if __name__ == "__main__":

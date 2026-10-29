@@ -2,6 +2,9 @@
 """The readiness handoff of the merge train: the marker and its verifier (SPEC-0027 section 2).
 
   scripts/merge_ready.py verify --pr N    # exit 0: ready; 1: not ready (the failed checks); 2: error
+  scripts/merge_ready.py mark --pr N (--review "name=APPROVE ..." | --carry) [--step]
+                                          # exit 0: marked (or the actions printed); 1: refused; 2: error
+  scripts/merge_ready.py labels [--create]  # the missing merge-train labels (exit 1 if any)
 
 A worker whose PR head is green and approved marks it with the `ready-to-merge` label and a PR
 comment that ends with a `merge-train-ready v1` block (`make mark-ready`, T-3040). `verify` runs
@@ -21,6 +24,9 @@ push. Anything else counts as an outsider, and an outsider's comments and review
 from __future__ import annotations
 
 import argparse
+import contextlib
+import json
+import os
 import re
 import sys
 from collections.abc import Iterable, Mapping, Sequence
@@ -333,6 +339,22 @@ class Repo:
         out = self.git("diff", "-z", "--no-renames", "--name-only", bases[0], head, "--")
         return [p for p in out.split("\0") if p]
 
+    def carry_problem(self, prev: str, head: str) -> str | None:
+        """Why `head` is not a clean merge of `main` into `prev` (SPEC-0027 section 2,
+        "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
+        second parent is on `main`, and whose tree `git merge-tree --write-tree` reproduces."""
+        parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
+        if len(parents) != 2 or parents[0] != prev:
+            return "the head is not a merge commit whose first parent is the marked head"
+        main = f"refs/merge-ready/{BASE_BRANCH}"
+        if git("merge-base", "--is-ancestor", parents[1], main, root=self.root, check=False).returncode:
+            return f"the merged commit is not on {BASE_BRANCH}"
+        merged = git("merge-tree", "--write-tree", *parents, root=self.root, check=False)
+        tree = merged.stdout.split("\n", 1)[0].strip()
+        if merged.returncode != 0 or tree != self.git("rev-parse", f"{head}^{{tree}}").strip():
+            return "the merge is not clean: its tree differs from a plain merge of its parents"
+        return None
+
     def task_file(self, head: str, task: str) -> str | None:
         """The text of task `task`'s file in `head`'s tree, or None when it has none."""
         names = self.git("ls-tree", "-r", "-z", "--name-only", head, "--", "docs/tasks").split("\0")
@@ -381,6 +403,20 @@ def pr_state_failures(pull: object, marker: Marker, head: str, repo: Repo) -> li
     return failures
 
 
+def head_state(client: Client, pull: object, head: str, repo: Repo) -> tuple[list[str] | None, str, list[str]]:
+    """The PR's changed paths (None when unknown: every reviewer applies) and its head's CI state
+    by the "green" rule, with the jobs that are not green. Fetches `main`.
+
+    `run_heavy=false` is told by the same classifier CI runs, because the proxy refuses the
+    job-log download where CI prints it (decision 0149)."""
+    base_sha = text_of(pull, "base", "sha")
+    repo.fetch_base()
+    paths = repo.changed_paths(base_sha, head) if gh_client.SHA.fullmatch(base_sha) else None
+    docs_only = None if paths is None else not ci_changes.classify_range(base_sha, head, cwd=repo.root)
+    state, jobs = ci_state(client.workflow_runs(head_sha=head), client.check_runs(head), docs_only)
+    return paths, state, jobs
+
+
 def verify(client: Client, pr: int, repo: Repo) -> Verdict:
     """V1-V6 of SPEC-0027 section 2 on PR `pr`. Raises GhError or GitError when a read fails."""
     pull = client.pull(pr)
@@ -405,17 +441,12 @@ def verify(client: Client, pr: int, repo: Repo) -> Verdict:
 
     failures = pr_state_failures(pull, marker, head, repo)
     # V4: every applicable reviewer approved (an attestation; SPEC-0027 section 2, "Trust").
-    base_sha = text_of(pull, "base", "sha")
-    repo.fetch_base()
-    paths = repo.changed_paths(base_sha, head) if gh_client.SHA.fullmatch(base_sha) else None
+    paths, state, jobs = head_state(client, pull, head, repo)
     missing = missing_approvals(marker.reviewers, applicable_reviewers(paths))
     if missing:
         failures.append(Failure("V4", f"no APPROVE from {', '.join(missing)}", UNLABEL))
 
-    # V3: CI on the head by the "green" rule. `run_heavy=false` is told by the same classifier CI
-    # runs, because the proxy refuses the job-log download where CI prints it (decision 0149).
-    docs_only = None if paths is None else not ci_changes.classify_range(base_sha, head, cwd=repo.root)
-    state, jobs = ci_state(client.workflow_runs(head_sha=head), client.check_runs(head), docs_only)
+    # V3: CI on the head by the "green" rule.
     if state == RED:
         failures.append(Failure("V3", f"CI red on {head}: {'; '.join(jobs)}", UNLABEL))
     elif state == PENDING:
@@ -432,6 +463,142 @@ def verify(client: Client, pr: int, repo: Repo) -> Verdict:
     return Verdict(pr, marker, comment_id, updated_at, tuple(failures))
 
 
+# `mark` (SPEC-0027 section 2, T-3040, decision 0161).
+LABEL_STYLES = {
+    READY_LABEL: ("0e8a16", "Marked ready for the merge train (make mark-ready, SPEC-0027)"),
+    EJECTED_LABEL: ("d93f0b", "Ejected from a merge train; mark again after fixing (SPEC-0027)"),
+    STOP_LABEL: ("b60205", "Stops the merge train while any open PR carries it (SPEC-0027)"),
+}
+# The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); T-2995 adds `merge`
+# and `unlabel` for the merger.
+STEP_LABEL, STEP_COMMENT = "label", "comment"
+
+
+class Refusal(Exception):
+    """`mark` refuses: the PR is not one to mark now (exit 1, with the reason)."""
+
+
+@dataclass(frozen=True)
+class Plan:
+    """What `mark` writes: the marker comment (None when this head already has one) and whether
+    the PR still needs the label."""
+
+    pr: int
+    marker: Marker
+    body: str | None
+    label: bool
+    labels: tuple[str, ...]
+
+    def actions(self) -> list[dict[str, object]]:
+        """The writes as step-mode actions, in order: the comment first, so a labelled PR always
+        has its marker. `labels` is the PR's whole label set after the label action, for a tool
+        that replaces the set instead of adding to it."""
+        out: list[dict[str, object]] = []
+        if self.body is not None:
+            out.append({"action": STEP_COMMENT, "pr": self.pr, "body": self.body})
+        if self.label:
+            out.append({"action": STEP_LABEL, "pr": self.pr, "label": READY_LABEL, "labels": list(self.labels)})
+        return out
+
+
+def marker_body(marker: Marker) -> str:
+    """The whole marking comment: one constant sentence, then the block."""
+    return (
+        f"Marked ready for the merge train at `{marker.head}` "
+        "(`make mark-ready`, SPEC-0027 section 2).\n\n" + marker.render()
+    )
+
+
+def writer_markers(comments: Sequence[object], authors: Authors) -> list[tuple[object, Marker]]:
+    """The well-formed markers by writers, oldest first (by `updated_at`, then id)."""
+    found = []
+    for comment in comments:
+        if has_marker(text_of(comment, "body")) and authors.writer(comment):
+            with contextlib.suppress(MarkerError):
+                found.append((comment, parse_marker(text_of(comment, "body"))))
+    return sorted(found, key=lambda pair: (text_of(pair[0], "updated_at"), int_of(pair[0], "id")))
+
+
+def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bool, by: str) -> Plan:
+    """The refusals of SPEC-0027 section 2 on PR `pr`, then what to write. Reads only; raises
+    Refusal, or GhError or GitError when a read fails."""
+    if not merge_lock.valid_id(by):
+        raise Refusal("no valid marker id: pass --by or set CLAUDE_CODE_SESSION_ID")
+    if carry == (review is not None):
+        raise Refusal("give the verdicts (REVIEW) or --carry, which takes the previous marker's")
+    pull = client.pull(pr)
+    if field_of(pull, "draft") is not False:
+        raise Refusal("the PR is a draft")
+    head_repo = text_of(pull, "head", "repo", "full_name")
+    if not head_repo or head_repo != text_of(pull, "base", "repo", "full_name"):
+        raise Refusal("the PR comes from a fork")
+    if text_of(pull, "base", "ref") != BASE_BRANCH:
+        raise Refusal(f"the PR's base is not {BASE_BRANCH}")
+    head = text_of(pull, "head", "sha")
+    local = repo.git("rev-parse", "--verify", "HEAD^{commit}").strip()
+    if not gh_client.SHA.fullmatch(head) or not local == head == repo.fetch_head(pr):
+        raise Refusal(f"the local HEAD, refs/pull/{pr}/head and the PR's head.sha differ")
+    task = task_of_branch(text_of(pull, "head", "ref"))
+    if task is not None and not task_done(repo.task_file(head, task)):
+        raise Refusal(f"{task} is not status: done with an ## Outcome on the head")
+
+    authors = Authors(client, text_of(pull, "base", "repo", "owner", "type") == "User")
+    markers = [m for _, m in writer_markers(client.comments(pr), authors)]
+    prev = None
+    if carry:
+        older = [m for m in markers if m.head != head]
+        if not older:
+            raise Refusal("--carry needs an earlier marker by a writer on this PR")
+        prev, verdicts = older[-1].head, dict(older[-1].reviewers)
+        repo.fetch_base()
+        problem = repo.carry_problem(prev, head)
+        if problem:
+            raise Refusal(f"--carry refused: {problem}; run the reviewers again")
+    else:
+        try:
+            verdicts = parse_reviewers(review or "")
+        except MarkerError as error:
+            raise Refusal(f"REVIEW: {error}") from error
+
+    paths, state, jobs = head_state(client, pull, head, repo)
+    missing = missing_approvals(verdicts, applicable_reviewers(paths))
+    if missing:
+        raise Refusal(f"no APPROVE from {', '.join(missing)}")
+    if state != GREEN:
+        raise Refusal(f"CI is {state} on {head}: {'; '.join(jobs)}")
+
+    labels = label_names(pull)
+    already = next((m for m in markers if m.head == head), None)
+    marker = already or Marker(head, prev, task, verdicts, by)
+    return Plan(
+        pr,
+        marker,
+        None if already else marker_body(marker),
+        READY_LABEL not in labels,
+        tuple(dict.fromkeys([*labels, READY_LABEL])),
+    )
+
+
+def missing_labels(client: Client) -> list[str]:
+    return [name for name in LABELS if client.label(name) is None]
+
+
+def create_labels(client: Client, names: Iterable[str]) -> None:
+    for name in names:
+        color, description = LABEL_STYLES[name]
+        client.create_label(name, color, description)
+
+
+def apply(client: Client, plan: Plan) -> None:
+    """Performs the plan's writes through the client (CI, or a session allowed to write)."""
+    create_labels(client, missing_labels(client))
+    for action in plan.actions():
+        if action["action"] == STEP_COMMENT:
+            client.comment(plan.pr, str(action["body"]))
+        else:
+            client.add_label(plan.pr, READY_LABEL)
+
+
 def report(verdict: Verdict) -> str:
     if verdict.ready and verdict.marker is not None:
         return f"#{verdict.pr} ready: head {verdict.marker.head}, marker comment {verdict.comment_id} ({verdict.updated_at})"
@@ -445,18 +612,57 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     check = sub.add_parser("verify", help="run V1-V6 on a PR (reads only)")
     check.add_argument("--pr", required=True)
+    mark = sub.add_parser("mark", help="mark a green, approved PR ready (the marker and the label)")
+    mark.add_argument("--pr", required=True)
+    mark.add_argument("--review", help='"security=APPROVE architecture=APPROVE quality=APPROVE ..."')
+    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a clean merge of main")
+    mark.add_argument("--by", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""), help="the marker id")
+    mark.add_argument("--step", action="store_true", help="print the writes as step-mode actions")
+    labels = sub.add_parser("labels", help="list the missing merge-train labels; --create creates them")
+    labels.add_argument("--create", action="store_true")
     args = parser.parse_args(argv)
     client = gh_client.from_remote(root, REMOTE)
     if client is None:
         print("merge_ready: origin is not a github.com repository", file=sys.stderr)
         return 2
     try:
-        verdict = verify(client, gh_client.number(args.pr), Repo(root))
+        if args.command == "labels":
+            missing = missing_labels(client)
+            if args.create:
+                create_labels(client, missing)
+            print(f"{'created' if args.create else 'missing'}: {', '.join(missing) or 'none'}")
+            return 1 if missing and not args.create else 0
+        pr = gh_client.number(args.pr)
+        if args.command == "mark":
+            return run_mark(client, pr, Repo(root), args)
+        verdict = verify(client, pr, Repo(root))
     except (GhError, GitError) as error:
         print(f"merge_ready: {error}", file=sys.stderr)
         return 2
     print(report(verdict))
     return 0 if verdict.ready else 1
+
+
+def run_mark(client: Client, pr: int, repo: Repo, args: argparse.Namespace) -> int:
+    """`mark`: 1 on a refusal; otherwise the writes (or, with --step, the actions to perform and
+    then `verify` to run), and 0. With direct writes, `verify` reads the result back."""
+    try:
+        plan = plan_mark(client, pr, repo, args.review, args.carry, args.by)
+    except Refusal as refusal:
+        print(f"merge_ready: not marking #{pr}: {refusal}", file=sys.stderr)
+        return 1
+    if not plan.actions():
+        print(f"#{pr} is already marked at {plan.marker.head}")
+        return 0
+    if args.step:
+        for action in plan.actions():
+            print(json.dumps(action, sort_keys=True))
+        print(f"merge_ready: perform these actions in order, then run make merge-ready-verify PR={pr}", file=sys.stderr)
+        return 0
+    apply(client, plan)
+    verdict = verify(client, pr, repo)
+    print(report(verdict))
+    return 0 if verdict.ready else 2
 
 
 if __name__ == "__main__":

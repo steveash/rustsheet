@@ -39,6 +39,10 @@ BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,199}")
 # Owner, repository and input names; a name of dots only (`..`) is refused, it would change the path.
 NAME = re.compile(r"(?!\.+$)[A-Za-z0-9_.-]{1,100}")
 REMOTE_URL = re.compile(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$")
+# A label's colour: six hex digits, no `#` (the REST labels endpoint's form).
+COLOR = re.compile(r"[0-9a-f]{6}")
+# How `gh api` reports a missing object.
+NOT_FOUND = "HTTP 404"
 MERGE_METHODS = ("squash", "merge", "rebase")
 
 
@@ -173,6 +177,22 @@ class Client:
         return self.call(
             "POST", f"issues/{number(pr)}/labels", body={"labels": [checked(LABEL, label, "label")]}
         )
+
+    def label(self, label: str) -> dict[str, object] | None:
+        """The repository's label `label`, or None when it does not exist (HTTP 404)."""
+        name = urllib.parse.quote(checked(LABEL, label, "label"), safe="")
+        try:
+            return as_dict(self.call("GET", f"labels/{name}"))
+        except GhError as error:
+            if NOT_FOUND in str(error):
+                return None
+            raise
+
+    def create_label(self, label: str, color: str, description: str) -> dict[str, object]:
+        if not COLOR.fullmatch(color) or not description or len(description) > 100:
+            raise GhError(f"refused label color or description for {label!r}")
+        body = {"name": checked(LABEL, label, "label"), "color": color, "description": description}
+        return as_dict(self.call("POST", "labels", body=body))
 
     def remove_label(self, pr: int | str, label: str) -> object:
         name = urllib.parse.quote(checked(LABEL, label, "label"), safe="")
