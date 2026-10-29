@@ -459,7 +459,7 @@ Constants:
 |---|---|---|---|---|
 | dry run (`DRY_RUN=1`, any mode) | none | none | none | none; would-be unlabels and ejections are printed |
 | `shadow` | none | `merge-train/shadow` only | none | only the housekeeping: `ready-to-merge` removed from closed PRs. Would-be unlabels and ejections go into the shadow commit's predicted outcome |
-| `train` | yes | `merge-train/current`, `merge-train/revert-*` (a revert PR's branch, step 7) | yes, the batch's PRs only; a revert PR only once review has marked it ready, like any PR | everything in this section |
+| `train` | yes | `merge-train/current`, `merge-train/revert-*` (a revert PR's branch, step 7), `merge-train/tasks-*` (a task-only PR's branch: the P0 of step 7, the P1 of section 6) | yes, the batch's PRs only; a revert PR only once review has marked it ready, like any PR | everything in this section, and opening the revert and task-only PRs |
 | `lock` | — | — | — | the merger stops at once. Only the steward does housekeeping (section 8) |
 
 The script installs an exit handler (on success, error or signal) that releases the lock if it
@@ -472,7 +472,10 @@ holds it.
   fetch and re-read `origin/main:scripts/merge_train.toml` (failing closed).
 
 If the mode is no longer `train`, or an honoured stop label is present, the script stops at once
-with nothing more merged, releases the lock and reports. The checkpoints are:
+with nothing more merged, releases the lock and reports. A labelled PR whose check cannot run git
+is honoured too (stopping is always safe), and is not unlabelled. `make merge-mode` prints
+`train (stop pending: #n)` while a train would honour PR n's label; it only reads, so it never
+removes a label (T-3055). The checkpoints are:
 - **right after lock acquisition**, before the build and push, so that a pending flip does not
   cause build–push–release loops;
 - before the CI wait;
@@ -583,12 +586,22 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
      3. file the P0 as a task file in a separate task-only PR, and name the revert PR in it;
      4. release the lock and report.
 
+     The check reads `S_k` from the merge reply (or the PR's `merge_commit_sha` when the reply is
+     lost). When `S_k` itself has the tested parent and tree but `main` has a foreign commit on top
+     of it, that is the "before the squash" case for the next PR: a P0, no revert (T-3055).
+
      **The revert PR is reviewed and merged like any other PR, with P0 priority, under the normal
      flow of the current mode.** The P0 handler (any agent) runs the review panel, then merges it
      under the lock (mode `lock`) or marks it ready (mode `train`), where it rides the next batch
      as an ordinary PR. No review waiver applies to reverts. Revert PRs get `pull_request` CI only,
      because the push trigger matches only `merge-train/current` and `merge-train/shadow`
      (section 9).
+
+   **Task filing** (T-3055). The P0, and the P1 of a red train that did not reproduce (section 6),
+   are task files written with `main`'s `tasks.py new` (milestone M2, lane `harness`, tier `opus`,
+   so the id is collision-free) in a scratch worktree at the current `main`. Their text is the
+   script's own (shas, PR numbers, run links). One commit on `merge-train/tasks-<first id>` and
+   one task-only PR per hold carry them. A failure to file is logged with the unfiled tasks.
 
    A merge call that fails (the head moved, so `expectedHeadSha` refused) also stops the sequence
    at k, without a revert, because nothing landed. PRs after k are not merged in this pass. The
