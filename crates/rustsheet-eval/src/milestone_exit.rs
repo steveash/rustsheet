@@ -58,6 +58,12 @@ pub(crate) fn meets_rate(within: usize, scored: usize, num: usize) -> bool {
     scored > 0 && within.saturating_mul(RATE_DEN) >= scored.saturating_mul(num)
 }
 
+/// Visibly-off cells a rate of `num` / [`RATE_DEN`] allows over `scored` cells: the most that
+/// still [`meets_rate`].
+fn allowance(scored: usize, num: usize) -> usize {
+    scored * (RATE_DEN - num) / RATE_DEN
+}
+
 /// One suite a milestone's exit requires.
 struct SuiteNeed {
     /// The suite's name.
@@ -87,6 +93,16 @@ impl SuiteNeed {
     }
 }
 
+/// What the ironcalc-calc function-scope row must meet.
+#[derive(Clone, Copy)]
+enum CalcRule {
+    /// No visibly-off cell once exit exceptions are excluded (decision 0085).
+    NoneOff,
+    /// At least this share over [`RATE_DEN`] of the row's scored cells not visibly off (M9,
+    /// decision 0146 item 3).
+    Rate(usize),
+}
+
 /// A milestone's required suites and which other measures are its criteria.
 struct Criteria {
     /// The required suites; the first is the row's `gen_*` suite (decision 0146).
@@ -95,13 +111,11 @@ struct Criteria {
     probe_list: Option<&'static str>,
     /// Catalog coverage is an exit criterion (M5, M6; not M2, decision 0135, nor M7).
     coverage: bool,
-    /// The ironcalc-calc function-scope row is an exit criterion (not M7, decision 0140).
-    calc: bool,
+    /// The ironcalc-calc function-scope row's exit criterion; `None` where it is none (M7,
+    /// decision 0140; M1, M11).
+    calc: Option<CalcRule>,
     /// Spill extents are an exit criterion (M7, decision 0140).
     extent: bool,
-    /// The ironcalc-calc measure is a rate over [`RATE_DEN`] of the row's scored cells instead
-    /// of none visibly off (M9, decision 0146 item 3).
-    calc_rate: Option<usize>,
     /// Every in-scope function of the milestone meets `v15_checkpoint`'s Phase 1 rate (M9).
     function_rate: bool,
 }
@@ -112,7 +126,7 @@ impl Criteria {
     /// function measures (coverage, ironcalc-calc, spill extents), so both stay `n/a` there
     /// (decision 0146).
     fn shows_scope(&self) -> bool {
-        self.coverage || self.calc || self.extent
+        self.coverage || self.calc.is_some() || self.extent
     }
 }
 
@@ -128,9 +142,8 @@ fn criteria(milestone: &str) -> Criteria {
             ],
             probe_list: Some(M1_PROBE_LIST),
             coverage: false,
-            calc: false,
+            calc: None,
             extent: false,
-            calc_rate: None,
             function_rate: false,
         },
         // "100%": no gen-m2 cell visibly off.
@@ -138,18 +151,16 @@ fn criteria(milestone: &str) -> Criteria {
             suites: generated(M2_MIN_SCORED, RATE_DEN),
             probe_list: None,
             coverage: false,
-            calc: true,
+            calc: Some(CalcRule::NoneOff),
             extent: false,
-            calc_rate: None,
             function_rate: false,
         },
         "M7" => Criteria {
             suites: generated(M7_MIN_SCORED, RATE_NUM),
             probe_list: None,
             coverage: false,
-            calc: false,
+            calc: None,
             extent: true,
-            calc_rate: None,
             function_rate: false,
         },
         // No suite: gen-m9 alone is not a criterion, and catalog coverage is shown, not required.
@@ -157,9 +168,8 @@ fn criteria(milestone: &str) -> Criteria {
             suites: Vec::new(),
             probe_list: None,
             coverage: false,
-            calc: true,
+            calc: Some(CalcRule::Rate(M9_CALC_RATE_NUM)),
             extent: false,
-            calc_rate: Some(M9_CALC_RATE_NUM),
             function_rate: true,
         },
         "M11" => Criteria {
@@ -170,18 +180,16 @@ fn criteria(milestone: &str) -> Criteria {
             )],
             probe_list: None,
             coverage: false,
-            calc: false,
+            calc: None,
             extent: false,
-            calc_rate: None,
             function_rate: false,
         },
         _ => Criteria {
             suites: generated(MIN_SCORED, RATE_NUM),
             probe_list: None,
             coverage: true,
-            calc: true,
+            calc: Some(CalcRule::NoneOff),
             extent: false,
-            calc_rate: None,
             function_rate: false,
         },
     }
@@ -228,7 +236,7 @@ fn suite_exit(report: &RunReport, need: &SuiteNeed) -> SuiteExit {
     out.known_failures = Some(scored - passed);
     out.visibly_off = Some(visible);
     out.rate15 = (scored > 0).then(|| s.rate(scored - visible));
-    out.allowance = Some(scored * (RATE_DEN - need.rate_num) / RATE_DEN);
+    out.allowance = Some(allowance(scored, need.rate_num));
     out.met =
         Some(scored >= need.min_scored && meets_rate(scored - visible, scored, need.rate_num));
     out.visibly_off_cells = report
@@ -298,8 +306,9 @@ pub struct ExitRow {
     /// Of those, the visibly-off cells (decision 0114).
     #[serde(default)]
     pub calc_visibly_off: Option<usize>,
-    /// No visibly-off cell is left (at most `calc_allowance` for M9); `None` too for a milestone without an ironcalc-calc
-    /// criterion (M7), whose counts are shown but not required.
+    /// No visibly-off cell is left (at most `calc_allowance` for M9); `None` too for a
+    /// milestone without an ironcalc-calc criterion (M7), whose counts are shown but not
+    /// required.
     pub calc_met: Option<bool>,
     /// Known failures of the milestone's probe row (Phase 1b).
     pub probe_known_failures: Option<usize>,
@@ -381,13 +390,16 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
                     .count();
                 row.calc_failing = Some(failing);
                 row.calc_visibly_off = Some(visible);
-                row.calc_met = need.calc.then_some(visible == 0);
-                if let Some(num) = need.calc_rate {
-                    let scored = r.cells.saturating_sub(r.deviations + r.excepted.len());
-                    row.calc_scored = Some(scored);
-                    row.calc_allowance = Some(scored * (RATE_DEN - num) / RATE_DEN);
-                    row.calc_met = Some(meets_rate(scored.saturating_sub(visible), scored, num));
-                }
+                row.calc_met = match need.calc {
+                    None => None,
+                    Some(CalcRule::NoneOff) => Some(visible == 0),
+                    Some(CalcRule::Rate(num)) => {
+                        let scored = r.cells.saturating_sub(r.deviations + r.excepted.len());
+                        row.calc_scored = Some(scored);
+                        row.calc_allowance = Some(allowance(scored, num));
+                        Some(meets_rate(scored.saturating_sub(visible), scored, num))
+                    }
+                };
             }
             if need.function_rate {
                 let below: Vec<String> = report
@@ -445,7 +457,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             row.exit = [
                 required(need.coverage, row.coverage_met),
                 required(!need.suites.is_empty(), row.gen_met),
-                required(need.calc, row.calc_met),
+                required(need.calc.is_some(), row.calc_met),
                 row.probes_met,
                 required(need.extent, row.extent_met),
                 required(need.function_rate, row.rate_met),

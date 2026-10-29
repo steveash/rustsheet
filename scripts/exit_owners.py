@@ -10,11 +10,12 @@ the milestone's exit criteria (decision 0085, read at visible parity by decision
 the `gen-m<k>` suite and any other required suite of the exit row (decision 0146: M1's smoke,
 M11's corpus-bench), the ironcalc-calc row of "Milestone function scope" less its exit
 exceptions when the exit row requires it (not M7, decision 0140), and the probes of the
-milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list,
-and for M9 the report's `attributed_off` cells of each function the exit row lists below the Phase 1
-rate, as `rate:<FUNCTION>`; decision 0146 item 3), plus each probe case that fails with no cell, that no open task of that milestone names, one per
-line as `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the
-count is not 0.
+milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list;
+and for M9 the report's `attributed_off` cells of each function the exit row lists below the
+Phase 1 rate, as `rate:<FUNCTION>`, decision 0146 item 3), plus each probe case that fails with
+no cell, that no open task of that milestone names, one per line as
+`criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count
+is not 0.
 
 A task owns a cell when its front matter has the milestone and an open status, and its text names
 the case (`case_names`): by its file stem (the last path segment of the case id less `.case.json`:
@@ -67,6 +68,8 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "eval" / "runs" / "latest" / "report.json"
 CALC_SUITE = "ironcalc-calc"
 PROBES_SUITE = "probes"
+# The criterion of an M9 function below the Phase 1 rate: `rate:IRR`.
+RATE_PREFIX = "rate:"
 # A failing item of a case that is not a cell (`*`, `!Panic`, ...): the whole case.
 WHOLE_CASE = "*"
 PASSING = ("pass", "deviation")
@@ -179,7 +182,8 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     below = set(exit_row.get("below_rate_functions") or [])
     for o in attributed_off_cells(report):
         if o.cell.criterion in below:
-            out.append(ExitCell(f"{RATE_PREFIX}{o.cell.criterion}", o.cell.case, o.cell.key, o.cell.formula))
+            c = o.cell
+            out.append(ExitCell(f"{RATE_PREFIX}{c.criterion}", c.case, c.key, c.formula))
 
     probe_row = exit_row.get("probe_row") or milestone
     # M1's probe measure is the frozen `m1-probes` list, not a probe row (decision 0146 item 1).
@@ -311,8 +315,6 @@ def unowned(report: dict[str, Any], milestone: str, tasks_dir: Path) -> list[Exi
 
 
 UNATTRIBUTED = "unattributed"
-# The criterion of an M9 function below the Phase 1 rate: `rate:IRR`.
-RATE_PREFIX = "rate:"
 
 
 def unowned_unattributed(report: dict[str, Any], tasks_dir: Path) -> list[ExitCell]:
