@@ -158,7 +158,8 @@ fn bpser_above_eight_takes_a_ln_beta() {
 }
 
 /// One row of `test/fixtures/bratio_beta_dist.fixture`: Excel's BETA.DIST(x, a, b, TRUE) with
-/// y = fl(1 - x), and the branch and swap r2-bratio's model names for the point.
+/// y = fl(1 - x), and the branch and swap r2-bratio's model names for the point (the model's
+/// branch names, spaces written as underscores).
 struct FixtureRow {
     a: f64,
     b: f64,
@@ -174,21 +175,21 @@ struct FixtureRow {
 fn fixture_rows() -> Vec<FixtureRow> {
     let bits = |field: &str| f64::from_bits(u64::from_str_radix(field, 16).expect("hex bits"));
     let branch = |name: &str| match name {
-        "Zero" => Branch::Zero,
-        "One" => Branch::One,
-        "Tiny" => Branch::Tiny,
-        "Fpser" => Branch::Fpser,
-        "Apser" => Branch::Apser,
-        "WBpser" => Branch::WBpser,
-        "W1Bpser" => Branch::W1Bpser,
-        "BupBgrat" => Branch::BupBgrat,
-        "Bgrat" => Branch::Bgrat,
-        "BpserLarge" => Branch::BpserLarge,
-        "L140BupBpser" => Branch::L140BupBpser,
-        "L140BupBgrat" => Branch::L140BupBgrat,
-        "L140BupBupBgrat" => Branch::L140BupBupBgrat,
-        "Bfrac" => Branch::Bfrac,
-        "Basym" => Branch::Basym,
+        "x=0" => Branch::Zero,
+        "y=0" => Branch::One,
+        "tiny" => Branch::Tiny,
+        "fpser" => Branch::Fpser,
+        "apser" => Branch::Apser,
+        "w_bpser" => Branch::WBpser,
+        "w1_bpser" => Branch::W1Bpser,
+        "bup+bgrat" => Branch::BupBgrat,
+        "bgrat" => Branch::Bgrat,
+        "bpser(a,b>1)" => Branch::BpserLarge,
+        "L140_bup+bpser" => Branch::L140BupBpser,
+        "L140_bup+bgrat" => Branch::L140BupBgrat,
+        "L140_bup+bup+bgrat" => Branch::L140BupBupBgrat,
+        "bfrac" => Branch::Bfrac,
+        "basym" => Branch::Basym,
         _ => panic!("unknown branch {name:?}"),
     };
     include_str!("../../../test/fixtures/bratio_beta_dist.fixture")
@@ -241,8 +242,8 @@ fn ported_rows() -> Vec<(FixtureRow, (f64, f64))> {
 }
 
 // Bit-exact cells per ported branch on the fixture (T-3007's count; a ratchet: raise it when a
-// change makes more exact, never lower it). A caller's shape of 1 keeps 84 WBpser rows on
-// today's kernel (`ported_tails`).
+// change makes more exact, never lower it). The fixture's other 84 WBpser rows have a caller's
+// shape of 1, which `ported_tails` leaves on today's kernel.
 #[test]
 fn fixture_ported_branches_score() {
     let mut scores = [

@@ -97,6 +97,10 @@ functions/statistical/bratio/
   ln_beta.rs    GL53 / glalgdiv ln B (T-2505), reusing gammaln.rs and incomplete_beta's algdiv pieces
 ```
 
+Amendment (T-3007): bpser's own choice of ln B by shape (`bpser_neg_ln_beta`: the GL53/glalgdiv sums, -LN at a shape
+of 1) lives in `bpser.rs` beside the series; `ln_beta.rs` holds the forms above a shape of 8 (TOMS `betaln`, the accurate
+half-integer ln B) that it calls.
+
 `incomplete_beta.rs` keeps the old kernel as the delegate. Its shared helpers stay where they are; the port imports
 them and copies none (directive 3). Once every branch has moved (after T-2511), a cleanup task deletes the old
 kernel and `t2464_harness.rs`.

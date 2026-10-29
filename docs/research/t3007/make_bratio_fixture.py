@@ -2,8 +2,8 @@
 
 Every cumulative four-argument BETA.DIST cell of docs/research/t2464/cells.tsv (excel-graph values) becomes a row
 `a b x y excel branch swapped`: a, b, x, y = fl(1 - x) and Excel's value as 16-digit hex f64 bits, then the branch
-r2-bratio's model `bratio_excel.py` `kernel` names for the point (the engine's `bratio::Branch` spelling) and 1 when
-bratio swapped. Branches with more than CAP rows keep every k-th row in (a, b, x) order.
+r2-bratio's model `bratio_excel.py` `kernel` names for the point (its own name, spaces as underscores; the Rust test
+maps it to `bratio::Branch`) and 1 when bratio swapped. Branches with more than CAP rows keep every k-th row in (a, b, x) order.
 
 Run from the repository root (the model needs numpy and mpmath; its GAMMALN placeholder does not change a branch):
     uv run --no-project --with mpmath --with numpy python docs/research/t3007/make_bratio_fixture.py
@@ -19,31 +19,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "docs/research/t2464/r2-bratio"))
-import bratio_excel  # noqa: E402
+import bratio_excel  # noqa: E402  (importable only once sys.path has r2-bratio)
 
 CELLS = ROOT / "docs/research/t2464/cells.tsv"
 OUT = ROOT / "crates/rustsheet-engine/src/test/fixtures/bratio_beta_dist.fixture"
 CAP = 400
-
-# The model's branch names, as `bratio::Branch` spells them.
-NAMES = {
-    "x=0": "Zero",
-    "y=0": "One",
-    "tiny": "Tiny",
-    "fpser": "Fpser",
-    "apser": "Apser",
-    "w_bpser": "WBpser",
-    "w1_bpser": "W1Bpser",
-    "bup+bgrat": "BupBgrat",
-    "bgrat": "Bgrat",
-    "bpser(a,b>1)": "BpserLarge",
-    "L140 bup+bpser": "L140BupBpser",
-    "L140 bup+bgrat": "L140BupBgrat",
-    "L140 bup+bup+bgrat": "L140BupBupBgrat",
-    "bfrac": "Bfrac",
-    "basym": "Basym",
-}
-
 
 def hexbits(v: float) -> str:
     return struct.pack(">d", v).hex()
@@ -70,7 +50,7 @@ def main() -> None:
             name = name.removesuffix("/sw")
             if name.startswith("closed"):
                 continue
-            rows[NAMES[name]].append((a, b, x, y, excel, int(swapped)))
+            rows[name.replace(" ", "_")].append((a, b, x, y, excel, int(swapped)))
     lines = [
         "# T-3007 bratio branch fixture (SPEC-0025 \"Test fixtures\"): a b x y excel (f64 bits) branch swapped.",
         "# Cumulative BETA.DIST cells of docs/research/t2464/cells.tsv (excel-graph), y = fl(1 - x); branch and",
