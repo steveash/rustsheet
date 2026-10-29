@@ -3,7 +3,7 @@ id: T-3094
 title: "Probe the near-zero root snap of a LAMBDA reached through a defined name, a LET name, a grouped body or a nested call"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
