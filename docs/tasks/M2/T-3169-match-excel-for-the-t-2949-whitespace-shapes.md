@@ -14,7 +14,7 @@ depends_on: []
 FORMULATEXT prints the shapes probed in T-2949 as Excel does.
 
 ## Context
-Evidence and rules: docs/excel-semantics/syntax.md "Remaining whitespace shapes (T-2949)"; cases probes/t2949-typed-* and t2949-stored-*. Check which already match (`make eval-show`) and fix the differences: whitespace before a LAMBDA/LET name kept and after it dropped, an intersection separator's line feed kept, a stored leading TAB or LF dropped.
+Evidence and rules: docs/excel-semantics/syntax.md "Remaining whitespace shapes (T-2949)"; cases probes/t2949-typed-* and t2949-stored-*. LAMBDA and LET name shapes already match. Fix what fails: an intersection separator's line feed is kept (typed-4, typed-5, stored-14); a stored leading LF is dropped (stored-5); a stored even-arity LET `=LET( a ,1, b ,a+1)` loads, prints `=LET( a,1, b,a+1,b)` and returns 2 (stored-11).
 
 ## Acceptance criteria
 - [ ] Every t2949 probe cell passes (or its difference is recorded as a DEVIATION).
