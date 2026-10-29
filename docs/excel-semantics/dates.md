@@ -907,7 +907,7 @@ Implemented in `time_part_fn!` (functions/date_and_time.rs).
 The bound is checked after rounding the serial to the nearest second (T-1815, probes/time-parts-rounding-window,
 excel-graph, 2026-10-18): 2958465.9999942 (23:59:59.499) and 2958465.999994 give 23, 59, 59, while 2958465.9999949
 (23:59:59.559), 2958465.999999 and 2958465.9999999999 are `#NUM!` for HOUR, MINUTE and SECOND alike, so the cut lies between 23:59:59.499 and
-23:59:59.559 (an exact .5 tie is unprobed).
+23:59:59.559 (the exact .5 tie: next paragraph).
 The exact tie and YEAR (T-3137, probes/t3137-date-parts-near-midnight R!B106:H120, excel-graph, 2026-10-29): the cut
 is the half-second carry of "YEAR, MONTH and DAY of a serial just below midnight" below. `fl(2958466-0.5/86400)` =
 2958465.9999942128 (R!A110), the exact tie, is `#NUM!` for HOUR, MINUTE and SECOND (R!F110:H110; ours 0, 0, 0) and
@@ -926,7 +926,7 @@ while `fl(N-0.5/86400)` minus one ULP, 0.6 s and 1 s below N are day B with HOUR
 `MONTH(60.99999421296296)` is 3, `MONTH(45016.999994212965)` is 4 (2023-04-01), `YEAR(45291.999994212965)` is 2024,
 `WEEKDAY(45000.999994212965)` is 5 (the next day's). Every serial from `fl(2958466-0.5/86400)` up is `#NUM!` for all
 seven functions.
-Ruled out: (a) a plain floor (the engine's `date_part`; 220 cells); (c) a millisecond rounding (0.4 s to 30 ms carry);
+Of T-3137's four candidate models this is (b), the half-second carry. Ruled out: (a) a plain floor (the engine's `date_part`; 220 cells); (c) a millisecond rounding (0.4 s to 30 ms carry);
 (d) an absolute near-integer bound like `near_integer_whole`, about 20.6 ms (30 ms and 0.4 s carry, and the cut sits at
 the half second, not at 2^-22 + 2^-33 day).
 Negatives are `#NUM!` before any carry: `DAY(0-1E-10)`, `YEAR(0-2^-40)`, `MONTH(0-0.4/86400)` and the 0.5, 0.6 and 1 s
