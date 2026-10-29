@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-3145]
+depends_on: [T-3148]
 campaign: visible
 ---
 
@@ -40,7 +40,7 @@ CHISQ.INV.RT. That explains the RT cells: `CHISQ.INV.RT(0.999,3)` is not Excel's
 and the band of x it cannot tell apart is about 1E-13 relative wide. The engine instead always crosses the smaller tail
 on the accurate pair (`incomplete_gamma::gamma_quantile`, `refine_increasing`). Where in the band Excel lands depends
 on its starting point and stopping test, which the cached probes (p only 0.95, 0.999 and 1 - 1E-10) cannot pin down:
-Needs an oracle sweep, T-3145, which also gives Excel's cdf at the doubles beside each quantile above. At 1 - 1E-10
+Needs an oracle sweep, T-3148, which also gives Excel's cdf at the doubles beside each quantile above. At 1 - 1E-10
 the same probes are within 2 ulp, so the rule changes between those p.
 
 T-3016 (`CHISQ.INV(0.999,5)` in the m9 and T-1049 CHISQ.INV probes) and T-3131 (`CHISQ.INV.RT(0.999,5)` and
@@ -52,7 +52,7 @@ relative off, within 15 digits; it should follow the same rule.
 - [ ] The 12 cells above are within half a unit of Excel's 15th significant digit (`python3 scripts/exit_owners.py
       --all-off` no longer lists them), with no new known-failure line in any eval/baseline file
       (`make eval-baseline`) and no p = 0.999 cell of T-3016 or T-3131 made worse.
-- [ ] The landing rule and the forms tried, with their bit-exact and visible-parity counts on T-3145's case and the
+- [ ] The landing rule and the forms tried, with their bit-exact and visible-parity counts on T-3148's case and the
       cached probes, are in docs/excel-semantics/statistics.md (decision 0056: two attempts, then time-box).
 - [ ] Iteration stays bounded on untrusted input (the shared `MAX_TERMS` budget; huge shape or scale; p next to 1).
 - [ ] `make check` green; reviewers approve.
