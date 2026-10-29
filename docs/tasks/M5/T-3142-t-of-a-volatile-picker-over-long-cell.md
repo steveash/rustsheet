@@ -31,4 +31,5 @@ T-3107 `reads_cell_text` (t_function.rs) calls `is_reference`, which evaluates a
   argument keeps its test unchanged.
 - Tests: `text_functions/fn_t_volatile_pick.rs`. The volatile test fails on the old code (it saw `#VALUE!` for a
   D1 pick within 200 recalculations); the probe-backed IF/CHOOSE shapes pass on both.
-- Eval delta: none expected (no eval case uses a volatile picker under T).
+- Eval delta: none (`make eval-check`: 0 regressions, 0 fixes, probes known failures 3730 → 3730).
+- Follow-up: T-3157 (a LET-bound or `@`-wrapped volatile pick).
