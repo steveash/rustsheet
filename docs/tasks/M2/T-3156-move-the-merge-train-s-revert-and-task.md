@@ -3,7 +3,7 @@ id: T-3156
 title: "Move the merge train's revert and task filing out of merge_train.py"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
