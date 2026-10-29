@@ -95,6 +95,9 @@ Cells:
 - gen-m9/eccd03df42e40006.case.json (3): Calc!A3, A34, A155
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A67, A158, A371
 - gen-m9/f82473275380882e.case.json (2): Calc!A151, A213
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/3c06f9298f65a3ba.case.json: Calc!A91
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2256): these 133 known-failure lines (the T-2256 cells in Context) disappear from

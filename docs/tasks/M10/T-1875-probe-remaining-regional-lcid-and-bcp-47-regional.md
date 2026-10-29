@@ -25,6 +25,9 @@ whether the extended path (`resolve_extended`, neutral LCIDs only) really differ
 
 Exit owners (decision 0096; the 2026-10-27 planner run names each cell the ranges above hold):
 - probes/t1924-locale-tag-extended-hex S!A2, S!A3, S!B2, S!B3
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - probes/t1924-locale-tag-extended-hex.case.json: S!B10, B22, B28, B29
 
 ## Acceptance criteria
 - [ ] A probe case covers the variants above; its cells pass; number-formats.md records which differ from the language fallback.

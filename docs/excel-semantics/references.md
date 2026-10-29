@@ -494,12 +494,16 @@ MATCH read a range of several cells of a cached sheet in place (`LookupTable::Ex
 `Model::cached_external_lookup_area`) instead of building it as an array, so whole columns and rows
 match B17, B21, B49 and B50 (T-0474). The search vector keeps the area's full length (the cached
 cells, then an empty tail), as a whole column of this workbook does; a vector cut to the cache's
-extent would move the approximate search's midpoints (lookup.md "Approximate match"). UNVERIFIED, a hand
-expectation awaiting an oracle cell (T-0479): an approximate whole-column lookup over an unsorted cached
-column (cache 1,5,2,9,3) is the local result. `VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as
-over a local whole column, and a unit test pins that in test_external_links.rs.
-Status: VERIFIED for the oracle cells above (excel-graph only; no desktop evidence, decision 0030); the
-unsorted approximate case is UNVERIFIED
+extent would move the approximate search's midpoints (lookup.md "Approximate match"). Verified against
+Excel (T-0479, fixtures/external-link-unsorted-approx-lookups, excel-graph, 2026-10-29; cache `Col` A1:A5 = 1,5,2,9,3,
+B = 10..50, `Row` A1:E1 = 1,5,2,9,3, A2:E2 = 10..50): over the unsorted whole column the approximate lookups give the
+result of the binary search over the full-length (1048576-cell) vector, as over a local whole column (lookup.md "Approximate match"; no local Excel control cell), and the engine matches every cell. `VLOOKUP(4,[1]Col!$A:$B,2,TRUE)` is 10 (B1), keys 6, 9 and
+100 give 30, 40 and 50, key 0.5 `#N/A`; `MATCH(4,..$A:$A,1)` is 1, key 6 gives 3 and key 100 gives 5; `MATCH(4,..,-1)` is
+`#N/A`, key 6 `#N/A`, key 0.5 gives 5; `HLOOKUP(4,[1]Row!$1:$2,2,TRUE)` is 10, keys 6 and 100 give 30 and 50; whole-row
+`MATCH 1` of 4 is 1 and of 100 is 5, `MATCH -1` of 4 and 6 `#N/A`. The bounded controls differ from the whole-column
+cells only where the search midpoints move (`VLOOKUP(4,..$A$1:$B$5,2,TRUE)` 30, `$A$1:$B$100` 30, `MATCH(4,..$A$1:$A$5,1)` 3;
+Excel gives these for the bounded ranges, so the full-length vector is what makes the whole-column cells differ).
+Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
 Tasks: T-0457, T-0472, T-0474, T-0479
 
 ## IF and INDEX return references to aggregates; IFERROR returns values

@@ -373,6 +373,45 @@ class ExitOwners(TaskDir):
         self.assertIn(f"{PROBE}!P!B2", listed)
         self.assertNotIn(f"{PROBE}!P!B3", listed)
 
+    def test_an_a1_name_beside_another_case_does_not_own(self) -> None:
+        # The T-2425 leak (decision 0159): B2 is listed for the gen case, so the probe's B2 is not owned
+        # although the same task names the probe on another line.
+        self.task("- gen-m5/1d22a002d4f380b3: Calc!A107, B2\n- probes/index-reference-args: P!B3")
+        listed = self.listed()
+        self.assertIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+        self.assertNotIn(f"{GEN}!Calc!A107", listed)
+
+    def test_an_indented_continuation_line_owns_beside_its_case(self) -> None:
+        # The T-3031 form: a cell list that wraps onto indented lines of the same bullet.
+        self.task("- probes/index-reference-args P!B3,\n  B2 and the rest")
+        listed = self.listed()
+        self.assertNotIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_a_new_line_bullet_row_or_blank_line_opens_a_block(self) -> None:
+        for body in (
+            "probes/index-reference-args P!B3\nB2",
+            "- probes/index-reference-args P!B3\n  - B2",
+            "- probes/index-reference-args P!B3\n  * B2",
+            "- probes/index-reference-args P!B3\n  2. B2",
+            "| probes/index-reference-args | P!B3 |\n| B2 |",
+            "- probes/index-reference-args P!B3\n\n    B2",
+        ):
+            with self.subTest(body=body):
+                for f in self.tasks.glob("*/*.md"):
+                    f.unlink()
+                self.task(body)
+                listed = self.listed()
+                self.assertIn(f"{PROBE}!P!B2", listed)
+                self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_blocks(self) -> None:
+        self.assertEqual(
+            exit_owners.blocks("a\n  b\n- c\n  d\n\n  e\n| f"),
+            ("a\n  b", "- c\n  d", "\n  e", "| f"),
+        )
+
     def test_output_and_strict_exit(self) -> None:
         path = self.tasks / "report.json"
         path.write_text(json.dumps(report()))
