@@ -124,6 +124,10 @@ FALSE, "0", " ", "x", `=NA()`, 1 with weights B = 2^0..2^13, every source gives 
 + 512: the 0, -0, `2^-1074` and "0" rows), AVERAGEIF 147, MINIFS 4, MAXIFS 512 (D1:H9), and the same on the
 80-cell range A21:A100 that the *IFS cache indexes (D21:H29, J31:J39). N1:N4: `#DIV/0!` and 0 with no match.
 Oracle: excel-graph, 2026-10-29 (T-3138).
+Like the number criterion 0, it also matches the text cells VALUE reads as 0: over "$1", "1e2%", "(1)", "0%", "$0",
+"0:00", "12:00 AM", "1 1/2", "1", "0" (weights 2^0..2^9), a blank-cell and an omitted SUMIF criterion and a blank-cell
+SUMIFS criterion all give 632, the "0%", "$0", "0:00", "12:00 AM" and "0" rows (probes/t3151-number-criterion-formatted-text
+C2, C3, C8; excel-graph, 2026-10-29, T-3151; see "Criterion operands and text cells read numbers with VALUE's grammar").
 Status: VERIFIED
 Implemented in: `indexed_criterion` (`crates/rustsheet-engine/src/functions/criteria.rs`), which turns the empty
 criterion into the number criterion 0 for both the walk and the indexed *IFS path.
@@ -482,10 +486,15 @@ SUMIF, SUMIFS (the indexed path), COUNTIF, COUNTIFS and DSUM agree on every row,
 Evidence: probes/t3136-criteria-formatted-number-operands (excel-graph, 2026-10-29): Data!A1:A8 numbers 0.5, 1, -1, 1.5, 1000,
 10.005, 43832.5, 100 and Data!C1:C14 text cells with power-of-two SUMIF weights. Rows 1-56 are 14 operands × 4 operators.
 Calc!A (SUMIF numbers), B (SUMIF text), C/D (SUMIFS), E (COUNTIF), F (COUNTIFS text), G (DSUM) and H1-H53 (VALUE).
+A number criterion from a cell or a literal reads text cells the same way (probes/t3151-number-criterion-formatted-text,
+excel-graph, 2026-10-29, T-3151): over the text cells above, a cell holding 1 gives SUMIF and SUMIFS 259 ("$1", "1e2%",
+"1"), `COUNTIF(r,1)` 3, 1.5 matches "1 1/2" and -1 matches "(1)". An operand followed by a tab (`"1"&CHAR(9)`,
+`"=1"&CHAR(9)`) is text and matches none of them (C10, C11).
 UNVERIFIED: euro operands (`€1`, `1€`), other VALUE forms (`- 5`, `1-1-1`, month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
 analogy with `>=`), a percent rounding at the 15-digit tie, CHAR(160)-padded formatted text, and non-en-US locales.
-Ours: the plain parser only (`parse_criterion_number`, `parse_date_criterion`, `result_is_equal_to_number` in
-functions/criteria.rs), so A, C, E and G fail on rows 1-52, B, D and F on rows 1-52 except 25, 26, 39, 41, 42, 49 and 50
-(the text sums match by chance), and H25; rows 53-56 pass. Owner: T-3151.
-Status: VERIFIED (excel-graph); not implemented (T-3151).
+Ours: the operand and the text cells read with the plain parser, then VALUE's reader (`criterion_text_number` in
+functions/criteria.rs over `value_number_text` in cast.rs, which VALUE uses too), then the date parser; text padded with a
+non-ASCII space stays text on both sides, as the section above requires. The indexed *IFS path and the D-functions build
+their predicates there too. Every cell of the probe passes (T-3151).
+Status: VERIFIED (excel-graph); implemented (T-3151).
 Tasks: T-3136, T-3151
