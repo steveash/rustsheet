@@ -3,7 +3,7 @@ id: T-3096
 title: "Probe blank elements of a lifted VLOOKUP, HLOOKUP and MATCH lookup_value against tables holding 0, empty text, FALSE and blanks"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
