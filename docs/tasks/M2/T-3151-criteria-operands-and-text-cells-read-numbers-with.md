@@ -3,7 +3,7 @@ id: T-3151
 title: "Criteria operands and text cells read numbers with VALUE's grammar (percent, currency, grouping, time, date-time, mixed fraction, parentheses)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
