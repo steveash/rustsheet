@@ -128,9 +128,9 @@ impl Model {
         }
     }
 
-    /// Whether `node`, T's argument as written, hands T a cell's text rather than a computed value. A legacy formula's
-    /// automatic `@` and a spill reference still stand for cells; a unary plus makes a value
-    /// (probes/text-255-units-reference-shapes A9, A13, A18; T-3107).
+    /// Whether `node`, T's argument as written, hands T a cell's text rather than a computed
+    /// value. A legacy formula's automatic `@` and a spill reference still stand for cells; a
+    /// unary plus makes a value (probes/text-255-units-reference-shapes A9, A13, A18; T-3107).
     fn written_reads_cell_text(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         let mut node = node;
         loop {
