@@ -772,11 +772,36 @@ on 40, the secant in v on 19, Newton and the secant in r on 2 each). (5) No step
 v = 0 separates the `#NUM!` rows: `{-N,1,1,1,1,1}` takes 24 to 27 steps for N = 163 to 400 (returns) and 28 to 33 for
 N = 496 to 2000 (`#NUM!`), but `{40,1,1,-1}` takes 28 and `{42,1,1,-1}` 30 and both return; neither does a bound on
 the root (v = 3.21 is `#NUM!` for N = 496 while `{100,1,1,-1}` returns at v = 5.08).
+Fit, attempt 2 (T-2928, 2026-10-29, scratch harness only, not shipped). Each candidate ran after the fit lab's
+`irr_secant_v`, on the same 212 cells. With the engine's Newton as the fallback that harness gets 62/90/183, against
+the engine's own 72, so these counts compare only with each other. Results:
+- Newton in d = 1 - v from d = 1, with v held to 2^-53 at the return: 66/89/183, 72/96/185 with |P| < 1E-7.
+- Forward-difference Newton in v from 0 (h = 1E-3 to 1E-9, absolute or relative, either sign, with or without
+  |P| < 1E-7): at best 70/94/188.
+- A secant from v = 0, in v or in d. The first offset was 1E-5 to 1, signed by P(0), unsigned or flipped. The stop test
+  was |dx| < 1E-7, 1E-5 or 1E-3, or none, with or without |P| < 1E-7. Best 66/78/157: it often reaches another root.
+- The fitted secant, continued past an iterate at v <= 0 with that iterate replaced by 2·v1, 1.5·v1, 10·v1, 1.1·v1,
+  v1 + 0.1 or v1 + 2|v1 - v0|: at best 63/79/121.
+The gains over 62 are the |P| test's `#NUM!` rows (A103-A111, as attempt 1's finding 3) and last-bit cells; it loses
+A97, A129 and A131, which Excel returns.
+Attempt 2 found two things:
+(6) The fallback is not Newton in any variable. Negating every flow leaves each Newton iterate bit-for-bit unchanged,
+and a residual test as well. But Excel's negated rows differ from their positive rows by up to 1,251 ulp (A74
+`{-25,-1,-1,1}` against A12 `{25,1,1,-1}`). A58, A60 and A62 are 276 to 613 ulp from the exact root, and their positive
+rows A4-A6 within 50. So a step depends on the sign of P, as a
+secant's signed first offset does.
+(7) Where v < 1, Excel's results lie on a 2^-53 grid in v, as T-2565 found for the secant. 29 of the 32 distinct values
+are within half an ulp of r of a multiple of 2^-53, where chance gives 3.3; on a 2^-52 grid it is 11. So the iterate is
+held as d = 1 - v or in a fixed-point form there.
+Holding v to that grid alone moves the harness from 62 to 66.
+Next evidence: T-3117 scales the same flows by exact powers of two, where only an absolute test sees the scale, and
+negates them.
 Evidence: probes/irr-fallback-roots A1-A24 (excel-graph, 2026-10-26); the gen-m9 cells above;
 probes-numeric/t2927-irr-fallback-sweep (excel-graph, 2026-10-27).
-Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the step cap (between 29 and 119)
+Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method (not Newton, finding 6) and the step cap
+(between 29 and 119)
 Implemented in: `irr_fallback`, `IRR_FALLBACK_STEPS` (functions/financial/financial_util.rs)
-Tasks: T-2727, T-1686, T-2131, T-2927 (sweep), T-2928 (returned digits)
+Tasks: T-2727, T-1686, T-2131, T-2927 (sweep), T-2928 (returned digits), T-3117 (power-of-two probe)
 
 ## RATE is a secant on the FV residual
 Rule: RATE is a secant, not Newton's method, on the residual f(r) = ((pv·P) + (pmt·(k·((P-1)/r)))) + fv:
