@@ -497,6 +497,30 @@ impl Parser {
         }
     }
 
+    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
+    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
+    /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
+    /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
+    /// PATCH 400, T-2568), or it nests more function calls than Excel takes
+    /// ([`MAX_NESTED_CALLS`], T-3097). `None` when parsing stored text or nothing is refused.
+    pub(crate) fn typed_refusal(&self) -> Option<String> {
+        if !self.typed {
+            return None;
+        }
+        if self.nests_too_many_calls() {
+            return Some(format!("Formula: {TOO_MANY_NESTED_CALLS_MESSAGE}"));
+        }
+        if let Some(name) = &self.cell_shaped_binding {
+            return Some(format!(
+                "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
+            ));
+        }
+        let name = self.wrong_count_call.as_ref()?;
+        Some(format!(
+            "Formula: {name} is called with the wrong number of arguments"
+        ))
+    }
+
     /// Records `name` as the first call of the formula with a count of arguments Excel refuses
     /// typed ([`Parser::typed_refusal`]); stored text records nothing.
     fn note_wrong_count(&mut self, name: &str) {
