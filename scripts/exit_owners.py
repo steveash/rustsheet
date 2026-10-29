@@ -10,10 +10,10 @@ the milestone's exit criteria (decision 0085, read at visible parity by decision
 the `gen-m<k>` suite and any other required suite of the exit row (decision 0146: M1's smoke,
 M11's corpus-bench), the ironcalc-calc row of "Milestone function scope" less its exit
 exceptions when the exit row requires it (not M7, decision 0140), and the probes of the
-milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list), plus each probe case that fails with no
-cell, that no open task of that milestone names, one per line as
-`criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the count is
-not 0.
+milestone's row of "Probe milestones", `M0-M2` for M2, or for M1 the frozen `m1-probes` list),
+plus each probe case that fails with no cell, that no open task of that milestone names, one per
+line as `criterion<TAB>case!Sheet!A1<TAB>formula`, then a count line. `--strict` exits 1 when the
+count is not 0.
 
 A task owns a cell when its front matter has the milestone and an open status, and its text names
 the case (`case_names`): by its file stem (the last path segment of the case id less `.case.json`:
@@ -147,8 +147,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
 
     # Every required suite (decision 0146): the row's first (`gen_suite`, `gen-m<k>` before it
     # existed) and `more_suites`, each with its own visibly-off list.
-    suites = [(exit_row.get("gen_suite") or f"gen-{milestone.lower()}", exit_row.get("gen_visibly_off_cells"))]
-    suites += [(str(s.get("name")), s.get("visibly_off_cells")) for s in exit_row.get("more_suites") or []]
+    first = exit_row.get("gen_suite") or f"gen-{milestone.lower()}"
+    suites = [(first, exit_row.get("gen_visibly_off_cells"))]
+    more = exit_row.get("more_suites") or []
+    suites += [(str(s.get("name")), s.get("visibly_off_cells")) for s in more]
     for suite, cells_off in suites:
         off = set(cells_off or [])
         for case in report.get("cases") or []:

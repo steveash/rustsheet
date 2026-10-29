@@ -536,7 +536,7 @@ mod tests {
     fn all_met() {
         let r = report(Some((22_400, 22_380)));
         let rows = summarize(&r);
-        let row = &m5(&r);
+        let row = rows.iter().find(|row| row.milestone == "M5").unwrap();
         assert_eq!(row.gen_allowance, Some(22));
         assert_eq!(row.gen_known_failures, Some(20));
         assert_eq!(row.calc_failing, Some(0));
