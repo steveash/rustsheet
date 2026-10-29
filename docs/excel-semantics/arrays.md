@@ -1213,7 +1213,9 @@ is given (the cell's rows, plus the relative set a two-parameter LAMBDA gets or 
 arguments, against the 2^27-cell cap of the lifted *IF(S) calls (`too_many_visits`, criteria.md); once the charges would
 pass it, no further call is made and the whole result is `#ERROR!`. One-parameter calls rarely get there (each record is
 given once per output column and subtotal level): `GROUPBY` over 1048575 records with 100 functions is `#ERROR!`, with 10
-it computes (unit test `one_parameter_calls_are_charged_against_the_visit_cap_too`).
+it computes (unit test `one_parameter_calls_are_charged_against_the_visit_cap_too`, which raises the formula work limit
+because at the default limit the work budget, which since T-2804 also charges the cells an aggregate reads, runs out first
+and the result is `#VALUE!`, not `#ERROR!`).
 Example: `GROUPBY(SEQUENCE(20000),SEQUENCE(20000),LAMBDA(x,y,ROWS(y)))` (20000 groups x 20000 rows) is `#ERROR!`, while
 PERCENTOF passed by name, summed once per relative set (O(N)), and one-parameter LAMBDAs compute it (unit test
 `two_parameter_lambdas_are_charged_against_the_visit_cap`, in test_fn_groupby.rs and, for 20000 PIVOTBY rows in one
@@ -1257,7 +1259,10 @@ most 64 levels (`MAX_NESTED_DEPTH`); past any of them the whole result is `#ERRO
 `CHOOSEROWS(r,SEQUENCE(200)^0)` copies one for free; reading one's contents (INDEX of the cell) charges its cells to a
 per-evaluation walk budget of 2^27 cells (`MAX_NESTED_WALK_CELLS`), past which the read is `#ERROR!` (200 INDEX reads of a
 1,048,512-cell nested cell fail at the 129th). Since T-2594 SUM, COUNT and COUNTA flattening a nested cell, and MAP, REDUCE and
-SCAN handing one to the LAMBDA, charge the same budget, and past it the whole call is `#ERROR!`. Equality of two nested cells is by content but O(1) for copies of one and for
+SCAN handing one to the LAMBDA, charge the same budget, and past it the whole call is `#ERROR!`. Since T-2804 the aggregate
+walker also charges 3 work units a cell it flattens, so at the default formula work limit (2^28) SUM and COUNT stop at
+about 89M cells, before this budget (2^27 cells): the 200-copy SUM is `#VALUE!` there, and `#ERROR!` only with the work
+limit raised (unit test `flattening_and_handing_over_copies_is_bounded`). Equality of two nested cells is by content but O(1) for copies of one and for
 cells of different sizes, so it is not charged.
 Evidence: none for Excel; this is a resource limit (CLAUDE.md directive 5), SPEC-0018 "Bound". Unit tests in
 crates/rustsheet-engine/src/nested_array.rs and test/test_nested_groupby_cells.rs.
@@ -1405,7 +1410,9 @@ Evidence: none for Excel; a resource limit (CLAUDE.md directive 5, SPEC-0024).
 Ours: each formula evaluation (a cell formula, a defined name, a conditional format, `evaluate_formula`) may spend 2^28 work
 units: 6 per node evaluated (each link of an operator chain is one), 3 per cell of each array value a node gives or a range
 is turned into (a range arm of a lifted IF or CHOOSE, or an HSTACK or VSTACK argument, is first read for 3 per cell of
-its used area, then a picked one copied for 3 per cell of the range; T-1564), one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
+its used area, then a picked one copied for 3 per cell of the range; T-1564), 3 per cell of each array an aggregate (SUM,
+COUNT, AVERAGE, MIN, MAX, PRODUCT and the other `for_each_value` readers) reads, nested GROUPBY/PIVOTBY cells it
+flattens included (T-2804), one per 4 bytes of each text value a node gives (and of a lifted text call's results and of each text the
 `&` operator makes over an array, T-2806), 512 per LAMBDA value
 made plus 6 per node of each LAMBDA body cloned (the LAMBDA stored, and a call's fresh copy of its body; T-2923), plus the
 per-call caps' own charges: a lifted call's cell visits and kernel units (`MAX_LIFTED_CELL_VISITS`, 1 unit each), GROUPBY/PIVOTBY's
@@ -1429,14 +1436,16 @@ second call's charge fails) and of smaller RATE calls 5.2 s, of lifted YIELD 7.6
 since T-2879, so these are node units). One call at its visit cap (2026-10-27, before T-2923's re-fit, which does not change
 visit units): RATE 2.4 s, ODDLPRICE 1.1 s, CHISQ.DIST and POISSON.DIST 0.4 s, GAMMA.INV and GAMMA.DIST under 0.1 s, COUNTIF
 and SUMIFS over 1,024 cells 0.1 and 0.4 s. The LAMBDAs a formula makes are dropped once its root cell is evaluated, so a
-recalculation of many such formulas does not slow each later one (T-2925). Array cells read by aggregates and other
-whole-array readers are not charged yet (T-2804, T-2805).
+recalculation of many such formulas does not slow each later one (T-2925). Array cells read by the other whole-array
+readers are not charged yet (T-2805). The calibration figures above were measured before T-2804 charged the aggregates'
+reads, so an aggregate-heavy eval formula now spends more (`rustsheet-eval check` still has no formula past the limit).
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-engine/src/area_budget.rs (`MAX_FORMULA_WORK`, `Model::spend_work`, `Model::with_area_budget`),
 crates/rustsheet-engine/src/model.rs (`evaluate_node_in_context`), crates/rustsheet-engine/src/functions/logical/lambda.rs
 (`call_prepared`, `prepare_lambda`, `fn_lambda`), crates/rustsheet-engine/src/node_frames.rs (`LambdaDefKind`),
-crates/rustsheet-engine/src/arithmetic.rs (`handle_concatenate`).
-Tasks: T-2712 (SPEC-0024), T-2803, T-2813, T-2923, T-2806
+crates/rustsheet-engine/src/arithmetic.rs (`handle_concatenate`), crates/rustsheet-engine/src/functions/util/aggregate_args.rs
+(`walk_array_items`).
+Tasks: T-2712 (SPEC-0024), T-2803, T-2813, T-2923, T-2806, T-2804
 
 ## Copies of a text share its bytes
 Rule: Excel has no known limit on the memory one formula's texts take; `IF(SEQUENCE(1024,1024),REPT("a",32767))` copies a
