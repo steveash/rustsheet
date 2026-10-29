@@ -189,3 +189,27 @@ fn test_chisq_test_blank_range() {
     assert_eq!(model._get_text("A6"), *"1");
     assert_eq!(model._get_text("A5"), *"#N/A");
 }
+
+// The p-value is the direct right tail, not 1 - P: chi2 = 18 at df 2 is EXP(-9) to the last bit in
+// Excel (probes-numeric/m9-legacy-chitest Calc!A23; T-3058).
+#[test]
+fn test_chitest_small_p_is_the_direct_tail() {
+    let mut model = new_empty_model();
+    for (cell, v) in [
+        ("F1", "5"),
+        ("F2", "0"),
+        ("F3", "x"),
+        ("G1", "1"),
+        ("G2", "2"),
+        ("G3", "3"),
+    ] {
+        model._set(cell, v);
+    }
+    model._set("A1", "=CHITEST(F1:F3,G1:G3)");
+    model.evaluate();
+    let crate::cell::CellValue::Number(p) = model.get_cell_value_by_ref("Sheet1!A1").unwrap()
+    else {
+        panic!("expected a number");
+    };
+    assert_eq!(p.to_bits(), (-9.0_f64).exp().to_bits());
+}

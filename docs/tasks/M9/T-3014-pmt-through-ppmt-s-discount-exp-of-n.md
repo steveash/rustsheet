@@ -59,6 +59,9 @@ Gap triage 2026-10-28 (eval on origin/main abefb50).
   "Findings" section shows PMT.xlsx rows 10, 11, 18 and 23 (rate -0.9, type 1) 3 to 5 ulp off under every form tried,
   the discount forms included, so score candidates on them first. RATE's own model
   (`rate_residual`, T-2527) is not to be touched.
+- T-2951 (2026-10-28, `docs/research/t2951_pmt_order_score.py`, Excel's EXP/LN models): the discount form scores 175/308
+  with Excel's EXP and LN as well; with the double Q and 1-Q but the rest of `-(pv+fv*Q)*r/((1-Q)*k)` rounded once it
+  scores 197/308, the best PMT model so far, and 33 of PMT.xlsx's 40 other PMT cells. Start the fit from it.
 
 ## Visible-parity stage
 Decision 0114, `visible`: the 113 RATE cells above are visibly off because Excel's PMT is not the exact payment, so
