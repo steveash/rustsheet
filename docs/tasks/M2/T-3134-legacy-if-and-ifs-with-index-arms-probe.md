@@ -68,10 +68,12 @@ that covers the shapes T-2326 left UNVERIFIED.
 - The harness's legacy-parse adapter (T-1096).
 
 ## Outcome
-probes/t3134-legacy-if-index-arm-shapes (167 cells, excel-graph) separates the candidates: Excel's line is (a),
-literal arguments only, with whole numbers of 1 or more, and it ignores the range's shape (even the 2-D
-`INDEX(B1:C6,3)`, `#REF!`). Literal arms beside the INDEX, nested IFs and CHOOSE drop the `@` too; IFS, a computed,
-cell, text, non-integer or 0 index, and a range arm beside the INDEX keep it. `returns_single_cell_index` now
-fits that rule and makes such an IF or CHOOSE a static scalar, so a call over it (ABS) gets no `@` either.
-Eval delta: probes 0 regressions, the new case 167/167; the four neighbouring probes unchanged. No cell needed a
-follow-up.
+probes/t3134-legacy-if-index-arm-shapes (295 cells, excel-graph; a second fill after review added conditions,
+literal kinds, mixed nesting, parentheses and non-literal scalar arms) separates the candidates. Excel's line is
+(a), literal whole-number indexes of 1 or more only, and it ignores the range's shape (even the 2-D
+`INDEX(B1:C6,3)`, `#REF!`). Scalar arms beside the INDEX, nested IF/CHOOSE and CHOOSE drop the `@` too. These keep
+it: IFS, an array condition or index, a computed, cell, text, non-integer or 0 INDEX index, and a range arm.
+`returns_single_cell_index` now decides from each argument's shape, computed once (the first version re-analysed
+conditions, which was exponential in nesting; a depth-60 test pins that). Such an IF or CHOOSE becomes a static
+scalar, so ABS over it gets no `@`. Eval delta: 0 regressions in every suite; the new case passes 293/295. I54 and
+K54 (array CHOOSE index, `@` on the constant) are baseline known failures, followed up by T-3165.

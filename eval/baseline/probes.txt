@@ -1560,7 +1560,7 @@ C	probes/t3100-snap-operand-order.case.json	540
 C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3106-lookup-xmatch-near-equal.case.json	786
 C	probes/t3115-approximate-text-collation.case.json	625
-C	probes/t3134-legacy-if-index-arm-shapes.case.json	167
+C	probes/t3134-legacy-if-index-arm-shapes.case.json	295
 C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
 C	probes/t3136-criteria-formatted-number-operands.case.json	590
 C	probes/t3138-blank-criterion.case.json	111
@@ -4982,6 +4982,8 @@ F	probes/t3106-lookup-xmatch-near-equal.case.json	Sheet1!Z5
 F	probes/t3106-lookup-xmatch-near-equal.case.json	Sheet1!Z6
 F	probes/t3106-lookup-xmatch-near-equal.case.json	Sheet1!Z7
 F	probes/t3106-lookup-xmatch-near-equal.case.json	Sheet1!Z9
+F	probes/t3134-legacy-if-index-arm-shapes.case.json	Sheet1!I54
+F	probes/t3134-legacy-if-index-arm-shapes.case.json	Sheet1!K54
 F	probes/t3136-criteria-formatted-number-operands.case.json	Calc!A1
 F	probes/t3136-criteria-formatted-number-operands.case.json	Calc!A10
 F	probes/t3136-criteria-formatted-number-operands.case.json	Calc!A11

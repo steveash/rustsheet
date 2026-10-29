@@ -1,7 +1,7 @@
 //! The arms of a legacy IF or IFS that are references, which the formula passes on whole instead of
 //! intersecting (docs/excel-semantics/references.md "Legacy IF passes a range arm whole").
 
-use super::{run_static_analysis_on_node, Node, StaticResult};
+use super::{Node, StaticResult};
 use crate::functions::Function;
 
 /// Whether `arg` is a value arm of IF or IFS that is a reference ([`is_range_arm`]), which a legacy
@@ -117,36 +117,21 @@ pub(super) fn returns_range_arm(kind: &Function, args: &[Node]) -> bool {
     }
 }
 
-/// Whether `kind(args)` is an IF or CHOOSE that is one value whatever its condition or index, so a
-/// legacy formula shows no `@` on it or on a call over it: every value arm is a single-cell INDEX
-/// ([`is_single_cell_index`]), a literal, or an IF or CHOOSE of the same kind, and every condition
-/// and CHOOSE index is a scalar. Excel shows `=IF(TRUE,INDEX(B1:B6,3),5)`,
+/// Whether the IF or CHOOSE call over `args`, whose shapes are `shapes`, is one cell whatever its
+/// condition: the condition (CHOOSE's index) is a scalar and every value arm is a scalar or a
+/// single-cell INDEX ([`is_single_cell_index`]), so a nested call of the same kind counts by its own
+/// shape. Excel shows no `@` on such a legacy call or on a call over it: `=IF(TRUE,INDEX(B1:B6,3),5)`,
 /// `=IF(FALSE,INDEX(B1:B6,3),INDEX(C1:C6,2))`, `=IF(TRUE,IF(TRUE,INDEX(B1:B6,3)))` and
-/// `=CHOOSE(1,INDEX(B1:C6,3))` with no `@`, also under ABS, but `=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`
-/// and an `@` on every IFS, `=@IFS(TRUE,INDEX(B1:B6,3))` (probes/t3134-legacy-if-index-arm-shapes
-/// I30-I49, K30-K49, excel-graph, T-3134). An explicit stack keeps the walk off the call stack: a
-/// formula's tree is untrusted input.
-pub(super) fn returns_single_cell_index(kind: &Function, args: &[Node]) -> bool {
-    if !matches!(kind, Function::If | Function::Choose) || args.len() < 2 {
-        return false;
-    }
-    let mut conditions = vec![&args[0]];
-    let mut pending: Vec<&Node> = args[1..].iter().collect();
-    while let Some(arm) = pending.pop() {
-        match arm.ungrouped() {
-            Node::BooleanKind(_) | Node::NumberKind(_) | Node::StringKind(_) => {}
-            Node::FunctionKind {
-                kind: Function::If | Function::Choose,
-                args,
-            } if args.len() > 1 => {
-                conditions.push(&args[0]);
-                pending.extend(&args[1..]);
-            }
-            other if is_single_cell_index(other) => {}
-            _ => return false,
-        }
-    }
-    conditions
-        .iter()
-        .all(|condition| matches!(run_static_analysis_on_node(condition), StaticResult::Scalar))
+/// `=CHOOSE(1,INDEX(B1:C6,3))`, also under ABS, but `=@IF(TRUE,INDEX(B1:B6,3),B1:B6)` and an `@` on
+/// every IFS, `=@IFS(TRUE,INDEX(B1:B6,3))` (probes/t3134-legacy-if-index-arm-shapes I30-I49,
+/// K30-K49, excel-graph, T-3134). A condition that is not a scalar, such as a dynamic-array call,
+/// keeps the call's broadcast shape (`=IF(TOCOL(A7:A9),"a")` spills).
+pub(super) fn returns_single_cell_index(args: &[Node], shapes: &[StaticResult]) -> bool {
+    args.len() > 1
+        && matches!(shapes.first(), Some(StaticResult::Scalar))
+        && args
+            .iter()
+            .zip(shapes)
+            .skip(1)
+            .all(|(arm, shape)| matches!(shape, StaticResult::Scalar) || is_single_cell_index(arm))
 }

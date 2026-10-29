@@ -678,16 +678,27 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
     }
 }
 
+/// The shape of the IF or CHOOSE `kind(args)`, from each argument's shape computed once (so nested
+/// calls stay linear): a scalar when its value arms are one cell whatever the condition
+/// ([`returns_single_cell_index`]), so a legacy formula shows no `@` on the call or a call over it
+/// (T-3134); otherwise IF broadcasts its arguments and CHOOSE is reference-shaped.
+fn if_or_choose_shape(kind: &Function, args: &[Node]) -> StaticResult {
+    let shapes: Vec<StaticResult> = args.iter().map(run_static_analysis_on_node).collect();
+    if returns_single_cell_index(args, &shapes) {
+        StaticResult::Scalar
+    } else if matches!(kind, Function::Choose) {
+        reference_result::choose_static_result(shapes)
+    } else {
+        broadcast_shapes(shapes)
+    }
+}
+
 /// The hand-written shapes of the functions not in the lifting table; `None` for one in it.
 fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
     Some(match kind {
-        // One cell whatever the condition: no `@` on the call or a call over it (T-3134).
-        Function::If | Function::Choose if returns_single_cell_index(kind, args) => {
-            StaticResult::Scalar
-        }
         Function::And => StaticResult::Scalar,
         Function::False => StaticResult::Scalar,
-        Function::If => scalar_arguments(args),
+        Function::If | Function::Choose => if_or_choose_shape(kind, args),
         Function::Iferror => scalar_arguments(args),
         Function::Ifna => scalar_arguments(args),
         Function::Ifs => StaticResult::Unknown, // chosen value spills: logic.md
@@ -698,7 +709,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Switch => StaticResult::Unknown,
         Function::True => StaticResult::Scalar,
         Function::Xor => StaticResult::Scalar,
-        Function::Choose => reference_result::choose_static_result(args),
         Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
         Function::Max => StaticResult::Scalar,

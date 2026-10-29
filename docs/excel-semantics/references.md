@@ -1895,21 +1895,25 @@ Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2
 Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
 shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
 `=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
-`@` at all in Excel (T-2326). The rule (probes/t3134-legacy-if-index-arm-shapes, 167 cells, excel-graph,
+`@` at all in Excel (T-2326). The rule (probes/t3134-legacy-if-index-arm-shapes, 295 cells, excel-graph,
 2026-10-29, T-3134; `returns_single_cell_index`): a legacy IF or CHOOSE shows no `@`, at the root or under ABS,
-when every value arm is a literal, an IF/CHOOSE of the same kind, or `INDEX(range,row[,column])` whose indexes
-are all literal whole numbers of 1 or more, whatever the range's shape. No `@` (I/K 31-33, 38-42, 49):
-`INDEX(B1:C6,3,1)`, `INDEX(B1:F1,3)` (100), `INDEX(B1:B6,3,1)`, the 2-D `INDEX(B1:C6,3)` (`#REF!` everywhere),
-`IF(TRUE,INDEX(B1:B6,3),5)`, `IF(FALSE,INDEX(B1:B6,3),INDEX(C1:C6,2))` (20),
-`IF(TRUE,IF(TRUE,INDEX(B1:B6,3)))`, `CHOOSE(1,INDEX(B1:B6,3))`, `CHOOSE(1,INDEX(B1:C6,3))`. `@` (I/K 30, 34-37,
-43-48): every IFS (`=@IFS(TRUE,INDEX(B1:B6,3))`, `=@IFS(TRUE,INDEX(B1:B6,3),FALSE,5)`), an index that is computed
-(`1+2`), a cell (A20 = 3 or 0), text (`"3"`), non-integer (`3.5`, still 3) or 0 (`INDEX(B1:B6,0)` and
+when its condition (CHOOSE's index) is a scalar after legacy intersection and every value arm is a scalar or
+`INDEX(range,row[,column])` whose indexes are all literal whole numbers of 1 or more, whatever the range's shape;
+parentheses are looked through. No `@` (I/K 31-33, 38-42, 49, 51-53, 55-64): `INDEX(B1:C6,3,1)`,
+`INDEX(B1:F1,3)` (100), `INDEX(B1:B6,3,1)`, the 2-D `INDEX(B1:C6,3)` (`#REF!` everywhere); beside a number,
+text, boolean, cell (`A20`), `A20+1`, `SUM(B1:B6)` or another such INDEX (`IF(FALSE,INDEX(B1:B6,3),INDEX(C1:C6,2))`
+is 20); nested IF/CHOOSE either way round (`IF(TRUE,CHOOSE(1,INDEX(B1:B6,3)))`, `CHOOSE(1,IF(TRUE,INDEX(...)))`);
+`CHOOSE(1,INDEX(B1:C6,3))`; a computed condition or index (`IF(A20>0,...)`, `CHOOSE(A20-2,...)`); a range
+condition, which takes its own `@` (`=IF(@B1:B6>0,INDEX(B1:B6,3))`, `#VALUE!` off B1:B6's rows); and
+`(INDEX(B1:B6,3))`, `INDEX(B1:B6,(3))`, `INDEX((B1:B6),3)`. `@` (I/K 30, 34-37, 43-48, 50, 54, 65): every IFS
+(`=@IFS(TRUE,INDEX(B1:B6,3))`, `=@IFS(TRUE,INDEX(B1:B6,3),FALSE,5)`); an array condition or index
+(`=@IF({TRUE,FALSE},INDEX(B1:B6,3))`, `=@CHOOSE({1,2},INDEX(B1:B6,3),5)`, whose SUM is 8); an INDEX index that is
+computed (`1+2`), a cell (A20 = 3 or 0), text (`"3"`), non-integer (`3.5`, still 3) or 0 (`INDEX(B1:B6,0)` and
 `INDEX(B1:C6,3,0)`: the whole column or row, intersected, `#VALUE!` off it; `=ABS(@IF(TRUE,INDEX(B1:C6,3,0)))`
-is 30 in column C), and a range beside the INDEX arm (`=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`). Under SUM none shows an
-`@` (M30-M49; 21 for the whole column, 33 for row 3). UNVERIFIED, the engine keeps the `@`: a cell reference or
-other non-literal scalar arm (`IF(TRUE,INDEX(B1:B6,3),A1)`), a non-scalar condition or CHOOSE index, an INDEX of a
-defined name, a one-argument or four-argument INDEX. UNVERIFIED, the engine drops it: parentheses around the
-INDEX, its range or an index (`INDEX((B1:B6),(3))`), a table area as the range.
+is 30 in column C); and a range or whole-column INDEX beside the INDEX arm (`=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`).
+Under SUM none shows an `@` (M30-M65; 21 for the whole column, 33 for row 3). Ours differs on one shape: an array
+CHOOSE index (I54, K54) puts the `@` on the constant, `=CHOOSE(@{1,2},...)` (known failure, T-3165).
+UNVERIFIED: an INDEX of a defined name or table area, a one- or four-argument INDEX (the engine keeps the `@`).
 Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
 `=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
 `=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
