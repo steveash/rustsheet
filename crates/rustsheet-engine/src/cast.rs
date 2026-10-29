@@ -266,23 +266,9 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.evaluate_node_top_left_ref(node, cell).0
-    }
-
-    /// [`Model::evaluate_node_top_left`] that also says whether the argument was read from a
-    /// cell: a reference as written, or a range value such as `INDEX` or `OFFSET` gives.
-    pub(crate) fn evaluate_node_top_left_ref(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> (CalcResult, bool) {
-        let written_as_reference = matches!(
-            *node.ungrouped_at(cell.row),
-            Node::ReferenceKind { .. } | Node::RangeKind { .. }
-        );
         match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, .. } => (self.evaluate_cell(left), true),
-            other => (other, written_as_reference),
+            CalcResult::Range { left, .. } => self.evaluate_cell(left),
+            other => other,
         }
     }
 

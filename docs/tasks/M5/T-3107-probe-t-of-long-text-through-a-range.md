@@ -1,0 +1,24 @@
+---
+id: T-3107
+title: "Probe T of long text through a range, name, INDIRECT, OFFSET, INDEX, IF, CHOOSE, LET and a sheet-qualified or legacy reference"
+milestone: M5
+lane: functions-text
+status: todo
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+Excel evidence decides what `T` gives for text over 255 UTF-16 units read through each reference shape, and ours matches.
+
+## Context
+T-2627 made `T(D1)` of a cell holding 256 units "" (probed) but left every other shape at `#VALUE!` unprobed: `T(D1:D2)`, a defined name, `INDIRECT`, `OFFSET`, `INDEX`, `IF`, `CHOOSE`, `LET`, a spill reference, a sheet-qualified reference and a legacy formula. Probe each with the long text built by REPT in a cell (excel-probe skill; model on probes/text-255-units-from-cell), then align `t_function.rs` (`from_cell`) and update text.md "REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units".
+
+## Acceptance criteria
+- [ ] A probe case with oracle values for each shape; `T_function.rs` matches or failures are owned; text.md lists each shape as verified.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-

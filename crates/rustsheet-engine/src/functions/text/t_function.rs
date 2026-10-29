@@ -34,7 +34,11 @@ impl Model {
         // A range is its top-left cell, with no lift and no implicit intersection, legacy or
         // dynamic: `T(A1:A3)` with A1 "x" is "x" from any row, and with A1 5 "" even from A2's
         // row (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
-        let (result, from_cell) = self.evaluate_node_top_left_ref(&args[0], cell);
+        let result = self.evaluate_node_top_left(&args[0], cell);
+        // Only a plain single-cell reference is probed (`T(D1)`); a range, name, INDIRECT, OFFSET,
+        // IF, CHOOSE, INDEX or LET argument keeps the #VALUE! of text over the limit (unprobed,
+        // docs/excel-semantics/text.md; T-2627).
+        let from_cell = matches!(*args[0].ungrouped_at(cell.row), Node::ReferenceKind { .. });
         match result {
             // Text over 255 UTF-16 units is #VALUE!, as in REPT, CODE and UNICODE:
             // `T(REPT("x",256))` (docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a
