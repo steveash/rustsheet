@@ -6,9 +6,9 @@ instructions). A PR that changes them must also add or update a decision record 
 docs/decisions/ explaining why, so rules are never silently weakened. Additionally,
 `--allow-regressions` baseline changes and test deletions are flagged, and a newly added probes
 case must carry exactly one milestone tag, M2 or later (decisions 0043, 0051, 0057). A diff that
-adds or changes a task filed from a GitHub issue (`issue:` in its front matter) may not touch a
-protected path at all, decision record or not, nor a dependency manifest, lockfile or build
-script, nor add `allow(` or `unsafe` to Rust code (decision 0158).
+adds or changes a task filed from a GitHub issue (`issue:` or `issue_origin:` in its front
+matter) may not touch a protected path at all, decision record or not, nor a dependency manifest,
+lockfile or build script, nor add `allow(` or `unsafe` to Rust code (decision 0158).
 
 Usage: scripts/check_governance.py [BASE_REF]   (default: origin/main)
 """
@@ -99,9 +99,11 @@ def case_tags(path: str) -> list[str]:
 
 
 def task_has_issue(path: str) -> bool:
-    """Whether the task file at `path`, as committed on HEAD, has `issue:` in its front matter."""
+    """Whether the task file at `path`, as committed on HEAD, came from a GitHub issue: `issue:`
+    (the issue's task) or `issue_origin:` (a follow-up filed while working it) in its front matter."""
     try:
-        return "issue" in tasks.front_matter(git("show", f"HEAD:{path}"), Path(path))
+        meta = tasks.front_matter(git("show", f"HEAD:{path}"), Path(path))
+        return any(key in meta for key in tasks.ISSUE_GUARD_KEYS)
     except (subprocess.CalledProcessError, ValueError):
         return False
 
