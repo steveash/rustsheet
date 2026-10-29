@@ -314,12 +314,15 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
             f"{label} {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
             f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})"
         )
-    # The other required suites (M1's smoke), each with its own floor and rate.
+    # The other required suites (M1's smoke, M8's gen-m8b and poi subset), each with its own
+    # floor and rate; the poi subset also counts the cases that did not run (decision 0146).
     for i, more in enumerate(row.get("more_suites") or []):
         mwhere = f"{where} more_suites[{i}]"
+        blocked = len(more.get("blocked_cases") or [])
         measures.append(
             f"{_text(more, 'name', mwhere)} {_num(_optional(more, 'visibly_off', mwhere))} visibly off of "
-            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))} "
+            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))}"
+            f"{f', {blocked:,} cases blocked' if blocked else ''} "
             f"({_verdict(_optional(more, 'met', mwhere, boolean=True))})"
         )
     # M9's ironcalc-calc is a rate with an allowance (decision 0146 item 3).

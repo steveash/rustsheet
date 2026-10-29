@@ -221,6 +221,54 @@ class ExitOwners(TaskDir):
         self.assertNotIn(f"{GEN}!Calc!A1", listed)
         self.assertIn(f"{TRIG}!S!C51", listed)
 
+    def test_m8_lists_both_gen_suites_the_poi_subset_and_its_blocked_cases(self) -> None:
+        # Decision 0146 item 2: gen-m8a, gen-m8b, the poi M8 subset (its visibly-off cells and,
+        # as `case!*`, the cases holding a subset formula that did not run) and the M8 probes.
+        gen_a, gen_b = "gen-m8a/aa.case.json", "gen-m8b/bb.case.json"
+        poi, crashed = "poi/names.xls", "poi/tables.xlsx"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M8",
+                "gen_suite": "gen-m8a",
+                "gen_visibly_off_cells": [f"{gen_a}!S!A1"],
+                "more_suites": [
+                    {"name": "gen-m8b", "visibly_off_cells": [f"{gen_b}!S!B2"]},
+                    {
+                        "name": "poi M8 subset",
+                        "visibly_off_cells": [f"{poi}!Data!C3"],
+                        "blocked_cases": [f"{crashed}!*"],
+                    },
+                ],
+                "probe_row": "M8",
+            }
+        ]
+        r["cases"] = [
+            {"id": gen_a, "suite": "gen-m8a", "cells": [cell("S", "A1")]},
+            {"id": gen_b, "suite": "gen-m8b", "cells": [cell("S", "B2")]},
+            {"id": poi, "suite": "poi", "cells": [cell("Data", "C3", "=SUM(Prices)")]},
+            {"id": PROBE, "suite": "probes", "cells": [cell("P", "B2"), cell("P", "B3")]},
+        ]
+        r["function_scope"] = {"rows": []}
+        r["probe_milestones"][0]["milestone"] = "M8"  # type: ignore[index]
+        cells = exit_owners.exit_cells(r, "M8")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}", c.formula) for c in cells],
+            [
+                ("gen-m8a", f"{gen_a}!S!A1", "=X()"),
+                ("gen-m8b", f"{gen_b}!S!B2", "=X()"),
+                ("poi M8 subset", f"{poi}!Data!C3", "=SUM(Prices)"),
+                ("poi M8 subset", f"{crashed}!*", ""),
+                ("probes", f"{PROBE}!P!B2", "=X()"),
+                ("probes", f"{PROBE}!P!B3", "=X()"),
+            ],
+        )
+        # A blocked case is owned by a task naming its stem (decision 0139).
+        self.task("poi `tables.xlsx` crashes on import", milestone="M8")
+        listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M8", self.tasks)]
+        self.assertNotIn(f"{crashed}!*", listed)
+        self.assertIn(f"{poi}!Data!C3", listed)
+
     def test_a1_does_not_match_a10(self) -> None:
         self.task("1d22a002d4f380b3 A107 and A10")
         listed = self.listed()

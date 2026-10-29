@@ -22,8 +22,8 @@ use crate::probe_milestones::{parse_milestone, row_label};
 use crate::report::RunReport;
 use crate::runner::CellKind;
 
-/// The milestones this section covers. M8 and M10 are T-0096 and T-0097.
-pub const MILESTONES: [&str; 7] = ["M1", "M2", "M5", "M6", "M7", "M9", "M11"];
+/// The milestones this section covers. M10 is T-0097.
+pub const MILESTONES: [&str; 8] = ["M1", "M2", "M5", "M6", "M7", "M8", "M9", "M11"];
 /// Fewest scored cells the generated suite must have (decision 0085 item 2).
 pub const MIN_SCORED: usize = 20_000;
 /// M2's fewest scored cells of `gen-m2` (docs/milestones.md "M2", decision 0058).
@@ -32,6 +32,13 @@ pub const M2_MIN_SCORED: usize = 10_000;
 pub const M7_MIN_SCORED: usize = 10_000;
 /// M1's fewest scored cells of `gen-m1` (decision 0146 item 1).
 pub const M1_MIN_SCORED: usize = 3_000;
+/// M8's fewest scored cells of each of `gen-m8a` and `gen-m8b`: the M1 floor (decision 0146
+/// item 2).
+pub const M8_MIN_SCORED: usize = M1_MIN_SCORED;
+/// M8's poi subset rate over [`RATE_DEN`]: 99.5% not visibly off (decision 0146 item 2(b)).
+pub const M8_SUBSET_RATE_NUM: usize = 9_950;
+/// The name M8's poi subset measure goes by among the row's `more_suites`.
+pub const M8_SUBSET: &str = "poi M8 subset";
 /// M11's fewest scored cells of `corpus-bench` (decision 0146 item 5).
 pub const M11_MIN_SCORED: usize = 200_000;
 /// M11's corpus-bench rate over [`RATE_DEN`]: 99.8%, the best published `SpreadsheetBench` score
@@ -118,6 +125,9 @@ struct Criteria {
     extent: bool,
     /// Every in-scope function of the milestone meets `v15_checkpoint`'s Phase 1 rate (M9).
     function_rate: bool,
+    /// The poi M8 subset (`poi_m8_subset`) must reach this rate over [`RATE_DEN`] with no
+    /// blocked case (M8, decision 0146 item 2(b)).
+    poi_subset: Option<usize>,
 }
 
 impl Criteria {
@@ -145,6 +155,7 @@ fn criteria(milestone: &str) -> Criteria {
             calc: None,
             extent: false,
             function_rate: false,
+            poi_subset: None,
         },
         // "100%": no gen-m2 cell visibly off.
         "M2" => Criteria {
@@ -154,6 +165,7 @@ fn criteria(milestone: &str) -> Criteria {
             calc: Some(CalcRule::NoneOff),
             extent: false,
             function_rate: false,
+            poi_subset: None,
         },
         "M7" => Criteria {
             suites: generated(M7_MIN_SCORED, RATE_NUM),
@@ -162,6 +174,20 @@ fn criteria(milestone: &str) -> Criteria {
             calc: None,
             extent: true,
             function_rate: false,
+            poi_subset: None,
+        },
+        // gen-m8a and gen-m8b with none visibly off, and the poi subset; no function scope.
+        "M8" => Criteria {
+            suites: vec![
+                SuiteNeed::named("gen-m8a", M8_MIN_SCORED, RATE_DEN),
+                SuiteNeed::named("gen-m8b", M8_MIN_SCORED, RATE_DEN),
+            ],
+            probe_list: None,
+            coverage: false,
+            calc: None,
+            extent: false,
+            function_rate: false,
+            poi_subset: Some(M8_SUBSET_RATE_NUM),
         },
         // No suite: gen-m9 alone is not a criterion, and catalog coverage is shown, not required.
         "M9" => Criteria {
@@ -171,6 +197,7 @@ fn criteria(milestone: &str) -> Criteria {
             calc: Some(CalcRule::Rate(M9_CALC_RATE_NUM)),
             extent: false,
             function_rate: true,
+            poi_subset: None,
         },
         "M11" => Criteria {
             suites: vec![SuiteNeed::named(
@@ -183,6 +210,7 @@ fn criteria(milestone: &str) -> Criteria {
             calc: None,
             extent: false,
             function_rate: false,
+            poi_subset: None,
         },
         _ => Criteria {
             suites: generated(MIN_SCORED, RATE_NUM),
@@ -191,6 +219,7 @@ fn criteria(milestone: &str) -> Criteria {
             calc: Some(CalcRule::NoneOff),
             extent: false,
             function_rate: false,
+            poi_subset: None,
         },
     }
 }
@@ -217,6 +246,31 @@ pub struct SuiteExit {
     /// The visibly-off cells as `case!Sheet!A1`, for `scripts/exit_owners.py` (decision 0135).
     #[serde(default)]
     pub visibly_off_cells: Vec<String>,
+    /// Cases that did not run to scoring, as `case!*`: M8's poi subset is not met while one holds
+    /// a subset formula (decision 0146 item 2(b)).
+    #[serde(default)]
+    pub blocked_cases: Vec<String>,
+}
+
+/// M8's poi subset measure from the report's `poi_m8_subset` section, at `num` over
+/// [`RATE_DEN`]; deviations are already out of its `scored`. `None` counts when poi did not run.
+fn subset_exit(report: &RunReport, num: usize) -> SuiteExit {
+    let mut out = SuiteExit {
+        name: M8_SUBSET.to_string(),
+        ..SuiteExit::default()
+    };
+    let Some(s) = report.poi_m8_subset.as_ref() else {
+        return out;
+    };
+    let visible = s.visibly_off.min(s.scored);
+    out.scored = Some(s.scored);
+    out.visibly_off = Some(visible);
+    out.rate15 = crate::v15_checkpoint::share(s.scored, visible);
+    out.allowance = Some(allowance(s.scored, num));
+    out.met = Some(s.blocked_cases.is_empty() && meets_rate(s.scored - visible, s.scored, num));
+    out.visibly_off_cells.clone_from(&s.visibly_off_cells);
+    out.blocked_cases.clone_from(&s.blocked_cases);
+    out
 }
 
 /// `need`'s measure from the report's suite row and its cases.
@@ -367,6 +421,9 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             let mut suites = need.suites.iter().map(|n| suite_exit(report, n));
             let first = suites.next().unwrap_or_default();
             row.more_suites = suites.collect();
+            if let Some(num) = need.poi_subset {
+                row.more_suites.push(subset_exit(report, num));
+            }
             row.gen_scored = first.scored;
             row.gen_rate = first.rate;
             row.gen_known_failures = first.known_failures;
@@ -487,15 +544,21 @@ fn count(n: Option<usize>) -> String {
 fn suite_text(s: &SuiteExit) -> String {
     match s.scored {
         None => "n/a".to_string(),
-        Some(scored) => format!(
-            "{scored}, {}, {}/{} [{}] {}",
-            s.rate15
-                .map_or_else(|| "n/a".to_string(), |x| format!("{x:.5}")),
-            count(s.visibly_off),
-            count(s.allowance),
-            count(s.known_failures),
-            verdict(s.met)
-        ),
+        Some(scored) => {
+            let blocked = match s.blocked_cases.len() {
+                0 => String::new(),
+                n => format!(", {n} cases blocked"),
+            };
+            format!(
+                "{scored}, {}, {}/{} [{}]{blocked} {}",
+                s.rate15
+                    .map_or_else(|| "n/a".to_string(), |x| format!("{x:.5}")),
+                count(s.visibly_off),
+                count(s.allowance),
+                count(s.known_failures),
+                verdict(s.met)
+            )
+        }
     }
 }
 
@@ -507,7 +570,7 @@ pub fn write_markdown(rows: &[ExitRow], md: &mut String) {
     let _ = writeln!(md, "\n## Milestone exit (decisions 0085, 0114)\n");
     let _ = writeln!(
         md,
-        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. M7 (decision 0140): gen-m7 needs {M7_MIN_SCORED} scored cells at the 0.999 rate, gen-m7 and the M7 probes have no spill-extent failure (a cell the engine filled that Excel left empty, decision 0063), and coverage and ironcalc-calc are shown but not required. M1 (decision 0146): gen-m1 needs {M1_MIN_SCORED} scored cells and smoke any number, both with none visibly off, and its probes are the frozen `{M1_PROBE_LIST}` list; M11: corpus-bench needs {M11_MIN_SCORED} scored cells with at least 0.998 not visibly off, `n/a` when it was not fetched; neither has a coverage or ironcalc-calc criterion. M9 (decision 0146 item 3): no suite is required; ironcalc-calc, less its exit exceptions and deviations, needs at least 0.9995 of its scored cells not visibly off (allowance `floor(0.0005 * scored)`); every in-scope M9 function must be covered and at the Phase 1 rate of the v1.5 checkpoint; coverage is shown, not required. A suite other than the milestone's gen suite is named in its column. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
+        "Thresholds, at visible parity (decision 0114): catalog coverage `covered` equals `functions`; gen suite at least {MIN_SCORED} scored cells (`cells - deviations`) with at least 0.999 of them not visibly off, so visibly-off cells at most the allowance `floor(0.001 * scored)`; ironcalc-calc has no visibly-off cell once exit exceptions are excluded; probes have no visibly-off cell. M2 (decision 0135): coverage is shown but not required, and gen-m2 needs {M2_MIN_SCORED} scored cells with none visibly off; its probes are the M0-M2 row. M7 (decision 0140): gen-m7 needs {M7_MIN_SCORED} scored cells at the 0.999 rate, gen-m7 and the M7 probes have no spill-extent failure (a cell the engine filled that Excel left empty, decision 0063), and coverage and ironcalc-calc are shown but not required. M1 (decision 0146): gen-m1 needs {M1_MIN_SCORED} scored cells and smoke any number, both with none visibly off, and its probes are the frozen `{M1_PROBE_LIST}` list; M11: corpus-bench needs {M11_MIN_SCORED} scored cells with at least 0.998 not visibly off, `n/a` when it was not fetched; neither has a coverage or ironcalc-calc criterion. M8 (decision 0146 item 2): gen-m8a and gen-m8b each need {M8_MIN_SCORED} scored cells with none visibly off, and the `{M8_SUBSET}` (the poi cells holding a defined name, structured, 3-D or external reference) needs at least 0.995 of its scored cells not visibly off and no crashed or errored case holding such a formula, `n/a` when poi did not run; no coverage or ironcalc-calc criterion. M9 (decision 0146 item 3): no suite is required; ironcalc-calc, less its exit exceptions and deviations, needs at least 0.9995 of its scored cells not visibly off (allowance `floor(0.0005 * scored)`); every in-scope M9 function must be covered and at the Phase 1 rate of the v1.5 checkpoint; coverage is shown, not required. A suite other than the milestone's gen suite is named in its column. Bracketed counts are the bit-level failures, Phase 1b's target. An exit measure, not a gate.\n"
     );
     let _ = writeln!(
         md,
