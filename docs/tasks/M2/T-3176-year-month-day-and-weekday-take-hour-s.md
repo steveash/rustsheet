@@ -3,7 +3,7 @@ id: T-3176
 title: "YEAR, MONTH, DAY and WEEKDAY take HOUR's half-second carry past midnight, through one helper with time_of_day_parts"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
