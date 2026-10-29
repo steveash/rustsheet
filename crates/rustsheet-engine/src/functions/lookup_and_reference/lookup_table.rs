@@ -9,7 +9,6 @@ use crate::functions::binary_search::Sequence;
 use crate::functions::criteria::{folded_units, WildcardPattern};
 use crate::functions::util::collation::{collation_key, CollationKey};
 use crate::functions::util::compare_values;
-use crate::number_format::excel_precision_key;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -196,8 +195,8 @@ impl ExactKey {
     }
 }
 
-/// A value's key under XMATCH and XLOOKUP's exact match (`compare_values` is 0): numbers on
-/// their 15-digit values, text under Excel's collation, booleans by value. Blanks and errors
+/// A value's key under XMATCH and XLOOKUP's exact match (`compare_values` is 0): numbers as
+/// exact doubles (-0 is 0; T-3132), text under Excel's collation, booleans by value. Blanks and errors
 /// have none: a blank only matches a blank lookup value and an error matches nothing.
 #[derive(PartialEq, Eq, Hash)]
 enum CollatedKey {
@@ -209,7 +208,7 @@ enum CollatedKey {
 impl CollatedKey {
     fn of(value: &CalcResult) -> Option<CollatedKey> {
         match value {
-            CalcResult::Number(x) => Some(CollatedKey::Number(excel_precision_key(*x))),
+            CalcResult::Number(x) => Some(CollatedKey::Number((x + 0.0).to_bits())),
             CalcResult::String(s) => Some(CollatedKey::Text(collation_key(s))),
             CalcResult::Boolean(b) => Some(CollatedKey::Boolean(*b)),
             _ => None,
@@ -471,7 +470,7 @@ impl SearchVector {
 /// a few ULP from the key is above or below it, never equal (`MATCH(0.3,{2;0.1+0.2;0.5},1)` is #N/A;
 /// docs/excel-semantics/lookup.md "Approximate match", probes/t3073-lookup-near-equal-approximate;
 /// T-3099). Text and booleans compare as `compare_values` does.
-fn compare_searched(value: &CalcResult, target: &CalcResult) -> i32 {
+pub(crate) fn compare_searched(value: &CalcResult, target: &CalcResult) -> i32 {
     match (value, target) {
         (CalcResult::Number(a), CalcResult::Number(b)) => match a.partial_cmp(b) {
             Some(Ordering::Less) => -1,
@@ -479,6 +478,17 @@ fn compare_searched(value: &CalcResult, target: &CalcResult) -> i32 {
             _ => 0,
         },
         _ => compare_values(value, target),
+    }
+}
+
+/// [`compare_searched`] as an `Ordering`, for the binary modes of XMATCH and XLOOKUP, which order a
+/// blank, an error and mixed types as `CalcResult`'s `Ord` does (T-3132).
+pub(crate) fn cmp_searched(value: &CalcResult, target: &CalcResult) -> Ordering {
+    match (value, target) {
+        (CalcResult::Number(a), CalcResult::Number(b)) => {
+            a.partial_cmp(b).unwrap_or(Ordering::Equal)
+        }
+        _ => value.cmp(target),
     }
 }
 
