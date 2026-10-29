@@ -115,3 +115,9 @@ From the parked T-2367: IRR gen-m9/d0854366830dcdee Calc!A216 `IRR(Data!A4:D10)`
 ## Cells added by the T-0087 sweep (2026-10-28)
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): unattributed 1. This task now owns them:
 - gen-m9/abb7d565af89b849: Calc!A387
+
+## Split by the gap triage (2026-10-29)
+T-3120 now owns the far-root cells: probes/t2565-irr-guess-sweeps (all 181 cells) and the probes/irr-fallback-roots
+cells P!A25, A26, A28, A36, A37, A38 and A39 listed above. Their v is on Excel's 2^-53 grid (financial.md "IRR's
+far-root bound"). The gen-m9 far-root cells (c0681a8b150ce301 A218, 67a4c03afd63f988 A3, A199, A346, 1dce4774f5c0e736
+A285) stay here. T-3120 re-measures them.

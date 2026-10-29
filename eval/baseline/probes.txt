@@ -853,6 +853,7 @@ C	probes/number-to-text-notation.case.json	52
 C	probes/numbervalue-default-group.case.json	14
 C	probes/numbervalue-separator-edges.case.json	20
 C	probes/odd-bond-argument-check-order.case.json	1091
+C	probes/odd-bond-huge-yield-overflow.case.json	53
 C	probes/oddfyield-solver-sweep.case.json	547
 C	probes/oddl-accrint-february-day.case.json	49
 C	probes/off-grid-corners.case.json	6
@@ -1348,6 +1349,7 @@ C	probes/t2594-nested-aggregates.case.json	32
 C	probes/t2598-engineering-scientific.case.json	12
 C	probes/t2601-index-scalar-forms-t-n.case.json	56
 C	probes/t2606-pivotby-total-gate-layouts.case.json	42
+C	probes/t2622-take-let-reference-lambda-text.case.json	40
 C	probes/t2625-nested-consumers.case.json	32
 C	probes/t2629-imcosh-imsinh-y-sweep.case.json	800
 C	probes/t2652-floor-ceiling-ties.case.json	98
@@ -1680,6 +1682,8 @@ C	probes/textjoin-array-limit-empty-strings.case.json	11
 C	probes/textjoin-delimiter-array.case.json	6
 C	probes/textjoin-delimiter-elements.case.json	24
 C	probes/textjoin-ignore-empty-lift.case.json	132
+C	probes/textjoin-whole-rows-error-cell.case.json	8
+C	probes/textjoin-whole-rows-self-reference.case.json	2
 C	probes/textsplit-casefold-length.case.json	8
 C	probes/textsplit-empty-delimiter.case.json	13
 C	probes/textsplit-empty-text.case.json	19
@@ -3796,22 +3800,14 @@ F	probes/t2436/abc2939ebd1e2365.case.json	Calc!T1
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!T16
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U1
 F	probes/t2436/abc2939ebd1e2365.case.json	Calc!U16
-F	probes/t2475-stat-subexpressions.case.json	P!A142
 F	probes/t2475-stat-subexpressions.case.json	P!A317
-F	probes/t2475-stat-subexpressions.case.json	P!A369
 F	probes/t2475-stat-subexpressions.case.json	P!A417
 F	probes/t2475-stat-subexpressions.case.json	P!A458
 F	probes/t2475-stat-subexpressions.case.json	P!A461
 F	probes/t2475-stat-subexpressions.case.json	P!A462
 F	probes/t2475-stat-subexpressions.case.json	P!A520
-F	probes/t2475-stat-subexpressions.case.json	P!A533
-F	probes/t2475-stat-subexpressions.case.json	P!A559
-F	probes/t2475-stat-subexpressions.case.json	P!A56
 F	probes/t2475-stat-subexpressions.case.json	P!A62
 F	probes/t2475-stat-subexpressions.case.json	P!A63
-F	probes/t2475-stat-subexpressions.case.json	P!A67
-F	probes/t2475-stat-subexpressions.case.json	P!A69
-F	probes/t2475-stat-subexpressions.case.json	P!A70
 F	probes/t2496-fin-subexpressions.case.json	P!A24
 F	probes/t2496-fin-subexpressions.case.json	P!A25
 F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D1
