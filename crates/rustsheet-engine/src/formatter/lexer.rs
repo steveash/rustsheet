@@ -12,6 +12,9 @@ pub struct Lexer {
     /// Whether the current section has a token before this one other than a color, condition,
     /// locale or calendar prefix: a `B1`/`B2` calendar prefix is invalid after one.
     section_started: bool,
+    /// Whether the current section has had a `B2` prefix: a locale tag after it resolves with
+    /// the Hijri calendar (`locale_tag::resolve_after_hijri_prefix`).
+    hijri_prefix: bool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -133,6 +136,7 @@ impl Lexer {
             error_position: 0,
             pending_locale: None,
             section_started: false,
+            hijri_prefix: false,
         }
     }
 
@@ -343,7 +347,7 @@ impl Lexer {
 
     fn consume_color(&mut self) -> Option<i32> {
         let colors = [
-            "black", "white", "red", "green", "blue", "yellow", "magenta",
+            "black", "white", "red", "green", "blue", "yellow", "magenta", "cyan",
         ];
         let mut chars = "".to_string();
         while let Some(ch) = self.read_next_char() {
@@ -444,7 +448,21 @@ impl Lexer {
             }
             _ => true,
         };
+        match token {
+            Token::Separator => self.hijri_prefix = false,
+            Token::Calendar('2') => self.hijri_prefix = true,
+            _ => {}
+        }
         token
+    }
+
+    /// Resolves the locale tag `tag` of the current section.
+    fn resolve_tag(&self, tag: &str) -> LocaleTag {
+        if self.hijri_prefix {
+            locale_tag::resolve_after_hijri_prefix(tag)
+        } else {
+            locale_tag::resolve(tag)
+        }
     }
 
     fn read_token(&mut self) -> Token {
@@ -492,7 +510,7 @@ impl Lexer {
                                 let mut tag = String::new();
                                 while let Some(c) = self.read_next_char() {
                                     if c == ']' {
-                                        return Token::Locale(locale_tag::resolve(&tag));
+                                        return Token::Locale(self.resolve_tag(&tag));
                                     }
                                     tag.push(c);
                                 }
@@ -523,7 +541,7 @@ impl Lexer {
                                         tag.push(c);
                                         self.read_next_char();
                                     }
-                                    self.pending_locale = Some(locale_tag::resolve(&tag));
+                                    self.pending_locale = Some(self.resolve_tag(&tag));
                                 }
                                 if self.read_next_char() == Some(']') {
                                     return if text.chars().count() == 1 {

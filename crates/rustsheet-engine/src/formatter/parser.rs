@@ -54,13 +54,23 @@ pub enum TextToken {
     AMPM,
     AP(char, char),
 }
+
+impl TextToken {
+    /// Whether the token prints fixed text and no value (a literal, quoted text, a ghost or a fill).
+    pub fn is_literal(&self) -> bool {
+        matches!(
+            self,
+            TextToken::Literal(_) | TextToken::Text(_) | TextToken::Ghost(_) | TextToken::Spacer(_)
+        )
+    }
+}
 pub struct NumberPart {
     pub color: Option<i32>,
     pub condition: Option<(Compare, f64)>,
     pub use_thousands: bool,
     pub percent: i32, // multiply number by 100^percent
-    /// Scaling commas: divide the number by 1000^comma, or in a fraction section multiply it by
-    /// 10^((-3 * comma) mod 256) (`fraction::fraction_scale`).
+    /// Scaling commas: scale the number by 10^-3n, the exponent wrapping in a signed byte, or in a
+    /// fraction section an unsigned one (`fraction::comma_exponent`).
     pub comma: i32,
     pub tokens: Vec<TextToken>,
     pub digit_count: i32, // number of digit tokens (#, 0 or ?) to the left of the decimal point
@@ -112,8 +122,15 @@ pub struct DatePart {
     pub calendar: Option<Calendar>,
     /// Whether the section's locale tag names a Japanese LCID (`Localized::japanese_lcid`).
     pub japanese_lcid: bool,
-    /// Whether a `B2` prefix puts the section in the Hijri calendar (`date_names::hijri_ymd`).
+    /// Whether a `B2` before the tag converts the years once more (`Localized::year_twice`).
+    pub year_twice: bool,
+    /// Whether a `B2` prefix before any tag puts the section in the Hijri calendar
+    /// (`date_names::hijri_ymd`) and, with no tag or from its first `mmm` on, Excel's Arabic
+    /// name path (`date_names::NameTokens`).
     pub hijri: bool,
+    /// Whether a `B2` prefix came before a tag whose calendar wins over it: a weekday after a
+    /// `mmm` then reads the month number (`date_names::NameTokens`).
+    pub b2_overridden: bool,
 }
 
 #[derive(Default)]
@@ -212,6 +229,8 @@ pub(crate) fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
 
 pub struct Parser {
     pub parts: Vec<ParsePart>,
+    /// Whether the format ends in a `;`, so an empty section follows the last part.
+    ends_in_separator: bool,
     lexer: Lexer,
 }
 
@@ -318,7 +337,17 @@ impl Parser {
     pub fn new(format: &str) -> Self {
         let lexer = Lexer::new(format);
         let parts = vec![];
-        Parser { parts, lexer }
+        Parser {
+            parts,
+            ends_in_separator: false,
+            lexer,
+        }
+    }
+    /// Whether the format is three sections plus an empty fourth: the parser drops the empty
+    /// section after a trailing `;`, so `;;;` has three parts. Excel prints nothing for it
+    /// (`TEXT("text",";;;")` is ""; gen-m10/0e3d8eba9432a18d T!A24).
+    pub(crate) fn has_empty_text_section(&self) -> bool {
+        self.parts.len() == 3 && self.ends_in_separator && !self.parts.iter().any(is_text_section)
     }
     pub fn parse(&mut self) {
         while self.lexer.peek_token() != Token::EOF {
@@ -336,6 +365,8 @@ impl Parser {
     }
 
     fn parse_part(&mut self) -> ParsePart {
+        // Set from the last part read; error parts never reach the empty-section check.
+        self.ends_in_separator = false;
         let mut token = self.lexer.next_token();
         let mut digit_count = 0;
         let mut precision = 0;
@@ -367,6 +398,7 @@ impl Parser {
         let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
         let mut hijri = false;
+        let mut calendar_prefix = false;
         // Whether the previous token is an unescaped colon, which the next one joins.
         let mut after_colon = false;
         let mut locale = None;
@@ -408,6 +440,7 @@ impl Parser {
             match token {
                 Token::General => {
                     if tokens.is_empty() && matches!(next_token, Token::EOF | Token::Separator) {
+                        self.ends_in_separator = next_token == Token::Separator;
                         return ParsePart::General(GeneralPart {});
                     }
                     // Excel: literals around `General` print around the value (`TEXT(5,"General x")`
@@ -687,16 +720,19 @@ impl Parser {
                     tokens.push(TextToken::Era(length));
                 }
                 // `B1` selects the Gregorian calendar and still makes the section a date one
-                // (`TEXT(100,"B1")` is ""). After a locale tag `B1` and `B2` change nothing
-                // (`[$-40C]B2mmmm` is "mars"; probes/text-locale-calendars A125-A134).
-                Token::Calendar('1') => {
+                // (`TEXT(100,"B1")` is ""). `B2` selects the Hijri calendar
+                // (`TEXT(45000,"B2yyyy-mm-dd")` is "1444-08-23"; probes/t1613-hijri-b2), also
+                // before a tag (the lexer resolves the tag in it). After a tag either changes
+                // nothing (`[$-40C]B2mmmm` is "mars"; probes/text-locale-calendars A125-A134), but
+                // is #VALUE! after another prefix (`B2[$-409]B1`, `[$-60409]B2B1`;
+                // probes/t2729-hijri-locale-tag-names A278-A285).
+                Token::Calendar(c) => {
+                    if locale.is_some() && calendar_prefix {
+                        return ParsePart::Error(ErrorPart::default());
+                    }
                     is_date = true;
-                }
-                // `B2` selects the Hijri calendar (`TEXT(45000,"B2yyyy-mm-dd")` is "1444-08-23";
-                // probes/t1613-hijri-b2). After a locale tag it changes nothing.
-                Token::Calendar(_) => {
-                    is_date = true;
-                    hijri |= locale.is_none();
+                    calendar_prefix = true;
+                    hijri |= c == '2' && locale.is_none();
                 }
                 Token::Hour => {
                     is_date = true;
@@ -830,6 +866,7 @@ impl Parser {
             after_colon = is_colon;
             token = next_token;
         }
+        self.ends_in_separator = token == Token::Separator;
         // Excel: a bare digit 1-9 is a literal (`TEXT(5,"2")` is "2", `"4am/pm"` "4AM"), but beside a
         // date or time token anywhere in the section the code is #VALUE!: `"42abc"`, `"4b"`, `"b4"`,
         // `"4 d"`, `"4:mm"`, `"[h]4"`, `"4g"`; quoted or escaped it prints (`"\4b"` is "443";
@@ -856,42 +893,28 @@ impl Parser {
                 return self.system_part(system_format, color);
             }
         }
-        let tagged = locale.is_some();
         let localized = match locale {
             Some(LocaleTag::Names(localized)) => Some(localized),
             _ => None,
         };
+        // A calendar digit other than Hijri wins over a `B2` before the tag (`B2[$-10409]yyyy` is
+        // "2023"); an unresolved tag leaves it a bare `B2` (`B2[$-zzz]`).
+        let b2_overridden = hijri && localized.is_some_and(|l| l.calendar != Calendar::Hijri);
+        hijri &= !b2_overridden;
         let general_count = tokens
             .iter()
             .filter(|t| matches!(t, TextToken::General))
             .count();
         if general_count > 0 {
-            let only_literals = tokens.iter().all(|t| {
-                matches!(
-                    t,
-                    TextToken::General
-                        | TextToken::Literal(_)
-                        | TextToken::Text(_)
-                        | TextToken::Ghost(_)
-                        | TextToken::Spacer(_)
-                )
-            });
+            let only_literals = tokens
+                .iter()
+                .all(|t| t.is_literal() || matches!(t, TextToken::General));
             if general_count > 1 || !only_literals || is_date || percent > 0 || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
         }
         if is_date {
-            let prints_date = tokens.iter().any(|t| {
-                !matches!(
-                    t,
-                    TextToken::Literal(_)
-                        | TextToken::Text(_)
-                        | TextToken::Ghost(_)
-                        | TextToken::Spacer(_)
-                )
-            });
-            // TODO(T-2729): `B2` before a locale tag (`B2[$-40C]mmmm` is "Chaaban") is not modelled.
-            if is_number || (hijri && prints_date && tagged) {
+            if is_number {
                 return ParsePart::Error(ErrorPart::default());
             }
             // Excel prints a currency symbol in a date section where it is written
@@ -908,7 +931,9 @@ impl Parser {
                 day_half: localized.and_then(|l| l.day_half),
                 calendar: localized.map(|l| l.calendar),
                 japanese_lcid: localized.is_some_and(|l| l.japanese_lcid),
+                year_twice: localized.is_some_and(|l| l.year_twice),
                 hijri,
+                b2_overridden,
             })
         } else {
             ParsePart::Number(NumberPart {
@@ -963,6 +988,7 @@ impl Parser {
                 day_half: Some(EN_US),
                 calendar: Some(Calendar::Gregorian),
                 japanese_lcid: false,
+                year_twice: false,
                 ..part
             }),
             _ => ParsePart::Error(ErrorPart::default()),

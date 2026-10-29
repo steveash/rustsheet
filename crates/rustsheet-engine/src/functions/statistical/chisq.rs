@@ -243,6 +243,47 @@ impl Model {
         self.numbers_from_ranked_arg(node, cell, false)
     }
 
+    /// [`Self::numbers_from_reference_arg`] of an element-wise expression of whole columns or of
+    /// bounded spans past the used area, read as its used head and its tail row (SPEC-0020
+    /// Amendment 1 section 3, T-0492): the head's first error, else the tail's error, else the
+    /// head's numbers and `tail_len` copies of a numeric tail; what the materialized array gives,
+    /// whose elements come in that order. `None` when the argument is not tailed: then it is read
+    /// the ordinary way (its cells already evaluated if a head was read). LARGE and SMALL only;
+    /// the RANK family makes arrays `#VALUE!` and keeps the ordinary reading.
+    pub(crate) fn tailed_numbers_from_reference_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Result<Vec<Option<f64>>, CalcResult>> {
+        let (head, tail) = self
+            .read_tailed(node, cell, |model| model.evaluate_reference_arg(node, cell))?
+            .elements()?;
+        // One column, the head's elements and the tail element once, read by the ordinary
+        // reading's kernels: their first error is the head's, else the tail's.
+        let mut column: Vec<ArrayNode> = head.collect();
+        let mut repeats = 0;
+        if let Some((element, tail_len)) = tail {
+            repeats = tail_len;
+            column.push(element);
+        }
+        let column = vec![column];
+        if let Some(error) = nested_array_error(&column, cell) {
+            return Some(Err(error));
+        }
+        let mut numbers = match self.values_from_array(column) {
+            Ok(numbers) => numbers,
+            Err(error) => return Some(Err(array_element_error(error, cell))),
+        };
+        // A numeric tail counts once per tail row; any other tail adds nothing. No tail when
+        // the pass is being abandoned: the value is discarded.
+        if repeats > 0 {
+            if let Some(Some(number)) = numbers.pop() {
+                numbers.extend(std::iter::repeat_n(Some(number), repeats));
+            }
+        }
+        Some(Ok(numbers))
+    }
+
     /// [`Self::numbers_from_reference_arg`] for the RANK family, whose `ref` must be a reference:
     /// an array that is not a reference (`IF(..)`, arithmetic) is an array of its own shape holding
     /// `#VALUE!`, or the element's error where the element is one (docs/excel-semantics/statistics.md,
@@ -389,8 +430,8 @@ impl Model {
         // A pair with a non-number on either side adds nothing; the degrees of freedom still come
         // from the first range's shape (statistics.md, CHITEST text rule; for two different shapes
         // that choice is UNVERIFIED, TODO(T-2650)). Pairs of only text and
-        // blanks are 1.0 for most shapes (gen-m9/8dd2312c96effb1b A343), but
-        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is #DIV/0! (0a9226016e8f5f33 A333), unexplained: TODO(T-2650).
+        // blanks are 1.0 when both sides hold numbers that are never paired (gen-m9/8dd2312c96effb1b
+        // A343); a side with no number at all is #DIV/0! (checked below).
         let values: Vec<(f64, f64)> = values_left
             .iter()
             .zip(&values_right)
@@ -406,6 +447,18 @@ impl Model {
                 Error::NA,
                 cell,
                 "CHISQ.TEST requires at least two data points".to_string(),
+            );
+        }
+
+        // Excel: a side holding no number at all is #DIV/0!, not p = 1
+        // (probes-numeric/t1049-chisqtest A23 `CHISQ.TEST(B1:B4,Z1:Z4)` and A24, Z1:Z4 blank;
+        // m9-legacy-chitest A28 `CHITEST(P1:P3,G1:G3)`; gen-m9/0a9226016e8f5f33 A333
+        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)`, a side of text, a boolean and blanks).
+        if values_left.iter().all(Option::is_none) || values_right.iter().all(Option::is_none) {
+            return CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "CHISQ.TEST range holds no number".to_string(),
             );
         }
 
@@ -463,14 +516,13 @@ impl Model {
             }
         };
 
-        // The capped cdf. A sheet's cell count keeps the shape under 2^33, where the series can
-        // need about 630,000 terms, past the 2^19 cap, so a very large test is #NUM! (the cap's
-        // DEVIATION). A statistic whose half underflows is a cdf of 0 (incomplete_gamma.rs), so p 1.
-        let mut p = if is_one_degree(&dist) {
-            chi_squared_sf(&dist, chi2)
-        } else {
-            1.0 - gamma_cdf(&dist, chi2)
-        };
+        // The capped right tail, taken directly for every df and not as 1 - P, which cancels digits
+        // as p gets small: CHITEST(F1:F3,G1:G3) at chi2 = 18, df 2 is EXP(-9) in Excel, and 1 - P is
+        // off in the 13th digit (probes-numeric/m9-legacy-chitest A23; statistics.md "Incomplete
+        // gamma: accurate kernel", T-0971, T-3058). A sheet's cell count keeps the shape under 2^33,
+        // where the series can need about 630,000 terms, past the 2^19 cap, so a very large test is
+        // #NUM! (the cap's DEVIATION). A statistic whose half underflows gives p 1.
+        let mut p = chi_squared_sf(&dist, chi2);
         if p.is_nan() {
             return CalcResult::new_error(
                 Error::NUM,

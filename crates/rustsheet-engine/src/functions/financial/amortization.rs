@@ -47,11 +47,12 @@ fn first_period_days(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
 
 /// The most AMORDEGRC periods walked one by one. Up to here the kernel is Excel's walk
 /// (probes/fin-amor-period-bound B6-B14 and probes/amordegrc-walk-drift E1-E48, up to 10^6 periods,
-/// are Excel's values); past it, where the
-/// walk has not reached a period whose charge is fixed, the decay is a closed form, which can move
-/// the rounded charge once it is about 1E12 or more (fin-amor-period-bound-c). The bound is also the
-/// kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds/financial.rs).
-const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 20;
+/// and fin-amor-period-bound-c A1-A6, 1.1E6 to 2.4E6 periods, are Excel's values); past it, where
+/// the walk has not reached a period whose charge is fixed, the decay is a closed form, which can
+/// move the rounded charge once it is about 1E12 or more (at 2^20, the bound before T-2918, it
+/// moved -c A1, A3, A4 and A5). The bound is also the kernel's work cap (`AMORDEGRC_WEIGHT` in
+/// functions/lift/kinds/financial.rs): about 29 ms a scalar call in release.
+const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 22;
 
 /// The most single subtractions `linear_charge` makes. A walk takes a few per binade it crosses
 /// and stops once the charge no longer moves the value, at most 616 over every charge from 2^-1074
@@ -498,9 +499,10 @@ impl DegressiveWalk {
     /// period): `remain` decays by `(1 - rate)` a period, `remain * exp(n * log1p(-rate))`.
     /// Main's walk adds a rounding per period, so the two drift apart by up to about 1e-13
     /// relative over 10^6 periods: equal once rounded for charges below about 1E11, but a larger
-    /// charge can be a unit off (a review replay: 3.1E11; about 1E12 or more often is):
-    /// `AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` is 18989305437101, Excel and main
-    /// 18989305437102 (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION).
+    /// charge can be a unit off (a review replay: 3.1E11; about 1E12 or more often is): with the
+    /// closed form from 2^20 periods, the bound before T-2918,
+    /// `AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` was 18989305437101, Excel and main
+    /// 18989305437102 (financial.md "AMORDEGRC past 2^22 periods", a DEVIATION).
     fn closed_form(&self, done: u64, periods: u64) -> f64 {
         let last = self
             .half_period

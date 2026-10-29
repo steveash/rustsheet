@@ -314,10 +314,9 @@ impl Parser {
             Function::Areas => 0,
             _ => return Node::FunctionKind { kind, args },
         };
-        let refused = args
-            .iter()
-            .skip(first_reference)
-            .any(|arg| matches!(arg, Node::EmptyArgKind) || !is_reference_operand(arg));
+        let refused = args.iter().skip(first_reference).any(|arg| {
+            matches!(arg.unwrap_spaced(), Node::EmptyArgKind) || !is_reference_operand(arg)
+        });
         if refused {
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
@@ -416,6 +415,7 @@ fn starts_reference(token: &TokenType) -> bool {
             | TokenType::StructuredReference { .. }
             | TokenType::LeftParenthesis
             | TokenType::Error(Error::REF)
+            | TokenType::SheetRefError(_)
     )
 }
 
@@ -439,6 +439,7 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::StructuredReferenceKind { .. }
+        | Node::SheetRefErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::OpRangeKind { .. }

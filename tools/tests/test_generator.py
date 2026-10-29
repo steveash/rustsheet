@@ -58,6 +58,31 @@ def test_generation_is_deterministic() -> None:
     assert a == b
 
 
+def test_criteria_pool_emits_text_number_and_date_criteria() -> None:
+    # T-2717: criteria are quoted text (text-number, tilde escape, boolean text) or a date expression.
+    formulas = " ".join(
+        " ".join(
+            generate_case(catalog(), seed, milestone="M2", functions=["COUNTIF", "SUMIFS"], focus=True)[
+                "sheets"
+            ][1]["cells"].values()
+        )
+        for seed in range(3)
+    )
+    for literal in (
+        '"1"',
+        '"2.5"',
+        '"=2"',
+        '"1E1"',
+        '"x~*"',
+        '"~?"',
+        '"TRUE"',
+        '"=FALSE"',
+        '">"&DATE(2020,1,1)',
+        '"<="&DATE(1900,1,1)',
+    ):
+        assert literal in formulas, literal
+
+
 def test_milestone_scoping_excludes_later_functions() -> None:
     spec = generate_case(catalog(), 3, milestone="M1", formulas=60)
     formulas = " ".join(spec["sheets"][1]["cells"].values())
@@ -147,9 +172,9 @@ def test_generator_emits_every_m2_function() -> None:
 
 
 def emitted(milestone: str) -> set[str]:
-    """Every tag (function name) the generator emits over 40 seeds at `milestone`."""
+    """Every tag (function name) the generator emits over 60 seeds at `milestone`."""
     seen: set[str] = set()
-    for seed in range(40):
+    for seed in range(60):
         seen.update(generate_case(catalog(), seed, milestone=milestone, formulas=80)["tags"])
     return seen
 
@@ -293,8 +318,9 @@ def test_number_enums_are_number_literals() -> None:
         for formula in spec["sheets"][1]["cells"].values():
             freqs += re.findall(r"COUP(?:DAYBS|DAYS|DAYSNC|NCD|NUM|PCD)\(\d+,\d+,([^,()]*)", formula)
     assert freqs and {"1", "2", "4"} & set(freqs), freqs
-    # The frequency pool's "2" is the one deliberate text frequency (T-2248).
-    assert not any(f.startswith('"') and f != '"2"' for f in freqs), freqs
+    # The frequency pool's "2" is the one deliberate text frequency (T-2248); `""` is the empty-text draw of
+    # every number parameter (T-2866).
+    assert not any(f.startswith('"') and f not in ('"2"', '""') for f in freqs), freqs
 
 
 def m7_formulas() -> list[str]:
@@ -436,8 +462,10 @@ def test_paired_repeat_groups_stay_paired() -> None:
     countifs = next(f for f in cat.functions if f["name"] == "COUNTIFS")
     assert countifs["params"][0]["repeat"]["group"] == ["criteria_range", "criteria"]
     spec = generate_case(cat, 3, milestone="M2", formulas=300)
-    # criteria are literals and ranges contain no commas, so a bare COUNTIFS has 2n-1 commas.
-    bare = [f for f in spec["sheets"][1]["cells"].values() if re.fullmatch(r"=COUNTIFS\([^()]*\)", f)]
+    # criteria are literals (a date criterion's DATE(y,1,1) is folded to one token) and ranges contain no commas,
+    # so a bare COUNTIFS has 2n-1 commas.
+    cells = (re.sub(r"DATE\(\d+,1,1\)", "DATE", f) for f in spec["sheets"][1]["cells"].values())
+    bare = [f for f in cells if re.fullmatch(r"=COUNTIFS\([^()]*\)", f)]
     assert bare
     assert all(f.count(",") % 2 == 1 for f in bare)
 
@@ -659,7 +687,8 @@ def test_unfocused_output_is_unchanged() -> None:
     # Digest recorded before --focus (T-2108): the flag must not move any unfocused draw. The catalog has its
     # `pool:` keys (T-2109) removed, which do draw from the rng. Re-recorded for T-2251 (INFO and SHEETS gained
     # signatures), T-2318 (TEXTJOIN's delimiter is an array parameter) and T-2719 (*IFS ranges share a shape,
-    # MATCH's lookup_array is a vector).
+    # MATCH's lookup_array is a vector) and T-2866 (number and bool parameters draw `""` and errors) and T-2717
+    # (the criteria pool grew, so criteria draws moved).
     catalog = copy.deepcopy(_loaded_catalog())
     for f in catalog.functions:
         for p in f.get("params", []):
@@ -667,7 +696,7 @@ def test_unfocused_output_is_unchanged() -> None:
     body = json.dumps(generate_case(catalog, 7, milestone="M5"), indent=1, sort_keys=True) + "\n"
     assert (
         hashlib.sha256(body.encode()).hexdigest()
-        == "cdb6072f223cf603915ba86c6dd52bf2feaa11db67ed9f539695ca7a7ead84af"
+        == "25b67c6d3b3e9440ef405deb2ae9f585f5994595174a974b74b617d10668edc3"
     )
 
 
@@ -1090,3 +1119,14 @@ def test_fixed_height_ranges_and_probes_stay_inside_their_range() -> None:
         cell = gen.cell_in("Data!B2:D4")
         assert re.fullmatch(r"Data![B-D][2-4]", cell), cell
     assert re.fullmatch(r"Data!\$?[A-E]\$?\d+", gen.cell_in("not a range"))
+
+
+def test_number_and_bool_value_params_draw_empty_text_and_errors() -> None:
+    """T-2866: a number or bool `value` param gets `""` and an error literal; a `hard` domain never does."""
+    g = Gen(random.Random(7), Catalog([], []), 12, 5, 3)
+    for typ in ("number", "bool"):
+        drawn = {g.scalar_text({"type": typ}, 0) for _ in range(2000)}
+        assert '""' in drawn, typ
+        assert drawn & set(POOLS["errors"]), typ
+    hard = {"type": "number", "domain": {"int": True, "min": 1, "max": 5, "hard": True}}
+    assert all(g.scalar_text(hard, 0) in {"1", "2", "3", "4", "5"} for _ in range(2000))

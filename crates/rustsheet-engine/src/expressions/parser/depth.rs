@@ -7,6 +7,7 @@
 //! (T-0128, `chain.rs`), so their links add no depth; their length is bounded
 //! by [`MAX_VALUE_OPERATORS`] instead.
 
+use crate::expressions::lexer::STRING_LITERAL_TOO_LONG_MESSAGE;
 use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser};
 
 /// Deepest formula tree the parser builds; deeper formulas are a parse error
@@ -40,10 +41,12 @@ pub const MAX_VALUE_OPERATORS: usize = 4096;
 pub const TOO_MANY_OPERATORS_MESSAGE: &str = "Formula has too many operators";
 
 /// Whether a parse error `message` is a resource limit ([`TOO_DEEP_MESSAGE`] or
-/// [`TOO_MANY_OPERATORS_MESSAGE`]) rather than a syntax error: no edit of the
+/// [`TOO_MANY_OPERATORS_MESSAGE`] or the lexer's string-literal limit, T-2762) rather than a syntax error: no edit of the
 /// formula's ending makes it parse.
 pub(crate) fn is_limit_error(message: &str) -> bool {
-    message == TOO_DEEP_MESSAGE || message == TOO_MANY_OPERATORS_MESSAGE
+    message == TOO_DEEP_MESSAGE
+        || message == TOO_MANY_OPERATORS_MESSAGE
+        || message == STRING_LITERAL_TOO_LONG_MESSAGE
 }
 
 impl Parser {

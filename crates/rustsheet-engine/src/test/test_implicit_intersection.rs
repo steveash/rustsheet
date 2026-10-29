@@ -266,3 +266,45 @@ fn formulatext_of_at_next_to_power_is_bare() {
         assert_eq!(model._get_text(&format!("I{}", i + 10)), *text);
     }
 }
+
+#[test]
+fn typed_single_is_the_at_operator() {
+    // Excel takes `SINGLE(x)` typed, in any case, as `@x` and shows it so
+    // (probes/single-typed-01, -02, -05, -06, -09; xlsx-storage.md "Typed SINGLE(x) is the @
+    // operator", T-2938).
+    let mut model = new_empty_model();
+    model._set("C1", "10");
+    model._set("C2", "20");
+    model._set("C3", "30");
+    model
+        .set_typed_user_input(0, 2, 1, "=SINGLE(C1:C3)".to_string())
+        .unwrap();
+    model
+        .set_typed_user_input(0, 5, 1, "=single(C1:C3)".to_string())
+        .unwrap();
+    model._set("A6", "=SINGLE(ERROR.TYPE(#REF!))");
+    model._set("B2", "=FORMULATEXT(A2)");
+    model._set("B5", "=FORMULATEXT(A5)");
+    model._set("B6", "=FORMULATEXT(A6)");
+    model.evaluate();
+    assert_eq!(model._get_text("A2"), "20");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "4");
+    assert_eq!(model._get_text("B2"), "=@C1:C3");
+    assert_eq!(model._get_text("B5"), "=@C1:C3");
+    assert_eq!(model._get_text("B6"), "=@ERROR.TYPE(#REF!)");
+}
+
+#[test]
+fn typed_single_with_other_than_one_argument_is_refused() {
+    // Excel refuses `=SINGLE()` and `=SINGLE(1,2)` typed (Graph PATCH 400, T-2938).
+    let mut model = new_empty_model();
+    for formula in ["=SINGLE()", "=SINGLE(1,2)"] {
+        assert!(
+            model
+                .set_typed_user_input(0, 1, 1, formula.to_string())
+                .is_err(),
+            "{formula}"
+        );
+    }
+}

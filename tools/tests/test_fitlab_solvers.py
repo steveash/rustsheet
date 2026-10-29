@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import datetime
 import math
+from collections.abc import Callable
 
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import registry, solvers, xirr, yield_caret
-from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
+from rustsheet_tools.fitlab.kernels import irr_fallback, registry, solvers, xirr, yield_caret
+from rustsheet_tools.fitlab.sweep import (
+    Arg,
+    Cell,
+    UnparsedError,
+    Workbook,
+    load_sweep,
+    parse_arg,
+    serial_date,
+)
 
 
 def test_parse_arg_reads_array_literals_and_dates() -> None:
@@ -19,6 +28,25 @@ def test_parse_arg_reads_array_literals_and_dates() -> None:
     assert parse_arg("DATE(1900,3,1)", "S", book) == 61.0  # after Excel's phantom 1900-02-29
     with pytest.raises(UnparsedError):
         parse_arg("DATE(2024,2,30)", "S", book)
+
+
+def test_parse_arg_reads_a_nested_call_from_the_calls_cases() -> None:
+    book = Workbook({}, {}, {"PMT(0.2,1,10000)": -12000.0})
+    assert parse_arg("PMT(0.2, 1, 10000)", "S", book) == -12000.0  # whitespace is not part of the key
+    with pytest.raises(UnparsedError):
+        parse_arg("PMT(0.2,2,10000)", "S", book)
+
+
+def test_rate_secant_needs_excel_operators_in_the_residual() -> None:
+    # m9-fin-irr-rate A218, RATE(1,PMT(0.2,1,10000,-500,1),10000,-500,1), with Excel's PMT
+    # (m9-fin-pmt A2): Excel 0.19999999999999138; FV's once-rounded residual is 157 ulp off (T-2527).
+    args: tuple[Arg, ...] = (1.0, -9583.333333333332, 10000.0, -500.0, 1.0)
+    assert solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(*args) == 0.19999999999999138
+    assert solvers.rate_secant(solvers.fv_residual())(*args) == 0.19999999999998702
+    with pytest.raises(solvers.NoResultError):  # residual 0 everywhere: the flat secant, not the guess
+        solvers.rate_secant(solvers.fv_residual(solvers.TWICE))(1.0, 0.0, 0.0, 0.0)
+    with pytest.raises(solvers.ExcelError, match="guess"):
+        solvers.rate_secant(solvers.fv_residual())(1.0, -1.0, 1.0, 0.0, 0.0, -1.0)
 
 
 def test_day_counts_and_schedule() -> None:
@@ -127,8 +155,17 @@ def test_irr_secant_on_a_two_flow_root() -> None:
 @pytest.mark.usefixtures("real_cases")
 def test_rate_results_are_rates() -> None:
     cells = fit.run(registry()["rate"], engine=False, only="^$").sweep.cells
-    assert len(cells) == 136
-    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 7
+    assert len(cells) == 782  # nested PMT included (T-2527), error cells too
+    assert sum(c.error is not None for c in cells) == 77
+    assert sum((1 + c.expected) - 1 == c.expected for c in cells) == 40
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_rate_secant_model_is_bit_exact_on_the_fit_set() -> None:
+    # financial.md "RATE is a secant on the FV residual" quotes this score (T-2527).
+    result = fit.run(registry()["rate"], engine=False, only=r"Excel operators, sum pv,pmt,fv$")
+    (s,) = result.scores
+    assert (s.exact, s.total) == (782, 782)
 
 
 def test_iterate_converges_or_reports_no_result() -> None:
@@ -189,9 +226,10 @@ def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
 def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     # T-2187: yield-start-sweep A1 (frequency 2) and B1 (frequency 1) step back to the same iterate as
     # yield-solver-sweep S!A1; C1 (frequency 4) is at PRICE's root. Run forward from that start,
-    # analytic Newton returning the iterate after the first step below the cut gives Excel's value on
+    # analytic Newton returning the iterate before the first step below the cut gives Excel's value on
     # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 5e-14 relative (worst 1.2e-14).
-    # The cells bracket the cut between 6.66e-6 and 7.11e-6; 6.9e-6 is an arbitrary point inside.
+    # T-2330: the stop is T-1592's short stop (a step below 1e-10 is not taken); the 6e-6 to 7e-6 "last steps"
+    # T-2187 read as a cut are the steps before it.
     cells = load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells
     by_key = {c.key: c for c in cells}
     a1, b1 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!A1", "S!B1"))
@@ -201,7 +239,7 @@ def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     assert abs(price_of(by_key["S!C1"].expected) - pr) < 1e-12
     swept = [c for c in cells if c.address[0] in "ABC"]
     assert len(swept) == 63
-    newton = solvers._newton_yield(a1, 6.9e-6)
+    newton = solvers._newton_yield_short(lambda *_args: a1, 1e-10)
     for cell in swept:
         assert abs(newton(*cell.args) - cell.expected) < 5e-14 * cell.expected, cell.key
 
@@ -287,6 +325,34 @@ def test_yield_fitted_start_and_short_stop() -> None:
         assert model(*cell.args) == cell.expected, cell.key
 
 
+@pytest.mark.usefixtures("real_cases")
+def test_yield_short_stop_cut_is_bracketed_by_two_cells() -> None:
+    # T-2330: from the fitted start, yield-start-sweep C18 does not take a 9.67e-11 step (bit-exact) and
+    # yield-start-one-input A5 takes a 1.0063e-10 one (1 ulp off), so the cut lies between them; 1e-10 is
+    # inside. yield-start-rate-term B2 and A26, whose 7.54e-6 and 6.87e-6 steps ruled out the absolute and
+    # relative cuts of T-2187, stop before a 9.13e-11 and a 6.52e-11 step not taken (1 ulp off each).
+    def cell(case: str, key: str) -> Cell:
+        return next(c for c in load_sweep([case], r"^=YIELD\((.*)\)$").cells if c.key == key)
+
+    c18 = cell("probes/yield-start-sweep", "S!C18")
+    a5 = cell("probes/yield-start-one-input", "S!A5")
+    b2, a26 = (cell("probes/yield-start-rate-term", k) for k in ("S!B2", "S!A26"))
+
+    def model(cut: float) -> Callable[..., float]:
+        return yield_caret.caret_priced(solvers._newton_yield_short(solvers.fitted_yield_start, cut))
+
+    def ulps(value: float, cell: Cell) -> float:
+        return abs(value - cell.expected) / math.ulp(cell.expected)
+
+    for cut in (9.68e-11, 1e-10, 1.0062e-10):
+        assert model(cut)(*c18.args) == c18.expected
+        assert ulps(model(cut)(*a5.args), a5) <= 1
+        assert ulps(model(cut)(*b2.args), b2) <= 1
+        assert ulps(model(cut)(*a26.args), a26) <= 1
+    assert ulps(model(9.66e-11)(*c18.args), c18) > 1e6  # C18 would take its step
+    assert ulps(model(1.0064e-10)(*a5.args), a5) > 1e6  # A5 would stop before its step
+
+
 def test_yield_start_term_whole_years_then_leftover_days() -> None:
     # T-2777: the start's term is whole years, then the leftover days over 360, 365 (basis 3) or the
     # maturity's calendar year (basis 1). On probe cells the days-over-a-year term misses visibly (a
@@ -308,3 +374,19 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
         assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
     assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
     assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
+
+
+def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:
+    # The engine's fallback digits (T-2928): `{42,1,1,-1}` converges to -0.7467044766537408, the
+    # correctly rounded root, where Excel returns -0.7467044766537371 (probes/irr-fallback-roots A12).
+    engine = irr_fallback.irr_fallback_newton()
+    assert engine([42.0, 1.0, 1.0, -1.0]) == -0.7467044766537408
+    assert engine([0.0, 2.0, -1.0]) == pytest.approx(-0.5)  # leading zeros dropped (T-2727)
+    with pytest.raises(solvers.NoResultError):  # P's root nearest v = 0 is negative: #NUM! (T-2727)
+        engine([1.0, 3.0, -1.0])
+    # A residual test on |P| makes the run on the 1E6-scaled {-656,1,1,1,1,1} reach the cap, as
+    # Excel does (t2927-irr-fallback-sweep A103), where the engine's step test returns.
+    scaled = [-656e6, 1e6, 1e6, 1e6, 1e6, 1e6]
+    assert engine(scaled) == pytest.approx(-0.7072347712570631)
+    with pytest.raises(solvers.NoResultError):
+        irr_fallback.irr_fallback_newton(residual=1e-7)(scaled)

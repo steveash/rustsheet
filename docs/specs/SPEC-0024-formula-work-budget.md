@@ -1,10 +1,10 @@
 # SPEC-0024 — A work budget for one formula evaluation
 
 - **Status:** accepted (T-2712; architecture, quality and security reviewers approved); amended by T-2813
-  (how per-call capped work is charged and calibrated: sections 1 and 4)
+  (how per-call capped work is charged and calibrated: sections 1 and 4) and by T-2923 (LAMBDA values made: sections 1 and 4)
 - **Milestone / lane:** M7 / engine
 - **Tasks:** T-2712 (this spec); steps 1–3 below are filed as T-2803, T-2804 and T-2805; known gaps
-  T-2806, T-2807; the visit caps' 5 s rule (T-2813 amendment) for YIELD and ODDFYIELD is T-2879
+  T-2806, T-2807, T-2925; the LAMBDA-made charge (T-2923 amendment); the visit caps' 5 s rule (T-2813 amendment) for YIELD and ODDFYIELD is T-2879
 
 ## Problem
 Each array is capped at 2^20 cells (arrays.md "Array results above 1,048,576 cells are #ERROR!").
@@ -49,7 +49,7 @@ Non-goals:
   formulas times the budget. This is a residual risk: 1,000 cells each near the limit is about
   1,000 times the per-formula time. A per-recalculation bound needs its own design, because the
   result of an over-budget pass, and which cells give up, must be deterministic. It is filed as
-  T-2807 (a spec task).
+  T-2807 (a spec task) and designed in SPEC-0028.
 - Wall-clock deadlines. They are non-deterministic and are not used (Alternatives).
 
 ## Excel behavior to match
@@ -84,12 +84,27 @@ knows of goes through at least one of them. "Known gaps" below lists what is sti
 | array cells built | where an array value is allocated: SEQUENCE, RANDARRAY, MAKEARRAY, the result of MAP/SCAN/BYROW/BYCOL, `evaluate_range` (range → array), `broadcast_arrays` and the operator/IF broadcasts, `broadcast_text`, the SPEC-0011 lift driver's result, HSTACK/VSTACK/EXPAND/WRAP*/TEXTSPLIT, MMULT | rows × columns, charged before allocating, at the same call that runs `limits::check_array_size` / `check_array_cells` / `check_built_array_size` |
 | array cells read | the aggregate walker's array arm (`aggregate_args.rs` `walk_array_items`: SUM, COUNT, AVERAGE, MIN, MAX, PRODUCT and the other `for_each_value` readers), then the other whole-array readers (step 3) | cells of the array argument |
 | text values | the same node chokepoint: a node whose value is a `CalcResult::String` (a function result, a cell read, a LET or LAMBDA variable read, a literal) | ⌈UTF-8 bytes / `TEXT_BYTES_PER_UNIT`⌉ (64 provisional; set by calibration). `broadcast_text` charges the byte total it already sums for its 64 MiB cap (`within_text_budget`) |
+| LAMBDA values made (amendment, T-2923) | `Model::store_lambda` (a `LambdaDefKind` evaluated, `LAMBDA(..)` made by `lambda_from_args`), and `prepare_lambda` when `call_prepared` patches a fresh copy of a caller's body (the body made a LAMBDA that reads its parameters) | `LAMBDA_UNITS` per LAMBDA stored (set by calibration), plus `NODE_UNITS` per node of the body each one clones |
 | per-call capped work | every per-call cap's spend, charged again to the formula: the SPEC-0011 driver's `kernel_units`, the *IF(S) cell visits counted for `MAX_LIFTED_CELL_VISITS`, GROUPBY/PIVOTBY's visits, the regex engine's compile and match budgets (regex_engine.rs, pcre) | the same number for the visit caps (1 unit per visit or kernel unit, T-2813: see "Per-call capped work" below); a fixed weight per budget step set by calibration for the regex budgets |
 
 Why these charges:
 - **Nodes** bound everything that builds no array. Examples are a long scalar LAMBDA body called
-  2^20 times by MAKEARRAY, and nested MAPs over small arrays. The LAMBDA call itself needs no
-  separate charge, because its body's nodes pay for it.
+  2^20 times by MAKEARRAY, and nested MAPs over small arrays. A call of a LAMBDA that makes no
+  LAMBDA needs no separate charge: its body's nodes pay for it (about 275 ns, 4 units, for
+  `MAKEARRAY(1024,1024,LAMBDA(r,c,r))`'s call: 70 ns a unit, T-2923).
+- **LAMBDA values made** (amendment, T-2923) bound a body that makes a LAMBDA on each call
+  (`MAKEARRAY(..,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))`). Making one clones its body into
+  `self.lambdas` and runs `close_over`. When the new LAMBDA reads the call's parameters, the caller's
+  body is also cloned and patched again on the next call. Before this amendment all of that was charged one node. Measured
+  on main (release build, 2026-10-27): `MAP(1,LAMBDA(z,z))` as a MAKEARRAY body costs 1.4 us a cell,
+  against 0.28 us for `SEQUENCE(1)`. `LAMBDA(z,z)(1)` costs 1.3 us. The MAKEARRAY of MAP above costs
+  4.5 us a cell (180 ns a unit at the T-2803 weights). A MAP of 1,000 such MAKEARRAYs reaches the
+  limit only after 124 s (460 ns a unit). The extra cost per cell there comes from how many LAMBDAs
+  are stored (`self.lambdas` keeps them all until the evaluation ends: 4.3 us a cell at 1M stored,
+  5.2 at 4M, 11.8 at about 11M), not from the nesting depth: three helpers deep over 32 by 32 arrays
+  cost the same 4.5 us a cell as two. So the charge counts each LAMBDA stored, and each body clone by
+  its nodes. `LAMBDA_UNITS` is fitted by time like the other weights (section 4). Releasing a
+  formula's LAMBDAs after its root cell, so that a recalculation does not pile them up, is T-2925 (done).
 - **Built cells** bound the three formulas above. Each call builds a SEQUENCE.
 - **Read cells** bound the variant that builds once and reads many times:
   `=LET(s,SEQUENCE(100000),REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(s))))`. It builds 2E5 cells
@@ -104,10 +119,15 @@ Why these charges:
   arrays are charged by their length where step 3 charges array reads.
 
 Known gaps (out of scope, recorded for later work):
-- **Retained memory.** The budget counts work, not what a formula holds at once. Memory stays bounded
-  by the existing per-value caps: arrays of 2^20 cells, 32,767-unit texts, `MAX_CAPTURED_CELLS`, and
-  the nested-array caps. 2^20 cells of 32 KB texts is still about 64 GB in principle, as it is today.
-  This is pre-existing and is filed as T-2806.
+- **LAMBDAs stored across formulas** (T-2925, closed: a root cell's LAMBDAs are now dropped once it is
+  evaluated). The budget bounds the LAMBDAs one formula makes, but before T-2925
+  `self.lambdas` kept them until the whole evaluation ended, so a recalculation of many such formulas
+  held all of them, and each later formula's calls slowed down with the map's size.
+- **Retained memory.** The budget counts work, not what a formula holds at once. Copies of one text
+  (an IF, IFERROR, EXPAND or INDEX broadcast into 2^20 cells) were 32 GB of owned bytes before T-2806;
+  since then a text's bytes are shared, so a copy costs a pointer, and the `&` operator over an array
+  charges each text it makes, so one formula makes at most about 2^30 bytes of text (arrays.md "Copies
+  of a text share its bytes", T-2806).
 - **Super-linear work inside one scalar call** that has no per-call cap and touches no text: none is
   known. A function found to have one gets a per-call cap of its own, charged to the formula like the
   others.
@@ -233,9 +253,14 @@ The limit has two constraints:
   - read cells: the LET variant;
   - text: `MAP(SEQUENCE(1000),LAMBDA(x,MAP(SEQUENCE(1000),LAMBDA(y,LEN(REPT("a",32767))))))`
     and the `LET(s,REPT(..),..LEN(s)..)` variant;
+  - LAMBDA values made (amendment, T-2923):
+    `=SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,MAP(SEQUENCE(1),LAMBDA(z,r+c+z))))))))`
+    (124 s to the limit at the T-2803 weights without this charge), the same with a longer inner
+    body (`LAMBDA(z,r+c+z+r+c+z+r+c+z)`, so the clones cost more), and
+    `=SUM(MAP(SEQUENCE(1000),LAMBDA(x,SUM(MAKEARRAY(1024,1024,LAMBDA(r,c,LAMBDA(z,z)(1)))))))`;
   - per-call caps: a MAKEARRAY of lifted RATE and a MAP of REGEXTEST calls (amendment, T-2813:
     also a MAKEARRAY of lifted YIELD; the visit caps' target is a per-call one, below).
-  The weights (units per node, `TEXT_BYTES_PER_UNIT`, units per regex step) are chosen so that each
+  The weights (units per node, `TEXT_BYTES_PER_UNIT`, units per regex step, `LAMBDA_UNITS`) are chosen so that each
   kind's worst case reaches the limit in at most **10 s**. A case can hold several such formulas.
   Weights may differ per kind; the limit stays one number.
 - **Lower:** every eval formula computed today stays computed (Goal 2). The gate enforces this
@@ -290,6 +315,16 @@ ODDLPRICE) and the *IF(S), AGGREGATE and GROUPBY/PIVOTBY visits were not timed h
 rule fits each kernel weight to time, and T-2814 timed IRR, XIRR, ODDLYIELD and PRICE within it;
 T-2803 times one call at the cap for each of these families when it resumes and files a perf task
 for any over 5 s. A formula refused for two near-cap calls is covered by the same DEVIATION entry.
+
+**Measured for T-2923** (release build, 2026-10-27, T-2803's branch with main merged in, weights
+`NODE_UNITS` = `CELL_UNITS` = 2): the three Problem formulas took 10.5, 10.6 and 11.1 s to the limit,
+above the 10 s target. On 2026-10-26 the same took 7.0, 7.0 and 5.9 s. So step 1 also re-fits
+`NODE_UNITS` and `CELL_UNITS` (3 puts them at about 7 s here). The lower constraint has room:
+the heaviest eval formula outside the visit caps spends 8,388,620 units at weight 2 (the unit counts and ns-a-unit
+figures in section 1 and the worked examples below are at weight 2 and move with the re-fit)
+(ironcalc-calc/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx, a whole-column ROW array), 12.6M at 3, and
+2^26 allows 8. Every timed case must stop within 10 s on the machine step 1 measures on. Fit the
+weights with a margin, as a slower machine (the 10.5 s above) must not miss the 30 s harness timeout.
 
 Worked examples at 2^28:
 
@@ -359,9 +394,9 @@ Step 1 adds this entry to docs/excel-semantics/arrays.md, with the measured cali
 
 ## Rollout
 1. **T-2803 (M, opus)**: the budget in `AreaBudget` (`MAX_FORMULA_WORK`, `spend_work`,
-   `work_exceeded`), the uncatchable formula error in `with_area_budget`, node, text and
-   built-cell charges, the per-call caps' charges, the helpers' early stop, the weights fitted to
-   the per-kind timings (section 4), the DEVIATION entry with the calibration measured. Acceptance:
+   `work_exceeded`), the uncatchable formula error in `with_area_budget`, node, text,
+   built-cell and LAMBDA-made charges (T-2923), the per-call caps' charges, the helpers' early stop, the weights fitted to
+   the per-kind timings (section 4; re-fit `NODE_UNITS` and `CELL_UNITS` and fit `LAMBDA_UNITS`, T-2923), the DEVIATION entry with the calibration measured. Acceptance:
    the three Problem formulas finish within the harness timeout (as `#VALUE!`), each kind's worst
    case stops within 10 s, no baseline gains a line, `make check` green. The visit caps are charged
    at 1 unit and judged by the amended rules of section 4 (T-2813); their YIELD and ODDFYIELD

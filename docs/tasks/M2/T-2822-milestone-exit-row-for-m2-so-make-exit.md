@@ -3,7 +3,7 @@ id: T-2822
 title: "Milestone exit row for M2 so make exit-owners MILESTONE=M2 runs"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -42,17 +42,37 @@ planner and the steward then check M2's exit with the tools instead of by hand.
   record (`make new-decision`) that extends decision 0096 to M2 and names the `M0-M2` probe row.
 
 ## Acceptance criteria
-- [ ] `make eval` writes an M2 row in report.json `milestone_exit` and in report.md's "Milestone exit" table, with
+- [x] `make eval` writes an M2 row in report.json `milestone_exit` and in report.md's "Milestone exit" table, with
       gen-m2's threshold of 10,000 scored cells and 0 visibly off; M5 and M6 rows are unchanged (a unit test pins
       each M2 threshold at its edge: 9,999 scored cells not met, 1 visibly-off gen-m2 cell not met).
-- [ ] The M2 row's probe measure reads the `M0-M2` probe row, and its ironcalc-calc measure the M2 function-scope row
+- [x] The M2 row's probe measure reads the `M0-M2` probe row, and its ironcalc-calc measure the M2 function-scope row
       less the M2 exit exceptions (IF_ARRAY.xlsx Sheet1!C11 does not count).
-- [ ] `make exit-owners MILESTONE=M2` runs and prints the unowned M2 exit cells; on the report of the PR's run it
+- [x] `make exit-owners MILESTONE=M2` runs and prints the unowned M2 exit cells; on the report of the PR's run it
       prints 0 (or each cell it prints gets an owner in the same PR's task files). The count is in the Outcome.
-- [ ] scripts/test_exit_owners.py has a test that M2's probe cells come from the `M0-M2` row.
-- [ ] Decision record extending decision 0096 to M2 added; `make check` green; reviewers approve.
+- [x] scripts/test_exit_owners.py has a test that M2's probe cells come from the `M0-M2` row.
+- [x] Decision record extending decision 0096 to M2 added; `make check` green; reviewers approve.
 
 ## Out of scope
 - Exit rows for M7 to M11 (milestone_exit.rs: "M7 to M11 need their own decision first").
 - Range or span ownership (`A52-A58`, `A5:D5`): T-2731.
 - Measuring the duplication or one-implementation criterion of M2.
+
+## Outcome
+- Decision 0135 (amends 0096). `milestone_exit` now has an M2 row:
+  - `gen-m2` must have at least 10,000 scored cells with 0 visibly off (`M2_MIN_SCORED`; M5's
+    constants are unchanged).
+  - The ironcalc-calc measure is the M2 function-scope row less its exceptions.
+  - The probe measure reads the `M0-M2` row (`probe_row`).
+  - Coverage is shown but not required (`coverage_met` null). The dashboard prints "not required".
+- The report now lists the visibly-off exit cells: `milestone_exit[].gen_visibly_off_cells` and
+  `probe_milestones[].visibly_off_cells`. `scripts/exit_owners.py` reads them, together with the
+  function-scope row's `visibly_off`, and so lists only visibly-off exit cells for every
+  milestone. Probe cases that fail with no cell are still listed.
+- `make eval` with all 17 suites on this branch:
+  - The M2 row reads coverage 37/37 n/a; gen-m2 16,200 scored, 0 visibly off, met; ironcalc-calc
+    0 [0], met; probes 2 visibly off [9 bit failures], not met (t2776-ws-after-bang S!A1 and S!C1,
+    owned by T-2785).
+  - `make exit-owners MILESTONE=M2` prints **0** unowned (2 exit cells, both owned).
+  - M5 and M6 print 0 unowned (8 and 5 visibly-off exit cells), the same count the old script
+    gave on that report.
+- Eval delta: none. This is a report and script change; the engine and baselines are unchanged.

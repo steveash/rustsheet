@@ -11,6 +11,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use crate::baseline::Baseline;
+use crate::probe_milestones::visibly_off_name;
 use crate::runner::CaseResult;
 use crate::suite::BaselineMode;
 
@@ -173,6 +174,12 @@ pub struct ListSummary {
     pub known_failures: usize,
     /// Listed cases with at least one known failure.
     pub failing_cases: Vec<String>,
+    /// Scored cells that are visibly off (decision 0114), not counting deviations.
+    #[serde(default)]
+    pub visibly_off: usize,
+    /// The visibly-off cells as `case!Sheet!A1`.
+    #[serde(default)]
+    pub visibly_off_cells: Vec<String>,
 }
 
 /// Scores `list` from the run's `results`; `modes` maps a suite name to its baseline mode.
@@ -193,6 +200,12 @@ pub fn summarize(
         s.cells += r.checked;
         s.bit_exact += r.passed;
         s.deviations += r.deviations;
+        for c in &r.cells {
+            if let Some(name) = visibly_off_name(r, c) {
+                s.visibly_off += 1;
+                s.visibly_off_cells.push(name);
+            }
+        }
         let mode = modes.get(&r.suite).copied().unwrap_or(BaselineMode::Cells);
         let failing = Baseline::from_results(mode, &[*r]).failing.len();
         if failing > 0 {
@@ -215,8 +228,8 @@ pub fn write_markdown(lists: &[ListSummary], md: &mut String) {
     );
     let _ = writeln!(
         md,
-        "| list | cases | scored cells | bit-exact | deviations | known failures (cells) | failing cases |\n\
-         |---|---|---|---|---|---|---|"
+        "| list | cases | scored cells | bit-exact | deviations | known failures (cells) | visibly off | failing cases |\n\
+         |---|---|---|---|---|---|---|---|"
     );
     for s in lists {
         let cases = if s.cases_run == s.cases {
@@ -227,12 +240,13 @@ pub fn write_markdown(lists: &[ListSummary], md: &mut String) {
         let failing: Vec<String> = s.failing_cases.iter().map(|c| format!("`{c}`")).collect();
         let _ = writeln!(
             md,
-            "| {} | {cases} | {} | {} | {} | {} | {} |",
+            "| {} | {cases} | {} | {} | {} | {} | {} | {} |",
             s.name,
             s.cells,
             s.bit_exact,
             s.deviations,
             s.known_failures,
+            s.visibly_off,
             failing.join(", ")
         );
     }
@@ -337,6 +351,7 @@ mod tests {
                 from_excel: true,
                 listed_deviation: verdict == Verdict::Deviation,
                 graph_subnormal: false,
+                kind: crate::runner::CellKind::Scored,
             })
             .collect();
         CaseResult {
@@ -359,6 +374,7 @@ mod tests {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: crate::poi_m8_subset::ReferenceFormCells::default(),
         }
     }
 
@@ -372,12 +388,21 @@ mod tests {
             )
             .expect("parse"),
         };
+        // A2 is off in the first digit; A4 differs only past the 15th digit (bit-level only).
+        let mut a = result(
+            "probes/a.case.json",
+            CaseStatus::Fail,
+            &[
+                Verdict::Pass,
+                Verdict::NumericMismatch,
+                Verdict::Deviation,
+                Verdict::NumericMismatch,
+            ],
+        );
+        a.cells[1].actual = Value::Number(2.0);
+        a.cells[3].actual = Value::Number(1.0 + f64::EPSILON);
         let results = [
-            result(
-                "probes/a.case.json",
-                CaseStatus::Fail,
-                &[Verdict::Pass, Verdict::NumericMismatch, Verdict::Deviation],
-            ),
+            a,
             result("probes/b.case.json", CaseStatus::Pass, &[Verdict::Pass]),
             result("probes/c.case.json", CaseStatus::Panic, &[]),
             // not listed
@@ -396,11 +421,13 @@ mod tests {
                 name: "m1-probes".into(),
                 cases: 4,
                 cases_run: 3,
-                cells: 4,
+                cells: 5,
                 bit_exact: 2,
                 deviations: 1,
-                known_failures: 2,
+                known_failures: 3,
                 failing_cases: vec!["probes/a.case.json".into(), "probes/c.case.json".into()],
+                visibly_off: 1,
+                visibly_off_cells: vec!["probes/a.case.json!S!A2".into()],
             }
         );
         let mut md = String::new();
@@ -408,7 +435,7 @@ mod tests {
         assert!(md.contains("## Milestone probe lists"), "{md}");
         assert!(
             md.contains(
-                "| m1-probes | 4 (1 not run) | 4 | 2 | 1 | 2 | `probes/a.case.json`, `probes/c.case.json` |"
+                "| m1-probes | 4 (1 not run) | 5 | 2 | 1 | 3 | 1 | `probes/a.case.json`, `probes/c.case.json` |"
             ),
             "{md}"
         );

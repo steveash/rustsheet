@@ -76,3 +76,11 @@ docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)".
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): CHISQ.DIST 3, GAMMA.DIST 25. This task now owns them:
+- probes-numeric/m9-gamma-dist-a50: Calc!A4, Calc!A12, Calc!A14, Calc!A23
+- probes-numeric/m9-gamma-dist-a500: Calc!A4, Calc!A10, Calc!A12, Calc!A14, Calc!A20, Calc!A23, Calc!A30
+- probes-numeric/m9-gamma-dist-a9: Calc!A1, Calc!A2, Calc!A11, Calc!A21, Calc!A22
+- probes-numeric/t1049-chisqdist: Calc!A16, Calc!A46, Calc!A48
+- probes/t2753-gamma-density-ratio-sweep: S!A20, S!A46, S!A47, S!A48, S!B20, S!B21, S!B46, S!B47, S!B48

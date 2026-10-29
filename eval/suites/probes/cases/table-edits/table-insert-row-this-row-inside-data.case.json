@@ -1,0 +1,103 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2845: #This Row references through a whole-row insert above row 6, strictly inside the data (the table grows to B3:C8, data rows 4-8, a blank row 6). Table Sales on S!B3:C7 (header B3:C3 Region/Qty, data rows 4-7 Qty 1,2,4,8). Sheet F: A4:A8 =Sales[@Qty] (rows 4-7 on the data rows before the edit, row 8 off them) with B4:B8 their FORMULATEXT, C8 =ROW(Sales[@Qty]), D8 =ISREF(Sales[@Qty]), A1 =ROWS(Sales). On S beside the table, E2, E4:E8 =Sales[@Qty] (these cells move with the insert); F!G1:G6 print them with FORMULATEXT and H1:H6 read them (the references follow the moved cells).",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B3": "Region",
+        "C3": "Qty",
+        "B4": "E",
+        "B5": "W",
+        "B6": "N",
+        "B7": "S",
+        "C4": 1,
+        "C5": 2,
+        "C6": 4,
+        "C7": 8,
+        "E4": "=Sales[@Qty]",
+        "E5": "=Sales[@Qty]",
+        "E6": "=Sales[@Qty]",
+        "E7": "=Sales[@Qty]",
+        "E2": "=Sales[@Qty]",
+        "E8": "=Sales[@Qty]"
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:C7"
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=ROWS(Sales)",
+        "A4": "=Sales[@Qty]",
+        "B4": "=FORMULATEXT(A4)",
+        "A5": "=Sales[@Qty]",
+        "B5": "=FORMULATEXT(A5)",
+        "A6": "=Sales[@Qty]",
+        "B6": "=FORMULATEXT(A6)",
+        "A7": "=Sales[@Qty]",
+        "B7": "=FORMULATEXT(A7)",
+        "A8": "=Sales[@Qty]",
+        "B8": "=FORMULATEXT(A8)",
+        "C8": "=ROW(Sales[@Qty])",
+        "D8": "=ISREF(Sales[@Qty])",
+        "G1": "=FORMULATEXT(S!E2)",
+        "H1": "=S!E2",
+        "G2": "=FORMULATEXT(S!E4)",
+        "H2": "=S!E4",
+        "G3": "=FORMULATEXT(S!E5)",
+        "H3": "=S!E5",
+        "G4": "=FORMULATEXT(S!E6)",
+        "H4": "=S!E6",
+        "G5": "=FORMULATEXT(S!E7)",
+        "H5": "=S!E7",
+        "G6": "=FORMULATEXT(S!E8)",
+        "H6": "=S!E8"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "insert_row",
+      "sheet": "S",
+      "row": 6
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A4",
+    "F!B4",
+    "F!A5",
+    "F!B5",
+    "F!A6",
+    "F!B6",
+    "F!A7",
+    "F!B7",
+    "F!A8",
+    "F!B8",
+    "F!C8",
+    "F!D8",
+    "F!G1",
+    "F!H1",
+    "F!G2",
+    "F!H2",
+    "F!G3",
+    "F!H3",
+    "F!G4",
+    "F!H4",
+    "F!G5",
+    "F!H5",
+    "F!G6",
+    "F!H6"
+  ]
+}

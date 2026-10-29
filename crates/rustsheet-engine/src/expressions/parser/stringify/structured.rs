@@ -106,6 +106,14 @@ pub(super) fn reference_text(
     let print = |node: &Node, rewrite: &Rewrite| {
         stringify(node, context, rewrite, export_to_excel, locale, language)
     };
+    // With no cell the text is the stored R1C1 one, which keeps an unqualified reference's table.
+    let written = || {
+        if context.is_none() {
+            reference.stored_text()
+        } else {
+            reference.text()
+        }
+    };
     // The export writes every table as a table part, so the file keeps the reference, in the
     // form Excel stores (SPEC-0016 step 3, T-2196), `#Totals` of a table without a totals row
     // included (Excel keeps `SUM(Table2[#Totals])`, cached `#REF!`: calc_test_tables/tables.xlsx
@@ -123,7 +131,7 @@ pub(super) fn reference_text(
         Rewrite::Displace(Displacement {
             data: DisplaceData::None,
             ..
-        }) => return reference.text(),
+        }) => return written(),
         // A `#This Row` area keeps today's rule below: whether Excel then reads the cell's row
         // of the moved table, or the row it read, is unprobed (T-2845).
         Rewrite::Displace(Displacement {
@@ -139,7 +147,7 @@ pub(super) fn reference_text(
             // as under a fallback: what Excel does to it is unprobed.
             match deleted_column(reference, deleted_columns) {
                 DeletedColumn::Whole => return token::Error::REF.to_string(),
-                DeletedColumn::None => return reference.text(),
+                DeletedColumn::None => return written(),
                 DeletedColumn::RangeEnd => {}
             }
         }
@@ -148,7 +156,7 @@ pub(super) fn reference_text(
             return if tables.contains(&name) {
                 print(lowered, rewrite)
             } else {
-                reference.text()
+                written()
             };
         }
         Rewrite::RefError(tables) => {
@@ -156,14 +164,14 @@ pub(super) fn reference_text(
             return if tables.contains(&name) {
                 token::Error::REF.to_string()
             } else {
-                reference.text()
+                written()
             };
         }
         Rewrite::LowerThisRow => {
             return if matches!(lowered, Node::ThisRowKind { .. }) {
                 print(lowered, &NO_REWRITE)
             } else {
-                reference.text()
+                written()
             };
         }
         Rewrite::Displace(..) | Rewrite::Move(_) => {}
@@ -176,7 +184,7 @@ pub(super) fn reference_text(
     // step 2 (T-1699).
     let rewritten = print(lowered, rewrite);
     if rewritten == print(lowered, &NO_REWRITE) && !row_may_move(lowered, context, rewrite) {
-        reference.text()
+        written()
     } else {
         rewritten
     }

@@ -51,6 +51,14 @@ fall from about 1,286 (the CR level) to about 7.
     the Outcome.
 - Code: `student_t.rs` (`unflushed_upper_tail`, `closed_form_tail`, `log_gamma_ratio`), `t_dist.rs`.
 
+Owned gen-m9 cells (handed from T-2437, excel-graph, 2026-10-28): 1 known-failure line in eval/baseline/gen-m9.txt, 1 formula.
+Handed from T-2437 because the outer FISHER is bit-exact on Excel's inner T.DIST.RT(1,4) = 0.18695048315002957
+(probes-numeric/m9-t-dist-rt A49, ours 0.18695048315002943); the miss is this task's T tail at df 4.
+Examples:
+- gen-m9/a612e89321a6df9c Calc!A191 `=FISHER(T.DIST.RT((1.005^1e-15),4))`: Excel 0.18917533187365954, ours 0.18917533187365945
+Cells:
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A191
+
 ## Acceptance criteria
 - [ ] The T bgrat cells of docs/research/t2464/cells.tsv score at least 1,545 bit-exact of 1,564, and t2464-r2-tdist-p1
       part C at least 4,895 of 4,915.

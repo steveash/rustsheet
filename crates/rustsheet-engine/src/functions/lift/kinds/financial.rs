@@ -303,11 +303,12 @@ const CUMULATIVE: ArgKinds = ArgKinds::fixed(
 /// cap" (a DEVIATION).
 const AMORLINC_WEIGHT: u32 = 1 << 9;
 /// What one AMORDEGRC element is charged unless refused before its walk (`ValueWork::Amortization`,
-/// T-2840): at most `DEGRESSIVE_LOOP_PERIODS` (2^20) periods walked one by one, then a closed
-/// form, about 7.6 ms an element in a release build (512 elements of `AMORDEGRC(1E15,..,1,5E6,
-/// 1E-7,1)`, whose walk takes no shortcut, took 3.9 s since each subtraction is rounded twice,
-/// T-2849; 2.06 s before). 2^18 units run at most 512 elements, about 3.9 s.
-const AMORDEGRC_WEIGHT: u32 = 1 << 18;
+/// T-2840): at most `DEGRESSIVE_LOOP_PERIODS` (2^22 since T-2918) periods walked one by one, then
+/// a closed form, about 32 ms an element in a release build (128 elements of
+/// `AMORDEGRC(1E15,..,1,5E6,1E-7,1)`, whose walk takes no shortcut and subtracts twice rounded,
+/// T-2849, took 3.96 to 4.35 s; at 2^20 periods 512 took 3.9 s). 2^20 units run at most 128
+/// elements, about 4.3 s.
+const AMORDEGRC_WEIGHT: u32 = 1 << 20;
 /// `AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])`.
 const AMORLINC: ArgKinds = ArgKinds::fixed(
     6,
