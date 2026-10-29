@@ -19,8 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "docs/research/t2464/r2-bratio"))
-# Importable only once sys.path has r2-bratio.
-import bratio_excel
+import bratio_excel  # noqa: E402  (importable only once sys.path has r2-bratio)
 
 CELLS = ROOT / "docs/research/t2464/cells.tsv"
 OUT = ROOT / "crates/rustsheet-engine/src/test/fixtures/bratio_beta_dist.fixture"
@@ -54,7 +53,7 @@ def main() -> None:
                 continue
             rows[name.replace(" ", "_")].append((a, b, x, y, excel, int(swapped)))
     lines = [
-        "# T-3007 bratio branch fixture (SPEC-0025 \"Test fixtures\"): a b x y excel (f64 bits) branch swapped.",
+        '# T-3007 bratio branch fixture (SPEC-0025 "Test fixtures"): a b x y excel (f64 bits) branch swapped.',
         "# Cumulative BETA.DIST cells of docs/research/t2464/cells.tsv (excel-graph), y = fl(1 - x); branch and",
         "# swap as r2-bratio's bratio_excel.py kernel names them. Written by docs/research/t3007/make_bratio_fixture.py.",
     ]
@@ -62,7 +61,9 @@ def main() -> None:
         points = sorted(rows[branch])
         step = max(1, -(-len(points) // CAP))
         for a, b, x, y, excel, swapped in points[::step]:
-            lines.append(f"{hexbits(a)} {hexbits(b)} {hexbits(x)} {hexbits(y)} {hexbits(excel)} {branch} {swapped}")
+            lines.append(
+                f"{hexbits(a)} {hexbits(b)} {hexbits(x)} {hexbits(y)} {hexbits(excel)} {branch} {swapped}"
+            )
         print(f"{branch}: {len(points)} cells, {len(points[::step])} rows")
     OUT.write_text("\n".join(lines) + "\n")
 
