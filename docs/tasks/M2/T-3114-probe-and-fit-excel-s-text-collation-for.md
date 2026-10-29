@@ -3,7 +3,7 @@ id: T-3114
 title: "Probe and fit Excel's text collation for letters beyond Latin-1 (Latin Extended-A, combining marks, accented Greek, Cyrillic)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,23 +41,46 @@ backed by a committed oracle case. Today every such letter sorts after `z` by co
   (T-1590), so add a few exact MATCH cells over the new letters to confirm their case-folded exact key still holds.
 
 ## Acceptance criteria
-- [ ] A new probe case `probes/t3114-collation-beyond-latin1` (oracle-filled by excel-graph) ranks at least: the Latin
+- [x] A new probe case `probes/t3114-collation-beyond-latin1` (oracle-filled by excel-graph) ranks at least: the Latin
       Extended-A letters `ā ă ą ć č ď ē ė ę ě ğ ģ ī į ķ ĺ ľ ń ņ ň ő ŕ ř ś ş š ţ ť ū ů ű ų ź ż ž` and the
       upper-case form of each, against their base letter and the next letter. It also ranks two-letter
       strings that tell an accent from a separate letter (`"ča"` against `"cb"` and `"da"`), base plus U+0301/U+030C
       against the precomposed form (`=` and `<`), `ά έ ή ί ό ύ ώ ϊ ΐ` against `α`…`ω`, and the Cyrillic alphabet with
       `ё`/`Ё` and `й`. It also has `=` cells between upper and lower case for the Greek and Cyrillic letters.
-- [ ] Every cell of that case passes. The cells of probes/text-collation-order, -unprobed, -longer, -lookups and
+- [x] Every cell of that case passes. The cells of probes/text-collation-order, -unprobed, -longer, -lookups and
       -ifs still pass, and so do the gen-m2 text-comparison and criteria cells (`make eval-check`: 0 regressions).
-- [ ] coercion.md's collation section records the probed order as VERIFIED, with the case id and cells. Each rule the
+- [x] coercion.md's collation section records the probed order as VERIFIED, with the case id and cells. Each rule the
       engine infers beyond the probed characters is named as UNVERIFIED. The stale sentence about `þ`, `ð`, `œ`,
       Greek and `§` keeping code-point order is corrected. The module docs of collation.rs say the same.
-- [ ] `collation_key` and `cmp_text_excel` still agree (two texts are equal under one exactly when they are under the
+- [x] `collation_key` and `cmp_text_excel` still agree (two texts are equal under one exactly when they are under the
       other). A unit test covers a new accented pair and a combining sequence through both.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CJK, kana, Hangul, Arabic, Hebrew, Indic scripts and emoji ordering (file a follow-up probe task if the evidence
   suggests Excel gives them structure beyond code-point order).
 - The approximate lookups' text order (T-3115) and the exact MATCH/VLOOKUP key beyond the confirming cells above.
 - Case mapping in UPPER/LOWER/PROPER (text.md, T-1747).
+
+## Outcome
+- Probe `probes/t3114-collation-beyond-latin1` (excel-graph, 2026-10-29): 282 strings ranked, plus
+  pairwise, exact MATCH and COUNTIF cells; 986 cells, all pass.
+- Finding (coercion.md "Letters beyond Latin-1 and combining marks"): every Latin Extended-A, Greek
+  accented and Cyrillic letter probed is its base letter plus an accent; a base letter plus a combining
+  mark equals the precomposed letter; `Σ = σ = ς`, and exact MATCH of `ς` finds `σ`.
+- Engine: `collation.rs` folds case, then decomposes canonically (`DECOMPOSED`) and gives a combining
+  mark's accent to the letter before it; the accent order gains breve, dot above, caron, macron,
+  ogonek and double acute. `criteria::fold_run` folds `ς` to `σ` for the exact, wildcard and
+  D-function prefix matches on both sides.
+- Eval delta: +1 probe case (986 cells, all passing), 0 regressions; the five earlier collation
+  probes and t3115 still pass in full.
+- Follow-up: T-3154 (accents across Latin-1 and Extended-A on one letter, stacked marks, `ё`/`й`).
+
+## Review history
+Resumed after the review-round limit (step 5c).
+- Blocked at round 3 (one excel-fidelity doc finding on exact MATCH and combining marks, fixed then).
+- Re-review round 1 (step 5c): the merge-time baseline regeneration had run under load and recorded a
+  `!Timeout` for the unrelated probes/text-locale-lunar-months-1900; regenerated on an idle machine, so
+  the baseline diff is the one new t3114 line. SEARCH's `casefold::fold_char` now folds `ς` through
+  `collation::fold_final_sigma` (one definition). coercion.md names the four probed combining marks and
+  the engine's current MATCH/VLOOKUP and XMATCH/XLOOKUP choice for decomposed keys (UNVERIFIED, T-3154).

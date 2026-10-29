@@ -67,9 +67,9 @@ fn lifted_or_unknown(args: &[Node]) -> StaticResult {
 /// array or a multi-cell range lifts CHOOSE to an array of values, even over range arms, so the
 /// call is an array: a `LiftArrays` argument lifts over it rather than refusing a range
 /// (`IMABS(CHOOSE({1,2},H1:H2,I1:I2))` is 2x2, probes/lift-arrays-choose-arms A21, T-1874). Each
-/// argument is analysed once, so nested calls stay linear.
-pub(super) fn choose_static_result(args: &[Node]) -> StaticResult {
-    let mut shapes = args.iter().map(run_static_analysis_on_node);
+/// argument is analysed once (`shapes`, in argument order), so nested calls stay linear.
+pub(super) fn choose_static_result(shapes: impl IntoIterator<Item = StaticResult>) -> StaticResult {
+    let mut shapes = shapes.into_iter();
     let index = shapes.next().unwrap_or(StaticResult::Scalar);
     let scalar_index = matches!(index, StaticResult::Scalar | StaticResult::Range(0, 0));
     match broadcast_shapes(std::iter::once(index).chain(shapes)) {
