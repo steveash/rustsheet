@@ -811,4 +811,19 @@ Summary `t2122/k3_j6scan_control_summary.log` (`TRUTH=60.42,56.49 k3_j6map.py OU
 4. 17.4.1 and 17.4.3 (more ladder rows on N5 and N7; the D chain) still stand.
 
 ## 19. T-2122 run 7 (2026-10-29, single opus worker, 18.5 step 1: the J=6 scans with the base bias subtracted)
-In progress.
+
+New: `BIASFILE` / `BIASKN` in `w5/p5/scan3.py` and the launcher `t2122/k3_j6bias.sh` (same grids and boxes as
+`k3_j6scan.sh`). Instead of ranking the real map against a separately scanned bias map, the scan subtracts the base's own
+residual under an 80-bit top (`mres(x, base, kn=BIASKN) - ref`) from the data residual before scoring. Every step from r
+to the score (template correlation, FFT over b, phase interpolation) is linear in r up to the per-run norm, so one pass
+scores "data minus bias". On the control this is mres(truth) - mres(c7), the move alone; on real data it is
+real - mres(C, KN=7).
+- Run state: the control scan (`k3_j6bias.sh PY ROWS control OUT`, 22,303 pairs) and the real scan (14,331 pairs) were
+  started in this run (logs `t2122/k3_j6bias_{control,real}_p[0-3].log`). They had not finished when the session budget
+  ran out (the control was paused for ~30 min for another task's eval run). The `.npy` maps are not committed.
+- To finish: rerun both (about 53 + 32 min on 4 cores), then `TRUTH=60.42,56.49 python3 t2122/k3_j6map.py OUT control`
+  and `python3 t2122/k3_j6map.py OUT real` (the .npy names are the same as run 6's; use separate OUT dirs).
+  Pass test for the method: on the control the truth pair (c 60, d 56, b -75.7) must rank 1 with no b cut, and the
+  base ridge (2051.8 in 18.2) must be gone. Only then read the real map's |b| <= 30 region.
+- Build notes as 17/18: build the four `.so` files from their `Build:` lines, venv with numpy; rows from
+  `w5/p5/mkrows.py OUT/rows.txt.near1.npz` (scan3 reads `ROWS + ".near1.npz"` when it exists), 9,606,590 points.
