@@ -26,6 +26,13 @@ miss barely moves with L = ln(1+rate) (a consistent L largely cancels at n = 1).
 the cause (fv, type 1, or the pair) cannot be separated from the cached values. PPMT's negative-rate probe
 (probes-numeric/ppmt-negative-rate-sweep, T-2588) covers PPMT only.
 
+## Note (T-3014, 2026-10-29)
+T-3014 fitted PMT (financial.md "PMT is a discounted payment") on its own probe, probes/t3014-pmt-fv-type-alone,
+and it reproduces all four rate -0.9 rows of PMT.xlsx, so T-2951 is done. This sweep is now a confirmation of that
+model at deep negative rates (where `1-Q` is `1 - EXP(x)` and Q is large): in the third criterion, say which cells
+the model misses (`docs/research/t3014_pmt_discount_score.py` scores it), not which shapes are off the exact payment,
+and file a task for any miss.
+
 ## Acceptance criteria
 - [ ] A spec case `probes-numeric/pmt-negative-rate-fv-type` with PMT at rates -0.95, -0.9, -0.8, -0.7, -0.6 and -0.5,
       nper 1, 2, 3, 5 and 10, pv 100 and 120, in four shapes per point: fv 0 type 0 (a control, scored to the

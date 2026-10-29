@@ -1214,7 +1214,9 @@ as a guard of ours; it cannot occur below |x| = 1 and no cell probes it.)
   64-bit expm1) are in the entry above.
 Ours: `excel_expm1` in `x87_exp.rs` (moved from hyperbolic.rs by T-2242). PPMT also uses it, for `1-EXP(-n*L)` with |x| = n*L up to
 hundreds (financial.md "PPMT discounts with an atanh-series log", probes-numeric/ppmt-log-rate-sweep), where the u - 1 = -1 guard
-is reachable (n*L above about 36.7).
+is reachable (n*L above about 36.7). PMT's `1-Q` is this expm1 only for |x| < 1 and `1 - EXP(x)` from 1 on (probes/t3014-pmt-fv-type-alone
+column C, financial.md "PMT is a discounted payment", T-3014); whether that switch belongs to Excel's expm1 itself, and so
+to PPMT's `1-Q` at |x| >= 1 too, is not established.
 Status: VERIFIED (excel-graph).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
