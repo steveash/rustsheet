@@ -10,6 +10,7 @@ use crate::functions::criteria::{folded_units, WildcardPattern};
 use crate::functions::util::collation::{collation_key, CollationKey};
 use crate::functions::util::compare_values;
 use crate::number_format::excel_precision_key;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
@@ -378,7 +379,7 @@ impl SearchVector {
         let kind = value_kind(target)?;
         let equal = |index: usize| {
             self.data.values.get(index).is_some_and(|value| {
-                value_kind(value) == Some(kind) && compare_values(value, target) == 0
+                value_kind(value) == Some(kind) && compare_searched(value, target) == 0
             })
         };
         // Cells in the virtual tail are empty, so the search never enters it.
@@ -402,7 +403,7 @@ impl SearchVector {
                 hi = mid;
                 continue;
             };
-            match compare_values(&self.data.values[m], target) {
+            match compare_searched(&self.data.values[m], target) {
                 0 => {
                     // Linear in the run's length, as Excel's answer needs it.
                     let mut edge = m;
@@ -438,7 +439,7 @@ impl SearchVector {
             if value_kind(value) != Some(kind) {
                 continue;
             }
-            match compare_values(value, target) {
+            match compare_searched(value, target) {
                 0 => return Some(index),
                 c if c > 0 => best = Some(index),
                 _ => break,
@@ -462,6 +463,22 @@ impl SearchVector {
                 (CalcResult::Number(a), CalcResult::Number(b)) => a == b,
                 _ => value_kind(value) == Some(kind) && compare_values(value, target) == 0,
             })
+    }
+}
+
+/// How the approximate and descending searches order a value against the key: numbers as exact
+/// doubles, not at 15 digits like `compare_values` and the comparison operators, so a table number
+/// a few ULP from the key is above or below it, never equal (`MATCH(0.3,{2;0.1+0.2;0.5},1)` is #N/A;
+/// docs/excel-semantics/lookup.md "Approximate match", probes/t3073-lookup-near-equal-approximate;
+/// T-3099). Text and booleans compare as `compare_values` does.
+fn compare_searched(value: &CalcResult, target: &CalcResult) -> i32 {
+    match (value, target) {
+        (CalcResult::Number(a), CalcResult::Number(b)) => match a.partial_cmp(b) {
+            Some(Ordering::Less) => -1,
+            Some(Ordering::Greater) => 1,
+            _ => 0,
+        },
+        _ => compare_values(value, target),
     }
 }
 
