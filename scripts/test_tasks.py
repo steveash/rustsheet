@@ -85,6 +85,14 @@ class NewTask(unittest.TestCase):
         code, files = self.run_new("--milestone", "M0", "--lane", "harness", "--title", "t", "--tier", "haiku")
         self.assertEqual((code, files), (2, []))
 
+    def test_title_with_quotes_and_backslashes_round_trips(self) -> None:
+        title = 'TEXT(x,"0;-0") is \\ ";;;" `$x`'
+        text = tasks.TEMPLATE.format(id="T-0004", title=tasks.quote(title), milestone="M0", lane="harness",
+                                     priority="P2", size="S", tier="opus")
+        self.assertIn('title: "TEXT(x,\\"0;-0\\") is \\\\ \\";;;\\" `$x`"', text)
+        self.assertEqual(tasks.front_matter(text, Path("t"))["title"], title)
+        self.assertEqual(tasks.unquote("plain"), "plain")
+
     def test_rejects_bad_arguments(self) -> None:
         for argv in (("--milestone", "M0x", "--lane", "harness", "--title", "x"),
                      ("--milestone", "M0", "--lane", "nope", "--title", "x"),

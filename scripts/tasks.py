@@ -91,8 +91,20 @@ def front_matter(text: str, path: Path) -> dict[str, object]:
         if value.startswith("[") and value.endswith("]"):
             meta[key.strip()] = [v.strip() for v in value[1:-1].split(",") if v.strip()]
         else:
-            meta[key.strip()] = value.strip('"')
+            meta[key.strip()] = unquote(value)
     return meta
+
+
+def quote(text: str) -> str:
+    """`text` as the body of a YAML double-quoted scalar: `\\` and `"` escaped (T-0084)."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def unquote(value: str) -> str:
+    """The text of a front-matter value; a double-quoted one has its `\\"` and `\\\\` escapes undone."""
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        return re.sub(r'\\(["\\])', r"\1", value[1:-1])
+    return value.strip('"')
 
 
 def path_of(t: dict[str, object]) -> Path:
@@ -363,7 +375,7 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     tid = next_id(milestone, tasks, taken)
     path = TASKS / milestone / f"{tid}-{slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(TEMPLATE.format(id=tid, title=title.replace('"', "'"), milestone=milestone,
+    path.write_text(TEMPLATE.format(id=tid, title=quote(title), milestone=milestone,
                                     lane=lane, priority=priority, size=size, tier=tier))
     print(f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}")
     return 0

@@ -214,11 +214,22 @@ form misses 38 to the bit and 2 to 15 digits (`IPMT(0.05/12,2,3,10000,0,1)`), so
 rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1dafd6 A235,
 6376e27be7a05871 A32, abb7d565af89b849 A112, b6a02893a8d6b151 A280, 81bcdc0bec0c8e6b A249 (rate
 50, pv 0: 0) and the rest of T-2490's list.
-- Open: a fractional nper past the range. `IPMT(1.005,7,~1.85E+7,92160,674,1)` is
-  -46194.91271820449, `-rate*(B/(1+rate))` and the FV recurrence on the rounded PMT, not the exact
-  balance's ...448, while on the integer-nper type-1 cells past the range the exact balance fits 91
-  of 118 and `-rate*(B/(1+rate))` 59; the engine keeps the FV recurrence for a fractional nper
-  there (gen-m9 0a957119475760c5 A153; T-2665).
+- Past the range a fractional nper is no different from an integer one: all 84 parameter sets of
+  probes/t2665-ipmt-fractional-nper-past-range give the same value at every nper. That probe covers rates 0.01 to 1E+10;
+  nper pairs 1000/1000.5, 1E5/100000.5, 1E6/1000000.25 and 18518518/18518518.44345; periods 7 and 50; pv/fv (92160,674),
+  (1000,0) and (1000,-1000); and both types (excel-graph, 2026-10-29, T-2665). Type 0 is the exact `-rate*B` on all 300
+  type-0 cells.
+  Type 1 depends on the rate. At a rate that is not a whole number it is the rounded balance times the double `rate/(1+rate)`,
+  `-B*(rate/(1+rate))`: `IPMT(1.005,7,1E+5,92160,674,1)` is -46194.91271820449, against the exact value's ...448 (gen-m9
+  0a957119475760c5 A153 is that cell at an nper of about 1.85E+7), and `IPMT(0.1,7,1E+6,1000,0,1)` is -90.9090909090909.
+  At a whole-number rate the exact quotient holds: `IPMT(42,8,290,392736,-0.5,1)` is -383602.6046511628 (gen-m9
+  b73c6cc96e093f03 A268), and `IPMT(2,2000,2000,1000,0,1)` is -444.44444444444446 (fin-ipmt-ppmt-huge-rate A186).
+  This switch is fitted, not an identified formulation. It fits 552 of the probe's 600 cells. The old FV recurrence fits
+  118 of its 300 fractional-nper cells and is visibly off on some, e.g. `IPMT(0.5,50,100000.5,92160,674,1)` is -30720,
+  where the recurrence gives -30720.001953125.
+- Open: at rate 1000, type 1 matches neither form, on all 48 such cells of the probe: `IPMT(1000,7,1E+5,1000,0,1)` is
+  -999.0009990009992, where the double form gives ...991 and the exact value ...990. `-(rate*B)*EXP(-LN(1+rate))` with
+  libm fits these cells but misses the rate-1.005 cells (T-3086).
 - Open: `PPMT(7,10,350,58827)` is -4.581304695604488E-303, its discount 8^-341 = 2^-1023 kept, where
   `PPMT(7,1,341,1)` with the same discount is 0 (probes/fin-ppmt-discount-underflow F1, F8; gen-m9
   a91bad4e84f49739 A158; T-2666).
@@ -231,8 +242,8 @@ rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1da
   a fitted boundary, not an identified formulation.
 Status: VERIFIED to 15 digits on 590/595 by the model, 588/595 by the engine (excel-graph); bits open.
 Implemented in: `balance_interest`, `accurate_discount` and `discounted_principal`'s `past_range`
-(crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2490).
-Tasks: T-2490, T-2665, T-2666, T-2667
+(crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2490; type 1 past the range, T-2665).
+Tasks: T-2490, T-2665, T-2666, T-2667, T-3086
 
 ## IPMT follows Excel's own discount where it moves the value
 Rule: where IPMT's balance does not cancel on fv ("IPMT cancels on fv"), Excel's IPMT is the exact balance of "PMT,
@@ -1430,6 +1441,23 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   0a957119475760c5 A383, 9d9ceba257f8001b A372, 5c6a23c4f6597f1c A7; gate-edges C1, C2, C11, D1, D2, D11) and put 8 on
   it (ba4ddb817a8e700e A116, CUMPRINC_CUMIPMT.xlsx H7, gate-edges C3, C9, C10, D3, D9, D10), none visibly, so it is not
   kept.
+- Near period 1E15 measured directly (T-3067 run 2, probes/fin-cumprinc-near-1e15): CUMPRINC over the last m = 1 to
+  12 periods of nper 1E15 at rates 0.01, 0.001 and 0.1 (A-C), PPMT of each of those periods at 0.01 (D), the
+  CUMIPMT (E, which A9-A11 and K3 sample) and type 1 CUMPRINC (F). Excel's CUMPRINC is not the sum of its own PPMTs:
+  `CUMPRINC(0.01,1E15,100000,1E15,1E15,0)` is -990.0990099009903 where `PPMT(0.01,1E15,1E15,100000)` is
+  -990.09900990099, 2 ulps apart. Each E cell is `PMT·m - A` (G - A) exactly, with PMT a whole -1000 (G).
+  Of 30 forms fitted to the 36 A-C principals (with L as `log1p`, `growth_log`, Excel's LN of `1+r` and libm's `ln`,
+  each shifted by -4 to 4 ulps; with libm's and Excel's EXP and expm1; and with the exponent kept in an x87
+  register), the best is the drop in the remaining balance, `pv/(1-v^nper)·(v^(nper-end)·(1-v^m))` with
+  `1-v^m = -EXPM1(-m·L)`, Excel's EXP and expm1, and `growth_log`'s L. It is exact on 23 of the 36 and within an ulp
+  on the rest, and exact on 8 of the 12 at 0.01, where the kernel's per-period sum is exact on 4. Neither pv's
+  factor nor the order of `pmt·…/r` moves it. libm's expm1 gives 19 of the 36, and `log1p` 12. As the first type 0
+  short principal it puts 3 gen-m9 cells on the bit and takes 8 off. Gated on an underflowed `v^nper`
+  (`1-v^nper = 1`), it fixes 4 probe cells and still takes 14 off: 8 at a rate of 1E10
+  (fin-cumipmt-overflow-and-forms A15-A17, A20-A24) and 6 at integer rates (gen-m9 1cd3096e3e87c965 A147,
+  67a4c03afd63f988 A110, 81bcdc0bec0c8e6b A226, 9a1fa5366bc50918 A18 and A361, d912671baa1364aa A104). So it is not
+  kept. Next: probe the same last-m ranges at nper 1E6 and 1E10, where `v^nper` underflows but the periods stay
+  exact, to see whether the balance-drop form holds wherever the range ends at nper.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
 fin-cumipmt-period-bound A18, the gen-m9 cells A62, A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
 T-3067; the short sums' last digits in T-1374)

@@ -49,6 +49,7 @@ fn create_test_table(
             },
             totals_row_dxf_id: None,
             has_filters: false,
+            filter_columns: Vec::new(),
         },
     );
     table

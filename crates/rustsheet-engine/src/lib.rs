@@ -98,6 +98,7 @@ mod sheet_reads;
 mod spill_shape;
 mod styles;
 mod table_edits;
+mod table_types;
 mod tables;
 mod tailed_array;
 mod typed_input;
