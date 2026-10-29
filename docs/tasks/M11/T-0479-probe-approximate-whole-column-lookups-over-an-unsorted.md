@@ -3,7 +3,7 @@ id: T-0479
 title: "Probe approximate whole-column lookups over an unsorted cached linked column"
 milestone: M11
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -33,3 +33,8 @@ its "Unprobed" note (T-0474).
 
 ## Out of scope
 - Changing the engine. If Excel disagrees, file a fix task.
+
+## Outcome
+Built `external-link-unsorted-approx-lookups.xlsx` (23 cells) and filled it from excel-graph. The engine matches Excel
+on every cell, so no engine change or follow-up; references.md now cites the cells. Fixtures suite 325 -> 348 cells,
+all passing; no baseline change.
