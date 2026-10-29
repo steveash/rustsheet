@@ -3,7 +3,7 @@ id: T-3085
 title: "TAKE/DROP of a one-cell name, LET variable or INDEX/OFFSET result keeps the reference"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
