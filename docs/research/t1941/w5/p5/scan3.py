@@ -12,6 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, ".."))
 from sc import res
+from maskmodel import res as mres
 from meter import sites_and_weights, template, resid, L
 
 mode = sys.argv[1]
@@ -93,7 +94,8 @@ t0 = time.time()
 for s in segs:
     xx = x[s]
     W, ref = sites_and_weights(N0, D0, xx)
-    Bv = res(xx, Nt, Dt) if mode == "control" else b[s]
+    # KN (T-2122 run 6, as scan2.py): the control's B with the N chain's ops j >= KN left in 80-bit (maskmodel.res)
+    Bv = (res(xx, Nt, Dt) if not os.environ.get("KN") else mres(xx, Nt, Dt, kn=int(os.environ["KN"]))) if mode == "control" else b[s]
     r = resid(xx, Bv, ref)
     c1, u1 = curves(kS, W, r)
     c2, u2 = curves(kP, W, r)
@@ -188,7 +190,25 @@ cgrid = np.arange(-CMAX, CMAX + CSTEP / 2, CSTEP)
 if truth and os.environ.get("NEAR"):
     cgrid = np.arange(truth[2] - 1, truth[2] + 1, CSTEP)
 dgrid = np.arange(-float(os.environ.get('DMAX', 0)), float(os.environ.get('DMAX', 0)) + 1e-9, float(os.environ.get('DSTEP', 0.5)))
-for dd, cc in [(dd_, cc_) for dd_ in dgrid for cc_ in cgrid]:
+# NEAR with NEARC/NEARD (T-2122 run 6): a window of +-NEARC in c and +-NEARD in d around the control's truth, to test
+# that the planted truth ranks first before a full box is paid for
+if truth and os.environ.get("NEAR") and os.environ.get("NEARD"):
+    _nc, _nd = float(os.environ.get("NEARC", 1)), float(os.environ["NEARD"])
+    cgrid = np.arange(round(truth[2] / CSTEP) * CSTEP - _nc, round(truth[2] / CSTEP) * CSTEP + _nc + CSTEP / 2, CSTEP)
+    _ds = float(os.environ.get('DSTEP', 0.5))
+    dgrid = np.arange(round(truth[3] / _ds) * _ds - _nd, round(truth[3] / _ds) * _ds + _nd + _ds / 2, _ds)
+    print("near window: %d c x %d d" % (len(cgrid), len(dgrid)), flush=True)
+pairs = [(dd_, cc_) for dd_ in dgrid for cc_ in cgrid]
+# RIDGE=slope,half (T-2122 run 6): keep only c within slope*d +- half (the ladder's c-d ridge, k3_topbox6.py), so a
+# box with strongly correlated c and d costs its ellipse, not its rectangle. CPART=i/n: every n-th pair (parallel parts).
+if os.environ.get("RIDGE"):
+    _sl, _hw = map(float, os.environ["RIDGE"].split(","))
+    pairs = [(dd_, cc_) for dd_, cc_ in pairs if abs(cc_ - _sl * dd_) <= _hw]
+if os.environ.get("CPART"):
+    _pi, _pn = map(int, os.environ["CPART"].split("/"))
+    pairs = pairs[_pi::_pn]
+print("(c, d) pairs to scan: %d" % len(pairs), flush=True)
+for dd, cc in pairs:
     tot = np.zeros((64, len(bsel)))
     for h in range(1, H + 1):
         zz = np.zeros(NB, complex)
@@ -203,5 +223,5 @@ for dd, cc in [(dd_, cc_) for dd_ in dgrid for cc_ in cgrid]:
 print("scan %.0fs, %d candidates" % (time.time() - t0, len(cand)), flush=True)
 cand.sort(reverse=True)
 print("top S-only:", " | ".join("%.1f (a %.2f b %.1f c %.2f d %.2f)" % c for c in cand[:5]))
-np.save(os.path.join(os.environ.get("TMPDIR_W5", "/tmp/claude-0/-home-user-rustsheet/3a20e203-66f6-532b-8608-5ba2c7a655ee/scratchpad"), "scan3_%s%d_%s.npy" % (CH, J, mode)), np.array(cand[:2000]))
-if truth: print("truth a mod 1 %.3f b %.2f c %.2f" % (truth[0] % 1, truth[1], truth[2]))
+np.save(os.path.join(os.environ.get("TMPDIR_W5", "/tmp/claude-0/-home-user-rustsheet/3a20e203-66f6-532b-8608-5ba2c7a655ee/scratchpad"), "scan3_%s%d_%s%s.npy" % (CH, J, mode, os.environ.get("CPART", "").replace("/", "of"))), np.array(cand[: int(os.environ.get("NSAVE", 2000))]))
+if truth: print("truth a mod 1 %.3f b %.2f c %.2f d %.2f" % (truth[0] % 1, truth[1], truth[2], truth[3]))

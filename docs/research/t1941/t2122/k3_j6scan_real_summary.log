@@ -1,0 +1,12 @@
+pairs 14331, median 747.0, sd 207.4, max 2005.1
+base ridge (top 50): c = -0.553 d -2.07
+on ridge |r| <= 4: n 150, median 1692.7, sd 98.7; top 2005 (b 0.0 c 0 d 0) | 1907 (b 0.6 c 0 d -4) | 1906 (b 0.0 c -2 d 4) | 1900 (b 1.0 c 2 d -8) | 1863 (b 0.6 c 4 d -12) | 1853 (b 0.3 c -4 d 8)
+off ridge |r| > 8: n 14031, median 744.8, sd 168.8; top 1697 (b -1.0 c 0 d 12) | 1688 (b -1.0 c 2 d 8) | 1677 (b 12.0 c -46 d 56) | 1676 (b 12.0 c -44 d 52) | 1673 (b 9.4 c -36 d 44) | 1661 (b 11.0 c -42 d 52)
+off ridge |r| > 16: n 13734, median 742.4, sd 139.1; top 1577 (b -12.0 c 46 d -56) | 1566 (b 12.3 c -36 d 32) | 1554 (b 12.3 c -38 d 36) | 1536 (b -12.0 c 44 d -52) | 1528 (b 14.0 c -46 d 48) | 1527 (b 13.6 c -48 d 52)
+  ridge d   -48: best 1744
+  ridge d   -24: best 1764
+  ridge d   -12: best 1863
+  ridge d    +0: best 2005
+  ridge d   +12: best 1822
+  ridge d   +24: best 1776
+  ridge d   +48: best 1731

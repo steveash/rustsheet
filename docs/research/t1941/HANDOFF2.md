@@ -734,4 +734,46 @@ J=7 scan showed none, that is the structure evidence. Also run the KN = 8 varian
 
 ## 18. T-2122 run 6 (2026-10-29, single opus worker, 17.8 next step: J=6 scan below an unstored top)
 
-In progress.
+New: `t2122/k3_topbox6.py` (ladder covariance mapped to the J=6 unknown), `t2122/k3_j6scan.sh` (launcher), and three
+switches in `w5/p5/scan3.py`: `KN` (as scan2.py), `NEAR=1 NEARC NEARD` (a c, d window around the control's truth) and
+`RIDGE=slope,half` with `CPART=i/n` (scan only the ladder's c-d ridge, split into parts). `NSAVE` sets how many
+candidates the `.npy` keeps. Environment as 17: build the `.so` files and use a venv with numpy (2.4.6 here).
+`mkrows.py` on this branch gives the same 9,606,590 points from 741 cases.
+
+### 18.1 The J=6 box (k3_topbox6.py)
+Delta S_6(x) = (a + b dx + c dx^2 + d dx^3) u_6, dx = x - 1.1, so d = dN9/u, c = (dN8 + 3.3 dN9)/u,
+b = (dN7 + 2.2 dN8 + 3.63 dN9)/u. The same script with the S_7 map reproduces 17.5 (sigma_b 376, sigma_c 550,
+corr -0.965), which checks the row parse and the covariance.
+- Real, from C (21 rows at zero): sigma_b 52.7, sigma_c 65.1, sigma_d 137; corr bc -0.730, bd -0.726, cd 0.926.
+  3-sigma box |b| <= 158, |c| <= 195, |d| <= 412. c given d: sigma 24.5.
+- Control, from c7 (12 rows at zero): sigma_b 84.4, sigma_c 83.3, sigma_d 209; corr cd 0.954. 3-sigma box |c| <= 250,
+  |d| <= 627.
+- Exact-rate tolerance in the same units (N9 +-400, N8 +-10, N7 +-1 ulps): d 0.012, c 0.078, b 0.25.
+- b costs nothing (FFT axis). The rectangle at CSTEP = DSTEP = 0.5 is 1.3e6 (c, d) pairs (about 190 core-hours at
+  0.53 s a pair). That is why the grid steps below matter.
+
+### 18.2 The KN = 7 control sees the planted S_6 at J = 6
+Logs `t2122/k3_j6_ctlkn_width.log` and `k3_j6_ctlkn_base.log` (base c7, truth `k3_run5_ctl_truth.txt`, B synthesised
+with N ops j >= 7 in 80-bit, 1,289 runs, RL 16384, NB 21, H 4):
+- Truth in J=6 units: (a mod 1 0.271, b -75.84, c 60.42, d 56.49). At truth: S 1413.6, P 210.8, joint 1624.4.
+  Joint null -45.8 +- 247.7.
+- The grid point nearest the truth ranks first in its window: S-only 1498.9 at (a 0.23, b -75.7, c 60.5, d 56.0).
+- **The peak is broad.** Over c 56.5 to 64.5 and d 50.5 to 62.5 (17 x 25 pairs, KEEP 1) the best-b score stays above
+  1100. It stays above 1400 within about +-1.5 in c and +-4 in d of the truth. So a scan at c step 2 and d step 4 cannot
+  miss a peak of this height. That is 64 times fewer pairs than steps of 0.5.
+- **The base point scores higher still: 2051.8** (S-only, c = d = 0, best a 0.62, b 0.0) against the truth's 1498.9.
+  At J = 7 the base bias was 643.5 against the truth's 948.6 (17.5). So at J = 6 the base ridge cannot be read as
+  evidence, as in 17.5 to 17.7. A real peak has to stand out away from the base region, not rank first overall.
+
+### 18.3 The real J = 6 ridge scan from C
+`sh t2122/k3_j6scan.sh PY ROWS real OUT`: 4 parts, c step 2, d step 4, |d| <= 412, c within 0.440 d +- 74 (the 3-sigma
+ridge of 18.1); 14,332 (c, d) pairs, KEEP 1, logs `t2122/k3_j6scan_real_p[0-3].log`.
+Summary `t2122/k3_j6scan_real_summary.log` (`t2122/k3_j6map.py OUT real`; the `.npy` maps are not committed):
+- 14,331 pairs scanned in 32 min on 4 cores (0.53 s a pair a core). Median 747, sd 207.
+- **The maximum is the base, 2005.1 at (b 0, c 0, d 0)**, with the control's base at 2051.8 (18.2). The top 50 lie on a
+  base ridge c = -0.553 d - 2.1, which falls slowly: 1863 at d -12, 1822 at d +12, about 1740 at |d| 48.
+- Off that ridge (|c - ridge| > 8) the best are 1697 and 1688 right beside the base (d 12, d 8), then 1677 at (b 12.0,
+  c -46, d 56). Further off (> 16) the best is 1577 at (b -12.0, c 46, d -56), the mirror of the last one. The off-ridge
+  tops come as (b, c, d) and (-b, -c, -d) pairs, the signature of the base's sidelobes, not of a planted top (the
+  control's truth peak has no mirror). Off-ridge median 742, sd 139.
+CONTROL_PLACEHOLDER
