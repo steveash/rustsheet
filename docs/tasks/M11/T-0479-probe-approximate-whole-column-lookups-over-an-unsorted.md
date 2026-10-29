@@ -26,10 +26,10 @@ its "Unprobed" note (T-0474).
   `cd tools && uv run rustsheet-oracle fill`.
 
 ## Acceptance criteria
-- [ ] The fixture has oracle values for at least VLOOKUP TRUE, MATCH 1, MATCH -1 and HLOOKUP TRUE over unsorted cached
+- [x] The fixture has oracle values for at least VLOOKUP TRUE, MATCH 1, MATCH -1 and HLOOKUP TRUE over unsorted cached
       whole columns/rows.
-- [ ] references.md cites those cells. A mismatch is recorded as a known failure, with a follow-up task.
-- [ ] `make check` green; reviewers approve.
+- [x] references.md cites those cells. A mismatch is recorded as a known failure, with a follow-up task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine. If Excel disagrees, file a fix task.
