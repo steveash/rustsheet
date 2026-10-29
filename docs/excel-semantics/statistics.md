@@ -2390,14 +2390,21 @@ both >= 8, gamln + algdiv for a < 2, the reduction of a otherwise). Against the 
 eval: bit-exact +67, visibly off -79 (BETA.DIST +6/-4, BINOM.DIST +27/-62, F.DIST +11/-4, F.DIST.RT +16/-3, FDIST 0/-1,
 NEGBINOM.DIST +7/-5, BETADIST -1/0, BINOMDIST +1/0); gen-m9 3,312 -> 3,311 known failures (c6cfda6bd10cae93 A289),
 probes 2,746 -> 2,741 (t2829-ftest-tail-over-b A12, A13, A15, A19, A20 now within the gate), no gated regression.
+Gross, on every scored cell (`docs/research/t3007/cell_diff.py`): 281 cells closer to Excel, 63 further; 15 bit-exact
+cells moved off (all probes-numeric, ungated: t2145-binomial-sweep A1700, m9-legacy-betadist A17, A18, t2220-f-dist-sweep-rt
+A480, A858, A860, t0969-beta-prefactor D129, D131, t2145-negbinom-sweep A932, A1060, t1745-beta-inv-roundtrip G123, H123,
+I123, t2220-f-dist-sweep-cdf A828, m9-beta-dist-a100 A19) and 4 became visibly off (t2145-binomial-sweep A2114, A2748,
+A2750, t2220-f-dist-sweep-cdf A828). The a + b <= 400 cap bounds `half_integer_beta`'s recurrence (directive 5) and is a
+choice between the two research forms, not an Excel boundary: no oracle cell has half-integer shapes above it on this
+branch. The half-integer/TOMS split is provisional: T-2924's fit of Excel's ln B, once found, replaces both forms.
 TOMS `betaln` at every shape (half-integers included) scores bit-exact +150, visibly off -73, but moves gen-m9
 05d44f6dd6cfc567 A222 (`BINOM.DIST(1,10,0.05,2)`, a = 2, b = 9, Excel 0.9138616441006836) 1 ulp low, where the accurate
 -LN(90) is exact; per betaln branch it wins on every one (bcorr 35 better/9 worse cells, a < 2 16/13, reduction
 189/42), so Excel's L is neither form alone (T-2924). Still visibly off: t2829-ftest-tail-over-b A1, A3, A4, A6, A7,
 A9 (A18 is now within 4 ulp): T-2924's k plus whole fl(a·LN x) steps, as above.
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
-b0 >= 8, all others); bit-exact 52-75%
-Tasks: T-2505, T-2512, T-2122
+b0 >= 8, all others); bit-exact 52-75%; both > 1 with max > 8 a provisional form (T-3007)
+Tasks: T-2505, T-2512, T-2122, T-3007
 
 ## Incomplete beta L140 and bfrac: the prefactor is Excel's own density times x·y (T-2464)
 Rule: for a, b > 1 with b0 < 40 and b0·x0 > 0.7 (bratio's L140), I = fl(bup(b0', a0, y0, x0, n) + bpser(a0, b0', x0))
