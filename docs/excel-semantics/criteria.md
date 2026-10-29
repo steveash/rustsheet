@@ -114,8 +114,8 @@ Tasks: T-0227, T-0246
 
 ## A blank-cell or omitted criterion is the criterion 0
 Rule: a criterion that is a blank cell (`COUNTIF(r,Z1)` with Z1 empty, on this sheet, another sheet or picked by
-`INDEX`) or an omitted argument (`COUNTIF(r,)`, `IF(FALSE,1,)`) matches exactly what the number criterion `0`
-does, in COUNTIF, SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MINIFS and MAXIFS: number cells equal to 0 at 15
+`INDEX`) or an omitted argument (`COUNTIF(r,)`, `IF(FALSE,1,)`) matches what the number criterion `0` does on
+every probed cell kind (padded text such as `" 0"` is not probed; the engine treats it as `0` does), in COUNTIF, SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MINIFS and MAXIFS: number cells equal to 0 at 15
 digits (0 and `=-0`; `=2^-1074` is 0 in Excel) and the text `"0"`. It never matches a blank cell, an empty-string
 cell, FALSE, `" "`, 1E-17, -1E-300 or 5E-16. So it is neither `""` (which matches blanks and empty strings) nor
 `"="` (blanks only). With no matching cell, AVERAGEIF and AVERAGEIFS are `#DIV/0!`.

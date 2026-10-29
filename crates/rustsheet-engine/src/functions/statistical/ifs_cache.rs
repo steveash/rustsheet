@@ -82,7 +82,6 @@ enum CriterionKey {
     Text(Vec<u16>),
     Boolean(bool),
     Error(Discriminant<Error>),
-    Empty,
 }
 
 impl CriterionKey {
@@ -101,7 +100,8 @@ impl CriterionKey {
             CalcResult::String(s) => CriterionKey::Text(s.units().collect()),
             CalcResult::Boolean(b) => CriterionKey::Boolean(*b),
             CalcResult::Error { error, .. } => CriterionKey::Error(std::mem::discriminant(error)),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => CriterionKey::Empty,
+            // An empty criterion is the criterion 0 (`indexed_criterion`), so it shares 0's set.
+            CalcResult::EmptyCell | CalcResult::EmptyArg => CriterionKey::Number(0.0f64.to_bits()),
             _ => return None,
         })
     }
