@@ -120,7 +120,7 @@ fn aggregate_and_subtotal_sum_snap() {
 }
 
 /// The root `+`/`-` snaps every element of an array result on its own two addends, with the
-/// scalar bound: 7 ULP of 1 snaps on the `+` side, 4 ULP of the smaller addend does not on the
+/// scalar bound: 7 ULP of 1 snaps on the `+` side, 4 ULP of the left addend does not on the
 /// `-` side (probes/t3047-snap-array-operands S!E1:L3).
 #[test]
 fn array_operands_snap_element_by_element() {

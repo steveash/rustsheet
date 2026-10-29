@@ -18,7 +18,8 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 (15, 9, 9, 9 of 24), k = 8 never; identical for `X-b`, `X+(-b)` and `SUM(X,-b)`. The exact
 threshold (T-0110, fitted on all 1,296 cells; refined by T-3100): snap iff the two addends of
 the final addition have opposite signs and |result| < 8 ULP of the **left** addend in magnitude
-(= 2^(e-49), e its binary exponent; for SUM, the total before its last addend). The
+(= 2^(e-49), e its binary exponent; for a two-addend SUM, its first; with three or more
+addends the engine takes the total before the last, which is unprobed, T-3145). The
 opposite-sign condition is implied, not observed: every probe cell subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
 addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
 up to k = 7 but the `-` side, whose left addend 1-k·2^-52 has half the ULP, only up to k = 3 (see "Operand order" below).
@@ -46,7 +47,7 @@ Summing functions (T-3048, probes/t3048-snap-conditional-sums, excel-graph 2026-
 Operand order (T-3100, probes/t3100-snap-operand-order, excel-graph 2026-10-29): the bound is 8 ULP of the **left**
 addend, not of the smaller one. With b = 1, 2, 1.5, 3, 0.75 and X = b±k·2^(e-52) (k = 3 to 8, read from cells), all
 540 cells of `X-b`, `b-X`, `-X+b`, `X+(-b)`, `-b+X`, `SUM(X,-b)`, `SUM(-b,X)`, `SUM(b,-X)` and `SUM(-X,b)` fit the
-left-addend bound (the left operand of the root `+`/`-`, a unary minus included, or SUM's total before its last addend);
+left-addend bound (the left operand of the root `+`/`-`, a unary minus included, or SUM's first argument);
 the smaller-addend rule misses 32 and a larger-addend rule 40. They differ only where b is a power of two and X lies
 below it, so X has half b's ULP: `1-(1-4·2^-52)` snaps (left 1, bound 2^-49) and `(1-4·2^-52)-1` keeps
 -8.881784197001252e-16 (left X, bound 2^-50); likewise `-1+(1-4·2^-52)` and `SUM(1,-(1-4·2^-52))` snap. Every earlier

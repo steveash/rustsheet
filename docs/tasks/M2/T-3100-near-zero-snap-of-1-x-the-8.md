@@ -47,3 +47,4 @@ where the operand order decides it.
   evidence and now snaps.
 - Eval delta: probes fixed 1 (t3073-lookup-near-equal-approximate Sheet1!E8), new case 540/540, regressions 0 in every
   suite.
+- Follow-up: T-3145 (the bound of a SUM with three or more addends, unprobed).
