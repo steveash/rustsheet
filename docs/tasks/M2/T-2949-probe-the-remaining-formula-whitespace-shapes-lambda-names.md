@@ -25,4 +25,4 @@ From the T-2781 review and SPEC-0023: `B1:B2` LF ` B2` (an intersection whose se
 - Implementing the findings.
 
 ## Outcome
-Probed 29 shapes one formula per case (refusals isolated; refused shapes are in syntax.md, not as cases). Findings in syntax.md "Remaining whitespace shapes". Follow-up: T-3169 (implement). No eval baseline change expected.
+Probed 29 shapes one formula per case (refusals isolated; refused shapes are in syntax.md, not as cases). Findings in syntax.md "Remaining whitespace shapes". Follow-up: T-3169 (implement). The baseline gained 25 case lines and 6 known failures from `make eval-baseline` (new probe coverage the engine does not match yet; T-3169 shrinks them).
