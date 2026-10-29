@@ -3,7 +3,7 @@ id: T-3090
 title: "SORT lifted by_col: an empty-able element below one with an equal by_col when the row's lead is broken"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
