@@ -3,7 +3,7 @@ id: T-0972
 title: "GAMMA.INV/CHISQ.INV/CHISQ.INV.RT: gamma quantile parity (39 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -197,3 +197,43 @@ Against a 50-digit reference, Excel is close to correctly rounded for this famil
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): CHISQ.INV 3, CHISQ.INV.RT 5. This task now owns them:
 - probes-numeric/t1049-chisqinv: Calc!A9, Calc!A20, Calc!A27
 - probes-numeric/t1049-chisqinvrt: Calc!A3, Calc!A9, Calc!A19, Calc!A20, Calc!A27
+
+## Outcome (2026-10-28, owner-unblocked)
+The baseline was recorded with `update-baseline --allow-regressions` under decision 0083's allowance as amended by
+**decision 0152**, with the owner's approval in session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr. Measured on
+the branch merged with `main` (3fe509e8):
+- gated: 28 lines fixed (gen-m9 23, ironcalc-calc 5); 49 cells regressed, all numeric (38 at 1 ulp, 9 at 2, 2 at 3);
+- every suite, against a `main` build: 90 other cells newly fail within the 15th digit; in-scope visibly-off cells
+  101,602 -> 101,575;
+- five cells newly visibly off, accepted by decision 0152: gen-m9 ecc87f80077959e0 A168 and 146b46e74f2dac3b A167,
+  ironcalc-calc GAMMA.xlsx F21, probes-numeric m9-chisq-inv A27 and t1049-chisqinv A19.
+
+Follow-up **T-3016** owns those five cells and lists all 49 regressed cells with their values.
+
+Open at that point (closed below):
+- Criterion 1: of the 65 owned gen-m9 lines, 17 now pass, 42 are within the 15th digit and 6 are still visibly off.
+- Criterion 2 is not re-measured on this merged tree.
+- Criterion 3 is not met: `incomplete_gamma/mod.rs` still keeps the ported statrs search (`inverse_cdf_within`) as the
+  refinement's start.
+
+## Baseline recorded (2026-10-29)
+The owner-run session https://claude.ai/code/session_01Xbmds2YtTrK9a9T4mMitSB ran
+`update-baseline --allow-regressions` and `evidence-floor --update` on this branch merged with `main` 2618770b (decision
+0152). Gated: 28 lines fixed (gen-m9 23, ironcalc-calc 5), 49 regressed, all numeric at 1-3 ulp, none visibly off.
+Against a `main` build over gen-m9, ironcalc-calc, probes and probes-numeric, the quantile cells visibly off fall from 166
+to 139 (30 fixed). Three are newly visibly off: gen-m9 146b46e74f2dac3b A167, probes-numeric m9-chisq-inv A27 and
+t1049-chisqinv A19. All three are on decision 0152's list. The other two cells the 2026-10-28 Outcome counts among its five (gen-m9
+ecc87f80077959e0 A168 and ironcalc-calc GAMMA.xlsx F21) are within the 15th digit on this merge, so that count of five
+is superseded. Follow-ups from review: a gamma-quantile bench case (performance) and exact-value unit tests are in T-3016.
+
+## Closed (2026-10-29)
+Closed at decision 0083's visible-parity stage, as T-0971 was (decision 0111), with the remainder in follow-ups:
+- On the merged branch (local `make eval`), 10 cells this task owns are still visibly off by decision 0083's measure
+  (|actual - expected| over half a unit of the 15th significant digit). ecc87f80077959e0 A168 counts: it is 5.3E-15 off
+  against a half unit of 5E-15, though the harness buckets it NumericUlp, which is why the section above calls it
+  within the 15th digit. T-3016 owns the two this
+  task made newly visibly off (gen-m9 146b46e74f2dac3b A167, ecc87f80077959e0 A168 at 3 ulp) with the 49 ulp lines
+  and the three cells of decision 0152; **T-3131** owns the other eight and criterion 3 (the statrs search start).
+- The 2026-10-28 section's count of five newly visibly-off cells is superseded by the 2026-10-29 section.
+- Review: `docs/excel-semantics/statistics.md` now records that the crossing lands 1 to 3 ulps off on closed forms
+  where Excel is correctly rounded (`CHISQ.INV(0.5,2)` = 2 ln 2), so those last digits are ours (T-3016).
