@@ -1500,6 +1500,11 @@ C	probes/t3049-snap-under-pickers.case.json	57
 C	probes/t3051-legacy-root-array-operators.case.json	38
 C	probes/t3053-blank-reference-wrappers.case.json	25
 C	probes/t3054-imtan-real-tan-kernel.case.json	22
+C	probes/t3063-expand-pad-col-past-grid.case.json	1
+C	probes/t3063-expand-pad-over-bound.case.json	1
+C	probes/t3063-wrapcols-empty-range.case.json	1
+C	probes/t3063-wrapcols-omitted-vector.case.json	1
+C	probes/t3063-wraprows-empty-range.case.json	1
 C	probes/t3072-criteria-near-equal-order.case.json	360
 C	probes/t3072-take-drop-one-cell-reference.case.json	57
 C	probes/t3073-lookup-near-equal-approximate.case.json	218
