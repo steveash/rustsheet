@@ -230,6 +230,8 @@ fn letters_beyond_latin1_and_combining_marks() {
         ("σ", "ς"),
         ("Ё", "ё"),
         ("Ά", "ά"),
+        // These two pin unprobed engine choices (a stacked mark, a mark before a hyphen); T-3154
+        // probes them and may overturn them.
         ("ϊ\u{301}", "ΐ"),
         ("C\u{30c}-a", "č-a"),
     ] {
@@ -244,8 +246,9 @@ fn decomposed_table_is_sorted() {
     assert!(DECOMPOSED.windows(2).all(|pair| pair[0].0 < pair[1].0));
 }
 
-/// The exact and wildcard matches fold `ς` to `σ` on both sides (probes/t3114-collation-beyond-latin1
-/// Calc!H10; Rust's final-sigma rule lower-cases a word-final `Σ` to `ς`).
+/// The exact and wildcard matches fold `ς` to `σ` on both sides
+/// (probes/t3114-collation-beyond-latin1 Calc!H10; Rust's final-sigma rule lower-cases a word-final
+/// `Σ` to `ς`).
 #[test]
 fn final_sigma_folds_in_exact_and_wildcard_matches() {
     use crate::functions::criteria::{folded_units, WildcardPattern};

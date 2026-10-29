@@ -34,6 +34,8 @@ combining mark, and whether Cyrillic `ё`/`й` are accented letters are backed b
 - [ ] It ranks stacked marks (`"á"&UNICHAR(780)`, `"a"&UNICHAR(769)&UNICHAR(780)`,
       `"a"&UNICHAR(780)&UNICHAR(769)`, a mark after `ǎ`, a mark outside the 13 mapped ones such as
       U+0323) and `"йа"` against `"иб"`, `"ёа"` against `"еб"`.
+- [ ] It checks the final-sigma fold beyond exact MATCH: `COUNTIF(r,"ς*")`, `MATCH("ς*",r,0)`,
+      `XMATCH("ς",r,2)`, `VLOOKUP("ς?",r,1,FALSE)` and a D-function criterion `ς` over `σx`, `ςx`, `Σ`.
 - [ ] `collation.rs` and coercion.md follow the evidence; every collation probe still passes.
 - [ ] `make check` green; reviewers approve.
 

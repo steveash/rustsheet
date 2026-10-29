@@ -210,7 +210,7 @@ const OTHER_MARK: u8 = 18;
 
 /// The accent of combining mark `c` (U+0300 to U+036F). Excel equates a base letter plus a mark
 /// with the precomposed letter (`"a"&UNICHAR(769) = "á"`, `"c"&UNICHAR(780)&"a" = "ča"`;
-/// probes/t3114-collation-beyond-latin1 Calc!D7:E9, B141:B148).
+/// probes/t3114-collation-beyond-latin1 Calc!D7:E9, B143:B150).
 fn mark(c: char) -> Option<u8> {
     Some(match c {
         '\u{300}' => GRAVE,
@@ -357,7 +357,7 @@ fn punctuation(c: char) -> Option<u32> {
 }
 
 /// The final sigma `ς` as `σ`, every other character as is: Excel's `Σ = σ = ς` in comparisons
-/// and in exact MATCH (probes/t3114-collation-beyond-latin1 Calc!B168, B190, B216, D20:E20, H10).
+/// and in exact MATCH (probes/t3114-collation-beyond-latin1 Calc!B168, B192, B216, D20:E20, H10).
 /// The collation key and `criteria::fold_run` both fold through it.
 pub(crate) fn fold_final_sigma(c: char) -> char {
     if c == 'ς' {
@@ -511,7 +511,7 @@ fn primaries(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u32> {
 /// The second pass: one accent weight per letter weight of the first pass. A combining mark
 /// gives an unaccented letter before it its accent (`"a"&UNICHAR(769)` is `"á"`) and otherwise
 /// adds its own accent weight (`ΐ`, ι with dialytika and tonos, after `ϊ`;
-/// probes/t3114-collation-beyond-latin1 Calc!A200, A204, A205). Other marks on an accented
+/// probes/t3114-collation-beyond-latin1 Calc!A202, A206, A207, D19:F19). Other marks on an accented
 /// letter are unprobed.
 fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
     Accents {

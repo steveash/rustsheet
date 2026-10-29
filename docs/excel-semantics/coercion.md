@@ -100,7 +100,7 @@ each other (Calc!A = count less, Calc!B = count equal) plus pairwise `<`/`=`/`>`
 MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status: VERIFIED for these:
 - Every Latin Extended-A letter probed (`ā ă ą ć č ď ē ė ę ě ğ ģ ī į ķ ĺ ľ ń ņ ň ő ŕ ř ś ş š ţ ť ū ů ű
   ų ź ż ž`) is its **base letter plus an accent**, not a letter of its own: `"ca" < "ča" < "cb"`,
-  `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A121:A140).
+  `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A123:A142).
   Upper and lower case are equal (`"Č" = "č"`, Calc!E1).
 - Accents on one base letter, in order: `a á ă ā ą`, `c ć č`, `e é ė ě ē ę`, `g ğ ģ`, `i ī į`, `l ĺ ľ`,
   `n ń ň ņ`, `o ö ő`, `r ŕ ř`, `s ś š ş`, `t ť ţ`, `u ū ů ų ű`, `z ź ż ž`. One order fits them all:
@@ -116,7 +116,7 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
   unprobed: the engine appends a second accent weight, and a mark with no letter before it
   weighs only as an accent, UNVERIFIED (T-3154).
 - Greek: `α < ά < β`, … `ι < ί < ϊ < ΐ < κ`, … `ω < ώ` (tonos is the acute accent, dialytika the
-  diaeresis); `Σ = σ = ς` (Calc!B168, B190, B216, E20), and exact MATCH of `"ς"` finds `σ` (Calc!H10). Base
+  diaeresis); `Σ = σ = ς` (Calc!B168, B192, B216, E20), and exact MATCH of `"ς"` finds `σ` (Calc!H10). Base
   letters keep code-point order.
 - Cyrillic: `а < б < … < е < ё < ж < … < и < й < к < … < я`, each upper case equal to its lower case.
   Whether `ё` and `й` are accented `е` and `и` (the engine, by their canonical decompositions) or
@@ -127,7 +127,9 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
   `ѐ ѓ ї ќ ѝ ў`) the same base-plus-accent rule.
 Implemented (T-3114): `collation.rs` case-folds, then decomposes each letter through its canonical
 decomposition (`DECOMPOSED`) and gives a combining mark's accent to the letter before it.
-`criteria::fold_run` (the exact MATCH, wildcard and D-function prefix fold) folds `ς` to `σ`.
+`criteria::fold_run` (the exact MATCH, wildcard and D-function prefix fold) folds `ς` to `σ`; only
+exact MATCH and COUNTIF `=`/`<`/`<>` are probed, so the fold in wildcard patterns (`"ς*"`, `"ς?"`) and
+D-function prefixes is inferred, UNVERIFIED (T-3154).
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
 Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by
 `SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.
