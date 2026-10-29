@@ -24,4 +24,4 @@ T-2785 skips whitespace after every sheet prefix's `!` (lexer `consume_range`) b
 -
 
 ## Outcome
-Three probe cases (quoted space, quoted line feed, unquoted line feed after the bang) pass bit-exact with no engine change; the lexer already skips whitespace after every prefix. External `[1]S! A1` is accepted by Excel (value environment-specific, no case kept); `S! R1C2` is refused. Recorded in syntax.md. Eval: 3 new passing probe cells groups (6 cells), no regressions.
+Three probe cases (quoted space, quoted line feed, unquoted line feed after the bang) pass bit-exact with no engine change; the lexer already skips whitespace after every prefix. External `[1]S! A1` is accepted by Excel (value environment-specific, no case kept); `S! R1C2` is refused. Recorded in syntax.md. Eval: 3 new passing probe cases (6 cells), no regressions.

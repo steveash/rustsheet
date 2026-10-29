@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2869: typed `='My S'!` LF `B1`.",
+ "description": "T-2869: typed `='My S'!` LF `B1`: value and FORMULATEXT.",
  "tags": [
   "M2",
   "syntax",

@@ -346,7 +346,7 @@ More shapes (probes/t2776-formula-text-whitespace-shapes, t2776-ws-after-at, -af
 - **The drop after `!` holds for every sheet-prefix form** (probes/t2869-quoted-ws-after-bang, -quoted-lf-after-bang,
   -ws-lf-after-bang; excel-graph `entered`, 2026-10-29, T-2869): `='My S'! B1`, `='My S'!` LF `B1` and `=S!` LF `B1`
   read as 1 and print `='My S'!B1` / `=S!B1`. An external prefix takes it too (`=[1]S! A1` is accepted and prints
-  `...[1]S'!A1` with no space; the value is Graph's `#BLOCKED!` because the link has no target, so no case is kept).
+  `'...[1]S'!A1` (the quote closes the file path Excel prepends) with no space; the value is Graph's `#BLOCKED!` because the link has no target, so no case is kept).
   `=S! R1C2` (R1C1 text after a prefix and a space, typed in A1 mode) is refused: PATCH answers `400 InvalidArgument`.
 - **A run keeps only its line feeds and the spaces after the last one**: `=1+ ` LF ` 2` prints `=1+` LF ` 2`,
   `=1+` LF ` ` LF `2` prints `=1+` LF LF `2`, 10 spaces, 3 line feeds and 2 spaces print as the 3 line feeds and 2
