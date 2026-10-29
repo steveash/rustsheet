@@ -3,7 +3,7 @@ id: T-2554
 title: "IM* text: keep the 1 of a -0.9999999999999999 part, plain digits for 1E+20 (sweep P43, D18, P18)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ crates/rustsheet-engine/src/functions/engineering/complex/mod.rs, number_format.
 
 ## Out of scope
 -
+
+## Outcome
+Already fixed on main (by the T-2641-era IM* text work): P43, D18 and P18 of probes-numeric
+im-last-digit-sweep pass and no cell of that case is in `eval/baseline/`. Added the regression test
+`text_keeps_the_one_and_writes_1e20_plain` (trig.rs) and rewrote the engineering.md "Text quirks"
+bullet as the rule. Eval delta: none.
