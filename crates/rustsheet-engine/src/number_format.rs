@@ -287,14 +287,6 @@ fn excel_precision_canon(x: f64) -> f64 {
     }
 }
 
-/// A key for [`cmp_excel_precision`]'s equality: two numbers are equal under it exactly when
-/// their keys are. Its shortcuts only skip the cut where the cut cannot make two numbers equal,
-/// so equality is always that of the canonical 15-digit values. The exact-match lookup index of
-/// XMATCH and XLOOKUP hashes it (T-0448).
-pub(crate) fn excel_precision_key(x: f64) -> u64 {
-    excel_precision_canon(x).to_bits()
-}
-
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
     if !value.is_finite() {
         return value;
@@ -749,12 +741,6 @@ mod tests {
                 assert_eq!(
                     cmp_excel_precision(a, b),
                     cmp_rounded(a, b),
-                    "{a:e} vs {b:e}"
-                );
-                // The lookup index's key has the same equality (T-0448).
-                assert_eq!(
-                    cmp_excel_precision(a, b) == std::cmp::Ordering::Equal,
-                    excel_precision_key(a) == excel_precision_key(b),
                     "{a:e} vs {b:e}"
                 );
                 checked += 1;

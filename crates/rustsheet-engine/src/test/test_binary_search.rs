@@ -12,7 +12,7 @@ fn find<T: Ord>(target: &T, array: &[T], descending: bool, mode: Option<i8>) -> 
         Some(1) => Ordering::Greater,
         _ => Ordering::Equal,
     };
-    binary_search(target, array, descending, side)
+    binary_search_by(target, array, descending, side, T::cmp)
 }
 
 #[test]

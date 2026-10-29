@@ -13,8 +13,9 @@
 //!    en and em dash and the control characters other than CHAR(9) to CHAR(13) are skipped
 //!    (`"-1" > "0"`).
 //! 2. **Accents**, letter by letter: none, the ordinal indicators `ª º`, acute, grave,
-//!    circumflex, diaeresis, tilde, ring (`"a" < "ª" < "á" < "à" < "â" < "ä" < "ã" < "å"`), then
-//!    the stroke (`"ö" < "ø"`, `"d" < "đ"`, `"l" < "ł"`) and last the letter variants
+//!    circumflex, diaeresis, tilde (`"a" < "ª" < "á" < "à" < "â" < "ä" < "ã" < "å"`), breve, dot
+//!    above, caron, macron, ring, ogonek, double acute, cedilla, then the stroke (`"ö" < "ø"`,
+//!    `"d" < "đ"`, `"l" < "ł"`) and last the letter variants
 //!    `ð ı` (`"đ" < "ð"`). `þ` is not an accent: it is the letters `th`.
 //! 3. **Skipped characters**: by position, a later one first, then control characters (by code
 //!    point) before apostrophe, hyphen, en dash, em dash (`"ab" < "a'b" < "a-b" < "a–b" <
@@ -23,7 +24,10 @@
 //! The non-ASCII characters placed here are those of probes/text-collation-unprobed (T-1590,
 //! T-1595); where they were probed as single characters only, the module places them by the
 //! smallest rule that fits (docs/excel-semantics/coercion.md "Collation equality in lookups and
-//! criteria; unprobed characters"). Every other character keeps code-point order after the
+//! criteria; unprobed characters"). Latin Extended-A, Greek and Cyrillic letters with a canonical
+//! decomposition are their base letter plus an accent, and a combining mark (U+0300 to U+036F) is
+//! the accent of the letter before it (probes/t3114-collation-beyond-latin1; coercion.md "Letters
+//! beyond Latin-1 and combining marks"). Every other character keeps code-point order after the
 //! letters, as before T-0220.
 //!
 //! **Lone surrogates** (`cmp_text`): a lone surrogate unit weighs `UNIT_BASE` plus its value and an
@@ -171,11 +175,16 @@ enum Element {
     Skipped(u8),
     /// One or two letter weights (two for `æ`, `ß`) and the accent of the character.
     Weights { primary: [u32; 2], accent: u8 },
+    /// A combining mark: no letter weight; it sets the accent of the letter before it.
+    Mark(u8),
 }
 
 /// Accent weights, in Excel's order (probes/text-collation-order: `á < à < â < ä < å`, `ö < ø`;
-/// probes/text-collation-unprobed: `a < ª < á`, `ä < ã < å`, `o < º < ö`, `đ < ð`). The cedilla
-/// and superscript are only ever compared with no accent, so their place is unprobed.
+/// probes/text-collation-unprobed: `a < ª < á`, `ä < ã < å`, `o < º < ö`, `đ < ð`;
+/// probes/t3114-collation-beyond-latin1: `á < ă < ā < ą`, `é < ė < ě < ē < ę`, `ğ < ģ`,
+/// `ň < ņ`, `ö < ő`, `ū < ů < ų < ű`, `ί < ϊ`). Only accents on one base letter were ranked, so
+/// the order between the Latin-1 accents (grave to tilde) and breve to double acute is a fit;
+/// the superscript is only ever compared with no accent.
 const NO_ACCENT: u8 = 0;
 const ORDINAL: u8 = 1;
 const ACUTE: u8 = 2;
@@ -183,13 +192,123 @@ const GRAVE: u8 = 3;
 const CIRCUMFLEX: u8 = 4;
 const DIAERESIS: u8 = 5;
 const TILDE: u8 = 6;
-const RING: u8 = 7;
-const CEDILLA: u8 = 8;
-const SUPERSCRIPT: u8 = 9;
-const STROKE: u8 = 10;
+const BREVE: u8 = 7;
+const DOT_ABOVE: u8 = 8;
+const CARON: u8 = 9;
+const MACRON: u8 = 10;
+const RING: u8 = 11;
+const OGONEK: u8 = 12;
+const DOUBLE_ACUTE: u8 = 13;
+const CEDILLA: u8 = 14;
+const SUPERSCRIPT: u8 = 15;
+const STROKE: u8 = 16;
 /// `ð`, `ı`: probed as single characters only, each right after its base letter; kept a
 /// tiebreak accent, like `ø`, rather than a letter of its own.
-const VARIANT: u8 = 11;
+const VARIANT: u8 = 17;
+/// A combining mark (U+0300 to U+036F) none of the probes ranks: after every accent.
+const OTHER_MARK: u8 = 18;
+
+/// The accent of combining mark `c` (U+0300 to U+036F). Excel equates a base letter plus a mark
+/// with the precomposed letter (`"a"&UNICHAR(769) = "á"`, `"c"&UNICHAR(780)&"a" = "ča"`;
+/// probes/t3114-collation-beyond-latin1 Calc!D7:E9, B143:B150).
+fn mark(c: char) -> Option<u8> {
+    Some(match c {
+        '\u{300}' => GRAVE,
+        '\u{301}' => ACUTE,
+        '\u{302}' => CIRCUMFLEX,
+        '\u{303}' => TILDE,
+        '\u{304}' => MACRON,
+        '\u{306}' => BREVE,
+        '\u{307}' => DOT_ABOVE,
+        '\u{308}' => DIAERESIS,
+        '\u{30a}' => RING,
+        '\u{30b}' => DOUBLE_ACUTE,
+        '\u{30c}' => CARON,
+        '\u{327}' => CEDILLA,
+        '\u{328}' => OGONEK,
+        '\u{300}'..='\u{36f}' => OTHER_MARK,
+        _ => return None,
+    })
+}
+
+/// The canonical decompositions of the lower-case Latin Extended-A, Greek and Cyrillic letters
+/// that have one (`unicodedata.normalize("NFD", c)`): letter, base, mark, second mark or `'\0'`.
+/// Excel ranks each as its base letter plus the mark's accent (`"ča"` between `"ca"` and `"cb"`,
+/// `ё` between `е` and `ж`; probes/t3114-collation-beyond-latin1). Sorted by letter.
+pub(crate) const DECOMPOSED: [(char, char, char, char); 72] = [
+    ('ā', 'a', '\u{0304}', '\0'),
+    ('ă', 'a', '\u{0306}', '\0'),
+    ('ą', 'a', '\u{0328}', '\0'),
+    ('ć', 'c', '\u{0301}', '\0'),
+    ('ĉ', 'c', '\u{0302}', '\0'),
+    ('ċ', 'c', '\u{0307}', '\0'),
+    ('č', 'c', '\u{030c}', '\0'),
+    ('ď', 'd', '\u{030c}', '\0'),
+    ('ē', 'e', '\u{0304}', '\0'),
+    ('ĕ', 'e', '\u{0306}', '\0'),
+    ('ė', 'e', '\u{0307}', '\0'),
+    ('ę', 'e', '\u{0328}', '\0'),
+    ('ě', 'e', '\u{030c}', '\0'),
+    ('ĝ', 'g', '\u{0302}', '\0'),
+    ('ğ', 'g', '\u{0306}', '\0'),
+    ('ġ', 'g', '\u{0307}', '\0'),
+    ('ģ', 'g', '\u{0327}', '\0'),
+    ('ĥ', 'h', '\u{0302}', '\0'),
+    ('ĩ', 'i', '\u{0303}', '\0'),
+    ('ī', 'i', '\u{0304}', '\0'),
+    ('ĭ', 'i', '\u{0306}', '\0'),
+    ('į', 'i', '\u{0328}', '\0'),
+    ('ĵ', 'j', '\u{0302}', '\0'),
+    ('ķ', 'k', '\u{0327}', '\0'),
+    ('ĺ', 'l', '\u{0301}', '\0'),
+    ('ļ', 'l', '\u{0327}', '\0'),
+    ('ľ', 'l', '\u{030c}', '\0'),
+    ('ń', 'n', '\u{0301}', '\0'),
+    ('ņ', 'n', '\u{0327}', '\0'),
+    ('ň', 'n', '\u{030c}', '\0'),
+    ('ō', 'o', '\u{0304}', '\0'),
+    ('ŏ', 'o', '\u{0306}', '\0'),
+    ('ő', 'o', '\u{030b}', '\0'),
+    ('ŕ', 'r', '\u{0301}', '\0'),
+    ('ŗ', 'r', '\u{0327}', '\0'),
+    ('ř', 'r', '\u{030c}', '\0'),
+    ('ś', 's', '\u{0301}', '\0'),
+    ('ŝ', 's', '\u{0302}', '\0'),
+    ('ş', 's', '\u{0327}', '\0'),
+    ('š', 's', '\u{030c}', '\0'),
+    ('ţ', 't', '\u{0327}', '\0'),
+    ('ť', 't', '\u{030c}', '\0'),
+    ('ũ', 'u', '\u{0303}', '\0'),
+    ('ū', 'u', '\u{0304}', '\0'),
+    ('ŭ', 'u', '\u{0306}', '\0'),
+    ('ů', 'u', '\u{030a}', '\0'),
+    ('ű', 'u', '\u{030b}', '\0'),
+    ('ų', 'u', '\u{0328}', '\0'),
+    ('ŵ', 'w', '\u{0302}', '\0'),
+    ('ŷ', 'y', '\u{0302}', '\0'),
+    ('ź', 'z', '\u{0301}', '\0'),
+    ('ż', 'z', '\u{0307}', '\0'),
+    ('ž', 'z', '\u{030c}', '\0'),
+    ('ΐ', 'ι', '\u{0308}', '\u{0301}'),
+    ('ά', 'α', '\u{0301}', '\0'),
+    ('έ', 'ε', '\u{0301}', '\0'),
+    ('ή', 'η', '\u{0301}', '\0'),
+    ('ί', 'ι', '\u{0301}', '\0'),
+    ('ΰ', 'υ', '\u{0308}', '\u{0301}'),
+    ('ϊ', 'ι', '\u{0308}', '\0'),
+    ('ϋ', 'υ', '\u{0308}', '\0'),
+    ('ό', 'ο', '\u{0301}', '\0'),
+    ('ύ', 'υ', '\u{0301}', '\0'),
+    ('ώ', 'ω', '\u{0301}', '\0'),
+    ('й', 'и', '\u{0306}', '\0'),
+    ('ѐ', 'е', '\u{0300}', '\0'),
+    ('ё', 'е', '\u{0308}', '\0'),
+    ('ѓ', 'г', '\u{0301}', '\0'),
+    ('ї', 'і', '\u{0308}', '\0'),
+    ('ќ', 'к', '\u{0301}', '\0'),
+    ('ѝ', 'и', '\u{0300}', '\0'),
+    ('ў', 'у', '\u{0306}', '\0'),
+];
 
 /// Third-pass weights of the skipped characters: control characters below the apostrophe (none
 /// probed against it; `CHAR(1) < CHAR(31) < CHAR(127) < "–"`), then `' - – —`.
@@ -237,13 +356,24 @@ fn punctuation(c: char) -> Option<u32> {
         .map(|index| PUNCTUATION_BASE + index)
 }
 
+/// The final sigma `ς` as `σ`, every other character as is: Excel's `Σ = σ = ς` in comparisons
+/// and in exact MATCH (probes/t3114-collation-beyond-latin1 Calc!B168, B192, B216, D20:E20, H10).
+/// The collation key, `criteria::fold_run` and SEARCH's `text::casefold` all fold through it.
+pub(crate) fn fold_final_sigma(c: char) -> char {
+    if c == 'ς' {
+        'σ'
+    } else {
+        c
+    }
+}
+
 /// `c` with case removed: ASCII and Latin-1 letters directly, others through `to_lowercase`.
 fn fold(c: char) -> char {
     match c {
         'A'..='Z' => c.to_ascii_lowercase(),
         'À'..='Þ' if c != '×' => char::from_u32(u32::from(c) + 0x20).unwrap_or(c),
         _ if c.is_ascii() => c,
-        _ => c.to_lowercase().next().unwrap_or(c),
+        _ => fold_final_sigma(c.to_lowercase().next().unwrap_or(c)),
     }
 }
 
@@ -263,6 +393,7 @@ fn element(c: Char) -> Element {
         }
         _ if c.is_ascii() => single(ASCII_PRIMARY[c as usize]),
         '\u{a0}' => single(NBSP),
+        '\u{300}'..='\u{36f}' => Element::Mark(mark(c).unwrap_or(OTHER_MARK)),
         '¼' => single(digit(0) + 1),
         '½' => single(digit(0) + 2),
         '¾' => single(digit(0) + 3),
@@ -334,31 +465,116 @@ fn element(c: Char) -> Element {
     }
 }
 
-/// The first pass: letter weights, hyphens and apostrophes skipped.
-fn primaries(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u32> {
-    text.flat_map(|c| match element(c) {
-        Element::Skipped(_) => [0, 0],
-        Element::Weights { primary, .. } => primary,
-    })
-    .filter(|&weight| weight != 0)
+/// `c` case-folded and canonically decomposed through [`DECOMPOSED`]: one to three characters.
+fn decompose(c: Char) -> impl Iterator<Item = Char> {
+    let folded = match c {
+        Char::Scalar(c) => fold(c),
+        // Every arm yields a `[Char; 3]` iterator so that the function has one return type.
+        Char::Lone(_) => return [c, c, c].into_iter().take(1),
+    };
+    let entry = if ('\u{100}'..='\u{45f}').contains(&folded) {
+        DECOMPOSED
+            .binary_search_by_key(&folded, |&(letter, ..)| letter)
+            .ok()
+            .and_then(|index| DECOMPOSED.get(index))
+    } else {
+        None
+    };
+    match entry {
+        Some(&(_, base, first, second)) => {
+            let units = [
+                Char::Scalar(base),
+                Char::Scalar(first),
+                Char::Scalar(second),
+            ];
+            units.into_iter().take(if second == '\0' { 2 } else { 3 })
+        }
+        None => [Char::Scalar(folded); 3].into_iter().take(1),
+    }
 }
 
-/// The second pass: one accent weight per letter weight of the first pass.
+/// The [`Element`] of each decomposed character of `text`.
+fn elements(text: impl Iterator<Item = Char>) -> impl Iterator<Item = Element> {
+    text.flat_map(decompose).map(element)
+}
+
+/// The first pass: letter weights, hyphens, apostrophes and combining marks skipped.
+fn primaries(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u32> {
+    elements(text)
+        .flat_map(|element| match element {
+            Element::Skipped(_) | Element::Mark(_) => [0, 0],
+            Element::Weights { primary, .. } => primary,
+        })
+        .filter(|&weight| weight != 0)
+}
+
+/// The second pass: one accent weight per letter weight of the first pass. A combining mark
+/// gives an unaccented letter before it its accent (`"a"&UNICHAR(769)` is `"á"`) and otherwise
+/// adds its own accent weight (`ΐ`, ι with dialytika and tonos, after `ϊ`;
+/// probes/t3114-collation-beyond-latin1 Calc!A202, A206, A207, D19:F19). Other marks on an accented
+/// letter are unprobed.
 fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
-    text.flat_map(|c| match element(c) {
-        Element::Skipped(_) => [None, None],
-        Element::Weights { primary, accent } => {
-            [Some(accent), (primary[1] != 0).then_some(NO_ACCENT)]
+    Accents {
+        elements: elements(text),
+        ready: None,
+        last: None,
+    }
+}
+
+/// The iterator of [`accents`]: `last` is held back so that a combining mark after it can
+/// change it.
+struct Accents<I> {
+    elements: I,
+    ready: Option<u8>,
+    last: Option<u8>,
+}
+
+impl<I: Iterator<Item = Element>> Iterator for Accents<I> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<u8> {
+        if let Some(accent) = self.ready.take() {
+            return Some(accent);
         }
-    })
-    .flatten()
+        loop {
+            match self.elements.next() {
+                None => return self.last.take(),
+                Some(Element::Skipped(_)) => {}
+                Some(Element::Mark(accent)) => match self.last.replace(accent) {
+                    None | Some(NO_ACCENT) => {}
+                    Some(before) => return Some(before),
+                },
+                Some(Element::Weights { primary, accent }) => {
+                    // An expansion (`æ`) weighs two letters: its accent, then an unaccented one.
+                    let (first, held) = if primary[1] == 0 {
+                        (None, accent)
+                    } else {
+                        (Some(accent), NO_ACCENT)
+                    };
+                    let before = self.last.replace(held);
+                    match (before, first) {
+                        (Some(before), first) => {
+                            self.ready = first;
+                            return Some(before);
+                        }
+                        (None, Some(first)) => return Some(first),
+                        (None, None) => {}
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// The third pass: each hyphen or apostrophe as (position, weight), a later position first.
+/// Positions count letters and skipped characters, not combining marks, so a decomposed letter
+/// keeps the position of its precomposed form.
 fn skipped(text: impl Iterator<Item = Char>) -> impl Iterator<Item = (Reverse<usize>, u8)> {
-    text.enumerate()
-        .filter_map(|(position, c)| match element(c) {
+    elements(text)
+        .filter(|element| !matches!(element, Element::Mark(_)))
+        .enumerate()
+        .filter_map(|(position, element)| match element {
             Element::Skipped(weight) => Some((Reverse(position), weight)),
-            Element::Weights { .. } => None,
+            Element::Weights { .. } | Element::Mark(_) => None,
         })
 }

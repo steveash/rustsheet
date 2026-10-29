@@ -55,7 +55,25 @@ probe had X on the left, which is why the smaller-addend fit held there. This al
 probes/t3073-lookup-near-equal-approximate Sheet1!E8 (`1-(1-8·2^-53)`, 0) and E16 (`(1-8·2^-53)-1`, kept);
 probes/t3106-lookup-xmatch-near-equal Sheet1!AC8 is the same pair as E8 and gives 0 too.
 The engine matches all of them since T-3100. Status: VERIFIED.
-Tasks: T-0110 (implementation), T-3092 (AVERAGEA addends, SUBTOTAL 1/101), T-1131 (SUM forms), T-3048 (summing functions), T-3049 (pickers, LET, LAMBDA and unary signs), T-3083 (LAMBDA body snap), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound), T-3047 (array and range operands), T-3100 (operand order)
+Coerced addends (T-3140, probes/t3140-snap-coerced-operands, excel-graph 2026-10-29): the snap sees the **coerced
+value**, with the same 8-ULP bound of the left addend. Thirteen bases, each as a literal and from a text cell (T!A),
+on the left and on the right of the root `-`, under a unary minus (`-"text"+X`) and as `X+(-"text")`, against X =
+c+k·ULP(c) for k = 0..9 (S, 1,040 cells; X built from the oracle's own coerced value V!B): number text `"1"`, `"1.5"`,
+`"0.3"`; percent `"50%"`, `"23.123%"` (0.23123); time `"12:00"`, `"10:00"` (0.4166666666666667); date-time
+`"1/2/1900 12:00"` (2.5) and `"7/7/2026 4:35 PM"` (46210.69097222222); date `"1/1/2000"`; TRUE (literal and cell);
+currency `"$1.50"`; thousands `"1,000"`. In every base and every form k ≤ 7 gives 0 and k ≥ 8 keeps the residue,
+exactly as the number controls (S!E, S!F) do. The forms with several coerced operands agree with their number
+controls too (M!A1:A30 against M!B): `="30%"-0.1-0.2`, `="0.3"-0.1-0.2`, `="0.1"+"0.2"-"0.3"`, the same over text
+cells, `=-"0.3"+0.1+0.2`, `="12:00"+"12:00"-1` and `=TRUE-(1-3*2^-52)` are 0; `=TRUE-(1+8*2^-52)` and
+`=(1+8*2^-52)-TRUE` keep ∓1.7763568394002505e-15. `="7/7/2026 4:35 PM"-46210-(16+35/60)/24` keeps
+-3.2337466038256935e-12, as `VALUE(..)` in its place does: that residue is the serial's own error (dates.md), far
+above 8 ULP of the left addend 0.69097222222. A blank cell, FALSE or a FALSE cell is a 0 addend and never snaps
+(`=0.1+0.2-0.3+Z1`, `-FALSE`: 5.551115123125783e-17, like `+0`; `=Z1-2^-1000` and `="1E-300"-1E-300*(1+2^-52)`
+keep their totals, the latter a kept subnormal whose `(x)=0` companion M!C24 is FALSE, so its Graph 0 scores by decision 0042). So Excel coerces before it
+snaps, and the engine, which snaps the coerced `f64` addends in `Model::handle_outermost_sum`, needed no change; it
+matches every cell. Every X in this probe lies above c, so the left-addend and smaller-addend bounds agree here
+(the operand-order question is T-3100's, settled above). Status: VERIFIED.
+Tasks: T-0110 (implementation), T-3092 (AVERAGEA addends, SUBTOTAL 1/101), T-1131 (SUM forms), T-3048 (summing functions), T-3049 (pickers, LET, LAMBDA and unary signs), T-3083 (LAMBDA body snap), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound), T-3047 (array and range operands), T-3100 (operand order), T-3140 (coerced addends)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
