@@ -112,6 +112,22 @@ Also verified for SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MAXIFS (`"="`)
 probes/criteria-ifs-bare-equals C1-C12. Oracle: excel-graph, 2026-10-05 (T-0246).
 Tasks: T-0227, T-0246
 
+## A blank-cell or omitted criterion is the criterion 0
+Rule: a criterion that is a blank cell (`COUNTIF(r,Z1)` with Z1 empty, on this sheet, another sheet or picked by
+`INDEX`) or an omitted argument (`COUNTIF(r,)`, `IF(FALSE,1,)`) matches what the number criterion `0` does on
+every probed cell kind (padded text such as `" 0"` is not probed; the engine treats it as `0` does), in COUNTIF, SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MINIFS and MAXIFS: number cells equal to 0 at 15
+digits (0 and `=-0`; `=2^-1074` is 0 in Excel) and the text `"0"`. It never matches a blank cell, an empty-string
+cell, FALSE, `" "`, 1E-17, -1E-300 or 5E-16. So it is neither `""` (which matches blanks and empty strings) nor
+`"="` (blanks only). With no matching cell, AVERAGEIF and AVERAGEIFS are `#DIV/0!`.
+Evidence: probes/t3138-blank-criterion. Over A1:A14 = blank, `=""`, 0, `=-0`, 1E-17, -1E-300, `=2^-1074`, 5E-16,
+FALSE, "0", " ", "x", `=NA()`, 1 with weights B = 2^0..2^13, every source gives COUNTIF 4, SUMIF 588 (= 4 + 8 + 64
++ 512: the 0, -0, `2^-1074` and "0" rows), AVERAGEIF 147, MINIFS 4, MAXIFS 512 (D1:H9), and the same on the
+80-cell range A21:A100 that the *IFS cache indexes (D21:H29, J31:J39). N1:N4: `#DIV/0!` and 0 with no match.
+Oracle: excel-graph, 2026-10-29 (T-3138).
+Status: VERIFIED
+Implemented in: `indexed_criterion` (`crates/rustsheet-engine/src/functions/criteria.rs`), which turns the empty
+criterion into the number criterion 0 for both the walk and the indexed *IFS path.
+
 ## `<`, `>`, `<=`, `>=` with a boolean or error operand
 Rule: `COUNTIF(r,">TRUE")`, `"<TRUE"`, `">#N/A"` and `"<#N/A"` match nothing, even over TRUE or
 #N/A cells; `"<=TRUE"`/`">=TRUE"` (and `<=`/`>=` with `#N/A`) behave as equality and count exactly
@@ -127,8 +143,11 @@ Rule: a number cell meets an ordering criterion by its 15-digit value, like `=` 
 COUNTIFS and SUMIFS. The criterion's own operand is text, already cut to 15 digits when parsed.
 Evidence: probes/t3072-criteria-near-equal-order (288 criteria cells); details in numbers.md "Criteria ordering
 operators compare at 15 digits too".
-Status: VERIFIED (engine not yet: `result_is_less_than_number` and the other three ordering matchers in
-functions/criteria.rs compare raw doubles, T-3103)
+Status: VERIFIED
+Implemented in: `result_is_less_than_number` and the other three ordering matchers (functions/criteria.rs), on
+`cmp_excel_precision`, and in the indexed *IFS cache (`number_interval`, functions/statistical/ifs_cache.rs).
+AVERAGEIF(S), MINIFS/MAXIFS and the D-functions share these matchers but have no oracle cell near a rounding
+boundary yet. Tasks: T-3084, T-3103
 
 ## Text `<=` / `>=` criteria, and dotted dates are text in en-US
 Rule: `"<=text"` and `">=text"` compare the cell text with the operand, case-insensitively, like

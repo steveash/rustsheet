@@ -562,9 +562,10 @@ TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a ran
 A defined name that stands for a cell or range is a reference to ISREF, a single cell included
 (`ISREF(TextCell)` and `ISREF(Cells)` TRUE; a LAMBDA name, a constant name `=7` and an undefined name are FALSE), and FILTER's `if_empty` range is its
 values, never a reference (`FILTER(A1:A1,B1:B1,D1:D2)` spills D1:D2, `ISREF(FILTER(..))` FALSE, `SUM(..)` = 30).
-Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940; re-confirmed 2026-10-09 with the LAMBDA name body stored as `_xlpm.x`, T-1209), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; to be added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
+Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940; re-confirmed 2026-10-09 with the LAMBDA name body stored as `_xlpm.x`, T-1209), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
 bound to a reference is TRUE (A19-A26; implemented by T-0223, see "Names, LET/LAMBDA variables and @ are
-references" below; T-0963 checks the ISREF.xlsx cells once T-0965 adds the workbook).
+references" below). ironcalc-calc/INFORMATION/ISREF.xlsx (added by T-0965) passes all 43 cells: A19, A20, A23,
+A24 and A26 are TRUE, and a variable bound to a value (A21 `5`, A22 `K1+1`, A25 `"K1"`) is FALSE (T-0963).
 Implemented in: `evaluate_aggregate_arg` in `crates/rustsheet-engine/src/functions/util.rs` (IF, INDEX; used by SUM,
 COUNT, MIN, MAX and every `for_each_value` caller: AVERAGE, MEDIAN, HARMEAN, GEOMEAN, SKEW, SKEW.P, KURT;
 also AVERAGEA, MAXA, MINA, PRODUCT, CONCAT, LARGE and RANK since T-0196; VERIFIED for AVERAGEA, MAXA, MINA, PRODUCT, LARGE and RANK, see below);
@@ -2450,8 +2451,9 @@ moved or grown table's row there, but a row on them is rewritten to the plain ar
 beside or inside the table is rewritten too. Excel keeps the text in all of them (the T-2845 bullet above; T-3037).
 FORMULATEXT prints the long `Sales[[#This Row],[Qty]]` where Excel prints `Sales[@Qty]` (T-1683). An insert at
 the first row of a table without a header row is a fallback too (unprobed, T-3039). An insert that would
-carry a table past the last row or column runs (the cells pushed off are empty) and leaves the table, where Excel
-refuses it (T-3038). The plain-range quirk is implemented for every range inside the table's
+carry a table past the last row or column is refused with an error and changes nothing, as Excel does
+(`Model::refuse_table_off_sheet`, T-3038; a table that ends exactly at the last row afterwards is
+allowed, unprobed). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
 inside grow the table (T-2339). A wholly deleted plain range prints one sheet-qualified `S!#REF!`, not a `#REF!` per corner

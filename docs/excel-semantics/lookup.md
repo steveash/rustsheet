@@ -323,7 +323,7 @@ while lo <= hi:
     mid = floor((lo+hi)/2)
     m = first index >= mid with the lookup value's type   # skips blanks, errors, other types
     if m > hi: hi = mid-1; continue
-    c = compare(v[m], key)                                  # text case-insensitive
+    c = compare(v[m], key)                                  # text by the collation: æ=ae, a=A (T-3115)
     if c == 0: return the last index of the run of adjacent equal cells starting at m
     if c < 0: best = m; lo = m+1
     else: hi = m-1
@@ -341,7 +341,18 @@ matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `VLOOKUP("",{blank;blank;b
 `MATCH(blank,{"";0},0)` = 2). Numbers must be exactly equal, without the 15-digit rounding of the
 comparison operators: `MATCH(0.1+0.2,{0.3},0)` and `VLOOKUP(0.1+0.2,{0.3},1,FALSE)` are `#N/A`.
 A match_type that is not a number is `#VALUE!` even with a blank key (`MATCH(blank,…,"x")`).
-Text comparison uses Excel's collation, not code-point order (T-0220).
+Text comparison uses Excel's collation, not code-point order (T-0220), and unlike exact match (MATCH 0, VLOOKUP FALSE,
+which compare case-folded code units, T-1590) the approximate searches take collation-equal texts as equal (T-3115,
+probes/t3115-approximate-text-collation, excel-graph 2026-10-29, VERIFIED). VLOOKUP TRUE, HLOOKUP TRUE and MATCH 1 (Calc!A-D)
+agree on every row: `"ae"` and `"æ"` (also `"ß"`/`"ss"`, `"œ"`/`"oe"`, `"Æ"`) form one run of equal cells, so
+`MATCH("ae",{"ae";"æ"},1)` and `MATCH("ae",{"æ";"ae"},1)` are both 2 (rows 1-13); a code-point tiebreak would give 1 and
+`#N/A`. The order is the collation's, not ordinal: `"az"` over {"æ";"b"} is 1, as is `"oz"` over {"œ";"p"} (rows 14-20). Hyphen,
+apostrophe and accent tiebreaks count (they are not equal): `"coop"` over {"co-op"} and {"co-op";"cop"}, `"a"` over {"'a";"b"},
+`"resume"` over {"résumé"} and `"e"` over {"é"} are `#N/A`; `"résumé"` over {"resume";"resumf"} is 1 (rows 21-44).
+Accents order against each other too: `"ä"` over {a;á;ä;å;b} is 3 and `"á"` over {a;å;b} is 1 (rows 45-46). Case is
+ignored outright: `"A"` over {"A";"a"} is 2 (rows 47-50). MATCH -1's top-down scan (Calc!E-F, rows 51-69) uses the same
+collation: `"ae"` over {"æ";"ae"} is 1 (the first equal cell), `"ae"` over {"b";"a-e"} is 2.
+The engine already compared text this way (`compare_searched` → `compare_values` → `cmp_text_excel`); all 625 cells pass.
 The approximate searches compare numbers as exact doubles, not at 15 digits like the comparison operators (T-3073,
 probes/t3073-lookup-near-equal-approximate, excel-graph 2026-10-29). A table number a few ULP from the key is larger
 or smaller than it, never equal, so the search steps past it. In VLOOKUP and HLOOKUP (TRUE) and in `MATCH(key,…,1)`
@@ -363,7 +374,7 @@ Status: VERIFIED
 Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`; numbers are ordered as exact doubles by
 `compare_searched` there.
-Tasks: T-0212, T-0220, T-3073, T-3099
+Tasks: T-0212, T-0220, T-3073, T-3099, T-3115
 
 ## MATCH descending search scans from the top; a text match_type read from a cell is #REF!
 Rule 1: a descending search (negative match_type) is a linear scan from the first cell, not a binary
@@ -911,10 +922,35 @@ the 10-cell range is the count's `#N/A` (coercion.md "SUMX2MY2 / SUMX2PY2 / SUMX
 `ISTEXT(TAKE(E7:E8,1))` TRUE and `ISFORMULA(TAKE(E7:E8,1))` FALSE.
 Evidence: probes/t3072-take-drop-one-cell-reference P1-P18, P42-P57 (excel-graph, 2026-10-28, T-3072); gen-m9/7674c89c824aca43 Calc!A305
 (`CHITEST((E9-TAKE(E7,2,42)),C8:C10)` `#VALUE!`), gen-m9/7c20351562a2d71d Calc!A277.
+
+Every other one-cell reference form is the same: a defined name for `$E$7`, a LET variable bound to `E7`, `INDEX(E7:E8,1)` and `OFFSET(E7,0,0)` as the
+array of TAKE or DROP keep the reference. `ROWS(E9-TAKE(x,1))` and `ROWS(E9-DROP(x,0))` are `#VALUE!` (E7 text), `ISREF(TAKE(x,1))` is TRUE and
+`TYPE(1+TAKE(x,1))` is 1 for a number cell, for each form.
+Evidence: probes/t3085-take-drop-one-cell-forms P1-P16 (excel-graph, 2026-10-29, T-3085).
 Ours: `take_drop_reference` reads a one-cell reference argument, on this sheet or another, through `evaluate_node_with_reference`, as a
 one-cell range, before choosing its value or reference read (T-3072).
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2519, T-3072
+
+## TAKE/DROP of a variable bound to one cell is a reference
+Rule: a LET variable or LAMBDA parameter bound to a one-cell reference is that reference as TAKE's, DROP's or TRIMRANGE's array, read
+bare, as a LET body (nested LETs too) or as the arm IF picks, as a written one-cell reference is (above): `TYPE(TAKE(LET(v,A2,v),1))`,
+`TYPE(TAKE(LET(v,A2,acc,v,y,"?b",acc),-1,-1))`, `TYPE(TAKE(LET(v,A2,LET(w,v,w)),1))`, `LET(v,A2,TYPE(TAKE(v,1)))`,
+`LET(v,A2,TYPE(TAKE(IF(TRUE,v),1)))`, `TYPE(DROP(LET(v,A2,v),0))` and `TYPE(LAMBDA(v,TAKE(v,1))(A2))` are 1 (not a 1x1 array's 64), and
+`ISREF` of `TAKE(LET(v,A2,v),1)`, `TAKE(v,1)`, `TAKE(IF(TRUE,v),1)`, `DROP(LET(v,A2,v),0)`, `TRIMRANGE(LET(v,A2,v))` and of the LAMBDA
+form is TRUE. So a blank one reads as a blank cell: `TAKE(LET(v,A1,v),1)` is 0 in a cell, `TAKE(LET(v,A1,acc,v,acc),-1,-1)&""` is "",
+`TYPE(TAKE(LET(v,A1,v),1)+0)` 1; and with A3 text `ROWS(A2-TAKE(LET(v,A3,v),2,42))` is `#VALUE!`. A variable bound to a value stays an
+array: `TYPE(TAKE(LET(v,5,v),1))`, `TYPE(TAKE(5,1))`, `TYPE(TAKE(LET(v,A2+0,v),1))` and `TYPE(TAKE(LET(v,{5},v),1))` are 64, as is a lifted
+count, `TYPE(TAKE(LET(v,A1,v),{1;1}))`. A multi-cell binding was already its range (`TYPE(TAKE(LET(v,B1:B4,v),-1))` 1,
+`TYPE(TAKE(LET(v,B1:B4,v),2)-1)` 64, `ROWS(TAKE(LET(v,B1:B4,v),3))` 3).
+Evidence: probes/t2622-take-let-reference-lambda-text P1-P30 (excel-graph, 2026-10-29, T-2622); gen-m9/1b31092a0d79e5f1 Calc!A143
+(probes/t2475-stat-subexpressions P!A70, `TAKE(LET(v,D05!A$11,acc,v,y,"?b",acc),-1,-1)` 0 with TYPE 1).
+Ours: `Model::cell_variable_reference` (functions/logical/let.rs), read by TAKE's and DROP's value path (`value_or_grid` with
+`keep_cell_variables`) and by `evaluate_picked_source` for TAKE, DROP and TRIMRANGE as a reference argument; OFFSET's counts and every
+other consumer still read such a variable as its cell's value (T-2622). TRIMRANGE's value read of one (`TYPE(TRIMRANGE(LET(v,A2,v)))`) is
+unprobed.
+Status: VERIFIED (excel-graph); implemented
+Tasks: T-2622
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or

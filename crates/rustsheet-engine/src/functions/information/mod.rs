@@ -135,8 +135,9 @@ impl Model {
         CalcResult::Boolean(self.is_reference(&args[0], cell))
     }
 
-    /// Whether `node` stands for a reference (ISREF).
-    fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+    /// Whether `node` stands for a reference (ISREF, and T's cell-text rule). It may evaluate
+    /// the argument again for the picking functions, so callers use it only when needed.
+    pub(crate) fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         // `ISREF(IF(TRUE,…!A1))` is TRUE (probes/external-ref-no-link-ifchoose A9, A10, A31).
         // A reference into another workbook, written or through INDEX, a union, an
         // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index

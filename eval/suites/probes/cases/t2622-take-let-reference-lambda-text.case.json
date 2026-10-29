@@ -1,0 +1,62 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2622 probe: TAKE/DROP of a LET whose body is a bound reference (one cell, blank, text, multi-cell) in value context, beside TAKE of a scalar; and an uncalled LAMBDA joined as text.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A2": 5,
+        "A3": "t",
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "B4": 4,
+        "P1": "=TYPE(TAKE(LET(v,A1,v),1))",
+        "P2": "=TYPE(TAKE(LET(v,A2,v),1))",
+        "P3": "=TYPE(TAKE(LET(v,A2,acc,v,y,\"?b\",acc),-1,-1))",
+        "P4": "=TYPE(TAKE(LET(v,A2:A3,v),1))",
+        "P5": "=TYPE(TAKE(LET(v,B1:B4,v),-1))",
+        "P6": "=TYPE(DROP(LET(v,B1:B4,v),3))",
+        "P7": "=TYPE(TAKE(LET(v,5,v),1))",
+        "P8": "=TYPE(TAKE(5,1))",
+        "P9": "=ROWS(A2-TAKE(LET(v,A3,v),2,42))",
+        "P10": "=ROWS(A2-TAKE(A3,2,42))",
+        "P11": "=TAKE(LET(v,A1,v),1)",
+        "P12": "=TAKE(LET(v,A1,acc,v,acc),-1,-1)&\"\"",
+        "P13": "=TYPE(TAKE(LET(v,A1,v),1)+0)",
+        "P14": "=TYPE(TAKE(LET(v,A2+0,v),1))",
+        "P15": "=ISREF(TAKE(LET(v,A2,v),1))",
+        "P16": "=TYPE(TAKE(LET(v,B1:B4,v),-1)-1)",
+        "P17": "=TYPE(TAKE(LET(v,B1:B4,v),2)-1)",
+        "P18": "=ROWS(TAKE(LET(v,B1:B4,v),3))",
+        "P19": "=TYPE(TAKE(LET(v,{5},v),1))",
+        "P20": "=TYPE(TAKE(LET(v,A2,LET(w,v,w)),1))",
+        "Q1": "=LAMBDA(x,x)&\"\"",
+        "Q2": "=ERROR.TYPE(LAMBDA(x,x)&\"\")",
+        "Q3": "=LET(f,LAMBDA(x,x),f&\"|\")",
+        "Q4": "=ERROR.TYPE(LET(f,LAMBDA(x,x),\"a\"&f))",
+        "Q5": "=TYPE(LAMBDA(x,x))",
+        "Q6": "=LET(t,TYPE(LAMBDA(x,x)),v,LAMBDA(x,x),t&\"|\"&v)",
+        "Q7": "=ISERROR(LAMBDA(x,x)&\"\")",
+        "Q8": "=IFERROR(LAMBDA(x,x)&\"\",\"e\")",
+        "Q9": "=LAMBDA(x,x)&LAMBDA(y,y)",
+        "Q10": "=\"a\"&LAMBDA(x,x)",
+        "P21": "=LET(v,A2,ISREF(TAKE(v,1)))",
+        "P22": "=LET(v,A2,TYPE(TAKE(v,1)))",
+        "P23": "=LET(v,A2,ISREF(TAKE(IF(TRUE,v),1)))",
+        "P24": "=LET(v,A2,TYPE(TAKE(IF(TRUE,v),1)))",
+        "P25": "=TYPE(DROP(LET(v,A2,v),0))",
+        "P26": "=ISREF(TRIMRANGE(LET(v,A2,v)))",
+        "P27": "=ISREF(DROP(LET(v,A2,v),0))",
+        "P28": "=TYPE(LAMBDA(v,TAKE(v,1))(A2))",
+        "P29": "=LAMBDA(v,ISREF(TAKE(v,1)))(A2)",
+        "P30": "=TYPE(TAKE(LET(v,A1,v),{1;1}))"
+      }
+    }
+  ],
+  "expected": {}
+}

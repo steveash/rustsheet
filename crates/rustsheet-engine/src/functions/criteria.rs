@@ -60,30 +60,33 @@ fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     }
 }
 
+// Excel: the ordering criteria compare the cell's 15-digit value too, so a cell holding 1+22*2^-52 meets
+// "<=1" and not ">1" (docs/excel-semantics/numbers.md#criteria-ordering-operators-compare-at-15-digits-too,
+// probes/t3072-criteria-near-equal-order).
 fn result_is_less_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f < target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_lt(),
         _ => false,
     }
 }
 
 fn result_is_less_or_equal_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f <= target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_le(),
         _ => false,
     }
 }
 
 fn result_is_greater_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f > target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_gt(),
         _ => false,
     }
 }
 
 fn result_is_greater_or_equal_than_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f >= target,
+        CalcResult::Number(f) => cmp_excel_precision(*f, target).is_ge(),
         _ => false,
     }
 }
@@ -204,18 +207,8 @@ fn result_is_not_equal_to_error(calc_result: &CalcResult, target: &str) -> bool 
 // EMPTY ///
 //*******///
 
-// Note that these two are not inverse of each other.
-// In particular, you can never match an empty cell.
-
 fn result_is_not_equal_to_empty(calc_result: &CalcResult) -> bool {
     !matches!(calc_result, CalcResult::EmptyCell)
-}
-
-fn result_is_equal_to_empty(calc_result: &CalcResult) -> bool {
-    match calc_result {
-        CalcResult::Number(f) => *f == 0.0,
-        _ => false,
-    }
 }
 
 /// Which family of functions a criterion is being compiled for.
@@ -365,6 +358,12 @@ pub(crate) fn indexed_criterion(
         CalcResult::Number(target) => {
             return Some(IndexedCriterion::Number(CriterionOp::Eq, *target))
         }
+        // Excel: a blank-cell or omitted criterion is the criterion 0: it matches 0, -0 and the
+        // text "0", never a blank, an empty string or FALSE (docs/excel-semantics/criteria.md,
+        // probes/t3138-blank-criterion D1:H9).
+        CalcResult::EmptyCell | CalcResult::EmptyArg => {
+            return Some(IndexedCriterion::Number(CriterionOp::Eq, 0.0))
+        }
         CalcResult::String(s) => s,
         _ => return None,
     };
@@ -475,12 +474,14 @@ pub(crate) fn build_criteria_with<'a>(
             }
             Box::new(move |x| result_is_equal_to_error(x, &error.to_string()))
         }
-        // `indexed_criterion` takes every number above.
+        // `indexed_criterion` takes every number and every empty criterion above.
         CalcResult::Number(target) => Box::new(move |x| result_is_equal_to_number(x, *target)),
+        CalcResult::EmptyCell | CalcResult::EmptyArg => {
+            Box::new(|x| result_is_equal_to_number(x, 0.0))
+        }
         CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
             Box::new(move |_x| false)
         }
-        CalcResult::EmptyCell | CalcResult::EmptyArg => Box::new(result_is_equal_to_empty),
     }
 }
 
