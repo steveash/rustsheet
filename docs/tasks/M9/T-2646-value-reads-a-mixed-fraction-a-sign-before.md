@@ -3,7 +3,7 @@ id: T-2646
 title: "VALUE reads a mixed fraction, a sign before a space and a dash date with a one-digit year (probes/eng-inumber-date-boundary, 4 cells)"
 milestone: M9
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
