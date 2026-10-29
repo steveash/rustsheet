@@ -25,4 +25,4 @@ T-3072 made `take_drop_reference` (functions/lookup_and_reference/drop_take.rs) 
 -
 
 ## Outcome
-Probed all four forms (probes/t3085-take-drop-one-cell-forms, 16 cells). LET variables and OFFSET already matched; a defined name and an INDEX result as TAKE/DROP's array now keep the reference (`take_drop_reference`). Findings in lookup.md. Probe case passes 16/16.
+Probed all four forms (probes/t3085-take-drop-one-cell-forms, 16 cells). LET variables and OFFSET already matched; a defined name and an INDEX result as TAKE/DROP's array now keep the reference (`take_drop_reference`). Findings in lookup.md. Probe case passes 16/16. (An earlier commit on this branch wrongly deleted nine t2065 oracle files; restored.)
