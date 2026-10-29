@@ -3,10 +3,10 @@ id: T-2622
 title: "TAKE of a LET scalar, CELL(contents) in COUNT and MODE.SNGL, XMATCH, and a LAMBDA joined as text is #VALUE! (T-2475 probe)"
 milestone: M9
 lane: functions-lookup
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -35,3 +35,13 @@ before implementing it.
 
 ## Out of scope
 - Cells owned by the other T-2475 follow-ups (T-2618 to T-2623).
+
+## Handoff
+Tried: read the task and the existing "empty value" handling (`CELL("contents",<blank>)` is the empty value, special-cased in
+functions/information/mod.rs ~788, drop_take.rs, hstack_vstack.rs, spill_functions.rs ~282; information.md "CELL("contents", ref)
+as a VSTACK argument"). No code changed. Why handed off: the five owned cells need five distinct rules (TAKE of a LET scalar,
+CELL("contents") as COUNT's and MODE.SNGL's argument, XMATCH match-mode cell, LAMBDA joined as text) whose evidence is inferred from
+a wrapper probe, and the task itself says the LAMBDA-as-text rule needs a direct probe cell first (`LAMBDA(x,x)&""`). That is a
+probe-then-design job across the empty-value representation, not a one-function fix.
+Next: add the direct probe cells (oracle excel-graph is OK), fill them, record each rule in docs/excel-semantics/, then fix the
+empty-value reads in COUNT / MODE.SNGL, TAKE's scalar path and XMATCH's match_mode coercion, and `make eval-baseline`.
