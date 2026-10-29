@@ -4,13 +4,13 @@ use crate::{calc_result::CalcResult, expressions::types::CellReferenceIndex, mod
 
 /// Random access to a sorted sequence, so the binary searches also run over
 /// a `SearchVector` whose empty tail is virtual (T-0127).
-pub(crate) trait Sequence<T: Ord> {
+pub(crate) trait Sequence<T> {
     fn seq_len(&self) -> usize;
     /// The element at `index`, which must be below `seq_len`.
     fn at(&self, index: usize) -> &T;
 }
 
-impl<T: Ord> Sequence<T> for [T] {
+impl<T> Sequence<T> for [T] {
     fn seq_len(&self) -> usize {
         self.len()
     }
@@ -19,7 +19,7 @@ impl<T: Ord> Sequence<T> for [T] {
     }
 }
 
-impl<T: Ord> Sequence<T> for Vec<T> {
+impl<T> Sequence<T> for Vec<T> {
     fn seq_len(&self) -> usize {
         self.len()
     }
@@ -40,11 +40,15 @@ impl<T: Ord> Sequence<T> for Vec<T> {
 /// unsorted data that is whatever those probes give, as in Excel: with 5,_,10,_,20,_ in A1:A6,
 /// `XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(99,A:A,-1,2)` is 1 (probes/xmatch-xlookup-blanks
 /// Col!M16-M26, Err!M6-M7, Row!A18; T-1019). O(log n) probes, so a virtual tail is never walked.
-pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
+///
+/// The elements are ordered by `cmp(element, target)`: XMATCH and XLOOKUP order numbers as exact
+/// doubles, not at 15 digits (T-3132).
+pub(crate) fn binary_search_by<T, S: Sequence<T> + ?Sized>(
     target: &T,
     array: &S,
     descending: bool,
     mode: Ordering,
+    cmp: impl Fn(&T, &T) -> Ordering,
 ) -> Option<usize> {
     let (mut smaller, mut larger, mut equal) = (None, None, None);
     // The live range is lo..hi (hi exclusive), so the lower middle of the inclusive bounds is
@@ -53,7 +57,7 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
     let mut hi = array.seq_len();
     while lo < hi {
         let mid = lo + (hi - 1 - lo) / 2;
-        let ordering = array.at(mid).cmp(target);
+        let ordering = cmp(array.at(mid), target);
         match ordering {
             // An equal element is remembered and the search goes on past it, to the left when
             // ascending and to the right when descending, so a gap inside a run ends it: with
