@@ -3,7 +3,7 @@ id: T-3115
 title: "Approximate VLOOKUP, HLOOKUP and MATCH over text: probe whether the search orders by the collation or by the exact-match key, and match it"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -35,19 +35,28 @@ oracle case, not from inference.
   same tables, so the four can be compared.
 
 ## Acceptance criteria
-- [ ] A new probe case `probes/t3115-approximate-text-collation` (oracle-filled) covers VLOOKUP TRUE, HLOOKUP TRUE,
+- [x] A new probe case `probes/t3115-approximate-text-collation` (oracle-filled) covers VLOOKUP TRUE, HLOOKUP TRUE,
       MATCH 1 and MATCH -1 with keys and tables built from `æ`/`ae`, `ß`/`ss`, `œ`/`oe`, `co-op`/`coop`, `'a`/`a`,
       `résumé`/`resume` and case pairs (`"A"`/`"a"`). It has at least one table per model above in which the models
       give different results.
-- [ ] lookup.md "Approximate-match lookups: type-skipping binary search" says which model Excel uses, with the case id and cells (VERIFIED). The
+- [x] lookup.md "Approximate-match lookups: type-skipping binary search" says which model Excel uses, with the case id and cells (VERIFIED). The
       inference sentence is replaced.
-- [ ] Every cell of the new case passes. If Excel does not use the collation, the approximate searches compare text
+- [x] Every cell of the new case passes. If Excel does not use the collation, the approximate searches compare text
       through one shared comparator (reuse `ExactKey`'s folding, `folded_units` in functions/criteria.rs, do not copy it). probes/t3073-lookup-near-equal-approximate,
       probes/text-collation-lookups and the gen-m2 VLOOKUP/HLOOKUP/MATCH cells show 0 regressions (`make eval-check`).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - LOOKUP, XLOOKUP and XMATCH approximate and binary modes. File a follow-up (M6/M7) if the answer suggests they
   differ. T-3106 covers their number keys.
 - New collation weights for letters beyond Latin-1 (T-3114).
 - Ordered criteria operators (T-3103).
+
+## Outcome
+New probe `probes/t3115-approximate-text-collation` (69 tables, 238 formula cells, excel-graph 2026-10-29): VLOOKUP TRUE,
+HLOOKUP TRUE, MATCH 1 and MATCH -1 all order text by the collation, with collation-equal texts (`æ`/`ae`, `ß`/`ss`,
+`œ`/`oe`, case pairs) forming one run of equal cells; hyphen, apostrophe and accent tiebreaks keep texts apart. That is
+model (a); the tables separate it from a code-point tiebreak (rows 1-13, 47-50) and a case-folded ordinal key (rows
+14-23, 28, 32, 36, 59-64). The engine already matched: 625/625 cells pass with no code change. lookup.md "Approximate-match
+lookups" records the rule (VERIFIED). Nothing suggests LOOKUP, XLOOKUP or XMATCH differ, so no follow-up was filed.
+Eval delta: +625 passing cells (new case), 0 regressions.
