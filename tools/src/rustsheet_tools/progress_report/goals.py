@@ -299,11 +299,24 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
         return met(met_key) if required else "not required"
 
     exited = "**exit met**" if flag(row, "exit", where) else "**exit not met**"
+    # The first required suite is the generated one but for M11's corpus-bench (decision 0146).
+    suite = row.get("gen_suite") or ""
+    label = suite if suite and suite != f"gen-{milestone.lower()}" else "generated suite"
     measures = [
         exited,
         f"coverage {_num(get('covered'))}/{_num(get('functions'))} ({shown('covered', 'coverage_met')})",
-        f"generated suite {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
+        f"{label} {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
         f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})",
+    ]
+    # The other required suites (M1's smoke), each with its own floor and rate.
+    for i, more in enumerate(row.get("more_suites") or []):
+        mwhere = f"{where} more_suites[{i}]"
+        measures.append(
+            f"{_text(more, 'name', mwhere)} {_num(_optional(more, 'visibly_off', mwhere))} visibly off of "
+            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))} "
+            f"({_verdict(_optional(more, 'met', mwhere, boolean=True))})"
+        )
+    measures += [
         f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off ({shown('calc_visibly_off', 'calc_met')})",
         f"probes {_num(get('probe_visibly_off'))} visibly off ({met('probes_met')})",
     ]

@@ -1932,13 +1932,17 @@ in row-major order or below a broken element that may be empty with the same by_
 `{TRUE,"x",TRUE,TRUE}` 22, `#VALUE!`, empty, `#VALUE!`, `{TRUE;FALSE;FALSE}` 22, empty, empty, `{TRUE;TRUE;FALSE}` and
 `{TRUE;FALSE;TRUE}` 22, empty, `#VALUE!`, `{TRUE,TRUE;FALSE,FALSE}` 22, empty / `#VALUE!`, `#VALUE!`, and a 3x2 range of TRUE 22,
 empty in every row; with sort_index 1, 3 or 4 every broken element is `#VALUE!`. Sort order, by_col FALSE or TRUE, the array's
-shape (4x4, 3x1, 1x3, 3x2, an array constant) and a range by_col change nothing. That a failed call between two that sort is skipped
-is evidenced for an invalid by_col ("x"); for a sort_index past the array it is by analogy, UNVERIFIED, as is comparing a number
-by_col with a boolean one.
+shape (4x4, 3x1, 1x3, 3x2, an array constant) and a range by_col change nothing. An invalid by_col ("x") is skipped wherever it sits, but a call that fails on its sort_index
+(`SORT(F7:F9,2,1,{TRUE,FALSE,TRUE})`, the FALSE one-column call has no column 2) is skipped only before the first call that sorts: after
+that it counts as a sorting call, so `{TRUE,FALSE,TRUE}` and `{TRUE;FALSE;TRUE}` are 5, empty, `#VALUE!`, `{TRUE;FALSE;FALSE}`
+5, empty, empty, and `{FALSE;TRUE;TRUE}` `#VALUE!`, 5, 5. A number by_col is not equal to the boolean it reads as when the leads are
+compared: `{TRUE;1;TRUE;TRUE}` on a 4x4 array is 22, empty, `#VALUE!`, `#VALUE!` and `{TRUE,TRUE;1,1}` keeps only the first row,
+while a horizontal `{1,1,1,1}`, `{1,TRUE,TRUE,TRUE}`, `{TRUE,1,TRUE,TRUE}`, `{1,1,TRUE,TRUE}`, `{1,2,TRUE,TRUE}` and `{2,TRUE,TRUE,TRUE}` are as `{TRUE,TRUE,TRUE,TRUE}`. UNVERIFIED (T-3090): a number by_col read from a range cell or a text one ("1", "TRUE") beside a boolean; `{TRUE,TRUE;1,TRUE}` row 2 is `#VALUE!`, `#VALUE!` in Excel, ours has an empty second element; a 4-row by_col over a 3-row
+array is unprobed (evidence: probes/t2947-sort-lifted-by-col-corners, excel-graph, 2026-10-29, T-2947).
 Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col (excel-graph, 2026-10-27, T-2366); probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column (excel-graph, 2026-10-27, T-2929).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
-(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element, then `sort_lifted_elements` in spill_functions.rs keeps, empties or errs each element by the rule above (T-2929); a range by_col lifts too; the two UNVERIFIED corners are T-2947's); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
+(T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element, then `sort_lifted_elements` in spill_functions.rs keeps, empties or errs each element by the rule above (T-2929); a range by_col lifts too; the corners of T-2947 are in the entry above); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
 Status: VERIFIED (excel-graph)
 Tasks: T-2313, T-2318, T-2319, T-2366, T-2467, T-2929, T-2947
 

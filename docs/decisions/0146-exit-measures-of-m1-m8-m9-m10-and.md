@@ -101,3 +101,10 @@
   - On today's numbers M1 is met; M8 is not (9 probe cells; the POI subset is `n/a`); M9 is not
     (138 > 36, 82 functions, 578 probe cells); M10 is not (76 text items, 50 probe cells); M11 is
     met on corpus-bench (99.834%, 205,366 cells) and its probes.
+  - T-0089 (2026-10-29) builds the M1 and M11 rows. Each row reads a list of required suites, each
+    with its own floor and rate. The first suite is the row's `gen_*` measure, named in
+    `gen_suite` (`gen-m1`, or `corpus-bench` for M11). The rest go in `more_suites` (M1's smoke).
+    M1's `probe_row` names the `m1-probes` list it reads. `scripts/exit_owners.py` lists the
+    visibly-off cells of every required suite (by `gen_suite`, falling back to `gen-m<k>`, then
+    `more_suites`) and of a `milestone_lists` row whose name is the exit row's `probe_row`. The
+    M2, M5, M6 and M7 rows read and print as before.
