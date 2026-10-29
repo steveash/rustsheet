@@ -3,7 +3,7 @@ id: T-0089
 title: "Milestone exit rows for M1 and M11 in the eval report (decision 0146 items 1 and 5), with rows that read several suites"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
