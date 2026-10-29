@@ -59,3 +59,7 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
 
 ## Out of scope
 - The visibly-off basis 1 and 2 cells (T-2777); YIELD's `#NUM!` cells and its 100-step cap (T-2391).
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- probes/yield-start-term-basis S!A18 `YIELD(DATE(2013,5,10),DATE(2024,2,29),0.05,98,100.5,2,2)`: Excel 0.05279263039071429, ours 0.05279263039071384 (8.5E-15 relative, the size of this probe's A9, C11, C20, A26 and A38 above)

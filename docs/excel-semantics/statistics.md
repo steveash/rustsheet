@@ -3199,6 +3199,13 @@ Tasks: T-1543, T-1634
     (A129 to A140). The ulp errors in this range only reflect the true quantile moving under a constant Excel
     output (`GAMMA.INV(p,2,1)` is low at all seven p, 40 to 595 ulp; `CHISQ.INV.RT(p,5)` is high at the six
     neighbours, 302 to 2,769 ulp, and 44 ulp low at 0.999).
+    Correction (gap triage 2026-10-29, T-3175): this "break" is the probe's literals, not Excel's search. Formula
+    number literals are cut to 15 significant digits (numbers.md), so `0.99899999999999967`, `...78` and `...89`
+    are all 0.998999999999999 and `0.99900000000000011` to `...33` are all 0.999. The two values of
+    `GAMMA.INV(p,2,1)` differ by 1.108E-12, which is 1E-15 of p over the gamma density 9.04E-4 at the quantile. Neither
+    group is a set of neighbouring doubles, so nothing above says how Excel's quantile moves between adjacent p. The
+    same cut applies to the 17-digit x literals of the cdf series below (A141 to A361): for small k several x = q + k
+    ulp literals read as one 15-digit x, so the band edges below are measured on 15-digit x, not on the doubles.
   - Excel's cdf is monotone in x at every sampled series, with a flat run at 0.999. For the doubles
     `x = q + k ulp`, k in 0, +-1 ... +-128 (q Excel's p = 0.999 quantile), `GAMMA.DIST(x,a,1,TRUE)` (and
     `CHISQ.DIST.RT(x,df)`) equals 0.999 for k in [-32, 64] (a = 1), only k = 32 (a = 2), [-32, 2] (a = 5),
