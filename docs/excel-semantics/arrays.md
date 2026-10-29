@@ -1330,14 +1330,17 @@ gives it back, which a cell shows as `#CALC!` (`INDEX(LAMBDA(x,x),1,1)`, `INDEX(
 `ROWS(INDEX(LAMBDA(x,x),0,0))` is 1). ISNONTEXT of it is TRUE, while ISERROR, ISERR, ISNA, ISTEXT, ISNUMBER, ISLOGICAL,
 ISBLANK and ISREF are FALSE (also through `IF(1,..)`). `ISEVEN(LAMBDA(x,x))` is `#VALUE!`, `ERROR.TYPE(LAMBDA(x,x))` is
 `#N/A`, `TYPE(_xleta.SUM)` is 128 and `IFERROR(LAMBDA(x,x),1)` is `#CALC!`, the uncalled LAMBDA in the cell. Joined as text
-it is `#VALUE!`: `LET(v,LAMBDA(z,z),t,TYPE(v),..,t&"|"&v)` is `#VALUE!` (probes/t2475-stat-subexpressions, the bare `LAMBDA(..)`
-rows; ours `#N/IMPL!`, T-2622).
+it is `#VALUE!` on either side: `LAMBDA(x,x)&""`, `"a"&LAMBDA(x,x)`, `LAMBDA(x,x)&LAMBDA(y,y)`, `LET(f,LAMBDA(x,x),f&"|")` and
+`LET(v,LAMBDA(z,z),t,TYPE(v),..,t&"|"&v)` are `#VALUE!` (ERROR.TYPE 3, ISERROR TRUE, IFERROR catches it), and `TYPE(LAMBDA(x,x))` is 128
+(probes/t2622-take-let-reference-lambda-text Q1-Q10; probes/t2475-stat-subexpressions, the bare `LAMBDA(..)` rows).
 Evidence: probes/lambda-value-arguments A1-A26 (excel-graph, 2026-10-19, T-1511); probes/m7-argument-modes F44:H44;
-probes/eta-reduced-names E93; probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475).
-Ours: `value_extent` (cast.rs), `is_predicate` and `parity_of` (information/mod.rs), `index_select` (index.rs) since T-1511.
+probes/eta-reduced-names E93; probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475);
+probes/t2622-take-let-reference-lambda-text Q1-Q10 (excel-graph, 2026-10-29, T-2622).
+Ours: `value_extent` (cast.rs), `is_predicate` and `parity_of` (information/mod.rs), `index_select` (index.rs) since T-1511; `&` of
+one is `#VALUE!` in `handle_concatenate` (arithmetic.rs) since T-2622. CONCATENATE, CONCAT and TEXTJOIN of one are unprobed.
 INDEX of a LAMBDA with an index of 2 is `#REF!` there, as for a scalar, which is unprobed (T-1946).
 Status: VERIFIED (excel-graph)
-Tasks: T-1511
+Tasks: T-1511, T-2622
 
 ## LAMBDAs that outlive their call
 Rule: a LAMBDA made inside a LET or a LAMBDA call is a lexical closure: called after that LET or call is over, it reads the
