@@ -53,7 +53,7 @@ element (and every accumulator step) of a helper result holds Excel's 0 or Excel
   MAKEARRAY, BYROW and BYCOL make snaps the LAMBDA body's `+`/`-` root, element by element. REDUCE and SCAN snap at
   every accumulator step, so later steps start from 0. An in-place call passed as another LAMBDA call's argument
   snaps too. k = 8 keeps its residue everywhere.
-- numbers.md "Pickers, LET, LAMBDA and unary signs" records each helper with its cells. Its "Unprobed" sentence now
+- numbers.md "Near-zero snapping" records each helper in a new paragraph after "Pickers, LET, LAMBDA and unary signs" with its cells. Its "Unprobed" sentence now
   names only GROUPBY/PIVOTBY and the eta-reduced helpers (T-3112).
 - Eval delta: +1 case, 83/148 cells pass. The 65 that fail are known failures in eval/baseline/probes.txt and are owned
   by T-3111 (M7, engine, opus).
