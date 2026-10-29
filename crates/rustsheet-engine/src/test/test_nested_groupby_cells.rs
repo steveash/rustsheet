@@ -236,6 +236,8 @@ fn flattening_and_handing_over_copies_is_bounded() {
     // its LAMBDA, pass the walk budget (2^27 cells) at the 129th copy: `#ERROR!`, in time bounded
     // by the budget (DEVIATION, arrays.md "Nested GROUPBY and PIVOTBY cells: bounds").
     let mut model = groups();
+    // The walk budget under test, not the formula work budget, which the reads now also charge.
+    model.area_budget.limit = u64::MAX;
     let copies = "LET(r,GROUPBY(A2,C2,LAMBDA(v,SEQUENCE(64,16383)),0,0),\
                   CHOOSECOLS(CHOOSEROWS(r,SEQUENCE(200)^0),2))";
     model._set("F1", &format!("=SUM({copies})"));
