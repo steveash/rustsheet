@@ -3,7 +3,8 @@
 
   scripts/merge_ready.py verify --pr N    # exit 0: ready; 1: not ready (the failed checks); 2: error
   scripts/merge_ready.py mark --pr N (--review "name=APPROVE ..." | --carry) [--step]
-                                          # exit 0: marked (or the actions printed); 1: refused; 2: error
+                                          # exit 0: marked (or the actions printed); 1: refused;
+                                          # 2: error, or not ready on the read-back
   scripts/merge_ready.py labels [--create]  # the missing merge-train labels (exit 1 if any)
 
 A worker whose PR head is green and approved marks it with the `ready-to-merge` label and a PR
@@ -535,7 +536,7 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
     pull = client.pull(pr)
     head = text_of(pull, "head", "sha")
     local = repo.git("rev-parse", "--verify", "HEAD^{commit}").strip()
-    if not gh_client.SHA.fullmatch(head) or not local == head == repo.fetch_head(pr):
+    if not gh_client.SHA.fullmatch(head) or local != head or repo.fetch_head(pr) != head:
         raise Refusal(f"the local HEAD, refs/pull/{pr}/head and the PR's head.sha differ")
     authors = Authors(client, text_of(pull, "base", "repo", "owner", "type") == "User")
     markers = writer_markers(client.comments(pr), authors)
@@ -652,7 +653,8 @@ def main(argv: list[str], root: Path = ROOT) -> int:
 
 def run_mark(client: Client, pr: int, repo: Repo, args: argparse.Namespace) -> int:
     """`mark`: 1 on a refusal; otherwise the writes (or, with --step, the actions to perform and
-    then `verify` to run), and 0. With direct writes, `verify` reads the result back."""
+    then `verify` to run), and 0. With direct writes, `verify` reads the result back, and a PR
+    still not ready after them (a push in between, or a write that did not land) exits 2."""
     try:
         plan = plan_mark(client, pr, repo, args.review, args.carry, args.by)
     except Refusal as refusal:
