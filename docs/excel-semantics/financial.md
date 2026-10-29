@@ -1476,6 +1476,27 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   never); both cuts sit inside the gaps the probe left (0.095 to 0.398, and 2.9 to 4.3). 7 known failures are fixed
   (gen-m9 b73c6cc96e093f03 A62; CUMPRINC_CUMIPMT.xlsx H9, H10, H15, H21; gate-edges G9, G11), none regressed, and the
   new case's 132 cells are visibly right, 73 to the bit.
+- How the interest is built, measured (T-3067 run 4, probes/fin-cumipmt-tiny-rate-structure, excel-graph 2026-10-29,
+  226 cells): Excel's CUMIPMT is its own PMT times the period count less its own CUMPRINC, in doubles and exactly:
+  `CUMIPMT(r,n,pv,s,e,t) = PMT(r,n,pv,0,t)·(e-s+1) - CUMPRINC(r,n,pv,s,e,t)`, to the bit on all 60 probed pairs (type 1
+  at 2E-5 and 2E-6 over single periods 3 to 14 and over periods 3 to 2+m, m = 1 to 12; type 0 at 1E-4 likewise: A-M).
+  A type 1 range from period 1 is built from the range from period 2: `CUMPRINC(..,1,e,1) = PMT + CUMPRINC(..,2,e,1)`
+  and `CUMIPMT(..,1,e,1) = PMT·(e-1) - CUMPRINC(..,2,e,1)`, to the bit on all 22 cells at 0.0083 and 2E-5 (N-T),
+  where `PMT·e - CUMPRINC(..,1,e,1)` misses 9 of them by 2 to 8 ulps (gate-edges H2-H4 are such cells). The first
+  pass found the hint: every gate-edges A2-A8 and E1-E10 value is a multiple of its principal's ulp (2^-40 for E), so
+  the last operation is a cancellation of two doubles of about 8,000. Consequences: the tiny-rate interests
+  (gate-edges A2-A8, E1-E10, gen-m9 A379) and G2/H2 are visibly off only because they amplify an ulp of PMT or of
+  CUMPRINC (an ulp of a 1,000 payment is 512 to 4,096 ulps of an interest of 1.5 to 15), and ours are not those bits:
+  the engine's PMT, which rounds the exact payment once (`accurate_payment`), is an ulp off Excel's at 2E-6, 2E-5
+  (both types) and 0.0083 type 1 (M1, M2, M4, M5; Excel's are 0.5 to 0.9 ulp from exact, T-3014), and our CUMPRINC is
+  1 to 3 ulps off on 59 of the case's 104 principals. Taking the rule now (with the engine's PMT and CUMPRINC) is no
+  better: everywhere it takes 29 bit-exact cells off (gen-m9 5c6a23c4f6597f1c A392, 81bcdc0bec0c8e6b A274 and 6 more;
+  CUMPRINC_CUMIPMT.xlsx G3-G5; gate-edges B8, B9, B11, H1, H7, H8; fin-cumipmt-overflow-and-forms A5, A8, A12, A14
+  and 7 more) and moves the visible count by one (7 fewer in the new case, 6 more elsewhere), and limited to `nper·L < 2^-10` it still takes 2 to 4 off.
+  So nothing in the kernel changed. With Excel's PMT bits plugged in, the best principal form for a type 1 range
+  from period 2 (the geometric sum `pmt·((1-v^m)/(r/(1+r)))·v^(nper-end+1)` on `log1p` or `growth_log`, Excel's
+  expm1) is exact on 22 of the 58 type 1 principals and within 3 ulps of the rest, so CUMPRINC's own form is open too.
+  Next: Excel's PMT bits (T-3014), then CUMIPMT as `PMT·m - CUMPRINC` (T-3106).
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
 fin-cumipmt-period-bound A18, the gen-m9 cells A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
 T-3067; the short sums' last digits in T-1374)
