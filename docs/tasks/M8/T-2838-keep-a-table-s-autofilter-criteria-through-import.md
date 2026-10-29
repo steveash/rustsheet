@@ -3,7 +3,7 @@ id: T-2838
 title: "Keep a table's autoFilter criteria through import and export, and probe an exported filter"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
