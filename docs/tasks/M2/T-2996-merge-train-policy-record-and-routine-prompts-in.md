@@ -87,7 +87,7 @@ the switch leaves `lock`.
   `check_governance.py` waives only the decision-record rule for a flip (its rules are now one
   `failures` function, so the test shows the other two still fire). `gh_client` gains
   `pull_files`. `SWITCH` and `LOCK` moved to `merge_flip`, and `merge_train` imports them.
-- `scripts/test_merge_flip.py`, 9 tests: the one-line flip passes, and these are refused: an extra
+- `scripts/test_merge_flip.py`, 10 tests: the one-line flip passes, and these are refused: an extra
   file or line, `train`/`shadow`, a duplicate key, a nested `mode`, a non-string mode, a symlink, a
   type change, an executable bit, a rename, a non-UTF-8 blob, a files-API listing with two files,
   a rename or another blob, and a head that moved during the check.

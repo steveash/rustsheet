@@ -93,6 +93,15 @@ def case_tags(path: str) -> list[str]:
     return [tag for tag in tags if isinstance(tag, str)] if isinstance(tags, list) else []
 
 
+def deleted_test_files(changed: list[str]) -> list[str]:
+    """The test files a diff's `--name-status` lines delete."""
+    return [
+        line.split("\t")[-1]
+        for line in changed
+        if line.startswith("D") and ("/tests/" in line or "/test/" in line or line.endswith("_test.py"))
+    ]
+
+
 def failures(changed: list[str], read_tags: Callable[[str], list[str]], flip: bool) -> list[list[str]]:
     """The failed rules for a diff's `--name-status` lines, each as its report lines. `flip` says
     the diff is a lock flip (decision 0157): it waives the decision-record rule and nothing else."""
@@ -107,11 +116,7 @@ def failures(changed: list[str], read_tags: Callable[[str], list[str]], flip: bo
                 *(f"  {p}" for p in protected),
             ]
         )
-    deleted_tests = [
-        line.split("\t")[-1]
-        for line in changed
-        if line.startswith("D") and ("/tests/" in line or "/test/" in line or line.endswith("_test.py"))
-    ]
+    deleted_tests = deleted_test_files(changed)
     if deleted_tests and not decisions:
         found.append(
             [
@@ -143,6 +148,8 @@ def main() -> int:
     if flip:
         print(f"governance: a lock flip of {merge_flip.SWITCH} (decision 0157); no decision record needed")
     found = failures(changed, case_tags, flip)
+    if deleted_test_files(changed) and any(line.split("\t")[-1].startswith("docs/decisions/") for line in changed):
+        print("note: test files deleted with a decision record present: allowed; reviewers must confirm")
     for lines in found:
         print("\n".join(lines))
     if not found:
