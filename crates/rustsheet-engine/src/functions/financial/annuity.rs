@@ -330,14 +330,16 @@ fn accurate_discount(rate: f64, x: f64) -> Option<Pair> {
 
 /// IPMT as `-rate*B` (divided by `1+rate` for type 1) on the balance after period-1 periods,
 /// `B = (pv+fv)*Y - fv` with `Y = (1-(1+rate)^(period-1-nper))/(1-(1+rate)^-nper)`, and whether
-/// that balance cancels (`|B| < |fv|`). Where it cancels Excel has `B` in doubles on the rounded
-/// `Y`, `(pv+fv)*Y - fv`, so its IPMT carries `fv`'s rounding: `IPMT(0.5,2,124,0,315)` is 0,
-/// `IPMT(50,2,10,0,315)` 5.6843418860808015E-12 = 25*2^-42, `IPMT(1E+10,10,10,0,315)`
-/// 315.00007935392205 (probes/fin-ipmt-ppmt-huge-rate A27, A291, A403); otherwise `B` is exact
-/// and the caller keeps [`accurate_period_split`]'s interest where it has one. Needing no
-/// `(1+rate)^nper`, it has the huge rates' `-pv*rate` (`IPMT(1E+300,3,2000,452017,905)` is
-/// -4.52017E+305, gen-m9 abb7d565af89b849 A112). docs/excel-semantics/financial.md "IPMT
-/// cancels on fv". `None` where a power declines or the result is not finite.
+/// that balance cancels (`|B| < |fv|`). Type 1 of a balance that does not cancel, at a rate that is
+/// not a whole number, is `-B*(rate/(1+rate))` in doubles (T-2665). Where it cancels Excel has `B`
+/// in doubles on the rounded `Y`, `(pv+fv)*Y - fv`, so its IPMT carries `fv`'s rounding:
+/// `IPMT(0.5,2,124,0,315)` is 0, `IPMT(50,2,10,0,315)` 5.6843418860808015E-12 = 25*2^-42,
+/// `IPMT(1E+10,10,10,0,315)` 315.00007935392205 (probes/fin-ipmt-ppmt-huge-rate A27, A291, A403);
+/// otherwise `B` is exact and the caller keeps [`accurate_period_split`]'s interest where it has
+/// one. Needing no `(1+rate)^nper`, it has the huge rates' `-pv*rate`
+/// (`IPMT(1E+300,3,2000,452017,905)` is -4.52017E+305, gen-m9 abb7d565af89b849 A112).
+/// docs/excel-semantics/financial.md "IPMT cancels on fv". `None` where a power declines or the
+/// result is not finite.
 fn balance_interest(
     rate: f64,
     nper: f64,
@@ -359,11 +361,21 @@ fn balance_interest(
     } else {
         exact
     };
-    let mut interest = negated(dd_mul(balance, (rate, 0.0)));
-    if period_start {
-        interest = dd_div(interest, two_sum(1.0, rate));
-    }
-    interest.0.is_finite().then_some((interest.0, cancels))
+    let interest = if period_start && !cancels && rate.fract() != 0.0 {
+        // Type 1 at a rate that is not a whole number is the rounded balance times the double
+        // `rate/(1+rate)`, not the exact quotient, for an integer or a fractional nper alike:
+        // `IPMT(1.005,7,1E+5,92160,674,1)` is -46194.91271820449 where the exact value rounds to
+        // ...448, while a whole rate keeps the exact quotient (`IPMT(42,8,290,392736,-0.5,1)`,
+        // `IPMT(2,2000,2000,1000,0,1)`). A fitted switch, see
+        // probes/t2665-ipmt-fractional-nper-past-range, fin-ipmt-ppmt-huge-rate A186 and gen-m9
+        // b73c6cc96e093f03 A268; financial.md "IPMT cancels on fv", TODO(T-3086).
+        -balance.0 * (rate / (1.0 + rate))
+    } else if period_start {
+        dd_div(negated(dd_mul(balance, (rate, 0.0))), two_sum(1.0, rate)).0
+    } else {
+        negated(dd_mul(balance, (rate, 0.0))).0
+    };
+    interest.is_finite().then_some((interest, cancels))
 }
 
 /// PMT's fitted quotient for `P = rate_nper`; not finite when `pv*P` overflows.
@@ -516,16 +528,12 @@ pub(super) fn period_payments(
             .or_else(|| {
                 discounted_principal(rate, period_count, period, values, period_start, true)
             });
-        // A fractional nper past the range keeps the FV recurrence below: it has Excel's last
-        // bit on the one such cell probed, where the exact balance is an ulp off (gen-m9
-        // 0a957119475760c5 A153, nper about 1.85E+7; TODO(T-2665)).
-        let whole_term = period_count.fract() == 0.0;
         interest = match balance_interest(rate, period_count, period, values, period_start) {
             Some((interest, true)) => Some(interest),
             balance => {
                 let exact = split
                     .map(|(interest, _)| interest.0)
-                    .or(balance.filter(|_| whole_term).map(|(interest, _)| interest));
+                    .or(balance.map(|(interest, _)| interest));
                 let discounted =
                     discounted_interest(rate, period_count, period, values, period_start);
                 // An exact 0 makes the ratio NaN (keeps 0) or infinite (takes the finite discount).

@@ -8,6 +8,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::lift::{grid_dims, ArgBuf, LiftCost, LiftOptions},
+    functions::spill_functions::reject_empty_value,
     functions::Function,
     model::Model,
     reference_operators::{Picked, RefArg, RefGrid},
@@ -153,6 +154,15 @@ impl Model {
                 }
             }
         }
+        // TAKE rejects the empty value (`TAKE(CELL("contents",<blank>),1)` `#VALUE!`,
+        // probes/t3030-cell-contents-blank-shapers A171, T-3053); DROP of it is unprobed.
+        let source = match edge {
+            Edge::Take => match reject_empty_value(&args[0], source, cell) {
+                Ok(source) => source,
+                Err(error) => return RefArg::Value(error),
+            },
+            Edge::Drop => source,
+        };
         let data = match self.result_to_array(source, cell) {
             Ok(d) => d,
             Err(e) => return RefArg::Value(e),

@@ -313,11 +313,25 @@ What the blank-target result is (T-3030, probes/t3030-cell-contents-blank-shaper
 - Targets that are not blank stack: a `=""` target stacks "" (A271), a `=C11` target (0) stacks 0 (A281), and a bare
   `VSTACK(Data!C11,1)` stacks 0;1 (A321).
 
-Ours (since T-3030) matches the non-blank and literal-call cells: CELL reads the named sheet, and VSTACK and HSTACK reject an
-argument written as `CELL("contents", ref)` (literal info type) whose target is blank. Ours cannot yet tell the empty value from
-a blank reference read through IF, LET, CHOOSE, IFERROR or parentheses, which our evaluator also turns into a bare empty cell.
-So the wrapped forms (t2466 A111, A121, A151), the other array-taking callers listed above (blank-shapers A21 .. A381, nested-sheet A231)
-and `COUNTA(..)` (blank-shapers A231: Excel 1, ours 0) still differ: T-3053.
+A blank **reference** read through a wrapper (T-3053, probes/t3053-blank-reference-wrappers, excel-graph, 2026-10-28; Data!C11
+blank) stays a reference that stacks as 0 through IF, LET, CHOOSE, parentheses, `@` and INDEX (`VSTACK(IF(TRUE,Data!C11),1)`,
+`VSTACK(LET(x,Data!C11,x),1)`, `VSTACK(CHOOSE(1,Data!C11),1)`, `VSTACK((Data!C11),1)`, `VSTACK(@Data!C11,1)`,
+`VSTACK(INDEX(Data!C11,1),1)` and `VSTACK(INDEX(Data!C11:C12,1),1)` are all 0;1; `TOCOL(IF(TRUE,Data!C11))` and
+`TOCOL(LET(x,Data!C11,x))` 0; `ROWS(IF(TRUE,Data!C11))` 1; `COUNTA(IF(TRUE,..))` and `COUNTA(LET(x,..,x))` 0). IFERROR and
+IFNA do not: they return the empty **value**, so `VSTACK(IFERROR(Data!C11,5),1)` and `VSTACK(IFNA(Data!C11,5),1)` are
+`#VALUE!` like the CELL result (A41, A141). The CELL result stays the empty value through LET and IF
+(`VSTACK(LET(x,CELL("contents",Data!C11),x),1)`, `VSTACK(IF(TRUE,CELL(..)),1)` `#VALUE!`, A161, A171). INDEX itself rejects
+it: `INDEX(CELL("contents",Data!C11),1)` is `#VALUE!` and its TYPE 16 (A1, A151). So the empty value comes from a call that
+returns a value (CELL, IFERROR, IFNA), and the reference-returning wrappers pass a blank reference on unchanged.
+
+Ours (since T-3053): `CELL("contents", ref)` of a blank target is `CalcResult::EmptyArg`, the empty value IFERROR and IFNA
+already gave for a blank cell (logic.md "IFERROR / IFNA of a blank cell is an empty value"), so COUNTA counts it and IF,
+LET, CHOOSE, `@` and parentheses pass it on, while a blank reference read through them stays our bare empty cell.
+`reject_empty_value` (spill_functions.rs) makes it `#VALUE!` as the array argument of VSTACK, HSTACK, TOCOL, TOROW, TAKE,
+CHOOSECOLS, FILTER and MAP (INDEX, WRAPROWS and ROWS rejected it before). All cells of the four probes above match. DROP,
+CHOOSEROWS, WRAPCOLS, COLUMNS, SCAN, REDUCE, BYROW and BYCOL of the empty value are unprobed and keep reading it as 0
+(T-3087), as does an omitted argument (`VSTACK(,1)`). From T-3030 to T-3053 only a literal `CELL("contents", ref)`
+VSTACK or HSTACK argument was caught.
 
 ## CELL("address") of a reference on another sheet names the workbook file (excel-graph)
 Rule: `CELL("address", ref)` for a reference on another sheet is `[<file name>]<sheet>!<address>`, the sheet name

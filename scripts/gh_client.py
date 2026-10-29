@@ -132,6 +132,12 @@ class Client:
             raise GhError(f"refused PR state: {state!r}")
         return self.pages("pulls", [("state", state)])
 
+    def closed_labelled(self, label: str) -> list[object]:
+        """Closed issues and PRs that still carry `label` (a PR has a `pull_request` key). The
+        issues endpoint filters by label, so the listing is only the label's leftovers, never every
+        closed PR."""
+        return self.pages("issues", [("state", "closed"), ("labels", checked(LABEL, label, "label"))])
+
     def comments(self, pr: int | str) -> list[object]:
         """The PR's conversation comments (issue comments), oldest first."""
         return self.pages(f"issues/{number(pr)}/comments")
