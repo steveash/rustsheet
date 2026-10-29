@@ -1458,8 +1458,26 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   67a4c03afd63f988 A110, 81bcdc0bec0c8e6b A226, 9a1fa5366bc50918 A18 and A361, d912671baa1364aa A104). So it is not
   kept. Next: probe the same last-m ranges at nper 1E6 and 1E10, where `v^nper` underflows but the periods stay
   exact, to see whether the balance-drop form holds wherever the range ends at nper.
+- Where the sum changes form, measured (T-3067 run 3, probes/fin-cumprinc-form-boundaries, excel-graph 2026-10-29, 132
+  cells): what decides it is the leading discount `(nper-end+1)·L`, how far before nper the range ends, not the range's
+  length or its deepest discount. Over 33 to 512 periods ending a deep discount before nper (rate 2, nper 600 and rate
+  0.1, nper 1100: A1-D14) the geometric sum on `growth_log` is within 2 ulps of Excel on all 56 cells, both types, where
+  the closed form the kernel took past 32 periods was 46 to 1,431 ulps off and visibly off:
+  `CUMPRINC(2,600,319288,3,42,1)` is -6.214428680002485E-262 (A2). On a long range that ends near nper (I1-I11, J1-J11,
+  K1-K11, L1-L11: leading exponents 0.005 to 9.5) the closed form's difference is as close or closer up to an exponent
+  of 2.9 (bit-exact on the whole-loan `CUMPRINC(0.005,100000,1000,2,99999,1)`, fin-cumipmt-period-bound A6, which the
+  geometric sum misses by an ulp) and 4 to 8 ulps off from 4.3 up, where the geometric sum is within an ulp. Over a short
+  range, at leading exponents of 0.4 to 3.6 (E1-H8: rate 0.01 over periods 1-12, rate 0.1 over 2-6, both types), the
+  geometric sum is exact on 22 of 32 cells and within 2 ulps on the rest; the per-period sum and the closed form are
+  exact on 7 and up to 5 ulps off. At 0.095 (G1, and the last periods of nper 1E15 at 0.1, fin-cumprinc-near-1e15 C6
+  and C10) the old forms keep the bit. The cut on the deepest discount (3.6, T-2521) moved to the leading one.
+  Ours since T-3067 run 3: the principal is the geometric sum from a leading exponent of 0.3 over up to 32 periods
+  (`GEOMETRIC_MIN_LEAD`, was a deepest exponent of 3.6) and from 3.6 past 32 periods (`LONG_GEOMETRIC_MIN_LEAD`, was
+  never); both cuts sit inside the gaps the probe left (0.095 to 0.398, and 2.9 to 4.3). 7 known failures are fixed
+  (gen-m9 b73c6cc96e093f03 A62; CUMPRINC_CUMIPMT.xlsx H9, H10, H15, H21; gate-edges G9, G11), none regressed, and the
+  new case's 132 cells are visibly right, 73 to the bit.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A6, A7 (= G2), A9-A11 and K3 near period 1E15,
-fin-cumipmt-period-bound A18, the gen-m9 cells A62, A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
+fin-cumipmt-period-bound A18, the gen-m9 cells A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6:
 T-3067; the short sums' last digits in T-1374)
 Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-1374
 
