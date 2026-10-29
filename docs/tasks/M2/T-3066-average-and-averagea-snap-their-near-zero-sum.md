@@ -3,7 +3,7 @@ id: T-3066
 title: "AVERAGE and AVERAGEA snap their near-zero sum's final addition as SUM does"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,3 +41,10 @@ the residue wherever SUM does.
 ## Out of scope
 - AVERAGEIF, AVERAGEIFS, SUMIF, SUMIFS, SUMPRODUCT (Excel does not snap them).
 - SUBTOTAL(1/101) (its own `subtotal_average`; unprobed).
+
+## Outcome
+`fn_average` and `fn_averagea` accumulate in `SumParts` and divide the snapped sum; AVERAGEA's text counts but adds no addend
+(`for_each_value_a` now tells its callback). Probed first: probes/t3066-average-snap-forms (22 cells; scalars, array constants,
+ranges, separate references and AGGREGATE(1) all snap as SUM does) is in the PR with its oracle sidecar. Eval: probes known
+failures 2695 -> 2687 (8 fixed: t3048-snap-conditional-sums D5, D6, G5, G6, I5, I6, P5, P6), 0 regressions, new case passes
+fully. SPEC-0009 and numbers.md updated. SUBTOTAL(1/101) unchanged.

@@ -109,3 +109,9 @@ bits. Cells left within 4 ulp afterwards go to a `defer: phase-1b` follow-up.
 Tier: opus. The complement fix alone leaves 4E-15 errors on the grid. Reaching 15 digits on all 224
 cells without moving any of the roughly 66,000 F density probe cells is accuracy work at the ulp level,
 measured against a reference.
+
+## Note (T-3034)
+T-3034 replaced `f_pdf_accurate` with Excel's own chain M-final (`f_density.rs`), which forms no 1 - y. On the
+t2220 sweep cases the visibly-off density cells fell from 725 to 217 and none is now more than 1E-13 relative off
+Excel (109 were). Re-triage before working this: check the 224 named cells with `make eval-show`; what is left is
+M-final's power-term residue (T-2586), not a cancellation.
