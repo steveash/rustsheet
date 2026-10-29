@@ -20,6 +20,9 @@ evidence, and RustSheet matches it or has a task that makes it.
   `T(+D1)` is `#VALUE!` (probes/text-255-units-reference-shapes A13). Unprobed; Excel may give `#VALUE!`.
 - Shapes to probe: `T(LET(x,D1,+x))`, `T(LET(x,D1,(x)))`, `T(LET(x,F1,x#))` with F1 `=D1:D2`,
   `T(LET(x,D1,@x))`, `ISREF(LET(x,D1,+x))`.
+- Also the readings `fn_t_volatile_pick.rs` pins from before T-3157, none in a probe yet: `T(LET(x,D1,x))`,
+  `T(LET(x,REPT("x",256),x))`, `T(LET(c,TRUE,IF(c,D1)))`, `T(@CHOOSE(1,D1))`, `T(@IF(TRUE,REPT("x",256)))`,
+  `T(@IFS(TRUE,D1))`, `T(@SWITCH(1,1,D1))` and `T(@IF(TRUE,+D1))` (ours "", while `T(+D1)` is `#VALUE!`).
 
 ## Acceptance criteria
 - [ ] A probe case with oracle values for each shape above lands in `eval/suites/probes` (excel-probe skill).

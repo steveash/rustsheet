@@ -59,9 +59,11 @@ fn test_t_let_and_at_volatile_picks_read_and_test_one_draw() {
         "=T(IF(TRUE,LET(i,RANDBETWEEN(1,2),CHOOSE(i,D1,\"a\"))))",
     );
     model._set("A4", "=T(LET(x,CHOOSE(RANDBETWEEN(1,2),D1,\"a\"),x))");
+    model._set("A5", "=T(@IFS(RANDBETWEEN(0,1)=1,D1,TRUE,\"a\"))");
+    model._set("A6", "=T(@SWITCH(RANDBETWEEN(1,2),1,D1,\"a\"))");
     for _ in 0..200 {
         model.evaluate();
-        for cell in ["A1", "A2", "A3", "A4"] {
+        for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
             let text = model._get_text(cell);
             assert!(text.is_empty() || text == "a", "{cell}: {text}");
         }
@@ -70,8 +72,9 @@ fn test_t_let_and_at_volatile_picks_read_and_test_one_draw() {
 
 #[test]
 fn test_t_let_and_at_shapes_keep_their_reading() {
-    // probes/text-255-units-reference-shapes: a LET-bound cell is the cell's text, a computed
-    // text `#VALUE!`; `@` of a picker reads like the picker.
+    // The readings these shapes had before T-3157, unprobed (T-3167 asks the oracle): a cell a
+    // LET or a picker reaches is the cell's text, a computed text `#VALUE!`, and the `@` of a
+    // picker reads like the picker, IFS and SWITCH included.
     let mut model = new_empty_model();
     model._set("D1", "=REPT(\"x\",256)");
     model._set("A1", "=T(LET(x,D1,x))");
@@ -80,6 +83,9 @@ fn test_t_let_and_at_shapes_keep_their_reading() {
     model._set("A5", "=T(@IF(TRUE,REPT(\"x\",256)))");
     model._set("A6", "=T(LET(c,TRUE,IF(c,D1)))");
     model._set("A7", "=T(LET(x,1,x,2,x))");
+    model._set("A8", "=T(@IFS(TRUE,D1))");
+    model._set("A9", "=T(@SWITCH(1,1,D1))");
+    model._set("A10", "=T(@IF(TRUE,+D1))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "");
     assert_eq!(model._get_text("A2"), "#VALUE!");
@@ -87,4 +93,7 @@ fn test_t_let_and_at_shapes_keep_their_reading() {
     assert_eq!(model._get_text("A5"), "#VALUE!");
     assert_eq!(model._get_text("A6"), "");
     assert_eq!(model._get_text("A7"), "#ERROR!");
+    assert_eq!(model._get_text("A8"), "");
+    assert_eq!(model._get_text("A9"), "");
+    assert_eq!(model._get_text("A10"), "");
 }
