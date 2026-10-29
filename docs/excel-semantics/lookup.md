@@ -1322,8 +1322,12 @@ Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAX
 not yet (T-2824).
 
 ### MEDIAN, LARGE and SMALL over a lifted OFFSET
-probes/t2065-lift-median, -large, -small failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs).
-Status: UNVERIFIED (desktop question, M14 T-1075 item 18, decision 0039).
+Rule: each is `#VALUE!` over a lifted OFFSET (an array of references), like CONCAT and unlike STDEV.S, VAR.S and SUMSQ
+above: `MEDIAN(OFFSET(A1,{0;1;2},0))`, `LARGE(OFFSET(A1,{0;1},0),1)` and `SMALL(OFFSET(A1,0,0,{2;3}),2)` (data as
+probes/reference-lift-consumers-b2) all give `#VALUE!`.
+Evidence: probes/t2065-lift-median, -large, -small E1 (excel-graph, 2026-10-29; they failed to open on Excel for the web
+on 2026-10-26 with createSession "retries exhausted", and opened on the 2026-10-29 steward run's fill).
+Status: VERIFIED (excel-graph). Ours matches all three cells. This answers T-1075 item 18.
 Tasks: T-2065, T-2063, T-2064, T-2823, T-2824
 
 ## MATCH match_type that is a reference to an error cell is #REF! (excel-graph)
