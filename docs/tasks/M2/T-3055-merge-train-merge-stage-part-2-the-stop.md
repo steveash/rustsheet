@@ -3,7 +3,7 @@ id: T-3055
 title: "Merge-train merge stage, part 2: the stop label and the revert PR"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -35,11 +35,21 @@ checkpoints (`Stage.checkpoint` in `scripts/merge_train.py`). A mismatch there i
 - `make merge-mode` prints `train (stop pending: #n)` when a stop label is honoured.
 
 ## Acceptance criteria
-- [ ] `scripts/test_merge_train.py`: a valid stop label at each checkpoint (right after
+- [x] `scripts/test_merge_train.py`: a valid stop label at each checkpoint (right after
       acquisition: nothing pushed), a label on a PR that fails `merge-flip-check` is ignored and
       removed with a comment, and the revert path (PR opened, P0 filed, lock released, the revert
       PR never merged by the merger).
-- [ ] `make check` green; architecture and security reviewers approve.
+- [x] `make check` green; architecture and security reviewers approve.
 
 ## Out of scope
 - Red trains (T-2998), shadow mode and the step mode (T-2995), turning the mode on (T-2989, T-2991).
+
+## Outcome
+Done (decision 0165). Every `train` stop checkpoint now lists `merge-train-stop` PRs and honours the first one that
+passes `merge_flip.pr_problems`; any other loses the label with a comment (a check that cannot run git honours it).
+`make merge-mode` prints `train (stop pending: #n)`, read only. A post-squash mismatch of our own squash
+(`Landed`) opens a revert PR from `merge-train/revert-<S_k>` (never merged by the merger); the P0 (and the P1 of
+a red train that did not reproduce) are filed with `main`'s `tasks.py new` in one task-only PR from
+`merge-train/tasks-<id>`; merged PR branches are deleted, a 403 logged. `gh_client` gains `create_pull` and
+`delete_branch`. New `StopAndRevert` tests (stop at each checkpoint, invalid label, merge-mode, revert path,
+refused deletion). Eval delta: none (scripts only). T-3077's context now lists the new writes for the step mode.
