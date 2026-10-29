@@ -3,7 +3,7 @@ id: T-0479
 title: "Probe approximate whole-column lookups over an unsorted cached linked column"
 milestone: M11
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
