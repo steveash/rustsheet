@@ -42,5 +42,5 @@ order a key a few ULP from a table number: exact doubles, as VLOOKUP/HLOOKUP/MAT
   Recorded in lookup.md "XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles"; the approximate-match section
   no longer calls LOOKUP unverified. AC8 repeats T-3073's `1-X` snap cell (numbers.md "Operand order", T-3100).
 - Engine: LOOKUP matches every cell. XMATCH/XLOOKUP compare at 15 digits: 332 known failures, owned by T-3132
-  (functions-lookup, sonnet). Eval delta: +1 probe case, 786 cells, 453 pass, 333 new known failures (332 T-3132,
-  1 T-3100), 0 regressions.
+  (functions-lookup, sonnet). Eval delta: +1 probe case, 786 cells, 454 pass, 332 new known failures (all T-3132;
+  AC8 passes since T-3100 merged), 0 regressions.
