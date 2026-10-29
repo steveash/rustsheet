@@ -20,8 +20,8 @@ How Excel's collation treats `İ` (U+0130) in `=`, `<`/`>`, COUNTIF and SORT is 
   decomposition, so `İ` ranks as `i` with the dot-above accent. That rank, and that `=` and COUNTIF agree with XMATCH,
   are inferred and marked UNVERIFIED in docs/excel-semantics/coercion.md ("Letters beyond Latin-1 and combining
   marks").
-- Method: the `excel-probe` skill, excel-graph, as in probes/t3114-collation-beyond-latin1. Rank `İ`, `"İa"`, `"İz"`
-  in a Data column with `i í ì î ï ı I ia iz` and `"i"&UNICHAR(775)` using `SUMPRODUCT(--(range<x))`, and add cells
+- Method: the `excel-probe` skill, excel-graph, as in probes/t3114-collation-beyond-latin1. Rank `İ`, `"İb"`, `"İy"`
+  in a Data column with `i í ì î ï ı I ib iy` and `"i"&UNICHAR(775)` using `SUMPRODUCT(--(range<x))`, and add cells
   for `"İ"="i"&UNICHAR(775)`, `"İ"="I"`, `"İ"="i"`, COUNTIF(range,"İ") and COUNTIF(range,"i"&UNICHAR(775)).
 
 ## Acceptance criteria
