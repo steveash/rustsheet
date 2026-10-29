@@ -39,4 +39,4 @@ leaves the sheet unchanged, even when the cells pushed off are empty. That is wh
 - Other refusals of the same Graph error (array formulas already refuse; merged cells unprobed).
 
 ## Outcome
-`insert_rows`/`insert_columns` refuse an insert that would push a table cell past the last row/column (`table_would_leave_sheet`, actions.rs); unit tests in `test_table_insert_limit.rs`. No eval delta.
+`insert_rows`/`insert_columns` refuse an insert that would push a table cell past the last row/column (`Model::refuse_table_off_sheet`, table_edits.rs); unit tests in `test_table_insert_limit.rs`. No eval delta.
