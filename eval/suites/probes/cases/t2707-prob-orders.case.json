@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-2707 probe: PROB's unprobed data orders (typed boolean/text scalars, a blank one-cell range against error values, error cells inside ranges against direct errors, text and booleans inside array arguments) and a trace of gen-m9/17c110a53924beb8 Calc!A330 (PROB over a GROUPBY whose filter_array is a one-row INDEX).",
+  "description": "T-2707 probe: PROB's unprobed data orders (typed boolean/text scalars, a blank one-cell range against error values, error cells inside ranges against direct errors, text and booleans inside array arguments) and a trace of gen-m9/17c110a53924beb8 Calc!A330 (PROB over a GROUPBY whose total_depth is a one-row INDEX reference).",
   "tags": [
     "M9",
     "probe"

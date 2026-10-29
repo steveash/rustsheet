@@ -1965,13 +1965,11 @@ of the call with that element in the argument's place, or that call's error. A o
   `#VALUE!`, `#N/A` (A97).
 - A multi-cell range lifts as an array does (`Data!D1:E1` holding 0 and 1, as field_headers or total_depth: A177, A225), and a
   blank element is valid (A185; whether as 0 or as omitted is unprobed: the data has no header to tell them apart).
-- The reference INDEX returns does not lift where a written range does: with Data!A4:D4 holding 2.5, 1E+15, "1" and FALSE,
-  `GROUPBY(..,0,INDEX(Data!A4:D4,0),-2)` (also `INDEX(Data!A4:D4,1,0)` and `INDEX(Data!A4:D4,<blank>)`) is one `#VALUE!` under
-  ROWS, COLUMNS, ISERROR, ERROR.TYPE, ARRAYTOTEXT and SUM, while `Data!A4:D4` and `INDEX(Data!A4:D4,<blank>)+0` lift to 1x4
-  (probes/t2707-prob-orders A37:A39, A49:A51, A61, A63:A65, A68). Under PROB's data argument the same INDEX call lifts:
-  `PROB(0,GROUPBY(..,INDEX(Data!A4:D4,<blank>),-2),0)` is `#N/A`, one cell against four (A44, through LET A60;
-  gen-m9/17c110a53924beb8 A330). What decides it (the caller's argument kind?) is unprobed. Ours lifts the INDEX reference
-  everywhere it is evaluated as a value and gives one `#VALUE!` under PROB, the reverse: T-3088.
+- The multi-cell reference INDEX returns lifts as a written range does: with Data!A4:D4 holding 2.5, 1E+15, "1" and
+  FALSE, `GROUPBY(..,0,INDEX(Data!A4:D4,0),-2)` (also `INDEX(Data!A4:D4,1,0)` and `INDEX(Data!A4:D4,<blank>)`) is 1x4 like
+  `Data!A4:D4` (probes/t2707-prob-orders A50, A63:A65, A68): ROWS 1, COLUMNS 4, ARRAYTOTEXT "#VALUE!, #VALUE!, -0.5, -0.5",
+  ERROR.TYPE spills 3, 3, `#N/A`, `#N/A` (A37:A39, A49, A51:D51), and under PROB's data it is `#N/A`, one cell against four
+  (A44, A60; gen-m9/17c110a53924beb8 A330). Ours gives one `#VALUE!` for the INDEX reference: T-3088.
 - An invalid number comes after a later argument's error value (`GROUPBY(k,v,SUM,0,{5},,,1/0)` and the scalar
   `...,0,5,,,1/0)` are `#DIV/0!`: A193, A217), but text that is no number, typed or computed, comes before it,
   scalar or lifted (`GROUPBY(k,v,SUM,0,"x",,,1/0)` is `#VALUE!`: A201). Text read from a one-cell reference is unprobed (ours
@@ -1997,7 +1995,7 @@ options with the lifting driver's `broadcast_shape`, and re-runs the call once p
 whole number within the valid range, another number, a boolean, text that is no number, an error), with every other argument
 frozen to its value, so neither an array's size nor nesting multiplies the work.
 `Model::lift_by_class` is shared with GROUPBY's array `field_relationship` (`Model::lifted_groupby`).
-Status: VERIFIED (excel-graph), except the INDEX-reference bullet, not yet matched (T-3088)
+Status: VERIFIED (excel-graph); the INDEX-reference bullet is not yet matched (T-3088)
 Tasks: T-2359, T-2397, T-2398, T-2399, T-2451, T-3088
 
 ## An empty array as a function argument (T-2436)

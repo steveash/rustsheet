@@ -39,7 +39,7 @@ T-2468 (PROB reads its data before the limits and pairs cells by position) left 
 - T-2685's PV cells and T-2425's FORECAST.ETS cell.
 
 ## Outcome
-- probes/t2707-prob-orders (excel-graph, 2026-10-29, 74 cells) covers each unprobed order; statistics.md's PROB entry states
+- probes/t2707-prob-orders (excel-graph, 2026-10-29, 74 formula cells) covers each unprobed order; statistics.md's PROB entry states
   each result and drops them from its UNVERIFIED list (the lower_limit-before-counts order stays UNVERIFIED: no cell separates
   them). Typed text, numeric text and booleans are one cell with no number (`#DIV/0!` against a number, A1:A8); text and
   booleans inside array constants are dropped like a range's (A24:A34).
@@ -47,9 +47,9 @@ T-2468 (PROB reads its data before the limits and pairs cells by position) left 
   prob_range's error value (A9:A12), and unequal cell counts are `#N/A` before an array's error element (A54, A56).
   These also fix gen-m9/775d053de498b8c7 Calc!A159 and b9a32ce9a1fd0d71 Calc!A331.
 - The three unowned cells: d37313406b9f6e55 A142 and 80586b859b73c87d A353 already pass on main (no owner needed).
-  17c110a53924beb8 A330 traces to its GROUPBY: `total_depth` is `INDEX(Data!A4:D4,<blank>)`, the reference INDEX returns,
-  which Excel gives as one `#VALUE!` under ROWS/ISERROR/ERROR.TYPE but lifts under PROB (`#N/A`, 1 cell against 4); ours is
-  the reverse. Owner: **T-3088** (functions-lookup, M7, opus), with the probe's A37:A39, A43, A44, A49, A50, B51:D51, A60,
+  17c110a53924beb8 A330 traces to its GROUPBY: `total_depth` is `INDEX(Data!A4:D4,<blank>)`, a multi-cell reference INDEX
+  returns, which Excel lifts as it lifts a written range (1x4, so PROB's data is 4 cells against 1, `#N/A`); ours gives one
+  `#VALUE!`. Owner: **T-3088** (functions-lookup, M7, opus), with the probe's A37:A39, A43, A44, A49, A50, B51:D51, A60,
   A64 and A65 (known failures in eval/baseline/probes.txt). arrays.md records the rule.
 - Eval delta: gen-m9 known failures 3309 -> 3307 (fixed 2); probes +1 case, 13 new-coverage known failures (all T-3088's);
   0 regressions.
