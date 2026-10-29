@@ -31,12 +31,12 @@ import gh_client
 import merge_lock
 import merge_ready
 from gh_client import SHA, Client, GhError
+from merge_flip import LOCK, SWITCH
 from merge_lock import GitError, git
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
-SWITCH = "scripts/merge_train.toml"
-LOCK, SHADOW, TRAIN = "lock", "shadow", "train"
+SHADOW, TRAIN = "shadow", "train"
 MODES = (LOCK, SHADOW, TRAIN)
 # The id checks of step 4; each takes `--root <tree>`. They run from `main`'s scripts (M0).
 ID_CHECKS = (("tasks.py", "validate"), ("check_decisions.py",))
