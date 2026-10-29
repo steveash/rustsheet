@@ -3,7 +3,7 @@ id: T-3138
 title: "Blank-cell and omitted criteria in COUNTIF, SUMIF and the IFS family: probe what they match (0, tiny numbers, blanks, empty text, FALSE) and match it"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
