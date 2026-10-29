@@ -53,6 +53,10 @@ Its column A repeats owned YIELD cells, one row per bond: P!A1 (yield-solver-swe
 T-2788's ulp-level cells (yield-start-one-input B54, B62, B69, B11, A54, A62; yield-solver-sweep C11;
 solver-iteration-traces Y!E2). P!B4, C3, C7 and D4 (PRICE) belong to T-3144.
 
+## Cells added by probes/yield-one-step-start (2026-10-29)
+This task owns the case's YIELD cells the engine misses (158 known failures, 1 to 67 ulps). The visibly-off one:
+- probes/yield-one-step-start: S!A68
+
 ## Outcome (partial, attempt 1, 2026-10-29; the task stays open, decision 0056)
 probes/yield-price-at-iterates (59 PRICE cells, excel-graph) asks Excel's PRICE at the exact iterates of our Newton and
 at Excel's YIELD values. The lab's `^`-priced PRICE equals Excel's to the bit on all 59 (the engine's misses 4 by 1 to 2 ulps: follow-up T-3144), so the three cells (and P!B2) are not off through PRICE:
