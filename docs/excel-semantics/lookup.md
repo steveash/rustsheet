@@ -851,7 +851,8 @@ Rule: TAKE and DROP of a range return a reference, so a one-cell result is a sca
 `IF(TRUE,DROP(..))`, `MAX(..)` and `N(..)`, and with `+0` (`TAKE(H2:H4,1)+0` is 3 rows). An array constant `{3}` or `{1E-15}`, `SEQUENCE(1,1,3)`,
 `INDEX(H2:H4,{1})` and `CHOOSE({1},3)` lift: 1 row, `INDEX(..,1,1)` is `#SPILL!`. A two-cell `DROP(H1:H3,1,0)` lifts to a 2x1 array of references.
 A scalar height or width that is not 0 but truncates to 0 gives 2 rows (columns) reaching one row *up* (left) from the start: the zero check
-sees the number, the end is start + trunc(height) - 1, so the area is the row above the start and the start itself. `ROWS(OFFSET(B9:C12,5,1,h,2))`
+sees the number, the end is start + trunc(height) - 1, so the area is the row above the start and the start itself (the mechanism is inferred
+from the values below, which it explains in full). `ROWS(OFFSET(B9:C12,5,1,h,2))`
 is 2 for h = 1E-15, 1E-300, 0.1, 0.5, 0.9999, -1E-15 and -0.5, 1 for 1, 1.5, 1.9999, -1 and -1.5, 2 for 2.5; `COLUMNS(..,2,1E-15)` and
 `COLUMNS(..,2,0.5)` are 2; `ROWS(OFFSET(A1,0,0,1E-15))` is `#REF!` (no row above row 1); `ROWS(OFFSET(B9,0,0,-0.5))` is 2 and
 `ROW(OFFSET(B9,0,0,-0.5))` spills (`#SPILL!` in one cell), `ROW(OFFSET(B9,0,0,-1.5))` 9 (probes/t3072-take-drop-one-cell-reference P23-P41; T-3072).
