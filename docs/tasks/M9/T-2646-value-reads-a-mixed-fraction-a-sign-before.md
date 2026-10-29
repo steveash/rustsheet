@@ -3,7 +3,7 @@ id: T-2646
 title: "VALUE reads a mixed fraction, a sign before a space and a dash date with a one-digit year (probes/eng-inumber-date-boundary, 4 cells)"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ the number-coercion grammar it calls.
 
 ## Out of scope
 - IM* reading of other text (T-2541, T-2641).
+
+## Outcome
+`VALUE("- 5")`, mixed fractions with a sign, `$` or `%`, and dash/slash dates with a one-digit year now read as Excel does
+(`parse_number`, `mixed_fraction`, `parse_separated`). Edge probe probes/value-sign-space-mixed-fraction-dash-date
+(35 cells, excel-graph) passes. Eval delta: probes/eng-inumber-date-boundary S!B21 and S!B23 left the baseline (2 known
+failures fewer), 35 new passing cells, no regressions. Quirks recorded in docs/excel-semantics/text.md.

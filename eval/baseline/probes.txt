@@ -1807,6 +1807,7 @@ C	probes/unknown-function-name-reach.case.json	52
 C	probes/unknown-function-name-spelling.case.json	36
 C	probes/value-argument-lift.case.json	22
 C	probes/value-clock-text.case.json	135
+C	probes/value-sign-space-mixed-fraction-dash-date.case.json	35
 C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
 C	probes/vara-direct-lambda.case.json	6
@@ -2333,8 +2334,6 @@ F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!B8
-F	probes/eng-inumber-date-boundary.case.json	S!B21
-F	probes/eng-inumber-date-boundary.case.json	S!B23
 F	probes/fin-argument-modes.case.json	Sheet1!H236
 F	probes/fin-argument-modes.case.json	Sheet1!H374
 F	probes/fin-argument-modes.case.json	Sheet1!H375
