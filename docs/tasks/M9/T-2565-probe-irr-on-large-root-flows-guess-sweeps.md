@@ -3,7 +3,7 @@ id: T-2565
 title: "Probe IRR on large-root flows: guess sweeps that pin Excel's early secant steps"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -34,15 +34,22 @@ fit the departure instead of guessing at it.
   `{0.3,-2.5,1.005}`) is T-1686's; do not duplicate it here.
 
 ## Acceptance criteria
-- [ ] A probe case in `eval/suites/probes/` (excel-graph oracle) with, for each of the two flows
+- [x] A probe case in `eval/suites/probes/` (excel-graph oracle) with, for each of the two flows
       above: `IRR(flows, g_k)` for every iterate v_k of the model's run from 0.1 (the
       guesses as 17-significant-digit literals, generated from the fit-lab model and listed in
       the case's hypotheses), and `IRR(flows, 0.1*(1+j*1E-4))` for j = -5..5.
-- [ ] The same for flows scaled by 1E6 and by -1 (the residual test's scale dependence).
-- [ ] financial.md's IRR section records the first step at which Excel's result departs from the
+- [x] The same for flows scaled by 1E6 and by -1 (the residual test's scale dependence).
+- [x] financial.md's IRR section records the first step at which Excel's result departs from the
       model, with cells; T-2131's Context links the case.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fitting or implementing the departure (T-2131).
 - IRR's fallback path, caps and overflow (T-1686).
+
+## Outcome
+Case `eval/suites/probes/cases/t2565-irr-guess-sweeps` (generator `fitlab/irr_guess_sweep.py`) filled on
+excel-graph. Excel departs from the model from the first guess on (no agreement distance); the large-root
+"error" is Excel's v rounded to a 2^-53 grid: rounding the model's v to it matches 173/175 cells. Recorded in
+financial.md; fitting it is T-2131.
+The case has no `hypotheses` field: the guesses are the column-B literals, named by block in the description.
