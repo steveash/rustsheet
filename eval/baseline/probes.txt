@@ -1505,6 +1505,7 @@ C	probes/t3073-lookup-near-equal-approximate.case.json	218
 C	probes/t3094-snap-lambda-call-forms.case.json	44
 C	probes/t3095-snap-lambda-helpers.case.json	148
 C	probes/t3096-lookup-value-blank-elements.case.json	203
+C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
 C	probes/t3138-blank-criterion.case.json	111
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
