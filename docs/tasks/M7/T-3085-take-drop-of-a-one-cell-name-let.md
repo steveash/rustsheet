@@ -3,7 +3,7 @@ id: T-3085
 title: "TAKE/DROP of a one-cell name, LET variable or INDEX/OFFSET result keeps the reference"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-3072 made `take_drop_reference` (functions/lookup_and_reference/drop_take.rs) 
 
 ## Out of scope
 -
+
+## Outcome
+Probed all four forms (probes/t3085-take-drop-one-cell-forms, 16 cells). LET variables and OFFSET already matched; a defined name and an INDEX result as TAKE/DROP's array now keep the reference (`take_drop_reference`). Findings in lookup.md. Probe case passes 16/16.
