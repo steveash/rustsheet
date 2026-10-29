@@ -3,7 +3,7 @@ id: T-3165
 title: "T-3097's 8 paren-depth probe cases count against M2 exit: pin them as decision-0036 deviations or lift MAX_FORMULA_DEPTH past Excel's paren nesting"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
