@@ -1,6 +1,6 @@
 ---
 id: T-3169
-title: "Match Excel for the T-2949 whitespace shapes (LAMBDA and LET names, intersection LF, leading TAB/LF in stored text)"
+title: "Match Excel for the T-2949 whitespace shapes (intersection LF, stored leading LF, stored even-arity LET)"
 milestone: M2
 lane: engine
 status: todo
