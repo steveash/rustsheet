@@ -46,8 +46,9 @@ Operand order (T-3073, one cell, unverified as a rule):
   addend (probes/t3073-lookup-near-equal-approximate Sheet1!E8, `=V!C29-V!A30`, excel-graph 2026-10-29).
 - `(1-8·2^-53)-1` keeps -8.881784197001252e-16 (E16), as the rule above says.
 - Both fit a bound of 8 ULP of the left operand, and so does every snap-addsub cell, where X is always on the left.
-The engine keeps E8 (8.881784197001252e-16). T-3100 probes the reversed orders.
-Tasks: T-3100, T-0110 (implementation), T-1131 (SUM forms), T-3048 (summing functions), T-3049 (pickers, LET, LAMBDA and unary signs), T-3083 (LAMBDA body snap), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound), T-3047 (array and range operands)
+The engine keeps E8 (8.881784197001252e-16). T-3100 probes the reversed orders. Status: UNVERIFIED (one cell; the
+smaller-addend rule above stays VERIFIED for X on the left).
+Tasks: T-0110 (implementation), T-1131 (SUM forms), T-3048 (summing functions), T-3049 (pickers, LET, LAMBDA and unary signs), T-3083 (LAMBDA body snap), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound), T-3047 (array and range operands), T-3100 (operand order)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
