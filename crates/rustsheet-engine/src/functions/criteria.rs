@@ -567,7 +567,8 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
 }
 
 /// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run folded by
-/// [`fold_case`], one character to one, then read as UTF-16 units (for ASCII text, each byte lower-cased).
+/// [`fold_case`], one character to one, then read as UTF-16 units (for ASCII text, each byte
+/// lower-cased).
 pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
     match text {
         Text::Utf8(s) if s.is_ascii() => s
