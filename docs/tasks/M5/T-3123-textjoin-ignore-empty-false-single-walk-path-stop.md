@@ -27,5 +27,5 @@ Follow-up of T-3098. Excel stops reading past the limit (probes/textjoin-whole-r
 ## Outcome
 Probe probes/textjoin-whole-rows-self-reference-full-width (excel-graph): with the used area spanning every column Excel
 also stops at the limit (`#CALC!`, not circular); the engine read past it. `textjoin_push_padded_range` now walks one row
-at a time on that path too and stops at the limit; the unit test `full_width_rows_stop_reading_at_the_limit` and text.md
+at a time on that path too and stops at the limit; the unit test `full_width_rows_stop_reading_at_the_limit` (it pins the stop through its result: a read past the limit would be circular, not `#CALC!`; there is no separate read counter) and text.md
 cover it. The non-padded arm only runs with ignore_empty TRUE (which Excel reads in full) or a 3-D reference, so it is unchanged.

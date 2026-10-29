@@ -193,8 +193,8 @@ excel-graph, 2026-10-29, T-3123).
 Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098); probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3 (T-3123).
 Status: VERIFIED
 Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
-sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row when
-columns are clipped) and after the last row through `JoinSize::push_empties`, which stops at the limit.
+sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row)
+and after the last row through `JoinSize::push_empties`, which stops at the limit.
 Tasks: T-1114
 
 ## JIS is `#NAME?` in en-US Excel for the web
