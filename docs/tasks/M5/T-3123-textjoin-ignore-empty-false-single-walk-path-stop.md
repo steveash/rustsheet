@@ -3,7 +3,7 @@ id: T-3123
 title: "TEXTJOIN ignore_empty FALSE single-walk path: stop reading at the length limit"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
