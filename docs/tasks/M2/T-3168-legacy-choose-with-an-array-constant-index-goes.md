@@ -1,5 +1,5 @@
 ---
-id: T-3165
+id: T-3168
 title: "Legacy CHOOSE with an array-constant index: @ goes on the call, not the constant (=@CHOOSE({1,2},INDEX(B1:B6,3),5))"
 milestone: M2
 lane: engine

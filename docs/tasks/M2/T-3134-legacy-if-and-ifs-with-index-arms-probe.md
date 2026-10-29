@@ -76,4 +76,4 @@ it: IFS, an array condition or index, a computed, cell, text, non-integer or 0 I
 `returns_single_cell_index` now decides from each argument's shape, computed once (the first version re-analysed
 conditions, which was exponential in nesting; a depth-60 test pins that). Such an IF or CHOOSE becomes a static
 scalar, so ABS over it gets no `@`. Eval delta: 0 regressions in every suite; the new case passes 293/295. I54 and
-K54 (array CHOOSE index, `@` on the constant) are baseline known failures, followed up by T-3165.
+K54 (array CHOOSE index, `@` on the constant) are baseline known failures, followed up by T-3168.
