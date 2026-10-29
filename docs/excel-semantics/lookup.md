@@ -916,6 +916,26 @@ one-cell range, before choosing its value or reference read (T-3072).
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2519, T-3072
 
+## TAKE/DROP of a variable bound to one cell is a reference
+Rule: a LET variable or LAMBDA parameter bound to a one-cell reference is that reference as TAKE's, DROP's or TRIMRANGE's array, read
+bare, as a LET body (nested LETs too) or as the arm IF picks, as a written one-cell reference is (above): `TYPE(TAKE(LET(v,A2,v),1))`,
+`TYPE(TAKE(LET(v,A2,acc,v,y,"?b",acc),-1,-1))`, `TYPE(TAKE(LET(v,A2,LET(w,v,w)),1))`, `LET(v,A2,TYPE(TAKE(v,1)))`,
+`LET(v,A2,TYPE(TAKE(IF(TRUE,v),1)))`, `TYPE(DROP(LET(v,A2,v),0))` and `TYPE(LAMBDA(v,TAKE(v,1))(A2))` are 1 (not a 1x1 array's 64), and
+`ISREF` of `TAKE(LET(v,A2,v),1)`, `TAKE(v,1)`, `TAKE(IF(TRUE,v),1)`, `DROP(LET(v,A2,v),0)`, `TRIMRANGE(LET(v,A2,v))` and of the LAMBDA
+form is TRUE. So a blank one reads as a blank cell: `TAKE(LET(v,A1,v),1)` is 0 in a cell, `TAKE(LET(v,A1,acc,v,acc),-1,-1)&""` is "",
+`TYPE(TAKE(LET(v,A1,v),1)+0)` 1; and with A3 text `ROWS(A2-TAKE(LET(v,A3,v),2,42))` is `#VALUE!`. A variable bound to a value stays an
+array: `TYPE(TAKE(LET(v,5,v),1))`, `TYPE(TAKE(5,1))`, `TYPE(TAKE(LET(v,A2+0,v),1))` and `TYPE(TAKE(LET(v,{5},v),1))` are 64, as is a lifted
+count, `TYPE(TAKE(LET(v,A1,v),{1;1}))`. A multi-cell binding was already its range (`TYPE(TAKE(LET(v,B1:B4,v),-1))` 1,
+`TYPE(TAKE(LET(v,B1:B4,v),2)-1)` 64, `ROWS(TAKE(LET(v,B1:B4,v),3))` 3).
+Evidence: probes/t2622-take-let-reference-lambda-text P1-P30 (excel-graph, 2026-10-29, T-2622); gen-m9/1b31092a0d79e5f1 Calc!A143
+(probes/t2475-stat-subexpressions P!A70, `TAKE(LET(v,D05!A$11,acc,v,y,"?b",acc),-1,-1)` 0 with TYPE 1).
+Ours: `Model::cell_variable_reference` (functions/logical/let.rs), read by TAKE's and DROP's value path (`value_or_grid` with
+`keep_cell_variables`) and by `evaluate_picked_source` for TAKE, DROP and TRIMRANGE as a reference argument; OFFSET's counts and every
+other consumer still read such a variable as its cell's value (T-2622). TRIMRANGE's value read of one (`TYPE(TRIMRANGE(LET(v,A2,v)))`) is
+unprobed.
+Status: VERIFIED (excel-graph); implemented
+Tasks: T-2622
+
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or
 TRIMRANGE's trim_rows or trim_cols lifts the call element-wise, and each element is a *reference* (the scalar
