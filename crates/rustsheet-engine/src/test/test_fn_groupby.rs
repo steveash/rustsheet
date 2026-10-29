@@ -991,6 +991,8 @@ fn one_parameter_calls_are_charged_against_the_visit_cap_too() {
     // Every call is charged the cells it is given: one group of 1048575 records and its total
     // row cost 2^21 cells per function, so 10 functions compute and 100 (2E8 cells) are #ERROR!.
     let mut model = new_empty_model();
+    // The visit cap under test, not the formula work budget, which the reads now also charge.
+    model.area_budget.limit = u64::MAX;
     model._set(
         "A1",
         "=549755289600=INDEX(GROUPBY(SEQUENCE(1048575,,1,0),SEQUENCE(1048575),HSTACK(_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM)),3,11)",
