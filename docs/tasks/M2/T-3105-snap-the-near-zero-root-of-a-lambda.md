@@ -39,4 +39,4 @@ and as the engine already does for an in-place, LET-bound or nested call.
 `Model::call_lambda` now evaluates a defined-name LAMBDA's body through `Model::evaluate_formula_root`, as it already
 did for an in-place call (`root_snap` is set for every direct call; the helpers' callers still leave it off, T-3095).
 probes/t3094-snap-lambda-call-forms passes 44/44; numbers.md says so. Eval delta: probes known failures -15 (C2:F2,
-C3:F3, C5:F5, J2, J3, J5), 0 regressions.
+C3:F3, C5:F5, J2, J3, J5), 0 regressions. Follow-up: T-3149 (probe sheet-scoped names).
