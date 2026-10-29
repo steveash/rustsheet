@@ -61,6 +61,18 @@
 - **Accepted residual:** both guards key on the `issue:` field, so a session that dropped it from
   an issue's task would pass CI. This is accepted: the skill requires `issue:` (and `Closes #<N>`
   ties the PR to the issue visibly), and the reviewer panel, security included, reads every diff.
+- **Amended (2026-10-29, T-3121),** after the first real run (issue #2277); these tighten the
+  skill and change no gate. A clone of a linked repository goes in its own empty directory outside
+  the worktree, has its agent-instruction files (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.cursor*`
+  and the like) deleted before anyone reads it, is never given to reviewers (they review the repo
+  diff only, run as the Agent tool's reviewer subagent types, or `claude -p --agent` with no extra
+  directories as a fallback), and is deleted when the task is done. A request with a fine part and
+  an owner-only part becomes a task for the fine part plus the `needs-owner` label, and the
+  PR-opened comment names the waiting part. Follow-up tasks filed during the work carry no
+  `issue:` (so `Closes #<N>` stays correct) and are named in the PR-opened comment; size-L splits
+  of the issue still carry it. The `needs-owner` label is created if missing before it is applied.
+  Facts in PR bodies and comments are copied from command output. Changed:
+  `.claude/skills/issue-intake/SKILL.md`.
 - **Protected paths changed:** `.claude/skills/issue-intake/SKILL.md` (new), the `work-loop` and
   `steward` skills, `docs/process/routines.md`, `docs/process/agent-workflow.md`,
   `docs/process/task-format.md`, `scripts/tasks.py` and `scripts/check_governance.py` with their
