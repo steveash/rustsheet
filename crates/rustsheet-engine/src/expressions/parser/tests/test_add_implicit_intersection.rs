@@ -90,8 +90,8 @@ fn simple_test() {
             "IF(TRUE,INDEX(B1:B6,3),B1:B6)",
             "@IF(TRUE,INDEX(B1:B6,3),B1:B6)",
         ),
-        // Unprobed conditions: a range one is intersected first, so the call is still one cell; an
-        // array one is not a scalar, so the call keeps its `@` (T-3134).
+        // A bare range condition (unprobed) is intersected first, so the call is still one cell; an
+        // array one is not a scalar, so the call keeps its `@` (probes/t3134-legacy-if-index-arm-shapes I50).
         ("IF(B1:B6,INDEX(B1:B6,3))", "IF(@B1:B6,INDEX(B1:B6,3))"),
         (
             "IF({TRUE,FALSE},INDEX(B1:B6,3))",

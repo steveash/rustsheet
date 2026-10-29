@@ -1913,7 +1913,9 @@ computed (`1+2`), a cell (A20 = 3 or 0), text (`"3"`), non-integer (`3.5`, still
 is 30 in column C); and a range or whole-column INDEX beside the INDEX arm (`=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`).
 Under SUM none shows an `@` (M30-M65; 21 for the whole column, 33 for row 3). Ours differs on one shape: an array
 CHOOSE index (I54, K54) puts the `@` on the constant, `=CHOOSE(@{1,2},...)` (known failure, T-3165).
-UNVERIFIED: an INDEX of a defined name or table area, a one- or four-argument INDEX (the engine keeps the `@`).
+UNVERIFIED: an INDEX of a defined name or table area, a one- or four-argument INDEX, a negated literal index
+(`INDEX(B1:B6,-3)`) (the engine keeps the `@`); a bare range condition (`IF(B1:B6,INDEX(B1:B6,3))`) and an
+out-of-range literal index (`INDEX(B1:B6,99)`) (the engine drops it).
 Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
 `=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
 `=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).

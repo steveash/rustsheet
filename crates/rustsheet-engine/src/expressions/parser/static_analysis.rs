@@ -681,7 +681,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
 /// The shape of the IF or CHOOSE `kind(args)`, from each argument's shape computed once (so nested
 /// calls stay linear): a scalar when its value arms are one cell whatever the condition
 /// ([`returns_single_cell_index`]), so a legacy formula shows no `@` on the call or a call over it
-/// (T-3134); otherwise IF broadcasts its arguments and CHOOSE is reference-shaped.
+/// (T-3134), and the cell stores it as a plain formula, not a spill anchor; otherwise IF broadcasts
+/// its arguments and CHOOSE is reference-shaped.
 fn if_or_choose_shape(kind: &Function, args: &[Node]) -> StaticResult {
     let shapes: Vec<StaticResult> = args.iter().map(run_static_analysis_on_node).collect();
     if returns_single_cell_index(args, &shapes) {
