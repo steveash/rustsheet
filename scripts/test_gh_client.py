@@ -82,6 +82,23 @@ FIXTURES: list[tuple[str, Callable[[Client], object], str, str, object, object]]
         None,
         {"workflow_runs": []},
     ),
+    (
+        "workflow_runs by event and time",
+        lambda c: c.workflow_runs(event="pull_request", created=">=2026-10-28T00:00:00Z"),
+        "GET",
+        f"repos/o/r/actions/runs?event=pull_request&created=%3E%3D2026-10-28T00%3A00%3A00Z&{PAGE}",
+        None,
+        {"workflow_runs": []},
+    ),
+    ("run_jobs", lambda c: c.run_jobs(42), "GET", f"repos/o/r/actions/runs/42/jobs?{PAGE}", None, {"jobs": []}),
+    (
+        "updated_pulls",
+        lambda c: c.updated_pulls("2026-10-28T00:00:00Z"),
+        "GET",
+        f"repos/o/r/pulls?state=all&sort=updated&direction=desc&{PAGE}",
+        None,
+        [],
+    ),
     ("commit", lambda c: c.commit(SHA), "GET", f"repos/o/r/git/commits/{SHA}", None, {"sha": SHA}),
     (
         "merge",
@@ -161,6 +178,42 @@ class Pages(unittest.TestCase):
             Endless("o", "r").pulls()
 
 
+class Cursor(unittest.TestCase):
+    """The activity endpoint ignores `page=`: its read follows the `after=` cursor of the Link header."""
+
+    URL = "repos/o/r/activity?ref=refs%2Fheads%2Fmerge-lock&per_page=100"
+
+    def test_the_fake_follows_the_cursor_back_past_since(self) -> None:
+        fake = FakeGh(replies={
+            ("GET", self.URL): Reply([{"timestamp": "2026-10-29T10:00:00Z"}], after="Y3Vy"),
+            ("GET", f"{self.URL}&after=Y3Vy"): Reply([{"timestamp": "2026-10-27T10:00:00Z"}], after="bmV4"),
+        })
+        self.assertEqual(len(fake.activity("merge-lock", "2026-10-28T00:00:00Z")), 2)
+        self.assertEqual(len(fake.requests), 2)
+
+    def test_gh_api_reads_the_cursor_from_the_link_header(self) -> None:
+        link = '<https://api.github.com/repositories/1/activity?ref=x&after=Y3Vy%3D>; rel="next"'
+        outputs = [f"HTTP/2.0 200 OK\r\nLink: {link}\r\n\r\n[]", "HTTP/2.0 200 OK\r\n\r\n[]"]
+        calls: list[list[str]] = []
+
+        def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            calls.append(argv)
+            return subprocess.CompletedProcess(argv, 0, outputs[len(calls) - 1], "")
+
+        with mock.patch("gh_client.subprocess.run", side_effect=run):
+            self.assertEqual(GhApi("o", "r").activity("merge-lock", "2026-10-28T00:00:00Z"), [])
+        # An empty page ends the read even with a cursor; the cursor goes back on the repos/ URL.
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][:3], ["gh", "api", "--include"])
+        self.assertEqual(calls[0][-1], self.URL)
+
+    def test_a_malformed_cursor_is_refused(self) -> None:
+        out = 'HTTP/2.0 200 OK\nLink: <https://x/activity?after=a/b>; rel="next"\n\n[]'
+        with mock.patch("gh_client.subprocess.run", return_value=subprocess.CompletedProcess([], 0, out, "")):
+            with self.assertRaises(GhError):
+                GhApi("o", "r").activity("merge-lock", "2026-10-28T00:00:00Z")
+
+
 class Refusals(unittest.TestCase):
     def test_no_caller_text_reaches_another_path(self) -> None:
         fake = FakeGh()
@@ -176,6 +229,10 @@ class Refusals(unittest.TestCase):
             lambda: fake.check_runs("HEAD"),
             lambda: fake.commit(SHA.upper()),
             lambda: fake.workflow_runs(branch="-x"),
+            lambda: fake.workflow_runs(created="2026-10-28&x=1"),
+            lambda: fake.workflow_runs(event="push&x=1"),
+            lambda: fake.run_jobs("1/../x"),
+            lambda: fake.activity("../x", "2026"),
             lambda: fake.dispatch("../ci.yml", "main"),
             lambda: fake.merge(7, SHA, title="a\nb"),
             lambda: fake.merge(7, SHA, title="t", method="fast-forward"),

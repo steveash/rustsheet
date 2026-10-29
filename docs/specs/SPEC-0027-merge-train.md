@@ -1299,6 +1299,11 @@ force-pushed branches keep none:
   repos/steveash/rustsheet/commits/<sha>`) to get the batch and the predicted outcome from the
   commit message.
 
+*As built (T-3076, decision 0167):* the prediction is a `[skip ci]` commit with no run of its own,
+so `make merge-train-stats` finds the prediction commits through the activity API (every push to
+`merge-train/shadow`, force pushes included) and reads each through the commits API; the runs
+supply the trains and the CI figures.
+
 The bar, computed by `make merge-train-stats` (T-2995):
 - at least 10 scored shadow trains over at least 24 h, the newest within the last 2 h;
 - at least 90% of scored predictions **agree**, by the rules in section 4 ("When a shadow
