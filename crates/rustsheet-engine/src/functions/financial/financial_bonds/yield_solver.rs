@@ -91,7 +91,8 @@ pub(super) fn yield_start(rate: f64, pr: f64, term: &StartTerm) -> f64 {
     if years == 0.0 {
         return (100.0 * rate + discount / years) / ((100.0 + pr) / 2.0 - discount / (4.0 * years));
     }
-    // pr * whole_years + pr * fraction + 100 * years, each product exact in double-double, rounded once.
+    // pr * whole_years + pr * fraction + 100 * years with each product exact, summed in
+    // double-double and rounded to its high word (the lab rounds the exact sum once).
     let products = dd_add(
         dd_mul((pr, 0.0), (term.whole_years, 0.0)),
         dd_mul((pr, 0.0), (fraction, 0.0)),
