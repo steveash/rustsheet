@@ -2,7 +2,7 @@
 //! `bpser.rs`): bratio's w = bpser(a0, b0, x0), w1 = bpser(b0, a0, y0), bpser for min(a, b) > 1 and
 //! L140's series term ([`super::bup`]).
 
-use super::super::beta_density::{algdiv_in, Arith};
+use super::super::beta_density::algdiv;
 use super::super::gammaln::excel_gammaln;
 use super::{half_complement, ln_beta};
 use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
@@ -103,10 +103,7 @@ pub(in super::super) fn bpser_neg_ln_beta(a: f64, b: f64) -> Option<Register> {
                 ),
             )
         } else {
-            extended_sum(
-                excel_gammaln(small),
-                algdiv_in(Arith::X87_STORED, small, large),
-            )
+            extended_sum(excel_gammaln(small), algdiv(small, large))
         };
         return Some(Register::load(-ln_beta));
     }
