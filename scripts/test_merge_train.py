@@ -955,6 +955,29 @@ class StopAndRevert(StageFixture):
         self.assertFalse([r for r in self.gh.writes if r.path.endswith("/merge") and "/101/" in r.path])
         self.assertEqual(self.lock.calls[-1], ("release", None))
 
+    def test_a_task_that_cannot_be_filed_is_logged_and_the_lock_released(self) -> None:
+        self.gh.bad_tree = True  # a P0 before the squash
+        failed = merge_train.GitError("tasks.py new: exit 3")
+        with mock.patch.object(merge_train.Stage, "write_task", side_effect=failed):
+            self.assertEqual(self.run_stage(), 1)
+        self.assertEqual(self.gh.opened, [])
+        self.assertEqual(self.stage.log[-2:], [
+            "the tasks were not filed: tasks.py new: exit 3",
+            "unfiled P0: merge train: main differs from the tested train at #1",
+        ])
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+
+    def test_an_error_mid_hold_still_files_the_tasks_held(self) -> None:
+        def fail() -> None:
+            self.stage.tasks.append(("P1", "merge train: possible flaky test or interaction at #1", "- x"))
+            raise GhError("boom")
+
+        self.gh.hooks[("GET", "actions/runs")] = fail
+        with self.assertRaises(GhError):
+            self.run_stage()
+        self.assertEqual([o["title"] for o in self.gh.opened], [self.tasks_title()])
+        self.assertEqual(self.lock.calls[-1], ("release", None))
+
     def test_a_refused_branch_deletion_is_logged_and_the_train_goes_on(self) -> None:
         self.gh.deny_delete = True
         self.assertEqual(self.run_stage(), 0, self.stage.log)

@@ -407,6 +407,12 @@ def remote_sha(ref: str, root: Path) -> str:
     return out[0] if out else ""
 
 
+def fetch_main(root: Path) -> str:
+    """`main`'s sha on origin, freshly fetched into `refs/remotes/origin/main`."""
+    git("fetch", "-q", "--no-tags", REMOTE, f"+{MAIN_REF}:refs/remotes/origin/main", root=root)
+    return git("rev-parse", "refs/remotes/origin/main", root=root).stdout.strip()
+
+
 def tree_of(commit: str, root: Path) -> str:
     return git("rev-parse", f"{commit}^{{tree}}", root=root).stdout.strip()
 
@@ -657,8 +663,7 @@ class Stage:
         `expected` as its first parent and the train's tree, and `main` is that squash. A squash
         with another parent or tree is `Landed`; a foreign commit on top of a good one is not
         ours to revert."""
-        git("fetch", "-q", "--no-tags", REMOTE, f"+{MAIN_REF}:refs/remotes/origin/main", root=self.root)
-        main = git("rev-parse", "refs/remotes/origin/main", root=self.root).stdout.strip()
+        main = fetch_main(self.root)
         sha = squashed if SHA.fullmatch(squashed) else main
         if git("merge-base", "--is-ancestor", sha, main, root=self.root, check=False).returncode != 0:
             raise Stop(f"main ({main}) does not hold the squash of #{member.pr} ({sha})", p0=True, pr=member.pr)
@@ -852,6 +857,9 @@ class Stage:
                 if stop.p0:
                     self.respond(stop)
                 code = 1
+            except (GhError, GitError):
+                self.file_tasks()  # a P1 found before the error is still filed
+                raise
             self.file_tasks()
             return code
         finally:
@@ -872,6 +880,7 @@ class Stage:
                              "(the merger never merges it)")
             except (GhError, GitError) as error:
                 self.log.append(f"P0: the revert PR of {stop.sha} was not opened: {error}")
+                # The task body is the script's own text, so git's or gh's stderr stays in the log.
                 lines.append(f"- revert PR: none; it was not opened ({error.__class__.__name__}); "
                              f"revert {stop.sha} by hand")
         else:
@@ -879,15 +888,11 @@ class Stage:
         title = f"merge train: main differs from the tested train at #{stop.pr}" if stop.pr else "merge train: P0"
         self.tasks.insert(0, ("P0", title, "\n".join(lines)))
 
-    def fetch_main(self) -> str:
-        git("fetch", "-q", "--no-tags", REMOTE, f"+{MAIN_REF}:refs/remotes/origin/main", root=self.root)
-        return git("rev-parse", "refs/remotes/origin/main", root=self.root).stdout.strip()
-
     def open_revert(self, landed: Landed) -> int:
         """Reverts `landed.sha` on the current `main` in a scratch worktree, pushes the result to
         `merge-train/revert-<sha>` and opens its PR, whose body the script writes in full."""
         branch = f"{REVERT_PREFIX}{landed.sha}"
-        with worktrees(self.root, self.fetch_main(), ("revert",)) as (tree,):
+        with worktrees(self.root, fetch_main(self.root), ("revert",)) as (tree,):
             git(*IDENTITY, "revert", "--no-edit", landed.sha, root=tree)
             git("push", "-q", REMOTE, f"HEAD:refs/heads/{branch}", root=tree)
         body = "\n".join([
@@ -915,7 +920,7 @@ class Stage:
         if not self.tasks:
             return
         try:
-            with worktrees(self.root, self.fetch_main(), ("tasks",)) as (tree,):
+            with worktrees(self.root, fetch_main(self.root), ("tasks",)) as (tree,):
                 ids = [self.write_task(tree, *task) for task in self.tasks]
                 listed = ", ".join(ids)
                 git("add", "-A", "docs/tasks", root=tree)
