@@ -24,7 +24,7 @@ today's PMT takes 29 bit-exact cells off, because the engine's PMT rounds the ex
 in `Model::cumulative_of` (functions/financial/cumulative.rs), CUMIPMT = `compute_payment(rate, nper, pv, 0, type)·m`
 less the CUMPRINC kernel's value (for type 1 from period 1, the period-2 range), replacing `short_interest`,
 `tiny_rate_interest`, `summed_interest` and `payments_less_principal`'s own payment forms where it keeps every
-bit-exact cell. Cells it should move: probes/fin-cumipmt-gate-edges A2-A8, E1-E10, H2-H4; the new probe's A, D, F, H,
+bit-exact cell. Cells it should move: probes/fin-cumipmt-gate-edges A2:A8, E1:E10, H2:H4; the new probe's A, D, F, H,
 K, O, Q, S columns; gen-m9 e168be7f6d3f84c2 A379. T-3067 closed with these left to this task too: the type 1 range
 from period 1 `CUMPRINC_CUMIPMT.xlsx` G2 (= fin-cumipmt-overflow-and-forms A7, gate-edges H5, H6) and gen-m9
 79d87fc527927626 A352 `CUMIPMT(1E-15,283,(1.005+3.14159+1E15)%,2,16,0)` (3 ulps of `pmt·m`, no pairing of 10 payment

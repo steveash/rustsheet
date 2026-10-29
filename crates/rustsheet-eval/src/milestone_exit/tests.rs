@@ -465,6 +465,14 @@ fn m1_needs_gen_m1_and_smoke_none_visibly_off_and_the_m1_probes_list() {
     let m1 = row(&r, "M1");
     assert_eq!(m1.probes_met, None);
     assert!(!m1.exit);
+    // A partial run (`--filter`) of the list gives no verdict either, met or unmet (T-3091).
+    for off in [0, 1] {
+        let mut r = m1_report(3_750, 0, off);
+        r.milestone_lists[0].cases_run = 88;
+        let m1 = row(&r, "M1");
+        assert_eq!(m1.probes_met, None);
+        assert!(!m1.exit);
+    }
 }
 
 /// A run with `corpus` (scored cells, visibly off) of corpus-bench, when fetched, and a
