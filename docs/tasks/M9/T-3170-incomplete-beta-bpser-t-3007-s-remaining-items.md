@@ -32,6 +32,16 @@ overflow probe, SPEC-0025's layout and tests, the shape-of-1 w1 complement, the 
 Tools: docs/research/t2977/score_branches.py (needs the T-2464 harness back from git history, per its docstring) and
 docs/research/t3007/cell_diff.py for full-eval A/B diffs.
 
+## Progress
+- 2026-10-29 (opus run): first item, part 1, is a negative result. I ran `beta_density::algdiv` x87-stored (every op
+  through `extended_*`, `LN(b) - 1` a double op, as `r2-bpser-small/lib.py` `algdiv_x87` runs it) for
+  `bpser_neg_ln_beta`'s min < 1, max >= 8 branch, and compared full `rustsheet-eval run` reports (base main
+  8529a2849 against the change; `docs/research/t3007/cell_diff.py`). The two are bit-identical on every cell:
+  probes-numeric 370,426 of 616,601 bit-exact both ways, and no cell changed. So the shapes case's 2-cell gap
+  between the model and the engine at b0 >= 8 (2,861 against 2,859) is not algdiv's arithmetic. Next step: diff
+  the model's L and the engine's L at those cells, which `score_branches.py` lists. The change was reverted (commit
+  0305f063d, revert 8e63c0bd5) and is kept here only as this record. Items 2 and 3 are untouched.
+
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
       its scores.
