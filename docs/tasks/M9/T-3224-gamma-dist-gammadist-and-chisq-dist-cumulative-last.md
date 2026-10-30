@@ -1,5 +1,5 @@
 ---
-id: T-3076
+id: T-3224
 title: "GAMMA.DIST, GAMMADIST and CHISQ.DIST cumulative last digits on the probes-numeric shape sweeps (43 cells no task names)"
 milestone: M9
 lane: functions-stat
