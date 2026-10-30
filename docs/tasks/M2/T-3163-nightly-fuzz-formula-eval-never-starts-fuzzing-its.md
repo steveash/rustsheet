@@ -3,7 +3,7 @@ id: T-3163
 title: "Nightly fuzz: formula_eval never starts fuzzing, its 802,100-file seed corpus outlasts the 45-minute job"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -32,12 +32,25 @@ the workflow is a protected path: needs a decision record and explicit approval 
 reviewer-architecture and reviewer-security. Filed by the 2026-10-29 18:47 UTC steward run.
 
 ## Acceptance criteria
-- [ ] A `workflow_dispatch` run of the nightly fuzz workflow on the branch (or the first nightly
+- [x] A `workflow_dispatch` run of the nightly fuzz workflow on the branch (or the first nightly
       after merge) finishes `fuzz (formula_eval)` green within the job limit, with fuzzing time
       after the initial pass.
-- [ ] The corpus that is saved stays bounded (state the bound and why) so the job cannot grow
+- [x] The corpus that is saved stays bounded (state the bound and why) so the job cannot grow
       back past the limit.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - New fuzz targets.
+
+## Outcome
+- `fuzz/seed_corpus.py`: formula seeds are one per shape (numbers and text literals blanked; 317,305 shapes of
+  813,249 formulas), capped at the 20,000 whose sha256 sorts first; the dictionary still takes every function name.
+  `scripts/test_seed_corpus.py` tests the shapes, the per-shape choice and the cap.
+- `.github/workflows/fuzz.yml`: `cargo fuzz cmin` after fuzzing, so the saved corpus holds only inputs that add
+  coverage (bounded by the target's coverage, not by the number of nights); the cache key gains `v2`, so the
+  802,100-file caches are not restored. Decision 0171 (amends 0035).
+- Evidence: `workflow_dispatch` run 40992688108 on this branch (b911b329, before the leading-dot regex fix and the
+  tests) is green on all three targets. `fuzz (formula_eval)`: seeds 6 s, the fuzz step 24 min 18 s (build plus
+  the 20 min `-max_total_time`, so the initial pass ended well inside it), cmin 2 min 40 s, job 27 min 36 s of 45.
+  formula_parse 25 min 34 s, xlsx_import 27 min 37 s. The first nightly on `main` saves the first `v2` corpus.
+- Eval delta: none (fuzz and CI only).
