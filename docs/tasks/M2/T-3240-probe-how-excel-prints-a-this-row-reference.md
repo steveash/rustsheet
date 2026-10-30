@@ -15,13 +15,16 @@ Excel evidence (excel-graph) for how FORMULATEXT prints a `#This Row` structured
 in a cell outside its table (same row as a data row, and another row), and in the table's header row and totals row.
 
 ## Context
-T-3069 prints `T[[#This Row],[Col]]` as `[@Col]` in any cell of its own table, using `Parser::containing_table_name`
-(crates/rustsheet-engine/src/expressions/parser/structured_reference.rs), which counts the header and totals rows too,
-and keeps the long form outside the table. The only evidence is probes/t2800-this-row-whitespace (data-row cells of
+Since T-3241 the printing cell decides the form (`StructuredReference::text_at`, using the table's parse-time
+`TableExtent`; crates/rustsheet-engine/src/expressions/parser/structured_reference.rs): `T[[#This Row],[Col]]` and
+`T[@Col]` print `[@Col]` on a data row of T and the long form `T[[#This Row],[Col]]` anywhere else, header and
+totals rows included; an unqualified `[@Col]` prints `[@Col]` anywhere in T's range, header and totals rows included,
+and `T[[#This Row],[Col]]` outside it (`[Col]` likewise prints `T[Col]` outside). The only evidence is probes/t2800-this-row-whitespace (data-row cells of
 a one-row table; docs/excel-semantics/syntax.md "Whitespace beside a missing argument"). Excel likely prints
 `T[@Col]` outside the table. Write probe cases (excel-probe skill): `=T[[#This Row],[Col]]` and `=T[@Col]` typed
 and stored (a) outside T on a data row, (b) outside T on a non-data row, (c) in T's header row, (d) in T's totals
-row, each with FORMULATEXT beside it. Record the findings in syntax.md; file an engine task if ours differs.
+row, each with FORMULATEXT beside it; also `=[@Col]` copied (or filled) from a data row to outside T, and a
+`=[Col]`-style unqualified column reference copied out. Record the findings in syntax.md; file an engine task if ours differs.
 
 Also probe the padded shapes T-3069 left unprobed (PR #2415 review), typed and stored: qualified `=T[@ Col]` and
 `=T[ @Col ]`, one-sided `=[@Col ]` and `=[@ Col]` outside the data row, a defined name whose body is `T[ Col ]`,
