@@ -2427,6 +2427,15 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
 - Rejected: R dbeta's log form, brcomp/(x·y) and TOMS's a0 >= 8 Stirling brcomp; Loader on (a, b); R's bd0 order
   fl(fl(t + M) - k) and 0.1 cut; cuts 0.25, 0.3; t, LN or the ratio kept extended; R >= 2.7.2 and R 2.0 lf forms;
   GAMMALN stirlerr; M2 = fl(n - M1) and nq = n - fl(n·x) for (4, 4); 896 lf / L5 / chain compositions (all within 0.1 rms).
+- Large shapes (gap triage 2026-10-30c, main 40ca52179). On t2464-r2-log1p-hix column C, BETA.DIST(x,1025,1.5,FALSE)
+  for x in (0.625, 1): 4,180 of 5,264 cells are visibly off after T-2507's port (examples: C1, Excel
+  2.4480589855435217e-205 against our 2.448058985543529e-205; C2000 4.406866092326905e-114 against
+  4.406866092326949e-114). The sd of the miss, in units of 2^-52 relative, grows with |ln f|: 14 at |ln f| < 50, 52
+  at 100-150 and 110 at 250-350. It falls to 18-38 above 400. Excel itself is a median 92 ulp from the 200-bit
+  value there (300-cell sample), and EXP of the double nearest the exact ln f does not give Excel's value. At
+  n = 90-256 with both shapes large (t2513-r3-loader-bd0-a and -bd0-hold) the miss is x-dependent with sd 8-19 units.
+  The one exception is (45.2, 60.9), a constant +5.3. UNVERIFIED as a mechanism: T-3249 sweeps the shapes, and
+  T-3250 and T-3244 fit them.
 Evidence: probes-numeric t2513-r3-loader-const-sweep1, -diverse1, -grid1, -hold1, t2513-r3-loader-bd0-a, -b, -hold,
 t2513-verify-r3-loader-const-hold, t2513-verify-r3-loader-bd0-hold, and T-2464's t2464-r2-density-large-p1,
 t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`, `a2_forms.py`, `a5_xreg.py`,
@@ -2436,7 +2445,7 @@ w4-fractions section 5, w6-literature H2.
 Ours: powf × tgamma below a + b = 171.6, statrs above.
 Status: PARTIAL (excel-graph): the structure (extended E, stored k/n/nk, bd0's log form, the 0.2 cut) VERIFIED on
 hold-outs; the constant's residual and the series branch UNVERIFIED
-Tasks: T-2507, T-2585, T-2586
+Tasks: T-2507, T-2585, T-2586, T-3220, T-3249, T-3250, T-3244
 
 ## Incomplete beta bpser: a forward series times EXP(fl(a LN x) - lnB) (T-2464)
 Rule: every bratio bpser call (min(a,b) <= 1 direct, w1 = bpser(b0, a0, y0), a, b > 1 with b0 < 40 and b0·x0 <= 0.7,
