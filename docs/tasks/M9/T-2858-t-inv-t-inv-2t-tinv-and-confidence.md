@@ -97,6 +97,8 @@ value. The closed form is expected to be bit-exact on all of them; any cell left
 `defer: phase-1b` follow-up named in the Outcome.
 
 ## Outcome
-`cauchy_two_tail_quantile` (1/TAN(PI*q/2) via `excel_tan`) now serves df = 1 in T.INV, T.INV.2T, TINV and CONFIDENCE.T. Two-tailed
-p = 1 returns 0 (Excel evidence, see statistics.md). Eval: gen-m9 known failures 3151 -> 3130 (21 fixed), ironcalc-calc 403 -> 395
-(8 fixed), no regressions. probes-numeric (ungated) cells were not itemised individually; the suite's passing count rose.
+`cauchy_two_tail_quantile` (`extended_quotient(1, excel_tan(PI*q/2))`; the worksheet `/` rounds twice, which decides the round points
+p = 0.5, 1.5) now serves df = 1 in T.INV, T.INV.2T, TINV and CONFIDENCE.T. Two-tailed p = 1 returns 0 (Excel evidence, see
+statistics.md). Eval: gen-m9 known failures 3151 -> 3125 (26 fixed), ironcalc-calc 403 -> 391 (12 fixed): all 30 gated lines are gone, no
+regressions. The ungated probes-numeric cells were not itemised cell by cell; the reviewer's list of round-point cells (m9-t-inv A6/A8,
+m9-t-inv-2t A7, m9-t-edges A9, t1531 A127) is covered by the same fix.

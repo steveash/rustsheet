@@ -1,5 +1,6 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
+use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::math_and_trigonometry::excel_tan;
@@ -18,7 +19,9 @@ use crate::{
 /// `1/TAN(PI()*q/2)` through Excel's own TAN, not the true Cauchy quantile (statistics.md
 /// "Student-t quantile at one degree of freedom is 1/TAN(π·p/2) through Excel's TAN", T-2858).
 pub(crate) fn cauchy_two_tail_quantile(q: f64) -> f64 {
-    1.0 / excel_tan(std::f64::consts::PI * q / 2.0)
+    // The worksheet `/` rounds twice (numbers.md "Division rounds twice"), which matters at the
+    // round points: TINV(0.5,1) is 1, not 1.0000000000000002.
+    extended_quotient(1.0, excel_tan(std::f64::consts::PI * q / 2.0))
 }
 
 fn mean(xs: &[f64]) -> f64 {
@@ -726,6 +729,9 @@ mod tests {
     // T-2858: Excel's df = 1 doubles (eval cells TINV/T.INV/T.INV.2T), bit for bit.
     #[test]
     fn df_one_quantile_is_one_over_excel_tan() {
+        // T.INV.2T(0.5,1) = 1 and T.INV.2T(1.5,1) = -1 (round points, double-rounded division)
+        assert_eq!(cauchy_two_tail_quantile(0.5), 1.0);
+        assert_eq!(-cauchy_two_tail_quantile(2.0 - 1.5), -1.0);
         // TINV(1-1E-10,1)
         assert_eq!(cauchy_two_tail_quantile(1.0 - 1e-10), 1.570797438519081e-10);
         // TINV(1+2^-52,1) = -t2(2 - p)
