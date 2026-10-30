@@ -3,7 +3,7 @@ id: T-3013
 title: "GAMMA.INV at a shape below 1 and a tiny p gives Excel's quantile, not the exact one (gen-m9 984cba67bbe6972b A43)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
