@@ -3,7 +3,7 @@ id: T-3178
 title: "Probe typed input and criteria for sign-space text, one-digit-year dates and sign/currency/percent mixed fractions"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -17,8 +17,11 @@ Establish and match what typed cell input and COUNTIF-style criteria do with `- 
 T-2646 changed the shared grammar (`parse_number`, `parse_separated`, `mixed_fraction`), probed only through VALUE and coercion. UNVERIFIED in docs/excel-semantics/text.md: typed input (value and number format), criteria `"- 5"`, and `€3 1/2`, `-$3 1/2`, `-3 1/2%`, `$3 1/2%`, `+ 3 1/2`, `="+ 5"+0`.
 
 ## Acceptance criteria
-- [ ] An oracle-filled probe covers each form above; our behavior matches it or a fix lands.
-- [ ] `make check` green; reviewers approve.
+- [x] An oracle-filled probe covers each form above; our behavior matches it or a fix lands.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/typed-input-sign-space-mixed-fraction` (excel-graph) covers every form. Fixes: number coercion and typed input now read signed, `$`- and `%` mixed fractions, a currency plus `%` is rejected, and criteria split operand (`$` only) from text-cell (`$`, `€`) mixed-fraction currencies. Findings in docs/excel-semantics/text.md.

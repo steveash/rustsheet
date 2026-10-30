@@ -1863,6 +1863,7 @@ C	probes/type-long-text-refs.case.json	8
 C	probes/type-long-text.case.json	30
 C	probes/type-one-cell-range-kinds.case.json	20
 C	probes/typed-currency-percent-input.case.json	66
+C	probes/typed-input-sign-space-mixed-fraction.case.json	54
 C	probes/typed-number-tiny.case.json	24
 C	probes/typed-paren-number-input.case.json	24
 C	probes/unichar-arg-shapes.case.json	22

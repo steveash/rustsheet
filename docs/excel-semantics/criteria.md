@@ -507,7 +507,7 @@ A number criterion from a cell or a literal reads text cells the same way (probe
 excel-graph, 2026-10-29, T-3151): over the text cells above, a cell holding 1 gives SUMIF and SUMIFS 259 ("$1", "1e2%",
 "1"), `COUNTIF(r,1)` 3, 1.5 matches "1 1/2" and -1 matches "(1)". An operand followed by a tab (`"1"&CHAR(9)`,
 `"=1"&CHAR(9)`) is text and matches none of them (C10, C11).
-UNVERIFIED: euro operands (`€1`, `1€`), other VALUE forms (`- 5`, `1-1-1`, month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
+Verified in text.md (T-3178): `- 5`, `1-1-1` and mixed fractions in a criterion. UNVERIFIED: euro operands (`€1`, `1€`), other VALUE forms (month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
 analogy with `>=`), a percent rounding at the 15-digit tie, CHAR(160)-padded formatted text, and non-en-US locales.
 Ours: the operand and the text cells read with the plain parser, then VALUE's reader (`criterion_text_number` in
 functions/criteria.rs over `value_number_text` in cast.rs, which VALUE uses too), then the date parser; text padded with a
