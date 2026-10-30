@@ -1664,8 +1664,23 @@ oracle's exponents 1..360 are unverified, so a zero or non-finite result falls b
 Status: VERIFIED (integer exponents)
 Tasks: T-0221, T-0901, T-1302
 
+### Integer exponents from 2^32 - 1: exp(y·ln x) (T-2392)
+Rule: for a positive base and an integer exponent with |n| >= 2^32 - 1 = 4294967295 (the limit at which a negative
+base is `#NUM!`, below), `x^n` and `POWER(x,n)` are not square-and-multiply but the non-integer path `exp(n·ln x)`
+("Non-integer exponents: exp(y·ln x)"): `(1+0.05/1E10)^1E10` is 1.0512711007250206, equal to
+`EXP(1E10*LN(1+0.05/1E10))` and libm `pow`, where square-and-multiply gives 1.0512711002754753. The switch is exact:
+`(1+0.05/3E9)^3E9` (below the limit) and `(1+0.05/2147483648)^2147483648` are the square-and-multiply values, and
+`(1+0.05/4294967295)^4294967295`, `4294967296`, `5E9`, `1E11`, `1E12`, `1E13` and `1234567890123` are `exp(n·ln x)`, for
+rates 0.01, 0.05, 0.1, 0.5 and 1. The bases that drift apart are the ones near 1; the T-1311 cells above 2^32 - 1
+(`0.5^9007199254740992`, `1^9007199254740992`, ...) are equal either way, and all of probes-numeric scores the same.
+Evidence: probes/fin-effect-huge-npery (102 cells: `^`, POWER and EFFECT side by side; excel-graph, 2026-10-30, T-2392).
+Status: VERIFIED (excel-graph)
+Implemented (T-2392): `integer_power` in arithmetic/power.rs leaves |n| >= 2^32 - 1 to the general path.
+Tasks: T-2392
+
 ### Integer exponents beyond 360, subnormal results, base 10 (T-1311)
-Rule: the square-and-multiply rule above holds for every integer exponent tried up to 2^53 and
+Rule: the square-and-multiply rule above holds for every integer exponent below 2^32 - 1 (from there on see
+"Integer exponents from 2^32 - 1: exp(y·ln x)" below; the cells above it here agree with both) and
 every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2`, `3`, `5`, `7`,
 `13`, `20`, `50`, `100`, `1000`, `1E5`, `1E15`, `-10`, `-1.5`, negative n by `1/`). Four additions:
 1. A result below 2.2250738585072014E-308 (subnormal) is 0, not the subnormal: `0.1^310`,

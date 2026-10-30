@@ -2158,7 +2158,9 @@ Tasks: T-2032
 ## EFFECT and NOMINAL raise to their power with `^`
 Rule: EFFECT is `(1 + r/n)^n - 1` and NOMINAL is `((1 + e)^(1/n) - 1) * n`, with n floored, and both powers are
 Excel's `^` operator, not libm `pow`. EFFECT's integer n goes through right-to-left square-and-multiply (numbers.md
-"Integer exponents: right-to-left square-and-multiply"). For NOMINAL, n = 1 is an exact integer power, n = 2 is the
+"Integer exponents: right-to-left square-and-multiply") below 2^32 - 1, and through `exp(n·ln x)` from there on
+(numbers.md "Integer exponents from 2^32 - 1: exp(y·ln x)", T-2392): `EFFECT(0.05,3E9)` is 0.05127110013105862 and
+`EFFECT(0.05,1E10)` 0.05127110072502061, each equal to its `(1+0.05/n)^n-1` (probes/fin-effect-huge-npery). For NOMINAL, n = 1 is an exact integer power, n = 2 is the
 square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-integer exponents: exp(y·ln x)").
 `EFFECT(0.5,10)` is 0.6288946267774416 (libm pow gives ...442), `NOMINAL(0.5,4.5)` is 0.4267276788012868 (...859), and
 `EFFECT(0.05,4)` is 0.050945336914062445 (...222). Columns E and F of NOMINAL_EFFECT.xlsx, which convert the other
@@ -3239,7 +3241,8 @@ formula per pool entry:
 - A coupon frequency truncates: `COUPNUM(39448,43831,2.5)` is 24 and `...,4.9)` 48; `"2"` is coerced (24); 3, 0, 12, -1
   and -0.0001 are `#NUM!`.
 - EFFECT floors npery: `EFFECT(0.05,1.5)` = `EFFECT(0.05,1)` = 0.050000000000000044, and npery 0.5, 0.999, 0 and -1 are
-  `#NUM!`. `EFFECT(0.05,1E+10)` is 0.05127110072502061 (ours 0.05127110027547532, T-2392).
+  `#NUM!`. `EFFECT(0.05,1E+10)` is 0.05127110072502061 (ours was 0.05127110027547532; fixed by T-2392, see "EFFECT and NOMINAL
+  raise to their power with `^`").
 - PMT: a rate of -1 and nper 0 are `#NUM!`; a negative nper computes (`PMT(0.05,-12,1000)` = 62.82541002081538); nper
   1E+6, 1E+9 and 1E+300 give -50 (`-pv*rate`). IPMT per 0, 0.5, -1 and past nper (13 of 12) is `#NUM!`; per 1.5 computes.
 - IRR: no sign change, a single flow and all zeros are `#NUM!`; text and TRUE inside an array literal are skipped
