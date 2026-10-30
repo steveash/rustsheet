@@ -39,7 +39,7 @@ Most of this already landed with T-3164 (`without_footer`, tests, SPEC-0027 sect
 remaining case: a footer followed by a trailing newline is accepted (`rstrip("\n")` before stripping the
 footer), with a test. Anything else after the marker is still refused. No eval change.
 
-## Handoff
+## Handoff (resumed)
 Tried: added `.rstrip("\n")` in `without_footer` (scripts/merge_ready.py) plus a test; `make check` green locally;
 security, architecture and quality reviewers all APPROVE on 45b997e (draft PR #2448).
 Failed: CI hygiene job, `check_governance.py origin/main`: "protected paths changed without a decision record in
