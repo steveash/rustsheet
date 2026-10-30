@@ -4,6 +4,8 @@ mod sheet_edits;
 mod structured;
 mod wrapped;
 mod wrong_reference;
+use std::fmt::Write;
+
 use super::reference_operators::{
     at_text, callee_operand, intersection_text, spill_operand, tight_operand, union_text,
 };
@@ -491,24 +493,25 @@ pub(crate) fn stringify_reference(
             }
         }
         None => {
-            let row_abs = if absolute_row {
-                format!("R{row}")
-            } else {
-                format!("R[{row}]")
-            };
-            let col_abs = if absolute_column {
-                format!("C{column}")
-            } else {
-                format!("C[{column}]")
-            };
-            match &sheet_name {
-                Some(name) => {
-                    format!("{}!{}{}", quote_name(name), row_abs, col_abs)
-                }
-                None => {
-                    format!("{row_abs}{col_abs}")
-                }
+            // Written into one buffer: the R1C1 text of every reference of every loaded formula
+            // is printed here (T-0499).
+            let mut text = String::with_capacity(24);
+            if let Some(name) = sheet_name {
+                text.push_str(&quote_name(name));
+                text.push('!');
             }
+            // Writing to a `String` cannot fail.
+            let _ = if absolute_row {
+                write!(text, "R{row}")
+            } else {
+                write!(text, "R[{row}]")
+            };
+            let _ = if absolute_column {
+                write!(text, "C{column}")
+            } else {
+                write!(text, "C[{column}]")
+            };
+            text
         }
     }
 }
@@ -557,23 +560,27 @@ fn format_function(
     locale: &Locale,
     language: &Language,
 ) -> String {
-    let mut first = true;
-    let mut arguments = "".to_string();
+    // One buffer for the call: rebuilding the argument text at each argument copied it once
+    // per argument, a hot spot on loading long formulas (T-0499).
     let arg_separator = argument_separator(locale);
-    for el in args {
-        if !first {
-            arguments = format!(
-                "{}{}{}",
-                arguments,
-                arg_separator,
-                stringify(el, context, rewrite, export_to_excel, locale, language)
-            );
-        } else {
-            first = false;
-            arguments = stringify(el, context, rewrite, export_to_excel, locale, language);
+    let mut text = String::with_capacity(name.len() + 2 + 16 * args.len());
+    text.push_str(name);
+    text.push('(');
+    for (index, el) in args.iter().enumerate() {
+        if index > 0 {
+            text.push_str(arg_separator);
         }
+        text.push_str(&stringify(
+            el,
+            context,
+            rewrite,
+            export_to_excel,
+            locale,
+            language,
+        ));
     }
-    format!("{name}({arguments})")
+    text.push(')');
+    text
 }
 
 // There is just one representation in the AST (Abstract Syntax Tree) of a formula.
@@ -991,9 +998,9 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
         _ => return left_text,
     };
     let level = binding(node);
-    format!(
-        "{}{operator}{}",
-        wrap(left_text, binding(left) < level),
-        wrap(sub(right), binding(right) <= level)
-    )
+    // Appended to the chain's text so far rather than copied into a new string at every link.
+    let mut text = wrap(left_text, binding(left) < level);
+    let _ = write!(text, "{operator}");
+    text.push_str(&wrap(sub(right), binding(right) <= level));
+    text
 }

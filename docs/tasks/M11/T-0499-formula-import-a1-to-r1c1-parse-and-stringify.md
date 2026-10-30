@@ -60,3 +60,21 @@ Profile first, then fix what the profile shows. Candidates, none measured:
 
 ## Out of scope
 - Defined-name parsing on load (T-3195); calculation time; the harness's own snapshot and volatile scan.
+
+## Progress (2026-10-30, partial; not yet reviewed)
+Pushed on this branch, `make check` not yet run; engine and xlsx tests pass (debug; in `--release`,
+`test_to_from_bytes::errors` fails the same way without this change).
+- `crates/rustsheet/benches/import.rs` (`cargo bench -p rustsheet --bench import`): loads 20,000 formulas of the
+  52450 shape over a quoted same-workbook sheet name, recalc off.
+- `Lexer::peek_token` keeps the token it read by start position (`Peeked`, dropped by `set_formula` and every setting
+  change; it also restores what an inner peek leaves in `next_token_position`, so a cached `next_token` leaves the
+  same state as a fresh one). New `Lexer::peek` borrows it; the parser's compare-only peeks use it.
+- `stringify`: `format_function`, `operator_text` and the R1C1 `stringify_reference` append into one buffer instead
+  of a `format!` per argument or link.
+- Callgrind on the bench at 1,000 formulas (`--toggle-collect='*from_a1_to_rc*'`): 980M -> 557M instructions
+  (parse 625M -> 303M, `to_rc_format` 278M -> 157M, `add_implicit_intersection` 63M unchanged).
+- corpus-bench/52450 on the same machine: 4,042 ms (main) -> 2,672 ms; still above the 1,500 ms target.
+Next, from the last profile: malloc/free are about 20% (`set_argument_hint` builds a `Vec` and a `String` per
+argument; `parse_identifier` and `Functions::lookup_stored` run a `str` search per identifier, 13M); the remaining
+`peek_token` clones in lists.rs and reference_operators.rs; `add_implicit_intersection`; then the
+R1C1-shape cache the Context names, only with a proof.

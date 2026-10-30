@@ -101,7 +101,7 @@ impl Parser {
 
     /// `node` called with the argument list that follows it, when a `(` follows with no space.
     pub(super) fn call_if_parenthesis_follows(&mut self, node: Node) -> Node {
-        if !self.lexer.whitespace_follows() && self.lexer.peek_token() == TokenType::LeftParenthesis
+        if !self.lexer.whitespace_follows() && *self.lexer.peek() == TokenType::LeftParenthesis
         {
             return self.parse_call(node);
         }

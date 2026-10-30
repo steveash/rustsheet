@@ -206,7 +206,7 @@ impl Parser {
     /// The run between a call's `(`, just read, and its `)` when no argument comes between them
     /// (`=NOW( )`); none otherwise.
     pub(super) fn empty_call_run(&mut self) -> Run {
-        if self.lexer.peek_token() == TokenType::RightParenthesis {
+        if *self.lexer.peek() == TokenType::RightParenthesis {
             self.run_ahead()
         } else {
             Run::default()

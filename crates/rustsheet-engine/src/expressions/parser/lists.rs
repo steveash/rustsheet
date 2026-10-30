@@ -107,7 +107,7 @@ impl Parser {
         self.set_argument_hint(fn_name, 1);
         // A run before a missing first argument is kept too (`=SUM( ,1)`,
         // probes/t2966-missing-first-arg-run, T-2966).
-        if &self.lexer.peek_token() == arg_separator_token {
+        if self.lexer.peek() == arg_separator_token {
             args.push(self.missing_argument());
         } else {
             let t = self.parse_argument(binds_names);
@@ -125,10 +125,10 @@ impl Parser {
             // A run between two commas, or after the last one, is the missing argument's own and
             // prints back (`=IF(1, ,2)`, `=SUM(1,` LF `)`; syntax.md "Whitespace beside a missing
             // argument is kept", probes/t2786-whitespace-structured-refs-runs I2:I10, T-2944).
-            if &self.lexer.peek_token() == arg_separator_token {
+            if self.lexer.peek() == arg_separator_token {
                 args.push(self.missing_argument());
                 next_token = arg_separator_token.clone();
-            } else if self.lexer.peek_token() == TokenType::RightParenthesis {
+            } else if *self.lexer.peek() == TokenType::RightParenthesis {
                 args.push(self.missing_argument());
                 return Ok(args);
             } else {

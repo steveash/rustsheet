@@ -119,6 +119,23 @@ pub struct Lexer {
     /// `T[ [Col] ]`, which the engine re-parses after edits. Text typed or loaded from a file
     /// reads it as no column, as Excel does (see [`Lexer::set_engine_text`]).
     padded_bare_columns: bool,
+    /// The last token [`peek_token`](Self::peek_token) read: the parser peeks at most tokens
+    /// several times before taking them, and long imported formulas spent most of their parse
+    /// lexing the same token again (T-0499). A token depends only on the text, the start
+    /// position and the settings, so it is kept by its start position and dropped when the text
+    /// or a setting changes.
+    peeked: Option<Peeked>,
+}
+
+/// A token read by [`Lexer::peek_token`], with the positions it was read from and up to.
+#[derive(Clone)]
+struct Peeked {
+    start: usize,
+    end: usize,
+    /// What reading it left in `next_token_position` (a peek inside the token, e.g. for the
+    /// `:` of a range, sets it), so that taking it with `next_token` leaves the same state.
+    inner_next: Option<usize>,
+    token: TokenType,
 }
 
 impl Lexer {
@@ -140,6 +157,7 @@ impl Lexer {
             locale,
             language,
             padded_bare_columns: true,
+            peeked: None,
         }
     }
 
@@ -149,21 +167,25 @@ impl Lexer {
     /// T-3069).
     pub(crate) fn set_engine_text(&mut self, engine_text: bool) {
         self.padded_bare_columns = engine_text;
+        self.peeked = None;
     }
 
     /// Changes the lexer mode
     pub fn set_lexer_mode(&mut self, mode: LexerMode) {
         self.mode = mode;
+        self.peeked = None;
     }
 
     /// Sets the locale
     pub fn set_locale(&mut self, locale: &'static Locale) {
         self.locale = locale;
+        self.peeked = None;
     }
 
     /// Sets the language
     pub fn set_language(&mut self, language: &'static Language) {
         self.language = language;
+        self.peeked = None;
     }
 
     // FIXME: I don't think we should have `is_a1_mode` and   `get_formula`.
@@ -192,6 +214,7 @@ impl Lexer {
         self.len = self.chars.len();
         self.position = 0;
         self.next_token_position = None;
+        self.peeked = None;
     }
 
     /// Returns an error if the token is not the expected one.
@@ -206,11 +229,32 @@ impl Lexer {
     /// Checks the next token without advancing position
     /// See also [`advance_token`](Self::advance_token)
     pub fn peek_token(&mut self) -> TokenType {
-        let position = self.position;
-        let tk = self.next_token();
-        self.next_token_position = Some(self.position);
-        self.position = position;
-        tk
+        self.peek().clone()
+    }
+
+    /// The next token, borrowed: [`peek_token`](Self::peek_token) without the copy, for a
+    /// caller that only looks at it (most peeks only compare it with one token, T-0499).
+    pub fn peek(&mut self) -> &TokenType {
+        let start = self.position;
+        if let Some(peeked) = self.peeked.take_if(|p| p.start == start) {
+            self.next_token_position = Some(peeked.end);
+            return &self.peeked.insert(peeked).token;
+        }
+        self.next_token_position = None;
+        let token = self.lex_token();
+        let end = self.position;
+        let inner_next = self.next_token_position;
+        self.next_token_position = Some(end);
+        self.position = start;
+        &self
+            .peeked
+            .insert(Peeked {
+                start,
+                end,
+                inner_next,
+                token,
+            })
+            .token
     }
 
     /// Whether whitespace comes right after the last token read (a [`peek_token`](Self::peek_token)
@@ -259,6 +303,16 @@ impl Lexer {
     /// Returns the next token
     pub fn next_token(&mut self) -> TokenType {
         self.next_token_position = None;
+        if let Some(peeked) = self.peeked.take_if(|p| p.start == self.position) {
+            self.position = peeked.end;
+            self.next_token_position = peeked.inner_next;
+            return peeked.token;
+        }
+        self.lex_token()
+    }
+
+    /// Reads the token at the current position, past any whitespace.
+    fn lex_token(&mut self) -> TokenType {
         self.consume_whitespace();
 
         match self.read_next_char() {
@@ -345,7 +399,7 @@ impl Lexer {
                         let position = self.position - 1;
                         match self.consume_number(char) {
                             Ok(number) => {
-                                if self.peek_token() == TokenType::Colon
+                                if *self.peek() == TokenType::Colon
                                     && self.mode == LexerMode::A1
                                 {
                                     // Its a row range  3:5

@@ -179,7 +179,7 @@ impl Parser {
             self.lexer.advance_token();
             let is_minus = op == token::OpSum::Minus;
             let before_number = !self.lexer.whitespace_follows()
-                && matches!(self.lexer.peek_token(), TokenType::Number(_));
+                && matches!(self.lexer.peek(), TokenType::Number(_));
             if !before_number {
                 counted += 1;
             }
@@ -208,7 +208,7 @@ impl Parser {
             self.depth = depth;
             return node;
         }
-        let cost = if group_head && self.lexer.peek_token() != TokenType::LeftParenthesis {
+        let cost = if group_head && *self.lexer.peek() != TokenType::LeftParenthesis {
             GROUP_HEAD_NESTING
         } else {
             OPERAND_NESTING
