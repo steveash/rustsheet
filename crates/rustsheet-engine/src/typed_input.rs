@@ -125,7 +125,8 @@ impl Model {
     /// into a table's data rows fills its column as a calculated column, when
     /// [`Model::calculated_column`] finds the column empty or filled (T-2958, T-3024); a stored
     /// formula never fills. A formula or a constant typed just right of a table grows the table
-    /// by a column first ([`Model::table_expansion`], T-2968, T-3218). A formula that does not parse is an error
+    /// by a column first, and one typed just below it by a row ([`Model::table_expansion`],
+    /// T-2968, T-3218, T-3273). A formula that does not parse is an error
     /// starting with [`TYPED_FORMULA_DOES_NOT_PARSE`], and the cell keeps its content (T-3213).
     pub fn set_typed_user_input(
         &mut self,
@@ -135,7 +136,8 @@ impl Model {
         value: String,
     ) -> Result<(), String> {
         // A formula or constant typed just right of a table grows it first, so the new column
-        // fills (T-2968, T-3218); one typed into the header cell only names the column.
+        // fills (T-2968, T-3218); one typed into the header cell only names the column. One typed
+        // just below it grows it by a row (T-3273).
         if let Some(expansion) = self.table_expansion(sheet, row, column, &value)? {
             self.expand_table(sheet, &expansion)?;
             if expansion.header {

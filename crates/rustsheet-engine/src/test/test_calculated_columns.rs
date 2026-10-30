@@ -344,3 +344,74 @@ fn a_padded_column_survives_an_edit_that_rewrites_its_text() {
     model.evaluate();
     assert_eq!(model.get_formatted_cell_value(0, 9, 5).unwrap(), "");
 }
+
+/// `COLUMNS(T[#All])` and `ROWS(T[#All])` after typing `text` into (`row`, `column`) of `model`.
+fn grown_by(mut model: Model, row: i32, column: i32, text: &str) -> Vec<String> {
+    model
+        .set_typed_user_input(0, row, column, text.to_string())
+        .unwrap();
+    expansion_readout(&mut model)[..2].to_vec()
+}
+
+/// probes/t3003-below-last-row, -const: `=B4*2` or `7` typed into A5, just below `T` A1:C4,
+/// grows `T` to A1:C5 and A5 keeps what was typed (rule 7e, T-3273).
+#[test]
+fn typing_just_below_the_last_data_row_grows_the_table_by_a_row() {
+    for text in ["=B4*2", "7"] {
+        let mut model = model(false);
+        model
+            .set_typed_user_input(0, 5, 1, text.to_string())
+            .unwrap();
+        assert_eq!(expansion_readout(&mut model)[..2], ["3", "5"], "{text}");
+        let stored = model.get_cell_formula(0, 5, 1).unwrap();
+        let value = model.get_formatted_cell_value(0, 5, 1).unwrap();
+        if text.starts_with('=') {
+            assert_eq!((stored.as_deref(), value.as_str()), (Some("=B4*2"), "80"));
+        } else {
+            assert_eq!((stored, value.as_str()), (None, "7"));
+        }
+        // The new row is the table's: its column sums see it.
+        model
+            .set_user_input(0, 7, 1, "=ROWS(T[Col])".to_string())
+            .unwrap();
+        model.evaluate();
+        assert_eq!(model.get_formatted_cell_value(0, 7, 1).unwrap(), "4");
+    }
+}
+
+/// Stored or untyped input (`set_user_input`, xlsx import) never grows a table by a row.
+#[test]
+fn untyped_input_below_the_table_does_not_grow_it() {
+    let mut model = model(false);
+    model.set_user_input(0, 5, 1, "7".to_string()).unwrap();
+    model
+        .set_loaded_user_input(0, 5, 2, "=B4*2".to_string())
+        .unwrap();
+    assert_eq!(expansion_readout(&mut model)[..2], ["3", "4"]);
+}
+
+/// Unprobed neighbours of rule 7e, pinned as the engine has them (T-3273): no growth below a
+/// totals row, outside the table's columns, two rows below, into a row another table reaches, or
+/// into a row whose other cells are not blank (the column rule 7d's analogue).
+#[test]
+fn unprobed_neighbours_below_the_table_do_not_grow_it() {
+    // A totals row (row 5): typing into A6 leaves `T` A1:C5.
+    assert_eq!(grown_by(model(true), 6, 1, "7"), ["3", "5"]);
+    // Below the table but outside its columns: E5.
+    assert_eq!(grown_by(model(false), 5, 5, "7"), ["3", "4"]);
+    // Two rows below: A6.
+    assert_eq!(grown_by(model(false), 6, 1, "7"), ["3", "4"]);
+    // Another table over C5:E6 reaches the new row.
+    let mut overlap = model(false);
+    overlap.set_user_input(0, 5, 3, "U1".to_string()).unwrap();
+    overlap.set_user_input(0, 5, 4, "U2".to_string()).unwrap();
+    overlap.set_user_input(0, 5, 5, "U3".to_string()).unwrap();
+    overlap
+        .add_table_with_totals(0, "U", (5, 3, 6, 5), false, false)
+        .unwrap();
+    assert_eq!(grown_by(overlap, 5, 1, "7"), ["3", "4"]);
+    // B5 already holds a value.
+    let mut occupied = model(false);
+    occupied.set_user_input(0, 5, 2, "1".to_string()).unwrap();
+    assert_eq!(grown_by(occupied, 5, 1, "7"), ["3", "4"]);
+}

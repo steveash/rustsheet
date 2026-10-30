@@ -3,7 +3,7 @@ id: T-3273
 title: "Typing just below a table's last data row grows the table by a row (references.md rule 7e, t3003-below-last-row)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,23 +41,32 @@ table now changes the table, so the existing typed-input tests and eval cases th
 passing.
 
 ## Acceptance criteria
-- [ ] probes/t3003-below-last-row S!H2 and probes/t3003-below-last-row-const S!H2 pass bit-exact. Their F lines
+- [x] probes/t3003-below-last-row S!H2 and probes/t3003-below-last-row-const S!H2 pass bit-exact. Their F lines
       leave eval/baseline/probes.txt via `make eval-baseline`, with 0 regressions in every suite.
-- [ ] Growth goes through the same engine entry point as the column growth (`set_typed_user_input` via
+- [x] Growth goes through the same engine entry point as the column growth (`set_typed_user_input` via
       `table_expansion` or its successor) for both typed formulas and typed constants. `set_user_input` (stored or
       untyped input) never grows a table, and a unit test shows that.
-- [ ] Facade test: a `Workbook::edit` that types into the cell below a table grows it, and undoing that edit
+- [x] Facade test: a `Workbook::edit` that types into the cell below a table grows it, and undoing that edit
       restores the original table reference (`T[#All]` back to 4 rows).
-- [ ] Engine tests cover the unprobed neighbours and pin today's behavior for each, with a comment saying it is
+- [x] Engine tests cover the unprobed neighbours and pin today's behavior for each, with a comment saying it is
       unprobed:
       - a table with a totals row;
       - a cell below the table but outside its columns;
       - a cell two rows below the table;
       - an overlap with another table.
-- [ ] references.md rule 7(e)'s "Ours" sentence says what the engine now does. `make check` green; reviewers approve.
+- [x] references.md rule 7(e)'s "Ours" sentence says what the engine now does. `make check` green; reviewers approve.
 
 ## Out of scope
 - Filling a calculated column into the new row (unprobed: the probe's `Calc` column is empty and B5/C5 are not read
   back). File a probe task in research if the implementation needs that answer.
 - Growth below a table with a totals row, and growth by several rows (pasting or typing further down): unprobed.
 - Column growth (T-3218) and unqualified `[@Col]` beside a table (T-3274).
+
+## Outcome
+`table_expansion` finds a table to grow right (as before) or down: a typed formula or constant in the cell just below
+the last data row, inside the table's columns, of a table without a totals row, when the rest of the new row is blank
+and no other table reaches it (`TableGrowth::Down`; one guard for both directions). `expand_table` moves the reference
+down a row and writes nothing else; the facade's existing `Undo::TableBefore` covers the rollback. probes/t3003-below-
+last-row and -const H2 now pass (2 cells fixed), 0 regressions. Engine tests pin the unprobed neighbours (totals row,
+outside the columns, two rows down, another table, an occupied cell) and that `set_user_input` never grows; a facade
+test grows the table and rolls the edit back. references.md rule 7(e) says what the engine does.
