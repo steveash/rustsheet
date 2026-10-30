@@ -7,3 +7,4 @@ mod test_multinomial;
 mod test_munit;
 mod test_seriessum;
 mod test_sumproduct;
+mod test_sumproduct_masked;

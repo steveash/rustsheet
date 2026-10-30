@@ -1,10 +1,14 @@
+use std::sync::Arc;
+
 use crate::arithmetic::{extended_product, extended_sum, flush_subnormal};
+use crate::functions::statistical::ifs_cache::BlockNumbers;
+use crate::limits::check_array_size;
 use crate::nested_array::NestedKind;
 use crate::{
     calc_result::CalcResult,
     expressions::{
-        parser::{ArrayNode, Node},
-        token::Error,
+        parser::{left_chain, value_operands, ArrayNode, Node},
+        token::{Error, OpProduct},
         types::CellReferenceIndex,
     },
     model::Model,
@@ -21,6 +25,100 @@ enum Factors {
         tail: f64,
         tail_len: usize,
     },
+    /// A `block*mask*...` argument, unbuilt.
+    Masked(MaskedBlock),
+}
+
+/// A SUMPRODUCT argument `block*mask*...` read without building its arrays (T-3230): a block of
+/// cells times masks, each a comparison's 1-row array as wide as the block or 1-column array as
+/// tall, whose elements are booleans or errors. A mask element is 1 or 0, so each element of the
+/// product is its cell's number, or a zero where a mask is 0, exactly as `*` gives it (the zero's
+/// sign never shows: adding it leaves SUMPRODUCT's total as it is, and the total is never -0).
+/// Its first error element, row by row, is its cell's error, or else the first in operator order
+/// of the masks' errors at its row and column, as `*` picks the left operand's error first.
+struct MaskedBlock {
+    numbers: Arc<BlockNumbers>,
+    rows: usize,
+    columns: usize,
+    /// Whether every row mask is TRUE at each row, every column mask at each column.
+    row_on: Vec<bool>,
+    column_on: Vec<bool>,
+    /// The first error element, row by row: its position and error.
+    error: Option<(usize, Error)>,
+}
+
+impl MaskedBlock {
+    fn new(numbers: Arc<BlockNumbers>, rows: usize, columns: usize) -> MaskedBlock {
+        MaskedBlock {
+            error: numbers.first_error.clone(),
+            numbers,
+            rows,
+            columns,
+            row_on: vec![true; rows],
+            column_on: vec![true; columns],
+        }
+    }
+
+    /// Multiplies the block by `value` when it is a mask (type docs); false, leaving the block as
+    /// it was, when it is anything else.
+    fn multiply(&mut self, value: &CalcResult) -> bool {
+        let CalcResult::Array(array) = value else {
+            return false;
+        };
+        let column_mask = array.len() == 1 && array.iter().all(|row| row.len() == self.columns);
+        let row_mask = array.len() == self.rows && array.iter().all(|row| row.len() == 1);
+        let elements = || array.iter().flatten();
+        let masks =
+            elements().all(|node| matches!(node, ArrayNode::Boolean(_) | ArrayNode::Error(_)));
+        if !masks || !(column_mask || row_mask) {
+            return false;
+        }
+        // A mask's error at index k is first met at position k of its row (column mask) or at
+        // the start of row k (row mask); where an earlier operand has an error at the same
+        // position, that one stays.
+        let stride = if column_mask { 1 } else { self.columns };
+        let first_error = elements().enumerate().find_map(|(index, node)| match node {
+            ArrayNode::Error(error) => Some((index.saturating_mul(stride), error.clone())),
+            _ => None,
+        });
+        if let Some((position, error)) = first_error {
+            if self
+                .error
+                .as_ref()
+                .is_none_or(|(first, _)| position < *first)
+            {
+                self.error = Some((position, error));
+            }
+        }
+        let on = if column_mask {
+            &mut self.column_on
+        } else {
+            &mut self.row_on
+        };
+        for (on, node) in on.iter_mut().zip(elements()) {
+            *on = *on && matches!(node, ArrayNode::Boolean(true));
+        }
+        true
+    }
+
+    /// The element at row `i`, column `j`, within the shape.
+    fn get(&self, i: usize, j: usize) -> f64 {
+        let on = self.row_on.get(i).copied().unwrap_or(false)
+            && self.column_on.get(j).copied().unwrap_or(false);
+        if on {
+            let index = i.saturating_mul(self.columns).saturating_add(j);
+            self.numbers.values.get(index).copied().unwrap_or(0.0)
+        } else {
+            0.0
+        }
+    }
+}
+
+/// A SUMPRODUCT argument read by [`Model::read_masked_block`].
+enum MaskedRead {
+    Block(MaskedBlock),
+    /// Its value, as the operators gave it.
+    Value(CalcResult),
 }
 
 impl Factors {
@@ -29,6 +127,7 @@ impl Factors {
         match self {
             Factors::Grid(grid) => (grid.len(), grid.first().map_or(0, Vec::len)),
             Factors::Tailed { head, tail_len, .. } => (head.len() + tail_len, 1),
+            Factors::Masked(block) => (block.rows, block.columns),
         }
     }
 
@@ -41,6 +140,7 @@ impl Factors {
                 .copied()
                 .unwrap_or(0.0),
             Factors::Tailed { head, tail, .. } => head.get(i).copied().unwrap_or(*tail),
+            Factors::Masked(block) => block.get(i, j),
         }
     }
 }
@@ -129,7 +229,7 @@ impl Model {
             .iter()
             .map(|factor| match factor {
                 Factors::Tailed { head, .. } => Some(head.len()),
-                Factors::Grid(_) => None,
+                Factors::Grid(_) | Factors::Masked(_) => None,
             })
             .try_fold(0, |longest, head| head.map(|head| longest.max(head)));
         let walked = heads.unwrap_or(rows).min(rows);
@@ -182,7 +282,16 @@ impl Model {
                 tail_len,
             });
         }
-        let array = self.sumproduct_array(arg, cell)?;
+        let array = match self.read_masked_block(arg, cell) {
+            Some(MaskedRead::Block(block)) => {
+                if let Some((_, error)) = &block.error {
+                    element_error.get_or_insert_with(|| error.clone());
+                }
+                return Ok(Factors::Masked(block));
+            }
+            Some(MaskedRead::Value(value)) => self.sumproduct_read_array(RefArg::from(value), cell),
+            None => self.sumproduct_array(arg, cell),
+        }?;
         let grid = array
             .iter()
             .map(|row| {
@@ -204,7 +313,17 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
-        match self.evaluate_value_or_grid(arg, cell) {
+        let read = self.evaluate_value_or_grid(arg, cell);
+        self.sumproduct_read_array(read, cell)
+    }
+
+    /// [`Model::sumproduct_array`] of an argument already read.
+    fn sumproduct_read_array(
+        &mut self,
+        read: RefArg,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        match read {
             RefArg::Grid(grid) => Ok(grid.to_array(ArrayNode::Empty)),
             read => {
                 // A blank cell given as a cell or one-cell range reference is `#VALUE!`, alone or
@@ -221,5 +340,91 @@ impl Model {
                 self.result_to_array(result, cell)
             }
         }
+    }
+
+    /// A SUMPRODUCT argument `block*mask*...` (a range times operands, [`MaskedBlock`]) read
+    /// without building its arrays when the block's cells are cached (`ifs_cache.rs`) and every
+    /// operand after it is a mask (T-3230): calipers `pv26_002` multiplies 1,440 x 41 cells by a
+    /// header-row and a key-column comparison in each of 1,500 calls. The argument is evaluated
+    /// as `evaluate_node_in_context` evaluates it, operand by operand in the same order; only the
+    /// block's reads move, and reading a cached block evaluates nothing. At the first operand that
+    /// is no mask, the operators run over the operands read so far, and the rest of the chain as
+    /// usual: [`MaskedRead::Value`]. `None`, having read nothing, when `arg` is no such chain.
+    fn read_masked_block(&mut self, arg: &Node, cell: CellReferenceIndex) -> Option<MaskedRead> {
+        let node = arg.ungrouped();
+        let times = |link: &Node| {
+            matches!(
+                link,
+                Node::OpProductKind {
+                    kind: OpProduct::Times,
+                    ..
+                }
+            )
+        };
+        if !times(node) || !self.tail_views.is_empty() || !self.pass_cache_safe() {
+            return None;
+        }
+        let (links, first) = left_chain(node);
+        let links: Vec<&Node> = links.collect();
+        if !links.iter().all(|link| times(link))
+            || !matches!(first.ungrouped(), Node::RangeKind { .. })
+        {
+            return None;
+        }
+        if let Err(error) = self.spend_node(cell) {
+            return Some(MaskedRead::Value(error));
+        }
+        let mut value = self.evaluate_node_in_context(first, cell);
+        let mut block = match value {
+            CalcResult::Range { left, right } => {
+                let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
+                let columns = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+                // A block the operators could not lift is theirs to refuse (`#ERROR!`, arrays.md
+                // "Array results above 1,048,576 cells").
+                if check_array_size(rows, columns).is_some() {
+                    None
+                } else {
+                    self.block_numbers(left, right)
+                        .map(|numbers| MaskedBlock::new(numbers, rows, columns))
+                }
+            }
+            _ => None,
+        };
+        let mut operands: Vec<CalcResult> = Vec::new();
+        for (index, &link) in links.iter().enumerate() {
+            let Some(masked) = block.as_mut() else {
+                value = self.apply_operator_link(value, link, cell);
+                if let Err(error) = self.charge_chain_link(node, link, &value, cell) {
+                    return Some(MaskedRead::Value(error));
+                }
+                continue;
+            };
+            // Every link is a `*` (checked above), so it has a right operand.
+            let (_, right) = value_operands(link)?;
+            let right = self.evaluate_node_in_context(right, cell);
+            let is_mask = masked.multiply(&right);
+            operands.push(right);
+            if is_mask {
+                continue;
+            }
+            block = None;
+            for (&link, right) in links.iter().take(index + 1).zip(operands.drain(..)) {
+                value = self.collapse_single_cell(value);
+                value = self.apply_operator(value, link, right, cell);
+                if let Err(error) = self.charge_chain_link(node, link, &value, cell) {
+                    return Some(MaskedRead::Value(error));
+                }
+            }
+        }
+        Some(match block {
+            Some(block) => {
+                #[cfg(test)]
+                {
+                    self.evaluation.ifs_cache.masked += 1;
+                }
+                MaskedRead::Block(block)
+            }
+            None => MaskedRead::Value(self.charged(value, cell)),
+        })
     }
 }

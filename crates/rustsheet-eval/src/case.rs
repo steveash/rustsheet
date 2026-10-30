@@ -20,7 +20,8 @@ pub const ORACLE_FORMAT: &str = "rustsheet-oracle/v1";
 /// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else. An error may
 /// carry `"stored":true`: spec2xlsx writes it as a stored `t="e"` constant (T-0999) and the engine
 /// adapter enters it as one, as xlsx import does (T-1221), not as typed input. `{"entered":"(1)"}`
-/// is text entered as a user types it, so Excel picks the value and number format (T-0280).
+/// is text entered as a user types it, so Excel picks the value and number format (T-0280);
+/// `{"entered_r1c1":"=R1C2+1"}` is typed the same way in R1C1 mode (T-3113).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellInput {
@@ -37,15 +38,23 @@ pub enum CellInput {
     Entered {
         entered: String,
     },
+    /// Typed entry in R1C1 mode: as `Entered`, but the oracle backend writes it as
+    /// `Range.formulasR1C1`, so `R1C2` is a reference (T-3113, decision 0179).
+    EnteredR1c1 {
+        entered_r1c1: String,
+    },
 }
 
 impl CellInput {
     /// The formula text without its leading `=`, or `None` for any other input. A typed entry
-    /// (`{"entered": "=NOW( )"}`) is a formula when it starts with `=`, as Excel's input parser reads it.
+    /// (`{"entered": "=NOW( )"}`) is a formula when it starts with `=`, as Excel's input parser reads it;
+    /// an R1C1-mode entry's formula is its R1C1 text.
     #[must_use]
     pub fn formula(&self) -> Option<&str> {
         match self {
-            Self::Str(f) | Self::Entered { entered: f } => f.strip_prefix('='),
+            Self::Str(f) | Self::Entered { entered: f } | Self::EnteredR1c1 { entered_r1c1: f } => {
+                f.strip_prefix('=')
+            }
             _ => None,
         }
     }

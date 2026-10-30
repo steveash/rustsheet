@@ -1613,6 +1613,8 @@ C	probes/t3097-nesting-sum-65-typed.case.json	2
 C	probes/t3100-snap-operand-order.case.json	540
 C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3106-lookup-xmatch-near-equal.case.json	786
+C	probes/t3113-entered-r1c1.case.json	4
+C	probes/t3113-entered-refused.case.json	2
 C	probes/t3114-collation-beyond-latin1.case.json	986
 C	probes/t3115-approximate-text-collation.case.json	625
 C	probes/t3116-now-once-per-recalc.case.json	2
@@ -4071,6 +4073,7 @@ F	probes/t3095-snap-lambda-helpers.case.json	Calc!B92
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B93
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B94
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B97
+F	probes/t3113-entered-refused.case.json	S!B1
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A1
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A2
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A3

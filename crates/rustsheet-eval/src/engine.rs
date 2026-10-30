@@ -12,7 +12,7 @@ use rustsheet::{
 use rustsheet_engine::text::{lone_escape, Segment};
 use rustsheet_engine::Text;
 
-use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp};
+use crate::case::{split_qualified, CaseSpec, CellInput, SheetOp, SheetSpec};
 use crate::cellref::{parse_range, Addr};
 use crate::spec_pivots;
 use crate::value::Value;
@@ -200,6 +200,7 @@ impl Engine for RustSheetEngine {
         workbook
             .edit(|tx| {
                 let mut ids = Vec::with_capacity(spec.sheets.len());
+                let sheet_names: Vec<String> = spec.sheets.iter().map(|s| s.name.clone()).collect();
                 for (i, sheet) in spec.sheets.iter().enumerate() {
                     ids.push(if i == 0 {
                         let first = tx.first_sheet()?;
@@ -235,30 +236,10 @@ impl Engine for RustSheetEngine {
                             spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
                         for (addr, a1, input_spec) in row_major(&sheet.cells)? {
-                            let Some(mut input) = spec_input(input_spec) else {
+                            let Some((input, input_phase)) =
+                                cell_input(sheet, &sheet_names, addr, a1, input_spec)
+                            else {
                                 continue;
-                            };
-                            // spec2xlsx writes these as plain `<f>` formulas (T-1077).
-                            if let Input::StoredFormula(text) = &input {
-                                if sheet.legacy_formulas.contains(a1) {
-                                    input = Input::LegacyFormula(text.clone());
-                                }
-                            }
-                            // Entered text goes after the tables, as the oracle types it after
-                            // the workbook loads: a structured reference in a typed formula
-                            // parses only once its table exists (probes/t2786-whitespace-
-                            // structured-refs-runs, T-2801), and a constant typed into a table
-                            // column after a typed formula is an exception to its calculated
-                            // column (probes/t2957-constant-exception, T-2958).
-                            let input_phase = match &input {
-                                Input::StoredFormula(_) | Input::LegacyFormula(_) => Phase::Stored,
-                                Input::Parse(text)
-                                    if text.starts_with('=')
-                                        || matches!(input_spec, CellInput::Entered { .. }) =>
-                                {
-                                    Phase::Entered
-                                }
-                                _ => Phase::Values,
                             };
                             if input_phase != phase {
                                 continue;
@@ -465,6 +446,53 @@ enum Phase {
     Entered,
 }
 
+/// The facade input for spec cell `a1` of `sheet` and the phase it goes in at; `None` leaves the
+/// cell empty.
+fn cell_input(
+    sheet: &SheetSpec,
+    sheet_names: &[String],
+    addr: Addr,
+    a1: &str,
+    input_spec: &CellInput,
+) -> Option<(Input, Phase)> {
+    let mut input = match input_spec {
+        CellInput::EnteredR1c1 { entered_r1c1 } => {
+            r1c1_entry(entered_r1c1, sheet_names, &sheet.name, addr)
+        }
+        _ => spec_input(input_spec),
+    }?;
+    // spec2xlsx writes these as plain `<f>` formulas (T-1077).
+    if let Input::StoredFormula(text) = &input {
+        if sheet.legacy_formulas.iter().any(|f| f == a1) {
+            input = Input::LegacyFormula(text.clone());
+        }
+    }
+    // Entered text goes after the tables, as the oracle types it after the workbook loads: a
+    // structured reference in a typed formula parses only once its table exists
+    // (probes/t2786-whitespace-structured-refs-runs, T-2801), and a constant typed into a table
+    // column after a typed formula is an exception to its calculated column
+    // (probes/t2957-constant-exception, T-2958).
+    let typed_entry = matches!(
+        input_spec,
+        CellInput::Entered { .. } | CellInput::EnteredR1c1 { .. }
+    );
+    let phase = match &input {
+        Input::StoredFormula(_) | Input::LegacyFormula(_) => Phase::Stored,
+        Input::Parse(text) if text.starts_with('=') || typed_entry => Phase::Entered,
+        _ => Phase::Values,
+    };
+    Some((input, phase))
+}
+
+/// The facade input for `text` typed in R1C1 mode into `addr` of `sheet`: the A1 text it reads as
+/// (`rustsheet_engine::r1c1_formula_to_a1`), typed. `None`, a blank cell, when it does not parse,
+/// as Excel refuses it (decision 0179).
+fn r1c1_entry(text: &str, sheet_names: &[String], sheet: &str, addr: Addr) -> Option<Input> {
+    let row = i32::try_from(addr.row).ok()?;
+    let column = i32::try_from(addr.col).ok()?;
+    rustsheet_engine::r1c1_formula_to_a1(text, sheet_names, sheet, row, column).map(Input::Parse)
+}
+
 /// The facade input for a spec cell; `None` leaves the cell empty.
 fn spec_input(input: &CellInput) -> Option<Input> {
     Some(match input {
@@ -491,7 +519,8 @@ fn spec_input(input: &CellInput) -> Option<Input> {
         CellInput::Typed(Value::Error(e)) | CellInput::Entered { entered: e } => {
             Input::Parse(e.clone())
         }
-        CellInput::Typed(Value::Empty) => return None,
+        // Needs its cell to read relative references: `r1c1_entry`.
+        CellInput::Typed(Value::Empty) | CellInput::EnteredR1c1 { .. } => return None,
     })
 }
 
@@ -840,6 +869,24 @@ mod tests {
             evaluated.value("S", Addr { row: 2, col: 3 }),
             Some(Value::Number(-8.0))
         );
+    }
+
+    #[test]
+    fn spec_r1c1_entries_read_relative_to_their_cell_and_unparsable_ones_stay_blank() {
+        // `R1C2` is $B$1 and `R[-2]C[1]` the cell two up and one right (T-3113); R1C1 text that
+        // does not parse is left blank, as Excel's refused PATCH leaves it (decision 0179).
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "B1":5,"A2":{"entered_r1c1":"=R1C2+1"},"A3":{"entered_r1c1":"=R[-2]C[1]*2"},
+                "A5":{"entered_r1c1":"=1+"},"C5":"=ISBLANK(A5)"}}]}"#,
+        );
+        let evaluated = RustSheetEngine
+            .evaluate_spec(&spec, None)
+            .expect("evaluates");
+        let at = |row, col| evaluated.value("S", Addr { row, col });
+        assert_eq!(at(2, 1), Some(Value::Number(6.0)));
+        assert_eq!(at(3, 1), Some(Value::Number(10.0)));
+        assert_eq!(at(5, 3), Some(Value::Bool(true)));
     }
 
     #[test]
