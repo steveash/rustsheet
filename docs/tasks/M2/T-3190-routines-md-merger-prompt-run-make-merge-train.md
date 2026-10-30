@@ -3,7 +3,7 @@ id: T-3190
 title: "routines.md merger prompt: run make merge-train STEP=1 in the background and ack each action with make merge-train-ack"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -33,7 +33,7 @@ path: decision record or a note under decision 0169, plus architecture and secur
 ## Out of scope
 - Changing the step mode itself; editing the routine (the owner pastes the prompt).
 
-## Handoff
+## Handoff (resumed)
 Picked by a sonnet run (2026-10-30). Not started beyond the claim: the change edits "Prompt — merger" in
 docs/process/routines.md, a protected path that needs a decision record (or a note under decision 0169) and
 architecture plus security approval (work-loop step 5b). Next: replace the sentence "If the script prints a JSON
