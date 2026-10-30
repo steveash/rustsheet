@@ -26,9 +26,9 @@ Open:
   docstring);
 - the 987 probes-numeric cells T-2505's port moved off the Cephes kernel (T-2847 Context), scored against the
   research model with the bindings venv (decision 0114): which are the port's and which the model's too;
-- the 6 cells Excel's shape-of-1 w moves 1 to 2 ulp off (probes/ftest-decomposition B12,
-  t1745-beta-inv-roundtrip G145, t2220-f-dist-sweep-cdf A191, A195, t2220-f-dist-sweep-d2-1 A16,
-  t2220-f-dist-sweep-rt A195): a near-tie in Excel's log1p (its 27 known 1-ulp misses are of that kind) or another
+- the 6 cells T-3170's shape-of-1 w moved off: probes/ftest-decomposition B12 (1 ulp, gated; decision 0170),
+  t2220-f-dist-sweep-cdf A191, A195, t2220-f-dist-sweep-d2-1 A16 (1 ulp), t2220-f-dist-sweep-rt A195 (4 ulp) and
+  t1745-beta-inv-roundtrip G145 (16 ulp, visibly off; 1 ulp of w near 0.95): a near-tie in Excel's log1p (its 27 known 1-ulp misses are of that kind) or another
   stored step.
 Tools: `docs/research/t3007/cell_diff.py` for full-eval A/B diffs.
 

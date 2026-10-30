@@ -2157,9 +2157,10 @@ own log1p (the stored atanh series, "Excel's log1p is a 14-term atanh series in 
 b0·ln1p a double; TOMS bpser(1, b0, x0) (bratio's dispatch there: WBpser) is further off.
 - Variants of w, scored as per-cell changes over every suite against libm's expm1 and log1p (T-3170, `make eval`,
   `docs/research/t3007/cell_diff.py`): Excel's expm1 of b0 times Excel's log1p makes 71 cells bit-exact (62
-  probes-numeric, 6 gen-m9, 3 probes) and moves 6 off by 1 to 2 ulp, none visibly (probes/ftest-decomposition B12,
-  t1745-beta-inv-roundtrip G145, t2220-f-dist-sweep-cdf A191, A195, t2220-f-dist-sweep-d2-1 A16,
-  t2220-f-dist-sweep-rt A195). The same with the product held extended is identical on every cell. libm's expm1
+  probes-numeric, 6 gen-m9, 3 probes) and moves 6 off: probes/ftest-decomposition B12,
+  t2220-f-dist-sweep-cdf A191, A195 and t2220-f-dist-sweep-d2-1 A16 by 1 ulp, t2220-f-dist-sweep-rt A195 by 4 ulp,
+  and t1745-beta-inv-roundtrip G145 (Excel 0.04999999999999938, now 0.04999999999999949) by 16 ulp, visibly off: a
+  1-ulp step of w near 0.95 is 16 ulp of w1 = (0.5 - w) + 0.5 at 0.05. No visibly-off cell is fixed. The same with the product held extended is identical on every cell. libm's expm1
   with Excel's log1p, and Excel's expm1 with libm's log1p, each win fewer cells and lose more (F.DIST.RT 21/6 and
   15/9 closer/further, against 37/1); (0.5 - EXP(b0·log1p)) + 0.5 and every form on the caller's y0 (LN(y0), with
   either EXP or expm1) are worse on most cells (F.DIST.RT 6/48 to 1/89).
@@ -2192,9 +2193,9 @@ Evidence: probes-numeric t2220-f-dist-sweep-cdf, t2220-f-dist-sweep-rt, t2220-f-
 t1745-beta-inv-roundtrip; probes/ftest-decomposition; gen-m9 58e3253bbd3a7a82, 60b0b6e69ad35a45, fd9fa22d212080d6
 (excel-graph).
 Ours: `incomplete_beta.rs::shape_one_tails` (w = -`excel_expm1`(b0·`excel_ln_one_minus`(x0)), w1 = (0.5 - w) + 0.5),
-through `bratio::kernel_tails` and `fisher.rs::f_tail`. The 6 cells above stay 1 to 2 ulp off (T-3192).
-Status: VERIFIED (excel-graph) for the complement down to w1 of about 1E-16 and for w's form (71 cells against 6);
-below 2^-53 UNVERIFIED
+through `bratio::kernel_tails` and `fisher.rs::f_tail`. The 6 cells above stay off (T-3192).
+Status: VERIFIED (excel-graph) for the complement down to w1 of about 1E-16; w's form PARTIAL (71 cells for it, 6
+contrary cells open, T-3192); below 2^-53 UNVERIFIED
 Tasks: T-3007, T-2511, T-3150, T-3170
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)

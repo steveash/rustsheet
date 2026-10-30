@@ -52,12 +52,13 @@ docs/research/t3007/cell_diff.py for full-eval A/B diffs.
 - Item 2 ported: Excel's w at a caller's shape of 1 outside the closed forms is -expm1(b0·ln1p(-x0)) with Excel's own
   expm1 (Kahan's form) and log1p (the stored atanh series), `incomplete_beta.rs::shape_one_tails`. Of 8 forms scored
   over every suite (statistics.md "Incomplete beta at a shape of 1 outside the closed forms"), it makes 71 cells
-  bit-exact (62 probes-numeric, 6 gen-m9, 3 probes) and moves 6 off by 1 to 2 ulp, none visibly: probes/ftest-decomposition
-  B12 (1 ulp, gated; decision 0170), probes-numeric t1745-beta-inv-roundtrip G145, t2220-f-dist-sweep-cdf A191, A195,
-  t2220-f-dist-sweep-d2-1 A16, t2220-f-dist-sweep-rt A195.
+  bit-exact (62 probes-numeric, 6 gen-m9, 3 probes) and moves 6 off: probes/ftest-decomposition
+  B12 (1 ulp, gated; decision 0170), probes-numeric t2220-f-dist-sweep-cdf A191, A195 and t2220-f-dist-sweep-d2-1 A16
+  (1 ulp), t2220-f-dist-sweep-rt A195 (4 ulp) and t1745-beta-inv-roundtrip G145 (16 ulp, visibly off).
+- Acceptance criterion 1 holds through decision 0170's exception for B12, the one gated cell that regresses.
 - Item 1, part 1, is a negative result (Progress above). The rest of item 1, item 3 and the 6 cells move to T-3192.
 - Eval delta: gen-m9 3,303 -> 3,297 known failures, probes 3,105 -> 3,103 (3 fixed, 1 regressed by decision 0170);
-  visibly-off cells unchanged.
+  visibly-off cells +1 (ungated probes-numeric G145), none gated.
 
 ## Out of scope
 - bfrac/basym (T-2508), the bgrat family (T-2509, T-2510), the inverses (T-2511), T-2978's ulp cells; T-2924's
