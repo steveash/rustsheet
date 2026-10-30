@@ -21,7 +21,7 @@ above an AMORLINC in A3 leaves 485 for A1, ours 132; -ai, the same formula with 
 financial.md "AMORDEGRC below period 1".
 
 ## Acceptance criteria
-- [ ] More probes tell where a dynamic-array formula (and the charges inside it) sits in the order; -ag and -ah pass.
+- [ ] A probe of an error element in a lifted call (`{1,-1,0.5}`) is added. More probes tell where a dynamic-array formula (and the charges inside it) sits in the order; -ag and -ah pass.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
