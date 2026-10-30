@@ -818,8 +818,9 @@ pub(crate) enum Tail {
 /// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
-/// (`special::refine_increasing`, at most 129 cdfs, from statrs' search, [`inverse_cdf_within`],
-/// when it has a result). Excel is close to the true quantile (against mpmath, 509 of 545
+/// (`special::refine_increasing`: below [`HUGE_SHAPE_MIN`] at most 129 cdfs, from statrs' search,
+/// [`inverse_cdf_within`], when it has a result; from it at most 65, halving the whole range).
+/// Excel is close to the true quantile (against mpmath, 509 of 545
 /// literal-argument quantile cells are within half a unit of the 15th digit), so statrs' result
 /// is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
 /// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in

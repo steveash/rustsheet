@@ -8,6 +8,7 @@ priority: P3
 size: M
 tier: opus
 depends_on: [T-3070]
+campaign: visible
 ---
 
 ## Goal
@@ -24,6 +25,10 @@ digits: the Wilson-Hilferty closed form's and the band's true-quantile crossings
 - Every known-failure line of probes/t3070-gamma-inv-band is this task's (decision 0136: the case named alone).
 - probes/t2982-gamma-inv-huge-shape A1:A4, A7:A9, A11, A13, A16, A19, A22:A26, A29, A30, A34, A36:A41, A44, A60, A61,
   A63, A66, A68:A70, A72:A75, A77:A85, A89, A92, A93 (1 to 5 ulps); probes/incomplete-gamma-cap E5, E14, E19 (1 ulp).
+- Probe (excel-probe skill): CHISQ.INV.RT and CHIINV at p = 0 and p = 1 above 1E10 degrees of freedom (unprobed; ours
+  `#NUM!` through `chisq.rs` `chi_squared`), and at df beyond about 1E16 (the largest evidenced, gen-m9
+  7bd219ec0c0c5e22 A239), e.g. 1E20, 1E100 and 1E300; also the lower band edge (`BAND_LOWER_EDGE`, in effect a cut
+  in p between 1E-30 and 1E-100; probe p = 1E-40 to 1E-90 at shapes 3E9 to 1E10) and its slope.
 - Finding Excel's actual search (the band's edges are fitted too: `BAND_UPPER_*`, `BAND_LOWER_EDGE`) would settle
   both; the probes give the cells to check it against.
 

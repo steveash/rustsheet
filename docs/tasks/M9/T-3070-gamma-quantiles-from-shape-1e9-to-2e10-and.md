@@ -51,7 +51,7 @@ Excel's algorithm, so the target is visible parity and the closed form's digits 
 ## Acceptance criteria
 - [x] The cells above pass or are named with their ulp in the Outcome; no new known-failure lines (the new probe's
       139 failing lines are named and owned by T-3272).
-- [x] `make check` green; reviewers approve (review not run here: the caller runs it).
+- [x] `make check` green; reviewers approve (security, architecture, quality and excel-fidelity APPROVE).
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).

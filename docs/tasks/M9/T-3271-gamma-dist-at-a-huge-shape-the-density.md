@@ -8,6 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: [T-3070]
+campaign: semantics
 ---
 
 ## Goal

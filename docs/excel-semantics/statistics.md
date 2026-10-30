@@ -1006,9 +1006,10 @@ shape of 1E8 needs no term past C_3 (they fall by 1/a each). The cap of 2^19 ter
 the series takes at most about 68,000 terms) and still binds an inversion's cdfs together below that shape.
 DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms, or that
 statrs' search cannot finish, is `#NUM!` where Excel gives a number. From a shape of 1E9 the quantile is
-`huge_shape_quantile` (section "GAMMA.INV and CHISQ.INV at a huge shape"; T-3070), so `GAMMA.INV(0.5,1E300,1E-300)` (E5)
-and `CHISQ.INV(5.6221E-26,4715100000)` (E15) are Excel's values (E5 1 ulp off); E14 and E19 are 1 ulp off Excel. A CHISQ.TEST's cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded`
-and `a_call_past_its_cap_is_nan`; T-2982 gives Excel's values for the inversions.
+`huge_shape_quantile` (section "GAMMA.INV and CHISQ.INV at a huge shape"; T-3070), so `GAMMA.INV(0.5,1E300,1E-300)`
+(E5) and `CHISQ.INV(5.6221E-26,4715100000)` (E15) are Excel's values; E5, E14 and E19 are 1 ulp off. A CHISQ.TEST's
+cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded` and
+`a_call_past_its_cap_is_nan`; T-2982 and T-3070 give Excel's values for the inversions.
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted CHISQ.*, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV,
 GAMMAINV, POISSON or POISSON.DIST is `#ERROR!` before it runs where Excel computes it once its elements' charges pass
 2^27 units (`limits::MAX_LIFTED_CELL_VISITS`). Since T-2795 an element is charged by value
@@ -4453,27 +4454,35 @@ Rule: from a shape of 1E9 Excel's GAMMA.INV (and GAMMAINV, CHISQ.INV, CHISQ.INV.
 `CHISQ.INV.RT(1E-100,1E10)` = 10005667524.015223 although 1 - p is 1):
 - **the closed form x0 itself** where the gamma density at x0 is below the smallest normal double: the true quantile
   times about 1.000266. Fit: ln density -708.54 at the closed form `GAMMA.INV(0.999999,1.5E10,1)` =
-  15004569623.957905 (t3070 A110), -701.60 at `GAMMA.INV(0.5,1.95E10,1)` `#NUM!` (A210); every probed cell either side
-  agrees. So `GAMMA.INV(0.5,a,1)` is the closed form from 2E10 (c (a - 1/3) for a = 1E13 to 1E300, t2982 A7-A23, and at
+  15004569623.957905 (t3070 A110), only 0.14 past the cut, -701.60 at `GAMMA.INV(0.5,1.95E10,1)` `#NUM!` (A210); every
+  probed cell either side agrees. So `GAMMA.INV(0.5,a,1)` is the closed form from 2E10 (c (a - 1/3) for a = 1E13 to 1E300, t2982 A7-A23, and at
   every scale, A78-A86), while at 2E10 p = 0.1 and below are `#NUM!` (t3070 A127-A134), at 5E10 only p = 1E-300 is
   (A155), and from about 8E10 every p is the closed form;
 - **the true quantile** inside a band of the start's offset o = (x0(z = 0) - a)/sqrt(a), about 2.66E-4 sqrt(a)
   standard deviations, and z: z + 1.35 o < 27.25 and o - z < 39 (a fit: the edges lie in (26.93, 27.60) and
   (38.05, 40.07), pinned by t3070 A77 `GAMMA.INV(0.001,7E9,1)` (a value) and t2982 A45 `GAMMA.INV(1E-16,1E10,1)`
   (`#NUM!`), and by t2982 A44 `GAMMA.INV(1E-30,1E10,1)` = 9998853641.00538 and t3070 A44 `GAMMA.INV(1E-100,5E9,1)`
-  (`#NUM!`); slopes 1.30 to 1.41 also separate every probed cell, UNVERIFIED between them). `GAMMA.INV(0.5,5E9,1)` =
+  (`#NUM!`); slopes 1.30 to 1.41 also separate every probed cell, UNVERIFIED between them). The lower edge fixes the
+  offset's slope at 1, UNVERIFIED: any slope from about 0.5 to 1.2 separates the probed cells, and it is pinned by one
+  value (t2982 A44, at 38.05) and one `#NUM!` point (t3070 A44 and A370, at 40.07); near it only p = 1E-30, 1E-100 and
+  1E-300 were probed, so it is in effect a cut in p between 1E-30 and 1E-100. `GAMMA.INV(0.5,5E9,1)` =
   4999999999.666667, `GAMMA.INV(1E-30,7E9,1)` = 6999040894.354145, `CHISQ.INV(1E-100,6E9)` = 5997669910.951994,
   `CHISQ.INV(5.6221E-26,4715100000)` = 4714082845.627977 (incomplete-gamma-cap E15);
 - **`#NUM!`** elsewhere: at the far tails (`GAMMA.INV(1E-300,1E9,1)`, `GAMMA.INV(1-1E-15,3E9,1)`, `CHISQ.INV.RT(1E-100,2E9)`),
   above the band (`GAMMA.INV(0.5,6E9,1)`, every probed p at 1.2E10) and below the closed form.
 How Excel's search fails is not known; the band is the shape of its failures, not its algorithm.
-The closed form's constants are Excel's own, fitted (T-3070) on the 167 closed-form cells from shape 1.5E10 to 1E300:
-s = 0.999977894167, and terms (-7.586532E-4 + 6.740481E-5 z^2)/a - 3.08676E-3 z^3/a^(3/2) inside the cube, all cells
-within 4 ulps of the fit (T-2982's fit without them, at 1E13 alone, was 100 to 12,459 ulps off at 1E11 and 2E10). At
-5E9 to 2E10 the right tail's closed form at p = 1E-100 is 20 to 33 ulps off it (UNVERIFIED as a form).
+The closed form's constants are effective constants fitted (T-3070) to Excel's values on the 167 closed-form cells
+from shape 1.5E10 to 1E300, not Excel's own formula: s = 0.999977894167, and terms (-7.586532E-4 + 6.740481E-5 z^2)/a -
+3.08676E-3 z^3/a^(3/2) inside the cube (UNVERIFIED as a form). The fit's residual is at most 3.6 ulps with a reference
+z (Python's `NormalDist`); the engine, with its own `normal_quantile` z, is up to 9 ulps off from 1.5E10 (t3070 A110;
+5 to 7 at A112, A152, A179, t2982 A63), and at 5E9 to 2E10 the right tail's closed form at p = 1E-100 is 11 to 33 ulps
+off (A229, A214, A371, the last just visibly off; T-3272). T-2982's fit without the terms, at 1E13 alone, was 100 to
+12,459 ulps off at 1E11 and 2E10.
 CHISQ.INV.RT and CHIINV take any number of degrees of freedom (2E13 and 1E15: `CHIINV(0.5,2E13)` =
 `CHISQ.INV.RT(0.5,2E13)` = 20005316471010.844, t2982 A92, A93, t3070 A304-A327), while CHISQ.INV, CHISQ.DIST,
-CHISQ.DIST.RT and CHIDIST are `#NUM!` above 1E10 (t2982 A91, t3070 A222-A333).
+CHISQ.DIST.RT and CHIDIST are `#NUM!` above 1E10 (t2982 A91, t3070 A222-A333). "Any" is evidenced up to about 1E16
+(gen-m9 7bd219ec0c0c5e22 A239 `CHIINV(1E-300,ROUND(9999999999999999,2))`), and p = 0 or 1 above 1E10 is unprobed: ours
+stays `#NUM!` there (`chisq.rs` `chi_squared`) (T-3272 probes both).
 The cdf itself has no such factor (`GAMMA.DIST(1E12,1E12,1,TRUE)` is correctly rounded, probes/incomplete-gamma-cap E9),
 so the factor is the inversion's: Excel is the inaccurate side here (T-3070's stage moved to `campaign: visible`).
 Evidence: probes/t3070-gamma-inv-band (381 cells: p sweeps at shapes 1E9 to 1E12, the median at 17 shapes of the band,
