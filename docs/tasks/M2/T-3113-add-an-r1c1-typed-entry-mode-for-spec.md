@@ -3,7 +3,7 @@ id: T-3113
 title: "Add an R1C1 typed-entry mode for spec cells (entered_r1c1 written as a formulasR1C1 PATCH) to the case schema, oracle client and engine adapter"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
