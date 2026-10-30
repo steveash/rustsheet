@@ -21,6 +21,11 @@ cell only that cell holds the formula); an occupied neighbour (D1 or D3) stops g
 data row grows the table by a row; an unqualified `[@Col]*2` is accepted, grows and fills. Code:
 crates/rustsheet-engine/src/calculated_columns.rs `Model::table_expansion`, plus the row-growth path.
 
+Cases owned (decision 0096; every failing cell of each): probes/t3003-const-number-d1, probes/t3003-const-number-d2,
+probes/t3003-const-text-d1, probes/t3003-const-text-d2, probes/t3003-totals-data-row, probes/t3003-totals-totals-row,
+probes/t3003-unqualified-structured-d2, probes/t3003-below-last-row, probes/t3003-below-last-row-const (41 visibly-off
+cells at triage 2026-10-30).
+
 ## Acceptance criteria
 - [ ] Rules 7a, 7c, 7e and 7f are implemented and their t3003-* probe cases pass (eval baseline shrinks); the
       already-matching occupied-* (7d) and header-formula-* (7b) cases keep passing.
