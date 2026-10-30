@@ -3,7 +3,7 @@ id: T-3190
 title: "routines.md merger prompt: run make merge-train STEP=1 in the background and ack each action with make merge-train-ack"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
