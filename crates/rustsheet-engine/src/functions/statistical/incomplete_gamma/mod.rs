@@ -47,6 +47,7 @@ use statrs::prec;
 
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{rlog1, stirling_correction};
+use super::loader::stirlerr_exact;
 use super::special::refine_increasing;
 use crate::functions::util::poly;
 use crate::x87_exp::excel_exp;
@@ -183,27 +184,45 @@ fn gamma_prefactor(a: f64, x: f64, form: Exponent) -> f64 {
         }
         return (a * x.ln() - x - super::special::ln_gamma(a)).exp();
     }
-    let exponent =
-        if form == Exponent::Accurate || (x - a).abs() <= a * NEAR_MODE || x < a * RATIO_FORM_MIN {
-            // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
-            // 0.5002659614862837 to 5 ulp, where the ratio form below is 1E-10 off (ironcalc-calc
-            // POISSON.xlsx D31). Below a/200 Excel is neither (TODO(T-3219)).
-            -a * rlog(a, x)
-        } else {
-            // Excel's own form away from the mode: the log of the ratio that is at least 1, a ln(x/a)
-            // above it and -a ln(a/x) below it, then a - x added. Excel's density and cdf are 0 to 1
-            // ulp from it at shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up
-            // to 600 ulp from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist
-            // A51-A64; T-2638).
-            let log_ratio = if x < a {
-                -a * (a / x).ln()
-            } else {
-                a * (x / a).ln()
-            };
-            log_ratio + (a - x)
-        };
-    (a / (2.0 * std::f64::consts::PI)).sqrt() * (exponent - stirling_correction(a)).exp()
+    let away_from_mode = form == Exponent::Excel && (x - a).abs() > a * NEAR_MODE;
+    let exponent = if away_from_mode && x >= a * RATIO_FORM_MIN {
+        // Excel's own form away from the mode. Excel's density and cdf are 0 to 1 ulp from it at
+        // shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up to 600 ulp
+        // from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist A51-A64;
+        // T-2638).
+        excel_ratio_exponent(a, x)
+    } else {
+        // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
+        // 0.5002659614862837 to 5 ulp, where the ratio form is 1E-10 off (ironcalc-calc
+        // POISSON.xlsx D31). Below a/200 Excel is neither (TODO(T-3219)).
+        -a * rlog(a, x)
+    };
+    stirling_prefactor(a, exponent, stirling_correction(a))
 }
+
+/// sqrt(a / 2 pi) exp(exponent - correction), Stirling's form of the prefactor.
+fn stirling_prefactor(a: f64, exponent: f64, correction: f64) -> f64 {
+    (a / (2.0 * std::f64::consts::PI)).sqrt() * (exponent - correction).exp()
+}
+
+/// Excel's exponent away from the mode (T-2638): the log of the ratio that is at least 1,
+/// a ln(x/a) above the mode and -a ln(a/x) below it, then a - x added.
+fn excel_ratio_exponent(a: f64, x: f64) -> f64 {
+    let log_ratio = if x < a {
+        -a * (a / x).ln()
+    } else {
+        a * (x / a).ln()
+    };
+    log_ratio + (a - x)
+}
+
+/// The smallest shape below [`DIRECT_SHAPE_MAX`] at which the density above the mode takes Excel's
+/// ratio form ([`density_with`]). A fit inside its evidence bracket (2.5, 3] (T-3147; ulp from
+/// Excel, the ratio form against the direct one): at 3 `CHISQ.DIST(37.5,6,FALSE)` is -1 against -6
+/// (gen-m9/984cba67bbe6972b A42), at 5 `CHISQ.DIST(40,10,FALSE)` 0 against -8 (probes-numeric/
+/// m9-chisq-dist A50); at 2.5 `CHISQ.DIST(50,5,FALSE)` is 23 against 5 (probes-numeric/
+/// t1049-chisqdist A46).
+const SMALL_RATIO_SHAPE_MIN: f64 = 3.0;
 
 /// rlog(x / a) = x/a - 1 - ln(x / a). Within a factor of 2 of a, x - a is exact (Sterbenz) and
 /// (x - a) / a one rounding; further out x / a is the one rounding, where (x - a) / a would lose
@@ -265,6 +284,19 @@ fn density_with(a: f64, x: f64, scale: f64, form: Exponent) -> Option<f64> {
     // the prefactor's y e^-y / x (gen-m9/ecc87f80077959e0 A261 `CHISQ.DIST(1.5,2,FALSE)`).
     if a == 1.0 {
         return Some((-y).exp() / scale);
+    }
+    // Below shape 20, above the mode, Excel's density takes its large-shape ratio form too, with
+    // the exact Stirling error (the asymptotic series of `stirling_correction` is 2E-13 off at a
+    // shape of 5): `CHISQ.DIST(40,10,FALSE)` is Excel's 6.870512074795199E-6, 7 ulp above the
+    // true value, where the direct form is 8 ulp below Excel (T-3147). Its cdf does not follow:
+    // the same prefactor moves `CHIDIST(38.5,6)` from Excel's value to 8 ulp off, so P and Q keep
+    // the direct form (T-3219). Below the mode the direct form is as close or closer (the 1-ulp
+    // `GAMMA.DIST(10,9,2,FALSE)` of ironcalc-calc GAMMA.xlsx E3 at 0.56a).
+    if form == Exponent::Excel
+        && (SMALL_RATIO_SHAPE_MIN..DIRECT_SHAPE_MAX).contains(&a)
+        && y - a > a * NEAR_MODE
+    {
+        return Some(stirling_prefactor(a, excel_ratio_exponent(a, y), stirlerr_exact(a).0) / x);
     }
     Some(gamma_prefactor(a, y, form) / x)
 }

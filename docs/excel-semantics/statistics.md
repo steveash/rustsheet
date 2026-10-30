@@ -1101,8 +1101,29 @@ ratio form (probes/t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1
 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252), so ours keeps `rcomp` below a/200 (UNVERIFIED between). POISSON.DIST's cdf and the large-shape BETA.DIST, BETA.INV and F.INV paths keep `rcomp`
 too: no cell probes them (T-3252 probes the window and those functions). Below shape 20 neither this form nor the direct one is Excel's
 (`GAMMA.DIST(0.9,9,1,TRUE)`: Excel 9 ulp below the truth, the ratio form 23 below Excel, the direct one 10 above).
+Found in T-3147: from shape 3 to 20 the *density* above the mode (x > 1.4a) is the same ratio form, with the exact
+Stirling error (loader.rs `stirlerr_exact`; the 8-term asymptotic series is 2E-13 off at shape 5):
+`CHISQ.DIST(40,10,FALSE)` = 6.870512074795199E-6 (probes-numeric m9-chisq-dist A50) is Excel's bit for bit and 7 ulp
+above the true value, where the direct form is 8 ulp below Excel; `GAMMA.DIST(27,9,1,FALSE)` and `(54,9,2,FALSE)`
+(m9-gamma-dist-a9 A10, A20) become bit-exact and `CHISQ.DIST(37.5,6,FALSE)` (gen-m9/984cba67bbe6972b A42) 1 ulp off (6
+before); m9-gamma-dist-a9 A30 `GAMMA.DIST(27000000,9,1000000,FALSE)` loses its bit (1 ulp). Fit attempt 1 (Python,
+60-digit mpmath, ulp from Excel at the 110 literal densities of shapes 0.5 to 19.9 with x / beta above 1E-15 in eval/,
+shape 1 and the tiny-ratio log form left out; exact / within 1 ulp): the engine's direct form 24 / 73 (26 / 72 with
+Python's tgamma); the ratio form everywhere 34 / 73 (max 49 ulp); `rcomp` everywhere 30 / 73; EXP(a LN(y) -
+y)/GAMMA(a)/x 14 / 43; EXP(a LN(y) - y - LNGAMMA(a))/x 13 / 29; EXP((a-1) LN(y) - y - LNGAMMA(a))/beta 9 / 25; y^(a-1)
+e^-y / GAMMA(a) / beta 26 / 65; x^(a-1) e^(-x/beta) / (beta^a GAMMA(a)) 31 / 70; Loader's saddle point (R's `dpois_raw`
+with its 0.1 `bd0` cut, R's `stirlerr`, or the a - 1 shape of R's `dgamma`) 25 to 36 exact, never more than the ratio
+form, and the a - 1 shape is 1,060 ulp off at shape 50; the ratio form with a GAMMALN-based Stirling error 11 / 26. No
+form is Excel's at every cell: the ratio form is 12 to 49 ulp off below 0.15a (`GAMMA.DIST(0.9,9,1,FALSE)` -12, the
+direct form 7; `CHISQ.DIST(1,20,FALSE)` 49 against 17) and at shape 2.5 and x = 10a (`CHISQ.DIST(50,5,FALSE)` 23 against
+5), and below the mode it is as close or 1 ulp further (ironcalc-calc GAMMA.xlsx E3 `GAMMA.DIST(10,9,2,FALSE)`,
+bit-exact on the direct form). The cdf does not follow the density: the same prefactor under P and Q puts
+`CHIDIST(38.5,6)` (gen-m9/4ab2ba98d26c8a5e A224, bit-exact on the direct form) 8 ulp off and `CHIDIST(37.5,7)` 12, so P
+and Q keep the direct form below 20 (T-3219). The bounds are fits inside their brackets: the shape (2.5, 3]
+(`CHISQ.DIST(50,5,FALSE)` against `CHISQ.DIST(37.5,6,FALSE)`); the lower end 1.4a is the large-shape `NEAR_MODE` bound,
+unbracketed below 20 (UNVERIFIED: no probed density between a and 1.5a changes with the form).
 Status: VERIFIED (excel-graph)
-Tasks: T-0971, T-0972, T-2638, T-3147
+Tasks: T-0971, T-0972, T-2638, T-3147, T-3219
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
