@@ -1,3 +1,4 @@
+use crate::functions::text::concatenate::lambda_text_error;
 use crate::{
     area_budget::{text_units, NODE_UNITS},
     calc_result::CalcResult,
@@ -752,11 +753,7 @@ impl Model {
         // An uncalled LAMBDA joined as text is `#VALUE!` (`LAMBDA(x,x)&""`, `"a"&LET(f,
         // LAMBDA(x,x),f)`; arrays.md "An uncalled LAMBDA is one value", T-2622).
         let mut operand = |value| match value {
-            CalcResult::Lambda(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "A LAMBDA joined as text".to_string(),
-            )),
+            CalcResult::Lambda(_) => Err(lambda_text_error(cell)),
             value => self.string_or_array(value, cell),
         };
         let l = operand(left);

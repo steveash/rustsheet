@@ -136,22 +136,19 @@ impl Model {
         match self.trim_of(&data, non_blank.as_ref(), values.as_slice(), cell) {
             Ok((rows, columns)) => match reference_corner {
                 Some(left) if as_reference => RefArg::from(sub_range(left, &rows, &columns)),
-                _ => {
-                    let trimmed: Vec<Vec<_>> = data[rows.clone()]
+                // Excel: a one-cell trim of a reference is that reference, a scalar value
+                // rather than a 1x1 array (`TYPE(TRIMRANGE(A2))` is 1,
+                // `ROWS(A2-TRIMRANGE(A3))` with text in A3 is #VALUE!; probes/t3130-concat-
+                // lambda-trimrange-cell-variable Q13-Q16).
+                Some(left) if rows.len() == 1 && columns.len() == 1 => {
+                    RefArg::from(sub_range(left, &rows, &columns))
+                }
+                _ => RefArg::Value(CalcResult::Array(
+                    data[rows]
                         .iter()
                         .map(|row| row[columns.clone()].to_vec())
-                        .collect();
-                    // Excel: a one-cell trim of a reference is that reference, a scalar value
-                    // rather than a 1x1 array (`TYPE(TRIMRANGE(A2))` is 1,
-                    // `ROWS(A2-TRIMRANGE(A3))` with text in A3 is #VALUE!; probes/t3130-concat-
-                    // lambda-trimrange-cell-variable Q13-Q16).
-                    match reference_corner {
-                        Some(left) if rows.len() == 1 && columns.len() == 1 => {
-                            RefArg::from(sub_range(left, &rows, &columns))
-                        }
-                        _ => RefArg::Value(CalcResult::Array(trimmed)),
-                    }
-                }
+                        .collect(),
+                )),
             },
             Err(error) => RefArg::Value(error),
         }
