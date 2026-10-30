@@ -145,6 +145,8 @@ fn scientific_zero_prints_all_integer_placeholders_and_carry_renormalises() {
         (0.0, "##0.00E+00", "000.00E+00"),
         (0.0, "#E+0", "0E+0"),
         (99.5, "0.0E+00", "1.0E+02"),
+        (f64::MAX, "0.00E+00", "1.80E+308"),
+        (1e100, "0.0E+0", "1.0E+100"),
     ];
     for (value, code, expected) in cases {
         assert_eq!(

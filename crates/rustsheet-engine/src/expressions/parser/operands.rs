@@ -543,7 +543,7 @@ impl Parser {
             .trim_start_matches("_xlpm.")
             .to_string();
         let empty_call_run = self.empty_call_run();
-        let args = match self.parse_function_args(&display_name) {
+        let mut args = match self.parse_function_args(&display_name) {
             Ok(s) => s,
             Err(e) => return e,
         };
@@ -619,6 +619,9 @@ impl Parser {
             .filter(|_| !self.calls_bound_name(&name))
         {
             self.note_argument_count(&function_kind, &display_name, args.len());
+            if self.loaded && function_kind == Function::Let {
+                result_of_even_let(&mut args);
+            }
             let node = self
                 .function_call(function_kind, args)
                 .with_empty_call_run(empty_call_run);
@@ -969,4 +972,16 @@ impl Parser {
             other => other,
         }
     }
+}
+
+/// A stored LET with an even argument count ends on a name and a value, and Excel loads it with
+/// the last name appended as the result: `<f>LET( a ,1, b ,a+1)</f>` prints
+/// `=LET( a,1, b,a+1,b)` and returns 2 (probes/t2949-stored-11, syntax.md "Remaining whitespace
+/// shapes (T-2949)"). Typed, Excel refuses the arity.
+fn result_of_even_let(args: &mut Vec<Node>) {
+    if args.len() < 2 || !args.len().is_multiple_of(2) {
+        return;
+    }
+    let name = args[args.len() - 2].unwrap_spaced().clone();
+    args.push(name);
 }

@@ -2,7 +2,7 @@
 //! (the default test thread) even in an unoptimized build, whose frames are several times larger
 //! than an optimized build's (directive 5).
 
-use crate::expressions::parser::MAX_FORMULA_DEPTH;
+use crate::expressions::parser::{MAX_FORMULA_DEPTH, MAX_PARENTHESES};
 use crate::test::util::new_empty_model;
 
 /// Deepest nesting of calls or parentheses the parser accepts: every operand costs two levels of
@@ -128,12 +128,12 @@ fn alternating_calls_and_groups_at_the_nesting_limit_evaluate_on_a_2_mib_stack()
 /// T-1169: the reported shape, `=` + N `(` + `0.1+0.2-0.3+B1` + N `)`, on the default test thread
 /// (2 MiB) in whatever build runs the tests. Up to the limit it parses, evaluates, prints, and
 /// survives the edits that rewrite every formula (row insert, sheet rename); past it, it is
-/// refused as too deep. Either way the process does not abort.
+/// refused as too deep. Either way the process does not abort. The parentheses are one run, one
+/// group node, so the limit is Excel's 256 (T-3191).
 #[test]
 fn parenthesised_chain_nested_to_the_limit_and_past_it_never_overflows() {
-    // The innermost operator chain costs one level more than a lone operand.
-    let limit = MAX_NESTING - 1;
-    for levels in [limit - 1, limit, limit + 1, MAX_FORMULA_DEPTH, 300] {
+    let limit = MAX_PARENTHESES;
+    for levels in [MAX_NESTING, limit - 1, limit, limit + 1, 300] {
         let nested_over = |cell: &str| {
             format!(
                 "={}0.1+0.2-0.3+{cell}{}",

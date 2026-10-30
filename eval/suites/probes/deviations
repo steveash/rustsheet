@@ -1,5 +1,6 @@
 # Cells that differ from Excel by design (decision 0036, crates/rustsheet-eval/src/deviations.rs):
 # case, cell, decision, accepted DEVIATION entry, RustSheet's pinned by-design value.
+# A `*` cell pins a whole case the engine refuses; its value reads `refused "<message>"` (decision 0168).
 lifted-range-rows.case.json	Sheet1!C1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!C2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!E1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
@@ -19,3 +20,25 @@ t2452-expand-2x524289.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arr
 t2452-expand-1048576x2.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 t2452-makearray-2x524289.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 t2452-makearray-cols-1048577.case.json	Sheet1!A1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
+t3097-nesting-paren-abs-64-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3097-nesting-paren-abs-64-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3097-nesting-paren-abs-65-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3097-nesting-paren-abs-65-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-alt-1023-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-alt-1023-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-alt-255-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-alt-255-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-alt-256-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-alt-256-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-minus-1024-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-minus-1024-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-minus-255-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-minus-255-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-minus-256-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-minus-256-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-plus-1023-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-plus-1023-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-plus-255-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-plus-255-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-plus-256-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
+t3172-plus-256-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"

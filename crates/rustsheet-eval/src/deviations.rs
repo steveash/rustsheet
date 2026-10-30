@@ -11,7 +11,9 @@
 //! ```
 //!
 //! The pinned value is an error literal (`#ERROR!`), `TRUE`/`FALSE`, a double-quoted text or a
-//! number.
+//! number. A line whose cell is `*` pins the whole case instead (decision 0168): its pinned value
+//! reads `refused "<message>"`, and it holds when the engine refuses the case with an error
+//! containing `<message>`, as a directive-5 bound refuses a formula before any cell is scored.
 
 use std::path::Path;
 
@@ -28,16 +30,28 @@ const SEMANTICS_DIR: &str = "docs/excel-semantics/";
 pub struct Deviation {
     /// Case path relative to the suite root (`cases/lifted-range-rows.case.json`).
     pub case: String,
-    pub sheet: String,
-    pub addr: Addr,
+    /// What the line pins.
+    pub pin: Pin,
     /// The decision record that accepts the deviation (`0014`).
     pub decision: String,
     /// The semantics file relative to the repository root (`docs/excel-semantics/arrays.md`).
     pub semantics_file: String,
     /// The heading anchor of the entry within it.
     pub anchor: String,
-    /// RustSheet's by-design value.
-    pub pinned: Value,
+}
+
+/// What a `deviations` line pins.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Pin {
+    /// One scored cell and RustSheet's by-design value for it.
+    Cell {
+        sheet: String,
+        addr: Addr,
+        value: Value,
+    },
+    /// The whole case, which the engine refuses with an error containing this message
+    /// (decision 0168).
+    Refusal(String),
 }
 
 /// Why a `deviations` file or one of its lines is unusable.
@@ -70,6 +84,17 @@ pub enum Outcome {
     StalePass,
     /// Neither: the by-design value changed.
     Failure,
+}
+
+/// The cell field of a line that pins the whole case.
+const WHOLE_CASE: &str = "*";
+
+/// The message of a `refused "<message>"` pinned value; never empty, so it cannot match every
+/// error.
+fn parse_refusal(text: &str) -> Option<&str> {
+    text.strip_prefix("refused \"")
+        .and_then(|t| t.strip_suffix('"'))
+        .filter(|message| !message.is_empty())
 }
 
 /// Parses a pinned value literal.
@@ -106,7 +131,15 @@ pub fn parse(text: &str) -> Result<Vec<Deviation>, DeviationError> {
         let [case, cell, decision, semantics, pinned] = fields.as_slice() else {
             return Err(bad("expected 5 tab-separated fields"));
         };
-        let (sheet, addr) = parse_cell(cell).ok_or_else(|| bad("bad cell"))?;
+        let pin = if *cell == WHOLE_CASE {
+            let message = parse_refusal(pinned)
+                .ok_or_else(|| bad("a whole case pins `refused \"<message>\"`"))?;
+            Pin::Refusal(message.to_string())
+        } else {
+            let (sheet, addr) = parse_cell(cell).ok_or_else(|| bad("bad cell"))?;
+            let value = parse_value(pinned).ok_or_else(|| bad("bad pinned value"))?;
+            Pin::Cell { sheet, addr, value }
+        };
         if !is_inner_relative(case) {
             return Err(bad("case path must be relative, without `..`"));
         }
@@ -125,15 +158,12 @@ pub fn parse(text: &str) -> Result<Vec<Deviation>, DeviationError> {
                     && !anchor.is_empty()
             })
             .ok_or_else(|| bad("semantics must read `docs/excel-semantics/<file>.md#<anchor>`"))?;
-        let pinned = parse_value(pinned).ok_or_else(|| bad("bad pinned value"))?;
         out.push(Deviation {
             case: (*case).to_string(),
-            sheet,
-            addr,
+            pin,
             decision: decision.to_string(),
             semantics_file: file.to_string(),
             anchor: anchor.to_string(),
-            pinned,
         });
     }
     Ok(out)
@@ -243,13 +273,27 @@ mod tests {
         assert_eq!(parsed.len(), 1);
         let d = &parsed[0];
         assert_eq!(d.case, "cases/lifted-range-rows.case.json");
+        let Pin::Cell { sheet, addr, value } = &d.pin else {
+            panic!("a cell line: {d:?}");
+        };
         assert_eq!(
-            (d.sheet.as_str(), d.addr.to_string()),
+            (sheet.as_str(), addr.to_string()),
             ("Sheet1", "C1".to_string())
         );
         assert_eq!(d.decision, "0014");
         assert_eq!(d.semantics_file, "docs/excel-semantics/arrays.md");
-        assert_eq!(d.pinned, Value::Error("#ERROR!".into()));
+        assert_eq!(*value, Value::Error("#ERROR!".into()));
+    }
+
+    #[test]
+    fn parses_a_whole_case_refusal() {
+        let line = "a.case.json\t*\tdecision 0014\tdocs/excel-semantics/syntax.md#x\t\
+                    refused \"Formula is nested too deeply\"";
+        let parsed = parse(line).expect("parse");
+        assert_eq!(
+            parsed[0].pin,
+            Pin::Refusal("Formula is nested too deeply".into())
+        );
     }
 
     #[test]
@@ -280,6 +324,10 @@ mod tests {
             "a.json\tS!C1\tdecision 0014\tdocs/excel-semantics/arrays.md\t#ERROR!".to_string(),
             "a.json\tS!C1\tdecision 0014\tdocs/excel-semantics/../x.md#y\t#ERROR!".to_string(),
             format!("a.json\tS!C1\tdecision 0014\t{sem}\tnot-a-value"),
+            format!("a.json\t*\tdecision 0014\t{sem}\t#ERROR!"),
+            format!("a.json\t*\tdecision 0014\t{sem}\trefused \"\""),
+            format!("a.json\t*\tdecision 0014\t{sem}\trefused deep"),
+            format!("a.json\tS!C1\tdecision 0014\t{sem}\trefused \"deep\""),
         ] {
             assert!(parse(&bad).is_err(), "{bad}");
         }
@@ -350,13 +398,15 @@ mod tests {
 
     #[test]
     fn scores_the_three_outcomes() {
-        let d = parse(LINE).expect("parse").remove(0);
+        let Pin::Cell { value: pinned, .. } = parse(LINE).expect("parse").remove(0).pin else {
+            panic!("a cell line");
+        };
         let excel = Value::Number(1000.0);
-        let pinned = Value::Error("#ERROR!".into());
-        assert_eq!(classify(&d.pinned, &excel, &pinned), Outcome::Deviation);
-        assert_eq!(classify(&d.pinned, &excel, &excel), Outcome::StalePass);
+        let actual = Value::Error("#ERROR!".into());
+        assert_eq!(classify(&pinned, &excel, &actual), Outcome::Deviation);
+        assert_eq!(classify(&pinned, &excel, &excel), Outcome::StalePass);
         assert_eq!(
-            classify(&d.pinned, &excel, &Value::Number(999.0)),
+            classify(&pinned, &excel, &Value::Number(999.0)),
             Outcome::Failure
         );
     }
