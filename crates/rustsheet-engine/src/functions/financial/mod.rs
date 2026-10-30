@@ -273,13 +273,17 @@ impl Model {
                 return None;
             }
             Error::NA
-        } else if date_count == 1 && self.non_number_cell(dates) {
-            // gen-m9/1cd3096e3e87c965 A48, 1db18890916ee643 A108 (an empty date cell).
+        } else if date_count == 1 && self.non_numeric_text_or_boolean_cell(dates) {
+            // gen-m9/1cd3096e3e87c965 A48. An empty or numeric-text date cell is left to the
+            // count (`XIRR(Data!B6:C11,<empty>,0.5)` and `XIRR(Data!A6:B12,<"1">)` are `#NUM!`,
+            // 89f0aee953a55a45 A330, c0681a8b150ce301 A266; T-2611).
             Error::VALUE
-        } else if value_count == 1 && self.non_number_cell(values) {
+        } else if value_count == 1 && self.non_numeric_text_or_boolean_cell(values) {
             // One text or boolean value cell against several dates is read first, `#VALUE!`
-            // (gen-m9/6376e27be7a05871 A67); a larger values range of another count is `#NUM!`
-            // whatever it holds (0a957119475760c5 A47, bbdfc06cae0e0d71 A44).
+            // (gen-m9/6376e27be7a05871 A67), but one empty value cell is the count's `#NUM!`
+            // (`XIRR(Data!D10:D10,Data!B7:E8)`, 1dce4774f5c0e736 A91; T-2611); a larger values
+            // range of another count is `#NUM!` whatever it holds (0a957119475760c5 A47,
+            // bbdfc06cae0e0d71 A44).
             return None;
         } else if value_count != date_count {
             Error::NUM
@@ -628,6 +632,8 @@ impl Model {
         // argument comes first, then an error dates argument, before the values' cells are read
         // (T-2611: gen-m9/67a4c03afd63f988 A388 is the dates' `#DIV/0!` beside text values;
         // 79d87fc527927626 A228 is the values' `#VALUE!` beside a `#DIV/0!` dates).
+        let values_error = matches!(values, CalcResult::Error { .. })
+            .then(|| values.clone().without_message());
         let dates_error = match (&values, &dates) {
             (CalcResult::Error { .. }, _) => None,
             (_, CalcResult::Error { .. }) => Some(dates.clone()),
@@ -649,10 +655,30 @@ impl Model {
             )),
             cell,
             &mut |model, arguments| {
-                // A size error stands only beside a number guess: a text, boolean or error guess
-                // leaves the old reading's `#VALUE!` (gen-m9/b6a02893a8d6b151 A226, b72d952c5f52cb4d
-                // A50). A written empty guess or an empty cell is a number guess here: both give
-                // `#NUM!` over text or boolean flows (probes/xirr-size-mismatch-empty-guess G21-G36).
+                // An error values argument comes first; then the guess: a guess that is an error,
+                // or text or a boolean (`#VALUE!`), is that error before the dates' error, the size
+                // checks and the values' cells (T-2611: `XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`,
+                // gen-m9/1dce4774f5c0e736 A189; `XIRR(<4 values>,<16 dates>,<#N/A>)` `#N/A`,
+                // 1b60bf99d71424e7 A29; a TRUE guess beside 6 values and 3 dates `#VALUE!`,
+                // b6a02893a8d6b151 A226).
+                if let Some(error) = &values_error {
+                    return error.clone();
+                }
+                // Excel: a written empty guess (`XIRR(v,d,)`) is the default 0.1, but an empty
+                // cell is guess 0; IRR and RATE read both as 0 (financial.md "XIRR (and IRR): an
+                // empty guess argument is the default 0.1 for XIRR, guess 0 for IRR";
+                // probes/xirr-irr-empty-guess).
+                let guess = arguments
+                    .get(2)
+                    .filter(|guess| !matches!(guess, CalcResult::EmptyArg));
+                let guess = match model.cast_number_or(guess, 0.1, cell) {
+                    Ok(guess) => guess,
+                    Err(error) => return error,
+                };
+                // A size error stands only beside a number guess: numeric text keeps the old
+                // reading. A written empty guess or an empty cell is a number guess here: both
+                // give `#NUM!` over text or boolean flows
+                // (probes/xirr-size-mismatch-empty-guess G21-G36).
                 let number_guess = matches!(
                     arguments.get(2),
                     None | Some(
@@ -666,22 +692,10 @@ impl Model {
                     Ok(flows) => flows,
                     Err(error) => return error.clone(),
                 };
-                // Excel: a written empty guess (`XIRR(v,d,)`) is the default 0.1, but an empty
-                // cell is guess 0; IRR and RATE read both as 0 (financial.md "XIRR (and IRR): an
-                // empty guess argument is the default 0.1 for XIRR, guess 0 for IRR";
-                // probes/xirr-irr-empty-guess).
-                let guess = arguments
-                    .get(2)
-                    .filter(|guess| !matches!(guess, CalcResult::EmptyArg));
-                match model.cast_number_or(guess, 0.1, cell) {
-                    Ok(guess) => {
-                        let xirr = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
-                            compute_xirr(values, dates, guess).map_err(|error| error.0)
-                        });
-                        number_result(xirr, cell)
-                    }
-                    Err(error) => error,
-                }
+                let xirr = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
+                    compute_xirr(values, dates, guess).map_err(|error| error.0)
+                });
+                number_result(xirr, cell)
             },
         )
     }

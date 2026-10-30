@@ -3277,12 +3277,23 @@ a text, boolean or error guess keeps the element reading's `#VALUE!` or that err
 unless either is a text, boolean or empty cell (`#VALUE!`; an array element such as BYROW's `{FALSE}` is not a cell, so
 `#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; a single text or boolean value cell against
 several dates is `#VALUE!`; then different counts are `#NUM!` whatever a larger range holds (gen-m9/0a957119475760c5 A47);
-then the element reading. T-2611 (gen-m9, excel-graph, 2026-10-24; 20 top-level cells): an error values argument comes
+then the element reading. T-2611 (gen-m9, excel-graph, 2026-10-24; 42 top-level cells): an error values argument comes
 first (`XIRR(<#VALUE!>,<#DIV/0!>,..)` is `#VALUE!`, 79d87fc527927626 A228; an `INDEX` `#REF!` beside an error dates,
-81bcdc0bec0c8e6b A305, bc04c1f478c9896c A220), then an error dates argument, before the values' cells are read
-(`XIRR(Data!A11:C12,AVERAGE(<text cell>),..)` is the dates' `#DIV/0!` although the values range holds text,
-67a4c03afd63f988 A388). Open (T-2428): an error guess beside numeric values is the guess's error in Excel
-(1b60bf99d71424e7 A29, 67a4c03afd63f988 A388) but text values beside an error guess are `#VALUE!` (b72d952c5f52cb4d A50).
+81bcdc0bec0c8e6b A305, bc04c1f478c9896c A220); then a guess that is an error, text or a boolean is that error (`#VALUE!`
+for text or a boolean) before an error dates argument, the size checks and the values' cells
+(`XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`, 1dce4774f5c0e736 A189; `XIRR({-1000,300,400,500},<16 dates>,<#N/A>)` `#N/A`,
+1b60bf99d71424e7 A29; `XIRR(<text cells>,<5 dates>,<#VALUE!>)` `#VALUE!`, b72d952c5f52cb4d A50, whose guess is itself
+`#VALUE!`; a TRUE guess beside 6 values and 3 dates `#VALUE!`, b6a02893a8d6b151 A226); then an error dates argument,
+before the values' cells are read (`XIRR(Data!A11:C12,AVERAGE(<text cell>),..)` is the dates' `#DIV/0!` although the
+values range holds text, 67a4c03afd63f988 A388). In the size checks one empty or numeric-text cell is not "a text, boolean
+or empty cell": one empty values cell against several dates (`XIRR(Data!D10:D10,Data!B7:E8)`, 1dce4774f5c0e736 A91;
+89f0aee953a55a45 A36; ba4ddb817a8e700e A339), one empty date cell against several values (`XIRR(Data!B6:C11,<empty>,0.5)`,
+89f0aee953a55a45 A330; d0854366830dcdee A133) and one numeric-text date `"1"` against 14 values (c0681a8b150ce301 A266) are
+the count's `#NUM!`; one FALSE date stays `#VALUE!` (1cd3096e3e87c965 A48). 1db18890916ee643 A108, once cited for an
+empty date cell's `#VALUE!`, has a FALSE guess, which explains it. Unprobed: an error values argument beside an error guess
+(ours: the values'); a numeric-text guess beside different counts (ours: the old reading); numeric text inside a values
+range (`XIRR(Data!C9:C11,{39448,39508,39859},0.1)` with C11 `"1"` is `#NUM!`, 31474c20fc1dafd6 A351, ours `#VALUE!`; text
+read as 1, skipped or refused all give `#NUM!` there; T-3312).
 Order (XNPV, T-2428): the rate first, per element, where a boolean is `#VALUE!` (a cell, `XNPV(<TRUE>,..)`,
 1dce4774f5c0e736 A22, or an array element, `XNPV(SORT(<FALSE>),..)`, 5c6a23c4f6597f1c A258); then one values cell that is
 non-numeric text or a boolean is `#VALUE!`, before an error dates argument (`XNPV(-1,<FALSE>,<#N/A>)`, 3aa168259335be54
