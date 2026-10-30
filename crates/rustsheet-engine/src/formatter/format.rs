@@ -700,15 +700,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
                     let group = f64::from(p.digit_count.max(1));
                     let exponent;
+                    let mut shifted = false;
                     if group > 1.0 {
                         // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
                     } else {
                         (value, exponent) = round_scientific(scaled, p.precision);
+                        // The mantissa is already shifted; engineering below is not.
+                        shifted = true;
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
-                    value /= 10.0_f64.powf(exponent);
+                    if !shifted {
+                        value /= 10.0_f64.powf(exponent);
+                    }
                     value = to_precision(value, 15);
                     value_abs = value.abs();
                 }
@@ -904,7 +909,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     text = format!("{text}{c}");
                                 }
                             } else {
-                                for i in 0..number_index + 1 {
+                                // Overflowing digits join the first exponent placeholder; later
+                                // placeholders take one digit each (`0.00E+00` on DBL_MAX is
+                                // "1.80E+308", probes/dbl-max-text-b, T-2106).
+                                let first = if index == 0 { 0 } else { number_index };
+                                for i in first..number_index + 1 {
                                     text = format!("{}{}", text, exponent_part[i as usize]);
                                 }
                                 digit_index += number_index + 1;

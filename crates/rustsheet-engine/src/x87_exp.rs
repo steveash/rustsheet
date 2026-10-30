@@ -498,7 +498,7 @@ fn two_to_the_minus_one_series_sum(magnitude: u128, drop: u32) -> (f64, f64) {
 }
 
 /// 2^k as a double for -1022 <= k <= 1023.
-fn power_of_two(k: i32) -> f64 {
+pub(crate) fn power_of_two(k: i32) -> f64 {
     let biased = u64::try_from(k + 1023).unwrap_or(1).clamp(1, 2046);
     f64::from_bits(biased << 52)
 }
