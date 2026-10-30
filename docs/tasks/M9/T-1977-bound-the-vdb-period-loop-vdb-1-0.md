@@ -3,7 +3,7 @@ id: T-1977
 title: "Bound the VDB period loop (VDB(1,0,1e12,0,1e12) walks 1e12 periods)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
