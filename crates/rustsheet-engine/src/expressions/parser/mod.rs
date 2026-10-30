@@ -726,6 +726,17 @@ impl Parser {
         self.tables = tables;
     }
 
+    /// Puts `table` in place of the table of its name (or adds it), and returns the one it
+    /// replaced: a provisional table for one parse, which the caller puts back.
+    pub fn replace_table(&mut self, table: Table) -> Option<Table> {
+        self.tables.insert(table.name.clone(), table)
+    }
+
+    /// Removes the table `name` from the list structured references resolve against.
+    pub fn remove_table(&mut self, name: &str) -> Option<Table> {
+        self.tables.remove(name)
+    }
+
     pub fn parse(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
         if !self.lexer.is_a1_mode() {
             if let Some(stored) = unparsed::parse_stored_text(formula) {
