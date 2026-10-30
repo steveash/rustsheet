@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3143: typed (Graph PATCH) formula, 64 nested ABS calls around `SUM(C1#)` (65 calls; stored `_xlfn.ANCHORARRAY`): does `#` count?",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "entered": "=ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(ABS(SUM(C1#)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+    },
+    "B1": "=ISFORMULA(A1)",
+    "C1": "=SEQUENCE(2)"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "S!A1",
+  "S!B1"
+ ]
+}
