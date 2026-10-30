@@ -74,6 +74,9 @@ off are 68, for example gen-m9/5389dd4d5b5739d2 A299 `TINV(1-1E-10,1)`: Excel 1.
 
 These cells are part of T-0967's scope, which waits on T-0969 (blocked, time-boxed); this split needs no new CDF.
 
+Three of the df = 1 cells below (gen-m9/5389dd4d5b5739d2 A299, probes-numeric/m9-t-inv-2t A12, A13) were listed in
+T-2724 (the centre); they are this task's, and T-2724 no longer lists them.
+
 ## Acceptance criteria
 - [ ] The 30 gated known-failure lines above (18 gen-m9, 12 ironcalc-calc) disappear from eval/baseline/gen-m9.txt and
       eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with no new known-failure line in any baseline.

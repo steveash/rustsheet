@@ -55,7 +55,7 @@ Owned cells (62 known-failure lines, 61 visibly off; `make eval-show CASE=<case>
 - gen-m9/43c6227e0ff368c7.case.json (1): Calc!A70
 - gen-m9/44a8841352dc48e9.case.json (1): Calc!A226
 - gen-m9/4bad303d32cc3f46.case.json (2): Calc!A5, A371
-- gen-m9/5389dd4d5b5739d2.case.json (3): Calc!A102, A299, A361
+- gen-m9/5389dd4d5b5739d2.case.json (2): Calc!A102, A361
 - gen-m9/5395b8a427764a3f.case.json (2): Calc!A37, A397
 - gen-m9/583ca2baea0bb30a.case.json (1): Calc!A271
 - gen-m9/5be29fa316931f05.case.json (1): Calc!A3
@@ -74,11 +74,13 @@ Owned cells (62 known-failure lines, 61 visibly off; `make eval-show CASE=<case>
 - gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A90
 - gen-m9/ecc87f80077959e0.case.json (1): Calc!A327
 - ironcalc-calc/STATISTICAL/T_DIST.xlsx (4): sheet `T.DIST.2T T.INV.2T` D20, D62, D63; sheet `T.DIST T.INV T.DIST.RT` E20
-- probes-numeric/m9-t-inv-2t.case.json (20): Calc!A103, A104, A116, A117, A12, A129, A13, A130, A25, A26, A38, A39, A51, A52, A64, A65, A77, A78, A90, A91
+- probes-numeric/m9-t-inv-2t.case.json (18): Calc!A103, A104, A116, A117, A129, A130, A25, A26, A38, A39, A51, A52, A64, A65, A77, A78, A90, A91
 
 
 Gap triage 2026-10-27: T-2859 owns the general region of the same kernel (the search tolerance, |t| not small) and
 leaves the centre and the cells listed here to this task.
+The df = 1 cells gen-m9/5389dd4d5b5739d2 A299 and probes-numeric/m9-t-inv-2t A12, A13 moved to T-2858 (the
+1/TAN closed form).
 
 ## Acceptance criteria
 - [ ] Every owned cell above is within half a unit of the 15th significant digit of Excel's value (an expected

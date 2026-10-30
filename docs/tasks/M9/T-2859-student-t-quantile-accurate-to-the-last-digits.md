@@ -84,7 +84,7 @@ any remaining cell that turns out to be a centre cell (|t| small) moves to T-272
 - gen-m9/787ba8d801105a60.case.json (1): A56
 - gen-m9/7980ffb6095a340d.case.json (1): A46
 - gen-m9/7fd0a98183c6babf.case.json (1): A90
-- gen-m9/85f48d5cdfb24555.case.json (1): A372
+- gen-m9/85f48d5cdfb24555.case.json (1): A372 (handed on from T-2695 to T-0967; this task's accuracy stage)
 - gen-m9/8dd2312c96effb1b.case.json (1): A256
 - gen-m9/91e167cd8d7eb652.case.json (2): A102, A393
 - gen-m9/928d08e3e1eecb5f.case.json (1): A15
