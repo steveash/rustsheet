@@ -471,8 +471,7 @@ pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
     if !(a > 0.0 && a < 1.0 && a != 0.5 && p > 0.0 && p < 1.0) {
         return None;
     }
-    let exponent = (excel_ln(p) + excel_gammaln(a) + excel_ln(a)) / a;
-    let mut x = excel_exp(exponent);
+    let mut x = leading_factor_root(a, p);
     if x.is_nan() || x >= CLOSED_FORM_QUANTILE_MAX {
         return None;
     }
@@ -488,6 +487,49 @@ pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
         x -= step;
     }
     (x > 0.0 && x.is_finite()).then_some(x)
+}
+
+/// The root of the cdf's leading factor, p = x^a / Gamma(a + 1), as Excel forms it:
+/// `EXP((LN(p)+GAMMALN(a)+LN(a))/a)`, summed in that order (T-3013 at a shape below 1, T-2561
+/// above it). NaN where a logarithm is.
+fn leading_factor_root(a: f64, p: f64) -> f64 {
+    excel_exp((excel_ln(p) + excel_gammaln(a) + excel_ln(a)) / a)
+}
+
+/// How far, relative to p, GAMMA.DIST at [`leading_factor_root`] may be from p for
+/// [`excel_tiny_quantile`] to return that root. This is a fit, not an Excel constant: any value in
+/// the evidence bracket [4.09E-14, 5.88E-14) scores the same. Ten cells pin it. Eight are bit-exact
+/// roots, with GAMMA.DIST at the root up to 4.09E-14 from p: gen-m9/0a9226016e8f5f33 A240
+/// `CHISQ.INV(1E-200,7)` (-4.09E-14), 4e55500bb8ad3cd8 A217 `CHISQ.INV(1E-300,5)` (+4.02E-14),
+/// a790a4d4a6a82756 A293 and eced4bb6a0234c9e A123 (-3.13E-14), 165db58d1540f014 A283,
+/// a61e547a1cab994c A184, b4173fe25109a238 A252 and 3e98b26cf6713e77 A142. Two are not the
+/// root, where GAMMA.DIST at the root is 5.88E-14 and 6.24E-14 from p: d8266bc15533702a A212
+/// `CHISQ.INV(1E-200,10)` and 06b4e8f5de409d5e A128 `CHISQ.INV(1E-200,5)`. Excel is 111 and 236
+/// ulp from the root there, and 36 and 20 ulp from the crossing the search finds.
+const TINY_QUANTILE_CHECK: f64 = 5e-14;
+
+/// Excel's lower-tail quantile at a shape above 1 (and below [`DIRECT_SHAPE_MAX`]) where it is
+/// tiny (T-2561): the root of the leading factor, [`leading_factor_root`], with no Newton step.
+/// It applies where GAMMA.DIST (the pair with Excel's prefactor) at that root is within
+/// [`TINY_QUANTILE_CHECK`] of p. The check also limits the form to tiny quantiles. The cdf's other
+/// factors, e^-x and the series, are 1 - x a / (a + 1) to first order, so above x of about 5E-14
+/// they move the cdf past the check. At `CHISQ.INV(1E-16,3)` (x = 2.6E-11, 1.6E-11 off)
+/// the search takes over. The check is not Excel's own test. At shape 25, `CHISQ.INV(1E-300,50)`
+/// is the root bit for bit in Excel (probes-numeric t1543-inverse-cdf-tiny-p A31), though the cdf
+/// there is 9.8E-12 off; the shape bound keeps that cell on the search (TODO(T-3294)). The root
+/// differs from the true quantile by the rounding of Excel's exponent: `CHISQ.INV(1E-300,4)` is
+/// Excel's 2.828427124746146E-150, 82 ulp below the crossing. `None` elsewhere.
+fn excel_tiny_quantile(a: f64, p: f64) -> Option<f64> {
+    if !(a > 1.0 && a < DIRECT_SHAPE_MAX && p > 0.0 && p < 1.0) {
+        return None;
+    }
+    let x = leading_factor_root(a, p);
+    if !(f64::MIN_POSITIVE..1.0).contains(&x) {
+        return None;
+    }
+    // One cdf of a shape below 20 at x below 1: the series, at most `cdf_terms_bound(20)` terms.
+    let cdf = pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Excel).0;
+    ((cdf / p - 1.0).abs() <= TINY_QUANTILE_CHECK).then_some(x)
 }
 
 /// The shape from which the pair is Temme's uniform asymptotic expansion ([`temme_pair`]) and not a
@@ -884,8 +926,15 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         (Tail::Lower, false) => (Tail::Upper, 1.0 - p),
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
+    let tiny = match small {
+        Tail::Lower if tail == Tail::Lower => excel_tiny_quantile(shape, target),
+        _ => None,
+    };
     let x = if shape == 1.0 {
         exponential_quantile(small, target) * scale
+    } else if let Some(unit) = tiny {
+        // The scale multiplies the unit quantile, as at shape 1 and below 1 (T-3013, T-3016).
+        unit * scale
     } else {
         let Ok(dist) = Gamma::new(shape, rate) else {
             return f64::NAN;

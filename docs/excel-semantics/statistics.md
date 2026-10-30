@@ -3498,6 +3498,42 @@ Tasks: T-1543, T-1634
   prefactor they are Excel's doubles. The kept-search quantiles moved by 1 to 2 ulps with the cdf under them: the
   merge fixed 56 more quantile cells (gen-m9) and left 6 at 1 to 2 ulps (`CHIINV(0.95,7)` Excel 2.167349909298057,
   ours 2.167349909298058; `CHISQ.INV.RT(0.1,7)`, `GAMMA.INV(0.05,2,30)`; T-2367).
+- Deep lower tail at a shape above 1 (T-2561): where the quantile is tiny, Excel's CHISQ.INV, GAMMA.INV and GAMMAINV
+  return the root of the cdf's leading factor p = x^a / Gamma(a + 1), as T-3013 found below shape 1. Excel forms it
+  as `EXP((LN(p)+GAMMALN(a)+LN(a))/a)` and takes no Newton step, then multiplies by the scale. Its error is the
+  rounding of that exponent, up to 82 ulp from the true quantile:
+  - `CHISQ.INV(1E-300,4)` = 2.828427124746146E-150 (crossing ...61904E-150);
+  - `CHISQ.INV(1E-100,6)` = 1.686865330603492E-33;
+  - `GAMMAINV(1E-300,2,1925)` = 2.7223611075681657E-147.
+
+  Evidence: gen-m9 (excel-graph). The root is bit-exact at 8 of the 10 cells with a quantile below 1E-11 at shape 1
+  to 20: 0a9226016e8f5f33 A240, 4e55500bb8ad3cd8 A217, a790a4d4a6a82756 A293, eced4bb6a0234c9e A123,
+  165db58d1540f014 A283, a61e547a1cab994c A184 (and a7bf0d8d81d33ba6 A399), b4173fe25109a238 A252, and
+  3e98b26cf6713e77 A142 (shape 1.500000000000001). It also holds at shape 25 (probes-numeric/t1543-inverse-cdf-tiny-p
+  A31 `CHISQ.INV(1E-300,50)`). The two exceptions are `CHISQ.INV(1E-200,5)` (06b4e8f5de409d5e A128, 623663cacea53bbc
+  A98; also caa1eed48b1883fe A282 `GAMMAINV(1E-200,2.5,10000000001)`) and `CHISQ.INV(1E-200,10)` (d8266bc15533702a
+  A212). There Excel is 236 and 111 ulp above the root and 20 and 36 ulp above the crossing. That is neither a Newton
+  step from the root (at most about 1E-14 of x there) nor any other root form tried:
+  - `GAMMALN(a+1)` in place of `GAMMALN(a)+LN(a)`;
+  - `LN(p)/a+GAMMALN(a+1)/a`;
+  - `(p*GAMMA(a+1))^(1/a)`;
+  - the log of the scale inside the exponent.
+
+  Ours (T-2561, `incomplete_gamma::excel_tiny_quantile`): the root wherever our GAMMA.DIST at it is within 5E-14 of p,
+  at shapes 1 to 20. The 5E-14 is a fit: our cdf is up to 4.09E-14 from p at the eight bit-exact roots and 5.88E-14
+  and 6.24E-14 at the two exceptions, so any cut in [4.09E-14, 5.88E-14) scores the same. Below that cut the search
+  applies, as before. The check is not Excel's own test. At A31 Excel takes the root though our cdf there is 9.8E-12
+  off (e^-x and the series at x = 1E-11). And at `CHISQ.INV(1E-16,3)` (x = 2.6E-11, a7bf0d8d81d33ba6 A216) Excel is
+  one Newton step from the root, not the root (T-3294).
+  Not reached (time-boxed, decision 0056), each still visibly off. These quantiles are too large for the root:
+  - `CHISQ.INV(1E-20,6)` (a612e89321a6df9c A169, Excel 7.829736048647269E-7, ours 5 ulp below);
+  - `CHISQ.INV(1E-20,10)` (c2974c061384fdd9 A355);
+  - `GAMMAINV(1E-16,2.5,1)` (a5828d3925575713 A338);
+  - `CHISQ.INV.RT(1-1E-16,3)` (ecc87f80077959e0 A301).
+
+  On them the search was compared with the root followed by one Newton step, or by Newton steps until a step is under
+  3.5E-14 of x, on the leading-factor series form. Neither matches. A169 is 71 ulp off with a step; A355 is 6 ulp
+  off with the loop against 5 for the search.
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
