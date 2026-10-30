@@ -22,7 +22,8 @@
 //!   its 2^19-term cap, on its NaN path and converging with its rescales (the bound's slower term),
 //!   and CHISQ.DIST at the largest chi-squared shape, over 512 elements. Since T-2795 an element is
 //!   charged by its shape: CHIDIST of df 5 (150 units) at x = 7, where its continued fraction is
-//!   slowest, over the 894,784 elements the charge lets through.
+//!   slowest, over the 894,784 elements the charge lets through. GAMMA.INV at shape 9 over 512
+//!   p in (0, 1): since T-0972 every element refines to the crossing of the cdf (T-3016).
 //!
 //! - HYPGEOM.DIST at its lift cap (T-1873): the cdf sum with 258,239 terms that are not known to
 //!   be 0 (just under its 2^18-term cap, the population of 1.8E8 at its widest), over 32 elements.
@@ -222,6 +223,11 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             "CHIDIST, df 5 at the continued fraction's slowest x, at its by-value element cap",
             1,
             "=SUM(CHIDIST(SEQUENCE(894784)*0+7,5))",
+        ),
+        (
+            "GAMMA.INV, the refined quantile over 512 p (T-0972, T-3016)",
+            1,
+            "=SUM(GAMMA.INV(SEQUENCE(512)/513,9,1))",
         ),
     ]
     .into_iter()

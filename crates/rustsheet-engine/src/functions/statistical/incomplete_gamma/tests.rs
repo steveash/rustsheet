@@ -443,3 +443,41 @@ fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
         20_005_316_470.675_835
     ));
 }
+
+#[test]
+fn shape_one_quantile_is_excels_closed_form() {
+    // Excel's doubles (T-3016): CHISQ.INV(0.5,2) and CHISQ.INV.RT(0.5,2) are 2 ln 2 (gen-m9
+    // 7674c89c824aca43 A106, a790a4d4a6a82756 A104), CHISQ.INV.RT(0.975,2) e6cf3b20a014e6a3 A98,
+    // CHISQ.INV(1E-16,2) 7674c89c824aca43 A198, GAMMA.INV(0.025,1,1) times 1E15 ecc87f80077959e0
+    // A302; the crossing was 1 to 2 ulps off all but CHISQ.INV(1E-16,2).
+    let chi2 = Gamma::new(1.0, 0.5).unwrap();
+    let unit = Gamma::new(1.0, 1.0).unwrap();
+    for (p, tail, excel) in [
+        (0.5, Tail::Lower, 1.386_294_361_119_890_6_f64),
+        (0.5, Tail::Upper, 1.386_294_361_119_890_6),
+        (0.975, Tail::Upper, 0.050_635_615_968_579_795),
+        (1e-16, Tail::Lower, 2e-16),
+    ] {
+        assert_eq!(
+            gamma_quantile(&chi2, p, tail).to_bits(),
+            excel.to_bits(),
+            "{p}"
+        );
+    }
+    assert_eq!(
+        gamma_quantile(&unit, 0.025, Tail::Lower) * 1e15,
+        25_317_807_984_289.875
+    );
+}
+
+#[test]
+fn half_quantiles_at_shapes_nine_and_fifty() {
+    // T-0972 refines every quantile to the crossing; these pin it at the median. Excel's
+    // GAMMA.INV(0.5,50,1) is 49.66706461799423 (probes-numeric m9-gamma-inv A60), and its
+    // GAMMA.INV(0.5,9,1) is 8.668951184370373 (A46), one ulp above ours (the true quantile is
+    // 8.6689511843703722; T-3016).
+    let ours = gamma_quantile(&Gamma::new(50.0, 1.0).unwrap(), 0.5, Tail::Lower);
+    assert_eq!(ours, 49.667_064_617_994_23);
+    let ours = gamma_quantile(&Gamma::new(9.0, 1.0).unwrap(), 0.5, Tail::Lower);
+    assert_eq!(ours.to_bits() + 1, 8.668_951_184_370_373_f64.to_bits());
+}
