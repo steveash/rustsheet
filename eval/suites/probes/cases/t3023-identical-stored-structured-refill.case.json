@@ -29,9 +29,9 @@
     "F2": "=FORMULATEXT(C2)",
     "F3": "=FORMULATEXT(C3)",
     "F4": "=FORMULATEXT(C4)",
-    "C2": "=[@Col]*2",
-    "C3": "=[@Col]*2",
-    "C4": "=[@Col]*2",
+    "C2": "=T[[#This Row],[Col]]*2",
+    "C3": "=T[[#This Row],[Col]]*2",
+    "C4": "=T[[#This Row],[Col]]*2",
     "A5": 8,
     "B5": 80,
     "C5": {

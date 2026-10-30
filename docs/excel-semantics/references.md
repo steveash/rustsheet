@@ -2681,7 +2681,11 @@ stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
    `#N/A`), C4 is 12 (t2983-formulas-and-blank-enter-last). (c) The same with `=A3*3` typed into the blank C3: C2 2,
    C3 6, C4 8, nothing filled (t2983-formulas-and-blank-enter-blank). (c) is a second witness for (a): C2 and C4 are
    one relative formula. (b) follows from (a) too, so **whether a blank beside a real calculated-column formula blocks
-   the fill is unprobed** (T-3025). Only A1 formulas are probed.
+   the fill is unprobed** (T-3025).
+   (d) The same holds for a stored structured formula (T-3023, excel-graph 2026-10-30): stored `T[[#This Row],[Col]]*2`
+   (the file form of `[@Col]*2`; a bare `[@Col]` in a stored cell loads as `#REF!`) in C2:C4, then `=[@Col]*3` typed into
+   C5: C2:C4 stay 2, 4, 8 (F2:F4 `=[@Col]*2`), C5 is 24 (F5 `=[@Col]*3`), so identical stored structured formulas are
+   no calculated column either (t3023-identical-stored-structured-refill). The engine matches (a stored formula never fills).
 (T-2969 probes a stored column formula.)
 Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
@@ -2717,7 +2721,7 @@ column whose other cells are not all blank (Excel also stays put for an occupied
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs; rule 7a-7f by probes/t3003-*)
 Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7 (7a-7d), the same file (T-2968, T-3218)
-Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033, T-3003, T-3218
+Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3023, T-3024, T-3025, T-3033, T-3003, T-3218
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
