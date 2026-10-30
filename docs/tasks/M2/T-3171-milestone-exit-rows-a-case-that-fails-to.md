@@ -3,7 +3,7 @@ id: T-3171
 title: "Milestone exit rows: a case that fails to load, panics or times out fails its measure (the M0-M2 probe row reads met with 8 unloadable cases)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
