@@ -4526,10 +4526,17 @@ x/beta = 2E-10 but `#NUM!` at 1.85E+76 (`GAMMA.DIST(2,1.85E+76,1E+10,TRUE)`,
 Evidence: probes/t2435-dist-extremes A25:A34, A92:A102 (excel-graph, 2026-10-26); gen-m9
 2801c1c11c21e134 A241 (`GAMMADIST(1E-300,10000000001,3,FALSE)`) and 40425341c5034eed A265
 (`GAMMADIST(2,1.85E+76,1E+10,"TRUE")`).
-Ours: 0 for each `#NUM!` above (T-2982); `GAMMA.DIST(1E+10,1E+10,1,TRUE)` is Excel's 0.5000013298076014 since
-T-1891 (Temme's expansion).
-Status: VERIFIED (excel-graph), one cell per shape at the cuts
-Tasks: T-2435, T-1891, T-2982
+The cdf cut only turns a 0 into `#NUM!`: at a shape of 1E+300, x = 1E+300 is 0.5 (probes/incomplete-gamma-cap E3), and a huge
+x at a huge shape keeps its density of 0 (`GAMMA.DIST(1E+307,1E+10,0.5,FALSE)` is 0, t2435-dist-extremes A31).
+Ours (T-3271): a computed 0 is `#NUM!` for a density at x/beta below 1 with (alpha - 1)·(-LN(x/beta)) of at least
+6.9187E+11 (A26's value, the smallest `#NUM!` seen), and for a cdf of a positive x at a shape of at least 1.85E+76 (the
+smallest `#NUM!` seen). Between the bracket ends (density 6.9E+10 to 6.9187E+11, cdf 1E+40 to 1.85E+76) the cut is
+UNVERIFIED: excel-graph refused workbooks holding those cells (FileCorruptTryRepair, T-2982).
+`GAMMA.DIST(1E+10,1E+10,1,TRUE)` is Excel's 0.5000013298076014 since T-1891 (Temme's expansion).
+Status: VERIFIED (excel-graph) at the probed cells; the cut positions inside each bracket UNVERIFIED
+Tasks: T-2435, T-1891, T-2982, T-3271
+Implemented in: `huge_shape_num_error`, `HUGE_SHAPE_DENSITY_CUT`, `HUGE_SHAPE_CDF_CUT`
+(crates/rustsheet-engine/src/functions/statistical/gamma.rs)
 
 ## LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order (T-1741)
 Rule: LINEST and LOGEST line known_x up with known_y as TREND does ("TREND: defaults, shapes, single points and error
