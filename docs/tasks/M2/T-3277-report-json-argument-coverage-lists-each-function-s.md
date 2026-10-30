@@ -3,7 +3,7 @@ id: T-3277
 title: "report.json argument_coverage lists each function's unseen argument-class pairs, so the generator can target them"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
