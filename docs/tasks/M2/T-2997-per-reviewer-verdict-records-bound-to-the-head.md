@@ -45,7 +45,7 @@ marking session's attestation.
   - `mark` derives the marker's verdicts from those records, and V4 checks the same records.
   - A diff digest was weighed and dropped, because the head sha already fixes the reviewed diff.
   - It is rolled out through `verdict_records = "warn" | "require"`.
-- What it does and does not prevent, given that every session shares one GitHub identity: it stops stale panels,
+- What it does and does not prevent, given that every session shares one GitHub identity: once in `require` mode it stops accidental stale panels,
   verdicts with no review behind them, and silent fabrication (the report becomes a visible, auditable comment). It does
   not stop a session that deliberately fabricates, which stays the accepted residual risk.
 - The implementation needs more than one size-M change, so this PR is the spec the task's rule asks for, and the

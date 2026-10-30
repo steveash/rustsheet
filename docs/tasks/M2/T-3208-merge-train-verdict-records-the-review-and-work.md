@@ -21,6 +21,8 @@ Every marked PR carries a verdict record per reviewer, and after a clean week in
   (step 6.3) and steward ("Merge train") skills describe marking.
 
 ## Acceptance criteria
+- [ ] Each reviewer agent's report starts with the `git rev-parse HEAD` it reviewed (SPEC-0027 "Verdict
+      records (v2)").
 - [ ] The review skill posts each reviewer's report with `make verdict-record` as it returns (step mode when
       `gh api` writes are refused), and the work-loop and steward skills mark with `make mark-ready` deriving the
       verdicts (no `REVIEW=` once in `require`).

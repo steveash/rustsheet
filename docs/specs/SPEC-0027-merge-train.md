@@ -334,11 +334,14 @@ review`.
   write tools, so the marking session posts whatever a reviewer returns. Nothing a reviewer can
   write is out of that session's reach, and a signing key would sit where the session can read
   it. So no record format stops a deliberately fabricating (buggy or prompt-injected) marking
-  session; that residual risk stays as accepted in "Trust". Records do stop:
-  - a **stale panel**: verdicts given on an earlier head (before a fix push) and re-used for the
+  session; that residual risk stays as accepted in "Trust". Once `verdict_records = "require"`
+  (none of this is enforced in `warn`), records do stop:
+  - an **accidental stale panel**: verdicts given on an earlier head (before a fix push) and re-used for the
     new one. Each record names the head it reviewed, and V4 rejects one for any other head. The
     `head:` is the posting session's own claim, so this holds against a buggy session, not a lying
-    one, and only because `make verdict-record` refuses when the local HEAD is not the PR head;
+    one, and only because `make verdict-record` refuses when the local HEAD is not the PR head.
+    Each reviewer's report starts with the `git rev-parse HEAD` it ran against, so a re-posted old
+    report under a new head is visible in the audit;
   - a **verdict with no review behind it**: a `REVIEW=` string typed without the panel running
     finds no records, so `mark` refuses and V4 fails;
   - **silent fabrication**: each record carries the reviewer's own report, so a fabricated
@@ -347,8 +350,11 @@ review`.
     account can edit or delete it, which is inside the residual risk.
 - **Format.** One PR comment per reviewer, posted by the marking session right after that
   reviewer returns (`make verdict-record PR=<n> REVIEWER=<name> VERDICT=<v> REPORT=<file>`, direct
-  or in step mode). The body is the reviewer's report verbatim (truncated to GitHub's comment
-  limit with a marker line), then the block:
+  or in step mode). The body is the reviewer's returned report and nothing else (no tool
+  environment, no tokens), with every `<!--` and `-->` in it neutralised (a space inserted) so
+  report text, which derives from untrusted PR content, can neither open a block nor close one;
+  then the block. Truncation to GitHub's comment limit cuts the report only, with a marker line,
+  and never the block. The block:
   ```
   <!-- merge-train-verdict v1
   head: <40-hex sha>       # the HEAD the reviewer read: the local HEAD, which must equal the PR head
@@ -358,10 +364,14 @@ review`.
   ```
   A diff digest was weighed and dropped: the head sha already fixes the tree, and with it the
   diff against the merge base, so a digest adds no binding the sha lacks.
-- **Which records count.** Only records by a writer (V1's permission filter). A record whose
+- **Which records count.** Only records by a writer (V1's permission filter), and only the one
+  block that ends the body (optionally followed by the decision 0175 attribution footer); a body
+  with any other `merge-train-verdict` block in it is not a record. A record whose
   `updated_at` differs from its `created_at` (edited) is ignored, so an edit cannot turn a
   `REQUEST_CHANGES` into an `APPROVE`; a corrected verdict is a new record. "Newest" orders by the
-  server's `created_at`, never a self-declared field. A record posted after the marker counts (a
+  server's `created_at`, never a self-declared field: since edited records are dropped, the two
+  server keys agree on every record that counts, and an edit fails closed (the edited record
+  stops counting) instead of re-ordering anything. A record posted after the marker counts (a
   panel re-run on the same head), and the merger re-reads the records at every V4 check, so a
   deleted record or a newer `REQUEST_CHANGES` takes effect at the next merger run.
 - **Checks.** `mark` refuses unless, for each applicable reviewer, the newest record by a writer

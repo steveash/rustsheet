@@ -32,7 +32,9 @@ review-less verdict is caught mechanically (in `warn` mode: reported, not yet en
 - [ ] V4 checks the records for `head` (or `prev` under a carry-over the merger re-verifies); in `warn` mode a
       gap is reported in the run summary and does not unlabel; in `require` it fails V4. Tests cover both modes,
       a stale-head record, a newer REQUEST_CHANGES, an edited record (ignored), a record posted after the
-      marker (counted) and an outsider's record (ignored).
+      marker (counted), an outsider's record (ignored), a report containing its own `merge-train-verdict`
+      block or a `-->` (neutralised; only the final block counts) and a report over the comment limit (the
+      report is truncated, the block kept).
 - [ ] `make check` green; security and architecture approve (protected paths: decision 0178 covers them).
 
 If this overruns size M, split the `verdict_records` key and V4's `warn` reporting into their own task.

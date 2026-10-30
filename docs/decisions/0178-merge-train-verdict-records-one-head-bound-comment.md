@@ -11,8 +11,9 @@
     the verdict. No diff digest: the head sha already fixes the reviewed diff.
   - `mark` derives the marker's `reviewers:` from the newest writer records for the head and refuses without them;
     V4 checks the same records (for `prev` under a verified carry-over).
-  - Only unedited writer records count, newest by `created_at`, re-read at every V4 check.
-  - Records stop stale panels (against a buggy session; `head:` is self-declared), verdicts with no review behind
+  - Only unedited writer records count, newest by `created_at`, re-read at every V4 check; only the block that ends a
+    body counts, and `verdict-record` neutralises comment markup in the report and never truncates the block.
+  - Once in `require` mode, records stop accidental stale panels (against a buggy session; `head:` is self-declared), verdicts with no review behind
     them, and silent fabrication (the report is a visible, auditable comment, not a tamper-proof one). They do not
     stop a deliberately fabricating session; that residual risk stays accepted.
   - Rollout through `verdict_records = "warn" | "require"` in `scripts/merge_train.toml`, `warn` first.
