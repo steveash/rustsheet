@@ -3,7 +3,7 @@ id: T-3317
 title: "XLOOKUP with a scalar return_array gives #VALUE! where Excel gives if_not_found (t3181 Calc!B11)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
