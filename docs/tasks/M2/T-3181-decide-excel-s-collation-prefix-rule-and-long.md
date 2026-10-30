@@ -3,7 +3,7 @@ id: T-3181
 title: "Decide Excel's collation prefix rule: a sort-safe pairwise implementation or a DEVIATION"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
