@@ -447,7 +447,7 @@ fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
 #[test]
 fn shape_one_quantile_is_excels_closed_form() {
     // Excel's doubles (T-3016): CHISQ.INV(0.5,2) and CHISQ.INV.RT(0.5,2) are 2 ln 2 (gen-m9
-    // 7674c89c824aca43 A106, a790a4d4a6a82756 A104), CHISQ.INV.RT(0.975,2) e6cf3b20a014e6a3 A98,
+    // 7674c89c824aca43 A106, a790a4d4a6a82756 A104), CHIINV(0.975,2) e6cf3b20a014e6a3 A98,
     // CHISQ.INV(1E-16,2) 7674c89c824aca43 A198, GAMMA.INV(0.025,1,1E+15) ecc87f80077959e0 A302
     // and GAMMA.INV(0.95,1,1000000) probes-numeric m9-gamma-inv A26 (the unit quantile over the
     // rate 1E-6 is 2995732.2735539903); the crossing was 1 to 2 ulps off all but A198.

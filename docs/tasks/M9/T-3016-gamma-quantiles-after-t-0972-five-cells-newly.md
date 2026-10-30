@@ -84,7 +84,7 @@ The 49 gated cells newly 1-3 ulp off (eval/baseline lines added by T-0972):
       line; the `CHISQ.INV(0.999,5)` pair is re-scoped to T-3146 and A168 and F21 to T-3238 (T-3016 review).
 - [x] As many of the 49 ulp lines as Excel's own quantile iteration explains leave the baselines; the rest are listed
       in a `defer: phase-1b` follow-up.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The CDF kernel (T-0971 and its follow-ups T-2367, T-2638).
