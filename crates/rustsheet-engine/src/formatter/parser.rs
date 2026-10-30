@@ -354,6 +354,7 @@ impl Parser {
     pub(crate) fn has_empty_text_section(&self) -> bool {
         self.parts.len() == 3 && self.ends_in_separator && !self.parts.iter().any(is_text_section)
     }
+
     /// Whether the last section is exactly `@`, with no color, locale or literal, not even `""`.
     /// Excel shows a text whole under it however long, where any other text section shows 255 `#`
     /// past 255 characters (probes/displayed-text-long-text-b A2, A3 vs A1, A4, A6; T-3282).

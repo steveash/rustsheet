@@ -12,7 +12,7 @@ use crate::{
 use std::collections::BTreeSet;
 
 pub use super::formatted::Formatted;
-use super::formatted::MAX_TEXT_FORMAT_CHARS;
+use super::formatted::{unshowable_text, MAX_TEXT_FORMAT_CHARS};
 pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
@@ -196,9 +196,7 @@ pub fn displayed_text(text: &str, format: &str) -> String {
     let formatted = format_text_value(text, format);
     match formatted.error.as_deref() {
         None => formatted.displayed(),
-        Some(TEXT_TOO_LONG) if text_section_changes_text(format) => {
-            "#".repeat(MAX_TEXT_FORMAT_CHARS)
-        }
+        Some(TEXT_TOO_LONG) if text_section_changes_text(format) => unshowable_text(),
         Some(_) => text.to_string(),
     }
 }
