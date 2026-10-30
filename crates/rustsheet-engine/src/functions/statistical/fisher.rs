@@ -6,13 +6,16 @@ use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
 use crate::functions::statistical::f_density::excel_f_density;
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
-use crate::functions::statistical::incomplete_beta::{beta_reg_tails, A1_EXPM1_MAX_X};
+use crate::functions::statistical::half_integer_beta::half_integer_remainder;
+use crate::functions::statistical::incomplete_beta::{
+    beta_reg_tails, search_tails, A1_EXPM1_MAX_X,
+};
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::paired::marked_number_error;
 use crate::functions::statistical::special::refine_increasing;
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp};
+use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -113,7 +116,7 @@ fn f_quantile_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
             return tail;
         }
     }
-    let (lower, upper_tail) = beta_reg_tails(u, v, a, b);
+    let (lower, upper_tail) = search_tails(u, v, a, b);
     if upper {
         upper_tail
     } else {
@@ -125,13 +128,6 @@ fn f_quantile_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
 /// [`beta_dist_lower_tail`]'s; below it the remainder of [`f_test_upper_tail`] is summed
 /// in double-double, at most about 30,000 terms (x <= 0.9975 there).
 const F_TEST_SERIES_SHAPE_MAX: f64 = 200.0;
-
-/// Bound on the terms of [`f_test_remainder`]'s series (it converges well before it below
-/// [`F_TEST_SERIES_SHAPE_MAX`]).
-const F_TEST_SERIES_TERMS: u32 = 100_000;
-
-/// pi as a double-double (hi + lo).
-const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 
 /// F.TEST's two-tailed p, `2 min(u, 1 - u)` for the upper tail u of [`f_test_upper_tail`]: with
 /// both shapes above 1 and a + b up to [`F_TEST_SERIES_SHAPE_MAX`], TOMS 708 `bratio`'s branches
@@ -173,7 +169,7 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     if a == 0.5 && b == 0.5 {
         return 2.0 * x.sqrt().asin() / std::f64::consts::PI;
     }
-    (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
+    (a * x.ln()).exp() * (b * y.ln()).exp() * half_integer_remainder((x, 0.0), a, b)
 }
 
 /// `I_x(a, b)` at a shape of 1 as F.TEST and the F quantile's search ([`f_quantile_tail`]) take it,
@@ -197,51 +193,6 @@ fn unoriented_shape_one_tail(x: f64, a: f64, b: f64) -> Option<f64> {
     } else {
         1.0 - (b * (1.0 - x).ln()).exp()
     })
-}
-
-/// `I_x(a,b)/(x^a (1-x)^b) = 2F1(a+b, 1; a+1; x) / (a B(a,b))` for half-integer shapes, in
-/// double-double: `B(a,b)` by [`half_integer_beta`] and the series of positive terms
-/// `t_(n+1) = t_n (a+b+n) x/(a+1+n)`, which nothing cancels.
-fn f_test_remainder(x: f64, a: f64, b: f64) -> f64 {
-    let beta = half_integer_beta(a, b);
-    let mut term = (1.0, 0.0);
-    let mut sum = (1.0, 0.0);
-    let mut n = 0.0;
-    for _ in 0..F_TEST_SERIES_TERMS {
-        term = dd_div_small(
-            dd_mul(dd_mul(term, (a + b + n, 0.0)), (x, 0.0)),
-            a + 1.0 + n,
-        );
-        sum = dd_add(sum, term);
-        n += 1.0;
-        // 2^-110 of the sum: past double-double precision.
-        if term.0 < sum.0 * 7.7e-34 {
-            break;
-        }
-    }
-    dd_div(sum, dd_mul(beta, (a, 0.0))).0
-}
-
-/// `B(a,b)` in double-double for half-integer shapes a, b >= 1/2: `B(a+1,b) = B(a,b) a/(a+b)` and
-/// `B(a,b+1) = B(a,b) b/(a+b)` from `B(1,1) = 1`, `B(1/2,1) = B(1,1/2) = 2` or `B(1/2,1/2) = pi`.
-pub(super) fn half_integer_beta(a: f64, b: f64) -> (f64, f64) {
-    let a0 = if a.fract() == 0.0 { 1.0 } else { 0.5 };
-    let b0 = if b.fract() == 0.0 { 1.0 } else { 0.5 };
-    let mut beta = match (a0 == 1.0, b0 == 1.0) {
-        (true, true) => (1.0, 0.0),
-        (true, false) | (false, true) => (2.0, 0.0),
-        (false, false) => PI_DD,
-    };
-    let (mut p, mut q) = (a0, b0);
-    while p < a {
-        beta = dd_div_small(dd_mul(beta, (p, 0.0)), p + q);
-        p += 1.0;
-    }
-    while q < b {
-        beta = dd_div_small(dd_mul(beta, (q, 0.0)), p + q);
-        q += 1.0;
-    }
-    beta
 }
 
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the

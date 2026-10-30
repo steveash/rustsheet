@@ -86,7 +86,7 @@ fn bpser_branches_match_excel() {
 // Branches not ported yet, and a shape of 1 outside the closed forms, keep today's kernel.
 #[test]
 fn unported_points_keep_todays_kernel() {
-    use crate::functions::statistical::incomplete_beta::beta_reg_complement;
+    use crate::functions::statistical::incomplete_beta::beta_reg_tails;
     for (x, a, b) in [
         (0.295, 0.5, 5.0),                   // bup + bgrat
         (0.5, 50.0, 60.0),                   // bfrac
@@ -96,7 +96,7 @@ fn unported_points_keep_todays_kernel() {
     ] {
         assert_eq!(
             cdf(x, a, b).to_bits(),
-            beta_reg_complement(x, 1.0 - x, a, b).to_bits()
+            beta_reg_tails(x, 1.0 - x, a, b).0.to_bits()
         );
     }
 }
