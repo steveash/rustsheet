@@ -11,6 +11,11 @@ impl Functions {
     /// `_xlfn._xlws.` or `_xlfn.` prefix newer functions are stored under
     /// (docs/excel-semantics/xlsx-storage.md).
     pub fn lookup_stored(&self, name: &str) -> Option<Function> {
+        // Both prefixes start with `_`; most names have neither, and the prefix searches cost
+        // more than the lookup on loading long formulas (T-0499).
+        if !name.starts_with('_') {
+            return self.lookup(name);
+        }
         self.lookup(name.trim_start_matches("_xlfn._xlws."))
             .or_else(|| self.lookup(name.trim_start_matches("_xlfn.")))
     }
