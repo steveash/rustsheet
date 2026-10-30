@@ -254,40 +254,8 @@ F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H31
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H4
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H5
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H7
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!A23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R1
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R2
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L12
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L16
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L17
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L18
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L19
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L22
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L25
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L27
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L28
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L31
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L41
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L42
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L56
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L58
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M12
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M16
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M17
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M18
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M19
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!N9
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D3
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D5
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E3
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K10
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K11

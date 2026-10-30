@@ -32,6 +32,7 @@ from rustsheet_tools.gen.generator import (
 from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
 from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
+from rustsheet_tools.gen.numeric_fp import CALL, FP_BASES, FP_K, POSITIONS, generate_numeric_fp
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
 from rustsheet_tools.gen.pools import MAX_STRING_LITERAL, POOLS, lambda_arity
@@ -121,6 +122,39 @@ def test_numeric_rules_policy() -> None:
     assert not re.search(
         r"-\d+\^", " ".join(f for c in cases for s in c["sheets"] for f in s["cells"].values())
     )
+
+
+def test_numeric_fp_policy_covers_every_position_with_m2_functions_only() -> None:
+    cases = generate_numeric_fp(3)
+    assert cases == generate_numeric_fp(3)
+    assert cases != generate_numeric_fp(4)  # the seed shuffles the probes' cells
+    assert [c["tags"][3] for c in cases] == list(POSITIONS)
+    m2 = {f["name"] for f in catalog().scoped("M2").functions}
+    probes = 0
+    for c in cases:
+        assert c["tags"][:2] == ["generated", "M2"]
+        assert set(c["hypotheses"]) == set(c["check"]) and c["expected"] == {}
+        formulas = [f for s in c["sheets"] for f in s["cells"].values() if isinstance(f, str)]
+        assert set(CALL.findall(" ".join(formulas))) <= m2
+        assert not re.search(r"-\d+\^", " ".join(formulas))  # -2^20 is +2^20 in Excel
+        assert build_xlsx(c)[:2] == b"PK"
+        probes += len(c["check"])
+    assert probes == 5200
+    tags = [t for c in cases for t in c["hypotheses"].values()]
+    assert len(set(tags)) == len(tags)  # one cell per position, form, order and pair
+    assert FP_BASES == ["1", "2", "0.5", "(2^20)", "1.5"] and list(FP_K) == list(range(10))
+    for want in ("root/vlookup/b-x/", "root/hlookup/x-b/", "wrapper/countif/b-x/", "sum/average-zero/b-x/"):
+        assert any(t.startswith(f"numeric-fp/{want}") for t in tags), want
+    root = cases[0]
+    cell = next(
+        a for a, t in root["hypotheses"].items() if t == "numeric-fp/root/hlookup/x-b/base=1/sign=-1/k=4"
+    )
+    hlookup = "HLOOKUP(4,Rows!$A$4:$J$6,{},FALSE)"
+    assert root["sheets"][2]["cells"][cell.split("!")[1]] == "=" + hlookup.format(2) + "-" + hlookup.format(3)
+    assert root["sheets"][0]["cells"]["B15"] == "=1*(1-4*2^-52)"
+    # Lookup keys and the trailing 0 addend are numbers: a text "0" would be skipped by SUM.
+    assert root["sheets"][0]["cells"]["A15"] == 15 and root["sheets"][0]["cells"]["F15"] == 0
+    assert root["sheets"][1]["cells"]["E4"] == 4
 
 
 M2_ADDED = [

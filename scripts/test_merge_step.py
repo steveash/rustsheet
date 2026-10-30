@@ -84,7 +84,8 @@ class Schema(unittest.TestCase):
 
     def test_mark_ready_prints_the_same_schema(self) -> None:
         marker = merge_ready.Marker(SHA, None, "T-0001", {"security": "APPROVE"}, "session-1")
-        plan = merge_ready.Plan(7, marker, merge_ready.marker_body(marker), True, ("bug", "ready-to-merge"))
+        plan = merge_ready.Plan(7, marker, merge_ready.marker_body(marker), True, True, ("bug", "ready-to-merge"))
+        self.assertEqual([a["action"] for a in plan.actions()], ["comment", "label", "unlabel"])
         for action in plan.actions():
             merge_step.validate(action)
 
