@@ -3,7 +3,7 @@ id: T-3191
 title: "Nested parentheses cost less parser stack, so Excel's 255 bare parentheses and 65 (ABS( levels parse"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
