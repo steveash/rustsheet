@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: [T-3120]
-defer: phase-1b
+campaign: visible
 ---
 
 ## Goal
@@ -17,7 +17,8 @@ The bit-level residue T-3120's secant in d (financial.md "IRR is a secant in d =
 fit-set cells.
 
 ## Context
-- Follow-up of T-3120 (decision 0176). All cells are within 15 significant digits except P!C157.
+- Follow-up of T-3120 (decision 0176). All three cells are visibly off at the 15th digit: A395 and A214 by
+  2.2E-16 (half-unit 5E-17), P!C157 by 7.9E-11 relative. A395 is a regression T-3120 accepted.
 - gen-m9/67a4c03afd63f988 Calc!A395 `IRR(Data!C10:E12,0.5)`, flows {0.5,0.1,-0.5}: Excel -0.09501243788791103,
   ours -0.0950124378879108 (16 ulp). Every variant starting from d0 = 1 - 1/(1 + g) gets it and scores 235/263
   on the fit set against the shipped 262/263; at guess 0.5 the fit set's `{-20,5,5,5,5,5}` and
@@ -36,6 +37,11 @@ fit-set cells.
       with no new known-failure lines.
 - [ ] financial.md records the result, with the cells.
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Visible stage (decision 0083): done when A395 and A214 are within half a unit of the 15th significant digit
+of Excel's value with the fit set kept at 262/263 or better; P!C157 may stay with a sentence in financial.md.
+Bit-level residue goes to a follow-up with `defer: phase-1b`.
 
 ## Out of scope
 - IRR's fallback path digits (T-1686, T-2928) and `#DIV/0!` cells (T-2802).

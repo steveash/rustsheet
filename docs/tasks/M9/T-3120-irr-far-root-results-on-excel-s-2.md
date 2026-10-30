@@ -134,8 +134,8 @@ Fit set (`uv run rustsheet-fitlab irr`, 263 cells), bit-exact / within 4 ulp:
   each regressed a tie cell (gen-m9 A302/A9 or IRR.xlsx L47): see the progress notes above.
 
 Eval delta (`make eval-baseline` with `--allow-regressions`, decision 0176): 273 known failures fixed
-(probes 215, ironcalc-calc 32, gen-m9 26), 1 regression: gen-m9/67a4c03afd63f988 Calc!A395 (16 ulp, within 15
-digits), owned by follow-up T-3205. t2565: 180 of the 181 lines gone (P!C157 stays, financial.md); irr-fallback-
+(probes 215, ironcalc-calc 32, gen-m9 26), 1 regression: gen-m9/67a4c03afd63f988 Calc!A395 (16 ulp, 2.2E-16: visibly
+off at the 15th digit), owned by follow-up T-3205 (not deferred). t2565: 180 of the 181 lines gone (P!C157 stays, financial.md); irr-fallback-
 roots P!A25, A26, A28, A36-A39 gone. The gen-m9 far-root cells of T-2131 (c0681a8b150ce301 A218, 67a4c03afd63f988
 A3, A199, A346, 1dce4774f5c0e736 A285) all pass now. In-scope visibly-off cells: 2841 (lock 3511).
 Not checked: RATE and XIRR (different solvers; no follow-up needed for this rule).

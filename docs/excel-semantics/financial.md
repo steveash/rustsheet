@@ -724,7 +724,7 @@ two other kinds:
   unconditional zero-step stop costs 6 fit cells (far guesses whose step stalls on a flat NPV and must retry).
   Leading zeros: `IRR({0,-100,110},0.05)`, `IRR({0,0,-100,110},-0.5)` and `(..,10)` are exactly the
   values of `{-100,110}` from the same guesses (irr-guess-edges P!A33, m9-fin-irr-rate Calc!A173, A175).
-  Miss left: gen-m9 67a4c03afd63f988 Calc!A395 (`IRR` of {0.5,0.1,-0.5}, guess 0.5) is 16 ulp off; every
+  Miss left: gen-m9 67a4c03afd63f988 Calc!A395 (`IRR` of {0.5,0.1,-0.5}, guess 0.5) is 16 ulp off (visibly, at the 15th digit); every
   d0 = 1 - 1/(1 + g) variant gets it and loses 25+ fit cells (decision 0176, T-3205).
 Status: VERIFIED for the method (secant in d, offset, both stop tests, retry, leading zeros dropped;
 262/263 bit-exact); UNVERIFIED for the zero-step stop's bound and the step cap
