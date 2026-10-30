@@ -478,7 +478,11 @@ impl Model {
                 if makes_calc_error(&cell_result) {
                     return Self::by_slices_calc_error(cell);
                 }
-                row.push(lambda_result_to_array_node(cell_result));
+                // A one-cell reference result is its value (gen-m7 a470dc9e165bdb20 A465:
+                // `TRIMRANGE(Data!D11:E11,2,2)` trims to one cell).
+                row.push(lambda_result_to_array_node(
+                    self.collapse_single_cell(cell_result),
+                ));
             }
             result.push(row);
         }

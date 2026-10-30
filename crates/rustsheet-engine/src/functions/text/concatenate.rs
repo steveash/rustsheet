@@ -1,3 +1,4 @@
+use crate::arithmetic::lambda_text_error;
 use crate::calc_result::Range;
 use crate::functions::util::{array_node_to_calc_result, RangeItem};
 use crate::number_format::number_to_text;
@@ -102,7 +103,10 @@ impl JoinSize {
             }
             error @ CalcResult::Error { .. } => return Err(error),
             CalcResult::EmptyCell | CalcResult::EmptyArg | CalcResult::Range { .. } => {}
-            CalcResult::Array(_) | CalcResult::Lambda(_) => {
+            // Excel: an uncalled LAMBDA joined as text is #VALUE! (probes/t3130-concat-lambda-
+            // trimrange-cell-variable Q5-Q12; arrays.md "An uncalled LAMBDA is one value").
+            CalcResult::Lambda(_) => return Err(lambda_text_error(cell)),
+            CalcResult::Array(_) => {
                 return Err(CalcResult::new_error(
                     Error::NIMPL,
                     cell,
@@ -231,13 +235,7 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Lambda(_) => {
-                    return CalcResult::new_error(
-                        Error::NIMPL,
-                        cell,
-                        "Arrays not supported yet".to_string(),
-                    );
-                }
+                CalcResult::Lambda(_) => return lambda_text_error(cell),
                 scalar => {
                     if let Err(error) = result.push_value(scalar) {
                         return error;
@@ -261,7 +259,11 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<String>, CalcResult> {
-        match self.get_string_or_array(node, cell)? {
+        let value = self.evaluate_node_in_context(node, cell);
+        if matches!(value, CalcResult::Lambda(_)) {
+            return Err(lambda_text_error(cell));
+        }
+        match self.string_or_array(value, cell)? {
             StringOrArray::String(text) => Ok(vec![text.into_lossy_string()]),
             StringOrArray::Array(array) => {
                 let mut delimiters = Vec::new();
@@ -503,13 +505,7 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
+                CalcResult::Lambda(_) => return lambda_text_error(cell),
             };
         }
         if over_limit || size.exceeds(&values) {
