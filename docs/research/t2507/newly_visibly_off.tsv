@@ -1,4 +1,4 @@
-# T-2507 (decision on its accepted cells): cells visibly off with the Loader density and not on main ec865788
+# T-2507 (decision 0181 accepts them, T-3220 owns them): cells visibly off with the Loader density and not on main ec865788
 # case	cell	formula	excel	ours
 probes-numeric/m9-beta-dist-a10.case.json	Calc!A32	BETA.DIST(0.1,10,5,FALSE)	6.567561000000001e-06	6.567560999999993e-06
 probes-numeric/m9-beta-dist-a100.case.json	Calc!A34	BETA.DIST(0.5,100,5,FALSE)	4.534102298350339e-23	4.53410229835036e-23

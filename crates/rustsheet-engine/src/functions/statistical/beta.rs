@@ -170,7 +170,8 @@ impl Model {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A). A subnormal
             // density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/t2513-r3-m1-residual-hold E863,
             // E875, E957; docs/excel-semantics/numbers.md "Distribution densities"). Both shapes
-            // above 1: Excel's Loader saddle point (T-2507, decision on its accepted cells).
+            // above 1: Excel's Loader saddle point (T-2507; decision 0181 accepts the cells it
+            // leaves visibly off, which T-3220 owns).
             flush_subnormal(
                 beta_density_small_shape(t, alpha, beta_param)
                     .or_else(|| {

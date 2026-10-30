@@ -11,15 +11,13 @@ use crate::arithmetic::{
     extended_div, round_extended_to_double, round_extended_to_subnormal, round_to_bits,
     significand_and_exponent,
 };
-use crate::x87_exp::dd_to_extended;
+use crate::x87_exp::{dd_to_extended, power_of_two};
 
 /// 2^exponent as an exact double: the product of two in-range powers of two, so any exponent of a
 /// value in the normal range (and somewhat beyond, towards 0 or infinity) is reached.
-fn power_of_two(exponent: i32) -> f64 {
+fn wide_power_of_two(exponent: i32) -> f64 {
     let half = exponent / 2;
-    let piece =
-        |e: i32| f64::from_bits(u64::try_from(e.clamp(-1022, 1023) + 1023).unwrap_or(1023) << 52);
-    piece(half) * piece(exponent - half)
+    power_of_two(half) * power_of_two(exponent - half)
 }
 
 /// `significand * 2^exponent`, with `significand` below 2^64 (zero, or at least 2^63 once
@@ -75,7 +73,7 @@ impl Register {
         }
         let low_bits = self.significand & 0x7FF;
         // Both parts are integers below 2^64 with at most 53 significant bits: exact as doubles.
-        let scale = power_of_two(self.exponent);
+        let scale = wide_power_of_two(self.exponent);
         let sign = if self.negative { -1.0 } else { 1.0 };
         (
             sign * ((self.significand - low_bits) as f64 * scale),

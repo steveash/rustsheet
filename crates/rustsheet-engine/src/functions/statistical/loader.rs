@@ -14,6 +14,8 @@ use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp_extended, t
 use crate::x87_log10::{excel_ln, ln_double_double_pair};
 use crate::x87_register::Register;
 
+use super::gammaln::STIRLING;
+
 /// A double-double `hi + lo`.
 type Dd = (f64, f64);
 
@@ -23,29 +25,13 @@ type Dd = (f64, f64);
 /// accurate forms, not Excel's, so they take the exact value.
 const LN_SQRT_2PI_CORRECTLY_ROUNDED: f64 = 0.918_938_533_204_672_8;
 
-/// The Stirling series coefficients 1/12, 1/360, 1/1260, 1/1680, 1/1188.
-const S2: f64 = 1.0 / 1260.0;
-const S3: f64 = 1.0 / 1680.0;
-const S4: f64 = 1.0 / 1188.0;
-
-/// The bound on [`bd0`]'s series terms; it converges in far fewer (|v| < 0.1, so v^2 < 0.01).
+/// The bound on [`excel_bd0`]'s series terms; it converges in far fewer (|v| < 0.2, so v^2 < 0.04).
 const BD0_MAX_TERMS: u32 = 1000;
 
-/// The Stirling series terms after 1/(12 n) and -1/(360 n^3), `B_2k / (2k (2k - 1))` for k = 3..=12,
-/// the first three of them [`S2`], -[`S3`] and [`S4`]. At n = 15 the next term is under 1e-26, far
-/// below the 2^-64 of the exponent [`stirlerr_exact`] goes into.
-const STIRLING_TAIL: [f64; 10] = [
-    S2,
-    -S3,
-    S4,
-    -691.0 / 360_360.0,
-    1.0 / 156.0,
-    -3617.0 / 122_400.0,
-    43_867.0 / 244_188.0,
-    -174_611.0 / 125_400.0,
-    77_683.0 / 5_796.0,
-    -236_364_091.0 / 1_506_960.0,
-];
+/// The Stirling series terms for k = 11 and 12, `B_2k / (2k (2k - 1))`, after `gammaln::STIRLING`'s
+/// k = 1..=10. At n = 15 the next term is under 1e-26, far below the 2^-64 of the exponent
+/// [`stirlerr_exact`] goes into.
+const STIRLING_EXTRA: [f64; 2] = [77_683.0 / 5_796.0, -236_364_091.0 / 1_506_960.0];
 
 /// From this n on [`stirlerr_exact`] sums the Stirling series; below it the recurrence first
 /// steps n up past it.
@@ -54,8 +40,8 @@ const STIRLING_SERIES_MIN: f64 = 15.0;
 /// The exact Stirling error `ln Gamma(n + 1) - (n + 1/2) ln n + n - ln sqrt(2 pi)` of a double
 /// n > 0 as a double-double (about 1e-25 absolute), the stirlerr of Excel's beta density
 /// (statistics.md "Beta density for min(a,b) > 1 ...": stirlerr is accurate, a GAMMALN or a
-/// double-rounded lgamma form misses by rms 15-26 units). Not [`stirlerr`], whose rounded table
-/// and lgamma difference the F density keeps. Below 15 the recurrence
+/// double-rounded lgamma form misses by rms 15-26 units). Not the F density's model of
+/// Excel's rounded stirlerr (`f_density`'s error table), which that density keeps. Below 15 the recurrence
 /// stirlerr(m) = stirlerr(m + 1) + (m + 1/2) (ln(m + 1) - ln m) - 1 steps n up (at most 15 steps,
 /// every m = n + i exact as a double-double), then the series in 1/m.
 pub(crate) fn stirlerr_exact(n: f64) -> Dd {
@@ -74,12 +60,14 @@ pub(crate) fn stirlerr_exact(n: f64) -> Dd {
 }
 
 /// Stirling's series `sum_k B_2k / (2k (2k - 1) m^(2k - 1))` for m >= 15, the two leading terms in
-/// double-double and the [`STIRLING_TAIL`] in double (it is under 1e-9 there).
+/// double-double and the rest (`STIRLING` from k = 3, then [`STIRLING_EXTRA`]) in double (it is under
+/// 1e-9 there).
 fn stirling_series(m: Dd) -> Dd {
     let z = dd_div((1.0, 0.0), m);
     let z2 = dd_mul(z, z);
-    let tail = STIRLING_TAIL
+    let tail = STIRLING[2..]
         .iter()
+        .chain(&STIRLING_EXTRA)
         .rev()
         .fold(0.0, |acc, &coefficient| coefficient + z2.0 * acc);
     let second = dd_add(dd_div_small((-1.0, 0.0), 360.0), dd_mul(z2, (tail, 0.0)));
