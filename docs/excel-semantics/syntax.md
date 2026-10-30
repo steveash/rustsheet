@@ -509,3 +509,16 @@ Status: VERIFIED
 The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
 Design: SPEC-0007 (a `Group` node).
 Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand), T-1340 (the `Group` node), T-1343 (the `@` groups), T-1380 (more shapes), T-1344 (no added parentheses; one printer)
+
+## A formula typed in R1C1 mode reads relative to its cell and shows in A1
+
+- **Behavior:** A formula written into a cell with `Range.formulasR1C1` (R1C1 typed entry) reads
+  `R1C2` as `$B$1` and `R[-2]C[1]` as the cell two rows up and one column right, and FORMULATEXT
+  shows the A1 text: `=R1C2+1` in A2 is `=$B$1+1`, `=R[-2]C[1]*2` in A3 is `=B1*2`. Typed text
+  Excel refuses (`=1+`, in A1 or R1C1 mode) is a PATCH 400 `InvalidArgument` and leaves the cell
+  blank (`ISBLANK` is TRUE).
+- **Evidence:** probes/t3113-entered-r1c1, probes/t3113-entered-refused (excel-graph, 2026-10-30).
+- **Status:** R1C1 entry implemented in the eval adapter (decision 0179); the engine's R1C1 reader
+  does not take bare `R`/`C` offsets (`RC`, `R[-1]C`) yet, T-3212. The engine does not refuse a
+  typed `=1+` in A1 mode: it stores a parse-error formula (`#ERROR!`), so ISBLANK is FALSE
+  (known failure probes/t3113-entered-refused S!B1, T-3213).
