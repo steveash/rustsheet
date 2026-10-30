@@ -3297,7 +3297,11 @@ m9-gamma-inv A19, A20, A26, A27 (`GAMMA.INV(0.999,1,1)` = 6.907755278982136), m9
 t1049-chisqinv, t1049-chisqinvrt, t1543-inverse-cdf-tiny-p A55/A58, and 12 gen-m9 cells (8fec7b207f4dd753 A265
 `CHISQ.INV.RT(0.001,2)` = 13.815510557964274; ecc87f80077959e0 A154 `CHISQ.INV.RT(0.001,2.5)`, same value). Passing
 cells were not re-checked. T-0972 already noted CHIINV at df 2 as `-2*LN(p)` (gen-m9/4df1b22d3ed63f58 A9).
-Ours: the incomplete-gamma search (`gamma_quantile`), 1 to 40 ulp off and 4 cells visibly off.
+Before T-3016 ours was the incomplete-gamma search (`gamma_quantile`), 1 to 40 ulp off and 4 cells visibly off; now all 34
+cells are bit-exact. Both orders of operation match the oracle cells (`-2·log1p(-p)` for every p, or `-2·ln(1-p)` with the
+exact `1-p` once p > 0.5); the engine takes the smaller tail, so do not "fix" one to match the other.
+Implemented in: T-3016 (`exponential_quantile` in `incomplete_gamma/mod.rs`, the smaller-tail form); T-2860 pinned the cells
+with a unit test.
 Status: VERIFIED (excel-graph)
 Tasks: T-2860
 
