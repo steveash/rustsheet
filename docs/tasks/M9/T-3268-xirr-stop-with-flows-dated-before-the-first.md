@@ -3,7 +3,7 @@ id: T-3268
 title: "XIRR stop with flows dated before the first: what sets the A4 family apart (attempt 2 after T-2045)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
