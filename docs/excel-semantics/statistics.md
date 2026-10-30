@@ -2766,7 +2766,7 @@ them and oracle cells contradict them.
   double-double series of positive terms, instead of Cephes' prefactor and fraction, which were up
   to about 40 ulp off a 50-digit reference (`F.DIST.RT(1,50,100)`: Excel 0.48912050780793015,
   Cephes 0.48912050780793204, now 0.48912050780793037; m9-f-dist-rt A18). Over every suite
-  (`make eval`, against origin/main d6618cd): 170 probes-numeric F.DIST, F.DIST.RT, FDIST and
+  (`make eval`, against origin/main d6618cd): 172 probes-numeric F.DIST, F.DIST.RT, FDIST and
   BETA.DIST cells move from visibly off to within 15 digits (e.g. `F.DIST.RT(1,100,3)`
   m9-legacy-fdist A40, `F.DIST(1,50,100,TRUE)` m9-f-dist A27, `F.DIST(0.5,50,100,TRUE)` A25), 105
   move onto Excel's bit and 23 off it. No gated known-failure line changes; two gen-m9 known
@@ -2781,7 +2781,7 @@ them and oracle cells contradict them.
   G150, H150, G158, G159 (-14 / 0, -16 / -1, +5 / 0, +18 / 0). Cephes erred the same way as Excel
   there: they are Excel's own formulation of bratio's branch, not an accuracy gap (T-3199).
 - The kernel takes integer shapes too, so BETA.DIST's cdf at whole shapes from a + b = 10 changed
-  with it (42 BETA.DIST cells and 16 `E../2` link cells fixed visibly, 6 moved visibly off, all
+  with it (44 BETA.DIST cells and 16 `E../2` link cells fixed visibly, 6 moved visibly off, all
   among the 13 above); T-2119's own counts predate this.
   - Below a + b = 10 the series only trades bits (35 cells off Excel's bit, 75 onto it, 6 visibly
     fixed), among them the gated `FDIST(2,1,9)` (gen-m9/c18dbf21f11093f3 A151) and
@@ -3780,7 +3780,7 @@ Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` 
 F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
 Engine: `f_test_p` in crates/rustsheet-engine/src/functions/statistical/fisher.rs: `f_test_bratio_p`
 (f_test_tail.rs, T-2681) for both shapes above 1 with a + b <= 200 where it reaches (not TOMS `bgrat`, `bfrac`
-or `basym`), else `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
+or `basym`), else `f_test_upper_tail` and `half_integer_beta::half_integer_remainder` (R in double-double for a + b <= 200,
 `beta_reg_complement` above).
 Status: implemented as a fit (T-2361, T-2681); bratio for both shapes above 1 is PARTIAL (one cell visibly off, T-2829),
 Excel's algorithm for R at a shape of 1/2 is UNVERIFIED.

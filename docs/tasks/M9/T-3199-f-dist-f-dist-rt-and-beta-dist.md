@@ -13,7 +13,7 @@ depends_on: []
 
 ## Goal
 The 13 cells below, which T-2219's accurate half-integer kernel moved from within 15 digits to
-visibly off Excel, agree with Excel to 15 significant digits again, without losing the 170 cells
+visibly off Excel, agree with Excel to 15 significant digits again, without losing the 172 cells
 T-2219 fixed.
 
 ## Context
@@ -41,7 +41,7 @@ starting; if one does, move the cell there instead.
 ## Acceptance criteria
 - [ ] Each cell above is within half a unit of the 15th digit of Excel, or named in the Outcome with
       the task that owns its branch (non-deferred).
-- [ ] None of the 170 cells T-2219 moved to within 15 digits goes visibly off again; no gated
+- [ ] None of the 172 cells T-2219 moved to within 15 digits goes visibly off again; no gated
       known-failure line added.
 - [ ] `make check` green; reviewers approve.
 

@@ -67,7 +67,7 @@ T-3198's (see Outcome).
 - [ ] No F.DIST, F.DIST.RT, FDIST, F.TEST, BETA.DIST, BETA.INV or F.INV cell moves from within 15
       digits to visibly off. Not met: 13 cells do, each one where Excel is 5 to 50 ulp off the
       60-digit value and ours within 5 (statistics.md); they are owned by T-3199 (`campaign:
-      visible`), against 170 cells this moves the other way.
+      visible`), against 172 cells this moves the other way.
 - [x] `make eval-check` shows 0 regressions in gated suites (no gated cell changes).
 - [x] statistics.md's T-0970 section records what changed and from which a + b, with the cells.
 - [x] `make check` green; reviewers approve.
@@ -97,7 +97,7 @@ runs on the ported L140 bup + bpser branch and is handed to T-3198.
 Half-integer shapes with 10 <= a + b < MAXGAM, outside Excel's closed forms and the ported bratio
 branches, now take `incomplete_beta.rs::half_integer_tail`: x^a y^b with the exponent in
 double-double (the argument above 1/2 as 1 minus its complement, exactly) times F.TEST's
-double-double series `fisher::f_test_remainder`, instead of Cephes' prefactor and fraction (up to
+double-double series `half_integer_beta::half_integer_remainder`, instead of Cephes' prefactor and fraction (up to
 about 40 ulp off a 50-digit reference). The quantile searches (BETA.INV, F.INV, FINV) and the
 Student-t callers keep Cephes through `search_tails`: with the series under them 7 gated gen-m9
 quantile cells and BETADIST_BETAINV.xlsx H67 lose their bit. Below a + b = 10 the series only
@@ -106,11 +106,11 @@ stays there (`SERIES_MIN_SHAPE_SUM`).
 
 Eval delta (`make eval` against origin/main d6618cd, by the harness's closeness buckets): no gated
 known-failure line changes (two gen-m9 known failures move closer to Excel, c2974c061384fdd9 A165
-and a5828d3925575713 A51). probes-numeric: 170 cells from visibly off to within 15 digits, 105
+and a5828d3925575713 A51). probes-numeric: 172 cells from visibly off to within 15 digits, 105
 onto Excel's bit, 23 off it (within 15 digits), and 13 to visibly off, each where Excel is 5 to 50
 ulp off the 60-digit value and ours within 5 (listed in statistics.md; T-3199 owns them, so
 acceptance criterion 2 is not met). The kernel takes integer shapes too, so BETA.DIST's cdf at
-whole shapes from a + b = 10 moved with it (42 BETA.DIST and 16 link cells fixed, 6 among the 13).
+whole shapes from a + b = 10 moved with it (44 BETA.DIST and 16 link cells fixed, 6 among the 13).
 Table cells: A18, A25, A27 (m9-f-dist-rt / m9-f-dist), m9-legacy-fdist A39, A40 now within 4 ulp;
 A12, A28, legacy A27, A28, t1049-fdist A4 were already bit-exact on main; A20, legacy A37, A38 and
 t1049 A6 within 4 ulp before and after (densities and a + b < 10).
