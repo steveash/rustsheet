@@ -68,3 +68,7 @@ first records its forms there; neither may regress the other's cells.
 Decision 0083/0114: every cell this task owns is visibly off and a 60-digit reference shows Excel is not correctly
 rounded there (2 to 63 ulp), so the stage is `visible`. The target is that each owned cell is within half a unit of the
 15th significant digit of Excel's value; bit-level misses left then go to a `defer: phase-1b` follow-up.
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- probes-numeric/t3148-gamma-quantile-flat-band Calc!A356 `CHISQ.DIST(24.673905271877182,50,TRUE)`: Excel 0.000999999999999913, ours 0.0009999999999999105 (11 ulp), the shape-25 cdf this task fits. Its neighbours A340, A344, A348 and A350 are off by 1.6E-15 to 3.1E-15 relative but within 15 digits; check they follow.

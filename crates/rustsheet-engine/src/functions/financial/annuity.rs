@@ -221,9 +221,10 @@ pub(super) fn growth_log(rate: f64) -> f64 {
     2.0 * sum.store()
 }
 
-/// Below this |nper*L| PPMT keeps the exact form: L's ulp-level error moves the power by under an
-/// ulp there, and the exact form matches Excel's last bit where the discounted one does not
-/// (`PPMT(1E-10,2,124,191996,822,1)` is -1554.9838614045912, gen-m9 5ded7594e597e31e A49).
+/// Below this |nper*L| [`discounted_principal`] declines and the exact form decides. This was
+/// fitted (`PPMT(1E-10,2,124,191996,822,1)` is -1554.9838614045912, gen-m9 5ded7594e597e31e A49)
+/// before IPMT and PPMT took [`discounted_split`], which matches that cell on its own. It now
+/// only matters for PPMT where that split is not finite (T-2243).
 const SHORT_GROWTH: f64 = 1e-6;
 
 /// PPMT (financial.md "PPMT discounts with an atanh-series log"): with `Q(x) = EXP(x*L)` (Excel's
@@ -368,7 +369,9 @@ fn balance_interest(
         // ...448, while a whole rate keeps the exact quotient (`IPMT(42,8,290,392736,-0.5,1)`,
         // `IPMT(2,2000,2000,1000,0,1)`). A fitted switch, see
         // probes/t2665-ipmt-fractional-nper-past-range, fin-ipmt-ppmt-huge-rate A186 and gen-m9
-        // b73c6cc96e093f03 A268; financial.md "IPMT cancels on fv", TODO(T-3086).
+        // b73c6cc96e093f03 A268; financial.md "IPMT cancels on fv". IPMT itself now takes
+        // `discounted_split`, which explains these cells (T-2243); this switch is left for the
+        // non-finite fallback and CUMIPMT's exact sum, TODO(T-3179).
         -balance.0 * (rate / (1.0 + rate))
     } else if period_start {
         dd_div(negated(dd_mul(balance, (rate, 0.0))), two_sum(1.0, rate)).0
@@ -396,6 +399,90 @@ pub(super) fn payment_overflows(rate: f64, nper: f64, pv: f64, period_start: boo
     !fitted_payment(rate, payment_growth(rate, nper), pv, 0.0, period_start).is_finite()
 }
 
+/// Below this |nper*L| PMT's `1-Q` is Excel's expm1, from it on `1 - EXP(-nper*L)`
+/// (probes/t3014-pmt-fv-type-alone column C: expm1 through |nper*L| 0.9896, `1-Q` from 1.0648).
+const PAYMENT_EXPM1_TO: f64 = 1.0;
+
+/// `1-Q` for `Q = EXP(x)` as Excel's PMT, IPMT and PPMT take it: `-expm1(x)` (Excel's expm1)
+/// for |x| < [`PAYMENT_EXPM1_TO`] and `1 - EXP(x)` beyond (financial.md "PMT is a discounted
+/// payment", "IPMT and PPMT split Excel's discounted payment").
+fn discount_complement(x: f64) -> f64 {
+    if x.abs() < PAYMENT_EXPM1_TO {
+        -excel_expm1(x)
+    } else {
+        1.0 - excel_exp(x)
+    }
+}
+
+/// PMT's per-period factor `d`: the rate for type 0 and `1/(1/rate + 1)` for type 1, which is an
+/// ulp off `rate/(1+rate)` at some rates (financial.md "PMT is a discounted payment"). `None` for
+/// a subnormal rate, where `1/rate` overflows and type 1's factor is 0 (unprobed).
+fn payment_factor(rate: f64, period_start: bool) -> Option<f64> {
+    let factor = if period_start {
+        1.0 / (1.0 / rate + 1.0)
+    } else {
+        rate
+    };
+    factor.is_normal().then_some(factor)
+}
+
+/// The discounted balance `A = (pv+fv)/(1-Q(-nper*L))` of Excel's PMT, IPMT and PPMT, with
+/// [`growth_log`]'s L, and the L itself. `None` where `1-Q` is not finite and normal (no
+/// periods, or `(1+rate)^-nper` past the double range).
+fn discounted_balance(rate: f64, nper: f64, pv: f64, fv: f64) -> Option<(f64, f64)> {
+    let log = growth_log(rate);
+    let periods = discount_complement(-nper * log);
+    periods.is_normal().then_some(((pv + fv) / periods, log))
+}
+
+/// Excel's PMT (docs/excel-semantics/financial.md "PMT is a discounted payment"): with
+/// [`discounted_balance`]'s `A` and [`payment_factor`]'s `d`, PMT is `-((A - fv) * d)` in
+/// doubles. Bit-exact on the 308 PMT cells of probes-numeric/m9-fin-pmt, the 371 of
+/// probes/t3014-pmt-fv-type-alone and the 49 constant-argument ones of ironcalc-calc
+/// FINANCIAL/PMT.xlsx, where the exact payment matches 132, 154 and 31 (T-3014). `None` where
+/// `A` or `d` declines or the payment is not finite; [`payment_pair`]'s forms decide there.
+fn discounted_payment(rate: f64, nper: f64, pv: f64, fv: f64, period_start: bool) -> Option<f64> {
+    let (balance, _) = discounted_balance(rate, nper, pv, fv)?;
+    let factor = payment_factor(rate, period_start)?;
+    let payment = -((balance - fv) * factor);
+    payment.is_finite().then_some(payment)
+}
+
+/// Excel's IPMT and PPMT (financial.md "IPMT and PPMT split Excel's discounted payment"): with
+/// PMT's `A`, `d` and `1-Q` ([`discounted_balance`], [`payment_factor`], [`discount_complement`])
+/// and `x = (period-1-nper)*L`, IPMT is `-((A*(1-Q(x)) - fv) * d)` and PPMT `-(A*Q(x)*d)`, every
+/// operation a double: the balance after period-1 periods and the payment's discounted
+/// principal. Bit-exact on every IPMT cell with constant arguments of probes-numeric/m9-fin-pmt,
+/// probes/fin-ipmt-ppmt-huge-rate, probes/t2665-ipmt-fractional-nper-past-range, gen-m9 and
+/// ironcalc-calc `FINANCIAL/IPMT_PPMT.xlsx` (1495 cells), and on 2552 of the 2556 PPMT ones
+/// (T-2243). A discount `Q(x)` below the normal range
+/// makes PPMT 0, as Excel's is (`PPMT(10,1,296,1)`, financial.md "IPMT cancels on fv").
+/// `None` where a factor declines or a value is not finite: [`period_payments`]' earlier forms
+/// decide there.
+fn discounted_split(
+    rate: f64,
+    nper: f64,
+    period: f64,
+    (pv, fv): (f64, f64),
+    period_start: bool,
+) -> Option<(f64, f64)> {
+    let (balance, log) = discounted_balance(rate, nper, pv, fv)?;
+    let factor = payment_factor(rate, period_start)?;
+    let x = (period - 1.0 - nper) * log;
+    let interest = -((balance * discount_complement(x) - fv) * factor);
+    let discount = excel_exp(x);
+    let principal = if discount.is_normal() {
+        -(balance * discount * factor)
+    } else {
+        0.0
+    };
+    (interest.is_finite() && principal.is_finite()).then_some((interest, principal))
+}
+
+/// PMT: [`payment_pair`] decides the errors (rate 0 with no periods, a rate at or below -1, a
+/// power whose reciprocal overflows) and the cases [`discounted_payment`] declines; elsewhere
+/// the value is [`discounted_payment`]'s. IPMT and PPMT split the same payment
+/// ([`discounted_split`]); CUMIPMT and CUMPRINC keep [`payment_pair`]'s exact payment.
 fn compute_payment(
     rate: f64,
     nper: f64,
@@ -403,7 +490,11 @@ fn compute_payment(
     fv: f64,
     period_start: bool,
 ) -> Result<f64, Error> {
-    payment_pair(rate, nper, pv, fv, period_start).map(|payment| payment.0)
+    let (payment, _) = payment_pair(rate, nper, pv, fv, period_start)?;
+    if rate == 0.0 {
+        return Ok(payment);
+    }
+    Ok(discounted_payment(rate, nper, pv, fv, period_start).unwrap_or(payment))
 }
 
 /// PMT as a double-double: [`accurate_payment`] where it applies, else a double form (low part 0).
@@ -474,8 +565,23 @@ fn compute_future_value(
     Ok(fv)
 }
 
-/// `(IPMT, PPMT)` of one period, for IPMT, PPMT, CUMIPMT and CUMPRINC, each with its own error:
-/// past PMT's overflow at a positive rate IPMT and PPMT keep their values (`PPMT(1E+307,7,292,
+/// The closed form [`period_payments`] splits a period's payment with.
+#[derive(Clone, Copy)]
+pub(super) enum SplitForm {
+    /// IPMT and PPMT: Excel's discounted payment ([`discounted_split`]) where it is finite.
+    Discounted,
+    /// CUMIPMT's type 1 per-period sum: the exact split and the forms after it, which are
+    /// bit-exact on ironcalc-calc `FINANCIAL/CUMPRINC_CUMIPMT.xlsx` G3, G4, G15 and
+    /// probes/fin-cumipmt-overflow-and-forms A8, where summing the discounted IPMT is an ulp off
+    /// (`CUMIPMT(0.1,10,345,2,2,1)` is -29.395712615048502; T-2243).
+    Exact,
+}
+
+/// `(IPMT, PPMT)` of one period, for IPMT, PPMT, CUMIPMT and CUMPRINC, each with its own error.
+/// [`SplitForm::Discounted`] takes [`discounted_split`] where it is finite; the forms after it
+/// (the exact split, [`discounted_principal`], [`balance_interest`], [`discounted_interest`]
+/// and the FV recurrence) decide elsewhere and for [`SplitForm::Exact`]. Past PMT's overflow
+/// at a positive rate IPMT and PPMT keep their values (`PPMT(1E+307,7,292,
 /// 176644,89)` is 0, gen-m9 3aa168259335be54 A340), and IPMT is 0 in period 1 of type 1 even where
 /// PMT is `#NUM!` (`IPMT(-0.5,1,2000,1,0,1)`, probes/fin-ipmt-ppmt-huge-rate B1).
 pub(super) fn period_payments(
@@ -485,6 +591,7 @@ pub(super) fn period_payments(
     present_value: f64,
     future_value: f64,
     period_start: bool,
+    form: SplitForm,
 ) -> (Result<f64, Error>, Result<f64, Error>) {
     if period < 1.0 || period >= period_count + 1.0 {
         return (Err(Error::NUM), Err(Error::NUM));
@@ -510,11 +617,30 @@ pub(super) fn period_payments(
         }
     };
     if period == 1.0 && period_start {
-        return (Ok(0.0), payment.map(|p| p.0).ok_or(Error::NUM));
+        // PPMT is PMT itself here, Excel's discounted one (`PPMT(0.0083,1,36,8000,0,1)` is
+        // -255.86361744160234; ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx I2, I28).
+        let principal = payment.map(|p| {
+            discounted_payment(
+                rate,
+                period_count,
+                present_value,
+                future_value,
+                period_start,
+            )
+            .unwrap_or(p.0)
+        });
+        return (Ok(0.0), principal.ok_or(Error::NUM));
     }
     let values = (present_value, future_value);
     let (mut interest, mut principal) = (None, None);
     if rate != 0.0 {
+        if let SplitForm::Discounted = form {
+            if let Some((interest, principal)) =
+                discounted_split(rate, period_count, period, values, period_start)
+            {
+                return (Ok(interest), Ok(principal));
+            }
+        }
         let e = if period_start {
             period - 2.0
         } else {
@@ -753,7 +879,7 @@ impl Model {
     pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ipmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5, SplitForm::Discounted)
                     .0
                     .map_err(formula_error(cell))
             }))
@@ -764,7 +890,7 @@ impl Model {
     pub(crate) fn fn_ppmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ppmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5, SplitForm::Discounted)
                     .1
                     .map_err(formula_error(cell))
             }))
@@ -823,113 +949,4 @@ impl Model {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{growth_log, period_payments};
-    use crate::expressions::token::Error;
-
-    /// IPMT and PPMT past `(1+rate)^nper`'s range and where IPMT's balance cancels on fv
-    /// (probes/fin-ipmt-ppmt-huge-rate, gen-m9; financial.md "IPMT cancels on fv").
-    #[test]
-    fn period_payments_at_huge_rates() {
-        let ipmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).0;
-        let ppmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).1;
-        assert_eq!(ppmt(42.0, 10.0, 303.0, 8292.0, 1.0, true), Ok(0.0));
-        assert_eq!(ppmt(10.0, 1.0, 296.0, 1.0, 0.0, false), Ok(0.0));
-        assert_eq!(
-            ppmt(10.0, 11.0, 304.0, 44626.0, 826.0, false),
-            Ok(-3.076_830_425_599_131_3e-301)
-        );
-        assert_eq!(ppmt(1e300, 1.5, 180.0, 194_733.0, -1e300, false), Ok(0.0));
-        assert_eq!(ppmt(1e307, 7.0, 292.0, 176_644.0, 89.0, false), Ok(0.0));
-        assert_eq!(ppmt(2.0, 1100.0, 1100.0, 1.0, 5.0, false), Ok(-4.0));
-        assert_eq!(
-            ipmt(1e300, 3.0, 2000.0, 452_017.0, 905.0, false),
-            Ok(-4.520_170_000_000_000_4e305)
-        );
-        assert_eq!(
-            ipmt(1e10, 8.0, 226.0, 439_138.0, 43.0, false),
-            Ok(-4.391_38e15)
-        );
-        assert_eq!(ipmt(2.0, 1100.0, 1100.0, 1.0, 5.0, false), Ok(2.0));
-        assert_eq!(ipmt(0.5, 2.0, 124.0, 0.0, 315.0, false), Ok(0.0));
-        assert_eq!(
-            ipmt(50.0, 2.0, 10.0, 0.0, 315.0, false),
-            Ok(25.0 * 2f64.powi(-42))
-        );
-        assert_eq!(
-            ipmt(1e10, 10.0, 10.0, 0.0, 315.0, false),
-            Ok(315.000_079_353_922_05)
-        );
-        // Period 1 of type 1 is 0 even where PMT is #NUM!; PPMT is PMT there.
-        assert_eq!(ipmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Ok(0.0));
-        assert_eq!(ppmt(-0.5, 1.0, 2000.0, 1.0, 0.0, true), Err(Error::NUM));
-    }
-
-    /// PPMT at negative rates down to -1 is the discounted form, and where `pv+fv` times the
-    /// discount passes the double range it still has Excel's value (gen-m9 79d87fc527927626 A46,
-    /// 5422bdbf173fc233 A383, d0854366830dcdee A335, 762cd0e4ec9a7aa9 A5, 67a4c03afd63f988 A180;
-    /// financial.md "PPMT discounts with an atanh-series log").
-    #[test]
-    fn principal_at_negative_rates() {
-        let ppmt = |r, per, n, pv, fv| period_payments(r, per, n, pv, fv, false).1;
-        assert_eq!(
-            ppmt(-0.5, 5.0, 294.0, 171_132.0, 0.0),
-            Ok(-5_347.875_000_000_112)
-        );
-        assert_eq!(
-            ppmt(-0.5, 13.0, 246.0, 37_796.0, 36.0),
-            Ok(-4.618_164_062_499_897)
-        );
-        // A fractional period is an ulp off Excel's -56630.48966324223 (bits are T-2243's).
-        let fractional = ppmt(-0.5, 1.999, 97.0, 226_365.0, 0.0).unwrap_or(f64::NAN);
-        assert!((fractional / -56_630.489_663_242_23 - 1.0).abs() < 5e-16);
-        assert_eq!(ppmt(-0.5, 1.0, 277.0, 73_630.0, 609.0), Ok(-37_119.5));
-        assert_eq!(
-            ppmt(-0.5, 4.0, 230.0, 1e300, 0.0),
-            Ok(-6.249_999_999_999_966e298)
-        );
-    }
-
-    /// IPMT takes Excel's own discount where it moves the value past a few ulp: long terms at
-    /// negative rates, a fractional period (gen-m9 e168be7f6d3f84c2 A385, c0681a8b150ce301 A104,
-    /// b6a02893a8d6b151 A35, 1cd3096e3e87c965 A227; financial.md "IPMT follows Excel's own
-    /// discount where it moves the value").
-    #[test]
-    fn interest_on_excels_discount() {
-        let ipmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).0;
-        assert_eq!(
-            ipmt(-0.05, 10.0, 336.0, 1.0, 0.0, false),
-            Ok(0.031_512_469_880_875_22)
-        );
-        assert_eq!(
-            ipmt(-0.5, 3.0, 232.0, 259_859.0, 333.0, true),
-            Ok(64_714.999_999_999_75)
-        );
-        assert_eq!(
-            ipmt(-0.05, 4.0, 341.0, 208_149.0, 115.0, true),
-            Ok(9_391.860_328_810_97)
-        );
-        assert_eq!(
-            // 3.14159 (Data!A6), written as a quotient so clippy does not take it for PI.
-            ipmt(314_159.0 / 100_000.0, 1.999, 167.0, 0.375, 0.0, false),
-            Ok(-1.178_096_249_999_999_8)
-        );
-        // Within a few ulp the exact balance stays: it has Excel's bits (m9-fin-pmt A101).
-        assert_eq!(
-            ipmt(0.1, 2.0, 3.0, 10_000.0, 0.0, true),
-            Ok(-634.441_087_613_293_1)
-        );
-    }
-
-    /// PPMT's log is the series below 0.375 and Excel's LN above it, an ulp or two from
-    /// `ln_1p` in places (probes-numeric/ppmt-first-period-sweep, ppmt-log-rate-sweep).
-    #[test]
-    fn growth_log_is_excels() {
-        assert_eq!(growth_log(0.1), 0.095_310_179_804_324_85); // ln_1p: ...87
-        assert_eq!(growth_log(0.05), 0.048_790_164_169_432_014); // ln_1p: ...01
-        assert_eq!(growth_log(-0.02), -0.020_202_707_317_519_45);
-        assert_eq!(growth_log(0.37), 0.314_810_739_840_033_5);
-        assert_eq!(growth_log(0.38), 0.322_083_499_169_113_2); // LN(1.38)
-        assert_eq!(growth_log(0.6), 0.470_003_629_245_735_63);
-    }
-}
+mod tests;

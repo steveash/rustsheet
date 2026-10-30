@@ -3,7 +3,7 @@ id: T-3076
 title: "make merge-train-stats: merge-train metrics and the shadow agreement score"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -31,11 +31,31 @@ Split out of T-2995 (its third criterion), which keeps shadow mode.
   have merged first, so those predictions are approximate.
 
 ## Acceptance criteria
-- [ ] `make merge-train-stats [SINCE=<date>]` prints every metric above, plus the shadow agreement score and
+- [x] `make merge-train-stats [SINCE=<date>]` prints every metric above, plus the shadow agreement score and
       the load bar.
-- [ ] It is unit-tested against fixtures from the fake client, including PR histories scripted for each
+- [x] It is unit-tested against fixtures from the fake client, including PR histories scripted for each
       agreement rule.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Shadow mode itself (T-2995). The step mode (T-3077).
+
+## Outcome
+- `scripts/merge_train_stats.py`, `make merge-train-stats [SINCE=<date>]` (decision 0167). It prints merges per
+  hour, latency p50/p90 per arrival bucket, merge-stage CI runs and runner-minutes per merged PR, PR CI wall time
+  and job queue delay, lock holds, wait p90 and held share, stranded PRs, red-train rate and bisection runs per
+  train branch, red `main` runs, shadow ejections by reason, deferral rate, effective batch size and tree-check
+  failures, the steward's daily thresholds, the shadow agreement score (with every disagreement listed) and
+  T-2991's evidence and load bar.
+- Shadow predictions are `[skip ci]` commits with no run, so they come from the activity API of
+  `merge-train/shadow`; the SPEC-0027 evidence paragraph now says so. `gh_client` gains `activity` (cursor
+  paging), `run_jobs`, `updated_pulls` and `event`/`created` run filters.
+- Tests: `scripts/test_merge_train_stats.py` (each agreement rule on scripted PR histories, prediction parsing, lock
+  holds and waits, train grouping, a whole report from the fake client); `test_gh_client.py` covers the new reads
+  and the cursor.
+- Live run on 2026-10-29 20:30-22:18 UTC (1 min 38 s): 7 merged PRs, latency p90 4.0/4.5 min, lock held 97% of the
+  time with wait p90 51 min, #2344 stranded, no shadow prediction yet (`merge-train/shadow` has one push, from
+  2026-10-28), so the T-2991 bar is not met.
+- Train-mode-only sources (ejections, deferrals and tree checks on `merge-train/current`, which records no
+  predictions) are left to T-2990, which measures train mode.
+- Eval delta: none (scripts and docs only).

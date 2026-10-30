@@ -476,8 +476,8 @@ LABEL_STYLES = {
     EJECTED_LABEL: ("d93f0b", "Ejected from a merge train; mark again after fixing (SPEC-0027)"),
     STOP_LABEL: ("b60205", "Stops the merge train while any open PR carries it (SPEC-0027)"),
 }
-# The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); T-2995 adds `merge`
-# and `unlabel` for the merger.
+# The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); scripts/merge_step.py
+# holds the whole schema, the merger's actions included, and validates these (decision 0169).
 STEP_LABEL, STEP_COMMENT = "label", "comment"
 
 
@@ -664,7 +664,10 @@ def run_mark(client: Client, pr: int, repo: Repo, args: argparse.Namespace) -> i
         print(f"#{pr} is already marked at {plan.marker.head}")
         return 0
     if args.step:
+        import merge_step  # here: merge_step imports this module
+
         for action in plan.actions():
+            merge_step.validate(action)  # the merger's schema (decision 0169)
             print(json.dumps(action, sort_keys=True))
         print(f"merge_ready: perform these actions in order, then run make merge-ready-verify PR={pr}", file=sys.stderr)
         return 0

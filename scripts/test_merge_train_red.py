@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_ready  # noqa: E402 (the sys.path line above must run first)
 import merge_train  # noqa: E402
+import merge_train_filing  # noqa: E402
 from test_merge_train import StageFixture, verdict  # noqa: E402
 
 TYPICAL, TIMEOUT = 5, 10  # CI polls before a result: about 5 min, and the 10-min timeout
@@ -165,7 +166,7 @@ class RedTrain(StageFixture):
         self.assertEqual([(p, t) for p, t, _ in self.stage.tasks], [("P1", title)])
         self.assertIn("#5's train prefix was red", self.stage.tasks[0][2])
         [opened] = self.gh.opened
-        self.assertTrue(opened["head"].startswith(merge_train.TASKS_PREFIX), opened)
+        self.assertTrue(opened["head"].startswith(merge_train_filing.TASKS_PREFIX), opened)
         self.assertIn(f"(P1): {title}", opened["body"])
 
     def test_an_infrastructure_failure_is_retried_once_and_ejects_nobody(self) -> None:
