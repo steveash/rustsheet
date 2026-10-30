@@ -3,7 +3,7 @@ id: T-3161
 title: "Probe XMATCH/XLOOKUP wildcard and regex modes with a near-equal numeric key"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
