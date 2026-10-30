@@ -4,7 +4,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
-use crate::functions::statistical::ifs_cache::{count_bits, range_cell, set_bits};
+use crate::functions::statistical::ifs_cache::{count_bits, range_cell, set_bits, RangeView};
 use crate::functions::util::StoredWalk;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -562,41 +562,28 @@ impl Model {
                 let values = self.ifs_values(&sum_rect);
                 // The leading criteria ranges are cached; the walk reads the rest, and the sum
                 // cell, only at the positions they match, in row order, and so does this loop:
-                // its reads that can evaluate anything are the walk's own (T-3227).
+                // its reads that can evaluate anything are the walk's own (T-3227). Those reads may
+                // evaluate formulas, but the views stay what the walk would read: every cached cell
+                // is evaluated already, so it can no longer change or join a cycle in this pass,
+                // and a spill into one restarts the pass, its first read being on record.
                 let first = rects.len() - leading.rest.len();
                 #[cfg(test)]
                 if first < rects.len() || values.is_none() {
                     self.evaluation.ifs_cache.mixed += 1;
                 }
                 for index in set_bits(&leading.matched) {
-                    let mut matches = true;
-                    for ((range, fn_criterion), view) in rects[first..]
-                        .iter()
-                        .zip(&fn_criteria[first..])
-                        .zip(&leading.rest)
-                    {
-                        matches = match view {
-                            Some(view) => view.get(index).is_some_and(fn_criterion),
-                            None => fn_criterion(&self.evaluate_cell(range_cell(range, index))),
-                        };
-                        if !matches {
-                            break;
-                        }
-                    }
-                    if !matches {
+                    let rest = (&rects[first..], &fn_criteria[first..], &leading.rest[..]);
+                    if !self.ifs_rest_matches(rest, index) {
                         continue;
                     }
-                    match &values {
-                        Some(values) => match values.get(index) {
-                            Some(CalcResult::Number(n)) => apply(*n),
-                            Some(error @ CalcResult::Error { .. }) => return Err(error.clone()),
-                            _ => {}
-                        },
-                        None => match self.evaluate_cell(range_cell(&sum_rect, index)) {
-                            CalcResult::Number(n) => apply(n),
-                            error @ CalcResult::Error { .. } => return Err(error),
-                            _ => {}
-                        },
+                    let value = match &values {
+                        Some(values) => values.get(index).cloned(),
+                        None => Some(self.evaluate_cell(range_cell(&sum_rect, index))),
+                    };
+                    match value {
+                        Some(CalcResult::Number(n)) => apply(n),
+                        Some(error @ CalcResult::Error { .. }) => return Err(error),
+                        _ => {}
                     }
                 }
                 return Ok(());
@@ -613,6 +600,26 @@ impl Model {
             }
         }
         Ok(())
+    }
+
+    /// Whether the `index`-th cell of each criteria range from the first not cached on meets its
+    /// criterion, read from its cached values or as the walk reads it, in order, stopping at the
+    /// first that fails (T-3227).
+    fn ifs_rest_matches(
+        &mut self,
+        (rects, fn_criteria, views): (&[Range], &[Criterion<'_>], &[Option<RangeView>]),
+        index: usize,
+    ) -> bool {
+        for ((range, fn_criterion), view) in rects.iter().zip(fn_criteria).zip(views) {
+            let matches = match view {
+                Some(view) => view.get(index).is_some_and(fn_criterion),
+                None => fn_criterion(&self.evaluate_cell(range_cell(range, index))),
+            };
+            if !matches {
+                return false;
+            }
+        }
+        true
     }
 
     /// One position of [`Model::run_ifs`]: `apply` gets the sum cell's number when every

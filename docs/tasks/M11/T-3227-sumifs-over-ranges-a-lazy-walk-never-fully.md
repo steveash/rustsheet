@@ -60,14 +60,18 @@ Measured on 2026-10-30, release, with temporary instrumentation in `ifs_range_va
   - the match set of the criteria ranges cached before the first uncached one;
   - the cached values, or `None`, of each range from that one on.
 
-  `ifs_all_matches` is now the case where every range is cached, so COUNTIFS is unchanged.
+  Both go through one `criteria_matches`. Neither looks past an uncached first range, and
+  `ifs_all_matches` (COUNTIFS) still stops at the first uncached range, so COUNTIFS reads exactly
+  what it did before.
 - **How `run_ifs` (if_ifs.rs) uses it.** It visits the leading matches in row order:
   - it tests the later criteria in order, a cached one by its value and an uncached one by reading
     its cell, stopping at the first that fails;
   - it then reads the sum cell from the cache, or as the walk does.
 
   So every read that can evaluate anything is one the walk makes, in its order. Only inert reads
-  are served from the cache.
+  are served from the cache. The per-row test is `ifs_rest_matches`. The views taken before the
+  loop stay valid while it evaluates formulas: a cached cell is already evaluated, so it cannot
+  change or join a cycle in the pass, and a spill into it restarts the pass.
 - **Timings,** release, `evaluate()` after load:
 
   | file | before | after |
@@ -86,7 +90,8 @@ Measured on 2026-10-30, release, with temporary instrumentation in `ifs_range_va
   - a first criteria range of formulas, which still walks;
   - a cycle through an uncached sum range at a row that only one of two calls reaches.
 
-  A test-only counter checks that the mixed path ran.
+  Each comparison includes whether the cell is marked circular. Both tests also run with
+  iterative calculation on, and a test-only counter checks that the mixed path ran.
 - **Mutations:** reading the sum cell before the later criteria are tested fails the cycle test,
   and ignoring an error in an uncached sum cell fails the mixed-path test.
 

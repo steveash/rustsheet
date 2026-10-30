@@ -470,8 +470,7 @@ impl Model {
         criteria: &[CalcResult],
         matchers: &[Criterion<'_>],
     ) -> Option<Vec<u64>> {
-        self.ifs_leading_matches(rects, criteria, matchers)
-            .filter(|leading| leading.rest.is_empty())
+        self.criteria_matches(rects, criteria, matchers, true)
             .map(|leading| leading.matched)
     }
 
@@ -484,10 +483,26 @@ impl Model {
         criteria: &[CalcResult],
         matchers: &[Criterion<'_>],
     ) -> Option<LeadingMatches> {
+        self.criteria_matches(rects, criteria, matchers, false)
+    }
+
+    /// [`Model::ifs_leading_matches`], or with `whole`, [`Model::ifs_all_matches`]: then `None`
+    /// at the first range not cacheable yet. Either way no range after an uncached first one is
+    /// looked at, and with `whole` none after any uncached one: the walk runs.
+    fn criteria_matches(
+        &mut self,
+        rects: &[Range],
+        criteria: &[CalcResult],
+        matchers: &[Criterion<'_>],
+        whole: bool,
+    ) -> Option<LeadingMatches> {
         let mut matched: Option<Vec<u64>> = None;
         let mut rest = Vec::new();
         for ((range, criterion), matches) in rects.iter().zip(criteria).zip(matchers) {
             let view = self.ifs_range_values(rect_of(range));
+            if view.is_none() && (whole || matched.is_none()) {
+                return None;
+            }
             match view {
                 Some(view) if rest.is_empty() => {
                     let bits = self.ifs_matches(&view, criterion, matches.as_ref());

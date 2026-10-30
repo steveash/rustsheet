@@ -378,22 +378,44 @@ fn indexed_number_criteria_match_the_walk() {
     }
 }
 
-/// Each formula's text with the pass caches on and off, and how many SUMIFS-shaped calls the
-/// cached run read partly as the walk does (T-3227).
+/// Each formula's text, and whether it is marked circular, with the pass caches on and off
+/// (iterative calculation on when `iterate`), and how many SUMIFS-shaped calls the cached run read
+/// partly as the walk does (T-3227).
 fn cached_and_walked(
     fill: &dyn Fn(&mut Model),
     formulas: &[&str],
+    iterate: bool,
 ) -> (Vec<(String, String)>, usize) {
     let run = |no_pass_caches: bool| {
         let mut model = new_empty_model();
         model.evaluation.no_pass_caches = no_pass_caches;
+        if iterate {
+            model.workbook.settings.iteration = Some(crate::types::Iteration {
+                max_iterations: 100,
+                max_change: 0.001,
+            });
+        }
         fill(&mut model);
         for (index, formula) in formulas.iter().enumerate() {
             model._set(&format!("E{}", index + 1), formula);
         }
         model.evaluate();
         let texts: Vec<String> = (1..=formulas.len())
-            .map(|row| model._get_text(&format!("E{row}")))
+            .map(|row| {
+                let at = crate::expressions::types::CellReferenceIndex {
+                    sheet: 0,
+                    row: i32::try_from(row).unwrap(),
+                    column: 5,
+                };
+                let circular = model
+                    .evaluation
+                    .circular
+                    .contains(&crate::evaluation::key(at));
+                format!(
+                    "{} circular={circular}",
+                    model._get_text(&format!("E{row}"))
+                )
+            })
             .collect();
         (texts, model.evaluation.ifs_cache.mixed)
     };
@@ -442,11 +464,13 @@ fn uncached_formula_ranges_are_read_at_the_matching_rows() {
         // A first criteria range of formulas: the walk as before.
         "=SUMIFS(Sheet2!B1:B300,Sheet2!C1:C300,\"y\")",
     ];
-    let (results, mixed) = cached_and_walked(&formula_columns, &formulas);
-    for ((cached, walked), formula) in results.iter().zip(formulas) {
-        assert_eq!(cached, walked, "{formula}");
+    for iterate in [false, true] {
+        let (results, mixed) = cached_and_walked(&formula_columns, &formulas, iterate);
+        for ((cached, walked), formula) in results.iter().zip(formulas) {
+            assert_eq!(cached, walked, "{formula} (iterate: {iterate})");
+        }
+        assert!(mixed >= 6, "the mixed path ran {mixed} times");
     }
-    assert!(mixed >= 6, "the mixed path ran {mixed} times");
 }
 
 /// A cycle through an uncached sum range: a call reaches the cell that reads it back only at a
@@ -463,9 +487,12 @@ fn a_cycle_through_an_uncached_sum_range() {
         "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k0\",Sheet2!C1:C300,\"x\")",
         "=SUM(E1:E2)",
     ];
-    let (results, mixed) = cached_and_walked(&fill, &formulas);
-    for ((cached, walked), formula) in results.iter().zip(formulas) {
-        assert_eq!(cached, walked, "{formula}");
+    for iterate in [false, true] {
+        let (results, mixed) = cached_and_walked(&fill, &formulas, iterate);
+        for ((cached, walked), formula) in results.iter().zip(formulas) {
+            assert_eq!(cached, walked, "{formula} (iterate: {iterate})");
+        }
+        // Under iteration the sweeps over the cycle clear the pass caches, the count with them.
+        assert!(iterate || mixed >= 2, "the mixed path ran {mixed} times");
     }
-    assert!(mixed >= 2, "the mixed path ran {mixed} times");
 }
