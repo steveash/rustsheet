@@ -128,7 +128,7 @@ impl Node {
     /// The operator printed before `self` as the right operand of an intersection: a line feed in
     /// its run is the operator itself, so no space is printed beside it
     /// (probes/t2949-typed-4).
-    pub(crate) fn intersection_operator(&self) -> &'static str {
+    pub(crate) fn intersect_gap(&self) -> &'static str {
         match self {
             Node::Spaced { space, .. } if space.before.line_feeds > 0 => "",
             _ => " ",

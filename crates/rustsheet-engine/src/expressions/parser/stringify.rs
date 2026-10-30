@@ -752,12 +752,12 @@ fn stringify(
             format!("{}:{}", operand(left), operand(right))
         }
         OpIntersectKind { left, right } => {
-            let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
+            let op = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
             format!(
                 "{}{}{}",
-                operand(left, true),
-                right.intersection_operator(),
-                operand(right, false)
+                op(left, true),
+                right.intersect_gap(),
+                op(right, false)
             )
         }
         OpUnionKind { left, right, .. } => union_text(&sub(left), &sub(right), locale),
