@@ -3,7 +3,7 @@
 //! code-point order"; probes/text-collation-order, probes/text-order-nbsp-space, excel-graph,
 //! T-1469, T-0244).
 //!
-//! Excel compares texts in three passes, like a word sort, and ignores case at every pass:
+//! Excel compares texts in four passes, like a word sort, and ignores case at every pass:
 //! 1. **Letters** (primary weights): the empty string, the space, CHAR(160), CHAR(9) to
 //!    CHAR(13), punctuation ``! " # $ % & ( ) * , . / : ; ? @ [ \ ] ^ _ ` { | } ~``, the Latin-1
 //!    marks, quotes and currency signs, `+ < = >`, the other Latin-1 symbols, digits (`¼ ½ ¾`
@@ -12,18 +12,24 @@
 //!    `"ae"`, `"ß"` is `"ss"`, `"ĳ"` is `"ij"` and `"œ"` is `"oe"`. Hyphens, apostrophes, the
 //!    en and em dash and the control characters other than CHAR(9) to CHAR(13) are skipped
 //!    (`"-1" > "0"`).
-//! 2. **Accents**, letter by letter: none, the ordinal indicators `ª º`, acute, grave,
-//!    circumflex, diaeresis, tilde, ring (`"a" < "ª" < "á" < "à" < "â" < "ä" < "ã" < "å"`), then
-//!    the stroke (`"ö" < "ø"`, `"d" < "đ"`, `"l" < "ł"`) and last the letter variants
-//!    `ð ı` (`"đ" < "ð"`). `þ` is not an accent: it is the letters `th`.
-//! 3. **Skipped characters**: by position, a later one first, then control characters (by code
+//! 2. **Accents**, letter by letter: the diacritic weights of Microsoft's Windows sorting weight
+//!    table, a letter's own plus those of the combining marks after it, in one wrapping byte
+//!    (`"a" < "ª" < "á" < "à" < "â" < "ä" < "ǎ" < "ă" < "ā" < "ã" < "å"`, `"ö" < "ø"`,
+//!    `"d" < "đ" < "ð"`; [`MARK_WEIGHT`]). `þ` is not an accent: it is the letters `th`.
+//! 3. **Variants**: the superscripts `ª º ¹ ² ³` after the plain letters and digits
+//!    (`"1" < "¹"`).
+//! 4. **Skipped characters**: by position, a later one first, then control characters (by code
 //!    point) before apostrophe, hyphen, en dash, em dash (`"ab" < "a'b" < "a-b" < "a–b" <
 //!    "a—b"`, `"a" < "a'" < "a-" < "'a" < "-a"`, `"1" < "'1" < "-1"`, `"" < CHAR(1) < "–"`).
 //!
 //! The non-ASCII characters placed here are those of probes/text-collation-unprobed (T-1590,
 //! T-1595); where they were probed as single characters only, the module places them by the
 //! smallest rule that fits (docs/excel-semantics/coercion.md "Collation equality in lookups and
-//! criteria; unprobed characters"). Every other character keeps code-point order after the
+//! criteria; unprobed characters"). Latin Extended-A and -B, Greek, Cyrillic and Latin Extended
+//! Additional letters with a canonical decomposition are their base letter plus their marks, and a
+//! combining mark (U+0300 to U+0362) adds its weight to the letter before it
+//! (probes/t3114-collation-beyond-latin1, probes/t3154-collation-accents; coercion.md "Letters
+//! beyond Latin-1 and combining marks"). Every other character keeps code-point order after the
 //! letters, as before T-0220.
 //!
 //! **Lone surrogates** (`cmp_text`): a lone surrogate unit weighs `UNIT_BASE` plus its value and an
@@ -33,6 +39,7 @@
 
 use std::cmp::{Ordering, Reverse};
 
+use super::collation_tables::{COMBINING_LETTERS, DECOMPOSED, MARK_WEIGHT};
 use crate::text::{Char, Text};
 
 /// Orders two texts the way Excel's `<`/`>`/`=` and the `">"` criteria do (module docs).
@@ -67,22 +74,29 @@ pub(crate) fn cmp_text(left: &Text, right: &Text) -> Ordering {
 pub(crate) struct CollationKey {
     primaries: Vec<u32>,
     accents: Vec<u8>,
+    /// The positions of the nonzero [`variants`] weights (all are [`SUPERSCRIPT`]); equality
+    /// needs no more.
+    superscripts: Vec<usize>,
     skipped: Vec<(usize, u8)>,
 }
 
-/// The [`CollationKey`] of `text`: its three passes, lone surrogates kept as [`cmp_text`] keeps them.
+/// The [`CollationKey`] of `text`: its four passes, lone surrogates kept as [`cmp_text`] keeps them.
 pub(crate) fn collation_key(text: &Text) -> CollationKey {
     let chars = || text.chars_lossless();
     CollationKey {
         primaries: primaries(chars()).collect(),
         accents: accents(chars()).collect(),
+        superscripts: variants(chars())
+            .enumerate()
+            .filter_map(|(at, weight)| (weight != 0).then_some(at))
+            .collect(),
         skipped: skipped(chars())
             .map(|(Reverse(at), weight)| (at, weight))
             .collect(),
     }
 }
 
-/// The three passes over two character sequences.
+/// The four passes over two character sequences.
 fn cmp_chars<L, R>(left: L, right: R) -> Ordering
 where
     L: Iterator<Item = Char> + Clone,
@@ -91,6 +105,7 @@ where
     primaries(left.clone())
         .cmp(primaries(right.clone()))
         .then_with(|| accents(left.clone()).cmp(accents(right.clone())))
+        .then_with(|| variants(left.clone()).cmp(variants(right.clone())))
         .then_with(|| skipped(left).cmp(skipped(right)))
 }
 
@@ -167,31 +182,70 @@ const UNIT_BASE: u32 = OTHER_BASE + 0x11_0000;
 /// What one case-folded character contributes to each pass.
 #[derive(Clone, Copy)]
 enum Element {
-    /// A skipped character (module docs): no letter weight, only a third-pass weight.
+    /// A skipped character (module docs): no letter weight, only a last-pass weight.
     Skipped(u8),
-    /// One or two letter weights (two for `æ`, `ß`) and the accent of the character.
-    Weights { primary: [u32; 2], accent: u8 },
+    /// One or two letter weights (two for `æ`, `ß`), the accent of the character and its
+    /// variant-pass weight ([`SUPERSCRIPT`] or 0).
+    Weights {
+        primary: [u32; 2],
+        accent: u8,
+        variant: u8,
+    },
+    /// A combining mark: no letter weight; it adds its diacritic weight to the letter before it.
+    Mark(u8),
 }
 
-/// Accent weights, in Excel's order (probes/text-collation-order: `á < à < â < ä < å`, `ö < ø`;
-/// probes/text-collation-unprobed: `a < ª < á`, `ä < ã < å`, `o < º < ö`, `đ < ð`). The cedilla
-/// and superscript are only ever compared with no accent, so their place is unprobed.
-const NO_ACCENT: u8 = 0;
-const ORDINAL: u8 = 1;
-const ACUTE: u8 = 2;
-const GRAVE: u8 = 3;
-const CIRCUMFLEX: u8 = 4;
-const DIAERESIS: u8 = 5;
-const TILDE: u8 = 6;
-const RING: u8 = 7;
-const CEDILLA: u8 = 8;
-const SUPERSCRIPT: u8 = 9;
-const STROKE: u8 = 10;
-/// `ð`, `ı`: probed as single characters only, each right after its base letter; kept a
-/// tiebreak accent, like `ø`, rather than a letter of its own.
-const VARIANT: u8 = 11;
+/// Diacritic (accent) weights, from Microsoft's Windows sorting weight table (the DW column; see
+/// [`MARK_WEIGHT`]): a letter without an accent weighs 2, an accented letter 2 plus its marks'
+/// weights. So `"a" < "á" < "à" < "â" < "ä" < "ǎ" < "ă" < "ā" < "ã" < "å" < "ą"` (2, 14, 15, 18,
+/// 19, 20, 21, 23, 25, 26, 27; probes/t3154-collation-accents Calc!A1:A12). The letters with a
+/// weight of their own (ordinal indicators, stroke, eth, dotless i) take theirs from the table too:
+/// `"a" < "ª" < "á"`, `"ö" < "ø"`, `"d" < "đ" < "ð"` (probes/text-collation-unprobed).
+const NO_ACCENT: u8 = 2;
+/// `ª` and `º` (they also differ from `a`, `o` in the variant pass, [`variants`]).
+const ORDINAL: u8 = 3;
+const ACUTE: u8 = accent('\u{301}');
+const GRAVE: u8 = accent('\u{300}');
+const CIRCUMFLEX: u8 = accent('\u{302}');
+const DIAERESIS: u8 = accent('\u{308}');
+const TILDE: u8 = accent('\u{303}');
+const RING: u8 = accent('\u{30a}');
+const CEDILLA: u8 = accent('\u{327}');
+/// `ı`, `đ`, `ł`, `ø`, `ð`: Windows table weights 4, 30, 31, 33, 104.
+const DOTLESS: u8 = 4;
+const D_STROKE: u8 = 30;
+const L_STROKE: u8 = 31;
+const O_STROKE: u8 = 33;
+const ETH: u8 = 104;
+/// The weight of the letters U+0363 to U+036F ([`COMBINING_LETTERS`]).
+const COMBINING_LETTER: u8 = 3;
 
-/// Third-pass weights of the skipped characters: control characters below the apostrophe (none
+/// The accent of a letter carrying combining mark `mark` alone.
+const fn accent(mark: char) -> u8 {
+    NO_ACCENT + MARK_WEIGHT[mark as usize - 0x300]
+}
+
+/// The letter that `c` (U+0363 to U+036F) sorts as ([`COMBINING_LETTERS`]).
+fn combining_letter(c: char) -> Option<char> {
+    let index = usize::try_from(u32::from(c).checked_sub(0x363)?).ok()?;
+    COMBINING_LETTERS.get(index).copied()
+}
+
+/// The diacritic weight combining mark `c` (U+0300 to U+0362) adds to the letter before it.
+fn mark_weight(c: char) -> Option<u8> {
+    let index = usize::try_from(u32::from(c).checked_sub(0x300)?).ok()?;
+    MARK_WEIGHT.get(index).copied()
+}
+
+/// The variant (third) pass weight of the superscripts `ª º ¹ ² ³`. The Windows table gives them
+/// the case weight 14 (superscript and compatibility bits) where a plain letter or digit has 2;
+/// Excel ignores the upper-case bit but keeps this one: `"¹" > "1"` with equal letters and
+/// accents (probes/text-collation-longer), and `"ª"&UNICHAR(769)` (3 + 12 = 15) sorts after `"à"`
+/// (15) (probes/t3154-collation-accent-weights Calc!A114, A10). `ς` has case weight 10 in the
+/// table but equals `σ` in Excel (probes/t3114-collation-beyond-latin1), so it keeps weight 0.
+const SUPERSCRIPT: u8 = 1;
+
+/// Last-pass weights of the skipped characters: control characters below the apostrophe (none
 /// probed against it; `CHAR(1) < CHAR(31) < CHAR(127) < "–"`), then `' - – —`.
 const APOSTROPHE: u8 = 0x80;
 const HYPHEN: u8 = APOSTROPHE + 1;
@@ -206,6 +260,7 @@ fn accented(base: char, accent: u8) -> Element {
     Element::Weights {
         primary: [letter(base), 0],
         accent,
+        variant: 0,
     }
 }
 
@@ -213,6 +268,16 @@ fn single(primary: u32) -> Element {
     Element::Weights {
         primary: [primary, 0],
         accent: NO_ACCENT,
+        variant: 0,
+    }
+}
+
+/// A superscript (`ª º ¹ ² ³`): `primary` with `accent` and the [`SUPERSCRIPT`] variant weight.
+fn superscript(primary: u32, accent: u8) -> Element {
+    Element::Weights {
+        primary: [primary, 0],
+        accent,
+        variant: SUPERSCRIPT,
     }
 }
 
@@ -221,6 +286,7 @@ fn expansion(first: char, second: char) -> Element {
     Element::Weights {
         primary: [letter(first), letter(second)],
         accent: NO_ACCENT,
+        variant: 0,
     }
 }
 
@@ -237,13 +303,52 @@ fn punctuation(c: char) -> Option<u32> {
         .map(|index| PUNCTUATION_BASE + index)
 }
 
+/// The final sigma `ς` as `σ`, every other character as is: Excel's `Σ = σ = ς` in comparisons
+/// and in exact MATCH (probes/t3114-collation-beyond-latin1 Calc!B168, B192, B216, D20:E20, H10).
+/// The collation key and [`fold_case`] both fold through it.
+pub(crate) fn fold_final_sigma(c: char) -> char {
+    if c == 'ς' {
+        'σ'
+    } else {
+        c
+    }
+}
+
+/// Lowercases `text` one character at a time (see [`fold_char`]), never changing its length:
+/// the case fold of SEARCH, of exact-match lookup keys (MATCH, VLOOKUP and HLOOKUP with an exact
+/// match, XMATCH in wildcard mode and, inferred, XLOOKUP) and of wildcard and D-function prefix
+/// criteria.
+/// Excel: `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's
+/// `to_lowercase` turns U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8,
+/// A12, A13); `MATCH("i",{"İ"},0)` is #N/A and `COUNTIF(r,"?")` counts `İ`
+/// (probes/t3133-lookup-criteria-case-fold; docs/excel-semantics/criteria.md "Wildcard escapes,
+/// case and trailing tilde").
+pub(crate) fn fold_case(text: &str) -> String {
+    text.chars().map(fold_char).collect()
+}
+
+/// [`fold_case`] for one character: always exactly one character out. A character whose full
+/// lowercase is one character takes it (the Kelvin sign is `k`, `ẞ` is `ß`, `ǅ` and `Ǆ` are `ǆ`,
+/// the Ångström sign is `å`, the Ohm sign is `ω`); one whose lowercase is longer (`İ`) stays as
+/// it is; final sigma matches sigma in either case. `ſ`/`s`, `µ`/`μ` and `ϐ`/`β` stay apart: each
+/// is its own lowercase (SEARCH: probes/text-search-casefold-length A14-A24; lookups and criteria:
+/// probes/t3133-lookup-criteria-case-fold).
+pub(crate) fn fold_char(c: char) -> char {
+    let c = fold_final_sigma(c);
+    let mut lower = c.to_lowercase();
+    match (lower.next(), lower.next()) {
+        (Some(single), None) => single,
+        _ => c,
+    }
+}
+
 /// `c` with case removed: ASCII and Latin-1 letters directly, others through `to_lowercase`.
 fn fold(c: char) -> char {
     match c {
         'A'..='Z' => c.to_ascii_lowercase(),
         'À'..='Þ' if c != '×' => char::from_u32(u32::from(c) + 0x20).unwrap_or(c),
         _ if c.is_ascii() => c,
-        _ => c.to_lowercase().next().unwrap_or(c),
+        _ => fold_final_sigma(c.to_lowercase().next().unwrap_or(c)),
     }
 }
 
@@ -263,23 +368,19 @@ fn element(c: Char) -> Element {
         }
         _ if c.is_ascii() => single(ASCII_PRIMARY[c as usize]),
         '\u{a0}' => single(NBSP),
+        '\u{363}'..='\u{36f}' => combining_letter(c).map_or_else(
+            || single(OTHER_BASE + u32::from(c)),
+            |base| accented(base, COMBINING_LETTER),
+        ),
+        '\u{300}'..='\u{362}' => Element::Mark(mark_weight(c).unwrap_or(0)),
         '¼' => single(digit(0) + 1),
         '½' => single(digit(0) + 2),
         '¾' => single(digit(0) + 3),
-        '¹' => Element::Weights {
-            primary: [digit(1), 0],
-            accent: SUPERSCRIPT,
-        },
-        '²' => Element::Weights {
-            primary: [digit(2), 0],
-            accent: SUPERSCRIPT,
-        },
-        '³' => Element::Weights {
-            primary: [digit(3), 0],
-            accent: SUPERSCRIPT,
-        },
-        'ª' => accented('a', ORDINAL),
-        'º' => accented('o', ORDINAL),
+        '¹' => superscript(digit(1), NO_ACCENT),
+        '²' => superscript(digit(2), NO_ACCENT),
+        '³' => superscript(digit(3), NO_ACCENT),
+        'ª' => superscript(letter('a'), ORDINAL),
+        'º' => superscript(letter('o'), ORDINAL),
         'á' => accented('a', ACUTE),
         'à' => accented('a', GRAVE),
         'â' => accented('a', CIRCUMFLEX),
@@ -287,10 +388,10 @@ fn element(c: Char) -> Element {
         'å' => accented('a', RING),
         'ã' => accented('a', TILDE),
         'ç' => accented('c', CEDILLA),
-        'đ' => accented('d', STROKE),
-        'ð' => accented('d', VARIANT),
-        'ı' => accented('i', VARIANT),
-        'ł' => accented('l', STROKE),
+        'đ' => accented('d', D_STROKE),
+        'ð' => accented('d', ETH),
+        'ı' => accented('i', DOTLESS),
+        'ł' => accented('l', L_STROKE),
         // Excel: þ is the expansion `th` (probes/text-collation-longer Calc!A74-A76).
         'þ' => expansion('t', 'h'),
         'é' => accented('e', ACUTE),
@@ -307,7 +408,7 @@ fn element(c: Char) -> Element {
         'ô' => accented('o', CIRCUMFLEX),
         'ö' => accented('o', DIAERESIS),
         'õ' => accented('o', TILDE),
-        'ø' => accented('o', STROKE),
+        'ø' => accented('o', O_STROKE),
         'ú' => accented('u', ACUTE),
         'ù' => accented('u', GRAVE),
         'û' => accented('u', CIRCUMFLEX),
@@ -328,37 +429,149 @@ fn element(c: Char) -> Element {
                     UNIT_BASE + u32::from(units[1]),
                 ],
                 accent: NO_ACCENT,
+                variant: 0,
             }
         }
         _ => single(punctuation(c).unwrap_or(OTHER_BASE + u32::from(c))),
     }
 }
 
-/// The first pass: letter weights, hyphens and apostrophes skipped.
-fn primaries(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u32> {
-    text.flat_map(|c| match element(c) {
-        Element::Skipped(_) => [0, 0],
-        Element::Weights { primary, .. } => primary,
-    })
-    .filter(|&weight| weight != 0)
-}
-
-/// The second pass: one accent weight per letter weight of the first pass.
-fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
-    text.flat_map(|c| match element(c) {
-        Element::Skipped(_) => [None, None],
-        Element::Weights { primary, accent } => {
-            [Some(accent), (primary[1] != 0).then_some(NO_ACCENT)]
+/// `c` case-folded and canonically decomposed through [`DECOMPOSED`]: one to three characters.
+fn decompose(c: Char) -> impl Iterator<Item = Char> {
+    let folded = match c {
+        // Excel: `İ` is `i` + U+0307 (its canonical decomposition, lower-cased), not `i` or `I`:
+        // `XMATCH("i"&UNICHAR(775),{"İ"})` is 1 and `XMATCH("I",{"İ"})` is #N/A
+        // (probes/t3133-lookup-criteria-case-fold Calc!J1, J3, J33).
+        Char::Scalar('\u{130}') => {
+            return [Char::Scalar('i'), Char::Scalar('\u{307}'), c]
+                .into_iter()
+                .take(2)
         }
-    })
-    .flatten()
+        Char::Scalar(c) => fold(c),
+        // Every arm yields a `[Char; 3]` iterator so that the function has one return type.
+        Char::Lone(_) => return [c, c, c].into_iter().take(1),
+    };
+    let entry = if ('\u{100}'..='\u{45f}').contains(&folded)
+        || ('\u{1e00}'..='\u{1eff}').contains(&folded)
+    {
+        DECOMPOSED
+            .binary_search_by_key(&folded, |&(letter, ..)| letter)
+            .ok()
+            .and_then(|index| DECOMPOSED.get(index))
+    } else {
+        None
+    };
+    match entry {
+        Some(&(_, base, first, second)) => {
+            let units = [
+                Char::Scalar(base),
+                Char::Scalar(first),
+                Char::Scalar(second),
+            ];
+            units.into_iter().take(if second == '\0' { 2 } else { 3 })
+        }
+        None => [Char::Scalar(folded); 3].into_iter().take(1),
+    }
 }
 
-/// The third pass: each hyphen or apostrophe as (position, weight), a later position first.
+/// The [`Element`] of each decomposed character of `text`.
+fn elements(text: impl Iterator<Item = Char>) -> impl Iterator<Item = Element> {
+    text.flat_map(decompose).map(element)
+}
+
+/// The first pass: letter weights, hyphens, apostrophes and combining marks skipped.
+fn primaries(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u32> {
+    elements(text)
+        .flat_map(|element| match element {
+            Element::Skipped(_) | Element::Mark(_) => [0, 0],
+            Element::Weights { primary, .. } => primary,
+        })
+        .filter(|&weight| weight != 0)
+}
+
+/// The second pass: one accent weight per letter weight of the first pass. A combining mark adds
+/// its diacritic weight to the letter before it, wrapping past 255 like the Windows sort key's
+/// one-byte diacritic weight, so the order of the marks does not matter:
+/// `"a"&UNICHAR(769)&UNICHAR(780)` = `"a"&UNICHAR(780)&UNICHAR(769)` = `"á"&UNICHAR(780)` =
+/// `"ǎ"&UNICHAR(769)` (2 + 12 + 18), and three U+0323 (2 + 3 * 86 = 260, so 4) sort between `"a"`
+/// and `"á"` (probes/t3154-collation-accent-weights, probes/t3154-collation-accent-pairs). A mark
+/// with no letter before it weighs as an accent of its own (unprobed).
+fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
+    Accents {
+        elements: elements(text),
+        ready: None,
+        last: None,
+    }
+}
+
+/// The iterator of [`accents`]: `last` is held back so that a combining mark after it can
+/// add to it.
+struct Accents<I> {
+    elements: I,
+    ready: Option<u8>,
+    last: Option<u8>,
+}
+
+impl<I: Iterator<Item = Element>> Iterator for Accents<I> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<u8> {
+        if let Some(accent) = self.ready.take() {
+            return Some(accent);
+        }
+        loop {
+            match self.elements.next() {
+                None => return self.last.take(),
+                Some(Element::Skipped(_)) => {}
+                Some(Element::Mark(weight)) => {
+                    self.last = Some(self.last.unwrap_or(NO_ACCENT).wrapping_add(weight));
+                }
+                Some(Element::Weights {
+                    primary, accent, ..
+                }) => {
+                    // An expansion (`æ`) weighs two letters: its accent, then an unaccented one.
+                    let (first, held) = if primary[1] == 0 {
+                        (None, accent)
+                    } else {
+                        (Some(accent), NO_ACCENT)
+                    };
+                    let before = self.last.replace(held);
+                    match (before, first) {
+                        (Some(before), first) => {
+                            self.ready = first;
+                            return Some(before);
+                        }
+                        (None, Some(first)) => return Some(first),
+                        (None, None) => {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The variant pass, after the accents: one weight per letter weight of the first pass,
+/// [`SUPERSCRIPT`] for `ª º ¹ ² ³` and 0 otherwise.
+fn variants(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
+    elements(text)
+        .flat_map(|element| match element {
+            Element::Weights {
+                primary, variant, ..
+            } => [Some(variant), (primary[1] != 0).then_some(0)],
+            Element::Skipped(_) | Element::Mark(_) => [None, None],
+        })
+        .flatten()
+}
+
+/// The last pass: each hyphen or apostrophe as (position, weight), a later position first.
+/// Positions count letters and skipped characters, not combining marks, so a decomposed letter
+/// keeps the position of its precomposed form.
 fn skipped(text: impl Iterator<Item = Char>) -> impl Iterator<Item = (Reverse<usize>, u8)> {
-    text.enumerate()
-        .filter_map(|(position, c)| match element(c) {
+    elements(text)
+        .filter(|element| !matches!(element, Element::Mark(_)))
+        .enumerate()
+        .filter_map(|(position, element)| match element {
             Element::Skipped(weight) => Some((Reverse(position), weight)),
-            Element::Weights { .. } => None,
+            Element::Weights { .. } | Element::Mark(_) => None,
         })
 }

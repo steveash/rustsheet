@@ -494,12 +494,16 @@ MATCH read a range of several cells of a cached sheet in place (`LookupTable::Ex
 `Model::cached_external_lookup_area`) instead of building it as an array, so whole columns and rows
 match B17, B21, B49 and B50 (T-0474). The search vector keeps the area's full length (the cached
 cells, then an empty tail), as a whole column of this workbook does; a vector cut to the cache's
-extent would move the approximate search's midpoints (lookup.md "Approximate match"). UNVERIFIED, a hand
-expectation awaiting an oracle cell (T-0479): an approximate whole-column lookup over an unsorted cached
-column (cache 1,5,2,9,3) is the local result. `VLOOKUP(4,[1]Uses!$A:$C,1,TRUE)` is 1 in the engine, as
-over a local whole column, and a unit test pins that in test_external_links.rs.
-Status: VERIFIED for the oracle cells above (excel-graph only; no desktop evidence, decision 0030); the
-unsorted approximate case is UNVERIFIED
+extent would move the approximate search's midpoints (lookup.md "Approximate match"). Verified against
+Excel (T-0479, fixtures/external-link-unsorted-approx-lookups, excel-graph, 2026-10-29; cache `Col` A1:A5 = 1,5,2,9,3,
+B = 10..50, `Row` A1:E1 = 1,5,2,9,3, A2:E2 = 10..50): over the unsorted whole column the approximate lookups give the
+result of the binary search over the full-length (1048576-cell) vector, as over a local whole column (lookup.md "Approximate match"; no local Excel control cell), and the engine matches every cell. `VLOOKUP(4,[1]Col!$A:$B,2,TRUE)` is 10 (B1), keys 6, 9 and
+100 give 30, 40 and 50, key 0.5 `#N/A`; `MATCH(4,..$A:$A,1)` is 1, key 6 gives 3 and key 100 gives 5; `MATCH(4,..,-1)` is
+`#N/A`, key 6 `#N/A`, key 0.5 gives 5; `HLOOKUP(4,[1]Row!$1:$2,2,TRUE)` is 10, keys 6 and 100 give 30 and 50; whole-row
+`MATCH 1` of 4 is 1 and of 100 is 5, `MATCH -1` of 4 and 6 `#N/A`. The bounded controls differ from the whole-column
+cells only where the search midpoints move (`VLOOKUP(4,..$A$1:$B$5,2,TRUE)` 30, `$A$1:$B$100` 30, `MATCH(4,..$A$1:$A$5,1)` 3;
+Excel gives these for the bounded ranges, so the full-length vector is what makes the whole-column cells differ).
+Status: VERIFIED (excel-graph only; no desktop evidence, decision 0030)
 Tasks: T-0457, T-0472, T-0474, T-0479
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
@@ -562,9 +566,10 @@ TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a ran
 A defined name that stands for a cell or range is a reference to ISREF, a single cell included
 (`ISREF(TextCell)` and `ISREF(Cells)` TRUE; a LAMBDA name, a constant name `=7` and an undefined name are FALSE), and FILTER's `if_empty` range is its
 values, never a reference (`FILTER(A1:A1,B1:B1,D1:D2)` spills D1:D2, `ISREF(FILTER(..))` FALSE, `SUM(..)` = 30).
-Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940; re-confirmed 2026-10-09 with the LAMBDA name body stored as `_xlpm.x`, T-1209), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; to be added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
+Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940; re-confirmed 2026-10-09 with the LAMBDA name body stored as `_xlpm.x`, T-1209), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
 bound to a reference is TRUE (A19-A26; implemented by T-0223, see "Names, LET/LAMBDA variables and @ are
-references" below; T-0963 checks the ISREF.xlsx cells once T-0965 adds the workbook).
+references" below). ironcalc-calc/INFORMATION/ISREF.xlsx (added by T-0965) passes all 43 cells: A19, A20, A23,
+A24 and A26 are TRUE, and a variable bound to a value (A21 `5`, A22 `K1+1`, A25 `"K1"`) is FALSE (T-0963).
 Implemented in: `evaluate_aggregate_arg` in `crates/rustsheet-engine/src/functions/util.rs` (IF, INDEX; used by SUM,
 COUNT, MIN, MAX and every `for_each_value` caller: AVERAGE, MEDIAN, HARMEAN, GEOMEAN, SKEW, SKEW.P, KURT;
 also AVERAGEA, MAXA, MINA, PRODUCT, CONCAT, LARGE and RANK since T-0196; VERIFIED for AVERAGEA, MAXA, MINA, PRODUCT, LARGE and RANK, see below);
@@ -1890,14 +1895,38 @@ Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2
 Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
 shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
 `=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
-`@` at all in Excel; ours matches (`returns_single_cell_index`, T-2326) for exactly that shape: an IF whose value arms are all `INDEX(one-column range, literal non-zero row)`. UNVERIFIED, so still `@`: IFS, a 2-D range (two-argument INDEX gives a whole row), a computed row (`INDEX(B1:B6,1+2)`), mixed arms.
+`@` at all in Excel (T-2326). The rule (probes/t3134-legacy-if-index-arm-shapes, 295 cells, excel-graph,
+2026-10-29, T-3134; `returns_single_cell_index`): a legacy IF or CHOOSE shows no `@`, at the root or under ABS,
+when its condition (CHOOSE's index) is a scalar after legacy intersection and every value arm is a scalar or
+`INDEX(range,row[,column])` whose indexes are all literal whole numbers of 1 or more, whatever the range's shape;
+parentheses are looked through. No `@` (I/K 31-33, 38-42, 49, 51-53, 55-64): `INDEX(B1:C6,3,1)`,
+`INDEX(B1:F1,3)` (100), `INDEX(B1:B6,3,1)`, the 2-D `INDEX(B1:C6,3)` (`#REF!` everywhere); beside a number,
+text, boolean, cell (`A20`), `A20+1`, `SUM(B1:B6)` or another such INDEX (`IF(FALSE,INDEX(B1:B6,3),INDEX(C1:C6,2))`
+is 20); nested IF/CHOOSE either way round (`IF(TRUE,CHOOSE(1,INDEX(B1:B6,3)))`, `CHOOSE(1,IF(TRUE,INDEX(...)))`);
+`CHOOSE(1,INDEX(B1:C6,3))`; a computed condition or index (`IF(A20>0,...)`, `CHOOSE(A20-2,...)`); a range
+condition, which takes its own `@` (`=IF(@B1:B6>0,INDEX(B1:B6,3))`, `#VALUE!` off B1:B6's rows); and
+`(INDEX(B1:B6,3))`, `INDEX(B1:B6,(3))`, `INDEX((B1:B6),3)`. `@` (I/K 30, 34-37, 43-48, 50, 54, 65): every IFS
+(`=@IFS(TRUE,INDEX(B1:B6,3))`, `=@IFS(TRUE,INDEX(B1:B6,3),FALSE,5)`); an array condition or index
+(`=@IF({TRUE,FALSE},INDEX(B1:B6,3))`, `=@CHOOSE({1,2},INDEX(B1:B6,3),5)`, whose SUM is 8); an INDEX index that is
+computed (`1+2`), a cell (A20 = 3 or 0), text (`"3"`), non-integer (`3.5`, still 3) or 0 (`INDEX(B1:B6,0)` and
+`INDEX(B1:C6,3,0)`: the whole column or row, intersected, `#VALUE!` off it; `=ABS(@IF(TRUE,INDEX(B1:C6,3,0)))`
+is 30 in column C); and a range or whole-column INDEX beside the INDEX arm (`=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`).
+Under SUM none shows an `@` (M30-M65; 21 for the whole column, 33 for row 3). An array-constant CHOOSE index over
+such one-cell arms stays whole and the call takes the `@` (I54, K54), while over range arms Excel shows both,
+`=@CHOOSE(@{1,2},H1:H2,I1:I2)` (probes/legacy-choose-array-index, T-1882); `leaves_choose_index_whole`, T-3168.
+UNVERIFIED: an INDEX of a defined name or table area, a one- or four-argument INDEX, a negated literal index
+(`INDEX(B1:B6,-3)`) (the engine keeps the `@`); a bare range condition (`IF(B1:B6,INDEX(B1:B6,3))`) and an
+out-of-range literal index (`INDEX(B1:B6,99)`) (the engine drops it).
+UNVERIFIED (T-3168): an array-constant CHOOSE index over plain-cell, computed-scalar or text/boolean arms
+(`CHOOSE({1,2},A1,B1)`, `CHOOSE({1,2},A1+1,5)`; the engine moves the `@` to the call as for I54), and over mixed
+range and scalar arms (`CHOOSE({1,2},H1:H2,5)`; the engine keeps `@{1,2}`).
 Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
 `=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
 `=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
 Excel drops the `@` for both one-cell arms (M12, S12).
 Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
-Tasks: T-1935, T-1969, T-2326
+Tasks: T-1935, T-1969, T-2326, T-3134, T-3168
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
@@ -2450,8 +2479,9 @@ moved or grown table's row there, but a row on them is rewritten to the plain ar
 beside or inside the table is rewritten too. Excel keeps the text in all of them (the T-2845 bullet above; T-3037).
 FORMULATEXT prints the long `Sales[[#This Row],[Qty]]` where Excel prints `Sales[@Qty]` (T-1683). An insert at
 the first row of a table without a header row is a fallback too (unprobed, T-3039). An insert that would
-carry a table past the last row or column runs (the cells pushed off are empty) and leaves the table, where Excel
-refuses it (T-3038). The plain-range quirk is implemented for every range inside the table's
+carry a table past the last row or column is refused with an error and changes nothing, as Excel does
+(`Model::refuse_table_off_sheet`, T-3038; a table that ends exactly at the last row afterwards is
+allowed, unprobed). The plain-range quirk is implemented for every range inside the table's
 data rows and columns that touches the edited edge (`Displacement::range_corners`, stringify.rs, T-2321);
 only the whole data column is probed, the other shapes are a hand generalisation (T-2846). Column inserts
 inside grow the table (T-2339). A wholly deleted plain range prints one sheet-qualified `S!#REF!`, not a `#REF!` per corner
@@ -2494,8 +2524,15 @@ Right/Left):
   Excel keeps the table's one data row, cleared: nothing below the table moves on that last delete. `=S!C10`
   below the table reads `=S!C7` after the four deletes (three rows up, not four), `=SUM(S!C9:C10)` reads
   `=SUM(S!C6:C7)`, and `ROWS(Sales)` is 1 (table-delete-row-all-data-below, excel-graph 2026-10-27, T-2338).
-  What happens to that row's cells outside the table, and to one delete of every data row at once, is
-  unprobed (T-2848).
+  The same last delete leaves the sheet row's cells outside the table alone: `S!E4` 5 beside `Sales` on
+  S!B3:C4 keeps its value, `S!E5` and `S!C5` below stay put, and a second table `Other` on S!E3:F7 keeps all
+  four data rows (`ROWS(Other)` 4, `SUM(Other[Val])` 100, `S!F4` 10); only `Sales`'s own cells are cleared
+  (`SUM(Sales[Qty])` 0, `ROWS(Sales)` 1, `#All` 2) (table-delete-row-only-data-outside, -second-table). With a
+  totals row the only data row is kept and cleared too, and the totals row does not move: `ROWS(Sales)` 1,
+  `#All` 3, `ROW(Sales[#Totals])` 5, `Sales[[#Totals],[Qty]]` 0 (SUBTOTAL over the cleared row), `S!C5` 0, a
+  cell below the table unchanged (table-delete-row-only-data-totals; all excel-graph 2026-10-28, T-2848).
+  Still unprobed (the case format deletes one row per op and has no header-less table): one delete of every
+  data row at once, a two-row delete reaching a data edge, and a delete on a table without a header row.
 - A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted

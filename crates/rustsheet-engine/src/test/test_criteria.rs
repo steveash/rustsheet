@@ -41,6 +41,21 @@ fn year_2026() -> Option<i32> {
 //
 // All of them are case insensitive.
 
+// Excel: a blank-cell or omitted criterion is the criterion 0 (probes/t3138-blank-criterion D1:H9).
+#[test]
+fn test_build_criteria_is_empty() {
+    for c in [CalcResult::EmptyCell, CalcResult::EmptyArg] {
+        let fn_criteria = build_criteria(&c, en_locale(), &year_2026, DateSystem::default());
+        assert!(fn_criteria(&CalcResult::Number(0.0)));
+        assert!(fn_criteria(&CalcResult::Number(-0.0)));
+        assert!(fn_criteria(&CalcResult::String("0".into())));
+        assert!(!fn_criteria(&CalcResult::EmptyCell));
+        assert!(!fn_criteria(&CalcResult::String("".into())));
+        assert!(!fn_criteria(&CalcResult::Number(1E-17)));
+        assert!(!fn_criteria(&CalcResult::Boolean(false)));
+    }
+}
+
 #[test]
 fn test_build_criteria_is_number() {
     let c = CalcResult::Number(42.0);
@@ -585,4 +600,87 @@ fn test_database_prefix_criteria_keep_lone_surrogates() {
         CriteriaFlavor::Database,
     );
     assert!(prefix_a(&text(&a_low)));
+}
+
+#[test]
+fn ordering_criteria_compare_the_cell_at_15_digits() {
+    // probes/t3072-criteria-near-equal-order (excel-graph, T-3084): 1+22*2^-52 and 1-4*2^-53 print as 1
+    // and meet "<=1" and ">=1" but neither "<1" nor ">1"; 1+23*2^-52 and 1-5*2^-53 do not round to 1.
+    let mut model = crate::test::util::new_empty_model();
+    model._set("A1", "=1+22*2^-52");
+    model._set("A2", "=1-4*2^-53");
+    model._set("A3", "=1+23*2^-52");
+    model._set("A4", "=1-5*2^-53");
+    for (row, cell) in ["A1", "A2", "A3", "A4"].iter().enumerate() {
+        let r = row + 1;
+        model._set(&format!("B{r}"), &format!("=COUNTIF({cell},\"<1\")"));
+        model._set(&format!("C{r}"), &format!("=COUNTIF({cell},\"<=1\")"));
+        model._set(&format!("D{r}"), &format!("=COUNTIFS({cell},\">1\")"));
+        model._set(
+            &format!("E{r}"),
+            &format!("=SUMIF({cell},\">=1\",{cell})>0"),
+        );
+    }
+    model.evaluate();
+
+    let row = |r: u32| ["B", "C", "D", "E"].map(|c| model._get_text(&format!("{c}{r}")));
+    assert_eq!(row(1), ["0", "1", "0", "TRUE"]);
+    assert_eq!(row(2), ["0", "1", "0", "TRUE"]);
+    assert_eq!(row(3), ["0", "0", "1", "TRUE"]);
+    assert_eq!(row(4), ["1", "1", "0", "FALSE"]);
+}
+
+// Excel: criterion operands and text cells read numbers with VALUE's grammar
+// (docs/excel-semantics/criteria.md, probes/t3136-criteria-formatted-number-operands).
+#[test]
+fn criteria_read_numbers_with_value_grammar() {
+    fn matches(criterion: &str, cell: CalcResult) -> bool {
+        let criterion = CalcResult::String(criterion.into());
+        let matcher = build_criteria(&criterion, en_locale(), &year_2026, DateSystem::default());
+        matcher(&cell)
+    }
+    let text = |s: &str| CalcResult::String(s.into());
+    let number = CalcResult::Number;
+
+    // Operands: each is the number VALUE reads.
+    for (operand, value) in [
+        ("50%", 0.5),
+        ("$1,000", 1000.0),
+        ("12:00 PM", 0.5),
+        ("1 1/2", 1.5),
+        ("(1)", -1.0),
+        ("-$1", -1.0),
+        ("1/2/2020 12:00", 43832.5),
+    ] {
+        assert!(matches(operand, number(value)), "{operand}");
+        assert!(matches(&format!(">={operand}"), number(value)), "{operand}");
+        assert!(
+            !matches(&format!("<>{operand}"), number(value)),
+            "{operand}"
+        );
+    }
+    // `=50%` matches the text cells VALUE reads as 0.5; `>=` never matches text, `<>` always does.
+    for cell in ["50%", "12:00", "12:00 PM"] {
+        assert!(matches("=50%", text(cell)), "{cell}");
+    }
+    assert!(!matches("=50%", text("1,00")) && !matches("=50%", text("abc")));
+    assert!(!matches(">=50%", text("50%")));
+    assert!(matches("<>50%", text("50%")));
+    assert!(matches("1,000", text("$1,000")));
+    // A number criterion (from a cell) reads text cells the same way
+    // (probes/t3151-number-criterion-formatted-text C1, C6).
+    let one = build_criteria(
+        &CalcResult::Number(1.0),
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+    );
+    assert!(one(&text("$1")) && one(&text("1e2%")) && !one(&text("1,00")));
+
+    // `1,00` is no number for VALUE, so it stays a text criterion.
+    assert!(matches("1,00", text("1,00")));
+    assert!(!matches("1,00", number(100.0)));
+    // CHAR(160) padding keeps text out of the number reading, on both sides (probes/criteria-padded-text).
+    assert!(!matches("50%\u{a0}", number(0.5)));
+    assert!(!matches("50%", text("50%\u{a0}")));
 }

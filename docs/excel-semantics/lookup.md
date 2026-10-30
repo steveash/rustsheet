@@ -157,7 +157,18 @@ column lifts too (`ROWS(VLOOKUP(D:D,A1:B4,2,FALSE))` is 1048576) and the engine 
 shared cell-visit cap (criteria.md): elements times the evaluated cells of the searched column or row,
 whatever the table is (DEVIATION, decision 0014: `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)`
 is `#ERROR!`).
-Unprobed: blank elements of a multi-cell lookup_value.
+A blank element of a multi-cell lookup_value is looked up exactly as the scalar blank-cell key: as the number 0, in every
+form. That holds for the blank middle cell of a range (`VLOOKUP(Keys!A1:A3,..)`, `HLOOKUP(Keys!C1:E1,..)`,
+`MATCH(Keys!A1:A3,..)`), for the blank element of an array (`IF({1;0;1},Keys!A1:A3,Keys!G1)`), and for a whole-column
+lookup_value read inside the used area and far below it (`INDEX(VLOOKUP(Keys!A:A,..),1000)`). Against tables holding a 0
+row, a `=""` row, a FALSE row or only a blank row among numbers, the blank element finds the 0 row and nothing else in
+exact mode (`#N/A` against the `""`, FALSE and blank tables), lands on the 0 row where there is one and otherwise on
+the last number below 0 (the -1 row) in the approximate VLOOKUP/HLOOKUP TRUE and `MATCH(..,1)`, and takes the smallest number at or above 0 in `MATCH(..,-1)`. It is
+never `""` or FALSE, and it never matches a blank row. The non-blank elements of the same lookup_value are unaffected.
+Evidence for the blank elements: probes/t3096-lookup-value-blank-elements (200 Calc cells, plus the 3 `=""` table
+cells on Data that make the baseline's 203; excel-graph, 2026-10-29, T-3096; Calc rows 16-22 the range middle, 37-43
+the array element, 44-51 the whole column, each identical to the scalar control rows 2-8 across the four tables in
+columns B-E). The engine matches every cell: `lift_values` hands a blank element to `lookup_index` as the blank key.
 Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
 `Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
@@ -312,7 +323,7 @@ while lo <= hi:
     mid = floor((lo+hi)/2)
     m = first index >= mid with the lookup value's type   # skips blanks, errors, other types
     if m > hi: hi = mid-1; continue
-    c = compare(v[m], key)                                  # text case-insensitive
+    c = compare(v[m], key)                                  # text by the collation: æ=ae, a=A (T-3115)
     if c == 0: return the last index of the run of adjacent equal cells starting at m
     if c < 0: best = m; lo = m+1
     else: hi = m-1
@@ -330,7 +341,18 @@ matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `VLOOKUP("",{blank;blank;b
 `MATCH(blank,{"";0},0)` = 2). Numbers must be exactly equal, without the 15-digit rounding of the
 comparison operators: `MATCH(0.1+0.2,{0.3},0)` and `VLOOKUP(0.1+0.2,{0.3},1,FALSE)` are `#N/A`.
 A match_type that is not a number is `#VALUE!` even with a blank key (`MATCH(blank,…,"x")`).
-Text comparison uses Excel's collation, not code-point order (T-0220).
+Text comparison uses Excel's collation, not code-point order (T-0220), and unlike exact match (MATCH 0, VLOOKUP FALSE,
+which compare case-folded code units, T-1590) the approximate searches take collation-equal texts as equal (T-3115,
+probes/t3115-approximate-text-collation, excel-graph 2026-10-29, VERIFIED). VLOOKUP TRUE, HLOOKUP TRUE and MATCH 1 (Calc!A-D)
+agree on every row: `"ae"` and `"æ"` (also `"ß"`/`"ss"`, `"œ"`/`"oe"`, `"Æ"`) form one run of equal cells, so
+`MATCH("ae",{"ae";"æ"},1)` and `MATCH("ae",{"æ";"ae"},1)` are both 2 (rows 1-13); a code-point tiebreak would give 1 and
+`#N/A`. The order is the collation's, not ordinal: `"az"` over {"æ";"b"} is 1, as is `"oz"` over {"œ";"p"} (rows 14-20). Hyphen,
+apostrophe and accent tiebreaks count (they are not equal): `"coop"` over {"co-op"} and {"co-op";"cop"}, `"a"` over {"'a";"b"},
+`"resume"` over {"résumé"} and `"e"` over {"é"} are `#N/A`; `"résumé"` over {"resume";"resumf"} is 1 (rows 21-44).
+Accents order against each other too: `"ä"` over {a;á;ä;å;b} is 3 and `"á"` over {a;å;b} is 1 (rows 45-46). Case is
+ignored outright: `"A"` over {"A";"a"} is 2 (rows 47-50). MATCH -1's top-down scan (Calc!E-F, rows 51-69) uses the same
+collation: `"ae"` over {"æ";"ae"} is 1 (the first equal cell), `"ae"` over {"b";"a-e"} is 2.
+The engine already compared text this way (`compare_searched` → `compare_values` → `cmp_text_excel`); all 625 cells pass.
 The approximate searches compare numbers as exact doubles, not at 15 digits like the comparison operators (T-3073,
 probes/t3073-lookup-near-equal-approximate, excel-graph 2026-10-29). A table number a few ULP from the key is larger
 or smaller than it, never equal, so the search steps past it. In VLOOKUP and HLOOKUP (TRUE) and in `MATCH(key,…,1)`
@@ -342,7 +364,8 @@ models: 0.1+0.2 against 0.3 is decided by the 0.5, and the pair either side of 1
 digits too. The run of equal cells is a run of exactly equal
 doubles. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52 give 1, 2 and 3, where a 15-digit run would
 give 3 for all three (A30-C31; A32-C32 fit both). VLOOKUP, HLOOKUP and MATCH agree on every cell. The engine compares
-exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too (unverified in Excel: T-3106).
+exactly there (`compare_searched`, T-3099); LOOKUP shares the search, so it compares exactly too, as Excel does
+(T-3106, "XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles" below).
 Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
 2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
 a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
@@ -352,7 +375,7 @@ Status: VERIFIED
 Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`; numbers are ordered as exact doubles by
 `compare_searched` there.
-Tasks: T-0212, T-0220, T-3073, T-3099
+Tasks: T-0212, T-0220, T-3073, T-3099, T-3115
 
 ## MATCH descending search scans from the top; a text match_type read from a cell is #REF!
 Rule 1: a descending search (negative match_type) is a linear scan from the first cell, not a binary
@@ -564,6 +587,62 @@ Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153
 
+## MATCH, VLOOKUP and HLOOKUP exact-match keys fold case one character to one (T-3133)
+Rule: the exact match of MATCH (type 0), VLOOKUP and HLOOKUP (`range_lookup` FALSE) compares text case-insensitively
+with SEARCH's per-character fold, never changing the text's length (criteria.md "Wildcard escapes, case and trailing
+tilde" lists the same fold for wildcard criteria). Over Data!A1:A35 = İ ı I i ΟΣ οσ ος K(U+212A) k K ẞ ß ǅ ǆ Ǆ
+Å(U+212B) å Å Ω(U+2126) ω Ω ſ s S µ μ Μ Ａ ａ Σ σ ς i+U+0307 ss İx, each value looked up both ways (as the key against
+each one-cell array, and against the whole column): `İ` matches only `İ` (not `i`, `I` or i+U+0307), `ı` only `ı`;
+`ΟΣ = οσ = ος` and `Σ = σ = ς`; the Kelvin sign = `k` = `K`; `ẞ = ß` (not `ss`); `ǅ = ǆ = Ǆ`; the Ångström sign = `å`
+= `Å`; the Ohm sign = `ω` = `Ω`; `Ａ = ａ`; `μ = Μ`; `ſ` and `µ` match only themselves. MATCH, VLOOKUP(..,FALSE),
+HLOOKUP(..,FALSE) and XMATCH(..,2) give the same first position for every key.
+XMATCH's exact mode (0) differs: it compares by the collation (coercion.md "Collation equality in lookups and
+criteria"), where `İ` equals i+U+0307 and `ẞ`/`ß` equal `ss`, but not `I` or `i`.
+Evidence: probes/t3133-lookup-criteria-case-fold Calc!A1:E35, I1:J35 (excel-graph, 2026-10-29, T-3133).
+UNVERIFIED: characters outside the list above are assumed to follow the same fold.
+Status: VERIFIED
+Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
+search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
+
+## XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles (T-3106)
+Rule: XMATCH and XLOOKUP equate and order numbers as exact doubles, not at 15 digits like the comparison operators, in
+the exact (0), next-smaller (-1) and next-larger (1) match modes and in every search mode (1, -1, 2, -2). LOOKUP does
+too, in its vector form and its tall and wide array forms, as VLOOKUP, HLOOKUP and MATCH do ("Approximate-match
+lookups" above). A table number X a few ULP from the key is never equal to it, so (the braces stand for ranges whose
+cells compute X, since an array constant cannot hold `1+2^-52`):
+- the exact mode is `#N/A` for every near-equal pair: `XMATCH(1,{2;1+2^-52;0.5},0)` and
+  `XMATCH(0.3,{2;0.1+0.2;0.5},0)` are `#N/A`, linear or binary;
+- next-smaller takes the 0.5 when X is above the key (3 over {2;X;0.5}, 1 over {0.5;X;2}) and X itself when below (2);
+- next-larger takes X when it is above the key (2) and the 2 when below (1 over {2;X;0.5}, 3 over {0.5;X;2});
+- LOOKUP over the unsorted {2;X;0.5} is `#N/A` when X is above the key and 3 when below, and over the sorted
+  {0.5;X;2} it is 1 and 2.
+A 15-digit compare would give 2 in all of these.
+Runs of near-equal numbers are distinct values. Over 1, 1+2^-52, 1+2·2^-52, 2 the keys 1, 1+2^-52 and 1+2·2^-52
+give 1, 2 and 3 in every match mode, under search_mode 1, -1 and 2 and in LOOKUP's three forms. Over the
+descending 2, 1+2·2^-52, 1+2^-52, 1, 0.5 they give 4, 3 and 2 in every match mode, linear (1, -1) and binary (-2).
+A 15-digit run would make the three equal, so search_mode -1 would give the run's last cell. LOOKUP over the descending
+run (D30-D32: `#N/A`, 3, 5) is its binary search on data out of order, which the engine reproduces.
+XLOOKUP returns the result-vector cell of XMATCH's position in every cell, and its if_not_found where XMATCH is `#N/A`.
+Evidence: probes/t3106-lookup-xmatch-near-equal (excel-graph, 2026-10-29), Sheet1 rows 1-20. Each row is the
+key/X pair of probes/t3073-lookup-near-equal-approximate's row: 1 against 1+k·2^-52 and 1-k·2^-53 (k = 1, 2, 3, 8),
+the reverse, 0.3 against 0.1+0.2 both ways, and the pair either side of 1+5E-15. The columns are LOOKUP (A-D),
+XMATCH (E-P) and XLOOKUP (Q-AB). Rows 30-32 and 34-36 hold the runs. Rows 8, 16, 19 and 20 fit both models.
+AC8 (`=1-(1-8*2^-53)` from cells, 0) repeats T-3073's E8 (numbers.md "Operand order", T-3100).
+The engine matches every cell: LOOKUP shares `SearchVector::approximate_search` and `compare_searched`
+(lookup_table.rs, T-3099); XMATCH and XLOOKUP compare through `compare_searched` in `linear_scan`, `cmp_searched` in
+`binary_search_by` and exact-bit `CollatedKey`s in the exact index (T-3132).
+The wildcard mode (2) with a number key equates numbers the same way (T-3161): over {2;X;0.5}, `XMATCH(1,..,2)` is
+`#N/A` for X = 1+2^-52, 1-2^-53, 1+1E-15 and 1+5E-15, and so is `XMATCH(0.3,..,2)` for X = 0.1+0.2 and
+`XMATCH(1+2^-52,{2;1;0.5},2)`; search_mode -1 agrees, and XLOOKUP gives its if_not_found. An exact 1 after X is
+found (4 over {2;X;0.5;1}), a text "1" is not, and the key 0.1+0.2 or 1+2^-52 finds its own X (2). The regex mode (3)
+reads the key as text at 15 digits (`XMATCH(1+2^-52,{2;1;0.5},3)` is 2) and finds it anywhere in each candidate's
+text ("Regex mode" below), so near-equal numbers do match; whether a candidate number also reads at 15 digits is not
+shown (an anchored pattern would show it): `XMATCH(1,{2;1+2^-52;0.5},3)` is
+2, as is `XMATCH(0.3,{2;0.1+0.2;0.5},3)`, and `XMATCH(1,{2;1+2^-52;"1";0.5},3,-1)` finds the text "1" (3).
+Evidence: probes/t3161-xmatch-wildcard-regex-near-equal Calc!A1:G10 (excel-graph, 2026-10-30).
+Status: VERIFIED
+Tasks: T-3106, T-3132, T-3161
+
 ## XLOOKUP / XMATCH with an omitted lookup_value is a blank cell
 Rule: an omitted lookup_value (`XMATCH(,H1:H4)`, `XLOOKUP(,...)`) is indistinguishable from a reference to a blank cell, in every
 match mode and search mode: exact, -1, 1, wildcard (2), reverse linear (-1) and binary (2, -2). With H1:H4 = 1, blank, "a", empty
@@ -660,11 +739,13 @@ MATCH, XMATCH, XLOOKUP and LOOKUP.
   row: `XMATCH(J5,A1:A5,-1)` is 5 and `XLOOKUP(J5,A1:A5,B1:B5,"nf",-1)` is "e". That is the existing blank-key behavior, not a new
   rule: the blank is the number 0 in the approximate lookups (below 10, so `#N/A`; see "Approximate-match lookups") and larger than
   every number in XMATCH/XLOOKUP (so -1 takes the last row; see "XMATCH / XLOOKUP linear search over blanks"). The probe has no 0,
-  `""` or blank candidates, so it does not test those against a reference-shaped key.
+  `""` or blank candidates, so it does not test those against a reference-shaped key. The plain blank-cell key against
+  tables that do hold a 0, a `=""`, a FALSE or a blank row is probes/t3096-lookup-value-blank-elements Calc rows 2-8: it
+  finds only the 0 row (exact), and lands as the number 0 would in the approximate searches (above).
 Evidence: probes/lookup-reference-lookup-value-blank-error (165 cells: 5 shapes x {blank, #DIV/0!, #N/A} x 11 lookups;
 excel-graph, 2026-10-12, T-1371). The engine already matches every cell.
 Status: VERIFIED
-Tasks: T-1371
+Tasks: T-1371, T-3096
 
 ## XMATCH and XLOOKUP next-smaller mode: text sorts above every number
 Rule: with match_mode -1 (exact or next smaller), a text lookup_value that is not found among numbers takes the last number:
@@ -898,10 +979,35 @@ the 10-cell range is the count's `#N/A` (coercion.md "SUMX2MY2 / SUMX2PY2 / SUMX
 `ISTEXT(TAKE(E7:E8,1))` TRUE and `ISFORMULA(TAKE(E7:E8,1))` FALSE.
 Evidence: probes/t3072-take-drop-one-cell-reference P1-P18, P42-P57 (excel-graph, 2026-10-28, T-3072); gen-m9/7674c89c824aca43 Calc!A305
 (`CHITEST((E9-TAKE(E7,2,42)),C8:C10)` `#VALUE!`), gen-m9/7c20351562a2d71d Calc!A277.
+
+Every other one-cell reference form is the same: a defined name for `$E$7`, a LET variable bound to `E7`, `INDEX(E7:E8,1)` and `OFFSET(E7,0,0)` as the
+array of TAKE or DROP keep the reference. `ROWS(E9-TAKE(x,1))` and `ROWS(E9-DROP(x,0))` are `#VALUE!` (E7 text), `ISREF(TAKE(x,1))` is TRUE and
+`TYPE(1+TAKE(x,1))` is 1 for a number cell, for each form.
+Evidence: probes/t3085-take-drop-one-cell-forms P1-P16 (excel-graph, 2026-10-29, T-3085).
 Ours: `take_drop_reference` reads a one-cell reference argument, on this sheet or another, through `evaluate_node_with_reference`, as a
 one-cell range, before choosing its value or reference read (T-3072).
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2519, T-3072
+
+## TAKE/DROP of a variable bound to one cell is a reference
+Rule: a LET variable or LAMBDA parameter bound to a one-cell reference is that reference as TAKE's, DROP's or TRIMRANGE's array, read
+bare, as a LET body (nested LETs too) or as the arm IF picks, as a written one-cell reference is (above): `TYPE(TAKE(LET(v,A2,v),1))`,
+`TYPE(TAKE(LET(v,A2,acc,v,y,"?b",acc),-1,-1))`, `TYPE(TAKE(LET(v,A2,LET(w,v,w)),1))`, `LET(v,A2,TYPE(TAKE(v,1)))`,
+`LET(v,A2,TYPE(TAKE(IF(TRUE,v),1)))`, `TYPE(DROP(LET(v,A2,v),0))` and `TYPE(LAMBDA(v,TAKE(v,1))(A2))` are 1 (not a 1x1 array's 64), and
+`ISREF` of `TAKE(LET(v,A2,v),1)`, `TAKE(v,1)`, `TAKE(IF(TRUE,v),1)`, `DROP(LET(v,A2,v),0)`, `TRIMRANGE(LET(v,A2,v))` and of the LAMBDA
+form is TRUE. So a blank one reads as a blank cell: `TAKE(LET(v,A1,v),1)` is 0 in a cell, `TAKE(LET(v,A1,acc,v,acc),-1,-1)&""` is "",
+`TYPE(TAKE(LET(v,A1,v),1)+0)` 1; and with A3 text `ROWS(A2-TAKE(LET(v,A3,v),2,42))` is `#VALUE!`. A variable bound to a value stays an
+array: `TYPE(TAKE(LET(v,5,v),1))`, `TYPE(TAKE(5,1))`, `TYPE(TAKE(LET(v,A2+0,v),1))` and `TYPE(TAKE(LET(v,{5},v),1))` are 64, as is a lifted
+count, `TYPE(TAKE(LET(v,A1,v),{1;1}))`. A multi-cell binding was already its range (`TYPE(TAKE(LET(v,B1:B4,v),-1))` 1,
+`TYPE(TAKE(LET(v,B1:B4,v),2)-1)` 64, `ROWS(TAKE(LET(v,B1:B4,v),3))` 3).
+Evidence: probes/t2622-take-let-reference-lambda-text P1-P30 (excel-graph, 2026-10-29, T-2622); gen-m9/1b31092a0d79e5f1 Calc!A143
+(probes/t2475-stat-subexpressions P!A70, `TAKE(LET(v,D05!A$11,acc,v,y,"?b",acc),-1,-1)` 0 with TYPE 1).
+Ours: `Model::cell_variable_reference` (functions/logical/let.rs), read by TAKE's and DROP's value path (`value_or_grid` with
+`keep_cell_variables`) and by `evaluate_picked_source` for TAKE, DROP and TRIMRANGE as a reference argument; OFFSET's counts and every
+other consumer still read such a variable as its cell's value (T-2622). TRIMRANGE's value read of one (`TYPE(TRIMRANGE(LET(v,A2,v)))`) is
+unprobed.
+Status: VERIFIED (excel-graph); implemented
+Tasks: T-2622
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or
@@ -1241,8 +1347,12 @@ Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAX
 not yet (T-2824).
 
 ### MEDIAN, LARGE and SMALL over a lifted OFFSET
-probes/t2065-lift-median, -large, -small failed to open on Excel for the web on 2026-10-26 (createSession "retries exhausted", two runs).
-Status: UNVERIFIED (desktop question, M14 T-1075 item 18, decision 0039).
+Rule: each is `#VALUE!` over a lifted OFFSET (an array of references), like CONCAT and unlike STDEV.S, VAR.S and SUMSQ
+above: `MEDIAN(OFFSET(A1,{0;1;2},0))`, `LARGE(OFFSET(A1,{0;1},0),1)` and `SMALL(OFFSET(A1,0,0,{2;3}),2)` (data as
+probes/reference-lift-consumers-b2) all give `#VALUE!`.
+Evidence: probes/t2065-lift-median, -large, -small E1 (excel-graph, 2026-10-29; they failed to open on Excel for the web
+on 2026-10-26 with createSession "retries exhausted", and opened on the 2026-10-29 steward run's fill).
+Status: VERIFIED (excel-graph). Ours matches all three cells. This answers T-1075 item 18.
 Tasks: T-2065, T-2063, T-2064, T-2823, T-2824
 
 ## MATCH match_type that is a reference to an error cell is #REF! (excel-graph)

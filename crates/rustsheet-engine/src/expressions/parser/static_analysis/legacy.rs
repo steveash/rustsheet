@@ -8,7 +8,7 @@
 //! evaluation results as well as where an `@` goes: a change to it needs a probe's legacy values,
 //! not only its FORMULATEXT (SPEC-0012 "Placement", item 4).
 
-use super::if_arm::{is_reference_arm, returns_range_arm};
+use super::if_arm::{is_reference_arm, leaves_choose_index_whole, returns_range_arm};
 use super::lifted::lifts_arrays_at;
 use super::operand_array::{add_operand_array_at, for_each_value_operand, remove_operand_array_at};
 use super::reference_result::{is_let_call, let_result};
@@ -165,12 +165,13 @@ pub(super) fn remove_array_at(
     }
 }
 
-/// Whether argument `arg` of `kind` with `signature` is still in a value position of the cell
+/// Whether argument `index` of the call `kind(args)`, with `signature`, is still in a value position of the cell
 /// when `kind`'s call is (`arrays`), so that a legacy formula puts its `@` on an array-valued call
 /// or array constant there rather than on an enclosing call: a scalar argument of a function that
 /// computes from it (`=ABS(@IF(1,{-2;3}))`, `=LEN(@IF(1,{"ab";"c"}))`, `=N(@TRANSPOSE({2,3}))`,
 /// `=N(@IFERROR({2;3},0))`; probes/legacy-array-result, legacy-n-t-reference-args D, T-1713).
-/// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`]), IFS or
+/// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`], unless
+/// [`leaves_choose_index_whole`]), IFS or
 /// SWITCH, whose result is one of them: `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the
 /// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF,
 /// SWITCH or a CHOOSE, INDEX or IFS of array constants ([`leaves_call_whole`]); nor
@@ -179,14 +180,17 @@ pub(super) fn legacy_array_context(
     kind: &Function,
     signature: Option<&Signature>,
     index: usize,
-    arg: &Node,
+    args: &[Node],
     arrays: bool,
 ) -> bool {
     arrays
         && matches!(signature, Some(Signature::Scalar))
-        && (!returns_an_argument(kind) || is_choose_index(kind, index))
+        && (!returns_an_argument(kind)
+            || (is_choose_index(kind, index) && !leaves_choose_index_whole(kind, args)))
         && !matches!(kind, Function::Let | Function::Lambda)
-        && !leaves_call_whole(kind, arg)
+        && args
+            .get(index)
+            .is_some_and(|arg| !leaves_call_whole(kind, arg))
 }
 
 /// CHOOSE's index is the one argument it computes from rather than returns, so a legacy formula
@@ -355,8 +359,8 @@ pub(super) fn add_root_legacy_intersection(node: &mut Node, add: bool) {
 
 /// `node`, or the operand of an `@` over it.
 fn under_at(node: &Node) -> &Node {
-    match node {
-        Node::ImplicitIntersection { child, .. } => child,
+    match node.unwrap_spaced() {
+        Node::ImplicitIntersection { child, .. } => child.unwrap_spaced(),
         node => node,
     }
 }
@@ -529,7 +533,8 @@ fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
 
 /// Marks the N or T call `kind(args)`, in a value position of a legacy cell and its arguments
 /// already rewritten, as one that reads an array argument as `#VALUE!` (the marker of SPEC-0012,
-/// rule 2). Its argument must be a bare IF (no `@`, no parentheses), or a CHOOSE, INDEX or IFS
+/// rule 2). Its argument must be a bare IF (no `@`, no parentheses; typed whitespace is looked
+/// through), or a CHOOSE, INDEX or IFS
 /// that returns only array constants ([`returns_array_constants`]), and not statically a scalar.
 /// `=N(IF(1,{2;3}))`, `=T(IF(1,{"a";"b"}))`, `=N(CHOOSE(1,{2;3}))`,
 /// `=N(CHOOSE({1;2},{2;3},{4;5}))` (no `@` on the index either), `=N(INDEX({2,3;4,5},1))`,
@@ -550,10 +555,13 @@ fn is_returned_argument(kind: &Function, index: usize, count: usize) -> bool {
 /// ([`chooses_references_by_an_array_index`]) goes too: `=N(CHOOSE({1},X1:X2,Y1:Y2))` shows none
 /// (probes/legacy-n-t-choose-array-index-shapes L, T-2100).
 pub(super) fn mark_legacy_reading(kind: &mut Function, args: &mut [Node]) {
-    let [Node::FunctionKind {
+    let [arg] = args else {
+        return;
+    };
+    let Node::FunctionKind {
         kind: call,
         args: call_args,
-    }] = args
+    } = arg.unwrap_spaced_mut()
     else {
         return;
     };

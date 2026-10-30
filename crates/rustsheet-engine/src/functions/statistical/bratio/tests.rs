@@ -1,4 +1,4 @@
-use super::{beta_dist_lower_tail, closed_or_ported_tails, dispatch, Branch};
+use super::{beta_dist_lower_tail, closed_or_ported_tails, dispatch, half_complement, Branch};
 
 fn branch(a: f64, b: f64, x: f64) -> (Branch, bool) {
     let d = dispatch(a, b, x, 1.0 - x).expect("in domain");
@@ -86,7 +86,7 @@ fn bpser_branches_match_excel() {
 // Branches not ported yet, and a shape of 1 outside the closed forms, keep today's kernel.
 #[test]
 fn unported_points_keep_todays_kernel() {
-    use crate::functions::statistical::incomplete_beta::beta_reg_complement;
+    use crate::functions::statistical::incomplete_beta::beta_reg_tails;
     for (x, a, b) in [
         (0.295, 0.5, 5.0),                   // bup + bgrat
         (0.5, 50.0, 60.0),                   // bfrac
@@ -96,7 +96,7 @@ fn unported_points_keep_todays_kernel() {
     ] {
         assert_eq!(
             cdf(x, a, b).to_bits(),
-            beta_reg_complement(x, 1.0 - x, a, b).to_bits()
+            beta_reg_tails(x, 1.0 - x, a, b).0.to_bits()
         );
     }
 }
@@ -155,4 +155,189 @@ fn bpser_above_eight_takes_a_ln_beta() {
             "BETA.DIST({x},{a},{b},TRUE)"
         );
     }
+}
+
+/// One row of `test/fixtures/bratio_beta_dist.fixture`: Excel's BETA.DIST(x, a, b, TRUE) with
+/// y = fl(1 - x), and the branch and swap r2-bratio's model names for the point (the model's
+/// branch names, spaces written as underscores).
+struct FixtureRow {
+    a: f64,
+    b: f64,
+    x: f64,
+    y: f64,
+    excel: f64,
+    branch: Branch,
+    swapped: bool,
+}
+
+/// The rows of the bratio fixture (SPEC-0025 "Test fixtures"; written by
+/// `docs/research/t3007/make_bratio_fixture.py`). A malformed line is a test failure.
+fn fixture_rows() -> Vec<FixtureRow> {
+    let bits = |field: &str| f64::from_bits(u64::from_str_radix(field, 16).expect("hex bits"));
+    let branch = |name: &str| match name {
+        "x=0" => Branch::Zero,
+        "y=0" => Branch::One,
+        "tiny" => Branch::Tiny,
+        "fpser" => Branch::Fpser,
+        "apser" => Branch::Apser,
+        "w_bpser" => Branch::WBpser,
+        "w1_bpser" => Branch::W1Bpser,
+        "bup+bgrat" => Branch::BupBgrat,
+        "bgrat" => Branch::Bgrat,
+        "bpser(a,b>1)" => Branch::BpserLarge,
+        "L140_bup+bpser" => Branch::L140BupBpser,
+        "L140_bup+bgrat" => Branch::L140BupBgrat,
+        "L140_bup+bup+bgrat" => Branch::L140BupBupBgrat,
+        "bfrac" => Branch::Bfrac,
+        "basym" => Branch::Basym,
+        _ => panic!("unknown branch {name:?}"),
+    };
+    include_str!("../../../test/fixtures/bratio_beta_dist.fixture")
+        .lines()
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(
+            |line| match line.split_whitespace().collect::<Vec<_>>().as_slice() {
+                [a, b, x, y, excel, name, swapped] => FixtureRow {
+                    a: bits(a),
+                    b: bits(b),
+                    x: bits(x),
+                    y: bits(y),
+                    excel: bits(excel),
+                    branch: branch(name),
+                    swapped: *swapped == "1",
+                },
+                _ => panic!("malformed fixture line {line:?}"),
+            },
+        )
+        .collect()
+}
+
+// SPEC-0025's dispatch test: on every fixture row the engine's dispatch names the branch and
+// swap r2-bratio's model does (every branch region the BETA.DIST cells reach: the x0 = 0.3 cut,
+// both swaps, b0 = 15, 40 and 100).
+#[test]
+fn fixture_dispatch_matches_the_model() {
+    let rows = fixture_rows();
+    assert_eq!(rows.len(), 857);
+    for r in &rows {
+        let d = dispatch(r.a, r.b, r.x, r.y).expect("in domain");
+        assert_eq!(
+            (d.branch, d.swapped),
+            (r.branch, r.swapped),
+            "K({}, {}, {}, {})",
+            r.a,
+            r.b,
+            r.x,
+            r.y
+        );
+    }
+}
+
+/// The fixture rows on a ported branch, with the engine's (w, w1) there.
+fn ported_rows() -> Vec<(FixtureRow, (f64, f64))> {
+    fixture_rows()
+        .into_iter()
+        .filter_map(|r| closed_or_ported_tails(r.x, r.y, r.a, r.b).map(|tails| (r, tails)))
+        .collect()
+}
+
+// Bit-exact cells per ported branch on the fixture (T-3007's count; a ratchet: raise it when a
+// change makes more exact, never lower it). The fixture's other 84 WBpser rows have a caller's
+// shape of 1, which `ported_tails` leaves on today's kernel.
+#[test]
+fn fixture_ported_branches_score() {
+    let mut scores = [
+        (Branch::WBpser, 225, 122),
+        (Branch::W1Bpser, 19, 16),
+        (Branch::BpserLarge, 205, 123),
+        (Branch::L140BupBpser, 122, 91),
+    ]
+    .map(|(branch, rows, exact)| (branch, rows, exact, 0, 0));
+    for (r, (w, _)) in ported_rows() {
+        let score = scores
+            .iter_mut()
+            .find(|score| score.0 == r.branch)
+            .expect("a ported branch");
+        score.3 += 1;
+        score.4 += usize::from(w.to_bits() == r.excel.to_bits());
+    }
+    for (branch, rows, exact, got_rows, got_exact) in scores {
+        assert_eq!(got_rows, rows, "{branch:?} rows");
+        assert!(got_exact >= exact, "{branch:?}: {got_exact} bit-exact");
+    }
+}
+
+// SPEC-0025's properties on every ported branch: one tail computed and the other its stored
+// complement (0.5 - w) + 0.5.
+#[test]
+fn ported_tails_are_stored_complements() {
+    for (r, (w, w1)) in ported_rows() {
+        assert!(
+            w1 == half_complement(w) || w == half_complement(w1),
+            "K({}, {}, {}, {}) = ({w}, {w1})",
+            r.a,
+            r.b,
+            r.x,
+            r.y
+        );
+    }
+}
+
+// K(a, b, x, y) = swap(K(b, a, y, x)) wherever the two calls swap differently and so compute the
+// same oriented point; where both swap or neither does (x or y = 0.5 at min(a, b) <= 1, λ = 0
+// at a = b) they are two different evaluations, a few ulp apart.
+#[test]
+fn ported_tails_are_swap_symmetric() {
+    let mut compared = 0;
+    for (r, (w, w1)) in ported_rows() {
+        let swaps = |a, b, x, y| dispatch(a, b, x, y).map(|d| d.swapped);
+        if swaps(r.a, r.b, r.x, r.y) == swaps(r.b, r.a, r.y, r.x) {
+            continue;
+        }
+        compared += 1;
+        let mirrored = closed_or_ported_tails(r.y, r.x, r.b, r.a).map(|(p, q)| (q, p));
+        assert_eq!(
+            mirrored.map(|(p, q)| (p.to_bits(), q.to_bits())),
+            Some((w.to_bits(), w1.to_bits())),
+            "K({}, {}, {}, {})",
+            r.a,
+            r.b,
+            r.x,
+            r.y
+        );
+    }
+    assert_eq!(compared, 536);
+}
+
+// Monotone in x on each shape pair's sorted ported rows, except where Excel's own value falls
+// between two x an ulp apart: BETA.DIST(x, 2.5, 2.5, TRUE) is 0.05000000000000001 at
+// 0.16528026665565798 and 0.05 at the next double (probes-numeric t1745-beta-inv-roundtrip G84,
+// H84; statistics.md "BETA.DIST's cdf is not monotone in its last bit").
+#[test]
+fn ported_tails_rise_with_x_where_excel_does() {
+    let mut rows = ported_rows();
+    rows.sort_by(|(p, _), (q, _)| {
+        (p.a, p.b, p.x)
+            .partial_cmp(&(q.a, q.b, q.x))
+            .expect("finite")
+    });
+    let mut pairs = 0;
+    for pair in rows.windows(2) {
+        let [(p, (wp, _)), (q, (wq, _))] = pair else {
+            continue;
+        };
+        if (p.a, p.b) != (q.a, q.b) {
+            continue;
+        }
+        pairs += 1;
+        assert!(
+            wq >= wp || q.excel < p.excel,
+            "({}, {}): {wp} at {}, {wq} at {}",
+            p.a,
+            p.b,
+            p.x,
+            q.x
+        );
+    }
+    assert_eq!(pairs, 422);
 }
