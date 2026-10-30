@@ -31,4 +31,3 @@ Code: `functions/xlookup.rs` (`xlookup_impl`, `xlookup_if_not_found`), `function
 
 ## Out of scope
 - Any change to XLOOKUP's scalar behavior.
-

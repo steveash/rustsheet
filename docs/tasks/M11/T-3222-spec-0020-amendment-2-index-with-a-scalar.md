@@ -29,4 +29,3 @@ Code: `functions/lookup_and_reference/index.rs` (`index_impl`, `index_source`, `
 
 ## Out of scope
 - Lifted INDEX indices; IF and CHOOSE forms that `pick_reference` resolves.
-

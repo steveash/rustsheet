@@ -29,9 +29,12 @@ Code: `tailed_array.rs` (`push_operands`, `tailed_leaves`, `TailView`), `functio
       `TAILED_OFF` path's, shown by counting tests for the merged and unmerged tail and at the cap boundary.
 - [ ] The equivalence tests of the amendment's test plan for this step, in `test/test_tailed_array.rs`.
 - [ ] A bench line for `SUM(--(VLOOKUP(A:A,..)=x))` in `aggregate -- tailed_consumers`, before and after numbers in the Outcome.
+- [ ] The refused-shapes tests and the `ROW()`-leaf-in-key tests (picked and not picked) of the test plan, and a fixed
+      `ReferenceKind` argument pointing at a cell in a cycle or in a spill evaluated during the head.
+- [ ] A `DEVIATION` entry in `docs/excel-semantics/` (decision 0014) for the fallback's possible work-budget
+      `#VALUE!` in place of the per-call cap's `#ERROR!` (Amendment 2 section 2), or a reference to an existing one.
 - [ ] `rustsheet-eval check` 0 regressions.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- INDEX as a consumer (T-3222); XLOOKUP and XMATCH (T-3223).
-
+- INDEX as a consumer (T-3222); XLOOKUP and XMATCH (T-3223), which keep today's path until T-3223 lands.
