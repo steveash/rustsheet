@@ -117,7 +117,7 @@ fn it_shares_the_order_with_weeknum_but_not_the_state() {
     assert_eq!(model._get_text("B1"), "16");
 }
 
-/// A lifted call over `periods` in A1, summed or not.
+/// A1 holds a lifted AMORDEGRC over `periods`.
 fn lifted(periods: &str) -> Model {
     let formula = format!("=AMORDEGRC(2400,39679,39813,300,{periods},0.15,1)");
     let mut model = new_empty_model();
@@ -135,6 +135,7 @@ fn a_lifted_call_reads_what_its_own_earlier_elements_left() {
     assert_eq!(model._get_text("A1"), "776");
 }
 
+/// Our behaviour, not Excel's: an error element inside a lifted call is unprobed (T-3220).
 #[test]
 fn an_error_element_stays_an_error_beside_a_fraction() {
     let model = lifted("{-1,0.5}");

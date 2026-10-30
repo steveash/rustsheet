@@ -1919,7 +1919,8 @@ workbook-wide state written in Excel's calculation order:
   (-ac to -af: A1 fraction, A2 the lifted SUM, A3 `AMORLINC(2400,39679,39813,300,1,0.15,1)`).
   An error element inside a lifted call is unprobed (ours: it leaves the value as it was, like a scalar error, so
   `{1,-1,0.5}` is 776, `#NUM!`, 776; T-3220).
-- Hypothesis from one probe: a dynamic-array formula in the order empties the state, as WEEKNUM's does (excel_order.rs): a fraction above
+- Hypothesis from one probe: a dynamic-array formula in the order empties the state, as WEEKNUM's does
+  (excel_order.rs): a fraction above
   `=SEQUENCE(1,2)` (A2) above the 485 charge (A3) is 0 (-ag; ours 485: emptying the state at the formula's place in
   `run_excel_order` did not change it, so how the pass reaches a spilling anchor is still to be found). Not fully
   explained: `=SEQUENCE(1,2)+AMORDEGRC(..485..)` in A2 above an AMORLINC in A3 leaves the 485 for the fraction in A1
