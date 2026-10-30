@@ -53,6 +53,8 @@ unchanged. New cases are oracle-filled with excel-graph.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
+- Covering every function in one PR: if the work exceeds size M, split it by function group and file the rest
+  as follow-up tasks with `make new-task` (as T-2861..T-2878 did).
 - FORECAST.ETS, FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY and FORECAST.ETS.STAT (T-2425).
 - The financial (T-3184), engineering and database argument kinds.
 - Fixing numeric residue of new cells (file it as tasks).

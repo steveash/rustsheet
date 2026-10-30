@@ -57,5 +57,7 @@ odd-period functions, T-2482 and T-2483; date coercion). The 1904 variants are T
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
+- Covering every function in one PR: if the work exceeds size M, split it by function group and file the rest
+  as follow-up tasks with `make new-task` (as T-2861..T-2878 did).
 - The statistical (T-3185), engineering and database argument kinds.
 - Fixing the numeric residue of new cells (file it as tasks).
