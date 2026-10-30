@@ -3,7 +3,7 @@ id: T-2611
 title: "XIRR's error-guess order and the other financial functions' domain-before-text orders under the gen-m9 cells (86 cells left by T-2428)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
