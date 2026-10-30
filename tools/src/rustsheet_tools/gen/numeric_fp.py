@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import random
 import re
+from decimal import ROUND_DOWN, ROUND_HALF_EVEN, Decimal
 from typing import Any
 
 from rustsheet_tools.gen.generator import col_letter
@@ -77,11 +78,11 @@ def _pairs() -> list[tuple[str, int, int]]:
 N_PAIRS = len(_pairs())
 
 
-def _inputs() -> tuple[dict[str, str | int], dict[str, str | int]]:
+def _inputs(pairs: list[tuple[str, int, int]]) -> tuple[dict[str, str | int], dict[str, str | int]]:
     """The `Inputs` and `Rows` (HLOOKUP blocks) sheets' cells; ids, keys and zeros are numbers, not text."""
     inputs: dict[str, str | int] = {}
     rows: dict[str, str | int] = {}
-    for r, (base, sign, k) in enumerate(_pairs(), 1):
+    for r, (base, sign, k) in enumerate(pairs, 1):
         inputs |= {
             f"A{r}": r,
             f"B{r}": f"={base}*(1{fmt_k(sign, k)})",
@@ -140,31 +141,135 @@ def _probes(position: str) -> list[tuple[str, str]]:
     return probes
 
 
-def generate_numeric_fp(seed: int) -> list[dict[str, Any]]:
-    """Return one gen-m2 `rustsheet-case/v1` spec per position (5,200 probe cells in all)."""
+# M5 (T-3204): the rounding functions read one operand (pickers, {v} the Inputs cell) or wrap the
+# cancellation ({e}). MOD's divisor 2^21 exceeds every X, so MOD(X,2^21) is X up to MOD's own error.
+M5_PICKERS = {
+    "trunc-20": "TRUNC({v},20)",
+    "trunc": "TRUNC({v})",
+    "int": "INT({v})",
+    "mod": "MOD({v},2^21)",
+    "roundup-20": "ROUNDUP({v},20)",
+    "rounddown-20": "ROUNDDOWN({v},20)",
+}
+M5_WRAPPERS = {
+    "trunc-20": "TRUNC({e},20)",
+    "trunc": "TRUNC({e})",
+    "int": "INT({e})",
+    "mod-1": "MOD({e},1)",
+    "roundup-20": "ROUNDUP({e},20)",
+    "rounddown-20": "ROUNDDOWN({e},20)",
+    "roundup-0": "ROUNDUP({e},0)",
+}
+M5_POSITIONS = ("root", "wrapper", "digits15")
+SIG_DIGITS = 15
+MAX_BOUNDARY_K = 1 << 12  # every FP_BASES boundary lies below k = 50; the cap only bounds the search
+
+
+def _value(base: str) -> float:
+    """The double an `FP_BASES` entry evaluates to: a decimal literal or a parenthesized power of two."""
+    if "^" in base:
+        return 2.0 ** int(base.strip("()").split("^")[1])
+    return float(base)
+
+
+def _x(base: str, sign: int, k: int) -> float:
+    """X = base*(1 ± k*2^-52) as Excel's Inputs formula computes it (the same IEEE double operations)."""
+    return _value(base) * (1 + sign * k * 2.0**-52)
+
+
+def _cut(x: float, rounding: str) -> Decimal:
+    """x's exact decimal value cut to 15 significant digits, rounded half-even or truncated."""
+    d = Decimal(x)
+    unit = Decimal(1).scaleb(d.adjusted() - SIG_DIGITS + 1)
+    return d.quantize(unit, rounding=rounding)
+
+
+def _cut_tags(base: str, sign: int, k: int) -> str:
+    """Whether X's 15-digit cut, rounded and truncated, equals b's (`eq`) or not (`ne`)."""
+    x, b = _x(base, sign, k), _value(base)
+    return "/".join(
+        f"{name}={'eq' if _cut(x, mode) == _cut(b, mode) else 'ne'}"
+        for name, mode in (("round15", ROUND_HALF_EVEN), ("trunc15", ROUND_DOWN))
+    )
+
+
+def _boundary_pairs() -> list[tuple[str, int, int]]:
+    """(base, sign, k) one step either side of the first k whose rounded or truncated 15-digit cut leaves b."""
+    pairs: list[tuple[str, int, int]] = []
+    for base in FP_BASES:
+        for sign in SIGNS:
+            ks: set[int] = set()
+            for mode in (ROUND_HALF_EVEN, ROUND_DOWN):
+                b = _cut(_value(base), mode)
+                flip = next(
+                    (k for k in range(1, MAX_BOUNDARY_K) if _cut(_x(base, sign, k), mode) != b),
+                    MAX_BOUNDARY_K,
+                )
+                ks |= {flip - 1, flip, flip + 1}
+            pairs += [(base, sign, k) for k in sorted(ks)]
+    return pairs
+
+
+def _m5_probes(position: str, pairs: list[tuple[str, int, int]]) -> list[tuple[str, str]]:
+    """(formula, hypothesis) for every pair and M5 form of one position."""
+    probes: list[tuple[str, str]] = []
+    pickers = {"ref": "{v}", **M5_PICKERS} if position == "digits15" else M5_PICKERS
+    for r, (base, sign, k) in enumerate(pairs, 1):
+        params = f"base={base}/sign={sign:+d}/k={k}"
+        if position == "digits15":
+            params += "/" + _cut_tags(base, sign, k)
+        x_ref, b_ref = f"Inputs!{X_COL}{r}", f"Inputs!{B_COL}{r}"
+        if position in ("root", "digits15"):
+            for picker, pick in pickers.items():
+                x, b = pick.format(v=x_ref), pick.format(v=b_ref)
+                for order, tmpl in ORDERS.items():
+                    probes.append(("=" + tmpl.format(x=x, b=b), f"pick-{picker}/{order}/{params}"))
+        if position in ("wrapper", "digits15"):
+            for form, wrap in M5_WRAPPERS.items():
+                for order, tmpl in ORDERS.items():
+                    e = tmpl.format(x=x_ref, b=b_ref)
+                    probes.append(("=" + wrap.format(e=e), f"wrap-{form}/{order}/{params}"))
+    return probes
+
+
+def _case(
+    seed: int, milestone: str, position: str, sheets: list[dict[str, Any]], probes: list[tuple[str, str]]
+) -> dict[str, Any]:
+    """One `rustsheet-case/v1` spec: the probes on sheet `Calc` after `sheets`, each tagged with its hypothesis."""
+    calc = {f"A{i}": f for i, (f, _) in enumerate(probes, 1)}
+    functions = sorted({name for f in calc.values() for name in CALL.findall(f)})
+    return {
+        "format": "rustsheet-case/v1",
+        "description": f"numeric-fp probes ({position}) seed={seed}; near-zero snapping through {milestone} functions",
+        "tags": ["generated", milestone, "numeric-fp", position, *functions],
+        "sheets": [*sheets, {"name": "Calc", "cells": calc}],
+        "expected": {},
+        "check": [f"Calc!{c}" for c in calc],
+        "hypotheses": {f"Calc!A{i}": f"numeric-fp/{position}/{t}" for i, (_, t) in enumerate(probes, 1)},
+    }
+
+
+def generate_numeric_fp(seed: int, milestone: str = "M2") -> list[dict[str, Any]]:
+    """Return one `rustsheet-case/v1` spec per position: gen-m2's 5,200 probe cells, or gen-m5's (T-3204)."""
+    if milestone not in ("M2", "M5"):
+        raise ValueError(f"numeric-fp covers M2 and M5, not {milestone}")
     rng = random.Random(seed)
-    inputs, rows = _inputs()
     cases: list[dict[str, Any]] = []
-    for position in POSITIONS:
-        probes = _probes(position)
+    if milestone == "M2":
+        inputs, rows = _inputs(_pairs())
+        for position in POSITIONS:
+            probes = _probes(position)
+            rng.shuffle(probes)
+            sheets = [{"name": "Inputs", "cells": inputs}]
+            if position == "root":
+                sheets.append({"name": "Rows", "cells": rows})
+            cases.append(_case(seed, milestone, position, sheets, probes))
+        return cases
+    for position in M5_POSITIONS:
+        pairs = _boundary_pairs() if position == "digits15" else _pairs()
+        probes = _m5_probes(position, pairs)
         rng.shuffle(probes)
-        calc = {f"A{i}": f for i, (f, _) in enumerate(probes, 1)}
-        sheets = [{"name": "Inputs", "cells": inputs}]
-        if position == "root":
-            sheets.append({"name": "Rows", "cells": rows})
-        sheets.append({"name": "Calc", "cells": calc})
-        functions = sorted({name for f in calc.values() for name in CALL.findall(f)})
         cases.append(
-            {
-                "format": "rustsheet-case/v1",
-                "description": f"numeric-fp probes ({position}) seed={seed}; near-zero snapping through M2 functions",
-                "tags": ["generated", "M2", "numeric-fp", position, *functions],
-                "sheets": sheets,
-                "expected": {},
-                "check": [f"Calc!{c}" for c in calc],
-                "hypotheses": {
-                    f"Calc!A{i}": f"numeric-fp/{position}/{t}" for i, (_, t) in enumerate(probes, 1)
-                },
-            }
+            _case(seed, milestone, position, [{"name": "Inputs", "cells": _inputs(pairs)[0]}], probes)
         )
     return cases
