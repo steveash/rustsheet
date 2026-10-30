@@ -104,6 +104,13 @@ impl Model {
         }
         let source = if as_reference {
             self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context, true)
+        } else if matches!(
+            args[0].ungrouped(),
+            Node::ReferenceKind { .. } | Node::DefinedNameKind(_)
+        ) {
+            // A one-cell reference stays a range of one cell, as for TAKE/DROP
+            // (drop_take.rs, T-3072), so its one-cell trim below is a reference.
+            self.evaluate_node_with_reference(&args[0], cell)
         } else {
             self.evaluate_node_in_context(&args[0], cell)
         };
@@ -130,16 +137,17 @@ impl Model {
             Ok((rows, columns)) => match reference_corner {
                 Some(left) if as_reference => RefArg::from(sub_range(left, &rows, &columns)),
                 _ => {
-                    let trimmed: Vec<Vec<_>> = data[rows]
+                    let trimmed: Vec<Vec<_>> = data[rows.clone()]
                         .iter()
                         .map(|row| row[columns.clone()].to_vec())
                         .collect();
-                    // Excel: a one-cell trim of a reference is a scalar value, not an array
-                    // (`TYPE(TRIMRANGE(A2))` is 1, `ROWS(A2-TRIMRANGE(A3))` with text in A3 is
-                    // #VALUE!; probes/t3130-concat-lambda-trimrange-cell-variable Q13-Q16).
-                    match trimmed.as_slice() {
-                        [row] if reference_corner.is_some() && row.len() == 1 => {
-                            RefArg::Value(array_node_to_calc_result(&row[0], cell))
+                    // Excel: a one-cell trim of a reference is that reference, a scalar value
+                    // rather than a 1x1 array (`TYPE(TRIMRANGE(A2))` is 1,
+                    // `ROWS(A2-TRIMRANGE(A3))` with text in A3 is #VALUE!; probes/t3130-concat-
+                    // lambda-trimrange-cell-variable Q13-Q16).
+                    match reference_corner {
+                        Some(left) if rows.len() == 1 && columns.len() == 1 => {
+                            RefArg::from(sub_range(left, &rows, &columns))
                         }
                         _ => RefArg::Value(CalcResult::Array(trimmed)),
                     }
