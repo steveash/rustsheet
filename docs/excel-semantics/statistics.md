@@ -428,8 +428,8 @@ there, a log form with the rest of the exponent about 1E-14 high; no tried order
 or in an x87 register, nor the ratio form, Loader's saddle point or `rcomp`, reproduces it (13 to 435 ulp off).
 Implemented in: functions/statistical/gamma.rs `log_form_density` (GAMMA.DIST, GAMMADIST, and CHISQ.DIST through
 chisq.rs).
-Status: VERIFIED for the forms (0 to 3 ulp at every probed density from shape 0.5 to 3; the remaining bits and y above
-16 are T-2852's follow-up)
+Status: VERIFIED for the forms (0 to 3 ulp at the probed densities from shape 0.5 to 3, 6 at gen-m9/a54c738c697617c3
+A29; the remaining bits, y above 16 and shapes below 0.5 are T-3303)
 
 ## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
 Rule: these functions are bit-identical compositions of one another, so their last digits come from one
