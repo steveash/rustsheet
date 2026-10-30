@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2961: mm month-or-minute after a time section and a date token.",
+ "tags": [
+  "M10",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(0.25,\"h:mm|yyyy-mm-dd\")",
+    "A2": "=TEXT(45000.75,\"h:mm|yyyy-mm-dd\")",
+    "A3": "=TEXT(0.25,\"h|yyyy-mm\")",
+    "A4": "=TEXT(45000.75,\"h|yyyy-mm\")",
+    "A5": "=TEXT(0.25,\"h:mm yyyy mm\")",
+    "A6": "=TEXT(45000.75,\"h:mm yyyy mm\")",
+    "A7": "=TEXT(0.25,\"hh mm|dd mm\")",
+    "A8": "=TEXT(45000.75,\"hh mm|dd mm\")",
+    "A9": "=TEXT(0.25,\"h:mm|dd-mm\")",
+    "A10": "=TEXT(45000.75,\"h:mm|dd-mm\")",
+    "A11": "=TEXT(0.25,\"h:mm|mm\")",
+    "A12": "=TEXT(45000.75,\"h:mm|mm\")",
+    "A13": "=TEXT(0.25,\"h:mm:ss|yyyy-mm\")",
+    "A14": "=TEXT(45000.75,\"h:mm:ss|yyyy-mm\")",
+    "A15": "=TEXT(0.25,\"h:mm mmm mm\")",
+    "A16": "=TEXT(45000.75,\"h:mm mmm mm\")",
+    "A17": "=TEXT(0.25,\"h:mm|\"\"x\"\"mm\")",
+    "A18": "=TEXT(45000.75,\"h:mm|\"\"x\"\"mm\")",
+    "A19": "=TEXT(0.25,\"mm:ss|yyyy-mm\")",
+    "A20": "=TEXT(45000.75,\"mm:ss|yyyy-mm\")",
+    "A21": "=TEXT(0.25,\"h:mm\\-yyyy\\-mm\")",
+    "A22": "=TEXT(45000.75,\"h:mm\\-yyyy\\-mm\")"
+   }
+  }
+ ],
+ "expected": {}
+}

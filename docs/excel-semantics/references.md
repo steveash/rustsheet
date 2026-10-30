@@ -2697,17 +2697,19 @@ calculated is, after import, no calculated column for a typed re-fill. A stored 
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
 types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below).
-Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
-grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
-over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
+Ours (T-2968, T-3218): rule 7. A formula or a constant typed (not stored) into the cell just right of a table's
+header row, a data row or its totals row grows the table by one column (`Model::table_expansion`,
+calculated_columns.rs), before the fill of rules 1-5 runs over the new column. A constant fills nothing, and a
+formula typed beside the totals row fills nothing either; the totals cell is never filled (rules 7a, 7c). The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
 and the name is written into its header cell. A formula typed into the header cell itself is not stored: the header
-is the text `0`. Excel's header is the text `0` for any formula typed there (rule 7b: `=2+3`, `="x"`, ISTEXT TRUE), not derived from its value; the engine writes text `0`. If the
-table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
-and the cell is typed as before, in these cases: a constant typed there, a table with a totals row, a new
-column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). The engine deviates from Excel on rules 7a, 7c, 7e and 7f (known deviations, not accepted behavior; T-3218); it already matches 7b and 7d. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
+is the text `0`. Excel's header is the text `0` for any formula typed there (rule 7b: `=2+3`, `="x"`, ISTEXT TRUE), not derived from its value; the engine writes text `0`. A constant typed
+into the header cell is the header text, always text (`5` is the text `5`; a leading `'` is dropped, unprobed). If the
+table already has a column of that name, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
+and the cell is typed as before, in these cases: an empty value, a new
+column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). The engine deviates from Excel on rules 7e and 7f (known deviations, not accepted behavior; T-3273, T-3274); it matches 7a-7d. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs; rule 7a-7f by probes/t3003-*)
-Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
+Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7 (7a-7d), the same file (T-2968, T-3218)
 Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033, T-3003, T-3218
 
 ## Unknown function call names: spelling in FORMULATEXT
