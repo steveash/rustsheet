@@ -56,12 +56,12 @@ If the task is bigger than size M, split it (planner) instead of doing it.
   the first commit after the claim so other sessions see the number.
 
 ## 5. Review
-Open the PR as a draft (step 6.2's template) if none exists, so the reviewers' verdict
-records have a PR to go on. Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES
-finding, re-run `make check`, and re-run only the reviewers that did not approve. Max 3 review
-rounds; if still blocked, set the task `status: blocked` with a "Blocked because" section, push
-the branch, keep the PR a draft, and stop work on this task (pick the next one at step 1 while the session budget allows). When
-the round limit is the only blocker, the section's first line is exactly
+Open the PR as a draft (step 6.2's template) if none exists, so the reviewers' verdict records have
+a PR to go on. Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run
+`make check`, and re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked,
+set the task `status: blocked` with a "Blocked because" section, push the branch, keep the PR a
+draft, and stop work on this task (pick the next one at step 1 while the session budget allows).
+When the round limit is the only blocker, the section's first line is exactly
 `Blocked because: review-round limit` (no other block uses it); if the task file already says
 `Resumed after the review-round limit (step 5c).`, write `Blocked because: review-round limit, twice`
 instead: that one goes to the owner, not to another run (decision 0095).
