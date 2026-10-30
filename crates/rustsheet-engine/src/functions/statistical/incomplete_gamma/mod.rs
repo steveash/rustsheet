@@ -45,9 +45,12 @@ use std::cell::RefCell;
 use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
 use statrs::prec;
 
+use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{rlog1, stirling_correction};
 use super::special::refine_increasing;
 use crate::functions::util::poly;
+use crate::x87_exp::excel_exp;
+use crate::x87_log10::excel_ln;
 
 /// The most series or continued-fraction terms one cdf, or one whole inversion, may take. The
 /// series needs about 6.8 * sqrt(a) terms at its slowest, x = a (it is used for x <= a, and needs
@@ -316,6 +319,45 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
         sum += term * ratio / (1.0 - ratio);
     }
     sum
+}
+
+/// The largest a·LN(x) at which [`excel_small_shape_lower`] takes Excel's form: from |a ln x| = 16
+/// on the double exponent's ulp is 2^-48 or more, so its rounding moves P by up to 1.8E-15, the 15th
+/// digit (probes/t3012-gamma-dist-at-quantile A3-A5, A16-A18, A21, A24: up to 102 ulps between
+/// the forms). Nearer 0 Excel still takes the form (its value is the exact cdf with the double
+/// exponent to within 0.1 ulp of that exponent at A20, A25, A30 and A31), but the forms are a few
+/// ulps apart and the engine's EXP, LN and GAMMALN leave a 1-ulp residue either way: A31
+/// `GAMMA.DIST(1E-5,0.25,1,TRUE)` and C25 are bit-exact on the pair and 1 ulp off with the form,
+/// so the pair is kept there (T-3060). No probe cell pins -16 itself: the in-region cells
+/// nearest the cut are at about -23.05 (rows 1, 19, 24) and the excluded ones at -11.54 to
+/// -11.61 (rows 2, 6, 10, 20, 25), so any cut in between scores the same; -16 is the ulp
+/// argument above (T-3242 probes the gap).
+const EXCEL_EXPONENT_MAX: f64 = -16.0;
+
+/// GAMMA.DIST's cdf P(a, x) at a shape below 1 and a normal x below 1 where a·LN(x) is at most
+/// [`EXCEL_EXPONENT_MAX`] (so the pair takes P from the series, not as 1 - Q): Excel's
+/// leading factor `EXP(a*LN(x))/EXP(GAMMALN(a+1))`, with a·LN(x) rounded to a double, times e^-x
+/// and the series (T-3060). That rounding is Excel's error, up to 1.2E-14 of P where |a ln x| is
+/// near 230: `GAMMA.DIST(4.147567013992206E-134,0.75,1,TRUE)` (its literal read as
+/// 4.14756701399220E-134) is Excel's 1.000000000000026E-100 against the true
+/// 1.0000000000000131E-100 (probes/t3012-gamma-dist-at-quantile A16; docs/excel-semantics/
+/// statistics.md, T-3060 bullet). `None` elsewhere, and where the series runs out of terms.
+pub(crate) fn excel_small_shape_lower(a: f64, x: f64) -> Option<f64> {
+    if !(a > 0.0 && a < 1.0 && (f64::MIN_POSITIVE..1.0).contains(&x)) {
+        return None;
+    }
+    let exponent = a * excel_ln(x);
+    if exponent > EXCEL_EXPONENT_MAX {
+        return None;
+    }
+    // P is then about e^-16 / Gamma(a + 1), under 2E-7, so the pair takes it from the series (it
+    // takes 1 - Q only where Q is at most 1/2).
+    let sum = lower_series(a, x, &mut Terms(MAX_TERMS));
+    if sum.is_nan() {
+        return None;
+    }
+    let lead = excel_exp(exponent) / excel_exp(excel_gammaln(a + 1.0));
+    Some(lead * excel_exp(-x) * sum)
 }
 
 /// The shape from which the pair is Temme's uniform asymptotic expansion ([`temme_pair`]) and not a
