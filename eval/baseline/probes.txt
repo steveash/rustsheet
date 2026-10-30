@@ -4249,8 +4249,6 @@ F	probes/t3095-snap-lambda-helpers.case.json	Calc!B92
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B93
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B94
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B97
-F	probes/t3134-legacy-if-index-arm-shapes.case.json	Sheet1!I54
-F	probes/t3134-legacy-if-index-arm-shapes.case.json	Sheet1!K54
 F	probes/t3137-date-parts-near-midnight.case.json	R!B100
 F	probes/t3137-date-parts-near-midnight.case.json	R!B101
 F	probes/t3137-date-parts-near-midnight.case.json	R!B102

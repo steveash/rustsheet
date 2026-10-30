@@ -97,6 +97,22 @@ fn simple_test() {
             "IF({TRUE,FALSE},INDEX(B1:B6,3))",
             "@IF({TRUE,FALSE},INDEX(B1:B6,3))",
         ),
+        // An array-constant CHOOSE index over one-cell arms stays whole and the `@` goes on the
+        // call; range arms keep both (probes/t3134-legacy-if-index-arm-shapes I54, K54,
+        // legacy-choose-array-index; T-3168).
+        (
+            "CHOOSE({1,2},INDEX(B1:B6,3),5)",
+            "@CHOOSE({1,2},INDEX(B1:B6,3),5)",
+        ),
+        (
+            "ABS(CHOOSE({1,2},INDEX(B1:B6,3),5))",
+            "ABS(@CHOOSE({1,2},INDEX(B1:B6,3),5))",
+        ),
+        (
+            "SUM(CHOOSE({1,2},INDEX(B1:B6,3),5))",
+            "SUM(CHOOSE({1,2},INDEX(B1:B6,3),5))",
+        ),
+        ("CHOOSE({1,2},H1:H2,I1:I2)", "@CHOOSE(@{1,2},H1:H2,I1:I2)"),
         (
             "_xlfn.IFS(TRUE,INDEX(B1:B6,3))",
             "@IFS(TRUE,INDEX(B1:B6,3))",

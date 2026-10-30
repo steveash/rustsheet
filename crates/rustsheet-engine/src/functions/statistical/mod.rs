@@ -23,6 +23,7 @@ mod gamma_x87;
 mod gammaln;
 mod gauss;
 mod geomean;
+mod half_integer_beta;
 mod hypegeom;
 mod if_ifs;
 pub(crate) mod ifs_cache;
