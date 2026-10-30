@@ -4,10 +4,10 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-use super::lookup_table::{Indexed, SearchVector};
+use super::lookup_table::{cmp_searched, compare_searched, Indexed, SearchVector};
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
-    binary_search::binary_search,
+    binary_search::binary_search_by,
     criteria::wildcard_text_matcher,
     text::{LookupPattern, LookupRegexes},
     util::{compare_values, near_integer::near_integer_whole},
@@ -56,7 +56,7 @@ fn compare_blank_last(candidate: &CalcResult, lookup_value: &CalcResult) -> i32 
         (true, true) => 0,
         (true, false) => 1,
         (false, true) => -1,
-        (false, false) => compare_values(candidate, lookup_value),
+        (false, false) => compare_searched(candidate, lookup_value),
     }
 }
 
@@ -78,7 +78,7 @@ pub(crate) fn linear_scan<'a>(
             if is_blank(v) || blank_lookup {
                 is_blank(v) && blank_lookup
             } else {
-                compare_values(v, lookup_value) == 0
+                compare_searched(v, lookup_value) == 0
             }
         }),
         MatchMode::ExactMatchSmaller | MatchMode::ExactMatchLarger => {
@@ -361,11 +361,12 @@ impl Model {
                         "Wildcard/regex match cannot be used with binary search".to_string(),
                     );
                 }
-                match binary_search(
+                match binary_search_by(
                     lookup_value,
                     array,
                     search_mode == SearchMode::BinaryDescending,
                     match_mode.ordering(),
+                    cmp_searched,
                 ) {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
                     Some(l) => CalcResult::Number(l as f64 + 1.0),
