@@ -3,7 +3,7 @@ id: T-3276
 title: "Probe where Excel collates other scripts and symbols: Hebrew, Arabic, Indic, Thai, Hangul, CJK ideographs, other-script digits and supplementary-plane characters"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
