@@ -102,6 +102,8 @@ class MarkerFormat(unittest.TestCase):
         body = merge_ready.marker_body(mark) + merge_ready.FOOTER
         self.assertEqual(merge_ready.parse_marker(body), mark)
         self.assertEqual(merge_ready.parse_marker(body.replace("\n", "\r\n")), mark)
+        # T-3177: a trailing newline after the footer is tolerated too.
+        self.assertEqual(merge_ready.parse_marker(body + "\n"), mark)
 
     def test_anything_else_after_the_block_is_rejected(self) -> None:
         good = merge_ready.marker_body(marker(self.HEAD))
