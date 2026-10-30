@@ -1,3 +1,5 @@
 runs 1289 prep 221s; u_S values [1.38777878e-17]
 joint null mean 0.1 sd 154.1
 (c, d) pairs to scan: 473
+scan 283s, 473 candidates
+top S-only: 463.1 (a 0.77 b -60.1 c 2.00 d 48.00) | 442.3 (a 0.70 b -60.7 c 10.00 d 32.00) | 441.7 (a 0.67 b -60.4 c 8.00 d 36.00) | 439.9 (a 0.78 b -62.7 c 24.00 d 4.00) | 437.6 (a 0.78 b -59.8 c -2.00 d 56.00)
