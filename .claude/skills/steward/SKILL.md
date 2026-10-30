@@ -73,9 +73,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     `origin/main` onto the marked head, checked by the script.
   - **Ejections** (`merge-train-ejected` label and a comment with the reason: `ci-red`,
     `conflict with main`, an id collision, or invalidated) are the PR's worker's to fix per
-    work-loop step 6.3; an idle ejected branch is resumed like any idle agent branch. Remove
-    `merge-train-ejected` once the PR is marked again. A PR that conflicts only with another PR
-    of its batch is deferred, not ejected: it stays ready.
+    work-loop step 6.3; an idle ejected branch is resumed like any idle agent branch. `make
+    mark-ready` removes `merge-train-ejected` when it marks the PR again (decision 0177). A PR
+    that conflicts only with another PR of its batch is deferred, not ejected: it stays ready.
   - **Stall fallback** (`train` mode only): any session may run one `make merge-train TRAIN=1`
     pass when a PR has been ready for more than 45 min (by its marker's `updated_at`), the last
     CI run on `merge-train/current` was created more than 45 min ago (workflow-runs

@@ -29,9 +29,9 @@ from merge_lock import GitError, git
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# `merge_ready.py mark --step` prints the first two.
-COMMENT, LABEL = merge_ready.STEP_COMMENT, merge_ready.STEP_LABEL
-UNLABEL, MERGE = "unlabel", "merge"
+# `merge_ready.py mark --step` prints the first three.
+COMMENT, LABEL, UNLABEL = merge_ready.STEP_COMMENT, merge_ready.STEP_LABEL, merge_ready.STEP_UNLABEL
+MERGE = "merge"
 CREATE_PULL, DELETE_BRANCH, DISPATCH = "create_pull", "delete_branch", "dispatch"
 # Each action's fields besides `action` and the optional `seq` (the closed enum of the spec).
 FIELDS: Mapping[str, frozenset[str]] = {
