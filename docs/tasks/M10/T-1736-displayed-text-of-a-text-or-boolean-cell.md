@@ -3,7 +3,7 @@ id: T-1736
 title: "Displayed text of a text or boolean cell goes through the format's text section"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
