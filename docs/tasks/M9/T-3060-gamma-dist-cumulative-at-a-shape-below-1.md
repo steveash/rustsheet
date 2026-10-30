@@ -3,7 +3,7 @@ id: T-3060
 title: "GAMMA.DIST cumulative at a shape below 1 and a tiny x: Excel's EXP(a LN x)/EXP(GAMMALN(a+1)) leading factor (35 visibly-off t3012-gamma-dist-at-quantile cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
