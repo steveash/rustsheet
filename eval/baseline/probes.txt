@@ -3966,12 +3966,6 @@ F	probes/t2829-ftest-tail-over-b.case.json	S!A6
 F	probes/t2829-ftest-tail-over-b.case.json	S!A7
 F	probes/t2829-ftest-tail-over-b.case.json	S!A8
 F	probes/t2829-ftest-tail-over-b.case.json	S!A9
-F	probes/t2949-stored-11.case.json	S!G11
-F	probes/t2949-stored-11.case.json	S!H11
-F	probes/t2949-stored-14.case.json	S!H14
-F	probes/t2949-stored-5.case.json	S!H5
-F	probes/t2949-typed-4.case.json	S!E4
-F	probes/t2949-typed-5.case.json	S!E5
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A1
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A10
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A11

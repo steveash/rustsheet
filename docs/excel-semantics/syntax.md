@@ -431,7 +431,7 @@ Typed (FORMULATEXT prints):
 - Groups and signs print as typed: `=( (1) )`, `=( (B1) )`, `=((1) )`, `=- 5 %`, `=-5 %`, `=- 5%`, `=-  5 %`.
 - excel-graph refuses (PATCH 400 InvalidArgument; probe run 2026-10-29, T-2949, cases not kept; desktop Excel unprobed): a TAB or NBSP anywhere (`=1+` TAB `2`, `=` TAB `1+2`, `=1` TAB `+2`, NBSP forms, `=B1:B2` TAB ` B2`). LET with an even argument count (`=LET( a ,1, b ,a+1)`) is refused for its arity, not its whitespace.
 Stored in the file (`<f>` text): a leading TAB or LF is dropped like leading spaces (`<f>` TAB `1+2</f>` and `<f>` LF `1+2</f>` print `=1+2`). Workbooks holding a TAB or NBSP between tokens, or a leading NBSP, are refused at createSession (501 FileCorruptTryRepair). Interior shapes load and print as typed (`=( (1) )`, `=- 5 %`, `=B1:B2` LF ` B2`, `=LAMBDA( x , x)(1)` prints `=LAMBDA(x, x)(1)`). A stored even-arity `=LET( a ,1, b ,a+1)` loads and prints `=LET( a,1, b,a+1,b)` (Excel appends the last name as the result).
-Ours (2026-10-29): LAMBDA and LET name shapes already match. Still failing: the intersection with a LF in its separator (typed-4, typed-5, stored-14), a stored leading LF (stored-5: we print `=` LF `1+2`), and the stored even-arity LET (stored-11: Excel appends the last name as the result and returns 2). T-3169.
+Ours (2026-10-30, T-3169): every t2949 shape matches. An intersection separator holding a line feed keeps it whole (the line feed is the operator, so no space is printed beside it), the parser drops a stored leading LF with the leading spaces, and a stored even-arity LET gets its last name appended as the result.
 Status: VERIFIED (excel-graph)
 Tasks: T-2769, T-2776, T-2949, T-3169, SPEC-0023
 

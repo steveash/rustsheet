@@ -183,7 +183,14 @@ impl Parser {
             let separator = self.lexer.separator();
             // The first space is the operator; Excel keeps the rest (SPEC-0023 step 3,
             // probes/t2776-formula-text-whitespace-shapes C3, C5, E9).
-            let extra = Run::of(separator.get(1..).unwrap_or_default());
+            // A separator holding a line feed keeps it whole: the line feed is the operator
+            // and the space before it is dropped (`=B1:B2` LF ` B2` and `=B1:B2 ` LF ` B2` both
+            // print `=B1:B2` LF ` B2`; probes/t2949-typed-4, typed-5, stored-14).
+            let extra = if separator.contains(&'\n') {
+                Run::of(separator)
+            } else {
+                Run::of(separator.get(1..).unwrap_or_default())
+            };
             // U+3000 starts a name for Excel, and no such name is defined: `#NAME?`
             // (probes/intersection-whitespace H7).
             let name_error = separator.contains(&'\u{3000}');

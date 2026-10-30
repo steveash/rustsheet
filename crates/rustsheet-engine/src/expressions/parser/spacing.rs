@@ -125,6 +125,13 @@ impl Node {
         }
     }
 
+    /// Whether the run written before `self` holds a line feed. A line feed between the operands
+    /// of an intersection is the operator itself, so no space is printed beside it
+    /// (probes/t2949-typed-4).
+    pub(crate) fn run_before_has_line_feed(&self) -> bool {
+        matches!(self, Node::Spaced { space, .. } if space.before.line_feeds > 0)
+    }
+
     /// The node under any [`Node::Spaced`] wrapper, for the printers that decide on its shape.
     pub(crate) fn unwrap_spaced(&self) -> &Node {
         let mut node = self;
