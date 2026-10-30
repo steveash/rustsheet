@@ -8,7 +8,7 @@
 //! (docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many periods"). Moved out of
 //! `financial/mod.rs` (T-1845).
 
-use super::annuity::{growth_log, payment_overflows, period_payments};
+use super::annuity::{growth_log, payment_overflows, period_payments, SplitForm};
 use super::number_or_error;
 use crate::functions::lift::num_error;
 use crate::x87_exp::{excel_exp, excel_expm1};
@@ -211,6 +211,7 @@ impl Periods {
                 self.pv,
                 0.0,
                 self.period_start,
+                SplitForm::Exact,
             )
             .0
             .ok()?;

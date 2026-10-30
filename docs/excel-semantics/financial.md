@@ -156,7 +156,8 @@ Evidence (T-3014):
 - RATE on these payments: all 308 `RATE(n,PMT(..),..)` cells of probes-numeric/m9-fin-irr-rate pass (154 failed on
   the exact payment), as RATE is bit-exact on Excel's PMT bits (probes/rate-excel-pmt-bits, T-2527).
 - Not established: whether Excel's expm1 itself switches to `EXP(x)-1` at |x| = 1 (SINH and TANH call it only below
-  1, numbers.md); PPMT, IPMT, CUMIPMT and CUMPRINC still use Kahan's form at every |x| and keep their fitted forms.
+  1, numbers.md). IPMT and PPMT take the same switch ("IPMT and PPMT split Excel's discounted payment", T-2243);
+  CUMIPMT and CUMPRINC still use Kahan's form at every |x| and keep their fitted forms (T-3179).
   Not probed: nper 0 with a non-zero rate, |x| at exactly 1, and rates where `1-Q` leaves the normal range (the
   engine keeps "PMT, IPMT and PPMT are the exact payment"'s forms and errors there).
 Status: VERIFIED (m9-fin-pmt, t3014-pmt-fv-type-alone, PMT.xlsx)
@@ -164,6 +165,8 @@ Implemented in: `discounted_payment` and `compute_payment`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-3014).
 
 ## PPMT discounts with an atanh-series log
+Superseded for IPMT and PPMT where it is finite by "IPMT and PPMT split Excel's discounted payment" (T-2243); the
+evidence below stands, and the engine keeps these forms only where that one is not finite and for CUMIPMT's sum.
 Rule: Excel's PPMT is its PMT discounted with Excel's EXP and its own `L = ln(1+rate)`:
 `PPMT(rate, 1, n, pv)` = `PMT(rate, n, pv) * EXP(-n*L)`, the product `-n*L` a double and the
 multiplication rounded once. L is not `log1p`: for |rate| up to at least 0.37 it is
@@ -225,6 +228,8 @@ baseline cannot record its fixes.
 Tasks: T-2242, T-0458
 
 ## IPMT cancels on fv
+Superseded for IPMT and PPMT where it is finite by "IPMT and PPMT split Excel's discounted payment" (T-2243); the
+evidence below stands, and the engine keeps these forms only where that one is not finite and for CUMIPMT's sum.
 Rule: Excel's IPMT is `-rate*B`, divided by `1+rate` for type 1 (0 in period 1 of type 1), with
 the balance after period-1 periods `B = (pv+fv)*Y - fv` and `Y = (1-(1+rate)^(per-1-nper))/(1-(1+rate)^-nper)`.
 Where that balance is smaller than fv (`|B| < |fv|`) it is computed in doubles on the rounded `Y`, so
@@ -285,6 +290,8 @@ Implemented in: `balance_interest`, `accurate_discount` and `discounted_principa
 Tasks: T-2490, T-2665, T-2666, T-2667, T-3086
 
 ## IPMT follows Excel's own discount where it moves the value
+Superseded for IPMT and PPMT where it is finite by "IPMT and PPMT split Excel's discounted payment" (T-2243); the
+evidence below stands, and the engine keeps these forms only where that one is not finite and for CUMIPMT's sum.
 Rule: where IPMT's balance does not cancel on fv ("IPMT cancels on fv"), Excel's IPMT is the exact balance of "PMT,
 IPMT and PPMT are the exact payment" only to a few ulp. Where Excel's own discount moves the value further, Excel has
 `-rate*((pv+fv)*Y - fv)` in doubles (divided by `1+rate` for type 1) with `Y = expm1((per-1-nper)*L)/expm1(-nper*L)`,
@@ -312,6 +319,55 @@ Status: VERIFIED to the bit on the four cells (excel-graph); the switch is fitte
 Implemented in: `discounted_interest`, `DISCOUNTED_INTEREST_FROM` and `period_payments`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2587).
 Tasks: T-2587, T-2943
+
+## IPMT and PPMT split Excel's discounted payment
+Rule: IPMT and PPMT split PMT's own discounted payment ("PMT is a discounted payment"). With PMT's `L`, its `1-Q`
+(Excel's expm1 for |x| < 1, `1 - EXP(x)` from 1 on), `A = (pv+fv)/(1-Q(-nper*L))` and `d` (the rate for type 0,
+`1/(1/rate + 1)` for type 1), and `x = (per-1-nper)*L`, all doubles:
+- `IPMT = -((A*(1-Q(x)) - fv) * d)`, where `1-Q(x)` uses the same expm1 / `1 - EXP` switch. This is the balance after
+  per-1 periods, times d.
+- `PPMT = -(A*Q(x)*d)`, with `Q(x) = EXP(x)`. A discount `Q(x)` below the normal range makes PPMT 0
+  ("IPMT cancels on fv").
+- In period 1 of type 1, IPMT is 0 and PPMT is Excel's PMT.
+
+This one form replaces the fitted switches of "IPMT cancels on fv" (`|B| < |fv|`, and type 1's
+`-B*(rate/(1+rate))` at rates that are not whole numbers) and "IPMT follows Excel's own discount where it moves the
+value" (the 6E-16 boundary). It also replaces PPMT's `-(pv+fv)*rate*Q/(1-Q)` with its division by `1+rate`. All of
+those were approximations of this form.
+
+Evidence (T-2243; each candidate was scored to the bit on every IPMT/PPMT cell with constant arguments in eval/suites,
+plus ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx, Mac Excel cached values):
+- IPMT: all 1495 cells are bit-exact. That includes m9-fin-pmt (208, previously 137), fin-ipmt-ppmt-huge-rate (595,
+  previously 499), t2665-ipmt-fractional-nper-past-range (600, previously 552), IPMT_PPMT.xlsx (35, previously 16)
+  and 20 gen-m9 cells. Among them are the cells earlier entries left open:
+  - `IPMT(10,2,10,0,315)` = 1.2144607808295405E-6 (T-2667);
+  - `IPMT(1000,7,1E+5,1000,0,1)` = -999.0009990009992 (T-3086).
+
+  Other forms scored worse:
+  - the same balance as `-(((A - fv) - A*Q(x)) * d)`: 145/208 on m9, 456/595 on huge-rate;
+  - `-rate*((pv+fv)*Y - fv)` with `Y = (1-Q(x))/(1-Q(-nper*L))` and the switch: 149/208 and 515/595;
+  - `A*(-expm1(x))` without the switch: 203/208 and 587/595;
+  - PMT less PPMT, or the FV recurrence on Excel's PMT: 87 to 123 of 208.
+- PPMT: 2552 of 2556 cells are bit-exact. ppmt-first-period-sweep goes from 461 to 799 of 800, ppmt-log-rate-sweep
+  from 464 to 754 of 756, ppmt-negative-rate-sweep from 43 to 79 of 79, m9-fin-pmt from 138 to 224 of 224, and
+  fin-ipmt-ppmt-huge-rate from 516 to 593 of 593. The misses:
+  - three are one ulp (`PPMT(0.21,1,160,10000)`, `PPMT(1,1,44,10000)`, `PPMT(0.1,1,320,10000)`); the old form
+    matched the first. On each of those rows Excel's PMT cell (ppmt-log-rate-sweep B371, B742,
+    ppmt-first-period-sweep B320) is an ulp off our PMT too, so the misses are PMT's, not the split's (T-3186);
+  - the fourth is `PPMT(7,10,350,58827)`, whose subnormal discount Excel keeps (T-2666, still open).
+  `-(A*d*Q)`, `-(A*(Q*d))` and `-(A*Q*rate)/(1+rate)` score 21 to 71 points lower on the sweeps.
+- CUMIPMT does not sum this IPMT. Its type-1 per-period sum still takes the exact split ("PMT, IPMT and PPMT are the
+  exact payment"), which is bit-exact on CUMPRINC_CUMIPMT.xlsx G3, G4, G15 and fin-cumipmt-overflow-and-forms A8. With
+  the discounted IPMT those four cells are an ulp off: `CUMIPMT(0.1,10,345,2,2,1)` is -29.395712615048502, but the
+  discounted `IPMT(0.1,2,10,345,0,1)` is ...485 in the engine. Excel's IPMT on those arguments is not probed: if it
+  were ...502, this form would miss it rather than CUMIPMT having a form of its own. Four other type-1 CUMIPMT cells
+  would have been fixed by it. The probe and CUMIPMT's own form are open (T-3179).
+Status: VERIFIED to the bit (Mac Excel cached values and excel-graph probes).
+Implemented in: `discounted_split`, `discounted_balance`, `discount_complement`, `payment_factor` and
+`period_payments`' `SplitForm` (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2243). Where the form
+is not finite (`1-Q` or `A` past the double range), and for CUMIPMT's `SplitForm::Exact`, the forms of the entries
+named above still decide.
+Tasks: T-2243, T-2666, T-3179
 
 ## DB and SYD argument domains
 Rule: SYD with a negative salvage is `#NUM!` (`SYD(100,-1E-300,10,1)`; salvage 0 is a value), and `life*(life+1)` past the
