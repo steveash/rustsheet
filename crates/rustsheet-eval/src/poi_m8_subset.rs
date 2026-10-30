@@ -16,7 +16,7 @@ use rustsheet_engine::{ReferenceForms, ReferenceFormsReader};
 use serde::{Deserialize, Serialize};
 
 use crate::closeness::Visible;
-use crate::runner::{CaseResult, CaseStatus};
+use crate::runner::CaseResult;
 use crate::value::Verdict;
 use crate::xlsx_snapshot::{FormulaKind, WorkbookSnapshot};
 
@@ -132,14 +132,6 @@ pub struct PoiM8Subset {
     pub blocked_cases: Vec<String>,
 }
 
-/// Whether a case did not run to scoring.
-fn blocked(status: CaseStatus) -> bool {
-    matches!(
-        status,
-        CaseStatus::EngineError | CaseStatus::Panic | CaseStatus::Timeout
-    )
-}
-
 /// Scores the subset over the [`SUITE`] cases of `results`; `None` when the run executed none.
 #[must_use]
 pub fn summarize(results: &[CaseResult]) -> Option<PoiM8Subset> {
@@ -149,7 +141,7 @@ pub fn summarize(results: &[CaseResult]) -> Option<PoiM8Subset> {
     }
     let mut out = PoiM8Subset::default();
     for r in cases {
-        if blocked(r.status) {
+        if r.status.did_not_run() {
             if !r.reference_forms.subset.is_empty() {
                 out.blocked_cases.push(format!("{}!*", r.id));
             }
@@ -204,7 +196,7 @@ mod tests {
 
     use super::*;
     use crate::cellref::Addr;
-    use crate::runner::CellResult;
+    use crate::runner::{CaseStatus, CellResult};
     use crate::value::Value;
     use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot};
 
