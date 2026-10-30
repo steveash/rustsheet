@@ -710,7 +710,7 @@ impl Parser {
         let unqualified = specifier == Some(token::TableSpecifier::ThisRow)
             && self
                 .containing_table_name()
-                .is_some_and(|name| name.eq_ignore_ascii_case(&table_name));
+                .is_some_and(|name| name.to_lowercase() == table_name.to_lowercase());
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),

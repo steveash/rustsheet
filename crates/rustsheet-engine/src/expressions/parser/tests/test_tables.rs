@@ -536,7 +536,7 @@ fn this_row_prints_in_its_at_form_in_its_own_table() {
     );
 }
 
-/// `T[ Col ]` is only our own stored form of `T[ [Col] ]`: as A1 text a padded bare column is a
+/// `T[ Col ]` is only the engine's own printed form of `T[ [Col] ]`: a padded bare column is a
 /// parse error typed and `#REF!` loaded, as Excel loads `<f>SUM(T[ Col ])</f>` (syntax.md,
 /// probes/t2800-stored-ws-0..2, T-3069).
 #[test]
@@ -551,8 +551,13 @@ fn a_padded_bare_column_is_ours_only() {
     let t = parser.parse("SUM(T[ [Col] ])", &cell);
     let again = reparse_stored(&mut parser, &t, &cell);
     assert_eq!(to_english_localized_string(&again, &cell), "SUM(T[ Col ])");
+    // The engine's own printed text reads back: edits re-parse it.
+    let printed = parser.parse("SUM(T[ Col ])", &cell);
+    assert_eq!(to_excel_string(&printed, &cell), "SUM(T[ [Col] ])");
     for formula in ["SUM(T[ Col ])", "SUM(T[ Col])", "SUM(T[Col ])"] {
+        parser.set_typed(true);
         let typed = parser.parse(formula, &cell);
+        parser.set_typed(false);
         assert!(matches!(typed, Node::ParseErrorKind { .. }), "{formula}");
         parser.set_loaded(true);
         let loaded = parser.parse(formula, &cell);

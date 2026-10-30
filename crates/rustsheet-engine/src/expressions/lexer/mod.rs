@@ -115,6 +115,10 @@ pub struct Lexer {
     mode: LexerMode,
     locale: &'static Locale,
     language: &'static Language,
+    /// Whether a padded bare column (`T[ Col ]`) reads as a column: our own printed text for
+    /// `T[ [Col] ]`, which the engine re-parses after edits. Text typed or loaded from a file
+    /// reads it as no column, as Excel does (see [`Lexer::set_padded_bare_columns`]).
+    padded_bare_columns: bool,
 }
 
 impl Lexer {
@@ -135,7 +139,16 @@ impl Lexer {
             mode,
             locale,
             language,
+            padded_bare_columns: true,
         }
+    }
+
+    /// Whether the next formulas read a padded bare column (`T[ Col ]`) as a column (`true`, the
+    /// default): only text the engine printed itself, never text typed or read from a file,
+    /// where Excel refuses it or loads it as `#REF!` (syntax.md, probes/t2800-stored-ws-0..2,
+    /// T-3069).
+    pub(crate) fn set_padded_bare_columns(&mut self, accept: bool) {
+        self.padded_bare_columns = accept;
     }
 
     /// Changes the lexer mode

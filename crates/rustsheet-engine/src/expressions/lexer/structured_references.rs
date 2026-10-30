@@ -259,10 +259,10 @@ impl Lexer {
     //   But this is only a UI thing that we will ignore for now.
     pub(crate) fn consume_structured_reference(&mut self, table_name: &str) -> Result<TokenType> {
         self.expect(TokenType::LeftBracket)?;
-        // A run after the outer `[` is kept before nested brackets (`T[ [Col] ]`) and, in our
-        // own stored (R1C1) text only, around a bare column padded on both sides (`T[ Col ]`, the
-        // form Excel prints for `T[ [Col] ]`). As A1 text, typed or in a file, Excel refuses or
-        // loads as `#REF!` every padded bare column (`T[ Col ]`, `T[ Col]`, `T[Col ]`; syntax.md,
+        // A run after the outer `[` is kept before nested brackets (`T[ [Col] ]`) and, in text
+        // the engine printed itself, around a bare column padded on both sides (`T[ Col ]`, the
+        // form Excel prints for `T[ [Col] ]`). Typed or in a file, Excel refuses or loads as
+        // `#REF!` every padded bare column (`T[ Col ]`, `T[ Col]`, `T[Col ]`; syntax.md,
         // probes/t2800-stored-ws-0..2, T-3069): the run is then read as part of the column
         // name, which no table has.
         let start = self.position;
@@ -272,7 +272,7 @@ impl Lexer {
         };
         // A padded `#` or `@` start (`T[ #Data ]`) is unprobed and keeps its old reading.
         if !spacing.open.is_empty()
-            && !self.is_a1_mode()
+            && self.padded_bare_columns
             && !matches!(self.peek_char(), Some('[' | '#' | '@'))
         {
             if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {

@@ -274,3 +274,31 @@ fn no_expansion_for_a_formula_that_does_not_parse_as_typed() {
         }
     }
 }
+
+/// A typed `T[ [Col] ]` prints `T[ Col ]` (syntax.md, T-2801) and keeps working when an edit
+/// rewrites its text, which the engine then re-parses; only text typed or loaded as `T[ Col ]`
+/// is no column (T-3069).
+#[test]
+fn a_padded_column_survives_an_edit_that_rewrites_its_text() {
+    let mut model = model(false);
+    model.set_user_input(0, 10, 1, "100".to_string()).unwrap();
+    model
+        .set_typed_user_input(0, 8, 5, "=SUM(T[ [Col] ])+A10".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 8, 5).unwrap(), "107");
+    model.insert_rows(0, 9, 1).unwrap();
+    model.evaluate();
+    assert_eq!(
+        model.get_cell_formula(0, 8, 5).unwrap().as_deref(),
+        Some("=SUM(T[ Col ])+A11")
+    );
+    assert_eq!(model.get_formatted_cell_value(0, 8, 5).unwrap(), "107");
+    // Typed as it prints, Excel refuses it: it is no formula that reads the column.
+    let refused = model.set_typed_user_input(0, 9, 5, "=SUM(T[ Col ])".to_string());
+    model.evaluate();
+    assert!(
+        refused.is_err() || model.get_formatted_cell_value(0, 9, 5).unwrap() == "#ERROR!",
+        "{refused:?}"
+    );
+}

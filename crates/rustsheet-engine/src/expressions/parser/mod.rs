@@ -730,6 +730,8 @@ impl Parser {
             formula
         };
         self.lexer.set_formula(formula);
+        self.lexer
+            .set_padded_bare_columns(!self.typed && !self.loaded);
         self.context = context.clone();
         // At the top level a formula may start with an expression or a range.
         self.expecting_here = vec![ExpectedTokens::Range, ExpectedTokens::Other];
