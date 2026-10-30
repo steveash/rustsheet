@@ -22,7 +22,7 @@ Evidence: docs/excel-semantics/references.md "Calculated columns" rule 7(f) (T-3
 joins.
 
 Case owned (decision 0096; every failing cell, split from T-3218 at planning 2026-10-30):
-- probes/t3003-unqualified-structured-d2 S!D2, S!D3, S!D4, S!F3, S!F4, S!H1, S!H4, S!J1, S!J2, S!J3, S!J4, S!K1, S!K2
+- probes/t3003-unqualified-structured-d2 S!D2, S!D3, S!D4, S!F2 (decision 0186), S!F3, S!F4, S!H1, S!H4, S!J1, S!J2, S!J3, S!J4, S!K1, S!K2
   (13 visibly-off cells; D2 is `#ERROR!`, D3:D4 are blank, and `COLUMNS(T[#All])` is 3).
 
 Why it fails (crates/rustsheet-engine/src/calculated_columns.rs, `Model::table_expansion`):

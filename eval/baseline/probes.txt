@@ -1658,6 +1658,7 @@ C	probes/t3181-collation-prefix-callers.case.json	43
 C	probes/t3188-b1-huge-tagged.case.json	6
 C	probes/t3201-collation-long-mark-runs.case.json	1506
 C	probes/t3201-collation-wrapped-run-pairs.case.json	1406
+C	probes/t3213-typed-parse-errors.case.json	25
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
@@ -3797,6 +3798,7 @@ F	probes/t3003-totals-totals-row.case.json	S!K1
 F	probes/t3003-unqualified-structured-d2.case.json	S!D2
 F	probes/t3003-unqualified-structured-d2.case.json	S!D3
 F	probes/t3003-unqualified-structured-d2.case.json	S!D4
+F	probes/t3003-unqualified-structured-d2.case.json	S!F2
 F	probes/t3003-unqualified-structured-d2.case.json	S!F3
 F	probes/t3003-unqualified-structured-d2.case.json	S!F4
 F	probes/t3003-unqualified-structured-d2.case.json	S!H1
@@ -3806,7 +3808,6 @@ F	probes/t3003-unqualified-structured-d2.case.json	S!J2
 F	probes/t3003-unqualified-structured-d2.case.json	S!J3
 F	probes/t3003-unqualified-structured-d2.case.json	S!J4
 F	probes/t3003-unqualified-structured-d2.case.json	S!K1
-F	probes/t3003-unqualified-structured-d2.case.json	S!K2
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A12
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A15
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A16
@@ -3954,7 +3955,6 @@ F	probes/t3095-snap-lambda-helpers.case.json	Calc!B92
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B93
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B94
 F	probes/t3095-snap-lambda-helpers.case.json	Calc!B97
-F	probes/t3113-entered-refused.case.json	S!B1
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A1
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A2
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A3
@@ -3980,6 +3980,9 @@ F	probes/t3181-collation-prefix-callers.case.json	Calc!C3
 F	probes/t3181-collation-prefix-callers.case.json	Calc!C5
 F	probes/t3181-collation-prefix-callers.case.json	Calc!C6
 F	probes/t3181-collation-prefix-callers.case.json	Calc!C7
+F	probes/t3213-typed-parse-errors.case.json	S!A5
+F	probes/t3213-typed-parse-errors.case.json	S!B5
+F	probes/t3213-typed-parse-errors.case.json	S!C5
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
