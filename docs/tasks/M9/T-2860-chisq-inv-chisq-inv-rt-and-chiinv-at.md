@@ -81,3 +81,4 @@ was picked: none of the 34 cells fails in `make eval` (the 12 gen-m9 lines were 
 eval/baseline/gen-m9.txt; all 22 probes-numeric cells pass). This PR adds the unit test
 `t2860_df2_and_alpha1_cells_are_excels_doubles` (the four acceptance values, bit-exact) and the statistics.md
 "Implemented in" line. No eval delta, no baseline change.
+Also dropped the three cells it shared (4ab2ba98d26c8a5e A315, 8d3588d8df0812df A130, abc2939ebd1e2365 A337) from T-2695's list.
