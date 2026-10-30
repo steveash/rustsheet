@@ -4,7 +4,7 @@ title: "Continue T-1941: crack the four open gamma kernels to the bit"
 milestone: M9
 lane: research
 status: todo
-priority: P1
+priority: P3
 size: M
 tier: opus
 depends_on: [T-1941]

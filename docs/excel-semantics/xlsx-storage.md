@@ -437,7 +437,7 @@ sheet1.xml), in the `<f>` and in FORMULATEXT's cached `<v>` alike; an XML parser
 back as one LF, which is what the oracle sidecar shows. A writer emitting LF therefore matches. A space after the line
 feed is kept. The drops FORMULATEXT shows (trailing whitespace, a run before a comma after an operand) are made before
 the save. A structured reference is stored with its normalized spaces: typed `T[ [Col] ]` saves as `SUM(T[ Col ])`,
-`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`.
+`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`. Excel does not read that saved text back: a stored `T[ Col ]` loads as `#REF!` (syntax.md, T-2800).
 Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
 T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac1b22c81cabb3f77c8, refetch with `rustsheet-oracle fill --force`), sheet1.xml H1:H17 and E4:E15. A typed `=T[#Headers]` (E13) is `#SPILL!` in the sidecar but `#VALUE!` in the saved array `<v>`; not relied on. Excel's whitespace semantics are in syntax.md.
 Ours: export writes the tree as written, its kept whitespace included (T-2948), a line feed as the reference `&#xA;`,
