@@ -112,13 +112,10 @@ fn an_end_period_past_nper_is_num() {
 
 #[test]
 fn up_to_32_periods_are_the_per_period_sum() {
-    // Type 1's interest is a per-period sum up to `CUMULATIVE_LOOP_PERIODS` (32), of the exact
-    // split rather than IPMT's discounted one, so within an ulp or so of the IPMT sum, not bit for
-    // bit (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26; T-2243); past it, the
-    // closed form.
-    // Type 0's short sums are their own forms (T-2192, below). The principal of type 1 is the
-    // closed form at any length, close to the PPMT sum (T-1890). The per-period sums are rebuilt
-    // here from IPMT and PPMT.
+    // The interest is PMT times the periods less the principal (T-3118), so within an ulp or so of
+    // the IPMT sum, not bit for bit. Type 0's short principal is its own forms (T-2192, below); type
+    // 1's is the geometric sum or the closed form, close to the PPMT sum (T-1890). The per-period
+    // sums are rebuilt here from IPMT and PPMT.
     let mut model = new_empty_model();
     let pairs = [
         (
@@ -151,9 +148,9 @@ fn up_to_32_periods_are_the_per_period_sum() {
     assert_eq!(number("A3"), -131.849_721_045_626_13);
     assert_eq!(number("A3").to_bits(), number("B3").to_bits());
     check(&[
-        // CUMPRINC_CUMIPMT.xlsx G3 (one period, the sum) and fin-cumipmt-period-bound A9, A11
-        // (1,024 periods, the closed form).
-        ("A1", "=CUMIPMT(0.1,10,345,2,2,1)", "-29.395712615048502"),
+        // CUMPRINC_CUMIPMT.xlsx G17 (one period) and fin-cumipmt-period-bound A9, A11 (1,024
+        // periods).
+        ("A1", "=CUMIPMT(0.8,12,8000,5,5,1)", "-3526.3391447649296"),
         (
             "A2",
             "=CUMIPMT(0.004,1024,1000,1,1024,0)",
@@ -291,34 +288,62 @@ fn a_short_principal_at_a_large_rate_is_one_geometric_sum() {
 }
 
 #[test]
-fn type_0_short_interest_is_the_balance_form() {
-    // probes/fin-cumipmt-overflow-and-forms A12-A14 (excel-graph): the interest of period k is
-    // `-(pv·q·r - pmt·(q-1))` with `q = exp((k-1)·L)`, not the exact IPMT (A12 was
-    // -15.708656559792592, the exact value; T-2192). A rate of 1E10 overflows `q`, and the closed
-    // form keeps A19.
+fn the_interest_is_pmt_times_the_periods_less_cumprinc() {
+    // Excel's CUMIPMT is its own PMT times the period count less its own CUMPRINC, and a type 1
+    // range from period 1 is built from the range from period 2 (`PMT·(e-1) - CUMPRINC(..,2,e,1)`):
+    // probes/fin-cumipmt-tiny-rate-structure and fin-cumipmt-gate-edges (excel-graph; T-3118).
+    // At these tiny rates the interest is a few thousandths of the payment, so the per-period forms
+    // before T-3118 were visibly off. A rate of 1E10 keeps fin-cumipmt-overflow-and-forms A19 (A9),
+    // and period 1 of type 1 pays no interest (A10).
     check(&[
         (
             "A1",
-            "=CUMIPMT(0.01,100,100000,100,100,0)",
-            "-15.708656559792416",
+            "=CUMIPMT(1.1E-4,60,100000,3,10,0)",
+            "-79.95706777414671",
         ),
         (
             "A2",
-            "=CUMIPMT(0.0083,36,8000,3,4,0)",
-            "-124.79622431364345",
+            "=CUMIPMT(2E-4,60,100000,3,10,0)",
+            "-145.41173505342704",
         ),
-        ("A3", "=CUMIPMT(1E10,40,1,10,40,0)", "-309999999999"),
+        (
+            "A3",
+            "=CUMIPMT(2E-6,100,100000,3,10,1)",
+            "-1.5120052077418222",
+        ),
+        (
+            "A4",
+            "=CUMIPMT(5E-6,100,100000,3,10,1)",
+            "-3.7800325459720625",
+        ),
+        ("A5", "=CUMIPMT(0.0083,36,8000,1,2,1)", "-64.27633197523468"),
+        (
+            "A6",
+            "=CUMIPMT(0.0083,36,8000,1,5,1)",
+            "-247.51137774521146",
+        ),
+        (
+            "A7",
+            "=CUMIPMT(2E-5,100,100000,3,3,1)",
+            "-1.9599999870645206",
+        ),
+        (
+            "A8",
+            "=CUMIPMT(2E-5,100,100000,1,2,1)",
+            "-1.9799801937302846",
+        ),
+        ("A9", "=CUMIPMT(1E10,40,1,10,40,0)", "-309999999999"),
+        ("A10", "=CUMIPMT(0.0083,36,8000,1,1,1)", "0"),
     ]);
 }
 
 #[test]
 fn type_0_interest_is_the_payments_less_the_principal() {
-    // T-2363 (excel-graph, gen-m9): outside the balance form's growth band [2^-10, 2^10] Excel's
-    // interest is `-pmt·m - principal`, cancellation included (A1 is 4E-10 relative off the exact
-    // sum; 5c6a23c4f6597f1c A392); at huge rates it is the payments (A2, A3: 1cd3096e3e87c965 A316,
-    // e168be7f6d3f84c2 A330); where `1 + rate` is 1 the principal is the balance drop (A4, A5:
-    // 81bcdc0bec0c8e6b A274, abb7d565af89b849 A84; A6: past 2^53, probes/fin-cumipmt-overflow-and-
-    // forms A5); inside the band the balance form stays (A7, probes A12).
+    // T-2363 (excel-graph, gen-m9): Excel's interest is `PMT·m - principal`, cancellation included
+    // (A1 is 4E-10 relative off the exact sum; 5c6a23c4f6597f1c A392); at huge rates it is the
+    // payments (A2, A3: 1cd3096e3e87c965 A316, e168be7f6d3f84c2 A330); where `1 + rate` is 1 the
+    // principal is the balance drop (A4, A5: 81bcdc0bec0c8e6b A274, abb7d565af89b849 A84; A6: past
+    // 2^53, probes/fin-cumipmt-overflow-and-forms A5).
     check(&[
         (
             "A1",
@@ -337,11 +362,6 @@ fn type_0_interest_is_the_payments_less_the_principal() {
             "A6",
             "=CUMIPMT(1E-15,2E16,1,1E16,1E16+8,0)",
             "-8.999591419181679E-15",
-        ),
-        (
-            "A7",
-            "=CUMIPMT(0.01,100,100000,100,100,0)",
-            "-15.708656559792416",
         ),
     ]);
 }

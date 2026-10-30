@@ -391,14 +391,6 @@ fn fitted_payment(rate: f64, rate_nper: f64, pv: f64, fv: f64, period_start: boo
     }
 }
 
-/// Whether PMT's fitted quotient overflows for a positive `rate` and `fv` 0, where
-/// [`compute_payment`] falls back to its divided-through form. CUMIPMT and CUMPRINC then take
-/// their closed form instead of summing IPMT/PPMT, as Excel does (probes/fin-cumipmt-period-bound
-/// A13-A19).
-pub(super) fn payment_overflows(rate: f64, nper: f64, pv: f64, period_start: bool) -> bool {
-    !fitted_payment(rate, payment_growth(rate, nper), pv, 0.0, period_start).is_finite()
-}
-
 /// Below this |nper*L| PMT's `1-Q` is Excel's expm1, from it on `1 - EXP(-nper*L)`
 /// (probes/t3014-pmt-fv-type-alone column C: expm1 through |nper*L| 0.9896, `1-Q` from 1.0648).
 const PAYMENT_EXPM1_TO: f64 = 1.0;
@@ -482,8 +474,9 @@ fn discounted_split(
 /// PMT: [`payment_pair`] decides the errors (rate 0 with no periods, a rate at or below -1, a
 /// power whose reciprocal overflows) and the cases [`discounted_payment`] declines; elsewhere
 /// the value is [`discounted_payment`]'s. IPMT and PPMT split the same payment
-/// ([`discounted_split`]); CUMIPMT and CUMPRINC keep [`payment_pair`]'s exact payment.
-fn compute_payment(
+/// ([`discounted_split`]), and CUMIPMT takes it times the period count (T-3118); CUMPRINC keeps
+/// [`payment_pair`]'s exact payment.
+pub(super) fn compute_payment(
     rate: f64,
     nper: f64,
     pv: f64,
@@ -565,33 +558,19 @@ fn compute_future_value(
     Ok(fv)
 }
 
-/// The closed form [`period_payments`] splits a period's payment with.
-#[derive(Clone, Copy)]
-pub(super) enum SplitForm {
-    /// IPMT and PPMT: Excel's discounted payment ([`discounted_split`]) where it is finite.
-    Discounted,
-    /// CUMIPMT's type 1 per-period sum: the exact split and the forms after it, which are
-    /// bit-exact on ironcalc-calc `FINANCIAL/CUMPRINC_CUMIPMT.xlsx` G3, G4, G15 and
-    /// probes/fin-cumipmt-overflow-and-forms A8, where summing the discounted IPMT is an ulp off
-    /// (`CUMIPMT(0.1,10,345,2,2,1)` is -29.395712615048502; T-2243).
-    Exact,
-}
-
-/// `(IPMT, PPMT)` of one period, for IPMT, PPMT, CUMIPMT and CUMPRINC, each with its own error.
-/// [`SplitForm::Discounted`] takes [`discounted_split`] where it is finite; the forms after it
-/// (the exact split, [`discounted_principal`], [`balance_interest`], [`discounted_interest`]
-/// and the FV recurrence) decide elsewhere and for [`SplitForm::Exact`]. Past PMT's overflow
+/// `(IPMT, PPMT)` of one period, each with its own error: [`discounted_split`] where it is
+/// finite; the forms after it (the exact split, [`discounted_principal`], [`balance_interest`],
+/// [`discounted_interest`] and the FV recurrence) decide elsewhere. Past PMT's overflow
 /// at a positive rate IPMT and PPMT keep their values (`PPMT(1E+307,7,292,
 /// 176644,89)` is 0, gen-m9 3aa168259335be54 A340), and IPMT is 0 in period 1 of type 1 even where
 /// PMT is `#NUM!` (`IPMT(-0.5,1,2000,1,0,1)`, probes/fin-ipmt-ppmt-huge-rate B1).
-pub(super) fn period_payments(
+fn period_payments(
     rate: f64,
     period: f64,
     period_count: f64,
     present_value: f64,
     future_value: f64,
     period_start: bool,
-    form: SplitForm,
 ) -> (Result<f64, Error>, Result<f64, Error>) {
     if period < 1.0 || period >= period_count + 1.0 {
         return (Err(Error::NUM), Err(Error::NUM));
@@ -634,12 +613,10 @@ pub(super) fn period_payments(
     let values = (present_value, future_value);
     let (mut interest, mut principal) = (None, None);
     if rate != 0.0 {
-        if let SplitForm::Discounted = form {
-            if let Some((interest, principal)) =
-                discounted_split(rate, period_count, period, values, period_start)
-            {
-                return (Ok(interest), Ok(principal));
-            }
+        if let Some((interest, principal)) =
+            discounted_split(rate, period_count, period, values, period_start)
+        {
+            return (Ok(interest), Ok(principal));
         }
         let e = if period_start {
             period - 2.0
@@ -879,7 +856,7 @@ impl Model {
     pub(crate) fn fn_ipmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ipmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                period_payments(a.0, a.1, a.2, a.3, a.4, a.5, SplitForm::Discounted)
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
                     .0
                     .map_err(formula_error(cell))
             }))
@@ -890,7 +867,7 @@ impl Model {
     pub(crate) fn fn_ppmt(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Ppmt, args, cell, &mut |model, values| {
             number_or_error(model.period_payment_args(values, cell).and_then(|a| {
-                period_payments(a.0, a.1, a.2, a.3, a.4, a.5, SplitForm::Discounted)
+                period_payments(a.0, a.1, a.2, a.3, a.4, a.5)
                     .1
                     .map_err(formula_error(cell))
             }))
