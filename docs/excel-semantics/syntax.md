@@ -232,8 +232,9 @@ sign runs T-3172 probed (minus up to 1,024, plus and alternating up to 1,023; T-
 64 and 65 levels of `(ABS(` (t3097-nesting-paren-abs-64 and -65; T-3197, decision 0184: a call at a
 group's head costs less depth), which RustSheet refused until then. The DEVIATION below is the
 depth bound on shapes past Excel's caps, which protects the stack (directive 5): up to 72 levels of
-`(ABS(` parse, and those past Excel's 65 calls are refused only on the typed and import paths, not
-through `Input::StoredFormula` or a defined name (T-3143). Measured on a 1 MiB stack in a release
+`(ABS(` parse, and those past Excel's 65 calls are refused only on the typed and import paths (a
+defined-name body only on import), not through `Input::StoredFormula` or a name the API defines
+(T-3143). Measured on a 1 MiB stack in a release
 build before T-3191 and T-3197, the
 parser alone overflowed at about 292 recursively nested parentheses (about 3.5 KB per level, as
 each one passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`;
