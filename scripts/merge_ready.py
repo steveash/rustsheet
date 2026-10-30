@@ -487,7 +487,7 @@ LABEL_STYLES = {
 }
 # The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); scripts/merge_step.py
 # holds the whole schema, the merger's actions included, and validates these (decision 0169).
-STEP_LABEL, STEP_COMMENT = "label", "comment"
+STEP_LABEL, STEP_UNLABEL, STEP_COMMENT = "label", "unlabel", "comment"
 
 
 class Refusal(Exception):
@@ -496,24 +496,29 @@ class Refusal(Exception):
 
 @dataclass(frozen=True)
 class Plan:
-    """What `mark` writes: the marker comment (None when this head already has one) and whether
-    the PR still needs the label."""
+    """What `mark` writes: the marker comment (None when this head already has one), whether
+    the PR still needs the label, and whether it still carries `merge-train-ejected`, which
+    marking again removes (SPEC-0027 section 6, "After an ejection")."""
 
     pr: int
     marker: Marker
     body: str | None
     label: bool
+    unlabel: bool
     labels: tuple[str, ...]
 
     def actions(self) -> list[dict[str, object]]:
         """The writes as step-mode actions, in order: the comment first, so a labelled PR always
-        has its marker. `labels` is the PR's whole label set after the label action, for a tool
-        that replaces the set instead of adding to it."""
+        has its marker. `labels` is the PR's whole label set once marked (`ready-to-merge` in,
+        `merge-train-ejected` out), the same in both label actions, for a tool that replaces the
+        set instead of adding or removing one label."""
         out: list[dict[str, object]] = []
         if self.body is not None:
             out.append({"action": STEP_COMMENT, "pr": self.pr, "body": self.body})
         if self.label:
             out.append({"action": STEP_LABEL, "pr": self.pr, "label": READY_LABEL, "labels": list(self.labels)})
+        if self.unlabel:
+            out.append({"action": STEP_UNLABEL, "pr": self.pr, "label": EJECTED_LABEL, "labels": list(self.labels)})
         return out
 
 
@@ -590,7 +595,8 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
         marker,
         None if already else marker_body(marker),
         READY_LABEL not in labels,
-        tuple(dict.fromkeys([*labels, READY_LABEL])),
+        EJECTED_LABEL in labels,
+        tuple(dict.fromkeys([*(name for name in labels if name != EJECTED_LABEL), READY_LABEL])),
     )
 
 
@@ -614,6 +620,8 @@ def apply(client: Client, plan: Plan) -> None:
         client.comment(plan.pr, plan.body)
     if plan.label:
         client.add_label(plan.pr, READY_LABEL)
+    if plan.unlabel:
+        client.remove_label(plan.pr, EJECTED_LABEL)
 
 
 def report(verdict: Verdict) -> str:
