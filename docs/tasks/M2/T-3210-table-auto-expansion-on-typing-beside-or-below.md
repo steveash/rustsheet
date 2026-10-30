@@ -21,11 +21,9 @@ cell only that cell holds the formula); an occupied neighbour (D1 or D3) stops g
 data row grows the table by a row; an unqualified `[@Col]*2` is accepted, grows and fills. Code:
 crates/rustsheet-engine/src/calculated_columns.rs `Model::table_expansion`, plus the row-growth path.
 
-The t3003-header-formula-* cases also fail in the baseline on the H1 readout (rule 7b): clear them too.
-
 ## Acceptance criteria
-- [ ] Each of rules 7a, 7c, 7e, 7f and the occupied-neighbour rule 7d is implemented and the t3003-* probe cases pass
-      (eval baseline shrinks).
+- [ ] Rules 7a, 7c, 7e and 7f are implemented and their t3003-* probe cases pass (eval baseline shrinks); the
+      already-matching occupied-* (7d) and header-formula-* (7b) cases keep passing.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

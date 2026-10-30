@@ -2642,11 +2642,12 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    (c) **A totals row does not stop the growth**: with `T` A1:C5 (totals row 5), `=A2*2` typed into D2 grows `T` to
    A1:D5, names the column `Column1`, fills D2:D4 (`=A2*2`, `=A3*2`, `=A4*2`) and leaves the totals cell D5 blank
    (totals-data-row). Typed into the totals cell D5 it grows `T` the same way, keeps `=A2*2` in D5 only (value 2) and
-   leaves D2:D4 blank (totals-totals-row).
+   leaves D2:D4 blank (totals-totals-row); whether D5 is stored as a totals-row formula is unprobed.
    (d) **An occupied neighbour cell stops the growth**: with 7 in D3, or text `x` in D1, `=A2*2` typed into D2 leaves
    `T` at A1:C4 and is just a formula in D2 (value 2; D3 stays 7, D1 stays `x`) (occupied-below, occupied-above).
    (e) **Typing just below the last data row grows the table by a row**: `=B4*2` or the constant `7` typed into A5
-   makes `ROWS(T[#All])` 5 and `COLUMNS` 3, A5 keeps what was typed (formula `=B4*2`), nothing else is filled
+   makes `ROWS(T[#All])` 5 and `COLUMNS` 3, A5 keeps what was typed (formula `=B4*2`), column D stays blank (B5, C5 and the
+   constant in A5 are not read back)
    (below-last-row, below-last-row-const).
    (f) **An unqualified `=[@Col]*2` typed into D2 is accepted** (Excel resolves it against the table the new column
    joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). The engine
@@ -2693,7 +2694,7 @@ and the name is written into its header cell. A formula typed into the header ce
 is the text `0`. Excel's header is the text `0` for any formula typed there (rule 7b: `=2+3`, `="x"`, ISTEXT TRUE), not derived from its value; the engine writes text `0`. If the
 table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
 and the cell is typed as before, in these cases: a constant typed there, a table with a totals row, a new
-column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). The engine deviates from Excel on rules 7a, 7c, 7d, 7e and 7f (known deviations, not accepted behavior; T-3210). Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
+column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). The engine deviates from Excel on rules 7a, 7c, 7e and 7f (known deviations, not accepted behavior; T-3210); it already matches 7b and 7d. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs; rule 7a-7f by probes/t3003-*)
 Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
