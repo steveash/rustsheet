@@ -33,7 +33,7 @@
 //! Every loop is bounded: [`SERIES_MAX_DF`] / 2 series terms, [`TAYLOR_TERMS`] Taylor terms and
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
-use super::bratio::ported_tails;
+use super::bratio::t_kernel_tails;
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{beta_reg_upper, closed_form_tails, incbcf, incbd};
 use crate::arithmetic::flush_subnormal;
@@ -168,7 +168,7 @@ fn kernel_tail(t: f64, n: f64) -> Option<f64> {
     let y = n / sum;
     let z = square / sum;
     let a = 0.5 * n;
-    let (w, _) = ported_tails(a, 0.5, y, z)?;
+    let (w, _) = t_kernel_tails(a, y, z)?;
     Some(0.5 * w)
 }
 

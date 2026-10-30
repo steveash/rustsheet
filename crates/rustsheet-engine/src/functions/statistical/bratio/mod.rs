@@ -217,6 +217,20 @@ pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(
 /// `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966 (probes/ftest-decomposition
 /// B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
 pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
+    ported_tails_with(a, b, x, y, false)
+}
+
+/// (w, w1) of the Student t kernel call K(n/2, 1/2, y, z) ([`ported_tails`] plus bgrat at b = 1/2,
+/// T-2509). Only the Student t tails take bgrat at b = 1/2 so far: F with a numerator or
+/// denominator df of 1 reaches the same branches, but there bgrat moved gated FDIST cells by 7 ulp
+/// and made F.DIST sweep cells visibly off (t2220-f-dist-sweep d1-1, d2-1), so F stays on today's
+/// kernel until T-2510 ports bgrat for every b.
+pub(super) fn t_kernel_tails(a: f64, y: f64, z: f64) -> Option<(f64, f64)> {
+    ported_tails_with(a, 0.5, y, z, true)
+}
+
+/// [`ported_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
+fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option<(f64, f64)> {
     // TODO(T-3007): find Excel's form at a0 = 1 outside the closed forms before moving it.
     if a == 1.0 || b == 1.0 {
         return None;
@@ -233,11 +247,11 @@ pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)>
             (other(w1), w1)
         }
         // bgrat's b is a0: only b = 1/2 is ported (T-2509; T-2510 and T-2512 own the rest).
-        Branch::Bgrat if d.a0 == 0.5 => {
+        Branch::Bgrat if half_bgrat && d.a0 == 0.5 => {
             let w1 = bgrat_half(d.b0, d.y0, d.x0, 0.0)?;
             (other(w1), w1)
         }
-        Branch::BupBgrat if d.a0 == 0.5 => {
+        Branch::BupBgrat if half_bgrat && d.a0 == 0.5 => {
             let up = bup(d.b0, d.a0, d.y0, d.x0, BUP_BGRAT_TERMS)?;
             let w1 = bgrat_half(d.b0 + BUP_BGRAT_TERMS, d.y0, d.x0, up)?;
             (other(w1), w1)
