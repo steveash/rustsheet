@@ -44,6 +44,16 @@ pub enum CaseStatus {
     InvalidCase,
 }
 
+impl CaseStatus {
+    /// Whether the case did not run to scoring: it failed to load or evaluate, panicked or timed
+    /// out. Such a case fails every exit measure that reads its suite or probe row (decisions
+    /// 0146 item 2(b) and 0174); a pending case that runs cleanly stays `Pending` and never does.
+    #[must_use]
+    pub fn did_not_run(self) -> bool {
+        matches!(self, Self::EngineError | Self::Panic | Self::Timeout)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellResult {
     pub sheet: String,
@@ -223,6 +233,14 @@ enum Prepared {
 }
 
 impl CaseResult {
+    /// `case!*` when the case did not run to scoring ([`CaseStatus::did_not_run`]): how every exit
+    /// measure lists such a case and `scripts/exit_owners.py` reads it as a whole case (decision
+    /// 0174).
+    #[must_use]
+    pub fn blocked_key(&self) -> Option<String> {
+        self.status.did_not_run().then(|| format!("{}!*", self.id))
+    }
+
     /// A case `id` of `suite` with `status`, nothing checked or skipped and no cells: the start
     /// of every result, filled in with struct-update syntax.
     pub(crate) fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {
