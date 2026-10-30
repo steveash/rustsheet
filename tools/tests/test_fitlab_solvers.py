@@ -114,6 +114,11 @@ def test_xirr_fit_scores() -> None:
         name = f"bisect, first-value sign, |f| bound scaled by {span}, Excel ^ (T-2045)"
         assert s[name] == 227
         assert oos[name] == 76
+    # T-3268: the XNPV bound only on a negative root, unscaled, fits every numeric cell; the one
+    # miss is xirr-early-dates A7 (Excel's input check).
+    name = "bisect, first-value sign, |f| bound on a negative root only, Excel ^ (T-3268)"
+    assert s[name] == 227
+    assert oos[name] == 80
 
 
 def test_xnpv_with_excels_power_at_an_exact_root() -> None:
