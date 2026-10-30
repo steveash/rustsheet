@@ -109,6 +109,31 @@ fn fn_rate_secant_excel_bits() {
     );
 }
 
+/// IRR's NPV takes Excel's twice-rounded `*` and `+` (financial.md "IRR is a secant in d = 1 - v",
+/// T-3205): in plain doubles both calls stop one secant iterate early, 16 ulp off.
+#[test]
+fn fn_irr_npv_rounds_twice() {
+    check_cells(
+        &[],
+        &[
+            // probes-numeric/m9-fin-irr-rate Calc!A214
+            (
+                "A1",
+                "=IRR({-1000,230,200,125,200,10},5)",
+                "-0.10150067605359347",
+            ),
+            // gen-m9/67a4c03afd63f988 Calc!A395 (its flows as a literal)
+            ("A2", "=IRR({0.5,0.1,-0.5},0.5)", "-0.09501243788791103"),
+            // gen-m9/9d9ceba257f8001b Calc!A85 (its Data!A8 is blank, which NPV skips)
+            (
+                "A3",
+                "=NPV(1E-10,{-100,50,60,0,0},{0,0,0})",
+                "9.999999981999995",
+            ),
+        ],
+    );
+}
+
 #[test]
 fn fn_impmt_ppmt_arguments() {
     let mut model = new_empty_model();

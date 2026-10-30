@@ -3,7 +3,7 @@ id: T-3205
 title: "IRR secant-in-d residues: gen-m9 67a4c03afd63f988 A395 (16 ulp), t2565 P!C157 and the fit set's last misses"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -37,11 +37,11 @@ fit-set cells.
   bit-exact count block the task as time-boxed.
 
 ## Acceptance criteria
-- [ ] Candidates are scored in the fit lab against the fit set plus A395 and A214; the Outcome records each.
-- [ ] Any shipped change keeps the fit set at 262/263 or better and removes A395 from eval/baseline/gen-m9.txt,
+- [x] Candidates are scored in the fit lab against the fit set plus A395 and A214; the Outcome records each.
+- [x] Any shipped change keeps the fit set at 262/263 or better and removes A395 from eval/baseline/gen-m9.txt,
       with no new known-failure lines.
-- [ ] financial.md records the result, with the cells.
-- [ ] `make check` green; reviewers approve.
+- [x] financial.md records the result, with the cells.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Visible stage (decision 0083): done when A395 and A214 are within half a unit of the 15th significant digit
@@ -50,3 +50,17 @@ Bit-level residue goes to a follow-up with `defer: phase-1b`.
 
 ## Out of scope
 - IRR's fallback path digits (T-1686, T-2928) and `#DIV/0!` cells (T-2802).
+
+## Outcome
+Attempt 1 (decision 0056) shipped: IRR's NPV uses Excel's twice-rounded `*`, `/` and `+` (`discounted_sum`,
+shared with worksheet NPV, whose final division is twice-rounded too). Both open cells, Calc!A214 and gen-m9 A395,
+were exactly the secant's next iterate after the one the plain-double NPV let the stop tests accept.
+Fit lab `irr` (263 cells, plus A395): shipped 263/263 and A395 (was 262/263); NPV in plain doubles (T-3120) 262;
+unconditional zero-step stop 257 (now a lab candidate, reproducing financial.md's 6-cell claim); leading zeros kept
+261; d0 = 1 - 1/(1+g) 236. Rejected arithmetic variants (64-bit NPV 194, right-to-left sum 197, c_i*v^i 179, three
+step formulations 233-243, extra-step or two-small-step stops 47-50, step bound 1E-8 193) are listed in financial.md.
+The lab's running-product NPV now flushes subnormals as the engine does (review item 2).
+Eval: gen-m9 known failures 3181 -> 3178 (A395 of 67a4c03afd63f988, IRR A268 of 81bcdc0bec0c8e6b, NPV A85 of
+9d9ceba257f8001b), 0 regressions. probes-numeric m9-fin-irr-rate Calc!A214 now matches. P!C157 stays (financial.md).
+Not done: review item 1 (a probe of leading-zero flows with far roots) needs new oracle cells; it is recorded as
+unprobed in financial.md.
