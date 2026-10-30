@@ -9,7 +9,7 @@ from collections.abc import Callable
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import irr_fallback, registry, solvers, xirr, yield_caret
+from rustsheet_tools.fitlab.kernels import irr_fallback, irr_secant_d, registry, solvers, xirr, yield_caret
 from rustsheet_tools.fitlab.sweep import (
     Arg,
     Cell,
@@ -142,6 +142,27 @@ def test_irr_secant_fit_scores() -> None:
     assert s["secant in v, no residual test"] == 181
     assert s["secant in v, no retry"] == 187
     assert s["Newton in v=1/(1+r), converged"] == 74
+
+
+def test_irr_secant_d_needs_twice_rounded_npv() -> None:
+    # T-3205: m9-fin-irr-rate Calc!A214 and gen-m9 67a4c03afd63f988 Calc!A395. With NPV in plain doubles
+    # both stop one secant iterate early, 16 ulp off Excel.
+    cells = [
+        ([-1000.0, 230.0, 200.0, 125.0, 200.0, 10.0], 5.0, -0.10150067605359347),
+        ([0.5, 0.1, -0.5], 0.5, -0.09501243788791103),
+    ]
+    plain = irr_secant_d.irr_secant_d(irr_secant_d.npv_v_running_plain)
+    for flows, guess, excel in cells:
+        assert irr_secant_d.irr_secant_d()(flows, guess, None) == excel
+        assert plain(flows, guess, None) != excel
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_irr_secant_d_fit_scores() -> None:
+    s = _scores("irr")
+    assert s["secant in d, shipped (T-3205)"] == 263
+    assert s["secant in d, NPV in plain doubles (T-3120)"] == 262
+    assert s["secant in d, unconditional zero-step stop"] == 257
 
 
 def test_irr_secant_on_a_two_flow_root() -> None:

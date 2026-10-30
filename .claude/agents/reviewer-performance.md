@@ -23,9 +23,12 @@ deduplicated strings/styles/formulas, and efficient row/column insertion. Do not
 
 ## Output
 ```
+HEAD: <the output of `git rev-parse HEAD`, run before you read the diff>
 VERDICT: APPROVE | REQUEST_CHANGES | BLOCK
 FINDINGS:
 - [BLOCKING|MAJOR|MINOR] path:line — problem — fix
 SUMMARY: ...
 ```
+The `HEAD:` line names the commit you reviewed: it goes into the verdict record of your report
+(SPEC-0027 "Verdict records (v2)"), and a report for another commit does not count.
 If the PR does not touch performance-relevant code, reply `VERDICT: APPROVE`, `SUMMARY: not applicable`.
