@@ -56,9 +56,9 @@ task and recorded.
 ## Outcome
 Closed with no code change, because the task's premise was wrong and T-0474 has already fixed the cells. The linked
 sheet these lookups read is not uncached. In `xl/externalLinks/externalLink1.xml` of
-corpus-bench/59932/1_59932_input.xlsx, `<2010Price` is `sheetId` 8 with 1,128 cached cells (columns
-A to BE, rows 1 to 101, column M included). `<2010Cal` (`sheetId` 9) holds 1,900 cached cells. Only the sheets
-this workbook does not look up are empty (`sheetId` 1-4, 7, 10-12, 14-16). The `#ERROR!` came from the
+corpus-bench/59932/1_59932_input.xlsx, `<2010Price` is `sheetId` 8 with 1,128 cached cells (16 columns
+A to T, rows 1 to 101, column M included). `<2010Cal` (`sheetId` 9) holds 1,900 cached cells. The sheets with
+no cached cells are `sheetId` 1-4, 7, 10-12 and 14-16. The `#ERROR!` came from the
 whole-column area `$A:$BE` passing the array bound, and T-0474 fixed it: VLOOKUP, HLOOKUP and MATCH now read a
 cached linked range in place (`LookupTable::External`).
 
