@@ -34,6 +34,9 @@ t3154 collation cells stop being unexplained known failures.
 - [ ] The prefix rule is implemented where it cannot reach a sort, or recorded as a DEVIATION with
       a decision record and accepted-deviation entries; no sort can panic (a test over the t3154
       spellings checks `cmp_text` stays a total order wherever sorts use it).
+- [ ] The UNVERIFIED engine choices T-3154 recorded in coercion.md (U+0363-U+036F as letters, a
+      mark after an expansion, the variant pass before the skipped pass, the table-only mark
+      weights) are probed or stay listed as unprobed.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

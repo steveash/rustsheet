@@ -225,6 +225,12 @@ const fn accent(mark: char) -> u8 {
     NO_ACCENT + MARK_WEIGHT[mark as usize - 0x300]
 }
 
+/// The letter that `c` (U+0363 to U+036F) sorts as ([`COMBINING_LETTERS`]).
+fn combining_letter(c: char) -> Option<char> {
+    let index = usize::try_from(u32::from(c).checked_sub(0x363)?).ok()?;
+    COMBINING_LETTERS.get(index).copied()
+}
+
 /// The diacritic weight combining mark `c` (U+0300 to U+0362) adds to the letter before it.
 fn mark_weight(c: char) -> Option<u8> {
     let index = usize::try_from(u32::from(c).checked_sub(0x300)?).ok()?;
@@ -235,7 +241,7 @@ fn mark_weight(c: char) -> Option<u8> {
 /// the case weight 14 (superscript and compatibility bits) where a plain letter or digit has 2;
 /// Excel ignores the upper-case bit but keeps this one: `"¹" > "1"` with equal letters and
 /// accents (probes/text-collation-longer), and `"ª"&UNICHAR(769)` (3 + 12 = 15) sorts after `"à"`
-/// (15) (probes/t3154-collation-accent-weights Calc!A111, A10). `ς` has case weight 10 in the
+/// (15) (probes/t3154-collation-accent-weights Calc!A114, A10). `ς` has case weight 10 in the
 /// table but equals `σ` in Excel (probes/t3114-collation-beyond-latin1), so it keeps weight 0.
 const SUPERSCRIPT: u8 = 1;
 
@@ -334,10 +340,10 @@ fn element(c: Char) -> Element {
         }
         _ if c.is_ascii() => single(ASCII_PRIMARY[c as usize]),
         '\u{a0}' => single(NBSP),
-        '\u{363}'..='\u{36f}' => {
-            let index = usize::try_from(u32::from(c) - 0x363).unwrap_or(0);
-            accented(COMBINING_LETTERS[index], COMBINING_LETTER)
-        }
+        '\u{363}'..='\u{36f}' => combining_letter(c).map_or_else(
+            || single(OTHER_BASE + u32::from(c)),
+            |base| accented(base, COMBINING_LETTER),
+        ),
         '\u{300}'..='\u{362}' => Element::Mark(mark_weight(c).unwrap_or(0)),
         '¼' => single(digit(0) + 1),
         '½' => single(digit(0) + 2),

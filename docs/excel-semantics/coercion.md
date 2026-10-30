@@ -149,7 +149,10 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
 - An accent is a **diacritic weight**: 2 for a plain letter, plus 12 acute, 13 grave, 14 dot above,
   16 circumflex, 17 diaeresis, 18 caron, 19 breve, 21 macron, 23 tilde, 24 ring, 25 ogonek,
   26 cedilla, 27 double acute, 78 horn, 86 dot below, 89 comma below, 141 perispomeni, … (the
-  table's script-member-1 rows). So on one letter `a á à â ä ǎ ă ā ã å ą ạ`, `e é è ė ê ë ě ē ę`,
+  table's script-member-1 rows). Probed as marks: U+0300-U+0304, U+0306-U+030C, U+030F, U+0311,
+  U+0314, U+0315, U+031B, U+0323-U+0328, U+032C, U+032D, U+0330, U+0331, U+0334, U+0342, U+0345
+  (accent-weights Data!A10:A39); the other weights of U+0300-U+0362 come from the Windows table
+  alone, UNVERIFIED. So on one letter `a á à â ä ǎ ă ā ã å ą ạ`, `e é è ė ê ë ě ē ę`,
   `o ó ò ô ö ō õ ő ơ`, `u ú ù û ü ū ů ų ű ư`, `s š ş ș`, `t ť ţ ț`, alone and as the first of two
   letters (Calc!A1:A145). Letters with a weight of their own keep theirs: `ª º` 3, `ı` 4, `đ` 30,
   `ł` 31, `ø` 33, `ð` 104 (all consistent with T-1590).
@@ -162,9 +165,16 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
 - The sum is **one byte and wraps** past 255: two U+0342 (2 + 282 = 284, so 28) equal one cedilla
   (`"a"&UNICHAR(834)&UNICHAR(834)` = `"a"&UNICHAR(807)`), and three U+0323 (260, so 4) sort between
   `"a"` and `"á"`.
+- Engine choices from the Windows table or by inference, UNVERIFIED (T-3181 may probe them):
+  U+0363-U+036F ("combining a" to "combining x") are the letters `a e i o u c d h m r t v x` with
+  diacritic weight 3, not marks (the table gives them script member 14, a letter's alphabetic
+  weight and DW 3); a mark after an expansion (`æ`, `ß`) adds its weight to the expansion's second
+  letter (the table gives `ǣ`, `æ` plus macron, a row of its own); the superscript (variant) pass
+  comes before the skipped-character pass.
 - `ª`/`º` and `¹ ² ³` differ from `a`/`o`/digits also in a later, case-like pass (Windows case
   weight 14, the superscript bits; Excel ignores only the upper-case bit, and `ς`, case weight 10,
-  still equals `σ`): `"ª"&UNICHAR(769)` (3 + 12 = 15) sorts just after `"à"` (15).
+  still equals `σ`): `"ª"&UNICHAR(769)` (3 + 12 = 15) sorts just after `"à"` (15) (accent-weights
+  Calc!A114, A10).
 - **Not a total order.** A text sorts before any text it is a proper prefix of, even when the
   wrapped weight says otherwise: `"a"&UNICHAR(834)` < `"a"&UNICHAR(834)&UNICHAR(834)` although the
   latter equals `"a"&UNICHAR(807)`, which is below `"a"&UNICHAR(834)`; likewise `"a"&UNICHAR(803)` <
