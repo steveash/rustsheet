@@ -3,7 +3,7 @@ id: T-3177
 title: "merge_ready: accept the session's trailing attribution footer after the merge-train-ready marker"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -36,8 +36,9 @@ its attribution footer still verifies, and the verify still refuses anything els
 
 ## Outcome
 Most of this already landed with T-3164 (`without_footer`, tests, SPEC-0027 section 2 wording). Added the
-remaining case: a footer followed by a trailing newline is accepted (`rstrip("\n")` before stripping the
-footer), with a test. Anything else after the marker is still refused. No eval change.
+remaining case: a footer followed by exactly one trailing newline is accepted (`without_footer` drops one
+`\n` before the footer), with tests; two newlines or any other text after the footer is still refused.
+Decision 0175 gains an amendment and SPEC-0027 section 2 names the newline. No eval change.
 
 ## Handoff (resumed)
 Tried: added `.rstrip("\n")` in `without_footer` (scripts/merge_ready.py) plus a test; `make check` green locally;

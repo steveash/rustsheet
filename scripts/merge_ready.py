@@ -160,8 +160,12 @@ def has_marker(body: str) -> bool:
 
 
 def without_footer(body: str) -> str:
-    """`body` with line endings normalized and at most one trailing FOOTER removed."""
-    return body.replace("\r\n", "\n").rstrip("\n").removesuffix(FOOTER)
+    """`body` with line endings normalized and at most one trailing FOOTER removed.
+
+    The footer may itself end in one newline (decision 0175, T-3177); any more text after it is kept, so
+    `parse_marker` and `parse_record` still refuse it.
+    """
+    return body.replace("\r\n", "\n").removesuffix("\n").removesuffix(FOOTER)
 
 
 def parse_marker(body: str) -> Marker:
