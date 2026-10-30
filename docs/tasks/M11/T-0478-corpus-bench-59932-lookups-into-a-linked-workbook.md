@@ -3,7 +3,7 @@ id: T-0478
 title: "corpus-bench 59932: lookups into a linked workbook with no cached data, #ERROR! against the file's cached values"
 milestone: M11
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
