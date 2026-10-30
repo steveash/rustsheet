@@ -58,3 +58,6 @@ Cells this task owns (split from T-3247):
 
 ## Out of scope
 - The small-k pmf residue and `POISSON_STIRLERR_2_TO_5` (T-3247). The cdf (T-3269).
+
+T-3288 landed the sweep: probes-numeric/t3282-poisson-pmf-large-k.case.json (171 cells) and
+probes-numeric/t3282-poisson-pmf-ulp-runs.case.json (160 cells), both filled by excel-graph.
