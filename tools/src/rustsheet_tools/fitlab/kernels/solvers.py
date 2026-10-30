@@ -5,7 +5,7 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
 `xirr-oos`. probes/bond-one-period-bases (T-1525 review) adds YIELD on every basis.
 
 - `xirr`, `xirr-oos`: in kernels/xirr.py.
-- `irr`: the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
+- `irr`: in kernels/irr_secant_d.py (the fit; T-3120's secant in d is shipped); here the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
 - `irr-fallback`: in kernels/irr_fallback.py.
 - `rate`: the T-2005 secant on the FV residual and its residual variants, traced (T-2527; a nested PMT is
@@ -935,14 +935,6 @@ def yield_candidates() -> list[Candidate]:
 
 
 FITS = [
-    Fit(
-        name="irr",
-        description="IRR fit set: the fitted secant in v (T-1533) and its variants, Newton candidates in r, x and v",
-        cases=FIT_CASES,
-        pattern=r"^=IRR\((.*)\)$",
-        candidates=irr_candidates,
-        where=_literal_irr,
-    ),
     Fit(
         name="rate",
         description="RATE cells of the fit set, nested PMT at Excel's bits: the T-2005 secant, its variants, Newton",
