@@ -228,7 +228,7 @@ fn operands_that_are_no_masks() {
         format!("=SUMPRODUCT({block}*{h}*{k},Sheet2!$B$2:$G$40)"),
         format!("=SUMPRODUCT(Sheet2!$I$2:$N$41*{h},{block}*{k})"),
         format!("=IFERROR(SUMPRODUCT(Sheet2!$I$2:$N$41*{h}*{k}),\"\")"),
-        format!("=SUMPRODUCT(Sheet2!$B$2:$C$9*(Sheet2!$B$1:$C$1=\"h1\"))"),
+        "=SUMPRODUCT(Sheet2!$B$2:$C$9*(Sheet2!$B$1:$C$1=\"h1\"))".to_string(),
         format!("=SUMPRODUCT({h}*{block}*{k})"),
         format!("=SUMPRODUCT({block}/{h}*{k})"),
     ]

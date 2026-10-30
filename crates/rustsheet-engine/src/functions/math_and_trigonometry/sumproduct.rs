@@ -392,6 +392,7 @@ impl Model {
                 }
                 continue;
             };
+            // Every link is a `*` (checked above), so it has a right operand.
             let (_, right) = value_operands(link)?;
             let right = self.evaluate_node_in_context(right, cell);
             let is_mask = masked.multiply(&right);

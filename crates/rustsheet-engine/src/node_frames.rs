@@ -255,6 +255,8 @@ impl Model {
     /// result so far and its right operand, the same order and results as
     /// recursing into each left operand, on one stack frame however long the
     /// chain is. Out of line, so its locals stay off `evaluate_node_in_context`'s frame.
+    /// SUMPRODUCT's `Model::read_masked_block` folds a `*` chain the same way (keep the two in
+    /// step; T-3230).
     #[inline(never)]
     pub(crate) fn evaluate_operator_chain(
         &mut self,

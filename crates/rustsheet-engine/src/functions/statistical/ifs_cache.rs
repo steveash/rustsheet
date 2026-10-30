@@ -38,7 +38,8 @@
 //! its match set is cut from the range's.
 //!
 //! SUMPRODUCT's `block*mask*...` argument reads a cached block's cells as numbers, the way `*`
-//! reads them ([`BlockNumbers`], T-3230), once per block and pass.
+//! reads them ([`BlockNumbers`], T-3230), once per block and pass. Those numbers are charged to
+//! the cells budget beside the block's values, so such a block counts twice.
 //!
 //! Directive 5: ranges between [`MIN_CACHED_CELLS`] and [`MAX_CACHED_CELLS`] cells are cached;
 //! all cached values of a pass hold at most [`MAX_CACHED_CELLS`] cells and all match sets at most
