@@ -199,7 +199,7 @@ fn exact_bracket(h: f64, o: f64) -> (f64, f64) {
 
 /// Binet's mu(v) in double-double for a half-integer v >= 1/2: the table to 15, Stirling's
 /// series above.
-pub(super) fn binet(v: f64) -> (f64, f64) {
+fn binet(v: f64) -> (f64, f64) {
     let index = 2.0 * v - 1.0;
     if index < 30.0 {
         // A half-integer v in [1/2, 15]: index is integral in 0..30.

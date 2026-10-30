@@ -1,6 +1,6 @@
-use super::f_density::binet;
 use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::gamma_ur;
+use super::loader::{excel_bd0, stirlerr_exact};
 use crate::arithmetic::{extended_product, extended_quotient, extended_sqrt, extended_sum};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
@@ -10,13 +10,6 @@ use crate::x87_log10::excel_ln;
 use crate::x87_register::Register;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
-/// Up to this relative gap |k - mean| <= cut (k + mean), Loader's bd0 is its series
-/// in v = (k - mean)/(k + mean); above it, the log form. Excel's cut is 0.2, not R's 0.1, as in its
-/// beta density (docs/excel-semantics/statistics.md "Beta density for min(a,b) > 1 is Loader's
-/// saddle point", T-2513), and the gap at the cut itself takes the series: `POISSON(2,3,FALSE)` =
-/// 0.22404180765538775, where the log form is 2 ulp off (probes-numeric/t1048-poisson A4).
-const BD0_SERIES_CUT: f64 = 0.2;
-
 /// The largest mean, compared exactly, at which a pmf with k >= 2 is still the closed form: at
 /// 1.1 `POISSON.DIST(7,1.1,FALSE)` is the closed form's double and 10 ulp from the saddle point's
 /// (k 5, 8, 10, 20: within an ulp of the closed form, 5 to 21 from the saddle point), and from
@@ -24,15 +17,11 @@ const BD0_SERIES_CUT: f64 = 0.2;
 /// t2055-poisson-pmf-switch).
 const CLOSED_FORM_MAX_MEAN: f64 = 1.1;
 
-/// The series terms bd0 sums at most: below the cut |v| < 0.2, so each term is under 1/25 of the
-/// one before and the sum stops changing within about 12 terms; the bound only caps the loop.
-const BD0_SERIES_TERMS: u32 = 64;
-
 /// Excel's stirlerr(k) for k = 2, ..., 6, as the saddle point uses it: 13, 12, 29, 34 and 39 ulp
-/// below the exact value (`f_density.rs` `binet`), about 4E-17 to 1.2E-16 low, the offsets that
-/// reproduce the most Excel pmfs at each k: 32 of 33 Excel cells at k = 2 (21 with the exact
-/// value), 22 of 23 at 3 (18), 24 of 25 at 4 (8), 46 of 48 at 5 (33), 23 of 26 at 6 (20); from
-/// k = 7 on the exact value is as good (probes-numeric/t2055-poisson-pmf-sweep, -switch,
+/// below the exact value (`loader.rs` `stirlerr_exact`), about 4E-17 to 1.2E-16 low, the offsets
+/// that reproduce the most Excel pmfs at each k: 32 of 33 Excel cells at k = 2 (21 with the exact
+/// value), 22 of 23 at 3 (18), 24 of 25 at 4 (8), 46 of 48 at 5 (33), 23 of 26 at 6 (20), counted
+/// with every op of the bd0 series stored; from k = 7 on the exact value is as good (probes-numeric/t2055-poisson-pmf-sweep, -switch,
 /// t1048-poisson; gen-m9). No closed form of Excel's GAMMALN or LN reproduces them.
 const EXCEL_STIRLERR_2_TO_6: [f64; 5] = [
     f64::from_bits(0x3FA5_2A9B_923E_A63C), // 0.04134069595540921
@@ -47,13 +36,13 @@ const EXCEL_STIRLERR_2_TO_6: [f64; 5] = [
 /// - mean <= 1.1, or k <= 1: `EXP(fl(k LN(mean)) - GAMMALN(k + 1)) * EXP(-mean)`, the exponent held
 ///   in a register, the mean's own factor apart (k = 0 is EXP(-mean));
 /// - otherwise Loader's saddle point `EXP(-stirlerr(k) - bd0(k, mean)) / SQRT(2 pi k)`, the
-///   exponent stored to a double, Excel's x87 bd0 and stirlerr ([`EXCEL_STIRLERR_2_TO_6`], then
-///   the exact value).
+///   exponent stored to a double, the beta density's x87 bd0 (`loader.rs` `excel_bd0`) and Excel's
+///   stirlerr ([`EXCEL_STIRLERR_2_TO_6`], then the exact value).
 ///
 /// Over the 121 Excel-computed pmf cells with a resolvable argument in gen-m9, probes-numeric
-/// t1048-poisson and ironcalc-calc POISSON.xlsx it is Excel's double at 104 and within 4 ulp at
+/// t1048-poisson and ironcalc-calc POISSON.xlsx it is Excel's double at 106 and within 4 ulp at
 /// all 121, against 47 and 80 for statrs' `exp(k ln mean - mean - ln k!)`; on the 204 cells of
-/// probes-numeric/t2055-poisson-pmf-sweep 154 and 197, against 29 and 121.
+/// probes-numeric/t2055-poisson-pmf-sweep 152 and 198, against 29 and 121.
 fn excel_poisson_pmf(count: u64, mean: f64) -> f64 {
     // The conversion rounds only above 2^53, where the saddle point is all there is anyway.
     let k = count as f64;
@@ -70,36 +59,15 @@ fn excel_poisson_pmf(count: u64, mean: f64) -> f64 {
     let stirlerr = (2..=6)
         .zip(EXCEL_STIRLERR_2_TO_6)
         .find_map(|(n, value)| (n == count).then_some(value))
-        .unwrap_or_else(|| binet(k).0);
-    let exponent = extended_sum(-stirlerr, -bd0(k, mean));
+        .unwrap_or_else(|| stirlerr_exact(k).0);
+    // The beta density's bd0, its 0.2 cut included: the gap at the cut takes the series
+    // (`POISSON(2,3,FALSE)` = 0.22404180765538775, 2 ulp from the log form; probes-numeric/
+    // t1048-poisson A4).
+    let exponent = extended_sum(-stirlerr, -excel_bd0(k, mean));
     extended_quotient(
         excel_exp(exponent),
         extended_sqrt(extended_product(std::f64::consts::TAU, k)),
     )
-}
-
-/// Loader's deviance term bd0(k, mean) = k ln(k / mean) + mean - k for k >= 2, mean > 1.1, each
-/// step an x87 op stored to a double: the log form `fl(fl(k LN(fl(k / mean))) + fl(mean - k))`,
-/// or the series 2k sum v^(2j+1) / (2j+1) near k = mean, where the log form cancels.
-fn bd0(k: f64, mean: f64) -> f64 {
-    let gap = k - mean;
-    if gap.abs() > BD0_SERIES_CUT * (k + mean) {
-        let t = extended_product(k, excel_ln(extended_quotient(k, mean)));
-        return extended_sum(t, extended_sum(mean, -k));
-    }
-    let v = extended_quotient(gap, extended_sum(k, mean));
-    let v2 = extended_product(v, v);
-    let mut sum = extended_product(gap, v);
-    let mut term = extended_product(2.0 * k, v);
-    for j in 1..=BD0_SERIES_TERMS {
-        term = extended_product(term, v2);
-        let next = extended_sum(sum, extended_quotient(term, f64::from(2 * j + 1)));
-        if next == sum {
-            break;
-        }
-        sum = next;
-    }
-    sum
 }
 
 impl Model {

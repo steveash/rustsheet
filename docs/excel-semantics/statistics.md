@@ -1211,7 +1211,7 @@ double 1.1 and k with 1:
 mean <= 1.1 or k <= 1:  fl( EXP(R) * EXP(-mean) ),  R = fl(k·LN(mean)) - GAMMALN(k+1) held in a register (EXP of it unstored)
 otherwise (Loader):     fl( EXP(E) / fl(SQRT(fl(2π·k))) ),  E = fl(-stirlerr(k) - bd0(k,mean)) stored
 bd0, log form when |k - mean| > 0.2·(k + mean):  fl( fl(k·LN(fl(k/mean))) + fl(mean - k) )
-bd0, series otherwise (the cut itself included):  R's loop, every op stored: v = fl(d/(k+mean)), s = d·v, ej = 2k·v, ...
+bd0, series otherwise (the cut itself included):  the beta density's series (`loader.rs` `excel_bd0`)
 stirlerr(k): the exact value from k = 7, and for k = 2..6 a value 13, 12, 29, 34, 39 ulp below it (fitted)
 ```
 LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`). k = 0 is EXP(-mean) either way.
@@ -1227,17 +1227,21 @@ LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`)
 - The 0.2 cut is the beta density's ("Beta density for min(a,b) > 1 is Loader's saddle point"), and the gap at the cut
   takes the series: `POISSON(2,3,FALSE)` is 0.22404180765538775, the series' double; the log form is 2 ulp off
   (probes-numeric/t1048-poisson A4).
+- bd0 is the beta density's (`excel_bd0`: its log form, its 0.2 cut, its register series with the fl(2kv) term). A series
+  with every op stored ties it on exact cells (152 of 204 on the sweep either way) and leaves two fewer cells visibly off
+  (`POISSON.DIST(300,210,FALSE)` and `(300,240)`, where `excel_bd0` is 16 and 46 ulp off, against `(300,420)`, 50 ulp the
+  other way), so the series' arithmetic is still not identified (T-2586, T-3242).
 - stirlerr: for k = 2 to 6 one offset per k reproduces 32 of 33, 22 of 23, 24 of 25, 46 of 48 and 23 of 26 Excel pmfs
-  (the exact value 21, 18, 8, 33, 20); Excel's value is 4E-17 to 1.2E-16 low. No GAMMALN-based form
+  (the exact value 21, 18, 8, 33, 20; counted with the stored series); Excel's value is 4E-17 to 1.2E-16 low. No GAMMALN-based form
   (GAMMALN(n+1) - (n+1/2)LN(n) + n - ln√(2π) in 17 storage orders, either ln√(2π) double) gives these offsets, and
   f_density.rs's measured stirlerr error (r3-loader-const) is a different quantity. From k = 7 the exact value is as good
   as any offset.
 - Scores (exact / within 4 ulp / visibly off, against statrs' `exp(k ln mean - mean - ln k!)`): the 121 pmf cells of
-  gen-m9, t1048-poisson and ironcalc-calc POISSON.xlsx with resolvable arguments 104/121/1 (statrs 47/80/33);
-  probes-numeric/t2055-poisson-pmf-sweep (204 cells, k 1 to 300) 154/197/5 (29/121/65); t2055-poisson-pmf-switch
-  (133) 127/133/2 (11/57/56).
-- Residue: Loader's log form at large k and a mean well off k (`POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,420)` 50 ulp,
-  `(30,21)` 11 ulp; t2055-poisson-pmf-sweep), and about one ulp at k = 2 to 8 elsewhere. The cdf's deep upper tail (mean
+  gen-m9, t1048-poisson and ironcalc-calc POISSON.xlsx with resolvable arguments 106/121/0 (statrs 47/80/33);
+  probes-numeric/t2055-poisson-pmf-sweep (204 cells, k 1 to 300) 152/198/5 (29/121/65); t2055-poisson-pmf-switch
+  (133) 127/133/0 (11/57/56).
+- Residue: the saddle point at large k and a mean well off k (`POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,240)` 46 ulp,
+  `(300,210)` 16 ulp, `(30,21)` 11 ulp; t2055-poisson-pmf-sweep), and about one ulp at k = 2 to 8 elsewhere. The cdf's deep upper tail (mean
   well above k) is a separate residue of the incomplete gamma kernel: `POISSON(2,100,TRUE)` = 1.8976107553682424E-40 is 34
   ulp from the exact value and 45 ulp from fl(pmf · (1 + 2/100 + 2/100²)), so the cdf there is not the pmf times its
   series (gen-m9 c7664e494e418395 A294).
@@ -1245,7 +1249,7 @@ LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`)
   is a probe at a different mean (the 17-digit cells were dropped from the t2055 probes).
 Evidence: probes-numeric/t2055-poisson-pmf-sweep, t2055-poisson-pmf-switch, t1048-poisson (excel-graph, 2026-10-30 and
 2026-10-14); gen-m9 POISSON and POISSON.DIST cells (excel-graph); ironcalc-calc STATISTICAL/POISSON.xlsx (Excel-cached).
-Ours: `statistical/poisson.rs` `excel_poisson_pmf` and `bd0`.
+Ours: `statistical/poisson.rs` `excel_poisson_pmf`, on `loader.rs` `excel_bd0` and `stirlerr_exact`.
 Status: VERIFIED (excel-graph) for the two forms and the switch; the small-k stirlerr is a fit
 Tasks: T-2055
 

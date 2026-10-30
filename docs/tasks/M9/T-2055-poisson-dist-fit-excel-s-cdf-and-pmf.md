@@ -3,7 +3,7 @@ id: T-2055
 title: "POISSON.DIST: fit Excel's cdf and pmf (ironcalc-calc POISSON.xlsx and probes-numeric/t1048-poisson together)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -102,8 +102,8 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2256): these 133 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Fewer POISSON.xlsx baseline lines; no Excel-computed cell in the suites above goes from pass to fail.
-- [ ] The per-call cost stays bounded, and the lifting weight covers it.
+- [x] Fewer POISSON.xlsx baseline lines; no Excel-computed cell in the suites above goes from pass to fail.
+- [x] The per-call cost stays bounded, and the lifting weight covers it.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -117,3 +117,38 @@ still unmet then move to a follow-up task without the key.
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Outcome
+POISSON.DIST's and POISSON's pmf are now Excel's two closed forms (`statistical/poisson.rs` `excel_poisson_pmf`,
+statistics.md "POISSON.DIST pmf: two closed forms"), replacing statrs' `exp(k ln mean - mean - ln k!)`:
+- mean <= 1.1 or k <= 1: EXP(fl(k LN(mean)) - GAMMALN(k+1), held in a register) * EXP(-mean);
+- otherwise Loader's saddle point with the exponent stored, on `loader.rs` `excel_bd0` (reused from T-2507) and
+  `stirlerr_exact`, with a fitted Excel stirlerr for k = 2..6.
+The switch at 1.1 and the shape of both forms come from two new excel-graph probes,
+probes-numeric/t2055-poisson-pmf-sweep (204 cells) and t2055-poisson-pmf-switch (133). Excel is not close to correctly
+rounded for this pmf (up to 91 eps off the exact value), so the stage-0114 target of a correctly rounded kernel would
+have left cells visibly off; the fit follows Excel (CLAUDE.md directive 1). The cdf is unchanged (`gamma_ur`): no change
+to `incomplete_gamma`, so T-2638 and T-3060 are untouched, and the even-df CHISQ.DIST.RT identity of T-1778 still holds.
+
+Main-vs-HEAD, every suite, per cell (main b06ef5fc8 and HEAD built in separate target dirs; the two t2055 probes are
+evaluated on both sides):
+- fixed (fail -> pass): 307 (gen-m9 49, ironcalc-calc 7, probes-numeric 251);
+- lost bit-exact (pass -> fail): 6, all 1 ulp, all in the new ungated probe t2055-poisson-pmf-sweep, in the closed form
+  branch: `POISSON.DIST(1,0.3,FALSE)` A139 +1, `(3,0.9)` A153 +1, `(3,1.0)` A154 +1, `(3,1.1)` A156 +1, `(5,0.9)` A159 +1,
+  `(5,1.05)` A161 +1. None in a gated suite;
+- newly visibly off: 0; type or error changes: 0;
+- visibly fixed: 128 (101 cells that now pass plus 27 still failing but within 15 digits).
+Top-level POISSON / POISSON.DIST cells in the suites that existed before this task: 140 failing, 42 visibly off on
+main; 81 failing, 11 visibly off now. All 11 are cdfs: the deep upper tail (mean well above k, for example
+`POISSON(2,100,TRUE)`, `POISSON(9,100,...)`) and ironcalc POISSON.xlsx D55 (k = 46040). No pmf cell is visibly off there.
+Baselines: gen-m9 -49 lines, ironcalc-calc -7 (POISSON.xlsx 15 -> 8), none added (`make eval-baseline`).
+
+Criteria:
+- Visible parity: partly met. Every owned pmf cell is within 15 digits; the gen-m9 cdf cells in the deep upper tail are
+  not, and their baseline lines stay (T-3241).
+- Fewer POISSON.xlsx baseline lines (15 -> 8) and no Excel-computed cell from pass to fail in the gated suites: met.
+- Per-call cost: both forms are O(1) apart from bd0's series (under about 12 terms, capped at 1000 in `loader.rs`); the
+  cdf, which the lifting weight charges, is unchanged: met.
+- `make check` green (this branch, after merging origin/main); reviewers: pending.
+Follow-ups: T-3241 (cdf deep upper tail, on the shared incomplete-gamma kernel), T-3242 (`defer: phase-1b`, pmf
+bit-level residue: large-k saddle point, about 1 ulp at small k).
