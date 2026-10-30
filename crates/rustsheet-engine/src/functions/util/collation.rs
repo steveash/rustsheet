@@ -599,8 +599,14 @@ fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
 /// with no units left is less (so a text is below any text it is a proper prefix of,
 /// probes/t3154-collation-accent-pairs Calc!S19, T18); otherwise the sums of the units left, each
 /// in a wrapping byte, decide. Texts equal here have equal [`accents`].
-fn cmp_accent_units(left: impl Iterator<Item = Char>, right: impl Iterator<Item = Char>) -> Ordering {
-    let (mut left, mut right) = (accent_units(left).peekable(), accent_units(right).peekable());
+fn cmp_accent_units(
+    left: impl Iterator<Item = Char>,
+    right: impl Iterator<Item = Char>,
+) -> Ordering {
+    let (mut left, mut right) = (
+        accent_units(left).peekable(),
+        accent_units(right).peekable(),
+    );
     loop {
         let (mut l, mut r) = match (left.next(), right.next()) {
             (None, None) => return Ordering::Equal,

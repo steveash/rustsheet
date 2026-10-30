@@ -336,7 +336,10 @@ fn probe_data_strings(stem: &str) -> Vec<Text> {
         model._set(cell, formula.as_str().unwrap());
     }
     model.evaluate();
-    cells.keys().map(|cell| Text::from(model._get_text(cell))).collect()
+    cells
+        .keys()
+        .map(|cell| Text::from(model._get_text(cell)))
+        .collect()
 }
 
 /// The accent strings of the T-3154 and T-3201 probes, on which Excel's own comparison is not
@@ -363,7 +366,11 @@ fn cmp_text_is_a_total_order_on_the_accent_probes() {
                 assert_eq!(cmp_text(b, a), order.reverse(), "{stem}: {a:?} vs {b:?}");
                 assert_eq!(
                     order,
-                    if below { Ordering::Less } else { order.min(Ordering::Equal) },
+                    if below {
+                        Ordering::Less
+                    } else {
+                        order.min(Ordering::Equal)
+                    },
                     "{stem}: {a:?} vs {b:?}"
                 );
                 below = order.is_lt();
@@ -390,7 +397,10 @@ fn pairwise_prefix_rule() {
     let circumflexes = format!("a{}", "\u{302}".repeat(16));
     assert_eq!(cmp("a", &circumflexes), Ordering::Less);
     assert_eq!(cmp(&circumflexes, "a"), Ordering::Greater);
-    assert_eq!(cmp_text(&Text::from("a"), &Text::from(circumflexes.as_str())), Ordering::Equal);
+    assert_eq!(
+        cmp_text(&Text::from("a"), &Text::from(circumflexes.as_str())),
+        Ordering::Equal
+    );
     // U+0342 (141) < two U+0342 (28, = cedilla) < U+0342.
     assert_eq!(cmp("a\u{342}", "a\u{342}\u{342}"), Ordering::Less);
     assert_eq!(cmp("a\u{342}\u{342}", "a\u{327}"), Ordering::Equal);
