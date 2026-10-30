@@ -851,43 +851,6 @@ pub(crate) enum Tail {
     Upper,
 }
 
-/// Above this shape the quantile is statrs' search alone, its NaN included: Excel is `#NUM!` for
-/// `GAMMAINV(0.999999,10000000000.5,1E+10)` and for a CHISQ.INV.RT of 10000000000.5 degrees of
-/// freedom (gen-m9), where statrs' search ends as NaN and a refinement would find the quantile
-/// (T-1634).
-/// Excel also has values above this shape (`CHISQ.INV(1E-16,10000000000.5)` = 9998837266.383266,
-/// gen-m9; `CHISQ.INV(5.6221E-26,4715100000)` = 4714082845.627977, probes/incomplete-gamma-cap),
-/// which rest on statrs' search alone, so moving the cut needs both kinds of cell checked.
-const REFINE_SHAPE_MAX: f64 = 1e9;
-
-/// From this shape on, Excel's GAMMA.INV and GAMMAINV are not a search but
-/// [`wilson_hilferty_quantile`]: `GAMMA.INV(0.5,a,1)` / a tends to c = 1.0002658235505755, and is
-/// c (a - 1/3) / a from 1E13 to 1E300 (probes/t2982-gamma-inv-huge-shape A7-A23; the one cell at 2E10, A7, is at
-/// p = 0.5), while at 5E9 the quantile is the true one and
-/// at 7E9 and 1E10 Excel is mostly `#NUM!` (A5, A6, A42-A59; that band and the shapes from 1E9 to
-/// it stay on the search, TODO(T-3070)).
-pub(crate) const WILSON_HILFERTY_SHAPE_MIN: f64 = 2e10;
-
-/// The offset Excel adds to the Wilson-Hilferty cube root: (1.0002658235505755)^(1/3) - 1 is
-/// 0.0000886 to 13 digits (A7-A23).
-const WILSON_HILFERTY_OFFSET: f64 = 0.000_088_6;
-
-/// The factor on Excel's z term, fitted to the p sweep at shape 1E13 (A25-A41, 1 - 2.2106E-5;
-/// the cells are within 7 ulps of it, 3 at most from p = 1E-16 to 1 - 1E-6).
-const WILSON_HILFERTY_SPREAD: f64 = 0.999_977_893_94;
-
-/// Excel's gamma quantile at a shape from [`WILSON_HILFERTY_SHAPE_MIN`], for a scale of 1, where
-/// `z` is the standard normal quantile of the lower tail's probability: the Wilson-Hilferty
-/// approximation a (1 - 1/(9a) + z/(3 sqrt a))^3 with Excel's offset and spread inside the cube
-/// (probes/t2982-gamma-inv-huge-shape, docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV
-/// at a huge shape"). It is within 7 ulps of Excel from a shape of 1E13 and about 100 to 1,500 ulps
-/// off at 1E11 (a term in z^2 that the fit does not have; T-3070).
-pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
-    let cube_root = 1.0 + WILSON_HILFERTY_OFFSET - 1.0 / (9.0 * shape)
-        + z * WILSON_HILFERTY_SPREAD / (3.0 * shape.sqrt());
-    shape * cube_root * cube_root * cube_root
-}
-
 /// The quantile of the gamma distribution of `shape` and `scale` where the probability of `tail`
 /// is `p` (in [0, 1], else NaN). NaN where the rate 1 / scale is not a positive finite double, at
 /// every shape (a subnormal scale stays `#NUM!` in GAMMA.INV, as statrs' `Gamma::new` made it).
@@ -897,8 +860,9 @@ pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
 /// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
-/// (`special::refine_increasing`, at most 129 cdfs, from statrs' search, [`inverse_cdf_within`],
-/// when it has a result). Excel is close to the true quantile (against mpmath, 509 of 545
+/// (`special::refine_increasing`: below [`HUGE_SHAPE_MIN`] at most 129 cdfs, from statrs' search,
+/// [`inverse_cdf_within`], when it has a result; from it at most 65, halving the whole range).
+/// Excel is close to the true quantile (against mpmath, 509 of 545
 /// literal-argument quantile cells are within half a unit of the 15th digit), so statrs' result
 /// is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
 /// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in
@@ -943,10 +907,15 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         // (`probability` calls no cdf of its own), so no borrow can overlap.
         let terms = RefCell::new(Terms(MAX_TERMS));
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
-        let estimate = inverse_cdf_within(&dist, lower, &mut terms.borrow_mut());
-        if dist.shape() > REFINE_SHAPE_MAX {
-            return estimate;
-        }
+        // From a huge shape statrs' search is NaN or far off (its 8 bisections leave Newton too
+        // far out: 4714346327.59633 for `CHISQ.INV(5.6221E-26,4715100000)`, whose quantile is
+        // Excel's 4714082845.627977, probes/incomplete-gamma-cap E15), so the refinement halves
+        // the whole range instead: at most 65 cdfs, each one Temme term.
+        let estimate = if shape >= HUGE_SHAPE_MIN {
+            f64::NAN
+        } else {
+            inverse_cdf_within(&dist, lower, &mut terms.borrow_mut())
+        };
         let crossing = match small {
             Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
             Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
@@ -1017,6 +986,10 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
         Tail::Upper => upper,
     }
 }
+
+mod huge_shape;
+
+pub(crate) use huge_shape::{huge_shape_quantile, HUGE_SHAPE_MIN};
 
 #[cfg(test)]
 mod tests;

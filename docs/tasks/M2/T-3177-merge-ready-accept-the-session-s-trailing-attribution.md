@@ -3,10 +3,10 @@ id: T-3177
 title: "merge_ready: accept the session's trailing attribution footer after the merge-train-ready marker"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -33,3 +33,13 @@ its attribution footer still verifies, and the verify still refuses anything els
 
 ## Out of scope
 - Changing what the session appends to comments.
+
+## Outcome
+Most of this already landed with T-3164 (`without_footer`, tests, SPEC-0027 section 2 wording). Added the
+remaining case: a footer followed by exactly one trailing newline is accepted (`without_footer` drops one
+`\n` before the footer), with tests; two newlines or any other text after the footer is still refused.
+Decision 0175 gains an amendment and SPEC-0027 section 2 names the newline. No eval change.
+
+Handed off by a sonnet run because the protected-path change needed a decision record; the opus run that
+resumed it amended decision 0175 and tightened `rstrip` to drop exactly one newline. `merge_step.same_body`
+(step-mode read-back of the session's own post) is unchanged.

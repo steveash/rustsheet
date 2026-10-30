@@ -6,7 +6,10 @@ use statrs::distribution::{Continuous, Gamma};
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
 use super::gamma::tiny_ratio_density;
-use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
+use super::incomplete_gamma::{
+    gamma_cdf, gamma_density, gamma_quantile, gamma_sf, huge_shape_quantile, Tail, HUGE_SHAPE_MIN,
+};
+use super::normal::normal_quantile;
 use crate::arithmetic::flush_subnormal;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -202,6 +205,29 @@ impl Model {
         // probability outside [0, 1] is #NUM!.
         if !(0.0..=1.0).contains(&p) {
             return Err(num_error(cell));
+        }
+        // CHISQ.INV.RT and CHIINV take any number of degrees of freedom from 1, where CHISQ.INV
+        // and the cdfs are `#NUM!` above 1E10 (`CHIINV(0.5,2E13)` = `CHISQ.INV.RT(0.5,2E13)` =
+        // 20005316471010.844, `CHISQ.INV(0.5,2E13)` `#NUM!`: probes/t2982-gamma-inv-huge-shape
+        // A91-A93; probes/t3070-gamma-inv-band A214-A333 from 1.5E10 to 1E15).
+        let shape = if right_tail && df.trunc() > MAX_DEGREES_OF_FREEDOM && df.is_finite() {
+            df.trunc() / 2.0
+        } else {
+            chi_squared(df, cell)?.shape()
+        };
+        // From a shape of 1E9 Excel's own search at scale 2, the right tail's z from p itself
+        // (`CHISQ.INV.RT(1E-100,1E10)` = 10005667524.015223, A371, where 1 - p is 1).
+        if shape >= HUGE_SHAPE_MIN && p > 0.0 && p < 1.0 {
+            let lower_z = normal_quantile(p, 0.0, 1.0, cell)?;
+            let (tail, z) = if right_tail {
+                (Tail::Upper, -lower_z)
+            } else {
+                (Tail::Lower, lower_z)
+            };
+            return non_negative(
+                huge_shape_quantile(shape, CHI_SQUARED_SCALE, p, tail, z),
+                cell,
+            );
         }
         let dist = chi_squared(df, cell)?;
         if !right_tail {
