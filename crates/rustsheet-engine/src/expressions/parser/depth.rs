@@ -9,6 +9,7 @@
 
 use crate::expressions::lexer::STRING_LITERAL_TOO_LONG_MESSAGE;
 use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser, Run};
+use crate::expressions::token::{self, TokenType};
 
 /// Deepest formula tree the parser builds; deeper formulas are a parse error
 /// ([`TOO_DEEP_MESSAGE`]), which keeps untrusted formulas from overflowing
@@ -151,6 +152,31 @@ impl Parser {
         let before = self.run_ahead();
         let (signs, counted) = self.parse_signs();
         (before, signs, counted)
+    }
+
+    /// The unary signs before an operand, in written order: whether each is a minus, and the
+    /// run after it. Every sign is kept in its written order (`--x` coerces `x` to a number,
+    /// `+-5` prints back as written), but a plus written directly before a number literal folds
+    /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
+    /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776). Also returns how many of
+    /// them count toward [`MAX_SIGNS`]: all but a minus written directly before a number literal.
+    #[inline(never)]
+    pub(super) fn parse_signs(&mut self) -> (Vec<(bool, Run)>, usize) {
+        let mut signs = Vec::new();
+        let mut counted = 0;
+        while let TokenType::Addition(op) = self.lexer.peek_token() {
+            self.lexer.advance_token();
+            let is_minus = op == token::OpSum::Minus;
+            let before_number = !self.lexer.whitespace_follows()
+                && matches!(self.lexer.peek_token(), TokenType::Number(_));
+            if !before_number {
+                counted += 1;
+            }
+            if is_minus || !before_number {
+                signs.push((is_minus, self.run_ahead()));
+            }
+        }
+        (signs, counted)
     }
 
     /// Parses an operand. Its subexpressions (parenthesised, function

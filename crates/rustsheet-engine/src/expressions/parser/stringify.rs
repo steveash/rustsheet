@@ -2,6 +2,7 @@ pub(super) mod bound_variables;
 mod rename_defined_name;
 mod sheet_edits;
 mod structured;
+mod wrapped;
 mod wrong_reference;
 use super::reference_operators::{
     at_text, callee_operand, intersection_text, spill_operand, tight_operand, union_text,
@@ -11,7 +12,7 @@ use super::{
     super::utils::{name_needs_quoting, quote_name},
     left_chain,
     move_formula::{moved_reference_text, MoveContext},
-    value_operands, ArrayNode, Node, Reference, Spacing,
+    value_operands, ArrayNode, Node, Reference,
 };
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
@@ -28,6 +29,7 @@ pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
 };
+use wrapped::wrapped_text;
 
 pub enum DisplaceData {
     Column {
@@ -957,65 +959,6 @@ fn binding(node: &Node) -> Binding {
         | Node::UnaryPlus { .. } => Binding::Minus,
         _ => Binding::Operand,
     }
-}
-
-/// What [`wrapped_text`] prints after the operand of a wrapper: the `)`s of written parentheses,
-/// or the whitespace written behind it.
-enum Closer {
-    Parentheses(u16),
-    Space(Spacing),
-}
-
-/// The text of `node`, a run of the wrappers printed around one operand, unary signs, written
-/// parentheses ([`Node::Group`]) and whitespace ([`Node::Spaced`]), and of that operand. Printed
-/// in a loop, not a frame per wrapper: a sign run holds up to [`super::MAX_SIGNS`] signs, and
-/// `-(-(...))` nests as deep as `((...))` (T-3193).
-fn wrapped_text(node: &Node, sub: impl Fn(&Node) -> String) -> String {
-    let mut text = String::new();
-    let mut closers = Vec::new();
-    let mut node = node;
-    loop {
-        match node {
-            Node::UnaryKind {
-                kind: OpUnary::Minus,
-                right: child,
-            }
-            | Node::UnaryPlus { child } => {
-                text.push(if matches!(node, Node::UnaryPlus { .. }) {
-                    '+'
-                } else {
-                    '-'
-                });
-                node = child;
-                if binding(child) < Binding::Minus {
-                    text.push('(');
-                    closers.push(Closer::Parentheses(1));
-                    break;
-                }
-            }
-            Node::Group { levels, child } => {
-                text.extend(std::iter::repeat_n('(', usize::from(*levels)));
-                closers.push(Closer::Parentheses(*levels));
-                node = child;
-            }
-            Node::Spaced { space, child } => {
-                space.push_before(&mut text);
-                closers.push(Closer::Space(*space));
-                node = child;
-            }
-            _ => break,
-        }
-    }
-    text.push_str(&sub(node));
-    for closer in closers.iter().rev() {
-        match closer {
-            Closer::Parentheses(levels) => {
-                text.extend(std::iter::repeat_n(')', usize::from(*levels)));
-            }
-            Closer::Space(space) => space.push_after(&mut text),
-        }
-    }
-    text
 }
 
 /// `text` in parentheses when `parens`.
