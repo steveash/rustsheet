@@ -73,15 +73,16 @@ FALSE, FALSE and 0, so the comparison and COUNTIF see the kept residue. SUM and 
 M5 rounding chains and 15-digit cuts (T-3204, gen-m5 `numeric-fp` cases b8981a7b5a032053 (root), 18c8298fa500477b
 (wrapper) and a513f2d1fa83dac5 (digits15) from `rustsheet-gen --policy numeric-fp --milestone M5 --seed 0`, 4,252
 cells, excel-graph 2026-10-30; same X and b as T-3139 above). **Under a rounding function the residue is kept and
-then rounded**: `TRUNC(X-b,20)`, `ROUNDUP(X-b,20)` and `ROUNDDOWN(X-b,20)` keep it at every k ≥ 1 (2.2204E-16 at
-base 1, k = 1: the residue's own 15-digit cut), and the integer forms act on it: `INT(b-X)` and `ROUNDUP(b-X,0)` are
--1, `ROUNDUP(X-b,0)` is 1 and `MOD(b-X,1)` is 0.9999999999999998 (1-2^-52), `MOD(X-b,1)` the residue, at base 1,
-k = 1. `TRUNC(X-b)` is 0 throughout. **A root over rounded operands snaps by the left-addend bound on the cut
+then rounded**: `TRUNC(X-b,20)`, `ROUNDUP(X-b,20)` and `ROUNDDOWN(X-b,20)` keep it at every
+k ≥ 1 (at X = 1+2^-52: 2.2204E-16 for TRUNC and ROUNDDOWN, the residue's 15-digit cut 2.22044604925031E-16 taken
+to 20 decimals, and 2.2205000000000003e-16 for ROUNDUP, see "ROUNDUP adds the unit in binary"), and the integer
+forms act on it: at X = 1+2^-52, `INT(b-X)` and `ROUNDUP(b-X,0)` are -1, `ROUNDUP(X-b,0)` is 1, `MOD(b-X,1)` is
+0.9999999999999998 (1-2^-52) and `MOD(X-b,1)` is the residue; with X below b the signs swap (`INT(X-b)` = -1). `TRUNC(X-b)` is 0 throughout. **A root over rounded operands snaps by the left-addend bound on the cut
 values**: `TRUNC(X,20)-TRUNC(b,20)`, and the same with ROUNDUP and ROUNDDOWN, are 0 wherever X's 15-digit cut is b,
 and otherwise the root `-` compares the cut difference with 8 ULP of the cut left addend, so for b = 1, X below it,
 `b-X` snaps up to k = 6 (1-0.999999999999999) and keeps 1.9984014443252818e-15 at k = 7, while `X-b` keeps
 -9.992007221626409e-16 from k = 3; at b = 0.5, k = 5 the cut 0.500000000000001 leaves 9.992007221626409e-16 (9 ULP of
-0.5, kept). `INT(X)-INT(b)` and `TRUNC(X)-TRUNC(b)` are 0 for X = 1-k·2^-52 up to k = 2 and -1 from k = 3, as "INT
+0.5, kept). `INT(X)-INT(b)` and `TRUNC(X)-TRUNC(b)` are 0 for X = 1-k·2^-52 up to k = 2 and from k = 3 are -1 (`b-X` order: 1), as "INT
 cuts to 15 significant digits first" predicts. `MOD(X,2^21)-MOD(b,2^21)` gives exactly what `X-b` gives in every
 cell ("MOD is an exact remainder"). The digits15 case puts X one step either side of the k where X's rounded or
 truncated 15-digit cut stops being b (tags `round15=` and `trunc15=`): TRUNC, ROUNDUP and ROUNDDOWN at 20 digits

@@ -50,6 +50,6 @@ either side of each base's rounded and truncated 15-digit cut, every picker and 
 `round15=`/`trunc15=`, 1,652 cells). Oracle-filled on excel-graph 2026-10-30. Eval delta: gen-m5 +4,252 checked
 cells, all passing (0 known-failure lines added; the suite's one F line is pre-existing); `make exit-owners
 MILESTONE=M5` reports 0. Findings in numbers.md "Near-zero snapping" (T-3204 paragraph): rounding wrappers keep and
-then round the residue (`INT(b-X)` = -1, `MOD(b-X,1)` = 1-2^-52), a root over rounded operands snaps by the
+then round the residue (at X = 1+2^-52, `INT(b-X)` = -1, `MOD(b-X,1)` = 1-2^-52), a root over rounded operands snaps by the
 left-addend bound on the cut values, and the 20-digit TRUNC/ROUNDUP/ROUNDDOWN follow the rounded 15-digit cut, not
 the truncated one.
