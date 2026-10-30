@@ -57,7 +57,7 @@ fn numbers_equal(a: f64, b: f64) -> bool {
 /// read further, which keeps a numeric criterion over a column of words cheap.
 fn criterion_text_number(
     text: &str,
-    fraction_currencies: &[&str],
+    currencies: &[&str],
     locale: &Locale,
     current_year: CurrentYear,
     date_system: DateSystem,
@@ -74,19 +74,19 @@ fn criterion_text_number(
     }
     value_number_text_with(
         trimmed,
-        &["$", "€"],
-        fraction_currencies,
+        currencies,
+        currencies,
         locale,
         current_year,
         date_system,
     )
 }
 
-/// Currencies a mixed fraction may start with in a criterion operand (`-$3 1/2`) and in a text
-/// cell (`€3 1/2` too): `COUNTIF(3.5,"€3 1/2")` is 0 yet `COUNTIF("€3 1/2",3.5)` is 1
-/// (probes/typed-input-sign-space-mixed-fraction I5, E5).
-const OPERAND_FRACTION_CURRENCIES: &[&str] = &["$"];
-const CELL_FRACTION_CURRENCIES: &[&str] = &["$", "€"];
+/// Currencies a criterion operand reads (`-$3 1/2`; not `€3 1/2`, `€1` or `1€`: `COUNTIF(3.5,
+/// "€3 1/2")` and `COUNTIF(1,"€1")` are 0) and a text cell reads (`COUNTIF("€3 1/2",3.5)` is 1)
+/// (probes/typed-input-sign-space-mixed-fraction I5, J2, J3, E5).
+const OPERAND_CURRENCIES: &[&str] = &["$"];
+const CELL_CURRENCIES: &[&str] = &["$", "€"];
 
 /// [`criterion_text_number`] for a matcher, which outlives the caller's current-year closure:
 /// the year is read once, when the criterion is built.
@@ -113,7 +113,7 @@ impl NumberTextReader {
     fn read(&self, text: &str) -> Option<f64> {
         criterion_text_number(
             text,
-            CELL_FRACTION_CURRENCIES,
+            CELL_CURRENCIES,
             self.locale,
             &|| self.year,
             self.date_system,
@@ -461,14 +461,8 @@ pub(crate) fn indexed_criterion(
     if matches!(op, CriterionOp::Eq | CriterionOp::Ne) && wildcard {
         return None;
     }
-    if let Some(f) = criterion_text_number(
-        v,
-        OPERAND_FRACTION_CURRENCIES,
-        locale,
-        current_year,
-        date_system,
-    )
-    .or_else(|| parse_date_criterion(v, locale, current_year, date_system))
+    if let Some(f) = criterion_text_number(v, OPERAND_CURRENCIES, locale, current_year, date_system)
+        .or_else(|| parse_date_criterion(v, locale, current_year, date_system))
     {
         return Some(IndexedCriterion::Number(op, f));
     }

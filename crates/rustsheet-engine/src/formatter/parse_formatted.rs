@@ -36,8 +36,9 @@ pub(crate) fn parse_typed_number(
         if let Some(parsed) = parse_bare_letter_clock(text) {
             return Ok(parsed);
         }
-        // A signed, `$` or `%` mixed fraction is a number too, with no format change
-        // (probes/typed-input-sign-space-mixed-fraction B6, B7, B9).
+        // A mixed fraction, signed, with `$` or `%`, is a number (probes/typed-input-sign-space-
+        // mixed-fraction B6, B7, B9-B12). Its number format is UNVERIFIED (CELL("format") is
+        // #VALUE! on excel-graph), so it stays General: TODO(T-3237).
         if let Some(v) = mixed_fraction(original.trim_matches(' '), currencies) {
             return Ok((v, None));
         }

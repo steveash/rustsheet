@@ -100,7 +100,27 @@
     "H8": 0.035,
     "I8": "=COUNTIF(H8,\"$3 1/2%\")",
     "H9": 3.5,
-    "I9": "=COUNTIF(H9,\"+ 3 1/2\")"
+    "I9": "=COUNTIF(H9,\"+ 3 1/2\")",
+    "A10": {
+     "entered": "3 1/2"
+    },
+    "B10": "=IF(ISNUMBER(A10),A10,\"T:\"&A10)",
+    "F10": "=IFERROR(\"3 1/2\"+0,\"err\")",
+    "A11": {
+     "entered": "$3 1/2"
+    },
+    "B11": "=IF(ISNUMBER(A11),A11,\"T:\"&A11)",
+    "F11": "=IFERROR(\"$3 1/2\"+0,\"err\")",
+    "A12": {
+     "entered": "3 1/2%"
+    },
+    "B12": "=IF(ISNUMBER(A12),A12,\"T:\"&A12)",
+    "F12": "=IFERROR(\"3 1/2%\"+0,\"err\")",
+    "J1": "=IFERROR(VALUE(\"$3 1/2%\"),\"err\")",
+    "J2": "=COUNTIF(K2,\"€1\")",
+    "K2": 1,
+    "J3": "=COUNTIF(K3,\"1€\")",
+    "K3": 1
    }
   }
  ],
@@ -159,6 +179,15 @@
   "Sheet1!I6",
   "Sheet1!I7",
   "Sheet1!I8",
-  "Sheet1!I9"
+  "Sheet1!I9",
+  "Sheet1!B10",
+  "Sheet1!F10",
+  "Sheet1!B11",
+  "Sheet1!F11",
+  "Sheet1!B12",
+  "Sheet1!F12",
+  "Sheet1!J1",
+  "Sheet1!J2",
+  "Sheet1!J3"
  ]
 }
