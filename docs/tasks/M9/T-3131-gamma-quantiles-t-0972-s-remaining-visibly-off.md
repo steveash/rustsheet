@@ -19,7 +19,7 @@ longer starts from the ported statrs search.
 T-0972 (#1767) refines GAMMA.INV, CHISQ.INV, CHISQ.INV.RT, GAMMAINV and CHIINV to the crossing of the smaller tail
 (`functions/statistical/incomplete_gamma/mod.rs` `gamma_quantile`). It closed at decision 0083's visible-parity stage
 with these owned cells still past half a unit of the 15th digit (local `make eval` on the T-0972 branch, 2026-10-29;
-the two T-0972 made newly visibly off, gen-m9 146b46e74f2dac3b A167 and ecc87f80077959e0 A168, are T-3016's):
+the two cells T-0972 made newly visibly off belong to T-3239 and T-3238, after T-3016):
 - gen-m9/4250f880ab640c49 Calc!A371 `CHISQ.INV.RT(((-0.0001)+1),3)`: Excel 0.005214832329030269, ours 0.005214832329027594
 - gen-m9/73f053591a54bc43 Calc!A108 `NORMSDIST(MOD(SUMIF(Data!A10:D12,"",Data!B4:E12),CHISQ.INV.RT(0.975,5)))`: Excel
   0.6004864351048662, ours 0.6004864351049074
@@ -44,4 +44,4 @@ T-0972's criterion 3 is also open: `inverse_cdf_within` (the ported statrs searc
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The five cells and 49 ulp lines of decision 0152 (T-3016); the CDF kernel (T-0971 follow-ups T-2367, T-2638).
+- The five cells and 49 ulp lines of decision 0152 (now T-3146, T-3238 and T-3239, after T-3016); the CDF kernel (T-0971 follow-ups T-2367, T-2638).

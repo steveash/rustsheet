@@ -167,8 +167,7 @@ impl Model {
             let z = normal_quantile(p, 0.0, 1.0, cell)?;
             wilson_hilferty_quantile(alpha, z) * beta_scale
         } else {
-            let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
-            gamma_quantile(&dist, p, Tail::Lower)
+            gamma_quantile(alpha, beta_scale, p, Tail::Lower)
         };
         if !x.is_finite() || x < 0.0 {
             return Err(num_error(cell));
