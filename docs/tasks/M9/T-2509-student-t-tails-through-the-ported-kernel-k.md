@@ -82,7 +82,7 @@ Outcome. Bit-level criteria still unmet then move to a follow-up task without th
 ## Outcome
 - `bratio/bgrat.rs`: TOMS bgrat at b = 1/2 in double-double with Excel's three stored pieces (LN or log1p(-y) at the
   0.01 cut, z = fl(-ν·lnx), ERFC.PRECISE(fl(sqrt z))); `ported_tails` takes bgrat and bup + bgrat when bgrat's b is 1/2
-  (`x87_exp`: `dd_exp`, and `dd_sqrt` moved there from `student_t.rs`.
+  (`x87_exp`: `dd_exp`, and `dd_sqrt` moved there from `student_t.rs`).
 - `student_t::kernel_tail`: from df 3 every T tail is one call K(n/2, 1/2, y, z), halved. df 1 and 2 keep today's
   path (df 1: the ported bpser at a = b = 1/2 is bit-exact on 24 of 67 cells.tsv df-1 tails against 41; df 2: closed
   forms).

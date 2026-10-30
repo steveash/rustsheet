@@ -218,6 +218,7 @@ pub(super) fn t_kernel_tails(a: f64, y: f64, z: f64) -> Option<(f64, f64)> {
 }
 
 /// [`ported_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
+// TODO(T-2510): drop `half_bgrat` once bgrat is ported for every b and F takes it too.
 fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option<(f64, f64)> {
     if a == 1.0 || b == 1.0 {
         return None;
