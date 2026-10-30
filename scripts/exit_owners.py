@@ -155,10 +155,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
 
     # Every required suite (decision 0146): the row's first (`gen_suite`, `gen-m<k>` before it
     # existed; empty when the row requires none, M9) and `more_suites`, each with its own
-    # visibly-off list; a measure over another suite's cells (M8's poi subset) also lists the
-    # cases that did not run as `case!*` (`blocked_cases`).
+    # visibly-off list and the cases that did not run as `case!*` (`blocked_cases`, decision 0174).
     first = exit_row.get("gen_suite", f"gen-{milestone.lower()}")
-    suites = [(first, exit_row.get("gen_visibly_off_cells"))] if first else []
+    first_listed = [*(exit_row.get("gen_visibly_off_cells") or []), *(exit_row.get("gen_blocked_cases") or [])]
+    suites = [(first, first_listed)] if first else []
     for s in exit_row.get("more_suites") or []:
         listed = [*(s.get("visibly_off_cells") or []), *(s.get("blocked_cases") or [])]
         suites.append((str(s.get("name")), listed))
@@ -184,6 +184,11 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
                 if name not in excepted and name in visible:
                     case, key = split_cell_name(str(name))
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
+    # An ironcalc-calc case that did not run fails every row's measure (decision 0174).
+    if not no_calc:
+        for name in exit_row.get("calc_blocked_cases") or []:
+            case, key = split_cell_name(str(name))
+            out.append(ExitCell(CALC_SUITE, case, key, ""))
 
     # The functions below the Phase 1 rate (M9, decision 0146 item 3): their attributed cells.
     below = set(exit_row.get("below_rate_functions") or [])
@@ -199,6 +204,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
             for name in row.get("visibly_off_cells") or []:
                 case, key = split_cell_name(str(name))
                 out.append(ExitCell(probe_row, case, key, formulas.get((case, key), "")))
+            # A listed case that crashes or errors has no cell; list it whole, as a probe row does.
+            for case in row.get("failing_cases") or []:
+                if not by_case.get(case):
+                    out.append(ExitCell(probe_row, str(case), WHOLE_CASE, ""))
     for row in report.get("probe_milestones") or []:
         if row.get("milestone") == probe_row:
             probe_off = set(row.get("visibly_off_cells") or [])
@@ -287,6 +296,31 @@ def names_in_span(text: str, names: tuple[str, ...], a1: str) -> bool:
     return False
 
 
+# A block of a task's text is a line plus its continuation lines (decision 0159). A line opens a new
+# block when it is blank, is not indented, or starts (after its indentation) a list item (`- `,
+# `* `, `1. `) or a table row (`|`); any other indented line continues the block above it.
+BLOCK_START = re.compile(r"\s*$|\S|\s*(?:[-*] |\||[0-9]+\. )")
+
+
+@functools.lru_cache(maxsize=None)
+def blocks(text: str) -> tuple[str, ...]:
+    """`text` split into blocks, each its lines joined by newlines."""
+    out: list[list[str]] = []
+    for line in text.splitlines():
+        if out and not BLOCK_START.match(line):
+            out[-1].append(line)
+        else:
+            out.append([line])
+    return tuple("\n".join(b) for b in out)
+
+
+def names_beside_case(text: str, called: tuple[str, ...], a1: str) -> bool:
+    """Whether a block of `text` names both the case and the cell `a1`: a single A1 name owns a
+    cell only beside its own case, so a task that lists cells of one case and also names a second
+    one does not own the second case's cells of the same names (decision 0159)."""
+    return any(names_case(b, called) and names(b, a1, A1_WORD) for b in blocks(text))
+
+
 @functools.lru_cache(maxsize=None)
 def names_whole_case(text: str, names: tuple[str, ...]) -> bool:
     """Whether a line of `text` names the case and no cell: a task that lists cells beside a case
@@ -299,7 +333,9 @@ def owned(cell: ExitCell, texts: list[str], called: tuple[str, ...]) -> bool:
     for text in texts:
         if not names_case(text, called):
             continue
-        if cell.a1 is not None and (names(text, cell.a1, A1_WORD) or names_in_span(text, called, cell.a1)):
+        if cell.a1 is not None and (
+            names_beside_case(text, called, cell.a1) or names_in_span(text, called, cell.a1)
+        ):
             return True
         if names_whole_case(text, called):
             return True

@@ -26,6 +26,11 @@ agent/research/T-1941-crack-gammaln-gamma-ln): every x whose product is within 4
 the T-2133 ASINH/ACOSH cells (probes-numeric/t2133-asinh-acosh-ln) and the LOG10 and GAMMALN probes that call the shared
 FYL2X path (`x87_log10.rs`).
 
+Gap triage 2026-10-30: T-2143's own fill cases are failing cells that no open task named, so this task owns them. They
+are probes-numeric/t2143-ln-near-ties-fill1 (29 cells), probes-numeric/t2143-ln-near-ties-fill2 (29) and
+probes-numeric/t2143-ln-near-ties-fill3 (18), all one-ulp NumericUlp near-ties. Report k=67 rn's count on each fill next
+to the shipped model's.
+
 ## Acceptance criteria
 - [ ] numbers.md "LN is FLDLN2 then FYL2X" records k=67 rn's count against the shipped model's on the T-1941 near-tie subset,
       with its losses (points the shipped model matches and k=67 misses).

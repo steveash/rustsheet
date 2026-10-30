@@ -297,6 +297,84 @@ fn gen_visibly_off_cells_are_listed_for_exit_owners() {
     assert_eq!(m2.gen_visibly_off_cells, ["gen-m2/abc.case.json!S!A1"]);
 }
 
+#[test]
+fn a_probe_case_that_did_not_run_fails_the_probe_row() {
+    // Decision 0174: an unloadable case adds no cell, so 0 visibly off alone would read met.
+    let mut r = m2_report((M2_MIN_SCORED, 0));
+    assert!(
+        row(&r, "M2").exit,
+        "the same row with the case running is met"
+    );
+    r.probe_milestones[1].blocked_cases = vec!["probes/t3097-nesting-paren-a.case.json!*".into()];
+    let m2 = row(&r, "M2");
+    assert_eq!(
+        (m2.probe_visibly_off, m2.probes_met),
+        (Some(0), Some(false))
+    );
+    assert_eq!(
+        m2.probe_blocked_cases,
+        ["probes/t3097-nesting-paren-a.case.json!*"]
+    );
+    assert!(!m2.exit);
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains(
+            "| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0] met | 0 [0] met | 0 [3], 1 cases did not run not met | n/a n/a | n/a | not met |"
+        ),
+        "{md}"
+    );
+}
+
+#[test]
+fn a_gen_case_that_timed_out_fails_the_gen_suite_and_a_clean_pending_case_does_not() {
+    use crate::report::tests::case;
+    use crate::runner::CaseStatus;
+    let mut r = m2_report((M2_MIN_SCORED, 0));
+    r.cases = vec![CaseResult {
+        status: CaseStatus::Pending,
+        ..case("gen-m2/pending.case.json", 1)
+    }];
+    let m2 = row(&r, "M2");
+    assert_eq!(
+        (m2.gen_met, m2.exit),
+        (Some(true), true),
+        "a pending case that runs cleanly changes no verdict"
+    );
+    r.cases.push(CaseResult {
+        status: CaseStatus::Timeout,
+        ..case("gen-m2/slow.case.json", 1)
+    });
+    let m2 = row(&r, "M2");
+    assert_eq!(m2.gen_met, Some(false));
+    assert_eq!(m2.gen_blocked_cases, ["gen-m2/slow.case.json!*"]);
+    assert!(!m2.exit);
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains("| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0], 1 cases did not run not met |"),
+        "{md}"
+    );
+}
+
+#[test]
+fn an_ironcalc_calc_case_that_did_not_run_fails_every_calc_row() {
+    let mut r = m2_report((M2_MIN_SCORED, 0));
+    r.function_scope.as_mut().unwrap().blocked_cases = vec!["ironcalc-calc/x.xlsx!*".into()];
+    for m in ["M2", "M5"] {
+        let row = row(&r, m);
+        assert_eq!(row.calc_met, Some(false), "{m}");
+        assert_eq!(row.calc_blocked_cases, ["ironcalc-calc/x.xlsx!*"]);
+        assert!(!row.exit, "{m}");
+    }
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains("| 0, 1 cases did not run [0] not met |"),
+        "{md}"
+    );
+}
+
 /// A run whose M7 inputs meet M7's exit: `gen_cells` (cells, visibly off) of gen-m7, an
 /// ironcalc-calc M7 row with a visibly-off cell and coverage short (neither required).
 fn m7_report(gen_cells: (usize, usize)) -> RunReport {
@@ -465,6 +543,14 @@ fn m1_needs_gen_m1_and_smoke_none_visibly_off_and_the_m1_probes_list() {
     let m1 = row(&r, "M1");
     assert_eq!(m1.probes_met, None);
     assert!(!m1.exit);
+    // A partial run (`--filter`) of the list gives no verdict either, met or unmet (T-3091).
+    for off in [0, 1] {
+        let mut r = m1_report(3_750, 0, off);
+        r.milestone_lists[0].cases_run = 88;
+        let m1 = row(&r, "M1");
+        assert_eq!(m1.probes_met, None);
+        assert!(!m1.exit);
+    }
 }
 
 /// A run with `corpus` (scored cells, visibly off) of corpus-bench, when fetched, and a
@@ -756,7 +842,7 @@ fn m8_a_blocked_subset_case_fails_alone() {
     let mut md = String::new();
     write_markdown(&summarize(&r), &mut md);
     assert!(
-        md.contains("poi M8 subset: 2000, 1.00000, 0/10 [n/a], 1 cases blocked not met"),
+        md.contains("poi M8 subset: 2000, 1.00000, 0/10 [n/a], 1 cases did not run not met"),
         "{md}"
     );
 }

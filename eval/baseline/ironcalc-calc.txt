@@ -108,7 +108,7 @@ C	ironcalc-calc/LOOKUP_AND_REFERENCE/XMATCH_arrays.xlsx	11
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ABS.xlsx	13
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ARABIC_ROMAN.xlsx	40427
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	61
-C	ironcalc-calc/MATH_AND_TRIGONOMETRY/BASE_DECIMAL.xlsx	358
+C	ironcalc-calc/MATH_AND_TRIGONOMETRY/BASE_DECIMAL.xlsx	390
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/BASE_DECIMAL_issue_1613.xlsx	5
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/BASE_DECIMAL_issue_1617.xlsx	3
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/COMBIN_COMBINA.xlsx	76
@@ -254,161 +254,22 @@ F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H31
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H4
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H5
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!H7
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G12
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G14
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G17
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G29
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G3
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G30
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G4
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G6
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!G7
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H13
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H14
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H16
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H17
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H3
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H30
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H31
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H4
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H5
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!H6
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I14
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I17
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I2
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I28
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I29
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I30
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I31
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!I4
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J12
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J14
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J15
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J16
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J17
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J2
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J22
-F	ironcalc-calc/FINANCIAL/IPMT_PPMT.xlsx	Sheet1!J28
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!A23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullColumn!B23
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R1
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	FullRow!R2
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L12
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L16
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L17
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L18
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L19
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L22
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L25
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L27
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L28
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L31
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L41
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L42
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L56
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L58
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!L6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M12
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M16
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M17
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M18
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M19
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!M6
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	General!N9
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D3
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!D5
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E3
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E4
-F	ironcalc-calc/FINANCIAL/IRR.xlsx	Three Parameters!E5
 F	ironcalc-calc/FINANCIAL/IRR.xlsx	Two Values!C4
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F10
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F11
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F14
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F15
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F16
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F18
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F2
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F23
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F27
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F32
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F33
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!F4
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!G10
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!G14
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!G15
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!G16
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!G27
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!G33
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!H10
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!H11
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!H18
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!H23
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!H27
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!H32
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!I16
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!I27
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!I33
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J10
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J11
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J14
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J15
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J16
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J18
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J2
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J23
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J27
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J32
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J33
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!J4
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!K10
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!K14
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!K15
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!K16
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!K33
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L10
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L11
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L15
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L18
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L2
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L23
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L32
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L33
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!L4
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!M10
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!M14
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!M15
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!M16
-F	ironcalc-calc/FINANCIAL/PMT.xlsx	Sheet1!M33
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K10
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K11
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K2
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K25
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K27
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K29
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K30
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K31
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K32
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K33
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K35
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K38
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K43
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K44
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K45
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K49
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K5
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K50
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K51
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K52
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K8
 F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	ODDFPRICE_ODDFYIELD!K9
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	PRICE_YIELD!I11
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	PRICE_YIELD!I28
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	PRICE_YIELD!I4
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	PRICE_YIELD!I6
-F	ironcalc-calc/FINANCIAL/PRICE_YIELD.xlsx	PRICE_YIELD!I9
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C11
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C4
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!E4
@@ -417,8 +278,7 @@ F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	Sheet1!D26
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G25
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G26
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G29
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G43
-F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G45
+F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G3
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G5
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G63
 F	ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx	Sheet1!G64
@@ -493,7 +353,6 @@ F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!G2
 F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!G3
 F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!G4
 F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!I2
-F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!J2
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!D11
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!D16
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!D17
@@ -519,7 +378,6 @@ F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E53
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E54
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E56
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!E8
-F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!J2
 F	ironcalc-calc/STATISTICAL/F_DIST.xlsx	Sheet1!L2
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!E11
@@ -536,29 +394,34 @@ F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F2
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F21
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F22
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F24
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F38
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F3
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F34
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F39
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F4
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F41
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F42
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F43
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F44
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F45
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F46
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F47
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F5
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F50
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F51
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F53
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F6
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F61
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F62
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F63
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F66
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F67
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F68
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F69
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F7
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F70
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F74
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F75
 F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F76
-F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F8
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F77
+F	ironcalc-calc/STATISTICAL/GAMMA.xlsx	GAMMA.DIST GAMMA.INV!F9
 F	ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx	Sheet1!F2
 F	ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/LINEST_LOGEST.xlsx	Sheet1!D2

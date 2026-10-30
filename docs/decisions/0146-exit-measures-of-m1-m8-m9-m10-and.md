@@ -136,3 +136,7 @@
     verdict: a null `calc_met` (M7's shown-only row, and M1, M8, M10 and M11, which have no
     ironcalc-calc criterion) lists no ironcalc-calc cell, even when the report has a scope row for
     the milestone (it had listed 119 for M10 and for M11).
+  - T-3091 (2026-10-29): M1's `probes_met` has a verdict only when the run executed the whole
+    `m1-probes` list (`cases_run == cases`); a run under `--filter` or `--suite` gives `n/a`, as a
+    missing input does. `scripts/exit_owners.py` lists a listed case in the list row's
+    `failing_cases` that has no cell (it crashed or errored) as `case!*`, as it does for a probe row.

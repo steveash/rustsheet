@@ -86,10 +86,9 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    Does Windows desktop give the web value? The engine keeps the desktop cache, and the web cells stay known failures (T-2774).
    probes/t3054-imtan-real-tan-kernel N1 is N6's own formula on N6's inputs: the web gives -3.38051500624659 there, and TAN's
    kernel in all nine of its discriminating rows (T-3054). Probing those rows on desktop answers the item.
-18. **MEDIAN, LARGE and SMALL over a lifted OFFSET** (T-2065; lookup.md "Statistical aggregates over a lifted OFFSET").
-   probes/t2065-lift-median, -large and -small failed to open on Excel for the web on 2026-10-26 (createSession "retries
-   exhausted", two runs each). What does Windows desktop give for `MEDIAN(OFFSET(A1,{0;1;2},0))`, `LARGE(OFFSET(A1,{0;1},0),1)`
-   and `SMALL(OFFSET(A1,0,0,{2;3}),2)`? Until answered they keep the engine's value view.
+18. **MEDIAN, LARGE and SMALL over a lifted OFFSET** (T-2065; lookup.md "MEDIAN, LARGE and SMALL over a lifted OFFSET").
+   Answered 2026-10-29 without desktop: Excel for the web opened probes/t2065-lift-median, -large and -small on the
+   steward run's fill and gives `#VALUE!` for all three, which ours matches. Nothing is left for desktop.
 19. **SUMPRODUCT of a one-cell numeric-text reference** (T-2921; coercion.md SUMPRODUCT entry).
    poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 `SUMPRODUCT(G1330:G1330,I1330:I1330)` (G1330 the text "4",
    I1330 the number 2): Excel 15 cached `#VALUE!`, excel-graph gives 0 (probes/t2921-sumproduct-one-cell-numeric-text A45).

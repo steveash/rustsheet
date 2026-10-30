@@ -396,7 +396,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // token, so a negative value prints its minus and the literals (`TEXT(-3,"b1")` is "-",
             // `"b1 x"` "- x"; probes/t2388-b1-negative, excel-graph 2026-10-28, T-2388). The same
             // holds for `B2`, a tagged prefix, an explicit negative section (`"0;b1 x"` is " x")
-            // and a magnitude past the maximum serial (`TEXT(-3000000,"b1")` is "-").
+            // and a magnitude past the maximum serial (`TEXT(-3000000,"b1")` is "-", and
+            // `TEXT(3000000,"b1")` is "", `"b1 x"` " x"; probes/t3050-b1-positive-large, excel-graph
+            // 2026-10-29, T-3050).
             let literals_only = p.tokens.iter().all(TextToken::is_literal);
             if value_original < 0.0
                 && !literals_only
@@ -418,7 +420,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // #VALUE!: `TEXT(1234567890,"h:mm")`, `"[h]:mm"`, `"[mm]:ss.0"` (gen-m10
             // 810fee377a42575b T!A16, b4f66526f822ff2c T!A20; gen-m5 6a511beadb56b932 Calc!A126).
             if value >= f64::from(MAXIMUM_DATE_SERIAL_NUMBER) + 1.0
-                && !(literals_only && value_original < 0.0)
+                && !literals_only
                 && !negative_serial_allowed(tokens, DateSystem::Excel1900)
             {
                 return invalid_date(value_original);
@@ -445,7 +447,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // Japanese one in its own calendar (`[$-411]yy|g|yy` is "23|R|05"), the whole Gregorian
             // year in the others (probes/text-locale-japanese-year A1-A13).
             let mut seen_era = false;
-            let mut names = NameTokens::new(p.hijri, p.names.is_some(), p.b2_overridden);
+            let mut names = NameTokens::new(p);
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -698,15 +700,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
                     let group = f64::from(p.digit_count.max(1));
                     let exponent;
+                    let mut shifted = false;
                     if group > 1.0 {
                         // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
                     } else {
                         (value, exponent) = round_scientific(scaled, p.precision);
+                        // The mantissa is already shifted; engineering below is not.
+                        shifted = true;
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
-                    value /= 10.0_f64.powf(exponent);
+                    if !shifted {
+                        value /= 10.0_f64.powf(exponent);
+                    }
                     value = to_precision(value, 15);
                     value_abs = value.abs();
                 }
@@ -902,7 +909,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     text = format!("{text}{c}");
                                 }
                             } else {
-                                for i in 0..number_index + 1 {
+                                // Overflowing digits join the first exponent placeholder; later
+                                // placeholders take one digit each (`0.00E+00` on DBL_MAX is
+                                // "1.80E+308", probes/dbl-max-text-b, T-2106).
+                                let first = if index == 0 { 0 } else { number_index };
+                                for i in first..number_index + 1 {
                                     text = format!("{}{}", text, exponent_part[i as usize]);
                                 }
                                 digit_index += number_index + 1;

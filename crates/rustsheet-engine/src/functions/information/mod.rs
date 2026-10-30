@@ -135,8 +135,37 @@ impl Model {
         CalcResult::Boolean(self.is_reference(&args[0], cell))
     }
 
-    /// Whether `node` stands for a reference (ISREF).
-    fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+    /// `node` once [`Self::pick_reference`] picked it, or whether what it picked instead is a
+    /// reference (one into another workbook, a LET body's reading, or a value).
+    fn unpicked_reference<'a>(
+        &mut self,
+        node: &'a Node,
+        cell: CellReferenceIndex,
+    ) -> Result<&'a Node, bool> {
+        match self.pick_reference(node, cell) {
+            PickedReference::Node(node) => Ok(node),
+            PickedReference::External(areas) => Err(areas.is_ok()),
+            PickedReference::Read(read) => Err(matches!(read, RefArg::Ranges(_))),
+            PickedReference::Value(_) => Err(false),
+        }
+    }
+
+    /// [`Self::is_reference`] of an IF, CHOOSE, IFS or SWITCH whose pick step
+    /// ([`Self::pick_step`]) already picked `arm`: the arm read in reference context, as the
+    /// picker's own test reads it, without reading its condition or index again (T-3142).
+    pub(crate) fn picked_arm_is_reference(&mut self, arm: &Node, cell: CellReferenceIndex) -> bool {
+        match self.unpicked_reference(arm, cell) {
+            Ok(arm) => matches!(
+                self.evaluate_picked_reference_arg(arm, cell),
+                RefArg::Ranges(_)
+            ),
+            Err(is_reference) => is_reference,
+        }
+    }
+
+    /// Whether `node` stands for a reference (ISREF, and T's cell-text rule). It may evaluate
+    /// the argument again for the picking functions, so callers use it only when needed.
+    pub(crate) fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         // `ISREF(IF(TRUE,…!A1))` is TRUE (probes/external-ref-no-link-ifchoose A9, A10, A31).
         // A reference into another workbook, written or through INDEX, a union, an
         // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index
@@ -144,11 +173,9 @@ impl Model {
         // not a reference.
         // So is one a LET whose body may pick it picks: `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` is
         // TRUE (probes/external-ref-no-link-let-index A6).
-        let node = match self.pick_reference(node, cell) {
-            PickedReference::Node(node) => node,
-            PickedReference::External(areas) => return areas.is_ok(),
-            PickedReference::Read(read) => return matches!(read, RefArg::Ranges(_)),
-            PickedReference::Value(_) => return false,
+        let node = match self.unpicked_reference(node, cell) {
+            Ok(node) => node,
+            Err(is_reference) => return is_reference,
         };
         // A `#This Row` area is the cell or range on the formula's row, `#VALUE!` off the data rows
         // (SPEC-0016 step 2).

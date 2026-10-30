@@ -178,6 +178,16 @@ class ExitOwners(TaskDir):
         listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M1", self.tasks)]
         self.assertEqual(listed, [f"{gen1}!Calc!A3"])
 
+    def test_m1_lists_a_failing_listed_case_with_no_cells_whole(self) -> None:
+        # T-3091: a listed case that crashes has no cell; it prints as `case!*`, as in a probe row.
+        r = report()
+        r["milestone_exit"] = [{"milestone": "M1", "gen_suite": "", "probe_row": "m1-probes"}]
+        r["cases"] = [{"id": PROBE, "suite": "probes", "cells": []}]
+        r["function_scope"] = {"rows": []}
+        r["milestone_lists"] = [{"name": "m1-probes", "failing_cases": [PROBE], "visibly_off_cells": []}]
+        cells = exit_owners.exit_cells(r, "M1")
+        self.assertEqual([(c.criterion, c.case, c.key) for c in cells], [("m1-probes", PROBE, exit_owners.WHOLE_CASE)])
+
     def test_m11_lists_corpus_bench_as_its_suite(self) -> None:
         corpus = "corpus-bench/53062/1_53062_input.xlsx"
         r = report()
@@ -223,6 +233,29 @@ class ExitOwners(TaskDir):
         listed = [f"{c.case}!{c.key}" for c in exit_owners.unowned(r, "M9", self.tasks)]
         self.assertNotIn(f"{GEN}!Calc!A1", listed)
         self.assertIn(f"{TRIG}!S!C51", listed)
+
+    def test_cases_that_did_not_run_are_listed_whole(self) -> None:
+        # Decision 0174: a gen or ironcalc-calc case that did not run fails its measure.
+        gen2, calc = "gen-m2/abc.case.json", "ironcalc-calc/BIG.xlsx"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M2",
+                "gen_suite": "gen-m2",
+                "gen_blocked_cases": [f"{gen2}!*"],
+                "calc_met": False,
+                "calc_blocked_cases": [f"{calc}!*"],
+                "probe_row": "M0-M2",
+            }
+        ]
+        r["function_scope"] = {"rows": []}
+        cells = exit_owners.exit_cells(r, "M2")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}") for c in cells],
+            [("gen-m2", f"{gen2}!*"), ("ironcalc-calc", f"{calc}!*")],
+        )
+        r["milestone_exit"][0]["calc_met"] = None
+        self.assertEqual([c.criterion for c in exit_owners.exit_cells(r, "M2")], ["gen-m2"])
 
     def test_m8_lists_both_gen_suites_the_poi_subset_and_its_blocked_cases(self) -> None:
         # Decision 0146 item 2: gen-m8a, gen-m8b, the poi M8 subset (its visibly-off cells and,
@@ -362,6 +395,45 @@ class ExitOwners(TaskDir):
         listed = self.listed()
         self.assertIn(f"{PROBE}!P!B2", listed)
         self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_an_a1_name_beside_another_case_does_not_own(self) -> None:
+        # The T-2425 leak (decision 0159): B2 is listed for the gen case, so the probe's B2 is not owned
+        # although the same task names the probe on another line.
+        self.task("- gen-m5/1d22a002d4f380b3: Calc!A107, B2\n- probes/index-reference-args: P!B3")
+        listed = self.listed()
+        self.assertIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+        self.assertNotIn(f"{GEN}!Calc!A107", listed)
+
+    def test_an_indented_continuation_line_owns_beside_its_case(self) -> None:
+        # The T-3031 form: a cell list that wraps onto indented lines of the same bullet.
+        self.task("- probes/index-reference-args P!B3,\n  B2 and the rest")
+        listed = self.listed()
+        self.assertNotIn(f"{PROBE}!P!B2", listed)
+        self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_a_new_line_bullet_row_or_blank_line_opens_a_block(self) -> None:
+        for body in (
+            "probes/index-reference-args P!B3\nB2",
+            "- probes/index-reference-args P!B3\n  - B2",
+            "- probes/index-reference-args P!B3\n  * B2",
+            "- probes/index-reference-args P!B3\n  2. B2",
+            "| probes/index-reference-args | P!B3 |\n| B2 |",
+            "- probes/index-reference-args P!B3\n\n    B2",
+        ):
+            with self.subTest(body=body):
+                for f in self.tasks.glob("*/*.md"):
+                    f.unlink()
+                self.task(body)
+                listed = self.listed()
+                self.assertIn(f"{PROBE}!P!B2", listed)
+                self.assertNotIn(f"{PROBE}!P!B3", listed)
+
+    def test_blocks(self) -> None:
+        self.assertEqual(
+            exit_owners.blocks("a\n  b\n- c\n  d\n\n  e\n| f"),
+            ("a\n  b", "- c\n  d", "\n  e", "| f"),
+        )
 
     def test_output_and_strict_exit(self) -> None:
         path = self.tasks / "report.json"

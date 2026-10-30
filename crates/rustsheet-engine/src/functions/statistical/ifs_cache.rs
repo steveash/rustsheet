@@ -82,7 +82,6 @@ enum CriterionKey {
     Text(Vec<u16>),
     Boolean(bool),
     Error(Discriminant<Error>),
-    Empty,
 }
 
 impl CriterionKey {
@@ -101,7 +100,8 @@ impl CriterionKey {
             CalcResult::String(s) => CriterionKey::Text(s.units().collect()),
             CalcResult::Boolean(b) => CriterionKey::Boolean(*b),
             CalcResult::Error { error, .. } => CriterionKey::Error(std::mem::discriminant(error)),
-            CalcResult::EmptyCell | CalcResult::EmptyArg => CriterionKey::Empty,
+            // An empty criterion is the criterion 0 (`indexed_criterion`), so it shares 0's set.
+            CalcResult::EmptyCell | CalcResult::EmptyArg => CriterionKey::Number(0.0f64.to_bits()),
             _ => return None,
         })
     }
@@ -586,10 +586,15 @@ impl ValueIndex {
         mut set: impl FnMut(u32),
     ) {
         match criterion {
-            // Only a text equals a non-empty text (`result_is_equal_to_string`).
+            // Only a text equals a non-empty text (`result_is_equal_to_string`). Texts equal under
+            // the criteria's `cmp_text_pairwise` share a collation key, but not every text of the
+            // key is equal to the target (`"a"` plus 16 U+0302 has the key of `"a"`), so `matches`
+            // tests each one.
             IndexedCriterion::Text(target) => {
                 for &position in self.texts.get(&collation_key(target)).into_iter().flatten() {
-                    set(position);
+                    if values.get(position as usize).is_some_and(matches) {
+                        set(position);
+                    }
                 }
             }
             IndexedCriterion::Number(op, target) => {

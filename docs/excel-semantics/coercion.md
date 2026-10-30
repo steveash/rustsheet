@@ -88,11 +88,176 @@ Fitted key (T-0220; all 486 probe cells and the gen-m2 cells above pass): compar
 case folded throughout. (1) Letter weights: control characters, space, CHAR(160), the punctuation
 in the order above, digits, letters; an accented Latin-1 letter weighs as its base letter, `æ` as
 `a e`, `ß` as `s s`; hyphen and apostrophe weigh nothing. (2) Accents, letter by letter: none <
-acute < grave < circumflex < diaeresis < ring, then tilde, cedilla and stroke (`ø`). Tilde and
-cedilla are placed by Windows' sort-key order, UNVERIFIED. (3) Hyphens and apostrophes as (position,
-weight), a later position first, apostrophe before hyphen. Characters outside ASCII and the Latin-1
-letters (`þ`, `ð`, `œ`, Greek, symbols such as `§`) are UNVERIFIED: they keep code-point order after
-the letters.
+acute < grave < circumflex < diaeresis < tilde < ring, then stroke (`ø`); T-3114 below extends this
+order. (3) Hyphens and apostrophes as (position, weight), a later position first, apostrophe before
+hyphen. `þ`, `ð`, `œ` and the Latin-1 symbols were placed later (T-1590, T-1595, T-1662, T-1669,
+below), and the Latin Extended-A, Greek and Cyrillic letters by T-3114 (next section). Every other
+character (CJK, other scripts, other symbols) keeps code-point order after the letters, UNVERIFIED.
+
+### Letters beyond Latin-1 and combining marks (T-3114)
+Evidence: probes/t3114-collation-beyond-latin1 (excel-graph, 2026-10-29), 282 strings ranked against
+each other (Calc!A = count less, Calc!B = count equal) plus pairwise `<`/`=`/`>` (Calc!D:F), exact
+MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status: VERIFIED for these:
+- Every Latin Extended-A letter probed (`ā ă ą ć č ď ē ė ę ě ğ ģ ī į ķ ĺ ľ ń ņ ň ő ŕ ř ś ş š ţ ť ū ů ű
+  ų ź ż ž`) is its **base letter plus an accent**, not a letter of its own: `"ca" < "ča" < "cb"`,
+  `"ea" < "ěa" < "eb"`, `"oa" < "őa" < "ob"`, `"ša" < "sb"`, `"ža" < "zb"` (Calc!A123:A139).
+  Upper and lower case are equal (`"Č" = "č"`, Calc!E1).
+- Accents on one base letter, in order: `a á ă ā ą`, `c ć č`, `e é ė ě ē ę`, `g ğ ģ`, `i ī į`, `l ĺ ľ`,
+  `n ń ň ņ`, `o ö ő`, `r ŕ ř`, `s ś š ş`, `t ť ţ`, `u ū ů ų ű`, `z ź ż ž`. One order fits them all:
+  acute < breve < dot above < caron < macron < ring < ogonek < double acute < cedilla (with diaeresis
+  before ring and double acute). T-3154 ranked them against the Latin-1 accents on one letter
+  and replaced this order by the Windows table's weights (next section).
+- A base letter plus a combining mark equals the precomposed letter: `"a"&UNICHAR(769) = "á"`,
+  `"c"&UNICHAR(780) = "č"` (also `"C"&UNICHAR(780)`), `"e"&UNICHAR(769) = "é"`,
+  `"c"&UNICHAR(780)&"a" = "ča"`, and `o`+U+030B, `s`+U+030C, `z`+U+0307 tie with `ő`, `š`, `ż` (Calc!B
+  counts 3 or 4, D7:F10, D25:F25). Only four combining marks are probed as such: U+0301, U+0307,
+  U+030B and U+030C (UNICHAR 769, 775, 779, 780); T-3154 probes the others and stacked marks
+  (next section).
+- Greek: `α < ά < β`, … `ι < ί < ϊ < ΐ < κ`, … `ω < ώ` (tonos is the acute accent, dialytika the
+  diaeresis); `Σ = σ = ς` (Calc!B168, B192, B216, E20), and exact MATCH of `"ς"` finds `σ` (Calc!H10). Base
+  letters keep code-point order.
+- Cyrillic: `а < б < … < е < ё < ж < … < и < й < к < … < я`, each upper case equal to its lower case.
+  `ё` and `й` are accented `е` and `и`, not letters of their own: `"ёа" < "еб"`, `"йа" < "иб"`,
+  `"ё" = "е"&UNICHAR(776)`, `"й" = "и"&UNICHAR(774)` (probes/t3154-collation-accents Calc!D8:F11).
+- COUNTIF `=`, `<` and `<>` agree with the ranking above (Calc!I1:K10; `I8` = 4 and `I9` = 2 count the
+  combining-mark spellings with the precomposed letters). Exact MATCH folds case and `ς` (H1:H7, H10)
+  but does **not** equate a base letter plus a combining mark with the precomposed letter:
+  `MATCH("c"&UNICHAR(780),r,0)` = 144 and `MATCH("a"&UNICHAR(769),r,0)` = 143 find the decomposed
+  spellings, not `č` (row 57) or `á` (row 140) (H8, H9), as T-1590 found for `æ`/`ae`. XMATCH,
+  XLOOKUP and COUNTIF do equate them, both ways, and VLOOKUP(...,FALSE) does not, like MATCH:
+  `XMATCH("a"&UNICHAR(780),{"ǎ",…},0)` = 1, `XMATCH("ơ",{"o"&UNICHAR(795),…},0)` = 1,
+  `VLOOKUP("s"&UNICHAR(806),…,FALSE)` `#N/A` (probes/t3154-collation-accents Calc!J1:J46). The engine
+  agrees: MATCH and VLOOKUP exact match fold through `folded_units`, which does not decompose;
+  XMATCH and XLOOKUP compare `collation_key`s (`CollatedKey`).
+- Inferred, UNVERIFIED: the engine gives every other lower- or upper-case letter of Latin Extended-A
+  and -B, Greek, Cyrillic and Latin Extended Additional that has a canonical decomposition
+  (`ĉ ĝ ĥ ĵ ŝ ŵ ŷ ĩ ĭ ŭ ŏ ō ĕ ġ ċ ļ ŗ`, `ǐ ǒ ǔ ǖ ȁ ȩ`, `ϋ ΰ`, `ѐ ѓ ї ќ ѝ ў`, `ấ ặ ẽ ỹ`) the same
+  base-plus-marks rule (its weight in the Windows table agrees for every one of them).
+Implemented (T-3114): `collation.rs` case-folds, then decomposes each letter through its canonical
+decomposition (`DECOMPOSED`) and gives a combining mark's accent to the letter before it.
+`collation::fold_case` (the exact MATCH, wildcard and D-function prefix fold, one character to one; T-3133)
+folds `ς` to `σ`, in wildcards and D-function criteria too: over `σx`, `ςx`, `Σ`, `COUNTIF(r,"ς*")` = 3,
+`COUNTIF(r,"ς?")` = 2, `MATCH("ς*",r,0)` = 1, `XMATCH("ς",r,2)` = 3, `VLOOKUP("ς?",r,1,FALSE)` = `σx`,
+`XLOOKUP("ς?",r,r,,2)` = `σx`, and a D-function criterion `ς` counts 3, `=ς` 1
+(probes/t3154-collation-accents Calc!H1:H19; also probes/t3133-lookup-criteria-case-fold, criteria.md
+"Wildcard escapes, case and trailing tilde"). VERIFIED. The D-function prefix fold of `İ` stays
+inferred, UNVERIFIED (T-3180).
+- `İ` (U+0130) collates as `i` + U+0307, its lower-cased canonical decomposition: `XMATCH("i"&UNICHAR(775),{"İ"})`
+  is 1, while `XMATCH("I",{"İ"})` and `XMATCH("İ",{"i"})` are #N/A (probes/t3133-lookup-criteria-case-fold Calc!J1,
+  J3, J4, J33, excel-graph, 2026-10-29, T-3133). Before T-3133 the engine folded it to a plain `i`. Its rank
+  among `i` and the other accented `i`s, and `=`/COUNTIF equality with it, are inferred from XMATCH, UNVERIFIED
+  (T-3180).
+  In the same cells XMATCH equates `ẞ` and `ß` with `ss` (the `ß` expansion) and `ǅ ǆ Ǆ`, the Kelvin, Ångström
+  and Ohm signs with their letters, while `ſ`/`s` and `µ`/`μ` stay apart (Calc!J1:J35).
+
+### Accent weights add up and wrap: Windows' diacritic weights (T-3154)
+Evidence: probes/t3154-collation-accents (146 strings ranked, pairs, lookups; 595 cells),
+probes/t3154-collation-accent-weights (119 spellings of `a` with 1 to 100 combining marks ranked),
+probes/t3154-collation-accent-pairs (28 spellings, every pair's `<`, `=`, `>`), excel-graph 2026-10-29;
+Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Table.txt`, download
+10921), whose DW column every finding below matches. Status: VERIFIED.
+- An accent is a **diacritic weight**: 2 for a plain letter, plus 12 acute, 13 grave, 14 dot above,
+  16 circumflex, 17 diaeresis, 18 caron, 19 breve, 21 macron, 23 tilde, 24 ring, 25 ogonek,
+  26 cedilla, 27 double acute, 78 horn, 86 dot below, 89 comma below, 141 perispomeni, … (the
+  table's script-member-1 rows). Probed as marks: U+0300-U+0304, U+0306-U+030C, U+030F, U+0311,
+  U+0314, U+0315, U+031B, U+0323-U+0328, U+032C, U+032D, U+0330, U+0331, U+0334, U+0342, U+0345
+  (accent-weights Data!A10:A39); the other weights of U+0300-U+0362 come from the Windows table
+  alone, UNVERIFIED. So on one letter `a á à â ä ǎ ă ā ã å ą ạ`, `e é è ė ê ë ě ē ę`,
+  `o ó ò ô ö ō õ ő ơ`, `u ú ù û ü ū ů ų ű ư`, `s š ş ș`, `t ť ţ ț`, alone and as the first of two
+  letters (Calc!A1:A145). Letters with a weight of their own keep theirs: `ª º` 3, `ı` 4, `đ` 30,
+  `ł` 31, `ø` 33, `ð` 104 (all consistent with T-1590).
+- Combining marks **add** their weights to the letter before them, in any order:
+  `"a"&UNICHAR(769)&UNICHAR(769)` = `"å"` (12 + 12 = 24), `"a"&UNICHAR(769)&UNICHAR(768)` = `"ą"`
+  (25), `"a"&UNICHAR(769)&UNICHAR(780)` = `"a"&UNICHAR(780)&UNICHAR(769)` = `"á"&UNICHAR(780)` =
+  `"ǎ"&UNICHAR(769)`, `"à"&UNICHAR(803)` = `"a"&UNICHAR(803)&UNICHAR(768)`; precomposed letters
+  of Latin Extended-B and Additional equal their decomposition (`ǎ`, `ș`, `ț`, `ơ`, `ư`, `ạ`) and
+  `ș` (comma below) is not `ş` (cedilla).
+- The sum is **one byte and wraps** past 255: two U+0342 (2 + 282 = 284, so 28) equal one cedilla
+  (`"a"&UNICHAR(834)&UNICHAR(834)` = `"a"&UNICHAR(807)`), and three U+0323 (260, so 4) sort between
+  `"a"` and `"á"`.
+- Engine choices from the Windows table or by inference, UNVERIFIED (T-3203 probes them):
+  U+0363-U+036F ("combining a" to "combining x") are the letters `a e i o u c d h m r t v x` with
+  diacritic weight 3, not marks (the table gives them script member 14, a letter's alphabetic
+  weight and DW 3); a mark after an expansion (`æ`, `ß`) adds its weight to the expansion's second
+  letter (the table gives `ǣ`, `æ` plus macron, a row of its own); the superscript (variant) pass
+  comes before the skipped-character pass.
+- `ª`/`º` and `¹ ² ³` differ from `a`/`o`/digits also in a later, case-like pass (Windows case
+  weight 14, the superscript bits; Excel ignores only the upper-case bit, and `ς`, case weight 10,
+  still equals `σ`): `"ª"&UNICHAR(769)` (3 + 12 = 15) sorts just after `"à"` (15) (accent-weights
+  Calc!A114, A10).
+- **Not a total order.** A text sorts before any text it is a proper prefix of, even when the
+  wrapped weight says otherwise: `"a"&UNICHAR(834)` < `"a"&UNICHAR(834)&UNICHAR(834)` although the
+  latter equals `"a"&UNICHAR(807)`, which is below `"a"&UNICHAR(834)`; likewise `"a"&UNICHAR(803)` <
+  three U+0323 < `"á"` < `"a"&UNICHAR(803)` (pairs Calc!S19, T18, W23, X22, AB28, AC27). The next
+  bullet is the general rule; the prefix rule is its case where one side runs out. It also makes
+  texts with equal wrapped sums unequal: `"a"=("a"&REPT(UNICHAR(770),16))` is FALSE and `<` TRUE
+  (circumflexes 16 * 16 = 256, so the same sum as `"a"`).
+  **Every caller uses it (T-3181).** Evidence: probes/t3181-collation-prefix-callers (35 cells) and
+  probes/t3181-collation-prefix-arrays (13 cells), excel-graph 2026-10-30, Status: VERIFIED, on
+  `"a"`, `"a"` plus 16 U+0302, U+0342 once and twice, U+0327, U+0323 once and three times and `"á"`:
+  - the operators `= <> < <= > >=` (callers Calc!A1:A9);
+  - COUNTIF and COUNTIFS criteria, `=` and the ordered ones (`COUNTIF(r,"a")` counts `"a"` but not
+    `"a"` plus 16 U+0302; callers Calc!B1:B12);
+  - approximate MATCH (1 and -1) and VLOOKUP TRUE (callers Calc!C3:C12, C14), and XMATCH next
+    smaller/larger (arrays Calc!B5:B8);
+  - exact XMATCH, XLOOKUP and SWITCH (`"a"` is not found in `"a"` plus 16 U+0302; arrays
+    Calc!B3, B4, B11, B12); MATCH(...,0) misses both ways too (callers Calc!C1, C2), as it misses
+    `"a"` against `"a"&UNICHAR(807)`'s equal `"a"&UNICHAR(834)&UNICHAR(834)` (C13): MATCH(...,0)
+    is not the collation's equality (T-1590 below);
+  - SORT and SORTBY: `SORT` of U+0342 once and twice gives once, twice whichever comes first
+    (arrays Calc!A1, A5), descending twice, once (A6), and `"a"` before `"a"` plus 16 U+0302 (A3,
+    A4). On the three-text cycle U+0342 once, twice, U+0327 SORT gives once, twice, U+0327 (A2),
+    and on U+0323, three U+0323, `"á"` it gives U+0323, three U+0323, `"á"` (A8): Excel sorts with
+    the pairwise comparison and its output on a cycle depends on its algorithm.
+  - `UNIQUE` of two U+0342 and U+0327 (equal sums, nothing shared after the letter) is one row
+    (arrays Calc!B2).
+  Ours (T-3181): the operators and the criteria compare texts with `cmp_text_pairwise`, which
+  applies the rule (the criteria index still hashes the `CollationKey` of the wrapped sums,
+  which every pair the rule finds equal shares, and tests each candidate with the rule); so do
+  all cells of the four t3154/t3201 accent cases, which compare with `<` and `=`. Sorts, sorted
+  lookups and the hashed exact lookups keep the total order of the wrapped sums (`cmp_text`;
+  `slice::sort_by` may panic on a non-total order): the lookup cells above fail (T-3210), and so do
+  the SORT, SORTBY and UNIQUE cells (T-3211). Open: T-3210, T-3211.
+- **Shared leading units are skipped before the sum (T-3201).** Evidence:
+  probes/t3201-collation-long-mark-runs (1,000 cells: a ladder of 246 texts `"a"` plus up to three
+  marks, one per weight 2, 5, 8, 11 and 14 to 255, self-ranked in order (Calc!A1:A246); `"a"` with
+  1 to 40 of U+0301, U+030A, U+0323, U+0342 ranked against it (Data!B1:B160), mixes, `"e"` runs
+  and `"a"`&run&`"b"`) and probes/t3201-collation-wrapped-run-pairs (37 texts whose sums wrap to
+  2 to 22, every pair, 1,369 cells), excel-graph 2026-10-30. Status: VERIFIED for one accented
+  letter, and for it followed by `"b"`. Compare a letter's accent as a sequence of units, the
+  letter itself (weight 2, or a precomposed letter's whole weight, `á` 14) and then each mark (its
+  weight above): first drop the leading units the two texts share with equal weights (a mark matches
+  any mark of the same weight: U+0341 matches U+0301, U+0352 matches U+0323, but precomposed `á` is
+  one unit and does not match `a` plus U+0301); if one side has no units left it is less; otherwise
+  compare the sums of the units left, each mod 256. Consequences, all in Excel's cells:
+  - With nothing shared but the letter, every run of the same sum mod 256 is equal whatever the
+    marks and counts: 22 U+0301 = 11 U+030A = 12 U+0323 = 40 U+0342 = 88 U+030D (the letter's 2
+    dropped, 264 each, so 8); 18 U+0323 = 60 U+0342 = 60 U+0300 = `"á"` (wrapped-run-pairs).
+  - There is no separate rule for long runs: each run is a proper prefix of every longer run of
+    the same mark, so it sorts below it, and it ranks against other texts by its wrapped sum.
+    22 U+0301 (2 + 264, so 10) has 43 of the 119 texts below it in t3154-collation-accent-weights Calc!A107 because
+    it is above the shorter acute runs (its prefixes), above the `"a"&UNICHAR(769)&UNICHAR(X)`
+    texts (they share its first acute, and its 21 acutes left, 252, beat their X), and above the
+    texts whose sum is below 10; the same count explains every Excel rank of
+    accent-weights Calc!A105:A112 (20, 21, 22, 40 and 100 acutes, 10 and 11 rings, 10 dots below:
+    108, 110, 43, 111, 105, 110, 6, 75).
+  - The skipped letter weighs nothing: `"a"` plus 85 U+030D (2 + 255, so 1 as a total) is above
+    all 246 ladder texts: `"a"` is its prefix, and against each other its marks sum to 255
+    (long-mark-runs Calc!B179 = 246);
+    `"a"` plus 16 U+0302 (marks 256, so 0) is below every ladder text but `"a"` (its prefix) and
+    the 15 that start with U+0302, which it beats on the 15 circumflexes left (240) (Calc!B173 = 16).
+  - Per letter: `"a"`, 22 U+0301, `"b"` beats `"a"&UNICHAR(833)&"b"` on its 21 acutes left
+    (Calc!B242); `"e"` runs rank as `"a"` runs (Calc!B181:B220).
+  - A model of this rule (and the weights above) reproduces all 3,391 cells of the four t3154 and
+    t3201 accent cases (pairs, weights, long-mark-runs, wrapped-run-pairs). Open, UNVERIFIED: units
+    shared across letters (`"áb"` against `"a"&UNICHAR(769)&"c"`), two units with equal sums that
+    share a prefix, and marks after `æ`/`ß`.
+  Ours (T-3181): `cmp_text_pairwise` applies this rule for the operators and criteria, so every
+  cell of the four accent cases passes. The rule is not transitive (wrapped-run-pairs has 554
+  intransitive triples), so the sorts keep the wrapped total with nothing skipped (`cmp_text`, a
+  total order); where Excel's sorts and lookups differ is in the "Not a total order" bullet.
+Implemented (T-3154): `collation_tables.rs` (`MARK_WEIGHT` from the Windows table, `DECOMPOSED`
+extended to Latin Extended-B and Additional) and `collation.rs` (accent byte, variant pass).
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
 Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by
 `SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.
@@ -122,7 +287,7 @@ Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-colla
   letter position (`"¹"` > `"1"`, `"¹a"` < `"1b"`, `"¹b"` > `"1a"`; XMATCH of `"1"` against `¹` `#N/A`); `ç đ ð ł ñ ı` are accents on `c d d l n i` (`"ða"` < `"db"`, > `"da"`).
   CORRECTED: `þ` is an expansion equal to `th`, not an accent on `t` (`"þ"="th"`, `"þ"&"a"` = `"t"&"h"&"a"` TRUE, `"þa"` > `"tb"`, `XMATCH("th","þ",0)` = 1). Implemented (T-1669): `cmp_text_excel` makes `þ` an `expansion('t','h')`.
   A single-cell reference as XMATCH `lookup_array` or XLOOKUP `lookup_array`/`return_array` is a one-cell vector, not `#VALUE!`/`#N/A` (probes/text-collation-longer A96, A97, A102, A104, A105, A107).
-Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669
+Tasks: T-0220, T-0244, T-1469, T-1590, T-1594, T-1595, T-1662, T-1669, T-3114, T-3154
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
@@ -387,7 +552,8 @@ whether it is literal or computed, empty or not: `AND("1",TRUE)`, `AND("abc",TRU
 `AND("",TRUE)`, `AND(""&"1",TRUE)`, `AND(IFERROR("1",0),TRUE)`, `AND(T("1"),TRUE)`, `AND(("1"),TRUE)`
 and `AND("1",1)` are TRUE, and `AND("1",FALSE)` is FALSE. Text in an array literal (`{"1",TRUE}`) and in
 referenced cells (A1 = "x", A2 = "1") is skipped as well. A literal "TRUE" argument counts as TRUE,
-case-insensitively (`OR("true",FALSE)` = TRUE; computed and array "TRUE" text are unprobed; "FALSE" next to a logical is unprobed, while `AND("FALSE")` alone is FALSE in ironcalc E48), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+case-insensitively (`OR("true",FALSE)` = TRUE), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+What counts is a direct scalar text whose whole value is "TRUE" or "FALSE" (any case), however it was computed: `""&"TRUE"`, `IF(TRUE,"TRUE")`, `T("TRUE")`, `LOWER("TRUE")` and `LET(s,"TRUE",s)` count as TRUE and the `&`, IF, LOWER and LET "FALSE" forms as FALSE (`T("FALSE")` is unprobed), beside a logical and alone (`AND(""&"FALSE",TRUE)` and `AND("FALSE",TRUE)` are FALSE, `XOR(T("TRUE"),TRUE)` is FALSE, `OR(LOWER("TRUE"))` is TRUE). The parse does not trim: `" TRUE"`, `"TRUE "`, `" FALSE"`, `"FALSE "` and a CHAR(160) pad are skipped like any other text (`AND(" FALSE",TRUE)` is TRUE, `OR(" TRUE")` is `#VALUE!`). Array elements are skipped whatever their text, in a constant or a computed array: `{"TRUE"}`, `{"FALSE"}`, `IF({1},"TRUE")` and `{"TRUE","FALSE"}` change nothing beside a logical and are `#VALUE!` alone. So text counts by its source (a direct value, not a reference or array element), not by the argument's syntax. Probe layout: 21 forms in rows 2-22 × AND/OR/XOR beside TRUE, beside FALSE and alone in B:J; `AND("FALSE")` alone is also FALSE in ironcalc E48.
 A "TRUE"/"FALSE" text cell is skipped as well, also when a function picks it: with A1 = "TRUE" and A2 = "FALSE",
 `AND`, `OR` and `XOR` of `IF(TRUE,A1)`, `INDEX(A1:A2,1)`, `XLOOKUP(1,{1},A1:A1)`, `CHOOSE(1,A1)`, `LET(x,A1,x)`,
 `TAKE(A1:A2,1)` and `OFFSET(A1,0,0)` are all `#VALUE!` (picked cells are references; evidence:
@@ -402,9 +568,10 @@ EverythingTests!J136 caches `#VALUE!` for `AND("1",1)`, where current Excel for 
 follows the web, and J136 stays a known failure until a 16.x desktop value decides (M14). I136 `AND(E14,E17,"1")`
 is not a conflict: E14 and E17 hold text or are empty, so every argument is skipped and both versions give `#VALUE!`.
 Evidence: probes/and-or-xor-text-arguments (84 cells, excel-graph, 2026-10-11, T-0258); ironcalc-calc
-LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53; gen-m2/893302d6c5b99e2e Calc!A108 (excel-graph).
+LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53; gen-m2/893302d6c5b99e2e Calc!A108 (excel-graph); probes/t3135-and-or-xor-computed-bool-text (189 cells,
+excel-graph, 2026-10-29, T-3135).
 Status: VERIFIED (web); CONFLICTING with the Excel 15 cached J136. The engine passes every probe cell.
-Tasks: T-0258, T-1075
+Tasks: T-0258, T-1075, T-3135
 
 ## GCD / LCM / MULTINOMIAL range cells
 Rule: GCD, LCM and MULTINOMIAL take ranges, but unlike SUM they do not skip what is not a number: a

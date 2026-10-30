@@ -529,7 +529,7 @@ Rule: SEARCH lowercases per character and never changes the text's length: a cha
 Also: ς (final sigma) matches Σ and σ in either direction (`SEARCH("ς","ΟΣ")` is 2, `SEARCH("σ","ΟΣ")` is 2), ǆ matches ǅ, and U+212A (Kelvin) matches k; ſ/s, µ/μ, ϐ/β and ﬀ/ff do not match (`#VALUE!`).
 Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-10-12, T-1296).
 Status: VERIFIED (excel-graph)
-Implemented in: `fold_case` (functions/text/casefold.rs).
+Implemented in: `fold_case` (functions/util/collation.rs; shared with exact-match lookups and wildcard criteria, T-3133).
 Tasks: T-1296
 
 ## TEXT over an array of format codes
@@ -669,8 +669,8 @@ from a numeral-length limit. From a cell, as an array element and with an error 
 `REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!`; 255 from a cell works in all
 four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!`;
 255 works. excel-graph refused to open a workbook whose array constants held 256-character literals (cause not isolated), so the probe builds the long text with REPT. REPT with a
-long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!`; `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Only a plain single-cell reference is implemented as "" (`T(D1)`, `T(D3)`, VERIFIED; a sheet-qualified reference, a legacy formula, a parenthesised or unary-plus reference and a single-cell structured reference are implemented as "" too, UNPROBED); unprobed, and ours keeps `#VALUE!` for them: `T` of a multi-cell range (`T(D1:D2)`), a name, `INDIRECT`, `OFFSET`, `INDEX`, `IF`, `CHOOSE`, `LET` or a spill reference whose cell holds long text (follow-up task).
-Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count rules are implemented (T-2627: `T` of a plain single-cell reference reads "" (other reference shapes unprobed, kept `#VALUE!`), an array element is `#VALUE!`, REPT reads its count's error before the text limit).
+long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!`; `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. T of such a cell is "" however the cell is reached (T-3107; probes/text-255-units-reference-shapes, excel-graph 2026-10-29): `T(D1:D2)` (top-left cell), a defined name, `INDIRECT`, `OFFSET`, `INDEX`, `IF`, `CHOOSE`, `LET`, a spill reference (`T(F1#)`), a sheet-qualified reference (same sheet or another), `T((D1))`, a single-cell structured reference, and a legacy formula's `T(D1)`, `T(D1:D2)` and `T(name)` are all "". A computed value stays `#VALUE!`, and so does the unary plus: `T(+D1)` is `#VALUE!`. Implemented by `reads_cell_text` in t_function.rs.
+Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count rules are implemented (T-2627, T-3107: `T` of any reference reads "", an array element is `#VALUE!`, REPT reads its count's error before the text limit).
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
@@ -966,9 +966,20 @@ Rule: `VALUE("- 5")` is -5, `VALUE("3 1/2")` 3.5 and `VALUE("1-1-1")` 36892 (200
 one-digit year). Readers built on VALUE's grammar follow it: `IMABS("3 1/2")` is 3.5 (engineering.md "How an inumber
 is read").
 Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
-Ours: `#VALUE!` for all three (`value_text_number`, functions/text/common.rs).
-Status: VERIFIED (excel-graph); not implemented (T-2646).
-Tasks: T-2646
+A criterion reads `"1 1/2"` as 1.5 too (criteria.md "Criterion operands and text cells read numbers with VALUE's grammar",
+probes/t3136-criteria-formatted-number-operands H25).
+Edges (probes/value-sign-space-mixed-fraction-dash-date, excel-graph, 2026-10-29): spaces after a sign are skipped
+(`"- 5"`, `"-  5"` -5, `"+ 5"` 5, `"- 5.5"` -5.5, and `="- 5"+0` -5, so number coercion shares it). A mixed fraction takes
+a sign (`"-3 1/2"`, `"- 3 1/2"`, `"-  3 1/2"` -3.5, `"+3 1/2"` 3.5), a `$` (3.5) and a `%` (`"3 1/2%"` is
+0.034999999999999996, the whole and the fraction divided by 100 apart); an improper fraction reads (`"1 3/2"` 2.5), a
+numerator with a leading zero too (`"3 01/02"` 3.5), many digits (`"123456789 1/2"`), a denominator of 200 (3.005); but
+`"3 1/0"`, `"3  1/2"` (two spaces), `"3 1 /2"` and `"3 1/ 2"` are `#VALUE!`. A dash date reads a one-digit year as 200x
+and `"1/1/1"` is the same 36892 (`"1-1-0"` 36526, `"1-1-99"` 36161, `"1-1-30"` 1930); `"13-1-1"` and `"0-1-1"` are `#VALUE!`.
+UNVERIFIED: typed cell input and criteria also read `- 5` and a one-digit-year date now (shared grammar), and the mixed-fraction
+combinations `€3 1/2`, `-$3 1/2`, `-3 1/2%`, `$3 1/2%`, `+ 3 1/2` are extrapolated (T-2646 follow-up probe).
+Ours: all implemented (`mixed_fraction`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
+Tasks: T-2646, T-3151
 
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:
