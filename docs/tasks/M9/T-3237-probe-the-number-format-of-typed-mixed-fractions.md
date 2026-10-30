@@ -3,7 +3,7 @@ id: T-3237
 title: "Probe the number format of typed mixed fractions"
 milestone: M9
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
