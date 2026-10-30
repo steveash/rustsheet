@@ -4,14 +4,14 @@ use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::{
-    excel_small_shape_lower, gamma_cdf, gamma_density, gamma_quantile, wilson_hilferty_quantile,
-    Tail, DIRECT_SHAPE_MAX, WILSON_HILFERTY_SHAPE_MIN,
+    excel_small_shape_lower, excel_small_shape_quantile, gamma_cdf, gamma_density, gamma_quantile,
+    wilson_hilferty_quantile, Tail, DIRECT_SHAPE_MAX, WILSON_HILFERTY_SHAPE_MIN,
 };
 use super::normal::normal_quantile;
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
@@ -27,15 +27,15 @@ const HALF_SHAPE: f64 = 0.5;
 /// at 1E-15, where the direct form is 4 to 12 off; T-2753, T-2852).
 const LOG_FORM_RATIO: f64 = 1E-15;
 
-/// GAMMA.DIST's density where y = x / beta is at most [`LOG_FORM_RATIO`]: Excel forms
-/// EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
+/// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density where y = x / beta is at most
+/// [`LOG_FORM_RATIO`]: Excel forms EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
 /// result, so `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235, not 1 (probes/
 /// t2753-gamma-density-ratio-sweep A1, B1; t2738-gamma-dist-tiny-ratio A2, A4, A15, A19).
 /// With Excel's own LN, EXP and GAMMA it is 0 to 1 ulp from Excel at most probed cells there and
 /// 2 to 3 at a few (`GAMMA.DIST(2E-16,1,1,FALSE)`, `(1E-20,2,1,FALSE)`; T-2852). Only shapes 0.5,
 /// 1 and 2 are probed; it keeps to the prefactor's direct shapes. `None` elsewhere, and at x = 0,
 /// which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
-fn tiny_ratio_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
+pub(super) fn tiny_ratio_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
     let y = x / beta;
     (x > 0.0 && alpha < DIRECT_SHAPE_MAX && y <= LOG_FORM_RATIO)
         .then(|| excel_exp(alpha * excel_ln(y) - y) / excel_gamma(alpha) / x)
@@ -162,6 +162,23 @@ impl Model {
         // probability outside [0, 1], alpha <= 0 and beta <= 0 are #NUM!.
         if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
+        }
+        // Excel's closed form at a shape below 1 and a tiny quantile, times the scale as a plain
+        // final product (T-3012: column B of probes/t3012-gamma-inv-small-shape is column A times
+        // 1E+15 to the double). A subnormal quantile there is #DIV/0! (A4
+        // `GAMMA.INV(1E-16,0.05,1)`, about 1E-320), one that underflows is 0 (A1-A3; T-3013).
+        // A scale whose rate 1 / beta overflows stays #NUM! (`gamma_quantile`).
+        let closed_form = (1.0 / beta_scale)
+            .is_finite()
+            .then(|| excel_small_shape_quantile(alpha, p))
+            .flatten();
+        if let Some(x) = closed_form {
+            if x > 0.0 && x < f64::MIN_POSITIVE {
+                return Err(div_error(cell));
+            }
+            // The product cannot overflow (x is below 1E-21 and beta a finite double). A subnormal
+            // product is 0, as `gamma_quantile` flushes after its scale.
+            return Ok(flush_subnormal(x * beta_scale));
         }
         let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && p > 0.0 && p < 1.0 {
             let z = normal_quantile(p, 0.0, 1.0, cell)?;

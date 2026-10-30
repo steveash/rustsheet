@@ -561,16 +561,6 @@ pub(crate) fn spill_operand(text: String, node: &Node) -> String {
     }
 }
 
-/// `text` in the `levels` pairs of parentheses a [`Node::Group`] was written in.
-pub(crate) fn group_text(levels: u16, text: &str) -> String {
-    let levels = usize::from(levels);
-    let mut grouped = String::with_capacity(text.len() + 2 * levels);
-    grouped.extend(std::iter::repeat_n('(', levels));
-    grouped.push_str(text);
-    grouped.extend(std::iter::repeat_n(')', levels));
-    grouped
-}
-
 /// The printed `@child`. An intersection operand prints bare, as Excel does (`@A1:B2 B1`,
 /// T-1098); the parentheses written around the operand or part of it are its [`Node::Group`]s
 /// (`@(A1 B1)`, `@((A1))`, `@(A1) B1`, `@(A1):(B1) C1`; T-1116, T-1134, T-1251, T-1343). Only a

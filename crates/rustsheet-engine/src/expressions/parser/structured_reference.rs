@@ -110,15 +110,19 @@ impl StructuredReference {
             return qualified;
         }
         // Excel shows a `#This Row` reference in its `@` form (references.md "Calculated
-        // columns" rule 6: FORMULATEXT prints `=[@Col]*2` in every filled row).
+        // columns" rule 6: FORMULATEXT prints `=[@Col]*2` in every filled row), keeping the
+        // padding inside the outer brackets: `T[ [#This Row] , [Col] ]` prints `[ @Col ]`
+        // (syntax.md, probes/t2800-this-row-whitespace, T-3069).
         if self.specifier == Some(TableSpecifier::ThisRow) {
-            return match &self.table_reference {
-                None => "[@]".to_string(),
+            let TableSpacing { open, close, .. } = &self.spacing;
+            let inner = match &self.table_reference {
+                None => String::new(),
                 Some(TableReference::ColumnReference(column)) if prints_bare(column) => {
-                    format!("[@{}]", escaped_column(column))
+                    escaped_column(column)
                 }
-                Some(reference) => format!("[@{}]", table_reference_text(reference)),
+                Some(reference) => table_reference_text(reference),
             };
+            return format!("[{open}@{inner}{close}]");
         }
         qualified[self.table_name.len()..].to_string()
     }
@@ -183,11 +187,20 @@ impl StructuredReference {
     /// The form the xlsx file stores: [`Self::text`], with a bare table name written as `T[]`,
     /// since Excel refuses a file holding a bare `T` as corrupt (xlsx-storage.md "Structured
     /// references in the file").
+    ///
+    /// A single column in padded brackets keeps its own (`T[ [Col] ]`, not the printed
+    /// `T[ Col ]`): Excel loads a stored padded bare column as `#REF!` (syntax.md,
+    /// probes/t2800-stored-ws-0, T-3069).
     pub(crate) fn file_text(&self) -> String {
         if self.bare {
-            format!("{}[]", self.table_name)
-        } else {
-            self.qualified_text()
+            return format!("{}[]", self.table_name);
+        }
+        let TableSpacing { open, close, .. } = &self.spacing;
+        match (&self.specifier, &self.table_reference) {
+            (None, Some(TableReference::ColumnReference(column))) if self.spacing.is_padded() => {
+                format!("{}[{open}{}{close}]", self.table_name, column_text(column))
+            }
+            _ => self.qualified_text(),
         }
     }
 }
