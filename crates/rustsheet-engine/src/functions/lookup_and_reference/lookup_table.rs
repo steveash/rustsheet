@@ -602,3 +602,47 @@ fn offset_cell(left: &CellReferenceIndex, row: i32, column: i32) -> CellReferenc
         column: left.column + column,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SearchVector;
+    use crate::{calc_result::CalcResult, text::Text};
+
+    fn text(s: &str) -> CalcResult {
+        CalcResult::String(Text::from(s))
+    }
+
+    /// The exact match walks on a vector's first search and looks up its index from the second
+    /// on (`index_worthwhile`); both must fold case one character to one, as Excel does:
+    /// `İ` matches only itself, `ΟΣ`/`οσ`/`ος` are one key, the Kelvin sign is `k`
+    /// (probes/t3133-lookup-criteria-case-fold Calc!C1:C35).
+    #[test]
+    fn indexed_and_linear_exact_matches_agree_on_one_to_one_fold() {
+        let mut values: Vec<CalcResult> =
+            (0..16).map(|i| CalcResult::Number(f64::from(i))).collect();
+        let keys = [
+            "İ", "i\u{307}", "i", "ΟΣ", "ος", "\u{212A}", "k", "ẞ", "ß", "ss",
+        ];
+        values.extend(keys.iter().map(|key| text(key)));
+        for key in keys.iter().chain(&["I", "οσ", "K", "ǅ"]) {
+            let target = text(key);
+            let linear = SearchVector::new(values.clone()).exact_match(&target);
+            let vector = SearchVector::new(values.clone());
+            vector.exact_match(&target);
+            assert_eq!(vector.exact_match(&target), linear, "{key:?}");
+        }
+        let first = |key: &str| {
+            let vector = SearchVector::new(values.clone());
+            vector.exact_match(&text(key));
+            vector.exact_match(&text(key))
+        };
+        assert_eq!(first("İ"), Some(16));
+        assert_eq!(first("i\u{307}"), Some(17));
+        assert_eq!(first("I"), Some(18));
+        assert_eq!(first("ΟΣ"), Some(19));
+        assert_eq!(first("ος"), Some(19));
+        assert_eq!(first("K"), Some(21));
+        assert_eq!(first("ß"), Some(23));
+        assert_eq!(first("ǅ"), None);
+    }
+}

@@ -33,6 +33,22 @@ Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, ab
 Status: VERIFIED
 Implemented in: functions::criteria::wildcard_text_matcher
 
+Case beyond ASCII (T-3133): a wildcard criterion (SUMIF, COUNTIFS, SUMIFS with `*` or `?`) and a wildcard MATCH/XMATCH
+fold case one character to one character, never changing the text's length, which is SEARCH's fold (text.md "SEARCH
+lowercases per character"). A character whose lowercase is one character takes it; one whose full lowercase is longer
+stays itself. Over Data!A1:A35 = İ ı I i ΟΣ οσ ος K(U+212A) k K ẞ ß ǅ ǆ Ǆ Å(U+212B) å Å Ω(U+2126) ω Ω ſ s S µ μ Μ Ａ ａ
+Σ σ ς i+U+0307 ss İx (SUMIF weights 2^(k-1)): `İ&"*"` matches İ and İx only, `"i*"` matches I, i and i+U+0307 but
+not İ, and `"?"` counts İ (one unit) and not i+U+0307 (two); `ΟΣ`, `οσ` and `ος` are one text, as are `Σ σ ς`
+(`"ς*"` matches all three; `"*"&"Σ"` also matches ΟΣ, οσ, ος); the Kelvin sign is `k`/`K`, `ẞ` is `ß` (neither is
+`ss`; `"s*"` matches s, S and ss only), `ǅ ǆ Ǆ` are one letter, the Ångström sign is `å`/`Å` and the Ohm sign `ω`/`Ω`,
+and fullwidth `Ａ` is `ａ`; `ı`, `ſ` and `µ` match only themselves (`ſ` is not `s`, `µ` is not `μ`). `"??"` counts ΟΣ,
+οσ, ος, i+U+0307, ss and İx; `"???"` nothing. COUNTIFS, SUMIFS and SUMIF agree.
+Evidence: probes/t3133-lookup-criteria-case-fold Calc!B1:B35, F1:I35, K1:L35, N1:N6 (excel-graph, 2026-10-29, T-3133).
+UNVERIFIED: D-function prefix criteria (DSUM, DCOUNTA) are assumed to use the same fold (T-3154 for `ς`, T-3180 for `İ`); characters outside this
+list (other Greek and Cyrillic final forms, `ϐ`/`β`, `ﬀ`) are assumed to follow it.
+Status: VERIFIED
+Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` and `WildcardPattern::new`
+
 ## Tildes inside wildcard patterns and wildcard-mode lookups
 Rule: once a criterion holds `*` or `?`, or always for a MATCH(..,0)/XMATCH(..,2) text lookup value, `~` makes the next
 character literal whatever it is: `~x` reads as `x`, `~~` as one `~`, `~*`/`~?` as `*`/`?`; a trailing `~` is dropped.
