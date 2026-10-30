@@ -631,9 +631,17 @@ AC8 (`=1-(1-8*2^-53)` from cells, 0) repeats T-3073's E8 (numbers.md "Operand or
 The engine matches every cell: LOOKUP shares `SearchVector::approximate_search` and `compare_searched`
 (lookup_table.rs, T-3099); XMATCH and XLOOKUP compare through `compare_searched` in `linear_scan`, `cmp_searched` in
 `binary_search_by` and exact-bit `CollatedKey`s in the exact index (T-3132).
-Unprobed: the wildcard and regex modes with a numeric key.
+The wildcard mode (2) with a number key equates numbers the same way (T-3161): over {2;X;0.5}, `XMATCH(1,..,2)` is
+`#N/A` for X = 1+2^-52, 1-2^-53, 1+1E-15 and 1+5E-15, and so is `XMATCH(0.3,..,2)` for X = 0.1+0.2 and
+`XMATCH(1+2^-52,{2;1;0.5},2)`; search_mode -1 agrees, and XLOOKUP gives its if_not_found. An exact 1 after X is
+found (4 over {2;X;0.5;1}), a text "1" is not, and the key 0.1+0.2 or 1+2^-52 finds its own X (2). The regex mode (3)
+reads the key as text at 15 digits (`XMATCH(1+2^-52,{2;1;0.5},3)` is 2) and finds it anywhere in each candidate's
+text ("Regex mode" below), so near-equal numbers do match; whether a candidate number also reads at 15 digits is not
+shown (an anchored pattern would show it): `XMATCH(1,{2;1+2^-52;0.5},3)` is
+2, as is `XMATCH(0.3,{2;0.1+0.2;0.5},3)`, and `XMATCH(1,{2;1+2^-52;"1";0.5},3,-1)` finds the text "1" (3).
+Evidence: probes/t3161-xmatch-wildcard-regex-near-equal Calc!A1:G10 (excel-graph, 2026-10-30).
 Status: VERIFIED
-Tasks: T-3106, T-3132
+Tasks: T-3106, T-3132, T-3161
 
 ## XLOOKUP / XMATCH with an omitted lookup_value is a blank cell
 Rule: an omitted lookup_value (`XMATCH(,H1:H4)`, `XLOOKUP(,...)`) is indistinguishable from a reference to a blank cell, in every
