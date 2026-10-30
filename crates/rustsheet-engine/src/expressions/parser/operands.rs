@@ -11,7 +11,8 @@ use super::super::utils::{
 };
 use super::reference_operators::is_reference_operand;
 use super::structured_reference::{
-    is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
+    is_unresolved_structured_reference, TableExtent, COLUMN_NOT_FOUND, TABLE_NOT_FOUND,
+    TABLE_SHEET_NOT_FOUND,
 };
 use super::*;
 use crate::functions::kinds::arg_counts;
@@ -709,15 +710,26 @@ impl Parser {
         spacing: token::TableSpacing,
         bare: bool,
     ) -> Node {
-        let reference = StructuredReference {
+        let mut reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
             spacing,
             bare,
             unqualified: false,
+            extent: None,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
+        if let Node::ThisRowKind {
+            data_start,
+            data_end,
+            ..
+        } = &lowered
+        {
+            reference.extent = self
+                .table_named(&reference.table_name)
+                .and_then(|table| TableExtent::of(table, Some((*data_start, *data_end))));
+        }
         if let Node::ParseErrorKind { message, .. } = &lowered {
             if self.loaded
                 && !message.starts_with(TABLE_SHEET_NOT_FOUND)
@@ -731,6 +743,19 @@ impl Parser {
             reference: Box::new(reference),
             lowered: Box::new(lowered),
         }
+    }
+
+    /// The table `name` names in the parser's table list. Table names match ignoring case
+    /// (gen-m8b names-case 5b5c0e20e82153bb): an exact hit is deterministic; the case-folded scan
+    /// covers the rest.
+    pub(super) fn table_named(&self, name: &str) -> Option<&Table> {
+        self.tables.get(name).or_else(|| {
+            let lower = name.to_lowercase();
+            self.tables
+                .iter()
+                .find(|(table_name, _)| table_name.to_lowercase() == lower)
+                .map(|(_, table)| table)
+        })
     }
 
     /// The area a structured reference resolves to against the parser's table list: a
@@ -757,15 +782,7 @@ impl Parser {
             }
         };
         // table-name => table
-        // Table names match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
-        // An exact hit is deterministic; the case-folded scan covers the rest.
-        let table_name_lower = table_name.to_lowercase();
-        let table = match self.tables.get(&table_name).or_else(|| {
-            self.tables
-                .iter()
-                .find(|(name, _)| name.to_lowercase() == table_name_lower)
-                .map(|(_, t)| t)
-        }) {
+        let table = match self.table_named(&table_name) {
             Some(t) => t,
             None => {
                 let message = format!(

@@ -107,12 +107,9 @@ pub(super) fn reference_text(
         stringify(node, context, rewrite, export_to_excel, locale, language)
     };
     // With no cell the text is the stored R1C1 one, which keeps an unqualified reference's table.
-    let written = || {
-        if context.is_none() {
-            reference.stored_text()
-        } else {
-            reference.text()
-        }
+    let written = || match context {
+        None => reference.stored_text(),
+        Some(cell) => reference.text_at(cell),
     };
     // The export writes every table as a table part, so the file keeps the reference, in the
     // form Excel stores (SPEC-0016 step 3, T-2196), `#Totals` of a table without a totals row
