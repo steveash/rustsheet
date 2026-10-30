@@ -1,6 +1,46 @@
 //! Text a user types, which Excel refuses in places where it reads the same text stored.
 
+use std::collections::HashMap;
+
+use crate::expressions::{
+    lexer::LexerMode,
+    parser::{new_parser_english, stringify::to_english_string, Node},
+    types::CellReferenceRC,
+};
 use crate::model::Model;
+
+/// The A1 text of `text` typed in R1C1 mode into the 1-based `row`, `column` of `sheet`, as
+/// Excel's `Range.FormulaR1C1` reads it (`=R1C2+1` in A3 is `=$B$1+1`, `=R[-1]C[1]` is `=B2`);
+/// text without a leading `=` is a constant, the same in both modes. `None` when the formula does
+/// not parse, which Excel refuses. `worksheets` are the workbook's sheet names; defined names are
+/// kept as written and resolve when the A1 text is entered, but a structured reference does not
+/// parse here (no tables), so such a formula is `None` (T-3113). The engine's R1C1 grammar is its
+/// storage form, which always writes both numbers: a bare `R` or `C` (`RC`, `R[-1]C`) is not read
+/// as an offset of 0 (TODO(T-3212)).
+#[must_use]
+pub fn r1c1_formula_to_a1(
+    text: &str,
+    worksheets: &[String],
+    sheet: &str,
+    row: i32,
+    column: i32,
+) -> Option<String> {
+    let Some(formula) = text.strip_prefix('=') else {
+        return Some(text.to_string());
+    };
+    let mut parser = new_parser_english(worksheets.to_vec(), Vec::new(), HashMap::new());
+    parser.set_lexer_mode(LexerMode::R1C1);
+    let context = CellReferenceRC {
+        sheet: sheet.to_string(),
+        row,
+        column,
+    };
+    let node = parser.parse(formula, &context);
+    if matches!(node, Node::ParseErrorKind { .. }) {
+        return None;
+    }
+    Some(format!("={}", to_english_string(&node, &context)))
+}
 
 impl Model {
     /// [`Model::set_user_input`] for text a user types, which Excel refuses where it would read

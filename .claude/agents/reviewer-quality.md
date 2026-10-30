@@ -27,9 +27,12 @@ for weeks; your job is to keep it small, DRY and readable. Do not edit files.
 
 ## Output
 ```
+HEAD: <the output of `git rev-parse HEAD`, run before you read the diff>
 VERDICT: APPROVE | REQUEST_CHANGES | BLOCK
 FINDINGS:
 - [BLOCKING|MAJOR|MINOR] path:line — problem — concrete fix (name the existing helper to reuse)
 SUMMARY: ...
 ```
+The `HEAD:` line names the commit you reviewed: it goes into the verdict record of your report
+(SPEC-0027 "Verdict records (v2)"), and a report for another commit does not count.
 Do not invent issues; style nits that rustfmt/clippy already enforce are not findings.
