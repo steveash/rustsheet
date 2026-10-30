@@ -16,3 +16,6 @@
 - **Consequences:** Markers posted from sessions, through `gh api` or the MCP tools, verify. The footer is text an
   author with write access already controls, so accepting it lets no one else mark a PR. If the platform changes
   the footer's shape, markers read as malformed again (fail closed) until `FOOTER` is updated.
+- **Amendment (2026-10-30, T-3177):** the footer may be followed by one newline (`\n` or `\r\n`), which a
+  read-back can carry. Exactly one: a second newline or any other text after the footer is still rejected.
+  `without_footer` is the one place this is applied, so markers and verdict records read alike.

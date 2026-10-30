@@ -2,6 +2,7 @@
 //! A formula typed into a table column fills it as a calculated column (T-2958;
 //! docs/excel-semantics/references.md, "Calculated columns: a formula typed into a table column").
 
+use crate::types::Cell;
 use crate::Model;
 
 /// `T` over A1:C4 (A1:C5 with a totals row): `Col` 1, 2, 4, `Other` 10, 20, 40 and an empty
@@ -222,11 +223,11 @@ fn a_formula_typed_beside_the_header_row_names_the_new_column_0() {
     assert_eq!(expansion_readout(&mut model), ["4", "4", "0", "FALSE"]);
 }
 
-/// A stored formula beside a table (xlsx import) does not grow it, nor does a typed constant, a
-/// formula beside a table with a totals row, or one whose new column already holds a value
-/// (each unprobed in Excel, so the cell is written as before).
+/// A stored formula beside a table (xlsx import) does not grow it, nor does a formula whose new
+/// column already holds a value (probes/t3003-occupied-*, rule 7d), so the cell is written as
+/// before.
 #[test]
-fn no_expansion_for_stored_formulas_constants_totals_or_occupied_columns() {
+fn no_expansion_for_stored_formulas_or_occupied_columns() {
     let mut stored = model(false);
     stored
         .set_loaded_user_input(0, 2, 4, "=A2*2".to_string())
@@ -235,19 +236,6 @@ fn no_expansion_for_stored_formulas_constants_totals_or_occupied_columns() {
     assert_eq!(expansion_readout(&mut stored)[0], "3");
     assert_eq!(column_d(&stored), ["2", "4", ""]);
 
-    let mut constant = model(false);
-    constant
-        .set_typed_user_input(0, 2, 4, "5".to_string())
-        .unwrap();
-    assert_eq!(expansion_readout(&mut constant)[0], "3");
-
-    let mut totals = model(true);
-    totals
-        .set_typed_user_input(0, 2, 4, "=A2*2".to_string())
-        .unwrap();
-    totals.evaluate();
-    assert_eq!(column_d(&totals), ["2", "", ""]);
-
     let mut occupied = model(false);
     occupied.set_user_input(0, 4, 4, "7".to_string()).unwrap();
     occupied
@@ -255,6 +243,62 @@ fn no_expansion_for_stored_formulas_constants_totals_or_occupied_columns() {
         .unwrap();
     assert_eq!(expansion_readout(&mut occupied)[0], "3");
     assert_eq!(column_d(&occupied), ["2", "", "7"]);
+}
+
+/// probes/t3003-const-*: a constant typed just right of the table grows it and fills nothing
+/// (rule 7a). Typed into the header cell, it is the header text, `5` as the text `5`.
+#[test]
+fn a_constant_typed_beside_the_table_grows_it() {
+    for text in ["5", "hello"] {
+        let mut beside = model(false);
+        beside
+            .set_typed_user_input(0, 2, 4, text.to_string())
+            .unwrap();
+        assert_eq!(
+            expansion_readout(&mut beside),
+            ["4", "4", "Column1", "FALSE"],
+            "{text}"
+        );
+        assert_eq!(column_d(&beside), [text, "", ""]);
+
+        let mut header = model(false);
+        header
+            .set_typed_user_input(0, 1, 4, text.to_string())
+            .unwrap();
+        assert_eq!(expansion_readout(&mut header), ["4", "4", text, "FALSE"]);
+        assert!(matches!(
+            header.workbook.worksheet(0).unwrap().cell(1, 4),
+            Some(Cell::SharedString { .. })
+        ));
+        assert_eq!(column_d(&header), ["", "", ""]);
+    }
+}
+
+/// probes/t3003-totals-*: a totals row does not stop the growth (rule 7c). Beside a data row the
+/// formula fills the other data rows, not the totals cell; beside the totals row it fills nothing.
+#[test]
+fn a_table_with_a_totals_row_grows_too() {
+    let mut data_row = model(true);
+    data_row
+        .set_typed_user_input(0, 2, 4, "=A2*2".to_string())
+        .unwrap();
+    assert_eq!(
+        expansion_readout(&mut data_row),
+        ["4", "5", "Column1", "FALSE"]
+    );
+    assert_eq!(column_d(&data_row), ["2", "4", "8"]);
+    assert_eq!(data_row.get_formatted_cell_value(0, 5, 4).unwrap(), "");
+
+    let mut totals_row = model(true);
+    totals_row
+        .set_typed_user_input(0, 5, 4, "=A2*2".to_string())
+        .unwrap();
+    assert_eq!(
+        expansion_readout(&mut totals_row),
+        ["4", "5", "Column1", "FALSE"]
+    );
+    assert_eq!(column_d(&totals_row), ["", "", ""]);
+    assert_eq!(totals_row.get_formatted_cell_value(0, 5, 4).unwrap(), "2");
 }
 
 /// A formula that does not parse as typed grows no table, beside the header row or a data row:
@@ -294,10 +338,9 @@ fn a_padded_column_survives_an_edit_that_rewrites_its_text() {
         Some("=SUM(T[ Col ])+A11")
     );
     assert_eq!(model.get_formatted_cell_value(0, 8, 5).unwrap(), "107");
-    // Typed as it prints, Excel refuses it: the cell holds a parse error, not the column.
-    model
-        .set_typed_user_input(0, 9, 5, "=SUM(T[ Col ])".to_string())
-        .unwrap();
+    // Typed as it prints, Excel refuses it, and so does the engine (T-3213): the cell stays blank.
+    let refused = model.set_typed_user_input(0, 9, 5, "=SUM(T[ Col ])".to_string());
+    assert!(refused.is_err());
     model.evaluate();
-    assert_eq!(model.get_formatted_cell_value(0, 9, 5).unwrap(), "#ERROR!");
+    assert_eq!(model.get_formatted_cell_value(0, 9, 5).unwrap(), "");
 }
