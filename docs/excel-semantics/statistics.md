@@ -407,8 +407,11 @@ probes/t2738-gamma-dist-tiny-ratio A2, A4, A15, A19. With Excel's own LN, EXP an
 most cells below 1E-15 (exact at t2738 A2, A15, A19) and 2 to 3 ulp off at a few: switch A11 `GAMMA.DIST(2E-16,1,1,FALSE)`,
 A12, A18, A24, A25, A38, B10, B11, B18, B24, B25, B38 and sweep A19 `GAMMA.DIST(1E-20,2,1,FALSE)` (T-2852); at 1E-15 it is 4
 to 7 off, the direct form 4 to 12. LNGAMMA in place of GAMMA is 40 to 60 ulp off at shape 0.5.
-Implemented in: functions/statistical/gamma.rs `tiny_ratio_density` (GAMMA.DIST and GAMMADIST only; CHISQ.DIST keeps
-`incomplete_gamma::gamma_density`, unprobed at tiny x). Unprobed: shapes from 2 to 20 (the cutoff at 20 is the
+CHISQ.DIST's density takes the same form at scale 2 (y = x/2): `CHISQ.DIST(1E-300,1,FALSE)` is 3.9894228040142567E+149
+(gen-m9/3e98b26cf6713e77 A268), 154 ulp below the exact 1/SQRT(2*PI()*1E-300) and 1 ulp from the form with Excel's LN,
+EXP and GAMMA (T-2638).
+Implemented in: functions/statistical/gamma.rs `tiny_ratio_density` (GAMMA.DIST, GAMMADIST and, from T-2638, CHISQ.DIST
+through chisq.rs). Unprobed: shapes from 2 to 20 (the cutoff at 20 is the
 prefactor's own split, not evidence; at shape 50 the density underflows to 0 in this regime).
 Status: VERIFIED for the form (0 to 3 ulp at the probed cells; the last bits are T-2852)
 
@@ -1043,7 +1046,8 @@ probes/incomplete-gamma-cap (T-1872).
 Ours: `statistical/incomplete_gamma.rs` `incomplete_gamma_pair`, replacing statrs' `gamma_lr`/`gamma_ur` (whose
 prefactor exp(a ln x - x - ln Gamma(a)) carries an ulp of that exponent into the result, and whose Q is 1 - P below
 x = a). The prefactor x^a e^-x / Gamma(a) is `powf * exp / tgamma` below a = 20 (each factor normal) and DiDonato and
-Morris' `rcomp` above it (sqrt(a / 2 pi) exp(-a rlog(x/a) - Stirling correction)); P is the power series below
+Morris' `rcomp` above it (sqrt(a / 2 pi) exp(-a rlog(x/a) - Stirling correction)) within 0.4a of the mode and
+Excel's ratio form outside it (below, T-2638); P is the power series below
 x = a + 1, with the geometric sum of the terms it leaves (near x = a they add up to thousands of times the last one:
 7E-15 of P(1E6, 1E6)), and Q the modified-Lentz continued fraction above it; below a shape of 1/2 and x of 1 Q is formed
 directly (TOMS 654's small-shape Q, with ln Gamma(1 + a) from its zeta series); a = 1 is (-expm1(-x), exp(-x)).
@@ -1064,14 +1068,39 @@ closed forms. That gives `GAMMA.DIST(10,9,2,FALSE)` = 0.032639019674079374, Exce
 E3, E34, E42, E58, BETA_GAMMA.xlsx L6; statrs' exp(ln pdf) was 78 ulp off).
 Not yet Excel's (T-2638): deep upper tails and tiny-x values such as `CHIDIST(100,8)` and `CHISQ.DIST(1E-10,8,TRUE)`,
 and `CHIINV(0.975,5)`. Ours is correctly rounded there against 50 digits, and Excel is 7-37 ulp off.
+Excel's error there is within about one ulp of ln(value) (relative error / ulp(ln value) from 0.17 to 0.82 at
+`CHIDIST(100,4)`, `(100,5)`, `(100,8)`, `CHISQ.DIST(1E-10,8,TRUE)` and `(1E-10,8,FALSE)`), the signature of a prefactor
+taken as an exponential of a summed log. But no summed-log form tried reproduces it (T-2638 fit attempt 1, 50-digit
+mpmath ratios times each candidate prefactor; ulp from Excel at those five cells): EXP(a LN(y) - y - LNGAMMA(a)) is
++43, -69, +4, +46, +53; EXP(a LN(y) - y)/GAMMA(a) +43, -59, +1, +43, +50 (the same with Excel's own LN, EXP, GAMMA:
++43, -58, +1, +43, +50); the direct y^a e^-y / GAMMA(a) +38, -34, -6, -31, -37; 2^(L log2 e) and 2^(a log2 y - ...)
+forms, every summation order of a LN(x), -a LN(2), -x/2, -LNGAMMA(a) and the (a-1) LN forms are 1 to 107 ulp off at
+some cell. At `CHIDIST(100,4)` Excel is 38 ulp below the truth while every log form is above it, so the continued
+fraction's own rounding, not only the prefactor, differs; stopping the fraction or the series at a looser tolerance
+(1E-16 to 1E-10, Numerical Recipes' gcf and gser) changes none of these cells.
 Not Excel's either, and not correctly rounded on either side (gap triage 2026-10-29, 60-digit mpmath reference;
 T-3147): CHISQ.DIST at 50 and 100 degrees of freedom, the `rcomp` branch of the prefactor (shape 20 and up).
-`CHISQ.DIST(10,100,FALSE)` is 9.838365191393825E-32 in Excel, 63 ulp below the true 9.8383651913938939E-32, and ours
-is 65 ulp above it; `CHISQ.DIST(10,100,TRUE)` is 57 ulp below and ours 57 above; `CHISQ.DIST(5,50,TRUE)` 52 below,
-ours 10 above; `CHISQ.DIST(50,100,FALSE)` 5 below, ours 11 above (probes-numeric/m9-chisq-dist A61, A62, A51, A64; also
-A52, A54, A58, A63). At shape 5, `CHISQ.DIST(40,10,FALSE)` (A50) is 7 ulp above the truth in Excel and 1 below in
-ours. So Excel's large-shape exponent rounds differently from TOMS 654's `rcomp` with `(x/a - 1) - ln(x/a)` outside
-[a/2, 2a], and the shape-20 split of `gamma_prefactor` is not Excel's (UNVERIFIED).
+`CHISQ.DIST(10,100,FALSE)` is 9.838365191393825E-32 in Excel, 63 ulp below the true 9.8383651913938939E-32.
+Found in T-2638: from shape 20, away from the mode, Excel's prefactor is Stirling's with its own exponent,
+sqrt(a/2pi) exp(L + (a - x) - correction(a)) with L = a LN(x/a) above the mode and -a LN(a/x) below it (the log of
+the ratio that is at least 1), both rounded as written. Against 50-digit ratios times that prefactor Excel is 0 to 1
+ulp off at every literal density and 0 to 3 at every cdf of probes-numeric m9-gamma-dist-a50, -a500 and
+m9-chisq-dist A51-A68 (shapes 25, 50 and 500, x from a/10 to 3a), where `rcomp` is 60 to 1,083 ulp off and Excel
+itself up to 600 ulp from the true value (`GAMMA.DIST(3000,500,2,FALSE)` 598). Near the mode Excel is accurate:
+`POISSON.DIST(1E6,1E6,TRUE)` = 0.5002659614862837 (POISSON.xlsx D31) is 5 ulp from `rcomp` and 1E-10 from the ratio
+form, and `POISSON.DIST(100,100,TRUE)` (x = 0.99a) fits `rcomp` and not the ratio form (4 ulp). Also rejected: a
+log1p((x - a)/a) exponent within [a/2, 2a] fits every cell above but loses about 1E-12 at a shape of 1E8 near the mode,
+where Excel matches Temme's expansion (probes/t2982-gamma-inv-huge-shape A144); a ln(y) - a ln(a) (114 to 128 ulp off
+at x = a/10), a(ln(y/a) + 1 - y/a), a log1p(y/a - 1) at a/10 and 3a, and every form with a - y - c summed in another
+order (11 to 870 ulp off somewhere). The window where Excel keeps the accurate exponent is bracketed only: it holds
+x = 0.99a, and the ratio form holds at 1.5a and a/10 (both agree at a/2); ours takes |x - a| <= 0.4a (TOMS 654's own
+near-mode bound) (UNVERIFIED between those points). The ratio form is Excel's bit for bit at a/21
+(gen-m9/8dd2312c96effb1b A333 `GAMMA.DIST(3.14159,42,ACOS(0),FALSE)`); at a/100 Excel is neither but closer to the
+ratio form (probes/t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1,FALSE)`: ratio form 69 ulp off, `rcomp`
+350; gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208), and at a/500 closer to `rcomp` (A47, B47
+`GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252), so ours keeps `rcomp` below a/200 (UNVERIFIED between). POISSON.DIST's cdf and the large-shape BETA.DIST, BETA.INV and F.INV paths keep `rcomp`
+too: no cell probes them (T-3252 probes the window and those functions). Below shape 20 neither this form nor the direct one is Excel's
+(`GAMMA.DIST(0.9,9,1,TRUE)`: Excel 9 ulp below the truth, the ratio form 23 below Excel, the direct one 10 above).
 Status: VERIFIED (excel-graph)
 Tasks: T-0971, T-0972, T-2638, T-3147
 
@@ -1156,15 +1185,12 @@ prefactor's rounding shows: BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21,
 E40, E74, E75 (for example E24, `BINOM.DIST(2,10,0.999999,TRUE)`: Excel 4.499992001038836E-47, exact
 4.499992001038802E-47). Neither Loader's saddle-point pmf summed (R's `dbinom_raw`: bit-exact at 49 of the 122 cells
 tried, more than 4 ulp off at 15) nor the prefactor `exp(a*ln x)` times the exact remaining factor reproduces them.
-POISSON.DIST is unfitted. On ironcalc-calc STATISTICAL/POISSON.xlsx, `fl(fl(S)*exp(-mean))`, with S the partial
-exponential series `sum mean^i/i!` over i <= k (cdf) or its last term (pmf) summed exactly, reproduces all 5 distinct
-small pmfs and 8 of 11 small cdfs bit for bit, against 6 of 11 for the exact value rounded. The excel-graph probes
-contradict it, though: probes-numeric/t1048-poisson `POISSON.DIST(10,4,FALSE)` is 0.005292476676420117 (that model
-...0195), `POISSON.DIST(1,0.1,FALSE)` 0.09048374180359597 (...596), `POISSON(10,4,TRUE)` 0.9971602338794863 (...862)
-and `POISSON(1,0.1,TRUE)` 0.9953211598395555 (...556), all of which statrs gets right. Applied to even-df
-CHISQ.DIST.RT through T-1778's identity, the same model gives `CHISQ.DIST.RT(1E-06,30)` = 1.0000000000000002 where
-Excel gives 1.0 (probes-numeric/m9-legacy-chidist A15, A16), and it misses m9-chisq-dist-rt A32 and t1049-chisqdistrt
-A8. So POISSON.DIST stays on statrs here (T-2055).
+POISSON.DIST's pmf is not the exact value rounded (it is up to 91 eps off it); it has its own two closed forms, "POISSON.DIST
+pmf: two closed forms" below (T-2055). Its cdf is still unfitted: `fl(fl(S)*exp(-mean))`, with S the partial exponential
+series summed exactly, reproduces 8 of 11 small ironcalc cdfs bit for bit but `POISSON(10,4,TRUE)` is 0.9971602338794863
+(...862 by that model) and `POISSON(1,0.1,TRUE)` 0.9953211598395555 (...556, probes-numeric/t1048-poisson), and through
+T-1778's identity it gives `CHISQ.DIST.RT(1E-06,30)` = 1.0000000000000002 where Excel gives 1.0 (m9-legacy-chidist A15,
+A16). So the cdf stays on the incomplete gamma kernel.
 T-2145 dense sweep (excel-graph; probes-numeric/t2145-binomial-sweep, t2145-negbinom-sweep, t2145-binom-range-sweep:
 3260 BINOM.DIST, 1100 NEGBINOM.DIST and 790 BINOM.DIST.RANGE cells, p in {0.5, 0.25, 0.125, 0.1, 0.2, 0.3, 0.7, 0.9,
 0.99, 0.999}, no error cells). Against the exact value rounded once (Python `fractions`, from the exact decimal p),
@@ -1206,6 +1232,73 @@ NEGBINOMDIST are charged 4096 units an element against the shared cell-visit cap
 the scalar statistical functions" above).
 Status: VERIFIED (excel-cached) for the values; the weight is a DEVIATION
 Tasks: T-0927, T-1744, T-2055, T-2145, T-2146
+
+## POISSON.DIST pmf: two closed forms (T-2055)
+Rule: `POISSON.DIST(k,mean,FALSE)` (and POISSON) for a mean > 0 is one of two forms, chosen by comparing the mean with the
+double 1.1 and k with 1:
+```
+mean <= 1.1 or k <= 1:  fl( EXP(R) * EXP(-mean) ),  R = fl(k·LN(mean)) - GAMMALN(k+1) held in a register (EXP of it unstored)
+otherwise (Loader):     fl( EXP(E) / fl(SQRT(fl(2π·k))) ),  E = fl(-stirlerr(k) - bd0(k,mean)) stored
+bd0, log form when |k - mean| > 0.2·(k + mean):  fl( fl(k·LN(fl(k/mean))) + fl(mean - k) )
+bd0, series otherwise (the cut itself included):  the beta density's series (`loader.rs` `excel_bd0`)
+stirlerr(k): the exact value, except a POISSON-only proxy 13, 12, 29, 34 ulp below it at k = 2..5 (below)
+```
+LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`). k = 0 is EXP(-mean) either way.
+- The closed form is what Excel keeps where the saddle point's stored exponent is large: `POISSON.DIST(9,1E-10,FALSE)` is
+  2.7557319221230322E-96 (gen-m9/a4090567758520df A246; the saddle point is 67 ulp off), `POISSON(10,0.01,FALSE)`
+  2.7283119316280092E-27 (7fd0a98183c6babf A31), and at k = 1 the mean does not matter: `POISSON(1,100,FALSE)` is
+  3.7200759760208376E-42, the closed form's double (afc00c8b70e78baf A193; the saddle point is 65 ulp off). Excel is far
+  from the exact value there: 29 ulp at `POISSON(10,0.01,FALSE)`, 37 at `POISSON(7,0.01,FALSE)`; the error is the rounding
+  of fl(k·LN(mean)) (`GAMMA.DIST`'s lower prefix, "Generic shape a" in "One incomplete-gamma kernel", shares it).
+- The switch lies in [1.1, 1.100001): at mean 1.1 k = 5 and 7 are the closed form's double and k = 8, 10 and 20 within an
+  ulp of it (5 to 21 ulp from the saddle point), and at every probed mean from 1.100001 to 1.2 (k 5, 7, 8, 10, 20) the pmf
+  is the saddle point's double, where the closed form is up to 82 ulp off (probes-numeric/t2055-poisson-pmf-switch). No
+  mean between 1.1 and 1.100001 is probed; the code switches at 1.1 itself.
+- The 0.2 cut is the beta density's ("Beta density for min(a,b) > 1 is Loader's saddle point"), and the gap at the cut
+  takes the series: `POISSON(2,3,FALSE)` is 0.22404180765538775, the series' double; the log form is 2 ulp off
+  (probes-numeric/t1048-poisson A4).
+- bd0 is the beta density's (`excel_bd0`: its log form, its 0.2 cut, its register series with the fl(2kv) term). A series
+  with every op stored ties it on exact cells on the sweep and leaves two fewer cells visibly off
+  (`POISSON.DIST(300,210,FALSE)` and `(300,240)`, where `excel_bd0` is 16 and 46 ulp off, against `(300,420)`, 50 ulp the
+  other way), so the series' arithmetic is still not identified (T-2586, T-3247).
+- stirlerr, a fitted proxy: with the shipped `excel_bd0`, one offset per k matches the most Excel pmfs at k = 2 to 5:
+  -13 ulp at k = 2 (24 of 25 cells, the exact value 13), -12 at 3 (22 of 23, 17), -29 at 4 (24 of 25, 8), -34 at 5 (44 of
+  46, 33). Fitted on half of t2055-poisson-pmf-sweep, the other half scores 8/9 (exact 4), 7/10 (8), 8/10 (4), 9/10 (3),
+  so k = 3 does not hold out; it is kept because a gated cell main passes needs it (gen-m9 91e167cd8d7eb652 A260
+  `POISSON(3,2.5,...)`). Gated cells pinning the others: gen-m9 b9a32ce9a1fd0d71 A183, 5cebac1f02bf30f2 A362,
+  c7664e494e418395 A370 (k = 2); 7fd0a98183c6babf A107, a5342a7e24fd803e A47, 5919660b7bb4d195 A50, 1b31092a0d79e5f1
+  A358 (k = 4); t1048-poisson A6, B6 and ironcalc POISSON.xlsx D9 (k = 5); the rest is the PR's own ungated probe. At
+  every k at least one cell needs the other side of the offset, and the offsets (4E-17 to 1.2E-16) are below the ulp of
+  the stored exponent E, so they act only by flipping E's rounding: the constant stands in for a cause not identified,
+  `excel_bd0`'s series or E's storage (T-3247), and is not Excel's stirlerr (the beta density keeps the exact value).
+  At k = 6 no offset beats the exact value (21 of 25), and k = 7 and 8 gain a cell or two at about -13, a hint that the
+  cause is not k-specific. No GAMMALN-based form (GAMMALN(n+1) - (n+1/2)LN(n) + n - ln√(2π) in 17 storage orders,
+  either ln√(2π) double) gives these offsets, and f_density.rs's measured stirlerr error (r3-loader-const) is a
+  different quantity.
+- Scores (exact / within 4 ulp / visibly off, against statrs' `exp(k ln mean - mean - ln k!)`): the 121 pmf cells of
+  gen-m9, t1048-poisson and ironcalc-calc POISSON.xlsx with resolvable arguments 106/121/0 (statrs 47/80/33);
+  probes-numeric/t2055-poisson-pmf-sweep (204 cells, k 1 to 300) 154/198/5 (29/121/65); t2055-poisson-pmf-switch
+  (133) 127/133/0 (11/57/56).
+- Residue: the saddle point at large k and a mean well off k (`POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,240)` 46 ulp,
+  `(300,210)` 16 ulp, `(30,21)` 11 ulp; t2055-poisson-pmf-sweep), about one ulp at k = 2 to 8 elsewhere, and 1 ulp at the
+  small-k edge of the closed form, where main's statrs happened to be right: `POISSON.DIST(1,0.3,FALSE)`, `(3,0.9)`,
+  `(3,1.0)`, `(3,1.1)`, `(5,0.9)`, `(5,1.05)` (t2055-poisson-pmf-sweep A139, A153, A154, A156, A159, A161). At `(3,1.0)` and
+  `(3,1.1)` the saddle point is Excel's double and the closed form 1 ulp off, so the switch rule is not the whole story
+  at small k (T-3247). The cdf's deep upper tail (mean well above k) is a separate residue of the incomplete gamma kernel:
+  `POISSON(2,100,TRUE)` = 1.8976107553682424E-40 is 34 ulp from the exact value and 45 ulp from
+  fl(pmf · (1 + 2/100 + 2/100²)), so the cdf there is not the pmf times its series (gen-m9 c7664e494e418395 A294; T-3269).
+- Decision 0114's premise for this family (Excel close to correctly rounded, so build an accurate kernel and do not fit)
+  is false for the pmf: Excel is up to 91 eps off the exact value (29 ulp at `POISSON(10,0.01,FALSE)`), and the correctly
+  rounded pmf (60-digit Python Decimal) is visibly off at 51 of the 337 t2055 probe cells and 19 of the 150 gated pmf
+  cells (gen-m9, t1048-poisson, ironcalc), against 5 and 0 for these forms. T-2055 and T-3247 are therefore
+  `campaign: visible`; the cdf evidence is mixed (T-3269).
+- Inputs: Excel reads at most 15 significant digits of a typed number, so a probe of `POISSON.DIST(7,1.0999999999999999,FALSE)`
+  is a probe at a different mean (the 17-digit cells were dropped from the t2055 probes).
+Evidence: probes-numeric/t2055-poisson-pmf-sweep, t2055-poisson-pmf-switch, t1048-poisson (excel-graph, 2026-10-30 and
+2026-10-14); gen-m9 POISSON and POISSON.DIST cells (excel-graph); ironcalc-calc STATISTICAL/POISSON.xlsx (Excel-cached).
+Ours: `statistical/poisson.rs` `excel_poisson_pmf`, on `loader.rs` `excel_bd0` and `stirlerr_exact`.
+Status: VERIFIED (excel-graph) for the two forms and the switch; the k = 2..5 stirlerr is a fitted proxy
+Tasks: T-2055
 
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
@@ -2398,6 +2491,15 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
 - Rejected: R dbeta's log form, brcomp/(x·y) and TOMS's a0 >= 8 Stirling brcomp; Loader on (a, b); R's bd0 order
   fl(fl(t + M) - k) and 0.1 cut; cuts 0.25, 0.3; t, LN or the ratio kept extended; R >= 2.7.2 and R 2.0 lf forms;
   GAMMALN stirlerr; M2 = fl(n - M1) and nq = n - fl(n·x) for (4, 4); 896 lf / L5 / chain compositions (all within 0.1 rms).
+- Large shapes (gap triage 2026-10-30c, main 40ca52179). On t2464-r2-log1p-hix column C, BETA.DIST(x,1025,1.5,FALSE)
+  for x in (0.625, 1): 4,180 of 5,264 cells are visibly off after T-2507's port (examples: C1, Excel
+  2.4480589855435217e-205 against our 2.448058985543529e-205; C2000 4.406866092326905e-114 against
+  4.406866092326949e-114). The sd of the miss, in units of 2^-52 relative, grows with |ln f|: 14 at |ln f| < 50, 52
+  at 100-150 and 110 at 250-350. It falls to 18-38 above 400. Excel itself is a median 92 ulp from the 200-bit
+  value there (300-cell sample), and EXP of the double nearest the exact ln f does not give Excel's value. At
+  n = 90-256 with both shapes large (t2513-r3-loader-bd0-a and -bd0-hold) the miss is x-dependent with sd 8-19 units.
+  The one exception is (45.2, 60.9), a constant +5.3. UNVERIFIED as a mechanism: T-3249 sweeps the shapes, and
+  T-3250 and T-3244 fit them.
 Evidence: probes-numeric t2513-r3-loader-const-sweep1, -diverse1, -grid1, -hold1, t2513-r3-loader-bd0-a, -b, -hold,
 t2513-verify-r3-loader-const-hold, t2513-verify-r3-loader-bd0-hold, and T-2464's t2464-r2-density-large-p1,
 t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`, `a2_forms.py`, `a5_xreg.py`,
@@ -2407,7 +2509,7 @@ w4-fractions section 5, w6-literature H2.
 Ours: powf × tgamma below a + b = 171.6, statrs above.
 Status: PARTIAL (excel-graph): the structure (extended E, stored k/n/nk, bd0's log form, the 0.2 cut) VERIFIED on
 hold-outs; the constant's residual and the series branch UNVERIFIED
-Tasks: T-2507, T-2585, T-2586
+Tasks: T-2507, T-2585, T-2586, T-3220, T-3249, T-3250, T-3244
 
 ## Incomplete beta bpser: a forward series times EXP(fl(a LN x) - lnB) (T-2464)
 Rule: every bratio bpser call (min(a,b) <= 1 direct, w1 = bpser(b0, a0, y0), a, b > 1 with b0 < 40 and b0·x0 <= 0.7,
@@ -3259,7 +3361,11 @@ m9-gamma-inv A19, A20, A26, A27 (`GAMMA.INV(0.999,1,1)` = 6.907755278982136), m9
 t1049-chisqinv, t1049-chisqinvrt, t1543-inverse-cdf-tiny-p A55/A58, and 12 gen-m9 cells (8fec7b207f4dd753 A265
 `CHISQ.INV.RT(0.001,2)` = 13.815510557964274; ecc87f80077959e0 A154 `CHISQ.INV.RT(0.001,2.5)`, same value). Passing
 cells were not re-checked. T-0972 already noted CHIINV at df 2 as `-2*LN(p)` (gen-m9/4df1b22d3ed63f58 A9).
-Ours: the incomplete-gamma search (`gamma_quantile`), 1 to 40 ulp off and 4 cells visibly off.
+Before T-3016 ours was the incomplete-gamma search (`gamma_quantile`), 1 to 40 ulp off and 4 cells visibly off; now all 34
+cells are bit-exact. Both orders of operation match the oracle cells (`-2·log1p(-p)` for every p, or `-2·ln(1-p)` with the
+exact `1-p` once p > 0.5); the engine takes the smaller tail, so do not "fix" one to match the other.
+Implemented in: T-3016 (`exponential_quantile` in `incomplete_gamma/mod.rs`, the smaller-tail form); T-2860 pinned the cells
+with a unit test.
 Status: VERIFIED (excel-graph)
 Tasks: T-2860
 
