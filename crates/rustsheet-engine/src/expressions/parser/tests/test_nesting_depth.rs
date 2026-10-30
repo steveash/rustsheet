@@ -92,8 +92,15 @@ fn one_level_past_the_limit_is_too_deep() {
 fn parenthesis_runs_nest_as_deep_as_excel_allows() {
     on_small_stack(|| {
         let node = parse(&nested("(", "1", ")", MAX_PARENTHESES));
-        assert!(matches!(node, Node::Group { levels, .. } if usize::from(levels) == MAX_PARENTHESES));
-        assert!(is_too_deep(&parse(&nested("(", "1", ")", MAX_PARENTHESES + 1))));
+        assert!(
+            matches!(node, Node::Group { levels, .. } if usize::from(levels) == MAX_PARENTHESES)
+        );
+        assert!(is_too_deep(&parse(&nested(
+            "(",
+            "1",
+            ")",
+            MAX_PARENTHESES + 1
+        ))));
         assert!(is_too_deep(&parse(&"(".repeat(MAX_PARENTHESES + 1))));
         let mut model = crate::test::util::new_empty_model();
         let formula = format!("={}", nested("(", "-A2", ")", MAX_PARENTHESES));
@@ -342,7 +349,10 @@ fn chain_links_add_no_depth() {
     on_small_stack(|| {
         // The deepest nesting still fits with a long chain at every level: a chain is one
         // level whatever its length.
-        let inner = format!("{}+1", nested("ABS(", &chain("+", 30), ")", MAX_NESTING - 2));
+        let inner = format!(
+            "{}+1",
+            nested("ABS(", &chain("+", 30), ")", MAX_NESTING - 2)
+        );
         assert!(
             !matches!(parse(&inner), Node::ParseErrorKind { .. }),
             "{inner}"
