@@ -4,8 +4,11 @@
 use super::super::lexer::{Lexer, LexerMode};
 use super::super::token::{TableReference, TableSpacing, TableSpecifier, TokenType};
 use super::{Node, Parser};
+use crate::expressions::types::CellReferenceRC;
 use crate::language::get_language;
 use crate::locale::get_locale;
+use crate::table_types::Table;
+use crate::types::sheet_names_match;
 
 /// The source of a structured reference: what [`super::Node::StructuredReferenceKind`] prints
 /// back in the storage and in-engine printers.
@@ -24,6 +27,47 @@ pub struct StructuredReference {
     /// Written without the table name in a cell of the table (`=[@Col]*2`), which names the
     /// containing table (references.md "Structured references: this row, totals and ranges", T-2979).
     pub unqualified: bool,
+    /// The range of the table of a `#This Row` reference or of one written without the table
+    /// name, as the table list the formula was parsed against had it: the printing cell decides
+    /// by it whether the reference prints without the table name (T-3241). `None` for any other
+    /// reference. Every change to the table list reparses the formulas, so it stays current.
+    pub extent: Option<TableExtent>,
+}
+
+/// A table's whole range on its sheet.
+#[derive(PartialEq, Clone, Debug)]
+pub struct TableExtent {
+    /// The table's sheet.
+    pub sheet: String,
+    /// The first and last columns.
+    pub columns: (i32, i32),
+    /// The first and last rows, headers and totals row included.
+    pub rows: (i32, i32),
+    /// The first and last data rows.
+    pub data_rows: (i32, i32),
+}
+
+impl TableExtent {
+    /// The range of `table`, if its `ref` is a range, with its data rows `data_rows` (the whole
+    /// range when `None`).
+    pub(super) fn of(table: &Table, data_rows: Option<(i32, i32)>) -> Option<Self> {
+        let (column_start, row_start, column_end, row_end) = parse_range(&table.reference).ok()?;
+        Some(Self {
+            sheet: table.sheet_name.clone(),
+            columns: (column_start, column_end),
+            rows: (row_start, row_end),
+            data_rows: data_rows.unwrap_or((row_start, row_end)),
+        })
+    }
+
+    /// Whether `cell` lies in the range (sheet names match ignoring case), on a data row if
+    /// `data_row`.
+    fn holds(&self, cell: &CellReferenceRC, data_row: bool) -> bool {
+        let rows = if data_row { self.data_rows } else { self.rows };
+        sheet_names_match(&self.sheet, &cell.sheet)
+            && (self.columns.0..=self.columns.1).contains(&cell.column)
+            && (rows.0..=rows.1).contains(&cell.row)
+    }
 }
 
 /// The parse error of a structured reference to a table that is not there.
@@ -105,8 +149,32 @@ impl StructuredReference {
     /// missing argument is kept; a structured reference keeps some and normalizes the rest";
     /// probes/t2786-whitespace-structured-refs-runs F4:F15, T-2801).
     pub(crate) fn text(&self) -> String {
+        self.text_with_name(!self.unqualified)
+    }
+
+    /// [`Self::text`] as printed in `cell`. A `#This Row` reference written with the table name
+    /// prints in its `@` form without the name on a data row of its own table (Excel's
+    /// FORMULATEXT of `=T[[#This Row],[Col]]` there is `=[@Col]`: probes/t2800-this-row-whitespace
+    /// B3:E3, table-edits/table-insert-row-calc-column-inside-data F!A1:A2); how Excel prints it
+    /// in the header or totals row is unprobed (T-3240). One written without the name prints
+    /// without it anywhere in the table's range, where it parses, and with it elsewhere, so a
+    /// copy, fill or move out of the table, or a resize that leaves the cell outside, gives text
+    /// that parses there (T-3241).
+    ///
+    /// The extent is the one the formula was parsed with: a structural edit prints the formulas
+    /// it moves before it reparses them, so a cell moved past the old extent may print with the
+    /// name in between, which parses and is reparsed at once.
+    pub(crate) fn text_at(&self, cell: &CellReferenceRC) -> String {
+        match &self.extent {
+            Some(extent) => self.text_with_name(!extent.holds(cell, !self.unqualified)),
+            None => self.text(),
+        }
+    }
+
+    /// [`Self::text`], with the table name if `named`, without it otherwise.
+    fn text_with_name(&self, named: bool) -> String {
         let qualified = self.qualified_text();
-        if !self.unqualified {
+        if named {
             return qualified;
         }
         // Excel shows a `#This Row` reference in its `@` form (references.md "Calculated
@@ -247,8 +315,26 @@ impl Parser {
         );
         if let Node::StructuredReferenceKind { reference, .. } = &mut node {
             reference.unqualified = true;
+            if reference.extent.is_none() {
+                reference.extent = self
+                    .table_named(&reference.table_name)
+                    .and_then(|table| TableExtent::of(table, None));
+            }
         }
         node
+    }
+
+    /// The table `name` names in the parser's table list. Table names match ignoring case
+    /// (gen-m8b names-case 5b5c0e20e82153bb): an exact hit is deterministic; the case-folded scan
+    /// covers the rest.
+    pub(super) fn table_named(&self, name: &str) -> Option<&Table> {
+        self.tables.get(name).or_else(|| {
+            let lower = name.to_lowercase();
+            self.tables
+                .iter()
+                .find(|(table_name, _)| table_name.to_lowercase() == lower)
+                .map(|(_, table)| table)
+        })
     }
 
     /// The name of the table whose range (headers and totals row included) holds the formula's
@@ -256,11 +342,8 @@ impl Parser {
     fn containing_table_name(&self) -> Option<String> {
         let context = &self.context;
         self.tables.values().find_map(|table| {
-            let (column_start, row_start, column_end, row_end) =
-                parse_range(&table.reference).ok()?;
             (table.is_on_sheet(&context.sheet)
-                && (column_start..=column_end).contains(&context.column)
-                && (row_start..=row_end).contains(&context.row))
+                && TableExtent::of(table, None)?.holds(context, false))
             .then(|| table.name.clone())
         })
     }

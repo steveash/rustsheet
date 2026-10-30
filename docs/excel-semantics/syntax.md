@@ -506,8 +506,11 @@ agree):
   Ours (t2786 case): the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
   Ours since T-3069: an unqualified `@` reference keeps the padding inside its brackets and a run after `@` is that
   padding (`[@ Col]` prints `[ @Col ]`, which reads back; one-sided `[@Col ]` and the qualified `T[@ Col]`, `T[ @Col ]`
-  read the same way and are unprobed, T-3240); a reference written with its table name still prints the
-  long form in its own table (T-3241; header, totals and outside-the-table shapes unprobed, T-3240). `T[ Col ]` is only
+  read the same way and are unprobed, T-3240). Since T-3241 the printing cell decides the `@` form: a `#This Row`
+  reference written with its table name prints `[@Col]` (padding kept) in a data row of its own table, as Excel does
+  above, and any `#This Row` reference, written with the name or not, prints with the name
+  (`T[[#This Row],[Col]]`) in a cell outside the table, so a copy, fill or move out of the table, or a resize that
+  leaves the cell outside, gives text that parses there (header, totals and outside-the-table spellings unprobed, T-3240). `T[ Col ]` is only
   the engine's own printed text for `T[ [Col] ]`, which it re-parses after edits: typed or loaded, a padded bare column
   reads the run as part of the column name, so it is a parse error typed and `#REF!` loaded, and the xlsx export writes
   `T[ [Col] ]`. A defined-name body is neither, so a stored name `T[ Col ]` still reads as the column (unprobed).
