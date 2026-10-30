@@ -43,7 +43,8 @@ Pickers, LET, LAMBDA and unary signs (T-3049, probes/t3049-snap-under-pickers, e
 
 M2 pickers, wrappers and summing functions in both operand orders (T-3139, gen-m2 `numeric-fp` cases
 fde64eeac1b5122d, 4fcaec656703fa15 and 2f543197a3445de1 from `rustsheet-gen --policy numeric-fp --seed 0`, 5,200 cells,
-excel-graph 2026-10-30; X = base·(1±k·2^-52) and b = base for base 1, 2, 0.5, 2^20 and 1.5, k = 0..9): a root `X-b` or
+excel-graph 2026-10-30; X = base·(1±k·2^-52) and b = base for base 1, 2, 0.5, 2^20 and 1.5, k = 0..9, so below a
+power of two k counts half-ULPs of b, i.e. 2k ULPs of X): a root `X-b` or
 `b-X` whose operands are read through VLOOKUP, HLOOKUP, INDEX, MATCH-fed INDEX, MIN, MAX, ABS or `IF(TRUE,..)` snaps
 exactly as over plain references (the left-addend bound above: over k = 1..9, 48 of 90 pairs snap for `X-b` and 64 for
 `b-X`). A root over `ROUND(X,20)-ROUND(b,20)` snaps more often (73 and 77 of 90), because ROUND first cuts X to 15

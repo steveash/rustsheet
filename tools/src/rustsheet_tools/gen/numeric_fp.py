@@ -22,7 +22,8 @@ from typing import Any
 from rustsheet_tools.gen.generator import col_letter
 from rustsheet_tools.gen.numeric_rules import BASES, fmt_k
 
-# Four powers of two (k is a true ULP count) and 1.5 (exact; its ULP is that of 1).
+# Four powers of two and 1.5, all exact. k counts steps of base*2^-52: the ULP of b above b, but
+# two ULPs of X below a power of two (sign -1), where X has half b's ULP.
 FP_BASES = [b for b in BASES if b in {"1", "2", "0.5", "(2^20)", "1.5"}]
 FP_K = range(10)  # straddles both boundaries: the `-` side snaps up to k = 3, the `+` side up to k = 7
 SIGNS = (1, -1)
@@ -64,12 +65,16 @@ SUMMERS = {
     "sumif": f"SUMIF({{rg}},{CRITERION})",
     "sumifs": f"SUMIFS({{rg}},{{rg}},{CRITERION})",
 }
+POSITIONS = ("root", "wrapper", "sum")
 CALL = re.compile(r"([A-Z][A-Z0-9.]*)\(")
 
 
 def _pairs() -> list[tuple[str, int, int]]:
     """(base, sign, k) per Inputs row, in row order; HLOOKUP block j holds rows 10j+1..10j+10."""
     return [(base, sign, k) for base in FP_BASES for sign in SIGNS for k in FP_K]
+
+
+N_PAIRS = len(_pairs())
 
 
 def _inputs() -> tuple[dict[str, str | int], dict[str, str | int]]:
@@ -104,7 +109,7 @@ def _pick(picker: str, column: str, r: int, k: int) -> str:
         c=column,
         r=r,
         k=k,
-        n=len(_pairs()),
+        n=N_PAIRS,
         i=2 if column == X_COL else 3,
         h=top,
         h2=top + 2,
@@ -133,9 +138,6 @@ def _probes(position: str) -> list[tuple[str, str]]:
                     f = "=" + summer.format(rg="Inputs!" + rg.format(r=r))
                     probes.append((f, f"{form}-{zero}/{order}/{params}"))
     return probes
-
-
-POSITIONS = ("root", "wrapper", "sum")
 
 
 def generate_numeric_fp(seed: int) -> list[dict[str, Any]]:
