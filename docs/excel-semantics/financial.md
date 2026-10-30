@@ -3291,7 +3291,7 @@ Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` an
 T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). Since T-2827 ACCRINT refuses a boolean in
 every argument but calc_method ("ACCRINT check order: calc_method first, dates as read").
 Status: VERIFIED (excel-graph)
-Tasks: T-2455
+Tasks: T-2455, T-2827
 
 ## ACCRINT check order: calc_method first, dates as read (T-2676)
 Rule: ACCRINT reads its last argument, calc_method, before all the others: calc_method's own error is the result, and
@@ -3319,7 +3319,7 @@ securities functions check frequency and dates first"). A par read from a FALSE 
 - booleans anywhere: a TRUE or FALSE, typed or from a cell, in issue, first_interest, settlement, rate, par, frequency or
   basis is `#VALUE!` (probes/accrint-boolean-args A1:A28, T-2827; the all-number baseline A29 is 506.8056).
 Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
-read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`).
+read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error, and a boolean frequency or basis after such a settlement; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`).
 Evidence: gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c (excel-graph, T-2676 sweep, 2026-10-26); each
 cell's arguments evaluated with the engine on the case's Data sheet.
 Ours: since T-2792, `accrint_of` (functions/financial/accrint.rs) reads calc_method first, then issue and first_interest, each range-checked from serial 0 as it is read (serial 0 itself still fails the later calendar check), then the other arguments in order; settlement is checked against its calendar limit only after all are read, and a boolean in any of the seven is `#VALUE!`, typed or from a cell (T-2827).
