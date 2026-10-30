@@ -6,7 +6,9 @@ use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
 use crate::functions::statistical::f_density::excel_f_density;
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
-use crate::functions::statistical::incomplete_beta::{beta_reg_tails, A1_EXPM1_MAX_X};
+use crate::functions::statistical::incomplete_beta::{
+    beta_reg_tails, search_tails, A1_EXPM1_MAX_X,
+};
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::paired::marked_number_error;
 use crate::functions::statistical::special::refine_increasing;
@@ -113,7 +115,7 @@ fn f_quantile_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
             return tail;
         }
     }
-    let (lower, upper_tail) = beta_reg_tails(u, v, a, b);
+    let (lower, upper_tail) = search_tails(u, v, a, b);
     if upper {
         upper_tail
     } else {
@@ -173,7 +175,7 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     if a == 0.5 && b == 0.5 {
         return 2.0 * x.sqrt().asin() / std::f64::consts::PI;
     }
-    (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
+    (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder((x, 0.0), a, b)
 }
 
 /// `I_x(a, b)` at a shape of 1 as F.TEST and the F quantile's search ([`f_quantile_tail`]) take it,
@@ -202,16 +204,13 @@ fn unoriented_shape_one_tail(x: f64, a: f64, b: f64) -> Option<f64> {
 /// `I_x(a,b)/(x^a (1-x)^b) = 2F1(a+b, 1; a+1; x) / (a B(a,b))` for half-integer shapes, in
 /// double-double: `B(a,b)` by [`half_integer_beta`] and the series of positive terms
 /// `t_(n+1) = t_n (a+b+n) x/(a+1+n)`, which nothing cancels.
-fn f_test_remainder(x: f64, a: f64, b: f64) -> f64 {
+pub(super) fn f_test_remainder(x: (f64, f64), a: f64, b: f64) -> f64 {
     let beta = half_integer_beta(a, b);
     let mut term = (1.0, 0.0);
     let mut sum = (1.0, 0.0);
     let mut n = 0.0;
     for _ in 0..F_TEST_SERIES_TERMS {
-        term = dd_div_small(
-            dd_mul(dd_mul(term, (a + b + n, 0.0)), (x, 0.0)),
-            a + 1.0 + n,
-        );
+        term = dd_div_small(dd_mul(dd_mul(term, (a + b + n, 0.0)), x), a + 1.0 + n);
         sum = dd_add(sum, term);
         n += 1.0;
         // 2^-110 of the sum: past double-double precision.
