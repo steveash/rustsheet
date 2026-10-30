@@ -1597,6 +1597,7 @@ C	probes/t3106-lookup-xmatch-near-equal.case.json	786
 C	probes/t3114-collation-beyond-latin1.case.json	986
 C	probes/t3115-approximate-text-collation.case.json	625
 C	probes/t3116-now-once-per-recalc.case.json	2
+C	probes/t3130-concat-lambda-trimrange-cell-variable.case.json	28
 C	probes/t3133-lookup-criteria-case-fold.case.json	426
 C	probes/t3134-legacy-if-index-arm-shapes.case.json	295
 C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
