@@ -3,7 +3,7 @@ id: T-3302
 title: "Port ironcalc 9f431e61..2128db12: check CHAR, UNICHAR, CODE, UNICODE, CONCAT and TEXTJOIN over arrays and ranges against Excel evidence"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -34,3 +34,10 @@ range of CODE, an error element in the array) and port only where Excel agrees. 
 
 ## Out of scope
 - Upstream's ENCODEURL and defined-name commits (T-3300, T-3301).
+
+## Outcome
+New probe `probes/t3302-text-funcs-arrays` (21 cells, oracle-filled) covers all six functions over
+ranges and computed arrays. Only CHAR failed (it did not lift); it now lifts like UNICHAR. The two
+`"Arrays not supported yet"` arms in `concatenate.rs` are not reached by any probed shape (an array
+cell value cannot occur in a range walk, and a computed array reaches CONCAT as an array
+argument), so they are left as defensive arms. Probe: 21/21 pass.
