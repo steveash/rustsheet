@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 
-use crate::cast::mixed_fraction;
 use crate::defined_names::ParsedDefinedName;
 use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
 use crate::{
@@ -1994,13 +1993,6 @@ impl Model {
                         new_style_index =
                             self.style_with_typed_format(new_style_index, &num_fmt)?;
                     }
-                    let worksheet = self.workbook.worksheet_mut(sheet)?;
-                    worksheet.set_cell_with_number(row, column, v, new_style_index)?;
-                    return Ok(());
-                }
-                // A signed, `$` or `%` mixed fraction is a number too, with no format change
-                // (probes/typed-input-sign-space-mixed-fraction B6, B7, B9).
-                if let Some(v) = mixed_fraction(value.trim_matches(' '), &["$"]) {
                     let worksheet = self.workbook.worksheet_mut(sheet)?;
                     worksheet.set_cell_with_number(row, column, v, new_style_index)?;
                     return Ok(());
