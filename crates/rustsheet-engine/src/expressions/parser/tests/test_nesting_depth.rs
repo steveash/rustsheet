@@ -170,6 +170,50 @@ fn parenthesis_runs_around_operators_are_bounded_by_depth() {
     });
 }
 
+/// T-3197: a call written directly inside a group takes the group's spare level, so a level of
+/// `(ABS(` costs three, not four: Excel's 64 and 65 levels parse (probes/t3097-nesting-paren-abs-*),
+/// and so does every level up to the depth bound, on a small stack, evaluated and printed.
+/// Anything else first in a group (a sign, `@`, a space, another group) still costs two.
+#[test]
+fn calls_at_the_head_of_a_group_share_its_level() {
+    on_small_stack(|| {
+        let deepest = (MAX_FORMULA_DEPTH - 2) / 3;
+        for (open, close) in [
+            ("(ABS(", "))"),
+            ("(IF(TRUE,", "))"),
+            ("(LAMBDA(x,", "))"),
+            ("(SUM(1)+(", "))"),
+        ] {
+            let formula = nested(open, "1", close, deepest);
+            assert!(
+                !matches!(parse(&formula), Node::ParseErrorKind { .. }),
+                "{open}"
+            );
+            assert!(
+                is_too_deep(&parse(&nested(open, "1", close, deepest + 1))),
+                "{open}"
+            );
+        }
+        for open in ["(-ABS(", "( ABS(", "(@ABS(", "( (ABS("] {
+            let close = ")".repeat(open.matches('(').count());
+            let levels = MAX_FORMULA_DEPTH / 4;
+            assert!(
+                is_too_deep(&parse(&nested(open, "1", &close, levels))),
+                "{open}"
+            );
+        }
+        let mut model = crate::test::util::new_empty_model();
+        let formula = format!("={}", nested("(ABS(", "-A2", "))", deepest));
+        model._set("A1", &formula);
+        model._set("A2", "3");
+        model._set("B1", "=(ABS(-2)+1)*(A2:A3 A2)");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "3");
+        assert_eq!(model._get_formula("A1"), formula);
+        assert_eq!(model._get_text("B1"), "9");
+    });
+}
+
 #[test]
 fn deep_formulas_of_every_shape_are_too_deep() {
     on_small_stack(|| {

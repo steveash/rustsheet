@@ -121,12 +121,50 @@ fn nested_lifted_edate_at_the_nesting_limit_evaluates_on_a_2_mib_stack() {
 }
 
 /// SPEC-0007: a call and a written group alternating, `SUM((SUM((…))))`, so every level is a
-/// `Group` node under a call, evaluates at the parser's limit on a 2 MiB stack. Each level is two
-/// operands, so it nests half as deep as a one-operand shape.
+/// `Group` node under a call, evaluates at the parser's limit on a 2 MiB stack. The call at the
+/// head of each group takes the group's spare level (T-3197), so a level costs three.
 #[test]
 fn alternating_calls_and_groups_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
     let deepest = deepest_on_2_mib_stack("SUM((", "))");
-    assert_eq!(deepest, Some((MAX_NESTING / 2, "1".to_string())));
+    assert_eq!(
+        deepest,
+        Some(((MAX_FORMULA_DEPTH - 2) / 3, "1".to_string()))
+    );
+}
+
+/// T-3197: a group around a call, `(ABS((ABS(…))))`, costs three levels of `MAX_FORMULA_DEPTH`
+/// (the call takes the group's spare one), so the parser accepts 84 of them when nothing counts
+/// the calls (`update_cell_with_formula`); that many parse, evaluate and print on a 2 MiB stack,
+/// and one more is too deep. Each shape whose group head is a call reaches the same depth.
+#[test]
+fn groups_around_calls_at_the_depth_limit_evaluate_on_a_2_mib_stack() {
+    let deepest = (MAX_FORMULA_DEPTH - 2) / 3;
+    for (open, close) in [("(ABS(", "))"), ("(IF(TRUE,", "))"), ("(LAMBDA(x,", "))")] {
+        let handle = std::thread::Builder::new()
+            .stack_size(2 << 20)
+            .spawn(move || {
+                let mut model = new_empty_model();
+                let formula = nested(open, "1", close, deepest);
+                model
+                    .update_cell_with_formula(0, 1, 1, formula.clone())
+                    .ok()?;
+                let past =
+                    model.update_cell_with_formula(0, 2, 1, nested(open, "1", close, deepest + 1));
+                model.evaluate();
+                Some((
+                    past.is_err(),
+                    model._get_formula("A1") == formula,
+                    model._get_text("A1"),
+                ))
+            });
+        let result = handle.ok().and_then(|h| h.join().ok()).flatten();
+        let value = if open.starts_with("(LAMBDA") {
+            "#CALC!"
+        } else {
+            "1"
+        };
+        assert_eq!(result, Some((true, true, value.to_string())), "{open}");
+    }
 }
 
 /// T-1169: the reported shape, `=` + N `(` + `0.1+0.2-0.3+B1` + N `)`, on the default test thread

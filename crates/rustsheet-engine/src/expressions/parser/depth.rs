@@ -188,18 +188,55 @@ impl Parser {
             self.depth = depth;
             return node;
         }
-        if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
+        self.parse_operand_costing(PRIMARY_DEPTH)
+    }
+
+    /// The first operand of a group's content, parsed ahead and left as the pending operand for
+    /// the content's expression ([`Parser::parse_primary`] returns it), when it is a name, a
+    /// reference or a call written directly after the `(`. A group adds one tree node over its
+    /// content but costs an operand's two levels, so the operand takes the spare one and costs
+    /// one level: `(ABS(x))` is a group (two) and a call (one), and Excel's 65 nested levels of
+    /// `(ABS(` fit (probes/t3097-nesting-paren-abs-*, T-3197). Parsing it here, and not at the
+    /// bottom of the content's precedence chain, also keeps a level of `(ABS(` to one pass
+    /// through that chain, so the levels the cheaper cost admits fit the stack. Anything else
+    /// (a sign, `@`, whitespace, another group) is left to the expression and costs two.
+    pub(super) fn parse_group_head(&mut self) -> Result<(), Node> {
+        if self.pending_operand.is_some()
+            || self.lexer.whitespace_follows()
+            || !matches!(
+                self.lexer.peek_token(),
+                TokenType::Ident(_)
+                    | TokenType::Reference { .. }
+                    | TokenType::Range { .. }
+                    | TokenType::Boolean(_)
+            )
+        {
+            return Ok(());
+        }
+        let start = self.lexer.get_position_index();
+        let node = self.parse_operand_costing(PRIMARY_DEPTH - 1);
+        if let Node::ParseErrorKind { .. } = node {
+            return Err(node);
+        }
+        self.pending_operand = Some((node, self.depth));
+        self.pending_start = start;
+        Ok(())
+    }
+
+    /// [`Parser::parse_primary`] for an operand that reserves and adds `cost` levels.
+    fn parse_operand_costing(&mut self, cost: usize) -> Node {
+        if self.nesting + cost > MAX_FORMULA_DEPTH {
             return self.too_deep();
         }
         let outer_depth = std::mem::replace(&mut self.inner_depth, 0);
-        self.nesting += PRIMARY_DEPTH;
+        self.nesting += cost;
         let node = self.parse_operand();
-        self.nesting -= PRIMARY_DEPTH;
+        self.nesting -= cost;
         let inner_depth = std::mem::replace(&mut self.inner_depth, outer_depth);
         if let Node::ParseErrorKind { .. } = node {
             return node;
         }
-        self.depth = inner_depth + PRIMARY_DEPTH;
+        self.depth = inner_depth + cost;
         if self.depth > MAX_FORMULA_DEPTH {
             return self.too_deep();
         }

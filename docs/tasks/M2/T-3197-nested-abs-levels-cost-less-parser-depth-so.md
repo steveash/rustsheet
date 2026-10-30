@@ -3,7 +3,7 @@ id: T-3197
 title: "Nested (ABS( levels cost less parser depth, so Excel's 64 and 65 levels of (ABS( parse"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,11 +27,23 @@ test_nested_formula_stack.rs). Both cases are pinned whole in eval/suites/probes
 (decision 0168); their lines leave when they match.
 
 ## Acceptance criteria
-- [ ] The four t3097-nesting-paren-abs cases load and match Excel; their whole-case lines leave
+- [x] The four t3097-nesting-paren-abs cases load and match Excel; their whole-case lines leave
       probes/deviations and the baseline records the passes.
-- [ ] At-limit tests on a 1 MiB release stack (test_nesting_depth.rs) and a 2 MiB debug stack cover
+- [x] At-limit tests on a 1 MiB release stack (test_nesting_depth.rs) and a 2 MiB debug stack cover
       the new bound; syntax.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bare parenthesis runs (T-3191, done); unary sign runs (T-3193).
+
+## Outcome
+A name, reference or call written directly after a group's `(` is parsed ahead of the group's
+content (`Parser::parse_group_head`, handed to the content as the pending operand, the T-3191
+mechanism) and costs one level of `MAX_FORMULA_DEPTH`, taking the group's spare one, so a level
+of `(ABS(` costs three, not four, and one pass through the precedence chain, not two. The parser
+accepts up to 84 levels of `(ABS(`, `(IF(TRUE,`, `(LAMBDA(x,` (when nothing counts calls); 84
+parse and evaluate on a 2 MiB debug stack and a 1 MiB release stack (tests in
+test_nesting_depth.rs and test_nested_formula_stack.rs; with the discount but without parsing the
+head ahead, about 78 levels overflowed the 2 MiB debug stack). Eval: the four
+t3097-nesting-paren-abs-64/-65 cases (8 cells) pass bit-exact; their whole-case lines left
+probes/deviations; no baseline F lines changed. syntax.md updated.
