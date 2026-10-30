@@ -348,6 +348,8 @@ C	probes/discount-argument-check-order.case.json	1707
 C	probes/discount-security-modes.case.json	135
 C	probes/discount-serial-zero.case.json	50
 C	probes/displayed-text-formats.case.json	10
+C	probes/displayed-text-long-text-b.case.json	11
+C	probes/displayed-text-long-text.case.json	22
 C	probes/dollar-fixed-unichar-edges.case.json	76
 C	probes/drop-lifted-grid-handon.case.json	11
 C	probes/dvar-one-vs-two-pass.case.json	32
@@ -4174,6 +4176,8 @@ F	probes/yield-start-term-basis.case.json	S!A52
 F	probes/yield-start-term-basis.case.json	S!B50
 F	probes/yield-start-term-basis.case.json	S!C2
 TC	probes/displayed-text-formats.case.json	28
+TC	probes/displayed-text-long-text-b.case.json	11
+TC	probes/displayed-text-long-text.case.json	24
 TC	probes/fraction-large-fixed-denominator.case.json	61
 TC	probes/fraction-numerator-overflow.case.json	76
 TC	probes/fraction-numerator-overflow2.case.json	69
