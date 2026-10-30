@@ -37,6 +37,15 @@
 //! cached range with the same columns (a growing prefix `I$11:I11`) is read from that range, and
 //! its match set is cut from the range's.
 //!
+//! A range of formulas the walk reads only where the criteria before it match (calipers
+//! `pv23_042`: shared-formula columns read at the 398 rows of 22,397 its first criterion matches)
+//! stays uncacheable as a whole, yet every cell the walk reads of it is evaluated after one call.
+//! So such a range is also cached at those rows only (T-0498): its values at the cells the chain of
+//! criteria before it matches, once each of them can be read without evaluating anything, which
+//! are the cells the walk reads of it. The chain names the set: each link a range and its
+//! criterion, so equal chains match the same cells. A criterion is then tested once per chain on
+//! those values, and a call intersects the sets as before.
+//!
 //! SUMPRODUCT's `block*mask*...` argument reads a cached block's cells as numbers, the way `*`
 //! reads them ([`BlockNumbers`], T-3230), once per block and pass. Those numbers are charged to
 //! the cells budget beside the block's values, so such a block counts twice.
@@ -84,7 +93,7 @@ const INDEX_AFTER_MISSES: u32 = 2;
 type RectKey = (u32, i32, i32, i32, i32);
 
 /// A criterion, as `build_criteria` reads it: two equal keys build the same predicate.
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 enum CriterionKey {
     Number(u64),
     Text(Vec<u16>),
@@ -101,6 +110,16 @@ impl CriterionKey {
         }
     }
 
+    /// The bits `chain`'s links take, charged to the match-set budget: each link's fixed size and
+    /// what its key holds beyond it ([`CriterionKey::extra_bits`]).
+    fn chain_bits(chain: &[(RectKey, CriterionKey)]) -> usize {
+        let link_bits = std::mem::size_of::<(RectKey, CriterionKey)>() * 8;
+        chain.iter().fold(0, |bits: usize, (_, key)| {
+            bits.saturating_add(link_bits)
+                .saturating_add(key.extra_bits())
+        })
+    }
+
     /// The key of `criterion`; `None` for anything else (an array element is already a scalar).
     fn of(criterion: &CalcResult) -> Option<CriterionKey> {
         Some(match criterion {
@@ -115,7 +134,11 @@ impl CriterionKey {
     }
 }
 
-/// A range's place in the cache.
+/// The criteria ranges and criteria a call has matched so far, in its order: they name the set of
+/// cells matched (T-0498).
+type Chain = Vec<(RectKey, CriterionKey)>;
+
+/// A range's place in the cache, or its place at the cells a [`Chain`] matches.
 enum RangeState {
     /// Its values, row by row.
     Ready(Arc<[CalcResult]>),
@@ -196,6 +219,11 @@ pub(crate) struct IfsCache {
     numbers: HashMap<RectKey, Arc<BlockNumbers>, KeyBuild>,
     /// The cached ranges of each (sheet, left column, right column), as (top row, bottom row).
     parents: HashMap<(u32, i32, i32), Vec<(i32, i32)>>,
+    /// A range's values at the cells a chain matches, in row order (module docs, T-0498).
+    gathered: HashMap<(RectKey, Chain), RangeState>,
+    /// The cells a chain matches whose last link is not cached as a whole, as a bit set over the
+    /// range's cells (T-0498).
+    chains: HashMap<Chain, Arc<[u64]>>,
     cells: usize,
     bits: usize,
     /// Match sets cut from a larger cached range's, for the tests of T-0465.
@@ -210,6 +238,16 @@ pub(crate) struct IfsCache {
     pub(crate) masked: usize,
 }
 
+/// The cache's state of the ranges a call reads, for the tests of T-0498: the ranges cached as a
+/// whole, those waiting to be, and the range values cached at a chain's cells.
+#[cfg(test)]
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct CacheCounts {
+    pub(crate) ready: usize,
+    pub(crate) waiting: usize,
+    pub(crate) gathered: usize,
+}
+
 impl IfsCache {
     /// Forgets everything: a new pass, or cells whose state was reset.
     pub(crate) fn clear(&mut self) {
@@ -218,6 +256,8 @@ impl IfsCache {
         self.indexes.clear();
         self.numbers.clear();
         self.parents.clear();
+        self.gathered.clear();
+        self.chains.clear();
         self.cells = 0;
         self.bits = 0;
         #[cfg(test)]
@@ -235,6 +275,23 @@ impl IfsCache {
             .values()
             .filter(|state| matches!(state, IndexState::Ready(_)))
             .count()
+    }
+
+    /// How many ranges are in each state, for the tests of T-0498.
+    #[cfg(test)]
+    pub(crate) fn counts(&self) -> CacheCounts {
+        let count = |wanted: fn(&RangeState) -> bool| {
+            self.ranges.values().filter(|state| wanted(state)).count()
+        };
+        CacheCounts {
+            ready: count(|state| matches!(state, RangeState::Ready(_))),
+            waiting: count(|state| matches!(state, RangeState::Waiting { .. })),
+            gathered: self
+                .gathered
+                .values()
+                .filter(|state| matches!(state, RangeState::Ready(_)))
+                .count(),
+        }
     }
 
     /// Match-set bits charged in this pass, for the budget test.
@@ -549,7 +606,9 @@ impl Model {
 
     /// [`Model::ifs_leading_matches`], or with `whole`, [`Model::ifs_all_matches`]: then `None`
     /// at the first range not cacheable yet. Either way no range after an uncached first one is
-    /// looked at, and with `whole` none after any uncached one: the walk runs.
+    /// looked at, and with `whole` none after any uncached one: the walk runs. A range not cached
+    /// as a whole counts as cached when its cells the criteria before it match are
+    /// ([`Model::chain_matches`], T-0498).
     fn criteria_matches(
         &mut self,
         rects: &[Range],
@@ -559,26 +618,141 @@ impl Model {
     ) -> Option<LeadingMatches> {
         let mut matched: Option<Vec<u64>> = None;
         let mut rest = Vec::new();
+        // The links matched so far; `None` once one has no key, as no later set can be named.
+        let mut chain: Option<Chain> = Some(Vec::new());
         for ((range, criterion), matches) in rects.iter().zip(criteria).zip(matchers) {
-            let view = self.ifs_range_values(rect_of(range));
-            if view.is_none() && (whole || matched.is_none()) {
-                return None;
+            let rect = rect_of(range);
+            let view = self.ifs_range_values(rect);
+            if !rest.is_empty() {
+                rest.push(view);
+                continue;
             }
-            match view {
-                Some(view) if rest.is_empty() => {
-                    let bits = self.ifs_matches(&view, criterion, matches.as_ref());
-                    match matched.as_mut() {
-                        None => matched = Some(bits.to_vec()),
-                        Some(all) => all.iter_mut().zip(bits.iter()).for_each(|(a, b)| *a &= b),
-                    }
+            let link = CriterionKey::of(criterion).map(|key| (rect, key));
+            let bits = match (view, matched.as_deref(), chain.as_deref(), link.as_ref()) {
+                (Some(view), ..) => Some(self.ifs_matches(&view, criterion, matches.as_ref())),
+                (None, Some(all), Some(chain), Some(link)) => {
+                    self.chain_matches(chain, link, all, matches.as_ref())
                 }
-                view => rest.push(view),
+                (None, ..) => None,
+            };
+            let Some(bits) = bits else {
+                if whole || matched.is_none() {
+                    return None;
+                }
+                rest.push(None);
+                continue;
+            };
+            match matched.as_mut() {
+                None => matched = Some(bits.to_vec()),
+                Some(all) => all.iter_mut().zip(bits.iter()).for_each(|(a, b)| *a &= b),
             }
+            chain = chain.zip(link).map(|(mut chain, link)| {
+                chain.push(link);
+                chain
+            });
         }
         Some(LeadingMatches {
             matched: matched?,
             rest,
         })
+    }
+
+    /// The cells of `link`'s range that its criterion (`matches` its predicate) matches among
+    /// those `chain` matched (`matched`, a bit set over the range's cells), when they can be read
+    /// without evaluating anything (module docs, T-0498): from the cache when this chain was
+    /// extended by `link` before in this pass. `None` when the caller must walk.
+    fn chain_matches(
+        &mut self,
+        chain: &[(RectKey, CriterionKey)],
+        link: &(RectKey, CriterionKey),
+        matched: &[u64],
+        matches: &dyn Fn(&CalcResult) -> bool,
+    ) -> Option<Arc<[u64]>> {
+        let mut extended = Vec::with_capacity(chain.len() + 1);
+        extended.extend_from_slice(chain);
+        extended.push(link.clone());
+        if let Some(bits) = self.evaluation.ifs_cache.chains.get(&extended) {
+            return Some(bits.clone());
+        }
+        let rect = link.0;
+        let values = self.gathered_values(rect, chain, matched)?;
+        let mut bits = vec![0u64; matched.len()];
+        for (index, value) in set_bits(matched).zip(values.iter()) {
+            if matches(value) {
+                set_bit(&mut bits, index);
+            }
+        }
+        let bits: Arc<[u64]> = bits.into();
+        let cache = &mut self.evaluation.ifs_cache;
+        // The set's words, the chain's links and a word for the entry itself.
+        let cost = (bits.len() + 1)
+            .saturating_mul(64)
+            .saturating_add(CriterionKey::chain_bits(&extended));
+        if cache.bits.saturating_add(cost) <= MAX_CACHED_BITS {
+            cache.bits += cost;
+            cache.chains.insert(extended, bits.clone());
+        }
+        Some(bits)
+    }
+
+    /// The values of `rect` at the cells `chain` matches (`matched`), row by row, once none of them
+    /// evaluates anything when read ([`Model::read_is_inert`]); the check resumes where it stopped,
+    /// as [`Model::ifs_range_values`]'s does. `None` when the caller must walk.
+    fn gathered_values(
+        &mut self,
+        rect: RectKey,
+        chain: &[(RectKey, CriterionKey)],
+        matched: &[u64],
+    ) -> Option<Arc<[CalcResult]>> {
+        if !self.pass_cache_safe() {
+            return None;
+        }
+        let key = (rect, chain.to_vec());
+        let cache = &mut self.evaluation.ifs_cache;
+        let checked = match cache.gathered.get(&key) {
+            Some(RangeState::Ready(values)) => return Some(values.clone()),
+            Some(RangeState::Never) => return None,
+            Some(RangeState::Waiting { checked }) => *checked,
+            None => {
+                // The entry's key, charged once, whatever state it ends in (directive 5).
+                let cost = CriterionKey::chain_bits(chain).saturating_add(64);
+                if cache.bits.saturating_add(cost) > MAX_CACHED_BITS {
+                    return None;
+                }
+                cache.bits += cost;
+                0
+            }
+        };
+        for (position, index) in set_bits(matched).enumerate().skip(checked) {
+            let state = match self.read_is_inert(rect_cell(rect, index)) {
+                Some(true) => continue,
+                Some(false) => RangeState::Waiting { checked: position },
+                None => RangeState::Never,
+            };
+            self.evaluation.ifs_cache.gathered.insert(key, state);
+            return None;
+        }
+        let size = count_bits(matched);
+        if self.evaluation.ifs_cache.cells.saturating_add(size) > MAX_CACHED_CELLS {
+            self.evaluation
+                .ifs_cache
+                .gathered
+                .insert(key, RangeState::Never);
+            return None;
+        }
+        // Every read is inert: it records what it saw, as the walk's read does.
+        let values: Arc<[CalcResult]> = set_bits(matched)
+            .map(|index| self.evaluate_cell(rect_cell(rect, index)))
+            .collect();
+        if !self.pass_cache_safe() {
+            return None;
+        }
+        let cache = &mut self.evaluation.ifs_cache;
+        cache.cells += size;
+        cache
+            .gathered
+            .insert(key, RangeState::Ready(values.clone()));
+        Some(values)
     }
 
     /// How many cells of `range` `criterion` matches (`matches` its predicate): COUNTIFS with one
