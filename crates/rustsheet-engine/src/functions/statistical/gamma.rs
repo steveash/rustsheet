@@ -5,7 +5,7 @@ use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::{
     excel_small_shape_lower, excel_small_shape_quantile, gamma_cdf, gamma_density, gamma_quantile,
-    wilson_hilferty_quantile, Tail, DIRECT_SHAPE_MAX, WILSON_HILFERTY_SHAPE_MIN,
+    huge_shape_quantile, Tail, DIRECT_SHAPE_MAX, HUGE_SHAPE_MIN,
 };
 use super::normal::normal_quantile;
 
@@ -180,9 +180,11 @@ impl Model {
             // product is 0, as `gamma_quantile` flushes after its scale.
             return Ok(flush_subnormal(x * beta_scale));
         }
-        let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && p > 0.0 && p < 1.0 {
+        // From a shape of 1E9 Excel's own search: a closed form, the true quantile or `#NUM!`
+        // (docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV at a huge shape").
+        let x = if alpha >= HUGE_SHAPE_MIN && p > 0.0 && p < 1.0 {
             let z = normal_quantile(p, 0.0, 1.0, cell)?;
-            wilson_hilferty_quantile(alpha, z) * beta_scale
+            huge_shape_quantile(alpha, beta_scale, p, Tail::Lower, z)
         } else {
             gamma_quantile(alpha, beta_scale, p, Tail::Lower)
         };
