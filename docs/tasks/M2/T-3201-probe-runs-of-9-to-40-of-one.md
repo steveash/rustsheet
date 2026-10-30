@@ -3,7 +3,7 @@ id: T-3201
 title: "Probe runs of 9 to 40 of one combining mark and state the rule their accent weight follows (t3154 long runs)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
