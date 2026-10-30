@@ -3,7 +3,7 @@ id: T-3201
 title: "Probe runs of 9 to 40 of one combining mark and state the rule their accent weight follows (t3154 long runs)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -39,17 +39,32 @@ accent is the wrapped byte sum T-3154 found, and what it is beyond them.
   crates/rustsheet-engine/src/functions/util/collation.rs, `MARK_WEIGHT` in collation_tables.rs.
 
 ## Acceptance criteria
-- [ ] A probe case `probes/t3201-collation-long-mark-runs` (milestone M2) is committed with its
+- [x] A probe case `probes/t3201-collation-long-mark-runs` (milestone M2) is committed with its
       excel-graph oracle sidecar, covering run lengths 1 to 40 of at least the four marks above.
-- [ ] coercion.md's T-3154 section states the long-run rule (the run length or sum where it starts,
+- [x] coercion.md's T-3154 section states the long-run rule (the run length or sum where it starts,
       and what the accent is beyond it) with the case id and cells, Status VERIFIED, and checks it
       against probes/t3154-collation-accent-weights Calc!A105:A112 (each of those eight Excel ranks
       is explained by the rule, shown in the PR).
-- [ ] Cells our engine fails are known failures in eval/baseline (`make eval-baseline`, 0
+- [x] Cells our engine fails are known failures in eval/baseline (`make eval-baseline`, 0
       regressions), and T-3202's Context names them (case stem and A1 names in one bullet,
       decision 0159), so they keep an owner.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing collation.rs (T-3202).
 - The prefix rule (T-3181) and the other unverified T-3154 choices (T-3203).
+
+## Outcome
+- Two excel-graph probes: probes/t3201-collation-long-mark-runs (1,000 cells; a 246-text weight
+  ladder, runs of 1 to 40 of U+0301, U+030A, U+0323, U+0342, mixes, `e` runs, `a`run`b`) and
+  probes/t3201-collation-wrapped-run-pairs (1,369 cells; every pair of 37 texts whose sums wrap
+  low). The ladder self-ranks in order, so the Windows weights it uses hold.
+- Rule (coercion.md "Shared leading units are skipped before the sum", VERIFIED): there is no
+  long-run rule. Equal sums mod 256 compare equal whatever the marks; per letter, leading units
+  shared with equal weights are dropped, a side with nothing left is less, otherwise the sums
+  left are compared mod 256. This is also T-3181's prefix rule. A throwaway model of it matched
+  all 3,391 cells of the four t3154/t3201 accent cases, including the eight Excel ranks of
+  t3154-collation-accent-weights Calc!A105:A112 (108, 110, 43, 111, 105, 110, 6, 75), and its
+  differences from our wrapped total are exactly the 109 new known failures.
+- Eval delta: probes known failures 2788 -> 2897 (+109, all new coverage in the two new cases),
+  0 regressions; owned by T-3202 (cells listed in its Context).

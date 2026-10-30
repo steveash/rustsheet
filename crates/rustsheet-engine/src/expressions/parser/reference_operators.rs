@@ -183,7 +183,14 @@ impl Parser {
             let separator = self.lexer.separator();
             // The first space is the operator; Excel keeps the rest (SPEC-0023 step 3,
             // probes/t2776-formula-text-whitespace-shapes C3, C5, E9).
-            let extra = Run::of(separator.get(1..).unwrap_or_default());
+            // A separator holding a line feed keeps it whole: the line feed is the operator
+            // and the space before it is dropped (`=B1:B2` LF ` B2` and `=B1:B2 ` LF ` B2` both
+            // print `=B1:B2` LF ` B2`; probes/t2949-typed-4, typed-5, stored-14).
+            let extra = if separator.contains(&'\n') {
+                Run::of(separator)
+            } else {
+                Run::of(separator.get(1..).unwrap_or_default())
+            };
             // U+3000 starts a name for Excel, and no such name is defined: `#NAME?`
             // (probes/intersection-whitespace H7).
             let name_error = separator.contains(&'\u{3000}');
@@ -473,6 +480,22 @@ fn starts_reference(token: &TokenType) -> bool {
     )
 }
 
+/// The text of the intersection of `left` and `right`, each printed with `sub`, with the gap
+/// Excel prints between them ([`Node::intersect_gap`]).
+pub(crate) fn intersection_text(
+    left: &Node,
+    right: &Node,
+    sub: &dyn Fn(&Node) -> String,
+) -> String {
+    let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
+    format!(
+        "{}{}{}",
+        operand(left, true),
+        right.intersect_gap(),
+        operand(right, false)
+    )
+}
+
 /// `text` (the printed `node`) as an operand of the intersection operator, parenthesized
 /// where printing it bare would parse back differently: an operator that binds looser
 /// (`A1 (B1+C1)`), a right operand that is itself an intersection (to keep the tree), and
@@ -481,7 +504,7 @@ fn starts_reference(token: &TokenType) -> bool {
 /// probes/intersection-at-formulatext, T-1098), only as a right operand that nothing follows:
 /// the left operand `A1 @A1` of `(A1 @A1) B1` keeps its parentheses, since bare `A1 @A1 B1`
 /// is `A1 @(A1 B1)` (T-0149).
-pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
+fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     // The extra spaces beside the operator are written around the right operand (SPEC-0023).
     let bare = match node.unwrap_spaced() {
         Node::OpIntersectKind { right, .. } => {
