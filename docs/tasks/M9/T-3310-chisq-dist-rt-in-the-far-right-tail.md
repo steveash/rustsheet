@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -37,8 +38,22 @@ Check them after the cdf fit.
 ## Acceptance criteria
 - [ ] The 273 visibly-off cells of t2561-chisq-dist-rt-past-edge are within half a unit of Excel's 15th digit, or
       the ones left are named in the Outcome, with the forms tried and their counts (decision 0056).
+- [ ] The CHISQ.INV.RT `#NUM!` edge (chisq.rs `RIGHT_TAIL_P_MIN`) is probed further. T-2561 inferred CHIINV and the
+      in-decade p, so the probe has: CHIINV at the edge decade of df 3, 10, 22 and 42; a mantissa sweep inside one
+      decade (p = m E-k, m = 1 to 9.9) at df 3, 10 and 30; and df 51 to 100 at p 1E-250 to 1E-300. The table
+      either matches it or is corrected, with the CHIINV and in-decade notes in chisq.rs and statistics.md
+      updated.
 - [ ] No new known-failure line in any eval/baseline file (`make eval-baseline`).
 - [ ] `make check` green; reviewers approve.
 
+## Visible-parity stage
+Decision 0083: the cells this task owns are visibly off, so it is in the campaign. Its target is that every visibly-off
+cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value;
+bit-level misses left then go to a `defer: phase-1b` follow-up.
+The campaign is `visible`, not `accuracy`. Checked in T-2561 review round 1 against mpmath at 60 digits,
+Excel's own far-tail values are what is inaccurate: CHISQ.DIST.RT and the density in this probe are up to 7.2E-14
+relative from the reference, with 115 of 160 cells each more than 5E-15 off. So the work is reproducing Excel's far-tail
+prefactor, not a more accurate kernel.
+
 ## Out of scope
-- The #NUM! edge of CHISQ.INV.RT (T-2561 tabulates it).
+- Refitting the #NUM! edge beyond what the probe items above show.

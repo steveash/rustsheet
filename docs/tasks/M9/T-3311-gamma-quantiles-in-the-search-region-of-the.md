@@ -8,6 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -36,6 +37,13 @@ Leads:
       counts (decision 0056).
 - [ ] No new known-failure line in any eval/baseline file; no cell T-2561 fixed gets worse.
 - [ ] `make check` green; reviewers approve.
+
+## Visible-parity stage
+Decision 0083: the cells this task owns are visibly off, so it is in the campaign. Its target is that every visibly-off
+cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value;
+bit-level misses left then go to a `defer: phase-1b` follow-up.
+For these seven cells Excel is the side off the true quantile; ours is the correctly rounded crossing. So
+reproduce Excel's landing, never a more accurate kernel.
 
 ## Out of scope
 - Shape 20 and above (T-3294); the p = 0.999 band (T-3146).

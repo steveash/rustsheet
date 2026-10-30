@@ -497,15 +497,17 @@ fn leading_factor_root(a: f64, p: f64) -> f64 {
 }
 
 /// How far, relative to p, GAMMA.DIST at [`leading_factor_root`] may be from p for
-/// [`excel_tiny_quantile`] to return that root. This is a fit, not an Excel constant: any value in
-/// the evidence bracket [4.09E-14, 5.88E-14) scores the same. Ten cells pin it. Eight are bit-exact
-/// roots, with GAMMA.DIST at the root up to 4.09E-14 from p: gen-m9/0a9226016e8f5f33 A240
-/// `CHISQ.INV(1E-200,7)` (-4.09E-14), 4e55500bb8ad3cd8 A217 `CHISQ.INV(1E-300,5)` (+4.02E-14),
-/// a790a4d4a6a82756 A293 and eced4bb6a0234c9e A123 (-3.13E-14), 165db58d1540f014 A283,
-/// a61e547a1cab994c A184, b4173fe25109a238 A252 and 3e98b26cf6713e77 A142. Two are not the
-/// root, where GAMMA.DIST at the root is 5.88E-14 and 6.24E-14 from p: d8266bc15533702a A212
-/// `CHISQ.INV(1E-200,10)` and 06b4e8f5de409d5e A128 `CHISQ.INV(1E-200,5)`. Excel is 111 and 236
-/// ulp from the root there, and 36 and 20 ulp from the crossing the search finds.
+/// [`excel_tiny_quantile`] to return that root. A fit, not an Excel constant, and a proxy for
+/// Excel's own test, which is unknown. Two cells set the bracket [4.09E-14, 5.88E-14): gen-m9/
+/// 0a9226016e8f5f33 A240 `CHISQ.INV(1E-200,7)`, the root bit for bit with our cdf 4.09E-14 from
+/// p, and d8266bc15533702a A212 `CHISQ.INV(1E-200,10)`, not the root (Excel 111 ulp above it)
+/// with our cdf 5.88E-14 from p. Over the cells it was fitted on, 7 distinct (shape, p) points are
+/// in and bit-exact and 2 are out. The ones in: (2, 1E-300) at A293 and A123, (2.5, 1E-300) A217,
+/// (3.5, 1E-200) A240, (2, 1E-100) A283, (4.5, 1E-200) A252, (3, 1E-100) A184 and A399, and
+/// (1.500000000000001, 1E-100) A142. The ones out: (5, 1E-200) A212 and (2.5, 1E-200) at A128, A98
+/// and caa1eed48b1883fe A282. The test is not Excel's: at shape 25 Excel's
+/// `CHISQ.INV(1E-300,50)` is the root (probes-numeric t1543-inverse-cdf-tiny-p A31) with our cdf
+/// 9.8E-12 off (TODO(T-3294)).
 const TINY_QUANTILE_CHECK: f64 = 5e-14;
 
 /// Excel's lower-tail quantile at a shape above 1 (and below [`DIRECT_SHAPE_MAX`]) where it is
@@ -890,10 +892,10 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         (Tail::Lower, false) => (Tail::Upper, 1.0 - p),
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
-    let tiny = match small {
-        Tail::Lower if tail == Tail::Lower => excel_tiny_quantile(shape, target),
-        _ => None,
-    };
+    // Only a lower-tail p of at most 1/2: the lower tail is both the tail given and the smaller one.
+    let tiny = (tail == Tail::Lower && small == Tail::Lower)
+        .then(|| excel_tiny_quantile(shape, target))
+        .flatten();
     let x = if shape == 1.0 {
         exponential_quantile(small, target) * scale
     } else if let Some(unit) = tiny {

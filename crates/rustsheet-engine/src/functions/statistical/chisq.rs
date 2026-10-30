@@ -64,6 +64,8 @@ fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
 /// giving up, not its cdf: CHISQ.DIST.RT is a plain number up to 7% past each edge
 /// (probes-numeric/t2561-chisq-dist-rt-past-edge). Each entry is a fit inside its probed decade:
 /// any threshold in (1E-(k+1), 1E-k] scores the same, and a p strictly inside a decade is unprobed.
+/// Every probed cell is CHISQ.INV.RT; CHIINV takes the same edge by inference, as it shares the
+/// function elsewhere, not by probe (TODO(T-3310)).
 const RIGHT_TAIL_P_MIN: [f64; 40] = [
     1e-20, 1e-27, 1e-35, 1e-43, 1e-52, 1e-62, 1e-72, 1e-81, 1e-87, 1e-90, 1e-94, 1e-99, 1e-104,
     1e-110, 1e-116, 1e-121, 1e-127, 1e-133, 1e-139, 1e-146, 1e-152, 1e-158, 1e-165, 1e-171, 1e-178,
@@ -74,11 +76,13 @@ const RIGHT_TAIL_P_MIN: [f64; 40] = [
 /// Whether Excel's right-tail quantile of `p` at `df` (truncated) degrees of freedom is `#NUM!`
 /// below its search's edge ([`RIGHT_TAIL_P_MIN`]).
 fn right_tail_beyond_edge(df: f64, p: f64) -> bool {
-    // df is a whole number here; at most 40 entries are scanned.
-    (3_u8..)
-        .zip(RIGHT_TAIL_P_MIN)
-        .find(|&(entry_df, _)| f64::from(entry_df) == df)
-        .is_some_and(|(_, p_min)| p < p_min)
+    if !(3.0..43.0).contains(&df) {
+        return false;
+    }
+    // df is a whole number in [3, 43) here, so the index is exact and within the table.
+    RIGHT_TAIL_P_MIN
+        .get(df as usize - 3)
+        .is_some_and(|&p_min| p < p_min)
 }
 
 /// A distribution value as a cell value: `#NUM!` unless finite and not negative.

@@ -3417,7 +3417,7 @@ Status: VERIFIED (excel-graph, 2026-10-15; probes-numeric case `t1543-inverse-cd
 
 Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/inverse_beta.rs `beta_quantile_crossing` (BETA.INV); functions/statistical/incomplete_gamma.rs `gamma_quantile` and chisq.rs `chisq_inv_of` (CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.INV, GAMMAINV; T-1634)
 
-Tasks: T-1543, T-1634
+Tasks: T-1543, T-1634, T-2561
 
 - CHISQ.INV.RT and CHIINV quirks (T-1634; the literal-argument cells of gen-m9, this probe and m9-legacy-chiinv):
   - At one degree of freedom (df is truncated, so 1.5 too) the right-tail quantile is the left one of 1 - p:
@@ -3440,6 +3440,8 @@ Tasks: T-1543, T-1634
     32 to 41 times df, and 39 to 248 below the Wilson-Hilferty estimate at p, with neither steady. The engine
     tabulates it (chisq.rs `RIGHT_TAIL_P_MIN`). A p strictly between 1E-(k+1) and 1E-k is unprobed, and the engine
     takes 1E-k itself as the threshold, a choice inside the bracket.
+    Every probed cell is CHISQ.INV.RT. CHIINV takes the same edge in the engine by inference, not by probe (T-3310
+    probes it, with a mantissa sweep inside a decade and df above 50).
     Evidence: probes-numeric t2561-chisq-inv-rt-num-boundary (df 3 to 22, p = 1E-20 to 1E-300 in steps of 5 decades
     and wider), -num-edge (every decade inside each df 3 to 22 bracket), -num-large-df and -num-large-df-edge (df 23
     to 50), and t2561-chisq-dist-rt-past-edge (CHISQ.DIST.RT and the density up to 7% past each edge). All
@@ -3536,25 +3538,35 @@ Tasks: T-1543, T-1634
   - `CHISQ.INV(1E-100,6)` = 1.686865330603492E-33;
   - `GAMMAINV(1E-300,2,1925)` = 2.7223611075681657E-147.
 
-  Evidence: gen-m9 (excel-graph). The root is bit-exact at 8 of the 10 cells with a quantile below 1E-11 at shape 1
-  to 20: 0a9226016e8f5f33 A240, 4e55500bb8ad3cd8 A217, a790a4d4a6a82756 A293, eced4bb6a0234c9e A123,
-  165db58d1540f014 A283, a61e547a1cab994c A184 (and a7bf0d8d81d33ba6 A399), b4173fe25109a238 A252, and
-  3e98b26cf6713e77 A142 (shape 1.500000000000001). It also holds at shape 25 (probes-numeric/t1543-inverse-cdf-tiny-p
-  A31 `CHISQ.INV(1E-300,50)`). The two exceptions are `CHISQ.INV(1E-200,5)` (06b4e8f5de409d5e A128, 623663cacea53bbc
-  A98; also caa1eed48b1883fe A282 `GAMMAINV(1E-200,2.5,10000000001)`) and `CHISQ.INV(1E-200,10)` (d8266bc15533702a
-  A212). There Excel is 236 and 111 ulp above the root and 20 and 36 ulp above the crossing. That is neither a Newton
-  step from the root (at most about 1E-14 of x there) nor any other root form tried:
+  Evidence: gen-m9 (excel-graph). The cells with a quantile below 1E-11 at shape 1 to 20 reduce to 9 distinct
+  (shape, p) points. The root is bit-exact at 7 of them:
+  - (2, 1E-300): a790a4d4a6a82756 A293 and eced4bb6a0234c9e A123;
+  - (2.5, 1E-300): 4e55500bb8ad3cd8 A217;
+  - (3.5, 1E-200): 0a9226016e8f5f33 A240;
+  - (2, 1E-100): 165db58d1540f014 A283;
+  - (4.5, 1E-200): b4173fe25109a238 A252;
+  - (3, 1E-100): a61e547a1cab994c A184 and a7bf0d8d81d33ba6 A399;
+  - (1.500000000000001, 1E-100): 3e98b26cf6713e77 A142.
+
+  It also holds at shape 25 (probes-numeric/t1543-inverse-cdf-tiny-p A31 `CHISQ.INV(1E-300,50)`). The 2 exceptions
+  are (2.5, 1E-200), `CHISQ.INV(1E-200,5)` (06b4e8f5de409d5e A128, 623663cacea53bbc A98; also caa1eed48b1883fe A282
+  `GAMMAINV(1E-200,2.5,10000000001)`), and (5, 1E-200), `CHISQ.INV(1E-200,10)` (d8266bc15533702a A212). There Excel
+  is 236 and 111 ulp above the root and 20 and 36 ulp above the crossing. That is neither a Newton step from the root
+  (at most about 1E-14 of x there) nor any other root form tried:
   - `GAMMALN(a+1)` in place of `GAMMALN(a)+LN(a)`;
   - `LN(p)/a+GAMMALN(a+1)/a`;
   - `(p*GAMMA(a+1))^(1/a)`;
   - the log of the scale inside the exponent.
 
   Ours (T-2561, `incomplete_gamma::excel_tiny_quantile`): the root wherever our GAMMA.DIST at it is within 5E-14 of p,
-  at shapes 1 to 20. The 5E-14 is a fit: our cdf is up to 4.09E-14 from p at the eight bit-exact roots and 5.88E-14
-  and 6.24E-14 at the two exceptions, so any cut in [4.09E-14, 5.88E-14) scores the same. Below that cut the search
-  applies, as before. The check is not Excel's own test. At A31 Excel takes the root though our cdf there is 9.8E-12
-  off (e^-x and the series at x = 1E-11). And at `CHISQ.INV(1E-16,3)` (x = 2.6E-11, a7bf0d8d81d33ba6 A216) Excel is
-  one Newton step from the root, not the root (T-3294).
+  at shapes 1 to 20. Where our cdf at the root is further than 5E-14 from p, the search applies, as before. The
+  5E-14 is a fit inside the bracket [4.09E-14, 5.88E-14), set by A240 (our cdf 4.09E-14 from p, and Excel is the
+  root) and A212 (5.88E-14, and Excel is not); over the 9 points, 7 are in and 2 out. The rule is a proxy, not
+  Excel's own test:
+  - At A31 (shape 25) Excel takes the root though our cdf there is 9.8E-12 off (e^-x and the series at x = 1E-11).
+  - At `CHISQ.INV(1E-16,3)` (x = 2.6E-11, a7bf0d8d81d33ba6 A216) Excel is one Newton step from the root, not the root.
+
+  T-3294 sweeps shapes 1.5 to 19.5 and p from 1E-50 to 1E-300 to find the real test.
   Not reached (time-boxed, decision 0056), each still visibly off. These quantiles are too large for the root:
   - `CHISQ.INV(1E-20,6)` (a612e89321a6df9c A169, Excel 7.829736048647269E-7, ours 5 ulp below);
   - `CHISQ.INV(1E-20,10)` (c2974c061384fdd9 A355);
