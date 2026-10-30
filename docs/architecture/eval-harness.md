@@ -210,6 +210,8 @@ Only `pass` counts as passing. Case statuses:
   (`{name, reason}` for each suite under eval/suites that did not run: `not fetched` or `not
   selected`); report.md prints it under the title. `date` and `commit` change on every run, so no
   test or golden file compares a whole report.json.
+  Each `argument_coverage[]` row's `unseen_pairs` (T-3277) lists the expected argument-class pairs
+  (parameter names and `ArgClass` of each) that its `pairwise` share counts but no Excel-evidence call has passed.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 - `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
   it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
