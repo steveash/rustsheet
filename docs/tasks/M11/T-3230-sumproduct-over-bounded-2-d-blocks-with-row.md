@@ -80,12 +80,14 @@ summary of the shared data block would answer that.
     constant, a mask already multiplied out, text, `/`;
   - other arguments beside a masked one, IFERROR around it, and a block too small to cache;
   - a cycle through the block;
+  - a block past the operators' 2^20-cell array limit, which stays `#ERROR!` (the walk's
+    directive-5 refusal, arrays.md);
   - one value worked out by hand.
 
   A test-only counter checks that the masked path ran.
 - **Mutations:** each of these fails a test: ignoring a mask's error, ignoring the block's first
   error, letting a later operand's error win at an equal position, and placing a row mask's error
-  at its row number instead of the start of its row.
+  at its row number instead of the start of its row, and reading a block past the array limit.
 - **Eval delta:** calipers runs `pv26_002` and `pv26_2_002` again (all cells pass; recorded once
   T-3246 unblocks the ratchet). The gated suites do not change.
 - **Follow-up:** T-3246.

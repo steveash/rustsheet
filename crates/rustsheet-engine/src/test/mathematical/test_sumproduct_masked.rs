@@ -132,12 +132,21 @@ fn cached_and_walked(
     fill: &dyn Fn(&mut Model),
     formulas: &[String],
 ) -> (Vec<(String, String)>, usize) {
+    cached_and_walked_at(fill, formulas, "A")
+}
+
+/// [`cached_and_walked`] with the formulas in Sheet1's `column`.
+fn cached_and_walked_at(
+    fill: &dyn Fn(&mut Model),
+    formulas: &[String],
+    column: &str,
+) -> (Vec<(String, String)>, usize) {
     let run = |no_pass_caches: bool| {
         let mut model = new_empty_model();
         model.evaluation.no_pass_caches = no_pass_caches;
         fill(&mut model);
         for (index, formula) in formulas.iter().enumerate() {
-            model._set(&format!("A{}", index + 1), formula);
+            model._set(&format!("{column}{}", index + 1), formula);
         }
         model.evaluate();
         let texts: Vec<String> = (1..=formulas.len())
@@ -145,7 +154,7 @@ fn cached_and_walked(
                 let at = CellReferenceIndex {
                     sheet: 0,
                     row: i32::try_from(row).unwrap(),
-                    column: 1,
+                    column: crate::expressions::utils::column_to_number(column).unwrap(),
                 };
                 let circular = model
                     .evaluation
@@ -153,7 +162,7 @@ fn cached_and_walked(
                     .contains(&crate::evaluation::key(at));
                 format!(
                     "{} circular={circular}",
-                    model._get_text(&format!("A{row}"))
+                    model._get_text(&format!("{column}{row}"))
                 )
             })
             .collect();
@@ -278,4 +287,23 @@ fn a_masked_sum_by_hand() {
         .sum();
     assert_eq!(model._get_text("A1"), format!("{expected}"));
     assert_eq!(model.evaluation.ifs_cache.masked, 1);
+}
+
+/// A block past the operators' array limit (2^20 cells) is refused by them (`#ERROR!`), not read
+/// as a masked block.
+#[test]
+fn a_block_past_the_array_limit() {
+    let fill = |model: &mut Model| {
+        model._set("A1", "h");
+        model._set("B1", "k");
+        model._set("A600000", "3");
+    };
+    let formulas = [
+        "=SUMPRODUCT(Sheet1!$A$1:$B$600000*(Sheet1!$A$1:$B$1=\"h\")*(Sheet1!$A$1:$A$600000=3))"
+            .to_string(),
+    ];
+    let (results, masked) = cached_and_walked_at(&fill, &formulas, "D");
+    assert_eq!(results[0].0, results[0].1);
+    assert!(results[0].0.starts_with("#ERROR!"), "{}", results[0].0);
+    assert_eq!(masked, 0);
 }

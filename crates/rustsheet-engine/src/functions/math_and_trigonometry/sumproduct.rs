@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::arithmetic::{extended_product, extended_sum, flush_subnormal};
 use crate::functions::statistical::ifs_cache::BlockNumbers;
+use crate::limits::check_array_size;
 use crate::nested_array::NestedKind;
 use crate::{
     calc_result::CalcResult,
@@ -378,8 +379,14 @@ impl Model {
             CalcResult::Range { left, right } => {
                 let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
                 let columns = usize::try_from(right.column - left.column + 1).unwrap_or(0);
-                self.block_numbers(left, right)
-                    .map(|numbers| MaskedBlock::new(numbers, rows, columns))
+                // A block the operators could not lift is theirs to refuse (`#ERROR!`, arrays.md
+                // "Array results above 1,048,576 cells").
+                if check_array_size(rows, columns).is_some() {
+                    None
+                } else {
+                    self.block_numbers(left, right)
+                        .map(|numbers| MaskedBlock::new(numbers, rows, columns))
+                }
             }
             _ => None,
         };
