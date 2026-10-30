@@ -283,9 +283,9 @@ pub enum SheetOp {
 impl SheetOp {
     /// Where the input cell `addr` (1-based row) of `sheet` sits after this op: an `insert_row` at
     /// or above it moves it down a row, a `delete_row` above it moves it up by its row count, and
-    /// the column ops
-    /// move it the same way across. A cell in the deleted row or column, a deleted sheet or a
-    /// table op leaves the address as it was (the cell is gone or unmoved; no case reads it).
+    /// the column ops move it the same way across. A cell in the deleted row or column, a deleted
+    /// sheet or a table op leaves the address as it was (the cell is gone or unmoved; no case
+    /// reads it).
     /// `sheet` is the spec's sheet name: an edit of a sheet renamed by an earlier op is not
     /// matched, which no case does yet.
     #[must_use]
