@@ -3,7 +3,7 @@ id: T-3204
 title: "rustsheet-gen --policy numeric-fp: extend to M5 rounding chains (ROUNDUP, ROUNDDOWN, TRUNC, INT, MOD) and 15-digit boundaries"
 milestone: M5
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -28,15 +28,28 @@ boundary, so the M5 exit suite covers the snap and the ROUND family's 15-digit c
   position set rather than copying the module.
 
 ## Acceptance criteria
-- [ ] `rustsheet-gen --policy numeric-fp --milestone M5` (or an equivalent flag) writes deterministic gen-m5 cases
+- [x] `rustsheet-gen --policy numeric-fp --milestone M5` (or an equivalent flag) writes deterministic gen-m5 cases
       with `hypotheses` per cell: TRUNC, INT, MOD, ROUNDUP and ROUNDDOWN as pickers and as wrappers of `X-b`, and
       operands at 15-digit cut boundaries (X whose 15-digit cut is or is not b), in both operand orders; only
       catalog M0-M5 functions appear.
-- [ ] tools tests cover determinism, spec2xlsx parsing and the function scope.
-- [ ] Oracle-filled on excel-graph and baselined with no regressions; every failing cell has an open owner
+- [x] tools tests cover determinism, spec2xlsx parsing and the function scope.
+- [x] Oracle-filled on excel-graph and baselined with no regressions; every failing cell has an open owner
       (`make exit-owners MILESTONE=M5` reports 0).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for any failures (owner tasks).
 - The other §5.5 policy rows (`coercion`, `error_prop`, `lookup`, ...).
+
+## Outcome
+`rustsheet-gen --policy numeric-fp --milestone M5` (numeric_fp.py, sharing the M2 pair layout, `_inputs` and
+`_case`; the M2 output is byte-identical) writes three gen-m5 cases: `root` (TRUNC with and without 20 digits, INT,
+`MOD(..,2^21)`, ROUNDUP and ROUNDDOWN at 20 as pickers, both orders, 1,200 cells), `wrapper` (TRUNC both forms, INT,
+`MOD(..,1)`, ROUNDUP at 20 and 0, ROUNDDOWN at 20 around `X-b`, both orders, 1,400 cells) and `digits15` (k one step
+either side of each base's rounded and truncated 15-digit cut, every picker and wrapper, tagged
+`round15=`/`trunc15=`, 1,652 cells). Oracle-filled on excel-graph 2026-10-30. Eval delta: gen-m5 +4,252 checked
+cells, all passing (0 known-failure lines added; the suite's one F line is pre-existing); `make exit-owners
+MILESTONE=M5` reports 0. Findings in numbers.md "Near-zero snapping" (T-3204 paragraph): rounding wrappers keep and
+then round the residue (`INT(b-X)` = -1, `MOD(b-X,1)` = 1-2^-52), a root over rounded operands snaps by the
+left-addend bound on the cut values, and the 20-digit TRUNC/ROUNDUP/ROUNDDOWN follow the rounded 15-digit cut, not
+the truncated one.
