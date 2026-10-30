@@ -3,7 +3,7 @@ id: T-2219
 title: "F.DIST, F.DIST.RT and FDIST to 15 digits where the engine's incomplete beta and F density lose accuracy (16 visibly-off cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -127,3 +127,27 @@ Gap triage 2026-10-30: `make unowned-off ALL=1` listed one visibly-off cell that
 probes-numeric/m9-f-dist-rt Calc!A19, `F.DIST.RT(3,50,100)`. Excel 1.516786664496894e-6, ours 1.5167866644968792e-6;
 mpmath (80 digits) gives 1.5167866644968894697e-6, so Excel is +22 ulp and ours -48 ulp. Half a unit in the 15th digit
 is about 24 ulp here, so an accurate tail meets the stage. This task owns it.
+
+## Outcome
+Half-integer shapes with 10 <= a + b < MAXGAM, outside Excel's closed forms and the ported bratio
+branches, now take `incomplete_beta.rs::half_integer_tail`: x^a y^b with the exponent in
+double-double (the argument above 1/2 as 1 minus its complement, exactly) times F.TEST's
+double-double series `fisher::f_test_remainder`, instead of Cephes' prefactor and fraction (up to
+about 40 ulp off a 50-digit reference). The quantile searches (BETA.INV, F.INV, FINV) and the
+Student-t callers keep Cephes through `search_tails`: with the series under them 7 gated gen-m9
+quantile cells and BETADIST_BETAINV.xlsx H67 lose their bit. Below a + b = 10 the series only
+traded bit-exact cells and moved the gated `FDIST(2,1,9)` and `F.DIST(1,3,8,1)` 1 ulp, so Cephes
+stays there (`SERIES_MIN_SHAPE_SUM`).
+
+Eval delta (`make eval` against origin/main d6618cd): gated suites unchanged (no gen-m9 or
+ironcalc-calc cell moves). probes-numeric: 172 cells from visibly off to within 15 digits, 105 onto
+Excel's bit, 23 off it (all within 15 digits), and 10 to visibly off, each one where Excel is 6 to
+50 ulp off the 50-digit value and ours within 5 (listed in statistics.md). Table cells: A18, A25,
+A27 (m9-f-dist-rt / m9-f-dist), m9-legacy-fdist A39, A40 now within 4 ulp; A12, A28, legacy A27,
+A28, t1049-fdist A4 were already bit-exact on main; A20, legacy A37, A38 and t1049 A6 within 4 ulp
+before and after (densities and a + b < 10).
+
+Not reached, handed to T-3198 with the gen-m9 cells (all a + b below 10, df 1E10 or the shape-of-1
+forms; none moved): `F.DIST.RT(3,50,100)` (A19, the ported L140 bup + bpser branch) and the
+densities `F.DIST(0.5,50,100,FALSE)` and `F.DIST(3,50,100,FALSE)` (A26, A30, Excel's density model,
+T-3034). The gen-m9 acceptance line is therefore not met here; T-3198 owns it.

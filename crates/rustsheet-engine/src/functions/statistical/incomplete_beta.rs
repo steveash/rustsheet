@@ -100,7 +100,7 @@ pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
 /// cross (`beta.rs`, `fisher.rs::f_quantile_tail`). With the accurate series under them 7 gated
 /// gen-m9 quantile cells move off Excel's bit (`FINV(0.025,7,10)`, gen-m9/fec39efaba9284c3 A336;
 /// `F.INV.RT(0.975,9,9)`, 40425341c5034eed A205) and BETA.INV round trips such as
-/// ironcalc-calc BETADIST_BETAINV.xlsx H67 (3 becomes 2.9999999999999996), though more quantile
+/// ironcalc-calc `BETADIST_BETAINV.xlsx` H67 (3 becomes 2.9999999999999996), though more quantile
 /// cells move to within 15 digits than off: where Excel's search stops is T-2511's.
 pub(crate) fn search_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     reg_tails(x, y, a, b, Kernel::Cephes)
