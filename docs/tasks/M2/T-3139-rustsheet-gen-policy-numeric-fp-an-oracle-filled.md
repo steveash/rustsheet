@@ -3,7 +3,7 @@ id: T-3139
 title: "rustsheet-gen --policy numeric-fp: an oracle-filled gen-m2 batch of near-zero cancellations through M2 functions at the 8-ULP snap boundary"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -69,3 +69,17 @@ cancellation, so it is 100% while the probes keep finding snap failures.
 - The other rows of §5.5 (`coercion`, `error_prop`, `lookup`, ...) and M5+ functions (ROUNDUP of MOD, TRUNC, INT
   chains): file follow-ups for their own milestones.
 - LAMBDA and defined-name bodies (T-3105, T-3093 and T-3111 cover them).
+
+## Outcome
+- `rustsheet-gen --policy numeric-fp --seed <n>` (tools/src/rustsheet_tools/gen/numeric_fp.py) writes three gen-m2
+  cases, one per position (`root` 2,000 cells, `wrapper` 1,600, `sum` 1,600; 5,200 in all), over bases 1, 2, 0.5,
+  2^20 and 1.5, k = 0..9, both signs and both operand orders, each cell tagged
+  `numeric-fp/<position>/<form>/<order>/base=../sign=../k=..`. It reuses `numeric_rules.BASES` and the ULP helper,
+  renamed `fmt_k` (public, documented). AVERAGEIF is M9, so the `sum` position covers SUM, AVERAGE, SUMIF and SUMIFS.
+- Seed 0 is oracle-filled on excel-graph (gen-m2 fde64eeac1b5122d, 4fcaec656703fa15, 2f543197a3445de1) and the
+  engine matches all 5,200 cells. Eval delta: gen-m2 +3 cases, +5,200 checked cells, known failures 0 -> 0, no
+  regressions; nothing needs an owner.
+- The findings (pickers snap as plain references, wrappers never snap, ROUND's 15-digit cut makes the root snap more
+  often, a trailing numeric 0 stops SUM/AVERAGE, SUMIF/SUMIFS never snap) are in docs/excel-semantics/numbers.md;
+  synthetic-generator.md §5.5 lists the policy and its scope.
+- Follow-up: T-3204 (M5 rounding chains and 15-digit boundaries).
