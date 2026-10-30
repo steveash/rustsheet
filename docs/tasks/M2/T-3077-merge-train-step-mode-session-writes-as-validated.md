@@ -3,7 +3,7 @@ id: T-3077
 title: "Merge-train step mode: session writes as validated JSON actions"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
