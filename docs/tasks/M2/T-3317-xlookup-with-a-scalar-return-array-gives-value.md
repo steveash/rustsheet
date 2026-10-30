@@ -3,7 +3,7 @@ id: T-3317
 title: "XLOOKUP with a scalar return_array gives #VALUE! where Excel gives if_not_found (t3181 Calc!B11)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,8 @@ in lookup_and_reference/xlookup. Check first what a scalar return_array does wit
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/t3317-xlookup-scalar-return` (20 cells, oracle-filled) shows a scalar return_array is
+a one-cell array. `xlookup_table` now wraps a scalar number, text, boolean or blank that way.
+t3181 Calc!B11 passes; probe 20/20.
