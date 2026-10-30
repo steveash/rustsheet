@@ -2765,7 +2765,7 @@ double. An 80-bit register holding `T` for that one product would do it; that is
   the bit (51 by 1 ulp, one visibly: yield-one-step-start A37, 32 ulps; decision 0166, follow-up T-3152). In-scope
   visibly-off cells go from 3,166 to 3,141. The lab still misses 155 of 1,115 cells.
 T-3152 (attempt 1, 2026-10-30): no start built from the term-scaled formula's operations beats the engine's. The fit lab
-now names both earlier engine starts (kernels/solvers.py `rounded_once_yield_start`, `unrounded_term_yield_start`):
+now names both earlier engine starts (kernels/yield_caret.py `rounded_once_yield_start`, `unrounded_term_yield_start`):
 `uv run rustsheet-fitlab yield-caret` (370 basis-0 cells) scores the rounded-once start 268 bit-exact and 361 within
 4 ulps, the unrounded-term start 341 and 369, T-1592's start in doubles 240 and 361.
 - Of the 9 cells decision 0162 listed visibly off, 6 are within 15 digits since attempt 4; yield-start-rate-term B30

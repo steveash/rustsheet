@@ -31,7 +31,7 @@ from contextvars import ContextVar
 from fractions import Fraction
 from functools import partial
 
-from rustsheet_tools.fitlab.exact import DOUBLE, X87, round_to_bits
+from rustsheet_tools.fitlab.exact import X87
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.kernels.power import excel_model
 from rustsheet_tools.fitlab.score import Candidate, ExcelError, candidate
@@ -787,31 +787,6 @@ def fitted_yield_start(*args: Arg) -> float:
     return (100 * rate + (100 - pr) / years) / ((100 + pr) / 2 - (100 - pr) / (4 * years))
 
 
-def rounded_once_yield_start(*args: Arg) -> float:
-    """`fitted_yield_start` computed exactly over the exact term `whole + days/year` and rounded once
-    to a double (T-2974 attempt 2, the engine's start under decision 0162)."""
-    settle, maturity, rate, pr, _, _, basis = _bond(args)
-    whole, days, year = start_term(settle, maturity, basis)
-    t, q = whole + Fraction(days, year), 100 - Fraction(pr)
-    if t == 0:
-        raise NoResultError("a zero term")  # the engine's NaN start, so #NUM!
-    exact_start = (100 * Fraction(rate) + q / t) / ((100 + Fraction(pr)) / 2 - q / (4 * t))
-    return float(round_to_bits(exact_start, DOUBLE))
-
-
-def unrounded_term_yield_start(*args: Arg) -> float:
-    """The start multiplied through by T, `((r T) 100 + q) / (D/2 - q/4)` with `q = 100 - pr`, in
-    doubles but for `D = pr T + 100 T`, rounded once with `100 T` rounded and `T` in `pr T` the exact
-    sum `whole + fl(days/year)`; every other `T` that sum rounded (T-2974 attempt 4, decision 0166:
-    the engine's `yield_start`)."""
-    settle, maturity, rate, pr, _, _, basis = _bond(args)
-    whole, days, year = start_term(settle, maturity, basis)
-    fraction = days / year
-    years, q = whole + fraction, 100 - pr
-    d = float(round_to_bits(Fraction(pr) * (whole + Fraction(fraction)) + Fraction(100 * years), DOUBLE))
-    return ((rate * years) * 100 + q) / (d / 2 - q / 4)
-
-
 def _newton_yield_short(start: Callable[..., float], tol: float) -> Callable[..., float]:
     """Analytic Newton from `start(*cell_args)` that returns the iterate whose next step is below
     `tol`, without taking that step (T-1592: Excel's values stop short of PRICE's root)."""
@@ -953,19 +928,6 @@ def yield_candidates() -> list[Candidate]:
             "Newton, fitted start",
         )
         for t in (1e-9, 1e-10, 1e-11)
-    ]
-    # T-3152: the starts the engine took under decisions 0162 (rounded once) and 0166 (`pr T` on the
-    # unrounded term), with the short stop at 1e-10.
-    out += [
-        candidate(
-            f"Newton from the {name} start, returned before a step below 1e-10",
-            _newton_yield_short(start, 1e-10),
-            "Newton, fitted start",
-        )
-        for name, start in (
-            ("rounded-once (exact term)", rounded_once_yield_start),
-            ("unrounded-term", unrounded_term_yield_start),
-        )
     ]
     out += [
         candidate(

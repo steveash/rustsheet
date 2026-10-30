@@ -331,11 +331,11 @@ def test_yield_unrounded_term_start_sits_one_ulp_above_rounded_once() -> None:
     # is one ulp below Excel's; the unrounded-term start (decision 0166, the engine's) is Excel's.
     sweep = {c.key: c for c in load_sweep(["probes/yield-solver-sweep"], r"^=YIELD\((.*)\)$").cells}
     cell = sweep["S!C7"]
-    once = solvers.rounded_once_yield_start(*cell.args)
-    assert solvers.unrounded_term_yield_start(*cell.args) == math.nextafter(once, math.inf)
+    once = yield_caret.rounded_once_yield_start(*cell.args)
+    assert yield_caret.unrounded_term_yield_start(*cell.args) == math.nextafter(once, math.inf)
     for start, exact in (
-        (solvers.rounded_once_yield_start, False),
-        (solvers.unrounded_term_yield_start, True),
+        (yield_caret.rounded_once_yield_start, False),
+        (yield_caret.unrounded_term_yield_start, True),
     ):
         model = yield_caret.caret_priced(solvers._newton_yield_short(start, 1e-10))
         assert (model(*cell.args) == cell.expected) == exact, start.__name__
@@ -390,6 +390,7 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
         assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
     assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
     assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
+    assert solvers.start_term(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == (7, 164, 360)
 
 
 def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:

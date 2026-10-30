@@ -61,14 +61,12 @@ on the YIELD cells, so start from the lab, not the port. `fn_yield_start_term_wh
 
 ## Attempt 1 (2026-10-30, decision 0056)
 - The fit lab names both earlier engine starts (`rounded_once_yield_start`, `unrounded_term_yield_start` in
-  kernels/solvers.py; `test_yield_unrounded_term_start_sits_one_ulp_above_rounded_once`). `yield-caret`, 370 cells,
-  bit-exact / within 4 ulps: unrounded-term (the engine) 341 / 369, rounded-once 268 / 361, T-1592's doubles 240 / 361.
-- Of the nine cells in Context, six are within 15 digits since T-2974 attempt 4. Still visibly off: yield-start-rate-term
-  S!B30 (5 ulps; start one ulp lower needed), yield-start-term-basis S!C47 (13; one lower) and yield-one-step-start
-  S!A37 (32; one higher). The lab reproduces all three engine misses, so they are the start, not the engine's PRICE.
-- Scratch grid, 13,824 candidates on 1,100 YIELD probe cells (each of the start's nine operations exact or rounded,
-  each of the three term products on the double, `whole + fl(days/year)` exact or `whole + days/year` exact): best 945,
-  the engine's arrangement (and eleven equivalents); doubles 676, attempt 3's FMA form 775, all exact 694. No gain.
-- Details and the per-group and slope findings: financial.md "YIELD stops short of PRICE's root", T-3152 attempt 1.
-- `fn_yield_start_term_whole_years_then_leftover_days` keeps its one-ulp pins on A1 and A2: no start found that fixes them.
+  kernels/yield_caret.py). `yield-caret`, 370 cells, bit-exact / within 4 ulps: unrounded-term (the engine) 341 / 369,
+  rounded-once 268 / 361, T-1592's doubles 240 / 361.
+- Six of the nine Context cells are within 15 digits since T-2974 attempt 4. Still off: yield-start-rate-term S!B30,
+  yield-start-term-basis S!C47 and yield-one-step-start S!A37, each one start ulp from Excel's (the lab reproduces them).
+- A 13,824-candidate grid of exact or rounded operations and term variants found nothing above the engine's start.
+  Counts and the other findings: financial.md "YIELD stops short of PRICE's root", T-3152 attempt 1. Its "Next" line
+  is the hypothesis a second attempt needs.
+- `fn_yield_start_term_whole_years_then_leftover_days` keeps its one-ulp pins on A1 and A2.
 - Eval delta: none (lab and docs only).
