@@ -8,7 +8,7 @@
 //! by [`MAX_VALUE_OPERATORS`] instead.
 
 use crate::expressions::lexer::STRING_LITERAL_TOO_LONG_MESSAGE;
-use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser, Run};
 
 /// Deepest formula tree the parser builds; deeper formulas are a parse error
 /// ([`TOO_DEEP_MESSAGE`]), which keeps untrusted formulas from overflowing
@@ -20,6 +20,12 @@ use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser};
 /// docs/excel-semantics/syntax.md. Sized for optimized builds on a 1 MiB
 /// stack (about 2 KB of parser stack per nesting level).
 pub const MAX_FORMULA_DEPTH: usize = 256;
+
+/// Most written groups a formula may nest (`((...(x)...))`): Excel loads 256 directly nested
+/// parentheses and refuses 257, stored and typed (probes/t3172-paren-256, T-3172). Groups split
+/// into several runs (`(1+((...)))`) count together (unprobed). A run is parsed in a loop
+/// ([`Parser::parse_parenthesis_run`]), so this bound is Excel's, not the stack's.
+pub const MAX_PARENTHESES: usize = 256;
 
 /// Levels an operand adds over its subexpressions, at most: a call wrapped in
 /// `@` or `#` on import (`_xlfn.SINGLE`), or `LAMBDA(...)(...)`.
@@ -126,11 +132,24 @@ impl Parser {
         result
     }
 
+    /// The run and the signs before an operand of [`Parser::parse_power`]. A pending operand has
+    /// none of its own (what follows it is read after it, [`Parser::parse_parenthesis_run`]).
+    pub(super) fn parse_prefix(&mut self) -> (Run, Vec<(bool, Run)>) {
+        if self.pending_operand.is_some() {
+            return (Run::default(), Vec::new());
+        }
+        (self.run_ahead(), self.parse_signs())
+    }
+
     /// Parses an operand. Its subexpressions (parenthesised, function
     /// arguments, array items, LAMBDA bodies) recurse into `parse_expr`, so
     /// this is where the parser's recursion is bounded: every open operand
     /// reserves its share of [`MAX_FORMULA_DEPTH`] before descending.
     pub(super) fn parse_primary(&mut self) -> Node {
+        if let Some((node, depth)) = self.pending_operand.take() {
+            self.depth = depth;
+            return node;
+        }
         if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
             return self.too_deep();
         }

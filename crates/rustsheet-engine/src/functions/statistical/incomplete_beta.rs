@@ -25,9 +25,12 @@
 //! Every loop is bounded: at most [`MAX_FRACTION_TERMS`] continued-fraction steps (Cephes' own
 //! cap) and [`RLOG1_TERMS`] series terms, so one call costs a fixed amount of work.
 
+use super::half_integer_beta::{half_integer_remainder, is_half_integer_shape};
 use super::special::ln_gamma;
-use crate::x87_exp::excel_exp;
-use crate::x87_log10::excel_ln;
+use crate::x87_exp::{dd_add, dd_mul, fast_two_sum, two_sum};
+use crate::x87_exp::{excel_exp, excel_expm1};
+use crate::x87_log10::{excel_ln, ln_double_double_pair};
+use crate::x87_log1p::excel_ln_one_minus;
 
 /// Cephes' `MAXGAM`: Gamma(z) is finite below it.
 const MAXGAM: f64 = 171.624_376_956_302_7;
@@ -44,6 +47,13 @@ const STIRLING_MIN: f64 = 8.0;
 pub(crate) const FRAC_1_SQRT_2PI: f64 = 0.398_942_280_401_432_7;
 /// Terms of the atanh series in [`rlog1`]: |r| <= 1/3 there, so (1/9)^20 is far below 2^-53.
 const RLOG1_TERMS: u32 = 20;
+
+/// The smallest a + b from which half-integer shapes take [`half_integer_tail`]. Below it Cephes'
+/// kernel is already within 15 digits of Excel, and the series only trades bit-exact cells: over
+/// every suite (T-2219) a + b below 10 moved 35 cells off Excel's bit and 75 onto it with 6 cells
+/// fixed visibly, among them the gated `FDIST(2,1,9)` and `F.DIST(1,3,8,1)` (gen-m9/c18dbf21f11093f3
+/// A151, c6cfda6bd10cae93 A348) 1 ulp off, while from 10 up it fixes 122 visibly-off cells.
+const SERIES_MIN_SHAPE_SUM: f64 = 10.0;
 
 /// Below this x an a = 1 tail outside Excel's closed forms is -expm1(b ln1p(-x)), which keeps the
 /// digits 1 - exp(b ln(1 - x)) cancels (T-0974): always so in [`shape_one_tails`] (x0 < 0.1 there),
@@ -72,14 +82,41 @@ pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
 /// `F.DIST.RT(1E-6,1,1)` is then Excel's correctly rounded 0.9993633804398389
 /// (probes-numeric/m9-legacy-fdist A12), where forming 1 - w from w misses by 2E-14. A shape of 1
 /// takes Excel's closed forms ([`closed_form_tails`], T-2502).
+///
+/// Like [`beta_reg_upper`] and [`search_tails`] it keeps Cephes' kernel at half-integer shapes,
+/// which the quantile searches (BETA.INV, F.INV) and the Student-t tails still invert.
 pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    beta_reg_tails(x, y, a, b).0
+    search_tails(x, y, a, b).0
 }
 
 /// (`I_x(a, b)`, 1 - `I_x(a, b)`) with y = 1 - x given: Excel's oriented closed forms
 /// ([`closed_form_tails`]), a shape of 1 outside them ([`shape_one_tails`]), else one evaluation of
-/// the Cephes kernel ([`beta_tails`]).
+/// the kernel ([`beta_tails`]: the accurate series at half-integer shapes, T-2219, else Cephes).
+/// Not for a quantile search, which crosses [`search_tails`].
 pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+    reg_tails(x, y, a, b, Kernel::Accurate)
+}
+
+/// [`beta_reg_tails`] with Cephes' kernel at every shape: the tails BETA.INV's and F.INV's searches
+/// cross (`beta.rs`, `fisher.rs::f_quantile_tail`). With the accurate series under them 7 gated
+/// gen-m9 quantile cells move off Excel's bit (`FINV(0.025,7,10)`, gen-m9/fec39efaba9284c3 A336;
+/// `F.INV.RT(0.975,9,9)`, 40425341c5034eed A205) and BETA.INV round trips such as
+/// ironcalc-calc `BETADIST_BETAINV.xlsx` H67 (3 becomes 2.9999999999999996), though more quantile
+/// cells move to within 15 digits than off: where Excel's search stops is T-2511's.
+pub(crate) fn search_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+    reg_tails(x, y, a, b, Kernel::Cephes)
+}
+
+/// Which kernel [`beta_tails`] takes at half-integer shapes below [`MAXGAM`].
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Kernel {
+    /// [`half_integer_tail`].
+    Accurate,
+    /// Cephes' prefactor and continued fraction.
+    Cephes,
+}
+
+fn reg_tails(x: f64, y: f64, a: f64, b: f64, kernel: Kernel) -> (f64, f64) {
     if x.is_nan() || y.is_nan() || a.is_nan() || b.is_nan() {
         return (f64::NAN, f64::NAN);
     }
@@ -91,7 +128,7 @@ pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     }
     closed_form_tails(x, y, a, b)
         .or_else(|| shape_one_tails(x, y, a, b))
-        .unwrap_or_else(|| beta_tails(x, y, a, b))
+        .unwrap_or_else(|| beta_tails(x, y, a, b, kernel))
 }
 
 /// Excel's closed forms of the incomplete beta, (`I_x(a, b)`, 1 - `I_x(a, b)`), for 0 < x, y < 1
@@ -129,21 +166,24 @@ pub(crate) fn closed_form_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, 
 /// 0 < x, y < 1: bratio's oriented a0 = 1 with y0 > 0.9 (x0 below about 0.1). Like bratio, Excel
 /// computes w and forms w1 as (0.5 - w) + 0.5 (statistics.md "Incomplete beta at a shape of 1
 /// outside the closed forms", T-3007):
-/// - w = -expm1(b0 ln1p(-x0)): `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)` is
-///   9.999999999999999E-11 (probes-numeric/t1745-beta-inv-roundtrip G35), which 1 - exp misses by
-///   8E-8 relative (T-0974); bpser(1, b0, x0) is further off Excel's w than this form;
+/// - w = -expm1(b0 ln1p(-x0)) with Excel's own expm1 (Kahan's form) and log1p (the stored atanh
+///   series): `F.DIST.RT(10,6,2)` = 0.09368601255412709 (gen-m9/146b46e74f2dac3b A329) and
+///   `FDIST(40,8,2)` (gen-m9/abc2939ebd1e2365 A318) are then bit-exact; libm's expm1 and log1p miss
+///   71 eval cells this form gets, and get 6 it misses (T-3170). `BETA.DIST(1.9999999998999996E-10,
+///   1,0.5,TRUE)` is 9.999999999999999E-11 (probes-numeric/t1745-beta-inv-roundtrip G35), which
+///   1 - exp misses by 8E-8 relative (T-0974); bpser(1, b0, x0) is further off Excel's w;
 /// - w1 from w: `F.DIST(5,20,2,TRUE)` = 0.8203482998751552 (probes-numeric/t2220-f-dist-sweep-cdf
 ///   A718), which y0^b0 puts 3 ulp low.
 ///
-/// `None` for other shapes and points. Excel's own w here is still 1 ulp off this form at 52 cells
-/// (TODO(T-3170)), and a w1 below 2^-53, which the complement rounds to 0, has no evidence (TODO(T-3150)).
+/// `None` for other shapes and points. A w1 below 2^-53, which the complement rounds to 0, has no
+/// evidence (TODO(T-3150)).
 fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
     let swap = x > 0.5;
     let (a0, b0, x0, y0) = if swap { (b, a, y, x) } else { (a, b, x, y) };
     if a0 != 1.0 || b0 == 1.0 || y0 <= A1_CLOSED_FORM_MAX_Y {
         return None;
     }
-    let w = -(b0 * (-x0).ln_1p()).exp_m1();
+    let w = -excel_expm1(b0 * excel_ln_one_minus(x0));
     let w1 = (0.5 - w) + 0.5;
     Some(if swap { (w1, w) } else { (w, w1) })
 }
@@ -152,14 +192,20 @@ fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
 /// its complement, for 0 < x < 1 outside the closed forms: Excel's two F tails add up to exactly
 /// 1 at the mean, `F.DIST.RT(1,3,7)+F.DIST(1,3,7,TRUE)` = 1 (probes-numeric/t1049-fdistrt A27),
 /// which two separate evaluations miss by 6E-16.
-fn beta_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+fn beta_tails(x: f64, y: f64, a: f64, b: f64, kernel: Kernel) -> (f64, f64) {
     let flip = x > a / (a + b);
     let (x, y, a, b) = if flip { (y, x, b, a) } else { (x, y, a, b) };
-    let w = cephes_fraction(a, b, x, y);
-    let v = if a + b < MAXGAM {
+    let accurate = match kernel {
+        Kernel::Accurate => half_integer_tail(x, y, a, b),
+        Kernel::Cephes => None,
+    };
+    let v = if let Some(v) = accurate {
+        v
+    } else if a + b < MAXGAM {
+        let w = cephes_fraction(a, b, x, y);
         (a * x.ln()).exp() * (b * y.ln()).exp() * gamma_ratio(a, b) / a * w
     } else {
-        large_prefactor(a, b, x, y) * w / a
+        large_prefactor(a, b, x, y) * cephes_fraction(a, b, x, y) / a
     };
     if flip {
         (1.0 - v, v)
@@ -168,10 +214,48 @@ fn beta_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     }
 }
 
+/// `I_x(a, b)` for half-integer shapes (the F tails) with a + b from [`SERIES_MIN_SHAPE_SUM`] to
+/// below [`MAXGAM`] and x at most the mean, close to correctly rounded: x^a y^b with a ln x + b ln y
+/// in double-double, times the remainder `I_x(a,b)/(x^a y^b)`, a double-double series of positive
+/// terms (`half_integer_beta::half_integer_remainder`). Cephes' prefactor and fraction there are up
+/// to about 40 ulp off a 50-digit reference (`F.DIST.RT(1,50,100)`, `F.DIST(0.5,50,100,TRUE)`,
+/// probes-numeric/m9-f-dist-rt A18, m9-f-dist A25), where Excel is within half an ulp (T-2219).
+/// `None` for other shapes. Not Excel's arithmetic: an accuracy stand-in for the bfrac, basym and
+/// bgrat branches of the bratio port (SPEC-0025), which replace it, libm `exp` included, as they
+/// land (T-2508).
+fn half_integer_tail(x: f64, y: f64, a: f64, b: f64) -> Option<f64> {
+    if !(is_half_integer_shape(a)
+        && is_half_integer_shape(b)
+        && (SERIES_MIN_SHAPE_SUM..MAXGAM).contains(&(a + b)))
+    {
+        return None;
+    }
+    // The argument above 1/2 is taken as 1 minus the other, exactly in double-double: the caller
+    // forms x and y each rounded, and the rounding of the one near 1 is what a large shape
+    // multiplies (`F.DIST(1,50,7,TRUE)`, probes-numeric/t2220-f-dist-sweep-cdf A854, is 13 ulp
+    // off with ln x and within 1 with ln(1 - y)).
+    let (x, y) = (complement_above_half(x, y), complement_above_half(y, x));
+    let exponent = dd_add(
+        dd_mul((a, 0.0), ln_double_double_pair(x)),
+        dd_mul((b, 0.0), ln_double_double_pair(y)),
+    );
+    let (hi, lo) = fast_two_sum(exponent.0, exponent.1);
+    Some(hi.exp() * (1.0 + lo) * half_integer_remainder(x, a, b))
+}
+
+/// `v` as a double-double, as 1 - `other` (exact by `TwoSum`) when `v` is above 1/2.
+fn complement_above_half(v: f64, other: f64) -> (f64, f64) {
+    if v > 0.5 {
+        two_sum(1.0, -other)
+    } else {
+        (v, 0.0)
+    }
+}
+
 /// 1 - `I_x(a, b)`, the upper tail of [`beta_reg_complement`], with y = 1 - x given: the other tail
 /// of the same evaluation, Excel's closed forms ([`closed_form_tails`]) included.
 pub(crate) fn beta_reg_upper(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    beta_reg_tails(x, y, a, b).1
+    search_tails(x, y, a, b).1
 }
 
 /// The beta density x^(a-1) (1-x)^(b-1) / B(a, b) for 0 < x < 1 while Gamma(a+b) is finite, by
@@ -682,5 +766,34 @@ mod tests {
         assert_eq!(d, Some(1.483_764_648_437_5));
         assert_eq!(beta_density(0.0, 2.0, 3.0), None);
         assert_eq!(beta_density(0.5, 100.0, 100.0), None);
+    }
+
+    // T-2219: F tails at half-integer shapes from a + b = 10 against a 50-digit mpmath `betainc` at
+    // the exact df1 x/(df1 x + df2). Cephes' kernel (`search_tails`) was 17 to 40 ulp off on these
+    // (F.DIST.RT(1,50,100), probes-numeric/m9-f-dist-rt A18: 0.48912050780793204). These are the
+    // true values, not Excel's: `F.DIST.RT(10,1,50)` is 0.0026605541904910776 in Excel
+    // (t2220-f-dist-sweep-rt A89, 13 ulp high), which is T-3199's.
+    #[test]
+    fn half_integer_tails_are_close_to_correctly_rounded() {
+        for (x, df1, df2, upper, reference) in [
+            (1.0, 50.0, 100.0, false, 0.510_879_492_192_069_9),
+            (1.0, 50.0, 100.0, true, 0.489_120_507_807_930_15),
+            (1.0, 100.0, 3.0, true, 0.603_813_750_381_993_4),
+            (1.0, 50.0, 7.0, false, 0.442_463_015_782_617_2),
+            (10.0, 1.0, 50.0, true, 0.002_660_554_190_491_072),
+        ] {
+            let scaled: f64 = df1 * x;
+            let total = scaled + df2;
+            let (lower, upper_tail) =
+                beta_reg_tails(scaled / total, df2 / total, df1 / 2.0, df2 / 2.0);
+            let got = if upper { upper_tail } else { lower };
+            assert!(
+                ulps(got, reference) <= 4,
+                "F({x},{df1},{df2}) upper={upper}: {got} against {reference}"
+            );
+        }
+        // Below a + b = 10 and in the quantile searches' tails Cephes' kernel stays.
+        let (u, v) = (0.25, 0.75);
+        assert_eq!(beta_reg_tails(u, v, 1.5, 4.0), search_tails(u, v, 1.5, 4.0));
     }
 }

@@ -3,7 +3,7 @@ id: T-3164
 title: "Readiness markers survive the attribution footer a session's GitHub write appends"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -30,11 +30,19 @@ shadow and train runs see the PRs workers mark ready.
   author rule unchanged.
 
 ## Acceptance criteria
-- [ ] `parse_marker` accepts a marker followed by the attribution footer and still rejects any other trailing
+- [x] `parse_marker` accepts a marker followed by the attribution footer and still rejects any other trailing
       text; unit tests in `scripts/test_merge_ready.py` cover both, and the ejection block if it shares the rule.
-- [ ] `make merge-ready-verify PR=<n>` exits 0 on a PR marked from a session (re-mark #2337's shape or a new PR).
-- [ ] Decision record (protected path); architecture and security approve.
-- [ ] `make check` green; reviewers approve.
+- [x] `make merge-ready-verify PR=<n>` exits 0 on a PR marked from a session (re-mark #2337's shape or a new PR).
+- [x] Decision record (protected path); architecture and security approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the footer itself, which the platform adds.
+
+## Outcome
+`merge_ready.FOOTER` is the one definition of the session attribution footer. `parse_marker` normalizes line endings
+and strips at most one exact trailing footer before reading the block. Any other trailing text, a second footer or
+an altered one is still rejected (unit tests in `scripts/test_merge_ready.py`). `merge_step.same_body` uses the
+same constant. The `merge-train-ejected v1` block is only written, by the merger, and never parsed, so it needed no
+change. Decision 0175 amends SPEC-0027 section 2. The live check is this PR's own `make mark-ready` and
+`make merge-ready-verify`. Eval delta: none (harness scripts only).
