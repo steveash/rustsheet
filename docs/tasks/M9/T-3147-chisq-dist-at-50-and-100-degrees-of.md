@@ -3,7 +3,7 @@ id: T-3147
 title: "CHISQ.DIST at 50 and 100 degrees of freedom and CHISQ.DIST(40,10,FALSE): Excel's large-shape prefactor (9 unowned visibly-off cells of the m9 CHISQ.DIST probe)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
