@@ -33,7 +33,7 @@ const LOG_FORM_RATIO: f64 = 1E-15;
 /// 74), at 5, 9 and 10 it is 10 to 18 off at x / beta from 1 up (probes-numeric m9-chisq-dist A48,
 /// m9-gamma-dist-a9 A8), where the direct form is 0 to 1; T-3147 finds Excel's large-shape form
 /// above the mode from 3.
-const LOG_FORM_SHAPE_MAX: f64 = 3.0;
+const LOG_FORM_SHAPE_MAX: f64 = 2.5;
 
 /// The smallest shape at which GAMMA.DIST's density takes the EXP(a LN(y)) form. A fit inside its
 /// evidence bracket (0.1, 0.5] (T-2852): the form holds at every probed density of shapes 0.5 to
@@ -48,7 +48,7 @@ const LOG_FORM_SHAPE_MIN: f64 = 0.5;
 /// rounding of the double y, times y, moves e^-y by 4 units, which Excel (within 1 ulp of the
 /// true value) does not carry; e^-y of the extended quotient fixes that cell but loses probes/
 /// t2753-gamma-density-ratio-sweep B35.
-const LOG_FORM_Y_MAX: f64 = 16.0;
+const LOG_FORM_Y_MAX: f64 = 2.0;
 
 /// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density in Excel's log-space forms, with Excel's
 /// own LN, EXP and GAMMA (`x87_log10`, `x87_exp`, `gamma_x87`), or `None` where the caller's forms hold.
