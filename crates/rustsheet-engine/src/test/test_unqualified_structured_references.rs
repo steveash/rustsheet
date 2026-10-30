@@ -94,6 +94,9 @@ fn survives_a_sheet_rename() {
 #[test]
 fn outside_every_table_it_is_refused() {
     let mut model = model();
-    typed(&mut model, 9, 9, "=[@Col]*2");
-    assert_eq!(model.get_formatted_cell_value(0, 9, 9).unwrap(), "#ERROR!");
+    // A typed formula that does not parse is refused and the cell keeps its content (T-3213).
+    let refused = model.set_typed_user_input(0, 9, 9, "=[@Col]*2".to_string());
+    assert!(refused.is_err());
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 9, 9).unwrap(), "");
 }
