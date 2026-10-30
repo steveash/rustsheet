@@ -176,12 +176,13 @@ impl Model {
         matches!(parsed, Ok(node) if !matches!(node, Node::ParseErrorKind { .. }))
     }
 
-    /// Grows the table of `expansion` (on `sheet`) by one row down (T-3273), or by its new column,
-    /// writing the column's name into its header cell: `Column1` as for a column insert
-    /// (probes/t2957-expand-right-data: D1 is `Column1`), `0` when a formula was typed into the header cell itself (-header: `=1+1`
-    /// typed into D1 leaves the text `0`, not 2 and no formula; rule 7b), or the text of a
-    /// constant typed there (t3003-const-*-d1, rule 7a). A name the table already has falls back
-    /// to `ColumnN` (unprobed).
+    /// Grows the table of `expansion` (on `sheet`). A [`TableGrowth::Down`] expansion only moves
+    /// the reference down a row (T-3273). A new column also gets its name written into its header
+    /// cell: `Column1` as for a column insert (probes/t2957-expand-right-data: D1 is `Column1`),
+    /// `0` when a formula was typed into the header cell itself (-header: `=1+1` typed into D1
+    /// leaves the text `0`, not 2 and no formula; rule 7b), or the text of a constant typed there
+    /// (t3003-const-*-d1, rule 7a). A name the table already has falls back to `ColumnN`
+    /// (unprobed).
     pub(crate) fn expand_table(
         &mut self,
         sheet: u32,
@@ -190,25 +191,23 @@ impl Model {
         let Some(b) = bounds(&expansion.table) else {
             return Ok(());
         };
-        if expansion.growth == TableGrowth::Down {
-            let (first, last) = number_to_column(b.left)
-                .zip(number_to_column(b.right))
-                .ok_or_else(|| format!("No column {}", b.right))?;
-            if let Some(table) = self.workbook.tables.get_mut(&expansion.table.name) {
-                table.reference = format!("{first}{}:{last}{}", b.top, b.bottom + 1);
-                self.reset_tables();
-            }
-            return Ok(());
-        }
-        let column = b.right + 1;
+        let (right, bottom) = match expansion.growth {
+            TableGrowth::Right => (b.right + 1, b.bottom),
+            TableGrowth::Down => (b.right, b.bottom + 1),
+        };
         let (first, last) = number_to_column(b.left)
-            .zip(number_to_column(column))
-            .ok_or_else(|| format!("No column {column}"))?;
+            .zip(number_to_column(right))
+            .ok_or_else(|| format!("No column {right}"))?;
         let name = expansion.table.name.clone();
         let Some(table) = self.workbook.tables.get_mut(&name) else {
             return Ok(());
         };
-        table.reference = format!("{first}{}:{last}{}", b.top, b.bottom);
+        table.reference = format!("{first}{}:{last}{bottom}", b.top);
+        if expansion.growth == TableGrowth::Down {
+            self.reset_tables();
+            return Ok(());
+        }
+        let column = right;
         let typed_name = match &expansion.header_text {
             Some(text) => Some(text.as_str()),
             None => expansion.header.then_some("0"),

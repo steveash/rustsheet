@@ -243,3 +243,23 @@ fn typing_below_the_table_grows_it_by_a_row_and_rollback_restores_it() {
     assert_eq!(formula(&wb, "A5").as_deref(), Some("=B4*2"));
     assert_eq!(wb.value("A5").unwrap(), Value::Number(80.0));
 }
+
+/// A formula typed just below an empty column grows the table but fills nothing, so rolling the
+/// edit back leaves every cell as it was (unprobed, pinned, T-3273).
+#[test]
+fn a_formula_typed_below_an_empty_column_fills_nothing_and_rolls_back() {
+    let mut wb = table_book();
+    wb.set("H2", "=ROWS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("C5", "=1")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+
+    wb.set("C5", "=1").unwrap();
+    assert_eq!(wb.value("H2").unwrap(), Value::Number(5.0));
+    assert_eq!(wb.value("C2").unwrap(), Value::Empty);
+    assert_eq!(formula(&wb, "C4"), None);
+}

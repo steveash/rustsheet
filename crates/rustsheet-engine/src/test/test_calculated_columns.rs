@@ -415,3 +415,35 @@ fn unprobed_neighbours_below_the_table_do_not_grow_it() {
     occupied.set_user_input(0, 5, 2, "1".to_string()).unwrap();
     assert_eq!(grown_by(occupied, 5, 1, "7"), ["3", "4"]);
 }
+
+/// A table that ends on the sheet's last row has no row below it to grow into: typing past it is
+/// refused before any growth (unprobed, T-3273).
+#[test]
+fn a_table_on_the_last_row_does_not_grow_down() {
+    let last = crate::constants::LAST_ROW;
+    let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+    model
+        .set_user_input(0, last - 1, 1, "Col".to_string())
+        .unwrap();
+    model.set_user_input(0, last, 1, "1".to_string()).unwrap();
+    model
+        .add_table_with_totals(0, "T", (last - 1, 1, last, 1), false, false)
+        .unwrap();
+    assert_eq!(model.table_expansion(0, last + 1, 1, "7").unwrap(), None);
+}
+
+/// A formula typed just below an empty column, or below a calculated column, grows the table by
+/// the row and fills nothing: the other data rows stay as they were (unprobed, pinned, T-3273).
+#[test]
+fn a_formula_typed_below_the_table_fills_no_calculated_column() {
+    let mut empty = model(false);
+    typed(&mut empty, 5, "=1");
+    assert_eq!(calc(&empty, 5), ["", "", "", "1"]);
+    assert_eq!(expansion_readout(&mut empty)[..2], ["3", "5"]);
+
+    let mut filled = model(false);
+    typed(&mut filled, 2, "=[@Col]*2");
+    assert_eq!(calc(&filled, 4), ["2", "4", "8"]);
+    typed(&mut filled, 5, "=1");
+    assert_eq!(calc(&filled, 5), ["2", "4", "8", "1"]);
+}

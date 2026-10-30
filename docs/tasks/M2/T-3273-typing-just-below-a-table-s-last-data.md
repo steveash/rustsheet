@@ -69,4 +69,6 @@ and no other table reaches it (`TableGrowth::Down`; one guard for both direction
 down a row and writes nothing else; the facade's existing `Undo::TableBefore` covers the rollback. probes/t3003-below-
 last-row and -const H2 now pass (2 cells fixed), 0 regressions. Engine tests pin the unprobed neighbours (totals row,
 outside the columns, two rows down, another table, an occupied cell) and that `set_user_input` never grows; a facade
-test grows the table and rolls the edit back. references.md rule 7(e) says what the engine does.
+test grows the table and rolls the edit back. A formula typed below an empty or calculated column fills nothing (the
+fill after a row growth is skipped, so the facade's log and the engine agree). references.md rule 7(e) says what the
+engine does. Follow-up: T-3320 probes the pinned neighbours.

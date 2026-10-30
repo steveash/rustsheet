@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::calculated_columns::TableGrowth;
 use crate::expressions::{
     lexer::LexerMode,
     parser::{is_limit_error, new_parser_english, stringify::to_english_string, Node},
@@ -138,13 +139,19 @@ impl Model {
         // A formula or constant typed just right of a table grows it first, so the new column
         // fills (T-2968, T-3218); one typed into the header cell only names the column. One typed
         // just below it grows it by a row (T-3273).
-        if let Some(expansion) = self.table_expansion(sheet, row, column, &value)? {
-            self.expand_table(sheet, &expansion)?;
+        let expansion = self.table_expansion(sheet, row, column, &value)?;
+        if let Some(expansion) = &expansion {
+            self.expand_table(sheet, expansion)?;
             if expansion.header {
                 return Ok(());
             }
         }
-        let fill = self.calculated_column_fill(sheet, row, column)?;
+        // A new row fills no calculated column, not even an empty or calculated one: unprobed
+        // (t3003-below-last-row types into a column of constants), and the facade logs no fill.
+        let fill = match expansion.map(|e| e.growth) {
+            Some(TableGrowth::Down) => None,
+            _ => self.calculated_column_fill(sheet, row, column)?,
+        };
         self.parser.set_typed(true);
         let result = self.set_user_input(sheet, row, column, value);
         self.parser.set_typed(false);

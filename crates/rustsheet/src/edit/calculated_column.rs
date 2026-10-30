@@ -11,7 +11,8 @@ impl Txn<'_> {
     /// Logs what typing `text` into `cell` (engine `key`, on sheet index `sheet`) writes besides
     /// the cell: the other rows of its table column that it fills as a calculated column, and the
     /// table as it was, which the fill marks as a calculated column or the text grows by a
-    /// column when typed just right of it, or by a row when typed just below it (T-3273). They are part of this edit and its undo.
+    /// column when typed just right of it, or by a row when typed just below it (T-3273). They
+    /// are part of this edit and its undo.
     pub(super) fn log_typed_fill(
         &mut self,
         sheet: u32,
