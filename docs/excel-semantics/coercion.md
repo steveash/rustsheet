@@ -207,16 +207,17 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
     dropped, 264 each, so 8); 18 U+0323 = 60 U+0342 = 60 U+0300 = `"á"` (wrapped-run-pairs).
   - There is no separate rule for long runs: each run is a proper prefix of every longer run of
     the same mark, so it sorts below it, and it ranks against other texts by its wrapped sum.
-    22 U+0301 (2 + 264, so 10) ranks 43 of 119 in t3154-collation-accent-weights Calc!A107 because
+    22 U+0301 (2 + 264, so 10) has 43 of the 119 texts below it in t3154-collation-accent-weights Calc!A107 because
     it is above the shorter acute runs (its prefixes), above the `"a"&UNICHAR(769)&UNICHAR(X)`
     texts (they share its first acute, and its 21 acutes left, 252, beat their X), and above the
     texts whose sum is below 10; the same count explains every Excel rank of
     accent-weights Calc!A105:A112 (20, 21, 22, 40 and 100 acutes, 10 and 11 rings, 10 dots below:
     108, 110, 43, 111, 105, 110, 6, 75).
-  - The skipped letter weighs nothing: `"a"` plus 85 U+030D (2 + 255, so 1 as a total) ranks above
-    all 246 ladder texts, because against each its marks sum to 255 (long-mark-runs Calc!B179);
-    `"a"` plus 16 U+0302 (marks 256, so 0) is below every ladder text but the 15 that start with
-    U+0302, which it beats on the 15 circumflexes left (240) (Calc!B173).
+  - The skipped letter weighs nothing: `"a"` plus 85 U+030D (2 + 255, so 1 as a total) is above
+    all 246 ladder texts: `"a"` is its prefix, and against each other its marks sum to 255
+    (long-mark-runs Calc!B179 = 246);
+    `"a"` plus 16 U+0302 (marks 256, so 0) is below every ladder text but `"a"` (its prefix) and
+    the 15 that start with U+0302, which it beats on the 15 circumflexes left (240) (Calc!B173 = 16).
   - Per letter: `"a"`, 22 U+0301, `"b"` beats `"a"&UNICHAR(833)&"b"` on its 21 acutes left
     (Calc!B242); `"e"` runs rank as `"a"` runs (Calc!B181:B220).
   - A model of this rule (and the weights above) reproduces all 3,391 cells of the four t3154 and
