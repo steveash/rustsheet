@@ -58,6 +58,23 @@ fn fn_vdb_errors() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 }
 
+/// An end period of 1e12 is past the period cap, so VDB returns `#NUM!` at once instead of walking
+/// 1e12 periods, in both modes (DEVIATION "DB and VDB period cap", T-1820, T-1977).
+#[test]
+fn fn_vdb_huge_period_is_capped() {
+    let mut model = new_empty_model();
+    model._set("A1", "=VDB(1,0,1e12,0,1e12)");
+    model._set("A2", "=VDB(1,0,1e12,0,1e12,2,TRUE)");
+    model._set("A3", "=VDB(1,0,1e12,999999999999,1e12)");
+    let started = std::time::Instant::now();
+    model.evaluate();
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+
+    for cell in ["A1", "A2", "A3"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+}
+
 /// VDB's `no_switch` reads as a boolean ("TRUE"/"FALSE" text in any case; other text, numeric too,
 /// is `#VALUE!` before the range checks), a factor of 0 is straight line, an empty window at 0 is 0,
 /// and DDB's factor takes a boolean and numeric text (probes/t2492-vdb-ddb-arguments, excel-graph,
