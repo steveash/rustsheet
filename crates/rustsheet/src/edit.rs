@@ -253,8 +253,13 @@ impl Txn<'_> {
         let key = (range.sheet.get(), row, col);
         self.log_cell(sheet, key, cell)?;
         let input = input.into();
-        if let Input::Parse(text) | Input::Formula(text) = &input {
-            self.log_typed_fill(sheet, key, cell, text)?;
+        match &input {
+            // `Input::Formula` without `=` is refused in `apply` before it writes anything.
+            Input::Formula(text) if !text.starts_with('=') => {}
+            Input::Parse(text) | Input::Formula(text) => {
+                self.log_typed_fill(sheet, key, cell, text)?;
+            }
+            _ => {}
         }
         self.apply(sheet, row, col, input, cell)
     }

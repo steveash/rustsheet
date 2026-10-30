@@ -1,6 +1,7 @@
 //! Calculated columns: a formula typed into a table column fills the column, as Excel does
 //! (docs/excel-semantics/references.md, "Calculated columns: a formula typed into a table
-//! column"; T-2957, T-2958), and one typed just right of a table grows it by a column (T-2968).
+//! column"; T-2957, T-2958), and one typed just right of a table grows it by a column (T-2968),
+//! as a constant does (T-3218).
 
 use crate::constants::LAST_COLUMN;
 use crate::expressions::parser::Node;
@@ -9,7 +10,7 @@ use crate::model::Model;
 use crate::table_edits::{append_column, bounds, Bounds};
 use crate::types::{Cell, Table};
 
-/// A table that a formula typed just right of it grows by one column (T-2968).
+/// A table that a formula or constant typed just right of it grows by one column (T-2968, T-3218).
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableExpansion {
     /// The table, as it is before the expansion.
@@ -17,9 +18,20 @@ pub struct TableExpansion {
     /// The new column's cells other than the typed one, (row, column): its header cell and the
     /// data rows the formula fills, which the expansion writes.
     pub cells: Vec<(i32, i32)>,
-    /// Whether the typed cell is the header cell. Then the formula is not stored and the header is
-    /// the text `0`.
+    /// Whether the typed cell is the header cell. Then the value is not stored as typed: a formula
+    /// gives the header text `0`, a constant [`TableExpansion::header_text`].
     pub header: bool,
+    /// The header text a constant typed into the header cell gives, as text even for a number
+    /// (`5` typed into D1 is the text `5`, TYPE 2; probes/t3003-const-number-d1). `None` for a
+    /// formula or a cell that is not the header cell.
+    pub header_text: Option<String>,
+}
+
+/// The header text of `value`, a constant typed into the header cell of a table's new column:
+/// the text as typed, without the `'` that marks typed text (unprobed; Excel's own header is
+/// probed with `5` and `hello` only, probes/t3003-const-*-d1).
+fn constant_header(value: &str) -> String {
+    value.strip_prefix('\'').unwrap_or(value).to_string()
 }
 
 /// The table column a typed formula fills as a calculated column ([`Model::calculated_column`]).
@@ -43,12 +55,14 @@ impl Model {
     }
 
     /// The table that typing `value` into (`sheet`, `row`, `column`) grows by one column, as Excel
-    /// grows a table when a formula is typed into the cell just right of its header row or a data
-    /// row (probes/t2957-expand-right-data, -header: `T` A1:C4 becomes A1:D4). `None` for a
-    /// constant, a table with a totals row, or a new column whose other cells are not all blank
-    /// or that another table overlaps: those are unprobed, so the cell is typed as before. `None`
-    /// too for a formula that does not parse there as typed: Excel refuses such an entry and
-    /// changes nothing.
+    /// grows a table when a formula or a constant is typed into the cell just right of its header
+    /// row, a data row or its totals row (probes/t2957-expand-right-data, -header: `T` A1:C4
+    /// becomes A1:D4; t3003-const-*: `5` or `hello` grows it too; t3003-totals-*: a totals row
+    /// does not stop it; docs/excel-semantics/references.md "Calculated columns" rules 7a, 7c).
+    /// `None` for an empty value, or a new column whose other cells are not all blank (Excel stays
+    /// put, rule 7d) or that another table overlaps (unprobed), so the cell is typed as before.
+    /// `None` too for a formula that does not parse there as typed: Excel refuses such an entry
+    /// and changes nothing.
     ///
     /// # Errors
     /// When `sheet` does not exist.
@@ -59,17 +73,15 @@ impl Model {
         column: i32,
         value: &str,
     ) -> Result<Option<TableExpansion>, String> {
-        if !value.starts_with('=') || column > LAST_COLUMN {
+        if value.is_empty() || column > LAST_COLUMN {
             return Ok(None);
         }
         let worksheet = self.workbook.worksheet(sheet)?;
         let sheet_name = worksheet.get_name();
         let on_sheet = || self.table_bounds_on_sheet(&sheet_name);
-        let Some((table, b)) = on_sheet().find(|(table, b)| {
-            table.totals_row_count == 0
-                && b.right + 1 == column
-                && (b.top..=b.bottom).contains(&row)
-        }) else {
+        let Some((table, b)) =
+            on_sheet().find(|(_, b)| b.right + 1 == column && (b.top..=b.bottom).contains(&row))
+        else {
             return Ok(None);
         };
         let overlapped = on_sheet().any(|(_, other)| {
@@ -77,26 +89,35 @@ impl Model {
                 && other.top <= b.bottom
                 && b.top <= other.bottom
         });
-        let cells: Vec<(i32, i32)> = (b.top..=b.bottom)
-            .filter(|&r| r != row)
-            .map(|r| (r, column))
-            .collect();
-        let blank = cells
-            .iter()
-            .all(|&(r, c)| matches!(worksheet.cell(r, c), None | Some(Cell::EmptyCell { .. })));
+        let blank = (b.top..=b.bottom).filter(|&r| r != row).all(|r| {
+            matches!(
+                worksheet.cell(r, column),
+                None | Some(Cell::EmptyCell { .. })
+            )
+        });
         if overlapped || !blank {
             return Ok(None);
         }
         let header = table.header_row_count > 0 && row == b.top;
+        let formula = value.starts_with('=');
+        // Only a formula typed into a data row fills the other data rows; the totals cell is
+        // never filled, and a formula typed into it fills nothing (t3003-totals-data-row D5
+        // blank; t3003-totals-totals-row D2:D4 blank). A constant fills nothing either
+        // (t3003-const-*-d2 D3:D4 blank).
+        let fills = formula && (b.data.0..=b.data.1).contains(&row);
+        let cells = (b.top..=b.bottom)
+            .filter(|&r| r != row)
+            .filter(|&r| (r == b.top && table.header_row_count > 0) || fills && r <= b.data.1)
+            .map(|r| (r, column))
+            .collect();
         let expansion = TableExpansion {
             table: table.clone(),
-            // Typed into the header cell, the formula writes no data row.
+            // Typed into the header cell, the value writes no data row.
             cells: if header { Vec::new() } else { cells },
             header,
+            header_text: (header && !formula).then(|| constant_header(value)),
         };
-        Ok(self
-            .parses_as_typed(sheet, row, column, value)
-            .then_some(expansion))
+        Ok((!formula || self.parses_as_typed(sheet, row, column, value)).then_some(expansion))
     }
 
     /// Whether `value`, a formula, parses as typed into (`sheet`, `row`, `column`): no parse
@@ -113,10 +134,10 @@ impl Model {
 
     /// Grows the table of `expansion` (on `sheet`) by its new column, and writes the column's
     /// name into its header cell: `Column1` as for a column insert (probes/t2957-expand-right-data:
-    /// D1 is `Column1`), or `0` when the formula was typed into the header cell itself
-    /// (-header: `=1+1` typed into D1 leaves the text `0`, not 2 and no formula). Excel's rule for
-    /// that `0` is only probed with `=1+1`; a name `0` the table already has falls back to
-    /// `ColumnN` (unprobed).
+    /// D1 is `Column1`), `0` when a formula was typed into the header cell itself (-header: `=1+1`
+    /// typed into D1 leaves the text `0`, not 2 and no formula; rule 7b), or the text of a
+    /// constant typed there (t3003-const-*-d1, rule 7a). A name the table already has falls back
+    /// to `ColumnN` (unprobed).
     pub(crate) fn expand_table(
         &mut self,
         sheet: u32,
@@ -134,7 +155,11 @@ impl Model {
             return Ok(());
         };
         table.reference = format!("{first}{}:{last}{}", b.top, b.bottom);
-        let header_text = append_column(&mut table.columns, expansion.header.then_some("0"));
+        let typed_name = match &expansion.header_text {
+            Some(text) => Some(text.as_str()),
+            None => expansion.header.then_some("0"),
+        };
+        let header_text = append_column(&mut table.columns, typed_name);
         let has_header = table.header_row_count > 0;
         self.reset_tables();
         if has_header {

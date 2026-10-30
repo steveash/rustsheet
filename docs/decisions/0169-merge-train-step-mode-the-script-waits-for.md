@@ -26,8 +26,9 @@
     session's GitHub write path appends.
 - **Consequences:**
   - The merger routine runs `make merge-train TRAIN=1 STEP=1` (or `SHADOW=1 STEP=1`) in the background, performs
-    each JSON line it prints, and acks it. The routine prompt in docs/process/routines.md still says "run the script
-    again"; T-3190 updates it.
+    each JSON line it prints, and acks it. T-3190 updated the routine prompt in docs/process/routines.md ("Prompt —
+    merger") to this flow: run in the background, watch the output, perform each action exactly with the GitHub
+    MCP tools, then ack it (`REFUSED=1` when refused or when no tool can perform it, e.g. `delete_branch`).
   - In step mode each squash costs four session round trips (merge, unlabel, comment, branch); `MERGE_BUDGET`
     is unchanged, so a long batch may run past `HOLD_BUDGET` after its CI wait, as a slow merge reply would.
   - Residual risk: the read-back is detective, not preventive. A session that performs a different write (say,
