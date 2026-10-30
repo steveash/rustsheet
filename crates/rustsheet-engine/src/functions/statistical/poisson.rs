@@ -14,8 +14,8 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// 1.1 `POISSON.DIST(7,1.1,FALSE)` is the closed form's double and 10 ulp from the saddle point's
 /// (k 5, 8, 10, 20: within an ulp of the closed form, 5 to 21 from the saddle point), and at every
 /// probed mean from 1.100001 to 1.2 it is the saddle point's to the bit at all five, so the switch
-/// lies in [1.1, 1.100001); no mean in between is probed, as one needs more than the 15 digits
-/// Excel reads (probes-numeric/t2055-poisson-pmf-switch).
+/// lies in [1.1, 1.100001); no mean in between is probed yet (T-3247 lists the probe;
+/// probes-numeric/t2055-poisson-pmf-switch).
 const CLOSED_FORM_MAX_MEAN: f64 = 1.1;
 
 /// A POISSON-only fit for k = 2 to 5 of the saddle point's stirlerr: 13, 12, 29 and 34 ulp below

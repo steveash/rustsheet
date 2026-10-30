@@ -16,6 +16,7 @@ campaign: visible
 POISSON.DIST's pmf is Excel's double where T-2055's model is still a few ulp off.
 
 ## Context
+- The pmf switch is pinned only to [1.1, 1.100001) (T-2055). Probe means between them, which fit in 15 digits (1.10000000000001, 1.1000000001, 1.1000001), at k = 7, 8, 10 and 20 to place it (T-2055 fidelity review).
 T-2055 (docs/excel-semantics/statistics.md "POISSON.DIST pmf: two closed forms", `statistical/poisson.rs`) leaves:
 - the saddle point at large k and a mean well off k: `POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,240)` 46 ulp,
   `(300,210)` 16, `(30,21)` 11 (probes-numeric/t2055-poisson-pmf-sweep). Two suspects: `loader.rs` `excel_bd0`'s series

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-2055 evidence for the POISSON.DIST pmf: where between mean 1.1 and 1.2 the closed form EXP(k LN(mean) - GAMMALN(k+1)) EXP(-mean) gives way to the saddle point, at k 5, 7, 8, 10 and 20, then from 1.100001 to 1.104 at k 7, 8, 10 and 20 (a mean closer to 1.1 needs more than the 15 digits Excel reads).",
+ "description": "T-2055 evidence for the POISSON.DIST pmf: where between mean 1.1 and 1.2 the closed form EXP(k LN(mean) - GAMMALN(k+1)) EXP(-mean) gives way to the saddle point, at k 5, 7, 8, 10 and 20, then from 1.100001 to 1.104 at k 7, 8, 10 and 20 (no mean closer to 1.1 is probed yet).",
  "tags": [
   "M9",
   "probe",
