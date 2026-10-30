@@ -3,7 +3,7 @@ id: T-3169
 title: "Match Excel for the T-2949 whitespace shapes (intersection LF, stored leading LF, stored even-arity LET)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,8 +24,11 @@ Cells (named so `make exit-owners MILESTONE=M2` counts them as owned; gap triage
 - probes/t2949-typed-5 S!E5
 
 ## Acceptance criteria
-- [ ] Every t2949 probe cell passes (or its difference is recorded as a DEVIATION).
-- [ ] `make check` green; reviewers approve.
+- [x] Every t2949 probe cell passes (or its difference is recorded as a DEVIATION).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Fixed the three engine gaps: intersection separators holding a line feed print whole, a stored leading LF is dropped, and a stored even-arity LET appends its last name as the result. All six t2949 cells now pass; unit tests added in `test_spacing.rs`.
