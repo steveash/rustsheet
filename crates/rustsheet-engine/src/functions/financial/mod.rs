@@ -632,8 +632,8 @@ impl Model {
         // argument comes first, then an error dates argument, before the values' cells are read
         // (T-2611: gen-m9/67a4c03afd63f988 A388 is the dates' `#DIV/0!` beside text values;
         // 79d87fc527927626 A228 is the values' `#VALUE!` beside a `#DIV/0!` dates).
-        let values_error = matches!(values, CalcResult::Error { .. })
-            .then(|| values.clone().without_message());
+        let values_error =
+            matches!(values, CalcResult::Error { .. }).then(|| values.clone().without_message());
         let dates_error = match (&values, &dates) {
             (CalcResult::Error { .. }, _) => None,
             (_, CalcResult::Error { .. }) => Some(dates.clone()),
@@ -692,9 +692,10 @@ impl Model {
                     Ok(flows) => flows,
                     Err(error) => return error.clone(),
                 };
-                let xirr = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
-                    compute_xirr(values, dates, guess).map_err(|error| error.0)
-                });
+                let xirr = dates
+                    .as_ref()
+                    .map_err(Clone::clone)
+                    .and_then(|dates| compute_xirr(values, dates, guess).map_err(|error| error.0));
                 number_result(xirr, cell)
             },
         )
