@@ -3,7 +3,7 @@ id: T-3218
 title: "Table auto-expansion on typing beside a table: a typed constant and a table with a totals row grow it too (rules 7a, 7c)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
