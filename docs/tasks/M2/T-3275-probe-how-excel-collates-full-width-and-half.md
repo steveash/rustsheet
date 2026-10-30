@@ -3,7 +3,7 @@ id: T-3275
 title: "Probe how Excel collates full-width and half-width forms and kana (width, hiragana/katakana, small kana, voicing marks, the long-vowel mark)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
