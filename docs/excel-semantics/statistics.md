@@ -3370,7 +3370,7 @@ Tasks: T-1543, T-1634
     so the pair is kept there. Unprobed, so also kept on the pair: x of 1 or more, CHISQ.DIST, CHIDIST, POISSON and
     the quantiles. External check: gen-m9/a013a45a8fbcab4f A257 `GAMMADIST(1E-300,(3.14159/Data!D4),2,Data!D5)`
     becomes Excel's 3.743699731362489E-10 (7 ulps off before).
-  - Evidence trap: formula literals are read at 15 significant digits (numbers.md "Formula number literals are read
+  - Evidence trap: formula literals are truncated (not rounded) to 15 significant digits (numbers.md "Formula number literals are read
     at 15 significant digits"), so the probe's 17-digit x values are not what Excel evaluated. `GAMMA.DIST
     (7.414417701862728e-12,0.9,1,TRUE)` (A24) is GAMMA.DIST at 7.41441770186272E-12, while B24 and C24 (one and two
     ulps of x higher) both read as 7.41441770186273E-12 and have the same value in Excel. Fitted at the 17-digit x,

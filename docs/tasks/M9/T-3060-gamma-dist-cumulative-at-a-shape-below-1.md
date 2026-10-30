@@ -84,7 +84,7 @@ a unit of the 15th significant digit of Excel's value. Time-boxed (decision 0056
       with no new known-failure line in any suite (`make eval-baseline` refuses regressions).
 - [x] The form and its region are recorded in docs/excel-semantics/statistics.md citing the probe cells, next to
       the T-3012 bullet.
-- [ ] `make check` green; reviewers approve. (`make check` green; review is run by the caller.)
+- [x] `make check` green; reviewers approve (security, architecture, quality, excel-fidelity: APPROVE).
 
 ## Out of scope
 - GAMMA.INV (T-3013, T-0972, T-2982).

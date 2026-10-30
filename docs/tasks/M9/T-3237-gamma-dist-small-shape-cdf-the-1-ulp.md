@@ -33,6 +33,9 @@ because, nearer 0, it would lose A31 and C25, bit-exact on the accurate pair). T
   GAMMA.DIST equals its worksheet form at A28. So start from the worksheet cells: find which of EXP, LN, GAMMALN
   or `/` is off (an excel-probe case of `LN(x)`, `0.25*LN(x)`, `EXP(that)`, `GAMMALN(1.25)` and
   `EXP(GAMMALN(1.25))` at the probe's x values pins each step).
+- `EXCEL_EXPONENT_MAX` = -16 is not pinned by any cell: the probe has no cell with a·LN(x) between -23.05 and
+  -11.61, and rows 2, 6 and 10 (A10-C10 9 ulps off, A2-C2 and A6-B6 2 to 4 ulps off, all within 15 digits) sit on the
+  pair because of the cut. Probe cells with a·LN(x) between -23 and -12 before moving it (T-3060 fidelity review).
 - Tried in T-3060, none fits every cell: 108 orderings (quotient plain, rounded twice, or as a product with
   EXP(-GAMMALN); e^-x by Excel's EXP or libm; series with and without its tail sum, or as 1 + aS) and x87
   extended chains with EXP and the quotient unrounded.
