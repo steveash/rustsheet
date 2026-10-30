@@ -983,7 +983,7 @@ symbol and a `%` do not combine in a mixed fraction. A criterion operand reads `
 `-3 1/2%` and `+ 3 1/2` but not `€3 1/2` or `$3 1/2%` (`COUNTIF(3.5,"€3 1/2")` is 0), while a text cell `€3 1/2` does read
 as 3.5 (`COUNTIF(A5,A5+0)` is 1). UNVERIFIED: the number format a typed mixed fraction gets (`CELL("format")` is `#VALUE!` on
 excel-graph), and `VALUE("$3 1/2%")` (ours: `#VALUE!` like coercion).
-Ours: all implemented (`mixed_fraction`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
 Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
 Tasks: T-2646, T-3151, T-3178
 
