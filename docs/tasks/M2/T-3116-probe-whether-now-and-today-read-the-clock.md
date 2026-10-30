@@ -57,6 +57,8 @@ same serial, or reads the clock at each call. SPEC-0008 then states the rule as 
   to make Excel recalculate afresh. On every fill, two NOW reads with about 50 ms of dependent work
   between them differ by 20 to 50 ms, in 10 ms steps: D1, A2, A4 and A7 are FALSE. NOW()-NOW()=0
   (A5) and INT(TODAY())=INT(NOW()) (A6) are TRUE.
+- Per fill, the gaps E1 / A3 / Other!A2 were 30/50/30 ms (the committed sidecar), then
+  20/40/20, 30/30/30 and 30/30/30 ms (Z1 = "run 2", "run 3", "run 4").
 - Rule: Excel reads its clock per call, not once per recalc. dates.md and SPEC-0008 now say so
   (VERIFIED). The engine's `Clock::System` already reads per call, so no engine follow-up is needed.
 - Only A5 and A6 are scored (`invariant`). The per-call cells are recorded, not scored: the
