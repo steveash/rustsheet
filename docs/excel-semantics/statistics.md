@@ -1791,13 +1791,19 @@ t1049-ttest A44, `T.TEST({1,2,3},{2,4,7},2,1)`, and A48, `T.TEST({1,1,1},{2,3,4}
   1E11 ulp) and not any simple form: on those 352 cells plus the six `m9-t-dist-rt` cells from t = 5 to 1E6,
   -expm1(log1p(-y)/2)/2 is bit-exact on 208 of 358, y/(1 + sqrt(1 - y))/2 on 175, our Cephes power series on
   111, and -expm1 of ln(1 - y) or of ln z on about 40.
+- Far tails at df 1 and 2 are within an ulp of exact (gap triage 2026-10-30, mpmath at 60-80 digits on the exact t,
+  excel-graph values). The examples are gen-m9/46ac3ef5e61583ca A236 `T.DIST.2T(1E15,1)` = 6.366197723675813E-16 (0
+  ulp; ours +9), gen-m9/11eb3ab4f4f8104c A174 `T.DIST.2T(1E15,2)` = 9.999999999999999E-31 (-1; ours +24),
+  gen-m9/bbab6562e88b70e8 A181 `T.DIST.2T(123456780.723,2.5)` = 6.561000999157746E-17 (0; ours +19), and
+  `T.DIST.RT(100,1)` (m9-t-dist-rt A10, 0; ours +5). Every failing df-1 or df-2 cell with literal arguments in the
+  report (49) has Excel within 1 ulp of the exact tail. Task: T-3187.
 Ours: `student_t.rs` `closed_form_tail` (since T-0969 attempt 8), the kernel's oriented closed form with the
 y0 <= 0.9 cut since T-2502; below it the general tail.
 Status: VERIFIED (excel-graph) from y = 0.100112 up and below y = 0.099900. The exact cut is UNVERIFIED: whether y = 0.1
 itself takes the closed form, and whether Excel tests y or z = 1 - y, need a dense probe near t = sqrt(18).
 T-2464 places the cut. It is the kernel's a0 = 1 test y0 <= 0.9 on the oriented arguments, and BETA.DIST at
 x0 = fl(1 - 0.9) takes the closed form. See "Incomplete beta closed forms act on the oriented arguments".
-Tasks: T-0969, T-2502
+Tasks: T-0969, T-2502, T-3187
 
 ## T.DIST.RT is BETA.DIST's incomplete beta, switched at the mean (T-0969)
 Rule: Excel's Student-t tail is its BETA.DIST kernel. With the worksheet-rounded y = fl(n / fl(n + fl(t*t))) and

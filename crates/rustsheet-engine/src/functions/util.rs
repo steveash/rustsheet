@@ -18,6 +18,7 @@ use crate::{
 
 pub(crate) mod aggregate_args;
 pub(crate) mod collation;
+pub(crate) mod collation_tables;
 mod existing_walk;
 
 pub(crate) use existing_walk::StoredWalk;
