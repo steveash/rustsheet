@@ -560,8 +560,8 @@ fn amor_fix_29_february(d: NaiveDate, basis: i32) -> NaiveDate {
 
 // Depreciation coefficient of the whole asset life `ceil(1/rate)` in years. A refused life is 2
 // or less (`asset_life_refused`), so the whole life is at least 3: 3 and 4 give 1.5, 5 and 6 give
-// 2, longer lives 2.5. Lives 2.01-3 take 1.5 and 4.01-4.99 take 2 (probes/fin-vdb-amordegrc-edges
-// A60-A143, T-1978).
+// 2, longer lives 2.5: lives above 2 up to 4 take 1.5, above 4 up to 6 take 2
+// (probes/fin-vdb-amordegrc-edges A60-A143, T-1978).
 fn amor_depr_coeff(asset_life: f64) -> f64 {
     if asset_life <= 4.0 {
         1.5

@@ -3103,7 +3103,7 @@ for a positive rate. There is no refused gap at life 3 or strictly between 4 and
 the library RustSheet ported from both have: `AMORDEGRC(2400,39679,39813,300,0,r,1)` is a number for r = 1/2.000001
 (659), 1/2.01 (656), 1/2.5, 1/2.9, 1/2.99, 1/3 (439), 0.34, 1/4.01 (438), 1/4.5 (391), 1/4.99 (352), and #NUM! for
 r = 0.5, 1/2, 1/1.99, 1/1.5 and 1. The coefficient goes by the whole life `ceil(1/rate)`: 1.5 for 3 and 4 (so lives
-2.01 to 4), 2 for 5 and 6 (lives 4.01 to 6), 2.5 above; the 1.0 coefficient of a life under 3 is never reached.
+above 2 up to 4), 2 for 5 and 6 (lives above 4 up to 6), 2.5 above; the 1.0 coefficient of a life under 3 is never reached.
 Evidence: probes/fin-vdb-amordegrc-edges A60-A143 (excel-graph, 2026-10-30, T-1978).
 Status: VERIFIED (excel-graph)
 Implemented (T-1978): `asset_life_refused` and `amor_depr_coeff` in functions/financial/amortization.rs.
