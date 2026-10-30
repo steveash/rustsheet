@@ -3,7 +3,7 @@ id: T-1948
 title: "Probe legacy implicit intersection of a D-function field range, and a TRUE field over a numeric first column (T-1389 review)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
