@@ -37,3 +37,4 @@ parenthesis run starts `n` chars after the run's first `(`. `Parser::parse_inter
 U+3000 name from there, so `=((A1:A3)　A2:B2)`, `=(((A1:A3))　A2:B2)+1` and `=((A1)　(A2))` are
 `#NAME?` and print as written (were `=(A2:B2)` etc.). Unit test in test_intersection_operator.rs.
 Eval: no change (no case holds the shape).
+Follow-up: T-3284 (probe the parenthesized U+3000 shapes).
