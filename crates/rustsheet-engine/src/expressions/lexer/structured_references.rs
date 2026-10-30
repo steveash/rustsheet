@@ -163,9 +163,18 @@ impl Lexer {
     }
 
     /// The `@` shorthand for `#This Row`: `T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]`
-    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI).
+    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI). A run after the `@`
+    /// (`[@ Col]`) is not part of the column: Excel reads the column and prints the reference
+    /// padded on both sides, `[ @Col ]` (syntax.md "Whitespace beside a missing argument",
+    /// probes/t2800-this-row-whitespace F2:F3, T-3069).
     fn consume_this_row_shorthand(&mut self, table_name: &str) -> Result<TokenType> {
         self.position += 1; // '@'
+        let run = self.whitespace_run();
+        let spacing = TableSpacing {
+            open: run.clone(),
+            close: run,
+            comma_space: false,
+        };
         let specifier = Some(TableSpecifier::ThisRow);
         let table_reference = match self.peek_char() {
             Some(']') => {
@@ -192,7 +201,7 @@ impl Lexer {
             table_name: table_name.to_string(),
             specifier,
             table_reference,
-            spacing: TableSpacing::default(),
+            spacing,
         })
     }
 
@@ -250,17 +259,22 @@ impl Lexer {
     //   But this is only a UI thing that we will ignore for now.
     pub(crate) fn consume_structured_reference(&mut self, table_name: &str) -> Result<TokenType> {
         self.expect(TokenType::LeftBracket)?;
-        // A run after the outer `[` is kept before nested brackets (`T[ [Col] ]`) and around a
-        // bare column padded on both sides (`T[ Col ]`, the form Excel prints and saves for
-        // `T[ [Col] ]`). Graph refuses one-sided padding (`T[ Col]`, `T[Col ]`; syntax.md),
-        // which keeps the reading it had before T-2801.
+        // A run after the outer `[` is kept before nested brackets (`T[ [Col] ]`) and, in our
+        // own stored (R1C1) text only, around a bare column padded on both sides (`T[ Col ]`, the
+        // form Excel prints for `T[ [Col] ]`). As A1 text, typed or in a file, Excel refuses or
+        // loads as `#REF!` every padded bare column (`T[ Col ]`, `T[ Col]`, `T[Col ]`; syntax.md,
+        // probes/t2800-stored-ws-0..2, T-3069): the run is then read as part of the column
+        // name, which no table has.
         let start = self.position;
         let mut spacing = TableSpacing {
             open: self.whitespace_run(),
             ..TableSpacing::default()
         };
         // A padded `#` or `@` start (`T[ #Data ]`) is unprobed and keeps its old reading.
-        if !spacing.open.is_empty() && !matches!(self.peek_char(), Some('[' | '#' | '@')) {
+        if !spacing.open.is_empty()
+            && !self.is_a1_mode()
+            && !matches!(self.peek_char(), Some('[' | '#' | '@'))
+        {
             if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
                 return Ok(token);
             }

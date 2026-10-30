@@ -72,12 +72,13 @@ fn simple_table() {
         column: 6,
     };
 
-    // `#This Row` keeps its text, in the export too, which writes table parts (T-2196).
+    // In a cell of its own table `#This Row` prints in Excel's `@` form (T-3069); the export
+    // keeps the long text, which writes table parts (T-2196).
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUM(tblIncome[[#This Row],[Jan]:[Dec]])"
+        "SUM([@[Jan]:[Dec]])"
     );
     assert_eq!(
         to_excel_string(&t, &cell_reference),
@@ -132,8 +133,15 @@ fn whitespace_inside_a_structured_reference() {
         row: 6,
         column: 5,
     };
+    // `T[ [Col] ]` prints `T[ Col ]`, which Excel refuses typed and loads as `#REF!` (T-3069):
+    // see `a_padded_bare_column_is_ours_only`.
+    let t = parser.parse("SUM(T[ [Col] ])", &cell_reference);
+    assert_eq!(to_excel_string(&t, &cell_reference), "SUM(T[ [Col] ])");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "SUM(T[ Col ])"
+    );
     for (typed, printed) in [
-        ("SUM(T[ [Col] ])", "SUM(T[ Col ])"),
         ("SUM(T[ [Col]:[Other] ])", "SUM(T[ [Col]:[Other] ])"),
         ("SUM(T[ [#Data] , [Col] ])", "SUM(T[ [#Data], [Col] ])"),
         ("SUM(T[[#Data], [Col]])", "SUM(T[[#Data], [Col]])"),
@@ -474,4 +482,78 @@ fn unqualified_reference_inside_its_table() {
     };
     let t = parser.parse("[@Jan]*2", &outside);
     assert!(matches!(t, Node::ParseErrorKind { .. }), "{t:?}");
+}
+
+/// A `#This Row` reference in a cell of its own table prints in Excel's `@` form without the
+/// table name, keeping the padding inside the outer brackets, and a run after `@` is padding, not
+/// part of the column (syntax.md, probes/t2800-this-row-whitespace, T-3069).
+#[test]
+fn this_row_prints_in_its_at_form_in_its_own_table() {
+    let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let inside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 2,
+        column: 2,
+    };
+    for (typed, printed) in [
+        ("T[[#This Row], [Col]]", "[@Col]"),
+        ("T[[#This Row] , [Col]]", "[@Col]"),
+        ("T[ [#This Row] , [Col] ]", "[ @Col ]"),
+        ("T[ [#This Row],[Col] ]", "[ @Col ]"),
+        ("[@ Col]", "[ @Col ]"),
+        ("[@Col]", "[@Col]"),
+    ] {
+        let t = parser.parse(typed, &inside);
+        assert_eq!(to_english_localized_string(&t, &inside), printed, "{typed}");
+        // The stored text reads back to the same reference.
+        let stored = to_rc_format(&t);
+        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::R1C1);
+        let again = parser.parse(&stored, &inside);
+        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::A1);
+        assert_eq!(
+            to_english_localized_string(&again, &inside),
+            printed,
+            "{stored}"
+        );
+    }
+    // Outside the table the name stays.
+    let outside = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 8,
+        column: 8,
+    };
+    let t = parser.parse("T[[#This Row], [Col]]", &outside);
+    assert_eq!(
+        to_english_localized_string(&t, &outside),
+        "T[[#This Row], [Col]]"
+    );
+}
+
+/// `T[ Col ]` is only our own stored form of `T[ [Col] ]`: as A1 text a padded bare column is a
+/// parse error typed and `#REF!` loaded, as Excel loads `<f>SUM(T[ Col ])</f>` (syntax.md,
+/// probes/t2800-stored-ws-0..2, T-3069).
+#[test]
+fn a_padded_bare_column_is_ours_only() {
+    let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
+    let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+    let cell = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 6,
+        column: 5,
+    };
+    let t = parser.parse("SUM(T[ [Col] ])", &cell);
+    let stored = to_rc_format(&t);
+    parser.set_lexer_mode(crate::expressions::lexer::LexerMode::R1C1);
+    let again = parser.parse(&stored, &cell);
+    parser.set_lexer_mode(crate::expressions::lexer::LexerMode::A1);
+    assert_eq!(to_english_localized_string(&again, &cell), "SUM(T[ Col ])");
+    for formula in ["SUM(T[ Col ])", "SUM(T[ Col])", "SUM(T[Col ])"] {
+        let typed = parser.parse(formula, &cell);
+        assert!(matches!(typed, Node::ParseErrorKind { .. }), "{formula}");
+        parser.set_loaded(true);
+        let loaded = parser.parse(formula, &cell);
+        parser.set_loaded(false);
+        assert_eq!(to_excel_string(&loaded, &cell), "SUM(#REF!)", "{formula}");
+    }
 }
