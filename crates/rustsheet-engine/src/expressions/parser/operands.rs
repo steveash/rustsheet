@@ -497,6 +497,11 @@ impl Parser {
         }
     }
 
+    /// Whether the formula is being typed ([`Parser::set_typed`]).
+    pub(crate) fn is_typed(&self) -> bool {
+        self.typed
+    }
+
     /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
     /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
     /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
