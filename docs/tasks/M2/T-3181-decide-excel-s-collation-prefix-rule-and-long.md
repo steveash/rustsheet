@@ -22,6 +22,8 @@ t3154 collation cells stop being unexplained known failures.
   (probes/t3154-collation-accent-pairs Calc!S19, T18, W23, X22, AB28, AC27), and runs of 20 or more
   of one mark do not follow the sum (probes/t3154-collation-accent-weights Calc!A105:A112; their
   presence shifts the ranks of A2:A68 by one).
+- Owned known failures (decision 0096): every failing cell of probes/t3154-collation-accent-weights
+  (Calc!A2:A112) and of probes/t3154-collation-accent-pairs (Calc!S19, T18, W23, X22, AB28, AC27).
 - `cmp_text` is shared by the `<`/`=`/`>` operators, criteria, lookups and the sorts (GROUPBY's
   `grouping.rs` sorts with it; `slice::sort_by` may panic on a non-total order since Rust 1.81).
 - Options: apply the prefix rule only in pairwise comparisons (operators, criteria) while sorts
