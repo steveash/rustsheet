@@ -166,6 +166,16 @@ def span_stop(c_term: float = 2e-8, span: Callable[[Probe], float] = span_years)
     return lambda p: h_ok(p) and (p.values[0] == 0 or abs(p.f) < c_term * max(map(abs, p.values)) * span(p))
 
 
+def negative_root_stop(c_term: float = 2e-8) -> Stop:
+    """The T-3268 candidate: the step test, and the unscaled XNPV bound |f| < 2e-8 max|value| only
+    on a negative bracket (m < 0, the downward chain). Over the 267 numeric cells with a nonzero
+    first value of `xirr` and `xirr-oos`, every positive root stops at the first step-test pass,
+    and every negative one fits the bound (feasible (1.93e-8, 2.05e-8] times max|value|), with no
+    span factor."""
+    h_ok = h_test()
+    return lambda p: h_ok(p) and (p.m >= 0 or p.values[0] == 0 or abs(p.f) < c_term * max(map(abs, p.values)))
+
+
 def zero_first_value_stop() -> Stop:
     """The fitted rule, or the step test alone when the first value is 0 (T-1583, rejected: 20/22)."""
     fitted, h_ok = fitted_stop(), h_test()
@@ -275,6 +285,14 @@ def xirr_candidates() -> list[Candidate]:
         for name, span in (
             ("earliest-to-latest years", all_dates_span_years),
             ("first-to-farthest years", farthest_date_years),
+        )
+    ]
+    # T-3268: the XNPV bound binds only on a negative root (the A4 family against E7, F3).
+    out += [
+        _xirr_candidate(
+            "bisect, first-value sign, |f| bound on a negative root only, Excel ^ (T-3268)",
+            _xirr(negative_root_stop(), first_value_sign=True, power=caret_pow),
+            "T-3268",
         )
     ]
     # The step test's bound: A in A + 1e-8 |m| (fitted 4.93e-9 <= A <= 5.09e-9), then B at A = 5e-9.

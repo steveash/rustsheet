@@ -512,7 +512,8 @@ positive root is `#NUM!`. The bracket is the first chain point whose XNPV sign d
 with the point before it (0 included); no bracket is `#NUM!`. Bisection: `a` starts at the bracket's upper
 end and `b` at its lower end; each step takes m = a + (b - a) / 2 and replaces the end whose XNPV has the
 sign of XNPV(m). An exact XNPV(m) = 0 does not stop it. It returns m at the first step where both
-h < 5e-9 + 1e-8 * |m| (h = (b - a) / 2, which equals |m - previous m|) and |XNPV(m)| < 2e-8 * max|value|.
+h < 5e-9 + 1e-8 * |m| (h = (b - a) / 2, which equals |m - previous m|) and, when m < 0 only, |XNPV(m)| < 2e-8 *
+max|value| (T-3268 bullet below; a positive root stops at the first step-test pass).
 So the result lies on the binary lattice of the bracket (for the default guess and a root of exactly 0.1
 it is 3355443/2^25 = 0.09999999403953552), which explains why XIRR is scale- and sign-invariant,
 converged only to about 1e-8, and why guess -0.5 or 1 gives `#NUM!` on one side.
@@ -631,17 +632,28 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   date to the latest, or from the first date to the farthest either side (named T-2045 candidates), 76/81, and 227/227
   on `xirr`. The misses are the A4 family (4 cells) and xirr-early-dates A7 (the input check). T-2328's rule (the engine)
   scores 69/81, and the step test alone 74/81. Put in the engine, the earliest-to-latest span would fix E7, F3 and the
-  probe's E7 family but regress nogaps A4, so it is not applied. What sets the A4 family apart (three flows, the
-  back-dated one last, a negative root) is open.
-Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
-T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells; with T-2328's `^` 69/81 on the 81-cell `xirr-oos` of T-2045. The walk
+  probe's E7 family but regress nogaps A4, so it is not applied. What sets the A4 family apart was open (next bullet).
+- T-3268 (attempt 2; no new probe, the 267 numeric cells with a nonzero first value of `xirr` and `xirr-oos`): the sign
+  of the root sets the A4 family apart. On every positive root (184 cells, the 4-flow back-dated cells, A8's 124 years and
+  T-1591's long spans among them) Excel returns the first iterate past the step test, so no XNPV bound ever binds there.
+  On every negative root (83 cells, the A4 family, A21-A28 and the downward-chain cells of the fit set) the unscaled
+  bound |XNPV(m)| < 2e-8·max|value| fits, with the feasible constant in (1.93e-8, 2.05e-8] and no span factor (every
+  negative-root cell has a latest date within a year of the first). So the rule is: the step test, and the XNPV bound only
+  when m < 0. Lab candidate "bisect, first-value sign, |f| bound on a negative root only, Excel ^ (T-3268)": 227/227 on
+  `xirr`, 80/81 on `xirr-oos` (the miss: the input check of xirr-early-dates A7). T-1583's span factor was a stand-in for
+  the positive-root exemption: A8 and T-1591's cells are positive roots. Not separated by any cell: whether the switch is
+  the midpoint's sign, the bracket's side (the downward chain) or a bound that grows fast with 1 + m; and whether a
+  negative-root cell spanning years scales the bound (none is probed).
+Ours: this model (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
+T-0916), with T-3268's stop (the XNPV bound on a negative midpoint only, unscaled): 227/227 on the fit set and 80/81 on
+the 81-cell `xirr-oos` (T-1583's span-scaled form before it: 69/81; the Newton code it replaced: 9/22 and 11/22 on the
+older cells). The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
 caps" below). A trial rate where a power overflows or underflows to 0 has no XNPV, as in the lab model.
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. The XNPV part of the stop test
-(T-1583's span-scaled form) fits every numeric cell probed once XNPV uses Excel's `^` (T-2328), except flows dated
-before the first (the T-2045 bullet: whole-column-empty-walkers E7 and F3 and xirr-back-dated-stop). Its form rests on the
-fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728, T-2045 (flows dated before the first)
+(T-3268's form: unscaled, on a negative midpoint only) fits every numeric cell probed once XNPV uses Excel's `^`
+(T-2328), flows dated before the first included. It is a fitted rule, not a known mechanism.
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728, T-2045, T-3268 (the negative-root stop)
 
 ## IRR is a secant in d = 1 - v = r/(1 + r) from d0 and d0 -+ 0.001 (fitted, 263/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of d = 1 - v = r/(1 + r), v = 1/(1 + r) (T-3120 moved
