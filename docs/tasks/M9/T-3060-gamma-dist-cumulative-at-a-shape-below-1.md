@@ -79,7 +79,7 @@ a unit of the 15th significant digit of Excel's value. Time-boxed (decision 0056
 ## Acceptance criteria
 - [ ] The 35 cells listed in Context are within half a unit of the 15th significant digit of Excel's value (the
       visibly-off count of probes/t3012-gamma-dist-at-quantile in `make eval`'s report is 0). Partly: 32 of 35;
-      D20, D23 and D25 stay visibly off and move to T-3237 (Outcome).
+      D20, D23 and D25 stay visibly off and move to T-3242 (Outcome).
 - [x] Those cells' `F` lines disappear from eval/baseline/probes.txt (or remain only as within-15-digit ulp lines),
       with no new known-failure line in any suite (`make eval-baseline` refuses regressions).
 - [x] The form and its region are recorded in docs/excel-semantics/statistics.md citing the probe cells, next to
@@ -114,7 +114,7 @@ a unit of the 15th significant digit of Excel's value. Time-boxed (decision 0056
   - still failing, closer: A4/B4/C4 16 to 1 ulp, A21/B21/C21 90 to 1, A24 28 to 2, B24/C24 10 to 3, A19/B19/C19 3 to
     1, A23/B23/C23 4 to 1, A27 4 to 1, A8/B8/C8 and A28 2 to 1, D23 still visibly off (smaller error).
   - `make eval-baseline`: probes 2568 to 2535 known failures, gen-m9 3240 to 3239, 0 regressions in every suite.
-- Open, filed as T-3237 (`campaign: visible`): D20, D23 and D25 (`GAMMA.DIST(..)/1E-k-1`), which magnify 1 to 2
+- Open, filed as T-3242 (`campaign: visible`): D20, D23 and D25 (`GAMMA.DIST(..)/1E-k-1`), which magnify 1 to 2
   ulps of B20, B23 and B25 to 1E-16 absolute. The same 1-ulp residue is in our worksheet
   `EXP(0.25*LN(x))/EXP(GAMMALN(1.25))` (B28, B30-B32), so it is in the engine's EXP, LN, GAMMALN or quotient model,
   not the form. Two fitting rounds tried 108 orderings and x87 extended chains; none fits every cell (decision 0056

@@ -331,7 +331,7 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
 /// so the pair is kept there (T-3060). No probe cell pins -16 itself: the in-region cells
 /// nearest the cut are at about -23.05 (rows 1, 19, 24) and the excluded ones at -11.54 to
 /// -11.61 (rows 2, 6, 10, 20, 25), so any cut in between scores the same; -16 is the ulp
-/// argument above (T-3237 probes the gap).
+/// argument above (T-3242 probes the gap).
 const EXCEL_EXPONENT_MAX: f64 = -16.0;
 
 /// GAMMA.DIST's cdf P(a, x) at a shape below 1 and a normal x below 1 where a·LN(x) is at most

@@ -1,5 +1,5 @@
 ---
-id: T-3237
+id: T-3242
 title: "GAMMA.DIST small-shape cdf: the 1-ulp EXP(a LN x)/EXP(GAMMALN(a+1)) residue behind D20, D23, D25 of t3012-gamma-dist-at-quantile"
 milestone: M9
 lane: functions-stat
