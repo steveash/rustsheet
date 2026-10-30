@@ -3,7 +3,7 @@ id: T-3023
 title: "Probe a stored column of identical structured formulas without calculatedColumnFormula (T-2983 follow-up)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
