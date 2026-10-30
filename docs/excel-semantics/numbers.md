@@ -2396,8 +2396,7 @@ Status: VERIFIED
 Tasks: T-2269, T-2302
 
 ## TEXT of DBL_MAX with a scientific format prints the full 3-digit exponent (T-2106)
-`TEXT(2^1023*(2-2^-52),"0.00E+00")` is `1.80E+308` (probes/dbl-max-text-b A1, excel-graph). The
-mantissa rounds up to 1.80, a decimal above DBL_MAX, so it must be built from the rounded digits
-rather than as a full-scale double (which overflows). An exponent wider than the `E+00` placeholders
-puts its extra digits at the first placeholder (`1E+100` under `0.0E+0` is `1.0E+100`). Implemented
-(T-2106).
+Rule: `TEXT(2^1023*(2-2^-52),"0.00E+00")` is `1.80E+308`: the mantissa rounds up to 1.80, a decimal above DBL_MAX, so it is built from the rounded digits, and exponent digits beyond the `E+00` placeholders all print at the first placeholder.
+Evidence: probes/dbl-max-text-b A1 (oracle: excel-graph) `1.80E+308`; the 2-digit analogues gen-m10/4398098060a7fa9d A13 ("01.2E+14") and gen-m5/c0651f0e0fb544d0 A74 ("1.0E+15").
+Status: VERIFIED for DBL_MAX; the 3-digit single-placeholder case (`1E+100` under `0.0E+0` as `1.0E+100`) is UNVERIFIED (probe pending), assumed from the 2-digit cells.
+Implemented in: formatter/format.rs, decimal_round.rs::round_scientific (T-2106).
