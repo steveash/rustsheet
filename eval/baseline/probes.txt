@@ -4349,3 +4349,4 @@ TC	probes/t2729-hijri-locale-tag.case.json	5
 TC	probes/t2932-b2-calendar-twice.case.json	5
 TC	probes/t3029-b2-calendar-weekday.case.json	3
 TC	probes/t3101-b2-calendar-names.case.json	3
+TC	probes/typed-mixed-fraction-number-format.case.json	8

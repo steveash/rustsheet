@@ -38,10 +38,22 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "deaf896bc65ee315d2249be80f911ebc527ef92d94e3abfc6e897c00655232e1",
+  "input_sha256": "a303fb92d9aa8c0df652d61b6bf10a09b2d2b852981e7bf8e6711f4a4abdb1a4",
   "kind": "excel-graph",
-  "produced_at": "2026-10-30T11:56:07+00:00",
+  "produced_at": "2026-10-30T12:35:35+00:00",
   "version": null,
-  "workbook_name": "ffc83d09cbcd88f80e787a776aff9e31bbb687e498fbda318836162ccf9493f3.xlsx"
+  "workbook_name": "c71190eccc2e03c286f6a6fa2f891ce167d246f52adb7e9c9f86fbe23f83650a.xlsx"
+ },
+ "text": {
+  "Sheet1": {
+   "A1": "3 1/2",
+   "A2": "-3 1/2",
+   "A3": "-3.50%",
+   "A4": "3 1/2",
+   "A5": "3 1/2",
+   "A6": "3.50%",
+   "A7": "-3 1/2",
+   "A8": "2 1/2"
+  }
  }
 }

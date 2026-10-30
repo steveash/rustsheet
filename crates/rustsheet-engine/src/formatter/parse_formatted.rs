@@ -44,7 +44,8 @@ pub(crate) fn parse_typed_number(
         }
         // A mixed fraction, signed, with `$` or `%`, is a number (probes/typed-input-sign-space-
         // mixed-fraction B6, B7, B9-B12). Its format is `# ?/?`, or `0.00%` with a `%` (ENTERED
-        // numberFormat, probes/typed-mixed-fraction-number-format, excel-graph 2026-10-30).
+        // numberFormat, probes/typed-mixed-fraction-number-format, excel-graph 2026-10-30;
+        // docs/research/typed-mixed-fraction-number-format-2026-10-30.md).
         let trimmed = original.trim_matches(' ');
         if let Some(v) = mixed_fraction(trimmed, currencies) {
             let format = if trimmed.ends_with('%') {
