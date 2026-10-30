@@ -3,7 +3,7 @@ id: T-3139
 title: "rustsheet-gen --policy numeric-fp: an oracle-filled gen-m2 batch of near-zero cancellations through M2 functions at the 8-ULP snap boundary"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
