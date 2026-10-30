@@ -108,6 +108,7 @@ Cells:
       eval/baseline/gen-m9.txt, with no new line in any baseline; cells that a model cannot reach move to a follow-up with
       the evidence.
 - [ ] statistics.md records the model change and cites the cells.
+- [ ] The 43 cells added by gap triage 2026-10-30 are bit-exact (their gen-m9 and probes lines leave eval/baseline/; the two probes-numeric cells, ungated, shown with `make eval-show`) or the Outcome lists each with its ulp distance.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -115,3 +116,42 @@ Cells:
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 Four visibly-off gen-m9 cells this task named are handed on so this parked task holds only last-digit work: F.INV gen-m9/0a614cfe974b59c3 Calc!A268 and gen-m9/85f48d5cdfb24555 Calc!A12 and FINV gen-m9/85f48d5cdfb24555 Calc!A10 to T-2511; CONFIDENCE.T gen-m9/85f48d5cdfb24555 Calc!A372 to T-0967.
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: 43 more incomplete-gamma cells within 15 digits (39 within 4 ulp, 4 further; none visibly off) that no open task names. 40 are gen-m9 cells where the function is the outer call or the only non-glue call inside another (CHIINV 7, CHISQ.INV 7, CHISQ.INV.RT 6, GAMMAINV 5, CHISQ.DIST 5, GAMMA.DIST 4, GAMMA.INV 3, CHIDIST 3, GAMMADIST 2, POISSON 1, over the whole group). The other three are round trips on the t1049 probes and one t2436 rerun of a gen-m9 cell. The neighbouring deferred tasks on the unmerged `tasks/m9-opus-fitting-deferred` branch (gamma quantiles and gamma cdf/density on the m9, t1048 and t1049 probes) do not list them. Examples, Excel vs ours: gen-m9/abc2939ebd1e2365 A291 `CHIINV(0.05,CSC((Data!D2-(-0.5))))` 3.8414588206941236 vs 3.841458820694128; gen-m9/2a18b2f5a4dc43ac A333 `GAMMA.DIST(10,DAY(26264),0.999,"FALSE")` 1.1450400571562037e-05 vs 1.1450400571562056e-05; probes-numeric/t1049-chisqinv A33 `CHISQ.INV(CHISQ.DIST(4,3,TRUE),3)` 4.000000000000001 vs 3.999999999999999.
+- gen-m9/0620505280d2ea6e.case.json (1): Calc!A292
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A178
+- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A30
+- gen-m9/165db58d1540f014.case.json (1): Calc!A375
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A51
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A333
+- gen-m9/31f09e6c48ca245c.case.json (1): Calc!A191
+- gen-m9/320d51765af9b6b7.case.json (1): Calc!A23
+- gen-m9/35e8168aae2b00f8.case.json (2): Calc!A158, A196
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A57
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A310
+- gen-m9/4bad303d32cc3f46.case.json (3): Calc!A38, A227, A289
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A386
+- gen-m9/60b0b6e69ad35a45.case.json (2): Calc!A85, A268
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A299
+- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A9
+- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A150, A319
+- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A173
+- gen-m9/984cba67bbe6972b.case.json (1): Calc!A272
+- gen-m9/9cca17438a7e6f8a.case.json (1): Calc!A370
+- gen-m9/a54c738c697617c3.case.json (2): Calc!A29, A354
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A273
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A145
+- gen-m9/a790a4d4a6a82756.case.json (1): Calc!A257
+- gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A121
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A291
+- gen-m9/b4173fe25109a238.case.json (2): Calc!A220, A366
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A42
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A349
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A230
+- gen-m9/ecc87f80077959e0.case.json (1): Calc!A231
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A293
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A123
+- probes-numeric/t1049-chisqinv.case.json (1): Calc!A33
+- probes-numeric/t1049-chisqinvrt.case.json (1): Calc!A33
+- probes/t2436/8d3588d8df0812df.case.json (1): Calc!A16
