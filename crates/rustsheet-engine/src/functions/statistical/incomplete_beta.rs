@@ -26,8 +26,9 @@
 //! cap) and [`RLOG1_TERMS`] series terms, so one call costs a fixed amount of work.
 
 use super::special::ln_gamma;
-use crate::x87_exp::excel_exp;
+use crate::x87_exp::{excel_exp, excel_expm1};
 use crate::x87_log10::excel_ln;
+use crate::x87_log1p::excel_ln_one_minus;
 
 /// Cephes' `MAXGAM`: Gamma(z) is finite below it.
 const MAXGAM: f64 = 171.624_376_956_302_7;
@@ -129,21 +130,24 @@ pub(crate) fn closed_form_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, 
 /// 0 < x, y < 1: bratio's oriented a0 = 1 with y0 > 0.9 (x0 below about 0.1). Like bratio, Excel
 /// computes w and forms w1 as (0.5 - w) + 0.5 (statistics.md "Incomplete beta at a shape of 1
 /// outside the closed forms", T-3007):
-/// - w = -expm1(b0 ln1p(-x0)): `BETA.DIST(1.9999999998999996E-10,1,0.5,TRUE)` is
-///   9.999999999999999E-11 (probes-numeric/t1745-beta-inv-roundtrip G35), which 1 - exp misses by
-///   8E-8 relative (T-0974); bpser(1, b0, x0) is further off Excel's w than this form;
+/// - w = -expm1(b0 ln1p(-x0)) with Excel's own expm1 (Kahan's form) and log1p (the stored atanh
+///   series): `F.DIST.RT(10,6,2)` = 0.09368601255412709 (gen-m9/146b46e74f2dac3b A329) and
+///   `FDIST(40,8,2)` (gen-m9/abc2939ebd1e2365 A318) are then bit-exact; libm's expm1 and log1p miss
+///   71 eval cells this form gets, and get 6 it misses (T-3170). `BETA.DIST(1.9999999998999996E-10,
+///   1,0.5,TRUE)` is 9.999999999999999E-11 (probes-numeric/t1745-beta-inv-roundtrip G35), which
+///   1 - exp misses by 8E-8 relative (T-0974); bpser(1, b0, x0) is further off Excel's w;
 /// - w1 from w: `F.DIST(5,20,2,TRUE)` = 0.8203482998751552 (probes-numeric/t2220-f-dist-sweep-cdf
 ///   A718), which y0^b0 puts 3 ulp low.
 ///
-/// `None` for other shapes and points. Excel's own w here is still 1 ulp off this form at 52 cells
-/// (TODO(T-3170)), and a w1 below 2^-53, which the complement rounds to 0, has no evidence (TODO(T-3150)).
+/// `None` for other shapes and points. A w1 below 2^-53, which the complement rounds to 0, has no
+/// evidence (TODO(T-3150)).
 fn shape_one_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
     let swap = x > 0.5;
     let (a0, b0, x0, y0) = if swap { (b, a, y, x) } else { (a, b, x, y) };
     if a0 != 1.0 || b0 == 1.0 || y0 <= A1_CLOSED_FORM_MAX_Y {
         return None;
     }
-    let w = -(b0 * (-x0).ln_1p()).exp_m1();
+    let w = -excel_expm1(b0 * excel_ln_one_minus(x0));
     let w1 = (0.5 - w) + 0.5;
     Some(if swap { (w1, w) } else { (w, w1) })
 }
