@@ -2783,7 +2783,7 @@ now names both earlier engine starts (kernels/yield_caret.py `rounded_once_yield
   need one ulp more, with the engine's exact quotient anywhere from -0.44 to +0.28 ulps off its rounding. On the 360
   one-step cells the relative slope error that would explain each miss instead runs evenly from -4e-12 to +5e-12 (A37 aside), so it
   is no constant slope error either.
-Next: a hypothesis outside this operation set (another formula whose terms round differently, or a start from a
+Next (T-3215): a hypothesis outside this operation set (another formula whose terms round differently, or a start from a
 different day count per product); the operation grid around the term-scaled form is exhausted.
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
 T-2777's term (`yield_start_term`) and, since T-2974 attempt 4, `pr·T` on the unrounded term (`yield_start`). Since

@@ -3,7 +3,7 @@ id: T-3152
 title: "YIELD and ODDFYIELD cells T-2974's correctly rounded start moved off the bit (decision 0162)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -70,3 +70,10 @@ on the YIELD cells, so start from the lab, not the port. `fn_yield_start_term_wh
   is the hypothesis a second attempt needs.
 - `fn_yield_start_term_whole_years_then_leftover_days` keeps its one-ulp pins on A1 and A2.
 - Eval delta: none (lab and docs only).
+
+## Outcome
+Partial, closed after attempt 1 (decision 0056); the remaining work moves to T-3215.
+- Done: `yield-caret` scores the rounded-once start (268/370 bit-exact) and the engine's unrounded-term start (341/370).
+- Six of the nine visibly-off cells are within 15 digits since T-2974 attempt 4. B30, C47 and A37 are still off and
+  move to T-3215, together with the exact-bit pins of `fn_yield_start_term_whole_years_then_leftover_days`.
+- Eval delta: none.
