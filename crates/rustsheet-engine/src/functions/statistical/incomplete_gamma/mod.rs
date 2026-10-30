@@ -183,26 +183,36 @@ fn gamma_prefactor(a: f64, x: f64, form: Exponent) -> f64 {
         }
         return (a * x.ln() - x - super::special::ln_gamma(a)).exp();
     }
-    let exponent =
-        if form == Exponent::Accurate || (x - a).abs() <= a * NEAR_MODE || x < a * RATIO_FORM_MIN {
-            // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
-            // 0.5002659614862837 to 5 ulp, where the ratio form below is 1E-10 off (ironcalc-calc
-            // POISSON.xlsx D31). Below a/200 Excel is neither (TODO(T-3219)).
-            -a * rlog(a, x)
-        } else {
-            // Excel's own form away from the mode: the log of the ratio that is at least 1, a ln(x/a)
-            // above it and -a ln(a/x) below it, then a - x added. Excel's density and cdf are 0 to 1
-            // ulp from it at shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up
-            // to 600 ulp from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist
-            // A51-A64; T-2638).
-            let log_ratio = if x < a {
-                -a * (a / x).ln()
-            } else {
-                a * (x / a).ln()
-            };
-            log_ratio + (a - x)
-        };
-    (a / (2.0 * std::f64::consts::PI)).sqrt() * (exponent - stirling_correction(a)).exp()
+    let away_from_mode = form == Exponent::Excel && (x - a).abs() > a * NEAR_MODE;
+    let exponent = if away_from_mode && x >= a * RATIO_FORM_MIN {
+        // Excel's own form away from the mode. Excel's density and cdf are 0 to 1 ulp from it at
+        // shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up to 600 ulp
+        // from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist A51-A64;
+        // T-2638).
+        excel_ratio_exponent(a, x)
+    } else {
+        // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
+        // 0.5002659614862837 to 5 ulp, where the ratio form is 1E-10 off (ironcalc-calc
+        // POISSON.xlsx D31). Below a/200 Excel is neither (TODO(T-3219)).
+        -a * rlog(a, x)
+    };
+    stirling_prefactor(a, exponent, stirling_correction(a))
+}
+
+/// sqrt(a / 2 pi) exp(exponent - correction), Stirling's form of the prefactor.
+fn stirling_prefactor(a: f64, exponent: f64, correction: f64) -> f64 {
+    (a / (2.0 * std::f64::consts::PI)).sqrt() * (exponent - correction).exp()
+}
+
+/// Excel's exponent away from the mode (T-2638): the log of the ratio that is at least 1,
+/// a ln(x/a) above the mode and -a ln(a/x) below it, then a - x added.
+fn excel_ratio_exponent(a: f64, x: f64) -> f64 {
+    let log_ratio = if x < a {
+        -a * (a / x).ln()
+    } else {
+        a * (x / a).ln()
+    };
+    log_ratio + (a - x)
 }
 
 /// rlog(x / a) = x/a - 1 - ln(x / a). Within a factor of 2 of a, x - a is exact (Sterbenz) and
@@ -241,33 +251,6 @@ const NEAR_MODE: f64 = 0.4;
 /// gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208) and closer to `rcomp`
 /// at a/500 (A47, B47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252); 1/200 lies between (T-3252).
 const RATIO_FORM_MIN: f64 = 0.005;
-
-/// The gamma density x^(a-1) e^(-x/scale) / (scale^a Gamma(a)) for a > 0, x > 0 and scale > 0,
-/// as [`gamma_prefactor`]`(a, x / scale) / x`: the prefactor P and Q share, so the density keeps
-/// its digits where statrs' `exp(ln pdf)` loses the absolute error of its log (T-0971). `None` at
-/// x = 0 or where x / scale is not normal, which keep statrs' closed forms.
-pub(crate) fn gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
-    density_with(a, x, scale, Exponent::Excel)
-}
-
-/// [`gamma_density`] with the accurate exponent throughout, for the large-shape beta paths, where
-/// the ratio form is unprobed (T-3252).
-pub(crate) fn accurate_gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
-    density_with(a, x, scale, Exponent::Accurate)
-}
-
-fn density_with(a: f64, x: f64, scale: f64, form: Exponent) -> Option<f64> {
-    let y = x / scale;
-    if x <= 0.0 || !y.is_normal() {
-        return None;
-    }
-    // The exponential density e^(-x/scale) / scale, as statrs forms it: one rounding fewer than
-    // the prefactor's y e^-y / x (gen-m9/ecc87f80077959e0 A261 `CHISQ.DIST(1.5,2,FALSE)`).
-    if a == 1.0 {
-        return Some((-y).exp() / scale);
-    }
-    Some(gamma_prefactor(a, y, form) / x)
-}
 
 /// The shape below which, for x below 1, Q is not 1 - P but [`small_shape_upper`]: there P runs
 /// up to 1 as the shape falls (P(0.00113, 8E-4) = 0.992), and 1 - P keeps only the digits P and
@@ -989,8 +972,10 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
     }
 }
 
+mod density;
 mod huge_shape;
 
+pub(crate) use density::{accurate_gamma_density, gamma_density};
 pub(crate) use huge_shape::{huge_shape_quantile, HUGE_SHAPE_MIN};
 
 #[cfg(test)]

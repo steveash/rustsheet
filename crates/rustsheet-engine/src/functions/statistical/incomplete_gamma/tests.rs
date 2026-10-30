@@ -523,6 +523,26 @@ fn the_large_shape_prefactor_is_excels_away_from_the_mode() {
     ));
 }
 
+// From shape 3 to 20 the density above the mode is Excel's ratio form too, and the cdf is not
+// (T-3147). Excel's own values: probes-numeric m9-chisq-dist A50 `CHISQ.DIST(40,10,FALSE)` (7 ulp
+// above the true value; the direct form was 8 below) and m9-gamma-dist-a9 A10
+// `GAMMA.DIST(27,9,1,FALSE)` bit for bit; gen-m9/984cba67bbe6972b A42 `CHISQ.DIST(37.5,6,FALSE)`
+// within 1 ulp (6 before). Below the mode the direct form stays: ironcalc-calc GAMMA.xlsx E3
+// `GAMMA.DIST(10,9,2,FALSE)`.
+#[test]
+fn the_small_shape_density_above_the_mode_is_excels_ratio_form() {
+    for (a, x, scale, excel) in [
+        (5.0, 40.0, 2.0, 6.870_512_074_795_199e-6_f64),
+        (9.0, 27.0, 1.0, 1.316_553_701_532_281e-5),
+        (9.0, 10.0, 2.0, 0.032_639_019_674_079_374),
+    ] {
+        let ours = gamma_density(a, x, scale).unwrap();
+        assert_eq!(ours.to_bits(), excel.to_bits(), "({x},{a},{scale}): {ours}");
+    }
+    let ours = gamma_density(3.0, 37.5, 2.0).unwrap();
+    assert!(within_ulps(ours, 6.322_968_483_684_426e-7, 1.0), "{ours}");
+}
+
 #[test]
 fn shape_one_quantile_is_excels_closed_form() {
     // Excel's doubles (T-3016): CHISQ.INV(0.5,2) and CHISQ.INV.RT(0.5,2) are 2 ln 2 (gen-m9
