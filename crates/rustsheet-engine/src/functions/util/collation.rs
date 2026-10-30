@@ -369,7 +369,8 @@ pub(crate) fn fold_final_sigma(c: char) -> char {
 
 /// Lowercases `text` one character at a time (see [`fold_char`]), never changing its length:
 /// the case fold of SEARCH, of exact-match lookup keys (MATCH, VLOOKUP and HLOOKUP with an exact
-/// match, XMATCH and XLOOKUP in wildcard mode) and of wildcard and D-function prefix criteria.
+/// match, XMATCH in wildcard mode and, inferred, XLOOKUP) and of wildcard and D-function prefix
+/// criteria.
 /// Excel: `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's
 /// `to_lowercase` turns U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8,
 /// A12, A13); `MATCH("i",{"İ"},0)` is #N/A and `COUNTIF(r,"?")` counts `İ`

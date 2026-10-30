@@ -139,11 +139,13 @@ decomposition (`DECOMPOSED`) and gives a combining mark's accent to the letter b
 `collation::fold_case` (the exact MATCH, wildcard and D-function prefix fold, one character to one; T-3133)
 folds `ς` to `σ`; exact MATCH, COUNTIF `=`/`<`/`<>` and, since T-3133, wildcard criteria and wildcard
 MATCH/XMATCH (`"ς*"`; probes/t3133-lookup-criteria-case-fold, criteria.md "Wildcard escapes, case and
-trailing tilde") are probed; the fold in D-function prefixes is inferred, UNVERIFIED (T-3154).
+trailing tilde") are probed; the fold in D-function prefixes is inferred, UNVERIFIED (T-3154 for `ς`,
+T-3180 for `İ`).
 - `İ` (U+0130) collates as `i` + U+0307, its lower-cased canonical decomposition: `XMATCH("i"&UNICHAR(775),{"İ"})`
   is 1, while `XMATCH("I",{"İ"})` and `XMATCH("İ",{"i"})` are #N/A (probes/t3133-lookup-criteria-case-fold Calc!J1,
   J3, J4, J33, excel-graph, 2026-10-29, T-3133). Before T-3133 the engine folded it to a plain `i`. Its rank
-  among `i` and the other accented `i`s, and `=`/COUNTIF equality with it, are inferred from XMATCH, UNVERIFIED.
+  among `i` and the other accented `i`s, and `=`/COUNTIF equality with it, are inferred from XMATCH, UNVERIFIED
+  (T-3180).
   In the same cells XMATCH equates `ẞ` and `ß` with `ss` (the `ß` expansion) and `ǅ ǆ Ǆ`, the Kelvin, Ångström
   and Ohm signs with their letters, while `ſ`/`s` and `µ`/`μ` stay apart (Calc!J1:J35).
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)

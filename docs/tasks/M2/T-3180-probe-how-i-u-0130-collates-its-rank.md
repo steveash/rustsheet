@@ -26,6 +26,8 @@ How Excel's collation treats `İ` (U+0130) in `=`, `<`/`>`, COUNTIF and SORT is 
 
 ## Acceptance criteria
 - [ ] A probe case with the cells above is committed with its excel-graph sidecar, and every cell passes.
+- [ ] The case also has a D-function prefix cell (`DCOUNTA` with the criterion `i` and with `İ` over `İx`, `ix`,
+      `"i"&UNICHAR(775)&"x"`), and criteria.md records it.
 - [ ] coercion.md records the result as VERIFIED, citing the case id and cells; `collation.rs` is changed only if the
       evidence requires it.
 - [ ] `make check` green; reviewers approve.
