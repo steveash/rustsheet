@@ -1,8 +1,9 @@
 #![allow(clippy::unwrap_used)]
+use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower, gamma_cdf, gamma_density,
     gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair,
-    inverse_cdf_within, temme_pair, wilson_hilferty_quantile, Tail, Terms, MAX_TERMS, TEMME_C,
+    inverse_cdf_within, temme_pair, Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -404,44 +405,70 @@ fn quantiles_in_the_tails_are_excel_s() {
     );
 }
 
-/// Excel's closed form at a huge shape (probes/t2982-gamma-inv-huge-shape; T-2982): the median
-/// is 1.0002658235505755 times the shape, and the p sweep at shape 1E13 is within a few ulps.
+/// Excel's closed form at a huge shape (probes/t2982-gamma-inv-huge-shape, probes/
+/// t3070-gamma-inv-band; T-2982, T-3070): the median is 1.0002658235505755 times the shape, and
+/// the p sweeps from shape 1.5E10 are within a few ulps of the fit.
 #[test]
 fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
-    let close = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 4.0 * f64::EPSILON;
-    // A34, A23: GAMMA.INV(0.5,1E13,1) and GAMMA.INV(0.5,1E300,1).
+    let ulps = |ours: f64, excel: f64| ((ours - excel) / excel).abs() / f64::EPSILON;
+    // t2982 A34, A23: GAMMA.INV(0.5,1E13,1) and GAMMA.INV(0.5,1E300,1).
+    assert!(ulps(wilson_hilferty_quantile(1e13, 0.0), 10_002_658_235_505.422) <= 2.0);
+    assert!(
+        ulps(
+            wilson_hilferty_quantile(1e300, 0.0),
+            1.000_265_823_550_575_5e300
+        ) <= 2.0
+    );
+    // t2982 A32: p = 0.1 at 1E13.
+    assert!(
+        ulps(
+            wilson_hilferty_quantile(1e13, -1.281_551_565_544_600_4),
+            10_002_654_182_255.533
+        ) <= 4.0
+    );
+    // At shape 1E11 (t2982 A60, A62, A70, A77; 12,459, 1,073, 103 and 500 ulps off before T-3070's
+    // terms) and 2E10 (A7, 519 ulps), and the band's first closed form (t3070 A110, 1.5E10).
+    for (shape, z, excel) in [
+        (1e11, -37.047_096_299_361_2, 100_014_865_674.986_98),
+        (1e11, -11.464_024_688_443_377, 100_022_956_593.373_21),
+        (1e11, 0.0, 100_026_582_354.721_88),
+        (1e11, 7.941_444_487_415_977, 100_029_094_070.505_65),
+        (2e10, 0.0, 20_005_316_470.675_835),
+        (1.5e10, 4.753_424_308_817_089, 15_004_569_623.957_905),
+    ] {
+        let ours = wilson_hilferty_quantile(shape, z);
+        assert!(
+            ulps(ours, excel) <= 8.0,
+            "{shape} {z}: {ours} against {excel}"
+        );
+    }
+}
+
+/// Excel's three regimes from shape 1E9 (probes/t3070-gamma-inv-band, T-3070): the closed form
+/// where the start's density underflows, the true quantile inside the fitted band, `#NUM!` (NaN)
+/// outside it.
+#[test]
+fn huge_shape_quantile_has_excels_three_regimes() {
+    let close = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 1e-15;
+    // A51 `GAMMA.INV(0.5,5E9,1)` and A358 `CHISQ.INV(1E-100,6E9)`: the true quantile.
     assert!(close(
-        wilson_hilferty_quantile(1e13, 0.0),
-        10_002_658_235_505.422
+        huge_shape_quantile(5e9, 1.0, 0.5, Tail::Lower, 0.0),
+        4_999_999_999.666_667
     ));
     assert!(close(
-        wilson_hilferty_quantile(1e300, 0.0),
-        1.000_265_823_550_575_5e300
+        huge_shape_quantile(3e9, 2.0, 1e-100, Tail::Lower, -21.273_453_560_965_32),
+        5_997_669_910.951_994
     ));
-    // A32: p = 0.1, z = -1.2815515655446004.
-    assert!(close(
-        wilson_hilferty_quantile(1e13, -1.281_551_565_544_600_4),
-        10_002_654_182_255.533
-    ));
-    // At shape 1E11 the fit is within 3E-13 relative (A62, A70, A77; 1,546, 149 and 721 ulps, the
-    // z^2 term T-3070 owns), as at 2E10 (A7, 599 ulps).
-    let near = |ours: f64, excel: f64| ((ours - excel) / excel).abs() <= 3e-13;
-    assert!(near(
-        wilson_hilferty_quantile(1e11, -11.464_024_688_443_377),
-        100_022_956_593.373_21
-    ));
-    assert!(near(
-        wilson_hilferty_quantile(1e11, 0.0),
-        100_026_582_354.721_88
-    ));
-    assert!(near(
-        wilson_hilferty_quantile(1e11, 7.941_444_487_415_977),
-        100_029_094_070.505_65
-    ));
-    assert!(near(
-        wilson_hilferty_quantile(2e10, 0.0),
-        20_005_316_470.675_835
-    ));
+    // A65 `GAMMA.INV(0.5,6E9,1)`, A44 `GAMMA.INV(1E-100,5E9,1)`, A93 `GAMMA.INV(0.5,1.2E10,1)`.
+    assert!(huge_shape_quantile(6e9, 1.0, 0.5, Tail::Lower, 0.0).is_nan());
+    assert!(huge_shape_quantile(5e9, 1.0, 1e-100, Tail::Lower, -21.273_453_560_965_32).is_nan());
+    assert!(huge_shape_quantile(1.2e10, 1.0, 0.5, Tail::Lower, 0.0).is_nan());
+    // A371 `CHISQ.INV.RT(1E-100,1E10)`: the right tail's closed form at shape 5E9.
+    let ours = huge_shape_quantile(5e9, 2.0, 1e-100, Tail::Upper, 21.273_453_560_965_32);
+    assert!(
+        ((ours - 10_005_667_524.015_223) / ours).abs() <= 1e-14,
+        "{ours}"
+    );
 }
 
 // From shape 20 the prefactor is Excel's ratio form away from the mode and `rcomp` near it (T-2638).

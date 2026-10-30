@@ -1005,10 +1005,9 @@ cdfs at df 1E10, 0.4999982128217492 on statrs and main, are now Excel's 0.500001
 shape of 1E8 needs no term past C_3 (they fall by 1/a each). The cap of 2^19 terms now binds a cdf nowhere (below 1E8
 the series takes at most about 68,000 terms) and still binds an inversion's cdfs together below that shape.
 DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms, or that
-statrs' search cannot finish, is `#NUM!` where Excel gives a number: `GAMMA.INV(0.5,1E300,1E-300)` (E5, Excel
-1.0002658235505755). Above a shape of 1E9 the quantile is statrs' search alone (`REFINE_SHAPE_MAX`), so
-`CHISQ.INV(5.6221E-26,4715100000)` is 4714346327.59633 where Excel's is 4714082845.627977 (E15); E14 and E19 are now
-1 ulp off Excel. A CHISQ.TEST's cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded`
+statrs' search cannot finish, is `#NUM!` where Excel gives a number. From a shape of 1E9 the quantile is
+`huge_shape_quantile` (section "GAMMA.INV and CHISQ.INV at a huge shape"; T-3070), so `GAMMA.INV(0.5,1E300,1E-300)` (E5)
+and `CHISQ.INV(5.6221E-26,4715100000)` (E15) are Excel's values (E5 1 ulp off); E14 and E19 are 1 ulp off Excel. A CHISQ.TEST's cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded`
 and `a_call_past_its_cap_is_nan`; T-2982 gives Excel's values for the inversions.
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted CHISQ.*, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV,
 GAMMAINV, POISSON or POISSON.DIST is `#ERROR!` before it runs where Excel computes it once its elements' charges pass
@@ -4339,36 +4338,48 @@ Ours: `#NUM!` where the quantile saturates, and 7 ulp off at `F.INV.RT(1E-20,3,9
 Status: VERIFIED (excel-graph)
 Tasks: T-2435, T-2808
 
-## GAMMA.INV and CHISQ.INV at a huge shape: #NUM! from about 7E9, then a Wilson-Hilferty closed form (T-2982)
-Rule: GAMMA.INV (and GAMMAINV, CHISQ.INV, CHISQ.INV.RT, CHIINV, with shape df/2 and scale 2) is close to the true
-quantile up to a shape of 5E9 (`GAMMA.INV(0.5,5E9,1)` = 4999999999.666667, `CHISQ.INV(1E-16,10000000000.5)` =
-9998837266.383266), mostly `#NUM!` at 7E9 and 1E10 (`GAMMA.INV(p,1E10,1)` is `#NUM!` for 17 of 18 p from 1E-300 to
-1-1E-15; only p = 1E-30 gives 9998853641.00538; `CHISQ.INV.RT(1E-10,10000000000.5)` and `(0.001,..)` are `#NUM!`
-while `(0.5,..)` = 9999999999.333334 and `(0.999,..)` = 9999562980.855858), and from 2E10 on the true quantile times a
-constant c = 1.0002658235505755, at every shape up to 1E300 and every scale: `GAMMA.INV(0.5,a,1)` / a is c for a = 1E11
-to 1E300 (A9-A23; `GAMMA.INV(0.5,1E13,1)` = 10002658235505.422 = c (1E13 - 1/3)), `GAMMA.INV(0.5,1E13,b)` is b times it
-for b = 1E-300 to 1E280 (A78-A85), and `GAMMA.INV(0.5,1E300,1E8)` = 1.0002658235505756E+308 (A86). The tails are not
-exactly c times the true quantile: at shape 1E13 and p = 1E-300 Excel's 10002541064587.973 is 12,972 below c times
-it and 2,600 above the true quantile at shape c·1E13 (A24). The whole factor is a Wilson-Hilferty
-closed form with constants of Excel's own: c^(1/3) - 1 is 0.0000886 to 13 digits, and from shape 2E10
-Excel's value is a·(1 + 0.0000886 - 1/(9a) + z·s/(3·sqrt a))^3, z the normal quantile of p and s =
-1 - 2.2106E-5 (fitted on the 1E13 sweep A25-A41, all within 7 ulps of it; at 1E11, A61-A77, a term
-in z^2 of about 0.0002·z^2 absolute is left, 100 to 1,500 ulps). No search: the value has no
-(z^2 - 1)/3 skew of its own beyond the cube's. CHISQ.INV and CHIINV differ at the
-same df: `CHISQ.INV(0.5,2E13)` is `#NUM!` while `CHIINV(0.5,2E13)` = `CHISQ.INV.RT(0.5,2E13)` = 20005316471010.844 (A91-A93).
+## GAMMA.INV and CHISQ.INV at a huge shape: the true quantile, `#NUM!`, or a Wilson-Hilferty closed form (T-2982, T-3070)
+Rule: from a shape of 1E9 Excel's GAMMA.INV (and GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV, at shape df/2 and scale
+2) is one of three things, decided by its Wilson-Hilferty start x0 = a(1 + 0.0000886 - 1/(9a) + z s/(3 sqrt a) + ...)^3
+(z the normal quantile of the lower tail's p; for CHISQ.INV.RT and CHIINV minus that of p itself, so
+`CHISQ.INV.RT(1E-100,1E10)` = 10005667524.015223 although 1 - p is 1):
+- **the closed form x0 itself** where the gamma density at x0 is below the smallest normal double: the true quantile
+  times about 1.000266. Fit: ln density -708.54 at the closed form `GAMMA.INV(0.999999,1.5E10,1)` =
+  15004569623.957905 (t3070 A110), -701.60 at `GAMMA.INV(0.5,1.95E10,1)` `#NUM!` (A210); every probed cell either side
+  agrees. So `GAMMA.INV(0.5,a,1)` is the closed form from 2E10 (c (a - 1/3) for a = 1E13 to 1E300, t2982 A7-A23, and at
+  every scale, A78-A86), while at 2E10 p = 0.1 and below are `#NUM!` (t3070 A127-A134), at 5E10 only p = 1E-300 is
+  (A155), and from about 8E10 every p is the closed form;
+- **the true quantile** inside a band of the start's offset o = (x0(z = 0) - a)/sqrt(a), about 2.66E-4 sqrt(a)
+  standard deviations, and z: z + 1.35 o < 27.25 and o - z < 39 (a fit: the edges lie in (26.93, 27.60) and
+  (38.05, 40.07), pinned by t3070 A77 `GAMMA.INV(0.001,7E9,1)` (a value) and t2982 A45 `GAMMA.INV(1E-16,1E10,1)`
+  (`#NUM!`), and by t2982 A44 `GAMMA.INV(1E-30,1E10,1)` = 9998853641.00538 and t3070 A44 `GAMMA.INV(1E-100,5E9,1)`
+  (`#NUM!`); slopes 1.30 to 1.41 also separate every probed cell, UNVERIFIED between them). `GAMMA.INV(0.5,5E9,1)` =
+  4999999999.666667, `GAMMA.INV(1E-30,7E9,1)` = 6999040894.354145, `CHISQ.INV(1E-100,6E9)` = 5997669910.951994,
+  `CHISQ.INV(5.6221E-26,4715100000)` = 4714082845.627977 (incomplete-gamma-cap E15);
+- **`#NUM!`** elsewhere: at the far tails (`GAMMA.INV(1E-300,1E9,1)`, `GAMMA.INV(1-1E-15,3E9,1)`, `CHISQ.INV.RT(1E-100,2E9)`),
+  above the band (`GAMMA.INV(0.5,6E9,1)`, every probed p at 1.2E10) and below the closed form.
+How Excel's search fails is not known; the band is the shape of its failures, not its algorithm.
+The closed form's constants are Excel's own, fitted (T-3070) on the 167 closed-form cells from shape 1.5E10 to 1E300:
+s = 0.999977894167, and terms (-7.586532E-4 + 6.740481E-5 z^2)/a - 3.08676E-3 z^3/a^(3/2) inside the cube, all cells
+within 4 ulps of the fit (T-2982's fit without them, at 1E13 alone, was 100 to 12,459 ulps off at 1E11 and 2E10). At
+5E9 to 2E10 the right tail's closed form at p = 1E-100 is 20 to 33 ulps off it (UNVERIFIED as a form).
+CHISQ.INV.RT and CHIINV take any number of degrees of freedom (2E13 and 1E15: `CHIINV(0.5,2E13)` =
+`CHISQ.INV.RT(0.5,2E13)` = 20005316471010.844, t2982 A92, A93, t3070 A304-A327), while CHISQ.INV, CHISQ.DIST,
+CHISQ.DIST.RT and CHIDIST are `#NUM!` above 1E10 (t2982 A91, t3070 A222-A333).
 The cdf itself has no such factor (`GAMMA.DIST(1E12,1E12,1,TRUE)` is correctly rounded, probes/incomplete-gamma-cap E9),
-so the factor is the inversion's.
-Evidence: probes/t2982-gamma-inv-huge-shape A1-A95 (excel-graph, 2026-10-28); probes/incomplete-gamma-cap E5, E14, E15,
-E19; gen-m9 0a614cfe974b59c3 A327, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239, a013a45a8fbcab4f A338, d8266bc15533702a
-A296 (each within about 1E-11 of c times the true quantile). excel-graph refused (FileCorruptTryRepair) workbooks holding
-`GAMMA.DIST(2,a,1E10,TRUE)` for a from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells
-were dropped from the probe (T-2982).
-Ours: the closed form from shape 2E10 for GAMMA.INV and GAMMAINV (`incomplete_gamma` `wilson_hilferty_quantile`);
-below it statrs' search, `#NUM!` from a shape of about 1E9, where Excel has values to 5E9. CHISQ.INV.RT and CHIINV
-stay `#NUM!` above 1E10 degrees of freedom (`chisq.rs` `MAX_DEGREES_OF_FREEDOM`), where Excel takes 2E13 (A92, A93):
-both are T-3070's.
-Status: VERIFIED (excel-graph) for the factor at p = 0.5 and the #NUM! band; the closed form is a fit (7 ulps at 1E13)
-Tasks: T-2982
+so the factor is the inversion's: Excel is the inaccurate side here (T-3070's stage moved to `campaign: visible`).
+Evidence: probes/t3070-gamma-inv-band (381 cells: p sweeps at shapes 1E9 to 1E12, the median at 17 shapes of the band,
+the chi-square functions from 1.5E10 to 1E15 degrees of freedom, CHISQ.INV and CHISQ.INV.RT at 2E9 to 1E10; excel-graph,
+2026-10-30); probes/t2982-gamma-inv-huge-shape A1-A95 (excel-graph, 2026-10-28); probes/incomplete-gamma-cap E5, E14,
+E15, E19; gen-m9 0a614cfe974b59c3 A327, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239, a013a45a8fbcab4f A338,
+d8266bc15533702a A296. excel-graph refused (FileCorruptTryRepair) workbooks holding `GAMMA.DIST(2,a,1E10,TRUE)` for a
+from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells were dropped from the probe (T-2982).
+Ours: `incomplete_gamma/huge_shape.rs` `huge_shape_quantile` for GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV
+from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expansion), halved over the whole range
+(65 cdfs) since statrs' search is NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
+`MAX_DEGREES_OF_FREEDOM`.
+Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
+Tasks: T-2982, T-3070
 
 ## GAMMA.DIST at a huge shape: #NUM! for a density at a tiny x, for the cdf above about 1E+76 (T-2435)
 Rule: GAMMA.DIST's density is `#NUM!`, not 0, where the shape is large and x/beta tiny:
