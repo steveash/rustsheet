@@ -3,7 +3,7 @@ id: T-3140
 title: "Near-zero snap of a root + or - over coerced operands (number, percent, time and date text, booleans, blank cells): probe and match"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -44,24 +44,35 @@ snapping" records the rule for coerced addends as VERIFIED.
   oracle sidecar.
 
 ## Acceptance criteria
-- [ ] `probes/t3140-snap-coerced-operands` is committed with its excel-graph sidecar. It holds at least 120 formula
+- [x] `probes/t3140-snap-coerced-operands` is committed with its excel-graph sidecar. It holds at least 120 formula
       cells, covering each operand kind above: number text, percent text, time text, date-time text, TRUE/FALSE,
       a blank cell and a text-number cell. Each kind is used as a literal and from a cell, on the left and the
       right, at k values on both sides of the 8-ULP bound, with companion cells for the coerced values.
-- [ ] numbers.md "Near-zero snapping" has a paragraph "Coerced addends" with the rule and cells (VERIFIED). If the
+- [x] numbers.md "Near-zero snapping" has a paragraph "Coerced addends" with the rule and cells (VERIFIED). If the
       snap sees the coerced value, the engine needs no change and the paragraph says so. If not, the paragraph
       says at which stage Excel snaps.
-- [ ] Every cell of the case passes. Any change stays in `snap_near_zero` and `evaluate_formula_root` (no second snap
+- [x] Every cell of the case passes. Any change stays in `snap_near_zero` and `evaluate_formula_root` (no second snap
       helper). A unit test in crates/rustsheet-engine/src/test/test_near_zero_snapping.rs covers one coerced form
       per kind that the probe shows to differ from the number-only rule. snap-addsub (probes-numeric),
       t3047-snap-array-operands, t3049-snap-under-pickers and the gen-m2 cells show 0 regressions
       (`make eval-check`). `make eval-baseline` is run.
-- [ ] Any cell that only the open operand-order rule explains is named in T-3100, so `make exit-owners MILESTONE=M2`
+- [x] Any cell that only the open operand-order rule explains is named in T-3100, so `make exit-owners MILESTONE=M2`
       reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The operand-order bound itself (T-3100) and LAMBDA or name bodies (T-3105).
 - Snap inside SUM/AVERAGE over coerced range values. Range text is skipped by SUM, and direct text arguments are a
   separate question: file a follow-up if this probe suggests SUM's snap differs.
 - Typed cell input of these texts (the cell stores a number then; no coercion at evaluation).
+
+## Outcome
+probes/t3140-snap-coerced-operands (1,273 cells, excel-graph 2026-10-29): Excel snaps a root `+`/`-` on the
+**coerced** value with the unchanged 8-ULP bound of the left addend. Thirteen bases (number, percent, time, date,
+date-time, currency and thousands text, TRUE), as literals and from text cells, on either side and under a unary
+minus, all snap at k ≤ 7 and keep at k ≥ 8, exactly as their number controls; the task's named forms
+(`="30%"-0.1-0.2`, `="0.1"+"0.2"-"0.3"`, `=TRUE-(1-3*2^-52)`, the date-time residue) match their number controls;
+blank and FALSE addends are 0 and never snap. The engine already coerces before `snap_near_zero`, so it needed no
+change and passes every cell; numbers.md "Near-zero snapping" gains a "Coerced addends" paragraph (VERIFIED) and
+test_near_zero_snapping.rs pins one form per kind. No cell needs the operand-order rule (every X lies above its
+base), so T-3100 gains nothing. Eval delta: +1,273 passing probe cells (new case), 0 regressions.

@@ -115,8 +115,9 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
-            for (index, arg) in args.iter_mut().enumerate() {
-                let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+            for index in 0..args.len() {
+                let arrays = legacy_array_context(kind, signature.get(index), index, args, arrays);
+                let arg = &mut args[index];
                 remove_array_at(kind, signature.get(index), index, arg, arrays);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).

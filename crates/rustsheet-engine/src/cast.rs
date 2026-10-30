@@ -202,13 +202,28 @@ pub(crate) fn value_number_text(
         .or_else(|| mixed_fraction(trimmed))
 }
 
-/// A mixed fraction `w n/d` (ASCII digits, one space) as `w + n/d`.
-/// Excel: `VALUE("3 1/2")` is 3.5 and `VALUE("1 1/2")` 1.5 (docs/excel-semantics/text.md "VALUE
-/// reads a mixed fraction", probes/eng-inumber-date-boundary B22, probes/t3136-criteria-formatted-
-/// number-operands H25). A zero denominator is not a number. UNVERIFIED: an improper fraction
-/// (`1 3/2`) and `w n/0`; a sign (`-3 1/2`) and two spaces are not read until T-2646 probes them.
+/// A mixed fraction `w n/d` (ASCII digits, one space) as `w + n/d`, with an optional sign (spaces
+/// may follow it), a leading `$` or `€` and a trailing `%`.
+/// Excel: `VALUE("3 1/2")` is 3.5, `"-3 1/2"` and `"- 3 1/2"` -3.5, `"$3 1/2"` 3.5, `"3 1/2%"`
+/// 0.034999999999999996 (the whole and the fraction divided by 100 apart), `"1 3/2"` 2.5 and
+/// `"3 01/02"` 3.5; `"3 1/0"`, `"3  1/2"`, `"3 1 /2"` and `"3 1/ 2"` are #VALUE!
+/// (docs/excel-semantics/text.md "VALUE reads a mixed fraction", probes/value-sign-space-mixed-
+/// fraction-dash-date A7-A12, A24-A35, probes/eng-inumber-date-boundary B22).
 fn mixed_fraction(text: &str) -> Option<f64> {
-    let (whole, fraction) = text.split_once(' ')?;
+    let (sign, rest) = match text.as_bytes().first()? {
+        b'-' => (-1.0, text[1..].trim_start_matches(' ')),
+        b'+' => (1.0, text[1..].trim_start_matches(' ')),
+        _ => (1.0, text),
+    };
+    let rest = ["$", "€"]
+        .iter()
+        .find_map(|c| rest.strip_prefix(c))
+        .unwrap_or(rest);
+    let (rest, percent) = match rest.strip_suffix('%') {
+        Some(rest) => (rest, true),
+        None => (rest, false),
+    };
+    let (whole, fraction) = rest.split_once(' ')?;
     let (numerator, denominator) = fraction.split_once('/')?;
     let digits = |part: &str| -> Option<f64> {
         if part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()) {
@@ -221,8 +236,13 @@ fn mixed_fraction(text: &str) -> Option<f64> {
     if denominator == 0.0 {
         return None;
     }
-    let value = whole + numerator / denominator;
-    value.is_finite().then_some(value)
+    let fraction = numerator / denominator;
+    let value = if percent {
+        whole / 100.0 + fraction / 100.0
+    } else {
+        whole + fraction
+    };
+    value.is_finite().then_some(sign * value)
 }
 
 /// The `#N/IMPL!` of a range, an array or a LAMBDA where a scalar cast expects a value.
@@ -318,7 +338,13 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.top_left(value)
+    }
+
+    /// `value` with a range read as its top-left cell ([`Self::evaluate_node_top_left`]).
+    pub(crate) fn top_left(&mut self, value: CalcResult) -> CalcResult {
+        match value {
             CalcResult::Range { left, .. } => self.evaluate_cell(left),
             other => other,
         }

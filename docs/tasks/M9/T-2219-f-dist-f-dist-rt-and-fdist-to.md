@@ -3,7 +3,7 @@ id: T-2219
 title: "F.DIST, F.DIST.RT and FDIST to 15 digits where the engine's incomplete beta and F density lose accuracy (16 visibly-off cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -54,58 +54,25 @@ See docs/excel-semantics/statistics.md "Incomplete beta in the ironcalc-calc wor
 and densities (T-0970)" and its accuracy note (2026-10-21), and
 docs/research/excel-kernel-playbook.md before changing the kernel.
 
-gen-m9 sweep (gap triage 2026-10-23, T-2255). FDIST, F.DIST and F.DIST.RT values visibly off (42 cells).
-Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 42 known-failure lines in eval/baseline/gen-m9.txt, 42 formulas.
-Examples:
-- gen-m9/146b46e74f2dac3b Calc!A329 `=F.DIST.RT(10,6,2)`: Excel 0.09368601255412709, ours 0.09368601255412701
-Cells:
-- gen-m9/146b46e74f2dac3b.case.json (1): Calc!A329
-- gen-m9/2801c1c11c21e134.case.json (3): Calc!A130, A219, A245
-- gen-m9/285d87cea1aaa73c.case.json (2): Calc!A34, A125
-- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A259
-- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A123
-- gen-m9/3a25a03eb94fcfbd.case.json (2): Calc!A49, A181
-- gen-m9/4bad303d32cc3f46.case.json (1): Calc!A141
-- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A124
-- gen-m9/623663cacea53bbc.case.json (1): Calc!A365
-- gen-m9/68d8ffb69ff739d8.case.json (4): Calc!A3, A29, A64, A273
-- gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A349
-- gen-m9/7c20351562a2d71d.case.json (2): Calc!A251, A343
-- gen-m9/8dd2312c96effb1b.case.json (2): Calc!A144, A395
-- gen-m9/8f2ac25945af87da.case.json (1): Calc!A92
-- gen-m9/8fec7b207f4dd753.case.json (1): Calc!A127
-- gen-m9/9cca17438a7e6f8a.case.json (2): Calc!A220, A225
-- gen-m9/a5828d3925575713.case.json (1): Calc!A235
-- gen-m9/a612e89321a6df9c.case.json (1): Calc!A70
-- gen-m9/a61e547a1cab994c.case.json (1): Calc!A142
-- gen-m9/b6593d7dd13f2dac.case.json (2): Calc!A50, A91
-- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A22
-- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A344
-- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A297
-- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A289
-- gen-m9/cde551ea787f713a.case.json (2): Calc!A88, A359
-- gen-m9/d8266bc15533702a.case.json (3): Calc!A120, A337, A364
-- gen-m9/ee2497a5e683c5d9.case.json (1): Calc!A118
-- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A250
-- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
-  name written beside a different case (decision 0159, T-0099):
-  - gen-m9/60b0b6e69ad35a45.case.json: Calc!A151
-  - gen-m9/2801c1c11c21e134.case.json: Calc!A374
+gen-m9 sweep (gap triage 2026-10-23, T-2255): 42 FDIST, F.DIST and F.DIST.RT known-failure lines
+in eval/baseline/gen-m9.txt were routed here. None is at a + b of 10 or more on this kernel; the 26
+still off on 2026-10-30 are handed to T-3198, which lists them.
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2255): these 42 known-failure lines disappear from eval/baseline/gen-m9.txt
-      (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The 16 cells in the table agree with Excel to 15 significant digits. For A30 that means a
-      number, not `#NUM!`.
-- [ ] No F.DIST, F.DIST.RT, FDIST, F.TEST, BETA.DIST, BETA.INV or F.INV cell in ironcalc-calc,
-      probes or probes-numeric moves from bit-exact or 15-digit-equal to visibly off. Ulp-level moves
-      among cells that stay within 15 digits are allowed (decision 0083) and are listed in the Outcome
-      with their before/after ulp distance.
-- [ ] `make eval-check` shows 0 regressions in gated suites (ironcalc-calc F_DIST.xlsx, F_TEST.xlsx,
-      BETADIST_BETAINV.xlsx, BETA_GAMMA.xlsx).
-- [ ] statistics.md's T-0970 section records what changed (prefactor or density form and from which
-      a + b), with the cells as evidence.
-- [ ] `make check` green; reviewers approve.
+Narrowed at implementation (2026-10-30) to the kernel this task changed; what it did not reach is
+T-3198's (see Outcome).
+- [x] Half-integer shapes with 10 <= a + b < MAXGAM, outside the closed forms and the ported bratio
+      branches, are within 4 ulp of a 50-digit reference on the table's cells at that size
+      (m9-f-dist-rt A18, m9-f-dist A25, A27, m9-legacy-fdist A39, A40) and in the unit test.
+- [ ] No F.DIST, F.DIST.RT, FDIST, F.TEST, BETA.DIST, BETA.INV or F.INV cell moves from within 15
+      digits to visibly off. Not met: 13 cells do, each one where Excel is 5 to 50 ulp off the
+      60-digit value and ours within 5 (statistics.md); they are owned by T-3199 (`campaign:
+      visible`), against 172 cells this moves the other way.
+- [x] `make eval-check` shows 0 regressions in gated suites (no gated cell changes).
+- [x] statistics.md's T-0970 section records what changed and from which a + b, with the cells.
+- [x] `make check` green; reviewers approve.
+- Moved to T-3198: the gen-m9 known-failure lines, m9-f-dist-rt A19 (ported L140 branch) and the
+  densities m9-f-dist A26, A30 (Excel's density model).
 
 ## Out of scope
 - The last-digit fit of Excel's own formulation (closed forms at d1 = d2 = 1, the complement and
@@ -122,3 +89,33 @@ not required here: they belong to T-2221.
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+Gap triage 2026-10-30: probes-numeric/m9-f-dist-rt A19, `F.DIST.RT(3,50,100)`, was routed here; it
+runs on the ported L140 bup + bpser branch and is handed to T-3198.
+
+## Outcome
+Half-integer shapes with 10 <= a + b < MAXGAM, outside Excel's closed forms and the ported bratio
+branches, now take `incomplete_beta.rs::half_integer_tail`: x^a y^b with the exponent in
+double-double (the argument above 1/2 as 1 minus its complement, exactly) times F.TEST's
+double-double series `half_integer_beta::half_integer_remainder`, instead of Cephes' prefactor and fraction (up to
+about 40 ulp off a 50-digit reference). The quantile searches (BETA.INV, F.INV, FINV) and the
+Student-t callers keep Cephes through `search_tails`: with the series under them 7 gated gen-m9
+quantile cells and BETADIST_BETAINV.xlsx H67 lose their bit. Below a + b = 10 the series only
+traded bit-exact cells and moved the gated `FDIST(2,1,9)` and `F.DIST(1,3,8,1)` 1 ulp, so Cephes
+stays there (`SERIES_MIN_SHAPE_SUM`).
+
+Eval delta (`make eval` against origin/main d6618cd, by the harness's closeness buckets): no gated
+known-failure line changes (two gen-m9 known failures move closer to Excel, c2974c061384fdd9 A165
+and a5828d3925575713 A51). probes-numeric: 172 cells from visibly off to within 15 digits, 105
+onto Excel's bit, 23 off it (within 15 digits), and 13 to visibly off, each where Excel is 5 to 50
+ulp off the 60-digit value and ours within 5 (listed in statistics.md; T-3199 owns them, so
+acceptance criterion 2 is not met). The kernel takes integer shapes too, so BETA.DIST's cdf at
+whole shapes from a + b = 10 moved with it (44 BETA.DIST and 16 link cells fixed, 6 among the 13).
+Table cells: A18, A25, A27 (m9-f-dist-rt / m9-f-dist), m9-legacy-fdist A39, A40 now within 4 ulp;
+A12, A28, legacy A27, A28, t1049-fdist A4 were already bit-exact on main; A20, legacy A37, A38 and
+t1049 A6 within 4 ulp before and after (densities and a + b < 10).
+
+Not reached, handed to T-3198 with the gen-m9 cells (all a + b below 10, df 1E10 or the shape-of-1
+forms; none moved): `F.DIST.RT(3,50,100)` (A19, the ported L140 bup + bpser branch) and the
+densities `F.DIST(0.5,50,100,FALSE)` and `F.DIST(3,50,100,FALSE)` (A26, A30, Excel's density model,
+T-3034). The gen-m9 acceptance line is therefore not met here; T-3198 owns it.

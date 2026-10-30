@@ -41,12 +41,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: fuzz
-      # The corpus libFuzzer grew on earlier nights; seeds from the suites are added on top.
+      # The corpus libFuzzer grew on earlier nights; seeds from the suites are added on top. `v2`:
+      # the caches saved before T-3163 hold every suite formula (802,100 files) and are not restored.
       - uses: actions/cache/restore@v4
         with:
           path: fuzz/corpus/${{ matrix.target }}
-          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
-          restore-keys: fuzz-corpus-${{ matrix.target }}-
+          key: fuzz-corpus-v2-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-v2-${{ matrix.target }}-
       - run: python3 fuzz/seed_corpus.py
       # cargo-fuzz defaults --target to the triple it was built for; the prebuilt binary is musl,
       # which the nightly toolchain lacks and ASan does not support. Fuzz the host (glibc) triple.
@@ -62,13 +63,24 @@ jobs:
           ${{ matrix.target }} corpus/${{ matrix.target }} --
           ${{ matrix.args }} -max_total_time=1200 -timeout=30 -rss_limit_mb=2048
           -print_final_stats=1
+      # Keep only inputs that add coverage (libFuzzer's -merge=1), so the corpus saved is bounded by
+      # the target's coverage, not by the number of nights, and the next night's first pass stays
+      # short (T-3163).
+      - name: minimize the corpus
+        working-directory: fuzz
+        env:
+          ASAN_OPTIONS: malloc_context_size=0
+        run: >-
+          cargo fuzz cmin --target "$(rustc -vV | sed -n 's/^host: //p')"
+          ${{ matrix.target }} corpus/${{ matrix.target }} --
+          ${{ matrix.args }} -timeout=30 -rss_limit_mb=2048
       # Only runs on main grow the shared corpus (decision 0035).
       - name: save the grown corpus
         if: success() && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v4
         with:
           path: fuzz/corpus/${{ matrix.target }}
-          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          key: fuzz-corpus-v2-${{ matrix.target }}-${{ github.run_id }}
       - name: upload crashing inputs
         if: failure()
         uses: actions/upload-artifact@v4

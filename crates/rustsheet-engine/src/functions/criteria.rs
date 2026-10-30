@@ -7,7 +7,7 @@ use crate::{
     cast::value_number_text,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::collation::cmp_text,
+    functions::util::collation::{cmp_text_pairwise, fold_case},
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     text::Text,
@@ -176,15 +176,17 @@ fn result_is_not_equal_to_bool(calc_result: &CalcResult, target: bool) -> bool {
 // STRINGS ///
 //*********///
 
-// Text criteria compare with `cmp_text`, which ignores case and reads a lone surrogate as its own
-// unit (docs/excel-semantics/text.md "Lone surrogates", criteria paragraph;
-// probes/criteria-lone-surrogates A1-A8, A18-A21).
+// Text criteria compare with `cmp_text_pairwise`, Excel's `<`, `=`, `>` between texts: it ignores
+// case, reads a lone surrogate as its own unit (docs/excel-semantics/text.md "Lone surrogates",
+// criteria paragraph; probes/criteria-lone-surrogates A1-A8, A18-A21) and skips the accent units
+// two letters share before summing the rest (`COUNTIF(r,"a")` does not count `"a"` plus 16
+// U+0302; probes/t3181-collation-prefix-callers Calc!B1:B12).
 
 fn result_is_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
         // Excel: `COUNTIF(r,"ae")` counts "æ" and `"a-b"` does not equal "ab" (the collation of
         // `=`, docs/excel-semantics/criteria.md "COUNTIF text criteria use the collation").
-        CalcResult::String(s) => cmp_text(s, target).is_eq(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_eq(),
         CalcResult::EmptyCell => target.is_empty(),
         _ => false,
     }
@@ -196,7 +198,7 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
 fn result_starts_with_units(calc_result: &CalcResult, target: &[u16]) -> bool {
     match calc_result {
         CalcResult::String(s) => {
-            let folded = s.map_runs(str::to_lowercase);
+            let folded = s.map_runs(fold_case);
             let mut units = folded.units();
             target.iter().all(|unit| units.next() == Some(*unit))
         }
@@ -209,14 +211,14 @@ fn result_starts_with_units(calc_result: &CalcResult, target: &[u16]) -> bool {
 // errors and blanks (same as the number/bool variants above).
 fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_ne(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_ne(),
         _ => true,
     }
 }
 
 fn result_is_less_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_lt(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_lt(),
         _ => false,
     }
 }
@@ -225,21 +227,21 @@ fn result_is_less_than_string(calc_result: &CalcResult, target: &Text) -> bool {
 // E10-E13: "10.1.2026" and "10.3.2026" are `<="10.3.2026"`, not `<="1.3.2026"`).
 fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_le(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_le(),
         _ => false,
     }
 }
 
 fn result_is_greater_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_gt(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_gt(),
         _ => false,
     }
 }
 
 fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_ge(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_ge(),
         _ => false,
     }
 }
@@ -376,7 +378,7 @@ pub(crate) enum IndexedCriterion {
     /// Numbers `op` the target, equality to 15 digits ([`numbers_equal`]). Under `Eq` a text that
     /// reads as an equal number matches too, and under `Ne` every cell but an equal number.
     Number(CriterionOp, f64),
-    /// Text equal to this one under `cmp_text`; never empty, so a blank never matches.
+    /// Text equal to this one under `cmp_text_pairwise`; never empty, so a blank never matches.
     Text(Text),
 }
 
@@ -517,7 +519,7 @@ pub(crate) fn build_criteria_with<'a>(
                         // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
                         Box::new(move |x| matches!(x, CalcResult::EmptyCell))
                     } else if flavor == CriteriaFlavor::Database && !explicit_equals {
-                        let folded = operand_text(s, "").map_runs(str::to_lowercase);
+                        let folded = operand_text(s, "").map_runs(fold_case);
                         let prefix: Vec<u16> = folded.units().collect();
                         Box::new(move |x| result_starts_with_units(x, &prefix))
                     } else {
@@ -566,15 +568,16 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
     criterion.slice_utf16(prefix.len(), criterion.len_utf16())
 }
 
-/// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run lower-cased,
-/// then read as UTF-16 units (for ASCII text, each byte lower-cased).
+/// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run folded by
+/// [`fold_case`], one character to one, then read as UTF-16 units (for ASCII text, each byte
+/// lower-cased).
 pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
     match text {
         Text::Utf8(s) if s.is_ascii() => s
             .bytes()
             .map(|byte| u16::from(byte.to_ascii_lowercase()))
             .collect(),
-        _ => text.map_runs(str::to_lowercase).units().collect(),
+        _ => text.map_runs(fold_case).units().collect(),
     }
 }
 
@@ -609,11 +612,11 @@ pub(crate) struct WildcardPattern {
 impl WildcardPattern {
     /// Compiles `pattern`.
     pub(crate) fn new(pattern: &Text) -> WildcardPattern {
-        Self::from_units(pattern.map_runs(str::to_lowercase).units())
+        Self::from_units(pattern.map_runs(fold_case).units())
     }
 
-    /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds with its
-    /// own rules, see `fold_case` in functions/text/casefold.rs).
+    /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds the whole
+    /// text once with [`fold_case`] and searches its units).
     pub(crate) fn from_units(units: impl Iterator<Item = u16>) -> WildcardPattern {
         let mut units = units;
         let mut tokens = Vec::new();
