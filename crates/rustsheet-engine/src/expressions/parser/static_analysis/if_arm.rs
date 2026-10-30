@@ -1,7 +1,7 @@
 //! The arms of a legacy IF or IFS that are references, which the formula passes on whole instead of
 //! intersecting (docs/excel-semantics/references.md "Legacy IF passes a range arm whole").
 
-use super::{Node, StaticResult};
+use super::{run_static_analysis_on_node, Node, StaticResult};
 use crate::functions::Function;
 
 /// Whether `arg` is a value arm of IF or IFS that is a reference ([`is_range_arm`]), which a legacy
@@ -133,5 +133,27 @@ pub(super) fn returns_single_cell_index(args: &[Node], shapes: &[StaticResult]) 
             .iter()
             .zip(shapes)
             .skip(1)
-            .all(|(arm, shape)| matches!(shape, StaticResult::Scalar) || is_single_cell_index(arm))
+            .all(|(arm, shape)| is_one_cell_arm(arm, shape))
+}
+
+/// Whether a legacy formula leaves the array-constant index of the CHOOSE call `kind(args)` whole
+/// because every value arm is one cell ([`is_one_cell_arm`]):
+/// the `@` then goes on the call, `=@CHOOSE({1,2},INDEX(B1:B6,3),5)` and
+/// `=ABS(@CHOOSE({1,2},INDEX(B1:B6,3),5))`, 3 (probes/t3134-legacy-if-index-arm-shapes I54, K54,
+/// excel-graph, T-3168), while range arms keep both, `=@CHOOSE(@{1,2},H1:H2,I1:I2)`
+/// (probes/legacy-choose-array-index, T-1882). A one-element index still
+/// shows its own `@` ([`super::legacy`]'s `shows_scalar_array_at`, T-1633).
+pub(super) fn leaves_choose_index_whole(kind: &Function, args: &[Node]) -> bool {
+    matches!(kind, Function::Choose)
+        && args.len() > 1
+        && matches!(args[0], Node::ArrayKind(_))
+        && args[1..]
+            .iter()
+            .all(|arm| is_one_cell_arm(arm, &run_static_analysis_on_node(arm)))
+}
+
+/// Whether the value arm `arm`, of shape `shape`, is one cell whatever the condition: a scalar or a
+/// single-cell INDEX ([`is_single_cell_index`]).
+fn is_one_cell_arm(arm: &Node, shape: &StaticResult) -> bool {
+    matches!(shape, StaticResult::Scalar) || is_single_cell_index(arm)
 }

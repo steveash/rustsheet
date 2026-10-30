@@ -155,10 +155,10 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
 
     # Every required suite (decision 0146): the row's first (`gen_suite`, `gen-m<k>` before it
     # existed; empty when the row requires none, M9) and `more_suites`, each with its own
-    # visibly-off list; a measure over another suite's cells (M8's poi subset) also lists the
-    # cases that did not run as `case!*` (`blocked_cases`).
+    # visibly-off list and the cases that did not run as `case!*` (`blocked_cases`, decision 0174).
     first = exit_row.get("gen_suite", f"gen-{milestone.lower()}")
-    suites = [(first, exit_row.get("gen_visibly_off_cells"))] if first else []
+    first_listed = [*(exit_row.get("gen_visibly_off_cells") or []), *(exit_row.get("gen_blocked_cases") or [])]
+    suites = [(first, first_listed)] if first else []
     for s in exit_row.get("more_suites") or []:
         listed = [*(s.get("visibly_off_cells") or []), *(s.get("blocked_cases") or [])]
         suites.append((str(s.get("name")), listed))
@@ -184,6 +184,11 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
                 if name not in excepted and name in visible:
                     case, key = split_cell_name(str(name))
                     out.append(ExitCell(CALC_SUITE, case, key, formulas.get((case, key), "")))
+    # An ironcalc-calc case that did not run fails every row's measure (decision 0174).
+    if not no_calc:
+        for name in exit_row.get("calc_blocked_cases") or []:
+            case, key = split_cell_name(str(name))
+            out.append(ExitCell(CALC_SUITE, case, key, ""))
 
     # The functions below the Phase 1 rate (M9, decision 0146 item 3): their attributed cells.
     below = set(exit_row.get("below_rate_functions") or [])

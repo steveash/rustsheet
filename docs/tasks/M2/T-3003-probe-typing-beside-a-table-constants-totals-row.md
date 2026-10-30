@@ -3,7 +3,7 @@ id: T-3003
 title: "Probe typing beside a table: constants, totals row, occupied or overlapped new column, and below the last row (auto-expansion)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,3 +37,8 @@ probe:
 
 ## Out of scope
 - Implementing the findings (follow-up tasks).
+
+## Outcome
+14 probe cases (probes/t3003-*, excel-graph 2026-10-30) cover every bullet; findings are rule 7a-7f in
+docs/excel-semantics/references.md. Engine differs on constants, totals row, row growth and unqualified `[@Col]`:
+filed T-3218. No engine change; the baseline (via `make eval-baseline`) gains the new t3003 cases as known failures, which T-3218 clears. The overlapped-new-column case is not probed (needs a second table; out of T-3218 too).

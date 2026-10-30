@@ -620,11 +620,17 @@ Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. 
 fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
 Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728
 
-## IRR is a secant in v = 1/(1 + r) from v0 and v0 +- 0.001 (fitted, 189/263 bit-exact)
-Rule: IRR runs the secant method on NPV as a function of v = 1/(1 + r):
-- start: v0 = 1/(1 + guess) (guess 0.1 when omitted) and v1 = v0 + 0.001 when NPV(v0) > 0, else v0 - 0.001;
-- step: v2 = v0 - NPV(v0)(v1 - v0)/(NPV(v1) - NPV(v0)), then shift (v0, v1) <- (v1, v2);
-- stop: at the first v2 with |v2 - v1| < 1e-7 and |NPV(v2)| < 1e-7, returning 1/v2 - 1;
+## IRR is a secant in d = 1 - v = r/(1 + r) from d0 and d0 -+ 0.001 (fitted, 262/263 bit-exact)
+Rule: IRR runs the secant method on NPV as a function of d = 1 - v = r/(1 + r), v = 1/(1 + r) (T-3120 moved
+the state from v to d; the T-1533 text below, written for the secant in v, holds for d with the signs flipped):
+- leading zero flows are dropped (T-3120 bullet below);
+- start: d0 = guess/(1 + guess) (guess 0.1 when omitted) and d1 = d0 - 0.001 when NPV(d0) > 0, else d0 + 0.001
+  (v1 = v0 +- 0.001 as before);
+- NPV at d: the sum of c_i/D_i with D_0 = 1 and D_i = D_(i-1)*x a running product, x = 1/(1 - d) (worksheet NPV's
+  arithmetic, "NPV's residue at IRR's root is not the double sum");
+- step: d2 = d1 - NPV(d1)(d1 - d0)/(NPV(d1) - NPV(d0)) (anchored on the newer iterate), then shift (d0, d1) <- (d1, d2);
+- stop: at the first d2 with |d2 - d1| < 1e-7 and |NPV(d2)| < 1e-7, or with d2 = d1 exactly and |NPV(d2)| below
+  1e-7 times the largest |flow| (fitted, T-3120 bullet), returning 1/(1 - d2) - 1;
 - a run that does not stop is retried once from guess 0.1. (The 18 `#NUM!` cells of the sweeps are all
   flows without a sign change; they are not scored.)
 So the result is x - 1 with x = 1/v a double: for all 263 numeric IRR cells, value + 1 is exactly
@@ -658,9 +664,9 @@ I!C, I!D (closed-form two- and three-flow roots), probes-numeric/m9-fin-irr-rate
 flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cells): the fitted secant
 189/263 bit-exact, 207 within 4 ulp, 260 within 1e-9; the best Newton candidate (in v, converged) 74; the
 engine 1.
-Ours: this secant (`irr_npv`, `irr_secant`, `compute_irr`, functions/financial/financial_util.rs, T-0916):
-189/263 bit-exact and 207 within 4 ulp on the fit set, the same cells as the lab model (the Newton code it
-replaced: 1). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
+Ours: this secant (`irr_npv`, `irr_secant`, `compute_irr`, functions/financial/financial_util.rs, T-0916, in d
+since T-3120): 262/263 bit-exact on the fit set, the same cells as the lab model (the Newton code it
+replaced: 1; the secant in v: 189). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
 Where both secant runs fail the engine runs the fitted fallback of "IRR's fallback when the secant fails" (T-2727). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
 where the fitted secant does not stop, and raising its step cap does not explain it (1,000 steps give
 -0.6737366751808431). T-2727 fitted that fallback ("IRR's fallback when the secant fails"); its digits and caps
@@ -699,11 +705,30 @@ two other kinds:
   = an iterate) is an unexplained outlier, about 100 grid steps and 7.9E-11 relative off, perhaps another step
   count or path. So the "0.1 to 0.4 %" error
   of the large-root cells is the secant's final v held with 53 fractional bits (the iterate is stored as an offset
-  from 1 or in a 2^-53-granular fixed form), not a different early step. Unexplored: where in the step the
-  rounding happens (T-2131).
-Status: VERIFIED for the method (secant in v, offset, both stop tests, retry; 189/263 bit-exact); UNVERIFIED
-for the last bit (NPV's evaluation order), the step cap, and flows with leading zeros (A173, A175)
-Tasks: T-1525, T-1533, T-0916, T-2131, T-2565
+  from 1 or in a 2^-53-granular fixed form), not a different early step.
+- T-3120 (fit lab `uv run rustsheet-fitlab irr`, `irr_secant_d`; engine eval): the rounding is the state. Excel's
+  secant runs on d = 1 - v, so every iterate's v = 1 - d is a multiple of 2^-53 once v < 0.5 (d in (0.5, 1) has
+  spacing 2^-53), not only the result. Fit set (263 cells), bit-exact / within 4 ulp: the secant in v 189/207;
+  that secant's result rounded to the grid (candidate A) 190/208; the secant in d anchored on d0 with
+  d0 = 1 - 1/(1 + g) and NPV as c_i/x^i (candidate B) 202/214, anchored on d0 with the shipped start and NPV 225/234;
+  the shipped rule 262/262. Each part counts: d0 = 1 - 1/(1 + g) instead of g/(1 + g) 235/239, NPV as c_i/x^i (pow,
+  `_npv_v_over_x`) 229/232, leading zeros kept 260/260 (Calc!A173, A175). It also gives irr-fallback-roots P!A25-A28 and A36-A39
+  bit for bit (the two-flow roots too: NPV by the running product of x is what puts them on the grid point nearest
+  the root) and 180 of the 181 t2565 cells; P!C95 is exact now and P!C157 stays the outlier. Rounding only the
+  final v cannot be the rule: in v in [0.25, 0.5) every off-grid double is a tie, and Excel takes the lower v for
+  `IRR({-1,0,0,0,0,0,0,0,0,1000})` (gen-m9 9a1fa5366bc50918 A302) but the higher for IRR.xlsx General!L47.
+  The zero-step stop: in t2565's x1E6 block of {-2.5,-1,123456789.123} (P!A107, C107-C141) no grid point has
+  |NPV| < 1e-7 (1.2E-6 at Excel's 7026.083663633989), the secant's step becomes exactly 0, and Excel still returns
+  that iterate; without the zero-step stop the run fails and those 36 cells are `#NUM!` (144/181). The bound on
+  that residual is fitted: 1E-20 to 1E-7 of the largest flow, or an absolute 1E-5 to 0.1, score the same; an
+  unconditional zero-step stop costs 6 fit cells (far guesses whose step stalls on a flat NPV and must retry).
+  Leading zeros: `IRR({0,-100,110},0.05)`, `IRR({0,0,-100,110},-0.5)` and `(..,10)` are exactly the
+  values of `{-100,110}` from the same guesses (irr-guess-edges P!A33, m9-fin-irr-rate Calc!A173, A175).
+  Miss left: gen-m9 67a4c03afd63f988 Calc!A395 (`IRR` of {0.5,0.1,-0.5}, guess 0.5) is 16 ulp off (visibly, at the 15th digit); every
+  d0 = 1 - 1/(1 + g) variant gets it and loses 25+ fit cells (decision 0176, T-3205).
+Status: VERIFIED for the method (secant in d, offset, both stop tests, retry, leading zeros dropped;
+262/263 bit-exact); UNVERIFIED for the zero-step stop's bound and the step cap
+Tasks: T-1525, T-1533, T-0916, T-2131, T-2565, T-3120, T-3205
 
 ## The IRR and XIRR solver caps
 Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
@@ -777,14 +802,14 @@ the gen-m9 roots 3.16E+7 and 2E+7 (9a1fa5366bc50918 A400, abc2939ebd1e2365 A280'
 `IRR({-1E-13,1})` are `#NUM!`. The exact threshold between 9999998.99 and 1E+7 is not pinned; the engine uses 1E+7.
 The two-flow returns are not the exact root X - 1 (`IRR({-1,1E+6})` is 999998.9999712444), so Excel's steps at
 these scales are not the fitted secant's (T-2131, T-2565).
-The 2^-53 grid in v ("IRR is a secant in v", T-2565 bullet) explains both kinds (gap triage 2026-10-29):
+The 2^-53 grid in v ("IRR is a secant in d = 1 - v", T-2565 and T-3120 bullets) explains both kinds (gap triage 2026-10-29):
 - Two flows: Excel's value is the exact root with v = 1/X rounded to the nearest multiple of 2^-53, and 1/v - 1
   returned. That gives 9999.0000000011 (A25), 99999.0000004551 (A26), 2999998.999580666 (A28) and
   999998.9999712444 exactly. The fitted secant already lands on a grid point here, one step away.
 - `{-1,0,X}`: the fitted secant's v rounded to the same grid gives Excel's A36-A39 bit for bit (for example
   9999998.994161328 for X = 1E+14).
-Where in the step the rounding happens is T-3120's. One candidate keeps the secant's state as d = 1 - v, whose
-spacing in [0.5, 1) is 2^-53.
+T-3120 found where: the secant's state is d = 1 - v, whose spacing in [0.5, 1) is 2^-53, and with NPV by
+worksheet NPV's running product the secant reaches those grid points itself (A25-A28 and A36-A39 bit for bit).
 Not explained: `IRR({-1,1E+15})` is `#DIV/0!` from guesses 0.05, 0.1, 5E+14 and 1E+15, and so are `IRR({-1,1E+300})`
 and IRR over gen-m9 bc04c1f478c9896c's Data!A1:D12 (first flow 0) from guesses 0.05, 0.1 and 0.5; ours is `#NUM!`
 (T-2802). `IRR({0,1E+15,2,42,1E+15,-0.0001})`, also a zero first flow, is `#NUM!` as ours.
@@ -2739,6 +2764,27 @@ double. An 80-bit register holding `T` for that one product would do it; that is
 - The engine (`yield_start`, double-double for `D`): 515 known failures fixed, 58 YIELD and ODDFYIELD cells moved off
   the bit (51 by 1 ulp, one visibly: yield-one-step-start A37, 32 ulps; decision 0166, follow-up T-3152). In-scope
   visibly-off cells go from 3,166 to 3,141. The lab still misses 155 of 1,115 cells.
+T-3152 (attempt 1, 2026-10-30): no start built from the term-scaled formula's operations beats the engine's. The fit lab
+now names both earlier engine starts (kernels/yield_caret.py `rounded_once_yield_start`, `unrounded_term_yield_start`):
+`uv run rustsheet-fitlab yield-caret` (370 basis-0 cells) scores the rounded-once start 268 bit-exact and 361 within
+4 ulps, the unrounded-term start 341 and 369, T-1592's start in doubles 240 and 361.
+- Of the 9 cells decision 0162 listed visibly off, 6 are within 15 digits since attempt 4; yield-start-rate-term B30
+  and yield-start-term-basis C47 (each wants the start one ulp lower) and, from decision 0166, yield-one-step-start A37
+  (one ulp higher, which crosses a PRICE step: 32 ulps) are not. The lab reproduces each engine miss to the ulp, so
+  the miss is the start, not the engine's PRICE.
+- Scratch grid (1,100 YIELD probe cells with more than one coupon, all bases; a candidate scores a cell when its start
+  is one of the starts within 3 ulps of the engine's that give Excel's bits): `S = n/den` rounded, with each of the nine
+  operations of `n = (r·T)·100 + q` and `den = (pr·T + 100·T)/2 - q/4` exact or rounded to a double, and `T` in each of
+  `r·T`, `pr·T` and `100·T` the double, `whole + fl(days/year)` exact, or `whole + days/year` exact (13,824
+  candidates). Best: 945, the engine's arrangement and eleven equivalents (`pr·T` exact on `whole + fl(days/year)`,
+  rounding of `D`, `D/2`, `q/4` or `den` immaterial). All in doubles 676, attempt 3's FMA form 775, all exact 694. Every
+  one of the 1,100 cells has a start within 3 ulps that gives Excel's bits.
+- Misses are not per term: in the 8 + 309/360 group (yield-one-step-start, 44 cells) 20 take the engine's start and 24
+  need one ulp more, with the engine's exact quotient anywhere from -0.44 to +0.28 ulps off its rounding. On the 360
+  one-step cells the relative slope error that would explain each miss instead runs evenly from -4e-12 to +5e-12 (A37 aside), so it
+  is no constant slope error either.
+Next (T-3215): a hypothesis outside this operation set (another formula whose terms round differently, or a start from a
+different day count per product); the operation grid around the term-scaled form is exhausted.
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
 T-2777's term (`yield_start_term`) and, since T-2974 attempt 4, `pr·T` on the unrounded term (`yield_start`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
@@ -2753,7 +2799,7 @@ follow (`fn_yield_matches_excel_off_the_fit`). Still visibly off, though only 5 
 unit in the 15th digit): yield-start-rate-term S!B39 and S!B49 (basis 1, 8 and 30 years) and yield-solver-sweep S!C7
 (T-2974).
 Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates)
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates), T-3152 (the cells the start's rounding moved)
 
 ## ODDFYIELD stops short of ODDFPRICE's root
 Rule: ODDFYIELD's last digits are not the root of ODDFPRICE's price at the given price, and they fall on both sides
@@ -3288,11 +3334,10 @@ date past the calendar is `#NUM!` before AMORDEGRC's boolean rate (`AMORDEGRC(70
 e8d55ec393460bb7 A374), while a date of 0 passes the read (`AMORDEGRC(-1,<blank>,38872,265,0,<#VALUE!>,0)` is `#VALUE!`,
 1dce4774f5c0e736 A199) and one below 0 is `#NUM!` as it is read ("AMORLINC and AMORDEGRC check order").
 Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which since
-T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). ACCRINT's other dates and numbers
-still take booleans; a FALSE par cell is `#VALUE!` in Excel ("ACCRINT check order: calc_method first, dates as read",
-T-2792), the others are unprobed.
+T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). Since T-2827 ACCRINT refuses a boolean in
+every argument but calc_method ("ACCRINT check order: calc_method first, dates as read").
 Status: VERIFIED (excel-graph)
-Tasks: T-2455
+Tasks: T-2455, T-2827
 
 ## ACCRINT check order: calc_method first, dates as read (T-2676)
 Rule: ACCRINT reads its last argument, calc_method, before all the others: calc_method's own error is the result, and
@@ -3317,12 +3362,13 @@ securities functions check frequency and dates first"). A par read from a FALSE 
   before a later bad argument, 9 are `#NUM!` (also A37, A157, A232 of 290180acf017709c, A43 of 932b33b1ef8b7608 and A255
   of f81bd3b6dc373e5c); the tenth, f81bd3b6dc373e5c A115, is `#SPILL!` because its par is an array, which lifts first.
 - boolean par: `ACCRINT(32965,35462,36817,10,<FALSE cell>,100,1.005,FALSE)` is `#VALUE!` (932b33b1ef8b7608 A233).
+- booleans anywhere: a TRUE or FALSE, typed or from a cell, in issue, first_interest, settlement, rate, par, frequency or
+  basis is `#VALUE!` (probes/accrint-boolean-args A1:A28, T-2827; the all-number baseline A29 is 506.8056).
 Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
-read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`); a typed boolean par, and
-booleans in first_interest, settlement, frequency and basis.
+read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error, and a boolean frequency or basis after such a settlement; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`).
 Evidence: gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c (excel-graph, T-2676 sweep, 2026-10-26); each
 cell's arguments evaluated with the engine on the case's Data sheet.
-Ours: since T-2792, `accrint_of` (functions/financial/accrint.rs) reads calc_method first, then issue and first_interest, each range-checked from serial 0 as it is read (serial 0 itself still fails the later calendar check), then the other arguments in order; settlement is checked against its calendar limit only after all are read, and a boolean par, typed or from a cell, is `#VALUE!` (the engine cannot tell a typed one from a cell).
+Ours: since T-2792, `accrint_of` (functions/financial/accrint.rs) reads calc_method first, then issue and first_interest, each range-checked from serial 0 as it is read (serial 0 itself still fails the later calendar check), then the other arguments in order; settlement is checked against its calendar limit only after all are read, and a boolean in any of the seven is `#VALUE!`, typed or from a cell (T-2827).
 Status: VERIFIED (excel-graph)
 Tasks: T-2792
 

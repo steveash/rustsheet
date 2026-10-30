@@ -151,9 +151,14 @@ Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` 
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
-one, so the depth bound admits up to 127 nested parentheses or function calls (126 around the operator chain
-`0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
-(T-0134). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
+one, so the depth bound admits up to 127 nested function calls; union operand lists too
+(T-0134). A run of directly nested parentheses (`((...(x)...))`, nothing between the `(`s) is
+parsed in a loop and is one group node, so it costs no level per parenthesis; a run of up to 256
+parses, as Excel's does, and 257 or more is too deep (`MAX_PARENTHESES`, T-3191, decision 0173;
+`=((...(0.1+0.2-0.3+B1)...))` too, T-1169). Groups split into several runs (`=( ((...)))`,
+`=(1+((...)))`) count together: more than 256 open at once is too deep. Whether Excel counts split
+runs the same way is unprobed (only an unbroken run around `1` was, T-3172). A group holding more than the group inside it
+(`((x)+1)`) still costs an operand's two levels. Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
 a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
 level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Calls are further capped at 65 (below).
@@ -188,12 +193,17 @@ refused through the API (`EditError::InvalidInput`, the cell keeps its content) 
 refuses a workbook holding one (`XlsxError::Workbook`), T-3097. `TRUE()`, `FALSE()` and a call of a
 LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY(x)` (stored `@` and
 `#`) do not (unprobed). Defined-name bodies, conditional formats, data validation and
-`Input::StoredFormula` are not checked (unprobed; T-3143). It also refuses
-128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
-(t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. Of the
-counts T-3172 probed it refuses all that Excel accepts: 256 parentheses and every probed sign run
-(255 and up: minus up to 1,024, plus and alternating up to 1,023; the 20 t3172 cases, owned by T-3189).
-That is the DEVIATION below: the depth bound protects the stack (directive 5).
+`Input::StoredFormula` are not checked (unprobed; T-3143). Bare parentheses match Excel:
+t3097-nesting-paren-128 and -255 and t3172-paren-256 load and evaluate (T-3191). It still refuses
+64 or more levels of `(ABS(` (t3097-nesting-paren-abs-64 and -65, four depth levels each) and every
+sign run T-3172 probed (255 and up: minus up to 1,024, plus and alternating up to 1,023), all of
+which Excel accepts.
+That is the DEVIATION below: the depth bound protects the stack (directive 5). Those cases are
+pinned whole in probes/deviations (decision 0168; T-3165, T-3189); T-3197 owns lifting the bound
+for `(ABS(`, T-3193 for sign runs. Measured on a 1 MiB stack in a release build before T-3191, the
+parser alone overflowed at about 292 recursively nested parentheses (about 3.5 KB per level, as
+each one passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`;
+parentheses separated by whitespace still take that path, under the depth bound.
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
@@ -226,7 +236,7 @@ re-measured against these limits (the at-limit tests run on a 1 MiB stack in rel
 must walk operator chains with `expressions/parser/chain.rs`.
 Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; the parentheses RustSheet refuses past its bound) and probes/t3172-* (Excel's 256-parenthesis and 1,023/1,024-sign caps, T-3172); this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,
@@ -421,7 +431,8 @@ Typed (FORMULATEXT prints):
 - Groups and signs print as typed: `=( (1) )`, `=( (B1) )`, `=((1) )`, `=- 5 %`, `=-5 %`, `=- 5%`, `=-  5 %`.
 - excel-graph refuses (PATCH 400 InvalidArgument; probe run 2026-10-29, T-2949, cases not kept; desktop Excel unprobed): a TAB or NBSP anywhere (`=1+` TAB `2`, `=` TAB `1+2`, `=1` TAB `+2`, NBSP forms, `=B1:B2` TAB ` B2`). LET with an even argument count (`=LET( a ,1, b ,a+1)`) is refused for its arity, not its whitespace.
 Stored in the file (`<f>` text): a leading TAB or LF is dropped like leading spaces (`<f>` TAB `1+2</f>` and `<f>` LF `1+2</f>` print `=1+2`). Workbooks holding a TAB or NBSP between tokens, or a leading NBSP, are refused at createSession (501 FileCorruptTryRepair). Interior shapes load and print as typed (`=( (1) )`, `=- 5 %`, `=B1:B2` LF ` B2`, `=LAMBDA( x , x)(1)` prints `=LAMBDA(x, x)(1)`). A stored even-arity `=LET( a ,1, b ,a+1)` loads and prints `=LET( a,1, b,a+1,b)` (Excel appends the last name as the result).
-Ours (2026-10-29): LAMBDA and LET name shapes already match. Still failing: the intersection with a LF in its separator (typed-4, typed-5, stored-14), a stored leading LF (stored-5: we print `=` LF `1+2`), and the stored even-arity LET (stored-11: Excel appends the last name as the result and returns 2). T-3169.
+Inferred, not probed (only the single-LF separator and `LET( a ,1, b ,a+1)` have oracle values): several line feeds in an intersection separator, other LET arities (`LET(a,1)`, `LET(a,1,b,2,c,3,d,4)`) and a stored even LET whose second-to-last argument is not a name.
+Ours (2026-10-30, T-3169): every t2949 shape matches. An intersection separator holding a line feed keeps it whole (the line feed is the operator, so no space is printed beside it), the parser drops a stored leading LF with the leading spaces, and a stored even-arity LET gets its last name appended as the result.
 Status: VERIFIED (excel-graph)
 Tasks: T-2769, T-2776, T-2949, T-3169, SPEC-0023
 

@@ -234,6 +234,29 @@ class ExitOwners(TaskDir):
         self.assertNotIn(f"{GEN}!Calc!A1", listed)
         self.assertIn(f"{TRIG}!S!C51", listed)
 
+    def test_cases_that_did_not_run_are_listed_whole(self) -> None:
+        # Decision 0174: a gen or ironcalc-calc case that did not run fails its measure.
+        gen2, calc = "gen-m2/abc.case.json", "ironcalc-calc/BIG.xlsx"
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M2",
+                "gen_suite": "gen-m2",
+                "gen_blocked_cases": [f"{gen2}!*"],
+                "calc_met": False,
+                "calc_blocked_cases": [f"{calc}!*"],
+                "probe_row": "M0-M2",
+            }
+        ]
+        r["function_scope"] = {"rows": []}
+        cells = exit_owners.exit_cells(r, "M2")
+        self.assertEqual(
+            [(c.criterion, f"{c.case}!{c.key}") for c in cells],
+            [("gen-m2", f"{gen2}!*"), ("ironcalc-calc", f"{calc}!*")],
+        )
+        r["milestone_exit"][0]["calc_met"] = None
+        self.assertEqual([c.criterion for c in exit_owners.exit_cells(r, "M2")], ["gen-m2"])
+
     def test_m8_lists_both_gen_suites_the_poi_subset_and_its_blocked_cases(self) -> None:
         # Decision 0146 item 2: gen-m8a, gen-m8b, the poi M8 subset (its visibly-off cells and,
         # as `case!*`, the cases holding a subset formula that did not run) and the M8 probes.

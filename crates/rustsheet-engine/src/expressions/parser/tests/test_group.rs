@@ -96,6 +96,43 @@ fn directly_nested_levels_are_one_group() {
     assert!(matches!(*child, Node::OpSumKind { .. }));
 }
 
+/// T-3191: a run of directly nested parentheses is parsed in a loop, the inner group handed to
+/// the content around it as its first operand; whatever follows that group (an operator, `%`,
+/// `#`, `:`, a space, a union comma, a call) is read as it would be after any operand.
+#[test]
+fn parenthesis_runs_print_back_and_round_trip() {
+    let mut parser = parser();
+    for formula in [
+        "((A1))",
+        "(((A1)))+1",
+        "((A1)+1)",
+        "(((A1)+1)*2)",
+        "((A1)%)",
+        "((A1)^2)",
+        "((A1) )",
+        "((A1) B1)",
+        "((A1):B2)",
+        "((A1),B1)",
+        "((A1,B1))",
+        "((-A1))",
+        "(((A1)))(A2)",
+        "((A1)(A2))",
+        "((( A1)))",
+        "(( (A1)))",
+        "SUM(((A1)),((B1)+1))",
+    ] {
+        assert_prints_back_and_round_trips(&mut parser, formula);
+    }
+    let node = parser.parse("((((A1)))+1)", &context());
+    let Node::Group { levels: 1, child } = node else {
+        panic!("not one level: {node:?}");
+    };
+    let Node::OpSumKind { left, .. } = *child else {
+        panic!("not a sum: {child:?}");
+    };
+    assert!(matches!(*left, Node::Group { levels: 3, .. }));
+}
+
 /// A tree built in code with no `Group` prints the parentheses it needs to parse back to the
 /// same tree: an equal-level right operand is wrapped, operators being left associative
 /// (T-1344's one precedence rule).

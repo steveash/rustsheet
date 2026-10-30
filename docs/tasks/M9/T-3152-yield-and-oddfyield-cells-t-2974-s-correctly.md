@@ -3,7 +3,7 @@ id: T-3152
 title: "YIELD and ODDFYIELD cells T-2974's correctly rounded start moved off the bit (decision 0162)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -38,7 +38,7 @@ bit are bit-exact again, or within 15 digits, while the cells it fixed stay fixe
       (`make eval-baseline`). Otherwise the task records the candidates tried with their lab
       counts (decision 0056).
 - [ ] `fn_yield_start_term_whole_years_then_leftover_days` asserts A1's and A2's exact bits again.
-- [ ] `uv run rustsheet-fitlab yield-caret` scores the rounded-once start.
+- [x] `uv run rustsheet-fitlab yield-caret` scores the rounded-once start.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -58,3 +58,22 @@ on the YIELD cells, so start from the lab, not the port. `fn_yield_start_term_wh
 - probes/yield-start-rate-term: S!A26 (2), S!A5 (1), S!B26 (1), S!B5 (1), S!C26 (1)
 - probes/yield-start-sweep: S!E1 (1)
 - probes/yield-start-term-basis: S!A29 (1), S!A3 (1), S!A48 (1), S!A5 (1), S!A53 (1), S!A8 (1), S!B29 (1), S!B3 (1), S!B48 (1), S!B5 (1), S!B53 (1), S!B8 (1), S!C48 (1), S!C8 (1)
+
+## Attempt 1 (2026-10-30, decision 0056)
+- The fit lab names both earlier engine starts (`rounded_once_yield_start`, `unrounded_term_yield_start` in
+  kernels/yield_caret.py). `yield-caret`, 370 cells, bit-exact / within 4 ulps: unrounded-term (the engine) 341 / 369,
+  rounded-once 268 / 361, T-1592's doubles 240 / 361.
+- Six of the nine Context cells are within 15 digits since T-2974 attempt 4. Still off: yield-start-rate-term S!B30,
+  yield-start-term-basis S!C47 and yield-one-step-start S!A37, each one start ulp from Excel's (the lab reproduces them).
+- A 13,824-candidate grid of exact or rounded operations and term variants found nothing above the engine's start.
+  Counts and the other findings: financial.md "YIELD stops short of PRICE's root", T-3152 attempt 1. Its "Next" line
+  is the hypothesis a second attempt needs.
+- `fn_yield_start_term_whole_years_then_leftover_days` keeps its one-ulp pins on A1 and A2.
+- Eval delta: none (lab and docs only).
+
+## Outcome
+Partial, closed after attempt 1 (decision 0056); the remaining work moves to T-3215.
+- Done: `yield-caret` scores the rounded-once start (268/370 bit-exact) and the engine's unrounded-term start (341/370).
+- Six of the nine visibly-off cells are within 15 digits since T-2974 attempt 4. B30, C47 and A37 are still off and
+  move to T-3215, together with the exact-bit pins of `fn_yield_start_term_whole_years_then_leftover_days`.
+- Eval delta: none.

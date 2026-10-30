@@ -175,7 +175,7 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
 - The sum is **one byte and wraps** past 255: two U+0342 (2 + 282 = 284, so 28) equal one cedilla
   (`"a"&UNICHAR(834)&UNICHAR(834)` = `"a"&UNICHAR(807)`), and three U+0323 (260, so 4) sort between
   `"a"` and `"á"`.
-- Engine choices from the Windows table or by inference, UNVERIFIED (T-3181 may probe them):
+- Engine choices from the Windows table or by inference, UNVERIFIED (T-3203 probes them):
   U+0363-U+036F ("combining a" to "combining x") are the letters `a e i o u c d h m r t v x` with
   diacritic weight 3, not marks (the table gives them script member 14, a letter's alphabetic
   weight and DW 3); a mark after an expansion (`æ`, `ß`) adds its weight to the expansion's second
@@ -188,12 +188,74 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
 - **Not a total order.** A text sorts before any text it is a proper prefix of, even when the
   wrapped weight says otherwise: `"a"&UNICHAR(834)` < `"a"&UNICHAR(834)&UNICHAR(834)` although the
   latter equals `"a"&UNICHAR(807)`, which is below `"a"&UNICHAR(834)`; likewise `"a"&UNICHAR(803)` <
-  three U+0323 < `"á"` < `"a"&UNICHAR(803)` (pairs Calc!S19, T18, W23, X22, AB28, AC27). And long
-  runs of one mark do not wrap as the sum says: 22 acutes (2 + 264, so 10) rank with the weights
-  near 40, not below `"á"` (accent-weights Calc!A107; 20, 21, 40 and 100 acutes, 10 and 11 rings
-  also off). Ours: the wrapped sum with no prefix rule, a total order (sorts such as GROUPBY's need
-  one; `slice::sort_by` may panic otherwise), so these cells and the ranks of the strings probed
-  with them (accent-weights Calc!A2:A112, 55 cells; pairs, 6 cells) fail. Open: T-3181.
+  three U+0323 < `"á"` < `"a"&UNICHAR(803)` (pairs Calc!S19, T18, W23, X22, AB28, AC27). The next
+  bullet is the general rule; the prefix rule is its case where one side runs out. It also makes
+  texts with equal wrapped sums unequal: `"a"=("a"&REPT(UNICHAR(770),16))` is FALSE and `<` TRUE
+  (circumflexes 16 * 16 = 256, so the same sum as `"a"`).
+  **Every caller uses it (T-3181).** Evidence: probes/t3181-collation-prefix-callers (35 cells) and
+  probes/t3181-collation-prefix-arrays (13 cells), excel-graph 2026-10-30, Status: VERIFIED, on
+  `"a"`, `"a"` plus 16 U+0302, U+0342 once and twice, U+0327, U+0323 once and three times and `"á"`:
+  - the operators `= <> < <= > >=` (callers Calc!A1:A9);
+  - COUNTIF and COUNTIFS criteria, `=` and the ordered ones (`COUNTIF(r,"a")` counts `"a"` but not
+    `"a"` plus 16 U+0302; callers Calc!B1:B12);
+  - approximate MATCH (1 and -1) and VLOOKUP TRUE (callers Calc!C3:C12, C14), and XMATCH next
+    smaller/larger (arrays Calc!B5:B8);
+  - exact XMATCH, XLOOKUP and SWITCH (`"a"` is not found in `"a"` plus 16 U+0302; arrays
+    Calc!B3, B4, B11, B12); MATCH(...,0) misses both ways too (callers Calc!C1, C2), as it misses
+    `"a"` against `"a"&UNICHAR(807)`'s equal `"a"&UNICHAR(834)&UNICHAR(834)` (C13): MATCH(...,0)
+    is not the collation's equality (T-1590 below);
+  - SORT and SORTBY: `SORT` of U+0342 once and twice gives once, twice whichever comes first
+    (arrays Calc!A1, A5), descending twice, once (A6), and `"a"` before `"a"` plus 16 U+0302 (A3,
+    A4). On the three-text cycle U+0342 once, twice, U+0327 SORT gives once, twice, U+0327 (A2),
+    and on U+0323, three U+0323, `"á"` it gives U+0323, three U+0323, `"á"` (A8): Excel sorts with
+    the pairwise comparison and its output on a cycle depends on its algorithm.
+  - `UNIQUE` of two U+0342 and U+0327 (equal sums, nothing shared after the letter) is one row
+    (arrays Calc!B2).
+  Ours (T-3181): the operators and the criteria compare texts with `cmp_text_pairwise`, which
+  applies the rule (the criteria index still hashes the `CollationKey` of the wrapped sums,
+  which every pair the rule finds equal shares, and tests each candidate with the rule); so do
+  all cells of the four t3154/t3201 accent cases, which compare with `<` and `=`. Sorts, sorted
+  lookups and the hashed exact lookups keep the total order of the wrapped sums (`cmp_text`;
+  `slice::sort_by` may panic on a non-total order): the lookup cells above fail (T-3210), and so do
+  the SORT, SORTBY and UNIQUE cells (T-3211). Open: T-3210, T-3211.
+- **Shared leading units are skipped before the sum (T-3201).** Evidence:
+  probes/t3201-collation-long-mark-runs (1,000 cells: a ladder of 246 texts `"a"` plus up to three
+  marks, one per weight 2, 5, 8, 11 and 14 to 255, self-ranked in order (Calc!A1:A246); `"a"` with
+  1 to 40 of U+0301, U+030A, U+0323, U+0342 ranked against it (Data!B1:B160), mixes, `"e"` runs
+  and `"a"`&run&`"b"`) and probes/t3201-collation-wrapped-run-pairs (37 texts whose sums wrap to
+  2 to 22, every pair, 1,369 cells), excel-graph 2026-10-30. Status: VERIFIED for one accented
+  letter, and for it followed by `"b"`. Compare a letter's accent as a sequence of units, the
+  letter itself (weight 2, or a precomposed letter's whole weight, `á` 14) and then each mark (its
+  weight above): first drop the leading units the two texts share with equal weights (a mark matches
+  any mark of the same weight: U+0341 matches U+0301, U+0352 matches U+0323, but precomposed `á` is
+  one unit and does not match `a` plus U+0301); if one side has no units left it is less; otherwise
+  compare the sums of the units left, each mod 256. Consequences, all in Excel's cells:
+  - With nothing shared but the letter, every run of the same sum mod 256 is equal whatever the
+    marks and counts: 22 U+0301 = 11 U+030A = 12 U+0323 = 40 U+0342 = 88 U+030D (the letter's 2
+    dropped, 264 each, so 8); 18 U+0323 = 60 U+0342 = 60 U+0300 = `"á"` (wrapped-run-pairs).
+  - There is no separate rule for long runs: each run is a proper prefix of every longer run of
+    the same mark, so it sorts below it, and it ranks against other texts by its wrapped sum.
+    22 U+0301 (2 + 264, so 10) has 43 of the 119 texts below it in t3154-collation-accent-weights Calc!A107 because
+    it is above the shorter acute runs (its prefixes), above the `"a"&UNICHAR(769)&UNICHAR(X)`
+    texts (they share its first acute, and its 21 acutes left, 252, beat their X), and above the
+    texts whose sum is below 10; the same count explains every Excel rank of
+    accent-weights Calc!A105:A112 (20, 21, 22, 40 and 100 acutes, 10 and 11 rings, 10 dots below:
+    108, 110, 43, 111, 105, 110, 6, 75).
+  - The skipped letter weighs nothing: `"a"` plus 85 U+030D (2 + 255, so 1 as a total) is above
+    all 246 ladder texts: `"a"` is its prefix, and against each other its marks sum to 255
+    (long-mark-runs Calc!B179 = 246);
+    `"a"` plus 16 U+0302 (marks 256, so 0) is below every ladder text but `"a"` (its prefix) and
+    the 15 that start with U+0302, which it beats on the 15 circumflexes left (240) (Calc!B173 = 16).
+  - Per letter: `"a"`, 22 U+0301, `"b"` beats `"a"&UNICHAR(833)&"b"` on its 21 acutes left
+    (Calc!B242); `"e"` runs rank as `"a"` runs (Calc!B181:B220).
+  - A model of this rule (and the weights above) reproduces all 3,391 cells of the four t3154 and
+    t3201 accent cases (pairs, weights, long-mark-runs, wrapped-run-pairs). Open, UNVERIFIED: units
+    shared across letters (`"áb"` against `"a"&UNICHAR(769)&"c"`), two units with equal sums that
+    share a prefix, and marks after `æ`/`ß`.
+  Ours (T-3181): `cmp_text_pairwise` applies this rule for the operators and criteria, so every
+  cell of the four accent cases passes. The rule is not transitive (wrapped-run-pairs has 554
+  intransitive triples), so the sorts keep the wrapped total with nothing skipped (`cmp_text`, a
+  total order); where Excel's sorts and lookups differ is in the "Not a total order" bullet.
 Implemented (T-3154): `collation_tables.rs` (`MARK_WEIGHT` from the Windows table, `DECOMPOSED`
 extended to Latin Extended-B and Additional) and `collation.rs` (accent byte, variant pass).
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
