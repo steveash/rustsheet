@@ -42,4 +42,4 @@ Stage: `campaign: visible` like T-2055 (Excel is the inaccurate side for this pm
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The cdf (T-3241).
+- The cdf (T-3269).

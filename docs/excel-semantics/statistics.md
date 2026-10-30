@@ -1286,12 +1286,12 @@ LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`)
   `(3,1.1)` the saddle point is Excel's double and the closed form 1 ulp off, so the switch rule is not the whole story
   at small k (T-3247). The cdf's deep upper tail (mean well above k) is a separate residue of the incomplete gamma kernel:
   `POISSON(2,100,TRUE)` = 1.8976107553682424E-40 is 34 ulp from the exact value and 45 ulp from
-  fl(pmf · (1 + 2/100 + 2/100²)), so the cdf there is not the pmf times its series (gen-m9 c7664e494e418395 A294; T-3241).
+  fl(pmf · (1 + 2/100 + 2/100²)), so the cdf there is not the pmf times its series (gen-m9 c7664e494e418395 A294; T-3269).
 - Decision 0114's premise for this family (Excel close to correctly rounded, so build an accurate kernel and do not fit)
   is false for the pmf: Excel is up to 91 eps off the exact value (29 ulp at `POISSON(10,0.01,FALSE)`), and the correctly
   rounded pmf (60-digit Python Decimal) is visibly off at 51 of the 337 t2055 probe cells and 19 of the 150 gated pmf
   cells (gen-m9, t1048-poisson, ironcalc), against 5 and 0 for these forms. T-2055 and T-3247 are therefore
-  `campaign: visible`; the cdf evidence is mixed (T-3241).
+  `campaign: visible`; the cdf evidence is mixed (T-3269).
 - Inputs: Excel reads at most 15 significant digits of a typed number, so a probe of `POISSON.DIST(7,1.0999999999999999,FALSE)`
   is a probe at a different mean (the 17-digit cells were dropped from the t2055 probes).
 Evidence: probes-numeric/t2055-poisson-pmf-sweep, t2055-poisson-pmf-switch, t1048-poisson (excel-graph, 2026-10-30 and

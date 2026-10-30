@@ -103,7 +103,7 @@ Cells:
 - [ ] Visible parity (gen-m9, T-2256): these 133 known-failure lines (the T-2256 cells in Context) disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline. Partly met: every
       owned pmf cell is within 15 digits and no baseline line was added; the deep-upper-tail cdf cells remain, carried
-      by T-3241.
+      by T-3269.
 - [x] Fewer POISSON.xlsx baseline lines; no Excel-computed cell in the suites above goes from pass to fail.
 - [x] The per-call cost stays bounded, and the lifting weight covers it.
 - [ ] `make check` green; reviewers approve. `make check` is green; review round 1: security and quality approved,
@@ -142,7 +142,7 @@ of T-1778 still holds. A huge k over a tiny mean, where `excel_bd0` is not finit
 Decision 0114's premise for POISSON (Excel close to correctly rounded: build an accurate kernel, do not fit) is false
 for the pmf. Excel is up to 91 eps off the exact value, and the correctly rounded pmf is visibly off at 51 of the 337
 probe cells and 19 of the 150 gated pmf cells, against 5 and 0 for these forms. So this task and T-3247 are now
-`campaign: visible`, and T-3241 too (in the deep upper tail Excel is the inaccurate side).
+`campaign: visible`, and T-3269 too (in the deep upper tail Excel is the inaccurate side).
 
 Main-vs-HEAD, every suite, per cell. Main is d2d4a59e3 (the merge parent); main and HEAD were built in separate target
 dirs, and both evaluate the two t2055 probes:
@@ -162,10 +162,10 @@ gated cell).
 
 Criteria:
 - Visible parity: partly met. Every owned pmf cell is within 15 digits; the deep-upper-tail cdf cells remain, carried
-  by T-3241.
+  by T-3269.
 - Fewer POISSON.xlsx baseline lines (15 -> 8), and no Excel-computed gated cell goes from pass to fail: met.
 - Per-call cost: both forms are O(1) apart from `excel_bd0`'s capped series; the cdf, which the lifting weight charges,
   is unchanged: met.
 - `make check` green: met. Review: round 1 asked for changes; round 2 addresses them.
-Follow-ups: T-3241 (the cdf's deep upper tail, on the shared incomplete-gamma kernel, `campaign: visible`) and T-3247
+Follow-ups: T-3269 (the cdf's deep upper tail, on the shared incomplete-gamma kernel, `campaign: visible`) and T-3247
 (`defer: phase-1b`, `campaign: visible`: the pmf's bit-level residue and the real cause behind the stirlerr proxy).

@@ -1,5 +1,5 @@
 ---
-id: T-3241
+id: T-3269
 title: "POISSON cdf: fit Excel's deep upper tail (mean well above k)"
 milestone: M9
 lane: functions-stat
