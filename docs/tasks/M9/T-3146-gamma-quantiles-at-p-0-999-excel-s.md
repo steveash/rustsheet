@@ -3,7 +3,7 @@ id: T-3146
 title: "Gamma quantiles at p = 0.999: Excel's landing point in the flat band of its double cdf (12 unowned visibly-off GAMMA.INV, GAMMAINV, CHISQ.INV and CHISQ.INV.RT probe cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
