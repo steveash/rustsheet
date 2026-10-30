@@ -3,7 +3,7 @@ id: T-3213
 title: "Refuse a typed formula that does not parse (Input::Parse/Formula), as Excel's PATCH 400 does, instead of storing #ERROR!"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
