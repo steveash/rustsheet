@@ -3,7 +3,7 @@ id: T-2106
 title: "TEXT of DBL_MAX with 0.00E+00 gives 1.80E+308 (probes/dbl-max-text-b)"
 milestone: M9
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
