@@ -336,11 +336,15 @@ review`.
   it. So no record format stops a deliberately fabricating (buggy or prompt-injected) marking
   session; that residual risk stays as accepted in "Trust". Records do stop:
   - a **stale panel**: verdicts given on an earlier head (before a fix push) and re-used for the
-    new one. Each record names the head it reviewed, and V4 rejects one for any other head;
+    new one. Each record names the head it reviewed, and V4 rejects one for any other head. The
+    `head:` is the posting session's own claim, so this holds against a buggy session, not a lying
+    one, and only because `make verdict-record` refuses when the local HEAD is not the PR head;
   - a **verdict with no review behind it**: a `REVIEW=` string typed without the panel running
     finds no records, so `mark` refuses and V4 fails;
   - **silent fabrication**: each record carries the reviewer's own report, so a fabricated
-    verdict is a visible, durable comment the steward's spot-audit can check against the diff.
+    verdict is a visible comment the steward's spot-audit can check against the diff. It is
+    auditable (GitHub marks an edited comment and keeps its history), not tamper-proof: the same
+    account can edit or delete it, which is inside the residual risk.
 - **Format.** One PR comment per reviewer, posted by the marking session right after that
   reviewer returns (`make verdict-record PR=<n> REVIEWER=<name> VERDICT=<v> REPORT=<file>`, direct
   or in step mode). The body is the reviewer's report verbatim (truncated to GitHub's comment
@@ -354,6 +358,12 @@ review`.
   ```
   A diff digest was weighed and dropped: the head sha already fixes the tree, and with it the
   diff against the merge base, so a digest adds no binding the sha lacks.
+- **Which records count.** Only records by a writer (V1's permission filter). A record whose
+  `updated_at` differs from its `created_at` (edited) is ignored, so an edit cannot turn a
+  `REQUEST_CHANGES` into an `APPROVE`; a corrected verdict is a new record. "Newest" orders by the
+  server's `created_at`, never a self-declared field. A record posted after the marker counts (a
+  panel re-run on the same head), and the merger re-reads the records at every V4 check, so a
+  deleted record or a newer `REQUEST_CHANGES` takes effect at the next merger run.
 - **Checks.** `mark` refuses unless, for each applicable reviewer, the newest record by a writer
   (V1's permission filter) for the marked head says `APPROVE`; the marker's `reviewers:` field is
   then derived from the records, not typed. V4 becomes a verification: the same lookup by the

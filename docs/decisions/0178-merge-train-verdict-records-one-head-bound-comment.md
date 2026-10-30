@@ -11,8 +11,10 @@
     the verdict. No diff digest: the head sha already fixes the reviewed diff.
   - `mark` derives the marker's `reviewers:` from the newest writer records for the head and refuses without them;
     V4 checks the same records (for `prev` under a verified carry-over).
-  - Records stop stale panels, verdicts with no review behind them, and silent fabrication (the report is a durable,
-    auditable comment). They do not stop a deliberately fabricating session; that residual risk stays accepted.
+  - Only unedited writer records count, newest by `created_at`, re-read at every V4 check.
+  - Records stop stale panels (against a buggy session; `head:` is self-declared), verdicts with no review behind
+    them, and silent fabrication (the report is a visible, auditable comment, not a tamper-proof one). They do not
+    stop a deliberately fabricating session; that residual risk stays accepted.
   - Rollout through `verdict_records = "warn" | "require"` in `scripts/merge_train.toml`, `warn` first.
 - **Consequences:** the implementation needs more than one size-M change, so it is split: T-3207 (the record
   format, `make verdict-record`, `mark` deriving verdicts, V4 in `warn` mode, tests) and T-3208 (the review and

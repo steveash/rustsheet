@@ -46,9 +46,10 @@ marking session's attestation.
   - A diff digest was weighed and dropped, because the head sha already fixes the reviewed diff.
   - It is rolled out through `verdict_records = "warn" | "require"`.
 - What it does and does not prevent, given that every session shares one GitHub identity: it stops stale panels,
-  verdicts with no review behind them, and silent fabrication (the report becomes an auditable comment). It does
+  verdicts with no review behind them, and silent fabrication (the report becomes a visible, auditable comment). It does
   not stop a session that deliberately fabricates, which stays the accepted residual risk.
-- The implementation needs more than one size-M change, so the task's own rule split it. T-3207 covers the format,
+- The implementation needs more than one size-M change, so this PR is the spec the task's rule asks for, and the
+  work is split. T-3207 covers the format,
   `make verdict-record`, `mark` and V4 in `warn` mode, with tests. T-3208 covers the skills and the flip to
   `require`. The acceptance criterion "verify checks the records" moves to T-3207, and V4 stays an attestation
   until T-3208.
