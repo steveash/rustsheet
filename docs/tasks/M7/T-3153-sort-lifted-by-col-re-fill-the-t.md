@@ -3,7 +3,7 @@ id: T-3153
 title: "SORT lifted by_col: re-fill the T-3090 probes after Excel's 2026-10-29 change and probe a text by_col"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
