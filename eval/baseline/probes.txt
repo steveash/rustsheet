@@ -348,6 +348,8 @@ C	probes/discount-argument-check-order.case.json	1707
 C	probes/discount-security-modes.case.json	135
 C	probes/discount-serial-zero.case.json	50
 C	probes/displayed-text-formats.case.json	10
+C	probes/displayed-text-long-text-b.case.json	11
+C	probes/displayed-text-long-text.case.json	22
 C	probes/dollar-fixed-unichar-edges.case.json	76
 C	probes/drop-lifted-grid-handon.case.json	11
 C	probes/dvar-one-vs-two-pass.case.json	32
@@ -3600,10 +3602,6 @@ F	probes/t2753-gamma-density-switch.case.json	S!B7
 F	probes/t2753-gamma-density-switch.case.json	S!B8
 F	probes/t2753-gamma-density-switch.case.json	S!B9
 F	probes/t2779-hebrew-saka-names.case.json	S!E18
-F	probes/t2800-this-row-whitespace.case.json	S!B3
-F	probes/t2800-this-row-whitespace.case.json	S!C3
-F	probes/t2800-this-row-whitespace.case.json	S!D3
-F	probes/t2800-this-row-whitespace.case.json	S!E3
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
@@ -4121,8 +4119,6 @@ F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A3
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A4
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A5
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A6
-F	probes/table-edits/table-insert-row-calc-column-inside-data.case.json	F!A1
-F	probes/table-edits/table-insert-row-calc-column-inside-data.case.json	F!A2
 F	probes/table-edits/table-insert-row-calc-column-inside-data.case.json	F!A3
 F	probes/table-edits/table-insert-row-calc-column-inside-data.case.json	F!A4
 F	probes/table-edits/table-insert-row-calc-column-inside-data.case.json	F!A6
@@ -4182,6 +4178,8 @@ F	probes/yield-start-term-basis.case.json	S!A52
 F	probes/yield-start-term-basis.case.json	S!B50
 F	probes/yield-start-term-basis.case.json	S!C2
 TC	probes/displayed-text-formats.case.json	28
+TC	probes/displayed-text-long-text-b.case.json	11
+TC	probes/displayed-text-long-text.case.json	24
 TC	probes/fraction-large-fixed-denominator.case.json	61
 TC	probes/fraction-numerator-overflow.case.json	76
 TC	probes/fraction-numerator-overflow2.case.json	69

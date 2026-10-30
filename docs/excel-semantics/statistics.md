@@ -1287,6 +1287,9 @@ LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`)
   gen-m9, t1048-poisson and ironcalc-calc POISSON.xlsx with resolvable arguments 106/121/0 (statrs 47/80/33);
   probes-numeric/t2055-poisson-pmf-sweep (204 cells, k 1 to 300) 154/198/5 (29/121/65); t2055-poisson-pmf-switch
   (133) 127/133/0 (11/57/56).
+- Large-k sweep (T-3288): probes-numeric/t3282-poisson-pmf-large-k (171 cells: k 30 to 1000, mean = k·r for r 0.5 to 2.5) and
+  t3282-poisson-pmf-ulp-runs (160 cells: 32 adjacent doubles around each of the five visibly-off t2055 cells). With today's
+  engine 60 of 171 and 26 of 160 are bit-exact (`rustsheet-eval show --all`); T-3295 fits the rest.
 - Residue: the saddle point at large k and a mean well off k (`POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,240)` 46 ulp,
   `(300,210)` 16 ulp, `(30,21)` 11 ulp; t2055-poisson-pmf-sweep), about one ulp at k = 2 to 8 elsewhere, and 1 ulp at the
   small-k edge of the closed form, where main's statrs happened to be right: `POISSON.DIST(1,0.3,FALSE)`, `(3,0.9)`,

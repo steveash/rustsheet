@@ -104,12 +104,42 @@ fn displayed_text_goes_through_the_text_section() {
     assert_eq!(displayed_text("text", ";;;"), "");
 }
 
-// A text over TEXT()'s 255-character limit keeps its plain text (unprobed with a text section).
+// Past TEXT()'s 255-character limit a text shows whole when the format leaves it unchanged and as
+// 255 `#` when a text section changes it (probes/displayed-text-long-text, -b; T-3282).
 #[test]
-fn displayed_text_keeps_a_long_text() {
+fn displayed_text_of_a_long_text() {
     let long = "a".repeat(300);
-    assert_eq!(displayed_text(&long, "General"), long);
-    assert_eq!(displayed_text(&long, "\"pre \"@"), long);
+    let hashes = "#".repeat(255);
+    for format in [
+        "General",
+        "0.00",
+        "@",
+        "0;@",
+        "0;0;0;@",
+        "General;General;General;@",
+    ] {
+        assert_eq!(displayed_text(&long, format), long, "{format}");
+    }
+    for format in [
+        "\"pre \"@",
+        "_(@_)",
+        "[Red]@",
+        "[$-409]@",
+        "@\"\"",
+        "\"\"@",
+        "@*-",
+        "0;0;0;\"pre \"@",
+        "_(* #,##0_);_(* \\(#,##0\\);_(* \"-\"_);_(@_)",
+    ] {
+        assert_eq!(displayed_text(&long, format), hashes, "{format}");
+    }
+    assert_eq!(displayed_text(&long, ";;;"), "");
+    // The limit is on the formatted result: 251 + 4 is 255, 252 + 4 is not.
+    let a251 = "a".repeat(251);
+    assert_eq!(displayed_text(&a251, "\"pre \"@"), format!("pre {a251}"));
+    assert_eq!(displayed_text(&"a".repeat(252), "\"pre \"@"), hashes);
+    assert_eq!(displayed_text(&"a".repeat(254), "_(@_)"), hashes);
+    assert_eq!(displayed_text(&"b".repeat(128), "@@"), hashes);
 }
 
 // An error cell is not a text: its text section never applies.

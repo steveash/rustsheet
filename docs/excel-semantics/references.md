@@ -2365,7 +2365,10 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   Ours (T-2979): an operand that starts with `[` in a cell of a table (its header and totals rows included) is a
   structured reference to that table: `[@Col]`, `[Col]`, `[[#This Row],[Col]]`. It prints without the name, a
   `#This Row` one in its `@` form (`=[[#This Row],[Col]]` prints `=[@Col]`, as calculated-column rule 6 shows for
-  `=[@Col]*2`; how Excel prints the typed long form is unprobed). Counting the header and totals rows as inside the
+  `=[@Col]*2`). Since T-3241 a `#This Row` reference written with the table name prints the same `@` form in a data row
+  of its table (probes/t2800-this-row-whitespace B3:E3, table-edits/table-insert-row-calc-column-inside-data
+  F!A1:A2), and any `#This Row` reference prints with the name in a cell outside its table (the engine's choice so the
+  text parses there; Excel's spelling there is T-3240). Counting the header and totals rows as inside the
   table is an engine choice too, unprobed (T-3000). Storage (R1C1) keeps the table as a `[T]` prefix
   (`[T][[#This Row],[Col]]*2`), so the same text in two tables of one sheet reads each its own table and a re-parse
   (a sheet rename) prints it unqualified again; the export writes the qualified form Excel saves
