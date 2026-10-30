@@ -1,0 +1,24 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3188: TEXT of a huge positive value and of tagged calendar prefixes past the maximum serial. A1: 1E15 under b1; A2-A3: 3000000 under [$-40C]B1 and [$-40D]B1 x; B1-B3: 1E15 under b2, B1 x and 0;b1.",
+ "tags": [
+  "M10",
+  "probe",
+  "text",
+  "number-format"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(1E15,\"b1\")",
+    "A2": "=TEXT(3000000,\"[$-40C]B1\")",
+    "A3": "=TEXT(3000000,\"[$-40D]B1 x\")",
+    "B1": "=TEXT(1E15,\"b2\")",
+    "B2": "=TEXT(1E15,\"b1 x\")",
+    "B3": "=TEXT(1E15,\"0;b1\")"
+  }
+ }
+ ],
+ "expected": {}
+}

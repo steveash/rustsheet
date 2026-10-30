@@ -328,7 +328,10 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
 /// exponent to within 0.1 ulp of that exponent at A20, A25, A30 and A31), but the forms are a few
 /// ulps apart and the engine's EXP, LN and GAMMALN leave a 1-ulp residue either way: A31
 /// `GAMMA.DIST(1E-5,0.25,1,TRUE)` and C25 are bit-exact on the pair and 1 ulp off with the form,
-/// so the pair is kept there (T-3060).
+/// so the pair is kept there (T-3060). No probe cell pins -16 itself: the in-region cells
+/// nearest the cut are at about -23.05 (rows 1, 19, 24) and the excluded ones at -11.54 to
+/// -11.61 (rows 2, 6, 10, 20, 25), so any cut in between scores the same; -16 is the ulp
+/// argument above (T-3242 probes the gap).
 const EXCEL_EXPONENT_MAX: f64 = -16.0;
 
 /// GAMMA.DIST's cdf P(a, x) at a shape below 1 and a normal x below 1 where a·LN(x) is at most
@@ -713,17 +716,26 @@ pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
     shape * cube_root * cube_root * cube_root
 }
 
-/// The quantile of `dist` where the probability of `tail` is `p` (in [0, 1], else NaN): always the
-/// crossing of the smaller tail (`special::refine_increasing`, at most 129 cdfs, from statrs'
-/// search, [`inverse_cdf_within`], when it has a result). Excel is close to the true quantile
-/// (against mpmath, 509 of 545 literal-argument quantile cells are within half a unit of the 15th
-/// digit), so statrs' result is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`).
-/// The smaller tail is `p` or its exact complement `1 - p`, so a tiny right-tail `p` keeps the
-/// digits `1 - p` loses, as in F.INV (T-0974), and the lower tail is the accurate pair's series,
-/// which has no shortcut at a tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200
-/// (T-1543, T-1634). All cdfs share one budget of [`MAX_TERMS`] terms; NaN once it is spent.
-pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
-    if !(0.0..=1.0).contains(&p) {
+/// The quantile of the gamma distribution of `shape` and `scale` where the probability of `tail`
+/// is `p` (in [0, 1], else NaN). NaN where the rate 1 / scale is not a positive finite double, at
+/// every shape (a subnormal scale stays `#NUM!` in GAMMA.INV, as statrs' `Gamma::new` made it).
+///
+/// At shape 1 it is [`exponential_quantile`] times the scale, Excel's double (T-3016): the scale
+/// multiplies the unit quantile, where dividing by the rate is an ulp off
+/// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
+///
+/// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
+/// (`special::refine_increasing`, at most 129 cdfs, from statrs' search, [`inverse_cdf_within`],
+/// when it has a result). Excel is close to the true quantile (against mpmath, 509 of 545
+/// literal-argument quantile cells are within half a unit of the 15th digit), so statrs' result
+/// is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
+/// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in
+/// F.INV (T-0974), and the lower tail is the accurate pair's series, which has no shortcut at a
+/// tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200 (T-1543, T-1634). All cdfs
+/// share one budget of [`MAX_TERMS`] terms; NaN once it is spent.
+pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 {
+    let rate = 1.0 / scale;
+    if !((0.0..=1.0).contains(&p) && rate > 0.0 && rate.is_finite()) {
         return f64::NAN;
     }
     let lower = match tail {
@@ -742,27 +754,50 @@ pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
         (Tail::Lower, false) => (Tail::Upper, 1.0 - p),
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
-    // One budget for every cdf below. Each `borrow_mut` lasts one cdf call and none nests
-    // (`probability` calls no cdf of its own), so no borrow can overlap.
-    let terms = RefCell::new(Terms(MAX_TERMS));
-    let probability = |x: f64| quantile_tail(dist, x, small, &mut terms.borrow_mut());
-    let estimate = inverse_cdf_within(dist, lower, &mut terms.borrow_mut());
-    if dist.shape() > REFINE_SHAPE_MAX {
-        return estimate;
-    }
-    let x = match small {
-        Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
-        Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
+    let x = if shape == 1.0 {
+        exponential_quantile(small, target) * scale
+    } else {
+        let Ok(dist) = Gamma::new(shape, rate) else {
+            return f64::NAN;
+        };
+        // One budget for every cdf below. Each `borrow_mut` lasts one cdf call and none nests
+        // (`probability` calls no cdf of its own), so no borrow can overlap.
+        let terms = RefCell::new(Terms(MAX_TERMS));
+        let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
+        let estimate = inverse_cdf_within(&dist, lower, &mut terms.borrow_mut());
+        if dist.shape() > REFINE_SHAPE_MAX {
+            return estimate;
+        }
+        let crossing = match small {
+            Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
+            Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
+        };
+        if terms.borrow().0 == 0 {
+            return f64::NAN;
+        }
+        crossing
     };
-    if terms.borrow().0 == 0 {
-        return f64::NAN;
-    }
     // A quantile below the smallest normal double is 0, as Excel's `CHISQ.INV(1E-200,1)` and
     // `(1E-300,1)` are (the crossings are about 1.6E-400 and 1.6E-600; T-1543 probe A25, A26).
     if x < f64::MIN_POSITIVE {
         return 0.0;
     }
     x
+}
+
+/// The quantile of the unit exponential (shape 1, rate 1) where the probability of `tail` is `t`
+/// in (0, 1/2]: the closed form `-ln(1 - t)` of the lower tail, by `ln_1p`, or `-ln(t)` of the
+/// upper. Excel's quantile at shape 1 is this double (106 of the 108 literal-argument cells in
+/// eval/ of CHISQ.INV, CHISQ.INV.RT and CHIINV at df 2 and GAMMA.INV at shape 1: `CHISQ.INV(0.5,2)`
+/// = 1.3862943611198906 = 2 ln 2, `GAMMA.INV(0.025,1,1E+15)` = 25317807984289.875,
+/// `CHISQ.INV(1E-16,2)` = 2E-16; T-3016). The crossing of the cdf lands 1 to 2 ulps off it on 69
+/// of them. The two others are 1 ulp off (`CHISQ.INV.RT(0.9995,2)` and `(0.99999,2)`,
+/// probes-numeric t3148-gamma-quantile-flat-band A97, A113).
+fn exponential_quantile(tail: Tail, t: f64) -> f64 {
+    match tail {
+        Tail::Lower => -(-t).ln_1p(),
+        Tail::Upper => -t.ln(),
+    }
 }
 
 /// The probability of `tail` at `x * rate` for [`gamma_quantile`]: the accurate pair, with the
