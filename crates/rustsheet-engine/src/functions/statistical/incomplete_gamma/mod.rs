@@ -924,9 +924,8 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 mod density;
 mod huge_shape;
 
+pub(crate) use density::{accurate_gamma_density, gamma_density};
 pub(crate) use huge_shape::{huge_shape_quantile, HUGE_SHAPE_MIN};
 
 #[cfg(test)]
 mod tests;
-
-pub(crate) use density::{accurate_gamma_density, gamma_density};
