@@ -2662,7 +2662,10 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    (e) **Typing just below the last data row grows the table by a row**: `=B4*2` or the constant `7` typed into A5
    makes `ROWS(T[#All])` 5 and `COLUMNS` 3, A5 keeps what was typed (formula `=B4*2`), column D stays blank (B5, C5 and the
    constant in A5 are not read back)
-   (below-last-row, below-last-row-const).
+   (below-last-row, below-last-row-const). Ours (T-3273): `set_typed_user_input` grows the table by the row through
+   `table_expansion`, for a typed formula or constant inside the table's columns; stored or untyped input does not.
+   Unprobed and pinned as no growth: below a totals row, two rows down, outside the table's columns, into a row
+   another table reaches, or into a row whose other cells are not blank. Nothing is filled into the new row.
    (f) **An unqualified `=[@Col]*2` typed into D2 is accepted** (Excel resolves it against the table the new column
    joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). The engine
    refuses this entry as a parse error (T-2979).
