@@ -208,3 +208,31 @@ fn typed_formulas_nesting_more_than_65_calls_are_refused() {
     wb.set("C1", Input::Formula(deep)).unwrap();
     assert_eq!(wb.value("C1").unwrap(), Value::Number(1.0));
 }
+
+/// Typed, the `@` and `#` operators add no level (65 ABS calls around `@C1:C2`, or 64 around
+/// `SUM(C1#)`, are accepted), but `SINGLE(` spelled as a call counts like any call: 64 ABS calls
+/// around it are accepted and 65 refused (Graph PATCH 400; probes/t3143-single-*-typed,
+/// t3143-anchor-inner-*-typed and t3143-single-spelled-*-typed, T-3143). A stored formula is not
+/// checked: [`Input::StoredFormula`] keeps 66 calls, as it keeps `=SUM()`.
+#[test]
+fn typed_at_and_hash_operators_add_no_nesting_level() {
+    let abs = |n: usize, inner: &str| format!("={}{inner}{}", "ABS(".repeat(n), ")".repeat(n));
+    let mut wb = book();
+    wb.set("C1", Input::Formula("=SEQUENCE(2)".into())).unwrap();
+    for (a1, formula) in [
+        ("A1", abs(65, "@C1:C2")),
+        // `@C1:C2` needs a row of C1:C2.
+        ("A2", abs(64, "SINGLE(C1:C2)")),
+        ("A3", format!("=ABS(@{})", &abs(64, "1")[1..])),
+        ("A4", abs(64, "SUM(C1#)")),
+    ] {
+        wb.set(a1, Input::Formula(formula)).unwrap();
+        assert!(matches!(wb.value(a1).unwrap(), Value::Number(_)), "{a1}");
+    }
+    let err = wb
+        .set("B1", Input::Formula(abs(65, "SINGLE(C1:C2)")))
+        .unwrap_err();
+    assert!(matches!(err, EditError::InvalidInput { .. }), "{err:?}");
+    wb.set("B2", Input::StoredFormula(abs(66, "1"))).unwrap();
+    assert_eq!(wb.value("B2").unwrap(), Value::Number(1.0));
+}

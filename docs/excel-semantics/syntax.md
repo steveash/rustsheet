@@ -175,6 +175,27 @@ wrapped in parentheses (`=(ABS((ABS(...))))`), and a LET or a called LAMBDA at t
 128 and 255 levels. The 66-call inputs (`abs`, `if`, `sum`, `mixed`, `op-abs`, `paren-abs`, `let`,
 `lambda`, stored and typed) cannot keep a sidecar, so they were dropped after the run, as T-1091's
 were. The committed 63- to 65-call cases evaluate on both sides.
+`@` and `#` (T-3143, probes/t3143-*, excel-graph 2026-10-30): stored, `_xlfn.SINGLE(` (the file form of
+`@`) and `_xlfn.ANCHORARRAY(` (of `#`) are calls like any other. 64 ABS calls around `_xlfn.SINGLE(C1:C2)`,
+`ABS(_xlfn.SINGLE(` around 63 more, and 63 ABS calls around `SUM(_xlfn.ANCHORARRAY(C1))` load (65 calls
+each), and the same one level deeper (66) makes Excel refuse the workbook (createSession 501). Typed, the
+operators add no level: 65 ABS calls around `@C1:C2`, `=ABS(@ABS(` with 64 more inside it, and 64 ABS
+calls around `SUM(C1#)` are all accepted (Graph PATCH) and evaluate. So Excel accepts typed formulas it
+then cannot load back once saved, since the saved text spells `@` and `#` as calls. `SINGLE(` typed as a
+call counts like any call: 64 ABS calls around `SINGLE(C1:C2)` are accepted and 65 refused (400
+`InvalidArgument`). `ANCHORARRAY(` typed as a call through Graph is refused at any depth, even
+`=ANCHORARRAY(C1)` and `=SUM(ANCHORARRAY(C1))` with C1 spilling (400 `InvalidArgument`;
+probes/t3143-anchor-typed-bare and -sum, dropped after the run; the engine accepts it, T-3224); a
+stored `ANCHORARRAY(D1)` loads (probes/at-operand-formulatext J30).
+Defined names (T-3143): a name body of 65 nested ABS calls loads and evaluates
+(probes/t3143-name-body-65), and one of 66 makes Excel refuse the workbook (createSession 501). The
+importer refuses both workbooks Excel refuses, cell formulas and name bodies (`reparse_formula_hack`).
+`Input::StoredFormula` through the API is not checked (it keeps 66 calls, as it keeps `=SUM()`):
+Excel has no per-cell stored entry to probe, only the whole file. Unprobed: conditional-format and
+data-validation formulas past 65 calls (the case format cannot express them yet, T-3225), names
+defined through the API, and whether a name's use counts its body's calls toward the using formula.
+The refused T-3143 inputs (`single-inner-65-stored`, `single-mid-65-stored`, `anchor-inner-65-stored`,
+`single-spelled-65-typed`, `name-body-66`) were dropped after the run.
 Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t3172-*, excel-graph
 2026-10-30, bisected; stored and typed give the same counts): Excel accepts 256 nested parentheses
 around `1` and refuses 257; accepts a run of 1,024 unary minus signs before the number `1` and refuses
