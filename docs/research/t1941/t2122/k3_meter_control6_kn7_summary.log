@@ -1,0 +1,13 @@
+pairs 1891, median 769.5, sd 184.0, max 1337.4
+base ridge (top 50): c = -0.482 d -0.04
+on ridge |r| <= 4: n 124, median 1114.7, sd 62.4; top 1337 (b 0.0 c 0 d 0) | 1287 (b 0.6 c 0 d -4) | 1274 (b -0.6 c 0 d 4) | 1249 (b 0.0 c 2 d -4) | 1235 (b 0.0 c -2 d 4) | 1227 (b -1.0 c -2 d 8)
+off ridge |r| > 8: n 1643, median 706.6, sd 151.3; top 1119 (b -6.5 c 32 d -48) | 1107 (b -5.8 c 26 d -36) | 1104 (b -5.5 c 24 d -32) | 1098 (b -6.2 c 30 d -44) | 1098 (b -4.2 c 14 d -12) | 1085 (b 6.5 c -38 d 56)
+off ridge |r| > 16: n 1395, median 672.3, sd 129.3; top 1065 (b 13.0 c -52 d 60) | 1060 (b 13.3 c -50 d 60) | 1049 (b 12.3 c -48 d 60) | 1047 (b -13.0 c 50 d -60) | 1046 (b -12.3 c 48 d -60) | 1042 (b 13.0 c -48 d 56)
+  ridge d   -48: best 1086
+  ridge d   -24: best 1123
+  ridge d   -12: best 1191
+  ridge d    +0: best 1337
+  ridge d   +12: best 1198
+  ridge d   +24: best 1142
+  ridge d   +48: best 1130
+nearest grid pair to truth (c 60, d 56): 569.3 (b -51.3), r 87.0; off-ridge rank 1554 of 1643

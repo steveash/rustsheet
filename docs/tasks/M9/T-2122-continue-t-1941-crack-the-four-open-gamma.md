@@ -89,6 +89,11 @@ Paste this to a fresh coordinator session (Opus, auto mode), on the research bra
   planted S_6 first with no b cut (1468 against the base's 1432). On real data the same subtraction leaves the base ridge and
   the mirror sidelobes, with no isolated top, so the real store structure is not "S_7/S_8 80-bit over C". Next: use BIASKN
   as a store-structure meter (19.3).
+- Run 8 (2026-10-30, one opus worker, K3 19.3 step 1): HANDOFF2 section 20, `t2122/k3_meter.sh`. The bias subtraction is a
+  store-structure meter: on the real data it steps once, between BIASKN 7 and 6 (base 1379 -> flat, sd 175 -> 23; 99 and 8
+  change nothing, 5 equals 6). A KN = 6 control scanned with the KN = 7 bias reproduces the real KN-7 map point for point
+  (base, ridge, mirror sidelobes) and is flat with the right one. So Excel keeps S_6 (and above) in 80-bit: KN <= 6, and
+  the J=6 store scans of runs 6-7 cannot find a top. Next: the J=5 scan (quartic term) on a KN = 6 control, then real (20.3).
 
 ## Acceptance criteria
 - [ ] Each of K1, K2, K3 and (1.5,2] has either a bit-exact model (≥ 99.9% of all probed points, misses

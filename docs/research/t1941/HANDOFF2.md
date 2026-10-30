@@ -889,7 +889,7 @@ as 17-19, plus `w5/libsc.so` (`w5/sc.c`'s `Build:` line), which scan3 loads; sam
 - Left over at BIASKN 6 and 5: a weak cluster at b -57 to -63, c -8 to 24, d 4 to 56 (best 463-470, Z ~4.7 over the
   355 median). Its b is outside the base cluster and it has no mirror,
   but at Z 4.7 on 1,891 pairs it is not evidence yet, and it sits at the J=6 phase of a stage the bias says is unstored.
-- **Reading (provisional until 20.2):** the real data's base-phase structure looks like C with S_6, S_7 and S_8 all
+- **Reading (confirmed by 20.2):** the real data's base-phase structure looks like C with S_6, S_7 and S_8 all
   80-bit, i.e. the deeper unstored top of 18.5 step 2, and not run 7's "S_7/S_8 80-bit, S_6 stored".
 
 ### 20.2 Calibration on a KN = 6 control
@@ -897,11 +897,35 @@ Control data from `k3_run5_ctl_truth.txt` with ops j >= 6 in 80-bit, base and bi
 scanned with BIASKN 6 (the right bias) and 7 (wrong by one stage). Expected if the meter works: BIASKN 6 leaves a flat
 map like 20.1's (and no J=6 truth peak, since the planted S_6 is unstored, as the J=7 one vanished in 17.7); BIASKN 7
 leaves a base ridge and sidelobes like the real KN-7 map.
-PENDING_20_2
+Logs `t2122/k3_meter_control6_kn{6,7}_p[0-3].log`, summaries `t2122/k3_meter_control6_kn{6,7}_summary.log`.
+
+| map | max (at) | median / sd | ridge (top-50 fit) | off-ridge (abs(r) > 16) best |
+|---|---|---|---|---|
+| control KN 6, BIASKN 6 (right) | 179.2 (b 4565, noise) | 147 / 7.4 | none (c = 0.16 d + 10.3, noise) | 179, scattered b |
+| control KN 6, BIASKN 7 (wrong by one) | 1337.4 (base) | 770 / 184 | c = -0.482 d - 0.04 | 1065 (b 13.0, c -52, d 60), mirror 1047 (b -13.0, c 50, d -60) |
+| real, BIASKN 6 (20.1) | 463.4 | 355 / 23 | none | 458 (the b ~-60 cluster) |
+| real, BIASKN 7 (20.1) | 1378.9 (base) | 773 / 175 | c = -0.558 d - 2.08 | 1102 (b 14.6, c -52, d 60), mirror 1088 (b -12.0, c 46, d -56) |
+
+- **The meter works, and it reads KN = 6 on the real data.** A control whose S_6, S_7 and S_8 are 80-bit, scanned with
+  the KN = 7 bias, gives the real KN-7 map almost point for point: the base peak (1337 against 1379), the median and sd
+  (770 / 184 against 773 / 175), a base ridge of nearly the same slope, and the mirror-paired sidelobes at the same
+  (b ~+-13, c ~-+50, d ~+-60). With the right bias the control's map is flat. So run 7's ridge and sidelobes (19.2) are
+  the signature of a bias one stage too shallow, and the real data's top is unstored from S_6 up (KN <= 6; 20.1 cannot
+  separate 6 from 5).
+- As expected for an unstored S_6, the control's planted J=6 move is invisible at BIASKN 6 (151.6 at the truth's grid
+  pair, rank 443 of 1,643 off-ridge pairs): the J=6 scan cannot see a stage that is not stored, as the J=7 one could
+  not in 17.7.
+- **The real map at BIASKN 6 is flat but sits higher than the control's** (median 355 against 147, sd 23 against 7.4),
+  and it keeps the b ~-60 cluster (Z ~4.7) that the control does not have. Part of the higher floor is the real data's
+  misses that no S_6-phase template explains (C's lower chain, the D chain); the cluster needs the 20.3 step 3 split
+  check. Neither is a stored-S_6 top: under KN = 6 there is none to find.
+- This retires 17.5 (2)'s "S_7 (and S_8) unstored, S_6 stored" and the J=6 store scans of runs 6-7 as a route to the
+  top; the next stored stage to read is S_5 (if KN = 6) or lower.
 
 ### 20.3 Next steps (in order)
-1. If 20.2 confirms the meter: synthesise the KN = 6 control on the full ridge box and check that the planted move is
-   then invisible at J=6 but visible at J=5 (18.5 step 2; scan3.py needs the quartic dS term for J = 5). Then the J=5 scan
+1. 20.2 confirms the meter and shows the planted move invisible at J=6 under KN = 6, so next: add the quartic dS term to
+   scan3.py for J = 5 and check on the KN = 6 control that the planted move is visible at J=5 (18.5 step 2); then a
+   KN = 5 control, to separate KN 6 from 5 by the J=5 peak. Then the J=5 scan
    of the real data with BIASKN 6 (or 5) subtracted, at the run-6 ridge box mapped to J=5 (k3_topbox6.py's map one
    stage down).
 2. Re-run the 17.x re-read and the k3_run5 Newton steps with an 80-bit S_6..S_8 in the model (`kn=6` in the residual),

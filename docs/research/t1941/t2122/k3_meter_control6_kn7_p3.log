@@ -1,1 +1,10 @@
 synthetic move [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] func change 0.0e+00
+runs 1289 prep 242s; u_S values [1.38777878e-17]
+truth cubic coefficient d = 56.485
+truth (alpha, beta, gamma)/u_S = (5817.271, -75.839, 60.418), a mod 1 = 0.271
+at truth: S 15.6  P 988.6  joint 1004.2
+joint null mean -27.4 sd 208.0
+(c, d) pairs to scan: 472
+scan 271s, 472 candidates
+top S-only: 1226.1 (a 0.52 b 1.0 c 0.00 d -8.00) | 1220.9 (a 0.66 b 0.3 c -2.00 d -4.00) | 1213.3 (a 0.48 b -1.0 c 0.00 d 8.00) | 1183.8 (a 0.61 b -1.3 c -2.00 d 12.00) | 1180.2 (a 0.41 b 1.3 c 2.00 d -12.00)
+truth a mod 1 0.271 b -75.84 c 60.42 d 56.49
