@@ -136,7 +136,7 @@ pub(crate) fn gamma_ur(a: f64, x: f64) -> f64 {
     if !(a > 0.0 && x > 0.0 && x.is_finite()) {
         return f64::NAN;
     }
-    // POISSON.DIST and the large-shape beta paths: the ratio form is unprobed for them (T-3220).
+    // POISSON.DIST and the large-shape beta paths: the ratio form is unprobed for them (T-3261).
     pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Accurate).1
 }
 
@@ -239,7 +239,7 @@ const NEAR_MODE: f64 = 0.4;
 /// `GAMMA.DIST(3.14159,42,ACOS(0),FALSE)`), closer to it than to `rcomp` at a/100 (probes/
 /// t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1,FALSE)`: 69 ulp against 350;
 /// gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208) and closer to `rcomp`
-/// at a/500 (A47, B47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252); 1/200 lies between (T-3220).
+/// at a/500 (A47, B47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252); 1/200 lies between (T-3261).
 const RATIO_FORM_MIN: f64 = 0.005;
 
 /// The gamma density x^(a-1) e^(-x/scale) / (scale^a Gamma(a)) for a > 0, x > 0 and scale > 0,
@@ -251,7 +251,7 @@ pub(crate) fn gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
 }
 
 /// [`gamma_density`] with the accurate exponent throughout, for the large-shape beta paths, where
-/// the ratio form is unprobed (T-3220).
+/// the ratio form is unprobed (T-3261).
 pub(crate) fn accurate_gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
     density_with(a, x, scale, Exponent::Accurate)
 }

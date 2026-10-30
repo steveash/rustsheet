@@ -1099,7 +1099,7 @@ near-mode bound) (UNVERIFIED between those points). The ratio form is Excel's bi
 ratio form (probes/t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1,FALSE)`: ratio form 69 ulp off, `rcomp`
 350; gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208), and at a/500 closer to `rcomp` (A47, B47
 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252), so ours keeps `rcomp` below a/200 (UNVERIFIED between). POISSON.DIST's cdf and the large-shape BETA.DIST, BETA.INV and F.INV paths keep `rcomp`
-too: no cell probes them (T-3220 probes the window and those functions). Below shape 20 neither this form nor the direct one is Excel's
+too: no cell probes them (T-3261 probes the window and those functions). Below shape 20 neither this form nor the direct one is Excel's
 (`GAMMA.DIST(0.9,9,1,TRUE)`: Excel 9 ulp below the truth, the ratio form 23 below Excel, the direct one 10 above).
 Status: VERIFIED (excel-graph)
 Tasks: T-0971, T-0972, T-2638, T-3147

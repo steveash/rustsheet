@@ -1,5 +1,5 @@
 ---
-id: T-3220
+id: T-3261
 title: "Probe Excel's large-shape gamma prefactor window: near-mode bound, x below a/10, POISSON.DIST and large-shape BETA.DIST"
 milestone: M9
 lane: research
