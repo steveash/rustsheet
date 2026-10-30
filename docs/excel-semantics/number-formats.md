@@ -483,6 +483,15 @@ Status: VERIFIED
 Implemented in: `Token::AP` / `Token::AMPM` (formatter/lexer.rs), `TextToken::AP` (formatter/format.rs); tests in formatter/test/test_time.rs.
 Tasks: T-0954
 
+## `mm` after a minute is a month
+Rule: once an `m`/`mm` has been read as a minute, every later `m`/`mm` in the section is a month, whatever time
+token came before it. `h:mm|yyyy-mm-dd` on 0.25 is "6:00|1900-01-00" and on 45000.75 "18:00|2023-03-15"; `hh mm|dd mm`
+is "06 00|00 01"; `mm:ss|yyyy-mm` is "00:00|1900-01". With an hour but no minute yet, `mm` is a minute even after a
+date token: `h|yyyy-mm` is "6|1900-00".
+Evidence: probes/mm-after-time-and-date-token (22 cells, excel-graph 2026-10-30), probes/t2779-hebrew-saka-more E7.
+Status: VERIFIED (excel-graph). Implemented in: `minute_read` (formatter/parser.rs). Unprobed: `h:mm:ss mm`.
+Tasks: T-2961
+
 ## `m`/`mm` directly before `:ss` is minutes, with no hour
 Rule: `m` or `mm` followed by `:` and a plain `s`/`ss` is a minute even when the code has no hour
 token (otherwise it is a month): `mm:ss` shows 1000 as "00:00", 123456.789 as "56:10" and 1.5 as
@@ -801,8 +810,10 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - The accounting formats' text section `_(@_)` pads a text, a boolean or an empty string with one space on each side:
   `_(* #,##0_);_(* \(#,##0\);_(* "-"_);_(@_)` on "text" is " text " (gen-m10 05c1c646c95a2d60 F!M4), on TRUE " TRUE "
   (eec351e03ccedfe0 F!R2) and on `=""` two spaces (5255389143dbcef6 F!H11); the `$` variants do the same
-  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25). Ours shows
-  the plain value (T-1736).
+  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25).
+  Implemented (T-1736): `Cell::formatted_value` sends a text or boolean cell through `format_text_value`; an error cell is
+  shown as it is. All 10,400 gen-m10 displayed-text cells pass.
+  Unprobed (T-3282): wherever TEXT() is `#VALUE!` (a text over 255 characters, a formatted result past 255, an unparsable number section) the cell shows the plain text.
 - A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5" (implemented, T-2097: the minus leads and the General token prints the absolute value; gen-m10 F!D19 -1E15 is "-x1E+15"). A value that rounds to Unprobed: literals after General on a negative (`General x`, unchanged here).
   nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
   1000 "1".
