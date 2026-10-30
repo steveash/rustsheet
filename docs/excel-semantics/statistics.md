@@ -1474,7 +1474,7 @@ are `#N/A` and one point is `#DIV/0!` (COVAR of one pair is 0): `TTEST(A7:C7,<nu
 `FORECAST.LINEAR(x,C2:D7,<number>)` and `FORECAST.LINEAR(x,0.2,D11:D12)` are `#N/A`; `SLOPE(123456789.123,<number>)`,
 `INTERCEPT(1.005,2.5)`, `FORECAST.LINEAR(x,0.2,1)` and `FORECAST.LINEAR(x,7,137.5)` are `#DIV/0!`; `COVAR(0,D6)` is a number (inferred 0;
 `(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. `T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE (one value, no number) is `#NUM!` (tails/type before
-the paired unequal-size `#N/A`; whether an error array argument beats a bad tails/type is unprobed). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
+the paired unequal-size `#N/A`; an error array argument beats a bad tails/type, see below). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
 PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). A single cell holding text is no number, like text inside a range: `QUARTILE(A1,1)`, `QUARTILE(A1,7)`, `QUARTILE.INC/.EXC`,
@@ -1491,6 +1491,13 @@ A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, 
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
 Ours: GROWTH and TREND match the single-value, error and size-before-text rules (T-1402); the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal too, for the regression functions and CHISQ.TEST: T-1723); `LARGE(#N/A,1)` is that error (gen-m9/1782efcecd5d4b1b A25); PERCENTILE.EXC reports k's error before the empty-data `#NUM!` (T-1403; PERCENTILE.INC's order is unprobed);
 `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
+Typed literals and error arrays (probes/paired-typed-literals-error-tails, excel-graph 2026-10-30, T-1968): `COVAR("x",B1:B2)`,
+`COVAR(B1:B2,"x")`, `COVAR(TRUE,B1:B2)`, `CORREL("x",B1:B2)`, `CORREL(TRUE,B1:B2)` and `CORREL(B1:B2,TRUE)` are `#N/A` (a literal is one
+value, so the sizes differ); `COVAR("x","x")`, `COVAR("x",5)`, `COVAR(TRUE,5)`, `COVAR("1",B1)` and `CORREL(TRUE,TRUE)` are `#DIV/0!`
+(a literal is no number, so no pair remains). T.TEST reads an error array before tails and type: `T.TEST(#DIV/0!,A1:A2,0.1,3)`,
+`T.TEST(#DIV/0!,A1:A2,1,0.3)`, `T.TEST(#DIV/0!,A1:A2,3,2)` and `T.TEST(#DIV/0!,A1:A2,"x",2)` are `#DIV/0!`, `T.TEST(A1:A2,#DIV/0!,0.1,3)` too,
+and the first error wins (`T.TEST(#N/A,#DIV/0!,1,1)` is `#N/A`); without an error array a bad type is `#NUM!` (`T.TEST(A1:A2,B1:B2,0.1,3)`).
+The engine already matches all 20 cells.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403
 

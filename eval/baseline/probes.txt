@@ -871,6 +871,7 @@ C	probes/offset-negative-height-width.case.json	80
 C	probes/omitted-arg-compare.case.json	10
 C	probes/operand-wrap-text.case.json	30
 C	probes/operator-chain-limit.case.json	6
+C	probes/paired-typed-literals-error-tails.case.json	20
 C	probes/paren-call-callee-indirect.case.json	1
 C	probes/paren-call-callee-offset.case.json	1
 C	probes/paren-call-empty-args.case.json	1
