@@ -328,9 +328,10 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
 /// exponent to within 0.1 ulp of that exponent at A20, A25, A30 and A31), but the forms are a few
 /// ulps apart and the engine's EXP, LN and GAMMALN leave a 1-ulp residue either way: A31
 /// `GAMMA.DIST(1E-5,0.25,1,TRUE)` and C25 are bit-exact on the pair and 1 ulp off with the form,
-/// so the pair is kept there (T-3060). No probe cell pins -16 itself: the in-region cells nearest the
-/// cut are at about -23.05 (rows 1, 19, 24) and the excluded ones at -11.54 to -11.61 (rows 2, 6, 10,
-/// 20, 25), so any cut in between scores the same; -16 is the ulp argument above (T-3237 probes the gap).
+/// so the pair is kept there (T-3060). No probe cell pins -16 itself: the in-region cells
+/// nearest the cut are at about -23.05 (rows 1, 19, 24) and the excluded ones at -11.54 to
+/// -11.61 (rows 2, 6, 10, 20, 25), so any cut in between scores the same; -16 is the ulp
+/// argument above (T-3237 probes the gap).
 const EXCEL_EXPONENT_MAX: f64 = -16.0;
 
 /// GAMMA.DIST's cdf P(a, x) at a shape below 1 and a normal x below 1 where a·LN(x) is at most
