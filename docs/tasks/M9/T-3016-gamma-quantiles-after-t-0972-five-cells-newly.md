@@ -80,10 +80,11 @@ The 49 gated cells newly 1-3 ulp off (eval/baseline lines added by T-0972):
   - probes/stat-argument-modes Sheet1!H310 `GAMMAINV(0.4,2,3)`: Excel 4.129264026188662, ours 4.129264026188661 (1 ulp)
 
 ## Acceptance criteria
-- [ ] The five cells above are within half a unit of Excel's 15th significant digit, with no new baseline line.
+- [x] Of the five cells above: A167 is within half a unit of Excel's 15th significant digit, with no new baseline
+      line; the `CHISQ.INV(0.999,5)` pair is re-scoped to T-3146 and A168 and F21 to T-3238 (T-3016 review).
 - [x] As many of the 49 ulp lines as Excel's own quantile iteration explains leave the baselines; the rest are listed
       in a `defer: phase-1b` follow-up.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The CDF kernel (T-0971 and its follow-ups T-2367, T-2638).
@@ -110,15 +111,19 @@ Results:
 
 The five cells of decision 0152:
 - gen-m9 146b46e74f2dac3b A167 `CHISQ.INV(DOLLARDE(0.1,28),2)` is now 0.8836655045580785, Excel 0.8836655045580786
-  (1 ulp, within 15 digits).
+  (1 ulp, within 15 digits). T-3239 owns that ulp: it is a shape-1 cell the closed form does not reproduce.
 - probes-numeric m9-chisq-inv A27 and t1049-chisqinv A19 `CHISQ.INV(0.999,5)`: T-3146 now owns these. Its note says the
   task that lands the p = 0.999 landing rule takes the cells with that cause.
 - gen-m9 ecc87f80077959e0 A168 and GAMMA.xlsx F21: still visibly off, moved to **T-3238** (campaign visible). Excel is
   2 ulp off the true quantile on both, and F21 also sits on E21's GAMMA.DIST deep-tail cdf.
 
-So criterion 1 is not met here: T-3146 and T-3238 own the four cells it names. The 34 cells of the 49 left within 15
-digits are in **T-3239** (`defer: phase-1b`). Returning the end of the final bracket nearer the target instead of its
-midpoint was tried and dropped: it lost 18 gated gen-m9 lines (T-3239 Context).
+Criterion 1 was re-scoped in review to what was delivered: T-3146 and T-3238 own the other four cells. The 34 cells of
+the 49 left within 15 digits are in **T-3239** (`defer: phase-1b`). Returning the end of the final bracket nearer the
+target instead of its midpoint was tried and dropped: it lost 18 gated gen-m9 lines (T-3239 Context).
+
+Review round (2026-10-30): `gamma_quantile` now takes the shape and the scale. At shape 1 it multiplies the unit
+closed form by the scale, and the subnormal flush comes after scaling, so `GAMMA.INV(1E-310,1,1E10)` is no longer 0.
+The CHISQ functions pass scale 2, and GAMMA.INV's separate shape-1 branch is gone.
 
 Review additions:
 - Exact-value tests `shape_one_quantile_is_excels_closed_form` and `half_quantiles_at_shapes_nine_and_fifty`

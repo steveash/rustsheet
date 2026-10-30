@@ -674,7 +674,8 @@ pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
     shape * cube_root * cube_root * cube_root
 }
 
-/// The quantile of `dist` where the probability of `tail` is `p` (in [0, 1], else NaN): always the
+/// The quantile of the gamma distribution of `shape` and `scale` where the probability of `tail`
+/// is `p` (in [0, 1], else NaN): always the
 /// crossing of the smaller tail (`special::refine_increasing`, at most 129 cdfs, from statrs'
 /// search, [`inverse_cdf_within`], when it has a result). Excel is close to the true quantile
 /// (against mpmath, 509 of 545 literal-argument quantile cells are within half a unit of the 15th
@@ -683,9 +684,14 @@ pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
 /// digits `1 - p` loses, as in F.INV (T-0974), and the lower tail is the accurate pair's series,
 /// which has no shortcut at a tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200
 /// (T-1543, T-1634). All cdfs share one budget of [`MAX_TERMS`] terms; NaN once it is spent.
-/// At shape 1 the quantile is [`exponential_quantile`] over the rate, Excel's double (T-3016).
-pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
-    if !(0.0..=1.0).contains(&p) {
+/// At shape 1 the quantile is [`exponential_quantile`] times the scale, Excel's double (T-3016):
+/// the scale multiplies the unit quantile, where dividing by the rate 1 / scale is an ulp off
+/// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26). Other
+/// shapes cross the cdf of rate 1 / scale. NaN where that rate is not a positive finite double, at
+/// every shape (a subnormal scale stays `#NUM!` in GAMMA.INV, as statrs' `Gamma::new` made it).
+pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 {
+    let rate = 1.0 / scale;
+    if !((0.0..=1.0).contains(&p) && rate > 0.0 && rate.is_finite()) {
         return f64::NAN;
     }
     let lower = match tail {
@@ -704,9 +710,13 @@ pub(crate) fn gamma_quantile(dist: &Gamma, p: f64, tail: Tail) -> f64 {
         (Tail::Lower, false) => (Tail::Upper, 1.0 - p),
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
-    let x = if dist.shape() == 1.0 {
-        exponential_quantile(small, target) / dist.rate()
+    let x = if shape == 1.0 {
+        exponential_quantile(small, target) * scale
     } else {
+        let Ok(gamma) = Gamma::new(shape, rate) else {
+            return f64::NAN;
+        };
+        let dist = &gamma;
         // One budget for every cdf below. Each `borrow_mut` lasts one cdf call and none nests
         // (`probability` calls no cdf of its own), so no borrow can overlap.
         let terms = RefCell::new(Terms(MAX_TERMS));

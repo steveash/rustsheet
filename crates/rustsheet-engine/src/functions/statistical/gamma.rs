@@ -162,21 +162,7 @@ impl Model {
             let z = normal_quantile(p, 0.0, 1.0, cell)?;
             wilson_hilferty_quantile(alpha, z) * beta_scale
         } else {
-            let dist = Gamma::new(alpha, 1.0 / beta_scale).map_err(|_| num_error(cell))?;
-            if alpha == 1.0 {
-                // Excel scales the unit exponential's quantile by beta: over the rate 1 / beta
-                // instead, `GAMMA.INV(0.95,1,1000000)` is 2995732.2735539903, Excel's
-                // 2995732.27355399 (probes-numeric m9-gamma-inv A26; T-3016).
-                let unit = Gamma::new(1.0, 1.0).map_err(|_| num_error(cell))?;
-                let x = gamma_quantile(&unit, p, Tail::Lower) * beta_scale;
-                if x < f64::MIN_POSITIVE {
-                    0.0
-                } else {
-                    x
-                }
-            } else {
-                gamma_quantile(&dist, p, Tail::Lower)
-            }
+            gamma_quantile(alpha, beta_scale, p, Tail::Lower)
         };
         if !x.is_finite() || x < 0.0 {
             return Err(num_error(cell));

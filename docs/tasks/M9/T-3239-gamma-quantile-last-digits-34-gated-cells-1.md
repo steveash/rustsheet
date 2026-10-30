@@ -26,6 +26,12 @@ T-3016 tried returning the end of `refine_increasing`'s final bracket nearer the
 literal-argument quantile cells in eval/, that matched Excel on 144 more cells but 55 fewer, 18 of them gated gen-m9
 lines, so it was not kept.
 
+Also owned: gen-m9/146b46e74f2dac3b Calc!A167 `CHISQ.INV(DOLLARDE(0.1,28),2)`: Excel 0.8836655045580786, ours
+0.8836655045580785 (1 ulp; one of decision 0152's five cells, within 15 digits since T-3016). It is a shape-1 cell that
+the closed form does not reproduce. At 50 digits the closed form is ...785 for p = 0.35714285714285715 (ours) and
+...787 for the next double, 0.3571428571428572. So either Excel's DOLLARDE(0.1,28) is a different double, which a
+probe of `DOLLARDE(0.1,28)-10/28` would show, or this cell is an exception to the shape-1 rule.
+
 `defer: phase-1b`: every cell is within 15 digits (decision 0114).
 
   - gen-m9/3e98b26cf6713e77 Calc!A315 `CHISQ.INV(0.5,8)`: Excel 7.344121497701793, ours 7.344121497701794 (1 ulp)
@@ -65,7 +71,7 @@ lines, so it was not kept.
 
 
 ## Acceptance criteria
-- [ ] The cells above leave the baselines with no new baseline line.
+- [ ] The cells above (the 34 and A167) leave the baselines with no new baseline line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
