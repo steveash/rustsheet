@@ -1,4 +1,4 @@
-# 0172 — Readiness markers accept the session attribution footer
+# 0175 — Readiness markers accept the session attribution footer
 
 - **Status:** accepted (2026-10-30, T-3164). It amends SPEC-0027 section 2 ("The marker").
 - **Context:** The first live `make mark-ready` from a session (PR #2337, 2026-10-29) posted the marker, then its

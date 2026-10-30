@@ -44,5 +44,5 @@ shadow and train runs see the PRs workers mark ready.
 and strips at most one exact trailing footer before reading the block. Any other trailing text, a second footer or
 an altered one is still rejected (unit tests in `scripts/test_merge_ready.py`). `merge_step.same_body` uses the
 same constant. The `merge-train-ejected v1` block is only written, by the merger, and never parsed, so it needed no
-change. Decision 0172 amends SPEC-0027 section 2. The live check is this PR's own `make mark-ready` and
+change. Decision 0175 amends SPEC-0027 section 2. The live check is this PR's own `make mark-ready` and
 `make merge-ready-verify`. Eval delta: none (harness scripts only).

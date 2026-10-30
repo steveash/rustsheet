@@ -39,7 +39,7 @@ approval. Filed by the 2026-10-29 18:47 UTC steward run.
 - Changing what the posting tool appends.
 
 ## Outcome (dropped, 2026-10-30, T-3164)
-Duplicate of T-3164, which fixes the same failure on the reading side (decision 0172): `parse_marker` accepts
+Duplicate of T-3164, which fixes the same failure on the reading side (decision 0175): `parse_marker` accepts
 exactly one trailing attribution footer and still rejects any other trailing text. Other comment readers checked:
 no other script parses a block at the end of a comment (the `merge-train-ejected v1` block is written by the
 merger and never parsed; the stop label and revert PRs are read by label and title, not by comment body).
