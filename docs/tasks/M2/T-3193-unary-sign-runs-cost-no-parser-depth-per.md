@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-3236]
 ---
 
 ## Goal
@@ -28,7 +28,8 @@ Keep the coercion each sign implies (`--x` coerces `x` to a number) and the prin
 caps (T-3172; syntax.md "Formula nesting depth cap"): 1,024 minus signs before a number, 1,023 plus
 signs before text or 1,023 alternating `-+` signs before a reference, 1,025 / 1,024 refused. The
 parenthesis case (t3172-paren-256) belongs with T-3191. This may need a spec first if the node
-change is bigger than M.
+change is bigger than M. It is (63 match sites in 27 files, 22 of them production code; judged on
+resume 2026-10-30), so T-3236 writes that spec first.
 
 ## Acceptance criteria
 - [ ] The eighteen sign-run cases load and match Excel; their whole-case lines leave

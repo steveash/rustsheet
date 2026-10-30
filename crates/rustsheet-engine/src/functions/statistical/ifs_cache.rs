@@ -11,7 +11,11 @@
 //! reading it evaluates nothing: every formula cell of it is already evaluated in this pass
 //! (spill cells: their anchor), and none is circular. Until then the walk runs as before, and the
 //! check resumes where it stopped (an evaluated cell stays evaluated for the rest of the pass), so
-//! it costs each range one scan per pass.
+//! it costs each range one scan per pass. A range of formulas the walk only reads where the
+//! criteria before it match may stay uncacheable for the whole pass. So a SUMIFS-shaped call whose
+//! leading criteria ranges are cached filters by their match sets, and reads the rest, and the sum
+//! cells, at the matching positions in row order, as the walk does (T-3227): the reads that can
+//! evaluate anything are the walk's own, in its order.
 //!
 //! The rest of the argument is `search_cache.rs`'s (T-0448): the first read of a cached range
 //! records what it saw, so a spill that later writes into it restarts the pass, and every pass
@@ -156,6 +160,18 @@ impl RangeView {
     }
 }
 
+/// What [`Model::ifs_leading_matches`] finds: the cells every criteria range before the first one
+/// not cacheable yet matches, and from that range on, each range's cached values or `None`.
+pub(super) struct LeadingMatches {
+    pub(super) matched: Vec<u64>,
+    pub(super) rest: Vec<Option<RangeView>>,
+}
+
+/// The position of the `index`-th cell of `range`, counting row by row.
+pub(super) fn range_cell(range: &Range, index: usize) -> CellReferenceIndex {
+    rect_cell(rect_of(range), index)
+}
+
 /// The criteria ranges' values and match sets of the current pass.
 #[derive(Default)]
 pub(crate) struct IfsCache {
@@ -169,6 +185,10 @@ pub(crate) struct IfsCache {
     /// Match sets cut from a larger cached range's, for the tests of T-0465.
     #[cfg(test)]
     pub(crate) windows: usize,
+    /// SUMIFS-shaped calls that read some of their ranges as the walk does, for the tests of
+    /// T-3227.
+    #[cfg(test)]
+    pub(crate) mixed: usize,
 }
 
 impl IfsCache {
@@ -183,6 +203,7 @@ impl IfsCache {
         #[cfg(test)]
         {
             self.windows = 0;
+            self.mixed = 0;
         }
     }
 
@@ -449,16 +470,54 @@ impl Model {
         criteria: &[CalcResult],
         matchers: &[Criterion<'_>],
     ) -> Option<Vec<u64>> {
-        let mut all: Option<Vec<u64>> = None;
+        self.criteria_matches(rects, criteria, matchers, true)
+            .map(|leading| leading.matched)
+    }
+
+    /// [`Model::ifs_all_matches`] for the criteria ranges up to the first one not cacheable yet,
+    /// and the cached values, if any, of each range from that one on (T-3227). `None` when the
+    /// first range is not cacheable yet.
+    pub(super) fn ifs_leading_matches(
+        &mut self,
+        rects: &[Range],
+        criteria: &[CalcResult],
+        matchers: &[Criterion<'_>],
+    ) -> Option<LeadingMatches> {
+        self.criteria_matches(rects, criteria, matchers, false)
+    }
+
+    /// [`Model::ifs_leading_matches`], or with `whole`, [`Model::ifs_all_matches`]: then `None`
+    /// at the first range not cacheable yet. Either way no range after an uncached first one is
+    /// looked at, and with `whole` none after any uncached one: the walk runs.
+    fn criteria_matches(
+        &mut self,
+        rects: &[Range],
+        criteria: &[CalcResult],
+        matchers: &[Criterion<'_>],
+        whole: bool,
+    ) -> Option<LeadingMatches> {
+        let mut matched: Option<Vec<u64>> = None;
+        let mut rest = Vec::new();
         for ((range, criterion), matches) in rects.iter().zip(criteria).zip(matchers) {
-            let view = self.ifs_range_values(rect_of(range))?;
-            let bits = self.ifs_matches(&view, criterion, matches.as_ref());
-            match all.as_mut() {
-                None => all = Some(bits.to_vec()),
-                Some(all) => all.iter_mut().zip(bits.iter()).for_each(|(a, b)| *a &= b),
+            let view = self.ifs_range_values(rect_of(range));
+            if view.is_none() && (whole || matched.is_none()) {
+                return None;
+            }
+            match view {
+                Some(view) if rest.is_empty() => {
+                    let bits = self.ifs_matches(&view, criterion, matches.as_ref());
+                    match matched.as_mut() {
+                        None => matched = Some(bits.to_vec()),
+                        Some(all) => all.iter_mut().zip(bits.iter()).for_each(|(a, b)| *a &= b),
+                    }
+                }
+                view => rest.push(view),
             }
         }
-        all
+        Some(LeadingMatches {
+            matched: matched?,
+            rest,
+        })
     }
 
     /// How many cells of `range` `criterion` matches (`matches` its predicate): COUNTIFS with one

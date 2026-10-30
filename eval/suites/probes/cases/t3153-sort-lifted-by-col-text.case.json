@@ -1,0 +1,53 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3153: SORT lifted by_col: text by_col that reads as a boolean ('1', 'TRUE') and number by_col read from range cells.",
+ "tags": [
+  "M7",
+  "probe",
+  "lookup",
+  "T-3153"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 13,
+    "B1": 7,
+    "C1": 22,
+    "D1": 5,
+    "A2": 9,
+    "B2": 31,
+    "C2": 2,
+    "D2": 17,
+    "A3": 26,
+    "B3": 4,
+    "C3": 15,
+    "D3": 11,
+    "A4": 3,
+    "B4": 19,
+    "C4": 8,
+    "D4": 28,
+    "G1": 1,
+    "H1": 1,
+    "I1": 1,
+    "G3": 0,
+    "H3": 1,
+    "I3": 2,
+    "G5": "1",
+    "H5": "TRUE",
+    "I5": "1",
+    "K1": "=SORT(A1:D4,2,1,{TRUE,\"1\",TRUE})",
+    "K6": "=SORT(A1:D4,2,1,{TRUE,\"TRUE\",TRUE})",
+    "K11": "=SORT(A1:D4,2,1,{\"1\",TRUE,TRUE})",
+    "K16": "=SORT(A1:D4,2,1,{TRUE,\"FALSE\",TRUE})",
+    "K21": "=SORT(A1:D4,2,1,{\"TRUE\",TRUE,TRUE})",
+    "K26": "=SORT(A1:D4,2,1,G1:I1)",
+    "K31": "=SORT(A1:D4,2,1,G3:I3)",
+    "K36": "=SORT(A1:D4,2,1,G5:I5)",
+    "K41": "=SORT(A1:D4,2,1,{TRUE,\"0\",TRUE})",
+    "K46": "=SORT(A1:D4,2,1,{TRUE,\" 1\",TRUE})"
+   }
+  }
+ ],
+ "expected": {}
+}
