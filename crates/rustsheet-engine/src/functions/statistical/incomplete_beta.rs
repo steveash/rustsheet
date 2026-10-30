@@ -7,6 +7,8 @@
 //! `tools/src/rustsheet_tools/fitlab/kernels/beta.py`, bit-exact on 158 of the 283 BETA.DIST
 //! sweep cells against 87 for statrs' `beta_reg`):
 //! - Excel's closed forms on bratio's oriented arguments ([`closed_form_tails`], T-2502);
+//! - at a first shape of 1E6 or more with b/a at most 1E-6 (after the reflection), `DiDonato` and
+//!   Morris' expansion in the incomplete gamma (`large_shape_beta.rs`, T-2528);
 //! - otherwise Cephes' two continued fractions (`incbcf`, `incbd`; no power series), reflected
 //!   at the mean, x > a/(a+b), to the upper tail I_{1-x}(b,a);
 //! - the prefactor x^a (1-x)^b / B(a,b) as exp(a ln x) * exp(b ln(1-x)) * Gamma(a+b) /
@@ -26,6 +28,7 @@
 //! cap) and [`RLOG1_TERMS`] series terms, so one call costs a fixed amount of work.
 
 use super::half_integer_beta::{half_integer_remainder, is_half_integer_shape};
+use super::large_shape_beta::large_shape_lower;
 use super::special::ln_gamma;
 use crate::x87_exp::{dd_add, dd_mul, fast_two_sum, two_sum};
 use crate::x87_exp::{excel_exp, excel_expm1};
@@ -199,7 +202,7 @@ fn beta_tails(x: f64, y: f64, a: f64, b: f64, kernel: Kernel) -> (f64, f64) {
         Kernel::Accurate => half_integer_tail(x, y, a, b),
         Kernel::Cephes => None,
     };
-    let v = if let Some(v) = accurate {
+    let v = if let Some(v) = accurate.or_else(|| large_shape_lower(a, b, x, y)) {
         v
     } else if a + b < MAXGAM {
         let w = cephes_fraction(a, b, x, y);
