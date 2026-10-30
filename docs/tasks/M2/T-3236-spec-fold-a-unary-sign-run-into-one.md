@@ -22,8 +22,8 @@ foresaw ("This may need a spec first if the node change is bigger than M"). `Par
 (crates/rustsheet-engine/src/expressions/parser/mod.rs) wraps one `Node::UnaryKind` (minus) or
 `Node::UnaryPlus` per sign and calls `grow` for each, so `MAX_FORMULA_DEPTH` (256, depth.rs) refuses
 the eighteen probes/t3172-minus-*, -plus-* and -alt-* cases pinned in probes/deviations by T-3189
-(decision 0168). The two variants are matched at 63 sites in 22 files of rustsheet-engine
-(evaluator and node_frames.rs, stringify and its sheet-edit/rename/bound-variable walkers,
+(decision 0168). The two variants are matched at 63 sites in 27 files, 22 of them production code in
+rustsheet-engine (evaluator and node_frames.rs, stringify and its sheet-edit/rename/bound-variable walkers,
 static_analysis and its legacy/redundant/operand_array passes, reference_operators.rs,
 contains_function.rs, cast.rs, call_arguments.rs, spill_shape.rs, tailed_array.rs, units.rs,
 let.rs, read_once.rs, t_function.rs, lifted_options.rs, model.rs). Dropping the tree and the
@@ -39,7 +39,10 @@ whether the single-sign case keeps today's variants (smaller diff) or every run 
 how the binding/printing in stringify.rs (`Binding::Minus`) treats a run; and how the run counts
 toward Excel's caps (refuse 1,025 minus / 1,024 plus as Excel does, typed and stored; syntax.md
 "Formula nesting depth cap", T-3172), with a release-stack test plan (test_nesting_depth.rs, 1 MiB).
-It should also split T-3193's implementation into size-M steps if one PR would be too big.
+Decision 0173 (T-3191) is the nearest precedent: directly nested parentheses are parsed in a loop
+(`parse_parenthesis_run`) and one `Group` carries their count (`levels`) under Excel's own per-run
+cap (`MAX_PARENTHESES`). The spec should weigh that shape (a count on the existing variants) against
+a new node, with alternatives considered. It should also split T-3193's implementation into size-M steps if one PR would be too big.
 
 ## Acceptance criteria
 - [ ] docs/specs/SPEC-XXXX-*.md (next free number, docs/specs/TEMPLATE.md) answers each question above,
