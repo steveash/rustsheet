@@ -224,17 +224,22 @@ fn cases() -> Vec<(&'static str, u32, &'static str)> {
             1,
             "=SUM(CHIDIST(SEQUENCE(894784)*0+7,5))",
         ),
-        (
-            "GAMMA.INV, the refined quantile over 512 p (T-0972, T-3016)",
-            1,
-            "=SUM(GAMMA.INV(SEQUENCE(512)/513,9,1))",
-        ),
     ]
     .into_iter()
+    .chain(gamma_quantile_cases())
     .chain(hypgeom_cases())
     .chain(lambda_cases())
     .chain(coupon_cases())
     .collect()
+}
+
+/// The GAMMA.INV case (T-3016), apart to keep `cases` short.
+fn gamma_quantile_cases() -> Vec<(&'static str, u32, &'static str)> {
+    vec![(
+        "GAMMA.INV, the refined quantile over 512 p (T-0972, T-3016)",
+        1,
+        "=SUM(GAMMA.INV(SEQUENCE(512)/513,9,1))",
+    )]
 }
 
 /// The HYPGEOM.DIST cases (T-1873, T-2433), apart to keep `cases` short.
