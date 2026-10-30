@@ -98,8 +98,8 @@ The 49 gated cells newly 1-3 ulp off (eval/baseline lines added by T-0972):
 
 ## Outcome (2026-10-30)
 Shape 1 is the exponential distribution. There `gamma_quantile` now returns its closed form in the smaller tail:
-`-ln_1p(-t)` for the lower tail and `-ln(t)` for the upper, divided by the rate. GAMMA.INV multiplies the
-unit quantile by its scale, which Excel does: dividing by the rate 1 / beta is 1 ulp off at scale 1E6. That is Excel's
+`-ln_1p(-t)` for the lower tail and `-ln(t)` for the upper, times the scale, which Excel does: dividing by the rate
+1 / beta instead is 1 ulp off at scale 1E6. That is Excel's
 double on 106 of the 108 literal-argument cells at df 2 or GAMMA.INV shape 1 in eval/ (statistics.md, "Shape 1
 (T-3016)").
 
