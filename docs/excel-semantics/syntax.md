@@ -179,7 +179,7 @@ were. The committed 63- to 65-call cases evaluate on both sides.
 `@`) and `_xlfn.ANCHORARRAY(` (of `#`) are calls like any other. 64 ABS calls around `_xlfn.SINGLE(C1:C2)`,
 `ABS(_xlfn.SINGLE(` around 63 more, and 63 ABS calls around `SUM(_xlfn.ANCHORARRAY(C1))` load (65 calls
 each), and the same one level deeper (66) makes Excel refuse the workbook (createSession 501). Typed, the
-operators add no level: 65 ABS calls around `@C1:C2`, `=ABS(@ABS(` with 64 more inside it, and 64 ABS
+operators add no level: 65 ABS calls around `@C1:C2`, `=ABS(@` around 64 more ABS calls, and 64 ABS
 calls around `SUM(C1#)` are all accepted (Graph PATCH) and evaluate. So Excel accepts typed formulas it
 then cannot load back once saved, since the saved text spells `@` and `#` as calls. `SINGLE(` typed as a
 call counts like any call: 64 ABS calls around `SINGLE(C1:C2)` are accepted and 65 refused (400
@@ -188,7 +188,7 @@ call counts like any call: 64 ABS calls around `SINGLE(C1:C2)` are accepted and 
 probes/t3143-anchor-typed-bare and -sum, dropped after the run; the engine accepts it, T-3224); a
 stored `ANCHORARRAY(D1)` loads (probes/at-operand-formulatext J30).
 Defined names (T-3143): a name body of 65 nested ABS calls loads and evaluates
-(probes/t3143-name-body-65), and one of 66 makes Excel refuse the workbook (createSession 501). The
+(probes/t3143-name-body-65, tagged M8 as defined-name bodies are, decision 0051), and one of 66 makes Excel refuse the workbook (createSession 501). The
 importer refuses both workbooks Excel refuses, cell formulas and name bodies (`reparse_formula_hack`).
 `Input::StoredFormula` through the API is not checked (it keeps 66 calls, as it keeps `=SUM()`):
 Excel has no per-cell stored entry to probe, only the whole file. Unprobed: conditional-format and
