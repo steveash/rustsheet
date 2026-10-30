@@ -89,10 +89,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, NamedTuple
-from xml.sax.saxutils import escape, unescape
+from xml.sax.saxutils import escape
 
 import xlsxwriter
 
+from rustsheet_tools.custom_properties import json_properties, set_json_property
 from rustsheet_tools.oracle.package import patch_parts, read_parts
 from rustsheet_tools.pivot import PivotParts, pivot_tables, relationships_xml
 from rustsheet_tools.sheetop import column_number, sheet_op
@@ -439,11 +440,11 @@ def _record_backend_steps(wb: xlsxwriter.Workbook, spec: dict[str, Any], entered
     for n, entry in enumerate(entered, start=1):
         # An A1 entry keeps its three elements, so workbooks built before R1C1 entry stay byte-identical.
         value = [entry.sheet, entry.a1, entry.text, *([R1C1_MODE] if entry.r1c1 else [])]
-        _set_json_property(wb, f"{ENTERED_PROPERTY}.{n}", value, f"entered cell {entry.sheet}!{entry.a1}")
+        set_json_property(wb, f"{ENTERED_PROPERTY}.{n}", value, f"entered cell {entry.sheet}!{entry.a1}")
     for n, op in enumerate(spec.get("sheet_ops", ()), start=1):
-        _set_json_property(wb, f"{SHEET_OP_PROPERTY}.{n}", list(sheet_op(op)), f"sheet op {n}")
+        set_json_property(wb, f"{SHEET_OP_PROPERTY}.{n}", list(sheet_op(op)), f"sheet op {n}")
     for n, key in enumerate(spec.get("text", ()), start=1):
-        _set_json_property(wb, f"{TEXT_PROPERTY}.{n}", list(_text_cell(key)), f"text cell {key}")
+        set_json_property(wb, f"{TEXT_PROPERTY}.{n}", list(_text_cell(key)), f"text cell {key}")
 
 
 class Entered(NamedTuple):
@@ -767,71 +768,6 @@ def _filter_tables(xlsx: bytes, filters: list[tuple[str, str]]) -> bytes:
     )
 
 
-# Excel holds at most 255 characters (UTF-16 units) in a custom property, so a longer JSON value is
-# split over `<name>` and continuation properties `<name>.2`, `<name>.3`, ... (T-2709).
-_PROPERTY_UNITS = 255
-# The longest JSON value recorded: an entered formula holds at most Excel's 8,192 characters, and a
-# few hundred more cover the sheet name, the address and JSON escaping. Larger fails here, not at
-# the oracle.
-_PROPERTY_JSON_MAX = 16_384
-
-
-def _utf16_chunks(text: str, units: int) -> list[str]:
-    """`text` cut into pieces of at most `units` UTF-16 units, never inside a surrogate pair."""
-    chunks: list[str] = []
-    start, used = 0, 0
-    for i, ch in enumerate(text):
-        width = 2 if ord(ch) > 0xFFFF else 1
-        if used + width > units:
-            chunks.append(text[start:i])
-            start, used = i, 0
-        used += width
-    chunks.append(text[start:])
-    return chunks
-
-
-def _set_json_property(wb: xlsxwriter.Workbook, name: str, value: object, what: str) -> None:
-    text = json.dumps(value, ensure_ascii=False)
-    if len(text) > _PROPERTY_JSON_MAX:
-        msg = f"{what} is too long for the custom properties ({len(text)} > {_PROPERTY_JSON_MAX})"
-        raise ValueError(msg)
-    first, *rest = _utf16_chunks(text, _PROPERTY_UNITS)
-    wb.set_custom_property(name, first)
-    for k, chunk in enumerate(rest, start=2):
-        wb.set_custom_property(f"{name}.{k}", chunk)
-
-
-def _json_properties(xlsx: bytes, prefix: str) -> list[Any]:
-    """The JSON values of the custom properties `<prefix>.<n>` in `xlsx`, in order of n.
-
-    Raises ValueError when the package or a property is malformed (xlsx inputs are untrusted).
-    """
-    try:
-        parts = read_parts(xlsx)
-        if "docProps/custom.xml" not in parts:
-            return []
-        custom = parts["docProps/custom.xml"].decode("utf-8")
-        # A regex, not an XML parser: the part is untrusted, and only XlsxWriter's own layout matters.
-        # `<prefix>.<n>` is value n, or its first piece when `<prefix>.<n>.<k>` continue it (k >= 2).
-        pattern = re.compile(
-            rf'name="{re.escape(prefix)}\.(\d+)(?:\.(\d+))?"><vt:lpwstr>(.*?)</vt:lpwstr>', re.S
-        )
-        pieces: dict[int, dict[int, str]] = {}
-        for n, k, v in pattern.findall(custom):
-            pieces.setdefault(int(n), {})[int(k) if k else 1] = unescape(v, {"&quot;": '"', "&apos;": "'"})
-        values = []
-        for n in sorted(pieces):
-            parts_of_n = pieces[n]
-            if sorted(parts_of_n) != list(range(1, len(parts_of_n) + 1)):
-                msg = f"{prefix}.{n} is missing a piece"
-                raise ValueError(msg)
-            values.append(json.loads("".join(parts_of_n[k] for k in sorted(parts_of_n))))
-        return values
-    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
-        msg = f"malformed {prefix} property: {e}"
-        raise ValueError(msg) from e
-
-
 def entered_cells(xlsx: bytes) -> list[Entered]:
     """The typed entries `build_xlsx` recorded in `xlsx`, in spec order.
 
@@ -839,7 +775,7 @@ def entered_cells(xlsx: bytes) -> list[Entered]:
     """
     try:
         entries = []
-        for value in _json_properties(xlsx, ENTERED_PROPERTY):
+        for value in json_properties(xlsx, ENTERED_PROPERTY):
             sheet, a1, text, *mode = value
             if mode not in ([], [R1C1_MODE]):
                 msg = f"unknown entry mode {mode!r}"
@@ -868,7 +804,7 @@ def text_cells(xlsx: bytes) -> list[tuple[str, str]]:
     Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
     """
     try:
-        return [_text_cell(f"{s}!{a1}") for s, a1 in _json_properties(xlsx, TEXT_PROPERTY)]
+        return [_text_cell(f"{s}!{a1}") for s, a1 in json_properties(xlsx, TEXT_PROPERTY)]
     except (TypeError, ValueError) as e:
         msg = f"malformed {TEXT_PROPERTY} property: {e}"
         raise ValueError(msg) from e
@@ -879,7 +815,7 @@ def sheet_ops(xlsx: bytes) -> list[tuple[str, str, str | int | None]]:
 
     Raises ValueError when the package or a property is malformed or an op is unknown.
     """
-    return [sheet_op(op) for op in _json_properties(xlsx, SHEET_OP_PROPERTY)]
+    return [sheet_op(op) for op in json_properties(xlsx, SHEET_OP_PROPERTY)]
 
 
 def _patch_sheets(xlsx: bytes, patches: list[tuple[int, Callable[[str], str]]]) -> bytes:
