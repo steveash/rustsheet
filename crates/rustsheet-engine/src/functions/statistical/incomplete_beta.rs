@@ -7,8 +7,8 @@
 //! `tools/src/rustsheet_tools/fitlab/kernels/beta.py`, bit-exact on 158 of the 283 BETA.DIST
 //! sweep cells against 87 for statrs' `beta_reg`):
 //! - Excel's closed forms on bratio's oriented arguments ([`closed_form_tails`], T-2502);
-//! - at a first shape of 1E6 or more with b/a at most 1E-6 (after the reflection), `DiDonato` and
-//!   Morris' expansion in the incomplete gamma (`large_shape_beta.rs`, T-2528);
+//! - at a first shape of 1E6 or more with b below 40 and b/a at most 1E-6 (after the reflection),
+//!   `DiDonato` and Morris' expansion in the incomplete gamma (`large_shape_beta.rs`, T-2528);
 //! - otherwise Cephes' two continued fractions (`incbcf`, `incbd`; no power series), reflected
 //!   at the mean, x > a/(a+b), to the upper tail I_{1-x}(b,a);
 //! - the prefactor x^a (1-x)^b / B(a,b) as exp(a ln x) * exp(b ln(1-x)) * Gamma(a+b) /

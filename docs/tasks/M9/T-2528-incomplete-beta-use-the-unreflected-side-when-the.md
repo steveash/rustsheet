@@ -46,7 +46,7 @@ expansion (`bgrat`, used by `bratio` for a huge b with a small a) or Temme's uni
 - New `large_shape_beta.rs`: `DiDonato` and Morris' expansion of `I_x(a, b)` in Q(b, z) (TOMS 708 `bgrat`'s
   series, in accurate arithmetic: ln x and z in double-double, Legendre's fraction for Q/r evaluated from the bottom
   up, Gamma(a+b)/(Gamma(a) nu^b) without cancellation). `incomplete_beta.rs` `beta_tails` takes it after the
-  reflection at a first shape of 1E6 or more with b/a at most 1E-6; Cephes' fraction did not converge there.
+  reflection at a first shape of 1E6 or more, b below 40 and b/a at most 1E-6; Cephes' fraction did not converge there.
   Within 2E-15 of a 120-digit mpmath reference on the probe points (60 digits is itself 4E-14 off at x = 50).
 - t1530-f-df-cut A8 bit-exact, A12 and A14 within half a unit of the 15th digit (were 8E-8 off).
 - New probes-numeric/t2528-f-dist-huge-df2 (60 cells, excel-graph): 38 within 15 digits; the other 22 are where
@@ -59,3 +59,5 @@ expansion (`bgrat`, used by `bratio` for a huge b with a small a) or Temme's uni
   the 1E6 floor on a keeps them.
 - BETA.INV's search keeps the expansion's leading term (`inverse_beta.rs` `GAMMA_LIMIT_SHAPE_RATIO`), bit-exact on
   t1538-f-inv-huge-df's near-1 cells.
+- b below 40 (bratio's bgrat family): without it `BETA.DIST(0.1,1E+200,1E+100,TRUE)` became 0 where Excel is `#NUM!`
+  (probes/t3007-beta-dist-ln-x-overflow S!A23); A21 and A22 of that case (b = 2) are now Excel's 1 and 0.

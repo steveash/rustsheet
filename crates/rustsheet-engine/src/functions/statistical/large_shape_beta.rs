@@ -29,6 +29,11 @@ pub(super) const MAX_SHAPE_RATIO: f64 = 1e-6;
 /// it.
 const MIN_SHAPE: f64 = 1e6;
 
+/// The second shape below which the expansion is used: bratio's bgrat family (L140) is for b0 below
+/// 40, and from 40 Excel's other branches decide, `#NUM!` included: `BETA.DIST(0.1,1E+200,1E+100,
+/// TRUE)` is `#NUM!` (probes/t3007-beta-dist-ln-x-overflow S!A23), where the expansion's tail is 0.
+const MAX_SECOND_SHAPE: f64 = 40.0;
+
 /// bgrat's cap on the series' terms.
 const MAX_SERIES_TERMS: usize = 30;
 
@@ -39,13 +44,13 @@ const MAX_FRACTION_DEPTH: u32 = 1 << 14;
 /// The relative size of the last series term at which the series stops.
 const SERIES_TOLERANCE: f64 = 1e-17;
 
-/// `I_x(a, b)` with y = 1 - x given, for a of [`MIN_SHAPE`] or more, b/a at most
-/// [`MAX_SHAPE_RATIO`] and 0 < x, y < 1; `None`
-/// elsewhere or where a step is not finite, and the caller keeps its kernel.
+/// `I_x(a, b)` with y = 1 - x given, for a of [`MIN_SHAPE`] or more, b below [`MAX_SECOND_SHAPE`]
+/// and at most [`MAX_SHAPE_RATIO`] of a, and 0 < x, y < 1; `None` elsewhere or where a step is not finite, and the caller keeps its kernel.
 pub(super) fn large_shape_lower(a: f64, b: f64, x: f64, y: f64) -> Option<f64> {
     if !(a >= MIN_SHAPE
         && a.is_finite()
         && b > 0.0
+        && b < MAX_SECOND_SHAPE
         && b <= a * MAX_SHAPE_RATIO
         && x > 0.0
         && y > 0.0)
@@ -218,6 +223,7 @@ mod tests {
     fn only_a_huge_first_shape_takes_the_expansion() {
         assert_eq!(large_shape_lower(100.0, 2.5, 0.99, 0.01), None);
         assert_eq!(large_shape_lower(3.366, 3.43e-18, 0.997, 0.003), None);
+        assert_eq!(large_shape_lower(1e200, 1e100, 0.1, 0.9), None);
         assert_eq!(large_shape_lower(5e9, 0.0, 0.99, 0.01), None);
         assert_eq!(large_shape_lower(5e9, 2.5, 0.0, 1.0), None);
         // Far below the mean the tail is 0, not NaN.
