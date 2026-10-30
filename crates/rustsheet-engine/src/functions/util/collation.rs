@@ -38,19 +38,38 @@
 //! (docs/excel-semantics/text.md "Lone surrogates through CODE, comparisons, ...").
 
 use std::cmp::{Ordering, Reverse};
+use std::iter::Peekable;
 
 use super::collation_tables::{COMBINING_LETTERS, DECOMPOSED, MARK_WEIGHT};
 use crate::text::{Char, Text};
 
-/// Orders two texts the way Excel's `<`/`>`/`=` and the `">"` criteria do (module docs).
+/// Orders two texts by the module's four passes, the accents by their wrapped sums: a total
+/// order, the one sorts, the sorted lookups and the collation key use. Excel's own `<`, `=`, `>`
+/// are [`cmp_text_pairwise`].
+#[cfg(test)]
 pub(crate) fn cmp_text_excel(left: &str, right: &str) -> Ordering {
+    cmp_str(left, right, AccentOrder::Total)
+}
+
+/// How the accent pass compares two letters' accents.
+#[derive(Clone, Copy)]
+enum AccentOrder {
+    /// By the wrapped sum of each letter's units: a total order.
+    Total,
+    /// Excel's comparison of two texts: the units both letters start with are skipped first
+    /// ([`cmp_accent_units`]); not transitive.
+    Pairwise,
+}
+
+/// [`cmp_text_excel`] or [`cmp_text_pairwise`] for well-formed text.
+fn cmp_str(left: &str, right: &str, order: AccentOrder) -> Ordering {
     if left.is_ascii() && right.is_ascii() {
         // ASCII has no accents, so the second pass always ties.
         return ascii_primaries(left)
             .cmp(ascii_primaries(right))
             .then_with(|| skipped(scalars(left)).cmp(skipped(scalars(right))));
     }
-    cmp_chars(scalars(left), scalars(right))
+    cmp_chars(scalars(left), scalars(right), order)
 }
 
 /// The characters of well-formed text.
@@ -61,10 +80,25 @@ fn scalars(text: &str) -> impl Iterator<Item = Char> + Clone + '_ {
 /// [`cmp_text_excel`] for engine text, a lone surrogate kept as its own unit instead of the
 /// lossy U+FFFD (module docs; probes/text-lone-surrogates A10-A24).
 pub(crate) fn cmp_text(left: &Text, right: &Text) -> Ordering {
+    cmp_text_in(left, right, AccentOrder::Total)
+}
+
+/// Orders two texts the way Excel's `<`, `=`, `>` and the text criteria do: as [`cmp_text`],
+/// except that the accents of a letter are compared after the units both texts share at its
+/// start ([`cmp_accent_units`]). Excel's rule, which is not transitive
+/// (docs/excel-semantics/coercion.md "Shared leading units are skipped before the sum",
+/// probes/t3181-collation-prefix-callers), so nothing may sort or hash with it: texts it finds
+/// equal always have equal [`CollationKey`]s, so a key lookup followed by this test finds them.
+pub(crate) fn cmp_text_pairwise(left: &Text, right: &Text) -> Ordering {
+    cmp_text_in(left, right, AccentOrder::Pairwise)
+}
+
+/// [`cmp_text`] or [`cmp_text_pairwise`].
+fn cmp_text_in(left: &Text, right: &Text, order: AccentOrder) -> Ordering {
     if left.has_lone_surrogate() || right.has_lone_surrogate() {
-        cmp_chars(left.chars_lossless(), right.chars_lossless())
+        cmp_chars(left.chars_lossless(), right.chars_lossless(), order)
     } else {
-        cmp_text_excel(left, right)
+        cmp_str(left, right, order)
     }
 }
 
@@ -97,14 +131,17 @@ pub(crate) fn collation_key(text: &Text) -> CollationKey {
 }
 
 /// The four passes over two character sequences.
-fn cmp_chars<L, R>(left: L, right: R) -> Ordering
+fn cmp_chars<L, R>(left: L, right: R, order: AccentOrder) -> Ordering
 where
     L: Iterator<Item = Char> + Clone,
     R: Iterator<Item = Char> + Clone,
 {
     primaries(left.clone())
         .cmp(primaries(right.clone()))
-        .then_with(|| accents(left.clone()).cmp(accents(right.clone())))
+        .then_with(|| match order {
+            AccentOrder::Total => accents(left.clone()).cmp(accents(right.clone())),
+            AccentOrder::Pairwise => cmp_accent_units(left.clone(), right.clone()),
+        })
         .then_with(|| variants(left.clone()).cmp(variants(right.clone())))
         .then_with(|| skipped(left).cmp(skipped(right)))
 }
@@ -489,63 +526,99 @@ fn primaries(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u32> {
         .filter(|&weight| weight != 0)
 }
 
-/// The second pass: one accent weight per letter weight of the first pass. A combining mark adds
-/// its diacritic weight to the letter before it, wrapping past 255 like the Windows sort key's
-/// one-byte diacritic weight, so the order of the marks does not matter:
-/// `"a"&UNICHAR(769)&UNICHAR(780)` = `"a"&UNICHAR(780)&UNICHAR(769)` = `"á"&UNICHAR(780)` =
-/// `"ǎ"&UNICHAR(769)` (2 + 12 + 18), and three U+0323 (2 + 3 * 86 = 260, so 4) sort between `"a"`
-/// and `"á"` (probes/t3154-collation-accent-weights, probes/t3154-collation-accent-pairs). A mark
-/// with no letter before it weighs as an accent of its own (unprobed).
-fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
-    Accents {
-        elements: elements(text),
-        ready: None,
-        last: None,
-    }
+/// One unit of the accent pass: a letter's own diacritic weight (`letter`), or the weight of a
+/// combining mark after it.
+#[derive(Clone, Copy)]
+struct AccentUnit {
+    weight: u8,
+    letter: bool,
 }
 
-/// The iterator of [`accents`]: `last` is held back so that a combining mark after it can
-/// add to it.
-struct Accents<I> {
-    elements: I,
-    ready: Option<u8>,
-    last: Option<u8>,
-}
-
-impl<I: Iterator<Item = Element>> Iterator for Accents<I> {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<u8> {
-        if let Some(accent) = self.ready.take() {
-            return Some(accent);
-        }
-        loop {
-            match self.elements.next() {
-                None => return self.last.take(),
-                Some(Element::Skipped(_)) => {}
-                Some(Element::Mark(weight)) => {
-                    self.last = Some(self.last.unwrap_or(NO_ACCENT).wrapping_add(weight));
-                }
-                Some(Element::Weights {
-                    primary, accent, ..
-                }) => {
-                    // An expansion (`æ`) weighs two letters: its accent, then an unaccented one.
-                    let (first, held) = if primary[1] == 0 {
-                        (None, accent)
-                    } else {
-                        (Some(accent), NO_ACCENT)
-                    };
-                    let before = self.last.replace(held);
-                    match (before, first) {
-                        (Some(before), first) => {
-                            self.ready = first;
-                            return Some(before);
-                        }
-                        (None, Some(first)) => return Some(first),
-                        (None, None) => {}
-                    }
+/// The accent units of `text`, letter by letter: one letter unit per letter weight of the first
+/// pass (an expansion such as `æ` is two, its accent then an unaccented one), each followed by
+/// the units of the combining marks after it. Marks with no letter before them follow an
+/// unaccented letter unit of their own (unprobed).
+fn accent_units(text: impl Iterator<Item = Char>) -> impl Iterator<Item = AccentUnit> {
+    let letter = |weight| AccentUnit {
+        weight,
+        letter: true,
+    };
+    let mut started = false;
+    elements(text)
+        .flat_map(move |element| match element {
+            Element::Skipped(_) => [None, None],
+            Element::Mark(weight) => {
+                let mark = Some(AccentUnit {
+                    weight,
+                    letter: false,
+                });
+                if std::mem::replace(&mut started, true) {
+                    [mark, None]
+                } else {
+                    [Some(letter(NO_ACCENT)), mark]
                 }
             }
+            Element::Weights {
+                primary, accent, ..
+            } => {
+                started = true;
+                let second = (primary[1] != 0).then(|| letter(NO_ACCENT));
+                [Some(letter(accent)), second]
+            }
+        })
+        .flatten()
+}
+
+/// The next unit of the letter whose units `units` is reading, if any is left.
+fn next_mark(units: &mut Peekable<impl Iterator<Item = AccentUnit>>) -> Option<u8> {
+    units.next_if(|unit| !unit.letter).map(|unit| unit.weight)
+}
+
+/// `first` plus the units left of the letter `units` is reading, in a wrapping byte.
+fn letter_sum(first: u8, units: &mut Peekable<impl Iterator<Item = AccentUnit>>) -> u8 {
+    std::iter::from_fn(|| next_mark(units)).fold(first, u8::wrapping_add)
+}
+
+/// The second pass: one accent weight per letter weight of the first pass, the sum of its
+/// [`accent_units`] in one wrapping byte, like the Windows sort key's one-byte diacritic weight.
+/// So the order of the marks does not matter:
+/// `"a"&UNICHAR(769)&UNICHAR(780)` = `"a"&UNICHAR(780)&UNICHAR(769)` = `"á"&UNICHAR(780)` =
+/// `"ǎ"&UNICHAR(769)` (2 + 12 + 18), and three U+0323 (2 + 3 * 86 = 260, so 4) sort between `"a"`
+/// and `"á"` (probes/t3154-collation-accent-weights, probes/t3154-collation-accent-pairs).
+fn accents(text: impl Iterator<Item = Char>) -> impl Iterator<Item = u8> {
+    let mut units = accent_units(text).peekable();
+    std::iter::from_fn(move || {
+        let first = units.next()?.weight;
+        Some(letter_sum(first, &mut units))
+    })
+}
+
+/// Excel's accent pass between two texts (coercion.md "Shared leading units are skipped before
+/// the sum", probes/t3201-collation-long-mark-runs, probes/t3201-collation-wrapped-run-pairs):
+/// letter by letter, drop the leading units both letters share with equal weights; a letter
+/// with no units left is less (so a text is below any text it is a proper prefix of,
+/// probes/t3154-collation-accent-pairs Calc!S19, T18); otherwise the sums of the units left, each
+/// in a wrapping byte, decide. Texts equal here have equal [`accents`].
+fn cmp_accent_units(left: impl Iterator<Item = Char>, right: impl Iterator<Item = Char>) -> Ordering {
+    let (mut left, mut right) = (accent_units(left).peekable(), accent_units(right).peekable());
+    loop {
+        let (mut l, mut r) = match (left.next(), right.next()) {
+            (None, None) => return Ordering::Equal,
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(l), Some(r)) => (Some(l.weight), Some(r.weight)),
+        };
+        while l.is_some() && l == r {
+            (l, r) = (next_mark(&mut left), next_mark(&mut right));
+        }
+        let order = match (l, r) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+            (Some(l), Some(r)) => letter_sum(l, &mut left).cmp(&letter_sum(r, &mut right)),
+        };
+        if order.is_ne() {
+            return order;
         }
     }
 }

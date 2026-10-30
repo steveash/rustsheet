@@ -1,0 +1,53 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Excel's collation prefix rule in the dynamic-array functions (T-3181): same Data!A1:A8 as t3181-collation-prefix-callers; Calc!A SORT and SORTBY orders as LEN lists, B UNIQUE, XMATCH exact, next-smaller/larger and binary, XLOOKUP and SWITCH.",
+ "tags": [
+  "M7",
+  "probe",
+  "collation",
+  "T-3181"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=TEXTJOIN(\",\",,LEN(SORT(Data!A3:A4)))",
+    "A2": "=TEXTJOIN(\",\",,LEN(SORT(Data!A3:A5)))",
+    "A3": "=TEXTJOIN(\",\",,LEN(SORT(VSTACK(Data!A2,Data!A1))))",
+    "A4": "=TEXTJOIN(\",\",,LEN(SORT(Data!A1:A2,,-1)))",
+    "A5": "=TEXTJOIN(\",\",,LEN(SORT(VSTACK(Data!A4,Data!A3))))",
+    "A6": "=TEXTJOIN(\",\",,LEN(SORT(Data!A3:A4,,-1)))",
+    "A7": "=TEXTJOIN(\",\",,LEN(SORTBY(Data!A3:A4,Data!A3:A4)))",
+    "A8": "=TEXTJOIN(\",\",,LEN(SORT(Data!A6:A8)))",
+    "A9": "=TEXTJOIN(\",\",,LEN(SORT(VSTACK(Data!A7,Data!A6))))",
+    "B1": "=ROWS(UNIQUE(Data!A1:A2))",
+    "B2": "=ROWS(UNIQUE(Data!A4:A5))",
+    "B3": "=XMATCH(Data!A1,Data!A2)",
+    "B4": "=XMATCH(Data!A2,Data!A1)",
+    "B5": "=XMATCH(Data!A1,Data!A2,-1)",
+    "B6": "=XMATCH(Data!A1,Data!A2,1)",
+    "B7": "=XMATCH(Data!A3,Data!A4,-1)",
+    "B8": "=XMATCH(Data!A3,Data!A4,1)",
+    "B9": "=XMATCH(Data!A3,Data!A3:A4,-1,2)",
+    "B10": "=XMATCH(Data!A4,Data!A3:A4,-1,2)",
+    "B11": "=XLOOKUP(Data!A1,Data!A2,\"hit\",\"miss\")",
+    "B12": "=SWITCH(Data!A1,Data!A2,\"hit\",\"miss\")",
+    "B13": "=XMATCH(Data!A3,Data!A3:A4,1,2)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "=\"a\"",
+    "A2": "=\"a\"&REPT(UNICHAR(770),16)",
+    "A3": "=\"a\"&UNICHAR(834)",
+    "A4": "=\"a\"&UNICHAR(834)&UNICHAR(834)",
+    "A5": "=\"a\"&UNICHAR(807)",
+    "A6": "=\"a\"&UNICHAR(803)",
+    "A7": "=\"a\"&REPT(UNICHAR(803),3)",
+    "A8": "=\"á\""
+   }
+  }
+ ],
+ "expected": {}
+}

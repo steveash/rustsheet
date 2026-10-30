@@ -314,3 +314,91 @@ fn final_sigma_folds_in_exact_and_wildcard_matches() {
         Some(folded_units(&Text::from("ΟΔΟΣ")))
     );
 }
+
+/// The evaluated `Data` strings of the probes case `stem` (each a formula such as
+/// `="a"&REPT(UNICHAR(769),22)`).
+fn probe_data_strings(stem: &str) -> Vec<Text> {
+    let path = format!(
+        "{}/../../eval/suites/probes/cases/{stem}.case.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let case: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let sheet = case["sheets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|sheet| sheet["name"] == "Data")
+        .unwrap();
+    let cells = sheet["cells"].as_object().unwrap();
+    let mut model = crate::test::util::new_empty_model();
+    for (cell, formula) in cells {
+        model._set(cell, formula.as_str().unwrap());
+    }
+    model.evaluate();
+    cells.keys().map(|cell| Text::from(model._get_text(cell))).collect()
+}
+
+/// The accent strings of the T-3154 and T-3201 probes, on which Excel's own comparison is not
+/// transitive (coercion.md "Not a total order"): `cmp_text`, which the sorts use, stays a total
+/// order with `CollationKey` equality as its equality, and texts `cmp_text_pairwise` finds equal
+/// share a key (what the criteria index relies on).
+#[test]
+fn cmp_text_is_a_total_order_on_the_accent_probes() {
+    use crate::functions::util::collation::cmp_text_pairwise;
+    for stem in [
+        "t3154-collation-accent-weights",
+        "t3154-collation-accent-pairs",
+        "t3201-collation-long-mark-runs",
+        "t3201-collation-wrapped-run-pairs",
+    ] {
+        let mut texts = probe_data_strings(stem);
+        assert!(texts.len() > 20, "{stem}");
+        texts.sort_by(cmp_text);
+        for (i, a) in texts.iter().enumerate() {
+            // Sorted, each text is equal to a run of the ones after it and below all the rest.
+            let mut below = false;
+            for b in &texts[i + 1..] {
+                let order = cmp_text(a, b);
+                assert_eq!(cmp_text(b, a), order.reverse(), "{stem}: {a:?} vs {b:?}");
+                assert_eq!(
+                    order,
+                    if below { Ordering::Less } else { order.min(Ordering::Equal) },
+                    "{stem}: {a:?} vs {b:?}"
+                );
+                below = order.is_lt();
+                assert_eq!(
+                    order.is_eq(),
+                    collation_key(a) == collation_key(b),
+                    "{stem}: {a:?} vs {b:?}"
+                );
+                if cmp_text_pairwise(a, b).is_eq() {
+                    assert!(order.is_eq(), "{stem}: {a:?} vs {b:?}");
+                }
+            }
+        }
+    }
+}
+
+/// Excel's pairwise comparison: a text is below any text it is a proper prefix of, even when the
+/// wrapped sums are equal or say otherwise (probes/t3181-collation-prefix-callers Calc!A1:A9,
+/// probes/t3154-collation-accent-pairs Calc!S19, T18, W23, X22, AB28, AC27).
+#[test]
+fn pairwise_prefix_rule() {
+    use crate::functions::util::collation::cmp_text_pairwise;
+    let cmp = |a: &str, b: &str| cmp_text_pairwise(&Text::from(a), &Text::from(b));
+    let circumflexes = format!("a{}", "\u{302}".repeat(16));
+    assert_eq!(cmp("a", &circumflexes), Ordering::Less);
+    assert_eq!(cmp(&circumflexes, "a"), Ordering::Greater);
+    assert_eq!(cmp_text(&Text::from("a"), &Text::from(circumflexes.as_str())), Ordering::Equal);
+    // U+0342 (141) < two U+0342 (28, = cedilla) < U+0342.
+    assert_eq!(cmp("a\u{342}", "a\u{342}\u{342}"), Ordering::Less);
+    assert_eq!(cmp("a\u{342}\u{342}", "a\u{327}"), Ordering::Equal);
+    assert_eq!(cmp("a\u{327}", "a\u{342}"), Ordering::Less);
+    // U+0323 (86) < three U+0323 (4) < á (14) < U+0323.
+    assert_eq!(cmp("a\u{323}", "a\u{323}\u{323}\u{323}"), Ordering::Less);
+    assert_eq!(cmp("a\u{323}\u{323}\u{323}", "á"), Ordering::Less);
+    assert_eq!(cmp("á", "a\u{323}"), Ordering::Less);
+    // Precomposed á is one unit: it equals a plus U+0301.
+    assert_eq!(cmp("á", "a\u{301}"), Ordering::Equal);
+}
