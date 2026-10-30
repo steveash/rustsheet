@@ -161,6 +161,13 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A110, A148, A262
 - gen-m9/f82473275380882e.case.json (4): Calc!A291, A320, A353, A382
 
+Split 2026-10-27 (gap triage, opus refill): while this task waits on T-0969, two parts that need no new CDF are
+their own tasks. T-2858 (sonnet) owns every df = 1 cell: Excel's df = 1 quantile is `1/TAN(PI()*p/2)` through
+Excel's TAN, bit-exact on all 112 failing df = 1 cells (statistics.md, T-2858 entry). T-2859 (opus, `accuracy`)
+owns the visibly-off cells for df 2 to 99998 with p/2 >= 2E-5 where Excel is within a few ulps of the true
+quantile and ours is not (274 cells, the list is in T-2859). This task keeps the bit-level target, the cells
+T-2859 shows Excel itself is off on, and whatever T-2858 and T-2859 leave in their Outcomes.
+
 Gap triage 2026-10-27 (`make eval` on 7dba3bfe): 3 visibly-off cells that no task named. They are p in (1,2), which
 T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T.INV(0.25,df)`, `TINV(1.5,df)` and
 `-T.INV(0.75,df)`. So the miss is the central quantile itself, not the p > 1 mapping. Exact (mpmath)
