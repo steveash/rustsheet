@@ -1156,15 +1156,12 @@ prefactor's rounding shows: BINOM.DIST E24, E32, E67; BINOM.DIST.RANGE E10, E21,
 E40, E74, E75 (for example E24, `BINOM.DIST(2,10,0.999999,TRUE)`: Excel 4.499992001038836E-47, exact
 4.499992001038802E-47). Neither Loader's saddle-point pmf summed (R's `dbinom_raw`: bit-exact at 49 of the 122 cells
 tried, more than 4 ulp off at 15) nor the prefactor `exp(a*ln x)` times the exact remaining factor reproduces them.
-POISSON.DIST is unfitted. On ironcalc-calc STATISTICAL/POISSON.xlsx, `fl(fl(S)*exp(-mean))`, with S the partial
-exponential series `sum mean^i/i!` over i <= k (cdf) or its last term (pmf) summed exactly, reproduces all 5 distinct
-small pmfs and 8 of 11 small cdfs bit for bit, against 6 of 11 for the exact value rounded. The excel-graph probes
-contradict it, though: probes-numeric/t1048-poisson `POISSON.DIST(10,4,FALSE)` is 0.005292476676420117 (that model
-...0195), `POISSON.DIST(1,0.1,FALSE)` 0.09048374180359597 (...596), `POISSON(10,4,TRUE)` 0.9971602338794863 (...862)
-and `POISSON(1,0.1,TRUE)` 0.9953211598395555 (...556), all of which statrs gets right. Applied to even-df
-CHISQ.DIST.RT through T-1778's identity, the same model gives `CHISQ.DIST.RT(1E-06,30)` = 1.0000000000000002 where
-Excel gives 1.0 (probes-numeric/m9-legacy-chidist A15, A16), and it misses m9-chisq-dist-rt A32 and t1049-chisqdistrt
-A8. So POISSON.DIST stays on statrs here (T-2055).
+POISSON.DIST's pmf is not the exact value rounded (it is up to 91 eps off it); it has its own two closed forms, "POISSON.DIST
+pmf: two closed forms" below (T-2055). Its cdf is still unfitted: `fl(fl(S)*exp(-mean))`, with S the partial exponential
+series summed exactly, reproduces 8 of 11 small ironcalc cdfs bit for bit but `POISSON(10,4,TRUE)` is 0.9971602338794863
+(...862 by that model) and `POISSON(1,0.1,TRUE)` 0.9953211598395555 (...556, probes-numeric/t1048-poisson), and through
+T-1778's identity it gives `CHISQ.DIST.RT(1E-06,30)` = 1.0000000000000002 where Excel gives 1.0 (m9-legacy-chidist A15,
+A16). So the cdf stays on the incomplete gamma kernel.
 T-2145 dense sweep (excel-graph; probes-numeric/t2145-binomial-sweep, t2145-negbinom-sweep, t2145-binom-range-sweep:
 3260 BINOM.DIST, 1100 NEGBINOM.DIST and 790 BINOM.DIST.RANGE cells, p in {0.5, 0.25, 0.125, 0.1, 0.2, 0.3, 0.7, 0.9,
 0.99, 0.999}, no error cells). Against the exact value rounded once (Python `fractions`, from the exact decimal p),
@@ -1206,6 +1203,51 @@ NEGBINOMDIST are charged 4096 units an element against the shared cell-visit cap
 the scalar statistical functions" above).
 Status: VERIFIED (excel-cached) for the values; the weight is a DEVIATION
 Tasks: T-0927, T-1744, T-2055, T-2145, T-2146
+
+## POISSON.DIST pmf: two closed forms (T-2055)
+Rule: `POISSON.DIST(k,mean,FALSE)` (and POISSON) for a mean > 0 is one of two forms, chosen by comparing the mean with the
+double 1.1 and k with 1:
+```
+mean <= 1.1 or k <= 1:  fl( EXP(R) * EXP(-mean) ),  R = fl(k·LN(mean)) - GAMMALN(k+1) held in a register (EXP of it unstored)
+otherwise (Loader):     fl( EXP(E) / fl(SQRT(fl(2π·k))) ),  E = fl(-stirlerr(k) - bd0(k,mean)) stored
+bd0, log form when |k - mean| > 0.2·(k + mean):  fl( fl(k·LN(fl(k/mean))) + fl(mean - k) )
+bd0, series otherwise (the cut itself included):  R's loop, every op stored: v = fl(d/(k+mean)), s = d·v, ej = 2k·v, ...
+stirlerr(k): the exact value from k = 7, and for k = 2..6 a value 13, 12, 29, 34, 39 ulp below it (fitted)
+```
+LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`). k = 0 is EXP(-mean) either way.
+- The closed form is what Excel keeps where the saddle point's stored exponent is large: `POISSON.DIST(9,1E-10,FALSE)` is
+  2.7557319221230322E-96 (gen-m9/a4090567758520df A246; the saddle point is 67 ulp off), `POISSON(10,0.01,FALSE)`
+  2.7283119316280092E-27 (7fd0a98183c6babf A31), and at k = 1 the mean does not matter: `POISSON(1,100,FALSE)` is
+  3.7200759760208376E-42, the closed form's double (afc00c8b70e78baf A193; the saddle point is 65 ulp off). Excel is far
+  from the exact value there: 29 ulp at `POISSON(10,0.01,FALSE)`, 37 at `POISSON(7,0.01,FALSE)`; the error is the rounding
+  of fl(k·LN(mean)) (`GAMMA.DIST`'s lower prefix, "Generic shape a" in "One incomplete-gamma kernel", shares it).
+- The switch is at 1.1: at mean 1.1 k = 5 and 7 are the closed form's double and k = 8, 10 and 20 within an ulp of it (5 to
+  21 ulp from the saddle point), and at every probed mean from 1.100001 to 1.2 (k 5, 7, 8, 10, 20) the pmf is the saddle
+  point's double, where the closed form is up to 82 ulp off (probes-numeric/t2055-poisson-pmf-switch).
+- The 0.2 cut is the beta density's ("Beta density for min(a,b) > 1 is Loader's saddle point"), and the gap at the cut
+  takes the series: `POISSON(2,3,FALSE)` is 0.22404180765538775, the series' double; the log form is 2 ulp off
+  (probes-numeric/t1048-poisson A4).
+- stirlerr: for k = 2 to 6 one offset per k reproduces 32 of 33, 22 of 23, 24 of 25, 46 of 48 and 23 of 26 Excel pmfs
+  (the exact value 21, 18, 8, 33, 20); Excel's value is 4E-17 to 1.2E-16 low. No GAMMALN-based form
+  (GAMMALN(n+1) - (n+1/2)LN(n) + n - ln√(2π) in 17 storage orders, either ln√(2π) double) gives these offsets, and
+  f_density.rs's measured stirlerr error (r3-loader-const) is a different quantity. From k = 7 the exact value is as good
+  as any offset.
+- Scores (exact / within 4 ulp / visibly off, against statrs' `exp(k ln mean - mean - ln k!)`): the 121 pmf cells of
+  gen-m9, t1048-poisson and ironcalc-calc POISSON.xlsx with resolvable arguments 104/121/1 (statrs 47/80/33);
+  probes-numeric/t2055-poisson-pmf-sweep (204 cells, k 1 to 300) 154/197/5 (29/121/65); t2055-poisson-pmf-switch
+  (133) 127/133/2 (11/57/56).
+- Residue: Loader's log form at large k and a mean well off k (`POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,420)` 50 ulp,
+  `(30,21)` 11 ulp; t2055-poisson-pmf-sweep), and about one ulp at k = 2 to 8 elsewhere. The cdf's deep upper tail (mean
+  well above k) is a separate residue of the incomplete gamma kernel: `POISSON(2,100,TRUE)` = 1.8976107553682424E-40 is 34
+  ulp from the exact value and 45 ulp from fl(pmf · (1 + 2/100 + 2/100²)), so the cdf there is not the pmf times its
+  series (gen-m9 c7664e494e418395 A294).
+- Inputs: Excel reads at most 15 significant digits of a typed number, so a probe of `POISSON.DIST(7,1.0999999999999999,FALSE)`
+  is a probe at a different mean (the 17-digit cells were dropped from the t2055 probes).
+Evidence: probes-numeric/t2055-poisson-pmf-sweep, t2055-poisson-pmf-switch, t1048-poisson (excel-graph, 2026-10-30 and
+2026-10-14); gen-m9 POISSON and POISSON.DIST cells (excel-graph); ironcalc-calc STATISTICAL/POISSON.xlsx (Excel-cached).
+Ours: `statistical/poisson.rs` `excel_poisson_pmf` and `bd0`.
+Status: VERIFIED (excel-graph) for the two forms and the switch; the small-k stirlerr is a fit
+Tasks: T-2055
 
 ## Overflowing arguments, PERMUT's limit and argument error order (T-1290)
 Rule: an F.DIST, F.DIST.RT or FDIST call whose `deg_freedom1 * x` overflows a double is `#DIV/0!` for the cdf and the
