@@ -50,7 +50,7 @@ fn nested(open: &str, inner: &str, close: &str, levels: usize) -> String {
 
 /// Deepest nesting of parentheses or calls that fits: every operand costs two
 /// levels, the innermost `1` included.
-const MAX_NESTING: usize = MAX_FORMULA_DEPTH / 2 - 1;
+const MAX_OPERANDS: usize = MAX_FORMULA_DEPTH / 2 - 1;
 
 #[test]
 fn excel_function_nesting_limit_fits() {
@@ -65,8 +65,8 @@ fn excel_function_nesting_limit_fits() {
 fn nesting_at_the_limit_parses() {
     on_small_stack(|| {
         for formula in [
-            nested("(", "1", ")", MAX_NESTING),
-            nested("ABS(", "1", ")", MAX_NESTING),
+            nested("(", "1", ")", MAX_OPERANDS),
+            nested("ABS(", "1", ")", MAX_OPERANDS),
         ] {
             let node = parse(&formula);
             assert!(!matches!(node, Node::ParseErrorKind { .. }), "{formula}");
@@ -78,8 +78,8 @@ fn nesting_at_the_limit_parses() {
 fn one_level_past_the_limit_is_too_deep() {
     on_small_stack(|| {
         for formula in [
-            nested("ABS(", "1", ")", MAX_NESTING + 1),
-            nested("( ", "1", ")", MAX_NESTING + 1),
+            nested("ABS(", "1", ")", MAX_OPERANDS + 1),
+            nested("( ", "1", ")", MAX_OPERANDS + 1),
         ] {
             assert!(is_too_deep(&parse(&formula)), "{formula}");
         }
@@ -149,6 +149,34 @@ fn parenthesis_runs_nest_as_deep_as_excel_allows() {
         model.evaluate();
         assert_eq!(model._get_text("B1"), "3");
         assert_eq!(model._get_text("B2"), "7");
+    });
+}
+
+/// T-3197: a call at the head of a group reserves one and a half levels of nesting and adds one
+/// level to the tree, so Excel's 65 calls each wrapped in parentheses parse
+/// (probes/t3097-nesting-paren-abs-65), up to 72 levels; one more is too deep.
+#[test]
+fn calls_wrapped_in_parentheses_nest_as_deep_as_excel_allows() {
+    on_small_stack(|| {
+        let levels = (2 * MAX_FORMULA_DEPTH - 4) / 7;
+        for (open, close) in [("(ABS(", "))"), ("SUM((", "))"), ("( ABS( ", " ) )")] {
+            for fits in [65, levels] {
+                let formula = nested(open, "1", close, fits);
+                assert!(
+                    !matches!(parse(&formula), Node::ParseErrorKind { .. }),
+                    "{open} {fits}"
+                );
+            }
+            let past = nested(open, "1", close, levels + 1);
+            assert!(is_too_deep(&parse(&past)), "{open}");
+        }
+        // A group at the head of a group still costs an operand's two levels.
+        assert!(is_too_deep(&parse(&nested(
+            "( ",
+            "1",
+            ")",
+            MAX_OPERANDS + 1
+        ))));
     });
 }
 
@@ -246,7 +274,7 @@ fn parser_is_reusable_after_a_too_deep_formula() {
         assert!(is_too_deep(
             &parser.parse(&nested("(", "1", ")", 1000), &cell)
         ));
-        let node = parser.parse(&nested("(", "1", ")", MAX_NESTING), &cell);
+        let node = parser.parse(&nested("(", "1", ")", MAX_OPERANDS), &cell);
         assert!(!matches!(node, Node::ParseErrorKind { .. }));
     });
 }
@@ -321,7 +349,7 @@ fn operator_chains_as_long_as_excel_allows_evaluate_and_print() {
                 format!(
                     "{}+{}",
                     chain("+", 2048),
-                    nested("ABS(", "1", ")", MAX_NESTING - 1)
+                    nested("ABS(", "1", ")", MAX_OPERANDS - 1)
                 ),
                 "2049",
             ),
@@ -402,13 +430,13 @@ fn chain_links_add_no_depth() {
         // level whatever its length.
         let inner = format!(
             "{}+1",
-            nested("ABS(", &chain("+", 30), ")", MAX_NESTING - 2)
+            nested("ABS(", &chain("+", 30), ")", MAX_OPERANDS - 2)
         );
         assert!(
             !matches!(parse(&inner), Node::ParseErrorKind { .. }),
             "{inner}"
         );
-        let too_deep = format!("{}+1", nested("ABS(", &chain("+", 30), ")", MAX_NESTING));
+        let too_deep = format!("{}+1", nested("ABS(", &chain("+", 30), ")", MAX_OPERANDS));
         assert!(is_too_deep(&parse(&too_deep)));
     });
 }
