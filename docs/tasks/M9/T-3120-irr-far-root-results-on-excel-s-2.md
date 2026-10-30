@@ -3,7 +3,7 @@ id: T-3120
 title: "IRR far-root results on Excel's 2^-53 grid in v: find where the secant rounds v (t2565, 181 cells; irr-fallback-roots A25-A39)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -113,3 +113,30 @@ Next: try candidate B in the engine with the retry and flat-secant guards, and s
 0056) against the IRR fit set (189/263); not yet done: the fit-lab scoring, A25/A26/A28 (two-flow cells), docs.
 
 Resumed 2026-10-30 05:35 UTC by an opus run (branch idle over 2 h).
+
+## Outcome
+Excel's IRR secant runs on d = 1 - v = r/(1 + r), not on v: that is where the 2^-53 grid in v comes from
+(every iterate's v = 1 - d is on it once v < 0.5). Shipped (`irr_secant`, `irr_npv`, `compute_irr`;
+fit lab `irr_secant_d`): d0 = g/(1+g), d1 = d0 -+ 0.001, step anchored on the newer iterate, NPV by worksheet
+NPV's running product (`discounted_sum`, now shared with `excel_npv`), leading zero flows dropped, and a zero
+step (d2 = d1) also stops when |NPV| < 1e-7 of the largest flow (fitted bound). financial.md "IRR is a secant
+in d = 1 - v" (T-3120 bullet) and "IRR's far-root bound" record it.
+
+Fit set (`uv run rustsheet-fitlab irr`, 263 cells), bit-exact / within 4 ulp:
+- secant in v (before): 189 / 207;
+- candidate A (secant in v, result rounded to the grid): 190 / 208; t2565 179/181 (triage); misses A25, A26, A28;
+- candidate B (secant in d, step anchored on d0, d0 = 1 - 1/(1+g), NPV as c/x^i): 202 / 214 (scratch run;
+  in the engine it fixed 202 and regressed 21 cells); with the shipped start and NPV, anchored on d0: 225 / 234;
+- shipped: 262 / 262 (the one miss Calc!A214, 16 ulp); variants: d0 = 1 - 1/(1+g) 235 / 239, NPV as c/x^i
+  229 / 232, leading zeros kept 260 / 260, no zero-step stop 262 / 262 (it decides only t2565's 36 x1E6 cells:
+  144/181 without it, 180/181 with it);
+- rounding variants of the branch's earlier engine attempt (ties away, ties even, ties to the smaller v, trunc)
+  each regressed a tie cell (gen-m9 A302/A9 or IRR.xlsx L47): see the progress notes above.
+
+Eval delta (`make eval-baseline` with `--allow-regressions`, decision 0176): 273 known failures fixed
+(probes 215, ironcalc-calc 32, gen-m9 26), 1 regression: gen-m9/67a4c03afd63f988 Calc!A395 (16 ulp, within 15
+digits), owned by follow-up T-3205. t2565: 180 of the 181 lines gone (P!C157 stays, financial.md); irr-fallback-
+roots P!A25, A26, A28, A36-A39 gone. The gen-m9 far-root cells of T-2131 (c0681a8b150ce301 A218, 67a4c03afd63f988
+A3, A199, A346, 1dce4774f5c0e736 A285) all pass now. In-scope visibly-off cells: 2841 (lock 3511).
+Not checked: RATE and XIRR (different solvers; no follow-up needed for this rule).
+Follow-up: T-3205 (A395, A214, P!C157).
