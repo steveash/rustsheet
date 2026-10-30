@@ -32,6 +32,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
+use crate::typed_input::{open_parenthesis_is_a_call, TYPED_FORMULA_DOES_NOT_PARSE};
 use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::tailed_array::range_corners;
 use crate::{clock::Clock, tz::Tz, variable_stack::VariableStack};
@@ -2211,6 +2212,8 @@ impl Model {
     /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
     /// otherwise kept as a parse error, except one past the parser's limits (nested too deep
     /// or too many operators; no `)` helps), which is rejected: the cell could never hold it.
+    /// Typed ([`Model::set_typed_user_input`]), only a call's missing `)` is added, and any
+    /// other parse error is rejected.
     pub(crate) fn parse_cell_formula(
         &mut self,
         sheet: u32,
@@ -2221,7 +2224,10 @@ impl Model {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
         let mut node = self.parser.parse(formula, cell_reference);
-        if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
+        // Typed, Excel closes a call's parenthesis only, not a group's (`=(1` is refused).
+        if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message))
+            && (!self.parser.is_typed() || open_parenthesis_is_a_call(formula))
+        {
             let closed = format!("{formula})");
             let retry = self.parser.parse(&closed, cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
@@ -2232,6 +2238,13 @@ impl Model {
             Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
                 Err(format!("Formula: {message}"))
             }
+            // Excel refuses a typed formula that does not parse (Graph PATCH 400
+            // `InvalidArgument`, probes/t3113-entered-refused, t3213-typed-parse-errors), where it
+            // keeps stored text as written (syntax.md "A typed formula that does not parse is
+            // refused", T-3213).
+            Node::ParseErrorKind { message, .. } if self.parser.is_typed() => Err(format!(
+                "{TYPED_FORMULA_DOES_NOT_PARSE}: {message}"
+            )),
             node => self.parser.typed_refusal().map_or(Ok(node), Err),
         }
     }

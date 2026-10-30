@@ -9,6 +9,11 @@ use crate::expressions::{
 };
 use crate::model::Model;
 
+/// Start of the error message [`Model::set_typed_user_input`] gives for a formula that does not
+/// parse, which Excel refuses typed (Graph PATCH 400 `InvalidArgument`) where it keeps stored text
+/// (T-3213). Callers that replay what a user typed leave such a cell as it was (decision 0179).
+pub const TYPED_FORMULA_DOES_NOT_PARSE: &str = "Formula does not parse";
+
 /// The A1 text of `text` typed in R1C1 mode into the 1-based `row`, `column` of `sheet`, as
 /// Excel's `Range.FormulaR1C1` reads it (`=R1C2+1` in A3 is `=$B$1+1`, `=R[-1]C[1]` is `=B2`);
 /// text without a leading `=` is a constant, the same in both modes. `None` when the formula does
@@ -42,6 +47,36 @@ pub fn r1c1_formula_to_a1(
     Some(format!("={}", to_english_string(&node, &context)))
 }
 
+/// Whether the one `(` that `formula` leaves open opens a call's arguments (`SUM(1`, `LOG10(2`,
+/// `SUM(1,,`) rather than a group (`(1`, `1+(2`): typed, Excel closes the first and refuses the
+/// second (probes/t3213-typed-parse-errors A2, A3, A6; T-3213). Text inside string literals, quoted
+/// sheet names and brackets is skipped.
+pub(crate) fn open_parenthesis_is_a_call(formula: &str) -> bool {
+    let mut open = Vec::new();
+    let mut quote = None;
+    let mut brackets = 0_usize;
+    let mut previous = None;
+    for (index, c) in formula.char_indices() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some(_), _) => {}
+            (None, '"' | '\'') if brackets == 0 => quote = Some(c),
+            (None, '[') => brackets += 1,
+            (None, ']') => brackets = brackets.saturating_sub(1),
+            (None, '(') if brackets == 0 => open.push(previous),
+            (None, ')') if brackets == 0 => {
+                open.pop();
+            }
+            _ => {}
+        }
+        previous = Some((index, c));
+    }
+    matches!(
+        open.as_slice(),
+        [Some((_, c))] if c.is_alphanumeric() || matches!(c, '_' | '.')
+    )
+}
+
 impl Model {
     /// [`Model::set_user_input`] for text a user types, which Excel refuses where it would read
     /// stored text: a LET name or LAMBDA parameter spelled like a cell (`=LET(f1,1,f1+1)`) is an
@@ -49,7 +84,8 @@ impl Model {
     /// into a table's data rows fills its column as a calculated column, when
     /// [`Model::calculated_column`] finds the column empty or filled (T-2958, T-3024); a stored
     /// formula never fills. A formula typed just right of a table grows the table by a column
-    /// first ([`Model::table_expansion`], T-2968).
+    /// first ([`Model::table_expansion`], T-2968). A formula that does not parse is an error
+    /// starting with [`TYPED_FORMULA_DOES_NOT_PARSE`], and the cell keeps its content (T-3213).
     pub fn set_typed_user_input(
         &mut self,
         sheet: u32,
