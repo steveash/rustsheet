@@ -55,7 +55,9 @@ use crate::locale::Locale;
 use super::token::{starts_with_getting_data, Error, TokenType};
 use super::types::*;
 use super::utils;
+use peek::Peeked;
 
+mod peek;
 pub mod util;
 
 pub use string_literal::{
@@ -119,6 +121,12 @@ pub struct Lexer {
     /// `T[ [Col] ]`, which the engine re-parses after edits. Text typed or loaded from a file
     /// reads it as no column, as Excel does (see [`Lexer::set_engine_text`]).
     padded_bare_columns: bool,
+    /// The last token [`peek_token`](Self::peek_token) read: the parser peeks at most tokens
+    /// several times before taking them, and long imported formulas spent most of their parse
+    /// lexing the same token again (T-0499). A token depends only on the text, the start
+    /// position and the settings, so it is kept by its start position and dropped when the text
+    /// or a setting changes: a new setting's setter must drop it too.
+    peeked: Option<Peeked>,
 }
 
 impl Lexer {
@@ -140,6 +148,7 @@ impl Lexer {
             locale,
             language,
             padded_bare_columns: true,
+            peeked: None,
         }
     }
 
@@ -149,21 +158,25 @@ impl Lexer {
     /// T-3069).
     pub(crate) fn set_engine_text(&mut self, engine_text: bool) {
         self.padded_bare_columns = engine_text;
+        self.peeked = None;
     }
 
     /// Changes the lexer mode
     pub fn set_lexer_mode(&mut self, mode: LexerMode) {
         self.mode = mode;
+        self.peeked = None;
     }
 
     /// Sets the locale
     pub fn set_locale(&mut self, locale: &'static Locale) {
         self.locale = locale;
+        self.peeked = None;
     }
 
     /// Sets the language
     pub fn set_language(&mut self, language: &'static Language) {
         self.language = language;
+        self.peeked = None;
     }
 
     // FIXME: I don't think we should have `is_a1_mode` and   `get_formula`.
@@ -188,10 +201,15 @@ impl Lexer {
 
     /// Resets the formula
     pub fn set_formula(&mut self, content: &str) {
-        self.chars = content.chars().collect();
+        // The buffer is reused, and sized once from the byte length (at least the char count):
+        // collecting the chars grew a new one several times per loaded formula (T-0499).
+        self.chars.clear();
+        self.chars.reserve(content.len());
+        self.chars.extend(content.chars());
         self.len = self.chars.len();
         self.position = 0;
         self.next_token_position = None;
+        self.peeked = None;
     }
 
     /// Returns an error if the token is not the expected one.
@@ -201,16 +219,6 @@ impl Lexer {
             return Err(self.set_error(&format!("Error, expected {tk:?}"), self.position));
         }
         Ok(())
-    }
-
-    /// Checks the next token without advancing position
-    /// See also [`advance_token`](Self::advance_token)
-    pub fn peek_token(&mut self) -> TokenType {
-        let position = self.position;
-        let tk = self.next_token();
-        self.next_token_position = Some(self.position);
-        self.position = position;
-        tk
     }
 
     /// Whether whitespace comes right after the last token read (a [`peek_token`](Self::peek_token)
@@ -247,18 +255,8 @@ impl Lexer {
         text.trim().to_string()
     }
 
-    /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
-    /// It is a noop if the has not been a previous `peek_token`
-    pub fn advance_token(&mut self) {
-        if let Some(position) = self.next_token_position {
-            self.position = position;
-            self.next_token_position = None;
-        }
-    }
-
-    /// Returns the next token
-    pub fn next_token(&mut self) -> TokenType {
-        self.next_token_position = None;
+    /// Reads the token at the current position, past any whitespace.
+    fn lex_token(&mut self) -> TokenType {
         self.consume_whitespace();
 
         match self.read_next_char() {
@@ -345,9 +343,7 @@ impl Lexer {
                         let position = self.position - 1;
                         match self.consume_number(char) {
                             Ok(number) => {
-                                if self.peek_token() == TokenType::Colon
-                                    && self.mode == LexerMode::A1
-                                {
+                                if *self.peek() == TokenType::Colon && self.mode == LexerMode::A1 {
                                     // Its a row range  3:5
                                     // FIXME: There are faster ways of parsing this
                                     // Like checking that 'number' is integer and that the next token is integer

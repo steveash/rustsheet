@@ -1,0 +1,64 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2969: table T has a calculatedColumnFormula (T[[#This Row],[Val]]*2) on columns C-F. C: every data cell blank; D: only D2 holds the formula; E: E3 holds the constant 99; F: F4 typed =B4*3 after load. FORMULATEXT of every data cell in H2:K5 shows whether Excel refills a column on load.",
+ "tags": [
+  "M2",
+  "tables",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "tables": [
+    {
+     "name": "T",
+     "ref": "A1:F5",
+     "calculated": {
+      "C": "=T[[#This Row],[Val]]*2",
+      "D": "=T[[#This Row],[Val]]*2",
+      "E": "=T[[#This Row],[Val]]*2",
+      "F": "=T[[#This Row],[Val]]*2"
+     }
+    }
+   ],
+   "cells": {
+    "A1": "Key",
+    "B1": "Val",
+    "C1": "Blank",
+    "D1": "One",
+    "E1": "Const",
+    "F1": "Typed",
+    "A2": 1,
+    "B2": 10,
+    "H2": "=FORMULATEXT(C2)",
+    "I2": "=FORMULATEXT(D2)",
+    "J2": "=FORMULATEXT(E2)",
+    "K2": "=FORMULATEXT(F2)",
+    "A3": 2,
+    "B3": 20,
+    "H3": "=FORMULATEXT(C3)",
+    "I3": "=FORMULATEXT(D3)",
+    "J3": "=FORMULATEXT(E3)",
+    "K3": "=FORMULATEXT(F3)",
+    "A4": 3,
+    "B4": 30,
+    "H4": "=FORMULATEXT(C4)",
+    "I4": "=FORMULATEXT(D4)",
+    "J4": "=FORMULATEXT(E4)",
+    "K4": "=FORMULATEXT(F4)",
+    "A5": 4,
+    "B5": 40,
+    "H5": "=FORMULATEXT(C5)",
+    "I5": "=FORMULATEXT(D5)",
+    "J5": "=FORMULATEXT(E5)",
+    "K5": "=FORMULATEXT(F5)",
+    "D2": "=T[[#This Row],[Val]]*2",
+    "E3": 99,
+    "F4": {
+     "entered": "=B4*3"
+    }
+   }
+  }
+ ]
+}
