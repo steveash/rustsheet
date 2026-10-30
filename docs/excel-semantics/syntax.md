@@ -192,9 +192,10 @@ LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY
 128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
 (t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. Of the
 counts T-3172 probed it refuses all that Excel accepts: 256 parentheses and every probed sign run
-(255 and up: minus up to 1,024, plus and alternating up to 1,023; the 20 t3172 cases, owned by T-3189).
+(255 and up: minus up to 1,024, plus and alternating up to 1,023).
 That is the DEVIATION below: the depth bound protects the stack (directive 5). The eight T-3097 cases
-are pinned whole in probes/deviations (decision 0168, T-3165): measured on a 1 MiB stack in a release
+are pinned whole in probes/deviations (decision 0168, T-3165), and so are the twenty T-3172 cases
+(T-3189; T-3193 owns lifting the bound for sign runs, T-3191 for parentheses): measured on a 1 MiB stack in a release
 build, the parser alone overflows at about 292 nested parentheses (about 3.5 KB per level, as each one
 passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`, so Excel's 256
 parentheses do not fit under a constant bound without a parser that spends less stack on a
