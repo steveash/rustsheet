@@ -72,3 +72,8 @@ rounded there (2 to 63 ulp), so the stage is `visible`. The target is that each 
 ## Cells added by gap triage (2026-10-29)
 `make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
 - probes-numeric/t3148-gamma-quantile-flat-band Calc!A356 `CHISQ.DIST(24.673905271877182,50,TRUE)`: Excel 0.000999999999999913, ours 0.0009999999999999105 (11 ulp), the shape-25 cdf this task fits. Its neighbours A340, A344, A348 and A350 are off by 1.6E-15 to 3.1E-15 relative but within 15 digits; check they follow.
+
+## Update (T-2638)
+T-2638 found Excel's form from shape 20 (docs/excel-semantics/statistics.md, the T-2638 paragraph): A51, A52, A54, A58,
+A61, A62 and A64 are bit-exact and A53, A63 and A68 within the 15th digit. Only A50 `CHISQ.DIST(40,10,FALSE)` (shape 5,
+the direct branch) is left; T-3219 works the same branch.

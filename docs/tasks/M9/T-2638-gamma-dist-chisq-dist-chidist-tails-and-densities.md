@@ -3,7 +3,7 @@ id: T-2638
 title: "GAMMA.DIST/CHISQ.DIST/CHIDIST/CHIINV tails and densities still visibly off after T-0971 (17 gen-m9 and 4 ironcalc-calc cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -97,3 +97,14 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
 ## Cells added by gap triage (2026-10-29)
 `make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
 - probes-numeric/t3148-gamma-quantile-flat-band Calc!A240, A244 and A248: `CHISQ.DIST(x,3,TRUE)` with x literals that Excel cuts to 15 digits, all x = 0.0242975858156924: Excel 0.0009999999999999803, ours 0.000999999999999979 (6 ulp; at 0.000999... half a unit of the 15th digit is about 2.3 ulp). The lower tail at shape 1.5 and x/2 = 0.0121, the same kind of few-ulp cdf miss as A178 above. T-3146 owns the probe's quantile cells.
+
+## Outcome
+Fit attempt 1 (decision 0056) found Excel's large-shape prefactor: from shape 20, away from the mode, it is
+sqrt(a/2pi) exp(L + (a - x) - correction(a)) with L = a ln(x/a) above the mode and -a ln(a/x) below it, 0 to 1 ulp from
+Excel at every literal density of shapes 25, 50 and 500 (TOMS 654's `rcomp` was 60 to 1,083 ulp off). Within 0.4a of the
+mode the accurate `rcomp` stays (Excel is accurate there: `POISSON.DIST(1E6,1E6,TRUE)`), and the quantiles keep `rcomp`
+everywhere (their probed cells are Excel's that way). CHISQ.DIST's density now takes GAMMA.DIST's tiny-ratio log form.
+Eval: 31 cells newly bit-exact (m9-gamma-dist-a50 and -a500, m9-chisq-dist A51-A64, t3148 flat band, gen-m9
+8dd2312c96effb1b A333), 22 more moved from visibly off to within a few ulp, 0 regressions. No form tried fits the
+small-shape cells (every candidate recorded in docs/excel-semantics/statistics.md); the 42 cells this task still owns
+moved to T-3219 (attempt 2). It also closed eight of T-3147's nine cells (all but A50, shape 5).
