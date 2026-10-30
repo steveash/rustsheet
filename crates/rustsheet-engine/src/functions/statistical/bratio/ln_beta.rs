@@ -77,16 +77,22 @@ fn bcorr(a: f64, b: f64) -> f64 {
 /// step per unit of a + b; directive 5).
 pub(in super::super) const HALF_INTEGER_SHAPE_SUM_MAX: f64 = 400.0;
 
-/// -ln B(a, b) for half-integer shapes a, b >= 1/2, accurate and rounded to a register: the
-/// double-double B of `fisher::half_integer_beta` and its double-double ln. `None` off those
-/// shapes and above [`HALF_INTEGER_SHAPE_SUM_MAX`].
-pub(in super::super) fn neg_ln_beta_half_integer(a: f64, b: f64) -> Option<Register> {
+/// ln B(a, b) in double-double for half-integer shapes a, b >= 1/2: the double-double B of
+/// `fisher::half_integer_beta` and its double-double ln. `None` off those shapes and above
+/// [`HALF_INTEGER_SHAPE_SUM_MAX`].
+pub(in super::super) fn ln_beta_half_integer(a: f64, b: f64) -> Option<(f64, f64)> {
     let half_integer = |v: f64| v >= 0.5 && (2.0 * v).fract() == 0.0;
     if !(half_integer(a) && half_integer(b) && a + b <= HALF_INTEGER_SHAPE_SUM_MAX) {
         return None;
     }
     let (hi, lo) = half_integer_beta(a, b);
-    let ln_beta = dd_add(ln_double_double(hi), (lo / hi, 0.0));
+    Some(dd_add(ln_double_double(hi), (lo / hi, 0.0)))
+}
+
+/// -ln B(a, b) for half-integer shapes a, b >= 1/2, accurate and rounded to a register
+/// ([`ln_beta_half_integer`]). `None` off those shapes and above [`HALF_INTEGER_SHAPE_SUM_MAX`].
+pub(in super::super) fn neg_ln_beta_half_integer(a: f64, b: f64) -> Option<Register> {
+    let ln_beta = ln_beta_half_integer(a, b)?;
     // `dd_to_extended` takes a positive head: B < 1, so -ln B > 0, wherever one shape is above 1
     // and neither is below 1/2 (B(1/2, 1/2) = pi and B(1/2, 1) = 2 are the exceptions).
     if ln_beta.0 >= 0.0 {

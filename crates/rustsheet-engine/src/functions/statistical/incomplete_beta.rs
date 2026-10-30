@@ -25,9 +25,11 @@
 //! Every loop is bounded: at most [`MAX_FRACTION_TERMS`] continued-fraction steps (Cephes' own
 //! cap) and [`RLOG1_TERMS`] series terms, so one call costs a fixed amount of work.
 
+use super::bratio::ln_beta::ln_beta_half_integer;
 use super::special::ln_gamma;
+use crate::x87_exp::{dd_add, dd_mul, fast_two_sum};
 use crate::x87_exp::{excel_exp, excel_expm1};
-use crate::x87_log10::excel_ln;
+use crate::x87_log10::{excel_ln, ln_double_double};
 use crate::x87_log1p::excel_ln_one_minus;
 
 /// Cephes' `MAXGAM`: Gamma(z) is finite below it.
@@ -160,7 +162,9 @@ fn beta_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     let flip = x > a / (a + b);
     let (x, y, a, b) = if flip { (y, x, b, a) } else { (x, y, a, b) };
     let w = cephes_fraction(a, b, x, y);
-    let v = if a + b < MAXGAM {
+    let v = if let Some(prefactor) = half_integer_prefactor(a, b, x, y) {
+        prefactor * w / a
+    } else if a + b < MAXGAM {
         (a * x.ln()).exp() * (b * y.ln()).exp() * gamma_ratio(a, b) / a * w
     } else {
         large_prefactor(a, b, x, y) * w / a
@@ -194,6 +198,23 @@ pub(crate) fn beta_density(x: f64, a: f64, b: f64) -> Option<f64> {
     }
     let density = x.powf(a - 1.0) * (1.0 - x).powf(b - 1.0) * ratio;
     density.is_finite().then_some(density)
+}
+
+/// x^a y^b / B(a, b), y = 1 - x, for half-integer shapes (the F tails) up to
+/// `HALF_INTEGER_SHAPE_SUM_MAX`: the exponent a ln x + b ln y - ln B in double-double, so the
+/// prefactor carries one rounding of exp instead of the rounding of a ln x, b ln y and the Gamma
+/// ratio (T-2219). `None` for other shapes.
+fn half_integer_prefactor(a: f64, b: f64, x: f64, y: f64) -> Option<f64> {
+    let ln_beta = ln_beta_half_integer(a, b)?;
+    let exponent = dd_add(
+        dd_add(
+            dd_mul((a, 0.0), ln_double_double(x)),
+            dd_mul((b, 0.0), ln_double_double(y)),
+        ),
+        (-ln_beta.0, -ln_beta.1),
+    );
+    let (hi, lo) = fast_two_sum(exponent.0, exponent.1);
+    Some(hi.exp() * (1.0 + lo))
 }
 
 /// Gamma(a+b) / (Gamma(a) Gamma(b)), Cephes' order, for a + b below [`MAXGAM`].
