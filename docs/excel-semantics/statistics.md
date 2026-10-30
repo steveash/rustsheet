@@ -1078,6 +1078,14 @@ forms, every summation order of a LN(x), -a LN(2), -x/2, -LNGAMMA(a) and the (a-
 some cell. At `CHIDIST(100,4)` Excel is 38 ulp below the truth while every log form is above it, so the continued
 fraction's own rounding, not only the prefactor, differs; stopping the fraction or the series at a looser tolerance
 (1E-16 to 1E-10, Numerical Recipes' gcf and gser) changes none of these cells.
+The deep upper tail reaches far past 37 ulp (gap triage 2026-10-30, 60-digit mpmath, ulps of Excel's value):
+`CHISQ.DIST.RT(1000,3)` +86.7 (probes-numeric/t1049-chisqdistrt A39), `CHIDIST(1000,30)` +405 (m9-legacy-chidist A71),
+`CHISQ.DIST.RT(200,20)` = `POISSON(9,100,TRUE)` -43.3 (t1049-chisqdistrt A28, gen-m9/5919660b7bb4d195 A80), and
+`POISSON.DIST(3,100,TRUE)` -59.4 (gen-m9/9735c5ab72fa5ecf A48); ours is within about 3 ulp of the truth at each (T-3269,
+sweep T-3289). Excel is correctly rounded nearer the bulk at small half-integer shapes, `CHISQ.DIST.RT(10,5)`
+0.07523524614651218 (+0.3 ulp; m9-chisq-dist-rt A19, ours -5.7: T-3285), and near the mode at large shapes,
+`POISSON.DIST(46040,46071,TRUE)` 0.4438020698095389 (-0.2 ulp; ironcalc-calc POISSON.xlsx D55, ours +15.8: T-3286),
+so only the far tail is Excel's own inaccurate form.
 Not Excel's either, and not correctly rounded on either side (gap triage 2026-10-29, 60-digit mpmath reference;
 T-3147): CHISQ.DIST at 50 and 100 degrees of freedom, the `rcomp` branch of the prefactor (shape 20 and up).
 `CHISQ.DIST(10,100,FALSE)` is 9.838365191393825E-32 in Excel, 63 ulp below the true 9.8383651913938939E-32.
