@@ -726,7 +726,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{f_cdf, f_quantile, fisher, fisher_inv};
+    use super::{f_cdf, f_quantile, f_tail, fisher, fisher_inv};
 
     // FISHER and FISHERINV round their quotient twice, like Excel's `/` (excel-graph; T-2437).
     #[test]
@@ -754,6 +754,15 @@ mod tests {
     fn shape_one_other_tail_is_the_complement() {
         assert_eq!(f_cdf(20.0, 2.0, 5.0), 0.820_348_299_875_155_2);
         assert_eq!(f_cdf(4.0, 2.0, 5.0), 0.826_446_280_991_735_6);
+    }
+
+    // There w is -expm1(b0 ln1p(-x0)) with Excel's own expm1 and log1p (T-3170): libm's put
+    // gen-m9/146b46e74f2dac3b A329 `F.DIST.RT(10,6,2)` and abc2939ebd1e2365 A318 `FDIST(40,8,2)`
+    // 1 ulp low.
+    #[test]
+    fn shape_one_tail_takes_excels_expm1_and_log1p() {
+        assert_eq!(f_tail(6.0, 2.0, 10.0, true), 0.093_686_012_554_127_09);
+        assert_eq!(f_tail(8.0, 2.0, 40.0, true), 0.024_614_204_935_833_432);
     }
 
     #[test]

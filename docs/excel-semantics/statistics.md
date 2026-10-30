@@ -1390,9 +1390,11 @@ DGET returns the matching cell's value, text included (T-1390 sample: "?b").
 `field` is a header name or a 1-based column index: `DSUM(A1:C6,"Price",E1:E2)` = `DSUM(A1:C6,3,E1:E2)` = 14.
 Over an array literal `field` lifts (`ROWS(DSUM(A1:C6,{2;3},E1:E2))` is 2), but a two-cell range is
 `#VALUE!`. An unknown name (`"Nope"`) and the numeric text `"2"` are `#VALUE!`, so text is never read as an
-index. A boolean field (`TRUE`) selects no column: DSUM, DMAX, DMIN, DPRODUCT and DCOUNT give 0, DAVERAGE,
-DSTDEV, DSTDEVP, DVAR and DVARP give `#DIV/0!`, DGET gives `#NUM!`, and DCOUNTA counts the matching records
-(4). An empty field (`DCOUNT(A1:C6,,E1:E2)`) gives DCOUNT and DCOUNTA the count of
+index. A boolean field `TRUE` is column 1 and `FALSE` is `#VALUE!` (T-1948, probes/db-field-legacy-true-numeric-first-column, excel-graph 2026-10-30:
+`DSUM(J1:L6,TRUE,N1:N2)` over a numeric first column is 19, the sum of column 1, `DAVERAGE` 4.75, `DMAX` 7, `DCOUNT`/`DCOUNTA` 4, `DGET` over one match 7, over several `#NUM!`; `DSUM(…,FALSE,…)` is `#VALUE!`).
+Earlier probes over a text first column gave 0 / `#DIV/0!` only because text is skipped by the numeric functions (DGET's `#NUM!` there came from several matching records).
+A legacy (non-dynamic-array) formula gets no implicit intersection on the `field` of a D-function: `=DSUM(A1:C6,G1:G2,E1:E2)` on a row of G1:G2 is `#VALUE!` (FORMULATEXT shows no `@`), while `G1:G2&""` is intersected (`@G1:G2&""`) and gives 19.
+An empty field (`DCOUNT(A1:C6,,E1:E2)`) gives DCOUNT and DCOUNTA the count of
 matching records (4), and `#VALUE!` in every other function.
 A criteria given as an array literal (`{"Qty";">2"}`) lifts elementwise to `#VALUE!` per element, so it
 spills (`#SPILL!` where blocked).
@@ -2158,8 +2160,20 @@ Tasks: T-2502, T-2505, T-2511, T-2977, T-3007
 ## Incomplete beta at a shape of 1 outside the closed forms (T-3007)
 Rule: after bratio's swap, at a0 = 1 with y0 > 0.9 (x0 below about 0.1, b0 not 1), Excel computes one tail, w, and
 forms the other as (0.5 - w) + 0.5, as bratio does on every branch; it does not form w1 = y0^b0 on its own. Its w is
-near the exact value: -expm1(b0·ln1p(-x0)) in doubles is bit-exact at most cells and 1 ulp off at the rest, and TOMS
-bpser(1, b0, x0) (bratio's dispatch there: WBpser) is further off.
+-expm1(b0·ln1p(-x0)) with Excel's own expm1 (Kahan's form, numbers.md "Excel's expm1 is Kahan's formula") and Excel's
+own log1p (the stored atanh series, "Excel's log1p is a 14-term atanh series in alnrel's variable"), the product
+b0·ln1p a double; TOMS bpser(1, b0, x0) (bratio's dispatch there: WBpser) is further off.
+- Variants of w, scored as per-cell changes over every suite against libm's expm1 and log1p (T-3170, `make eval`,
+  `docs/research/t3007/cell_diff.py`): Excel's expm1 of b0 times Excel's log1p makes 71 cells bit-exact (62
+  probes-numeric, 6 gen-m9, 3 probes) and moves 6 off: probes/ftest-decomposition B12,
+  t2220-f-dist-sweep-cdf A191, A195 and t2220-f-dist-sweep-d2-1 A16 by 1 ulp, t2220-f-dist-sweep-rt A195 by 4 ulp,
+  and t1745-beta-inv-roundtrip G145 (Excel 0.04999999999999938, now 0.04999999999999949) by 16 ulp, visibly off: a
+  1-ulp step of w near 0.95 is 16 ulp of w1 = (0.5 - w) + 0.5 at 0.05. No visibly-off cell is fixed. The same with the product held extended is identical on every cell. libm's expm1
+  with Excel's log1p, and Excel's expm1 with libm's log1p, each win fewer cells and lose more (F.DIST.RT 21/6 and
+  15/9 closer/further, against 37/1); (0.5 - EXP(b0·log1p)) + 0.5 and every form on the caller's y0 (LN(y0), with
+  either EXP or expm1) are worse on most cells (F.DIST.RT 6/48 to 1/89).
+- Examples: `F.DIST.RT(10,6,2)` = 0.09368601255412709 (gen-m9/146b46e74f2dac3b A329), `FDIST(40,8,2)` =
+  0.024614204935833432 (gen-m9/abc2939ebd1e2365 A318), both 1 ulp low on libm's.
 - Variants, scored as per-cell changes against the engine's earlier w = -expm1(b0·ln1p(-x0)), w1 = y0^b0 over every
   suite (`make eval`, origin/main 5f35109): w1 = (0.5 - w) + 0.5 from that w fixes 77 cells and moves 2 off
   (`F.DIST(1.5,50,2,TRUE)` and `F.DIST(5,7,2,TRUE)`, probes-numeric/t2220-f-dist-sweep-cdf A815 and A518, 1 ulp);
@@ -2186,9 +2200,10 @@ bpser(1, b0, x0) (bratio's dispatch there: WBpser) is further off.
 Evidence: probes-numeric t2220-f-dist-sweep-cdf, t2220-f-dist-sweep-rt, t2220-f-dist-sweep-d1-1, t2220-f-dist-sweep-d2-1,
 t1745-beta-inv-roundtrip; probes/ftest-decomposition; gen-m9 58e3253bbd3a7a82, 60b0b6e69ad35a45, fd9fa22d212080d6
 (excel-graph).
-Ours: `incomplete_beta.rs::shape_one_tails` (w = -expm1(b0·ln1p(-x0)), w1 = (0.5 - w) + 0.5), through
-`bratio::kernel_tails` and `fisher.rs::f_tail`. Excel's w is open: 52 cells still 1 ulp off (TODO(T-3170)).
-Status: VERIFIED (excel-graph) for the complement down to w1 of about 1E-16; below 2^-53 and w's arithmetic UNVERIFIED
+Ours: `incomplete_beta.rs::shape_one_tails` (w = -`excel_expm1`(b0·`excel_ln_one_minus`(x0)), w1 = (0.5 - w) + 0.5),
+through `bratio::kernel_tails` and `fisher.rs::f_tail`. The 6 cells above stay off (T-3192).
+Status: VERIFIED (excel-graph) for the complement down to w1 of about 1E-16; w's form PARTIAL (71 cells for it, 6
+contrary cells open, T-3192); below 2^-53 UNVERIFIED
 Tasks: T-3007, T-2511, T-3150, T-3170
 
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)

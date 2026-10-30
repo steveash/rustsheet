@@ -44,7 +44,8 @@ not İ, and `"?"` counts İ (one unit) and not i+U+0307 (two); `ΟΣ`, `οσ` an
 and fullwidth `Ａ` is `ａ`; `ı`, `ſ` and `µ` match only themselves (`ſ` is not `s`, `µ` is not `μ`). `"??"` counts ΟΣ,
 οσ, ος, i+U+0307, ss and İx; `"???"` nothing. COUNTIFS, SUMIFS and SUMIF agree.
 Evidence: probes/t3133-lookup-criteria-case-fold Calc!B1:B35, F1:I35, K1:L35, N1:N6 (excel-graph, 2026-10-29, T-3133).
-UNVERIFIED: D-function prefix criteria (DSUM, DCOUNTA) are assumed to use the same fold (T-3154 for `ς`, T-3180 for `İ`); characters outside this
+D-function prefix criteria fold `ς` too: DCOUNTA over `σx`, `ςx`, `Σ` counts 3 for `ς`, `σ` and `ς*` and 1 for `=ς`
+(probes/t3154-collation-accents Calc!H12:H15, T-3154). UNVERIFIED: the D-function fold of `İ` (T-3180); characters outside this
 list (other Greek and Cyrillic final forms, `ϐ`/`β`, `ﬀ`) are assumed to follow it.
 Status: VERIFIED
 Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` and `WildcardPattern::new`

@@ -96,6 +96,27 @@ class MarkerFormat(unittest.TestCase):
             merge_ready.parse_marker(bare.render()).reviewers, {**APPROVED, "excel-fidelity": "n/a"}
         )
 
+    def test_one_session_footer_after_the_block_is_accepted(self) -> None:
+        # T-3164: the session's write path appends this footer to every comment it posts.
+        mark = marker(self.HEAD, reviewers={**APPROVED, "excel-fidelity": "n/a"})
+        body = merge_ready.marker_body(mark) + merge_ready.FOOTER
+        self.assertEqual(merge_ready.parse_marker(body), mark)
+        self.assertEqual(merge_ready.parse_marker(body.replace("\n", "\r\n")), mark)
+
+    def test_anything_else_after_the_block_is_rejected(self) -> None:
+        good = merge_ready.marker_body(marker(self.HEAD))
+        footer = merge_ready.FOOTER
+        bad = [
+            good + footer + footer,
+            good + footer + "\ntrailing text",
+            good + "\ntrailing text" + footer,
+            good + footer.replace("Claude Code", "Claude C0de"),
+            good + "\n\n---",
+        ]
+        for body in bad:
+            with self.subTest(body=body[-60:]), self.assertRaises(MarkerError):
+                merge_ready.parse_marker(body)
+
     def test_bad_fields_are_rejected(self) -> None:
         good = marker(self.HEAD).render()
         bad = [
