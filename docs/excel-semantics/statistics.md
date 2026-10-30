@@ -3409,12 +3409,24 @@ Tasks: T-1543, T-1634
     on its double-valued lower cdf: `CHIINV(1E-9,1)` (probes-numeric/m9-legacy-chiinv A1, A2) is 37.324892889999234
     in Excel, about 2.2E-7 (one step of the cdf's resolution near 1) below the complement crossing
     37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561).
-  - With 3 to 10 degrees of freedom a right-tail p of 1E-100, 1E-200 or 1E-300 is `#NUM!` (21 literal gen-m9 cells:
-    `CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `CHISQ.INV.RT(1E-300,10)`), though the quantile exists, while
-    1E-20 is a value for every df probed (`CHIINV(1E-20,5)` = 103.42897723775795). df 2 (`CHISQ.INV.RT(1E-300,2)` =
-    1381.5510557964274, -2 ln p) and df 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946) are values at every p.
-    The boundary p between 1E-20 and 1E-100 is unprobed; the engine takes `#NUM!` below 1E-20
-    for df 3 to 10 (df 22 at `CHISQ.INV.RT(1E-100,...)` is 542.4417060011164 in Excel, gen-m9; df 11 to 21 unprobed, UNVERIFIED).
+  - Excel's search gives up in the far right tail. Below an edge that depends on df, CHISQ.INV.RT and CHIINV are
+    `#NUM!`, though the quantile exists and CHISQ.DIST.RT past it is a plain number. With p = 1E-k, the last k that
+    is still a value is, for df 3 to 42: 20, 27, 35, 43, 52, 62, 72, 81, 87, 90, 94, 99, 104, 110, 116, 121, 127,
+    133, 139, 146, 152, 158, 165, 171, 178, 184, 191, 198, 205, 212, 219, 226, 234, 241, 249, 257, 265, 273, 282,
+    291. 1E-(k+1) is `#NUM!`, and so is every smaller p probed. Examples: `CHISQ.INV.RT(1E-20,3)` = 96.2391239380938
+    while `(1E-21,3)` is `#NUM!`; `(1E-291,42)` = 1520.841398295613 while `(1E-292,42)` is `#NUM!`. From df 43 on
+    every p to 1E-300 is a value (`(1E-300,43)` = 1567.117852865588). df 1 and 2 have their own rules (above, and the
+    closed form). This replaces T-1634's guess: `#NUM!` below 1E-20 for df 3 to 10 only, which gave values beyond
+    the edge from df 11 on and `#NUM!` short of it for df 4 to 10.
+    The edge rises 3 to 10 decades a degree of freedom, with a dip at df 11 to 14. No closed form fits it. In x it is
+    32 to 41 times df, and 39 to 248 below the Wilson-Hilferty estimate at p, with neither steady. The engine
+    tabulates it (chisq.rs `RIGHT_TAIL_P_MIN`). A p strictly between 1E-(k+1) and 1E-k is unprobed, and the engine
+    takes 1E-k itself as the threshold, a choice inside the bracket.
+    Evidence: probes-numeric t2561-chisq-inv-rt-num-boundary (df 3 to 22, p = 1E-20 to 1E-300 in steps of 5 decades
+    and wider), -num-edge (every decade inside each df 3 to 22 bracket), -num-large-df and -num-large-df-edge (df 23
+    to 50), and t2561-chisq-dist-rt-past-edge (CHISQ.DIST.RT and the density up to 7% past each edge). All
+    excel-graph, 1,480 cells. The earlier gen-m9 cells agree: 21 cells such as `CHISQ.INV.RT(1E-100,3)` and
+    `CHIINV(1E-200,6)` are `#NUM!`, `CHIINV(1E-20,5)` = 103.42897723775795, and df 22 at 1E-100 = 542.4417060011164.
   - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
 - Excel's gamma quantiles (T-0972, against an mpmath 50-digit reference of the 545 literal-argument CHISQ.INV,
   CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV cells in eval/, df truncated, df 1 right tail as the lower quantile of
