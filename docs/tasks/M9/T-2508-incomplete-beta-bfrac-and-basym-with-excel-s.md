@@ -79,3 +79,11 @@ Notes from the opus run that claimed the task (data for the run that resumes it,
   against an exact reference (e.g. the prefactor x^2·y^100·B(2,100)^-1 is exact in rationals), then either fix the
   prefactor rounding or keep a b0 >= 40 cell with a small integer a0/b0 on its exact finite sum, if the r2-bratio scores
   support that.
+- E39 measured (scratch test calling `bfrac(2, 100, x0 = fl(1 - 0.99) = 0.010000000000000009, y0 = 0.99, λ = 0.98)`,
+  exact references in rationals, x0 = 1 - y0 exactly): density `excel_beta_density` 37.34269340262242 is +2.68 ulp,
+  brcomp 0.36969266468596235 +3.99 ulp, the fraction r -4.19 ulp, and w = 0.2679353174535413 is -0.0004 ulp, so
+  correctly rounded. 0.5 - w is exact, and 1 - w lies exactly halfway between ...586 and ...587. Round-half-even picks
+  ...587 (...586 has an odd mantissa), but Excel shows ...586. So Excel's w here is one ulp(w) = 2^-54 above the correctly
+  rounded w (0.26793531745354133), or Excel does not form w1 as (0.5 - w) + 0.5 in this branch. Check the
+  w2f/r2-bratio bfrac cells for which of the two holds before touching the complement. The earlier note's ...585 came
+  from a different call (the scratch run gives ...587).
