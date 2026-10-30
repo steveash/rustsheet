@@ -3,7 +3,7 @@ id: T-2508
 title: "Incomplete beta bfrac and basym with Excel's density times x y as prefactor (T-2464 E6)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
