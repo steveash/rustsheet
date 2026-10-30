@@ -23,6 +23,10 @@ task names these cells. Ours is within an ulp of the true quantile at every one;
 - probes-numeric/m9-chisq-inv Calc!A20 `CHISQ.INV(0.999,3)`: 16.266236196237987 vs 16.266236196238125 (-40 ulp)
 - probes-numeric/m9-chisq-inv Calc!A34 `CHISQ.INV(0.999,10)`: 29.58829844507459 vs 29.588298445074415 (+48)
 - probes-numeric/m9-chisq-inv Calc!A41 `CHISQ.INV(0.999,50)`: 86.6608151904034 vs 86.66081519040313 (+18)
+- probes-numeric/m9-chisq-inv Calc!A27 `CHISQ.INV(0.999,5)`: 20.515005652432812 vs 20.515005652432876 (-18; from
+  T-3016, decision 0152)
+- probes-numeric/t1049-chisqinv Calc!A19 `CHISQ.INV(0.999,5)`: 20.515005652432812 vs 20.515005652432876 (-18; from
+  T-3016, decision 0152)
 - probes-numeric/m9-chisq-inv-rt Calc!A20 `CHISQ.INV.RT(0.999,3)`: 0.024297585815692378 vs 0.024297585815692746 (-106)
 - probes-numeric/m9-chisq-inv-rt Calc!A27 `CHISQ.INV.RT(0.999,5)`: 0.210212602629218 vs 0.21021260262921926 (-44)
 - probes-numeric/m9-chisq-inv-rt Calc!A34 `CHISQ.INV.RT(0.999,10)`: 1.478743463835678 vs 1.4787434638356651 (+57)
@@ -43,10 +47,11 @@ on its starting point and stopping test, which the cached probes (p only 0.95, 0
 Needs an oracle sweep, T-3148, which also gives Excel's cdf at the doubles beside each quantile above. At 1 - 1E-10
 the same probes are within 2 ulp, so the rule changes between those p.
 
-T-3016 (`CHISQ.INV(0.999,5)` in the m9 and T-1049 CHISQ.INV probes) and T-3131 (`CHISQ.INV.RT(0.999,5)` and
-`(0.999,20)` in the T-1049 CHISQ.INV.RT probe) own cells with the same cause. Whichever task lands the landing rule
-first takes them all; the others then only check their cells. `GAMMA.INV(0.999,9,1)` and `(0.999,9,1000000)` are 2-3E-15
-relative off, within 15 digits; it should follow the same rule.
+This task owns the `CHISQ.INV(0.999,5)` pair (m9-chisq-inv A27, t1049-chisqinv A19, listed above) since T-3016 handed
+it over. T-3131 (`CHISQ.INV.RT(0.999,5)` and `(0.999,20)` in the T-1049 CHISQ.INV.RT probe) owns cells with the same
+cause: whichever of the two lands the landing rule first takes them all, and the other then only checks its cells.
+`GAMMA.INV(0.999,9,1)` and `(0.999,9,1000000)` are 2-3E-15 relative off, within 15 digits; it should follow the same
+rule.
 
 ### Also owned: T-3148's probe (gap triage 2026-10-29)
 `make eval` on main a2ecf005b, `python3 scripts/exit_owners.py --all-off`: T-3148 (done) added

@@ -84,6 +84,7 @@ mod iteration;
 mod legacy_formula;
 pub mod links;
 mod merged_cells;
+mod mixed_fraction;
 mod model;
 mod nested_array;
 mod node_frames;
