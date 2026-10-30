@@ -384,7 +384,11 @@ review`.
   (default `warn`): in `warn` the merger reports a PR whose markers lack records in its run
   summary and still treats V4 as an attestation; the steward flips it to `require` (a decision
   record) once a week of marked PRs all carry records. The review skill posts the records in both
-  modes.
+  modes. As built (T-3207): a missing key reads as `warn`, a switch file that does not parse or a
+  value that is not a mode as `require` (fails closed); in `warn`, `mark` takes a missing
+  reviewer's verdict from `REVIEW=` or the carried marker with a warning, and every V4 record gap
+  (a missing or non-`APPROVE` newest record, or a carry-over that no longer holds) is a warning
+  line in `verify` and the merger's run log, never an unlabel.
 - **Out of scope.** The reviewers' criteria; a second GitHub identity or an external signer
   (owner steps, if the residual risk ever needs closing).
 
