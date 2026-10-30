@@ -37,10 +37,10 @@ Oracle evidence for the corners of Excel's 65-call nesting cap that T-3097 left 
 - Probed (excel-graph 2026-10-30, probes/t3143-*): stored `_xlfn.SINGLE(` and `_xlfn.ANCHORARRAY(` count as calls
   (65 with one loads, 66 refuses the workbook); typed `@` and `#` operators add no level; typed `SINGLE(` spelled as a
   call counts (64+1 accepted, 65+1 refused); typed `ANCHORARRAY(` spelled as a call is refused by Graph at any depth
-  (follow-up T-3224); a defined-name body of 66 nested calls refuses the workbook, 65 loads. syntax.md records it all.
+  (follow-up T-3262); a defined-name body of 66 nested calls refuses the workbook, 65 loads. syntax.md records it all.
 - Engine: the parser no longer exempts spelled `SINGLE(`/`ANCHORARRAY(` from the call count (lists.rs); the importer
   refuses a name body nesting more than 65 calls (`reparse_formula_hack`). Unit tests at 65 and 66 in
   rustsheet-xlsx `malformed_import.rs` and rustsheet `typed_entry.rs`. `Input::StoredFormula` stays unchecked
   (documented; nothing in Excel to probe per cell).
-- Not done: conditional-format and data-validation formulas need case-format support first (follow-up T-3225).
+- Not done: conditional-format and data-validation formulas need case-format support first (follow-up T-3263).
 - Eval delta: +11 probe cases (22 cells), all bit-exact; no known failures added or removed.

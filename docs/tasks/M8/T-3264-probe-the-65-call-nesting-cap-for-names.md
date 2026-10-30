@@ -1,5 +1,5 @@
 ---
-id: T-3229
+id: T-3264
 title: "Probe the 65-call nesting cap for names defined through the API and for a name's body counted in the formula that uses it"
 milestone: M8
 lane: research
@@ -28,4 +28,4 @@ Oracle evidence for two unprobed corners of the 65-call cap on names, and the en
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Conditional formats and data validation (T-3225).
+- Conditional formats and data validation (T-3263).

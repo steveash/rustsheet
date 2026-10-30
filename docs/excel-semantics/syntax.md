@@ -185,15 +185,15 @@ then cannot load back once saved, since the saved text spells `@` and `#` as cal
 call counts like any call: 64 ABS calls around `SINGLE(C1:C2)` are accepted and 65 refused (400
 `InvalidArgument`). `ANCHORARRAY(` typed as a call through Graph is refused at any depth, even
 `=ANCHORARRAY(C1)` and `=SUM(ANCHORARRAY(C1))` with C1 spilling (400 `InvalidArgument`;
-probes/t3143-anchor-typed-bare and -sum, dropped after the run; the engine accepts it, T-3224); a
+probes/t3143-anchor-typed-bare and -sum, dropped after the run; the engine accepts it, T-3262); a
 stored `ANCHORARRAY(D1)` loads (probes/at-operand-formulatext J30).
 Defined names (T-3143): a name body of 65 nested ABS calls loads and evaluates
 (probes/t3143-name-body-65, tagged M8 as defined-name bodies are, decision 0051), and one of 66 makes Excel refuse the workbook (createSession 501). The
 importer refuses both workbooks Excel refuses, cell formulas and name bodies (`reparse_formula_hack`).
 `Input::StoredFormula` through the API is not checked (it keeps 66 calls, as it keeps `=SUM()`):
 Excel has no per-cell stored entry to probe, only the whole file. Unprobed: conditional-format and
-data-validation formulas past 65 calls (the case format cannot express them yet, T-3225), names
-defined through the API, and whether a name's use counts its body's calls toward the using formula (T-3229).
+data-validation formulas past 65 calls (the case format cannot express them yet, T-3263), names
+defined through the API, and whether a name's use counts its body's calls toward the using formula (T-3264).
 The refused T-3143 inputs (`single-inner-65-stored`, `single-mid-65-stored`, `anchor-inner-65-stored`,
 `single-spelled-65-typed`, `name-body-66`) were dropped after the run.
 Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t3172-*, excel-graph
@@ -215,7 +215,7 @@ refuses a workbook holding one (`XlsxError::Workbook`), T-3097. `TRUE()`, `FALSE
 LET name or of a cell-shaped callee count as calls, and so do `SINGLE(x)` and `ANCHORARRAY(x)` spelled
 as calls (the stored `@` and `#`), while the `@` and `#` operators do not (T-3143, above). The importer
 also refuses a defined-name body nesting 66 or more (T-3143). Conditional formats and data validation
-are not checked (unprobed, T-3225), nor is `Input::StoredFormula` (by design, above). Bare parentheses match Excel:
+are not checked (unprobed, T-3263), nor is `Input::StoredFormula` (by design, above). Bare parentheses match Excel:
 t3097-nesting-paren-128 and -255 and t3172-paren-256 load and evaluate (T-3191). It still refuses
 64 or more levels of `(ABS(` (t3097-nesting-paren-abs-64 and -65, four depth levels each) and every
 sign run T-3172 probed (255 and up: minus up to 1,024, plus and alternating up to 1,023), all of
