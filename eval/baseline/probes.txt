@@ -487,6 +487,7 @@ C	probes/fin-remaining-later-argument-ranges.case.json	197
 C	probes/fin-rri-vdb-edges.case.json	24
 C	probes/fin-rri.case.json	16
 C	probes/fin-syd-db-domain.case.json	143
+C	probes/fin-vdb-amordegrc-edges.case.json	143
 C	probes/fin-vdb-fractional-start-edges.case.json	14
 C	probes/fin-vdb-fractional-start.case.json	45
 C	probes/fin-vdb-modes.case.json	20
