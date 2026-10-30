@@ -1,4 +1,5 @@
 pub(super) mod bound_variables;
+mod literals;
 mod rename_defined_name;
 mod sheet_edits;
 mod structured;
@@ -14,15 +15,17 @@ use super::{
     super::utils::{name_needs_quoting, quote_name},
     left_chain,
     move_formula::{moved_reference_text, MoveContext},
-    value_operands, ArrayNode, Node, Reference,
+    value_operands, Node, Reference,
 };
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
 use crate::expressions::token::OpUnary;
+use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
-use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
+pub(crate) use literals::argument_separator;
+use literals::{format_number_locale, to_string_array_node};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
 pub(crate) use sheet_edits::{
     move_sheet_in_node, rename_sheet_in_node, retarget_unqualified_references,
@@ -513,41 +516,6 @@ pub(crate) fn stringify_reference(
             };
             text
         }
-    }
-}
-
-/// The separator of function arguments, and of union operands, in `locale`: `,`, or `;`
-/// where the decimal separator is not `.`.
-pub(crate) fn argument_separator(locale: &Locale) -> &'static str {
-    if locale.numbers.symbols.decimal == "." {
-        ","
-    } else {
-        ";"
-    }
-}
-
-/// `number` as a formula prints it, with the decimal separator of `locale`.
-fn format_number_locale(number: f64, locale: &Locale) -> String {
-    let s = to_excel_precision_str(number);
-    let decimal = &locale.numbers.symbols.decimal;
-    if decimal == "." {
-        s
-    } else {
-        s.replace('.', decimal)
-    }
-}
-
-/// The printed element `node` of an array constant.
-fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) -> String {
-    match node {
-        ArrayNode::Boolean(true) => language.booleans.r#true.to_uppercase(),
-        ArrayNode::Boolean(false) => language.booleans.r#false.to_uppercase(),
-        ArrayNode::Number(number) => format_number_locale(*number, locale),
-        ArrayNode::String(value) => format!("\"{value}\""),
-        ArrayNode::Error(kind) => format!("{kind}"),
-        ArrayNode::Empty => "0".to_string(),
-        ArrayNode::Lambda(_) => "#CALC!".to_string(), // never parsed: what a cell shows
-        ArrayNode::Nested(_) => "#VALUE!".to_string(), // never parsed: what a cell shows
     }
 }
 

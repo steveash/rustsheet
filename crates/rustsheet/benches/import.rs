@@ -6,6 +6,7 @@
 mod common;
 
 use std::error::Error;
+use std::io::Write;
 
 use rustsheet::{Input, LoadOptions, SaveOptions, Workbook};
 
@@ -66,10 +67,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let Some(e) = failed {
         return Err(e.into());
     }
-    println!(
+    writeln!(
+        std::io::stdout(),
         "load {} formulas ({} bytes), no recalc: {timings}",
         ROWS * COLUMNS,
         bytes.len()
-    );
+    )?;
     Ok(())
 }

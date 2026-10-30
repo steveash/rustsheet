@@ -55,7 +55,9 @@ use crate::locale::Locale;
 use super::token::{starts_with_getting_data, Error, TokenType};
 use super::types::*;
 use super::utils;
+use peek::Peeked;
 
+mod peek;
 pub mod util;
 
 pub use string_literal::{
@@ -123,19 +125,8 @@ pub struct Lexer {
     /// several times before taking them, and long imported formulas spent most of their parse
     /// lexing the same token again (T-0499). A token depends only on the text, the start
     /// position and the settings, so it is kept by its start position and dropped when the text
-    /// or a setting changes.
+    /// or a setting changes: a new setting's setter must drop it too.
     peeked: Option<Peeked>,
-}
-
-/// A token read by [`Lexer::peek_token`], with the positions it was read from and up to.
-#[derive(Clone)]
-struct Peeked {
-    start: usize,
-    end: usize,
-    /// What reading it left in `next_token_position` (a peek inside the token, e.g. for the
-    /// `:` of a range, sets it), so that taking it with `next_token` leaves the same state.
-    inner_next: Option<usize>,
-    token: TokenType,
 }
 
 impl Lexer {
@@ -230,37 +221,6 @@ impl Lexer {
         Ok(())
     }
 
-    /// Checks the next token without advancing position
-    /// See also [`advance_token`](Self::advance_token)
-    pub fn peek_token(&mut self) -> TokenType {
-        self.peek().clone()
-    }
-
-    /// The next token, borrowed: [`peek_token`](Self::peek_token) without the copy, for a
-    /// caller that only looks at it (most peeks only compare it with one token, T-0499).
-    pub fn peek(&mut self) -> &TokenType {
-        let start = self.position;
-        if let Some(peeked) = self.peeked.take_if(|p| p.start == start) {
-            self.next_token_position = Some(peeked.end);
-            return &self.peeked.insert(peeked).token;
-        }
-        self.next_token_position = None;
-        let token = self.lex_token();
-        let end = self.position;
-        let inner_next = self.next_token_position;
-        self.next_token_position = Some(end);
-        self.position = start;
-        &self
-            .peeked
-            .insert(Peeked {
-                start,
-                end,
-                inner_next,
-                token,
-            })
-            .token
-    }
-
     /// Whether whitespace comes right after the last token read (a [`peek_token`](Self::peek_token)
     /// does not count). Whitespace is otherwise skipped, but between two references it is
     /// Excel's intersection operator (`A1:B2 B1:B3`), so the parser has to see it.
@@ -293,26 +253,6 @@ impl Lexer {
         let end = self.position.min(self.len);
         let text: String = self.chars[start.min(end)..end].iter().collect();
         text.trim().to_string()
-    }
-
-    /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
-    /// It is a noop if the has not been a previous `peek_token`
-    pub fn advance_token(&mut self) {
-        if let Some(position) = self.next_token_position {
-            self.position = position;
-            self.next_token_position = None;
-        }
-    }
-
-    /// Returns the next token
-    pub fn next_token(&mut self) -> TokenType {
-        self.next_token_position = None;
-        if let Some(peeked) = self.peeked.take_if(|p| p.start == self.position) {
-            self.position = peeked.end;
-            self.next_token_position = peeked.inner_next;
-            return peeked.token;
-        }
-        self.lex_token()
     }
 
     /// Reads the token at the current position, past any whitespace.
