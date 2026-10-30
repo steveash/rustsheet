@@ -3,7 +3,7 @@ id: T-3241
 title: "Print a qualified #This Row reference in Excel's @ form by the printing cell (FORMULATEXT [@Col] inside its table), keeping copy and fill outside the table working"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
