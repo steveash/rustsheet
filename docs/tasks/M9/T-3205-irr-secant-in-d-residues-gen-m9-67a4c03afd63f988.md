@@ -3,7 +3,7 @@ id: T-3205
 title: "IRR secant-in-d residues: gen-m9 67a4c03afd63f988 A395 (16 ulp), t2565 P!C157 and the fit set's last misses"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
