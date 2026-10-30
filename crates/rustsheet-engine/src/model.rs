@@ -2421,7 +2421,16 @@ impl Model {
                     &self.workbook.shared_strings,
                     self.language,
                     |value| format_number(value, &format, &self.format_context()).displayed(),
-                    |text| format_text_value(text, &format).displayed(),
+                    |text| {
+                        // TEXT() is `#VALUE!` past 255 characters, a cell shows its text whole
+                        // (unprobed with a text section; the plain text is kept).
+                        let formatted = format_text_value(text, &format);
+                        if formatted.error.is_some() {
+                            text.to_string()
+                        } else {
+                            formatted.displayed()
+                        }
+                    },
                 );
                 Ok(formatted_value)
             }

@@ -3,7 +3,7 @@ id: T-1736
 title: "Displayed text of a text or boolean cell goes through the format's text section"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -42,10 +42,13 @@ eec351e03ccedfe0 F!J20 added by T-0099, which found them owned only through the 
   F!A19; bfbcd16cee266336 F!F13, F!Z13; e1c29d3fe448682c F!F11; eec351e03ccedfe0 F!J2, F!J12, F!J20; fbdab487cb11409e F!C1, F!C19
 
 ## Acceptance criteria
-- [ ] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
-- [ ] The 27 accounting-format cells listed under Context (2026-10-25) pass in the "Displayed text" section too.
-- [ ] number-formats.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] The gen-m10 text cells under these codes pass in the report's "Displayed text" section (or the remaining ones are filed); the matching TEXT() cells on sheet T leave eval/baseline/gen-m10.txt; no regressions.
+- [x] The 27 accounting-format cells listed under Context (2026-10-25) pass in the "Displayed text" section too.
+- [x] number-formats.md updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Text and boolean cells now display through the format's text section (`Cell::formatted_value`, errors unchanged). gen-m10 displayed text 10339 -> 10400 of 10400; the matching TEXT() known failures left eval/baseline/gen-m10.txt.
