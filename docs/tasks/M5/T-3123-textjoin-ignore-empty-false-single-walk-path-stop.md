@@ -6,7 +6,7 @@ lane: functions-text
 status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -23,3 +23,11 @@ Follow-up of T-3098. Excel stops reading past the limit (probes/textjoin-whole-r
 
 ## Out of scope
 -
+
+## Handoff
+Picked by a sonnet run and handed off before any code: the task starts with an Excel probe (a self-including
+whole-row TEXTJOIN whose used columns span the range, modelled on probes/textjoin-whole-rows-self-reference
+B5/D3), and the engine change plus a read-count test depend on its result, which the run's remaining budget
+could not cover. `rustsheet-oracle status` showed excel-graph OK on 2026-10-30. Next: use the excel-probe skill
+to write and run the probe, then follow the acceptance criteria (`textjoin_walk` non-padded arm and the
+`skipped_columns == 0` branch of `textjoin_push_padded_range` in concatenate.rs).
