@@ -3,7 +3,7 @@ id: T-3208
 title: "Merge-train verdict records: the review and work-loop skills post records, then flip verdict_records to require"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
