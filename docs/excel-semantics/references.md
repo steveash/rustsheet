@@ -1911,18 +1911,22 @@ condition, which takes its own `@` (`=IF(@B1:B6>0,INDEX(B1:B6,3))`, `#VALUE!` of
 computed (`1+2`), a cell (A20 = 3 or 0), text (`"3"`), non-integer (`3.5`, still 3) or 0 (`INDEX(B1:B6,0)` and
 `INDEX(B1:C6,3,0)`: the whole column or row, intersected, `#VALUE!` off it; `=ABS(@IF(TRUE,INDEX(B1:C6,3,0)))`
 is 30 in column C); and a range or whole-column INDEX beside the INDEX arm (`=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`).
-Under SUM none shows an `@` (M30-M65; 21 for the whole column, 33 for row 3). Ours differs on one shape: an array
-CHOOSE index (I54, K54) puts the `@` on the constant, `=CHOOSE(@{1,2},...)` (known failure, T-3168).
+Under SUM none shows an `@` (M30-M65; 21 for the whole column, 33 for row 3). An array-constant CHOOSE index over
+such one-cell arms stays whole and the call takes the `@` (I54, K54), while over range arms Excel shows both,
+`=@CHOOSE(@{1,2},H1:H2,I1:I2)` (probes/legacy-choose-array-index, T-1882); `leaves_choose_index_whole`, T-3168.
 UNVERIFIED: an INDEX of a defined name or table area, a one- or four-argument INDEX, a negated literal index
 (`INDEX(B1:B6,-3)`) (the engine keeps the `@`); a bare range condition (`IF(B1:B6,INDEX(B1:B6,3))`) and an
 out-of-range literal index (`INDEX(B1:B6,99)`) (the engine drops it).
+UNVERIFIED (T-3168): an array-constant CHOOSE index over plain-cell, computed-scalar or text/boolean arms
+(`CHOOSE({1,2},A1,B1)`, `CHOOSE({1,2},A1+1,5)`; the engine moves the `@` to the call as for I54), and over mixed
+range and scalar arms (`CHOOSE({1,2},H1:H2,5)`; the engine keeps `@{1,2}`).
 Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
 `=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
 `=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
 Excel drops the `@` for both one-cell arms (M12, S12).
 Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
-Tasks: T-1935, T-1969, T-2326, T-3134
+Tasks: T-1935, T-1969, T-2326, T-3134, T-3168
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
