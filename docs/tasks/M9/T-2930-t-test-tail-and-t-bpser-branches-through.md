@@ -28,7 +28,8 @@ come from the same kernel call as the bgrat tails, K(n/2, 1/2, y, z), without lo
   passes (fl(1 - y) or a z of its own) is not probed. Probe it (excel-probe) before routing it.
 
 ## Acceptance criteria
-- [ ] The T bpser points (cells.tsv lower side, branches w_bpser and w1_bpser) go through the kernel with no gated
+- [ ] The T bpser points (cells.tsv lower side, branches w_bpser and w1_bpser), which already take the kernel from
+      df 3, use a bpser that wins back the 1-ulp cells listed below; df 1 and 2 join the kernel with no gated
       known-failure line added, or the Outcome shows per region why today's path stays.
 - [ ] T.TEST's complement is evidenced by a probe and its tail takes the kernel where that evidence says so.
 - [ ] `make check` green; reviewers approve.
@@ -44,6 +45,12 @@ Visibly off since T-2509 (Student t tails on the ported kernel), accepted by dec
 The ten gated cells T-2509 moves by 1 ulp: gen-m9 0620505280d2ea6e A158, A273; 334f3dc9ca937f10 A171;
 3fb9cecf2c23169f A345; 44a8841352dc48e9 A310; 5389dd4d5b5739d2 A216; 5be29fa316931f05 A238; cb61169f4c033d4b A160;
 a2262ea466fcc142 A58; eedd629f3d69fdda A261.
+
+Gated cells already in the baseline that T-2509 moves from 1 to 2 ulp: gen-m9 5be29fa316931f05 A176 `TDIST(1,3,1)`,
+a4090567758520df A63 `T.DIST.2T(Data!C2,3)`, c4635963fc926284 A180 `TDIST(Data!E1,3,2)`.
+
+Not visibly off (3-4 ulp, outside the 15th-digit half unit), for reference: probes-numeric t0969-t-beta-link
+Link!C140 and L140; t2464-r2-tdist-p1 Calc!A10676, A10785, A11430, A8757, A9792.
 - Review follow-ups from T-2509's PR (#2055): one `Dd` type alias in `x87_exp.rs` for bgrat.rs, student_t.rs and
   discrete.rs; a unit test pinning `bgrat::algdiv_half(a).0` to `beta_density::algdiv(0.5, a)`; one exact-value
   assertion on the bup + bgrat branch (a bit-exact t2464-r2-tdist-p1 part C cell); `dd_exp` returning `None` (or
