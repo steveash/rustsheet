@@ -399,9 +399,7 @@ impl Parser {
         // Where each currency symbol sits among `tokens`, for a date section to print it there.
         let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
-        // Excel: once an `m`/`mm` has been read as a minute, later ones are months, whatever time
-        // token came before (`h:mm|yyyy-mm-dd` prints the month; `h|yyyy-mm` has no minute yet, so
-        // its `mm` is one; docs/excel-semantics/number-formats.md "`mm` after a minute is a month").
+        // Excel: after a minute, later `m`/`mm` are months (number-formats.md "`mm` after a minute").
         let mut minute_read = false;
         let mut hijri = false;
         let mut calendar_prefix = false;
@@ -678,25 +676,18 @@ impl Parser {
                     is_date = true;
                     tokens.push(TextToken::MonthName);
                 }
-                Token::Month => {
-                    if (is_time && !minute_read) || self.minute_before_seconds(&next_token) {
-                        minute_read = true;
-                        // minute
-                        tokens.push(TextToken::Minute);
-                    } else {
-                        is_date = true;
-                        tokens.push(TextToken::Month);
-                    }
-                }
-                Token::MonthPadded => {
-                    if (is_time && !minute_read) || self.minute_before_seconds(&next_token) {
-                        minute_read = true;
-                        // minute padded
-                        tokens.push(TextToken::MinutePadded);
-                    } else {
-                        is_date = true;
-                        tokens.push(TextToken::MonthPadded);
-                    }
+                Token::Month | Token::MonthPadded => {
+                    let padded = matches!(token, Token::MonthPadded);
+                    let minute =
+                        (is_time && !minute_read) || self.minute_before_seconds(&next_token);
+                    minute_read |= minute;
+                    is_date |= !minute;
+                    tokens.push(match (minute, padded) {
+                        (true, false) => TextToken::Minute,
+                        (true, true) => TextToken::MinutePadded,
+                        (false, false) => TextToken::Month,
+                        (false, true) => TextToken::MonthPadded,
+                    });
                 }
                 Token::MonthLetter => {
                     is_date = true;
