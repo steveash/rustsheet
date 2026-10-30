@@ -294,11 +294,10 @@ fn a_padded_column_survives_an_edit_that_rewrites_its_text() {
         Some("=SUM(T[ Col ])+A11")
     );
     assert_eq!(model.get_formatted_cell_value(0, 8, 5).unwrap(), "107");
-    // Typed as it prints, Excel refuses it: it is no formula that reads the column.
-    let refused = model.set_typed_user_input(0, 9, 5, "=SUM(T[ Col ])".to_string());
+    // Typed as it prints, Excel refuses it: the cell holds a parse error, not the column.
+    model
+        .set_typed_user_input(0, 9, 5, "=SUM(T[ Col ])".to_string())
+        .unwrap();
     model.evaluate();
-    assert!(
-        refused.is_err() || model.get_formatted_cell_value(0, 9, 5).unwrap() == "#ERROR!",
-        "{refused:?}"
-    );
+    assert_eq!(model.get_formatted_cell_value(0, 9, 5).unwrap(), "#ERROR!");
 }

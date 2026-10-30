@@ -197,6 +197,8 @@ impl Lexer {
                 Some(TableReference::ColumnReference(name.to_string()))
             }
         };
+        // `[ @Col ]` brings its own runs before `@` and after the column; `[@ Col]` has only the
+        // run after `@`, which then stands for both sides (Excel prints it `[ @Col ]`).
         let spacing = TableSpacing {
             open: if open.is_empty() {
                 after_at.clone()

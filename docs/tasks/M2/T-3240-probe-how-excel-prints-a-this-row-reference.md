@@ -23,6 +23,10 @@ a one-row table; docs/excel-semantics/syntax.md "Whitespace beside a missing arg
 and stored (a) outside T on a data row, (b) outside T on a non-data row, (c) in T's header row, (d) in T's totals
 row, each with FORMULATEXT beside it. Record the findings in syntax.md; file an engine task if ours differs.
 
+Also probe the padded shapes T-3069 left unprobed (PR #2415 review), typed and stored: qualified `=T[@ Col]` and
+`=T[ @Col ]`, one-sided `=[@Col ]` and `=[@ Col]` outside the data row, a defined name whose body is `T[ Col ]`,
+and a one-sided nested `=T[ [Col]]` (ours prints `T[ Col]`, which an edit's re-parse no longer reads as the column).
+
 ## Acceptance criteria
 - [ ] Probe cases with excel-graph oracle values committed; syntax.md records each shape.
 - [ ] An engine task is filed for every shape where ours differs (or none differs).
