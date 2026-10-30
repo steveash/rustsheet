@@ -233,8 +233,6 @@ pub struct Parser {
     pub parts: Vec<ParsePart>,
     /// Whether the format ends in a `;`, so an empty section follows the last part.
     ends_in_separator: bool,
-    /// Where the last part starts in the format.
-    last_part_start: usize,
     lexer: Lexer,
 }
 
@@ -344,7 +342,6 @@ impl Parser {
         Parser {
             parts,
             ends_in_separator: false,
-            last_part_start: 0,
             lexer,
         }
     }
@@ -354,17 +351,8 @@ impl Parser {
     pub(crate) fn has_empty_text_section(&self) -> bool {
         self.parts.len() == 3 && self.ends_in_separator && !self.parts.iter().any(is_text_section)
     }
-
-    /// Whether the last section is exactly `@`, with no color, locale or literal, not even `""`.
-    /// Excel shows a text whole under it however long, where any other text section shows 255 `#`
-    /// past 255 characters (probes/displayed-text-long-text-b A2, A3 vs A1, A4, A6; T-3282).
-    pub(crate) fn last_part_is_bare_at(&self) -> bool {
-        !self.ends_in_separator && self.lexer.source_from(self.last_part_start) == ['@']
-    }
-
     pub fn parse(&mut self) {
         while self.lexer.peek_token() != Token::EOF {
-            self.last_part_start = self.lexer.position();
             let part = self.parse_part();
             self.parts.push(part);
         }

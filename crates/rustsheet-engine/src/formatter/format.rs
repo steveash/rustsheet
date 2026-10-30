@@ -20,6 +20,7 @@ use super::{
     calendar_dates::{calendar_ymd, hebrew_month_name, year_token_text, HEBREW_LAST_NAMED_YEAR},
     date_names::NameTokens,
     dates::negative_serial_allowed,
+    lexer::last_section_is_bare_at,
     locale_tag::Calendar,
     parser::{
         conditional_section, is_text_section, numeric_section_count, section_condition,
@@ -206,7 +207,7 @@ fn text_section_changes_text(format: &str) -> bool {
     let mut parser = Parser::new(format);
     parser.parse();
     match parser.parts.last() {
-        Some(last) if is_text_section(last) => !parser.last_part_is_bare_at(),
+        Some(last) if is_text_section(last) => !last_section_is_bare_at(format),
         _ => false,
     }
 }

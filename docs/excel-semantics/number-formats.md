@@ -822,7 +822,7 @@ TEXT() with the same codes. Points the earlier probes did not show:
   text section (`General`, `0.00`) or a section that is exactly `@` (`@`, `0;@`, `0;0;0;@`,
   `General;General;General;@`; 300 characters shown). `;;;` shows nothing. A literal and a formula text behave
   the same. Implemented in formatter/format.rs `displayed_text`.
-  A workbook whose cell carries a code TEXT() rejects as invalid (`42abc`, `@;0`, `x@0`) is refused whole by
+  Unprobed (T-3314): a workbook whose cell carries a code TEXT() rejects as invalid (`42abc`, `@;0`, `x@0`) is refused whole by
   excel-graph (`FileCorruptTryRepair`, T-3282 probe attempt), so that displayed text cannot be probed; the engine
   keeps the plain text for it.
 - A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5" (implemented, T-2097: the minus leads and the General token prints the absolute value; gen-m10 F!D19 -1E15 is "-x1E+15"). A value that rounds to Unprobed: literals after General on a negative (`General x`, unchanged here).
