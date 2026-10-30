@@ -3,7 +3,7 @@ id: T-2844
 title: "Probe AMORDEGRC's left-over value: lifted calls, dynamic-array formulas in the order, a NaN AMORLINC charge"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
