@@ -7,7 +7,7 @@ use crate::test::util::new_empty_model;
 
 /// Deepest nesting of calls or parentheses the parser accepts: every operand costs two levels of
 /// `MAX_FORMULA_DEPTH`, the innermost `1` included (expressions/parser/depth.rs).
-const MAX_NESTING: usize = MAX_FORMULA_DEPTH / 2 - 1;
+const MAX_OPERANDS: usize = MAX_FORMULA_DEPTH / 2 - 1;
 
 fn nested(open: &str, inner: &str, close: &str, levels: usize) -> String {
     format!("={}{inner}{}", open.repeat(levels), close.repeat(levels))
@@ -31,7 +31,7 @@ fn deepest_with_inner_on_2_mib_stack(
         .stack_size(2 << 20)
         .spawn(move || {
             let mut model = new_empty_model();
-            let accepted = (1..=MAX_NESTING).rev().find(|&levels| {
+            let accepted = (1..=MAX_OPERANDS).rev().find(|&levels| {
                 model
                     .set_user_input(0, 1, 1, nested(open, inner, close, levels))
                     .is_ok()
@@ -65,7 +65,7 @@ fn formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
     }
     // A sign costs no level (T-3193), so `-(` nests as deep as `(`, and an odd count negates.
     let (accepted, text) = deepest_on_2_mib_stack("-(", ")").unwrap_or_default();
-    assert_eq!(accepted, MAX_NESTING);
+    assert_eq!(accepted, MAX_OPERANDS);
     let negated = if accepted % 2 == 1 { "-1" } else { "1" };
     assert_eq!(text, negated);
 }
@@ -144,7 +144,7 @@ fn alternating_calls_and_groups_at_the_nesting_limit_evaluate_on_a_2_mib_stack()
 #[test]
 fn parenthesised_chain_nested_to_the_limit_and_past_it_never_overflows() {
     let limit = MAX_PARENTHESES;
-    for levels in [MAX_NESTING, limit - 1, limit, limit + 1, 300] {
+    for levels in [MAX_OPERANDS, limit - 1, limit, limit + 1, 300] {
         let nested_over = |cell: &str| {
             format!(
                 "={}0.1+0.2-0.3+{cell}{}",
