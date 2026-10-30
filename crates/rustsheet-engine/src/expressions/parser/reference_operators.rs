@@ -480,6 +480,22 @@ fn starts_reference(token: &TokenType) -> bool {
     )
 }
 
+/// The text of the intersection of `left` and `right`, each printed with `sub`, with the gap
+/// Excel prints between them ([`Node::intersect_gap`]).
+pub(crate) fn intersection_text(
+    left: &Node,
+    right: &Node,
+    sub: &dyn Fn(&Node) -> String,
+) -> String {
+    let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
+    format!(
+        "{}{}{}",
+        operand(left, true),
+        right.intersect_gap(),
+        operand(right, false)
+    )
+}
+
 /// `text` (the printed `node`) as an operand of the intersection operator, parenthesized
 /// where printing it bare would parse back differently: an operator that binds looser
 /// (`A1 (B1+C1)`), a right operand that is itself an intersection (to keep the tree), and
@@ -488,7 +504,7 @@ fn starts_reference(token: &TokenType) -> bool {
 /// probes/intersection-at-formulatext, T-1098), only as a right operand that nothing follows:
 /// the left operand `A1 @A1` of `(A1 @A1) B1` keeps its parentheses, since bare `A1 @A1 B1`
 /// is `A1 @(A1 B1)` (T-0149).
-pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
+fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     // The extra spaces beside the operator are written around the right operand (SPEC-0023).
     let bare = match node.unwrap_spaced() {
         Node::OpIntersectKind { right, .. } => {

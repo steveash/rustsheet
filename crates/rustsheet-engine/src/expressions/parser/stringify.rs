@@ -4,7 +4,7 @@ mod sheet_edits;
 mod structured;
 mod wrong_reference;
 use super::reference_operators::{
-    at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
+    at_text, callee_operand, group_text, intersection_text, spill_operand, tight_operand,
     union_text,
 };
 use super::structured_reference::is_unresolved_structured_reference;
@@ -751,15 +751,7 @@ fn stringify(
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind { left, right } => {
-            let op = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
-            format!(
-                "{}{}{}",
-                op(left, true),
-                right.intersect_gap(),
-                op(right, false)
-            )
-        }
+        OpIntersectKind { left, right } => intersection_text(left, right, &sub),
         OpUnionKind { left, right, .. } => union_text(&sub(left), &sub(right), locale),
         OpConcatenateKind { .. }
         | CompareKind { .. }
