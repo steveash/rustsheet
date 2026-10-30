@@ -312,11 +312,12 @@ fn structural_edits_keep_values() {
         all.extend(found.into_iter().map(|f| format!("{name}: {f}")));
     }
     assert!(all.is_empty(), "{}", all.join("\n"));
-    // An edit of another sheet leaves the text of a formula on the table's sheet as it is.
+    // An edit of another sheet leaves the text of a formula on the table's sheet as it is, in
+    // the `@` form Excel prints in a cell of the table (T-3069).
     let mut model = parity_model();
     model.add_sheet("Other").unwrap();
     model.insert_rows(2, 1, 3).unwrap();
-    assert_eq!(formula(&model, 0, 3, 5), "=Sales[[#This Row],[Qty]]");
+    assert_eq!(formula(&model, 0, 3, 5), "=[@Qty]");
     // So does an insert below the formula on its own sheet.
     model.insert_rows(1, 9, 1).unwrap();
     assert_eq!(formula(&model, 1, 3, 1), "=Sales[[#This Row],[Qty]]");

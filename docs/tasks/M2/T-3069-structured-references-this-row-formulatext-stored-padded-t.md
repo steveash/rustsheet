@@ -24,7 +24,7 @@ Note T-2801/T-2962 chose the stored `T[ Col ]` round-trip for our own export; th
 ## Acceptance criteria
 - [x] The listed probe cases pass; baseline updated.
 - [x] Our xlsx export no longer writes a padded bare column Excel reads as `#REF!`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The unloadable-workbook case `T[ #Data ]`.

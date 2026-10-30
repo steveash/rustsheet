@@ -2,9 +2,10 @@
 
 use std::collections::HashMap;
 
+use crate::expressions::lexer::LexerMode;
 use crate::expressions::parser::stringify::{to_excel_string, to_rc_format};
 use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
-use crate::expressions::parser::Node;
+use crate::expressions::parser::{Node, Parser};
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils::{number_to_column, parse_reference_a1};
 use crate::types::{Table, TableColumn, TableStyleInfo};
@@ -484,6 +485,14 @@ fn unqualified_reference_inside_its_table() {
     assert!(matches!(t, Node::ParseErrorKind { .. }), "{t:?}");
 }
 
+/// `node` read back from its stored (R1C1) text, as the engine re-parses a formula.
+fn reparse_stored(parser: &mut Parser, node: &Node, cell: &CellReferenceRC) -> Node {
+    parser.set_lexer_mode(LexerMode::R1C1);
+    let again = parser.parse(&to_rc_format(node), cell);
+    parser.set_lexer_mode(LexerMode::A1);
+    again
+}
+
 /// A `#This Row` reference in a cell of its own table prints in Excel's `@` form without the
 /// table name, keeping the padding inside the outer brackets, and a run after `@` is padding, not
 /// part of the column (syntax.md, probes/t2800-this-row-whitespace, T-3069).
@@ -507,14 +516,11 @@ fn this_row_prints_in_its_at_form_in_its_own_table() {
         let t = parser.parse(typed, &inside);
         assert_eq!(to_english_localized_string(&t, &inside), printed, "{typed}");
         // The stored text reads back to the same reference.
-        let stored = to_rc_format(&t);
-        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::R1C1);
-        let again = parser.parse(&stored, &inside);
-        parser.set_lexer_mode(crate::expressions::lexer::LexerMode::A1);
+        let again = reparse_stored(&mut parser, &t, &inside);
         assert_eq!(
             to_english_localized_string(&again, &inside),
             printed,
-            "{stored}"
+            "{typed}"
         );
     }
     // Outside the table the name stays.
@@ -543,10 +549,7 @@ fn a_padded_bare_column_is_ours_only() {
         column: 5,
     };
     let t = parser.parse("SUM(T[ [Col] ])", &cell);
-    let stored = to_rc_format(&t);
-    parser.set_lexer_mode(crate::expressions::lexer::LexerMode::R1C1);
-    let again = parser.parse(&stored, &cell);
-    parser.set_lexer_mode(crate::expressions::lexer::LexerMode::A1);
+    let again = reparse_stored(&mut parser, &t, &cell);
     assert_eq!(to_english_localized_string(&again, &cell), "SUM(T[ Col ])");
     for formula in ["SUM(T[ Col ])", "SUM(T[ Col])", "SUM(T[Col ])"] {
         let typed = parser.parse(formula, &cell);
