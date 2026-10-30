@@ -3,7 +3,7 @@ id: T-3274
 title: "An unqualified [@Col] formula typed just right of a table resolves against the table it grows, fills and prints [@Col] (rule 7f, t3003-unqualified-structured-d2)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
