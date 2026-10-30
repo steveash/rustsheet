@@ -107,11 +107,11 @@ A110 (an inner ODDFYIELD whose issue date, 123456789.123 times a cell, is past 9
 settlement past 9999-12-31 is `#NUM!` as it is read); both lines are gone from the baseline.
 
 ## Acceptance criteria
-- [ ] The 86 known-failure lines listed above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), or each one
+- [x] The 86 known-failure lines listed above disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), or each one
       left is listed in the Outcome with its traced cause and owner task; no new known-failure lines in any baseline.
-- [ ] Every order changed is backed by a probe of the bare call and recorded in docs/excel-semantics/financial.md.
-- [ ] Unit tests for each order changed.
-- [ ] `make check` green; reviewers approve.
+- [x] Every order changed is backed by a probe of the bare call and recorded in docs/excel-semantics/financial.md.
+- [x] Unit tests for each order changed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - XIRR/XNPV values (their solver tasks).
@@ -179,8 +179,8 @@ continue with the guess-error and `#NUM!` groups above.
 
 Resumed 2026-10-30 (opus run, work-loop resume of an idle branch).
 
-## Outcome (2026-10-30)
-XIRR now follows Excel's order (financial.md "XIRR and XNPV under the gen-m9 statistical cells", T-2611 sentences): an
+## Outcome
+2026-10-30. XIRR now follows Excel's order (financial.md "XIRR and XNPV under the gen-m9 statistical cells", T-2611 sentences): an
 error values argument; then an error guess (or a non-numeric text guess's `#VALUE!`) before an error
 dates argument, the size checks and the values' cells; then an error dates argument before the values' cells. In the size
 checks one empty or numeric-text cell beside a range of another count is the count's `#NUM!` (one FALSE cell keeps
