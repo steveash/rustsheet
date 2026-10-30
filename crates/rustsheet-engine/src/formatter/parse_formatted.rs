@@ -16,6 +16,12 @@ use super::{
 /// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
+/// Format Excel gives a typed mixed fraction (`3 1/2`, `-$3 1/2`, `+ 3 1/2`).
+const MIXED_FRACTION_FORMAT: &str = "# ?/?";
+
+/// Format of a typed mixed fraction with a `%` (`3 1/2%`, `-3 1/2%`).
+const MIXED_FRACTION_PERCENT_FORMAT: &str = "0.00%";
+
 /// Format of a typed clock with a fractional second (`10:00:30.5`, `10:00.5`).
 const FRACTION_CLOCK_FORMAT: &str = "mm:ss.0";
 
@@ -37,10 +43,16 @@ pub(crate) fn parse_typed_number(
             return Ok(parsed);
         }
         // A mixed fraction, signed, with `$` or `%`, is a number (probes/typed-input-sign-space-
-        // mixed-fraction B6, B7, B9-B12). Its number format is UNVERIFIED (CELL("format") is
-        // #VALUE! on excel-graph), so it stays General: TODO(T-3237).
-        if let Some(v) = mixed_fraction(original.trim_matches(' '), currencies) {
-            return Ok((v, None));
+        // mixed-fraction B6, B7, B9-B12). Its format is `# ?/?`, or `0.00%` with a `%` (ENTERED
+        // numberFormat, probes/typed-mixed-fraction-number-format, excel-graph 2026-10-30).
+        let trimmed = original.trim_matches(' ');
+        if let Some(v) = mixed_fraction(trimmed, currencies) {
+            let format = if trimmed.ends_with('%') {
+                MIXED_FRACTION_PERCENT_FORMAT
+            } else {
+                MIXED_FRACTION_FORMAT
+            };
+            return Ok((v, Some(format.to_string())));
         }
         let Some(shape) = typed_clock_shape(text) else {
             return Err(err);

@@ -3,7 +3,7 @@ id: T-3237
 title: "Probe the number format of typed mixed fractions"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-3178 showed these typed forms are numbers, but `CELL("format")` is `#VALUE!` o
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/typed-mixed-fraction-number-format (excel-graph ENTERED numberFormat): fractions get `# ?/?`, percent forms `0.00%`. `parse_typed_number` now returns them; docs/excel-semantics/text.md updated.
