@@ -204,7 +204,8 @@ pub(crate) fn ln_double_double_pair((hi, lo): (f64, f64)) -> (f64, f64) {
 
 /// ln x in double-double (about 2^-104 relative) for a positive finite `x`: ln x = e ln 2 + ln f
 /// with x = f 2^e, f in [√2/2, √2]. [`fyl2x`]'s logarithm before its roundings, also F.TEST's
-/// accurate ln B (`f_test_tail.rs`, T-2681).
+/// accurate ln B (`f_test_tail.rs`, T-2681) and, through [`ln_double_double_pair`], the accurate
+/// half-integer ln B and F tails (`bratio/ln_beta.rs`, `incomplete_beta.rs`, T-2219).
 pub(crate) fn ln_double_double(x: f64) -> (f64, f64) {
     // x = f * 2^e with f in [√2/2, √2], f a double (an exact scaling of x's significand).
     let (significand, exponent) = significand_and_exponent(x);

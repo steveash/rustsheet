@@ -78,8 +78,8 @@ fn bcorr(a: f64, b: f64) -> f64 {
 pub(in super::super) const HALF_INTEGER_SHAPE_SUM_MAX: f64 = 400.0;
 
 /// -ln B(a, b) for half-integer shapes a, b >= 1/2, accurate and rounded to a register: the
-/// double-double B of `half_integer_beta::half_integer_beta` and its double-double ln. `None` off those
-/// shapes and above [`HALF_INTEGER_SHAPE_SUM_MAX`].
+/// double-double B of `half_integer_beta::half_integer_beta` and its double-double ln. `None` off
+/// those shapes and above [`HALF_INTEGER_SHAPE_SUM_MAX`].
 pub(in super::super) fn neg_ln_beta_half_integer(a: f64, b: f64) -> Option<Register> {
     if !(is_half_integer_shape(a)
         && is_half_integer_shape(b)

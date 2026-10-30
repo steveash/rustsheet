@@ -2766,17 +2766,23 @@ them and oracle cells contradict them.
   double-double series of positive terms, instead of Cephes' prefactor and fraction, which were up
   to about 40 ulp off a 50-digit reference (`F.DIST.RT(1,50,100)`: Excel 0.48912050780793015,
   Cephes 0.48912050780793204, now 0.48912050780793037; m9-f-dist-rt A18). Over every suite
-  (`make eval`, against origin/main d6618cd): 172 probes-numeric F.DIST, F.DIST.RT, FDIST and
+  (`make eval`, against origin/main d6618cd): 170 probes-numeric F.DIST, F.DIST.RT, FDIST and
   BETA.DIST cells move from visibly off to within 15 digits (e.g. `F.DIST.RT(1,100,3)`
   m9-legacy-fdist A40, `F.DIST(1,50,100,TRUE)` m9-f-dist A27, `F.DIST(0.5,50,100,TRUE)` A25), 105
-  move onto Excel's bit and 23 off it; no gated cell changes. Ten cells move to visibly off, and on
-  each of them Excel is 12 to 50 ulp off the 50-digit value while the new value is within 5:
-  `F.DIST.RT(10,1,50)` and `F.DIST(0.1,50,1,TRUE)` (t2220-f-dist-sweep-rt A89, -cdf A801, Excel
-  +13 ulp), `F.DIST.RT(10,3,100)` and `F.DIST(0.1,100,3,TRUE)` (A299, A921, +13),
-  `F.DIST.RT(5,3,50)` (A288, +6), `F.DIST(0.0356,100,1,TRUE)` and `F.DIST(0.24,50,1,TRUE)`
-  (t2220-f-dist-sweep-d2-1 A754, A670, -50 and +10), `BETA.DIST(0.5,100,50,TRUE)` (m9-beta-dist-a100
-  A45, -35), t1745-beta-inv-roundtrip G159 (+18) and t0969-t-beta-link E159 (-15). Those are
-  Excel's own formulation (T-2221), not an accuracy gap.
+  move onto Excel's bit and 23 off it. No gated known-failure line changes; two gen-m9 known
+  failures move closer to Excel (`F.DIST.RT(WEEKDAY(13197,1),3,100)` c2974c061384fdd9 A165,
+  `FDIST(3.14159,100,7)` a5828d3925575713 A51). Thirteen cells move to visibly off, and on each of
+  them Excel is 5 to 50 ulp off the 60-digit value while the new value is within 5 (Excel / new, in
+  ulp): `F.DIST.RT(10,1,50)` and `F.DIST(0.1,50,1,TRUE)` (t2220-f-dist-sweep-rt A89, -cdf A801,
+  +13 / +1), `F.DIST.RT(10,3,100)` and `F.DIST(0.1,100,3,TRUE)` (A299, A921, +13 / -4),
+  `F.DIST.RT(5,3,50)` (A288, +6 / -1), `F.DIST(0.0356,100,1,TRUE)` and `F.DIST(0.24,50,1,TRUE)`
+  (t2220-f-dist-sweep-d2-1 A754, A670, -50 / +5 and +10 / -1), `BETA.DIST(0.5,100,50,TRUE)`
+  (m9-beta-dist-a100 A45, -35 / 0), t0969-t-beta-link E159 (-15 / 0) and t1745-beta-inv-roundtrip
+  G150, H150, G158, G159 (-14 / 0, -16 / -1, +5 / 0, +18 / 0). Cephes erred the same way as Excel
+  there: they are Excel's own formulation of bratio's branch, not an accuracy gap (T-3199).
+- The kernel takes integer shapes too, so BETA.DIST's cdf at whole shapes from a + b = 10 changed
+  with it (42 BETA.DIST cells and 16 `E../2` link cells fixed visibly, 6 moved visibly off, all
+  among the 13 above); T-2119's own counts predate this.
   - Below a + b = 10 the series only trades bits (35 cells off Excel's bit, 75 onto it, 6 visibly
     fixed), among them the gated `FDIST(2,1,9)` (gen-m9/c18dbf21f11093f3 A151) and
     `F.DIST(1,3,8,1)` (c6cfda6bd10cae93 A348) 1 ulp off, so Cephes stays there.

@@ -770,7 +770,9 @@ mod tests {
 
     // T-2219: F tails at half-integer shapes from a + b = 10 against a 50-digit mpmath `betainc` at
     // the exact df1 x/(df1 x + df2). Cephes' kernel (`search_tails`) was 17 to 40 ulp off on these
-    // (F.DIST.RT(1,50,100), probes-numeric/m9-f-dist-rt A18: 0.48912050780793204).
+    // (F.DIST.RT(1,50,100), probes-numeric/m9-f-dist-rt A18: 0.48912050780793204). These are the
+    // true values, not Excel's: `F.DIST.RT(10,1,50)` is 0.0026605541904910776 in Excel
+    // (t2220-f-dist-sweep-rt A89, 13 ulp high), which is T-3199's.
     #[test]
     fn half_integer_tails_are_close_to_correctly_rounded() {
         for (x, df1, df2, upper, reference) in [
