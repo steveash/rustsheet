@@ -60,5 +60,6 @@ change is bigger than M.
 - The eighteen t3172 sign-run lines left probes/deviations; the cases now load and match Excel.
 - Eval delta: probes 18 cases (36 cells) move from whole-case deviation pins to bit-exact passes
   (probes/deviations lines 41 -> 23; the probes suite now scores 27 deviation cells); known failures unchanged (2672 -> 2672), no regressions.
+- Decision 0183 records the change (protected path eval/suites/probes/deviations).
 - Follow-ups: T-3252 (probe which signs count and how nested `-(` runs share the cap), T-3253
   (wider stack margin: iterative Clone/Drop of sign runs).
