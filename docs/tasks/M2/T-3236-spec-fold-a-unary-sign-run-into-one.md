@@ -3,7 +3,7 @@ id: T-3236
 title: "SPEC: fold a unary sign run into one parse-tree node so its depth cost is constant (for T-3193)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
