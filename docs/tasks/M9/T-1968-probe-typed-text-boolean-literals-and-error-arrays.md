@@ -3,7 +3,7 @@ id: T-1968
 title: "Probe typed text/boolean literals and error arrays vs tails/type in paired statistical functions (COVAR, CORREL, T.TEST)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
