@@ -31,10 +31,13 @@ linked spec, and any decision records (`docs/decisions/`) touching the area.
 
 ## Output
 ```
+HEAD: <the output of `git rev-parse HEAD`, run before you read the diff>
 VERDICT: APPROVE | REQUEST_CHANGES | BLOCK
 FINDINGS:
 - [BLOCKING|MAJOR|MINOR] path:line — problem — concrete fix
 SUMMARY: ...
 ```
+The `HEAD:` line names the commit you reviewed: it goes into the verdict record of your report
+(SPEC-0027 "Verdict records (v2)"), and a report for another commit does not count.
 Only BLOCK for changes that would entrench a wrong architecture or break layering.
 Do not invent issues; APPROVE clean changes.
