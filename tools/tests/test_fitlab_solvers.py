@@ -95,17 +95,25 @@ def test_xirr_fit_scores() -> None:
     assert s["bisect fitted, m=(a+b)/2"] == 225
     assert s["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 227
     oos = _scores("xirr-oos")
-    assert oos["cells"] == 52  # T-1591 added 30 cells (probes/xirr-span-zero-first)
-    assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 28
+    # T-1591 added 30 cells (probes/xirr-span-zero-first), T-2045 29 (probes/xirr-back-dated-stop, whose two
+    # range cells A2 and A31 the literal-array filter leaves out)
+    assert oos["cells"] == 81
+    assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 46
     # T-1583 misses xirr-early-dates A7 (input check) and the root-0.1 cells at 20, 40 and 120 years (T-1591)
-    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 48
-    assert oos["bisect, first-value sign, fitted stop"] == 30
-    # T-2328: XNPV discounted with Excel's `^` puts the root-0.1 cells on Excel's side of the exact root;
-    # only A7 (input check) is left. The span factor is still needed (A8, 124 years), the step test too.
+    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 66
+    assert oos["bisect, first-value sign, fitted stop"] == 48
+    # T-2328: XNPV discounted with Excel's `^` puts the root-0.1 cells on Excel's side of the exact root.
+    # The span factor is still needed (A8, 124 years), the step test too.
     assert s["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 227
-    assert oos["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 51
-    assert oos["bisect, first-value sign, fitted stop, Excel ^"] == 33
-    assert oos["bisect, first-value sign, step test only, Excel ^"] == 48
+    assert oos["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 69
+    assert oos["bisect, first-value sign, fitted stop, Excel ^"] == 51
+    assert oos["bisect, first-value sign, step test only, Excel ^"] == 74
+    # T-2045: a span that counts flows dated before the first fits the back-dated cells but
+    # whole-column-nogaps A4 and its copies (xirr-back-dated-stop A4, A5, A23).
+    for span in ("earliest-to-latest years", "first-to-farthest years"):
+        name = f"bisect, first-value sign, |f| bound scaled by {span}, Excel ^ (T-2045)"
+        assert s[name] == 227
+        assert oos[name] == 76
 
 
 def test_xnpv_with_excels_power_at_an_exact_root() -> None:
