@@ -4,7 +4,7 @@ title: "Python: drop the bitcode and icalc loaders, apply_external_diffs and tes
 milestone: M12
 lane: api
 status: todo
-priority: P1
+priority: P2
 size: S
 tier: sonnet
 depends_on: []
