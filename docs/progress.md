@@ -12,8 +12,6 @@ The eval run of **2026-10-30** at commit `b069a12f` (report.json `run`).
 
 ## Bottom line
 
-_Written for the run of 2026-10-29; not yet updated for this run._
-
 <!-- progress:judgment bottom-line -->
 <!-- as-of: 2026-10-30 b069a12f -->
 Values still match Excel on real workbooks, and Phase 1 moved forward again. It has not exited: the M2, M6, M7 and M9 probe exits are still open.
@@ -335,8 +333,6 @@ Counts of the quality ratchets and knowledge files, with the change since 2026-1
 
 ## Real-world readiness
 
-_Written for the run of 2026-10-29; not yet updated for this run._
-
 <!-- progress:judgment readiness -->
 <!-- as-of: 2026-10-30 b069a12f -->
 Ratings are the steward's judgment, grounded in the numbers they cite. The page measures computed values only, not speed or saving.
@@ -348,8 +344,6 @@ Ratings are the steward's judgment, grounded in the numbers they cite. The page 
 <!-- /progress:judgment -->
 
 ## Risks
-
-_Written for the run of 2026-10-29; not yet updated for this run._
 
 <!-- progress:judgment risks -->
 <!-- as-of: 2026-10-30 b069a12f -->
