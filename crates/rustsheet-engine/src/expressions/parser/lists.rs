@@ -20,7 +20,7 @@ impl Parser {
     pub(super) fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
         let column_separator_token = self.get_argument_separator_token();
         let mut row = vec![self.parse_array_item()?];
-        while self.lexer.peek_token() == column_separator_token {
+        while *self.lexer.peek() == column_separator_token {
             self.lexer.advance_token();
             row.push(self.parse_array_item()?);
         }
@@ -86,8 +86,9 @@ impl Parser {
         let token = binds_name.then(|| self.lexer.peek_token());
         let start = self.lexer.get_position_index();
         let node = self.parse_enclosed_expr();
+        let separator = self.get_argument_separator_token();
         match token {
-            Some(token) if self.lexer.peek_token() == self.get_argument_separator_token() => {
+            Some(token) if *self.lexer.peek() == separator => {
                 let text = self.lexer.source_since(start);
                 self.bind_name(&token, &text, node)
             }
@@ -99,8 +100,7 @@ impl Parser {
         let binds_names = fn_name.eq_ignore_ascii_case("LET");
         let arg_separator_token = &self.get_argument_separator_token();
         let mut args: Vec<Node> = Vec::new();
-        let mut next_token = self.lexer.peek_token();
-        if next_token == TokenType::RightParenthesis {
+        if *self.lexer.peek() == TokenType::RightParenthesis {
             return Ok(args);
         }
         // The cursor is currently in the first argument of `fn_name`.
@@ -116,9 +116,9 @@ impl Parser {
             }
             args.push(t);
         }
-        next_token = self.lexer.peek_token();
+        let mut separator_follows = self.lexer.peek() == arg_separator_token;
         let mut arg_index = 1;
-        while &next_token == arg_separator_token {
+        while separator_follows {
             self.lexer.advance_token();
             arg_index += 1;
             self.set_argument_hint(fn_name, arg_index);
@@ -127,7 +127,6 @@ impl Parser {
             // argument is kept", probes/t2786-whitespace-structured-refs-runs I2:I10, T-2944).
             if self.lexer.peek() == arg_separator_token {
                 args.push(self.missing_argument());
-                next_token = arg_separator_token.clone();
             } else if *self.lexer.peek() == TokenType::RightParenthesis {
                 args.push(self.missing_argument());
                 return Ok(args);
@@ -136,7 +135,7 @@ impl Parser {
                 if let Node::ParseErrorKind { .. } = p {
                     return Err(p);
                 }
-                next_token = self.lexer.peek_token();
+                separator_follows = self.lexer.peek() == arg_separator_token;
                 args.push(p);
             }
         }

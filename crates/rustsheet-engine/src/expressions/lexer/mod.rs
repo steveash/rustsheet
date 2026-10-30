@@ -210,7 +210,11 @@ impl Lexer {
 
     /// Resets the formula
     pub fn set_formula(&mut self, content: &str) {
-        self.chars = content.chars().collect();
+        // The buffer is reused, and sized once from the byte length (at least the char count):
+        // collecting the chars grew a new one several times per loaded formula (T-0499).
+        self.chars.clear();
+        self.chars.reserve(content.len());
+        self.chars.extend(content.chars());
         self.len = self.chars.len();
         self.position = 0;
         self.next_token_position = None;
@@ -399,9 +403,7 @@ impl Lexer {
                         let position = self.position - 1;
                         match self.consume_number(char) {
                             Ok(number) => {
-                                if *self.peek() == TokenType::Colon
-                                    && self.mode == LexerMode::A1
-                                {
+                                if *self.peek() == TokenType::Colon && self.mode == LexerMode::A1 {
                                     // Its a row range  3:5
                                     // FIXME: There are faster ways of parsing this
                                     // Like checking that 'number' is integer and that the next token is integer

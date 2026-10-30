@@ -553,7 +553,7 @@ fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) 
 
 fn format_function(
     name: &str,
-    args: &Vec<Node>,
+    args: &[Node],
     context: Option<&CellReferenceRC>,
     rewrite: &Rewrite,
     export_to_excel: bool,

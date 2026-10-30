@@ -221,7 +221,7 @@ impl Parser {
     /// The run after an operand, kept when a binary operator or `)` follows it (`=1 + 2`,
     /// `=SUM(B1:B2 )`); before a comma or at the end of the formula Excel drops it.
     pub(super) fn run_after_operand(&mut self) -> Run {
-        match self.lexer.peek_token() {
+        match self.lexer.peek() {
             TokenType::Compare(_)
             | TokenType::And
             | TokenType::Addition(_)

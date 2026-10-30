@@ -175,9 +175,9 @@ impl Parser {
     pub(super) fn parse_signs(&mut self) -> (Vec<(bool, Run)>, usize) {
         let mut signs = Vec::new();
         let mut counted = 0;
-        while let TokenType::Addition(op) = self.lexer.peek_token() {
+        while let TokenType::Addition(op) = self.lexer.peek() {
+            let is_minus = *op == token::OpSum::Minus;
             self.lexer.advance_token();
-            let is_minus = op == token::OpSum::Minus;
             let before_number = !self.lexer.whitespace_follows()
                 && matches!(self.lexer.peek(), TokenType::Number(_));
             if !before_number {
