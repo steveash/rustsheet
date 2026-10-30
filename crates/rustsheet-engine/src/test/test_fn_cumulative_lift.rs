@@ -112,8 +112,10 @@ fn an_end_period_past_nper_is_num() {
 
 #[test]
 fn up_to_32_periods_are_the_per_period_sum() {
-    // Type 1's interest is main's sum of IPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for bit
-    // (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26); past it, the closed form.
+    // Type 1's interest is a per-period sum up to `CUMULATIVE_LOOP_PERIODS` (32), of the exact
+    // split rather than IPMT's discounted one, so within an ulp or so of the IPMT sum, not bit for
+    // bit (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26; T-2243); past it, the
+    // closed form.
     // Type 0's short sums are their own forms (T-2192, below). The principal of type 1 is the
     // closed form at any length, close to the PPMT sum (T-1890). The per-period sums are rebuilt
     // here from IPMT and PPMT.
@@ -138,17 +140,16 @@ fn up_to_32_periods_are_the_per_period_sum() {
     }
     model.evaluate();
     let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
-    assert_eq!(number("A1").to_bits(), number("B1").to_bits());
+    assert!((number("A1") / number("B1") - 1.0).abs() < 1E-14);
     // The PPMT sum cancels (each principal is a fiftieth of its payment). The geometric sum on
     // Excel's own `ln(1+rate)` is Excel's value, an ulp or two from the exact
     // -2.33419231896298640 (probes/fin-cumipmt-gate-edges J1; T-1890, T-2521).
     assert_eq!(number("A2"), -2.334_192_318_962_987_4);
     assert!((number("A2") / number("B2") - 1.0).abs() < 1E-12);
-    // 33 periods: past the per-period sums, Excel's value (gate-edges J2), within an ulp of the
-    // IPMT sum.
+    // 33 periods: past the per-period sums, Excel's value (gate-edges J2), which is also the sum
+    // of Excel's discounted IPMT to the bit (T-2243).
     assert_eq!(number("A3"), -131.849_721_045_626_13);
-    assert_ne!(number("A3").to_bits(), number("B3").to_bits());
-    assert!((number("A3") / number("B3") - 1.0).abs() < 1E-14);
+    assert_eq!(number("A3").to_bits(), number("B3").to_bits());
     check(&[
         // CUMPRINC_CUMIPMT.xlsx G3 (one period, the sum) and fin-cumipmt-period-bound A9, A11
         // (1,024 periods, the closed form).
