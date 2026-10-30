@@ -109,6 +109,12 @@ fn parenthesis_runs_nest_as_deep_as_excel_allows() {
         model.evaluate();
         assert_eq!(model._get_text("A1"), "-3");
         assert_eq!(model._get_formula("A1"), formula);
+        // A called group at the end of a run, and inside one (probes/paren-call-*).
+        model._set("B1", "=(((LAMBDA(x,x+1))))(2)");
+        model._set("B2", "=((LAMBDA(x,x*2))(3)+1)");
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "3");
+        assert_eq!(model._get_text("B2"), "7");
     });
 }
 
