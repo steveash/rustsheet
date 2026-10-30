@@ -3,7 +3,7 @@ id: T-0498
 title: "SUMIFS over whole columns of formula cells: find why the T-0449/T-0465 pass cache does not pay on calipers pv23_042 (6.75 s, 1,080 calls)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
