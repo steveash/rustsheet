@@ -587,6 +587,23 @@ Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153
 
+## MATCH, VLOOKUP and HLOOKUP exact-match keys fold case one character to one (T-3133)
+Rule: the exact match of MATCH (type 0), VLOOKUP and HLOOKUP (`range_lookup` FALSE) compares text case-insensitively
+with SEARCH's per-character fold, never changing the text's length (criteria.md "Wildcard escapes, case and trailing
+tilde" lists the same fold for wildcard criteria). Over Data!A1:A35 = İ ı I i ΟΣ οσ ος K(U+212A) k K ẞ ß ǅ ǆ Ǆ
+Å(U+212B) å Å Ω(U+2126) ω Ω ſ s S µ μ Μ Ａ ａ Σ σ ς i+U+0307 ss İx, each value looked up both ways (as the key against
+each one-cell array, and against the whole column): `İ` matches only `İ` (not `i`, `I` or i+U+0307), `ı` only `ı`;
+`ΟΣ = οσ = ος` and `Σ = σ = ς`; the Kelvin sign = `k` = `K`; `ẞ = ß` (not `ss`); `ǅ = ǆ = Ǆ`; the Ångström sign = `å`
+= `Å`; the Ohm sign = `ω` = `Ω`; `Ａ = ａ`; `μ = Μ`; `ſ` and `µ` match only themselves. MATCH, VLOOKUP(..,FALSE),
+HLOOKUP(..,FALSE) and XMATCH(..,2) give the same first position for every key.
+XMATCH's exact mode (0) differs: it compares by the collation (coercion.md "Collation equality in lookups and
+criteria"), where `İ` equals i+U+0307 and `ẞ`/`ß` equal `ss`, but not `I` or `i`.
+Evidence: probes/t3133-lookup-criteria-case-fold Calc!A1:E35, I1:J35 (excel-graph, 2026-10-29, T-3133).
+UNVERIFIED: characters outside the list above are assumed to follow the same fold.
+Status: VERIFIED
+Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
+search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
+
 ## XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles (T-3106)
 Rule: XMATCH and XLOOKUP equate and order numbers as exact doubles, not at 15 digits like the comparison operators, in
 the exact (0), next-smaller (-1) and next-larger (1) match modes and in every search mode (1, -1, 2, -2). LOOKUP does
