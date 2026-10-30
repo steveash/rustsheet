@@ -3,7 +3,7 @@ id: T-3230
 title: "SUMPRODUCT over bounded 2-D blocks with row and column masks (calipers pv26_002: 2,000 calls over I11:AW1450)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
