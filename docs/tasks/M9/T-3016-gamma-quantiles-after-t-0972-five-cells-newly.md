@@ -3,7 +3,7 @@ id: T-3016
 title: "Gamma quantiles after T-0972: five cells newly visibly off and 49 cells 1-3 ulp"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in_progress
 priority: P2
 size: S
 tier: opus
