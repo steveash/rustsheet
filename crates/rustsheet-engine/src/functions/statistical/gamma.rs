@@ -13,9 +13,8 @@ use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::Function;
-use crate::x87_exp::{excel_exp, excel_exp_extended};
+use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
-use crate::x87_register::Register;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// The one shape whose cdf Excel takes from its ERF kernel, on exact equality: `a = 0.5 +- 1 ulp`
@@ -52,7 +51,7 @@ const LOG_FORM_SHAPE_MIN: f64 = 0.5;
 const LOG_FORM_Y_MAX: f64 = 16.0;
 
 /// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density in Excel's log-space forms, with Excel's
-/// own LN, EXP and GAMMA (x87_log10, x87_exp, gamma_x87), or `None` where the caller's forms hold.
+/// own LN, EXP and GAMMA (`x87_log10`, `x87_exp`, `gamma_x87`), or `None` where the caller's forms hold.
 /// - From [`LOG_FORM_SHAPE_MIN`] to [`LOG_FORM_SHAPE_MAX`] and for y above [`LOG_FORM_RATIO`] up to
 ///   [`LOG_FORM_Y_MAX`]: EXP(a LN(y)) / GAMMA(a) / x * EXP(-y). Excel's error there is a times that
 ///   of LN(y), nothing more: at every probes/t2753-gamma-density-switch and -ratio-sweep cell from
@@ -70,7 +69,7 @@ const LOG_FORM_Y_MAX: f64 = 16.0;
 /// `None` at x = 0, which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
 pub(super) fn log_form_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
     let y = x / beta;
-    if !(x > 0.0) {
+    if x.is_nan() || x <= 0.0 {
         return None;
     }
     if (LOG_FORM_SHAPE_MIN..LOG_FORM_SHAPE_MAX).contains(&alpha)
