@@ -41,12 +41,24 @@ the last addend (exponent -1 or 0) predict cut-offs of k ≤ 3 or k ≤ 15 in so
 k ≤ 7 (8 ULP of 1) and keeps k = 8 (1.7763568394002505e-15, negated in the second block). In every block the running
 total is the larger of the two final addends or shares its binary exponent (block 2: 1 against -(1+k·2^-52)), so
 this probe alone does not separate it from the larger addend; the two-addend `-` side above (b = 1, whose larger
-addend 1 would allow k ≤ 7, snaps only to k = 3) rules the larger addend out, and T-3248 probes it inside SUM. SUM over the cells as
+addend 1 would allow k ≤ 7, snaps only to k = 3) rules the larger addend out, and T-3248 rules it out inside SUM
+(below). SUM over the cells as
 arguments, over the row range and over an array argument (`SUM(CHOOSE({1,2,3},..))`), SUBTOTAL(9,range) and
 the `+` chain agree on every cell. AVERAGE snaps the sum before dividing: 0 for k ≤ 7, the kept total over the
 count from k = 8 on (5.921189464667501e-16 for three addends). Status: VERIFIED.
 Implemented in: `SumParts::snapped` (functions/math_and_trigonometry/sum.rs), which SUM, AVERAGE and SUBTOTAL
 share; the engine already matched.
+
+Running total below the last addend's exponent (T-3248, probes/t3248-snap-running-total-below-last, excel-graph
+2026-10-30): inside SUM the bound is 8 ULP of the **running total**, not of the larger of the two final addends.
+Four 16-row blocks make the running total before the last addend 1-k·2^-52 (exponent -1, bound 2^-50) while the
+last addend is ∓1 (exponent 0, bound 2^-49): (0.5, 0.5-k·2^-52, -1), its negation, (0.25, 0.25, 0.5-k·2^-52, -1)
+and (2, -1.5, 0.5-k·2^-52, -1), whose first argument 2 would allow k ≤ 15. Every block snaps exactly k ≤ 3 and
+keeps k = 4 (-8.881784197001252e-16, positive in the negated block), where the larger addend would snap to k = 7.
+SUM of the cells as arguments, of the row range and of an array argument (`SUM(CHOOSE({1,2,3},..))`),
+SUBTOTAL(9,range) and the `+` chain agree on all 384 cells; AVERAGE snaps the sum before dividing (0 for k ≤ 3,
+then the kept total over the count, -2.9605947323337506e-16 at k = 4 with three addends). Status: VERIFIED. The
+engine already matched (`SumParts::snapped`).
 
 Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
 
