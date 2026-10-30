@@ -95,3 +95,19 @@ Visible stage (decision 0114): Excel's own iterate is the target, not the exact 
 t2565 and irr-fallback-roots cells above are within half a unit of the 15th significant digit of Excel's value,
 except P!C95 and C157 as the acceptance criteria allow.
 Any bit-level residue goes to a follow-up with `defer: phase-1b`.
+
+## Progress notes (2026-10-30, opus run, not a handoff)
+Work in flight on this branch: `on_discount_grid` in functions/financial/financial_util.rs rounds the secant's
+converged v to the nearest multiple of 2^-53 below v = 0.5 (no-op above), in the engine, not yet in the fit lab.
+Measured with `rustsheet-eval check --suite probes --suite gen-m9 --suite ironcalc-calc`:
+- `round()` (ties away from 0): fixed probes 184, gen-m9 15; REGRESSIONS gen-m9 9a1fa5366bc50918 A302 and
+  abb7d565af89b849 A9 (`IRR({-1,0,0,0,0,0,0,0,0,1000})`, 1 ulp: our iterate is exactly half a grid step and Excel
+  has the lower v).
+- `round_ties_even()`: the same two regress. `trunc()`: fixed 74, ironcalc IRR.xlsx General!L47 regresses.
+- ties to the smaller v (the branch's current code): fixed probes 183, gen-m9 16; REGRESSION ironcalc-calc
+  IRR.xlsx General!L47 `IRR(A47:F47)` (Excel 1.3333765085060993, ours ...0998, 1 ulp: our iterate is a tie and
+  Excel has the larger v).
+So the tie direction is not one rule: every off-grid iterate in v in [0.25, 0.5) is a tie, and Excel's own iterate
+is on the grid already, which points at candidate B (the secant run on d = 1 - v, where d's spacing is 2^-53).
+Next: try candidate B in the engine with the retry and flat-secant guards, and score it in the fit lab (decision
+0056) against the IRR fit set (189/263); not yet done: the fit-lab scoring, A25/A26/A28 (two-flow cells), docs.

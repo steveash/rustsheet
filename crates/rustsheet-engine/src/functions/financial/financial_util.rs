@@ -171,6 +171,27 @@ fn irr_from_discount(v: f64) -> Option<f64> {
     (x < IRR_FAR_ROOT_BOUND).then_some(x - 1.0)
 }
 
+/// 2^53: Excel's IRR results are integer multiples of 2^-53 in v.
+const DISCOUNT_GRID: f64 = 9_007_199_254_740_992.0;
+
+/// `v` rounded to the nearest multiple of 2^-53, the grid Excel's converged discount factors sit
+/// on, a tie to the smaller v (probes/t2565-irr-guess-sweeps; financial.md "IRR is a secant in
+/// v"). From v = 0.5 up a double's own spacing is 2^-53 or coarser, so `v` is returned as it is
+/// and only roots past r = 1 move (T-3120). Below it `v·2^53` is exact, so the tie is exact too:
+/// `IRR({-1,0,0,0,0,0,0,0,0,1000})`'s iterate is half a step between two grid points and Excel
+/// returns the lower, 1.1544346900317652 (gen-m9 9a1fa5366bc50918 A302, abb7d565af89b849 A9).
+fn on_discount_grid(v: f64) -> f64 {
+    if v >= 0.5 {
+        return v;
+    }
+    let scaled = v * DISCOUNT_GRID;
+    let mut nearest = scaled.round();
+    if nearest - scaled == 0.5 {
+        nearest -= 1.0;
+    }
+    nearest / DISCOUNT_GRID
+}
+
 /// One run of IRR's secant from `guess`, or `None` when it fails (a flat secant, an iterate that
 /// is not a positive discount factor, or no stop in 50 steps).
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
@@ -189,7 +210,7 @@ fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
         }
         let f2 = irr_npv(values, v2)?;
         if (v2 - v1).abs() < 1e-7 && f2.abs() < 1e-7 {
-            return irr_from_discount(v2);
+            return irr_from_discount(on_discount_grid(v2));
         }
         (v0, f0, v1, f1) = (v1, f1, v2, f2);
     }
