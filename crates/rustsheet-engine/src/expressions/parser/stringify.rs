@@ -753,12 +753,12 @@ fn stringify(
         }
         OpIntersectKind { left, right } => {
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
-            let operator = if right.run_before_has_line_feed() {
-                ""
-            } else {
-                " "
-            };
-            format!("{}{operator}{}", operand(left, true), operand(right, false))
+            format!(
+                "{}{}{}",
+                operand(left, true),
+                right.intersection_operator(),
+                operand(right, false)
+            )
         }
         OpUnionKind { left, right, .. } => union_text(&sub(left), &sub(right), locale),
         OpConcatenateKind { .. }
