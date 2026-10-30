@@ -2160,8 +2160,9 @@ Rule: EFFECT is `(1 + r/n)^n - 1` and NOMINAL is `((1 + e)^(1/n) - 1) * n`, with
 Excel's `^` operator, not libm `pow`. EFFECT's integer n goes through right-to-left square-and-multiply (numbers.md
 "Integer exponents: right-to-left square-and-multiply") below 2^32 - 1, and through `exp(n·ln x)` from there on
 (numbers.md "Integer exponents from 2^32 - 1: exp(y·ln x)", T-2392): `EFFECT(0.05,3E9)` is 0.05127110013105862 and
-`EFFECT(0.05,1E10)` 0.05127110072502061, each equal to its `(1+0.05/n)^n-1` (probes/fin-effect-huge-npery). For NOMINAL, n = 1 is an exact integer power, n = 2 is the
-square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-integer exponents: exp(y·ln x)").
+`EFFECT(0.05,1E10)` 0.05127110072502061, each equal to its `(1+0.05/n)^n-1` (probes/fin-effect-huge-npery).
+For NOMINAL, n = 1 is an exact integer power, n = 2 is the square root, and every other n is `exp(ln(1+e) * (1/n))`
+(numbers.md "Non-integer exponents: exp(y·ln x)").
 `EFFECT(0.5,10)` is 0.6288946267774416 (libm pow gives ...442), `NOMINAL(0.5,4.5)` is 0.4267276788012868 (...859), and
 `EFFECT(0.05,4)` is 0.050945336914062445 (...222). Columns E and F of NOMINAL_EFFECT.xlsx, which convert the other
 function's result back, match once C and D do.

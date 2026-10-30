@@ -33,10 +33,10 @@ depends_on: []
 - NOMINAL unless the same cause.
 
 ## Outcome
-probes/fin-effect-huge-npery (102 cells, excel-graph) puts `(1+r/n)^n`, POWER and EFFECT side by side for n from 1E6 to
-2^53. EFFECT is always Excel's own `^`; the cause is the power: Excel raises an integer exponent of 2^32 - 1 or more as
+probes/fin-effect-huge-npery (124 cells, excel-graph) puts `(1+r/n)^n`, POWER and EFFECT side by side for n from 1E6 to
+2^53, with the boundary (4294967294/4294967295) and negative exponents. EFFECT is always Excel's own `^`; the cause is the power: Excel raises an integer exponent of 2^32 - 1 or more as
 `exp(n·ln x)`, not by square-and-multiply (3E9 and 2^31 are square-and-multiply, 4294967295 on are not). `integer_power`
 in arithmetic/power.rs now leaves |n| >= 2^32 - 1 to the general path, which also cuts its loop to 33 iterations. NOMINAL
-is unaffected (its exponent 1/n is not an integer). 102/102 pass; every gated suite has 0 regressions, and probes-numeric
+is unaffected (its exponent 1/n is not an integer). 124/124 pass; every gated suite has 0 regressions, and probes-numeric
 (ungated, incl. the 442 T-1311 large-exponent cells) scores exactly as before. Recorded in numbers.md "Integer exponents
 from 2^32 - 1: exp(y·ln x)" and financial.md "EFFECT and NOMINAL raise to their power with `^`".
