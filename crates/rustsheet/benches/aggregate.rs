@@ -12,9 +12,11 @@
 //! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows. Last, the three
 //! consumers the SPEC-0020 amendment tails next (T-0488), each over 2,000 rows: UNIQUE under
 //! TEXTJOIN, LOOKUP's last-non-empty idiom, and SMALL over a 70,000-row range with `ROW()`.
-//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank` and
-//! `-- sumproduct` run only the T-0449, T-0469, T-0465 or T-0471 case, `-- tailed_consumers`
-//! only the T-0488 cases)
+//! Then calipers `pv23_042`'s shape (T-0498): 1,000 four-criteria SUMIFS over formula columns of
+//! 20,000 rows that the calls themselves evaluate.
+//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank`,
+//! `-- sumproduct` and `-- chained` run only the T-0449, T-0469, T-0465, T-0471 or T-0498 case,
+//! `-- tailed_consumers` only the T-0488 cases)
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
 //! and the spread.
@@ -208,6 +210,57 @@ fn small_row_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// Rows of the formula columns of the T-0498 case.
+const CHAINED_ROWS: u32 = 20_000;
+/// Rows and columns of its SUMIFS calls (1,000).
+const CHAINED_CALL_ROWS: u32 = 100;
+const MONTHS: [&str; 10] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+];
+
+/// Calipers `pv23_042`'s shape: on Data, a customer in A (one of 50, a constant) and a number in X,
+/// and formulas of X: a person in B (all but 1% the same), a year in C (one of 10), a month in D
+/// (one of 12) and an amount in E. On Sheet1, which the pass reaches first, 100 rows x 10 columns
+/// of `SUMIFS(E,A,"c1",B,"p1",C,<the row's year>,D,<the column's month>)` over whole columns:
+/// the calls evaluate B, C, D and E where the criteria before them match, and nothing else does.
+fn chained_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Data")?;
+        for r in 1..=CHAINED_ROWS {
+            tx.set(
+                format!("Data!A{r}").as_str(),
+                format!("c{}", r % 50).as_str(),
+            )?;
+            tx.set(format!("Data!X{r}").as_str(), f64::from(r))?;
+            let formulas = [
+                ("B", format!("=IF(MOD(X{r},100)=0,\"p2\",\"p1\")")),
+                ("C", format!("=2015+MOD(X{r}*7,10)")),
+                ("D", format!("=TEXT(DATE(2024,MOD(X{r},12)+1,1),\"mmm\")")),
+                ("E", format!("=ROUND(X{r}*1.5,5)")),
+            ];
+            for (column, formula) in formulas {
+                tx.set(
+                    format!("Data!{column}{r}").as_str(),
+                    Input::Formula(formula),
+                )?;
+            }
+        }
+        for r in 1..=CHAINED_CALL_ROWS {
+            let year = 2015 + r % 10;
+            for (column, month) in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+                .iter()
+                .zip(MONTHS)
+            {
+                let formula = format!(
+                    "=SUMIFS(Data!$E:$E,Data!$A:$A,\"c1\",Data!$B:$B,\"p1\",Data!$C:$C,{year},Data!$D:$D,\"{month}\")"
+                );
+                tx.set(format!("{column}{r}").as_str(), Input::Formula(formula))?;
+            }
+        }
+        Ok(())
+    })
+}
+
 /// A bench workbook's builder.
 type Build = fn() -> Result<Workbook, Box<dyn Error>>;
 
@@ -288,6 +341,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         "SUMPRODUCT((F:F=A1)*G:G): {WHOLE_COLUMN_CALLS} calls over {WHOLE_COLUMN_ROWS} rows, runs={RUNS} {t}"
     )?;
     if std::env::args().any(|arg| arg == "sumproduct") {
+        return Ok(());
+    }
+    let mut wb = chained_workbook()?;
+    let t = common::timings(RUNS, || wb.recalculate());
+    writeln!(
+        std::io::stdout(),
+        "chained SUMIFS over formula columns: 1,000 calls over {CHAINED_ROWS} rows, runs={RUNS} {t}"
+    )?;
+    if std::env::args().any(|arg| arg == "chained") {
         return Ok(());
     }
     let mut wb = rank_workbook()?;
