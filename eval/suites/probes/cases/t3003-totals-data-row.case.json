@@ -1,12 +1,17 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-3003: =A2*2 typed into D2 beside a data row of T (A1:C5, totals row 5).",
+ "description": "T-3003: =A2*2 typed into D2 beside a data row of T (A1:C5, totals row 5). D1 is the header text Excel writes (not a formula, so the sidecar does not record it): `Column1`, as the oracle's J1 (`=D1&\"\"`), K1 (`TYPE(D1)` 2) and H3 (`ISFORMULA(D1)` FALSE) read it (T-3218).",
  "tags": [
   "M2",
   "tables",
   "probe"
  ],
- "expected": {},
+ "expected": {
+  "S!D1": {
+   "t": "s",
+   "v": "Column1"
+  }
+ },
  "sheets": [
   {
    "name": "S",

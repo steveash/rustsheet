@@ -3,7 +3,7 @@ id: T-3236
 title: "SPEC: fold a unary sign run into one parse-tree node so its depth cost is constant (for T-3193)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -46,12 +46,27 @@ a new node, with alternatives considered. It should also split T-3193's implemen
 steps if one PR would be too big.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-XXXX-*.md (next free number, docs/specs/TEMPLATE.md) answers each question above,
+- [ ] (n/a, see Outcome: no spec needed) docs/specs/SPEC-XXXX-*.md (next free number, docs/specs/TEMPLATE.md) answers each question above,
       lists every match site to change, and names the evidence (probes/t3172-*, syntax.md).
-- [ ] T-3193's Context links the spec; any implementation steps beyond one M PR are filed with
+- [ ] (n/a, see Outcome: T-3193 is done) T-3193's Context links the spec; any implementation steps beyond one M PR are filed with
       `make new-task` and T-3193 depends on what it needs.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the node (T-3193).
 - Bare parentheses (T-3191) and function-call nesting (T-3097, T-3143).
+
+## Outcome
+Closed with no spec, because the task it was written for no longer needs one. T-3193 merged on
+2026-10-30 (#2426, decision 0183) without a new node: a unary sign stopped costing a level of
+`MAX_FORMULA_DEPTH`, `MAX_SIGNS` (1,023, depth.rs) bounds the open signs instead, the evaluator
+already walked a run in a loop (`apply_unary_chain`) and the printer now does too
+(`stringify::wrapped_text`). The eighteen probes/t3172 sign-run cases load and match Excel, so
+none of the 63 match sites had to change and there is no implementation left to split.
+
+The one question this spec would still have answered, whether to fold a run into one node to
+widen the stack margin of the derived `Clone`/`Drop`/`PartialEq`/`Debug` and the rewrite walks
+(about 2x headroom on a 1 MiB release stack), is T-3253's, which already weighs a folded node
+against iterative `Clone`/`Drop` and asks for a measurement first. Which signs count toward
+Excel's cap is T-3266's. The first two acceptance criteria no longer apply: no spec number was
+taken and T-3193 needs no link; this change is docs only.
