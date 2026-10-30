@@ -975,11 +975,17 @@ a sign (`"-3 1/2"`, `"- 3 1/2"`, `"-  3 1/2"` -3.5, `"+3 1/2"` 3.5), a `$` (3.5)
 numerator with a leading zero too (`"3 01/02"` 3.5), many digits (`"123456789 1/2"`), a denominator of 200 (3.005); but
 `"3 1/0"`, `"3  1/2"` (two spaces), `"3 1 /2"` and `"3 1/ 2"` are `#VALUE!`. A dash date reads a one-digit year as 200x
 and `"1/1/1"` is the same 36892 (`"1-1-0"` 36526, `"1-1-99"` 36161, `"1-1-30"` 1930); `"13-1-1"` and `"0-1-1"` are `#VALUE!`.
-UNVERIFIED: typed cell input and criteria also read `- 5` and a one-digit-year date now (shared grammar), and the mixed-fraction
-combinations `€3 1/2`, `-$3 1/2`, `-3 1/2%`, `$3 1/2%`, `+ 3 1/2` are extrapolated (T-2646 follow-up probe).
-Ours: all implemented (`mixed_fraction`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Typed input, criteria and coercion (probes/typed-input-sign-space-mixed-fraction, excel-graph, 2026-10-30, T-3178): typed
+`- 5`, `+ 5`, `1-1-1` and `1/1/1` are numbers (-5, 5, 36892, 36892), and so are the typed mixed fractions `-$3 1/2` (-3.5),
+`-3 1/2%` (-0.034999999999999996) and `+ 3 1/2` (3.5); typed `€3 1/2` (no euro in en-US) and `$3 1/2%` stay text; unsigned `3 1/2`, `$3 1/2` and `3 1/2%` are numbers (B10-B12). Number
+coercion reads `"€3 1/2"` 3.5, `"-$3 1/2"`, `"-3 1/2%"` and `"+ 3 1/2"` too, but `"$3 1/2%"` is `#VALUE!`, and so is `VALUE("$3 1/2%")` (J1): a currency
+symbol and a `%` do not combine in a mixed fraction. A criterion operand reads `- 5`, `+ 5`, both dates, `-$3 1/2`,
+`-3 1/2%` and `+ 3 1/2` but not `€3 1/2` or `$3 1/2%` (`COUNTIF(3.5,"€3 1/2")` is 0), while a text cell `€3 1/2` does read
+as 3.5 (`COUNTIF(A5,A5+0)` is 1). UNVERIFIED: the number format a typed mixed fraction gets (`CELL("format")` is `#VALUE!` on
+excel-graph; ours General, T-3237).
+Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
 Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
-Tasks: T-2646, T-3151
+Tasks: T-2646, T-3151, T-3178
 
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:
