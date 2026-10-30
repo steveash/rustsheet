@@ -377,3 +377,95 @@ fn indexed_number_criteria_match_the_walk() {
         );
     }
 }
+
+/// Each formula's text with the pass caches on and off, and how many SUMIFS-shaped calls the
+/// cached run read partly as the walk does (T-3227).
+fn cached_and_walked(
+    fill: &dyn Fn(&mut Model),
+    formulas: &[&str],
+) -> (Vec<(String, String)>, usize) {
+    let run = |no_pass_caches: bool| {
+        let mut model = new_empty_model();
+        model.evaluation.no_pass_caches = no_pass_caches;
+        fill(&mut model);
+        for (index, formula) in formulas.iter().enumerate() {
+            model._set(&format!("E{}", index + 1), formula);
+        }
+        model.evaluate();
+        let texts: Vec<String> = (1..=formulas.len())
+            .map(|row| model._get_text(&format!("E{row}")))
+            .collect();
+        (texts, model.evaluation.ifs_cache.mixed)
+    };
+    let (cached, mixed) = run(false);
+    let (walked, _) = run(true);
+    (cached.into_iter().zip(walked).collect(), mixed)
+}
+
+/// Sheet2 holds 300 rows: constants in A and B (cached at once) and formulas in C and D, which
+/// the walk only reaches where the criteria before them match. Sheet1's calls run before Sheet2's
+/// formulas in the pass, so C and D are not cacheable when they do.
+fn formula_columns(model: &mut Model) {
+    model.new_sheet();
+    for row in 1..=300 {
+        model._set(&format!("Sheet2!A{row}"), &format!("k{}", row % 7));
+        model._set(&format!("Sheet2!B{row}"), &(row % 5).to_string());
+        model._set(
+            &format!("Sheet2!C{row}"),
+            &format!("=IF(MOD(B{row},2)=0,\"x\",IF(B{row}>2,\"y\",\"z\"))"),
+        );
+        let d = match row {
+            37 => "=1/0".to_string(),
+            150 => "=NA()".to_string(),
+            _ => format!("=B{row}*{row}+0.1"),
+        };
+        model._set(&format!("Sheet2!D{row}"), &d);
+    }
+}
+
+/// Criteria and sum ranges of formulas the walk never fully evaluates: the cached leading criteria
+/// filter the rows, the rest are read at the matching rows as the walk reads them, so values and
+/// errors are the walk's (T-3227).
+#[test]
+fn uncached_formula_ranges_are_read_at_the_matching_rows() {
+    let formulas = [
+        // The sum range is uncached, a matching row holds an error (row 37: k2).
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k2\")",
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k3\")",
+        // A formula criteria range after the cached one, then a cached one.
+        "=SUMIFS(Sheet2!B1:B300,Sheet2!A1:A300,\"k4\",Sheet2!C1:C300,\"y\",Sheet2!B1:B300,\">3\")",
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k5\",Sheet2!C1:C300,\"z\")",
+        "=AVERAGEIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k1\",Sheet2!C1:C300,\"<>x\")",
+        "=MINIFS(Sheet2!D1:D300,Sheet2!B1:B300,\">=2\",Sheet2!C1:C300,\"y\")",
+        "=MAXIFS(Sheet2!D1:D300,Sheet2!B1:B300,\"<2\",Sheet2!C1:C300,\"z\")",
+        "=SUMIF(Sheet2!A1:A300,\"k6\",Sheet2!D1:D300)",
+        // A first criteria range of formulas: the walk as before.
+        "=SUMIFS(Sheet2!B1:B300,Sheet2!C1:C300,\"y\")",
+    ];
+    let (results, mixed) = cached_and_walked(&formula_columns, &formulas);
+    for ((cached, walked), formula) in results.iter().zip(formulas) {
+        assert_eq!(cached, walked, "{formula}");
+    }
+    assert!(mixed >= 6, "the mixed path ran {mixed} times");
+}
+
+/// A cycle through an uncached sum range: a call reaches the cell that reads it back only at a
+/// row every criterion matches, as the walk does, so the cycle is reported alike. Row 21 is k0
+/// with C "z" (B21 is 1): E1's call reaches D21, E2's (C "x") never does.
+#[test]
+fn a_cycle_through_an_uncached_sum_range() {
+    let fill = |model: &mut Model| {
+        formula_columns(model);
+        model._set("Sheet2!D21", "=Sheet1!E1+Sheet1!E2");
+    };
+    let formulas = [
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k0\",Sheet2!C1:C300,\"z\")",
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k0\",Sheet2!C1:C300,\"x\")",
+        "=SUM(E1:E2)",
+    ];
+    let (results, mixed) = cached_and_walked(&fill, &formulas);
+    for ((cached, walked), formula) in results.iter().zip(formulas) {
+        assert_eq!(cached, walked, "{formula}");
+    }
+    assert!(mixed >= 2, "the mixed path ran {mixed} times");
+}

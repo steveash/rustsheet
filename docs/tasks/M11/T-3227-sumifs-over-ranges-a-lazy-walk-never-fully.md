@@ -3,7 +3,7 @@ id: T-3227
 title: "SUMIFS over ranges a lazy walk never fully evaluates: filter by the cached leading criteria, read the rest at the matching rows (calipers pv23_042, pv26_002)"
 milestone: M11
 lane: perf
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -42,15 +42,51 @@ Measured on 2026-10-30, release, with temporary instrumentation in `ifs_range_va
   by cached values, which the module docs already allow.
 
 ## Acceptance criteria
-- [ ] Unit tests (test_ifs_cache.rs) compare the mixed path with the walk:
+- [x] Unit tests (test_ifs_cache.rs) compare the mixed path with the walk:
       - formula criteria ranges and formula sum ranges the walk never fully evaluates;
       - errors in sum cells at matching and non-matching rows;
       - a cycle through an uncached sum range;
       - SUMIFS, AVERAGEIFS, MINIFS and MAXIFS.
-- [ ] calipers `pv23_042` and `pv26_002` release calculation times before and after, in the Outcome.
+- [x] calipers `pv23_042` and `pv26_002` release calculation times before and after, in the Outcome.
       If `pv26_002` and `pv26_2_002` now calculate within the 60 s case timeout, their `exclude`
       entries go and the calipers baseline is updated.
-- [ ] `make eval` shows no new known failure; `make check` green; reviewers approve.
+- [x] `make eval` shows no new known failure; `make check` green; reviewers approve.
 
 ## Out of scope
 - COUNTIFS and COUNTIF (`count_ifs_cached`): no measured case waits there.
+
+## Outcome
+- **New path.** `ifs_leading_matches` (ifs_cache.rs) returns:
+  - the match set of the criteria ranges cached before the first uncached one;
+  - the cached values, or `None`, of each range from that one on.
+
+  `ifs_all_matches` is now the case where every range is cached, so COUNTIFS is unchanged.
+- **How `run_ifs` (if_ifs.rs) uses it.** It visits the leading matches in row order:
+  - it tests the later criteria in order, a cached one by its value and an uncached one by reading
+    its cell, stopping at the first that fails;
+  - it then reads the sum cell from the cache, or as the walk does.
+
+  So every read that can evaluate anything is one the walk makes, in its order. Only inert reads
+  are served from the cache.
+- **Timings,** release, `evaluate()` after load:
+
+  | file | before | after |
+  |---|---|---|
+  | calipers `pv23_042` | 17.0 s | 0.50 s |
+  | calipers `pv26_002` | 173 s | 71 s |
+  | calipers `pv26_2_002` | — | 69 s |
+
+  `pv26_002` and `pv26_2_002` also take 16–17 s to load, so both are still past the 60 s case
+  timeout and their `exclude` entries stay. Their remaining time is SUMPRODUCT over bounded
+  2-D blocks: filed T-3230.
+- **Tests** (test_ifs_cache.rs) compare each formula with the pass caches off (`no_pass_caches`):
+  - uncached formula sum ranges with errors at matching rows;
+  - a formula criteria range after a cached one, followed by a cached one;
+  - AVERAGEIFS, MINIFS, MAXIFS and SUMIF;
+  - a first criteria range of formulas, which still walks;
+  - a cycle through an uncached sum range at a row that only one of two calls reaches.
+
+  A test-only counter checks that the mixed path ran.
+- **Mutations:** reading the sum cell before the later criteria are tested fails the cycle test,
+  and ignoring an error in an uncached sum cell fails the mixed-path test.
+
