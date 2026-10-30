@@ -61,7 +61,7 @@ Profile first, then fix what the profile shows. Candidates, none measured:
 ## Out of scope
 - Defined-name parsing on load (T-3195); calculation time; the harness's own snapshot and volatile scan.
 
-## Progress (2026-10-30, partial; not yet reviewed)
+## Progress (2026-10-30, partial; not yet reviewed; resumed 21:17 UTC after 2 h idle, step 2)
 Pushed on this branch, `make check` not yet run; engine and xlsx tests pass (debug; in `--release`,
 `test_to_from_bytes::errors` fails the same way without this change).
 - `crates/rustsheet/benches/import.rs` (`cargo bench -p rustsheet --bench import`): loads 20,000 formulas of the
