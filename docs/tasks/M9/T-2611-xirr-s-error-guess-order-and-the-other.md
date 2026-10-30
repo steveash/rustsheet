@@ -3,7 +3,7 @@ id: T-2611
 title: "XIRR's error-guess order and the other financial functions' domain-before-text orders under the gen-m9 cells (86 cells left by T-2428)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -178,3 +178,15 @@ A305 and bc04c1f478c9896c A220. 35 owned lines remain. Next: run `make check` an
 continue with the guess-error and `#NUM!` groups above.
 
 Resumed 2026-10-30 (opus run, work-loop resume of an idle branch).
+
+## Outcome (2026-10-30)
+XIRR now follows Excel's order (financial.md "XIRR and XNPV under the gen-m9 statistical cells", T-2611 sentences): an
+error values argument; then a text, boolean or error guess (that error, `#VALUE!` for text or a boolean) before an error
+dates argument, the size checks and the values' cells; then an error dates argument before the values' cells. In the size
+checks one empty or numeric-text cell beside a range of another count is the count's `#NUM!` (one FALSE cell keeps
+`#VALUE!`). Unit tests in test_fn_financial.rs (`fn_xirr_error_arguments_before_the_value_cells`,
+`fn_xirr_guess_error_before_the_dates_and_the_sizes`, `fn_xirr_one_empty_or_numeric_text_cell_is_the_count_error`).
+Eval: gen-m9 known failures 42 fewer (20 from the error-argument order, 15 from the guess order, 7 from the single-cell
+size checks), 0 regressions in any suite. Of the 86 owned lines, 68 are gone; the 18 left are traced in T-3312 (one
+XIRR numeric-text-in-range cell to probe, one XIRR whose inner WEIBULL.DIST differs, two XNPV element-order cells, eight
+nested cells decided by the inner call and four value cells), which owns them.
