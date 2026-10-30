@@ -39,3 +39,6 @@ change is bigger than M.
 
 ## Out of scope
 - Bare parentheses (T-3191); function-call nesting (T-3097, T-3143).
+
+## Notes
+- 2026-10-30: resumed by an opus run (the claim had been idle since 08:32 with no further commit).
