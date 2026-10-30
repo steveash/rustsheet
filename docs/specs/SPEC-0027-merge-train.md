@@ -682,7 +682,7 @@ routine session, **before** any slice depends on them, and records the answer he
   path for sessions; `gh_client` writes serve CI (`GITHUB_TOKEN`) and an owner-approved session.
 
 If writes fail, T-2995 adds a constrained **step mode** (T-2986's minimal fallback uses the same
-schema):
+schema; the "As built" note below supersedes the enum and the re-run of these bullets):
 - the script prints the next write as one JSON action. The action type comes from a closed enum
   (`merge`, `label`, `unlabel`, `comment`), and the script fills every field: PR numbers validated
   as integers that the script itself selected, label names from a fixed list (`ready-to-merge`,
