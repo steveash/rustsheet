@@ -404,11 +404,12 @@ fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)>
 /// XIRR as Excel computes it: not Newton, but a bisection of [`xirr_bracket`]. `a` starts at the
 /// upper end; each step takes m = a + (b - a)/2 and replaces the upper end when
 /// XNPV(m)·values[0] >= 0, else the lower one (an exact 0 does not stop the search). It returns m
-/// once the half-width is below 5e-9 + 1e-8·|m| and |XNPV(m)| is below
-/// 2e-8·max|value|·max(1, years from the first date to the latest), with no XNPV bound when the
-/// first value is 0. This matches all 227 numeric cells of the fit set (probes/solver-iteration-traces
-/// sheet X, probes-numeric/m9-fin-irr-rate) and 21 of 22 out of sample (fit lab `xirr`,
-/// `xirr-oos`; T-1525, T-1583). The span scaling rests on one long-span cell (T-1591 probes it).
+/// once the half-width is below 5e-9 + 1e-8·|m| and, on a negative midpoint only, |XNPV(m)| is
+/// below 2e-8·max|value| (no XNPV bound when the first value is 0). Every positive root in the
+/// oracle cells stops at the first step-test pass and every negative one fits that bound (T-3268),
+/// so the fitted rule matches all 227 cells of the fit set (probes/solver-iteration-traces sheet X,
+/// probes-numeric/m9-fin-irr-rate) and 80 of 81 out of sample, the miss being the input check of
+/// xirr-early-dates A7 (fit lab `xirr`, `xirr-oos`; T-1525, T-1583, T-3268).
 /// Excel's bisection cap is unprobed: 200 steps is enough on every oracle cell.
 pub(crate) fn compute_xirr(
     values: &[f64],
@@ -432,16 +433,13 @@ pub(crate) fn compute_xirr(
     };
     let first_value = values[0];
     let largest = values.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
-    let d0 = dates[0];
-    let latest = dates.iter().fold(d0, |m, &d| m.max(d));
-    let span_years = ((latest - d0) / 365.0).max(1.0);
     // `a` (here `upper`) is the end the midpoint is measured from
     for _ in 0..BISECTION_CAP {
         let m = upper + (lower - upper) / 2.0;
         let fm = xirr_xnpv(m, values, dates).ok_or_else(no_result)?;
         let half_width = (lower - upper).abs() / 2.0;
         if half_width < 5e-9 + 1e-8 * m.abs()
-            && (first_value == 0.0 || fm.abs() < 2e-8 * largest * span_years)
+            && (m >= 0.0 || first_value == 0.0 || fm.abs() < 2e-8 * largest)
         {
             return Ok(m);
         }

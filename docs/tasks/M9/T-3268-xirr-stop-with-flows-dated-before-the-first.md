@@ -3,7 +3,7 @@ id: T-3268
 title: "XIRR stop with flows dated before the first: what sets the A4 family apart (attempt 2 after T-2045)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -32,10 +32,21 @@ counts (decision 0056).
 - Engine: `compute_xirr` in crates/rustsheet-engine/src/functions/financial/financial_util.rs.
 
 ## Acceptance criteria
-- [ ] The 14 cells above leave eval/baseline (probes.txt) with no new line, or the task records each candidate
+- [x] The 14 cells above leave eval/baseline (probes.txt) with no new line, or the task records each candidate
       with its lab counts (decision 0056).
-- [ ] Any new candidate is a named candidate in kernels/xirr.py.
-- [ ] `make check` green; reviewers approve.
+- [x] Any new candidate is a named candidate in kernels/xirr.py.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Numeric text in XIRR's ranges (T-3267).
+
+## Outcome
+Attempt 2 fixed it, with no new probe. Splitting the 267 numeric cells of `xirr` and `xirr-oos` that have a nonzero first value by the root's sign separates them cleanly:
+- On all 184 positive roots, Excel stops at the first step-test pass. That covers E7, F3, the 4-flow back-dated cells, A8's 124 years and T-1591's long spans.
+- On all 83 negative roots (the A4 family, A21-A28 and the fit set's downward chain), the unscaled bound |XNPV(m)| < 2e-8·max|value| fits (feasible (1.93e-8, 2.05e-8]).
+
+`compute_xirr` now applies the XNPV bound only when m < 0, and drops T-1583's span factor.
+- Lab candidate "bisect, first-value sign, |f| bound on a negative root only, Excel ^ (T-3268)": 227/227 on `xirr` and 80/81 on `xirr-oos`. The miss is xirr-early-dates A7's input check. Before this change, T-2328's rule scored 69/81.
+- Eval delta: probes 2071 → 2057 known failures (the 14 cells: whole-column-empty-walkers E7 and F3, xirr-back-dated-stop A1-A3, A6-A12, A17 and A18). 0 regressions.
+- Semantics: financial.md "XIRR is a bracketing bisection", T-3268 bullet.
+- Open, not separated by any cell: whether the switch is the midpoint's sign or the bracket's side, and whether a negative root spanning several years scales the bound.

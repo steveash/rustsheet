@@ -88,6 +88,18 @@ fn xirr_bisects_the_walked_bracket() {
 }
 
 #[test]
+fn xirr_bounds_xnpv_on_a_negative_root_only() {
+    // probes/xirr-back-dated-stop A1 (positive root: the first step-test pass, at
+    // |XNPV| 2.55e-7·max|value|) and A4 (negative root: one step past it); T-3268
+    let got = results(&[
+        "=XIRR({-1000,1100,-1000,45000},{45000,45365,1100,45365})",
+        "=XIRR({-1000,1100,-1000},{45000,45365,1100})",
+    ]);
+    let expected = [0.031_899_645_924_568_16_f64, -0.017_501_763_999_462_12];
+    assert_eq!(got, expected.map(f64::to_bits));
+}
+
+#[test]
 fn xirr_with_a_zero_first_value_needs_no_later_date() {
     // probes/xirr-span-zero-first A28 (first date after the others); T-2329
     let got = results(&["=XIRR({0,-1000,1100},{46000,45000,45365})"]);
