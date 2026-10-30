@@ -176,3 +176,5 @@ error dates argument, before it reads the values' cells (financial.md, T-2611 se
 A first try that put the dates error before an error values argument regressed 79d87fc527927626 A228, 81bcdc0bec0c8e6b
 A305 and bc04c1f478c9896c A220. 35 owned lines remain. Next: run `make check` and the review panel on this commit, then
 continue with the guess-error and `#NUM!` groups above.
+
+Resumed 2026-10-30 (opus run, work-loop resume of an idle branch).
