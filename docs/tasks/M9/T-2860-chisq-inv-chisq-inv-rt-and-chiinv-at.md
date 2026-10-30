@@ -32,9 +32,8 @@ A265 `CHISQ.INV.RT(0.001,2)`: Excel 13.815510557964274, ours 13.815510557964235;
 `GAMMA.INV(1E-300,1,1)`: Excel 1E-300, ours 9.999999999999999E-301. The forms are the accurate ones (Excel is close to
 correctly rounded and the search is not), hence `accuracy`; 4 cells are visibly off, the rest 1 to 40 ulp.
 
-It depends on T-0972 because T-0972's branch (agent/functions-stat/T-0972-gamma-inv) rewrites `gamma_quantile`
-(functions/statistical/incomplete_gamma.rs) to always refine to the crossing; add the closed-form branch on top of
-it, before that search, in `chisq_inv_of` (functions/statistical/chisq.rs) and the GAMMA.INV caller. Argument
+T-0972 (done) reworked `gamma_quantile` (functions/statistical/incomplete_gamma/mod.rs) on main; add the
+closed-form branch on top of it, before that search, in `chisq_inv_of` (functions/statistical/chisq.rs) and the GAMMA.INV caller. Argument
 checks and errors stay as they are (p = 0, p = 1, df out of range).
 
 Cells (2026-10-27; 12 lines in eval/baseline/gen-m9.txt, 22 in the ungated probes-numeric suite):
@@ -68,7 +67,8 @@ Cells (2026-10-27; 12 lines in eval/baseline/gen-m9.txt, 22 in the ungated probe
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Other df and alpha (T-0972, T-2561, T-2695); CHISQ.INV.RT at df 1 (statistics.md T-1634 entry).
+- Other df and alpha (T-0972, T-2561, T-2695). gen-m9 4ab2ba98d26c8a5e A315, 8d3588d8df0812df A130 and
+  abc2939ebd1e2365 A337 are also in deferred T-2695's list: they are claimed here, and this task's PR drops them there; CHISQ.INV.RT at df 1 (statistics.md T-1634 entry).
 
 ## Visible-parity stage
 Decisions 0083 and 0114, stage `accuracy`: done when every cell this task owns is within half a unit of the 15th

@@ -77,6 +77,9 @@ Owned cells (62 known-failure lines, 61 visibly off; `make eval-show CASE=<case>
 - probes-numeric/m9-t-inv-2t.case.json (20): Calc!A103, A104, A116, A117, A12, A129, A13, A130, A25, A26, A38, A39, A51, A52, A64, A65, A77, A78, A90, A91
 
 
+Gap triage 2026-10-27: T-2859 owns the general region of the same kernel (the search tolerance, |t| not small) and
+leaves the centre and the cells listed here to this task.
+
 ## Acceptance criteria
 - [ ] Every owned cell above is within half a unit of the 15th significant digit of Excel's value (an expected
       value is never matched by 0); the ones that also become bit-exact leave eval/baseline/gen-m9.txt,

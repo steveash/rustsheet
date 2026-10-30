@@ -3224,9 +3224,10 @@ parse: `T.INV.2T(1.9999999999999998,1)` is -63712901546918.43, the value at p = 
 Evidence: gap triage 2026-10-27 evaluated these forms with the engine's TAN on a scratch case against all 112 failing
 df = 1 cells in eval/ (excel-graph; T_DIST.xlsx and CONFIDENCE.xlsx desktop cache), and all 112 match bit for bit.
 Among them `ironcalc-calc/STATISTICAL/T_DIST.xlsx` `T.DIST.2T T.INV.2T`!D2 `T.INV.2T(T.DIST.2T(60,1),1)` = 60 exactly
-and D15/D37 (p = 0.5000000000000001) = 0.9999999999999996; probes-numeric/t1531-t-tiny-p A1-A44 and A121-A129,
+and D15/D37 (p = 0.5000000000000001) = 0.9999999999999996; probes-numeric/t1531-t-tiny-p (its df = 1 cells, listed in T-2858; A36, A39, A42 are df 2),
 m9-t-inv-2t A1-A13, m9-t-inv A1-A13; gen-m9 334f3dc9ca937f10 A23 `TINV(1E-300,1)`, 5389dd4d5b5739d2 A299
-`TINV(1-1E-10,1)`, a4090567758520df A307 `TINV(1+2^-52,1)`. The full cell list is in T-2858.
+`TINV(1-1E-10,1)`, a4090567758520df A307 `TINV(1+2^-52,1)`. The full cell list is in T-2858. At df = 1 this closed form takes precedence over the general
+SQRT(df*(1/y-1)) form below (T-3061), which gives the same cells only to 0 or 1 ulp.
 Ours: `statrs`' inverse or the tail asymptotic (`t_quantile`, `t_tail_quantile` in t_dist.rs), from 1 ulp to the 14th
 digit off (`TINV(0.5,1)` 1.0000000000000016), and to 100% off near p = 1 (`TINV(1-1E-10,1)` 1.05E-8).
 Status: VERIFIED (excel-graph and Excel-cached; the formula is a fit that every evidence cell matches)
@@ -3239,8 +3240,8 @@ Rule: with a deg_freedom that truncates to 2, `CHISQ.INV(p,2)` is `-2*LN(1+(-p))
 doubles with libm's `ln`/`log1p`, so Excel is exact where they are (`GAMMA.INV(1E-300,1,1)` = 1E-300,
 `CHISQ.INV(1E-10,2)` = 2.0000000001E-10; `-2·ln(1-p)` would give 2.000000165580742E-10).
 Evidence: gap triage 2026-10-27 checked the forms against every failing cell of these shapes in eval/: 34 of 34
-bit-exact (excel-graph): probes-numeric/m9-legacy-chiinv A13-A34 (`CHIINV(0.01,2)` = 9.210340371976182),
-m9-gamma-inv A19-A27 (`GAMMA.INV(0.999,1,1)` = 6.907755278982136), m9-chisq-inv A12/A13, m9-chisq-inv-rt A9/A10,
+bit-exact (excel-graph): probes-numeric/m9-legacy-chiinv A13, A14, A23, A24, A33, A34 (`CHIINV(0.01,2)` = 9.210340371976182),
+m9-gamma-inv A19, A20, A26, A27 (`GAMMA.INV(0.999,1,1)` = 6.907755278982136), m9-chisq-inv A12/A13, m9-chisq-inv-rt A9/A10,
 t1049-chisqinv, t1049-chisqinvrt, t1543-inverse-cdf-tiny-p A55/A58, and 12 gen-m9 cells (8fec7b207f4dd753 A265
 `CHISQ.INV.RT(0.001,2)` = 13.815510557964274; ecc87f80077959e0 A154 `CHISQ.INV.RT(0.001,2.5)`, same value). Passing
 cells were not re-checked. T-0972 already noted CHIINV at df 2 as `-2*LN(p)` (gen-m9/4df1b22d3ed63f58 A9).
