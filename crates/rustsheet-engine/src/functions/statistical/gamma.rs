@@ -27,8 +27,8 @@ const HALF_SHAPE: f64 = 0.5;
 /// at 1E-15, where the direct form is 4 to 12 off; T-2753, T-2852).
 const LOG_FORM_RATIO: f64 = 1E-15;
 
-/// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density where y = x / beta is at most [`LOG_FORM_RATIO`]: Excel forms
-/// EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
+/// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density where y = x / beta is at most
+/// [`LOG_FORM_RATIO`]: Excel forms EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
 /// result, so `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235, not 1 (probes/
 /// t2753-gamma-density-ratio-sweep A1, B1; t2738-gamma-dist-tiny-ratio A2, A4, A15, A19).
 /// With Excel's own LN, EXP and GAMMA it is 0 to 1 ulp from Excel at most probed cells there and

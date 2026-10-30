@@ -1046,7 +1046,8 @@ probes/incomplete-gamma-cap (T-1872).
 Ours: `statistical/incomplete_gamma.rs` `incomplete_gamma_pair`, replacing statrs' `gamma_lr`/`gamma_ur` (whose
 prefactor exp(a ln x - x - ln Gamma(a)) carries an ulp of that exponent into the result, and whose Q is 1 - P below
 x = a). The prefactor x^a e^-x / Gamma(a) is `powf * exp / tgamma` below a = 20 (each factor normal) and DiDonato and
-Morris' `rcomp` above it (sqrt(a / 2 pi) exp(-a rlog(x/a) - Stirling correction)) within 0.4a of the mode and Excel's ratio form outside it (below, T-2638); P is the power series below
+Morris' `rcomp` above it (sqrt(a / 2 pi) exp(-a rlog(x/a) - Stirling correction)) within 0.4a of the mode and
+Excel's ratio form outside it (below, T-2638); P is the power series below
 x = a + 1, with the geometric sum of the terms it leaves (near x = a they add up to thousands of times the last one:
 7E-15 of P(1E6, 1E6)), and Q the modified-Lentz continued fraction above it; below a shape of 1/2 and x of 1 Q is formed
 directly (TOMS 654's small-shape Q, with ln Gamma(1 + a) from its zeta series); a = 1 is (-expm1(-x), exp(-x)).

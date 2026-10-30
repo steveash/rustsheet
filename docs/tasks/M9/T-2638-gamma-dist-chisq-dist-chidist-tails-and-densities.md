@@ -79,6 +79,8 @@ docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)".
 ## Acceptance criteria
 - [ ] Each cell above is within half a unit of Excel's 15th significant digit, with no new baseline line.
 - [ ] `make check` green; reviewers approve.
+Met in part: the large-shape cells are closed (Outcome); the 42 cells left moved to T-3219 (fit attempt 2,
+decision 0056), which owns them now.
 
 ## Out of scope
 - The 1-2 ulp residue of T-2367.
