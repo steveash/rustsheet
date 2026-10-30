@@ -1596,6 +1596,7 @@ C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3106-lookup-xmatch-near-equal.case.json	786
 C	probes/t3114-collation-beyond-latin1.case.json	986
 C	probes/t3115-approximate-text-collation.case.json	625
+C	probes/t3116-now-once-per-recalc.case.json	2
 C	probes/t3133-lookup-criteria-case-fold.case.json	426
 C	probes/t3134-legacy-if-index-arm-shapes.case.json	295
 C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
@@ -3831,10 +3832,6 @@ F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A16
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A18
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A19
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A20
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A21
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A22
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A3
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A4
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A5
 F	probes/t3012-gamma-dist-at-quantile.case.json	S!A10
 F	probes/t3012-gamma-dist-at-quantile.case.json	S!A16
