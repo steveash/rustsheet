@@ -80,7 +80,7 @@ exact-piece literals; do not fit the landing rule to A120 to A140's p as doubles
       (`make eval-baseline`) and no p = 0.999 cell of T-3016 or T-3131 made worse.
 - [ ] The landing rule and the forms tried, with their bit-exact and visible-parity counts on T-3148's case and the
       cached probes, are in docs/excel-semantics/statistics.md (decision 0056: two attempts, then time-box).
-- [ ] Iteration stays bounded on untrusted input (the shared `MAX_TERMS` budget; huge shape or scale; p next to 1).
+- [x] Iteration stays bounded on untrusted input (the shared `MAX_TERMS` budget; huge shape or scale; p next to 1).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -102,34 +102,47 @@ Still visibly off on main 9efff2847, checked first: all 12 cells above and all 6
 T-3013, T-3070 and T-2638 moved none of them. `CHISQ.INV(0.999,5)` (T-3016) and `CHISQ.INV.RT(0.999,20)` (T-3131)
 are also still visibly off.
 
-Attempt 1: search forms on our double cdf, the GAMMA.DIST kernel (`pair_with`, Excel exponent). Each was scored
-against the 136 t3148 quantile cells at p 0.99 to 0.9999, shapes other than 0.5 and 1. The figures are bit-exact /
-visible:
+Two attempts. The counts below are from the reproducible script docs/research/t3146/flat_band_fit.py (output in
+flat_band_fit.out, review round 1). Its cell sets, from the probe's 140 quantile cells with p literals cut to 15
+digits:
+- S: shapes other than 0.5 and 1, 112 cells;
+- S99: S at 0.99 <= p <= 0.9999, 99 cells.
 
-| Candidate | Bit-exact | Visible |
+"Our double cdf" is the correctly rounded P or Q from mpmath at 60 digits, which the engine's accurate pair is within
+an ulp of.
+
+Attempt 1: search forms on our double cdf, scored as bit-exact / within 4 ulp / visible.
+
+| Candidate | S (112) | S99 (99) |
 |---|---|---|
-| Engine crossing (main) | 4 | 48 |
-| statrs' search | 9 | 44 |
-| Newton from a | 4 | 52 |
-| Newton from Wilson-Hilferty | 4 | 48-49 |
-| Newton from statrs' estimate | 7 | 43 |
-| Newton from the crossing moved by 1E-3 | 3-5 | 38-42 |
-| Bisection from [0, 2^k] | 7 | 45 |
+| Crossing (correctly rounded quantile, stand-in for the engine) | 11 / 38 / 47 | 2 / 25 / 34 |
+| statrs' search | 6 / 25 / 36 | 5 / 21 / 32 |
+| Newton from a (cdf = p, or a step under 1E-15) | 3 / 19 / 33 | 3 / 19 / 33 |
+| Newton from Wilson-Hilferty, cdf = p | 4 / 24 / 33 | 4 / 24 / 33 |
+| Newton from Wilson-Hilferty, step under 1E-15 | 4 / 25 / 34 | 4 / 25 / 34 |
+| Newton from the crossing times 1.001 | 4 / 17 / 26 | 4 / 17 / 25 |
+| Newton from the crossing times 0.999 | 3 / 19 / 27 | 3 / 19 / 27 |
+| Bisection from [0, 2^k], cdf = p | 4 / 21 / 29 | 4 / 21 / 29 |
 
-Newton was run with two stopping rules, cdf = p or a step under 1E-15 relative; the range is over those. Over all
-878 literal-argument quantile cells in eval/, none beats the crossing.
+Attempt 2:
+- Newton on ln cdf from a: 3 / 20 / 35 on S, 3 / 20 / 35 on S99.
+- Newton in ln x from a: 4 / 21 / 32 on S, 4 / 21 / 32 on S99.
+- Then a test of the hypothesis itself, at Excel's own quantiles. Over S99, Excel lands where the true cdf of its
+  given tail is -0.715 to +0.727 ulp of p, so it searches a double-valued cdf that is noisy beyond the rounding. That
+  cdf is not ours:
+  - On 35 of the 140 cells, all in S99, our double cdf at Excel's quantile is 1 ulp from p (17 below, 18 above).
+  - Against 60-digit values, Excel's GAMMA.DIST is off the correctly rounded double on 12 of 85 probe cdf cells.
+    Ours is Excel's at 2 of them (A215, A217, through T-2638's ratio prefactor).
+  - Excel's CHISQ.DIST.RT is off on 8 of 68, and its lower-tail CHISQ.DIST on 49 of 68 (up to 19 ulp at df 50).
 
-Attempt 2: Newton on ln cdf (4 / 53) and Newton in ln x (6 / 41). Then a test of the hypothesis itself, at Excel's
-own quantiles. Excel lands where the true cdf of its given tail is within 0.73 ulp of p, so it searches a
-double-valued cdf that is noisy by about 0.25 ulp beyond the rounding. That cdf is not ours:
-- On 44 of 132 cells, our double cdf at Excel's quantile is 1 ulp of p away from p.
-- Excel's GAMMA.DIST differs from ours by 1 or 2 ulp on 10 of 85 probe cdf cells, and Excel's CHISQ.DIST.RT on 8 of
-  68. Excel is the side off the 50-digit value each time.
+So no search that stops where our cdf equals p reaches those 35 cells, whatever its start or step.
 
-So no search that stops where our cdf equals p reaches those cells, whatever its start or step.
+The first-round figures (136 cells, 44 of 132, crossing 4 / 48, and a sweep over 878 literal cells in eval/) came
+from an engine scratch harness with an unstated cell filter. They do not reproduce and are withdrawn; the table
+above replaces them.
 
 Reopen on new evidence, either of:
-- a model of Excel's own cdf near p that reproduces those 18 cdf cells bit for bit;
+- a model of Excel's own cdf near p that reproduces the probe's non-correctly-rounded cdf cells bit for bit;
 - T-3175's exact-piece probe of Excel's cdf at consecutive doubles around one quantile, which would show whether
   Excel's quantile is the first point of its own band along some path.
 
