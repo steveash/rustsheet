@@ -326,7 +326,47 @@ review`.
 - **Accepted residual risk, unchanged from today:** a buggy or prompt-injected worker session
   could mark a PR ready with fabricated verdicts, just as it could merge one today.
 - The v2 follow-up, T-2997, replaces the attestation with per-reviewer verdict records bound to
-  the head sha.
+  the head sha ("Verdict records (v2)" below).
+
+**Verdict records (v2, T-2997; decision 0178).**
+- **What they can and cannot prevent.** Every session, and every reviewer subagent inside one,
+  acts as the owner's single GitHub account on the same machine, and the reviewers have no GitHub
+  write tools, so the marking session posts whatever a reviewer returns. Nothing a reviewer can
+  write is out of that session's reach, and a signing key would sit where the session can read
+  it. So no record format stops a deliberately fabricating (buggy or prompt-injected) marking
+  session; that residual risk stays as accepted in "Trust". Records do stop:
+  - a **stale panel**: verdicts given on an earlier head (before a fix push) and re-used for the
+    new one. Each record names the head it reviewed, and V4 rejects one for any other head;
+  - a **verdict with no review behind it**: a `REVIEW=` string typed without the panel running
+    finds no records, so `mark` refuses and V4 fails;
+  - **silent fabrication**: each record carries the reviewer's own report, so a fabricated
+    verdict is a visible, durable comment the steward's spot-audit can check against the diff.
+- **Format.** One PR comment per reviewer, posted by the marking session right after that
+  reviewer returns (`make verdict-record PR=<n> REVIEWER=<name> VERDICT=<v> REPORT=<file>`, direct
+  or in step mode). The body is the reviewer's report verbatim (truncated to GitHub's comment
+  limit with a marker line), then the block:
+  ```
+  <!-- merge-train-verdict v1
+  head: <40-hex sha>       # the HEAD the reviewer read: the local HEAD, which must equal the PR head
+  reviewer: security | architecture | quality | excel-fidelity
+  verdict: APPROVE | REQUEST_CHANGES
+  -->
+  ```
+  A diff digest was weighed and dropped: the head sha already fixes the tree, and with it the
+  diff against the merge base, so a digest adds no binding the sha lacks.
+- **Checks.** `mark` refuses unless, for each applicable reviewer, the newest record by a writer
+  (V1's permission filter) for the marked head says `APPROVE`; the marker's `reviewers:` field is
+  then derived from the records, not typed. V4 becomes a verification: the same lookup by the
+  merger, for the marker's `head`, or for its `prev` when the marker carries verdicts over (the
+  merger re-runs the carry check of "Carry-over" on `prev` and `head`). A `REQUEST_CHANGES` record
+  newer than the newest `APPROVE` for that head fails V4.
+- **Rollout.** A `verdict_records = "warn" | "require"` key in `scripts/merge_train.toml`
+  (default `warn`): in `warn` the merger reports a PR whose markers lack records in its run
+  summary and still treats V4 as an attestation; the steward flips it to `require` (a decision
+  record) once a week of marked PRs all carry records. The review skill posts the records in both
+  modes.
+- **Out of scope.** The reviewers' criteria; a second GitHub identity or an external signer
+  (owner steps, if the residual risk ever needs closing).
 
 **Verification by the merger** (it does not review again). For each open PR with the label:
 - **V1, author.** Read the PR's comments and keep only those whose author has `admin`, `maintain`
@@ -343,7 +383,8 @@ review`.
   - Pending: skip, and keep the label.
   - Red: remove the label and comment `CI red on <sha>: <jobs>`.
 - **V4, verdicts.** The verdicts name every applicable reviewer, each with `APPROVE` (an
-  attestation, see Trust). Failure: remove the label and comment.
+  attestation, see Trust; with verdict records in `require` mode, a verification, see "Verdict
+  records (v2)"). Failure: remove the label and comment.
 - **V5, PR state.** The PR is not a draft, its base is `main`, its head is in this repository, and
   its task file on the head is `status: done` with an Outcome (not `blocked`). Failure: remove
   the label and comment.
