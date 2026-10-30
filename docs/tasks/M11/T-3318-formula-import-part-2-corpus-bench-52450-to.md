@@ -3,7 +3,7 @@ id: T-3318
 title: "Formula import, part 2: corpus-bench 52450 to 1,500 ms (stringify and legacy-@ pass, argument-coverage re-parse)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
