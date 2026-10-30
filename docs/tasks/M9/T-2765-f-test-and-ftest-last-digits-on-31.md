@@ -77,3 +77,6 @@ value in every product order, so the innermost difference is FTEST, about 2 ulp 
 ## Out of scope
 - The 8 visibly-off cells (T-2681) and F.DIST's own last digits (T-2221).
 - F.TEST error choice over overflowing squares (T-2432) and one-value arguments (T-2576).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+The visibly-off F.TEST cell gen-m9/b6593d7dd13f2dac Calc!A306 goes to the T-0087 sweep with the other unowned visibly-off F.TEST/FTEST cells (T-2681, the natural owner, finished on 2026-10-27 before this triage landed); this task keeps the last-digit work.

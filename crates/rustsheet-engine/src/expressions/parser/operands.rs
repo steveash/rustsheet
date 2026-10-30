@@ -7,6 +7,7 @@ use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
 use super::super::utils::{
     is_out_of_range_r1c1_name, number_to_column, parse_dotted_a1_range, parse_reference_a1,
+    quote_name,
 };
 use super::reference_operators::is_reference_operand;
 use super::structured_reference::{
@@ -260,10 +261,12 @@ impl Parser {
             }
             None => crate::expressions::utils::unquote_sheet_prefix(prefix)?,
         };
-        let scope = if sheet.is_empty() {
-            None
-        } else {
-            Some(self.get_sheet_index_by_name(&sheet)?)
+        let scope = match self.get_sheet_index_by_name(&sheet) {
+            _ if sheet.is_empty() => None,
+            Some(index) => Some(index),
+            // `Budget.xlsx!loc`, the text Excel shows for `Feb!loc`, reads the workbook name.
+            None if self.is_workbook_file(&sheet) => None,
+            None => return None,
         };
         // A sheet with no local definition reads the workbook-scoped name (docs/excel-semantics/
         // references.md "A sheet-qualified name falls back to the workbook name"; `Feb!loc`).
@@ -282,7 +285,25 @@ impl Parser {
                 (None, formula)
             }
         };
-        Some(Node::DefinedNameKind((name.to_string(), scope, formula)))
+        // Excel shows a workbook name read through a sheet, or through the file's own-workbook
+        // prefix `[0]!`, with the workbook's file name as its prefix, quoted as a sheet name
+        // would be (`=Feb!loc` is `='53aa….xlsx'!loc`), and a sheet rename leaves it alone
+        // (docs/excel-semantics/references.md "A sheet-qualified workbook name is rewritten to
+        // the workbook's file name", T-2834).
+        let text = match &self.workbook_file {
+            Some(file) if scope.is_none() && !prefix.is_empty() && !formula.is_empty() => {
+                format!("{}!{bare}", quote_name(file))
+            }
+            _ => name.to_string(),
+        };
+        Some(Node::DefinedNameKind((text, scope, formula)))
+    }
+
+    /// Whether a sheet prefix spells this workbook's file name (`Budget.xlsx`, any case).
+    fn is_workbook_file(&self, prefix: &str) -> bool {
+        self.workbook_file
+            .as_deref()
+            .is_some_and(|file| file.to_lowercase() == prefix.to_lowercase())
     }
 
     /// A name that is not called: a defined name, a table or a LAMBDA parameter.
@@ -326,7 +347,13 @@ impl Parser {
             if table_name.to_lowercase() == name_lower {
                 // A bare table name is its data area, like `Table[]` (gen-m8b specials
                 // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(name, None, None, true);
+                return self.structured_reference_operand(
+                    name,
+                    None,
+                    None,
+                    token::TableSpacing::default(),
+                    true,
+                );
             }
         }
         // xlpm: Excel Lambda Parameter
@@ -466,6 +493,38 @@ impl Parser {
         let refused = !arg_counts::takes_count(&english, count)
             || kind.arg_kinds().is_some_and(|kinds| !kinds.accepts(count));
         if refused {
+            self.note_wrong_count(name);
+        }
+    }
+
+    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
+    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
+    /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
+    /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
+    /// PATCH 400, T-2568), or it nests more function calls than Excel takes
+    /// ([`MAX_NESTED_CALLS`], T-3097). `None` when parsing stored text or nothing is refused.
+    pub(crate) fn typed_refusal(&self) -> Option<String> {
+        if !self.typed {
+            return None;
+        }
+        if self.nests_too_many_calls() {
+            return Some(format!("Formula: {TOO_MANY_NESTED_CALLS_MESSAGE}"));
+        }
+        if let Some(name) = &self.cell_shaped_binding {
+            return Some(format!(
+                "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
+            ));
+        }
+        let name = self.wrong_count_call.as_ref()?;
+        Some(format!(
+            "Formula: {name} is called with the wrong number of arguments"
+        ))
+    }
+
+    /// Records `name` as the first call of the formula with a count of arguments Excel refuses
+    /// typed ([`Parser::typed_refusal`]); stored text records nothing.
+    fn note_wrong_count(&mut self, name: &str) {
+        if self.typed && self.wrong_count_call.is_none() {
             self.wrong_count_call = Some(name.to_ascii_uppercase());
         }
     }
@@ -483,7 +542,8 @@ impl Parser {
             .trim_start_matches("_xlfn.")
             .trim_start_matches("_xlpm.")
             .to_string();
-        let args = match self.parse_function_args(&display_name) {
+        let empty_call_run = self.empty_call_run();
+        let mut args = match self.parse_function_args(&display_name) {
             Ok(s) => s,
             Err(e) => return e,
         };
@@ -509,9 +569,13 @@ impl Parser {
                 message: err.message,
             };
         }
-        // We should do this *only* importing functions from xlsx: Implicit Intersection
-        if &name == "_xlfn.SINGLE" {
+        // Implicit intersection: `_xlfn.SINGLE(x)` is how a file stores `@x`, and Excel takes a
+        // typed `SINGLE(x)`, in any case, as `@x` too and shows it so (`=SINGLE(C1:C3)` beside row 2
+        // is the row's cell, FORMULATEXT `=@C1:C3`; probes/single-typed-*, xlsx-storage.md "Typed
+        // SINGLE(x) is the @ operator", T-2938). Excel refuses `=SINGLE()` and `=SINGLE(1,2)` typed.
+        if display_name.eq_ignore_ascii_case("SINGLE") {
             if args.len() != 1 {
+                self.note_wrong_count(&display_name);
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
                     expecting: vec![ExpectedTokens::Other],
@@ -555,7 +619,12 @@ impl Parser {
             .filter(|_| !self.calls_bound_name(&name))
         {
             self.note_argument_count(&function_kind, &display_name, args.len());
-            let node = self.function_call(function_kind, args);
+            if self.loaded && function_kind == Function::Let {
+                result_of_even_let(&mut args);
+            }
+            let node = self
+                .function_call(function_kind, args)
+                .with_empty_call_run(empty_call_run);
             // The result of a function that can return a reference (or a LAMBDA) may be called:
             // `INDEX(A1:A3,1)(2)` is `#REF!` and `IF(TRUE,LAMBDA(x,x*2))(3)` 6, while Excel
             // refuses `SUM(1)(2)`, `ABS(1)(2)` and `IFERROR(LAMBDA(x,x*2),0)(3)`
@@ -599,6 +668,7 @@ impl Parser {
             // We parse all the arguments, although technically this is moot
             // But is has the upside of transforming `=TRUE( 4 )` into `=TRUE(4)`
             let fn_name = if value { "TRUE" } else { "FALSE" };
+            let empty_call_run = self.empty_call_run();
             let args = match self.parse_function_args(fn_name) {
                 Ok(s) => s,
                 Err(e) => return e,
@@ -611,17 +681,12 @@ impl Parser {
                     message: err.message,
                 };
             }
-            if value {
-                return Node::FunctionKind {
-                    kind: Function::True,
-                    args,
-                };
+            let kind = if value {
+                Function::True
             } else {
-                return Node::FunctionKind {
-                    kind: Function::False,
-                    args,
-                };
-            }
+                Function::False
+            };
+            return Node::FunctionKind { kind, args }.with_empty_call_run(empty_call_run);
         }
         Node::BooleanKind(value)
     }
@@ -636,13 +701,16 @@ impl Parser {
         table_name: String,
         specifier: Option<token::TableSpecifier>,
         table_reference: Option<TableReference>,
+        spacing: token::TableSpacing,
         bare: bool,
     ) -> Node {
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
+            spacing,
             bare,
+            unqualified: false,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
         if let Node::ParseErrorKind { message, .. } = &lowered {
@@ -904,4 +972,16 @@ impl Parser {
             other => other,
         }
     }
+}
+
+/// A stored LET with an even argument count ends on a name and a value, and Excel loads it with
+/// the last name appended as the result: `<f>LET( a ,1, b ,a+1)</f>` prints
+/// `=LET( a,1, b,a+1,b)` and returns 2 (probes/t2949-stored-11, syntax.md "Remaining whitespace
+/// shapes (T-2949)"). Typed, Excel refuses the arity.
+fn result_of_even_let(args: &mut Vec<Node>) {
+    if args.len() < 2 || !args.len().is_multiple_of(2) {
+        return;
+    }
+    let name = args[args.len() - 2].unwrap_spaced().clone();
+    args.push(name);
 }

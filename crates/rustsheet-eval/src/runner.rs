@@ -17,10 +17,11 @@ use crate::case::{
 };
 use crate::case_log;
 use crate::cellref::Addr;
-use crate::deviations::{self, Outcome};
+use crate::deviations::{self, Outcome, Pin};
 use crate::engine::{Engine, Evaluated};
 use crate::formula_calls::calls_add_in;
 use crate::overrides;
+use crate::poi_m8_subset::{self, ReferenceFormCells};
 use crate::spill_extent::SpillExtent;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::text_expect::{self, TextExpectation, TextResult};
@@ -41,6 +42,16 @@ pub enum CaseStatus {
     Timeout,
     /// The case file itself is unreadable or malformed.
     InvalidCase,
+}
+
+impl CaseStatus {
+    /// Whether the case did not run to scoring: it failed to load or evaluate, panicked or timed
+    /// out. Such a case fails every exit measure that reads its suite or probe row (decisions
+    /// 0146 item 2(b) and 0174); a pending case that runs cleanly stays `Pending` and never does.
+    #[must_use]
+    pub fn did_not_run(self) -> bool {
+        matches!(self, Self::EngineError | Self::Panic | Self::Timeout)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,14 +80,62 @@ pub struct CellResult {
     /// the report lists these cells so the evidence stays visible (T-1142).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub graph_subnormal: bool,
+    /// A scored expectation, or a cell the spill-extent check added (decision 0140).
+    #[serde(default, skip_serializing_if = "CellKind::is_scored")]
+    pub kind: CellKind,
+}
+
+/// Where a [`CellResult`] comes from.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CellKind {
+    /// One of the case's expectations, counted in `checked`.
+    #[default]
+    Scored,
+    /// A cell the engine filled and Excel left empty, outside `checked` (decision 0063); the M7
+    /// exit counts these (decision 0140).
+    SpillExtent,
+}
+
+impl CellKind {
+    /// Whether the cell is one of the case's expectations (the serialized default).
+    #[must_use]
+    pub fn is_scored(&self) -> bool {
+        *self == Self::Scored
+    }
 }
 
 impl CellResult {
+    /// A scored Excel-evidence cell of sheet `S` expecting 1 and giving 1, for tests.
+    #[cfg(test)]
+    pub(crate) fn for_test(cell: &str, formula: Option<&str>, verdict: Verdict) -> CellResult {
+        CellResult {
+            sheet: "S".to_string(),
+            cell: cell.to_string(),
+            formula: formula.map(str::to_string),
+            anchor_formula: None,
+            expected: Value::Number(1.0),
+            actual: Value::Number(1.0),
+            verdict,
+            from_excel: true,
+            listed_deviation: false,
+            graph_subnormal: false,
+            kind: CellKind::Scored,
+        }
+    }
+
     /// Stable identifier used in baselines: `Sheet!A1`.
     #[must_use]
     pub fn key(&self) -> String {
         format!("{}!{}", self.sheet, self.cell)
     }
+}
+
+/// The `case!Sheet!A1` name report sections use for one cell; `exit_owners.py` compares these
+/// strings across sections (decision 0135), so every report builds them here.
+#[must_use]
+pub fn cell_id(case: &str, key: &str) -> String {
+    format!("{case}!{key}")
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,6 +174,10 @@ pub struct CaseResult {
     /// Only the run's own report reads them, so they are never serialized.
     #[serde(skip)]
     pub arguments: Vec<CallSeen>,
+    /// A poi case's formula cells in M8's subset and its unparsed formulas (decision 0146 item
+    /// 2(b), T-0094); empty for other suites. Only the run's own report reads them.
+    #[serde(skip)]
+    pub reference_forms: ReferenceFormCells,
 }
 
 #[derive(Debug, Clone)]
@@ -170,6 +233,14 @@ enum Prepared {
 }
 
 impl CaseResult {
+    /// `case!*` when the case did not run to scoring ([`CaseStatus::did_not_run`]): how every exit
+    /// measure lists such a case and `scripts/exit_owners.py` reads it as a whole case (decision
+    /// 0174).
+    #[must_use]
+    pub fn blocked_key(&self) -> Option<String> {
+        self.status.did_not_run().then(|| format!("{}!*", self.id))
+    }
+
     /// A case `id` of `suite` with `status`, nothing checked or skipped and no cells: the start
     /// of every result, filled in with struct-update syntax.
     pub(crate) fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {
@@ -190,6 +261,7 @@ impl CaseResult {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: ReferenceFormCells::default(),
         }
     }
 
@@ -216,6 +288,7 @@ struct PreparedCase {
     tags: Vec<String>,
     text: Vec<TextExpectation>,
     defined_names: BTreeMap<String, String>,
+    reference_forms: ReferenceFormCells,
 }
 
 /// Runs all cases of the given suites in parallel.
@@ -262,16 +335,20 @@ pub fn run_case(
     case: &CaseFile,
     timeout: Duration,
 ) -> CaseResult {
-    let prepared = match prepare(suite, case) {
+    let (prepared, refusal) = match prepare(suite, case) {
         Ok(p) => p,
         Err(e) => return invalid(suite, case, e),
     };
+    // A whole-case pin (decision 0168) needs the cells after the expectations move to the worker.
+    let refused_cells = refusal.as_ref().map(|_| refused(&prepared.expectations));
+    let listed = refusal.is_some();
     let mut result = CaseResult {
         expected_source: prepared.expected_source.clone(),
         skipped_volatile: prepared.skipped_volatile,
         skipped_add_in: prepared.skipped_add_in,
         tags: prepared.tags.clone(),
         defined_names: prepared.defined_names.clone(),
+        reference_forms: prepared.reference_forms.clone(),
         ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::Pending)
     };
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
@@ -293,7 +370,7 @@ pub fn run_case(
                         engine.evaluate_spec(spec, prepared.workbook_name.as_deref())
                     }
                 }?;
-                let mut cells = score(evaluated.as_ref(), &prepared.expectations);
+                let mut cells = score(evaluated.as_ref(), &prepared.expectations, listed);
                 let scored = cells.len();
                 let extent = prepared.extent.iter();
                 cells.extend(extent.flat_map(|e| e.unexpected_cells(evaluated.as_ref())));
@@ -324,10 +401,23 @@ pub fn run_case(
             result.status = CaseStatus::Panic;
             result.message = Some(panic_message(panic.as_ref()));
         }
-        Ok(Ok(Err(e))) => {
-            result.status = CaseStatus::EngineError;
-            result.message = Some(e);
-        }
+        Ok(Ok(Err(e))) => match (refusal, refused_cells) {
+            (Some(message), Some(cells)) if e.contains(message.as_str()) => {
+                result.checked = cells.len();
+                result.deviations = cells.len();
+                result.status = if cells.is_empty() {
+                    CaseStatus::Pending
+                } else {
+                    CaseStatus::Pass
+                };
+                result.cells = cells;
+                result.message = Some(e);
+            }
+            _ => {
+                result.status = CaseStatus::EngineError;
+                result.message = Some(e);
+            }
+        },
         Ok(Ok(Ok((cells, scored, text, arguments)))) => {
             result.text = text;
             result.arguments = arguments;
@@ -358,7 +448,10 @@ fn panic_message(p: &(dyn std::any::Any + Send)) -> String {
         .unwrap_or_else(|| "panic with non-string payload".into())
 }
 
-fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellResult> {
+/// Scores every expectation against the evaluated workbook. `listed` marks every cell as listed
+/// in the suite's `deviations` file, as a whole-case pin lists them (decision 0168), so a cell
+/// that matches Excel reads as a stale line.
+fn score(evaluated: &dyn Evaluated, expectations: &[Expectation], listed: bool) -> Vec<CellResult> {
     expectations
         .iter()
         .map(|e| {
@@ -391,20 +484,43 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 actual,
                 verdict,
                 from_excel: e.from_excel,
-                listed_deviation: e.pinned.is_some(),
+                listed_deviation: listed || e.pinned.is_some(),
                 graph_subnormal,
+                kind: CellKind::Scored,
             }
         })
         .collect()
 }
 
-fn prepare(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
+/// The case ready to run, and the refusal message its whole-case `deviations` line pins, if any.
+fn prepare(suite: &Suite, case: &CaseFile) -> Result<(PreparedCase, Option<String>), String> {
     let mut prepared = match suite.manifest.kind {
         SuiteKind::Xlsx => prepare_xlsx(suite, case),
         SuiteKind::Spec => prepare_spec(case),
     }?;
-    pin_deviations(suite, case, &mut prepared.expectations)?;
-    Ok(prepared)
+    let refusal = pin_deviations(suite, case, &mut prepared.expectations)?;
+    Ok((prepared, refusal))
+}
+
+/// The cells of a case its whole-case `deviations` line pins (decision 0168), when the engine
+/// refused it as pinned: every expectation is a deviation, with no value of its own.
+fn refused(expectations: &[Expectation]) -> Vec<CellResult> {
+    expectations
+        .iter()
+        .map(|e| CellResult {
+            sheet: e.sheet.clone(),
+            cell: e.addr.to_string(),
+            formula: e.formula.clone(),
+            anchor_formula: e.anchor_formula.clone(),
+            expected: e.expected.clone(),
+            actual: Value::Error("<refused>".into()),
+            verdict: Verdict::Deviation,
+            from_excel: e.from_excel,
+            listed_deviation: true,
+            graph_subnormal: false,
+            kind: CellKind::Scored,
+        })
+        .collect()
 }
 
 /// The case's id relative to its suite root, as `cached_overrides` and `deviations` lines name it.
@@ -414,30 +530,46 @@ fn relative_case_id<'a>(suite: &Suite, case: &'a CaseFile) -> &'a str {
 }
 
 /// Pins the by-design value of every cell the suite's `deviations` file lists for this case
-/// (decision 0036). A line naming a cell that is not scored is an error, as for overrides.
+/// (decision 0036), and returns the refusal message a whole-case line pins (decision 0168). A
+/// line naming a cell that is not scored is an error, as for overrides.
 fn pin_deviations(
     suite: &Suite,
     case: &CaseFile,
     expectations: &mut [Expectation],
-) -> Result<(), String> {
+) -> Result<Option<String>, String> {
     let rel = relative_case_id(suite, case);
+    let mut refusal = None;
     for d in deviations::load(suite)
         .map_err(|e| e.to_string())?
         .into_iter()
         .filter(|d| d.case == rel)
     {
-        let target = expectations
-            .iter_mut()
-            .find(|e| e.sheet == d.sheet && e.addr == d.addr)
-            .ok_or_else(|| format!("deviation for unscored cell {}!{}", d.sheet, d.addr))?;
-        target.pinned = Some(d.pinned);
+        match d.pin {
+            Pin::Cell { sheet, addr, value } => {
+                let target = expectations
+                    .iter_mut()
+                    .find(|e| e.sheet == sheet && e.addr == addr)
+                    .ok_or_else(|| format!("deviation for unscored cell {sheet}!{addr}"))?;
+                target.pinned = Some(value);
+            }
+            Pin::Refusal(message) => refusal = Some(message),
+        }
     }
-    Ok(())
+    Ok(refusal)
 }
 
 fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
     let bytes = std::fs::read(&case.path).map_err(|e| e.to_string())?;
     let snapshot = read_snapshot(&bytes).map_err(|e| e.to_string())?;
+    // Every poi workbook, pending ones too: a crashed one holding a subset formula is listed. The
+    // parser reads third-party text here, outside the evaluation's panic isolation, so a panic
+    // leaves the workbook unclassified instead of ending the run.
+    let reference_forms = if suite.manifest.name == poi_m8_subset::SUITE {
+        catch_unwind(AssertUnwindSafe(|| ReferenceFormCells::classify(&snapshot)))
+            .unwrap_or_default()
+    } else {
+        ReferenceFormCells::default()
+    };
     let oracle = load_oracle(case)?;
     let workbook_name = oracle.as_ref().and_then(|o| o.source.workbook_name.clone());
     let (source, from_excel, lookup): (String, bool, Lookup) = if let Some(o) = oracle {
@@ -473,6 +605,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             tags: Vec::new(),
             text: Vec::new(),
             defined_names: BTreeMap::new(),
+            reference_forms,
         });
     };
     let (scorable, skipped_volatile) =
@@ -518,6 +651,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         tags: Vec::new(),
         text: Vec::new(),
         defined_names,
+        reference_forms,
     })
 }
 
@@ -653,6 +787,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         tags: spec.tags.clone(),
         text: text_expect::expectations(&spec, case)?,
         defined_names: BTreeMap::new(),
+        reference_forms: ReferenceFormCells::default(),
         input: Prepared::Spec {
             spec: Box::new(spec),
         },

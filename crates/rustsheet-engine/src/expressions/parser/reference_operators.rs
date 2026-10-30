@@ -6,7 +6,7 @@
 //! Excel evidence: docs/excel-semantics/references.md "Intersection operator (space)" (gen-m1,
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
-use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
+use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, MAX_PARENTHESES, PRIMARY_DEPTH};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::functions::Function;
@@ -46,6 +46,60 @@ impl Parser {
         // (`@(A1)`, `@(A1) B1`, `(@1)#`; T-1343).
         let nested = matches!(t, Node::Group { .. });
         regroup(t, nested)
+    }
+
+    /// A run of `(` written with nothing between them, after the first: `((x))`, `(((x)+1)*2)`.
+    /// The innermost group is parsed first, and each enclosing one in a loop, with the group
+    /// inside it handed to its content as the first operand ([`Parser::parse_primary`] returns
+    /// it), so a run takes the same parser stack whatever its length, where a recursive descent
+    /// would take one pass through the precedence chain per parenthesis (T-3191). A group whose
+    /// content is exactly the group inside merges with it (`((x))` is one [`Node::Group`] of two
+    /// levels, [`regroup`]) and adds no depth; any other costs an operand's.
+    /// Excel loads 256 directly nested parentheses and refuses 257 (probes/t3172-paren-256,
+    /// docs/excel-semantics/syntax.md "Formula nesting depth cap"), so a formula nesting more
+    /// than 256 groups, in one run or several (`( ((...)))`, `(1+((...)))`), is too deep.
+    pub(super) fn parse_parenthesis_run(&mut self) -> Node {
+        let mut opened = 1;
+        while !self.lexer.whitespace_follows()
+            && self.lexer.peek_token() == TokenType::LeftParenthesis
+        {
+            opened += 1;
+            if self.open_groups + opened > MAX_PARENTHESES {
+                return self.too_deep();
+            }
+            self.lexer.advance_token();
+        }
+        if self.open_groups + opened > MAX_PARENTHESES {
+            return self.too_deep();
+        }
+        self.open_groups += opened;
+        let node = self.parse_run_groups(opened);
+        self.open_groups -= opened;
+        node
+    }
+
+    /// The `opened` groups of a run, after its last `(`: see [`Parser::parse_parenthesis_run`].
+    fn parse_run_groups(&mut self, opened: usize) -> Node {
+        let mut node = self.parse_parenthesized_call();
+        let mut depth = self.inner_depth + PRIMARY_DEPTH;
+        for _ in 1..opened {
+            if let Node::ParseErrorKind { .. } = node {
+                return node;
+            }
+            self.pending_operand = Some((node, depth));
+            self.inner_depth = 0;
+            node = self.parse_parenthesized_call();
+            self.pending_operand = None;
+            if !matches!(node, Node::Group { levels, .. } if levels > 1) {
+                depth = self.inner_depth + PRIMARY_DEPTH;
+                if depth > MAX_FORMULA_DEPTH {
+                    return self.too_deep();
+                }
+            }
+        }
+        // The enclosing [`Parser::parse_primary`] adds an operand's levels to this.
+        self.inner_depth = depth - PRIMARY_DEPTH;
+        node
     }
 
     /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
@@ -129,7 +183,14 @@ impl Parser {
             let separator = self.lexer.separator();
             // The first space is the operator; Excel keeps the rest (SPEC-0023 step 3,
             // probes/t2776-formula-text-whitespace-shapes C3, C5, E9).
-            let extra = Run::of(separator.get(1..).unwrap_or_default());
+            // A separator holding a line feed keeps it whole: the line feed is the operator
+            // and the space before it is dropped (`=B1:B2` LF ` B2` and `=B1:B2 ` LF ` B2` both
+            // print `=B1:B2` LF ` B2`; probes/t2949-typed-4, typed-5, stored-14).
+            let extra = if separator.contains(&'\n') {
+                Run::of(separator)
+            } else {
+                Run::of(separator.get(1..).unwrap_or_default())
+            };
             // U+3000 starts a name for Excel, and no such name is defined: `#NAME?`
             // (probes/intersection-whitespace H7).
             let name_error = separator.contains(&'\u{3000}');
@@ -225,7 +286,7 @@ impl Parser {
     /// (probes/intersection-operands H11, probes/intersection-at-operands; T-0149).
     fn parse_implicit(&mut self) -> Node {
         let next_token = self.lexer.peek_token();
-        if next_token == TokenType::At {
+        if next_token == TokenType::At && self.pending_operand.is_none() {
             self.lexer.advance_token();
             // `@` recurses into the intersection without an operand in between (`A1 @A1
             // @A1 ...`), so it reserves nesting like an operand does to bound the recursion.
@@ -314,10 +375,9 @@ impl Parser {
             Function::Areas => 0,
             _ => return Node::FunctionKind { kind, args },
         };
-        let refused = args
-            .iter()
-            .skip(first_reference)
-            .any(|arg| matches!(arg, Node::EmptyArgKind) || !is_reference_operand(arg));
+        let refused = args.iter().skip(first_reference).any(|arg| {
+            matches!(arg.unwrap_spaced(), Node::EmptyArgKind) || !is_reference_operand(arg)
+        });
         if refused {
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
@@ -416,6 +476,23 @@ fn starts_reference(token: &TokenType) -> bool {
             | TokenType::StructuredReference { .. }
             | TokenType::LeftParenthesis
             | TokenType::Error(Error::REF)
+            | TokenType::SheetRefError(_)
+    )
+}
+
+/// The text of the intersection of `left` and `right`, each printed with `sub`, with the gap
+/// Excel prints between them ([`Node::intersect_gap`]).
+pub(crate) fn intersection_text(
+    left: &Node,
+    right: &Node,
+    sub: &dyn Fn(&Node) -> String,
+) -> String {
+    let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
+    format!(
+        "{}{}{}",
+        operand(left, true),
+        right.intersect_gap(),
+        operand(right, false)
     )
 }
 
@@ -427,7 +504,7 @@ fn starts_reference(token: &TokenType) -> bool {
 /// probes/intersection-at-formulatext, T-1098), only as a right operand that nothing follows:
 /// the left operand `A1 @A1` of `(A1 @A1) B1` keeps its parentheses, since bare `A1 @A1 B1`
 /// is `A1 @(A1 B1)` (T-0149).
-pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
+fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     // The extra spaces beside the operator are written around the right operand (SPEC-0023).
     let bare = match node.unwrap_spaced() {
         Node::OpIntersectKind { right, .. } => {
@@ -439,6 +516,7 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::StructuredReferenceKind { .. }
+        | Node::SheetRefErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::OpRangeKind { .. }
@@ -484,7 +562,7 @@ pub(crate) fn spill_operand(text: String, node: &Node) -> String {
 }
 
 /// `text` in the `levels` pairs of parentheses a [`Node::Group`] was written in.
-pub(crate) fn group_text(levels: u8, text: &str) -> String {
+pub(crate) fn group_text(levels: u16, text: &str) -> String {
     let levels = usize::from(levels);
     let mut grouped = String::with_capacity(text.len() + 2 * levels);
     grouped.extend(std::iter::repeat_n('(', levels));

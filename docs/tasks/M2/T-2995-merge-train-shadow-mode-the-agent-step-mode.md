@@ -1,0 +1,76 @@
+---
+id: T-2995
+title: "Merge-train shadow mode (stats split to T-3076, step mode to T-3077)"
+milestone: M2
+lane: harness
+status: done
+priority: P1
+size: M
+tier: opus
+depends_on: [T-2998]
+spec: docs/specs/SPEC-0027-merge-train.md
+---
+
+## Goal
+The merge train can be proven live without merging anything, and its metrics, including whether
+shadow predictions agree with reality, can be computed from the GitHub API. If T-3001 found that
+`gh api` writes fail in a routine session, the session can perform them safely instead.
+
+## Context
+- SPEC-0027 section 4: the write policy, "Shadow" and "When a shadow prediction agrees".
+  - Shadow pushes to `merge-train/shadow`, takes no lock and merges nothing. A lease failure on
+    the push skips the round.
+  - Its only PR-visible write is the closed-PR housekeeping. It pushes only when the ready set or
+    `main` changed.
+  - Each train's commit message records the batch, the predicted outcome per PR
+    (`merge` / `defer` / `eject:<reason>`), the would-be unlabels, and the shadow tree check
+    (`tree-check: match | mismatch | n/a`), which compares the first PR's test merge with
+    `tree(T_1)`.
+  - A cancelled or superseded run is recorded as `no result`.
+- The agreement rules are defined in the spec. `merge-train-stats` scores each prediction against
+  the PR's later state, its later heads and their check runs, within 24 h.
+- The step mode (SPEC-0027 section 4, "GitHub access"):
+  - a closed enum of actions, every field generated or validated by the script, a read-back with
+    abort on any difference, and a session that never adds, skips, reorders or changes an
+    action;
+  - T-2986's minimal fallback uses the same schema;
+  - built **only if** T-3001's probe found that writes fail. Otherwise this criterion is dropped,
+    and the PR says so.
+- SPEC-0027 "Metrics" and "Daily thresholds": `make merge-train-stats` reports:
+  - latency, per arrival bucket;
+  - merge-stage CI runs per merged PR, against p, and runner-minutes;
+  - lock wait, stranded PRs, the red-train rate, bisection runs and ejections;
+  - the deferral rate and the effective batch size;
+  - tree-check failures and lock occupancy;
+  - during shadow: PR CI wall time, job queue delay, and T-2991's evidence and load bar (`gh run
+    list --workflow ci.yml --branch merge-train/shadow`, plus the commits API).
+
+## Acceptance criteria
+- [x] `make merge-train SHADOW=1` implements "Shadow". Tests show that it takes no lock, makes no
+      PR-visible writes beyond the closed-PR housekeeping, skips a round when the lease fails, and
+      records predictions and the tree check.
+- [x] For a red shadow train, shadow reuses T-2998's binary search on `M0` (no second
+      implementation) to emit the `defer` and `eject:ci-red` predictions. Tests cover a red
+      shadow train with the culprit at `P_3`.
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
+
+## Out of scope
+- `make merge-train-stats` (split to T-3076, 2026-10-28) and the step mode (split to T-3077: T-3001's probe
+  found that session writes fail, so it is needed).
+- Routine prompts and policy (T-2996). Skills (T-2989).
+
+## Outcome
+- `scripts/merge_train.py`: `ShadowStage` and `--shadow` (`make merge-train SHADOW=1`), per decision 0155. `Stage`
+  now takes its branch and mode as attributes, and has a hook between collection and the first build, so shadow
+  shares the build, CI wait and bisection code.
+- `scripts/test_merge_train_shadow.py` (7 tests on test_merge_train's simulator):
+  - a green round takes no lock and makes no PR write, and records `merge` for each PR and `tree-check: match`;
+  - a repeated round pushes nothing, and a moved `main` pushes again;
+  - a lost lease skips the round;
+  - the closed-PR housekeeping is the only PR write;
+  - a red train with the culprit at `P_3` bisects on `M0` and predicts `eject:ci-red` for #3 and `merge` for the rest;
+  - ejections (`eject:invalidated`) and deferrals are predicted;
+  - another mode stops at once.
+- Split out: `make merge-train-stats` (T-3076) and the step mode (T-3077). T-3001's probe found that session writes
+  fail, so the step mode is needed and gets its own task.
+- Eval delta: none (scripts and docs only).

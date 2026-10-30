@@ -3,6 +3,12 @@ use super::bessel_excel::{
     MILLER_RESCALE, MILLER_RESCALE_FACTOR,
 };
 use crate::functions::statistical::ln_gamma;
+use crate::x87_exp::excel_exp;
+
+/// BESSELI is `#NUM!` at every order past this |x|: `BESSELI(709.7,0)` is 2.4788083687166675E+306 and
+/// `BESSELI(709.70001,0)` is `#NUM!`, likewise at orders 1 and 5 (probes/besseli-overflow-cut-finest,
+/// -fine and -sweep; engineering.md "BESSELI overflow point"). Negative x is unprobed (taken as |x|).
+const BESSELI_OVERFLOW_X: f64 = 709.7;
 
 /// The even order BESSELI's Miller recurrence starts from, `2 (n + sqrt(MILLER_ACCURACY n))`.
 fn in_start_order(n: i32) -> f64 {
@@ -10,7 +16,7 @@ fn in_start_order(n: i32) -> f64 {
 }
 
 /// `BESSELI(x, n)` for `MAX_ORDER < n` without the recurrence: 0 where Excel's is provably 0, else
-/// NaN. I0(x) overflows from x = 709.79, which makes Excel's result `#NUM!` at every order
+/// NaN. I0(x) overflows past `BESSELI_OVERFLOW_X`, which makes Excel's result `#NUM!` at every order
 /// (`BESSELI(713,100001)`, `(1E+4,100001)`); otherwise the bound
 /// `I_n(x) <= (x/2)^n / n! * e^(x^2 / (4 (n + 1)))` (the series with `(n + k)! >= n! (n + 1)^k`)
 /// below `LN_COMPUTED_ZERO` and a recurrence that stays finite give 0: `BESSELI(100,100001)`,
@@ -23,9 +29,6 @@ fn bessel_i_past_cap(n: i32, x: f64) -> f64 {
         return 0.0;
     }
     let ax = x.abs();
-    if !bessel_i0(ax).is_finite() {
-        return f64::NAN;
-    }
     let order = f64::from(n);
     let ln_bound =
         order * (ax / 2.0).ln() - ln_gamma(order + 1.0) + ax * ax / (4.0 * (order + 1.0));
@@ -83,7 +86,8 @@ pub(crate) fn bessel_i0(x: f64) -> f64 {
         p1 + y * (p2 + y * (p3 + y * (p4 + y * (p5 + y * (p6 + y * p7)))))
     } else {
         let y = k1 / ax;
-        ((ax).exp() / (ax).sqrt())
+        // Excel's own EXP: the platform exp is 2 ulps off `BESSELI(100.21..,5)` (engineering.md, T-2548).
+        (excel_exp(ax) / (ax).sqrt())
             * (q1
                 + y * (q2
                     + y * (q3 + y * (q4 + y * (q5 + y * (q6 + y * (q7 + y * (q8 + y * q9))))))))
@@ -119,7 +123,7 @@ pub(crate) fn bessel_i1(x: f64) -> f64 {
         x * (p1 + y * (p2 + y * (p3 + y * (p4 + y * (p5 + y * (p6 + y * p7))))))
     } else {
         let y = k1 / ax;
-        let result = ((ax).exp() / (ax).sqrt())
+        let result = (excel_exp(ax) / (ax).sqrt())
             * (q1
                 + y * (q2
                     + y * (q3 + y * (q4 + y * (q5 + y * (q6 + y * (q7 + y * (q8 + y * q9))))))));
@@ -133,6 +137,9 @@ pub(crate) fn bessel_i1(x: f64) -> f64 {
 pub(crate) fn bessel_i(n: i32, x: f64) -> f64 {
     // The order cap bounds the downward recurrence below (about 2n steps).
     if n < 0 {
+        return f64::NAN;
+    }
+    if x.abs() > BESSELI_OVERFLOW_X {
         return f64::NAN;
     }
     if n > MAX_ORDER {

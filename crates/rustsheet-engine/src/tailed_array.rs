@@ -12,17 +12,20 @@
 //! logical 1,048,576-row shape, and the rows past every head share one product.
 //!
 //! Only expressions whose rows are independent of one another are taken
-//! ([`Model::tailed_leaves`]): literals, one-cell references, single whole columns, the value
-//! operators and IF over a condition that is an array. A whole-column operand reads what
-//! `evaluate_range` reads: its used rows, the rest on record as read empty through
-//! `clip_to_used_area`. The tail reads the one-cell references again, which finds them evaluated
-//! and records nothing new. Should the used area grow while the head is evaluated (a spill
-//! evaluated on the way), the head is too short: the argument is then evaluated the ordinary
-//! way, its cells already evaluated.
+//! ([`Model::tailed_leaves`]): literals, one-cell references, single-column ranges of one common
+//! span (whole columns, or bounded ranges running past the used area), the value operators and IF
+//! over a condition that is an array. `ROW()` of such a range is a position leaf: its head is its
+//! row numbers and its tail the sentinel `#N/IMPL`, and a tail element that is the sentinel
+//! leaves the argument to the ordinary reading (SPEC-0020 Amendment 1, T-0491). A range operand
+//! reads what `evaluate_range` reads: its used rows, the rest on record as read empty through
+//! `clip_block_to_used_area`. The tail reads the one-cell references again, which finds them
+//! evaluated and records nothing new. Should the used area grow while the head is evaluated (a
+//! spill evaluated on the way), the head is too short: the argument is then evaluated the
+//! ordinary way, its cells already evaluated.
 
 use crate::calc_result::CalcResult;
-use crate::constants::LAST_ROW;
 use crate::expressions::parser::{ArrayNode, Node};
+use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::Function;
 use crate::model::Model;
@@ -39,12 +42,21 @@ thread_local! {
 /// Fewest rows past the used area for which the two evaluations beat one ordinary evaluation.
 const MIN_TAILED_ROWS: i32 = 4096;
 
+/// The tail of a `ROW()` position leaf: an error no tailed operand row can hide, so a tail
+/// element that depends on the row numbers is this error (SPEC-0020 Amendment 1, section 2). A
+/// real `#N/IMPL` in the tail only sends the argument to the ordinary reading.
+const POSITION_SENTINEL: Error = Error::NIMPL;
+
 /// The whole-column operands of an argument whose head or tail is being evaluated.
 pub(crate) struct TailView {
     /// The formula's cell: formulas evaluated meanwhile may share its parsed nodes.
     cell: CellReferenceIndex,
-    /// The whole-column operand nodes, by address (compared, never dereferenced).
+    /// The range operand nodes, by address (compared, never dereferenced).
     leaves: Vec<usize>,
+    /// The `ROW()` position leaves, by address.
+    positions: Vec<usize>,
+    /// The first row of the operands' common span.
+    top: i32,
     /// The head's last row while the head is evaluated, `None` for the tail.
     head_end: Option<i32>,
     /// Set when an operand's used rows went past `head_end`.
@@ -57,30 +69,46 @@ pub(crate) struct Tailed<T> {
     pub(crate) head: T,
     pub(crate) tail: Option<T>,
     pub(crate) tail_len: usize,
+    /// The argument has `ROW()` position leaves: a sentinel tail element has no single value.
+    pub(crate) positions: bool,
 }
 
 impl Tailed<RefArg> {
-    /// The elements of a tailed argument: its head's, and its tail element with the number of
-    /// rows it stands for; `None` unless the head is one column of values and the tail one
-    /// element, as the two evaluations of an array argument give. Tests count the arguments
-    /// read this way (`TAILED_WALKS`).
+    /// The elements of a tailed aggregate or SUMPRODUCT argument ([`Tailed::elements_by`] of
+    /// its arrays).
     pub(crate) fn elements(
         self,
     ) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
-        let Err(CalcResult::Array(head)) = self.head.into_ranges_or_value() else {
-            return None;
-        };
+        self.elements_by(|arg| match arg.into_ranges_or_value() {
+            Err(CalcResult::Array(array)) => Some(array),
+            _ => None,
+        })
+    }
+}
+
+impl<T> Tailed<T> {
+    /// The elements of a tailed argument, each evaluation read as an array by `as_array`: its
+    /// head's, and its tail element with the number of rows it stands for; `None` unless the
+    /// head is one column of values and the tail one element, as the two evaluations of an
+    /// array argument give. Tests count the arguments read this way (`TAILED_WALKS`).
+    pub(crate) fn elements_by(
+        self,
+        as_array: impl Fn(T) -> Option<Vec<Vec<ArrayNode>>>,
+    ) -> Option<(impl Iterator<Item = ArrayNode>, Option<(ArrayNode, usize)>)> {
+        let head = as_array(self.head)?;
         if head.iter().any(|row| row.len() != 1) {
             return None;
         }
-        let tail = match self.tail.map(RefArg::into_ranges_or_value) {
+        let tail = match self.tail {
             None => None,
-            Some(Err(CalcResult::Array(tail))) => {
-                let [row] = <[Vec<ArrayNode>; 1]>::try_from(tail).ok()?;
+            Some(tail) => {
+                let [row] = <[Vec<ArrayNode>; 1]>::try_from(as_array(tail)?).ok()?;
                 let [element] = <[ArrayNode; 1]>::try_from(row).ok()?;
+                if self.positions && element == ArrayNode::Error(POSITION_SENTINEL) {
+                    return None;
+                }
                 Some((element, self.tail_len))
             }
-            Some(_) => return None,
         };
         #[cfg(test)]
         TAILED_WALKS.with(|walks| walks.set(walks.get() + 1));
@@ -105,6 +133,27 @@ fn ungroup(mut node: &Node) -> &Node {
 /// the parsed tree cannot move or be freed meanwhile.
 fn address(node: &Node) -> usize {
     std::ptr::from_ref(node) as usize
+}
+
+/// `ROW(range)`, and the range node.
+fn row_of(node: &Node) -> Option<&Node> {
+    match node {
+        Node::FunctionKind {
+            kind: Function::Row,
+            args,
+        } if args.len() == 1 => Some(ungroup(&args[0])),
+        _ => None,
+    }
+}
+
+/// The leaves of a tailed argument: range and position nodes by address, their sheets and their
+/// common span of rows.
+struct Leaves {
+    ranges: Vec<usize>,
+    positions: Vec<usize>,
+    sheets: Vec<u32>,
+    top: i32,
+    bottom: i32,
 }
 
 /// IF with its value arguments.
@@ -151,17 +200,13 @@ fn reaches_leaf(node: &Node, leaves: &[usize]) -> bool {
 }
 
 impl Model {
-    /// The whole-column operands of `arg` (node addresses) and their sheets, when `arg` is an
-    /// element-wise expression of them whose evaluation is an array today: a value operator or
-    /// IF at the top (never a bare range, which aggregates walk as a reference), every IF over
-    /// a condition with a whole-column operand (a scalar condition picks one branch
-    /// unevaluated), operands that are literals, one-cell references or single whole columns.
-    /// Read from the formula alone; an explicit stack walks operator chains of any length.
-    fn tailed_leaves(
-        &self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Option<(Vec<usize>, Vec<u32>)> {
+    /// The range and `ROW()` operands of `arg`, when `arg` is an element-wise expression of them
+    /// whose evaluation is an array today: a value operator or IF at the top (never a bare range,
+    /// which aggregates walk as a reference), every IF over a condition with a range or `ROW()`
+    /// operand (a scalar condition picks one branch unevaluated), operands that are literals,
+    /// one-cell references, single-column ranges all of one span of rows, or `ROW()` of such a
+    /// range. Read from the formula alone; an explicit stack walks operator chains of any length.
+    fn tailed_leaves(&self, arg: &Node, cell: CellReferenceIndex) -> Option<Leaves> {
         let top = ungroup(arg);
         let mut pending = Vec::new();
         if !push_operands(top, &mut pending) {
@@ -169,8 +214,13 @@ impl Model {
         }
         pending.clear();
         pending.push(top);
-        let mut leaves = Vec::new();
-        let mut sheets = Vec::new();
+        let mut leaves = Leaves {
+            ranges: Vec::new(),
+            positions: Vec::new(),
+            sheets: Vec::new(),
+            top: 0,
+            bottom: 0,
+        };
         let mut conditions = Vec::new();
         while let Some(node) = pending.pop() {
             let node = ungroup(node);
@@ -181,28 +231,41 @@ impl Model {
                 }
                 continue;
             }
-            match node {
+            let range = row_of(node).unwrap_or(node);
+            match range {
                 Node::NumberKind(_)
                 | Node::BooleanKind(_)
                 | Node::StringKind(_)
-                | Node::ReferenceKind { .. } => {}
+                | Node::ReferenceKind { .. }
+                    if std::ptr::eq(range, node) => {}
                 Node::RangeKind { .. } => {
-                    let (left, right) = range_corners(node, cell)?;
-                    if left.row != 1 || right.row != LAST_ROW || left.column != right.column {
+                    let (left, right) = range_corners(range, cell)?;
+                    if left.column != right.column {
                         return None;
                     }
-                    leaves.push(address(node));
-                    if !sheets.contains(&left.sheet) {
-                        sheets.push(left.sheet);
+                    let first = leaves.ranges.is_empty() && leaves.positions.is_empty();
+                    if first {
+                        (leaves.top, leaves.bottom) = (left.row, right.row);
+                    } else if (leaves.top, leaves.bottom) != (left.row, right.row) {
+                        // Ragged operands broadcast and pad with #N/A: one head cannot say that.
+                        return None;
+                    }
+                    if std::ptr::eq(range, node) {
+                        leaves.ranges.push(address(node));
+                    } else {
+                        leaves.positions.push(address(node));
+                    }
+                    if !leaves.sheets.contains(&left.sheet) {
+                        leaves.sheets.push(left.sheet);
                     }
                 }
                 _ => return None,
             }
         }
-        let arrays = conditions
-            .into_iter()
-            .all(|condition| reaches_leaf(condition, &leaves));
-        (!leaves.is_empty() && arrays).then_some((leaves, sheets))
+        let arrays = conditions.into_iter().all(|condition| {
+            reaches_leaf(condition, &leaves.ranges) || reaches_leaf(condition, &leaves.positions)
+        });
+        (!leaves.ranges.is_empty() && arrays).then_some(leaves)
     }
 
     /// `arg` read by `read` (the aggregate walk's own reading of it) as a head and a tail, or
@@ -222,30 +285,37 @@ impl Model {
         if TAILED_OFF.with(std::cell::Cell::get) {
             return None;
         }
-        let (leaves, sheets) = self.tailed_leaves(arg, cell)?;
-        let mut head_end = 1;
-        for sheet in sheets {
-            head_end = head_end.max(self.used_area_end_of(sheet).ok()?.0);
+        let leaves = self.tailed_leaves(arg, cell)?;
+        let mut used_end = 1;
+        for sheet in &leaves.sheets {
+            used_end = used_end.max(self.used_area_end_of(*sheet).ok()?.0);
         }
-        if LAST_ROW - head_end < MIN_TAILED_ROWS {
+        // The head is at least the span's first row (`max` then `min`: never a panic, whatever
+        // the span).
+        let head_end = used_end.max(leaves.top).min(leaves.bottom);
+        if leaves.bottom - head_end < MIN_TAILED_ROWS {
             return None;
         }
+        let positions = !leaves.positions.is_empty();
         self.tail_views.push(TailView {
             cell,
-            leaves,
+            leaves: leaves.ranges,
+            positions: leaves.positions,
+            top: leaves.top,
             head_end: Some(head_end),
             stale: false,
         });
         let head = read(self);
         let stale = self.tail_views.last().is_none_or(|view| view.stale);
         // A pass being abandoned discards the value; the tail would read in vain.
-        let abandoned = self.evaluation.restart.is_some() || self.evaluation.unwinding;
+        let abandoned = self.evaluation.abandoned() || self.evaluation.unwinding;
         if stale || abandoned {
             self.tail_views.pop();
             return (!stale).then_some(Tailed {
                 head,
                 tail: None,
                 tail_len: 0,
+                positions,
             });
         }
         if let Some(view) = self.tail_views.last_mut() {
@@ -256,7 +326,8 @@ impl Model {
         Some(Tailed {
             head,
             tail: Some(tail),
-            tail_len: usize::try_from(LAST_ROW - head_end).unwrap_or(0),
+            tail_len: usize::try_from(leaves.bottom - head_end).unwrap_or(0),
+            positions,
         })
     }
 
@@ -268,6 +339,9 @@ impl Model {
         cell: CellReferenceIndex,
         range: &CalcResult,
     ) -> Option<CalcResult> {
+        if self.tail_views.is_empty() {
+            return None;
+        }
         let at = address(node);
         let index = self
             .tail_views
@@ -279,9 +353,11 @@ impl Model {
         let Some(head_end) = self.tail_views[index].head_end else {
             return Some(CalcResult::Array(vec![vec![ArrayNode::Empty]]));
         };
-        // The record `evaluate_range` makes: past the used rows, read empty.
+        // Past the used rows, on record as read empty: what `evaluate_range` records for a whole
+        // column, and the union of the empty cells it reads one by one for a bounded range. A
+        // block the seen-range budget cannot record is not cut, so the head goes stale.
         let (last_row, _) = self
-            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .clip_block_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
             .ok()?;
         if last_row > head_end {
             self.tail_views[index].stale = true;
@@ -295,6 +371,33 @@ impl Model {
             Ok(array) => CalcResult::Array(array),
             Err(error) => error,
         })
+    }
+}
+
+impl Model {
+    /// What the `ROW()` position leaf `node` evaluates to while the head or the tail of its
+    /// argument is evaluated: the head's row numbers, or the sentinel; `None` when neither is.
+    pub(crate) fn tailed_position(
+        &self,
+        node: &Node,
+        kind: &Function,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        if *kind != Function::Row || self.tail_views.is_empty() {
+            return None;
+        }
+        let at = address(node);
+        let view = self
+            .tail_views
+            .iter()
+            .rev()
+            .find(|view| view.cell == cell && view.positions.contains(&at))?;
+        Some(CalcResult::Array(match view.head_end {
+            Some(head_end) => (view.top..=head_end)
+                .map(|row| vec![ArrayNode::Number(f64::from(row))])
+                .collect(),
+            None => vec![vec![ArrayNode::Error(POSITION_SENTINEL)]],
+        }))
     }
 }
 

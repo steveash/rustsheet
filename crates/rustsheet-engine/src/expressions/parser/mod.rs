@@ -75,7 +75,8 @@ use chain::ChainLevel;
 pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
 pub(crate) use depth::is_limit_error;
 pub use depth::{
-    MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_PARENTHESES, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
+    TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
 pub(crate) use spacing::Run;
 pub use spacing::Spacing;
@@ -289,7 +290,7 @@ pub enum Node {
     /// FORMULATEXT and stored formula text keep every written parenthesis
     /// (docs/excel-semantics/syntax.md, SPEC-0007).
     Group {
-        levels: u8,
+        levels: u16,
         child: Box<Node>,
     },
     /// A structured reference as written (`Sales[[#All],[Qty]]`), with the area it resolves to
@@ -342,6 +343,11 @@ pub enum Node {
         child: Box<Node>,
     },
     ErrorKind(token::Error),
+    /// `S!#REF!`, printed with its sheet (references.md "A sheet-qualified #REF! is #REF!"). Only
+    /// in the tree as written: [`Node::strip_spaces`] makes it a bare `#REF!` (T-2855).
+    SheetRefErrorKind {
+        sheet_name: String,
+    },
     ParseErrorKind {
         formula: String,
         message: String,
@@ -352,7 +358,7 @@ pub enum Node {
     EmptyArgKind,
 }
 
-// A `Group` must not grow the node: `Box<Node>` + `u8` fits in the largest variant (SPEC-0007).
+// A `Group` must not grow the node: `Box<Node>` + `u16` fits in the largest variant (SPEC-0007).
 const _: () = assert!(std::mem::size_of::<Node>() <= NODE_SIZE);
 
 /// `size_of::<Node>()` before the `Group` variant; pinned so later variants cannot grow it unnoticed.
@@ -570,6 +576,11 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
+    /// An operand parsed ahead, with its depth, for the next [`Parser::parse_primary`] to
+    /// return: the inner group of a run of parentheses ([`Parser::parse_parenthesis_run`]).
+    pending_operand: Option<(Node, usize)>,
+    /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
+    open_groups: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
     value_operators: usize,
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
@@ -593,6 +604,14 @@ pub struct Parser {
     /// The first call of a function with an argument count Excel refuses that the last parse
     /// read (see [`Parser::typed_refusal`]).
     wrong_count_call: Option<String>,
+    /// Function calls open on the current parse path ([`Parser::in_call`]).
+    open_calls: usize,
+    /// The most function calls open at once in the last parse (see
+    /// [`Parser::nests_too_many_calls`]).
+    deepest_calls: usize,
+    /// The workbook's file name (`Budget.xlsx`), which prefixes a workbook name read through a
+    /// sheet (`=Feb!loc` is `=Budget.xlsx!loc`); `None` for an unnamed workbook.
+    workbook_file: Option<String>,
 }
 
 pub fn new_parser_english(
@@ -633,12 +652,17 @@ impl Parser {
             top_level: false,
             depth: 0,
             inner_depth: 0,
+            pending_operand: None,
+            open_groups: 0,
             value_operators: 0,
             bound_names: Vec::new(),
             typed: false,
             loaded: false,
             cell_shaped_binding: None,
             wrong_count_call: None,
+            open_calls: 0,
+            deepest_calls: 0,
+            workbook_file: None,
         }
     }
     /// Reads the next formulas as a file loader does (`true`), or not (`false`, the default).
@@ -654,26 +678,6 @@ impl Parser {
     /// [`Parser::typed_refusal`].
     pub(crate) fn set_typed(&mut self, typed: bool) {
         self.typed = typed;
-    }
-
-    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
-    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
-    /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
-    /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
-    /// PATCH 400, T-2568). `None` when parsing stored text or nothing is refused.
-    pub(crate) fn typed_refusal(&self) -> Option<String> {
-        if !self.typed {
-            return None;
-        }
-        if let Some(name) = &self.cell_shaped_binding {
-            return Some(format!(
-                "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
-            ));
-        }
-        let name = self.wrong_count_call.as_ref()?;
-        Some(format!(
-            "Formula: {name} is called with the wrong number of arguments"
-        ))
     }
 
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -699,6 +703,12 @@ impl Parser {
         self.defined_names = defined_names;
     }
 
+    /// Sets the workbook's file name (`Budget.xlsx`, `None` for an unnamed workbook); see
+    /// `Parser::workbook_file`.
+    pub fn set_workbook_file(&mut self, file_name: Option<String>) {
+        self.workbook_file = file_name;
+    }
+
     /// Replaces the tables structured references resolve against.
     pub fn set_tables(&mut self, tables: HashMap<String, Table>) {
         self.tables = tables;
@@ -712,9 +722,10 @@ impl Parser {
         }
         // A file's stored text drops the whitespace it starts with, where the same text typed
         // after `=` keeps it: `<f> 1+2</f>` prints `=1+2` (probes/t2776-formula-text-whitespace-shapes
-        // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784).
+        // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784), and so does a
+        // leading line feed (`<f>` LF `1+2</f>` prints `=1+2`; probes/t2949-stored-5).
         let formula = if self.loaded {
-            formula.trim_start_matches(' ')
+            formula.trim_start_matches([' ', '\n'])
         } else {
             formula
         };
@@ -726,10 +737,14 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
+        self.pending_operand = None;
+        self.open_groups = 0;
         self.value_operators = 0;
         self.bound_names.clear();
         self.cell_shaped_binding = None;
         self.wrong_count_call = None;
+        self.open_calls = 0;
+        self.deepest_calls = 0;
         self.top_level = true;
         let node = self.parse_expr();
         self.top_level = false;
@@ -836,8 +851,7 @@ impl Parser {
     /// before and after the operand is in helpers of their own, to keep this frame small in
     /// unoptimized builds (T-1110).
     pub(super) fn parse_power(&mut self) -> Node {
-        let before = self.run_ahead();
-        let signs = self.parse_signs();
+        let (before, signs) = self.parse_prefix();
         let t = self.parse_bare_union();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -853,7 +867,7 @@ impl Parser {
     /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
     /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776).
     #[inline(never)]
-    fn parse_signs(&mut self) -> Vec<(bool, Run)> {
+    pub(super) fn parse_signs(&mut self) -> Vec<(bool, Run)> {
         let mut signs = Vec::new();
         while let TokenType::Addition(op) = self.lexer.peek_token() {
             self.lexer.advance_token();
@@ -906,7 +920,7 @@ impl Parser {
         let start = self.lexer.get_position_index();
         let next_token = self.lexer.next_token();
         match next_token {
-            TokenType::LeftParenthesis => self.parse_parenthesized_call(),
+            TokenType::LeftParenthesis => self.parse_parenthesis_run(),
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => self.parse_array_operand(),
@@ -928,6 +942,7 @@ impl Parser {
             }
             TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),
+            TokenType::SheetRefError(sheet_name) => Node::SheetRefErrorKind { sheet_name },
             TokenType::Illegal(error) => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
                 expecting: vec![ExpectedTokens::Other],
@@ -966,12 +981,19 @@ impl Parser {
             | TokenType::Percent => {
                 self.unexpected_operand(format!("Unexpected token: '{next_token:?}'"))
             }
-            TokenType::LeftBracket => self.unexpected_operand("Unexpected token: '['".to_string()),
+            TokenType::LeftBracket => self.unqualified_structured_reference(),
             TokenType::StructuredReference {
                 table_name,
                 specifier,
                 table_reference,
-            } => self.structured_reference_operand(table_name, specifier, table_reference, false),
+                spacing,
+            } => self.structured_reference_operand(
+                table_name,
+                specifier,
+                table_reference,
+                spacing,
+                false,
+            ),
         }
     }
 }

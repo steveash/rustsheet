@@ -3,11 +3,12 @@ id: T-2094
 title: "CHISQ.TEST and CHITEST over a range with no numbers are #DIV/0!, not 1"
 milestone: M9
 lane: functions-stat
-status: todo
-priority: P3
+status: done
+priority: P2
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -33,14 +34,26 @@ A21 `CHISQ.TEST(G1:G4,H1:H4)` (G1 = "a") and A34/A35 pass. Partly blank ranges a
 T-1689's probe.
 
 ## Acceptance criteria
-- [ ] The three cells above pass in `make eval`. Every cell of t1049-chisqtest and m9-legacy-chitest
+- [x] The three cells above pass in `make eval`. Every cell of t1049-chisqtest and m9-legacy-chitest
       that passes today still passes, and no gated baseline (eval/baseline/*.txt) gains an F line.
-- [ ] A unit test covers an all-blank actual range and an all-blank expected range (`#DIV/0!`), and a
+- [x] A unit test covers an all-blank actual range and an all-blank expected range (`#DIV/0!`), and a
       range with one text cell among numbers (unchanged value). The code comment cites the probe cells.
-- [ ] statistics.md's T-1049 entry says the empty-range rule is implemented (T-2094).
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's T-1049 entry says the empty-range rule is implemented (T-2094).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Ranges that each hold numbers, but never in the same position (unprobed); partly blank ranges and
   whole columns (T-1689).
 - CHISQ.TEST's last digits (T-0971).
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off probes-numeric cells of CHITEST (2) and CHISQ.TEST (2; T-2650 owns the third). Fixing them lifts CHITEST to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+`fn_chisq_test` returns `#DIV/0!` when either range holds no number (after the `#N/A` size check). Unit test
+`test_chisq_test_blank_range` added; statistics.md updated. Eval: gen-m9 known failures 3341 -> 3340; no regressions.
+Also fixes gen-m9/0a9226016e8f5f33 A333 (a side with only text, a boolean and blanks); T-2650's A333 criterion is met.

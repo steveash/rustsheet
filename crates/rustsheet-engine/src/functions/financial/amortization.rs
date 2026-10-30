@@ -13,6 +13,9 @@
 //! drifts from the walk by about 1e-13 relative (`DegressiveWalk::closed_form`, a DEVIATION). Moved out
 //! of `financial/financial_depreciation.rs` (T-1841).
 //!
+//! AMORDEGRC's walk subtracts each charge in x87 extended precision, so the remaining value is
+//! rounded twice (`extended_sum`; T-2849, probes/amordegrc-walk-drift and -ties).
+//!
 //! Port of the depreciation calculations as implemented in the `ExcelFinancialFunctions` library
 //! (depreciation.fs), see <https://github.com/fsprojects/ExcelFinancialFunctions>.
 
@@ -22,6 +25,7 @@ use super::dates::{actual_days, days_30_360_eu, days_30_360_us, DateReading};
 use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
+    arithmetic::extended_sum,
     calc_result::CalcResult,
     decimal_round::{round_decimal, RoundMode},
     expressions::{parser::Node, types::CellReferenceIndex},
@@ -41,12 +45,14 @@ fn first_period_days(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
     }
 }
 
-/// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk
-/// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
-/// walk has not reached a period whose charge is fixed, the decay is a closed form, which can move
-/// the rounded charge once it is about 1E12 or more (fin-amor-period-bound-c). The bound is also the
-/// kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds/financial.rs).
-const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 20;
+/// The most AMORDEGRC periods walked one by one. Up to here the kernel is Excel's walk
+/// (probes/fin-amor-period-bound B6-B14 and probes/amordegrc-walk-drift E1-E48, up to 10^6 periods,
+/// and fin-amor-period-bound-c A1-A6, 1.1E6 to 2.4E6 periods, are Excel's values); past it, where
+/// the walk has not reached a period whose charge is fixed, the decay is a closed form, which can
+/// move the rounded charge once it is about 1E12 or more (at 2^20, the bound before T-2918, it
+/// moved -c A1, A3, A4 and A5). The bound is also the kernel's work cap (`AMORDEGRC_WEIGHT` in
+/// functions/lift/kinds/financial.rs): about 29 ms a scalar call in release.
+const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 22;
 
 /// The most single subtractions `linear_charge` makes. A walk takes a few per binade it crosses
 /// and stops once the charge no longer moves the value, at most 616 over every charge from 2^-1074
@@ -299,7 +305,9 @@ impl Asset {
             return Ok(Amortized::new(0.0, LeftOver::Read));
         }
         let walk = DegressiveWalk {
-            remain: self.cost - first_depr,
+            // Subtracted like every later charge (`DegressiveWalk::charge`), by analogy: the
+            // probes fit the plain and the twice-rounded difference alike.
+            remain: extended_sum(self.cost, -first_depr),
             salvage: self.salvage,
             rate: depr_rate,
             half_period: half_period(asset_life),
@@ -429,7 +437,12 @@ struct DegressiveWalk {
 impl DegressiveWalk {
     /// The (unrounded) charge of whole period `periods`, main's loop: each period charges
     /// `rate * remain`, the half period half of `remain` (and the rate becomes 1), and once
-    /// `remain` is below the salvage nothing.
+    /// `remain` is below the salvage nothing. Excel subtracts the charge in x87 extended precision
+    /// and stores the difference, so `remain` is rounded twice ([`extended_sum`]): about one step in
+    /// 4,000 then differs from the plain difference by an ulp, which a walk of 10^3 periods or more
+    /// carries into its charge. With it all 135 cells of probes/amordegrc-walk-drift and -ties are
+    /// Excel's; with the plain difference 28 (from 1000 periods on) were not (T-2849, financial.md
+    /// "AMORDEGRC rounds its charge like ROUND").
     ///
     /// The walk stops early where the rest is known, bit for bit main's value: below the salvage
     /// every later period charges 0; before the half period a charge that rounds to 0 stays 0
@@ -468,7 +481,7 @@ impl DegressiveWalk {
             } else {
                 depr_temp
             };
-            let remain = self.remain - depr;
+            let remain = extended_sum(self.remain, -depr);
             if remain == self.remain {
                 // A fixed point: every period charges `depr` until the half period, or for ever
                 // after it (the rate is 1 there, so only a zero `remain` stays put).
@@ -486,9 +499,10 @@ impl DegressiveWalk {
     /// period): `remain` decays by `(1 - rate)` a period, `remain * exp(n * log1p(-rate))`.
     /// Main's walk adds a rounding per period, so the two drift apart by up to about 1e-13
     /// relative over 10^6 periods: equal once rounded for charges below about 1E11, but a larger
-    /// charge can be a unit off (a review replay: 3.1E11; about 1E12 or more often is):
-    /// `AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` is 18989305437101, Excel and main
-    /// 18989305437102 (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION).
+    /// charge can be a unit off (a review replay: 3.1E11; about 1E12 or more often is): with the
+    /// closed form from 2^20 periods, the bound before T-2918,
+    /// `AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` was 18989305437101, Excel and main
+    /// 18989305437102 (financial.md "AMORDEGRC past 2^22 periods", a DEVIATION).
     fn closed_form(&self, done: u64, periods: u64) -> f64 {
         let last = self
             .half_period
@@ -590,7 +604,8 @@ mod tests {
         depr
     }
 
-    /// Main's AMORDEGRC loop after the first period, the reference walk.
+    /// Main's AMORDEGRC loop after the first period, with Excel's twice-rounded subtraction
+    /// (T-2849): the reference walk, one period at a time.
     fn degressive_walk(walk: &DegressiveWalk, asset_life: f64, periods: u64) -> f64 {
         let mut depr = 0.0;
         let mut depr_rate = walk.rate;
@@ -608,7 +623,7 @@ mod tests {
             } else {
                 depr_temp
             };
-            remain -= depr;
+            remain = extended_sum(remain, -depr);
         }
         depr
     }

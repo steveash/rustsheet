@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use crate::area_budget::NODE_UNITS;
 use crate::arithmetic::{divide, minus, plus, power, times};
 use crate::calc_result::CalcResult;
 use crate::defined_names::ParsedDefinedName;
@@ -41,6 +42,8 @@ impl Model {
             // Their operand is turned into a number, element by element on a range or an array.
             UnaryKind { .. } => self.apply_unary_chain(node, cell),
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
+            // Stripped before evaluation (`Node::strip_spaces`); the bare `#REF!` it stands for.
+            SheetRefErrorKind { .. } => CalcResult::new_error(Error::REF, cell, "".to_string()),
             ParseErrorKind {
                 formula, message, ..
             } => CalcResult::new_error(
@@ -68,6 +71,9 @@ impl Model {
                 self.implicit_intersection_to_value(result, cell)
             }
             LambdaDefKind { parameters, body } => {
+                if let Err(error) = self.spend_lambda_made(body, cell) {
+                    return error;
+                }
                 let definition = Arc::new((parameters.clone(), *body.clone()));
                 CalcResult::Lambda(self.store_lambda(definition))
             }
@@ -259,6 +265,17 @@ impl Model {
         let mut value = self.evaluate_node_in_context(first, cell);
         for link in links {
             value = self.apply_operator_link(value, link, cell);
+            // Each link below the chain's own node is a node of its own, and its value, an array
+            // a broadcast built, is charged as a node's is (SPEC-0024); the chain's value is
+            // charged where it is returned (`evaluate_node_in_context`).
+            if !std::ptr::eq(link, node) {
+                if let Err(error) = self
+                    .spend_work(NODE_UNITS, cell)
+                    .and_then(|()| self.spend_value(&value, cell))
+                {
+                    return error;
+                }
+            }
         }
         value
     }

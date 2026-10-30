@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2366: SORT lifted by_col elements: each call's top-left (Array) or only the first (ArrayFirst).",
+ "tags": ["M7", "probe", "lookup", "T-2366"],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 3, "A2": 1, "A3": 2,
+    "E1": false, "E2": true,
+    "H1": "=SORT(A1:A3,1,1,{FALSE,TRUE})",
+    "H5": "=ISBLANK(INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2))",
+    "H6": "=INDEX(SORT(A1:A3,1,1,{FALSE,TRUE}),1,2)&\"|\"",
+    "H7": "=SORT(A1:A3,1,1,{TRUE,TRUE})",
+    "H11": "=SORT(A1:A3,3,1,{FALSE,TRUE})",
+    "H15": "=ROWS(SORT(A1:A3,1,1,E1:E2))",
+    "H16": "=COLUMNS(SORT(A1:A3,1,1,E1:E2))",
+    "H17": "=SORT(A1:A3,1,1,E1:E2)"
+   }
+  }
+ ],
+ "expected": {}
+}

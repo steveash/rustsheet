@@ -538,23 +538,18 @@ pub(crate) enum CallResult {
     /// An array as [`CallResult::Array`], but unless every element's lifted entries are equal,
     /// only the first element whose call is not an error keeps its top-left value: an error
     /// stays, and every other element is empty (UNIQUE; probes/m7-unique-lift-elements,
-    /// docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's lifted elements"; T-2300). The
-    /// driver applies it to computed elements only, so it needs `Reuse::Never`, which every
-    /// table entry's options have (`LiftOptions::for_entry`).
-    ArrayFirst,
-    /// As [`CallResult::ArrayFirst`], and when every entry is equal and spans several columns the
-    /// elements past the first column are empty too (UNIQUE; probes/m7-unique-lift-corners,
-    /// T-2348). SORTBY's uniform 1xN `sort_order` is unprobed, so it stays on `ArrayFirst`.
+    /// docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's lifted elements"; T-2300). When every
+    /// entry is equal and spans several columns the elements past the first column are empty too
+    /// (UNIQUE, T-2348; SORTBY, T-2349: probes/m7-unique-lift-corners,
+    /// probes/sortby-lifted-element-corners). The driver applies it to computed elements only, so
+    /// it needs `Reuse::Never`, which every table entry's options have (`LiftOptions::for_entry`).
     ArrayFirstColumn,
 }
 
 impl CallResult {
     /// Whether one unlifted call returns an array.
     pub(crate) fn is_array(self) -> bool {
-        matches!(
-            self,
-            CallResult::Array | CallResult::ArrayFirst | CallResult::ArrayFirstColumn
-        )
+        matches!(self, CallResult::Array | CallResult::ArrayFirstColumn)
     }
 }
 

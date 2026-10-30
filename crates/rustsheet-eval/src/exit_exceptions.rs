@@ -38,32 +38,80 @@ pub struct ExitExceptions {
     pub cells: BTreeMap<String, Exception>,
 }
 
-/// Why the exceptions file or one of its lines is unusable.
+/// Why an exceptions file (this one, or the Phase 1 list of
+/// [`crate::phase1_exceptions`]) or one of its lines is unusable.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ExceptionsError {
     /// The file cannot be read.
-    #[error("{EXCEPTIONS_PATH}: {message}")]
-    Unreadable { message: String },
+    #[error("{path}: {message}")]
+    Unreadable { path: &'static str, message: String },
     /// A line is malformed.
-    #[error("{EXCEPTIONS_PATH} line {line}: {why}")]
-    Line { line: usize, why: &'static str },
+    #[error("{path} line {line}: {why}")]
+    Line {
+        path: &'static str,
+        line: usize,
+        why: &'static str,
+    },
     /// A cell is listed twice.
-    #[error("{EXCEPTIONS_PATH} line {line}: {cell} is already listed on line {first}")]
+    #[error("{path} line {line}: {cell} is already listed on line {first}")]
     Duplicate {
+        path: &'static str,
         line: usize,
         cell: String,
         first: usize,
     },
 }
 
-/// `ironcalc-calc/<path>!Sheet!A1` in the form the function-scope rows use, or `None`.
-fn cell_id(cell: &str) -> Option<String> {
+/// `case!Sheet!A1` split into the case id and `Sheet!A1` with a canonical address, the form
+/// [`crate::runner::CellResult::key`] gives; `None` when malformed.
+pub(crate) fn split_cell(cell: &str) -> Option<(String, String)> {
     let (case, qualified) = cell.split_once('!')?;
-    if !case.starts_with(&format!("{SUITE}/")) {
+    let (sheet, a1) = split_qualified(qualified)?;
+    if case.is_empty() || sheet.is_empty() {
         return None;
     }
-    let (sheet, a1) = split_qualified(qualified)?;
-    Some(format!("{case}!{sheet}!{}", Addr::parse(&a1)?))
+    Some((case.to_string(), format!("{sheet}!{}", Addr::parse(&a1)?)))
+}
+
+/// `ironcalc-calc/<path>!Sheet!A1` in the form the function-scope rows use, or `None`.
+fn ironcalc_cell_id(cell: &str) -> Option<String> {
+    let (case, key) = split_cell(cell)?;
+    case.starts_with(&format!("{SUITE}/"))
+        .then(|| crate::runner::cell_id(&case, &key))
+}
+
+/// Checks a line's decision (four digits) and owning task (`T-<digits>`) fields.
+pub(crate) fn check_owner(decision: &str, task: &str) -> Result<(), &'static str> {
+    if decision.len() != 4 || !decision.bytes().all(|b| b.is_ascii_digit()) {
+        return Err("the decision must be four digits");
+    }
+    check_task(task)
+}
+
+/// Checks a line's owning task field (`T-<digits>`).
+pub(crate) fn check_task(task: &str) -> Result<(), &'static str> {
+    let digits = task.strip_prefix("T-").unwrap_or_default();
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return Err("the task must be `T-<digits>`");
+    }
+    Ok(())
+}
+
+/// Reads the file at `path` under `repo_root`; `None` when it is absent.
+pub(crate) fn read_optional(
+    repo_root: &Path,
+    path: &'static str,
+) -> Result<Option<String>, ExceptionsError> {
+    let full = repo_root.join(path);
+    if !full.exists() {
+        return Ok(None);
+    }
+    std::fs::read_to_string(&full)
+        .map(Some)
+        .map_err(|e| ExceptionsError::Unreadable {
+            path,
+            message: e.to_string(),
+        })
 }
 
 impl ExitExceptions {
@@ -75,23 +123,21 @@ impl ExitExceptions {
     pub fn parse(text: &str) -> Result<ExitExceptions, ExceptionsError> {
         let mut exceptions = ExitExceptions::default();
         for (line, fields) in data_lines(text) {
-            let bad = |why| ExceptionsError::Line { line, why };
+            let bad = |why| ExceptionsError::Line {
+                path: EXCEPTIONS_PATH,
+                line,
+                why,
+            };
             let [cell, milestone, decision, task] = fields.as_slice() else {
                 return Err(bad(
                     "expected `case!Sheet!A1<TAB>milestone<TAB>decision<TAB>task`",
                 ));
             };
-            let cell =
-                cell_id(cell).ok_or(bad("the cell must be `ironcalc-calc/<case>!Sheet!A1`"))?;
+            let cell = ironcalc_cell_id(cell)
+                .ok_or(bad("the cell must be `ironcalc-calc/<case>!Sheet!A1`"))?;
             let milestone =
                 parse_milestone(milestone).ok_or(bad("the milestone must be `M<digits>`"))?;
-            if decision.len() != 4 || !decision.bytes().all(|b| b.is_ascii_digit()) {
-                return Err(bad("the decision must be four digits"));
-            }
-            let digits = task.strip_prefix("T-").unwrap_or_default();
-            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-                return Err(bad("the task must be `T-<digits>`"));
-            }
+            check_owner(decision, task).map_err(bad)?;
             let exception = Exception {
                 line,
                 milestone,
@@ -100,6 +146,7 @@ impl ExitExceptions {
             };
             if let Some(first) = exceptions.cells.get(&cell) {
                 return Err(ExceptionsError::Duplicate {
+                    path: EXCEPTIONS_PATH,
                     line,
                     cell,
                     first: first.line,
@@ -115,14 +162,8 @@ impl ExitExceptions {
     /// # Errors
     /// When the file is unreadable or malformed.
     pub fn load(repo_root: &Path) -> Result<ExitExceptions, ExceptionsError> {
-        let path = repo_root.join(EXCEPTIONS_PATH);
-        if !path.exists() {
-            return Ok(ExitExceptions::default());
-        }
-        let text = std::fs::read_to_string(&path).map_err(|e| ExceptionsError::Unreadable {
-            message: e.to_string(),
-        })?;
-        ExitExceptions::parse(&text)
+        read_optional(repo_root, EXCEPTIONS_PATH)?
+            .map_or_else(|| Ok(ExitExceptions::default()), |text| Self::parse(&text))
     }
 
     /// Whether `cell` is left out of the row of milestone `row`: it is listed with a milestone
@@ -183,6 +224,7 @@ mod tests {
         assert_eq!(
             ExitExceptions::parse(&twice),
             Err(ExceptionsError::Duplicate {
+                path: EXCEPTIONS_PATH,
                 line: 2,
                 cell: C11.to_string(),
                 first: 1,

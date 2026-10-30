@@ -6,7 +6,8 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::tests::utils::new_parser;
 use crate::expressions::parser::{
-    Node, MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    Node, MAX_FORMULA_DEPTH, MAX_PARENTHESES, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
+    TOO_MANY_OPERATORS_MESSAGE,
 };
 use crate::expressions::types::CellReferenceRC;
 
@@ -77,11 +78,95 @@ fn nesting_at_the_limit_parses() {
 fn one_level_past_the_limit_is_too_deep() {
     on_small_stack(|| {
         for formula in [
-            nested("(", "1", ")", MAX_NESTING + 1),
             nested("ABS(", "1", ")", MAX_NESTING + 1),
+            nested("( ", "1", ")", MAX_NESTING + 1),
         ] {
             assert!(is_too_deep(&parse(&formula)), "{formula}");
         }
+    });
+}
+
+/// T-3191: a run of directly nested parentheses is parsed in a loop and merges into one group,
+/// so Excel's 256 fit (probes/t3172-paren-256) and 257 are refused, as Excel refuses them.
+#[test]
+fn parenthesis_runs_nest_as_deep_as_excel_allows() {
+    on_small_stack(|| {
+        let node = parse(&nested("(", "1", ")", MAX_PARENTHESES));
+        assert!(
+            matches!(node, Node::Group { levels, .. } if usize::from(levels) == MAX_PARENTHESES)
+        );
+        assert!(is_too_deep(&parse(&nested(
+            "(",
+            "1",
+            ")",
+            MAX_PARENTHESES + 1
+        ))));
+        assert!(is_too_deep(&parse(&"(".repeat(MAX_PARENTHESES + 1))));
+        // Groups in several runs count together (unprobed; syntax.md): split by a space, an
+        // operand or a call, 256 in all fit and 257 do not.
+        let half = MAX_PARENTHESES / 2;
+        for (open, close) in [("( ", ")"), ("(1+", ")"), ("ABS(", ")")] {
+            let fits = format!(
+                "{open}{}{close}",
+                nested("(", "1", ")", MAX_PARENTHESES - 1)
+            );
+            assert!(
+                !matches!(parse(&fits), Node::ParseErrorKind { .. }),
+                "{open}"
+            );
+            let past = format!("{open}{}{close}", nested("(", "1", ")", MAX_PARENTHESES));
+            let past = if open == "ABS(" {
+                format!("({past})")
+            } else {
+                past
+            };
+            assert!(is_too_deep(&parse(&past)), "{open}");
+        }
+        let split = nested(
+            "(",
+            &format!("1+{}", nested("(", "1", ")", half)),
+            ")",
+            half,
+        );
+        assert!(!matches!(parse(&split), Node::ParseErrorKind { .. }));
+        let split = nested(
+            "(",
+            &format!("1+{}", nested("(", "1", ")", half + 1)),
+            ")",
+            half,
+        );
+        assert!(is_too_deep(&parse(&split)));
+        let mut model = crate::test::util::new_empty_model();
+        let formula = format!("={}", nested("(", "-A2", ")", MAX_PARENTHESES));
+        model._set("A1", &formula);
+        model._set("A2", "3");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "-3");
+        assert_eq!(model._get_formula("A1"), formula);
+        // A called group at the end of a run, and inside one (probes/paren-call-*).
+        model._set("B1", "=(((LAMBDA(x,x+1))))(2)");
+        model._set("B2", "=((LAMBDA(x,x*2))(3)+1)");
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "3");
+        assert_eq!(model._get_text("B2"), "7");
+    });
+}
+
+/// T-3191: a run whose groups hold more than the group inside them (`(((1)+1)*2)`) still costs
+/// an operand per parenthesis, but no parser stack: it is bounded by the depth, not the stack.
+#[test]
+fn parenthesis_runs_around_operators_are_bounded_by_depth() {
+    on_small_stack(|| {
+        // Each level is a group (two levels) over a sum (one).
+        let levels = (MAX_FORMULA_DEPTH - 2) / 3;
+        let deepest = nested("(", "1", "+1)", levels);
+        assert!(!matches!(parse(&deepest), Node::ParseErrorKind { .. }));
+        assert!(is_too_deep(&parse(&nested("(", "1", "+1)", levels + 1))));
+        let mut model = crate::test::util::new_empty_model();
+        model._set("A1", &format!("={deepest}"));
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), (levels + 1).to_string());
+        assert_eq!(model._get_formula("A1"), format!("={deepest}"));
     });
 }
 
@@ -304,12 +389,15 @@ fn chain_links_add_no_depth() {
     on_small_stack(|| {
         // The deepest nesting still fits with a long chain at every level: a chain is one
         // level whatever its length.
-        let inner = format!("{}+1", nested("(", &chain("+", 30), ")", MAX_NESTING - 2));
+        let inner = format!(
+            "{}+1",
+            nested("ABS(", &chain("+", 30), ")", MAX_NESTING - 2)
+        );
         assert!(
             !matches!(parse(&inner), Node::ParseErrorKind { .. }),
             "{inner}"
         );
-        let too_deep = format!("{}+1", nested("(", &chain("+", 30), ")", MAX_NESTING));
+        let too_deep = format!("{}+1", nested("ABS(", &chain("+", 30), ")", MAX_NESTING));
         assert!(is_too_deep(&parse(&too_deep)));
     });
 }

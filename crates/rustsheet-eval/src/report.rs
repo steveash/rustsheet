@@ -14,6 +14,7 @@ use crate::formula_calls::{calls_only_in_scope, functions_in};
 use crate::function_scope::{self, FunctionScope};
 use crate::milestone_lists::{self, ListSummary};
 use crate::out_of_scope::{self, OutOfScope};
+use crate::poi_m8_subset::{self, PoiM8Subset};
 use crate::probe_milestones::{self, MilestoneRow};
 use crate::run_meta::{self, RunMeta};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
@@ -284,6 +285,9 @@ pub struct RunReport {
     /// How the M0–M2-only `ironcalc-calc` cells scored (M2 exit); `None` if the suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
+    /// How M8's POI corpus subset scored (decision 0146 item 2(b), T-0094); `None` if poi did not run.
+    #[serde(default)]
+    pub poi_m8_subset: Option<PoiM8Subset>,
     /// Catalog coverage per function milestone (T-2112); filled by the caller, which knows the
     /// suites' origin and milestone tags.
     #[serde(default)]
@@ -308,6 +312,10 @@ pub struct RunReport {
     /// in case order. Deviation cells are not among them.
     #[serde(default)]
     pub unattributed_off: Vec<attribution::UnattributedCell>,
+    /// Visibly-off, in-scope Excel cells attributed to one function (decision 0118), in case
+    /// order; `scripts/exit_owners.py --all-off` lists those no open task owns (T-0086).
+    #[serde(default)]
+    pub attributed_off: Vec<attribution::AttributedCell>,
     /// Commit, date, dirty flag and skipped suites ([`RunMeta`], T-0080); filled by the caller.
     #[serde(default)]
     pub run: RunMeta,
@@ -441,9 +449,11 @@ impl RunReport {
             below_floor,
             out_of_scope: lists.out_of_scope,
             function_scope: function_scope::summarize(catalog, results),
+            poi_m8_subset: poi_m8_subset::summarize(results),
             argument_coverage: argument_coverage::summarize(catalog, results),
             real_world_suites: REAL_WORLD_SUITES.iter().map(ToString::to_string).collect(),
             unattributed_off: attribution::unattributed_off(catalog, results),
+            attributed_off: attribution::attributed_off(catalog, results),
             // The caller fills the milestone sections, the checkpoint and `run`.
             ..RunReport::default()
         }
@@ -604,6 +614,7 @@ impl RunReport {
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         probe_milestones::write_markdown(&self.probe_milestones, &mut md);
         function_scope::write_markdown(self.function_scope.as_ref(), &mut md);
+        poi_m8_subset::write_markdown(self.poi_m8_subset.as_ref(), &mut md);
         run_meta::write_timing(self, &mut md);
         let broken: Vec<&CaseResult> = self
             .cases

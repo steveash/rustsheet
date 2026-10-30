@@ -2,44 +2,21 @@
 //! Hijri calendar of the `B2` prefix. Evidence for Hijri: probes/t1613-hijri-b2 and
 //! t1613-hijri-b2-weekday (excel-graph, 2026-10-25); number-formats.md "The `B2` (Hijri) calendar".
 
-use super::parser::TextToken;
-use crate::locale::{excel_date_names::DateNames, Locale};
+use super::{
+    calendar_dates::real_day,
+    parser::{DatePart, TextToken},
+};
+use crate::locale::{
+    excel_date_names::{DateNames, HIJRI_ARABIC},
+    Locale,
+};
 
-/// Days from 1 Muharram 1 AH to the proleptic Gregorian 1899-12-30, the day a serial from 61 on
-/// counts from: the Hijri epoch Excel uses is 622-07-18, which replays all 103 probed dates. Serials
-/// 1 to 59 sit one day later because Excel's serials count a fictitious 1900-02-29 (serial 60).
+/// Days from 1 Muharram 1 AH to the proleptic Gregorian 1899-12-30, the day [`real_day`] counts
+/// from: the Hijri epoch Excel uses is 622-07-18, which replays all 103 probed dates.
 const HIJRI_DAYS_TO_1899_12_30: i64 = 466_580;
 
 /// Days in a 30-year Hijri cycle: 19 years of 354 days and 11 of 355.
 const HIJRI_CYCLE_DAYS: i64 = 10_631;
-
-/// `mmm` and `mmmm` under `B2` (the two print the same), Muharram first. Two-word names are
-/// joined by a no-break space, as Excel prints them.
-const HIJRI_MONTHS: [&str; 12] = [
-    "محرم",
-    "صفر",
-    "ربيع\u{a0}الأول",
-    "ربيع\u{a0}الثاني",
-    "جمادى\u{a0}الأولى",
-    "جمادى\u{a0}الثانية",
-    "رجب",
-    "شعبان",
-    "رمضان",
-    "شوال",
-    "ذو\u{a0}القعدة",
-    "ذو\u{a0}الحجة",
-];
-
-/// `ddd` and `dddd` under `B2` (the two print the same), Sunday first.
-const HIJRI_DAYS: [&str; 7] = [
-    "الأحد",
-    "الإثنين",
-    "الثلاثاء",
-    "الأربعاء",
-    "الخميس",
-    "الجمعة",
-    "السبت",
-];
 
 /// Whether year `year_in_cycle` (1-based) of a 30-year cycle has 355 days. Excel's leap years are 2, 5, 7,
 /// 10, 13, 15, 18, 21, 24, 26 and 29 (the variant with 15, not 16: it alone replays the probe).
@@ -51,13 +28,7 @@ fn is_hijri_leap(year_in_cycle: i64) -> bool {
 /// calendar above. Serial 0 shows serial 1's date ("1317-08-29") and serial 60, the fictitious
 /// 1900-02-29, is `None` (`#VALUE!`), as are serials outside `0..=2958465`.
 pub(crate) fn hijri_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
-    let days = match serial_1900 {
-        // Serial 0 shows serial 1's date.
-        0 => 1 + HIJRI_DAYS_TO_1899_12_30 + 1,
-        1..=59 => serial_1900 + HIJRI_DAYS_TO_1899_12_30 + 1,
-        61..=2_958_465 => serial_1900 + HIJRI_DAYS_TO_1899_12_30,
-        _ => return None,
-    };
+    let days = real_day(serial_1900)? + HIJRI_DAYS_TO_1899_12_30;
     let (cycles, mut rest) = (days / HIJRI_CYCLE_DAYS, days % HIJRI_CYCLE_DAYS);
     let mut year_in_cycle = 1;
     loop {
@@ -91,6 +62,12 @@ pub(crate) fn hijri_ymd(serial_1900: i64) -> Option<(i32, u32, u32)> {
     Some((year, month, u32::try_from(rest + 1).ok()?))
 }
 
+/// The Sunday-first weekday index Excel's `B2` name quirks read from a month: weekday number
+/// min(month, 7), Sunday being 1 (`NameTokens`).
+fn month_as_weekday(month: u32) -> usize {
+    month.clamp(1, 7) as usize - 1
+}
+
 /// What the first name token of a `B2` section showed.
 #[derive(Clone, Copy)]
 enum FirstName {
@@ -100,14 +77,47 @@ enum FirstName {
 
 /// Writes the name tokens of one date section in order.
 pub(crate) struct NameTokens {
-    hijri: bool,
+    /// Whether the section is in Excel's Arabic `B2` name path: a bare `B2`, or a `B2` before a
+    /// tag from its first `mmm` on.
+    arabic: bool,
+    /// Whether a `mmm` switches the section to the Arabic path: `B2` before a tag.
+    mmm_switches: bool,
+    /// Whether a `B2` came before a tag whose calendar wins over it (`DatePart::b2_overridden`).
+    b2_overridden: bool,
+    /// The month a `mmm` printed in a `b2_overridden` section, which every weekday after it reads.
+    month_after_mmm: Option<u32>,
+    /// The names every name token prints from a `b2_overridden` section's first `mmm` on
+    /// (`DatePart::names_after_mmm`).
+    names_after_mmm: Option<&'static DateNames>,
     first: Option<FirstName>,
+    /// Whether a numeric date token came before any Arabic name in a bare `B2` section, which
+    /// turns the first-name quirk off for the section (`B2yyyy-mm-dd|mmmm|dddd` is
+    /// "1444-08-23|شعبان|الأربعاء"; probes/text-locale-calendars A124).
+    real_names: bool,
 }
 
 impl NameTokens {
-    /// `hijri` is whether the section is in the `B2` calendar.
-    pub(crate) fn new(hijri: bool) -> Self {
-        NameTokens { hijri, first: None }
+    /// The name tokens of `part`'s section.
+    pub(crate) fn new(part: &DatePart) -> Self {
+        let tagged = part.names.is_some();
+        NameTokens {
+            arabic: part.hijri && !tagged,
+            mmm_switches: part.hijri && tagged,
+            b2_overridden: part.b2_overridden,
+            month_after_mmm: None,
+            names_after_mmm: part.names_after_mmm,
+            first: None,
+            real_names: false,
+        }
+    }
+
+    /// Notes a day, month or year number token. Under a tag, one before the `mmm` switch leaves
+    /// the quirk on (`B2[$-409]yyyy|mmm|dddd` is "1444|شعبان|السبت";
+    /// probes/t2932-b2-calendar-twice A60-A63).
+    pub(crate) fn number(&mut self) {
+        if self.arabic && self.first.is_none() {
+            self.real_names = true;
+        }
     }
 
     /// Appends `token`'s name for `month` (1-12) and the Sunday-first `weekday`, from `names` (a
@@ -121,11 +131,28 @@ impl NameTokens {
         month: u32,
         weekday: usize,
     ) {
-        let is_day = matches!(token, TextToken::DayName | TextToken::DayNameShort);
-        if self.hijri {
-            text.push_str(self.hijri_name(token, is_day, month, weekday));
+        // Excel: after `B2` before a tag, `mmm` prints the Arabic month and every name after it
+        // takes the Arabic path (`B2[$-409]mmmm|mmm|mmmm` is "Sha'ban|شعبان|شعبان";
+        // probes/t2729-hijri-locale-tag-names A83-A199).
+        self.arabic |= self.mmm_switches && matches!(token, TextToken::MonthNameShort);
+        if self.arabic {
+            text.push_str(self.hijri_name(token, month, weekday));
             return;
         }
+        // Excel: after a `B2` before a tag whose calendar wins over it, every weekday after a
+        // `mmm` is weekday number min(month, 7), Sunday being 1, in the tag's names, as in the
+        // Arabic path's first-name quirk: `B2[$-70409]mmm|ddd` of 2023-03-15 is "มี.ค.|อ."
+        // (Tuesday), `dddd|mmm|dddd` "พุธ|มี.ค.|อังคาร"; `mmmm` and `mmmmm` do not do it
+        // (probes/t3029-b2-calendar-weekday). Under calendars 1, 3 and 5 every name from that
+        // `mmm` on is in another language too (`B2[$-30411]dddd|mmm|mmmm` is "水曜日|Mar|March";
+        // probes/t3101-b2-calendar-names).
+        if self.b2_overridden && matches!(token, TextToken::MonthNameShort) {
+            self.month_after_mmm = Some(month);
+        }
+        let (weekday, names) = match self.month_after_mmm {
+            Some(m) => (month_as_weekday(m), self.names_after_mmm.or(names)),
+            None => (weekday, names),
+        };
         let m = month as usize - 1;
         let dates = &locale.dates;
         match token {
@@ -150,28 +177,34 @@ impl NameTokens {
         }
     }
 
-    /// Excel: in a `B2` section every name token after the first reads the first one's value. A
-    /// weekday after a month name is weekday number min(month, 7), Sunday being 1
+    /// Excel: in the Arabic `B2` path every name token after the first reads the first one's
+    /// value. A weekday after a month name is weekday number min(month, 7), Sunday being 1
     /// (`B2mmmm|dddd` of 1444-08-23 is "شعبان|السبت"), and a month name after a weekday prints
-    /// the weekday again (`B2dddd|mmmm` is "الأربعاء|الأربعاء"); probes/t1613-hijri-b2-weekday.
-    fn hijri_name(
-        &mut self,
-        token: &TextToken,
-        is_day: bool,
-        month: u32,
-        weekday: usize,
-    ) -> &'static str {
-        let first = *self.first.get_or_insert(if is_day {
+    /// the weekday again, `mmmmm` the whole of it (`B2dddd|mmmm` and `B2dddd|mmmmm` are
+    /// "الأربعاء|الأربعاء"); probes/t1613-hijri-b2-weekday. `mmm` always reads the month and
+    /// becomes the value read after it (`B2dddd|mmm|dddd` is "الأربعاء|شعبان|السبت");
+    /// probes/t2729-hijri-locale-tag A151-A168, t2729-hijri-locale-tag-names A239-A277.
+    fn hijri_name(&mut self, token: &TextToken, month: u32, weekday: usize) -> &'static str {
+        let is_day = matches!(token, TextToken::DayName | TextToken::DayNameShort);
+        let own = if is_day {
             FirstName::Weekday(weekday)
         } else {
             FirstName::Month(month)
-        });
-        let name = match (is_day, first) {
-            (true, FirstName::Month(m)) => HIJRI_DAYS[m.clamp(1, 7) as usize - 1],
-            (_, FirstName::Weekday(w)) => HIJRI_DAYS[w],
-            (false, FirstName::Month(m)) => HIJRI_MONTHS[m as usize - 1],
         };
-        if matches!(token, TextToken::MonthLetter) {
+        let read = if self.real_names {
+            own
+        } else if matches!(token, TextToken::MonthNameShort) {
+            *self.first.insert(own)
+        } else {
+            *self.first.get_or_insert(own)
+        };
+        let names = &HIJRI_ARABIC;
+        let name = match (is_day, read) {
+            (true, FirstName::Month(m)) => names.days[month_as_weekday(m)],
+            (_, FirstName::Weekday(w)) => names.days[w],
+            (false, FirstName::Month(m)) => names.months[m as usize - 1],
+        };
+        if matches!((token, read), (TextToken::MonthLetter, FirstName::Month(_))) {
             // `B2mmmmm` is the first letter ("ش" for Sha'ban).
             return name
                 .char_indices()

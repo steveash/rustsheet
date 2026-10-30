@@ -17,6 +17,7 @@ mod broadcast;
 mod if_arm;
 mod legacy;
 mod lifted;
+mod operand_array;
 mod redundant;
 mod reference_parameter;
 mod reference_result;
@@ -75,9 +76,10 @@ use signature::{
 ///  * A:A => @A:A
 ///  * SIN(A1:D1) => SIN(@A1:D1)
 ///
-/// Assumes formula return a scalar
+/// Assumes formula return a scalar. The operators are those of the formula with no whitespace
+/// ([`Node::rewrite_as_unspaced`]).
 pub fn add_implicit_intersection(node: &mut Node, add: bool) {
-    legacy::add_root_legacy_intersection(node, add);
+    node.rewrite_as_unspaced(|node| legacy::add_root_legacy_intersection(node, add));
 }
 
 /// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
@@ -91,6 +93,7 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::EmptyArgKind
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
@@ -215,10 +218,11 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         Node::FunctionKind { kind, args } if is_array_context(kind) => add_in_array_context(args),
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
-            for (index, arg) in args.iter_mut().enumerate() {
+            for index in 0..args.len() {
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+                let arrays = legacy_array_context(kind, signature.get(index), index, args, arrays);
+                let arg = &mut args[index];
                 add_array_at(kind, signature.get(index), index, arg, arrays);
                 add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
@@ -236,9 +240,7 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
                 && (add || arrays)
                 && !legacy_call_reads_a_value(kind, args)
                 && match static_analysis_on_function(kind, args) {
-                    StaticResult::Range(_, _) | StaticResult::Unknown => {
-                        add && !returns_single_cell_index(kind, args)
-                    }
+                    StaticResult::Range(_, _) | StaticResult::Unknown => add,
                     // A one-cell array gives the same value with or without the `@`. Excel shows
                     // none on `=SUBTOTAL(9,CHOOSE(1,{5}))`, a 1x1 array shape here
                     // (probes/legacy-one-cell-shape-intersection J3); other one-cell calls are
@@ -296,6 +298,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
@@ -676,12 +679,28 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
     }
 }
 
+/// The shape of the IF or CHOOSE `kind(args)`, from each argument's shape computed once (so nested
+/// calls stay linear): a scalar when its value arms are one cell whatever the condition
+/// ([`returns_single_cell_index`]), so a legacy formula shows no `@` on the call or a call over it
+/// (T-3134), and the cell stores it as a plain formula, not a spill anchor; otherwise IF broadcasts
+/// its arguments and CHOOSE is reference-shaped.
+fn if_or_choose_shape(kind: &Function, args: &[Node]) -> StaticResult {
+    let shapes: Vec<StaticResult> = args.iter().map(run_static_analysis_on_node).collect();
+    if returns_single_cell_index(args, &shapes) {
+        StaticResult::Scalar
+    } else if matches!(kind, Function::Choose) {
+        reference_result::choose_static_result(shapes)
+    } else {
+        broadcast_shapes(shapes)
+    }
+}
+
 /// The hand-written shapes of the functions not in the lifting table; `None` for one in it.
 fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
     Some(match kind {
         Function::And => StaticResult::Scalar,
         Function::False => StaticResult::Scalar,
-        Function::If => scalar_arguments(args),
+        Function::If | Function::Choose => if_or_choose_shape(kind, args),
         Function::Iferror => scalar_arguments(args),
         Function::Ifna => scalar_arguments(args),
         Function::Ifs => StaticResult::Unknown, // chosen value spills: logic.md
@@ -692,7 +711,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         Function::Switch => StaticResult::Unknown,
         Function::True => StaticResult::Scalar,
         Function::Xor => StaticResult::Scalar,
-        Function::Choose => reference_result::choose_static_result(args),
         Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
         Function::Max => StaticResult::Scalar,

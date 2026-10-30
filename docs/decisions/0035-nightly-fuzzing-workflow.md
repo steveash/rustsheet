@@ -30,3 +30,5 @@
   `x86_64-unknown-linux-musl`, which the nightly toolchain does not have (E0463; ASan does not
   support musl either). The workflow and the local command now pass the host triple from
   `rustc -vV` explicitly. Permissions, triggers and secrets are unchanged.
+- **Revision (2026-10-30, T-3163):** capped formula seeds, a `cargo fuzz cmin` before the cache save and a `v2`
+  cache key; see decision 0171.

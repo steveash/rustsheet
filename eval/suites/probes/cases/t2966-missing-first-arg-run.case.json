@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2966: a run before a missing first argument, typed (=SUM( ,1), =IF(  ,1,2)); FORMULATEXT in column B.",
+  "tags": [
+    "M2",
+    "syntax",
+    "probe"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": {
+          "entered": "=SUM( ,1)"
+        },
+        "B1": "=FORMULATEXT(A1)",
+        "A2": {
+          "entered": "=IF(  ,1,2)"
+        },
+        "B2": "=FORMULATEXT(A2)",
+        "A3": {
+          "entered": "=SUM(\n,3)"
+        },
+        "B3": "=FORMULATEXT(A3)"
+      }
+    }
+  ]
+}

@@ -7,8 +7,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::information::map_elements,
+    functions::{information::map_elements, text::common::reject_over_short_limit, Function},
     model::Model,
+    reference_operators::Picked,
+    text::Text,
 };
 
 impl Model {
@@ -34,13 +36,25 @@ impl Model {
         // A range is its top-left cell, with no lift and no implicit intersection, legacy or
         // dynamic: `T(A1:A3)` with A1 "x" is "x" from any row, and with A1 5 "" even from A2's
         // row (probes/t-n-range-top-left F2, F10, F12; t-array-lift S!E7; T-0985).
-        let result = self.evaluate_node_top_left(&args[0], cell);
+        let (result, read) = self.t_argument(&args[0], None, cell);
+        // Text over 255 units read from a cell is "" however the cell is reached: a range, name,
+        // INDIRECT, OFFSET, INDEX, IF, CHOOSE, LET, spill reference, sheet-qualified, parenthesised
+        // or legacy reference, or structured reference. A computed value stays `#VALUE!`, and so
+        // does `+D1` (probes/text-255-units-reference-shapes A1:A19; T-3107).
         match result {
             // Text over 255 UTF-16 units is #VALUE!, as in REPT, CODE and UNICODE:
             // `T(REPT("x",256))` (docs/excel-semantics/text.md "REPT, CODE, UNICODE and T refuse a
             // text argument over 255 UTF-16 units", probes/t2199-text-length-and-combin-cuts A12).
-            CalcResult::String(ref text) => match super::common::reject_over_short_limit(text) {
+            // Read from a cell, such text is "" instead, and an array element over the limit is
+            // #VALUE! (probes/text-255-units-from-cell A4, A12; -array-element A4; T-2627).
+            CalcResult::String(ref text) => match reject_over_short_limit(text) {
                 Ok(()) => result,
+                // Checked only here: `is_reference` can evaluate the argument again, which every
+                // T call would pay and nested T(IF(…T(IF(…)))) would double per level. It tests
+                // the argument already picked, so a volatile pick is not drawn again (T-3142).
+                Err(_) if self.reads_cell_text(read, cell) => {
+                    CalcResult::String(String::new().into())
+                }
                 Err(error) => CalcResult::new_error(error, cell, String::new()),
             },
             error @ CalcResult::Error { .. } => error,
@@ -54,6 +68,9 @@ impl Model {
             }
             CalcResult::Array(values) => {
                 CalcResult::Array(map_elements(&values, |value| match value {
+                    ArrayNode::String(text) if over_short_limit(text) => {
+                        ArrayNode::Error(Error::VALUE)
+                    }
                     ArrayNode::String(_) | ArrayNode::Error(_) => value.clone(),
                     _ => ArrayNode::String("".into()),
                 }))
@@ -61,4 +78,161 @@ impl Model {
             _ => CalcResult::String("".into()),
         }
     }
+
+    /// T's argument read top-left, and how to tell whether it is a cell's text. Each IF, CHOOSE,
+    /// IFS and SWITCH at the argument's root is replaced by the argument it picks, its condition
+    /// or index read once, so the value and the reference test see one pick:
+    /// `T(CHOOSE(RANDBETWEEN(1,2),D1,REPT("x",256)))` with 256 units in D1 is "" or `#VALUE!` by
+    /// the pick it made, never the value of one pick and the test of another (T-3142). A LET there
+    /// is read and tested while its names are bound, and the `@` of a picker picks once and reads
+    /// what it picked through `@`, so
+    /// `T(LET(i,RANDBETWEEN(1,2),CHOOSE(i,D1,…)))` and `T(@CHOOSE(RANDBETWEEN(1,2),D1,…))` see
+    /// one draw too (T-3157). `outer` is the picker that picked `node`, when a LET was picked.
+    fn t_argument<'a>(
+        &mut self,
+        node: &'a Node,
+        outer: Option<&Function>,
+        cell: CellReferenceIndex,
+    ) -> (CalcResult, ArgumentRead<'a>) {
+        let mut arm = node;
+        let mut picker = outer;
+        let mut at = false;
+        loop {
+            match arm {
+                // Not `ungrouped`: a unary plus makes a value.
+                Node::Group { child, .. } | Node::Spaced { child, .. } => arm = child,
+                // Not under `@`, which would intersect the LET's result (that shape keeps its
+                // old reading).
+                Node::FunctionKind {
+                    kind: Function::Let,
+                    args,
+                } if !at => return self.t_let_argument(args, picker, cell),
+                // The `@` of a picker at the root picks as the picker does; `@` then intersects
+                // what it picked. One a picker picked keeps its old reading (unprobed, T-3167).
+                Node::ImplicitIntersection { child, .. }
+                    if picker.is_none() && is_picker(child) =>
+                {
+                    at = true;
+                    arm = child;
+                }
+                Node::FunctionKind { kind, args } => match self.pick_step(kind, args, cell) {
+                    Some(Picked::Node(picked)) => {
+                        picker = Some(kind);
+                        arm = picked;
+                    }
+                    Some(Picked::Value(value)) => {
+                        let value = if at {
+                            self.implicit_intersection_to_value(value, cell)
+                        } else {
+                            value
+                        };
+                        return (self.top_left(value), ArgumentRead::Settled(false));
+                    }
+                    None => break,
+                },
+                _ => break,
+            }
+        }
+        match picker {
+            Some(kind) => {
+                let value = if at {
+                    let picked = self
+                        .evaluate_picked_reference_arg(arm, cell)
+                        .into_single_area(cell);
+                    self.implicit_intersection_to_value(picked, cell)
+                } else {
+                    self.picked_value(kind, arm, cell)
+                };
+                (self.top_left(value), ArgumentRead::Picked(arm))
+            }
+            None => (
+                self.evaluate_node_top_left(arm, cell),
+                ArgumentRead::Written(arm),
+            ),
+        }
+    }
+
+    /// T's argument when it is a LET (`args`): its body read as [`Self::t_argument`] reads an
+    /// argument, and tested for cell text, while the LET's names are bound, so a volatile value
+    /// is drawn once for both (T-3157). LET's own error is a value.
+    fn t_let_argument(
+        &mut self,
+        args: &[Node],
+        outer: Option<&Function>,
+        cell: CellReferenceIndex,
+    ) -> (CalcResult, ArgumentRead<'static>) {
+        let mut cell_text = false;
+        let value = self.let_scope(args, cell, |model, body| {
+            let (value, read) = model.t_argument(body, outer, cell);
+            // A body as written is tested as `is_reference` tests a LET, in reference context:
+            // `T(LET(x,D1,+x))` keeps the reading it had (unprobed, TODO(T-3167)).
+            let read = match read {
+                ArgumentRead::Written(body) => ArgumentRead::Picked(body),
+                read => read,
+            };
+            cell_text = matches!(&value, CalcResult::String(text) if over_short_limit(text))
+                && model.reads_cell_text(read, cell);
+            value
+        });
+        (
+            value.unwrap_or_else(|error| error),
+            ArgumentRead::Settled(cell_text),
+        )
+    }
+
+    /// Whether T's argument, read as [`Self::t_argument`] says, hands T a cell's text.
+    fn reads_cell_text(&mut self, read: ArgumentRead<'_>, cell: CellReferenceIndex) -> bool {
+        match read {
+            ArgumentRead::Settled(cell_text) => cell_text,
+            ArgumentRead::Picked(arm) => self.picked_arm_is_reference(arm, cell),
+            ArgumentRead::Written(node) => self.written_reads_cell_text(node, cell),
+        }
+    }
+
+    /// Whether `node`, T's argument as written, hands T a cell's text rather than a computed
+    /// value. A legacy formula's automatic `@` and a spill reference still stand for cells; a
+    /// unary plus makes a value (probes/text-255-units-reference-shapes A9, A13, A18; T-3107).
+    fn written_reads_cell_text(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+        let mut node = node;
+        loop {
+            match node {
+                Node::UnaryPlus { .. } => return false,
+                Node::Group { child, .. }
+                | Node::Spaced { child, .. }
+                | Node::ImplicitIntersection { child, .. } => node = child,
+                Node::SpillRangeOperator { .. } => return true,
+                _ => return self.is_reference(node, cell),
+            }
+        }
+    }
+}
+
+/// Whether `node` is an IF, CHOOSE, IFS or SWITCH call, parentheses aside: the functions
+/// [`Model::pick_step`] picks through, which this list must track.
+fn is_picker(node: &Node) -> bool {
+    matches!(
+        node.ungrouped(),
+        Node::FunctionKind {
+            kind: Function::If | Function::Choose | Function::Ifs | Function::Switch,
+            ..
+        }
+    )
+}
+
+/// Whether `text` is over T's 255-unit limit: `#VALUE!` computed or as an array element, "" read
+/// from a cell, so the only text whose cell-text test matters.
+fn over_short_limit(text: &Text) -> bool {
+    reject_over_short_limit(text).is_err()
+}
+
+/// How T tells whether its argument is a cell's text ([`Model::t_argument`]).
+#[derive(Clone, Copy)]
+enum ArgumentRead<'a> {
+    /// Already decided: false for the value an IF, CHOOSE, IFS or SWITCH gives in place of an
+    /// argument; for a LET, what the test inside its scope showed.
+    Settled(bool),
+    /// The argument a picker picked, tested as the picker's own reference test tests it.
+    Picked(&'a Node),
+    /// The argument as written.
+    Written(&'a Node),
 }

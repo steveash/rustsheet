@@ -34,6 +34,21 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
   significant digit by a rounding boundary; and probes/yield-start-term-basis A9, C11, C20, A26 and A38, at the
   root and 4e-15 to 1e-14 off, plus B50 and A52 (sub-year, 10 to 12 ulp in the engine, 1-2 ulp in the lab) and the
   probe's 73 cells 1-2 ulp off.
+- Gap triage 2026-10-27 (`make eval` on 7dba3bfe): one more cell 8 ulp off at the root. It is just past half a
+  unit of the 15th digit and no task named it: probes/yield-start-one-input S!B67
+  `YIELD(DATE(2096,3,1),DATE(2097,6,30),0.05,98,100.5,1,0)`, Excel 0.06966784545910434, ours 0.06966784545910445.
+- Handed over by T-2741 (2026-10-28): the bit-level residue of T-2741's owned YIELD cells, all within 15 digits after
+  T-1592. That is every remaining known-failure line of probes/yield-start-rate-term, yield-start-sweep,
+  yield-solver-sweep, solver-iteration-traces, date-system-1900-financial-readers and its -shifted twin,
+  fin-coupon-walk-bounds-c, fin-remaining-later-argument-ranges, fin-bond-negative-basis, coup-calendar-edges,
+  fin-argument-modes and fin-yield-odd-lift, and of ironcalc-calc FINANCIAL/PRICE_YIELD.xlsx's I column, whose
+  outermost call is YIELD. The three cells T-2974 owns are excluded. For example, date-system-1900-financial-readers
+  S!E8, its -shifted twin S!E8 and yield-start-rate-term S!B20 are each 1 ulp off
+  (`fn_yield_matches_excel_off_the_fit`).
+
+- Added by T-2974 (2026-10-29): probes/yield-price-at-iterates P!A5 to P!A12, which repeat yield-start-one-input B54,
+  B62, B69, B11, A54 and A62, yield-solver-sweep C11 and solver-iteration-traces Y!E2. The same probe shows Excel's PRICE
+  at our iterates equals the lab's `^` PRICE to the bit (financial.md "YIELD stops short of PRICE's root", T-2974).
 
 ## Acceptance criteria
 - [ ] The three regressed probe cells pass bit for bit (their lines leave eval/baseline/probes.txt), or the task
@@ -44,3 +59,7 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
 
 ## Out of scope
 - The visibly-off basis 1 and 2 cells (T-2777); YIELD's `#NUM!` cells and its 100-step cap (T-2391).
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- probes/yield-start-term-basis S!A18 `YIELD(DATE(2013,5,10),DATE(2024,2,29),0.05,98,100.5,2,2)`: Excel 0.05279263039071429, ours 0.05279263039071384 (8.5E-15 relative, the size of this probe's A9, C11, C20, A26 and A38 above)

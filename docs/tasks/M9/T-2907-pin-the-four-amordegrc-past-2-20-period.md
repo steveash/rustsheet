@@ -3,7 +3,7 @@ id: T-2907
 title: "Pin the four AMORDEGRC past-2^20-period DEVIATION cells (fin-amor-period-bound-c A1, A3, A4, A5) in probes/deviations, or match Excel's walk within the cap"
 milestone: M9
 lane: functions-financial
-status: todo
+status: dropped
 priority: P3
 size: S
 tier: opus
@@ -60,3 +60,9 @@ Two routes, in this order:
 
 ## Visible-parity stage
 The four cells above are no longer visibly-off known failures: they pass, or they score as accepted deviations.
+
+## Outcome
+Dropped: T-2918 took route 1 another way, by raising AMORDEGRC's walk bound (`DEGRESSIVE_LOOP_PERIODS`) from 2^20 to
+2^22 periods with the lifted weight refitted (financial.md "AMORDEGRC past 2^22 periods" and "AMORLINC and AMORDEGRC
+work cap"). probes/fin-amor-period-bound-c A1, A3, A4 and A5 now pass bit for bit, so nothing is pinned in
+probes/deviations.

@@ -84,10 +84,27 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!N6 `IMREAL(IMTAN(D6))` (D6 = 5) caches Mac 16.0300's -3.38051500624658,
    the libm double-angle value; the web gives TAN's kernel, -3.38051500624659 (35 gen-m9 cells, probes/t2534-im-trig-real-limit).
    Does Windows desktop give the web value? The engine keeps the desktop cache, and the web cells stay known failures (T-2774).
-18. **MEDIAN, LARGE and SMALL over a lifted OFFSET** (T-2065; lookup.md "Statistical aggregates over a lifted OFFSET").
-   probes/t2065-lift-median, -large and -small failed to open on Excel for the web on 2026-10-26 (createSession "retries
-   exhausted", two runs each). What does Windows desktop give for `MEDIAN(OFFSET(A1,{0;1;2},0))`, `LARGE(OFFSET(A1,{0;1},0),1)`
-   and `SMALL(OFFSET(A1,0,0,{2;3}),2)`? Until answered they keep the engine's value view.
+   probes/t3054-imtan-real-tan-kernel N1 is N6's own formula on N6's inputs: the web gives -3.38051500624659 there, and TAN's
+   kernel in all nine of its discriminating rows (T-3054). Probing those rows on desktop answers the item.
+18. **MEDIAN, LARGE and SMALL over a lifted OFFSET** (T-2065; lookup.md "MEDIAN, LARGE and SMALL over a lifted OFFSET").
+   Answered 2026-10-29 without desktop: Excel for the web opened probes/t2065-lift-median, -large and -small on the
+   steward run's fill and gives `#VALUE!` for all three, which ours matches. Nothing is left for desktop.
+19. **SUMPRODUCT of a one-cell numeric-text reference** (T-2921; coercion.md SUMPRODUCT entry).
+   poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J1328 `SUMPRODUCT(G1330:G1330,I1330:I1330)` (G1330 the text "4",
+   I1330 the number 2): Excel 15 cached `#VALUE!`, excel-graph gives 0 (probes/t2921-sumproduct-one-cell-numeric-text A45).
+   The engine follows the web; J1328 stays a known failure.
+20. **Wildcards in conditional-format text rules** (T-2910; criteria.md "Conditional-format text rules and wildcards").
+   Does a "text that contains" rule (and begins with, ends with, equals) with `a*c`, `a?c` or `~*` as its text treat
+   them as wildcards, as SEARCH does, or literally, as `apply_cf_text` does? The Graph oracle cannot evaluate
+   conditional formats.
+21. **A workbook name read through a sheet, in a quoted file name** (T-2937; references.md "A sheet-qualified
+   workbook name is rewritten to the workbook's file name"). Save a workbook as `My Book's.xlsx` (and as `1 a.xlsx`)
+   with workbook `loc` = `Feb!$A$1` and no `Feb!loc`, type `=Feb!loc` on another sheet: what does FORMULATEXT show
+   (`='My Book''s.xlsx'!loc`, as the sheet-name rule would quote it)? excel-graph uploads under hex names only.
+22. **A workbook name read through a sheet in a never-saved workbook** (T-2937; same entry). In a new, unsaved
+   workbook (`Book1`) with workbook `loc` and no `Feb!loc`, type `=Feb!loc`: does FORMULATEXT show `=Feb!loc`,
+   `=Book1!loc` or something else, and what after the first save? Ours keeps the typed `Feb!loc` until a
+   re-parse shows `[0]!loc`.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

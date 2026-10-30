@@ -4,7 +4,7 @@
 )]
 
 //! IRR and XIRR as fitted against the excel-graph solver traces (T-0916; fit lab `irr`, `xirr`;
-//! docs/excel-semantics/financial.md "IRR is a secant in v" and "XIRR is a bracketing bisection").
+//! docs/excel-semantics/financial.md "IRR is a secant in d = 1 - v" and "XIRR is a bracketing bisection").
 //! Each value is the oracle's; the guess changes Excel's last digits, so each one pins the path.
 
 use crate::cell::CellValue;
@@ -38,6 +38,41 @@ fn irr_is_a_secant_in_the_discount_factor() {
     // probes/solver-iteration-traces I!A1, I!A10
     let got = results(&["=IRR({-20,5,5,5,5,5},0.05)", "=IRR({-20,5,5,5,5,5},0.0725)"]);
     let expected = [0.079_308_261_158_238_75_f64, 0.079_308_261_160_528_69];
+    assert_eq!(got, expected.map(f64::to_bits));
+}
+
+#[test]
+fn irr_far_roots_sit_on_the_discount_grid() {
+    // probes/irr-fallback-roots P!A25, A28, A39 and t2565-irr-guess-sweeps P!A107 (a zero step
+    // that stops on the residual relative to the largest flow); T-3120
+    let got = results(&[
+        "=IRR({-1,1E+4})",
+        "=IRR({-1,3E+6})",
+        "=IRR({-1,0,1E+14})",
+        "=IRR({-2500000,-1000000,123456789123000})",
+    ]);
+    let expected = [
+        9_999.000_000_001_1_f64,
+        2_999_998.999_580_666,
+        9_999_998.994_161_328,
+        7_026.083_663_633_989,
+    ];
+    assert_eq!(got, expected.map(f64::to_bits));
+}
+
+#[test]
+fn irr_drops_leading_zero_flows() {
+    // probes/irr-guess-edges P!A33, probes-numeric/m9-fin-irr-rate Calc!A173, A175; T-3120
+    let got = results(&[
+        "=IRR({0,-100,110},0.05)",
+        "=IRR({0,0,-100,110},-0.5)",
+        "=IRR({0,0,-100,110},10)",
+    ]);
+    let expected = [
+        0.099_999_999_999_999_87_f64,
+        0.100_000_000_000_000_09,
+        0.099_999_999_999_999_87,
+    ];
     assert_eq!(got, expected.map(f64::to_bits));
 }
 
@@ -222,4 +257,19 @@ fn irr_reads_the_guess_between_a_flows_error_and_an_element_error() {
         ("=IRR(ERROR.TYPE(#REF!),NA())", "#N/A"),
         ("=IRR({1,\"a\"}+0,INDEX(B3:C9,2))", "#REF!"),
     ]);
+}
+
+#[test]
+fn xnpv_discounts_with_excels_caret_at_an_exact_root() {
+    // probes/xirr-exact-root-sign: a few ulps from 0, with Excel's sign (financial.md "XNPV
+    // discounts with Excel's `^`").
+    let got = results(&["=XNPV(0.1,{-1,6.727499949325611},{45000,52300})"]);
+    assert_eq!(got, [2.220_446_049_250_313e-16_f64.to_bits()]);
+}
+
+#[test]
+fn xnpv_keeps_a_flow_whose_power_overflows_as_zero() {
+    // Unprobed: unchanged from the `powf` days (value/inf = 0), not Excel evidence.
+    let got = results(&["=XNPV(1E+300,{-100,100},{39448,40000})"]);
+    assert_eq!(got, [(-100.0_f64).to_bits()]);
 }

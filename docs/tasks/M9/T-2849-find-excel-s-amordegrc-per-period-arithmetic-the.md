@@ -3,7 +3,7 @@ id: T-2849
 title: "Find Excel's AMORDEGRC per-period arithmetic: the walk drifts a few ulps from main's from about 10^3 periods (amordegrc-walk-drift, -ties)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -35,9 +35,19 @@ From T-2826 (docs/excel-semantics/financial.md "AMORDEGRC rounds its charge like
 Code: functions/financial/amortization.rs (`DegressiveWalk::charge`, `amor_round`).
 
 ## Acceptance criteria
-- [ ] The listed cells pass (baseline lines removed) with no new failures, or the entry records the arithmetic
+- [x] The listed cells pass (baseline lines removed) with no new failures, or the entry records the arithmetic
   ruled out and why the rest cannot be settled.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AMORDEGRC past 2^20 periods (the closed form, a work-cap DEVIATION).
+
+## Outcome
+Excel's walk subtracts each charge in x87 extended precision and stores the difference: the remaining value is rounded
+twice, `RN53(RN64(remain - rate * remain))`. `DegressiveWalk::charge` now subtracts through `arithmetic::extended_sum`
+(the first period's subtraction too, by analogy). A scratch fit over the 135 cells of probes/amordegrc-walk-drift and
+-ties: the twice-rounded walk 135, main's 107, exact or 80-bit-throughout arithmetic 86, `remain * (1 - rate)` 38; it
+also gives all five of probes/fin-amor-period-bound-c A1-A5 (1.1E6-2.4E6 periods, outside the fit; main's walk 3), which
+the closed form past 2^20 periods still misses (follow-up T-2918). Eval: 28 known failures fixed (D16, E5-E45,
+A51, A53, C5, C8, C9), 0 regressions. A walk at the cap now takes 3.9 s for 512 lifted elements (2.06 s before), within
+SPEC-0011's 5 s, so `AMORDEGRC_WEIGHT` stays 2^18; financial.md and SPEC-0011 give the new timing.

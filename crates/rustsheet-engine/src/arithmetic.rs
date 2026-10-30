@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::{text_units, NODE_UNITS},
     calc_result::CalcResult,
     cast::{
         array_node_to_string, array_node_to_text, NumberOrArray, StringOrArray, ValueOrArray,
@@ -9,7 +10,7 @@ use crate::{
         token::{Error, OpCompare, OpSum},
         types::CellReferenceIndex,
     },
-    functions::util::compare_values,
+    functions::util::{collation::cmp_text_pairwise, compare_values},
     limits::{check_array_size, unspillable_shape},
     model::Model,
     text::Text,
@@ -332,6 +333,10 @@ fn finite_or_num(value: f64) -> Result<f64, Error> {
     finite_or_overflow(value).map(flush_subnormal)
 }
 
+/// 2^-1026, below which Excel's ROUND keeps a positive subnormal and unary minus keeps it positive
+/// (docs/excel-semantics/numbers.md; probes/t2771-roundup-subnormal-threshold, -sign-controls).
+pub(crate) const TINY_SUBNORMAL_BELOW: f64 = f64::MIN_POSITIVE / 16.0;
+
 /// 0 for a value below the smallest normal double, `value` otherwise. The postfix `%` and the
 /// multiplying and dividing functions (PRODUCT, SUMPRODUCT, SUMSQ, AVERAGE) flush their result
 /// like `*` and `/`; addition keeps subnormals (docs/excel-semantics/numbers.md "Subnormal results become 0",
@@ -345,22 +350,23 @@ pub fn flush_subnormal(value: f64) -> f64 {
     }
 }
 
-/// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
-/// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
-/// Excel returns exactly 0. It applies when the cell formula's outermost operation is `+`/`-`
-/// (not when the whole formula is parenthesized) and to every SUM call (the callers decide that).
-/// Across the 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
-/// least 8 (docs/excel-semantics/numbers.md "Near-zero snapping in addition and subtraction",
-/// probes-numeric/30bc5f8fab02d0a2).
+/// Excel's near-zero snapping of a formula's final addition: `total` is `x + y` (`x` the left
+/// operand, or what a SUM has added before its last addend), and when the two addends have
+/// opposite signs and `total` is below 8 ULP of the **left** addend `x` in magnitude, Excel returns
+/// exactly 0. It applies when the cell formula's outermost operation is `+`/`-` (not when the
+/// whole formula is parenthesized) and to every SUM call (the callers decide that). The left
+/// operand, not the smaller addend, sets the bound: `=1-(1-4*2^-52)` snaps and
+/// `=(1-4*2^-52)-1` does not (probes/t3100-snap-operand-order, all 540 cells, and the 1,296 of
+/// probes-numeric/30bc5f8fab02d0a2; docs/excel-semantics/numbers.md "Near-zero snapping in
+/// addition and subtraction").
 pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
     if x == 0.0 || y == 0.0 || x.is_sign_negative() == y.is_sign_negative() {
         return total;
     }
-    let smaller = x.abs().min(y.abs());
-    // 2^floor(log2(smaller)) for a normal double (its exponent bits alone); 0 for a subnormal.
-    let scale = f64::from_bits(smaller.to_bits() & 0x7FF0_0000_0000_0000);
-    // 8 ULP of `smaller` is scale * 2^-49. Excel flushes that bound when it is subnormal, so
-    // addends below 2^-973 never snap, even to a subnormal total: `=1.5*2^-973-x` snaps for
+    // 2^floor(log2(|x|)) for a normal double (its exponent bits alone); 0 for a subnormal.
+    let scale = f64::from_bits(x.abs().to_bits() & 0x7FF0_0000_0000_0000);
+    // 8 ULP of `x` is scale * 2^-49. Excel flushes that bound when it is subnormal, so
+    // left addends below 2^-973 never snap, even to a subnormal total: `=1.5*2^-973-x` snaps for
     // x = 1.5*2^-973*(1+2^-52) but not at 2^-974 (probes/t2714-snap-tiny-addends).
     if total.abs() < flush_subnormal(scale * 2f64.powi(-49)) {
         0.0
@@ -504,6 +510,10 @@ impl Model {
         }
         match node {
             Node::OpSumKind { kind, left, right } => {
+                // The root `+` is a node, charged as `evaluate_node_in_context` charges one.
+                if let Err(error) = self.spend_work(NODE_UNITS, cell) {
+                    return error;
+                }
                 let left = self.evaluate_node_in_context(left, cell);
                 let left = self.collapse_single_cell(left);
                 let right = self.evaluate_node_in_context(right, cell);
@@ -575,8 +585,12 @@ impl Model {
     }
 
     /// A formula's outermost `+`/`-` over its evaluated left operand: like
-    /// [`Model::handle_arithmetic`], but a scalar result is snapped to 0 by [`snap_near_zero`].
-    /// Array operands are not snapped (no evidence).
+    /// [`Model::handle_arithmetic`], but every result, scalar or array element, is snapped to 0
+    /// by [`snap_near_zero`] on its own two addends. Excel snaps array and range operands element
+    /// by element, with the scalar bound (`=1+{3;7;8}*2^-52-1` spills 0, 0, 8 ULP;
+    /// `=A1:A4+B1:B4-C1:C4` spills 0 on the rows that cancel), and a legacy formula's
+    /// intersected rows the same way (probes/t3047-snap-array-operands, docs/excel-semantics/numbers.md
+    /// "Near-zero snapping in addition and subtraction").
     fn handle_outermost_sum(
         &mut self,
         left: CalcResult,
@@ -584,22 +598,18 @@ impl Model {
         cell: CellReferenceIndex,
         subtract: bool,
     ) -> CalcResult {
-        let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
+        // A subtraction adds the negated right operand, so its addends are `x` and `-y`.
+        let snapping_op = |x: f64, y: f64| {
+            let (total, y) = if subtract {
+                (minus(x, y)?, -y)
+            } else {
+                (plus(x, y)?, y)
+            };
+            Ok(snap_near_zero(x, y, total))
+        };
         let l = self.number_or_array(left, cell);
         let r = self.number_or_array(right, cell);
-        // The two addends of a scalar addition (a subtraction adds the negated right operand).
-        let addends = match (&l, &r) {
-            (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
-                Some((*x, if subtract { -*y } else { *y }))
-            }
-            _ => None,
-        };
-        match (self.arithmetic_on_values(l, r, cell, op), addends) {
-            (CalcResult::Number(total), Some((x, y))) => {
-                CalcResult::Number(snap_near_zero(x, y, total))
-            }
-            (result, _) => result,
-        }
+        self.arithmetic_on_values(l, r, cell, &snapping_op)
     }
 
     /// Applies `op` element‐wise for arrays/numbers to the evaluated operands `left` and `right`.
@@ -739,8 +749,14 @@ impl Model {
         right: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let l = self.string_or_array(left, cell);
-        let r = self.string_or_array(right, cell);
+        // An uncalled LAMBDA joined as text is `#VALUE!` (`LAMBDA(x,x)&""`, `"a"&LET(f,
+        // LAMBDA(x,x),f)`; arrays.md "An uncalled LAMBDA is one value", T-2622).
+        let mut operand = |value| match value {
+            CalcResult::Lambda(_) => Err(lambda_text_error(cell)),
+            value => self.string_or_array(value, cell),
+        };
+        let l = operand(left);
+        let r = operand(right);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
             (Err(error), Ok(StringOrArray::Array(array))) => {
@@ -752,10 +768,23 @@ impl Model {
             (Err(error), _) | (_, Err(error)) => return error,
         };
 
-        // Concatenates two array elements, propagating errors as error nodes.
-        let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+        // Concatenates two array elements, propagating errors as error nodes. Each element is a
+        // new text, so its bytes go to the formula's work budget as they are made (SPEC-0024
+        // "text values"): 2^20 elements of 32,767 bytes would otherwise be 32 GB built by one
+        // operator, past every other charge (T-2806). Once the budget is spent the rest are
+        // `#VALUE!` without being built, and the formula is the budget's error.
+        let mut concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
+            if self.work_exceeded() {
+                return ArrayNode::Error(Error::VALUE);
+            }
             match (array_node_to_text(a), array_node_to_text(b)) {
-                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_limited(&sa, &sb)),
+                (Ok(sa), Ok(sb)) => {
+                    let joined = concat_limited(&sa, &sb);
+                    match self.spend_work(text_units(joined.len()), cell) {
+                        Ok(()) => ArrayNode::String(joined),
+                        Err(_) => ArrayNode::Error(Error::VALUE),
+                    }
+                }
                 (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
             }
         };
@@ -814,7 +843,12 @@ impl Model {
         };
 
         let apply = |lv: &CalcResult, rv: &CalcResult| -> bool {
-            let cmp = compare_values(lv, rv);
+            // Two texts compare by Excel's pairwise rule, which no sort can use
+            // (`cmp_text_pairwise`; probes/t3181-collation-prefix-callers Calc!A1:A9).
+            let cmp = match (lv, rv) {
+                (CalcResult::String(l), CalcResult::String(r)) => cmp_text_pairwise(l, r) as i32,
+                _ => compare_values(lv, rv),
+            };
             match kind {
                 OpCompare::Equal => cmp == 0,
                 OpCompare::LessThan => cmp == -1,
@@ -905,4 +939,10 @@ fn concat_limited(a: &Text, b: &Text) -> Text {
     let mut joined = Text::concat(a, b);
     joined.truncate_utf16(MAX_TEXT_UNITS);
     joined
+}
+
+/// The error of an uncalled LAMBDA read as text: `&` (probes/t2622-take-let-reference-lambda-text),
+/// CONCAT and TEXTJOIN (probes/t3130-concat-lambda-trimrange-cell-variable Q5-Q12).
+pub(crate) fn lambda_text_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "A LAMBDA joined as text".to_string())
 }

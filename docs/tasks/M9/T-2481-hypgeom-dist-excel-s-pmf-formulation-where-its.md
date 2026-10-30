@@ -8,6 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: [T-0977, T-2742]
+campaign: visible
 ---
 
 ## Goal
@@ -15,6 +16,10 @@ HYPGEOM.DIST and HYPGEOMDIST reproduce Excel's pmf where Excel's own value is mo
 off the exact rational, so the last visibly-off HYPGEOM cells pass.
 
 ## Context
+New evidence (T-2742): probes-numeric/t2742-hypgeom-small-n has Excel's pmf and cdf for every valid (x, n, K, N) with
+N 6-12. statistics.md "HYPGEOM.DIST is not exact for small integer arguments" summarizes it: 286 of 1442 pmf cells are
+exact, offsets reach 14 ulps, the pmf is not symmetric in n and K, the cdf is not the running sum of the pmf, and
+HYPGEOMDIST shares the kernel.
 T-0977 made the pmf and cdf the exact value rounded once (`discrete.rs` `hypergeometric_walk`). Excel is a few ulp off
 the exact value everywhere, and visibly off it at these cells (Excel vs ours = exact):
 - gen-m9/f2bd5f380ec002bf A52 `HYPGEOMDIST(2,2,3,11)`: 0.05454545454545458 vs 0.05454545454545454 (3/55)
@@ -38,6 +43,9 @@ Bit-level scope left by T-0977 (decision 0083), which the same formulation shoul
 STATISTICAL/HYPERGEOM_DIST.xlsx F2, F3; the 65 last-digit HYPGEOM gen-m9 lines in T-0977's task file; and
 t1049-hypgeomdist A5 `HYPGEOM.DIST(0,3,5,12,TRUE)` (Excel 0.15909090909090923, now the exact 7/44, 5 ulp off; it was 2
 ulp off under statrs).
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - probes-numeric/t1049-hypgeomdist.case.json: Calc!A14, A16
 
 ## Acceptance criteria
 - [ ] The ten cells above are within half a unit of the 15th digit of Excel's value, no new known-failure lines.
@@ -46,3 +54,10 @@ ulp off under statrs).
 
 ## Out of scope
 - The population limit near 2^53 (statistics.md, same entry).
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the visibly-off cells of HYPGEOMDIST (5) and HYPGEOM.DIST (2). Fixing them lifts both to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells. Its dependency T-2742 is promoted with it (decision 0094).
