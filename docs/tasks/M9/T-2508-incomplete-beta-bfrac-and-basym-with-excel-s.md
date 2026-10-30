@@ -68,3 +68,4 @@ Notes from the opus run that claimed the task (data for the run that resumes it,
   ironcalc-calc/STATISTICAL/BINOM.xlsx NEGBINOM.DIST!E39 (Excel 0.7320646825464586, bfrac 0.7320646825464585,
   1 ulp). That must be resolved before merge (no gated line may be added), e.g. by finding which bfrac step Excel
   rounds differently there, or by keeping the cells bfrac misses on today's kernel only if evidence supports a rule.
+- Resumed 2026-10-30 20:45 by an opus run (branch idle over 2 h).
