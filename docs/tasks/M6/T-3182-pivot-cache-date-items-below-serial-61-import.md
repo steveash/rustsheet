@@ -34,6 +34,8 @@ other pivot-cache date below serial 61 is misread.
   `iso8601_to_date_system_serial` (crates/rustsheet-xlsx/src/import/iso_date.rs). That function returns `None`
   before 1900-01-01, and `skip` then drops the cache. The same function serves `t="d"` cells, which must keep their
   verified behavior. So the pivot path needs its own mapping, or a mode flag, not a change to the cell rule.
+  This builds on T-2393 (done), which added the `date_system` parameter on this path for the 1904 offset; its
+  Outcome leaves a pre-epoch date in a 1904 workbook skipping the cache (unprobed), the same failure as here.
 - Open questions for this task to settle with evidence, and record in xlsx-storage.md:
   1. Where the OLE epoch stops in a 1900 workbook. From serial 61 (1900-03-01) the two calendars agree. Between 1 and
      60 the cache date is one day earlier than the cell calendar (FCR!E241 shows it at 2.67). The phantom 1900-02-29
