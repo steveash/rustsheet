@@ -3,7 +3,7 @@ id: T-3302
 title: "Port ironcalc 9f431e61..2128db12: check CHAR, UNICHAR, CODE, UNICODE, CONCAT and TEXTJOIN over arrays and ranges against Excel evidence"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
