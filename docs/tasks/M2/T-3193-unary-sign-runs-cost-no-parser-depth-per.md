@@ -3,7 +3,7 @@ id: T-3193
 title: "Unary sign runs cost no parser depth per sign, so Excel's 1,024-minus and 1,023-plus sign runs parse"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
