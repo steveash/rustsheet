@@ -1600,6 +1600,7 @@ C	probes/t3137-date-parts-near-midnight.case.json	1134
 C	probes/t3138-blank-criterion.case.json	111
 C	probes/t3140-snap-coerced-operands.case.json	1273
 C	probes/t3151-number-criterion-formatted-text.case.json	21
+C	probes/t3161-xmatch-wildcard-regex-near-equal.case.json	73
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/table-convert-names-this-row.case.json	13
