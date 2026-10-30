@@ -3,7 +3,7 @@ id: T-3069
 title: "Structured references: this-row FORMULATEXT, stored padded T[ Col ] is #REF!"
 milestone: M2
 lane: engine
-status: blocked
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -38,7 +38,7 @@ flag broke copy and fill outside the table (PR #2415 review). Eval: probes known
 (t2800-stored-ws-0 A6:B6, t2800-this-row-whitespace F2:F3), no regressions. Follow-ups: T-3240 (probe), T-3241.
 
 ## Blocked because
-Blocked because: review-round limit
+Resumed after the review-round limit (step 5c).
 
 Three review rounds ran on PR #2415 (session 2026-10-30). Round 3: security, architecture and quality APPROVE;
 Excel fidelity REQUEST_CHANGES with one MAJOR finding: with the padded-bare-column reading off (typed or loaded), the
