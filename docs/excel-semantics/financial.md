@@ -3277,7 +3277,11 @@ a text, boolean or error guess keeps the element reading's `#VALUE!` or that err
 unless either is a text, boolean or empty cell (`#VALUE!`; an array element such as BYROW's `{FALSE}` is not a cell, so
 `#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; a single text or boolean value cell against
 several dates is `#VALUE!`; then different counts are `#NUM!` whatever a larger range holds (gen-m9/0a957119475760c5 A47);
-then the element reading. Open (T-2428): an error guess beside numeric values is the guess's error in Excel
+then the element reading. T-2611 (gen-m9, excel-graph, 2026-10-24; 20 top-level cells): an error values argument comes
+first (`XIRR(<#VALUE!>,<#DIV/0!>,..)` is `#VALUE!`, 79d87fc527927626 A228; an `INDEX` `#REF!` beside an error dates,
+81bcdc0bec0c8e6b A305, bc04c1f478c9896c A220), then an error dates argument, before the values' cells are read
+(`XIRR(Data!A11:C12,AVERAGE(<text cell>),..)` is the dates' `#DIV/0!` although the values range holds text,
+67a4c03afd63f988 A388). Open (T-2428): an error guess beside numeric values is the guess's error in Excel
 (1b60bf99d71424e7 A29, 67a4c03afd63f988 A388) but text values beside an error guess are `#VALUE!` (b72d952c5f52cb4d A50).
 Order (XNPV, T-2428): the rate first, per element, where a boolean is `#VALUE!` (a cell, `XNPV(<TRUE>,..)`,
 1dce4774f5c0e736 A22, or an array element, `XNPV(SORT(<FALSE>),..)`, 5c6a23c4f6597f1c A258); then one values cell that is

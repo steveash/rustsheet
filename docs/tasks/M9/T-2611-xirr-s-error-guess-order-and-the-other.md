@@ -168,3 +168,11 @@ these cells, so that order needs revising from them. Start with the cells where 
 error rather than `#VALUE!`: 1b60bf A29, 1cd309 A244 and A293, 5c6a23 A83 and A181, 6376e2 A296, 67a4c0 A241 and A388,
 a91bad A301, d91267 A282, ba4ddb A290 and 81bcdc A158. Then do the `#NUM!` cells with an out-of-domain number guess or a
 non-date dates argument.
+
+Partial fix on this branch (not reviewed yet; `make check` not run): XIRR returns an error values argument first, then an
+error dates argument, before it reads the values' cells (financial.md, T-2611 sentence in "Order (XIRR, T-2428)").
+`rustsheet-eval check --suite gen-m9`: 3094 → 3074 known failures, 20 fixed, 0 regressions, all 20 owned by this task:
+0a9571 A243, 1cd309 A244, 30e20b A257, 3c06f9 A46, 404253 A216, 5422bd A192, 583ca2 A267, 5c6a23 A83, 6376e2 A296, 67a4c0 A241, 67a4c0 A290, 67a4c0 A388, 7d2979 A222, 81bcdc A158, b6a028 A275, b72d95 A393, ba4ddb A290, ce3128 A267, d08543 A84, d91267 A282.
+A first try that put the dates error before an error values argument regressed 79d87fc527927626 A228, 81bcdc0bec0c8e6b
+A305 and bc04c1f478c9896c A220. 35 owned lines remain. Next: run `make check` and the review panel on this commit, then
+continue with the guess-error and `#NUM!` groups above.

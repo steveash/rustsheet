@@ -950,3 +950,20 @@ fn ipmt_past_the_range_fractional_nper_is_the_integer_value() {
     assert_eq!(number(4), Ok(CellValue::Number(-383602.6046511628)));
     assert_eq!(number(5), Ok(CellValue::Number(-100.0)));
 }
+
+/// XIRR returns an error values argument first, then an error dates argument, before it reads the
+/// values' cells (gen-m9/67a4c03afd63f988 A388, 79d87fc527927626 A228; T-2611).
+#[test]
+fn fn_xirr_error_arguments_before_the_value_cells() {
+    let mut model = new_empty_model();
+    model._set("B1", "-100");
+    model._set("B2", "x");
+    model._set("A1", "=XIRR(B1:B2,1/0)");
+    model._set("A2", "=XIRR(#VALUE!,1/0)");
+    model._set("A3", "=XIRR(B1:B2,{39448,39508})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+}

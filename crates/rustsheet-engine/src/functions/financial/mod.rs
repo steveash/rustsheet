@@ -624,9 +624,17 @@ impl Model {
         } else {
             self.xirr_size_error(&values, &dates, cell)
         };
-        // The dates are truncated and checked once, not per element, as XNPV's.
-        let flows = self
-            .xirr_numbers(values, &cell)
+        // The dates are truncated and checked once, not per element, as XNPV's. An error values
+        // argument comes first, then an error dates argument, before the values' cells are read
+        // (T-2611: gen-m9/67a4c03afd63f988 A388 is the dates' `#DIV/0!` beside text values;
+        // 79d87fc527927626 A228 is the values' `#VALUE!` beside a `#DIV/0!` dates).
+        let dates_error = match (&values, &dates) {
+            (CalcResult::Error { .. }, _) => None,
+            (_, CalcResult::Error { .. }) => Some(dates.clone()),
+            _ => None,
+        };
+        let flows = dates_error
+            .map_or_else(|| self.xirr_numbers(values, &cell), Err)
             .and_then(|values| {
                 let dates = self.xirr_numbers(dates, &cell)?;
                 let dates = xirr_dates(&values, &dates);
