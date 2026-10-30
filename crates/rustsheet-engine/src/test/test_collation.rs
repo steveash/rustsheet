@@ -190,6 +190,13 @@ fn collation_key_equality_is_cmp_text_equality() {
         "ё",
         "a\u{301}\u{30c}",
         "\u{301}a",
+        "ª",
+        "ª\u{301}",
+        "à",
+        "ǎ",
+        "a\u{30c}",
+        "a\u{342}\u{342}",
+        "a\u{327}",
     ]
     .iter()
     .map(|s| Text::from(*s))
@@ -230,19 +237,55 @@ fn letters_beyond_latin1_and_combining_marks() {
         ("σ", "ς"),
         ("Ё", "ё"),
         ("Ά", "ά"),
-        // These two pin unprobed engine choices (a stacked mark, a mark before a hyphen); T-3154
-        // probes them and may overturn them.
         ("ϊ\u{301}", "ΐ"),
+        // Pins an unprobed engine choice: a mark before a hyphen still belongs to its letter.
         ("C\u{30c}-a", "č-a"),
     ] {
         assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
     }
 }
 
+/// Accents are the Windows table's diacritic weights, and combining marks add theirs to the letter
+/// before them in one wrapping byte (probes/t3154-collation-accents,
+/// probes/t3154-collation-accent-weights, probes/t3154-collation-accent-pairs).
+#[test]
+fn accent_weights_add_up_and_wrap() {
+    assert_increasing(&[
+        "a", "á", "à", "â", "ä", "ǎ", "ă", "ā", "ã", "å", "ą", "ạ", "aa",
+    ]);
+    assert_increasing(&["e", "é", "è", "ė", "ê", "ë", "ě", "ē", "ę", "f"]);
+    assert_increasing(&[
+        "o", "ó", "ò", "ô", "ö", "ō", "õ", "ő", "ơ", "oa", "ơa", "ob",
+    ]);
+    assert_increasing(&["u", "ú", "ù", "û", "ü", "ū", "ů", "ų", "ű", "ư", "v"]);
+    assert_increasing(&["s", "š", "ş", "ș", "sa", "șa", "sb"]);
+    // Three dot-below marks wrap (2 + 3 * 86 = 260, so 4): between "a" and "á".
+    assert_increasing(&["a", "a\u{323}\u{323}\u{323}", "á"]);
+    assert_increasing(&["ª", "à", "ª\u{301}", "ȧ"]);
+    for (a, b) in [
+        ("a\u{301}\u{301}", "å"),
+        ("a\u{301}\u{30c}", "a\u{30c}\u{301}"),
+        ("á\u{30c}", "ǎ\u{301}"),
+        ("à\u{323}", "a\u{323}\u{300}"),
+        ("a\u{301}\u{300}", "ą"),
+        ("a\u{342}\u{342}", "a\u{327}"),
+        ("ǎ", "a\u{30c}"),
+        ("Ș", "s\u{326}"),
+        ("ț", "t\u{326}"),
+        ("ư", "u\u{31b}"),
+        ("ạ", "a\u{323}"),
+        ("й", "и\u{306}"),
+    ] {
+        assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
+        assert_eq!(collation_key(&Text::from(a)), collation_key(&Text::from(b)));
+    }
+    assert_ne!(cmp_text_excel("ș", "ş"), Ordering::Equal);
+}
+
 /// `decompose` binary-searches the table, so it must stay sorted by letter.
 #[test]
 fn decomposed_table_is_sorted() {
-    use crate::functions::util::collation::DECOMPOSED;
+    use crate::functions::util::collation_tables::DECOMPOSED;
     assert!(DECOMPOSED.windows(2).all(|pair| pair[0].0 < pair[1].0));
 }
 

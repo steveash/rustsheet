@@ -587,6 +587,23 @@ Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153
 
+## MATCH, VLOOKUP and HLOOKUP exact-match keys fold case one character to one (T-3133)
+Rule: the exact match of MATCH (type 0), VLOOKUP and HLOOKUP (`range_lookup` FALSE) compares text case-insensitively
+with SEARCH's per-character fold, never changing the text's length (criteria.md "Wildcard escapes, case and trailing
+tilde" lists the same fold for wildcard criteria). Over Data!A1:A35 = İ ı I i ΟΣ οσ ος K(U+212A) k K ẞ ß ǅ ǆ Ǆ
+Å(U+212B) å Å Ω(U+2126) ω Ω ſ s S µ μ Μ Ａ ａ Σ σ ς i+U+0307 ss İx, each value looked up both ways (as the key against
+each one-cell array, and against the whole column): `İ` matches only `İ` (not `i`, `I` or i+U+0307), `ı` only `ı`;
+`ΟΣ = οσ = ος` and `Σ = σ = ς`; the Kelvin sign = `k` = `K`; `ẞ = ß` (not `ss`); `ǅ = ǆ = Ǆ`; the Ångström sign = `å`
+= `Å`; the Ohm sign = `ω` = `Ω`; `Ａ = ａ`; `μ = Μ`; `ſ` and `µ` match only themselves. MATCH, VLOOKUP(..,FALSE),
+HLOOKUP(..,FALSE) and XMATCH(..,2) give the same first position for every key.
+XMATCH's exact mode (0) differs: it compares by the collation (coercion.md "Collation equality in lookups and
+criteria"), where `İ` equals i+U+0307 and `ẞ`/`ß` equal `ss`, but not `I` or `i`.
+Evidence: probes/t3133-lookup-criteria-case-fold Calc!A1:E35, I1:J35 (excel-graph, 2026-10-29, T-3133).
+UNVERIFIED: characters outside the list above are assumed to follow the same fold.
+Status: VERIFIED
+Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
+search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
+
 ## XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles (T-3106)
 Rule: XMATCH and XLOOKUP equate and order numbers as exact doubles, not at 15 digits like the comparison operators, in
 the exact (0), next-smaller (-1) and next-larger (1) match modes and in every search mode (1, -1, 2, -2). LOOKUP does
@@ -611,12 +628,20 @@ key/X pair of probes/t3073-lookup-near-equal-approximate's row: 1 against 1+k·2
 the reverse, 0.3 against 0.1+0.2 both ways, and the pair either side of 1+5E-15. The columns are LOOKUP (A-D),
 XMATCH (E-P) and XLOOKUP (Q-AB). Rows 30-32 and 34-36 hold the runs. Rows 8, 16, 19 and 20 fit both models.
 AC8 (`=1-(1-8*2^-53)` from cells, 0) repeats T-3073's E8 (numbers.md "Operand order", T-3100).
-The engine's LOOKUP matches every cell: it shares `SearchVector::approximate_search` and `compare_searched`
-(lookup_table.rs, T-3099). XMATCH and XLOOKUP still compare at 15 digits (`compare_values` in `linear_scan`,
-`CollatedKey` in the exact index, `impl Ord for CalcResult` in `binary_search`), so 332 of their cells fail: T-3132.
-Unprobed: the wildcard and regex modes with a numeric key.
+The engine matches every cell: LOOKUP shares `SearchVector::approximate_search` and `compare_searched`
+(lookup_table.rs, T-3099); XMATCH and XLOOKUP compare through `compare_searched` in `linear_scan`, `cmp_searched` in
+`binary_search_by` and exact-bit `CollatedKey`s in the exact index (T-3132).
+The wildcard mode (2) with a number key equates numbers the same way (T-3161): over {2;X;0.5}, `XMATCH(1,..,2)` is
+`#N/A` for X = 1+2^-52, 1-2^-53, 1+1E-15 and 1+5E-15, and so is `XMATCH(0.3,..,2)` for X = 0.1+0.2 and
+`XMATCH(1+2^-52,{2;1;0.5},2)`; search_mode -1 agrees, and XLOOKUP gives its if_not_found. An exact 1 after X is
+found (4 over {2;X;0.5;1}), a text "1" is not, and the key 0.1+0.2 or 1+2^-52 finds its own X (2). The regex mode (3)
+reads the key as text at 15 digits (`XMATCH(1+2^-52,{2;1;0.5},3)` is 2) and finds it anywhere in each candidate's
+text ("Regex mode" below), so near-equal numbers do match; whether a candidate number also reads at 15 digits is not
+shown (an anchored pattern would show it): `XMATCH(1,{2;1+2^-52;0.5},3)` is
+2, as is `XMATCH(0.3,{2;0.1+0.2;0.5},3)`, and `XMATCH(1,{2;1+2^-52;"1";0.5},3,-1)` finds the text "1" (3).
+Evidence: probes/t3161-xmatch-wildcard-regex-near-equal Calc!A1:G10 (excel-graph, 2026-10-30).
 Status: VERIFIED
-Tasks: T-3106, T-3132
+Tasks: T-3106, T-3132, T-3161
 
 ## XLOOKUP / XMATCH with an omitted lookup_value is a blank cell
 Rule: an omitted lookup_value (`XMATCH(,H1:H4)`, `XLOOKUP(,...)`) is indistinguishable from a reference to a blank cell, in every
