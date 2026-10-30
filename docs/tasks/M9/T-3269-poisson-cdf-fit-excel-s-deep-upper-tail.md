@@ -64,3 +64,5 @@ Cells (the gen-m9 and probe cells above):
 
 ## Out of scope
 - The pmf (T-3247).
+
+T-3289 landed the sweep: probes-numeric/t3284-gamma-deep-upper-tail.case.json (343 cells, filled by excel-graph).

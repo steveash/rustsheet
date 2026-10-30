@@ -3,7 +3,7 @@ id: T-3289
 title: "Oracle sweep: the incomplete gamma's deep upper tail, POISSON cdf at mean 4(k+1) to 100(k+1) and CHISQ.DIST.RT at x 4 to 100 df"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -54,3 +54,9 @@ a dense excel-graph sweep, instead of the dozen scattered gen-m9 and probe cells
 ## Out of scope
 - Fitting or implementing (T-3269). The near-mode window (T-3252, T-3286). Shapes 1.5 and 2.5 at x up to about 13a,
   where Excel is accurate (T-3285).
+
+## Outcome
+One probes-numeric case, `t3284-gamma-deep-upper-tail` (343 cells, filled by excel-graph, no pending cells; ulp-run means are
+written as `m+(j)*2^(-e)` since a literal is read to 15 digits). Excel is within 1 ulp of the 50-digit value in 64 cells
+(`docs/research/t3284/ulp_vs_exact.py`); the engine is bit-exact on 53. Documented in statistics.md; T-3269 links the case.
+No eval baseline change (probes-numeric is ungated).
