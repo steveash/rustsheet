@@ -42,9 +42,8 @@ k ≤ 7 (8 ULP of 1) and keeps k = 8 (1.7763568394002505e-15, negated in the sec
 total is the larger of the two final addends or shares its binary exponent (block 2: 1 against -(1+k·2^-52)), so
 this probe alone does not separate it from the larger addend; the two-addend `-` side above (b = 1, whose larger
 addend 1 would allow k ≤ 7, snaps only to k = 3) rules the larger addend out, and T-3248 rules it out inside SUM
-(below). SUM over the cells as
-arguments, over the row range and over an array argument (`SUM(CHOOSE({1,2,3},..))`), SUBTOTAL(9,range) and
-the `+` chain agree on every cell. AVERAGE snaps the sum before dividing: 0 for k ≤ 7, the kept total over the
+(below). SUM over the cells as arguments, over the row range and over an array argument
+(`SUM(CHOOSE({1,2,3},..))`), SUBTOTAL(9,range) and the `+` chain agree on every cell. AVERAGE snaps the sum before dividing: 0 for k ≤ 7, the kept total over the
 count from k = 8 on (5.921189464667501e-16 for three addends). Status: VERIFIED.
 Implemented in: `SumParts::snapped` (functions/math_and_trigonometry/sum.rs), which SUM, AVERAGE and SUBTOTAL
 share; the engine already matched.

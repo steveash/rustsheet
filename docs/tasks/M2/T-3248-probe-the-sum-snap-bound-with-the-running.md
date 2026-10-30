@@ -38,4 +38,4 @@ not of the larger of the two final addends.
   1-k·2^-52 below the last addend ∓1, all four blocks snap exactly k ≤ 3 and keep k = 4 in SUM over arguments, a
   range and an array argument, SUBTOTAL(9) and the `+` chain; AVERAGE snaps before dividing.
 - numbers.md "Near-zero snapping" records it (VERIFIED). The engine already matched (`SumParts::snapped`), so no
-  code change; eval delta +384 passing probe cells, no new known failures.
+  code change; eval delta +384 passing probe cells (eval/baseline/probes.txt), no new known failures.
