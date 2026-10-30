@@ -219,9 +219,9 @@ fn typed_at_and_hash_operators_add_no_nesting_level() {
     let abs = |n: usize, inner: &str| format!("={}{inner}{}", "ABS(".repeat(n), ")".repeat(n));
     let mut wb = book();
     wb.set("C1", Input::Formula("=SEQUENCE(2)".into())).unwrap();
+    // The `@` and SINGLE cells sit in rows 1-2, where `@C1:C2` meets the spill.
     for (a1, formula) in [
         ("A1", abs(65, "@C1:C2")),
-        // `@C1:C2` needs a row of C1:C2.
         ("A2", abs(64, "SINGLE(C1:C2)")),
         ("A3", format!("=ABS(@{})", &abs(64, "1")[1..])),
         ("A4", abs(64, "SUM(C1#)")),
