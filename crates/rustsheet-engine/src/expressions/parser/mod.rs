@@ -75,7 +75,7 @@ use chain::ChainLevel;
 pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
 pub(crate) use depth::is_limit_error;
 pub use depth::{
-    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
+    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_PARENTHESES, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
     TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
 pub(crate) use spacing::Run;
@@ -290,7 +290,7 @@ pub enum Node {
     /// FORMULATEXT and stored formula text keep every written parenthesis
     /// (docs/excel-semantics/syntax.md, SPEC-0007).
     Group {
-        levels: u8,
+        levels: u16,
         child: Box<Node>,
     },
     /// A structured reference as written (`Sales[[#All],[Qty]]`), with the area it resolves to
@@ -358,7 +358,7 @@ pub enum Node {
     EmptyArgKind,
 }
 
-// A `Group` must not grow the node: `Box<Node>` + `u8` fits in the largest variant (SPEC-0007).
+// A `Group` must not grow the node: `Box<Node>` + `u16` fits in the largest variant (SPEC-0007).
 const _: () = assert!(std::mem::size_of::<Node>() <= NODE_SIZE);
 
 /// `size_of::<Node>()` before the `Group` variant; pinned so later variants cannot grow it unnoticed.
@@ -576,6 +576,11 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
+    /// An operand parsed ahead, with its depth, for the next [`Parser::parse_primary`] to
+    /// return: the inner group of a run of parentheses ([`Parser::parse_parenthesis_run`]).
+    pending_operand: Option<(Node, usize)>,
+    /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
+    open_groups: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
     value_operators: usize,
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
@@ -647,6 +652,8 @@ impl Parser {
             top_level: false,
             depth: 0,
             inner_depth: 0,
+            pending_operand: None,
+            open_groups: 0,
             value_operators: 0,
             bound_names: Vec::new(),
             typed: false,
@@ -729,6 +736,8 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
+        self.pending_operand = None;
+        self.open_groups = 0;
         self.value_operators = 0;
         self.bound_names.clear();
         self.cell_shaped_binding = None;
@@ -841,8 +850,7 @@ impl Parser {
     /// before and after the operand is in helpers of their own, to keep this frame small in
     /// unoptimized builds (T-1110).
     pub(super) fn parse_power(&mut self) -> Node {
-        let before = self.run_ahead();
-        let signs = self.parse_signs();
+        let (before, signs) = self.parse_prefix();
         let t = self.parse_bare_union();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -858,7 +866,7 @@ impl Parser {
     /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
     /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776).
     #[inline(never)]
-    fn parse_signs(&mut self) -> Vec<(bool, Run)> {
+    pub(super) fn parse_signs(&mut self) -> Vec<(bool, Run)> {
         let mut signs = Vec::new();
         while let TokenType::Addition(op) = self.lexer.peek_token() {
             self.lexer.advance_token();
@@ -911,7 +919,7 @@ impl Parser {
         let start = self.lexer.get_position_index();
         let next_token = self.lexer.next_token();
         match next_token {
-            TokenType::LeftParenthesis => self.parse_parenthesized_call(),
+            TokenType::LeftParenthesis => self.parse_parenthesis_run(),
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => self.parse_array_operand(),

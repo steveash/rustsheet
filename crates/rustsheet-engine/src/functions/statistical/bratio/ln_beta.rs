@@ -8,10 +8,10 @@
 //! (statistics.md "Incomplete beta bpser", T-3007).
 
 use super::super::beta_density::{algdiv, alnrel, stirling_del, ALGDIV_C};
-use super::super::fisher::half_integer_beta;
 use super::super::gammaln::excel_gammaln;
-use crate::x87_exp::{dd_add, dd_to_extended};
-use crate::x87_log10::{excel_ln, ln_double_double};
+use super::super::half_integer_beta::{half_integer_beta, is_half_integer_shape};
+use crate::x87_exp::dd_to_extended;
+use crate::x87_log10::{excel_ln, ln_double_double_pair};
 use crate::x87_register::Register;
 
 /// TOMS's ln(sqrt(2 pi)) as `betaln` writes it.
@@ -78,15 +78,17 @@ fn bcorr(a: f64, b: f64) -> f64 {
 pub(in super::super) const HALF_INTEGER_SHAPE_SUM_MAX: f64 = 400.0;
 
 /// -ln B(a, b) for half-integer shapes a, b >= 1/2, accurate and rounded to a register: the
-/// double-double B of `fisher::half_integer_beta` and its double-double ln. `None` off those
-/// shapes and above [`HALF_INTEGER_SHAPE_SUM_MAX`].
+/// double-double B of `half_integer_beta::half_integer_beta` and its double-double ln. `None` off
+/// those shapes and above [`HALF_INTEGER_SHAPE_SUM_MAX`].
 pub(in super::super) fn neg_ln_beta_half_integer(a: f64, b: f64) -> Option<Register> {
-    let half_integer = |v: f64| v >= 0.5 && (2.0 * v).fract() == 0.0;
-    if !(half_integer(a) && half_integer(b) && a + b <= HALF_INTEGER_SHAPE_SUM_MAX) {
+    if !(is_half_integer_shape(a)
+        && is_half_integer_shape(b)
+        && a + b <= HALF_INTEGER_SHAPE_SUM_MAX)
+    {
         return None;
     }
     let (hi, lo) = half_integer_beta(a, b);
-    let ln_beta = dd_add(ln_double_double(hi), (lo / hi, 0.0));
+    let ln_beta = ln_double_double_pair((hi, lo));
     // `dd_to_extended` takes a positive head: B < 1, so -ln B > 0, wherever one shape is above 1
     // and neither is below 1/2 (B(1/2, 1/2) = pi and B(1/2, 1) = 2 are the exceptions).
     if ln_beta.0 >= 0.0 {

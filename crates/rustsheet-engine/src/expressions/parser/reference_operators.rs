@@ -6,7 +6,7 @@
 //! Excel evidence: docs/excel-semantics/references.md "Intersection operator (space)" (gen-m1,
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
-use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
+use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, MAX_PARENTHESES, PRIMARY_DEPTH};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::functions::Function;
@@ -46,6 +46,60 @@ impl Parser {
         // (`@(A1)`, `@(A1) B1`, `(@1)#`; T-1343).
         let nested = matches!(t, Node::Group { .. });
         regroup(t, nested)
+    }
+
+    /// A run of `(` written with nothing between them, after the first: `((x))`, `(((x)+1)*2)`.
+    /// The innermost group is parsed first, and each enclosing one in a loop, with the group
+    /// inside it handed to its content as the first operand ([`Parser::parse_primary`] returns
+    /// it), so a run takes the same parser stack whatever its length, where a recursive descent
+    /// would take one pass through the precedence chain per parenthesis (T-3191). A group whose
+    /// content is exactly the group inside merges with it (`((x))` is one [`Node::Group`] of two
+    /// levels, [`regroup`]) and adds no depth; any other costs an operand's.
+    /// Excel loads 256 directly nested parentheses and refuses 257 (probes/t3172-paren-256,
+    /// docs/excel-semantics/syntax.md "Formula nesting depth cap"), so a formula nesting more
+    /// than 256 groups, in one run or several (`( ((...)))`, `(1+((...)))`), is too deep.
+    pub(super) fn parse_parenthesis_run(&mut self) -> Node {
+        let mut opened = 1;
+        while !self.lexer.whitespace_follows()
+            && self.lexer.peek_token() == TokenType::LeftParenthesis
+        {
+            opened += 1;
+            if self.open_groups + opened > MAX_PARENTHESES {
+                return self.too_deep();
+            }
+            self.lexer.advance_token();
+        }
+        if self.open_groups + opened > MAX_PARENTHESES {
+            return self.too_deep();
+        }
+        self.open_groups += opened;
+        let node = self.parse_run_groups(opened);
+        self.open_groups -= opened;
+        node
+    }
+
+    /// The `opened` groups of a run, after its last `(`: see [`Parser::parse_parenthesis_run`].
+    fn parse_run_groups(&mut self, opened: usize) -> Node {
+        let mut node = self.parse_parenthesized_call();
+        let mut depth = self.inner_depth + PRIMARY_DEPTH;
+        for _ in 1..opened {
+            if let Node::ParseErrorKind { .. } = node {
+                return node;
+            }
+            self.pending_operand = Some((node, depth));
+            self.inner_depth = 0;
+            node = self.parse_parenthesized_call();
+            self.pending_operand = None;
+            if !matches!(node, Node::Group { levels, .. } if levels > 1) {
+                depth = self.inner_depth + PRIMARY_DEPTH;
+                if depth > MAX_FORMULA_DEPTH {
+                    return self.too_deep();
+                }
+            }
+        }
+        // The enclosing [`Parser::parse_primary`] adds an operand's levels to this.
+        self.inner_depth = depth - PRIMARY_DEPTH;
+        node
     }
 
     /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
@@ -225,7 +279,7 @@ impl Parser {
     /// (probes/intersection-operands H11, probes/intersection-at-operands; T-0149).
     fn parse_implicit(&mut self) -> Node {
         let next_token = self.lexer.peek_token();
-        if next_token == TokenType::At {
+        if next_token == TokenType::At && self.pending_operand.is_none() {
             self.lexer.advance_token();
             // `@` recurses into the intersection without an operand in between (`A1 @A1
             // @A1 ...`), so it reserves nesting like an operand does to bound the recursion.
@@ -485,7 +539,7 @@ pub(crate) fn spill_operand(text: String, node: &Node) -> String {
 }
 
 /// `text` in the `levels` pairs of parentheses a [`Node::Group`] was written in.
-pub(crate) fn group_text(levels: u8, text: &str) -> String {
+pub(crate) fn group_text(levels: u16, text: &str) -> String {
     let levels = usize::from(levels);
     let mut grouped = String::with_capacity(text.len() + 2 * levels);
     grouped.extend(std::iter::repeat_n('(', levels));
