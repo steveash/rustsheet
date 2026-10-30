@@ -31,7 +31,7 @@ A legacy CHOOSE whose index is an array constant shows the `@` on the call, as E
 ## Out of scope
 - IF and IFS conditions (already evidenced, T-3134).
 
-## Progress notes (opus run 2026-10-30, stopped at the session budget; nothing implemented yet)
+## Progress notes (opus run 2026-10-30, stopped at the session budget; resumed by a later opus run)
 - Evidence in eval/suites/probes: with range arms Excel keeps both `@`s, `=@CHOOSE(@{1,2},H1:H2,I1:I2)`, also under
   ABS and LEN (legacy-choose-array-index, subtotal-take-array-selector). With scalar arms (a scalar, or a single-cell
   INDEX) it shows only the call's `@`, `=@CHOOSE({1,2},INDEX(B1:B6,3),5)` (t3134 I54, K54). Under N, T, SUM or ROWS no
