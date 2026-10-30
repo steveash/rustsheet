@@ -47,6 +47,8 @@ M0-M2 probe row's known failures. Two ways out; the implementer picks with evide
   (2) changes harness policy (today any refused input fails the case loudly), so it probably needs a decision
   record.
 
+- 2026-10-30: resumed by an opus run (branch idle 3 h).
+
 ## Acceptance criteria
 - [ ] `make exit-owners MILESTONE=M2` no longer lists the eight t3097-nesting-paren cases.
 - [ ] The DEVIATION entry (if kept) names the bound, the cases, and Excel's own limit as probed.
