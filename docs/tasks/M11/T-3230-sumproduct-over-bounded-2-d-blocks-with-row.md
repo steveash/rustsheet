@@ -65,8 +65,11 @@ summary of the shared data block would answer that.
   | calipers `pv26_2_002` | 37.1 s | 13.4 s |
 
   Each takes about 9 s to load. Under the parallel harness, `rustsheet-eval run --suite calipers`,
-  each case takes 44 s, inside the 60 s timeout. So their `exclude` entries are gone and the
-  calipers baseline now includes them. Both pass every scored cell (2.75M cells). After evaluation,
+  each case takes 44 s, inside the 60 s timeout, so their `exclude` entries are gone. Both
+  pass every scored cell (2.75M cells). The calipers baseline is not updated:
+  `update-baseline --suite calipers` refuses one regression from main. It is IRR in
+  `formulas_financial` E132, after T-3120, filed as T-3246. calipers is not gated, so the two cases
+  are recorded with the next baseline update. After evaluation,
   all 1,765,265 cell values of each workbook are identical to `origin/main`'s.
 - **Tests** (test_sumproduct_masked.rs) compare each formula with the pass caches off
   (`no_pass_caches`), including whether the cell is marked circular:
@@ -83,5 +86,6 @@ summary of the shared data block would answer that.
 - **Mutations:** each of these fails a test: ignoring a mask's error, ignoring the block's first
   error, letting a later operand's error win at an equal position, and placing a row mask's error
   at its row number instead of the start of its row.
-- **Eval delta:** calipers gains `pv26_002` and `pv26_2_002` (all cells pass). The gated suites do
-  not change.
+- **Eval delta:** calipers runs `pv26_002` and `pv26_2_002` again (all cells pass; recorded once
+  T-3246 unblocks the ratchet). The gated suites do not change.
+- **Follow-up:** T-3246.
