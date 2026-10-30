@@ -30,6 +30,7 @@ _OP_KEYS = {
     "delete_table": "table",
 }
 _COLUMN_LETTERS = re.compile(r"[A-Za-z]{1,3}")
+_ROW_SPAN = re.compile(r"([1-9][0-9]*):([1-9][0-9]*)")
 _LAST_COLUMN = 16384  # XFD
 
 
@@ -67,13 +68,19 @@ def _is_name(value: object) -> bool:
     return isinstance(value, str) and bool(value)
 
 
+def _is_row_span(value: object) -> bool:
+    """Whether `value` is the `first:last` rows of a multi-row delete_row, first before last (T-3019)."""
+    match = _ROW_SPAN.fullmatch(value) if isinstance(value, str) else None
+    return match is not None and int(match[1]) < int(match[2])
+
+
 def _valid_op_argument(kind: str, to: object) -> bool:
     """Whether `to` is a valid argument for sheet op `kind`."""
     return {
         "rename": _is_name(to),
         "move": _is_int_at_least(to, 0),
         "insert_row": _is_int_at_least(to, 1),
-        "delete_row": _is_int_at_least(to, 1),
+        "delete_row": _is_int_at_least(to, 1) or _is_row_span(to),
         "insert_column": _is_column(to),
         "delete_column": _is_column(to),
         "convert_table": _is_name(to),
@@ -84,10 +91,12 @@ def _valid_op_argument(kind: str, to: object) -> bool:
 def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
     """A spec's sheet op as `(op, sheet, to)`: `to` is the new name of a rename, the 0-based
     position of a move, the 1-based row of an insert_row or delete_row (spec key `row`; the
-    blank row goes above it, T-1933), the column letter of an insert_column or delete_column
+    blank row goes above it, T-1933; a delete_row with `count` n > 1 gives the span `row:row+n-1`,
+    T-3019), the column letter of an insert_column or delete_column
     (spec key `column`), the table name of a convert_table or delete_table (spec key `table`;
     T-2323) and None for an add or delete_sheet. Raises ValueError for an unknown or malformed op."""
-    if isinstance(op, (list, tuple)) and len(op) == 3:
+    recorded = isinstance(op, (list, tuple)) and len(op) == 3
+    if recorded:
         key = _op_key(op[0])
         op = {"op": op[0], "sheet": op[1], **({} if op[2] is None or key is None else {key: op[2]})}
     if not isinstance(op, dict) or op.get("op") not in SHEET_OPS or not isinstance(op.get("sheet"), str):
@@ -96,14 +105,27 @@ def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
     kind, sheet = op["op"], op["sheet"]
     key = _op_key(kind)
     to = op.get(key) if key else None
-    if set(op) - {"op", "sheet", key}:
+    if set(op) - {"op", "sheet", key, *(["count"] if kind == "delete_row" else [])}:
         msg = f"sheet op {op!r} has unknown keys"
+        raise ValueError(msg)
+    if "count" in op:
+        count = op["count"]
+        if not (_is_int_at_least(count, 1) and _is_int_at_least(to, 1)):
+            msg = f"sheet op {op!r}: `count` must be a row count >= 1 after a 1-based `row`"
+            raise ValueError(msg)
+        # One edit of several rows is recorded as their span, `4:7`, which is also Graph's address;
+        # a count of 1 keeps the plain row, so single-row workbooks stay byte-identical.
+        if count > 1:
+            to = f"{to}:{to + count - 1}"
+    elif _is_row_span(to) and not recorded:
+        msg = f"sheet op {op!r}: a spec deletes several rows with `row` and `count`, not a span"
         raise ValueError(msg)
     if _valid_op_argument(kind, to):
         return kind, sheet, to
     msg = (
         f"sheet op {op!r}: `to` must be absent for add and delete_sheet, a name for rename, a position"
-        " >= 0 for move; `row` a 1-based row for insert_row and delete_row; `column` a column letter"
+        " >= 0 for move; `row` a 1-based row for insert_row and delete_row (with an optional row `count`"
+        " for delete_row); `column` a column letter"
         " (A to XFD) for insert_column and delete_column; `table` a table name for convert_table and"
         " delete_table"
     )
