@@ -377,9 +377,8 @@ fn excel_form_lower(a: f64, x: f64, exponent: f64) -> Option<f64> {
 /// the engine's model of Excel's cdf; so are A34 `(1E-16,0.9,1)` (1.6E-18) and
 /// gen-m9/60b0b6e69ad35a45 A210 (shape 1/60, 4.9E-19). The cut is on x, not on p or a·LN(x): A28
 /// and A34 share p = 1E-16 and nearly the same a·LN(x) (about -36.9), and only A28 is the closed
-/// form. Below it
-/// the series' correction (about x / (a + 1)) is far below an ulp, so the closed form is the
-/// quantile of the leading factor alone. T-3252 probes the gap.
+/// form. Below it the series' correction (about x / (a + 1)) is far below an ulp, so the closed
+/// form is the quantile of the leading factor alone. T-3252 probes the gap.
 const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
 
 /// GAMMA.INV takes one Newton step from the closed form where that step is more than this
@@ -408,8 +407,8 @@ const CLOSED_FORM_STEP_MIN: f64 = 3.5e-14;
 /// A9 `GAMMA.INV(1E-30,0.1,1)` = 6.073048362407713E-301 and A16 `(1E-16,0.25,1)` =
 /// 6.749697893111757E-65 among them, where `GAMMALN(a+1)` in place of the last two terms is one
 /// ulp of the exponent off). Where the Newton step on the leading-factor series form
-/// ([`excel_form_lower`]) is more than [`CLOSED_FORM_STEP_MIN`] of x, it takes that one step (A26). The value may be 0 or subnormal
-/// (Excel's `#DIV/0!`, the caller's to decide). `None` outside [`CLOSED_FORM_QUANTILE_MAX`], at a
+/// ([`excel_form_lower`]) is more than [`CLOSED_FORM_STEP_MIN`] of x, it takes that one step
+/// (A26). The value may be 0 or subnormal (Excel's `#DIV/0!`, the caller's to decide). `None` outside [`CLOSED_FORM_QUANTILE_MAX`], at a
 /// p outside (0, 1), and where a cdf or density fails: the search applies there.
 pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
     if !(a > 0.0 && a < 1.0 && a != 0.5 && p > 0.0 && p < 1.0) {

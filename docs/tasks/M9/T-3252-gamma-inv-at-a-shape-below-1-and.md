@@ -16,6 +16,7 @@ GAMMA.INV and GAMMAINV at a shape below 1 (not 1/2) give Excel's value to 15 dig
 is 1E-21 or more, above the region T-3013 matched.
 
 ## Context
+- Probe `GAMMA.INV(1E-30,0.1,1E-10)` (a subnormal product of a normal unit quantile and the scale; the engine gives 0, UNVERIFIED) next to the cells above (T-3013 fidelity review).
 - T-3013 (docs/excel-semantics/statistics.md, T-3013 bullets under "Excel's CHISQ.INV and GAMMA.INV are exact in the
   lower tail"): below a unit quantile of 1E-21 Excel is the closed form `EXP((LN(p)+GAMMALN(a)+LN(a))/a)`, plus one
   Newton step on its own GAMMA.DIST cdf where that step is over 3.5E-14 of x. Above it the engine keeps its crossing
