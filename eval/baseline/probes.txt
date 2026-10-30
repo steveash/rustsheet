@@ -1626,6 +1626,17 @@ C	probes/t3136-criteria-formatted-number-operands.case.json	590
 C	probes/t3137-date-parts-near-midnight.case.json	1134
 C	probes/t3138-blank-criterion.case.json	111
 C	probes/t3140-snap-coerced-operands.case.json	1273
+C	probes/t3143-anchor-inner-64-stored.case.json	2
+C	probes/t3143-anchor-inner-64-typed.case.json	2
+C	probes/t3143-anchor-inner-65-typed.case.json	2
+C	probes/t3143-name-body-65.case.json	2
+C	probes/t3143-single-inner-64-stored.case.json	2
+C	probes/t3143-single-inner-64-typed.case.json	2
+C	probes/t3143-single-inner-65-typed.case.json	2
+C	probes/t3143-single-mid-64-stored.case.json	2
+C	probes/t3143-single-mid-64-typed.case.json	2
+C	probes/t3143-single-mid-65-typed.case.json	2
+C	probes/t3143-single-spelled-64-typed.case.json	2
 C	probes/t3145-snap-multi-addend.case.json	384
 C	probes/t3151-number-criterion-formatted-text.case.json	21
 C	probes/t3153-sort-lifted-by-col-text.case.json	30
