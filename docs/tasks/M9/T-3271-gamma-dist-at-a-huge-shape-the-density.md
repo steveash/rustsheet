@@ -3,7 +3,7 @@ id: T-3271
 title: "GAMMA.DIST at a huge shape: the density's #NUM! cut at a tiny x and the cdf's above 1E76 (T-2435 rules, T-3070 rest)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -30,9 +30,17 @@ above a shape of about 1E76, where ours is 0.
 - Code: `statistical/gamma.rs` `fn_gamma_dist` (density `tiny_ratio_density`/`gamma_density`, cdf `gamma_cdf`).
 
 ## Acceptance criteria
-- [ ] The six cells above pass; the cuts are pinned by a probe (or bracketed and named UNVERIFIED) and recorded in
+- [x] The six cells above pass; the cuts are pinned by a probe (or bracketed and named UNVERIFIED) and recorded in
       statistics.md; no cell becomes visibly off.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The gamma inversions (T-3070, T-3272).
+
+## Outcome
+`gamma_dist_of` turns a computed 0 into `#NUM!` at a huge shape (`huge_shape_num_error`): a density at x/beta below 1
+with (alpha - 1)·(-LN(x/beta)) of at least 6.9187E+11, and a cdf of a positive x at a shape of at least 1.85E+76. Each
+cut sits at the smallest `#NUM!` Excel has shown, so every probed 0 stays 0. The cdf rule applies to a 0 only:
+`GAMMA.DIST(1E300,1E300,1,TRUE)` stays Excel's 0.5 (incomplete-gamma-cap E3). The cuts were not probed again, because
+excel-graph refused those workbooks (T-2982). Inside each bracket they are UNVERIFIED in statistics.md "GAMMA.DIST at a
+huge shape". Eval delta: probes 2167 -> 2159 known failures (fixed 8), gen-m9 3091 -> 3089 (fixed 2), no regressions.

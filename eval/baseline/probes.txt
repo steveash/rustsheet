@@ -3390,8 +3390,6 @@ F	probes/t2429-hypgeom-threshold.case.json	Calc!A21
 F	probes/t2429-hypgeom-threshold.case.json	Calc!A25
 F	probes/t2429-hypgeom-threshold.case.json	Calc!A5
 F	probes/t2429-hypgeom-threshold.case.json	Calc!A9
-F	probes/t2435-dist-extremes.case.json	S!A101
-F	probes/t2435-dist-extremes.case.json	S!A102
 F	probes/t2435-dist-extremes.case.json	S!A108
 F	probes/t2435-dist-extremes.case.json	S!A109
 F	probes/t2435-dist-extremes.case.json	S!A110
@@ -3406,8 +3404,6 @@ F	probes/t2435-dist-extremes.case.json	S!A15
 F	probes/t2435-dist-extremes.case.json	S!A18
 F	probes/t2435-dist-extremes.case.json	S!A23
 F	probes/t2435-dist-extremes.case.json	S!A24
-F	probes/t2435-dist-extremes.case.json	S!A25
-F	probes/t2435-dist-extremes.case.json	S!A26
 F	probes/t2435-dist-extremes.case.json	S!A35
 F	probes/t2435-dist-extremes.case.json	S!A36
 F	probes/t2435-dist-extremes.case.json	S!A37
@@ -3423,15 +3419,11 @@ F	probes/t2435-dist-extremes.case.json	S!A78
 F	probes/t2435-dist-extremes.case.json	S!A79
 F	probes/t2435-dist-extremes.case.json	S!A80
 F	probes/t2435-dist-extremes.case.json	S!A81
-F	probes/t2435-dist-extremes.case.json	S!B101
-F	probes/t2435-dist-extremes.case.json	S!B102
 F	probes/t2435-dist-extremes.case.json	S!B110
 F	probes/t2435-dist-extremes.case.json	S!B115
 F	probes/t2435-dist-extremes.case.json	S!B116
 F	probes/t2435-dist-extremes.case.json	S!B117
 F	probes/t2435-dist-extremes.case.json	S!B118
-F	probes/t2435-dist-extremes.case.json	S!B25
-F	probes/t2435-dist-extremes.case.json	S!B26
 F	probes/t2435-dist-extremes.case.json	S!B68
 F	probes/t2435-dist-extremes.case.json	S!B69
 F	probes/t2435-dist-extremes.case.json	S!B77
