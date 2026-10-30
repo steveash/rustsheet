@@ -620,14 +620,15 @@ Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. 
 fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
 Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728
 
-## IRR is a secant in d = 1 - v = r/(1 + r) from d0 and d0 -+ 0.001 (fitted, 262/263 bit-exact)
+## IRR is a secant in d = 1 - v = r/(1 + r) from d0 and d0 -+ 0.001 (fitted, 263/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of d = 1 - v = r/(1 + r), v = 1/(1 + r) (T-3120 moved
 the state from v to d; the T-1533 text below, written for the secant in v, holds for d with the signs flipped):
 - leading zero flows are dropped (T-3120 bullet below);
 - start: d0 = guess/(1 + guess) (guess 0.1 when omitted) and d1 = d0 - 0.001 when NPV(d0) > 0, else d0 + 0.001
   (v1 = v0 +- 0.001 as before);
 - NPV at d: the sum of c_i/D_i with D_0 = 1 and D_i = D_(i-1)*x a running product, x = 1/(1 - d) (worksheet NPV's
-  arithmetic, "NPV's residue at IRR's root is not the double sum");
+  arithmetic, "NPV's residue at IRR's root is not the double sum"), every `*`, `/` and `+` Excel's twice-rounded
+  operator (numbers.md "Division rounds twice"; T-3205 bullet below);
 - step: d2 = d1 - NPV(d1)(d1 - d0)/(NPV(d1) - NPV(d0)) (anchored on the newer iterate), then shift (d0, d1) <- (d1, d2);
 - stop: at the first d2 with |d2 - d1| < 1e-7 and |NPV(d2)| < 1e-7, or with d2 = d1 exactly and |NPV(d2)| below
   1e-7 times the largest |flow| (fitted, T-3120 bullet), returning 1/(1 - d2) - 1;
@@ -665,8 +666,8 @@ flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cel
 189/263 bit-exact, 207 within 4 ulp, 260 within 1e-9; the best Newton candidate (in v, converged) 74; the
 engine 1.
 Ours: this secant (`irr_npv`, `irr_secant`, `compute_irr`, functions/financial/financial_util.rs, T-0916, in d
-since T-3120): 262/263 bit-exact on the fit set, the same cells as the lab model (the Newton code it
-replaced: 1; the secant in v: 189). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
+since T-3120, its NPV twice-rounded since T-3205): 263/263 bit-exact on the fit set, the same cells as
+the lab model (the Newton code it replaced: 1; the secant in v: 189). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
 Where both secant runs fail the engine runs the fitted fallback of "IRR's fallback when the secant fails" (T-2727). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
 where the fitted secant does not stop, and raising its step cap does not explain it (1,000 steps give
 -0.6737366751808431). T-2727 fitted that fallback ("IRR's fallback when the secant fails"); its digits and caps
@@ -712,7 +713,7 @@ two other kinds:
   that secant's result rounded to the grid (candidate A) 190/208; the secant in d anchored on d0 with
   d0 = 1 - 1/(1 + g) and NPV as c_i/x^i (candidate B) 202/214, anchored on d0 with the shipped start and NPV 225/234;
   the shipped rule 262/262. Each part counts: d0 = 1 - 1/(1 + g) instead of g/(1 + g) 235/239, NPV as c_i/x^i (pow,
-  `_npv_v_over_x`) 229/232, leading zeros kept 260/260 (Calc!A173, A175). It also gives irr-fallback-roots P!A25-A28 and A36-A39
+  `_npv_v_over_x`) 229/232, leading zeros kept 260/260 (Calc!A173, A175; 261 with T-3205's NPV). It also gives irr-fallback-roots P!A25-A28 and A36-A39
   bit for bit (the two-flow roots too: NPV by the running product of x is what puts them on the grid point nearest
   the root) and 180 of the 181 t2565 cells; P!C95 is exact now and P!C157 stays the outlier. Rounding only the
   final v cannot be the rule: in v in [0.25, 0.5) every off-grid double is a tie, and Excel takes the lower v for
@@ -724,10 +725,25 @@ two other kinds:
   unconditional zero-step stop costs 6 fit cells (far guesses whose step stalls on a flat NPV and must retry).
   Leading zeros: `IRR({0,-100,110},0.05)`, `IRR({0,0,-100,110},-0.5)` and `(..,10)` are exactly the
   values of `{-100,110}` from the same guesses (irr-guess-edges P!A33, m9-fin-irr-rate Calc!A173, A175).
-  Miss left: gen-m9 67a4c03afd63f988 Calc!A395 (`IRR` of {0.5,0.1,-0.5}, guess 0.5) is 16 ulp off (visibly, at the 15th digit); every
-  d0 = 1 - 1/(1 + g) variant gets it and loses 25+ fit cells (decision 0176, T-3205).
-Status: VERIFIED for the method (secant in d, offset, both stop tests, retry, leading zeros dropped;
-262/263 bit-exact); UNVERIFIED for the zero-step stop's bound and the step cap
+- T-3205 (fit lab `irr` plus the two cells below; engine eval): NPV's operators round twice. The two cells T-3120
+  left, m9-fin-irr-rate Calc!A214 `IRR({-1000,230,200,125,200,10},5)` (Excel -0.10150067605359347) and gen-m9
+  67a4c03afd63f988 Calc!A395 `IRR(Data!C10:E12,0.5)`, flows {0.5,0.1,-0.5} (Excel -0.09501243788791103), are each
+  exactly the secant's next iterate after the one plain doubles stop at (16 ulp off): there the plain NPV is
+  5.6E-13 and 2.2E-16, so the stop tests pass one step early. With the running product's `*` twice-rounded
+  (numbers.md "Division rounds twice") A395 comes out right, with the sum's `+` twice-rounded A214, and with
+  both, `/` too or not, every cell: 263/263, and both cells (264/264 counting A395). Rejected on the same set:
+  NPV with every operation held at 64 bits and one final rounding (ext) 194, the quotients summed right to left
+  197 (plain or twice-rounded), NPV as c_i*v^i 179, the step as d1 - f1/((f1-f0)/(d1-d0)) 243 or
+  d1 - (d1-d0)*(f1/(f1-f0)) 237, the step in 64 bits 233, two consecutive small steps before the stop 50, one
+  extra step after it 47, a step bound of 1E-8 193. The lab's NPV now flushes subnormals as the engine's does,
+  and its "unconditional zero-step stop" candidate scores 257 (the 6 cells above). Worksheet NPV shares this
+  arithmetic (`discounted_sum`): its fit (annuity-npv, 470 cells) cannot tell plain from twice-rounded, and the
+  twice-rounded form also gives gen-m9 9d9ceba257f8001b Calc!A85 `NPV(1E-10,Data!A8,{-100,50,60,0,0},{0,0,0})`
+  = 9.999999981999995 and gen-m9 81bcdc0bec0c8e6b Calc!A268 `IRR(Data!A8:D9)` = 1.9999999999999996, which
+  plain doubles missed. Still open: P!C157 (below), and whether dropping leading zero flows holds for a root far
+  from 0.1 (T-3120's review; unprobed).
+Status: VERIFIED for the method (secant in d, offset, both stop tests, retry, leading zeros dropped, NPV
+twice-rounded; 263/263 bit-exact); UNVERIFIED for the zero-step stop's bound and the step cap
 Tasks: T-1525, T-1533, T-0916, T-2131, T-2565, T-3120, T-3205
 
 ## The IRR and XIRR solver caps
@@ -3414,8 +3430,11 @@ Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T
 
 ## NPV's residue at IRR's root is not the double sum
 Rule: NPV divides by (1+r) once, at the end: NPV(r, v1..vn) = (v1/d0 + v2/d1 + ... + vn/d(n-1)) / (1+r), where d0 = 1
-and d(i) = d(i-1)*(1+r) is a running product. All of it is in doubles: 1+r rounded, each product, each quotient and
-each partial sum (left to right) rounded to a double. Where NPV's terms cancel, this differs from both the exact sum
+and d(i) = d(i-1)*(1+r) is a running product. All of it is in doubles: 1+r rounded (once in the engine; whether
+Excel rounds it twice is unprobed), and each product, each quotient and each partial sum (left to right) rounded to
+a double twice (64 bits, then 53; numbers.md "Division rounds twice"). The NPV fit below cannot tell that from one
+rounding, but IRR's secant, which runs on this sum, can (T-3205, "IRR is a secant in d = 1 - v"), and so can gen-m9
+9d9ceba257f8001b Calc!A85 (9.999999981999995), the one worksheet NPV cell that separates the two. Where NPV's terms cancel, this differs from both the exact sum
 and the plain double sum of v_i/(1+r)^i by more than half a unit of the 15th significant digit of the result. At M2,
 M8 and Three Parameters!E2 below (and at H367 and A148) Excel is nearer the exact value than the plain double sum, at
 M3 further from it.

@@ -37,6 +37,10 @@
 //! cached range with the same columns (a growing prefix `I$11:I11`) is read from that range, and
 //! its match set is cut from the range's.
 //!
+//! SUMPRODUCT's `block*mask*...` argument reads a cached block's cells as numbers, the way `*`
+//! reads them ([`BlockNumbers`], T-3230), once per block and pass. Those numbers are charged to
+//! the cells budget beside the block's values, so such a block counts twice.
+//!
 //! Directive 5: ranges between [`MIN_CACHED_CELLS`] and [`MAX_CACHED_CELLS`] cells are cached;
 //! all cached values of a pass hold at most [`MAX_CACHED_CELLS`] cells and all match sets at most
 //! [`MAX_CACHED_BITS`] bits; past that the walks run as before.
@@ -122,6 +126,17 @@ enum RangeState {
     Never,
 }
 
+/// The cells of a cached block read as numbers, as an arithmetic operator reads them
+/// (`Model::calc_result_to_number`: a blank is 0, a boolean 1 or 0, a text its number), for
+/// SUMPRODUCT's `block*mask*...` argument (T-3230).
+pub(crate) struct BlockNumbers {
+    /// Row by row; 0 where the cell reads as no number.
+    pub(crate) values: Box<[f64]>,
+    /// The first cell, row by row, that reads as no number, and its error: the cell's own, or
+    /// `#VALUE!` for a text that is no number.
+    pub(crate) first_error: Option<(usize, Error)>,
+}
+
 /// The values of a cached range ordered for the criteria [`IndexedCriterion`] describes.
 struct ValueIndex {
     /// The finite numbers with their positions, by value (`total_cmp`), then position.
@@ -178,6 +193,7 @@ pub(crate) struct IfsCache {
     ranges: HashMap<RectKey, RangeState, KeyBuild>,
     matches: HashMap<(RectKey, CriterionKey), Arc<[u64]>>,
     indexes: HashMap<RectKey, IndexState, KeyBuild>,
+    numbers: HashMap<RectKey, Arc<BlockNumbers>, KeyBuild>,
     /// The cached ranges of each (sheet, left column, right column), as (top row, bottom row).
     parents: HashMap<(u32, i32, i32), Vec<(i32, i32)>>,
     cells: usize,
@@ -189,6 +205,9 @@ pub(crate) struct IfsCache {
     /// T-3227.
     #[cfg(test)]
     pub(crate) mixed: usize,
+    /// SUMPRODUCT arguments read as masked blocks, for the tests of T-3230.
+    #[cfg(test)]
+    pub(crate) masked: usize,
 }
 
 impl IfsCache {
@@ -197,6 +216,7 @@ impl IfsCache {
         self.ranges.clear();
         self.matches.clear();
         self.indexes.clear();
+        self.numbers.clear();
         self.parents.clear();
         self.cells = 0;
         self.bits = 0;
@@ -204,6 +224,7 @@ impl IfsCache {
         {
             self.windows = 0;
             self.mixed = 0;
+            self.masked = 0;
         }
     }
 
@@ -358,6 +379,46 @@ impl Model {
             blocks.push((top, bottom));
         }
         Some(whole(rect, &values))
+    }
+
+    /// The cells of the block `left:right` read as numbers ([`BlockNumbers`]), when its values can
+    /// be read without evaluating anything (module docs); `None` when the caller must walk.
+    pub(crate) fn block_numbers(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+    ) -> Option<Arc<BlockNumbers>> {
+        if left.sheet != right.sheet || !self.pass_cache_safe() {
+            return None;
+        }
+        let rect = (left.sheet, left.row, left.column, right.row, right.column);
+        if let Some(numbers) = self.evaluation.ifs_cache.numbers.get(&rect) {
+            return Some(numbers.clone());
+        }
+        let view = self.ifs_range_values(rect)?;
+        if self.evaluation.ifs_cache.cells.saturating_add(view.len) > MAX_CACHED_CELLS {
+            return None;
+        }
+        let mut first_error = None;
+        let values = (0..view.len)
+            .map(|index| {
+                let number = view
+                    .get(index)
+                    .map_or(Ok(0.0), |value| self.calc_result_to_number(value));
+                number.unwrap_or_else(|error| {
+                    first_error.get_or_insert((index, error));
+                    0.0
+                })
+            })
+            .collect();
+        let numbers = Arc::new(BlockNumbers {
+            values,
+            first_error,
+        });
+        let cache = &mut self.evaluation.ifs_cache;
+        cache.cells += view.len;
+        cache.numbers.insert(rect, numbers.clone());
+        Some(numbers)
     }
 
     /// The index of `values` (the cached values of `rect`), once the walk has tested
