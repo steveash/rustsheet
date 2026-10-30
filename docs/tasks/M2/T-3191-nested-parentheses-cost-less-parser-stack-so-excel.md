@@ -24,8 +24,8 @@ thread): the parser alone overflows at about 292 nested parentheses (about 3.5 K
 → … → `parse_primary`). A directly nested group (`((x))`) could skip the chain, and a `Group` node
 (one node for many levels, `levels: u8`, saturating today) could cost less than a full operand
 level, so the bound covers what really uses the stack. Watch `Group.levels` past 255 (saturating
-add would drop a parenthesis from the printed text). Excel's own limit past 255 bare parentheses
-is unprobed (syntax.md "Formula nesting depth cap"; T-3172 probes paren and sign limits). This may
+add would drop a parenthesis from the printed text). Excel's own limit on bare
+parentheses is 256 (T-3172; syntax.md "Formula nesting depth cap"); T-3189 owns the T-3172 cases. This may
 need a spec first if the parser change is bigger than M.
 
 ## Acceptance criteria

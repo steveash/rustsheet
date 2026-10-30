@@ -682,7 +682,7 @@ routine session, **before** any slice depends on them, and records the answer he
   path for sessions; `gh_client` writes serve CI (`GITHUB_TOKEN`) and an owner-approved session.
 
 If writes fail, T-2995 adds a constrained **step mode** (T-2986's minimal fallback uses the same
-schema):
+schema; the "As built" note below supersedes the enum and the re-run of these bullets):
 - the script prints the next write as one JSON action. The action type comes from a closed enum
   (`merge`, `label`, `unlabel`, `comment`), and the script fills every field: PR numbers validated
   as integers that the script itself selected, label names from a fixed list (`ready-to-merge`,
@@ -691,6 +691,16 @@ schema):
 - the session performs exactly that action with the GitHub MCP tools and runs the script again;
 - the script reads GitHub's state back and aborts on any difference from the expected result;
 - the session never adds, skips, reorders or changes an action.
+
+**As built (T-3077, decision 0169).** `make merge-train TRAIN=1 STEP=1` (or `SHADOW=1 STEP=1`) runs the
+merger with `scripts/merge_step.py`'s `StepClient`: reads go through `gh_client`, and the seven writes
+(`comment`, `label`, `unlabel`, `merge`, `create_pull`, `delete_branch`, `dispatch`) are actions validated
+against one schema, which `make mark-ready STEP=1` also uses. The run stays alive and keeps the lock:
+it prints each action as one JSON line (with a `seq`), the session performs it and runs `make
+merge-train-ack SEQ=<n>` (`REFUSED=1` when GitHub or the tool refused it), and the script reads the
+state back. Done must read exactly as expected, refused must read unchanged (and then fails like a
+refused direct write); anything else, no ack within 10 min, or an ack for another `seq` aborts the
+run (exit 2, lock released). Comment and PR bodies read back with or without the session's footer.
 
 ### 5. Why `main` ends with the tested tree, and how a difference is caught
 Notation:
