@@ -24,7 +24,7 @@ an oracle case, and coercion.md marks each VERIFIED or records Excel's actual ru
   3. The superscript (variant) pass comes before the skipped-character pass.
 - Method: the `excel-probe` skill, excel-graph, laid out like probes/t3154-collation-accent-pairs
   (Data strings, a Calc grid of `(x<y)*1+(x=y)*2+(x>y)*4` codes, `SUMPRODUCT(--(range<x))` ranks).
-  Suggested strings: for 1, `"b"&UNICHAR(867)` against `"ba"`, `"bá"` and `"b"&UNICHAR(769)`, for a
+  Suggested strings: for 1, `"b"&UNICHAR(867)` against `"b"&"a"`, `"bá"` and `"b"&UNICHAR(769)`, for a
   few of U+0363-U+036F; for 2, `"æ"&UNICHAR(772)`, `"ǣ"`, `"ae"&UNICHAR(772)`, `"ā"&"e"`,
   `"ß"&UNICHAR(769)`, `"ss"&UNICHAR(769)`; for 3, pairs that differ in both a superscript (`ª`,
   `²`) and a skipped character (`-`, `'`), in both orders (`"ª-b"` against `"a-b"`, `"ªb"`,
