@@ -3,7 +3,7 @@ id: T-3145
 title: "Probe the near-zero snap bound of a SUM with three or more addends: running total or left argument"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
