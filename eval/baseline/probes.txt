@@ -1967,6 +1967,7 @@ C	probes/workday-serial-zero.case.json	58
 C	probes/wrapcols-wraprows-pad-with.case.json	122
 C	probes/written-parens-reference-context.case.json	35
 C	probes/written-parens-reference-only.case.json	35
+C	probes/xirr-back-dated-stop.case.json	31
 C	probes/xirr-early-dates.case.json	16
 C	probes/xirr-exact-root-sign.case.json	574
 C	probes/xirr-irr-empty-guess.case.json	22
@@ -4038,8 +4039,7 @@ F	probes/table-edits/table-insert-two-columns-inside-header.case.json	F!A5
 F	probes/text-elapsed-two-tokens.case.json	S!A13
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
-F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
-F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
+F	probes/xirr-back-dated-stop.case.json	Sheet1!A31
 F	probes/xnpv-empty-values-cell.case.json	Sheet1!C8
 F	probes/yield-newton-domain.case.json	P!B10
 F	probes/yield-newton-domain.case.json	P!B11
