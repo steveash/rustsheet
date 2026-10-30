@@ -30,3 +30,7 @@
     again"; T-3190 updates it.
   - In step mode each squash costs four session round trips (merge, unlabel, comment, branch); `MERGE_BUDGET`
     is unchanged, so a long batch may run past `HOLD_BUDGET` after its CI wait, as a slow merge reply would.
+  - Residual risk: the read-back is detective, not preventive. A session that performs a different write (say,
+    a merge at another head) is caught only after that write landed. A writer posting an identical comment at
+    the same moment would pass for the expected one. The action text carries PR titles that contributors write;
+    the schema and the read-back bound what a prompt-injected session can do through the step mode.
