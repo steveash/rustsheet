@@ -3,7 +3,7 @@ id: T-1129
 title: "Probe and fix the sign of negative numbers that round to or past one unit (TEXT(-0.5,0), TEXT(-0.4,0))"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
