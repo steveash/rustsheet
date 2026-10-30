@@ -48,8 +48,7 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     text, and no value may be both kept and hidden. The engine adapter loads both. With
     `"totals_row": true` the last row of `ref` is the totals row: its cells (labels or formulas) are
     written with the table's totals metadata (T-1607). `"calculated": {"C": "T[[#This Row],[Col]]*2"}`
-    writes a `<calculatedColumnFormula>` for column C of the table (T-2969) and nothing in the data cells,
-    which stay as the spec has them; the engine adapter ignores it. Structured references are stored in their file
+    writes a `<calculatedColumnFormula>` for column C (T-2969), leaving the data cells as the spec has them. Structured references are stored in their file
     form: a bare table name as `Sales[]`, `@` as `#This Row` (`table_refs_to_file_form`).
   * `"date_system": 1904` at the top level writes `<workbookPr date1904="1"/>` (1900, the default,
     writes nothing), and a sheet's `"number_formats": {"A1": "[h]:mm"}` gives those cells that number
@@ -603,7 +602,7 @@ def _calculated_columns(
 
 def _calculated_tables(xlsx: bytes, calculated: list[tuple[str, dict[str, str]]]) -> bytes:
     """Gives each calculated column its `<calculatedColumnFormula>` (XlsxWriter's own column `formula`
-    option would also fill the data cells). `calculated` is in `add_table` order, `tableN.xml`'s numbering."""
+    option would also fill the data cells). `calculated` is in `add_table` order (`tableN.xml`)."""
 
     def patch(name: str, columns: dict[str, str]) -> Callable[[str], str]:
         def apply(text: str) -> str:
@@ -614,12 +613,12 @@ def _calculated_tables(xlsx: bytes, calculated: list[tuple[str, dict[str, str]]]
                 quoted = escape(header, {chr(34): "&quot;"})
                 column = re.compile(rf'<tableColumn id="(\d+)" name="{re.escape(quoted)}"\s*/>')
                 element = f"<calculatedColumnFormula>{escape(formula)}</calculatedColumnFormula>"
-                text, count = column.subn(
-                    lambda m: f'<tableColumn id="{m[1]}" name="{quoted}">{element}</tableColumn>', text
-                )
-                if count != 1:
+                if len(matches := list(column.finditer(text))) != 1:
                     msg = f"table {name}: column {header!r} not found once"
                     raise ValueError(msg)
+                m = matches[0]
+                tag = f'<tableColumn id="{m[1]}" name="{quoted}">{element}</tableColumn>'
+                text = text[: m.start()] + tag + text[m.end() :]
             return text
 
         return apply
