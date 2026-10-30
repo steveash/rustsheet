@@ -193,10 +193,10 @@ impl Model {
     /// and "FALSE" too, is `#VALUE!` (probes/t2492-vdb-ddb-arguments A47:A54), whatever the other
     /// arguments hold. The other seven are then read in order: a date off the calendar is `#NUM!`
     /// as soon as it is read, before a later argument's error, text or boolean, and a boolean
-    /// issue, rate or par is `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-
-    /// single-value A52, A53, A56; gen-m9/932b33b1ef8b7608 A233 for par; financial.md "ACCRINT
-    /// check order: `calc_method` first, dates as read"). The other numbers take booleans (as
-    /// `get_number` did; unprobed).
+    /// issue, `first_interest`, settlement, rate, par, frequency or basis, typed or from a cell, is
+    /// `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-single-value A52, A53, A56;
+    /// probes/accrint-boolean-args A1:A28; financial.md "ACCRINT check order: `calc_method`
+    /// first, dates as read").
     fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
@@ -217,21 +217,21 @@ impl Model {
             let first_interest = self.financial_date_as(
                 reading,
                 self.financial_calendar_serial(
-                    self.cast_number_ref(first_interest, cell)?,
+                    self.cast_number_no_bools_ref(first_interest, cell)?,
                     reading,
                     cell,
                 )?,
             );
             let settlement =
-                self.financial_date_as(reading, self.cast_number_ref(settlement, cell)?);
+                self.financial_date_as(reading, self.cast_number_no_bools_ref(settlement, cell)?);
             Ok((
                 issue,
                 first_interest,
                 settlement,
                 self.cast_number_no_bools_ref(rate, cell)?,
                 self.cast_number_no_bools_ref(par, cell)?,
-                self.cast_number_ref(frequency, cell)?.floor(),
-                day_count_basis(self.cast_number_or(rest.first(), 0.0, cell)?),
+                self.cast_number_no_bools_ref(frequency, cell)?.floor(),
+                day_count_basis(self.cast_number_no_bools_or(rest.first(), 0.0, cell)?),
                 calc_method,
             ))
         };
