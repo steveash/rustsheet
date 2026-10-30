@@ -33,4 +33,4 @@ another sheet (`TYPE(TAKE(LET(v,Data!A1,v),1))`).
 -
 
 ## Outcome
-Probe t3130-concat-lambda-trimrange-cell-variable (28 cells) passes against excel-graph. CONCAT/TEXTJOIN of an uncalled LAMBDA are now #VALUE! (were #N/IMPL!); TRIMRANGE reads its source as a reference like TAKE, so a one-cell trim is a scalar. Rules in arrays.md and lookup.md.
+Probe t3130-concat-lambda-trimrange-cell-variable (28 cells) passes against excel-graph. CONCAT/TEXTJOIN of an uncalled LAMBDA are now #VALUE! (were #N/IMPL!); TRIMRANGE reads its source as a reference like TAKE, so a one-cell trim stays a one-cell reference. Rules in arrays.md and lookup.md.

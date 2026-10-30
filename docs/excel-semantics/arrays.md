@@ -1339,8 +1339,8 @@ it is `#VALUE!` on either side: `LAMBDA(x,x)&""`, `"a"&LAMBDA(x,x)`, `LAMBDA(x,x
 `LET(v,LAMBDA(z,z),t,TYPE(v),..,t&"|"&v)` are `#VALUE!` (ERROR.TYPE 3, ISERROR TRUE, IFERROR catches it), and `TYPE(LAMBDA(x,x))` is 128
 (probes/t2622-take-let-reference-lambda-text Q1-Q10; probes/t2475-stat-subexpressions, the bare `LAMBDA(..)` rows).
 CONCATENATE, CONCAT and TEXTJOIN read it as text the same way: `CONCATENATE(LAMBDA(x,x),"")`, `CONCAT("a",LET(f,LAMBDA(x,x),f))`,
-`TEXTJOIN(",",TRUE,LAMBDA(x,x))` and a LAMBDA as TEXTJOIN's delimiter are `#VALUE!` (ERROR.TYPE 3). The `&` edges: `LAMBDA(x,x)&{1,2}`,
-`{1,2}&LAMBDA(x,x)` and `LAMBDA(x,x)&NA()` are `#VALUE!`, while `NA()&LAMBDA(x,x)` is `#N/A` (the left error wins; ERROR.TYPE 7)
+`TEXTJOIN(",",TRUE,LAMBDA(x,x))` and a LAMBDA as TEXTJOIN's delimiter are `#VALUE!` (ERROR.TYPE 3). The `&` edges: `LAMBDA(x,x)&{1,2}` and
+`{1,2}&LAMBDA(x,x)` spill `#VALUE!` in every element (Q17:R18), `LAMBDA(x,x)&NA()` is `#VALUE!`, while `NA()&LAMBDA(x,x)` is `#N/A` (the left error wins; ERROR.TYPE 7)
 (probes/t3130-concat-lambda-trimrange-cell-variable Q1-Q22, excel-graph, 2026-10-30, T-3130).
 Evidence: probes/lambda-value-arguments A1-A26 (excel-graph, 2026-10-19, T-1511); probes/m7-argument-modes F44:H44;
 probes/eta-reduced-names E93; probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475);
