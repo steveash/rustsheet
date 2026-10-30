@@ -44,10 +44,10 @@ Non-goals:
 - A "ticking" clock (a fixed offset from the system time) or a user callback. `Fixed` covers
   determinism. A callback would put embedder code inside evaluation, which directive 5 rules out
   (evaluation performs no I/O and runs no foreign code).
-- One instant per recalc. Today each NOW call reads the system clock on its own, so two NOW cells
-  in one recalc can differ by a millisecond. Whether Excel reads its clock once per recalc is
-  unprobed. Under `Fixed` the question does not arise, and `System` keeps today's per-call
-  reading.
+- One instant per recalc. Each NOW call reads the system clock on its own, so two NOW cells
+  in one recalc can differ. Excel does the same: it reads its clock at each call, not once per
+  recalc (T-3116, probes/t3116-now-once-per-recalc; dates.md "NOW() keeps sub-second precision").
+  Under `Fixed` the question does not arise, and `System` keeps the per-call reading.
 - The timezone model. `WorkbookOptions.timezone` and the engine's `NOW(tz)`/`TODAY(tz)` extension
   are unchanged.
 
