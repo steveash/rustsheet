@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
-depends_on: [T-3284]
+depends_on: [T-3289]
 campaign: visible
 ---
 
@@ -42,7 +42,7 @@ ulps of Excel's value against 60-digit mpmath, Excel / ours:
   gap-triage-2026-10-30d branch hands to T-3219; whichever task lands Excel's deep-tail prefactor first takes the others'
   deep-tail cells with it (record the split in both).
 - Needs an oracle sweep: these points have "no shared pattern" (above) and 48 storage orders already failed, so the
-  fit waits for T-3284's dense sweep (POISSON k 0 to 19 at mean 4(k + 1) to 100(k + 1), the CHISQ.DIST.RT twins,
+  fit waits for T-3289's dense sweep (POISSON k 0 to 19 at mean 4(k + 1) to 100(k + 1), the CHISQ.DIST.RT twins,
   half-integer shapes and ulp runs).
 
 Cells (the gen-m9 and probe cells above):

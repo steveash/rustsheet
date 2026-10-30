@@ -1,5 +1,5 @@
 ---
-id: T-3284
+id: T-3289
 title: "Oracle sweep: the incomplete gamma's deep upper tail, POISSON cdf at mean 4(k+1) to 100(k+1) and CHISQ.DIST.RT at x 4 to 100 df"
 milestone: M9
 lane: research

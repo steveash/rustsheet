@@ -55,5 +55,5 @@ Cells this task owns:
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The deep upper tail where Excel is 10 to 405 ulp off (T-3269, T-3284). The near-mode window at large shapes (T-3286).
+- The deep upper tail where Excel is 10 to 405 ulp off (T-3269, T-3289). The near-mode window at large shapes (T-3286).
   The shapes below 20 at a tiny x / a (T-3219).

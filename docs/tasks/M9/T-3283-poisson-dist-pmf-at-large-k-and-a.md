@@ -1,13 +1,13 @@
 ---
 id: T-3283
-title: "POISSON.DIST pmf at large k and a mean well off k: Excel's saddle point on the 5 visibly-off t2055 cells (needs the T-3282 sweep)"
+title: "POISSON.DIST pmf at large k and a mean well off k: Excel's saddle point on the 5 visibly-off t2055 cells (needs the T-3288 sweep)"
 milestone: M9
 lane: functions-stat
 status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-3282]
+depends_on: [T-3288]
 campaign: visible
 ---
 
@@ -24,7 +24,7 @@ to T-3247 (`defer: phase-1b`), which keeps the rest of the pmf residue.
 
 ## Context
 - Needs an oracle sweep: the 27 cells with k >= 30 in probes-numeric/t2055-poisson-pmf-sweep (k = 30, 100, 300, nine
-  means each) cannot separate the candidate forms, so this task waits for T-3282's dense sweep (k = 30 to 1000, mean
+  means each) cannot separate the candidate forms, so this task waits for T-3288's dense sweep (k = 30 to 1000, mean
   k/2 to 2.5k, and ulp runs at the five cells). Do not start a fit before its sidecar lands.
 - T-2055 (docs/excel-semantics/statistics.md "POISSON.DIST pmf: two closed forms"; `statistical/poisson.rs`) uses
   Loader's saddle point exp(-stirlerr(k) - bd0(k, mean)) / sqrt(2 pi k) from mean 1.1, with `loader.rs` `excel_bd0`.
@@ -48,7 +48,7 @@ Cells this task owns (split from T-3247):
 
 ## Acceptance criteria
 - [ ] The five cells above are within half a unit of the 15th significant digit of Excel (`make eval-show
-      CASE=probes-numeric/t2055-poisson-pmf-sweep`), and the T-3282 sweep's cells are scored and reported in the
+      CASE=probes-numeric/t2055-poisson-pmf-sweep`), and the T-3288 sweep's cells are scored and reported in the
       Outcome (bit-exact / within 15 digits / visibly off, before and after).
 - [ ] No Excel-computed cell of POISSON, POISSON.DIST, BINOM.DIST, NEGBINOM.DIST or BETA.DIST goes from pass to fail
       (main-vs-HEAD per cell); no new line in eval/baseline/ (`make eval-baseline` refuses regressions).

@@ -1,5 +1,5 @@
 ---
-id: T-3282
+id: T-3288
 title: "Oracle sweep: POISSON.DIST pmf at large k (30 to 1000) with the mean from k/2 to 2.5k, and ulp runs at the five visibly-off cells"
 milestone: M9
 lane: research
@@ -55,4 +55,4 @@ k >= 30 that probes-numeric/t2055-poisson-pmf-sweep holds today (A178-A204: k = 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Fitting or implementing (T-3283). The cdf (T-3269, T-3284). The small-k residue (T-3247).
+- Fitting or implementing (T-3283). The cdf (T-3269, T-3289). The small-k residue (T-3247).
