@@ -2827,8 +2827,35 @@ now names both earlier engine starts (kernels/yield_caret.py `rounded_once_yield
   is no constant slope error either.
 Next (T-3215): a hypothesis outside this operation set (another formula whose terms round differently, or a start from a
 different day count per product); the operation grid around the term-scaled form is exhausted.
+T-3215 (attempt 2 of T-3152's track, 2026-10-30): Excel's start is the term-scaled formula in doubles with its
+denominator written as `100·T - q·T/2 - q/4`, the same value since `(100 + pr)/2 = 100 - q/2`:
+`S = ((r·T)·100 + q) / ((100·T - q·T/2) - q/4)`, `q = 100 - pr`, `T` the double `whole + days/year`. No operation
+is exact or fused. It replaces attempt 4's `pr·T` on the unrounded term.
+- Found from the denominators: for each YIELD probe cell, the doubles `D` that give Excel's bits with the engine's
+  numerator bound Excel's real `D` to an interval one ulp wide. On every term group that missed, it holds
+  `pr·T + 2·fl(100·T) - 100·T`, where `100·T`'s rounding error counts twice. That is what `100·T - q·T/2` leaves:
+  `2·(fl(100·T) - q·T/2) = pr·T + 2·fl(100·T) - 100·T`. The "unrounded term in `pr·T`" of attempt 4 was the nearest
+  arrangement inside the old operation grid to that doubled error.
+- Scratch scoring (1,086 YIELD probe cells with more than one coupon left, all bases, that some start within 3 ulps
+  of attempt 4's gives Excel's bits; a start scores a cell when it is one of those starts):
+  | denominator, numerator `(r·T)·100 + q` | cells |
+  |---|---|
+  | `(100·T - q·T/2) - q/4` in doubles, or `100·T - (q/2)·T - q/4` | **1,083** |
+  | `100·T - (q·T/2 + q/4)`, `100·T - q·(T/2 + 0.25)`, `100·T - q·(2T + 1)/4` | 1,077 |
+  | the same with `q·T` on the unrounded term, or the whole denominator rounded once | 1,071 to 1,076 |
+  | attempt 4: `fl(pr·(whole + fl(days/year)) + fl(100·T))/2 - q/4` (the engine before) | 931 |
+  | `((100 + pr)/2)·T - q/4` or `(100 - q/2)·T - q/4` | 678 |
+  | the unscaled `(100r + q/T) / (100 - q/2 - q/(4T))` | 588 |
+  With this denominator the numerator stays `(r·T)·100 + q`: `(100r)·T + q` scores 893, `r·(100T) + q` 882, and the
+  exact numerator rounded once 907. The three cells left are yield-start-one-input S!B8 (3 ulps of start),
+  yield-start-term-basis S!C2 (2 ulps, basis 1) and yield-newton-domain P!B13 (rate 30).
+- Fit lab (`uv run rustsheet-fitlab yield-caret`, 370 basis-0 cells, kernels/yield_caret.py
+  `hundred_t_minus_qt_yield_start`): 369 bit-exact and 370 within 4 ulps, against 341 and 369 for attempt 4's start.
+- In the engine (`yield_start`) it fixes 226 YIELD and ODDFYIELD known failures and adds none: yield-start-rate-term
+  S!B30, yield-start-term-basis S!C47 and yield-one-step-start S!A37 are bit-exact, and 63 of the cells are
+  oddfyield-solver-sweep's (ODDFYIELD shares the start).
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
-T-2777's term (`yield_start_term`) and, since T-2974 attempt 4, `pr·T` on the unrounded term (`yield_start`). Since
+T-2777's term (`yield_start_term`) and, since T-3215, the denominator `100·T - q·T/2 - q/4` in doubles (`yield_start`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
 cells and its 100-step cap").
 Off the fit (T-2741, `make eval` on de48145d): of the 370 probe and ironcalc-calc YIELD cells that were visibly off
@@ -2840,8 +2867,8 @@ four years apart, and their start's term in the basis's years differs, so Excel'
 follow (`fn_yield_matches_excel_off_the_fit`). Still visibly off, though only 5 to 27 ulp from Excel (a gap larger than half a
 unit in the 15th digit): yield-start-rate-term S!B39 and S!B49 (basis 1, 8 and 30 years) and yield-solver-sweep S!C7
 (T-2974).
-Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates), T-3152 (the cells the start's rounding moved)
+Status: UNVERIFIED (the algorithm is a fit: 369/370 bit-exact in the lab since T-3215; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates), T-3152 (the cells the start's rounding moved), T-3215 (the start's denominator)
 
 ## ODDFYIELD stops short of ODDFPRICE's root
 Rule: ODDFYIELD's last digits are not the root of ODDFPRICE's price at the given price, and they fall on both sides

@@ -436,3 +436,31 @@ def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -
     assert engine(scaled) == pytest.approx(-0.7072347712570631)
     with pytest.raises(solvers.NoResultError):
         irr_fallback.irr_fallback_newton(residual=1e-7)(scaled)
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_yield_start_denominator_is_100t_minus_qt_over_2() -> None:
+    # T-3215: yield-start-rate-term S!B30 and yield-start-term-basis S!C47 want a start one ulp below
+    # the unrounded-term start (decision 0166), yield-one-step-start S!A37 one ulp above it. The
+    # denominator `(100 T - q T/2) - q/4` in doubles gives all three Excel's bits.
+    cases = ("yield-start-rate-term", "yield-start-term-basis", "yield-one-step-start")
+    cells = {
+        f"{case}!{c.key}": c
+        for case in cases
+        for c in load_sweep([f"probes/{case}"], r"^=YIELD\((.*)\)$").cells
+    }
+    old = yield_caret.caret_priced(solvers._newton_yield_short(yield_caret.unrounded_term_yield_start, 1e-10))
+    new = yield_caret.caret_priced(
+        solvers._newton_yield_short(yield_caret.hundred_t_minus_qt_yield_start, 1e-10)
+    )
+    for key, step in (
+        ("yield-start-rate-term!S!B30", -1),
+        ("yield-start-term-basis!S!C47", -1),
+        ("yield-one-step-start!S!A37", 1),
+    ):
+        cell = cells[key]
+        before = yield_caret.unrounded_term_yield_start(*cell.args)
+        after = yield_caret.hundred_t_minus_qt_yield_start(*cell.args)
+        assert after == math.nextafter(before, step * math.inf), key
+        assert old(*cell.args) != cell.expected, key
+        assert new(*cell.args) == cell.expected, key
