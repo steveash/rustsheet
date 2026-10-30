@@ -52,7 +52,7 @@ cell it owns has Excel's type, error and text, or is within half a unit of the 1
 bit-level misses left then go to a `defer: phase-1b` follow-up.
 The campaign is `visible`, not `accuracy`. Checked in T-2561 review round 1 against mpmath at 60 digits,
 Excel's own far-tail values are what is inaccurate: CHISQ.DIST.RT and the density in this probe are up to 7.2E-14
-relative from the reference, with 115 of 160 cells each more than 5E-15 off. So the work is reproducing Excel's far-tail
+relative from the reference, with 115 of 160 cells in each column (CHISQ.DIST.RT and density; 230 of 320 in all) more than 5E-15 off. So the work is reproducing Excel's far-tail
 prefactor, not a more accurate kernel.
 
 ## Out of scope
