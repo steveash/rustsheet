@@ -3,7 +3,7 @@ id: T-3143
 title: "Probe whether SINGLE/ANCHORARRAY, defined-name bodies, conditional formats and data validation count toward Excel's 65-call nesting cap"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
