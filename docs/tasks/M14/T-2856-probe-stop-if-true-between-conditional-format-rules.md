@@ -3,7 +3,7 @@ id: T-2856
 title: "Probe: stop-if-true between conditional-format rules of different priorities"
 milestone: M14
 lane: research
-status: todo
+status: blocked
 priority: P3
 size: S
 tier: sonnet
@@ -27,6 +27,9 @@ so the probe needs applied formats (desktop Excel, `DisplayFormat`), hence M14.
       cells, and the formats Excel applies, cited in docs/excel-semantics/.
 - [ ] The engine matches, or a follow-up task is filed.
 - [ ] `make check` green; reviewers approve.
+
+## Blocked because
+Phase 4 (decision 0039): not a "Needs owner" item, and it blocks no milestone or phase exit. The evidence needs desktop Excel. Unblock when `cd tools && uv run rustsheet-oracle status` shows `excel-desktop OK` (2026-10-30: `excel-desktop  n/a`).
 
 ## Out of scope
 - Rules over different cells.
