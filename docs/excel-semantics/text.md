@@ -529,7 +529,7 @@ Rule: SEARCH lowercases per character and never changes the text's length: a cha
 Also: ς (final sigma) matches Σ and σ in either direction (`SEARCH("ς","ΟΣ")` is 2, `SEARCH("σ","ΟΣ")` is 2), ǆ matches ǅ, and U+212A (Kelvin) matches k; ſ/s, µ/μ, ϐ/β and ﬀ/ff do not match (`#VALUE!`).
 Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-10-12, T-1296).
 Status: VERIFIED (excel-graph)
-Implemented in: `fold_case` (functions/text/casefold.rs).
+Implemented in: `fold_case` (functions/util/collation.rs; shared with exact-match lookups and wildcard criteria, T-3133).
 Tasks: T-1296
 
 ## TEXT over an array of format codes
