@@ -43,6 +43,22 @@ Design questions the amendment must answer:
   them today.
 - Seen-empty records for the key's tail (`clip_to_used_area`): unchanged, one rectangle.
 
+Callgrind on main (gap triage 2026-10-30, folded in from a duplicate task; `valgrind --tool=callgrind
+./target/release/rustsheet-eval show probes/t3096-lookup-value-blank-elements.case.json`), 28.3G instructions in total:
+- `Model::index_impl` 28.2G, of which `index_source` → `reference_arg_reading` → `lift_values` 24.1G;
+- `lift_grids` 17.3G and `vlookup_impl` 15.3G; `fn_match` 8.8G; `evaluate_range` over the key column 6.8G;
+- malloc and free 18G together: dropping `Vec<Vec<ArrayNode>>` 5.5G, dropping `CalcResult` 4.1G, and
+  `lift::driver::same_as` 4.0G (`LiftOptions::REUSE_EQUAL_RUNS` compares every element to the one before it). Each `#N/A`
+  also builds its own `"Not found".to_string()` (`lookup_each.rs`).
+
+Semantics to keep (the probe's Excel cells; docs/excel-semantics/lookup.md "VLOOKUP / HLOOKUP lift over an array
+lookup_value"):
+- a blank element is looked up as the scalar blank-cell key, the number 0 (rows 44-51 equal the scalar control rows 2-8);
+- INDEX past the used head (`...,1000)`) reads a tail element;
+- the shared cell-visit cap stays as specified, so `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)` stays
+  `#ERROR!` (DEVIATION, decision 0014). The amendment says whether a tailed whole column is still charged for 1,048,576
+  elements; keeping that charge is the safe default, since a cap result must not change.
+
 Code: `functions/lift/`, `spill_functions.rs`, `tailed_array.rs`; the lookups in `functions/lookup_and_reference/`.
 
 ## Acceptance criteria

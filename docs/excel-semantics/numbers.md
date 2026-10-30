@@ -19,7 +19,7 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 threshold (T-0110, fitted on all 1,296 cells; refined by T-3100): snap iff the two addends of
 the final addition have opposite signs and |result| < 8 ULP of the **left** addend in magnitude
 (= 2^(e-49), e its binary exponent; for a two-addend SUM, its first; with three or more
-addends the engine takes the total before the last, which is unprobed, T-3145). The
+addends, the running total before the last addend, T-3145 below). The
 opposite-sign condition is implied, not observed: every probe cell subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
 addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
 up to k = 7 but the `-` side, whose left addend 1-k·2^-52 has half the ULP, only up to k = 3 (see "Operand order" below).
@@ -33,6 +33,21 @@ Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/3
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`; also at a directly called LAMBDA's body, `Model::call_lambda` setting `LambdaCaller::root_snap`, T-3083) and `fn_sum` (every SUM call, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a root `Node::Group` (`Parser::parse_parenthesized`, T-1017, T-1341, T-1392) and is not snapped. Array and range operands are snapped element by element in the same `Model::handle_outermost_sum` (T-3047, below); SUM over array arguments snaps too (below).
+Three or more addends (T-3145, probes/t3145-snap-multi-addend, excel-graph 2026-10-30): the left addend of a
+SUM's final addition is the **running total before the last addend**, not the first argument and not the last
+addend. Four 16-row blocks put the last addend at -(1∓k·2^-52) for k = 1..16 after (0.5, 0.5), (2, -1), (1.5, -0.5)
+and (0.5, 0.25, 0.25), so the running total is 1 in every block while the first argument (0.5, 2, 1.5, 0.5) and
+the last addend (exponent -1 or 0) predict cut-offs of k ≤ 3 or k ≤ 15 in some block; every block snaps exactly
+k ≤ 7 (8 ULP of 1) and keeps k = 8 (1.7763568394002505e-15, negated in the second block). In every block the running
+total is the larger of the two final addends or shares its binary exponent (block 2: 1 against -(1+k·2^-52)), so
+this probe alone does not separate it from the larger addend; the two-addend `-` side above (b = 1, whose larger
+addend 1 would allow k ≤ 7, snaps only to k = 3) rules the larger addend out, and T-3248 probes it inside SUM. SUM over the cells as
+arguments, over the row range and over an array argument (`SUM(CHOOSE({1,2,3},..))`), SUBTOTAL(9,range) and
+the `+` chain agree on every cell. AVERAGE snaps the sum before dividing: 0 for k ≤ 7, the kept total over the
+count from k = 8 on (5.921189464667501e-16 for three addends). Status: VERIFIED.
+Implemented in: `SumParts::snapped` (functions/math_and_trigonometry/sum.rs), which SUM, AVERAGE and SUBTOTAL
+share; the engine already matched.
+
 Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
 
 Array and range operands (T-3047, probes/t3047-snap-array-operands, excel-graph 2026-10-28): the outermost `+`/`-` snaps **each element** of an array result by the scalar rule, on that element's own two addends. Spilled `=A1:A4+B1:B4-C1:C4` over rows (0.1, 0.2, 0.3), (1, 1, 2), (0.1, 0.2, 0.1), (1, -0.9, 0.1) is 0, 0, 0.20000000000000004, 0 (S!E3:E6), and `=-C1:C4+A1:A4+B1:B4` is 0, 0, 0.2, 0 (F3:F6). `=0+{0.1,1}+{0.2,1}-({0.3,2})`, a one-element `=0+{0.1}+0.2-0.3`, scalars broadcast over an array (`=0.1+{0.2;0.2}-0.3`) and a 2-D constant (K1:L2) all give 0 in every cancelling element. The 8-ULP boundary is per element and unchanged: `=1+{3;7;8}*2^-52-1` is 0, 0, 1.7763568394002505e-15 (the `+` side keeps k = 8), `=1-{3;4;7}*2^-52-1` is 0, -8.881784197001252e-16, -1.5543122344752192e-15 (the `-` side snaps only up to k = 3), and `=-1+(1+{3;7;8}*2^-52)` matches the `+` side. A plain reference to a spill cell (`=E3`), `INDEX(E3#,1)` and `SUM(E3:E6)` (0.20000000000000004) read the snapped values, while `=INDEX(A1:A4+B1:B4-C1:C4,1)` is 5.551115123125783e-17: the snap belongs to the root, not to an operator under a call. A legacy (implicitly intersected) `=A1:A4+B1:B4-C1:C4` snaps on each of its rows (L!E1:E4 = 0, 0, 0.20000000000000004, 0). A legacy root operator over an array constant shows its first element and does not spill (L!G1 0 with G2 empty, L!H2 0 with H3 empty, although H2's own row would be the 8-ULP element); the engine still spills those (T-3051). Status: VERIFIED.
@@ -2408,3 +2423,9 @@ product is 0 whenever no number is included, never 1.
 Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
 Status: VERIFIED
 Tasks: T-2269, T-2302
+
+## TEXT of DBL_MAX with a scientific format prints the full 3-digit exponent (T-2106)
+Rule: `TEXT(2^1023*(2-2^-52),"0.00E+00")` is `1.80E+308`: the mantissa rounds up to 1.80, a decimal above DBL_MAX, so it is built from the rounded digits, and exponent digits beyond the `E+00` placeholders all print at the first placeholder.
+Evidence: probes/dbl-max-text-b A1 (oracle: excel-graph) `1.80E+308`; the 2-digit analogues gen-m10/4398098060a7fa9d A13 ("01.2E+14") and gen-m5/c0651f0e0fb544d0 A74 ("1.0E+15").
+Status: VERIFIED for DBL_MAX; the 3-digit single-placeholder case (`1E+100` under `0.0E+0` as `1.0E+100`) is UNVERIFIED (probe pending), assumed from the 2-digit cells.
+Implemented in: formatter/format.rs, decimal_round.rs::round_scientific (T-2106).

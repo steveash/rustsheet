@@ -163,11 +163,17 @@ merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads 
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
 
-.PHONY: mark-ready merge-labels
-mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123 REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" (or CARRY=1 after a clean merge of main) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
+.PHONY: mark-ready merge-labels verdict-record
+mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123, its verdicts from the verdict records on the head [REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" for a reviewer with no record, while verdict_records = warn] (or CARRY=1 after a clean merge of main) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))
-	$(if $(REVIEW)$(CARRY),,$(error REVIEW="..." or CARRY=1 is required))
-	$(PY) scripts/merge_ready.py mark --pr '$(PR)' $(if $(CARRY),--carry,--review '$(REVIEW)') $(if $(STEP),--step)
+	$(PY) scripts/merge_ready.py mark --pr '$(PR)' $(if $(CARRY),--carry) $(if $(REVIEW),--review '$(REVIEW)') $(if $(STEP),--step)
+
+verdict-record: ## Post one reviewer's verdict record for the local HEAD, which must be the PR head (decision 0178): make verdict-record PR=123 REVIEWER=security VERDICT=APPROVE REPORT=<file with the reviewer's report> [STEP=1: print the comment as a step-mode action] (exit 0: posted; 1: refused; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(if $(REVIEWER),,$(error REVIEWER=<security|architecture|quality|excel-fidelity> is required))
+	$(if $(VERDICT),,$(error VERDICT=<APPROVE|REQUEST_CHANGES> is required))
+	$(if $(REPORT),,$(error REPORT=<file> is required))
+	$(PY) scripts/merge_ready.py record --pr '$(PR)' --reviewer '$(REVIEWER)' --verdict '$(VERDICT)' --report '$(REPORT)' $(if $(STEP),--step)
 
 merge-labels: ## Create the merge-train labels that are missing (ready-to-merge, merge-train-ejected, merge-train-stop)
 	$(PY) scripts/merge_ready.py labels --create

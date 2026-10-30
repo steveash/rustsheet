@@ -107,9 +107,11 @@ pub(crate) fn compute_rate(
 }
 
 /// The worksheet NPV with Excel's arithmetic and range rules: (v1/d0 + v2/d1 + ... + vn/d(n-1))
-/// / (1+rate), where d0 = 1 and d(i) = d(i-1)*(1+rate) is a running product, every step a double
-/// and the quotients summed left to right (financial.md "NPV's residue at IRR's root is not the
-/// double sum"; T-2671, probes/npv-term-order 382/382 and m9-fin-nper-npv 88/88 in the fit lab).
+/// / (1+rate), where d0 = 1 and d(i) = d(i-1)*(1+rate) is a running product, every step Excel's
+/// twice-rounded operator and the quotients summed left to right (financial.md "NPV's residue at
+/// IRR's root is not the double sum"; T-2671, probes/npv-term-order 382/382 and m9-fin-nper-npv
+/// 88/88 in the fit lab, with plain or twice-rounded operators alike; IRR's NPV needs the latter,
+/// T-3205).
 /// The call is `#DIV/0!` when 1+rate is 0 (a rate of -1, also with no flow but 0s) or when a
 /// discount a period divides by overflows or is below the smallest normal double (financial.md
 /// "NPV's discount past the double range", probes/npv-power-edges and npv-power-edges-2):
@@ -122,25 +124,28 @@ pub(crate) fn excel_npv(rate: f64, values: &[f64]) -> Result<f64, Error> {
         return Err(Error::DIV);
     }
     let sum = discounted_sum(base, values).ok_or(Error::DIV)?;
-    Ok(flush_subnormal(sum / base))
+    Ok(flush_subnormal(extended_quotient(sum, base)))
 }
 
-/// `c0/d0 + c1/d1 + ... + cn/dn` with d0 = 1 and d(i) = d(i-1)*base a running product, every step
-/// a double and the quotients summed left to right: the sum worksheet NPV divides by `base` and
-/// the NPV IRR's secant evaluates at `base` = 1 + r. `None` when a discount overflows or is below
-/// the smallest normal double; a subnormal quotient is 0, as for `/`.
+/// `c0/d0 + c1/d1 + ... + cn/dn` with d0 = 1 and d(i) = d(i-1)*base a running product, every `*`,
+/// `/` and `+` Excel's twice-rounded operator and the quotients summed left to right: the sum
+/// worksheet NPV divides by `base` and the NPV IRR's secant evaluates at `base` = 1 + r. The
+/// twice-rounded `*` and `+` decide IRR's last secant step: with plain doubles
+/// `IRR({-1000,230,200,125,200,10},5)` and gen-m9's `IRR({0.5,0.1,-0.5},0.5)` stop one iterate
+/// early, 16 ulp off (financial.md "IRR is a secant in d = 1 - v", T-3205). `None` when a discount
+/// overflows or is below the smallest normal double; a subnormal quotient is 0, as for `/`.
 fn discounted_sum(base: f64, values: &[f64]) -> Option<f64> {
     let mut sum = 0.0;
     // d(i), the running product this period divides by.
     let mut discount = 1.0_f64;
     for (i, item) in values.iter().enumerate() {
         if i > 0 {
-            discount = flush_subnormal(discount * base);
+            discount = flush_subnormal(extended_product(discount, base));
         }
         if discount == 0.0 || !discount.is_finite() {
             return None;
         }
-        sum += flush_subnormal(item / discount);
+        sum = extended_sum(sum, flush_subnormal(extended_quotient(*item, discount)));
     }
     Some(sum)
 }
@@ -211,9 +216,9 @@ const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
 /// d0 = guess/(1 + guess) and d1 = d0 -+ 0.001 (toward larger |NPV|), each step anchored on the
 /// newer iterate. It stops at the first iterate with |d2 - d1| < 1e-7 and |NPV| < 1e-7 (or a zero
 /// step, see [`irr_secant`]) and returns 1/(1 - d2) - 1; a run that fails is retried once from 0.1.
-/// Leading zero flows are dropped first. This matches 262 of the 263 cells of the fit set
+/// Leading zero flows are dropped first. This matches all 263 cells of the fit set
 /// (probes/solver-iteration-traces sheet I, probes-numeric/m9-fin-irr-rate; fit lab `irr`,
-/// `irr_secant_d`, T-3120) and 180 of the 181 of probes/t2565-irr-guess-sweeps.
+/// `irr_secant_d`, T-3120, T-3205) and 180 of the 181 of probes/t2565-irr-guess-sweeps.
 /// Not Excel facts, kept from the fit: the d >= 1 (v <= 0) guard, no retry when the guess is
 /// already 0.1, and `#NUM!` for flows without a sign change. Where both runs fail,
 /// [`irr_fallback`] runs a Newton search from v = 0 (fitted, T-2727). A root with 1 + r at or past
