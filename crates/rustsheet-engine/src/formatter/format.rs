@@ -186,7 +186,7 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     capped_text(out)
 }
 
-/// The text a cell shows for a text or boolean value under `format`. TEXT() is `#VALUE!` past 255
+/// The text a cell shows for a text or boolean value under `format`. `TEXT()` is `#VALUE!` past 255
 /// characters but a cell shows its text whole (unprobed with a text section: the plain text is kept).
 #[must_use]
 pub fn displayed_text(text: &str, format: &str) -> String {
