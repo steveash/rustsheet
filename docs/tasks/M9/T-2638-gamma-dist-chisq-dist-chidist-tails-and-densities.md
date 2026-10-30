@@ -3,7 +3,7 @@ id: T-2638
 title: "GAMMA.DIST/CHISQ.DIST/CHIDIST/CHIINV tails and densities still visibly off after T-0971 (17 gen-m9 and 4 ironcalc-calc cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
