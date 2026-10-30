@@ -36,6 +36,7 @@ See docs/process/task-format.md.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -149,12 +150,7 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
                 "`make new-task` (decision 0016)"
             )
         ids[tid] = t
-        for key, allowed in (
-            ("status", STATUSES),
-            ("lane", LANES),
-            ("priority", PRIORITIES),
-            ("size", SIZES),
-        ):
+        for key, allowed in (("status", STATUSES), ("lane", LANES), ("priority", PRIORITIES), ("size", SIZES)):
             if t.get(key) not in allowed:
                 errors.append(f"{where}: {key}={t.get(key)!r} not in {allowed}")
         if "campaign" in t and t.get("campaign") not in CAMPAIGNS:
@@ -257,10 +253,7 @@ def stale_todos(tasks: list[dict[str, object]], files: dict[str, str]) -> list[s
 def code_files() -> dict[str, str]:
     """Tracked files under TODO_DIRS (git ls-files skips build outputs and .venv), path -> text."""
     out = subprocess.run(
-        ["git", "-C", str(ROOT), "ls-files", "-z", "--", *TODO_DIRS],
-        capture_output=True,
-        text=True,
-        check=True,
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--", *TODO_DIRS], capture_output=True, text=True, check=True
     ).stdout
     files = {}
     for name in out.split("\0"):
@@ -270,23 +263,26 @@ def code_files() -> dict[str, str]:
     return files
 
 
-_CELL = r"\$?[A-Z]{1,3}\$?\d+\b(?:[-:]\$?[A-Z]{0,3}\$?\d+\b)?"  # A1, A10-A21, A12:B15
+_CELL = r"\$?[A-Z]{1,3}\$?\d{1,7}\b(?:[-:]\$?[A-Z]{0,3}\$?\d{1,7}\b)?"  # A1, A10-A21, A12:B15
 _SEP = r"(?:,[ \t]*|[ \t]+and[ \t]+|/)"
 # A cell-list line (docs/process/task-format.md "Cell lists"): `- gen-m9/<case>.case.json (3): Calc!A185, A246`,
 # or a workbook and sheet, `- ironcalc-calc/STATISTICAL/T_DIST.xlsx (9): T.DIST T.INV T.DIST.RT!E7, E8`.
-_LISTED = rf"(?:[^,!\n]+!)?{_CELL}"
+_LISTED = rf"(?:[^,!/\n]{{1,64}}!)?{_CELL}"  # bounded, no `/`: no backtracking blow-up
 CELL_LINE = re.compile(
     rf"^[ \t]*- ([a-z][a-z0-9-]*/\S+?)(?:\.case\.json)?(?: \(\d+\))?: ({_LISTED}(?:{_SEP}{_LISTED})*)", re.MULTILINE
 )
 # An inline citation: a case path, then one or more cells (`gen-m9/<case> Calc!A200, A279`).
-_CITED = rf"(?:[A-Za-z]\w*!)?{_CELL}"
+_CITED = rf"(?:[A-Za-z]\w{{0,63}}!)?{_CELL}"
 CELL_CITE = re.compile(rf"(?<![\w/])([a-z][a-z0-9-]*/[\w.\-/]+?)(?:\.case\.json)?`?[ \t]+({_CITED}(?:{_SEP}{_CITED})*)")
 CELL_SEP = re.compile(_SEP)
-CELL = re.compile(r"(?:([^,!]+)!)?\$?([A-Z]{1,3})\$?(\d+)(?:[-:]\$?([A-Z]{1,3})?\$?(\d+))?")
+CELL = re.compile(r"(?:([^,!]{1,64})!)?\$?([A-Z]{1,3})\$?(\d{1,7})(?:[-:]\$?([A-Z]{1,3})?\$?(\d{1,7}))?")
+MAX_CELL_LINE = 4000  # task text can be untrusted (decision 0158): longer lines are skipped, not scanned
 MAX_RANGE_CELLS = 2000  # a longer range in a cell list is a typo, not a claim
 
 
+# scripts/ cannot import tools/ (sheetop.py has its own column_number), so the A1 parsing is local.
 def column_number(letters: str) -> int:
+    """The 1-based column number of column `letters` (`A` 1, `AA` 27)."""
     n = 0
     for ch in letters:
         n = n * 26 + ord(ch) - ord("A") + 1
@@ -294,6 +290,7 @@ def column_number(letters: str) -> int:
 
 
 def column_letters(n: int) -> str:
+    """The letters of 1-based column `n` (the inverse of `column_number`)."""
     letters = ""
     while n:
         n, r = divmod(n - 1, 26)
@@ -322,14 +319,18 @@ def add_cells(out: set[str], case: str, tokens: list[str]) -> None:
             out.update(f"{case}!{sheet}!{column_letters(col)}{row}" for col in cols for row in rows)
 
 
-def cells_of(text: str) -> set[str]:
+def cells_of(text: str, suites: set[str]) -> set[str]:
     """The eval cells a task file names: its cell-list lines, and inline citations such as
-    `gen-m9/27601819397dd56e Calc!A200` or `probes/irr-fallback-roots P!A12-A15 and A22-A24`."""
+    `gen-m9/27601819397dd56e Calc!A200` or `probes/irr-fallback-roots P!A12-A15 and A22-A24`, of cases in `suites` (eval/suites
+    directory names; `crates/x.rs A1` is not a case)."""
     out: set[str] = set()
+    text = "\n".join(line for line in text.splitlines() if len(line) <= MAX_CELL_LINE)
     for m in CELL_LINE.finditer(text):
-        add_cells(out, m.group(1), CELL_SEP.split(m.group(2)))
+        if m.group(1).split("/", 1)[0] in suites:
+            add_cells(out, m.group(1), CELL_SEP.split(m.group(2)))
     for m in CELL_CITE.finditer(text):
-        add_cells(out, m.group(1), CELL_SEP.split(m.group(2)))
+        if m.group(1).split("/", 1)[0] in suites:
+            add_cells(out, m.group(1), CELL_SEP.split(m.group(2)))
     return out
 
 
@@ -341,7 +342,8 @@ def cell_overlaps(tasks: list[dict[str, object]], new_ids: set[str]) -> list[str
     if not any(str(t["id"]) in new_ids for t in open_tasks):
         return []
     text = {str(t["id"]): path_of(t).read_text() for t in open_tasks}
-    cells = {tid: cells_of(body) for tid, body in text.items()}
+    suites = {p.name for p in (ROOT / "eval" / "suites").glob("*") if p.is_dir()}
+    cells = {tid: cells_of(body, suites) for tid, body in text.items()}
     errors = []
     for t in open_tasks:
         tid = str(t["id"])
@@ -356,7 +358,7 @@ def cell_overlaps(tasks: list[dict[str, object]], new_ids: set[str]) -> list[str
                 continue
             sample = ", ".join(c.replace("!!", "!") for c in sorted(shared)[:3])
             errors.append(
-                f"{path_of(t).relative_to(ROOT)}: new task {tid} lists {len(shared)} cells that open task "
+                f"{path_of(t).relative_to(ROOT)}: new task {tid} lists {len(shared)} cell(s) that open task "
                 f"{oid} already lists ({sample}). Fold the work into {oid}, drop the shared cells, or name "
                 f"{oid} in the task to record the split (docs/process/task-format.md)."
             )
@@ -474,9 +476,7 @@ def git_task_ids(fetch: bool = True) -> set[str]:
 ISSUE_KEYS = ("id", "status", "issue", "issue_author")
 
 
-def issue_copies(
-    tasks: list[dict[str, object]], number: str | None = None, fetch: bool = True
-) -> list[dict[str, object]]:
+def issue_copies(tasks: list[dict[str, object]], number: str | None = None, fetch: bool = True) -> list[dict[str, object]]:
     """Every copy of a task filed from an issue (front matter with `issue:`; only `issue: <number>`
     when given): its `ISSUE_KEYS` plus "where" ("working tree" or the branch name), "ref" (the full
     ref, "" on the working tree) and "file". Working-tree copies come first. Decision 0158: the
@@ -487,38 +487,18 @@ def issue_copies(
     `---` lines count, so a body line that reads `issue: N` does not.
     """
     copies: list[dict[str, object]] = [
-        {
-            **{k: t[k] for k in ISSUE_KEYS if k in t},
-            "where": "working tree",
-            "ref": "",
-            "file": str(path_of(t).relative_to(ROOT)),
-        }
+        {**{k: t[k] for k in ISSUE_KEYS if k in t}, "where": "working tree", "ref": "",
+         "file": str(path_of(t).relative_to(ROOT))}
         for t in tasks
         if "issue" in t and (number is None or str(t["issue"]) == number)
     ]
     want = number or "[0-9]+"
     try:
         refs = origin_refs(fetch)
-        out = (
-            _git(
-                "grep",
-                "-n",
-                "--all-match",
-                "-E",
-                "-e",
-                "^---$",
-                "-e",
-                rf'^issue: *"?{want}"? *$',
-                "-e",
-                "^(id|status|issue_author): ",
-                *refs,
-                "--",
-                "docs/tasks",
-                ok=(0, 1),
-            )
-            if refs
-            else ""
-        )
+        out = _git(
+            "grep", "-n", "--all-match", "-E", "-e", "^---$", "-e", rf'^issue: *"?{want}"? *$',
+            "-e", "^(id|status|issue_author): ", *refs, "--", "docs/tasks", ok=(0, 1),
+        ) if refs else ""
     except (OSError, subprocess.CalledProcessError) as e:
         branches_unreadable(e, "only the working tree was searched")
         return copies
@@ -538,9 +518,7 @@ def issue_copies(
             meta.setdefault(key.strip(), unquote(value.strip()))
         if "issue" in meta and (number is None or meta["issue"] == number):
             short = ref.removeprefix("refs/remotes/origin/")
-            copies.append(
-                {**{k: meta[k] for k in ISSUE_KEYS if k in meta}, "where": short, "ref": ref, "file": name}
-            )
+            copies.append({**{k: meta[k] for k in ISSUE_KEYS if k in meta}, "where": short, "ref": ref, "file": name})
     return copies
 
 
@@ -563,22 +541,11 @@ def filed_today(copies: list[dict[str, object]], now: float) -> set[str]:
         if tid in found or (ref and ref != "refs/remotes/origin/main" and not (m and m.group(2) == tid)):
             continue
         try:
-            stamps = _git(
-                "log",
-                "--since=2 days ago",
-                "--diff-filter=A",
-                "--format=%ct",
-                ref or "HEAD",
-                "--",
-                str(c["file"]),
-            ).split()
+            stamps = _git("log", "--since=2 days ago", "--diff-filter=A", "--format=%ct", ref or "HEAD", "--",
+                          str(c["file"])).split()
         except (OSError, subprocess.CalledProcessError):
             continue
-        if (
-            stamps
-            and stamps[-1].isdigit()
-            and time.strftime("%Y-%m-%d", time.gmtime(int(stamps[-1]))) == today
-        ):
+        if stamps and stamps[-1].isdigit() and time.strftime("%Y-%m-%d", time.gmtime(int(stamps[-1]))) == today:
             found.add(tid)
     return found
 
@@ -592,11 +559,8 @@ def issue_stats(copies: list[dict[str, object]], today_ids: set[str]) -> dict[st
         if c.get("issue_author"):
             author.setdefault(str(c.get("id")), str(c["issue_author"]))
     by_author = Counter(a for tid, a in author.items() if tid not in closed)
-    return {
-        "open_by_author": dict(sorted(by_author.items())),
-        "filed_today": len(today_ids),
-        "limits": ISSUE_LIMITS,
-    }
+    return {"open_by_author": dict(sorted(by_author.items())), "filed_today": len(today_ids),
+            "limits": ISSUE_LIMITS}
 
 
 def next_id(milestone: str, tasks: list[dict[str, object]], taken: set[str]) -> str:
@@ -652,14 +616,9 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     """Writes a task file with the next free id (`--no-fetch` skips `git fetch`, e.g. offline)."""
     milestone, lane, title = arg("--milestone"), arg("--lane"), arg("--title")
     priority, size, tier = arg("--priority") or "P2", arg("--size") or "S", arg("--tier") or "opus"
-    if (
-        not (milestone and MILESTONE.fullmatch(milestone) and lane in LANES and lane != "functions" and title)
-        or "\n" in title
-    ):
-        print(
-            "usage: tasks.py new --milestone M<n> --lane <lane> --title <one-line title> "
-            "[--priority P2] [--size S] [--tier opus] [--no-fetch]"
-        )
+    if not (milestone and MILESTONE.fullmatch(milestone) and lane in LANES and lane != "functions" and title) or "\n" in title:
+        print("usage: tasks.py new --milestone M<n> --lane <lane> --title <one-line title> "
+              "[--priority P2] [--size S] [--tier opus] [--no-fetch]")
         return 2
     if priority not in PRIORITIES or size not in SIZES or size == "L" or tier not in TIERS:
         print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks); tier one of {TIERS}")
@@ -668,20 +627,9 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     tid = next_id(milestone, tasks, taken)
     path = TASKS / milestone / f"{tid}-{slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        TEMPLATE.format(
-            id=tid,
-            title=quote(title),
-            milestone=milestone,
-            lane=lane,
-            priority=priority,
-            size=size,
-            tier=tier,
-        )
-    )
-    print(
-        f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}"
-    )
+    path.write_text(TEMPLATE.format(id=tid, title=quote(title), milestone=milestone,
+                                    lane=lane, priority=priority, size=size, tier=tier))
+    print(f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}")
     return 0
 
 
@@ -755,10 +703,8 @@ def branch_claims(
         active = {(lane, tid) for tid, lane in recent.items() if tid not in handed | blocked}
         return claimed | blocked, handed, active, limited
     except (OSError, subprocess.CalledProcessError) as e:
-        print(
-            f"warning: could not read agent branches ({e}); claims and handoffs on branches not seen",
-            file=sys.stderr,
-        )
+        print(f"warning: could not read agent branches ({e}); claims and handoffs on branches not seen",
+              file=sys.stderr)
         return set(), set(), set(), {}
 
 
@@ -889,7 +835,9 @@ def main() -> int:
     if cmd == "validate":
         errors = check(tasks)
         new_ids = new_task_ids()
-        if new_ids is None:
+        if new_ids is None and os.environ.get("GITHUB_ACTIONS"):
+            errors.append("no origin/main merge base in CI; the new-task cell-overlap check cannot run")
+        elif new_ids is None:
             print("warning: no origin/main merge base; skipped the new-task cell-overlap check", file=sys.stderr)
         else:
             errors += cell_overlaps(tasks, new_ids)
@@ -935,9 +883,7 @@ def main() -> int:
         print(f"{len(found)} tasks for issue #{number}")
         return 0 if found else 1
     if cmd in ("next", "ready"):
-        cands, limited = available(
-            tasks, by_id, arg("--lane"), arg("--tier"), fetch="--no-fetch" not in sys.argv
-        )
+        cands, limited = available(tasks, by_id, arg("--lane"), arg("--tier"), fetch="--no-fetch" not in sys.argv)
         if cmd == "ready":
             for t in cands:
                 print(f"{t['id']}  {t.get('lane')!s:<9} {t['title']}{resume_note(t, limited)}")
@@ -950,38 +896,22 @@ def main() -> int:
         print(f"{t['id']}  {t['title']}  ({t['path'].relative_to(ROOT)}){resume_note(t, limited)}")  # type: ignore[union-attr]
         return 0
     if cmd == "board":
-        lines = [
-            "# Task board",
-            "",
-            "Generated by `make board` (git-ignored; decision 0017). Do not edit or commit it.",
-            "",
-        ]
+        lines = ["# Task board", "", "Generated by `make board` (git-ignored; decision 0017). Do not edit or commit it.", ""]
         for status in STATUSES:
             group = [t for t in tasks if t.get("status") == status]
             if not group:
                 continue
-            lines += [
-                f"## {status} ({len(group)})",
-                "",
-                "| id | milestone | lane | pri | title |",
-                "|---|---|---|---|---|",
-            ]
+            lines += [f"## {status} ({len(group)})", "", "| id | milestone | lane | pri | title |", "|---|---|---|---|---|"]
             for t in sorted(group, key=lambda t: str(t["id"])):
                 rel = t["path"].relative_to(TASKS)  # type: ignore[union-attr]
-                lines.append(
-                    f"| [{t['id']}]({rel}) | {t.get('milestone')} | {t.get('lane')} | {t.get('priority')} | {t.get('title')} |"
-                )
+                lines.append(f"| [{t['id']}]({rel}) | {t.get('milestone')} | {t.get('lane')} | {t.get('priority')} | {t.get('title')} |")
             lines.append("")
         (TASKS / "BOARD.md").write_text("\n".join(lines))
         print("wrote docs/tasks/BOARD.md")
         return 0
     lane, status, ms = arg("--lane"), arg("--status"), arg("--milestone")
     for t in tasks:
-        if (
-            not in_lane(t, lane)
-            or (status and t.get("status") != status)
-            or (ms and t.get("milestone") != ms)
-        ):
+        if not in_lane(t, lane) or (status and t.get("status") != status) or (ms and t.get("milestone") != ms):
             continue
         mark = "*" if ready(t, by_id) else " "
         print(
