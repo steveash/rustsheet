@@ -515,5 +515,7 @@ Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `
   Excel refuses (`=1+`, in A1 or R1C1 mode) is a PATCH 400 `InvalidArgument` and leaves the cell
   blank (`ISBLANK` is TRUE).
 - **Evidence:** probes/t3113-entered-r1c1, probes/t3113-entered-refused (excel-graph, 2026-10-30).
-- **Status:** implemented in the eval adapter (decision 0179); the engine's R1C1 reader does not
-  take bare `R`/`C` offsets (`RC`, `R[-1]C`) yet, T-3212.
+- **Status:** R1C1 entry implemented in the eval adapter (decision 0179); the engine's R1C1 reader
+  does not take bare `R`/`C` offsets (`RC`, `R[-1]C`) yet, T-3212. The engine does not refuse a
+  typed `=1+` in A1 mode: it stores a parse-error formula (`#ERROR!`), so ISBLANK is FALSE
+  (known failure probes/t3113-entered-refused S!B1, T-3213).
