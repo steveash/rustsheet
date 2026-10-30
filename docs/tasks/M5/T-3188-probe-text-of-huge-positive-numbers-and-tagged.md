@@ -1,6 +1,6 @@
 ---
-id: T-3186
-title: "Probe TEXT of huge positive numbers and tagged calendar prefixes (TEXT(1E15,'b1'), '[40C]B1' on 3000000)"
+id: T-3188
+title: "Probe TEXT of huge positive numbers and tagged calendar prefixes"
 milestone: M5
 lane: functions-text
 status: todo
