@@ -135,10 +135,20 @@ MATCH (Calc!H) and COUNTIF `=`, `<`, `<>` (Calc!I:K); all 986 cells pass. Status
   base-plus-marks rule (its weight in the Windows table agrees for every one of them).
 Implemented (T-3114): `collation.rs` case-folds, then decomposes each letter through its canonical
 decomposition (`DECOMPOSED`) and gives a combining mark's accent to the letter before it.
-`criteria::fold_run` (the exact MATCH, wildcard and D-function prefix fold) folds `ς` to `σ`, in
-wildcards too: over `σx`, `ςx`, `Σ`, `COUNTIF(r,"ς*")` = 3, `COUNTIF(r,"ς?")` = 2, `MATCH("ς*",r,0)` = 1,
-`XMATCH("ς",r,2)` = 3, `VLOOKUP("ς?",r,1,FALSE)` = `σx`, `XLOOKUP("ς?",r,r,,2)` = `σx`, and a D-function
-criterion `ς` counts 3, `=ς` 1 (probes/t3154-collation-accents Calc!H1:H19). VERIFIED.
+`collation::fold_case` (the exact MATCH, wildcard and D-function prefix fold, one character to one; T-3133)
+folds `ς` to `σ`, in wildcards and D-function criteria too: over `σx`, `ςx`, `Σ`, `COUNTIF(r,"ς*")` = 3,
+`COUNTIF(r,"ς?")` = 2, `MATCH("ς*",r,0)` = 1, `XMATCH("ς",r,2)` = 3, `VLOOKUP("ς?",r,1,FALSE)` = `σx`,
+`XLOOKUP("ς?",r,r,,2)` = `σx`, and a D-function criterion `ς` counts 3, `=ς` 1
+(probes/t3154-collation-accents Calc!H1:H19; also probes/t3133-lookup-criteria-case-fold, criteria.md
+"Wildcard escapes, case and trailing tilde"). VERIFIED. The D-function prefix fold of `İ` stays
+inferred, UNVERIFIED (T-3180).
+- `İ` (U+0130) collates as `i` + U+0307, its lower-cased canonical decomposition: `XMATCH("i"&UNICHAR(775),{"İ"})`
+  is 1, while `XMATCH("I",{"İ"})` and `XMATCH("İ",{"i"})` are #N/A (probes/t3133-lookup-criteria-case-fold Calc!J1,
+  J3, J4, J33, excel-graph, 2026-10-29, T-3133). Before T-3133 the engine folded it to a plain `i`. Its rank
+  among `i` and the other accented `i`s, and `=`/COUNTIF equality with it, are inferred from XMATCH, UNVERIFIED
+  (T-3180).
+  In the same cells XMATCH equates `ẞ` and `ß` with `ss` (the `ß` expansion) and `ǅ ǆ Ǆ`, the Kelvin, Ångström
+  and Ohm signs with their letters, while `ſ`/`s` and `µ`/`μ` stay apart (Calc!J1:J35).
 
 ### Accent weights add up and wrap: Windows' diacritic weights (T-3154)
 Evidence: probes/t3154-collation-accents (146 strings ranked, pairs, lookups; 595 cells),

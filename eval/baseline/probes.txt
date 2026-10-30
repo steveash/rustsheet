@@ -1593,6 +1593,7 @@ C	probes/t3101-b2-calendar-names.case.json	194
 C	probes/t3106-lookup-xmatch-near-equal.case.json	786
 C	probes/t3114-collation-beyond-latin1.case.json	986
 C	probes/t3115-approximate-text-collation.case.json	625
+C	probes/t3133-lookup-criteria-case-fold.case.json	426
 C	probes/t3134-legacy-if-index-arm-shapes.case.json	295
 C	probes/t3135-and-or-xor-computed-bool-text.case.json	189
 C	probes/t3136-criteria-formatted-number-operands.case.json	590
@@ -1838,6 +1839,7 @@ C	probes/unknown-function-name-reach.case.json	52
 C	probes/unknown-function-name-spelling.case.json	36
 C	probes/value-argument-lift.case.json	22
 C	probes/value-clock-text.case.json	135
+C	probes/value-sign-space-mixed-fraction-dash-date.case.json	35
 C	probes/valuetotext-error-format.case.json	10
 C	probes/valuetotext-format.case.json	37
 C	probes/vara-direct-lambda.case.json	6
@@ -2364,8 +2366,6 @@ F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!B8
-F	probes/eng-inumber-date-boundary.case.json	S!B21
-F	probes/eng-inumber-date-boundary.case.json	S!B23
 F	probes/fin-argument-modes.case.json	Sheet1!H374
 F	probes/fin-argument-modes.case.json	Sheet1!H375
 F	probes/fin-argument-modes.case.json	Sheet1!H80

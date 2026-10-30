@@ -416,6 +416,14 @@ fn parse_number(
         1.0
     };
 
+    // Excel: spaces between the sign and the digits are skipped, `VALUE("- 5")` is -5 and
+    // `VALUE("+ 5")` is 5 (docs/excel-semantics/text.md, probes/value-sign-space-mixed-fraction-dash-date A1-A6).
+    if position > 0 {
+        while position < len && characters[position] == ' ' {
+            position += 1;
+        }
+    }
+
     if position >= len {
         return Err("Cannot parse number".to_string());
     }

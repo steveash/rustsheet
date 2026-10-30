@@ -305,12 +305,40 @@ fn punctuation(c: char) -> Option<u32> {
 
 /// The final sigma `ς` as `σ`, every other character as is: Excel's `Σ = σ = ς` in comparisons
 /// and in exact MATCH (probes/t3114-collation-beyond-latin1 Calc!B168, B192, B216, D20:E20, H10).
-/// The collation key, `criteria::fold_run` and SEARCH's `text::casefold` all fold through it.
+/// The collation key and [`fold_case`] both fold through it.
 pub(crate) fn fold_final_sigma(c: char) -> char {
     if c == 'ς' {
         'σ'
     } else {
         c
+    }
+}
+
+/// Lowercases `text` one character at a time (see [`fold_char`]), never changing its length:
+/// the case fold of SEARCH, of exact-match lookup keys (MATCH, VLOOKUP and HLOOKUP with an exact
+/// match, XMATCH in wildcard mode and, inferred, XLOOKUP) and of wildcard and D-function prefix
+/// criteria.
+/// Excel: `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is #VALUE!, whereas Rust's
+/// `to_lowercase` turns U+0130 into "i" + U+0307 (probes/text-search-casefold-length A1, A2, A8,
+/// A12, A13); `MATCH("i",{"İ"},0)` is #N/A and `COUNTIF(r,"?")` counts `İ`
+/// (probes/t3133-lookup-criteria-case-fold; docs/excel-semantics/criteria.md "Wildcard escapes,
+/// case and trailing tilde").
+pub(crate) fn fold_case(text: &str) -> String {
+    text.chars().map(fold_char).collect()
+}
+
+/// [`fold_case`] for one character: always exactly one character out. A character whose full
+/// lowercase is one character takes it (the Kelvin sign is `k`, `ẞ` is `ß`, `ǅ` and `Ǆ` are `ǆ`,
+/// the Ångström sign is `å`, the Ohm sign is `ω`); one whose lowercase is longer (`İ`) stays as
+/// it is; final sigma matches sigma in either case. `ſ`/`s`, `µ`/`μ` and `ϐ`/`β` stay apart: each
+/// is its own lowercase (SEARCH: probes/text-search-casefold-length A14-A24; lookups and criteria:
+/// probes/t3133-lookup-criteria-case-fold).
+pub(crate) fn fold_char(c: char) -> char {
+    let c = fold_final_sigma(c);
+    let mut lower = c.to_lowercase();
+    match (lower.next(), lower.next()) {
+        (Some(single), None) => single,
+        _ => c,
     }
 }
 
@@ -411,6 +439,14 @@ fn element(c: Char) -> Element {
 /// `c` case-folded and canonically decomposed through [`DECOMPOSED`]: one to three characters.
 fn decompose(c: Char) -> impl Iterator<Item = Char> {
     let folded = match c {
+        // Excel: `İ` is `i` + U+0307 (its canonical decomposition, lower-cased), not `i` or `I`:
+        // `XMATCH("i"&UNICHAR(775),{"İ"})` is 1 and `XMATCH("I",{"İ"})` is #N/A
+        // (probes/t3133-lookup-criteria-case-fold Calc!J1, J3, J33).
+        Char::Scalar('\u{130}') => {
+            return [Char::Scalar('i'), Char::Scalar('\u{307}'), c]
+                .into_iter()
+                .take(2)
+        }
         Char::Scalar(c) => fold(c),
         // Every arm yields a `[Char; 3]` iterator so that the function has one return type.
         Char::Lone(_) => return [c, c, c].into_iter().take(1),
