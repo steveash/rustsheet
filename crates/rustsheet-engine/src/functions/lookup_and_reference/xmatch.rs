@@ -10,7 +10,7 @@ use crate::functions::{
     binary_search::binary_search_by,
     criteria::wildcard_text_matcher,
     text::{LookupPattern, LookupRegexes},
-    util::{compare_values, near_integer::near_integer_whole},
+    util::near_integer::near_integer_whole,
 };
 
 #[derive(PartialEq)]
@@ -102,7 +102,10 @@ pub(crate) fn linear_scan<'a>(
                 if let CalcResult::String(s) = lookup_value {
                     wildcard_text_matcher(s)
                 } else {
-                    Box::new(move |x| compare_values(x, lookup_value) == 0)
+                    // Excel: a number key matches as in the exact mode, as an exact double, not
+                    // at 15 digits: `XMATCH(1,{2;1+2^-52;0.5},2)` is #N/A
+                    // (probes/t3161-xmatch-wildcard-regex-near-equal Calc!A1:A10, C1:C10, E1:E10).
+                    Box::new(move |x| compare_searched(x, lookup_value) == 0)
                 };
             indices.into_iter().find(|&idx| {
                 let v = get(idx);
