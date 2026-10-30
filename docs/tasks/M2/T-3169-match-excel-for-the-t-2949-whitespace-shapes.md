@@ -3,7 +3,7 @@ id: T-3169
 title: "Match Excel for the T-2949 whitespace shapes (intersection LF, stored leading LF, stored even-arity LET)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
