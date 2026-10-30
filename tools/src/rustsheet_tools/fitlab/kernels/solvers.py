@@ -31,7 +31,7 @@ from contextvars import ContextVar
 from fractions import Fraction
 from functools import partial
 
-from rustsheet_tools.fitlab.exact import X87
+from rustsheet_tools.fitlab.exact import DOUBLE, X87, round_to_bits
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.kernels.power import excel_model
 from rustsheet_tools.fitlab.score import Candidate, ExcelError, candidate
@@ -751,11 +751,12 @@ def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[
     return chain
 
 
-def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> float:
-    """The term the fitted YIELD start takes (T-2777, probes/yield-start-term-basis): whole years from
-    `settle` (a 29 February settlement has its anniversaries on 1 March in common years), then the
-    basis' days from the last anniversary to `maturity` over 360 (bases 0, 2, 4), 365 (basis 3) or
-    the length of the maturity's calendar year (basis 1). The engine's `yield_start_years`."""
+def start_term(settle: datetime.date, maturity: datetime.date, basis: int) -> tuple[int, int, int]:
+    """The term the fitted YIELD start takes (T-2777, probes/yield-start-term-basis), as its parts
+    (whole years, days, year days): whole years from `settle` (a 29 February settlement has its
+    anniversaries on 1 March in common years), then the basis' days from the last anniversary to
+    `maturity` over 360 (bases 0, 2, 4), 365 (basis 3) or the length of the maturity's calendar year
+    (basis 1). The engine's `yield_start_term`."""
 
     def anniversary(year: int) -> datetime.date:
         if settle.month == 2 and settle.day == 29 and not calendar.isleap(year):
@@ -766,7 +767,13 @@ def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> f
     if last > maturity:
         whole, last = whole - 1, anniversary(maturity.year - 1)
     days = days360(last, maturity, basis == 4) if basis in (0, 4) else (maturity - last).days
-    year = {1: 366.0 if calendar.isleap(maturity.year) else 365.0, 3: 365.0}.get(basis, 360.0)
+    year = {1: 366 if calendar.isleap(maturity.year) else 365, 3: 365}.get(basis, 360)
+    return whole, days, year
+
+
+def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> float:
+    """`start_term` as the double `whole + days / year`."""
+    whole, days, year = start_term(settle, maturity, basis)
     return whole + days / year
 
 
@@ -778,6 +785,31 @@ def fitted_yield_start(*args: Arg) -> float:
     settle, maturity, rate, pr, _, _, basis = _bond(args)
     years = start_years(settle, maturity, basis)
     return (100 * rate + (100 - pr) / years) / ((100 + pr) / 2 - (100 - pr) / (4 * years))
+
+
+def rounded_once_yield_start(*args: Arg) -> float:
+    """`fitted_yield_start` computed exactly over the exact term `whole + days/year` and rounded once
+    to a double (T-2974 attempt 2, the engine's start under decision 0162)."""
+    settle, maturity, rate, pr, _, _, basis = _bond(args)
+    whole, days, year = start_term(settle, maturity, basis)
+    t, q = whole + Fraction(days, year), 100 - Fraction(pr)
+    if t == 0:
+        raise NoResultError("a zero term")  # the engine's NaN start, so #NUM!
+    exact_start = (100 * Fraction(rate) + q / t) / ((100 + Fraction(pr)) / 2 - q / (4 * t))
+    return float(round_to_bits(exact_start, DOUBLE))
+
+
+def unrounded_term_yield_start(*args: Arg) -> float:
+    """The start multiplied through by T, `((r T) 100 + q) / (D/2 - q/4)` with `q = 100 - pr`, in
+    doubles but for `D = pr T + 100 T`, rounded once with `100 T` rounded and `T` in `pr T` the exact
+    sum `whole + fl(days/year)`; every other `T` that sum rounded (T-2974 attempt 4, decision 0166:
+    the engine's `yield_start`)."""
+    settle, maturity, rate, pr, _, _, basis = _bond(args)
+    whole, days, year = start_term(settle, maturity, basis)
+    fraction = days / year
+    years, q = whole + fraction, 100 - pr
+    d = float(round_to_bits(Fraction(pr) * (whole + Fraction(fraction)) + Fraction(100 * years), DOUBLE))
+    return ((rate * years) * 100 + q) / (d / 2 - q / 4)
 
 
 def _newton_yield_short(start: Callable[..., float], tol: float) -> Callable[..., float]:
@@ -921,6 +953,19 @@ def yield_candidates() -> list[Candidate]:
             "Newton, fitted start",
         )
         for t in (1e-9, 1e-10, 1e-11)
+    ]
+    # T-3152: the starts the engine took under decisions 0162 (rounded once) and 0166 (`pr T` on the
+    # unrounded term), with the short stop at 1e-10.
+    out += [
+        candidate(
+            f"Newton from the {name} start, returned before a step below 1e-10",
+            _newton_yield_short(start, 1e-10),
+            "Newton, fitted start",
+        )
+        for name, start in (
+            ("rounded-once (exact term)", rounded_once_yield_start),
+            ("unrounded-term", unrounded_term_yield_start),
+        )
     ]
     out += [
         candidate(

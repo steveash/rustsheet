@@ -3,7 +3,7 @@ id: T-3152
 title: "YIELD and ODDFYIELD cells T-2974's correctly rounded start moved off the bit (decision 0162)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -38,7 +38,7 @@ bit are bit-exact again, or within 15 digits, while the cells it fixed stay fixe
       (`make eval-baseline`). Otherwise the task records the candidates tried with their lab
       counts (decision 0056).
 - [ ] `fn_yield_start_term_whole_years_then_leftover_days` asserts A1's and A2's exact bits again.
-- [ ] `uv run rustsheet-fitlab yield-caret` scores the rounded-once start.
+- [x] `uv run rustsheet-fitlab yield-caret` scores the rounded-once start.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -58,3 +58,17 @@ on the YIELD cells, so start from the lab, not the port. `fn_yield_start_term_wh
 - probes/yield-start-rate-term: S!A26 (2), S!A5 (1), S!B26 (1), S!B5 (1), S!C26 (1)
 - probes/yield-start-sweep: S!E1 (1)
 - probes/yield-start-term-basis: S!A29 (1), S!A3 (1), S!A48 (1), S!A5 (1), S!A53 (1), S!A8 (1), S!B29 (1), S!B3 (1), S!B48 (1), S!B5 (1), S!B53 (1), S!B8 (1), S!C48 (1), S!C8 (1)
+
+## Attempt 1 (2026-10-30, decision 0056)
+- The fit lab names both earlier engine starts (`rounded_once_yield_start`, `unrounded_term_yield_start` in
+  kernels/solvers.py; `test_yield_unrounded_term_start_sits_one_ulp_above_rounded_once`). `yield-caret`, 370 cells,
+  bit-exact / within 4 ulps: unrounded-term (the engine) 341 / 369, rounded-once 268 / 361, T-1592's doubles 240 / 361.
+- Of the nine cells in Context, six are within 15 digits since T-2974 attempt 4. Still visibly off: yield-start-rate-term
+  S!B30 (5 ulps; start one ulp lower needed), yield-start-term-basis S!C47 (13; one lower) and yield-one-step-start
+  S!A37 (32; one higher). The lab reproduces all three engine misses, so they are the start, not the engine's PRICE.
+- Scratch grid, 13,824 candidates on 1,100 YIELD probe cells (each of the start's nine operations exact or rounded,
+  each of the three term products on the double, `whole + fl(days/year)` exact or `whole + days/year` exact): best 945,
+  the engine's arrangement (and eleven equivalents); doubles 676, attempt 3's FMA form 775, all exact 694. No gain.
+- Details and the per-group and slope findings: financial.md "YIELD stops short of PRICE's root", T-3152 attempt 1.
+- `fn_yield_start_term_whole_years_then_leftover_days` keeps its one-ulp pins on A1 and A2: no start found that fixes them.
+- Eval delta: none (lab and docs only).
