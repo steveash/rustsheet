@@ -315,6 +315,27 @@ Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/x
 (shared with pivot cache `<d>` items and the eval snapshot reader)
 Tasks: T-0112, T-0406, T-0407, T-2515
 
+## Pivot cache dates below serial 61 use the 1899-12-30 epoch
+Observed: in the pivot caches it saves, Excel writes a date or time below serial 61 as 1899-12-30 plus the serial, in
+days (the OLE epoch). It does not use the 1900-system calendar that a `t="d"` cell is read with (section above:
+`1900-01-01` = 1, `1899-12-31` is `#VALUE!`). Evidence (Excel-authored, docProps/app.xml Microsoft Excel 16.0300):
+- corpus-bench/52379/1_52379_input.xlsx, pivotCacheDefinition1 field `Duration`. Source `Table1` is sheet FCR, column E.
+  The field has `minDate="1899-12-30T00:00:08"` and `maxDate="1900-01-02T16:03:58"`, and records such as
+  `1899-12-30T00:07:23`. The source cell FCR!E241 = 2.6748611111111114 (2 days 16:11:48), and the cache holds the item
+  `1900-01-01T16:11:48`. The cache predates the sheet's current values (it holds items no cell matches), so the
+  pairing is by value: E241 is the only source value of at least 1.
+- corpus-bench/59932/1_59932_input.xlsx, field `Date`. It has `minDate="1899-12-30T00:00:00"`, and its `Quarters` and
+  `Years` groups have `rangePr startDate="1899-12-30T00:00:00"`. Excel labels the first group item `<1/0/1900`, which is
+  serial 0.
+So within a pivot cache, `1899-12-30T00:00:00` is 0, a time alone is `1899-12-30T<time>`, and serials 1 to 60 come out
+one day earlier than the cell calendar reads them. The importer reads cache `<d>` items with the cell rule
+(`iso8601_to_date_system_serial`). It rejects these dates and skips the whole cache ("bad date"), and with that rule it
+would also misread serials 1 to 60 by a day. The cutoff at 61 is inferred from where the two calendars agree
+(1900-03-01), not observed. UNVERIFIED: serial 60 (the phantom 1900-02-29) and serials 1 to 60 other
+than this one point; whether `rangePr`/`groupItems` dates follow the same rule; 1904 workbooks. No GETPIVOTDATA cell
+depends on it yet.
+Tasks: T-3182
+
 ## Structured references in the file
 Rule (excel-graph uploads of spec2xlsx files, 2026-10-16, T-1607): the file form of a structured reference
 differs from what a user types, and Excel for the web refuses or misreads the typed forms.

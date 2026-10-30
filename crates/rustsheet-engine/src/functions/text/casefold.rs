@@ -1,28 +1,9 @@
-//! Case folding shared by SEARCH, TEXTSPLIT, TEXTBEFORE and TEXTAFTER. Every fold maps one char
+//! The case folds of TEXTSPLIT, TEXTBEFORE and TEXTAFTER, built on SEARCH's one-to-one
+//! [`fold_char`] (util/collation.rs, shared with lookups and criteria). Every fold maps one char
 //! to exactly one char, so char positions in the folded text are char positions in the original.
 
 use super::string_format::sigma_is_final;
-use crate::functions::util::collation::fold_final_sigma;
-
-/// Lowercases `text` one character at a time (see [`fold_char`]). Excel's SEARCH never changes
-/// the length of the text it counts in: `SEARCH("x","İx")` is 2 and `SEARCH("i","İx")` is
-/// #VALUE!, whereas Rust's `to_lowercase` turns U+0130 into "i" + U+0307
-/// (probes/text-search-casefold-length A1, A2, A8, A12, A13).
-pub(super) fn fold_case(text: &str) -> String {
-    text.chars().map(fold_char).collect()
-}
-
-/// [`fold_case`] for one character: always exactly one character out.
-fn fold_char(c: char) -> char {
-    // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other
-    // simple-fold pairs do not: ſ/s, µ/μ and ϐ/β are #VALUE! (A14-A24).
-    let c = fold_final_sigma(c);
-    let mut lower = c.to_lowercase();
-    match (lower.next(), lower.next()) {
-        (Some(single), None) => single,
-        _ => c,
-    }
-}
+use crate::functions::util::collation::fold_char;
 
 /// The folding `match_mode` 1 of TEXTSPLIT, TEXTBEFORE and TEXTAFTER share (TEXTBEFORE and
 /// TEXTAFTER handle sigma themselves; TEXTSPLIT's final sigma follows SEARCH through
