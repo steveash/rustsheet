@@ -666,8 +666,8 @@ flows, guesses); excel-graph, 2026-10-14. `uv run rustsheet-fitlab irr` (263 cel
 189/263 bit-exact, 207 within 4 ulp, 260 within 1e-9; the best Newton candidate (in v, converged) 74; the
 engine 1.
 Ours: this secant (`irr_npv`, `irr_secant`, `compute_irr`, functions/financial/financial_util.rs, T-0916, in d
-since T-3120, its NPV twice-rounded since T-3205): 263/263 bit-exact on the fit set, the same cells as the lab model (the Newton code it
-replaced: 1; the secant in v: 189). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
+since T-3120, its NPV twice-rounded since T-3205): 263/263 bit-exact on the fit set, the same cells as
+the lab model (the Newton code it replaced: 1; the secant in v: 189). Three gated cells the Newton code matched by chance are known failures now (decision 0065).
 Where both secant runs fail the engine runs the fitted fallback of "IRR's fallback when the secant fails" (T-2727). Excel returns `IRR({-400,1,1,1,1,1})` = -0.6737366751808405 (ironcalc-calc IRR.xlsx General!L17),
 where the fitted secant does not stop, and raising its step cap does not explain it (1,000 steps give
 -0.6737366751808431). T-2727 fitted that fallback ("IRR's fallback when the secant fails"); its digits and caps
