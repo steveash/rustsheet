@@ -7,7 +7,7 @@
   of them from `probes-numeric`, mostly one generated shape with other numbers. A cancelled job saves no corpus, so
   every later night would fail the same way.
 - **Decision:**
-  - `fuzz/seed_corpus.py` writes one seed per formula shape (numbers and text literals replaced; 183,932 shapes
+  - `fuzz/seed_corpus.py` writes one seed per formula shape (numbers and text literals replaced; 317,305 shapes
     on 2026-10-30), then keeps the 20,000 whose sha256 sorts first (`MAX_FORMULA_SEEDS`). That is about a minute
     of first pass at formula_eval's rate. The dictionary still lists every function name from all the formulas.
   - After fuzzing, the job runs `cargo fuzz cmin` (libFuzzer `-merge=1`) on the corpus. The saved corpus then holds

@@ -30,7 +30,7 @@ FUNCTION_CALL = re.compile(r"(?<![A-Za-z0-9_.])([A-Z][A-Z0-9.]*\()")
 # shape (numbers and text literals replaced), capped, keeps the first pass near a minute; the
 # fuzzer mutates numbers itself, and the dictionary still lists every function name.
 MAX_FORMULA_SEEDS = 20_000
-NUMBER = re.compile(r"(?<![A-Za-z0-9_$.])\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+NUMBER = re.compile(r"(?<![A-Za-z0-9_$.])(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
 TEXT = re.compile(r'"(?:[^"]|"")*"')
 
 
