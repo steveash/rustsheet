@@ -3,7 +3,7 @@ id: T-2561
 title: "Fit Excel's deep-tail CHISQ.INV and GAMMA.INV kernel (T-1634 residue)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -102,3 +102,64 @@ every visibly-off cell it owns has Excel's type, error and text, or is within ha
 `make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
 - gen-m9/b4173fe25109a238 Calc!A252 `CHISQ.INV(1E-200,9)`: Excel 1.732023266119695e-44, ours 1.7320232661196884e-44
 - gen-m9/c2974c061384fdd9 Calc!A355 `CHISQ.INV(1E-20,10)`: Excel 0.0005210568413974334, ours 0.0005210568413974328
+
+## Outcome
+First checked on main 9efff2847: 16 of the 34 owned cells were still visibly off. T-0972, T-3013, T-3070 and T-2638
+had already brought the other 18 to visible parity or better.
+
+Two changes, both in this PR.
+
+**Deep lower tail (`incomplete_gamma::excel_tiny_quantile`).** At shapes 1 to 20, a tiny lower-tail quantile is the
+root of the cdf's leading factor, `EXP((LN(p)+GAMMALN(a)+LN(a))/a)` times the scale, with no Newton step. It
+applies where our GAMMA.DIST at the root is within 5E-14 of p. That cut is a fit inside the evidence bracket
+[4.09E-14, 5.88E-14), pinned by 10 cells: 8 in, 2 out. The candidates tried, bit-exact / visible on the 80
+literal-argument deep-tail cells at shape 1 or more in eval/:
+
+| Candidate | Bit-exact | Visible |
+|---|---|---|
+| Engine crossing (main) | 16 | 52 |
+| Root alone | 8 | 8 |
+| Root + one Newton step (T-3013's 3.5E-14 test) | 9 | 11 |
+| Root + Newton loop under that test | 12 | 35 |
+| Root + one unconditional step | 3 | 6 |
+| Root + unconditional loop | 4 | 30 |
+| Crossing, with the gated root (shipped) | 23 | 59 |
+
+Root orderings tried at the 11 tiny cells, where the shipped form is bit-exact on 8:
+- `GAMMALN(a+1)` in place of `GAMMALN(a)+LN(a)`: the same on all 11;
+- `LN(p)/a+GAMMALN(a+1)/a`: 7 exact;
+- `(p*GAMMA(a+1))^(1/a)`: 0 exact;
+- the scale inside the exponent: 0 exact.
+
+**CHISQ.INV.RT `#NUM!` edge.** Probed at excel-graph (probes-numeric t2561-chisq-inv-rt-num-boundary, -num-edge,
+-num-large-df, -num-large-df-edge: 1,320 cells). Every df from 3 to 42 has one edge, with every probed p below it
+`#NUM!`. From df 43 on, every p to 1E-300 is a value. chisq.rs now tabulates the last valid decade per df
+(`RIGHT_TAIL_P_MIN`). It replaces the 1E-20 / df-10 guess, and the `TODO(T-2561)` is gone. All 1,320 cells now have
+Excel's type, error and value class. No closed form for the edge was found. CHISQ.DIST.RT is still a number past
+it (t2561-chisq-dist-rt-past-edge, 160 rows), so the edge comes from Excel's search, not its cdf.
+
+**Main against HEAD, per cell.** Full `rustsheet-eval run` on origin/main 8e42b5bf9 (after T-3070) against this
+branch, on the cases both have:
+- fixed: 9 gen-m9 cells, all visibly off before: 0a9226016e8f5f33 A240, 165db58d1540f014 A283, 3e98b26cf6713e77
+  A142, 4e55500bb8ad3cd8 A217, a61e547a1cab994c A184, a790a4d4a6a82756 A293, a7bf0d8d81d33ba6 A399,
+  b4173fe25109a238 A252, eced4bb6a0234c9e A123;
+- lost bit-exact: 0;
+- changed while failing: 0;
+- newly visibly off: 0;
+- type or error changed: 0;
+- visibly fixed: 9.
+
+The new probe cases are ungated (probes-numeric). On them, 276 cells are visibly off and owned by T-3300: 273 far
+right-tail CHISQ.DIST.RT and density cells, plus 3 quantiles.
+
+**Left (time-boxed, decision 0056).** Seven owned cells are still visibly off, now owned by T-3301:
+- `CHISQ.INV(1E-200,5)` (A128, A98) and `(1E-200,10)` (A212), where Excel is not the root;
+- `CHISQ.INV(1E-20,6)` (A169), `(1E-20,10)` (A355), `GAMMAINV(1E-16,2.5,1)` (A338) and `CHISQ.INV.RT(1-1E-16,3)`
+  (A301), in the search region.
+
+Nine more owned cells are within the 15th digit but not bit-exact (A215, A250, A5, A111, A88, A13, A14, A347, A173).
+Shape 20 and above (`CHISQ.INV(1E-300,50)`, which is the root in Excel) goes to T-3294.
+
+Iteration stays bounded: one closed form plus one cdf of at most `cdf_terms_bound(20)` terms, and a 40-entry table
+scan. Findings are in docs/excel-semantics/statistics.md: the "Deep lower tail at a shape above 1" entry and the
+CHISQ.INV.RT edge bullet.
