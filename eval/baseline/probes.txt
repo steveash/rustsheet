@@ -1661,6 +1661,7 @@ C	probes/t3201-collation-wrapped-run-pairs.case.json	1406
 C	probes/t3213-typed-parse-errors.case.json	25
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
+C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
 C	probes/table-edits/table-convert-names-this-row.case.json	13
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
@@ -1679,6 +1680,8 @@ C	probes/table-edits/table-delete-row-only-data-outside.case.json	11
 C	probes/table-edits/table-delete-row-only-data-second-table.case.json	10
 C	probes/table-edits/table-delete-row-only-data-totals.case.json	14
 C	probes/table-edits/table-delete-row-totals.case.json	15
+C	probes/table-edits/table-delete-rows-all-data-once.case.json	11
+C	probes/table-edits/table-delete-rows-last-two.case.json	15
 C	probes/table-edits/table-delete-sheet.case.json	12
 C	probes/table-edits/table-delete-table-cells.case.json	6
 C	probes/table-edits/table-delete-table.case.json	12
@@ -3987,6 +3990,14 @@ F	probes/t3213-typed-parse-errors.case.json	S!C5
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A10
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A2
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A4
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A5
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A6
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A7
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A8
+F	probes/table-edits/table-delete-rows-all-data-once.case.json	F!A9
 F	probes/table-edits/table-insert-column-inside-header.case.json	F!A4
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A1
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A2
