@@ -3,7 +3,7 @@ id: T-3210
 title: "Collation: approximate and exact lookups compare texts by Excel's pairwise accent rule (t3181 lookup cells)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
