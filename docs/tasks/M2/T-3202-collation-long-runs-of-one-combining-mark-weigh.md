@@ -3,7 +3,7 @@ id: T-3202
 title: "Collation: long runs of one combining mark weigh as Excel does (t3154-collation-accent-weights A105:A112 and the ranks they shift)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -40,18 +40,25 @@ strings ranked with them stop being off by one.
 - Tier opus: the rule is not known at filing, and it may need fitting to Excel's bytes.
 
 ## Acceptance criteria
-- [ ] Every cell named above passes. If a rank cell also counts a prefix-rule pair and cannot pass
+- [x] Every cell named above passes. If a rank cell also counts a prefix-rule pair and cannot pass
       before T-3181, the PR names the cell and the pair, and T-3181's cell list gains it.
-- [ ] Every other cell of the t3154 probes, probes/t3114-collation-beyond-latin1,
+- [x] Every other cell of the t3154 probes, probes/t3114-collation-beyond-latin1,
       text-collation-* and the criteria and lookup collation probes keeps passing (`make
       eval-check`: 0 regressions; `make eval-baseline` run).
-- [ ] A unit test in collation.rs checks that `cmp_text` is a total order (antisymmetric and
+- [x] A unit test in collation.rs checks that `cmp_text` is a total order (antisymmetric and
       transitive) over every Data string of the two t3154 weight/pair cases and of
       t3201-collation-long-mark-runs, and that `CollationKey` equality matches `Ordering::Equal`
       on them.
-- [ ] coercion.md's "Ours" text for long runs says the engine matches.
-- [ ] `make check` green; reviewers approve.
+- [x] coercion.md's "Ours" text for long runs says the engine matches.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The prefix rule (T-3181).
 - Marks outside U+0300-U+0362 and scripts other than Latin, Greek and Cyrillic.
+
+## Outcome
+- Delivered by T-3181's PR, which implemented the shared-units rule for the operators and
+  criteria (`cmp_text_pairwise`), the only callers these cells use: every cell named above passes,
+  and the unit test `cmp_text_is_a_total_order_on_the_accent_probes` checks `cmp_text`'s total
+  order and `CollationKey` equality over the Data strings of all four accent cases. Sorts keep the
+  total order; where Excel's sorts differ is T-3211.

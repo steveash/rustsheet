@@ -2492,13 +2492,14 @@ double, though the value it would give is 0: `BETA.DIST(0.1,a,2,TRUE)` is 0 at a
 `#NUM!` for b = 1.5 and 9; b = 2 at 1E+100, 3 at 1E+100 and 4 at 1E+77 are 0. The density `BETA.DIST(0.1,1E+200,2,FALSE)`
 is `#NUM!` too. The other branches at the same shapes are values: `BETA.DIST(0.9,1E+200,2,TRUE)` (L140 bup+bgrat) is 0 and
 `BETA.DIST(0.1,2,1E+200,TRUE)` (swapped, the same point) 1; `BETA.DIST(0.1,0.5,1E+290,TRUE)` (bgrat) is 1 and
-`BETA.DIST(0.9,1E+290,0.5,TRUE)` 0, and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours are `#NUM!`; but
+`BETA.DIST(0.9,1E+290,0.5,TRUE)` 0 (since T-2528 ours too, by the large-shape expansion, "Incomplete beta at a huge first
+shape"), and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours is `#NUM!`; but
 `BETA.DIST(0.1,1E+200,1E+100,TRUE)` (bfrac too) is `#NUM!`, as ours is. The form behind the cut (1/B, or a^b, in
 doubles) is not pinned: B(a, 2) does not separate 1/B from a(a + 1).
 Evidence: probes/t3007-beta-dist-ln-x-overflow (excel-graph, 2026-10-29), 27 cells; the refusals are upload errors from
 throwaway fills, not cells.
 Status: VERIFIED (excel-graph) for the values; the refusal threshold is between 1E+290 and 1E+295 (not bisected); not
-implemented: 11 of the 27 cells are off (T-3104 owns them).
+implemented: 7 of the 27 cells are off (T-3104 owns them; T-2528 took A3, A4, A21 and A22).
 Tasks: T-3007, T-3104
 
 ## BETA.DIST's cdf is not monotone in its last bit (T-3007)
@@ -3042,6 +3043,27 @@ Evidence: probes-numeric cases `t1048-gammadist`, `-gammainv`, `-hypgeomdist`, `
 Status: VERIFIED (excel-graph)
 Tasks: T-1048, T-2035
 
+## Incomplete beta at a huge first shape: Excel is close to the true value, but not within an ulp (T-2528)
+Rule: at a first shape of 5E7 to 5E9 with a second of 2.5 (the F tails at df1 = 5, df2 = 1E8 to 1E10, above the mean,
+and the matching BETA.DIST reflections) Excel's incomplete beta is the true value at the double arguments to within
+about 1E-15 relative where the tail is above 1E-4 (x = 2, 5 on the F scale), and up to 1.5E-14 off it further out:
+`F.DIST.RT(50,5,1E10)` is 5.4969308523163854E-52 against the true 5.496930852316323E-52, `F.DIST.RT(2,5,1E9)`
+0.07523524713822176 against 0.07523524713822164 (120-digit mpmath `betainc` at u = fl(5x/(5x + df2)); at 60 digits
+mpmath itself is 4E-14 off at x = 50). `F.DIST(2,5,1E10,TRUE)` = 0.9247647537543169 is the true value rounded.
+- Excel's error grows with z = -nu ln x (nu = a + (b - 1)/2, z about 125 at x = 50), the argument of the incomplete
+  gamma in TOMS 708 `bgrat`, which is the branch bratio takes there (L140 bup + bgrat): consistent with z formed with a
+  few ulp of error in Excel's own LN/log1p, not pinned.
+Evidence: probes-numeric t2528-f-dist-huge-df2 (60 cells, excel-graph, 2026-10-30), t1530-f-df-cut A8, A12, A14.
+Ours: since T-2528 DiDonato and Morris' expansion in Q(b, z) (`large_shape_beta.rs`) for a of 1E6 or more, b below
+40 (bratio's bgrat family; from 40 Excel's other branches decide, `#NUM!` at `BETA.DIST(0.1,1E+200,1E+100,TRUE)`) and
+b/a at most 1E-6, in accurate arithmetic (z and ln x in double-double, Legendre's fraction for Q/r from the bottom up):
+within 2E-15 of the true value on the probe; Cephes' fraction there did not converge and was about 1E-7 off. 38 of
+the 60 cells are within 15 digits of Excel; the other 22 are where Excel is itself more than half a unit of the 15th
+digit off the true value (T-3209).
+Status: VERIFIED (excel-graph) for the values; Excel's arithmetic inside bgrat is UNVERIFIED (T-3209, T-2510)
+Implemented in: functions/statistical/large_shape_beta.rs `large_shape_lower`
+Tasks: T-2528, T-3209
+
 ## F-distribution df limit (T-1530)
 Rule: either df above 1E10 (after truncation) makes every F function `#NUM!`: F.DIST (cumulative and pdf), F.DIST.RT,
 F.INV, F.INV.RT, FDIST and FINV, in both df positions (probed at 10000000001, 1.5E10 and 1E11). Unlike Student-t, the pdf is cut too.
@@ -3154,7 +3176,8 @@ Where it is tiny (the second shape huge, p <= 1/2) the search stops early, a New
   to 9.3E-7 relative off the true root, near AS 109's second Newton iterate from its own start (1E-12 to 4E-8
   relative), but no fixed acu, statrs' acu, or ln B from a double lgamma reproduces them (T-2555).
 - Ours: the crossing needs the CDF to about 1E-8 relative to pick Excel's neighbour near 1, and the T-0970 incomplete
-  beta is about 1E-7 off there (its fraction does not converge, T-2528): 1 ulp off at 4 of 12 near-1 cells. Where
+  beta was about 1E-7 off there (its fraction does not converge; since T-2528 the CDF takes the large-shape expansion,
+  "Incomplete beta at a huge first shape"): 1 ulp off at 4 of 12 near-1 cells. Where
   b/a is at most 1E-7, I_x(a, b) is taken as its large-a limit Q(b, -nu ln x), nu = a + (b - 1)/2 (the leading term
   of TOMS 708 `bgrat`, relative error about (b/a)^2 by mpmath: 1E-19 at a = 5E9), which is bit-exact on all of them.
 - Search failure at an extreme p: `F.INV(1E-200,1E10,6)` = 1.3006292404573862E-07 and
