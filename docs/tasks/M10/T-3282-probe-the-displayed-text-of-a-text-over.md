@@ -18,6 +18,7 @@ T-1736 routes a text or boolean cell through the format's text section. TEXT() i
 
 ## Acceptance criteria
 - [ ] A probe records Excel's displayed text for 256- and 300-character texts under `"pre "@`, `@`, `_(@_)` and `;;;`.
+- [ ] The probe also covers a 250-character text whose formatted result passes 255, and a code with an unparsable number section, on a text cell.
 - [ ] `displayed_text` matches it, or a `DEVIATION` records why not.
 - [ ] `make check` green; reviewers approve.
 
