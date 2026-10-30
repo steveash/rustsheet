@@ -5,6 +5,7 @@
   scripts/merge_train.py --dry-run   # steps 2-4: collect, build, id checks; prints, writes nothing
   scripts/merge_train.py --train     # steps 1-9 and section 6 (red trains), in `train` mode only
   scripts/merge_train.py --shadow    # steps 2-6 and section 6 on merge-train/shadow, in `shadow` mode only
+  ... --train --step, --shadow --step  # each write is a JSON action the session performs (decision 0169)
 
 The mode is read from `scripts/merge_train.toml` on a freshly fetched `origin/main`, never from
 the checkout, so a branch cannot switch its own flow. The read fails closed: a missing file, a
@@ -29,6 +30,7 @@ import gh_client
 import merge_flip
 import merge_lock
 import merge_ready
+import merge_step
 from gh_client import SHA, Client, GhError
 from merge_flip import LOCK, SWITCH
 from merge_lock import GitError, git
@@ -808,26 +810,35 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     if argv == ["mode"]:
         print(mode_line(root))
         return 0
-    if argv not in (["--dry-run"], ["--train"], ["--shadow"]):
-        print("usage: merge_train.py mode | --dry-run | --train | --shadow", file=sys.stderr)
+    step = argv[1:] == ["--step"] and argv[0] in ("--train", "--shadow")
+    if argv not in (["--dry-run"], ["--train"], ["--shadow"]) and not step:
+        print("usage: merge_train.py mode | --dry-run | (--train | --shadow) [--step]", file=sys.stderr)
         return 2
-    client = gh_client.from_remote(root, REMOTE)
-    if client is None:
+    real = gh_client.from_remote(root, REMOTE)
+    if real is None:
         print("merge_train: origin is not a github.com repository", file=sys.stderr)
         return 2
+    stage: Stage | None = None
     try:
         if argv == ["--dry-run"]:
-            print(dry_run(client, root))
+            print(dry_run(real, root))
             return 0
         signal.signal(signal.SIGTERM, raise_on_term)
+        # Every write of a --step run is an action the session performs (decision 0169).
+        client: Client = merge_step.StepClient(real, merge_step.AckFile(root)) if step else real
         # Imported here: merge_train_shadow subclasses this module's Stage.
         from merge_train_shadow import ShadowStage
 
-        kind = ShadowStage if argv == ["--shadow"] else Stage
+        kind = ShadowStage if argv[0] == "--shadow" else Stage
         stage = kind(client, root, LockOps(f"train-{int(time.time())}", root))
         code = stage.run()
         print("\n".join(stage.log))
         return code
+    except merge_step.StepError as error:
+        # The lock was released on the way out; nothing after the failed action ran.
+        print("\n".join(stage.log if stage is not None else []))
+        print(f"merge_train: step mode aborted: {error}", file=sys.stderr)
+        return 2
     except (GhError, GitError) as error:
         print(f"merge_train: {error}", file=sys.stderr)
         return 2

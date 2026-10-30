@@ -692,6 +692,16 @@ schema):
 - the script reads GitHub's state back and aborts on any difference from the expected result;
 - the session never adds, skips, reorders or changes an action.
 
+**As built (T-3077, decision 0169).** `make merge-train TRAIN=1 STEP=1` (or `SHADOW=1 STEP=1`) runs the
+merger with `scripts/merge_step.py`'s `StepClient`: reads go through `gh_client`, and the seven writes
+(`comment`, `label`, `unlabel`, `merge`, `create_pull`, `delete_branch`, `dispatch`) are actions validated
+against one schema, which `make mark-ready STEP=1` also uses. The run stays alive and keeps the lock:
+it prints each action as one JSON line (with a `seq`), the session performs it and runs `make
+merge-train-ack SEQ=<n>` (`REFUSED=1` when GitHub or the tool refused it), and the script reads the
+state back. Done must read exactly as expected, refused must read unchanged (and then fails like a
+refused direct write); anything else, no ack within 10 min, or an ack for another `seq` aborts the
+run (exit 2, lock released). Comment and PR bodies read back with or without the session's footer.
+
 ### 5. Why `main` ends with the tested tree, and how a difference is caught
 Notation:
 - `M0` is `main` at step 3, `H_1..H_n` are the PR heads, `T_0 = M0`, and

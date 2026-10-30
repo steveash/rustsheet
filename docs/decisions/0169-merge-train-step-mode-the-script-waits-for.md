@@ -27,6 +27,6 @@
 - **Consequences:**
   - The merger routine runs `make merge-train TRAIN=1 STEP=1` (or `SHADOW=1 STEP=1`) in the background, performs
     each JSON line it prints, and acks it. The routine prompt in docs/process/routines.md still says "run the script
-    again"; T-2996's successor updates it (follow-up filed with this task).
+    again"; T-3190 updates it.
   - In step mode each squash costs four session round trips (merge, unlabel, comment, branch); `MERGE_BUDGET`
     is unchanged, so a long batch may run past `HOLD_BUDGET` after its CI wait, as a slow merge reply would.
