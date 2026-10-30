@@ -3,7 +3,7 @@ id: T-3164
 title: "Readiness markers survive the attribution footer a session's GitHub write appends"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
