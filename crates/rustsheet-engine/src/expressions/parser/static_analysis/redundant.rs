@@ -3,6 +3,7 @@
 
 #[cfg(doc)]
 use super::add_implicit_intersection;
+use super::if_arm::leaves_choose_index_whole;
 use super::legacy::{
     leaves_call_whole, legacy_array_context, legacy_context_intersects, remove_array_at,
     remove_in_array_context, removes_automatic_at,
@@ -115,8 +116,16 @@ pub(super) fn remove_redundant_legacy_intersection(node: &mut Node, add: bool, a
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
+            let whole_index = leaves_choose_index_whole(kind, args);
             for (index, arg) in args.iter_mut().enumerate() {
-                let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+                let arrays = legacy_array_context(
+                    kind,
+                    signature.get(index),
+                    index,
+                    arg,
+                    arrays,
+                    whole_index,
+                );
                 remove_array_at(kind, signature.get(index), index, arg, arrays);
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not (`legacy_context_intersects`).

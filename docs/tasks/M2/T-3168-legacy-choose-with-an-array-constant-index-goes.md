@@ -3,7 +3,7 @@ id: T-3168
 title: "Legacy CHOOSE with an array-constant index: @ goes on the call, not the constant (=@CHOOSE({1,2},INDEX(B1:B6,3),5))"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,9 +24,9 @@ A legacy CHOOSE whose index is an array constant shows the `@` on the call, as E
   `index == 0` for CHOOSE). Check which other probes pin `CHOOSE(@{..},...)` before changing it.
 
 ## Acceptance criteria
-- [ ] I54 and K54 pass; every other cell of probes/t3134-legacy-if-index-arm-shapes and the legacy CHOOSE probes keeps
+- [x] I54 and K54 pass; every other cell of probes/t3134-legacy-if-index-arm-shapes and the legacy CHOOSE probes keeps
       passing (`make eval-check`: 0 regressions, `make eval-baseline` run).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IF and IFS conditions (already evidenced, T-3134).
@@ -43,3 +43,11 @@ A legacy CHOOSE whose index is an array constant shows the `@` on the call, as E
   index-constant `@` for CHOOSE when every value arm is Scalar or `is_single_cell_index`. Mirror that in
   `remove_array_at`. The call then has shape Array(1, 2), and `legacy_array_call_at` (returns_an_argument) already adds its `@`.
   Verify that the range-arm probes keep `@{1,2}`.
+
+## Outcome
+- `leaves_choose_index_whole` (static_analysis/if_arm.rs): a CHOOSE whose index is an array constant and whose value
+  arms are all scalars or single-cell INDEXes leaves the index out of the legacy array context, in both the add pass
+  and its mirror in redundant.rs, so the call (shape Array(1, 2)) takes the `@` instead of the constant. Range arms
+  keep `=@CHOOSE(@{1,2},...)`; a one-element index keeps its own `@` (T-1633).
+- Eval: probes known failures 2739 -> 2737 (I54, K54 fixed), 0 regressions. Unit cases in
+  test_add_implicit_intersection.rs.

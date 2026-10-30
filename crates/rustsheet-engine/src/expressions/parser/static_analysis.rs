@@ -4,7 +4,7 @@ use crate::functions::lift::lifting_table_functions;
 use crate::functions::lookup_and_reference::lifts_into_references;
 use crate::functions::Function;
 use broadcast::{broadcast_shapes, static_analysis_operator_chain};
-use if_arm::{returns_range_arm, returns_single_cell_index};
+use if_arm::{leaves_choose_index_whole, returns_range_arm, returns_single_cell_index};
 use legacy::{
     add_argument_intersection, add_array_at, add_in_array_context, is_array_context,
     legacy_array_call_at, legacy_array_context, legacy_call_reads_a_value, let_returns_range,
@@ -218,10 +218,18 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         Node::FunctionKind { kind, args } if is_array_context(kind) => add_in_array_context(args),
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
+            let whole_index = leaves_choose_index_whole(kind, args);
             for (index, arg) in args.iter_mut().enumerate() {
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+                let arrays = legacy_array_context(
+                    kind,
+                    signature.get(index),
+                    index,
+                    arg,
+                    arrays,
+                    whole_index,
+                );
                 add_array_at(kind, signature.get(index), index, arg, arrays);
                 add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }
