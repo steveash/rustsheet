@@ -2081,7 +2081,7 @@ capped beyond those bounds.
 Since T-2840 an element the kernel refuses before its walk is charged 1, not the weight, so a broadcast of such elements
 lifts in full: an error or a logical in any argument (each is read, the basis too, before the walk), a cost, salvage,
 period and rate, all numbers, that fail the value checks (`0 <= salvage < cost`, `period >= 0`, `rate > 0`, NaN failing
-them), or for AMORDEGRC a rate whose asset life is refused (`1/rate` in [0, 3] or (4, 5)); the charge calls the
+them), or for AMORDEGRC a rate whose asset life is refused (`1/rate` in [0, 2], T-1978); the charge calls the
 kernel's own predicates (`amortization_values_valid`, `asset_life_refused`). A text or a blank is not judged (it may
 read as any number), nor is a date's calendar check, which depends on the date system: such an element is charged the
 weight. gen-m9/e8d55ec393460bb7
@@ -3043,8 +3043,8 @@ Evidence: probes/fin-fvschedule-bool-ref (excel-graph, 2026-10-19, T-1992).
 Status: VERIFIED (excel-graph)
 Implemented (T-1764; the fractional-period rules are now the fractional grid of "VDB charge order", T-2185): VDB with salvage above cost never switches to straight line (-600); a fractional end period
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
-rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
-1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. The ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI) are fixed by T-1975: see "VDB charge order" and "DURATION and RRI operation order".
+rejects only an asset life (1/rate) of 2 or less (T-1978 replaced T-1764's [0, 3] and (4, 5) bands; see "AMORDEGRC
+life bands"). T-1978 confirmed the VDB rules across 59 more cells (see "VDB charge order"). The ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI) are fixed by T-1975: see "VDB charge order" and "DURATION and RRI operation order".
 Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` too, verified by probes/fin-fvschedule-bool-ref (T-1992).
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
 
@@ -3086,11 +3086,28 @@ build the per-period charges differently, so the same inputs give different last
   running-total difference this replaced both miss visibly: fin-vdb-schedule A44 is 250.50773812499992 and
   242.0635349999999 with them.
 Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes, fin-rri-vdb-edges (excel-graph, 2026-10-20, T-1975);
-fin-vdb-fractional-start (45 cells), fin-vdb-fractional-start-edges (14 cells) (excel-graph, 2026-10-28, T-2185).
+fin-vdb-fractional-start (45 cells), fin-vdb-fractional-start-edges (14 cells) (excel-graph, 2026-10-28, T-2185);
+fin-vdb-amordegrc-edges A1-A59 (excel-graph, 2026-10-30, T-1978): salvage at or above cost in both modes (switching
+gives -300 for `VDB(2400,3000,10,0,0.5)`, -600 for (0,1.5) and (0,10), 0 from period 1 on; `no_switch` TRUE and salvage
+equal to cost give 0 everywhere), fractional windows near the end of life (`VDB(2400,300,10,9.25,9.75,2,FALSE)` is
+3.0082099200000414, TRUE 11.061273600000135), and a fractional life 9.5 (an end past it is #NUM!, factor 3 reaches the
+salvage before period 8). The model already matched all 59 cells.
 Status: VERIFIED (excel-graph)
 Implemented (T-1975, T-2185): `vdb_no_switch_between` and `vdb_switching_between` in
 functions/financial/financial_depreciation.rs.
 Tasks: T-1975, T-2185, T-3022
+
+## AMORDEGRC life bands
+Rule: AMORDEGRC refuses (#NUM!) an asset life `1/rate` of 2 or less, that is a rate of 0.5 or more, and nothing else
+for a positive rate. There is no refused gap at life 3 or strictly between 4 and 5, which Microsoft's documentation and
+the library RustSheet ported from both have: `AMORDEGRC(2400,39679,39813,300,0,r,1)` is a number for r = 1/2.000001
+(659), 1/2.01 (656), 1/2.5, 1/2.9, 1/2.99, 1/3 (439), 0.34, 1/4.01 (438), 1/4.5 (391), 1/4.99 (352), and #NUM! for
+r = 0.5, 1/2, 1/1.99, 1/1.5 and 1. The coefficient goes by the whole life `ceil(1/rate)`: 1.5 for 3 and 4 (so lives
+above 2 up to 4), 2 for 5 and 6 (lives above 4 up to 6), 2.5 above; the 1.0 coefficient of a life under 3 is never reached.
+Evidence: probes/fin-vdb-amordegrc-edges A60-A143 (excel-graph, 2026-10-30, T-1978).
+Status: VERIFIED (excel-graph)
+Implemented (T-1978): `asset_life_refused` and `amor_depr_coeff` in functions/financial/amortization.rs.
+Tasks: T-1764, T-1978
 
 ## VDB, DDB and ACCRINT argument types
 Rule: VDB's `no_switch` reads as a boolean. TRUE, FALSE and a number are taken, and so is the text "TRUE" or "FALSE"
