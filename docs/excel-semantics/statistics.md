@@ -2492,13 +2492,14 @@ double, though the value it would give is 0: `BETA.DIST(0.1,a,2,TRUE)` is 0 at a
 `#NUM!` for b = 1.5 and 9; b = 2 at 1E+100, 3 at 1E+100 and 4 at 1E+77 are 0. The density `BETA.DIST(0.1,1E+200,2,FALSE)`
 is `#NUM!` too. The other branches at the same shapes are values: `BETA.DIST(0.9,1E+200,2,TRUE)` (L140 bup+bgrat) is 0 and
 `BETA.DIST(0.1,2,1E+200,TRUE)` (swapped, the same point) 1; `BETA.DIST(0.1,0.5,1E+290,TRUE)` (bgrat) is 1 and
-`BETA.DIST(0.9,1E+290,0.5,TRUE)` 0, and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours are `#NUM!`; but
+`BETA.DIST(0.9,1E+290,0.5,TRUE)` 0 (since T-2528 ours too, by the large-shape expansion, "Incomplete beta at a huge first
+shape"), and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours is `#NUM!`; but
 `BETA.DIST(0.1,1E+200,1E+100,TRUE)` (bfrac too) is `#NUM!`, as ours is. The form behind the cut (1/B, or a^b, in
 doubles) is not pinned: B(a, 2) does not separate 1/B from a(a + 1).
 Evidence: probes/t3007-beta-dist-ln-x-overflow (excel-graph, 2026-10-29), 27 cells; the refusals are upload errors from
 throwaway fills, not cells.
 Status: VERIFIED (excel-graph) for the values; the refusal threshold is between 1E+290 and 1E+295 (not bisected); not
-implemented: 11 of the 27 cells are off (T-3104 owns them).
+implemented: 7 of the 27 cells are off (T-3104 owns them; T-2528 took A3, A4, A21 and A22).
 Tasks: T-3007, T-3104
 
 ## BETA.DIST's cdf is not monotone in its last bit (T-3007)
@@ -2760,6 +2761,40 @@ them and oracle cells contradict them.
   - At d1 = d2 = 1 and x = 1 the exact value is 0.5, yet Excel gives `F.DIST(1,1,1,TRUE)` =
     0.5000000000000001 and `F.DIST.RT(1,1,1)` = 0.4999999999999999 (t1049-fdist A7, m9-legacy-fdist A31).
   - Tasks: T-2219 (the accuracy cells, visible parity) and T-2221 (the fit, after the T-2220 sweep).
+- **Accurate tails at half-integer shapes from a + b = 10 (T-2219).** Outside the closed forms and
+  the ported bratio branches, half-integer shapes with 10 <= a + b < 171.6 now take x^a y^b (a ln x +
+  b ln y in double-double, the argument above 1/2 as 1 minus its complement) times F.TEST's
+  double-double series of positive terms, instead of Cephes' prefactor and fraction, which were up
+  to about 40 ulp off a 50-digit reference (`F.DIST.RT(1,50,100)`: Excel 0.48912050780793015,
+  Cephes 0.48912050780793204, now 0.48912050780793037; m9-f-dist-rt A18). Over every suite
+  (`make eval`, against origin/main d6618cd): 172 probes-numeric F.DIST, F.DIST.RT, FDIST and
+  BETA.DIST cells move from visibly off to within 15 digits (e.g. `F.DIST.RT(1,100,3)`
+  m9-legacy-fdist A40, `F.DIST(1,50,100,TRUE)` m9-f-dist A27, `F.DIST(0.5,50,100,TRUE)` A25), 105
+  move onto Excel's bit and 23 off it. No gated known-failure line changes; two gen-m9 known
+  failures move closer to Excel (`F.DIST.RT(WEEKDAY(13197,1),3,100)` c2974c061384fdd9 A165,
+  `FDIST(3.14159,100,7)` a5828d3925575713 A51). Thirteen cells move to visibly off, and on each of
+  them Excel is 5 to 50 ulp off the 60-digit value while the new value is within 5 (Excel / new, in
+  ulp): `F.DIST.RT(10,1,50)` and `F.DIST(0.1,50,1,TRUE)` (t2220-f-dist-sweep-rt A89, -cdf A801,
+  +13 / +1), `F.DIST.RT(10,3,100)` and `F.DIST(0.1,100,3,TRUE)` (A299, A921, +13 / -4),
+  `F.DIST.RT(5,3,50)` (A288, +6 / -1), `F.DIST(0.0356,100,1,TRUE)` and `F.DIST(0.24,50,1,TRUE)`
+  (t2220-f-dist-sweep-d2-1 A754, A670, -50 / +5 and +10 / -1), `BETA.DIST(0.5,100,50,TRUE)`
+  (m9-beta-dist-a100 A45, -35 / 0), t0969-t-beta-link E159 (-15 / 0) and t1745-beta-inv-roundtrip
+  G150, H150, G158, G159 (-14 / 0, -16 / -1, +5 / 0, +18 / 0). Cephes erred the same way as Excel
+  there: they are Excel's own formulation of bratio's branch, not an accuracy gap (T-3199).
+- The kernel takes integer shapes too, so BETA.DIST's cdf at whole shapes from a + b = 10 changed
+  with it (44 BETA.DIST cells and 16 `E../2` link cells fixed visibly, 6 moved visibly off, all
+  among the 13 above); T-2119's own counts predate this.
+  - Below a + b = 10 the series only trades bits (35 cells off Excel's bit, 75 onto it, 6 visibly
+    fixed), among them the gated `FDIST(2,1,9)` (gen-m9/c18dbf21f11093f3 A151) and
+    `F.DIST(1,3,8,1)` (c6cfda6bd10cae93 A348) 1 ulp off, so Cephes stays there.
+  - BETA.INV's and F.INV's searches keep crossing Cephes' tails (`incomplete_beta::search_tails`):
+    with the series under them 7 gated gen-m9 quantile cells move off Excel's bit
+    (`FINV(0.025,7,10)` fec39efaba9284c3 A336, `F.INV.RT(0.975,9,9)` 40425341c5034eed A205) and
+    BETADIST_BETAINV.xlsx H67 (3 becomes 2.9999999999999996), while 22 gen-m9 quantile cells would move from
+    visibly off to within 15 digits and 3 the other way. Where Excel's search stops is T-2511's.
+  - Still off: `F.DIST.RT(3,50,100)` (m9-f-dist-rt A19) is on the ported L140 bup + bpser branch,
+    and the densities `F.DIST(0.5,50,100,FALSE)` and `F.DIST(3,50,100,FALSE)` (m9-f-dist A26, A30,
+    a number since T-2586) are Excel's density model (T-3034), not this kernel (T-3198).
 
 The engine follows both PARTIAL rules (the T-2220 sweep contradicts the strong form of the second). Against statrs, the probes-numeric F and BETA cases gain
 72 bit-exact cells and lose 3, a net gain of 69. The three lost cells are now 1 ulp off:
@@ -3008,6 +3043,27 @@ Evidence: probes-numeric cases `t1048-gammadist`, `-gammainv`, `-hypgeomdist`, `
 Status: VERIFIED (excel-graph)
 Tasks: T-1048, T-2035
 
+## Incomplete beta at a huge first shape: Excel is close to the true value, but not within an ulp (T-2528)
+Rule: at a first shape of 5E7 to 5E9 with a second of 2.5 (the F tails at df1 = 5, df2 = 1E8 to 1E10, above the mean,
+and the matching BETA.DIST reflections) Excel's incomplete beta is the true value at the double arguments to within
+about 1E-15 relative where the tail is above 1E-4 (x = 2, 5 on the F scale), and up to 1.5E-14 off it further out:
+`F.DIST.RT(50,5,1E10)` is 5.4969308523163854E-52 against the true 5.496930852316323E-52, `F.DIST.RT(2,5,1E9)`
+0.07523524713822176 against 0.07523524713822164 (120-digit mpmath `betainc` at u = fl(5x/(5x + df2)); at 60 digits
+mpmath itself is 4E-14 off at x = 50). `F.DIST(2,5,1E10,TRUE)` = 0.9247647537543169 is the true value rounded.
+- Excel's error grows with z = -nu ln x (nu = a + (b - 1)/2, z about 125 at x = 50), the argument of the incomplete
+  gamma in TOMS 708 `bgrat`, which is the branch bratio takes there (L140 bup + bgrat): consistent with z formed with a
+  few ulp of error in Excel's own LN/log1p, not pinned.
+Evidence: probes-numeric t2528-f-dist-huge-df2 (60 cells, excel-graph, 2026-10-30), t1530-f-df-cut A8, A12, A14.
+Ours: since T-2528 DiDonato and Morris' expansion in Q(b, z) (`large_shape_beta.rs`) for a of 1E6 or more, b below
+40 (bratio's bgrat family; from 40 Excel's other branches decide, `#NUM!` at `BETA.DIST(0.1,1E+200,1E+100,TRUE)`) and
+b/a at most 1E-6, in accurate arithmetic (z and ln x in double-double, Legendre's fraction for Q/r from the bottom up):
+within 2E-15 of the true value on the probe; Cephes' fraction there did not converge and was about 1E-7 off. 38 of
+the 60 cells are within 15 digits of Excel; the other 22 are where Excel is itself more than half a unit of the 15th
+digit off the true value (T-3209).
+Status: VERIFIED (excel-graph) for the values; Excel's arithmetic inside bgrat is UNVERIFIED (T-3209, T-2510)
+Implemented in: functions/statistical/large_shape_beta.rs `large_shape_lower`
+Tasks: T-2528, T-3209
+
 ## F-distribution df limit (T-1530)
 Rule: either df above 1E10 (after truncation) makes every F function `#NUM!`: F.DIST (cumulative and pdf), F.DIST.RT,
 F.INV, F.INV.RT, FDIST and FINV, in both df positions (probed at 10000000001, 1.5E10 and 1E11). Unlike Student-t, the pdf is cut too.
@@ -3120,7 +3176,8 @@ Where it is tiny (the second shape huge, p <= 1/2) the search stops early, a New
   to 9.3E-7 relative off the true root, near AS 109's second Newton iterate from its own start (1E-12 to 4E-8
   relative), but no fixed acu, statrs' acu, or ln B from a double lgamma reproduces them (T-2555).
 - Ours: the crossing needs the CDF to about 1E-8 relative to pick Excel's neighbour near 1, and the T-0970 incomplete
-  beta is about 1E-7 off there (its fraction does not converge, T-2528): 1 ulp off at 4 of 12 near-1 cells. Where
+  beta was about 1E-7 off there (its fraction does not converge; since T-2528 the CDF takes the large-shape expansion,
+  "Incomplete beta at a huge first shape"): 1 ulp off at 4 of 12 near-1 cells. Where
   b/a is at most 1E-7, I_x(a, b) is taken as its large-a limit Q(b, -nu ln x), nu = a + (b - 1)/2 (the leading term
   of TOMS 708 `bgrat`, relative error about (b/a)^2 by mpmath: 1E-19 at a = 5E9), which is bit-exact on all of them.
 - Search failure at an extreme p: `F.INV(1E-200,1E10,6)` = 1.3006292404573862E-07 and
@@ -3746,7 +3803,7 @@ Earlier findings kept: F.TEST is not `2*MIN(F.DIST(f,..,TRUE),F.DIST.RT(f,..))` 
 F.DIST (probes/ftest-decomposition A8 0.7947858780819459 against F.TEST's 0.7947858780819458).
 Engine: `f_test_p` in crates/rustsheet-engine/src/functions/statistical/fisher.rs: `f_test_bratio_p`
 (f_test_tail.rs, T-2681) for both shapes above 1 with a + b <= 200 where it reaches (not TOMS `bgrat`, `bfrac`
-or `basym`), else `f_test_upper_tail` and `f_test_remainder` (R in double-double for a + b <= 200,
+or `basym`), else `f_test_upper_tail` and `half_integer_beta::half_integer_remainder` (R in double-double for a + b <= 200,
 `beta_reg_complement` above).
 Status: implemented as a fit (T-2361, T-2681); bratio for both shapes above 1 is PARTIAL (one cell visibly off, T-2829),
 Excel's algorithm for R at a shape of 1/2 is UNVERIFIED.
