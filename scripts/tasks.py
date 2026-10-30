@@ -321,8 +321,8 @@ def add_cells(out: set[str], case: str, tokens: list[str]) -> None:
 
 def cells_of(text: str, suites: set[str]) -> set[str]:
     """The eval cells a task file names: its cell-list lines, and inline citations such as
-    `gen-m9/27601819397dd56e Calc!A200` or `probes/irr-fallback-roots P!A12-A15 and A22-A24`, of cases in `suites` (eval/suites
-    directory names; `crates/x.rs A1` is not a case)."""
+    `gen-m9/27601819397dd56e Calc!A200` or `probes/irr-fallback-roots P!A12-A15 and A22-A24`, of
+    cases in `suites` (eval/suites directory names; `crates/x.rs A1` is not a case)."""
     out: set[str] = set()
     text = "\n".join(line for line in text.splitlines() if len(line) <= MAX_CELL_LINE)
     for m in CELL_LINE.finditer(text):
