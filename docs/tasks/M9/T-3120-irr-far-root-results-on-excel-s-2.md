@@ -111,3 +111,5 @@ So the tie direction is not one rule: every off-grid iterate in v in [0.25, 0.5)
 is on the grid already, which points at candidate B (the secant run on d = 1 - v, where d's spacing is 2^-53).
 Next: try candidate B in the engine with the retry and flat-secant guards, and score it in the fit lab (decision
 0056) against the IRR fit set (189/263); not yet done: the fit-lab scoring, A25/A26/A28 (two-flow cells), docs.
+
+Resumed 2026-10-30 05:35 UTC by an opus run (branch idle over 2 h).
