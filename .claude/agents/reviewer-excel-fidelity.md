@@ -35,9 +35,12 @@ Microsoft 365 Excel (en-US, 1900 date system, dynamic arrays) — including undo
 
 ## Output
 ```
+HEAD: <the output of `git rev-parse HEAD`, run before you read the diff>
 VERDICT: APPROVE | REQUEST_CHANGES | BLOCK
 FINDINGS:
 - [BLOCKING|MAJOR|MINOR] path:line — problem — evidence/oracle case — fix
 SUMMARY: ...
 ```
+The `HEAD:` line names the commit you reviewed: it goes into the verdict record of your report
+(SPEC-0027 "Verdict records (v2)"), and a report for another commit does not count.
 If the PR does not touch semantics, reply `VERDICT: APPROVE` with `SUMMARY: not applicable`.

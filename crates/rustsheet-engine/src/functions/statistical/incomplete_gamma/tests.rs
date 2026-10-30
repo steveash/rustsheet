@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 use super::{
-    cdf_terms_bound, continued_fraction_budget, gamma_cdf, gamma_density, gamma_inverse_cdf,
-    gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
-    wilson_hilferty_quantile, Tail, Terms, MAX_TERMS, TEMME_C,
+    cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower, gamma_cdf, gamma_density,
+    gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair,
+    inverse_cdf_within, temme_pair, wilson_hilferty_quantile, Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -387,7 +387,7 @@ fn quantiles_in_the_tails_are_excel_s() {
         (chi(1.0), 1e-200, Tail::Lower, 0.0),
     ];
     for (dist, p, tail, excel) in cases {
-        let ours = gamma_quantile(&dist, p, tail);
+        let ours = gamma_quantile(dist.shape(), 1.0 / dist.rate(), p, tail);
         assert!(
             (ours - excel).abs() <= 5e-15 * excel,
             "{p} at shape {}: {ours:e}, Excel {excel:e}",
@@ -397,7 +397,7 @@ fn quantiles_in_the_tails_are_excel_s() {
     // At a large shape `x^a` overflows, and the prefactor is TOMS 654's `rcomp`: the quantile
     // is within 1E-13 of `GAMMAINV(1E-10,99999,2)`, Excel's 196001.02844708483 (gen-m9
     // 165db58d1540f014; before T-1634's overflow guard it was 2.01).
-    let ours = gamma_quantile(&Gamma::new(99_999.0, 0.5).unwrap(), 1e-10, Tail::Lower);
+    let ours = gamma_quantile(99_999.0, 2.0, 1e-10, Tail::Lower);
     assert!(
         (ours - 196_001.028_447_084_83).abs() < 1e-13 * ours,
         "{ours}"
@@ -473,4 +473,77 @@ fn the_large_shape_prefactor_is_excels_away_from_the_mode() {
         0.500_265_961_486_283_7,
         8.0
     ));
+}
+
+#[test]
+fn shape_one_quantile_is_excels_closed_form() {
+    // Excel's doubles (T-3016): CHISQ.INV(0.5,2) and CHISQ.INV.RT(0.5,2) are 2 ln 2 (gen-m9
+    // 7674c89c824aca43 A106, a790a4d4a6a82756 A104), CHIINV(0.975,2) e6cf3b20a014e6a3 A98,
+    // CHISQ.INV(1E-16,2) 7674c89c824aca43 A198, GAMMA.INV(0.025,1,1E+15) ecc87f80077959e0 A302
+    // and GAMMA.INV(0.95,1,1000000) probes-numeric m9-gamma-inv A26 (the unit quantile over the
+    // rate 1E-6 is 2995732.2735539903); the crossing was 1 to 2 ulps off all but A198.
+    for (scale, p, tail, excel) in [
+        (2.0, 0.5, Tail::Lower, 1.386_294_361_119_890_6_f64),
+        (2.0, 0.5, Tail::Upper, 1.386_294_361_119_890_6),
+        (2.0, 0.975, Tail::Upper, 0.050_635_615_968_579_795),
+        (2.0, 1e-16, Tail::Lower, 2e-16),
+        (1e15, 0.025, Tail::Lower, 25_317_807_984_289.875),
+        (1e6, 0.95, Tail::Lower, 2_995_732.273_553_99),
+    ] {
+        let ours = gamma_quantile(1.0, scale, p, tail);
+        assert_eq!(
+            ours.to_bits(),
+            excel.to_bits(),
+            "{p} at scale {scale}: {ours}"
+        );
+    }
+    // The flush of a subnormal quantile to 0 comes after the scale: the unit quantile of 1E-310
+    // is subnormal, but times 1E10 it is a normal double.
+    assert!(gamma_quantile(1.0, 1e10, 1e-310, Tail::Lower) >= 1e-301);
+}
+
+#[test]
+fn half_quantiles_at_shapes_nine_and_fifty() {
+    // T-0972 refines every quantile to the crossing; these pin it at the median. Excel's
+    // GAMMA.INV(0.5,50,1) is 49.66706461799423 (probes-numeric m9-gamma-inv A60), and its
+    // GAMMA.INV(0.5,9,1) is 8.668951184370373 (A46), one ulp above ours (the true quantile is
+    // 8.6689511843703722; T-3016). T-3239 owns that ulp: whoever fixes it asserts Excel's bits.
+    let ours = gamma_quantile(50.0, 1.0, 0.5, Tail::Lower);
+    assert_eq!(ours, 49.667_064_617_994_23);
+    let ours = gamma_quantile(9.0, 1.0, 0.5, Tail::Lower);
+    assert_eq!(ours.to_bits() + 1, 8.668_951_184_370_373_f64.to_bits());
+}
+
+/// Excel's GAMMA.DIST at a shape below 1 and a small x is its own leading factor
+/// EXP(a*LN(x))/EXP(GAMMALN(a+1)) times e^-x and the series, bit for bit, where the accurate pair is
+/// up to 102 ulps away (probes/t3012-gamma-dist-at-quantile; the literals are read at 15 digits,
+/// so these are the 15-digit x values Excel evaluated; T-3060).
+#[test]
+fn small_shape_lower_is_excels_leading_factor() {
+    let cells: [(f64, f64, f64); 8] = [
+        // (x, a, Excel), cells A16, A17, A18, A3, A5, B22, A9 and A29.
+        (4.147_567_013_992_2e-134, 0.75, 1.000_000_000_000_026e-100),
+        (8.935_662_254_176_51e-41, 0.75, 9.999_999_999_999_968e-31),
+        (4.147_567_013_992_1e-22, 0.75, 9.999_999_999_999_981e-17),
+        (6.073_048_362_407_71e-301, 0.1, 9.999_999_999_999_915e-31),
+        (6.073_048_362_407_84e-101, 0.1, 9.999_999_999_999_995e-11),
+        (4.444_826_637_535_33e-34, 0.9, 1.000_000_000_000_001_1e-30),
+        (6.749_697_893_111_74e-41, 0.25, 1.000_000_000_000_000_6e-10),
+        (1e-30, 0.25, 3.488_822_835_570_022e-8),
+    ];
+    for (x, a, excel) in cells {
+        let ours = excel_small_shape_lower(a, x).unwrap();
+        assert_eq!(
+            ours.to_bits(),
+            excel.to_bits(),
+            "GAMMA.DIST({x:e},{a},1,TRUE)"
+        );
+    }
+    // Outside its region it leaves the pair alone: a shape of 1 or more, x of 1 or more, a
+    // subnormal x, and an a·LN(x) above -16, where A31 and C25 are bit-exact on the pair.
+    assert_eq!(excel_small_shape_lower(1.0, 1e-30), None);
+    assert_eq!(excel_small_shape_lower(0.75, 1.0), None);
+    assert_eq!(excel_small_shape_lower(0.75, 1e-310), None);
+    assert_eq!(excel_small_shape_lower(0.25, 1e-5), None);
+    assert_eq!(excel_small_shape_lower(0.9, 2.664_607_301_508_61e-6), None);
 }

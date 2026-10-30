@@ -213,6 +213,7 @@ pub(crate) fn round_shown_place(value: f64, precision: i32, is_scientific: bool)
 /// once, at `precision + 1` digits, as the fixed codes round (`0.00E+00` on 1.005, the double
 /// 1.00499999…, is "1.01E+00"; `0E+0` on 2.5 "3E+0"; on 12.345 "1.23E+01", where rounding to four
 /// digits first gave "1.24E+01"; probes/t2705-scientific-mantissa-rounding, gen-m10; T-2705).
+/// The returned mantissa is already shifted to one integer digit (it is not the full-scale value).
 pub(crate) fn round_scientific(value: f64, precision: i32) -> (f64, f64) {
     let shown = (i64::from(precision) + 1).clamp(1, SIGNIFICANT_DIGITS);
     let (mantissa, mut exponent) = significant_15(value.abs(), false);
@@ -227,7 +228,9 @@ pub(crate) fn round_scientific(value: f64, precision: i32) -> (f64, f64) {
         digits /= 10;
         exponent += 1;
     }
-    let rounded = decimal_to_f64(digits, exponent - shown + 1).unwrap_or(f64::INFINITY);
+    // The mantissa is built unscaled: scaling to the full magnitude first overflows for 1.80E+308
+    // (DBL_MAX rounds up past f64::MAX; probes/dbl-max-text-b, T-2106).
+    let rounded = decimal_to_f64(digits, 1 - shown).unwrap_or(f64::INFINITY);
     (rounded.copysign(value), exponent as f64)
 }
 
