@@ -12,7 +12,7 @@ depends_on: []
 
 ## Goal
 Oracle evidence pins where Excel's large-shape gamma prefactor takes its ratio form (T-2638) and where it does not,
-so the engine's bracketed bounds (`incomplete_gamma::NEAR_MODE` = 0.4, `RATIO_FORM_MIN` = 0.02) and the functions that
+so the engine's bracketed bounds (`incomplete_gamma::NEAR_MODE` = 0.4, `RATIO_FORM_MIN` = 0.005) and the functions that
 use the form are set by evidence.
 
 ## Context
@@ -21,8 +21,8 @@ the log of the ratio that is at least 1 (docs/excel-semantics/statistics.md, T-2
 GAMMA.DIST and CHISQ.DIST densities and cdfs at shapes 25, 50 and 500 for x from a/10 to 4a. Bracketed only:
 - Near the mode: Excel is accurate at x = 0.99a (`POISSON.DIST(100,100,TRUE)`) and at 1E6; it takes the ratio form at
   1.5a and a/10; both agree at a/2. The engine switches at |x - a| = 0.4a (TOMS 654's bound, not evidence).
-- Below a/10: the form is Excel's at a/21 (gen-m9/8dd2312c96effb1b A333); at a/500 Excel is neither form (probes/t2753-gamma-density-ratio-sweep A47, B47); the engine keeps
-  `rcomp` below a/50. T-3219 owns those cells' fit.
+- Below a/10: the form is Excel's at a/21 (gen-m9/8dd2312c96effb1b A333); at a/100 Excel is closer to it than to `rcomp` (t2753 A48, B48; gen-m9/68d8ffb69ff739d8 A341) and at a/500
+  closer to `rcomp` (probes/t2753-gamma-density-ratio-sweep A47, B47); the engine keeps `rcomp` below a/200. T-3219 owns those cells' fit.
 - POISSON.DIST cumulative (`gamma_ur`) and the large-shape BETA.DIST / BETA.INV / F.INV paths keep `rcomp`: no cell
   probes the ratio form for them.
 Probe (excel-probe skill): GAMMA.DIST(x,50,1,FALSE) and (x,200,1,FALSE) at x/a = 0.55 to 0.99 and 1.01 to 1.45 in

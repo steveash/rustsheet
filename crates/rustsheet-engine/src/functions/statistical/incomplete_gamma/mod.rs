@@ -184,7 +184,7 @@ fn gamma_prefactor(a: f64, x: f64, form: Exponent) -> f64 {
         if form == Exponent::Accurate || (x - a).abs() <= a * NEAR_MODE || x < a * RATIO_FORM_MIN {
             // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
             // 0.5002659614862837 to 5 ulp, where the ratio form below is 1E-10 off (ironcalc-calc
-            // POISSON.xlsx D31). Below a/50 Excel is neither (TODO(T-3219)).
+            // POISSON.xlsx D31). Below a/200 Excel is neither (TODO(T-3219)).
             -a * rlog(a, x)
         } else {
             // Excel's own form away from the mode: the log of the ratio that is at least 1, a ln(x/a)
@@ -233,10 +233,11 @@ const NEAR_MODE: f64 = 0.4;
 
 /// The smallest x / a at which [`gamma_prefactor`] takes Excel's ratio form. Bracketed (T-2638):
 /// Excel is the ratio form bit for bit at a/21 (gen-m9/8dd2312c96effb1b A333
-/// `GAMMA.DIST(3.14159,42,ACOS(0),FALSE)`) and is not at a/500 (probes/
-/// t2753-gamma-density-ratio-sweep A47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 ulp off with `rcomp`, 252
-/// with the ratio form); 1/50 lies between (T-3220 probes it).
-const RATIO_FORM_MIN: f64 = 0.02;
+/// `GAMMA.DIST(3.14159,42,ACOS(0),FALSE)`), closer to it than to `rcomp` at a/100 (probes/
+/// t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1,FALSE)`: 69 ulp against 350;
+/// gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208) and closer to `rcomp`
+/// at a/500 (A47, B47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252); 1/200 lies between (T-3220).
+const RATIO_FORM_MIN: f64 = 0.005;
 
 /// The gamma density x^(a-1) e^(-x/scale) / (scale^a Gamma(a)) for a > 0, x > 0 and scale > 0,
 /// as [`gamma_prefactor`]`(a, x / scale) / x`: the prefactor P and Q share, so the density keeps

@@ -1095,9 +1095,10 @@ at x = a/10), a(ln(y/a) + 1 - y/a), a log1p(y/a - 1) at a/10 and 3a, and every f
 order (11 to 870 ulp off somewhere). The window where Excel keeps the accurate exponent is bracketed only: it holds
 x = 0.99a, and the ratio form holds at 1.5a and a/10 (both agree at a/2); ours takes |x - a| <= 0.4a (TOMS 654's own
 near-mode bound) (UNVERIFIED between those points). The ratio form is Excel's bit for bit at a/21
-(gen-m9/8dd2312c96effb1b A333 `GAMMA.DIST(3.14159,42,ACOS(0),FALSE)`), but at a/500 Excel is neither form
-(probes/t2753-gamma-density-ratio-sweep A47 `GAMMA.DIST(0.1,50,1,FALSE)`: `rcomp` 114 ulp off, the ratio form 252), so
-ours keeps `rcomp` below a/50 (UNVERIFIED between). POISSON.DIST's cdf and the large-shape BETA.DIST, BETA.INV and F.INV paths keep `rcomp`
+(gen-m9/8dd2312c96effb1b A333 `GAMMA.DIST(3.14159,42,ACOS(0),FALSE)`); at a/100 Excel is neither but closer to the
+ratio form (probes/t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1,FALSE)`: ratio form 69 ulp off, `rcomp`
+350; gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208), and at a/500 closer to `rcomp` (A47, B47
+`GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252), so ours keeps `rcomp` below a/200 (UNVERIFIED between). POISSON.DIST's cdf and the large-shape BETA.DIST, BETA.INV and F.INV paths keep `rcomp`
 too: no cell probes them (T-3220 probes the window and those functions). Below shape 20 neither this form nor the direct one is Excel's
 (`GAMMA.DIST(0.9,9,1,TRUE)`: Excel 9 ulp below the truth, the ratio form 23 below Excel, the direct one 10 above).
 Status: VERIFIED (excel-graph)
