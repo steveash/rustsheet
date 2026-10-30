@@ -3,7 +3,7 @@ id: T-2858
 title: "T.INV, T.INV.2T, TINV and CONFIDENCE.T at one degree of freedom are 1/TAN(pi*p/2) through Excel's TAN (68 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
