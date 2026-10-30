@@ -11,6 +11,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_ready  # noqa: E402 (the sys.path line above must run first)
 import merge_train  # noqa: E402
+import merge_train_filing  # noqa: E402
 from gh_client import GhError  # noqa: E402
 from test_merge_train import StageFixture  # noqa: E402
 
@@ -85,7 +86,7 @@ class StopAndRevert(StageFixture):
         squash = self.gh.squashes[1]
         self.assertIn(f"P0: main differs from the tested train after squashing #1 ({squash})", self.stage.log)
         revert, tasks = self.gh.opened
-        branch = f"{merge_train.REVERT_PREFIX}{squash}"
+        branch = f"{merge_train_filing.REVERT_PREFIX}{squash}"
         self.assertEqual((revert["title"], revert["head"], revert["base"]),
                          ("revert: merge train mismatch at #1", branch, "main"))
         tested = self.gh.git("rev-parse", f"{self.train_ref()}~2^{{tree}}")  # T_1: the record commit is on T_2
@@ -107,7 +108,7 @@ class StopAndRevert(StageFixture):
     def test_a_task_that_cannot_be_filed_is_logged_and_the_lock_released(self) -> None:
         self.gh.bad_tree = True  # a P0 before the squash
         failed = merge_train.GitError("tasks.py new: exit 3")
-        with mock.patch.object(merge_train.Stage, "write_task", side_effect=failed):
+        with mock.patch.object(merge_train_filing, "write_task", side_effect=failed):
             self.assertEqual(self.run_stage(), 1)
         self.assertEqual(self.gh.opened, [])
         self.assertEqual(self.stage.log[-2:], [

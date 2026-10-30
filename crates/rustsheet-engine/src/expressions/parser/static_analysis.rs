@@ -218,10 +218,11 @@ pub(super) fn add_legacy_intersection(node: &mut Node, add: bool, arrays: bool) 
         Node::FunctionKind { kind, args } if is_array_context(kind) => add_in_array_context(args),
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
-            for (index, arg) in args.iter_mut().enumerate() {
+            for index in 0..args.len() {
                 // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
                 // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
-                let arrays = legacy_array_context(kind, signature.get(index), index, arg, arrays);
+                let arrays = legacy_array_context(kind, signature.get(index), index, args, arrays);
+                let arg = &mut args[index];
                 add_array_at(kind, signature.get(index), index, arg, arrays);
                 add_argument_intersection(kind, signature.get(index), index, arg, arrays);
             }

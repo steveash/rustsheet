@@ -8,7 +8,7 @@
 //! evaluation results as well as where an `@` goes: a change to it needs a probe's legacy values,
 //! not only its FORMULATEXT (SPEC-0012 "Placement", item 4).
 
-use super::if_arm::{is_reference_arm, returns_range_arm};
+use super::if_arm::{is_reference_arm, leaves_choose_index_whole, returns_range_arm};
 use super::lifted::lifts_arrays_at;
 use super::operand_array::{add_operand_array_at, for_each_value_operand, remove_operand_array_at};
 use super::reference_result::{is_let_call, let_result};
@@ -165,12 +165,13 @@ pub(super) fn remove_array_at(
     }
 }
 
-/// Whether argument `arg` of `kind` with `signature` is still in a value position of the cell
+/// Whether argument `index` of the call `kind(args)`, with `signature`, is still in a value position of the cell
 /// when `kind`'s call is (`arrays`), so that a legacy formula puts its `@` on an array-valued call
 /// or array constant there rather than on an enclosing call: a scalar argument of a function that
 /// computes from it (`=ABS(@IF(1,{-2;3}))`, `=LEN(@IF(1,{"ab";"c"}))`, `=N(@TRANSPOSE({2,3}))`,
 /// `=N(@IFERROR({2;3},0))`; probes/legacy-array-result, legacy-n-t-reference-args D, T-1713).
-/// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`]), IFS or
+/// Not the arguments of IF, IFERROR, IFNA, CHOOSE (but its index, [`is_choose_index`], unless
+/// [`leaves_choose_index_whole`]), IFS or
 /// SWITCH, whose result is one of them: `=@IF(1,{2;3})` and `=@IF(1,N(IF(1,{2;3})))` take the
 /// `@` on the call (probes/legacy-array-result D, legacy-n-t-reference-args P); nor N or T over IF,
 /// SWITCH or a CHOOSE, INDEX or IFS of array constants ([`leaves_call_whole`]); nor
@@ -179,14 +180,17 @@ pub(super) fn legacy_array_context(
     kind: &Function,
     signature: Option<&Signature>,
     index: usize,
-    arg: &Node,
+    args: &[Node],
     arrays: bool,
 ) -> bool {
     arrays
         && matches!(signature, Some(Signature::Scalar))
-        && (!returns_an_argument(kind) || is_choose_index(kind, index))
+        && (!returns_an_argument(kind)
+            || (is_choose_index(kind, index) && !leaves_choose_index_whole(kind, args)))
         && !matches!(kind, Function::Let | Function::Lambda)
-        && !leaves_call_whole(kind, arg)
+        && args
+            .get(index)
+            .is_some_and(|arg| !leaves_call_whole(kind, arg))
 }
 
 /// CHOOSE's index is the one argument it computes from rather than returns, so a legacy formula
