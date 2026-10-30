@@ -186,6 +186,27 @@ wrapped in parentheses (`=(ABS((ABS(...))))`), and a LET or a called LAMBDA at t
 128 and 255 levels. The 66-call inputs (`abs`, `if`, `sum`, `mixed`, `op-abs`, `paren-abs`, `let`,
 `lambda`, stored and typed) cannot keep a sidecar, so they were dropped after the run, as T-1091's
 were. The committed 63- to 65-call cases evaluate on both sides.
+`@` and `#` (T-3143, probes/t3143-*, excel-graph 2026-10-30): stored, `_xlfn.SINGLE(` (the file form of
+`@`) and `_xlfn.ANCHORARRAY(` (of `#`) are calls like any other. 64 ABS calls around `_xlfn.SINGLE(C1:C2)`,
+`ABS(_xlfn.SINGLE(` around 63 more, and 63 ABS calls around `SUM(_xlfn.ANCHORARRAY(C1))` load (65 calls
+each), and the same one level deeper (66) makes Excel refuse the workbook (createSession 501). Typed, the
+operators add no level: 65 ABS calls around `@C1:C2`, `=ABS(@` around 64 more ABS calls, and 64 ABS
+calls around `SUM(C1#)` are all accepted (Graph PATCH) and evaluate. So Excel accepts typed formulas it
+then cannot load back once saved, since the saved text spells `@` and `#` as calls. `SINGLE(` typed as a
+call counts like any call: 64 ABS calls around `SINGLE(C1:C2)` are accepted and 65 refused (400
+`InvalidArgument`). `ANCHORARRAY(` typed as a call through Graph is refused at any depth, even
+`=ANCHORARRAY(C1)` and `=SUM(ANCHORARRAY(C1))` with C1 spilling (400 `InvalidArgument`;
+probes/t3143-anchor-typed-bare and -sum, dropped after the run; the engine accepts it, T-3262); a
+stored `ANCHORARRAY(D1)` loads (probes/at-operand-formulatext J30).
+Defined names (T-3143): a name body of 65 nested ABS calls loads and evaluates
+(probes/t3143-name-body-65, tagged M8 as defined-name bodies are, decision 0051), and one of 66 makes Excel refuse the workbook (createSession 501). The
+importer refuses both workbooks Excel refuses, cell formulas and name bodies (`reparse_formula_hack`).
+`Input::StoredFormula` through the API is not checked (it keeps 66 calls, as it keeps `=SUM()`):
+Excel has no per-cell stored entry to probe, only the whole file. Unprobed: conditional-format and
+data-validation formulas past 65 calls (the case format cannot express them yet, T-3263), names
+defined through the API, and whether a name's use counts its body's calls toward the using formula (T-3264).
+The refused T-3143 inputs (`single-inner-65-stored`, `single-mid-65-stored`, `anchor-inner-65-stored`,
+`single-spelled-65-typed`, `name-body-66`) were dropped after the run.
 Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t3172-*, excel-graph
 2026-10-30, bisected; stored and typed give the same counts): Excel accepts 256 nested parentheses
 around `1` and refuses 257; accepts a run of 1,024 unary minus signs before the number `1` and refuses
@@ -202,16 +223,18 @@ alternating runs of 1,024 and 8,189. So no run reaches the 8,192-character text 
 RustSheet counts the same calls (`MAX_NESTED_CALLS`, depth.rs): a typed formula nesting 66 or more is
 refused through the API (`EditError::InvalidInput`, the cell keeps its content) and the xlsx importer
 refuses a workbook holding one (`XlsxError::Workbook`), T-3097. `TRUE()`, `FALSE()` and a call of a
-LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY(x)` (stored `@` and
-`#`) do not (unprobed). Defined-name bodies, conditional formats, data validation and
-`Input::StoredFormula` are not checked (unprobed; T-3143). Bare parentheses match Excel:
+LET name or of a cell-shaped callee count as calls, and so do `SINGLE(x)` and `ANCHORARRAY(x)` spelled
+as calls (the stored `@` and `#`), while the `@` and `#` operators do not (T-3143, above). The importer
+also refuses a defined-name body nesting 66 or more (T-3143). Conditional formats and data validation
+are not checked (unprobed, T-3263), nor is `Input::StoredFormula` (by design, above). Bare parentheses match Excel:
 t3097-nesting-paren-128 and -255 and t3172-paren-256 load and evaluate (T-3191), and so do the
 sign runs T-3172 probed (minus up to 1,024, plus and alternating up to 1,023; T-3193), and so do
 64 and 65 levels of `(ABS(` (t3097-nesting-paren-abs-64 and -65; T-3197, decision 0184: a call at a
 group's head costs less depth), which RustSheet refused until then. The DEVIATION below is the
 depth bound on shapes past Excel's caps, which protects the stack (directive 5): up to 72 levels of
-`(ABS(` parse, and those past Excel's 65 calls are refused only on the typed and import paths, not
-through `Input::StoredFormula` or a defined name (T-3143). Measured on a 1 MiB stack in a release
+`(ABS(` parse, and those past Excel's 65 calls are refused only on the typed and import paths (a
+defined-name body only on import), not through `Input::StoredFormula` or a name the API defines
+(T-3143). Measured on a 1 MiB stack in a release
 build before T-3191 and T-3197, the
 parser alone overflowed at about 292 recursively nested parentheses (about 3.5 KB per level, as
 each one passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`;
@@ -483,8 +506,12 @@ agree):
   Ours (t2786 case): the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
   Ours since T-3069: an unqualified `@` reference keeps the padding inside its brackets and a run after `@` is that
   padding (`[@ Col]` prints `[ @Col ]`, which reads back; one-sided `[@Col ]` and the qualified `T[@ Col]`, `T[ @Col ]`
-  read the same way and are unprobed, T-3240); a reference written with its table name still prints the
-  long form in its own table (T-3241; header, totals and outside-the-table shapes unprobed, T-3240). `T[ Col ]` is only
+  read the same way and are unprobed, T-3240). Since T-3241 the printing cell decides the `@` form: a `#This Row`
+  reference written with its table name prints `[@Col]` (padding kept) in a data row of its own table, as Excel does
+  above. Any reference written without the name prints with it in a cell outside the table (`[@Col]` as
+  `T[[#This Row],[Col]]`, `[Col]` as `T[Col]`), so a copy, fill or move out of the table, or a resize that leaves the
+  cell outside, gives text that parses there (an engine choice; header, totals and outside-the-table spellings are
+  unprobed, T-3240). `T[ Col ]` is only
   the engine's own printed text for `T[ [Col] ]`, which it re-parses after edits: typed or loaded, a padded bare column
   reads the run as part of the column name, so it is a parse error typed and `#REF!` loaded, and the xlsx export writes
   `T[ [Col] ]`. A defined-name body is neither, so a stored name `T[ Col ]` still reads as the column (unprobed).

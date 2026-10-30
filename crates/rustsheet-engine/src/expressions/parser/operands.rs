@@ -11,7 +11,8 @@ use super::super::utils::{
 };
 use super::reference_operators::is_reference_operand;
 use super::structured_reference::{
-    is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
+    is_unresolved_structured_reference, TableExtent, COLUMN_NOT_FOUND, TABLE_NOT_FOUND,
+    TABLE_SHEET_NOT_FOUND,
 };
 use super::*;
 use crate::functions::kinds::arg_counts;
@@ -345,19 +346,16 @@ impl Parser {
                 return Node::DefinedNameKind((name, scope, formula));
             }
         }
-        let name_lower = name.to_lowercase();
-        for table_name in self.tables.keys() {
-            if table_name.to_lowercase() == name_lower {
-                // A bare table name is its data area, like `Table[]` (gen-m8b specials
-                // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(
-                    name,
-                    None,
-                    None,
-                    token::TableSpacing::default(),
-                    true,
-                );
-            }
+        if self.table_named(&name).is_some() {
+            // A bare table name is its data area, like `Table[]` (gen-m8b specials
+            // e804cf2f8af00680 K116, lookups 27252667210b1d03).
+            return self.structured_reference_operand(
+                name,
+                None,
+                None,
+                token::TableSpacing::default(),
+                true,
+            );
         }
         // xlpm: Excel Lambda Parameter
         let name = name.trim_start_matches("_xlpm.").to_string();
@@ -716,15 +714,26 @@ impl Parser {
         spacing: token::TableSpacing,
         bare: bool,
     ) -> Node {
-        let reference = StructuredReference {
+        let mut reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
             spacing,
             bare,
             unqualified: false,
+            extent: None,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
+        if let Node::ThisRowKind {
+            data_start,
+            data_end,
+            ..
+        } = &lowered
+        {
+            reference.extent = self
+                .table_named(&reference.table_name)
+                .and_then(|table| TableExtent::of(table, Some((*data_start, *data_end))));
+        }
         if let Node::ParseErrorKind { message, .. } = &lowered {
             if self.loaded
                 && !message.starts_with(TABLE_SHEET_NOT_FOUND)
@@ -764,15 +773,7 @@ impl Parser {
             }
         };
         // table-name => table
-        // Table names match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
-        // An exact hit is deterministic; the case-folded scan covers the rest.
-        let table_name_lower = table_name.to_lowercase();
-        let table = match self.tables.get(&table_name).or_else(|| {
-            self.tables
-                .iter()
-                .find(|(name, _)| name.to_lowercase() == table_name_lower)
-                .map(|(_, t)| t)
-        }) {
+        let table = match self.table_named(&table_name) {
             Some(t) => t,
             None => {
                 let message = format!(

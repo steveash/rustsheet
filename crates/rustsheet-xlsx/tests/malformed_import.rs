@@ -443,6 +443,45 @@ fn formula_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
     Ok(())
 }
 
+// Stored, `_xlfn.SINGLE(` (`@`) and `_xlfn.ANCHORARRAY(` (`#`) are calls like any other: 65 calls
+// with one of them load and 66 are refused (createSession 501; probes/t3143-single-*-stored and
+// t3143-anchor-inner-*-stored, T-3143).
+#[test]
+fn stored_single_and_anchorarray_count_toward_the_nesting_cap() -> TestResult {
+    let abs = |n: usize, inner: &str| format!("{}{inner}{}", "ABS(".repeat(n), ")".repeat(n));
+    for calls in [65, 66] {
+        for formula in [
+            abs(calls - 1, "_xlfn.SINGLE(C1:C2)"),
+            format!("ABS(_xlfn.SINGLE({}))", abs(calls - 2, "1")),
+            abs(calls - 2, "SUM(_xlfn.ANCHORARRAY(C1))"),
+        ] {
+            let sheet = sheet_with_a100_formula(&formula)?;
+            if calls == 65 {
+                assert_imports(&sheet)?;
+            } else {
+                assert_import_error(
+                    &sheet,
+                    "Formula in Sheet1!A100 nests more than 65 function calls",
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+// A defined-name body is held to the same cap: a body of 65 nested calls loads and one of 66 makes
+// Excel refuse the workbook (createSession 501; probes/t3143-name-body-65, T-3143).
+#[test]
+fn name_body_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
+    let body = |n: usize| format!("{}1{}", "ABS(".repeat(n), ")".repeat(n));
+    assert_imports(&workbook_with_name_body(&body(65))?)?;
+    assert_import_error(
+        &workbook_with_name_body(&body(66))?,
+        "definedName nm body nests more than 65 function calls",
+    );
+    Ok(())
+}
+
 /// A workbook whose only defined name `nm` has `body` as its stored text.
 fn workbook_with_name_body(body: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     let names = format!(

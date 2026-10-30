@@ -33,7 +33,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
     one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position,
     `{"op": "insert_row", "sheet": "S", "row": 1}` inserts a blank row above row 1 (T-1933),
-    `delete_row` (same keys) deletes row 1, `{"op": "insert_column", "sheet": "S", "column": "B"}`
+    `delete_row` (same keys) deletes row 1 (with `"count": 4`, rows 1-4 in one edit, T-3019),
+    `{"op": "insert_column", "sheet": "S", "column": "B"}`
     inserts a blank column left of B and `delete_column` deletes it, `{"op": "delete_sheet",
     "sheet": "S"}` deletes a sheet, and `{"op": "convert_table", "sheet": "S", "table": "T1"}` /
     `delete_table` turn a table into a range / delete it (T-2323). The
@@ -46,7 +47,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     inside the table are the rows the filter hides; that column's data cells must be literal numbers or
     text, and no value may be both kept and hidden. The engine adapter loads both. With
     `"totals_row": true` the last row of `ref` is the totals row: its cells (labels or formulas) are
-    written with the table's totals metadata (T-1607). Structured references are stored in their file
+    written with the table's totals metadata (T-1607). `"calculated": {"C": "T[[#This Row],[Col]]*2"}`
+    writes a `<calculatedColumnFormula>` for column C (T-2969), leaving the data cells as the spec has them. Structured references are stored in their file
     form: a bare table name as `Sales[]`, `@` as `#This Row` (`table_refs_to_file_form`).
   * `"date_system": 1904` at the top level writes `<workbookPr date1904="1"/>` (1900, the default,
     writes nothing), and a sheet's `"number_formats": {"A1": "[h]:mm"}` gives those cells that number
@@ -368,6 +370,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             ws.set_row(row - 1, None, None, {"hidden": True})
         for table in sheet.get("tables", ()):
             patches.filters.append(_add_table(ws, sheet, table, hidden, tables))
+            patches.calculated.append(_calculated_columns(sheet, table, tables))
         formats = _number_formats(wb, sheet)
         _set_column_widths(ws, sheet)
         legacy = _listed_formula_cells(sheet, "legacy_formulas")
@@ -466,6 +469,8 @@ class _Patches:
     lossy: list[tuple[int, str, float]] = field(default_factory=list)
     # (table name, `<autoFilter>` element or "") in add order
     filters: list[tuple[str, str]] = field(default_factory=list)
+    # (table name, {header: file-form formula}) in add order, T-2969
+    calculated: list[tuple[str, dict[str, str]]] = field(default_factory=list)
     # (sheet number, (top-left cell, `<f>`)), T-0428
     data_tables: list[tuple[int, tuple[str, str]]] = field(default_factory=list)
     pivots: PivotParts = field(default_factory=PivotParts)  # T-1705
@@ -475,6 +480,7 @@ def _patch_package(xlsx: bytes, spec: dict[str, Any], patches: _Patches) -> byte
     """Writes what XlsxWriter cannot into the package `build_xlsx` wrote."""
     xlsx = _store_errors(xlsx, patches.stored) if patches.stored else xlsx
     xlsx = _filter_tables(xlsx, patches.filters) if any(el for _, el in patches.filters) else xlsx
+    xlsx = _calculated_tables(xlsx, patches.calculated) if any(c for _, c in patches.calculated) else xlsx
     # Data tables and calculation settings are no-ops when the spec has none (T-0428).
     xlsx = _write_calculation(_write_data_tables(xlsx, patches.data_tables), spec.get("calculation"))
     xlsx = _write_pivots(xlsx, patches.pivots)
@@ -576,6 +582,50 @@ def _add_table(
     ref_abs = f"{cell(r1, c1)}:{cell(last_data, c2)}"
     column = f'<filterColumn colId="0"><filters>{values}</filters></filterColumn>'
     return name, f'<autoFilter ref="{ref_abs}">{column}</autoFilter>'
+
+
+def _calculated_columns(
+    sheet: dict[str, Any], table: dict[str, Any], tables: frozenset[str]
+) -> tuple[str, dict[str, str]]:
+    """The table's `"calculated"` option as `{header text: file-form formula}` (T-2969)."""
+    name, (r1, c1, _, c2) = str(table["name"]), _range(str(table["ref"]))
+    found: dict[str, str] = {}
+    for letter, formula in table.get("calculated", {}).items():
+        col = parse_a1(f"{letter}1")[1]
+        if not c1 <= col <= c2 or not isinstance(formula, str) or not formula:
+            msg = f"table {name}: calculated column {letter!r} must be a column of {table['ref']} with a formula"
+            raise ValueError(msg)
+        header = sheet["cells"][xlsxwriter.utility.xl_rowcol_to_cell(r1, col)]
+        found[header] = _formula_text("=" + formula.removeprefix("="), tables).removeprefix("=")
+    return name, found
+
+
+def _calculated_tables(xlsx: bytes, calculated: list[tuple[str, dict[str, str]]]) -> bytes:
+    """Gives each calculated column its `<calculatedColumnFormula>` (XlsxWriter's own column `formula`
+    option would also fill the data cells). `calculated` is in `add_table` order (`tableN.xml`)."""
+
+    def patch(name: str, columns: dict[str, str]) -> Callable[[str], str]:
+        def apply(text: str) -> str:
+            if f' name="{name}"' not in text:
+                msg = f"cannot patch table {name}: table part not found"
+                raise ValueError(msg)
+            for header, formula in columns.items():
+                quoted = escape(header, {chr(34): "&quot;"})
+                column = re.compile(rf'<tableColumn id="(\d+)" name="{re.escape(quoted)}"\s*/>')
+                element = f"<calculatedColumnFormula>{escape(formula)}</calculatedColumnFormula>"
+                if len(matches := list(column.finditer(text))) != 1:
+                    msg = f"table {name}: column {header!r} not found once"
+                    raise ValueError(msg)
+                m = matches[0]
+                tag = f'<tableColumn id="{m[1]}" name="{quoted}">{element}</tableColumn>'
+                text = text[: m.start()] + tag + text[m.end() :]
+            return text
+
+        return apply
+
+    return patch_parts(
+        xlsx, [(f"xl/tables/table{n}.xml", patch(name, c)) for n, (name, c) in enumerate(calculated, 1) if c]
+    )
 
 
 def _totals_column(raw: Any, a1: str, tables: frozenset[str]) -> dict[str, str]:

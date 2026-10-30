@@ -6,6 +6,12 @@ use super::*;
 /// `T` over A1:C4: `Col` 1, 2, 4, `Other` 10, 20, 40 and an empty `Calc` column, as in the
 /// probes/t2957-* cases.
 fn table_book() -> Workbook {
+    table_book_with_totals(false)
+}
+
+/// [`table_book`], with a totals row 5 (`Total` in A5) when `totals` is set, as in
+/// probes/t3003-totals-*.
+fn table_book_with_totals(totals: bool) -> Workbook {
     let mut wb = book();
     for (a1, input) in [
         ("A1", "Col"),
@@ -20,8 +26,14 @@ fn table_book() -> Workbook {
     ] {
         wb.set(a1, input).unwrap();
     }
-    let range = wb.range_ref("A1:C4").unwrap();
-    wb.edit(|tx| tx.add_table(range, "T", false)).unwrap();
+    if totals {
+        wb.set("A5", "Total").unwrap();
+    }
+    let range = wb
+        .range_ref(if totals { "A1:C5" } else { "A1:C4" })
+        .unwrap();
+    wb.edit(|tx| tx.add_table_with_totals(range, "T", false, totals))
+        .unwrap();
     wb
 }
 
@@ -144,4 +156,110 @@ fn rollback_restores_the_table_a_typed_formula_grew() {
     // The table is its old size again: typing beside it grows it once more.
     wb.set("D2", "=A2*2").unwrap();
     assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+}
+
+/// probes/t3003-const-*: a constant typed just right of the table grows it too, but fills nothing;
+/// typed into the header cell it becomes the header text, `5` as the text `5` (rule 7a, T-3218).
+#[test]
+fn a_constant_typed_beside_the_table_grows_it_and_fills_nothing() {
+    let mut wb = table_book();
+    wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+    let changes = wb.set("D2", "5").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+    assert_eq!(wb.value("D1").unwrap(), Value::Text("Column1".into()));
+    assert_eq!(wb.value("D2").unwrap(), Value::Number(5.0));
+    assert_eq!(wb.value("D3").unwrap(), Value::Empty);
+    // D2 and the header D1 are the edit's inputs.
+    assert_eq!(changes.inputs.len(), 2);
+
+    let mut wb = table_book();
+    wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+    wb.set("D1", "5").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+    assert_eq!(wb.value("D1").unwrap(), Value::Text("5".into()));
+    assert_eq!(wb.value("D2").unwrap(), Value::Empty);
+}
+
+/// Rolling back a typed constant that grew the table puts the table and its header cell back.
+#[test]
+fn rollback_restores_the_table_a_typed_constant_grew() {
+    let mut wb = table_book();
+    wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("D2", "hello")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(3.0));
+    assert_eq!(wb.value("D1").unwrap(), Value::Empty);
+}
+
+/// probes/t3003-totals-*: a totals row does not stop the growth. A formula typed beside a data row
+/// fills the other data rows but not the totals cell; typed beside the totals row it fills
+/// nothing (rule 7c, T-3218).
+#[test]
+fn a_table_with_a_totals_row_grows_too() {
+    let totals_book = || {
+        let mut wb = table_book_with_totals(true);
+        wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+        wb
+    };
+    let mut wb = totals_book();
+    let changes = wb.set("D2", "=A2*2").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+    assert_eq!(wb.value("D1").unwrap(), Value::Text("Column1".into()));
+    assert_eq!(wb.value("D4").unwrap(), Value::Number(8.0));
+    assert_eq!(wb.value("D5").unwrap(), Value::Empty);
+    // D1:D4 are the edit's inputs; the totals cell D5 is not written.
+    assert_eq!(changes.inputs.len(), 4);
+
+    let mut wb = totals_book();
+    wb.set("D5", "=A2*2").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+    assert_eq!(wb.value("D5").unwrap(), Value::Number(2.0));
+    assert_eq!(wb.value("D2").unwrap(), Value::Empty);
+    assert_eq!(wb.value("D4").unwrap(), Value::Empty);
+}
+
+/// probes/t3003-below-last-row: a formula typed just below the table grows it by a row in one
+/// edit, and rolling that edit back puts the table back to four rows (rule 7e, T-3273).
+#[test]
+fn typing_below_the_table_grows_it_by_a_row_and_rollback_restores_it() {
+    let mut wb = table_book();
+    wb.set("H2", "=ROWS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("A5", "=B4*2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    assert_eq!(wb.value("H2").unwrap(), Value::Number(4.0));
+
+    wb.set("A5", "=B4*2").unwrap();
+    assert_eq!(wb.value("H2").unwrap(), Value::Number(5.0));
+    assert_eq!(formula(&wb, "A5").as_deref(), Some("=B4*2"));
+    assert_eq!(wb.value("A5").unwrap(), Value::Number(80.0));
+}
+
+/// A formula typed just below an empty column grows the table but fills nothing, so rolling the
+/// edit back leaves every cell as it was (unprobed, pinned, T-3273).
+#[test]
+fn a_formula_typed_below_an_empty_column_fills_nothing_and_rolls_back() {
+    let mut wb = table_book();
+    wb.set("H2", "=ROWS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("C5", "=1")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+
+    wb.set("C5", "=1").unwrap();
+    assert_eq!(wb.value("H2").unwrap(), Value::Number(5.0));
+    assert_eq!(wb.value("C2").unwrap(), Value::Empty);
+    assert_eq!(formula(&wb, "C4"), None);
 }

@@ -73,12 +73,13 @@ fn simple_table() {
         column: 6,
     };
 
-    // `#This Row` keeps its text, in the export too, which writes table parts (T-2196).
+    // `#This Row` prints in its `@` form in a cell of its table (T-3241) and keeps its text in
+    // the export, which writes table parts (T-2196).
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUM(tblIncome[[#This Row],[Jan]:[Dec]])"
+        "SUM([@[Jan]:[Dec]])"
     );
     assert_eq!(
         to_excel_string(&t, &cell_reference),
@@ -390,6 +391,7 @@ fn every_form_round_trips_through_the_printer() {
         spacing: TableSpacing::default(),
         bare: true,
         unqualified: false,
+        extent: None,
     }];
     for specifier in &specifiers {
         if specifier.is_some() {
@@ -400,6 +402,7 @@ fn every_form_round_trips_through_the_printer() {
                 spacing: TableSpacing::default(),
                 bare: false,
                 unqualified: false,
+                extent: None,
             });
         }
         for (i, left) in names.iter().enumerate() {
@@ -415,6 +418,7 @@ fn every_form_round_trips_through_the_printer() {
                     spacing: TableSpacing::default(),
                     bare: false,
                     unqualified: false,
+                    extent: None,
                 });
             }
         }
@@ -428,7 +432,12 @@ fn every_form_round_trips_through_the_printer() {
         else {
             panic!("{text} parsed as {node:?}");
         };
-        assert_eq!(**parsed, reference, "{text}");
+        // The table's range is parse-time data, not part of the written text.
+        let written = StructuredReference {
+            extent: None,
+            ..(**parsed).clone()
+        };
+        assert_eq!(written, reference, "{text}");
         assert_eq!(to_rc_format(&node), text);
     }
 }

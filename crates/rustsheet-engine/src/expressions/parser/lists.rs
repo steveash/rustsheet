@@ -67,15 +67,11 @@ impl Parser {
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         // The names a LET binds are in scope up to its `)`.
         let scope = self.bound_names.len();
-        // `SINGLE(x)` and `ANCHORARRAY(x)` are the `@` and `#` operators, which Excel shows as
-        // such, so they are not counted as calls (unprobed, TODO(T-3143)).
-        let operator =
-            fn_name.eq_ignore_ascii_case("SINGLE") || fn_name.eq_ignore_ascii_case("ANCHORARRAY");
-        let args = if operator {
-            self.parse_function_args_in_scope(fn_name)
-        } else {
-            self.in_call(|parser| parser.parse_function_args_in_scope(fn_name))
-        };
+        // Spelled as calls, `SINGLE(x)` and `ANCHORARRAY(x)` count toward the nesting cap like any
+        // other: Excel refuses a stored formula with 65 calls and one `_xlfn.SINGLE(` or
+        // `_xlfn.ANCHORARRAY(`, and a typed one with 65 calls and one `SINGLE(`, while the `@` and
+        // `#` operators, which never reach here, add no level (probes/t3143-*, T-3143).
+        let args = self.in_call(|parser| parser.parse_function_args_in_scope(fn_name));
         self.bound_names.truncate(scope);
         args
     }
