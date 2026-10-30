@@ -9,6 +9,7 @@ use std::error::Error;
 use std::io::Write;
 
 use rustsheet::{Input, LoadOptions, SaveOptions, Workbook};
+use rustsheet_engine::expressions::utils::number_to_column;
 
 const ROWS: u32 = 1_000;
 const COLUMNS: u32 = 20;
@@ -24,26 +25,20 @@ fn formula(row: u32, column: &str) -> String {
     )
 }
 
-/// The column letters of the 0-based column `index` (below 676).
-fn column_name(index: u32) -> String {
-    let letter = |i: u32| char::from(b'A' + u8::try_from(i % 26).unwrap_or(0));
-    if index < 26 {
-        letter(index).to_string()
-    } else {
-        format!("{}{}", letter(index / 26 - 1), letter(index))
-    }
-}
-
 /// The xlsx bytes of a workbook holding `ROWS * COLUMNS` such formulas in F2 onwards.
 fn workbook_bytes() -> Result<Vec<u8>, Box<dyn Error>> {
+    // From F (column 6) on.
+    let columns = (6..6 + COLUMNS)
+        .map(|c| number_to_column(i32::try_from(c).ok()?))
+        .collect::<Option<Vec<_>>>()
+        .ok_or("no such column")?;
     let wb = common::filled_workbook(|tx| {
         tx.add_sheet("XA Data Pull")?;
         for r in 2..=ROWS + 1 {
-            for c in 0..COLUMNS {
-                let column = column_name(c + 5);
+            for column in &columns {
                 tx.set(
                     format!("{column}{r}").as_str(),
-                    Input::Formula(formula(r, &column)),
+                    Input::Formula(formula(r, column)),
                 )?;
             }
         }

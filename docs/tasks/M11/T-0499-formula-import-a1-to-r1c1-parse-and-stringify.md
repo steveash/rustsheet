@@ -79,5 +79,6 @@ Numbers (release build, this container): corpus-bench/52450 4,042 ms on main (fi
 after the first run's changes -> 2,466-2,563 ms after this run's. Callgrind of `rustsheet-eval show` on the case after
 the first run: `from_a1_to_rc` 13.4G (from 19.5G on main); the first run measured the bench at 1,000 formulas at
 980M -> 557M instructions in `from_a1_to_rc`. The case thread also spends 6.6G in the harness's argument-coverage
-re-parse (`call_arguments`), which is timed; T-3318 has that profile and the remaining target. Eval: 0 regressions,
-no newly passing cells.
+re-parse (`call_arguments`), which is timed; T-3318 has that profile and the remaining target. `cargo bench -p rustsheet --bench import` on the final branch: median 695 ms (min 658 ms)
+for the 20,000 formulas (no number on main: the bench is new; T-3318 compares). A lexer test
+(`lexer/test/test_peek.rs`) checks cached peeks against fresh reads. Eval: 0 regressions, no newly passing cells.
