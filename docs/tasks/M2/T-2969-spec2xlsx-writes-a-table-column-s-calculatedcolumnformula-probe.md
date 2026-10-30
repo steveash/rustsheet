@@ -39,4 +39,4 @@ each data cell keeps its own `<f>`. spec2xlsx cannot write a column formula toda
 ## Outcome
 spec2xlsx takes a table `"calculated": {"C": "<formula>"}` option (test in tools/tests/test_spec2xlsx_tables.py).
 Probe `t2969-calculated-column-load` filled on excel-graph: Excel does not refill a calculated column on load
-(rule in xlsx-storage.md). The engine does not read `calculatedColumnFormula`, so it matches the load rule; the one failing cell (FORMULATEXT shows `[@Val]` in Excel) is filed as T-3315.
+(rule in xlsx-storage.md). The engine does not read `calculatedColumnFormula`, so it matches the load rule; its one failing cell (FORMULATEXT `[@Val]`) was fixed on main by T-3241 (T-3315, dropped).

@@ -3719,7 +3719,6 @@ F	probes/t2829-ftest-tail-over-b.case.json	S!A6
 F	probes/t2829-ftest-tail-over-b.case.json	S!A7
 F	probes/t2829-ftest-tail-over-b.case.json	S!A8
 F	probes/t2829-ftest-tail-over-b.case.json	S!A9
-F	probes/t2969-calculated-column-load.case.json	S!I2
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A1
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A11
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A13

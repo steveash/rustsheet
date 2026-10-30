@@ -3,7 +3,7 @@ id: T-3315
 title: "FORMULATEXT of a formula inside its own table shows [@Col], not T[[#This Row],[Col]]"
 milestone: M2
 lane: engine
-status: todo
+status: dropped
 priority: P2
 size: S
 tier: opus
@@ -22,3 +22,6 @@ Found by T-2969: probes/t2969-calculated-column-load.case.json I2 expects `=[@Va
 
 ## Out of scope
 -
+
+## Outcome (dropped, 2026-10-30, T-2969)
+Superseded by T-3241 (merged to main): probes/t2969-calculated-column-load I2 passes there, so the baseline entry is gone and nothing is left to implement.
