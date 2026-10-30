@@ -80,7 +80,7 @@ exact-piece literals; do not fit the landing rule to A120 to A140's p as doubles
       (`make eval-baseline`) and no p = 0.999 cell of T-3016 or T-3131 made worse.
 - [ ] The landing rule and the forms tried, with their bit-exact and visible-parity counts on T-3148's case and the
       cached probes, are in docs/excel-semantics/statistics.md (decision 0056: two attempts, then time-box).
-- [x] Iteration stays bounded on untrusted input (the shared `MAX_TERMS` budget; huge shape or scale; p next to 1).
+- [ ] (not applicable: no engine change) Iteration stays bounded on untrusted input (the shared `MAX_TERMS` budget; huge shape or scale; p next to 1).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -132,7 +132,7 @@ Attempt 2:
   cdf is not ours:
   - On 35 of the 140 cells, all in S99, our double cdf at Excel's quantile is 1 ulp from p (17 below, 18 above).
   - Against 60-digit values, Excel's GAMMA.DIST is off the correctly rounded double on 12 of 85 probe cdf cells.
-    Ours is Excel's at 2 of them (A215, A217, through T-2638's ratio prefactor).
+    Ours is Excel's at 2 of them (A215, A217, through T-2638's ratio prefactor; engine eval at main f9d91462a).
   - Excel's CHISQ.DIST.RT is off on 8 of 68, and its lower-tail CHISQ.DIST on 49 of 68 (up to 19 ulp at df 50).
 
 So no search that stops where our cdf equals p reaches those 35 cells, whatever its start or step.

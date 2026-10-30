@@ -3500,7 +3500,8 @@ Tasks: T-1543, T-1634
       - GAMMA.DIST is off on 12 of 85 cells by 1 or 2 ulp: A167, A171, A172, A174, A202, A205-A208, A215, A217 and A218.
         Ours is off from Excel on the same cells except A215 and A217 (shape 50, x = 74.7246263895192), where it
         is Excel's double, also 1 ulp under the correctly rounded value. That is Excel's ratio-form large-shape
-        prefactor, which ours takes since T-2638.
+        prefactor, which ours takes since T-2638 (the T-3146 implementer's engine eval at main f9d91462a; the
+        committed script does not run the engine).
       - CHISQ.DIST.RT is off on 8 of 68 by 1 ulp: A251, A255, A259, A289, A313, A317, A353 and A355. For example, A313
         `CHISQ.DIST.RT(1.4787434638356816,10)` is 0.9989999999999999 in Excel, where the true value is
         0.999 - 0.39 ulp.
@@ -3522,7 +3523,8 @@ Tasks: T-1543, T-1634
       | Newton in ln x from a | 4 / 21 / 32 | 4 / 21 / 32 |
       | bisection from [0, 2^k], stopping at cdf = p | 4 / 21 / 29 | 4 / 21 / 29 |
 
-      None beats the crossing.
+      None beats the crossing on within-4-ulp or visible counts; statrs' search is more often bit-exact on S99 (5
+      against 2) but less often visible.
     - Reproducing Excel's landing point needs Excel's noisy double cdf near p bit for bit and its iteration path.
       This probe pins neither, and its x literals are cut to 15 digits (T-3175 replaces them).
     - Superseded: T-3146's first-round counts (136 cells, 44 of 132 off the band, crossing 4 / 48) used the engine's
