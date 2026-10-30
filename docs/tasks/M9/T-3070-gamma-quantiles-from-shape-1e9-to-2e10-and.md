@@ -3,7 +3,7 @@ id: T-3070
 title: "Gamma quantiles from shape 1E9 to 2E10 and above the chi-square df cap (T-2982 rest: E15, A2-A4, the #NUM! band, CHIINV at 2E13, the 1E11 z^2 term)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
