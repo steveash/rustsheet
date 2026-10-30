@@ -3,7 +3,7 @@ id: T-3130
 title: "Probe CONCATENATE, CONCAT and TEXTJOIN of an uncalled LAMBDA, and TRIMRANGE's value read of a variable bound to one cell"
 milestone: M9
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ another sheet (`TYPE(TAKE(LET(v,Data!A1,v),1))`).
 
 ## Out of scope
 -
+
+## Outcome
+Probe t3130-concat-lambda-trimrange-cell-variable (28 cells) passes against excel-graph. CONCAT/TEXTJOIN of an uncalled LAMBDA are now #VALUE! (were #N/IMPL!); TRIMRANGE reads its source as a reference like TAKE, so a one-cell trim stays a one-cell reference. Rules in arrays.md and lookup.md.

@@ -32,6 +32,8 @@ LN, EXP, log1p and GAMMALN, and brcmp1 = density·x·y), where that is a net vis
 - r2-impact's expected change for this group without T (step S6):
   - -137 visibly-off pre-T2464 cells and -2,319 in the w2f probes, with 17 broke;
   - 1 gated bit-exact cell lost: gen-m9 FDIST c18dbf21 A151, bup+bgrat, 7 ulp.
+- T-2528 added `large_shape_beta.rs`, an accurate bgrat-series stand-in for a >= 1E6, b < 40, b/a <= 1E-6 in the old
+  kernel: fold it into or replace it by this task's bgrat when the old kernel goes (directive 3).
 - Models: r2-bratio `bratio_excel.py` (`bgrat` and its incomplete-gamma helper, `Cfg(bgrat="orig")`), r2-tdist `xlk.py`.
 
 ### Cases owned (T-2981)

@@ -2764,6 +2764,27 @@ double. An 80-bit register holding `T` for that one product would do it; that is
 - The engine (`yield_start`, double-double for `D`): 515 known failures fixed, 58 YIELD and ODDFYIELD cells moved off
   the bit (51 by 1 ulp, one visibly: yield-one-step-start A37, 32 ulps; decision 0166, follow-up T-3152). In-scope
   visibly-off cells go from 3,166 to 3,141. The lab still misses 155 of 1,115 cells.
+T-3152 (attempt 1, 2026-10-30): no start built from the term-scaled formula's operations beats the engine's. The fit lab
+now names both earlier engine starts (kernels/yield_caret.py `rounded_once_yield_start`, `unrounded_term_yield_start`):
+`uv run rustsheet-fitlab yield-caret` (370 basis-0 cells) scores the rounded-once start 268 bit-exact and 361 within
+4 ulps, the unrounded-term start 341 and 369, T-1592's start in doubles 240 and 361.
+- Of the 9 cells decision 0162 listed visibly off, 6 are within 15 digits since attempt 4; yield-start-rate-term B30
+  and yield-start-term-basis C47 (each wants the start one ulp lower) and, from decision 0166, yield-one-step-start A37
+  (one ulp higher, which crosses a PRICE step: 32 ulps) are not. The lab reproduces each engine miss to the ulp, so
+  the miss is the start, not the engine's PRICE.
+- Scratch grid (1,100 YIELD probe cells with more than one coupon, all bases; a candidate scores a cell when its start
+  is one of the starts within 3 ulps of the engine's that give Excel's bits): `S = n/den` rounded, with each of the nine
+  operations of `n = (r·T)·100 + q` and `den = (pr·T + 100·T)/2 - q/4` exact or rounded to a double, and `T` in each of
+  `r·T`, `pr·T` and `100·T` the double, `whole + fl(days/year)` exact, or `whole + days/year` exact (13,824
+  candidates). Best: 945, the engine's arrangement and eleven equivalents (`pr·T` exact on `whole + fl(days/year)`,
+  rounding of `D`, `D/2`, `q/4` or `den` immaterial). All in doubles 676, attempt 3's FMA form 775, all exact 694. Every
+  one of the 1,100 cells has a start within 3 ulps that gives Excel's bits.
+- Misses are not per term: in the 8 + 309/360 group (yield-one-step-start, 44 cells) 20 take the engine's start and 24
+  need one ulp more, with the engine's exact quotient anywhere from -0.44 to +0.28 ulps off its rounding. On the 360
+  one-step cells the relative slope error that would explain each miss instead runs evenly from -4e-12 to +5e-12 (A37 aside), so it
+  is no constant slope error either.
+Next (T-3215): a hypothesis outside this operation set (another formula whose terms round differently, or a start from a
+different day count per product); the operation grid around the term-scaled form is exhausted.
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
 T-2777's term (`yield_start_term`) and, since T-2974 attempt 4, `pr·T` on the unrounded term (`yield_start`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
@@ -2778,7 +2799,7 @@ follow (`fn_yield_matches_excel_off_the_fit`). Still visibly off, though only 5 
 unit in the 15th digit): yield-start-rate-term S!B39 and S!B49 (basis 1, 8 and 30 years) and yield-solver-sweep S!C7
 (T-2974).
 Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates)
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates), T-3152 (the cells the start's rounding moved)
 
 ## ODDFYIELD stops short of ODDFPRICE's root
 Rule: ODDFYIELD's last digits are not the root of ODDFPRICE's price at the given price, and they fall on both sides

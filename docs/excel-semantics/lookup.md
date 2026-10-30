@@ -1008,6 +1008,11 @@ other consumer still read such a variable as its cell's value (T-2622). TRIMRANG
 unprobed.
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2622
+TRIMRANGE's value read is a reference too: `TYPE(TRIMRANGE(LET(v,A2,v)))` and `TYPE(TRIMRANGE(A2))` are 1, and `ROWS(A2-TRIMRANGE(LET(v,A3,v)))`
+and `ROWS(A2-TRIMRANGE(A3))` with A3 text are `#VALUE!`. TAKE of a variable that CHOOSE picks (`LET(v,A2,TYPE(TAKE(CHOOSE(1,v),1)))`) or that is bound
+to a cell on another sheet (`TYPE(TAKE(LET(v,Data!A1,v),1))`) is a reference as well: TYPE 1, ISREF TRUE
+A multi-cell source that trims to one cell is read the same way (our rule, from gen-m7 a470dc9e165bdb20 A465: `MAKEARRAY(3,2,LAMBDA(w,v,TRIMRANGE(Data!D11:E11,2,2)))` is 0.2 throughout); `TYPE`/`ISREF` of it are unprobed.
+(probes/t3130-concat-lambda-trimrange-cell-variable Q13-Q16, Q23-Q26, excel-graph, 2026-10-30, T-3130).
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or
