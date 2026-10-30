@@ -18,7 +18,7 @@ import json
 import re
 import subprocess
 import urllib.parse
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +41,14 @@ NAME = re.compile(r"(?!\.+$)[A-Za-z0-9_.-]{1,100}")
 REMOTE_URL = re.compile(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$")
 # A label's colour: six hex digits, no `#` (the REST labels endpoint's form).
 COLOR = re.compile(r"[0-9a-f]{6}")
+# The activity endpoint's paging cursor (its `after=` value): base64url text.
+CURSOR = re.compile(r"[A-Za-z0-9_=-]{1,200}")
+# A run list's `created` filter: one ISO-8601 UTC instant, as `>=` it or a `start..end` range.
+CREATED = re.compile(r"(?:>=)?\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ(?:\.\.\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)?")
+EVENT = re.compile(r"[a-z_]{1,40}")
+# Workflow run ids passed 10^10 in 2026, so they get their own bound, not `number`'s.
+RUN_ID = re.compile(r"[1-9][0-9]{0,19}")
+NEXT_AFTER = re.compile(r'<[^>]*[?&]after=([^&>]+)[^>]*>;\s*rel="next"')
 # How `gh api` reports a missing object.
 NOT_FOUND = "HTTP 404"
 MERGE_METHODS = ("squash", "merge", "rebase")
@@ -79,6 +87,15 @@ def number(value: int | str, what: str = "PR number") -> int:
     return int(text)
 
 
+def branch_name(name: str) -> str:
+    """A branch name safe in a URL path: `BRANCH`, and no empty, `.`-led or `.lock` segment, so
+    no `..` can climb out of `git/refs/heads/`."""
+    checked(BRANCH, name, "branch")
+    if any(not part or part.startswith(".") or part.endswith(".lock") for part in name.split("/")):
+        raise GhError(f"refused branch: {name!r}")
+    return name
+
+
 def as_dict(value: object) -> dict[str, object]:
     """`value` if it is a JSON object; GhError otherwise."""
     if not isinstance(value, dict):
@@ -95,6 +112,10 @@ class Client:
     def send(self, request: Request) -> object:
         raise NotImplementedError
 
+    def send_cursor(self, request: Request) -> tuple[object, str | None]:
+        """`send`, plus the cursor of the next page (the `after=` of a `rel="next"` link), if any."""
+        raise NotImplementedError
+
     def call(
         self,
         method: str,
@@ -104,8 +125,15 @@ class Client:
     ) -> object:
         return self.send(Request(method, f"{self.base}/{path}", tuple(query), body))
 
-    def pages(self, path: str, query: Sequence[tuple[str, str]] = (), key: str | None = None) -> list[object]:
-        """Every item of a list endpoint, read with `page=` (see the module docstring)."""
+    def pages(
+        self,
+        path: str,
+        query: Sequence[tuple[str, str]] = (),
+        key: str | None = None,
+        enough: Callable[[list[object]], bool] | None = None,
+    ) -> list[object]:
+        """Every item of a list endpoint, read with `page=` (see the module docstring). `enough`
+        sees each page and ends the read early when it returns True (for lists sorted newest first)."""
         items: list[object] = []
         for page in range(1, MAX_PAGES + 1):
             reply = self.call("GET", path, [*query, ("per_page", str(PER_PAGE)), ("page", str(page))])
@@ -113,7 +141,7 @@ class Client:
             if not isinstance(batch, list):
                 raise GhError(f"expected a list from {path}")
             items.extend(batch)
-            if len(batch) < PER_PAGE:
+            if len(batch) < PER_PAGE or (enough is not None and enough(batch)):
                 return items
         raise GhError(f"{path} has more than {MAX_PAGES * PER_PAGE} items")
 
@@ -135,6 +163,16 @@ class Client:
         if state not in ("open", "closed", "all"):
             raise GhError(f"refused PR state: {state!r}")
         return self.pages("pulls", [("state", state)])
+
+    def updated_pulls(self, since: str) -> list[object]:
+        """Every PR, newest update first, down to the first page that reaches back past `since`
+        (an ISO-8601 UTC instant, which compares as text)."""
+        def enough(batch: list[object]) -> bool:
+            last = batch[-1] if batch else None
+            return isinstance(last, dict) and str(last.get("updated_at", "")) < since
+
+        query = [("state", "all"), ("sort", "updated"), ("direction", "desc")]
+        return self.pages("pulls", query, enough=enough)
 
     def closed_labelled(self, label: str) -> list[object]:
         """Closed issues and PRs that still carry `label` (a PR has a `pull_request` key). The
@@ -172,6 +210,21 @@ class Client:
             raise GhError("refused comment: empty or over 65536 characters")
         return as_dict(self.call("POST", f"issues/{number(pr)}/comments", body={"body": body}))
 
+    def create_pull(self, title: str, head: str, body: str, base: str = "main") -> dict[str, object]:
+        """Opens a PR from the same-repository branch `head` into `base`."""
+        if not title or "\n" in title or len(title) > 256:
+            raise GhError("refused PR title: empty, multi-line or over 256 characters")
+        if not body or len(body) > 65536:
+            raise GhError("refused PR body: empty or over 65536 characters")
+        payload = {"title": title, "head": branch_name(head), "base": branch_name(base), "body": body}
+        return as_dict(self.call("POST", "pulls", body=payload))
+
+    def delete_branch(self, name: str) -> object:
+        """Deletes the branch `name` (never `main`)."""
+        if branch_name(name) == "main":
+            raise GhError("refused branch deletion: main")
+        return self.call("DELETE", f"git/refs/heads/{name}")
+
     # Labels.
     def add_label(self, pr: int | str, label: str) -> object:
         return self.call(
@@ -203,16 +256,49 @@ class Client:
     def check_runs(self, sha: str) -> list[object]:
         return self.pages(f"commits/{checked(SHA, sha, 'sha')}/check-runs", key="check_runs")
 
-    def workflow_runs(self, *, branch: str | None = None, head_sha: str | None = None) -> list[object]:
+    def workflow_runs(
+        self,
+        *,
+        branch: str | None = None,
+        head_sha: str | None = None,
+        event: str | None = None,
+        created: str | None = None,
+    ) -> list[object]:
         query = []
         if branch is not None:
-            query.append(("branch", checked(BRANCH, branch, "branch")))
+            query.append(("branch", branch_name(branch)))
         if head_sha is not None:
             query.append(("head_sha", checked(SHA, head_sha, "sha")))
+        if event is not None:
+            query.append(("event", checked(EVENT, event, "event")))
+        if created is not None:
+            query.append(("created", checked(CREATED, created, "created")))
         return self.pages("actions/runs", query, key="workflow_runs")
 
+    def run_jobs(self, run_id: int | str) -> list[object]:
+        """The jobs of workflow run `run_id` (its latest attempt), with their timestamps."""
+        return self.pages(f"actions/runs/{checked(RUN_ID, str(run_id), 'run id')}/jobs", key="jobs")
+
+    def activity(self, branch: str, since: str) -> list[object]:
+        """The pushes to `branch` (force pushes included), newest first, back past `since` (an
+        ISO-8601 UTC instant). The activity endpoint ignores `page=`, so this one read follows its
+        cursor, re-sent on the `repos/{owner}/{repo}` URL (module docstring)."""
+        query = (("ref", f"refs/heads/{branch_name(branch)}"), ("per_page", str(PER_PAGE)))
+        items: list[object] = []
+        cursor: str | None = None
+        for _ in range(MAX_PAGES):
+            paged = (*query, ("after", cursor)) if cursor else query
+            reply, cursor = self.send_cursor(Request("GET", f"{self.base}/activity", paged))
+            if not isinstance(reply, list):
+                raise GhError("expected a list from activity")
+            items.extend(reply)
+            last = reply[-1] if reply else None
+            if cursor is None or not isinstance(last, dict) or str(last.get("timestamp", "")) < since:
+                return items
+        raise GhError(f"activity has more than {MAX_PAGES * PER_PAGE} items")
+
     def dispatch(self, workflow: str, ref: str, inputs: Mapping[str, str] | None = None) -> object:
-        body: dict[str, object] = {"ref": checked(BRANCH, ref, "ref")}
+        body: dict[str, object] = {"ref": branch_name(ref)}
         if inputs:
             body["inputs"] = {checked(NAME, k, "input"): str(v) for k, v in inputs.items()}
         return self.call(
@@ -258,10 +344,24 @@ class GhApi(Client):
         return command + ["--input", "-"] if request.body is not None else command
 
     def send(self, request: Request) -> object:
+        return self.parse(request, self.run(request, self.argv(request)))
+
+    def send_cursor(self, request: Request) -> tuple[object, str | None]:
+        argv = self.argv(request)
+        out = self.run(request, [*argv[:2], "--include", *argv[2:]])
+        head, _, body = out.replace("\r\n", "\n").partition("\n\n")
+        found = NEXT_AFTER.search(head)
+        cursor = urllib.parse.unquote(found[1]) if found else None
+        if cursor is not None and not CURSOR.fullmatch(cursor):
+            raise GhError(f"gh api {request.method} {request.path}: refused cursor")
+        return self.parse(request, body), cursor
+
+    def run(self, request: Request, argv: list[str]) -> str:
+        """`gh api`'s output for `argv`; GhError when it fails."""
         stdin = json.dumps(request.body) if request.body is not None else ""
         try:
             result = subprocess.run(
-                self.argv(request),
+                argv,
                 input=stdin,
                 capture_output=True,
                 text=True,
@@ -273,8 +373,12 @@ class GhApi(Client):
         if result.returncode != 0:
             detail = (result.stderr.strip().splitlines() or ["no output"])[0][:200]
             raise GhError(f"gh api {request.method} {request.path}: {detail}")
+        return result.stdout
+
+    @staticmethod
+    def parse(request: Request, out: str) -> object:
         try:
-            return json.loads(result.stdout) if result.stdout.strip() else None
+            return json.loads(out) if out.strip() else None
         except ValueError as error:
             raise GhError(f"gh api {request.method} {request.path}: not JSON") from error
 
@@ -285,6 +389,8 @@ class Reply:
 
     value: object = None
     error: str | None = None
+    # The next page's cursor, for `send_cursor`.
+    after: str | None = None
 
 
 class FakeGh(Client):
@@ -298,13 +404,16 @@ class FakeGh(Client):
         self.requests: list[Request] = []
 
     def send(self, request: Request) -> object:
+        return self.send_cursor(request)[0]
+
+    def send_cursor(self, request: Request) -> tuple[object, str | None]:
         self.requests.append(request)
         reply = self.replies.get((request.method, request.url()))
         if reply is None:
             raise GhError(f"fake: no reply for {request.method} {request.url()}")
         if reply.error is not None:
             raise GhError(reply.error)
-        return reply.value
+        return reply.value, reply.after
 
 
 def owner_repo(url: str) -> tuple[str, str] | None:

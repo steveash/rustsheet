@@ -231,7 +231,9 @@ calendar prefix alone is no date token for a negative value: `"b1"` and `"B1"` g
 is " x", " x" and "- x", `"[$-40C]B1"` is "", "", "-" (probes/t2388-b1-negative, excel-graph, 2026-10-28; `"B1@"` prints the
 number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals. The same holds for a lone `B2`
 (`"b2"` -> "-", `"B2 x"` "- x"), a tagged `"[$-40C]B2"` and `"[$-409]B2"` ("-"), and a magnitude past the maximum
-serial (`TEXT(-3000000,"b1")` is "-"). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
+serial (`TEXT(-3000000,"b1")` is "-"). A positive value past it (and at or just past 2958465) prints
+only the literals: `TEXT(3000000,"b1")` and `"b2"`/`"B1"` are "", `"b1 x"` is " x", while `"d b1"` is `#VALUE!` and
+`"0;b1"` is the number "3000000" (probes/t3050-b1-positive-large, excel-graph, 2026-10-29). The same holds for a huge value and for locale-tagged prefixes: `TEXT(1E15,"b1")` and `"b2"` are "", `"b1 x"` is " x", `"0;b1"` is "1000000000000000"; `TEXT(3000000,"[$-40C]B1")` is "" and `"[$-40D]B1 x"` is " x" (probes/t3188-b1-huge-tagged, excel-graph, 2026-10-30; already implemented). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
 `"b1;b1"` are "", `"0;b1 x"` is " x" (probes/t2388-b1-negative A6-A13).
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED

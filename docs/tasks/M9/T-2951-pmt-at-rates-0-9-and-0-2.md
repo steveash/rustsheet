@@ -3,7 +3,7 @@ id: T-2951
 title: "PMT at rates -0.9 and 0.2 to Excel's bits so PMT.xlsx's 10 visibly-off chained NPER, PV and FV cells pass (parked in deferred T-2730)"
 milestone: M9
 lane: functions-financial
-status: blocked
+status: done
 priority: P1
 size: S
 tier: opus
@@ -134,3 +134,10 @@ and of the five 0.2 inputs it gets only G33 (F27, G27, F32 and F33 are 1 ulp off
 
 Reopen hypothesis: T-3071's probe of PMT at rates -0.95 to -0.5 with fv alone, type 1 alone and both (new oracle
 evidence); with it, fit the -0.9 shift first, then rescore the 0.2 cells with the rounded-once form.
+
+## Outcome
+Done by T-3014 (2026-10-29): Excel's PMT is `-(((pv+fv)/(1-Q) - fv) * d)` (financial.md "PMT is a discounted
+payment"), bit-exact on all 49 constant-argument PMT cells of PMT.xlsx including F10, F11, F18, F23, F27, G27, F32,
+F33 and G33, so the 10 owned cells pass and the whole workbook passes (309/309); their lines left
+eval/baseline/ironcalc-calc.txt. m9-fin-pmt's PMT count rose 132 -> 308; PPMT and IPMT are unchanged. T-3071's probe
+was not needed: T-3014's own probe (probes/t3014-pmt-fv-type-alone) separated fv from type 1.

@@ -3,7 +3,7 @@ id: T-2243
 title: "PMT, IPMT and PPMT back to Excel's bits on the 14 cells T-2130 moved by 1 to 4 ulp"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -47,9 +47,9 @@ The visibly-off cells are PMT's last bits amplified, so this task is PMT's bit f
   them first.
 
 ## Acceptance criteria
-- [ ] The 14 cells are bit-exact, and no cell of m9-fin-pmt, IPMT_PPMT.xlsx, PMT.xlsx or
+- [x] The 14 cells are bit-exact, and no cell of m9-fin-pmt, IPMT_PPMT.xlsx, PMT.xlsx or
       CUMPRINC_CUMIPMT.xlsx regresses or becomes visibly off.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The four PPMT cells Excel computes inexactly (T-2242).
@@ -68,3 +68,25 @@ all within 15 digits): FINANCIAL/PMT.xlsx Sheet1!J10, J11, J18, J23 (PV, e.g. 11
 120.00000000000462 today), H10, H11, H27, I27 (NPER), L32, L33 (FV), and FINANCIAL/CUMPRINC_CUMIPMT.xlsx Sheet1!G2
 (CUMIPMT). Fixing them lifts PV, NPER and FV to the Phase 1 rate. T-2730 names the same cells and stays parked
 for its PMT bit work.
+
+## After T-3014 (2026-10-29)
+T-3014's PMT (financial.md "PMT is a discounted payment") makes the whole of PMT.xlsx pass, so the eight PMT.xlsx
+cells here (F15, F33, G10, J15, J33, K10, L15, M10) are fixed. Left: IPMT_PPMT.xlsx G12, G14, H13, H31, H4 and
+probes/fin-cumipmt-overflow-and-forms A13, all IPMT/PPMT, which still start from the exact payment; T-3179 tries
+PMT's `1-Q` switch there.
+
+## Outcome
+IPMT and PPMT now split Excel's discounted PMT. With `A = (pv+fv)/(1-Q)`, PMT's `1-Q` switch and PMT's `d`, IPMT is
+`-((A*(1-Q(x)) - fv)*d)` and PPMT is `-(A*Q(x)*d)` (financial.md "IPMT and PPMT split Excel's discounted payment";
+`discounted_split` in annuity.rs). In period 1 of type 1, PPMT is Excel's discounted PMT. CUMIPMT's type-1 sum keeps
+the exact split (`SplitForm::Exact`), because the discounted one regresses 4 cells there (T-3179).
+
+The five IPMT_PPMT.xlsx cells of this task are fixed, and the whole workbook now passes (93 to 128
+of 128 cells). fin-cumipmt-overflow-and-forms A13 is CUMIPMT type 0, not an IPMT sum, so this change does not reach
+it; it stays with T-3179.
+
+Eval delta, gated suites: 312 known failures fixed (gen-m9 31, ironcalc-calc 35, probes 246) and 0 regressions.
+The ungated probes-numeric suite gains about 860 IPMT/PPMT cells (m9-fin-pmt, the three PPMT sweeps) and loses one:
+`PPMT(0.21,1,160,10000)` (ppmt-log-rate-sweep A371) is now an ulp off. Its PMT cell is an ulp off too; T-3186 is filed for it and the two other one-ulp PPMT misses.
+
+This also closes T-2667, T-2943 and T-3086.

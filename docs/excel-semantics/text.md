@@ -529,7 +529,7 @@ Rule: SEARCH lowercases per character and never changes the text's length: a cha
 Also: ς (final sigma) matches Σ and σ in either direction (`SEARCH("ς","ΟΣ")` is 2, `SEARCH("σ","ΟΣ")` is 2), ǆ matches ǅ, and U+212A (Kelvin) matches k; ſ/s, µ/μ, ϐ/β and ﬀ/ff do not match (`#VALUE!`).
 Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-10-12, T-1296).
 Status: VERIFIED (excel-graph)
-Implemented in: `fold_case` (functions/text/casefold.rs).
+Implemented in: `fold_case` (functions/util/collation.rs; shared with exact-match lookups and wildcard criteria, T-3133).
 Tasks: T-1296
 
 ## TEXT over an array of format codes
@@ -966,9 +966,26 @@ Rule: `VALUE("- 5")` is -5, `VALUE("3 1/2")` 3.5 and `VALUE("1-1-1")` 36892 (200
 one-digit year). Readers built on VALUE's grammar follow it: `IMABS("3 1/2")` is 3.5 (engineering.md "How an inumber
 is read").
 Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
-Ours: `#VALUE!` for all three (`value_text_number`, functions/text/common.rs).
-Status: VERIFIED (excel-graph); not implemented (T-2646).
-Tasks: T-2646
+A criterion reads `"1 1/2"` as 1.5 too (criteria.md "Criterion operands and text cells read numbers with VALUE's grammar",
+probes/t3136-criteria-formatted-number-operands H25).
+Edges (probes/value-sign-space-mixed-fraction-dash-date, excel-graph, 2026-10-29): spaces after a sign are skipped
+(`"- 5"`, `"-  5"` -5, `"+ 5"` 5, `"- 5.5"` -5.5, and `="- 5"+0` -5, so number coercion shares it). A mixed fraction takes
+a sign (`"-3 1/2"`, `"- 3 1/2"`, `"-  3 1/2"` -3.5, `"+3 1/2"` 3.5), a `$` (3.5) and a `%` (`"3 1/2%"` is
+0.034999999999999996, the whole and the fraction divided by 100 apart); an improper fraction reads (`"1 3/2"` 2.5), a
+numerator with a leading zero too (`"3 01/02"` 3.5), many digits (`"123456789 1/2"`), a denominator of 200 (3.005); but
+`"3 1/0"`, `"3  1/2"` (two spaces), `"3 1 /2"` and `"3 1/ 2"` are `#VALUE!`. A dash date reads a one-digit year as 200x
+and `"1/1/1"` is the same 36892 (`"1-1-0"` 36526, `"1-1-99"` 36161, `"1-1-30"` 1930); `"13-1-1"` and `"0-1-1"` are `#VALUE!`.
+Typed input, criteria and coercion (probes/typed-input-sign-space-mixed-fraction, excel-graph, 2026-10-30, T-3178): typed
+`- 5`, `+ 5`, `1-1-1` and `1/1/1` are numbers (-5, 5, 36892, 36892), and so are the typed mixed fractions `-$3 1/2` (-3.5),
+`-3 1/2%` (-0.034999999999999996) and `+ 3 1/2` (3.5); typed `€3 1/2` (no euro in en-US) and `$3 1/2%` stay text; unsigned `3 1/2`, `$3 1/2` and `3 1/2%` are numbers (B10-B12). Number
+coercion reads `"€3 1/2"` 3.5, `"-$3 1/2"`, `"-3 1/2%"` and `"+ 3 1/2"` too, but `"$3 1/2%"` is `#VALUE!`, and so is `VALUE("$3 1/2%")` (J1): a currency
+symbol and a `%` do not combine in a mixed fraction. A criterion operand reads `- 5`, `+ 5`, both dates, `-$3 1/2`,
+`-3 1/2%` and `+ 3 1/2` but not `€3 1/2` or `$3 1/2%` (`COUNTIF(3.5,"€3 1/2")` is 0), while a text cell `€3 1/2` does read
+as 3.5 (`COUNTIF(A5,A5+0)` is 1). UNVERIFIED: the number format a typed mixed fraction gets (`CELL("format")` is `#VALUE!` on
+excel-graph; ours General, T-3237).
+Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
+Tasks: T-2646, T-3151, T-3178
 
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:

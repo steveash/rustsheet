@@ -325,6 +325,22 @@ def test_yield_fitted_start_and_short_stop() -> None:
         assert model(*cell.args) == cell.expected, cell.key
 
 
+def test_yield_unrounded_term_start_sits_one_ulp_above_rounded_once() -> None:
+    # T-2974 attempts 2 and 4 (T-3152 names them in the fit): yield-solver-sweep S!C7 takes one step
+    # from the start, so its bits show the start's last bit. The rounded-once start (decision 0162)
+    # is one ulp below Excel's; the unrounded-term start (decision 0166, the engine's) is Excel's.
+    sweep = {c.key: c for c in load_sweep(["probes/yield-solver-sweep"], r"^=YIELD\((.*)\)$").cells}
+    cell = sweep["S!C7"]
+    once = yield_caret.rounded_once_yield_start(*cell.args)
+    assert yield_caret.unrounded_term_yield_start(*cell.args) == math.nextafter(once, math.inf)
+    for start, exact in (
+        (yield_caret.rounded_once_yield_start, False),
+        (yield_caret.unrounded_term_yield_start, True),
+    ):
+        model = yield_caret.caret_priced(solvers._newton_yield_short(start, 1e-10))
+        assert (model(*cell.args) == cell.expected) == exact, start.__name__
+
+
 @pytest.mark.usefixtures("real_cases")
 def test_yield_short_stop_cut_is_bracketed_by_two_cells() -> None:
     # T-2330: from the fitted start, yield-start-sweep C18 does not take a 9.67e-11 step (bit-exact) and
@@ -374,6 +390,7 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
         assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
     assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
     assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
+    assert solvers.start_term(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == (7, 164, 360)
 
 
 def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:

@@ -3,7 +3,7 @@ id: T-3092
 title: "Probe the near-zero snap of AVERAGEA over array-constant text, FALSE cells and numeric text, and of SUBTOTAL 1 and 101"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,9 +22,15 @@ functions/subtotal.rs does not snap). Write a probe case, fill it with the excel
 `fn_averagea` (`for_each_value_a`) and `subtotal_average`.
 
 ## Acceptance criteria
-- [ ] A probe case with an oracle sidecar covers each unprobed form; numbers.md records the result.
-- [ ] The engine matches every cell of it (or the mismatch is a documented, task-owned known failure).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with an oracle sidecar covers each unprobed form; numbers.md records the result.
+- [x] The engine matches every cell of it (or the mismatch is a documented, task-owned known failure).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- SUBTOTAL(1/101) over a hidden-row or filtered mix beyond the probed forms.
+
+## Outcome
+Probed first: probes/t3092-averagea-subtotal-snap (29 cells, excel-graph 2026-10-29) with its oracle sidecar. Excel: AVERAGEA adds no 0
+addend for a text or FALSE array element or a FALSE cell (the snap holds), but a direct `"0"`/FALSE, a 0 element or a 0 cell is an addend;
+SUBTOTAL(1/101) snap as SUM does. `for_each_value_a` now treats a non-direct FALSE like text; `subtotal_average` sums through `SumParts`.
+numbers.md and SPEC-0009 updated. Eval: new case 29/29 cells pass, baseline gains it, 0 regressions; `make check` green.

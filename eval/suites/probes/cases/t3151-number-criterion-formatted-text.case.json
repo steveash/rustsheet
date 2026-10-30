@@ -1,0 +1,51 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Number-cell, blank-cell and omitted criteria against text cells VALUE reads as numbers ($1, 1e2%, (1), 0%, $0, 0:00, 12:00 AM, 1 1/2, 1, 0 in A1:A10, power-of-two weights in B); D1=1, D2 blank, D3=1.5, D4=-1; C10:C11 a tab after the operand (T-3151)",
+ "tags": [
+  "M2",
+  "criteria",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=\"$1\"",
+    "B1": 1,
+    "A2": "=\"1e2%\"",
+    "B2": 2,
+    "A3": "=\"(1)\"",
+    "B3": 4,
+    "A4": "=\"0%\"",
+    "B4": 8,
+    "A5": "=\"$0\"",
+    "B5": 16,
+    "A6": "=\"0:00\"",
+    "B6": 32,
+    "A7": "=\"12:00 AM\"",
+    "B7": 64,
+    "A8": "=\"1 1/2\"",
+    "B8": 128,
+    "A9": "=\"1\"",
+    "B9": 256,
+    "A10": "=\"0\"",
+    "B10": 512,
+    "D1": 1,
+    "D3": 1.5,
+    "D4": -1,
+    "C1": "=SUMIF($A$1:$A$10,D1,$B$1:$B$10)",
+    "C2": "=SUMIF($A$1:$A$10,D2,$B$1:$B$10)",
+    "C3": "=SUMIF($A$1:$A$10,,$B$1:$B$10)",
+    "C4": "=SUMIF($A$1:$A$10,D3,$B$1:$B$10)",
+    "C5": "=SUMIF($A$1:$A$10,D4,$B$1:$B$10)",
+    "C6": "=COUNTIF($A$1:$A$10,1)",
+    "C7": "=SUMIFS($B$1:$B$10,$A$1:$A$10,D1)",
+    "C8": "=SUMIFS($B$1:$B$10,$A$1:$A$10,D2)",
+    "C9": "=COUNTIFS($A$1:$A$10,D3)",
+    "C10": "=COUNTIF($A$1:$A$10,\"1\"&CHAR(9))",
+    "C11": "=SUMIF($A$1:$A$10,\"=1\"&CHAR(9),$B$1:$B$10)"
+   }
+  }
+ ],
+ "expected": {}
+}

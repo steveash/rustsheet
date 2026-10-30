@@ -1,8 +1,11 @@
 use crate::arithmetic::{flush_subnormal, TINY_SUBNORMAL_BELOW};
 use crate::external_reference::{one_external_area, ExternalArea, PickedReference};
 use crate::formatter::date_text::CurrentYear;
+use crate::locale::Locale;
+use crate::mixed_fraction::mixed_fraction;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
+use crate::types::DateSystem;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -166,6 +169,54 @@ pub(crate) fn number_text_too_long(text: &str) -> bool {
     text.len() > MAX_NUMBER_TEXT_LEN && text.chars().count() > MAX_NUMBER_TEXT_LEN
 }
 
+/// [`Model::parse_number_text`] in an explicit `locale` and `date_system`, for readers that run
+/// without the model (the criteria matchers).
+pub(crate) fn number_text_in(
+    text: &str,
+    currencies: &[&str],
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    if let Ok((v, _number_format)) =
+        parse_formatted_number(text, currencies, locale, year, date_system)
+    {
+        return Some(flush_subnormal(v));
+    }
+    crate::functions::date_and_time::time_text::parse_time_serial(text, locale, year, date_system)
+}
+
+/// Text read as VALUE reads it (`Model::value_text_number`): `None` when it is over the
+/// number-text length cap or does not read as a number. VALUE trims only the space character
+/// around the text, then reads number coercion's grammar with `$` and `€`, else a mixed fraction.
+pub(crate) fn value_number_text(
+    text: &str,
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    value_number_text_with(text, &["$", "€"], &["$", "€"], locale, year, date_system)
+}
+
+/// [`value_number_text`] with the currency symbols the plain grammar reads and, apart, those a
+/// mixed fraction reads: a criterion reads `-$3 1/2` but not `€3 1/2` (probes/typed-input-sign-
+/// space-mixed-fraction I5, I6).
+pub(crate) fn value_number_text_with(
+    text: &str,
+    currencies: &[&str],
+    fraction_currencies: &[&str],
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    if number_text_too_long(text) {
+        return None;
+    }
+    let trimmed = text.trim_matches(' ');
+    number_text_in(trimmed, currencies, locale, year, date_system)
+        .or_else(|| mixed_fraction(trimmed, fraction_currencies))
+}
+
 /// The `#N/IMPL!` of a range, an array or a LAMBDA where a scalar cast expects a value.
 fn not_a_scalar(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NIMPL, cell, "Arrays not supported yet".to_string())
@@ -219,6 +270,7 @@ impl Model {
                     currencies.push(currency);
                 }
                 self.parse_number_text(s, &currencies, current_year)
+                    .or_else(|| mixed_fraction(s.trim_matches(' '), &["$", "€"]))
             }
         }
     }
@@ -234,22 +286,15 @@ impl Model {
         currencies: &[&str],
         year: CurrentYear,
     ) -> Option<f64> {
-        if let Ok((v, _number_format)) = parse_formatted_number(
+        number_text_in(
             text,
             currencies,
             self.locale,
             year,
             self.workbook.settings.date_system,
-        ) {
-            return Some(crate::arithmetic::flush_subnormal(v));
-        }
-        crate::functions::date_and_time::time_text::parse_time_serial(
-            text,
-            self.locale,
-            year,
-            self.workbook.settings.date_system,
         )
     }
+
     /// Lifts the range `left:right` into a 2-D array of its cell values, for a function or
     /// operator that works on it element by element (or a formula that spills it).
     ///
@@ -266,7 +311,13 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.top_left(value)
+    }
+
+    /// `value` with a range read as its top-left cell ([`Self::evaluate_node_top_left`]).
+    pub(crate) fn top_left(&mut self, value: CalcResult) -> CalcResult {
+        match value {
             CalcResult::Range { left, .. } => self.evaluate_cell(left),
             other => other,
         }

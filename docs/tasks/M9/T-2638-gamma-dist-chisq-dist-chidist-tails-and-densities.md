@@ -46,7 +46,7 @@ Cells (Excel vs ours):
 - gen-m9/bbdfc06cae0e0d71 Calc!A125 `CHIDIST(100,5)`: 5.2851483609432604e-20 vs 5.28514836094324e-20 (34 ulp)
 - gen-m9/c2974c061384fdd9 Calc!A13 `CHISQ.DIST(SUM(...),10,BYCOL(...))`: 0.09849448946078171 vs 0.09849448946078165 (4 ulp)
 - gen-m9/984cba67bbe6972b Calc!A217 `CHISQ.DIST(ACOTH(Data!B5),8,DGET(..))`: 1.1210083920801943e-35 vs 1.1210083920802015e-35 (14th digit; moved from T-2524, its DGET agrees)
-- new: gen-m9/285d87cea1aaa73c Calc!A261 and 4ab2ba98d26c8a5e Calc!A85 `CHIINV(0.975,5)`: 0.8312116134866638 vs 0.8312116134866628 (9 ulp; statrs gave ...6640)
+- new: gen-m9/285d87cea1aaa73c Calc!A261 and gen-m9/4ab2ba98d26c8a5e Calc!A85 `CHIINV(0.975,5)`: 0.8312116134866638 vs 0.8312116134866628 (9 ulp; statrs gave ...6640)
 - new: gen-m9/984cba67bbe6972b Calc!A49 `CHISQ.DIST(1E-10,8,...)`: 1.0416666666145884e-32 vs 1.0416666666145834e-32 (37 ulp; statrs ...854)
 - new: gen-m9/a7bf0d8d81d33ba6 Calc!A152 `GAMMADIST(PERCENTILE.EXC(...),7,...)`: 2.920390518154494e-64 vs 2.9203905181544776e-64 (49 ulp; statrs ...904)
 - ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx BETA_DIST!L3 (GAMMA.DIST): 5.316161131057619e-11 vs 5.31616113105763e-11 (17 ulp)
@@ -93,3 +93,7 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
 - probes-numeric/m9-gamma-dist-a9: Calc!A1, Calc!A2, Calc!A11, Calc!A21, Calc!A22
 - probes-numeric/t1049-chisqdist: Calc!A16, Calc!A46, Calc!A48
 - probes/t2753-gamma-density-ratio-sweep: S!A20, S!A46, S!A47, S!A48, S!B20, S!B21, S!B46, S!B47, S!B48
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- probes-numeric/t3148-gamma-quantile-flat-band Calc!A240, A244 and A248: `CHISQ.DIST(x,3,TRUE)` with x literals that Excel cuts to 15 digits, all x = 0.0242975858156924: Excel 0.0009999999999999803, ours 0.000999999999999979 (6 ulp; at 0.000999... half a unit of the 15th digit is about 2.3 ulp). The lower tail at shape 1.5 and x/2 = 0.0121, the same kind of few-ulp cdf miss as A178 above. T-3146 owns the probe's quantile cells.
