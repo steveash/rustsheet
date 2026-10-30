@@ -163,18 +163,15 @@ impl Lexer {
     }
 
     /// The `@` shorthand for `#This Row`: `T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]`
-    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI). A run after the `@`
-    /// (`[@ Col]`) is not part of the column: Excel reads the column and prints the reference
-    /// padded on both sides, `[ @Col ]` (syntax.md "Whitespace beside a missing argument",
-    /// probes/t2800-this-row-whitespace F2:F3, T-3069).
-    fn consume_this_row_shorthand(&mut self, table_name: &str) -> Result<TokenType> {
+    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI), after the run `open`
+    /// inside the outer `[`. A run after the `@` (`[@ Col]`) is not part of the column: Excel
+    /// reads the column and prints the reference padded on both sides, `[ @Col ]` (syntax.md
+    /// "Whitespace beside a missing argument", probes/t2800-this-row-whitespace F2:F3, T-3069),
+    /// which reads back as the same reference, its runs kept as the padding.
+    fn consume_this_row_shorthand(&mut self, table_name: &str, open: String) -> Result<TokenType> {
         self.position += 1; // '@'
-        let run = self.whitespace_run();
-        let spacing = TableSpacing {
-            open: run.clone(),
-            close: run,
-            comma_space: false,
-        };
+        let after_at = self.whitespace_run();
+        let mut close = String::new();
         let specifier = Some(TableSpecifier::ThisRow);
         let table_reference = match self.peek_char() {
             Some(']') => {
@@ -193,9 +190,21 @@ impl Lexer {
                 self.expect(TokenType::RightBracket)?;
                 Some(reference)
             }
-            _ => Some(TableReference::ColumnReference(
-                self.consume_escaped_until(']')?,
-            )),
+            _ => {
+                let text = self.consume_escaped_until(']')?;
+                let name = text.trim_end_matches(char::is_whitespace);
+                close = text[name.len()..].to_string();
+                Some(TableReference::ColumnReference(name.to_string()))
+            }
+        };
+        let spacing = TableSpacing {
+            open: if open.is_empty() {
+                after_at.clone()
+            } else {
+                open
+            },
+            close: if close.is_empty() { after_at } else { close },
+            comma_space: false,
         };
         Ok(TokenType::StructuredReference {
             table_name: table_name.to_string(),
@@ -270,7 +279,7 @@ impl Lexer {
             open: self.whitespace_run(),
             ..TableSpacing::default()
         };
-        // A padded `#` or `@` start (`T[ #Data ]`) is unprobed and keeps its old reading.
+        // A padded `#` start (`T[ #Data ]`) is unprobed and keeps its old reading.
         if !spacing.open.is_empty()
             && self.padded_bare_columns
             && !matches!(self.peek_char(), Some('[' | '#' | '@'))
@@ -288,7 +297,7 @@ impl Lexer {
             return Ok(TokenType::Ident(table_name.to_string()));
         }
         if peek_char == Some('@') {
-            return self.consume_this_row_shorthand(table_name);
+            return self.consume_this_row_shorthand(table_name, spacing.open);
         }
         if peek_char == Some('#') {
             // Expecting MyTable[#Totals]

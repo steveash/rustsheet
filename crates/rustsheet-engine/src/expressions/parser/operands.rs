@@ -704,20 +704,13 @@ impl Parser {
         spacing: token::TableSpacing,
         bare: bool,
     ) -> Node {
-        // A `#This Row` reference to the table holding the cell prints as Excel shows it there,
-        // without the table name: `T[[#This Row], [Col]]` is `[@Col]` (syntax.md,
-        // probes/t2800-this-row-whitespace B2:E3, T-3069).
-        let unqualified = specifier == Some(token::TableSpecifier::ThisRow)
-            && self
-                .containing_table_name()
-                .is_some_and(|name| name.to_lowercase() == table_name.to_lowercase());
         let reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
             spacing,
             bare,
-            unqualified,
+            unqualified: false,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
         if let Node::ParseErrorKind { message, .. } = &lowered {

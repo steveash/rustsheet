@@ -467,11 +467,12 @@ agree):
   T-2786 attempt typed three of these into one column, and the calculated-column fill rewrote them all; see references.md,
   "Calculated columns: a formula typed into a table column", T-2957, T-2958.)
   Ours (t2786 case): the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
-  Ours since T-3069: a `#This Row` reference in a cell of its own table prints in the `@` form without the table name,
-  its outer padding kept (`[ @Col ]`), and a run after `@` is that padding; outside the table the long form stays
-  (unprobed; T-3240). `T[ Col ]` is only the engine's own printed text for `T[ [Col] ]`, which it re-parses after edits:
-  typed or loaded, a padded bare column reads the run as part of the column name, so it is a parse error typed and
-  `#REF!` loaded, and the xlsx export writes `T[ [Col] ]`.
+  Ours since T-3069: an unqualified `@` reference keeps the padding inside its brackets and a run after `@` is that
+  padding (`[@ Col]` prints `[ @Col ]`, which reads back); a reference written with its table name still prints the
+  long form in its own table (T-3241; header, totals and outside-the-table shapes unprobed, T-3240). `T[ Col ]` is only
+  the engine's own printed text for `T[ [Col] ]`, which it re-parses after edits: typed or loaded, a padded bare column
+  reads the run as part of the column name, so it is a parse error typed and `#REF!` loaded, and the xlsx export writes
+  `T[ [Col] ]`. A defined-name body is neither, so a stored name `T[ Col ]` still reads as the column (unprobed).
 Evidence: probes/t2800-this-row-whitespace B2:F3 and t2800-stored-ws-0..3 (excel-graph, 2026-10-28, T-2800); probes/t2786-whitespace-structured-refs-runs (excel-graph `entered`, 2026-10-26, T-2786): E4:E15 (F4:F15), H1:H13
 (I1:I13). Each refused formula was entered alone against the same case. probes/t2966-empty-call-runs and
 t2966-missing-first-arg-run (excel-graph `entered`, 2026-10-28, T-2966; cache keys `input_sha256` 22b97392f143589e517cbf4a28cbe57cc7d474de238160fc867864e5597b7e36

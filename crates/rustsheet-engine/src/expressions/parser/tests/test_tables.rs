@@ -73,13 +73,12 @@ fn simple_table() {
         column: 6,
     };
 
-    // In a cell of its own table `#This Row` prints in Excel's `@` form (T-3069); the export
-    // keeps the long text, which writes table parts (T-2196).
+    // `#This Row` keeps its text, in the export too, which writes table parts (T-2196).
     let formula = "SUM(tblIncome[[#This Row],[Jan]:[Dec]])";
     let t = parser.parse(formula, &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "SUM([@[Jan]:[Dec]])"
+        "SUM(tblIncome[[#This Row],[Jan]:[Dec]])"
     );
     assert_eq!(
         to_excel_string(&t, &cell_reference),
@@ -493,11 +492,12 @@ fn reparse_stored(parser: &mut Parser, node: &Node, cell: &CellReferenceRC) -> N
     again
 }
 
-/// A `#This Row` reference in a cell of its own table prints in Excel's `@` form without the
-/// table name, keeping the padding inside the outer brackets, and a run after `@` is padding, not
-/// part of the column (syntax.md, probes/t2800-this-row-whitespace, T-3069).
+/// A `@` reference written without the table name keeps the padding inside its brackets, and a
+/// run after `@` is padding, not part of the column: `[@ Col]` prints `[ @Col ]` (syntax.md,
+/// probes/t2800-this-row-whitespace F2:F3, T-3069). The printed text reads back, as A1 text (copy,
+/// fill) and as stored text.
 #[test]
-fn this_row_prints_in_its_at_form_in_its_own_table() {
+fn an_unqualified_this_row_keeps_its_padding() {
     let tables = create_test_table("T", &["Col", "Other"], "A1", 4);
     let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
     let inside = CellReferenceRC {
@@ -506,34 +506,25 @@ fn this_row_prints_in_its_at_form_in_its_own_table() {
         column: 2,
     };
     for (typed, printed) in [
-        ("T[[#This Row], [Col]]", "[@Col]"),
-        ("T[[#This Row] , [Col]]", "[@Col]"),
-        ("T[ [#This Row] , [Col] ]", "[ @Col ]"),
-        ("T[ [#This Row],[Col] ]", "[ @Col ]"),
         ("[@ Col]", "[ @Col ]"),
+        ("[ @Col ]", "[ @Col ]"),
         ("[@Col]", "[@Col]"),
     ] {
         let t = parser.parse(typed, &inside);
         assert_eq!(to_english_localized_string(&t, &inside), printed, "{typed}");
-        // The stored text reads back to the same reference.
-        let again = reparse_stored(&mut parser, &t, &inside);
+        let a1 = parser.parse(printed, &inside);
         assert_eq!(
-            to_english_localized_string(&again, &inside),
+            to_english_localized_string(&a1, &inside),
+            printed,
+            "{typed}"
+        );
+        let stored = reparse_stored(&mut parser, &t, &inside);
+        assert_eq!(
+            to_english_localized_string(&stored, &inside),
             printed,
             "{typed}"
         );
     }
-    // Outside the table the name stays.
-    let outside = CellReferenceRC {
-        sheet: "Sheet One".to_string(),
-        row: 8,
-        column: 8,
-    };
-    let t = parser.parse("T[[#This Row], [Col]]", &outside);
-    assert_eq!(
-        to_english_localized_string(&t, &outside),
-        "T[[#This Row], [Col]]"
-    );
 }
 
 /// `T[ Col ]` is only the engine's own printed form of `T[ [Col] ]`: a padded bare column is a

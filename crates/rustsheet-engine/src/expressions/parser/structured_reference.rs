@@ -253,7 +253,7 @@ impl Parser {
 
     /// The name of the table whose range (headers and totals row included) holds the formula's
     /// cell, if any.
-    pub(super) fn containing_table_name(&self) -> Option<String> {
+    fn containing_table_name(&self) -> Option<String> {
         let context = &self.context;
         self.tables.values().find_map(|table| {
             let (column_start, row_start, column_end, row_end) =
