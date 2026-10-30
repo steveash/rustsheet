@@ -6,7 +6,9 @@
 //! Excel evidence: docs/excel-semantics/references.md "Intersection operator (space)" (gen-m1,
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
-use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, MAX_PARENTHESES, PRIMARY_DEPTH};
+use crate::expressions::parser::depth::{
+    MAX_FORMULA_DEPTH, MAX_NESTING, MAX_PARENTHESES, OPERAND_NESTING, PRIMARY_DEPTH,
+};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::functions::Function;
@@ -22,6 +24,7 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
+        self.group_head = true;
         let t = self.parse_enclosed_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -290,7 +293,7 @@ impl Parser {
             self.lexer.advance_token();
             // `@` recurses into the intersection without an operand in between (`A1 @A1
             // @A1 ...`), so it reserves nesting like an operand does to bound the recursion.
-            if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
+            if self.nesting + OPERAND_NESTING > MAX_NESTING {
                 return self.too_deep();
             }
             // `=@ B1:B2` keeps its space (probes/t2776-ws-after-at, SPEC-0023); a signed operand
@@ -303,14 +306,14 @@ impl Parser {
                 // `@-1` loads (probes/anchorarray-at-operand-kinds H101, T-1247): the sign is
                 // the operand's, a value, so the `@` of it is a value too. The precedence against
                 // `%`, `^` and ranges is inferred (UNVERIFIED, T-1285).
-                self.nesting += PRIMARY_DEPTH;
+                self.nesting += OPERAND_NESTING;
                 let t = self.parse_power();
-                self.nesting -= PRIMARY_DEPTH;
+                self.nesting -= OPERAND_NESTING;
                 t
             } else {
-                self.nesting += PRIMARY_DEPTH;
+                self.nesting += OPERAND_NESTING;
                 let t = self.parse_intersection();
-                self.nesting -= PRIMARY_DEPTH;
+                self.nesting -= OPERAND_NESTING;
                 match t {
                     Node::ParseErrorKind { .. } => t,
                     t => t.spaced(gap, Run::default()),
