@@ -722,9 +722,10 @@ impl Parser {
         }
         // A file's stored text drops the whitespace it starts with, where the same text typed
         // after `=` keeps it: `<f> 1+2</f>` prints `=1+2` (probes/t2776-formula-text-whitespace-shapes
-        // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784).
+        // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784), and so does a
+        // leading line feed (`<f>` LF `1+2</f>` prints `=1+2`; probes/t2949-stored-5).
         let formula = if self.loaded {
-            formula.trim_start_matches(' ')
+            formula.trim_start_matches([' ', '\n'])
         } else {
             formula
         };
