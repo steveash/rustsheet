@@ -1652,6 +1652,7 @@ C	probes/t3172-plus-256-stored.case.json	2
 C	probes/t3172-plus-256-typed.case.json	2
 C	probes/t3181-collation-prefix-arrays.case.json	30
 C	probes/t3181-collation-prefix-callers.case.json	43
+C	probes/t3188-b1-huge-tagged.case.json	6
 C	probes/t3201-collation-long-mark-runs.case.json	1506
 C	probes/t3201-collation-wrapped-run-pairs.case.json	1406
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
