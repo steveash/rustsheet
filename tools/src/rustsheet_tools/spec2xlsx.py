@@ -23,6 +23,11 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     as JSON `[sheet, a1, text]`; oracle backends write
     the text into the cell as a user types it (Graph `values`), so Excel picks value and number
     format. The engine adapter enters the same text through its user-input parser.
+    `{"entered_r1c1":"=R1C2+1"}` is typed in R1C1 mode (T-3113, decision 0179): recorded the same way
+    with a fourth element, `[sheet, a1, text, "r1c1"]`, and written by the backends as
+    `formulasR1C1` (Graph) or `Range.FormulaR1C1` (desktop); the engine adapter converts it to A1
+    relative to the cell. Excel refusing either kind (Graph 400 `InvalidArgument`) leaves the cell
+    blank, as its UI does after the error dialog; the backend logs `REFUSED` and goes on.
   * `"sheet_ops": [{"op": "rename", "sheet": "Data", "to": "Inputs"}, {"op": "add", "sheet": "New"},
     {"op": "move", "sheet": "Inputs", "to": 0}]` at the top level are sheet edits made after the
     workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
@@ -83,7 +88,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 from xml.sax.saxutils import escape, unescape
 
 import xlsxwriter
@@ -97,6 +102,8 @@ from rustsheet_tools.sheetop import column_number, sheet_op
 _FIXED_CREATED = datetime(2000, 1, 1)
 
 ENTERED_PROPERTY = "rustsheet.entered"
+# The fourth element of an R1C1-mode typed entry's property value (T-3113).
+R1C1_MODE = "r1c1"
 SHEET_OP_PROPERTY = "rustsheet.sheetop"
 TEXT_PROPERTY = "rustsheet.text"
 
@@ -350,7 +357,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     wb.set_properties({"created": _FIXED_CREATED})
     patches = _Patches()
     tables = frozenset(str(t["name"]).upper() for sheet in spec["sheets"] for t in sheet.get("tables", ()))
-    entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
+    entered: list[Entered] = []
     worksheets = []
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
@@ -384,13 +391,8 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                 ws.write_formula(row, col, "=0", formats.get(a1), "#N/A")
                 patches.stored.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["v"])))
                 continue
-            if isinstance(raw, dict) and "entered" in raw:
-                if a1 in formats:
-                    msg = f"entered cell {a1} cannot have a number format (Excel picks it)"
-                    raise ValueError(msg)
-                entered.append(
-                    (sheet["name"], xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["entered"]))
-                )
+            if isinstance(raw, dict) and ("entered" in raw or "entered_r1c1" in raw):
+                entered.append(_entered(sheet["name"], a1, raw, a1 in formats))
                 continue
             if (
                 cell_number := _write(ws, row, col, raw, formats.get(a1), tables=tables)
@@ -411,6 +413,19 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     return _patch_package(buf.getvalue(), spec, patches)
 
 
+def _entered(sheet: str, a1: str, raw: dict[str, Any], formatted: bool) -> Entered:
+    """The typed entry of spec cell `a1`, `{"entered": ...}` or `{"entered_r1c1": ...}`."""
+    if "entered" in raw and "entered_r1c1" in raw:
+        msg = f"cell {a1} cannot be both entered and entered_r1c1"
+        raise ValueError(msg)
+    if formatted:
+        msg = f"entered cell {a1} cannot have a number format (Excel picks it)"
+        raise ValueError(msg)
+    r1c1 = "entered_r1c1" in raw
+    text = str(raw["entered_r1c1" if r1c1 else "entered"])
+    return Entered(sheet, xlsxwriter.utility.xl_rowcol_to_cell(*parse_a1(a1)), text, r1c1)
+
+
 def _set_column_widths(ws: Any, sheet: dict[str, Any]) -> None:
     """Applies a sheet's `column_widths` (column letter -> width in characters; T-1610)."""
     for column, width in sheet.get("column_widths", {}).items():
@@ -418,17 +433,27 @@ def _set_column_widths(ws: Any, sheet: dict[str, Any]) -> None:
         ws.set_column(col, col, float(width))
 
 
-def _record_backend_steps(
-    wb: xlsxwriter.Workbook, spec: dict[str, Any], entered: list[tuple[str, str, str]]
-) -> None:
+def _record_backend_steps(wb: xlsxwriter.Workbook, spec: dict[str, Any], entered: list[Entered]) -> None:
     """Records what an oracle backend does beyond recalculating, as custom properties: typed entries,
     sheet edits and the cells whose displayed text it reads."""
     for n, entry in enumerate(entered, start=1):
-        _set_json_property(wb, f"{ENTERED_PROPERTY}.{n}", entry, f"entered cell {entry[0]}!{entry[1]}")
+        # An A1 entry keeps its three elements, so workbooks built before R1C1 entry stay byte-identical.
+        value = [entry.sheet, entry.a1, entry.text, *([R1C1_MODE] if entry.r1c1 else [])]
+        _set_json_property(wb, f"{ENTERED_PROPERTY}.{n}", value, f"entered cell {entry.sheet}!{entry.a1}")
     for n, op in enumerate(spec.get("sheet_ops", ()), start=1):
         _set_json_property(wb, f"{SHEET_OP_PROPERTY}.{n}", list(sheet_op(op)), f"sheet op {n}")
     for n, key in enumerate(spec.get("text", ()), start=1):
         _set_json_property(wb, f"{TEXT_PROPERTY}.{n}", list(_text_cell(key)), f"text cell {key}")
+
+
+class Entered(NamedTuple):
+    """A typed entry (T-0280): text an oracle backend types into a cell after load."""
+
+    sheet: str
+    a1: str
+    text: str
+    # Typed in R1C1 mode (`entered_r1c1`, T-3113), so `R1C2` is a reference.
+    r1c1: bool = False
 
 
 @dataclass
@@ -807,13 +832,20 @@ def _json_properties(xlsx: bytes, prefix: str) -> list[Any]:
         raise ValueError(msg) from e
 
 
-def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
-    """The `(sheet, a1, text)` typed entries `build_xlsx` recorded in `xlsx`, in spec order.
+def entered_cells(xlsx: bytes) -> list[Entered]:
+    """The typed entries `build_xlsx` recorded in `xlsx`, in spec order.
 
     Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
     """
     try:
-        return [(str(s), str(a1), str(t)) for s, a1, t in _json_properties(xlsx, ENTERED_PROPERTY)]
+        entries = []
+        for value in _json_properties(xlsx, ENTERED_PROPERTY):
+            sheet, a1, text, *mode = value
+            if mode not in ([], [R1C1_MODE]):
+                msg = f"unknown entry mode {mode!r}"
+                raise ValueError(msg)
+            entries.append(Entered(str(sheet), str(a1), str(text), bool(mode)))
+        return entries
     except (TypeError, ValueError) as e:
         msg = f"malformed {ENTERED_PROPERTY} property: {e}"
         raise ValueError(msg) from e

@@ -130,6 +130,7 @@ pub use model::Model;
 pub use reference_forms::{ReferenceForms, ReferenceFormsReader};
 pub use sheet_undo::TakenSheet;
 pub use text::Text;
+pub use typed_input::r1c1_formula_to_a1;
 pub use user_model::BorderArea;
 pub use user_model::ClipboardData;
 pub use user_model::UserModel;
