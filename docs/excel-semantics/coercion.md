@@ -175,7 +175,7 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
 - The sum is **one byte and wraps** past 255: two U+0342 (2 + 282 = 284, so 28) equal one cedilla
   (`"a"&UNICHAR(834)&UNICHAR(834)` = `"a"&UNICHAR(807)`), and three U+0323 (260, so 4) sort between
   `"a"` and `"á"`.
-- Engine choices from the Windows table or by inference, UNVERIFIED (T-3181 may probe them):
+- Engine choices from the Windows table or by inference, UNVERIFIED (T-3203 probes them):
   U+0363-U+036F ("combining a" to "combining x") are the letters `a e i o u c d h m r t v x` with
   diacritic weight 3, not marks (the table gives them script member 14, a letter's alphabetic
   weight and DW 3); a mark after an expansion (`æ`, `ß`) adds its weight to the expansion's second
@@ -193,7 +193,8 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   near 40, not below `"á"` (accent-weights Calc!A107; 20, 21, 40 and 100 acutes, 10 and 11 rings
   also off). Ours: the wrapped sum with no prefix rule, a total order (sorts such as GROUPBY's need
   one; `slice::sort_by` may panic otherwise), so these cells and the ranks of the strings probed
-  with them (accent-weights Calc!A2:A112, 55 cells; pairs, 6 cells) fail. Open: T-3181.
+  with them (accent-weights Calc!A2:A112, 55 cells; pairs, 6 cells) fail. Open: T-3181 (prefix
+  rule), T-3201 and T-3202 (long runs).
 Implemented (T-3154): `collation_tables.rs` (`MARK_WEIGHT` from the Windows table, `DECOMPOSED`
 extended to Latin Extended-B and Additional) and `collation.rs` (accent byte, variant pass).
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
