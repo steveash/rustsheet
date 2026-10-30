@@ -19,7 +19,7 @@ no known failure left that is not a rule of T-1891 or T-2808.
 T-2435 settled five argument-range rules of the gen-m9 extremes sweep; its probe,
 probes/t2435-dist-extremes (142 formulas, excel-graph, 2026-10-26), also records these last-digit
 and accuracy gaps, which no other task names. They are the cells of that case left in
-eval/baseline/probes.txt once T-1891 (A21, A22, A25, A26, A33, A34, A101, A102), T-2808 (A68, A69,
+eval/baseline/probes.txt once T-1891 (A21, A22, A33, A34), T-3268 (the #NUM! rules, A25, A26, A101, A102), T-2808 (A68, A69,
 A72, A73, A77:A81, A108:A112, A115:A118) and T-2809 (A15, A18) take theirs:
 - A14 `BINOM.DIST(1,2,0.9999999999999999,FALSE)`: Excel 1.998401444325278E-15, ours ...2798 (the
   pmf walk at a p that is 1 - 1 ulp; see "BINOM.DIST pmf: closed forms at k = 0 and k = n").

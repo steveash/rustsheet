@@ -36,9 +36,18 @@ statrs' search, and the closed form's last digits at 1E11 are Excel's.
     - probes/t2982-gamma-inv-huge-shape A60:A85 (the closed form's last digits, 1 to 1,546 ulps);
     - probes/t2982-gamma-inv-huge-shape A89, A90 (CHISQ.INV.RT at 10000000000.5 df, ours `#NUM!`), A92, A93, A144:A146;
     and T-2982's owned gen-m9 cells (the 25 lines listed in
-    docs/tasks/M9/T-1891-gamma-dist-poisson-and-the-gamma-inversions-give.md) and t2435 cells (gen-m9 2801c1c11c21e134
-    A241, 40425341c5034eed A265; probes/t2435-dist-extremes A25, A26, A101, A102), leaving any small-shape inversion's
-    last digits to T-0972.
+    docs/tasks/M9/T-1891-gamma-dist-poisson-and-the-gamma-inversions-give.md), leaving any small-shape inversion's
+    last digits to T-0972. The GAMMA.DIST/GAMMADIST `#NUM!` cells at a huge shape, which T-2982 also handed on here,
+    moved to their own `semantics` task, T-3268 (gap triage 2026-10-30d).
+  - CHIINV at a df far above the cap, by full case id: a bare hash names no case when probes/t2436 reruns that
+    hash, and T-3219 had these three listed as unexplained type mismatches (gap triage 2026-10-30d). Excel gives a
+    number, ours `#NUM!`:
+    - gen-m9/a013a45a8fbcab4f.case.json (1): Calc!A338 `CHIINV(0.5,((Data!C$1+1000000000000000.0)*RADIANS(1)))`
+      (df about 1.75E+13): Excel 17457932016129.209
+    - gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A341 `CHIINV(0.001,(ROUND(9999999999999999,2)+(..)))` (df about
+      1E+16): Excel 1.0002658672598378E+16
+    - gen-m9/7bd219ec0c0c5e22.case.json (1): Calc!A239 `CHIINV(1E-300,ROUND(9999999999999999,2))`: Excel
+      1.0002663475569862E+16
 
 ## Acceptance criteria
 - [ ] The cells above pass or are named with their ulp in the Outcome; no new known-failure lines.
