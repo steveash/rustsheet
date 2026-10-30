@@ -42,12 +42,12 @@ density's large-shape behaviour, plus a hold-out no fitting choice uses, so the 
 - Beside each BETA.DIST row, put `F.DIST` at the mapped point x' = b·x/(a·(1 - x)) with d1 = 2a and d2 = 2b, but
   only where 2a and 2b are integers. That is one more column for T-3173, whose power-term error also tracks the size
   of the exponent ("error tracking ulp(P)" in its Context).
-- Generator and run notes go in docs/research/t3242/. Fill through `cd tools && uv run rustsheet-oracle fill`, then
+- Generator and run notes go in docs/research/t3249/. Fill through `cd tools && uv run rustsheet-oracle fill`, then
   canary-verify (excel-probe skill).
 
 ## Acceptance criteria
 - [ ] Two probe cases (fit and hold-out) with excel-graph sidecars land under eval/suites/probes-numeric/cases/.
-      The generator that rebuilds them byte for byte is in docs/research/t3242/.
+      The generator that rebuilds them byte for byte is in docs/research/t3249/.
 - [ ] `make eval` loads both. Their known failures are recorded with `make eval-baseline` and no existing line
       regresses.
 - [ ] T-3250's Cells section names both new case stems, so that no visibly-off cell they add is unowned
