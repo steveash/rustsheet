@@ -10,9 +10,8 @@ use super::incomplete_gamma::{
 use super::normal::normal_quantile;
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
-use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
@@ -175,18 +174,11 @@ impl Model {
             .flatten();
         if let Some(x) = closed_form {
             if x > 0.0 && x < f64::MIN_POSITIVE {
-                return Err(CalcResult::new_error(
-                    Error::DIV,
-                    cell,
-                    "GAMMA.INV's quantile is subnormal".to_string(),
-                ));
+                return Err(div_error(cell));
             }
-            let scaled = x * beta_scale;
-            if !scaled.is_finite() {
-                return Err(num_error(cell));
-            }
-            // A subnormal product is 0, as `gamma_quantile` flushes after its scale.
-            return Ok(flush_subnormal(scaled));
+            // The product cannot overflow (x is below 1E-21 and beta a finite double). A subnormal
+            // product is 0, as `gamma_quantile` flushes after its scale.
+            return Ok(flush_subnormal(x * beta_scale));
         }
         let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && p > 0.0 && p < 1.0 {
             let z = normal_quantile(p, 0.0, 1.0, cell)?;

@@ -65,21 +65,26 @@ At shape a the quantile's relative error is 1/a times that of p·Gamma(a+1), so 
 ## Outcome
 - Finding: at a shape below 1 (not 1/2) and a tiny quantile, Excel's GAMMA.INV is not a search. It is the closed
   form `EXP((LN(p)+GAMMALN(a)+LN(a))/a)` (that summation order; `GAMMALN(a+1)` is an exponent ulp off at A9 and
-  A16), plus one Newton step on Excel's own GAMMA.DIST cdf (T-3060's form) where that step is more than about
-  3.5E-14 of x. A subnormal step counts as no step (A9). A subnormal quantile is `#DIV/0!` (A4, B4), one that
+  A16), plus one Newton step on T-3060's leading-factor series form, ungated, where that step is more than
+  3.5E-14 of x. 3.5E-14 is a point inside the evidence bracket (2.78E-14, 4.1E-14), not an Excel constant. The step
+  uses that form even where the engine's GAMMA.DIST is the pair (a·LN(x) above -16), and gen-m9 A254 and A396
+  need it. A subnormal step counts as no step (single-cell evidence, A9 and B9). The 1E-21 cut is a choice inside
+  (4.15E-22, 6.75E-21), and T-3252 probes all three choices. A subnormal quantile is `#DIV/0!` (A4, B4), one that
   underflows is 0, and the scale is a plain final product. This is why T-3012 found the quantile off the crossing.
   Implemented as `incomplete_gamma::excel_small_shape_quantile` (no loop: one closed form, at most one step), called
   from `gamma.rs` `gamma_inv_of` for unit quantiles below 1E-21. Unit test
   `small_shape_quantile_is_excels_closed_form`. Recorded in docs/excel-semantics/statistics.md (T-3013 bullets).
 - Eval, per cell over all suites (full `rustsheet-eval run` of each binary, cells compared by actual value):
-  - Against origin/main 25f5d7b22 (T-3060 merged as #2418; this branch has main merged in), which isolates this
+  - Against origin/main 9b5fc0e7b (T-3060 merged as #2418; the main merged in by 7307f2222), which isolates this
     change: fixed (failing to bit-exact) 36. gen-m9 A43 (984cba67bbe6972b, -29 ulps before), A152 (146b46e74f2dac3b,
     2.2E-308 before, Excel 0), A396 (146b46e74f2dac3b `GAMMA.INV(0.05,0.01,..)`, -8), A254 (3a25a03eb94fcfbd
     `GAMMAINV(0.5,0.01,100)`, -46), A317 (a612e89321a6df9c `GAMMAINV(..,0.3,99999)`, -100) and A179
     (c2974c061384fdd9, +37). probes/t3012-gamma-inv-small-shape A4-A6, A9-A12, A15-A17, A26-A28, A32, A33 and the
     same rows of column B (30, 6 to 487 ulps before; A4 and B4 were 0 and 5.8E-306 against Excel's `#DIV/0!`).
     Lost bit-exact: 0. Newly visibly off: 0. Visibly fixed: 35 (all of these but A396). Type or error changes among
-    cells that were passing: 0. No other cell changed value.
+    cells that were passing: 0. No other cell changed value. Review round 1 merged origin/main 0a8b2cfb8 (no gamma
+    changes since 9b5fc0e7b) and changes no behavior: the removed product-overflow check could not fire.
+    `make check`'s eval gate passes on it.
   - Against the T-3060 branch head 9bb9ed4f7: the 3,137 cases common to both runs differ in 118,792 cells. 118,756
     of these are origin/main's own changes since T-3060 branched (the same cells, same values, as a run of main:
     30,938 fixed, 5,713 lost bit-exact, 3,002 newly visibly off, 40,115 visibly fixed). The other 36 are this

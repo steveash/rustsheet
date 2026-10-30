@@ -3463,18 +3463,28 @@ Tasks: T-1543, T-1634
     +LN(a))/a)`, summed left to right in that order: bit-exact at 14 of the probe's column-A cells (A5, A6, A9-A12,
     A15-A17, A27, A28, A32, A33) and at gen-m9/c2974c061384fdd9 A179 `GAMMAINV(0.001,0.01,...)`. With `GAMMALN(a+1)`
     in place of `GAMMALN(a)+LN(a)`, or with that pair summed first, the exponent is one ulp off at A6, A9 or A16
-    (100 to 800 ulps of x). From it Excel takes one Newton step on its own GAMMA.DIST cdf (the T-3060 form) where
-    the step is more than about 3.5E-14 of x. The step is kept at 2.78E-14 (gen-m9/146b46e74f2dac3b A396
-    `GAMMA.INV(0.05,0.01,EOMONTH(58733,-18))`) and taken at 4.1E-14 (A26 `GAMMA.INV(1E-100,0.75,1)`, to
-    4.1475670139922064E-134, where Excel's cdf is still 2.6E-14 above p) and 4.4E-14 (gen-m9/3a25a03eb94fcfbd A254
-    `GAMMAINV(0.5,0.01,100)` = 4.4655350189103716E-29). The test is on the step, not on the cdf: A254's cdf at the
-    closed form is only 4.4E-16 off p, while A9 keeps it 8.5E-15 off. A9 `GAMMA.INV(1E-30,0.1,1)` =
-    6.073048362407713E-301 keeps the closed form although its step is 8.5E-14 of x. That step is about 5E-314,
-    subnormal, as if Excel flushed it to zero.
-    Region implemented: a quantile (at scale 1) below 1E-21. A28 (4.1E-22) is the closed form, while A18
-    `GAMMA.INV(1E-5,0.25,1)` (6.7E-21), A34 (1.6E-18) and gen-m9/60b0b6e69ad35a45 A210 (shape 1/60, 4.9E-19) are
-    neither it nor one step from it on our cdf model, so the cut lies in (4.15E-22, 6.75E-21). Larger quantiles stay
-    on the crossing search. A quantile that underflows is 0 (A1-A3, gen-m9/146b46e74f2dac3b A152
+    (100 to 800 ulps of x). From it Excel takes one Newton step on the leading-factor series form
+    `EXP(a*LN(x))/EXP(GAMMALN(a+1))` times e^-x and the series (T-3060's form, ungated) where the step is more than
+    about 3.5E-14 of x. The step is on that form even where a·LN(x) is above -16 and the engine's GAMMA.DIST is the
+    accurate pair, a few ulps away. A254 and A396 need that: on the engine's GAMMA.DIST their steps would be 2.2E-14
+    (kept) and -4.2E-14 (taken), both against Excel. So either Excel's GAMMA.INV steps on an internal form, or the
+    engine's GAMMA.DIST is off there (T-3252 probes GAMMA.DIST at those two closed forms). The step is kept at
+    2.78E-14 (gen-m9/146b46e74f2dac3b A396 `GAMMA.INV(0.05,0.01,EOMONTH(58733,-18))`, F 2.2E-16 below p at the
+    closed form). It is taken at 4.1E-14 (A26 `GAMMA.INV(1E-100,0.75,1)`: F is 3.09E-14 below p at the closed form,
+    and 2.60E-14 above p at the result, Excel's 4.1475670139922064E-134) and at 4.4E-14 (gen-m9/3a25a03eb94fcfbd A254
+    `GAMMAINV(0.5,0.01,100)` = 4.4655350189103716E-29; F 4.4E-16 below p at the closed form). The engine's 3.5E-14 is
+    a point inside the bracket (2.78E-14, 4.1E-14), not an Excel constant: 2^-45 (2.84E-14) fits the one-step
+    reading as well. A loop under the same test fits too, with the threshold in [3.46E-14, 4.1E-14), since a second
+    step at A26 would be 3.46E-14. The test is on the step, not on the cdf: A254's F at the closed form is only
+    4.4E-16 off p, while A9 keeps it 8.5E-15 off. A9 `GAMMA.INV(1E-30,0.1,1)` = 6.073048362407713E-301 (and B9 at
+    scale 1E+15) keeps the closed form although its step is 8.5E-14 of x. That step is about 5E-314, subnormal, as if
+    Excel flushed it to zero. This is single-cell evidence, and the engine takes a subnormal step as no step.
+    Region implemented: a quantile (at scale 1) below 1E-21. That cut is a choice inside the evidence bracket
+    (4.15E-22, 6.75E-21), not a measurement. A28 (4.1E-22) is the closed form, while A18 and B18
+    `GAMMA.INV(1E-5,0.25,..)` (6.7E-21) are neither it nor one step from it on our cdf model, and neither are A34
+    (1.6E-18) and gen-m9/60b0b6e69ad35a45 A210 (shape 1/60, 4.9E-19). The cut has to be on x: A28 and A34 share
+    p = 1E-16 and nearly the same a·LN(x) (about -36.9), and only A28 is the closed form. Larger quantiles stay on
+    the crossing search. A quantile that underflows is 0 (A1-A3, gen-m9/146b46e74f2dac3b A152
     `GAMMA.INV(0.5,1E-300,...)`), and a subnormal one is `#DIV/0!` at any scale (A4 and B4 `GAMMA.INV(1E-16,0.05,1)`
     and `(..,1E+15)`, about 1E-320 before the scale). The scale is a plain final product (T-3012).
   - Still open (T-3013): the probe's larger quantiles, from x of about 1E-20 up (A18, A29, A30, A34-A36 and their
