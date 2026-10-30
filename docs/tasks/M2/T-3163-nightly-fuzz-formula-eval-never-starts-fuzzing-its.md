@@ -3,7 +3,7 @@ id: T-3163
 title: "Nightly fuzz: formula_eval never starts fuzzing, its 802,100-file seed corpus outlasts the 45-minute job"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
