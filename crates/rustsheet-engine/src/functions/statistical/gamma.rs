@@ -22,22 +22,50 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// `kmyst-erf-ashape`).
 const HALF_SHAPE: f64 = 0.5;
 
-/// The x / beta up to which GAMMA.DIST's density is Excel's log-space form (probes/
-/// t2753-gamma-density-switch: 0 to 3 ulp from Excel up to 3E-16 at shapes 0.5, 1 and 2, 4 to 7
-/// at 1E-15, where the direct form is 4 to 12 off; T-2753, T-2852).
+/// The x / beta up to which GAMMA.DIST's density is Excel's log-space form at a shape from
+/// [`LOG_FORM_SHAPE_MAX`] to 20 (probes/t2753-gamma-density-switch: 0 to 3 ulp from Excel up to
+/// 3E-16 at shapes 0.5, 1 and 2, 4 to 7 at 1E-15, where the direct form is 4 to 12 off; T-2753).
 const LOG_FORM_RATIO: f64 = 1E-15;
 
-/// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density where y = x / beta is at most
-/// [`LOG_FORM_RATIO`]: Excel forms EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
-/// result, so `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235, not 1 (probes/
-/// t2753-gamma-density-ratio-sweep A1, B1; t2738-gamma-dist-tiny-ratio A2, A4, A15, A19).
-/// With Excel's own LN, EXP and GAMMA it is 0 to 1 ulp from Excel at most probed cells there and
-/// 2 to 3 at a few (`GAMMA.DIST(2E-16,1,1,FALSE)`, `(1E-20,2,1,FALSE)`; T-2852). Only shapes 0.5,
-/// 1 and 2 are probed; it keeps to the prefactor's direct shapes. `None` elsewhere, and at x = 0,
-/// which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
-pub(super) fn tiny_ratio_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
+/// The shape below which GAMMA.DIST's density is EXP(a LN(y)) / GAMMA(a) * EXP(-y) / x at every
+/// x / beta ([`log_form_density`]). A fit inside its evidence bracket (2.5, 5] (T-2852): at shapes
+/// 0.5 to 2.5 that form is 0 to 1 ulp from Excel at 208 of 222 probed densities (the direct form
+/// 74), at 5, 9 and 10 it is 10 to 18 off at x / beta from 1 up (probes-numeric m9-chisq-dist A48,
+/// m9-gamma-dist-a9 A8), where the direct form is 0 to 1; T-3147 finds Excel's large-shape form
+/// above the mode from 3.
+const LOG_FORM_SHAPE_MAX: f64 = 3.0;
+
+/// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density in Excel's log-space forms, with Excel's
+/// own LN, EXP and GAMMA (x87_log10, x87_exp, gamma_x87), or `None` where the caller's forms hold.
+/// - Below [`LOG_FORM_SHAPE_MAX`], wherever y^a and e^-y are normal: EXP(a LN(y)) / GAMMA(a) *
+///   EXP(-y) / x. Excel's error there is a times that of LN(y), nothing more (probes/
+///   t2753-gamma-density-switch and -ratio-sweep at shapes 0.5, 1 and 2, x / beta 1E-300 to 0.5,
+///   both columns: Excel's relative error minus a times LN(y)'s rounding error is within about 1 ulp at
+///   every cell from 1E-16 to 1E-10), so `GAMMA.DIST(1E-14,2,1,FALSE)` is 11.8 ulp below the true
+///   value, where the direct form was 17 from Excel; 0 to 2 ulp from Excel at every probed cell
+///   below 1E-10 (T-2852).
+/// - Otherwise, below shape 20 and at y at most [`LOG_FORM_RATIO`]: EXP(a LN(y) - y) / GAMMA(a) / x,
+///   whose log carries about |LN(y)| ulp of error, so `GAMMA.DIST(1E-300,1,1,FALSE)` is
+///   1.0000000000000235, not 1 (probes/t2753-gamma-density-ratio-sweep A1, B1; t2738-gamma-dist-
+///   tiny-ratio A2, A4, A15, A19; T-2753). Unprobed above shape 2; it keeps to the prefactor's
+///   direct shapes.
+///
+/// `None` at x = 0, which keeps its own value (`GAMMA.DIST(0,9,2,FALSE)` is 0, GAMMA.xlsx E13).
+pub(super) fn log_form_density(alpha: f64, x: f64, beta: f64) -> Option<f64> {
     let y = x / beta;
-    (x > 0.0 && alpha < DIRECT_SHAPE_MAX && y <= LOG_FORM_RATIO)
+    if !(x > 0.0) {
+        return None;
+    }
+    if alpha < LOG_FORM_SHAPE_MAX && y.is_normal() {
+        let power = excel_exp(alpha * excel_ln(y));
+        let decay = excel_exp(-y);
+        // Where either factor is not normal (y^a underflows below about 1E-150 at shape 2, e^-y
+        // past 708) its digits are gone; the single exponential below keeps them.
+        if power.is_normal() && decay.is_normal() {
+            return Some(power / excel_gamma(alpha) * decay / x);
+        }
+    }
+    (alpha < DIRECT_SHAPE_MAX && y <= LOG_FORM_RATIO)
         .then(|| excel_exp(alpha * excel_ln(y) - y) / excel_gamma(alpha) / x)
 }
 
@@ -127,7 +155,7 @@ impl Model {
             // A subnormal density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/m9-gamma-dist-a500
             // B22; docs/excel-semantics/numbers.md "Distribution densities").
             flush_subnormal(
-                tiny_ratio_density(alpha, x, beta_scale)
+                log_form_density(alpha, x, beta_scale)
                     .or_else(|| gamma_density(alpha, x, beta_scale))
                     .unwrap_or_else(|| dist.pdf(x)),
             )

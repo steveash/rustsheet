@@ -82,3 +82,25 @@ fn gamma_density_at_a_tiny_ratio_is_the_log_form() {
         ],
     );
 }
+
+// T-2852: below shape 3 the density is EXP(a LN(y)) / GAMMA(a) * EXP(-y) / x at every x / beta, so
+// its error is a times LN(y)'s: Excel's own doubles, bit for bit (probes/t2753-gamma-density-switch
+// A6, A8, A24; probes-numeric m9-gamma-dist-a1 A2, t1049-chisqdist A6), where the direct form and the
+// tiny-ratio form were 2 to 26 ulp off.
+#[test]
+fn gamma_density_below_shape_three_is_the_log_form() {
+    check_cells(
+        &[],
+        &[
+            ("A1", "=GAMMA.DIST(1E-14,1,1,FALSE)", "0.9999999999999888"),
+            ("A2", "=GAMMA.DIST(1E-12,1,1,FALSE)", "0.9999999999990009"),
+            (
+                "A3",
+                "=GAMMA.DIST(3E-16,2,1,FALSE)",
+                "3.000000000000007e-16",
+            ),
+            ("A4", "=GAMMA.DIST(0.1,1,1,FALSE)", "0.9048374180359597"),
+            ("A5", "=CHISQ.DIST(0.1,5,FALSE)", "0.004000129828100455"),
+        ],
+    );
+}

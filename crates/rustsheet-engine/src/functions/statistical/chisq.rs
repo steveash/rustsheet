@@ -5,7 +5,7 @@ use statrs::distribution::{Continuous, Gamma};
 
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
-use super::gamma::tiny_ratio_density;
+use super::gamma::log_form_density;
 use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
 use crate::arithmetic::flush_subnormal;
 use crate::functions::lift::{num_error, number_or_error};
@@ -103,12 +103,12 @@ impl Model {
         } else if cumulative {
             gamma_cdf(&dist, x)
         } else {
-            // CHISQ.DIST's density is GAMMA.DIST's at scale 2, its tiny-ratio log form included:
+            // CHISQ.DIST's density is GAMMA.DIST's at scale 2, its log forms included:
             // `CHISQ.DIST(1E-300,1,FALSE)` is within 1 ulp of Excel's 3.9894228040142567E+149,
             // which is 154 ulp below the exact 1/SQRT(2*PI()*1E-300) (gen-m9/3e98b26cf6713e77
             // A268, T-2638).
             let scale = 1.0 / dist.rate();
-            tiny_ratio_density(dist.shape(), x, scale)
+            log_form_density(dist.shape(), x, scale)
                 .or_else(|| gamma_density(dist.shape(), x, scale))
                 .unwrap_or_else(|| dist.pdf(x))
         };
