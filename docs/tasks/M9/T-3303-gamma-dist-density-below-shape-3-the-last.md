@@ -8,7 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: []
-campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -41,8 +41,3 @@ inexact quotient) is likely needed first (`excel-probe` skill). Shape 50 below a
 
 ## Out of scope
 - Shape 50 at y below a/100 (T-3219); shapes from 3 up (T-3147, T-3219).
-
-## Visible-parity stage
-Decision 0114: Excel is the inaccurate side here (its density carries a times LN(y)'s rounding error, 11.8 ulp below the
-true value at `GAMMA.DIST(1E-14,2,1,FALSE)`), so the stage is `visible`; the named cells are already within the 15th digit,
-so this is the bit-level remainder, after the visibly-off cells of the campaign.

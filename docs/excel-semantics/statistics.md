@@ -398,38 +398,54 @@ Status: VERIFIED
 
 ## GAMMA.DIST's density below shape 3 is a log-space form (T-2753, T-2852)
 Rule: below shape 20, where y = x / beta is at most about 1E-15, `GAMMA.DIST(x,a,beta,FALSE)` is EXP(a*LN(y)-y)/GAMMA(a)/x
-(T-2753), and from shape 0.5 to below 3 at a larger y (to 16 at least) it is EXP(a*LN(y))/GAMMA(a)/x*EXP(-y) (T-2852),
-with Excel's own LN, EXP and GAMMA. Both carry a times the rounding error of LN(y): `GAMMA.DIST(1E-300,1,1,FALSE)` is
-1.0000000000000235, `GAMMA.DIST(1,1,1E+307,FALSE)` 9.999999999999768E-308 and `GAMMA.DIST(1E-14,2,1,FALSE)` 11.8 ulp
-below the true value. CHISQ.DIST's density takes the same forms at scale 2.
+(T-2753). From shape 0.5 to below 3, for y below the mode (y < a), and from 0.5 to below 2.5 at any y, from 1E-15 up to
+16 (UNVERIFIED from 2 up), it is EXP(a*LN(y))/GAMMA(a)/x*EXP(-y) (T-2852), with Excel's own LN, EXP and GAMMA. Both
+carry a times the rounding error of LN(y): `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235,
+`GAMMA.DIST(1,1,1E+307,FALSE)` 9.999999999999768E-308 and `GAMMA.DIST(1E-14,2,1,FALSE)` 11.8 ulp below the true value.
+CHISQ.DIST's density takes the same forms at scale 2.
 Evidence: probes/t2753-gamma-density-ratio-sweep (x / beta 1E-300 to 0.5 at shapes 1, 2, 0.5 and 50, column A beta = 1,
-column B x = 1) and probes/t2753-gamma-density-switch (1E-19 to 1E-11), excel-graph 2026-10-27;
-probes/t2738-gamma-dist-tiny-ratio A2, A4, A15, A19; probes-numeric m9-gamma-dist-a0p5, -a1, -a2, m9-chisq-dist,
-t1049-chisqdist; `CHISQ.DIST(1E-300,1,FALSE)` = 3.9894228040142567E+149 (gen-m9/3e98b26cf6713e77 A268), 154 ulp below
-the exact 1/SQRT(2*PI()*1E-300). Found in T-2852: at every switch and sweep cell from 1E-16 to 1E-10, Excel's relative
-error minus a times LN(y)'s rounding error is within about 1 ulp (shapes 0.5, 1, 2; both columns), the signature of
-EXP(a LN(y)) with the rest accurate; T-2753's EXP(a LN(y) - y) loses y into the rounding of a LN(y) above 1E-15 (4 to 37
-ulp). Fit (Excel's kernels, the 222 literal densities at shapes 0.5 to 2.5 in eval/; exact / within 1 ulp):
-EXP(a LN y)/GAMMA(a)*EXP(-y)/x 114 / 208; EXP(a LN y)*EXP(-y)/GAMMA(a)/x 110 / 208; EXP(a LN y)/GAMMA(a)/x*EXP(-y) 111 /
-206 (in the full eval it fixes two cells more than the first and keeps gen-m9/ecc87f80077959e0 A261
-`CHISQ.DIST(1.5,2,FALSE)` bit-exact, which the first loses, so it is the one implemented); EXP(a LN y)/EXP(y)/GAMMA(a)/x 99 / 202; the same exponent in an x87 register less GAMMALN(a) 107 / 203, or into
-EXP over GAMMA(a) 112 / 203; EXP(a LN y - y)/GAMMA(a)/x 69 / 141; EXP(a LN y - y - GAMMALN(a))/x 49 / 124; the direct
-y^a e^-y / GAMMA(a) / x (the engine's form before) 26 / 74 above 1E-15. Below 1E-15 the second form is as close as the first but not at the same cells, and the first is bit-exact
-at four gated switch cells (A39, A40, B39, B41), so it stays there. Above y = 16 (a fit in [5, 20)): e^-y of the double
-y misses `GAMMA.DIST(40,1.5,1.999,FALSE)` (gen-m9/c468f5046aadfbbc A171, y = 20.01) by 10 ulp, the direct form by 5 and
-e^-y of the extended quotient by 3 (Excel is within 1 ulp of the true value), but the extended quotient loses the gated
-sweep B35, so the form stops short of it. The lower shape bound 0.5 is a fit inside (0.1, 0.5]: at shape 0.1 gen-m9/0a614cfe974b59c3 A367 is bit-exact on
-the direct form and 1 ulp off on this one (at 1E-10, gen-m9/4e55500bb8ad3cd8 A386 goes the other way). The upper bound 3
-is a fit inside (2.5, 5]: at shapes 5, 9 and 10 every log form is 10 to 18 ulp
-off from y = 1 up (m9-chisq-dist A48, m9-gamma-dist-a9 A8), where the direct form is 0 to 1 (and T-3147 finds the ratio
-form there above the mode from 3). Still off: shape 50 below a/100 (sweep A46:A48, B46:B48, 32 to 114 ulp; T-3219): Excel
-is 50 to 105 ulp above the true value, and its error is 50 times LN(y)'s rounding error plus 41 to 52 units of 2^-52
-there, a log form with the rest of the exponent about 1E-14 high; no tried order of a LN(y), y and GAMMALN(50) in doubles
-or in an x87 register, nor the ratio form, Loader's saddle point or `rcomp`, reproduces it (13 to 435 ulp off).
+column B x = 1) and probes/t2753-gamma-density-switch (1E-19 to 1E-11), excel-graph 2026-10-27; probes/t2738-gamma-dist-
+tiny-ratio A2, A4, A15, A19; probes-numeric m9-gamma-dist-a0p5, -a1, -a2, m9-chisq-dist, t1049-chisqdist;
+`CHISQ.DIST(1E-300,1,FALSE)` = 3.9894228040142567E+149 (gen-m9/3e98b26cf6713e77 A268), 154 ulp below the exact
+1/SQRT(2*PI()*1E-300).
+Found in T-2852: at every switch and sweep cell from 1E-16 to 1E-10, Excel's relative error minus a times LN(y)'s
+rounding error is within about 1 ulp (shapes 0.5, 1, 2; both columns), the signature of EXP(a LN(y)) with the rest
+accurate; T-2753's EXP(a LN(y) - y) loses y into the rounding of a LN(y) above 1E-15, and the direct form was up to 37 ulp
+off there (switch B23 26 ulp). Fit (Excel's kernels, the 222 literal densities at shapes 0.5 to 2.5 in
+eval/; exact / within 1 ulp): EXP(a LN y)/GAMMA(a)*EXP(-y)/x 114 / 208; EXP(a LN y)*EXP(-y)/GAMMA(a)/x 110 / 208;
+EXP(a LN y)/GAMMA(a)/x*EXP(-y) 111 / 206 (in the full eval it fixes two cells more than the first and keeps
+gen-m9/ecc87f80077959e0 A261 `CHISQ.DIST(1.5,2,FALSE)` bit-exact, which the first loses, so it is the one implemented);
+EXP(a LN y)/EXP(y)/GAMMA(a)/x 99 / 202; the same exponent in an x87 register less GAMMALN(a) 107 / 203, or into EXP over
+GAMMA(a) 112 / 203; EXP(a LN y - y)/GAMMA(a)/x 69 / 141; EXP(a LN y - y - GAMMALN(a))/x 49 / 124; the direct y^a e^-y /
+GAMMA(a) / x (the engine's form before) 26 / 74 above 1E-15.
+The bounds are fits inside their evidence brackets (gamma.rs names each cell):
+- y at most 1E-15 keeps T-2753's form: the new one is as close but not at the same cells, and the old one is bit-exact at
+  four gated switch cells (A39, A40, B39, B41).
+- Lower shape 0.5, in (0.1, 0.5]: at shape 0.1 gen-m9/0a614cfe974b59c3 A367 is bit-exact on the direct form and 1 ulp off
+  on this one (at 1E-10, gen-m9/4e55500bb8ad3cd8 A386 goes the other way).
+- Above the mode, shape 2.5, in (2, 2.5]: at 2.5 all five probed cells above the mode move away from Excel on it
+  (m9-chisq-dist A36 `CHISQ.DIST(5,5,FALSE)` 0 -> -1 ulp, A38 and t1049-chisqdist A38 `(10,5,FALSE)` -1 -> -3, A40
+  `(20,5,FALSE)` -1 -> 3, gen-m9/a54c738c697617c3 A29 `GAMMADIST(9,2.5,2.5,FALSE)` -2 -> -6); at 2 it is mixed (gated
+  gen-m9/bc40d37cb4d8301d A165 `CHISQ.DIST(11,4,FALSE)` and m9-gamma-dist-a2 A28 become bit-exact, A8 and A18 lose a bit,
+  t1048-gammadist A6, B6 go from 1 ulp to 2).
+- Below the mode, shape 3, in (2.5, 5]: at 2.5 all four probed cells below the mode move closer (t1049-chisqdist A6, A30;
+  gen-m9/9cca17438a7e6f8a A133 and d8266bc15533702a A230 bit-exact); at shapes 5, 9 and 10 every log form is 10 to 18 ulp
+  off from y = 1 up (m9-chisq-dist A48, m9-gamma-dist-a9 A8), where the direct form is 0 to 1 (and T-3147 finds the
+  ratio form there above the mode from 3).
+- Upper y 16, in [5.5, 20.01): gated gen-m9/bc40d37cb4d8301d A165 at y = 5.5 is bit-exact on the form (1 ulp on the
+  direct one); at `GAMMA.DIST(40,1.5,1.999,FALSE)` (gen-m9/c468f5046aadfbbc A171, y = 20.01) e^-y of the double y misses
+  by 10 ulp, the direct form by 5 and e^-y of the extended quotient by 3 (Excel is within 1 ulp of the true value), but
+  the extended quotient loses the gated sweep B35. From y = 2 up the form is no closer than the direct one on balance
+  (UNVERIFIED: of 12 probed cells from y = 2 to 16, 3 become bit-exact, gated gen-m9/8dd2312c96effb1b A150 and A165 among
+  them, 2 lose a bit, 2 move closer and 5 stay at the same distance).
+Still off: shape 50 below a/100 (sweep A46:A48, B46:B48, 32 to 114 ulp; T-3219): Excel is 50 to 105 ulp above the true
+value, and its error is 50 times LN(y)'s rounding error plus 41 to 52 units of 2^-52 there, a log form with the rest of
+the exponent about 1E-14 high; no tried order of a LN(y), y and GAMMALN(50) in doubles or in an x87 register, nor the
+ratio form, Loader's saddle point or `rcomp`, reproduces it (13 to 435 ulp off).
 Implemented in: functions/statistical/gamma.rs `log_form_density` (GAMMA.DIST, GAMMADIST, and CHISQ.DIST through
 chisq.rs).
-Status: VERIFIED for the forms (0 to 3 ulp at the probed densities from shape 0.5 to 3, 6 at gen-m9/a54c738c697617c3
-A29; the remaining bits, y above 16 and shapes below 0.5 are T-3303)
+Status: VERIFIED for the forms (every probed density the form moves ends 0 to 2 ulp from Excel; UNVERIFIED from y = 2
+to 16; the remaining bits, y above 16 and shapes below 0.5 are T-3303)
 
 ## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
 Rule: these functions are bit-identical compositions of one another, so their last digits come from one
