@@ -3,7 +3,7 @@ id: T-3215
 title: "YIELD start: the three cells one start-ulp off after T-3152 attempt 1 (rate-term B30, term-basis C47, one-step A37)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
