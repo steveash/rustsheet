@@ -3,7 +3,7 @@ id: T-3248
 title: "Probe the SUM snap bound with the running total below the last addend's exponent"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -25,9 +25,17 @@ not of the larger of the two final addends.
 - Engine: `SumParts::snapped` (functions/math_and_trigonometry/sum.rs) uses the running total.
 
 ## Acceptance criteria
-- [ ] An excel-graph probe (milestone M2) with those cells; numbers.md states the result.
-- [ ] If the engine differs, `SumParts::snapped` matches Excel, with tests either side of the bound.
-- [ ] `make check` green; reviewers approve.
+- [x] An excel-graph probe (milestone M2) with those cells; numbers.md states the result.
+- [x] If the engine differs, `SumParts::snapped` matches Excel, with tests either side of the bound.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The opposite-sign condition.
+
+## Outcome
+- probes/t3248-snap-running-total-below-last (384 cells, excel-graph 2026-10-30): inside SUM the near-zero snap bound
+  is 8 ULP of the running total before the last addend, not of the larger final addend. With the running total
+  1-k·2^-52 below the last addend ∓1, all four blocks snap exactly k ≤ 3 and keep k = 4 in SUM over arguments, a
+  range and an array argument, SUBTOTAL(9) and the `+` chain; AVERAGE snaps before dividing.
+- numbers.md "Near-zero snapping" records it (VERIFIED). The engine already matched (`SumParts::snapped`), so no
+  code change; eval delta +384 passing probe cells (eval/baseline/probes.txt), no new known failures.

@@ -1078,6 +1078,14 @@ forms, every summation order of a LN(x), -a LN(2), -x/2, -LNGAMMA(a) and the (a-
 some cell. At `CHIDIST(100,4)` Excel is 38 ulp below the truth while every log form is above it, so the continued
 fraction's own rounding, not only the prefactor, differs; stopping the fraction or the series at a looser tolerance
 (1E-16 to 1E-10, Numerical Recipes' gcf and gser) changes none of these cells.
+The deep upper tail reaches far past 37 ulp (gap triage 2026-10-30, 60-digit mpmath, ulps of Excel's value):
+`CHISQ.DIST.RT(1000,3)` +86.7 (probes-numeric/t1049-chisqdistrt A39), `CHIDIST(1000,30)` +405 (m9-legacy-chidist A71),
+`CHISQ.DIST.RT(200,20)` = `POISSON(9,100,TRUE)` -43.3 (t1049-chisqdistrt A28, gen-m9/5919660b7bb4d195 A80), and
+`POISSON.DIST(3,100,TRUE)` -59.4 (gen-m9/9735c5ab72fa5ecf A48); ours is within about 3 ulp of the truth at each (T-3269,
+sweep T-3289). Excel is correctly rounded nearer the bulk at small half-integer shapes, `CHISQ.DIST.RT(10,5)`
+0.07523524614651218 (+0.3 ulp; m9-chisq-dist-rt A19, ours -5.7: T-3285), and near the mode at large shapes,
+`POISSON.DIST(46040,46071,TRUE)` 0.4438020698095389 (-0.2 ulp; ironcalc-calc POISSON.xlsx D55, ours +15.8: T-3286),
+so only the far tail is Excel's own inaccurate form.
 Not Excel's either, and not correctly rounded on either side (gap triage 2026-10-29, 60-digit mpmath reference;
 T-3147): CHISQ.DIST at 50 and 100 degrees of freedom, the `rcomp` branch of the prefactor (shape 20 and up).
 `CHISQ.DIST(10,100,FALSE)` is 9.838365191393825E-32 in Excel, 63 ulp below the true 9.8383651913938939E-32.
@@ -2500,6 +2508,16 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
   n = 90-256 with both shapes large (t2513-r3-loader-bd0-a and -bd0-hold) the miss is x-dependent with sd 8-19 units.
   The one exception is (45.2, 60.9), a constant +5.3. UNVERIFIED as a mechanism: T-3249 sweeps the shapes, and
   T-3250 and T-3244 fit them.
+- Large shapes, measured without fitting (T-3249: t3249-beta-large-shape-fit and -hold, 34 + 62 shapes,
+  a = 128.5-8192.5, b = 1.5-40.5 or b = a, n 128-16383, runs below the mode at ln f = -25 to -650): the miss
+  against Excel does not collapse at large |ln f|, unlike the a = 1025, b = 1.5 column. Its sd (2^-52 relative units)
+  grows steadily with |ln f|: about 1 at the mode run, 43-58 at 25-75, 83-101 at 100-150, 133-177 at 200-350, 175-211
+  at 400-500 and 257-283 at 600-650 (fit and hold-out agree). By shape (fit; hold-out in brackets) it is 57-159
+  [56-190] for one large shape; with b = a it is 83-141 to n 2048, then 237, 381 [408] and 457 [514] at n 4095, 8191
+  and 16383. Off at 15 digits: none of the mode runs, 49-84% of the cells at |ln f| 25-75, 81-98% from 100 up.
+  F.DIST at the mapped point (column B) shows the same growth (sd 46-53 at 25-50, 336-398 at 450-650).
+  UNVERIFIED hypothesis (T-3250 and T-3244 to test): one rounding at the scale of |E| that one side makes and the
+  other does not.
 Evidence: probes-numeric t2513-r3-loader-const-sweep1, -diverse1, -grid1, -hold1, t2513-r3-loader-bd0-a, -b, -hold,
 t2513-verify-r3-loader-const-hold, t2513-verify-r3-loader-bd0-hold, and T-2464's t2464-r2-density-large-p1,
 t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`, `a2_forms.py`, `a5_xreg.py`,
