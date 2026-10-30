@@ -11,7 +11,7 @@
   open on one parse path, and a minus written directly before a number literal is not counted
   (`Parser::parse_signs`). That reproduces all three probed caps. Signs in nested runs
   (`=-(-(...))`) count together, which is the conservative reading because Excel was probed with
-  unbroken runs only (T-3252). The evaluator already walked a sign run in a loop. The printer
+  unbroken runs only (T-3266). The evaluator already walked a sign run in a loop. The printer
   now prints signs, written parentheses and whitespace in a loop too (`stringify/wrapped.rs`), so
   the remaining per-sign recursion (Clone, Drop, analysis, edits) is bounded by `MAX_SIGNS`.
 - **Consequences:** The eighteen t3172 sign-run lines leave `eval/suites/probes/deviations`; those
