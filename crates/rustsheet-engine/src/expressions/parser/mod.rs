@@ -580,6 +580,9 @@ pub struct Parser {
     /// An operand parsed ahead, with its depth, for the next [`Parser::parse_primary`] to
     /// return: the inner group of a run of parentheses ([`Parser::parse_parenthesis_run`]).
     pending_operand: Option<(Node, usize)>,
+    /// Where the pending operand's text starts (a char index), for the intersection that reads
+    /// it back ([`Parser::parse_intersection`]).
+    pending_start: usize,
     /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
     open_groups: usize,
     /// A group's content is about to be parsed: its first operand, unless another group, reserves
@@ -659,6 +662,7 @@ impl Parser {
             depth: 0,
             inner_depth: 0,
             pending_operand: None,
+            pending_start: 0,
             open_groups: 0,
             group_head: false,
             open_signs: 0,

@@ -332,11 +332,14 @@ class GraphBackend:
                 # One blank row above row `to` with the cells below shifted down, as the T-1853
                 # session did (docs/research/t1853-legacy-cell-edits-2026-10-18.md); the other
                 # row and column edits (T-2323) are the same call with another verb and shift.
-                # The address is `3:3` for a row and `C:C` for a column letter.
+                # The address is `3:3` for a row and `C:C` for a column letter; a multi-row
+                # delete_row is recorded as its span, `4:7`, already an address (T-3019).
                 verb, shift = _RANGE_EDITS[op]
+                target = str(to).upper()
+                address = target if ":" in target else f"{target}:{target}"
                 self._call(
                     "POST",
-                    f"{ref(sheet)}/range(address='{str(to).upper()}:{str(to).upper()}')/{verb}",
+                    f"{ref(sheet)}/range(address='{address}')/{verb}",
                     json={"shift": shift},
                     headers=sid,
                 )
