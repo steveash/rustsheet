@@ -231,7 +231,9 @@ calendar prefix alone is no date token for a negative value: `"b1"` and `"B1"` g
 is " x", " x" and "- x", `"[$-40C]B1"` is "", "", "-" (probes/t2388-b1-negative, excel-graph, 2026-10-28; `"B1@"` prints the
 number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals. The same holds for a lone `B2`
 (`"b2"` -> "-", `"B2 x"` "- x"), a tagged `"[$-40C]B2"` and `"[$-409]B2"` ("-"), and a magnitude past the maximum
-serial (`TEXT(-3000000,"b1")` is "-"). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
+serial (`TEXT(-3000000,"b1")` is "-"). A positive value past it (and at or just past 2958465) prints
+only the literals: `TEXT(3000000,"b1")` and `"b2"`/`"B1"` are "", `"b1 x"` is " x", while `"d b1"` is `#VALUE!` and
+`"0;b1"` is the number "3000000" (probes/t3050-b1-positive-large, excel-graph, 2026-10-29). The same holds for a huge value and for locale-tagged prefixes: `TEXT(1E15,"b1")` and `"b2"` are "", `"b1 x"` is " x", `"0;b1"` is "1000000000000000"; `TEXT(3000000,"[$-40C]B1")` is "" and `"[$-40D]B1 x"` is " x" (probes/t3188-b1-huge-tagged, excel-graph, 2026-10-30; already implemented). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
 `"b1;b1"` are "", `"0;b1 x"` is " x" (probes/t2388-b1-negative A6-A13).
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
@@ -799,8 +801,10 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - The accounting formats' text section `_(@_)` pads a text, a boolean or an empty string with one space on each side:
   `_(* #,##0_);_(* \(#,##0\);_(* "-"_);_(@_)` on "text" is " text " (gen-m10 05c1c646c95a2d60 F!M4), on TRUE " TRUE "
   (eec351e03ccedfe0 F!R2) and on `=""` two spaces (5255389143dbcef6 F!H11); the `$` variants do the same
-  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25). Ours shows
-  the plain value (T-1736).
+  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25).
+  Implemented (T-1736): `Cell::formatted_value` sends a text or boolean cell through `format_text_value`; an error cell is
+  shown as it is. All 10,400 gen-m10 displayed-text cells pass.
+  Unprobed (T-3282): wherever TEXT() is `#VALUE!` (a text over 255 characters, a formatted result past 255, an unparsable number section) the cell shows the plain text.
 - A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5" (implemented, T-2097: the minus leads and the General token prints the absolute value; gen-m10 F!D19 -1E15 is "-x1E+15"). A value that rounds to Unprobed: literals after General on a negative (`General x`, unchanged here).
   nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
   1000 "1".

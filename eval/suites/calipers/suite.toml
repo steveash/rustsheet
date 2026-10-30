@@ -7,12 +7,9 @@ root = "../../.cache/suites/calipers"
 # script runs (the engine cannot run the scripts, but their saved workbooks are ordinary Excel files).
 include = ["**/golden.xlsx"]
 # `_disabled/`: hostile files Calipers itself never loads. pv26_002 and pv26_2_002 (1.4M formulas,
-# 560k COUNTIFS/SUMIFS) take about 11 minutes to calculate, and a timed-out case keeps its worker
-# running until the run ends; T-0449 puts them back once they calculate within the case timeout.
+# 560k COUNTIFS/SUMIFS) are back since T-3230: about 10 s to load and 13 s to calculate each.
 exclude = [
   "_disabled/**",
-  "pv_goldens/pv26_002/**",
-  "pv_goldens/pv26_2_002/**",
 ]
 # Calipers is MIT. The pv_goldens workbooks were imported into it from a non-public repository
 # (lyfegame/shortcut, anonymised by its authors), so the corpus is fetched, never vendored.

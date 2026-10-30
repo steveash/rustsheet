@@ -10,7 +10,7 @@ use crate::{
         token::{Error, OpCompare, OpSum},
         types::CellReferenceIndex,
     },
-    functions::util::compare_values,
+    functions::util::{collation::cmp_text_pairwise, compare_values},
     limits::{check_array_size, unspillable_shape},
     model::Model,
     text::Text,
@@ -752,11 +752,7 @@ impl Model {
         // An uncalled LAMBDA joined as text is `#VALUE!` (`LAMBDA(x,x)&""`, `"a"&LET(f,
         // LAMBDA(x,x),f)`; arrays.md "An uncalled LAMBDA is one value", T-2622).
         let mut operand = |value| match value {
-            CalcResult::Lambda(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "A LAMBDA joined as text".to_string(),
-            )),
+            CalcResult::Lambda(_) => Err(lambda_text_error(cell)),
             value => self.string_or_array(value, cell),
         };
         let l = operand(left);
@@ -847,7 +843,12 @@ impl Model {
         };
 
         let apply = |lv: &CalcResult, rv: &CalcResult| -> bool {
-            let cmp = compare_values(lv, rv);
+            // Two texts compare by Excel's pairwise rule, which no sort can use
+            // (`cmp_text_pairwise`; probes/t3181-collation-prefix-callers Calc!A1:A9).
+            let cmp = match (lv, rv) {
+                (CalcResult::String(l), CalcResult::String(r)) => cmp_text_pairwise(l, r) as i32,
+                _ => compare_values(lv, rv),
+            };
             match kind {
                 OpCompare::Equal => cmp == 0,
                 OpCompare::LessThan => cmp == -1,
@@ -938,4 +939,10 @@ fn concat_limited(a: &Text, b: &Text) -> Text {
     let mut joined = Text::concat(a, b);
     joined.truncate_utf16(MAX_TEXT_UNITS);
     joined
+}
+
+/// The error of an uncalled LAMBDA read as text: `&` (probes/t2622-take-let-reference-lambda-text),
+/// CONCAT and TEXTJOIN (probes/t3130-concat-lambda-trimrange-cell-variable Q5-Q12).
+pub(crate) fn lambda_text_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "A LAMBDA joined as text".to_string())
 }

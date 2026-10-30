@@ -91,5 +91,11 @@ scoring one candidate at a time:
 - Gap triage 2026-10-28: that dense-grid probe is filed as T-3015 (research), through BETA.DIST's bpser since F.TEST
   cannot give fractional shapes. Its answer is the new hypothesis this section asks for.
 
+- Gap triage 2026-10-30: `make unowned-off ALL=1` listed six visibly-off cells with no open owner. They are
+  `2*F.DIST.RT(1E+12,df1,df2)` with df2/2 = 6 and df1/2 = 8.5 to 13, inside this task's 1 < min < 8 < max band. T-3007 is
+  done and named them, and T-3015 refers to them only through T-3007. mpmath shows Excel itself is 9 to 119 ulp from the
+  exact tail on them (ours 3 to 153), so they need this fit, not more accuracy. This task owns them:
+  probes/t2829-ftest-tail-over-b S!A1, S!A3, S!A4, S!A6, S!A7, S!A9.
+
 ## Out of scope
 - Porting the form (its own task), the shapes of 1/2 and 1 (the remainder model), min(a, b) < 1.

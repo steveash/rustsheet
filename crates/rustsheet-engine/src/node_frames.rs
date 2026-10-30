@@ -255,6 +255,8 @@ impl Model {
     /// result so far and its right operand, the same order and results as
     /// recursing into each left operand, on one stack frame however long the
     /// chain is. Out of line, so its locals stay off `evaluate_node_in_context`'s frame.
+    /// SUMPRODUCT's `Model::read_masked_block` folds a `*` chain the same way (keep the two in
+    /// step; T-3230).
     #[inline(never)]
     pub(crate) fn evaluate_operator_chain(
         &mut self,
@@ -265,26 +267,36 @@ impl Model {
         let mut value = self.evaluate_node_in_context(first, cell);
         for link in links {
             value = self.apply_operator_link(value, link, cell);
-            // Each link below the chain's own node is a node of its own, and its value, an array
-            // a broadcast built, is charged as a node's is (SPEC-0024); the chain's value is
-            // charged where it is returned (`evaluate_node_in_context`).
-            if !std::ptr::eq(link, node) {
-                if let Err(error) = self
-                    .spend_work(NODE_UNITS, cell)
-                    .and_then(|()| self.spend_value(&value, cell))
-                {
-                    return error;
-                }
+            if let Err(error) = self.charge_chain_link(node, link, &value, cell) {
+                return error;
             }
         }
         value
+    }
+
+    /// Charges `value`, the value of chain `node` (of [`left_chain`]) up to `link`. Each link
+    /// below the chain's own node is a node of its own, and its value, an array a broadcast built,
+    /// is charged as a node's is (SPEC-0024); the chain's value is charged where it is returned
+    /// (`evaluate_node_in_context`).
+    pub(crate) fn charge_chain_link(
+        &mut self,
+        node: &Node,
+        link: &Node,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        if std::ptr::eq(link, node) {
+            return Ok(());
+        }
+        self.spend_work(NODE_UNITS, cell)
+            .and_then(|()| self.spend_value(value, cell))
     }
 
     /// The operator of `link` (of [`left_chain`]) over `value` and its right operand; a dynamic
     /// array's root chain folds the same way in `Model::evaluate_spilling_chain`. Out of
     /// line, so the chain's frame, held while a nested call in its first operand runs, stays small.
     #[inline(never)]
-    fn apply_operator_link(
+    pub(crate) fn apply_operator_link(
         &mut self,
         value: CalcResult,
         link: &Node,

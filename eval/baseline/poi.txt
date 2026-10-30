@@ -144,8 +144,6 @@ F	poi/57535.xlsx	Sheet1!E6
 F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
 F	poi/60825.xlsx	!EngineError
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1056
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1060
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G936

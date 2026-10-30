@@ -153,6 +153,26 @@ impl Model {
         })
     }
 
+    /// The value an IF, CHOOSE, IFS or SWITCH (`kind`) gives once [`Self::pick_step`] picked
+    /// `arm`, as `fn_if`, `fn_choose`, `fn_ifs` and `fn_switch` read it: a caller that picks
+    /// first then reads the same value without reading the condition or index again. For nested
+    /// pickers the innermost one reads its arm; a scalar pick hands its arm on unchanged, so
+    /// only IFS's and SWITCH's empty-to-0 depends on which one reads it.
+    pub(crate) fn picked_value(
+        &mut self,
+        kind: &Function,
+        arm: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match kind {
+            Function::If => self.if_branch_value(arm, cell),
+            Function::Choose => self.choose_arm_value(arm, cell),
+            _ => self
+                .evaluate_node_in_context(arm, cell)
+                .empty_value_as_zero(),
+        }
+    }
+
     /// What IF's condition picks: with a scalar condition the branch it chooses, unevaluated;
     /// otherwise the value IF gives (the condition's error, FALSE for a missing branch, or IF
     /// over an array condition, its branches evaluated). IF with no branch at all, as an

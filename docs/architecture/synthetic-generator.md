@@ -516,9 +516,26 @@ Each workbook draws one policy. The policy multiplies category weights and pool 
 | `structure` | deep DAGs, wide fan-in/out, cross-sheet chains, insert/delete MRs |
 
 Implemented so far (`rustsheet-gen --policy`): `random` (the catalog-driven P0 generator),
-`numeric-rules` (dense floating-point probes, suite `probes-numeric`) and `operators-refs` (M1
-operators and references only, no functions, suite `gen-m1`; T-0117). The last two are
-whole-suite policies rather than per-workbook draws.
+`numeric-rules` (dense floating-point probes, suite `probes-numeric`), `operators-refs` (M1
+operators and references only, no functions, suite `gen-m1`; T-0117), `names-3d` (suite `gen-m8a`,
+T-1606), `tables` (suite `gen-m8b`, T-1607), `number-formats` (suite `gen-m10`, T-1611) and
+`numeric-fp` (suite `gen-m2`, T-3139). All but `random` are whole-suite policies rather than
+per-workbook draws.
+
+`numeric-fp` implements the cancellation part of the `numeric_fp` row for M2 and M5: X = base·(1±k·2^-52)
+against b = base (bases 1, 2, 0.5, 2^20, 1.5; k = 0..9; both signs; exact doubles built on an
+`Inputs` sheet with `numeric_rules`' `BASES` and `fmt_k`) in three positions, each case one
+position: `root` (the `+`/`-` at the root, operands read through VLOOKUP, HLOOKUP, INDEX,
+MATCH-fed INDEX, MIN, MAX, ABS, ROUND and IF), `wrapper` (the cancellation under IF, IFERROR,
+ROUND, ABS, `&`, `=`, AND and COUNTIF) and `sum` (SUM, AVERAGE, SUMIF and SUMIFS over a range of X
+and -b, with and without a trailing 0), all in both operand orders: 5,200 cells, each tagged
+`numeric-fp/<position>/<form>/<order>/base=../sign=../k=..`. The seed only shuffles the cells.
+With `--milestone M5` (suite `gen-m5`, T-3204) it writes three more cases over the same pairs: `root` reads
+both operands through TRUNC (with and without 20 digits), INT, `MOD(..,2^21)`, ROUNDUP and ROUNDDOWN (20 digits);
+`wrapper` puts `X-b` under TRUNC (both forms), INT, `MOD(..,1)`, ROUNDUP (20 and 0 digits) and ROUNDDOWN (20); and
+`digits15` takes, per base and sign, the k one step either side of where X's rounded or truncated 15-significant-digit
+cut stops being b (computed exactly with `decimal`), with every picker (plain references included) and wrapper, each
+cell tagged `round15=eq|ne/trunc15=eq|ne`: 4,252 cells. Other milestones are refused.
 
 ---
 

@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3063: WRAPROWS of a one-cell empty range; error type, else rows.",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-3063"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "G1": "=IFERROR(ERROR.TYPE(ROWS(_xlfn.WRAPROWS(Z1:Z1,1/0))),ROWS(_xlfn.WRAPROWS(Z1:Z1,1/0)))"
+   }
+  }
+ ]
+}

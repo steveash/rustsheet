@@ -629,3 +629,58 @@ fn ordering_criteria_compare_the_cell_at_15_digits() {
     assert_eq!(row(3), ["0", "0", "1", "TRUE"]);
     assert_eq!(row(4), ["1", "1", "0", "FALSE"]);
 }
+
+// Excel: criterion operands and text cells read numbers with VALUE's grammar
+// (docs/excel-semantics/criteria.md, probes/t3136-criteria-formatted-number-operands).
+#[test]
+fn criteria_read_numbers_with_value_grammar() {
+    fn matches(criterion: &str, cell: CalcResult) -> bool {
+        let criterion = CalcResult::String(criterion.into());
+        let matcher = build_criteria(&criterion, en_locale(), &year_2026, DateSystem::default());
+        matcher(&cell)
+    }
+    let text = |s: &str| CalcResult::String(s.into());
+    let number = CalcResult::Number;
+
+    // Operands: each is the number VALUE reads.
+    for (operand, value) in [
+        ("50%", 0.5),
+        ("$1,000", 1000.0),
+        ("12:00 PM", 0.5),
+        ("1 1/2", 1.5),
+        ("(1)", -1.0),
+        ("-$1", -1.0),
+        ("1/2/2020 12:00", 43832.5),
+    ] {
+        assert!(matches(operand, number(value)), "{operand}");
+        assert!(matches(&format!(">={operand}"), number(value)), "{operand}");
+        assert!(
+            !matches(&format!("<>{operand}"), number(value)),
+            "{operand}"
+        );
+    }
+    // `=50%` matches the text cells VALUE reads as 0.5; `>=` never matches text, `<>` always does.
+    for cell in ["50%", "12:00", "12:00 PM"] {
+        assert!(matches("=50%", text(cell)), "{cell}");
+    }
+    assert!(!matches("=50%", text("1,00")) && !matches("=50%", text("abc")));
+    assert!(!matches(">=50%", text("50%")));
+    assert!(matches("<>50%", text("50%")));
+    assert!(matches("1,000", text("$1,000")));
+    // A number criterion (from a cell) reads text cells the same way
+    // (probes/t3151-number-criterion-formatted-text C1, C6).
+    let one = build_criteria(
+        &CalcResult::Number(1.0),
+        en_locale(),
+        &year_2026,
+        DateSystem::default(),
+    );
+    assert!(one(&text("$1")) && one(&text("1e2%")) && !one(&text("1,00")));
+
+    // `1,00` is no number for VALUE, so it stays a text criterion.
+    assert!(matches("1,00", text("1,00")));
+    assert!(!matches("1,00", number(100.0)));
+    // CHAR(160) padding keeps text out of the number reading, on both sides (probes/criteria-padded-text).
+    assert!(!matches("50%\u{a0}", number(0.5)));
+    assert!(!matches("50%", text("50%\u{a0}")));
+}

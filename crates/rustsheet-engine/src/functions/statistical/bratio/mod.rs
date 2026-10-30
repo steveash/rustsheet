@@ -7,14 +7,16 @@
 //! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
 //! migration).
 
+mod bgrat;
 pub(super) mod bpser;
 mod bup;
 pub(super) mod ln_beta;
 
 use super::incomplete_beta::{beta_reg_tails, closed_form_tails};
 use crate::arithmetic::extended_sum;
+use bgrat::bgrat_half;
 use bpser::bpser;
-use bup::l140_bup_bpser;
+use bup::{bup, l140_bup_bpser};
 
 /// TOMS 708's `eps` in `bratio`: max(2^-52, 1e-15).
 pub(super) const EPS: f64 = 1e-15;
@@ -23,6 +25,9 @@ pub(super) const EPS: f64 = 1e-15;
 /// (probes-numeric t2464-r2-bratio-x29: Excel takes the 0.3 dispatch on 284 of the 434 cells in
 /// [0.29, 0.3) where the two differ, the 0.29 one on 87).
 const W1_BPSER_MIN_X: f64 = 0.3;
+
+/// The bup terms bratio takes before bgrat for b0 <= 15 (its `n = 20`).
+const BUP_BGRAT_TERMS: f64 = 20.0;
 
 /// The branch bratio computes a point with (the model's names; `bratio_excel.py` `kernel`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -197,12 +202,24 @@ pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(
 /// tail and forms the other as (0.5 - w) + 0.5, each step an x87 op stored to a double
 /// (statistics.md "Incomplete beta is TOMS 708 `bratio`").
 ///
-/// A shape of 1 outside the closed forms (a0 = 1 with y0 > 0.9) stays on today's kernel
-/// (`incomplete_beta::shape_one_tails`), whose y0^b0 there is Excel's value:
-/// `BETA.DIST(0.9169139465875371,3.5,1,TRUE)` = 0.7381591796246966 (probes/ftest-decomposition
-/// B12) is bit-exact on it and 1 ulp high through bpser(1, 3.5, x0).
+/// A shape of 1 outside the closed forms (a0 = 1 with y0 > 0.9) stays on
+/// `incomplete_beta::shape_one_tails`: bpser(1, b0, x0) is further off Excel's w there (T-3007).
 pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)> {
-    // TODO(T-3007): find Excel's form at a0 = 1 outside the closed forms before moving it.
+    ported_tails_with(a, b, x, y, false)
+}
+
+/// (w, w1) of the Student t kernel call K(n/2, 1/2, y, z) ([`ported_tails`] plus bgrat at b = 1/2,
+/// T-2509). Only the Student t tails take bgrat at b = 1/2 so far: F with a numerator or
+/// denominator df of 1 reaches the same branches, but there bgrat moved gated FDIST cells by 7 ulp
+/// and made F.DIST sweep cells visibly off (t2220-f-dist-sweep d1-1, d2-1), so F stays on today's
+/// kernel until T-2510 ports bgrat for every b.
+pub(super) fn t_kernel_tails(a: f64, y: f64, z: f64) -> Option<(f64, f64)> {
+    ported_tails_with(a, 0.5, y, z, true)
+}
+
+/// [`ported_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
+// TODO(T-2510): drop `half_bgrat` once bgrat is ported for every b and F takes it too.
+fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option<(f64, f64)> {
     if a == 1.0 || b == 1.0 {
         return None;
     }
@@ -215,6 +232,16 @@ pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)>
         }
         Branch::W1Bpser => {
             let w1 = bpser(d.b0, d.a0, d.y0)?;
+            (other(w1), w1)
+        }
+        // bgrat's b is a0: only b = 1/2 is ported (T-2509; T-2510 and T-2512 own the rest).
+        Branch::Bgrat if half_bgrat && d.a0 == 0.5 => {
+            let w1 = bgrat_half(d.b0, d.y0, d.x0, 0.0)?;
+            (other(w1), w1)
+        }
+        Branch::BupBgrat if half_bgrat && d.a0 == 0.5 => {
+            let up = bup(d.b0, d.a0, d.y0, d.x0, BUP_BGRAT_TERMS)?;
+            let w1 = bgrat_half(d.b0 + BUP_BGRAT_TERMS, d.y0, d.x0, up)?;
             (other(w1), w1)
         }
         Branch::L140BupBpser => {

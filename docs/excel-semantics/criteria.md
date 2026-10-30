@@ -33,6 +33,23 @@ Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, ab
 Status: VERIFIED
 Implemented in: functions::criteria::wildcard_text_matcher
 
+Case beyond ASCII (T-3133): a wildcard criterion (SUMIF, COUNTIFS, SUMIFS with `*` or `?`) and a wildcard MATCH/XMATCH
+fold case one character to one character, never changing the text's length, which is SEARCH's fold (text.md "SEARCH
+lowercases per character"). A character whose lowercase is one character takes it; one whose full lowercase is longer
+stays itself. Over Data!A1:A35 = İ ı I i ΟΣ οσ ος K(U+212A) k K ẞ ß ǅ ǆ Ǆ Å(U+212B) å Å Ω(U+2126) ω Ω ſ s S µ μ Μ Ａ ａ
+Σ σ ς i+U+0307 ss İx (SUMIF weights 2^(k-1)): `İ&"*"` matches İ and İx only, `"i*"` matches I, i and i+U+0307 but
+not İ, and `"?"` counts İ (one unit) and not i+U+0307 (two); `ΟΣ`, `οσ` and `ος` are one text, as are `Σ σ ς`
+(`"ς*"` matches all three; `"*"&"Σ"` also matches ΟΣ, οσ, ος); the Kelvin sign is `k`/`K`, `ẞ` is `ß` (neither is
+`ss`; `"s*"` matches s, S and ss only), `ǅ ǆ Ǆ` are one letter, the Ångström sign is `å`/`Å` and the Ohm sign `ω`/`Ω`,
+and fullwidth `Ａ` is `ａ`; `ı`, `ſ` and `µ` match only themselves (`ſ` is not `s`, `µ` is not `μ`). `"??"` counts ΟΣ,
+οσ, ος, i+U+0307, ss and İx; `"???"` nothing. COUNTIFS, SUMIFS and SUMIF agree.
+Evidence: probes/t3133-lookup-criteria-case-fold Calc!B1:B35, F1:I35, K1:L35, N1:N6 (excel-graph, 2026-10-29, T-3133).
+D-function prefix criteria fold `ς` too: DCOUNTA over `σx`, `ςx`, `Σ` counts 3 for `ς`, `σ` and `ς*` and 1 for `=ς`
+(probes/t3154-collation-accents Calc!H12:H15, T-3154). UNVERIFIED: the D-function fold of `İ` (T-3180); characters outside this
+list (other Greek and Cyrillic final forms, `ϐ`/`β`, `ﬀ`) are assumed to follow it.
+Status: VERIFIED
+Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` and `WildcardPattern::new`
+
 ## Tildes inside wildcard patterns and wildcard-mode lookups
 Rule: once a criterion holds `*` or `?`, or always for a MATCH(..,0)/XMATCH(..,2) text lookup value, `~` makes the next
 character literal whatever it is: `~x` reads as `x`, `~~` as one `~`, `~*`/`~?` as `*`/`?`; a trailing `~` is dropped.
@@ -124,6 +141,10 @@ FALSE, "0", " ", "x", `=NA()`, 1 with weights B = 2^0..2^13, every source gives 
 + 512: the 0, -0, `2^-1074` and "0" rows), AVERAGEIF 147, MINIFS 4, MAXIFS 512 (D1:H9), and the same on the
 80-cell range A21:A100 that the *IFS cache indexes (D21:H29, J31:J39). N1:N4: `#DIV/0!` and 0 with no match.
 Oracle: excel-graph, 2026-10-29 (T-3138).
+Like the number criterion 0, it also matches the text cells VALUE reads as 0: over "$1", "1e2%", "(1)", "0%", "$0",
+"0:00", "12:00 AM", "1 1/2", "1", "0" (weights 2^0..2^9), a blank-cell and an omitted SUMIF criterion and a blank-cell
+SUMIFS criterion all give 632, the "0%", "$0", "0:00", "12:00 AM" and "0" rows (probes/t3151-number-criterion-formatted-text
+C2, C3, C8; excel-graph, 2026-10-29, T-3151; see "Criterion operands and text cells read numbers with VALUE's grammar").
 Status: VERIFIED
 Implemented in: `indexed_criterion` (`crates/rustsheet-engine/src/functions/criteria.rs`), which turns the empty
 criterion into the number criterion 0 for both the walk and the indexed *IFS path.
@@ -463,3 +484,34 @@ Evidence: `probes/m2-argument-kind-gaps-c` (excel-graph). Criteria `0`/`"0"`/`"=
 text cell but not a blank; `-2`/`"-2"`/`"=-2"` match numeric -2 and a `"-2"` text cell; `"<0"` matches only numbers.
 An error `logical_test` (literal or cell) propagates; an error `value_if_false` surfaces only on the FALSE branch.
 `RIGHT(text,"2")`, `" 2 "` and `"1E1"` coerce num_chars as numbers. `RIGHT("abcdef","2.7")` is "ef" (truncated; Calc!A27) and `RIGHT(..,"x")` is #VALUE! (Calc!A31). IF cells: Calc!A1:A12; RIGHT cells: Calc!A25:A31. Our engine already matches every cell.
+
+## Criterion operands and text cells read numbers with VALUE's grammar (VERIFIED, T-3136)
+Rule (criterion side): a *IF(S) or D-function criterion operand, after its operator, is a number exactly when VALUE reads
+it as one. Percent (`"50%"`, `"1,000.5%"` = 10.005, `"1e2%"` = 1), `$` currency with and without grouping and sign (`"$1"`,
+`"$1,000"`, `"$-1"`, `"-$1"`), thousands grouping (`"1,000"`), a time (`"12:00"`, `"12:00 PM"` = 0.5), a date with a time
+(`"1/2/2020 12:00"` = 43832.5), a mixed fraction (`"1 1/2"`) and a parenthesised negative (`"(1)"`) are all numbers, under
+the plain operand, `=`, `<>` and `>=`. Misplaced grouping is not: `"1,00"` is text in the criterion, as `VALUE("1,00")` is
+`#VALUE!`, so it matches only the text cell "1,00" and `">=1,00"` compares texts by the collation. Calc!H gives VALUE of each
+operand: every one agrees with the criteria. So the criteria read numbers consistently with VALUE's grammar (`parse_formatted_number` plus VALUE's own forms), not
+with the plain parser the engine uses; no probed form tells VALUE apart from typed input.
+Rule (text-cell side): a numeric criterion under the plain operand or `=` matches the text cells that VALUE reads as the
+same number: `50%`, `12:00` and `12:00 PM` match the text cells "50%", "12:00" and "12:00 PM"; `$1` and `1e2%` match "$1",
+"1e2%" and "1"; `1,000` matches "1,000" and "$1,000"; `(1)`, `$-1` and `-$1` match "(1)" and "$-1". `<>` with a numeric
+operand counts every text cell, the equal ones included; `>=` never matches a text cell (Calc!B, D, F: 0). This extends
+"Numeric criteria against text cells and non-ASCII spaces" above from plain number text to VALUE's grammar.
+SUMIF, SUMIFS (the indexed path), COUNTIF, COUNTIFS and DSUM agree on every row, with criteria from cells and from literals.
+Evidence: probes/t3136-criteria-formatted-number-operands (excel-graph, 2026-10-29): Data!A1:A8 numbers 0.5, 1, -1, 1.5, 1000,
+10.005, 43832.5, 100 and Data!C1:C14 text cells with power-of-two SUMIF weights. Rows 1-56 are 14 operands × 4 operators.
+Calc!A (SUMIF numbers), B (SUMIF text), C/D (SUMIFS), E (COUNTIF), F (COUNTIFS text), G (DSUM) and H1-H53 (VALUE).
+A number criterion from a cell or a literal reads text cells the same way (probes/t3151-number-criterion-formatted-text,
+excel-graph, 2026-10-29, T-3151): over the text cells above, a cell holding 1 gives SUMIF and SUMIFS 259 ("$1", "1e2%",
+"1"), `COUNTIF(r,1)` 3, 1.5 matches "1 1/2" and -1 matches "(1)". An operand followed by a tab (`"1"&CHAR(9)`,
+`"=1"&CHAR(9)`) is text and matches none of them (C10, C11).
+Verified in text.md (T-3178): `- 5`, `1-1-1` and mixed fractions in a criterion. Euro operands `€1`, `1€` and `€3 1/2` match nothing (probes/typed-input-sign-space-mixed-fraction J2, J3, I5), though a text cell `€3 1/2` reads as 3.5 (E5); ours: `OPERAND_CURRENCIES` vs `CELL_CURRENCIES`, criteria.rs. UNVERIFIED: other VALUE forms (month names with a time, `1e2` with `$`), the `<`, `>` and `<=` operators (by
+analogy with `>=`), a percent rounding at the 15-digit tie, CHAR(160)-padded formatted text, and non-en-US locales.
+Ours: the operand and the text cells read with the plain parser, then VALUE's reader (`criterion_text_number` in
+functions/criteria.rs over `value_number_text` in cast.rs, which VALUE uses too), then the date parser; text padded with a
+non-ASCII space stays text on both sides, as the section above requires. The indexed *IFS path and the D-functions build
+their predicates there too. Every cell of the probe passes (T-3151).
+Status: VERIFIED (excel-graph); implemented (T-3151).
+Tasks: T-3136, T-3151

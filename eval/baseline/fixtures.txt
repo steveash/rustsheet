@@ -10,6 +10,7 @@ C	fixtures/external-link-cached-lookups.xlsx	24
 C	fixtures/external-link-cached-ranges.xlsx	99
 C	fixtures/external-link-cached-text.xlsx	19
 C	fixtures/external-link-uncached-lookups.xlsx	51
+C	fixtures/external-link-unsorted-approx-lookups.xlsx	23
 C	fixtures/ifs-legacy-range-criteria.xlsx	20
 C	fixtures/rich-error-export-formulas.xlsx	15
 C	fixtures/rich-error-export.xlsx	15

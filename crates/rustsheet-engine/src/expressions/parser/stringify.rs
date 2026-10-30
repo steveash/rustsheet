@@ -2,10 +2,10 @@ pub(super) mod bound_variables;
 mod rename_defined_name;
 mod sheet_edits;
 mod structured;
+mod wrapped;
 mod wrong_reference;
 use super::reference_operators::{
-    at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
-    union_text,
+    at_text, callee_operand, intersection_text, spill_operand, tight_operand, union_text,
 };
 use super::structured_reference::is_unresolved_structured_reference;
 use super::{
@@ -29,6 +29,7 @@ pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
 };
+use wrapped::wrapped_text;
 
 pub enum DisplaceData {
     Column {
@@ -751,10 +752,7 @@ fn stringify(
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind { left, right } => {
-            let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
-            format!("{} {}", operand(left, true), operand(right, false))
-        }
+        OpIntersectKind { left, right } => intersection_text(left, right, &sub),
         OpUnionKind { left, right, .. } => union_text(&sub(left), &sub(right), locale),
         OpConcatenateKind { .. }
         | CompareKind { .. }
@@ -831,13 +829,17 @@ fn stringify(
             context.is_none() || export_to_excel,
         ),
         NamedVariableKind { name, id: _ } => variable_text(name, context),
-        UnaryKind { kind, right } => {
-            let operand = wrap(sub(right), binding(right) < binding(node));
-            match kind {
-                OpUnary::Minus => format!("-{operand}"),
-                OpUnary::Percentage => format!("{operand}%"),
-            }
+        UnaryKind {
+            kind: OpUnary::Minus,
+            ..
         }
+        | UnaryPlus { .. }
+        | Group { .. }
+        | Spaced { .. } => wrapped_text(node, sub),
+        UnaryKind {
+            kind: OpUnary::Percentage,
+            right,
+        } => format!("{}%", wrap(sub(right), binding(right) < binding(node))),
         ErrorKind(kind) => format!("{kind}"),
         SheetRefErrorKind { sheet_name } => wrong_reference::ref_error_text(Some(sheet_name)),
         ParseErrorKind { message, .. }
@@ -847,9 +849,6 @@ fn stringify(
         }
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
-        Group { levels, child } => group_text(*levels, &sub(child)),
-        UnaryPlus { child } => format!("+{}", wrap(sub(child), binding(child) < binding(node))),
-        Spaced { space, child } => space.around(&sub(child)),
         ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
