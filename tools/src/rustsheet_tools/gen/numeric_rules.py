@@ -76,7 +76,8 @@ TEXT_FORMS = {
 }
 
 
-def _fmt_k(sign: int, k: int) -> str:
+def fmt_k(sign: int, k: int) -> str:
+    """The ULP offset `±k*2^-52` inside `base*(1...)`, empty for k = 0."""
     return "" if k == 0 else f"{'+' if sign > 0 else '-'}{k}*2^-52"
 
 
@@ -119,7 +120,7 @@ def generate_numeric_rules(seed: int) -> list[dict[str, Any]]:
         for sign in (1, -1):
             for k in SNAP_K:
                 cell = f"A{len(inputs) + 1}"
-                inputs[cell] = f"={base}*(1{_fmt_k(sign, k)})"
+                inputs[cell] = f"={base}*(1{fmt_k(sign, k)})"
                 for form, tmpl in SNAP_FORMS.items():
                     f = tmpl.format(x=f"Inputs!{cell}", b=base)
                     probes.append((f, f"{form}/base={base}/sign={sign:+d}/k={k}"))

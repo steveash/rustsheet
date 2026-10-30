@@ -350,12 +350,16 @@ pub struct MilestoneRow {
     /// row (decision 0146 item 4).
     #[serde(default)]
     pub text_failing_cells: Vec<String>,
+    /// Cases of the row that did not run to scoring, as `case!*` ([`CaseResult::blocked_key`]),
+    /// in case order: the row's exit measure is not met while there is one (decision 0174).
+    #[serde(default)]
+    pub blocked_cases: Vec<String>,
 }
 
 /// `case!Sheet!A1` when cell `c` of case `r` is visibly off (decision 0114): neither bit-exact nor
 /// a pinned deviation, and outside what `Visible` tolerates.
 pub(crate) fn visibly_off_name(r: &CaseResult, c: &CellResult) -> Option<String> {
-    (c.verdict.is_failure() && Visible::is_off(c)).then(|| format!("{}!{}", r.id, c.key()))
+    (c.verdict.is_failure() && Visible::is_off(c)).then(|| crate::runner::cell_id(&r.id, &c.key()))
 }
 
 /// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
@@ -398,6 +402,9 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
             rows_of_case.insert(row);
         }
         let case_row = row_of(rules.case_milestone(r));
+        if let Some(key) = r.blocked_key() {
+            rows.entry(case_row).or_default().blocked_cases.push(key);
+        }
         // A text item takes its cell's milestone, as its value cell does (decision 0146 item 4).
         for t in &r.text {
             let key = format!("{}!{}", t.sheet, t.cell);
@@ -406,7 +413,8 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
             s.text_items += 1;
             if !t.pass {
                 s.text_failing += 1;
-                s.text_failing_cells.push(format!("{}!{key}", r.id));
+                s.text_failing_cells
+                    .push(crate::runner::cell_id(&r.id, &key));
             }
             rows_of_case.insert(row);
         }
@@ -451,17 +459,18 @@ pub fn write_markdown(rows: &[MilestoneRow], md: &mut String) {
         "\n## Probe milestones (decision 0051)\n\n`probes` cases (and `probes/catalog/*` cells) by \
          the milestone whose exit they count toward: the frozen M1 list, then `{MAPPING_PATH}`, \
          then each catalog cell's functions, then the case's milestone tag, else M2. Known \
-         failures count items as the baseline counts F lines.\n"
+         failures count items as the baseline counts F lines. `did not run` counts the cases that \
+         failed to load or evaluate, panicked or timed out (decision 0174).\n"
     );
     let _ = writeln!(
         md,
-        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) | visibly off | text items | failing text |\n\
-         |---|---|---|---|---|---|---|---|---|"
+        "| milestone | cases | scored cells | bit-exact | deviations | known failures (cells) | visibly off | text items | failing text | did not run |\n\
+         |---|---|---|---|---|---|---|---|---|---|"
     );
     for s in rows {
         let _ = writeln!(
             md,
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             s.milestone,
             s.cases,
             s.cells,
@@ -470,7 +479,8 @@ pub fn write_markdown(rows: &[MilestoneRow], md: &mut String) {
             s.known_failures,
             s.visibly_off,
             s.text_items,
-            s.text_failing
+            s.text_failing,
+            s.blocked_cases.len()
         );
     }
     for s in rows.iter().filter(|s| !s.failing_cases.is_empty()) {
@@ -818,7 +828,11 @@ mod tests {
                 row("M0-M2", 2, 3, 1, 1, &[("probes/d.case.json", 1)]),
                 row("M5", 0, 0, 0, 0, &[]),
                 row("M6", 1, 1, 1, 0, &[]),
-                row("M7", 1, 0, 0, 0, &[("probes/p.case.json", 1)]),
+                // A panicked case did not run (decision 0174); the pending M12 case did.
+                MilestoneRow {
+                    blocked_cases: vec!["probes/p.case.json!*".into()],
+                    ..row("M7", 1, 0, 0, 0, &[("probes/p.case.json", 1)])
+                },
                 row("M8", 0, 0, 0, 0, &[]),
                 MilestoneRow {
                     visibly_off: 1,

@@ -497,6 +497,30 @@ impl Parser {
         }
     }
 
+    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
+    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
+    /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
+    /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
+    /// PATCH 400, T-2568), or it nests more function calls than Excel takes
+    /// ([`MAX_NESTED_CALLS`], T-3097). `None` when parsing stored text or nothing is refused.
+    pub(crate) fn typed_refusal(&self) -> Option<String> {
+        if !self.typed {
+            return None;
+        }
+        if self.nests_too_many_calls() {
+            return Some(format!("Formula: {TOO_MANY_NESTED_CALLS_MESSAGE}"));
+        }
+        if let Some(name) = &self.cell_shaped_binding {
+            return Some(format!(
+                "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
+            ));
+        }
+        let name = self.wrong_count_call.as_ref()?;
+        Some(format!(
+            "Formula: {name} is called with the wrong number of arguments"
+        ))
+    }
+
     /// Records `name` as the first call of the formula with a count of arguments Excel refuses
     /// typed ([`Parser::typed_refusal`]); stored text records nothing.
     fn note_wrong_count(&mut self, name: &str) {
@@ -519,7 +543,7 @@ impl Parser {
             .trim_start_matches("_xlpm.")
             .to_string();
         let empty_call_run = self.empty_call_run();
-        let args = match self.parse_function_args(&display_name) {
+        let mut args = match self.parse_function_args(&display_name) {
             Ok(s) => s,
             Err(e) => return e,
         };
@@ -595,6 +619,9 @@ impl Parser {
             .filter(|_| !self.calls_bound_name(&name))
         {
             self.note_argument_count(&function_kind, &display_name, args.len());
+            if self.loaded && function_kind == Function::Let {
+                result_of_even_let(&mut args);
+            }
             let node = self
                 .function_call(function_kind, args)
                 .with_empty_call_run(empty_call_run);
@@ -945,4 +972,16 @@ impl Parser {
             other => other,
         }
     }
+}
+
+/// A stored LET with an even argument count ends on a name and a value, and Excel loads it with
+/// the last name appended as the result: `<f>LET( a ,1, b ,a+1)</f>` prints
+/// `=LET( a,1, b,a+1,b)` and returns 2 (probes/t2949-stored-11, syntax.md "Remaining whitespace
+/// shapes (T-2949)"). Typed, Excel refuses the arity.
+fn result_of_even_let(args: &mut Vec<Node>) {
+    if args.len() < 2 || !args.len().is_multiple_of(2) {
+        return;
+    }
+    let name = args[args.len() - 2].unwrap_spaced().clone();
+    args.push(name);
 }

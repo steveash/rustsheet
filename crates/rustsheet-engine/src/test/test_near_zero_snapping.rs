@@ -14,15 +14,24 @@ fn ulps_above(b: f64, k: f64) -> f64 {
 }
 
 #[test]
-fn snaps_below_eight_ulp_of_the_smaller_addend() {
+fn snaps_below_eight_ulp_of_the_left_addend() {
     // 7 ULP of 1.0 snaps, 8 ULP is kept.
     let seven = ulps_above(1.0, 7.0);
     assert_eq!(snap_near_zero(seven, -1.0, seven - 1.0), 0.0);
     let eight = ulps_above(1.0, 8.0);
     assert_eq!(snap_near_zero(eight, -1.0, eight - 1.0), eight - 1.0);
-    // The smaller addend sets the scale: 1 - 4·2^-52 has half the ULP of 1.
+    // The left addend sets the scale: 1 - 4·2^-52 has half the ULP of 1, so `(1-4·2^-52)-1` is
+    // kept and `1-(1-4·2^-52)` snaps (probes/t3100-snap-operand-order row 8, columns A and B).
     let below = 1.0 - 4.0 * f64::EPSILON;
-    assert_eq!(snap_near_zero(1.0, -below, 1.0 - below), 1.0 - below);
+    assert_eq!(snap_near_zero(below, -1.0, below - 1.0), below - 1.0);
+    assert_eq!(snap_near_zero(1.0, -below, 1.0 - below), 0.0);
+    assert_eq!(snap_near_zero(-1.0, below, below - 1.0), 0.0);
+    // 8 ULP of the left 1.0 is kept either way.
+    let eight_below = 1.0 - 4.0 * f64::EPSILON - 4.0 * f64::EPSILON;
+    assert_eq!(
+        snap_near_zero(1.0, -eight_below, 1.0 - eight_below),
+        1.0 - eight_below
+    );
 }
 
 // Excel flushes the 8-ULP bound when it is subnormal: addends of 1.5·2^-973 still snap (to a
@@ -111,7 +120,7 @@ fn aggregate_and_subtotal_sum_snap() {
 }
 
 /// The root `+`/`-` snaps every element of an array result on its own two addends, with the
-/// scalar bound: 7 ULP of 1 snaps on the `+` side, 4 ULP of the smaller addend does not on the
+/// scalar bound: 7 ULP of 1 snaps on the `+` side, 4 ULP of the left addend does not on the
 /// `-` side (probes/t3047-snap-array-operands S!E1:L3).
 #[test]
 fn array_operands_snap_element_by_element() {
@@ -180,4 +189,32 @@ fn legacy_intersected_ranges_snap_per_row() {
     model.evaluate();
     assert_eq!(model._get_text("E1"), "0");
     assert_eq!(model._get_text("E2"), "0");
+}
+
+/// A coerced addend (number, percent, time or date-time text, a text cell, TRUE) snaps exactly as
+/// its number does: 7 ULP of the left addend snap and 8 keep, on either side
+/// (probes/t3140-snap-coerced-operands, every S cell; M!A4, M!A7, M!A11).
+#[test]
+fn coerced_addends_snap_like_numbers() {
+    let mut model = new_empty_model();
+    model._set("T1", "=\"1.5\"");
+    let cases = [
+        ("A1", "=\"1.5\"-(1.5+7*2^-52)", "0"),
+        ("A2", "=\"1.5\"-(1.5+8*2^-52)", "-1.77636E-15"),
+        ("A3", "=(1.5+7*2^-52)-T1", "0"),
+        ("A4", "=(1.5+8*2^-52)-T1", "1.77636E-15"),
+        ("A5", "=\"50%\"-(0.5+7*2^-53)", "0"),
+        ("A6", "=-\"12:00\"+(0.5+7*2^-53)", "0"),
+        ("A7", "=\"1/2/1900 12:00\"-(2.5+8*2^-51)", "-3.55271E-15"),
+        ("A8", "=TRUE-(1+7*2^-52)", "0"),
+        ("A9", "=\"30%\"-0.1-0.2", "0"),
+        ("A10", "=\"0.1\"+\"0.2\"-\"0.3\"", "0"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cases {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
+    }
 }

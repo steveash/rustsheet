@@ -26,3 +26,21 @@ fn time_parts_round_to_the_nearest_second() {
     assert_eq!(model._get_text("A5"), "0");
     assert_eq!(model._get_text("A6"), "11");
 }
+
+// YEAR, MONTH, DAY and WEEKDAY carry past midnight where HOUR rolls to 0, and every date and time
+// part is #NUM! from fl(2958466-0.5/86400) up (`carried_day`; probes/t3137-date-parts-near-midnight).
+#[test]
+fn date_parts_carry_past_midnight() {
+    let mut model = new_empty_model();
+    let edge: f64 = 1.0 - 0.5 / 86400.0;
+    let below = f64::from_bits(edge.to_bits() - 1);
+    model._set("A1", &format!("=DAY({edge:?})"));
+    model._set("A2", &format!("=DAY({below:?})"));
+    model._set("A3", "=YEAR(2958466-0.5/86400)");
+    model._set("A4", "=HOUR(2958466-0.5/86400)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "0");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+    assert_eq!(model._get_text("A4"), "#NUM!");
+}

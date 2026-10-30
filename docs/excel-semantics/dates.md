@@ -194,9 +194,18 @@ Evidence: eval/suites/ironcalc-calc DATE_AND_TIME/NOW_TODAY.xlsx cached `=NOW()`
 (59002.58 s into the day). The engine truncated to whole seconds before T-0005; fixed in `tz/os_tz.rs`
 (the wasm `tz/browser_tz.rs` path still truncates).
 Status: VERIFIED (Excel-cached values)
-Unprobed: whether Excel reads its clock once per recalc, so that two `=NOW()` cells and
-`=NOW()-NOW()` agree exactly, or once per call. RustSheet's system clock reads once per call;
-a fixed clock (SPEC-0008) makes the question moot.
+Excel reads its clock **at each call, not once per recalc**, in steps of 10 ms. Two `NOW()` reads
+with slow work between them differ: a `NOW()` cell, a cell doing slow work that depends on
+it (`SUM(SEQUENCE(1000,1000))` plus a 150x150 `MAKEARRAY`), and a later `NOW()` cell that depends on
+that work give `C1=A1` FALSE, 20 to 30 ms apart. The same holds inside one `LET` (30 to 50 ms) and
+for a `NOW()` on another sheet. `NOW()-NOW()=0` within one formula was TRUE on every run, but only
+because both reads fell in one 10 ms tick. Evidence: probes/t3116-now-once-per-recalc Calc!D1, E1,
+A2, A3, A4, A5, A6, A7, Other!A2, excel-graph 2026-10-30, four fills (three with a changed inert cell so
+Excel recalculated afresh). Status: VERIFIED. RustSheet's system clock (`Clock::System`) also reads
+once per call, so it needs no change. A fixed clock (SPEC-0008, which the harness uses) gives one
+instant for every call, so the eval scores only A5 and A6. Those two are very likely TRUE, not certain: A5 fails when its
+two reads straddle a tick, A6 when a recalc crosses midnight. The FALSE cells cannot be shown with a
+fixed clock.
 
 ## TIMEVALUE of "date time" text keeps serial-subtraction error
 Rule: for text carrying a date and a time, Excel builds the full serial and returns its fractional
@@ -907,7 +916,35 @@ Implemented in `time_part_fn!` (functions/date_and_time.rs).
 The bound is checked after rounding the serial to the nearest second (T-1815, probes/time-parts-rounding-window,
 excel-graph, 2026-10-18): 2958465.9999942 (23:59:59.499) and 2958465.999994 give 23, 59, 59, while 2958465.9999949
 (23:59:59.559), 2958465.999999 and 2958465.9999999999 are `#NUM!` for HOUR, MINUTE and SECOND alike, so the cut lies between 23:59:59.499 and
-23:59:59.559 (an exact .5 tie is unprobed).
+23:59:59.559 (the exact .5 tie: next paragraph).
+The exact tie and YEAR (T-3137, probes/t3137-date-parts-near-midnight R!B106:H120, excel-graph, 2026-10-29): the cut
+is the half-second carry of "YEAR, MONTH and DAY of a serial just below midnight" below. `fl(2958466-0.5/86400)` =
+2958465.9999942128 (R!A110), the exact tie, is `#NUM!` for HOUR, MINUTE and SECOND (R!F110:H110; ours 0, 0, 0) and
+for YEAR, MONTH, DAY and WEEKDAY too, while one ULP below it (2958465.9999942123, R!109) is 9999-12-31 23:59:59. So
+`YEAR(2958465.9999949)` is `#NUM!` like HOUR: every serial from that tie up to 2958466 is.
+Status: VERIFIED (web)
+
+## YEAR, MONTH and DAY of a serial just below midnight
+Rule: YEAR, MONTH, DAY and WEEKDAY take the same half-second carry as HOUR, MINUTE and SECOND: the day is
+`floor(x + 0.5/86400)` computed in double precision, so a serial within half a second of the next midnight reads as
+the next day, and `#NUM!` when that day is past 2958465. The cut is the same double for the date parts and the time
+parts on every probed serial: at each base B in 0, 1, 59, 60, 45000, 45016, 45291 and 2958465 (N = B+1),
+`fl(N-0.5/86400)` and everything above it (0.4 s, 30, 21, 20, 10, 1 and 0.5 ms, 2^-30 below N) is day N with HOUR 0,
+while `fl(N-0.5/86400)` minus one ULP, 0.6 s and 1 s below N are day B with HOUR 23, MINUTE 59, SECOND 59. Examples:
+`DAY(1-0.5/86400)` is 1 (ours 0), `DAY(59.99999421296296)` is 29 (the fictitious 1900-02-29, serial 60) and
+`MONTH(60.99999421296296)` is 3, `MONTH(45016.999994212965)` is 4 (2023-04-01), `YEAR(45291.999994212965)` is 2024,
+`WEEKDAY(45000.999994212965)` is 5 (the next day's). Every serial from `fl(2958466-0.5/86400)` up is `#NUM!` for all
+seven functions.
+Of T-3137's four candidate models this is (b), the half-second carry. Ruled out: (a) a plain floor (the engine's `date_part`; 220 cells); (c) a millisecond rounding (0.4 s to 30 ms carry);
+(d) an absolute near-integer bound like `near_integer_whole`, about 20.6 ms (30 ms and 0.4 s carry, and the cut sits at
+the half second, not at 2^-22 + 2^-33 day).
+Negatives are `#NUM!` before any carry: `DAY(0-1E-10)`, `YEAR(0-2^-40)`, `MONTH(0-0.4/86400)` and the 0.5, 0.6 and 1 s
+negatives are `#NUM!` for all seven functions (R!B121:H126), not serial 0. (A formula `=-2^-40` would be positive:
+unary minus binds before `^`, so the probe writes `0-2^-40`.)
+Evidence: probes/t3137-date-parts-near-midnight R!A1:H126 (V!A holds the serials, built exactly in formulas;
+excel-graph, 2026-10-29, T-3137).
+Ours: matches. `carried_day` (`floor(v + 0.5/86400)`, negatives only floored) serves YEAR, MONTH, DAY, WEEKDAY and the bound of HOUR,
+MINUTE and SECOND (T-3176; all 223 cells of the probe pass).
 Status: VERIFIED (web)
 
 ## HOUR, MINUTE and SECOND round to the nearest second

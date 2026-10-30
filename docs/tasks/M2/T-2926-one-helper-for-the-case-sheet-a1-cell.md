@@ -3,7 +3,7 @@ id: T-2926
 title: "One helper for the case!Sheet!A1 cell id in eval reports"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Every report field that names a cell as `case!Sheet!A1` is built by one helper, 
 
 ## Out of scope
 - Changing the cell-id format, or how sheet names are quoted.
+
+## Outcome
+Added `runner::cell_id(case, key)`; all `case!Sheet!A1` report fields (function_scope, milestone_exit, probe_milestones, poi_m8_subset, v15_checkpoint, exit_exceptions, phase1_exceptions) use it. Format unchanged; eval delta none. Renamed exit_exceptions' local `cell_id` to `ironcalc_cell_id`.

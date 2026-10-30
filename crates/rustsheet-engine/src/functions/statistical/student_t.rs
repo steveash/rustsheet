@@ -24,16 +24,20 @@
 //!   of the exact value there up to df 1E10 (`T.DIST(2,1E10,TRUE)` = 0.977249868038323,
 //!   probes-numeric m9-t-edges), and a rounded y moves L by about n eps.
 //!
+//! - from df 3 on, L is one call into the ported incomplete-beta kernel, K(n/2, 1/2, y, z), halved
+//!   ([`kernel_tail`], T-2509), ahead of every rule below, which now covers df 1 and 2 and the
+//!   points the kernel does not take;
 //! - for df 13 to 16 the series tail is scaled by Excel's 1/B(n/2, 1/2) over the exact one: Excel's
 //!   BETA.DIST forms B from GAMMALNs there ([`log_gamma_ratio`], T-0969 attempt 10).
 //!
 //! Every loop is bounded: [`SERIES_MAX_DF`] / 2 series terms, [`TAYLOR_TERMS`] Taylor terms and
 //! [`MAX_POWER_SERIES_TERMS`] power-series terms a call.
 
+use super::bratio::t_kernel_tails;
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{beta_reg_upper, closed_form_tails, incbcf, incbd};
 use crate::arithmetic::flush_subnormal;
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp, two_sum};
+use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, dd_sqrt, excel_exp};
 
 /// A double-double: an unevaluated sum `hi + lo` with |lo| <= ulp(hi)/2.
 type Dd = (f64, f64);
@@ -61,6 +65,8 @@ const MAX_POWER_SERIES_TERMS: u32 = 200;
 const TAYLOR_TERMS: u32 = 40;
 /// Below this the double-double tail 1/2 - A/2 keeps fewer than 40 of its 106 bits.
 const MIN_SERIES_TAIL: f64 = 1e-12;
+/// df 1 and 2 keep today's path rather than the kernel call ([`kernel_tail`]).
+const KERNEL_MIN_DF: f64 = 2.0;
 /// Largest rounded y = n/(n+t^2) at which the tail of a t beyond 1 is taken at that y
 /// ([`unflushed_upper_tail`]).
 const ROUNDED_Y_MAX: f64 = 0.99;
@@ -116,6 +122,9 @@ fn unflushed_upper_tail(t: f64, n: f64) -> f64 {
     if n + t * t == n {
         return 0.5;
     }
+    if let Some(tail) = kernel_tail(t, n) {
+        return tail;
+    }
     // Beyond t = 1, and short of y = 0.99, Excel evaluates the tail at y rounded as the
     // worksheet would round it, fl(n / fl(n + fl(t^2))), as T.TEST does (`student_t_tail_at`);
     // inside it the tail is the exact one at t (docs/excel-semantics/statistics.md, "T.DIST.RT
@@ -139,6 +148,28 @@ fn unflushed_upper_tail(t: f64, n: f64) -> f64 {
         series: series_arguments(t, n),
     };
     tail_from(&args, n)
+}
+
+/// L = w/2 for w of one incomplete-beta kernel call, K(n/2, 1/2, y, z), with the worksheet's
+/// y = fl(n/fl(n + fl(t·t))) and complement z = fl(fl(t·t)/fl(n + fl(t·t))) (docs/excel-semantics/
+/// statistics.md "Student t tails are one kernel call, K(n/2, 1/2, y, z)"; T-2464 r2-tdist, T-2509):
+/// bgrat at b = 1/2 (n > 30), bup + bgrat (n <= 30) and bpser in the centre and the deep tail.
+/// `None` where t·t overflows and for df 1 and 2, which keep today's path: df 2 its closed forms
+/// (which read fl(1 - y)) and today's deep tail, df 1 (bpser at a = b = 1/2) the double-double
+/// series, bit-exact on 41 of cells.tsv's 67 df-1 tails against 24 through the ported bpser
+/// (`T.DIST.2T(1,1)` = 0.5000000000000001 is 5 ulp off through it). At every df from 3 the
+/// kernel is bit-exact on more cells than today's path in every branch.
+fn kernel_tail(t: f64, n: f64) -> Option<f64> {
+    let square = t * t;
+    let sum = n + square;
+    if !sum.is_finite() || n <= KERNEL_MIN_DF {
+        return None;
+    }
+    let y = n / sum;
+    let z = square / sum;
+    let a = 0.5 * n;
+    let (w, _) = t_kernel_tails(a, y, z)?;
+    Some(0.5 * w)
 }
 
 /// L = `I_y(n/2, 1/2)`/2 at a y that is already a double: T.TEST's p-value. Excel's T.TEST
@@ -485,14 +516,6 @@ pub(crate) fn student_t_density(t: f64, n: f64) -> Option<f64> {
     Some(dd_div(dd_mul(ratio, power), dd_sqrt((n, 0.0))).0)
 }
 
-/// sqrt of a positive double-double: the double root and one Newton correction.
-fn dd_sqrt(a: Dd) -> Dd {
-    let root = a.0.sqrt();
-    let square = dd_mul((root, 0.0), (root, 0.0));
-    let residual = dd_add(a, (-square.0, -square.1));
-    two_sum(root, residual.0 / (2.0 * root))
-}
-
 /// atan of a positive double-double u: the double atan `theta_0`, then one Newton step on
 /// tan(theta) = u, d = (u cos - sin)/(cos + u sin), with sin and cos of `theta_0` by their
 /// double-double Taylor series.
@@ -520,6 +543,40 @@ mod tests {
     use super::super::incomplete_beta::{beta_reg_complement, A1_EXPM1_MAX_X};
     use super::*;
     use crate::test::util::ulps;
+
+    #[test]
+    fn bgrat_tails_match_excel() {
+        // probes-numeric t2464-r2-tdist-p1 part C (excel-graph): T.DIST.RT(t, n) for n > 30 in
+        // bgrat's region, one kernel call K(n/2, 1/2, y, z) with bgrat at b = 1/2 (T-2509).
+        for (t, n, excel) in [
+            (6.876_766_968_460_287, 1184.0, 4.944_295_635_855_830_5e-12),
+            (6.688_772_703_856_486, 1462.0, 1.597_408_460_492_365_4e-11),
+            (1.194_984_828_755_362_2, 818.0, 0.116_219_651_401_460_62),
+            (5.651_628_247_834_669, 450.0, 1.412_472_689_666_297_8e-8),
+            (2.907_418_672_926_900_7, 869.0, 0.001_868_483_605_870_204_5),
+        ] {
+            assert_eq!(student_t_tails(t, n).1, excel, "T.DIST.RT({t},{n})");
+            assert_eq!(student_t_tails(-t, n).0, excel, "T.DIST({t},{n},TRUE)");
+        }
+    }
+
+    #[test]
+    fn kernel_tail_covers_every_df_from_three() {
+        // bup + bgrat (n <= 30), bgrat (n > 30), the centre and the deep tail (bpser) go through
+        // the kernel; df 1, df 2 and an overflowing t·t keep today's path.
+        for (t, n) in [
+            (2.5, 30.0),
+            (2.5, 100.0),
+            (0.5, 10.0),
+            (50.0, 10.0),
+            (2.0, 3.0),
+        ] {
+            assert!(kernel_tail(t, n).is_some(), "{t}, {n}");
+        }
+        assert!(kernel_tail(1.0, 1.0).is_none());
+        assert!(kernel_tail(3.0, 2.0).is_none());
+        assert!(kernel_tail(1e300, 10.0).is_none());
+    }
 
     #[test]
     fn tail_beyond_one_is_taken_at_the_rounded_y() {

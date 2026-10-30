@@ -315,6 +315,27 @@ Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/x
 (shared with pivot cache `<d>` items and the eval snapshot reader)
 Tasks: T-0112, T-0406, T-0407, T-2515
 
+## Pivot cache dates below serial 61 use the 1899-12-30 epoch
+Observed: in the pivot caches it saves, Excel writes a date or time below serial 61 as 1899-12-30 plus the serial, in
+days (the OLE epoch). It does not use the 1900-system calendar that a `t="d"` cell is read with (section above:
+`1900-01-01` = 1, `1899-12-31` is `#VALUE!`). Evidence (Excel-authored, docProps/app.xml Microsoft Excel 16.0300):
+- corpus-bench/52379/1_52379_input.xlsx, pivotCacheDefinition1 field `Duration`. Source `Table1` is sheet FCR, column E.
+  The field has `minDate="1899-12-30T00:00:08"` and `maxDate="1900-01-02T16:03:58"`, and records such as
+  `1899-12-30T00:07:23`. The source cell FCR!E241 = 2.6748611111111114 (2 days 16:11:48), and the cache holds the item
+  `1900-01-01T16:11:48`. The cache predates the sheet's current values (it holds items no cell matches), so the
+  pairing is by value: E241 is the only source value of at least 1.
+- corpus-bench/59932/1_59932_input.xlsx, field `Date`. It has `minDate="1899-12-30T00:00:00"`, and its `Quarters` and
+  `Years` groups have `rangePr startDate="1899-12-30T00:00:00"`. Excel labels the first group item `<1/0/1900`, which is
+  serial 0.
+So within a pivot cache, `1899-12-30T00:00:00` is 0, a time alone is `1899-12-30T<time>`, and serials 1 to 60 come out
+one day earlier than the cell calendar reads them. The importer reads cache `<d>` items with the cell rule
+(`iso8601_to_date_system_serial`). It rejects these dates and skips the whole cache ("bad date"), and with that rule it
+would also misread serials 1 to 60 by a day. The cutoff at 61 is inferred from where the two calendars agree
+(1900-03-01), not observed. UNVERIFIED: serial 60 (the phantom 1900-02-29) and serials 1 to 60 other
+than this one point; whether `rangePr`/`groupItems` dates follow the same rule; 1904 workbooks. No GETPIVOTDATA cell
+depends on it yet.
+Tasks: T-3182
+
 ## Structured references in the file
 Rule (excel-graph uploads of spec2xlsx files, 2026-10-16, T-1607): the file form of a structured reference
 differs from what a user types, and Excel for the web refuses or misreads the typed forms.
@@ -352,12 +373,19 @@ a totals-row text cell as `totalsRowLabel`, and formulas keep their structured r
 name, `[#This Row]` for `@`). Excel itself writes `totalsRowFunction="sum"` (and the other named functions) for a
 totals cell it built, with the cell formula `SUBTOTAL(109,Table1[Feb])` (calc_test_tables/tables.xlsx
 `xl/tables/table1.xml`); `custom` with that formula is the form the T-1607 uploads showed Excel loads.
-The import keeps only whether a table's `<autoFilter>` applies a filter (`has_filters`, which makes SUBTOTAL call
-the sheet's hidden rows filtered), not its criteria, so the export writes an applied filter as a
-`<filterColumn colId="0"/>` without a criterion. That is schema-valid and our own import reads it back as
-filtered; whether Excel opens it without repair, and still calls the hidden rows filtered, is unprobed (T-2838).
+The import keeps a table's `<filterColumn>` criteria (`filter_columns`: values filters with their blank choice,
+custom filters with `and`, values decoded from `_xHHHH_` escapes) and the export writes them back (T-2838), so
+those two kinds survive a round trip with the same meaning (Excel's own tables.xlsx filters come back byte for
+byte; `blank="true"` is written `blank="1"`, `and="0"` is dropped, and a `<filter>` without `val` is dropped); column inserts and deletes inside the table move them with their
+columns. Every other kind (top 10, dynamic, color, icon, and a values filter with date groups or a `calendarType`)
+keeps only its column and is written back as a criterion-less `<filterColumn colId="N"/>`; a `<filterColumn>`
+without a valid `colId` is dropped, and the `hiddenButton`/`showButton` attributes are not kept. `has_filters`
+still makes SUBTOTAL call the sheet's hidden rows filtered. A table filtered through the API with no criterion is
+written as `<filterColumn colId="0"/>`. Both criterion-less forms are schema-valid and our own import reads them
+back as filtered; whether Excel opens any of these forms without repair, and still calls the hidden rows filtered,
+is unprobed (T-3081).
 A totals-row cell holding a number, boolean or error constant gets no metadata (T-1607 covered label and formula
-cells only); whether Excel loads that is unprobed too (T-2838's probe). A structured reference that lowers to an
+cells only); whether Excel loads that is unprobed too (T-3081). A structured reference that lowers to an
 error because the table's metadata does not fit (an unparsable `ref`, an overflowing row count; directive 5) is
 written as that error.
 Evidence: crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx (Excel-authored, 9 tables) now round-trips
@@ -365,7 +393,7 @@ Evidence: crates/rustsheet-xlsx/tests/calc_test_tables/tables.xlsx (Excel-author
 (`excel_authored_tables_keep_their_formula_text`, export/test/test_tables.rs).
 Status: UNVERIFIED (the exported file has not been opened in Excel)
 Implemented in: crates/rustsheet-xlsx/src/export/tables.rs
-Tasks: T-2196, T-2838
+Tasks: T-2196, T-2838, T-3081
 
 ## A calculated column is saved as `calculatedColumnFormula` plus one formula per row
 Rule (excel-graph downloads of the T-2957 probes, 2026-10-27): a column Excel filled (references.md, "Calculated
@@ -409,14 +437,14 @@ sheet1.xml), in the `<f>` and in FORMULATEXT's cached `<v>` alike; an XML parser
 back as one LF, which is what the oracle sidecar shows. A writer emitting LF therefore matches. A space after the line
 feed is kept. The drops FORMULATEXT shows (trailing whitespace, a run before a comma after an operand) are made before
 the save. A structured reference is stored with its normalized spaces: typed `T[ [Col] ]` saves as `SUM(T[ Col ])`,
-`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`.
+`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`. Excel does not read that saved text back: a stored `T[ Col ]` loads as `#REF!` (syntax.md, T-2800).
 Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
 T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac1b22c81cabb3f77c8, refetch with `rustsheet-oracle fill --force`), sheet1.xml H1:H17 and E4:E15. A typed `=T[#Headers]` (E13) is `#SPILL!` in the sidecar but `#VALUE!` in the saved array `<v>`; not relied on. Excel's whitespace semantics are in syntax.md.
 Ours: export writes the tree as written, its kept whitespace included (T-2948), a line feed as the reference `&#xA;`,
 which reads back as LF like Excel's raw bytes. The runs beside a missing argument and inside an empty call print back and
 are saved (T-2944, T-2966). The legacy `@` rewrite on import and export decides on the formula with no whitespace; where one
-of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (`=N( IF(1,{2;3}) )`
-saves as `N(IF(1,{2;3}))`, T-2970). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
+of its shape tests does not look past the whitespace, the formula loses its whitespace, never a value (no shape is known to
+fall back since T-2970: `=N( IF(1,{2;3}) )` keeps its spaces). Unprobed: what Excel saves for a typed leading run (`= 1+2`); we write it, and
 reading stored text drops it (T-2784). The saved text beside `@`, LET names and a sign is derived, not probed (T-2971).
 Status: VERIFIED (excel-graph)
 Tasks: T-2786, T-2944, T-2801, T-2948, T-2970, T-2971

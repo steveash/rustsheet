@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use rustsheet_engine::expressions::parser::{
-    new_parser_english, static_analysis::add_implicit_intersection, Parser,
+    new_parser_english, static_analysis::add_implicit_intersection, Parser, MAX_NESTED_CALLS,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
@@ -256,6 +256,13 @@ pub(super) fn from_a1_to_rc(
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
     let mut t = parser.parse(&formula, &cell_reference);
+    // Excel refuses a workbook nesting more function calls than it takes (createSession 501;
+    // syntax.md "Formula nesting depth cap", T-3097).
+    if parser.nests_too_many_calls() {
+        return Err(XlsxError::Workbook(format!(
+            "Formula in {context} nests more than {MAX_NESTED_CALLS} function calls"
+        )));
+    }
     if !is_array_formula {
         add_implicit_intersection(&mut t, true);
     }

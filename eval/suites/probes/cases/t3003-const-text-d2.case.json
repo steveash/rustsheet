@@ -1,0 +1,56 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3003: text hello typed into D2 beside table T (A1:C4): does T grow.",
+ "tags": [
+  "M2",
+  "tables",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "tables": [
+    {
+     "name": "T",
+     "ref": "A1:C4"
+    }
+   ],
+   "cells": {
+    "A1": "Col",
+    "B1": "Other",
+    "C1": "Calc",
+    "A2": 1,
+    "B2": 10,
+    "A3": 2,
+    "B3": 20,
+    "A4": 4,
+    "B4": 40,
+    "F1": "=FORMULATEXT(D1)",
+    "J1": "=D1&\"\"",
+    "K1": "=TYPE(D1)",
+    "F2": "=FORMULATEXT(D2)",
+    "J2": "=D2&\"\"",
+    "K2": "=TYPE(D2)",
+    "F3": "=FORMULATEXT(D3)",
+    "J3": "=D3&\"\"",
+    "K3": "=TYPE(D3)",
+    "F4": "=FORMULATEXT(D4)",
+    "J4": "=D4&\"\"",
+    "K4": "=TYPE(D4)",
+    "F5": "=FORMULATEXT(D5)",
+    "J5": "=D5&\"\"",
+    "K5": "=TYPE(D5)",
+    "H1": "=COLUMNS(T[#All])",
+    "H2": "=ROWS(T[#All])",
+    "H3": "=ISFORMULA(D1)",
+    "H4": "=ISTEXT(D1)",
+    "H5": "=ISFORMULA(A5)",
+    "H6": "=FORMULATEXT(A5)",
+    "D2": {
+     "entered": "hello"
+    }
+   }
+  }
+ ]
+}

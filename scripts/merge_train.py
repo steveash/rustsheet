@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """The merge train (SPEC-0027 section 4): batched merges of ready PRs under the merge lock.
 
-  scripts/merge_train.py mode        # the mode on origin/main: lock, shadow or train
+  scripts/merge_train.py mode        # the mode on origin/main: lock, shadow or train (stop pending: #n)
   scripts/merge_train.py --dry-run   # steps 2-4: collect, build, id checks; prints, writes nothing
   scripts/merge_train.py --train     # steps 1-9 and section 6 (red trains), in `train` mode only
+  scripts/merge_train.py --shadow    # steps 2-6 and section 6 on merge-train/shadow, in `shadow` mode only
+  ... --train --step, --shadow --step  # each write is a JSON action the session performs (decision 0169)
 
 The mode is read from `scripts/merge_train.toml` on a freshly fetched `origin/main`, never from
 the checkout, so a branch cannot switch its own flow. The read fails closed: a missing file, a
@@ -16,33 +18,32 @@ import re
 import signal
 import subprocess
 import sys
-import tempfile
 import time
 import tomllib
 import unicodedata
-from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import ci_changes
 import gh_client
+import merge_flip
 import merge_lock
 import merge_ready
+import merge_step
 from gh_client import SHA, Client, GhError
+from merge_flip import LOCK, SWITCH
 from merge_lock import GitError, git
+from merge_train_filing import (
+    ID_CHECK_TIMEOUT, IDENTITY, MAIN_REF, REMOTE, CutOff, Landed, Stop, fetch_main, file_tasks, respond, worktrees,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
-REMOTE = "origin"
-SWITCH = "scripts/merge_train.toml"
-LOCK, SHADOW, TRAIN = "lock", "shadow", "train"
+SHADOW, TRAIN = "shadow", "train"
 MODES = (LOCK, SHADOW, TRAIN)
 # The id checks of step 4; each takes `--root <tree>`. They run from `main`'s scripts (M0).
 ID_CHECKS = (("tasks.py", "validate"), ("check_decisions.py",))
-ID_CHECK_TIMEOUT = 300
 BATCH_MAX = 5
-# The committer of train merge commits, so a clone with no git identity can still build.
-IDENTITY = ("-c", "user.name=merge-train", "-c", "user.email=merge-train@invalid")
 # Ids that an id-check failure line names; only these, never its file names, reach a reason.
 COLLIDING_ID = re.compile(r"\b(?:duplicate id (T-\d{4})|decision number (\d{4}))\b")
 
@@ -61,7 +62,7 @@ def parse_mode(text: str | None) -> str:
 def read_mode(root: Path = ROOT) -> str:
     """The mode on a freshly fetched origin/main; LOCK when the fetch or the read fails."""
     try:
-        git("fetch", "-q", "--no-tags", REMOTE, "+refs/heads/main:refs/remotes/origin/main", root=root)
+        fetch_main(root)
         shown = git("show", f"refs/remotes/origin/main:{SWITCH}", root=root, check=False)
     except GitError:
         return LOCK
@@ -172,21 +173,6 @@ def build(worktree: Path, scripts: Path, base: str, heads: Sequence[tuple[int, s
     return train
 
 
-@contextmanager
-def worktrees(root: Path, base: str) -> Iterator[tuple[Path, Path]]:
-    """Two scratch worktrees at `base` outside the checkout: the train's and, read-only, M0's
-    (its `scripts` run the id checks). Both are removed on the way out."""
-    with tempfile.TemporaryDirectory(prefix="merge-train-") as scratch:
-        trees = (Path(scratch) / "train", Path(scratch) / "m0")
-        try:
-            for tree in trees:
-                git("worktree", "add", "-q", "--detach", str(tree), base, root=root)
-            yield trees
-        finally:
-            for tree in trees:
-                git("worktree", "remove", "--force", str(tree), root=root, check=False)
-
-
 @dataclass
 class Collected:
     """Step 2: the ready PRs oldest marker first, and what the merger would do about the rest."""
@@ -243,7 +229,6 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
 # constants are section 4's.
 TRAIN_BRANCH = "merge-train/current"
 TRAIN_REF = f"refs/heads/{TRAIN_BRANCH}"
-MAIN_REF = "refs/heads/main"
 CI_WORKFLOW_FILE = Path(merge_ready.CI_WORKFLOW).name
 TRAIN_EVENTS = ("push", "workflow_dispatch")
 WINDOW = 40 * 60  # a merger run's polling window; the lock wait is capped at what is left of it
@@ -261,20 +246,6 @@ CLOSING_KEYWORD = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b", r
 CO_AUTHOR = re.compile(r"Co-Authored-By: [^@#<>\n]+ <[^@<>\s]+@[^@<>\s]+>")
 SESSION = re.compile(r"Claude-Session: https://claude\.ai/code/session_[A-Za-z0-9]{1,64}")
 
-
-class Stop(Exception):
-    """The train stops this hold with nothing more merged. `p0` when `main` differs from the
-    tested train (step 7's mismatch response); the P0 and the revert PR are T-3055's."""
-
-    def __init__(self, reason: str, *, p0: bool = False) -> None:
-        super().__init__(reason)
-        self.p0 = p0
-
-
-class CutOff(Stop):
-    """A stop after which the known-green prefix still merges and the search state is recorded
-    (SPEC-0027 section 6, "Budget cut-off"): the step 6 gate failed, or the infrastructure failed
-    twice."""
 
 
 # The outcome of one train CI wait (step 6). INFRA is a run that is not the PRs' fault: no run, a
@@ -381,6 +352,39 @@ def tree_of(commit: str, root: Path) -> str:
     return git("rev-parse", f"{commit}^{{tree}}", root=root).stdout.strip()
 
 
+def stop_pending(client: Client, root: Path, on_invalid: Callable[[int, str], None] | None = None) -> int | None:
+    """The first open PR (lowest number) labelled `merge-train-stop` that passes `make
+    merge-flip-check`, or None. `on_invalid(pr, head)` is called for each labelled PR before it
+    that fails the check. A check that could not run git honours the label: stopping is safe."""
+    labelled = sorted(
+        gh_client.number(merge_ready.int_of(pull, "number"))
+        for pull in client.pulls()
+        if merge_ready.STOP_LABEL in merge_ready.label_names(pull)
+    )
+    for pr in labelled:
+        head, problems = merge_flip.pr_problems(client, pr, root)
+        if not problems or any(problem.startswith("git: ") for problem in problems):
+            return pr
+        if on_invalid is not None:
+            on_invalid(pr, head)
+    return None
+
+
+def mode_line(root: Path) -> str:
+    """`make merge-mode`'s line: the mode, and in `train` mode the stop label a train would honour.
+    It only reads: an invalid stop label is left for the train to remove."""
+    mode = read_mode(root)
+    client = gh_client.from_remote(root, REMOTE) if mode == TRAIN else None
+    if client is None:
+        return mode
+    try:
+        pending = stop_pending(client, root)
+    except GhError as error:
+        print(f"merge_train: the stop labels were not read: {error}", file=sys.stderr)
+        return mode
+    return f"{mode} (stop pending: #{pending})" if pending is not None else mode
+
+
 class LockOps:
     """The merge lock calls of a train run, as `scripts/merge_lock.py` exit codes."""
 
@@ -412,19 +416,40 @@ class Stage:
     renewed: float = 0.0
     main: str = ""
     lease: str = ""
+    branch: str = TRAIN_BRANCH
     log: list[str] = field(default_factory=list)
-    # The tasks this hold asks for, as (priority, title, body); filing them is T-3055's.
+    # The tasks this hold asks for, as (priority, title, context); `file_tasks` files them.
     tasks: list[tuple[str, str, str]] = field(default_factory=list)
 
+    mode = TRAIN
+
+    @property
+    def ref(self) -> str:
+        return f"refs/heads/{self.branch}"
+
     def checkpoint(self) -> None:
-        """A stop checkpoint: when `main` moved since the last one, re-read the switch from it
-        (failing closed) and stop unless it still says `train`. The stop label is T-3055's."""
+        """A stop checkpoint: stop on a valid stop label; and when `main` moved since the last
+        one, re-read the switch from it (failing closed) and stop unless it still says this
+        stage's mode."""
+        self.stop_label()
         sha = remote_sha(MAIN_REF, self.root)
         if sha != self.main:
             self.main = sha
             mode = read_mode(self.root)
-            if mode != TRAIN:
+            if mode != self.mode:
                 raise Stop(f"the mode on main is now {mode}")
+
+    def stop_label(self) -> None:
+        """Honours a `merge-train-stop` label on a flip PR, and removes it from any other PR."""
+        pending = stop_pending(self.client, self.root, self.remove_stop)
+        if pending is not None:
+            raise Stop(f"a flip to lock is pending: #{pending} carries {merge_ready.STOP_LABEL}")
+
+    def remove_stop(self, pr: int, head: str) -> None:
+        self.client.remove_label(pr, merge_ready.STOP_LABEL)
+        self.client.comment(pr, f"merge train: stop label removed: not a valid flip PR "
+                                f"(`make merge-flip-check` fails at {head})")
+        self.log.append(f"removed {merge_ready.STOP_LABEL} from #{pr}: not a valid flip PR")
 
     def renew(self, prs: Sequence[int]) -> None:
         if self.lock.renew(prs) != 0:
@@ -436,7 +461,7 @@ class Stage:
 
     def push(self, train: Train, notes: Sequence[str] = ()) -> str:
         """Step 5: push a record commit on the train's tip (same tree; its message lists the
-        batch, then `notes`) to TRAIN_REF, leased on the last sha this hold read or pushed there.
+        batch, then `notes`) to the train branch, leased on the last sha this hold read or pushed there.
         Returns the pushed sha."""
         lines = [f"merge train on main {train.base}", ""]
         lines += [f"#{m.pr} {m.head}" for m in train.members]
@@ -445,16 +470,19 @@ class Stage:
 
     def write_train_ref(self, tree: str, parent: str, message: str) -> str:
         tip = git(*IDENTITY, "commit-tree", tree, "-p", parent, "-m", message, root=self.root).stdout.strip()
-        pushed = git("push", "-q", f"--force-with-lease={TRAIN_REF}:{self.lease}", REMOTE, f"{tip}:{TRAIN_REF}",
+        pushed = git("push", "-q", f"--force-with-lease={self.ref}:{self.lease}", REMOTE, f"{tip}:{self.ref}",
                      root=self.root, check=False)
         if pushed.returncode != 0:
-            raise Stop(f"infrastructure: the push to {TRAIN_BRANCH} lost its lease under the lock")
+            self.lost_lease()
         self.lease = tip
         return tip
 
+    def lost_lease(self) -> None:
+        raise Stop(f"infrastructure: the push to {self.branch} lost its lease under the lock")
+
     def record(self, state: Resume) -> None:
         """A cut-off's search state, as a `[skip ci]` commit on the last train tip."""
-        git("fetch", "-q", "--no-tags", REMOTE, f"+{TRAIN_REF}:refs/merge-train/current", root=self.root)
+        git("fetch", "-q", "--no-tags", REMOTE, f"+{self.ref}:refs/{self.branch}", root=self.root)
         self.write_train_ref(tree_of(self.lease, self.root), self.lease, state.render())
         self.log.append("recorded known-red " + ", ".join(f"#{pr}" for pr, _ in state.known_red)
                         + f" on {state.base[:12]}")
@@ -468,8 +496,8 @@ class Stage:
     def ci(self, tip: str, docs_only: bool | None) -> tuple[str, list[str], list[int]]:
         """The train CI's state on exactly `tip` (step 6), and the ids of the matching runs."""
         runs = [
-            r for r in self.client.workflow_runs(branch=TRAIN_BRANCH, head_sha=tip)
-            if merge_ready.text_of(r, "head_sha") == tip and merge_ready.text_of(r, "head_branch") == TRAIN_BRANCH
+            r for r in self.client.workflow_runs(branch=self.branch, head_sha=tip)
+            if merge_ready.text_of(r, "head_sha") == tip and merge_ready.text_of(r, "head_branch") == self.branch
         ]
         ids = sorted(
             merge_ready.int_of(r, "id") for r in runs
@@ -501,7 +529,7 @@ class Stage:
                 return Outcome(INFRA if infra else state, tuple(jobs), tuple(ids))
             now = self.clock()
             if not ids and dispatched is None and now - start >= DISPATCH_AFTER:
-                self.client.dispatch(CI_WORKFLOW_FILE, TRAIN_BRANCH)
+                self.client.dispatch(CI_WORKFLOW_FILE, self.branch)
                 dispatched = now
             elif not ids and dispatched is not None and now - dispatched >= DISPATCH_AFTER:
                 return Outcome(INFRA, ("no CI run on the train, even after a dispatch",))
@@ -517,7 +545,7 @@ class Stage:
             self.gate(n)
             tip = self.push(train, notes if attempt == 1 else (*notes, "retry after an infrastructure failure"))
             names = ", ".join(f"#{m.pr}" for m in train.members)
-            self.log.append(f"pushed {tip} to {TRAIN_BRANCH}: {names}")
+            self.log.append(f"pushed {tip} to {self.branch}: {names}")
             self.renew(prs)
             docs_only = not ci_changes.classify_range(train.base, tip, cwd=self.root)
             self.checkpoint()  # before the CI wait
@@ -542,33 +570,56 @@ class Stage:
                 if merge_ready.text_of(first, "sha") == expected:
                     if merge_ready.text_of(commit, "tree", "sha") != tree_of(member.merge, self.root):
                         raise Stop(f"main differs from the tested train at #{member.pr}: GitHub's test merge "
-                                   "has another tree", p0=True)
+                                   "has another tree", p0=True, pr=member.pr)
                     return pull
                 if remote_sha(MAIN_REF, self.root) != expected:
-                    raise Stop(f"main moved without the lock before squashing #{member.pr}", p0=True)
+                    raise Stop(f"main moved without the lock before squashing #{member.pr}", p0=True, pr=member.pr)
             if self.clock() >= deadline:
                 raise Stop(f"GitHub's test merge of #{member.pr} was not recomputed on {expected[:12]} "
                            f"within {PRE_SQUASH_TIMEOUT // 60} min")
             self.sleep(PRE_SQUASH_POLL)
 
-    def squash(self, member: Member, pull: dict[str, object]) -> None:
-        """Step 7.3: squash-merge the PR only at its tested head. A lost reply is read back."""
+    def squash(self, member: Member, pull: dict[str, object]) -> str:
+        """Step 7.3: squash-merge the PR only at its tested head. A lost reply is read back.
+        Returns the squash commit's sha as GitHub reports it ("" when it does not)."""
         title = squash_title(merge_ready.text_of(pull, "title"), member.pr)
         message = squash_trailers(self.client.pull_commits(member.pr))
         try:
-            self.client.merge(member.pr, member.head, title=title, message=message)
+            reply = self.client.merge(member.pr, member.head, title=title, message=message)
         except GhError as error:
-            if not merge_ready.field_of(self.client.pull(member.pr), "merged"):
+            after = self.client.pull(member.pr)
+            if not merge_ready.field_of(after, "merged"):
                 raise Stop(f"the merge of #{member.pr} was refused ({error})") from error
+            return merge_ready.text_of(after, "merge_commit_sha")
+        return merge_ready.text_of(reply, "sha")
 
-    def post_squash(self, member: Member, expected: str) -> str:
-        """Step 7.4: `main` now has `expected` as its first parent and the train's tree."""
-        git("fetch", "-q", "--no-tags", REMOTE, f"+{MAIN_REF}:refs/remotes/origin/main", root=self.root)
-        main = git("rev-parse", "refs/remotes/origin/main", root=self.root).stdout.strip()
-        parent = git("rev-parse", "--verify", "-q", f"{main}^1", root=self.root, check=False).stdout.strip()
-        if parent != expected or tree_of(main, self.root) != tree_of(member.merge, self.root):
-            raise Stop(f"main differs from the tested train after squashing #{member.pr} ({main})", p0=True)
-        return main
+    def post_squash(self, member: Member, expected: str, squashed: str) -> str:
+        """Step 7.4: our squash `squashed` (`main` itself when GitHub did not report it) has
+        `expected` as its first parent and the train's tree, and `main` is that squash. A squash
+        with another parent or tree is `Landed`; a foreign commit on top of a good one is not
+        ours to revert."""
+        main = fetch_main(self.root)
+        sha = squashed if SHA.fullmatch(squashed) else main
+        if git("merge-base", "--is-ancestor", sha, main, root=self.root, check=False).returncode != 0:
+            raise Stop(f"main ({main}) does not hold the squash of #{member.pr} ({sha})", p0=True, pr=member.pr)
+        parent = git("rev-parse", "--verify", "-q", f"{sha}^1", root=self.root, check=False).stdout.strip()
+        tree, want = tree_of(sha, self.root), tree_of(member.merge, self.root)
+        if parent != expected or tree != want:
+            raise Landed(member.pr, sha, parent, expected, tree, want)
+        if main != sha:
+            raise Stop(f"main moved without the lock after squashing #{member.pr}", p0=True, pr=member.pr)
+        return sha
+
+    def delete_branch(self, pr: int, pull: dict[str, object]) -> None:
+        """Step 7.5: the merged PR's branch goes when it is in this repository. A failure (the
+        session proxy answers 403, T-1938) is logged, never a stop: the merge has landed."""
+        repo = self.client.base.removeprefix("repos/").lower()
+        if merge_ready.text_of(pull, "head", "repo", "full_name").lower() != repo:
+            return
+        try:
+            self.client.delete_branch(merge_ready.text_of(pull, "head", "ref"))
+        except GhError as error:
+            self.log.append(f"the branch of #{pr} was not deleted: {error}")
 
     def merge_green(self, train: Train, tip: str) -> list[int]:
         """Step 7: squash the members in order, each between a pre- and a post-squash check. The
@@ -576,20 +627,21 @@ class Stage:
         prs = [m.pr for m in train.members]
         self.renew(prs)
         if remote_sha(MAIN_REF, self.root) != train.base:
-            raise Stop("main moved without the lock before the first squash", p0=True)
+            raise Stop("main moved without the lock before the first squash", p0=True, pr=prs[0])
         expected, merged = train.base, []
         batch = ", ".join(f"#{pr}" for pr in prs)
         for k, member in enumerate(train.members):
             self.checkpoint()
             self.renew(prs[k:])
             pull = self.pre_squash(member, expected)
-            self.squash(member, pull)
+            squashed = self.squash(member, pull)
             merged.append(member.pr)
             self.log.append(f"merged #{member.pr}")
-            expected = self.post_squash(member, expected)
+            expected = self.post_squash(member, expected, squashed)
             self.main = expected  # our own squash is not a reason to re-read the switch
             self.client.remove_label(member.pr, merge_ready.READY_LABEL)
             self.client.comment(member.pr, f"merged by merge train {tip} (batch {batch})")
+            self.delete_branch(member.pr, pull)
         return merged
 
     def unlabel(self, pr: int, reason: str, *, eject: bool = False) -> None:
@@ -614,7 +666,8 @@ class Stage:
         if not heads:
             self.log.append("no ready PR")
             return []
-        self.lease = remote_sha(TRAIN_REF, self.root)
+        self.lease = remote_sha(self.ref, self.root)
+        self.collected(base, heads)
         state = self.recorded()
         merged: list[int] = []
         while heads:
@@ -634,6 +687,9 @@ class Stage:
             done, base, heads = self.resolve(train, known_red, notes)
             merged += done
         return merged
+
+    def collected(self, base: str, heads: Sequence[tuple[int, str]]) -> None:
+        """A hook between step 2 and the first build; shadow mode skips a repeated round there."""
 
     def build_on(self, base: str, heads: Sequence[tuple[int, str]]) -> Train:
         """Steps 3 and 4 on `base` in scratch worktrees, with step 3's ejections made."""
@@ -686,7 +742,7 @@ class Stage:
             raise
         links = ", ".join(self.run_link(r) for r in (*red_runs, *outcome.runs)) or "none"
         if outcome.state == merge_ready.GREEN:
-            self.tasks.append(("P1", "possible flaky test or interaction",
+            self.tasks.append(("P1", f"merge train: possible flaky test or interaction at #{culprit.pr}",
                                f"#{culprit.pr}'s train prefix was red on {train.base}, then green alone on "
                                f"{base}; runs: {links}"))
             self.log.append(f"P1: #{culprit.pr}'s red train did not reproduce; not ejected")
@@ -728,11 +784,19 @@ class Stage:
             self.log.append("the merge lock was not acquired in this window")
             return 0
         try:
-            self.hold()
-            return 0
-        except Stop as stop:
-            self.log.append(("P0: " if stop.p0 else "stopped: ") + str(stop))
-            return 1
+            code = 0
+            try:
+                self.hold()
+            except Stop as stop:
+                self.log.append(("P0: " if stop.p0 else "stopped: ") + str(stop))
+                if stop.p0:
+                    respond(self.root, self.client, self.log, self.tasks, self.lease, stop)
+                code = 1
+            except (GhError, GitError):
+                file_tasks(self.root, self.client, self.log, self.tasks)  # a P1 found before the error is still filed
+                raise
+            file_tasks(self.root, self.client, self.log, self.tasks)
+            return code
         finally:
             self.lock.release()
 
@@ -744,28 +808,44 @@ def raise_on_term(signum: int, _frame: object) -> None:
 
 def main(argv: list[str], root: Path = ROOT) -> int:
     if argv == ["mode"]:
-        print(read_mode(root))
+        print(mode_line(root))
         return 0
-    if argv not in (["--dry-run"], ["--train"]):
-        print("usage: merge_train.py mode | --dry-run | --train", file=sys.stderr)
+    step = argv[1:] == ["--step"] and argv[0] in ("--train", "--shadow")
+    if argv not in (["--dry-run"], ["--train"], ["--shadow"]) and not step:
+        print("usage: merge_train.py mode | --dry-run | (--train | --shadow) [--step]", file=sys.stderr)
         return 2
-    client = gh_client.from_remote(root, REMOTE)
-    if client is None:
+    real = gh_client.from_remote(root, REMOTE)
+    if real is None:
         print("merge_train: origin is not a github.com repository", file=sys.stderr)
         return 2
+    stage: Stage | None = None
     try:
         if argv == ["--dry-run"]:
-            print(dry_run(client, root))
+            print(dry_run(real, root))
             return 0
         signal.signal(signal.SIGTERM, raise_on_term)
-        stage = Stage(client, root, LockOps(f"train-{int(time.time())}", root))
+        # Every write of a --step run is an action the session performs (decision 0169).
+        client: Client = merge_step.StepClient(real, merge_step.AckFile(root)) if step else real
+        # Imported here: merge_train_shadow subclasses this module's Stage.
+        from merge_train_shadow import ShadowStage
+
+        kind = ShadowStage if argv[0] == "--shadow" else Stage
+        stage = kind(client, root, LockOps(f"train-{int(time.time())}", root))
         code = stage.run()
         print("\n".join(stage.log))
         return code
+    except merge_step.StepError as error:
+        # The lock was released on the way out; nothing after the failed action ran.
+        print("\n".join(stage.log if stage is not None else []))
+        print(f"merge_train: step mode aborted: {error}", file=sys.stderr)
+        return 2
     except (GhError, GitError) as error:
         print(f"merge_train: {error}", file=sys.stderr)
         return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    # Run the imported module, not `__main__`, so merge_train_shadow subclasses the same `Stage`.
+    import merge_train
+
+    sys.exit(merge_train.main(sys.argv[1:]))

@@ -112,8 +112,10 @@ fn an_end_period_past_nper_is_num() {
 
 #[test]
 fn up_to_32_periods_are_the_per_period_sum() {
-    // Type 1's interest is main's sum of IPMT up to `CUMULATIVE_LOOP_PERIODS` (32), bit for bit
-    // (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26); past it, the closed form.
+    // Type 1's interest is a per-period sum up to `CUMULATIVE_LOOP_PERIODS` (32), of the exact
+    // split rather than IPMT's discounted one, so within an ulp or so of the IPMT sum, not bit for
+    // bit (ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx G3, G9, G15, G26; T-2243); past it, the
+    // closed form.
     // Type 0's short sums are their own forms (T-2192, below). The principal of type 1 is the
     // closed form at any length, close to the PPMT sum (T-1890). The per-period sums are rebuilt
     // here from IPMT and PPMT.
@@ -138,17 +140,16 @@ fn up_to_32_periods_are_the_per_period_sum() {
     }
     model.evaluate();
     let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
-    assert_eq!(number("A1").to_bits(), number("B1").to_bits());
+    assert!((number("A1") / number("B1") - 1.0).abs() < 1E-14);
     // The PPMT sum cancels (each principal is a fiftieth of its payment). The geometric sum on
     // Excel's own `ln(1+rate)` is Excel's value, an ulp or two from the exact
     // -2.33419231896298640 (probes/fin-cumipmt-gate-edges J1; T-1890, T-2521).
     assert_eq!(number("A2"), -2.334_192_318_962_987_4);
     assert!((number("A2") / number("B2") - 1.0).abs() < 1E-12);
-    // 33 periods: past the per-period sums, Excel's value (gate-edges J2), within an ulp of the
-    // IPMT sum.
+    // 33 periods: past the per-period sums, Excel's value (gate-edges J2), which is also the sum
+    // of Excel's discounted IPMT to the bit (T-2243).
     assert_eq!(number("A3"), -131.849_721_045_626_13);
-    assert_ne!(number("A3").to_bits(), number("B3").to_bits());
-    assert!((number("A3") / number("B3") - 1.0).abs() < 1E-14);
+    assert_eq!(number("A3").to_bits(), number("B3").to_bits());
     check(&[
         // CUMPRINC_CUMIPMT.xlsx G3 (one period, the sum) and fin-cumipmt-period-bound A9, A11
         // (1,024 periods, the closed form).
@@ -256,7 +257,7 @@ fn a_short_principal_at_a_large_rate_is_one_geometric_sum() {
             "=CUMIPMT(1E-10,296,197540,13,19,1)",
             "-0.00013127066813467536",
         ),
-        // Below `GEOMETRIC_MIN_DISCOUNT` the old forms keep these to the bit: the per-period
+        // Below `GEOMETRIC_MIN_LEAD` the old forms keep these to the bit: the per-period
         // sum (gen-m9 d912671baa1364aa A300) and type 1's closed form (CUMPRINC_CUMIPMT.xlsx H25).
         (
             "A6",
@@ -267,6 +268,24 @@ fn a_short_principal_at_a_large_rate_is_one_geometric_sum() {
             "A7",
             "=CUMPRINC(0.1234,36,8000,3,10,1)",
             "-212.62776661477534",
+        ),
+        // Past 32 periods a range that ends a deep discount before nper is the geometric sum
+        // too (gen-m9 b73c6cc96e093f03 A62, probes/fin-cumprinc-form-boundaries A2; T-3067), and
+        // one that ends near nper keeps the closed form (fin-cumipmt-period-bound A6).
+        (
+            "A8",
+            "=CUMPRINC(2,151,319288,3,42,1)",
+            "-1.049166891970377E-47",
+        ),
+        (
+            "A9",
+            "=CUMPRINC(2,600,319288,3,42,1)",
+            "-6.214428680002485E-262",
+        ),
+        (
+            "A10",
+            "=CUMPRINC(0.005,100000,1000,2,99999,1)",
+            "-990.0745031063589",
         ),
     ]);
 }

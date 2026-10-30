@@ -31,9 +31,11 @@ statrs' search, and the closed form's last digits at 1E11 are Excel's.
     about -2.3E-3 at z = 0 for shapes 2E10 to 1E11, A7-A9): find the exact form; A24 and A60 (p = 1E-300) are about
     250 ulps off at 1E13 and 1E11;
   - Temme's tails at the 1E8 cut, A144-A146 (about 1E-15 relative), and E13, E14, E19 (1 ulp each).
-  - Every known-failure line of probes/t2982-gamma-inv-huge-shape is this task's: A1-A4, A7-A13, A16, A19, A22-A30,
-    A34, A36-A41, A44, A60-A85 (the closed form's last digits, 1 to 1,546 ulps), A89, A90 (CHISQ.INV.RT at
-    10000000000.5 df, ours `#NUM!`), A92, A93, A144-A146; and T-2982's owned gen-m9 cells (the 25 lines listed in
+  - Every known-failure line of probes/t2982-gamma-inv-huge-shape is this task's (colon spans, decision 0136):
+    - probes/t2982-gamma-inv-huge-shape A1:A4, A7:A13, A16, A19, A22:A30, A34, A36:A41, A44;
+    - probes/t2982-gamma-inv-huge-shape A60:A85 (the closed form's last digits, 1 to 1,546 ulps);
+    - probes/t2982-gamma-inv-huge-shape A89, A90 (CHISQ.INV.RT at 10000000000.5 df, ours `#NUM!`), A92, A93, A144:A146;
+    and T-2982's owned gen-m9 cells (the 25 lines listed in
     docs/tasks/M9/T-1891-gamma-dist-poisson-and-the-gamma-inversions-give.md) and t2435 cells (gen-m9 2801c1c11c21e134
     A241, 40425341c5034eed A265; probes/t2435-dist-extremes A25, A26, A101, A102), leaving any small-shape inversion's
     last digits to T-0972.
@@ -44,3 +46,7 @@ statrs' search, and the closed form's last digits at 1E11 are Excel's.
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- gen-m9/8f2ac25945af87da Calc!A240 `CHISQ.INV(1E-16,10000000000.5)`: Excel 9998837266.383266, ours `#NUM!` (the lower-tail twin of A89 and A90's CHISQ.INV.RT at 10000000000.5 df).

@@ -432,3 +432,57 @@ fn a_root_cells_lambdas_are_dropped_once_it_is_evaluated() {
     assert_eq!(model._get_text("A2"), *"133");
     assert!(model.lambdas.is_empty());
 }
+
+/// An uncalled LAMBDA joined as text is `#VALUE!` on either side of `&`
+/// (probes/t2622-take-let-reference-lambda-text Q1-Q10; T-2622).
+#[test]
+fn uncalled_lambda_joined_as_text_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LAMBDA(x,x)&\"\"");
+    model._set("A2", "=\"a\"&LET(f,LAMBDA(x,x),f)");
+    model._set("A3", "=ERROR.TYPE(LAMBDA(x,x)&LAMBDA(y,y))");
+    model._set("A4", "=IFERROR(LAMBDA(x,x)&\"\",\"e\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "3");
+    assert_eq!(model._get_text("A4"), "e");
+}
+
+/// CONCAT, TEXTJOIN and CONCATENATE of an uncalled LAMBDA are `#VALUE!`, not `#N/IMPL!`
+/// (probes/t3130-concat-lambda-trimrange-cell-variable Q1-Q12; T-3130).
+#[test]
+fn uncalled_lambda_read_as_text_by_functions_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CONCAT(\"a\",LAMBDA(x,x))");
+    model._set("A2", "=TEXTJOIN(\",\",TRUE,LAMBDA(x,x))");
+    model._set("A3", "=TEXTJOIN(LAMBDA(x,x),TRUE,\"a\",\"b\")");
+    model._set("A4", "=ERROR.TYPE(CONCAT(LET(f,LAMBDA(x,x),f),\"\"))");
+    model._set("A5", "=ERROR.TYPE(CONCATENATE(LAMBDA(x,x),\"\"))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A4"), *"3");
+    assert_eq!(model._get_text("A5"), *"3");
+}
+
+/// A one-cell TRIMRANGE of a cell or a LET variable bound to one is a one-cell reference, and a
+/// MAKEARRAY LAMBDA returning one gives its value (probes/t3130-concat-lambda-trimrange-cell-variable
+/// Q13-Q16; gen-m7 a470dc9e165bdb20 A465; T-3130).
+#[test]
+fn one_cell_trimrange_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("A2", "5");
+    model._set("A3", "t");
+    model._set("B1", "=TYPE(TRIMRANGE(A2))");
+    model._set("B2", "=TYPE(TRIMRANGE(LET(v,A2,v)))");
+    model._set("B3", "=ROWS(A2-TRIMRANGE(A3))");
+    model._set("B4", "=MAKEARRAY(1,2,LAMBDA(r,c,TRIMRANGE(A2,2,2)))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"1");
+    assert_eq!(model._get_text("B2"), *"1");
+    assert_eq!(model._get_text("B3"), *"#VALUE!");
+    assert_eq!(model._get_text("B4"), *"5");
+    assert_eq!(model._get_text("C4"), *"5");
+}

@@ -31,8 +31,8 @@ fn a_formula_spends_units_per_node_cell_built_and_text_byte() {
     const C: u64 = CELL_UNITS;
     // `1+2`: the sum and its two operands.
     assert_eq!(units("=1+2"), 3 * N);
-    // SUM, SEQUENCE and 10: three nodes, and the ten cells SEQUENCE builds.
-    assert_eq!(units("=SUM(SEQUENCE(10))"), 3 * N + 10 * C);
+    // SUM, SEQUENCE and 10: three nodes, the ten cells SEQUENCE builds and the ten SUM reads.
+    assert_eq!(units("=SUM(SEQUENCE(10))"), 3 * N + 20 * C);
     // LEN, REPT, "a" (1 byte) and 640: four nodes, then the 640 bytes REPT gives.
     assert_eq!(
         units(r#"=LEN(REPT("a",640))"#),
@@ -40,8 +40,8 @@ fn a_formula_spends_units_per_node_cell_built_and_text_byte() {
     );
     // Each link of an operator chain is a node and is charged the array it builds: SUM, the
     // chain, SEQUENCE(10) and its 10 cells, the inner `+1` (its link, its operand and 10 cells),
-    // the outer `+1` (its operand, and the chain's 10 cells).
-    assert_eq!(units("=SUM(SEQUENCE(10)+1+1)"), 7 * N + 30 * C);
+    // the outer `+1` (its operand, and the chain's 10 cells), then the 10 cells SUM reads.
+    assert_eq!(units("=SUM(SEQUENCE(10)+1+1)"), 7 * N + 40 * C);
 }
 
 #[test]
@@ -167,4 +167,16 @@ fn an_oversized_charge_fails_without_wrapping() {
 fn the_default_limit_is_two_to_the_28() {
     assert_eq!(MAX_FORMULA_WORK, 1 << 28);
     assert_eq!(new_empty_model().area_budget.limit, MAX_FORMULA_WORK);
+}
+
+#[test]
+fn a_lambda_reading_a_bound_array_again_and_again_is_bounded() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=LET(s,SEQUENCE(100000),REDUCE(0,SEQUENCE(100000),LAMBDA(a,b,a+SUM(s))))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_error_message("A1"), TOO_MUCH_WORK);
 }
