@@ -1,6 +1,6 @@
 ---
 id: T-3199
-title: "F.DIST, F.DIST.RT and BETA.DIST: 13 cells where Excel is 5-50 ulp off the true value and T-2219's accurate kernel is visibly off Excel"
+title: "F.DIST, F.DIST.RT and BETA.DIST: 16 cells where Excel is 5-50 ulp off the true value and T-2219's accurate kernel is visibly off Excel"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -12,8 +12,8 @@ depends_on: []
 ---
 
 ## Goal
-The 13 cells below, which T-2219's accurate half-integer kernel moved from within 15 digits to
-visibly off Excel, agree with Excel to 15 significant digits again, without losing the 172 cells
+The 16 cells below, where T-2219's accurate half-integer kernel is visibly off Excel (13 of them
+it moved there from within 15 digits), agree with Excel to 15 significant digits again, without losing the 172 cells
 T-2219 fixed.
 
 ## Context
@@ -34,6 +34,12 @@ takes there (`bratio::dispatch`), not more accuracy:
 - t0969-t-beta-link E159 `BETA.DIST(D159,B159/2,0.5,TRUE)`: -15 / 0 / -9
 - t1745-beta-inv-roundtrip G150: -14 / 0 / -15; H150: -16 / -1 / -20; G158: +5 / 0 / +6;
   G159 (`BETA.DIST(D159,100,10,TRUE)`): +18 / 0 / +13
+- Added by gap triage 2026-10-30 (`make unowned-off ALL=1` on main 8f47bb850 listed them as owned
+  only by the deferred T-2221): probes-numeric/m9-f-dist-rt A16 `F.DIST.RT(10,10,10)` and
+  m9-legacy-fdist A55 `FDIST(10,10,10)`, A56 `F.DIST.RT(10,10,10)`. Excel 0.0005715525434020334,
+  ours 0.0005715525434020328, and the 60-digit mpmath value 0.00057155254340203257715. Excel is
+  +1.4E-15 relative off it and ours +4E-16, so ours is visibly off Excel. a = b = 5 (a + b = 10)
+  is in `half_integer_tail`'s range, the same class as the cells above.
 Several have a shape of 1/2 (d2 = 1) or a shape of 50 or more: check which bratio branch each
 takes (bgrat, bfrac, basym) and whether T-2508 (bfrac, basym) or T-2512 (bgrat) covers them before
 starting; if one does, move the cell there instead.
