@@ -25,7 +25,7 @@ text only under `#[cfg(debug_assertions)]`, and `"bitcode error"` otherwise. The
 (`src/test/user_model/test_to_from_bytes.rs:26`) asserts the debug-only text, so its outcome depends on the build
 profile.
 
-Pick one:
+Prefer the first option unless a caller needs a stable message (grep for `Error parsing workbook` first):
 - Assert only the build-independent part: the `Error parsing workbook: ` prefix.
 - Have `from_bytes` return a fixed message of our own that doesn't depend on bitcode's text.
 
