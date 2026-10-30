@@ -3,7 +3,7 @@ id: T-1129
 title: "Probe and fix the sign of negative numbers that round to or past one unit (TEXT(-0.5,0), TEXT(-0.4,0))"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,3 +25,6 @@ and -0.005 under `0.00` keep their minus; what is still open is values that roun
 
 ## Out of scope
 -
+
+## Outcome
+Probed 30 cells (probes/text-negative-round-sign, excel-graph). Only literal-only formats without a decimal point were wrong (`TEXT(-0.4,"x")` gave "x", Excel "-x"); fixed in formatter/format.rs. Rule recorded in number-formats.md. Eval delta: new probe case, all 30 cells pass.

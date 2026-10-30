@@ -1839,6 +1839,7 @@ C	probes/text-modes-dbcs.case.json	3
 C	probes/text-modes-phonetic-number.case.json	1
 C	probes/text-modes-phonetic-range.case.json	1
 C	probes/text-modes-phonetic.case.json	1
+C	probes/text-negative-round-sign.case.json	30
 C	probes/text-negative-serial-elapsed-mixed.case.json	9
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-like-text-and-control-chars.case.json	29
