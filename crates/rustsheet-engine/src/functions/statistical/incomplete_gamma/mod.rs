@@ -133,7 +133,8 @@ pub(crate) fn gamma_ur(a: f64, x: f64) -> f64 {
     if !(a > 0.0 && x > 0.0 && x.is_finite()) {
         return f64::NAN;
     }
-    incomplete_gamma_pair(a, x, &mut Terms(MAX_TERMS)).1
+    // POISSON.DIST and the large-shape beta paths: the ratio form is unprobed for them (T-3220).
+    pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Accurate).1
 }
 
 /// statrs' `Gamma::cdf` within `terms`: its closed branches are statrs' own.
@@ -179,24 +180,25 @@ fn gamma_prefactor(a: f64, x: f64, form: Exponent) -> f64 {
         }
         return (a * x.ln() - x - super::special::ln_gamma(a)).exp();
     }
-    let exponent = if form == Exponent::Accurate || (x - a).abs() <= a * NEAR_MODE {
-        // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
-        // 0.5002659614862837 to 5 ulp, where the ratio form below is 1E-10 off (ironcalc-calc
-        // POISSON.xlsx D31).
-        -a * rlog(a, x)
-    } else {
-        // Excel's own form away from the mode: the log of the ratio that is at least 1, a ln(x/a)
-        // above it and -a ln(a/x) below it, then a - x added. Excel's density and cdf are 0 to 1
-        // ulp from it at shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up
-        // to 600 ulp from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist
-        // A51-A64; T-2638).
-        let log_ratio = if x < a {
-            -a * (a / x).ln()
+    let exponent =
+        if form == Exponent::Accurate || (x - a).abs() <= a * NEAR_MODE || x < a * RATIO_FORM_MIN {
+            // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
+            // 0.5002659614862837 to 5 ulp, where the ratio form below is 1E-10 off (ironcalc-calc
+            // POISSON.xlsx D31). Below a/50 Excel is neither (TODO(T-3219)).
+            -a * rlog(a, x)
         } else {
-            a * (x / a).ln()
+            // Excel's own form away from the mode: the log of the ratio that is at least 1, a ln(x/a)
+            // above it and -a ln(a/x) below it, then a - x added. Excel's density and cdf are 0 to 1
+            // ulp from it at shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up
+            // to 600 ulp from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist
+            // A51-A64; T-2638).
+            let log_ratio = if x < a {
+                -a * (a / x).ln()
+            } else {
+                a * (x / a).ln()
+            };
+            log_ratio + (a - x)
         };
-        log_ratio + (a - x)
-    };
     (a / (2.0 * std::f64::consts::PI)).sqrt() * (exponent - stirling_correction(a)).exp()
 }
 
@@ -215,7 +217,7 @@ fn rlog(a: f64, x: f64) -> f64 {
 /// Which large-shape exponent [`gamma_prefactor`] takes away from the mode.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Exponent {
-    /// Excel's ratio form, for the distribution functions.
+    /// Excel's ratio form, for GAMMA.DIST, CHISQ.DIST and CHISQ.DIST.RT (and their legacy names).
     Excel,
     /// -a rlog(x/a) everywhere, for the quantiles: their crossings of the ratio form were Excel's
     /// at 4 probed cells and not at 2 others, where the accurate cdf's crossings are
@@ -229,11 +231,28 @@ enum Exponent {
 /// at a/2; 0.4 is TOMS 654's bound for its own near-mode branch, |1 - x/a| <= 0.4.
 const NEAR_MODE: f64 = 0.4;
 
+/// The smallest x / a at which [`gamma_prefactor`] takes Excel's ratio form. Bracketed (T-2638):
+/// Excel is the ratio form bit for bit at a/21 (gen-m9/8dd2312c96effb1b A333
+/// `GAMMA.DIST(3.14159,42,ACOS(0),FALSE)`) and is not at a/500 (probes/
+/// t2753-gamma-density-ratio-sweep A47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 ulp off with `rcomp`, 252
+/// with the ratio form); 1/50 lies between (T-3220 probes it).
+const RATIO_FORM_MIN: f64 = 0.02;
+
 /// The gamma density x^(a-1) e^(-x/scale) / (scale^a Gamma(a)) for a > 0, x > 0 and scale > 0,
 /// as [`gamma_prefactor`]`(a, x / scale) / x`: the prefactor P and Q share, so the density keeps
 /// its digits where statrs' `exp(ln pdf)` loses the absolute error of its log (T-0971). `None` at
 /// x = 0 or where x / scale is not normal, which keep statrs' closed forms.
 pub(crate) fn gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
+    density_with(a, x, scale, Exponent::Excel)
+}
+
+/// [`gamma_density`] with the accurate exponent throughout, for the large-shape beta paths, where
+/// the ratio form is unprobed (T-3220).
+pub(crate) fn accurate_gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
+    density_with(a, x, scale, Exponent::Accurate)
+}
+
+fn density_with(a: f64, x: f64, scale: f64, form: Exponent) -> Option<f64> {
     let y = x / scale;
     if x <= 0.0 || !y.is_normal() {
         return None;
@@ -243,7 +262,7 @@ pub(crate) fn gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
     if a == 1.0 {
         return Some((-y).exp() / scale);
     }
-    Some(gamma_prefactor(a, y, Exponent::Excel) / x)
+    Some(gamma_prefactor(a, y, form) / x)
 }
 
 /// The shape below which, for x below 1, Q is not 1 - P but [`small_shape_upper`]: there P runs
@@ -470,7 +489,8 @@ fn temme_pair(a: f64, x: f64) -> (f64, f64) {
     }
 }
 
-/// The accurate regularized incomplete gamma pair (P(a, x), Q(a, x)) for a > 0, x > 0 (T-0971):
+/// The regularized incomplete gamma pair (P(a, x), Q(a, x)) for a > 0, x > 0 (T-0971), with
+/// Excel's large-shape prefactor (T-2638; [`pair_with`] `Exponent::Accurate` for the accurate one):
 /// the series for P below x = a + 1 and the continued fraction (modified Lentz) for Q above it,
 /// each taken to full double precision, the other tail as 1 minus it (Q directly for a small
 /// shape, [`small_shape_upper`]); a = 1 is exactly

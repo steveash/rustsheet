@@ -107,6 +107,8 @@ Excel at every literal density of shapes 25, 50 and 500 (TOMS 654's `rcomp` was 
 mode the accurate `rcomp` stays (Excel is accurate there: `POISSON.DIST(1E6,1E6,TRUE)`), and the quantiles keep `rcomp`
 everywhere (their probed cells are Excel's that way). CHISQ.DIST's density now takes GAMMA.DIST's tiny-ratio log form.
 Eval: 31 cells newly bit-exact (m9-gamma-dist-a50 and -a500, m9-chisq-dist A51-A64, t3148 flat band, gen-m9
-8dd2312c96effb1b A333), 22 more moved from visibly off to within a few ulp, 0 regressions. No form tried fits the
+8dd2312c96effb1b A333), 22 more moved from visibly off to within a few ulp, 0 gate regressions. At a/500 the form is not Excel's
+(t2753 A47, B47 got worse with it), so `rcomp` stays below a/50; POISSON.DIST and the beta paths keep `rcomp` (unprobed,
+T-3220). No form tried fits the
 small-shape cells (every candidate recorded in docs/excel-semantics/statistics.md); the 42 cells this task still owns
 moved to T-3219 (attempt 2). It also closed eight of T-3147's nine cells (all but A50, shape 5).

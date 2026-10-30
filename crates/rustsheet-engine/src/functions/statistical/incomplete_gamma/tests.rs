@@ -458,6 +458,16 @@ fn the_large_shape_prefactor_is_excels_away_from_the_mode() {
         gamma_density(500.0, 1500.0, 1.0),
         Some(1.097_430_138_864_169_5e-198)
     );
+    // m9-chisq-dist A62 `CHISQ.DIST(10,100,FALSE)`, at x = a/10, the form's lower end.
+    assert_eq!(
+        gamma_density(50.0, 10.0, 2.0),
+        Some(9.838_365_191_393_825e-32)
+    );
+    // The beta paths keep the accurate exponent: 65 ulp from Excel's form here.
+    assert_ne!(
+        super::accurate_gamma_density(50.0, 10.0, 2.0),
+        gamma_density(50.0, 10.0, 2.0)
+    );
     assert!(within_ulps(
         gamma_ur(1e6 + 1.0, 1e6),
         0.500_265_961_486_283_7,
