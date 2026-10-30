@@ -3,7 +3,7 @@ id: T-3172
 title: "Probe Excel's limits on bare nested parentheses past 255 and on unary sign runs, stored and typed"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -38,22 +38,32 @@ it refuses that Excel accepts.
   (ISFORMULA beside the probe cell tells a formula from text in the typed form).
 
 ## Acceptance criteria
-- [ ] Committed probe cases with excel-graph sidecars, stored and typed, for bare parentheses at
+- [x] Committed probe cases with excel-graph sidecars, stored and typed, for bare parentheses at
       256, 511, 512 and 4,095 levels (or the largest accepted count found by bisection and its
       neighbours), and for runs of `-`, of `+` before a text literal, and of alternating `-+`
       before a reference, at 255, 256, 1,024 and the longest run the text limit allows (or the
       bisected boundary).
-- [ ] syntax.md "Formula nesting depth cap" records, per form and per entry path, the largest count
+- [x] syntax.md "Formula nesting depth cap" records, per form and per entry path, the largest count
       Excel accepts and, if any, the smallest it refuses (refused inputs listed with the run date
       and the error, as T-1091's are), and its DEVIATION paragraph lists which accepted counts the
       engine refuses.
-- [ ] Every new failing cell is either pinned as a decision-0036 deviation in
+- [x] Every new failing cell is either pinned as a decision-0036 deviation in
       `eval/suites/probes/deviations` against that DEVIATION entry, or owned by an open task (file
       an engine follow-up if T-3165's scope does not cover it); `make exit-owners MILESTONE=M2`
       reports 0.
-- [ ] `make eval-baseline` refuses no regression; `make check` green; reviewers approve.
+- [x] `make eval-baseline` refuses no regression; `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `MAX_FORMULA_DEPTH`, the Group node or the parser (T-3165 or a follow-up).
 - Function-call nesting (T-3097, done) and what counts toward the 65-call cap (T-3143).
 - Desktop Excel (M14).
+
+## Outcome
+- 20 probe cases with excel-graph sidecars (probes/t3172-{paren,minus,plus,alt}-*-{stored,typed}),
+  bisected over four oracle rounds on 2026-10-30. Excel accepts 256 bare nested parentheses (257
+  refused), 1,024 unary minus signs before a number (1,025 refused), 1,023 unary plus signs before a
+  text or alternating `-+` signs before a reference (1,024 refused); stored and typed agree. Refused
+  counts are listed in syntax.md "Formula nesting depth cap" with their errors; no sidecar can exist.
+- RustSheet refuses all 20 accepted cases (depth bound, the DEVIATION); T-3189 (engine, M2) owns
+  them, following T-3165's choice.
+- Eval delta: 20 new probe cases, all known failures (whole-case EngineError); no regressions.
