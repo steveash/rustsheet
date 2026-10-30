@@ -952,7 +952,7 @@ fn ipmt_past_the_range_fractional_nper_is_the_integer_value() {
 }
 
 /// XIRR returns an error values argument first, then an error dates argument, before it reads the
-/// values' cells (gen-m9/67a4c03afd63f988 A388, 79d87fc527927626 A228; T-2611).
+/// values' cells (gen-m9/67a4c03afd63f988 A241, 79d87fc527927626 A228; T-2611).
 #[test]
 fn fn_xirr_error_arguments_before_the_value_cells() {
     let mut model = new_empty_model();
@@ -968,9 +968,8 @@ fn fn_xirr_error_arguments_before_the_value_cells() {
     assert_eq!(model._get_text("A3"), *"#VALUE!");
 }
 
-/// XIRR's text, boolean or error guess comes before an error dates argument, the size checks and
-/// the values' cells (gen-m9/1dce4774f5c0e736 A189, 1b60bf99d71424e7 A29,
-/// b6a02893a8d6b151 A226; T-2611).
+/// XIRR's error guess comes before an error dates argument, the size checks and the values' cells
+/// (gen-m9/1dce4774f5c0e736 A189, 1b60bf99d71424e7 A29; T-2611).
 #[test]
 fn fn_xirr_guess_error_before_the_dates_and_the_sizes() {
     let mut model = new_empty_model();
@@ -978,12 +977,12 @@ fn fn_xirr_guess_error_before_the_dates_and_the_sizes() {
     model._set("B2", "x");
     model._set("A1", "=XIRR(1E+21,1/0,SQRT(-1))");
     model._set("A2", "=XIRR({-1000,300,400,500},{1,2},NA())");
-    model._set("A3", "=XIRR(B1:B2,{1,2,3},TRUE)");
+    model._set("A3", "=XIRR(B1:B2,{1,2,3},#DIV/0!)");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"#N/A");
-    assert_eq!(model._get_text("A3"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
 }
 
 /// One empty or numeric-text cell beside a range of another count is the count's `#NUM!`, but one

@@ -611,7 +611,8 @@ impl Model {
 
     /// `XIRR(values, dates, [guess])`: the guess lifts over arrays (a multi-cell range is
     /// refused); the values and dates are read once, whole, and an error in them is every
-    /// element's, before the guess's, the scalar order (T-1843). Each element may run the bracket
+    /// element's: an error values argument before the guess's error, which comes before an error
+    /// dates argument and the values' cells (T-1843, T-2611). Each element may run the bracket
     /// walks and the bisection over the flows, so the call is charged their count per element,
     /// weighted by the table's `XIRR_WEIGHT`.
     pub(crate) fn fn_xirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -628,25 +629,22 @@ impl Model {
         } else {
             self.xirr_size_error(&values, &dates, cell)
         };
-        // The dates are truncated and checked once, not per element, as XNPV's. An error values
-        // argument comes first, then an error dates argument, before the values' cells are read
-        // (T-2611: gen-m9/67a4c03afd63f988 A388 is the dates' `#DIV/0!` beside text values;
-        // 79d87fc527927626 A228 is the values' `#VALUE!` beside a `#DIV/0!` dates).
+        // The dates are truncated and checked once, not per element, as XNPV's. An error dates
+        // argument comes before the values' cells are read (T-2611: `XIRR(<" x " in range>,
+        // <#N/A>)` is `#N/A`, gen-m9/67a4c03afd63f988 A241), but after an error values argument
+        // (79d87fc527927626 A228 is the values' `#VALUE!` beside a `#DIV/0!` dates).
         let values_error =
             matches!(values, CalcResult::Error { .. }).then(|| values.clone().without_message());
-        let dates_error = match (&values, &dates) {
-            (CalcResult::Error { .. }, _) => None,
-            (_, CalcResult::Error { .. }) => Some(dates.clone()),
-            _ => None,
-        };
-        let flows = dates_error
-            .map_or_else(|| self.xirr_numbers(values, &cell), Err)
-            .and_then(|values| {
+        let flows = if values_error.is_none() && matches!(dates, CalcResult::Error { .. }) {
+            Err(dates.clone())
+        } else {
+            self.xirr_numbers(values, &cell).and_then(|values| {
                 let dates = self.xirr_numbers(dates, &cell)?;
                 let dates = xirr_dates(&values, &dates);
                 Ok((values, dates))
             })
-            .map_err(CalcResult::without_message);
+        }
+        .map_err(CalcResult::without_message);
         self.lift_call_costed(
             Function::Xirr,
             args,
@@ -655,12 +653,12 @@ impl Model {
             )),
             cell,
             &mut |model, arguments| {
-                // An error values argument comes first; then the guess: a guess that is an error,
-                // or text or a boolean (`#VALUE!`), is that error before the dates' error, the size
-                // checks and the values' cells (T-2611: `XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`,
-                // gen-m9/1dce4774f5c0e736 A189; `XIRR(<4 values>,<16 dates>,<#N/A>)` `#N/A`,
-                // 1b60bf99d71424e7 A29; a TRUE guess beside 6 values and 3 dates `#VALUE!`,
-                // b6a02893a8d6b151 A226).
+                // An error values argument comes first; then an error guess is that error before
+                // the dates' error, the size checks and the values' cells (T-2611:
+                // `XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`, gen-m9/1dce4774f5c0e736 A189;
+                // `XIRR(<4 values>,<16 dates>,<#N/A>)` `#N/A`, 1b60bf99d71424e7 A29). A text guess
+                // that is not a number is its `#VALUE!` at the same point; a boolean guess reads as
+                // 1 or 0, as before, and only skips the size checks (its order is unprobed).
                 if let Some(error) = &values_error {
                     return error.clone();
                 }

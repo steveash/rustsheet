@@ -119,7 +119,7 @@ settlement past 9999-12-31 is `#NUM!` as it is read); both lines are gone from t
 ## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
 From the parked T-2730: XIRR gen-m9/1dce4774f5c0e736 Calc!A91 `XIRR(Data!D10:D10,Data!B7:E8)`, #NUM! expected, #VALUE! today (an error-order cell).
 
-## Progress (2026-10-30, opus run; resume from here)
+## Progress (2026-10-30, superseded by the Outcome below)
 Traced at 09f899b9 (after T-3268). 55 of the 86 owned lines are still in eval/baseline/gen-m9.txt; the other 31 pass now.
 The 55 by outermost function: XIRR 37, XNPV 2, LOGNORM.INV 2, and one each of ZTEST, WEIBULL, STDEVPA, PERCENTRANK.INC, PEARSON,
 ODDLYIELD, LOGNORMDIST, HYPGEOM.DIST, GAMMA.INV, FVSCHEDULE, FINV, F.INV, EXPONDIST and BETADIST.
@@ -181,7 +181,7 @@ Resumed 2026-10-30 (opus run, work-loop resume of an idle branch).
 
 ## Outcome (2026-10-30)
 XIRR now follows Excel's order (financial.md "XIRR and XNPV under the gen-m9 statistical cells", T-2611 sentences): an
-error values argument; then a text, boolean or error guess (that error, `#VALUE!` for text or a boolean) before an error
+error values argument; then an error guess (or a non-numeric text guess's `#VALUE!`) before an error
 dates argument, the size checks and the values' cells; then an error dates argument before the values' cells. In the size
 checks one empty or numeric-text cell beside a range of another count is the count's `#NUM!` (one FALSE cell keeps
 `#VALUE!`). Unit tests in test_fn_financial.rs (`fn_xirr_error_arguments_before_the_value_cells`,
