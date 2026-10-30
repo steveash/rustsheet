@@ -3,7 +3,7 @@ id: T-2106
 title: "TEXT of DBL_MAX with 0.00E+00 gives 1.80E+308 (probes/dbl-max-text-b)"
 milestone: M9
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/dbl-max-text-b A1 (known failure in eval/baseline/probes.txt) expects `1.
 
 ## Out of scope
 -
+
+## Outcome
+Scientific number-to-text printed overflowing exponent digits at every placeholder (`1.80E+30308`) and overflowed the mantissa for DBL_MAX; both fixed (formatter/format.rs, decimal_round.rs). probes/dbl-max-text-b now passes (probes known failures -1). Documented in numbers.md.

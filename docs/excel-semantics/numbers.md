@@ -2394,3 +2394,10 @@ product is 0 whenever no number is included, never 1.
 Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
 Status: VERIFIED
 Tasks: T-2269, T-2302
+
+## TEXT of DBL_MAX with a scientific format prints the full 3-digit exponent (T-2106)
+`TEXT(2^1023*(2-2^-52),"0.00E+00")` is `1.80E+308` (probes/dbl-max-text-b A1, excel-graph). The
+mantissa rounds up to 1.80, a decimal above DBL_MAX, so it must be built from the rounded digits
+rather than as a full-scale double (which overflows). An exponent wider than the `E+00` placeholders
+puts its extra digits at the first placeholder (`1E+100` under `0.0E+0` is `1.0E+100`). Implemented
+(T-2106).
