@@ -3,7 +3,7 @@ id: T-3248
 title: "Probe the SUM snap bound with the running total below the last addend's exponent"
 milestone: M2
 lane: research
-status: done
+status: in-progress
 priority: P3
 size: S
 tier: opus
