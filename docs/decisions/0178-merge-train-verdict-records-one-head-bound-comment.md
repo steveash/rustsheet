@@ -33,3 +33,9 @@
   edit drops a record; if GitHub ever moves `updated_at` for anything else, that record stops counting
   (fails closed: a missing record, never a wrong verdict). `scripts/merge_flip.py` now reads the switch path from `merge_ready.SWITCH`
   (one definition).
+- **Skills (T-3208, 2026-10-30):** each reviewer agent's report starts with `HEAD: <git rev-parse HEAD>`; the
+  `review` skill posts each report with `make verdict-record` as the reviewer returns (a `BLOCK` recorded as
+  `REQUEST_CHANGES`; nothing posted when HEAD moved past the reviewed commit), so the work-loop opens its PR as a
+  draft before the first review round; the work-loop and steward skills mark with `make mark-ready PR=<n>`, with
+  `REVIEW=` only as the `warn`-mode stand-in. The flip to `require` moved to its own task, T-3243 (blocked until
+  2026-11-07, a week after the skills land), because the week of `warn` data cannot fit in one session.

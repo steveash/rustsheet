@@ -30,7 +30,7 @@ import requests
 from xlsxwriter.utility import xl_rowcol_to_cell
 
 from rustsheet_tools.oracle.package import PackageError, patch_workbook
-from rustsheet_tools.spec2xlsx import entered_cells, parse_a1, sheet_ops, text_cells
+from rustsheet_tools.spec2xlsx import Entered, entered_cells, parse_a1, sheet_ops, text_cells
 
 
 class OracleError(RuntimeError):
@@ -78,7 +78,7 @@ def force_full_calc_on_load(xlsx: bytes) -> bytes:
         raise OracleError(str(e)) from e
 
 
-def typed_entries(xlsx: bytes) -> list[tuple[str, str, str]]:
+def typed_entries(xlsx: bytes) -> list[Entered]:
     """The cells a backend must enter as typed text before recalculating (spec2xlsx, T-0280)."""
     try:
         return entered_cells(xlsx)
@@ -114,6 +114,17 @@ _RANGE_EDITS = {
     "delete_column": ("delete", "Left"),
 }
 SCOPES = ["Files.ReadWrite"]
+
+
+def _error_code(resp: requests.Response) -> str | None:
+    """The `error.code` of a Graph error response, or None when its body has none."""
+    try:
+        body = resp.json()
+    except ValueError:
+        return None
+    error = body.get("error") if isinstance(body, dict) else None
+    code = error.get("code") if isinstance(error, dict) else None
+    return code if isinstance(code, str) else None
 
 
 def _cache_path() -> Path:
@@ -252,7 +263,11 @@ class GraphBackend:
         headers: dict[str, str] | None = None,
         json: Any = None,
         data: bytes | None = None,
+        refusable: bool = False,
     ) -> requests.Response:
+        """Sends one Graph request, retrying throttling and dropped connections; any error status
+        raises OracleError, except a 400 `InvalidArgument` when `refusable` (Excel refusing typed
+        input, decision 0179), which is returned."""
         for attempt in range(8):
             all_headers = {"Authorization": f"Bearer {self._token()}", **(headers or {})}
             try:
@@ -267,6 +282,8 @@ class GraphBackend:
             if resp.status_code in (429, 503, 504):
                 time.sleep(float(resp.headers.get("Retry-After", 2**attempt)))
                 continue
+            if refusable and resp.status_code == 400 and _error_code(resp) == "InvalidArgument":
+                return resp
             if resp.status_code >= 400:
                 raise OracleError(
                     f"{method} {self._redact(url)} -> {resp.status_code}: {self._redact(resp.text[:500])}"
@@ -349,21 +366,8 @@ class GraphBackend:
                 "POST", f"{item_url}/workbook/createSession", json={"persistChanges": True}
             ).json()
             sid = {"workbook-session-id": session["id"]}
-            for sheet, a1, text in typed_entries(xlsx):
-                # Writing `values` runs Excel's typed-input parser: "(1)" becomes -1 with a number
-                # format Excel picks, as if typed into the cell (T-0280).
-                sheet_ref = quote(sheet.replace("'", "''"), safe="")
-                rng = self._call(
-                    "PATCH",
-                    f"{item_url}/workbook/worksheets('{sheet_ref}')/range(address='{quote(a1, safe='')}')",
-                    json={"values": [[text]]},
-                    headers=sid,
-                ).json()
-                print(
-                    f"ENTERED {sheet}!{a1} {text!r}: values={rng.get('values')} "
-                    f"numberFormat={rng.get('numberFormat')}",
-                    file=sys.stderr,
-                )
+            for entry in typed_entries(xlsx):
+                self._type_entry(item_url, sid, entry)
             self._replay_sheet_ops(item_url, sid, recorded_sheet_ops(xlsx))
             # Load, this rebuild and the scratch edit below are three calculations; the eval
             # adapter repeats them for iterative cases (`ORACLE_CALCULATIONS` in
@@ -404,6 +408,30 @@ class GraphBackend:
                 self._call("DELETE", item_url)
         return content, OracleInfo(
             kind=self.name, application="Excel for the web (Graph)", texts=texts, workbook_name=name
+        )
+
+    def _type_entry(self, item_url: str, sid: dict[str, str], entry: Entered) -> None:
+        """Types `entry` into its cell. Writing `values` runs Excel's typed-input parser: "(1)"
+        becomes -1 with a number format Excel picks, as if typed into the cell (T-0280);
+        `formulasR1C1` is the same typed in R1C1 mode (T-3113). Text Excel refuses (400
+        `InvalidArgument`) leaves the cell blank: that is the answer, not a failure (decision
+        0179)."""
+        sheet_ref = quote(entry.sheet.replace("'", "''"), safe="")
+        resp = self._call(
+            "PATCH",
+            f"{item_url}/workbook/worksheets('{sheet_ref}')/range(address='{quote(entry.a1, safe='')}')",
+            json={"formulasR1C1" if entry.r1c1 else "values": [[entry.text]]},
+            headers=sid,
+            refusable=True,
+        )
+        where = f"{entry.sheet}!{entry.a1} {entry.text!r}{' (R1C1)' if entry.r1c1 else ''}"
+        if resp.status_code == 400:
+            print(f"REFUSED {where}: {self._redact(resp.text[:500])}", file=sys.stderr)
+            return
+        rng = resp.json()
+        print(
+            f"ENTERED {where}: values={rng.get('values')} numberFormat={rng.get('numberFormat')}",
+            file=sys.stderr,
         )
 
     def _read_texts(
@@ -494,8 +522,13 @@ class ExcelDesktopBackend:
                 excel.AskToUpdateLinks = False
                 excel.AutomationSecurity = 3  # msoAutomationSecurityForceDisable
                 wb = excel.Workbooks.Open(str(src), UpdateLinks=0, ReadOnly=True, AddToMru=False)
-                for sheet, a1, text in typed_entries(xlsx):
-                    wb.Worksheets(sheet).Range(a1).Value = text  # parsed as typed input (T-0280)
+                for entry in typed_entries(xlsx):
+                    cell = wb.Worksheets(entry.sheet).Range(entry.a1)
+                    # Parsed as typed input (T-0280), in R1C1 mode for `entered_r1c1` (T-3113).
+                    if entry.r1c1:
+                        cell.FormulaR1C1 = entry.text
+                    else:
+                        cell.Value = entry.text
                 excel.CalculateFullRebuild()
                 wb.SaveAs(str(dst), FileFormat=51)
                 wb.Close(SaveChanges=False)
@@ -526,7 +559,9 @@ class LibreOfficeBackend:
 
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         if typed_entries(xlsx):
-            raise OracleError("libreoffice cannot enter typed cell input (spec `entered` cells)")
+            raise OracleError(
+                "libreoffice cannot enter typed cell input (spec `entered`/`entered_r1c1` cells)"
+            )
         if recorded_sheet_ops(xlsx):
             raise OracleError("libreoffice cannot replay sheet edits (spec `sheet_ops`)")
         with tempfile.TemporaryDirectory() as tmp:
