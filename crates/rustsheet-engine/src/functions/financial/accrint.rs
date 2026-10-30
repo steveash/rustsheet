@@ -193,7 +193,7 @@ impl Model {
     /// and "FALSE" too, is `#VALUE!` (probes/t2492-vdb-ddb-arguments A47:A54), whatever the other
     /// arguments hold. The other seven are then read in order: a date off the calendar is `#NUM!`
     /// as soon as it is read, before a later argument's error, text or boolean, and a boolean
-    /// issue, first_interest, settlement, rate, par, frequency or basis, typed or from a cell, is
+    /// issue, `first_interest`, settlement, rate, par, frequency or basis, typed or from a cell, is
     /// `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-single-value A52, A53, A56;
     /// probes/accrint-boolean-args A1:A28; financial.md "ACCRINT check order: `calc_method`
     /// first, dates as read").
