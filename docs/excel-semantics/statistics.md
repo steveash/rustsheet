@@ -1308,6 +1308,9 @@ LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`)
   gen-m9, t1048-poisson and ironcalc-calc POISSON.xlsx with resolvable arguments 106/121/0 (statrs 47/80/33);
   probes-numeric/t2055-poisson-pmf-sweep (204 cells, k 1 to 300) 154/198/5 (29/121/65); t2055-poisson-pmf-switch
   (133) 127/133/0 (11/57/56).
+- Large-k sweep (T-3288): probes-numeric/t3282-poisson-pmf-large-k (171 cells: k 30 to 1000, mean = k·r for r 0.5 to 2.5) and
+  t3282-poisson-pmf-ulp-runs (160 cells: 32 adjacent doubles around each of the five visibly-off t2055 cells). With today's
+  engine 60 of 171 and 26 of 160 are bit-exact (`rustsheet-eval show --all`); T-3295 fits the rest.
 - Residue: the saddle point at large k and a mean well off k (`POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,240)` 46 ulp,
   `(300,210)` 16 ulp, `(30,21)` 11 ulp; t2055-poisson-pmf-sweep), about one ulp at k = 2 to 8 elsewhere, and 1 ulp at the
   small-k edge of the closed form, where main's statrs happened to be right: `POISSON.DIST(1,0.3,FALSE)`, `(3,0.9)`,
@@ -2529,6 +2532,16 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
   n = 90-256 with both shapes large (t2513-r3-loader-bd0-a and -bd0-hold) the miss is x-dependent with sd 8-19 units.
   The one exception is (45.2, 60.9), a constant +5.3. UNVERIFIED as a mechanism: T-3249 sweeps the shapes, and
   T-3250 and T-3244 fit them.
+- Large shapes, measured without fitting (T-3249: t3249-beta-large-shape-fit and -hold, 34 + 62 shapes,
+  a = 128.5-8192.5, b = 1.5-40.5 or b = a, n 128-16383, runs below the mode at ln f = -25 to -650): the miss
+  against Excel does not collapse at large |ln f|, unlike the a = 1025, b = 1.5 column. Its sd (2^-52 relative units)
+  grows steadily with |ln f|: about 1 at the mode run, 43-58 at 25-75, 83-101 at 100-150, 133-177 at 200-350, 175-211
+  at 400-500 and 257-283 at 600-650 (fit and hold-out agree). By shape (fit; hold-out in brackets) it is 57-159
+  [56-190] for one large shape; with b = a it is 83-141 to n 2048, then 237, 381 [408] and 457 [514] at n 4095, 8191
+  and 16383. Off at 15 digits: none of the mode runs, 49-84% of the cells at |ln f| 25-75, 81-98% from 100 up.
+  F.DIST at the mapped point (column B) shows the same growth (sd 46-53 at 25-50, 336-398 at 450-650).
+  UNVERIFIED hypothesis (T-3250 and T-3244 to test): one rounding at the scale of |E| that one side makes and the
+  other does not.
 Evidence: probes-numeric t2513-r3-loader-const-sweep1, -diverse1, -grid1, -hold1, t2513-r3-loader-bd0-a, -b, -hold,
 t2513-verify-r3-loader-const-hold, t2513-verify-r3-loader-bd0-hold, and T-2464's t2464-r2-density-large-p1,
 t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`, `a2_forms.py`, `a5_xreg.py`,
