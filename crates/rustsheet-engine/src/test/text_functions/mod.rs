@@ -261,7 +261,8 @@ fn test_value_mixed_fraction() {
 
 #[test]
 fn test_typed_and_coerced_signed_mixed_fraction() {
-    // probes/typed-input-sign-space-mixed-fraction B6, B7, B8, B9, F5, F8.
+    // probes/typed-input-sign-space-mixed-fraction B6, B7, B8, B9, F5, F8. The displayed text
+    // assumes General format for typed fractions, UNVERIFIED (TODO(T-3237)).
     let mut model = new_empty_model();
     model._set("A1", "-$3 1/2");
     model._set("A2", "$3 1/2%");
