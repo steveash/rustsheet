@@ -3,7 +3,7 @@ id: T-3271
 title: "GAMMA.DIST at a huge shape: the density's #NUM! cut at a tiny x and the cdf's above 1E76 (T-2435 rules, T-3070 rest)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
