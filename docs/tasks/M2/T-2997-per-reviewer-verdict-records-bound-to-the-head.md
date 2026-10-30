@@ -29,10 +29,11 @@ marking session's attestation.
 - If the design needs more than size M, file a spec task instead.
 
 ## Acceptance criteria
-- [ ] A design note, or a SPEC-0027 amendment, chooses the record format and says what it does and
+- [x] A design note, or a SPEC-0027 amendment, chooses the record format and says what it does and
       does not prevent, given that all sessions share one GitHub identity.
-- [ ] `merge_ready.py verify` checks the records. V4 becomes a verification, with tests.
-- [ ] A decision record lands in this PR. The architecture and security reviewers approve.
+- [ ] ~~`merge_ready.py verify` checks the records. V4 becomes a verification, with tests.~~ Moved to T-3207
+      (implementation) and T-3208 (enforcement): the work is more than size M (see Outcome).
+- [x] A decision record lands in this PR. The architecture and security reviewers approve.
 
 ## Out of scope
 - Changing the reviewer agents' review criteria.
@@ -52,4 +53,3 @@ marking session's attestation.
   `require`. The acceptance criterion "verify checks the records" moves to T-3207, and V4 stays an attestation
   until T-3208.
 - Eval delta: none (docs only).
-
