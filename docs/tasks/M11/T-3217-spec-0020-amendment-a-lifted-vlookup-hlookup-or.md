@@ -3,7 +3,7 @@ id: T-3217
 title: "SPEC-0020 amendment: a lifted VLOOKUP, HLOOKUP or MATCH whose lookup_value is a whole column evaluates its tail once (probes/t3096-lookup-value-blank-elements takes 4.8 s)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
