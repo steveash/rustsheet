@@ -3,7 +3,7 @@ id: T-3145
 title: "Probe the near-zero snap bound of a SUM with three or more addends: running total or left argument"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -24,9 +24,17 @@ Oracle evidence for which value sets the near-zero snap bound of a SUM with thre
   plus AVERAGE and SUBTOTAL(9) over the same values.
 
 ## Acceptance criteria
-- [ ] An excel-graph probe (milestone M2) with those cells; numbers.md states the rule for 3+ addends.
-- [ ] If the engine differs, `SumParts::snapped` is changed to match, with unit tests either side of the bound.
-- [ ] `make check` green; reviewers approve.
+- [x] An excel-graph probe (milestone M2) with those cells; numbers.md states the rule for 3+ addends.
+- [x] If the engine differs, `SumParts::snapped` is changed to match, with unit tests either side of the bound.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The opposite-sign condition (separate probe if wanted).
+
+## Outcome
+Done 2026-10-30. probes/t3145-snap-multi-addend (384 cells, excel-graph): with three or more addends the snap
+bound is 8 ULP of the running total before the last addend. Four blocks whose first argument or last addend
+predict another cut-off (k ≤ 3 or k ≤ 15) all snap exactly k ≤ 7 (running total 1), in SUM over arguments, a range
+and an array, SUBTOTAL(9), the `+` chain, and AVERAGE, which snaps the sum before dividing. The engine's
+`SumParts::snapped` already used the running total: 384/384 pass, no code change. numbers.md records the rule.
+Eval delta: +384 newly covered probe cells, all passing; no regressions.
