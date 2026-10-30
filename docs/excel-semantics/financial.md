@@ -611,13 +611,14 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   (-0.5/2^27, the downward chain's first point); the same flows negated give 0.1/2^25 too. At guess 1E+300 it is `#NUM!`
   (about 1000 halvings), so Excel's bisection cap lies between 95 and about 1000 steps (ours 200). Before T-2728 the
   engine read XNPV(0) = 0 as negative, skipped the upward chain and returned the negative mirror or `#NUM!`.
-- T-2045 (attempt 1; probes/xirr-back-dated-stop, excel-graph, 2026-10-30; 30 cells): with a flow dated before the
+- T-2045 (attempt 1; probes/xirr-back-dated-stop, excel-graph, 2026-10-30; 31 cells): with a flow dated before the
   first, T-1583's span (the years from the first date to the latest) does not fit. whole-column-empty-walkers E7 and
   F3 (`{-1000,1100,-1000,45000}` on `{45000,45365,1100,45365}`) stop at the first iterate past the step test (step
   24, |XNPV| 2.55e-7·max|v|), where T-1583's bound runs on to step 26. The same flows as a literal (A1), as a range
-  with ten empty rows between (A2) and with a zero flow dated 0 added (A3) give the same bits, so the whole column
-  only contributes its four flows. Of the 30 cells, 26 stop at the first step-test pass: last values 1100 to 100000
-  (A6-A12) and back flows 1 to 100 years early (A13-A20). xirr-xnpv-whole-column-nogaps A4 (`{-1000,1100,-1000}` on
+  with nine empty rows between (A2; the empty rows are zero flows on date 0, "XIRR reads empty cells as 0") and with
+  a zero flow dated 0 added (A3) give the same bits, so the whole column's empty cells do not move the stop. Of the 28
+  literal cells, 25 stop at the first step-test pass: last values 1100 to 300000 (A6-A12) and back flows 1 to 100
+  years early (A13-A20), among others. xirr-xnpv-whole-column-nogaps A4 (`{-1000,1100,-1000}` on
   `{45000,45365,1100}`, root -0.0175) is the exception, along with its copies A4 and A5 and its 5-year twin A23: these
   take one step past the first pass, after rejecting an iterate at |XNPV| 2.82e-8·max|v|. A6 differs from A4 only by
   an extra 1100 flow at the latest date (same max|v|, same dates) and needs a bound more than 5 times A4's. So no
@@ -1118,7 +1119,10 @@ are whole-column `XIRR(Data!A:A,Data!B:B)` on a sheet holding only A1:B2, whole-
 empty date (X11). Date 0 is a valid date: -1000 with an empty date, then 1100 on 45365, gives
 1.1^(365/45365) - 1 = 0.000767144560813904 (X5, xirr-early-dates A8). A value with an empty date late
 in the range puts that flow on date 0. 50 on date 0 after -1000 on 45000 and 1100 on 45365 has no root
-and is `#NUM!` (X2). Text in either range is `#VALUE!` (X6, X7). Dates before the first are accepted:
+and is `#NUM!` (X2). Non-numeric text in either range is `#VALUE!` (X6, X7), but numeric text in cells reads as
+its number: `XIRR(G1:G13,H1:H13)` with E7's four flows typed as text ("-1000", "45000", ...) gives the same
+0.03189964592456816 as the numbers (probes/xirr-back-dated-stop A31 against A2, excel-graph, T-2045; ours `#VALUE!`,
+T-3267). Dates before the first are accepted:
 `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same flows is
 #NUM!), and -1000, 1100, -1000 on 45000, 45365, 44000 = -0.24668241366744048 (X8). But XIRR is `#NUM!`
 when no date is later than the first and the first value is nonzero, even where a root exists (with a zero first value

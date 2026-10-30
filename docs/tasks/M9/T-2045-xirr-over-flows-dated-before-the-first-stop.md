@@ -45,9 +45,9 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - XIRR: 2 cells (13-14 digits right 0, 10-12 0, 6-9 2, fewer or 0 vs nonzero 0); most in `probes/whole-column-empty-walkers.case.json` 2. e.g. `XIRR(A:A,B:B)` Excel 0.03189964592456816, ours 0.03189964368939399
 
 ## Attempt 1 (2026-10-30, decision 0056)
-- New probe probes/xirr-back-dated-stop (excel-graph, 30 cells), in `xirr-oos`. E7's flows give Excel's E7 bits as a
-  literal, as a range with empty rows and with a zero flow dated 0 added, so the whole column is not the cause. 26 of
-  the 30 cells stop at the first iterate past the step test. The A4 family (xirr-xnpv-whole-column-nogaps A4, probe
+- New probe probes/xirr-back-dated-stop (excel-graph, 31 cells), in `xirr-oos`. E7's flows give Excel's E7 bits as a
+  literal, as a range with nine empty rows and with a zero flow dated 0 added, so the whole column is not the cause.
+  25 of the 28 literal cells stop at the first iterate past the step test. The A4 family (xirr-xnpv-whole-column-nogaps A4, probe
   A4, A5, A23) takes one step more.
 - Candidates (`uv run rustsheet-fitlab xirr-oos`, 81 cells; `xirr` 227):
   - T-2328's rule (the engine): 69/81 and 227/227;
@@ -64,4 +64,7 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
   negative root. Probe these one at a time (the back-dated flow moved earlier in the list, a fourth flow at the first
   date, positive-root twins) and fit the |f| test on the cells where it bites.
 - This task now also owns the probe's 12 known failures (probes/xirr-back-dated-stop A1-A3, A6-A12, A17, A18).
-- Eval delta: none fixed; 12 new-coverage known failures (the new probe), 0 regressions.
+- Found in review: XIRR reads numeric text in its ranges as numbers (probe A31, ours `#VALUE!`), recorded in
+  financial.md and filed as T-3267, which owns A31.
+- Eval delta: none fixed; 13 new-coverage known failures (the new probe: 12 owned here, A31 by T-3267),
+  0 regressions.

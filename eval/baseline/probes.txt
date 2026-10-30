@@ -1956,7 +1956,7 @@ C	probes/workday-serial-zero.case.json	58
 C	probes/wrapcols-wraprows-pad-with.case.json	122
 C	probes/written-parens-reference-context.case.json	35
 C	probes/written-parens-reference-only.case.json	35
-C	probes/xirr-back-dated-stop.case.json	30
+C	probes/xirr-back-dated-stop.case.json	31
 C	probes/xirr-early-dates.case.json	16
 C	probes/xirr-exact-root-sign.case.json	574
 C	probes/xirr-irr-empty-guess.case.json	22
@@ -4158,6 +4158,7 @@ F	probes/xirr-back-dated-stop.case.json	Sheet1!A17
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A18
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A2
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A3
+F	probes/xirr-back-dated-stop.case.json	Sheet1!A31
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A6
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A7
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A8

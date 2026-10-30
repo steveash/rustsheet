@@ -12,7 +12,7 @@
    },
    "A11": {
     "t": "n",
-    "v": 0.03189964592456816
+    "v": 0.048157259821891785
    },
    "A12": {
     "t": "n",
@@ -98,6 +98,10 @@
     "t": "n",
     "v": 22.049999809265138
    },
+   "A31": {
+    "t": "n",
+    "v": 0.03189964592456816
+   },
    "A4": {
     "t": "n",
     "v": -0.01750176399946212
@@ -126,10 +130,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "65016eae01cfe22e5f0988e78a12d3053f41b9a2ca6a4ea3d669a688bee1d333",
+  "input_sha256": "9b1380d9f13a8781f10665248799abd1a9b663ff348ead7bc101cfe4501f9a4f",
   "kind": "excel-graph",
-  "produced_at": "2026-10-30T14:29:38+00:00",
+  "produced_at": "2026-10-30T14:47:16+00:00",
   "version": null,
-  "workbook_name": "8bb9c4693c5cca36b9bcd5d675552ac334ba1abbad7e993456e3eb0b995e7a05.xlsx"
+  "workbook_name": "d272b9ef217233a508d959b553c621dfef764b7b530d278c093188ee15aad414.xlsx"
  }
 }

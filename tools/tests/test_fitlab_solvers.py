@@ -95,7 +95,8 @@ def test_xirr_fit_scores() -> None:
     assert s["bisect fitted, m=(a+b)/2"] == 225
     assert s["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 227
     oos = _scores("xirr-oos")
-    # T-1591 added 30 cells (probes/xirr-span-zero-first), T-2045 29 (probes/xirr-back-dated-stop)
+    # T-1591 added 30 cells (probes/xirr-span-zero-first), T-2045 29 (probes/xirr-back-dated-stop, whose two
+    # range cells A2 and A31 the literal-array filter leaves out)
     assert oos["cells"] == 81
     assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 46
     # T-1583 misses xirr-early-dates A7 (input check) and the root-0.1 cells at 20, 40 and 120 years (T-1591)
