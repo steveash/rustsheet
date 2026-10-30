@@ -611,14 +611,37 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   (-0.5/2^27, the downward chain's first point); the same flows negated give 0.1/2^25 too. At guess 1E+300 it is `#NUM!`
   (about 1000 halvings), so Excel's bisection cap lies between 95 and about 1000 steps (ours 200). Before T-2728 the
   engine read XNPV(0) = 0 as negative, skipped the upward chain and returned the negative mirror or `#NUM!`.
+- T-2045 (attempt 1; probes/xirr-back-dated-stop, excel-graph, 2026-10-30; 31 cells): with a flow dated before the
+  first, T-1583's span (the years from the first date to the latest) does not fit. whole-column-empty-walkers E7 and
+  F3 (`{-1000,1100,-1000,45000}` on `{45000,45365,1100,45365}`) stop at the first iterate past the step test (step
+  24, |XNPV| 2.55e-7·max|v|), where T-1583's bound runs on to step 26. The same flows as a literal (A1), as a range
+  with nine empty rows between (A2; the empty rows are zero flows on date 0, "XIRR reads empty cells as 0") and with
+  a zero flow dated 0 added (A3) give the same bits, so the whole column's empty cells do not move the stop. Of the 28
+  literal cells, 25 stop at the first step-test pass: last values 1100 to 300000 (A6-A12) and back flows 1 to 100
+  years early (A13-A20), among others. xirr-xnpv-whole-column-nogaps A4 (`{-1000,1100,-1000}` on
+  `{45000,45365,1100}`, root -0.0175) is the exception, along with its copies A4 and A5 and its 5-year twin A23: these
+  take one step past the first pass, after rejecting an iterate at |XNPV| 2.82e-8·max|v|. A6 differs from A4 only by
+  an extra 1100 flow at the latest date (same max|v|, same dates) and needs a bound more than 5 times A4's. So no
+  bound `c·N` fits both, whatever the constant `c`. Scratch arithmetic over the 269 numeric cells of `xirr`,
+  `xirr-oos` and this probe (a nonzero first value) rules out every normaliser `N` tried: max|v| scaled or not by
+  T-1583's span or by the earliest-to-latest years, Σ|v|, max or Σ of the discounted terms at m, |XNPV'(m)| (bare, times
+  |m| or times 1 + m), |XNPV| at either bracket end, at 0, at the first or the previous midpoint, |Σv| and the sum of
+  the positive values. A step test on the signed m (`5e-9 + 1e-8·m`) scores 218 of 280 cells, against 269 for T-1583.
+  Lab (`uv run rustsheet-fitlab xirr-oos`, now with this probe: 81 cells): T-1583's span with the span from the earliest
+  date to the latest, or from the first date to the farthest either side (named T-2045 candidates), 76/81, and 227/227
+  on `xirr`. The misses are the A4 family (4 cells) and xirr-early-dates A7 (the input check). T-2328's rule (the engine)
+  scores 69/81, and the step test alone 74/81. Put in the engine, the earliest-to-latest span would fix E7, F3 and the
+  probe's E7 family but regress nogaps A4, so it is not applied. What sets the A4 family apart (three flows, the
+  back-dated one last, a negative root) is open.
 Ours: this model, T-1583's form (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
-T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells. The walk
+T-0916): 227/227 on the fit set and 22/22 on the pre-T-1591 `xirr-oos` cells (the Newton code it replaced: 9 and 11); 48/52 with T-1591's cells; with T-2328's `^` 69/81 on the 81-cell `xirr-oos` of T-2045. The walk
 cap (100 points) and bisection cap (200 steps) are engine bounds (DEVIATION, "The IRR and XIRR solver
 caps" below). A trial rate where a power overflows or underflows to 0 has no XNPV, as in the lab model.
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. The XNPV part of the stop test
-(T-1583's span-scaled form) fits every numeric cell probed once XNPV uses Excel's `^` (T-2328). Its form rests on the
+(T-1583's span-scaled form) fits every numeric cell probed once XNPV uses Excel's `^` (T-2328), except flows dated
+before the first (the T-2045 bullet: whole-column-empty-walkers E7 and F3 and xirr-back-dated-stop). Its form rests on the
 fit set, `xirr-oos` and A8 alone, so it is a fitted rule, not a known mechanism.
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728, T-2045 (flows dated before the first)
 
 ## IRR is a secant in d = 1 - v = r/(1 + r) from d0 and d0 -+ 0.001 (fitted, 263/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of d = 1 - v = r/(1 + r), v = 1/(1 + r) (T-3120 moved
@@ -1097,7 +1120,10 @@ are whole-column `XIRR(Data!A:A,Data!B:B)` on a sheet holding only A1:B2, whole-
 empty date (X11). Date 0 is a valid date: -1000 with an empty date, then 1100 on 45365, gives
 1.1^(365/45365) - 1 = 0.000767144560813904 (X5, xirr-early-dates A8). A value with an empty date late
 in the range puts that flow on date 0. 50 on date 0 after -1000 on 45000 and 1100 on 45365 has no root
-and is `#NUM!` (X2). Text in either range is `#VALUE!` (X6, X7). Dates before the first are accepted:
+and is `#NUM!` (X2). Non-numeric text in either range is `#VALUE!` (X6, X7), but numeric text in cells reads as
+its number: `XIRR(G1:G13,H1:H13)` with E7's four flows typed as text ("-1000", "45000", ...) gives the same
+0.03189964592456816 as the numbers (probes/xirr-back-dated-stop A31 against A2, excel-graph, T-2045; ours `#VALUE!`,
+T-3267). Dates before the first are accepted:
 `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same flows is
 #NUM!), and -1000, 1100, -1000 on 45000, 45365, 44000 = -0.24668241366744048 (X8). But XIRR is `#NUM!`
 when no date is later than the first and the first value is nonzero, even where a root exists (with a zero first value
@@ -2801,8 +2827,35 @@ now names both earlier engine starts (kernels/yield_caret.py `rounded_once_yield
   is no constant slope error either.
 Next (T-3215): a hypothesis outside this operation set (another formula whose terms round differently, or a start from a
 different day count per product); the operation grid around the term-scaled form is exhausted.
+T-3215 (attempt 2 of T-3152's track, 2026-10-30): Excel's start is the term-scaled formula in doubles with its
+denominator written as `100·T - q·T/2 - q/4`, the same value since `(100 + pr)/2 = 100 - q/2`:
+`S = ((r·T)·100 + q) / ((100·T - q·T/2) - q/4)`, `q = 100 - pr`, `T` the double `whole + days/year`. No operation
+is exact or fused. It replaces attempt 4's `pr·T` on the unrounded term.
+- Found from the denominators: for each YIELD probe cell, the doubles `D` that give Excel's bits with the engine's
+  numerator bound Excel's real `D` to an interval one ulp wide. On every term group that missed, it holds
+  `pr·T + 2·fl(100·T) - 100·T`, where `100·T`'s rounding error counts twice. That is what `100·T - q·T/2` leaves:
+  `2·(fl(100·T) - q·T/2) = pr·T + 2·fl(100·T) - 100·T`. The "unrounded term in `pr·T`" of attempt 4 was the nearest
+  arrangement inside the old operation grid to that doubled error.
+- Scratch scoring (1,086 YIELD probe cells with more than one coupon left, all bases, that some start within 3 ulps
+  of attempt 4's gives Excel's bits; a start scores a cell when it is one of those starts):
+  | denominator, numerator `(r·T)·100 + q` | cells |
+  |---|---|
+  | `(100·T - q·T/2) - q/4` in doubles, or `100·T - (q/2)·T - q/4` | **1,083** |
+  | `100·T - (q·T/2 + q/4)`, `100·T - q·(T/2 + 0.25)`, `100·T - q·(2T + 1)/4` | 1,077 |
+  | the same with `q·T` on the unrounded term, or the whole denominator rounded once | 1,071 to 1,076 |
+  | attempt 4: `fl(pr·(whole + fl(days/year)) + fl(100·T))/2 - q/4` (the engine before) | 931 |
+  | `((100 + pr)/2)·T - q/4` or `(100 - q/2)·T - q/4` | 678 |
+  | the unscaled `(100r + q/T) / (100 - q/2 - q/(4T))` | 588 |
+  With this denominator the numerator stays `(r·T)·100 + q`: `(100r)·T + q` scores 893, `r·(100T) + q` 882, and the
+  exact numerator rounded once 907. The three cells left are yield-start-one-input S!B8 (3 ulps of start),
+  yield-start-term-basis S!C2 (2 ulps, basis 1) and yield-newton-domain P!B13 (rate 30).
+- Fit lab (`uv run rustsheet-fitlab yield-caret`, 370 basis-0 cells, kernels/yield_caret.py
+  `hundred_t_minus_qt_yield_start`): 369 bit-exact and 370 within 4 ulps, against 341 and 369 for attempt 4's start.
+- In the engine (`yield_start`) it fixes 226 YIELD and ODDFYIELD known failures and adds none: yield-start-rate-term
+  S!B30, yield-start-term-basis S!C47 and yield-one-step-start S!A37 are bit-exact, and 63 of the cells are
+  oddfyield-solver-sweep's (ODDFYIELD shares the start).
 Ours: since T-1592 the fitted start and stop on the `^`-priced PRICE with an analytic slope (`excel_yield_newton`), with
-T-2777's term (`yield_start_term`) and, since T-2974 attempt 4, `pr·T` on the unrounded term (`yield_start`). Since
+T-2777's term (`yield_start_term`) and, since T-3215, the denominator `100·T - q·T/2 - q/4` in doubles (`yield_start`). Since
 T-2391 there is no fallback: an iterate off PRICE's domain is `#NUM!` and the 100th iterate is the value ("YIELD's #NUM!
 cells and its 100-step cap").
 Off the fit (T-2741, `make eval` on de48145d): of the 370 probe and ironcalc-calc YIELD cells that were visibly off
@@ -2814,8 +2867,8 @@ four years apart, and their start's term in the basis's years differs, so Excel'
 follow (`fn_yield_matches_excel_off_the_fit`). Still visibly off, though only 5 to 27 ulp from Excel (a gap larger than half a
 unit in the 15th digit): yield-start-rate-term S!B39 and S!B49 (basis 1, 8 and 30 years) and yield-solver-sweep S!C7
 (T-2974).
-Status: UNVERIFIED (the algorithm is a fit: 240/370 bit-exact in the lab; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
-Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates), T-3152 (the cells the start's rounding moved)
+Status: UNVERIFIED (the algorithm is a fit: 369/370 bit-exact in the lab since T-3215; 367/370 of T-2741's cells within 15 digits); the values are excel-graph
+Tasks: T-1374, T-1493, T-1525, T-1533, T-1583, T-1592, T-2187, T-2304, T-2740, T-2741, T-2777 (the start's term), T-2788 (the last ulps), T-2974 (the three visibly-off cells; probes/yield-price-at-iterates), T-3152 (the cells the start's rounding moved), T-3215 (the start's denominator)
 
 ## ODDFYIELD stops short of ODDFPRICE's root
 Rule: ODDFYIELD's last digits are not the root of ODDFPRICE's price at the given price, and they fall on both sides

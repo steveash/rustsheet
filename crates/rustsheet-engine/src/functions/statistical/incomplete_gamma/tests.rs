@@ -1,9 +1,10 @@
 #![allow(clippy::unwrap_used)]
 use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
-    cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower, gamma_cdf, gamma_density,
-    gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair,
-    inverse_cdf_within, temme_pair, Tail, Terms, MAX_TERMS, TEMME_C,
+    cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
+    excel_small_shape_quantile, gamma_cdf, gamma_density, gamma_inverse_cdf, gamma_quantile,
+    gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair, Tail, Terms,
+    MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -471,6 +472,26 @@ fn huge_shape_quantile_has_excels_three_regimes() {
     );
 }
 
+/// The T-2860 cells by name: chi-squared at df 2 is the shape-1 quantile at scale 2, and
+/// `GAMMA.INV(p,1,beta)` is the scale-`beta` one (probes-numeric m9-legacy-chiinv A23,
+/// m9-gamma-inv A20 and A26, gen-m9/8fec7b207f4dd753 A265).
+#[test]
+fn t2860_df2_and_alpha1_cells_are_excels_doubles() {
+    for (scale, p, tail, excel) in [
+        (2.0, 0.01, Tail::Upper, 9.210_340_371_976_182_f64),
+        (2.0, 0.999, Tail::Lower, 13.815_510_557_964_272),
+        (2.0, 0.001, Tail::Upper, 13.815_510_557_964_274),
+        (1e6, 0.999, Tail::Lower, 6_907_755.278_982_135_5),
+    ] {
+        let ours = gamma_quantile(1.0, scale, p, tail);
+        assert_eq!(
+            ours.to_bits(),
+            excel.to_bits(),
+            "{p} at scale {scale}: {ours}"
+        );
+    }
+}
+
 // From shape 20 the prefactor is Excel's ratio form away from the mode and `rcomp` near it (T-2638).
 // Excel's own values: probes-numeric m9-gamma-dist-a50 A2 `GAMMA.DIST(5,50,1,FALSE)` and
 // m9-gamma-dist-a500 A10 `GAMMA.DIST(1500,500,1,FALSE)` (bit for bit), ironcalc-calc POISSON.xlsx
@@ -573,4 +594,43 @@ fn small_shape_lower_is_excels_leading_factor() {
     assert_eq!(excel_small_shape_lower(0.75, 1e-310), None);
     assert_eq!(excel_small_shape_lower(0.25, 1e-5), None);
     assert_eq!(excel_small_shape_lower(0.9, 2.664_607_301_508_61e-6), None);
+}
+
+/// Excel's GAMMA.INV at a shape below 1 and a tiny quantile is its closed form
+/// EXP((LN(p)+GAMMALN(a)+LN(a))/a), bit for bit, or one Newton step on its own cdf from it where
+/// that step is over 3.5E-14 of x (probes/t3012-gamma-inv-small-shape column A, gen-m9 A254;
+/// T-3013).
+#[test]
+fn small_shape_quantile_is_excels_closed_form() {
+    let cells: [(f64, f64, f64); 11] = [
+        // (p, a, Excel), cells A5, A6, A9, A10, A15, A16, A26, A28, A32 and A33, and
+        // gen-m9/3a25a03eb94fcfbd A254 `GAMMAINV(0.5,0.01,100)` divided by its scale.
+        (1e-10, 0.05, 5.844_632_057_286_718e-201),
+        (1e-5, 0.05, 5.844_632_057_286_617e-101),
+        (1e-30, 0.1, 6.073_048_362_407_713e-301),
+        (1e-16, 0.1, 6.073_048_362_407_876e-161),
+        (1e-30, 0.25, 6.749_697_893_111_722_5e-121),
+        (1e-16, 0.25, 6.749_697_893_111_757e-65),
+        (1e-100, 0.75, 4.147_567_013_992_206_4e-134),
+        (1e-16, 0.75, 4.147_567_013_992_107e-22),
+        (1e-100, 0.9, 7.414_417_701_833_755e-112),
+        (1e-30, 0.9, 4.444_826_637_535_332e-34),
+        (0.5, 0.01, 4.465_535_018_910_371e-31),
+    ];
+    for (p, a, excel) in cells {
+        let ours = excel_small_shape_quantile(a, p).unwrap();
+        assert_eq!(ours.to_bits(), excel.to_bits(), "GAMMA.INV({p:e},{a},1)");
+    }
+    // An underflowing quantile is 0 (A1) and a subnormal one is returned for the caller's
+    // #DIV/0! (A4).
+    assert_eq!(excel_small_shape_quantile(0.05, 1e-300), Some(0.0));
+    let subnormal = excel_small_shape_quantile(0.05, 1e-16).unwrap();
+    assert!(subnormal > 0.0 && subnormal < f64::MIN_POSITIVE);
+    // Outside its region the search applies: shape 1/2 (its own path), a shape of 1, and a
+    // quantile above the cut (A18, A34).
+    assert_eq!(excel_small_shape_quantile(0.5, 1e-100), None);
+    assert_eq!(excel_small_shape_quantile(1.0, 1e-100), None);
+    assert_eq!(excel_small_shape_quantile(0.25, 1e-5), None);
+    assert_eq!(excel_small_shape_quantile(0.9, 1e-16), None);
+    assert_eq!(excel_small_shape_quantile(0.25, 0.0), None);
 }

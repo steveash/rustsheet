@@ -4,14 +4,14 @@ use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::{
-    excel_small_shape_lower, gamma_cdf, gamma_density, gamma_quantile, huge_shape_quantile, Tail,
-    DIRECT_SHAPE_MAX, HUGE_SHAPE_MIN,
+    excel_small_shape_lower, excel_small_shape_quantile, gamma_cdf, gamma_density, gamma_quantile,
+    huge_shape_quantile, Tail, DIRECT_SHAPE_MAX, HUGE_SHAPE_MIN,
 };
 use super::normal::normal_quantile;
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::{num_error, number_or_error};
+use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::Function;
 use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
@@ -162,6 +162,23 @@ impl Model {
         // probability outside [0, 1], alpha <= 0 and beta <= 0 are #NUM!.
         if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
+        }
+        // Excel's closed form at a shape below 1 and a tiny quantile, times the scale as a plain
+        // final product (T-3012: column B of probes/t3012-gamma-inv-small-shape is column A times
+        // 1E+15 to the double). A subnormal quantile there is #DIV/0! (A4
+        // `GAMMA.INV(1E-16,0.05,1)`, about 1E-320), one that underflows is 0 (A1-A3; T-3013).
+        // A scale whose rate 1 / beta overflows stays #NUM! (`gamma_quantile`).
+        let closed_form = (1.0 / beta_scale)
+            .is_finite()
+            .then(|| excel_small_shape_quantile(alpha, p))
+            .flatten();
+        if let Some(x) = closed_form {
+            if x > 0.0 && x < f64::MIN_POSITIVE {
+                return Err(div_error(cell));
+            }
+            // The product cannot overflow (x is below 1E-21 and beta a finite double). A subnormal
+            // product is 0, as `gamma_quantile` flushes after its scale.
+            return Ok(flush_subnormal(x * beta_scale));
         }
         // From a shape of 1E9 Excel's own search: a closed form, the true quantile or `#NUM!`
         // (docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV at a huge shape").
