@@ -540,9 +540,8 @@ Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `
   blank (`ISBLANK` is TRUE).
 - **Evidence:** probes/t3113-entered-r1c1, probes/t3113-entered-refused (excel-graph, 2026-10-30).
 - **Status:** R1C1 entry implemented in the eval adapter (decision 0179); the engine's R1C1 reader
-  does not take bare `R`/`C` offsets (`RC`, `R[-1]C`) yet, T-3212. The engine does not refuse a
-  typed `=1+` in A1 mode: it stores a parse-error formula (`#ERROR!`), so ISBLANK is FALSE
-  (known failure probes/t3113-entered-refused S!B1, T-3213).
+  does not take bare `R`/`C` offsets (`RC`, `R[-1]C`) yet, T-3212. The engine refuses a typed
+  `=1+` in A1 mode too since T-3213 (see "A typed formula that does not parse is refused" below).
 
 ## A typed formula that does not parse is refused; a call's missing `)` is added
 Rule: Excel refuses a formula typed through the API (Graph PATCH 400 `InvalidArgument`) that does

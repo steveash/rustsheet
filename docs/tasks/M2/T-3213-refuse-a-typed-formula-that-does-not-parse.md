@@ -38,6 +38,5 @@ A typed formula (`Input::Parse`/`Formula`, `Model::set_typed_user_input`) that d
 error starting `TYPED_FORMULA_DOES_NOT_PARSE`, and the cell keeps its content. The `)`-retry still closes a call
 (`=SUM(1`), but not a group (`=(1`), as Excel does. Stored text is unchanged. The eval adapter leaves a refused
 typed cell blank (decision 0179). New probe t3213-typed-parse-errors (11 shapes, excel-graph): 8 refused, 2
-auto-closed calls, and `=1**2` stores `=100` in Excel (follow-up T-3283). Eval: fixed 2 (t3113-entered-refused
-S!B1 and one more), new case with 3 known failures (`=1**2`), and one accepted regression, t3003 S!F2, a coincidental
+auto-closed calls, and `=1**2` stores `=100` in Excel (follow-up T-3283). Eval: fixed 2 (t3113-entered-refused S!B1, and t3003-unqualified-structured-d2 S!K2, a coincidental pass: a blank D2 also has TYPE 1), new case with 3 known failures (`=1**2`), and one accepted regression, t3003 S!F2, a coincidental
 pass now owned by T-3274 (decision 0186). references.md's two "typed stays a parse error" claims now cite the probe.

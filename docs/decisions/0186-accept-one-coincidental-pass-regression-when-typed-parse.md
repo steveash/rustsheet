@@ -12,4 +12,5 @@
 - **Decision:** `make eval-baseline` runs once with `--allow-regressions` for this one cell (S!F2),
   in T-3213's PR. No other regression is accepted.
 - **Consequences:** probes/t3003-unqualified-structured-d2 S!F2 is a known failure until T-3274
-  lands. T-3274's case list gains S!F2.
+  lands. T-3274's case list gains S!F2. The mirror case, S!K2 (`=TYPE(D2)`, 1), now passes by
+  coincidence because a blank D2 also has TYPE 1; T-3274 notes it.
