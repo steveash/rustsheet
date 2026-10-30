@@ -209,8 +209,8 @@ content and costs one level of the depth bound, taking the spare level of the gr
 for one tree node), so a level of `(ABS(` costs three, not four, and the parser accepts up to 84
 of them where nothing counts the calls. Parsing it ahead also keeps each level to one pass through
 the precedence chain, so 84 levels parse and evaluate on a 2 MiB stack in an unoptimized build
-(parsed at the bottom of the chain instead, about 78 levels overflowed it). A sign, `@`, whitespace or another group first in a
-group still costs two. Measured on a 1 MiB stack in a release build before T-3191, the
+(parsed at the bottom of the chain instead, about 78 levels overflowed it). A sign, `@`,
+whitespace or another group first in a group still costs two (decision 0185). Measured on a 1 MiB stack in a release build before T-3191, the
 parser alone overflowed at about 292 recursively nested parentheses (about 3.5 KB per level, as
 each one passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`;
 parentheses separated by whitespace still take that path, under the depth bound.
