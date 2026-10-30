@@ -33,7 +33,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames
     one (Excel rewrites the formulas that refer to it), `move` puts one at a 0-based position,
     `{"op": "insert_row", "sheet": "S", "row": 1}` inserts a blank row above row 1 (T-1933),
-    `delete_row` (same keys) deletes row 1, `{"op": "insert_column", "sheet": "S", "column": "B"}`
+    `delete_row` (same keys) deletes row 1 (with `"count": 4`, rows 1-4 in one edit, T-3019),
+    `{"op": "insert_column", "sheet": "S", "column": "B"}`
     inserts a blank column left of B and `delete_column` deletes it, `{"op": "delete_sheet",
     "sheet": "S"}` deletes a sheet, and `{"op": "convert_table", "sheet": "S", "table": "T1"}` /
     `delete_table` turn a table into a range / delete it (T-2323). The
