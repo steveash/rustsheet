@@ -21,7 +21,9 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_typed_number, rejected_clock_text_format},
+        format::{
+            format_number, format_text_value, parse_typed_number, rejected_clock_text_format,
+        },
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -2415,10 +2417,12 @@ impl Model {
         match self.workbook.worksheet(sheet_index)?.cell(row, column) {
             Some(cell) => {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
-                let formatted_value =
-                    cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, &self.format_context()).displayed()
-                    });
+                let formatted_value = cell.formatted_value(
+                    &self.workbook.shared_strings,
+                    self.language,
+                    |value| format_number(value, &format, &self.format_context()).displayed(),
+                    |text| format_text_value(text, &format).displayed(),
+                );
                 Ok(formatted_value)
             }
             None => Ok("".to_string()),
