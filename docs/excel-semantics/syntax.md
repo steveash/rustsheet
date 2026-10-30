@@ -170,6 +170,19 @@ wrapped in parentheses (`=(ABS((ABS(...))))`), and a LET or a called LAMBDA at t
 128 and 255 levels. The 66-call inputs (`abs`, `if`, `sum`, `mixed`, `op-abs`, `paren-abs`, `let`,
 `lambda`, stored and typed) cannot keep a sidecar, so they were dropped after the run, as T-1091's
 were. The committed 63- to 65-call cases evaluate on both sides.
+Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t3172-*, excel-graph
+2026-10-30, bisected; stored and typed give the same counts): Excel accepts 256 nested parentheses
+around `1` and refuses 257; accepts a run of 1,024 unary minus signs before the number `1` and refuses
+1,025; accepts 1,023 unary plus signs before the text `"a"` and 1,023 alternating `-+` signs before a
+reference (`C1`), and refuses 1,024 of either. The minus run before a number literal is one longer;
+why is unprobed (each sign was probed with one operand kind only: the last minus folding into the
+number, or the operand type, would both explain it). Accepted and evaluated (with sidecars): parentheses
+at 256 (`1`); minus runs of 255 (`-1`), 256 and 1,024 (`1`); plus runs of 255, 256 and 1,023 (`a`);
+alternating runs of 255, 256 and 1,023 (`2`). Refused (createSession 501 `FileCorruptTryRepair`
+stored, Graph PATCH 400 `InvalidArgument` typed; dropped after the run, no sidecar can exist):
+parentheses at 257, 258, 280, 300, 384, 448, 511, 512 and 4,095 (257 typed too); minus runs of 1,025
+(typed too), 1,500, 2,000, 2,047, 2,048, 4,096, 6,144 and 8,190; plus runs of 1,024 and 8,188;
+alternating runs of 1,024 and 8,189. So no run reaches the 8,192-character text limit.
 RustSheet counts the same calls (`MAX_NESTED_CALLS`, depth.rs): a typed formula nesting 66 or more is
 refused through the API (`EditError::InvalidInput`, the cell keeps its content) and the xlsx importer
 refuses a workbook holding one (`XlsxError::Workbook`), T-3097. `TRUE()`, `FALSE()` and a call of a
@@ -177,8 +190,10 @@ LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY
 `#`) do not (unprobed). Defined-name bodies, conditional formats, data validation and
 `Input::StoredFormula` are not checked (unprobed; T-3143). It also refuses
 128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
-(t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. That is
-the DEVIATION below: the depth bound protects the stack (directive 5).
+(t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. Of the
+counts T-3172 probed it refuses all that Excel accepts: 256 parentheses and every probed sign run
+(255 and up: minus up to 1,024, plus and alternating up to 1,023; the 20 t3172 cases, owned by T-3189).
+That is the DEVIATION below: the depth bound protects the stack (directive 5).
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
@@ -209,7 +224,7 @@ stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested p
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.
-Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; the parentheses RustSheet refuses past its bound); this is a resource limit.
+Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; the parentheses RustSheet refuses past its bound) and probes/t3172-* (Excel's 256-parenthesis and 1,023/1,024-sign caps, T-3172); this is a resource limit.
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
 
