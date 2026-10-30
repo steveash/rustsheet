@@ -42,7 +42,8 @@ toward Excel's caps (refuse 1,025 minus / 1,024 plus as Excel does, typed and st
 Decision 0173 (T-3191) is the nearest precedent: directly nested parentheses are parsed in a loop
 (`parse_parenthesis_run`) and one `Group` carries their count (`levels`) under Excel's own per-run
 cap (`MAX_PARENTHESES`). The spec should weigh that shape (a count on the existing variants) against
-a new node, with alternatives considered. It should also split T-3193's implementation into size-M steps if one PR would be too big.
+a new node, with alternatives considered. It should also split T-3193's implementation into size-M
+steps if one PR would be too big.
 
 ## Acceptance criteria
 - [ ] docs/specs/SPEC-XXXX-*.md (next free number, docs/specs/TEMPLATE.md) answers each question above,
