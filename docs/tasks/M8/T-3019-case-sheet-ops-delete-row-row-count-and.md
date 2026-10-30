@@ -3,7 +3,7 @@ id: T-3019
 title: "Case sheet ops: delete_row row count and header-less tables, for the T-2848 residual probes"
 milestone: M8
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,11 +27,23 @@ The probes baseline also holds 7 harness false failures from T-2848: input cells
 (T-2855).
 
 ## Acceptance criteria
-- [ ] Those 7 cells leave eval/baseline/probes.txt (the harness scores the oracle's unmoved input cells).
-- [ ] `delete_row` takes an optional row count on the oracle and engine sides; spec tables take a
+- [x] Those 7 cells leave eval/baseline/probes.txt (the harness scores the oracle's unmoved input cells).
+- [x] `delete_row` takes an optional row count on the oracle and engine sides; spec tables take a
       header-less flag; validated in sheetop.py with tests.
-- [ ] The three shapes above are probes/table-edits cases, oracle-filled, recorded in references.md.
-- [ ] `make check` green; reviewers approve.
+- [x] The three shapes above are probes/table-edits cases, oracle-filled, recorded in references.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the table-edit engine behavior (file follow-ups for disagreements).
+
+## Outcome
+- The 7 T-2848 harness false failures had already left eval/baseline/probes.txt (T-2855's `moved_input`); nothing to do.
+- `delete_row` takes an optional `count` (spec `{"op":"delete_row","sheet":"S","row":4,"count":4}`): sheetop.py
+  validates it and records a span `4:7` (a count of 1 keeps the plain row, so existing workbooks are byte-identical),
+  the Graph replay deletes `range('4:7')`, and the engine adapter calls `delete_rows(.., count)`;
+  `SheetOp::moved` and `moved_input` (spill_extent.rs) follow it, including the kept data row below.
+- Probes (excel-graph 2026-10-30), recorded in references.md: table-delete-rows-all-data-once (Excel keeps one
+  cleared data row; the engine fails 8 cells, owned by T-3259), table-delete-rows-last-two (passes) and
+  plain-range-delete-rows-across-edge (passes; it replaces the hand generalisation of multi-row shrinking).
+- Header-less tables (spec flag and the third shape) need an engine and facade change: split to T-3260.
+- Eval delta: probes +36 checked cells, 28 passing, 8 new-coverage known failures (T-3259); 0 regressions.

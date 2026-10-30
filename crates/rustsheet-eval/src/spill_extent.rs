@@ -30,8 +30,9 @@ pub(crate) struct SpillExtent {
 }
 
 /// Where `addr` on `sheet` sits after the spec's `sheet_ops`. Excel keeps a table's last data row
-/// when it is deleted (T-2338, probes/table-edits/table-delete-row-all-data-below): that delete
-/// moves nothing, so the cells below the table stay one row lower than a plain delete leaves them.
+/// when it is deleted (T-2338, probes/table-edits/table-delete-row-all-data-below), and keeps one
+/// when a single delete takes every data row (T-3019, table-delete-rows-all-data-once): one row
+/// fewer goes, so the cells below the table stay one row lower than a plain delete leaves them.
 fn moved_input(spec: &CaseSpec, sheet: &str, addr: Addr) -> Addr {
     // The data rows (first, last) of each table on `sheet`, followed through the ops.
     let mut tables: Vec<(u32, u32)> = spec
@@ -51,25 +52,41 @@ fn moved_input(spec: &CaseSpec, sheet: &str, addr: Addr) -> Addr {
         .collect();
     let mut addr = addr;
     for op in &spec.sheet_ops {
-        if let SheetOp::DeleteRow { sheet: at, row } = op {
-            if at == sheet {
-                if tables
-                    .iter()
-                    .any(|&(first, last)| first == last && first == *row)
-                {
-                    continue;
-                }
-                for (first, last) in &mut tables {
-                    if *row < *first {
-                        *first -= 1;
-                    }
-                    if *row <= *last {
-                        *last -= 1;
-                    }
-                }
-            }
+        let SheetOp::DeleteRow {
+            sheet: at,
+            row,
+            count,
+        } = op
+        else {
+            addr = op.moved(sheet, addr);
+            continue;
+        };
+        if at != sheet {
+            continue;
         }
-        addr = op.moved(sheet, addr);
+        let (mut row, mut count) = (*row, count.unwrap_or(1));
+        let end = row.saturating_add(count);
+        if tables
+            .iter()
+            .any(|&(first, last)| row <= first && last < end)
+        {
+            // The table's first data row stays, cleared; the rows after it go.
+            row += 1;
+            count -= 1;
+        }
+        if count == 0 {
+            continue;
+        }
+        for (first, last) in &mut tables {
+            *first -= first.saturating_sub(row).min(count);
+            *last -= (*last + 1).saturating_sub(row).min(count);
+        }
+        let kept = SheetOp::DeleteRow {
+            sheet: sheet.to_string(),
+            row,
+            count: Some(count),
+        };
+        addr = kept.moved(sheet, addr);
     }
     addr
 }
@@ -261,6 +278,23 @@ mod tests {
             moved_input(&spec, "S", c10),
             Addr::parse("C7").expect("addr")
         );
+    }
+
+    /// One delete of every data row keeps one cleared row too (T-3019): rows 5-7 go, so S!C10
+    /// sits at C7, and a later one-row delete below the table moves it on to C6.
+    #[test]
+    fn a_counted_delete_of_every_data_row_keeps_one() {
+        let json = format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{}},
+            "tables":[{{"name":"T","ref":"B3:C7"}}]}}],
+            "sheet_ops":[{},{}]}}"#,
+            r#"{"op":"delete_row","sheet":"S","row":4,"count":4}"#,
+            r#"{"op":"delete_row","sheet":"S","row":5}"#
+        );
+        let spec: CaseSpec = serde_json::from_str(&json).expect("spec");
+        let at = |a1| Addr::parse(a1).expect("addr");
+        assert_eq!(moved_input(&spec, "S", at("C10")), at("C6"));
+        assert_eq!(moved_input(&spec, "S", at("C2")), at("C2"));
     }
 
     /// A1 left pending: its spill extent in Excel is unknown, so its members are not checked.
