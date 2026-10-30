@@ -3764,8 +3764,6 @@ F	probes/t2982-gamma-inv-huge-shape.case.json	S!A89
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A9
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A92
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A93
-F	probes/t3003-below-last-row-const.case.json	S!H2
-F	probes/t3003-below-last-row.case.json	S!H2
 F	probes/t3003-unqualified-structured-d2.case.json	S!D2
 F	probes/t3003-unqualified-structured-d2.case.json	S!D3
 F	probes/t3003-unqualified-structured-d2.case.json	S!D4
