@@ -29,4 +29,4 @@ tried (T-2055 scratch fit). This is the shared incomplete-gamma kernel's Q prefa
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The pmf (T-3242).
+- The pmf (T-3247).

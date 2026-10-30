@@ -150,5 +150,5 @@ Criteria:
 - Per-call cost: both forms are O(1) apart from bd0's series (under about 12 terms, capped at 1000 in `loader.rs`); the
   cdf, which the lifting weight charges, is unchanged: met.
 - `make check` green (this branch, after merging origin/main); reviewers: pending.
-Follow-ups: T-3241 (cdf deep upper tail, on the shared incomplete-gamma kernel), T-3242 (`defer: phase-1b`, pmf
+Follow-ups: T-3241 (cdf deep upper tail, on the shared incomplete-gamma kernel), T-3247 (`defer: phase-1b`, pmf
 bit-level residue: large-k saddle point, about 1 ulp at small k).

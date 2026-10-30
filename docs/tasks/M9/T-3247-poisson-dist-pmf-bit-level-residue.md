@@ -1,5 +1,5 @@
 ---
-id: T-3242
+id: T-3247
 title: "POISSON.DIST pmf: bit-level residue of the saddle point (large k log form, small-k one ulp)"
 milestone: M9
 lane: functions-stat

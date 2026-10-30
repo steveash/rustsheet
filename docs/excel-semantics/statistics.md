@@ -1230,7 +1230,7 @@ LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`)
 - bd0 is the beta density's (`excel_bd0`: its log form, its 0.2 cut, its register series with the fl(2kv) term). A series
   with every op stored ties it on exact cells (152 of 204 on the sweep either way) and leaves two fewer cells visibly off
   (`POISSON.DIST(300,210,FALSE)` and `(300,240)`, where `excel_bd0` is 16 and 46 ulp off, against `(300,420)`, 50 ulp the
-  other way), so the series' arithmetic is still not identified (T-2586, T-3242).
+  other way), so the series' arithmetic is still not identified (T-2586, T-3247).
 - stirlerr: for k = 2 to 6 one offset per k reproduces 32 of 33, 22 of 23, 24 of 25, 46 of 48 and 23 of 26 Excel pmfs
   (the exact value 21, 18, 8, 33, 20; counted with the stored series); Excel's value is 4E-17 to 1.2E-16 low. No GAMMALN-based form
   (GAMMALN(n+1) - (n+1/2)LN(n) + n - ln√(2π) in 17 storage orders, either ln√(2π) double) gives these offsets, and
