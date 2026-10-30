@@ -34,7 +34,8 @@ review-less verdict is caught mechanically (in `warn` mode: reported, not yet en
       a stale-head record, a newer REQUEST_CHANGES, an edited record (ignored), a record posted after the
       marker (counted), an outsider's record (ignored), a report containing its own `merge-train-verdict`
       block or a `-->` (neutralised; only the final block counts) and a report over the comment limit (the
-      report is truncated, the block kept).
+      report is truncated, the block kept). Check with a real GitHub payload that only an edit moves a comment's `updated_at`
+      (not a reaction); if anything else does, edited-record filtering fails closed and must be documented.
 - [ ] `make check` green; security and architecture approve (protected paths: decision 0178 covers them).
 
 If this overruns size M, split the `verdict_records` key and V4's `warn` reporting into their own task.
