@@ -3,7 +3,7 @@ id: T-3249
 title: "Oracle sweep: BETA.DIST(.,FALSE) Loader density at large shapes (a + b from 128 to 8192, partner 1.5 to a), the fitting and hold-out points the large-exponent residue needs"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
