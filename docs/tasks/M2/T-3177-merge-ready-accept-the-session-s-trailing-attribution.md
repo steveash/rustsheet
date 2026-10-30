@@ -40,12 +40,6 @@ remaining case: a footer followed by exactly one trailing newline is accepted (`
 `\n` before the footer), with tests; two newlines or any other text after the footer is still refused.
 Decision 0175 gains an amendment and SPEC-0027 section 2 names the newline. No eval change.
 
-## Handoff (resumed)
-Tried: added `.rstrip("\n")` in `without_footer` (scripts/merge_ready.py) plus a test; `make check` green locally;
-security, architecture and quality reviewers all APPROVE on 45b997e (draft PR #2448).
-Failed: CI hygiene job, `check_governance.py origin/main`: "protected paths changed without a decision record in
-docs/decisions/: scripts/merge_ready.py, scripts/test_merge_ready.py". A sonnet run may not add decision records
-for protected paths (work-loop 5b).
-Next: add a decision record (`make new-decision TITLE=...`) covering the footer tolerance (or confirm one already
-covers merge_ready.py), re-run `make check`, re-run reviewers on the new head, then mark ready per `make merge-mode`
-(currently `shadow`). The Outcome section above is accurate; set `status: done` again when merging.
+Handed off by a sonnet run because the protected-path change needed a decision record; the opus run that
+resumed it amended decision 0175 and tightened `rstrip` to drop exactly one newline. `merge_step.same_body`
+(step-mode read-back of the session's own post) is unchanged.
