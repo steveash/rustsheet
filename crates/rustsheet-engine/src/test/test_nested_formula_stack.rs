@@ -58,12 +58,16 @@ fn formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
         ("(", ")"),
         ("IF(TRUE,", ")"),
         ("SUM(", ")"),
-        ("-(", ")"),
         ("1*(", ")"),
     ] {
         let text = evaluate_deepest_on_2_mib_stack(open, close);
         assert_eq!(text.as_deref(), Some("1"), "{open}");
     }
+    // A sign costs no level (T-3193), so `-(` nests as deep as `(`, and an odd count negates.
+    let (accepted, text) = deepest_on_2_mib_stack("-(", ")").unwrap_or_default();
+    assert_eq!(accepted, MAX_NESTING);
+    let negated = if accepted % 2 == 1 { "-1" } else { "1" };
+    assert_eq!(text, negated);
 }
 
 /// SPEC-0023: whitespace costs no nesting level, so a shape typed with spaces at every level, a

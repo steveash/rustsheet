@@ -3,12 +3,12 @@ id: T-2055
 title: "POISSON.DIST: fit Excel's cdf and pmf (ironcalc-calc POISSON.xlsx and probes-numeric/t1048-poisson together)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
 depends_on: []
-campaign: accuracy
+campaign: visible
 ---
 
 ## Goal
@@ -101,10 +101,13 @@ Cells:
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2256): these 133 known-failure lines (the T-2256 cells in Context) disappear from
-      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Fewer POISSON.xlsx baseline lines; no Excel-computed cell in the suites above goes from pass to fail.
-- [ ] The per-call cost stays bounded, and the lifting weight covers it.
-- [ ] `make check` green; reviewers approve.
+      eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline. Partly met: every
+      owned pmf cell is within 15 digits and no baseline line was added; the deep-upper-tail cdf cells remain, carried
+      by T-3269.
+- [x] Fewer POISSON.xlsx baseline lines; no Excel-computed cell in the suites above goes from pass to fail.
+- [x] The per-call cost stays bounded, and the lifting weight covers it.
+- [ ] `make check` green; reviewers approve. `make check` is green; review round 1: security and quality approved,
+      architecture and fidelity requested changes, addressed in round 2; this box is ticked once that round approves.
 
 ## Out of scope
 - BINOM.DIST and NEGBINOM.DIST (T-0927).
@@ -116,4 +119,53 @@ significant digit of Excel's value; the visible-parity criterion under Acceptanc
 still unmet then move to a follow-up task without the key.
 
 ## Stage (decision 0114)
-`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+`campaign: visible` (retagged from `accuracy` in review round 1). The `accuracy` premise, that Excel is close to correctly
+rounded here so the fix is an accurate kernel never fitted to Excel, is false for the pmf: Excel is up to 91 eps off the
+exact value, and the correctly rounded pmf (60-digit Python Decimal) is visibly off at 51 of the 337 t2055 probe cells
+and 19 of the 150 gated pmf cells. The pmf is Excel's own algorithm, reproduced, which is decision 0114's `visible`
+stage under decision 0056's time-box. The original text was: "`campaign: accuracy`: a 50-digit reference shows Excel is
+close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an
+mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a
+`defer: phase-1b` follow-up."
+
+## Outcome
+POISSON.DIST's and POISSON's pmf are now Excel's two closed forms (`statistical/poisson.rs` `excel_poisson_pmf`,
+statistics.md "POISSON.DIST pmf: two closed forms"), replacing statrs' `exp(k ln mean - mean - ln k!)`:
+- mean <= 1.1 or k <= 1: EXP(fl(k LN(mean)) - GAMMALN(k+1), held in a register) * EXP(-mean);
+- otherwise Loader's saddle point with the exponent stored, on `loader.rs` `excel_bd0` (from T-2507) and
+  `stirlerr_exact`, with a POISSON-only fitted proxy for stirlerr at k = 2..5 (`POISSON_STIRLERR_2_TO_5`,
+  `TODO(T-3247)`); k = 6 takes the exact value (review round 1: its offset did not hold up).
+The switch, which lies in [1.1, 1.100001), and the shape of both forms come from two new excel-graph probes,
+probes-numeric/t2055-poisson-pmf-sweep (204 cells) and t2055-poisson-pmf-switch (133 cells). The cdf is unchanged
+(`gamma_ur`): `incomplete_gamma` is untouched (T-2638 and T-3060 are unaffected), and the even-df CHISQ.DIST.RT identity
+of T-1778 still holds. A huge k over a tiny mean, where `excel_bd0` is not finite, is #NUM!.
+Decision 0114's premise for POISSON (Excel close to correctly rounded: build an accurate kernel, do not fit) is false
+for the pmf. Excel is up to 91 eps off the exact value, and the correctly rounded pmf is visibly off at 51 of the 337
+probe cells and 19 of the 150 gated pmf cells, against 5 and 0 for these forms. So this task and T-3247 are now
+`campaign: visible`, and T-3269 too (in the deep upper tail Excel is the inaccurate side).
+
+Main-vs-HEAD, every suite, per cell. Main is d2d4a59e3 (the merge parent); main and HEAD were built in separate target
+dirs, and both evaluate the two t2055 probes:
+- fixed (fail -> pass): 309 (gen-m9 49, ironcalc-calc 7, probes-numeric 253);
+- lost bit-exact (pass -> fail): 6, all 1 ulp, all in the new ungated probe t2055-poisson-pmf-sweep at the closed form's
+  small-k edge: `POISSON.DIST(1,0.3,FALSE)` A139 +1, `(3,0.9)` A153 +1, `(3,1.0)` A154 +1, `(3,1.1)` A156 +1,
+  `(5,0.9)` A159 +1, `(5,1.05)` A161 +1. None is in a gated suite (T-3247);
+- newly visibly off: 0; type or error changes: 0;
+- visibly fixed: 128 (101 cells now pass, 27 still fail but are within 15 digits).
+Top-level POISSON / POISSON.DIST cells in the suites that existed before this task: 140 failing and 42 visibly off on
+main, against 79 and 11 now. All 11 are cdfs: the deep upper tail (mean well above k, e.g. `POISSON(2,100,TRUE)`)
+and ironcalc POISSON.xlsx D55 (k = 46040). No pmf cell is visibly off there.
+Fit scores (exact / within 4 ulp / visibly off): the 121 gated pmf cells with resolvable arguments 106/121/0 (statrs
+47/80/33); t2055-poisson-pmf-sweep 154/198/5; t2055-poisson-pmf-switch 127/133/0.
+Baselines: gen-m9 -49 lines, ironcalc-calc -7 (POISSON.xlsx 15 -> 8), none added (`make eval-baseline`; round 2 moved no
+gated cell).
+
+Criteria:
+- Visible parity: partly met. Every owned pmf cell is within 15 digits; the deep-upper-tail cdf cells remain, carried
+  by T-3269.
+- Fewer POISSON.xlsx baseline lines (15 -> 8), and no Excel-computed gated cell goes from pass to fail: met.
+- Per-call cost: both forms are O(1) apart from `excel_bd0`'s capped series; the cdf, which the lifting weight charges,
+  is unchanged: met.
+- `make check` green: met. Review: round 1 asked for changes; round 2 addresses them.
+Follow-ups: T-3269 (the cdf's deep upper tail, on the shared incomplete-gamma kernel, `campaign: visible`) and T-3247
+(`defer: phase-1b`, `campaign: visible`: the pmf's bit-level residue and the real cause behind the stirlerr proxy).

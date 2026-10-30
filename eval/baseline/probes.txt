@@ -3667,14 +3667,10 @@ F	probes/t2753-gamma-density-switch.case.json	S!B8
 F	probes/t2753-gamma-density-switch.case.json	S!B9
 F	probes/t2779-hebrew-saka-more.case.json	S!E7
 F	probes/t2779-hebrew-saka-names.case.json	S!E18
-F	probes/t2800-stored-ws-0.case.json	S!A6
-F	probes/t2800-stored-ws-0.case.json	S!B6
 F	probes/t2800-this-row-whitespace.case.json	S!B3
 F	probes/t2800-this-row-whitespace.case.json	S!C3
 F	probes/t2800-this-row-whitespace.case.json	S!D3
 F	probes/t2800-this-row-whitespace.case.json	S!E3
-F	probes/t2800-this-row-whitespace.case.json	S!F2
-F	probes/t2800-this-row-whitespace.case.json	S!F3
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
