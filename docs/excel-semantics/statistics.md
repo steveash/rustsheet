@@ -2492,13 +2492,14 @@ double, though the value it would give is 0: `BETA.DIST(0.1,a,2,TRUE)` is 0 at a
 `#NUM!` for b = 1.5 and 9; b = 2 at 1E+100, 3 at 1E+100 and 4 at 1E+77 are 0. The density `BETA.DIST(0.1,1E+200,2,FALSE)`
 is `#NUM!` too. The other branches at the same shapes are values: `BETA.DIST(0.9,1E+200,2,TRUE)` (L140 bup+bgrat) is 0 and
 `BETA.DIST(0.1,2,1E+200,TRUE)` (swapped, the same point) 1; `BETA.DIST(0.1,0.5,1E+290,TRUE)` (bgrat) is 1 and
-`BETA.DIST(0.9,1E+290,0.5,TRUE)` 0, and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours are `#NUM!`; but
+`BETA.DIST(0.9,1E+290,0.5,TRUE)` 0 (since T-2528 ours too, by the large-shape expansion, "Incomplete beta at a huge first
+shape"), and `BETA.DIST(0.1,1E+200,1E+200,TRUE)` (bfrac) 0, where ours is `#NUM!`; but
 `BETA.DIST(0.1,1E+200,1E+100,TRUE)` (bfrac too) is `#NUM!`, as ours is. The form behind the cut (1/B, or a^b, in
 doubles) is not pinned: B(a, 2) does not separate 1/B from a(a + 1).
 Evidence: probes/t3007-beta-dist-ln-x-overflow (excel-graph, 2026-10-29), 27 cells; the refusals are upload errors from
 throwaway fills, not cells.
 Status: VERIFIED (excel-graph) for the values; the refusal threshold is between 1E+290 and 1E+295 (not bisected); not
-implemented: 11 of the 27 cells are off (T-3104 owns them).
+implemented: 7 of the 27 cells are off (T-3104 owns them; T-2528 took A3, A4, A21 and A22).
 Tasks: T-3007, T-3104
 
 ## BETA.DIST's cdf is not monotone in its last bit (T-3007)

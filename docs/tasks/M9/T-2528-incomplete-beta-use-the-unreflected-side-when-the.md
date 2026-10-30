@@ -55,11 +55,13 @@ expansion (`bgrat`, used by `bratio` for a huge b with a small a) or Temme's uni
   Excel itself is 1E-15 to 1.5E-14 off the true value (statistics.md "Incomplete beta at a huge first shape"),
   handed to T-3205.
 - Eval against main: +16 passing cells, 44 cells closer to Excel, none further (t1530-f-df-cut +1,
-  t1538-beta-dist-at-excel-inv +6, t3007-beta-dist-ln-x-overflow +3, t2528 +6; gen-m9 FDIST(7,10,1E+8),
+  t1538-beta-dist-at-excel-inv +6, t3007-beta-dist-ln-x-overflow +4: A3, A4, A21, A22, t2528 +6; gen-m9 FDIST(7,10,1E+8),
   FDIST(37.5,...), BETADIST(1E-10,0.5,1E10), m9-legacy-fdist A86, t2435-dist-extremes A38 from 1E-7 to 1E-15 off).
 - A first try at b/a <= 1E-6 alone also took tiny b at a moderate a (t2464-r2-bpser-small-tiny, 8 cells lost);
   the 1E6 floor on a keeps them.
 - BETA.INV's search keeps the expansion's leading term (`inverse_beta.rs` `GAMMA_LIMIT_SHAPE_RATIO`), bit-exact on
   t1538-f-inv-huge-df's near-1 cells.
 - b below 40 (bratio's bgrat family): without it `BETA.DIST(0.1,1E+200,1E+100,TRUE)` became 0 where Excel is `#NUM!`
-  (probes/t3007-beta-dist-ln-x-overflow S!A23); A21 and A22 of that case (b = 2) are now Excel's 1 and 0.
+  (probes/t3007-beta-dist-ln-x-overflow S!A23); A3, A4, A21 and A22 of that case are now Excel's values.
+- References: `docs/research/t2528/reference.py`. Ours is within about 2E-15 of them (`F.DIST.RT(2,5,1E10)`: ours
+  0.07523524624568313, reference 0.07523524624568315, Excel 0.07523524624568317): correctly rounded is phase 1b's.

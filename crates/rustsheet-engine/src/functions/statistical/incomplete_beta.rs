@@ -100,7 +100,9 @@ pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     reg_tails(x, y, a, b, Kernel::Accurate)
 }
 
-/// [`beta_reg_tails`] with Cephes' kernel at every shape: the tails BETA.INV's and F.INV's searches
+/// [`beta_reg_tails`] with Cephes' kernel at half-integer shapes too (the large-shape expansion,
+/// `large_shape_beta.rs`, stays: at a of 1E6 or more Cephes' fraction does not converge, T-2528):
+/// the tails BETA.INV's and F.INV's searches
 /// cross (`beta.rs`, `fisher.rs::f_quantile_tail`). With the accurate series under them 7 gated
 /// gen-m9 quantile cells move off Excel's bit (`FINV(0.025,7,10)`, gen-m9/fec39efaba9284c3 A336;
 /// `F.INV.RT(0.975,9,9)`, 40425341c5034eed A205) and BETA.INV round trips such as
@@ -110,7 +112,8 @@ pub(crate) fn search_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     reg_tails(x, y, a, b, Kernel::Cephes)
 }
 
-/// Which kernel [`beta_tails`] takes at half-integer shapes below [`MAXGAM`].
+/// Which kernel [`beta_tails`] takes at half-integer shapes below [`MAXGAM`]; both take the
+/// large-shape expansion (`large_shape_beta.rs`) where it applies.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Kernel {
     /// [`half_integer_tail`].
