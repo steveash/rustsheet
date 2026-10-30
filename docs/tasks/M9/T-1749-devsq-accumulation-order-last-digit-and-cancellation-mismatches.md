@@ -36,6 +36,13 @@ Cells:
 gen-m9 sweep (T-2255 triage), last digits only, not visibly off: DEVSQ (124) and KURT (45) last digits (the accumulation order). Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 169 known-failure lines in eval/baseline/gen-m9.txt, 169 formulas.
 Examples:
 - gen-m9/05d44f6dd6cfc567 Calc!A185 `=KURT(Data!C7:C12,Data!A11:A12,Data!E11:E12)`: Excel 7.000000000000002, ours 7.0
+- KURT fitting hints (gap triage 2026-10-29, folded in from a duplicate task): where the exact result is 7 (n = 8, one
+  outlier) Excel gives 7.000000000000002 and we give 7.0 in eight cases (A185 above; 06b4e8f5de409d5e A14, 3e98b26cf6713e77
+  A359, 4ab2ba98d26c8a5e A356, 68d8ffb69ff739d8 A25, abc2939ebd1e2365 A34, c18dbf21f11093f3 A307, ee2497a5e683c5d9 A350),
+  but d8266bc15533702a A46 is Excel 7.0, ours 6.999999999999998, and `KURT({1,..,10})` is Excel -1.2000000000000002
+  (a013a45a8fbcab4f A2, a54c738c697617c3 A41). These pin the order of the n(n+1)/((n-1)(n-2)(n-3)) factor, the Σz⁴ sum
+  and the 3(n-1)²/((n-2)(n-3)) term. Deferred T-1754's three KURT last-digit cells (probes/stats-evidence-floor-t1623 Q36,
+  ironcalc-calc MEADIAN_KURT_SKEW_HARMEAN.xlsx F2, probes/stat-argument-modes H13) are likely the same order.
 Cells:
 - gen-m9/05d44f6dd6cfc567.case.json (3): Calc!A185, A246, A345
 - gen-m9/06b4e8f5de409d5e.case.json (2): Calc!A14, A158

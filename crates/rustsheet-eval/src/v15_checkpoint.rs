@@ -159,6 +159,10 @@ pub struct V15Checkpoint {
     /// visibly off (`case!Sheet!A1`). A warning only: the line should go (decision 0134).
     #[serde(default)]
     pub stale_exceptions: Vec<String>,
+    /// Listed cells whose suite has no case in this run (not fetched or not selected): neither
+    /// stale nor confirmed, so the report does not tell anyone to remove their lines.
+    #[serde(default)]
+    pub unchecked_exceptions: Vec<String>,
     /// Cells the Phase 1 rate left out because only open M14 tasks own them (decision 0143):
     /// visibly-off, non-deviation Excel cells of the run that [`Self::excepted`] does not count.
     #[serde(default)]
@@ -235,11 +239,14 @@ fn left_out_counts(left_out: &[LeftOut], name: &str, attribution: Attribution) -
 /// The cells the Phase 1 rate leaves out: each visibly-off, non-deviation Excel cell of `results`
 /// that `exceptions` lists or (decision 0143) says only M14 tasks own; and the listed cells that
 /// are not such a cell, as `case!Sheet!A1`. A desktop-owned cell that is not one is not stale: the
-/// generated list holds every known failure M14 owns, within 15 digits or not.
+/// generated list holds every known failure M14 owns, within 15 digits or not. A listed cell
+/// whose suite (the first segment of its case id) has no case in `results` is returned as
+/// unchecked instead: the run cannot tell whether it is stale.
 fn excepted_cells(
     results: &[CaseResult],
     exceptions: &Phase1Exceptions,
-) -> (Vec<LeftOut>, Vec<String>) {
+) -> (Vec<LeftOut>, Vec<String>, Vec<String>) {
+    let scored: BTreeSet<&str> = results.iter().map(|r| r.suite.as_str()).collect();
     let mut left_out = Vec::new();
     let mut found = BTreeSet::new();
     for r in results {
@@ -265,13 +272,21 @@ fn excepted_cells(
             }
         }
     }
-    let stale = exceptions
+    let (mut stale, mut unchecked) = (Vec::new(), Vec::new());
+    for cell in exceptions
         .cells
         .keys()
         .filter(|cell| !found.contains(*cell))
-        .map(|(case, key)| crate::runner::cell_id(case, key))
-        .collect();
-    (left_out, stale)
+    {
+        let id = crate::runner::cell_id(&cell.0, &cell.1);
+        let suite = cell.0.split('/').next().unwrap_or_default();
+        if scored.contains(suite) {
+            stale.push(id);
+        } else {
+            unchecked.push(id);
+        }
+    }
+    (left_out, stale, unchecked)
 }
 
 /// Scores `report` (already built from `results`); `generated` names the generated suites, and
@@ -284,7 +299,7 @@ pub fn summarize(
     generated: &[&str],
     exceptions: &Phase1Exceptions,
 ) -> V15Checkpoint {
-    let (left_out, stale_exceptions) = excepted_cells(results, exceptions);
+    let (left_out, stale_exceptions, unchecked_exceptions) = excepted_cells(results, exceptions);
     let mut outer: BTreeMap<String, usize> = BTreeMap::new();
     for r in results
         .iter()
@@ -389,6 +404,7 @@ pub fn summarize(
         phase1_line: String::new(),
         excepted: left_out.iter().filter(|c| !c.desktop).count(),
         stale_exceptions,
+        unchecked_exceptions,
         desktop_owned: left_out.iter().filter(|c| c.desktop).count(),
     };
     checkpoint.verdict_line = checkpoint.verdict_line();
@@ -407,7 +423,10 @@ fn write_exceptions(checkpoint: &V15Checkpoint, md: &mut String) {
             per_function(checkpoint, |f| f.desktop_owned)
         );
     }
-    if checkpoint.excepted == 0 && checkpoint.stale_exceptions.is_empty() {
+    if checkpoint.excepted == 0
+        && checkpoint.stale_exceptions.is_empty()
+        && checkpoint.unchecked_exceptions.is_empty()
+    {
         return;
     }
     let per_function = per_function(checkpoint, |f| f.rate_excepted);
@@ -429,6 +448,17 @@ fn write_exceptions(checkpoint: &V15Checkpoint, md: &mut String) {
             checkpoint.stale_exceptions.len()
         );
         for cell in &checkpoint.stale_exceptions {
+            let _ = writeln!(md, "- {cell}");
+        }
+        let _ = writeln!(md);
+    }
+    if !checkpoint.unchecked_exceptions.is_empty() {
+        let _ = writeln!(
+            md,
+            "{} listed cells were not checked: their suite was skipped:\n",
+            checkpoint.unchecked_exceptions.len()
+        );
+        for cell in &checkpoint.unchecked_exceptions {
             let _ = writeln!(md, "- {cell}");
         }
         let _ = writeln!(md);
@@ -847,7 +877,8 @@ mod tests {
         assert!(!before.meets_rate);
         let listed = Phase1Exceptions::parse(
             "probes/a!S!B1\t0134\tT-1075\nprobes/a!S!C1\t0134\tT-1075\n\
-             probes/a!S!Z9\t0134\tT-1075\nprobes/a!S!D1\t0134\tT-1075\n",
+             probes/a!S!Z9\t0134\tT-1075\nprobes/a!S!D1\t0134\tT-1075\n\
+             poi/b.xlsx!S!G9\t0134\tT-1075\n",
         )
         .expect("parses");
         let v = summarize(&catalog, &results, &report, &[], &listed);
@@ -872,8 +903,12 @@ mod tests {
         );
         assert_eq!(v.excepted, 2);
         assert_eq!(v.stale_exceptions, ["probes/a!S!C1", "probes/a!S!Z9"]);
+        // A line in a suite the run did not score (poi not fetched) is unchecked, not stale.
+        assert_eq!(v.unchecked_exceptions, ["poi/b.xlsx!S!G9"]);
         let mut md = String::new();
         write_markdown(&v, &mut md);
+        assert!(md.contains("1 listed cells were not checked: their suite was skipped"));
+        assert!(md.contains("Warning: 2 listed cells are not scored"));
         assert!(
             md.contains(
                 "decision 0134, eval/milestones/phase1-exceptions.tsv): 2 visibly-off cells ("

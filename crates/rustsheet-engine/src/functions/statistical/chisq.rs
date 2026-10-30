@@ -5,6 +5,7 @@ use statrs::distribution::{Continuous, Gamma};
 
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
+use super::gamma::tiny_ratio_density;
 use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
 use crate::arithmetic::flush_subnormal;
 use crate::functions::lift::{num_error, number_or_error};
@@ -17,6 +18,9 @@ use crate::{
 };
 const MAX_DEGREES_OF_FREEDOM: f64 = 10_000_000_000.0;
 
+/// The scale of every chi-squared distribution: a gamma of shape df/2 and scale 2 (rate 1/2).
+const CHI_SQUARED_SCALE: f64 = 2.0;
+
 /// The chi-squared distribution of `df` degrees of freedom, truncated, as statrs builds it (a
 /// gamma of shape df/2 and rate 1/2); a df below 1 or above 1E10 is `#NUM!`.
 fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
@@ -24,7 +28,7 @@ fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
     if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
         return Err(num_error(cell));
     }
-    Gamma::new(df / 2.0, 0.5).map_err(|_| num_error(cell))
+    Gamma::new(df / 2.0, 1.0 / CHI_SQUARED_SCALE).map_err(|_| num_error(cell))
 }
 
 /// Whether a chi-squared distribution from [`chi_squared`] has one degree of freedom (shape 1/2),
@@ -99,7 +103,14 @@ impl Model {
         } else if cumulative {
             gamma_cdf(&dist, x)
         } else {
-            gamma_density(dist.shape(), x, 1.0 / dist.rate()).unwrap_or_else(|| dist.pdf(x))
+            // CHISQ.DIST's density is GAMMA.DIST's at scale 2, its tiny-ratio log form included:
+            // `CHISQ.DIST(1E-300,1,FALSE)` is within 1 ulp of Excel's 3.9894228040142567E+149,
+            // which is 154 ulp below the exact 1/SQRT(2*PI()*1E-300) (gen-m9/3e98b26cf6713e77
+            // A268, T-2638).
+            let scale = 1.0 / dist.rate();
+            tiny_ratio_density(dist.shape(), x, scale)
+                .or_else(|| gamma_density(dist.shape(), x, scale))
+                .unwrap_or_else(|| dist.pdf(x))
         };
         // A subnormal cdf or density is 0, as in Excel (`(x)=0` TRUE: probes/
         // t2706-subnormal-density-paths B35, probes/t2737-subnormal-cdf-shapes B15:B17).
@@ -179,18 +190,27 @@ impl Model {
         }
         let dist = chi_squared(df, cell)?;
         if !right_tail {
-            return non_negative(gamma_quantile(&dist, p, Tail::Lower), cell);
+            return non_negative(
+                gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, p, Tail::Lower),
+                cell,
+            );
         }
         // At one degree of freedom Excel's right-tail quantile is the left one of 1 - p:
         // `CHISQ.INV.RT(1E-10,1)` is `CHISQ.INV(0.9999999999,1)`, 41.82145620298276, and below
         // 1.1E-16 (1 - p rounds to 1) it is `#NUM!` (T-1543 probe, T-1634).
         if is_one_degree(&dist) {
-            return non_negative(gamma_quantile(&dist, 1.0 - p, Tail::Lower), cell);
+            return non_negative(
+                gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, 1.0 - p, Tail::Lower),
+                cell,
+            );
         }
         if p < RIGHT_TAIL_P_MIN && dist.shape() != 1.0 && dist.shape() < RIGHT_TAIL_SHAPE_ALL_P {
             return Err(num_error(cell));
         }
-        non_negative(gamma_quantile(&dist, p, Tail::Upper), cell)
+        non_negative(
+            gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, p, Tail::Upper),
+            cell,
+        )
     }
 
     /// The values of a range, row-major, for a caller that keeps the numbers: a number is `Some`,

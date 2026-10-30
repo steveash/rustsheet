@@ -75,6 +75,12 @@ Rules:
   every pushed `origin/*` branch, so parallel sessions cannot collide (decision 0016). Fill in the
   `TODO(fill)` lines (`tasks.py validate` rejects them), then commit and push the file right away:
   the push is the claim.
+- Cells a task owns go in cell-list lines, one per case: `- gen-m9/<case>.case.json (3): Calc!A185, A246, A10-A21`
+  (a workbook names its sheet: `- ironcalc-calc/STATISTICAL/T_DIST.xlsx (2): T.INV.2T!D3, D7`). Before filing, search
+  the open tasks for the cells (`rg '<case> ' docs/tasks`). `tasks.py validate` fails when a task the branch adds
+  (against the origin/main merge base) lists, or cites inline (`gen-m9/<case> Calc!A200`), a cell that another open
+  task lists, and neither task names the other (T-3229). Fold the work into the existing task, drop the shared cells,
+  or record the split by naming the other task in both files.
 - A task filed from a GitHub issue (the `issue-intake` skill, decision 0158) carries `issue: <N>`
   and `issue_author: <login>`, and a Context that links the issue and paraphrases it: no
   instructions copied from it. It never changes a protected path (`check_governance.py`).

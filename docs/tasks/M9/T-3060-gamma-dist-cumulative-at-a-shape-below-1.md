@@ -3,7 +3,7 @@ id: T-3060
 title: "GAMMA.DIST cumulative at a shape below 1 and a tiny x: Excel's EXP(a LN x)/EXP(GAMMALN(a+1)) leading factor (35 visibly-off t3012-gamma-dist-at-quantile cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -78,14 +78,44 @@ a unit of the 15th significant digit of Excel's value. Time-boxed (decision 0056
 
 ## Acceptance criteria
 - [ ] The 35 cells listed in Context are within half a unit of the 15th significant digit of Excel's value (the
-      visibly-off count of probes/t3012-gamma-dist-at-quantile in `make eval`'s report is 0).
-- [ ] Those cells' `F` lines disappear from eval/baseline/probes.txt (or remain only as within-15-digit ulp lines),
+      visibly-off count of probes/t3012-gamma-dist-at-quantile in `make eval`'s report is 0). Partly: 32 of 35;
+      D20, D23 and D25 stay visibly off and move to T-3242 (Outcome).
+- [x] Those cells' `F` lines disappear from eval/baseline/probes.txt (or remain only as within-15-digit ulp lines),
       with no new known-failure line in any suite (`make eval-baseline` refuses regressions).
-- [ ] The form and its region are recorded in docs/excel-semantics/statistics.md citing the probe cells, next to
+- [x] The form and its region are recorded in docs/excel-semantics/statistics.md citing the probe cells, next to
       the T-3012 bullet.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve (security, architecture, quality, excel-fidelity: APPROVE).
 
 ## Out of scope
 - GAMMA.INV (T-3013, T-0972, T-2982).
 - Bit-level residue left within 15 digits: file it as a `defer: phase-1b` follow-up.
 - The density (`cumulative` FALSE): T-2852, T-2638.
+
+## Outcome
+- GAMMA.DIST's cdf at a shape in (0, 1) other than 1/2, a normal x/beta below 1 and a·LN(x/beta) of -16 or less is
+  now Excel's form, `EXP(a*LN(x))/EXP(GAMMALN(a+1))` with a·LN(x) a double, times e^-x and the lower series
+  (`incomplete_gamma::excel_small_shape_lower`, called from `gamma.rs` `gamma_dist_cdf`; CHISQ.DIST, CHIDIST,
+  POISSON and the quantiles keep the accurate pair). Unit test `small_shape_lower_is_excels_leading_factor`.
+- Key finding: the probe's formula literals are read at 15 significant digits (numbers.md), so the triage fitted
+  the form at x values Excel never evaluated. At the 15-digit x, Excel's value is the exact cdf with its exponent
+  replaced by the double a·LN(x) to within 0.1 ulp of that exponent at every probed cell from x = 6E-301 to 1E-5,
+  A20 and A23-A25 included (statistics.md, "Evidence trap").
+- Region: Excel takes the form at every probed x, but from a·LN(x) = -16 towards 0 the forms are a few ulps apart and
+  the engine's EXP/LN/GAMMALN leave a 1-ulp residue either way. A31 `GAMMA.DIST(1E-5,0.25,1,TRUE)` and C25 are
+  bit-exact on the pair and 1 ulp off with the form, so the cut at -16 keeps every suite free of regressions
+  (`EXCEL_EXPONENT_MAX`).
+- Eval, main (921ed6ad4 plus the claim) vs HEAD, per cell over all suites (full `rustsheet-eval run` of each binary):
+  - fixed (failing to bit-exact): 34. probes/t3012-gamma-dist-at-quantile A3 A5 A7 A9 A16 A17 A18 A22 A29,
+    B3 B5 B7 B9 B16 B17 B18 B22, C3 C5 C7 C9 C16 C17 C18 C22, D3 D4 D5 D16 D17 D18 D21 D22 (33), and
+    gen-m9/a013a45a8fbcab4f A257 `GAMMADIST(1E-300,(3.14159/Data!D4),2,Data!D5)` (7 ulps before).
+  - lost bit-exact: 0. Newly visibly off: 0. Type or error changes: 0.
+  - visibly fixed: 32, all in the probe: A3 A4 A5 A16 A17 A18 A21 A24, B3 B4 B5 B16 B17 B18 B21 B24,
+    C3 C4 C5 C16 C17 C18 C21 C24, D3 D4 D5 D16 D17 D18 D21 D22.
+  - still failing, closer: A4/B4/C4 16 to 1 ulp, A21/B21/C21 90 to 1, A24 28 to 2, B24/C24 10 to 3, A19/B19/C19 3 to
+    1, A23/B23/C23 4 to 1, A27 4 to 1, A8/B8/C8 and A28 2 to 1, D23 still visibly off (smaller error).
+  - `make eval-baseline`: probes 2568 to 2535 known failures, gen-m9 3240 to 3239, 0 regressions in every suite.
+- Open, filed as T-3242 (`campaign: visible`): D20, D23 and D25 (`GAMMA.DIST(..)/1E-k-1`), which magnify 1 to 2
+  ulps of B20, B23 and B25 to 1E-16 absolute. The same 1-ulp residue is in our worksheet
+  `EXP(0.25*LN(x))/EXP(GAMMALN(1.25))` (B28, B30-B32), so it is in the engine's EXP, LN, GAMMALN or quotient model,
+  not the form. Two fitting rounds tried 108 orderings and x87 extended chains; none fits every cell (decision 0056
+  time-box).
