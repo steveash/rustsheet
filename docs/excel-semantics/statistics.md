@@ -3462,6 +3462,32 @@ Tasks: T-1543, T-1634
     lie within one step of them. Excel's own quantile (k = 0) is inside the band except for a = 2 and df 50, where
     Excel's quantile does not evaluate back to p (`CHISQ.DIST.RT(24.673905271877409,50)` = 0.9989999999999999); it
     sits at the high edge only for a = 25. So it is not at a fixed edge of the band. T-3146 fits from these cells.
+  - T-3146 (time-boxed, decision 0056; nothing implemented). Fitted against the 136 quantile cells of the probe at
+    p 0.99 to 0.9999 and shape not 0.5 or 1, with 50-digit references at the 15-digit literals:
+    - Excel lands where the true cdf of the tail it is given is within 0.73 of an ulp of p. For GAMMA.INV that is
+      P(a, x) - p; for CHISQ.INV.RT it is Q(a, x/2) - p, in units of 2^-53 (the spacing of doubles near p). Over
+      those cells the offset runs from -0.72 to +0.73, with no trend in the shape or p. At shape 2 it is -0.31,
+      +0.70, +0.71, -0.58, +0.49 and -0.70 at p = 0.99, 0.995, 0.998, 0.999, 0.9995 and 0.9999. That is the
+      rounding of a double-valued cdf whose own error is up to about 0.25 ulp beyond the rounding. The quantile
+      error in ulps of x is this offset over the density: 18 to 3,084 ulps.
+    - Excel's own double cdf near 0.999 is not correctly rounded. Ours is (the accurate pair), so the two differ.
+      `GAMMA.DIST` differs from ours by 1 or 2 ulp on 10 of the probe's 85 cdf cells (A167, A171, A172, A174,
+      A202, A205-A208, A218). `CHISQ.DIST.RT` differs by 1 ulp on 8 of 68 (A251, A255, A259, A289, A313, A317,
+      A353, A355). In each case Excel is the side off the 50-digit value: A313 `CHISQ.DIST.RT(1.4787434638356816,10)`
+      is 0.9989999999999999 in Excel, where the true value is 0.999 - 0.39 ulp.
+    - Excel's quantile is not in the band of x where our double cdf equals p: on 44 of 132 cells it is 1 ulp of p
+      off (21 low, 23 high). So no search that stops where our cdf equals p reaches those cells, whatever its
+      start or step. The forms tried, each on our double cdf (the GAMMA.DIST kernel), scored against the 136 cells
+      (bit-exact, visible) beside the engine's crossing (4, 48):
+      - statrs' search (9, 44);
+      - Newton stopping at cdf = p or at a step under 1E-15 relative, from the mean a (4, 52), from Wilson-Hilferty
+        (4, 48-49), from statrs' estimate (7, 43), and from the crossing moved by 1E-3 either way (3-5, 38-42);
+      - Newton on ln cdf from a (4, 53);
+      - Newton in ln x from a (6, 41);
+      - bisection from [0, 2^k] stopping at cdf = p (7, 45).
+      None reaches visible parity on more than 53 of the 136. Reproducing Excel's landing point needs two things
+      this probe pins neither of: Excel's noisy double cdf near p bit for bit, and its iteration path. The x
+      literals are cut to 15 digits, which T-3175 replaces.
 - Shape 1 (T-3016): Excel's quantile is the closed form of the exponential, taken in the smaller tail: with t the
   smaller tail's probability (p, or the exact 1 - p for p above 1/2), `-LN(1-t)` (by `ln_1p`) where that tail is the
   lower one and `-LN(t)` where it is the upper, times the scale. `CHISQ.INV(0.5,2)` = `CHISQ.INV.RT(0.5,2)` =
