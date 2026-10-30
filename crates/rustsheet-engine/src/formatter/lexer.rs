@@ -124,6 +124,22 @@ impl Token {
     }
 }
 
+/// Whether the last section of `format` is exactly `@`, with no color, locale or literal, not even
+/// `""`. Excel shows a text whole under it however long, where any other text section shows 255 `#`
+/// past 255 characters (probes/displayed-text-long-text-b A2, A3 vs A1, A4, A6; T-3282).
+pub(crate) fn last_section_is_bare_at(format: &str) -> bool {
+    let mut lexer = Lexer::new(format);
+    let mut start = 0;
+    loop {
+        match lexer.next_token() {
+            Token::EOF => break,
+            Token::Separator => start = lexer.position,
+            _ => {}
+        }
+    }
+    lexer.chars.get(start..) == Some(&['@'][..])
+}
+
 impl Lexer {
     pub fn new(format: &str) -> Lexer {
         let chars: Vec<char> = format.chars().collect();

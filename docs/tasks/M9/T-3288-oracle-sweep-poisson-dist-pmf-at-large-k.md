@@ -3,7 +3,7 @@ id: T-3288
 title: "Oracle sweep: POISSON.DIST pmf at large k (30 to 1000) with the mean from k/2 to 2.5k, and ulp runs at the five visibly-off cells"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -56,3 +56,9 @@ k >= 30 that probes-numeric/t2055-poisson-pmf-sweep holds today (A178-A204: k = 
 
 ## Out of scope
 - Fitting or implementing (T-3295). The cdf (T-3269, T-3289). The small-k residue (T-3247).
+
+## Outcome
+Two probes-numeric cases, filled by excel-graph with no pending cells: `t3282-poisson-pmf-large-k` (171 cells) and
+`t3282-poisson-pmf-ulp-runs` (160 cells; the means are written as `m+(j)*2^(-e)`, exact in a double, since a literal is
+read to 15 digits). With today's engine 60/171 and 26/160 cells are bit-exact. Documented in statistics.md; T-3295 links the cases.
+No eval baseline change (probes-numeric is ungated).
