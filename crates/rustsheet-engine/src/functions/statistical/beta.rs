@@ -9,6 +9,7 @@ use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
 use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
+use crate::functions::statistical::loader::excel_beta_density;
 use crate::functions::statistical::special::refine_increasing;
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -168,9 +169,16 @@ impl Model {
         } else {
             // general-interval beta pdf: f_X(x) = f_T(t) / (B - A), t=(x-A)/(B-A). A subnormal
             // density is 0, as in Excel (`(x)=0` TRUE: probes-numeric/t2513-r3-m1-residual-hold E863,
-            // E875, E957; docs/excel-semantics/numbers.md "Distribution densities").
+            // E875, E957; docs/excel-semantics/numbers.md "Distribution densities"). Both shapes
+            // above 1: Excel's Loader saddle point (T-2507; decision 0181 accepts the cells it
+            // leaves visibly off, which T-3220 owns).
             flush_subnormal(
                 beta_density_small_shape(t, alpha, beta_param)
+                    .or_else(|| {
+                        (alpha > 1.0 && beta_param > 1.0)
+                            .then(|| excel_beta_density(t, alpha, beta_param))
+                            .flatten()
+                    })
                     .or_else(|| beta_density(t, alpha, beta_param))
                     .unwrap_or_else(|| dist.pdf(t))
                     / width,
