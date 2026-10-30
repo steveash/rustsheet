@@ -112,6 +112,31 @@ fn test_fn_gamma_inv() {
     assert_eq!(model._get_text("A10"), *"8.668951184");
 }
 
+/// GAMMA.INV's closed form at a shape below 1 and a tiny quantile (T-3013): a subnormal unit
+/// quantile is #DIV/0! at any scale (probes/t3012-gamma-inv-small-shape A4, B4), one that
+/// underflows is 0 (A1), a subnormal (or zero) scale stays #NUM! (the closed form is skipped where
+/// the rate 1 / beta overflows, as `gamma_quantile` refuses it), and a subnormal product of a
+/// normal unit quantile and the scale is 0 (A4 and A5 here follow the engine's flush and rate
+/// conventions, not an oracle cell: UNVERIFIED, T-3265).
+#[test]
+fn test_fn_gamma_inv_small_shape_closed_form() {
+    let mut model = new_empty_model();
+    model._set("A1", "=GAMMA.INV(1E-16,0.05,1)");
+    model._set("A2", "=GAMMA.INV(1E-16,0.05,1E+15)");
+    model._set("A3", "=GAMMA.INV(1E-300,0.05,1)");
+    model._set("A4", "=GAMMA.INV(1E-30,0.1,1E-300/1E+10)");
+    model._set("A5", "=GAMMA.INV(1E-30,0.1,1E-10)=0");
+    model._set("A6", "=GAMMA.INV(1E-16,0.25,1E+15)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"0");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"TRUE");
+    // gen-m9/984cba67bbe6972b A43: Excel's 6.749697893111757E-50.
+    assert_eq!(model._get_text("A6"), *"6.7497E-50");
+}
+
 #[test]
 fn test_fn_gammaln() {
     let mut model = new_empty_model();

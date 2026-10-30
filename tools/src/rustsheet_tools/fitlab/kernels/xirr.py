@@ -25,6 +25,7 @@ XIRR_OOS_CASES = [
     "probes/xirr-mismatched-empties",
     "probes/xirr-early-dates",
     "probes/xirr-span-zero-first",
+    "probes/xirr-back-dated-stop",
 ]
 
 
@@ -147,13 +148,22 @@ def span_years(p: Probe) -> float:
     return max(1.0, (max(p.dates) - p.dates[0]) / 365)
 
 
-def span_stop(c_term: float = 2e-8) -> Stop:
-    """The T-1583 candidate: the fitted rule with the XNPV bound scaled by max(1, span in years),
-    and no XNPV bound when the first value is 0."""
+def all_dates_span_years(p: Probe) -> float:
+    """The years from the earliest date to the latest one, at least 1 (T-2045: a flow dated before
+    the first counts)."""
+    return max(1.0, (max(p.dates) - min(p.dates)) / 365)
+
+
+def farthest_date_years(p: Probe) -> float:
+    """The years from the first date to the farthest one either side, at least 1 (T-2045)."""
+    return max(1.0, max(abs(d - p.dates[0]) for d in p.dates) / 365)
+
+
+def span_stop(c_term: float = 2e-8, span: Callable[[Probe], float] = span_years) -> Stop:
+    """The T-1583 candidate: the fitted rule with the XNPV bound scaled by `span` (max(1, years
+    from the first date to the latest)), and no XNPV bound when the first value is 0."""
     h_ok = h_test()
-    return lambda p: (
-        h_ok(p) and (p.values[0] == 0 or abs(p.f) < c_term * max(map(abs, p.values)) * span_years(p))
-    )
+    return lambda p: h_ok(p) and (p.values[0] == 0 or abs(p.f) < c_term * max(map(abs, p.values)) * span(p))
 
 
 def zero_first_value_stop() -> Stop:
@@ -255,6 +265,18 @@ def xirr_candidates() -> list[Candidate]:
             "T-2328",
         ),
     ]
+    # T-2045: the span counts a flow dated before the first (probes/whole-column-empty-walkers E7, F3).
+    out += [
+        _xirr_candidate(
+            f"bisect, first-value sign, |f| bound scaled by {name}, Excel ^ (T-2045)",
+            _xirr(span_stop(span=span), first_value_sign=True, power=caret_pow),
+            "T-2045",
+        )
+        for name, span in (
+            ("earliest-to-latest years", all_dates_span_years),
+            ("first-to-farthest years", farthest_date_years),
+        )
+    ]
     # The step test's bound: A in A + 1e-8 |m| (fitted 4.93e-9 <= A <= 5.09e-9), then B at A = 5e-9.
     out += [
         _xirr_candidate(f"bisect fitted, A={a:.3g}", _xirr(fitted_stop(a_term=a)), "bound A")
@@ -291,7 +313,7 @@ FITS = [
     ),
     Fit(
         name="xirr-oos",
-        description="XIRR out of sample: the literal XIRR cells of five older probes",
+        description="XIRR out of sample: the literal XIRR cells of seven probes",
         cases=XIRR_OOS_CASES,
         pattern=r"^=XIRR\((.*)\)$",
         candidates=xirr_candidates,
