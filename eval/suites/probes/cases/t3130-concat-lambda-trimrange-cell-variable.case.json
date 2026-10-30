@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3130 probe: CONCATENATE/CONCAT/TEXTJOIN of an uncalled LAMBDA, TRIMRANGE value read of a LET cell variable, & edges with LAMBDA, CHOOSE arm and cross-sheet cell variables.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A2": 5,
+        "A3": "t",
+        "Q1": "=CONCATENATE(LAMBDA(x,x),\"\")",
+        "Q2": "=ERROR.TYPE(CONCATENATE(LAMBDA(x,x),\"\"))",
+        "Q3": "=CONCATENATE(\"a\",LET(f,LAMBDA(x,x),f))",
+        "Q4": "=ERROR.TYPE(CONCATENATE(\"a\",LET(f,LAMBDA(x,x),f)))",
+        "Q5": "=CONCAT(LAMBDA(x,x),\"\")",
+        "Q6": "=ERROR.TYPE(CONCAT(LAMBDA(x,x),\"\"))",
+        "Q7": "=CONCAT(\"a\",LET(f,LAMBDA(x,x),f))",
+        "Q8": "=ERROR.TYPE(CONCAT(\"a\",LET(f,LAMBDA(x,x),f)))",
+        "Q9": "=TEXTJOIN(\",\",TRUE,LAMBDA(x,x))",
+        "Q10": "=ERROR.TYPE(TEXTJOIN(\",\",TRUE,LAMBDA(x,x)))",
+        "Q11": "=TEXTJOIN(LAMBDA(x,x),TRUE,\"a\",\"b\")",
+        "Q12": "=ERROR.TYPE(TEXTJOIN(\",\",TRUE,\"a\",LET(f,LAMBDA(x,x),f)))",
+        "Q13": "=TYPE(TRIMRANGE(LET(v,A2,v)))",
+        "Q14": "=ROWS(A2-TRIMRANGE(LET(v,A3,v)))",
+        "Q15": "=TYPE(TRIMRANGE(A2))",
+        "Q16": "=ROWS(A2-TRIMRANGE(A3))",
+        "Q17": "=LAMBDA(x,x)&{1,2}",
+        "Q18": "={1,2}&LAMBDA(x,x)",
+        "Q19": "=LAMBDA(x,x)&NA()",
+        "Q20": "=NA()&LAMBDA(x,x)",
+        "Q21": "=ERROR.TYPE(LAMBDA(x,x)&NA())",
+        "Q22": "=ERROR.TYPE(NA()&LAMBDA(x,x))",
+        "Q23": "=LET(v,A2,TYPE(TAKE(CHOOSE(1,v),1)))",
+        "Q24": "=LET(v,A2,ISREF(TAKE(CHOOSE(1,v),1)))",
+        "Q25": "=TYPE(TAKE(LET(v,Data!A1,v),1))",
+        "Q26": "=ISREF(TAKE(LET(v,Data!A1,v),1))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 7
+      }
+    }
+  ],
+  "expected": {}
+}

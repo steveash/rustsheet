@@ -144,8 +144,8 @@ file and its acceptance criteria.
      check`, re-run the reviewers the change concerns, wait for green CI, and mark again with
      `REVIEW="..."`. Only when the new head is a clean merge of `origin/main` onto the marked head
      and nothing else (no conflict resolution, no other commit) may you carry the old verdicts
-     over with `make mark-ready PR=<n> CARRY=1`; the script checks that mechanically. Once marked
-     again, remove `merge-train-ejected` from the PR.
+     over with `make mark-ready PR=<n> CARRY=1`; the script checks that mechanically. Marking
+     again removes `merge-train-ejected` (decision 0177).
    - **Revert PRs** the merger opens (`revert: merge train mismatch at #k`) are handled by
      whoever takes their P0 task: full review panel, then merge under the lock (`lock`, `shadow`)
      or mark ready (`train`), with P0 priority. No review waiver applies to reverts.

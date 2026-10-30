@@ -125,6 +125,16 @@ impl Node {
         }
     }
 
+    /// The operator printed before `self` as the right operand of an intersection: a line feed in
+    /// its run is the operator itself, so no space is printed beside it
+    /// (probes/t2949-typed-4).
+    pub(crate) fn intersect_gap(&self) -> &'static str {
+        match self {
+            Node::Spaced { space, .. } if space.before.line_feeds > 0 => "",
+            _ => " ",
+        }
+    }
+
     /// The node under any [`Node::Spaced`] wrapper, for the printers that decide on its shape.
     pub(crate) fn unwrap_spaced(&self) -> &Node {
         let mut node = self;
