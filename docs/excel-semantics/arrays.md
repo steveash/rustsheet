@@ -1338,6 +1338,10 @@ ISBLANK and ISREF are FALSE (also through `IF(1,..)`). `ISEVEN(LAMBDA(x,x))` is 
 it is `#VALUE!` on either side: `LAMBDA(x,x)&""`, `"a"&LAMBDA(x,x)`, `LAMBDA(x,x)&LAMBDA(y,y)`, `LET(f,LAMBDA(x,x),f&"|")` and
 `LET(v,LAMBDA(z,z),t,TYPE(v),..,t&"|"&v)` are `#VALUE!` (ERROR.TYPE 3, ISERROR TRUE, IFERROR catches it), and `TYPE(LAMBDA(x,x))` is 128
 (probes/t2622-take-let-reference-lambda-text Q1-Q10; probes/t2475-stat-subexpressions, the bare `LAMBDA(..)` rows).
+CONCATENATE, CONCAT and TEXTJOIN read it as text the same way: `CONCATENATE(LAMBDA(x,x),"")`, `CONCAT("a",LET(f,LAMBDA(x,x),f))`,
+`TEXTJOIN(",",TRUE,LAMBDA(x,x))` and a LAMBDA as TEXTJOIN's delimiter are `#VALUE!` (ERROR.TYPE 3). The `&` edges: `LAMBDA(x,x)&{1,2}` and
+`{1,2}&LAMBDA(x,x)` spill `#VALUE!` in every element (Q17:R18), `LAMBDA(x,x)&NA()` is `#VALUE!`, while `NA()&LAMBDA(x,x)` is `#N/A` (the left error wins; ERROR.TYPE 7)
+(probes/t3130-concat-lambda-trimrange-cell-variable Q1-Q22, excel-graph, 2026-10-30, T-3130).
 Evidence: probes/lambda-value-arguments A1-A26 (excel-graph, 2026-10-19, T-1511); probes/m7-argument-modes F44:H44;
 probes/eta-reduced-names E93; probes/t2475-stat-subexpressions (excel-graph, 2026-10-24, T-2475);
 probes/t2622-take-let-reference-lambda-text Q1-Q10 (excel-graph, 2026-10-29, T-2622).
@@ -1943,9 +1947,13 @@ Excel changed: the same workbooks gave other values on 2026-10-27 and at 02:04 U
 top-left, `{TRUE;TRUE;TRUE}` was 5, 5, 5, and an empty element passed emptiness down a column of equal by_col values: the T-2929 and
 T-2947 rule), and gave today's values twice in a row on 2026-10-29 16:00 UTC, also as one-formula workbooks. Older sidecars of these
 cases were refilled with `rustsheet-oracle fill --force`; another change of Excel's would show as a refill diff.
-UNVERIFIED (T-3153): a text by_col that reads as a boolean ("1", "TRUE") and a number by_col read from a range cell; T-3153
-also re-fills these cases later in case Excel's change was a staged rollout.
-Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col, probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column, probes/t2947-sort-lifted-by-col-corners and probes/t3090-sort-lifted-by-col-broken-lead (excel-graph, 2026-10-29, T-3090).
+A text by_col is a boolean only when it is the word TRUE or FALSE (probes/t3153-sort-lifted-by-col-text, excel-graph, 2026-10-30, T-3153):
+`"1"`, `"0"` and `" 1"` are invalid like `"x"` (`#VALUE!`, skipped: `{TRUE,"1",TRUE}` is 22, `#VALUE!`, empty and `{"1",TRUE,TRUE}` is
+`#VALUE!`, 22, empty), while `"TRUE"` and `"FALSE"` count as sorting calls (`{TRUE,"TRUE",TRUE}` and `{TRUE,"FALSE",TRUE}` are 22, empty,
+`#VALUE!`, as is `{"TRUE",TRUE,TRUE}`). A by_col range of numbers (G1:I1 = 1,1,1; G3:I3 = 0,1,2) follows the ordinary rule (26, empty,
+`#VALUE!` for G3:I3, whose 0 sorts rows), and a range of text cells "1", "TRUE", "1" is `#VALUE!`, 22, `#VALUE!`. Re-filling the t2366, t2929,
+t2947 and t3090 probes on 2026-10-30 changed no value: the 2026-10-29 16:00 rule stands.
+Evidence: gen-m7 (excel-graph, 2026-10-21, T-2225); probes/textjoin-ignore-empty-lift (excel-graph, 2026-10-23, T-2318); probes/t2366-sort-lifted-by-col, probes/t2929-sort-lifted-by-col-index, -shapes, -errors, -range and -column, probes/t2947-sort-lifted-by-col-corners and probes/t3090-sort-lifted-by-col-broken-lead (excel-graph, 2026-10-29, T-3090; refilled unchanged 2026-10-30, T-3153), probes/t3153-sort-lifted-by-col-text (excel-graph, 2026-10-30, T-3153).
 Ours: TOROW is in the lifting table with TOCOL's entry, an error array is every lifted element's result (TOCOL's too, by
 analogy with TOROW's evidence: UNVERIFIED, T-2365 probes `ROWS(TOCOL(1/0,0,{0;1}))`), and an error ignore or scan_by_column comes before an invalid one, in argument order
 (T-2313; an error ignore beside an error scan_by_column is unprobed); SORT lifts by_col since T-2319 (lifting table: array, sort_index and sort_order read whole, `sort_by_keys` per element, then `sort_lifted_elements` in spill_functions.rs keeps, empties or errs each element by the rule above (T-2929, T-3090); a range by_col lifts too); TEXTJOIN is in the lifting table since T-2318 (`ignore_empty` `Lift`, the delimiter and the texts read once by `fn_textjoin`, which builds at most one join per value of ignore_empty; the 255-argument cap is unprobed, Excel's documentation says 252 texts; whether a legacy formula keeps a range delimiter whole, now `Signature::Vector`, is unprobed; T-2467 probes both, an element error beside a text error and a blank cell in a range ignore_empty).
