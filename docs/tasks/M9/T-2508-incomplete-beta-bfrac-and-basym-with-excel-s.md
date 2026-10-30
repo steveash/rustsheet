@@ -69,3 +69,13 @@ Notes from the opus run that claimed the task (data for the run that resumes it,
   1 ulp). That must be resolved before merge (no gated line may be added), e.g. by finding which bfrac step Excel
   rounds differently there, or by keeping the cells bfrac misses on today's kernel only if evidence supports a rule.
 - Resumed 2026-10-30 20:45 by an opus run (branch idle over 2 h).
+- E39 analysis (2026-10-30 resume): `NEGBINOM.DIST(1,100,0.99,TRUE)` is I_0.99(100, 2). bratio swaps it to
+  (a0, b0, x0) = (2, 100, 0.01) with λ = 0.98, and a0 <= 100 sends it to bfrac, so the dispatch is right. The exact
+  value at x = fl(0.99) is x^100·(101 - 100x) (rational arithmetic): Excel's 0.7320646825464586 is -0.4998 ulp from
+  it, which is the correctly rounded double on a knife edge. bfrac's ...585 is -1.4998 ulp. On main this cell fell
+  through `ported_tails` to the pmf walk (`binom.rs` `negbinom_dist_of`), which hits it. Under `campaign: accuracy`
+  (decision 0114) the target is the correctly rounded value, so the 1-ulp loss is bfrac's error (prefactor
+  `excel_beta_density`·fl(x·y) or the fraction), not an Excel quirk to fit. Next: measure which of the two drifts here
+  against an exact reference (e.g. the prefactor x^2·y^100·B(2,100)^-1 is exact in rationals), then either fix the
+  prefactor rounding or keep a b0 >= 40 cell with a small integer a0/b0 on its exact finite sum, if the r2-bratio scores
+  support that.
