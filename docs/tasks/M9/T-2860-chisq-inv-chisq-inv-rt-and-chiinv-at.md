@@ -3,7 +3,7 @@ id: T-2860
 title: "CHISQ.INV, CHISQ.INV.RT and CHIINV at df 2 and GAMMA.INV at alpha 1 are Excel's closed forms -2*LOG1P(-p), -2*LN(p) and -beta*LOG1P(-p) (34 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
