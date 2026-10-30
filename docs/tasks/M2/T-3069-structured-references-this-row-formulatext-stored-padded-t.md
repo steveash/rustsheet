@@ -3,7 +3,7 @@ id: T-3069
 title: "Structured references: this-row FORMULATEXT, stored padded T[ Col ] is #REF!"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
