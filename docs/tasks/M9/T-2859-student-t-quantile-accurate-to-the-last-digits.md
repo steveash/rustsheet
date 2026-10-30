@@ -113,6 +113,10 @@ any remaining cell that turns out to be a centre cell (|t| small) moves to T-272
 - probes-numeric/t1048-tinv.case.json (8): A3, B3, A4, B4, A6, B6, A8, B8
 - probes/stat-argument-modes.case.json (1): H518
 
+Shared with T-3061 (which reproduces Excel's SQRT(df*(1/y-1)) form, stage `visible`): probes-numeric/m9-confidence-t
+A5, m9-t-inv A108, m9-t-inv-2t A35 and probes/stat-argument-modes H518. Whichever task lands first takes them, and the
+other re-triages them in its first PR.
+
 Not owned: df = 1 (T-2858), p above 1 (T-2839), p/2 below 2E-5 and df >= 99999 (T-1542), 48 gen-m9 cells whose p or
 df is a sub-expression (classify them after the change; any still visibly off goes to T-0967 or a follow-up).
 These cells are also listed in T-0967, which keeps the bit-level target and waits on T-0969; this task is its
