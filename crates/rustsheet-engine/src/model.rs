@@ -22,7 +22,7 @@ use crate::{
     },
     formatter::{
         format::{
-            format_number, format_text_value, parse_typed_number, rejected_clock_text_format,
+            displayed_text_value, format_number, parse_typed_number, rejected_clock_text_format,
         },
         lexer::is_likely_date_number_format,
     },
@@ -2421,16 +2421,7 @@ impl Model {
                     &self.workbook.shared_strings,
                     self.language,
                     |value| format_number(value, &format, &self.format_context()).displayed(),
-                    |text| {
-                        // TEXT() is `#VALUE!` past 255 characters, a cell shows its text whole
-                        // (unprobed with a text section; the plain text is kept).
-                        let formatted = format_text_value(text, &format);
-                        if formatted.error.is_some() {
-                            text.to_string()
-                        } else {
-                            formatted.displayed()
-                        }
-                    },
+                    |text| displayed_text_value(text, &format),
                 );
                 Ok(formatted_value)
             }
