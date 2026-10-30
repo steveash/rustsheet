@@ -90,10 +90,10 @@ class Schema(unittest.TestCase):
 
     def test_the_footer_is_accepted_once_and_only_at_the_end(self) -> None:
         self.assertTrue(merge_step.same_body("x", "x"))
-        self.assertTrue(merge_step.same_body("x" + merge_step.FOOTER, "x"))
-        self.assertTrue(merge_step.same_body(("x" + merge_step.FOOTER).replace("\n", "\r\n"), "x"))
-        self.assertFalse(merge_step.same_body("x" + merge_step.FOOTER * 2, "x"))
-        self.assertFalse(merge_step.same_body(merge_step.FOOTER + "x", "x"))
+        self.assertTrue(merge_step.same_body("x" + merge_ready.FOOTER, "x"))
+        self.assertTrue(merge_step.same_body(("x" + merge_ready.FOOTER).replace("\n", "\r\n"), "x"))
+        self.assertFalse(merge_step.same_body("x" + merge_ready.FOOTER * 2, "x"))
+        self.assertFalse(merge_step.same_body(merge_ready.FOOTER + "x", "x"))
         self.assertFalse(merge_step.same_body("x\n\nmore", "x"))
 
 
@@ -144,7 +144,7 @@ class Hub(Client):
             self.labels = [str(n) for n in action["labels"]]  # type: ignore[union-attr]
         elif kind == "comment":
             self.comments_.append(
-                {"body": str(action["body"]) + merge_step.FOOTER, "author_association": "OWNER"}
+                {"body": str(action["body"]) + merge_ready.FOOTER, "author_association": "OWNER"}
             )
         elif kind == "merge":
             self.merged = "b" * 40
@@ -320,7 +320,7 @@ class StepSim(GitHub):
         if request.method == "POST" and (m := re.fullmatch(r"issues/(\d+)/comments", path)):
             assert isinstance(request.body, dict)
             self.writes.append(request)
-            body = str(request.body["body"]) + merge_step.FOOTER
+            body = str(request.body["body"]) + merge_ready.FOOTER
             self.comments_.setdefault(int(m[1]), []).append({"body": body, "author_association": "OWNER"})
             return {}
         if request.method == "POST" and (m := re.fullmatch(r"issues/(\d+)/labels", path)):
