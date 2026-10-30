@@ -67,4 +67,4 @@ was measured first (release, 1 MiB stack): the parser alone overflows at about 2
 parentheses, 180 `ABS(` and 112 `(ABS(`, so 255 parentheses need a parser that spends less stack
 per parenthesis; syntax.md "Formula nesting depth cap" records the numbers.
 Eval delta: probes 8 cases `!EngineError` → pass (16 cells, all deviations); `make exit-owners
-MILESTONE=M2` no longer lists them; no regressions.
+MILESTONE=M2` no longer lists them; no regressions. Follow-up: T-3191 (lift the bound for parentheses).

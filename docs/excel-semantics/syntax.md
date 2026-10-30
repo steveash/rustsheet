@@ -183,7 +183,7 @@ whole in probes/deviations (decision 0168, T-3165): measured on a 1 MiB stack in
 the parser alone overflows at about 292 nested parentheses (about 3.5 KB per level, as each one
 passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`, so 255
 parentheses do not fit under a constant bound without a parser that spends less stack on a
-parenthesis. Excel's own limit on bare parentheses past 255 is unprobed.
+parenthesis (T-3191). Excel's own limit on bare parentheses past 255 is unprobed.
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");

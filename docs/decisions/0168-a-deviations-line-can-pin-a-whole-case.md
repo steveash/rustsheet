@@ -24,7 +24,7 @@
     instead of failing the case, a harness-wide policy change for eight cases.
   - *(c) Lift the bound* by making a parenthesis cost less parser stack. Not rejected, but a parser
     restructure (a nested group would have to skip the precedence chain) that this decision does not
-    wait for; lifting it makes the lines stale, and the stale report says so.
+    wait for (T-3191); lifting it makes the lines stale, and the stale report says so.
 - **Decision:** In a suite's `deviations` file (decision 0036) a line whose cell field is `*` pins
   the whole case; its pinned value reads `refused "<message>"`. When the engine refuses the case
   with an error containing `<message>`, every scored cell of the case is a deviation (its actual
@@ -36,4 +36,5 @@
   `runner.rs` scores it; reports, milestone lists and `scripts/exit_owners.py` see ordinary
   deviation cells and need no change. The eight T-3097 cases leave the probes baseline as passes
   with deviations. A whole-case line is for a resource-limit refusal only; any other refusal stays a
-  known failure.
+  known failure. The match is on the case's error text, not on a cell: a case pinned this way
+  should hold one formula that meets the limit, as the eight T-3097 cases do.
