@@ -32,9 +32,9 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::typed_input::{open_parenthesis_is_a_call, TYPED_FORMULA_DOES_NOT_PARSE};
 use crate::limits::{spill_past_grid_error, spills_past_grid};
 use crate::tailed_array::range_corners;
+use crate::typed_input::{open_parenthesis_is_a_call, TYPED_FORMULA_DOES_NOT_PARSE};
 use crate::{clock::Clock, tz::Tz, variable_stack::VariableStack};
 
 // The structure of a cell. It can be:
@@ -2242,9 +2242,9 @@ impl Model {
             // `InvalidArgument`, probes/t3113-entered-refused, t3213-typed-parse-errors), where it
             // keeps stored text as written (syntax.md "A typed formula that does not parse is
             // refused", T-3213).
-            Node::ParseErrorKind { message, .. } if self.parser.is_typed() => Err(format!(
-                "{TYPED_FORMULA_DOES_NOT_PARSE}: {message}"
-            )),
+            Node::ParseErrorKind { message, .. } if self.parser.is_typed() => {
+                Err(format!("{TYPED_FORMULA_DOES_NOT_PARSE}: {message}"))
+            }
             node => self.parser.typed_refusal().map_or(Ok(node), Err),
         }
     }
