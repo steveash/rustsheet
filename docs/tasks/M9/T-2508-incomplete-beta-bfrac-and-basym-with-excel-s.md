@@ -87,3 +87,4 @@ Notes from the opus run that claimed the task (data for the run that resumes it,
   rounded w (0.26793531745354133), or Excel does not form w1 as (0.5 - w) + 0.5 in this branch. Check the
   w2f/r2-bratio bfrac cells for which of the two holds before touching the complement. The earlier note's ...585 came
   from a different call (the scratch run gives ...587).
+- Resumed 2026-10-30 23:35 by an opus run (branch idle over 2 h).
