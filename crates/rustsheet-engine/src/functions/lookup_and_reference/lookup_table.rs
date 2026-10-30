@@ -9,7 +9,7 @@ use crate::functions::binary_search::Sequence;
 use crate::functions::criteria::{folded_units, WildcardPattern};
 use crate::functions::util::collation::{collation_key, CollationKey};
 use crate::functions::util::compare_values;
-use crate::number_format::excel_precision_key;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
@@ -195,8 +195,8 @@ impl ExactKey {
     }
 }
 
-/// A value's key under XMATCH and XLOOKUP's exact match (`compare_values` is 0): numbers on
-/// their 15-digit values, text under Excel's collation, booleans by value. Blanks and errors
+/// A value's key under XMATCH and XLOOKUP's exact match (`compare_values` is 0): numbers as
+/// exact doubles (-0 is 0; T-3132), text under Excel's collation, booleans by value. Blanks and errors
 /// have none: a blank only matches a blank lookup value and an error matches nothing.
 #[derive(PartialEq, Eq, Hash)]
 enum CollatedKey {
@@ -208,7 +208,7 @@ enum CollatedKey {
 impl CollatedKey {
     fn of(value: &CalcResult) -> Option<CollatedKey> {
         match value {
-            CalcResult::Number(x) => Some(CollatedKey::Number(excel_precision_key(*x))),
+            CalcResult::Number(x) => Some(CollatedKey::Number((x + 0.0).to_bits())),
             CalcResult::String(s) => Some(CollatedKey::Text(collation_key(s))),
             CalcResult::Boolean(b) => Some(CollatedKey::Boolean(*b)),
             _ => None,
@@ -378,7 +378,7 @@ impl SearchVector {
         let kind = value_kind(target)?;
         let equal = |index: usize| {
             self.data.values.get(index).is_some_and(|value| {
-                value_kind(value) == Some(kind) && compare_values(value, target) == 0
+                value_kind(value) == Some(kind) && compare_searched(value, target) == 0
             })
         };
         // Cells in the virtual tail are empty, so the search never enters it.
@@ -402,7 +402,7 @@ impl SearchVector {
                 hi = mid;
                 continue;
             };
-            match compare_values(&self.data.values[m], target) {
+            match compare_searched(&self.data.values[m], target) {
                 0 => {
                     // Linear in the run's length, as Excel's answer needs it.
                     let mut edge = m;
@@ -438,7 +438,7 @@ impl SearchVector {
             if value_kind(value) != Some(kind) {
                 continue;
             }
-            match compare_values(value, target) {
+            match compare_searched(value, target) {
                 0 => return Some(index),
                 c if c > 0 => best = Some(index),
                 _ => break,
@@ -465,6 +465,33 @@ impl SearchVector {
     }
 }
 
+/// How the approximate and descending searches order a value against the key: numbers as exact
+/// doubles, not at 15 digits like `compare_values` and the comparison operators, so a table number
+/// a few ULP from the key is above or below it, never equal (`MATCH(0.3,{2;0.1+0.2;0.5},1)` is #N/A;
+/// docs/excel-semantics/lookup.md "Approximate match", probes/t3073-lookup-near-equal-approximate;
+/// T-3099). Text and booleans compare as `compare_values` does.
+pub(crate) fn compare_searched(value: &CalcResult, target: &CalcResult) -> i32 {
+    match (value, target) {
+        (CalcResult::Number(a), CalcResult::Number(b)) => match a.partial_cmp(b) {
+            Some(Ordering::Less) => -1,
+            Some(Ordering::Greater) => 1,
+            _ => 0,
+        },
+        _ => compare_values(value, target),
+    }
+}
+
+/// [`compare_searched`] as an `Ordering`, for the binary modes of XMATCH and XLOOKUP, which order a
+/// blank, an error and mixed types as `CalcResult`'s `Ord` does (T-3132).
+pub(crate) fn cmp_searched(value: &CalcResult, target: &CalcResult) -> Ordering {
+    match (value, target) {
+        (CalcResult::Number(a), CalcResult::Number(b)) => {
+            a.partial_cmp(b).unwrap_or(Ordering::Equal)
+        }
+        _ => value.cmp(target),
+    }
+}
+
 /// The value a lookup searches for: a blank lookup value, or an empty value such as
 /// `IFERROR(<blank>,..)` (T-0291), is the number 0.
 fn lookup_key(target: &CalcResult) -> &CalcResult {
@@ -483,6 +510,12 @@ enum ValueKind {
     Number,
     Text,
     Boolean,
+}
+
+/// Whether the approximate search can stop on `value`: a number, text or a boolean. It skips
+/// every other value (a blank, an error) whatever it searches for.
+pub(super) fn is_searched_kind(value: &CalcResult) -> bool {
+    value_kind(value).is_some()
 }
 
 fn value_kind(value: &CalcResult) -> Option<ValueKind> {
@@ -567,5 +600,49 @@ fn offset_cell(left: &CellReferenceIndex, row: i32, column: i32) -> CellReferenc
         sheet: left.sheet,
         row: left.row + row,
         column: left.column + column,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SearchVector;
+    use crate::{calc_result::CalcResult, text::Text};
+
+    fn text(s: &str) -> CalcResult {
+        CalcResult::String(Text::from(s))
+    }
+
+    /// The exact match walks on a vector's first search and looks up its index from the second
+    /// on (`index_worthwhile`); both must fold case one character to one, as Excel does:
+    /// `İ` matches only itself, `ΟΣ`/`οσ`/`ος` are one key, the Kelvin sign is `k`
+    /// (probes/t3133-lookup-criteria-case-fold Calc!C1:C35).
+    #[test]
+    fn indexed_and_linear_exact_matches_agree_on_one_to_one_fold() {
+        let mut values: Vec<CalcResult> =
+            (0..16).map(|i| CalcResult::Number(f64::from(i))).collect();
+        let keys = [
+            "İ", "i\u{307}", "i", "ΟΣ", "ος", "\u{212A}", "k", "ẞ", "ß", "ss",
+        ];
+        values.extend(keys.iter().map(|key| text(key)));
+        for key in keys.iter().chain(&["I", "οσ", "K", "ǅ"]) {
+            let target = text(key);
+            let linear = SearchVector::new(values.clone()).exact_match(&target);
+            let vector = SearchVector::new(values.clone());
+            vector.exact_match(&target);
+            assert_eq!(vector.exact_match(&target), linear, "{key:?}");
+        }
+        let first = |key: &str| {
+            let vector = SearchVector::new(values.clone());
+            vector.exact_match(&text(key));
+            vector.exact_match(&text(key))
+        };
+        assert_eq!(first("İ"), Some(16));
+        assert_eq!(first("i\u{307}"), Some(17));
+        assert_eq!(first("I"), Some(18));
+        assert_eq!(first("ΟΣ"), Some(19));
+        assert_eq!(first("ος"), Some(19));
+        assert_eq!(first("K"), Some(21));
+        assert_eq!(first("ß"), Some(23));
+        assert_eq!(first("ǅ"), None);
     }
 }

@@ -7,3 +7,61 @@ roundtrip/formulas_math_basic/golden.xlsx	Math Tests!I23	probes/cases/t2714-mod-
 roundtrip/formulas_math_basic/golden.xlsx	Math Tests!H24	probes/cases/t2714-mod-near-smallest-normal.oracle.json	Sheet1!I131
 roundtrip/formulas_datetime/golden.xlsx	Sheet2!I23	probes/cases/t2714-mod-near-smallest-normal.oracle.json	Sheet1!I130
 roundtrip/formulas_datetime/golden.xlsx	Sheet2!H24	probes/cases/t2714-mod-near-smallest-normal.oracle.json	Sheet1!I131
+# Cached values the corpus anonymisation broke (decision 0133, T-2867). pv26_020 and its byte-identical
+# twin pv26_2_020: the anonymisation renamed the text in Summary!B17 to Company0691 but left the sheet it
+# names as ConAgra, so the shipped workbook has no Company0691 sheet. C17:O17 are INDIRECT($B17&"!Name")
+# and M23:O26 MAX/AVERAGE/MEDIAN/MIN(M7:M21) over them; the probe holds the same formulas over the same
+# B17 text, with the other rows of M7:O21 as their cached INDIRECT results. Excel gives #REF! for all.
+pv_goldens/pv26_020/golden.xlsx	Summary!C17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!C17
+pv_goldens/pv26_020/golden.xlsx	Summary!D17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!D17
+pv_goldens/pv26_020/golden.xlsx	Summary!E17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!E17
+pv_goldens/pv26_020/golden.xlsx	Summary!F17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!F17
+pv_goldens/pv26_020/golden.xlsx	Summary!G17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!G17
+pv_goldens/pv26_020/golden.xlsx	Summary!H17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!H17
+pv_goldens/pv26_020/golden.xlsx	Summary!I17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!I17
+pv_goldens/pv26_020/golden.xlsx	Summary!J17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!J17
+pv_goldens/pv26_020/golden.xlsx	Summary!K17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!K17
+pv_goldens/pv26_020/golden.xlsx	Summary!L17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!L17
+pv_goldens/pv26_020/golden.xlsx	Summary!M17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M17
+pv_goldens/pv26_020/golden.xlsx	Summary!N17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N17
+pv_goldens/pv26_020/golden.xlsx	Summary!O17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O17
+pv_goldens/pv26_020/golden.xlsx	Summary!M23	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M23
+pv_goldens/pv26_020/golden.xlsx	Summary!N23	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N23
+pv_goldens/pv26_020/golden.xlsx	Summary!O23	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O23
+pv_goldens/pv26_020/golden.xlsx	Summary!M24	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M24
+pv_goldens/pv26_020/golden.xlsx	Summary!N24	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N24
+pv_goldens/pv26_020/golden.xlsx	Summary!O24	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O24
+pv_goldens/pv26_020/golden.xlsx	Summary!M25	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M25
+pv_goldens/pv26_020/golden.xlsx	Summary!N25	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N25
+pv_goldens/pv26_020/golden.xlsx	Summary!O25	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O25
+pv_goldens/pv26_020/golden.xlsx	Summary!M26	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M26
+pv_goldens/pv26_020/golden.xlsx	Summary!N26	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N26
+pv_goldens/pv26_020/golden.xlsx	Summary!O26	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O26
+pv_goldens/pv26_2_020/golden.xlsx	Summary!C17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!C17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!D17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!D17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!E17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!E17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!F17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!F17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!G17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!G17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!H17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!H17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!I17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!I17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!J17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!J17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!K17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!K17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!L17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!L17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!M17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!N17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!O17	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O17
+pv_goldens/pv26_2_020/golden.xlsx	Summary!M23	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M23
+pv_goldens/pv26_2_020/golden.xlsx	Summary!N23	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N23
+pv_goldens/pv26_2_020/golden.xlsx	Summary!O23	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O23
+pv_goldens/pv26_2_020/golden.xlsx	Summary!M24	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M24
+pv_goldens/pv26_2_020/golden.xlsx	Summary!N24	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N24
+pv_goldens/pv26_2_020/golden.xlsx	Summary!O24	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O24
+pv_goldens/pv26_2_020/golden.xlsx	Summary!M25	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M25
+pv_goldens/pv26_2_020/golden.xlsx	Summary!N25	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N25
+pv_goldens/pv26_2_020/golden.xlsx	Summary!O25	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O25
+pv_goldens/pv26_2_020/golden.xlsx	Summary!M26	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!M26
+pv_goldens/pv26_2_020/golden.xlsx	Summary!N26	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!N26
+pv_goldens/pv26_2_020/golden.xlsx	Summary!O26	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Summary!O26
+# pv26_010 Cover!C16 is saved as <f ca="1">45678</f> with no value: the anonymisation replaced a
+# volatile formula by a literal and dropped its value. The probe cell is =45678.
+pv_goldens/pv26_010/golden.xlsx	Cover!C16	probes/cases/t2867-calipers-anonymised-inputs.oracle.json	Cover!C16

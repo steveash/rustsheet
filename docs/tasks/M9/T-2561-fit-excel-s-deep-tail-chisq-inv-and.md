@@ -4,7 +4,7 @@ title: "Fit Excel's deep-tail CHISQ.INV and GAMMA.INV kernel (T-1634 residue)"
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []
@@ -50,7 +50,7 @@ Cells:
 - gen-m9/4e55500bb8ad3cd8.case.json (2): Calc!A111, A217
 - gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A88
 - gen-m9/623663cacea53bbc.case.json (1): Calc!A98
-- gen-m9/984cba67bbe6972b.case.json (1): Calc!A13
+- gen-m9/984cba67bbe6972b.case.json (2): Calc!A13, A43 (A43 added by the gap triage of 2026-10-28: `GAMMA.INV(1E-16,ABS(TIMEVALUE("6:00")),Data!A10)`, shape 0.25, Excel 6.749697893111757E-50, ours 6.74969789311173E-50; it was attributed to no function because TIMEVALUE is not glue)
 - gen-m9/a612e89321a6df9c.case.json (2): Calc!A169, A317
 - gen-m9/a61e547a1cab994c.case.json (1): Calc!A184
 - gen-m9/a790a4d4a6a82756.case.json (1): Calc!A293
@@ -68,6 +68,15 @@ One more visibly-off deep-tail cell (gap triage 2026-10-26, `make eval` on 1c8b3
   6.436215297435568E-07 (5 ulp)
 Cells:
 - gen-m9/a5828d3925575713.case.json (1): Calc!A338
+
+One more (gap triage 2026-10-28, `make eval` on dea28aa5, excel-graph; the report attributes it to no function because
+TIMEVALUE is nested, and no task listed it):
+- gen-m9/984cba67bbe6972b Calc!A43 `=GAMMA.INV(1E-16,ABS(TIMEVALUE("6:00")),Data!A10)` = `GAMMA.INV(1E-16,0.25,1E+15)`:
+  Excel 6.749697893111757E-50, ours 6.74969789311173E-50 (4E-15 relative, visibly off). A 60-digit mpmath bisection on
+  `gammainc(0.25,0,x)/Gamma(0.25) = 1E-16` gives 6.7496978931117296E-50, which ours rounds correctly, so this is Excel's own
+  deep-tail rounding at a shape below 1, the same kind of cell as the rest of this list.
+Cells:
+- gen-m9/984cba67bbe6972b.case.json (1): Calc!A43
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-1634 residue): these 30 known-failure lines disappear from
@@ -88,3 +97,8 @@ Cells:
 Decision 0083: the cells above are visibly off, so the task is in the campaign. Its target is that
 every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the
 15th significant digit of Excel's value.
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- gen-m9/b4173fe25109a238 Calc!A252 `CHISQ.INV(1E-200,9)`: Excel 1.732023266119695e-44, ours 1.7320232661196884e-44
+- gen-m9/c2974c061384fdd9 Calc!A355 `CHISQ.INV(1E-20,10)`: Excel 0.0005210568413974334, ours 0.0005210568413974328

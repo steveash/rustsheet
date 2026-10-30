@@ -24,7 +24,7 @@ pub struct DateNames {
     pub pm: &'static str,
 }
 
-static EN: DateNames = DateNames {
+pub(super) static EN: DateNames = DateNames {
     months_short: [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ],
@@ -785,4 +785,114 @@ const LUNAR_KO_MONTHS: [&str; 12] = [
     "시월",
     "동짓달",
     "섣달",
+];
+
+/// The Hijri month names of an Arabic LCID and of an LCID with no locale under calendar digit 6,
+/// and of every section that a `B2` prefix puts in Excel's Arabic path (`B2mmmm`,
+/// `B2[$-409]mmm`): Muharram first, `mmm` the same, the ar-SA weekdays. Two-word names join with
+/// a no-break space (probes/t1613-hijri-b2, t2729-hijri-locale-tag A25-A36).
+pub(crate) static HIJRI_ARABIC: DateNames = DateNames {
+    months_short: HIJRI_ARABIC_MONTHS,
+    months: HIJRI_ARABIC_MONTHS,
+    ..AR
+};
+
+const HIJRI_ARABIC_MONTHS: [&str; 12] = [
+    "محرم",
+    "صفر",
+    "ربيع\u{a0}الأول",
+    "ربيع\u{a0}الثاني",
+    "جمادى\u{a0}الأولى",
+    "جمادى\u{a0}الثانية",
+    "رجب",
+    "شعبان",
+    "رمضان",
+    "شوال",
+    "ذو\u{a0}القعدة",
+    "ذو\u{a0}الحجة",
+];
+
+/// The Hijri names of every probed LCID but the Arabic, French and Turkish ones under calendar
+/// digit 6 or a `B2` prefix before the tag: English transliterations, `mmm` = `mmmm` and `ddd` =
+/// `dddd`, Muharram and Sunday first (`[$-60409]mmmm|dddd` of 2023-03-15 is "Sha'ban|AlArbia'a";
+/// probes/t2729-hijri-locale-tag A1-A12, A73-A79, t2729-hijri-locale-tag-names A39-A82).
+pub(crate) static HIJRI_ENGLISH: DateNames = DateNames {
+    months_short: HIJRI_ENGLISH_MONTHS,
+    months: HIJRI_ENGLISH_MONTHS,
+    days_short: HIJRI_ENGLISH_DAYS,
+    days: HIJRI_ENGLISH_DAYS,
+    ..EN
+};
+
+const HIJRI_ENGLISH_MONTHS: [&str; 12] = [
+    "Muharram",
+    "Safar",
+    "Rabi' Awwal",
+    "Rabi' Thani",
+    "Jamada El Oula",
+    "Jamada El Thaniah",
+    "Rajab",
+    "Sha'ban",
+    "Ramadan",
+    "Shawwal",
+    "Thoul Ki'dah",
+    "Thoul Hijjah",
+];
+
+const HIJRI_ENGLISH_DAYS: [&str; 7] = [
+    "AlAhad",
+    "AlEthnien",
+    "AthThulatha",
+    "AlArbia'a",
+    "AlKhamis",
+    "AlJumaa",
+    "AsSabt",
+];
+
+/// The Hijri names of a French LCID: French transliterated months (`mmm` the same) and the
+/// ordinary French weekdays (`[$-6040C]mmmm|ddd` of 2023-03-15 is "Chaaban|mer.";
+/// probes/t2729-hijri-locale-tag A13-A24, A80-A86).
+pub(crate) static HIJRI_FRENCH: DateNames = DateNames {
+    months_short: HIJRI_FRENCH_MONTHS,
+    months: HIJRI_FRENCH_MONTHS,
+    ..FR
+};
+
+const HIJRI_FRENCH_MONTHS: [&str; 12] = [
+    "Mouharam",
+    "Safar",
+    "Rabi' Aoual",
+    "Rabi' Thani",
+    "Jamada El Oula",
+    "Jamada El Thaniah",
+    "Rajab",
+    "Chaaban",
+    "Ramadan",
+    "Chaoual",
+    "Zoul Ki'dah",
+    "Zoul Hijjah",
+];
+
+/// The Hijri names of a Turkish LCID: Turkish months (`mmm` the same) and the ordinary Turkish
+/// weekdays (`[$-6041F]mmmm|ddd` of 2023-03-15 is "Şaban|Çar";
+/// probes/t2729-hijri-locale-tag-names A1-A19).
+pub(crate) static HIJRI_TURKISH: DateNames = DateNames {
+    months_short: HIJRI_TURKISH_MONTHS,
+    months: HIJRI_TURKISH_MONTHS,
+    ..TR
+};
+
+const HIJRI_TURKISH_MONTHS: [&str; 12] = [
+    "Muharrem",
+    "Safer",
+    "Rebiyülevvel",
+    "Rebiyülahir",
+    "Cemaziyelevvel",
+    "Cemaziyelahir",
+    "Recep",
+    "Şaban",
+    "Ramazan",
+    "Şevval",
+    "Zilkade",
+    "Zilhicce",
 ];

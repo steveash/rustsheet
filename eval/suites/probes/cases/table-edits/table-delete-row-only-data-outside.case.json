@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2848: when delete_row deletes sheet row 4, the only data row of Sales on S!B3:C4 (header B3:C3 Region/Qty, data row 4), what happens to the cells of that sheet row outside the table? S!E4 5 sits beside the table, S!E5 9 below E4, S!B5 'below' and S!C5 7 below the table. Sheet F holds A1 =S!E4, A3 =S!E5, A5 =S!C5, A7 =SUM(S!C4:C5), A9 =ROWS(Sales), A10 =ROWS(Sales[#All]), A11 =SUM(Sales[Qty]), each value followed by its FORMULATEXT where listed (A2, A4, A6, A8).",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B3": "Region",
+        "C3": "Qty",
+        "B4": "E",
+        "C4": 1,
+        "E4": 5,
+        "E5": 9,
+        "B5": "below",
+        "C5": 7
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:C4"
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=S!E4",
+        "A2": "=FORMULATEXT(A1)",
+        "A3": "=S!E5",
+        "A4": "=FORMULATEXT(A3)",
+        "A5": "=S!C5",
+        "A6": "=FORMULATEXT(A5)",
+        "A7": "=SUM(S!C4:C5)",
+        "A8": "=FORMULATEXT(A7)",
+        "A9": "=ROWS(Sales)",
+        "A10": "=ROWS(Sales[#All])",
+        "A11": "=SUM(Sales[Qty])"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "delete_row",
+      "sheet": "S",
+      "row": 4
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "F!A9",
+    "F!A10",
+    "F!A11"
+  ]
+}

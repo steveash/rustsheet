@@ -1,7 +1,7 @@
 //! Comma-separated lists inside an operand: function arguments and the rows
 //! of an array constant.
 
-use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{OpSum, TokenType};
 
 impl Parser {
@@ -67,7 +67,15 @@ impl Parser {
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         // The names a LET binds are in scope up to its `)`.
         let scope = self.bound_names.len();
-        let args = self.parse_function_args_in_scope(fn_name);
+        // `SINGLE(x)` and `ANCHORARRAY(x)` are the `@` and `#` operators, which Excel shows as
+        // such, so they are not counted as calls (unprobed, TODO(T-3143)).
+        let operator =
+            fn_name.eq_ignore_ascii_case("SINGLE") || fn_name.eq_ignore_ascii_case("ANCHORARRAY");
+        let args = if operator {
+            self.parse_function_args_in_scope(fn_name)
+        } else {
+            self.in_call(|parser| parser.parse_function_args_in_scope(fn_name))
+        };
         self.bound_names.truncate(scope);
         args
     }
@@ -97,8 +105,10 @@ impl Parser {
         }
         // The cursor is currently in the first argument of `fn_name`.
         self.set_argument_hint(fn_name, 1);
+        // A run before a missing first argument is kept too (`=SUM( ,1)`,
+        // probes/t2966-missing-first-arg-run, T-2966).
         if &self.lexer.peek_token() == arg_separator_token {
-            args.push(Node::EmptyArgKind);
+            args.push(self.missing_argument());
         } else {
             let t = self.parse_argument(binds_names);
             if let Node::ParseErrorKind { .. } = t {
@@ -112,11 +122,14 @@ impl Parser {
             self.lexer.advance_token();
             arg_index += 1;
             self.set_argument_hint(fn_name, arg_index);
+            // A run between two commas, or after the last one, is the missing argument's own and
+            // prints back (`=IF(1, ,2)`, `=SUM(1,` LF `)`; syntax.md "Whitespace beside a missing
+            // argument is kept", probes/t2786-whitespace-structured-refs-runs I2:I10, T-2944).
             if &self.lexer.peek_token() == arg_separator_token {
-                args.push(Node::EmptyArgKind);
+                args.push(self.missing_argument());
                 next_token = arg_separator_token.clone();
             } else if self.lexer.peek_token() == TokenType::RightParenthesis {
-                args.push(Node::EmptyArgKind);
+                args.push(self.missing_argument());
                 return Ok(args);
             } else {
                 let p = self.parse_argument(binds_names && arg_index % 2 == 1);
@@ -128,6 +141,11 @@ impl Parser {
             }
         }
         Ok(args)
+    }
+
+    /// A missing argument, with the run written in its place.
+    fn missing_argument(&self) -> Node {
+        Node::EmptyArgKind.spaced(self.run_ahead(), Run::default())
     }
 
     /// Records that the position currently being parsed *starts* argument

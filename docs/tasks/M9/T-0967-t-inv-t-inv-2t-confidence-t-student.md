@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-0969, T-1043]
+depends_on: [T-0969, T-1043, T-2511]
 ---
 
 ## Goal
@@ -43,6 +43,11 @@ directly (no `1 - p`). The last digits depend on the solver's start, step and st
 **Needs an oracle sweep (T-0018):** fit against the T-1043 Student-t sweep, never blind.
 Previous evidence from T-0925 (inverse normal): a closed-form inverse plus one Newton step regressed
 cells that the old code matched by luck; measure regressions on every attempt.
+
+Split (gap triage 2026-10-25): the centre quantiles, where a two-tailed p near 1 (or a one-tailed p near 0.5) makes
+the result a tiny t and ours cancels (`TINV(1-1E-10,5)` Excel 1.3171528710518458e-10, ours 2.356080457693621e-08), are
+owned by T-2724 (accuracy stage, 62 cells listed there, including T_DIST.xlsx D20, D62, D63 and E20 below). This task
+keeps every other cell; its acceptance counts exclude the T-2724 cells.
 
 Oracle sweep (T-1043): probes-numeric cases `m9-t-inv`, `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`; findings in docs/excel-semantics/statistics.md "Student t sweep".
 
@@ -163,6 +168,35 @@ owns the visibly-off cells for df 2 to 99998 with p/2 >= 2E-5 where Excel is wit
 quantile and ours is not (274 cells, the list is in T-2859). This task keeps the bit-level target, the cells
 T-2859 shows Excel itself is off on, and whatever T-2858 and T-2859 leave in their Outcomes.
 
+Gap triage 2026-10-27 (`make eval` on 7dba3bfe): 3 visibly-off cells that no task named. They are p in (1,2), which
+T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T.INV(0.25,df)`, `TINV(1.5,df)` and
+`-T.INV(0.75,df)`. So the miss is the central quantile itself, not the p > 1 mapping. Exact (mpmath)
+`T.INV(0.25,7)` is -0.71114177808178631: Excel is 4E-16 above it, ours 3E-16 below.
+- gen-m9/5395b8a427764a3f Calc!A347 `=T.INV.2T(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
+- gen-m9/787ba8d801105a60 Calc!A265 `=TINV(1.5,7)`: Excel -0.7111417780817859, ours -0.7111417780817866
+- gen-m9/1db18890916ee643 Calc!A106 `=TINV(1.5,10)`: Excel -0.6998120613124317, ours -0.6998120613124311
+
+Sequencing (T-0098, 2026-10-28): waits on T-2511, which inverts the ported incomplete beta for T.INV; fit the
+quantile on the ported kernel, not the current one, so the work is not done twice.
+
+T-3061 (gap triage 2026-10-28) takes the cells away from the centre where Excel's quantile is SQRT(df*(1/y-1)) of the
+rounded beta quantile, at df 1000 to 1E10 and wherever the one-sided q is at most 0.45 (statistics.md "Student-t
+quantile is SQRT(df*(1/y-1)) of the rounded beta quantile"). It does not depend on T-0969. Rescore this task's
+cells after it lands.
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/334f3dc9ca937f10.case.json: Calc!A252
+  - gen-m9/91e167cd8d7eb652.case.json: Calc!A226
+  - gen-m9/a2262ea466fcc142.case.json: Calc!A7
+  - gen-m9/a63d1c7d6f96c56d.case.json: Calc!A370
+  - gen-m9/5919660b7bb4d195.case.json: Calc!A395
+  - gen-m9/5be29fa316931f05.case.json: Calc!A127
+  - gen-m9/afc00c8b70e78baf.case.json: Calc!A188, A371
+  - gen-m9/ede0323c389fc703.case.json: Calc!A186
+  - gen-m9/1b31092a0d79e5f1.case.json: Calc!A57
+  - gen-m9/c2684066d8df263e.case.json: Calc!A64
+  - gen-m9/ee2497a5e683c5d9.case.json: Calc!A319
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 269 known-failure lines (35 from T-2255, 234 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -188,3 +222,6 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - CONFIDENCE.T: 66 cells (13-14 digits right 31, 10-12 29, 6-9 3, fewer or 0 vs nonzero 3); most in `probes-numeric/m9-confidence-t.case.json` 30; `ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx` 18. e.g. `CONFIDENCE.T(0.1,1,2)` Excel 4.464496510753559, ours 4.464496510753552
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
+From the parked T-2695: CONFIDENCE.T gen-m9/85f48d5cdfb24555 Calc!A372 `CONFIDENCE.T(0.3,0.3,29)`, 0.0588276537815129 expected, 0.05882765378149652 today.

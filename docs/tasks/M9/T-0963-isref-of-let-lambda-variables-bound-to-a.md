@@ -3,7 +3,7 @@ id: T-0963
 title: "ISREF of LET/LAMBDA variables bound to a reference (ISREF.xlsx A19-A26)"
 milestone: M9
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -21,9 +21,15 @@ MIN_MAX_extras.xlsx A14-A16 pass). What remains is confirming the five ISREF.xls
 the workbook; this may then shrink to a check-and-close.
 
 ## Acceptance criteria
-- [ ] The five ISREF.xlsx cells above pass; `ISREF(x)` for a variable bound to a value is still FALSE.
-- [ ] 0 eval regressions, `make check` green.
-- [ ] `make check` green; reviewers approve.
+- [x] The five ISREF.xlsx cells above pass; `ISREF(x)` for a variable bound to a value is still FALSE.
+- [x] 0 eval regressions, `make check` green.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Check-and-close: no code change. T-0223 already made LET/LAMBDA variables hold the reference they are bound
+to, and T-0965 added ironcalc-calc/INFORMATION/ISREF.xlsx to the suite. `rustsheet-eval show --all` on it:
+43/43 pass, including A19, A20, A23, A24, A26 (TRUE) and the value-bound controls A21, A22, A25 (FALSE).
+references.md now cites the workbook. Eval delta: fixed 0, new coverage 0, regressions 0.

@@ -7,81 +7,80 @@ merged since its last run.
 
 **Progress dashboard:** [docs/progress.md](progress.md), regenerated daily by the steward.
 
-## Snapshot — 2026-10-26, second run (M2 is current)
+## Snapshot — 2026-10-30, 05:47 UTC run (M2 is current)
 
-This is the scheduled run at 18:47 UTC. It follows #1896, this morning's 05:47 UTC run, and covers the 52 commits merged to `main` since then, through 96449aaf, including the two this run merged.
+This is the scheduled 05:47 UTC run (it started at 05:50 UTC). It follows #2343, yesterday's 18:47 UTC run. It covers the 50 commits merged to `main` after 91be853a (#2343's eval head) up to b069a12f (T-2827, #2387), the head when this run started.
 
-`make eval` ran on 5dc93dd8, this branch merged with `main` at 96449aaf, so it includes everything this run merged. #1953 (T-2782) merged after it and only removes known failures: 6 M0–M2 cells (t2769 S!C17; t2776-shapes C13, C19, C20, C22, E6). The lock and dashboard predate it, and the next run lowers the lock further.
-- All 17 suites were fetched and scored. On the first pass (on 7ffb09ee), calipers, corpus-bench and poi had not been fetched; I fetched them and re-ran. Timeouts: 0 in every suite.
-- `make eval-lower-visible-lock` shows 0 regressions in every gated suite and lowers the visible-parity lock from 4,448 to 3,581 (decision 0093).
-- I first lowered the lock to 3,541 on 7ffb09ee. reviewer-excel-fidelity pointed out that #1826, merged by this run, adds 43 visibly-off probe cells, so that lock would fail on the merged head. CI confirmed it. I merged `main` in under the merge lock and re-ran the eval.
+`make eval` ran on b069a12f with a clean tree.
+- All 17 suites were scored. calipers, corpus-bench and poi were again not fetched in this container, so I ran `rustsheet-eval fetch` first. Timeouts: 0 in every suite.
+- Eval gate: `make eval-lower-visible-lock` shows 0 regressions in every gated suite and 1 fixed (poi `FormulaEvalTestData_Copy.xlsx` EverythingTests!E1056; this PR drops its baseline line). It lowered the visible-parity lock from 3,511 to 3,076 (decision 0093).
 - The dashboard has this run's numbers (`make progress-report`; the judgment blocks pass `--check`).
-- Since the last complete run, Phase 1 functions rose from 324 to 378 of 506. Visibly-off type, error or text cells fell from 20,039 to 1,484, and visibly-off numbers from 131,347 to 105,122. VLOOKUP is now Exact.
 
-CI on `main` is green: every push run since #1896 succeeded or was cancelled by the next push, and none failed.
+CI on `main` is green. Of the 42 push runs since #2343's eval, 40 succeeded and 2 were cancelled by the next push. None failed. The run on b069a12f succeeded.
 
-**M2 is still current: M0–M2 probes (decision 0051) have 18 known failures, 11 of them visibly off.** Every one has an open M2 owner, checked by hand by the planner and me.
-- `probes/t2776-formula-text-whitespace-shapes` has 8 cells and `t2769-formula-text-whitespace` S!C17 has 1. T-2782 (#1953, merged after the eval) fixed 6 of them; T-2783 and T-2784 own the rest.
-- `probes/t2776-ws-after-bang` S!A1 and S!C1. Owner: T-2785.
-- `probes/t2756-roundup-smallest-normal-threshold` Sheet1!A52–A58 are within 15 digits but not bit-exact. Owner: T-2771. The planner now names each cell in it, so the exit-owner rule can see them.
-- The new failures come from the SPEC-0023 whitespace probes (T-2776). T-2781 (#1925) fixed last run's two visibly-off cells, t2723 S!C24 and S!C25.
+Nightly fuzz: run 27 (2026-10-30 03:41 UTC) **passed**, the first full night since T-3163 (#2376) capped the formula seeds and minimizes the corpus. Run 26 (a manual dispatch on T-3163's branch) passed too.
+
+**M2 is still current: M0–M2 probes (decision 0051) have 290 known failures, all visibly off (352 last run).** These are new coverage, not regressions. `make exit-owners MILESTONE=M2` reports 0 unowned.
+- `probes/t3137-date-parts-near-midnight` (T-3137, #2355): 223 cells. Owner: T-3176 (functions-date), open as #2360 and marked `ready-to-merge`.
+- `probes/t3154-collation-accent-weights` and `-pairs` (T-3154, #2365): 61 cells. Owners: T-3181 and T-3202 (engine), with probes T-3201 and T-3203 (research).
+- Five `probes/t2949-*` cases (T-2949, #2348): 6 cells. Owner: T-3169 (engine, branch pushed 05:34 UTC).
+- T-3151 (#2335) closed last run's 344 criteria cells, and T-3165 (#2372) and T-3189 (#2378) pinned the paren-depth and sign-run cases as decision-0036 deviations; T-3191 (#2383) then made runs of directly nested parentheses parse in a loop, so Excel's 256 fit.
 - The frozen M1 list has 0 known failures (89/89 cases).
-- `make exit-owners MILESTONE=M2` still cannot run, so the planner filed **T-2822** (harness, M2) to add an M2 exit row. `make exit-owners MILESTONE=M5` reports 0 unowned. #1826's 43 new FORMULATEXT cells are M5 cells, owned by T-2726.
-- `make exit-owners MILESTONE=M6` reported 11 unowned cells: the probes/t2065-lift-* cells. T-2065 had handed them to T-2063 and T-2064, which were already done. I filed **T-2823** (COUNTIFS, AVERAGEIF, MAXIFS: 6 cells) and **T-2824** (STDEV.S, VAR.S, SUMSQ, AVERAGEA, MAXA: 5 cells, after T-2816). It now reports 0.
 
 Hygiene:
 - lint-debt: 91 allow entries (= last run);
-- duplicated lines: 2,931 (was 2,951);
+- duplicated lines: 2,931 (`check_duplication.py` = committed baseline);
 - oversized files: 8 (= last run).
-- `check_duplication.py` and `check_file_size.py` only note that they could be ratcheted. I didn't commit the `--update`: quality/ is a protected path, and the governance gate wants a decision record for it.
 
-Merged since #1896: 52 commits through 96449aaf. None was reverted, and all came through PRs.
-- Three were squash-merged without the `(#n)` suffix in the title: a855178f (#1936, T-1883), 6340da61 (#1935, T-2687) and f6f9865c (#1951, T-2691).
-- Task ids merged (50): T-0474, T-0480–T-0482, T-0954, T-1366, T-1592, T-1671, T-1883, T-1923, T-1924, T-2065, T-2391, T-2432, T-2433, T-2435, T-2472, T-2503, T-2523, T-2529, T-2535, T-2537, T-2575, T-2584, T-2618, T-2621, T-2629, T-2634, T-2664, T-2671, T-2674–T-2677, T-2687, T-2689, T-2691, T-2696, T-2700, T-2712, T-2727, T-2728, T-2746, T-2757, T-2769, T-2776, T-2781, T-2793, T-2795, T-2810.
-- Task-only PRs: #1913, #1934.
+Merged since #2343's eval (91be853a): 50 commits up to b069a12f. None were reverted. All were committed by GitHub, and each matches a merged PR:
+- With the `(#n)` suffix: #2331–#2337, #2340, #2342, #2343, #2345–#2349, #2351–#2357, #2359, #2361–#2370, #2372, #2375, #2376, #2378, #2380–#2385 and #2387 (#2343 is the last steward run).
+- Without it, matched by title: T-2848 (8dee5096), T-3148 (66409433) and T-3132 (bf57806f).
+- Task-only PRs among them: #2340, #2349, #2356, #2361, #2362, #2368 and #2384.
 
-Blocked: 33 (= last run, counted by front matter). None was newly blocked or unblocked on `main`. T-2803 (#1938) and T-2778 (#1917) are blocked on their draft branches.
+Blocked: 40 on `main` (38 last run). #2368 blocked three M14 desktop tasks filed as todo (T-1928, T-2716, T-2856; decision 0039), and T-2951 left the list (done). No blocked task's blocker has cleared: the others wait on Phase 2 or 4, a time-box, T-3113 (T-3102) or the owner's merger routine (T-2991). No task on `main` is `Blocked because: review-round limit`.
 
-Open PRs: 17 at 19:42 UTC. Seven non-draft PRs were older than 24 h.
-- **#1834 (T-2618, close as already fixed by T-2493)**: a task-only PR. I checked its claim: the six gen-m9 and six probe cells are absent from the baselines. reviewer-security, reviewer-architecture and reviewer-quality all returned APPROVE. I merged `main` in under the merge lock; CI was green on 842a86c3 and the branch was up to date, so I **merged** it as 33e9f9ca.
-- **#1826 (T-2529, FORMULATEXT probe)**: all four reviewers returned APPROVE, but the first merge of `main` turned the eval gate red. Calc!O1, `FORMULATEXT(INDIRECT({"Data!A2"}))`, regressed. Since T-2577 (#1894), a 1x1-array INDIRECT is a one-element array of references, as Excel has it, and FORMULATEXT does not yet read it per element. That is T-2726's gap. I released the lock, rebuilt the probes baseline from `main`'s (43 new-coverage, 0 regressions) and corrected the miss counts in references.md, T-2529 and T-2726 (reviewer-excel-fidelity caught my first breakdown). All four reviewers re-approved a8776648. I took the lock again, merged `main` in, and CI was green on that head, so I **merged** it as 96449aaf.
-- **#1817 (T-2469)**: not merged. It conflicts with `main` (statistical sources and two baselines), and #1949 now implements the same task from a fresh, live branch. Per decision 0050, whichever merges first survives, and the other is closed after that. I commented on the PR.
-- **#1811 (tasks: refill opus queue)**: not merged. It conflicts in statistics.md, and its `tasks/*` branch is outside the orphan rules. I commented on the PR.
-- **#1769 (T-2504)**: a `claude/*` branch from an interactive session, so outside the orphan rules. It has had no activity since 2026-10-25.
-- **#1727 (T-2622)** and **#1718 (T-2427)**: unchanged since this morning's REQUEST_CHANGES verdicts and blocker comments. Neither branch has moved.
-- #1583, #1658, #1767, #1885, #1917 and #1938 are drafts whose tasks are blocked. #1953 (T-2782) is a draft handed off to opus.
-- No task is `Blocked because: review-round limit`.
+Open PRs: 23 at 06:05 UTC (before this PR), after this run closed one. Non-draft PRs older than 24 h:
+- **#2236 (T-3050)**: closed as a duplicate. T-3050 merged through #2364, and the branch had been idle since 2026-10-28 23:01 UTC.
+- **#2231** (gap-triage task files on an `agent/functions-stat/tasks-*` branch): outside the orphan rule, and its ids T-3076 and T-3077 now name different tasks on `main` (#2353, #2370). Commented the blocker (renumber with `make new-task`).
+- **#2224 (T-2800)**: a duplicate of #2377 (T-2800 v2, marked `ready-to-merge`). It is closed once #2377 merges (the orphan rule's duplicate clause).
+- **#1998 (T-2507)**: still `status: blocked` on its branch, so the orphan rule does not apply.
+- **#2005, #2037 and #2300**: task-only PRs (`tasks/*` and `agent/functions/tasks-*` branches), outside the orphan rule (decision 0050). #2300 is clean, approved by its own panel and idle since 2026-10-29 12:05 UTC.
+- #1658, #1885, #1917, #2055 and #2104 are drafts. #2324 (T-3123, opened 2026-10-29 15:56 UTC) reaches 24 h after this run; the rest were opened in the last 24 h, eight of them marked `ready-to-merge` (#2344, #2350, #2358, #2360, #2371, #2374, #2377, #2386).
 
 Queues:
-- `make ready-tasks LANE=functions` printed 26 ready, so the gap-triager did not run. `TIER=sonnet` printed 47 (≥ 10).
-- engine and research print 0 ready, because their lanes are busy (T-2782 and T-1943 branches moved within 2 h). Their M2 work is queued: T-2783, T-2784, T-2785 and T-2771. api printed 2, harness 10, quality 4 and perf 21.
-- The planner ran for M2. It filed T-2822 and named T-2771's cells.
+- `make ready-tasks LANE=functions` printed 0 ready, but only because every functions-* lane is busy (agent branches pushed in the last 2 hours, e.g. T-3120, T-2528, T-2106). Ignoring those claims, 134 functions tasks are ready, so the gap-triager did not run. `TIER=sonnet` printed 30 (≥ 10).
+- engine, harness and research printed 0 ready for the same reason (T-3169, T-3139 and T-3201 branches). Ignoring claims their M2 queues hold 4, 13 and 18 ready tasks, so the planner did not run. api printed 9, quality 6 and perf 15.
 
-Upstream IronCalc: 5 new commits since 9cfbdfce, triaged through de6545ab (UPSTREAM.md).
-- Filed **T-2819**: take the Excel-authored BASE_DECIMAL.xlsx (b716e550; f2f0b089 only reformats its test).
-- Filed **T-2820**: take the Excel-authored NOT.xlsx (de6545ab).
-- 7ec21c74 (NOT lifts over arrays) is already ours (T-0225, T-0260).
-- ce346b2f (displace rows and columns in one go) is a structural-edit refactor for speed with no behaviour change, so no port task (perf is Phase 2).
+Upstream IronCalc: `scripts/upstream-log.sh` listed no commit since 85ddea84, so nothing to port.
+
+Issues: the one open issue, #2277, already has its task (T-0496, done in #2293).
+
+Merge mode: `shadow` on `main`. `make merge-train-stats` (T-3076, #2353) now exists, so the daily check ran (window 2026-10-29 06:02 to 2026-10-30 06:02 UTC; in `shadow` mode the numbers are only reported):
+- 114 PRs merged (4.75 an hour, peak 9). Merge latency p90 5.1 min at 3-6 merges an hour and 4.0 min above that. The lock was held 86% of the time; its wait p90 was 54.3 min.
+- **Stranded: 7 PRs** marked `ready-to-merge` and unmerged after 2 h (#2344, #2350, #2358, #2360, #2371, #2374, #2377). In `shadow` mode their workers merge them by the per-PR lock flow; in `train` mode this would trigger the emergency flip to `lock`.
+- **0 shadow trains** on `merge-train/shadow`, so 0 predictions, a red-train rate of n/a, 0 bisection runs and 0 tree-check failures. T-2991's bar is not met (0 scored trains, 0% agreement). Judgment: no merger routine is running yet (owner step (1) under "Needs owner"), so `shadow` mode is gathering no evidence.
+- `main`: 0 red `ci.yml` push runs.
 
 Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-graph OK).
-- probes: 6 pending, 0 written, 4 failures. `t2065-lift-large`, `-median` and `-small` never open a session on Excel for the web (retries exhausted), as T-2065 found; they are T-1075 item 18 (M14). `typed-if-one-argument` (T-1990) still gets 501 `FileCorruptTryRepair`. The other 2 pending cases are the unfillable M10 locale cases.
-- ironcalc-calc's 1 pending case is Excel-authored, and poi's 205 are web-vs-desktop conflicts (decision 0019), so neither was refilled. calipers (283 pending) and corpus-bench (592) are Excel-saved workbooks scored from their own cached values (`use_cached_values`), so an oracle fill does not apply to them.
+- probes: the same 4 pending cases as last run. `rustsheet-oracle fill -b excel-graph --suite probes` wrote 0 sidecars: Excel for the web refused t0481-curly-quote-names-c and typed-if-one-argument again, and the other two are known unfillable (T-1075).
+- As before, ironcalc-calc's 1 pending case is Excel-authored, and poi's 205 are web-vs-desktop conflicts (decision 0019), so I refilled neither. calipers (283 pending) and corpus-bench (592) are scored from their own cached values.
 
 Spot-audit: the last was 2026-10-25 (#1736), so none is due. The next is on or after 2026-11-01.
 
 **Critical lane:** engine, research, harness
 
 (Ordered list read by both tier workers, which then fall back to `functions`. The current milestone is M2.
-- engine: T-2783, T-2784 and T-2785 own the visibly-off M0–M2 cells left after T-2782 (#1953, merged after the eval).
-- research: T-2771 owns the last 7 (A52–A58, bit-level).
-- harness: T-2822, the M2 exit row that lets `make exit-owners` check M2.
-- api and quality have no M2 work. perf stays out: Phase 2.)
+- engine: T-3181 and T-3202 (collation) and T-3169 (whitespace shapes) own 67 of the 290 M0–M2 cells. The other 223 are T-3176's (functions-date, in review).
+- research: the collation probes T-3201 and T-3203 feed T-3181's decision.
+- harness: the merge-train rollout (SPEC-0027; shadow mode is on) and the M2 generator work.
+- api and quality have no M2 work on the critical path. perf stays out: Phase 2.)
 
 ## Needs owner
 
-- **Direct pushes to `main`** (2026-10-18, continuing 2026-10-19). Session `01Xbmds2…` has now pushed fifteen T-1778 commits straight to `main` with no PR (6f85cc9 … 892a53ca reported last run; fc3f993d, c00142bb, 0b5ce7a4, 36217c63, 756f849f, 37d303dd, 32ac084d and c763916b since), so the reviewer agents never saw them. CI passed on each and nothing needs reverting. New this run: **32ac084d edits a protected path, `.claude/skills/excel-probe/SKILL.md`**, without the decision record the governance gate demands of a PR. It is a two-line pointer to the new `docs/research/excel-kernel-playbook.md`, and both read as benign research guidance. Still, agent instructions changed with no review. Recommended fix: a branch ruleset on `main` that requires a pull request (the steward and workers already merge through PRs, so nothing changes for them). If these pushes were your own interactive work, remove this item. Update 2026-10-20: no direct push to `main` since the last run; all 109 commits came through PRs. Update 2026-10-25: still none; all 221 commits since 2026-10-22 came through PRs, and so did the 81 since #1736. Update 2026-10-26 (18:47 UTC run): still none; all 52 commits since #1896 came through PRs.
-- **Missed steward runs** (2026-10-25). There is no steward snapshot or PR for 2026-10-23 or 2026-10-24, so this snapshot covers three days. Please check that the daily steward routine fired on those days. Update (second 2026-10-25 run): a scheduled steward firing ran today at 18:47 UTC. SPEC-0022 notes that #1736 was probably not a scheduled run. Update 2026-10-26: the scheduled run fired again at 05:47 UTC. A second steward firing ran at 18:47 UTC (this run).
-- **Steward routine out of sync with routines.md** (2026-10-26). This 18:47 UTC run's stored prompt is an older text than "Prompt — steward (daily)" in docs/process/routines.md. It lacks the progress-dashboard step (`make eval-lower-visible-lock`, `make progress-report`, the `progress-report` skill) and asks for per-suite numbers in docs/status.md, which decision 0118 moved to the dashboard. I followed routines.md and the `steward` skill. Also, routines.md lists one daily steward run at 05:47 UTC, but steward firings arrive at both 05:47 and 18:47. Please update the routine prompt to routines.md's text, and either delete the second schedule or add it to routines.md (agents never edit routines).
+- **Direct pushes to `main`** (2026-10-18, continuing 2026-10-19). Session `01Xbmds2…` has now pushed fifteen T-1778 commits straight to `main` with no PR (6f85cc9 … 892a53ca reported last run; fc3f993d, c00142bb, 0b5ce7a4, 36217c63, 756f849f, 37d303dd, 32ac084d and c763916b since), so the reviewer agents never saw them. CI passed on each and nothing needs reverting. New this run: **32ac084d edits a protected path, `.claude/skills/excel-probe/SKILL.md`**, without the decision record the governance gate demands of a PR. It is a two-line pointer to the new `docs/research/excel-kernel-playbook.md`, and both read as benign research guidance. Still, agent instructions changed with no review. Recommended fix: a branch ruleset on `main` that requires a pull request (the steward and workers already merge through PRs, so nothing changes for them). If these pushes were your own interactive work, remove this item. Update 2026-10-20: no direct push to `main` since the last run; all 109 commits came through PRs. Update 2026-10-25: still none; all 221 commits since 2026-10-22 came through PRs, and so did the 81 since #1736. Update 2026-10-26 (18:47 UTC run): still none; all 52 commits since #1896 came through PRs. Update 2026-10-27: still none; all 41 commits since #1954 came through PRs. Update 2026-10-27 (18:47 UTC run): still none; all 64 commits since #2007's eval were merged through GitHub. Update 2026-10-28 (18:47 UTC run): still none; all 65 commits since #2152's eval were committed by GitHub. Update 2026-10-29: still none; all 53 commits since #2216's eval match a merged PR. Update 2026-10-29 (18:47 UTC run): still none; all 68 commits since #2268's eval match a merged PR. Update 2026-10-30: still none; all 50 commits since #2343's eval match a merged PR.
+- **Missed steward runs** (2026-10-25). There is no steward snapshot or PR for 2026-10-23 or 2026-10-24, so this snapshot covers three days. Please check that the daily steward routine fired on those days. Update (second 2026-10-25 run): a scheduled steward firing ran today at 18:47 UTC. SPEC-0022 notes that #1736 was probably not a scheduled run. Update 2026-10-26: the scheduled run fired again at 05:47 UTC. A second steward firing ran at 18:47 UTC. Update 2026-10-27: the 05:47 UTC run fired. The 18:47 UTC run fired too. Update 2026-10-28: both fired (05:47 and 18:47 UTC). Update 2026-10-29: the 05:47 UTC run fired. The 18:47 UTC run fired too. Update 2026-10-30: the 05:47 UTC run fired.
+- **Steward routine out of sync with routines.md** (2026-10-26). This 18:47 UTC run's stored prompt is an older text than "Prompt — steward (daily)" in docs/process/routines.md. It lacks the progress-dashboard step (`make eval-lower-visible-lock`, `make progress-report`, the `progress-report` skill) and asks for per-suite numbers in docs/status.md, which decision 0118 moved to the dashboard. I followed routines.md and the `steward` skill. Also, routines.md lists one daily steward run at 05:47 UTC, but steward firings arrive at both 05:47 and 18:47. Please update the routine prompt to routines.md's text, and either delete the second schedule or add it to routines.md (agents never edit routines). Update 2026-10-27: today's 05:47 UTC firing carries the current routines.md text word for word, so only the 18:47 firing is out of date. Update (18:47 UTC run): this firing now carries the routines.md text word for word as well. What remains is that routines.md lists one daily steward run, but the steward fires at 05:47 and 18:47 UTC: delete the second schedule or add it to routines.md. Update 2026-10-28 (18:47 UTC run): this firing's prompt again matches routines.md word for word; the second schedule is still unlisted there. Update 2026-10-29 (05:47 UTC run): #2252 (T-2996) added the merge-train clauses to the steward prompt in routines.md, so this firing's prompt is now the older text. That is expected until owner step (3) of the merge-train item below, which waits on T-2989 (todo); the mode is still `lock`, so nothing is missed. Update 2026-10-29 (18:47 UTC run): this firing also carries the older text (no issue-sweep step 8, no `train`-mode clauses or step 9). T-2989 merged as #2332 during this run, so owner step (3) below is now due; until then I followed the `steward` skill on `main`, which covers both. Update 2026-10-30 (05:47 UTC run): this firing also carries the older text (no issue-sweep step 8, no `train`-mode clauses or step 9). I followed the `steward` skill on `main`, which covers both, and did the issue sweep (nothing to do).
+- **Merge-train owner steps** (2026-10-29, T-2996, SPEC-0027 "Owner steps"). Nothing merges through the train until T-2991 sets `train` mode; `scripts/merge_train.toml` says `shadow` since T-2989 (decision 0164). (1) Create the routine **rustsheet merger** in claude.ai → Code → Routines: repository `steveash/rustsheet` attached with GitHub access, "new session each run", Sonnet 5.5, schedule `5,35 * * * *` (UTC), notifications off, prompt "Prompt — merger" in docs/process/routines.md. In `lock` mode it stops at once. (2) In the `main` ruleset, add the required checks `changes (docs-only?)`, `hygiene (ratchets, deny, machete, typos, governance)`, `rust (fmt, clippy, test)`, `eval (Excel-compatibility gate)` and `python (tools + bindings)`; leave "Require branches to be up to date before merging" and "Allow auto-merge" off. (3) **After T-2989 merges**: update the two worker routines and the steward routine to their prompts in docs/process/routines.md. (4) Optional: a ruleset that restricts `merge-train/*` branches to the owner account. Update 2026-10-29 (18:47 UTC run): **T-2989 merged (#2332), so step (3) is due now**: update the two worker routines and the steward routine to their prompts in docs/process/routines.md. `scripts/merge_train.toml` on `main` now says `shadow` (trains are built and tested on `merge-train/shadow`; nothing merges through them). Update 2026-10-30: step (3) is still due (the 05:47 UTC steward firing still has the older prompt); the mode is `shadow`, so nothing breaks until `train` mode (T-2991). `make merge-train-stats` shows 0 shadow trains in the last 24 h, so step (1), the merger routine, is what T-2991's evidence now waits on. This run also removed stale duplicate copies of these four items that an earlier merge had left below them.
 
 excel-desktop needs are not owner items (decision 0039): T-1016, T-1051 and the other desktop tasks wait in M14 (Phase 4), tracked by T-1074 and T-1075.
 

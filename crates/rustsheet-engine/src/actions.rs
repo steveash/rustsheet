@@ -4,14 +4,14 @@ use crate::cut_paste::cf_sqref_anchor;
 use crate::expressions::parser::stringify::{
     to_localized_string, to_string_displaced_keeping, DisplaceData, Displacement,
 };
-use crate::expressions::parser::Parser as ExprParser;
+use crate::expressions::parser::{Node, Parser as ExprParser};
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
+use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
 use crate::pivot::PivotLines;
 use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
-use crate::{formula_cells::written_formula, language::get_default_language};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
 /// that links follow their cells when rows or columns are inserted, deleted or
@@ -369,7 +369,7 @@ impl Model {
             .cell(row, column)
             .and_then(|c| c.get_formula())
         {
-            let node = &written_formula(&self.parsed_formulas[sheet as usize][f as usize]).clone();
+            let node = &Node::clone(self.parsed_formulas[sheet as usize][f as usize].written());
             let cell_reference = CellReferenceRC {
                 sheet: self.workbook.worksheets[sheet as usize].get_name(),
                 row,
@@ -614,9 +614,9 @@ impl Model {
                 "Cannot insert columns because that would break an array formula".to_string(),
             );
         }
+        self.refuse_table_off_sheet(sheet, column, column_count, false)?;
         // check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_column = dimensions.max_column + column_count;
+        let last_column = self.workbook.worksheet(sheet)?.dimension().max_column + column_count;
         if last_column > LAST_COLUMN {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a row"
@@ -999,9 +999,9 @@ impl Model {
         if !self.can_insert_rows(sheet, row, row_count)? {
             return Err("Cannot insert rows because that would break an array formula".to_string());
         }
+        self.refuse_table_off_sheet(sheet, row, row_count, true)?;
         // Check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_row = dimensions.max_row + row_count;
+        let last_row = self.workbook.worksheet(sheet)?.dimension().max_row + row_count;
         if last_row > LAST_ROW {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a column"
@@ -1106,6 +1106,10 @@ impl Model {
         }
         if !self.can_delete_rows(sheet, row, row_count)? {
             return Err("Cannot delete rows because that would break an array formula".to_string());
+        }
+        if let Some(area) = self.last_data_row(sheet, row, row_count) {
+            // A table keeps its last data row, cleared (Model::last_data_row, T-2338).
+            return self.range_clear_contents(&area);
         }
         self.displace_pivots(sheet, PivotLines::Rows, row, -row_count)?;
         self.reset_dynamic_array_spills(sheet)?;

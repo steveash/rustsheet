@@ -292,17 +292,72 @@ def exit_measures(milestone: str, row: dict[str, Any]) -> str:
     def met(key: str) -> str:
         return _verdict(_optional(row, key, where, boolean=True))
 
+    def shown(count_key: str, met_key: str) -> str:
+        """Counts without a verdict: not one of the milestone's criteria (coverage for M2,
+        decision 0135; coverage and ironcalc-calc for M7, decision 0140)."""
+        required = get(count_key) is None or field(row, met_key, where) is not None
+        return met(met_key) if required else "not required"
+
     exited = "**exit met**" if flag(row, "exit", where) else "**exit not met**"
-    return "; ".join(
-        [
-            exited,
-            f"coverage {_num(get('covered'))}/{_num(get('functions'))} ({met('coverage_met')})",
-            f"generated suite {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
-            f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})",
-            f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off ({met('calc_met')})",
-            f"probes {_num(get('probe_visibly_off'))} visibly off ({met('probes_met')})",
-        ]
+    # The first required suite is the generated one but for M11's corpus-bench (decision 0146).
+    suite = row.get("gen_suite") or ""
+    label = suite if suite and suite != f"gen-{milestone.lower()}" else "generated suite"
+    measures = [
+        exited,
+        f"coverage {_num(get('covered'))}/{_num(get('functions'))} ({shown('covered', 'coverage_met')})",
+    ]
+    # A row that requires no suite (M9, decision 0146 item 3) has an empty `gen_suite`.
+    if "gen_suite" in row and not suite:
+        measures.append("no suite required")
+    else:
+        measures.append(
+            f"{label} {_num(get('gen_visibly_off'))} visibly off of {_num(get('gen_scored'))}, "
+            f"allowance {_num(get('gen_allowance'))} ({met('gen_met')})"
+        )
+    # Only M10 reads the generated suite's displayed text: none of its items may fail (decision
+    # 0146 item 4(a)); its verdict is the suite's `gen_met`.
+    if row.get("gen_text_items") is not None:
+        measures.append(
+            f"{label} text {_num(get('gen_text_failing'))} failing of {_num(get('gen_text_items'))}"
+        )
+    # The other required suites (M1's smoke, M8's gen-m8b and poi subset), each with its own
+    # floor and rate; the poi subset also counts the cases that did not run (decision 0146).
+    for i, more in enumerate(row.get("more_suites") or []):
+        mwhere = f"{where} more_suites[{i}]"
+        blocked = len(more.get("blocked_cases") or [])
+        measures.append(
+            f"{_text(more, 'name', mwhere)} {_num(_optional(more, 'visibly_off', mwhere))} visibly off of "
+            f"{_num(_optional(more, 'scored', mwhere))}, allowance {_num(_optional(more, 'allowance', mwhere))}"
+            f"{f', {blocked:,} cases blocked' if blocked else ''} "
+            f"({_verdict(_optional(more, 'met', mwhere, boolean=True))})"
+        )
+    # M9's ironcalc-calc is a rate with an allowance (decision 0146 item 3).
+    calc_of = (
+        f" of {_num(get('calc_scored'))}, allowance {_num(get('calc_allowance'))}"
+        if row.get("calc_allowance") is not None
+        else ""
     )
+    # M10's probe row also needs no failing text item (decision 0146 item 4(b)).
+    probe_text = (
+        f", text {_num(get('probe_text_failing'))} failing of {_num(get('probe_text_items'))}"
+        if row.get("probe_text_items") is not None
+        else ""
+    )
+    measures += [
+        f"ironcalc-calc {_num(get('calc_visibly_off'))} visibly off{calc_of} "
+        f"({shown('calc_visibly_off', 'calc_met')})",
+        f"probes {_num(get('probe_visibly_off'))} visibly off{probe_text} ({met('probes_met')})",
+    ]
+    # Only M9 requires every function at the Phase 1 rate (decision 0146 item 3).
+    if row.get("rate_functions") is not None or row.get("rate_met") is not None:
+        measures.append(
+            f"functions at the Phase 1 rate {_num(get('below_rate'))} below of "
+            f"{_num(get('rate_functions'))} ({met('rate_met')})"
+        )
+    # Only a milestone with the criterion (M7, decision 0140) reports spill extents.
+    if row.get("extent_failures") is not None or row.get("extent_met") is not None:
+        measures.append(f"spill extents {_num(get('extent_failures'))} failures ({met('extent_met')})")
+    return "; ".join(measures)
 
 
 def _check_known(what: str, names: set[str], docs: list[MilestoneDoc]) -> None:
@@ -400,7 +455,9 @@ def lifts(g: Goals, f: FunctionParity) -> bool:
 
 def campaign_block(g: Goals, data: Parity, tasks: Tasks) -> str:
     """The `campaign` block: a row per stage and the parked row."""
-    below = [f for f in data.functions if f.tier in BELOW_BAR]
+    # A function whose tier is under the bar but which meets the rate had its only off cells left
+    # out of the rate (decision 0134), so no fix lifts it.
+    below = [f for f in data.functions if f.tier in BELOW_BAR and not f.meets_rate]
     other = sum(f.attributed["visible_other"] for f in below)
     numeric = sum(f.attributed["visible_numeric"] for f in below)
     lifted = sorted(f.name for f in below if lifts(g, f))
@@ -464,6 +521,7 @@ METHOD = f"""- **Goals.** The Phase 1 and checkpoint lines are report.json `v15_
   and the exit checklists, report.json `catalog_coverage`, `milestone_exit`, `milestone_lists`
   and `probe_milestones`, and tasks.json `by_milestone`.
 - **Campaign stages.** Task counts are tasks.json `by_campaign` and `deferred` (decision 0119).
-  The functions below the rate are those whose report tier is under `rate999`; a function is
+  The functions below the rate are those whose report tier is under `rate999` and whose
+  `meets_rate` is false (decision 0134 leaves listed cells out of the rate, not the tier); a function is
   lifted when its counted cells (`v15_checkpoint.functions[].rate_cells`) reach the report's rate
   (`rate_num / rate_den`) once its visibly-off type, error and text cells are fixed."""

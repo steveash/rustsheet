@@ -178,12 +178,21 @@ small the used area: `TEXTJOIN(",",FALSE,D:D)` is `#CALC!` (1,048,576 values joi
 characters) and `TEXTJOIN(",",FALSE,10:10)` with H10 = "x" and J10 = "y" is ",,,,,,,x,,y" followed by
 16,374 more commas. With ignore_empty TRUE only the non-empty cells count (`TEXTJOIN(",",TRUE,D:D)` =
 "a,c"). `TEXTJOIN(",",FALSE,D1:D16385)` over the same sheet has length 16,386.
-Unprobed: an error cell met after the skipped empties have taken the join over the limit (for example
-`TEXTJOIN(",",FALSE,1:3)` with an error in A3); the engine gives `#CALC!`, as for a walked range (C20).
-Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114).
+An error cell met after the skipped empties have taken the join over the limit is dropped: with A1 = "x",
+A2 = "y" and A3 = `=NA()`, `TEXTJOIN(",",FALSE,1:3)` and `1:2` are `#CALC!`, while `1:1` joins to 16,384
+characters and `TEXTJOIN(",",TRUE,1:3)`, `3:3` and `A1:A3` are `#N/A` (probes/textjoin-whole-rows-error-cell
+A1-A7, excel-graph, 2026-10-29, T-3098).
+Past the limit Excel stops reading cells: with A1 = "x", A2 = "y" and `=TEXTJOIN(",",FALSE,1:10)` in B5 (a cell
+of its own range, below the row where the padding passes the limit) the result is `#CALC!`, not a circular
+reference, while `=TEXTJOIN(",",TRUE,1:10)` in D3 is circular (0), since ignore_empty TRUE adds no padding and reads
+every cell (probes/textjoin-whole-rows-self-reference B5, D3, excel-graph, 2026-10-29, T-3098). The engine's
+whole-row walk with ignore_empty FALSE and clipped columns stops at the limit (`textjoin_push_padded_range`);
+the unclipped single-walk path still reads past it (unprobed).
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098).
 Status: VERIFIED
-Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area and adds the skipped
-empty cells per row and after the last row through `JoinSize::push_empties`, which stops at the limit.
+Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
+sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row when
+columns are clipped) and after the last row through `JoinSize::push_empties`, which stops at the limit.
 Tasks: T-1114
 
 ## JIS is `#NAME?` in en-US Excel for the web
@@ -520,7 +529,7 @@ Rule: SEARCH lowercases per character and never changes the text's length: a cha
 Also: ς (final sigma) matches Σ and σ in either direction (`SEARCH("ς","ΟΣ")` is 2, `SEARCH("σ","ΟΣ")` is 2), ǆ matches ǅ, and U+212A (Kelvin) matches k; ſ/s, µ/μ, ϐ/β and ﬀ/ff do not match (`#VALUE!`).
 Evidence: probes/text-search-casefold-length A1-A24 (oracle: excel-graph, 2026-10-12, T-1296).
 Status: VERIFIED (excel-graph)
-Implemented in: `fold_case` (functions/text/casefold.rs).
+Implemented in: `fold_case` (functions/util/collation.rs; shared with exact-match lookups and wildcard criteria, T-3133).
 Tasks: T-1296
 
 ## TEXT over an array of format codes
@@ -621,6 +630,9 @@ Every space is removed before the text is read, so `NUMBERVALUE("12:30 PM")` is 
 `VALUE("12:30 PM")` is 0.5208333333333334 (gen-m5/bbbd316c346ce645 A207, fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357
 against gen-m5/49bfbf67a1409563 A217, 901e91c09b347914 A13; Microsoft's NUMBERVALUE page says spaces are ignored "even in the
 middle"; that "12:30PM" is the reason, not a refusal of AM/PM, is the simplest reading and unprobed).
+An omitted group separator defaults to "," unless the decimal separator starts with ",", when it defaults to ".":
+`NUMBERVALUE("1.5",",")` = 15, `("1.000,5",",")` = 1000.5, `("1.5.2",",")` = 152, while `("1,5",";")` = 15, `("1,5","x")` = 15
+and `("1.5",".")` = 1.5 (excel-graph, 2026-10-28, probes/numbervalue-default-group A1-A14, T-2441). A multi-character decimal separator starting with "," is unprobed (only the first character is read elsewhere).
 A decimal separator equal to the group separator is `#VALUE!` whatever the text: `NUMBERVALUE("1.5",",",",")` and
 `NUMBERVALUE("1.5",".",".")` (excel-graph, 2026-10-20, T-2198, probes/t2198-m5-lift-argument-kinds A38, B38).
 A separator over 255 characters is `#VALUE!`, though only its first character counts: `NUMBERVALUE(0.2,REPT("A",255),"b")` is 0.2
@@ -630,7 +642,7 @@ and `NUMBERVALUE(0.2,REPT("A",256),"b")`, `NUMBERVALUE("2",REPT("A",256),"b")` a
 `NUMBERVALUE("1x5","x","X")` are 1.5, but `NUMBERVALUE("1,5","A","a")` is `#VALUE!` (the "," is no separator) and the decimal
 separator matches case (`NUMBERVALUE("1a5","A","b")` is `#VALUE!`). A letter decimal separator leaves "0.2" readable
 (`NUMBERVALUE("0.2","A","b")` and `NUMBERVALUE("0.2","A")` are 0.2). With a "," decimal separator and no group separator,
-`NUMBERVALUE("1.5",",")` is 15: the default group separator is then not "," (ours `#VALUE!`, T-2441). Separators whose first characters agree clash even when
+`NUMBERVALUE("1.5",",")` is 15: the default group separator is then "." (rule above, T-2441). Separators whose first characters agree clash even when
 the rest differs: `NUMBERVALUE("1A5","A","AB")` is `#VALUE!` (A20).
 Evidence: probes/numbervalue-separator-edges A1:A20 (excel-graph, 2026-10-22, T-2379). Whether the 255 counts characters or
 UTF-16 units is unprobed (the engine counts as for the text, `number_text_too_long`).
@@ -654,12 +666,11 @@ units (`LEN` 256) and is `#VALUE!` in all three (row 7), as is 255 "x" plus it (
 (A9-A11, A13, `LEN` 256 for the first three). `VALUE(REPT("1",256))` is `#VALUE!` (A14), which the probe cannot tell
 from a numeral-length limit. From a cell, as an array element and with an error count (T-2305; probes/text-255-units-from-cell, -array-element,
 -rept-error-count, excel-graph 2026-10-24): a cell holding 256 "x" (typed, D1, or a formula result, D3) is `#VALUE!` in
-`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!` (ours `#VALUE!`); 255 from a cell works in all
-four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!` (ours keeps T's element);
+`REPT(D1,2)`, `CODE` and `UNICODE`, but `T(D1)` and `T(D3)` are empty text "", not `#VALUE!`; 255 from a cell works in all
+four. As an array element (`REPT("x",256)&{""}`) REPT, CODE, UNICODE and T are all `#VALUE!`;
 255 works. excel-graph refused to open a workbook whose array constants held 256-character literals (cause not isolated), so the probe builds the long text with REPT. REPT with a
-long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!` (ours
-`#VALUE!`); `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. Unprobed: `T` of a multi-cell range whose top-left cell holds long text.
-Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count differences are T-2627.
+long text and an error count gives the count's error: `REPT(REPT("x",256),#N/A)` is `#N/A`, `(…,#DIV/0!)` is `#DIV/0!`; `(…,-1)` is `#VALUE!`; `REPT(#N/A,REPT("x",256))` is `#N/A`. T of such a cell is "" however the cell is reached (T-3107; probes/text-255-units-reference-shapes, excel-graph 2026-10-29): `T(D1:D2)` (top-left cell), a defined name, `INDIRECT`, `OFFSET`, `INDEX`, `IF`, `CHOOSE`, `LET`, a spill reference (`T(F1#)`), a sheet-qualified reference (same sheet or another), `T((D1))`, a single-cell structured reference, and a legacy formula's `T(D1)`, `T(D1:D2)` and `T(name)` are all "". A computed value stays `#VALUE!`, and so does the unary plus: `T(+D1)` is `#VALUE!`. Implemented by `reads_cell_text` in t_function.rs.
+Status: VERIFIED (excel-graph); implemented (T-2155: `reject_over_short_limit` in functions/text/common.rs); the cell, array and error-count rules are implemented (T-2627, T-3107: `T` of any reference reads "", an array element is `#VALUE!`, REPT reads its count's error before the text limit).
 
 ## UNICHAR code point bounds
 Rule: UNICHAR truncates toward zero and lifts over arrays (`UNICHAR({65,66})` spills "A","B"). Below 1 (0, -1, 0.5) or
@@ -955,9 +966,20 @@ Rule: `VALUE("- 5")` is -5, `VALUE("3 1/2")` 3.5 and `VALUE("1-1-1")` 36892 (200
 one-digit year). Readers built on VALUE's grammar follow it: `IMABS("3 1/2")` is 3.5 (engineering.md "How an inumber
 is read").
 Evidence: probes/eng-inumber-date-boundary B21:B23, A22 (excel-graph, 2026-10-25).
-Ours: `#VALUE!` for all three (`value_text_number`, functions/text/common.rs).
-Status: VERIFIED (excel-graph); not implemented (T-2646).
-Tasks: T-2646
+A criterion reads `"1 1/2"` as 1.5 too (criteria.md "Criterion operands and text cells read numbers with VALUE's grammar",
+probes/t3136-criteria-formatted-number-operands H25).
+Edges (probes/value-sign-space-mixed-fraction-dash-date, excel-graph, 2026-10-29): spaces after a sign are skipped
+(`"- 5"`, `"-  5"` -5, `"+ 5"` 5, `"- 5.5"` -5.5, and `="- 5"+0` -5, so number coercion shares it). A mixed fraction takes
+a sign (`"-3 1/2"`, `"- 3 1/2"`, `"-  3 1/2"` -3.5, `"+3 1/2"` 3.5), a `$` (3.5) and a `%` (`"3 1/2%"` is
+0.034999999999999996, the whole and the fraction divided by 100 apart); an improper fraction reads (`"1 3/2"` 2.5), a
+numerator with a leading zero too (`"3 01/02"` 3.5), many digits (`"123456789 1/2"`), a denominator of 200 (3.005); but
+`"3 1/0"`, `"3  1/2"` (two spaces), `"3 1 /2"` and `"3 1/ 2"` are `#VALUE!`. A dash date reads a one-digit year as 200x
+and `"1/1/1"` is the same 36892 (`"1-1-0"` 36526, `"1-1-99"` 36161, `"1-1-30"` 1930); `"13-1-1"` and `"0-1-1"` are `#VALUE!`.
+UNVERIFIED: typed cell input and criteria also read `- 5` and a one-digit-year date now (shared grammar), and the mixed-fraction
+combinations `€3 1/2`, `-$3 1/2`, `-3 1/2%`, `$3 1/2%`, `+ 3 1/2` are extrapolated (T-2646 follow-up probe).
+Ours: all implemented (`mixed_fraction`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
+Tasks: T-2646, T-3151
 
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:
@@ -1053,6 +1075,10 @@ delimiter is found and beside an if_not_found: 1.5 (also from a cell), 1.9999, T
 -0.5 and FALSE are 0, while 2, -1 and -1.5 are `#VALUE!` (`TEXTAFTER("ab","b",1,0,2)` is `#VALUE!`, not ""), and the text "TRUE" is `#VALUE!`.
 TEXTBEFORE reads it the same way (A16-A30): with the delimiter not found, a value cut to 1 gives the whole text "ab", one cut to 0 `#N/A`, and the same values are `#VALUE!`. `TEXTAFTER("a","zz",1,0,<any>)` is `#VALUE!` for every value (the longer-delimiter rule above; for 2 and -1 both checks give `#VALUE!`, so their order is not shown). Evidence: probes/t2498-textafter-match-end (excel-graph,
 2026-10-25, T-2498). Ours: matches (`around_options`).
+An instance_num that is the empty value (`CELL("contents",<blank>)`) behaves as 0 (`#VALUE!`), not as an omitted argument:
+`TEXTAFTER(((Data!C$12&"")&Data!E10),"-",CELL("contents",Data!B3),1,1)` with Data!B3 blank (gen-m7/9359f03972e94026 Calc!A1420,
+excel-graph). A left-out argument (`TEXTAFTER(..,"-",,1)`) keeps the default 1. Ours: matches since T-3053 (`around_options` reads
+a written empty value as 0, so match_mode and match_end do too, unprobed: T-3087; information.md "CELL("contents", ref) as a VSTACK argument").
 TEXTAFTER's result takes the shape of an array if_not_found even when the text is an error (T-2414, probes/t2414-gen-m7-unexplained, excel-graph, 2026-10-23):
 `ROWS(TEXTAFTER("abc","",1,-2^53,0,{1;2}))` is 2 (invalid match_mode: each cell `#VALUE!`), `TEXTAFTER("abc","b",1,0,0,{1;2})` is "c","c", and
 `ROWS(TEXTAFTER(<#VALUE!>,"",1,-2^53,0,OFFSET(B9:C12,5,1,DROP(A3:A5,-2,0),2)))` is 2. The OFFSET alone is a 2x2 reference
@@ -1120,3 +1146,15 @@ Evidence: probes/t2581-textsplit-textbefore A1-A29 (excel-graph, 2026-10-24). Th
 Ours: since T-2581 (`split_grid`, `textsplit_element` in functions/text/textsplit.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-2581
+
+## ARRAYTOTEXT error before format
+An error value as ARRAYTOTEXT's first argument is the result before the format is looked at: `ARRAYTOTEXT(NA(),2)`
+is `#N/A`, `ARRAYTOTEXT(1/0,2)` `#DIV/0!`, `ARRAYTOTEXT(SINH(710),2)` `#NUM!`, `ARRAYTOTEXT(NA(),"x")` `#N/A`, and a
+reference to an error cell (also `B1:B1`) the same. With two errors the first argument's wins (`ARRAYTOTEXT(NA(),1/0)`
+`#N/A`, `ARRAYTOTEXT(1/0,NA())` `#DIV/0!`); a valid first argument with an error format gives the format's error
+(`ARRAYTOTEXT(1,NA())` `#N/A`). An error inside an array is not the argument's error: `ARRAYTOTEXT({1,#N/A},2)` is
+`#VALUE!`, as `ARRAYTOTEXT(1,2)` and `ARRAYTOTEXT(1,"x")` are. VERIFIED (probes/arraytotext-error-vs-format, excel-graph
+2026-10-27, T-2250). VALUETOTEXT differs: `VALUETOTEXT(NA(),2)` is `#VALUE!`, not the argument's error (matches today's
+engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`); a reference to an error cell with an error or text format, such as `ARRAYTOTEXT(B1,NA())` or `ARRAYTOTEXT(B1,"x")` with B1 holding `#N/A` (the engine reads the format first and returns its error).
+
+See also: RIGHT num_chars numeric-text coercion is recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).

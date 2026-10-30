@@ -190,6 +190,23 @@ fn fyl2x(x: f64, y_over_ln_2: (f64, f64)) -> f64 {
     if x == 1.0 {
         return 0.0;
     }
+    let log = dd_mul_in_range(ln_double_double(x), y_over_ln_2);
+    // FYL2X's 64-bit rounding, then the store's rounding to a double (|log| < 745, never tiny:
+    // the smallest, at x = 1 ± 2^-53, is about 4.8e-17 for log10 and 1.1e-16 for ln).
+    dd_rounded_twice(log)
+}
+
+/// ln of a positive double-double `hi + lo` (|lo| <= ulp(hi)/2): [`ln_double_double`] of the head
+/// plus lo/hi, the first term of ln(1 + lo/hi), whose square is below 2^-106.
+pub(crate) fn ln_double_double_pair((hi, lo): (f64, f64)) -> (f64, f64) {
+    dd_add(ln_double_double(hi), (lo / hi, 0.0))
+}
+
+/// ln x in double-double (about 2^-104 relative) for a positive finite `x`: ln x = e ln 2 + ln f
+/// with x = f 2^e, f in [√2/2, √2]. [`fyl2x`]'s logarithm before its roundings, also F.TEST's
+/// accurate ln B (`f_test_tail.rs`, T-2681) and, through [`ln_double_double_pair`], the accurate
+/// half-integer ln B and F tails (`bratio/ln_beta.rs`, `incomplete_beta.rs`, T-2219).
+pub(crate) fn ln_double_double(x: f64) -> (f64, f64) {
     // x = f * 2^e with f in [√2/2, √2], f a double (an exact scaling of x's significand).
     let (significand, exponent) = significand_and_exponent(x);
     let mut f = significand as f64 * f64::EPSILON; // in [1, 2)
@@ -199,14 +216,10 @@ fn fyl2x(x: f64, y_over_ln_2: (f64, f64)) -> f64 {
         e += 1;
     }
     // ln x = e ln 2 + ln f; |e| <= 1075 is exact in a double.
-    let ln_x = dd_add(
+    dd_add(
         dd_mul_in_range((f64::from(e), 0.0), (LN_2_HI, LN_2_LO)),
         ln_reduced(f),
-    );
-    let log = dd_mul_in_range(ln_x, y_over_ln_2);
-    // FYL2X's 64-bit rounding, then the store's rounding to a double (|log| < 745, never tiny:
-    // the smallest, at x = 1 ± 2^-53, is about 4.8e-17 for log10 and 1.1e-16 for ln).
-    dd_rounded_twice(log)
+    )
 }
 
 /// ln f in double-double (about 2^-104 relative) for f in [√2/2, √2]: ln c + 2 atanh(s) with

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::arithmetic::{extended_sum, flush_subnormal};
 use crate::constants::LAST_ROW;
+use crate::expressions::parser::stringify::retarget_unqualified_references;
 use crate::types::Cell;
 use crate::{
     arithmetic::extended_quotient,
@@ -38,20 +39,22 @@ fn computed_criterion_holds(condition: &CalcResult) -> bool {
     }
 }
 
-/// Whether a formula condition evaluated at `context` (its cell moved down to a record) stays off
-/// the database's header row: Excel matches no record whose moved relative reference into the
-/// database lands on its header row or above. Over Db!A2:D9 (header row 2) with `=B2>3` as the
-/// condition, the first record reads B2 = 4 and does not match, while the later records read
-/// B3..B8 (`DVAR(Db!A2:D9,2,Db!O1:O2)` is 12.5 and `DCOUNTA(..,3,..)` 2, rows 4 and 9; criteria.md
-/// "D* computed criteria and an unknown header in the gen-m9 database sweep (T-2258)"). Absolute
-/// rows stay put and are not checked (probes/db-criteria-formula-placement F2, F14); a reference
-/// on another sheet, or outside the database's columns, is read as it is: TODO(T-2617).
+/// Whether a formula condition evaluated at `context` (its cell moved down to a record) reads
+/// only the record area of the database (its rows below the header row, its columns): Excel
+/// matches no record whose moved relative reference onto the database's sheet lands on the header
+/// row or above, below the last record, or outside the database's columns, and a range matches
+/// when it overlaps that area (`SUM(B5:B6)>0` over Same!A5:C12 matches its first record,
+/// `SUM(B4:B5)>0` does not). Over Db!A2:D9 (header row 2) with `=B2>3`, the first record reads
+/// B2 = 4 and does not match (criteria.md "D* computed criteria and an unknown header in the
+/// gen-m9 database sweep (T-2258)"; probes/db-computed-criteria-cross-sheet). A reference with an
+/// absolute row (a range with two) stays put and is not checked (probes/db-criteria-formula-placement
+/// F2, F14; `$B$5>0` on the header row matches), nor is one on another sheet than the database's.
 fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> bool {
-    let first_record = query.left.row + 1;
+    let rows = query.left.row + 1..=query.right.row;
     let columns = query.left.column..=query.right.column;
-    let reads = |sheet: u32, row: i32, column: i32, absolute_column: bool| {
-        let column = column + if absolute_column { 0 } else { context.column };
-        sheet != query.left.sheet || !columns.contains(&column) || row + context.row >= first_record
+    let moved = |at: i32, absolute: bool, by: i32| at + if absolute { 0 } else { by };
+    let overlaps = |span: &std::ops::RangeInclusive<i32>, a: i32, b: i32| {
+        a.min(b) <= *span.end() && a.max(b) >= *span.start()
     };
     let mut pending = vec![node];
     while let Some(node) = pending.pop() {
@@ -63,8 +66,12 @@ fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> b
                 row,
                 column,
                 ..
-            } => reads(*sheet_index, *row, *column, *absolute_column),
-            // Each corner in `reads`'s argument order, its absolute row flag first.
+            } => {
+                *sheet_index != query.left.sheet
+                    || (rows.contains(&(row + context.row))
+                        && columns.contains(&moved(*column, *absolute_column, context.column)))
+            }
+            // Each corner's row and column with its absolute flag, row first.
             Node::RangeKind {
                 absolute_row1,
                 sheet_index,
@@ -77,8 +84,17 @@ fn reads_records(node: &Node, context: CellReferenceIndex, query: &DbQuery) -> b
                 absolute_column2,
                 ..
             } => {
-                (*absolute_row1 || reads(*sheet_index, *row1, *column1, *absolute_column1))
-                    && (*absolute_row2 || reads(*sheet_index, *row2, *column2, *absolute_column2))
+                *sheet_index != query.left.sheet
+                    || (*absolute_row1 && *absolute_row2)
+                    || (overlaps(
+                        &rows,
+                        moved(*row1, *absolute_row1, context.row),
+                        moved(*row2, *absolute_row2, context.row),
+                    ) && overlaps(
+                        &columns,
+                        moved(*column1, *absolute_column1, context.column),
+                        moved(*column2, *absolute_column2, context.column),
+                    ))
             }
             _ => true,
         };
@@ -588,8 +604,10 @@ impl Model {
     /// A computed criterion's value for database `row`. A formula condition is evaluated again
     /// as if it sat as many rows lower as the record is below the first record, so its relative
     /// references follow the record (a blank header over `=B2>2` tests each record's B cell);
-    /// a constant is its own value (probes/db-computed-criteria-shapes AB23-AB26). A record whose
-    /// moved references land on the database's header row does not match ([`reads_records`]).
+    /// a constant is its own value (probes/db-computed-criteria-shapes AB23-AB26). Its references
+    /// without a sheet prefix read the database's sheet, so a condition on another sheet is
+    /// evaluated for the first record too (probes/db-computed-criteria-cross-sheet). A record
+    /// whose moved references leave the database's record area does not match ([`reads_records`]).
     fn db_computed_condition(
         &mut self,
         query: &DbQuery,
@@ -616,18 +634,22 @@ impl Model {
         if context.row > LAST_ROW {
             return CalcResult::new_error(Error::REF, criteria_cell, "Off the grid".to_string());
         }
-        let Some(node) = self
+        let Some(mut node) = self
             .parsed_formulas
             .get(criteria_cell.sheet as usize)
             .and_then(|formulas| formulas.get(usize::try_from(formula).ok()?))
-            .map(|(node, ..)| Arc::clone(node))
+            .map(|formula| Arc::clone(&formula.evaluated))
         else {
             return value;
         };
+        let other_sheet = criteria_cell.sheet != query.left.sheet;
+        if other_sheet {
+            retarget_unqualified_references(Arc::make_mut(&mut node), query.left.sheet);
+        }
         if !reads_records(&node, context, query) {
             return CalcResult::Boolean(false);
         }
-        if offset == 0 {
+        if offset == 0 && !other_sheet {
             return value;
         }
         // A formula condition that itself runs a D-function with formula conditions would

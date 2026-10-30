@@ -222,6 +222,22 @@ Cells:
 - gen-m9/290180acf017709c.case.json (1): Calc!A98
 - gen-m9/932b33b1ef8b7608.case.json (1): Calc!A336
 - gen-m9/f81bd3b6dc373e5c.case.json (2): Calc!A64, A331
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/22656c225ff4f22a.case.json: Calc!A194, A36, A124, A156, A35, A155, A183, A231, A367, A105, A130, A139, A169, A273, A280, A308, A329, A334
+  - gen-m9/146b46e74f2dac3b.case.json: Calc!A174
+  - gen-m9/165db58d1540f014.case.json: Calc!A19, A145
+  - gen-m9/4250f880ab640c49.case.json: Calc!A340
+  - gen-m9/43a13a091907b402.case.json: Calc!A4, A61, A67, A91, A107, A165, A392
+  - gen-m9/44a8841352dc48e9.case.json: Calc!A251
+  - gen-m9/60b0b6e69ad35a45.case.json: Calc!A113
+  - gen-m9/67f5e0fe790e6bec.case.json: Calc!A14, A37, A198, A272, A298, A336
+  - gen-m9/899f9555e67da2d6.case.json: Calc!A142
+  - gen-m9/941c409532603d32.case.json: Calc!A324
+  - gen-m9/c2684066d8df263e.case.json: Calc!A318
+  - gen-m9/caa1eed48b1883fe.case.json: Calc!A61
+  - gen-m9/ec2a1d9194a84396.case.json: Calc!A67, A218, A316
+  - gen-m9/fd9fa22d212080d6.case.json: Calc!A58
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 17 known-failure lines disappear from eval/baseline/gen-m9.txt
@@ -252,3 +268,12 @@ states it.
 
 ## Milestone (decision 0114)
 Moved from M9 to M14: the values need desktop Excel (excel-graph leaves them `#N/A`), so under decision 0039 rule 3 this filed task does not block the Phase 1 exit. Its argument-error cells stay with T-2424 (`campaign: semantics`).
+
+## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
+At the 2026-10-27 eval 302 visibly-off FORECAST.ETS, FORECAST.ETS.SEASONALITY, FORECAST.ETS.STAT and FORECAST.ETS.CONFINT cells were owned by no open task, so these four functions could not meet the "every remaining failure has a filed task" rule. This task owns them too (one line per case, cells listed):
+- gen-m9/43a13a091907b402: A10, A11, A18, A24, A27, A34, A35, A37, A49, A50, A52, A54, A62, A63, A64, A66, A70, A71, A74, A78, A79, A82, A86, A87, A90, A92, A94, A95, A99, A111, A115, A120, A121, A127, A130, A134, A138, A142, A146, A150, A151, A158, A159, A171, A182, A183, A187, A188, A194, A202, A218, A226, A228, A243, A251, A254, A255, A258, A260, A261, A262, A270, A271, A275, A278, A282, A294, A298, A302, A306, A311, A323, A325, A326, A338, A339, A348, A350, A351, A353, A354, A359, A362, A363, A366, A375, A381, A387, A395, A396, A397
+- gen-m9/67f5e0fe790e6bec: A8, A11, A20, A22, A23, A27, A34, A41, A51, A52, A55, A56, A59, A62, A67, A71, A78, A83, A86, A90, A94, A95, A98, A99, A102, A107, A108, A109, A114, A134, A138, A146, A156, A164, A166, A170, A175, A179, A182, A189, A199, A200, A219, A220, A225, A227, A230, A235, A239, A242, A243, A246, A250, A254, A257, A263, A266, A271, A278, A286, A287, A289, A290, A291, A297, A299, A300, A302, A303, A314, A343, A354, A355, A358, A359, A361, A362, A363, A384, A386, A390, A391, A395
+- gen-m9/ec2a1d9194a84396: A2, A11, A12, A14, A21, A22, A24, A32, A34, A40, A42, A44, A45, A46, A49, A52, A58, A61, A68, A74, A76, A78, A79, A88, A90, A92, A98, A100, A104, A112, A113, A114, A122, A123, A124, A129, A132, A134, A152, A158, A160, A166, A171, A176, A180, A182, A186, A198, A210, A212, A214, A224, A228, A231, A244, A252, A255, A256, A258, A273, A274, A278, A280, A282, A284, A286, A288, A294, A300, A306, A308, A318, A320, A334, A335, A339, A340, A341, A342, A351, A373, A380, A384, A385, A386, A390, A398
+- probes/forecast-ets-longer-series: Sheet1!K1, Sheet1!K2, Sheet1!K3, Sheet1!K4, Sheet1!K5, Sheet1!K6, Sheet1!K7, Sheet1!K8, Sheet1!K9, Sheet1!K10, Sheet1!K11, Sheet1!K12, Sheet1!K13, Sheet1!K14, Sheet1!K15, Sheet1!K16, Sheet1!K17, Sheet1!K18, Sheet1!K19, Sheet1!K20, Sheet1!K21, Sheet1!K22, Sheet1!K23, Sheet1!K24, Sheet1!K25, Sheet1!K26, Sheet1!K27, Sheet1!K28, Sheet1!K29, Sheet1!K30, Sheet1!K31, Sheet1!K32, Sheet1!K33, Sheet1!K34, Sheet1!K35, Sheet1!K36, Sheet1!K37, Sheet1!K39, Sheet1!K40, Sheet1!K41, Sheet1!K42
+
+T-0085 makes the eval's Phase 1 line treat the cells of this desktop-evidence task as filed rather than as misses, as decision 0114 says.

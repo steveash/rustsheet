@@ -68,6 +68,11 @@ pub struct FunctionScope {
     /// Exit exceptions whose cell fails in no row (it passes, is a deviation or is not scored).
     #[serde(default)]
     pub stale_exceptions: Vec<String>,
+    /// Cases that did not run to scoring ([`crate::runner::CaseStatus::did_not_run`]), as
+    /// `case!*`, sorted. Their cells cannot be classified, so each counts against every row's
+    /// exit measure (decision 0174).
+    #[serde(default)]
+    pub blocked_cases: Vec<String>,
 }
 
 impl FunctionScope {
@@ -124,6 +129,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
         ..FunctionScope::default()
     };
     for r in cases {
+        scope.blocked_cases.extend(r.blocked_key());
         for c in &r.cells {
             let Some(formula) = c.formula.as_deref().or(c.anchor_formula.as_deref()) else {
                 scope.no_formula += 1;
@@ -142,7 +148,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
                 if c.verdict.is_pass() {
                     row.bit_exact += 1;
                 } else if c.verdict.is_failure() {
-                    let key = format!("{}!{}", r.id, c.key());
+                    let key = crate::runner::cell_id(&r.id, &c.key());
                     if Visible::is_off(c) {
                         row.visibly_off.push(key.clone());
                     }
@@ -157,6 +163,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
         row.failing.sort();
         row.visibly_off.sort();
     }
+    scope.blocked_cases.sort();
     Some(scope)
 }
 
@@ -203,8 +210,12 @@ pub fn write_markdown(scope: Option<&FunctionScope>, md: &mut String) {
          row includes the rows above it. A call of a defined name counts the functions of the \
          name's formula; precedents are not followed. {} scored cells with no formula or anchor \
          are left out ({} failing). `failing excl. exceptions` leaves out the cells \
-         `{EXCEPTIONS_PATH}` names for the row's milestone or an earlier one (decision 0087).\n",
-        s.no_formula, s.no_formula_failing
+         `{EXCEPTIONS_PATH}` names for the row's milestone or an earlier one (decision 0087). \
+         {} cases did not run (failed to load or evaluate, panicked or timed out); they count \
+         against every row's exit measure (decision 0174).\n",
+        s.no_formula,
+        s.no_formula_failing,
+        s.blocked_cases.len()
     );
     let _ = writeln!(
         md,
@@ -239,6 +250,12 @@ pub fn write_markdown(scope: Option<&FunctionScope>, md: &mut String) {
         }
         listed = &row.failing;
     }
+    if !s.blocked_cases.is_empty() {
+        let _ = writeln!(md, "\nCases that did not run:\n");
+        for case in &s.blocked_cases {
+            let _ = writeln!(md, "- `{case}`");
+        }
+    }
     if !s.stale_exceptions.is_empty() {
         let _ = writeln!(
             md,
@@ -256,7 +273,7 @@ mod tests {
     use super::*;
     use crate::catalog::{CatalogFunction, Scope};
     use crate::runner::{CaseStatus, CellResult};
-    use crate::value::{Value, Verdict};
+    use crate::value::Verdict;
 
     fn function(name: &str, milestone: &str) -> CatalogFunction {
         CatalogFunction {
@@ -273,18 +290,7 @@ mod tests {
     }
 
     fn cell(cell: &str, formula: Option<&str>, verdict: Verdict) -> CellResult {
-        CellResult {
-            sheet: "S".to_string(),
-            cell: cell.to_string(),
-            formula: formula.map(str::to_string),
-            anchor_formula: None,
-            expected: Value::Number(1.0),
-            actual: Value::Number(1.0),
-            verdict,
-            from_excel: true,
-            listed_deviation: false,
-            graph_subnormal: false,
-        }
+        CellResult::for_test(cell, formula, verdict)
     }
 
     fn case(suite: &str, cells: Vec<CellResult>) -> CaseResult {
@@ -305,6 +311,7 @@ mod tests {
             text: Vec::new(),
             defined_names: BTreeMap::new(),
             arguments: Vec::new(),
+            reference_forms: crate::poi_m8_subset::ReferenceFormCells::default(),
         }
     }
 
@@ -472,6 +479,34 @@ mod tests {
         assert!(!calls.contains("POWER"));
         assert!(calls.contains(&format!("N{MAX_NAME_DEPTH}")));
         assert!(calls_through_names("N1(1)", &names).contains("POWER"));
+    }
+
+    #[test]
+    fn cases_that_did_not_run_are_listed_and_pending_ones_are_not() {
+        let mut results = Vec::new();
+        for (id, status) in [
+            ("c", CaseStatus::EngineError),
+            ("b", CaseStatus::Pending),
+            ("a", CaseStatus::Panic),
+        ] {
+            results.push(CaseResult {
+                id: format!("{SUITE}/{id}.xlsx"),
+                status,
+                ..case(SUITE, Vec::new())
+            });
+        }
+        let scope = summarize(&Catalog::default(), &results).unwrap();
+        assert_eq!(
+            scope.blocked_cases,
+            ["ironcalc-calc/a.xlsx!*", "ironcalc-calc/c.xlsx!*"]
+        );
+        let mut md = String::new();
+        write_markdown(Some(&scope), &mut md);
+        assert!(md.contains("2 cases did not run"), "{md}");
+        assert!(
+            md.contains("Cases that did not run:\n\n- `ironcalc-calc/a.xlsx!*`\n"),
+            "{md}"
+        );
     }
 
     #[test]

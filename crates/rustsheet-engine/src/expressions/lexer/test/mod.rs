@@ -4,5 +4,6 @@ mod test_language;
 mod test_locale;
 mod test_ranges;
 mod test_spill_operator;
+mod test_string_literal_limit;
 mod test_tables;
 mod test_util;

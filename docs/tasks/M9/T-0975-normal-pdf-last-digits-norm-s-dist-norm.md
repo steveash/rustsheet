@@ -4,11 +4,11 @@ title: "Normal PDF last digits: NORM.S.DIST/NORM.DIST/LOGNORM.DIST non-cumulativ
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: []
-defer: phase-1b
 ---
 
 ## Goal
@@ -28,7 +28,10 @@ correctly rounded constant `SQRT_2PI` = 2.5066282746310007; LOGNORM.DIST's densi
 - `ironcalc-calc/STATISTICAL/PHI.xlsx` `Sheet1`: B5
 
 Oracle sweep (T-1041): probes-numeric cases `m9-normpdf-norm-s-dist`, `m9-normpdf-phi`,
-`m9-normpdf-norm-dist-s0p5`, `-s1p2`, `-s3`, `-s10`, `m9-normpdf-lognorm-dist`.
+`m9-normpdf-norm-dist-s0p5`, `m9-normpdf-norm-dist-s1p2`, `m9-normpdf-norm-dist-s3`, `m9-normpdf-norm-dist-s10`, `m9-normpdf-lognorm-dist`.
+Visibly off in `m9-normpdf-lognorm-dist` on main 5b8c2ae7 (T-3021): Calc!A29 `LOGNORM.DIST(7.25,0,1,FALSE)` Excel
+0.007734043882067061, ours ...053; Calc!A41 `LOGNORM.DIST(0.25,1,0.5,FALSE)` Excel 3.6133196398262184E-5, ours ...116;
+Calc!A73 `LOGNORM.DIST(8.25,1,0.5,FALSE)` Excel 0.008220277976125383, ours ...373.
 
 Examples (expected vs actual):
 - `NORM.S.DIST(0,FALSE)` C7/C25/C45: expected 0.3989422804014327, actual 0.39894228040143265.
@@ -102,5 +105,7 @@ target is that every visibly-off cell it owns has Excel's type, error and text, 
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/b4173fe25109a238 Calc!A48 `=LOGNORM.DIST(40,0,(Data!A10*100%),FALSE)`: Excel 3.0218137820578166e-14, ours 3.021813782057842e-14 (5 units of the 15th digit).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+It owns the 4 visibly-off LOGNORM.DIST cells and alone lifts LOGNORM.DIST. Priority raised so it leads its stage in M9.

@@ -113,7 +113,14 @@ fn compute_accrint(
     // Only the coupon dates the accrual reads must be in the calendar: a regular period that
     // starts before 1900 is fine when the settlement's period is later (`ACCRINT(33448,1,37714,
     // 1E+300,0.3,1,2,TRUE)` is a number; gen-m9 3b7990bd4e3307ba Calc!A317).
-    let pcd = accrint_coupon_serial(pcd_date, first_coupon)?;
+    let mut pcd = accrint_coupon_serial(pcd_date, first_coupon)?;
+    // Excel: first_interest 60 (the fictitious 1900-02-29) stays serial 60 as the settlement's
+    // coupon date, although the schedule steps from 1900-02-28, so an issue of 59 still has a
+    // period to walk back through and the walk reaches 1899: `ACCRINT(59,60,242,0.05,1000,2,0,
+    // TRUE)` is #NUM! while first_interest 59 is a number (probes/accrint-eom-1900 A9, A13).
+    if pcd_date == first_interest_date {
+        pcd = pcd.max(first_interest);
+    }
 
     let first_date = issue.max(pcd);
     let days0 = serial_basis_days(first_date, settlement, basis)?;
@@ -186,10 +193,10 @@ impl Model {
     /// and "FALSE" too, is `#VALUE!` (probes/t2492-vdb-ddb-arguments A47:A54), whatever the other
     /// arguments hold. The other seven are then read in order: a date off the calendar is `#NUM!`
     /// as soon as it is read, before a later argument's error, text or boolean, and a boolean
-    /// issue, rate or par is `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-
-    /// single-value A52, A53, A56; gen-m9/932b33b1ef8b7608 A233 for par; financial.md "ACCRINT
-    /// check order: `calc_method` first, dates as read"). The other numbers take booleans (as
-    /// `get_number` did; unprobed).
+    /// issue, `first_interest`, settlement, rate, par, frequency or basis, typed or from a cell, is
+    /// `#VALUE!` (`ACCRINT(TRUE,SQRT(-1),..)`: probes/t2455-transpose-single-value A52, A53, A56;
+    /// probes/accrint-boolean-args A1:A28; financial.md "ACCRINT check order: `calc_method`
+    /// first, dates as read").
     fn accrint_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
         let [issue, first_interest, settlement, rate, par, frequency, rest @ ..] = values else {
             return CalcResult::new_args_number_error(cell);
@@ -210,21 +217,21 @@ impl Model {
             let first_interest = self.financial_date_as(
                 reading,
                 self.financial_calendar_serial(
-                    self.cast_number_ref(first_interest, cell)?,
+                    self.cast_number_no_bools_ref(first_interest, cell)?,
                     reading,
                     cell,
                 )?,
             );
             let settlement =
-                self.financial_date_as(reading, self.cast_number_ref(settlement, cell)?);
+                self.financial_date_as(reading, self.cast_number_no_bools_ref(settlement, cell)?);
             Ok((
                 issue,
                 first_interest,
                 settlement,
                 self.cast_number_no_bools_ref(rate, cell)?,
                 self.cast_number_no_bools_ref(par, cell)?,
-                self.cast_number_ref(frequency, cell)?.floor(),
-                day_count_basis(self.cast_number_or(rest.first(), 0.0, cell)?),
+                self.cast_number_no_bools_ref(frequency, cell)?.floor(),
+                day_count_basis(self.cast_number_no_bools_or(rest.first(), 0.0, cell)?),
                 calc_method,
             ))
         };

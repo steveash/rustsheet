@@ -135,8 +135,37 @@ impl Model {
         CalcResult::Boolean(self.is_reference(&args[0], cell))
     }
 
-    /// Whether `node` stands for a reference (ISREF).
-    fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+    /// `node` once [`Self::pick_reference`] picked it, or whether what it picked instead is a
+    /// reference (one into another workbook, a LET body's reading, or a value).
+    fn unpicked_reference<'a>(
+        &mut self,
+        node: &'a Node,
+        cell: CellReferenceIndex,
+    ) -> Result<&'a Node, bool> {
+        match self.pick_reference(node, cell) {
+            PickedReference::Node(node) => Ok(node),
+            PickedReference::External(areas) => Err(areas.is_ok()),
+            PickedReference::Read(read) => Err(matches!(read, RefArg::Ranges(_))),
+            PickedReference::Value(_) => Err(false),
+        }
+    }
+
+    /// [`Self::is_reference`] of an IF, CHOOSE, IFS or SWITCH whose pick step
+    /// ([`Self::pick_step`]) already picked `arm`: the arm read in reference context, as the
+    /// picker's own test reads it, without reading its condition or index again (T-3142).
+    pub(crate) fn picked_arm_is_reference(&mut self, arm: &Node, cell: CellReferenceIndex) -> bool {
+        match self.unpicked_reference(arm, cell) {
+            Ok(arm) => matches!(
+                self.evaluate_picked_reference_arg(arm, cell),
+                RefArg::Ranges(_)
+            ),
+            Err(is_reference) => is_reference,
+        }
+    }
+
+    /// Whether `node` stands for a reference (ISREF, and T's cell-text rule). It may evaluate
+    /// the argument again for the picking functions, so callers use it only when needed.
+    pub(crate) fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         // `ISREF(IF(TRUE,…!A1))` is TRUE (probes/external-ref-no-link-ifchoose A9, A10, A31).
         // A reference into another workbook, written or through INDEX, a union, an
         // intersection or LET (probes/external-ref-no-link-shapes A4, external-ref-no-link-index
@@ -144,11 +173,9 @@ impl Model {
         // not a reference.
         // So is one a LET whose body may pick it picks: `ISREF(LET(c,TRUE,IF(c,…!A1,D1)))` is
         // TRUE (probes/external-ref-no-link-let-index A6).
-        let node = match self.pick_reference(node, cell) {
-            PickedReference::Node(node) => node,
-            PickedReference::External(areas) => return areas.is_ok(),
-            PickedReference::Read(read) => return matches!(read, RefArg::Ranges(_)),
-            PickedReference::Value(_) => return false,
+        let node = match self.unpicked_reference(node, cell) {
+            Ok(node) => node,
+            Err(is_reference) => return is_reference,
         };
         // A `#This Row` area is the cell or range on the formula's row, `#VALUE!` off the data rows
         // (SPEC-0016 step 2).
@@ -722,13 +749,6 @@ impl Model {
         CalcResult::Array(lifted)
     }
 
-    /// The workbook's file name as CELL names it (`Budget.xlsx`), `None` for an unnamed workbook
-    /// (an empty `Workbook::name`, which holds the name without its extension).
-    fn workbook_file_name(&self) -> Option<String> {
-        let name = &self.workbook.name;
-        (!name.is_empty()).then(|| format!("{name}.xlsx"))
-    }
-
     /// The value of one CELL `info_type` for `reference`; `ranges` holds every area of a union.
     fn cell_info(
         &mut self,
@@ -751,7 +771,7 @@ impl Model {
                         message: message.to_string(),
                     };
                     // Excel's form for an unsaved workbook is unprobed.
-                    let Some(file_name) = self.workbook_file_name() else {
+                    let Some(file_name) = self.workbook.file_name() else {
                         return unimplemented("Unnamed workbook");
                     };
                     // A union cannot span sheets in Excel; one on another sheet is unprobed.
@@ -788,14 +808,17 @@ impl Model {
                     message: "info_type not implemented".to_string(),
                 }
             }
-            // The top-left cell of the reference taken on the formula's own sheet, whatever sheet
-            // the reference names, with no implicit intersection: `CELL("contents",Data!A2)` on
-            // Calc reads Calc!A2 (probes/info-cell-contents-range, excel-graph, T-1230). Desktop
-            // Excel is unverified (T-1075 item 9); excel-graph is the oracle of record (decision 0039).
-            "CONTENTS" => self.evaluate_cell(CellReferenceIndex {
-                sheet: cell.sheet,
-                ..reference
-            }),
+            // The top-left cell of the reference, on the sheet it names, with no implicit
+            // intersection (probes/info-cell-contents-range, excel-graph re-filled 2026-10-28,
+            // T-3030; the 2026-10-12 fill read the formula's own sheet, T-1230).
+            // A blank target gives the empty value, as IFERROR of a blank cell does (`EmptyArg`):
+            // COUNTA counts it and array arguments reject it (`COUNTA(CELL("contents",<blank>))` 1,
+            // `TOCOL(CELL("contents",<blank>))` `#VALUE!`; probes/t3030-cell-contents-blank-shapers
+            // A21, A231, excel-graph, T-3053; information.md "CELL("contents", ref) as a VSTACK argument").
+            "CONTENTS" => match self.evaluate_cell(reference) {
+                CalcResult::EmptyCell => CalcResult::EmptyArg,
+                value => value,
+            },
             // Excel for the web gives #VALUE! for every form (probes/info-cell-address-cross-sheet
             // Calc!B1:B4, excel-graph, T-2052); desktop's full-path form is M14.
             "FILENAME" => CalcResult::Error {
@@ -804,14 +827,11 @@ impl Model {
                 message: "CELL(\"filename\") is #VALUE! in Excel for the web".to_string(),
             },
             "ROW" => CalcResult::Number(reference.row as f64),
-            // Like "contents", "type" reads the reference's address on the formula's own sheet
-            // (`CELL("type",Data!A7)` is "b" when Calc!A7 is blank although Data!A7 is text;
-            // probes/info-cell-legacy-range J1:K3, excel-graph, T-1433).
+            // Like "contents", "type" reads the top-left cell on the sheet the reference names
+            // (`CELL("type",Data!A7)` is "l" for text in Data!A7 although Calc!A7 is blank;
+            // probes/info-cell-legacy-range J1:K3, excel-graph re-filled 2026-10-28, T-3030).
             "TYPE" => {
-                let cell_type = match self.evaluate_cell(CellReferenceIndex {
-                    sheet: cell.sheet,
-                    ..reference
-                }) {
+                let cell_type = match self.evaluate_cell(reference) {
                     CalcResult::EmptyCell => "b",
                     CalcResult::String(_) => "l",
                     CalcResult::Number(_) => "v",

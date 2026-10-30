@@ -13,6 +13,9 @@
 //! drifts from the walk by about 1e-13 relative (`DegressiveWalk::closed_form`, a DEVIATION). Moved out
 //! of `financial/financial_depreciation.rs` (T-1841).
 //!
+//! AMORDEGRC's walk subtracts each charge in x87 extended precision, so the remaining value is
+//! rounded twice (`extended_sum`; T-2849, probes/amordegrc-walk-drift and -ties).
+//!
 //! Port of the depreciation calculations as implemented in the `ExcelFinancialFunctions` library
 //! (depreciation.fs), see <https://github.com/fsprojects/ExcelFinancialFunctions>.
 
@@ -22,7 +25,9 @@ use super::dates::{actual_days, days_30_360_eu, days_30_360_us, DateReading};
 use super::number_or_error;
 use crate::functions::date_and_time::is_leap_year;
 use crate::{
+    arithmetic::extended_sum,
     calc_result::CalcResult,
+    decimal_round::{round_decimal, RoundMode},
     expressions::{parser::Node, types::CellReferenceIndex},
     formatter::dates::from_excel_date,
     functions::lift::num_error,
@@ -40,12 +45,14 @@ fn first_period_days(start: NaiveDate, end: NaiveDate, basis: i32) -> f64 {
     }
 }
 
-/// The most AMORDEGRC periods walked one by one. Up to here the kernel is main's walk
-/// (probes/fin-amor-period-bound B6-B14, up to 10^6 periods, are Excel's values); past it, where the
-/// walk has not reached a period whose charge is fixed, the decay is a closed form, which can move
-/// the rounded charge once it is about 1E12 or more (fin-amor-period-bound-c). The bound is also the
-/// kernel's work cap (`AMORDEGRC_WEIGHT` in functions/lift/kinds/financial.rs).
-const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 20;
+/// The most AMORDEGRC periods walked one by one. Up to here the kernel is Excel's walk
+/// (probes/fin-amor-period-bound B6-B14 and probes/amordegrc-walk-drift E1-E48, up to 10^6 periods,
+/// and fin-amor-period-bound-c A1-A6, 1.1E6 to 2.4E6 periods, are Excel's values); past it, where
+/// the walk has not reached a period whose charge is fixed, the decay is a closed form, which can
+/// move the rounded charge once it is about 1E12 or more (at 2^20, the bound before T-2918, it
+/// moved -c A1, A3, A4 and A5). The bound is also the kernel's work cap (`AMORDEGRC_WEIGHT` in
+/// functions/lift/kinds/financial.rs): about 29 ms a scalar call in release.
+const DEGRESSIVE_LOOP_PERIODS: u64 = 1 << 22;
 
 /// The most single subtractions `linear_charge` makes. A walk takes a few per binade it crosses
 /// and stops once the charge no longer moves the value, at most 616 over every charge from 2^-1074
@@ -144,12 +151,8 @@ impl Model {
         // The purchase may fall on the first period's end (`AMORLINC(2400,1,1,300,1,0.15,1)` is
         // 360), and every value is checked before the basis is read
         // (`AMORLINC(-1,39679,39813,300,1,0.15,NA())` is #NUM!).
-        let valid = cost >= 0.0
-            && salvage >= 0.0
-            && salvage < cost
-            && period >= 0.0
-            && rate > 0.0
-            && purchased <= first_period;
+        let valid =
+            amortization_values_valid(cost, salvage, period, rate) && purchased <= first_period;
         if !valid {
             return Err(num_error(cell));
         }
@@ -169,11 +172,7 @@ impl Model {
             Amortization::Linear => asset.linear(period),
             Amortization::Degressive => {
                 // Checked after the basis (`AMORDEGRC(2400,39679,39813,300,1,0.5,NA())` is #N/A).
-                // The asset life must not fall in [0, 3] or strictly between 4 and 5: Excel
-                // accepts a life of exactly 4 and 5 (rates 0.25, 0.2; probes/fin-amordegrc
-                // A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
-                let life = 1.0 / rate;
-                if (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0) {
+                if asset_life_refused(rate) {
                     return Err(num_error(cell));
                 }
                 asset.degressive(period, DEGRESSIVE_LOOP_PERIODS)
@@ -181,6 +180,21 @@ impl Model {
         }
         .map_err(|_| num_error(cell))
     }
+}
+
+/// AMORLINC's and AMORDEGRC's value checks beside the dates: `0 <= salvage < cost`, `period >= 0`
+/// and `rate > 0`, written as the valid ranges so that a NaN fails them. Also the lift's charge
+/// (`ValueWork::Amortization`), which must refuse only what the kernel refuses.
+pub(crate) fn amortization_values_valid(cost: f64, salvage: f64, period: f64, rate: f64) -> bool {
+    cost >= 0.0 && salvage >= 0.0 && salvage < cost && period >= 0.0 && rate > 0.0
+}
+
+/// Whether AMORDEGRC refuses the asset life `1 / rate` of a positive rate: it must not fall in
+/// [0, 3] or strictly between 4 and 5. Excel accepts a life of exactly 4 and 5 (rates 0.25, 0.2;
+/// probes/fin-amordegrc A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
+pub(crate) fn asset_life_refused(rate: f64) -> bool {
+    let life = 1.0 / rate;
+    (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0)
 }
 
 /// The stand-in date of a 1900 serial from 0 to 9999-12-31 (`from_excel_date`, whose serial 1 is
@@ -291,7 +305,9 @@ impl Asset {
             return Ok(Amortized::new(0.0, LeftOver::Read));
         }
         let walk = DegressiveWalk {
-            remain: self.cost - first_depr,
+            // Subtracted like every later charge (`DegressiveWalk::charge`), by analogy: the
+            // probes fit the plain and the twice-rounded difference alike.
+            remain: extended_sum(self.cost, -first_depr),
             salvage: self.salvage,
             rate: depr_rate,
             half_period: half_period(asset_life),
@@ -421,7 +437,12 @@ struct DegressiveWalk {
 impl DegressiveWalk {
     /// The (unrounded) charge of whole period `periods`, main's loop: each period charges
     /// `rate * remain`, the half period half of `remain` (and the rate becomes 1), and once
-    /// `remain` is below the salvage nothing.
+    /// `remain` is below the salvage nothing. Excel subtracts the charge in x87 extended precision
+    /// and stores the difference, so `remain` is rounded twice ([`extended_sum`]): about one step in
+    /// 4,000 then differs from the plain difference by an ulp, which a walk of 10^3 periods or more
+    /// carries into its charge. With it all 135 cells of probes/amordegrc-walk-drift and -ties are
+    /// Excel's; with the plain difference 28 (from 1000 periods on) were not (T-2849, financial.md
+    /// "AMORDEGRC rounds its charge like ROUND").
     ///
     /// The walk stops early where the rest is known, bit for bit main's value: below the salvage
     /// every later period charges 0; before the half period a charge that rounds to 0 stays 0
@@ -460,7 +481,7 @@ impl DegressiveWalk {
             } else {
                 depr_temp
             };
-            let remain = self.remain - depr;
+            let remain = extended_sum(self.remain, -depr);
             if remain == self.remain {
                 // A fixed point: every period charges `depr` until the half period, or for ever
                 // after it (the rate is 1 there, so only a zero `remain` stays put).
@@ -478,9 +499,10 @@ impl DegressiveWalk {
     /// period): `remain` decays by `(1 - rate)` a period, `remain * exp(n * log1p(-rate))`.
     /// Main's walk adds a rounding per period, so the two drift apart by up to about 1e-13
     /// relative over 10^6 periods: equal once rounded for charges below about 1E11, but a larger
-    /// charge can be a unit off (a review replay: 3.1E11; about 1E12 or more often is):
-    /// `AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` is 18989305437101, Excel and main
-    /// 18989305437102 (financial.md "AMORDEGRC past 2^20 periods", a DEVIATION).
+    /// charge can be a unit off (a review replay: 3.1E11; about 1E12 or more often is): with the
+    /// closed form from 2^20 periods, the bound before T-2918,
+    /// `AMORDEGRC(1E20,39679,39813,300,1100000,1E-7,1)` was 18989305437101, Excel and main
+    /// 18989305437102 (financial.md "AMORDEGRC past 2^22 periods", a DEVIATION).
     fn closed_form(&self, done: u64, periods: u64) -> f64 {
         let last = self
             .half_period
@@ -552,15 +574,15 @@ fn amor_are_equal(x: f64, y: f64) -> bool {
     (x - y).abs() < 0.0001
 }
 
-// `round excelComplaint`: pre-round to 13 significant digits (Excel's internal
-// precision) then round to the nearest integer, ties away from zero.
+// The AMOR* functions round a charge the way ROUND(x,0) does: the value is cut to 15 significant
+// digits and then rounded half away from zero, so a charge of 1E15 or more comes back at 15
+// digits (`AMORDEGRC(1E308,39679,39813,300,1E5,1E-6,1)` is 1.94700443465919E302, the walk's
+// 1.9470044346591894E302 cut) and 43132894008630.49 rounds up through 43132894008630.5
+// (docs/excel-semantics/financial.md "AMORDEGRC rounds its charge like ROUND", probes/amordegrc-walk-ties,
+// T-2826). A cut that overflows (only a charge within 5E292 of the largest double, unprobed)
+// leaves the value as it is.
 fn amor_round(x: f64) -> f64 {
-    // Past about 1.8E295 the scaled value overflows; there the pre-round has no visible effect, and
-    // skipping it keeps a huge charge finite (`AMORDEGRC(1E308,..)`, probes/fin-amor-period-bound-b
-    // B2, T-1895).
-    let scaled = (x * 1e13).round();
-    let k = if scaled.is_finite() { scaled / 1e13 } else { x };
-    k.round()
+    round_decimal(x, 0.0, RoundMode::HalfAwayFromZero).unwrap_or(x)
 }
 
 #[cfg(test)]
@@ -582,7 +604,8 @@ mod tests {
         depr
     }
 
-    /// Main's AMORDEGRC loop after the first period, the reference walk.
+    /// Main's AMORDEGRC loop after the first period, with Excel's twice-rounded subtraction
+    /// (T-2849): the reference walk, one period at a time.
     fn degressive_walk(walk: &DegressiveWalk, asset_life: f64, periods: u64) -> f64 {
         let mut depr = 0.0;
         let mut depr_rate = walk.rate;
@@ -600,7 +623,7 @@ mod tests {
             } else {
                 depr_temp
             };
-            remain -= depr;
+            remain = extended_sum(remain, -depr);
         }
         depr
     }
@@ -720,14 +743,17 @@ mod tests {
     }
 
     #[test]
-    fn amor_round_keeps_a_huge_charge_finite() {
-        // `x * 1e13` overflows past about 1.8E295: the value rounds as it is (T-1895).
+    fn amor_round_rounds_like_round() {
+        // A huge charge comes back cut to 15 digits (probes/fin-amor-period-bound-b B2, T-2826).
         assert_eq!(
             amor_round(1.947_004_434_659_189_4e302),
-            1.947_004_434_659_189_4e302
+            1.947_004_434_659_19e302
         );
         assert_eq!(amor_round(-1e300), -1e300);
         assert_eq!(amor_round(2.5), 3.0);
+        // The 15-digit cut is 43132894008630.5 (probes/amordegrc-walk-ties A1).
+        assert_eq!(amor_round(43_132_894_008_630.49), 43_132_894_008_631.0);
+        assert_eq!(amor_round(f64::MAX), f64::MAX);
     }
 
     #[test]

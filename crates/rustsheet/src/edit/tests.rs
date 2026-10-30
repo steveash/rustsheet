@@ -2,6 +2,7 @@ use super::*;
 use crate::value::{ErrorKind, XlError};
 use crate::WorkbookOptions;
 
+mod calculated_column;
 mod typed_entry;
 
 fn book() -> Workbook {
@@ -707,9 +708,11 @@ fn over_nested_formula_is_rejected_not_a_crash() {
 fn formulas_at_the_depth_limit_evaluate() {
     on_small_stack(|| {
         let mut wb = book();
-        // 127 nested calls (Excel itself allows 64) and a 255-term chain are the deepest accepted.
+        // 127 nested calls and a 255-term chain are the deepest trees accepted. Typed, Excel's
+        // 65-call cap refuses the calls (T-3097), so they are entered as stored text, which the
+        // cap does not check, to keep measuring the depth bound's stack.
         let calls = format!("={}1{}", "ABS(".repeat(127), ")".repeat(127));
-        wb.set("A1", Input::Formula(calls)).unwrap();
+        wb.set("A1", Input::StoredFormula(calls)).unwrap();
         assert_eq!(wb.value("A1").unwrap(), Value::Number(1.0));
         wb.set(
             "A2",
