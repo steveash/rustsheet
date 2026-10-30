@@ -19,7 +19,7 @@ function and every shape split is one named constant. No cell changes value (a p
 After T-3147 and T-2852 the density is chosen in two places: gamma.rs `gamma_dist_of` and chisq.rs both write
 `log_form_density(..).or_else(|| gamma_density(..)).unwrap_or_else(|| dist.pdf(x))`, the log form living in gamma.rs and
 the ratio form in incomplete_gamma/density.rs. The shape bounds also overlap: gamma.rs `LOG_FORM_SHAPE_MAX` (where the log
-form stops) and density.rs `SMALL_RATIO_SHAPE_MIN` (where the ratio form above the mode starts) are separate fits of
+form stops; `LOG_FORM_ABOVE_MODE_SHAPE_MAX` = 2.5 above the mode) and density.rs `SMALL_RATIO_SHAPE_MIN` (where the ratio form above the mode starts) are separate fits of
 neighbouring brackets and should become one constant, or two that name each other, with their brackets restated
 (statistics.md "GAMMA.DIST's density below shape 3 is a log-space form" and the T-3147 paragraph of "Incomplete gamma:
 accurate kernel"). Review finding on T-2852 (architecture reviewer, round 1).

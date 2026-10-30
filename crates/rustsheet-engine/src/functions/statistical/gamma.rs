@@ -79,7 +79,8 @@ const LOG_FORM_ABOVE_MODE_SHAPE_MAX: f64 = 2.5;
 const LOG_FORM_SHAPE_MIN: f64 = 0.5;
 
 /// The largest x / beta at which GAMMA.DIST's density takes the EXP(a LN(y)) form. A fit inside its
-/// evidence bracket [5.5, 20.01) (T-2852): at y = 5.5 it is Excel's bit for bit (gated gen-m9/
+/// evidence bracket [5, 20.01) (T-2852): at y = 5 and 5.5 it is Excel's bit for bit (gated gen-m9/
+/// 8dd2312c96effb1b A150 `GAMMA.DIST(1.5,1,0.3,FALSE)` and gen-m9/
 /// bc40d37cb4d8301d A165 `CHISQ.DIST(11,4,FALSE)`, 1 ulp on the direct form), and at
 /// `GAMMA.DIST(40,1.5,1.999,FALSE)` (y = 20.01, gen-m9/c468f5046aadfbbc A171) it is 10 ulp off, the
 /// direct form 5: there the rounding of the double y, times y, moves e^-y by 4 units, which Excel

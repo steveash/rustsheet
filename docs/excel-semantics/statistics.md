@@ -432,7 +432,7 @@ The bounds are fits inside their evidence brackets (gamma.rs names each cell):
   gen-m9/9cca17438a7e6f8a A133 and d8266bc15533702a A230 bit-exact); at shapes 5, 9 and 10 every log form is 10 to 18 ulp
   off from y = 1 up (m9-chisq-dist A48, m9-gamma-dist-a9 A8), where the direct form is 0 to 1 (and T-3147 finds the
   ratio form there above the mode from 3).
-- Upper y 16, in [5.5, 20.01): gated gen-m9/bc40d37cb4d8301d A165 at y = 5.5 is bit-exact on the form (1 ulp on the
+- Upper y 16, in [5, 20.01): gated gen-m9/8dd2312c96effb1b A150 at y = 5 and gen-m9/bc40d37cb4d8301d A165 at y = 5.5 are bit-exact on the form (1 ulp on the
   direct one); at `GAMMA.DIST(40,1.5,1.999,FALSE)` (gen-m9/c468f5046aadfbbc A171, y = 20.01) e^-y of the double y misses
   by 10 ulp, the direct form by 5 and e^-y of the extended quotient by 3 (Excel is within 1 ulp of the true value), but
   the extended quotient loses the gated sweep B35. From y = 2 up the form is no closer than the direct one on balance
