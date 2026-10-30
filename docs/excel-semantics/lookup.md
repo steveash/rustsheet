@@ -587,6 +587,23 @@ Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153
 
+## MATCH, VLOOKUP and HLOOKUP exact-match keys fold case one character to one (T-3133)
+Rule: the exact match of MATCH (type 0), VLOOKUP and HLOOKUP (`range_lookup` FALSE) compares text case-insensitively
+with SEARCH's per-character fold, never changing the text's length (criteria.md "Wildcard escapes, case and trailing
+tilde" lists the same fold for wildcard criteria). Over Data!A1:A35 = İ ı I i ΟΣ οσ ος K(U+212A) k K ẞ ß ǅ ǆ Ǆ
+Å(U+212B) å Å Ω(U+2126) ω Ω ſ s S µ μ Μ Ａ ａ Σ σ ς i+U+0307 ss İx, each value looked up both ways (as the key against
+each one-cell array, and against the whole column): `İ` matches only `İ` (not `i`, `I` or i+U+0307), `ı` only `ı`;
+`ΟΣ = οσ = ος` and `Σ = σ = ς`; the Kelvin sign = `k` = `K`; `ẞ = ß` (not `ss`); `ǅ = ǆ = Ǆ`; the Ångström sign = `å`
+= `Å`; the Ohm sign = `ω` = `Ω`; `Ａ = ａ`; `μ = Μ`; `ſ` and `µ` match only themselves. MATCH, VLOOKUP(..,FALSE),
+HLOOKUP(..,FALSE) and XMATCH(..,2) give the same first position for every key.
+XMATCH's exact mode (0) differs: it compares by the collation (coercion.md "Collation equality in lookups and
+criteria"), where `İ` equals i+U+0307 and `ẞ`/`ß` equal `ss`, but not `I` or `i`.
+Evidence: probes/t3133-lookup-criteria-case-fold Calc!A1:E35, I1:J35 (excel-graph, 2026-10-29, T-3133).
+UNVERIFIED: characters outside the list above are assumed to follow the same fold.
+Status: VERIFIED
+Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
+search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
+
 ## XMATCH, XLOOKUP and LOOKUP compare numbers as exact doubles (T-3106)
 Rule: XMATCH and XLOOKUP equate and order numbers as exact doubles, not at 15 digits like the comparison operators, in
 the exact (0), next-smaller (-1) and next-larger (1) match modes and in every search mode (1, -1, 2, -2). LOOKUP does
@@ -614,9 +631,17 @@ AC8 (`=1-(1-8*2^-53)` from cells, 0) repeats T-3073's E8 (numbers.md "Operand or
 The engine matches every cell: LOOKUP shares `SearchVector::approximate_search` and `compare_searched`
 (lookup_table.rs, T-3099); XMATCH and XLOOKUP compare through `compare_searched` in `linear_scan`, `cmp_searched` in
 `binary_search_by` and exact-bit `CollatedKey`s in the exact index (T-3132).
-Unprobed: the wildcard and regex modes with a numeric key.
+The wildcard mode (2) with a number key equates numbers the same way (T-3161): over {2;X;0.5}, `XMATCH(1,..,2)` is
+`#N/A` for X = 1+2^-52, 1-2^-53, 1+1E-15 and 1+5E-15, and so is `XMATCH(0.3,..,2)` for X = 0.1+0.2 and
+`XMATCH(1+2^-52,{2;1;0.5},2)`; search_mode -1 agrees, and XLOOKUP gives its if_not_found. An exact 1 after X is
+found (4 over {2;X;0.5;1}), a text "1" is not, and the key 0.1+0.2 or 1+2^-52 finds its own X (2). The regex mode (3)
+reads the key as text at 15 digits (`XMATCH(1+2^-52,{2;1;0.5},3)` is 2) and finds it anywhere in each candidate's
+text ("Regex mode" below), so near-equal numbers do match; whether a candidate number also reads at 15 digits is not
+shown (an anchored pattern would show it): `XMATCH(1,{2;1+2^-52;0.5},3)` is
+2, as is `XMATCH(0.3,{2;0.1+0.2;0.5},3)`, and `XMATCH(1,{2;1+2^-52;"1";0.5},3,-1)` finds the text "1" (3).
+Evidence: probes/t3161-xmatch-wildcard-regex-near-equal Calc!A1:G10 (excel-graph, 2026-10-30).
 Status: VERIFIED
-Tasks: T-3106, T-3132
+Tasks: T-3106, T-3132, T-3161
 
 ## XLOOKUP / XMATCH with an omitted lookup_value is a blank cell
 Rule: an omitted lookup_value (`XMATCH(,H1:H4)`, `XLOOKUP(,...)`) is indistinguishable from a reference to a blank cell, in every
@@ -983,6 +1008,11 @@ other consumer still read such a variable as its cell's value (T-2622). TRIMRANG
 unprobed.
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2622
+TRIMRANGE's value read is a reference too: `TYPE(TRIMRANGE(LET(v,A2,v)))` and `TYPE(TRIMRANGE(A2))` are 1, and `ROWS(A2-TRIMRANGE(LET(v,A3,v)))`
+and `ROWS(A2-TRIMRANGE(A3))` with A3 text are `#VALUE!`. TAKE of a variable that CHOOSE picks (`LET(v,A2,TYPE(TAKE(CHOOSE(1,v),1)))`) or that is bound
+to a cell on another sheet (`TYPE(TAKE(LET(v,Data!A1,v),1))`) is a reference as well: TYPE 1, ISREF TRUE
+A multi-cell source that trims to one cell is read the same way (our rule, from gen-m7 a470dc9e165bdb20 A465: `MAKEARRAY(3,2,LAMBDA(w,v,TRIMRANGE(Data!D11:E11,2,2)))` is 0.2 throughout); `TYPE`/`ISREF` of it are unprobed.
+(probes/t3130-concat-lambda-trimrange-cell-variable Q13-Q16, Q23-Q26, excel-graph, 2026-10-30, T-3130).
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or

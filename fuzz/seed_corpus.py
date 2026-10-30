@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Builds the fuzz seed corpora from the repository's own test inputs (T-0021).
 
-Formula targets get one file per distinct formula in eval/suites (without the leading `=`);
-`xlsx_import` gets every workbook under crates/rustsheet-xlsx/tests and eval/suites. Corpora are
-generated, never committed, so they track the suites as they grow. Seeds are added to whatever a
-corpus directory already holds, so the inputs libFuzzer found on earlier runs are kept.
+Formula targets get one file per formula shape in eval/suites (without the leading `=`), at most
+MAX_FORMULA_SEEDS of them; `xlsx_import` gets every workbook under crates/rustsheet-xlsx/tests and
+eval/suites. Corpora are generated, never committed, so they track the suites as they grow. Seeds
+are added to whatever a corpus directory already holds, so the inputs libFuzzer found on earlier
+runs are kept.
 
 Usage: fuzz/seed_corpus.py   (from anywhere; writes fuzz/corpus/<target>/ and fuzz/dict/)
 """
@@ -23,6 +24,14 @@ FORMULA_TARGETS = ("formula_parse", "formula_eval")
 MAX_SEED_BYTES = 1 << 20
 # A function call in a seed formula; its name (with the paren) becomes a dictionary token.
 FUNCTION_CALL = re.compile(r"(?<![A-Za-z0-9_.])([A-Z][A-Z0-9.]*\()")
+# The suites hold over 800,000 distinct formulas, most of them one generated shape with other
+# numbers (probes-numeric). libFuzzer reads every seed once before it fuzzes, at a few hundred
+# formula_eval runs a second, so all of them outlasted the nightly job (T-3163). One seed per
+# shape (numbers and text literals replaced), capped, keeps the first pass near a minute; the
+# fuzzer mutates numbers itself, and the dictionary still lists every function name.
+MAX_FORMULA_SEEDS = 20_000
+NUMBER = re.compile(r"(?<![A-Za-z0-9_$.])(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
+TEXT = re.compile(r'"(?:[^"]|"")*"')
 
 
 def write_dictionary(formulas: set[str]) -> Path:
@@ -48,6 +57,21 @@ def case_formulas(case: Path) -> set[str]:
     return found
 
 
+def shape(formula: str) -> str:
+    """`formula` with its numbers and text literals blanked: generated probes differ only there."""
+    return NUMBER.sub("0", TEXT.sub('""', formula))
+
+
+def formula_seeds(formulas: set[str]) -> list[str]:
+    """One formula per shape (the first in sorted order), then the MAX_FORMULA_SEEDS whose
+    sha256 sorts first: deterministic, and spread over the suites rather than the first ones."""
+    by_shape: dict[str, str] = {}
+    for formula in sorted(formulas):
+        by_shape.setdefault(shape(formula), formula)
+    ranked = sorted(by_shape.values(), key=lambda f: hashlib.sha256(f.encode("utf-8")).hexdigest())
+    return ranked[:MAX_FORMULA_SEEDS]
+
+
 def write_seed(directory: Path, data: bytes) -> None:
     (directory / hashlib.sha256(data).hexdigest()).write_bytes(data)
 
@@ -57,10 +81,11 @@ def main() -> int:
     formulas: set[str] = set()
     for case in sorted((ROOT / "eval" / "suites").rglob("*.case.json")):
         formulas |= case_formulas(case)
+    seeds = formula_seeds(formulas)
     for target in FORMULA_TARGETS:
         directory = corpus / target
         directory.mkdir(parents=True, exist_ok=True)
-        for formula in formulas:
+        for formula in seeds:
             write_seed(directory, formula.encode("utf-8"))
     dictionary = write_dictionary(formulas)
     directory = corpus / "xlsx_import"
@@ -74,7 +99,8 @@ def main() -> int:
         if workbook.stat().st_size <= MAX_SEED_BYTES:
             write_seed(directory, workbook.read_bytes())
             kept += 1
-    print(f"{len(formulas)} formula seeds, {kept} workbook seeds in {corpus}; dictionary {dictionary}")
+    print(f"{len(seeds)} formula seeds of {len(formulas)} formulas, {kept} workbook seeds in {corpus}; "
+          f"dictionary {dictionary}")
     return 0
 
 

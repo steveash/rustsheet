@@ -3,7 +3,7 @@ id: T-3154
 title: "Probe collation accents across Latin-1 and Latin Extended-A on one letter, stacked combining marks, and Cyrillic ё/й as accent or letter"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,17 +29,36 @@ combining mark, and whether Cyrillic `ё`/`й` are accented letters are backed b
   (excel-probe skill, excel-graph).
 
 ## Acceptance criteria
-- [ ] A probe case ranks `à â ã ä å ă ā ą` with `a`, `è ê ë ė ě ē ę` with `e`, `ò ô õ ö ő ō`
+- [x] A probe case ranks `à â ã ä å ă ā ą` with `a`, `è ê ë ė ě ē ę` with `e`, `ò ô õ ö ő ō`
       with `o`, `ù û ü ů ū ű ų` with `u`, and the same letters as the first of two-letter strings.
-- [ ] It ranks stacked marks (`"á"&UNICHAR(780)`, `"a"&UNICHAR(769)&UNICHAR(780)`,
+- [x] It ranks stacked marks (`"á"&UNICHAR(780)`, `"a"&UNICHAR(769)&UNICHAR(780)`,
       `"a"&UNICHAR(780)&UNICHAR(769)`, a mark after `ǎ`, a mark outside the 13 mapped ones such as
       U+0323) and `"йа"` against `"иб"`, `"ёа"` against `"еб"`.
-- [ ] It checks the final-sigma fold beyond exact MATCH: `COUNTIF(r,"ς*")`, `MATCH("ς*",r,0)`,
+- [x] It checks the final-sigma fold beyond exact MATCH: `COUNTIF(r,"ς*")`, `MATCH("ς*",r,0)`,
       `XMATCH("ς",r,2)`, `VLOOKUP("ς?",r,1,FALSE)` and a D-function criterion `ς` over `σx`, `ςx`, `Σ`.
-- [ ] It ranks Latin Extended-B letters (`ǎ`, `ș`, `ț`, `ơ`, `ư`) against their base letters and
+- [x] It ranks Latin Extended-B letters (`ǎ`, `ș`, `ț`, `ơ`, `ư`) against their base letters and
       their combining spellings (U+0326, U+031B), and XMATCH/VLOOKUP with a decomposed key.
-- [ ] `collation.rs` and coercion.md follow the evidence; every collation probe still passes.
-- [ ] `make check` green; reviewers approve.
+- [x] `collation.rs` and coercion.md follow the evidence; every collation probe still passes.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Scripts other than Latin, Greek and Cyrillic.
+
+## Outcome
+- Three probes (excel-graph): probes/t3154-collation-accents (595 cells: the accent order on
+  `a e o u`, stacked and unmapped marks, `ё`/`й`, final sigma in wildcards and D-functions, Latin
+  Extended-B and decomposed lookup keys), probes/t3154-collation-accent-weights (357 cells: 119
+  spellings of `a` with 1 to 100 marks) and probes/t3154-collation-accent-pairs (812 cells: every
+  pair's `<`, `=`, `>`).
+- Finding: Excel's accent is the Windows sorting weight table's diacritic weight, summed over the
+  combining marks in a wrapping byte (`a`+acute+acute = `å`; two perispomeni = one cedilla); the
+  superscripts `ª º ¹ ² ³` differ in a later case-like pass; `ё`/`й` are accented letters; the
+  final-sigma fold holds in wildcards and D-function criteria; XMATCH/XLOOKUP/COUNTIF equate
+  decomposed keys, MATCH/VLOOKUP do not. Excel's comparison is not a total order (prefix rule,
+  long mark runs): left to T-3181.
+- Implemented: `collation_tables.rs` (`MARK_WEIGHT` from the Windows table, `DECOMPOSED` extended
+  to Latin Extended-B and Additional, 241 letters) and `collation.rs` (accent byte, variant pass).
+  coercion.md "Accent weights add up and wrap" records it.
+- Eval delta: 3 new probe cases, 1764 cells, 1703 pass; 61 new-coverage known failures (55 in
+  accent-weights, 6 in accent-pairs, all T-3181); no regressions; every earlier collation probe
+  still passes.
