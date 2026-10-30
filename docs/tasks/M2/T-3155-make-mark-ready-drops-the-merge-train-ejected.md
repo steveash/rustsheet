@@ -3,7 +3,7 @@ id: T-3155
 title: "make mark-ready drops the merge-train-ejected label when it marks a PR again"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
