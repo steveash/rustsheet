@@ -66,5 +66,5 @@ Main (9efff2847) against HEAD (the same tree before merging T-3070's quantile ch
   m9-chisq-dist A38, A40 and t1049-chisqdist A38 1 -> 3, m9-gamma-dist-a0p5 A22 1 -> 2, t1048-gammadist A6, B6 1 -> 2.
 - Visibly fixed, 1: probes/t2753-gamma-density-ratio-sweep B21 `GAMMA.DIST(1,2,1/1E-5,FALSE)` 5 -> 1 ulp. Newly visibly
   off: 0. Type or error changes: 0.
-- Gated suites: 0 regressions (`make eval-baseline`).
+- Gated suites: 0 regressions; `make eval-baseline` drops 5 gen-m9 and 18 probes known failures.
 
