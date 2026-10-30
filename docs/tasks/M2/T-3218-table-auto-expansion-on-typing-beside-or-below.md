@@ -3,7 +3,7 @@ id: T-3218
 title: "Table auto-expansion on typing beside a table: a typed constant and a table with a totals row grow it too (rules 7a, 7c)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -45,13 +45,31 @@ What this task changes:
   non-formula text, so a constant's growth reaches the undo log.
 
 ## Acceptance criteria
-- [ ] Rules 7a and 7c are implemented. Every cell listed above passes bit-exact, and the F lines leave
+- [x] Rules 7a and 7c are implemented. Every cell listed above passes bit-exact, and the F lines leave
       eval/baseline/probes.txt via `make eval-baseline`, with 0 regressions.
-- [ ] The already-matching occupied-* (7d) and header-formula-* (7b) cases keep passing, as do the t2957-* cases.
-- [ ] Facade test: undoing a typed constant that grew the table restores the table and the header cell.
-- [ ] `make check` green; reviewers approve.
+- [x] The already-matching occupied-* (7d) and header-formula-* (7b) cases keep passing, as do the t2957-* cases.
+- [x] Facade test: undoing a typed constant that grew the table restores the table and the header cell.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Overlap with another table (unprobed).
 - Row growth below the last data row (T-3273) and an unqualified `[@Col]` typed beside the table (T-3274).
 - Whether the totals cell D5 is stored as a totals-row formula (unprobed, rule 7c).
+
+## Outcome
+Rules 7a and 7c are implemented. `Model::table_expansion` now grows a table for a typed constant as well as a
+formula, and for a table with a totals row. Its guards are now an empty value, an occupied neighbour (rule 7d) and
+an overlap. A formula typed beside a data row fills the other data rows. It never fills the totals cell, and one
+typed beside the totals row fills nothing. A constant fills nothing. A constant typed into the header cell becomes
+the header text, always as text (`TableExpansion::header_text`). The facade's `Txn::log_typed_fill` logs a
+constant's growth, and `Input::Formula` without `=` is not logged, because `apply` refuses it.
+
+Tests: engine unit tests `a_constant_typed_beside_the_table_grows_it` and `a_table_with_a_totals_row_grows_too`.
+The old `no_expansion_for_...` test is narrowed to stored formulas and occupied columns. Facade tests cover a
+constant growing the table, rollback of that growth restoring the table and header, and totals-row growth.
+The four `-d2`/`totals-*` cases gain a hand expectation for D1 (`Column1`), as t2957-expand-right-data has. The
+oracle's J1 (`D1&""`), K1 (`TYPE(D1)` 2) and H3 (`ISFORMULA(D1)` FALSE) back it, because the sidecar does not
+record a non-formula cell.
+
+Eval: probes known failures 2059 -> 2033. All 26 owned cells pass, with 4 new D1 checks passing, 0 regressions,
+and occupied-*, header-formula-* and t2957-* still passing. docs/excel-semantics/references.md "Ours" is updated.
