@@ -7,6 +7,8 @@
 //! `tools/src/rustsheet_tools/fitlab/kernels/beta.py`, bit-exact on 158 of the 283 BETA.DIST
 //! sweep cells against 87 for statrs' `beta_reg`):
 //! - Excel's closed forms on bratio's oriented arguments ([`closed_form_tails`], T-2502);
+//! - at a first shape of 1E6 or more with b below 40 and b/a at most 1E-6 (after the reflection),
+//!   `DiDonato` and Morris' expansion in the incomplete gamma (`large_shape_beta.rs`, T-2528);
 //! - otherwise Cephes' two continued fractions (`incbcf`, `incbd`; no power series), reflected
 //!   at the mean, x > a/(a+b), to the upper tail I_{1-x}(b,a);
 //! - the prefactor x^a (1-x)^b / B(a,b) as exp(a ln x) * exp(b ln(1-x)) * Gamma(a+b) /
@@ -26,6 +28,7 @@
 //! cap) and [`RLOG1_TERMS`] series terms, so one call costs a fixed amount of work.
 
 use super::half_integer_beta::{half_integer_remainder, is_half_integer_shape};
+use super::large_shape_beta::large_shape_lower;
 use super::special::ln_gamma;
 use crate::x87_exp::{dd_add, dd_mul, fast_two_sum, two_sum};
 use crate::x87_exp::{excel_exp, excel_expm1};
@@ -97,7 +100,9 @@ pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     reg_tails(x, y, a, b, Kernel::Accurate)
 }
 
-/// [`beta_reg_tails`] with Cephes' kernel at every shape: the tails BETA.INV's and F.INV's searches
+/// [`beta_reg_tails`] with Cephes' kernel at half-integer shapes too (the large-shape expansion,
+/// `large_shape_beta.rs`, stays: at a of 1E6 or more Cephes' fraction does not converge, T-2528):
+/// the tails BETA.INV's and F.INV's searches
 /// cross (`beta.rs`, `fisher.rs::f_quantile_tail`). With the accurate series under them 7 gated
 /// gen-m9 quantile cells move off Excel's bit (`FINV(0.025,7,10)`, gen-m9/fec39efaba9284c3 A336;
 /// `F.INV.RT(0.975,9,9)`, 40425341c5034eed A205) and BETA.INV round trips such as
@@ -107,7 +112,8 @@ pub(crate) fn search_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     reg_tails(x, y, a, b, Kernel::Cephes)
 }
 
-/// Which kernel [`beta_tails`] takes at half-integer shapes below [`MAXGAM`].
+/// Which kernel [`beta_tails`] takes at half-integer shapes below [`MAXGAM`]; both take the
+/// large-shape expansion (`large_shape_beta.rs`) where it applies.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Kernel {
     /// [`half_integer_tail`].
@@ -199,7 +205,7 @@ fn beta_tails(x: f64, y: f64, a: f64, b: f64, kernel: Kernel) -> (f64, f64) {
         Kernel::Accurate => half_integer_tail(x, y, a, b),
         Kernel::Cephes => None,
     };
-    let v = if let Some(v) = accurate {
+    let v = if let Some(v) = accurate.or_else(|| large_shape_lower(a, b, x, y)) {
         v
     } else if a + b < MAXGAM {
         let w = cephes_fraction(a, b, x, y);

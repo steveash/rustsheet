@@ -29,6 +29,9 @@ answers `#NUM!` on bgrat and bfrac.
   `#NUM!` from a ported branch needs its own signal.
 - Excel for the web refuses a workbook holding BETA.DIST with a shape of 1E+295 or more: keep such cells out of cases.
 
+- T-2528 (large-shape expansion, a >= 1E6, b < 40) fixed probes/t3007-beta-dist-ln-x-overflow S!A3, A4, A21 and A22;
+  7 of the case's 27 cells are left.
+
 ## Acceptance criteria
 - [ ] The 11 cells above match Excel, or the ones left are recorded with their reason in statistics.md; no gated
       cell regresses.
