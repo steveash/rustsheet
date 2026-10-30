@@ -3,7 +3,7 @@ id: T-2858
 title: "T.INV, T.INV.2T, TINV and CONFIDENCE.T at one degree of freedom are 1/TAN(pi*p/2) through Excel's TAN (68 cells)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -95,3 +95,8 @@ T-2724 (the centre); they are this task's, and T-2724 no longer lists them.
 Decision 0083: done when every cell this task owns is within half a unit of the 15th significant digit of Excel's
 value. The closed form is expected to be bit-exact on all of them; any cell left only at the ulp level moves to a
 `defer: phase-1b` follow-up named in the Outcome.
+
+## Outcome
+`cauchy_two_tail_quantile` (1/TAN(PI*q/2) via `excel_tan`) now serves df = 1 in T.INV, T.INV.2T, TINV and CONFIDENCE.T. Two-tailed
+p = 1 returns 0 (Excel evidence, see statistics.md). Eval: gen-m9 known failures 3151 -> 3130 (21 fixed), ironcalc-calc 403 -> 395
+(8 fixed), no regressions. probes-numeric (ungated) cells were not itemised individually; the suite's passing count rose.

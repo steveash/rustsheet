@@ -2,6 +2,7 @@ use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
+use crate::functions::math_and_trigonometry::excel_tan;
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::paired::{MarkedSample, PairedSamplesError, PairedValues};
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
@@ -12,6 +13,13 @@ use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
+/// Student-t quantile at one degree of freedom for the two-tailed probability `q` in (0, 1]:
+/// `1/TAN(PI()*q/2)` through Excel's own TAN, not the true Cauchy quantile (statistics.md
+/// "Student-t quantile at one degree of freedom is 1/TAN(π·p/2) through Excel's TAN", T-2858).
+pub(crate) fn cauchy_two_tail_quantile(q: f64) -> f64 {
+    1.0 / excel_tan(std::f64::consts::PI * q / 2.0)
+}
 
 fn mean(xs: &[f64]) -> f64 {
     let n = xs.len();
@@ -526,6 +534,31 @@ impl Model {
         if p_out || !(1.0..=T_DF_MAX).contains(&df) {
             return Err(num_error(cell));
         }
+        if df == 1.0 {
+            // Closed form Excel evaluates at df 1 (T-2858); T.INV(0.5) keeps today's 0.
+            let x = if two_tailed {
+                if p == 1.0 {
+                    // 1/TAN(PI/2) would be 6.1E-17; Excel returns 0 (gen-m9 0620505280d2ea6e A90
+                    // `TINV(1,1)`, 7f7ca726c3f68554 A166 `TINV(1-1E-17,1)`).
+                    0.0
+                } else if p > 1.0 {
+                    -cauchy_two_tail_quantile(2.0 - p)
+                } else {
+                    cauchy_two_tail_quantile(p)
+                }
+            } else if p < 0.5 {
+                -cauchy_two_tail_quantile(2.0 * p)
+            } else if p > 0.5 {
+                cauchy_two_tail_quantile(2.0 * (1.0 - p))
+            } else {
+                0.0
+            };
+            return if x.is_finite() {
+                Ok(x)
+            } else {
+                Err(num_error(cell))
+            };
+        }
         let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
         let x = if two_tailed && p > 1.0 {
             // T.INV.2T(p) = T.INV(1 - p/2), the negative quantile, for p in (1, 2) (m9-t-edges A2
@@ -619,7 +652,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{t_quantile, t_upper_quantile};
+    use super::{cauchy_two_tail_quantile, t_quantile, t_upper_quantile};
     use statrs::distribution::StudentsT;
 
     // Excel (probes-numeric t1531-t-tiny-p): the Student-t quantile is finite, never an error, for
@@ -688,5 +721,29 @@ mod tests {
                 assert!(t.is_finite() && t < 0.0, "df {df} q {q}: {t}");
             }
         }
+    }
+
+    // T-2858: Excel's df = 1 doubles (eval cells TINV/T.INV/T.INV.2T), bit for bit.
+    #[test]
+    fn df_one_quantile_is_one_over_excel_tan() {
+        // TINV(1-1E-10,1)
+        assert_eq!(cauchy_two_tail_quantile(1.0 - 1e-10), 1.570797438519081e-10);
+        // TINV(1+2^-52,1) = -t2(2 - p)
+        assert_eq!(
+            -cauchy_two_tail_quantile(2.0 - (1.0 + f64::EPSILON)),
+            -5.053466325954936e-16
+        );
+        // T.INV(1E-16,1) = -t2(2p)
+        assert_eq!(-cauchy_two_tail_quantile(2.0 * 1e-16), -3183098861837907.0);
+        // T.INV(0.9,1)
+        assert_eq!(
+            cauchy_two_tail_quantile(2.0 * (1.0 - 0.9)),
+            3.0776835371752544
+        );
+        // CONFIDENCE.T(0.05,1,2)
+        assert_eq!(
+            cauchy_two_tail_quantile(0.05) * 1.0 / 2.0_f64.sqrt(),
+            8.984643532093761
+        );
     }
 }
