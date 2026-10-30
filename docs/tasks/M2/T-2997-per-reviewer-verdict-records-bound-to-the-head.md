@@ -3,7 +3,7 @@ id: T-2997
 title: "Per-reviewer verdict records bound to the head sha for merge-train readiness"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
