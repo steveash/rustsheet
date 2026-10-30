@@ -32,7 +32,7 @@ pub(super) fn l140_bup_bpser(a0: f64, b0: f64, x0: f64, y0: f64) -> Option<f64> 
 /// - W = 1 + `d_1` + ... with `d_l = d_{l-1}·(r_l·x)`, `r_l = fl(fl(apb + l)/fl(ap1 + l))` stored and `r_l·x`
 ///   held in a register; each partial sum stored;
 /// - the sum stops after term k (TOMS's (b - 1)x/y - a) once d <= eps·W.
-fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
+pub(super) fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
     let density = beta_density_small_shape(x, a, b)?;
     let ret = density * (x * y) / a;
     if n == 1.0 || ret == 0.0 {
