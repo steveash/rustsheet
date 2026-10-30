@@ -3,7 +3,7 @@ id: T-3207
 title: "Merge-train verdict records: record format, make verdict-record, mark derives verdicts, V4 checks them in warn mode"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: M
 tier: opus
@@ -23,22 +23,36 @@ review-less verdict is caught mechanically (in `warn` mode: reported, not yet en
 - Reuse the V1 writer filter (`Authors`) and the attribution-footer tolerance of decision 0175 for record bodies.
 
 ## Acceptance criteria
-- [ ] A `merge-train-verdict v1` block (head, reviewer, verdict) with parse/render and tests, and a
+- [x] A `merge-train-verdict v1` block (head, reviewer, verdict) with parse/render and tests, and a
       `make verdict-record PR=<n> REVIEWER=<name> VERDICT=<v> REPORT=<file> [STEP=1]` that posts the report plus
       the block for the local HEAD (refusing when HEAD is not the PR head), truncating to GitHub's limit.
-- [ ] `mark` derives `reviewers:` from the newest writer record per applicable reviewer on the head; while
+- [x] `mark` derives `reviewers:` from the newest writer record per applicable reviewer on the head; while
       `verdict_records = "warn"` (the default, read from `scripts/merge_train.toml` on `origin/main`) a missing
       record is a warning and `REVIEW=` still works; in `require` it is a refusal.
-- [ ] V4 checks the records for `head` (or `prev` under a carry-over the merger re-verifies); in `warn` mode a
+- [x] V4 checks the records for `head` (or `prev` under a carry-over the merger re-verifies); in `warn` mode a
       gap is reported in the run summary and does not unlabel; in `require` it fails V4. Tests cover both modes,
       a stale-head record, a newer REQUEST_CHANGES, an edited record (ignored), a record posted after the
       marker (counted), an outsider's record (ignored), a report containing its own `merge-train-verdict`
       block or a `-->` (neutralised; only the final block counts) and a report over the comment limit (the
       report is truncated, the block kept). Check with a real GitHub payload that only an edit moves a comment's `updated_at`
       (not a reaction); if anything else does, edited-record filtering fails closed and must be documented.
-- [ ] `make check` green; security and architecture approve (protected paths: decision 0178 covers them).
+- [x] `make check` green; security and architecture approve (protected paths: decision 0178 covers them).
 
 If this overruns size M, split the `verdict_records` key and V4's `warn` reporting into their own task.
 
 ## Out of scope
 - The skills' instructions to post records and the flip to `require` (T-3208).
+
+## Outcome
+Done 2026-10-30 (PR #2419). `scripts/merge_ready.py` gains the `merge-train-verdict v1` record (`Record`,
+`record_body`, which neutralises `<!--`/`-->` in the report and cuts only the report to fit the comment limit
+less the session footer, `parse_record`, which accepts only a body with exactly one block, at its end), the
+lookup (`recorded_verdicts`: unedited writer records for one head, newest by `created_at`; `record_gaps`) and
+the rollout key (`records_mode`: missing key `warn`, unparseable or unknown value `require`). `make
+verdict-record` (`record`, direct or `STEP=1`) posts one for the local HEAD and refuses when it is not the PR
+head. `mark` derives its verdicts from the records (`REVIEW=`/`CARRY=1` now optional and stand in for a missing
+record only in `warn`, with a warning); V4 checks the records for `head`, or `prev` with the carry check re-run,
+failing in `require` and warning in `warn` (in `verify`'s report and the merger's run log). `verdict_records =
+"warn"` is now explicit in `scripts/merge_train.toml`. Real-payload check on PR #2419: a reaction leaves
+`updated_at` alone, an edit moves it (decision 0178). Tests: scripts/test_verdict_records.py (17). Eval delta:
+none (scripts and docs only).

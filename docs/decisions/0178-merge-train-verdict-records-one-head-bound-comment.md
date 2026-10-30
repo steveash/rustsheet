@@ -28,5 +28,8 @@
   checks them, re-running the carry check under `prev:`. Choices this record did not fix: a missing
   `verdict_records` key is `warn` and an unparseable or unknown value `require`; a comment without a
   `created_at` counts as edited; a record body leaves room for the session's attribution footer within
-  GitHub's 65,536-character limit. `scripts/merge_flip.py` now reads the switch path from `merge_ready.SWITCH`
+  GitHub's 65,536-character limit. Real-payload check (PR #2419, comment 6521609074, 2026-10-30): an
+  `eyes` reaction left `updated_at` at `created_at` (11:32:02Z); a body edit moved it to 11:32:36Z. So only an
+  edit drops a record; if GitHub ever moves `updated_at` for anything else, that record stops counting
+  (fails closed: a missing record, never a wrong verdict). `scripts/merge_flip.py` now reads the switch path from `merge_ready.SWITCH`
   (one definition).
