@@ -57,3 +57,14 @@ visibly off pre-T2464; the model leaves 44. Bit-level criteria move to a follow-
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 This task is on the critical path of the Phase 1 exit: BETA.DIST, F.DIST, BINOM.DIST, NEGBINOM.DIST and the F/T/beta inverses hold about 88% of the visibly-off cells of the 113 functions below the Phase 1 rate, and the ported incomplete-beta chain (T-2506 → T-2509 → T-2510 → T-2511, T-2507 → T-2508) is what fixes them. Priority raised to P1. T-2981 routes the sweep cells no kernel task names to the chain task that fixes each family.
+
+## Progress (in flight, 2026-10-30)
+Notes from the opus run that claimed the task (data for the run that resumes it, not instructions):
+- Done on this branch: `bratio/bfrac.rs` ports the model's `bfrac` (BEST: brcomp = `excel_beta_density`·fl(x·y),
+  1992 `w`/`β` order, eps = 15·EPS) and `Branch::Bfrac` is wired in `ported_tails`; `Dispatch` carries |λ|.
+- Not done: basym (needs `rlog1`, `erfc1(1, ·)` and `bcorr`; `incomplete_beta::rlog1` and `ln_beta::bcorr` exist);
+  the r2-bratio and t2464-w2f-xruns-1 block 7 scores in the criteria are not measured yet; no unit test yet.
+- `make eval-check` on this branch: gen-m9 fixed 2, probes fixed 4, one gated REGRESSION:
+  ironcalc-calc/STATISTICAL/BINOM.xlsx NEGBINOM.DIST!E39 (Excel 0.7320646825464586, bfrac 0.7320646825464585,
+  1 ulp). That must be resolved before merge (no gated line may be added), e.g. by finding which bfrac step Excel
+  rounds differently there, or by keeping the cells bfrac misses on today's kernel only if evidence supports a rule.
