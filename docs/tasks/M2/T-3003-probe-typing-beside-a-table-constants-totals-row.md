@@ -41,4 +41,4 @@ probe:
 ## Outcome
 14 probe cases (probes/t3003-*, excel-graph 2026-10-30) cover every bullet; findings are rule 7a-7f in
 docs/excel-semantics/references.md. Engine differs on constants, totals row, row growth and unqualified `[@Col]`:
-filed T-3210. No engine change; the baseline (via `make eval-baseline`) gains the new t3003 cases as known failures, which T-3210 clears. The overlapped-new-column case is not probed (needs a second table; out of T-3210 too).
+filed T-3218. No engine change; the baseline (via `make eval-baseline`) gains the new t3003 cases as known failures, which T-3218 clears. The overlapped-new-column case is not probed (needs a second table; out of T-3218 too).

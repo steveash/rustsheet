@@ -1,5 +1,5 @@
 ---
-id: T-3210
+id: T-3218
 title: "Table auto-expansion on typing beside or below a table: constants, totals row, occupied neighbour, row growth, unqualified [@Col]"
 milestone: M2
 lane: engine
