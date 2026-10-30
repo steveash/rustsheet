@@ -11,8 +11,8 @@ depends_on: []
 ---
 
 ## Goal
-Probe cases can delete several rows in one op and describe a table without a header row, so the residual
-T-2848 shapes can be probed on Excel and the engine.
+Probe cases can delete several rows in one op, so the residual T-2848 row-delete shapes can be probed on Excel
+and the engine (the header-less table part moved to T-3260).
 
 ## Context
 `delete_row` (tools/src/rustsheet_tools/sheetop.py, oracle/backends.py `_RANGE_EDITS`, rustsheet-eval
@@ -28,9 +28,11 @@ The probes baseline also holds 7 harness false failures from T-2848: input cells
 
 ## Acceptance criteria
 - [x] Those 7 cells leave eval/baseline/probes.txt (the harness scores the oracle's unmoved input cells).
-- [x] `delete_row` takes an optional row count on the oracle and engine sides; spec tables take a
-      header-less flag; validated in sheetop.py with tests.
-- [x] The three shapes above are probes/table-edits cases, oracle-filled, recorded in references.md.
+- [x] `delete_row` takes an optional row count on the oracle and engine sides, validated in sheetop.py with tests.
+- Moved to T-3260 (header-less tables need an engine and facade change): spec tables take a header-less flag,
+  and the probe of a delete of the first row of a table without a header row.
+- [x] The two other shapes above (every data row at once, two rows to the data edge) are probes/table-edits
+      cases, oracle-filled, recorded in references.md.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope

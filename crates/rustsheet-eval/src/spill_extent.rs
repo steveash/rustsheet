@@ -68,9 +68,11 @@ fn moved_input(spec: &CaseSpec, sheet: &str, addr: Addr) -> Addr {
         let end = row.saturating_add(count);
         if tables
             .iter()
-            .any(|&(first, last)| row <= first && last < end)
+            .any(|&(first, last)| row == first && last.saturating_add(1) == end)
         {
-            // The table's first data row stays, cleared; the rows after it go.
+            // The table's first data row stays, cleared; the rows after it go. Only a delete of
+            // exactly the data rows is probed: one reaching the header, the totals row or rows
+            // outside the table is moved as a plain delete.
             row += 1;
             count -= 1;
         }
@@ -78,8 +80,8 @@ fn moved_input(spec: &CaseSpec, sheet: &str, addr: Addr) -> Addr {
             continue;
         }
         for (first, last) in &mut tables {
-            *first -= first.saturating_sub(row).min(count);
-            *last -= (*last + 1).saturating_sub(row).min(count);
+            *first = first.saturating_sub(first.saturating_sub(row).min(count));
+            *last = last.saturating_sub(last.saturating_add(1).saturating_sub(row).min(count));
         }
         let kept = SheetOp::DeleteRow {
             sheet: sheet.to_string(),

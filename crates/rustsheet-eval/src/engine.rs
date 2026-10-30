@@ -344,24 +344,27 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
             SheetOp::DeleteTable { table, .. } => workbook
                 .delete_table(table)
                 .map(|()| workbook.recalculate()),
-            SheetOp::InsertRow { sheet, row }
-            | SheetOp::DeleteRow {
-                sheet,
-                row,
-                count: _,
-            } => {
+            SheetOp::InsertRow { sheet, row } => {
                 let id = sheet_id_of(workbook, sheet)?;
                 let row = row
                     .checked_sub(1)
                     .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
-                let result = match op {
-                    SheetOp::DeleteRow { count, .. } => match count.unwrap_or(1) {
-                        0 => return Err(format!("sheet op {op:?}: count is at least 1")),
-                        count => workbook.delete_rows(id, row, count),
-                    },
-                    _ => workbook.insert_rows(id, row, 1),
-                };
-                result.map(|()| workbook.recalculate())
+                workbook
+                    .insert_rows(id, row, 1)
+                    .map(|()| workbook.recalculate())
+            }
+            SheetOp::DeleteRow { sheet, row, count } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                let row = row
+                    .checked_sub(1)
+                    .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
+                let count = count.unwrap_or(1);
+                if count == 0 {
+                    return Err(format!("sheet op {op:?}: count is at least 1"));
+                }
+                workbook
+                    .delete_rows(id, row, count)
+                    .map(|()| workbook.recalculate())
             }
             SheetOp::InsertColumn { sheet, column } | SheetOp::DeleteColumn { sheet, column } => {
                 let id = sheet_id_of(workbook, sheet)?;

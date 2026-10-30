@@ -335,7 +335,8 @@ class GraphBackend:
                 # The address is `3:3` for a row and `C:C` for a column letter; a multi-row
                 # delete_row is recorded as its span, `4:7`, already an address (T-3019).
                 verb, shift = _RANGE_EDITS[op]
-                address = str(to).upper() if ":" in str(to) else f"{str(to).upper()}:{str(to).upper()}"
+                target = str(to).upper()
+                address = target if ":" in target else f"{target}:{target}"
                 self._call(
                     "POST",
                     f"{ref(sheet)}/range(address='{address}')/{verb}",
