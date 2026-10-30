@@ -904,7 +904,7 @@ impl Parser {
                 Node::UnaryPlus { child: right }
             };
         }
-        while self.lexer.peek_token() == TokenType::Percent {
+        while *self.lexer.peek() == TokenType::Percent {
             t = t.spaced(Run::default(), self.run_ahead());
             self.lexer.advance_token();
             self.grow(self.depth, 0)?;

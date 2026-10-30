@@ -330,7 +330,7 @@ impl Lexer {
         self.expect(TokenType::LeftBracket)?;
         let mut specifier = self.consume_table_specifier()?;
         if specifier.is_some() {
-            if self.peek_token() == TokenType::Comma {
+            if *self.peek() == TokenType::Comma {
                 self.advance_token();
                 spacing.comma_space = !self.whitespace_run().is_empty();
                 self.expect(TokenType::LeftBracket)?;
@@ -342,7 +342,7 @@ impl Lexer {
                         position,
                         message: "Invalid structured reference".to_string(),
                     })?);
-                    if self.peek_token() == TokenType::Comma {
+                    if *self.peek() == TokenType::Comma {
                         self.advance_token();
                         spacing.comma_space = !self.whitespace_run().is_empty();
                         self.expect(TokenType::LeftBracket)?;
@@ -351,7 +351,7 @@ impl Lexer {
             }
             let before_close = self.position;
             spacing.close = self.whitespace_run();
-            if self.peek_token() == TokenType::RightBracket {
+            if *self.peek() == TokenType::RightBracket {
                 self.expect(TokenType::RightBracket)?;
                 return Ok(TokenType::StructuredReference {
                     table_name: table_name.to_string(),
