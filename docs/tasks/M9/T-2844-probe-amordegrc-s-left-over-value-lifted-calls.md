@@ -43,5 +43,5 @@ Use the three-cell shape of probes/amordegrc-fraction-state-z (fraction / subjec
 - Item 3 (NaN AMORLINC charge): no reachable input (needs 1024 single walk steps); recorded, no probe.
 - Known failures, named in the entry: -ag (a spilling dynamic-array formula should empty the state; emptying it at its place
   in `run_excel_order` had no effect, so the pass's handling of a spilling anchor is unclear) and -ah (the charges inside a
-  dynamic-array formula). Follow-up task filed below.
+  dynamic-array formula). Follow-up: T-3220.
 - Eval: 9 probe cells newly pass (baseline probes.txt); no regressions.

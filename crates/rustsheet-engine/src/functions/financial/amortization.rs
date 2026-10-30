@@ -113,8 +113,14 @@ impl Model {
             // A lifted call runs on a state of its own, which starts empty and runs the elements in
             // order (`{1,0.5}` is 776 + 776, `{0.5,1}` 0 + 776: probes/amordegrc-fraction-state-ae,
             // -af), and leaves the workbook's state empty whatever its elements left (-ac to -af).
+            // `calls` has an entry per element that is not an error, and only those are numbers: an
+            // error element, or one the lift did not run (a broadcast's padding), has none.
             let mut left = 0.0;
-            for (call, node) in calls.iter().zip(rows.iter_mut().flatten()) {
+            let numbers = rows
+                .iter_mut()
+                .flatten()
+                .filter(|node| matches!(node, ArrayNode::Number(_)));
+            for (call, node) in calls.iter().zip(numbers) {
                 match call {
                     LeftOver::Keep => {}
                     LeftOver::Set(value) => left = *value,
