@@ -3,7 +3,7 @@ id: T-3120
 title: "IRR far-root results on Excel's 2^-53 grid in v: find where the secant rounds v (t2565, 181 cells; irr-fallback-roots A25-A39)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
