@@ -563,6 +563,20 @@ Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `
   blank (`ISBLANK` is TRUE).
 - **Evidence:** probes/t3113-entered-r1c1, probes/t3113-entered-refused (excel-graph, 2026-10-30).
 - **Status:** R1C1 entry implemented in the eval adapter (decision 0179); the engine's R1C1 reader
-  does not take bare `R`/`C` offsets (`RC`, `R[-1]C`) yet, T-3212. The engine does not refuse a
-  typed `=1+` in A1 mode: it stores a parse-error formula (`#ERROR!`), so ISBLANK is FALSE
-  (known failure probes/t3113-entered-refused S!B1, T-3213).
+  does not take bare `R`/`C` offsets (`RC`, `R[-1]C`) yet, T-3212. The engine refuses a typed
+  `=1+` in A1 mode too since T-3213 (see "A typed formula that does not parse is refused" below).
+
+## A typed formula that does not parse is refused; a call's missing `)` is added
+Rule: Excel refuses a formula typed through the API (Graph PATCH 400 `InvalidArgument`) that does
+not parse, and the cell keeps its content (blank in the probes): `=1+`, `=(1`, `=1)`, `=+`, `=1 2`,
+`="a`, `=NoSuchTable[Col]` and `=[1]!Table3[#Data]` with no such table or link. A call left open is
+closed instead: `=SUM(1` stores `=SUM(1)` (1) and `=SUM(1,,` stores `=SUM(1,,)` (1); a group left
+open (`=(1`) is not. And `=1**2` is not refused: Excel stores `=100` (100), a reading of `**` nobody
+documents; RustSheet refuses it (TODO(T-3283)). Stored text that does not parse loads as a parse
+error (`#ERROR!`, the text kept), as before.
+Evidence: probes/t3113-entered-refused (`=1+`, A1 and R1C1 mode), probes/t3213-typed-parse-errors
+(excel-graph, 2026-10-30). Only one `)` was probed missing, after a call or a group with nothing
+after it; `=SUM(1+(2`, `=SUM((1`, `=LAMBDA(x,x)(1` and other `**` shapes are unprobed.
+Status: VERIFIED (excel-graph); `=1**2` open (T-3283).
+Implemented in: model.rs (`Model::parse_cell_formula`), typed_input.rs (`TYPED_FORMULA_DOES_NOT_PARSE`,
+`open_parenthesis_is_a_call`); rustsheet-eval engine.rs leaves a refused typed cell blank (decision 0179).
