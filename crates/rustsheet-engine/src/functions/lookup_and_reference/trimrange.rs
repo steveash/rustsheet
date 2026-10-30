@@ -129,12 +129,21 @@ impl Model {
         match self.trim_of(&data, non_blank.as_ref(), values.as_slice(), cell) {
             Ok((rows, columns)) => match reference_corner {
                 Some(left) if as_reference => RefArg::from(sub_range(left, &rows, &columns)),
-                _ => RefArg::Value(CalcResult::Array(
-                    data[rows]
+                _ => {
+                    let trimmed: Vec<Vec<_>> = data[rows]
                         .iter()
                         .map(|row| row[columns.clone()].to_vec())
-                        .collect(),
-                )),
+                        .collect();
+                    // Excel: a one-cell trim of a reference is a scalar value, not an array
+                    // (`TYPE(TRIMRANGE(A2))` is 1, `ROWS(A2-TRIMRANGE(A3))` with text in A3 is
+                    // #VALUE!; probes/t3130-concat-lambda-trimrange-cell-variable Q13-Q16).
+                    match trimmed.as_slice() {
+                        [row] if reference_corner.is_some() && row.len() == 1 => {
+                            RefArg::Value(array_node_to_calc_result(&row[0], cell))
+                        }
+                        _ => RefArg::Value(CalcResult::Array(trimmed)),
+                    }
+                }
             },
             Err(error) => RefArg::Value(error),
         }
