@@ -3,7 +3,7 @@ id: T-3003
 title: "Probe typing beside a table: constants, totals row, occupied or overlapped new column, and below the last row (auto-expansion)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
