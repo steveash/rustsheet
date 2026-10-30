@@ -21,6 +21,11 @@ use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser};
 /// stack (about 2 KB of parser stack per nesting level).
 pub const MAX_FORMULA_DEPTH: usize = 256;
 
+/// Most parentheses a run of directly nested ones may hold (`((...(x)...))`): Excel loads 256
+/// and refuses 257, stored and typed (probes/t3172-paren-256, T-3172). A run is parsed in a loop
+/// ([`Parser::parse_parenthesis_run`]), so this bound is Excel's, not the stack's.
+pub const MAX_PARENTHESES: usize = 256;
+
 /// Levels an operand adds over its subexpressions, at most: a call wrapped in
 /// `@` or `#` on import (`_xlfn.SINGLE`), or `LAMBDA(...)(...)`.
 pub(super) const PRIMARY_DEPTH: usize = 2;
@@ -131,6 +136,10 @@ impl Parser {
     /// this is where the parser's recursion is bounded: every open operand
     /// reserves its share of [`MAX_FORMULA_DEPTH`] before descending.
     pub(super) fn parse_primary(&mut self) -> Node {
+        if let Some((node, depth)) = self.pending_operand.take() {
+            self.depth = depth;
+            return node;
+        }
         if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
             return self.too_deep();
         }
