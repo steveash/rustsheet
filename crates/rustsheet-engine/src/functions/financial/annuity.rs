@@ -221,9 +221,10 @@ pub(super) fn growth_log(rate: f64) -> f64 {
     2.0 * sum.store()
 }
 
-/// Below this |nper*L| PPMT keeps the exact form: L's ulp-level error moves the power by under an
-/// ulp there, and the exact form matches Excel's last bit where the discounted one does not
-/// (`PPMT(1E-10,2,124,191996,822,1)` is -1554.9838614045912, gen-m9 5ded7594e597e31e A49).
+/// Below this |nper*L| [`discounted_principal`] declines and the exact form decides. This was
+/// fitted (`PPMT(1E-10,2,124,191996,822,1)` is -1554.9838614045912, gen-m9 5ded7594e597e31e A49)
+/// before IPMT and PPMT took [`discounted_split`], which matches that cell on its own. It now
+/// only applies where that split is not finite, and to CUMIPMT's `SplitForm::Exact` (T-2243).
 const SHORT_GROWTH: f64 = 1e-6;
 
 /// PPMT (financial.md "PPMT discounts with an atanh-series log"): with `Q(x) = EXP(x*L)` (Excel's

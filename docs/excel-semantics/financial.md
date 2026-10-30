@@ -352,14 +352,16 @@ plus ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx, Mac Excel cached values):
   from 464 to 754 of 756, ppmt-negative-rate-sweep from 43 to 79 of 79, m9-fin-pmt from 138 to 224 of 224, and
   fin-ipmt-ppmt-huge-rate from 516 to 593 of 593. The misses:
   - three are one ulp (`PPMT(0.21,1,160,10000)`, `PPMT(1,1,44,10000)`, `PPMT(0.1,1,320,10000)`); the old form
-    matched the first;
+    matched the first. On each of those rows Excel's PMT cell (ppmt-log-rate-sweep B371, B742,
+    ppmt-first-period-sweep B320) is an ulp off our PMT too, so the misses are PMT's, not the split's (T-3186);
   - the fourth is `PPMT(7,10,350,58827)`, whose subnormal discount Excel keeps (T-2666, still open).
   `-(A*d*Q)`, `-(A*(Q*d))` and `-(A*Q*rate)/(1+rate)` score 21 to 71 points lower on the sweeps.
 - CUMIPMT does not sum this IPMT. Its type-1 per-period sum still takes the exact split ("PMT, IPMT and PPMT are the
   exact payment"), which is bit-exact on CUMPRINC_CUMIPMT.xlsx G3, G4, G15 and fin-cumipmt-overflow-and-forms A8. With
   the discounted IPMT those four cells are an ulp off: `CUMIPMT(0.1,10,345,2,2,1)` is -29.395712615048502, but the
-  discounted `IPMT(0.1,2,10,345,0,1)` is ...485. Four other type-1 CUMIPMT cells would have been fixed by it. So
-  CUMIPMT's own form is still open (T-3179).
+  discounted `IPMT(0.1,2,10,345,0,1)` is ...485 in the engine. Excel's IPMT on those arguments is not probed: if it
+  were ...502, this form would miss it rather than CUMIPMT having a form of its own. Four other type-1 CUMIPMT cells
+  would have been fixed by it. The probe and CUMIPMT's own form are open (T-3179).
 Status: VERIFIED to the bit (Mac Excel cached values and excel-graph probes).
 Implemented in: `discounted_split`, `discounted_balance`, `discount_complement`, `payment_factor` and
 `period_payments`' `SplitForm` (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-2243). Where the form

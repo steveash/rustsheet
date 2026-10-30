@@ -87,6 +87,6 @@ it; it stays with T-3179.
 
 Eval delta, gated suites: 312 known failures fixed (gen-m9 31, ironcalc-calc 35, probes 246) and 0 regressions.
 The ungated probes-numeric suite gains about 860 IPMT/PPMT cells (m9-fin-pmt, the three PPMT sweeps) and loses one:
-`PPMT(0.21,1,160,10000)` (ppmt-log-rate-sweep A371) is now an ulp off.
+`PPMT(0.21,1,160,10000)` (ppmt-log-rate-sweep A371) is now an ulp off. Its PMT cell is an ulp off too; T-3186 is filed for it and the two other one-ulp PPMT misses.
 
 This also closes T-2667, T-2943 and T-3086.
