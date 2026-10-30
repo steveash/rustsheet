@@ -156,6 +156,27 @@ fn graph_zero_hides_only_a_subnormal() {
     assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(0.0)));
 }
 
+/// A spec suite `t` in `dir` with a `deviations` file, and its case at `path`
+/// (`cases/a.case.json`).
+fn deviations_suite(dir: &std::path::Path, path: PathBuf) -> (Suite, CaseFile) {
+    let manifest: SuiteManifest = toml::from_str(
+        "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
+         deviations = \"deviations\"\n",
+    )
+    .expect("manifest");
+    let suite = Suite {
+        manifest,
+        dir: dir.to_path_buf(),
+        cache_dir: PathBuf::new(),
+    };
+    let case = CaseFile {
+        id: "t/a.case.json".into(),
+        sidecar: oracle_sidecar(&path),
+        path,
+    };
+    (suite, case)
+}
+
 /// A listed cell is a deviation when it gives its pinned value, a pass when it matches Excel
 /// and a failure otherwise; a deviation leaves the case passing, and a line naming an
 /// unscored cell is an error (decision 0036).
@@ -172,21 +193,7 @@ fn listed_deviations_score_apart_from_bit_exact() {
         ),
     )
     .expect("write case");
-    let manifest: SuiteManifest = toml::from_str(
-        "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
-         deviations = \"deviations\"\n",
-    )
-    .expect("manifest");
-    let suite = Suite {
-        manifest,
-        dir: dir.clone(),
-        cache_dir: PathBuf::new(),
-    };
-    let case = CaseFile {
-        id: "t/a.case.json".into(),
-        sidecar: oracle_sidecar(&path),
-        path,
-    };
+    let (suite, case) = deviations_suite(&dir, path);
     let write = |cells: &[(&str, &str)]| {
         let lines: Vec<String> = cells
             .iter()
@@ -250,21 +257,7 @@ fn a_whole_case_line_pins_a_refused_case() {
         )
         .expect("write case");
     };
-    let manifest: SuiteManifest = toml::from_str(
-        "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
-         deviations = \"deviations\"\n",
-    )
-    .expect("manifest");
-    let suite = Suite {
-        manifest,
-        dir: dir.clone(),
-        cache_dir: PathBuf::new(),
-    };
-    let case = CaseFile {
-        id: "t/a.case.json".into(),
-        sidecar: oracle_sidecar(&path),
-        path: path.clone(),
-    };
+    let (suite, case) = deviations_suite(&dir, path.clone());
     let pin = |message: &str| {
         std::fs::write(
             dir.join("deviations"),
