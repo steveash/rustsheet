@@ -160,6 +160,10 @@ impl StructuredReference {
     /// without it anywhere in the table's range, where it parses, and with it elsewhere, so a
     /// copy, fill or move out of the table, or a resize that leaves the cell outside, gives text
     /// that parses there (T-3241).
+    ///
+    /// The extent is the one the formula was parsed with: a structural edit prints the formulas
+    /// it moves before it reparses them, so a cell moved past the old extent may print with the
+    /// name in between, which parses and is reparsed at once.
     pub(crate) fn text_at(&self, cell: &CellReferenceRC) -> String {
         match &self.extent {
             Some(extent) => self.text_with_name(!extent.holds(cell, !self.unqualified)),
@@ -320,14 +324,27 @@ impl Parser {
         node
     }
 
+    /// The table `name` names in the parser's table list. Table names match ignoring case
+    /// (gen-m8b names-case 5b5c0e20e82153bb): an exact hit is deterministic; the case-folded scan
+    /// covers the rest.
+    pub(super) fn table_named(&self, name: &str) -> Option<&Table> {
+        self.tables.get(name).or_else(|| {
+            let lower = name.to_lowercase();
+            self.tables
+                .iter()
+                .find(|(table_name, _)| table_name.to_lowercase() == lower)
+                .map(|(_, table)| table)
+        })
+    }
+
     /// The name of the table whose range (headers and totals row included) holds the formula's
     /// cell, if any.
     fn containing_table_name(&self) -> Option<String> {
         let context = &self.context;
         self.tables.values().find_map(|table| {
-            TableExtent::of(table, None)?
-                .holds(context, false)
-                .then(|| table.name.clone())
+            (table.is_on_sheet(&context.sheet)
+                && TableExtent::of(table, None)?.holds(context, false))
+            .then(|| table.name.clone())
         })
     }
 }

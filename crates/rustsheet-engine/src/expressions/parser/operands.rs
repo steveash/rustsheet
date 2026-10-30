@@ -343,19 +343,16 @@ impl Parser {
                 return Node::DefinedNameKind((name, scope, formula));
             }
         }
-        let name_lower = name.to_lowercase();
-        for table_name in self.tables.keys() {
-            if table_name.to_lowercase() == name_lower {
-                // A bare table name is its data area, like `Table[]` (gen-m8b specials
-                // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(
-                    name,
-                    None,
-                    None,
-                    token::TableSpacing::default(),
-                    true,
-                );
-            }
+        if self.table_named(&name).is_some() {
+            // A bare table name is its data area, like `Table[]` (gen-m8b specials
+            // e804cf2f8af00680 K116, lookups 27252667210b1d03).
+            return self.structured_reference_operand(
+                name,
+                None,
+                None,
+                token::TableSpacing::default(),
+                true,
+            );
         }
         // xlpm: Excel Lambda Parameter
         let name = name.trim_start_matches("_xlpm.").to_string();
@@ -743,19 +740,6 @@ impl Parser {
             reference: Box::new(reference),
             lowered: Box::new(lowered),
         }
-    }
-
-    /// The table `name` names in the parser's table list. Table names match ignoring case
-    /// (gen-m8b names-case 5b5c0e20e82153bb): an exact hit is deterministic; the case-folded scan
-    /// covers the rest.
-    pub(super) fn table_named(&self, name: &str) -> Option<&Table> {
-        self.tables.get(name).or_else(|| {
-            let lower = name.to_lowercase();
-            self.tables
-                .iter()
-                .find(|(table_name, _)| table_name.to_lowercase() == lower)
-                .map(|(_, table)| table)
-        })
     }
 
     /// The area a structured reference resolves to against the parser's table list: a
