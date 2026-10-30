@@ -116,3 +116,27 @@
     `meets_rate`. `scripts/exit_owners.py` lists, beside the function-scope and probe cells, the
     `attributed_off` cells of each function the row names in `below_rate_functions`, as
     `rate:<FUNCTION>`, through the same reader `--all-off` uses.
+  - T-0096 (2026-10-29) builds the M8 row of item 2. gen-m8a is the row's `gen_suite`; gen-m8b and
+    the poi subset (`poi M8 subset`, read from the report's `poi_m8_subset` section, T-0094) are
+    `more_suites`, each with 3,000 scored cells (gen-m8a and gen-m8b) or 99.5% (the subset, 9,950 over
+    10,000). A `more_suites` entry carries `blocked_cases` (`case!*`); the subset is not met while it
+    holds one. `scripts/exit_owners.py` lists each `more_suites` entry's visibly-off cells and
+    blocked cases from the entry's own lists, so a measure over another suite's cells needs no suite
+    match.
+  - T-0097 (2026-10-29) builds the M10 row of item 4. gen-m10 is the row's `gen_suite` with no
+    value-cell floor and none visibly off, and its displayed-text items are a criterion of the same
+    suite measure: at least 10,000 (`M10_MIN_TEXT`) with none failing, reported as
+    `gen_text_items`, `gen_text_failing` and `gen_text_failing_cells` (`case!Sheet!A1`, from the
+    report's failing text items). The M10 probe row's `text_items` and `text_failing` (T-0093) are
+    copied to `probe_text_items` and `probe_text_failing`, and `probes_met` needs both counts of
+    failures at 0. Other rows leave the text fields null. `scripts/exit_owners.py` lists the failing
+    text items as `gen-m10 text` and `probes text` (the probe row's `text_failing_cells`, only when
+    the exit row carries `probe_text_items`), and the progress page shows both text counts.
+    `scripts/exit_owners.py` reads a function-scope row only where the exit row gives `calc_met` a
+    verdict: a null `calc_met` (M7's shown-only row, and M1, M8, M10 and M11, which have no
+    ironcalc-calc criterion) lists no ironcalc-calc cell, even when the report has a scope row for
+    the milestone (it had listed 119 for M10 and for M11).
+  - T-3091 (2026-10-29): M1's `probes_met` has a verdict only when the run executed the whole
+    `m1-probes` list (`cases_run == cases`); a run under `--filter` or `--suite` gives `n/a`, as a
+    missing input does. `scripts/exit_owners.py` lists a listed case in the list row's
+    `failing_cases` that has no cell (it crashed or errored) as `case!*`, as it does for a probe row.

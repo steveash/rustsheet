@@ -159,3 +159,7 @@ to a follow-up task filed without the key.
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## PMT fitted by T-3014 (2026-10-29)
+PMT's bits are solved: `-(((pv+fv)/(1-Q) - fv) * d)` with PPMT's L and Q, 308/308 on m9-fin-pmt (financial.md "PMT is
+a discounted payment"). This task keeps IPMT, PPMT and NPV; T-3179 tries the same `1-Q` switch in PPMT and IPMT.

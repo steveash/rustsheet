@@ -98,7 +98,7 @@ const SORTBY: ArgKinds = ArgKinds {
 /// the array and the `sort_index` and `sort_order` lists are read once by the function. Each element
 /// sorts the whole array: read and charged as [`TOCOL`]. Later elements do not follow SORTBY's
 /// `ArrayFirstColumn` (`.array()`: probes/t2366-sort-lifted-by-col); `fn_sort` keeps, empties or errs them
-/// by its own rule (`sort_lifted_elements`, T-2929).
+/// by its own rule (`sort_lifted_elements`, T-2929, T-3090).
 const SORT: ArgKinds = ArgKinds::fixed(
     1,
     &[WholeByCaller, WholeByCaller, WholeByCaller, Lift],

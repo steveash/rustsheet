@@ -10,6 +10,7 @@ mod fn_fixed_negative_zero;
 mod fn_left_right_mid_arrays;
 mod fn_regex;
 mod fn_regex_backtrack;
+mod fn_t_volatile_pick;
 mod fn_text_arrays;
 mod fn_text_sections;
 mod fn_textbefore;
@@ -231,4 +232,29 @@ fn test_value_date_text_with_clock_suffix() {
     assert_eq!(model._get_text("A1"), "46204.41667");
     // probes/date-text-grammar C63.
     assert_eq!(model._get_text("A2"), "43832.75");
+}
+
+#[test]
+fn test_value_mixed_fraction() {
+    // probes/eng-inumber-date-boundary B22, probes/t3136-criteria-formatted-number-operands H25.
+    let mut model = new_empty_model();
+    model._set("A1", "=VALUE(\"3 1/2\")");
+    model._set("A2", "=VALUE(\" 1 1/2 \")");
+    model._set("A3", "=VALUE(\"1 1/0\")");
+    model._set("A4", "=VALUE(\"1 1/\")");
+    model._set("A5", "=VALUE(\"1 a/2\")");
+    // probes/value-sign-space-mixed-fraction-dash-date A8, A9, A11, A32.
+    model._set("A6", "=VALUE(\"-3 1/2\")");
+    model._set("A7", "=VALUE(\"3  1/2\")");
+    model._set("A8", "=VALUE(\"1 3/2\")");
+    model._set("A9", "=VALUE(\"- 3 1/2\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3.5");
+    assert_eq!(model._get_text("A2"), "1.5");
+    assert_eq!(model._get_text("A6"), "-3.5");
+    assert_eq!(model._get_text("A8"), "2.5");
+    assert_eq!(model._get_text("A9"), "-3.5");
+    for cell in ["A3", "A4", "A5", "A7"] {
+        assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
+    }
 }

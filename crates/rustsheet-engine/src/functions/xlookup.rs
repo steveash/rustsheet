@@ -7,9 +7,9 @@ use crate::{
 };
 
 use super::{
-    binary_search::{binary_search, Sequence},
+    binary_search::{binary_search_by, Sequence},
     lift::{LiftCost, LiftOptions, LiftedArg},
-    lookup_and_reference::lookup_table::{Indexed, SearchVector},
+    lookup_and_reference::lookup_table::{cmp_searched, Indexed, SearchVector},
     lookup_and_reference::xmatch::{
         exact_through_index, linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode,
     },
@@ -96,11 +96,12 @@ fn binary_hit<S: Sequence<CalcResult> + ?Sized>(
         MatchMode::ExactMatchLarger => Ordering::Greater,
         _ => Ordering::Equal,
     };
-    match binary_search(
+    match binary_search_by(
         lookup_value,
         values,
         *search_mode == SearchMode::BinarySearchDescending,
         side,
+        cmp_searched,
     ) {
         Some(index) => BinaryHit::Found(index),
         None => BinaryHit::NotFound,

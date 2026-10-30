@@ -172,6 +172,31 @@ fn collation_key_equality_is_cmp_text_equality() {
         "😀a",
         "x",
         "X",
+        "ča",
+        "Ča",
+        "c\u{30c}a",
+        "C\u{30c}-a",
+        "č-a",
+        "ca",
+        "á",
+        "a\u{301}",
+        "ϊ",
+        "ΐ",
+        "ϊ\u{301}",
+        "σ",
+        "ς",
+        "Σ",
+        "е",
+        "ё",
+        "a\u{301}\u{30c}",
+        "\u{301}a",
+        "ª",
+        "ª\u{301}",
+        "à",
+        "ǎ",
+        "a\u{30c}",
+        "a\u{342}\u{342}",
+        "a\u{327}",
     ]
     .iter()
     .map(|s| Text::from(*s))
@@ -188,4 +213,104 @@ fn collation_key_equality_is_cmp_text_equality() {
             );
         }
     }
+}
+
+/// Latin Extended-A, Greek and Cyrillic letters are their base letter plus an accent, and a
+/// combining mark is the accent of the letter before it (probes/t3114-collation-beyond-latin1).
+#[test]
+fn letters_beyond_latin1_and_combining_marks() {
+    assert_increasing(&["c", "ć", "č", "ca", "ča", "cb", "čb", "cz", "d"]);
+    assert_increasing(&["a", "á", "ă", "ā", "ą", "b"]);
+    assert_increasing(&["e", "é", "ė", "ě", "ē", "ę", "ea", "ěa", "eb"]);
+    assert_increasing(&["o", "ö", "ő", "oa", "őa", "ob", "p"]);
+    assert_increasing(&["u", "ū", "ů", "ų", "ű", "v", "z", "ź", "ż", "ž", "α"]);
+    assert_increasing(&[
+        "ι", "ί", "ϊ", "ΐ", "κ", "ω", "ώ", "а", "е", "ё", "ж", "и", "й", "к", "я",
+    ]);
+    for (a, b) in [
+        ("a\u{301}", "á"),
+        ("c\u{30c}", "č"),
+        ("C\u{30c}", "č"),
+        ("c\u{30c}a", "Ča"),
+        ("Ő", "o\u{30b}"),
+        ("Σ", "ς"),
+        ("σ", "ς"),
+        ("Ё", "ё"),
+        ("Ά", "ά"),
+        ("ϊ\u{301}", "ΐ"),
+        // Pins an unprobed engine choice: a mark before a hyphen still belongs to its letter.
+        ("C\u{30c}-a", "č-a"),
+    ] {
+        assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
+    }
+}
+
+/// Accents are the Windows table's diacritic weights, and combining marks add theirs to the letter
+/// before them in one wrapping byte (probes/t3154-collation-accents,
+/// probes/t3154-collation-accent-weights, probes/t3154-collation-accent-pairs).
+#[test]
+fn accent_weights_add_up_and_wrap() {
+    assert_increasing(&[
+        "a", "á", "à", "â", "ä", "ǎ", "ă", "ā", "ã", "å", "ą", "ạ", "aa",
+    ]);
+    assert_increasing(&["e", "é", "è", "ė", "ê", "ë", "ě", "ē", "ę", "f"]);
+    assert_increasing(&[
+        "o", "ó", "ò", "ô", "ö", "ō", "õ", "ő", "ơ", "oa", "ơa", "ob",
+    ]);
+    assert_increasing(&["u", "ú", "ù", "û", "ü", "ū", "ů", "ų", "ű", "ư", "v"]);
+    assert_increasing(&["s", "š", "ş", "ș", "sa", "șa", "sb"]);
+    // Three dot-below marks wrap (2 + 3 * 86 = 260, so 4): between "a" and "á".
+    assert_increasing(&["a", "a\u{323}\u{323}\u{323}", "á"]);
+    assert_increasing(&["ª", "à", "ª\u{301}", "ȧ"]);
+    for (a, b) in [
+        ("a\u{301}\u{301}", "å"),
+        ("a\u{301}\u{30c}", "a\u{30c}\u{301}"),
+        ("á\u{30c}", "ǎ\u{301}"),
+        ("à\u{323}", "a\u{323}\u{300}"),
+        ("a\u{301}\u{300}", "ą"),
+        ("a\u{342}\u{342}", "a\u{327}"),
+        ("ǎ", "a\u{30c}"),
+        ("Ș", "s\u{326}"),
+        ("ț", "t\u{326}"),
+        ("ư", "u\u{31b}"),
+        ("ạ", "a\u{323}"),
+        ("й", "и\u{306}"),
+    ] {
+        assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
+        assert_eq!(collation_key(&Text::from(a)), collation_key(&Text::from(b)));
+    }
+    assert_ne!(cmp_text_excel("ș", "ş"), Ordering::Equal);
+}
+
+/// `decompose` binary-searches the table, so it must stay sorted by letter.
+#[test]
+fn decomposed_table_is_sorted() {
+    use crate::functions::util::collation_tables::DECOMPOSED;
+    assert!(DECOMPOSED.windows(2).all(|pair| pair[0].0 < pair[1].0));
+}
+
+/// The exact and wildcard matches fold `ς` to `σ` on both sides
+/// (probes/t3114-collation-beyond-latin1 Calc!H10; Rust's final-sigma rule lower-cases a word-final
+/// `Σ` to `ς`).
+#[test]
+fn final_sigma_folds_in_exact_and_wildcard_matches() {
+    use crate::functions::criteria::{folded_units, WildcardPattern};
+    for pattern in ["ς", "σ", "Σ"] {
+        let compiled = WildcardPattern::new(&Text::from(pattern));
+        for text in ["ς", "σ", "Σ"] {
+            assert!(
+                compiled.matches(&Text::from(text)),
+                "{pattern:?} matches {text:?}"
+            );
+        }
+    }
+    assert!(WildcardPattern::new(&Text::from("ς*")).matches(&Text::from("σx")));
+    assert_eq!(
+        folded_units(&Text::from("ΟΔΟΣ")),
+        folded_units(&Text::from("οδοσ"))
+    );
+    assert_eq!(
+        WildcardPattern::new(&Text::from("οδοσ")).literal_units(),
+        Some(folded_units(&Text::from("ΟΔΟΣ")))
+    );
 }

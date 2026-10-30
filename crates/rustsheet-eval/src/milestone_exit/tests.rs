@@ -297,6 +297,84 @@ fn gen_visibly_off_cells_are_listed_for_exit_owners() {
     assert_eq!(m2.gen_visibly_off_cells, ["gen-m2/abc.case.json!S!A1"]);
 }
 
+#[test]
+fn a_probe_case_that_did_not_run_fails_the_probe_row() {
+    // Decision 0174: an unloadable case adds no cell, so 0 visibly off alone would read met.
+    let mut r = m2_report((M2_MIN_SCORED, 0));
+    assert!(
+        row(&r, "M2").exit,
+        "the same row with the case running is met"
+    );
+    r.probe_milestones[1].blocked_cases = vec!["probes/t3097-nesting-paren-a.case.json!*".into()];
+    let m2 = row(&r, "M2");
+    assert_eq!(
+        (m2.probe_visibly_off, m2.probes_met),
+        (Some(0), Some(false))
+    );
+    assert_eq!(
+        m2.probe_blocked_cases,
+        ["probes/t3097-nesting-paren-a.case.json!*"]
+    );
+    assert!(!m2.exit);
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains(
+            "| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0] met | 0 [0] met | 0 [3], 1 cases did not run not met | n/a n/a | n/a | not met |"
+        ),
+        "{md}"
+    );
+}
+
+#[test]
+fn a_gen_case_that_timed_out_fails_the_gen_suite_and_a_clean_pending_case_does_not() {
+    use crate::report::tests::case;
+    use crate::runner::CaseStatus;
+    let mut r = m2_report((M2_MIN_SCORED, 0));
+    r.cases = vec![CaseResult {
+        status: CaseStatus::Pending,
+        ..case("gen-m2/pending.case.json", 1)
+    }];
+    let m2 = row(&r, "M2");
+    assert_eq!(
+        (m2.gen_met, m2.exit),
+        (Some(true), true),
+        "a pending case that runs cleanly changes no verdict"
+    );
+    r.cases.push(CaseResult {
+        status: CaseStatus::Timeout,
+        ..case("gen-m2/slow.case.json", 1)
+    });
+    let m2 = row(&r, "M2");
+    assert_eq!(m2.gen_met, Some(false));
+    assert_eq!(m2.gen_blocked_cases, ["gen-m2/slow.case.json!*"]);
+    assert!(!m2.exit);
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains("| M2 | 30/37 n/a | 10000, 1.00000, 0/0 [0], 1 cases did not run not met |"),
+        "{md}"
+    );
+}
+
+#[test]
+fn an_ironcalc_calc_case_that_did_not_run_fails_every_calc_row() {
+    let mut r = m2_report((M2_MIN_SCORED, 0));
+    r.function_scope.as_mut().unwrap().blocked_cases = vec!["ironcalc-calc/x.xlsx!*".into()];
+    for m in ["M2", "M5"] {
+        let row = row(&r, m);
+        assert_eq!(row.calc_met, Some(false), "{m}");
+        assert_eq!(row.calc_blocked_cases, ["ironcalc-calc/x.xlsx!*"]);
+        assert!(!row.exit, "{m}");
+    }
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains("| 0, 1 cases did not run [0] not met |"),
+        "{md}"
+    );
+}
+
 /// A run whose M7 inputs meet M7's exit: `gen_cells` (cells, visibly off) of gen-m7, an
 /// ironcalc-calc M7 row with a visibly-off cell and coverage short (neither required).
 fn m7_report(gen_cells: (usize, usize)) -> RunReport {
@@ -465,6 +543,14 @@ fn m1_needs_gen_m1_and_smoke_none_visibly_off_and_the_m1_probes_list() {
     let m1 = row(&r, "M1");
     assert_eq!(m1.probes_met, None);
     assert!(!m1.exit);
+    // A partial run (`--filter`) of the list gives no verdict either, met or unmet (T-3091).
+    for off in [0, 1] {
+        let mut r = m1_report(3_750, 0, off);
+        r.milestone_lists[0].cases_run = 88;
+        let m1 = row(&r, "M1");
+        assert_eq!(m1.probes_met, None);
+        assert!(!m1.exit);
+    }
 }
 
 /// A run with `corpus` (scored cells, visibly off) of corpus-bench, when fetched, and a
@@ -672,5 +758,231 @@ fn m9_without_checkpoint_functions_is_not_applicable() {
     r.v15_checkpoint.functions.clear();
     let row = m9(&r);
     assert_eq!((row.rate_functions, row.rate_met), (None, None));
+    assert!(!row.exit);
+}
+
+/// A run with gen-m8a and gen-m8b of 3,577 and 3,368 cells (`m8b_off` visibly off), a poi
+/// subset of `subset` (scored, visibly off) when poi ran, and a clean M8 probe row.
+fn m8_report(m8b_off: usize, subset: Option<(usize, usize)>) -> RunReport {
+    use crate::poi_m8_subset::PoiM8Subset;
+    let mut r = report(None);
+    r.suites.push(suite("gen-m8a", 3_577, 0));
+    r.suites.push(suite("gen-m8b", 3_368, m8b_off));
+    r.poi_m8_subset = subset.map(|(scored, off)| PoiM8Subset {
+        scored,
+        visibly_off: off,
+        visibly_off_cells: (0..off)
+            .map(|i| format!("poi/a.xls!S!A{}", i + 1))
+            .collect(),
+        ..PoiM8Subset::default()
+    });
+    r.probe_milestones.push(MilestoneRow {
+        milestone: "M8".into(),
+        ..MilestoneRow::default()
+    });
+    r
+}
+
+fn m8(r: &RunReport) -> ExitRow {
+    row(r, "M8")
+}
+
+#[test]
+fn m8_needs_both_gen_suites_the_poi_subset_at_99_5_and_clean_probes() {
+    // 2,000 scored subset cells: the allowance is floor(0.005 * 2,000) = 10.
+    let r = m8_report(0, Some((2_000, 10)));
+    let row = m8(&r);
+    assert_eq!(row.gen_suite, "gen-m8a");
+    assert_eq!(row.gen_met, Some(true));
+    let names: Vec<&str> = row.more_suites.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, ["gen-m8b", M8_SUBSET]);
+    let subset = &row.more_suites[1];
+    assert_eq!((subset.allowance, subset.met), (Some(10), Some(true)));
+    assert_eq!(subset.visibly_off_cells.len(), 10);
+    assert_eq!((row.coverage_met, row.calc_met), (None, None));
+    assert!(row.exit, "{row:?}");
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains(
+            "| M8 | n/a/n/a n/a | gen-m8a: 3577, 1.00000, 0/0 [0] met; gen-m8b: 3368, 1.00000, 0/0 [0] met; poi M8 subset: 2000, 0.99500, 10/10 [n/a] met | n/a [n/a] n/a | 0 [0] met | n/a n/a | n/a | met |"
+        ),
+        "{md}"
+    );
+}
+
+#[test]
+fn m8_a_visibly_off_gen_m8b_cell_fails_alone() {
+    let row = m8(&m8_report(1, Some((2_000, 0))));
+    assert_eq!(row.more_suites[0].met, Some(false));
+    assert_eq!(
+        (row.gen_met, row.more_suites[1].met),
+        (Some(true), Some(true))
+    );
+    assert!(!row.exit);
+}
+
+#[test]
+fn m8_a_subset_below_99_5_fails_alone() {
+    let row = m8(&m8_report(0, Some((2_000, 11))));
+    assert_eq!(row.more_suites[1].met, Some(false));
+    assert_eq!(row.more_suites[0].met, Some(true));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m8_a_blocked_subset_case_fails_alone() {
+    let mut r = m8_report(0, Some((2_000, 0)));
+    r.poi_m8_subset.as_mut().unwrap().blocked_cases = vec!["poi/b.xlsx!*".into()];
+    let row = m8(&r);
+    let subset = &row.more_suites[1];
+    assert_eq!(subset.met, Some(false));
+    assert_eq!(subset.blocked_cases, ["poi/b.xlsx!*"]);
+    assert!(!row.exit);
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains("poi M8 subset: 2000, 1.00000, 0/10 [n/a], 1 cases did not run not met"),
+        "{md}"
+    );
+}
+
+#[test]
+fn m8_a_visibly_off_probe_fails_alone() {
+    let mut r = m8_report(0, Some((2_000, 0)));
+    r.probe_milestones.last_mut().unwrap().visibly_off = 1;
+    let row = m8(&r);
+    assert_eq!(row.probes_met, Some(false));
+    assert!(row.more_suites.iter().all(|s| s.met == Some(true)));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m8_without_poi_is_not_applicable() {
+    let row = m8(&m8_report(0, None));
+    let subset = &row.more_suites[1];
+    assert_eq!((subset.scored, subset.met), (None, None));
+    assert!(!row.exit);
+}
+
+/// A run with gen-m10's `items` text items (`failing` of them failing, listed in one case) and
+/// 1,690 value cells (`gen_off` visibly off), and an M10 probe row with `probe_off` visibly-off
+/// cells and `probe_text_failing` failing text items of 415.
+fn m10_report(
+    items: usize,
+    failing: usize,
+    gen_off: usize,
+    probe_off: usize,
+    probe_text_failing: usize,
+) -> RunReport {
+    let mut r = report(None);
+    r.suites.push(SuiteSummary {
+        text_cells: items,
+        text_passed: items - failing,
+        ..suite("gen-m10", 1_690, gen_off)
+    });
+    let mut g = crate::report::tests::case("gen-m10/abc.case.json", 1);
+    g.text = (0..failing)
+        .map(|i| crate::text_expect::TextResult {
+            sheet: "S".into(),
+            cell: format!("B{}", i + 1),
+            expected: "1.0".into(),
+            actual: Some("1".into()),
+            pass: false,
+        })
+        .collect();
+    r.cases.push(g);
+    r.probe_milestones.push(MilestoneRow {
+        milestone: "M10".into(),
+        visibly_off: probe_off,
+        text_items: 415,
+        text_failing: probe_text_failing,
+        ..MilestoneRow::default()
+    });
+    r
+}
+
+fn m10(r: &RunReport) -> ExitRow {
+    row(r, "M10")
+}
+
+#[test]
+fn m10_needs_ten_thousand_gen_m10_text_items_none_failing_and_clean_probes() {
+    let r = m10_report(10_400, 0, 0, 0, 0);
+    let row = m10(&r);
+    assert_eq!(row.gen_suite, "gen-m10");
+    assert_eq!(
+        (row.gen_text_items, row.gen_text_failing, row.gen_met),
+        (Some(10_400), Some(0), Some(true))
+    );
+    assert_eq!(
+        (row.probe_text_items, row.probe_text_failing, row.probes_met),
+        (Some(415), Some(0), Some(true))
+    );
+    assert_eq!((row.coverage_met, row.calc_met), (None, None));
+    assert!(row.exit, "{row:?}");
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(
+        md.contains(
+            "| M10 | n/a/n/a n/a | 1690, 1.00000, 0/0 [0], text 0 failing of 10400 met | n/a [n/a] n/a | 0 [0], text 0 failing of 415 met | n/a n/a | n/a | met |"
+        ),
+        "{md}"
+    );
+    // Other rows carry no text measure.
+    assert_eq!(m5(&r).gen_text_items, None);
+}
+
+#[test]
+fn m10_a_failing_gen_m10_text_item_fails_alone() {
+    let r = m10_report(10_400, 1, 0, 0, 0);
+    let row = m10(&r);
+    assert_eq!((row.gen_text_failing, row.gen_met), (Some(1), Some(false)));
+    assert_eq!(row.gen_text_failing_cells, ["gen-m10/abc.case.json!S!B1"]);
+    assert_eq!(row.probes_met, Some(true));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m10_gen_m10_short_of_ten_thousand_text_items_fails_alone() {
+    let row = m10(&m10_report(M10_MIN_TEXT - 1, 0, 0, 0, 0));
+    assert_eq!(row.gen_met, Some(false));
+    assert_eq!(row.probes_met, Some(true));
+    assert!(!row.exit);
+    let row = m10(&m10_report(M10_MIN_TEXT, 0, 0, 0, 0));
+    assert!(row.exit, "{row:?}");
+}
+
+#[test]
+fn m10_a_visibly_off_gen_m10_value_cell_fails_alone() {
+    let row = m10(&m10_report(10_400, 0, 1, 0, 0));
+    assert_eq!((row.gen_text_failing, row.gen_met), (Some(0), Some(false)));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m10_a_visibly_off_probe_value_cell_fails_alone() {
+    let row = m10(&m10_report(10_400, 0, 0, 1, 0));
+    assert_eq!((row.gen_met, row.probes_met), (Some(true), Some(false)));
+    assert!(!row.exit);
+}
+
+#[test]
+fn m10_a_failing_probe_text_item_fails_alone() {
+    let row = m10(&m10_report(10_400, 0, 0, 0, 1));
+    assert_eq!(row.probe_visibly_off, Some(0));
+    assert_eq!(
+        (row.gen_met, row.probe_text_failing, row.probes_met),
+        (Some(true), Some(1), Some(false))
+    );
+    assert!(!row.exit);
+}
+
+#[test]
+fn m10_without_gen_m10_is_not_applicable() {
+    let mut r = m10_report(10_400, 0, 0, 0, 0);
+    r.suites.retain(|s| s.name != "gen-m10");
+    let row = m10(&r);
+    assert_eq!((row.gen_met, row.gen_text_items), (None, None));
     assert!(!row.exit);
 }

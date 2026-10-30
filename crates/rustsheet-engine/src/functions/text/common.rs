@@ -1,6 +1,6 @@
 use super::text_kernel::{lambda_argument_error, text_result};
 use super::util::substitute_element;
-use crate::cast::number_text_too_long;
+use crate::cast::value_number_text;
 use crate::{
     calc_result::CalcResult,
     cast::{calc_result_to_string, calc_result_to_text, MAX_SHORT_TEXT_UNITS, MAX_TEXT_UNITS},
@@ -105,8 +105,11 @@ fn len_element(text: &CalcResult) -> Result<ArrayNode, Error> {
 /// Computes a single REPT result from one element of each argument.
 fn rept_element(text: &CalcResult, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let text = calc_result_to_text(text)?;
+    // An error count is the result even over a text past the limit: `REPT(REPT("x",256),#N/A)` is
+    // `#N/A` (probes/text-255-units-rept-error-count A1, A4; T-2627).
+    let number_times = number_times?;
     reject_over_short_limit(&text)?;
-    let number_times = number_times?.floor();
+    let number_times = number_times.floor();
     // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
     // it also bounds the allocation (CLAUDE.md directive 5).
     let units = text.len_utf16() as f64;
@@ -213,18 +216,18 @@ impl Model {
         })
     }
 
-    /// A text value read as VALUE reads it: `None` when it is over the number-text length cap or
-    /// does not read as a number. VALUE trims spaces around date and clock text, unlike number
+    /// A text value read as VALUE reads it, in the model's locale and date system
+    /// ([`value_number_text`]). VALUE trims spaces around date and clock text, unlike number
     /// coercion, but only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!, and clock
     /// text and date text with a clock suffix read as in number coercion (probes/date-text-grammar
     /// C7, C30, C31, C53, C55, C63; probes/value-clock-text B14, B44, column B against C).
     pub(crate) fn value_text_number(&self, text: &str) -> Option<f64> {
-        if number_text_too_long(text) {
-            return None;
-        }
-        self.parse_number_text(text.trim_matches(' '), &["$", "€"], &|| {
-            self.current_year()
-        })
+        value_number_text(
+            text,
+            self.locale,
+            &|| self.current_year(),
+            self.workbook.settings.date_system,
+        )
     }
 
     /// `FIND(find_text`, `within_text`, [`start_num`])

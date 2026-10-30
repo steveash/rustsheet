@@ -64,6 +64,13 @@ pub(crate) fn beta_density_small_shape(x: f64, a: f64, b: f64) -> Option<f64> {
 }
 
 /// ln B(a, b) for min(a, b) <= 1 as model M2 forms it (module docs).
+///
+/// bpser's ln B (`bratio::bpser::bpser_neg_ln_beta`) is a separate fit and stays separate: each
+/// matches its own Excel evidence (statistics.md "Beta density for min(a,b) <= 1" against
+/// "Incomplete beta bpser"), and the two differ at the edges, so one form for both would move the
+/// cells the other was fitted on. Here a larger shape of 8 still takes the GAMMALN sum (bpser
+/// switches to algdiv at 8), ln B(a, 1) with a < 1 is -LN(a) (bpser keeps the GAMMALN sum there),
+/// and a + b is a plain double sum (bpser's is an x87 sum, stored).
 fn ln_beta_small_shape(a: f64, b: f64) -> f64 {
     if a == 1.0 || b == 1.0 {
         // B(1, b) = 1/b: -LN(the other shape), at any size of it (statistics.md: 32 of 32 shapes
