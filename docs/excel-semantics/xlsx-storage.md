@@ -417,6 +417,18 @@ Status: VERIFIED (excel-graph)
 Implemented in: no (T-2958 for export, T-2969 for load)
 Tasks: T-2957, T-2958, T-2969
 
+
+## Excel does not fill a calculated column on load
+Rule: a table part whose `<tableColumn>` holds `<calculatedColumnFormula>` does not make Excel fill the
+column when the workbook opens: blank data cells stay blank, a cell holding the formula leaves its
+neighbours blank, and a constant stays a constant. Only a formula typed into a data cell afterwards
+fills the whole column (as in the entry above).
+Evidence: probes/t2969-calculated-column-load (excel-graph, 2026-10-30), column formula
+`T[[#This Row],[Val]]*2` on C:F of T A1:F5: FORMULATEXT is #N/A for every cell of C (all blank), for D3:D5
+(only D2 holds the formula, `=[@Val]*2`) and for E2:E5 (E3 holds 99); F4 typed `=B4*3` fills F2:F5.
+Status: VERIFIED
+Tasks: T-2969
+
 ## A table part without a name attribute is named by its displayName
 Rule: Excel opens a workbook whose `xl/tables/tableN.xml` has `displayName` but no `name` attribute (as
 LibreOffice writes it), and its formulas reach the table by the displayName: `SUBTOTAL(109,Таблица1[Sum for Q3])`

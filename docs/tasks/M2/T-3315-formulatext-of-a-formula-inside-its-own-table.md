@@ -1,0 +1,24 @@
+---
+id: T-3315
+title: "FORMULATEXT of a formula inside its own table shows [@Col], not T[[#This Row],[Col]]"
+milestone: M2
+lane: engine
+status: todo
+priority: P2
+size: S
+tier: opus
+depends_on: []
+---
+
+## Goal
+FORMULATEXT of a table-body cell whose formula reads its own row shows the in-table form `=[@Val]*2`, as Excel does.
+
+## Context
+Found by T-2969: probes/t2969-calculated-column-load.case.json I2 expects `=[@Val]*2` for `=T[[#This Row],[Val]]*2` stored in D2 of table T (excel-graph); we return `=T[[#This Row],[Val]]*2`. Check T-1683 / T-2763 for related FORMULATEXT structured-ref rules before changing.
+
+## Acceptance criteria
+- [ ] I2 of the case above passes and leaves the probes baseline.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-
