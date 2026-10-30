@@ -102,17 +102,17 @@ impl Model {
         if values.as_slice().iter().any(lifts) {
             return self.lifted_trimrange(&args[0], values, cell);
         }
-        let source = if as_reference {
-            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context, true)
-        } else if matches!(
-            args[0].ungrouped(),
-            Node::ReferenceKind { .. } | Node::DefinedNameKind(_)
-        ) {
-            // A one-cell reference stays a range of one cell, as for TAKE/DROP
-            // (drop_take.rs, T-3072), so its one-cell trim below is a reference.
+        // The source is read as a reference wherever it is one, as TAKE/DROP's is (drop_take.rs,
+        // T-3072), so a one-cell trim of a cell, a name or a LET variable bound to a cell is a
+        // reference, not a 1x1 array (probes/t3130-concat-lambda-trimrange-cell-variable Q13-Q16).
+        let source = if !as_reference
+            && matches!(
+                args[0].ungrouped(),
+                Node::ReferenceKind { .. } | Node::DefinedNameKind(_)
+            ) {
             self.evaluate_node_with_reference(&args[0], cell)
         } else {
-            self.evaluate_node_in_context(&args[0], cell)
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context, true)
         };
         let reference_corner = match source {
             CalcResult::Range { left, right } if left.sheet == right.sheet => Some(left),
