@@ -96,6 +96,27 @@ class MarkerFormat(unittest.TestCase):
             merge_ready.parse_marker(bare.render()).reviewers, {**APPROVED, "excel-fidelity": "n/a"}
         )
 
+    def test_one_session_footer_after_the_block_is_accepted(self) -> None:
+        # T-3164: the session's write path appends this footer to every comment it posts.
+        mark = marker(self.HEAD, reviewers={**APPROVED, "excel-fidelity": "n/a"})
+        body = merge_ready.marker_body(mark) + merge_ready.FOOTER
+        self.assertEqual(merge_ready.parse_marker(body), mark)
+        self.assertEqual(merge_ready.parse_marker(body.replace("\n", "\r\n")), mark)
+
+    def test_anything_else_after_the_block_is_rejected(self) -> None:
+        good = merge_ready.marker_body(marker(self.HEAD))
+        footer = merge_ready.FOOTER
+        bad = [
+            good + footer + footer,
+            good + footer + "\ntrailing text",
+            good + "\ntrailing text" + footer,
+            good + footer.replace("Claude Code", "Claude C0de"),
+            good + "\n\n---",
+        ]
+        for body in bad:
+            with self.subTest(body=body[-60:]), self.assertRaises(MarkerError):
+                merge_ready.parse_marker(body)
+
     def test_bad_fields_are_rejected(self) -> None:
         good = marker(self.HEAD).render()
         bad = [
@@ -449,7 +470,8 @@ class Mark(PrFixture):
         if action["action"] == merge_ready.STEP_COMMENT:
             self.comments.append(self.comment(len(self.comments) + 1, str(action["body"])))
         else:
-            self.assertEqual(action["label"], merge_ready.READY_LABEL)
+            label = merge_ready.READY_LABEL if action["action"] == merge_ready.STEP_LABEL else merge_ready.EJECTED_LABEL
+            self.assertEqual(action["label"], label)
             self.pull["labels"] = [{"name": name} for name in action["labels"]]  # type: ignore[attr-defined]
 
     def mark_main(self, *args: str, fake: FakeGh | None = None) -> tuple[int, str, str]:
@@ -482,6 +504,24 @@ class Mark(PrFixture):
         self.pull["labels"] = []
         self.assertEqual([a["action"] for a in self.plan().actions()], ["label"])
 
+    def test_marking_again_drops_the_ejected_label(self) -> None:
+        # SPEC-0027 section 6: `merge-train-ejected` goes once the PR is marked again (T-3155).
+        self.pull["labels"] = [{"name": "bug"}, {"name": merge_ready.EJECTED_LABEL}]
+        code, out, _ = self.mark_main("--review", self.REVIEW, "--step")
+        self.assertEqual(code, 0)
+        actions = [json.loads(line) for line in out.splitlines()]
+        self.assertEqual([a["action"] for a in actions], ["comment", "label", "unlabel"])
+        final = ["bug", merge_ready.READY_LABEL]
+        self.assertEqual([a.get("labels") for a in actions[1:]], [final, final])
+        for action in actions:
+            self.perform(action)
+        self.assertEqual([label["name"] for label in self.pull["labels"]], final)
+        verdict, _ = self.verify()
+        self.assertTrue(verdict.ready, verdict.failures)
+        # Already marked and labelled at this head, the ejected label alone is removed.
+        self.pull["labels"] = [{"name": merge_ready.READY_LABEL}, {"name": merge_ready.EJECTED_LABEL}]
+        self.assertEqual([a["action"] for a in self.plan().actions()], ["unlabel"])
+
     def test_direct_mode_creates_labels_comments_then_labels_and_reads_back(self) -> None:
         test = self
 
@@ -491,8 +531,11 @@ class Mark(PrFixture):
                     test.perform({"action": "comment", "body": (request.body or {})["body"]})
                 elif request.method == "POST" and request.path.endswith("/issues/7/labels"):
                     test.pull["labels"].append({"name": merge_ready.READY_LABEL})
+                elif request.method == "DELETE" and request.path.endswith("/issues/7/labels/merge-train-ejected"):
+                    test.pull["labels"].remove({"name": merge_ready.EJECTED_LABEL})
                 return super().send(request)
 
+        self.pull["labels"].append({"name": merge_ready.EJECTED_LABEL})
         fake = Writing("o", "r", self.fake().replies)
         missing = Reply(error="gh: Not Found (HTTP 404)")
         fake.replies[("GET", "repos/o/r/labels/ready-to-merge")] = Reply({"name": "ready-to-merge"})
@@ -500,6 +543,7 @@ class Mark(PrFixture):
         fake.replies[("GET", "repos/o/r/labels/merge-train-stop")] = missing
         for write in ("labels", "issues/7/comments", "issues/7/labels"):
             fake.replies[("POST", f"repos/o/r/{write}")] = Reply({})
+        fake.replies[("DELETE", "repos/o/r/issues/7/labels/merge-train-ejected")] = Reply({})
         code, out, _ = self.mark_main("--review", self.REVIEW, fake=fake)
         self.assertEqual(code, 0)
         self.assertIn("#7 ready", out)
@@ -511,8 +555,10 @@ class Mark(PrFixture):
                 ("POST", "repos/o/r/labels", "merge-train-stop"),
                 ("POST", "repos/o/r/issues/7/comments", None),
                 ("POST", "repos/o/r/issues/7/labels", None),
+                ("DELETE", "repos/o/r/issues/7/labels/merge-train-ejected", None),
             ],
         )
+        self.assertEqual([label["name"] for label in self.pull["labels"]], ["bug", merge_ready.READY_LABEL])
 
     def test_each_refusal(self) -> None:
         self.refused("--by", by="")

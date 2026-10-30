@@ -9,10 +9,12 @@ price (and its derivative) taken through kernels/power.py's `excel_model`, on th
 from __future__ import annotations
 
 from collections.abc import Callable
+from fractions import Fraction
 
+from rustsheet_tools.fitlab.exact import DOUBLE, round_to_bits
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.kernels import solvers
-from rustsheet_tools.fitlab.score import Candidate
+from rustsheet_tools.fitlab.score import Candidate, candidate
 from rustsheet_tools.fitlab.sweep import Arg, Cell
 
 
@@ -33,11 +35,54 @@ def _caret_evaluate(c: Candidate) -> Callable[[Cell], float]:
     return lambda cell: caret_priced(lambda: c.evaluate(cell))()
 
 
+def _start_term(args: tuple[Arg, ...]) -> tuple[float, float, int, int, int]:
+    """(rate, pr, whole years, days, year days) of a bond cell; `NoResultError` for a zero term,
+    where the engine's start is NaN (`#NUM!`)."""
+    settle, maturity, rate, pr, _, _, basis = solvers._bond(args)
+    whole, days, year = solvers.start_term(settle, maturity, basis)
+    if whole == 0 and days == 0:
+        raise solvers.NoResultError("a zero term")
+    return rate, pr, whole, days, year
+
+
+def rounded_once_yield_start(*args: Arg) -> float:
+    """`solvers.fitted_yield_start` computed exactly over the exact term `whole + days/year` and
+    rounded once to a double (T-2974 attempt 2, the engine's start under decision 0162)."""
+    rate, pr, whole, days, year = _start_term(args)
+    t, q = whole + Fraction(days, year), 100 - Fraction(pr)
+    exact_start = (100 * Fraction(rate) + q / t) / ((100 + Fraction(pr)) / 2 - q / (4 * t))
+    return float(round_to_bits(exact_start, DOUBLE))
+
+
+def unrounded_term_yield_start(*args: Arg) -> float:
+    """The start multiplied through by T, `((r T) 100 + q) / (D/2 - q/4)` with `q = 100 - pr`, in
+    doubles but for `D = pr T + 100 T`, rounded once with `100 T` rounded and `T` in `pr T` the exact
+    sum `whole + fl(days/year)`; every other `T` that sum rounded (T-2974 attempt 4, decision 0166:
+    the engine's `yield_start`)."""
+    rate, pr, whole, days, year = _start_term(args)
+    fraction = days / year
+    years, q = whole + fraction, 100 - pr
+    d = float(round_to_bits(Fraction(pr) * (whole + Fraction(fraction)) + Fraction(100 * years), DOUBLE))
+    return ((rate * years) * 100 + q) / (d / 2 - q / 4)
+
+
 def caret_candidates() -> list[Candidate]:
-    """Each `yield` candidate, `^`-priced."""
-    return [
-        Candidate(f"{c.name}, ^-priced", _caret_evaluate(c), c.family) for c in solvers.yield_candidates()
+    """Each `yield` candidate, `^`-priced, then Newton from the starts the engine took under
+    decisions 0162 (rounded once) and 0166 (`pr T` on the unrounded term), with the short stop at
+    1e-10 (T-3152)."""
+    out = [Candidate(f"{c.name}, ^-priced", _caret_evaluate(c), c.family) for c in solvers.yield_candidates()]
+    out += [
+        candidate(
+            f"Newton from the {name} start, returned before a step below 1e-10, ^-priced",
+            caret_priced(solvers._newton_yield_short(start, 1e-10)),
+            "Newton, fitted start",
+        )
+        for name, start in (
+            ("rounded-once (exact term)", rounded_once_yield_start),
+            ("unrounded-term", unrounded_term_yield_start),
+        )
     ]
+    return out
 
 
 _YIELD = next(fit for fit in solvers.FITS if fit.name == "yield")
