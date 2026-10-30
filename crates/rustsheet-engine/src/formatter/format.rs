@@ -189,7 +189,7 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
 /// The text a cell shows for a text or boolean value under `format`. TEXT() is `#VALUE!` past 255
 /// characters but a cell shows its text whole (unprobed with a text section: the plain text is kept).
 #[must_use]
-pub fn displayed_text_value(text: &str, format: &str) -> String {
+pub fn displayed_text(text: &str, format: &str) -> String {
     let formatted = format_text_value(text, format);
     if formatted.error.is_some() {
         text.to_string()
