@@ -2652,6 +2652,18 @@ bfrac (min(a,b) >= 40) takes the same brcomp = density·x·y, with λ = fl(a - f
   on the full eval ("Incomplete beta bpser" above: 116 cells bit-exact, 28 moved 1 to 4 ulp off).
 - Rejected: stored, extended, Horner or reverse W; the (P·y0)·x order; an extended P; every CF × prefactor on 15,657
   direct cells (best 2,931, CR 2,920); bfrac's λ from y.
+- bfrac as ported (T-2508, b0 >= 40, the 1992 fraction in doubles, eps 15·1e-15, brcomp = fl(P·fl(x·y)) with the
+  engine's T-2507 density): the (100, 120) run is 47 of 1,024 bit-exact (23 on the Cephes kernel before). The engine's
+  density is 33 of 1,024 there, so w4's 185 (Excel's own pdf read off the sheet) waits on that density (T-3244); an
+  x87-extended fraction scores 42, no better. bratio_beta_dist.fixture's 82 bfrac rows: 39 bit-exact.
+- Excel's bfrac-branch values are not correctly rounded, and the port follows the sign of Excel's error: on the t2220
+  F sweep at df 100 Excel sits up to 82 ulp from a 50-digit reference (F.DIST.RT(100,100,50) +82.4); F.DIST(0.1,50,100,
+  TRUE) is Excel +26.4 ulp, the port +24.4, the Cephes kernel -9.6 (T-2508 PR, mpmath betainc at 50 digits).
+- `NEGBINOM.DIST(1,100,0.99,TRUE)` = 0.7320646825464586 (ironcalc-calc BINOM.xlsx NEGBINOM.DIST!E39) is the correctly
+  rounded I_0.99(100, 2), -0.4998 ulp from the exact x^100·(101 - 100x). bratio takes bfrac there ((2, 100, 0.01) after
+  the swap); bfrac's w = 0.26793531745354133 is correctly rounded (-0.0004 ulp), so (0.5 - w) + 0.5 is an exact tie
+  and rounds to ...587. Excel's w there is an ulp above, or its NEGBINOM cdf is not bfrac's complement; the engine keeps
+  NEGBINOM.DIST's double-double pmf walk at bfrac points, which hits it.
 Evidence: probes-numeric t2464-w2f-xruns-1, -xruns-2, -absweep; w4's probe w4p1 (w4-fractions/probe, not in
 eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_lambda.py`, `t25_old.py`), r2-bratio
 (`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio; docs/research/t2506.

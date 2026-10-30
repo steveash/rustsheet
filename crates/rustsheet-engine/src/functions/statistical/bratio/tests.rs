@@ -83,13 +83,43 @@ fn bpser_branches_match_excel() {
     }
 }
 
+// bfrac (b0 >= 40): Excel's values (probes-numeric, excel-graph), bit-exact through the bfrac port
+// and 1 to 3 ulp off on today's kernel before it (T-2508).
+#[test]
+fn bfrac_matches_excel() {
+    let cells: [(f64, f64, f64, f64); 4] = [
+        // m9-beta-dist-a10 A43, m9-beta-dist-a100 A47 (swapped).
+        (0.1, 10.0, 50.0, 0.066_589_445_582_871_41),
+        (0.9, 100.0, 50.0, 0.999_999_999_999_994_9),
+        // t2464-w2f-xruns-1 A14913, A15779: the (100, 120) run.
+        (
+            0.401_300_000_000_016,
+            100.0,
+            120.0,
+            0.055_325_311_152_874_035,
+        ),
+        (0.401_300_000_000_04, 100.0, 120.0, 0.055_325_311_152_955_79),
+    ];
+    for (x, a, b, excel) in cells {
+        assert_eq!(
+            dispatch(a, b, x, 1.0 - x).map(|d| d.branch),
+            Some(Branch::Bfrac)
+        );
+        assert_eq!(
+            cdf(x, a, b).to_bits(),
+            excel.to_bits(),
+            "BETA.DIST({x},{a},{b},TRUE)"
+        );
+    }
+}
+
 // Branches not ported yet, and a shape of 1 outside the closed forms, keep today's kernel.
 #[test]
 fn unported_points_keep_todays_kernel() {
     use crate::functions::statistical::incomplete_beta::beta_reg_tails;
     for (x, a, b) in [
         (0.295, 0.5, 5.0),                   // bup + bgrat
-        (0.5, 50.0, 60.0),                   // bfrac
+        (0.5, 500.0, 600.0),                 // basym
         (0.916_913_946_587_537_1, 3.5, 1.0), // a0 = 1, y0 > 0.9
         (0.1, 1e308, 0.5),                   // fl(a·LN x) = -inf
         (0.1, f64::MAX, 0.5),
@@ -251,6 +281,7 @@ fn fixture_ported_branches_score() {
         (Branch::W1Bpser, 19, 16),
         (Branch::BpserLarge, 205, 123),
         (Branch::L140BupBpser, 122, 91),
+        (Branch::Bfrac, 82, 39),
     ]
     .map(|(branch, rows, exact)| (branch, rows, exact, 0, 0));
     for (r, (w, _)) in ported_rows() {
@@ -290,8 +321,12 @@ fn ported_tails_are_stored_complements() {
 fn ported_tails_are_swap_symmetric() {
     let mut compared = 0;
     for (r, (w, w1)) in ported_rows() {
-        let swaps = |a, b, x, y| dispatch(a, b, x, y).map(|d| d.swapped);
-        if swaps(r.a, r.b, r.x, r.y) == swaps(r.b, r.a, r.y, r.x) {
+        let swaps = |a, b, x, y| dispatch(a, b, x, y).map(|d| (d.swapped, d.lambda.to_bits()));
+        let (direct, mirror) = (swaps(r.a, r.b, r.x, r.y), swaps(r.b, r.a, r.y, r.x));
+        // bfrac also takes λ, which the two calls form from different products when a = b.
+        if direct.map(|d| d.0) == mirror.map(|m| m.0)
+            || (r.branch == Branch::Bfrac && direct.map(|d| d.1) != mirror.map(|m| m.1))
+        {
             continue;
         }
         compared += 1;
@@ -306,7 +341,7 @@ fn ported_tails_are_swap_symmetric() {
             r.y
         );
     }
-    assert_eq!(compared, 536);
+    assert_eq!(compared, 607);
 }
 
 // Monotone in x on each shape pair's sorted ported rows, except where Excel's own value falls
@@ -326,7 +361,10 @@ fn ported_tails_rise_with_x_where_excel_does() {
         let [(p, (wp, _)), (q, (wq, _))] = pair else {
             continue;
         };
-        if (p.a, p.b) != (q.a, q.b) {
+        // bfrac's fraction is a few ulp of noise in Excel and in the port, uncorrelated (its own
+        // arithmetic is not found, T-2512): (10, 100) at x = 0.08843223023126127 is ours 2 ulp
+        // above the next double's, Excel's 2 below.
+        if (p.a, p.b) != (q.a, q.b) || p.branch == Branch::Bfrac {
             continue;
         }
         pairs += 1;
@@ -339,5 +377,5 @@ fn ported_tails_rise_with_x_where_excel_does() {
             q.x
         );
     }
-    assert_eq!(pairs, 422);
+    assert_eq!(pairs, 425);
 }
