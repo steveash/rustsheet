@@ -46,7 +46,7 @@ refuses it as it refuses `entered`.
 byte-identical), excel-graph writes a `formulasR1C1` PATCH, excel-desktop `Range.FormulaR1C1`, libreoffice refuses.
 The engine adapter converts it to A1 relative to its cell with the new `rustsheet_engine::r1c1_formula_to_a1` (the
 lexer's `LexerMode::R1C1`) and types that. A typed entry Excel refuses (400 `InvalidArgument`) is now an answer: the
-backend logs `REFUSED` and the cell stays blank; the adapter leaves an entry the engine refuses blank too. T-3102 is
+backend logs `REFUSED` and the cell stays blank; the adapter leaves R1C1 text it cannot parse blank too. T-3102 is
 unblocked. Follow-ups: T-3212 (the engine's R1C1 reader lacks bare `R`/`C` offsets, `R[-1]C`) and T-3213 (the
 engine stores a typed formula that does not parse as `#ERROR!` where Excel refuses it).
 Eval: 2 new probe cases: probes/t3113-entered-r1c1 passes 4/4; probes/t3113-entered-refused passes 1/2 (S!B1, typed

@@ -57,7 +57,7 @@ Input conventions:
   a fourth element `"r1c1"` and written with a range `formulasR1C1` PATCH. The engine adapter converts
   it to A1 text relative to its cell (`rustsheet_engine::r1c1_formula_to_a1`) and enters that as
   `Input::Parse`. Typed text Excel refuses (PATCH 400 `InvalidArgument`) leaves the cell blank, and so
-  does a typed entry the engine refuses; probe a refusal through a dependant such as `=ISBLANK(A1)`.
+  does R1C1 text the engine cannot parse; probe a refusal through a dependant such as `=ISBLANK(A1)`.
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
   (T-1077). The engine adapter enters them as `Input::LegacyFormula`, which adds the implicit

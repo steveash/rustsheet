@@ -13,12 +13,13 @@
   `Range.FormulaR1C1`, libreoffice refuses it. The engine adapter converts the text to A1 relative
   to its cell with the engine's R1C1 parser (`rustsheet_engine::r1c1_formula_to_a1`) and enters
   that with `Input::Parse`. A typed entry (either mode) that Excel refuses with 400
-  `InvalidArgument` leaves the cell blank, as Excel's UI leaves it after the error dialog; the
-  engine adapter leaves a typed entry the engine refuses (`EditError::InvalidInput`, or R1C1 text
-  that does not parse) blank too. A probe observes a refusal through a dependant such as
-  `=ISBLANK(A1)`.
+  `InvalidArgument` leaves the cell blank, as Excel's UI leaves it after the error dialog, and
+  R1C1 text the engine's R1C1 reader cannot parse is left blank by the engine adapter. A probe
+  observes a refusal through a dependant such as `=ISBLANK(A1)`. A typed entry the engine itself
+  refuses (`EditError::InvalidInput`) still fails the case, as before: the case-level refusal
+  deviations (nesting and length limits, directive 5) are matched on that error.
 - **Consequences:** Probes of R1C1-mode parsing (T-3102) can be filled and scored. A refusal is
   logged as `REFUSED` on the fill's stderr instead of failing the fill; any other Graph error still
-  fails it. A typed entry the engine refuses but Excel accepts now scores as a mismatch on its
-  cells instead of failing the whole case. R1C1 entry cannot hold a structured reference (the
-  converter has no tables), so such a cell is left blank by the engine adapter.
+  fails it. A typed formula Excel refuses that the engine stores as a parse error scores as a
+  mismatch (T-3213). R1C1 entry cannot hold a structured reference (the converter has no tables),
+  so such a cell is left blank by the engine adapter.

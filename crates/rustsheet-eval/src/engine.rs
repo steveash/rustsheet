@@ -236,7 +236,7 @@ impl Engine for RustSheetEngine {
                             spec_pivots::write_rendered(tx, sheet, id, spec_input)?;
                         }
                         for (addr, a1, input_spec) in row_major(&sheet.cells)? {
-                            let Some((input, input_phase, typed_entry)) =
+                            let Some((input, input_phase)) =
                                 cell_input(sheet, &sheet_names, addr, a1, input_spec)
                             else {
                                 continue;
@@ -244,12 +244,7 @@ impl Engine for RustSheetEngine {
                             if input_phase != phase {
                                 continue;
                             }
-                            match tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input) {
-                                // Excel refuses such typed text (Graph PATCH 400) and the cell
-                                // stays blank, as the oracle backend leaves it (decision 0179).
-                                Err(rustsheet::EditError::InvalidInput { .. }) if typed_entry => {}
-                                result => result?,
-                            }
+                            tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
                         }
                     }
                 }
@@ -451,15 +446,15 @@ enum Phase {
     Entered,
 }
 
-/// The facade input for spec cell `a1` of `sheet`, the phase it goes in at, and whether it is a
-/// typed entry, which the engine may refuse; `None` leaves the cell empty.
+/// The facade input for spec cell `a1` of `sheet` and the phase it goes in at; `None` leaves the
+/// cell empty.
 fn cell_input(
     sheet: &SheetSpec,
     sheet_names: &[String],
     addr: Addr,
     a1: &str,
     input_spec: &CellInput,
-) -> Option<(Input, Phase, bool)> {
+) -> Option<(Input, Phase)> {
     let mut input = match input_spec {
         CellInput::EnteredR1c1 { entered_r1c1 } => {
             r1c1_entry(entered_r1c1, sheet_names, &sheet.name, addr)
@@ -486,7 +481,7 @@ fn cell_input(
         Input::Parse(text) if text.starts_with('=') || typed_entry => Phase::Entered,
         _ => Phase::Values,
     };
-    Some((input, phase, typed_entry))
+    Some((input, phase))
 }
 
 /// The facade input for `text` typed in R1C1 mode into `addr` of `sheet`: the A1 text it reads as
@@ -877,15 +872,13 @@ mod tests {
     }
 
     #[test]
-    fn spec_r1c1_entries_read_relative_to_their_cell_and_refusals_stay_blank() {
-        // `R1C2` is $B$1 and `R[-2]C[1]` the cell two up and one right (T-3113); a typed formula the engine refuses
-        // (decision 0103) and R1C1 text that does not parse leave their cells blank, as Excel's
-        // refused PATCH does (decision 0179).
+    fn spec_r1c1_entries_read_relative_to_their_cell_and_unparsable_ones_stay_blank() {
+        // `R1C2` is $B$1 and `R[-2]C[1]` the cell two up and one right (T-3113); R1C1 text that
+        // does not parse is left blank, as Excel's refused PATCH leaves it (decision 0179).
         let spec = spec(
             r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
                 "B1":5,"A2":{"entered_r1c1":"=R1C2+1"},"A3":{"entered_r1c1":"=R[-2]C[1]*2"},
-                "A4":{"entered":"=LET(f1,1,f1+1)"},"A5":{"entered_r1c1":"=1+"},
-                "C4":"=ISBLANK(A4)","C5":"=ISBLANK(A5)"}}]}"#,
+                "A5":{"entered_r1c1":"=1+"},"C5":"=ISBLANK(A5)"}}]}"#,
         );
         let evaluated = RustSheetEngine
             .evaluate_spec(&spec, None)
@@ -893,7 +886,6 @@ mod tests {
         let at = |row, col| evaluated.value("S", Addr { row, col });
         assert_eq!(at(2, 1), Some(Value::Number(6.0)));
         assert_eq!(at(3, 1), Some(Value::Number(10.0)));
-        assert_eq!(at(4, 3), Some(Value::Bool(true)));
         assert_eq!(at(5, 3), Some(Value::Bool(true)));
     }
 

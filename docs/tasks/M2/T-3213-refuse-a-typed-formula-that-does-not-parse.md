@@ -15,8 +15,10 @@ A formula typed through the facade (`Input::Parse` / `Input::Formula`) that does
 
 ## Context
 Evidence: probes/t3113-entered-refused S!B1 (`{"entered": "=1+"}`, `=ISBLANK(A1)` TRUE on excel-graph; the engine
-gives FALSE, the cell holds `#ERROR!`), a known failure in eval/baseline. The eval adapter already leaves a typed
-entry blank on `InvalidInput` (decision 0179). docs/excel-semantics/references.md says "a typed one stays a parse
+gives FALSE, the cell holds `#ERROR!`), a known failure in eval/baseline. The eval adapter (crates/rustsheet-eval/src/engine.rs, the `tx.set` of a spec cell) fails the whole case on
+`InvalidInput`, which the resource-limit refusal deviations rely on (probes/t3172-*-typed, t3097-*-typed); a refused
+parse error must leave the cell blank instead (decision 0179), so tell the two apart (a distinct error, or match the
+message). docs/excel-semantics/references.md says "a typed one stays a parse
 error (`#ERROR!`, the text kept)" in two places (structured references to a missing table, `[1]!Table3[#Data]`):
 check those against Excel (probe first) and update them. Code: `Model::set_typed_user_input`
 (crates/rustsheet-engine/src/typed_input.rs) already refuses decision-0103 forms via `Parser::typed_refusal`; a
