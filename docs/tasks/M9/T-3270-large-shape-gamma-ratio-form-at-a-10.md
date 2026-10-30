@@ -1,5 +1,5 @@
 ---
-id: T-3269
+id: T-3270
 title: "Large-shape gamma ratio form at a/10 and a/2: last digits of 8 m9-gamma-dist-a50/a500 cells 1-2 ulp off after T-2638"
 milestone: M9
 lane: functions-stat

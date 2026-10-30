@@ -121,3 +121,5 @@ it. Bit-level criteria still unmet then move to a follow-up task without the key
   over-charge there.
 - statistics.md "Incomplete gamma: per-call cap and lifting": the DEVIATION now covers the inversions only.
 - Follow-up: T-2982 (the inversions E5, E15, E18, the underflow rule, the gen-m9 and t2435 cells).
+
+Note (2026-10-30 triage): the GAMMA.DIST/GAMMADIST `#NUM!` cells at a huge shape named above (probes/t2435-dist-extremes S!A25, A26, A101, A102 and their B companions; gen-m9 2801c1c11c21e134 A241, 40425341c5034eed A265) are owned by T-3268.

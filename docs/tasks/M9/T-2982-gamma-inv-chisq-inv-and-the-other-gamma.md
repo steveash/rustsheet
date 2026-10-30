@@ -72,3 +72,5 @@ T-3070 with their cells.
   reading as c times the true quantile plus a z term was the same cube expanded.
 - Eval delta: known failures gen-m9 3319 -> 3318, probes 2607 -> 2596 (fixed 12, regressions 0);
   probes/t2982-gamma-inv-huge-shape 49 -> 60 of 123.
+
+Note (2026-10-30 triage): the GAMMA.DIST/GAMMADIST `#NUM!` cells at a huge shape named above (probes/t2435-dist-extremes S!A25, A26, A101, A102 and their B companions; gen-m9 2801c1c11c21e134 A241, 40425341c5034eed A265) are owned by T-3268.
