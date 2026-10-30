@@ -2,7 +2,7 @@
 
 Raw `ENTERED` stderr lines of `rustsheet-oracle fill -b excel-graph --suite probes` for
 `eval/suites/probes/cases/typed-mixed-fraction-number-format.case.json`. The sidecar scores values and the
-displayed `text` of A1:A27; these formats are the evidence for docs/excel-semantics/text.md (typed mixed fractions).
+displayed `text` of A1:A31; these formats are the evidence for docs/excel-semantics/text.md (typed mixed fractions).
 
 ```
 ENTERED Sheet1!A1 '3 1/2': values=[[3.5]] numberFormat=[['# ?/?']]
@@ -32,4 +32,8 @@ ENTERED Sheet1!A24 '3 1/10000': values=[[3.0001]] numberFormat=[['# ??/??']]
 ENTERED Sheet1!A25 '3 001/2': values=[[3.5]] numberFormat=[['# ?/?']]
 ENTERED Sheet1!A26 '3 1/0002': values=[[3.5]] numberFormat=[['# ?/?']]
 ENTERED Sheet1!A27 '3 1/2000': values=[[3.0005]] numberFormat=[['# ??/??']]
+ENTERED Sheet1!A28 '3 5/10': values=[[3.5]] numberFormat=[['# ??/??']]
+ENTERED Sheet1!A29 '3 2/4': values=[[3.5]] numberFormat=[['# ?/?']]
+ENTERED Sheet1!A30 '3 12/5': values=[[5.4]] numberFormat=[['# ?/?']]
+ENTERED Sheet1!A31 '3 10/5': values=[[5]] numberFormat=[['# ?/?']]
 ```

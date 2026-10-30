@@ -118,7 +118,23 @@
     "A27": {
      "entered": "3 1/2000"
     },
-    "B27": "=A27+0"
+    "B27": "=A27+0",
+    "A28": {
+     "entered": "3 5/10"
+    },
+    "B28": "=A28+0",
+    "A29": {
+     "entered": "3 2/4"
+    },
+    "B29": "=A29+0",
+    "A30": {
+     "entered": "3 12/5"
+    },
+    "B30": "=A30+0",
+    "A31": {
+     "entered": "3 10/5"
+    },
+    "B31": "=A31+0"
    }
   }
  ],
@@ -150,7 +166,11 @@
   "Sheet1!B24",
   "Sheet1!B25",
   "Sheet1!B26",
-  "Sheet1!B27"
+  "Sheet1!B27",
+  "Sheet1!B28",
+  "Sheet1!B29",
+  "Sheet1!B30",
+  "Sheet1!B31"
  ],
  "text": [
   "Sheet1!A1",
@@ -179,6 +199,10 @@
   "Sheet1!A24",
   "Sheet1!A25",
   "Sheet1!A26",
-  "Sheet1!A27"
+  "Sheet1!A27",
+  "Sheet1!A28",
+  "Sheet1!A29",
+  "Sheet1!A30",
+  "Sheet1!A31"
  ]
 }

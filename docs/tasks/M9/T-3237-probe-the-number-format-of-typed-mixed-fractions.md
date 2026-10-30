@@ -24,4 +24,4 @@ T-3178 showed these typed forms are numbers, but `CELL("format")` is `#VALUE!` o
 -
 
 ## Outcome
-Probe probes/typed-mixed-fraction-number-format (excel-graph ENTERED numberFormat): fractions get `# ?/?`, percent forms `0.00%`. `parse_typed_number` now returns them; docs/excel-semantics/text.md updated.
+Probe probes/typed-mixed-fraction-number-format (excel-graph ENTERED numberFormat): fractions get `# ?/?` (denominator under 10) or `# ??/??` (10 or more, as typed, leading zeros not counted), percent forms `0.00%`. `parse_typed_number` now returns them; docs/excel-semantics/text.md updated.

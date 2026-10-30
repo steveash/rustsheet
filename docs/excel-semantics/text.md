@@ -983,9 +983,9 @@ symbol and a `%` do not combine in a mixed fraction. A criterion operand reads `
 `-3 1/2%` and `+ 3 1/2` but not `€3 1/2` or `$3 1/2%` (`COUNTIF(3.5,"€3 1/2")` is 0), while a text cell `€3 1/2` does read
 as 3.5 (`COUNTIF(A5,A5+0)` is 1). A typed mixed fraction gets the number format `# ?/?` when its denominator is a single digit (`3 1/2`, `-$3 1/2`,
 `+ 3 1/2`, `$3 1/2`, `-3 1/2`, `1 3/2`, `3 01/02`, `3 001/2`, `3 1/002`; no currency format even with `$`) and `# ??/??` when
-it is 10 or more (`3 1/10`, `3 1/12`, `1 1/16`, `-$1 7/16`, `3 1/99`, `3 1/999`, `3 1/10000`), leading zeros not counted;
+it is 10 or more (`3 1/10`, `3 1/12`, `1 1/16`, `-$1 7/16`, `3 1/99`, `3 1/999`, `3 1/10000`), leading zeros not counted, the typed denominator not the reduced one (`3 5/10` is `??/??`, `3 2/4` `?/?`) and the numerator's width not at all (`3 12/5` displays `5 2/5`, `3 10/5` displays `5`);
 one with a `%` gets `0.00%` whatever the denominator (`3 1/2%`, `-3 1/2%`, `2 5/16%`). Displayed, `3 1/12` is `3  1/12`
-and `3 1/200` (three digits fit no `??/??`) is `3` plus six spaces. Typed `-$3 1/2%` stays text, like `$3 1/2%`
+and `3 1/200` (three digits fit no `??/??`) is `3` plus six spaces. Typed `-$3 1/2%` stays text, like `$3 1/2%`, but the cell still gets `0.00%` (A15 ENTERED numberFormat)
 (probes/typed-mixed-fraction-number-format, excel-graph, 2026-10-30, T-3237; raw ENTERED lines and displayed text in
 docs/research/typed-mixed-fraction-number-format-2026-10-30.md).
 Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
