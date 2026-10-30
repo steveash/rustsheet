@@ -1526,6 +1526,7 @@ C	probes/t3030-cell-first-sheet.case.json	20
 C	probes/t3047-snap-array-operands.case.json	70
 C	probes/t3048-snap-conditional-sums.case.json	86
 C	probes/t3049-snap-under-pickers.case.json	57
+C	probes/t3050-b1-positive-large.case.json	9
 C	probes/t3051-legacy-root-array-operators.case.json	38
 C	probes/t3053-blank-reference-wrappers.case.json	25
 C	probes/t3054-imtan-real-tan-kernel.case.json	22
