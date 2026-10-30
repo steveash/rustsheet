@@ -444,6 +444,57 @@ fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
     ));
 }
 
+/// The T-2860 cells by name: chi-squared at df 2 is the shape-1 quantile at scale 2, and
+/// `GAMMA.INV(p,1,beta)` is the scale-`beta` one (probes-numeric m9-legacy-chiinv A23,
+/// m9-gamma-inv A20 and A26, gen-m9/8fec7b207f4dd753 A265).
+#[test]
+fn t2860_df2_and_alpha1_cells_are_excels_doubles() {
+    for (scale, p, tail, excel) in [
+        (2.0, 0.01, Tail::Upper, 9.210_340_371_976_182_f64),
+        (2.0, 0.999, Tail::Lower, 13.815_510_557_964_272),
+        (2.0, 0.001, Tail::Upper, 13.815_510_557_964_274),
+        (1e6, 0.999, Tail::Lower, 6_907_755.278_982_135_5),
+    ] {
+        let ours = gamma_quantile(1.0, scale, p, tail);
+        assert_eq!(
+            ours.to_bits(),
+            excel.to_bits(),
+            "{p} at scale {scale}: {ours}"
+        );
+    }
+}
+
+// From shape 20 the prefactor is Excel's ratio form away from the mode and `rcomp` near it (T-2638).
+// Excel's own values: probes-numeric m9-gamma-dist-a50 A2 `GAMMA.DIST(5,50,1,FALSE)` and
+// m9-gamma-dist-a500 A10 `GAMMA.DIST(1500,500,1,FALSE)` (bit for bit), ironcalc-calc POISSON.xlsx
+// D31 `POISSON.DIST(1E6,1E6,TRUE)`, Q(1E6 + 1, 1E6), within 8 ulp (the ratio form is 1E-10 off).
+#[test]
+fn the_large_shape_prefactor_is_excels_away_from_the_mode() {
+    assert_eq!(
+        gamma_density(50.0, 5.0, 1.0),
+        Some(1.967_673_038_278_765e-31)
+    );
+    assert_eq!(
+        gamma_density(500.0, 1500.0, 1.0),
+        Some(1.097_430_138_864_169_5e-198)
+    );
+    // m9-chisq-dist A62 `CHISQ.DIST(10,100,FALSE)`, at x = a/10, the form's lower end.
+    assert_eq!(
+        gamma_density(50.0, 10.0, 2.0),
+        Some(9.838_365_191_393_825e-32)
+    );
+    // The beta paths keep the accurate exponent: 65 ulp from Excel's form here.
+    assert_ne!(
+        super::accurate_gamma_density(50.0, 10.0, 2.0),
+        gamma_density(50.0, 10.0, 2.0)
+    );
+    assert!(within_ulps(
+        gamma_ur(1e6 + 1.0, 1e6),
+        0.500_265_961_486_283_7,
+        8.0
+    ));
+}
+
 #[test]
 fn shape_one_quantile_is_excels_closed_form() {
     // Excel's doubles (T-3016): CHISQ.INV(0.5,2) and CHISQ.INV.RT(0.5,2) are 2 ln 2 (gen-m9
