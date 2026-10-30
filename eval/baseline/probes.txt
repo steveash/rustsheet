@@ -3830,10 +3830,6 @@ F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A16
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A18
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A19
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A20
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A21
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A22
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A3
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A4
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A5
 F	probes/t3012-gamma-dist-at-quantile.case.json	S!A10
 F	probes/t3012-gamma-dist-at-quantile.case.json	S!A16
