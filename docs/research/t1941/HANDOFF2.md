@@ -861,3 +861,6 @@ partly paused).
   the `.npy` maps are not committed).
 - Build notes as 17/18: build the four `.so` files from their `Build:` lines, venv with numpy; rows from
   `w5/p5/mkrows.py OUT/rows.txt.near1.npz` (scan3 reads `ROWS + ".near1.npz"` when it exists), 9,606,590 points.
+
+## 20. T-2122 run 8 (2026-10-30, single opus worker, 19.3 step 1: the bias subtraction as a store-structure meter)
+In progress.
