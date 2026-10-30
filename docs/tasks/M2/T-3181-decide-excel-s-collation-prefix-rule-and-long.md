@@ -24,6 +24,10 @@ collation probes stop being unexplained known failures.
   `"a"&UNICHAR(834)` < `"a"&UNICHAR(834)&UNICHAR(834)` although the latter equals
   `"a"&UNICHAR(807)`, which is below `"a"&UNICHAR(834)`; likewise `"a"&UNICHAR(803)` < three
   U+0323 < `"á"` < `"a"&UNICHAR(803)`.
+- T-3201 generalized the prefix rule (coercion.md "Shared leading units are skipped before the
+  sum"): per letter, the leading units both texts share with equal weights are dropped before the
+  wrapped sums are compared, and a side with nothing left is less. T-3202's long-run cells are the
+  same rule, so the pairwise-or-DEVIATION choice here decides them too.
 - Cells owned (decision 0096; gap triage 2026-10-30, report run at 83cf65c2):
   - probes/t3154-collation-accent-pairs Calc!S19, T18, W23, X22, AB28, AC27
   - probes/t3154-collation-accent-weights Calc!A94, A95, A104
