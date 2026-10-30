@@ -3,7 +3,7 @@ id: T-1978
 title: "Probe VDB fractional periods near end of life and with salvage above cost"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
