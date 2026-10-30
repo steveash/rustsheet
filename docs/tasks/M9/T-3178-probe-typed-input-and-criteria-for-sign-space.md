@@ -3,7 +3,7 @@ id: T-3178
 title: "Probe typed input and criteria for sign-space text, one-digit-year dates and sign/currency/percent mixed fractions"
 milestone: M9
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
