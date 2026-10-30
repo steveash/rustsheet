@@ -1,5 +1,5 @@
 ---
-id: T-3283
+id: T-3295
 title: "POISSON.DIST pmf at large k and a mean well off k: Excel's saddle point on the 5 visibly-off t2055 cells (needs the T-3288 sweep)"
 milestone: M9
 lane: functions-stat

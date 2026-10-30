@@ -34,7 +34,7 @@ T-2055 (docs/excel-semantics/statistics.md "POISSON.DIST pmf: two closed forms",
 Every such cell is within 4 ulp or within 15 digits except the large-k cells above.
 
 Gap triage 2026-10-30: the five large-k cells that are visibly off (t2055-poisson-pmf-sweep A193, A196, A197, A200,
-A201) moved to T-3283 (`campaign: visible`, after T-3288's sweep), so the visible part is not parked here; this task keeps
+A201) moved to T-3295 (`campaign: visible`, after T-3288's sweep), so the visible part is not parked here; this task keeps
 the bit-level residue.
 
 Stage: `campaign: visible` like T-2055 (Excel is the inaccurate side for this pmf, statistics.md), parked by

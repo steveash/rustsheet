@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-T-3283 can fit Excel's POISSON.DIST pmf at large k against a dense excel-graph sweep, instead of the 27 cells with
+T-3295 can fit Excel's POISSON.DIST pmf at large k against a dense excel-graph sweep, instead of the 27 cells with
 k >= 30 that probes-numeric/t2055-poisson-pmf-sweep holds today (A178-A204: k = 30, 100 and 300 only, nine means each).
 
 ## Context
@@ -49,10 +49,10 @@ k >= 30 that probes-numeric/t2055-poisson-pmf-sweep holds today (A178-A204: k = 
 - [ ] The `.oracle.json` sidecar is committed with no pending cells.
 - [ ] docs/excel-semantics/statistics.md "POISSON.DIST pmf: two closed forms" cites the new case in its Evidence line,
       with the count of cells that are bit-exact with today's engine (from `make eval-show`).
-- [ ] T-3283 links the case.
+- [ ] T-3295 links the case.
 - [ ] Fixtures hold only formulas and Excel values. No RUSTSHEET_ORACLE_* values in logs or commits.
 - [ ] If the oracle is unavailable, the task is `status: blocked` with the reason.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Fitting or implementing (T-3283). The cdf (T-3269, T-3289). The small-k residue (T-3247).
+- Fitting or implementing (T-3295). The cdf (T-3269, T-3289). The small-k residue (T-3247).
