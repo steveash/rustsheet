@@ -3,7 +3,7 @@ id: T-2961
 title: "mm after a time section and a literal reads as minutes instead of month in h:mm|yyyy-mm-dd"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
