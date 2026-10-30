@@ -44,4 +44,3 @@ label, with no manual step.
 - Decision 0177. The manual-removal sentences are gone from the work-loop (step 6.3) and steward ("Merge train")
   skills.
 - Eval delta: none (scripts only).
-
