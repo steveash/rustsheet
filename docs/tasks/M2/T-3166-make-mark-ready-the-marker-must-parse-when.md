@@ -3,7 +3,7 @@ id: T-3166
 title: "make mark-ready: the marker must parse when the posting tool appends an attribution footer after it"
 milestone: M2
 lane: harness
-status: todo
+status: dropped
 priority: P1
 size: S
 tier: opus
@@ -37,3 +37,10 @@ approval. Filed by the 2026-10-29 18:47 UTC steward run.
 
 ## Out of scope
 - Changing what the posting tool appends.
+
+## Outcome (dropped, 2026-10-30, T-3164)
+Duplicate of T-3164, which fixes the same failure on the reading side (decision 0175): `parse_marker` accepts
+exactly one trailing attribution footer and still rejects any other trailing text. Other comment readers checked:
+no other script parses a block at the end of a comment (the `merge-train-ejected v1` block is written by the
+merger and never parsed; the stop label and revert PRs are read by label and title, not by comment body).
+The live `make mark-ready` check is on T-3164's PR.

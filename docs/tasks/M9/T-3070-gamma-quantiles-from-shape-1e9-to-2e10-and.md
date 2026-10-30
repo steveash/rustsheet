@@ -46,3 +46,7 @@ statrs' search, and the closed form's last digits at 1E11 are Excel's.
 
 ## Out of scope
 - The last digits at ordinary shapes (T-0971, T-0972, T-1634).
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- gen-m9/8f2ac25945af87da Calc!A240 `CHISQ.INV(1E-16,10000000000.5)`: Excel 9998837266.383266, ours `#NUM!` (the lower-tail twin of A89 and A90's CHISQ.INV.RT at 10000000000.5 df).

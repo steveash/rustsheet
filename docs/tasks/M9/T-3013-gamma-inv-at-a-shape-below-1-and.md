@@ -54,3 +54,10 @@ T-3060's). This is time-boxed (decision 0056).
 ## Out of scope
 - Huge shapes (T-2982) and ordinary-shape last digits (T-0972, T-2367).
 - Bit-level residue left within 15 digits: file it as a `defer: phase-1b` follow-up.
+
+## Cells added by gap triage (2026-10-29)
+`make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
+- gen-m9/146b46e74f2dac3b Calc!A152 `GAMMA.INV(0.5,1E-300,ROUNDUP(2^53+1,4))`: Excel 0, ours 2.2250738585072014e-308 (the quantile (p·Gamma(a+1))^(1/a)·scale underflows; ours stops at the smallest normal double)
+- gen-m9/60b0b6e69ad35a45 Calc!A210 `GAMMAINV(0.5,MINVERSE(INT(60)),1.5E+10)` (shape 1/60): Excel 7.404834485321526e-09, ours 7.404834485321458e-09
+- gen-m9/c2974c061384fdd9 Calc!A179 `GAMMAINV(0.001,0.01,SUMPRODUCT(Data!C2:D9))` (shape 0.01): Excel 6.988576892175477e-293, ours 6.988576892175518e-293
+At shape a the quantile's relative error is 1/a times that of p·Gamma(a+1), so these three show Excel's small-shape form strongly.

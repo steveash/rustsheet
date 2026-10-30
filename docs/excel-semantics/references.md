@@ -1895,14 +1895,38 @@ Other reference arms pass whole the same way (T-1969; B1:B6 = 1,2,3,1,2,3, row 2
 Value contexts hold the same way (probes/legacy-if-arm-other-references K-T, excel-graph): `=IF(TRUE,OFFSET(B1,0,0,6))`
 shows `=@IF(TRUE,OFFSET(B1,0,0,6))`, `=ABS(IFS(TRUE,B1:B6))` `=ABS(@IFS(TRUE,B1:B6))`,
 `=INDEX(IF(TRUE,OFFSET(B1,0,0,6)),3)` is 3. A single-cell INDEX arm, `=IF(TRUE,INDEX(B1:B6,3))`, shows no
-`@` at all in Excel; ours matches (`returns_single_cell_index`, T-2326) for exactly that shape: an IF whose value arms are all `INDEX(one-column range, literal non-zero row)`. UNVERIFIED, so still `@`: IFS, a 2-D range (two-argument INDEX gives a whole row), a computed row (`INDEX(B1:B6,1+2)`), mixed arms.
+`@` at all in Excel (T-2326). The rule (probes/t3134-legacy-if-index-arm-shapes, 295 cells, excel-graph,
+2026-10-29, T-3134; `returns_single_cell_index`): a legacy IF or CHOOSE shows no `@`, at the root or under ABS,
+when its condition (CHOOSE's index) is a scalar after legacy intersection and every value arm is a scalar or
+`INDEX(range,row[,column])` whose indexes are all literal whole numbers of 1 or more, whatever the range's shape;
+parentheses are looked through. No `@` (I/K 31-33, 38-42, 49, 51-53, 55-64): `INDEX(B1:C6,3,1)`,
+`INDEX(B1:F1,3)` (100), `INDEX(B1:B6,3,1)`, the 2-D `INDEX(B1:C6,3)` (`#REF!` everywhere); beside a number,
+text, boolean, cell (`A20`), `A20+1`, `SUM(B1:B6)` or another such INDEX (`IF(FALSE,INDEX(B1:B6,3),INDEX(C1:C6,2))`
+is 20); nested IF/CHOOSE either way round (`IF(TRUE,CHOOSE(1,INDEX(B1:B6,3)))`, `CHOOSE(1,IF(TRUE,INDEX(...)))`);
+`CHOOSE(1,INDEX(B1:C6,3))`; a computed condition or index (`IF(A20>0,...)`, `CHOOSE(A20-2,...)`); a range
+condition, which takes its own `@` (`=IF(@B1:B6>0,INDEX(B1:B6,3))`, `#VALUE!` off B1:B6's rows); and
+`(INDEX(B1:B6,3))`, `INDEX(B1:B6,(3))`, `INDEX((B1:B6),3)`. `@` (I/K 30, 34-37, 43-48, 50, 54, 65): every IFS
+(`=@IFS(TRUE,INDEX(B1:B6,3))`, `=@IFS(TRUE,INDEX(B1:B6,3),FALSE,5)`); an array condition or index
+(`=@IF({TRUE,FALSE},INDEX(B1:B6,3))`, `=@CHOOSE({1,2},INDEX(B1:B6,3),5)`, whose SUM is 8); an INDEX index that is
+computed (`1+2`), a cell (A20 = 3 or 0), text (`"3"`), non-integer (`3.5`, still 3) or 0 (`INDEX(B1:B6,0)` and
+`INDEX(B1:C6,3,0)`: the whole column or row, intersected, `#VALUE!` off it; `=ABS(@IF(TRUE,INDEX(B1:C6,3,0)))`
+is 30 in column C); and a range or whole-column INDEX beside the INDEX arm (`=@IF(TRUE,INDEX(B1:B6,3),B1:B6)`).
+Under SUM none shows an `@` (M30-M65; 21 for the whole column, 33 for row 3). An array-constant CHOOSE index over
+such one-cell arms stays whole and the call takes the `@` (I54, K54), while over range arms Excel shows both,
+`=@CHOOSE(@{1,2},H1:H2,I1:I2)` (probes/legacy-choose-array-index, T-1882); `leaves_choose_index_whole`, T-3168.
+UNVERIFIED: an INDEX of a defined name or table area, a one- or four-argument INDEX, a negated literal index
+(`INDEX(B1:B6,-3)`) (the engine keeps the `@`); a bare range condition (`IF(B1:B6,INDEX(B1:B6,3))`) and an
+out-of-range literal index (`INDEX(B1:B6,99)`) (the engine drops it).
+UNVERIFIED (T-3168): an array-constant CHOOSE index over plain-cell, computed-scalar or text/boolean arms
+(`CHOOSE({1,2},A1,B1)`, `CHOOSE({1,2},A1+1,5)`; the engine moves the `@` to the call as for I54), and over mixed
+range and scalar arms (`CHOOSE({1,2},H1:H2,5)`; the engine keeps `@{1,2}`).
 Also in Excel (same probe, our engine passes): `=IF(TRUE,OFFSET(B1,0,0))` (one cell, no resize) shows no `@` and
 `=SUM(IF(TRUE,OFFSET(B1,0,0)))` is 1 (S, T); `=IF(TRUE,Rng)` shows `=@IF(TRUE,Rng)` (R);
 `=IF(TRUE,B1:INDEX(B1:B6,6))` shows `=@IF(...)` (N); `=SUM(IF(TRUE,INDEX(B1:B6,3)))` is 3 with no `@` (P).
 Excel drops the `@` for both one-cell arms (M12, S12).
 Evidence: probes/legacy-if-arm-other-references (excel-graph, 2026-10-21, T-1969).
 Status: VERIFIED
-Tasks: T-1935, T-1969, T-2326
+Tasks: T-1935, T-1969, T-2326, T-3134, T-3168
 
 ## Legacy formulas put `@` on array-valued calls and array constants (T-1713)
 Rule: a legacy (non-array) formula reads an array-valued call or array constant in a value
@@ -2607,7 +2631,27 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    into D2 grows `T` to A1:D4 (`COLUMNS(T[#All])` 4), names the new column `Column1` (D1 holds that text, as for a
    column insert above) and fills D2:D4 with `=A2*2`, `=A3*2`, `=A4*2`. `=1+1` typed into the header-row cell D1
    grows `T` to A1:D4 too, but D1 becomes the **text** `0` (not 2, not a formula; the column is named `0`), and
-   D2:D4 stay blank. Typing a constant beside the table, below its last row, or beside a totals row is unprobed.
+   D2:D4 stay blank. T-3003 probed the rest (excel-graph 2026-10-30, probes/t3003-*, table `T` A1:C4, readouts COLUMNS/ROWS of
+   `T[#All]`, `D<n>&""`, `TYPE(D<n>)`, FORMULATEXT, ISFORMULA/ISTEXT of D1):
+   (a) **A constant grows the table too**: `5` or `hello` typed into D2 grows `T` to A1:D4, names the column `Column1`,
+   keeps D2 as the constant and fills nothing (D3:D4 blank) (const-number-d2, const-text-d2). Typed into the header
+   cell D1, the constant becomes the header text (`5` is the **text** `5`, TYPE 2; `hello`) and nothing is filled
+   (const-number-d1, const-text-d1).
+   (b) **Any formula typed into D1 gives the header text `0`**, not its value: `=1+1`, `=2+3` and `="x"` all give the
+   text `0` (ISTEXT TRUE, ISFORMULA FALSE) (header-formula-*).
+   (c) **A totals row does not stop the growth**: with `T` A1:C5 (totals row 5), `=A2*2` typed into D2 grows `T` to
+   A1:D5, names the column `Column1`, fills D2:D4 (`=A2*2`, `=A3*2`, `=A4*2`) and leaves the totals cell D5 blank
+   (totals-data-row). Typed into the totals cell D5 it grows `T` the same way, keeps `=A2*2` in D5 only (value 2) and
+   leaves D2:D4 blank (totals-totals-row); whether D5 is stored as a totals-row formula is unprobed.
+   (d) **An occupied neighbour cell stops the growth**: with 7 in D3, or text `x` in D1, `=A2*2` typed into D2 leaves
+   `T` at A1:C4 and is just a formula in D2 (value 2; D3 stays 7, D1 stays `x`) (occupied-below, occupied-above).
+   (e) **Typing just below the last data row grows the table by a row**: `=B4*2` or the constant `7` typed into A5
+   makes `ROWS(T[#All])` 5 and `COLUMNS` 3, A5 keeps what was typed (formula `=B4*2`), column D stays blank (B5, C5 and the
+   constant in A5 are not read back)
+   (below-last-row, below-last-row-const).
+   (f) **An unqualified `=[@Col]*2` typed into D2 is accepted** (Excel resolves it against the table the new column
+   joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). The engine
+   refuses this entry as a parse error (T-2979).
 What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
 `calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
 blank, or all the one calculated formula). Rule 8 (T-2983, excel-graph 2026-10-28, same table and `FORMULATEXT` in F;
@@ -2647,14 +2691,14 @@ Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of 
 grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
 over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
 and the name is written into its header cell. A formula typed into the header cell itself is not stored: the header
-is the text `0`. This is only probed with `=1+1`, and the oracle's H3 (`D1&""`) does not tell the text `0` from the number 0; headers are text, so the engine writes text. Whether Excel derives the `0` from the formula is unknown. If the
+is the text `0`. Excel's header is the text `0` for any formula typed there (rule 7b: `=2+3`, `="x"`, ISTEXT TRUE), not derived from its value; the engine writes text `0`. If the
 table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
-and the cell is typed as before, in four unprobed cases: a constant typed there, a table with a totals row, a new
-column whose other cells are not all blank, and a new column that another table overlaps. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979): what Excel does with it there is unprobed (T-3003). The facade's edit holds
+and the cell is typed as before, in these cases: a constant typed there, a table with a totals row, a new
+column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). The engine deviates from Excel on rules 7a, 7c, 7e and 7f (known deviations, not accepted behavior; T-3218); it already matches 7b and 7d. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
 the growth, the header cell and the filled rows, and its rollback puts the table back.
-Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
+Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs; rule 7a-7f by probes/t3003-*)
 Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
-Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033
+Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033, T-3003, T-3218
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`
