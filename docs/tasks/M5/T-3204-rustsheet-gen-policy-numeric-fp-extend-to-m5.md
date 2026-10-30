@@ -3,7 +3,7 @@ id: T-3204
 title: "rustsheet-gen --policy numeric-fp: extend to M5 rounding chains (ROUNDUP, ROUNDDOWN, TRUNC, INT, MOD) and 15-digit boundaries"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
