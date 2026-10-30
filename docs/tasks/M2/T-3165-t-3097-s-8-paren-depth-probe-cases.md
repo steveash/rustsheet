@@ -3,7 +3,7 @@ id: T-3165
 title: "T-3097's 8 paren-depth probe cases count against M2 exit: pin them as decision-0036 deviations or lift MAX_FORMULA_DEPTH past Excel's paren nesting"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -50,9 +50,21 @@ M0-M2 probe row's known failures. Two ways out; the implementer picks with evide
 - 2026-10-30: resumed by an opus run (branch idle 3 h).
 
 ## Acceptance criteria
-- [ ] `make exit-owners MILESTONE=M2` no longer lists the eight t3097-nesting-paren cases.
-- [ ] The DEVIATION entry (if kept) names the bound, the cases, and Excel's own limit as probed.
-- [ ] No regressions; `make check` green; reviewers approve.
+- [x] `make exit-owners MILESTONE=M2` no longer lists the eight t3097-nesting-paren cases.
+- [x] The DEVIATION entry (if kept) names the bound, the cases, and Excel's own limit as probed.
+- [x] No regressions; `make check` green; reviewers approve.
 
 ## Out of scope
 - The 65-call function nesting cap (T-3097, done) and T-3143's follow-ups.
+
+## Outcome
+Kept the bound and pinned the eight cases whole (route (1) of the Progress notes; decision 0168).
+A `deviations` line whose cell is `*` and whose value reads `refused "<message>"` pins a case the
+engine refuses with that message: every scored cell is a deviation (`deviations.rs` `Pin::Refusal`,
+`runner.rs` `refused`). Any other refusal stays an `EngineError`, and a pinned case that starts
+loading scores as usual with every cell listed, so a match shows as a stale line. Lifting the bound
+was measured first (release, 1 MiB stack): the parser alone overflows at about 292 nested
+parentheses, 180 `ABS(` and 112 `(ABS(`, so 255 parentheses need a parser that spends less stack
+per parenthesis; syntax.md "Formula nesting depth cap" records the numbers.
+Eval delta: probes 8 cases `!EngineError` → pass (16 cells, all deviations); `make exit-owners
+MILESTONE=M2` no longer lists them; no regressions.

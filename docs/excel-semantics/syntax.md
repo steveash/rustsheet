@@ -178,7 +178,12 @@ LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY
 `Input::StoredFormula` are not checked (unprobed; T-3143). It also refuses
 128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
 (t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. That is
-the DEVIATION below: the depth bound protects the stack (directive 5).
+the DEVIATION below: the depth bound protects the stack (directive 5). Those eight cases are pinned
+whole in probes/deviations (decision 0168, T-3165): measured on a 1 MiB stack in a release build,
+the parser alone overflows at about 292 nested parentheses (about 3.5 KB per level, as each one
+passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`, so 255
+parentheses do not fit under a constant bound without a parser that spends less stack on a
+parenthesis. Excel's own limit on bare parentheses past 255 is unprobed.
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
