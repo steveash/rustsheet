@@ -8,7 +8,7 @@
 //! by [`MAX_VALUE_OPERATORS`] instead.
 
 use crate::expressions::lexer::STRING_LITERAL_TOO_LONG_MESSAGE;
-use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser, Run};
 
 /// Deepest formula tree the parser builds; deeper formulas are a parse error
 /// ([`TOO_DEEP_MESSAGE`]), which keeps untrusted formulas from overflowing
@@ -130,6 +130,15 @@ impl Parser {
         let result = parse(self);
         self.open_calls -= 1;
         result
+    }
+
+    /// The run and the signs before an operand of [`Parser::parse_power`]. A pending operand has
+    /// none of its own (what follows it is read after it, [`Parser::parse_parenthesis_run`]).
+    pub(super) fn parse_prefix(&mut self) -> (Run, Vec<(bool, Run)>) {
+        if self.pending_operand.is_some() {
+            return (Run::default(), Vec::new());
+        }
+        (self.run_ahead(), self.parse_signs())
     }
 
     /// Parses an operand. Its subexpressions (parenthesised, function

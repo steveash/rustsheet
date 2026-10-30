@@ -576,9 +576,8 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
-    /// An operand already parsed, with its depth, that the next [`Parser::parse_primary`]
-    /// returns instead of reading one: the inner group of a run of parentheses, parsed before
-    /// the content around it (see [`Parser::parse_parenthesis_run`]).
+    /// An operand parsed ahead, with its depth, for the next [`Parser::parse_primary`] to
+    /// return: the inner group of a run of parentheses ([`Parser::parse_parenthesis_run`]).
     pending_operand: Option<(Node, usize)>,
     /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
     open_groups: usize,
@@ -851,12 +850,7 @@ impl Parser {
     /// before and after the operand is in helpers of their own, to keep this frame small in
     /// unoptimized builds (T-1110).
     pub(super) fn parse_power(&mut self) -> Node {
-        // A pending operand has no run or sign of its own: what follows it is read after it.
-        let (before, signs) = if self.pending_operand.is_some() {
-            (Run::default(), Vec::new())
-        } else {
-            (self.run_ahead(), self.parse_signs())
-        };
+        let (before, signs) = self.parse_prefix();
         let t = self.parse_bare_union();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -872,7 +866,7 @@ impl Parser {
     /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
     /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776).
     #[inline(never)]
-    fn parse_signs(&mut self) -> Vec<(bool, Run)> {
+    pub(super) fn parse_signs(&mut self) -> Vec<(bool, Run)> {
         let mut signs = Vec::new();
         while let TokenType::Addition(op) = self.lexer.peek_token() {
             self.lexer.advance_token();
