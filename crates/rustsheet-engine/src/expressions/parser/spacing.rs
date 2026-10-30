@@ -98,9 +98,8 @@ impl Node {
     ///
     /// A `Spaced` costs no level of [`super::MAX_FORMULA_DEPTH`]: it only ever wraps a node that
     /// costs one or a unary sign (bounded by [`super::MAX_SIGNS`]), and never another `Spaced`, so
-    /// the tree is at most twice as deep as counted, and
-    /// only the printers and edits walk it (evaluation reads the tree with no whitespace,
-    /// decision 0127). A formula nests as deep with spaces as without, as Excel's does; the
+    /// the tree is at most twice as deep as counted, and only the printers and edits walk it
+    /// (evaluation reads the tree with no whitespace, decision 0127). A formula nests as deep with spaces as without, as Excel's does; the
     /// nesting tests print and edit the spaced shapes at the limit on a 2 MiB stack.
     pub(super) fn spaced(self, before: Run, after: Run) -> Node {
         let (space, child) = self.unspaced();

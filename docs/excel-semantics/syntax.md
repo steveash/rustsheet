@@ -162,8 +162,11 @@ runs the same way is unprobed (only an unbroken run around `1` was, T-3172). A g
 (T-2723), but a sign costs no depth level: the evaluator walks a run of them in a loop. Instead at
 most 1,023 signs may be open at once (`MAX_SIGNS`, T-3193), a minus written directly before a number
 literal not counted, so a run matches Excel's caps below (1,024 minus signs before `1`, 1,023 plus
-signs before `"a"`, 1,023 alternating `-+` before `C1`) and one more sign is too deep. Signs in
-several runs on one path (`=-(-(...))`) count together (unprobed in Excel); a plus directly before a
+signs before `"a"`, 1,023 alternating `-+` before `C1`) and one more sign is too deep. That counting
+rule was chosen to fit those three probed caps; the other explanation (a cap that depends on the
+operand's type) is not ruled out, and `-(1)`, `- 1`, 1,024 plus signs before `1` and minus runs
+before `TRUE` or a reference are unprobed (T-3252). Signs in
+several runs on one path (`=-(-(...))`) count together (unprobed in Excel, T-3252); a plus directly before a
 number literal folds into it and adds no node. Typed whitespace adds no
 level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Calls are further capped at 65 (below).
 Excel caps function nesting at 64

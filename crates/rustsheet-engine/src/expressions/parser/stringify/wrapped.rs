@@ -14,8 +14,9 @@ enum Closer {
 
 /// The text of `node`, a run of the wrappers printed around one operand, unary signs, written
 /// parentheses ([`Node::Group`]) and whitespace ([`Node::Spaced`]), and of that operand. Printed
-/// in a loop, not a frame per wrapper: a sign run holds up to [`crate::expressions::parser::MAX_SIGNS`] signs, and
-/// `-(-(...))` nests as deep as `((...))` (T-3193).
+/// in a loop, not a frame per wrapper: a sign run holds up to
+/// [`crate::expressions::parser::MAX_SIGNS`] signs, and `-(-(...))` nests as deep as `((...))`
+/// (T-3193).
 pub(super) fn wrapped_text(node: &Node, sub: impl Fn(&Node) -> String) -> String {
     let mut text = String::new();
     let mut closers = Vec::new();
@@ -27,6 +28,7 @@ pub(super) fn wrapped_text(node: &Node, sub: impl Fn(&Node) -> String) -> String
                 right: child,
             }
             | Node::UnaryPlus { child } => {
+                // One arm for both signs, so the parentheses rule below is written once.
                 text.push(if matches!(node, Node::UnaryPlus { .. }) {
                     '+'
                 } else {

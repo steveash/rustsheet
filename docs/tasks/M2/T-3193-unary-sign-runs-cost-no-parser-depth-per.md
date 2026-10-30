@@ -3,7 +3,7 @@ id: T-3193
 title: "Unary sign runs cost no parser depth per sign, so Excel's 1,024-minus and 1,023-plus sign runs parse"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -35,7 +35,7 @@ change is bigger than M.
       probes/deviations (the stale report flags them) and the baseline records the passes.
 - [x] At-limit tests on a 1 MiB release stack (test_nesting_depth.rs) cover runs of 1,024 signs;
       syntax.md updated.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bare parentheses (T-3191); function-call nesting (T-3097, T-3143).
@@ -58,3 +58,7 @@ change is bigger than M.
   sheet rename; one more sign, alone or across a `-(` run, is too deep. Measured headroom: the
   same test overflows at 512 KiB (in the derived `Clone`), so about 2x.
 - The eighteen t3172 sign-run lines left probes/deviations; the cases now load and match Excel.
+- Eval delta: probes 18 cases (36 cells) move from whole-case deviation pins to bit-exact passes
+  (probes/deviations lines 41 -> 23; the probes suite now scores 27 deviation cells); known failures unchanged (2672 -> 2672), no regressions.
+- Follow-ups: T-3252 (probe which signs count and how nested `-(` runs share the cap), T-3253
+  (wider stack margin: iterative Clone/Drop of sign runs).
