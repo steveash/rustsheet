@@ -3,7 +3,7 @@ id: T-3189
 title: "T-3172's 20 paren and sign-run probe cases count against M2 exit: lift the depth bound or pin them as decision-0036 deviations"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
