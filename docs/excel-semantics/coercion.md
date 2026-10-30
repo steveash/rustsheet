@@ -214,10 +214,12 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   Ours (T-3181): the operators and the criteria compare texts with `cmp_text_pairwise`, which
   applies the rule (the criteria index still hashes the `CollationKey` of the wrapped sums,
   which every pair the rule finds equal shares, and tests each candidate with the rule); so do
-  all cells of the four t3154/t3201 accent cases, which compare with `<` and `=`. Sorts, sorted
-  lookups and the hashed exact lookups keep the total order of the wrapped sums (`cmp_text`;
-  `slice::sort_by` may panic on a non-total order): the lookup cells above fail (T-3210), and so do
-  the SORT, SORTBY and UNIQUE cells (T-3211). Open: T-3210, T-3211.
+  all cells of the four t3154/t3201 accent cases, which compare with `<` and `=`. Since T-3210 the
+  lookups do too: `compare_values_pairwise` orders texts for MATCH/VLOOKUP/HLOOKUP/XMATCH/XLOOKUP
+  (approximate, descending and linear searches) and SWITCH, and the hashed exact XMATCH/XLOOKUP
+  index keeps the `CollationKey` but tests the first (last) cell with the key and walks when that
+  cell is not equal. Sorts keep the total order of the wrapped sums (`cmp_text`; `slice::sort_by`
+  may panic on a non-total order): the SORT, SORTBY and UNIQUE cells fail (T-3211). Open: T-3211.
 - **Shared leading units are skipped before the sum (T-3201).** Evidence:
   probes/t3201-collation-long-mark-runs (1,000 cells: a ladder of 246 texts `"a"` plus up to three
   marks, one per weight 2, 5, 8, 11 and 14 to 255, self-ranked in order (Calc!A1:A246); `"a"` with

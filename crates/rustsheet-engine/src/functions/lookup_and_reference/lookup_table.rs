@@ -8,7 +8,7 @@ use super::array_node_to_calc_result;
 use crate::functions::binary_search::Sequence;
 use crate::functions::criteria::{folded_units, WildcardPattern};
 use crate::functions::util::collation::{collation_key, CollationKey};
-use crate::functions::util::compare_values;
+use crate::functions::util::{compare_values, compare_values_pairwise};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -313,7 +313,18 @@ impl SearchVector {
             .data
             .collated
             .get_or_init(|| PositionIndex::build(&self.data.values, CollatedKey::of));
-        Indexed::Searched(index.find(&key, forward))
+        let Some(position) = index.find(&key, forward) else {
+            return Indexed::Searched(None);
+        };
+        // Texts `cmp_text_pairwise` finds equal share a key, but not every pair with one key is
+        // equal ("a" and "a" plus 16 U+0302), so the first (last) with the key is the answer only
+        // when it is equal itself; else the walk decides (T-3210).
+        if matches!(target, CalcResult::String(_))
+            && compare_searched(self.get(position), target) != 0
+        {
+            return Indexed::Unindexed;
+        }
+        Indexed::Searched(Some(position))
     }
 
     /// The full length, including the empty tail.
@@ -477,7 +488,7 @@ pub(crate) fn compare_searched(value: &CalcResult, target: &CalcResult) -> i32 {
             Some(Ordering::Greater) => 1,
             _ => 0,
         },
-        _ => compare_values(value, target),
+        _ => compare_values_pairwise(value, target),
     }
 }
 
@@ -605,7 +616,7 @@ fn offset_cell(left: &CellReferenceIndex, row: i32, column: i32) -> CellReferenc
 
 #[cfg(test)]
 mod tests {
-    use super::SearchVector;
+    use super::{compare_searched, Indexed, SearchVector};
     use crate::{calc_result::CalcResult, text::Text};
 
     fn text(s: &str) -> CalcResult {
@@ -644,5 +655,28 @@ mod tests {
         assert_eq!(first("K"), Some(21));
         assert_eq!(first("ß"), Some(23));
         assert_eq!(first("ǅ"), None);
+    }
+
+    /// An exact XMATCH over `"a"` plus 16 U+0302 and `"a"` finds only the equal one through the
+    /// hashed index: both share a collation key but `cmp_text_pairwise` tells them apart (T-3210).
+    #[test]
+    fn indexed_collated_match_tests_the_candidate_with_the_pairwise_order() {
+        let long = format!("a{}", "\u{302}".repeat(16));
+        let mut values: Vec<CalcResult> =
+            (0..16).map(|i| CalcResult::Number(f64::from(i))).collect();
+        values.extend([text(&long), text("a")]);
+        let vector = SearchVector::new(values);
+        let target = text("a");
+        // The first search walks; the second goes through the index.
+        assert!(matches!(
+            vector.collated_match(&target, true),
+            Indexed::Unindexed
+        ));
+        let indexed = vector.collated_match(&target, true);
+        // The first cell with the key is not equal, so the index defers to the walk, never
+        // answering 16; the walk finds the equal cell.
+        assert!(matches!(indexed, Indexed::Unindexed));
+        let walked = (0..vector.len()).find(|&i| compare_searched(vector.get(i), &target) == 0);
+        assert_eq!(walked, Some(17));
     }
 }

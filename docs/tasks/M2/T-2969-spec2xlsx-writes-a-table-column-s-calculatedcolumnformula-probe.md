@@ -3,7 +3,7 @@ id: T-2969
 title: "spec2xlsx writes a table column's calculatedColumnFormula; probe whether Excel refills it on load"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -35,3 +35,8 @@ each data cell keeps its own `<f>`. spec2xlsx cannot write a column formula toda
 
 ## Out of scope
 - The engine's fill on typed entry (T-2958) and auto-expansion (T-2968).
+
+## Outcome
+spec2xlsx takes a table `"calculated": {"C": "<formula>"}` option (test in tools/tests/test_spec2xlsx_tables.py).
+Probe `t2969-calculated-column-load` filled on excel-graph: Excel does not refill a calculated column on load
+(rule in xlsx-storage.md). The engine does not read `calculatedColumnFormula`, so it matches the load rule; its one failing cell (FORMULATEXT `[@Val]`) was fixed on main by T-3241 (T-3315, dropped).

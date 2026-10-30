@@ -42,6 +42,7 @@ Cells (from T-2638; run `make eval-show CASE=...` for the values):
 - ironcalc-calc STATISTICAL/BETA_GAMMA.xlsx BETA_DIST!L3, CHISQ.xlsx Sheet1!G3 and G4, GAMMA.xlsx
   'GAMMA.DIST GAMMA.INV'!E16.
 - probes-numeric/m9-gamma-dist-a9 Calc!A1, A2, A11, A21, A22; t1049-chisqdist Calc!A16, A46, A48;
+- Since T-3147: probes-numeric/m9-gamma-dist-a9 Calc!A30 `GAMMA.DIST(27000000,9,1000000,FALSE)` (lost bit-exact, now 1 ulp: same y as A10, so the gap is in the final division) and t1049-chisqdist A48 (moved 8 to 10 ulp; Excel is 8 ulp below the true value there);
   t3148-gamma-quantile-flat-band Calc!A240.
 - probes/t2753-gamma-density-ratio-sweep S!A20, A46, A47, A48, B20, B21, B46, B47, B48.
 Also visibly off and T-2638's before: probes-numeric m9-legacy-chidist A71, A72 `CHIDIST(1000,30)` (shape 15).

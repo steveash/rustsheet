@@ -11,7 +11,8 @@ impl Txn<'_> {
     /// Logs what typing `text` into `cell` (engine `key`, on sheet index `sheet`) writes besides
     /// the cell: the other rows of its table column that it fills as a calculated column, and the
     /// table as it was, which the fill marks as a calculated column or the text grows by a
-    /// column when typed just right of it. They are part of this edit and its undo.
+    /// column when typed just right of it, or by a row when typed just below it (T-3273). They
+    /// are part of this edit and its undo.
     pub(super) fn log_typed_fill(
         &mut self,
         sheet: u32,
@@ -21,8 +22,8 @@ impl Txn<'_> {
     ) -> Result<(), EditError> {
         let (_, row, col) = key;
         // Typed just right of a table, a formula or a constant grows the table by a column first
-        // (T-2968, T-3218): the table, the new column's header and the rows it fills are this
-        // edit's too.
+        // (T-2968, T-3218), and typed just below it by a row (T-3273): the table, the new column's
+        // header and the rows it fills are this edit's too.
         let expansion =
             (self.model.table_expansion(sheet, row, col, text)).map_err(EditError::Engine)?;
         let targets = match expansion {
