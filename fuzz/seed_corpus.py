@@ -2,9 +2,10 @@
 """Builds the fuzz seed corpora from the repository's own test inputs (T-0021).
 
 Formula targets get one file per formula shape in eval/suites (without the leading `=`), at most
-MAX_FORMULA_SEEDS of them; `xlsx_import` gets every workbook under crates/rustsheet-xlsx/tests and eval/suites. Corpora are
-generated, never committed, so they track the suites as they grow. Seeds are added to whatever a
-corpus directory already holds, so the inputs libFuzzer found on earlier runs are kept.
+MAX_FORMULA_SEEDS of them; `xlsx_import` gets every workbook under crates/rustsheet-xlsx/tests and
+eval/suites. Corpora are generated, never committed, so they track the suites as they grow. Seeds
+are added to whatever a corpus directory already holds, so the inputs libFuzzer found on earlier
+runs are kept.
 
 Usage: fuzz/seed_corpus.py   (from anywhere; writes fuzz/corpus/<target>/ and fuzz/dict/)
 """
@@ -57,6 +58,7 @@ def case_formulas(case: Path) -> set[str]:
 
 
 def shape(formula: str) -> str:
+    """`formula` with its numbers and text literals blanked: generated probes differ only there."""
     return NUMBER.sub("0", TEXT.sub('""', formula))
 
 
@@ -97,7 +99,8 @@ def main() -> int:
         if workbook.stat().st_size <= MAX_SEED_BYTES:
             write_seed(directory, workbook.read_bytes())
             kept += 1
-    print(f"{len(seeds)} formula seeds of {len(formulas)} formulas, {kept} workbook seeds in {corpus}; dictionary {dictionary}")
+    print(f"{len(seeds)} formula seeds of {len(formulas)} formulas, {kept} workbook seeds in {corpus}; "
+          f"dictionary {dictionary}")
     return 0
 
 
