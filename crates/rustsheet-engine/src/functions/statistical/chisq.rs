@@ -17,6 +17,9 @@ use crate::{
 };
 const MAX_DEGREES_OF_FREEDOM: f64 = 10_000_000_000.0;
 
+/// The scale of every chi-squared distribution: a gamma of shape df/2 and scale 2 (rate 1/2).
+const CHI_SQUARED_SCALE: f64 = 2.0;
+
 /// The chi-squared distribution of `df` degrees of freedom, truncated, as statrs builds it (a
 /// gamma of shape df/2 and rate 1/2); a df below 1 or above 1E10 is `#NUM!`.
 fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
@@ -24,7 +27,7 @@ fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
     if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
         return Err(num_error(cell));
     }
-    Gamma::new(df / 2.0, 0.5).map_err(|_| num_error(cell))
+    Gamma::new(df / 2.0, 1.0 / CHI_SQUARED_SCALE).map_err(|_| num_error(cell))
 }
 
 /// Whether a chi-squared distribution from [`chi_squared`] has one degree of freedom (shape 1/2),
@@ -179,18 +182,27 @@ impl Model {
         }
         let dist = chi_squared(df, cell)?;
         if !right_tail {
-            return non_negative(gamma_quantile(&dist, p, Tail::Lower), cell);
+            return non_negative(
+                gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, p, Tail::Lower),
+                cell,
+            );
         }
         // At one degree of freedom Excel's right-tail quantile is the left one of 1 - p:
         // `CHISQ.INV.RT(1E-10,1)` is `CHISQ.INV(0.9999999999,1)`, 41.82145620298276, and below
         // 1.1E-16 (1 - p rounds to 1) it is `#NUM!` (T-1543 probe, T-1634).
         if is_one_degree(&dist) {
-            return non_negative(gamma_quantile(&dist, 1.0 - p, Tail::Lower), cell);
+            return non_negative(
+                gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, 1.0 - p, Tail::Lower),
+                cell,
+            );
         }
         if p < RIGHT_TAIL_P_MIN && dist.shape() != 1.0 && dist.shape() < RIGHT_TAIL_SHAPE_ALL_P {
             return Err(num_error(cell));
         }
-        non_negative(gamma_quantile(&dist, p, Tail::Upper), cell)
+        non_negative(
+            gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, p, Tail::Upper),
+            cell,
+        )
     }
 
     /// The values of a range, row-major, for a caller that keeps the numbers: a number is `Some`,
