@@ -145,9 +145,11 @@ impl Model {
                     // rather than a 1x1 array (`TYPE(TRIMRANGE(A2))` is 1,
                     // `ROWS(A2-TRIMRANGE(A3))` with text in A3 is #VALUE!; probes/t3130-concat-
                     // lambda-trimrange-cell-variable Q13-Q16).
-                    match reference_corner {
-                        Some(left) if rows.len() == 1 && columns.len() == 1 => {
-                            RefArg::from(sub_range(left, &rows, &columns))
+                    // The scalar, not the reference: a LAMBDA body that returns a one-cell
+                    // reference is MAKEARRAY's #VALUE! (gen-m7 a470dc9e165bdb20 A465).
+                    match trimmed.as_slice() {
+                        [row] if reference_corner.is_some() && row.len() == 1 => {
+                            RefArg::Value(array_node_to_calc_result(&row[0], cell))
                         }
                         _ => RefArg::Value(CalcResult::Array(trimmed)),
                     }
