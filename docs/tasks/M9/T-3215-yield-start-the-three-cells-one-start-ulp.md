@@ -3,7 +3,7 @@ id: T-3215
 title: "YIELD start: the three cells one start-ulp off after T-3152 attempt 1 (rate-term B30, term-basis C47, one-step A37)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,10 +32,25 @@ its lab counts (decision 0056).
   the fix.
 
 ## Acceptance criteria
-- [ ] The three cells are within 15 digits and `make eval-baseline` adds no known-failure line, or the task records
+- [x] The three cells are within 15 digits and `make eval-baseline` adds no known-failure line, or the task records
       each candidate tried with its lab counts (decision 0056).
-- [ ] Any new candidate is a named `yield-caret` candidate in kernels/yield_caret.py.
-- [ ] `make check` green; reviewers approve.
+- [x] Any new candidate is a named `yield-caret` candidate in kernels/yield_caret.py.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - ODDFYIELD's own slope (T-2007) and the engine's PRICE last bits (T-3144).
+
+## Outcome
+Done in attempt 1 (decision 0056): Excel's start divides by `(100 T - q T/2) - q/4` in doubles, not by
+`pr T + 100 T` with `pr T` on the unrounded term (financial.md "YIELD stops short of PRICE's root", T-3215).
+- New hypothesis: the denominator's other algebraic form. The doubles each cell allows for `D` bound Excel's
+  real `D` to `pr T + 2 fl(100 T) - 100 T`, the rounding error of `100 T` counted twice, which is what
+  `100 T - q T/2` leaves.
+- Lab: `yield-caret` candidate "Newton from the 100T - qT/2 start" (kernels/yield_caret.py
+  `hundred_t_minus_qt_yield_start`) 369/370 bit-exact and 370/370 within 4 ulps, against 341 and 369 for the
+  unrounded-term start. Scratch scoring on 1,086 YIELD probe cells of all bases: 1,083 against 931.
+- Engine: `yield_start` is the formula in doubles (the double-double sum is gone). B30, C47 and A37 are bit-exact;
+  `fn_yield_start_term_whole_years_then_leftover_days` pins A1 and A2 to the bit again, and
+  `fn_yield_start_denominator_is_100t_minus_qt_over_2` pins the three cells.
+- Eval delta: 226 known failures fixed (probes 224, gen-m9 2; 63 of them ODDFYIELD), none added. Visibly-off
+  in-scope cells 2,576 (lock 3,076).

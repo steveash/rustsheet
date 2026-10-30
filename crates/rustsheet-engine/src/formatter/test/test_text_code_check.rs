@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
-    formatter::format::{format_number, format_text_value, FormatContext},
+    formatter::format::{displayed_text, format_number, format_text_value, FormatContext},
     locale::get_locale,
 };
 
@@ -93,4 +93,37 @@ fn cyan_is_a_color() {
         ("0".to_string(), false)
     );
     assert_eq!(number(5.0, "[Cyan]0"), ("5".to_string(), false));
+}
+
+// The text section on a cell's displayed text (T-1736; gen-m10 "Displayed text").
+#[test]
+fn displayed_text_goes_through_the_text_section() {
+    assert_eq!(displayed_text("TRUE", "\"pre \"@"), "pre TRUE");
+    assert_eq!(displayed_text("text", "_(@_)"), " text ");
+    assert_eq!(displayed_text("", "_(@_)"), "  ");
+    assert_eq!(displayed_text("text", ";;;"), "");
+}
+
+// A text over TEXT()'s 255-character limit keeps its plain text (unprobed with a text section).
+#[test]
+fn displayed_text_keeps_a_long_text() {
+    let long = "a".repeat(300);
+    assert_eq!(displayed_text(&long, "General"), long);
+    assert_eq!(displayed_text(&long, "\"pre \"@"), long);
+}
+
+// An error cell is not a text: its text section never applies.
+#[test]
+fn an_error_cell_ignores_the_text_section() {
+    let mut model = crate::Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_user_input(0, 1, 1, "=1/0".to_string()).unwrap();
+    model.set_user_input(0, 1, 2, "x".to_string()).unwrap();
+    for column in 1..=2 {
+        let mut style = model.get_style_for_cell(0, 1, column).unwrap();
+        style.num_fmt = "\"pre \"@".to_string();
+        model.set_cell_style(0, 1, column, &style).unwrap();
+    }
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "#DIV/0!");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "pre x");
 }

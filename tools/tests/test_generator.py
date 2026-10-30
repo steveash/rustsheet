@@ -32,7 +32,16 @@ from rustsheet_tools.gen.generator import (
 from rustsheet_tools.gen.names_3d import CATEGORIES as NAMES_3D_CATEGORIES
 from rustsheet_tools.gen.names_3d import SPAN_SHEETS, generate_names_3d
 from rustsheet_tools.gen.number_formats import BUILTIN, CUSTOM, generate_number_formats
-from rustsheet_tools.gen.numeric_fp import CALL, FP_BASES, FP_K, POSITIONS, generate_numeric_fp
+from rustsheet_tools.gen.numeric_fp import (
+    CALL,
+    FP_BASES,
+    FP_K,
+    M5_PICKERS,
+    M5_POSITIONS,
+    M5_WRAPPERS,
+    POSITIONS,
+    generate_numeric_fp,
+)
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
 from rustsheet_tools.gen.pools import MAX_STRING_LITERAL, POOLS, lambda_arity
@@ -155,6 +164,60 @@ def test_numeric_fp_policy_covers_every_position_with_m2_functions_only() -> Non
     # Lookup keys and the trailing 0 addend are numbers: a text "0" would be skipped by SUM.
     assert root["sheets"][0]["cells"]["A15"] == 15 and root["sheets"][0]["cells"]["F15"] == 0
     assert root["sheets"][1]["cells"]["E4"] == 4
+
+
+def test_numeric_fp_m5_policy_covers_rounding_chains_and_15_digit_cuts() -> None:
+    cases = generate_numeric_fp(3, "M5")
+    assert cases == generate_numeric_fp(3, "M5")
+    assert cases != generate_numeric_fp(4, "M5")
+    assert [c["tags"][3] for c in cases] == list(M5_POSITIONS)
+    m5 = {f["name"] for f in catalog().scoped("M5").functions}
+    m2 = {f["name"] for f in catalog().scoped("M2").functions}
+    used: set[str] = set()
+    for c in cases:
+        assert c["tags"][:2] == ["generated", "M5"]
+        assert set(c["hypotheses"]) == set(c["check"]) and c["expected"] == {}
+        formulas = [f for s in c["sheets"] for f in s["cells"].values() if isinstance(f, str)]
+        used |= set(CALL.findall(" ".join(formulas)))
+        assert not re.search(r"-\d+\^", " ".join(formulas))  # -2^20 is +2^20 in Excel
+        assert build_xlsx(c)[:2] == b"PK"
+    assert (
+        used == {"TRUNC", "INT", "MOD", "ROUNDUP", "ROUNDDOWN"}
+        and used <= m5
+        and not {"TRUNC", "INT", "MOD"} <= m2
+    )
+    tags = [t for c in cases for t in c["hypotheses"].values()]
+    assert len(set(tags)) == len(tags)
+    root, wrapper, digits = cases
+    assert (
+        len(root["check"]) == len(M5_PICKERS) * 2 * 100
+        and len(wrapper["check"]) == len(M5_WRAPPERS) * 2 * 100
+    )
+    for order in ("x-b", "b-x"):
+        assert any(f"pick-int/{order}/" in t for t in root["hypotheses"].values())
+        assert any(f"wrap-mod-1/{order}/" in t for t in wrapper["hypotheses"].values())
+    # Each base and sign straddles both cuts: X's 15-digit cut is b on one side and not on the other.
+    digit_tags = list(digits["hypotheses"].values())
+    for base in FP_BASES:
+        for sign in ("+1", "-1"):
+            mine = [t for t in digit_tags if f"/base={base}/sign={sign}/" in t]
+            for cut in ("round15", "trunc15"):
+                assert {f"{cut}=eq", f"{cut}=ne"} <= {p for t in mine for p in t.split("/")}, (
+                    base,
+                    sign,
+                    cut,
+                )
+    # 1+23*2^-52 = 1.0000000000000051...: its rounded cut is 1.00000000000001, its truncated cut is 1.
+    cell = next(
+        a
+        for a, t in digits["hypotheses"].items()
+        if t.startswith("numeric-fp/digits15/pick-ref/x-b/base=1/sign=+1/k=23/")
+    )
+    assert digits["hypotheses"][cell].endswith("/round15=ne/trunc15=eq")
+    row = int(digits["sheets"][1]["cells"][cell.split("!")[1]].split("Inputs!B")[1].split("-")[0])
+    assert digits["sheets"][0]["cells"][f"B{row}"] == "=1*(1+23*2^-52)"
+    with pytest.raises(ValueError):
+        generate_numeric_fp(0, "M7")
 
 
 M2_ADDED = [

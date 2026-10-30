@@ -244,7 +244,17 @@ impl Engine for RustSheetEngine {
                             if input_phase != phase {
                                 continue;
                             }
-                            tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
+                            match tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input) {
+                                // Excel refuses a typed formula that does not parse and the cell
+                                // stays blank (decision 0179, T-3213); a typed formula past a
+                                // resource limit still fails the case (decision 0168).
+                                Err(rustsheet::EditError::InvalidInput { message, .. })
+                                    if phase == Phase::Entered
+                                        && message.starts_with(
+                                            rustsheet_engine::TYPED_FORMULA_DOES_NOT_PARSE,
+                                        ) => {}
+                                result => result?,
+                            }
                         }
                     }
                 }
