@@ -49,6 +49,10 @@ visibly-off cell anywhere.
 Cells (gap triage 2026-10-30c): every cell of this case:
 - probes-numeric/t2464-r2-log1p-hix.case.json
 
+Cells (T-3249's sweep): the BETA.DIST column of both cases; column B (F.DIST) is T-3173's:
+- probes-numeric/t3249-beta-large-shape-fit.case.json A1:A9792 (fit)
+- probes-numeric/t3249-beta-large-shape-hold.case.json A1:A7936 (hold-out: score once, never fit)
+
 ## Acceptance criteria
 - [ ] Every cell of the case, and every cell of T-3249's two cases, is within 15 digits of Excel's value, or each
       cell left over is named here with its reason and an owner.
