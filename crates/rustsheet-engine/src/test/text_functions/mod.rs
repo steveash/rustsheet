@@ -268,6 +268,9 @@ fn test_typed_and_coerced_signed_mixed_fraction() {
     model._set("A2", "$3 1/2%");
     model._set("A3", "+ 3 1/2");
     model._set("A4", "-3 1/2%");
+    model._set("A5", "3 1/12");
+    model._set("A6", "3 1/200");
+    model._set("A7", "3 1/002");
     model._set("B1", "=\"€3 1/2\"+0");
     model._set("B2", "=IFERROR(\"$3 1/2%\"+0,\"err\")");
     model._set("B3", "=COUNTIF(A3,\"€3 1/2\")");
@@ -276,6 +279,9 @@ fn test_typed_and_coerced_signed_mixed_fraction() {
     assert_eq!(model._get_text("A2"), "$3 1/2%");
     assert_eq!(model._get_text("A3"), "3 1/2");
     assert_eq!(model._get_text("A4"), "-3.50%");
+    assert_eq!(model._get_text("A5"), "3  1/12");
+    assert_eq!(model._get_text("A6"), "3      ");
+    assert_eq!(model._get_text("A7"), "3 1/2");
     assert_eq!(model._get_text("B1"), "3.5");
     assert_eq!(model._get_text("B2"), "err");
     assert_eq!(model._get_text("B3"), "0");
