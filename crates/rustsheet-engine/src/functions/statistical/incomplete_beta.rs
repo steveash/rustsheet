@@ -25,11 +25,11 @@
 //! Every loop is bounded: at most [`MAX_FRACTION_TERMS`] continued-fraction steps (Cephes' own
 //! cap) and [`RLOG1_TERMS`] series terms, so one call costs a fixed amount of work.
 
-use super::fisher::f_test_remainder;
+use super::half_integer_beta::{half_integer_remainder, is_half_integer_shape};
 use super::special::ln_gamma;
 use crate::x87_exp::{dd_add, dd_mul, fast_two_sum, two_sum};
 use crate::x87_exp::{excel_exp, excel_expm1};
-use crate::x87_log10::{excel_ln, ln_double_double};
+use crate::x87_log10::{excel_ln, ln_double_double_pair};
 use crate::x87_log1p::excel_ln_one_minus;
 
 /// Cephes' `MAXGAM`: Gamma(z) is finite below it.
@@ -92,6 +92,7 @@ pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// (`I_x(a, b)`, 1 - `I_x(a, b)`) with y = 1 - x given: Excel's oriented closed forms
 /// ([`closed_form_tails`]), a shape of 1 outside them ([`shape_one_tails`]), else one evaluation of
 /// the kernel ([`beta_tails`]: the accurate series at half-integer shapes, T-2219, else Cephes).
+/// Not for a quantile search, which crosses [`search_tails`].
 pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     reg_tails(x, y, a, b, Kernel::Accurate)
 }
@@ -213,16 +214,20 @@ fn beta_tails(x: f64, y: f64, a: f64, b: f64, kernel: Kernel) -> (f64, f64) {
     }
 }
 
-/// `I_x(a, b)` for half-integer shapes with a + b from [`SERIES_MIN_SHAPE_SUM`] to below
-/// [`MAXGAM`] (the F tails) and x at most the
-/// mean, close to correctly rounded: x^a y^b with a ln x + b ln y in double-double, times F.TEST's
-/// remainder `I_x(a,b)/(x^a y^b)`, a double-double series of positive terms
-/// (`fisher::f_test_remainder`). Cephes' prefactor and fraction there are up to about 40 ulp off
-/// a 50-digit reference (`F.DIST.RT(1,50,100)`, `F.DIST(0.5,50,100,TRUE)`, probes-numeric/m9-f-dist
-/// A18, A25), where Excel is within half an ulp (T-2219). `None` for other shapes.
+/// `I_x(a, b)` for half-integer shapes (the F tails) with a + b from [`SERIES_MIN_SHAPE_SUM`] to
+/// below [`MAXGAM`] and x at most the mean, close to correctly rounded: x^a y^b with a ln x + b ln y
+/// in double-double, times the remainder `I_x(a,b)/(x^a y^b)`, a double-double series of positive
+/// terms (`half_integer_beta::half_integer_remainder`). Cephes' prefactor and fraction there are up
+/// to about 40 ulp off a 50-digit reference (`F.DIST.RT(1,50,100)`, `F.DIST(0.5,50,100,TRUE)`,
+/// probes-numeric/m9-f-dist-rt A18, m9-f-dist A25), where Excel is within half an ulp (T-2219).
+/// `None` for other shapes. Not Excel's arithmetic: an accuracy stand-in for the bfrac, basym and
+/// bgrat branches of the bratio port (SPEC-0025), which replace it, libm `exp` included, as they
+/// land (T-2508).
 fn half_integer_tail(x: f64, y: f64, a: f64, b: f64) -> Option<f64> {
-    let half_integer = |v: f64| v >= 0.5 && (2.0 * v).fract() == 0.0;
-    if !(half_integer(a) && half_integer(b) && (SERIES_MIN_SHAPE_SUM..MAXGAM).contains(&(a + b))) {
+    if !(is_half_integer_shape(a)
+        && is_half_integer_shape(b)
+        && (SERIES_MIN_SHAPE_SUM..MAXGAM).contains(&(a + b)))
+    {
         return None;
     }
     // The argument above 1/2 is taken as 1 minus the other, exactly in double-double: the caller
@@ -230,9 +235,12 @@ fn half_integer_tail(x: f64, y: f64, a: f64, b: f64) -> Option<f64> {
     // multiplies (`F.DIST(1,50,7,TRUE)`, probes-numeric/t2220-f-dist-sweep-cdf A854, is 13 ulp
     // off with ln x and within 1 with ln(1 - y)).
     let (x, y) = (complement_above_half(x, y), complement_above_half(y, x));
-    let exponent = dd_add(dd_mul((a, 0.0), ln_dd(x)), dd_mul((b, 0.0), ln_dd(y)));
+    let exponent = dd_add(
+        dd_mul((a, 0.0), ln_double_double_pair(x)),
+        dd_mul((b, 0.0), ln_double_double_pair(y)),
+    );
     let (hi, lo) = fast_two_sum(exponent.0, exponent.1);
-    Some(hi.exp() * (1.0 + lo) * f_test_remainder(x, a, b))
+    Some(hi.exp() * (1.0 + lo) * half_integer_remainder(x, a, b))
 }
 
 /// `v` as a double-double, as 1 - `other` (exact by `TwoSum`) when `v` is above 1/2.
@@ -242,11 +250,6 @@ fn complement_above_half(v: f64, other: f64) -> (f64, f64) {
     } else {
         (v, 0.0)
     }
-}
-
-/// ln of a positive double-double: ln hi + lo/hi.
-fn ln_dd((hi, lo): (f64, f64)) -> (f64, f64) {
-    dd_add(ln_double_double(hi), (lo / hi, 0.0))
 }
 
 /// 1 - `I_x(a, b)`, the upper tail of [`beta_reg_complement`], with y = 1 - x given: the other tail

@@ -196,6 +196,12 @@ fn fyl2x(x: f64, y_over_ln_2: (f64, f64)) -> f64 {
     dd_rounded_twice(log)
 }
 
+/// ln of a positive double-double `hi + lo` (|lo| <= ulp(hi)/2): [`ln_double_double`] of the head
+/// plus lo/hi, the first term of ln(1 + lo/hi), whose square is below 2^-106.
+pub(crate) fn ln_double_double_pair((hi, lo): (f64, f64)) -> (f64, f64) {
+    dd_add(ln_double_double(hi), (lo / hi, 0.0))
+}
+
 /// ln x in double-double (about 2^-104 relative) for a positive finite `x`: ln x = e ln 2 + ln f
 /// with x = f 2^e, f in [√2/2, √2]. [`fyl2x`]'s logarithm before its roundings, also F.TEST's
 /// accurate ln B (`f_test_tail.rs`, T-2681).
