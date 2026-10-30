@@ -863,4 +863,48 @@ partly paused).
   `w5/p5/mkrows.py OUT/rows.txt.near1.npz` (scan3 reads `ROWS + ".near1.npz"` when it exists), 9,606,590 points.
 
 ## 20. T-2122 run 8 (2026-10-30, single opus worker, 19.3 step 1: the bias subtraction as a store-structure meter)
-In progress.
+
+New: `t2122/k3_meter.sh PY ROWS BIASKN OUT [real|control CTLKN]`, the run-7 J=6 scan (scan3.py `BIASFILE`/`BIASKN`) on a
+small box around the base: |c| <= 60, |d| <= 60, c step 2, d step 4, no ridge cut (1,891 pairs, about 8.5 min on 4
+cores). The box holds the base cluster, the 18.3 ridge out to |d| 60 and the nearest mirror sidelobes (b ~12, c ~-44,
+d ~52). Logs `t2122/k3_meter_<mode>_kn<BIASKN>_p[0-3].log`, summaries `..._summary.log` (`k3_j6map.py`). Environment
+as 17-19, plus `w5/libsc.so` (`w5/sc.c`'s `Build:` line), which scan3 loads; same 9,606,590 rows.
+
+### 20.1 Real data from C, one scan per BIASKN
+
+| BIASKN (bias: C with ops j >= BIASKN in 80-bit) | max (at) | median / sd | best off ridge (abs(r) > 8) | reading |
+|---|---|---|---|---|
+| 99 (all stored) | 2004.9 (base) | 1153 / 261 | 1697 beside the base, 1695 (b 12.3, c -48, d 60) | as unsubtracted (18.3: 2005.1) |
+| 8 | 1980.0 (base) | 1136 / 258 | 1673 / 1672, same points | almost no change |
+| 7 (reference) | 1378.9 (base) | 773 / 175 | 1159 (b 12.3, c -48, d 60), 1157 | reproduces 19.2 (1378.9) |
+| **6** | **463.4 (b -59.8, c 2, d 44)** | **355 / 23** | 458 (b -60.7, c 14, d 20) | base ridge and sidelobes gone |
+| 5 | 470.3 (b -60.7, c 14, d 20) | 356 / 24 | 462, the same cluster | as 6 |
+
+- **The meter steps once, between BIASKN 7 and 6.** With S_6 (and everything above it) in 80-bit, the subtraction removes
+  the real base peak (1379 -> about 375 on the ridge, at the map's median), the c-d ridge (no slope left: the top-50 fit
+  is c = 0.28 d - 7.1, a fit to noise) and the mirror sidelobes, and the map's sd falls from 175 to 23. On the KN = 7
+  control the right bias only shrank the base to a compact cluster (19.1: 2052 -> 1432); here it goes away entirely.
+- BIASKN 5 is indistinguishable from 6, as expected: a J=6 scan reads the S_6 store phase, which the ops below S_6 do
+  not change at first order. So the meter dates the deepest unstored stage at S_6 or lower, not which.
+- Left over at BIASKN 6 and 5: a weak cluster at b -57 to -63, c -8 to 24, d 4 to 56 (best 463-470, Z ~4.7 over the
+  355 median). Its b is outside the base cluster and it has no mirror,
+  but at Z 4.7 on 1,891 pairs it is not evidence yet, and it sits at the J=6 phase of a stage the bias says is unstored.
+- **Reading (provisional until 20.2):** the real data's base-phase structure looks like C with S_6, S_7 and S_8 all
+  80-bit, i.e. the deeper unstored top of 18.5 step 2, and not run 7's "S_7/S_8 80-bit, S_6 stored".
+
+### 20.2 Calibration on a KN = 6 control
+Control data from `k3_run5_ctl_truth.txt` with ops j >= 6 in 80-bit, base and bias c7 (`k3_meter.sh ... control 6`),
+scanned with BIASKN 6 (the right bias) and 7 (wrong by one stage). Expected if the meter works: BIASKN 6 leaves a flat
+map like 20.1's (and no J=6 truth peak, since the planted S_6 is unstored, as the J=7 one vanished in 17.7); BIASKN 7
+leaves a base ridge and sidelobes like the real KN-7 map.
+PENDING_20_2
+
+### 20.3 Next steps (in order)
+1. If 20.2 confirms the meter: synthesise the KN = 6 control on the full ridge box and check that the planted move is
+   then invisible at J=6 but visible at J=5 (18.5 step 2; scan3.py needs the quartic dS term for J = 5). Then the J=5 scan
+   of the real data with BIASKN 6 (or 5) subtracted, at the run-6 ridge box mapped to J=5 (k3_topbox6.py's map one
+   stage down).
+2. Re-run the 17.x re-read and the k3_run5 Newton steps with an 80-bit S_6..S_8 in the model (`kn=6` in the residual),
+   since C was fitted under an all-stored chain: its lower-chain moves may change.
+3. Check the b ~-60 cluster of 20.1 on a second, disjoint half of the runs (split by case) before reading it.
+4. 18.5 step 3 (joint S + P rescoring) and 17.4.1 / 17.4.3 still stand.
