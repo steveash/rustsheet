@@ -1,5 +1,5 @@
 ---
-id: T-3300
+id: T-3310
 title: "CHISQ.DIST.RT in the far right tail: Excel's Q from 1E-20 to 1E-160 is up to 1E-14 relative off ours (273 visibly-off t2561 probe cells)"
 milestone: M9
 lane: functions-stat

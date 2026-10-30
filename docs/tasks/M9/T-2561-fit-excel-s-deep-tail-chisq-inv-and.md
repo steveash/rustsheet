@@ -149,10 +149,10 @@ branch, on the cases both have:
 - type or error changed: 0;
 - visibly fixed: 9.
 
-The new probe cases are ungated (probes-numeric). On them, 276 cells are visibly off and owned by T-3300: 273 far
+The new probe cases are ungated (probes-numeric). On them, 276 cells are visibly off and owned by T-3310: 273 far
 right-tail CHISQ.DIST.RT and density cells, plus 3 quantiles.
 
-**Left (time-boxed, decision 0056).** Seven owned cells are still visibly off, now owned by T-3301:
+**Left (time-boxed, decision 0056).** Seven owned cells are still visibly off, now owned by T-3311:
 - `CHISQ.INV(1E-200,5)` (A128, A98) and `(1E-200,10)` (A212), where Excel is not the root;
 - `CHISQ.INV(1E-20,6)` (A169), `(1E-20,10)` (A355), `GAMMAINV(1E-16,2.5,1)` (A338) and `CHISQ.INV.RT(1-1E-16,3)`
   (A301), in the search region.
